@@ -502,14 +502,22 @@ describe("generationDegradationLogMetadata (#231) and worker pre-claim scope fil
     expect(isPreClaimCandidateAllowed({ document_id: "doc-1", file_type: "application/pdf" }, inactive)).toBe(true);
 
     const active = resolveWorkerClaimScopeFilter({
-      WORKER_ALLOWED_DOCUMENT_IDS: "DOC-TXT-1, doc-txt-2",
+      WORKER_ALLOWED_DOCUMENT_IDS: "7D0C4A52-1B9E-4F6A-9C2D-3E4F5A6B7C81, 7d0c4a52-1b9e-4f6a-9c2d-3e4f5a6b7c82",
       WORKER_ALLOWED_FILE_TYPES: "TEXT/PLAIN; charset=utf-8",
     });
     expect(active.active).toBe(true);
     expect(
-      isPreClaimCandidateAllowed({ document_id: "doc-txt-1", file_type: "text/plain; charset=utf-8" }, active),
+      isPreClaimCandidateAllowed(
+        { document_id: "7d0c4a52-1b9e-4f6a-9c2d-3e4f5a6b7c81", file_type: "text/plain; charset=utf-8" },
+        active,
+      ),
     ).toBe(true);
-    expect(isPreClaimCandidateAllowed({ document_id: "doc-txt-1", file_type: "application/pdf" }, active)).toBe(false);
+    expect(
+      isPreClaimCandidateAllowed(
+        { document_id: "7d0c4a52-1b9e-4f6a-9c2d-3e4f5a6b7c81", file_type: "application/pdf" },
+        active,
+      ),
+    ).toBe(false);
     expect(isPreClaimCandidateAllowed({ document_id: "doc-other", file_type: "text/plain" }, active)).toBe(false);
 
     const nowMs = Date.parse("2026-10-17T12:00:00.000Z");

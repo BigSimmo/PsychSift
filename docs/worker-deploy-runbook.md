@@ -667,7 +667,8 @@ most one stale window of latency on any in-flight job and zero data loss.
 `WORKER_ALLOWED_DOCUMENT_IDS` is a comma-separated UUID allowlist;
 `WORKER_ALLOWED_FILE_TYPES` is a comma-separated MIME-type allowlist (for example,
 `text/plain,application/pdf`). Blank lists leave that dimension unrestricted; a
-non-blank list with no valid entries (for example `,`) claims no jobs at all;
+non-blank list with no valid entries (for example `,`), or any document ID that is not
+a UUID, claims no jobs at all and logs the configuration error once;
 when both lists are set, a job must satisfy both. MIME types are case-insensitive
 and ignore parameters such as `charset`. UUIDs are normalized to lowercase.
 

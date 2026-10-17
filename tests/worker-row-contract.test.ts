@@ -375,6 +375,37 @@ describe("worker claim rejection isolation", () => {
     }
   });
 
+  it("rejects a non-UUID document ID before the uuid[] claim RPC and reports it once", async () => {
+    const { createWorkerRuntime } = await import("../worker/main");
+    const { resolveWorkerClaimScopeFilter } = await import("../worker/behavior");
+    const valid = claimedRow().document_id;
+    for (const value of ["not-a-uuid", `${valid}, doc-1`]) {
+      expect(resolveWorkerClaimScopeFilter({ WORKER_ALLOWED_DOCUMENT_IDS: value })).toMatchObject({
+        active: true,
+        claimsNothing: true,
+        configurationError: expect.stringContaining("non-UUID"),
+      });
+    }
+    expect(resolveWorkerClaimScopeFilter({ WORKER_ALLOWED_DOCUMENT_IDS: valid.toUpperCase() })).toMatchObject({
+      claimsNothing: false,
+      configurationError: null,
+    });
+    vi.stubEnv("WORKER_ALLOWED_DOCUMENT_IDS", `${valid}, doc-1`);
+    const rpc = vi.fn(async () => ({ data: [claimedRow()], error: null }));
+    const report = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const runtime = createWorkerRuntime({ client: { rpc } as unknown as SupabaseClient });
+      expect(await runtime.claimJobs()).toEqual([]);
+      expect(await runtime.claimJobs()).toEqual([]);
+      expect(rpc).not.toHaveBeenCalled();
+      expect(report).toHaveBeenCalledTimes(1);
+      expect(String(report.mock.calls[0]?.[0])).toContain("doc-1");
+    } finally {
+      report.mockRestore();
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("treats blank allowlists as unset", async () => {
     const { resolveWorkerClaimScopeFilter } = await import("../worker/behavior");
     expect(

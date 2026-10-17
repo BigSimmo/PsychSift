@@ -397,13 +397,21 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
 
   // The declared JobRow[] return is the compile-time proof that the claim contract's
   // inferred row type stays assignable to JobRow — weakening the schema fails here.
+  let reportedClaimScopeError: string | null = null;
   async function claimJobs(stopSignal?: AbortSignal): Promise<JobRow[]> {
     if (isWorkerClaimLoopPaused(process.env)) {
       return [];
     }
     const scopeFilter = resolveWorkerClaimScopeFilter(process.env);
-    // A malformed allowlist (e.g. ",") must never fall through to the unscoped claim.
-    if (scopeFilter.claimsNothing) return [];
+    // A malformed allowlist (e.g. "," or a non-UUID ID) must never fall through to the
+    // unscoped claim, nor reach the uuid[] RPC parameter and fail every poll.
+    if (scopeFilter.claimsNothing) {
+      if (scopeFilter.configurationError !== reportedClaimScopeError) {
+        reportedClaimScopeError = scopeFilter.configurationError;
+        console.error(`Worker claim scope rejected; claiming no jobs: ${scopeFilter.configurationError}`);
+      }
+      return [];
+    }
     const { data, error } = await supabase
       .rpc("claim_ingestion_jobs", {
         p_worker_id: workerId,
