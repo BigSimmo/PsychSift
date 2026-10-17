@@ -86,7 +86,7 @@ export function sourceStatusShortLabel(metadata: ReturnType<typeof normalizeSour
   if (metadata.document_status === "outdated") return "Outdated";
   if (metadata.document_status === "current") return "Current";
   // "Review status unknown" is 21 characters on a card whose whole title is
-  // truncated at 158px, so the one line that has to carry page AND status became
+  // truncated at about 156px, so the one line that has to carry page AND status became
   // mostly status. Same statement, short enough to sit beside the page number.
   // Registry summaries keep their own wording.
   if (
