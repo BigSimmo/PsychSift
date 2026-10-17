@@ -1351,6 +1351,15 @@ function attachIssueFingerprint(action, payload) {
 
   if (row) {
     const isArchived = row.table === "archive";
+    if (
+      action === "reopen" &&
+      payload.targetUlid &&
+      normalizeIssueDisplayId(row.id) !== normalizeIssueDisplayId(payload.id)
+    ) {
+      throw new Error(
+        `ledger request rejected: reopen id ${payload.id} and targetUlid ${payload.targetUlid} (${row.id}) name different issues`,
+      );
+    }
     if (action === "reopen" && !isArchived) {
       throw new Error(`ledger request rejected: ${row.id} is still open; reopen requires an archived durable issue`);
     }

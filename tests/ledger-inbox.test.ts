@@ -1043,9 +1043,15 @@ describe("ledger-inbox idempotent close and duplicate done handling", () => {
     it("refuses a second reopen once the row is open again", () => {
       const once = applyRequest(REOPEN_LEDGER, reopenRequest());
       expect(() => applyRequest(once, reopenRequest())).toThrow(/stale/);
+      // A reopen must carry the archived row's fingerprint, so an unfingerprinted retry is refused outright.
       expect(() => applyRequest(once, reopenRequest({ baseRowFingerprint: undefined }))).toThrow(
-        /not an archived durable issue/,
+        /reopen requires a valid baseRowFingerprint/,
       );
+    });
+
+    it("refuses a targetUlid that names a different issue from the id", () => {
+      const mismatched = reopenRequest({ targetUlid: "01M552JNXFGYR7Q31XTTJSNQZD" });
+      expect(() => applyRequest(REOPEN_LEDGER, mismatched)).toThrow(/not the requested targetUlid/);
     });
 
     it("rejects a stale archive fingerprint", () => {
@@ -1053,8 +1059,15 @@ describe("ledger-inbox idempotent close and duplicate done handling", () => {
     });
 
     it("rejects archived rows without a durable ULID and incomplete requests", () => {
-      const legacyRow = reopenRequest({ id: "#005", baseRowFingerprint: undefined, targetUlid: undefined });
+      const legacyRow = reopenRequest({
+        id: "#005",
+        baseRowFingerprint: archiveRowFingerprint(REOPEN_LEDGER, "#005"),
+        targetUlid: undefined,
+      });
       expect(() => applyRequest(REOPEN_LEDGER, legacyRow)).toThrow(/not an archived durable issue/);
+      expect(validateRequest(reopenRequest({ baseRowFingerprint: undefined }))).toContain(
+        "reopen requires a valid baseRowFingerprint",
+      );
       expect(validateRequest(reopenRequest({ pri: "P9" }))).toContain("reopen pri must be P1, P2, or P3");
       expect(validateRequest(reopenRequest({ detail: undefined }))).toContain("reopen requires detail");
     });

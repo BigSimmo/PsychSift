@@ -325,6 +325,9 @@ export function reopenIssue(markdown, id, fields, options = {}) {
       (entry) => entry.table === "archive" && normalizeIssueDisplayId(entry.id) === targetId,
     );
     if (!row || !row.ulid) throw new Error(`${id} is not an archived durable issue in ${ISSUES_PATH}`);
+    if (fields.targetUlid && fields.targetUlid !== row.ulid) {
+      throw new Error(`${id} has ULID ${row.ulid}, not the requested targetUlid ${fields.targetUlid}`);
+    }
 
     const archiveCells = splitCells(row.raw);
     const openRow = buildRow([
