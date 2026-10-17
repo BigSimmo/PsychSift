@@ -56,6 +56,14 @@
       "pattern": "npm run arbiter|gate[- ]arbiter|GATE_ARBITER|consult the arbiter|arbiter'?s? verdict",
       "allowedContext": "no longer|removed|removal|retir(ed|ement)|deleted|there is no|formerly|previously|superseded|dropped|replaced|deprecated|gone|do not wait|no need",
       "record": "diff-integrity.json: scripts/gate-arbiter.mjs deleted in the owner-approved governance cut of 2026-09-17; gate receipts kept"
+    },
+    {
+      "id": "clinical-review-signs-only-unverified-sources",
+      "retired": "2026-10-17",
+      "summary": "clinical:review --kind source no longer signs only unverified sources: a locally_reviewed source with no attestation field at all is offered too, so the owner can record the structured attestation it lacks.",
+      "pattern": "clinical:review (only signs|signs only) (unverified|drafted) sources|clinical:review only signs unverified",
+      "allowedContext": "no longer|retir(ed|ement)|removed|formerly|previously|superseded|dropped|replaced|historical",
+      "decision": "docs/decisions/2026-10-17-sign-prose-only-source-reviews.md"
     }
   ]
 }

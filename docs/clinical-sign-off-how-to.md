@@ -272,15 +272,16 @@ The tool offers two kinds of source:
 
 - **Unverified sources** that nobody has reviewed yet. Signing one marks it `locally_reviewed`.
 - **Sources already marked `locally_reviewed` whose review was written down only in words**,
-  with no recorded signer, date or content pin (owner decision, 2026-10-17). These show as
+  with no recorded signer, date or content pin ([owner decision, 2026-10-17](decisions/2026-10-17-sign-prose-only-source-reviews.md)). These show as
   waiting in the sign-off ledger. Signing one records your name, the time and a pin of the
   record's current content; its status stays `locally_reviewed`. Read the record on screen
   again before you sign: you are vouching for it as it reads today, not as it read when it was
   first reviewed.
 
-A source that already carries any part of a recorded sign-off (a signer, a date or a content
-pin) is not offered and the tool refuses it by its id, unless its content has changed since it
-was signed. Signing a source never adopts it: whether clinical content cites it is a separate
+A source marked `locally_reviewed` that already carries any part of a recorded sign-off (a
+signer, a date or a content pin) is not offered this way, and the tool refuses it by its id
+unless its content has changed since it was signed. (A partial sign-off is a ledger error that
+`npm run check:source-acquisitions` reports.) Signing a source never adopts it: whether clinical content cites it is a separate
 decision. To send a source sign-off, add `src/data/source-acquisitions.json` in step 11 below.
 
 ## Indigenous content is never signed off here

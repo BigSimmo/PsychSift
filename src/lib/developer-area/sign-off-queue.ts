@@ -533,14 +533,20 @@ function isUnattestedLocalSourceReview(record: SourceAcquisitionRecord): boolean
   );
 }
 
-/** A reviewed source whose content changed after its structured sign-off. */
+/**
+ * A reviewed source with a complete structured sign-off (all three attestation fields present)
+ * whose content changed after it was signed. A partial attestation is never treated as stale: it
+ * is a ledger error (acquisitionLedgerIssues) and stays awaiting prerequisites.
+ */
 function isStaleAttestedSourceReview(record: SourceAcquisitionRecord): boolean {
+  const complete = ACQUISITION_ATTESTATION_FIELDS.every((field) => {
+    const value = record[field];
+    return typeof value === "string" && value.trim().length > 0;
+  });
   return (
     record.disposition !== "rejected" &&
     (record.validationStatus === "locally_reviewed" || record.validationStatus === "approved") &&
-    typeof record.attestedBy === "string" &&
-    record.attestedBy.trim().length > 0 &&
-    typeof record.attestedAgainstSha256 === "string" &&
+    complete &&
     record.attestedAgainstSha256 !== acquisitionAttestedContentSha256(record)
   );
 }

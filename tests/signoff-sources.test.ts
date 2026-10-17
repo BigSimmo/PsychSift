@@ -385,6 +385,10 @@ describe("signing a source reviewed only in prose", () => {
     for (const id of PROSE_ONLY) {
       const view = views().find((record) => record.id === id)!;
       expect(view).toMatchObject({ status: "drafted", validationStatus: "locally_reviewed", reviewedBy: null });
+      // The screen must not promise a rating change: validationStatus is already locally_reviewed.
+      const text = rowsText(display.source(view, context));
+      expect(text).toContain("stays so, so its rating does not change");
+      expect(text).not.toContain("Sets validationStatus to locally_reviewed");
       expect(signOffEligibilityProblem(view, "source")).toBeNull();
       expect(signOffQueue("source", views())).toContain(id);
     }

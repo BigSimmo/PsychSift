@@ -122,7 +122,7 @@ behalf. The owner writes them with `npm run clinical:review -- --kind source` (o
 `validationStatus` to `locally_reviewed` and computes the digest. The tool also offers a source
 already marked `locally_reviewed` whose review lives only in prose, meaning it has no
 attestation field at all; signing it records the three fields and leaves `validationStatus` as
-it is (owner decision, 2026-10-17). A record with any attestation field, complete or partial,
+it is ([owner decision, 2026-10-17](decisions/2026-10-17-sign-prose-only-source-reviews.md)). A record with any attestation field, complete or partial,
 is not offered this way. Signing a source does not adopt
 it: `disposition` stays as it is until a separate adoption decision. Sources with Aboriginal,
 Torres Strait Islander or other Indigenous content are never offered (owner rule 2026-09-26).

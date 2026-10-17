@@ -83,6 +83,7 @@ const signedValidationStatus = (status) => (status === "unverified" ? "locally_r
  * (not even an empty or null one). The owner may sign it with this tool like a drafted source,
  * which records the structured attestation the ledger lacks (owner decision, 2026-10-17). A
  * record carrying any attestation field, complete or partial, is never treated this way.
+ * Decision entry: docs/decisions/2026-10-17-sign-prose-only-source-reviews.md
  */
 export function isUnattestedLocalReview(native) {
   return (
@@ -311,9 +312,14 @@ export const display = {
       ...ratingRows(record, context),
       [
         "What signing does",
-        "Sets validationStatus to locally_reviewed and records your name, the time and a pin of every field above. " +
-          "It takes the source off the owner review queue and changes its rating as shown above. It does not adopt " +
-          "the source: disposition stays candidate until clinical content is written to cite it.",
+        record.validationStatus === "locally_reviewed"
+          ? "Records your name, the time and a pin of every field above. validationStatus is already " +
+            "locally_reviewed and stays so, so its rating does not change; the review stops being prose only and " +
+            "counts as signed. It does not adopt the source: disposition stays as it is until clinical content is " +
+            "written to cite it."
+          : "Sets validationStatus to locally_reviewed and records your name, the time and a pin of every field above. " +
+            "It takes the source off the owner review queue and changes its rating as shown above. It does not adopt " +
+            "the source: disposition stays candidate until clinical content is written to cite it.",
       ],
     ];
   },
