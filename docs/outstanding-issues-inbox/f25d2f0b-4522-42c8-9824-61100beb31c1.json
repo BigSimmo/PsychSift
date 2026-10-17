@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "f25d2f0b-4522-42c8-9824-61100beb31c1",
+  "createdOn": "2026-10-17",
+  "action": "done",
+  "payload": {
+    "id": "#YETFBJ",
+    "outcome": "Converted scripts/eval-retrieval.ts and scripts/build-ranking-snapshot.ts to isDirectEntrypoint(import.meta.url) from scripts/lib/is-entrypoint.mjs and removed both from ALLOWED_RAW in tests/script-entrypoint-guard.test.ts (5/5 passing).",
+    "baseRowFingerprint": "ed4561f8bb9826d5f9092379dd46a85821c9c0772f8f41d1c2f52cc8d035a308",
+    "targetUlid": "01M4R2MABMYETFBJA8FR1XWCHQ"
+  }
+}
