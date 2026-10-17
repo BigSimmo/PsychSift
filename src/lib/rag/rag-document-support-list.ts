@@ -7,7 +7,7 @@ import { queryTokenMatchesText } from "@/lib/rag/rag-extractive-signals";
 import type { AnswerSection, SearchResult } from "@/lib/types";
 
 const documentLookupMetaTokenPattern =
-  /^(?:which|what|list|show|name|where|find|provide|support|supports|supporting|sources?|documents?|guidelines?|polic(?:y|ies|ie)|protocols?|procedures?|manuals?|guidance|indexed|reviews?|sets?|states?|says?|describes?|mentions?|covers?|contains?|for|with|from|that|this|the|and)$/i;
+  /^(?:which|what|list|show|name|where|find|provide|support|supports|supporting|sources?|documents?|guidelines?|polic(?:y|ies|ie)|protocols?|procedures?|manuals?|guidance|indexed|reviews?|sets?|states?|says?|describes?|mentions?|mentioned|covers?|contains?|discuss(?:e|es|ed|ing)?|address(?:e|es|ed|ing)?|outlines?|outlined|recommends?|recommended|explains?|explained|relevant|any|there|have|has|our|about|for|with|from|that|this|the|and)$/i;
 
 /** Build document support list answer. */
 export function buildDocumentSupportListAnswer(args: {
@@ -16,15 +16,16 @@ export function buildDocumentSupportListAnswer(args: {
   filterToClaimBearingDocuments?: boolean;
 }) {
   let scopedResults = args.results;
+  let qualifierTokens: string[] = [];
+  const matchesByResult = new Map<string, string[]>();
   if (args.filterToClaimBearingDocuments) {
-    const qualifierTokens = Array.from(
+    qualifierTokens = Array.from(
       new Set(
         normalizedClinicalSearchTokens(args.query).filter((token) => !documentLookupMetaTokenPattern.test(token)),
       ),
     );
     if (qualifierTokens.length > 0) {
       const matchesByDocument = new Map<string, Set<string>>();
-      const matchesByResult = new Map<string, string[]>();
       for (const result of args.results) {
         const evidence = evidenceTextForGate(result);
         const matches = qualifierTokens.filter((token) => queryTokenMatchesText(token, evidence));
@@ -42,7 +43,39 @@ export function buildDocumentSupportListAnswer(args: {
       );
     }
   }
-  const documents = buildDocumentBreakdown(scopedResults, extractQuoteCards(scopedResults, args.query)).slice(0, 5);
+  // Each named document is cited by the chunks that together cover the qualifiers
+  // (one chunk when no qualifier filter applies). A document is named only when its
+  // whole covering set fits the five-citation budget, never with partial support.
+  const coveringChunkIds = (documentId: string) => {
+    const chunks = scopedResults.filter((result) => result.document_id === documentId);
+    if (qualifierTokens.length === 0 || matchesByResult.size === 0) return chunks.slice(0, 1).map((r) => r.id);
+    const covered = new Set<string>();
+    const ids: string[] = [];
+    for (const chunk of chunks) {
+      const added = (matchesByResult.get(chunk.id) ?? []).filter((token) => !covered.has(token));
+      if (added.length === 0) continue;
+      added.forEach((token) => covered.add(token));
+      ids.push(chunk.id);
+      if (covered.size === qualifierTokens.length) break;
+    }
+    return ids;
+  };
+  const citationBudget = 5;
+  const citationChunkIds: string[] = [];
+  const documents = buildDocumentBreakdown(scopedResults, extractQuoteCards(scopedResults, args.query))
+    .filter((document) => {
+      const ids = coveringChunkIds(document.document_id);
+      if (ids.length === 0 || citationChunkIds.length + ids.length > citationBudget) return false;
+      citationChunkIds.push(...ids);
+      return true;
+    })
+    .slice(0, citationBudget);
+  // Remaining budget goes to the named documents' other matching chunks, as before.
+  for (const result of scopedResults) {
+    if (citationChunkIds.length >= citationBudget) break;
+    if (citationChunkIds.includes(result.id)) continue;
+    if (documents.some((document) => document.document_id === result.document_id)) citationChunkIds.push(result.id);
+  }
   if (!documents.length) {
     const gapAnswer = finalQualityGapAnswer(args.query, "document_lookup", "document_lookup");
     return {
@@ -64,17 +97,6 @@ export function buildDocumentSupportListAnswer(args: {
     names.length === 1
       ? `I found one indexed document that supports this query: ${names[0]}.`
       : `I found ${names.length} indexed documents that support this query: ${names.slice(0, -1).join("; ")}; and ${names.at(-1)}.`;
-  const chunksByDocument = documents.map((document) =>
-    scopedResults.filter((result) => result.document_id === document.document_id).map((result) => result.id),
-  );
-  // Every named document gets an anchor before extra chunks can consume the
-  // five-citation budget. Split-chunk supporting evidence fills remaining slots.
-  const citationChunkIds = Array.from(
-    new Set([
-      ...chunksByDocument.flatMap((ids) => ids.slice(0, 1)),
-      ...chunksByDocument.flatMap((ids) => ids.slice(1)),
-    ]),
-  ).slice(0, 5);
   return {
     answer,
     preformatted: true,

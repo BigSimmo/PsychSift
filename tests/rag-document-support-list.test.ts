@@ -85,6 +85,34 @@ describe("claim-bearing document lookup", () => {
       new Set(result.documentBreakdown?.map((d) => d.document_id)),
     );
   });
+  it.each([
+    "What sources are there for anticoagulation in pregnancy?",
+    "Which documents support and discuss anticoagulation in pregnancy?",
+    "Which documents support anticoagulation in pregnancy and explain it?",
+  ])("ignores everyday lookup wording when matching qualifiers: %s", (query) => {
+    const result = answer(query, [partial, full, unrelated]);
+    expect(result.grounded).toBe(true);
+    expect(result.sources.map((r) => r.id)).toEqual([full.id]);
+  });
+  it("cites every covering chunk of a split match even when five documents compete for citations", () => {
+    const whole = Array.from({ length: 4 }, (_, i) => source(`whole-${i}`, `whole-guideline-${i}`, full.content));
+    const split = [
+      source("split-a", "split-guideline", "Anticoagulation requires specialist planning."),
+      source("split-b", "split-guideline", "Pregnancy care is addressed in this guidance."),
+    ];
+    const result = answer("Which documents support anticoagulation in pregnancy?", [...whole, ...split]);
+    const cited = result.citations.map((c) => c.chunk_id);
+    expect(cited.length).toBeLessThanOrEqual(5);
+    const namedSplit = result.answer.includes("Synthetic split-guideline");
+    if (namedSplit) expect(cited).toEqual(expect.arrayContaining(["split-a", "split-b"]));
+    for (const id of new Set(result.citations.map((c) => c.document_id))) {
+      expect(result.answer).toContain(`Synthetic ${id}`);
+    }
+    const splitResult = answer("Which documents support anticoagulation in pregnancy?", [...split, ...whole]);
+    expect(splitResult.answer).toContain("Synthetic split-guideline");
+    expect(splitResult.citations.map((c) => c.chunk_id)).toEqual(expect.arrayContaining(["split-a", "split-b"]));
+    expect(splitResult.citations.length).toBeLessThanOrEqual(5);
+  });
   it("returns a gap without attributing support when no document matches", () => {
     const result = answer("Which documents support anticoagulation in pregnancy?", [unrelated]);
     expect(result.grounded).toBe(false);
