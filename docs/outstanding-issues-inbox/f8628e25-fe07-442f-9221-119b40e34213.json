@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "f8628e25-fe07-442f-9221-119b40e34213",
+  "createdOn": "2026-10-17",
+  "action": "amend-outcome",
+  "payload": {
+    "id": "#WFYDV6",
+    "outcome": "Reopened 17 Oct 2026 by owner decision (21:37 AWST): archived by PR #3609 without the required legal and clinical sign-off; tracked again as an open P1 row. The form stays unwired until sign-off.",
+    "baseRowFingerprint": "7557eae4330cfdd49d1530a684e58d5668cd895b9f73047e23be2dc8a3fb7531",
+    "allowArchived": true,
+    "targetTable": "archive",
+    "targetUlid": "01M4ZM793BWFYDV65NNBHBP53K"
+  }
+}
