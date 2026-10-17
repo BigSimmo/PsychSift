@@ -232,7 +232,9 @@ export function classifyRepositoryPath(relativePath, options = {}) {
       lower,
     ) ||
     /^docs\/(personal|workspace|diary|cme|on-call)/.test(lower) ||
-    /^tests\/(cme|roster|my-day|teaching|open-shifts|work|diary|workspace|calendar|handover|notes|alerts|favourites|needs-you|admin)(-|\.)/.test(
+    // No bare `work-` prefix: Work tests span several systems (App experience, data
+    // platform, design system), so an unmatched one stays unplaced for explicit ownership.
+    /^tests\/(cme|roster|my-day|teaching|open-shifts|diary|workspace|calendar|handover|notes|alerts|favourites|needs-you|admin)(-|\.)/.test(
       lower,
     )
   ) {
