@@ -15,6 +15,7 @@ import { resetExampleDataForTests, setExampleDataOn } from "@/lib/example-data/s
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }));
 
 const now = new Date("2026-09-19T02:00:00Z");
+const REAL_CME_ENTRIES = DEMO_CME_ENTRIES.map((entry, index) => ({ ...entry, id: `real-cme-${index}` }));
 
 beforeEach(() => {
   window.localStorage.clear();
@@ -42,6 +43,8 @@ describe("CPD annual summary exports with example data", () => {
       expect(screen.getByRole("link", { name: "Download CSV" }).getAttribute("href")).toBe(
         `/api/cme/export?year=${DEMO_CME_YEAR.year}`,
       );
+      fireEvent.click(screen.getByTestId("cme-claim-pack-button"));
+      expect(blocked).toHaveBeenCalledTimes(4);
     } finally {
       window.removeEventListener(EXAMPLE_BLOCKED_EVENT, blocked);
       print.mockRestore();
@@ -54,7 +57,7 @@ describe("CPD annual summary exports with example data", () => {
     const anchorClick = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
     try {
       act(() => setExampleDataOn(false));
-      render(<CmeAnnualSummary set={DEMO_CME_YEAR} entries={DEMO_CME_ENTRIES} now={now} />);
+      render(<CmeAnnualSummary set={DEMO_CME_YEAR} entries={REAL_CME_ENTRIES} now={now} />);
       const claimBtn = screen.getByTestId("cme-claim-pack-button");
       expect(claimBtn).toHaveTextContent("Export claim pack");
       await act(async () => {
@@ -70,12 +73,29 @@ describe("CPD annual summary exports with example data", () => {
     }
   });
 
+  it("does not report success when the claim pack download fails", async () => {
+    const createObjectUrl = vi.spyOn(URL, "createObjectURL").mockImplementation(() => {
+      throw new Error("download unavailable");
+    });
+    try {
+      act(() => setExampleDataOn(false));
+      render(<CmeAnnualSummary set={DEMO_CME_YEAR} entries={REAL_CME_ENTRIES} now={now} />);
+      const claimBtn = screen.getByTestId("cme-claim-pack-button");
+      await act(async () => {
+        fireEvent.click(claimBtn);
+      });
+      expect(claimBtn).toHaveTextContent("Export claim pack");
+    } finally {
+      createObjectUrl.mockRestore();
+    }
+  });
+
   it("does not download an empty claim pack file when no entries have positive costs", async () => {
     const createObjectUrl = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:cme-claim-pack");
     const anchorClick = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
     try {
       act(() => setExampleDataOn(false));
-      const zeroCostEntries = DEMO_CME_ENTRIES.map((entry) => ({ ...entry, costCents: null }));
+      const zeroCostEntries = REAL_CME_ENTRIES.map((entry) => ({ ...entry, costCents: null }));
       render(<CmeAnnualSummary set={DEMO_CME_YEAR} entries={zeroCostEntries} now={now} />);
       const claimBtn = screen.getByTestId("cme-claim-pack-button");
       await act(async () => {

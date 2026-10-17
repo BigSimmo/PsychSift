@@ -84,9 +84,15 @@ export interface CmeClaimPackButtonProps {
   readonly entries: readonly CmeEntry[];
   readonly className?: string;
   readonly filename?: string;
+  readonly demoMode?: boolean;
 }
 
-export function CmeClaimPackButton({ entries, className, filename = "cme-claim-pack.txt" }: CmeClaimPackButtonProps) {
+export function CmeClaimPackButton({
+  entries,
+  className,
+  filename = "cme-claim-pack.txt",
+  demoMode = false,
+}: CmeClaimPackButtonProps) {
   const [downloaded, setDownloaded] = useState(false);
   const resetTimerRef = useRef<number | null>(null);
   const example = useExampleData("cpd").active;
@@ -100,20 +106,15 @@ export function CmeClaimPackButton({ entries, className, filename = "cme-claim-p
     };
   }, []);
 
-  const handleExport = async () => {
-    if (!guardExampleAction(example, "export")) return;
+  const handleExport = () => {
+    if (!guardExampleAction(demoMode || example, "export")) return;
     if (claimableEntries(entries).length === 0) {
       showToast("No claimable expenses recorded for this year");
       return;
     }
-    const text = generateClaimPackText(entries);
-    downloadClaimPackText(entries, filename);
-    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-      try {
-        await navigator.clipboard.writeText(text);
-      } catch {
-        // Fallback or ignore clipboard rejection
-      }
+    if (!downloadClaimPackText(entries, filename)) {
+      showToast("Unable to download claim pack");
+      return;
     }
     setDownloaded(true);
     showToast("Claim pack exported and downloaded");
