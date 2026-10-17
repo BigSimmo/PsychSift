@@ -210,7 +210,7 @@ describe("services clinical workflow navigation", () => {
     expect(selectedParams.get("sort")).toBe("alpha");
     expect(window.location.pathname).toBe("/services/search");
     expect(window.location.hash).toBe("#results");
-    expect(window.history.length).toBe(previousLength + 1);
+    expect(window.history.length).toBe(previousLength);
     expect(navigation.push).not.toHaveBeenCalled();
 
     fireEvent.click(within(screen.getByTestId("services-shortlist-bar")).getByRole("button", { name: "Clear" }));
@@ -219,6 +219,7 @@ describe("services clinical workflow navigation", () => {
     expect(new URLSearchParams(window.location.search).get("sort")).toBe("alpha");
     expect(window.location.hash).toBe("#results");
     expect(screen.queryByTestId("services-shortlist-bar")).toBeNull();
+    expect(window.history.length).toBe(previousLength + 1);
 
     await act(async () => {
       await new Promise<void>((resolve) => {

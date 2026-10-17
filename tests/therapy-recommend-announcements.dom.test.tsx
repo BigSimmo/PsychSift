@@ -90,6 +90,43 @@ describe("Therapy recommendation announcements", () => {
     expect(screen.getByText("No ranked matches").closest('[role="status"], [aria-live]')).toBeNull();
   });
 
+  it("does not repeat a delivered count after an unchanged loading cycle", () => {
+    const { rerender } = render(<RecommendScreen />);
+    state.count = 3;
+    rerender(<RecommendScreen />);
+    act(() => vi.advanceTimersByTime(300));
+    state.announce.mockClear();
+
+    state.loading = true;
+    rerender(<RecommendScreen />);
+    state.loading = false;
+    rerender(<RecommendScreen />);
+    act(() => vi.advanceTimersByTime(300));
+    expect(state.announce).not.toHaveBeenCalled();
+  });
+
+  it("delivers a pending count after loading interrupts its announcement", () => {
+    const { rerender } = render(<RecommendScreen />);
+    state.count = 3;
+    rerender(<RecommendScreen />);
+    act(() => vi.advanceTimersByTime(300));
+    state.announce.mockClear();
+
+    state.count = 4;
+    rerender(<RecommendScreen />);
+    act(() => vi.advanceTimersByTime(200));
+    state.loading = true;
+    rerender(<RecommendScreen />);
+    act(() => vi.advanceTimersByTime(400));
+    expect(state.announce).not.toHaveBeenCalled();
+    state.loading = false;
+    rerender(<RecommendScreen />);
+    act(() => vi.advanceTimersByTime(299));
+    expect(state.announce).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(1));
+    expect(state.announce).toHaveBeenCalledExactlyOnceWith("4 ranked matches", { eventId: "therapy-recommend-count" });
+  });
+
   it("announces zero matches while the scenario editor keeps the result page inert", () => {
     const page = () => (
       <div data-testid="recommend-background">
