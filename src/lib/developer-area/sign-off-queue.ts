@@ -23,7 +23,11 @@ import { isSpecifierClinicianReviewed, loadSpecifiersContent, specifierCatalogIt
 import { therapyNeedsReview, therapyRecords } from "@/lib/therapies";
 import signableTherapySlugList from "@/data/therapy-signable-slugs.json";
 import { isIndigenousContent, signedOffReviewer } from "@/lib/forms-reference-sign-off";
-import { acquisitionReviewQueue, sourceAcquisitionRecords } from "@/lib/sources/acquisition-ledger";
+import {
+  acquisitionAttestedContentSha256,
+  acquisitionReviewQueue,
+  sourceAcquisitionRecords,
+} from "@/lib/sources/acquisition-ledger";
 import {
   conceptReviewState,
   isFormulationSignedOffStatus,
@@ -164,6 +168,15 @@ function canonicalize(value: unknown): unknown {
       .sort()
       .map((key) => [key, canonicalize(record[key])]),
   );
+}
+
+function therapyContentSha256(record: Record<string, unknown>): string {
+  const content = Object.fromEntries(
+    Object.entries(record).filter(
+      ([key]) => !["reviewStatus", "reviewChecklist", "reviewedBy", "reviewedAt", "reviewedContentSha256"].includes(key),
+    ),
+  );
+  return createHash("sha256").update(JSON.stringify(canonicalize(content))).digest("hex");
 }
 
 /**
@@ -722,7 +735,16 @@ function todayRulesDomain(): SignOffDomainSummary {
   let signableNow = 0;
   for (const item of items) {
     const signedBy = item.block?.signedBy?.trim();
-    if (item.block?.enabled === true && signedBy && item.block.signedAt) {
+    const signedContentSha256 = (item.block as (RuleSignOffBlock & { signedContentSha256?: string }) | undefined)
+      ?.signedContentSha256;
+    if (
+      item.block?.enabled === true &&
+      signedBy &&
+      item.block.signedAt &&
+      typeof signedContentSha256 === "string" &&
+      /^[a-f0-9]{64}$/.test(signedContentSha256) &&
+      (item.id !== "mha-timer-switch" || raw.mhaTimerSwitch?.medicalDeviceRuling?.record === "local")
+    ) {
       signedRows.push({
         domain: "today-rules",
         key: `today-rule:${item.id}`,
@@ -762,6 +784,7 @@ function formsDomain(): SignOffDomainSummary {
     status: string;
     reviewedBy?: string | null;
     reviewedAt?: string | null;
+    reviewedContentSha256?: string | null;
   };
   const reviewRows = new Map(
     ((formsContentReviewJson as { forms: FormReviewRow[] }).forms ?? []).map((row) => [row.code, row]),
@@ -774,7 +797,13 @@ function formsDomain(): SignOffDomainSummary {
     const review = reviewRows.get(details.form);
     const href = formPageHref(details.form);
     const title = `Form ${details.form} — ${details.name}`;
-    if (details.contentReviewStatus === "reviewed") {
+    if (
+      details.contentReviewStatus === "reviewed" &&
+      review?.reviewedBy?.trim() &&
+      review.reviewedAt &&
+      typeof review.reviewedContentSha256 === "string" &&
+      /^[a-f0-9]{64}$/.test(review.reviewedContentSha256)
+    ) {
       signedRows.push({
         domain: "wa-mha-forms",
         key: `signed-form:${details.id}`,
@@ -1327,29 +1356,29 @@ function specifiersDomain(): SignOffDomainSummary {
 }
 
 function therapyDomain(): SignOffDomainSummary {
-  const signedBySlug =
-    (
-      signableTherapySlugList as {
-        signedBySlug?: Record<string, { reviewedBy: string; reviewedAt: string | null }>;
-      }
-    ).signedBySlug ?? {};
-
   const signedRows: SignedRecordRow[] = [];
   const prerequisiteRows: UnsignedHoldRow[] = [];
   let signableNow = 0;
 
   for (const record of therapyRecords) {
     const href = `/therapy-compass/${record.slug}`;
-    if (!therapyNeedsReview(record)) {
-      const meta = signedBySlug[record.slug];
+    const canonical = record as unknown as Record<string, unknown>;
+    if (
+      !therapyNeedsReview(record) &&
+      typeof canonical.reviewedBy === "string" &&
+      canonical.reviewedBy.trim() &&
+      typeof canonical.reviewedAt === "string" &&
+      typeof canonical.reviewedContentSha256 === "string" &&
+      canonical.reviewedContentSha256 === therapyContentSha256(canonical)
+    ) {
       signedRows.push({
         domain: "therapy",
         key: `signed-therapy:${record.slug}`,
         id: record.slug,
         title: record.name,
         whatFor: `Evidence-based therapy profile (${record.category ?? "Psychological & psychosocial therapy"}) in Therapy Compass.`,
-        signedBy: meta?.reviewedBy?.trim() || "PsychSift",
-        signedAt: meta?.reviewedAt ?? null,
+        signedBy: String(canonical.reviewedBy).trim(),
+        signedAt: String(canonical.reviewedAt),
         href,
       });
     } else if (signableTherapySlugs.has(record.slug)) {
@@ -1456,15 +1485,21 @@ function sourcesDomain(): SignOffDomainSummary {
   let signableNow = 0;
 
   for (const record of activeRecords) {
-    if (record.validationStatus !== "unverified") {
+    const completeAttestation =
+      typeof record.attestedBy === "string" &&
+      record.attestedBy.trim().length > 0 &&
+      typeof record.attestedAt === "string" &&
+      typeof record.attestedAgainstSha256 === "string" &&
+      record.attestedAgainstSha256 === acquisitionAttestedContentSha256(record);
+    if (record.validationStatus !== "unverified" && completeAttestation) {
       signedRows.push({
         domain: "sources",
         key: `signed-source:${record.id}`,
         id: record.id,
         title: record.title,
         whatFor: `Governed Rung ${record.rung} (${record.jurisdiction}) clinical source (${record.publisher}, ${record.disposition}).`,
-        signedBy: record.attestedBy?.trim() || "PsychSift",
-        signedAt: record.attestedAt ?? record.capturedAt ?? null,
+        signedBy: record.attestedBy!.trim(),
+        signedAt: record.attestedAt!,
         href: null,
       });
     } else if (isIndigenousContent([JSON.stringify(record)])) {
