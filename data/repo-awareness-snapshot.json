@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-18"
+    "committed_at": "2026-10-17"
   },
   "routes": {
     "modes": [
@@ -4606,6 +4606,11 @@
       {
         "path": "docs/archive/2026-10-agent-code-reviews/READY_TO_DEPLOY.md",
         "section": "archive",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-18-no-national-youth-crisis-line-pinning-yet.md",
+        "section": "decisions",
         "catalogued": true
       },
       {

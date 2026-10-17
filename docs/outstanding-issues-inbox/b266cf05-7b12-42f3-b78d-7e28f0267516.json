@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "b266cf05-7b12-42f3-b78d-7e28f0267516",
+  "createdOn": "2026-10-17",
+  "action": "done",
+  "payload": {
+    "id": "#GKAEZS",
+    "outcome": "Closed as a duplicate of #C4Q3T7 (verified 18 Oct 2026): both are the audit M5-2 task to check the older calculator mockups (src/app/mockups calculators-*) after the 30-day dead-code window and remove them once eligible. #C4Q3T7 is the surviving row and carries the dead-code check (delete nothing without the dead-code candidate check). Provenance kept: #GKAEZS came from the PR #3609 review.",
+    "baseRowFingerprint": "f6e66b010c0d01df0b9878a53376a2ab96f627c1f8d363b4ebf55f82fdd25d1e",
+    "targetUlid": "01M54ZYAG4GKAEZS7MF96WFDWS"
+  }
+}
