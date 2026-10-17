@@ -65,6 +65,22 @@ describe("service urgent routing — Requirement R2", () => {
         expect(titles(query, 8)[0]).toBe("CAMHS Crisis Connect");
       }
     });
+
+    it("does not promote non-approved national lines as crisis pins for youth queries", () => {
+      // Owner ruling 18 Oct 2026 00:10 AWST: national youth lines are not pinned until the
+      // owner approves the list (#8CKX6F). Only the detected intents' urgent routes are pinned:
+      // camhs_crisis (CAMHS Crisis Connect) and adult_metro_crisis (MHERL, Lifeline WA). The
+      // first unpinned slot must not be taken by a promoted national line.
+      const topTitles = titles("youth self harm", 8);
+      expect(topTitles.slice(0, 3)).toEqual([
+        "CAMHS Crisis Connect",
+        "Mental Health Emergency Response Line (MHERL)",
+        "Lifeline WA",
+      ]);
+      for (const line of ["Suicide Call Back Service", "Kids Helpline", "13YARN"]) {
+        expect(topTitles.slice(0, 4), line).not.toContain(line);
+      }
+    });
   });
 
   describe("distinguishes non-acute suicidal intent", () => {
