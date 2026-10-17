@@ -126,17 +126,27 @@ node_version_supported() {
 # deprecated lowercase aliases before the first npm invocation.
 unset npm_config_http_proxy npm_config_https_proxy npm_config_proxy
 
+# Bound npm/npx version checks so a tool that starts but never exits cannot
+# stall setup (including the maintenance fallback into setup).
+bounded_probe() {
+  if command -v timeout >/dev/null 2>&1; then
+    timeout -k 5s 30s "$@"
+  else
+    "$@"
+  fi
+}
+
 install_npm_cli() {
   local package_name="$1"
   local expected_version="$2"
   local command_name="$3"
   local actual_version
-  actual_version="$("$command_name" --version 2>/dev/null | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1 || true)"
+  actual_version="$(bounded_probe "$command_name" --version 2>/dev/null | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1 || true)"
   if [[ "$actual_version" != "$expected_version" ]]; then
     log "Installing ${package_name}@${expected_version}."
     npm install --global "${package_name}@${expected_version}"
     hash -r
-    actual_version="$("$command_name" --version 2>/dev/null | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1 || true)"
+    actual_version="$(bounded_probe "$command_name" --version 2>/dev/null | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1 || true)"
   fi
   [[ "$actual_version" = "$expected_version" ]] || fail "${command_name} ${expected_version} is required; detected ${actual_version:-unavailable}."
 }
@@ -161,7 +171,7 @@ if [[ "$policy_only_harness" != "1" ]]; then
   actual_node_version="$(node -p 'process.versions.node' 2>/dev/null || true)"
   node_version_supported "$actual_node_version" || fail "Node ${expected_node_range} is required; detected ${actual_node_version:-unavailable}."
 
-  if [[ "$(npm --version)" != "$expected_npm_version" ]]; then
+  if [[ "$(bounded_probe npm --version 2>/dev/null || true)" != "$expected_npm_version" ]]; then
     log "Installing the repository npm version ${expected_npm_version}."
     npm install --global "npm@${expected_npm_version}"
     hash -r

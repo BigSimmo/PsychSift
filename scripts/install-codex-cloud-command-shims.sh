@@ -74,12 +74,10 @@ else
 fi
 node_version="$("$node_bin/node" -p 'process.versions.node' 2>/dev/null || true)"
 node_version_supported "$node_version" || fail "Node ${expected_node_major}.x >=24.15.0 and <25 is required; detected ${node_version:-unavailable}."
+# A hung npm/npx probe must fail validation so maintenance can rerun setup.
+command -v timeout >/dev/null 2>&1 || fail "The timeout command is required to bound npm/npx version probes."
 bounded_probe() {
-  if command -v timeout >/dev/null 2>&1; then
-    timeout -k 5s 30s "$@"
-  else
-    "$@"
-  fi
+  timeout -k 5s 30s "$@"
 }
 command_paths=()
 # Resolve and validate every target before replacing any installed wrapper.
@@ -95,8 +93,12 @@ for command_name in node npm npx; do
     fi
     # Bundled tools can drift too; validate every selected npm/npx executable.
     if [[ -x "$command_path" ]]; then
-      # Bound the probe so a hung npm/npx fails validation and maintenance can fall back to setup.
-      tool_version="$(PATH="$node_bin${fallback_path:+:$fallback_path}" bounded_probe "$command_path" --version 2>/dev/null | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1 || true)"
+      # Reject a failed or timed-out probe before parsing any version text it printed.
+      tool_output=""
+      if ! tool_output="$(PATH="$node_bin${fallback_path:+:$fallback_path}" bounded_probe "$command_path" --version 2>/dev/null)"; then
+        tool_output=""
+      fi
+      tool_version="$(printf '%s\n' "$tool_output" | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1 || true)"
       [[ "${tool_version%%.*}" = "$expected_npm_major" ]] ||
         fail "${command_name} ${expected_npm_major}.x is required (package.json engines.npm); detected ${tool_version:-unavailable}."
     fi
