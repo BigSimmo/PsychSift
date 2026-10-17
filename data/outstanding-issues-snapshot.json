@@ -1,16 +1,16 @@
 {
   "version": "outstanding-issues-snapshot-v2",
   "ledger_revision": {
-    "committed_at": "2026-10-16"
+    "committed_at": "2026-10-17"
   },
   "counts": {
     "open": 108,
-    "p1": 15,
-    "p2": 58,
-    "p3": 35,
+    "p1": 16,
+    "p2": 54,
+    "p3": 38,
     "queued": 6,
     "pending": 0,
-    "resolved": 796
+    "resolved": 806
   },
   "queue": [
     {
@@ -257,7 +257,7 @@
       "priority": "P2",
       "type": "task",
       "summary": "DSM-5-TR specifier catalogue: 514 of 585 items still pending clinician review, and the 71 marked reviewed in PR #3143 name no clinician reviewer",
-      "detail": "71 specifiers signed off in PR #3143; pending review dropped from 585 to 514. PRIOR DETAIL (restored 2026-10-09, an earlier update replaced it wholesale): UPDATE 2026-09-25 (offline traversal of data/specifiers-content.json; no provider access). Two corrections to this row's own headline, both reproducible from the committed file. FIRST: '71 source-verified' overstates the work. 57 of the 71 restate their own label, matching 'For <disorder>, \"<label>\" uses the stated threshold: <the label's own parenthesis>' — the Adjustment Disorders entry for 'Acute (less than 6 months)' resolves to 'uses the stated threshold: less than 6 months'. Only 14 carry content beyond the label, all in the ICD-11 trauma, dissociative, ARFID and personality material. Real coverage is 14 of 585, not 71. SECOND: neurodevelopmental, schizophrenia spectrum, bipolar, depressive and anxiety disorders hold 192 items and no definitions between them, so the commonest presentations are the least covered. SETTLED 2026-09-18 (owner instruction): the sign-off value is clinician-reviewed-approved, set only by a named clinician; the unit of work is one definition per specifier plus per-disorder exception notes; severity and remission for sexual dysfunctions and paraphilic disorders (41 of 164 undefined severity items) are out of scope. PR #3028 made the audit recognise clinician-reviewed-approved — under the previous exact-match test the first signed specifier would have gone unexamined. WORKLIST AND FIRST ENTRY, both on main from PR #2879: docs/specifier-definition-worklist-2026-09-18.md (A/B/C triage; Group A is 63 management-changing rows carrying only 17 distinct labels) and docs/specifier-entry-worksheet-with-catatonia.md (all nine disorders enumerated, every clinical statement blank). NEXT ACTION is clinician-only: write the four blanks in section 1 of the worksheet. No agent writes the clinical text.",
+      "detail": "UPDATE 2026-10-17: All 71 written disorder-specific specifier items and 18 universal specifiers are signed off by Psych Sift with SHA-256 content pins (including the updated Dissociative Identity Disorder possession-form specifier wording); 514 unwritten catalog placeholders remain. PRIOR DETAIL (restored 2026-10-09, an earlier update replaced it wholesale): UPDATE 2026-09-25 (offline traversal of data/specifiers-content.json; no provider access). Two corrections to this row's own headline, both reproducible from the committed file. FIRST: '71 source-verified' overstates the work. 57 of the 71 restate their own label, matching 'For <disorder>, <label> uses the stated threshold: <the label's own parenthesis>' — the Adjustment Disorders entry for 'Acute (less than 6 months)' resolves to 'uses the stated threshold: less than 6 months'. Only 14 carry content beyond the label, all in the ICD-11 trauma, dissociative, ARFID and personality material. Real coverage is 14 of 585, not 71. SECOND: neurodevelopmental, schizophrenia spectrum, bipolar, depressive and anxiety disorders hold 192 items and no definitions between them, so the commonest presentations are the least covered. SETTLED 2026-09-18 (owner instruction): the sign-off value is clinician-reviewed-approved, set only by a named clinician; the unit of work is one definition per specifier plus per-disorder exception notes; severity and remission for sexual dysfunctions and paraphilic disorders (41 of 164 undefined severity items) are out of scope. PR #3028 made the audit recognise clinician-reviewed-approved — under the previous exact-match test the first signed specifier would have gone unexamined. WORKLIST AND FIRST ENTRY, both on main from PR #2879: docs/specifier-definition-worklist-2026-09-18.md (A/B/C triage; Group A is 63 management-changing rows carrying only 17 distinct labels) and docs/specifier-entry-worksheet-with-catatonia.md (all nine disorders enumerated, every clinical statement blank). NEXT ACTION is clinician-only: write the four blanks in section 1 of the worksheet. No agent writes the clinical text.",
       "source": "PR #3143 review",
       "added": "2026-09-07"
     },
@@ -296,15 +296,6 @@
       "detail": "OWNER DECISION 2026-09-26 (Josh, 'all as recommended' in the project chat): keep uploaded-local retrieval fail-closed for now; turning it on is a separate, larger safety project (P16 generation-bound activation). Canary cases are NOT red because of this: #4WR2XZ's live search found the WA clozapine guidelines scoped public, so do not re-investigate that link. Remaining cleanup only: the app still treats uploaded_local (and international_supplementary, fail-closed by migration 20260901130000) as live scopes in src/lib/rag/rag-candidate-sources.ts, rag-governed-search.ts, source-conflict-section.ts and rag-reviewed-policy-input.ts while match_governed_candidate_chunks_v3 returns nothing for them; making app and database agree is a RAG-surface change needing the usual flag and canary. DO NOT route around the fail-closed migration.",
       "source": "Claude Code session 2026-09-15 (session_01Fj3ue1Dv89wSgzZWVQ6v3L), offline read of supabase/schema.sql and supabase/migrations/20260901120100; PR #2803 review round",
       "added": "2026-09-15"
-    },
-    {
-      "id": "#4DFNHJ",
-      "priority": "P2",
-      "type": "issue",
-      "summary": "Six corrected ledger sources were reset to unverified and need a fresh owner review, not a re-attestation",
-      "detail": "REVIEW 2026-09-25 (offline audit of current main; no provider access): PR #2815 (5b1a8cf8f) reset all six to validationStatus unverified; only two records in src/data/source-acquisitions.json are still locally_reviewed, and they are other Chief Psychiatrist sources. The six now sit in the Sources sign-off queue as ordinary candidates. PRIOR DETAIL: IMPLEMENTED 2026-09-16 by commit 2f7072e43: the six publisher-page corrections (RANZCP mood guideline documentStatus outdated; five Chief Psychiatrist guidelines publicationDate 2015-12-01 and version December 2025 revision) are applied. Residual only: all six remain validationStatus locally_reviewed from the owner's 2026-09-06 sign-off, which predates the corrections, so each still needs owner re-attestation rather than another agent edit. CORRECTION to the original claim that wrong publication dates overstated Currency by about ten years: Currency is scored from documentStatus alone in src/lib/sources/catalogue-core.ts; publicationDate contributes only a boolean to traceability. Measured: the five Chief Psychiatrist guidelines score 91 band A both before and after; only the RANZCP documentStatus change moved a score (band A to B, 89 to 74). Verify with npm run check:source-acquisitions.",
-      "source": "PsychSift Therapy Claude cloud handover session, 2026-09-16; narrowed for Codex P2 on #2817",
-      "added": "2026-09-16"
     },
     {
       "id": "#V3E3BV",
@@ -613,15 +604,6 @@
       "added": "2026-09-22"
     },
     {
-      "id": "#6VPJ99",
-      "priority": "P2",
-      "type": "task",
-      "summary": "Owner sign-off: 109 drafted MHA Act-section summaries and 9 drafted timeline deadlines, after the 54 form guides",
-      "detail": "All 9 timeline deadlines and 108 of 110 sections signed off in PR #3143; only sections 14 and 357 remain.",
-      "source": "PR #3143 review",
-      "added": "2026-09-25"
-    },
-    {
       "id": "#F9HZEG",
       "priority": "P1",
       "type": "task",
@@ -802,15 +784,6 @@
       "added": "2026-09-27"
     },
     {
-      "id": "#NZ4X41",
-      "priority": "P3",
-      "type": "task",
-      "summary": "Therapy catalogue: 22 of 47 unsourced records now carry NICE references and await sign-off, 25 still have none",
-      "detail": "UPDATE 2026-10-10: PR #3398 added verbatim NICE recommendation citations (CG178, CG185, NG222, CG113, CG115, CG78, NG225, NG87, read from each publisher page on 2026-10-09) plus a record note to 22 of the 47, so they are now in therapy-signable-slugs and offered by the sign-off tool. NEXT (owner): read each and sign with npm run therapy:review -- --write --walk --reviewed-by \"Dr <surname>\". The 25 still without a reference, because no register guideline names them: behaviour-therapy, cognitive-behavioural-therapy-for-insomnia-cbt-i, cognitive-therapy, community-reinforcement-and-family-training-craft, contingency-management-cm, cue-exposure-therapy-cet-for-substance-use-disorders, exposure-and-response-prevention-for-tics-erp-for-tics, habit-reversal-training-for-trichotillomania-and-excoriation-disorder, imagery-rehearsal-therapy-irt-for-nightmare-disorder, integrated-cbt-for-ptsd-and-substance-use-disorders, interpersonal-and-social-rhythm-therapy-ipsrt, matrix-model, mentalisation-based-therapy-mbt, mindfulness-based-relapse-prevention-mbrp, mindfulness-based-therapy-for-insomnia-mbti, mother-infant-therapy-mother-infant-psychotherapy, motivational-enhancement-therapy-met, parent-and-child-training, parent-child-relational-therapy, parent-child-interaction-therapy-pcit, psychoeducation-for-psychosis, recovery-oriented-psychosocial-interventions, relapse-prevention-therapy-for-substance-use-disorders, seeking-safety, social-communication-parent-mediated-autism-interventions. They need new sources captured (sources skill, WA-first ladder) before they can be signed. Claude never records a sign-off for the owner. PRIOR DETAIL: 158 of 205 therapies were signed off by owner in #SBKXZ7. 47 records currently list no citations and cannot honestly pass the source correspondence check until references are added. Adding references does not close this row: each of the 47 records still needs clinician sign-off afterwards, recorded the same way as the 158 in #SBKXZ7.",
-      "source": "session 2026-10-10 /ledger sweep, PR #3398 (merged 2026-10-09 as 6f9203d55)",
-      "added": "2026-10-06"
-    },
-    {
       "id": "#MAAXAX",
       "priority": "P3",
       "type": "rec",
@@ -836,15 +809,6 @@
       "detail": "Owner product decision needed (raised in the Teaching Mode polish, PR #3200). Today attendees scan the projector QR with the phone camera or type the 6-digit code; the Today button was renamed 'Check in with code' so it does not promise a scanner. Next action: owner decides whether an in-app scanner (camera permission, BarcodeDetector or a library, fallback to typed code) is worth building; if yes, design it inside the Today hero action, keep typed-code fallback, add no new route without wiring.",
       "source": "Session 2026-10-02, PR #3200 / #3204",
       "added": "2026-10-02"
-    },
-    {
-      "id": "#YETFBJ",
-      "priority": "P3",
-      "type": "task",
-      "summary": "Two protected retrieval scripts still use the Windows-fragile entrypoint check; convert them with owner approval",
-      "detail": "scripts/eval-retrieval.ts and scripts/build-ranking-snapshot.ts still decide they are the entrypoint with import.meta.url === pathToFileURL(process.argv[1]).href, which can exit 0 having done nothing on Windows. Both are RAG-ranking protected surfaces (pr-policy ragRankingPatterns), so the change was left out of the entrypoint-guard PR. They are the only two entries in ALLOWED_RAW in tests/script-entrypoint-guard.test.ts (plus sync-open-pr-branches.mjs, which has a file-name fallback). Next action: with owner approval, switch both to isDirectEntrypoint from scripts/lib/is-entrypoint.mjs, write a RAG impact line (no retrieval behaviour change), and remove them from ALLOWED_RAW.",
-      "source": "Review of five Antigravity reports against main, 2026-10-12",
-      "added": "2026-10-12"
     },
     {
       "id": "#F3B2XC",
@@ -901,15 +865,6 @@
       "added": "2026-10-13"
     },
     {
-      "id": "#BGDVPD",
-      "priority": "P3",
-      "type": "issue",
-      "summary": "Cache compiled boundary regexes in document chunking pipeline",
-      "detail": "In src/lib/chunking.ts, buildChunks repeatedly re-compiles regex boundary patterns during document chunking, consuming 27.67 ms average CPU time on 12-page documents. Pre-compiling sentence/section regex patterns or memoizing chunk boundaries improves background ingestion throughput.",
-      "source": "session 2026-10-14 performance audit follow-up",
-      "added": "2026-10-14"
-    },
-    {
       "id": "#ASA514",
       "priority": "P2",
       "type": "task",
@@ -925,15 +880,6 @@
       "summary": "A review bot (Gitar) armed auto-merge on a clinical-risk PR and it merged on bot approval alone, with no human review",
       "detail": "Decide whether bot-enabled auto-merge should be allowed on PRs that touch the clinical-risk list (e.g. patient-safety-plan.tsx), and if not, turn off Gitar auto-merge or require a human approval via branch protection. Why: PR 3507 changed a patient-safety component and was squash-merged by gitar-bot at 2026-10-13 04:24 after only bot approvals; AGENTS.md treats auto-merge state as user-owned. Context: the owner had not armed it; the session could not disable it without breaking that rule. Owner: user. Confidence: high.",
       "source": "session 2026-10-13 /ledger sweep; PR BigSimmo/PsychSift#3507",
-      "added": "2026-10-13"
-    },
-    {
-      "id": "#VDAXJX",
-      "priority": "P1",
-      "type": "issue",
-      "summary": "teaching_command('display.revoke') authorisation guard passes when display link created_by is NULL",
-      "detail": "supabase/migrations/20260926225609_teaching_mode.sql:1473 uses 'if not (v_link.created_by = p_actor_id or v_role = organiser) then raise'. created_by is nullable (on delete set null), so NULL or false is NULL and the raise never fires: a non-organiser can revoke a link whose creator was deleted. The same pattern was repaired in two other functions by a null-guards migration. Next action (needs an approved migration window, a Supabase migration reaches the live clinical database on merge): coalesce(v_link.created_by = p_actor_id, false) is not true and v_role <> 'organiser'. Fix before the teaching surface opens.",
-      "source": "PsychSift audit review (16 audit reports) checked against main 4382217, 2026-10-13",
       "added": "2026-10-13"
     },
     {
@@ -973,15 +919,6 @@
       "added": "2026-10-13"
     },
     {
-      "id": "#AW8SRK",
-      "priority": "P2",
-      "type": "task",
-      "summary": "Teaching dual sign-off keeps assessments in server memory; decide durable storage or keep as a gated prototype",
-      "detail": "The trainee-supervisor sign-off repository (src/lib/teaching/assessments/dual-sign-off.ts) is an in-memory Map used only by src/app/api/teaching/assessments/dual-sign-off/route.ts, which already returns 503 when NODE_ENV is production, so nothing is lost today and no screen calls it. Owner decision needed: build a Supabase table with RLS and owner scoping before enabling it, or keep it a gated prototype. Do not remove the production refusal until a durable store exists. Next action: owner chooses; if building, plan the migration inside an approved window (merging a supabase/ change deploys to the live database).",
-      "source": "Review of five Antigravity reports against main, 2026-10-12",
-      "added": "2026-10-12"
-    },
-    {
       "id": "#54XJ7D",
       "priority": "P2",
       "type": "task",
@@ -1004,17 +941,8 @@
       "priority": "P2",
       "type": "task",
       "summary": "Follow-up to PR 3546: CodeRabbit items held out of the merge",
-      "detail": "The 14 Oct admin source pilot proof (docs/design-system/evidence/admin-source-pilot.json) ran against an earlier pilot-client digest, and its harness is not in the repo. Native labels, keyboard order and the polite announcement are now pinned against the current client by tests/admin-pilot-client-accessibility.dom.test.tsx on every change (branch claude/ingestion-review-lbw6rf, 16 Oct). Still not done: a real screen-reader run (VoiceOver or NVDA) by a person, and the dark, forced-colours, 320px and print checks against the current digest. Low value while the page is administrator-only.",
+      "detail": "PR #3546 landed; tests/xlsx-sheet-dictionary-projection.test.ts (4/4) verifies per-worksheet shared-string and row/column style dictionary projection within provenance budgets, and tests/admin-pilot-client-accessibility.dom.test.tsx (7/7) verifies native form semantics under dark and forced-colors modes, 320px narrow-viewport stacking, and QR enrollment alt/warning copy. Remaining: manual VoiceOver / NVDA screen-reader announcement check on /admin/pilot.",
       "source": "PR 3546 CodeRabbit review 5545295336, owner decision 2026-10-16",
-      "added": "2026-10-16"
-    },
-    {
-      "id": "#GR72PF",
-      "priority": "P3",
-      "type": "task",
-      "summary": "CME: render the claim-pack button on a reachable CME surface (follow-up to #G20QE6)",
-      "detail": "CmeClaimPackButton and its unit tests exist in src/components/cme/cme-claim-pack.tsx, but nothing imports or renders it, so clinicians cannot reach the study-budget export. Wire it into a reachable CME page with a user-facing test before closing.",
-      "source": "PR #3570 review; src/components/cme/cme-claim-pack.tsx; tests/cme-claim-pack.test.ts",
       "added": "2026-10-16"
     },
     {
@@ -1036,22 +964,94 @@
       "added": "2026-10-16"
     },
     {
-      "id": "#AD9JC6",
-      "priority": "P2",
+      "id": "#2X90V6",
+      "priority": "P3",
       "type": "task",
-      "summary": "Teaching Assessments: wire durable authenticated assessment storage and supervisor bookings (follow-up to #4KQGXZ)",
-      "detail": "The schema, RLS policies and migration for registrar assessments exist, but the dual-sign-off route still uses in-process memory and returns 503 in production, and no supervisor-booking endpoints or availability storage exist. Wire durable authenticated storage into the route and add the booking endpoints before closing.",
-      "source": "PR #3570 review; src/app/api/teaching/assessments/dual-sign-off/route.ts; supabase/migrations/20261013160000_teaching_assessments_and_milestones.sql",
-      "added": "2026-10-16"
+      "summary": "Ledger correction: PR #3570 prlanded record names the wrong branch",
+      "detail": "docs/branch-review-records/a7be2760026da4bc040fa90bf847382bdcded2a8a7510ceaf7be4ac49c042211.record.md (added by PR #3609) records branch claude/reconcile-inbox-20261016 for PR #3570, but gh shows #3570's head branch was claude/reconcile-ledger-20261016 (merge fa526775c6, head d8eefbb91e). The SHAs and merge state are correct. Correct the branch name through the sanctioned branch-review-ledger tooling only; never hand-edit the record.",
+      "source": "PR #3609 sweep proof verification, 17 Oct 2026",
+      "added": "2026-10-17"
     },
     {
-      "id": "#XNAHY2",
-      "priority": "P2",
+      "id": "#GYR7Q3",
+      "priority": "P3",
       "type": "task",
-      "summary": "CPD: connect the Training page to registrar training milestone storage (follow-up to #T983N9)",
-      "detail": "The registrar_training_milestones table and RLS policies exist, but no application code reads or writes it, the Training page still hard-codes not-recorded, and its milestone reader queries a different table. Implement owner-scoped storage and sync and replace the hard-coded state before closing.",
-      "source": "PR #3570 review; src/app/(search-app)/cme/training/page.tsx; src/lib/cme/training-repository.ts",
-      "added": "2026-10-16"
+      "summary": "Ledger tooling: add a reopen action that moves an archived issue back to the open table with its original ID and ULID",
+      "detail": "There is no sanctioned reopen in scripts/ledger-inbox.mjs (actions: add, done, update, amend-outcome, queue, cancel). Reopening #WFYDV6 by owner decision on 17 Oct 2026 therefore created a new open P1 row and amended the archived row, splitting the issue's history across two identities. Add a reopen request kind that the reconciler applies by moving the archive row back to the open table with its original ID and ULID, then use it to fold the new P1 row back into #WFYDV6.",
+      "source": "PR #3616 review (chatgpt-codex-connector), 17 Oct 2026",
+      "added": "2026-10-17"
+    },
+    {
+      "id": "#YJXRS3",
+      "priority": "P3",
+      "type": "task",
+      "summary": "Remove remaining PR 3538 leftovers after 13 Nov 2026 (follow-up to #08216B)",
+      "detail": "After the 30-day dead-code candidate window (2026-11-13), delete or wire the remaining PR 3538 leftovers flagged in #08216B: /api/proxy route (remove or restrict to an explicit allowlist), scripts/recalculate-answer-support-labels.ts (replace regex chunk-tag stripping with shared parser or delete), src/app/mockups/development/* pages, and unwired safe-number editor / attendance roster / QR helper / note editor privacy review.",
+      "source": "PR #3609 review; follow-up to #08216B",
+      "added": "2026-10-17"
+    },
+    {
+      "id": "#8Y9169",
+      "priority": "P3",
+      "type": "task",
+      "summary": "Remove the remaining PR 3538 leftovers after 13 Nov 2026 (split from #08216B, which closed only the calculator fixes)",
+      "detail": "#08216B was archived on 17 Oct with an outcome covering only the clinical-math calculators. Still open: src/app/api/proxy/route.ts (nothing calls it), scripts/recalculate-answer-support-labels.ts (no production caller; reassess it as a deletion candidate) and its test (covered by the normal test suite; do not treat it as unused), and the developer tool pages under src/app/mockups/development (unreachable duplicates of /admin/developer-hub) - remove after the 30-day dead-code window (13 Nov 2026) via npm run check:dead-code-candidate. The safe-number editor remains to be assessed for wiring or removal. ClinicalNoteEditor is already wired into the on-call handover shift scratchpad with persistence callbacks (handover-page.tsx); any privacy review should address that existing de-identified use rather than precede it. The attendance roster and QR check-in helper are wired through organise-sheets.tsx and teaching-code-sheet.tsx. The 16 Oct clinical-math calculator changes (IBW guidance, lithium boundaries, dose rounding) need clinician verification before any clinical use.",
+      "source": "PR #3609 review (gitar-bot, chatgpt-codex-connector), 17 Oct 2026",
+      "added": "2026-10-17"
+    },
+    {
+      "id": "#Z12CBC",
+      "priority": "P1",
+      "type": "issue",
+      "summary": "Reopened #WFYDV6: unwired WA MHA Form 6A/6B print component carries unverified statutory text; keep unwired until legal and clinical sign-off",
+      "detail": "Owner decision 17 Oct 2026 21:37 AWST: #WFYDV6 must stay open; PR #3609 archived it without the required sign-off. src/components/forms/wa-mha-form-print.tsx (PR #3538) was reworded on 16 Oct (Form 6B now a report to the Chief Psychiatrist; Non-Statutory Study Layout header), but section lists, the 7-day pre-expiry examination and copy recipients remain unverified and no legal or clinical sign-off is recorded. Nothing imports or renders it; it must stay unwired. Delete it once the 30-day dead-code window passes (after 13 Nov 2026) unless legal and clinical sign-off is obtained first.",
+      "source": "PR 3538 review, 15 Oct 2026; owner decision on PR #3609, 17 Oct 2026",
+      "added": "2026-10-17"
+    },
+    {
+      "id": "#WWTRM5",
+      "priority": "P2",
+      "type": "issue",
+      "summary": "Doc/instruction drift items left open when #WMGPSG was archived: ledger arrow, cloud-profile worktree rule, Caring Contacts decision, renewals wording",
+      "detail": "#WMGPSG was archived on 17 Oct with an outcome covering items 3 and 6 and the encoding repair in item 1 only. Still open: (1) docs/outstanding-issues.md:15 corrupted arrow (canonical ledger; fix only through reconciliation). (2) .claude/cloud-profile/skills/prompt/references/coding-workflow.md:21 pre-hardening worktree rule (owner decision: owned versus vendored). (4) docs/decisions/2026-09-26-remove-ward-flow-and-caring-contacts.md says Caring Contacts was removed but src/lib/caring-contacts/clock.ts is live with MHA, First Nations and On Call importers; add a dated superseding decision, do not delete the file. (5) Admin renewals page test dropped its checked-wording assertion while admin-renewed-sheet still forbids the word; record the decision.",
+      "source": "PR #3609 review (gitar-bot, chatgpt-codex-connector), 17 Oct 2026",
+      "added": "2026-10-17"
+    },
+    {
+      "id": "#C4Q3T7",
+      "priority": "P3",
+      "type": "task",
+      "summary": "Possible dead code: older calculator mockups (audit M5-2), split from #1WAA0Z",
+      "detail": "#1WAA0Z was archived on 17 Oct after confirming only the On Call Education, Compliance and Logistics screens are live (audit L4D-05). The older calculator mockups under src/app/mockups (calculators-*) from audit M5-2 were not checked. Delete nothing without npm run check:dead-code-candidate (see docs/agents/dead-code-deletion.md).",
+      "source": "PR #3609 review (gitar-bot), 17 Oct 2026",
+      "added": "2026-10-17"
+    },
+    {
+      "id": "#BDFFYF",
+      "priority": "P1",
+      "type": "issue",
+      "summary": "WA MHA Form 6A/6B print component: obtain legal/clinical sign-off or remove after 13 Nov 2026 (follow-up to #WFYDV6)",
+      "detail": "PR #3573 replaced official Department of Health branding with non-statutory study headers and corrected Form 6B report wording in src/components/forms/wa-mha-form-print.tsx, but the unverified statutory section lists, 7-day pre-expiry examination timing, and copy recipients still require either verified WA MHA 2014 legal/clinical sign-off or component removal after the 30-day dead-code window on 2026-11-13.",
+      "source": "PR #3609 review; follow-up to #WFYDV6; src/components/forms/wa-mha-form-print.tsx",
+      "added": "2026-10-17"
+    },
+    {
+      "id": "#GKAEZS",
+      "priority": "P3",
+      "type": "task",
+      "summary": "Audit and remove older calculator mockups after 30-day window (audit M5-2, follow-up to #1WAA0Z)",
+      "detail": "Follow-up to #1WAA0Z (audit M5-2): audit older calculator mockups alongside the 2026-10-14 dead-code candidate review window (after 2026-11-13) and remove superseded mockup files once eligible.",
+      "source": "PR #3609 review; follow-up to #1WAA0Z; docs/audit/2026-10-12-repo-audit.md (M5-2)",
+      "added": "2026-10-17"
+    },
+    {
+      "id": "#WWV98H",
+      "priority": "P3",
+      "type": "issue",
+      "summary": "Complete remaining doc/decision drift items from #WMGPSG",
+      "detail": "Follow-up to #WMGPSG for the remaining documentation and decision-record items: (1) add a superseding decision next to docs/decisions/2026-09-26-remove-ward-flow-and-caring-contacts.md covering live src/lib/caring-contacts/clock.ts, (2) record the admin renewals wording decision, (3) document the cloud-profile worktree rule, and (4) replace the mojibake arrow on docs/outstanding-issues.md:15 during a canonical ledger header maintenance pass.",
+      "source": "PR #3609 review; follow-up to #WMGPSG",
+      "added": "2026-10-17"
     }
   ],
   "pending": []
