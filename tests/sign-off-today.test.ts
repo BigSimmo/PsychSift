@@ -320,4 +320,26 @@ describe("tool-order and pin-awareness", () => {
         .sort(),
     );
   });
+  it("the therapy sign-off transaction regenerates the signable projection, so a newly signed therapy leaves the to-do list", async () => {
+    const therapy = await import("../scripts/review-therapy.mjs");
+    const { therapyReviewedContentSha256 } = await import("../scripts/lib/therapy-review-contract.mjs");
+    const records = structuredClone(therapiesSource) as Record<string, unknown>[];
+    // The committed projection is exactly what the transaction writes.
+    expect(therapy.therapySignableProjection(records)).toEqual(signableTherapySlugList);
+    const slug = signableTherapySlugList.slugs[0];
+    const record = records.find((item) => item.slug === slug)!;
+    // Fixture only: simulate the tool recording an owner signature on a copy.
+    Object.assign(record, {
+      reviewStatus: "reviewed",
+      reviewedBy: "Fixture Reviewer",
+      reviewedAt: "2026-10-18T00:00:00.000Z",
+    });
+    record.reviewedContentSha256 = therapyReviewedContentSha256(record);
+    const projected = therapy.therapySignableProjection(records);
+    expect(projected.slugs).not.toContain(slug);
+    expect(projected.signedBySlug[slug]).toEqual({
+      reviewedBy: "Fixture Reviewer",
+      reviewedAt: "2026-10-18T00:00:00.000Z",
+    });
+  });
 });

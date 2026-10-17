@@ -10,8 +10,8 @@ export const THERAPY_CATALOGUE_ASSETS = {
 // pruned. `useTherapyData` also falls back to the unversioned alias for
 // bundles that include that fallback (pre-fallback clients are best-effort).
 export const THERAPY_CATALOGUE_ASSETS_PREVIOUS = {
-  full: "therapies.46f71b9451eeb269.json",
-  index: "therapies-index.d8df74c4fd75e0e4.json",
+  full: "therapies.9be87b25ad2919f8.json",
+  index: "therapies-index.bcd0a67d30801a06.json",
 } as const;
 
 // First-paint metadata for the Therapy home. The landing page renders only
