@@ -272,6 +272,8 @@ it("R3 moves a provider failure to the amber line under the overseas notice, ful
 });
 
 it.each([
+  // An evidence reason keeps its full sentence above the answer, even on a source-only answer.
+  ["retrieval_degraded", "source_only", "Search used a reduced retrieval path; review the cited sources carefully."],
   ["source_conflict", "model_synthesis", "Current sources contain a material difference that requires review."],
 ] as const)("R3 displays the current precise %s disclosure", (fallbackReasonCode, answerQualityTier, phrase) => {
   const answer = toClientAnswerPayload({
