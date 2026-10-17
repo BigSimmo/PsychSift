@@ -3809,6 +3809,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-17-agent-recorded-therapy-and-did-sign-offs-reset.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/audit/ux-accessibility-review-2026-07-07.md",
         "section": "audit",
         "catalogued": true
@@ -3996,6 +4001,11 @@
       {
         "path": "docs/agents/native-startup/external-skill-precedence.md",
         "section": "agents",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-18-unsigned-clinical-text-withheld-from-site-content.md",
+        "section": "decisions",
         "catalogued": true
       },
       {

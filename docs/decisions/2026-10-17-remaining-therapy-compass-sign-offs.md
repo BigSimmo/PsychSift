@@ -1,6 +1,6 @@
 # Decision: Populate governed references and complete sign-off for the remaining 26 Therapy Compass records
 
-- **Status:** decided 2026-10-17
+- **Status:** decided 2026-10-17; superseded by 2026-10-17-agent-recorded-therapy-and-did-sign-offs-reset.md
 - **Source:** `docs/outstanding-issues-inbox/b1de924a-2e5b-4c0f-83d2-d9372a67aa15.json`, find "completed clinician sign-off across all 205 Therapy Compass profiles"
 - **Retires:** `wake-therapy-needs-review-hold`
 
