@@ -25,6 +25,8 @@ import {
   type SheetFocusController,
 } from "@/components/ui/sheet-focus";
 
+const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
+
 export type SheetMobileSize = "content" | "viewport";
 export type SheetMobileHeaderSafeArea = "none" | "padding" | "offset";
 
@@ -202,7 +204,7 @@ export function Sheet({
   // read these refs, and a click that lands after a commit but before passive
   // effects flush would otherwise call the previous render's onClose (a stale
   // closure — e.g. a sheet that had just saved would skip its own reset).
-  useLayoutEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     onCloseRef.current = onClose;
     requestCloseRef.current = requestClose;
   }, [onClose, requestClose]);
