@@ -243,8 +243,14 @@ export function isClinicalImageEvidence(image: {
   searchable?: boolean | null;
   image_type?: string | null;
   clinical_relevance_score?: number | null;
+  clinicalRelevanceScore?: number | null;
   clinicalUseClass?: string | null;
   tableRole?: string | null;
+  tableTitle?: string | null;
+  tableLabel?: string | null;
+  tableTextSnippet?: string | null;
+  caption?: string | null;
+  labels?: string[] | null;
   source_kind?: string | null;
   sourceKind?: string | null;
   width?: number | null;
@@ -254,26 +260,44 @@ export function isClinicalImageEvidence(image: {
   // Cover thumbnails are display-only and must never count as clinical evidence.
   if (image.sourceKind === "cover_page" || image.source_kind === "cover_page") return false;
   if (image.searchable === false || image.image_type === "logo_decorative") return false;
-  if (image.clinicalUseClass) return image.clinicalUseClass === "clinical_evidence";
+  if (image.clinicalUseClass && image.clinicalUseClass !== "ambiguous") {
+    return image.clinicalUseClass === "clinical_evidence";
+  }
   const metadata = safeMetadata(image.metadata);
   const useClass = clinicalUseClassFromMetadata(metadata);
-  if (useClass) return useClass === "clinical_evidence";
+  if (useClass && useClass !== "ambiguous") return useClass === "clinical_evidence";
+  const relevanceScore = image.clinical_relevance_score ?? image.clinicalRelevanceScore;
   const assessment = assessClinicalImageUse({
     imageType: image.image_type,
     searchable: image.searchable,
-    clinicalRelevanceScore: image.clinical_relevance_score,
+    clinicalRelevanceScore: relevanceScore,
     sourceKind: image.sourceKind ?? image.source_kind,
     width: image.width,
     height: image.height,
+    caption: image.caption ?? (typeof metadata.caption === "string" ? metadata.caption : null),
+    labels: image.labels ?? (Array.isArray(metadata.labels) ? (metadata.labels as string[]) : null),
     tableRole: image.tableRole ?? (typeof metadata.table_role === "string" ? metadata.table_role : null),
+    tableTitle: image.tableTitle ?? (typeof metadata.table_title === "string" ? metadata.table_title : null),
+    tableLabel: image.tableLabel ?? (typeof metadata.table_label === "string" ? metadata.table_label : null),
+    // Full table text first: a truncated snippet can hide administrative terms.
     tableText:
       typeof metadata.table_text === "string"
         ? metadata.table_text
-        : typeof metadata.table_text_snippet === "string"
-          ? metadata.table_text_snippet
-          : null,
+        : (image.tableTextSnippet ??
+          (typeof metadata.table_text_snippet === "string" ? metadata.table_text_snippet : null)),
   });
-  return assessment.clinical_use_class === "clinical_evidence";
+  if (assessment.clinical_use_class === "clinical_evidence") return true;
+  if (
+    assessment.clinical_use_class === "ambiguous" &&
+    ["clinical_table", "flowchart_algorithm", "medication_chart", "risk_matrix"].includes(
+      String(image.image_type ?? ""),
+    ) &&
+    assessment.admin_signal_score === 0 &&
+    (assessment.clinical_signal_score >= 1 || clampedScore(relevanceScore, 0) >= 0.65)
+  ) {
+    return true;
+  }
+  return false;
 }
 
 export type ViewerImagePartitionInput = {
