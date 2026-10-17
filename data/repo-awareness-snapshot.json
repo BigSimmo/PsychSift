@@ -3889,6 +3889,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-17-clinical-math-panel-hidden-until-clinician-verification.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/superpowers/plans/2026-08-23-favourites-and-reconciliation.md",
         "section": "superpowers",
         "catalogued": true
@@ -3975,6 +3980,11 @@
       },
       {
         "path": "docs/decisions/2026-09-03-safety-findings-below-the-prose.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-17-wfydv6-stays-open-until-sign-off.md",
         "section": "decisions",
         "catalogued": true
       },
