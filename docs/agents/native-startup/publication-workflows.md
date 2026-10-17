@@ -2,6 +2,8 @@
 
 # `upload` shortcut
 
+_Updated 2026-10-17 — aligned owned-file formatting with publication scope; Documentation owns._
+
 For the `upload` safe Git handoff workflow — protected branches, required inspection, safe versus confirmation-required actions, branch cleanup, syncing, and the final report, see [`docs/agents/upload-shortcut.md`](../../../docs/agents/upload-shortcut.md).
 <!-- END:upload-shortcut -->
 
@@ -61,7 +63,7 @@ Goal: fewer false merge conflicts, less cancelled CI, and faster feedback — wi
 ### Speed CI without skipping quality
 
 - Assemble every commit for a head before the first push, or wait for the current PR CI run to settle before pushing again. Apply the same settle-first rule whenever a real conflict actually needs resolving: wait for required CI in flight, then perform the `update-branch` / `git merge origin/main` once review and fix work is assembled. Being merely behind is a reason to sync only once, when the PR is otherwise ready (see [Branch sync](../../../docs/agents/pull-request-workflow.md#branch-sync)). Cancel-in-progress remains enabled for pull requests (pushes mid-run cancel Production UI), but is deliberately disabled for base-branch pushes (`tests/ci-cache-safety.test.ts`).
-- For Run PR sweeps and normal readiness pushes — never an explicit bare PR publication — run `npm run format` **and commit the result**, then `npm run verify:pr-local` (or the smallest gate that covers the change). Format is in `static-pr` but not in `verify:cheap`; an uncommitted format leaves CI red on the pushed blob. Whole-tree Prettier, not a single edited file.
+- For Run PR sweeps and normal readiness pushes — never an explicit bare PR publication — format only the owned handoff paths with `node node_modules/prettier/bin/prettier.cjs --write <owned-path> ...` (requires the existing local dependency), then run `npm run verify:pr-local` (or the smallest gate that covers the change). Verify the exact candidate content that will be published; formatting left only in the working tree does not prove the committed blob. Commit and publication still require applicable authority. Whole-tree formatting is a separate, explicitly scoped operation. Format is in `static-pr` but not in `verify:cheap`.
 - If a PR has auto-merge armed, its auto-merge state is user-owned and automation must not disable or re-enable it. Ordinary fast-forward pushes, bundled additions, and an `update-branch`/merge-main-in sync that the branch-sync rule above allows (a real conflict, or the owner asks) may proceed — GitHub re-validates required checks against the new head before merging, so an additive push cannot slip past that. A force-push, history rewrite, or base/target change while armed still hard-blocks with no override; wait for the user to change that state first.
 - Missing CI checks are not a green pass. The `PR mergeability` check uses trusted `pull_request_target` events and refreshes unchanged PR heads after protected-base pushes; it fails explicitly on `mergeable_state: dirty`. When a sync is actually warranted (a real conflict, or the owner asks), use `npm run sync:pr-branches` / `:apply` with human `gh` auth — never bot `update-branch`.
 - Triage and repair actionable review threads early; reply before resolving (`<!-- codex-thread-disposition:resolved -->`). Leave ambiguous or product-sensitive threads open for the owner.

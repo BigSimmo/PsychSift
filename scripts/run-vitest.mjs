@@ -56,15 +56,15 @@ export function extractReporters(argumentList) {
   const reporters = [];
   for (let i = 0; i < argumentList.length; i++) {
     const arg = argumentList[i];
-    if (arg.startsWith("--reporter=")) {
-      const val = arg.slice("--reporter=".length);
+    if (/^--reporters?=/.test(arg)) {
+      const val = arg.slice(arg.indexOf("=") + 1);
       reporters.push(
         ...val
           .split(",")
           .map((s) => s.trim())
           .filter(Boolean),
       );
-    } else if (arg === "--reporter" || arg === "-r") {
+    } else if (arg === "--reporter" || arg === "--reporters" || arg === "-r") {
       const next = argumentList[i + 1];
       if (next && !next.startsWith("-")) {
         reporters.push(
@@ -179,9 +179,26 @@ export function validateTestFiles(argumentList, rootDir = projectRoot) {
 // review on PR #2216. `--no-coverage` correctly does not match, so it stays
 // memoisable; an explicit `--coverage=false` merely runs the gate, which is the safe
 // direction.
-const NON_MEMOISABLE_ARGUMENT = /^--(?:coverage|watch|update|ui)(?:[.=]|$)/;
+const NON_MEMOISABLE_ARGUMENT = /^--(?:coverage|watch|update|ui|outputFile|output-file|mergeReports|config)(?:[.=]|$)/;
 export const vitestRunIsMemoisable = (argumentList) =>
-  !argumentList.some((argument) => argument === "-u" || NON_MEMOISABLE_ARGUMENT.test(argument));
+  argumentList[0] === "run" &&
+  !argumentList.some((argument) => /^-(?:u|w|o|c)(?:=|$)/.test(argument) || NON_MEMOISABLE_ARGUMENT.test(argument)) &&
+  // Receipts certify the result, not the continued existence of report files.
+  // Custom reporters/configs may write files; only the default config and known console reporters reuse.
+  extractReporters(argumentList).every((reporter) =>
+    new Set([
+      "default",
+      "agent",
+      "minimal",
+      "verbose",
+      "dot",
+      "tap",
+      "tap-flat",
+      "tree",
+      "hanging-process",
+      "github-actions",
+    ]).has(reporter),
+  );
 
 export async function main() {
   const reporterValidation = validateReporters(args);
