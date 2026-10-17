@@ -327,7 +327,8 @@ export function buildOwnerTrainingAssessments(
   // The deadline is the current rotation's own end date; with none recorded the page shows no date
   // rather than borrowing an unrelated milestone's due date.
   const rotationEndsOn = currentRotation?.endsOn ?? null;
-  const minimumEpas = currentRotation ? 2 * currentRotation.fte : 2;
+  // Pro rata for part-time, rounded up so the page never asks for a fraction of an EPA.
+  const minimumEpas = currentRotation ? Math.max(1, Math.ceil(2 * currentRotation.fte)) : 2;
 
   const epas: TrainingEpa[] = epaRecords.map((record) => ({
     id: record.id,
