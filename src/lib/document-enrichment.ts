@@ -1133,7 +1133,7 @@ export async function fetchRelatedDocumentMetadata(args: {
     documentsQuery,
   ]);
   args.signal?.throwIfAborted();
-  const metadataError = labelsResult.error ?? summariesResult.error;
+  const metadataError = labelsResult.error ?? summariesResult.error ?? documentsResult?.error;
   if (metadataError) throw metadataError;
   const committedGenerationByDocument = new Map<string, string | null>();
   for (const doc of (documentsResult?.data ?? []) as Array<{ id: string; metadata?: unknown }>) {
