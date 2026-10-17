@@ -1,5 +1,5 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { readdirSync, readFileSync } from "node:fs";
+import { resolve, sep } from "node:path";
 
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
@@ -27,8 +27,13 @@ describe("AnswerProviderNotice", () => {
     // Production UI tests cover the rendered notice.
     const source = readFileSync(resolve(process.cwd(), "src/components/ClinicalDashboard.tsx"), "utf8");
     expect(source.match(/<AnswerProviderNotice\b/g)).toHaveLength(1);
-    // The owner removed it from the home pages on 17 Oct 2026.
-    expect(source).not.toContain("answer-provider-notice-home");
+    // The owner removed it from the home pages on 17 Oct 2026, so nothing else in src may mount it,
+    // including the shared home components.
+    const mounts = readdirSync(resolve(process.cwd(), "src"), { recursive: true, encoding: "utf8" })
+      .filter((file) => file.endsWith(".tsx"))
+      .filter((file) => readFileSync(resolve(process.cwd(), "src", file), "utf8").includes("<AnswerProviderNotice"))
+      .map((file) => file.split(sep).join("/"));
+    expect(mounts).toEqual(["components/ClinicalDashboard.tsx"]);
     expect(source).toMatch(
       /explicitDemoMode \|\|\s*answer\.demoMode === true[^?]*\? null : \(\s*<AnswerProviderNotice/,
     );
