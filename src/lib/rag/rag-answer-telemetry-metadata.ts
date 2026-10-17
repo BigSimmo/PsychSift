@@ -3,10 +3,7 @@ import { rankAnswerEvidence } from "@/lib/answer-ranking";
 import { buildCrossDocumentFusionBrief, buildCrossDocumentSynthesisPlan } from "@/lib/cross-document-synthesis";
 import { buildAnswerScoreExplanations, buildIndexingQuality, collectMemoryCards } from "@/lib/rag/rag-answer-support";
 import { memoryCardChunkScore } from "@/lib/rag/rag-candidate-sources";
-import { generationDegradationLogMetadata } from "@/lib/rag/rag-generation-degradation";
 import type { RagAnswer, RagQueryClass } from "@/lib/types";
-
-export { generationDegradationLogMetadata };
 
 type AnswerLatencyTimings = NonNullable<RagAnswer["latencyTimings"]>;
 
@@ -46,14 +43,12 @@ export function answerLatencyMetadata(
   generationLatencyMs: number,
   timings: AnswerLatencyTimings | null | undefined,
   startedAt: number,
-  degradation?: RagAnswer["generationDegradation"] | null,
 ): Record<string, unknown> {
   return {
     search_latency_ms: searchLatencyMs,
     generation_latency_ms: generationLatencyMs,
     total_latency_ms: timings?.total_latency_ms ?? Date.now() - startedAt,
     ...extendedAnswerTelemetryFields(timings),
-    ...generationDegradationLogMetadata(degradation),
   };
 }
 
