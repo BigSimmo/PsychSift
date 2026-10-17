@@ -70,25 +70,33 @@ try:
         raise ValueError("invalid scan errors")
     error_count = 0
     warning_count = 0
+    info_count = 0
     for error in errors:
-        if isinstance(error, dict) and error.get("level") == "warn":
+        level = error.get("level") if isinstance(error, dict) else None
+        if level == "warn":
             warning_count += 1
+        elif level == "info":
+            info_count += 1
         else:
-            # Only an explicitly classified warning is non-blocking. Missing
-            # or unknown levels cannot prove that analysis completed.
+            # Only explicitly classified warn/info diagnostics are non-blocking.
+            # Missing or unknown levels cannot prove that analysis completed.
             error_count += 1
     if warning_count:
         print(f"scan-status: ignoring {warning_count} warning-level scan diagnostics", file=sys.stderr)
+    if info_count:
+        print(f"scan-status: ignoring {info_count} info-level scan diagnostics", file=sys.stderr)
     if error_count:
         raise ValueError("scan JSON reports error-level incomplete analysis")
-    if not isinstance(sarif, dict) or not isinstance(sarif.get("runs"), list) or not sarif["runs"]:
+    if not isinstance(sarif, dict) or sarif.get("version") != "2.1.0":
+        raise ValueError("invalid SARIF log version")
+    if not isinstance(sarif.get("runs"), list) or not sarif["runs"]:
         raise ValueError("invalid or empty SARIF runs")
     for run in sarif["runs"]:
         if not isinstance(run, dict) or not isinstance(run.get("tool"), dict):
             raise ValueError("invalid SARIF run")
         driver = run["tool"].get("driver")
-        if not isinstance(driver, dict):
-            raise ValueError("invalid SARIF run structure")
+        if not isinstance(driver, dict) or not isinstance(driver.get("name"), str) or not driver["name"].strip():
+            raise ValueError("invalid SARIF tool driver")
         # SARIF permits absent rules/results for an empty run, and the merger
         # uses these same empty-list defaults. Present malformed values fail.
         rules = driver.get("rules", [])
@@ -100,6 +108,13 @@ try:
         if any(not isinstance(item, dict) for item in results):
             raise ValueError("invalid SARIF result")
         for item in results:
+            # SARIF requires every result to carry a message with text or id;
+            # the merger would otherwise collapse placeholder results into one.
+            message = item.get("message")
+            if not isinstance(message, dict) or not any(
+                isinstance(message.get(key), str) and message[key].strip() for key in ("text", "id")
+            ):
+                raise ValueError("invalid SARIF result message")
             locations = item.get("locations", [])
             if not isinstance(locations, list) or any(not isinstance(location, dict) for location in locations):
                 raise ValueError("invalid SARIF result locations")

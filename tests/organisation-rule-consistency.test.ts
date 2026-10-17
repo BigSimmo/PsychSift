@@ -225,6 +225,7 @@ const errors = {
   'missing-level': [{message: 'unclassified synthetic scan error'}],
   'unknown-level': [{level: 'other', message: 'unknown synthetic scan diagnostic'}],
   'warning': [{level: 'warn', message: 'synthetic warning'}],
+  'info': [{level: 'info', message: 'synthetic info notice'}],
 };
 fs.writeFileSync(json, mode === 'invalid' ? '{invalid' : JSON.stringify({results: [], errors: errors[mode] || []}));
 const run = mode === 'optional-sarif'
@@ -232,7 +233,11 @@ const run = mode === 'optional-sarif'
   : {tool: {driver: {name: 'synthetic-semgrep', rules: []}}, results: []};
 if (mode === 'bad-sarif-rules') run.tool.driver.rules = {};
 if (mode === 'bad-sarif-results') run.results = {};
-if (mode !== 'missing') fs.writeFileSync(sarif, JSON.stringify({version: '2.1.0', runs: [run]}));
+if (mode === 'bad-sarif-messages') run.results = [{}, {}];
+if (mode === 'bad-sarif-driver') delete run.tool.driver.name;
+if (mode === 'with-result') run.results = [{ruleId: 'synthetic.rule', message: {text: 'synthetic finding'}}];
+const version = mode === 'bad-sarif-version' ? '2.0.0' : '2.1.0';
+if (mode !== 'missing') fs.writeFileSync(sarif, JSON.stringify({version, runs: [run]}));
 process.exit(mode === 'failed-child' ? 7 : 0);
 `,
     );
@@ -285,6 +290,9 @@ wait_semgrep_scans "$expected"
     "unknown-level",
     "bad-sarif-rules",
     "bad-sarif-results",
+    "bad-sarif-messages",
+    "bad-sarif-driver",
+    "bad-sarif-version",
   ])("rejects %s even when another scan succeeds", (mode) => {
     const result = runBatch([mode, "good"]);
     expect(result.status).toBe(1);
@@ -296,6 +304,19 @@ wait_semgrep_scans "$expected"
     const result = runBatch(["warning", "good"]);
     expect(result.status, result.stderr).toBe(0);
     expect(result.stderr).toContain("1 warning-level scan diagnostics");
+    expect(result.stdout).toContain("2 approved scans completed");
+  });
+
+  it("reports info-level notices without rejecting an otherwise complete batch", () => {
+    const result = runBatch(["info", "good"]);
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stderr).toContain("1 info-level scan diagnostics");
+    expect(result.stdout).toContain("2 approved scans completed");
+  });
+
+  it("accepts SARIF results that carry the required message", () => {
+    const result = runBatch(["with-result", "good"]);
+    expect(result.status, result.stderr).toBe(0);
     expect(result.stdout).toContain("2 approved scans completed");
   });
 
