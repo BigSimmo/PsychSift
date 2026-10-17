@@ -90,7 +90,7 @@ describe("clinical sign-off queue page", () => {
     render(<SignOffQueuePageContent />);
 
     expect(screen.getByTestId("developer-sign-off-count-signed-value")).toHaveTextContent(String(ledger.totalSigned));
-    expect(screen.getByTestId("developer-sign-off-count-signable-now-value")).toHaveTextContent("2");
+    expect(screen.getByTestId("developer-sign-off-count-signable-now-value")).toHaveTextContent("29");
     expect(screen.getByTestId("developer-sign-off-count-indigenous-hold-value")).toHaveTextContent("26");
     expect(screen.getByTestId("developer-sign-off-count-prerequisites-value")).toHaveTextContent("582");
 
@@ -116,7 +116,7 @@ describe("clinical sign-off queue page", () => {
       "?domain=therapy&signedPage=3",
     );
     expect(screen.getByTestId("developer-sign-off-signed-pagination-summary")).toHaveTextContent(
-      "Showing 51–100 of 205 signed-off records in this domain (page 2 of 5)",
+      "Showing 51–100 of 179 signed-off records in this domain (page 2 of 4)",
     );
   });
 });

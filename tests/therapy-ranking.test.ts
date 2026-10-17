@@ -77,19 +77,14 @@ describe("shared Therapy ranker", () => {
   // out, which emptied discovery and 404'd all 205 routes. Review status is now a
   // disclosure, not a reachability gate, so an unreviewed record must resolve.
   it("keeps unreviewed Therapy content discoverable and routable, flagged rather than dropped", () => {
-    expect(therapyRecords.length).toBe(205);
-    expect(therapyRecords.every((r) => !therapyNeedsReview(r))).toBe(true);
-    const sample = therapyRecords[0]!;
-    const originalStatus = sample.reviewStatus;
-    try {
-      (sample as { reviewStatus: string }).reviewStatus = "needs_review";
-      expect(therapyNeedsReview(sample)).toBe(true);
-      expect(therapySlugs()).toContain(sample.slug);
-      expect(findTherapyRecord(sample.slug)).toBe(sample);
-      expect(searchTherapyRecords("CBT").length).toBeGreaterThan(0);
-    } finally {
-      (sample as { reviewStatus: string }).reviewStatus = originalStatus;
-    }
+    expect(therapyRecords.length).toBeGreaterThan(0);
+    const unreviewed = therapyRecords.find(therapyNeedsReview);
+    expect(unreviewed).toBeDefined();
+    expect(therapySlugs()).toContain(unreviewed!.slug);
+    expect(findTherapyRecord(unreviewed!.slug)).toBe(unreviewed);
+    expect(searchTherapyRecords("CBT").length).toBeGreaterThan(0);
+    // Search must reach the needs-review record itself, not only reviewed neighbours.
+    expect(searchTherapyRecords(unreviewed!.name).map((match) => match.record.slug)).toContain(unreviewed!.slug);
   });
 
   it.each([

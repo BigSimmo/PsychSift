@@ -19,7 +19,6 @@ import { acquisitionReviewQueue, sourceAcquisitionRecords } from "@/lib/sources/
 import { isSpecifierClinicianReviewed, loadSpecifiersContent, specifierCatalogItems } from "@/lib/specifiers-content";
 import { formulationConcepts, formulationGuides } from "@/lib/formulation-concepts";
 import { conceptReviewState } from "@/lib/formulation-review-status";
-import { therapyNeedsReview, therapyRecords } from "@/lib/therapies";
 
 /**
  * The failure this file exists to prevent is a silent zero.
@@ -51,11 +50,15 @@ const EXPECTED: Record<SignOffFamilyId, number> = {
   // 333 unpublished sense drafts + 68 reviews without approved rewrite text.
   dictionary: 401,
   // 514 placeholders remain; the 71 written items and 18 universals (including the 22
-  // corrected on 15 Oct) have now been signed off by "Psych Sift" (owner decision, 16 Oct 2026).
-  specifiers: 514,
-  // All 205 Therapy Compass profiles now carry governed guideline/literature references and
-  // have been signed off by "Psych Sift" (owner decision, 17 Oct 2026).
-  therapy: 0,
+  // corrected on 15 Oct) were signed off by "Psych Sift" (owner decision, 16 Oct 2026). The
+  // reworded DID possession-form item went back to clinician-review-pending (owner ruling,
+  // 17 Oct 2026 22:12 AWST), so 515 wait.
+  specifiers: 515,
+  // The 27 signable records with references (including the 5 edited on #3510 and the 15 Oct
+  // corrections) have now been signed off by "Psych Sift". The 26 records stamped on 17 Oct
+  // without the interactive review tool went back to needs_review (owner ruling, 17 Oct 2026
+  // 22:12 AWST) until the owner signs each one with therapy:review.
+  therapy: 26,
   // All 93 signable candidates and the 3 adopted medicine sources were reviewed; six Indigenous
   // sources remain held, and two OCP WA standards reviewed only in prose wait for the owner to
   // sign them with clinical:review (owner decision, 17 Oct 2026).
@@ -105,13 +108,8 @@ describe("clinical sign-off queue", () => {
     const forms = queue.families.find((family) => family.id === "wa-mha-forms");
     expect(forms?.rows.length, "the forms reader disagrees with the review file").toBe(unsigned.length);
 
-    expect(therapyRecords).toHaveLength(205);
-    const unsignedTherapies = therapyRecords.filter((record) => therapyNeedsReview(record));
-    const therapy = queue.families.find((family) => family.id === "therapy");
-    expect(therapy?.rows.length, "the therapy reader disagrees with the index file").toBe(unsignedTherapies.length);
-
     for (const family of queue.families) {
-      if (family.id === "wa-mha-forms" || family.id === "therapy") continue;
+      if (family.id === "wa-mha-forms") continue;
       expect(family.rows.length, `${family.id} is empty`).toBeGreaterThan(0);
     }
   });
@@ -198,15 +196,15 @@ describe("clinical sign-off queue", () => {
     // should be argued with first.
     const nativeStatusFor = (id: SignOffFamilyId) =>
       queue.families.find((family) => family.id === id)!.rows[0]!.nativeStatus;
-    // Forms and therapy have no waiting row. Their vocabularies are still their source files' own words.
+    // Forms have no waiting row. Their vocabulary is still the review file's own word.
     expect(
       (formsContentReview as { forms: { status: string }[] }).forms.every((entry) => entry.status === "reviewed"),
     ).toBe(true);
-    expect(therapyRecords.every((record) => record.reviewStatus === "reviewed")).toBe(true);
     expect(nativeStatusFor("formulation")).toBe("clinical_review_required");
     expect(nativeStatusFor("differentials")).toContain("validation_status: unverified");
     expect(nativeStatusFor("dictionary")).toContain("clinicalApproval.status: pending");
     expect(nativeStatusFor("specifiers")).toContain("clinician-review-pending");
+    expect(nativeStatusFor("therapy")).toBe("needs_review");
     expect(nativeStatusFor("sources")).toContain("validationStatus: unverified");
   });
 
@@ -319,8 +317,8 @@ const EXPECTED_SIGNED_BY_DOMAIN: Record<SignOffDomainId, { signed: number; waiti
   "cultural-notes": { signed: 14, waiting: 9 },
   differentials: { signed: 11, waiting: 232 },
   formulation: { signed: 58, waiting: 6 },
-  specifiers: { signed: 89, waiting: 514 },
-  therapy: { signed: 205, waiting: 0 },
+  specifiers: { signed: 88, waiting: 515 },
+  therapy: { signed: 179, waiting: 26 },
   dictionary: { signed: 28, waiting: 401 },
   // 93 sources carry a structured, current attestation. Two OCP standards are marked
   // locally_reviewed in prose only and are ready for the owner to sign with clinical:review;
@@ -349,16 +347,16 @@ describe("clinical & rule sign-off ledger", () => {
   );
 
   it("derives the overall totals, signer breakdown, and categorized waiting counts from the domain rows", () => {
-    expect(ledger.totalSigned).toBe(702);
-    expect(ledger.totalWaiting).toBe(1175);
+    expect(ledger.totalSigned).toBe(675);
+    expect(ledger.totalWaiting).toBe(1202);
     expect(ledger.totalGoverned).toBe(1877);
     expect(ledger.signedByTotals).toEqual({
       "Josh Simpson": 3,
-      "Psych Sift": 222,
+      "Psych Sift": 195,
       PsychSift: 477,
     });
     expect(ledger.waitingByCategory).toEqual({
-      signableNow: 2,
+      signableNow: 29,
       indigenousHold: 26,
       awaitingPrerequisites: 582,
       awaitingTool: 565,

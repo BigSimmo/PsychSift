@@ -122,8 +122,36 @@ describe("the real queue", () => {
     // waiting is an Indigenous governance hold or has no sign-off tool / references.
     // 17 Oct 2026: clinical:review now offers sources reviewed only in prose (owner decision),
     // so the two OCP WA standards are signable by the owner.
-    expect(signable.map((item) => item.family)).toEqual(["sources", "sources"]);
+    // 17 Oct 2026 22:12 AWST: the 26 Therapy records stamped without therapy:review went back to
+    // needs_review (owner ruling); they list references, so the owner can sign each one.
+    expect(signable.map((item) => item.family)).toEqual([...Array<string>(26).fill("therapy"), "sources", "sources"]);
     expect(signable.map((item) => item.id)).toEqual([
+      "behaviour-therapy",
+      "cognitive-behavioural-therapy-for-insomnia-cbt-i",
+      "cognitive-therapy",
+      "community-reinforcement-and-family-training-craft",
+      "contingency-management-cm",
+      "cue-exposure-therapy-cet-for-substance-use-disorders",
+      "exposure-and-response-prevention-for-tics-erp-for-tics",
+      "habit-reversal-training-for-trichotillomania-and-excoriation-disorder",
+      "imagery-rehearsal-therapy-irt-for-nightmare-disorder",
+      "integrated-cbt-for-ptsd-and-substance-use-disorders",
+      "interpersonal-and-social-rhythm-therapy-ipsrt",
+      "matrix-model",
+      "mentalisation-based-therapy-mbt",
+      "mindfulness-based-relapse-prevention-mbrp",
+      "mindfulness-based-therapy-for-insomnia-mbti",
+      "mother-infant-therapy-mother-infant-psychotherapy",
+      "motivational-enhancement-therapy-met",
+      "parent-and-child-training",
+      "parent-child-relational-therapy",
+      "parent-child-interaction-therapy-pcit",
+      "psychoeducation-for-psychosis",
+      "recovery-oriented-psychosocial-interventions",
+      "relapse-prevention-therapy-for-substance-use-disorders",
+      "seeking-safety",
+      "social-communication-parent-mediated-autism-interventions",
+      "wake-therapy-sleep-deprivation-chronotherapy",
       "ocp-wa-standard-authorisation-of-hospitals",
       "ocp-wa-standards-for-clinical-care",
     ]);
