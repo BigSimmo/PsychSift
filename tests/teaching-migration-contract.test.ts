@@ -916,7 +916,6 @@ describe("teaching migration: depth decisions (R23)", () => {
 describe("teaching migration: admins may export attendance (20261016134500)", () => {
   const followUpName = "20261016134500_teaching_admin_attendance_export.sql";
   const followUp = readFileSync(`supabase/migrations/${followUpName}`, "utf8");
-  const schema = readFileSync("supabase/schema.sql", "utf8");
   const oldGuard = "if v_role <> 'organiser' then raise exception 'teaching_role_denied'; end if;";
   const newGuard = "if v_role not in ('organiser','admin') then raise exception 'teaching_role_denied'; end if;";
 
