@@ -395,7 +395,7 @@ describe("specifier sign-off", () => {
       for (const disorder of category.disorders)
         for (const group of disorder.groups)
           for (const item of group.items) {
-            if (item.definitionStatus === "defined") {
+            if (item.definitionStatus === "defined" && item.review.clinicianReviewStatus === "clinician-reviewed") {
               (item.review as Json).reviewedBy = "PsychSift";
               stampedIds.add(String(item.review.rowKey));
             }

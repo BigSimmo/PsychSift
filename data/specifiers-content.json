@@ -5448,11 +5448,8 @@
                     "rowKey": "specifier:dis:dissociative-identity-disorder:features:with-without-possession-form",
                     "contentHash": "7a3bdeaa",
                     "sourceVerificationStatus": "source-verified",
-                    "clinicianReviewStatus": "clinician-reviewed",
-                    "changedSinceReview": false,
-                    "reviewedBy": "Psych Sift",
-                    "reviewedAt": "2026-10-17T12:15:00.000Z",
-                    "reviewedContentSha256": "4f7105052693d0fb88e71d5f9e4cb556b1e68811518ad17e3b936da17616c64a"
+                    "clinicianReviewStatus": "clinician-review-pending",
+                    "changedSinceReview": true
                   }
                 }
               ]
