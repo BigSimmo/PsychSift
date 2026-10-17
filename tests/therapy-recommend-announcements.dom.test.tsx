@@ -82,11 +82,36 @@ describe("Therapy recommendation announcements", () => {
     expect(state.announce).toHaveBeenCalledTimes(1);
   });
 
-  it("leaves the zero-result outcome to its empty-state announcement", () => {
+  it("announces the zero-result outcome once through the shared announcer", () => {
     state.count = 0;
     render(<RecommendScreen />);
     act(() => vi.advanceTimersByTime(300));
-    expect(screen.getByRole("status")).toHaveTextContent("No ranked matches");
-    expect(state.announce).not.toHaveBeenCalled();
+    expect(state.announce).toHaveBeenCalledExactlyOnceWith("0 ranked matches", { eventId: "therapy-recommend-count" });
+    expect(screen.getByText("No ranked matches").closest('[role="status"], [aria-live]')).toBeNull();
+  });
+
+  it("announces zero matches while the scenario editor keeps the result page inert", () => {
+    const page = () => (
+      <div data-testid="recommend-background">
+        <RecommendScreen />
+      </div>
+    );
+    const { rerender } = render(page());
+    act(() => vi.advanceTimersByTime(300));
+    state.announce.mockClear();
+
+    fireEvent.click(screen.getByTestId("therapy-recommend-scenario-trigger"));
+    const editor = screen.getByRole("dialog", { name: "Clinical scenario" });
+    expect(screen.getByTestId("recommend-background").closest("[inert]")).not.toBeNull();
+
+    state.count = 0;
+    rerender(page());
+    act(() => vi.advanceTimersByTime(300));
+
+    expect(editor).toBeInTheDocument();
+    expect(screen.getByText("No ranked matches").closest("[inert]")).not.toBeNull();
+    expect(state.announce).toHaveBeenCalledExactlyOnceWith("0 ranked matches", { eventId: "therapy-recommend-count" });
+    expect(screen.getByText("No ranked matches").closest('[role="status"], [aria-live]')).toBeNull();
+    expect(editor.querySelector('[role="status"], [aria-live]')).toBeNull();
   });
 });

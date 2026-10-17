@@ -134,11 +134,13 @@ export function EmptyState({
   title,
   body,
   action,
+  announce = true,
 }: {
   icon: LucideIcon;
   title: string;
   body: string;
   action?: ReactNode;
+  announce?: boolean;
 }) {
   return (
     <SharedEmptyState
@@ -147,7 +149,7 @@ export function EmptyState({
       actions={action}
       iconNode={<Icon size={26} aria-hidden="true" />}
       align="center"
-      live="polite"
+      live={announce ? "polite" : "off"}
       centeredTreatment="clinical"
     />
   );

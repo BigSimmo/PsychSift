@@ -1585,6 +1585,22 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
       ).toHaveAttribute("aria-disabled", "true");
       await expectNoPageHorizontalOverflow(page);
     });
+
+    test(`Services can replace unavailable bookmarked shortlist records at ${width}px`, async ({ page }) => {
+      await mockAnswerDashboardApi(page);
+      await page.setViewportSize({ width, height: 900 });
+      await gotoLauncher(
+        page,
+        "/services/search?q=13YARN&run=1&shortlist=missing1,missing2,missing3,missing4,missing5&workflow=compare",
+      );
+      const result = page.getByTestId("service-search-result-13yarn");
+      await expect(result).toBeVisible();
+      await result.getByRole("button", { name: "More actions for 13YARN" }).click();
+      await page.getByRole("button", { name: "Add 13YARN to shortlist", exact: true }).click();
+      await expect(page.getByTestId("services-shortlist-bar")).toContainText("1 shortlisted");
+      expect(new URL(page.url()).searchParams.get("shortlist")).toBe("13yarn");
+      await expectNoPageHorizontalOverflow(page);
+    });
   }
 
   test("Therapy shared-home tabs retain compatible query and comparison state", async ({ page }) => {

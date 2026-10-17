@@ -642,7 +642,13 @@ export function ServicesNavigatorPage() {
   // update. Retire it when the URL changes so Back cannot resurrect it.
   if (workflowOverride && workflowOverride.urlKey !== workflowUrlKey) setWorkflowOverride(null);
   const pendingWorkflow = workflowOverride?.urlKey === workflowUrlKey ? workflowOverride : null;
-  const selectedSlugs = pendingWorkflow?.selectedSlugs ?? readShortlist(urlShortlist);
+  const requestedSlugs = pendingWorkflow?.selectedSlugs ?? readShortlist(urlShortlist);
+  // Bookmarked identifiers can outlive catalogue records. Once the registry
+  // is readable, absent records must not consume invisible shortlist slots.
+  // Keep the URL untouched while loading or blocked so recovery can restore it.
+  const selectedSlugs = registryReady
+    ? requestedSlugs.filter((slug) => searchableRecords.some((service) => service.slug === slug))
+    : requestedSlugs;
   const selected = searchableRecords.filter((service) => selectedSlugs.includes(service.slug));
   const requestedStage =
     pendingWorkflow?.stage ?? (urlWorkflow === "shortlist" || urlWorkflow === "compare" ? urlWorkflow : "search");

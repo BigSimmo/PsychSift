@@ -22,6 +22,7 @@ const withoutPhone: ServiceRecord = {
 
 const registryRecords = [withPhone, withoutPhone];
 const navigation = vi.hoisted(() => ({ push: vi.fn() }));
+const registryState = vi.hoisted(() => ({ status: "ready" }));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: navigation.push, replace: vi.fn() }),
@@ -38,8 +39,8 @@ vi.mock("next/link", () => ({
 
 vi.mock("@/lib/use-registry-records", () => ({
   useRegistryRecords: () => ({
-    status: "ready",
-    records: registryRecords,
+    status: registryState.status,
+    records: registryState.status === "ready" ? registryRecords : [],
     total: registryRecords.length,
     demoMode: true,
     governance: {},
@@ -74,6 +75,7 @@ import { ServicesNavigatorPage } from "@/components/services/services-navigator-
 beforeEach(() => {
   setSearch("");
   navigation.push.mockClear();
+  registryState.status = "ready";
 });
 
 function setSearch(search: string) {
@@ -353,5 +355,46 @@ describe("services clinical workflow navigation", () => {
     const nav = screen.getByRole("navigation", { name: "Referral progress" });
     expect(within(nav).getByRole("button", { name: "Search" })).toHaveAttribute("aria-current", "step");
     expect(within(nav).getByRole("button", { name: "Compare" })).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it.each([
+    { shortlist: "missing1,missing2,missing3,missing4,missing5", service: withPhone, expected: [withPhone.slug] },
+    {
+      shortlist: `${withPhone.slug},missing1,missing2,missing3,missing4`,
+      service: withoutPhone,
+      expected: [withPhone.slug, withoutPhone.slug],
+    },
+  ])(
+    "lets valid additions replace unavailable URL shortlist entries ($shortlist)",
+    ({ shortlist, service, expected }) => {
+      setSearch(`shortlist=${shortlist}&workflow=compare`);
+      render(<ServicesNavigatorPage />);
+      fireEvent.click(
+        within(screen.getByRole("navigation", { name: "Referral progress" })).getByRole("button", { name: "Search" }),
+      );
+
+      shortlistService(service);
+
+      const card = screen.getByTestId(`service-search-result-${service.slug}`);
+      expect(within(card).getByRole("button", { name: `Remove ${service.title} from shortlist` })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+      expect(screen.getByTestId("services-shortlist-bar")).toHaveTextContent(`${expected.length} shortlisted`);
+      expect(new URLSearchParams(window.location.search).get("shortlist")).toBe(expected.join(","));
+    },
+  );
+
+  it.each(["loading", "error"])("preserves URL selection while registry state is %s", (status) => {
+    const shortlist = `${withPhone.slug},missing`;
+    setSearch(`shortlist=${shortlist}&workflow=shortlist`);
+    registryState.status = status;
+    const { rerender } = render(<ServicesNavigatorPage />);
+    expect(new URLSearchParams(window.location.search).get("shortlist")).toBe(shortlist);
+
+    registryState.status = "ready";
+    rerender(<ServicesNavigatorPage />);
+    expect(screen.getByTestId("services-shortlist-bar")).toHaveTextContent("1 shortlisted");
+    expect(new URLSearchParams(window.location.search).get("shortlist")).toBe(shortlist);
   });
 });

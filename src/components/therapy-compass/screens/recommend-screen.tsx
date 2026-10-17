@@ -48,8 +48,9 @@ export function RecommendScreen() {
   // The scenario sheet and the result heading show the same count. One
   // bounded announcement prevents both speaking while the phone editor is open.
   useEffect(() => {
-    // LoadingState and EmptyState already announce these distinct outcomes.
-    if (b.loading || ranked.length === 0) return;
+    // The singleton remains accessible while the scenario sheet makes the
+    // results page inert, including when the scenario yields zero matches.
+    if (b.loading) return;
     const timer = window.setTimeout(() => announce(matchLabel, { eventId: "therapy-recommend-count" }), 300);
     return () => window.clearTimeout(timer);
   }, [b.loading, matchLabel, ranked.length]);
@@ -92,6 +93,7 @@ export function RecommendScreen() {
           icon={Sparkles}
           title="No ranked matches"
           body="Add a presentation, setting or caution, or widen the constraints. Ranking stays inside the therapy catalogue."
+          announce={false}
         />
       ) : (
         <>
