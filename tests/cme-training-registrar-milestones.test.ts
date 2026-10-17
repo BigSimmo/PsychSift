@@ -45,7 +45,6 @@ function fakeClient(responses: QueuedResponse[], options?: { registrarSync?: boo
       limit: record("limit"),
       single: () => Promise.resolve(next()),
       maybeSingle: () => Promise.resolve(next()),
-      // eslint-disable-next-line unicorn/no-thenable -- Supabase query builders are thenable.
       then: (resolve: (value: QueuedResponse) => unknown) => Promise.resolve(next()).then(resolve),
     };
     return builder;

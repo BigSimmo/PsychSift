@@ -22,8 +22,8 @@ vi.mock("@/lib/supabase/browser-client", () => ({
   }),
 }));
 vi.mock("next/image", () => ({
-  // eslint-disable-next-line @next/next/no-img-element -- Stand-in for next/image inside jsdom.
   default: ({ alt, src, width, height }: { alt: string; src: string; width?: number; height?: number }) => (
+    // eslint-disable-next-line @next/next/no-img-element -- Stand-in for next/image inside jsdom.
     <img alt={alt} src={src} width={width} height={height} />
   ),
 }));
