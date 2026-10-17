@@ -17754,6 +17754,14 @@
         "checks": "vitest preamble+rag-cache-invalidation 7/7; check:rag:fixtures 36/21; prior tip PR-required green before #1376 land"
       },
       {
+        "date": "2026-10-17",
+        "ref": "fix/final-non-design-recommendations-20261017",
+        "head": "8babcd56ad73a08ee314fda8f7d02f3e279bf72d",
+        "scope": "Telemetry switch & wire for generation degradation (#231), CAMHS crisis support lines (#8CKX6F), hostile PDF ingestion-to-answer pipeline tests (#7D8WZ2), and issue-inbox closures (#231, #FZP7VW, #ES3KTG; the #7D8WZ2 and #8CKX6F done requests were later cancelled in f7b67e374 and both issues stay open)",
+        "outcome": "Adversarial review completed; all 3 findings remediated; zero UI/design or DB migration changes",
+        "checks": "vitest (145/145 across 5 suites), typecheck:internal, lint:internal, check-clinical-hazard-controls"
+      },
+      {
         "date": "2026-08-15",
         "ref": "1976",
         "head": "8bb76ce085f212d47a0918b9242cb412e8a9a3f7",

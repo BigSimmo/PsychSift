@@ -407,3 +407,59 @@ describe("P12A selected generation diagnostic identity", () => {
       expect(projectGenerationDegradation({ ...record, ...pair } as unknown as typeof record)).toBeNull();
   });
 });
+
+describe("#231 generation degradation telemetry switch and wire", () => {
+  it("records per-attempt observations when enabled=false while keeping answer.generationDegradation undefined", async () => {
+    const { readObservedGenerationDegradation } = await import("../src/lib/rag/rag-generation-degradation");
+    const { answerScopedEvidenceMetadata, generationDegradationTelemetryFields } =
+      await import("../src/lib/rag/rag-answer-telemetry-metadata");
+
+    const timeoutAnswer = structuredClone(delivered);
+    const timeoutRecorder = createGenerationDegradationRecorder({ enabled: false, routeBudgetMs: 35000 });
+    timeoutRecorder.start({
+      route: "fast",
+      timeoutMs: 12000,
+      outputBudget: "standard",
+      retrievalHealthy: true,
+      coverage: "complete",
+      contextCount: 3,
+    });
+    timeoutRecorder.fail("timeout", 12000);
+    expect(timeoutRecorder.finish(timeoutAnswer, true)).toBeUndefined();
+    expect(readObservedGenerationDegradation(timeoutAnswer)?.reason).toBe("provider_initial_attempt_timeout");
+    expect(generationDegradationTelemetryFields(timeoutAnswer)).toEqual({
+      generation_degradation_reason: "provider_initial_attempt_timeout",
+      generation_degradation_attempt_count: 1,
+      generation_degradation_completed_response_count: 0,
+      generation_degradation_total_attempt_latency_ms: 12000,
+      generation_degradation_initial_outcome: "timeout",
+      generation_degradation_initial_latency_ms: 12000,
+      generation_degradation_initial_timeout_ms: 12000,
+    });
+
+    const qualityAnswer = { ...structuredClone(delivered), sources: [] };
+    const qualityRecorder = createGenerationDegradationRecorder({ enabled: false, routeBudgetMs: 35000 });
+    response(qualityRecorder);
+    qualityRecorder.retry("template_like_answer", "admitted", 22000);
+    qualityRecorder.start({
+      route: "strong",
+      timeoutMs: 20000,
+      outputBudget: "recovery",
+      retrievalHealthy: true,
+      coverage: "complete",
+      contextCount: 3,
+    });
+    qualityRecorder.fail("timeout", 20000);
+    expect(qualityRecorder.finish(qualityAnswer, true)).toBeUndefined();
+    const metadata = answerScopedEvidenceMetadata("clozapine monitoring", "medication_dose_risk", qualityAnswer);
+    expect(metadata).toMatchObject({
+      generation_degradation_reason: "provider_quality_retry_exhausted",
+      generation_degradation_attempt_count: 2,
+      generation_degradation_completed_response_count: 1,
+      generation_degradation_total_attempt_latency_ms: 20012,
+      generation_degradation_initial_outcome: "completed",
+      generation_degradation_initial_latency_ms: 12,
+      generation_degradation_initial_timeout_ms: 30000,
+    });
+  });
+});

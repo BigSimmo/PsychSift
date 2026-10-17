@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "f175ee1d-0a4b-4233-9fe7-880babc8ee28",
+  "createdOn": "2026-10-17",
+  "action": "done",
+  "payload": {
+    "id": "#ES3KTG",
+    "outcome": "Already implemented on main: /api/documents/upload enforces PDF object, stream, xref, and page-tree structural limits via assertUploadStructure (src/lib/upload-structure.ts) before storage upload.",
+    "baseRowFingerprint": "1428fcd55f89d7ff52ad8b04054c4a57469c0d4b79cbdcabcfff2a4a3d740020",
+    "targetUlid": "01M2R5TH2HES3KTGGWNZ752BHM"
+  }
+}
