@@ -201,7 +201,7 @@ export PLAYWRIGHT_OFFLINE_MODE="\${PLAYWRIGHT_OFFLINE_MODE:-true}"
 cloud_expected_base_file="\$HOME/.cache/clinical-kb-codex/checkouts/$checkout_key/cloud-expected-base-sha"
 # An explicit task pin, including an invalid one, is validated by the caller.
 # Never replace it with a cached value from this or another checkout.
-if [ "\${CODEX_CLOUD_EXPECTED_BASE_SHA+x}" != x ] && [ -r "\$cloud_expected_base_file" ]; then
+if [ -z "\${CODEX_CLOUD_EXPECTED_BASE_SHA+x}" ] && [ -r "\$cloud_expected_base_file" ]; then
   IFS= read -r cloud_expected_base < "\$cloud_expected_base_file" || true
   case "\$cloud_expected_base" in
     *[!0-9a-f]*|'') ;;
