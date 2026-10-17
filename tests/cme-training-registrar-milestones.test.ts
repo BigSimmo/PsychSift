@@ -269,12 +269,21 @@ describe("registrar_training_milestones repository & Training page integration (
       ],
     );
 
-    expect(merged).toHaveLength(2);
-    expect(merged.map((m) => m.label)).toEqual(["Written examination", "Stage 2 psychotherapy written case"]);
+    // Identity is the record id (CME writes mirror under the same id); a registrar record that only
+    // shares a title is a different milestone and stays visible rather than being hidden.
+    expect(merged).toHaveLength(3);
+    expect(merged.map((m) => m.id)).toEqual([
+      "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      sampleRegistrarRow.id,
+      "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+    ]);
+    expect(
+      mergeTrainingAndRegistrarMilestones([{ ...converted, label: "Renamed locally" }], [registrarRecord]),
+    ).toHaveLength(1);
   });
 
   it("builds recorded registrar assessments from registrar_training_milestones and keeps not-recorded when empty", () => {
-    expect(buildOwnerTrainingAssessments([], [], [])).toEqual({ status: "not-recorded" });
+    expect(buildOwnerTrainingAssessments([], [])).toEqual({ status: "not-recorded" });
 
     const assessments = buildOwnerTrainingAssessments(
       [
@@ -287,7 +296,6 @@ describe("registrar_training_milestones repository & Training page integration (
           fte: 1,
         },
       ],
-      [],
       [
         {
           id: sampleRegistrarRow.id,
@@ -307,7 +315,17 @@ describe("registrar_training_milestones repository & Training page integration (
           achievedAt: null,
           evidenceSummary: null,
         },
+        {
+          id: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+          registrarId: OWNER_A,
+          milestoneCode: "written-examination-eeeeeeee",
+          milestoneTitle: "Written examination",
+          stage: "stage_2",
+          achievedAt: "2026-09-01T00:00:00Z",
+          evidenceSummary: null,
+        },
       ],
+      "2026-10-17",
     );
 
     expect(assessments).toEqual({
@@ -321,20 +339,81 @@ describe("registrar_training_milestones repository & Training page integration (
           {
             id: sampleRegistrarRow.id,
             title: "ST2.A1 Acute inpatient care",
-            wbasLogged: 3,
+            wbasLogged: null,
             assessor: null,
             attainedOn: "2026-09-14",
           },
           {
             id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
             title: "ST2.A2 Consultation-liaison assessment",
-            wbasLogged: 0,
+            wbasLogged: null,
             assessor: null,
             attainedOn: null,
           },
         ],
       },
     });
+  });
+
+  it("never shows generic milestones as EPAs and gives no deadline without a current rotation", () => {
+    const generic = {
+      id: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+      registrarId: OWNER_A,
+      milestoneCode: "written-examination-eeeeeeee",
+      milestoneTitle: "Written examination",
+      stage: "stage_2" as const,
+      achievedAt: "2026-09-01T00:00:00Z",
+      evidenceSummary: null,
+    };
+    expect(buildOwnerTrainingAssessments([], [generic], "2026-10-17")).toEqual({ status: "not-recorded" });
+
+    const epa = { ...generic, id: "ffffffff-ffff-4fff-8fff-ffffffffffff", milestoneCode: "st2-epa-3" };
+    const past = {
+      id: "rot-0",
+      kind: "rotation" as const,
+      label: "Old",
+      startsOn: "2026-02-02",
+      endsOn: "2026-08-02",
+      fte: 1,
+    };
+    const result = buildOwnerTrainingAssessments([past], [generic, epa], "2026-10-17");
+    expect(result).toMatchObject({ status: "recorded", registrar: { rotationEndsOn: null } });
+    expect(result.status === "recorded" && result.view === "registrar" ? result.registrar.epas : []).toHaveLength(1);
+  });
+
+  it("edits and deletes a registrar-only milestone through the Training page's ID routes", async () => {
+    const { supabase, chains } = fakeClient(
+      [
+        // update cme_training_milestones: no CME row
+        { data: null, error: null },
+        // update registrar_training_milestones in place
+        { data: { ...sampleRegistrarRow, milestone_title: "Renamed", achieved_at: null }, error: null },
+        // delete cme_training_milestones: no CME row
+        { data: [], error: null },
+        // delete registrar_training_milestones
+        { data: [{ id: sampleRegistrarRow.id }], error: null },
+      ],
+      { registrarSync: true },
+    );
+
+    const updated = await updateOwnerTrainingMilestone(supabase, OWNER_A, sampleRegistrarRow.id, {
+      label: "Renamed",
+      dueKind: "date",
+      dueFteMonths: null,
+      dueOn: null,
+      completedOn: null,
+    });
+    expect(updated).toMatchObject({ id: sampleRegistrarRow.id, label: "Renamed", completedOn: null });
+    await expect(deleteOwnerTrainingMilestone(supabase, OWNER_A, sampleRegistrarRow.id)).resolves.toBeUndefined();
+
+    const registrarChains = chains.filter((chain) => chain.table === "registrar_training_milestones");
+    expect(registrarChains).toHaveLength(2);
+    const updateStep = registrarChains[0]!.steps.find((step) => step.method === "update");
+    expect(Object.keys(updateStep?.args[0] as object).sort()).toEqual([
+      "achieved_at",
+      "evidence_summary",
+      "milestone_title",
+    ]);
   });
 
   it("infers stage codes from milestone titles", () => {

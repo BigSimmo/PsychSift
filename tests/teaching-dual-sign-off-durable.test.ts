@@ -7,8 +7,8 @@ function createMockRegistrarAssessmentsDb(initialRows: RegistrarAssessmentRow[] 
 
   const createFilterChain = (operation: "select" | "update", updatePatch?: Partial<RegistrarAssessmentRow>) => {
     const predicates: Array<(row: RegistrarAssessmentRow) => boolean> = [];
-    let orderColumn: keyof RegistrarAssessmentRow | null = null;
-    let orderAscending = true;
+    const orderings: Array<{ column: keyof RegistrarAssessmentRow; ascending: boolean }> = [];
+    let rangeWindow: { from: number; to: number } | null = null;
 
     const execute = (): { data: RegistrarAssessmentRow[]; error: null } => {
       let matched = [...rows.values()].filter((row) => predicates.every((fn) => fn(row)));
@@ -31,26 +31,39 @@ function createMockRegistrarAssessmentsDb(initialRows: RegistrarAssessmentRow[] 
         matched = matched.map((row) => structuredClone(row));
       }
 
-      if (orderColumn) {
-        const col = orderColumn;
+      if (orderings.length > 0) {
         matched.sort((a, b) => {
-          const av = String(a[col] ?? "");
-          const bv = String(b[col] ?? "");
-          return orderAscending ? av.localeCompare(bv) : bv.localeCompare(av);
+          for (const { column, ascending } of orderings) {
+            const av = String(a[column] ?? "");
+            const bv = String(b[column] ?? "");
+            const cmp = ascending ? av.localeCompare(bv) : bv.localeCompare(av);
+            if (cmp !== 0) return cmp;
+          }
+          return 0;
         });
       }
+      if (rangeWindow) matched = matched.slice(rangeWindow.from, rangeWindow.to + 1);
 
       return { data: matched, error: null };
     };
 
     const builder = {
       eq(column: string, value: string) {
-        predicates.push((row) => String(row[column as keyof RegistrarAssessmentRow] ?? "") === value);
+        const jsonPath = /^(\w+)->>(\w+)$/.exec(column);
+        predicates.push((row) => {
+          const actual = jsonPath
+            ? (row[jsonPath[1] as keyof RegistrarAssessmentRow] as Record<string, unknown> | null)?.[jsonPath[2]]
+            : row[column as keyof RegistrarAssessmentRow];
+          return String(actual ?? "") === value;
+        });
         return builder;
       },
       order(column: string, options?: { ascending?: boolean }) {
-        orderColumn = column as keyof RegistrarAssessmentRow;
-        orderAscending = options?.ascending ?? true;
+        orderings.push({ column: column as keyof RegistrarAssessmentRow, ascending: options?.ascending ?? true });
+        return builder;
+      },
+      range(from: number, to: number) {
+        rangeWindow = { from, to };
         return builder;
       },
       select() {
@@ -85,9 +98,43 @@ function createMockRegistrarAssessmentsDb(initialRows: RegistrarAssessmentRow[] 
     return builder;
   };
 
+  // Active team members and the reviewers work_can() would allow, keyed `${serviceId}:${userId}`.
+  const members = new Set<string>();
+  const reviewers = new Set<string>();
+
+  const membershipQuery = () => {
+    const filters: Record<string, string | null> = {};
+    const query = {
+      select: () => query,
+      eq: (column: string, value: string) => {
+        filters[column] = value;
+        return query;
+      },
+      is: (column: string, value: null) => {
+        filters[column] = value;
+        return query;
+      },
+      maybeSingle: async () => {
+        const active = filters.revoked_at === null && members.has(`${filters.service_id}:${filters.user_id}`);
+        return { data: active ? { user_id: filters.user_id } : null, error: null };
+      },
+    };
+    return query;
+  };
+
   const client = {
     rows,
+    members,
+    reviewers,
+    rpc: vi.fn(async (fn: string, args: Record<string, unknown>) => {
+      if (fn !== "work_can" || args.p_capability !== "assessments.review") {
+        return { data: null, error: { message: `Unexpected rpc: ${fn}` } };
+      }
+      if (args.p_subject_user === args.p_actor_id) return { data: false, error: null };
+      return { data: reviewers.has(`${String(args.p_service_id)}:${String(args.p_actor_id)}`), error: null };
+    }),
     from: vi.fn((table: string) => {
+      if (table === "on_call_service_members") return membershipQuery() as never;
       if (table !== "registrar_assessments") {
         throw new Error(`Unexpected table: ${table}`);
       }
@@ -141,6 +188,11 @@ vi.mock("@/lib/supabase/auth", () => {
       }),
   };
 });
+vi.mock("@/lib/api-rate-limit", () => ({
+  consumeSubjectApiRateLimit: vi.fn(async () => ({ limited: false })),
+  rateLimitJsonResponse: () => Response.json({}, { status: 429 }),
+  allowRateLimitInMemoryFallbackOnUnavailable: () => false,
+}));
 vi.mock("@/lib/logger", () => ({
   logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
 }));
@@ -193,6 +245,8 @@ describe("Durable Teaching Assessments & Supervisor Bookings (registrar_assessme
     defaultAssessmentRepository.clear();
     defaultSupervisorBookingRepository.clear();
     mockDb = createMockRegistrarAssessmentsDb();
+    for (const userId of [TRAINEE_ID, SECOND_TRAINEE_ID, SUPERVISOR_ID]) mockDb.members.add(`${SERVICE_ID}:${userId}`);
+    mockDb.reviewers.add(`${SERVICE_ID}:${SUPERVISOR_ID}`);
     mocks.adminClient = mockDb;
     mocks.user = { id: TRAINEE_ID };
     mocks.auth.mockImplementation(async () => mocks.user);
@@ -339,6 +393,27 @@ describe("Durable Teaching Assessments & Supervisor Bookings (registrar_assessme
       expect((await lockedEditRes.json()).code).toBe("assessment_locked");
     });
 
+    it("refuses a draft naming a supervisor who cannot review this trainee, and a trainee outside the service", async () => {
+      vi.stubEnv("NODE_ENV", "production");
+      const draft = {
+        action: "create_draft",
+        serviceId: SERVICE_ID,
+        title: "Acute Inpatient WBA Case Formulation",
+        clinicalSetting: "Adult Acute Inpatient Unit",
+        traineeReflection: "Reflection text.",
+      };
+
+      mocks.user = { id: TRAINEE_ID };
+      const colleague = await postDualSignOff(makeDualSignOffPost({ ...draft, supervisorId: SECOND_TRAINEE_ID }));
+      expect(colleague.status).toBe(403);
+      expect((await colleague.json()).code).toBe("assessment_access_denied");
+
+      mocks.user = { id: OUTSIDER_ID };
+      const outsider = await postDualSignOff(makeDualSignOffPost({ ...draft, supervisorId: SUPERVISOR_ID }));
+      expect(outsider.status).toBe(403);
+      expect(mockDb.rows.size).toBe(0);
+    });
+
     it("fails closed with 503 assessment_store_unavailable in production when admin client lacks durable table access", async () => {
       vi.stubEnv("NODE_ENV", "production");
       mocks.adminClient = {};
@@ -350,6 +425,43 @@ describe("Durable Teaching Assessments & Supervisor Bookings (registrar_assessme
   });
 
   describe("Supervisor Bookings (/api/teaching/assessments/bookings)", () => {
+    it("refuses availability slots from a service member without supervisor access", async () => {
+      vi.stubEnv("NODE_ENV", "production");
+      mocks.user = { id: SECOND_TRAINEE_ID };
+      const res = await postBookings(
+        makeBookingsPost({
+          action: "create_slot",
+          serviceId: SERVICE_ID,
+          startsAt: "2026-10-20T09:00:00.000Z",
+          endsAt: "2026-10-20T09:45:00.000Z",
+        }),
+      );
+      expect(res.status).toBe(403);
+      expect((await res.json()).code).toBe("booking_access_denied");
+      expect(mockDb.rows.size).toBe(0);
+    });
+
+    it("requires a serviceId and membership to list open slots", async () => {
+      vi.stubEnv("NODE_ENV", "production");
+      mocks.user = { id: OUTSIDER_ID };
+      expect((await getBookings(makeBookingsGet("role=open"))).status).toBe(400);
+      expect((await getBookings(makeBookingsGet(`role=open&serviceId=${SERVICE_ID}`))).status).toBe(403);
+    });
+
+    it("withdraws the later of two overlapping slots that both passed the pre-insert check", async () => {
+      vi.stubEnv("NODE_ENV", "production");
+      mocks.user = { id: SUPERVISOR_ID };
+      const slot = (start: string, end: string) =>
+        makeBookingsPost({ action: "create_slot", serviceId: SERVICE_ID, startsAt: start, endsAt: end });
+      const [first, second] = await Promise.all([
+        postBookings(slot("2026-10-22T09:00:00.000Z", "2026-10-22T10:00:00.000Z")),
+        postBookings(slot("2026-10-22T09:30:00.000Z", "2026-10-22T10:30:00.000Z")),
+      ]);
+      expect([first.status, second.status].sort()).toEqual([201, 409]);
+      const active = [...mockDb.rows.values()].filter((row) => row.status !== "archived");
+      expect(active).toHaveLength(1);
+    });
+
     it("supports create_slot, book_slot, double-booking 409 conflict, self-booking 400 refusal, and cancel_booking", async () => {
       vi.stubEnv("NODE_ENV", "production");
 

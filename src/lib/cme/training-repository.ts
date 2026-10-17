@@ -375,9 +375,16 @@ function registrarMilestoneColumns(input: RegistrarMilestoneInput) {
   };
 }
 
+// Writes mirror into registrar_training_milestones whenever the client is a real Supabase client
+// (it carries rpc/rest/auth). Bare table-only test doubles opt in with `registrarSync` or the
+// explicit option; read paths pass `syncRegistrar: false` and merge the two tables themselves.
 function shouldSyncRegistrarTable(supabase: AdminClient, options?: { readonly syncRegistrar?: boolean }): boolean {
   if (typeof options?.syncRegistrar === "boolean") return options.syncRegistrar;
-  return false;
+  return Boolean(
+    supabase &&
+    typeof supabase === "object" &&
+    ("rpc" in supabase || "rest" in supabase || "auth" in supabase || "registrarSync" in supabase),
+  );
 }
 
 export async function fetchOwnerRegistrarMilestones(
@@ -467,20 +474,27 @@ export async function syncOwnerMilestoneToRegistrarTable(
     achievedAt: milestone.completedOn,
     evidenceSummary: toEvidenceSummary(milestone),
   });
-  try {
-    const table = registrarMilestonesTable(supabase).from("registrar_training_milestones");
-    const result =
-      mode === "update"
-        ? await table.update(columns).eq("registrar_id", ownerId).eq("id", milestone.id).select(REGISTRAR_MILESTONE_COLUMNS).maybeSingle()
-        : await table.insert({ ...columns, id: milestone.id, registrar_id: ownerId }).select(REGISTRAR_MILESTONE_COLUMNS).maybeSingle();
-    if (result.error) throw cmeRepositoryError(result.error);
-    if (mode === "update" && !result.data) {
-      const inserted = await table.insert({ ...columns, id: milestone.id, registrar_id: ownerId }).select(REGISTRAR_MILESTONE_COLUMNS).maybeSingle();
-      if (inserted.error) throw cmeRepositoryError(inserted.error);
-    }
-  } catch (error) {
-    throw error;
+  const insertRow = () =>
+    registrarMilestonesTable(supabase)
+      .from("registrar_training_milestones")
+      .insert({ ...columns, id: milestone.id, registrar_id: ownerId })
+      .eq("registrar_id", ownerId)
+      .select(REGISTRAR_MILESTONE_COLUMNS)
+      .maybeSingle();
+  if (mode === "update") {
+    const updated = await registrarMilestonesTable(supabase)
+      .from("registrar_training_milestones")
+      .update(columns)
+      .eq("registrar_id", ownerId)
+      .eq("id", milestone.id)
+      .select(REGISTRAR_MILESTONE_COLUMNS)
+      .maybeSingle();
+    if (updated.error) throw cmeRepositoryError(updated.error);
+    if (updated.data) return;
+    // No mirror yet (written before mirroring existed): create it so the two tables agree.
   }
+  const inserted = await insertRow();
+  if (inserted.error) throw cmeRepositoryError(inserted.error);
 }
 
 export async function fetchOwnerTrainingMilestones(
@@ -554,7 +568,13 @@ export async function updateOwnerTrainingMilestone(
     .select(MILESTONE_COLUMNS)
     .maybeSingle();
   if (error) throw cmeRepositoryError(error);
-  if (!data) throw milestoneNotFound();
+  if (!data) {
+    // The Training page also lists registrar-only milestones (no CME row); edit those in place.
+    if (shouldSyncRegistrarTable(supabase, options)) {
+      return updateRegistrarOnlyMilestone(supabase, ownerId, id, input);
+    }
+    throw milestoneNotFound();
+  }
   const updated = rowToTrainingMilestone(data as MilestoneRow);
   if (shouldSyncRegistrarTable(supabase, options)) {
     await syncOwnerMilestoneToRegistrarTable(supabase, ownerId, updated, options?.stage ?? "stage_1", "update");
@@ -576,17 +596,46 @@ export async function deleteOwnerTrainingMilestone(
     .eq("id", id)
     .select("id");
   if (error) throw cmeRepositoryError(error);
-  if (!data || data.length === 0) throw milestoneNotFound();
-  if (shouldSyncRegistrarTable(supabase, options)) {
-    try {
-      await registrarMilestonesTable(supabase)
-        .from("registrar_training_milestones")
-        .delete()
-        .eq("registrar_id", ownerId)
-        .eq("id", id)
-        .select("id");
-    } catch {
-      // Ignore when mock does not queue registrar_training_milestones
-    }
+  const deletedCme = Boolean(data && data.length > 0);
+  if (!shouldSyncRegistrarTable(supabase, options)) {
+    if (!deletedCme) throw milestoneNotFound();
+    return;
   }
+  // Remove the mirror, or the registrar-only milestone itself when there was no CME row.
+  const registrar = await registrarMilestonesTable(supabase)
+    .from("registrar_training_milestones")
+    .delete()
+    .eq("registrar_id", ownerId)
+    .eq("id", id)
+    .select("id");
+  if (registrar.error) throw cmeRepositoryError(registrar.error);
+  const deletedRegistrar = Array.isArray(registrar.data) && registrar.data.length > 0;
+  if (!deletedCme && !deletedRegistrar) throw milestoneNotFound();
+}
+
+/**
+ * Edit a milestone that exists only in registrar_training_milestones. Only the fields the Training
+ * page edits change; the registrar record's own code and stage are kept.
+ */
+async function updateRegistrarOnlyMilestone(
+  supabase: AdminClient,
+  ownerId: string,
+  id: string,
+  input: TrainingMilestoneInput,
+): Promise<TrainingMilestone> {
+  const draft: TrainingMilestone = { id, ...input };
+  const { data, error } = await registrarMilestonesTable(supabase)
+    .from("registrar_training_milestones")
+    .update({
+      milestone_title: input.label,
+      achieved_at: toIsoAchievedAt(input.completedOn),
+      evidence_summary: toEvidenceSummary(draft),
+    })
+    .eq("registrar_id", ownerId)
+    .eq("id", id)
+    .select(REGISTRAR_MILESTONE_COLUMNS)
+    .maybeSingle();
+  if (error) throw cmeRepositoryError(error);
+  if (!data) throw milestoneNotFound();
+  return registrarMilestoneToTrainingMilestone(rowToRegistrarMilestone(data as RegistrarMilestoneRow));
 }

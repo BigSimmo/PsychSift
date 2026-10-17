@@ -154,6 +154,7 @@ export type RegistrarAssessmentsQueryBuilder = {
 export type RegistrarAssessmentsFilterBuilder<T> = QueryResult<T> & {
   eq(column: string, value: string): RegistrarAssessmentsFilterBuilder<T>;
   order(column: string, options?: { ascending?: boolean }): RegistrarAssessmentsFilterBuilder<T>;
+  range(from: number, to: number): RegistrarAssessmentsFilterBuilder<T>;
   select(columns?: string): RegistrarAssessmentsFilterBuilder<T>;
   single(): QueryResult<RegistrarAssessmentRow>;
   maybeSingle(): QueryResult<RegistrarAssessmentRow>;
@@ -307,7 +308,8 @@ function isSupervisorBookingRow(row: RegistrarAssessmentRow): boolean {
 
 function assessmentDatabaseError(error: DbErrorLike | null): PublicApiError {
   if (error?.code === "22P02") return new PublicApiError("Invalid assessment identifier.", 400, { code: "invalid_id" });
-  if (error?.code === "23503") return new PublicApiError("Referenced assessment user was not found.", 400, { code: "invalid_reference" });
+  if (error?.code === "23503")
+    return new PublicApiError("Referenced assessment user was not found.", 400, { code: "invalid_reference" });
   return new PublicApiError("Clinical assessment database operation failed.", 500, {
     code: "assessment_database_error",
   });
@@ -648,10 +650,8 @@ export class ClinicalAssessmentRepository {
   }
 
   createDraft(params: CreateAssessmentDraftParams): AssessmentRecord {
-    const record = buildDraftAssessmentRecord(
-      params,
-      () => `asmt-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-    );
+    // UUIDs like the durable store, so ids pass the routes' uuid validation either way.
+    const record = buildDraftAssessmentRecord(params, () => randomUUID());
     this.store.set(record.id, record);
     return record;
   }

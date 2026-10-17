@@ -1,4 +1,5 @@
 import { formatCmeRowDate } from "@/lib/cme/cpd-year";
+import { perthDateOf } from "@/lib/perth-time";
 import type { RegistrarMilestoneRecord } from "@/lib/cme/training-repository";
 import type { NextMilestone, TrainingMilestone, TrainingPeriod, TrainingPosition } from "@/lib/cme/training-timeline";
 
@@ -165,7 +166,8 @@ export function epaRowDetail(epa: TrainingEpa, wbasPerEpa: number): string {
     const [, month, day] = epa.attainedOn.split("-");
     return `You marked it attained on ${Number.parseInt(day, 10)} ${SHORT_MONTHS[Number.parseInt(month, 10) - 1]} · keep your COE form in InTrain`;
   }
-  if (epa.wbasLogged === null) return epa.assessor ? `WBA count not recorded · ${epa.assessor}` : "WBA count not recorded";
+  if (epa.wbasLogged === null)
+    return epa.assessor ? `WBA count not recorded · ${epa.assessor}` : "WBA count not recorded";
   const logged = `${xOfY(epa.wbasLogged, wbasPerEpa)} WBAs logged`;
   if (epa.wbasLogged === 0) return `${logged} · not started`;
   return epa.assessor ? `${logged} · ${epa.assessor}` : logged;
@@ -288,6 +290,19 @@ export function milestoneSummary(
   return next.overdue ? `${head} · overdue since ${date}` : `${head} · next ${date}`;
 }
 
+// An EPA record carries "EPA" in its code or title (for example `st2-epa-1`, "EPA 3"), or a RANZCP
+// EPA code such as "ST2.A1" or "ST1.AP2" at the start of its title.
+const epaCodePattern = /(?:^|[^a-z])epa(?:[^a-z]|$)/i;
+const ranzcpEpaTitlePattern = /^ST\d\.[A-Z]{1,4}\d+\b/;
+
+export function isEpaMilestoneRecord(record: RegistrarMilestoneRecord): boolean {
+  return (
+    epaCodePattern.test(record.milestoneCode) ||
+    epaCodePattern.test(record.milestoneTitle) ||
+    ranzcpEpaTitlePattern.test(record.milestoneTitle.trim())
+  );
+}
+
 /**
  * Builds the signed-in owner's assessment view from `registrar_training_milestones`
  * and their current rotation periods. When no registrar milestones are recorded,
@@ -295,27 +310,26 @@ export function milestoneSummary(
  */
 export function buildOwnerTrainingAssessments(
   periods: readonly TrainingPeriod[],
-  milestones: readonly TrainingMilestone[] = [],
   registrarMilestones: readonly RegistrarMilestoneRecord[] = [],
+  today: string = perthDateOf(),
 ): CmeTrainingAssessments {
-  if (registrarMilestones.length === 0) {
+  // Only records explicitly typed as EPAs belong in the EPA list. Generic milestones (written
+  // examinations, psychotherapy cases, anything mirrored from the CME timeline) stay timeline
+  // milestones and are never shown as attained EPAs.
+  const epaRecords = registrarMilestones.filter(isEpaMilestoneRecord);
+  if (epaRecords.length === 0) {
     return { status: "not-recorded" };
   }
-  const today = new Date().toISOString().slice(0, 10);
   const currentRotation = periods.find(
-    (period) => period.kind === "rotation" && period.startsOn <= today && (period.endsOn === null || period.endsOn >= today),
+    (period) =>
+      period.kind === "rotation" && period.startsOn <= today && (period.endsOn === null || period.endsOn >= today),
   );
-  const rotationEndsOn =
-    currentRotation?.endsOn ??
-    milestones
-      .filter((milestone): milestone is TrainingMilestone & { readonly dueOn: string } => milestone.dueOn !== null)
-      .map((milestone) => milestone.dueOn)
-      .sort()
-      .at(0) ??
-    null;
+  // The deadline is the current rotation's own end date; with none recorded the page shows no date
+  // rather than borrowing an unrelated milestone's due date.
+  const rotationEndsOn = currentRotation?.endsOn ?? null;
   const minimumEpas = currentRotation ? 2 * currentRotation.fte : 2;
 
-  const epas: TrainingEpa[] = registrarMilestones.map((record) => ({
+  const epas: TrainingEpa[] = epaRecords.map((record) => ({
     id: record.id,
     title: record.milestoneTitle,
     wbasLogged: null,

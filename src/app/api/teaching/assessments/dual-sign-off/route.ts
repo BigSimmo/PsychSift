@@ -10,7 +10,13 @@ import { PublicApiError } from "@/lib/http";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, requireAuthenticatedUser, unauthorizedResponse } from "@/lib/supabase/auth";
 import { teachingErrorResponse, teachingNoStore } from "@/lib/teaching/api";
-import { projectAssessmentForActor, resolveAssessmentStore } from "@/lib/teaching/assessments/dual-sign-off";
+import { requireActiveServiceMember, requireAssessmentReviewer } from "@/lib/teaching/assessments/access";
+import {
+  AssessmentAccessDeniedError,
+  DurableClinicalAssessmentRepository,
+  projectAssessmentForActor,
+  resolveAssessmentStore,
+} from "@/lib/teaching/assessments/dual-sign-off";
 import { readBoundedJson } from "@/lib/validation/body";
 
 export const runtime = "nodejs";
@@ -73,6 +79,33 @@ const actionSchema = z.discriminatedUnion("action", [
     cancelledId: z.string().uuid(),
   }),
 ]);
+
+/**
+ * The durable store checks that the trainee belongs to the team and that the named supervisor
+ * really holds `assessments.review` for them (work_can), at creation and again at sign-off, so a
+ * trainee cannot route their sign-off to an arbitrary or second account. The in-memory store is a
+ * non-production fallback with no membership data, so it skips these checks.
+ */
+async function requireReviewPairing(
+  client: unknown,
+  store: ReturnType<typeof resolveAssessmentStore>,
+  pairing: { serviceId: string; traineeId: string; supervisorId: string },
+): Promise<void> {
+  if (!(store instanceof DurableClinicalAssessmentRepository)) return;
+  await requireActiveServiceMember(
+    client,
+    pairing.traineeId,
+    pairing.serviceId,
+    () => new AssessmentAccessDeniedError("The trainee is not a member of this service."),
+  );
+  await requireAssessmentReviewer(
+    client,
+    pairing.supervisorId,
+    pairing.serviceId,
+    pairing.traineeId,
+    () => new AssessmentAccessDeniedError("The named supervisor cannot review assessments for this trainee."),
+  );
+}
 
 export async function GET(request: Request) {
   try {
@@ -165,6 +198,11 @@ export async function POST(request: Request) {
 
     switch (payload.action) {
       case "create_draft": {
+        await requireReviewPairing(client, store, {
+          serviceId: payload.serviceId,
+          traineeId: user.id,
+          supervisorId: payload.supervisorId,
+        });
         const created = await store.createDraft({
           serviceId: payload.serviceId,
           traineeId: user.id,
@@ -195,6 +233,14 @@ export async function POST(request: Request) {
       }
 
       case "supervisor_sign_off": {
+        const record = await store.getRecord(payload.assessmentId);
+        if (record.supervisorId === user.id) {
+          await requireReviewPairing(client, store, {
+            serviceId: record.serviceId,
+            traineeId: record.traineeId,
+            supervisorId: user.id,
+          });
+        }
         const approved = await store.supervisorSignOff(user.id, payload.assessmentId, {
           supervisorFeedback: payload.supervisorFeedback,
           supervisorRatings: payload.supervisorRatings,

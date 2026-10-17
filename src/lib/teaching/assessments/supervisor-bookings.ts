@@ -349,10 +349,7 @@ export class SupervisorBookingRepository {
   }
 
   createAvailabilitySlot(input: CreateAvailabilitySlotInput): SupervisorBookingRecord {
-    const candidate = buildBookingSlotRecord(
-      input,
-      () => `slot-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-    );
+    const candidate = buildBookingSlotRecord(input, () => randomUUID());
 
     for (const existing of this.store.values()) {
       if (
@@ -397,10 +394,19 @@ export class SupervisorBookingRepository {
 
 function bookingDatabaseError(error: { message?: string; code?: string } | null): PublicApiError {
   if (error?.code === "22P02") return new PublicApiError("Invalid booking identifier.", 400, { code: "invalid_id" });
-  if (error?.code === "23503") return new PublicApiError("Referenced booking user was not found.", 400, { code: "invalid_reference" });
+  if (error?.code === "23503")
+    return new PublicApiError("Referenced booking user was not found.", 400, { code: "invalid_reference" });
   return new PublicApiError("Supervision booking database operation failed.", 500, {
     code: "booking_database_error",
   });
+}
+
+const BOOKING_PAGE_SIZE = 500;
+
+function compareCreation(a: SupervisorBookingRecord, b: SupervisorBookingRecord): number {
+  const byTime = Date.parse(a.createdAt) - Date.parse(b.createdAt);
+  if (Number.isFinite(byTime) && byTime !== 0) return byTime;
+  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 }
 
 function isBookingRow(row: RegistrarAssessmentRow): boolean {
@@ -445,17 +451,8 @@ export class DurableSupervisorBookingRepository {
   async createAvailabilitySlot(input: CreateAvailabilitySlotInput): Promise<SupervisorBookingRecord> {
     const candidate = buildBookingSlotRecord(input, () => randomUUID());
 
-    const existingSupervisorSlots = await this.listBookingsForActor({
-      actorId: candidate.supervisorId,
-      role: "supervisor",
-    });
-    for (const existing of existingSupervisorSlots) {
-      if (
-        existing.bookingState !== "cancelled" &&
-        windowsOverlap(existing.startsAt, existing.endsAt, candidate.startsAt, candidate.endsAt)
-      ) {
-        throw new BookingSlotConflictError("Supervisor already has an overlapping availability slot in this window.");
-      }
+    if ((await this.overlappingActiveSlots(candidate)).length > 0) {
+      throw new BookingSlotConflictError("Supervisor already has an overlapping availability slot in this window.");
     }
 
     const row = bookingRecordToRow(candidate);
@@ -469,7 +466,45 @@ export class DurableSupervisorBookingRepository {
       throw bookingDatabaseError(error);
     }
 
-    return rowToBookingRecord(data);
+    const created = rowToBookingRecord(data);
+    // The check above and the insert are separate statements, so two concurrent requests can both
+    // pass it. Re-check after inserting: if an overlapping slot that sorts earlier (created_at, then
+    // id) exists, this one withdraws itself, so exactly one of any concurrent overlapping pair survives.
+    const earlier = (await this.overlappingActiveSlots(created)).filter((other) => compareCreation(other, created) < 0);
+    if (earlier.length > 0) {
+      await this.withdrawConcurrentDuplicate(created);
+      throw new BookingSlotConflictError("Supervisor already has an overlapping availability slot in this window.");
+    }
+
+    return created;
+  }
+
+  /** Every non-cancelled slot of the same supervisor whose window overlaps `slot`, excluding itself. */
+  private async overlappingActiveSlots(slot: SupervisorBookingRecord): Promise<SupervisorBookingRecord[]> {
+    const supervisorSlots = await this.listBookingsForActor({ actorId: slot.supervisorId, role: "supervisor" });
+    return supervisorSlots.filter(
+      (existing) =>
+        existing.id !== slot.id &&
+        existing.bookingState !== "cancelled" &&
+        windowsOverlap(existing.startsAt, existing.endsAt, slot.startsAt, slot.endsAt),
+    );
+  }
+
+  private async withdrawConcurrentDuplicate(slot: SupervisorBookingRecord): Promise<void> {
+    const { updated } = applyCancelBookingTransition(slot, {
+      slotId: slot.id,
+      actorId: slot.supervisorId,
+      reason: "Withdrawn automatically: an overlapping slot was published at the same time.",
+    });
+    const row = bookingRecordToRow(updated);
+    const { error } = await this.db
+      .from("registrar_assessments")
+      .update({ feedback: row.feedback, status: row.status, ratings: row.ratings, updated_at: row.updated_at })
+      .eq("category", "supervisor_review")
+      .eq("id", slot.id)
+      .select(BOOKING_SELECT_COLUMNS)
+      .maybeSingle();
+    if (error) throw bookingDatabaseError(error);
   }
 
   async bookSupervisorSlot(input: BookSupervisorSlotInput): Promise<SupervisorBookingRecord> {
@@ -535,27 +570,40 @@ export class DurableSupervisorBookingRepository {
   }
 
   async listBookingsForActor(filter: ListBookingsFilter): Promise<SupervisorBookingRecord[]> {
-    let query = this.db
-      .from("registrar_assessments")
-      .select(BOOKING_SELECT_COLUMNS)
-      .eq("category", "supervisor_review");
+    const buildQuery = () => {
+      let query = this.db
+        .from("registrar_assessments")
+        .select(BOOKING_SELECT_COLUMNS)
+        .eq("category", "supervisor_review");
+      if (filter.role === "supervisor") {
+        query = query.eq("assessor_id", filter.actorId);
+      } else if (filter.role === "trainee") {
+        query = query.eq("registrar_id", filter.actorId);
+      }
+      if (filter.serviceId) query = query.eq("ratings->>serviceId", filter.serviceId);
+      if (filter.bookingState) query = query.eq("status", bookingStateToDbStatus(filter.bookingState));
+      if (filter.role === "open") query = query.eq("status", "draft");
+      return query;
+    };
 
-    if (filter.role === "supervisor") {
-      query = query.eq("assessor_id", filter.actorId);
-    } else if (filter.role === "trainee") {
-      query = query.eq("registrar_id", filter.actorId);
-    }
-    if (filter.serviceId) query = query.eq("ratings->>serviceId", filter.serviceId);
-    if (filter.bookingState) query = query.eq("status", bookingStateToDbStatus(filter.bookingState));
-    if (filter.role === "open") query = query.eq("status", "draft");
-
-    const { data, error } = await query.order("created_at", { ascending: true }).limit(500);
-    if (error) {
-      throw bookingDatabaseError(error);
+    // Read every matching row in pages rather than one capped read: a cap silently drops rows,
+    // which would hide bookings and blind the overlap check for busy supervisors.
+    const rows: RegistrarAssessmentRow[] = [];
+    for (let from = 0; ; from += BOOKING_PAGE_SIZE) {
+      const { data, error } = await buildQuery()
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, from + BOOKING_PAGE_SIZE - 1);
+      if (error) {
+        throw bookingDatabaseError(error);
+      }
+      const page = data ?? [];
+      rows.push(...page);
+      if (page.length < BOOKING_PAGE_SIZE) break;
     }
 
     const results: SupervisorBookingRecord[] = [];
-    for (const row of data ?? []) {
+    for (const row of rows) {
       if (!isBookingRow(row)) continue;
       const slot = rowToBookingRecord(row);
       if (matchesBookingFilter(slot, filter)) {

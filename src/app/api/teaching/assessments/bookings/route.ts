@@ -10,8 +10,10 @@ import { PublicApiError } from "@/lib/http";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, requireAuthenticatedUser, unauthorizedResponse } from "@/lib/supabase/auth";
 import { teachingErrorResponse, teachingNoStore } from "@/lib/teaching/api";
+import { requireActiveServiceMember, requireAssessmentReviewer } from "@/lib/teaching/assessments/access";
 import {
   BookingAccessDeniedError,
+  DurableSupervisorBookingRepository,
   resolveSupervisorBookingStore,
   type SupervisorBookingState,
 } from "@/lib/teaching/assessments/supervisor-bookings";
@@ -23,33 +25,33 @@ const assessmentTypeSchema = z.enum(["epa", "wba", "ita", "general"]);
 const bookingStateSchema = z.enum(["open", "booked", "completed", "cancelled"]);
 const roleQuerySchema = z.enum(["supervisor", "trainee", "open"]);
 
-type MembershipQuery = {
-  select: (columns: string) => MembershipQuery;
-  eq: (column: string, value: string) => MembershipQuery;
-  is: (column: string, value: null) => MembershipQuery;
-  maybeSingle: () => Promise<{ data: unknown; error: { message?: string } | null }>;
-};
-
-async function requireServiceMember(client: unknown, userId: string, serviceId: string, supervisor = false) {
-  const from = (client as { from?: (table: string) => MembershipQuery }).from;
-  if (typeof from !== "function") throw new BookingAccessDeniedError("You are not a member of this service.");
-  const member = await from("on_call_service_members")
-    .select("user_id")
-    .eq("service_id", serviceId)
-    .eq("user_id", userId)
-    .is("revoked_at", null)
-    .maybeSingle();
-  if (member.error || !member.data) throw new BookingAccessDeniedError("You are not a member of this service.");
-  if (supervisor) {
-    const role = await from("teaching_member_roles")
-      .select("role")
-      .eq("service_id", serviceId)
-      .eq("user_id", userId)
-      .eq("role", "supervisor")
-      .is("revoked_at", null)
-      .maybeSingle();
-    if (role.error || !role.data) throw new BookingAccessDeniedError("Supervisor access is required.");
-  }
+/**
+ * Team membership and supervisor checks need the durable store's database; the in-memory store is
+ * a non-production fallback with no membership data, so the checks only run against the durable one.
+ */
+function accessChecksFor(client: unknown, store: ReturnType<typeof resolveSupervisorBookingStore>) {
+  const durable = store instanceof DurableSupervisorBookingRepository;
+  return {
+    async member(userId: string, serviceId: string) {
+      if (!durable) return;
+      await requireActiveServiceMember(
+        client,
+        userId,
+        serviceId,
+        () => new BookingAccessDeniedError("You are not a member of this service."),
+      );
+    },
+    async supervisor(userId: string, serviceId: string, traineeId: string | null) {
+      if (!durable) return;
+      await requireAssessmentReviewer(
+        client,
+        userId,
+        serviceId,
+        traineeId,
+        () => new BookingAccessDeniedError("Supervisor access for this service is required."),
+      );
+    },
+  };
 }
 
 const bookingActionSchema = z.discriminatedUnion("action", [
@@ -98,6 +100,7 @@ export async function GET(request: Request) {
     }
 
     const store = resolveSupervisorBookingStore(client);
+    const access = accessChecksFor(client, store);
     const { searchParams } = new URL(request.url);
 
     const id = searchParams.get("id");
@@ -107,7 +110,7 @@ export async function GET(request: Request) {
       }
       const slot = await store.getSlot(id);
       if (slot.bookingState === "open") {
-        await requireServiceMember(client, user.id, slot.serviceId);
+        await access.member(user.id, slot.serviceId);
       }
       const canView = slot.supervisorId === user.id || slot.traineeId === user.id || slot.bookingState === "open";
       if (!canView) {
@@ -143,7 +146,7 @@ export async function GET(request: Request) {
     }
 
     if (serviceId && (parsedRole?.data === "open" || !parsedRole)) {
-      await requireServiceMember(client, user.id, serviceId);
+      await access.member(user.id, serviceId);
     }
 
     const bookings = await store.listBookingsForActor({
@@ -179,6 +182,7 @@ export async function POST(request: Request) {
     }
 
     const store = resolveSupervisorBookingStore(client);
+    const access = accessChecksFor(client, store);
 
     let body: unknown;
     try {
@@ -205,8 +209,11 @@ export async function POST(request: Request) {
         if (payload.supervisorId && payload.supervisorId !== user.id) {
           throw new BookingAccessDeniedError("You can only publish supervision availability slots for yourself.");
         }
-        await requireServiceMember(client, user.id, payload.serviceId, true);
-        if (payload.traineeId) await requireServiceMember(client, payload.traineeId, payload.serviceId);
+        await access.member(user.id, payload.serviceId);
+        // A self-assigned trainee is refused by the store with a 400, so it is not a reviewer scope.
+        const subject = payload.traineeId && payload.traineeId !== user.id ? payload.traineeId : null;
+        await access.supervisor(user.id, payload.serviceId, subject);
+        if (payload.traineeId) await access.member(payload.traineeId, payload.serviceId);
         const created = await store.createAvailabilitySlot({
           serviceId: payload.serviceId,
           supervisorId: user.id,
@@ -226,7 +233,7 @@ export async function POST(request: Request) {
           throw new BookingAccessDeniedError("You can only book supervision slots for yourself.");
         }
         const slot = await store.getSlot(payload.slotId);
-        await requireServiceMember(client, user.id, slot.serviceId);
+        await access.member(user.id, slot.serviceId);
         const booked = await store.bookSupervisorSlot({
           slotId: payload.slotId,
           traineeId: user.id,

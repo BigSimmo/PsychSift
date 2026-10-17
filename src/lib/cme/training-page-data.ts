@@ -77,7 +77,7 @@ export async function loadCmeTrainingPageData(): Promise<CmeTrainingPageData> {
       fetchOwnerRegistrarMilestones(admin, auth.user.id),
     ]);
     const milestones = mergeTrainingAndRegistrarMilestones(rawMilestones, registrarMilestones);
-    const assessments = buildOwnerTrainingAssessments(periods, milestones, registrarMilestones);
+    const assessments = buildOwnerTrainingAssessments(periods, registrarMilestones);
     return {
       state: "ready",
       demoMode: false,

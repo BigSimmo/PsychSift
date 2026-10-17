@@ -30,8 +30,7 @@ export default async function CmeTrainingRoute({ searchParams }: CmeTrainingRout
   const view = trainingExampleView(query.example);
   const assessments = data.demoMode
     ? sampleTrainingAssessments(view)
-    : (data.assessments ??
-      buildOwnerTrainingAssessments(data.periods, data.milestones, data.registrarMilestones ?? []));
+    : (data.assessments ?? buildOwnerTrainingAssessments(data.periods, data.registrarMilestones ?? []));
   return (
     <CmeTrainingPage
       key={data.demoMode ? view : "owner"}
