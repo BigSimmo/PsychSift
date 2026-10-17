@@ -1,13 +1,19 @@
 "use client";
 
 import { ClipboardCheck, FileText } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { useCopyToast } from "@/components/ui/toast";
+import { useOptionalToast } from "@/components/ui/toast";
 import type { CmeEntry } from "@/lib/cme/types";
 import { guardExampleAction } from "@/lib/example-data/guards";
 import { useExampleData } from "@/lib/example-data/store";
+
+function claimableEntries(entries: readonly CmeEntry[]): CmeEntry[] {
+  return entries
+    .filter((entry) => !entry.archivedAt && typeof entry.costCents === "number" && entry.costCents > 0)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
+}
 
 /**
  * Formats a list of CME entries into an itemized, human-readable claim pack text
@@ -17,9 +23,7 @@ import { useExampleData } from "@/lib/example-data/store";
  * Sorts by date ascending.
  */
 export function generateClaimPackText(entries: readonly CmeEntry[]): string {
-  const claimable = entries
-    .filter((entry) => !entry.archivedAt && typeof entry.costCents === "number" && entry.costCents > 0)
-    .sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
+  const claimable = claimableEntries(entries);
 
   if (claimable.length === 0) {
     return "No claimable expenses recorded (0 entries with financial costs).";
@@ -78,30 +82,61 @@ export function downloadClaimPackText(entries: readonly CmeEntry[], filename = "
 
 export interface CmeClaimPackButtonProps {
   readonly entries: readonly CmeEntry[];
+  readonly demoMode?: boolean;
   readonly className?: string;
   readonly filename?: string;
 }
 
-export function CmeClaimPackButton({ entries, className, filename = "cme-claim-pack.txt" }: CmeClaimPackButtonProps) {
+export function CmeClaimPackButton({
+  entries,
+  demoMode = false,
+  className,
+  filename = "cme-claim-pack.txt",
+}: CmeClaimPackButtonProps) {
   const [downloaded, setDownloaded] = useState(false);
-  const showToast = useCopyToast();
+  const resetTimerRef = useRef<number | null>(null);
   const example = useExampleData("cpd").active;
+  const toast = useOptionalToast();
 
-  const handleExport = async () => {
-    if (!guardExampleAction(example, "export")) return;
-    const text = generateClaimPackText(entries);
-    downloadClaimPackText(entries, filename);
-    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-      try {
-        await navigator.clipboard.writeText(text);
-      } catch {
-        // Fallback or ignore clipboard rejection
+  useEffect(() => {
+    return () => {
+      if (resetTimerRef.current !== null) {
+        window.clearTimeout(resetTimerRef.current);
       }
+    };
+  }, []);
+
+  const handleExport = () => {
+    if (!guardExampleAction(example || demoMode, "export")) return;
+    if (claimableEntries(entries).length === 0) {
+      toast?.push({
+        tone: "info",
+        title: "No claimable expenses recorded for this year",
+        duration: 3000,
+      });
+      return;
+    }
+    const ok = downloadClaimPackText(entries, filename);
+    if (!ok) {
+      toast?.push({
+        tone: "danger",
+        title: "Could not export claim pack",
+        duration: 3000,
+      });
+      return;
     }
     setDownloaded(true);
-    showToast("Claim pack exported and downloaded");
-    window.setTimeout(() => {
+    toast?.push({
+      tone: "success",
+      title: "Claim pack downloaded",
+      duration: 3000,
+    });
+    if (resetTimerRef.current !== null) {
+      window.clearTimeout(resetTimerRef.current);
+    }
+    resetTimerRef.current = window.setTimeout(() => {
       setDownloaded(false);
+      resetTimerRef.current = null;
     }, 2500);
   };
 

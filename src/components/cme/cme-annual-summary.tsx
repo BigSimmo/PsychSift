@@ -165,7 +165,7 @@ export function CmeAnnualSummary({
                 Download CSV
               </a>
             )}
-            <CmeClaimPackButton entries={active} filename={`cme-claim-pack-${set.year}.txt`} />
+            <CmeClaimPackButton entries={active} demoMode={demoMode} filename={`cme-claim-pack-${set.year}.txt`} />
           </div>
           <p className={cn(textMuted, "mt-2 text-xs")}>
             Opens your device&apos;s print screen. Choose Save as PDF, or Share on a phone, to send it to your college

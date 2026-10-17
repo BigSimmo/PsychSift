@@ -15,14 +15,14 @@ Retention and rotation: [`branch-review-archival-policy.md`](branch-review-archi
 
 ## Summary
 
-- Records: 711
-- Distinct ref cells: 457
-- Distinct reviewed heads: 693
+- Records: 712
+- Distinct ref cells: 458
+- Distinct reviewed heads: 694
 - Date range: `2026-08-12` to `2026-10-17`
 
 Records per date, newest first:
 
-- `2026-10-17` — 5 records
+- `2026-10-17` — 6 records
 - `2026-10-16` — 7 records
 - `2026-10-15` — 3 records
 - `2026-10-14` — 1 record
@@ -79,6 +79,7 @@ Scope and outcome are truncated; follow the record link for the full six-cell ro
 
 | Date | Ref | Scope | Outcome | Record |
 | --- | --- | --- | --- | --- |
+| 2026-10-17 | docs/audit-remediation-20261014 | prlanded | Verified PR #3544 squash-merged at def6fabcc8235e8592fea2613d07170e23d… | [0dbb74fa](branch-review-records/0dbb74fa24e427d3d012744657555374a0da336ad41ba1439663c24cf88e5342.record.md) |
 | 2026-10-17 | codex/cloud-policy-clarity | prlanded | PR #3581 (a5b118f952) and PR #3587 (7c719b2bc4) squash-merged cleanly… | [16df9092](branch-review-records/16df90928a34e2941ef9c2892b7f48d92e09e12f470af635ef15e4ee3677b0b9.record.md) |
 | 2026-10-17 | claude/rag-ingestion-hardening | prlanded | PR #3596 squash-merged cleanly into main at 45fc04c42f0867bc9802ffc93f… | [1ae2c7f8](branch-review-records/1ae2c7f8f7762d8e1d81898ed83a701be7cbd007c80be5a3d83e39470ced9461.record.md) |
 | 2026-10-17 | claude/rag-ingestion-hardening | RAG retrieval/summary/cache generation isolation and ingestion worker/edge hardening | resolved | [5349150e](branch-review-records/5349150e82f255e42866975fa7aa5e9fe76601433ebc427c75226677c5bef854.record.md) |

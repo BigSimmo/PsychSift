@@ -2161,6 +2161,10 @@
         "file": "src/app/api/roster/settings/route.ts"
       },
       {
+        "path": "/api/teaching/assessments/bookings",
+        "file": "src/app/api/teaching/assessments/bookings/route.ts"
+      },
+      {
         "path": "/api/account/preferences",
         "file": "src/app/api/account/preferences/route.ts"
       },
@@ -14360,6 +14364,14 @@
         "checks": "UI 3 passed; unit 8 passed; lint, typecheck, build, design-system and offline RAG passed; full suite 6022 passed with 16 unchanged baseline failures"
       },
       {
+        "date": "2026-10-17",
+        "ref": "PR #3609 (claude/reconcile-inbox-20261017)",
+        "head": "679d2bfeb8fb2082a09ae75009bc07d454731276",
+        "scope": "Reconcile 21 pending inbox requests and bundle prlanded review records for PRs #3567, #3570, and #3573",
+        "outcome": "landed (squash-merged into main as 679d2bfeb8fb2082a09ae75009bc07d454731276; 4 follow-up inbox items queued from review)",
+        "checks": "PR required, Static PR checks, Safety and config checks, Build, Production UI (1-3), Unit coverage (1-2), Semgrep, Gitleaks, Gitar, CodeAnt all green"
+      },
+      {
         "date": "2026-08-18",
         "ref": "claude/dictionary-mode-ui-updates-uwoicy",
         "head": "67a290f393702f36021a470e6b00b0d1aa335227",
@@ -24782,6 +24794,14 @@
         "scope": "open-pr-merge-sweep",
         "outcome": "MERGED after #1268 (lockfile order). Dev bumps: bundle-analyzer/eslint-config-next 16.2.12, playwright 1.62, prettier 3.9.6.",
         "checks": "hosted-pr-required,static,unit,build,circleci"
+      },
+      {
+        "date": "2026-10-17",
+        "ref": "docs/audit-remediation-20261014",
+        "head": "def6fabcc8235e8592fea2613d07170e23dd9836",
+        "scope": "prlanded",
+        "outcome": "Verified PR #3544 squash-merged at def6fabcc8235e8592fea2613d07170e23dd9836 with zero content diff against final PR head f519ae94fafab3e2ce7b221a054faa7d66939eea and zero orphaned commits",
+        "checks": "gh pr view 3544, git rev-list --parents -n 1 def6fabcc8235e8592fea2613d07170e23dd9836, git diff --stat def6fabcc8235e8592fea2613d07170e23dd9836 f519ae94fafab3e2ce7b221a054faa7d66939eea"
       },
       {
         "date": "2026-07-14",

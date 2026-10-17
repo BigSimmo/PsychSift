@@ -25,6 +25,20 @@ afterEach(() => {
 
 describe("CME Claim Pack button on Annual Summary surface (#GR72PF)", () => {
   it("renders Export claim pack on CmeAnnualSummary and transitions to Claim pack exported when clicked", async () => {
+    if (typeof URL.createObjectURL !== "function") {
+      Object.defineProperty(URL, "createObjectURL", {
+        configurable: true,
+        writable: true,
+        value: () => "blob:cme-claim-pack",
+      });
+    }
+    if (typeof URL.revokeObjectURL !== "function") {
+      Object.defineProperty(URL, "revokeObjectURL", {
+        configurable: true,
+        writable: true,
+        value: () => {},
+      });
+    }
     const createObjectUrl = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:cme-claim-pack");
     const revokeObjectUrl = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
     const entriesWithCost = DEMO_CME_ENTRIES.map((entry, idx) =>
