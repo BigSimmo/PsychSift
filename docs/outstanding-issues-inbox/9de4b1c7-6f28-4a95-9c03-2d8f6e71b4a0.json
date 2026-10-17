@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "9de4b1c7-6f28-4a95-9c03-2d8f6e71b4a0",
+  "createdOn": "2026-10-18",
+  "action": "done",
+  "payload": {
+    "id": "#BDFFYF",
+    "outcome": "Duplicate identity for #WFYDV6. Folded into reopened #WFYDV6, which remains the sole open P1 issue for the WA MHA Form 6A/6B statutory-text sign-off or removal work. The canonical #WFYDV6 detail retains the distinct PR #3573 branding and Form 6B wording changes; nothing is signed off.",
+    "targetUlid": "01M54ZYAB6BDFFYFA3ZA5MNPVB"
+  }
+}
