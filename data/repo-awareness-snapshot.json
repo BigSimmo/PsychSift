@@ -3970,6 +3970,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-17-wfydv6-stays-open-until-sign-off.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/agents/native-startup/external-skill-precedence.md",
         "section": "agents",
         "catalogued": true
