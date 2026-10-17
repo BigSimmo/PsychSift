@@ -165,6 +165,24 @@ describe("maintain-docs-system pipeline", () => {
       expect(result.system).toBe("search-and-answers");
       expect(result.systemFile).toBe("docs/organisation/systems/search-and-answers.json");
     });
+
+    it("routes new domain-specific tests/* paths to their owning system area instead of falling through to delivery", () => {
+      const testCases = [
+        { path: "tests/query-classification-new.test.ts", expectedResolved: "answer-engine" },
+        { path: "tests/xlsx-sheet-dictionary-projection-new.test.ts", expectedResolved: "source-intake" },
+        { path: "tests/cme-accreditation-summary-new.test.ts", expectedResolved: "personal-practice" },
+        { path: "tests/calculators-lithium-toxicity-new.test.ts", expectedResolved: "clinical-content" },
+        { path: "tests/branch-review-ledger-new.test.ts", expectedResolved: "knowledge" },
+        { path: "tests/design-system-token-new.test.ts", expectedResolved: "design-system" },
+        { path: "tests/phone-chrome-scroll-new.test.ts", expectedResolved: "app-experience" },
+      ];
+
+      for (const tc of testCases) {
+        const result = classifyRepositoryPath(tc.path);
+        expect(result.resolvedSystem).toBe(tc.expectedResolved);
+        expect(result.resolvedSystemFile).toBe(`docs/organisation/systems/${tc.expectedResolved}.json`);
+      }
+    });
   });
 
   describe("placeUnplacedFiles", () => {

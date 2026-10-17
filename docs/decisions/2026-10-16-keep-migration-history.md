@@ -1,7 +1,7 @@
 # Decision: Keep the full database migration history instead of folding it into one snapshot
 
 - **Status:** decided 2026-10-16
-- **Source:** the owner, in chat
+- **Source:** `AGENTS.md`, find "never edit a migration already on `main`"
 
 The owner chose not to fold the older database migration history into one starting snapshot, because
 rewriting the protected applied migration hashes, migration history and drift checks carries more risk

@@ -16335,7 +16335,7 @@
         "date": "2026-10-17",
         "ref": "claude/add-prlanded-skill",
         "head": "7e6fd2d557d53e22dfa6ea37b8921007fe4b0dfa",
-        "scope": "prlanded",
+        "scope": "Canonical prlanded skill and landed ledger records",
         "outcome": "PASS (0 blocking findings; added .agents/skills/prlanded canonical skill, registered cross-surface twin in list-database-skills.mjs, updated skill inventory tests, and recorded prlanded proofs for PRs #3581/#3587 and #3596)",
         "checks": "npm run check:skills, vitest run tests/database-skills.test.ts tests/repository-skill-inventory.test.ts (15/15), npm run docs:maintain:check, check-format-changed"
       },
@@ -24746,6 +24746,14 @@
         "scope": "open-pr-merge-sweep",
         "outcome": "MERGED after #1268 (lockfile order). Dev bumps: bundle-analyzer/eslint-config-next 16.2.12, playwright 1.62, prettier 3.9.6.",
         "checks": "hosted-pr-required,static,unit,build,circleci"
+      },
+      {
+        "date": "2026-10-17",
+        "ref": "docs/audit-remediation-20261014",
+        "head": "def6fabcc8235e8592fea2613d07170e23dd9836",
+        "scope": "prlanded",
+        "outcome": "Verified PR #3544 squash-merged at def6fabcc8235e8592fea2613d07170e23dd9836 with zero content diff against final PR head f519ae94fafab3e2ce7b221a054faa7d66939eea and zero orphaned commits",
+        "checks": "gh pr view 3544, git rev-list --parents -n 1 def6fabcc8235e8592fea2613d07170e23dd9836, git diff --stat def6fabcc8235e8592fea2613d07170e23dd9836 f519ae94fafab3e2ce7b221a054faa7d66939eea"
       },
       {
         "date": "2026-07-14",
