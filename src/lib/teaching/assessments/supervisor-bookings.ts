@@ -570,6 +570,17 @@ export class DurableSupervisorBookingRepository {
   }
 
   async listBookingsForActor(filter: ListBookingsFilter): Promise<SupervisorBookingRecord[]> {
+    if (!filter.role) {
+      // No role: the caller's own slots either side, plus open slots when a service is named. Each
+      // part is filtered in the database, so the listing never scans other people's bookings.
+      const parts = await Promise.all([
+        this.listBookingsForActor({ ...filter, role: "supervisor" }),
+        this.listBookingsForActor({ ...filter, role: "trainee" }),
+        filter.serviceId ? this.listBookingsForActor({ ...filter, role: "open" }) : Promise.resolve([]),
+      ]);
+      const byId = new Map(parts.flat().map((slot) => [slot.id, slot]));
+      return [...byId.values()].sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));
+    }
     const buildQuery = () => {
       let query = this.db
         .from("registrar_assessments")

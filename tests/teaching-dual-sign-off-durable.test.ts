@@ -414,6 +414,31 @@ describe("Durable Teaching Assessments & Supervisor Bookings (registrar_assessme
       expect(mockDb.rows.size).toBe(0);
     });
 
+    it("never reads a registrar_assessments row the dual sign-off flow did not write", async () => {
+      vi.stubEnv("NODE_ENV", "production");
+      const foreignId = "77777777-7777-4777-8777-777777777777";
+      mockDb.rows.set(foreignId, {
+        id: foreignId,
+        registrar_id: TRAINEE_ID,
+        assessor_id: SUPERVISOR_ID,
+        category: "epa",
+        title: "Imported EPA record",
+        ratings: { state: "approved", somethingElse: true },
+        feedback: null,
+        status: "draft",
+        created_at: "2026-10-01T00:00:00.000Z",
+        updated_at: "2026-10-01T00:00:00.000Z",
+      });
+
+      mocks.user = { id: TRAINEE_ID };
+      expect((await getDualSignOff(makeDualSignOffGet(`id=${foreignId}`))).status).toBe(404);
+      const update = await postDualSignOff(
+        makeDualSignOffPost({ action: "update_draft", assessmentId: foreignId, title: "Overwrite" }),
+      );
+      expect(update.status).toBe(404);
+      expect(mockDb.rows.get(foreignId)?.ratings).toEqual({ state: "approved", somethingElse: true });
+    });
+
     it("fails closed with 503 assessment_store_unavailable in production when admin client lacks durable table access", async () => {
       vi.stubEnv("NODE_ENV", "production");
       mocks.adminClient = {};

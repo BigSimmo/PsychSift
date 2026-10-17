@@ -104,6 +104,8 @@ export type SupervisorSignOffInput = {
 };
 
 export type RegistrarAssessmentRatingsPayload = {
+  /** Marks rows written by the dual sign-off flow; reads accept nothing else. */
+  kind: typeof DUAL_SIGN_OFF_KIND;
   serviceId: string;
   clinicalSetting: string;
   traineeReflection: string;
@@ -115,7 +117,6 @@ export type RegistrarAssessmentRatingsPayload = {
   supervisorSignedAt: string | null;
   revisionReason: string | null;
   cancelReason: string | null;
-  kind?: string;
 };
 
 export type RegistrarAssessmentRow = {
@@ -163,6 +164,8 @@ export type RegistrarAssessmentsFilterBuilder<T> = QueryResult<T> & {
 export type RegistrarAssessmentsTableClient = {
   from(table: "registrar_assessments"): RegistrarAssessmentsQueryBuilder;
 };
+
+export const DUAL_SIGN_OFF_KIND = "dual_sign_off" as const;
 
 const ASSESSMENT_SELECT_COLUMNS =
   "id, registrar_id, assessor_id, category, title, ratings, feedback, status, created_at, updated_at";
@@ -231,6 +234,7 @@ export function assessmentRecordToRow(
   category: RegistrarAssessmentCategory = "wba",
 ): RegistrarAssessmentRow {
   const ratingsPayload: RegistrarAssessmentRatingsPayload = {
+    kind: DUAL_SIGN_OFF_KIND,
     serviceId: record.serviceId,
     clinicalSetting: record.clinicalSetting,
     traineeReflection: record.traineeReflection,
@@ -297,12 +301,15 @@ export function rowToAssessmentRecord(row: RegistrarAssessmentRow): AssessmentRe
   };
 }
 
-function isSupervisorBookingRow(row: RegistrarAssessmentRow): boolean {
+/**
+ * Only rows the dual sign-off flow wrote (`ratings.kind = "dual_sign_off"`) are assessments here.
+ * Bookings and any other registrar_assessments rows are never read as, or rewritten into, one.
+ */
+function isDualSignOffRow(row: RegistrarAssessmentRow): boolean {
   return Boolean(
-    row.category === "supervisor_review" &&
     row.ratings &&
     typeof row.ratings === "object" &&
-    (row.ratings as Record<string, unknown>).kind === "supervisor_booking",
+    (row.ratings as Record<string, unknown>).kind === DUAL_SIGN_OFF_KIND,
   );
 }
 
@@ -753,7 +760,7 @@ export class DurableClinicalAssessmentRepository {
       throw assessmentDatabaseError(error);
     }
 
-    if (!data || isSupervisorBookingRow(data)) {
+    if (!data || !isDualSignOffRow(data)) {
       throw new AssessmentNotFoundError(id);
     }
 
@@ -854,6 +861,7 @@ export class DurableClinicalAssessmentRepository {
       .from("registrar_assessments")
       .select(ASSESSMENT_SELECT_COLUMNS)
       .eq("assessor_id", supervisorId)
+      .eq("ratings->>kind", DUAL_SIGN_OFF_KIND)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -862,7 +870,7 @@ export class DurableClinicalAssessmentRepository {
 
     const results: SafeAssessmentView[] = [];
     for (const row of data ?? []) {
-      if (isSupervisorBookingRow(row)) continue;
+      if (!isDualSignOffRow(row)) continue;
       const record = rowToAssessmentRecord(row);
       if (!filterState || record.state === filterState) {
         results.push(projectAssessmentForActor(record, supervisorId));
@@ -876,6 +884,7 @@ export class DurableClinicalAssessmentRepository {
       .from("registrar_assessments")
       .select(ASSESSMENT_SELECT_COLUMNS)
       .eq("registrar_id", traineeId)
+      .eq("ratings->>kind", DUAL_SIGN_OFF_KIND)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -884,7 +893,7 @@ export class DurableClinicalAssessmentRepository {
 
     const results: SafeAssessmentView[] = [];
     for (const row of data ?? []) {
-      if (isSupervisorBookingRow(row)) continue;
+      if (!isDualSignOffRow(row)) continue;
       const record = rowToAssessmentRecord(row);
       results.push(projectAssessmentForActor(record, traineeId));
     }
