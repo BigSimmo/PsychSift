@@ -12,7 +12,14 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, s
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { addIssue, resolveIssue, updateArchivedIssue, updateIssue, updateQueueRow } from "./outstanding-issues.mjs";
+import {
+  addIssue,
+  reopenIssue,
+  resolveIssue,
+  updateArchivedIssue,
+  updateIssue,
+  updateQueueRow,
+} from "./outstanding-issues.mjs";
 import {
   ISSUES_PATH,
   archiveRowFingerprint,
@@ -34,7 +41,7 @@ import {
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const INBOX_DIR = "docs/outstanding-issues-inbox";
 const APPLIED_DIR = path.posix.join(INBOX_DIR, "applied");
-const ACTIONS = new Set(["add", "done", "update", "amend-outcome", "queue", "cancel"]);
+const ACTIONS = new Set(["add", "done", "update", "amend-outcome", "reopen", "queue", "cancel"]);
 // Fields a `queue` request may carry, mirroring updateQueueRow's editable map.
 const QUEUE_FIELDS = ["acuity", "capability", "when", "estimate", "outcome"];
 const REQUEST_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -93,6 +100,20 @@ function validateDoneRequest(payload, problems) {
   }
 }
 
+function validateReopenRequest(payload, problems) {
+  if (!isIssueDisplayId(payload?.id)) problems.push("reopen requires a canonical issue display id");
+  for (const field of ["pri", "detail", "source"]) {
+    if (!payload?.[field]) problems.push(`reopen requires ${field}`);
+  }
+  if (payload?.pri && !["P1", "P2", "P3"].includes(String(payload.pri))) {
+    problems.push("reopen pri must be P1, P2, or P3");
+  }
+  validateFingerprint(payload, "reopen", problems);
+  if (payload?.targetUlid !== undefined && !isIssueUlid(payload.targetUlid)) {
+    problems.push("reopen targetUlid must be a valid ULID");
+  }
+}
+
 function validateUpdateRequest(action, payload, problems) {
   if (!isIssueDisplayId(payload?.id)) {
     problems.push(`${action} requires a canonical issue display id`);
@@ -144,10 +165,13 @@ export function validateRequest(request) {
   if (![1, 2].includes(request.version)) problems.push("version must be 1 or 2");
   if (!REQUEST_ID.test(request.id ?? "")) problems.push("id must be a UUID");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(request.createdOn ?? "")) problems.push("createdOn must be YYYY-MM-DD");
-  if (!ACTIONS.has(request.action)) problems.push("action must be add, done, update, queue, or cancel");
+  if (!ACTIONS.has(request.action)) {
+    problems.push("action must be add, done, update, amend-outcome, reopen, queue, or cancel");
+  }
   if (!request.payload || typeof request.payload !== "object") problems.push("payload must be an object");
   if (request.action === "add") validateAddRequest(request, problems);
   if (request.action === "done") validateDoneRequest(request.payload, problems);
+  if (request.action === "reopen") validateReopenRequest(request.payload, problems);
   if (request.action === "update" || request.action === "amend-outcome") {
     validateUpdateRequest(request.action, request.payload, problems);
   }
@@ -211,7 +235,7 @@ function shouldKeepArchivedMarkdown(markdown, request, options, allowArchived) {
 }
 
 function verifyIssueFingerprint(markdown, request, allowArchived) {
-  if (!["done", "update", "amend-outcome"].includes(request.action) || !request.payload?.baseRowFingerprint) {
+  if (!["done", "update", "amend-outcome", "reopen"].includes(request.action) || !request.payload?.baseRowFingerprint) {
     return allowArchived;
   }
   const id = request.payload.id;
@@ -238,6 +262,9 @@ function applyValidatedRequest(markdown, request, options, dateOptions, allowArc
   if (request.action === "add") {
     const durableId = request.payload.issueUlid ?? issueUlidFromRequest(request.createdOn, request.id);
     return addIssue(markdown, request.payload, { ...dateOptions, issueUlid: durableId });
+  }
+  if (request.action === "reopen") {
+    return reopenIssue(markdown, request.payload.id, request.payload, dateOptions);
   }
   if (request.action === "done") {
     return resolveIssue(markdown, request.payload.id, request.payload.outcome, {
@@ -1247,6 +1274,16 @@ function createRequestPayload(action, argv) {
       issueUlid: issueUlid(),
     };
   }
+  if (action === "reopen") {
+    const payload = {
+      id: targetId,
+      pri: argValue(argv, "pri"),
+      detail: argValue(argv, "detail"),
+      source: argValue(argv, "source"),
+    };
+    if (targetUlid) payload.targetUlid = targetUlid;
+    return payload;
+  }
   if (action === "done" || action === "amend-outcome") {
     const payload = { id: targetId, outcome: argValue(argv, "outcome") ?? argValue(argv, "reason") };
     if (targetUlid) payload.targetUlid = targetUlid;
@@ -1287,7 +1324,7 @@ function createRequestPayload(action, argv) {
 }
 
 function attachIssueFingerprint(action, payload) {
-  if (!["done", "update", "amend-outcome"].includes(action) || typeof payload.id !== "string") return;
+  if (!["done", "update", "amend-outcome", "reopen"].includes(action) || typeof payload.id !== "string") return;
   const pending = loadPending();
 
   // If explicit targetUlid identifies a pending add, retain it without borrowing
@@ -1978,7 +2015,7 @@ function dispatchInboxCommand(action, argv) {
   if (action === "reconcile") return reconcile(argv.slice(1));
   if (action === "check") return checkInbox();
   throw new Error(
-    "usage: ledger-inbox.mjs <add|done|update|amend-outcome|queue|cancel|enqueue|reconcile|check> [args]",
+    "usage: ledger-inbox.mjs <add|done|update|amend-outcome|reopen|queue|cancel|enqueue|reconcile|check> [args]",
   );
 }
 

@@ -997,4 +997,66 @@ describe("ledger-inbox idempotent close and duplicate done handling", () => {
       expect(() => applyRequest(ARCHIVE_LEDGER, missing)).toThrow(/not archived/);
     });
   });
+
+  describe("reopen requests", () => {
+    const REOPEN_ULID = "01M4ZM793BWFYDV65NNBHBP53K";
+    const REOPEN_LEDGER = BASE_LEDGER.replace(
+      "| #005 | issue | Prior resolved issue | Original outcome text from PR #10 | 2026-01-01 |",
+      [
+        "| #005 | issue | Prior resolved issue | Original outcome text from PR #10 | 2026-01-01 |",
+        `| #WFYDV6 <!-- issue-ulid:${REOPEN_ULID} --> | issue | Archived durable issue | Archived early | 2026-10-16 |`,
+      ].join("\n"),
+    );
+    const reopenRequest = (overrides: Record<string, unknown> = {}) => ({
+      version: 2,
+      id: "cccc1111-1111-4111-8111-111111111111",
+      createdOn: "2026-10-17",
+      action: "reopen",
+      payload: {
+        id: "#WFYDV6",
+        pri: "P1",
+        detail: "Reopened by owner decision",
+        source: "owner decision",
+        baseRowFingerprint: archiveRowFingerprint(REOPEN_LEDGER, "#WFYDV6"),
+        targetUlid: REOPEN_ULID,
+        ...overrides,
+      },
+    });
+
+    it("moves the archived row back to the open table with its original ID and ULID", () => {
+      const result = applyRequest(REOPEN_LEDGER, reopenRequest());
+      const rows = parseIssues(result).rows.filter((row) => row.id === "#WFYDV6");
+      expect(rows).toHaveLength(1);
+      expect(rows[0].table).toBe("open");
+      expect(rows[0].ulid).toBe(REOPEN_ULID);
+      expect(rows[0].raw).toContain("| P1 | issue | Archived durable issue | Reopened by owner decision |");
+      expect(rows[0].raw).toContain("| owner decision | 2026-10-17 |");
+      expect(archiveRowFingerprint(result, "#WFYDV6")).toBeNull();
+      expect(issueRowFingerprint(result, "#WFYDV6")).toBeTruthy();
+      const count = (markdown: string, table: string) =>
+        parseIssues(markdown).rows.filter((row) => row.table === table).length;
+      expect(count(result, "open")).toBe(count(REOPEN_LEDGER, "open") + 1);
+      expect(count(result, "archive")).toBe(count(REOPEN_LEDGER, "archive") - 1);
+      expect(checkIssues(result)).toHaveLength(checkIssues(REOPEN_LEDGER).length);
+    });
+
+    it("refuses a second reopen once the row is open again", () => {
+      const once = applyRequest(REOPEN_LEDGER, reopenRequest());
+      expect(() => applyRequest(once, reopenRequest())).toThrow(/stale/);
+      expect(() => applyRequest(once, reopenRequest({ baseRowFingerprint: undefined }))).toThrow(
+        /not an archived durable issue/,
+      );
+    });
+
+    it("rejects a stale archive fingerprint", () => {
+      expect(() => applyRequest(REOPEN_LEDGER, reopenRequest({ baseRowFingerprint: "0".repeat(64) }))).toThrow(/stale/);
+    });
+
+    it("rejects archived rows without a durable ULID and incomplete requests", () => {
+      const legacyRow = reopenRequest({ id: "#005", baseRowFingerprint: undefined, targetUlid: undefined });
+      expect(() => applyRequest(REOPEN_LEDGER, legacyRow)).toThrow(/not an archived durable issue/);
+      expect(validateRequest(reopenRequest({ pri: "P9" }))).toContain("reopen pri must be P1, P2, or P3");
+      expect(validateRequest(reopenRequest({ detail: undefined }))).toContain("reopen requires detail");
+    });
+  });
 });
