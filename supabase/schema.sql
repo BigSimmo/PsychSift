@@ -23780,7 +23780,7 @@ begin
     where l.link_hash = v_code and o.service_id = p_service_id
     for update of l;
     if not found then raise exception 'teaching_not_found'; end if;
-    if not (v_link.created_by = p_actor_id or v_role = 'organiser') then raise exception 'teaching_role_denied'; end if;
+    if coalesce(v_link.created_by = p_actor_id, false) is not true and v_role <> 'organiser' then raise exception 'teaching_role_denied'; end if;
     update public.teaching_display_links set revoked_at = coalesce(revoked_at, now()) where id = v_link.id;
     perform public.teaching_audit(p_service_id, p_actor_id, 'display.revoke', v_link.occurrence_id);
     return '{}'::jsonb;

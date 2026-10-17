@@ -1,13 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// These routes always apply the per-owner rate limiter; the route tests stub it
-// open so they exercise the route logic, not the limiter.
-vi.mock("@/lib/api-rate-limit", () => ({
-  consumeSubjectApiRateLimit: vi.fn(async () => ({ limited: false })),
-  rateLimitJsonResponse: () => Response.json({ error: "rate limited" }, { status: 429 }),
-  allowRateLimitInMemoryFallbackOnUnavailable: () => false,
-}));
-
 const mocks = vi.hoisted(() => ({
   auth: vi.fn(),
   user: { id: "" },
@@ -29,6 +21,11 @@ vi.mock("@/lib/supabase/auth", () => {
       }),
   };
 });
+vi.mock("@/lib/api-rate-limit", () => ({
+  consumeSubjectApiRateLimit: vi.fn(async () => ({ limited: false })),
+  rateLimitJsonResponse: () => Response.json({}, { status: 429 }),
+  allowRateLimitInMemoryFallbackOnUnavailable: () => false,
+}));
 vi.mock("@/lib/logger", () => ({
   logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
 }));

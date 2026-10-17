@@ -2161,6 +2161,10 @@
         "file": "src/app/api/roster/settings/route.ts"
       },
       {
+        "path": "/api/teaching/assessments/bookings",
+        "file": "src/app/api/teaching/assessments/bookings/route.ts"
+      },
+      {
         "path": "/api/account/preferences",
         "file": "src/app/api/account/preferences/route.ts"
       },
@@ -2451,6 +2455,11 @@
       },
       {
         "path": "docs/decisions/2026-09-16-withhold-unreliable-differential-bodies.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-17-remaining-therapy-compass-sign-offs.md",
         "section": "decisions",
         "catalogued": true
       },
@@ -14358,6 +14367,14 @@
         "scope": "answer creation loading UI",
         "outcome": "No high-confidence findings",
         "checks": "UI 3 passed; unit 8 passed; lint, typecheck, build, design-system and offline RAG passed; full suite 6022 passed with 16 unchanged baseline failures"
+      },
+      {
+        "date": "2026-10-17",
+        "ref": "PR #3609 (claude/reconcile-inbox-20261017)",
+        "head": "679d2bfeb8fb2082a09ae75009bc07d454731276",
+        "scope": "Reconcile 21 pending inbox requests and bundle prlanded review records for PRs #3567, #3570, and #3573",
+        "outcome": "landed (squash-merged into main as 679d2bfeb8fb2082a09ae75009bc07d454731276; 4 follow-up inbox items queued from review)",
+        "checks": "PR required, Static PR checks, Safety and config checks, Build, Production UI (1-3), Unit coverage (1-2), Semgrep, Gitleaks, Gitar, CodeAnt all green"
       },
       {
         "date": "2026-08-18",

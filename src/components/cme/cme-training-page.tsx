@@ -746,11 +746,13 @@ export function CmeTrainingPage({
             </CmeGroup>
           ) : null}
 
-          {assessments.status === "sample" && assessments.view === "registrar" ? (
+          {(assessments.status === "sample" || assessments.status === "recorded") &&
+          assessments.view === "registrar" ? (
             <>
               <CmeRegistrarEpaSummary registrar={assessments.registrar} />
               <CmeRegistrarEpaList
                 registrar={assessments.registrar}
+                isSample={assessments.status === "sample"}
                 onSampleAction={sampleAction}
                 sampleMessage={sampleMessage}
               />
@@ -1303,13 +1305,15 @@ function CmeRegistrarEpaSummary({ registrar }: { readonly registrar: RegistrarAs
   );
 }
 
-/** The EPA list: each EPA's WBAs, or the day it was marked attained. Sample only. */
+/** The EPA list: each EPA's WBAs, or the day it was marked attained. */
 function CmeRegistrarEpaList({
   registrar,
+  isSample,
   onSampleAction,
   sampleMessage,
 }: {
   readonly registrar: RegistrarAssessments;
+  readonly isSample: boolean;
   readonly onSampleAction: () => void;
   readonly sampleMessage: string | null;
 }) {
@@ -1320,9 +1324,11 @@ function CmeRegistrarEpaList({
       label={`EPAs in progress · ${inProgress.length}`}
       testId="cme-training-epa-list"
       end={
-        <CmeTextLink onClick={onSampleAction} testId="cme-training-add-epa">
-          Add an EPA
-        </CmeTextLink>
+        isSample ? (
+          <CmeTextLink onClick={onSampleAction} testId="cme-training-add-epa">
+            Add an EPA
+          </CmeTextLink>
+        ) : null
       }
     >
       <CmeFlatList label="EPAs this rotation">
@@ -1334,7 +1340,7 @@ function CmeRegistrarEpaList({
             title={epa.title}
             subtitle={epaRowDetail(epa, registrar.wbasPerEpa)}
             end={
-              epa.attainedOn ? null : (
+              epa.attainedOn || !isSample ? null : (
                 <CmeTextLink onClick={onSampleAction} wrap>
                   Draft a WBA request<span className="sr-only">: {epa.title}</span>
                 </CmeTextLink>
@@ -1347,7 +1353,7 @@ function CmeRegistrarEpaList({
         A WBA request opens a draft for you to send. PsychSift sends nothing. Three WBAs do not by themselves mean an
         EPA is attained (RANZCP).
       </p>
-      <SampleActionStatus message={sampleMessage} />
+      {isSample ? <SampleActionStatus message={sampleMessage} /> : null}
     </CmeGroup>
   );
 }

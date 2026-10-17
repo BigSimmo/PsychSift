@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "7c0377e7-899c-45d6-9f9f-94b54d8539ff",
+  "createdOn": "2026-10-17",
+  "action": "done",
+  "payload": {
+    "id": "#VDAXJX",
+    "outcome": "Hardened public.teaching_command('display.revoke') with coalesce(v_link.created_by = p_actor_id, false) is not true and v_role <> 'organiser' so links with NULL created_by require an organiser.",
+    "baseRowFingerprint": "a61fbdc5a2184d274257dcab1a99254e9d624ee9dd4de4d2855c8f7f9876022a",
+    "targetUlid": "01M4T67MXDVDAXJX3GX37BA6DV"
+  }
+}

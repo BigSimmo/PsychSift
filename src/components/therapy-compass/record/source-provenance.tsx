@@ -3,7 +3,7 @@
 import { Disclosure } from "@/components/ui/disclosure";
 import { SourceDesignationBadge, SourceStatusBadge } from "@/components/ui-primitives";
 import {
-  isLaterAddedNiceReference,
+  isLaterAddedReference,
   splitSourceCitations,
   therapyNiceGuidelineMetadata,
   therapySourceMetadata,
@@ -36,7 +36,7 @@ export function TherapySourceProvenance({ therapy }: { therapy: Therapy }) {
   const reviewStatusClass = reviewed
     ? "text-xs font-semibold text-[color:var(--success-text)]"
     : "text-xs font-semibold text-[color:var(--warning-text)]";
-  const hasLaterAddedNice = isLaterAddedNiceReference(blob);
+  const hasLaterAdded = isLaterAddedReference(blob);
 
   return (
     <>
@@ -59,9 +59,7 @@ export function TherapySourceProvenance({ therapy }: { therapy: Therapy }) {
                   citation.authority.toUpperCase().includes("NICE") ||
                   citation.text.toLowerCase().includes("nice.org.uk");
                 const niceMetadata =
-                  isNiceCitation && hasLaterAddedNice
-                    ? therapyNiceGuidelineMetadata(citation, therapy.reviewStatus)
-                    : null;
+                  isNiceCitation && hasLaterAdded ? therapyNiceGuidelineMetadata(citation, therapy.reviewStatus) : null;
 
                 return (
                   <li
@@ -110,7 +108,7 @@ export function TherapySourceProvenance({ therapy }: { therapy: Therapy }) {
           {source ? (
             <div className="space-y-2 border-t border-[color:var(--border)] pt-2.5">
               <p className="m-0 text-xs text-[color:var(--text-muted)]">
-                {hasLaterAddedNice ? (
+                {hasLaterAdded ? (
                   <>
                     Record content imported from{" "}
                     <span className="break-words font-medium">{source.title ?? "an uploaded source"}</span> (guideline

@@ -10,26 +10,16 @@ import { PublicApiError } from "@/lib/http";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, requireAuthenticatedUser, unauthorizedResponse } from "@/lib/supabase/auth";
 import { teachingErrorResponse, teachingNoStore } from "@/lib/teaching/api";
-import { defaultAssessmentRepository, projectAssessmentForActor } from "@/lib/teaching/assessments/dual-sign-off";
+import { requireActiveServiceMember, requireAssessmentReviewer } from "@/lib/teaching/assessments/access";
+import {
+  AssessmentAccessDeniedError,
+  DurableClinicalAssessmentRepository,
+  projectAssessmentForActor,
+  resolveAssessmentStore,
+} from "@/lib/teaching/assessments/dual-sign-off";
 import { readBoundedJson } from "@/lib/validation/body";
 
 export const runtime = "nodejs";
-
-/**
- * The repository behind this route is process memory. A production deploy would
- * drop every draft on restart and split drafts across instances. Refuse the
- * route there until a durable clinical store exists. Tests and local dev keep
- * the in-memory stand-in.
- */
-function refuseEphemeralAssessmentStore(): void {
-  if (process.env.NODE_ENV === "production") {
-    throw new PublicApiError(
-      "Dual sign-off isn't available until assessments are stored in the clinical database.",
-      503,
-      { code: "assessment_store_unavailable" },
-    );
-  }
-}
 
 const ratingValueSchema = z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]);
 
@@ -52,7 +42,7 @@ const actionSchema = z.discriminatedUnion("action", [
   }),
   z.object({
     action: z.literal("update_draft"),
-    assessmentId: z.string().min(1),
+    assessmentId: z.string().uuid(),
     title: z.string().min(3).max(200).optional(),
     clinicalSetting: z.string().min(2).max(100).optional(),
     traineeReflection: z.string().min(1).max(10000).optional(),
@@ -60,39 +50,65 @@ const actionSchema = z.discriminatedUnion("action", [
   }),
   z.object({
     action: z.literal("submit_for_review"),
-    assessmentId: z.string().min(1),
+    assessmentId: z.string().uuid(),
   }),
   z.object({
     action: z.literal("supervisor_sign_off"),
-    assessmentId: z.string().min(1),
+    assessmentId: z.string().uuid(),
     supervisorFeedback: z.string().min(10).max(10000),
     supervisorRatings: domainRatingsSchema,
     globalRecommendation: z.enum(["sat", "cond", "unsat"]),
   }),
   z.object({
     action: z.literal("request_revision"),
-    assessmentId: z.string().min(1),
+    assessmentId: z.string().uuid(),
     revisionReason: z.string().min(5).max(2000),
   }),
   z.object({
     action: z.literal("resubmit"),
-    assessmentId: z.string().min(1),
+    assessmentId: z.string().uuid(),
     updatedReflection: z.string().min(1).max(10000).optional(),
   }),
   z.object({
     action: z.literal("cancel"),
-    assessmentId: z.string().min(1),
+    assessmentId: z.string().uuid(),
     reason: z.string().max(500).optional(),
   }),
   z.object({
     action: z.literal("restart_draft"),
-    cancelledId: z.string().min(1),
+    cancelledId: z.string().uuid(),
   }),
 ]);
 
+/**
+ * The durable store checks that the trainee belongs to the team and that the named supervisor
+ * really holds `assessments.review` for them (work_can), at creation and again at sign-off, so a
+ * trainee cannot route their sign-off to an arbitrary or second account. The in-memory store is a
+ * non-production fallback with no membership data, so it skips these checks.
+ */
+async function requireReviewPairing(
+  client: unknown,
+  store: ReturnType<typeof resolveAssessmentStore>,
+  pairing: { serviceId: string; traineeId: string; supervisorId: string },
+): Promise<void> {
+  if (!(store instanceof DurableClinicalAssessmentRepository)) return;
+  await requireActiveServiceMember(
+    client,
+    pairing.traineeId,
+    pairing.serviceId,
+    () => new AssessmentAccessDeniedError("The trainee is not a member of this service."),
+  );
+  await requireAssessmentReviewer(
+    client,
+    pairing.supervisorId,
+    pairing.serviceId,
+    pairing.traineeId,
+    () => new AssessmentAccessDeniedError("The named supervisor cannot review assessments for this trainee."),
+  );
+}
+
 export async function GET(request: Request) {
   try {
-    refuseEphemeralAssessmentStore();
     const client = createAdminClient();
     const user = await requireAuthenticatedUser(request, client);
     {
@@ -108,24 +124,26 @@ export async function GET(request: Request) {
         );
       }
     }
+
+    const store = resolveAssessmentStore(client);
     const { searchParams } = new URL(request.url);
 
     const id = searchParams.get("id");
     const role = searchParams.get("role");
 
     if (id) {
-      const record = defaultAssessmentRepository.getRecord(id);
+      const record = await store.getRecord(id);
       const safeView = projectAssessmentForActor(record, user.id);
       return teachingNoStore(NextResponse.json({ assessment: safeView }));
     }
 
     if (role === "supervisor") {
-      const pendingList = defaultAssessmentRepository.listForSupervisor(user.id, "pending_supervisor");
+      const pendingList = await store.listForSupervisor(user.id, "pending_supervisor");
       return teachingNoStore(NextResponse.json({ pendingAssessments: pendingList }));
     }
 
     if (role === "trainee") {
-      const myList = defaultAssessmentRepository.listForTrainee(user.id);
+      const myList = await store.listForTrainee(user.id);
       return teachingNoStore(NextResponse.json({ assessments: myList }));
     }
 
@@ -140,7 +158,6 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    refuseEphemeralAssessmentStore();
     const client = createAdminClient();
     const user = await requireAuthenticatedUser(request, client);
     {
@@ -156,6 +173,8 @@ export async function POST(request: Request) {
         );
       }
     }
+
+    const store = resolveAssessmentStore(client);
 
     let body: unknown;
     try {
@@ -179,7 +198,12 @@ export async function POST(request: Request) {
 
     switch (payload.action) {
       case "create_draft": {
-        const created = defaultAssessmentRepository.createDraft({
+        await requireReviewPairing(client, store, {
+          serviceId: payload.serviceId,
+          traineeId: user.id,
+          supervisorId: payload.supervisorId,
+        });
+        const created = await store.createDraft({
           serviceId: payload.serviceId,
           traineeId: user.id,
           supervisorId: payload.supervisorId,
@@ -194,7 +218,7 @@ export async function POST(request: Request) {
       }
 
       case "update_draft": {
-        const updated = defaultAssessmentRepository.updateDraft(user.id, payload.assessmentId, {
+        const updated = await store.updateDraft(user.id, payload.assessmentId, {
           title: payload.title,
           clinicalSetting: payload.clinicalSetting,
           traineeReflection: payload.traineeReflection,
@@ -204,12 +228,20 @@ export async function POST(request: Request) {
       }
 
       case "submit_for_review": {
-        const submitted = defaultAssessmentRepository.submitForReview(user.id, payload.assessmentId);
+        const submitted = await store.submitForReview(user.id, payload.assessmentId);
         return teachingNoStore(NextResponse.json({ assessment: projectAssessmentForActor(submitted, user.id) }));
       }
 
       case "supervisor_sign_off": {
-        const approved = defaultAssessmentRepository.supervisorSignOff(user.id, payload.assessmentId, {
+        const record = await store.getRecord(payload.assessmentId);
+        if (record.supervisorId === user.id) {
+          await requireReviewPairing(client, store, {
+            serviceId: record.serviceId,
+            traineeId: record.traineeId,
+            supervisorId: user.id,
+          });
+        }
+        const approved = await store.supervisorSignOff(user.id, payload.assessmentId, {
           supervisorFeedback: payload.supervisorFeedback,
           supervisorRatings: payload.supervisorRatings,
           globalRecommendation: payload.globalRecommendation,
@@ -218,31 +250,27 @@ export async function POST(request: Request) {
       }
 
       case "request_revision": {
-        const revised = defaultAssessmentRepository.requestRevision(
-          user.id,
-          payload.assessmentId,
-          payload.revisionReason,
-        );
+        const revised = await store.requestRevision(user.id, payload.assessmentId, payload.revisionReason);
         return teachingNoStore(NextResponse.json({ assessment: projectAssessmentForActor(revised, user.id) }));
       }
 
       case "resubmit": {
         if (payload.updatedReflection) {
-          defaultAssessmentRepository.updateDraft(user.id, payload.assessmentId, {
+          await store.updateDraft(user.id, payload.assessmentId, {
             traineeReflection: payload.updatedReflection,
           });
         }
-        const resubmitted = defaultAssessmentRepository.submitForReview(user.id, payload.assessmentId);
+        const resubmitted = await store.submitForReview(user.id, payload.assessmentId);
         return teachingNoStore(NextResponse.json({ assessment: projectAssessmentForActor(resubmitted, user.id) }));
       }
 
       case "cancel": {
-        const cancelled = defaultAssessmentRepository.cancelAssessment(user.id, payload.assessmentId, payload.reason);
+        const cancelled = await store.cancelAssessment(user.id, payload.assessmentId, payload.reason);
         return teachingNoStore(NextResponse.json({ assessment: projectAssessmentForActor(cancelled, user.id) }));
       }
 
       case "restart_draft": {
-        const restarted = defaultAssessmentRepository.restartDraft(user.id, payload.cancelledId);
+        const restarted = await store.restartDraft(user.id, payload.cancelledId);
         return teachingNoStore(
           NextResponse.json({ assessment: projectAssessmentForActor(restarted, user.id) }, { status: 201 }),
         );
