@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { pathToFileURL } from "node:url";
 import type { RagQueryClass } from "../src/lib/types";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 import {
   candidateFeatures,
   contentLabelMatchesWithAliases,
@@ -170,6 +170,6 @@ function main() {
 }
 
 // Guarded so unit tests can import convertArtifact without executing the CLI.
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isDirectEntrypoint(import.meta.url)) {
   main();
 }
