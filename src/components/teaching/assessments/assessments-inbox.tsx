@@ -589,6 +589,7 @@ function FeedbackSheet({
         variant="primary"
         block
         disabled={blocker !== null}
+        aria-disabled={blocker ? "true" : undefined}
         aria-describedby={blocker ? whyId : undefined}
         onClick={() => onSend(draft)}
         testId="assessments-inbox-send"

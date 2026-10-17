@@ -9,12 +9,14 @@ import { IMPORT_MAX_FILE_BYTES, type SheetRow } from "@/lib/teaching/depth-model
  * `@aws-sdk/client-s3` the build cannot resolve (F1). This route loads exceljs lazily, like Roster's
  * `read-file` route loads its reader.
  */
+import { loadOoxmlWorkbook } from "@/lib/ooxml-workbook";
 import { MAX_COLUMNS } from "@/lib/teaching/import-csv";
 
 export { parseCsv } from "@/lib/teaching/import-csv";
 export type { SheetRow };
 const MAX_ARCHIVE_ENTRIES = 1_000;
 const MAX_EXPANDED_BYTES = 32 * 1024 * 1024;
+const MAX_ROWS = 2_000;
 export const IMPORT_UNREADABLE_MESSAGE = "This file couldn't be read. Save it from the template as .xlsx or .csv.";
 export const IMPORT_TOO_LARGE_MESSAGE = "Use a file under 1 MB.";
 
@@ -33,37 +35,22 @@ function cellText(value: unknown): string {
   return value === null || value === undefined ? "" : String(value);
 }
 
-/**
- * The same archive budget document ingestion uses (`assertOoxmlArchiveBudget`), with limits sized for
- * a timetable, so a crafted file is refused before it is expanded.
- */
-async function assertSmallWorkbook(bytes: Uint8Array): Promise<void> {
-  const { default: JSZip } = await import("jszip");
-  const zip = await JSZip.loadAsync(bytes).catch(() => {
-    throw new Error(IMPORT_UNREADABLE_MESSAGE);
-  });
-  const entries = Object.values(zip.files);
-  const expanded = entries.reduce((total, file) => {
-    const data = (file as unknown as { _data?: { uncompressedSize?: number } })._data;
-    return total + Math.max(0, Number(data?.uncompressedSize ?? 0));
-  }, 0);
-  if (entries.length > MAX_ARCHIVE_ENTRIES || expanded > MAX_EXPANDED_BYTES) throw new Error(IMPORT_UNREADABLE_MESSAGE);
-}
-
 /** The first sheet of an .xlsx the doctor chose, read on the device. Errors carry plain words. */
 export async function readXlsxRows(data: ArrayBuffer | Uint8Array): Promise<SheetRow[]> {
   const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
   if (bytes.byteLength > IMPORT_MAX_FILE_BYTES) throw new Error(IMPORT_TOO_LARGE_MESSAGE);
-  await assertSmallWorkbook(bytes);
-  const { default: ExcelJS } = await import("exceljs");
-  const workbook = new ExcelJS.Workbook();
-  try {
-    await workbook.xlsx.load(bytes as unknown as Parameters<typeof workbook.xlsx.load>[0]);
-  } catch {
-    throw new Error(IMPORT_UNREADABLE_MESSAGE);
-  }
+  const workbook = await loadOoxmlWorkbook(bytes, {
+    maxEntries: MAX_ARCHIVE_ENTRIES,
+    maxExpandedBytes: MAX_EXPANDED_BYTES,
+    onUnreadable: () => new Error(IMPORT_UNREADABLE_MESSAGE),
+    onTooManyEntries: () => new Error(IMPORT_UNREADABLE_MESSAGE),
+    onExpandedBytesExceeded: () => new Error(IMPORT_UNREADABLE_MESSAGE),
+  });
   const rows: SheetRow[] = [];
   workbook.worksheets[0]?.eachRow({ includeEmpty: false }, (row, line) => {
+    if (rows.length >= MAX_ROWS || line > 10_000) {
+      throw new Error(IMPORT_TOO_LARGE_MESSAGE);
+    }
     const values = Array.isArray(row.values) ? row.values.slice(1, MAX_COLUMNS + 1) : [];
     rows.push({ line, cells: Array.from(values, cellText) });
   });

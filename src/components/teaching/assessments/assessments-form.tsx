@@ -512,8 +512,10 @@ export function AssessmentForm({ s, dispatch, who, go }: ScreenProps & { who: Wh
           {previous}
           <WorkButton
             icon={ok ? (sup ? Eye : Check) : undefined}
-            disabled={!ok}
+            aria-disabled={!ok ? "true" : undefined}
+            aria-describedby={whyId}
             onClick={() => {
+              if (!ok) return;
               dispatch({ type: "form-finish", who });
               go(sup ? viewHref("side", { as: "supervisor" }) : viewHref("hub"));
             }}

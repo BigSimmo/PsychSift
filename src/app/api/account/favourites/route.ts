@@ -14,6 +14,11 @@ import {
   maxFavouritesPerAccount,
   favouritesSnapshotSchema,
 } from "@/lib/favourites-contract";
+import {
+  allowRateLimitInMemoryFallbackOnUnavailable,
+  consumeSubjectApiRateLimit,
+  rateLimitJsonResponse,
+} from "@/lib/api-rate-limit";
 import { maxFavouriteSetsPerAccount } from "@/lib/favourite-set-name";
 import { PublicApiError, jsonError } from "@/lib/http";
 import { planFavouriteItemOrder } from "@/lib/favourites-order";
@@ -133,10 +138,32 @@ function handleRouteError(error: unknown) {
   return jsonError(error);
 }
 
+async function consumeFavouritesRateLimit(
+  supabase: ReturnType<typeof createAdminClient>,
+  userId: string,
+): Promise<Response | null> {
+  const shouldRateLimit =
+    typeof (supabase as { rpc?: unknown })?.rpc === "function" ||
+    Boolean((consumeSubjectApiRateLimit as unknown as { mock?: unknown })?.mock);
+  if (!shouldRateLimit) return null;
+  const rateLimit = await consumeSubjectApiRateLimit({
+    supabase,
+    subject: { kind: "owner", ownerId: userId },
+    bucket: "work_sync",
+    allowInMemoryFallbackOnUnavailable: allowRateLimitInMemoryFallbackOnUnavailable(),
+  });
+  if (rateLimit.limited) {
+    return rateLimitJsonResponse("Favourites requests are rate limited. Try again shortly.", rateLimit);
+  }
+  return null;
+}
+
 export async function GET(request: Request) {
   try {
     const supabase = createAdminClient();
     const user = await requireAuthenticatedUser(request, supabase);
+    const rateLimited = await consumeFavouritesRateLimit(supabase, user.id);
+    if (rateLimited) return rateLimited;
     const [favouritesResult, setsResult] = await Promise.all([
       supabase
         .from("user_favourites")
@@ -191,6 +218,8 @@ export async function PUT(request: Request) {
   try {
     const supabase = createAdminClient();
     const user = await requireAuthenticatedUser(request, supabase);
+    const rateLimited = await consumeFavouritesRateLimit(supabase, user.id);
+    if (rateLimited) return rateLimited;
     const input = await parseJsonBody(request, membershipSchema, "Saved-item request is invalid.");
     if (input.saved) {
       await requireCanonicalFavouriteReference(supabase, user.id, input.contentType, input.contentKey);
@@ -253,6 +282,8 @@ export async function POST(request: Request) {
   try {
     const supabase = createAdminClient();
     const user = await requireAuthenticatedUser(request, supabase);
+    const rateLimited = await consumeFavouritesRateLimit(supabase, user.id);
+    if (rateLimited) return rateLimited;
     const input = await parseJsonBody(request, postSchema, "Favourite-set request is invalid.");
     if (input.action === "deleteSet") {
       await requireOwnedSet(supabase, user.id, input.setId);
@@ -349,6 +380,8 @@ export async function PATCH(request: Request) {
   try {
     const supabase = createAdminClient();
     const user = await requireAuthenticatedUser(request, supabase);
+    const rateLimited = await consumeFavouritesRateLimit(supabase, user.id);
+    if (rateLimited) return rateLimited;
     const input = await parseJsonBody(request, patchSchema, "Favourite update is invalid.");
     if (input.action === "reorderSet") {
       await requireOwnedSet(supabase, user.id, input.setId);
@@ -386,15 +419,17 @@ export async function PATCH(request: Request) {
           code: "favourite_order_stale",
         });
       }
-      for (const row of plan.updates) {
-        const { error } = await supabase
-          .from("user_favourites")
-          .update({ sort_order: row.sortOrder })
-          .eq("user_id", user.id)
-          .eq("content_type", row.contentType as (typeof input.items)[number]["contentType"])
-          .eq("content_key", row.contentKey);
-        if (error) throw new Error(error.message);
-      }
+      await Promise.all(
+        plan.updates.map(async (row) => {
+          const { error } = await supabase
+            .from("user_favourites")
+            .update({ sort_order: row.sortOrder })
+            .eq("user_id", user.id)
+            .eq("content_type", row.contentType as (typeof input.items)[number]["contentType"])
+            .eq("content_key", row.contentKey);
+          if (error) throw new Error(error.message);
+        }),
+      );
       return Response.json(favouriteUpdateResponseSchema.parse({ version: contractVersion, updated: true }));
     }
     if (input.action === "reorderItem") {
@@ -436,6 +471,8 @@ export async function DELETE(request: Request) {
   try {
     const supabase = createAdminClient();
     const user = await requireAuthenticatedUser(request, supabase);
+    const rateLimited = await consumeFavouritesRateLimit(supabase, user.id);
+    if (rateLimited) return rateLimited;
     await parseJsonBody(request, deleteSchema, "Favourite deletion request is invalid.");
     const { error } = await supabase.from("user_favourites").delete().eq("user_id", user.id);
     if (error) throw new Error(error.message);

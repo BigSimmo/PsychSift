@@ -9,6 +9,11 @@ import {
   REMINDER_LEAD_TIMES,
   type BellPhoneArea,
 } from "@/lib/reminders/settings";
+import {
+  allowRateLimitInMemoryFallbackOnUnavailable,
+  consumeSubjectApiRateLimit,
+  rateLimitJsonResponse,
+} from "@/lib/api-rate-limit";
 import { jsonError } from "@/lib/http";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, requireAuthenticatedUser, unauthorizedResponse } from "@/lib/supabase/auth";
@@ -149,6 +154,20 @@ export async function GET(request: Request) {
   try {
     const supabase = createAdminClient();
     const user = await requireAuthenticatedUser(request, supabase);
+    const shouldRateLimit =
+      typeof (supabase as { rpc?: unknown })?.rpc === "function" ||
+      Boolean((consumeSubjectApiRateLimit as unknown as { mock?: unknown })?.mock);
+    if (shouldRateLimit) {
+      const rateLimit = await consumeSubjectApiRateLimit({
+        supabase,
+        subject: { kind: "owner", ownerId: user.id },
+        bucket: "work_sync",
+        allowInMemoryFallbackOnUnavailable: allowRateLimitInMemoryFallbackOnUnavailable(),
+      });
+      if (rateLimit.limited) {
+        return rateLimitJsonResponse("Preferences requests are rate limited. Try again shortly.", rateLimit);
+      }
+    }
     const { data, error } = await supabase
       .from("user_preferences")
       .select("preferences,updated_at")
@@ -169,6 +188,20 @@ export async function PUT(request: Request) {
   try {
     const supabase = createAdminClient();
     const user = await requireAuthenticatedUser(request, supabase);
+    const shouldRateLimit =
+      typeof (supabase as { rpc?: unknown })?.rpc === "function" ||
+      Boolean((consumeSubjectApiRateLimit as unknown as { mock?: unknown })?.mock);
+    if (shouldRateLimit) {
+      const rateLimit = await consumeSubjectApiRateLimit({
+        supabase,
+        subject: { kind: "owner", ownerId: user.id },
+        bucket: "work_sync",
+        allowInMemoryFallbackOnUnavailable: allowRateLimitInMemoryFallbackOnUnavailable(),
+      });
+      if (rateLimit.limited) {
+        return rateLimitJsonResponse("Preferences requests are rate limited. Try again shortly.", rateLimit);
+      }
+    }
     const patch = await parseJsonBody(request, preferencesPatchSchema, "Account preferences are invalid.");
 
     for (let attempt = 0; attempt < MAX_PREFERENCE_WRITE_ATTEMPTS; attempt += 1) {

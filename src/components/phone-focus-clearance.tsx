@@ -6,7 +6,7 @@ import { phoneMediaQuery } from "@/components/clinical-dashboard/use-hide-on-scr
 
 function visibleDockTop() {
   const viewportBottom = window.visualViewport?.height ?? window.innerHeight;
-  for (const layer of document.querySelectorAll<HTMLElement>(".phone-footer-layer")) {
+  for (const layer of document.querySelectorAll<HTMLElement>(".phone-footer-layer, .work-dock")) {
     const style = getComputedStyle(layer);
     if (style.visibility === "hidden" || style.display === "none" || Number(style.opacity) === 0) continue;
     const top = layer.getBoundingClientRect().top;

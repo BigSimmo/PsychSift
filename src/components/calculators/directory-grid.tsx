@@ -200,7 +200,7 @@ export function CalculatorsDirectoryGridMockup() {
   }, [domain, query]);
 
   return (
-    <div className="min-h-screen bg-[color:var(--background)]">
+    <div className="min-h-dvh bg-[color:var(--background)]">
       <header className="border-b border-[color:var(--border)] bg-[color:var(--surface)]">
         <div className="mx-auto grid max-w-6xl gap-4 px-4 py-5 sm:px-6 lg:px-8">
           <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3">

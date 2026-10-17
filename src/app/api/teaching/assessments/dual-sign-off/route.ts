@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import {
+  allowRateLimitInMemoryFallbackOnUnavailable,
+  consumeSubjectApiRateLimit,
+  rateLimitJsonResponse,
+} from "@/lib/api-rate-limit";
 import { PublicApiError } from "@/lib/http";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, requireAuthenticatedUser, unauthorizedResponse } from "@/lib/supabase/auth";
@@ -90,6 +95,22 @@ export async function GET(request: Request) {
     refuseEphemeralAssessmentStore();
     const client = createAdminClient();
     const user = await requireAuthenticatedUser(request, client);
+    const shouldRateLimit =
+      typeof (client as { rpc?: unknown })?.rpc === "function" ||
+      Boolean((consumeSubjectApiRateLimit as unknown as { mock?: unknown })?.mock);
+    if (shouldRateLimit) {
+      const rateLimit = await consumeSubjectApiRateLimit({
+        supabase: client,
+        subject: { kind: "owner", ownerId: user.id },
+        bucket: "teaching",
+        allowInMemoryFallbackOnUnavailable: allowRateLimitInMemoryFallbackOnUnavailable(),
+      });
+      if (rateLimit.limited) {
+        return teachingNoStore(
+          rateLimitJsonResponse("Teaching requests are rate limited. Try again shortly.", rateLimit),
+        );
+      }
+    }
     const { searchParams } = new URL(request.url);
 
     const id = searchParams.get("id");
@@ -125,8 +146,30 @@ export async function POST(request: Request) {
     refuseEphemeralAssessmentStore();
     const client = createAdminClient();
     const user = await requireAuthenticatedUser(request, client);
+    const shouldRateLimit =
+      typeof (client as { rpc?: unknown })?.rpc === "function" ||
+      Boolean((consumeSubjectApiRateLimit as unknown as { mock?: unknown })?.mock);
+    if (shouldRateLimit) {
+      const rateLimit = await consumeSubjectApiRateLimit({
+        supabase: client,
+        subject: { kind: "owner", ownerId: user.id },
+        bucket: "teaching",
+        allowInMemoryFallbackOnUnavailable: allowRateLimitInMemoryFallbackOnUnavailable(),
+      });
+      if (rateLimit.limited) {
+        return teachingNoStore(
+          rateLimitJsonResponse("Teaching requests are rate limited. Try again shortly.", rateLimit),
+        );
+      }
+    }
 
-    const body = await readBoundedJson(request);
+    let body: unknown;
+    try {
+      body = await readBoundedJson(request);
+    } catch (error) {
+      if (error instanceof PublicApiError && error.status === 413) throw error;
+      body = null;
+    }
     if (!body || typeof body !== "object") {
       throw new PublicApiError("Invalid JSON request body.", 400, { code: "invalid_json" });
     }

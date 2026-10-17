@@ -6,7 +6,7 @@ import { memo, useEffect, useId, useRef, useState } from "react";
 import { CircleAlert, Download, ExternalLink, FileText, Maximize2, RefreshCw } from "lucide-react";
 
 import { ImageLightbox } from "@/components/clinical-dashboard/image-lightbox";
-import { cn, floatingControl } from "@/components/ui-primitives";
+import { Skeleton, cn, floatingControl } from "@/components/ui-primitives";
 import { announce } from "@/components/ui/live-announcer";
 
 const secondaryButton = floatingControl;
@@ -28,11 +28,13 @@ export const NonPdfSourcePreview = memo(function NonPdfSourcePreview({
   title,
   signedUrl,
   downloadSignedUrl,
+  onRetry,
 }: {
   fileType: string | undefined;
   title: string;
   signedUrl: string | null;
   downloadSignedUrl: string | null;
+  onRetry?: () => void | Promise<void>;
 }) {
   const type = fileType ?? "";
 
@@ -50,7 +52,13 @@ export const NonPdfSourcePreview = memo(function NonPdfSourcePreview({
   if (type.startsWith("image/")) {
     // Keyed by signedUrl so a freshly issued URL remounts with a clean failed state.
     return (
-      <InlineImagePreview key={signedUrl} signedUrl={signedUrl} downloadSignedUrl={downloadSignedUrl} title={title} />
+      <InlineImagePreview
+        key={signedUrl}
+        signedUrl={signedUrl}
+        downloadSignedUrl={downloadSignedUrl}
+        title={title}
+        onRetry={onRetry}
+      />
     );
   }
 
@@ -100,12 +108,16 @@ function InlineImagePreview({
   signedUrl,
   downloadSignedUrl,
   title,
+  onRetry,
 }: {
   signedUrl: string;
   downloadSignedUrl: string | null;
   title: string;
+  onRetry?: () => void | Promise<void>;
 }) {
   const [failed, setFailed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const announcementSourceId = useId();
   const failureTransition = useRef(0);
@@ -128,7 +140,16 @@ function InlineImagePreview({
           <p className="font-semibold text-[color:var(--text)]">Image preview could not load</p>
           <p className="mt-1">The preview link may have expired. Open the image in a new tab or download it.</p>
           <div className="mt-3 flex flex-wrap justify-center gap-2">
-            <button type="button" onClick={() => setFailed(false)} className={cn(secondaryButton, "min-h-tap")}>
+            <button
+              type="button"
+              onClick={() => {
+                setLoaded(false);
+                setFailed(false);
+                setRetryCount((c) => c + 1);
+                void onRetry?.();
+              }}
+              className={cn(secondaryButton, "min-h-tap")}
+            >
               <RefreshCw aria-hidden="true" className="h-4 w-4" />
               Retry image preview
             </button>
@@ -160,18 +181,30 @@ function InlineImagePreview({
         data-testid="non-pdf-image-stage"
         className="relative h-[clamp(16rem,60vh,36rem)] w-full overflow-hidden bg-[color:var(--surface-inset)] sm:h-[clamp(18rem,60vh,36rem)]"
       >
+        {!loaded ? (
+          <Skeleton
+            aria-hidden="true"
+            data-testid="non-pdf-image-skeleton"
+            className="pointer-events-none absolute inset-0 h-full w-full rounded-none"
+          />
+        ) : null}
         {/* Eager, not lazy: for an image-source document this *is* the document,
             and it sits above the fold. Lazy-loading it puts the largest element
             on the page behind the browser's own lazy threshold and delays LCP
             (performance-image-cwv-audit-2026-08-02, LCP-1/LL-1). `fetchPriority`
             says the same thing to the preload scanner. */}
         <img
+          key={`${signedUrl}:${retryCount}`}
           src={signedUrl}
           alt={title}
           decoding="async"
           fetchPriority="high"
-          onError={() => setFailed(true)}
-          className="h-full w-full object-contain"
+          onLoad={() => setLoaded(true)}
+          onError={() => {
+            setLoaded(false);
+            setFailed(true);
+          }}
+          className={cn("h-full w-full object-contain", !loaded && "sr-only")}
         />
         <button
           ref={triggerRef}

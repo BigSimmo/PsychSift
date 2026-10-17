@@ -108,6 +108,17 @@ export function teachingMyDayItems(
 // The depth routes refuse the synthetic demo build with this code. That is "not
 // available here", not a failed read, so it must not raise "Couldn't load".
 const DEMO_UNAVAILABLE = "demo_mode_unavailable";
+const MY_DAY_TEACHING_SPAN_DAYS = 41;
+
+/**
+ * Shared 6-week `/api/teaching?view=week` URL starting on `mondayOf(today)` (`span = 41` days,
+ * the maximum allowed by `teachingOverviewQuerySchema`), used by both `useTeachingMyDaySource`
+ * and `useTodaysTeaching` so `sharedGet` deduplicates their in-flight read on `/my-day`.
+ */
+export function myDayTeachingWeekUrl(today: string): string {
+  const monday = mondayOf(today);
+  return `/api/teaching?${new URLSearchParams({ view: "week", from: monday, to: addDays(monday, MY_DAY_TEACHING_SPAN_DAYS) })}`;
+}
 
 function combine(resources: readonly { status: TeachingResourceStatus; code: string | null }[]): MyDaySourceStatus {
   const statuses = resources.map((resource) => (resource.code === DEMO_UNAVAILABLE ? "setup" : resource.status));
@@ -135,11 +146,9 @@ export function useTeachingMyDaySource({ enabled, now }: { enabled: boolean; now
   );
   const teach = demoMode ? { ...teachRead, code: DEMO_UNAVAILABLE } : teachRead;
   const feedback = demoMode ? { ...feedbackRead, code: DEMO_UNAVAILABLE } : feedbackRead;
-  // The same Monday-to-a-week-ahead range Teaching's own week read uses.
+  // Shared Monday-anchored 6-week range so My Day's items read and dashboard cards coalesce.
   const today = perthDateKey(now);
-  const weekUrl = enabled
-    ? `/api/teaching?${new URLSearchParams({ view: "week", from: mondayOf(today), to: addDays(today, 6) })}`
-    : null;
+  const weekUrl = enabled ? myDayTeachingWeekUrl(today) : null;
   const week = useTeachingResource<TeachingWeekResponse>(weekUrl);
   const { preferences } = useAppPreferences();
   const reminders = preferences.reminders;

@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import {
+  allowRateLimitInMemoryFallbackOnUnavailable,
+  consumeSubjectApiRateLimit,
+  rateLimitJsonResponse,
+} from "@/lib/api-rate-limit";
 import { normalizedClinicalSearchTokens } from "@/lib/clinical-search";
 import { isDemoMode } from "@/lib/env";
 import { jsonError } from "@/lib/http";
@@ -103,6 +108,20 @@ export async function POST(request: Request) {
     // Carry the authenticated owner through so the miss row is attributable and
     // owner-cleanable instead of being orphaned with owner_id: null (RET-H4).
     const user = await serverAuth.requireAuthenticatedUser(request, supabase);
+    const shouldRateLimit =
+      typeof (supabase as { rpc?: unknown })?.rpc === "function" ||
+      Boolean((consumeSubjectApiRateLimit as unknown as { mock?: unknown })?.mock);
+    if (shouldRateLimit) {
+      const rateLimit = await consumeSubjectApiRateLimit({
+        supabase,
+        subject: { kind: "owner", ownerId: user.id },
+        bucket: "search",
+        allowInMemoryFallbackOnUnavailable: allowRateLimitInMemoryFallbackOnUnavailable(),
+      });
+      if (rateLimit.limited) {
+        return rateLimitJsonResponse("Search interaction requests are rate limited. Try again shortly.", rateLimit);
+      }
+    }
 
     // Cross-mode link clicks reference registry/medication slugs, not owned
     // documents; store the same privacy-hardened miss row with the target in
