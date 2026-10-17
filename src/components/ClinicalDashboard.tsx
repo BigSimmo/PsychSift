@@ -2828,17 +2828,25 @@ function ClinicalDashboardContent({
                   // mode-specific branch so picking a mode on `/` changes only its
                   // presentation and composer target; mode-owned content stays behind
                   // its own route (/tools, /favourites, /dsm, …).
-                  // No overseas-processing line here: the owner removed it from the home pages on
-                  // 17 Oct 2026. It still shows under each answer, and /privacy carries the full wording.
-                  <SharedHomeEmptyState
-                    modeId={searchMode}
-                    desktopComposerSlotId={desktopHomeComposerSlotId}
-                    recentQueries={recentQueries}
-                    onSelectRecent={(recentQuery) => {
-                      setQuery(recentQuery);
-                      void ask(recentQuery);
-                    }}
-                  />
+                  // One grid item, so a tall canvas cannot split the home and its line into two rows.
+                  <div className="relative w-full">
+                    <SharedHomeEmptyState
+                      modeId={searchMode}
+                      desktopComposerSlotId={desktopHomeComposerSlotId}
+                      recentQueries={recentQueries}
+                      onSelectRecent={(recentQuery) => {
+                        setQuery(recentQuery);
+                        void ask(recentQuery);
+                      }}
+                    />
+                    {/* Before the first question is sent: where an Answer question goes. Centred on the
+                        Answer home (owner decision, 17 Oct 2026); PR #3605 centres the line under each
+                        answer to match. It hangs below the home without taking layout space, so the
+                        centred home and its composer sit in the same place in every mode. */}
+                    {searchMode === "answer" && !clientDemoMode ? (
+                      <AnswerProviderNotice className="absolute inset-x-0 top-full mt-2 justify-center px-4 text-center" />
+                    ) : null}
+                  </div>
                 ) : activeModeResultKind === "differentials" ? (
                   <DifferentialsHome
                     query={deferredQuery}
