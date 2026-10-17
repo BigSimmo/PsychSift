@@ -9,7 +9,7 @@
  * daemon socket, which would be equivalent to root on the host.
  */
 import { basename, dirname, join, resolve } from "node:path";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -183,12 +183,20 @@ export function trivyDbNeedsRefresh(metadataText, now = new Date()) {
   return !Number.isFinite(nextUpdate) || nextUpdate <= now.getTime();
 }
 
-function readTrivyDbMetadata(cacheDir) {
+/**
+ * Whether a cached Trivy database directory needs downloading: its database file is missing (a
+ * partial cache), or its metadata says it is stale. The main database lives in `db/trivy.db` and
+ * the Java database in `java-db/trivy-java.db`, each beside its own metadata.json.
+ */
+function cachedTrivyDbNeedsRefresh(cacheDir, subdir, dbFile) {
+  if (!existsSync(join(cacheDir, subdir, dbFile))) return true;
+  let metadataText = null;
   try {
-    return readFileSync(join(cacheDir, "db", "metadata.json"), "utf8");
+    metadataText = readFileSync(join(cacheDir, subdir, "metadata.json"), "utf8");
   } catch {
-    return null;
+    // Unreadable metadata is treated as absent.
   }
+  return trivyDbNeedsRefresh(metadataText);
 }
 
 /**
@@ -209,7 +217,7 @@ function runDockerTrivy(imageRef, trivyArgs, { outputHostPath = null, needsVulne
         : join(tmpdir(), `trivy-db-cache-${TRIVY_VERSION}`);
       mkdirSync(cacheDir, { recursive: true });
       // A failed refresh fails the scan rather than falling back to the expired database.
-      if (trivyDbNeedsRefresh(readTrivyDbMetadata(cacheDir))) {
+      if (cachedTrivyDbNeedsRefresh(cacheDir, "db", "trivy.db")) {
         const dbDownload = run("docker", [
           "run",
           "--rm",
@@ -228,7 +236,10 @@ function runDockerTrivy(imageRef, trivyArgs, { outputHostPath = null, needsVulne
             stderr: dbDownload.stderr || dbDownload.stdout || "Trivy DB download failed",
           };
         }
-        // Best-effort Java DB pre-population for Java archive inspection offline.
+      }
+      // The Java database expires on its own schedule, so it is checked separately. Its download
+      // stays best-effort: it only adds Java archive inspection, and a failure is retried next run.
+      if (cachedTrivyDbNeedsRefresh(cacheDir, "java-db", "trivy-java.db")) {
         run("docker", [
           "run",
           "--rm",
