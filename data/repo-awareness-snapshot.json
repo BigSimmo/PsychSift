@@ -3880,6 +3880,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-17-clinical-math-panel-hidden-until-clinician-verification.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/superpowers/plans/2026-08-23-favourites-and-reconciliation.md",
         "section": "superpowers",
         "catalogued": true
