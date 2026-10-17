@@ -227,6 +227,9 @@ export function classifyRepositoryPath(relativePath, options = {}) {
     lower.startsWith("src/app/diary/") ||
     lower === "src/app/diary" ||
     /^src\/app\/(cme|roster|my-day|teaching|open-shifts|work)(\/|$)/.test(lower) ||
+    // Recorded exception (docs/organisation/README.md): the Roster and Open shifts page folders
+    // belong to Personal practice, ahead of the shared `(search-app)` App experience rule.
+    /^src\/app\/\(search-app\)\/(roster|open-shifts)(\/|$)/.test(lower) ||
     /^src\/app\/api\/(cme|roster|teaching|work|on-call|alerts|calendar)(\/|$)/.test(lower) ||
     /^src\/components\/(cme|roster|my-day|teaching|open-shifts|on-call|alerts|admin|favourites|needs-you|calendar|work-frame|work-profile|work-screens|work-search|work-sync|work-time|work-calendar)(\/|$)/.test(
       lower,

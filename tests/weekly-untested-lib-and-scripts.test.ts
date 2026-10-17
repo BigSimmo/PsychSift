@@ -108,12 +108,18 @@ describe("apply-specifier-worksheet CLI & parser", () => {
       /Worksheet is incomplete; refusing to apply/,
     );
 
-    expect(() =>
+    let failure: { status?: number | null; stderr?: string } | undefined;
+    try {
       execFileSync(process.execPath, ["scripts/run-preview-smoke.mjs", "--url", "http://["], {
         cwd: REPO_ROOT,
         encoding: "utf8",
         stdio: "pipe",
-      }),
-    ).toThrow();
+      });
+    } catch (error) {
+      failure = error as { status?: number | null; stderr?: string };
+    }
+    // Pin the URL-validation exit, not just any failure (missing script, syntax error, crash).
+    expect(failure?.status).toBe(1);
+    expect(failure?.stderr).toContain('Invalid preview URL: "http://["');
   });
 });

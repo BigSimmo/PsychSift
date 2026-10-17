@@ -12,6 +12,8 @@
     "docs/personal-practice/**",
     "scripts/capture-on-call-boards.mjs",
     "scripts/sign-today-rules.ts",
+    "src/app/(search-app)/open-shifts/**",
+    "src/app/(search-app)/roster/**",
     "src/app/api/account/favourites/route.ts",
     "src/app/api/alerts/**",
     "src/app/api/calendar/**",
