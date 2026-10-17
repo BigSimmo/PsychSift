@@ -335,14 +335,10 @@ function CrossModeLinksLine({
     <section
       aria-label="Related pages in other modes"
       data-testid="cross-mode-links"
-      className={cn(
-        // The recessed tray from `UniversalSearchAlsoMatches` — the "Also
-        // matches" panel on the mode search pages — so the two cross-surface
-        // suggestion panels read as one system rather than two inventions.
-        // Border only, no `--shadow-inset`: card-recipes.ts records that pairing
-        // a bevel with a border puts two edge treatments on one surface.
-        "min-w-0 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-subtle)] p-1.5 forced-colors:border sm:p-2",
-      )}
+      // A plain list row under the answer, matching "How this answer was built" above it
+      // (owner decision, 17 Oct 2026). The recessed tray it replaced was the heaviest block on
+      // the page for the least important content.
+      className="min-w-0 border-t border-[color:var(--border)]"
     >
       <button
         type="button"
@@ -351,7 +347,7 @@ function CrossModeLinksLine({
         aria-controls={panelId}
         data-testid="cross-mode-links-line-trigger"
         className={cn(
-          "flex min-h-12 w-full items-center gap-2.5 rounded-xl px-2 text-left transition-colors hover:bg-[color:var(--surface)]",
+          "flex min-h-12 w-full items-center gap-2.5 rounded-md text-left text-sm font-medium text-[color:var(--text-heading)]",
           "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]",
         )}
       >
@@ -364,24 +360,13 @@ function CrossModeLinksLine({
         >
           <Layers className="size-icon-md" aria-hidden />
         </span>
-        <span className={cn(eyebrowText, "shrink-0 text-[color:var(--text-heading)]")}>Also in your library</span>
-        {/* Label, rule, count — the same editorial section-header device the
-            "Also matches" tray uses, and now at every width. A preview of the
-            first three record names used to take the rule's place from sm up;
-            it earned that room while the line rested closed and had no other
-            way to say what it held. Resting open, it was naming the cards
-            immediately below it. */}
-        <span className="h-px min-w-3 flex-1 bg-[color:var(--border)] forced-colors:bg-[CanvasText]" aria-hidden />
-        {/* The visible count is decorative — it is dropped entirely below sm, and
-            `hidden` hides it from assistive tech as well as from the eye. This
-            tray has no live region to carry the number, so without the sr-only
-            copy the count would never reach a screen reader at any width, and
-            the closed control would announce as a door onto an unknown. */}
-        <span
-          className="hidden shrink-0 text-2xs font-medium tabular-nums text-[color:var(--text-muted)] sm:inline"
-          aria-hidden
-        >
-          {countLabel}
+        {/* Sentence case, and the count shows at every width: below sm it used to be hidden,
+            so on a phone the row never said how much it held. */}
+        <span className="min-w-0 flex-1">
+          Also in your library
+          <span className="nums ml-1.5 font-normal text-[color:var(--text-muted)]" aria-hidden>
+            · {links.length}
+          </span>
         </span>
         <span className="sr-only">{countLabel}</span>
         <span

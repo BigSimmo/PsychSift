@@ -14,9 +14,7 @@ describe("AnswerProviderNotice", () => {
   it("says where a question goes and asks for no patient details, as one quiet note", () => {
     render(<AnswerProviderNotice />);
     const note = screen.getByRole("note");
-    expect(note).toHaveTextContent(
-      "Questions are sent to an overseas AI service (OpenAI) to search and write answers. Don't include patient details.",
-    );
+    expect(note).toHaveTextContent("Sent to OpenAI overseas. Don't include patient details.");
     expect(note).toHaveTextContent(ANSWER_PROVIDER_NOTICE_TEXT);
     expect(note).toHaveAttribute("data-testid", "answer-provider-notice");
   });

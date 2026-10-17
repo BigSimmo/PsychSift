@@ -71,9 +71,13 @@ import { SystemNotice, DegradedNoticeFrame } from "@/components/clinical-dashboa
 import { resolveModeHomeCanvasClass } from "@/components/clinical-dashboard/mode-home-canvas";
 import { sanitizeAnswerDisplayText } from "@/components/clinical-dashboard/display-text";
 import { AnswerCancelledNotice } from "@/components/clinical-dashboard/answer-cancelled-notice";
-import { AnswerProviderNotice } from "@/components/clinical-dashboard/answer-provider-notice";
+import {
+  AnswerProviderNotice,
+  AnswerSummaryUnavailableNotice,
+} from "@/components/clinical-dashboard/answer-provider-notice";
 import { isPreformattedGroundedAnswer } from "@/components/clinical-dashboard/answer-content";
 import {
+  AnswerBuildDetails,
   AnswerProgress,
   AnswerSkeleton,
   SearchProgressBanner,
@@ -2988,12 +2992,16 @@ function ClinicalDashboardContent({
                         restoredSavedAt={restoredAnswerSavedAt}
                         onRecheckAnswer={handleRecheckRestoredAnswer}
                       />
+                      {/* Under the answer, not above the question (owner decision, 17 Oct 2026). */}
+                      {loading ? null : <AnswerBuildDetails events={answerProgressEvents} />}
                       {/* Once per page, under the latest answer: where a question goes (audit S3). */}
                       {explicitDemoMode ||
                       answer.demoMode === true ||
                       answer.fallbackMode === "non_production_demo" ? null : (
-                        <AnswerProviderNotice className="mt-1" />
+                        <AnswerProviderNotice className="mt-1 justify-center text-center" />
                       )}
+                      {/* Directly under it: the model could not write this answer (owner decision, 17 Oct 2026). */}
+                      <AnswerSummaryUnavailableNotice answer={answer} />
                     </>
                   ) : null
                 ) : null}

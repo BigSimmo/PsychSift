@@ -4000,7 +4000,12 @@ test.describe("PsychSift UI smoke coverage", () => {
     ).filter((text) => !/^Answer limitations$/i.test(text.trim()));
     const gapWarnings = panelWarnings.filter((text) => !/\bdue for review\.$/.test(text.trim()));
     expect(panelWarnings.length).toBeGreaterThan(0);
-    await expect(gapsChip).toContainText(`${gapWarnings.length} limitation${gapWarnings.length === 1 ? "" : "s"}`);
+    // The count left the visible chip beside a prefix (owner decision, 17 Oct 2026). It is still in
+    // the accessible name, which is where it is pinned now.
+    await expect(gapsChip).toHaveAttribute(
+      "aria-label",
+      new RegExp(`${gapWarnings.length} limitation${gapWarnings.length === 1 ? "" : "s"}$`),
+    );
     // The banner is inside the disclosure, not merely somewhere on the page.
     await expect(gapsDetail.getByTestId("retrieval-state-stale-toggle")).toBeVisible();
     await expect(reviewDueTab).toContainText("Review due");
