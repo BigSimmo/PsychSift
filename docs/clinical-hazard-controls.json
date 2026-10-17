@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
   "authority": "Static evidence register only. It does not establish clinical adequacy, regulatory classification, or risk acceptance.",
-  "reviewedCommit": "3b7b6e84012f843dd0858089672eff943355b70c",
+  "reviewedCommit": "679d2bfeb8fb2082a09ae75009bc07d454731276",
   "reviewedAt": "2026-10-17",
   "reviewExpiresAt": "2027-01-17",
   "hazards": [
     {
       "id": "H1",
       "state": "partial",
-      "reviewedCommit": "3b7b6e84012f843dd0858089672eff943355b70c",
+      "reviewedCommit": "679d2bfeb8fb2082a09ae75009bc07d454731276",
       "reviewedAt": "2026-10-17",
       "reviewExpiresAt": "2027-01-17",
       "owner": "Clinical safety owner",
@@ -24,7 +24,7 @@
     {
       "id": "H2",
       "state": "partial",
-      "reviewedCommit": "3b7b6e84012f843dd0858089672eff943355b70c",
+      "reviewedCommit": "679d2bfeb8fb2082a09ae75009bc07d454731276",
       "reviewedAt": "2026-10-17",
       "reviewExpiresAt": "2027-01-17",
       "owner": "Source governance owner",
@@ -36,7 +36,7 @@
     {
       "id": "H3",
       "state": "partial",
-      "reviewedCommit": "3b7b6e84012f843dd0858089672eff943355b70c",
+      "reviewedCommit": "679d2bfeb8fb2082a09ae75009bc07d454731276",
       "reviewedAt": "2026-10-17",
       "reviewExpiresAt": "2027-01-17",
       "owner": "Clinical UX owner",
@@ -48,7 +48,7 @@
     {
       "id": "H4",
       "state": "partial",
-      "reviewedCommit": "3b7b6e84012f843dd0858089672eff943355b70c",
+      "reviewedCommit": "679d2bfeb8fb2082a09ae75009bc07d454731276",
       "reviewedAt": "2026-10-17",
       "reviewExpiresAt": "2027-01-17",
       "owner": "Answer quality owner",
@@ -60,7 +60,7 @@
     {
       "id": "H5",
       "state": "partial",
-      "reviewedCommit": "3b7b6e84012f843dd0858089672eff943355b70c",
+      "reviewedCommit": "679d2bfeb8fb2082a09ae75009bc07d454731276",
       "reviewedAt": "2026-10-17",
       "reviewExpiresAt": "2027-01-17",
       "owner": "Answer quality owner",
@@ -76,7 +76,7 @@
     {
       "id": "H6",
       "state": "partial",
-      "reviewedCommit": "3b7b6e84012f843dd0858089672eff943355b70c",
+      "reviewedCommit": "679d2bfeb8fb2082a09ae75009bc07d454731276",
       "reviewedAt": "2026-10-17",
       "reviewExpiresAt": "2027-01-17",
       "owner": "Application security owner",
@@ -88,7 +88,7 @@
     {
       "id": "H8",
       "state": "partial",
-      "reviewedCommit": "3b7b6e84012f843dd0858089672eff943355b70c",
+      "reviewedCommit": "679d2bfeb8fb2082a09ae75009bc07d454731276",
       "reviewedAt": "2026-09-28",
       "reviewExpiresAt": "2026-12-28",
       "owner": "Clinical safety owner (owner approval 2026-09-28)",
@@ -106,7 +106,7 @@
     {
       "id": "CLINICAL-TRUTH-AUTHORITY",
       "state": "open",
-      "reviewedCommit": "3b7b6e84012f843dd0858089672eff943355b70c",
+      "reviewedCommit": "679d2bfeb8fb2082a09ae75009bc07d454731276",
       "reviewedAt": "2026-10-17",
       "reviewExpiresAt": "2027-01-17",
       "owner": "Clinical governance authority",
@@ -116,7 +116,7 @@
     {
       "id": "EXTERNAL-RISK-ACCEPTANCE",
       "state": "open",
-      "reviewedCommit": "3b7b6e84012f843dd0858089672eff943355b70c",
+      "reviewedCommit": "679d2bfeb8fb2082a09ae75009bc07d454731276",
       "reviewedAt": "2026-10-17",
       "reviewExpiresAt": "2027-01-17",
       "owner": "Authorised risk owner",
@@ -126,7 +126,7 @@
     {
       "id": "SAFETY-CHIP-VOCABULARY",
       "state": "open",
-      "reviewedCommit": "3b7b6e84012f843dd0858089672eff943355b70c",
+      "reviewedCommit": "679d2bfeb8fb2082a09ae75009bc07d454731276",
       "reviewedAt": "2026-09-18",
       "reviewExpiresAt": "2026-12-18",
       "owner": "Clinical governance authority",
@@ -140,7 +140,7 @@
     {
       "id": "DICTIONARY-PUBLISHER-AGENCIES",
       "state": "open",
-      "reviewedCommit": "3b7b6e84012f843dd0858089672eff943355b70c",
+      "reviewedCommit": "679d2bfeb8fb2082a09ae75009bc07d454731276",
       "reviewedAt": "2026-09-18",
       "reviewExpiresAt": "2026-12-18",
       "owner": "Clinical governance authority",
@@ -150,7 +150,7 @@
     {
       "id": "PATIENT-NUMERIC-FIELD-DISPLAY",
       "state": "open",
-      "reviewedCommit": "3b7b6e84012f843dd0858089672eff943355b70c",
+      "reviewedCommit": "679d2bfeb8fb2082a09ae75009bc07d454731276",
       "reviewedAt": "2026-09-18",
       "reviewExpiresAt": "2026-12-18",
       "owner": "Clinical governance authority",
