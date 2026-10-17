@@ -2,8 +2,9 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/components/work-search/lazy-work-search-sheet", () => ({
-  LazyWorkSearchSheet: () => null,
-  LazyWorkSearchKeys: () => null,
+  LazyWorkSearchSheet: ({ open, onClose }: { open: boolean; onClose: (navigated?: boolean) => void }) =>
+    open ? <button onClick={() => onClose(false)}>Close search</button> : null,
+  LazyWorkSearchKeys: ({ open }: { open: boolean }) => (open ? <p>Keyboard shortcuts</p> : null),
   prefetchWorkSearchSheet: () => {},
 }));
 
@@ -11,82 +12,85 @@ import { WorkSearchButton } from "@/components/work-search/work-search-button";
 
 const KEY = "psychsift:work-search-coach-seen";
 
-/** The note shows from 1024px; below that only the ring does. */
-function setViewport(desktop: boolean) {
-  window.matchMedia = vi.fn().mockImplementation((query: string) => ({
-    matches: desktop,
-    media: query,
-    onchange: null,
-    addEventListener: () => {},
-    removeEventListener: () => {},
-    addListener: () => {},
-    removeListener: () => {},
-    dispatchEvent: () => false,
-  })) as unknown as typeof window.matchMedia;
-}
-
-describe("AI Search's one-time New note", () => {
-  const originalMatchMedia = window.matchMedia;
+describe("AI Search discovery without automatic coaching", () => {
   beforeEach(() => {
     window.localStorage.removeItem(KEY);
-    setViewport(true);
     vi.useFakeTimers();
   });
   afterEach(() => {
     vi.useRealTimers();
     window.localStorage.removeItem(KEY);
-    window.matchMedia = originalMatchMedia;
   });
 
-  it("goes by itself after a few seconds, and is counted as read when it goes", () => {
+  it("never introduces a timed note or promotional halo on a first visit", () => {
     render(<WorkSearchButton modeId="cme" />);
-    expect(screen.getByRole("note")).toHaveTextContent("New");
-    expect(window.localStorage.getItem(KEY)).toBeNull();
-    act(() => {
-      vi.advanceTimersByTime(7999);
-    });
-    expect(screen.queryByRole("note")).not.toBeNull();
-    act(() => {
-      vi.advanceTimersByTime(1);
-    });
+    const button = screen.getByRole("button", { name: "AI Search" });
     expect(screen.queryByRole("note")).toBeNull();
-    expect(window.localStorage.getItem(KEY)).toBe("1");
+    expect(button.parentElement).not.toHaveClass("ring-4");
+    act(() => vi.advanceTimersByTime(8000));
+    expect(screen.queryByRole("note")).toBeNull();
+    expect(window.localStorage.getItem(KEY)).toBeNull();
   });
 
-  it("stays through a re-render while it is showing", () => {
+  it("keeps the labelled control and real focus outline through a re-render", () => {
     const { rerender } = render(<WorkSearchButton modeId="cme" />);
     rerender(<WorkSearchButton modeId="cme" className="x" />);
-    expect(screen.getByRole("note")).toHaveTextContent("New");
-  });
-
-  it("is not used up on a phone, where only the ring shows", () => {
-    setViewport(false);
-    render(<WorkSearchButton modeId="cme" />);
-    act(() => {
-      vi.advanceTimersByTime(8000);
-    });
-    expect(window.localStorage.getItem(KEY)).toBeNull();
-  });
-
-  it("goes at the reader's first scroll", () => {
-    render(<WorkSearchButton modeId="cme" />);
-    act(() => {
-      fireEvent.scroll(window);
-    });
+    const button = screen.getByRole("button", { name: "AI Search" });
+    expect(button).toHaveClass("focus-visible:outline-2");
+    expect(button).toHaveAttribute("aria-keyshortcuts", "/ Control+k Meta+k");
+    expect(button).not.toHaveAttribute("aria-describedby");
     expect(screen.queryByRole("note")).toBeNull();
   });
 
-  it("goes at the reader's first tap elsewhere on the page", () => {
+  it("opens by click and returns focus when the search closes", () => {
     render(<WorkSearchButton modeId="cme" />);
-    act(() => {
-      fireEvent.pointerDown(document.body);
-    });
-    expect(screen.queryByRole("note")).toBeNull();
+    const button = screen.getByRole("button", { name: "AI Search" });
+    fireEvent.click(button);
+    expect(button).toHaveAttribute("aria-expanded", "true");
+    fireEvent.click(screen.getByRole("button", { name: "Close search" }));
+    act(() => vi.advanceTimersByTime(20));
+    expect(button).toHaveAttribute("aria-expanded", "false");
+    expect(button).toHaveFocus();
   });
 
-  it("never shows again once read", () => {
+  it.each([{ key: "/" }, { key: "k", ctrlKey: true }, { key: "k", metaKey: true }])(
+    "preserves the search shortcut $key",
+    (shortcut) => {
+      render(<WorkSearchButton modeId="cme" />);
+      fireEvent.keyDown(window, shortcut);
+      expect(screen.getByRole("button", { name: "AI Search" })).toHaveAttribute("aria-expanded", "true");
+    },
+  );
+
+  it("keeps keyboard help available on request", () => {
+    render(<WorkSearchButton modeId="cme" />);
+    fireEvent.keyDown(window, { key: "?" });
+    expect(screen.getByText("Keyboard shortcuts")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "AI Search" })).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("leaves shortcuts with a text field or another dialog", () => {
+    render(
+      <>
+        <WorkSearchButton modeId="cme" />
+        <input aria-label="Page field" />
+      </>,
+    );
+    fireEvent.keyDown(screen.getByRole("textbox"), { key: "/" });
+    expect(screen.getByRole("button", { name: "AI Search" })).toHaveAttribute("aria-expanded", "false");
+    const dialog = document.createElement("div");
+    dialog.setAttribute("role", "dialog");
+    dialog.setAttribute("aria-modal", "true");
+    document.body.append(dialog);
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    expect(screen.getByRole("button", { name: "AI Search" })).toHaveAttribute("aria-expanded", "false");
+    dialog.remove();
+  });
+
+  it("does not revive old coaching state when the legacy flag exists", () => {
     window.localStorage.setItem(KEY, "1");
     render(<WorkSearchButton modeId="cme" />);
     expect(screen.queryByRole("note")).toBeNull();
+    expect(screen.getByRole("button", { name: "AI Search" })).toHaveAccessibleName("AI Search");
   });
 });

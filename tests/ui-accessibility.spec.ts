@@ -122,7 +122,10 @@ async function mockDifferentialSearch(page: Page) {
 }
 
 async function expectDashboardUsable(page: Page) {
-  await expect(page.getByRole("heading", { level: 1, name: "PsychSift" })).toHaveCount(1);
+  // Every caller enters the shared Answer home. Its route heading names the
+  // current mode; the visible hero remains the separate Clinical Answers H2.
+  await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+  await expect(page.getByRole("heading", { level: 1, name: "Answer", exact: true })).toHaveCount(1);
   await expect(page.getByRole("heading", { name: "Clinical Answers", exact: true })).toBeVisible();
   await expect(page.locator('[aria-label^="Search indexed guidelines by question or keyword"]:visible')).toBeVisible();
   await expect(page.getByRole("button", { name: "Open answer options" })).toBeVisible();
@@ -368,8 +371,8 @@ test.describe("PsychSift accessibility coverage", () => {
     );
 
     for (const targetSize of targetSizes) {
-      expect(targetSize.width).toBeGreaterThanOrEqual(44);
-      expect(targetSize.height).toBeGreaterThanOrEqual(44);
+      expect(targetSize.width).toBeGreaterThanOrEqual(48);
+      expect(targetSize.height).toBeGreaterThanOrEqual(48);
     }
     expect(privateIngestionRequests).toEqual([]);
   });
@@ -630,7 +633,10 @@ test.describe("PsychSift accessibility coverage", () => {
     // there directly keeps this on the surface it is asserting about.
     await page.goto("/?mode=therapy-compass", { waitUntil: "domcontentloaded" });
 
-    await expect(page.getByRole("heading", { name: "Therapy", exact: true })).toBeVisible({
+    await expect(page.getByRole("heading", { name: "Therapy", level: 1, exact: true })).toHaveCount(1);
+    await expect(
+      page.getByTestId("shared-home-empty-state").getByRole("heading", { name: "Therapy", level: 2, exact: true }),
+    ).toBeVisible({
       timeout: 60_000,
     });
 
@@ -678,15 +684,9 @@ test.describe("PsychSift accessibility coverage", () => {
       const bounds = element.getBoundingClientRect();
       return { width: bounds.width, height: bounds.height };
     });
-    // 44, not 48. This trigger sits in the ribbon's utility row, which is
-    // `min-h-tap` (44px) throughout — raising only this control would leave the
-    // row visibly ragged. (`ResultSortControl` set that rhythm before it became
-    // `sm`-and-up; the row still holds it.) The repo's `min-h-12` rule
-    // exists to stop generic a11y advice pulling production down to `min-h-11`
-    // (a known `ui-smoke` flake), not to override a page's own row rhythm; the
-    // sheet's own toggles, which have the room, are `min-h-12`.
-    expect(triggerSize.width).toBeGreaterThanOrEqual(44);
-    expect(triggerSize.height).toBeGreaterThanOrEqual(44);
+    // The visual utility row must retain the shared 48px interactive floor.
+    expect(triggerSize.width).toBeGreaterThanOrEqual(48);
+    expect(triggerSize.height).toBeGreaterThanOrEqual(48);
 
     await therapyFilterTrigger.click();
     const therapyFilterPanel = page.getByTestId("therapy-filter-panel");
@@ -778,8 +778,8 @@ test.describe("PsychSift accessibility coverage", () => {
       const bounds = element.getBoundingClientRect();
       return { width: bounds.width, height: bounds.height };
     });
-    expect(clinicianSwitchSize.width).toBeGreaterThanOrEqual(44);
-    expect(clinicianSwitchSize.height).toBeGreaterThanOrEqual(44);
+    expect(clinicianSwitchSize.width).toBeGreaterThanOrEqual(48);
+    expect(clinicianSwitchSize.height).toBeGreaterThanOrEqual(48);
 
     // Sheet builder therapy picker. The page header's own menu buttons also
     // sit inside the page on phones, so name the picker directly.

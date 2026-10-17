@@ -4,7 +4,7 @@ import Image from "next/image";
 import { memo, useEffect, useRef, useState } from "react";
 import { CircleAlert, Maximize2 } from "lucide-react";
 
-import { cn, Skeleton } from "@/components/ui-primitives";
+import { controlDisabled, cn, Skeleton } from "@/components/ui-primitives";
 import { Button } from "@/components/ui/button";
 import { getCachedSignedUrl } from "@/lib/signed-url-cache";
 import { type SignedImageFailure, useSignedImageUrl } from "@/components/clinical-dashboard/use-signed-image-url";
@@ -235,7 +235,10 @@ export const SignedImage = memo(function SignedImage({
             type="button"
             onClick={retryImage}
             disabled={retryDisabled}
-            className="mt-3 inline-flex min-h-tap items-center rounded-lg border border-[color:var(--warning)]/30 bg-[color:var(--surface)] px-3 text-[color:var(--warning)] disabled:opacity-50 disabled:cursor-not-allowed transition"
+            className={cn(
+              controlDisabled,
+              "mt-3 inline-flex min-h-tap items-center rounded-lg border border-[color:var(--warning)]/30 bg-[color:var(--surface)] px-3 text-[color:var(--warning)] disabled:cursor-not-allowed transition",
+            )}
           >
             {retryDisabled ? "Retrying…" : retryLabel}
           </button>

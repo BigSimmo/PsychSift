@@ -12,6 +12,7 @@ import {
   GitCompareArrows,
   ListChecks,
   Phone,
+  Search,
   X,
 } from "lucide-react";
 import { useCallback, useDeferredValue, useId, useMemo, useRef, useState } from "react";
@@ -35,7 +36,9 @@ import {
 } from "@/components/clinical-dashboard/result-filter-control";
 import { AlphabetStrip, alphabetStripEntries, alphabetStripTargetClass } from "@/components/mode-kit/alphabet-strip";
 import { StatusTag, type StatusTagShape } from "@/components/mode-kit/status-tag";
-import { cn } from "@/components/ui-primitives";
+import { ModeNavHeaderPortal } from "@/components/mode-nav/mode-nav-portal";
+import { restoreFocusUnlessMoved } from "@/components/use-dismissable-layer";
+import { cn, controlDisabled, ignoreUnavailableActivation } from "@/components/ui-primitives";
 import { useResultSort } from "@/components/use-result-sort";
 import { compactBestUseTitle } from "@/lib/compact-best-use-title";
 import { modeHomeComposerReservePendingValue, modeHomeDesktopComposerSlotId } from "@/lib/mode-home-composer";
@@ -248,7 +251,8 @@ function ServiceCard({
                 : `Loading saved state for ${service.title}`
           }
           className={cn(
-            "relative z-10 grid min-h-12 min-w-12 place-items-center rounded-lg border focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] disabled:cursor-not-allowed disabled:opacity-50",
+            "relative z-10 grid min-h-12 min-w-12 place-items-center rounded-lg border focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]",
+            controlDisabled,
             savedStateReady && !savedStateLoadFailed && saved
               ? "border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]"
               : "border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--text-muted)] enabled:hover:bg-[color:var(--surface-subtle)]",
@@ -332,78 +336,105 @@ function ServiceCard({
 }
 
 const referralStages = [
-  { id: "search", label: "Search" },
-  { id: "shortlist", label: "Shortlist" },
-  { id: "compare", label: "Compare" },
-  { id: "refer", label: "Refer" },
+  { id: "search", label: "Search", icon: Search },
+  { id: "shortlist", label: "Shortlist", icon: ListChecks },
+  { id: "compare", label: "Compare", icon: GitCompareArrows },
+  { id: "refer", label: "Refer", icon: ArrowRight },
 ] as const;
 
-type ReferralStageId = (typeof referralStages)[number]["id"];
+type ReferralStageId = Exclude<(typeof referralStages)[number]["id"], "refer">;
+
+function readShortlist(value: string | null) {
+  return [
+    ...new Set(
+      (value ?? "")
+        .split(",")
+        .map((slug) => slug.trim())
+        .filter(Boolean),
+    ),
+  ].slice(0, 5);
+}
 
 /**
- * The progressive replacement for the old four-card numbered walkthrough
- * (direction B, ledger #163): one ~20px line of dots that says where you are
- * without spending a third of the fold saying it.
- *
- * The accessible name is deliberately NOT "Referral workflow" — that name
- * belongs to `ServiceReferralFlow` on the service record, and
- * `tests/ui-tools.spec.ts` asserts it is absent from the results route so the
- * removed walkthrough cannot creep back in. Reusing it here would satisfy that
- * assertion's letter and defeat its purpose.
- *
- * "Refer" is never the active stage here; it is reached on the record itself.
- * It stays in the rail because the point is showing the whole path, not just
- * the part this page owns.
+ * The workflow uses the clinical header's single collapse owner. These are
+ * stateful views of this route, not invented destinations. Refer stays on a
+ * service record, where its eligibility and referral route can be reviewed.
  */
-function ServiceReferralProgress({ active }: { active: ReferralStageId }) {
-  const activeIndex = referralStages.findIndex((stage) => stage.id === active);
-
+function ServiceReferralNavigation({
+  active,
+  selectedCount,
+  onNavigate,
+}: {
+  active: ReferralStageId;
+  selectedCount: number;
+  onNavigate: (stage: ReferralStageId) => void;
+}) {
+  const helpId = useId();
   return (
-    <nav aria-label="Referral progress" className="min-w-0">
-      <ol className="flex min-w-0 flex-wrap items-center justify-center gap-x-2 gap-y-1 sm:justify-start">
-        {referralStages.map((stage, index) => {
-          const isActive = index === activeIndex;
-          const isComplete = index < activeIndex;
-          return (
-            <li key={stage.id} className="flex min-w-0 items-center gap-2">
-              {index > 0 ? (
-                <span
-                  aria-hidden
-                  className={cn(
-                    "h-px w-4 shrink-0 sm:w-6",
-                    isComplete || isActive ? "bg-[color:var(--clinical-accent-border)]" : "bg-[color:var(--border)]",
-                  )}
-                />
-              ) : null}
-              <span
-                aria-current={isActive ? "step" : undefined}
-                className={cn(
-                  "inline-flex min-w-0 items-center gap-1.5 text-2xs font-bold",
-                  isActive
-                    ? "text-[color:var(--clinical-accent)]"
-                    : isComplete
-                      ? "text-[color:var(--text)]"
-                      : "text-[color:var(--text-muted)]",
-                )}
-              >
-                <span
-                  aria-hidden
-                  className={cn(
-                    "h-2 w-2 shrink-0 rounded-full border",
-                    isActive
-                      ? "border-[color:var(--clinical-accent)] bg-[color:var(--clinical-accent)]"
-                      : isComplete
-                        ? "border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)]"
-                        : "border-[color:var(--border-strong)] bg-[color:var(--surface)]",
-                  )}
-                />
-                {stage.label}
-              </span>
-            </li>
-          );
-        })}
-      </ol>
-    </nav>
+    <ModeNavHeaderPortal>
+      <nav
+        aria-label="Referral progress"
+        data-testid="mode-nav"
+        data-services-workflow
+        className="mode-nav-rail border-b border-[color:var(--border)] bg-[color:var(--surface)]"
+      >
+        <div className="mode-nav">
+          <p className="mode-nav__heading" data-testid="mode-nav-title">
+            Services
+          </p>
+          <ul className="grid grid-cols-2 px-1 sm:flex sm:flex-wrap">
+            {referralStages.map(({ id, label, icon: Icon }) => {
+              const isActive = id === active;
+              const reason =
+                id === "refer"
+                  ? "Open a service record to review its referral route."
+                  : id === "compare" && selectedCount < 2
+                    ? "Shortlist at least two services to compare."
+                    : id === "shortlist" && selectedCount === 0
+                      ? "Add a service to your shortlist first."
+                      : undefined;
+              return (
+                <li key={id} className="min-w-0 sm:flex-1">
+                  <button
+                    type="button"
+                    aria-label={id === "shortlist" && selectedCount > 0 ? `Shortlist (${selectedCount})` : undefined}
+                    aria-current={isActive ? "step" : undefined}
+                    aria-disabled={reason ? true : undefined}
+                    aria-describedby={reason ? `${helpId}-${id}` : undefined}
+                    title={reason}
+                    onClick={(event) => {
+                      if (reason || id === "refer") {
+                        ignoreUnavailableActivation(event);
+                        return;
+                      }
+                      onNavigate(id);
+                    }}
+                    className={cn(
+                      "relative flex min-h-12 min-w-12 w-full items-center justify-center gap-2 rounded-lg border-b-2 px-3 text-sm font-semibold transition-colors motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]",
+                      isActive
+                        ? "border-[color:var(--clinical-accent)] text-[color:var(--text-heading)]"
+                        : "border-transparent text-[color:var(--text-muted)] hover:bg-[color:var(--surface-subtle)]",
+                      controlDisabled,
+                    )}
+                  >
+                    <Icon className="size-icon-md shrink-0 sm:hidden" aria-hidden="true" />
+                    {label}
+                    {id === "shortlist" && selectedCount > 0 ? (
+                      <span className="nums text-xs">({selectedCount})</span>
+                    ) : null}
+                  </button>
+                  {reason ? (
+                    <span id={`${helpId}-${id}`} className="sr-only">
+                      {reason}
+                    </span>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </nav>
+    </ModeNavHeaderPortal>
   );
 }
 
@@ -438,7 +469,7 @@ function ComparisonPanel({
           type="button"
           onClick={onClose}
           aria-label="Close service comparison"
-          className="grid size-12 shrink-0 place-items-center rounded-lg text-[color:var(--text-muted)] hover:bg-[color:var(--surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] sm:size-10"
+          className="grid size-12 shrink-0 place-items-center rounded-lg text-[color:var(--text-muted)] hover:bg-[color:var(--surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
         >
           <X className="h-4 w-4" aria-hidden />
         </button>
@@ -455,7 +486,7 @@ function ComparisonPanel({
                 type="button"
                 onClick={() => onRemove(service.slug)}
                 aria-label={`Remove ${service.title} from comparison`}
-                className="grid size-12 shrink-0 place-items-center rounded-lg text-[color:var(--text-muted)] hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] sm:size-10"
+                className="grid size-12 shrink-0 place-items-center rounded-lg text-[color:var(--text-muted)] hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
               >
                 <X className="h-4 w-4" aria-hidden />
               </button>
@@ -597,13 +628,41 @@ export function ServicesNavigatorPage() {
       ) as Record<ServiceCoreGroupId, number>,
     [activeGroupSelection, coreGroupFacetedBase],
   );
-  const [selectedSlugs, setSelectedSlugs] = useState<string[]>([]);
+  // Only catalogue identifiers and the current view travel in the URL. This
+  // keeps shortlist/compare, search filters and browser history together.
+  const urlShortlist = searchParams.get("shortlist");
+  const urlWorkflow = searchParams.get("workflow");
+  const workflowUrlKey = `${urlShortlist ?? ""}|${urlWorkflow ?? ""}`;
+  const [workflowOverride, setWorkflowOverride] = useState<{
+    urlKey: string;
+    selectedSlugs: string[];
+    stage: ReferralStageId;
+  } | null>(null);
+  // Keep the clicked view immediate while Next adopts the native history
+  // update. Retire it when the URL changes so Back cannot resurrect it.
+  if (workflowOverride && workflowOverride.urlKey !== workflowUrlKey) setWorkflowOverride(null);
+  const pendingWorkflow = workflowOverride?.urlKey === workflowUrlKey ? workflowOverride : null;
+  const selectedSlugs = pendingWorkflow?.selectedSlugs ?? readShortlist(urlShortlist);
   const selected = searchableRecords.filter((service) => selectedSlugs.includes(service.slug));
-  const [showComparison, setShowComparison] = useState(false);
+  const requestedStage =
+    pendingWorkflow?.stage ?? (urlWorkflow === "shortlist" || urlWorkflow === "compare" ? urlWorkflow : "search");
+  const referralStage: ReferralStageId =
+    requestedStage === "compare" && selected.length >= 2
+      ? "compare"
+      : requestedStage !== "search" && (registryLoading ? selectedSlugs.length > 0 : selected.length > 0)
+        ? "shortlist"
+        : "search";
+  const showComparison = referralStage === "compare";
+  const resultRecords = referralStage === "search" ? displayedMatches : selected;
   const filterPanelId = useId();
   const [filterOpen, setFilterOpen] = useState(false);
   const activeGroupLabel = activeGroupSelection.size === 1 ? serviceCoreGroupLabel([...activeGroupSelection][0]) : null;
-  const heading = query || (activeGroupLabel ?? "Browse services");
+  const heading =
+    referralStage === "shortlist"
+      ? "Shortlist"
+      : showComparison
+        ? "Compare services"
+        : query || (activeGroupLabel ?? "Browse services");
   const accountData = useAccountData();
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
   // The provider rolls back a failed mutation from its pre-request snapshot.
@@ -611,11 +670,33 @@ export function ServicesNavigatorPage() {
   // erase another row's successful optimistic update.
   const savingSlugsRef = useRef(new Set<string>());
   const [savingSlugs, setSavingSlugs] = useState<ReadonlySet<string>>(() => new Set());
-  // Derived during render rather than tracked in an effect: the stage is a
-  // pure function of the shortlist state that already exists, and
-  // tests/audit-content-services-regressions.test.ts pins this file as
-  // effect-free.
-  const referralStage: ReferralStageId = showComparison ? "compare" : selectedSlugs.length ? "shortlist" : "search";
+  function navigateWorkflow(stage: ReferralStageId, nextSelection = selectedSlugs) {
+    if (stage === "compare" && nextSelection.length < 2) return;
+    const nextStage = nextSelection.length === 0 ? "search" : stage;
+    if (nextStage !== "search") setFilterOpen(false);
+    setWorkflowOverride({ urlKey: workflowUrlKey, selectedSlugs: nextSelection, stage: nextStage });
+    // This is client-only view state: publish it synchronously before another
+    // control can submit a query. Next's native-history integration updates
+    // useSearchParams without a server navigation; push keeps Back available.
+    // Read the current address so rapid changes preserve each other's params.
+    const params = new URLSearchParams(window.location.search);
+    if (nextSelection.length) params.set("shortlist", nextSelection.join(","));
+    else params.delete("shortlist");
+    if (nextStage === "search") params.delete("workflow");
+    else params.set("workflow", nextStage);
+    const queryString = params.toString();
+    window.history.pushState(
+      null,
+      "",
+      `${window.location.pathname}${queryString ? `?${queryString}` : ""}${window.location.hash}`,
+    );
+    // Closing comparison or removing a row can remove the focused control.
+    // Restore to the selected view only if focus has not moved elsewhere.
+    const navigation = document.querySelector<HTMLElement>("[data-services-workflow]");
+    window.requestAnimationFrame(() => {
+      restoreFocusUnlessMoved(navigation?.querySelector<HTMLElement>('button[aria-current="step"]'));
+    });
+  }
 
   async function toggleSaved(slug: string) {
     // Belt as well as braces: the control is disabled until the read settles,
@@ -644,11 +725,10 @@ export function ServicesNavigatorPage() {
   }
 
   function toggleSelected(slug: string) {
-    setSelectedSlugs((current) => {
-      const next = current.includes(slug) ? current.filter((item) => item !== slug) : [...current, slug].slice(0, 5);
-      if (next.length < 2) setShowComparison(false);
-      return next;
-    });
+    const next = selectedSlugs.includes(slug)
+      ? selectedSlugs.filter((item) => item !== slug)
+      : [...selectedSlugs, slug].slice(0, 5);
+    navigateWorkflow(showComparison && next.length < 2 ? "shortlist" : referralStage, next);
   }
 
   const updateNavigationParams = useCallback(
@@ -897,7 +977,7 @@ export function ServicesNavigatorPage() {
           <SearchResultsHeaderBand
             modeId="services"
             query={heading}
-            matchCount={displayedMatches.length}
+            matchCount={resultRecords.length}
             headingLevel={1}
             status={
               registryBlocked
@@ -932,38 +1012,43 @@ export function ServicesNavigatorPage() {
               ) : undefined
             }
             sortValue={sortValue}
-            onSortChange={setSortValue}
-            appliedFilters={appliedFilters}
-            onClearFilters={activeFilterCount > 0 ? clearAllFilters : undefined}
+            onSortChange={referralStage === "search" ? setSortValue : undefined}
+            appliedFilters={referralStage === "search" ? appliedFilters : undefined}
+            onClearFilters={referralStage === "search" && activeFilterCount > 0 ? clearAllFilters : undefined}
             mobileControlsPlacement="inline"
             mobileControls={
-              <ResultFilterTrigger
-                panelId={filterPanelId}
-                testId="service-filter-trigger-phone"
-                title="Filter services"
-                open={filterOpen}
-                activeCount={activeFilterCount}
-                onToggle={() => setFilterOpen((current) => !current)}
-              />
-            }
-            utilityControls={
-              <span className="hidden sm:inline-flex">
+              referralStage === "search" ? (
                 <ResultFilterTrigger
                   panelId={filterPanelId}
-                  testId="service-filter-trigger-desktop"
+                  testId="service-filter-trigger-phone"
                   title="Filter services"
                   open={filterOpen}
                   activeCount={activeFilterCount}
                   onToggle={() => setFilterOpen((current) => !current)}
                 />
-              </span>
+              ) : null
+            }
+            utilityControls={
+              referralStage === "search" ? (
+                <span className="hidden sm:inline-flex">
+                  <ResultFilterTrigger
+                    panelId={filterPanelId}
+                    testId="service-filter-trigger-desktop"
+                    title="Filter services"
+                    open={filterOpen}
+                    activeCount={activeFilterCount}
+                    onToggle={() => setFilterOpen((current) => !current)}
+                  />
+                </span>
+              ) : null
             }
           />
 
-          {/* Progress, then the shortlist banner, then browse — the banner
-              sits under the heading it qualifies rather than above it, and
-              appears only once something is shortlisted. */}
-          <ServiceReferralProgress active={referralStage} />
+          <ServiceReferralNavigation
+            active={referralStage}
+            selectedCount={selected.length}
+            onNavigate={navigateWorkflow}
+          />
 
           {selected.length ? (
             <section
@@ -978,22 +1063,22 @@ export function ServicesNavigatorPage() {
               <span className="flex items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={() => setShowComparison(true)}
+                  onClick={() => navigateWorkflow("compare")}
                   disabled={selected.length < 2}
                   title={
                     selected.length < 2 ? "Shortlist at least two services to compare" : "Compare shortlisted services"
                   }
-                  className="inline-flex min-h-12 items-center gap-1.5 rounded-lg px-3 text-xs font-bold text-[color:var(--clinical-accent)] hover:bg-[color:var(--surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] disabled:cursor-not-allowed disabled:opacity-50"
+                  className={cn(
+                    "inline-flex min-h-12 items-center gap-1.5 rounded-lg px-3 text-xs font-bold text-[color:var(--clinical-accent)] hover:bg-[color:var(--surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]",
+                    controlDisabled,
+                  )}
                 >
                   <GitCompareArrows className="h-4 w-4" aria-hidden />
                   Compare
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    setSelectedSlugs([]);
-                    setShowComparison(false);
-                  }}
+                  onClick={() => navigateWorkflow("search", [])}
                   className="inline-flex min-h-12 items-center rounded-lg px-3 text-xs font-bold text-[color:var(--text-muted)] hover:bg-[color:var(--surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
                 >
                   Clear
@@ -1027,48 +1112,54 @@ export function ServicesNavigatorPage() {
             {saveNotice ?? ""}
           </span>
 
-          <ResultFilterSheet
-            open={filterOpen}
-            onClose={() => setFilterOpen(false)}
-            panelId={filterPanelId}
-            testId="service-filter-panel"
-            title="Filter services"
-            groups={[substanceGroup, coreGroupFacetGroup, ...facetGroups]}
-            onClearAll={activeFilterCount > 0 ? clearAllFilters : undefined}
-            summary={{ count: displayedMatches.length, noun: displayedMatches.length === 1 ? "service" : "services" }}
-            chromeResetKey={`${deferredQuery}|${[...activeGroupSelection].sort().join(",")}|${resultScope}`}
-            scope={
-              showResultScope
-                ? {
-                    label: "Search in",
-                    value: resultScope,
-                    onChange: (value) => setResultScopeValue(value as ServiceResultScope),
-                    options: [
-                      {
-                        value: "results",
-                        label: "Current results",
-                        count: resultsScopedCount,
-                        description: "Keep the current search and service group.",
-                      },
-                      {
-                        value: "all",
-                        label: "All services",
-                        count: allScopedCount,
-                        description: "Apply filters across the full catalogue.",
-                      },
-                    ],
-                  }
-                : undefined
-            }
-          />
+          {referralStage === "search" ? (
+            <ResultFilterSheet
+              open={filterOpen}
+              onClose={() => setFilterOpen(false)}
+              panelId={filterPanelId}
+              testId="service-filter-panel"
+              title="Filter services"
+              groups={[substanceGroup, coreGroupFacetGroup, ...facetGroups]}
+              onClearAll={activeFilterCount > 0 ? clearAllFilters : undefined}
+              summary={{ count: displayedMatches.length, noun: displayedMatches.length === 1 ? "service" : "services" }}
+              chromeResetKey={`${deferredQuery}|${[...activeGroupSelection].sort().join(",")}|${resultScope}`}
+              scope={
+                showResultScope
+                  ? {
+                      label: "Search in",
+                      value: resultScope,
+                      onChange: (value) => setResultScopeValue(value as ServiceResultScope),
+                      options: [
+                        {
+                          value: "results",
+                          label: "Current results",
+                          count: resultsScopedCount,
+                          description: "Keep the current search and service group.",
+                        },
+                        {
+                          value: "all",
+                          label: "All services",
+                          count: allScopedCount,
+                          description: "Apply filters across the full catalogue.",
+                        },
+                      ],
+                    }
+                  : undefined
+              }
+            />
+          ) : null}
         </>
       }
     >
       {registryLoading ? (
         <SearchResultsSkeleton />
-      ) : registryBlocked ? null : query.trim() && deferredQuery !== query ? (
+      ) : registryBlocked ? null : referralStage === "search" && query.trim() && deferredQuery !== query ? (
         <SearchResultsSkeleton />
-      ) : resultScope === "results" && query.trim() && deferredQuery === query && rankedMatches.length === 0 ? (
+      ) : referralStage === "search" &&
+        resultScope === "results" &&
+        query.trim() &&
+        deferredQuery === query &&
+        rankedMatches.length === 0 ? (
         // `rankedMatches` is query-only (see its definition above) and never
         // reflects the "All items" scope, which exists precisely to bypass a
         // query match of zero — see docs/filter-contract.md section 4. Gating
@@ -1080,7 +1171,7 @@ export function ServicesNavigatorPage() {
           query={query}
           onTryExample={(example) => applyServiceQuery(example)}
         />
-      ) : deferredQuery === query && displayedMatches.length === 0 ? (
+      ) : referralStage === "search" && deferredQuery === query && displayedMatches.length === 0 ? (
         // `displayedMatches` is now group- AND facet/lens-narrowed, so a zero
         // here can come from either. Offer both escapes, and only the one that
         // applies, without reintroducing the removed query-suggestion rail.
@@ -1110,30 +1201,38 @@ export function ServicesNavigatorPage() {
       ) : (
         <>
           {showComparison && selected.length >= 2 ? (
-            <ComparisonPanel services={selected} onRemove={toggleSelected} onClose={() => setShowComparison(false)} />
+            <ComparisonPanel
+              services={selected}
+              onRemove={toggleSelected}
+              onClose={() => navigateWorkflow("shortlist")}
+            />
           ) : null}
-          <div id="service-search-results" data-testid="service-search-results" className="grid gap-3">
-            {displayedMatches.map((service, index) => (
-              <ServiceCard
-                key={service.slug}
-                service={service}
-                index={index}
-                relevanceRank={sortValue === "alpha" ? null : (relevanceRankMap.get(service.slug) ?? null)}
-                query={query}
-                selected={selectedSlugs.includes(service.slug)}
-                onToggleSelected={toggleSelected}
-                saved={accountData.isSaved("service", service.slug)}
-                savedStateReady={accountData.ready}
-                savedStateLoadFailed={Boolean(accountData.loadError)}
-                savePending={savingSlugs.size > 0}
-                onToggleSaved={toggleSaved}
-              />
-            ))}
-          </div>
+          {!showComparison ? (
+            <div id="service-search-results" data-testid="service-search-results" className="grid gap-3">
+              {resultRecords.map((service, index) => (
+                <ServiceCard
+                  key={service.slug}
+                  service={service}
+                  index={index}
+                  relevanceRank={sortValue === "alpha" ? null : (relevanceRankMap.get(service.slug) ?? null)}
+                  query={query}
+                  selected={selectedSlugs.includes(service.slug)}
+                  onToggleSelected={toggleSelected}
+                  saved={accountData.isSaved("service", service.slug)}
+                  savedStateReady={accountData.ready}
+                  savedStateLoadFailed={Boolean(accountData.loadError)}
+                  savePending={savingSlugs.size > 0}
+                  onToggleSaved={toggleSaved}
+                />
+              ))}
+            </div>
+          ) : null}
           {/* Phone A to Z strip (audit item 13): drawn only when the list is
               in A to Z order, never over a ranked list. */}
-          <AlphabetStrip listId="service-search-results" testId="services-alphabet-strip" entries={alphabetEntries} />
-          {query ? <UniversalSearchAlsoMatches modeId="services" query={query} /> : null}
+          {referralStage === "search" ? (
+            <AlphabetStrip listId="service-search-results" testId="services-alphabet-strip" entries={alphabetEntries} />
+          ) : null}
+          {referralStage === "search" && query ? <UniversalSearchAlsoMatches modeId="services" query={query} /> : null}
         </>
       )}
     </SearchResultsLayout>

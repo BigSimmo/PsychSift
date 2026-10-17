@@ -129,7 +129,11 @@ import {
   modeHomeComposerReservePendingValue,
   modeHomeDesktopComposerSlotId,
 } from "@/lib/mode-home-composer";
-import { readSearchNavigationContext, type SearchNavigationOptions } from "@/lib/search-navigation-context";
+import {
+  preserveServicesShortlist,
+  readSearchNavigationContext,
+  type SearchNavigationOptions,
+} from "@/lib/search-navigation-context";
 import { isTherapyPhoneDockRoute, readTherapyCompareSlugCount } from "@/lib/therapy-compass-navigation";
 import { useDifferentialsCompareHasSelection } from "@/components/differentials/compare-presence";
 import {
@@ -800,7 +804,14 @@ function GlobalStandaloneSearchShellBody({
       router.push(documentsSearchHref(nextOptions));
       return;
     }
-    router.push(appModeHomeHref(mode, nextOptions));
+    const href = appModeHomeHref(mode, nextOptions);
+    router.push(
+      mode === "services" && searchMode === "services"
+        ? // Workflow selection writes native history synchronously; a React params
+          // snapshot can lag behind a rapid selection followed by a new search.
+          preserveServicesShortlist(href, new URLSearchParams(window.location.search))
+        : href,
+    );
   }
 
   function submitSearch(queryOverride?: string) {

@@ -43,6 +43,7 @@ import {
   chatActionRow,
   chatMicroAction,
   cn,
+  controlDisabled,
   codeText,
   EmptyState,
   iconTilePremium,
@@ -200,7 +201,7 @@ export function AnswerUtilityActions({
                 type="button"
                 disabled={Boolean(pendingFeedback)}
                 onClick={() => onSubmitFeedback("verified")}
-                className={cn(chatMicroAction, "min-w-12 justify-center px-2 disabled:opacity-60")}
+                className={cn(chatMicroAction, controlDisabled, "min-w-12 justify-center px-2")}
                 aria-label="This answer is supported by its sources"
               >
                 {pendingFeedback === "verified" ? (
@@ -724,7 +725,7 @@ export function ClinicalNotesChecklistPanel({
                   className={cn(
                     "inline-flex min-h-tap min-w-0 items-center justify-center gap-1.5 rounded-md px-2 text-xs font-semibold leading-none transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]",
                     selected
-                      ? "bg-[color:var(--clinical-accent)] text-[color:var(--clinical-accent-contrast)] shadow-[var(--e1)]"
+                      ? "bg-[color:var(--clinical-accent)] text-[color:var(--clinical-accent-contrast)] shadow-[var(--e0)]"
                       : "text-[color:var(--text-muted)] hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text)]",
                   )}
                 >
@@ -1222,7 +1223,8 @@ export function AnswerFeedbackPanel({
               disabled={Boolean(pending)}
               onClick={() => onSubmit(item.type)}
               className={cn(
-                "inline-flex min-h-tap items-center justify-center gap-1.5 rounded-lg border px-2.5 text-center text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 lg:min-h-compact-meta",
+                "inline-flex min-h-tap items-center justify-center gap-1.5 rounded-lg border px-2.5 text-center text-xs font-semibold transition lg:min-h-compact-meta",
+                controlDisabled,
                 feedbackToneClass(item.tone),
               )}
             >

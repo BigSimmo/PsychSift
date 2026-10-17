@@ -48,7 +48,7 @@ import { SourceMethodReferenceContent } from "@/components/reference/source-meth
 import { colourCodingReferenceHref } from "@/lib/reference-routes";
 import { SOURCE_METHOD_ROUTE } from "@/lib/sources/rating-method";
 import { Sheet } from "@/components/ui/sheet";
-import { cn, eyebrowText, floatingControl, primaryControl, textMuted } from "@/components/ui-primitives";
+import { cn, eyebrowText, floatingControl, commandControl, textMuted } from "@/components/ui-primitives";
 
 const guideAccessibleNameId = "clinical-kb-guide-accessible-name";
 
@@ -69,7 +69,9 @@ const quickTaskIcons: readonly LucideIcon[] = [HelpCircle, SlidersHorizontal, Sh
 
 /**
  * The guided tour is the ONLY control in the phone dock, so it takes the filled
- * primary treatment — the role `differentials-mobile-compare-fab__button` fills
+ * command treatment. The Guide is a system workflow, so its filled action stays
+ * neutral graphite rather than inheriting a clinical area accent — the role
+ * `differentials-mobile-compare-fab__button` fills
  * on its own surface, not the quiet outlined framing reserved for dock addons
  * (`patient-details-fab__button`, Compare's empty state).
  *
@@ -80,9 +82,9 @@ const quickTaskIcons: readonly LucideIcon[] = [HelpCircle, SlidersHorizontal, Sh
  * surface's single call to action should read as one.
  *
  * Only the pill radius and elevation are phone-scoped — from `sm` the footer is
- * a real Sheet band where a square-cornered `primaryControl` is correct.
+ * a real Sheet band where a square-cornered `commandControl` is correct.
  */
-const guideTourAction = cn(primaryControl, "max-sm:rounded-full max-sm:shadow-[var(--e3)]");
+const guideTourAction = cn(commandControl, "max-sm:rounded-full max-sm:shadow-[var(--e3)]");
 
 /** Secondary dock controls stay quiet pills so the primary action keeps the eye. */
 const guideSecondaryAction = cn(floatingControl, "max-sm:rounded-full max-sm:shadow-[var(--e3)]");
@@ -502,7 +504,7 @@ function TourView({
           completion stays on this browser only.
         </p>
         <div className="mt-5 flex flex-wrap justify-center gap-2">
-          <button type="button" onClick={onReview} className={primaryControl}>
+          <button type="button" onClick={onReview} className={commandControl}>
             <PlayCircle aria-hidden="true" className="size-icon-md" /> Review tour
           </button>
           <button type="button" onClick={onRestart} className={floatingControl}>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { FileQuestion, Search } from "lucide-react";
-import { cn, primaryControl } from "@/components/ui-primitives";
+import { cn, commandControl } from "@/components/ui-primitives";
 
 export default function NotFound() {
   return (
@@ -30,7 +30,7 @@ export default function NotFound() {
           <Link
             href="/"
             className={cn(
-              primaryControl,
+              commandControl,
               "flex min-h-12 items-center justify-center gap-2 px-4 py-2 text-sm font-medium",
             )}
           >

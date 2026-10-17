@@ -1,12 +1,13 @@
 "use client";
 
-import { useId } from "react";
+import { useEffect, useId } from "react";
 import { Check, Copy, Search, Shield, Sparkles } from "lucide-react";
 
 import { cardPadding, cardSurface } from "@/components/card-recipes";
 import { PageHeader } from "@/components/ui/page-header";
 import { cn, pageContainer } from "@/components/ui-primitives";
 import { Button } from "@/components/ui/button";
+import { announce } from "@/components/ui/live-announcer";
 
 import { useTcBindings } from "../bindings";
 import { RECOMMEND_CONSTRAINTS } from "../data/select";
@@ -44,6 +45,14 @@ export function RecommendScreen() {
   const matchLabel = b.loading
     ? "Ranking clinical matches…"
     : `${ranked.length} ranked ${ranked.length === 1 ? "match" : "matches"}`;
+  // The scenario sheet and the result heading show the same count. One
+  // bounded announcement prevents both speaking while the phone editor is open.
+  useEffect(() => {
+    // LoadingState and EmptyState already announce these distinct outcomes.
+    if (b.loading || ranked.length === 0) return;
+    const timer = window.setTimeout(() => announce(matchLabel, { eventId: "therapy-recommend-count" }), 300);
+    return () => window.clearTimeout(timer);
+  }, [b.loading, matchLabel, ranked.length]);
 
   const scenarioBindings = {
     recQuery: b.recQuery,
@@ -91,9 +100,7 @@ export function RecommendScreen() {
               <div className="text-base-minus font-semibold text-[color:var(--text-heading)]">
                 Ranked clinical matches
               </div>
-              <p className="mt-0.5 text-xs font-semibold text-[color:var(--text-muted)]" aria-live="polite">
-                {matchLabel}
-              </p>
+              <p className="mt-0.5 text-xs font-semibold text-[color:var(--text-muted)]">{matchLabel}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Button

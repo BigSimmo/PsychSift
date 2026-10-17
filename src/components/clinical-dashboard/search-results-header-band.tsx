@@ -140,6 +140,7 @@ export function SearchResultsHeaderBand({
   query,
   matchCount,
   status,
+  summaryPlacement = "ribbon",
   loading = false,
   faultTitle,
   faultBody,
@@ -171,6 +172,8 @@ export function SearchResultsHeaderBand({
   /** Result trustworthiness. Defaults to `ready`, or `loading` when the legacy
       `loading` prop is set. A faulted status never renders a number. */
   status?: SearchResultsBandStatus;
+  /** A body recovery panel owns the summary and announcement; keep this ribbon's query and controls. */
+  summaryPlacement?: "ribbon" | "body";
   /** @deprecated Pass `status="loading"`. Retained so the pages with no async
       source need no edit; ignored whenever `status` is supplied. */
   loading?: boolean;
@@ -282,6 +285,7 @@ export function SearchResultsHeaderBand({
   // search reads as "there are no crisis services" rather than "we could not check".
   const faulted = resolvedStatus === "error" || resolvedStatus === "unauthorized";
   const partial = resolvedStatus === "partial";
+  const showSummary = summaryPlacement === "ribbon";
   const busy = resolvedStatus === "loading" || resolvedStatus === "refetching";
   // "Service matches" -> "Services", leaving already-plural headings ("Favourites",
   // "DSM diagnoses") untouched. Phrasing the title as "<noun> could not be loaded"
@@ -385,7 +389,9 @@ export function SearchResultsHeaderBand({
               or partial one keeps a double stroke before the count, so state is
               never carried by colour alone. Rendered in flow rather than
               absolutely positioned, so the band's corner can never clip it. */}
-          {faulted || partial ? <span className="search-band-lead shrink-0" data-tone="warning" aria-hidden /> : null}
+          {showSummary && (faulted || partial) ? (
+            <span className="search-band-lead shrink-0" data-tone="warning" aria-hidden />
+          ) : null}
           {/* Count first, query second. The count is the answer to the search; the
               query is what you already typed, and the composer above still shows it.
               Leading with the query spent the band's only heading slot on
@@ -396,24 +402,24 @@ export function SearchResultsHeaderBand({
               finds it. */}
           {/* Neutral, not a success pill: a count is not a state that was achieved,
               and green has to keep meaning something where it does appear. */}
-          {/* One unconditional `role="status"` in every state. Playwright asserts it
-              is visible on every search route, so it must never be swapped out or
-              wrapped in a state branch. While faulted the live region is silenced
+          {/* The ribbon owns the status unless a body recovery panel owns it.
+              While faulted the live region is silenced
               (`aria-live="off"`) and the freshly-mounted fault `role="alert"` below
               makes the single announcement, rather than both speaking. */}
-          <span
-            className={cn(
-              "flex shrink-0 items-center gap-1.5 whitespace-nowrap",
-              faulted ? "search-band-fault" : "search-band-count-word",
-              busy && "text-[color:var(--clinical-accent)]",
-              (faulted || partial) && "text-[color:var(--warning)]",
-              !busy && !faulted && !partial && "text-[color:var(--text-muted)]",
-            )}
-            role="status"
-            aria-live={faulted ? "off" : "polite"}
-            aria-atomic="true"
-          >
-            {/* The state tile is gone, but state must not fall back to hue alone:
+          {showSummary ? (
+            <span
+              className={cn(
+                "flex shrink-0 items-center gap-1.5 whitespace-nowrap",
+                faulted ? "search-band-fault" : "search-band-count-word",
+                busy && "text-[color:var(--clinical-accent)]",
+                (faulted || partial) && "text-[color:var(--warning)]",
+                !busy && !faulted && !partial && "text-[color:var(--text-muted)]",
+              )}
+              role="status"
+              aria-live={faulted ? "off" : "polite"}
+              aria-atomic="true"
+            >
+              {/* The state tile is gone, but state must not fall back to hue alone:
                 the tile carried it as shape, and a failed search that is merely a
                 different colour is invisible to a reader who cannot separate the
                 two. The glyph renders only for the states that are not `ready`,
@@ -421,79 +427,80 @@ export function SearchResultsHeaderBand({
                 survives forced colors, where a tinted tile background does not.
                 Shape, glyph presence and the absence of a number are three
                 independent non-chromatic channels. */}
-            {resolvedStatus === "loading" ? (
-              <LoaderCircle className="h-4 w-4 shrink-0 motion-safe:animate-spin" aria-hidden />
-            ) : faulted || partial ? (
-              <CircleAlert className="h-4 w-4 shrink-0" aria-hidden />
-            ) : null}
-            {resolvedStatus === "loading" ? (
-              "Searching…"
-            ) : resolvedStatus === "error" ? (
-              "Couldn’t search"
-            ) : resolvedStatus === "unauthorized" ? (
-              "Sign in to search"
-            ) : (
-              // `refetching` keeps text content identical to `ready` so the atomic
-              // live region does not re-announce an unchanged count. The pulsing
-              // dot is the whole signal and it is decorative.
-              //
-              // This comment used to add "and the dimming is CSS via
-              // `data-status`". There is no `[data-status="refetching"]` rule in
-              // globals.css and there is no evidence there ever was, so the
-              // sentence described an intention rather than the code. Adding the
-              // rule is a visual change across twelve modes and belongs to
-              // whoever decides a background refresh should look different;
-              // asserting it here while it does not exist is what let it go
-              // unnoticed.
-              <>
-                {resolvedStatus === "refetching" ? (
-                  <span
-                    className="h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--clinical-accent)] motion-safe:animate-pulse"
-                    aria-hidden
-                  />
-                ) : null}
-                <span>
-                  <span
-                    className="search-band-count text-[color:var(--text-heading)]"
-                    data-zero={matchCount === 0 ? "true" : undefined}
-                  >
-                    {matchCount}
-                  </span>{" "}
-                  {/* The count names what it counted. "12 matches" matched what?
+              {resolvedStatus === "loading" ? (
+                <LoaderCircle className="h-4 w-4 shrink-0 motion-safe:animate-spin" aria-hidden />
+              ) : faulted || partial ? (
+                <CircleAlert className="h-4 w-4 shrink-0" aria-hidden />
+              ) : null}
+              {resolvedStatus === "loading" ? (
+                "Searching…"
+              ) : resolvedStatus === "error" ? (
+                "Couldn’t search"
+              ) : resolvedStatus === "unauthorized" ? (
+                "Sign in to search"
+              ) : (
+                // `refetching` keeps text content identical to `ready` so the atomic
+                // live region does not re-announce an unchanged count. The pulsing
+                // dot is the whole signal and it is decorative.
+                //
+                // This comment used to add "and the dimming is CSS via
+                // `data-status`". There is no `[data-status="refetching"]` rule in
+                // globals.css and there is no evidence there ever was, so the
+                // sentence described an intention rather than the code. Adding the
+                // rule is a visual change across twelve modes and belongs to
+                // whoever decides a background refresh should look different;
+                // asserting it here while it does not exist is what let it go
+                // unnoticed.
+                <>
+                  {resolvedStatus === "refetching" ? (
+                    <span
+                      className="h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--clinical-accent)] motion-safe:animate-pulse"
+                      aria-hidden
+                    />
+                  ) : null}
+                  <span>
+                    <span
+                      className="search-band-count text-[color:var(--text-heading)]"
+                      data-zero={matchCount === 0 ? "true" : undefined}
+                    >
+                      {matchCount}
+                    </span>{" "}
+                    {/* The count names what it counted. "12 matches" matched what?
                       Once the query stops being the heading, an unlabelled number
                       is unanchored on a deep link or below the fold — and the mode
                       registry already carries the noun. */}
-                  {/* An override is already correct for the count it was given —
+                    {/* An override is already correct for the count it was given —
                       a caller that knows "abbreviation" is the singular of
                       "abbreviations" also knows which one this count needs, and
                       `singularNoun` would turn a supplied "abbreviation" into
                       itself only by luck of the suffix rules. */}
-                  {resultNounOverride ??
-                    (matchCount === 1 ? singularNoun(inlineNoun(resultNoun)) : inlineNoun(resultNoun))}
-                  {/* Nested in the count phrase, not a sibling flex item: the
+                    {resultNounOverride ??
+                      (matchCount === 1 ? singularNoun(inlineNoun(resultNoun)) : inlineNoun(resultNoun))}
+                    {/* Nested in the count phrase, not a sibling flex item: the
                       status row is `flex … gap-1.5`, so a separate span with a
                       leading space doubled the gap before the middot and still
                       left the live-region textContent missing that space. */}
-                  {partial ? (
-                    <span className="text-[color:var(--warning)]" title="Some result sources could not be loaded">
-                      {" · some sources unavailable"}
-                    </span>
-                  ) : null}
-                  {/* Same nesting rule as `partial` above: inside the count phrase, not a
+                    {partial ? (
+                      <span className="text-[color:var(--warning)]" title="Some result sources could not be loaded">
+                        {" · some sources unavailable"}
+                      </span>
+                    ) : null}
+                    {/* Same nesting rule as `partial` above: inside the count phrase, not a
                       sibling flex item, so the live region's textContent keeps the space
                       before the middot. */}
-                  {catalogueDegraded ? (
-                    <span
-                      className="text-[color:var(--warning)]"
-                      title="This list was served from the built-in catalogue because the published one could not be read"
-                    >
-                      {` · ${catalogueDegradedNotice}`}
-                    </span>
-                  ) : null}
-                </span>
-              </>
-            )}
-          </span>
+                    {catalogueDegraded ? (
+                      <span
+                        className="text-[color:var(--warning)]"
+                        title="This list was served from the built-in catalogue because the published one could not be read"
+                      >
+                        {` · ${catalogueDegradedNotice}`}
+                      </span>
+                    ) : null}
+                  </span>
+                </>
+              )}
+            </span>
+          ) : null}
           {/* The query, stated quietly after the count. The composer holds it too,
               but phone chrome scroll-hides and this band pins, so while you read
               results nothing on screen would otherwise say what was asked. It is
@@ -502,7 +509,7 @@ export function SearchResultsHeaderBand({
               part that truncates when the line runs out, never the number. */}
           {querySubjectDrawn ? (
             <>
-              <span className="search-band-rule mx-0.5 h-[1.125rem] w-px shrink-0" aria-hidden />
+              {showSummary ? <span className="search-band-rule mx-0.5 h-[1.125rem] w-px shrink-0" aria-hidden /> : null}
               <QueryHeading
                 // `min-w-[2rem]` keeps a non-empty box at 320px, so the heading stays
                 // findable and visible when a wide page control squeezes the line.
@@ -776,7 +783,7 @@ export function SearchResultsHeaderBand({
           `role="alert"` is a distinct role from the spine's `role="status"`, so
           singular role queries in jsdom and Playwright still resolve to exactly
           one node each. */}
-      {faulted ? (
+      {showSummary && faulted ? (
         <div
           role="alert"
           data-testid="search-query-ribbon-fault"
@@ -908,6 +915,7 @@ export function SearchResultsEmptyState({
   degraded = false,
   degradedReason,
   onRetry,
+  announce,
 }: {
   modeId: AppModeId;
   query: string;
@@ -953,6 +961,8 @@ export function SearchResultsEmptyState({
   degradedReason?: string | null;
   /** Degraded only: re-run the same search. Offered first, ahead of browsing. */
   onRetry?: () => void | Promise<void>;
+  /** Override announcement ownership when the surrounding results band already announces this state. */
+  announce?: boolean;
 }) {
   const config = searchCommandSurfaceConfig(modeId);
   const crossModes = (config?.crossModes ?? []).filter((target) => canAccessFavourites || target !== "favourites");
@@ -963,6 +973,7 @@ export function SearchResultsEmptyState({
   // calling it the most recent would be a claim the data cannot support.
   const lastFilter = appliedFilters.at(-1);
   const filtered = appliedFilters.length > 0;
+  const shouldAnnounce = announce ?? !filtered;
   const Title = headingLevel ? (`h${headingLevel}` as "h2" | "h3" | "h4" | "h5" | "h6") : "p";
   // What the panel can actually offer, decided before the copy describes it.
   // Both halves need a handler as well as data: most hosts render this panel
@@ -986,7 +997,7 @@ export function SearchResultsEmptyState({
         : `No ${resultNoun} match all ${appliedFilters.length} filters`
       : `No matches for “${query.trim() || "your search"}”`;
   const emptyBody = degraded
-    ? "Part of the search index did not respond, so this is not a reliable “nothing found”. Retry shortly, and do not read it as an absence of guidance."
+    ? "The search did not complete, so this is not a reliable “nothing found”. Retry shortly, and do not read it as an absence of guidance."
     : filtered
       ? "The search itself ran fine — the filters above excluded everything. Remove one to widen it."
       : hasExample && hasCrossMode
@@ -997,10 +1008,9 @@ export function SearchResultsEmptyState({
             ? "Try another mode."
             : "Check the spelling, or try a broader term.";
   // Live regions that mount already populated are silent in most screen readers.
-  // Deferred population makes the query-only path announce. Filtered-to-zero
-  // suppresses the region entirely: the band's `role="status"` already
-  // re-announced the zero count for that interaction, and a second polite
-  // region would double-speak.
+  // Deferred population makes the query-only path announce. By default a
+  // filtered zero leaves that announcement to the band's count. A caller can
+  // explicitly hand ownership here when this card is the sole failure summary.
   const [liveMessage, setLiveMessage] = useState("");
   useEffect(() => {
     // The population happens in the frame callback, never in the effect body.
@@ -1008,14 +1018,12 @@ export function SearchResultsEmptyState({
     // to: the deferred render is the entire mechanism here, so doing it
     // synchronously would both trip the rule and defeat the purpose.
     //
-    // Neither clearing call this replaced was doing anything. The region is
-    // rendered only when `!filtered`, so the filtered branch had nothing mounted
-    // to clear; and a re-populating region is already unmounted-then-mounted by
-    // that same gate, so it starts empty on its own.
-    if (filtered) return;
-    const frame = requestAnimationFrame(() => setLiveMessage(`${emptyTitle}. ${emptyBody}`));
+    // The live region is omitted whenever another surface owns the announcement.
+    if (!shouldAnnounce) return;
+    const reason = degraded && degradedReason?.trim() ? ` Reason: ${degradedReason.trim()}` : "";
+    const frame = requestAnimationFrame(() => setLiveMessage(`${emptyTitle}. ${emptyBody}${reason}`));
     return () => cancelAnimationFrame(frame);
-  }, [filtered, emptyTitle, emptyBody]);
+  }, [shouldAnnounce, emptyTitle, emptyBody, degraded, degradedReason]);
   const [retrying, setRetrying] = useState(false);
   const retry = async () => {
     if (!onRetry) return;
@@ -1117,9 +1125,9 @@ export function SearchResultsEmptyState({
       {/* Visible copy is never inside the live region: a region that mounts
           already populated is silent in most screen readers, and wrapping the
           visible tree would flash empty for a frame. The sr-only live region
-          below is populated after mount (query-only) or omitted (filtered).
-          NOT `role="status"`: the band already owns that role on every search
-          route and a second one makes singular `getByRole("status")` ambiguous. */}
+          below is populated after mount only when this panel owns the
+          announcement. It uses bare `aria-live` so a panel beside the shared
+          band's status never introduces a second status role. */}
       {/* The glyph sits beside the heading rather than inside it: a 48px tinted
           disc above centred copy is a container the icon vocabulary does not
           have, and putting the SVG inside `Title` would put a node inside the
@@ -1151,7 +1159,7 @@ export function SearchResultsEmptyState({
           ) : null}
         </div>
       </div>
-      {!filtered ? (
+      {shouldAnnounce ? (
         <div aria-live="polite" className="sr-only">
           {liveMessage}
         </div>

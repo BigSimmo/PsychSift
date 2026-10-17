@@ -81,10 +81,11 @@ import {
 import { clearRecentQueries, countRecentQueries } from "@/lib/recent-query-storage";
 import {
   cn,
+  controlDisabled,
   fieldControl,
   floatingControl,
   InlineNotice,
-  primaryControl,
+  commandControl,
   toggleThumbSurface,
 } from "@/components/ui-primitives";
 import { ProviderBrandMark, type SsoProvider } from "@/components/clinical-dashboard/provider-brand-icons";
@@ -817,7 +818,8 @@ export function SettingsDialog({
                     disabled={!reachable}
                     aria-current={active && reachable ? "true" : undefined}
                     className={cn(
-                      "flex min-h-tap items-center gap-3 rounded-lg px-3 text-sm font-medium leading-5 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] disabled:cursor-default disabled:opacity-40",
+                      "flex min-h-tap items-center gap-3 rounded-lg px-3 text-sm font-medium leading-5 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] disabled:cursor-default ",
+                      controlDisabled,
                       active && reachable
                         ? "bg-[color:var(--surface-lux)] text-[color:var(--clinical-accent)] shadow-[var(--shadow-inset)] ring-1 ring-[color:var(--clinical-accent)]/12"
                         : "text-[color:var(--text-muted)] enabled:hover:bg-[color:var(--surface-lux)]/80 enabled:hover:text-[color:var(--text-heading)]",
@@ -865,7 +867,7 @@ export function SettingsDialog({
                 // partner controls with it. Between md and lg the panel is still
                 // fullscreen, so the pinned bar needs the page background rather
                 // than the floating panel's surface.
-                "edge-glass-header sticky top-0 z-30 border-b border-[color:var(--border)]/70 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] transition-transform duration-[var(--duration-deliberate)] motion-reduce:transition-none md:translate-y-0 md:border-b-0 md:bg-[color:var(--background)] md:px-0 md:pb-3 md:pt-6 lg:bg-[color:var(--surface-lux)]",
+                "edge-glass-header sticky top-0 z-30 border-b border-[color:var(--border)]/70 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] transition-transform duration-[var(--duration-deliberate)] motion-reduce:transition-none md:translate-y-0 bg-[color:var(--surface)] md:-mx-6 md:px-6 md:pb-3 md:pt-6 lg:-mx-7 lg:px-7",
                 headerHidden && "-translate-y-full",
               )}
             >
@@ -1083,7 +1085,7 @@ export function SettingsDialog({
                             <button
                               type="submit"
                               disabled={settingsActionBusy || !settingsEmail.trim() || !auth.isConfigured}
-                              className={cn(primaryControl, "w-full")}
+                              className={cn(commandControl, "w-full")}
                             >
                               {settingsAuthBusy ? (
                                 <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
@@ -2076,17 +2078,25 @@ function SettingsActionRow({
       data-settings-search-row={rowId}
       className={cn(
         settingsSectionScrollMarginClass,
-        "flex w-full items-center gap-3 border-b border-[color:var(--border)]/70 px-3.5 py-3 text-left transition last:border-b-0 hover:bg-[color:var(--surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[color:var(--focus)] disabled:cursor-not-allowed disabled:opacity-55 md:hover:bg-[color:var(--surface-lux)]/55",
+        "group flex w-full items-center gap-3 border-b border-[color:var(--border)]/70 px-3.5 py-3 text-left transition last:border-b-0 hover:bg-[color:var(--surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[color:var(--focus)] disabled:cursor-not-allowed md:hover:bg-[color:var(--surface-lux)]/55",
+        controlDisabled,
       )}
     >
-      <IconBadge icon={Icon} />
-      <span className="min-w-0 flex-1 truncate text-sm font-semibold leading-5 text-[color:var(--text-heading)]">
+      <span className="group-disabled:[&_svg]:text-[color:var(--disabled)]">
+        <IconBadge icon={Icon} />
+      </span>
+      <span className="min-w-0 flex-1 truncate text-sm font-semibold leading-5 text-[color:var(--text-heading)] group-disabled:text-[color:var(--disabled)]">
         {label}
       </span>
       {meta ? (
-        <span className="shrink-0 text-xs font-medium leading-5 text-[color:var(--text-muted)]">{meta}</span>
+        <span className="shrink-0 text-xs font-medium leading-5 text-[color:var(--text-muted)] group-disabled:text-[color:var(--disabled)]">
+          {meta}
+        </span>
       ) : null}
-      <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-[color:var(--decoration-soft)]" />
+      <ChevronRight
+        aria-hidden="true"
+        className="h-4 w-4 shrink-0 text-[color:var(--decoration-soft)] group-disabled:text-[color:var(--disabled)]"
+      />
     </button>
   );
 }
@@ -2125,7 +2135,7 @@ function AccountEntryModeButton({
       type="button"
       onClick={() => onSelect(mode)}
       aria-pressed={active}
-      className={cn(active ? primaryControl : floatingControl, className)}
+      className={cn(active ? commandControl : floatingControl, className)}
     >
       {mode === "create" ? "Create account" : "Sign in"}
     </button>
@@ -2159,7 +2169,10 @@ function SettingsProviderRow({
       onClick={onClick}
       disabled={busy}
       aria-label={label}
-      className="flex min-h-12 w-full items-center gap-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-3 text-left text-sm font-semibold text-[color:var(--text-heading)] shadow-[var(--shadow-inset)] transition hover:border-[color:var(--border-strong)] hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] disabled:cursor-wait disabled:opacity-65 disabled:hover:border-[color:var(--border)] disabled:hover:bg-[color:var(--surface-raised)]"
+      className={cn(
+        "flex min-h-12 w-full items-center gap-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-3 text-left text-sm font-semibold text-[color:var(--text-heading)] shadow-[var(--shadow-inset)] transition hover:border-[color:var(--border-strong)] hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] disabled:cursor-wait disabled:hover:border-[color:var(--border)] disabled:hover:bg-[color:var(--surface-raised)]",
+        controlDisabled,
+      )}
     >
       {pending ? (
         <span className="grid h-7 w-7 shrink-0 place-items-center">

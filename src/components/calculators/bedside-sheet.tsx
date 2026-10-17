@@ -3,7 +3,7 @@
 import { AlertTriangle, CheckCheck, ChevronDown, ClipboardCopy, ClipboardList, NotebookPen } from "lucide-react";
 import { useState } from "react";
 
-import { cn } from "@/components/ui-primitives";
+import { cn, controlDisabled } from "@/components/ui-primitives";
 import { useCopyToast } from "@/components/ui/toast";
 
 import { calculators, domainLabels, type CalculatorFixture } from "./calculator-fixtures";
@@ -237,7 +237,8 @@ export function CalculatorsBedsideSheetMockup() {
               aria-label="Copy summary"
               disabled={!completedCalcs.length}
               className={cn(
-                "inline-flex min-h-tap items-center gap-1.5 rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] px-2.5 text-2xs font-bold text-[color:var(--text-muted)] transition hover:border-[color:var(--border-strong)] hover:text-[color:var(--text)] disabled:pointer-events-none disabled:opacity-40",
+                "inline-flex min-h-tap items-center gap-1.5 rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] px-2.5 text-2xs font-bold text-[color:var(--text-muted)] transition hover:border-[color:var(--border-strong)] hover:text-[color:var(--text)] disabled:pointer-events-none",
+                controlDisabled,
                 focusRing,
               )}
             >

@@ -20,7 +20,7 @@ export function ModeHomePageSkeleton() {
         <Skeleton className="h-16 w-full rounded-lg" animationDelay="100ms" />
         <Skeleton className="h-16 w-full rounded-lg" animationDelay="150ms" />
       </div>
-      <span className="sr-only">Loading</span>
+      <span className="text-sm text-[color:var(--text-muted)]">Loading…</span>
     </div>
   );
 }

@@ -382,7 +382,11 @@ test.describe("02 More — the second row is about the page you are on", () => {
     await expect(header).not.toContainText("Contacts");
     await expect(header.getByRole("link", { name: /back to on call/i })).toHaveCount(0);
     await expect(page.getByTestId("on-call-section-actions-trigger")).toHaveCount(0);
-    await expect(page.getByTestId("on-call-section-section-trigger")).toHaveCount(0);
+    // The shared rail keeps a disclosure for widths below its minimum band.
+    // It must stay hidden while this width has a complete section bar.
+    const narrowFallback = page.getByTestId("on-call-section-section-trigger");
+    await expect(narrowFallback).toHaveCount(1);
+    await expect(narrowFallback).toBeHidden();
   });
 
   test("names the page once, in the pill, with the mode beneath it", async ({ page }) => {

@@ -3,7 +3,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 
 import { TextField } from "@/components/ui/text-field";
-import { AsyncButton, cn, InlineNotice, primaryControl } from "@/components/ui-primitives";
+import { AsyncButton, cn, InlineNotice, commandControl } from "@/components/ui-primitives";
 import { useAuthSession } from "@/lib/supabase/client";
 import {
   clearPasswordRecoveryAuthorized,
@@ -128,7 +128,7 @@ export function PasswordRecoveryForm() {
                 busy={busy}
                 busyLabel="Please wait…"
                 disabled={busy || !password || !confirmation}
-                className={cn(primaryControl, "w-full")}
+                className={cn(commandControl, "w-full")}
               >
                 Update password
               </AsyncButton>
@@ -154,7 +154,7 @@ export function PasswordRecoveryForm() {
                 busy={busy}
                 busyLabel="Please wait…"
                 disabled={busy || !email.trim()}
-                className={cn(primaryControl, "w-full")}
+                className={cn(commandControl, "w-full")}
               >
                 Send recovery link
               </AsyncButton>

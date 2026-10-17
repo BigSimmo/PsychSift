@@ -3,7 +3,7 @@
 import { ArrowLeft, ArrowRight, Check, ChevronRight, Clock3, ListChecks, RotateCcw, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import { cn } from "@/components/ui-primitives";
+import { cn, controlDisabled } from "@/components/ui-primitives";
 import { MissingValue, missingValuePhrase } from "@/components/ui/missing-value";
 
 import { calculators, domainLabels, type CalculatorFixture, type CalculatorItem } from "./calculator-fixtures";
@@ -231,7 +231,8 @@ function QuestionScreen({
           onClick={onBack}
           disabled={stepIndex === 0}
           className={cn(
-            "inline-flex min-h-tap items-center gap-2 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-3 text-sm-minus font-bold text-[color:var(--text-muted)] hover:text-[color:var(--text)] disabled:pointer-events-none disabled:opacity-40",
+            "inline-flex min-h-tap items-center gap-2 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-3 text-sm-minus font-bold text-[color:var(--text-muted)] hover:text-[color:var(--text)] disabled:pointer-events-none",
+            controlDisabled,
             focusRing,
           )}
         >

@@ -3,7 +3,7 @@
 import { AlertTriangle, Info, Stethoscope } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import { cn } from "@/components/ui-primitives";
+import { cn, controlDisabled } from "@/components/ui-primitives";
 import { MissingValue } from "@/components/ui/missing-value";
 
 import { calculators, domainIcons, domainLabels, domainOrder, type CalculatorFixture } from "./calculator-fixtures";
@@ -245,7 +245,8 @@ export function CalculatorsClinicalConsoleMockup() {
               onClick={() => setAnswers({})}
               disabled={!derived.started}
               className={cn(
-                "inline-flex min-h-tap items-center rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] px-2.5 text-2xs font-bold text-[color:var(--text-muted)] hover:text-[color:var(--text)] disabled:pointer-events-none disabled:opacity-40",
+                "inline-flex min-h-tap items-center rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] px-2.5 text-2xs font-bold text-[color:var(--text-muted)] hover:text-[color:var(--text)] disabled:pointer-events-none",
+                controlDisabled,
                 focusRing,
               )}
             >

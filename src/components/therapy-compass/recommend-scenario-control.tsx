@@ -113,9 +113,7 @@ export function RecommendScenarioControl({
         testId="therapy-recommend-scenario-panel"
         footer={
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <span aria-live="polite" className="min-w-0 text-xs font-semibold text-[color:var(--text-muted)]">
-              {matchLabel}
-            </span>
+            <span className="min-w-0 text-xs font-semibold text-[color:var(--text-muted)]">{matchLabel}</span>
             <Button
               variant="primary"
               size="sm"

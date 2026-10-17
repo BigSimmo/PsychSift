@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 import { Sheet, type SheetProps } from "@/components/ui/sheet";
-import { cn, glassOverlaySurface, subtleStatusPill, textMuted } from "@/components/ui-primitives";
+import { controlDisabled, cn, glassOverlaySurface, subtleStatusPill, textMuted } from "@/components/ui-primitives";
 import { useDesktopSourceDock } from "@/components/clinical-dashboard/use-desktop-source-dock";
 import { logSourceOpen } from "@/components/clinical-dashboard/source-actions";
 import { cleanDisplayTitle, sourceQuoteDisplayText } from "@/components/clinical-dashboard/display-text";
@@ -420,8 +420,10 @@ export function AnswerSourceDrawer({
   );
 }
 
-const pagerStepClass =
-  "grid h-12 w-12 shrink-0 place-items-center rounded-md border border-[color:var(--border)] text-[color:var(--text-muted)] transition hover:bg-[color:var(--surface-subtle)] disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]";
+const pagerStepClass = cn(
+  controlDisabled,
+  "grid h-12 w-12 shrink-0 place-items-center rounded-md border border-[color:var(--border)] text-[color:var(--text-muted)] transition hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]",
+);
 
 const drawerHeaderActionClass =
   "inline-flex h-8 w-8 items-center justify-center rounded-full text-[color:var(--text-muted)] transition hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]";

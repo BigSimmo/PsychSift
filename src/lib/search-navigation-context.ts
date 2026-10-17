@@ -20,6 +20,18 @@ export type ResolvedSearchNavigationContext = {
 export type PrivateScopeRestorationStatus = "none" | "restoring" | "restored" | "unavailable";
 
 type ReadableSearchParams = Pick<URLSearchParams, "get" | "getAll">;
+
+/** A new Services query keeps the comparison basket, but returns to Search. */
+export function preserveServicesShortlist(href: string, current: ReadableSearchParams): string {
+  const [pathname, query = ""] = href.split("?");
+  if (pathname !== "/services/search") return href;
+  const shortlist = current.get("shortlist");
+  if (!shortlist) return href;
+  const params = new URLSearchParams(query);
+  params.set("shortlist", shortlist);
+  params.delete("workflow");
+  return `${pathname}?${params.toString()}`;
+}
 type FreeTextScopeKey =
   | "medications"
   | "topics"

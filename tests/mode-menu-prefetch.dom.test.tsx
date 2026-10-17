@@ -300,11 +300,12 @@ describe("mode menu destination prefetch", () => {
 
     const trigger = screen.getByRole("button", { name: /Mode First Nations/i });
     await user.click(trigger);
-    // The pill opens on First Nations' own pages; step back to the mode list.
-    await user.click(await screen.findByRole("button", { name: "Back to all modes" }));
+    // The trigger opens the mode choices directly, including the active home.
+    expect(screen.queryByRole("button", { name: "Back to all modes" })).not.toBeInTheDocument();
     const homeOption = within(await screen.findByRole("menu", { name: "Choose app mode" })).getByRole("menuitemradio", {
       name: /^First Nations\b/i,
     });
+    expect(homeOption).toHaveAttribute("aria-checked", "true");
     await user.click(homeOption);
 
     expect(router.push).toHaveBeenCalledWith("/first-nations");

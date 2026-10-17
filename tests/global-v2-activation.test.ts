@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { sourceFrom } from "./helpers/source-contract";
 
+import { readLayers } from "../scripts/token-layer-divergences.mjs";
 import { APP_THEME_COLORS, THEME_BOOTSTRAP_SCRIPT } from "../src/lib/theme";
 
 const layout = readFileSync(new URL("../src/app/layout.tsx", import.meta.url), "utf8");
@@ -82,12 +83,17 @@ describe("global v2 activation", () => {
     expect(forcedColours).toContain("--background: Canvas;");
   });
 
-  it("keeps compatibility tokens in :root instead of promoting v2 values", () => {
-    const compatibilityRoot = cssBlock(globals, "\n:root {");
-    expect(compatibilityRoot).toContain("--background: #f1f4f8;");
-    expect(compatibilityRoot).toContain("--command: #111827;");
-    expect(compatibilityRoot).not.toContain("--background: #ffffff;");
-    expect(compatibilityRoot).not.toContain("--command: #1a66a8;");
+  it("retains synchronized compatibility fallbacks while v2 stays class-scoped", () => {
+    const layers = readLayers();
+    for (const theme of ["light", "dark"] as const) {
+      const compatibility = cssBlock(globals, theme === "light" ? "\n:root {" : "\n.dark {");
+      for (const role of ["--background", "--surface", "--command", "--text-placeholder"]) {
+        expect(compatibility, `${theme} rollback must retain ${role}`).toContain(`${role}:`);
+        expect(layers[theme].compat.get(role), `${theme} ${role} must match canonical v2`).toBe(
+          layers[theme].v2.get(role),
+        );
+      }
+    }
     expect(v2).not.toMatch(/^:root\s*\{/m);
   });
 });

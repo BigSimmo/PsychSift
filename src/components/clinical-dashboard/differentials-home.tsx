@@ -34,7 +34,7 @@ import { useResultSort } from "@/components/use-result-sort";
 import { stretchedRowLinkClass } from "@/components/card-recipes";
 import { SharedCompareTray } from "@/components/compare/shared-compare-tray";
 import { Chip as DesignChip } from "@/components/ui/chip";
-import { cn } from "@/components/ui-primitives";
+import { cn, controlDisabled } from "@/components/ui-primitives";
 import { appModeHomeHref } from "@/lib/app-modes";
 import {
   differentialIdsFromSearchParams,
@@ -1285,7 +1285,10 @@ function SearchResultsView({
               type="button"
               onClick={rerunSearch}
               disabled={loading}
-              className="inline-flex min-h-tap items-center gap-1.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-3 text-sm font-bold text-[color:var(--text-heading)] disabled:cursor-wait disabled:opacity-60"
+              className={cn(
+                "inline-flex min-h-tap items-center gap-1.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-3 text-sm font-bold text-[color:var(--text-heading)] disabled:cursor-wait",
+                controlDisabled,
+              )}
             >
               <Search className="h-4 w-4" aria-hidden />
               {loading ? "Searching sources" : "Run source search"}

@@ -248,13 +248,19 @@ describe("Empirical Challenger M4 Stress Test Harness", () => {
       expect(classes).not.toContain("min-h-8"); // Previous sub-floor class eradicated
     });
 
-    it("verifies design-system contract baseline reflects debt reduction to 4", () => {
-      expect(baselineJson.metrics.interactiveTapFloorDeclarations).toBe(4);
+    it("verifies the two remaining tap-floor declarations exclude the repaired dictionary and tag-cloud paths", () => {
+      expect(baselineJson.metrics.interactiveTapFloorDeclarations).toBe(2);
       expect(
         (baselineJson.debtByPath.interactiveTapFloorDeclarations as Record<string, number>)[
           "src/components/dictionary/dictionary-term-page.tsx"
         ],
       ).toBeUndefined();
+      expect(Object.keys(baselineJson.debtByPath.interactiveTapFloorDeclarations)).not.toContain(
+        "src/components/DocumentTagCloud.tsx",
+      );
+      expect(
+        Object.values(baselineJson.debtByPath.interactiveTapFloorDeclarations).reduce((sum, count) => sum + count, 0),
+      ).toBe(2);
     });
   });
 
@@ -315,7 +321,8 @@ describe("Empirical Challenger M4 Stress Test Harness", () => {
    * 5. Calculators Search Page Density Toggle Hitbox
    * ======================================================================== */
   describe("5. Calculators: Density toggles horizontal collision avoidance", () => {
-    it("applies before:-inset-y-1.5 before:inset-x-0 to expand vertical height while zeroing horizontal extension", () => {
+    it("uses normal-flow 48px square targets and changes density without expanding into adjacent controls", async () => {
+      const user = userEvent.setup();
       render(<CalculatorsSearchPage />);
 
       const comfortableBtn = screen.getByRole("button", { name: /Comfortable density/i });
@@ -326,12 +333,16 @@ describe("Empirical Challenger M4 Stress Test Harness", () => {
 
       for (const btn of [comfortableBtn, compactBtn]) {
         const classes = btn.className;
-        expect(classes).toContain("relative");
-        expect(classes).toContain("size-9"); // 36px base
-        expect(classes).toContain("before:absolute");
-        expect(classes).toContain("before:-inset-y-1.5"); // 6px top and bottom -> 36 + 12 = 48px
-        expect(classes).toContain("before:inset-x-0"); // 0px horizontal inset -> prevents overlap with sibling button
+        expect(btn).toHaveAttribute("type", "button");
+        expect(btn).toHaveClass("size-12");
+        expect(classes).not.toMatch(/(?:^|\s)(?:absolute|fixed|-m[^\s]*|(?:before|after):[^\s]*)\b/);
+        expect(classes).not.toMatch(/\b(?:sm|md|lg|xl|2xl):(?:size|h|w)-/);
       }
+      expect(comfortableBtn.parentElement).toHaveClass("inline-flex");
+      expect(comfortableBtn.nextElementSibling).toBe(compactBtn);
+      await user.click(compactBtn);
+      expect(compactBtn).toHaveAttribute("aria-pressed", "true");
+      expect(comfortableBtn).toHaveAttribute("aria-pressed", "false");
     });
   });
 
