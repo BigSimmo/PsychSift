@@ -46,16 +46,18 @@ describe("starter-sharing preference reader and CAS writer", () => {
   });
 
   it("inserts a new preferences row or updates an existing row via compare-and-swap", async () => {
-    let storedRow: { preferences: Record<string, unknown>; updated_at: string } | null = null;
+    const state: {
+      storedRow: { preferences: Record<string, unknown>; updated_at: string } | null;
+    } = { storedRow: null };
     const fakeSupabase = {
       from: () => ({
         select: () => ({
           eq: () => ({
-            maybeSingle: async () => ({ data: storedRow, error: null }),
+            maybeSingle: async () => ({ data: state.storedRow, error: null }),
           }),
         }),
         insert: async (payload: { preferences: Record<string, unknown>; updated_at: string }) => {
-          storedRow = { preferences: payload.preferences, updated_at: payload.updated_at };
+          state.storedRow = { preferences: payload.preferences, updated_at: payload.updated_at };
           return { error: null };
         },
         update: (payload: { preferences: Record<string, unknown>; updated_at: string }) => ({
@@ -63,7 +65,7 @@ describe("starter-sharing preference reader and CAS writer", () => {
             eq: () => ({
               select: () => ({
                 maybeSingle: async () => {
-                  storedRow = { preferences: payload.preferences, updated_at: payload.updated_at };
+                  state.storedRow = { preferences: payload.preferences, updated_at: payload.updated_at };
                   return { data: { updated_at: payload.updated_at }, error: null };
                 },
               }),
@@ -79,7 +81,7 @@ describe("starter-sharing preference reader and CAS writer", () => {
 
     const second = await writeStarterSharing(fakeSupabase, "user-123", false);
     expect(second.workforce).toBe(false);
-    expect(storedRow?.preferences).toHaveProperty("starterSharing");
+    expect(state.storedRow?.preferences).toHaveProperty("starterSharing");
   });
 });
 
