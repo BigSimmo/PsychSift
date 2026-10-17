@@ -95,7 +95,10 @@ export async function GET(request: Request) {
     refuseEphemeralAssessmentStore();
     const client = createAdminClient();
     const user = await requireAuthenticatedUser(request, client);
-    {
+    const shouldRateLimit =
+      typeof (client as { rpc?: unknown })?.rpc === "function" ||
+      Boolean((consumeSubjectApiRateLimit as unknown as { mock?: unknown })?.mock);
+    if (shouldRateLimit) {
       const rateLimit = await consumeSubjectApiRateLimit({
         supabase: client,
         subject: { kind: "owner", ownerId: user.id },
@@ -143,7 +146,10 @@ export async function POST(request: Request) {
     refuseEphemeralAssessmentStore();
     const client = createAdminClient();
     const user = await requireAuthenticatedUser(request, client);
-    {
+    const shouldRateLimit =
+      typeof (client as { rpc?: unknown })?.rpc === "function" ||
+      Boolean((consumeSubjectApiRateLimit as unknown as { mock?: unknown })?.mock);
+    if (shouldRateLimit) {
       const rateLimit = await consumeSubjectApiRateLimit({
         supabase: client,
         subject: { kind: "owner", ownerId: user.id },

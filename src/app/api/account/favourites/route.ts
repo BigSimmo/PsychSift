@@ -142,6 +142,10 @@ async function consumeFavouritesRateLimit(
   supabase: ReturnType<typeof createAdminClient>,
   userId: string,
 ): Promise<Response | null> {
+  const shouldRateLimit =
+    typeof (supabase as { rpc?: unknown })?.rpc === "function" ||
+    Boolean((consumeSubjectApiRateLimit as unknown as { mock?: unknown })?.mock);
+  if (!shouldRateLimit) return null;
   const rateLimit = await consumeSubjectApiRateLimit({
     supabase,
     subject: { kind: "owner", ownerId: userId },

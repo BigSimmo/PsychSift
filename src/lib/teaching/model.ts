@@ -358,8 +358,8 @@ export const teachingOverviewQuerySchema = z
     }
     if (value.from && value.to) {
       const span = daysBetween(value.from, value.to);
-      if (span < 0 || span > 47)
-        ctx.addIssue({ code: "custom", message: "A week view covers 1 to 48 days.", path: ["to"] });
+      if (span < 0 || span > 41)
+        ctx.addIssue({ code: "custom", message: "A week view covers 1 to 42 days.", path: ["to"] });
     }
   });
 export type TeachingOverviewQuery = z.infer<typeof teachingOverviewQuerySchema>;

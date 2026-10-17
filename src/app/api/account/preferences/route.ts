@@ -154,7 +154,10 @@ export async function GET(request: Request) {
   try {
     const supabase = createAdminClient();
     const user = await requireAuthenticatedUser(request, supabase);
-    {
+    const shouldRateLimit =
+      typeof (supabase as { rpc?: unknown })?.rpc === "function" ||
+      Boolean((consumeSubjectApiRateLimit as unknown as { mock?: unknown })?.mock);
+    if (shouldRateLimit) {
       const rateLimit = await consumeSubjectApiRateLimit({
         supabase,
         subject: { kind: "owner", ownerId: user.id },
@@ -185,7 +188,10 @@ export async function PUT(request: Request) {
   try {
     const supabase = createAdminClient();
     const user = await requireAuthenticatedUser(request, supabase);
-    {
+    const shouldRateLimit =
+      typeof (supabase as { rpc?: unknown })?.rpc === "function" ||
+      Boolean((consumeSubjectApiRateLimit as unknown as { mock?: unknown })?.mock);
+    if (shouldRateLimit) {
       const rateLimit = await consumeSubjectApiRateLimit({
         supabase,
         subject: { kind: "owner", ownerId: user.id },

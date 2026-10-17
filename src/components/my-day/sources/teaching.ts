@@ -108,11 +108,12 @@ export function teachingMyDayItems(
 // The depth routes refuse the synthetic demo build with this code. That is "not
 // available here", not a failed read, so it must not raise "Couldn't load".
 const DEMO_UNAVAILABLE = "demo_mode_unavailable";
-const MY_DAY_TEACHING_SPAN_DAYS = 47;
+const MY_DAY_TEACHING_SPAN_DAYS = 41;
 
 /**
- * Shared `/api/teaching?view=week` URL starting on `mondayOf(today)` and ending 41 days
- * after today, used by both My Day readers so their in-flight read is deduplicated.
+ * Shared 6-week `/api/teaching?view=week` URL starting on `mondayOf(today)` (`span = 41` days,
+ * the maximum allowed by `teachingOverviewQuerySchema`), used by both `useTeachingMyDaySource`
+ * and `useTodaysTeaching` so `sharedGet` deduplicates their in-flight read on `/my-day`.
  */
 export function myDayTeachingWeekUrl(today: string): string {
   const monday = mondayOf(today);

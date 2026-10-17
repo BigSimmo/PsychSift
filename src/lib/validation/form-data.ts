@@ -28,4 +28,3 @@ export function parseFormDataFields<TSchema extends z.ZodType>(
   const values = Object.fromEntries(fields.map((field) => [field, formData.get(field)]));
   return parseSchema(schema, values, message, "invalid_form_data");
 }
-

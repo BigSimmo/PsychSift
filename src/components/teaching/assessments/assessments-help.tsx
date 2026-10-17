@@ -486,6 +486,7 @@ function RecordEpaSheet({
       />
       <WorkButton
         size="wide"
+        disabled={!!why}
         aria-disabled={why ? "true" : undefined}
         aria-describedby={why ? "assess-save-epa-why" : undefined}
         onClick={() => {
@@ -580,6 +581,7 @@ export function AnswerEpaRequest({
       />
       <WorkButton
         size="wide"
+        disabled={!!why}
         aria-disabled={why ? "true" : undefined}
         aria-describedby={why ? `assess-epa-${kind}-why` : undefined}
         onClick={() => {

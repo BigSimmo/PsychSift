@@ -142,7 +142,6 @@ export function CalculatorSheet({
       (element) =>
         element.tabIndex !== -1 &&
         (element.offsetParent !== null || element === document.activeElement) &&
-        element.getClientRects().length > 0 &&
         element.getAttribute("aria-hidden") !== "true" &&
         !element.closest('[aria-hidden="true"], [inert]'),
     );
