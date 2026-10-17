@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process";
+import { spawnSync, type SpawnSyncOptionsWithStringEncoding } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   chmodSync,
@@ -15,7 +15,7 @@ import {
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   codexCloudValidationScope,
@@ -57,6 +57,22 @@ import {
 const temporaryDirectories: string[] = [];
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const setupScript = "scripts/setup-codex-cloud.sh";
+const fixtureConfigRoot = mkdtempSync(path.join(os.tmpdir(), "codex-cloud-git-config-"));
+const fixtureGitConfig = path.join(fixtureConfigRoot, "empty.gitconfig");
+const fixtureHooks = path.join(fixtureConfigRoot, "empty-hooks");
+const fixtureShellBin = path.join(fixtureConfigRoot, "shell-bin");
+writeFileSync(fixtureGitConfig, "");
+mkdirSync(fixtureHooks);
+mkdirSync(fixtureShellBin);
+// Shell fixtures model Linux's physical Git root. Real Git repository tests
+// below remain separate; no shell fixture may fetch or mutate a host repository.
+const fixtureShellGit = path.join(fixtureShellBin, "git");
+writeFileSync(
+  fixtureShellGit,
+  '#!/bin/bash\nif [[ "$#" = 2 && "$1" = rev-parse && "$2" = --show-toplevel ]]; then pwd -P; else exit 91; fi\n',
+);
+chmodSync(fixtureShellGit, 0o755);
+afterAll(() => rmSync(fixtureConfigRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
 // Fixtures must never inherit provider values, startup hooks, or host config paths.
 const fixtureEnvironment: NodeJS.ProcessEnv = {
   PATH: process.env.PATH,
@@ -64,13 +80,62 @@ const fixtureEnvironment: NodeJS.ProcessEnv = {
   ComSpec: process.env.ComSpec,
   NODE_ENV: "test",
   GIT_CONFIG_NOSYSTEM: "1",
-  GIT_CONFIG_GLOBAL: os.devNull,
+  // Git for Windows rejects Node's \\\\.\\nul spelling of os.devNull.
+  GIT_CONFIG_GLOBAL: fixtureGitConfig,
+  GIT_CONFIG_COUNT: "1",
+  GIT_CONFIG_KEY_0: "core.hooksPath",
+  GIT_CONFIG_VALUE_0: fixtureHooks,
 };
 const bashCommand =
   process.platform === "win32"
     ? path.join(process.env.ProgramFiles || "C:\\Program Files", "Git/bin/bash.exe")
     : "bash";
 const shellToolsPath = process.platform === "win32" ? "/mingw64/bin:/usr/bin:/bin" : "/usr/bin:/bin";
+
+beforeEach(() => {
+  // Imported Git helpers also spawn children. Keep their reads/mutations inside
+  // synthetic repositories, without host configuration, hooks or path overrides.
+  for (const key of [
+    "GIT_CONFIG_NOSYSTEM",
+    "GIT_CONFIG_GLOBAL",
+    "GIT_CONFIG_COUNT",
+    "GIT_CONFIG_KEY_0",
+    "GIT_CONFIG_VALUE_0",
+  ]) {
+    vi.stubEnv(key, fixtureEnvironment[key]);
+  }
+  for (const key of ["GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE"]) vi.stubEnv(key, undefined);
+});
+
+function runBash(args: string[], options: SpawnSyncOptionsWithStringEncoding) {
+  // Establish PATH after Git Bash startup so synthetic tools retain precedence.
+  const environment = options.env ?? {};
+  const commandIndex = args.indexOf("-c");
+  const body = commandIndex >= 0 ? args[commandIndex + 1] : 'source "$0" "$@"';
+  const parameters = commandIndex >= 0 ? args.slice(commandIndex + 2) : [bashPathEntry(args[0]), ...args.slice(1)];
+  const requestedPath = environment.PATH ?? shellToolsPath;
+  return spawnSync(
+    bashCommand,
+    [
+      "--noprofile",
+      "--norc",
+      "-c",
+      `export PATH="$CLOUD_FIXTURE_PATH"; unset CLOUD_FIXTURE_PATH; [[ "$(command -v git)" = "$CLOUD_FIXTURE_GIT" ]] || exit 96; unset CLOUD_FIXTURE_GIT; ${body}`,
+      ...parameters,
+    ],
+    {
+      ...options,
+      timeout: options.timeout ?? 10_000,
+      env: {
+        ...environment,
+        // Keep native Windows bash/timeout out of shell fixtures. Requested
+        // paths contain only explicit fixture tools and these Unix utilities.
+        CLOUD_FIXTURE_PATH: `${bashPathEntry(fixtureShellBin)}:${requestedPath}:${shellToolsPath}`,
+        CLOUD_FIXTURE_GIT: bashPathEntry(fixtureShellGit),
+      },
+    },
+  );
+}
 const requiredPolicyExcludes = [
   "OPENAI_API_KEY",
   "OPENAI_ORG_ID",
@@ -110,6 +175,7 @@ const requiredPolicyExcludes = [
 ] as const;
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   for (const directory of temporaryDirectories.splice(0))
     rmSync(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 });
@@ -137,11 +203,6 @@ function bashPathEntry(entry: string) {
   return entry.replace(/^([A-Za-z]):/, (_, drive: string) => `/${drive.toLowerCase()}`).replaceAll("\\", "/");
 }
 
-function bashPathList(value: string) {
-  if (process.platform !== "win32") return value;
-  return value.split(path.delimiter).filter(Boolean).map(bashPathEntry).join(":");
-}
-
 function writeFakePython(directory: string, name: string, version: string) {
   const executable = path.join(directory, name);
   writeFileSync(executable, `#!/usr/bin/env bash\nprintf '%s\\n' '${version}'\n`);
@@ -150,13 +211,8 @@ function writeFakePython(directory: string, name: string, version: string) {
 }
 
 function runSetupPolicyOnly(home: string, env: Record<string, string | undefined> = {}) {
-  // The test redirects HOME to isolate the generated Codex config. Put the
-  // running test process's Node binary first so version-manager launchers that
-  // resolve their runtime through HOME remain usable until setup reaches the
-  // policy-only stop.
-  const nodeBin = path.dirname(process.execPath);
-  const requestedPath = env.PATH || [nodeBin, process.env.PATH].filter(Boolean).join(path.delimiter);
-  return spawnSync(bashCommand, [setupScript, "--policy-only-test-harness"], {
+  // Policy-only setup requires shell utilities, never a host Node launcher.
+  return runBash([setupScript, "--policy-only-test-harness"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -165,7 +221,7 @@ function runSetupPolicyOnly(home: string, env: Record<string, string | undefined
       CODEX_CLOUD_SETUP_STOP_AFTER_POLICY: "1",
       NODE_ENV: "test",
       ...env,
-      PATH: bashPathList(requestedPath),
+      PATH: env.PATH ?? shellToolsPath,
     },
   });
 }
@@ -1011,10 +1067,10 @@ describe("Codex Cloud environment contract", () => {
 
   it("probes the raw task environment without printing credential values", () => {
     const secret = "never-print-raw-provider-value";
-    const result = spawnSync(bashCommand, ["scripts/check-codex-cloud-raw-env.sh"], {
+    const result = runBash(["scripts/check-codex-cloud-raw-env.sh"], {
       cwd: repoRoot,
       encoding: "utf8",
-      env: { PATH: process.env.PATH, NODE_ENV: "test", OPENAI_API_KEY: secret },
+      env: { PATH: shellToolsPath, NODE_ENV: "test", OPENAI_API_KEY: secret },
     });
     expect(result.status).toBe(1);
     expect(result.stderr).toContain("OPENAI_API_KEY");
@@ -1023,11 +1079,11 @@ describe("Codex Cloud environment contract", () => {
   }, 120_000);
 
   it("name-scopes the documented launcher names separately from unexpected provider names", () => {
-    const known = spawnSync(bashCommand, ["scripts/check-codex-cloud-raw-env.sh"], {
+    const known = runBash(["scripts/check-codex-cloud-raw-env.sh"], {
       cwd: repoRoot,
       encoding: "utf8",
       env: {
-        PATH: process.env.PATH,
+        PATH: shellToolsPath,
         NODE_ENV: "test",
         OPENAI_BASE_URL: "https://example.invalid",
         GH_TOKEN: "synthetic-known-host-token",
@@ -1043,11 +1099,11 @@ describe("Codex Cloud environment contract", () => {
     expect(known.stderr).not.toContain("https://example.invalid");
     expect(known.stderr).not.toContain("synthetic-known-host-token");
 
-    const mixed = spawnSync(bashCommand, ["scripts/check-codex-cloud-raw-env.sh"], {
+    const mixed = runBash(["scripts/check-codex-cloud-raw-env.sh"], {
       cwd: repoRoot,
       encoding: "utf8",
       env: {
-        PATH: process.env.PATH,
+        PATH: shellToolsPath,
         NODE_ENV: "test",
         OPENAI_BASE_URL: "https://example.invalid",
         GH_TOKEN: "synthetic-known-host-token",
@@ -1172,31 +1228,38 @@ describe("Codex Cloud environment contract", () => {
       writeFileSync(
         executable,
         command === "node"
-          ? `#!/usr/bin/env bash\nif [[ "\${1:-}" = "-p" ]]; then printf "%s\\n" "${nodeVersion.slice(1)}"; else printf "%s\\n" "$PATH"; fi\n`
+          ? `#!/usr/bin/env bash\nif [[ "\${1:-}" = "-p" ]]; then printf "%s\\n" "${nodeVersion.slice(1)}"; else printf "%s|%s\\n" "\${CLOUD_FIXTURE_PROFILE_LOADED-unset}" "$PATH"; fi\n`
           : '#!/usr/bin/env bash\nif [[ "${1:-}" = "--version" ]]; then printf "%s\\n" "11.17.0"; else printf "%s\\n" "$PATH"; fi\n',
       );
       chmodSync(executable, 0o755);
     }
     writeFileSync(
       path.join(home, ".clinical-kb-codex-cloud.sh"),
-      [`export NVM_DIR="${bashHome}/.nvm"`, `nvm() { printf '${nodeVersion}\\n'; }`, ""].join("\n"),
+      [
+        `export NVM_DIR="${bashHome}/.nvm"`,
+        `nvm() { printf '${nodeVersion}\\n'; }`,
+        "export CLOUD_FIXTURE_PROFILE_LOADED=loaded",
+        "",
+      ].join("\n"),
     );
 
-    const install = spawnSync(bashCommand, ["scripts/install-codex-cloud-command-shims.sh"], {
+    const install = runBash(["scripts/install-codex-cloud-command-shims.sh"], {
       cwd: repoRoot,
       encoding: "utf8",
-      env: { ...fixtureEnvironment, HOME: bashHome, PATH: bashPathList(process.env.PATH || "") },
+      env: { ...fixtureEnvironment, HOME: bashHome, PATH: shellToolsPath },
     });
     expect(install.status, install.stderr || install.stdout).toBe(0);
 
     const shimDir = `${bashHome}/.local/bin`;
-    const result = spawnSync(bashCommand, [`${shimDir}/node`], {
+    const result = runBash([`${shimDir}/node`], {
       cwd: repoRoot,
       encoding: "utf8",
       env: { ...fixtureEnvironment, HOME: bashHome, PATH: `${shimDir}:${shimDir}:${shellToolsPath}` },
     });
     expect(result.status, result.stderr || result.stdout).toBe(0);
-    const resolvedPath = result.stdout.trim().split(":");
+    const [profileLoaded, runtimePath] = result.stdout.trim().split("|");
+    expect(profileLoaded).toBe("loaded");
+    const resolvedPath = runtimePath.split(":");
     expect(resolvedPath[0]).toBe(bashNodeBin);
     expect(resolvedPath).not.toContain(shimDir);
     expect(resolvedPath).toEqual(expect.arrayContaining(["/usr/bin", "/bin"]));
@@ -1225,10 +1288,10 @@ describe("Codex Cloud environment contract", () => {
       [`export NVM_DIR="${bashHome}/.nvm"`, `nvm() { printf '${nodeVersion}\\n'; }`, ""].join("\n"),
     );
 
-    const install = spawnSync(bashCommand, ["scripts/install-codex-cloud-command-shims.sh"], {
+    const install = runBash(["scripts/install-codex-cloud-command-shims.sh"], {
       cwd: repoRoot,
       encoding: "utf8",
-      env: { ...fixtureEnvironment, HOME: bashHome, PATH: bashPathList(process.env.PATH || "") },
+      env: { ...fixtureEnvironment, HOME: bashHome, PATH: shellToolsPath },
     });
     expect(install.status, install.stderr || install.stdout).toBe(0);
   }, 120_000);
@@ -1278,7 +1341,7 @@ describe("Codex Cloud environment contract", () => {
         );
         chmodSync(fallback, 0o755);
       }
-      const install = spawnSync(bashCommand, ["scripts/install-codex-cloud-command-shims.sh"], {
+      const install = runBash(["scripts/install-codex-cloud-command-shims.sh"], {
         cwd: repoRoot,
         encoding: "utf8",
         env: { ...fixtureEnvironment, HOME: bashHome, PATH: "/usr/bin:/bin" },
@@ -1296,14 +1359,14 @@ describe("Codex Cloud environment contract", () => {
           SUPABASE_URL: "synthetic-unrelated-value",
           HTTPS_PROXY: "synthetic-proxy",
         };
-        const selected = spawnSync(bashCommand, [path.join(shimDir, command)], {
+        const selected = runBash([path.join(shimDir, command)], {
           cwd: repoRoot,
           encoding: "utf8",
           env: commandEnvironment,
         });
         expect(selected.status, selected.stderr).toBe(0);
         expect(selected.stdout).toBe(`${command}|offline|unset|synthetic-proxy`);
-        const unrelated = spawnSync(bashCommand, [path.join(shimDir, command)], {
+        const unrelated = runBash([path.join(shimDir, command)], {
           cwd: otherCheckout,
           encoding: "utf8",
           env: commandEnvironment,
@@ -1339,7 +1402,7 @@ describe("Codex Cloud environment contract", () => {
       }
       for (const command of ["node", "npm"]) symlinkSync(path.join(nodeBin, command), path.join(shimDir, command));
       writeFileSync(path.join(shimDir, "npx"), "host-owned destination\n");
-      const install = spawnSync(bashCommand, ["scripts/install-codex-cloud-command-shims.sh"], {
+      const install = runBash(["scripts/install-codex-cloud-command-shims.sh"], {
         cwd: repoRoot,
         encoding: "utf8",
         env: { ...fixtureEnvironment, HOME: bashHome, PATH: "/usr/bin:/bin" },
@@ -1385,13 +1448,13 @@ describe("Codex Cloud environment contract", () => {
           );
           chmodSync(executable, 0o755);
         }
-        return spawnSync(bashCommand, ["scripts/install-codex-cloud-command-shims.sh"], {
+        return runBash(["scripts/install-codex-cloud-command-shims.sh"], {
           cwd: repoRoot,
           encoding: "utf8",
           env: {
             ...fixtureEnvironment,
             HOME: bashHome,
-            PATH: `${bashPathEntry(fallbackBin)}:${bashPathList(process.env.PATH || "")}`,
+            PATH: `${bashPathEntry(fallbackBin)}:${shellToolsPath}`,
           },
         });
       };
@@ -1449,7 +1512,7 @@ describe("Codex Cloud environment contract", () => {
       mkdirSync(staleVenvBin, { recursive: true });
       writeFakePython(staleVenvBin, "python3.12", "3.12");
 
-      const result = spawnSync(bashCommand, ["scripts/select-codex-cloud-python.sh", "3.12"], {
+      const result = runBash(["scripts/select-codex-cloud-python.sh", "3.12"], {
         cwd: repoRoot,
         encoding: "utf8",
         timeout: 2000,
