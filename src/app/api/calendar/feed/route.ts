@@ -8,6 +8,7 @@ import {
 import { ownerHasCalendarFeed, revokeOwnerCalendarFeed, rotateOwnerCalendarFeed } from "@/lib/calendar/feed-repository";
 import { isDemoMode } from "@/lib/env";
 import { jsonError, publicErrorResponse } from "@/lib/http";
+import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, requireAuthenticatedUser, unauthorizedResponse } from "@/lib/supabase/auth";
 
@@ -59,6 +60,7 @@ export async function POST(request: Request) {
     const { supabase, user, rateLimit } = await authorise(request);
     if (rateLimit.limited) return rateLimitJsonResponse("Too many requests. Try again shortly.", rateLimit);
     const path = await rotateOwnerCalendarFeed(supabase, user.id);
+    logger.info("calendar_feed_rotated", { userId: user.id });
     return NextResponse.json({ path }, { headers: noStore });
   } catch (error) {
     if (error instanceof AuthenticationError) return unauthorizedResponse();
@@ -72,6 +74,7 @@ export async function DELETE(request: Request) {
     const { supabase, user, rateLimit } = await authorise(request);
     if (rateLimit.limited) return rateLimitJsonResponse("Too many requests. Try again shortly.", rateLimit);
     await revokeOwnerCalendarFeed(supabase, user.id);
+    logger.info("calendar_feed_revoked", { userId: user.id });
     return NextResponse.json({ subscribed: false }, { headers: noStore });
   } catch (error) {
     if (error instanceof AuthenticationError) return unauthorizedResponse();

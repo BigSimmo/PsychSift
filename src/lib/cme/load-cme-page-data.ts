@@ -63,6 +63,8 @@ export type CmePageData = {
   readonly nextYearConfirmed: boolean | null;
   /** Undefined means the next year's goals could not be checked. */
   readonly nextYearGoals: readonly CmePlanGoal[] | undefined;
+  /** Authenticated owner id for owner-scoped client draft storage. */
+  readonly ownerId?: string | null;
 };
 
 export type CmeRecordsOptions = {
@@ -165,6 +167,7 @@ async function load(
       trainingPosition: null,
       nextYearConfirmed: null,
       nextYearGoals: undefined,
+      ownerId: null,
       entry,
     };
   }
@@ -183,6 +186,7 @@ async function load(
     trainingPosition: null,
     nextYearConfirmed: null,
     nextYearGoals: undefined,
+    ownerId: null,
   };
   try {
     const server = await createSupabaseServerClient();
@@ -206,7 +210,16 @@ async function load(
     ]);
     if (!set) {
       const allYears = await loadAllYears(admin, auth.user.id, targetYear, [], options);
-      return { ...empty, ...records, ...allYears, year: targetYear, routines, trainingPosition, state: "unconfigured" };
+      return {
+        ...empty,
+        ...records,
+        ...allYears,
+        year: targetYear,
+        routines,
+        trainingPosition,
+        ownerId: auth.user.id,
+        state: "unconfigured",
+      };
     }
     // Only the entry-goal links depend on the entry list; everything else needs just the year, so it
     // is read side by side rather than one after another (each read crosses Singapore -> Sydney).
@@ -238,7 +251,7 @@ async function load(
       ...(entryGoals[item.id] ? { goalId: entryGoals[item.id] } : {}),
     }));
     const state = cmeYearConfigurationState(set);
-    if (state === "unavailable") return { ...empty, year: targetYear, state };
+    if (state === "unavailable") return { ...empty, year: targetYear, ownerId: auth.user.id, state };
     const allYears = await loadAllYears(admin, auth.user.id, targetYear, entries, options);
     // Preserve the original settings and history for explicit owner repair.
     return {
@@ -255,6 +268,7 @@ async function load(
       trainingPosition,
       nextYearConfirmed: nextYear?.confirmed ?? null,
       nextYearGoals: nextYear?.goals,
+      ownerId: auth.user.id,
       ...records,
       entry: entry
         ? {

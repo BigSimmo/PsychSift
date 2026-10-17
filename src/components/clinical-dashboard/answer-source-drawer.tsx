@@ -19,6 +19,7 @@ import { cn, glassOverlaySurface, subtleStatusPill, textMuted } from "@/componen
 import { useDesktopSourceDock } from "@/components/clinical-dashboard/use-desktop-source-dock";
 import { logSourceOpen } from "@/components/clinical-dashboard/source-actions";
 import { cleanDisplayTitle, sourceQuoteDisplayText } from "@/components/clinical-dashboard/display-text";
+import { documentFileKind } from "@/components/clinical-dashboard/document-ui";
 import { SignedImage } from "@/components/clinical-dashboard/signed-image";
 import { CanonicalAnswerTables } from "@/components/clinical-dashboard/visual-evidence";
 import {
@@ -318,6 +319,10 @@ export function AnswerSourceDrawer({
             <p data-testid="answer-source-drawer-support" className="text-sm leading-6 text-[color:var(--text)]">
               {supportSentence}
             </p>
+          ) : source.cited === false ? (
+            <p data-testid="answer-source-drawer-uncited" className={cn("text-xs font-medium", textMuted)}>
+              Searched, not cited
+            </p>
           ) : null}
 
           {stale ? (
@@ -334,8 +339,10 @@ export function AnswerSourceDrawer({
           ) : null}
 
           {passage ? (
-            <section aria-label="Cited passage">
-              <p className={cn("mb-1.5 text-2xs font-semibold uppercase tracking-wide", textMuted)}>Cited passage</p>
+            <section aria-label={source.cited === false ? "Retrieved passage" : "Cited passage"}>
+              <p className={cn("mb-1.5 text-2xs font-semibold uppercase tracking-wide", textMuted)}>
+                {source.cited === false ? "Retrieved passage" : "Cited passage"}
+              </p>
               <blockquote
                 data-testid="answer-source-drawer-passage"
                 className="border-l-2 border-[color:var(--clinical-accent)]/35 pl-3 text-sm font-medium leading-6 text-[color:var(--text)]"
@@ -364,7 +371,9 @@ export function AnswerSourceDrawer({
                only content is a button, which reads as a failure rather than as
                a document with no captured passage. */
             <p data-testid="answer-source-drawer-no-passage" className={cn("text-sm leading-6", textMuted)}>
-              No passage was captured for this source. Open the original PDF to read the page it points at.
+              {documentFileKind(source.fileName) === "TXT" || documentFileKind(source.fileName) === "MD"
+                ? "No passage was captured for this source. Open the original text source to read it."
+                : "No passage was captured for this source. Open the original PDF to read the page it points at."}
             </p>
           )}
 
@@ -401,7 +410,9 @@ export function AnswerSourceDrawer({
             className="inline-flex min-h-12 items-center gap-1.5 justify-self-start rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] px-3 text-xs font-semibold text-[color:var(--text)] shadow-[var(--shadow-inset)] transition hover:border-[color:var(--clinical-accent-border)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
           >
             <ExternalLink aria-hidden="true" className="h-3.5 w-3.5" />
-            View original PDF
+            {documentFileKind(source.fileName) === "TXT" || documentFileKind(source.fileName) === "MD"
+              ? "View original text"
+              : "View original PDF"}
           </Link>
         </div>
       ) : null}

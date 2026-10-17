@@ -6,7 +6,11 @@ import { transcribeClinicalAskAudio } from "@/lib/openai";
 import { publicAccessContext } from "@/lib/public-api-access";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, unauthorizedResponse } from "@/lib/supabase/auth";
-import { validateSpeechTranscriptionForm } from "@/lib/validation/speech-transcription-request";
+import { readBoundedFormData } from "@/lib/validation/body";
+import {
+  maxClinicalAskAudioBytes,
+  validateSpeechTranscriptionForm,
+} from "@/lib/validation/speech-transcription-request";
 
 export const runtime = "nodejs";
 const transcriptionTimeoutMs = 30_000;
@@ -40,8 +44,11 @@ export async function POST(request: Request) {
         }),
       );
     if (request.signal.aborted) throw new PublicApiError("Transcription cancelled.", 499, { code: "client_cancelled" });
-    const formData = await request.formData().catch(() => {
-      throw new PublicApiError("Invalid transcription form data.", 400, { code: "invalid_form_data" });
+    const formData = await readBoundedFormData(request, maxClinicalAskAudioBytes, {
+      tooLargeMessage: "The audio recording exceeds 10 MiB.",
+      tooLargeCode: "audio_too_large",
+      invalidFormMessage: "Invalid transcription form data.",
+      invalidFormCode: "invalid_form_data",
     });
     const { audio, durationMs } = validateSpeechTranscriptionForm(formData);
     const signal = AbortSignal.any([request.signal, AbortSignal.timeout(transcriptionTimeoutMs)]);

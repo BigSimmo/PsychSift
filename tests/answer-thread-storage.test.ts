@@ -13,6 +13,8 @@ import {
   answerThreadStorageKey,
   answerThreadTtlMs,
   clearPersistedAnswerThread,
+  createAnswerThreadSnapshotMetadata,
+  formatRestoredAnswerAge,
   loadPersistedAnswerThread,
   maxStoredAnswerTurns,
   normalizeLatestTurn,
@@ -33,6 +35,7 @@ const sampleAnswer = {
 } satisfies RagAnswer;
 
 function createSampleThread(overrides: Partial<PersistedAnswerThread> = {}): PersistedAnswerThread {
+  const now = Date.now();
   return {
     version: 3,
     priorTurns: [
@@ -51,7 +54,8 @@ function createSampleThread(overrides: Partial<PersistedAnswerThread> = {}): Per
     collapsedTurnIds: ["answer-turn-1"],
     showEarlierTurns: false,
     latestSubmissionSignature: "answer:what about renal impairment?:",
-    expiresAt: Date.now() + answerThreadTtlMs,
+    savedAt: now,
+    expiresAt: now + answerThreadTtlMs,
     ...overrides,
   };
 }
@@ -567,7 +571,32 @@ describe("answer thread storage", () => {
 
     const raw = JSON.parse(storage.get(`${answerThreadStorageKey}:user-a`) ?? "{}");
     expect(raw.expiresAt).toBe(sampleThread.expiresAt);
-    expect(raw).not.toHaveProperty("savedAt");
+    expect(raw.savedAt).toBe(sampleThread.savedAt);
+  });
+
+  it("derives savedAt from expiresAt when restoring a v3 snapshot without savedAt and formats age disclosure (R32)", () => {
+    const now = Date.now();
+    const meta = createAnswerThreadSnapshotMetadata("answer:lithium:", now);
+    expect(meta).toEqual({
+      latestSubmissionSignature: "answer:lithium:",
+      savedAt: now,
+      expiresAt: now + answerThreadTtlMs,
+    });
+
+    const withoutSavedAt = {
+      ...createSampleThread({ expiresAt: now + answerThreadTtlMs }),
+    };
+    delete withoutSavedAt.savedAt;
+    storage.set(`${answerThreadStorageKey}:user-a`, JSON.stringify(withoutSavedAt));
+
+    const loaded = loadPersistedAnswerThread("user-a");
+    expect(loaded?.savedAt).toBe(now);
+
+    expect(formatRestoredAnswerAge(now, now + 20_000)).toBe(
+      "Restored from earlier in this tab (less than a minute ago)",
+    );
+    expect(formatRestoredAnswerAge(now, now + 15 * 60_000)).toBe("Restored from earlier in this tab (15 minutes ago)");
+    expect(formatRestoredAnswerAge(now, now + 2 * 60 * 60_000)).toBe("Restored from earlier in this tab (2 hours ago)");
   });
 
   it("scopes snapshots to accounts or the resolved current-tab guest", () => {

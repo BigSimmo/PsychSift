@@ -394,11 +394,13 @@ function ClinicalDashboardContent({
       scrollSurface(mainRef.current, "end");
     });
   }, [answer, mainRef]);
+  const [restoredAnswerSavedAt, setRestoredAnswerSavedAt] = useState<number | null>(null);
   const resetAnswerThread = useCallback(() => {
     setPriorAnswerTurns([]);
     setLatestAnswerQuery(null);
     setCollapsedTurnIds(new Set());
     setShowEarlierTurns(false);
+    setRestoredAnswerSavedAt(null);
     latestAnswerSnapshotMetadataRef.current = null;
     const ownerId = activeAnswerThreadOwnerIdRef.current;
     if (ownerId) clearPersistedAnswerThread(ownerId);
@@ -680,6 +682,7 @@ function ClinicalDashboardContent({
     setModeSearchSubmitted,
     setQuery,
     setAnswerThreadBootstrapped,
+    setRestoredAnswerSavedAt,
   });
   // Local no-auth can still exercise public-read APIs, but administration is always
   // derived separately from the immutable account role claim.
@@ -1517,6 +1520,7 @@ function ClinicalDashboardContent({
       // M10: discard a stale response — a newer search owns the UI state.
       if (requestIsCurrent()) {
         if (successfulPayload.kind === "answer") {
+          setRestoredAnswerSavedAt(null);
           latestAnswerSnapshotMetadataRef.current = createAnswerThreadSnapshotMetadata(
             searchSubmissionSignature(targetMode, trimmedQuery, {
               queryMode: targetQueryMode,
@@ -2270,6 +2274,11 @@ function ClinicalDashboardContent({
   const handleSubmitAnswerFeedback = useEventCallback(submitAnswerFeedback);
   const handleAnswerFollowUpQuote = useEventCallback(handleFollowUpQuote);
   const handleFollowUpSuggestionPick = useEventCallback(handlePickFollowUpSuggestion);
+  const handleRecheckRestoredAnswer = useEventCallback(() => {
+    const queryToRerun = (latestAnswerQuery ?? deferredQuery).trim();
+    if (!queryToRerun) return;
+    void executeSearch(queryToRerun, "answer", scopeFilters, queryMode, true);
+  });
   const handleCrossModeSearch = useEventCallback(crossModeSearch);
   const handleDocumentTagSearch = useEventCallback(handleTagSearch);
   const handleScopeFiltersChange = useScopeFilterRelax(query, queryMode, setScopeFilters, ask);
@@ -2976,6 +2985,8 @@ function ClinicalDashboardContent({
                         followUpSuggestionsDisabled={loading}
                         generating={loading}
                         onScopeDocument={handleScopeDocument}
+                        restoredSavedAt={restoredAnswerSavedAt}
+                        onRecheckAnswer={handleRecheckRestoredAnswer}
                       />
                       {/* Once per page, under the latest answer: where a question goes (audit S3). */}
                       {explicitDemoMode ||

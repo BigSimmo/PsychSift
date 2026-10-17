@@ -365,6 +365,7 @@
     "tests/registry-retry.dom.test.tsx",
     "tests/rendered-text-formatting.test.ts",
     "tests/restore-focus-unless-moved.dom.test.tsx",
+    "tests/restored-answer-notice.dom.test.tsx",
     "tests/result-filter-url.test.ts",
     "tests/route-*",
     "tests/rsc-boundary.test.ts",

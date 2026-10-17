@@ -20,7 +20,12 @@ vi.mock("@/lib/env", () => ({
 }));
 
 import { publicAccessContext } from "@/lib/public-api-access";
-import { AuthenticationError, getOptionalAuthenticatedUser, resolveOptionalAuthentication } from "@/lib/supabase/auth";
+import {
+  AuthenticationError,
+  getOptionalAuthenticatedUser,
+  requireAuthenticatedUser,
+  resolveOptionalAuthentication,
+} from "@/lib/supabase/auth";
 
 function authClient(result: unknown) {
   return {
@@ -323,6 +328,38 @@ describe("optional authentication", () => {
       authenticated: false,
       ownerId: undefined,
       rateLimitSubject: { kind: "anonymous" },
+    });
+  });
+
+  it("binds unmocked requireAuthenticatedUser exclusively to the verified session user despite conflicting owner_id in URL or body", async () => {
+    const client = authClient({
+      data: { user: { id: "user-verified-123", app_metadata: { site_role: "clinician" } } },
+      error: null,
+    });
+    const request = new Request("http://localhost/api/documents?owner_id=user-victim-999&userId=user-victim-999", {
+      method: "POST",
+      headers: {
+        authorization: "Bearer valid-session-token",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        owner_id: "user-victim-999",
+        userId: "user-victim-999",
+      }),
+    });
+
+    const authenticatedUser = await requireAuthenticatedUser(request, client as never);
+    expect(authenticatedUser).toEqual({
+      id: "user-verified-123",
+      appMetadata: { site_role: "clinician" },
+    });
+    expect(authenticatedUser.id).not.toBe("user-victim-999");
+
+    const access = await publicAccessContext(request, client as never);
+    expect(access).toMatchObject({
+      authenticated: true,
+      ownerId: "user-verified-123",
+      rateLimitSubject: { kind: "owner" },
     });
   });
 });

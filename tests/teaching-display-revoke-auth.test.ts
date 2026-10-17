@@ -157,6 +157,67 @@ describe("teachingServiceMutation display.revoke authorization", () => {
     });
   });
 
+  it("refuses a revoke by occurrence when the client cannot look up display links", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: { ok: true }, error: null });
+    const client = { rpc } as unknown as Parameters<typeof teachingServiceMutation>[0];
+
+    await expect(
+      teachingServiceMutation(client, actorId, serviceId, {
+        action: "display.revoke",
+        occurrenceId: "33333333-3333-4333-8333-333333333333",
+      }),
+    ).rejects.toMatchObject({
+      details: { code: "teaching_invalid_request" },
+    } satisfies Partial<PublicApiError>);
+
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  function occurrenceClient(rows: Array<{ id: string; link_hash: string; created_by: string | null }>) {
+    const base = createMockClient({ link: null, isOrganiser: false });
+    const from = vi.fn((table: string) => {
+      if (table !== "teaching_display_links") return base.from(table);
+      const is = vi.fn().mockResolvedValue({ data: rows, error: null });
+      const eq = vi.fn(() => ({ eq, is }));
+      return { select: vi.fn(() => ({ eq })) };
+    });
+    const client = { from, rpc: base.rpc } as unknown as Parameters<typeof teachingServiceMutation>[0];
+    return { client, rpc: base.rpc };
+  }
+
+  it("refuses a non-organiser's revoke by occurrence when someone else created one of the links", async () => {
+    const { client, rpc } = occurrenceClient([
+      { id: "link-own", link_hash: "b".repeat(64), created_by: actorId },
+      { id: "link-other", link_hash: "c".repeat(64), created_by: "44444444-4444-4444-8444-444444444444" },
+    ]);
+
+    await expect(
+      teachingServiceMutation(client, actorId, serviceId, {
+        action: "display.revoke",
+        occurrenceId: "33333333-3333-4333-8333-333333333333",
+      }),
+    ).rejects.toMatchObject({
+      status: 403,
+      details: { code: "teaching_role_denied" },
+    } satisfies Partial<PublicApiError>);
+
+    // Nothing is revoked, so the caller is never told a partial revoke succeeded.
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("lets a non-organiser revoke by occurrence when every active link is their own", async () => {
+    const { client, rpc } = occurrenceClient([{ id: "link-own", link_hash: "b".repeat(64), created_by: actorId }]);
+
+    await expect(
+      teachingServiceMutation(client, actorId, serviceId, {
+        action: "display.revoke",
+        occurrenceId: "33333333-3333-4333-8333-333333333333",
+      }),
+    ).resolves.toEqual({});
+
+    expect(rpc).toHaveBeenCalledOnce();
+  });
+
   it("allows the original creator even if not an organiser", async () => {
     const { client, rpc, from } = createMockClient({
       link: { id: "link-1", created_by: actorId },

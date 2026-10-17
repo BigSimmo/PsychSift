@@ -1,10 +1,7 @@
 # Ops deep-health digest + canary liveness.
 #
-# Schedule is DAILY at 22:00 UTC (`0 22 * * *`), not hourly. Hybrid-RPC evidence
-# steps still speak in "hourly" buckets for historical keying / future cadence
-# bumps — that naming is intentional and is not the workflow cron.
-#
-# Keep workflow_dispatch for operator verification and the daily schedule for
+# Schedule runs every 6 hours (`15 */6 * * *`) so trailing 60-minute SLO windows
+# are sampled 4x/day and active warning/page alerts notify on the rolling issue.
 name: Ops Digest
 
 on:
@@ -16,8 +13,8 @@ on:
         default: false
         type: boolean
   schedule:
-    # Once daily at 22:00 UTC.
-    - cron: "0 22 * * *"
+    # Every 6 hours at minute 15 UTC (4x/day sampling of 60-minute windows).
+    - cron: "15 */6 * * *"
 
 concurrency:
   group: ops-digest
@@ -153,8 +150,6 @@ jobs:
           script: |
             const fs = require("fs");
             const label = "ops-digest";
-            const publishAttentionComment =
-              context.eventName === "workflow_dispatch" && process.env.OPS_DIGEST_PUBLISH_ALERT_COMMENT === "true";
             const canaryStale = process.env.EVAL_CANARY_STALE === "true";
             const canaryMessage = process.env.EVAL_CANARY_MESSAGE || "";
             let body = fs.readFileSync("digest.md", "utf8");
@@ -167,6 +162,9 @@ jobs:
             const status = allowedStatuses.has(rawStatus) ? rawStatus : "unknown";
             const rawSeverity = process.env.OPS_DIGEST_SEVERITY || "unknown";
             const severity = allowedSeverities.has(rawSeverity) ? rawSeverity : "unknown";
+            const publishAttentionComment =
+              (context.eventName === "workflow_dispatch" && process.env.OPS_DIGEST_PUBLISH_ALERT_COMMENT === "true") ||
+              (context.eventName === "schedule" && (severity === "warning" || severity === "page"));
             let parsedSummary;
             try {
               parsedSummary = JSON.parse(process.env.OPS_DIGEST_ALERT_SUMMARY || "{}");
@@ -227,7 +225,7 @@ jobs:
               });
               issueNumber = created.data.number;
             }
-            // Attention comments notify subscribers, so scheduled runs never publish them.
+            // Publish attention comments on confirmed manual dispatches or scheduled warning/page breaches.
             if (publishAttentionComment && (status !== "ok" || alerting)) {
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
@@ -236,7 +234,7 @@ jobs:
                 body: `⚠ Attention (status=${status}, alerting=${alerting}, severity=${severity}${canaryStale ? ", eval-canary-stale=true" : ""}) — ${new Date().toISOString()}\n\nAlert summary: \`${alertSummary}\`\n\n${body}`,
               });
             } else if (status !== "ok" || alerting) {
-              core.info("Attention comment skipped: manual operator confirmation was not supplied.");
+              core.info("Attention comment skipped: neither manual confirmation nor scheduled warning/page severity was met.");
             }
             if (status !== "ok") core.warning(`Ops digest status: ${status}`);
             if (canaryStale) core.warning(canaryMessage || "Eval-canary liveness reported stale.");

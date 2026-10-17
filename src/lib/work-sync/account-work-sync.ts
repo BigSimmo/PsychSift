@@ -4,17 +4,20 @@ import { z } from "zod";
 
 import type { Json } from "@/lib/supabase/database.types";
 
-import { isValidApplications, parseApplications, type ApplicationsState } from "@/lib/cme/applications";
+import { cpdApplicationsReadSchema, cpdApplicationsSchema, parseApplications } from "@/lib/cme/applications";
 import { PublicApiError } from "@/lib/http";
 import {
-  isValidExamPrep,
-  isValidTermTracker,
+  examPrepReadSchema,
+  examPrepSchema,
+  termTrackerReadSchema,
+  termTrackerSchema,
   type ExamPrepState,
   type TermTrackerState,
 } from "@/lib/teaching/term-tracker";
 import { WORK_AREAS } from "@/lib/work-frame/areas";
 import { myDayCardIds } from "@/lib/my-day/dashboard";
-import { paperworkSchema } from "@/lib/work-screens/admin/paperwork-model";
+import { paperworkSchema, type AdminPaperwork } from "@/lib/work-screens/admin/paperwork-model";
+import { firstPaperworkPatientProblem } from "@/lib/work-screens/admin/patient-check";
 import { checkPatientDetail, type PatientDetailCheckOptions } from "@/lib/work-text/patient-detail-check";
 import {
   WORK_SYNC_ACCOUNT_STORES,
@@ -64,13 +67,6 @@ const favouriteSchema = z
   })
   .strict();
 
-/** A whole record, valid exactly when its page's own check says it reads back. */
-function wholeRecord<T>(isValid: (value: T) => boolean): z.ZodType<T> {
-  return z.custom<T>((value) => typeof value === "object" && value !== null && isValid(value as T), {
-    message: "That record could not be read.",
-  });
-}
-
 const WORK_SYNC_VALUE_SCHEMAS = {
   favouriteWorkPages: z.array(favouriteSchema).max(WORK_SYNC_MAX_FAVOURITES),
   myDayHiddenCards: z.array(z.enum(myDayCardIds)).max(myDayCardIds.length),
@@ -79,9 +75,9 @@ const WORK_SYNC_VALUE_SCHEMAS = {
     .refine((value) => Object.keys(value).length <= MAX_SNOOZES, { message: `At most ${MAX_SNOOZES} items.` }),
   myDayQuickNote: z.string().max(WORK_SYNC_QUICK_NOTE_LIMIT),
   adminPaperwork: paperworkSchema,
-  teachingTermTracker: wholeRecord<TermTrackerState>(isValidTermTracker),
-  teachingExamPrep: wholeRecord<ExamPrepState>(isValidExamPrep),
-  cpdApplications: wholeRecord<ApplicationsState>(isValidApplications),
+  teachingTermTracker: termTrackerSchema,
+  teachingExamPrep: examPrepSchema,
+  cpdApplications: cpdApplicationsSchema,
 } as const satisfies Record<WorkSyncSection, z.ZodType>;
 
 /** The `work_backups.section` each backed-up section is kept under. */
@@ -148,13 +144,23 @@ function parseWorkSyncValue(section: WorkSyncSection, value: unknown): unknown {
   if (value === null) return null;
   const parsed = WORK_SYNC_VALUE_SCHEMAS[section].safeParse(value);
   if (!parsed.success) {
-    throw new PublicApiError("That choice could not be saved to your account.", 400, { code: "invalid_body" });
+    throw new PublicApiError("That choice could not be saved to your account.", 400, {
+      code: isBackupSection(section) ? "invalid_work_backup" : "invalid_body",
+    });
   }
   if (section === "myDayQuickNote") {
     const note = parsed.data as string;
     if (!note.trim()) return null;
     if (checkPatientDetail(note, { thisYear: new Date().getUTCFullYear() })) {
       throw new PublicApiError("The note looks like it holds a patient detail, so it stays on this device.", 422, {
+        code: "patient_detail",
+      });
+    }
+  }
+  if (section === "adminPaperwork") {
+    const thisYear = new Date().getUTCFullYear();
+    if (firstPaperworkPatientProblem(parsed.data as AdminPaperwork, thisYear)) {
+      throw new PublicApiError("Something here looks like a patient detail, so it stays on this device.", 422, {
         code: "patient_detail",
       });
     }
@@ -205,11 +211,18 @@ function requireOwner(ownerId: string) {
   if (!ownerId) throw new Error("Missing work sync owner.");
 }
 
+const WORK_SYNC_READ_SCHEMAS = {
+  ...WORK_SYNC_VALUE_SCHEMAS,
+  teachingTermTracker: termTrackerReadSchema,
+  teachingExamPrep: examPrepReadSchema,
+  cpdApplications: cpdApplicationsReadSchema,
+} as const satisfies Record<WorkSyncSection, z.ZodType>;
+
 /** A table row back to an entry; a record that no longer validates is left out, as if never saved. */
 function tableEntry(section: WorkSyncSection, record: unknown, updatedAt: unknown): WorkSyncEntry | null {
   if (typeof updatedAt !== "string" || !Number.isFinite(Date.parse(updatedAt))) return null;
   if (record === null) return { value: null, updatedAt };
-  const parsed = WORK_SYNC_VALUE_SCHEMAS[section].safeParse(record);
+  const parsed = WORK_SYNC_READ_SCHEMAS[section].safeParse(record);
   return parsed.success ? { value: parsed.data, updatedAt } : null;
 }
 

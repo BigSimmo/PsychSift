@@ -77,6 +77,36 @@ describe("hybrid RPC hourly evidence", () => {
     }
   });
 
+  it("counts windows from a manual run between scheduled runs as consecutive evidence", () => {
+    const result = updateHybridRpcHourlyEvidence(
+      {
+        version: 1,
+        windows: [
+          { hour: "2026-08-23T00:00:00.000Z", rpcNames: ["hybrid_search"] },
+          { hour: "2026-08-23T03:00:00.000Z", rpcNames: ["hybrid_search"] },
+        ],
+      },
+      { slo: { hybridRpcIdentityEvidenceComplete: true, hybridRpcErrorCounts: { hybrid_search: 1 } } },
+      new Date("2026-08-23T06:20:00Z"),
+    );
+    expect(result.repeatedRpcNames).toEqual(["hybrid_search"]);
+  });
+
+  it("does not join windows more than six hours apart", () => {
+    const result = updateHybridRpcHourlyEvidence(
+      {
+        version: 1,
+        windows: [
+          { hour: "2026-08-23T00:00:00.000Z", rpcNames: ["hybrid_search"] },
+          { hour: "2026-08-23T07:00:00.000Z", rpcNames: ["hybrid_search"] },
+        ],
+      },
+      { slo: { hybridRpcIdentityEvidenceComplete: true, hybridRpcErrorCounts: { hybrid_search: 1 } } },
+      new Date("2026-08-23T08:20:00Z"),
+    );
+    expect(result.repeatedRpcNames).toEqual([]);
+  });
+
   it("breaks the paging sequence when an hourly identity snapshot is incomplete", () => {
     const result = updateHybridRpcHourlyEvidence(
       {
