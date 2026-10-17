@@ -19,6 +19,7 @@ const MAX_EXPANDED_BYTES = 32 * 1024 * 1024;
 const MAX_ROWS = 2_000;
 export const IMPORT_UNREADABLE_MESSAGE = "This file couldn't be read. Save it from the template as .xlsx or .csv.";
 export const IMPORT_TOO_LARGE_MESSAGE = "Use a file under 1 MB.";
+export const IMPORT_TOO_MANY_ROWS_MESSAGE = "Use a sheet with up to 2,000 rows.";
 
 function cellText(value: unknown): string {
   if (value instanceof Date) {
@@ -49,7 +50,7 @@ export async function readXlsxRows(data: ArrayBuffer | Uint8Array): Promise<Shee
   const rows: SheetRow[] = [];
   workbook.worksheets[0]?.eachRow({ includeEmpty: false }, (row, line) => {
     if (rows.length >= MAX_ROWS || line > 10_000) {
-      throw new Error(IMPORT_TOO_LARGE_MESSAGE);
+      throw new Error(IMPORT_TOO_MANY_ROWS_MESSAGE);
     }
     const values = Array.isArray(row.values) ? row.values.slice(1, MAX_COLUMNS + 1) : [];
     rows.push({ line, cells: Array.from(values, cellText) });
