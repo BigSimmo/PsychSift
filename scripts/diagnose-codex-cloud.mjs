@@ -1,6 +1,8 @@
 #!/usr/bin/env node
-import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { closeSync, mkdtempSync, openSync, readFileSync, rmSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
 
 import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 import { configuredProviderCredentialNames } from "./check-codex-cloud-setup.mjs";
@@ -86,9 +88,28 @@ export function diagnoseCodexCloud({
 }
 
 export function commandVersion(command, args = ["--version"], timeoutMilliseconds = 5000) {
-  const result = spawnSync(command, args, { encoding: "utf8", shell: false, timeout: timeoutMilliseconds });
-  if (result.status !== 0) return null;
-  return `${result.stdout || result.stderr}`.match(/\d+(?:\.\d+){1,2}/)?.[0] ?? null;
+  // File-backed stdio prevents descendants of a wrapper from keeping pipes
+  // open after the timed-out process is killed.
+  const outputDirectory = mkdtempSync(path.join(os.tmpdir(), "codex-cloud-version-"));
+  const stdoutPath = path.join(outputDirectory, "stdout");
+  const stderrPath = path.join(outputDirectory, "stderr");
+  const stdout = openSync(stdoutPath, "w+");
+  const stderr = openSync(stderrPath, "w+");
+  try {
+    const result = spawnSync(command, args, {
+      shell: false,
+      stdio: ["ignore", stdout, stderr],
+      timeout: timeoutMilliseconds,
+      killSignal: "SIGKILL",
+    });
+    closeSync(stdout);
+    closeSync(stderr);
+    if (result.status !== 0) return null;
+    const output = `${readFileSync(stdoutPath, "utf8")}${readFileSync(stderrPath, "utf8")}`;
+    return output.match(/\d+(?:\.\d+){1,2}/)?.[0] ?? null;
+  } finally {
+    rmSync(outputDirectory, { recursive: true, force: true });
+  }
 }
 
 function npmVersion() {
