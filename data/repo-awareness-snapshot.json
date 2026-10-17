@@ -3265,6 +3265,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-17-no-overseas-line-on-home-pages.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/superpowers/plans/2026-09-27-first-nations-mode-completion.md",
         "section": "superpowers",
         "catalogued": true

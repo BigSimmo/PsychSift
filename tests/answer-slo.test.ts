@@ -7,7 +7,7 @@ import { answerSloSnapshot, type SloProbeClient } from "@/lib/observability/answ
 // to provider-generation fallbacks, and .ilike(col, pattern) narrows it to the
 // truncation or timeout fallback subset by pattern. Awaiting
 // resolves to { count, error }.
-type SloFilterKey = "total" | "hybrid" | "degraded" | "truncation" | "timeout";
+type SloFilterKey = "total" | "hybrid" | "degraded" | "truncation" | "timeout" | "sourceGap" | "unsupported";
 
 function fakeClient(
   counts: {
@@ -16,6 +16,8 @@ function fakeClient(
     degraded: number;
     truncation?: number;
     timeout?: number;
+    sourceGap?: number;
+    unsupported?: number;
     hybridRows?: Array<{ metadata: unknown }>;
   },
   error?: unknown,
@@ -44,7 +46,11 @@ function fakeClient(
             ? "timeout"
             : filters.startsWith("metadata->>provider_generation_truncated.eq.true")
               ? "truncation"
-              : "degraded",
+              : filters.startsWith("metadata->>source_gap.eq.true")
+                ? "sourceGap"
+                : filters.startsWith("metadata->>unsupported.eq.true")
+                  ? "unsupported"
+                  : "degraded",
         );
       },
       ilike: (_column: string, pattern: string) =>
@@ -122,9 +128,9 @@ describe("answerSloSnapshot", () => {
     );
 
     expect(snapshot.totalQueries).toBe(7);
-    // Six queries scope by event_type, including the bounded hybrid-RPC identity evidence read.
+    // Eight queries scope by event_type, including the bounded metadata sample read.
     expect(observedBaseFilters).toEqual(
-      Array.from({ length: 6 }, () => ({ column: "metadata->>event_type", value: null })),
+      Array.from({ length: 8 }, () => ({ column: "metadata->>event_type", value: null })),
     );
   });
 
@@ -198,5 +204,55 @@ describe("answerSloSnapshot", () => {
     await expect(
       answerSloSnapshot(fakeClient({ total: 0, hybrid: 0, degraded: 0 }, { message: "boom" })),
     ).rejects.toThrow(/boom/);
+  });
+
+  it("counts source-gap and unsupported answers over the whole window, not the sampled rows (R27)", async () => {
+    const observedNarrowingFilters: Array<{ method: "eq" | "not" | "or"; column: string; value: unknown }> = [];
+    const snapshot = await answerSloSnapshot(
+      fakeClient(
+        {
+          total: 5000,
+          hybrid: 0,
+          degraded: 0,
+          sourceGap: 250,
+          unsupported: 50,
+          // The sample holds none of them: the counts must come from the server, not these rows.
+          hybridRows: [{ metadata: { latency_ms: 2000, mode: "fast" } }],
+        },
+        undefined,
+        [],
+        observedNarrowingFilters,
+      ),
+    );
+    expect(snapshot.sourceGapQueries).toBe(250);
+    expect(snapshot.sourceGapRate).toBeCloseTo(0.05, 5);
+    expect(snapshot.unsupportedQueries).toBe(50);
+    expect(snapshot.unsupportedRate).toBeCloseTo(0.01, 5);
+    expect(observedNarrowingFilters).toContainEqual(
+      expect.objectContaining({ method: "or", value: expect.stringContaining("metadata->>source_gap.eq.true") }),
+    );
+    expect(observedNarrowingFilters).toContainEqual(
+      expect.objectContaining({ method: "or", value: expect.stringContaining("metadata->>unsupported.eq.true") }),
+    );
+  });
+
+  it("computes the latency budget breach metric from the sample even when hybrid_rpc_errors is zero (R27)", async () => {
+    const snapshot = await answerSloSnapshot(
+      fakeClient({
+        total: 10,
+        hybrid: 0,
+        degraded: 0,
+        hybridRows: [
+          { metadata: { latency_ms: 4000, mode: "fast" } },
+          { metadata: { latency_ms: 12000, mode: "fast" } },
+          { metadata: { latency_ms: 30000, mode: "strong" } },
+          { metadata: { latency_ms: 2000, mode: "fast" } },
+        ],
+      }),
+    );
+    expect(snapshot.hybridRpcErrorQueries).toBe(0);
+    expect(snapshot.hybridRpcIdentityEvidenceComplete).toBe(true);
+    expect(snapshot.latencyBudgetBreachQueries).toBe(2);
+    expect(snapshot.latencyBudgetBreachRate).toBeCloseTo(0.2, 5);
   });
 });

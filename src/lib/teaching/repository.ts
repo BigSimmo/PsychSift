@@ -323,17 +323,53 @@ export async function teachingServiceMutation(
       return { ...parseTeachingResult(invitationCreatedSchema, data), code };
     }
     case "display.create": {
+      type DynamicCreateQueryChain = {
+        select?: (cols: string) => DynamicCreateQueryChain;
+        eq?: (col: string, val: string) => DynamicCreateQueryChain;
+        is?: (col: string, val: null) => DynamicCreateQueryChain;
+      } & PromiseLike<{ data?: unknown; error?: { message: string; code?: string | null } | null }>;
+      let priorRows: Array<{ link_hash?: string | null }> = [];
+      const dynamicCreateClient = client as unknown as { from?: (table: string) => DynamicCreateQueryChain };
+      if (typeof dynamicCreateClient.from === "function") {
+        try {
+          const linkTable = dynamicCreateClient.from("teaching_display_links");
+          const q1 = linkTable?.select?.("id, link_hash, teaching_occurrences!inner(service_id)");
+          const q2 = q1?.eq?.("occurrence_id", input.occurrenceId);
+          const q3 = q2?.eq?.("stream", input.stream) ?? q2;
+          const q4 = q3?.eq?.("teaching_occurrences.service_id", serviceId) ?? q3;
+          const q5 = q4?.is?.("revoked_at", null);
+          if (q5 && typeof q5.then === "function") {
+            const existingRes = await q5;
+            if (!existingRes?.error && existingRes?.data) {
+              priorRows = (Array.isArray(existingRes.data) ? existingRes.data : [existingRes.data]) as Array<{
+                link_hash?: string | null;
+              }>;
+            }
+          }
+        } catch {
+          // Best-effort prior-link snapshot when table query helper is not available on mock clients.
+        }
+      }
       const secret = newTeachingSecret();
+      const newHash = hashTeachingSecret(secret);
       const data = await teachingCommand(client, actorId, serviceId, input.action, {
         occurrenceId: input.occurrenceId,
         stream: input.stream,
-        linkHash: hashTeachingSecret(secret),
+        linkHash: newHash,
       });
+      for (const prior of priorRows) {
+        if (prior?.link_hash && prior.link_hash !== newHash) {
+          try {
+            await teachingCommand(client, actorId, serviceId, "display.revoke", { linkHash: prior.link_hash });
+          } catch {
+            // Best-effort cleanup: a presenter creating a new link may not own an earlier link created by an organiser.
+          }
+        }
+      }
       // `token` for the UI part's own link building, `path` for callers that only need the address.
       return { ...parseTeachingResult(displayCreatedSchema, data), token: secret, path: teachingDisplayPath(secret) };
     }
     case "display.revoke": {
-      const tokenHash = hashTeachingSecret(input.token);
       type DynamicQueryChain = {
         select: (cols: string) => DynamicQueryChain;
         eq: (col: string, val: string) => DynamicQueryChain;
@@ -341,70 +377,124 @@ export async function teachingServiceMutation(
         maybeSingle?: () => Promise<{ data?: unknown; error?: { message: string; code?: string | null } | null }>;
       } & PromiseLike<{ data?: unknown; error?: { message: string; code?: string | null } | null }>;
       const dynamicClient = client as unknown as { from?: (table: string) => DynamicQueryChain };
+
+      const verifyActiveOrganiser = async () => {
+        if (typeof dynamicClient.from !== "function") return;
+        const roleTable = dynamicClient.from("teaching_member_roles");
+        if (!roleTable || typeof roleTable.select !== "function") {
+          throw teachingRpcError({ message: "teaching_role_denied" });
+        }
+        const roleQuery = roleTable
+          .select("role, granted_at")
+          .eq("service_id", serviceId)
+          .eq("user_id", actorId)
+          .eq("role", "organiser")
+          .is("revoked_at", null);
+        const roleRes = typeof roleQuery.maybeSingle === "function" ? await roleQuery.maybeSingle() : await roleQuery;
+        if (roleRes?.error) throw teachingRpcError(roleRes.error);
+        const roleData = roleRes?.data;
+        const activeOrganiser = (Array.isArray(roleData) ? roleData[0] : roleData) as {
+          role?: string;
+          granted_at?: string | null;
+        } | null;
+        if (!activeOrganiser) {
+          throw teachingRpcError({ message: "teaching_role_denied" });
+        }
+        const memberTable = dynamicClient.from("on_call_service_members");
+        if (!memberTable || typeof memberTable.select !== "function") {
+          throw teachingRpcError({ message: "teaching_access_denied" });
+        }
+        const memberQuery = memberTable
+          .select("joined_at")
+          .eq("service_id", serviceId)
+          .eq("user_id", actorId)
+          .is("revoked_at", null);
+        const memberRes =
+          typeof memberQuery.maybeSingle === "function" ? await memberQuery.maybeSingle() : await memberQuery;
+        if (memberRes?.error) throw teachingRpcError(memberRes.error);
+        const memberData = memberRes?.data;
+        const activeMember = (Array.isArray(memberData) ? memberData[0] : memberData) as {
+          joined_at?: string | null;
+        } | null;
+        if (!activeMember) {
+          throw teachingRpcError({ message: "teaching_access_denied" });
+        }
+        const grantedMs = activeOrganiser.granted_at ? Date.parse(activeOrganiser.granted_at) : Number.NaN;
+        const joinedMs = activeMember.joined_at ? Date.parse(activeMember.joined_at) : Number.NaN;
+        if (!Number.isFinite(grantedMs) || !Number.isFinite(joinedMs) || grantedMs < joinedMs) {
+          throw teachingRpcError({ message: "teaching_role_denied" });
+        }
+      };
+
+      if (input.token) {
+        const tokenHash = hashTeachingSecret(input.token);
+        if (typeof dynamicClient.from === "function") {
+          const linkTable = dynamicClient.from("teaching_display_links");
+          if (linkTable && typeof linkTable.select === "function") {
+            const linkQuery = linkTable
+              .select("id, created_by, teaching_occurrences!inner(service_id)")
+              .eq("link_hash", tokenHash)
+              .eq("teaching_occurrences.service_id", serviceId);
+            const linkRes =
+              typeof linkQuery.maybeSingle === "function" ? await linkQuery.maybeSingle() : await linkQuery;
+            if (linkRes?.error) throw teachingRpcError(linkRes.error);
+            const link = linkRes?.data;
+            const linkRow = (Array.isArray(link) ? link[0] : link) as {
+              id?: string;
+              created_by?: string | null;
+            } | null;
+            if (linkRow && (!linkRow.created_by || linkRow.created_by !== actorId)) {
+              await verifyActiveOrganiser();
+            }
+          }
+        }
+        return parseTeachingResult(
+          emptyTeachingResultSchema,
+          await teachingCommand(client, actorId, serviceId, input.action, { linkHash: tokenHash }),
+        );
+      }
+
+      if (!input.occurrenceId) {
+        throw teachingRpcError({ message: "teaching_invalid_request" });
+      }
+
       if (typeof dynamicClient.from === "function") {
         const linkTable = dynamicClient.from("teaching_display_links");
         if (linkTable && typeof linkTable.select === "function") {
           const linkQuery = linkTable
-            .select("id, created_by, teaching_occurrences!inner(service_id)")
-            .eq("link_hash", tokenHash)
-            .eq("teaching_occurrences.service_id", serviceId);
-          const linkRes = typeof linkQuery.maybeSingle === "function" ? await linkQuery.maybeSingle() : await linkQuery;
+            .select("id, link_hash, created_by, teaching_occurrences!inner(service_id, presenter_id)")
+            .eq("occurrence_id", input.occurrenceId)
+            .eq("teaching_occurrences.service_id", serviceId)
+            .is("revoked_at", null);
+          const linkRes = await linkQuery;
           if (linkRes?.error) throw teachingRpcError(linkRes.error);
-          const link = linkRes?.data;
-          const linkRow = (Array.isArray(link) ? link[0] : link) as { id?: string; created_by?: string | null } | null;
-          if (linkRow && (!linkRow.created_by || linkRow.created_by !== actorId)) {
-            const roleTable = dynamicClient.from("teaching_member_roles");
-            if (!roleTable || typeof roleTable.select !== "function") {
-              throw teachingRpcError({ message: "teaching_role_denied" });
-            }
-            const roleQuery = roleTable
-              .select("role, granted_at")
-              .eq("service_id", serviceId)
-              .eq("user_id", actorId)
-              .eq("role", "organiser")
-              .is("revoked_at", null);
-            const roleRes =
-              typeof roleQuery.maybeSingle === "function" ? await roleQuery.maybeSingle() : await roleQuery;
-            if (roleRes?.error) throw teachingRpcError(roleRes.error);
-            const roleData = roleRes?.data;
-            const activeOrganiser = (Array.isArray(roleData) ? roleData[0] : roleData) as {
-              role?: string;
-              granted_at?: string | null;
-            } | null;
-            if (!activeOrganiser) {
-              throw teachingRpcError({ message: "teaching_role_denied" });
-            }
-            const memberTable = dynamicClient.from("on_call_service_members");
-            if (!memberTable || typeof memberTable.select !== "function") {
-              throw teachingRpcError({ message: "teaching_access_denied" });
-            }
-            const memberQuery = memberTable
-              .select("joined_at")
-              .eq("service_id", serviceId)
-              .eq("user_id", actorId)
-              .is("revoked_at", null);
-            const memberRes =
-              typeof memberQuery.maybeSingle === "function" ? await memberQuery.maybeSingle() : await memberQuery;
-            if (memberRes?.error) throw teachingRpcError(memberRes.error);
-            const memberData = memberRes?.data;
-            const activeMember = (Array.isArray(memberData) ? memberData[0] : memberData) as {
-              joined_at?: string | null;
-            } | null;
-            if (!activeMember) {
-              throw teachingRpcError({ message: "teaching_access_denied" });
-            }
-            const grantedMs = activeOrganiser.granted_at ? Date.parse(activeOrganiser.granted_at) : Number.NaN;
-            const joinedMs = activeMember.joined_at ? Date.parse(activeMember.joined_at) : Number.NaN;
-            if (!Number.isFinite(grantedMs) || !Number.isFinite(joinedMs) || grantedMs < joinedMs) {
-              throw teachingRpcError({ message: "teaching_role_denied" });
+          const rawRows = linkRes?.data;
+          const rows = (Array.isArray(rawRows) ? rawRows : rawRows ? [rawRows] : []) as Array<{
+            id?: string;
+            link_hash?: string | null;
+            created_by?: string | null;
+            teaching_occurrences?: { presenter_id?: string | null } | null;
+          }>;
+          // Revoking by occurrence revokes every active link or none. A link someone else created
+          // (or with no recorded creator) needs an active organiser; a non-organiser is refused
+          // outright rather than given a partial revoke that reports success while other links
+          // stay live. They can still revoke their own link by its token.
+          const hasOtherCreators = rows.some((row) => !row.created_by || row.created_by !== actorId);
+          if (rows.length === 0 || hasOtherCreators) {
+            await verifyActiveOrganiser();
+          }
+          for (const row of rows) {
+            if (row.link_hash) {
+              await teachingCommand(client, actorId, serviceId, input.action, { linkHash: row.link_hash });
             }
           }
+          return {};
         }
       }
-      return parseTeachingResult(
-        emptyTeachingResultSchema,
-        await teachingCommand(client, actorId, serviceId, input.action, { linkHash: tokenHash }),
-      );
+
+      // Only reached when the client cannot query tables. The database command takes a link
+      // hash, not an occurrence id, so sending `{ occurrenceId }` would be rejected anyway.
+      throw teachingRpcError({ message: "teaching_invalid_request" });
     }
     case "series.save":
       return parseTeachingResult(

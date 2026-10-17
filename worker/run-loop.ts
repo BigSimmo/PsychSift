@@ -1,7 +1,10 @@
 import { safeErrorLogDetails, safeIngestionJobLog } from "../src/lib/privacy";
+import { isWorkerClaimLoopPaused } from "./health";
 import type { JobRow } from "./types";
 import type { WorkerErrorStage } from "./observability";
 import { WorkerRuntimeControl, WorkerAbortError } from "./runtime-control";
+
+export { isWorkerClaimLoopPaused };
 
 export type WorkerRunLoopDeps = {
   once: boolean;
@@ -14,6 +17,11 @@ export type WorkerRunLoopDeps = {
   backoff: (consecutiveFailures: number) => number;
   controller: WorkerRuntimeControl;
   log: (message: string, level: "info" | "warn" | "error", extra?: Record<string, unknown>) => void;
+  /**
+   * Optional pause check (defaults to WORKER_PAUSED=true or WORKER_CLAIM_LOOP_ENABLED=false).
+   * When true, the worker keeps /healthz live and skips claiming new jobs.
+   */
+  isPaused?: () => boolean;
   /**
    * Optional Sentry/privacy-safe capture. Restores the pre-extraction
    * threshold-transition claim report and per-job process report.
@@ -33,9 +41,11 @@ export async function runWorkerLoop(deps: WorkerRunLoopDeps): Promise<void> {
     backoff,
     controller,
     log,
+    isPaused = () => isWorkerClaimLoopPaused(globalThis.process?.env),
     captureException,
   } = deps;
   let consecutiveClaimFailures = 0;
+  let loggedPauseState = false;
 
   // Stop exits via explicit breaks after probe/claim/sleep checks. An in-flight
   // batch always drains before the next loop condition, so an `active` counter
@@ -57,6 +67,18 @@ export async function runWorkerLoop(deps: WorkerRunLoopDeps): Promise<void> {
       }
       // Do not lease new work after SIGTERM/SIGINT — drain only.
       if (controller.isStopped) break;
+      if (isPaused()) {
+        if (!loggedPauseState) {
+          log("Worker claim loop is paused; skipping job claim", "info", { claimLoopPaused: true });
+          loggedPauseState = true;
+        }
+        consecutiveClaimFailures = 0;
+        if (once) break;
+        if (controller.isStopped) break;
+        await controller.sleep(pollMs);
+        continue;
+      }
+      loggedPauseState = false;
       jobs = await claim();
       consecutiveClaimFailures = 0;
     } catch (error) {

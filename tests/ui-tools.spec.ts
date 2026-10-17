@@ -3397,14 +3397,15 @@ test.describe("Responsive layout guards", () => {
     await expect(resultFilter).toBeVisible();
     await expect(resultFilter).toHaveAccessibleName(/No filters active/);
     await expect(bottomDock).toBeVisible();
-    await scrollPrimarySurface(page, "end");
-    await expect
-      .poll(async () => {
-        const geometry = await readPrimaryScrollGeometry(page);
-        return geometry.maxScrollTop - geometry.scrollTop;
-      })
-      .toBeLessThanOrEqual(1);
-    expect((await readPrimaryScrollGeometry(page)).owner).toBe("document");
+    // The "Also matches" card loads on its own request and can land after the first scroll to the
+    // end, making the page taller. Scroll to the live end and measure it as one retried step; a
+    // result that really sits under the dock still fails below.
+    await expect(async () => {
+      await scrollPrimarySurface(page, "end");
+      const geometry = await readPrimaryScrollGeometry(page);
+      expect(geometry.owner).toBe("document");
+      expect(geometry.maxScrollTop - geometry.scrollTop).toBeLessThanOrEqual(1);
+    }).toPass({ timeout: 10_000 });
     await expect(bottomDock).not.toHaveAttribute("data-scroll-hidden", "true");
     const resultBox = await resultCard.boundingBox();
     const dockBox = await bottomDock.boundingBox();

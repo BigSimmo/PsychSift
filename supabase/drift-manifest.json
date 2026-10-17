@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-16T00:03:20.700Z",
+  "generated_at": "2026-10-17T05:28:26.483Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "2b625b944a1087ecd9c671f95366a1fb6369334ef0619224ca86e858485100ce",
-  "replay_seconds": 34,
+  "schema_sha256": "878481b5d479c2749749de00f8266a1eb0473473c023f13105fd22a525fba9f4",
+  "replay_seconds": 157,
   "snapshot": {
     "views": [
       {
@@ -457,6 +457,14 @@
             "default": null,
             "identity": "",
             "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "rotated_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": false,
             "generated": ""
           },
           {
@@ -9200,6 +9208,42 @@
       {
         "acl": [
           "postgres=arwdDxtm/postgres",
+          "service_role=arwdDxtm/postgres"
+        ],
+        "name": "roster_open_post_alerts",
+        "columns": [
+          {
+            "name": "delivered_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "open_shift_id",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "service_id",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
+        "rls_forced": false,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
           "service_role=arwd/postgres"
         ],
         "name": "roster_open_post_keys",
@@ -16062,6 +16106,12 @@
         "def_hash": "590bcff136e7af842298b48ee261e3f2"
       },
       {
+        "def": "CREATE UNIQUE INDEX roster_open_post_alerts_pkey ON public.roster_open_post_alerts USING btree (service_id, open_shift_id)",
+        "name": "roster_open_post_alerts_pkey",
+        "table": "roster_open_post_alerts",
+        "def_hash": "554f543336fac0f6b87febcd93bf1b92"
+      },
+      {
         "def": "CREATE INDEX roster_open_post_keys_open_shift_idx ON public.roster_open_post_keys USING btree (open_shift_id)",
         "name": "roster_open_post_keys_open_shift_idx",
         "table": "roster_open_post_keys",
@@ -18443,7 +18493,7 @@
           "authenticated=X/postgres",
           "postgres=X/postgres"
         ],
-        "def_hash": "4b056ff4c38b7f520f3af9ac98530fb2",
+        "def_hash": "6f927f707d2fac97e8c7eaf9664ee75a",
         "signature": "public.admit_administrator_document(jsonb,jsonb,boolean)"
       },
       {
@@ -18551,7 +18601,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "fbc9cbd6804c5ceda22fe832b8a28fdd",
+        "def_hash": "662c9446962212a7435fb48de1d408aa",
         "signature": "public.calendar_feed_owner(text)"
       },
       {
@@ -18567,7 +18617,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "1b3446751b709c5d61850441069ee35b",
+        "def_hash": "4a2c186d0386fadff473a6a2a419d496",
         "signature": "public.calendar_feed_rotate(uuid,text)"
       },
       {
@@ -19602,7 +19652,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "4299bc0f724cb2f8d32653580991cb24",
+        "def_hash": "151405b481b44c5ec2078c35e7396076",
         "signature": "public.purge_expired_api_rate_limit_subjects(integer)"
       },
       {
@@ -19610,7 +19660,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "3f7a8939ee41c93b0c0126a6b1b65124",
+        "def_hash": "0f44716661f2d214c514dc00618d7694",
         "signature": "public.purge_expired_rag_queries(integer)"
       },
       {
@@ -19618,7 +19668,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "8dbddbaae2cceed984bfeb7c0ee61df0",
+        "def_hash": "87c49d745923c4d4a7ede2d55d3d82e7",
         "signature": "public.purge_expired_rag_query_misses(integer)"
       },
       {
@@ -19626,7 +19676,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "5009d9294403fdab9280c4bb0952e782",
+        "def_hash": "4511c6bd98f3219a61f5ddd44f644e76",
         "signature": "public.purge_expired_rag_response_cache(integer)"
       },
       {
@@ -20032,7 +20082,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "ca06394dd5c4556e65af5a771fc47841",
+        "def_hash": "084f9f92232ced865e0e3aa679ba7a7e",
         "signature": "public.roster_open_post_once(uuid,uuid,uuid,jsonb)"
       },
       {
@@ -23758,6 +23808,11 @@
         "def": "FOREIGN KEY (service_id, user_id) REFERENCES public.on_call_service_members(service_id, user_id) ON DELETE CASCADE",
         "name": "roster_member_roles_service_id_user_id_fkey",
         "table": "roster_member_roles"
+      },
+      {
+        "def": "PRIMARY KEY (service_id, open_shift_id)",
+        "name": "roster_open_post_alerts_pkey",
+        "table": "roster_open_post_alerts"
       },
       {
         "def": "FOREIGN KEY (open_shift_id) REFERENCES public.roster_open_shifts(id) ON DELETE CASCADE",

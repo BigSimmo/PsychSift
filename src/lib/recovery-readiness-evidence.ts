@@ -12,6 +12,7 @@ const MAX_EVIDENCE_VALIDITY_SECONDS = 86_400;
 const MAX_RECOVERY_EVIDENCE_AGE_SECONDS = 86_400;
 const MAX_RECOVERY_RPO_SECONDS = 86_400;
 const MAX_RESTORE_DRILL_AGE_SECONDS = 7_776_000;
+const MAX_RESTORE_DRILL_RTO_SECONDS = 86_400;
 
 const boundedIdentitySchema = z
   .string()
@@ -62,6 +63,10 @@ const restoreDrillSchema = z
     environment: z.literal("isolated"),
     databaseRestored: z.literal(true),
     storageRestored: z.literal(true),
+    authRestored: z.literal(true).optional(),
+    configRestored: z.literal(true).optional(),
+    measuredRpoSeconds: z.number().int().nonnegative().max(MAX_RECOVERY_RPO_SECONDS).optional(),
+    measuredRtoSeconds: z.number().int().positive().max(MAX_RESTORE_DRILL_RTO_SECONDS).optional(),
     integrityDigest: sha256Schema,
     outcome: z.literal("succeeded"),
   })
@@ -159,6 +164,7 @@ function canonicalJson(value: unknown): string {
   if (value && typeof value === "object") {
     const record = value as Record<string, unknown>;
     return `{${Object.keys(record)
+      .filter((key) => record[key] !== undefined)
       .sort(compareCodeUnits)
       .map((key) => `${JSON.stringify(key)}:${canonicalJson(record[key])}`)
       .join(",")}}`;

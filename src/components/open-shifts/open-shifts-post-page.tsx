@@ -79,11 +79,6 @@ function Field({
   );
 }
 
-/** When a post was tried, read in the click handler (never during render). */
-function attemptTime(): number {
-  return Date.now();
-}
-
 export function OpenShiftsPostPage() {
   const state = usePostedShifts();
   const router = useRouter();
@@ -106,11 +101,9 @@ export function OpenShiftsPostPage() {
   // failure sends only the dates still missing and never posts the same shift twice.
   const [done, setDone] = useState<Record<string, string>>({});
   const [progress, setProgress] = useState<{ current: number; total: number } | null>(null);
-  // Dates whose post got no answer (the connection dropped), with the team's shift ids known before that
-  // attempt. Only these are checked against the team's list on a retry: one that went live is not sent again.
-  const [unanswered, setUnanswered] = useState<
-    Record<string, { readonly ids: readonly string[]; readonly at: number; readonly serviceId: string }>
-  >({});
+  // Dates whose post got no answer (the connection dropped), with the team that attempt went to, so if
+  // that team cannot be read on a retry the form never falls back to another team instead.
+  const [unanswered, setUnanswered] = useState<Record<string, { readonly serviceId: string }>>({});
   // One post key per date being posted, by everything that was sent, also kept for this tab so it survives a
   // reload. A retry of a date whose answer was lost sends the same key, so the server answers with the shift
   // that post already saved instead of saving a second one. A key is dropped once its date is posted;
@@ -192,34 +185,6 @@ export function OpenShiftsPostPage() {
   const siteName = team?.sites.find((row) => row.id === site)?.name ?? null;
   const signature = (on: string) =>
     JSON.stringify([team?.serviceId, on, start, end, code.trim(), kind, site, level, urgent]);
-  /**
-   * For a date whose earlier post got no answer: the open shift that post made, if it did go live. It must be
-   * new since that attempt and match everything that was sent. A first post is never checked, so a manager can
-   * still deliberately post a second opening for the same slot.
-   */
-  const lostAnswerMatch = (on: string) => {
-    const before = unanswered[signature(on)]?.ids;
-    const onTimes = gapTimes(on, start, end);
-    if (!before || !onTimes || !team) return null;
-    return (
-      state.shifts.find(
-        (row) =>
-          !before.includes(row.id) &&
-          // Only a shift this person posted, so another manager's identical opening is never taken for theirs.
-          state.actorId !== null &&
-          row.postedBy === state.actorId &&
-          row.serviceId === team.serviceId &&
-          row.status === "open" &&
-          row.shiftCode === code.trim() &&
-          row.kind === kind &&
-          (row.siteId ?? "") === site &&
-          (row.minGrade ?? "") === level &&
-          row.urgent === urgent &&
-          Date.parse(row.startsAt) === Date.parse(onTimes.startsAt) &&
-          Date.parse(row.endsAt) === Date.parse(onTimes.endsAt),
-      ) ?? null
-    );
-  };
   const alreadyPosted = dates.filter((on) => signature(on) in done);
   const toPost = dates.filter((on) => !(signature(on) in done));
 
@@ -268,25 +233,6 @@ export function OpenShiftsPostPage() {
       }
       setProgress({ current: index + 1, total: toPost.length });
       const onTimes = gapTimes(on, start, end);
-      // A date whose earlier post got no answer waits for a fresh read of the team's shifts, so it is never sent
-      // twice just because the list hadn't caught up yet.
-      const pending = unanswered[signature(on)];
-      if (pending && (!state.readAt || state.readAt.getTime() <= pending.at || state.refreshFailed)) {
-        attempts.push({
-          date: on,
-          ok: false,
-          message: "Still checking whether this one went live. Try again in a moment.",
-        });
-        continue;
-      }
-      const live = lostAnswerMatch(on);
-      if (live) {
-        attempts.push({ date: on, ok: true, openShiftId: live.id });
-        nowDone[signature(on)] = live.id;
-        // Confirmed from the list, so a later deliberate post of the same slot gets a new key.
-        forgetPostKey(keyFor(on, postingActorId), postKeys.current);
-        continue;
-      }
       if (!onTimes) {
         attempts.push({ date: on, ok: false, message: "The times couldn't be worked out for this date." });
         continue;
@@ -304,18 +250,23 @@ export function OpenShiftsPostPage() {
         postKey,
       } as RosterAction);
       if (result.ok) {
-        attempts.push({ date: on, ok: true, openShiftId: result.result.openShiftId ?? null });
-        nowDone[signature(on)] = result.result.openShiftId ?? "";
-        forgetPostKey(keyFor(on, postingActorId), postKeys.current);
+        const status = (result.result as { status?: string }).status;
+        if (status !== undefined && status !== "reported" && status !== "open" && status !== "claimed") {
+          attempts.push({
+            date: on,
+            ok: false,
+            message: "That earlier post is no longer open. Try posting again.",
+          });
+          forgetPostKey(keyFor(on, postingActorId), postKeys.current);
+        } else {
+          attempts.push({ date: on, ok: true, openShiftId: result.result.openShiftId ?? null });
+          nowDone[signature(on)] = result.result.openShiftId ?? "";
+          forgetPostKey(keyFor(on, postingActorId), postKeys.current);
+        }
       } else {
         attempts.push({ date: on, ok: false, message: result.message });
-        // No answer at all: it may still have gone live, so a retry checks the team's list first. A repeat
-        // with no answer replaces the earlier record, so the next retry waits for a read newer than this one.
-        // The current list holds no copy from an earlier attempt, or that copy would have been matched above.
         if (result.code === "roster_unavailable") {
           nowUnanswered[signature(on)] = {
-            ids: state.shifts.map((row) => row.id),
-            at: attemptTime(),
             serviceId: team.serviceId,
           };
         }
