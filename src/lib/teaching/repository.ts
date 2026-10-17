@@ -475,21 +475,15 @@ export async function teachingServiceMutation(
             created_by?: string | null;
             teaching_occurrences?: { presenter_id?: string | null } | null;
           }>;
-          const ownRows = rows.filter((row) => row.created_by === actorId);
-          const otherRows = rows.filter((row) => !row.created_by || row.created_by !== actorId);
-          let isOrganiser = false;
-          if (rows.length === 0 || otherRows.length > 0) {
-            try {
-              await verifyActiveOrganiser();
-              isOrganiser = true;
-            } catch (orgErr) {
-              if (ownRows.length === 0) {
-                throw orgErr;
-              }
-            }
+          // Revoking by occurrence revokes every active link or none. A link someone else created
+          // (or with no recorded creator) needs an active organiser; a non-organiser is refused
+          // outright rather than given a partial revoke that reports success while other links
+          // stay live. They can still revoke their own link by its token.
+          const hasOtherCreators = rows.some((row) => !row.created_by || row.created_by !== actorId);
+          if (rows.length === 0 || hasOtherCreators) {
+            await verifyActiveOrganiser();
           }
-          const targetRows = isOrganiser ? rows : ownRows;
-          for (const row of targetRows) {
+          for (const row of rows) {
             if (row.link_hash) {
               await teachingCommand(client, actorId, serviceId, input.action, { linkHash: row.link_hash });
             }

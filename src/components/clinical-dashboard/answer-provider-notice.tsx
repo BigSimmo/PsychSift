@@ -11,15 +11,12 @@ import { isProviderGenerationFallbackCode, publicFallbackReason } from "@/lib/ra
  */
 export const ANSWER_PROVIDER_NOTICE_TEXT = "Sent to OpenAI overseas. Don't include patient details.";
 
-/** The same line on the Answer home, where nothing has been sent yet, so it must not say "Sent". */
-export const ANSWER_PROVIDER_NOTICE_HOME_TEXT = "Questions go to OpenAI overseas. Don't include patient details.";
-
 /** The visible words when the model could not write the answer and the source text is shown instead. */
 export const ANSWER_SUMMARY_UNAVAILABLE_TEXT = "AI summary unavailable";
 
 /**
- * One quiet line under the latest answer, and on the Answer home before the first question is sent
- * (owner decision, 13 Oct 2026).
+ * One quiet line under the latest answer. It was also on the Answer home before the first question
+ * (owner decision, 13 Oct 2026) until the owner removed it from the home pages on 17 Oct 2026.
  *
  * It says where a clinical question goes, which the composer's privacy line ("Do not enter
  * patient-identifiable information.") does not. It sits below the answer rather than beside
@@ -29,23 +26,15 @@ export const ANSWER_SUMMARY_UNAVAILABLE_TEXT = "AI summary unavailable";
  *
  * Not shown in demo mode, where no question leaves the device, so the line is never untrue.
  */
-export function AnswerProviderNotice({
-  className,
-  testId = "answer-provider-notice",
-  text = ANSWER_PROVIDER_NOTICE_TEXT,
-}: {
-  className?: string;
-  testId?: string;
-  text?: string;
-}) {
+export function AnswerProviderNotice({ className }: { className?: string }) {
   return (
     <p
       role="note"
-      data-testid={testId}
+      data-testid="answer-provider-notice"
       className={cn("flex min-w-0 items-start gap-1.5 text-2xs leading-4", textMuted, className)}
     >
       <Globe aria-hidden="true" className="mt-0.5 size-icon-xs shrink-0" />
-      <span className="min-w-0">{text}</span>
+      <span className="min-w-0">{ANSWER_PROVIDER_NOTICE_TEXT}</span>
     </p>
   );
 }
