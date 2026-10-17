@@ -176,7 +176,10 @@ function inheritedHeap() {
   const marker = "__PSYCHSIFT_HEAP_LIMIT__:";
   const result = spawnSync(
     process.execPath,
-    ["-e", `process.stdout.write(${JSON.stringify(marker)} + String(require("node:v8").getHeapStatistics().heap_size_limit))`],
+    [
+      "-e",
+      `process.stdout.write(${JSON.stringify(marker)} + String(require("node:v8").getHeapStatistics().heap_size_limit))`,
+    ],
     {
       env: process.env,
       encoding: "utf8",

@@ -3944,6 +3944,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/agents/cross-repo-cloud-contracts.md",
+        "section": "agents",
+        "catalogued": true
+      },
+      {
         "path": "docs/medication-lexicon-review-worklist.md",
         "section": "root",
         "catalogued": true
@@ -4206,6 +4211,11 @@
       {
         "path": "docs/prompts/codex-data-database-safety-ultra-review.md",
         "section": "prompts",
+        "catalogued": true
+      },
+      {
+        "path": "docs/agents/cloud-platform-acceptance.md",
+        "section": "agents",
         "catalogued": true
       },
       {
@@ -5231,6 +5241,11 @@
       {
         "path": "docs/decisions/2026-09-25-offline-pocket-pack.md",
         "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/agents/cloud-build-resources.md",
+        "section": "agents",
         "catalogued": true
       },
       {
