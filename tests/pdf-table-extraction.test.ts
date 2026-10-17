@@ -147,6 +147,21 @@ describe.runIf(hasPyMuPDF)("PDF table edge-strip row recovery (3344a3a9)", () =>
     ).toEqual([["5", "Highly aroused", "Lorazepam 1 to 2 mg orally - repeat once after 1 hour"]]);
   });
 
+  it("keeps footnotes flush with the first cell out of a recovered row", () => {
+    expect(
+      recoverBottomRow([
+        "page.insert_text((314, 218), 'Call the duty registrar', fontsize=9)",
+        "page.insert_text((54, 229), '* Off-label use', fontsize=9)",
+      ]),
+    ).toEqual([["5", "Highly aroused", "Call the duty registrar"]]);
+    expect(
+      recoverBottomRow([
+        "page.insert_text((314, 218), 'Call the duty registrar', fontsize=9)",
+        "page.insert_text((54, 229), '1 Not PBS listed', fontsize=9)",
+      ]),
+    ).toEqual([["5", "Highly aroused", "Call the duty registrar"]]);
+  });
+
   it("extracts column ranges cleanly when a table row contains (None, None, None, None) merged/empty cells", () => {
     const script = [
       "import json, sys",

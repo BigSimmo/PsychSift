@@ -745,6 +745,8 @@ def _continues_wrapped_cell(prev_line, segment, column_range, slack=12.0):
     closer to the column's right edge than the width of this line's first word.
     A deliberate break also counts: a line starting at the cell's own left edge
     with a bullet, a lower-case word or a number (a dose under a drug name).
+    Footnotes look alike, so '*' never counts and a number counts only when
+    the word after it is not capitalised ('1 Not PBS listed' stays out).
     """
     if prev_line is None:
         return False
@@ -754,8 +756,9 @@ def _continues_wrapped_cell(prev_line, segment, column_range, slack=12.0):
     words = cleaned.split(" ")
     if not words or not words[0]:
         return False
+    numbered_footnote = cleaned[0].isdigit() and len(words) > 1 and words[1][:1].isupper()
     if abs(sx0 - prev_line_start) <= 3.0 and (
-        cleaned[0] in "•·-–*" or cleaned[0].islower() or cleaned[0].isdigit()
+        cleaned[0] in "•·-–" or cleaned[0].islower() or (cleaned[0].isdigit() and not numbered_footnote)
     ):
         return True
     first_word_width = (sx1 - sx0) * (len(words[0]) / max(1, len(cleaned)))
