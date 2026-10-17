@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "23456bfc-5a5e-4dcb-946d-c099165824bb",
+  "createdOn": "2026-10-17",
+  "action": "update",
+  "payload": {
+    "id": "#8CKX6F",
+    "detail": "Lifeline WA boosted in PR #3157; national crisis lines remain unpinned for generic youth queries. Owner ruling 18 Oct 2026 00:10 AWST: do NOT pin national youth crisis lines (Lifeline WA, Suicide Call Back Service, Kids Helpline, 13YARN) for CAMHS crisis searches yet. Pinning waits for owner approval of the exact list; any pinning must exclude services that are closed, planned, superseded or marked temporarily unavailable, and keep CAMHS Crisis Connect and MHERL first. PR #3617 dropped its unapproved pinning attempt and cancelled its done request.",
+    "baseRowFingerprint": "9670257d2eec72cae4a29b9f245a9f0759995b16da76d1627a40371bf6fbb303",
+    "targetUlid": "01M3CT4CFM8CKX6FCRKGSK2RRS"
+  }
+}
