@@ -15,15 +15,15 @@ Retention and rotation: [`branch-review-archival-policy.md`](branch-review-archi
 
 ## Summary
 
-- Records: 708
-- Distinct ref cells: 454
-- Distinct reviewed heads: 690
+- Records: 711
+- Distinct ref cells: 457
+- Distinct reviewed heads: 693
 - Date range: `2026-08-12` to `2026-10-17`
 
 Records per date, newest first:
 
 - `2026-10-17` — 5 records
-- `2026-10-16` — 4 records
+- `2026-10-16` — 7 records
 - `2026-10-15` — 3 records
 - `2026-10-14` — 1 record
 - `2026-10-13` — 2 records
@@ -84,9 +84,12 @@ Scope and outcome are truncated; follow the record link for the full six-cell ro
 | 2026-10-17 | claude/rag-ingestion-hardening | RAG retrieval/summary/cache generation isolation and ingestion worker/edge hardening | resolved | [5349150e](branch-review-records/5349150e82f255e42866975fa7aa5e9fe76601433ebc427c75226677c5bef854.record.md) |
 | 2026-10-17 | claude/rag-ingestion-hardening | RAG and Ingestion review follow-ups | Resolved PR review findings, repaired bot-applied regressions, and res… | [94a7d790](branch-review-records/94a7d7908ea7ff58edaecb6ebd9fd41f72d422ad6d345190046cfd5ed2d4372d.record.md) |
 | 2026-10-17 | claude/add-prlanded-skill | Canonical prlanded skill and landed ledger records | PASS (0 blocking findings; added .agents/skills/prlanded canonical ski… | [e60fd2b5](branch-review-records/e60fd2b5f608cf1e9d5bbabab48952b87feff63f27ad911b96a1e9fc22250fa7.record.md) |
+| 2026-10-16 | claude/swarm-12-remaining-20261016 | prlanded | PR #3573 squash-merged as 24eeea365e; two-dot diff and stable patch-id… | [05e48734](branch-review-records/05e48734fb477ce17ef2f6b85df92af8aaf4e7c8281586c9e87ea8f873af629a.record.md) |
 | 2026-10-16 | fix/adversarial-remediation-20261016 | Adversarial assessment + parallel fix swarm + post-fix adversarial review across calculato… | All P0/P1/P2 findings fixed and verified; zero RAG files touched | [2a6b6200](branch-review-records/2a6b620065f5371039438fdbff73be97da6baf6c40dace3596e26c7bad0047dd.record.md) |
 | 2026-10-16 | codex/cloud-policy-clarity | Codex Cloud reasoning-effort and raw-env policy overhaul | PASS (0 blocking findings; removed all xhigh prompt-marker references… | [3dd0e7e3](branch-review-records/3dd0e7e32634c00735102bf22ba9883745ad72dc5db730b1dce2c33f03e699f0.record.md) |
+| 2026-10-16 | claude/swarm-16-issues-20261016 | prlanded | PR #3567 squash-merged as 5cbe4ec63a; all 68 source/test/doc files mat… | [5c2377ba](branch-review-records/5c2377bab5fb02f7ed3bd95bba8059a37e04c6fd22d90c1d718f6cb3e7771bda.record.md) |
 | 2026-10-16 | codex/cloud-policy-clarity | Codex Cloud environment script and shell-profile hardening | PASS (0 blocking findings; hardened .bashrc prepend, command-shim fall… | [7f059fca](branch-review-records/7f059fca46aac02223aa9f81e3d88a1a08f2b8a4844646d3a8eaa2cabd493c33.record.md) |
+| 2026-10-16 | claude/reconcile-inbox-20261016 | prlanded | PR #3570 squash-merged as fa526775c6; stable patch-id 87375f76eaf matc… | [a7be2760](branch-review-records/a7be2760026da4bc040fa90bf847382bdcded2a8a7510ceaf7be4ac49c042211.record.md) |
 | 2026-10-16 | feat/backlog-remediation-20261016 | prlanded | PR #3571 squash-merged cleanly into main (e526f8a4d5ad00ad05c5b780262b… | [ad2c45bc](branch-review-records/ad2c45bc2f3c606a7847421acc887ddf4861ab0563a5b96b4c6315b066837d90.record.md) |
 | 2026-10-15 | codex/ingestion-rag-pilot-handover-20261014 | Uncommitted admin pilot shared announcement correction; file SHA256 0f76deaa4d8d9ad46139d0… | Independent frontend source review ACCEPT; visible message and polite… | [263f1f06](branch-review-records/263f1f0680e9d5cda1bed9bb2a62853d3a34b78b5ad60054971520fdc884cf1c.record.md) |
 | 2026-10-15 | codex/ingestion-rag-pilot-handover-20261014 | Uncommitted native-PDF layout v5 producer 352d178978ef9086df1df708aa71266538076a2f5050a526… | Independent technical P1/P2 closure and qualified representative-sourc… | [6d2fd2e8](branch-review-records/6d2fd2e81761e17d32bb56bd41261efe8f9239ef266cf85a512c1021f889dd4b.record.md) |
