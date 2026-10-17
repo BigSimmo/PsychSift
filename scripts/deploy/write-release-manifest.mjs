@@ -29,16 +29,15 @@ function readGitHeadCommitSha(cwd = REPO_ROOT) {
 }
 
 export function resolveReleaseManifestIdentity(env = process.env, options = {}) {
-  const envCommitCandidate =
-    env.RAILWAY_GIT_COMMIT_SHA ||
-    env.GITHUB_SHA ||
-    env.SOURCE_COMMIT_SHA ||
-    env.COMMIT_SHA ||
-    env.VERCEL_GIT_COMMIT_SHA ||
-    "";
+  // Same candidate order as resolveDeploymentCommitSha in src/lib/observability/sentry-release.ts,
+  // and the first candidate that is a valid SHA wins, so a blank or malformed earlier variable
+  // cannot hide a valid later one.
+  const envCommitSha =
+    [env.RAILWAY_GIT_COMMIT_SHA, env.VERCEL_GIT_COMMIT_SHA, env.GITHUB_SHA, env.SOURCE_COMMIT_SHA, env.COMMIT_SHA]
+      .map(normalizeCommitSha)
+      .find(Boolean) ?? null;
   const commitSha =
-    normalizeCommitSha(envCommitCandidate) ??
-    (options.resolveGitHead === false ? null : readGitHeadCommitSha(options.cwd ?? REPO_ROOT));
+    envCommitSha ?? (options.resolveGitHead === false ? null : readGitHeadCommitSha(options.cwd ?? REPO_ROOT));
 
   const explicitRelease = (env.SENTRY_RELEASE || env.NEXT_PUBLIC_SENTRY_RELEASE || "").trim();
   const sentryRelease = explicitRelease || commitSha || "dev";

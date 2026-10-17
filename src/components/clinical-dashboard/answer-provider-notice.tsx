@@ -7,8 +7,8 @@ export const ANSWER_PROVIDER_NOTICE_TEXT =
   "Questions are sent to an overseas AI service (OpenAI) to search and write answers. Don't include patient details.";
 
 /**
- * One quiet line under the latest answer, and on the Answer home before the first question is sent
- * (owner decision, 13 Oct 2026).
+ * One quiet line under the latest answer. It was also on the Answer home before the first question
+ * (owner decision, 13 Oct 2026) until the owner removed it from the home pages on 17 Oct 2026.
  *
  * It says where a clinical question goes, which the composer's privacy line ("Do not enter
  * patient-identifiable information.") does not. It sits below the answer rather than beside
@@ -18,17 +18,11 @@ export const ANSWER_PROVIDER_NOTICE_TEXT =
  *
  * Not shown in demo mode, where no question leaves the device, so the line is never untrue.
  */
-export function AnswerProviderNotice({
-  className,
-  testId = "answer-provider-notice",
-}: {
-  className?: string;
-  testId?: string;
-}) {
+export function AnswerProviderNotice({ className }: { className?: string }) {
   return (
     <p
       role="note"
-      data-testid={testId}
+      data-testid="answer-provider-notice"
       className={cn("flex min-w-0 items-start gap-1.5 text-2xs leading-4", textMuted, className)}
     >
       <Globe aria-hidden="true" className="mt-0.5 size-icon-xs shrink-0" />

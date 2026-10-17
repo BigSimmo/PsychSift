@@ -3397,9 +3397,11 @@ test.describe("Responsive layout guards", () => {
     await expect(resultFilter).toBeVisible();
     await expect(resultFilter).toHaveAccessibleName(/No filters active/);
     await expect(bottomDock).toBeVisible();
-    // Scroll-driven reserve/layout commits can extend the document after the
-    // first endpoint jump. Re-issue the action against the live range, and keep
-    // the clearance measurement bracketed by endpoint assertions (#3597).
+    // The "Also matches" card loads on its own request, and scroll-driven
+    // reserve/layout commits can extend the document after the first endpoint
+    // jump. Re-issue the action against the live range, and keep the clearance
+    // measurement bracketed by endpoint assertions (#3597); a result that really
+    // sits under the dock still fails.
     await expect(async () => {
       await scrollPrimarySurface(page, "end");
       const before = await readPrimaryScrollGeometry(page);
