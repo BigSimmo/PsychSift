@@ -80,6 +80,14 @@
       "pattern": "clinical:review (only signs|signs only) (unverified|drafted) sources|clinical:review only signs unverified",
       "allowedContext": "no longer|retir(ed|ement)|removed|formerly|previously|superseded|dropped|replaced|historical",
       "decision": "docs/decisions/2026-10-17-sign-prose-only-source-reviews.md"
+    },
+    {
+      "id": "wake-therapy-needs-review-hold",
+      "retired": "2026-10-17",
+      "summary": "Wake therapy (sleep deprivation / chronotherapy) now carries governed clinical references and clinician sign-off in src/data/therapies-source.json rather than remaining held in needs_review.",
+      "pattern": "wake-therapy-sleep-deprivation-chronotherapy[^.\\n]{0,80}(must remain|stays|held in) `?needs_review`?",
+      "allowedContext": "no longer|retir(ed|ement)|removed|formerly|previously|superseded|dropped|replaced|historical|rather than",
+      "decision": "docs/decisions/2026-10-17-remaining-therapy-compass-sign-offs.md"
     }
   ]
 }
