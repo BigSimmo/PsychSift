@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId } from "react";
+import { useEffect, useId, useRef } from "react";
 import { Check, Copy, Search, Shield, Sparkles } from "lucide-react";
 
 import { cardPadding, cardSurface } from "@/components/card-recipes";
@@ -47,13 +47,20 @@ export function RecommendScreen() {
     : `${ranked.length} ranked ${ranked.length === 1 ? "match" : "matches"}`;
   // The scenario sheet and the result heading show the same count. One
   // bounded announcement prevents both speaking while the phone editor is open.
+  const lastAnnouncedLabel = useRef<string | null>(null);
   useEffect(() => {
     // The singleton remains accessible while the scenario sheet makes the
     // results page inert, including when the scenario yields zero matches.
-    if (b.loading) return;
+    if (b.loading || lastAnnouncedLabel.current === matchLabel) return;
+    // Returning to this routed tab should not repeat an unchanged result.
+    if (lastAnnouncedLabel.current === null) {
+      lastAnnouncedLabel.current = matchLabel;
+      return;
+    }
+    lastAnnouncedLabel.current = matchLabel;
     const timer = window.setTimeout(() => announce(matchLabel, { eventId: "therapy-recommend-count" }), 300);
     return () => window.clearTimeout(timer);
-  }, [b.loading, matchLabel, ranked.length]);
+  }, [b.loading, matchLabel]);
 
   const scenarioBindings = {
     recQuery: b.recQuery,
