@@ -338,7 +338,19 @@ function run() {
     safeParent(settingsPath);
     if (entry(settingsPath) && !entry(settingsPath).isFile())
       fail("host settings must be a regular file; preserved unchanged");
-    const existing = existsSync(settingsPath) ? readObject(settingsPath, "host settings") : {};
+    let existing = {};
+    if (existsSync(settingsPath)) {
+      try {
+        existing = readObject(settingsPath, "host settings");
+      } catch (error) {
+        if (!uninstall) throw error;
+        note("preserved malformed host settings during uninstall; ownership entries retained for review");
+        existing = null;
+      }
+    }
+    if (existing === null) {
+      // Do not touch the malformed settings file or its ownership records.
+    } else {
     const settings = structuredClone(existing);
     const desiredByKey = new Map(desiredSettings.map((item) => [JSON.stringify(item.path), item]));
     const previousByKey = new Map(previous.settings.map((item) => [JSON.stringify(item.path), item]));
@@ -382,6 +394,7 @@ function run() {
         content: `${JSON.stringify(settings, null, 2)}\n`,
       });
     else note("settings.json already matches the profile or preserved host values");
+    }
   }
   // Preflight memory parents too; host memory entries themselves, including symlinks, always win.
   const projectDir = process.env.CLAUDE_PROJECT_DIR ? resolve(process.env.CLAUDE_PROJECT_DIR) : repoRoot;
