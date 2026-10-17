@@ -27,7 +27,12 @@ vi.mock("@/lib/openai", () => ({
   }),
 }));
 
-import { generateDocumentEnrichment, ragEnrichmentVersion, upsertDocumentEnrichment } from "@/lib/document-enrichment";
+import {
+  fetchRelatedDocumentMetadata,
+  generateDocumentEnrichment,
+  ragEnrichmentVersion,
+  upsertDocumentEnrichment,
+} from "@/lib/document-enrichment";
 
 type QueryResult = { data: unknown; error: { message: string } | null };
 type QueryCall = {
@@ -504,5 +509,80 @@ describe("document enrichment", () => {
       "document enrichment structured output rejected",
       expect.objectContaining({ document: "fallback-protocol.pdf" }),
     );
+  });
+
+  it("filters hidden labels and selects the newest committed summary in fetchRelatedDocumentMetadata", async () => {
+    const docId = "doc-meta-1";
+    const summaryOrderCalls: Array<{ column: string; options?: { ascending?: boolean } }> = [];
+    const fallbackSupabase = {
+      rpc: vi.fn(async () => ({ data: null, error: { message: "rpc_unavailable" } })),
+      from: vi.fn((table: string) => {
+        const builder = {
+          select: () => builder,
+          in: () => builder,
+          eq: () => builder,
+          is: () => builder,
+          or: () => builder,
+          order: (column: string, options?: { ascending?: boolean }) => {
+            if (table === "document_summaries") summaryOrderCalls.push({ column, options });
+            return builder;
+          },
+          abortSignal: () => builder,
+          then: (resolve: (value: { data: unknown[]; error: null }) => unknown) => {
+            if (table === "documents") {
+              return Promise.resolve({
+                data: [{ id: docId, metadata: { index_generation_id: "gen-current" } }],
+                error: null,
+              }).then(resolve);
+            }
+            if (table === "document_summaries") {
+              return Promise.resolve({
+                data: [
+                  {
+                    document_id: docId,
+                    summary: "Older committed summary",
+                    generated_at: "2026-07-01T00:00:00.000Z",
+                  },
+                  {
+                    document_id: docId,
+                    summary: "Newest committed summary",
+                    generated_at: "2026-07-02T00:00:00.000Z",
+                  },
+                ],
+                error: null,
+              }).then(resolve);
+            }
+            return Promise.resolve({
+              data: [
+                {
+                  document_id: docId,
+                  label: "clozapine",
+                  label_type: "medication",
+                  metadata: { index_generation_id: "gen-current" },
+                },
+                {
+                  document_id: docId,
+                  label: "suppressed-tag",
+                  label_type: "topic",
+                  metadata: { index_generation_id: "gen-current", review_status: "hidden" },
+                },
+              ],
+              error: null,
+            }).then(resolve);
+          },
+        };
+        return builder;
+      }),
+    };
+
+    const fallbackRows = await fetchRelatedDocumentMetadata({
+      supabase: fallbackSupabase as never,
+      documentIds: [docId],
+    });
+    expect(summaryOrderCalls).toEqual([{ column: "generated_at", options: { ascending: false } }]);
+    expect(fallbackRows[0]?.summary).toBe("Newest committed summary");
+    expect(fallbackRows[0]?.labels).toEqual([
+      expect.objectContaining({ label: "clozapine", label_type: "medication" }),
+    ]);
   });
 });

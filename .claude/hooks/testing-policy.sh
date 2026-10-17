@@ -1,13 +1,9 @@
 #!/usr/bin/env bash
 # SessionStart hook — state the verification-cost policy for cloud sessions.
 #
-# A cloud session starts with no memory of what the last one learned the hard
-# way, and the most expensive lesson in this repository is about the browser
-# gate: `npm run verify:ui` is ~25 minutes, CI repeats it wholesale on every
-# change that touches a browser surface, and a session that does not know this
-# will spend those 25 minutes buying a verdict GitHub is about to reach anyway.
-# Measured 2026-09-02 on two consecutive changes: 25.0m and 20.5m locally, while
-# the focused selection for the same diffs took 37s and 6.1s and agreed.
+# Give a fresh Cloud session the current scoped-verification guidance. CI coverage
+# depends on the selected event, draft state, paths and successful prerequisites;
+# advice about expected jobs is never evidence that those jobs passed.
 #
 # So this hook says, once per session and in the model's own context, which gate
 # to reach for first. It is scoped to cloud sessions because that is where the
@@ -37,25 +33,31 @@ root="${CLAUDE_PROJECT_DIR:-}"
 read -r -d '' context <<'POLICY' || true
 [testing-policy] Verification cost policy for this cloud session.
 
-CI re-runs the browser suite on every change that touches a browser surface, so a
-full local `npm run verify:ui` (~25 min, 646 tests) buys a verdict GitHub is about
-to reach. Do not spend it by default.
+Use the smallest check that covers the diff's plausible failures. CI selection
+depends on event, draft and scope conditions and successful prerequisites. A
+selected or deferred check remains pending until successful execution is observed.
+Skipped, missing or failed jobs are not passing evidence.
 
-Before any browser run, ask the planner which part of the suite the diff can break:
+Ask the planner which part of the browser suite the diff can break:
 
     npm run plan:browser              # dry run: the level, the specs, and why
-    npm run plan:browser -- --run     # execute the plan it printed
+
+Before executing browser checks, run `npm run ensure` and use its verified project
+URL. Then `npm run plan:browser -- --run` executes the selected plan.
 
 It fails closed: shared foundations, an unattributable UI file, or unknown scope
 all escalate to the full suite on their own. You do not have to judge that.
 
 Reporting rules, which the cost saving depends on:
-- A narrowed run is NOT the full gate. Say "focused browser proof at level <x>,
-  full suite left to CI" — never "verify:ui passed".
+- A narrowed run is NOT the full gate. Report focused browser proof at level <x>
+  and name any broader checks still pending — never "verify:ui passed".
+- Identify the jobs expected for this event and scope. Do not defer required local
+  proof on an assumption that CI will repeat it; verify the job conditions first.
 - Paste the decisive line of real output. Exit 0 alone is not proof.
 
 Unchanged by any of this: GitHub remains the authoritative merge gate and runs
-exactly what it ran before. Never weaken a required check to save local time.
+its configured scoped checks. Never weaken a required check to save local time.
+Follow docs/agents/verification-gates.md for the complete current policy.
 POLICY
 
 # The context is a JSON string field, so the only characters that must be escaped

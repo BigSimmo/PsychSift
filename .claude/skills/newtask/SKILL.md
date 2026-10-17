@@ -1,109 +1,79 @@
 ---
 name: newtask
-description: Bootstrap a clean session for new work in this repo — create a fresh git worktree off the latest origin/main, install deps, warm routes, and confirm the base is current. Use at the start of a task when you want an isolated, up-to-date working copy and want to avoid the stale-base, cold-worktree, and reserved-port traps this repo is prone to.
+description: Prepare an isolated current task checkout using the current host's supported workflow. Check ownership and the base, restore dependencies only when needed, and start the app only for a task that needs it.
 ---
 
-# newtask — start a clean, current working copy
+# newtask — prepare the task checkout
 
-This repo moves fast and shares ~50 worktrees and one stash stack, so starting work on a
-stale base or a cold worktree is the default failure. This skill sets up an isolated,
-current worktree so new work starts clean. That count is not stable trivia — it was 48 on
-2026-08-18 and reached 50 during a single session, because nothing reclaims a worktree
-whose branch has landed. See the cleanup note at the end.
+Read root `AGENTS.md` and the current task checkpoint. Establish repository identity,
+branch, `HEAD`, upstream, registered worktrees, existing changes and ownership before
+writing. Preserve unrelated work. A same-task continuation keeps its established
+checkout and checkpoint; it does not start over merely because owned changes exist.
 
-## Before you start
+## Check for overlapping work
 
-Check whether this task can ride an already-open PR you own or bundle with other queued
-low-risk work instead of minting a new branch — see AGENTS.md "PR bundling (reduce
-one-task-one-PR churn)". Only proceed to the steps below (which create a new branch and
-worktree) once bundling doesn't apply: the work isn't independently low-risk by that
-rule's test, or there's no suitable open PR to ride.
+Before creating a new branch, check whether the work belongs on an existing owned PR
+under the repository's bundling policy. When GitHub reads are authorised, inspect open
+PRs for the actual route, component or surface, rather than only a ledger ID. A missing
+progress marker does not establish that nobody owns the work. Reconcile confirmed
+overlap before dependent edits.
 
-**Ask that same open-PR list a second question: is someone already building this?** Some
-ledger rows carry a progress marker in their prose (`IN PROGRESS`, `IMPLEMENTED in PR
-#1766`), but there is no structured status field and no atomic claim — a marker is written
-by whoever did the work, usually after the fact, and nothing requires or checks one, so its
-absence means nothing. Two sessions can read the same queued `/issues` item and both build
-it. That is not hypothetical — on
-2026-08-09 two assistants took the same queued item about four hours apart and shipped the
-same conversion twice (PR #1766, and PR #1767 closed as a duplicate), which also left two
-divergent shapes to adjudicate afterwards. Before starting a queued item, scan the open PRs
-for the **route, component, or surface** it touches, not just for a matching ledger id — the
-duplicate PR will rarely quote the id. If you find one, stop and reconcile with it rather
-than opening a second branch. This is one GitHub read (`mcp__github__list_pull_requests`, or
-`gh pr list` where available) and it falls inside the existing provider-confirmation
-boundary. If GitHub is unreachable, treat it as a warning and continue — an offline session
-must still be able to start work. Recorded as `#292`.
+The duplicate implementation incident recorded as `#292` is historical evidence for
+this check, not permission to call GitHub. Respect the provider boundary and any armed
+PR-handoff stop hook. Do not bypass a denied PR read through another transport.
+`git ls-remote` and `git fetch` also contact the remote, require network/authentication
+and need applicable authority; they are not provider-free fallbacks.
 
-**If the PR-handoff stop hook has already armed in this session, that read is denied** — a
-session that opened its own PR and then picks up another queued item cannot call
-`list_pull_requests` or `gh pr list` at all (see `docs/pr-handoff-stop-cross-agent-gap.md`).
-Do not unlock the hook for this; fall back to `git ls-remote --heads origin`, which needs no
-provider tool and still answers the question, because a session building the same surface
-almost always has a pushed branch named after it. Report which check you used. Observed
-2026-08-14 on PR #1956.
+Without an authorised remote read, inspect local branch refs, registered worktrees,
+current task records and available checkpoints. Record that remote ownership and base
+freshness remain unverified. Continue independent authorised offline work; do not claim
+that local branch names prove the absence of another implementation.
 
-## Steps
+## Prepare the checkout for the current host
 
-1. **Sync main.** `git fetch --quiet origin main`.
-2. **Create an isolated worktree** off the latest main (never reuse another session's
-   checkout, and never switch the main checkout's branch). Put it under the project's
-   own worktree root on the **D: Dev Drive**, which is where every Claude Code worktree
-   already lives — not `../wt-<slug>`, which lands outside the project tree, and never
-   under `C:\Users\…`:
+1. Follow `docs/agents/codex-cloud-environment.md` for Cloud and
+   `docs/agents/codex-desktop-worktree-setup.md` for Windows Desktop where applicable.
+   Use the current host's supported task/worktree workflow. A disposable Cloud task
+   checkout does not require a Windows task-start script or another worktree merely
+   because an older local example used one.
+2. For a new local task needing isolation, create a task-specific non-protected branch
+   in an owned worktree. Determine its root from the current checkout and host policy;
+   do not switch or reuse another session's checkout. If an authorised fetch is needed,
+   verify repository identity and fetch `origin/main` before choosing the base. If
+   working offline, record the actual locally available base SHA and its freshness gap.
+3. Check capacity on the actual destination volume before a dependency install or
+   build. Preserve other sessions' worktrees and services. Low capacity does not grant
+   cleanup authority; use the repository's scoped cleanup workflow only when authorised.
+4. Restore dependencies only when the task needs them and current parity evidence
+   shows they are absent or stale. Inspect the setup helper and coordinator admission
+   first. Where supported, `node scripts/setup-codex-worktree.mjs` reuses an eligible
+   byte-identical donor before its documented npm fallback. Use the current host's
+   supported restoration route; do not force the legacy Cloud bootstrap or change
+   manifests/lockfiles merely to prepare a checkout.
+5. When relevant, use `BASE_FRESHNESS_NO_FETCH=1 node scripts/check-base-freshness.mjs`
+   for the default local comparison. The command without that flag fetches `origin/main`;
+   run `node scripts/check-base-freshness.mjs` only with already-granted network/provider
+   authority. Distinguish the local tracking ref from a freshly authorised remote observation.
+   If the base moved, assess relevant drift and the task's sync policy; do not discard
+   a continuation or recreate a worktree automatically.
+6. Start or verify the app only for a task that needs it, following `AGENTS.md` local
+   server safety: run `npm run ensure`, use its printed URL and verify project identity
+   before browser work. Do not warm unrelated routes or start a watcher during generic
+   onboarding. A documentation-only task needs no app server.
 
-   ```bash
-   git worktree add -b claude/<task-slug> D:/Repos/PsychSift/.claude/worktrees/<task-slug> origin/main
-   ```
+## Historical Windows example
 
-   Use a short, descriptive `<task-slug>`.
+On 2026-08-18 the local environment used `D:/Repos/PsychSift/.claude/worktrees/`
+on a ReFS Dev Drive and reported roughly 48–50 worktrees. The then-observed disk
+capacity, free-space percentage and dependency sizes are historical measurements.
+They do not identify the current checkout, operating system, capacity or worktree
+owner. Derive those facts from the current host instead of copying the old path.
 
-   **Check free space first — this is a real constraint, not a formality.** `D:` is a
-   50 GB ReFS Dev Drive that was 51% full on 2026-08-18, and each worktree's
-   `node_modules` costs ~0.9 GB (measured 51,735 files / 0.89 GB). ReFS supports
-   hardlinks, but npm extracts fresh copies rather than linking from the cache, so
-   nothing is shared:
+## Handoff and cleanup
 
-   ```bash
-   df -h /d | tail -1
-   ```
-
-   Under ~5 GB free, reclaim space before starting: `node scripts/clean-worktree.mjs --merged`
-   lists worktrees whose branch already landed. Worktrees under `C:\Users\joshs\.codex\`
-   and `C:\Users\joshs\.gemini\` belong to Codex and Antigravity sessions — leave them
-   alone and do not count them.
-
-3. **Install deps in the new worktree** (a cold worktree fails `vitest`/`tsc`). Prefer
-   `node scripts/setup-codex-worktree.mjs`, which reuses a byte-identical donor `node_modules`
-   before falling back to `npm ci --include=dev --prefer-offline --no-audit --no-fund`:
-
-   ```bash
-   cd D:/Repos/PsychSift/.claude/worktrees/<task-slug>
-   node scripts/setup-codex-worktree.mjs
-   ```
-
-   **Fallback — direct install when the setup helper cannot be used:**
-
-   ```bash
-   npm ci --include=dev --prefer-offline --no-audit --no-fund
-   ```
-
-   `postinstall` writes the lock-parity stamp and installs the pre-push guards automatically.
-
-4. **Confirm the base is current:** `node scripts/check-base-freshness.mjs` — expect
-   `behind 0`. If it reports behind, the fetch/worktree base is stale; recreate.
-5. **Warm routes before any browser/UI work** (fresh worktrees can hash onto a
-   Next-reserved port and 404 all routes until warmed): `npm run ensure`, then hit
-   `/` and `/applications` once.
-
-## Notes
-
-- Never `git stash` here — the stash stack is global across all worktrees. Use a
-  throwaway worktree or a patch file instead.
-- Do the work on the `claude/<task-slug>` branch; commit only your own paths.
-- When done, hand off with the `handoff` skill.
-- **Worktrees are not free and nothing reclaims them automatically.** `npm run clean:worktree`
-  only prunes worktrees whose directory is already missing or that git has marked prunable —
-  a merged branch whose directory still exists is never a candidate, which is how 48
-  accumulated. After the PR lands, `prlanded` should offer removal; otherwise run
-  `node scripts/clean-worktree.mjs --merged` periodically and remove what it lists.
+- Do not stash, reset, clean, relocate or absorb unrelated work.
+- Follow the requested delivery workflow; commit or publish only with applicable authority.
+- Use the `handoff` skill when available and relevant, without inventing missing tooling.
+- A merged branch does not prove its worktree is disposable. Removal needs verified
+  ownership, current status and the repository's cleanup authority. Do not run periodic
+  cleanup or delete another task's checkout as part of task setup.

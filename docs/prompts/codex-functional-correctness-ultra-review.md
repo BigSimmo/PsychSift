@@ -1,4 +1,4 @@
-# Codex Local Ultra — Functional Correctness Review Orchestrator
+# Codex — Functional Correctness Review Orchestrator
 
 ## Mission
 
@@ -86,7 +86,12 @@ If a document is missing:
 
 Act as the lead coordinator and sole writer of the final report.
 
-Actually use Ultra-mode subagents for independent analysis. Do not merely describe delegation.
+Use the current host's callable subagent tools for independent analysis when available
+and authorised. Preserve the user's selected main-chat model and effort. Choose child
+routes through `docs/agents/smart-agent-allocation.md` using supported controls; report
+requested settings separately from observed execution. This prompt does not select a
+model or require a special host mode. Use the sequential fallback below when delegation
+is unavailable or disallowed.
 
 ## 1.1 First agent wave: parallel read-only discovery
 
@@ -224,7 +229,7 @@ The lead coordinator must:
 - Decide the reproduction and validation sequence
 - Remain the sole writer of the final report and any later in-scope corrections to review artifacts
 
-If subagent spawning is unavailable:
+If subagent spawning is unavailable or disallowed:
 
 - Perform the same five lanes sequentially
 - Explicitly report the limitation
@@ -499,6 +504,12 @@ Never commit or push.
 # 4. Second agent wave: independent verification
 
 After the lead coordinator synthesises findings and runs first-pass proofs, spawn three fresh read-only reviewer agents in parallel.
+
+If fresh reviewer subagents are unavailable or disallowed:
+
+- Perform the same three reviewer lanes sequentially after the first-pass synthesis
+- Explicitly report that independent verification was unavailable
+- Do not describe the sequential pass as independent verification, and do not omit any lane
 
 ## Reviewer 1 — Reproduction integrity reviewer
 

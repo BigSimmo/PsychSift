@@ -10,6 +10,18 @@ fail() {
 repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || fail "Run this script from the PsychSift repository."
 cd "$repo_root"
 
+# The documented launcher-name exception may use an existing generated profile;
+# unexpected provider names must never be hidden by sourcing that profile.
+if bash --noprofile --norc scripts/check-codex-cloud-raw-env.sh; then
+  :
+else
+  raw_boundary_status="$?"
+  case "$raw_boundary_status" in
+    2) ;; # Restricted continuation; the raw boundary remains failed.
+    *) exit "$raw_boundary_status" ;;
+  esac
+fi
+
 expected_node_major="$(tr -cd '0-9' < .node-version)"
 [[ -n "$expected_node_major" ]] || fail "Could not read the Node major from .node-version."
 
@@ -56,11 +68,11 @@ if [[ -n "$resolved_node_version" && "$resolved_node_version" != "N/A" ]]; then
 else
   fallback_node="$(PATH="$fallback_path" command -v node 2>/dev/null || true)"
   [[ -n "$fallback_node" ]] || fail "Node ${expected_node_major} is unavailable through nvm or PATH."
-  fallback_node_version="$($fallback_node -p 'process.versions.node' 2>/dev/null || true)"
+  fallback_node_version="$("$fallback_node" -p 'process.versions.node' 2>/dev/null || true)"
   node_version_supported "$fallback_node_version" || fail "Node ${expected_node_major}.x >=24.15.0 and <25 is required; detected ${fallback_node_version:-unavailable}."
   node_bin="$(cd "$(dirname "$fallback_node")" && pwd)"
 fi
-node_version="$($node_bin/node -p 'process.versions.node' 2>/dev/null || true)"
+node_version="$("$node_bin/node" -p 'process.versions.node' 2>/dev/null || true)"
 node_version_supported "$node_version" || fail "Node ${expected_node_major}.x >=24.15.0 and <25 is required; detected ${node_version:-unavailable}."
 mkdir -p "$HOME/.local/bin"
 for command_name in node npm npx; do

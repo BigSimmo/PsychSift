@@ -231,7 +231,7 @@
       "P16D",
       "P17"
     ],
-    "launchContract": "TARGET_PHASE must be supplied before repository inspection. The Cloud UI effort must match the target launch set.",
+    "launchContract": "TARGET_PHASE must be supplied before repository inspection. The Cloud UI effort must match the target launch set. For xhigh, ordinary-language user confirmation is sufficient; no literal prompt token, resubmission or additional CLI attestation is required. Authoritative runtime route evidence remains required.",
     "allowedEscalations": [
       {
         "fromModel": "gpt-5.6-terra",

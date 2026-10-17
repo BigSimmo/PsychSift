@@ -50,17 +50,17 @@ repository gate. The generated inventories remain governed by their own contract
 
 ## Core reference map
 
-| Doc                                               | What it is                                                                                                 |
-| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| [codebase-index.md](codebase-index.md)            | Structured architecture map: layout, module map, Supabase schema, scripts, domain concepts                 |
-| [README.md](README.md)                            | This index — every tracked document under `docs/`, categorised                                             |
-| [site-map.md](site-map.md)                        | **Generated** route map — regenerate with `npm run docs:update`, verify with `npm run sitemap:check`       |
-| [agents-guide.md](agents-guide.md)                | Task navigator, platform setup and skill ownership; rules in `AGENTS.md`                                   |
-| [scripts-index.md](scripts-index.md)              | Curated map of `scripts/` and the `package.json` command surface by purpose                                |
-| [organisation/](organisation/README.md)           | Organisation map: which area owns every file, checked by `npm run check:organisation`                      |
-| [personal-practice/](personal-practice/README.md) | Personal practice area: what it owns and the rules every change there follows                              |
-| [codex-cloud.md](codex-cloud.md)                  | Codex Cloud setup, access profiles, profile-loading command shims, GitHub exception, and acceptance checks |
-| [claude-cloud.md](claude-cloud.md)                | Claude Code on the web: the tiered container provisioner and the checked-in user profile                   |
+| Doc                                               | What it is                                                                                           |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| [codebase-index.md](codebase-index.md)            | Structured architecture map: layout, module map, Supabase schema, scripts, domain concepts           |
+| [README.md](README.md)                            | This index — every tracked document under `docs/`, categorised                                       |
+| [site-map.md](site-map.md)                        | **Generated** route map — regenerate with `npm run docs:update`, verify with `npm run sitemap:check` |
+| [agents-guide.md](agents-guide.md)                | Task navigator, platform setup and skill ownership; rules in `AGENTS.md`                             |
+| [scripts-index.md](scripts-index.md)              | Curated map of `scripts/` and the `package.json` command surface by purpose                          |
+| [organisation/](organisation/README.md)           | Organisation map: which area owns every file, checked by `npm run check:organisation`                |
+| [personal-practice/](personal-practice/README.md) | Personal practice area: what it owns and the rules every change there follows                        |
+| [codex-cloud.md](codex-cloud.md)                  | Current-host Cloud guide; archived legacy setup applies only when explicitly selected                |
+| [claude-cloud.md](claude-cloud.md)                | Claude Code on the web: the tiered container provisioner and the checked-in user profile             |
 
 ## Architecture
 
@@ -222,7 +222,7 @@ Every remaining tracked document in this category, one line each; the descriptio
 - [productivity-workflows.md](productivity-workflows.md) — repo workflow planners (flightplan, triage, rag-lab, …)
 - [codex-review-protocol.md](codex-review-protocol.md) — shared review protocol for all review skills
 - [codex-prompt-playbook.md](codex-prompt-playbook.md) — copy/paste prompts for common repo work
-- [codex-cloud.md](codex-cloud.md) — reproducible provider-free Codex Cloud environment and acceptance check
+- [codex-cloud.md](codex-cloud.md) — current-host Cloud guide and explicit selection of the archived legacy setup
 - [claude-cloud.md](claude-cloud.md) — Claude Code on the web container parity: tiered provisioner and checked-in user profile
 - [branch-cleanup-guide.md](branch-cleanup-guide.md) — branch hygiene workflow
 - [branch-review-ledger.md](branch-review-ledger.md) — reviewed branch/SHA ledger; read with `npm run ledger:lookup` (historical tables + immutable records), write with `npm run ledger:append`, and convert a pre-system active-branch row with `npm run ledger:migrate-legacy`
@@ -237,11 +237,11 @@ Every remaining tracked document in this category (process, plus the `agents/` r
 - [ci-operations.md](ci-operations.md) — CI Operations and Runner Usage Assessment — See also continuous-integration.md for pre-push safety controls and Guard 2 in-flight CI push guard details.
 - [agents/bug-hunter-shortcut.md](agents/bug-hunter-shortcut.md) — Bug-Hunter Shortcut — When the user types exactly bug-hunter as the entire task message, after trimming surrounding whitespace, treat it as a shortcut for targete…
 - [agents/claude-hook-scripts.md](agents/claude-hook-scripts.md) — Claude Code Hook Scripts — .claude/hooks/*.sh runs on Linux web containers as well as on the Windows workstation, and the workstation cannot see the thing that breaks…
-- [agents/codex-cloud-environment.md](agents/codex-cloud-environment.md) — Codex Cloud Environment — Codex Cloud uses an isolated Linux container and does not inherit desktop files, credentials, OAuth sessions, MCP authentication, local serv…
+- [agents/codex-cloud-environment.md](agents/codex-cloud-environment.md) — Canonical Cloud operating policy: current-host evidence, task continuation, tools, credentials and explicitly selected legacy setup.
 - [agents/codex-dependency-shortcut.md](agents/codex-dependency-shortcut.md) — Codex Dependency Shortcut — When the user types exactly dependency as the entire task message, after trimming surrounding whitespace, treat it as a shortcut for safe de…
 - [agents/codex-desktop-worktree-setup.md](agents/codex-desktop-worktree-setup.md) — Codex Desktop Worktree Setup — It must work before node_modules exists, validate Node 24/npm 11, reuse only a complete byte-identical local installation, and otherwise run…
 - [agents/codex-productivity-defaults.md](agents/codex-productivity-defaults.md) — Codex Productivity Defaults
-- [agents/codex-reasoning-effort.md](agents/codex-reasoning-effort.md) — Codex Reasoning Effort Calibration
+- [agents/codex-reasoning-effort.md](agents/codex-reasoning-effort.md) — User-selected model/effort, ordinary-language confirmation and scoped specialist contracts
 - [agents/codex-review-throttling.md](agents/codex-review-throttling.md) — Codex Review Throttling & Thread Resolution — Do not review branches opportunistically.
 - [agents/context7.md](agents/context7.md) — shared library-docs workflow, version matching, authentication and query privacy
 - [agents/cursor-cloud.md](agents/cursor-cloud.md) — Cursor Cloud Specific Instructions — Durable notes for Cloud Agents.
@@ -251,7 +251,7 @@ Every remaining tracked document in this category (process, plus the `agents/` r
 - [agents/repository-skills-and-issues.md](agents/repository-skills-and-issues.md) — Repository Skills and Outstanding-Work Memory — Select repo-local skills under `.agents/skills/` when their descriptions match the actual task and their use materially helps; read an explicitly named skill before acting.
 - [agents/shared-context-and-memory.md](agents/shared-context-and-memory.md) — Context, adaptive agents and memory across local and cloud sessions — Read this reference when a task needs continuity, delegation, memory or a change of execution host.
 - [agents/test-deletion-guard.md](agents/test-deletion-guard.md) — Deleting tests, or letting a tool delete them for you — On 2026-08-31 a commit on PR #2481 titled "test(ui):
-- [agents/smart-agent-allocation.md](agents/smart-agent-allocation.md) — Default model/effort selection, independent ownership and review, evidence reuse, and portable Codex Cloud delivery.
+- [agents/smart-agent-allocation.md](agents/smart-agent-allocation.md) — Current supported model/effort selection, independent ownership/review and evidence reuse.
 - [agents/task-efficiency.md](agents/task-efficiency.md) - On-demand task brief, one continuation record and private measurement using existing workflows.
 - [agents/upload-shortcut.md](agents/upload-shortcut.md) — Upload Shortcut — When the user types exactly:
 - [agents/verification-gates.md](agents/verification-gates.md) — Verification Gates — the verification pyramid, gate receipts, and the browser-gate planner
@@ -263,7 +263,7 @@ Every remaining tracked document in this category (process, plus the `agents/` r
 - [agents/native-startup/publication-workflows.md](agents/native-startup/publication-workflows.md) — Safe Git publication workflows, PR shortcuts, and anti-churn sync
 - [agents/native-startup/search-chrome-behaviour.md](agents/native-startup/search-chrome-behaviour.md) — Search chrome behaviour, composer ownership, and phone edge-to-edge contracts
 - [prompts/codex-architecture-maintainability-ultra-review.md](prompts/codex-architecture-maintainability-ultra-review.md) — Codex Local Ultra — Architecture & Maintainability Review Orchestrator — Perform a rigorous, evidence-based Architecture and Maintainability review of this repository using multi-agent coordination.
-- [prompts/codex-cloud-design-status-semantics.md](prompts/codex-cloud-design-status-semantics.md) — Codex Cloud prompt — design-system clinical status semantics — Copy the complete prompt below into a new Codex Cloud task for the PsychSift (`BigSimmo/PsychSift`) repository.
+- [prompts/codex-cloud-design-status-semantics.md](prompts/codex-cloud-design-status-semantics.md) — Retired implementation prompt; status semantics landed, human screenshot disposition remains separate.
 - [prompts/codex-cloud-detailed-task.md](prompts/codex-cloud-detailed-task.md) — Codex Cloud detailed-task prompt — Use this prompt when assigning a substantial implementation, refactor, defect fix, or other detailed task to Codex Cloud in this repository.
 - [prompts/codex-cloud-review/1-codex-full-stack-master-review-prompt.md](prompts/codex-cloud-review/1-codex-full-stack-master-review-prompt.md) — Codex Comprehensive Full-Stack Product, Design, Architecture, Engineering, Security, Quality and Refactoring Master Prompt — Keep this master specification as a normal Markdown file, for example:
 - [prompts/codex-cloud-review/2-codex-full-stack-master-prompt-review-and-stress-test.md](prompts/codex-cloud-review/2-codex-full-stack-master-prompt-review-and-stress-test.md) — Review and Adversarial Stress Test of the Codex Full-Stack Master Prompt — The original Cursor prompt had unusually strong domain coverage and quality controls.
@@ -274,7 +274,7 @@ Every remaining tracked document in this category (process, plus the `agents/` r
 - [prompts/codex-performance-reliability-ultra-review.md](prompts/codex-performance-reliability-ultra-review.md) — Codex Local Ultra — Performance & Reliability Review Orchestrator — Perform a rigorous, evidence-based Performance and Reliability review of this repository using multi-agent coordination.
 - [prompts/codex-tests-quality-gates-ultra-review.md](prompts/codex-tests-quality-gates-ultra-review.md) — Codex Local Ultra — Tests & Quality Gates Review Orchestrator — Perform a rigorous, evidence-based Tests & Quality Gates review of this repository using multi-agent coordination.
 - [prompts/mode-aware-clinical-ask-codex-cloud-handover.md](prompts/mode-aware-clinical-ask-codex-cloud-handover.md) — Codex Cloud handover: implement Mode-aware Clinical Ask — Paste the prompt below into a fresh Codex Cloud task whose checkout contains this entire planning pack.
-- [prompts/rag-coverage-gate-extraction.md](prompts/rag-coverage-gate-extraction.md) — X3 / #086 rag.ts coverage-gate extraction — Use this prompt in a fresh Codex Cloud task with CODEX_CLOUD_ACCESS_PROFILE=offline.
+- [prompts/rag-coverage-gate-extraction.md](prompts/rag-coverage-gate-extraction.md) — Retired implementation prompt; extraction exists in the current tree. Historical task instructions are archived.
 - [codex/architecture-maintainability/README.md](codex/architecture-maintainability/README.md) — Architecture and maintainability review packets — Durable artifacts requested from the architecture and maintainability review prompt belong here.
 - [codex/data-database-safety/README.md](codex/data-database-safety/README.md) — Data and database safety review packets — Durable artifacts requested from the data and database safety review prompt belong here.
 - [codex/documentation-ownership/README.md](codex/documentation-ownership/README.md) — Documentation and ownership review packets — Durable artifacts requested from the documentation and ownership review prompt belong here.

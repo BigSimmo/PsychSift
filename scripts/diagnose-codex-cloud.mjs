@@ -1,29 +1,17 @@
 #!/usr/bin/env node
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 
 import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
+import { configuredProviderCredentialNames } from "./check-codex-cloud-setup.mjs";
+import { nodeVersionSatisfiesRange } from "./setup-codex-worktree.mjs";
 
 import { lockPythonVersion, workerPythonLockTargets } from "./worker-python-lock-config.mjs";
 
-const NODE_MINIMUM_VERSION = "24.15.0";
+const repositoryNodeRange = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).engines.node;
 
 function major(version) {
   return version?.match(/\d+/)?.[0] ?? null;
-}
-
-function isSupportedNodeVersion(version) {
-  if (!version || major(version) !== "24") return false;
-  const parts = version
-    .match(/^\d+(?:\.\d+){1,2}/)?.[0]
-    ?.split(".")
-    .map(Number);
-  if (!parts || parts.length < 3 || parts.some((part) => !Number.isFinite(part))) return false;
-  const required = NODE_MINIMUM_VERSION.split(".").map(Number);
-  for (let index = 0; index < 3; index += 1) {
-    if (parts[index] !== required[index]) return parts[index] > required[index];
-  }
-  return true;
 }
 
 export function diagnoseCodexCloud({
@@ -33,13 +21,14 @@ export function diagnoseCodexCloud({
   cloudLockContents,
   setupStep,
   setupExitCode,
+  expectedNodeRange = repositoryNodeRange,
 }) {
   const issues = [];
-  if (!isSupportedNodeVersion(nodeVersion)) {
+  if (!nodeVersionSatisfiesRange(nodeVersion, expectedNodeRange)) {
     issues.push({
       code: "NODE_RUNTIME",
-      issue: `Node >=${NODE_MINIMUM_VERSION} <25 is required; detected ${nodeVersion || "unavailable"}.`,
-      fix: "Select Node 24 (>=24.15.0) in the Cloud environment or rerun setup with nvm available.",
+      issue: `Node ${expectedNodeRange} is required; detected ${nodeVersion || "unavailable"}.`,
+      fix: "Select the Node range from package.json engines.node in the Cloud environment or rerun setup with nvm available.",
     });
   }
   if (major(npmVersion) !== "11") {
@@ -109,29 +98,111 @@ function npmVersion() {
   return commandVersion("npm");
 }
 
-function argument(name) {
-  const index = process.argv.indexOf(name);
-  return index === -1 ? null : (process.argv[index + 1] ?? null);
+/**
+ * Parse only documented flags; never echo arbitrary argument or profile values.
+ * @param {string[]} [args]
+ * @param {NodeJS.ProcessEnv | Record<string, string | undefined>} [env]
+ */
+export function parseDiagnosticArguments(args = [], env = process.env) {
+  const options = {};
+  const errors = [];
+  const valueFlags = new Set(["--python-bin", "--setup-step", "--exit-code"]);
+  for (let index = 0; index < args.length; index += 1) {
+    const flag = args[index];
+    if (Object.hasOwn(options, flag)) {
+      errors.push("Diagnostic flags may be supplied only once.");
+      break;
+    }
+    if (flag === "--legacy-profile") {
+      options[flag] = true;
+    } else if (valueFlags.has(flag)) {
+      const value = args[index + 1];
+      if (!value || value.startsWith("--")) {
+        errors.push(`${flag} requires a value.`);
+        break;
+      }
+      options[flag] = value;
+      index += 1;
+    } else {
+      errors.push("Unsupported Cloud-diagnostic argument.");
+      break;
+    }
+  }
+  if (
+    env.CODEX_CLOUD_ACCESS_PROFILE !== undefined &&
+    !["offline", "connected"].includes(env.CODEX_CLOUD_ACCESS_PROFILE)
+  ) {
+    errors.push("CODEX_CLOUD_ACCESS_PROFILE must be offline or connected.");
+  }
+  if (options["--exit-code"] !== undefined && !/^(?:0|[1-9]\d{0,2})$/.test(options["--exit-code"])) {
+    errors.push("--exit-code must be an integer from 0 to 255.");
+  } else if (Number(options["--exit-code"]) > 255) {
+    errors.push("--exit-code must be an integer from 0 to 255.");
+  }
+  if (options["--setup-step"] !== undefined && !/^[a-z][a-z0-9-]{0,63}$/.test(options["--setup-step"])) {
+    errors.push("--setup-step must be a short setup step identifier.");
+  }
+  if (args.length > 0 && !legacyCloudDiagnosticsSelected(args, env)) {
+    errors.push("Diagnostic options require --legacy-profile or CODEX_CLOUD_ACCESS_PROFILE.");
+  }
+  return { options, errors };
+}
+
+/**
+ * Diagnose the legacy toolchain only after explicit selection, independent of host branding.
+ * @param {string[]} [args]
+ * @param {NodeJS.ProcessEnv | Record<string, string | undefined>} [env]
+ */
+export function legacyCloudDiagnosticsSelected(args = [], env = process.env) {
+  return args.includes("--legacy-profile") || env.CODEX_CLOUD_ACCESS_PROFILE !== undefined;
 }
 
 export function main() {
-  if (process.env.CODEX_CLOUD !== "1") {
+  const args = process.argv.slice(2);
+  const { options, errors } = parseDiagnosticArguments(args);
+  if (errors.length > 0) {
+    console.error(`[Codex Cloud Diagnose] status=INVALID_INPUT issues=${errors.length}`);
+    for (const error of errors) console.error(`[Codex Cloud Diagnose] FAIL: ${error}`);
+    return 1;
+  }
+  if (!legacyCloudDiagnosticsSelected(args)) {
     console.log("[Codex Cloud Diagnose] status=NOT_APPLICABLE issues=0");
     console.log(
-      "[Codex Cloud Diagnose] INFO DESKTOP_CONTEXT: Run this command inside a Codex Cloud shell; local Python versions are not Cloud runtime evidence.",
+      "[Codex Cloud Diagnose] INFO PROFILE_NOT_SELECTED: Select the legacy profile explicitly with --legacy-profile or CODEX_CLOUD_ACCESS_PROFILE; local Python versions are not Cloud runtime evidence.",
     );
     return 0;
   }
 
-  const cloudLock = workerPythonLockTargets.cloud.outputFile;
-  const pythonBin = argument("--python-bin") || process.env.CODEX_CLOUD_OCR_PYTHON || "python3";
+  const providerNames = configuredProviderCredentialNames();
+  if (providerNames.length > 0) {
+    console.error("[Codex Cloud Diagnose] status=BLOCKED_ENVIRONMENT issues=1");
+    console.error(
+      `[Codex Cloud Diagnose] FAIL: Legacy diagnostics cannot probe runtimes with provider environment variables: ${providerNames.join(", ")}.`,
+    );
+    return 1;
+  }
+
+  const cloudLock = new URL(`../${workerPythonLockTargets.cloud.outputFile}`, import.meta.url);
+  let cloudLockContents = null;
+  try {
+    cloudLockContents = readFileSync(cloudLock, "utf8");
+  } catch (error) {
+    if (error.code !== "ENOENT") {
+      console.error("[Codex Cloud Diagnose] status=DEGRADED issues=1");
+      console.error(
+        "[Codex Cloud Diagnose] ISSUE CLOUD_PYTHON_LOCK_UNREADABLE: The repository Cloud Python lock could not be read.",
+      );
+      return 1;
+    }
+  }
+  const pythonBin = options["--python-bin"] || process.env.CODEX_CLOUD_OCR_PYTHON || "python3";
   const issues = diagnoseCodexCloud({
     nodeVersion: commandVersion(process.execPath, ["--version"]),
     npmVersion: npmVersion(),
     pythonVersion: commandVersion(pythonBin),
-    cloudLockContents: existsSync(cloudLock) ? readFileSync(cloudLock, "utf8") : null,
-    setupStep: argument("--setup-step"),
-    setupExitCode: argument("--exit-code"),
+    cloudLockContents,
+    setupStep: options["--setup-step"],
+    setupExitCode: options["--exit-code"],
   });
   console.log(`[Codex Cloud Diagnose] status=${issues.length === 0 ? "HEALTHY" : "DEGRADED"} issues=${issues.length}`);
   for (const issue of issues) {

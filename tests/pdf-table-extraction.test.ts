@@ -94,6 +94,92 @@ describe.runIf(hasPyMuPDF)("PDF table edge-strip row recovery (3344a3a9)", () =>
     ]);
   });
 
+  function recoverBottomRow(lines: string[], scoreX = 54): string[][] {
+    const script = [
+      "import json, sys",
+      "import pymupdf as fitz",
+      `sys.path.insert(0, ${JSON.stringify(extractorDir)})`,
+      "import extract_pdf_assets as e",
+      "doc = fitz.open()",
+      "page = doc.new_page(width=595, height=842)",
+      "original_rect = fitz.Rect(50, 120, 560, 200)",
+      "extended_rect = fitz.Rect(50, 120, 560, 250)",
+      "existing_rows = [['0', 'Asleep', 'Monitor vitals']]",
+      "column_ranges = [(50.0, 120.0), (120.0, 310.0), (310.0, 560.0)]",
+      `page.insert_text((${scoreX}, 218), '5', fontsize=9)`,
+      "page.insert_text((124, 218), 'Highly aroused', fontsize=9)",
+      ...lines,
+      "recovered = e.recover_table_rows_from_edge_strip(",
+      "    page, original_rect, extended_rect, existing_rows, column_count=3, column_ranges=column_ranges",
+      ")",
+      "print(json.dumps(recovered))",
+    ].join("\n");
+    return JSON.parse(execFileSync(pythonBin, ["-c", script], { cwd: process.cwd(), encoding: "utf8" }).trim());
+  }
+
+  it("keeps a short note under a recovered row out of that row's cells", () => {
+    expect(
+      recoverBottomRow([
+        "page.insert_text((314, 218), 'Call the duty registrar', fontsize=9)",
+        "page.insert_text((54, 229), 'See note', fontsize=9)",
+      ]),
+    ).toEqual([["5", "Highly aroused", "Call the duty registrar"]]);
+  });
+
+  it("keeps a note out of the row when the cell above it is a short right-aligned value", () => {
+    expect(
+      recoverBottomRow(
+        [
+          "page.insert_text((314, 218), 'Call the duty registrar', fontsize=9)",
+          "page.insert_text((54, 229), 'See note', fontsize=9)",
+        ],
+        111,
+      ),
+    ).toEqual([["5", "Highly aroused", "Call the duty registrar"]]);
+  });
+
+  it("still fills an empty cell whose text starts a line lower than the rest of the row", () => {
+    expect(recoverBottomRow(["page.insert_text((314, 229), 'Call the duty registrar', fontsize=9)"])).toEqual([
+      ["5", "Highly aroused", "Call the duty registrar"],
+    ]);
+  });
+
+  it("still joins a cell whose text wrapped onto the next line", () => {
+    expect(
+      recoverBottomRow([
+        "page.insert_text((314, 218), 'Give oral medication first, then call the duty registrar,', fontsize=9)",
+        "page.insert_text((314, 229), 'security and nurse in charge', fontsize=9)",
+      ]),
+    ).toEqual([
+      ["5", "Highly aroused", "Give oral medication first, then call the duty registrar, security and nurse in charge"],
+    ]);
+  });
+
+  it("still joins a deliberate line break inside a cell, such as a dose under a drug name", () => {
+    expect(
+      recoverBottomRow([
+        "page.insert_text((314, 218), 'Lorazepam', fontsize=9)",
+        "page.insert_text((314, 229), '1 to 2 mg orally', fontsize=9)",
+        "page.insert_text((314, 240), '- repeat once after 1 hour', fontsize=9)",
+      ]),
+    ).toEqual([["5", "Highly aroused", "Lorazepam 1 to 2 mg orally - repeat once after 1 hour"]]);
+  });
+
+  it("keeps footnotes flush with the first cell out of a recovered row", () => {
+    expect(
+      recoverBottomRow([
+        "page.insert_text((314, 218), 'Call the duty registrar', fontsize=9)",
+        "page.insert_text((54, 229), '* Off-label use', fontsize=9)",
+      ]),
+    ).toEqual([["5", "Highly aroused", "Call the duty registrar"]]);
+    expect(
+      recoverBottomRow([
+        "page.insert_text((314, 218), 'Call the duty registrar', fontsize=9)",
+        "page.insert_text((54, 229), '1 Not PBS listed', fontsize=9)",
+      ]),
+    ).toEqual([["5", "Highly aroused", "Call the duty registrar"]]);
+  });
+
   it("extracts column ranges cleanly when a table row contains (None, None, None, None) merged/empty cells", () => {
     const script = [
       "import json, sys",

@@ -1,13 +1,12 @@
-- [RAG programme coordination state](rag-programme-coordination-state.md) — master plan v2 artifact, open PR order trap, R1-first + governance Option B decisions (2026-08-17)
-- [Lighthouse mobile-root CLS flake](lighthouse-mobile-root-cls-flake.md) — the CI budget gate blocks unrelated PRs bimodally; rerun the job before hunting the diff
-- [DB remediation coordination state](db-remediation-coordination-state.md) — live-drift #316: alignment fix LIVE on prod 2026-08-20; staging 1 version behind (blocked); D4 UNRESOLVED — assume merge=deploy; Phase 5 + reconcile left
-- [Never print env values](never-print-env-values.md) — mask every value; an allowlist leaked a staging key on 2026-08-18
-- [Dev Drive is the project location](dev-drive-project-location.md) — D:\Repos\Database on ReFS; ignore the C: Codex/Gemini worktrees; 51% full and node_modules is most of it
+# Reusable project guidance
+
+Use current repository instructions and verify the current host and task. Dated examples below
+do not establish present machine paths, failures, services or task status. Historical coordination
+boards and workstation state are archived in the repository and are not startup memory seeds.
+
+- [Never print env values](never-print-env-values.md) — names/presence only; preserve the lesson from a 2026-08-18 disclosure incident
 - [Checks that cannot fail](checks-that-cannot-fail.md) — mutation-test guards; stderr hooks, grep on binary, `| tail` masking exit codes, tautological re-checks
-- [Hook exec-bit trap](claude-hook-exec-bit-trap.md) — core.fileMode=false hides a 100644 hook script; chmod is a no-op, use git update-index --chmod=+x
-- [Local test failures (Windows)](local-test-failures-windows.md) — session-start-hook + worker-observability fail environmentally here; check disjoint run sets before chasing
-- [Codex chat import tooling](codex-chat-import-tooling.md) — two-store split: transcript in ~/.claude/projects, sidebar entry in the app registry; scripts in ~/.claude/scripts
-- [Ingestion review remediation state](ingestion-review-remediation-state.md) — live quality signal is synthetic 0.84 for all 2851 docs and feeds ranking; PR A′/C local, operator + canary pending
-- [Plain, brief communication style](communication-style-plain-and-brief.md) — answer first, numbered steps, no internal detail unless asked; saved in user-level CLAUDE.md
-- [Token usage hygiene](token-usage-hygiene.md) — no .claudeignore exists; grep before reading big dirs, delegate broad searches to Explore, never drop a rule to save tokens (AGENTS.md is a deliberately small core plus docs/agents/ reference files)
-- [Claude plugin native deps trap](claude-plugin-native-deps-trap.md) — `claude plugin install` skips npm deps; npm 11 blocks native builds; prove with stats+search, not the postinstall warning
+- [Hook exec-bit trap](claude-hook-exec-bit-trap.md) — verify hook index modes and the current host's Git configuration
+- [Plain, brief communication style](communication-style-plain-and-brief.md) — answer first, numbered steps, no internal detail unless asked
+- [Token usage hygiene](token-usage-hygiene.md) — search before reading large files; delegate only under current policy; preserve applicable instructions
+- [Claude plugin native deps trap](claude-plugin-native-deps-trap.md) — verify actual dependency readiness; dated workstation symptoms do not establish current host state

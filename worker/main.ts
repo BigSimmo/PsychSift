@@ -314,7 +314,9 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
       p_batch_id: job.batch_id,
       p_stage: stage,
     });
-    invalidateRagCachesForDocumentMutation(job.documents.owner_id ?? "anonymous");
+    invalidateRagCachesForDocumentMutation(job.documents.owner_id ?? "anonymous", {
+      affectsPublicCorpus: !job.documents.owner_id,
+    });
   }
 
   async function completeStrictEnrichmentJob(job: JobRow) {
@@ -1913,7 +1915,9 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
             rpc: (name, payload) =>
               ingestionRpcClient.rpc(name, payload).abortSignal(controlPlaneAbortSignal(attempt.signal)),
           });
-          invalidateRagCachesForDocumentMutation(job.documents.owner_id ?? "anonymous");
+          invalidateRagCachesForDocumentMutation(job.documents.owner_id ?? "anonymous", {
+            affectsPublicCorpus: !job.documents.owner_id,
+          });
           return;
         }
         if (originalWitness.status === "retained") {
@@ -2035,7 +2039,9 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
                 rpc: (name, payload) =>
                   ingestionRpcClient.rpc(name, payload).abortSignal(controlPlaneAbortSignal(attempt.signal)),
               });
-              invalidateRagCachesForDocumentMutation(job.documents.owner_id ?? "anonymous");
+              invalidateRagCachesForDocumentMutation(job.documents.owner_id ?? "anonymous", {
+                affectsPublicCorpus: !job.documents.owner_id,
+              });
               return;
             }
           } else {
@@ -2333,7 +2339,9 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
       if (enrichmentStatus === "completed") {
         const strictCompletion = await completeStrictEnrichmentJob(job);
         if (strictCompletion.completed) {
-          invalidateRagCachesForDocumentMutation(job.documents.owner_id ?? "anonymous");
+          invalidateRagCachesForDocumentMutation(job.documents.owner_id ?? "anonymous", {
+            affectsPublicCorpus: !job.documents.owner_id,
+          });
           await refreshRagTableStats();
           return;
         }

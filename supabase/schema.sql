@@ -27367,7 +27367,7 @@ as $$
 declare
   v_deleted integer;
 begin
-  if p_retention_days < 1 then
+  if p_retention_days is null or p_retention_days < 1 then
     raise exception 'retention days must be positive' using errcode = '22023';
   end if;
   delete from public.api_rate_limit_subjects where updated_at < now() - make_interval(days => p_retention_days);

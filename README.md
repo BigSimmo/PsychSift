@@ -32,11 +32,9 @@ then validates the installed metadata. It falls back to the locked install above
 when no safe local donor exists. Do not configure Windows Desktop worktrees to run
 the Cloud-only Bash setup script.
 
-For Codex Cloud, use the tracked environment setup and acceptance contract in
-[`docs/codex-cloud.md`](docs/codex-cloud.md). It installs the complete repository
-toolchain, installs the profile-loading Node command shims, and distinguishes safe offline
-tasks from explicitly connected provider tasks. Fresh Cloud validation runs the direct
-`npm run check:codex-cloud` commands without manually sourcing a profile.
+For Codex Cloud, start with the [current-host guide](docs/codex-cloud.md) and actual task
+capabilities. The older repository-managed bootstrap is archived and applies only when explicitly
+selected. Do not impose its profiles, command shims or startup checks on another host setup.
 
 3. For offline app development, use a credential-free `.env.local` containing
    `NEXT_PUBLIC_DEMO_MODE=true`. Use the synthetic corpus; leave Supabase and
@@ -156,10 +154,10 @@ checks; this documentation correction changes no runtime pins.
 
 ### Codex Cloud
 
-For isolated provider-free Cloud work, create the environment with the exact values in
-[`docs/codex-cloud.md`](docs/codex-cloud.md). Its checked-in setup and maintenance
-scripts match the Node/npm, Deno, Python/OCR, and Playwright toolchain without copying
-local credentials or enabling live provider access.
+Use the [current Cloud policy](docs/agents/codex-cloud-environment.md) and host readiness evidence.
+Provider-free work remains provider-free; it does not require a particular historical profile.
+The [archived bootstrap](docs/archive/codex-cloud-legacy-profile-2026-10-16.md) retains its own
+toolchain and acceptance contract for environments that explicitly select it.
 
 ## Environment Notes
 
@@ -256,7 +254,7 @@ records vs archive). The most load-bearing entries:
 - `docs/site-map.md` — generated route map (`npm run docs:update`)
 - `docs/process-hardening.md` — verification gates, CI expectations, known limits
 - `docs/testing.md` — local test safety, focused/live commands, Playwright ownership, flake policy
-- `docs/codex-cloud.md` — reproducible provider-free Codex Cloud setup and acceptance check
+- `docs/codex-cloud.md` — current-host Cloud guide and explicit legacy-bootstrap selection
 - `docs/clinical-governance.md` — deployment and source governance checklist
 - `docs/deployment-architecture.md` — app/worker/Supabase deployment topology
 - `docs/supabase-migration-reconciliation.md` — migration drift and repair policy

@@ -8,10 +8,14 @@ metadata:
   modified: 2026-08-18T09:08:45.187Z
 ---
 
-A new `.claude/hooks/*.sh` script added from this Windows Dev Drive workstation will be committed
-**`100644`** unless someone explicitly runs `git update-index --chmod=+x <path>`. `core.fileMode`
-is `false` (correct for Windows/ReFS — see [[dev-drive-project-location]]), so git ignores
-filesystem permission bits and a local `chmod +x` changes nothing git can see.
+Verify the current host's Git configuration and the index mode when adding `.claude/hooks/*.sh`.
+On a host with `core.fileMode=false`, a local `chmod +x` may leave the index unchanged; use
+`git update-index --chmod=+x <path>` when required and confirm the tracked mode. Do not assume
+the current host uses Windows, ReFS or a previously recorded project location.
+
+The incident below describes the 2026-08-18 workstation, whose `core.fileMode` was `false`.
+Its workstation record (`docs/archive/cloud-session-state-2026-10-16/dev-drive-project-location.md`)
+is archived and does not establish current configuration.
 
 **Why:** found on 2026-08-18. `.claude/hooks/session-start.sh` was `100644` while
 `issues-surface.sh` and `pr-handoff-stop.sh` were both `100755`. It is also the only hook
@@ -33,3 +37,5 @@ web container, exactly where a non-executable checkout cannot run. That script p
 Line endings are a sibling trap but currently clean: `.gitattributes` sets `* text=auto eol=lf`
 and all hook blobs measured CR=0. A CR in a shell blob fails on Linux as `/bin/bash^M: bad
 interpreter`. The same test pins this.
+
+Resolve repository paths against the verified current checkout root, not this installed memory directory.

@@ -962,6 +962,7 @@ type DocumentLookupChunkRow = {
   content: string;
   retrieval_synopsis?: string | null;
   image_ids: string[] | null;
+  index_generation_id?: string | null;
   text_rank?: number | null;
 };
 
@@ -1028,6 +1029,7 @@ function documentLookupChunkScore(chunk: DocumentLookupChunkRow, terms: string[]
 async function fetchBestDocumentLookupChunks(args: {
   supabase: ReturnType<typeof createAdminClient>;
   documentIds: string[];
+  committedGenerationByDocument?: ReadonlyMap<string, string | null>;
   query: string;
   limit: number;
   ownerId?: string;
@@ -1036,6 +1038,12 @@ async function fetchBestDocumentLookupChunks(args: {
   signal?: AbortSignal;
 }) {
   const terms = documentLookupChunkTerms(args.query);
+  const matchesCommittedGeneration = (chunk: DocumentLookupChunkRow) => {
+    if (!chunk.index_generation_id || !args.committedGenerationByDocument?.has(chunk.document_id)) {
+      return true;
+    }
+    return chunk.index_generation_id === args.committedGenerationByDocument.get(chunk.document_id);
+  };
   const { data: rpcChunks, error: rpcError } = await callVersionedRetrievalRpc(
     args.supabase,
     "match_document_lookup_chunks_text_v2",
@@ -1050,6 +1058,7 @@ async function fetchBestDocumentLookupChunks(args: {
   );
   if (!rpcError && rpcChunks?.length) {
     const ranked = (rpcChunks as DocumentLookupChunkRow[])
+      .filter(matchesCommittedGeneration)
       .map((chunk) => ({
         chunk,
         score: Math.max(Number(chunk.text_rank ?? 0), documentLookupChunkScore(chunk, terms)),
@@ -1072,7 +1081,7 @@ async function fetchBestDocumentLookupChunks(args: {
   const baseQuery = args.supabase
     .from("document_chunks")
     .select(
-      "id,document_id,page_number,chunk_index,section_heading,section_path,heading_level,parent_heading,anchor_id,content,retrieval_synopsis,image_ids",
+      "id,document_id,page_number,chunk_index,section_heading,section_path,heading_level,parent_heading,anchor_id,content,retrieval_synopsis,image_ids,index_generation_id",
     )
     .in("document_id", args.documentIds)
     .limit(Math.max(args.limit * 4, 24));
@@ -1085,6 +1094,7 @@ async function fetchBestDocumentLookupChunks(args: {
 
   if (!matchedError && matchedChunks?.length) {
     const ranked = (matchedChunks as DocumentLookupChunkRow[])
+      .filter(matchesCommittedGeneration)
       .map((chunk) => ({ chunk, score: documentLookupChunkScore(chunk, terms) }))
       .filter((item) => item.score > 0)
       .sort((a, b) => b.score - a.score || a.chunk.chunk_index - b.chunk.chunk_index)
@@ -1095,15 +1105,18 @@ async function fetchBestDocumentLookupChunks(args: {
   const fallbackQuery = args.supabase
     .from("document_chunks")
     .select(
-      "id,document_id,page_number,chunk_index,section_heading,section_path,heading_level,parent_heading,anchor_id,content,retrieval_synopsis,image_ids",
+      "id,document_id,page_number,chunk_index,section_heading,section_path,heading_level,parent_heading,anchor_id,content,retrieval_synopsis,image_ids,index_generation_id",
     )
     .in("document_id", args.documentIds)
     .order("chunk_index", { ascending: true })
-    .limit(args.limit);
+    .limit(Math.max(args.limit * 4, 24));
   const { data: fallbackChunks, error: fallbackError } = await withAbortSignal(fallbackQuery, args.signal);
   throwIfAborted(args.signal);
   if (fallbackError || !fallbackChunks?.length) return { chunks: [] as DocumentLookupChunkRow[], terms };
-  return { chunks: fallbackChunks as DocumentLookupChunkRow[], terms };
+  return {
+    chunks: (fallbackChunks as DocumentLookupChunkRow[]).filter(matchesCommittedGeneration).slice(0, args.limit),
+    terms,
+  };
 }
 
 /** Fetch document title alias rows. */
@@ -1249,9 +1262,13 @@ export async function searchDocumentLookupFastPath(args: {
     : args.queryVariants?.length
       ? args.query
       : (primaryVariant ?? args.query);
+  const committedGenerationByDocument = new Map(
+    rankedDocuments.map((item) => [item.document.id, committedIndexGeneration(item.document.metadata)] as const),
+  );
   const { chunks, terms } = await fetchBestDocumentLookupChunks({
     supabase: args.supabase,
     documentIds: rankedDocuments.map((item) => item.document.id),
+    committedGenerationByDocument,
     query: chunkQuery,
     limit: Math.max(args.matchCount, rankedDocuments.length * 4),
     ownerId: args.ownerId,

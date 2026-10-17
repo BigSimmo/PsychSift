@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-17T02:14:25.845Z",
+  "generated_at": "2026-10-17T05:28:26.483Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "ea0da37af4fb6c11aab3f6a289b691713cd83874d59be155947c938d79429690",
-  "replay_seconds": 30,
+  "schema_sha256": "878481b5d479c2749749de00f8266a1eb0473473c023f13105fd22a525fba9f4",
+  "replay_seconds": 157,
   "snapshot": {
     "views": [
       {
@@ -19652,7 +19652,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "19c970a809a56e5b9fd26c750aa75467",
+        "def_hash": "151405b481b44c5ec2078c35e7396076",
         "signature": "public.purge_expired_api_rate_limit_subjects(integer)"
       },
       {
@@ -19660,7 +19660,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "536e2eed3f06e5a0e126d96fe826a4db",
+        "def_hash": "0f44716661f2d214c514dc00618d7694",
         "signature": "public.purge_expired_rag_queries(integer)"
       },
       {
@@ -19668,7 +19668,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "2d6781ac9e9f29c54970d947ce850b65",
+        "def_hash": "87c49d745923c4d4a7ede2d55d3d82e7",
         "signature": "public.purge_expired_rag_query_misses(integer)"
       },
       {
@@ -19676,7 +19676,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "f604f908708d380b94ee294913a41b0e",
+        "def_hash": "4511c6bd98f3219a61f5ddd44f644e76",
         "signature": "public.purge_expired_rag_response_cache(integer)"
       },
       {

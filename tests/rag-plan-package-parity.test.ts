@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -111,6 +111,38 @@ function ensureHistoryDeepened(depth = 2000): void {
 }
 
 describe("RAG plan execution packages", () => {
+  it.each([0, 1, 2])("admits the documented legacy bootstrap only after raw status 0 (status %s)", (status) => {
+    const guide = readFileSync("docs/superpowers/rag-upgrade/canonical/START-HERE.cloud.md", "utf8");
+    const snippet = Array.from(guide.matchAll(/```bash\n([\s\S]*?)```/g), (match) => match[1]).find((block) =>
+      block.includes('if [ "$raw_status" -eq 0 ]; then'),
+    );
+    expect(snippet).toBeDefined();
+    const shell =
+      process.platform === "win32" ? join(process.env.ProgramFiles || "C:/Program Files", "Git/bin/bash.exe") : "bash";
+    const result = spawnSync(
+      shell,
+      [
+        "--noprofile",
+        "--norc",
+        "-c",
+        `set -eu\nraw_status=${status}\nPACKAGE_BASE_SHA=synthetic-base\nbash() { printf 'SETUP:%s\\n' "$*"; }\nnpm() { printf 'CHECK:%s\\n' "$*"; }\n${snippet}`,
+      ],
+      {
+        encoding: "utf8",
+        env: { NODE_ENV: "test", PATH: process.env.PATH, SystemRoot: process.env.SystemRoot },
+      },
+    );
+    expect(result.error).toBeUndefined();
+    expect(result.status, result.stderr).toBe(status);
+    if (status === 0) {
+      expect(result.stdout).toContain("SETUP:scripts/setup-codex-cloud.sh");
+      expect(result.stdout).toContain("CHECK:run check:codex-cloud -- --runtime");
+    } else {
+      expect(result.stdout).toBe("");
+      expect(result.stderr).toContain("Raw boundary failed");
+    }
+  });
+
   it("keeps Local and Cloud task bodies identical and executable", () => {
     if (!isCommitAvailable(manifest.reconciledBase)) {
       ensureHistoryDeepened(2000);
@@ -184,6 +216,23 @@ describe("RAG plan execution packages", () => {
         stdio: "pipe",
       }),
     ).not.toThrow();
+  });
+
+  it("does not require a CLI confirmation marker and keeps phase effort floors", () => {
+    const launch = (...args: string[]) =>
+      execFileSync(process.execPath, ["scripts/rag-phase-launch-check.mjs", ...args], {
+        cwd: process.cwd(),
+        encoding: "utf8",
+        stdio: "pipe",
+      });
+
+    // Ordinary-language confirmation remains a controller responsibility. The
+    // helper validates declared effort, not user prose or observed runtime routes.
+    expect(launch("--target", "P01", "--effort", "xhigh")).toContain("PASS");
+    expect(launch("--target", "P01", "--effort", "xhigh", "--xhigh-confirmed")).toContain("PASS");
+    expect(launch("--target", "P00", "--effort", "high")).toContain("PASS");
+    expect(launch("--target", "P00", "--effort", "high", "--xhigh-confirmed")).toContain("PASS");
+    expect(() => launch("--target", "P01", "--effort", "high", "--xhigh-confirmed")).toThrow();
   });
 
   it("ships a valid resumable phase-receipt contract", () => {

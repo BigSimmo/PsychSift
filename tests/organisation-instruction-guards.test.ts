@@ -182,6 +182,103 @@ describe("retired rules: the list itself", () => {
     expect(isInstructionFile("docs/AGENTS.md")).toBe(false);
     expect(isInstructionFile("docs/outstanding-issues.md")).toBe(false);
   });
+
+  it.each([
+    "docs/codex-cloud.md",
+    "plugins/clinical-kb/skills/clinical-kb-workflow/SKILL.md",
+    "plugins/clinical-kb/skills/new-workflow/references/cloud.md",
+    "docs/prompts/codex-cloud-detailed-task.md",
+    "docs/prompts/new-codex-cloud-task.md",
+    "docs/prompts/mode-aware-clinical-ask-codex-cloud-handover.md",
+    "docs/prompts/rag-coverage-gate-extraction.md",
+    "docs/superpowers/plans/2026-08-22-mode-aware-clinical-ask-implementation.md",
+    "docs/superpowers/rag-upgrade/CLOUD-EXECUTION-PROMPT.md",
+    "docs/superpowers/rag-upgrade/canonical/START-HERE.cloud.md",
+    "docs/superpowers/rag-upgrade/canonical/START-HERE.local.md",
+    "docs/superpowers/rag-upgrade/cloud/START-HERE.md",
+    "docs/superpowers/rag-upgrade/local/START-HERE.md",
+    ...["canonical", "cloud", "local"].flatMap((directory) =>
+      [
+        "approval-matrix.md",
+        "connected-execution.md",
+        "execution-order.md",
+        "programme-manifest.json",
+        "sdd-execution.md",
+      ].map((file) => `docs/superpowers/rag-upgrade/${directory}/${file}`),
+    ),
+  ])("includes active copied or programme instructions: %s", (file) => {
+    expect(isInstructionFile(file)).toBe(true);
+    expect(isInstructionFile(file.replaceAll("/", "\\"))).toBe(true);
+  });
+
+  it.each([
+    "docs/prompts/codex-cloud-review/1-codex-full-stack-master-review-prompt.md",
+    "docs/prompts/codex-cloud-review/2-codex-full-stack-master-prompt-review-and-stress-test.md",
+    "docs/prompts/codex-cloud-review/3-codex-agents-md-companion.md",
+    "docs/archive/codex-cloud-legacy-profile-2026-10-16.md",
+    "docs/audit/codex-cloud-reliability-20260907.md",
+    "plugins/clinical-kb/skills-archive/clinical-kb-workflow/SKILL.md",
+    "plugins/clinical-kb/audit/2026-08-22-cloud.md",
+    "docs/superpowers/plans/2026-08-21-developer-hub-phase-1-HANDOFF.md",
+    "docs/superpowers/rag-upgrade/cloud/plans/2026-08-20-rag-adaptive-answer.md",
+    "docs/superpowers/rag-upgrade/local/plans/2026-08-20-rag-adaptive-answer.md",
+    "docs/superpowers/rag-upgrade/execution-receipts/programme/P00.json",
+    "docs/superpowers/rag-upgrade/execution-artifacts/programme/review.md",
+  ])("preserves source inputs and historical evidence outside the live scope: %s", (file) => {
+    expect(isInstructionFile(file)).toBe(false);
+  });
+});
+
+describe("retired rules: Cloud instruction copies", () => {
+  it.each([
+    {
+      file: "docs/prompts/new-codex-cloud-task.md",
+      text: "If the prompt does not contain the exact marker [xhigh-confirmed], stop.\n",
+      rule: "cloud-xhigh-marker-gate",
+    },
+    {
+      file: "docs/superpowers/plans/2026-08-22-mode-aware-clinical-ask-implementation.md",
+      text: "Default to `CODEX_CLOUD_ACCESS_PROFILE=offline`.\n",
+      rule: "cloud-legacy-profile-default",
+    },
+    {
+      file: "docs/superpowers/rag-upgrade/cloud/START-HERE.md",
+      text: "The first line is the repository's exact xhigh confirmation marker.\n",
+      rule: "cloud-variable-proves-host",
+    },
+  ])("rejects a retired Cloud instruction in $file locally and in CI", ({ file, text, rule }) => {
+    const { root, base } = repo({
+      "docs/organisation/retired-rules.json": fs.readFileSync(REPO_RULES, "utf8"),
+    });
+    const head = commit(root, { [file]: text });
+
+    for (const args of [
+      ["--root", root],
+      ["--root", root, "--base", base, "--head", head],
+    ]) {
+      const result = run(RETIRED, args);
+      expect(result.code).toBe(1);
+      expect(result.out).toContain(`${file}:1 [${rule}]`);
+    }
+  });
+
+  it("does not rewrite verbatim review inputs or dated evidence when checking Cloud retirements", () => {
+    const { root, base } = repo({
+      "docs/organisation/retired-rules.json": fs.readFileSync(REPO_RULES, "utf8"),
+    });
+    const historicalText = "Default to `CODEX_CLOUD_ACCESS_PROFILE=offline`.\n";
+    const head = commit(root, {
+      "docs/prompts/codex-cloud-review/3-codex-agents-md-companion.md": historicalText,
+      "docs/archive/codex-cloud-legacy-profile-2026-10-16.md": historicalText,
+      "docs/audit/codex-cloud-reliability-20260907.md": historicalText,
+      "docs/superpowers/plans/2026-08-21-developer-hub-phase-1-HANDOFF.md": historicalText,
+      "docs/superpowers/rag-upgrade/cloud/plans/2026-08-20-rag-adaptive-answer.md": historicalText,
+      "docs/superpowers/rag-upgrade/execution-receipts/programme/P00.json": historicalText,
+    });
+
+    expect(run(RETIRED, ["--root", root]).code).toBe(0);
+    expect(run(RETIRED, ["--root", root, "--base", base, "--head", head]).code).toBe(0);
+  });
 });
 
 describe("retired rules: reading a diff", () => {

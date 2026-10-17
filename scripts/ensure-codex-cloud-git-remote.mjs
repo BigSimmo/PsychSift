@@ -28,11 +28,13 @@ export function remoteContainsCredentials(remoteUrl) {
 
 export function remoteRepositoryIdentity(remoteUrl) {
   if (typeof remoteUrl !== "string" || remoteContainsCredentials(remoteUrl)) return null;
-  const normalized = remoteUrl
-    .trim()
-    .replace(/^git@github\.com:/i, "")
-    .replace(/^ssh:\/\/git@github\.com\//i, "")
-    .replace(/^https?:\/\/github\.com\//i, "")
+  const githubPrefix = /^(?:git@github\.com:|ssh:\/\/git@github\.com\/|https?:\/\/github\.com\/)/i;
+  const candidate = remoteUrl.trim();
+  // A matching path alone can be a local filesystem remote. Establish the GitHub
+  // transport/host before interpreting owner/repository as provider identity.
+  if (!githubPrefix.test(candidate)) return null;
+  const normalized = candidate
+    .replace(githubPrefix, "")
     .replace(/\.git$/i, "")
     .replace(/^\/+|\/+$/g, "");
   return /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(normalized) ? normalized : null;

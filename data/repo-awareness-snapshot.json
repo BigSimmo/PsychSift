@@ -3290,8 +3290,18 @@
         "catalogued": true
       },
       {
+        "path": "docs/archive/cloud-session-state-2026-10-16/ingestion-review-remediation-state.md",
+        "section": "archive",
+        "catalogued": true
+      },
+      {
         "path": "docs/rag-improvement/gate-b-decision-record.md",
         "section": "rag-improvement",
+        "catalogued": true
+      },
+      {
+        "path": "docs/archive/cloud-session-state-2026-10-16/README.md",
+        "section": "archive",
         "catalogued": true
       },
       {
@@ -3327,6 +3337,11 @@
       {
         "path": "docs/decisions/2026-10-16-import-loops-fixed-in-3546.md",
         "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/archive/cloud-session-state-2026-10-16/db-remediation-coordination-state.md",
+        "section": "archive",
         "catalogued": true
       },
       {
@@ -3372,6 +3387,11 @@
       {
         "path": "docs/superpowers/specs/2026-09-30-roster-team-calendar-and-swaps-design.md",
         "section": "superpowers",
+        "catalogued": true
+      },
+      {
+        "path": "docs/archive/cloud-session-state-2026-10-16/rag-programme-coordination-state.md",
+        "section": "archive",
         "catalogued": true
       },
       {
@@ -4070,6 +4090,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/archive/cloud-session-state-2026-10-16/local-test-failures-windows.md",
+        "section": "archive",
+        "catalogued": true
+      },
+      {
         "path": "docs/ledger-id-scheme-proposal.md",
         "section": "root",
         "catalogued": true
@@ -4137,6 +4162,11 @@
       {
         "path": "docs/decisions/2026-09-16-differentials-sources-stay-held.md",
         "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/archive/cloud-session-state-2026-10-16/dev-drive-project-location.md",
+        "section": "archive",
         "catalogued": true
       },
       {
@@ -4240,6 +4270,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/archive/codex-cloud-design-status-semantics-2026-10-16.md",
+        "section": "archive",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-10-16-provider-agreements-verified-for-first-release.md",
         "section": "decisions",
         "catalogued": true
@@ -4251,6 +4286,11 @@
       },
       {
         "path": "docs/archive/2026-10-agent-code-reviews/POST_FIX_CHECKLIST.md",
+        "section": "archive",
+        "catalogued": true
+      },
+      {
+        "path": "docs/archive/rag-coverage-gate-extraction-2026-10-16.md",
         "section": "archive",
         "catalogued": true
       },
@@ -4372,6 +4412,11 @@
       {
         "path": "docs/mockup-audit-and-issues-report.md",
         "section": "root",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-16-cloud-policy-repair-boundary.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -4655,6 +4700,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/archive/cloud-session-state-2026-10-16/codex-chat-import-tooling.md",
+        "section": "archive",
+        "catalogued": true
+      },
+      {
         "path": "docs/ingestion-concurrency-fix-workorder.md",
         "section": "root",
         "catalogued": true
@@ -4697,6 +4747,11 @@
       {
         "path": "docs/decisions/2026-08-25-answer-provenance-line.md",
         "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/archive/cloud-session-state-2026-10-16/lighthouse-mobile-root-cls-flake.md",
+        "section": "archive",
         "catalogued": true
       },
       {
@@ -4825,6 +4880,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/archive/codex-cloud-legacy-profile-2026-10-16.md",
+        "section": "archive",
+        "catalogued": true
+      },
+      {
         "path": "docs/design-system/sweep-fix-tap-floors-round-2.md",
         "section": "design-system",
         "catalogued": true
@@ -4885,6 +4945,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-16-teaching-admins-export-named-attendance.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/care-plan/reports/task-10-report.md",
         "section": "care-plan",
         "catalogued": true
@@ -4937,6 +5002,11 @@
       {
         "path": "docs/branch-review-archival-policy.md",
         "section": "root",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-16-user-controlled-reasoning-effort.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -5135,6 +5205,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-16-remove-obsolete-cloud-startup-instructions.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/README.md",
         "section": "superpowers",
         "catalogued": true
@@ -5285,6 +5360,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-16-cloud-legacy-profile-scope.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/wa-mha-forms-handover-reconciliation-2026-09-16.md",
         "section": "root",
         "catalogued": true
@@ -5306,6 +5386,11 @@
       },
       {
         "path": "docs/decisions/2026-08-18-gate-b-table-target-is-parity.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-16-cloud-operating-policy-overhaul.md",
         "section": "decisions",
         "catalogued": true
       },

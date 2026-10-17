@@ -1,10 +1,14 @@
 # Mode-aware Clinical Ask Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILLS: load `superpowers:executing-plans` for plan admission,
-> sequential task tracking, and branch closeout; use `superpowers:subagent-driven-development` for the
-> preferred per-task implementer/reviewer loop when those skills and Codex multi-agent tools are actually
-> available. Otherwise execute the identical task graph inline with `superpowers:executing-plans`. Neither
-> route authorises push, PR mutation, merge, deployment, hosted migration, or live-provider work.
+_Cloud admission refreshed 2026-10-16 to follow current-host policy; implementation scope and
+clinical acceptance criteria are unchanged._
+
+> **For agentic workers:** use `superpowers:executing-plans` and
+> `superpowers:subagent-driven-development` when available. Otherwise follow the same admission,
+> task tracking, verification and independent-review contracts directly with current host tools.
+> Missing optional skills are not a general task blocker; unavailable independent review remains
+> explicitly unmet. Neither route authorises push, PR mutation, merge, deployment, hosted migration,
+> or live-provider work.
 
 **Goal:** Add an explicit typed-or-dictated Clinical Ask action to Services, Forms, Differentials, Formulation,
 DSM-5 Diagnosis, Specifiers, and Therapy that returns the best-supported mode-shaped response from governed
@@ -60,10 +64,11 @@ binding product, clinical, privacy, evidence, or interaction decision, stop and 
 
 ## Codex Cloud execution contract
 
-### Route selection: use both skills without making the feature plugin-dependent
+### Route selection: use available skills without making the feature plugin-dependent
 
-`superpowers:executing-plans` owns plan admission, plan review, sequential advancement through Tasks 1–12,
-blocker handling, completion evidence, and the final `superpowers:finishing-a-development-branch` decision.
+When available, `superpowers:executing-plans` supports plan admission, plan review, sequential advancement through Tasks 1–12,
+blocker handling, completion evidence, and branch closeout. Without it, follow the same lifecycle directly;
+do not install a plugin or stop the task merely to obtain the skill.
 Inside that lifecycle, prefer `superpowers:subagent-driven-development` for each task when the current Codex
 Cloud task exposes the named skills and the callable multi-agent tools. This is one controller and one shared
 checkout; implementation agents are never parallel.
@@ -81,8 +86,10 @@ requires all of:
 Repository setup does not install Superpowers or enable Codex multi-agent support. Never infer capability from a
 local Desktop profile, plugin cache, repository prose, or `[features] multi_agent=true` on another machine. Do
 not edit tracked product files, weaken Cloud setup, or copy a local plugin into the repository to manufacture the
-capability. If any preferred-route requirement is absent, record `Execution route: inline executing-plans` and
-continue the same plan in the controller. Missing SDD capability is not a product blocker.
+capability. If SDD is unavailable but executing-plans exists, record `Execution route: inline executing-plans`.
+If the execution skills are unavailable, record `Execution route: direct sequential` and follow the same
+checkboxes, verification and independent-review requirements with current tools. Missing optional skills
+are not a product blocker; unavailable independent review remains explicitly unmet.
 
 Do not switch routes in the middle of a task. If a subagent tool fails, finish or roll back only the current
 task-owned uncommitted increment, update the ledger, and resume inline at the first incomplete checkbox. A route
@@ -90,21 +97,27 @@ change never permits duplicate implementation or parallel writers.
 
 ### Cloud admission gate
 
-Run from a fresh Codex Cloud task using the repository's **offline** profile. Read `AGENTS.md`,
-`docs/codex-cloud.md`, `.agents/skills/prompt-perfector/references/repository-workflow.md`, this complete plan,
-the binding specification, and the ADR before writing. Then:
+Run this provider-free task using the current host's supported setup. Read `AGENTS.md`,
+`docs/agents/codex-cloud-environment.md`, `docs/codex-cloud.md`,
+`.agents/skills/prompt-perfector/references/repository-workflow.md`, this complete plan, the binding
+specification, and the ADR before writing. Then:
 
-1. Run `bash --noprofile --norc scripts/check-codex-cloud-raw-env.sh`; accept only the documented provider-free
-   result and never print environment values.
-2. Run `npm run check:codex-cloud`, `npm run check:runtime`, `npm run check:installed-lock-parity`,
-   `npm run check:playwright-browser-revision`, and `npm run check:codex-cloud -- --runtime`. Record the decisive
-   line and exit code from each. Do not rerun setup if these are already green.
-3. Confirm `CODEX_CLOUD_EXPECTED_BASE_SHA` is reported as a verified 40-character ancestor, the origin identity
-   is `BigSimmo/Database`, and current base freshness is known. If the host supplied a shallow checkout, use the
-   repository maintenance/refresh path; do not reason about missing history as if it were complete.
-4. Confirm the checkout is clean, on a task-specific non-protected branch, and has no active Git operation. Run
-   the prompt-perfector verifier with `--cloud` immediately before the first write and proceed only on
-   `SAFE_TO_EDIT=true` and `PRECHECK_RESULT=SAFE`.
+1. Establish current-host capabilities and readiness without printing credential values. The archived
+   raw-probe/profile acceptance applies only when the owner or environment explicitly selects that legacy
+   setup; preserve its fail-closed checks in that case. Do not force the setup on another Cloud host.
+2. Run `npm run check:runtime`, `npm run check:installed-lock-parity`, and
+   `npm run check:playwright-browser-revision` for this implementation. Record the decisive line and exit
+   code from each. Run `check:codex-cloud` static/runtime acceptance only for the selected legacy profile.
+3. Confirm repository identity is `BigSimmo/PsychSift` and verify the intended base commit and ancestry
+   from the actual checkout. The legacy profile additionally requires its verified
+   `CODEX_CLOUD_EXPECTED_BASE_SHA`. If the host supplied a shallow checkout, use an authorised
+   maintenance/refresh path; do not reason about missing history as if it were complete.
+4. Confirm the task-specific non-protected branch, expected repository/HEAD and absence of an active Git
+   operation. A new task starts clean. For verified same-task continuation, inventory every changed path,
+   preserve unrelated work, and bind the continuation to the verifier's `SAFE_STATUS_HASH` using
+   `--allow-dirty --expected-status-hash` plus exact expected repository, branch and HEAD. Use `--cloud`
+   only after current-host evidence establishes the supplied Cloud workflow. Proceed only on
+   `SAFE_TO_EDIT=true` and `PRECHECK_RESULT=SAFE`; dirty state alone does not require a new session.
 5. Build `planned_files` from every path in the plan's `Create:` and `Modify:` lists, joined by commas, then run
    `npm run workflow:flightplan -- --write-evidence --files "$planned_files"` and retain its new `.local` receipt.
    The expected domains are `ui`, `database`, `retrieval`, `clinical`, and `privacy`; treat actual output as

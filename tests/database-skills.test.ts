@@ -161,6 +161,12 @@ describe("Database skill catalog", () => {
     expect(workflow).toContain("git worktree add");
     expect(workflow).toContain("git rev-parse --show-toplevel");
     expect(workflow).toContain("CODEX_CLOUD=1");
+    expect(workflow).toContain("marker is neither required nor sufficient");
+    expect(workflow).toContain("`--cloud` selects that workflow");
+    expect(workflow).toContain("--cloud-host-attested");
+    expect(workflow).toContain("only after current task metadata establishes");
+    expect(workflow).toContain("workflow hints, not proof of platform isolation");
+    expect(workflow).not.toContain("CODEX_CLOUD=1 is required.");
     expect(workflow).toContain("--expected-status-hash");
     expect(workflow).toContain("--allow-dirty");
     expect(workflow).toContain("does not provide an OS-level sandbox");
@@ -169,6 +175,16 @@ describe("Database skill catalog", () => {
     expect(verifier).toContain("dirty_override_requires_expected_state");
     expect(verifier).toContain("expected_state_required");
     expect(verifier).toContain("primary_worktree");
+    const evaluator = verifier.slice(
+      verifier.indexOf("export function evaluateRepositoryState"),
+      verifier.indexOf("function git("),
+    );
+    expect(evaluator).not.toContain("process.env");
+    expect(verifier).toContain('process.env.CODEX_CLOUD === "1"');
+    expect(verifier).toContain('process.env.CLAUDE_CODE_REMOTE === "true"');
+    expect(verifier).not.toContain("CODEX_CLOUD_HOST");
+    expect(verifier).toContain("attested Cloud primary without host marker");
+    expect(verifier).toContain("Cloud primary missing host evidence and attestation");
     expect(verifier).not.toContain("node_modules");
 
     const selfTest = spawnSync(
@@ -178,10 +194,17 @@ describe("Database skill catalog", () => {
         cwd: path.resolve(import.meta.dirname, ".."),
         encoding: "utf8",
         shell: false,
+        env: {
+          PATH: process.env.PATH,
+          SystemRoot: process.env.SystemRoot,
+          NODE_ENV: "test",
+          CODEX_CLOUD: "1",
+          CLAUDE_CODE_REMOTE: "true",
+        },
       },
     );
     expect(selfTest.status, `${selfTest.stdout}\n${selfTest.stderr}`).toBe(0);
-    expect(selfTest.stdout).toContain("prompt-perfector isolation self-test passed: 14/14");
+    expect(selfTest.stdout).toContain("prompt-perfector isolation self-test passed: 28/28");
   });
 });
 
