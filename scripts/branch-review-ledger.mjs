@@ -12,6 +12,7 @@
  *
  *   node scripts/branch-review-ledger.mjs lookup <branch-or-ref> [--head <sha>] [--scope <text>] [--json] [--verbose]
  *   node scripts/branch-review-ledger.mjs append --ref <x> --head <sha> --scope <s> --outcome <o> --checks <c>
+ *   node scripts/branch-review-ledger.mjs supersede --record <path> --ref <corrected-ref>
  *   node scripts/branch-review-ledger.mjs migrate-legacy [--base <commit>] [--dry-run]
  *   node scripts/branch-review-ledger.mjs dedupe [--dry-run]
  *   node scripts/branch-review-ledger.mjs rotate [--before YYYY-MM-DD] [--dry-run]
@@ -531,6 +532,65 @@ function runLookup(_liveMarkdown, argv) {
   }
 }
 
+function runSupersede(markdown, argv) {
+  const { flags } = parseFlags(argv);
+  const record = flags.record && flags.record !== true ? String(flags.record) : "";
+  const correctedRef = flags.ref && flags.ref !== true ? String(flags.ref) : "";
+  if (!record || !correctedRef) {
+    console.error("usage: branch-review-ledger.mjs supersede --record <path> --ref <corrected-ref>");
+    process.exitCode = 2;
+    return;
+  }
+  const relative = record.replace(/^\\/+/, "");
+  if (!relative.startsWith(`${RECORDS_DIR}/`) || !relative.endsWith(RECORD_SUFFIX)) {
+    console.error("refusing supersede: --record must name an immutable branch-review record");
+    process.exitCode = 1;
+    return;
+  }
+  const target = path.join(root, relative);
+  if (!existsSync(target)) {
+    console.error(`refusing supersede: record does not exist: ${relative}`);
+    process.exitCode = 1;
+    return;
+  }
+  const rows = parseLedgerRows(readFileSync(target, "utf8"));
+  if (rows.length !== 1) {
+    console.error("refusing supersede: record must contain exactly one ledger row");
+    process.exitCode = 1;
+    return;
+  }
+  const prior = rows[0];
+  const scope = `${prior.scope} (supersedes ${prior.date})`;
+  let row;
+  try {
+    row = buildRow({
+      date: new Date().toISOString().slice(0, 10),
+      ref: correctedRef,
+      head: prior.head,
+      scope,
+      outcome: prior.outcome,
+      checks: `supersedes ${relative}; ${prior.checks}`,
+    });
+  } catch (error) {
+    console.error(`refusing supersede: ${error.message}`);
+    process.exitCode = 1;
+    return;
+  }
+  const output = path.posix.join(RECORDS_DIR, `${createHash("sha256").update(row, "utf8").digest("hex")}${RECORD_SUFFIX}`);
+  if (flags["dry-run"]) {
+    console.log(`Would record superseding entry at ${output}:\\n${row}`);
+    return;
+  }
+  mkdirSync(path.join(root, RECORDS_DIR), { recursive: true });
+  try {
+    const status = writeImmutableReviewRecord(path.join(root, output), row);
+    console.log(`${status === "created" ? "Recorded" : "Verified existing"} superseding entry at ${output}:\\n${row}`);
+  } catch (error) {
+    console.error(`refusing supersede: ${error.message}`);
+    process.exitCode = 1;
+  }
+}
+
 function runAppend(markdown, argv) {
   const { flags } = parseFlags(argv);
   const required = ["ref", "head", "scope", "outcome", "checks"];
@@ -968,10 +1028,11 @@ function main() {
   const [command, ...rest] = argv;
   if (command === "lookup") return runLookup(markdown, rest);
   if (command === "append") return runAppend(markdown, rest);
+  if (command === "supersede") return runSupersede(markdown, rest);
   if (command === "migrate-legacy") return runMigrateLegacy(markdown, rest);
   if (command === "dedupe") return runDedupe(markdown, rest);
   if (command === "rotate") return runRotate(markdown, rest);
-  console.error("usage: branch-review-ledger.mjs <lookup|append|migrate-legacy|dedupe|rotate|--self-test> [...]");
+  console.error("usage: branch-review-ledger.mjs <lookup|append|supersede|migrate-legacy|dedupe|rotate|--self-test> [...]");
   console.error("  lookup <branch-or-ref> [--head <sha>] [--scope <text>] [--json] [--verbose]");
   console.error(
     "  append --ref <x> --head <sha> --scope <s> --outcome <o> --checks <c> [--date <YYYY-MM-DD>] [--supersede]",
