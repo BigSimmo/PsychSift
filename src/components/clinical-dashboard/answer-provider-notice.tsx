@@ -52,7 +52,22 @@ export function AnswerProviderNotice({
 export function answerSummaryUnavailableReason(answer: AnswerStateInput): string | null {
   const code = answer.fallbackReasonCode;
   if (!answerUsesDegradedMode(answer) || !code || !isProviderGenerationFallbackCode(code)) return null;
+  // Retrieval deadlines use the same provider timeout code, but do not establish
+  // that any source-backed answer exists. Only move a timeout below the answer
+  // when the route explicitly records a generation fallback.
+  if (
+    code === "provider_timeout" &&
+    !/generation_fallback|generation_failed/i.test(`${answer.fallbackReason ?? ""} ${answer.routingReason ?? ""}`)
+  ) {
+    return null;
+  }
   return publicFallbackReason(code);
+}
+
+export function answerRetrievalDeadlineReason(answer: AnswerStateInput): string | null {
+  return answer.routingReason === "retrieval_deadline_exceeded"
+    ? (answer.degradedMode?.reason ?? "The search reached its time limit before source evidence could be confirmed.")
+    : null;
 }
 
 /**
