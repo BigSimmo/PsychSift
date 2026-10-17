@@ -288,6 +288,7 @@
     "tests/webhooks-chat-notify.test.ts",
     "tests/webhooks-railway-route.test.ts",
     "tests/worktree-*",
+    "tests/xlsx-sheet-dictionary-projection.test.ts",
     "tests/xlsx-source-provenance.test.ts",
     "tests/yaml-contract.test.ts",
     "tsconfig.json",

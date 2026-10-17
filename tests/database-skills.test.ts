@@ -23,8 +23,8 @@ describe("Database skill catalog", () => {
     const result = validateSkillCatalog();
 
     expect(result.errors).toEqual([]);
-    expect(result.canonical).toHaveLength(35);
-    expect(new Set(result.canonical.map((skill: { name: string }) => skill.name))).toHaveProperty("size", 35);
+    expect(result.canonical).toHaveLength(36);
+    expect(new Set(result.canonical.map((skill: { name: string }) => skill.name))).toHaveProperty("size", 36);
     expect(result.aliases).toHaveLength(8);
     for (const category of catalog.categories) {
       expect(category.skills.every((skill: unknown) => typeof skill === "string")).toBe(true);
@@ -34,7 +34,7 @@ describe("Database skill catalog", () => {
   it("discovers each declared skill from its folder metadata", () => {
     const discovered = discoverSkillDefinitions();
 
-    expect(discovered).toHaveLength(43);
+    expect(discovered).toHaveLength(44);
     for (const skill of discovered) {
       if (!skill) continue;
       const metadataPath = path.join(skillsRoot, skill.name, "agents", "openai.yaml");
@@ -90,9 +90,9 @@ describe("Database skill catalog", () => {
     const result = validateRepositorySkillPolicies(files);
 
     expect(result.errors).toEqual([]);
-    expect(files).toHaveLength(68);
+    expect(files).toHaveLength(69);
     expect(result.surfaceCounts).toEqual({
-      Codex: 43,
+      Codex: 44,
       Claude: 9,
       Cursor: 15,
       "PsychSift plugin": 1,
@@ -114,10 +114,16 @@ describe("Database skill catalog", () => {
       byName.set(name, group);
     }
 
-    expect(CROSS_SURFACE_NAME_TWINS).toEqual(new Set(["ledger"]));
+    expect(CROSS_SURFACE_NAME_TWINS).toEqual(new Set(["ledger", "prlanded"]));
     expect(
       byName
         .get("ledger")
+        ?.map((skill) => skill.surface)
+        .sort(),
+    ).toEqual(["Claude", "Codex"]);
+    expect(
+      byName
+        .get("prlanded")
         ?.map((skill) => skill.surface)
         .sort(),
     ).toEqual(["Claude", "Codex"]);
