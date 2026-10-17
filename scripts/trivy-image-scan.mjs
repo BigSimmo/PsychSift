@@ -147,6 +147,19 @@ export function evaluateTrivySummaryText(summaryText, requiredImages = REQUIRED_
 }
 
 /**
+ * Docker volume arguments for a containerised Trivy run. The saved image tarball stays read-only.
+ * Only the throwaway vulnerability-database cache is writable: Trivy opens its database file
+ * read-write, and a read-only mount made every scan fail with "read-only file system", which is
+ * reported as unassessed. The container still runs with no network.
+ */
+export function trivyDockerMounts({ workDir, cacheDir = null, outputDir = null }) {
+  const mounts = ["-v", `${workDir}:/work:ro`];
+  if (cacheDir) mounts.push("-v", `${cacheDir}:/cache`);
+  if (outputDir) mounts.push("-v", `${outputDir}:/out`);
+  return mounts;
+}
+
+/**
  * @param {string} imageRef
  * @param {string[]} trivyArgs use "__IMAGE__" where the image ref belongs and
  *   "__OUT__" where an output path belongs (when outputHostPath is set)
@@ -213,13 +226,11 @@ function runDockerTrivy(imageRef, trivyArgs, { outputHostPath = null, needsVulne
       };
     }
 
-    const mounts = ["-v", `${workDir}:/work:ro`];
-    if (cacheDir) {
-      mounts.push("-v", `${cacheDir}:/cache:ro`);
-    }
-    if (outputHostPath) {
-      mounts.push("-v", `${dirname(resolve(outputHostPath))}:/out`);
-    }
+    const mounts = trivyDockerMounts({
+      workDir,
+      cacheDir,
+      outputDir: outputHostPath ? dirname(resolve(outputHostPath)) : null,
+    });
 
     const dockerArgs = ["run", "--rm", "--network=none", ...mounts, TRIVY_IMAGE];
     for (const arg of trivyArgs) {

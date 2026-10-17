@@ -5,6 +5,7 @@ import {
   isCompatibleLocalTrivyVersion,
   TRIVY_IMAGE,
   TRIVY_VERSION,
+  trivyDockerMounts,
   validateTrivyReportJson,
 } from "../scripts/trivy-image-scan.mjs";
 
@@ -132,5 +133,19 @@ describe("Trivy image scan evidence validation (R13)", () => {
     expect(workflow).toContain("Trivy scan completed (clinical-kb-app:ci): STATUS=ok");
     expect(workflow).toContain("Trivy scan completed (clinical-kb-worker:ci): STATUS=ok");
     expect(workflow).toContain("Trivy scan unassessed:");
+  });
+});
+
+describe("Trivy container mounts", () => {
+  it("keeps the image tarball read-only and makes only the throwaway database cache writable", () => {
+    expect(trivyDockerMounts({ workDir: "/tmp/w", cacheDir: "/tmp/c", outputDir: "/tmp/o" })).toEqual([
+      "-v",
+      "/tmp/w:/work:ro",
+      "-v",
+      "/tmp/c:/cache",
+      "-v",
+      "/tmp/o:/out",
+    ]);
+    expect(trivyDockerMounts({ workDir: "/tmp/w" })).toEqual(["-v", "/tmp/w:/work:ro"]);
   });
 });
