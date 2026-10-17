@@ -127,8 +127,6 @@ function isAllowedPath(repoRelative, target) {
 const DATED_DOC = /\b20\d{2}-\d{2}(-\d{2})?\b/;
 // Historical directories: only scanned with --all.
 const HISTORICAL_DIRS = new Set(["archive", "audit"]);
-// Verbatim as-provided inputs: retained byte-for-byte, so their internal path
-// references cannot be corrected. Only scanned with --all.
 const APP_ROUTE_GROUPS = ["(search-app)"];
 const OUTSTANDING_ISSUES = "docs/outstanding-issues.md";
 const OUTSTANDING_ISSUES_INBOX = "docs/outstanding-issues-inbox";
