@@ -142,10 +142,6 @@ async function consumeFavouritesRateLimit(
   supabase: ReturnType<typeof createAdminClient>,
   userId: string,
 ): Promise<Response | null> {
-  const shouldRateLimit =
-    typeof (supabase as { rpc?: unknown })?.rpc === "function" ||
-    Boolean((consumeSubjectApiRateLimit as unknown as { mock?: unknown })?.mock);
-  if (!shouldRateLimit) return null;
   const rateLimit = await consumeSubjectApiRateLimit({
     supabase,
     subject: { kind: "owner", ownerId: userId },
@@ -421,12 +417,17 @@ export async function PATCH(request: Request) {
       }
       await Promise.all(
         plan.updates.map(async (row) => {
-          const { error } = await supabase
+          // Scope each write to the set the plan was built from, so a favourite moved
+          // to another set after the membership snapshot is not reordered there.
+          const updateQuery = supabase
             .from("user_favourites")
             .update({ sort_order: row.sortOrder })
             .eq("user_id", user.id)
             .eq("content_type", row.contentType as (typeof input.items)[number]["contentType"])
             .eq("content_key", row.contentKey);
+          const { error } = await (input.setId
+            ? updateQuery.eq("set_id", input.setId)
+            : updateQuery.is("set_id", null));
           if (error) throw new Error(error.message);
         }),
       );

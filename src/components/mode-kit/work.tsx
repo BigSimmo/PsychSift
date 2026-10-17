@@ -475,7 +475,17 @@ export function WorkButton(props: WorkButtonProps) {
   };
   if (props.href !== undefined) {
     return (
-      <Link href={props.href} {...shared}>
+      <Link
+        href={props.href}
+        onClick={
+          ariaDisabled
+            ? (event) => {
+                event.preventDefault();
+              }
+            : undefined
+        }
+        {...shared}
+      >
         {inner}
       </Link>
     );

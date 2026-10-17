@@ -7,7 +7,6 @@ import {
   useRef,
   useState,
   type CSSProperties,
-  type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
   type RefObject,
 } from "react";
@@ -142,38 +141,6 @@ export function SourcePreviewPopover({
     onDismiss: () => onClose(),
   });
 
-  const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    if (event.key !== "Tab") return;
-    const root = surfaceRef.current;
-    if (!root) return;
-    const focusables = Array.from(
-      root.querySelectorAll<HTMLElement>(
-        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-      ),
-    ).filter(
-      (element) =>
-        element.tabIndex !== -1 &&
-        !element.hasAttribute("disabled") &&
-        element.getClientRects().length > 0 &&
-        element.getAttribute("aria-hidden") !== "true" &&
-        !element.closest('[aria-hidden="true"], [inert]'),
-    );
-    const first = focusables[0];
-    const last = focusables[focusables.length - 1];
-    const active = document.activeElement;
-    if (focusables.length === 0) {
-      event.preventDefault();
-      return;
-    }
-    if (event.shiftKey && (active === first || !root.contains(active))) {
-      event.preventDefault();
-      last?.focus();
-    } else if (!event.shiftKey && active === last) {
-      event.preventDefault();
-      first?.focus();
-    }
-  };
-
   if (!open || typeof document === "undefined") return null;
 
   const style: CSSProperties = layout
@@ -194,7 +161,6 @@ export function SourcePreviewPopover({
       aria-label={title}
       data-testid="source-capsule-preview"
       data-popover-placement={layout?.placement ?? "below"}
-      onKeyDown={handleKeyDown}
       style={style}
       className={cn(
         "fixed z-[95] min-w-[min(100vw-1.5rem,20rem)] max-w-[calc(100vw-1.5rem)] overflow-y-auto overscroll-contain rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-lux)] p-3 shadow-[var(--shadow-elevated)] motion-safe:animate-pop-in motion-reduce:animate-none",

@@ -31,7 +31,9 @@ export function scopedSearchKey(body: SearchCoalesceKeyInput, ownerId?: string |
   return JSON.stringify({
     ownerId: ownerId ?? undefined,
     publicOnly,
-    query: body.query.toLowerCase().replace(/\s+/g, " ").trim(),
+    // Case is preserved: the leader's original query runs for every waiter, and
+    // clinical abbreviations can be case-sensitive.
+    query: body.query.replace(/\s+/g, " ").trim(),
     topK: body.topK ?? null,
     documentId: body.documentId ?? null,
     documentIds: body.documentIds?.length ? [...body.documentIds].sort() : [],

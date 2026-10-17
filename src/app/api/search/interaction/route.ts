@@ -108,10 +108,7 @@ export async function POST(request: Request) {
     // Carry the authenticated owner through so the miss row is attributable and
     // owner-cleanable instead of being orphaned with owner_id: null (RET-H4).
     const user = await serverAuth.requireAuthenticatedUser(request, supabase);
-    const shouldRateLimit =
-      typeof (supabase as { rpc?: unknown })?.rpc === "function" ||
-      Boolean((consumeSubjectApiRateLimit as unknown as { mock?: unknown })?.mock);
-    if (shouldRateLimit) {
+    {
       const rateLimit = await consumeSubjectApiRateLimit({
         supabase,
         subject: { kind: "owner", ownerId: user.id },
