@@ -2459,6 +2459,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-17-remaining-therapy-compass-sign-offs.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-10-17-overseas-line-centred-on-answer-home.md",
         "section": "decisions",
         "catalogued": true

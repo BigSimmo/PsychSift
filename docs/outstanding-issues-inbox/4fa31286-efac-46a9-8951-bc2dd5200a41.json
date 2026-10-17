@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "4fa31286-efac-46a9-8951-bc2dd5200a41",
+  "createdOn": "2026-10-17",
+  "action": "done",
+  "payload": {
+    "id": "#4DFNHJ",
+    "outcome": "All six corrected ledger sources (RANZCP mood guideline and five Chief Psychiatrist WA guidelines) reviewed and signed off by Psych Sift with structured SHA-256 attestations (PR #3601).",
+    "baseRowFingerprint": "b02b4fde13684083ab84a21ca767c0dcba5b9522968d175f1543fbd738407aa5",
+    "targetUlid": "01M2MR66DN4DFNHJ36JHSPKJJ9"
+  }
+}
