@@ -131,10 +131,7 @@ import {
   strongReasoningEffortForQueryClass,
 } from "@/lib/rag/rag-extractive-answer";
 import { contextPackAdmissionMatches } from "./rag-context-admission";
-import {
-  withAdmissionDischargeContextPair,
-  withAdmissionDischargeSideEvidence,
-} from "./rag-admission-discharge-side-evidence";
+import { withAdmissionDischargeSideEvidence } from "./rag-admission-discharge-side-evidence";
 import { withBestPracticePrescriptionEvidence } from "./rag-best-practice-prescription-evidence";
 import { chooseValidatedExtractiveShortCircuit, hasValidatedExtractiveCandidate } from "@/lib/rag/rag-extractive-first";
 import { buildComparisonMatrix, comparisonEvidenceGuide, selectSafeComparisonFallback } from "@/lib/rag/rag-comparison";
@@ -2044,6 +2041,17 @@ async function searchChunksWithTiming(
   return finishSearch(searchTiming, { results, telemetry });
 }
 
+type RelatedDocumentsArgs = { query: string; results: SearchResult[]; ownerId?: string; signal?: AbortSignal };
+
+/** Build related documents safe. */
+async function buildRelatedDocumentsSafe(args: RelatedDocumentsArgs) {
+  try {
+    return await fetchRelatedDocuments({ supabase: createAdminClient(), ...args });
+  } catch {
+    return [];
+  }
+}
+
 /** Search chunks. */
 export async function searchChunks(args: SearchChunksArgs) {
   const { results } = await searchChunksWithTelemetry(args);
@@ -2379,19 +2387,13 @@ async function answerQuestionWithScopeUncoalesced(
     useGovernedContextPacking || loadCheckedPublishedOriginal
       ? await packModelContextEvidence(routeSelection, packGovernedContext, useGovernedContextPacking)
       : routeSelection;
-  // Side-evidence top-up candidates must come from selection-eligible results and pass the same admission receipt the governed packer requires.
-  const sideEvidencePool = eligibleAnswerResults;
+  const answerInputResults = packedRouteSelection.results;
+  // Side-evidence top-up candidates must pass the same admission receipt the governed packer requires.
   const sideEvidenceCandidates = useGovernedContextPacking
-    ? sideEvidencePool.filter((result) =>
+    ? eligibleAnswerResults.filter((result) =>
         contextPackAdmissionMatches(result, contextPackAccessScope, args.ragRequestContext!.snapshot),
       )
-    : sideEvidencePool;
-  const answerInputResults = withAdmissionDischargeSideEvidence({
-    query: args.query,
-    queryClass,
-    selected: packedRouteSelection.results,
-    candidates: sideEvidenceCandidates,
-  });
+    : eligibleAnswerResults;
   let coverageSelections: CoverageEvidenceSelection[] = packedRouteSelection.coverageSelections;
   // A rollout choice does not grant missing source-role or corpus authority.
   // Legacy admitted evidence keeps its established verified answer contract;
@@ -2400,8 +2402,6 @@ async function answerQuestionWithScopeUncoalesced(
     requestedAnswerContract.adaptive && (!packedRouteSelection.coverage || coverageSelections.length === 0);
   const answerContract = adaptiveCoverageUnavailable ? answerContractForRollout() : requestedAnswerContract;
   const searchLatencyMs = Date.now() - searchStartedAt;
-  const buildArtifacts = (selected: SearchResult[]) =>
-    buildSelectedEvidenceArtifacts(answerFocusQuery, selected, sideEvidenceCandidates);
   const {
     relevance,
     quoteCards,
@@ -2415,15 +2415,20 @@ async function answerQuestionWithScopeUncoalesced(
     memoryCardsUsed,
     indexingQuality,
     scoreExplanations: answerScoreExplanations,
-  } = buildArtifacts(answerInputResults);
+  } = buildSelectedEvidenceArtifacts(answerFocusQuery, answerInputResults);
   const emptyPanel = buildSmartPanel(answerFocusQuery, []);
-  const relatedDocumentsPromise = fetchRelatedDocuments({
-    supabase: createAdminClient(),
+  const relatedDocumentsPromise = buildRelatedDocumentsSafe({
     query: answerFocusQuery,
-    results: answerInputResults,
+    // Include any side-evidence top-up so a cited stage keeps its related-document entry.
+    results: withAdmissionDischargeSideEvidence({
+      query: args.query,
+      queryClass,
+      selected: answerInputResults,
+      candidates: sideEvidenceCandidates,
+    }),
     ownerId: args.ownerId,
     signal: args.signal,
-  }).catch(() => []);
+  });
   const routingStartedAt = Date.now();
   const routeFromRouting = chooseAnswerRoute({
     query: answerFocusQuery,
@@ -2916,7 +2921,7 @@ async function answerQuestionWithScopeUncoalesced(
     const extractiveContextResults = validatedExtractiveShortCircuit?.resultIds?.length
       ? extractiveFirstInputResults.filter((result) => validatedExtractiveShortCircuit.resultIds?.includes(result.id))
       : extractiveFirstInputResults;
-    const extractiveContextArtifacts = buildArtifacts(extractiveContextResults);
+    const extractiveContextArtifacts = buildSelectedEvidenceArtifacts(answerFocusQuery, extractiveContextResults);
     relatedDocuments = retainRelatedDocumentsForResults(relatedDocuments, extractiveContextResults);
     const builtSourceSafeExtractiveAnswer = buildExtractiveAnswer({
       allowSourceProseRecovery: true,
@@ -2957,7 +2962,7 @@ async function answerQuestionWithScopeUncoalesced(
         timings: extractiveTimings,
       });
     const deliveredExtractiveResults = sourceSafeComparisonAnswer.sources;
-    const deliveredExtractiveArtifacts = buildArtifacts(deliveredExtractiveResults);
+    const deliveredExtractiveArtifacts = buildSelectedEvidenceArtifacts(answerFocusQuery, deliveredExtractiveResults);
     relatedDocuments = retainRelatedDocumentsForResults(relatedDocuments, deliveredExtractiveResults);
     const extractiveBasePlan = buildCurrentSmartApiPlan("extractive", route.reason, deliveredExtractiveResults);
     const extractiveSmartApiPlan = sourceBoundAdmissionDischargeAnswer
@@ -3407,21 +3412,16 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
     } satisfies RagAnswer;
   }
 
-  const selectedContextPair = withAdmissionDischargeContextPair({
-    query: args.query,
+  const selectedContextPair = selectModelContextEvidencePair({
+    routeMode: route.mode,
     queryClass,
-    pair: selectModelContextEvidencePair({
-      routeMode: route.mode,
-      queryClass,
-      crossDocument: crossDocumentPlan.enabled,
-      results: rawAnswerInputResults,
-      queryPlan: requestQueryPlan ?? undefined,
-      siteContentState: args.ragRequestContext?.snapshot.publicSiteContent.state,
-      sourcePolicyConflicts: args.sourcePolicyConflicts,
-      accessScope: contextPackAccessScope,
-      snapshot: args.ragRequestContext?.snapshot,
-    }),
-    candidates: sideEvidenceCandidates,
+    crossDocument: crossDocumentPlan.enabled,
+    results: rawAnswerInputResults,
+    queryPlan: requestQueryPlan ?? undefined,
+    siteContentState: args.ragRequestContext?.snapshot.publicSiteContent.state,
+    sourcePolicyConflicts: args.sourcePolicyConflicts,
+    accessScope: contextPackAccessScope,
+    snapshot: args.ragRequestContext?.snapshot,
   });
   // The route pack is already admitted and safe to verify if optional generation
   // packing expires. Only a completed generation pack may replace its evidence.
@@ -3448,7 +3448,7 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
     coverageSelections = modelContextSelection.coverageSelections;
     generationFallbackResults = strongRetryContextResults;
     let responseContextResults = modelContextResults;
-    let responseContextArtifacts = buildSelectedEvidenceArtifacts(answerFocusQuery, responseContextResults, sideEvidenceCandidates);
+    let responseContextArtifacts = buildSelectedEvidenceArtifacts(answerFocusQuery, responseContextResults);
     const modelContextSelectionSummary = summarizeAustralianSourceSelection(answerInputResults, modelContextResults);
     await args.onProgress?.({
       stage: "ranking",
@@ -3504,7 +3504,7 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
       });
       coverageSelections = strongRetryContextSelection.coverageSelections;
       responseContextResults = strongRetryContextResults;
-      responseContextArtifacts = buildSelectedEvidenceArtifacts(answerFocusQuery, responseContextResults, sideEvidenceCandidates);
+      responseContextArtifacts = buildSelectedEvidenceArtifacts(answerFocusQuery, responseContextResults);
       packedContextResults = strongRetryContextResults;
       // Boost the cap: a max_output_tokens truncation retried on the SAME budget with MORE
       // reasoning (strong) just re-truncates. This is the truncation self-heal.
@@ -3602,7 +3602,7 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
       });
       coverageSelections = strongRetryContextSelection.coverageSelections;
       responseContextResults = strongRetryContextResults;
-      responseContextArtifacts = buildSelectedEvidenceArtifacts(answerFocusQuery, responseContextResults, sideEvidenceCandidates);
+      responseContextArtifacts = buildSelectedEvidenceArtifacts(answerFocusQuery, responseContextResults);
       packedContextResults = strongRetryContextResults;
       generated = await generateWithModel(env.OPENAI_STRONG_ANSWER_MODEL, packedContextResults, {
         strong: true,
@@ -3728,7 +3728,7 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
     if (canRecoverExtractively && isUnusableGeneratedAnswer(answer)) {
       coverageSelections = strongRetryContextSelection.coverageSelections;
       responseContextResults = generationFallbackResults;
-      const recoveryArtifacts = buildSelectedEvidenceArtifacts(answerFocusQuery, responseContextResults, sideEvidenceCandidates);
+      const recoveryArtifacts = buildSelectedEvidenceArtifacts(answerFocusQuery, responseContextResults);
       responseContextArtifacts = recoveryArtifacts;
       answer = buildExtractiveAnswer({
         allowSourceProseRecovery: true,
@@ -3756,7 +3756,7 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
         query: args.query,
         results: packedContextResults,
         relatedDocuments,
-        artifacts: buildSelectedEvidenceArtifacts(answerFocusQuery, packedContextResults, sideEvidenceCandidates),
+        artifacts: buildSelectedEvidenceArtifacts(answerFocusQuery, packedContextResults),
       });
       answer.routingMode = retriedWithStrong ? "strong" : route.mode;
       answer.routingReason = routingReason;
@@ -3923,7 +3923,7 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
     if (generationQualityFailure) {
       answerRetryReasons.push(`generation_quality_gate:${generationQualityFailure.gateReason}`);
     }
-    const generationFallbackArtifacts = buildArtifacts(generationFallbackResults);
+    const generationFallbackArtifacts = buildSelectedEvidenceArtifacts(answerFocusQuery, generationFallbackResults);
     const candidateSummary = summarizeAustralianSourceSelection(answerInputResults, generationFallbackResults);
     await args.onProgress?.({
       stage: "fallback",
@@ -3986,7 +3986,9 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
     const extractiveFallbackRouteReason = `${route.reason}; generation_fallback:${sanitizedReason}; source_backed_extractive_fallback`;
     const buildExtractiveFallbackCandidate = (candidateResults: SearchResult[]) => {
       const candidateArtifacts =
-        candidateResults === generationFallbackResults ? generationFallbackArtifacts : buildArtifacts(candidateResults);
+        candidateResults === generationFallbackResults
+          ? generationFallbackArtifacts
+          : buildSelectedEvidenceArtifacts(answerFocusQuery, candidateResults);
       const candidatePlan = buildCurrentSmartApiPlan("extractive", extractiveFallbackRouteReason, candidateResults);
       return {
         ...buildExtractiveAnswer({

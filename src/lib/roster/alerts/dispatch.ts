@@ -96,8 +96,7 @@ async function isOpenPostAlertDelivered(
     // Fall back to in-memory tracking when the table query is unavailable.
   }
   if (pendingOrFailedOpenPostAlerts.has(key)) return false;
-  // A replay is not proof of delivery when the durable receipt is unavailable.
-  return false;
+  return replayed;
 }
 
 async function markOpenPostAlertDelivered(

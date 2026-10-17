@@ -1646,18 +1646,12 @@ export function sourceBoundComparisonFacts(args: {
 /** Build the narrow two-sided fallback for admission/discharge comparisons.
  *  Exported as a test seam for the #019 conservative-fallback regression guard; no behaviour change. */
 export function buildAdmissionDischargeComparisonAnswer(args: { query: string; results: SearchResult[] }) {
-  const isCommunityAdmission = (result: SearchResult) =>
-    /\bcommunity\b|admissioncommunitypts/i.test(`${result.title ?? ""} ${result.file_name ?? ""}`);
-  const rawAdmissionFacts = sourceBoundComparisonFacts({
+  const admissionFacts = sourceBoundComparisonFacts({
     results: args.results,
     subjectPattern: admissionComparisonTermPattern,
     otherSubjectPattern: dischargeComparisonTermPattern,
     requirementBindingPatterns: admissionRequirementBindingPatterns,
   });
-  const admissionFacts = [
-    ...rawAdmissionFacts.filter((fact) => isCommunityAdmission(fact.result)),
-    ...rawAdmissionFacts.filter((fact) => !isCommunityAdmission(fact.result)),
-  ];
   const dischargeFacts = sourceBoundComparisonFacts({
     results: args.results,
     subjectPattern: dischargeComparisonTermPattern,

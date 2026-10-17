@@ -60,19 +60,9 @@ export function selectAnswerRouteEvidence(args: {
   return { crossDocumentPlan, eligibleResults: eligible.results, rawResults, routeSelection };
 }
 
-export function buildSelectedEvidenceArtifacts(
-  query: string,
-  results: SearchResult[],
-  fallbackResults?: SearchResult[],
-) {
+export function buildSelectedEvidenceArtifacts(query: string, results: SearchResult[]) {
   const quoteCards = extractQuoteCards(results, query);
   const memoryCardsUsed = collectMemoryCards(results);
-  const directVisualEvidence = buildVisualEvidence(results);
-  const retainedDocumentIds = new Set(results.map((result) => result.document_id));
-  const visualEvidence =
-    directVisualEvidence.length > 0 || !fallbackResults?.length || retainedDocumentIds.size === 0
-      ? directVisualEvidence
-      : buildVisualEvidence(fallbackResults.filter((result) => retainedDocumentIds.has(result.document_id)));
   return {
     relevance: buildEvidenceRelevance(query, results),
     quoteCards,
@@ -81,7 +71,7 @@ export function buildSelectedEvidenceArtifacts(
     evidenceSummary: buildEvidenceSummary(results, quoteCards),
     sourceCoverage: buildSourceCoverage(results),
     conflictsOrGaps: detectConflictsOrGaps(results),
-    visualEvidence,
+    visualEvidence: buildVisualEvidence(results),
     bestSource: selectBestSourceRecommendation(results, quoteCards),
     memoryCardsUsed,
     indexingQuality: buildIndexingQuality(results, memoryCardsUsed),
@@ -137,17 +127,13 @@ export function applySelectedEvidenceArtifacts(args: {
   preserveBestSource?: boolean;
 }) {
   const { answer, query, results, relatedDocuments, artifacts, preserveBestSource = false } = args;
-  const retainedDocumentIds = new Set(results.map((result) => result.document_id));
-  const fallbackVisualEvidence = (answer.visualEvidence ?? []).filter((item) =>
-    retainedDocumentIds.has(item.document_id),
-  );
   answer.sources = results;
   answer.quoteCards = reconcileQuoteCards(answer.quoteCards, results, query);
   answer.documentBreakdown = artifacts.documentBreakdown;
   answer.evidenceSummary = artifacts.evidenceSummary;
   answer.sourceCoverage = artifacts.sourceCoverage;
   answer.conflictsOrGaps = answer.conflictsOrGaps?.length ? answer.conflictsOrGaps : artifacts.conflictsOrGaps;
-  answer.visualEvidence = artifacts.visualEvidence.length ? artifacts.visualEvidence : fallbackVisualEvidence;
+  answer.visualEvidence = artifacts.visualEvidence;
   answer.bestSource = preserveBestSource
     ? answer.bestSource
     : (selectBestSourceRecommendation(results, answer.quoteCards) ?? artifacts.bestSource);
@@ -857,9 +843,6 @@ export function selectRetrievalEvidence(args: {
     // clamped-score contract holds, and generic boost stacking cannot outvote query relevance.
     if ((right.contentCoverageScore ?? 0) !== (left.contentCoverageScore ?? 0))
       return (right.contentCoverageScore ?? 0) - (left.contentCoverageScore ?? 0);
-    const leftTitlePhrase = left.matchedSignals.includes("document_title_phrase") ? 1 : 0;
-    const rightTitlePhrase = right.matchedSignals.includes("document_title_phrase") ? 1 : 0;
-    if (rightTitlePhrase !== leftTitlePhrase) return rightTitlePhrase - leftTitlePhrase;
     return left.chunkId.localeCompare(right.chunkId);
   });
   const candidateById = new Map(candidates.map((candidate) => [candidate.chunkId, candidate]));

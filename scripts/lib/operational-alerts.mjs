@@ -65,13 +65,6 @@ const policies = {
     escalationOwner: "Clinical safety owner",
     runbook: RUNBOOKS.degradedPage,
   },
-  sourceGapUnknown: {
-    code: "OPS_SOURCE_GAP_RATE_UNKNOWN",
-    severity: "unknown",
-    owner: "Clinical evaluation owner",
-    escalationOwner: "Clinical safety owner",
-    runbook: RUNBOOKS.sourceGapWarning,
-  },
   sourceGapWarning: {
     code: "OPS_SOURCE_GAP_RATE_WARNING",
     severity: "warning",
@@ -79,26 +72,12 @@ const policies = {
     escalationOwner: "Clinical safety owner",
     runbook: RUNBOOKS.sourceGapWarning,
   },
-  unsupportedUnknown: {
-    code: "OPS_UNSUPPORTED_ANSWER_RATE_UNKNOWN",
-    severity: "unknown",
-    owner: "AI platform owner",
-    escalationOwner: "Clinical safety owner",
-    runbook: RUNBOOKS.unsupportedWarning,
-  },
   unsupportedWarning: {
     code: "OPS_UNSUPPORTED_ANSWER_RATE_WARNING",
     severity: "warning",
     owner: "AI platform owner",
     escalationOwner: "Clinical safety owner",
     runbook: RUNBOOKS.unsupportedWarning,
-  },
-  latencyBudgetUnknown: {
-    code: "OPS_ANSWER_LATENCY_BUDGET_UNKNOWN",
-    severity: "unknown",
-    owner: "Platform operations",
-    escalationOwner: "AI platform owner",
-    runbook: RUNBOOKS.latencyBudgetWarning,
   },
   latencyBudgetWarning: {
     code: "OPS_ANSWER_LATENCY_BUDGET_WARNING",
@@ -226,14 +205,7 @@ export function evaluateOperationalAlerts(health, context = {}) {
 
     if (slo.totalQueries >= 20) {
       const windowMinutes = finiteNumber(slo.windowMinutes) ? slo.windowMinutes : 60;
-      if (!validRate(slo.sourceGapRate)) {
-        alerts.push(alert(policies.sourceGapUnknown, {
-          observedValue: null,
-          threshold: { operator: "present", value: true, unit: "sourceGapRate" },
-          windowMinutes,
-          reason: "Source-gap rate is missing, non-finite, or outside 0..1.",
-        }));
-      } else if (slo.sourceGapRate > 0.15) {
+      if (validRate(slo.sourceGapRate) && slo.sourceGapRate > 0.15) {
         alerts.push(
           alert(policies.sourceGapWarning, {
             observedValue: slo.sourceGapRate,
@@ -242,14 +214,7 @@ export function evaluateOperationalAlerts(health, context = {}) {
           }),
         );
       }
-      if (!validRate(slo.unsupportedRate)) {
-        alerts.push(alert(policies.unsupportedUnknown, {
-          observedValue: null,
-          threshold: { operator: "present", value: true, unit: "unsupportedRate" },
-          windowMinutes,
-          reason: "Unsupported-answer rate is missing, non-finite, or outside 0..1.",
-        }));
-      } else if (slo.unsupportedRate > 0.15) {
+      if (validRate(slo.unsupportedRate) && slo.unsupportedRate > 0.15) {
         alerts.push(
           alert(policies.unsupportedWarning, {
             observedValue: slo.unsupportedRate,
@@ -258,14 +223,7 @@ export function evaluateOperationalAlerts(health, context = {}) {
           }),
         );
       }
-      if (!validRate(slo.latencyBudgetBreachRate)) {
-        alerts.push(alert(policies.latencyBudgetUnknown, {
-          observedValue: null,
-          threshold: { operator: "present", value: true, unit: "latencyBudgetBreachRate" },
-          windowMinutes,
-          reason: "Latency-budget breach rate is missing, non-finite, or outside 0..1.",
-        }));
-      } else if (slo.latencyBudgetBreachRate > 0.15) {
+      if (validRate(slo.latencyBudgetBreachRate) && slo.latencyBudgetBreachRate > 0.15) {
         alerts.push(
           alert(policies.latencyBudgetWarning, {
             observedValue: slo.latencyBudgetBreachRate,
