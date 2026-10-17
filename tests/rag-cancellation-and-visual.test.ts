@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { searchTextChunkCandidates } from "../src/lib/rag/rag-candidate-sources";
 import { packAdjacentSourceContext } from "../src/lib/rag/rag-context-pack";
-import type { RagAnswer, SearchResult } from "../src/lib/types";
+import type { SearchResult } from "../src/lib/types";
 
 function makeSearchResult(overrides: Partial<SearchResult> & { id: string; document_id: string }): SearchResult {
   const { id, document_id, ...rest } = overrides;
