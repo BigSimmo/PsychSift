@@ -2929,7 +2929,6 @@
         "src/components/admin/renewals/record-dates-sheet.tsx",
         "src/components/admin/starter/starter-date-sheet.tsx",
         "src/components/alerts/remind-me-sheet.tsx",
-        "src/components/calculators/clinical-math-panel.tsx",
         "src/components/clinical-dashboard/email-auth-form.tsx",
         "src/components/clinical-dashboard/password-recovery-form.tsx",
         "src/components/clinical-dashboard/patient-profile-panel.tsx",
