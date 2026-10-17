@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "15a11955-9ee3-4c86-ad8f-faa0af2a342c",
+  "createdOn": "2026-10-17",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "task",
+    "summary": "Ledger correction: PR #3570 prlanded record names the wrong branch",
+    "detail": "docs/branch-review-records/a7be2760026da4bc040fa90bf847382bdcded2a8a7510ceaf7be4ac49c042211.record.md (added by PR #3609) records branch claude/reconcile-inbox-20261016 for PR #3570, but gh shows #3570's head branch was claude/reconcile-ledger-20261016 (merge fa526775c6, head d8eefbb91e). The SHAs and merge state are correct. Correct the branch name through the sanctioned branch-review-ledger tooling only; never hand-edit the record.",
+    "source": "PR #3609 sweep proof verification, 17 Oct 2026",
+    "issueUlid": "01M551BST62X90V6VK3DEP4C7S"
+  }
+}

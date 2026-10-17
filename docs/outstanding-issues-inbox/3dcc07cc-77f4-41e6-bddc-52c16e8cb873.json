@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "3dcc07cc-77f4-41e6-bddc-52c16e8cb873",
+  "createdOn": "2026-10-17",
+  "action": "done",
+  "payload": {
+    "id": "#BGDVPD",
+    "outcome": "Hoisted 19 pre-compiled boundary, heading, metadata-noise, boilerplate, dose-unit, prohibition, and table regexes to module scope in src/lib/chunking.ts with zero chunk output change; verified with tests/chunking-regex-hoist.test.ts (4/4) and 135/135 existing chunking tests.",
+    "baseRowFingerprint": "ec33d2f927593ac06d397ab6853e0126d172c94781e1a709edb9a2f0a41902c5",
+    "targetUlid": "01M4WDKGQDBGDVPD7HR56ED6MC"
+  }
+}

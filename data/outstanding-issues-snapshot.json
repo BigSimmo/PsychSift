@@ -4,13 +4,13 @@
     "committed_at": "2026-10-16"
   },
   "counts": {
-    "open": 109,
-    "p1": 17,
-    "p2": 55,
-    "p3": 37,
+    "open": 108,
+    "p1": 15,
+    "p2": 58,
+    "p3": 35,
     "queued": 6,
     "pending": 0,
-    "resolved": 787
+    "resolved": 796
   },
   "queue": [
     {
@@ -847,15 +847,6 @@
       "added": "2026-10-12"
     },
     {
-      "id": "#08216B",
-      "priority": "P3",
-      "type": "task",
-      "summary": "Remove PR 3538 leftovers once the 30-day dead-code window passes (after 13 Nov 2026)",
-      "detail": "The /api/proxy route only replies authenticated and nothing calls it. scripts/recalculate-answer-support-labels.ts and its test are run by nothing. The 11 developer tool pages under src/app/mockups/development are now unreachable duplicates of /admin/developer-hub. The safe-number editor, attendance roster, QR check-in helper and clinical note editor are unwired; wire or remove each, and the note editor needs a privacy review before use. The clinical-math calculators need ideal body weight guidance, a corrected lithium dialysis label, a consistent 1.2 mmol/L boundary and tablet-strength rounding before any use.",
-      "source": "PR 3538 review, 15 Oct 2026",
-      "added": "2026-10-15"
-    },
-    {
       "id": "#F3B2XC",
       "priority": "P2",
       "type": "task",
@@ -874,20 +865,11 @@
       "added": "2026-10-13"
     },
     {
-      "id": "#NHR0MM",
-      "priority": "P3",
-      "type": "issue",
-      "summary": "Roster week strip shows only the first shift kind on a day; Teaching next-session ignores all-day entries; WA public holidays end at 2028",
-      "detail": "roster-week-strip.tsx uses kinds[0] so a morning plus night shift looks like a morning alone (de-duplicate kinds and count distinct kinds for any overflow marker, test with two shifts of the same kind). teaching-view-model.ts:138 excludes all-day sessions from nextSession (restore a date guard for all-day entries: today or later). src/lib/on-call/wa-public-holidays.ts has data for 2026-2028 only, including the fairness count call site.",
-      "source": "PsychSift audit review (16 audit reports) checked against main 4382217, 2026-10-13",
-      "added": "2026-10-13"
-    },
-    {
       "id": "#ZWJCK4",
-      "priority": "P1",
+      "priority": "P2",
       "type": "issue",
       "summary": "PDF extractor can turn prose beneath a table into a table row and rebuild the table markdown from it",
-      "detail": "worker/python/extract_pdf_assets.py recover_table_rows_from_edge_strip (~:557, caller ~:1367-1390) admits blocks by position alone (four bbox tests) and treats each line as a cell, then rebuilds the whole accessible table markdown, which reaches the vision model, document_table_facts (threshold_value/action) and page.text/search. Also appends recovered rows unsorted, drops single-baseline rows silently, has no test, and worker/python/** is outside the coverage inventory. Next action: accept a recovered block only when its line x-positions align with table.rows cell bboxes, sort by y0, drop the row on alignment failure, cover the markdown rebuild path too, and add a synthetic test (3-column table followed by a 3-line paragraph asserting no new row and unchanged accessible_table_markdown).",
+      "detail": "Rechecked 17 Oct 2026 against main 99507ebca. The original fault is fixed: PR #3571 made worker/python/extract_pdf_assets.py _recover_table_rows_split admit a recovered line only when each piece fits one column, keep top and bottom strips in order, and tests/pdf-table-extraction.test.ts pins full-width prose being rejected. A leftover was fixed on 17 Oct: a short note under a recovered row (for example 'See note') was glued into that row's first cell; a lone line now joins the row above only when that cell actually wrapped (_continues_wrapped_cell), with tests both ways. Still open, low risk: text laid out in the table's own columns directly under a table (an abbreviation key, or a two-column page) becomes an extra row, and only when a drawing below the table extends the crop over it. Geometry alone cannot tell such a key from a real row. Changes reach search only after a re-index.",
       "source": "PsychSift audit review (16 audit reports) checked against main 4382217, 2026-10-13",
       "added": "2026-10-13"
     },
@@ -897,15 +879,6 @@
       "type": "task",
       "summary": "Ranking-snapshot date gate will fail around 3 Nov 2026 if the automated snapshot-refresh PR is not merged (audit H5-1)",
       "detail": "The snapshot was refreshed to 4 Oct, so the automatic checks pass today. .github/workflows/ranking-snapshot-refresh.yml runs after each weekly Eval Canary on main and opens a refresh PR once the snapshot is 14 days old, reusing the canary artifact with no provider calls. Next: watch for that PR (expected from about 18 Oct) and get it reviewed and merged before the 30-day expiry; it touches a RAG ranking fixture, so follow docs/rag-behaviour/ and the canary rules. Only if no refresh PR appears (canary failing or not running) does a new paid eval, with the owner's explicit approval, become necessary.",
-      "source": "Audit 2026-10-08, rechecked against main 2026-10-13",
-      "added": "2026-10-13"
-    },
-    {
-      "id": "#1WAA0Z",
-      "priority": "P3",
-      "type": "task",
-      "summary": "Possible dead code: older calculator mockups (audit M5-2) and On Call Education, Compliance and Logistics screens said to be unreachable (audit L4D-05)",
-      "detail": "Recheck first: the On Call sections are still used by calendar events and tests, so L4D-05 may be wrong. Delete nothing without npm run check:dead-code-candidate (see docs/agents/dead-code-deletion.md).",
       "source": "Audit 2026-10-08, rechecked against main 2026-10-13",
       "added": "2026-10-13"
     },
@@ -946,15 +919,6 @@
       "added": "2026-10-13"
     },
     {
-      "id": "#WFYDV6",
-      "priority": "P1",
-      "type": "issue",
-      "summary": "Unwired WA MHA Form 6A/6B print component carries unverified statutory text",
-      "detail": "src/components/forms/wa-mha-form-print.tsx (PR #3538) says Form 6B needs Chief Psychiatrist consent, while src/lib/form-register.ts calls the 6B attachment a report to the Chief Psychiatrist. Section lists, the 7-day pre-expiry examination and copy recipients are unverified, and it prints WA Government branding. Fabricated default patient, clinician and consent values were removed on 15 Oct. Nothing renders it. Delete it once the 30-day dead-code window passes (after 13 Nov 2026) unless legal and clinical sign-off is obtained first.",
-      "source": "PR 3538 review, 15 Oct 2026",
-      "added": "2026-10-15"
-    },
-    {
       "id": "#YF0XSQ",
       "priority": "P2",
       "type": "issue",
@@ -973,15 +937,6 @@
       "added": "2026-10-13"
     },
     {
-      "id": "#CFHRJY",
-      "priority": "P2",
-      "type": "issue",
-      "summary": "Virtualize long document and differential diagnosis result lists",
-      "detail": "In src/components/clinical-dashboard/document-search-results.tsx (which has a 30-result initial progressive reveal) and src/components/differentials/differential-stream-workspace.tsx, evaluate virtualization or DOM recycling for large query results exceeding initial reveal limits to prevent memory bloat and scroll stutter while preserving keyboard/screen-reader accessibility.",
-      "source": "session 2026-10-14 performance audit follow-up",
-      "added": "2026-10-14"
-    },
-    {
       "id": "#A33Z1X",
       "priority": "P2",
       "type": "issue",
@@ -989,15 +944,6 @@
       "detail": "Owner decision: sign the Services directory off, or hide it until signed. No code change until then.",
       "source": "Audit 2026-10-08, rechecked against main 2026-10-13",
       "added": "2026-10-13"
-    },
-    {
-      "id": "#3B4S3Z",
-      "priority": "P2",
-      "type": "issue",
-      "summary": "Safe number editor: two managers saving at almost the same moment can overwrite each other's cover needs",
-      "detail": "The editor (Manage, Team settings, PR #3431) re-reads the team's needs, then sends needs.set, which replaces the whole list. The read and the write are separate requests, so a dated, grade or site need, or a safe number, that another manager saves in that gap is lost. Undo has the same gap. Closing it needs a database change (owner's explicit yes required): a version check on the team's needs so needs.set only succeeds against the list it read, else re-read and ask the manager to retry. Then add a test that interleaves a second save between the read and the write. Raised by Qodo on PR #3431, left open by choice as rare. Josh asked for it to be recorded 2026-10-10.",
-      "source": "PR #3431 review (Qodo), modes and dead wiring review thread",
-      "added": "2026-10-10"
     },
     {
       "id": "#K66YES",
@@ -1015,15 +961,6 @@
       "summary": "Medication interaction lexicon: the 28 Sept sign-off is out of date because the drug groupings changed since; alerts still fire on an unapproved version (audit L4C-H1)",
       "detail": "Owner action: re-approve the current lexicon through the review sheet. The check only warns, so nothing blocks the stale version meanwhile.",
       "source": "Audit 2026-10-08, rechecked against main 2026-10-13",
-      "added": "2026-10-13"
-    },
-    {
-      "id": "#WMGPSG",
-      "priority": "P2",
-      "type": "issue",
-      "summary": "Doc/instruction drift left open after the doc-fix pass: encoding damage, cloud-profile worktree rule, RAG duty missing from skills, stale decision",
-      "detail": "(1) docs/privacy-impact-assessment.md and docs/openai-cross-border-basis.md carry double-encoded text and a BOM (a verified-lossless guarded per-run repair exists on an unpushed branch; never a naive whole-file re-encode); docs/outstanding-issues.md:15 has a corrupted arrow (canonical ledger, edit only via reconciliation). (2) .claude/cloud-profile/skills/prompt/references/coding-workflow.md:21 has the pre-hardening worktree rule and is copied into every container session (owner decision on owned versus vendored). (3) No .agents skill mentions the RAG ranking-protection duty, and the retrieval-quality and reindex runbooks have no canary-pair or approval requirement. (4) docs/decisions/2026-09-26-remove-ward-flow-and-caring-contacts.md says Caring Contacts was removed but src/lib/caring-contacts/clock.ts is live with importers; needs a dated superseding decision, do not delete the file. (5) Admin renewals page test dropped its checked-wording assertion while admin-renewed-sheet still forbids the word; record the decision. (6) min-h-[48px] remains at account-setup-dialog.tsx:246 against a 'none remain' claim in docs/redesign/07-token-adoption-audit.md.",
-      "source": "PsychSift audit review (16 audit reports) checked against main 4382217, 2026-10-13",
       "added": "2026-10-13"
     },
     {
@@ -1045,15 +982,6 @@
       "added": "2026-10-12"
     },
     {
-      "id": "#3ZHFH9",
-      "priority": "P2",
-      "type": "issue",
-      "summary": "Test-deletion guard blind spots: each-tables count as one case, Python tests are invisible, mass skip is undetected",
-      "detail": "scripts/check-diff-integrity.mjs counts each it.each(table) once (100 tables with 8+ rows, largest 48), TEST_FILE_PATTERN matches only TS/JS .spec/.test files (worker/python/test_*.py and tests/roster-publication-concurrency.mjs are outside it), and skip/only are counted as declared cases. Next action: owner decision on counting each-rows, adding .py, and flagging mass .skip; do not add skip to NON_CASE_MEMBERS (that would be wrong).",
-      "source": "PsychSift audit review (16 audit reports) checked against main 4382217, 2026-10-13",
-      "added": "2026-10-13"
-    },
-    {
       "id": "#54XJ7D",
       "priority": "P2",
       "type": "task",
@@ -1061,6 +989,69 @@
       "detail": "Needs a database migration and an owner decision between blocking the swap and asking the manager to acknowledge. A migration merged to main reaches the live database within seconds, so schedule the merge inside an approved window.",
       "source": "Audit 2026-10-08, rechecked against main 2026-10-13",
       "added": "2026-10-13"
+    },
+    {
+      "id": "#EG02B7",
+      "priority": "P2",
+      "type": "task",
+      "summary": "Reindex reaper: enqueue storage cleanup at generation commit time (follow-up to #RP00FZ)",
+      "detail": "The reaper script builds storage cleanup jobs only on its gated apply path, so ordinary generation commits still schedule no cleanup for superseded storage objects. Needs a reviewed forward migration (never an edit to an existing one) before closing. Migration merges deploy to production and need the owner's explicit permission.",
+      "source": "PR #3570 review; scripts/cleanup-abandoned-reindex-generations.ts; supabase/migrations/20260702000000_commit_generation_preserve_legacy_artifacts.sql",
+      "added": "2026-10-16"
+    },
+    {
+      "id": "#54N8ZN",
+      "priority": "P2",
+      "type": "task",
+      "summary": "Follow-up to PR 3546: CodeRabbit items held out of the merge",
+      "detail": "The 14 Oct admin source pilot proof (docs/design-system/evidence/admin-source-pilot.json) ran against an earlier pilot-client digest, and its harness is not in the repo. Native labels, keyboard order and the polite announcement are now pinned against the current client by tests/admin-pilot-client-accessibility.dom.test.tsx on every change (branch claude/ingestion-review-lbw6rf, 16 Oct). Still not done: a real screen-reader run (VoiceOver or NVDA) by a person, and the dark, forced-colours, 320px and print checks against the current digest. Low value while the page is administrator-only.",
+      "source": "PR 3546 CodeRabbit review 5545295336, owner decision 2026-10-16",
+      "added": "2026-10-16"
+    },
+    {
+      "id": "#GR72PF",
+      "priority": "P3",
+      "type": "task",
+      "summary": "CME: render the claim-pack button on a reachable CME surface (follow-up to #G20QE6)",
+      "detail": "CmeClaimPackButton and its unit tests exist in src/components/cme/cme-claim-pack.tsx, but nothing imports or renders it, so clinicians cannot reach the study-budget export. Wire it into a reachable CME page with a user-facing test before closing.",
+      "source": "PR #3570 review; src/components/cme/cme-claim-pack.tsx; tests/cme-claim-pack.test.ts",
+      "added": "2026-10-16"
+    },
+    {
+      "id": "#7D8WZ2",
+      "priority": "P2",
+      "type": "task",
+      "summary": "Hostile-document ingestion: run the upload-to-answer end-to-end matrix (follow-up to #F3SGCM)",
+      "detail": "Seven-class helper coverage exists in tests/hostile-document-ingestion-matrix.test.ts, but it uses an extraction mock and fabricated search results, so no uploaded hostile document is checked against real ingestion, retrieval and answer paths. Close only when each class runs end to end.",
+      "source": "PR #3570 review; tests/hostile-document-ingestion-matrix.test.ts",
+      "added": "2026-10-16"
+    },
+    {
+      "id": "#9E87MG",
+      "priority": "P2",
+      "type": "task",
+      "summary": "Clinical KB: provision PROXY_AUTH dedicated secret on the PsychSift Railway service (follow-up to #789SD7)",
+      "detail": "Route validation for PROXY_AUTH exists and fails closed with 503, but docs/supabase-remediation-closeout-notes.md still records PROXY_AUTH as not on Railway by name. The owner must authorise and confirm the variable on the correct PsychSift Railway service in a quiet change window; no agent sets production secrets.",
+      "source": "PR #3570 review; docs/supabase-remediation-closeout-notes.md; src/lib/supabase/proxy-auth-crypto.ts",
+      "added": "2026-10-16"
+    },
+    {
+      "id": "#AD9JC6",
+      "priority": "P2",
+      "type": "task",
+      "summary": "Teaching Assessments: wire durable authenticated assessment storage and supervisor bookings (follow-up to #4KQGXZ)",
+      "detail": "The schema, RLS policies and migration for registrar assessments exist, but the dual-sign-off route still uses in-process memory and returns 503 in production, and no supervisor-booking endpoints or availability storage exist. Wire durable authenticated storage into the route and add the booking endpoints before closing.",
+      "source": "PR #3570 review; src/app/api/teaching/assessments/dual-sign-off/route.ts; supabase/migrations/20261013160000_teaching_assessments_and_milestones.sql",
+      "added": "2026-10-16"
+    },
+    {
+      "id": "#XNAHY2",
+      "priority": "P2",
+      "type": "task",
+      "summary": "CPD: connect the Training page to registrar training milestone storage (follow-up to #T983N9)",
+      "detail": "The registrar_training_milestones table and RLS policies exist, but no application code reads or writes it, the Training page still hard-codes not-recorded, and its milestone reader queries a different table. Implement owner-scoped storage and sync and replace the hard-coded state before closing.",
+      "source": "PR #3570 review; src/app/(search-app)/cme/training/page.tsx; src/lib/cme/training-repository.ts",
+      "added": "2026-10-16"
     }
   ],
   "pending": []

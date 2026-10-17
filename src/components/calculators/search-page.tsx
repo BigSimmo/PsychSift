@@ -45,7 +45,6 @@ import {
   type CalculatorFixture,
 } from "./calculator-fixtures";
 import { CalculatorSheet } from "./calculator-sheet";
-import { ClinicalMathPanel, useClinicalMathPanelState } from "./clinical-math-panel";
 import { calculatorRecordById } from "./calculator-routes";
 import {
   MetaPill,
@@ -62,22 +61,6 @@ type SessionAnswers = Record<string, AnswerMap>;
 type Density = "comfortable" | "compact";
 
 const subscribeNoop = () => () => undefined;
-
-function subscribeDesktopSidebar(onStoreChange: () => void) {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
-    return () => undefined;
-  }
-  const mql = window.matchMedia("(min-width: 1280px)");
-  mql.addEventListener("change", onStoreChange);
-  return () => mql.removeEventListener("change", onStoreChange);
-}
-
-function getDesktopSidebarSnapshot() {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
-    return false;
-  }
-  return window.matchMedia("(min-width: 1280px)").matches;
-}
 
 /**
  * The calculator whose tile should take focus back once closing it has finished
@@ -344,8 +327,6 @@ export function CalculatorsSearchPage({
     () => true,
     () => false,
   );
-  const isDesktopSidebar = useSyncExternalStore(subscribeDesktopSidebar, getDesktopSidebarSnapshot, () => false);
-  const clinicalMath = useClinicalMathPanelState();
   const query = hydrated ? (searchCommand?.query ?? initialQuery) : initialQuery;
   const normalizedQuery = normalizeCalculatorQuery(query);
   const smartExpansions = useMemo(() => smartSearchExpansions("calculators", query), [query]);
@@ -606,14 +587,12 @@ export function CalculatorsSearchPage({
         sidebar={
           <>
             <ContinuePanel inProgress={inProgress} onOpen={openCalculator} />
-            {isDesktopSidebar ? <ClinicalMathPanel state={clinicalMath} /> : null}
             <AboutPanel />
           </>
         }
         sidebarMobile={
           <div className="grid gap-4 xl:hidden">
             <ContinuePanel inProgress={inProgress} onOpen={openCalculator} />
-            {!isDesktopSidebar ? <ClinicalMathPanel state={clinicalMath} /> : null}
             <AboutPanel />
           </div>
         }

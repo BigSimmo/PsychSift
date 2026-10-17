@@ -32,14 +32,6 @@ function usesRawComparison(source: string): boolean {
 // converted; the second test below fails if an entry no longer needs to be here.
 const ALLOWED_RAW = new Map<string, string>([
   [
-    "scripts/eval-retrieval.ts",
-    "Protected retrieval-ranking tooling (pr-policy ragRankingPatterns): converting it needs owner approval and a RAG impact line.",
-  ],
-  [
-    "scripts/build-ranking-snapshot.ts",
-    "Protected retrieval-ranking tooling (pr-policy ragRankingPatterns): converting it needs owner approval and a RAG impact line.",
-  ],
-  [
     "scripts/sync-open-pr-branches.mjs",
     "Already falls back to an endsWith match on both of its file names, so it still runs on Windows.",
   ],
