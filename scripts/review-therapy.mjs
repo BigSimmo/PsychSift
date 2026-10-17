@@ -616,6 +616,7 @@ export function persistTherapyReviewTransaction({
  * dashboard's to-do list in the same change.
  */
 export function therapySignableProjection(records) {
+  /** @type {Record<string, { reviewedBy: string; reviewedAt: string }>} */
   const signedBySlug = {};
   for (const record of records) {
     if (record.reviewStatus !== "reviewed") continue;
