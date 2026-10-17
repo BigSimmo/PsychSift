@@ -23,12 +23,13 @@ function curatedBody(record: SpecifierRecord) {
 }
 
 function catalogueBody(item: SpecifierCatalogItem) {
+  const clinicianReviewed = isSpecifierClinicianReviewed(item.review);
   return [
     `Disorder: ${item.disorderName}`,
     `Group: ${item.groupLabel}`,
     item.icd11Context && `Context: ${item.icd11Context}`,
-    item.definition?.meaning,
-    item.definition?.clinicalNote,
+    clinicianReviewed ? item.definition?.meaning : undefined,
+    clinicianReviewed ? item.definition?.clinicalNote : undefined,
   ]
     .filter(Boolean)
     .join("\n");
