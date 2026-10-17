@@ -73,8 +73,8 @@ export async function loadCmeTrainingPageData(): Promise<CmeTrainingPageData> {
     const admin = createAdminClient();
     const [periods, rawMilestones, registrarMilestones] = await Promise.all([
       fetchOwnerTrainingPeriods(admin, auth.user.id),
-      fetchOwnerTrainingMilestones(admin, auth.user.id),
-      fetchOwnerRegistrarMilestones(admin, auth.user.id).catch(() => [] as RegistrarMilestoneRecord[]),
+      fetchOwnerTrainingMilestones(admin, auth.user.id, { syncRegistrar: false }),
+      fetchOwnerRegistrarMilestones(admin, auth.user.id),
     ]);
     const milestones = mergeTrainingAndRegistrarMilestones(rawMilestones, registrarMilestones);
     const assessments = buildOwnerTrainingAssessments(periods, milestones, registrarMilestones);

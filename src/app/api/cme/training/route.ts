@@ -13,7 +13,6 @@ import {
   fetchOwnerTrainingMilestones,
   fetchOwnerTrainingPeriods,
   mergeTrainingAndRegistrarMilestones,
-  type RegistrarMilestoneRecord,
 } from "@/lib/cme/training-repository";
 import { isDemoMode } from "@/lib/env";
 import { jsonError, publicErrorResponse } from "@/lib/http";
@@ -40,8 +39,8 @@ export async function GET(request: Request) {
     if (limit.limited) return rateLimitJsonResponse("CPD requests are rate limited. Try again shortly.", limit);
     const [periods, rawMilestones, registrarMilestones] = await Promise.all([
       fetchOwnerTrainingPeriods(supabase, user.id),
-      fetchOwnerTrainingMilestones(supabase, user.id),
-      fetchOwnerRegistrarMilestones(supabase, user.id).catch(() => [] as RegistrarMilestoneRecord[]),
+      fetchOwnerTrainingMilestones(supabase, user.id, { syncRegistrar: false }),
+      fetchOwnerRegistrarMilestones(supabase, user.id),
     ]);
     const milestones = mergeTrainingAndRegistrarMilestones(rawMilestones, registrarMilestones);
     return NextResponse.json(
