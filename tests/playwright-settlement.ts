@@ -114,11 +114,36 @@ export async function clickWhenSettled(locator: Locator, { timeout = 10_000 }: {
  * spec on most runs.
  */
 export async function expectHydrated(locator: Locator, { timeout = 15_000 }: { timeout?: number } = {}) {
+  const deadline = timeout === 0 ? Number.POSITIVE_INFINITY : performance.now() + timeout;
   await expect
-    .poll(() => locator.evaluate((element) => Object.keys(element).some((key) => key.startsWith("__reactProps$"))), {
-      message: "the control must be hydrated before it is used",
-      timeout,
-    })
+    .poll(
+      async () => {
+        const remaining = deadline - performance.now();
+        if (remaining <= 0) return false;
+        try {
+          return await locator.evaluate(
+            (element) => Object.keys(element).some((key) => key.startsWith("__reactProps$")),
+            undefined,
+            { timeout: Number.isFinite(remaining) ? remaining : 0 },
+          );
+        } catch (error) {
+          // A streamed canonical redirect can replace the document after
+          // DOMContentLoaded. Poll the locator again in its new context, while
+          // preserving closed-page, strict-mode and other evaluation failures.
+          if (
+            error instanceof Error &&
+            error.message.includes("Execution context was destroyed, most likely because of a navigation.")
+          ) {
+            return false;
+          }
+          throw error;
+        }
+      },
+      {
+        message: "the control must be hydrated before it is used",
+        timeout,
+      },
+    )
     .toBe(true);
 }
 

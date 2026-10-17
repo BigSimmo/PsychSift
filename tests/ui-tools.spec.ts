@@ -3397,20 +3397,24 @@ test.describe("Responsive layout guards", () => {
     await expect(resultFilter).toBeVisible();
     await expect(resultFilter).toHaveAccessibleName(/No filters active/);
     await expect(bottomDock).toBeVisible();
-    await scrollPrimarySurface(page, "end");
-    await expect
-      .poll(async () => {
-        const geometry = await readPrimaryScrollGeometry(page);
-        return geometry.maxScrollTop - geometry.scrollTop;
-      })
-      .toBeLessThanOrEqual(1);
-    expect((await readPrimaryScrollGeometry(page)).owner).toBe("document");
-    await expect(bottomDock).not.toHaveAttribute("data-scroll-hidden", "true");
-    const resultBox = await resultCard.boundingBox();
-    const dockBox = await bottomDock.boundingBox();
-    expect(resultBox).not.toBeNull();
-    expect(dockBox).not.toBeNull();
-    expect(resultBox!.y + resultBox!.height).toBeLessThanOrEqual(dockBox!.y + 2);
+    // Scroll-driven reserve/layout commits can extend the document after the
+    // first endpoint jump. Re-issue the action against the live range, and keep
+    // the clearance measurement bracketed by endpoint assertions (#3597).
+    await expect(async () => {
+      await scrollPrimarySurface(page, "end");
+      const before = await readPrimaryScrollGeometry(page);
+      expect(before.owner).toBe("document");
+      expect(before.maxScrollTop - before.scrollTop).toBeLessThanOrEqual(1);
+      await expect(bottomDock).not.toHaveAttribute("data-scroll-hidden", "true");
+      const resultBox = await resultCard.boundingBox();
+      const dockBox = await bottomDock.boundingBox();
+      expect(resultBox).not.toBeNull();
+      expect(dockBox).not.toBeNull();
+      const after = await readPrimaryScrollGeometry(page);
+      expect(after.owner).toBe("document");
+      expect(after.maxScrollTop - after.scrollTop).toBeLessThanOrEqual(1);
+      expect(resultBox!.y + resultBox!.height).toBeLessThanOrEqual(dockBox!.y + 2);
+    }).toPass({ timeout: 10_000 });
   });
 
   test("safety-plan working content stays local until an explicit export", async ({ page }) => {
