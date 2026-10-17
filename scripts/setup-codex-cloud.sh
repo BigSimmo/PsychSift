@@ -78,7 +78,9 @@ if [[ -e "$codex_config_dir" && ! -d "$codex_config_dir" ]]; then
   fail "CODEX_HOME must identify a directory."
 fi
 for setup_target in "$codex_config_dir/config.toml" "$HOME/.clinical-kb-codex-cloud.sh" "$HOME/.bashrc" "$HOME/.profile" "$HOME/.bash_profile"; do
-  if [[ ( -e "$setup_target" || -L "$setup_target" ) && ! -f "$setup_target" ]]; then
+  if [[ -L "$setup_target" ]]; then
+    fail "Setup target ${setup_target##*/} must not be a symlink."
+  elif [[ -e "$setup_target" && ! -f "$setup_target" ]]; then
     fail "Setup target ${setup_target##*/} must be a regular file."
   fi
 done
@@ -163,6 +165,9 @@ if [[ "$policy_only_harness" != "1" ]]; then
     npm install --global "npm@${expected_npm_version}"
     hash -r
   fi
+  # npm installs npx alongside it, but a stale or independently modified npx
+  # must also be repaired before shim validation can succeed.
+  install_npm_cli "npm" "$expected_npm_version" "npx"
 fi
 
 runtime_profile="$HOME/.clinical-kb-codex-cloud.sh"
