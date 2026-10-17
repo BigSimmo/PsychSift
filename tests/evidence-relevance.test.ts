@@ -54,6 +54,9 @@ describe("evidence relevance", () => {
     ]);
     expect(queryCoreTerms("What is the clinical need for lithium?")).toContain("need");
     expect(queryCoreTerms("Is there a need for clozapine monitoring?")).toContain("need");
+    expect(queryCoreTerms("Is there an ongoing need for clozapine?")).toContain("need");
+    expect(queryCoreTerms("Does the patient need clozapine monitoring?")).not.toContain("need");
+    expect(queryCoreTerms("Which clozapine monitoring is required versus optional?")).toContain("required");
   });
 
   it("does not treat a lithium-only passage as direct evidence for the clinical need", () => {

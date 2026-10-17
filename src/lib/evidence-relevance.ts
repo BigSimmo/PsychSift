@@ -113,9 +113,10 @@ function normalizeTerm(term: string) {
 // let any passage that happens to say "required" outrank the guideline on the
 // topic. They are removed before plural stripping, so the nouns "needs" and
 // "requirements" still name a subject. "needs" goes only as the verb in "needs to",
-// and "need" stays after a determiner or modifier, as in "the clinical need for".
+// and "need" stays after a determiner or modifier, as in "the clinical need for"
+// or "an ongoing need for". A required-versus-optional question keeps them all.
 const requirementVerbs =
-  /\b(?<!\b(?:a|an|the|this|that|any|no|clinical|unmet|support|care|their|his|her|its|our|your)\s+)need\b|\b(?:needed|require|required|requires)\b|\bneeds(?=\s+to\b)/gi;
+  /\b(?<!\b(?:a|an|the|this|that|any|no|clinical|unmet|support|care|their|his|her|its|our|your)\s+)(?!(?<=\b(?:a|an|the|this|that|any|no)\s+[a-z]+\s+)need\s+for\b)need\b|\b(?:needed|require|required|requires)\b|\bneeds(?=\s+to\b)/gi;
 
 // Only this interrogative scaffold becomes a semantic cadence requirement.
 const monitoringFrequencyQuestion =
@@ -141,7 +142,7 @@ export function queryCoreTerms(query: string) {
     .replace(/\bFocus on the requested\s+/g, "")
     .replace(/\b(What|Which)\b([^?.]*?)\bappl(?:y|ies) to\b/gi, "$1$2for")
     .replace(monitoringFrequencyQuestion, "$1 frequency")
-    .replace(requirementVerbs, " ");
+    .replace(requirementVerbs, (word) => (/\boptional\b/i.test(request) ? word : " "));
   const normalized = normalizedClinicalSearchTokens(semanticQuery).map(normalizeTerm).filter(Boolean);
   const raw = (semanticQuery.toLowerCase().match(/[a-z0-9]+/g) ?? []).map(normalizeTerm).filter(Boolean);
   const candidates = uniq([...normalized, ...raw], 14);
