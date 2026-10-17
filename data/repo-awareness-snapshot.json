@@ -4400,6 +4400,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-17-sign-prose-only-source-reviews.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/brand/psychsift-logo.md",
         "section": "brand",
         "catalogued": true

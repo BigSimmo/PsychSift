@@ -23,9 +23,12 @@
  * cannot carry them.
  *
  * Status: a record in `acquisitionReviewQueue()` (not rejected, still unverified) is
- * `drafted`; one that is locally_reviewed or approved AND names its reviewer in attestedBy
- * is `reviewed`; everything else (rejections, and reviews recorded only in prose) is
- * `pending`. Walk order is the queue's: most local rung first, then title.
+ * `drafted`, and so is one marked locally_reviewed with no attestation field at all (a review
+ * recorded only in prose, which the owner can now sign properly; signing leaves its
+ * validationStatus as it is). One that is locally_reviewed or approved AND names its reviewer
+ * in attestedBy is `reviewed`; everything else (rejections, approved records reviewed only in
+ * prose, and any partial attestation) is `pending`. Walk order: most local rung first, then
+ * title.
  *
  * Signing a source does not adopt it. `disposition` stays `candidate` until clinical content
  * is written to cite it, which is a separate, deliberate edit.
@@ -75,8 +78,25 @@ const presentText = (value) => (typeof value === "string" && value.trim() ? valu
 /** What signing leaves in validationStatus; mirrors signedValidationStatus in the rating helper. */
 const signedValidationStatus = (status) => (status === "unverified" ? "locally_reviewed" : status);
 
+/**
+ * Marked locally_reviewed with the review recorded only in prose: no attestation field at all
+ * (not even an empty or null one). The owner may sign it with this tool like a drafted source,
+ * which records the structured attestation the ledger lacks (owner decision, 2026-10-17). A
+ * record carrying any attestation field, complete or partial, is never treated this way.
+ * Decision entry: docs/decisions/2026-10-17-sign-prose-only-source-reviews.md
+ */
+export function isUnattestedLocalReview(native) {
+  return (
+    isPlainRecord(native) &&
+    native.disposition !== "rejected" &&
+    native.validationStatus === "locally_reviewed" &&
+    ATTESTATION_FIELDS.every((key) => !Object.hasOwn(native, key))
+  );
+}
+
 function sourceStatus(native) {
   if (native.disposition !== "rejected" && native.validationStatus === "unverified") return "drafted";
+  if (isUnattestedLocalReview(native)) return "drafted";
   if (REVIEWED_VALIDATION.has(native.validationStatus) && presentText(native.attestedBy)) return "reviewed";
   return "pending";
 }
@@ -292,9 +312,14 @@ export const display = {
       ...ratingRows(record, context),
       [
         "What signing does",
-        "Sets validationStatus to locally_reviewed and records your name, the time and a pin of every field above. " +
-          "It takes the source off the owner review queue and changes its rating as shown above. It does not adopt " +
-          "the source: disposition stays candidate until clinical content is written to cite it.",
+        record.validationStatus !== "unverified"
+          ? `Records your name, the time and a pin of every field above. validationStatus is already ` +
+            `${record.validationStatus} and stays so, so its rating does not change; the source counts as signed ` +
+            "against its content as it reads now. It does not adopt the source: disposition stays as it is until " +
+            "clinical content is written to cite it."
+          : "Sets validationStatus to locally_reviewed and records your name, the time and a pin of every field above. " +
+            "It takes the source off the owner review queue and changes its rating as shown above. It does not adopt " +
+            "the source: disposition stays candidate until clinical content is written to cite it.",
       ],
     ];
   },

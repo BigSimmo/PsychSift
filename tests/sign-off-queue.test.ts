@@ -15,7 +15,7 @@ import {
   dictionaryDefinitionReviews,
   isDefinitionReviewClinicallyApproved,
 } from "@/lib/dictionary-editorial/definition-reviews";
-import { acquisitionReviewQueue } from "@/lib/sources/acquisition-ledger";
+import { acquisitionReviewQueue, sourceAcquisitionRecords } from "@/lib/sources/acquisition-ledger";
 import { isSpecifierClinicianReviewed, loadSpecifiersContent, specifierCatalogItems } from "@/lib/specifiers-content";
 import { formulationConcepts, formulationGuides } from "@/lib/formulation-concepts";
 import { conceptReviewState } from "@/lib/formulation-review-status";
@@ -57,8 +57,9 @@ const EXPECTED: Record<SignOffFamilyId, number> = {
   // no references yet (47 originally unsigned - 22 that gained references + 1 wake-therapy).
   therapy: 26,
   // All 93 signable candidates and the 3 adopted medicine sources were reviewed; six Indigenous
-  // sources remain held.
-  sources: 6,
+  // sources remain held, and two OCP WA standards reviewed only in prose wait for the owner to
+  // sign them with clinical:review (owner decision, 17 Oct 2026).
+  sources: 8,
 };
 
 describe("clinical sign-off queue", () => {
@@ -134,7 +135,23 @@ describe("clinical sign-off queue", () => {
 
   it("reuses the source acquisition ledger's own queue rather than re-deriving the filter", () => {
     const sources = queue.families.find((family) => family.id === "sources")!;
-    expect(sources.rows.map((row) => row.id)).toEqual(acquisitionReviewQueue().map((record) => record.id));
+    const proseOnly = sourceAcquisitionRecords.filter(
+      (record) =>
+        record.disposition !== "rejected" &&
+        record.validationStatus === "locally_reviewed" &&
+        !["attestedBy", "attestedAt", "attestedAgainstSha256"].some((field) => Object.hasOwn(record, field)),
+    );
+    // The ledger's queue plus the reviews recorded only in prose (which clinical:review also
+    // offers), in the queue's own order: most local rung first, then title.
+    const collator = new Intl.Collator("en-AU");
+    expect(sources.rows.map((row) => row.id)).toEqual(
+      [...acquisitionReviewQueue(), ...proseOnly]
+        .sort((left, right) => left.rung - right.rung || collator.compare(left.title, right.title))
+        .map((record) => record.id),
+    );
+    expect(
+      sources.rows.filter((row) => row.statusLabel === "Reviewed in prose only, not yet signed").map((row) => row.id),
+    ).toEqual(["ocp-wa-standard-authorisation-of-hospitals", "ocp-wa-standards-for-clinical-care"]);
   });
 
   it("carries the whole dictionary editorial layer, which nothing else in the app renders", () => {
@@ -301,7 +318,8 @@ const EXPECTED_SIGNED_BY_DOMAIN: Record<SignOffDomainId, { signed: number; waiti
   therapy: { signed: 179, waiting: 26 },
   dictionary: { signed: 28, waiting: 401 },
   // 93 sources carry a structured, current attestation. Two OCP standards are marked
-  // locally_reviewed in prose only and wait for one; six Indigenous sources are held.
+  // locally_reviewed in prose only and are ready for the owner to sign with clinical:review;
+  // six Indigenous sources are held.
   sources: { signed: 93, waiting: 8 },
   services: { signed: 21, waiting: 4 },
 };
@@ -335,9 +353,9 @@ describe("clinical & rule sign-off ledger", () => {
       PsychSift: 477,
     });
     expect(ledger.waitingByCategory).toEqual({
-      signableNow: 0,
+      signableNow: 2,
       indigenousHold: 26,
-      awaitingPrerequisites: 610,
+      awaitingPrerequisites: 608,
       awaitingTool: 565,
     });
   });

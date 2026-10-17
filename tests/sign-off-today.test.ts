@@ -120,7 +120,13 @@ describe("the real queue", () => {
     // 16 Oct 2026: the 27 corrected Therapy records and the 3 adopted medicine sources
     // have been signed off by "Psych Sift", so no signable rows remain; everything still
     // waiting is an Indigenous governance hold or has no sign-off tool / references.
-    expect(signable.map((item) => item.family)).toEqual([]);
+    // 17 Oct 2026: clinical:review now offers sources reviewed only in prose (owner decision),
+    // so the two OCP WA standards are signable by the owner.
+    expect(signable.map((item) => item.family)).toEqual(["sources", "sources"]);
+    expect(signable.map((item) => item.id)).toEqual([
+      "ocp-wa-standard-authorisation-of-hospitals",
+      "ocp-wa-standards-for-clinical-care",
+    ]);
     expect(today.signable).toBe(signable.length);
     expect(today.rows.length).toBe(Math.min(SIGN_OFF_TODAY_SIZE, signable.length));
     for (const item of today.rows) {
