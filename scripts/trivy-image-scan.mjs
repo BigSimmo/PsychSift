@@ -9,7 +9,7 @@
  * daemon socket, which would be equivalent to root on the host.
  */
 import { basename, dirname, join, resolve } from "node:path";
-import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -163,6 +163,35 @@ export function trivyDockerMounts({ workDir, cacheDir = null, outputDir = null }
 }
 
 /**
+ * Whether the cached vulnerability database must be downloaded before an offline scan. Scans pass
+ * --skip-db-update, so a persistent TRIVY_CACHE_DIR would otherwise keep using an expired database
+ * and report STATUS=ok on stale data. A missing, unreadable or undated metadata file, or a
+ * NextUpdate time that has passed, all require a fresh download.
+ *
+ * @param {string | null} metadataText contents of <cache>/db/metadata.json, or null when absent
+ * @param {Date} [now]
+ * @returns {boolean}
+ */
+export function trivyDbNeedsRefresh(metadataText, now = new Date()) {
+  if (typeof metadataText !== "string") return true;
+  let nextUpdate;
+  try {
+    nextUpdate = Date.parse(JSON.parse(metadataText)?.NextUpdate);
+  } catch {
+    return true;
+  }
+  return !Number.isFinite(nextUpdate) || nextUpdate <= now.getTime();
+}
+
+function readTrivyDbMetadata(cacheDir) {
+  try {
+    return readFileSync(join(cacheDir, "db", "metadata.json"), "utf8");
+  } catch {
+    return null;
+  }
+}
+
+/**
  * @param {string} imageRef
  * @param {string[]} trivyArgs use "__IMAGE__" where the image ref belongs and
  *   "__OUT__" where an output path belongs (when outputHostPath is set)
@@ -179,7 +208,8 @@ function runDockerTrivy(imageRef, trivyArgs, { outputHostPath = null, needsVulne
         ? resolve(process.env.TRIVY_CACHE_DIR)
         : join(tmpdir(), `trivy-db-cache-${TRIVY_VERSION}`);
       mkdirSync(cacheDir, { recursive: true });
-      if (!existsSync(join(cacheDir, "db", "metadata.json"))) {
+      // A failed refresh fails the scan rather than falling back to the expired database.
+      if (trivyDbNeedsRefresh(readTrivyDbMetadata(cacheDir))) {
         const dbDownload = run("docker", [
           "run",
           "--rm",

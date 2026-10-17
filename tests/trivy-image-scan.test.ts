@@ -5,6 +5,7 @@ import {
   isCompatibleLocalTrivyVersion,
   TRIVY_IMAGE,
   TRIVY_VERSION,
+  trivyDbNeedsRefresh,
   trivyDockerMounts,
   validateTrivyReportJson,
 } from "../scripts/trivy-image-scan.mjs";
@@ -147,5 +148,23 @@ describe("Trivy container mounts", () => {
       "/tmp/o:/out",
     ]);
     expect(trivyDockerMounts({ workDir: "/tmp/w" })).toEqual(["-v", "/tmp/w:/work:ro"]);
+  });
+});
+
+describe("Trivy vulnerability database freshness", () => {
+  const now = new Date("2026-10-17T00:00:00Z");
+
+  it("refreshes a missing, unreadable or undated database", () => {
+    expect(trivyDbNeedsRefresh(null, now)).toBe(true);
+    expect(trivyDbNeedsRefresh("not json", now)).toBe(true);
+    expect(trivyDbNeedsRefresh(JSON.stringify({ Version: 2 }), now)).toBe(true);
+  });
+
+  it("refreshes a cached database whose NextUpdate has passed", () => {
+    expect(trivyDbNeedsRefresh(JSON.stringify({ NextUpdate: "2026-10-16T18:00:00Z" }), now)).toBe(true);
+  });
+
+  it("reuses a cached database that is still current", () => {
+    expect(trivyDbNeedsRefresh(JSON.stringify({ NextUpdate: "2026-10-17T06:00:00Z" }), now)).toBe(false);
   });
 });

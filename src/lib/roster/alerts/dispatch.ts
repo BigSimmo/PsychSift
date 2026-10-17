@@ -236,7 +236,10 @@ async function runRosterAlertDispatch(
       ? new Set<string>()
       : await recipientsOnNightNow(client, event.actorId, event.serviceId, eligible);
   const delivery = await sendRosterAlerts(client, eligible, type, quiet);
-  if (isOpenPostOffer && result.openShiftId && (delivery?.failed ?? 0) === 0) {
+  // Any successful send marks the offer delivered: a replay resends to the whole eligible list, so
+  // retrying a partial delivery would duplicate the offer for everyone it already reached. A gone
+  // device also counts as a failed send, so only a delivery that reached nobody is retried.
+  if (isOpenPostOffer && result.openShiftId && ((delivery?.sent ?? 0) > 0 || (delivery?.failed ?? 0) === 0)) {
     await markOpenPostAlertDelivered(client, event.serviceId, result.openShiftId);
   }
 }

@@ -108,7 +108,9 @@ export function updateHybridRpcHourlyEvidence(rawHistory, health, observedAt = n
     lastThree.every((entry, index) => {
       if (index === 0) return true;
       const gapMs = Date.parse(entry.hour) - Date.parse(lastThree[index - 1].hour);
-      return gapMs === hourlyWindowMs || gapMs === 6 * hourlyWindowMs;
+      // Scheduled runs are six hours apart, and a manual run between them shares the same history
+      // file, so any positive whole-hour gap up to six hours still counts as consecutive evidence.
+      return gapMs > 0 && gapMs <= 6 * hourlyWindowMs;
     });
   const repeatedRpcNames = contiguous
     ? lastThree[0].rpcNames.filter((name) => lastThree.every((entry) => entry.rpcNames.includes(name)))
