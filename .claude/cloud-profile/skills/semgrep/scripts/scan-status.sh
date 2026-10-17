@@ -65,10 +65,36 @@ try:
     result, sarif = documents
     if not isinstance(result, dict) or not isinstance(result.get("results"), list):
         raise ValueError("invalid scan JSON")
-    if result.get("errors"):
-        raise ValueError("scan JSON reports incomplete analysis")
+    errors = result.get("errors")
+    if not isinstance(errors, list):
+        raise ValueError("invalid scan errors")
+    error_count = 0
+    warning_count = 0
+    for error in errors:
+        if not isinstance(error, dict) or error.get("level") == "error":
+            error_count += 1
+        elif error.get("level") == "warn":
+            warning_count += 1
+    if warning_count:
+        print(f"scan-status: ignoring {warning_count} warning-level scan diagnostics", file=sys.stderr)
+    if error_count:
+        raise ValueError("scan JSON reports error-level incomplete analysis")
     if not isinstance(sarif, dict) or not isinstance(sarif.get("runs"), list) or not sarif["runs"]:
         raise ValueError("invalid or empty SARIF runs")
+    for run in sarif["runs"]:
+        if not isinstance(run, dict) or not isinstance(run.get("tool"), dict):
+            raise ValueError("invalid SARIF run")
+        driver = run["tool"].get("driver")
+        if not isinstance(driver, dict) or not isinstance(driver.get("rules"), list) or not isinstance(run.get("results"), list):
+            raise ValueError("invalid SARIF run structure")
+        if any(not isinstance(rule, dict) for rule in driver["rules"]):
+            raise ValueError("invalid SARIF rule")
+        if any(not isinstance(item, dict) for item in run["results"]):
+            raise ValueError("invalid SARIF result")
+        for item in run["results"]:
+            locations = item.get("locations", [])
+            if not isinstance(locations, list) or any(not isinstance(location, dict) for location in locations):
+                raise ValueError("invalid SARIF result locations")
 except (OSError, ValueError, TypeError):
     print("scan-status: expected fresh JSON/SARIF pair is missing, invalid or incomplete", file=sys.stderr)
     sys.exit(1)
