@@ -4,6 +4,7 @@ import {
   useEffect,
   useCallback,
   useId,
+  useLayoutEffect,
   useRef,
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
@@ -197,7 +198,11 @@ export function Sheet({
     onClose();
   }, [dismissOnBack, onClose, sheetId]);
 
-  useEffect(() => {
+  // Layout effect, not a passive one: the Close button, swipe and back handlers
+  // read these refs, and a click that lands after a commit but before passive
+  // effects flush would otherwise call the previous render's onClose (a stale
+  // closure — e.g. a sheet that had just saved would skip its own reset).
+  useLayoutEffect(() => {
     onCloseRef.current = onClose;
     requestCloseRef.current = requestClose;
   }, [onClose, requestClose]);
