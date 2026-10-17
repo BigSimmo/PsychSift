@@ -148,8 +148,7 @@ export function createObservedAnswerGenerator<T>(args: {
     let attempted = false;
     try {
       const timeoutMs = args.deadline.generationRequestTimeoutMs(env.OPENAI_ANSWER_TIMEOUT_MS);
-      if (args.recorder.enabled)
-        args.recorder.start({
+      args.recorder.start({
           ...args.contextObservation(context),
           route: options?.strong ? "strong" : "fast",
           timeoutMs,
