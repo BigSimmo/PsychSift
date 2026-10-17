@@ -2,11 +2,9 @@
   "version": 2,
   "id": "f35134cd-554b-4121-8da5-5608b683b87c",
   "createdOn": "2026-10-17",
-  "action": "done",
+  "action": "cancel",
   "payload": {
-    "id": "#QP7H3X",
-    "outcome": "All 3 Today rule engines (fatigue, CPD, MHA per-order countdown switch) and local TGA non-device ruling record signed off by Josh Simpson and Psych Sift (PR #3601).",
-    "baseRowFingerprint": "5cffe990de2e80bc134e49798c3435f0f6ba20bd7765fd013468f903c8499715",
-    "targetUlid": "01M2MRG1PCQP7H3XF4ZHWBSNXS"
+    "requestId": "01M2MRG1PCQP7H3XF4ZHWBSNXS",
+    "reason": "The queued rule-engine outcome is unrelated to this open source-review task; retain the candidate-source, duplicate-source, and currentness work for its proper review."
   }
 }
