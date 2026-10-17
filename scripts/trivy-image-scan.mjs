@@ -151,6 +151,9 @@ export function evaluateTrivySummaryText(summaryText, requiredImages = REQUIRED_
  * Only the throwaway vulnerability-database cache is writable: Trivy opens its database file
  * read-write, and a read-only mount made every scan fail with "read-only file system", which is
  * reported as unassessed. The container still runs with no network.
+ *
+ * @param {{ workDir: string; cacheDir?: string | null; outputDir?: string | null }} options
+ * @returns {string[]}
  */
 export function trivyDockerMounts({ workDir, cacheDir = null, outputDir = null }) {
   const mounts = ["-v", `${workDir}:/work:ro`];
