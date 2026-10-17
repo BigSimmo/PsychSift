@@ -295,13 +295,24 @@ async function attachIndexQualityMetadata(
       .from("document_index_quality")
       .select("document_id,owner_id,quality_score,extraction_quality,metrics,issues,updated_at")
       .in("document_id", missingDocumentIds);
-    if (ownerId) query = query.eq("owner_id", ownerId);
+    if (ownerId) {
+      query =
+        typeof query.or === "function"
+          ? query.or(`owner_id.eq.${ownerId},owner_id.is.null`)
+          : query.eq("owner_id", ownerId);
+    } else if (typeof query.is === "function") {
+      query = query.is("owner_id", null);
+    }
     if (signal) query = query.abortSignal(signal);
     const { data, error } = await query;
     signal?.throwIfAborted();
     if (error) return results;
     for (const documentId of missingDocumentIds) cache.indexQuality.set(documentId, null);
-    for (const row of data ?? []) cache.indexQuality.set(row.document_id, row as SearchResult["indexing_quality"]);
+    for (const row of data ?? []) {
+      const { owner_id: rowOwnerId, ...qualityRow } = row;
+      if (rowOwnerId && rowOwnerId !== ownerId) continue;
+      cache.indexQuality.set(row.document_id, qualityRow as SearchResult["indexing_quality"]);
+    }
     return withCachedIndexQuality(results, cache);
   } catch {
     signal?.throwIfAborted();

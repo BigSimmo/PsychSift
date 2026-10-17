@@ -23,7 +23,7 @@ import { withRagProgrammeRollout, answerContractForRollout, adaptiveAnswerRender
 import { loadReviewedPolicyRequest } from "@/lib/rag/rag-reviewed-policy-input";
 import { createGenerationDegradationRecorder } from "@/lib/rag/rag-generation-degradation";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { loadDocumentSummaryContext } from "@/lib/rag/rag-document-summary-context";
+import { loadDocumentSummaryContext, sanitizeUnsupportedSummaryAnswer } from "@/lib/rag/rag-document-summary-context";
 import { generationFailureDetailToken } from "@/lib/rag/rag-generation-failure-diagnostics";
 import { answerLatencyMetadata, answerScopedEvidenceMetadata } from "@/lib/rag/rag-answer-telemetry-metadata";
 import { assertRetrievalRows, buildDocumentSummaryResults } from "@/lib/rag/rag-row-contracts";
@@ -335,7 +335,6 @@ import { buildCrossDocumentFusionBrief, buildCrossDocumentSourceGuide } from "@/
 import { buildSmartRagApiPlan } from "@/lib/smart-rag-api";
 import { clinicalModePrompt, queryClassForClinicalMode, queryForClinicalMode } from "@/lib/clinical-query-mode";
 import { annotateSearchResults, buildEvidenceRelevance } from "@/lib/evidence-relevance";
-import { committedIndexGeneration } from "@/lib/reindex-pipeline";
 import {
   applySelectedEvidenceArtifacts,
   buildSelectedEvidenceArtifacts,
@@ -4279,11 +4278,7 @@ export async function summarizeDocument(
   options?: { signal?: AbortSignal; observationContext?: import("@/lib/rag/rag-contracts").RagObservationContext },
 ) {
   const { document, chunks } = await loadDocumentSummaryContext(documentId, ownerId, options?.signal);
-  const committedGeneration = committedIndexGeneration((document as { metadata?: unknown }).metadata);
-  const committedChunks = chunks.filter(
-    (chunk) => !chunk.index_generation_id || chunk.index_generation_id === committedGeneration,
-  );
-  if (!committedChunks.length) {
+  if (!chunks.length) {
     return observeRagAnswer(
       {
         answer: "This document has not been indexed yet, so no summary can be generated.",
@@ -4296,7 +4291,7 @@ export async function summarizeDocument(
     );
   }
 
-  const results = buildDocumentSummaryResults(committedChunks, document);
+  const results = buildDocumentSummaryResults(chunks, document);
 
   const summaryInstructions = `Summarize a clinical document for practical psychiatric use in Perth, Australia.
 Use only the excerpts provided. Use a layered response: make the answer field a plain high-yield clinical paragraph,
@@ -4331,18 +4326,23 @@ ${buildRagSourceBlock(results)}`;
   answer.documentBreakdown = buildDocumentBreakdown(results, answer.quoteCards);
   answer.evidenceSummary = buildEvidenceSummary(results, answer.quoteCards);
   answer.sourceCoverage = buildSourceCoverage(results);
-  answer.conflictsOrGaps = detectConflictsOrGaps(results);
+  const detectedConflicts = detectConflictsOrGaps(results);
+  const existingConflictMessages = new Set((answer.conflictsOrGaps ?? []).map((gap) => gap.message));
+  answer.conflictsOrGaps = [
+    ...(answer.conflictsOrGaps ?? []),
+    ...detectedConflicts.filter((gap) => !existingConflictMessages.has(gap.message)),
+  ];
   answer.visualEvidence = buildVisualEvidence(results);
   answer.bestSource = selectBestSourceRecommendation(results, answer.quoteCards);
   answer.smartPanel = { ...buildSmartPanel("summary", results), bestSource: answer.bestSource };
   answer.modelUsed = env.OPENAI_SUMMARY_MODEL;
   answer.openAIRequestIds = generated.requestId ? [generated.requestId] : [];
   answer.openAIUsage = generated.usage;
-  answer.latencyTimings = {
-    generation_latency_ms: generated.latencyMs,
-    total_latency_ms: generated.latencyMs,
-  };
-  return observeRagAnswer(assessAndEnforceClaimSupport(answer), options?.observationContext);
+  answer.latencyTimings = { generation_latency_ms: generated.latencyMs, total_latency_ms: generated.latencyMs };
+  const verifiedAnswer = sanitizeUnsupportedSummaryAnswer(
+    applyNumericVerification(assessAndEnforceClaimSupport(answer), results),
+  );
+  return observeRagAnswer(verifiedAnswer, options?.observationContext);
 }
 
 export function sanitizePromptUserQuery(query: string): string {

@@ -80,11 +80,11 @@ const envSchema = z
     // Railway deploy webhook -> chat forwarder. Railway only lets you configure a
     // target URL (no custom headers), so this secret travels as `?token=` in the
     // configured URL and is compared constant-time. Min 16 chars.
-    RAILWAY_WEBHOOK_SECRET: z.string().min(16).optional(),
+    RAILWAY_WEBHOOK_SECRET: z.preprocess(coerceBlankEnv, z.string().min(16).optional()),
     // Supabase Database Webhook -> ingestion enqueue. Supabase webhooks DO allow
     // custom headers, so this secret is sent as `Authorization: Bearer` (or the
     // `x-webhook-secret` header) and compared constant-time. Min 16 chars.
-    SUPABASE_INGESTION_WEBHOOK_SECRET: z.string().min(16).optional(),
+    SUPABASE_INGESTION_WEBHOOK_SECRET: z.preprocess(coerceBlankEnv, z.string().min(16).optional()),
     // Optional outbound chat destinations shared by every /api/webhooks/* forwarder
     // and the CI-failure GitHub workflow. Set either, both, or neither; a receiver
     // with no destination configured accepts the event and reports it undelivered.

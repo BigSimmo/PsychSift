@@ -214,13 +214,29 @@ function buildReviewItems(args: {
     const documentStages = stagesByDocument.get(document.id) ?? [];
     const documentPages = pagesByDocument.get(document.id) ?? [];
     const documentImages = imagesByDocument.get(document.id) ?? [];
-    const failedJob = documentJobs.find((job) => job.status === "failed");
+    const latestJob = documentJobs[0];
+    const failedJob =
+      latestJob?.status === "failed"
+        ? latestJob
+        : document.status === "failed"
+          ? documentJobs.find((job) => job.status === "failed")
+          : undefined;
     const ingestionJobIds = new Set(documentJobs.map((job) => job.id));
-    const failedOcrStage = documentStages.find(
-      (stage) =>
-        stage.stage_status === "failed" &&
-        includesAny(`${stage.stage_name ?? ""} ${stage.error_message ?? ""}`, ["ocr", "extract"]),
-    );
+    const latestStagesByName = new Map<string, (typeof documentStages)[number]>();
+    for (const stage of documentStages) {
+      const key = stage.stage_name ?? stage.id;
+      if (!latestStagesByName.has(key)) latestStagesByName.set(key, stage);
+    }
+    const failedOcrStage = Array.from(latestStagesByName.values()).find((stage) => {
+      if (stage.stage_status !== "failed") return false;
+      if (!includesAny(`${stage.stage_name ?? ""} ${stage.error_message ?? ""}`, ["ocr", "extract"])) return false;
+      if (latestJob?.status !== "completed") return true;
+      if (stage.job_id && ingestionJobIds.has(stage.job_id)) {
+        return stage.job_id === latestJob.id;
+      }
+      const stageTimestamp = stage.finished_at ?? stage.started_at;
+      return !latestJob.updated_at || !stageTimestamp || stageTimestamp >= latestJob.updated_at;
+    });
     const warnings = Array.isArray(metadata.extraction_warnings) ? metadata.extraction_warnings.map(String) : [];
     const ocrWarning = unique([...warnings, ...issues]).find((warning) => includesAny(warning, ["ocr", "scanned"]));
     const lowTextPages = documentPages.filter((page) => String(page.text ?? "").trim().length < 80);
