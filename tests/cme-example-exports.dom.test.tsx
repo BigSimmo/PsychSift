@@ -34,7 +34,8 @@ describe("CPD annual summary exports with example data", () => {
       expect(screen.queryByRole("link", { name: "Download CSV" })).toBeNull();
       fireEvent.click(screen.getByRole("button", { name: "Download CSV" }));
       fireEvent.click(screen.getByTestId("cme-summary-save-pdf"));
-      expect(blocked).toHaveBeenCalledTimes(2);
+      fireEvent.click(screen.getByTestId("cme-claim-pack-button"));
+      expect(blocked).toHaveBeenCalledTimes(3);
       expect(print).not.toHaveBeenCalled();
 
       act(() => setExampleDataOn(false));
@@ -44,6 +45,84 @@ describe("CPD annual summary exports with example data", () => {
     } finally {
       window.removeEventListener(EXAMPLE_BLOCKED_EVENT, blocked);
       print.mockRestore();
+    }
+  });
+
+  it("blocks claim pack export in demoMode even when the browser example-data toggle is off", () => {
+    const blocked = vi.fn();
+    window.addEventListener(EXAMPLE_BLOCKED_EVENT, blocked);
+    const createObjectUrl = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:cme-claim-pack");
+    try {
+      act(() => setExampleDataOn(false));
+      render(<CmeAnnualSummary set={DEMO_CME_YEAR} entries={DEMO_CME_ENTRIES} now={now} demoMode />);
+      const claimBtn = screen.getByTestId("cme-claim-pack-button");
+      fireEvent.click(claimBtn);
+      expect(blocked).toHaveBeenCalledTimes(1);
+      expect(createObjectUrl).not.toHaveBeenCalled();
+      expect(claimBtn).toHaveTextContent("Export claim pack");
+    } finally {
+      window.removeEventListener(EXAMPLE_BLOCKED_EVENT, blocked);
+      createObjectUrl.mockRestore();
+    }
+  });
+
+  it("exports the study-budget claim pack from the annual summary when example data is off", async () => {
+    const createObjectUrl = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:cme-claim-pack");
+    const revokeObjectUrl = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+    const anchorClick = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    try {
+      act(() => setExampleDataOn(false));
+      render(<CmeAnnualSummary set={DEMO_CME_YEAR} entries={DEMO_CME_ENTRIES} now={now} />);
+      const claimBtn = screen.getByTestId("cme-claim-pack-button");
+      expect(claimBtn).toHaveTextContent("Export claim pack");
+      await act(async () => {
+        fireEvent.click(claimBtn);
+      });
+      expect(createObjectUrl).toHaveBeenCalledTimes(1);
+      expect(anchorClick).toHaveBeenCalledTimes(1);
+      expect(claimBtn).toHaveTextContent("Claim pack exported");
+    } finally {
+      createObjectUrl.mockRestore();
+      revokeObjectUrl.mockRestore();
+      anchorClick.mockRestore();
+    }
+  });
+
+  it("does not download an empty claim pack file when no entries have positive costs", async () => {
+    const createObjectUrl = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:cme-claim-pack");
+    const anchorClick = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    try {
+      act(() => setExampleDataOn(false));
+      const zeroCostEntries = DEMO_CME_ENTRIES.map((entry) => ({ ...entry, costCents: null }));
+      render(<CmeAnnualSummary set={DEMO_CME_YEAR} entries={zeroCostEntries} now={now} />);
+      const claimBtn = screen.getByTestId("cme-claim-pack-button");
+      await act(async () => {
+        fireEvent.click(claimBtn);
+      });
+      expect(createObjectUrl).not.toHaveBeenCalled();
+      expect(anchorClick).not.toHaveBeenCalled();
+      expect(claimBtn).toHaveTextContent("Export claim pack");
+    } finally {
+      createObjectUrl.mockRestore();
+      anchorClick.mockRestore();
+    }
+  });
+
+  it("does not report success when browser file download fails", async () => {
+    const createObjectUrl = vi.spyOn(URL, "createObjectURL").mockImplementation(() => {
+      throw new Error("Blob URL creation failed");
+    });
+    try {
+      act(() => setExampleDataOn(false));
+      render(<CmeAnnualSummary set={DEMO_CME_YEAR} entries={DEMO_CME_ENTRIES} now={now} />);
+      const claimBtn = screen.getByTestId("cme-claim-pack-button");
+      await act(async () => {
+        fireEvent.click(claimBtn);
+      });
+      expect(createObjectUrl).toHaveBeenCalledTimes(1);
+      expect(claimBtn).toHaveTextContent("Export claim pack");
+    } finally {
+      createObjectUrl.mockRestore();
     }
   });
 });
