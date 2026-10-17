@@ -37,6 +37,10 @@ describe("AnswerProviderNotice", () => {
     expect(source).toMatch(
       /searchMode === "answer" && !clientDemoMode \? \(\s*<AnswerProviderNotice className="[^"]*justify-center text-center[^"]*"/,
     );
+    // The home and its line share one grid item, so a tall canvas cannot split them into two rows.
+    expect(source).toMatch(
+      /<div className="flex w-full flex-col items-center">\s*<SharedHomeEmptyState[\s\S]*?<AnswerProviderNotice className="[^"]*"[^>]*\/>\s*\) : null\}\s*<\/div>/,
+    );
     expect(source).toMatch(
       /explicitDemoMode \|\|\s*answer\.demoMode === true[^?]*\? null : \(\s*<AnswerProviderNotice/,
     );
