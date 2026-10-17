@@ -4,6 +4,7 @@ import therapies from "../src/data/therapies-source.json";
 import {
   extractNiceGuidelineDetails,
   isLaterAddedNiceReference,
+  isLaterAddedReference,
   splitSourceCitations,
   therapyNiceGuidelineMetadata,
   therapySourceMetadata,
@@ -27,17 +28,24 @@ describe("therapy source governance", () => {
     expect(therapySourceMetadata(source, "reviewed").clinical_validation_status).toBe("locally_reviewed");
   });
 
-  it("identifies later-added NICE guideline citations from the 2026-10-09 sweep", () => {
+  it("identifies later-added NICE guideline citations from the 2026-10-09 sweep and 2026-10-17 sweep", () => {
     const laterAddedSample =
       'Psychosis and schizophrenia in adults, recommendation 1.1.5.1: "Consider peer support for people with psychosis or schizophrenia to help improve service user experience and quality of life." https://www.nice.org.uk/guidance/cg178/chapter/Recommendations. (NICE CG178) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher\'s own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.';
 
     expect(isLaterAddedNiceReference(laterAddedSample)).toBe(true);
+    expect(isLaterAddedReference(laterAddedSample)).toBe(true);
     expect(isLaterAddedNiceReference("Imported reference. (PubMed)")).toBe(false);
+    expect(isLaterAddedReference("Imported reference. (PubMed)")).toBe(false);
     expect(isLaterAddedNiceReference(null)).toBe(false);
-    expect(isLaterAddedNiceReference(undefined)).toBe(false);
+    expect(isLaterAddedReference(undefined)).toBe(false);
 
-    const laterAddedRecords = therapies.filter((t) => t.sources.some((s) => isLaterAddedNiceReference(s.reference)));
-    expect(laterAddedRecords).toHaveLength(22);
+    const laterAddedNiceRecords = therapies.filter((t) =>
+      t.sources.some((s) => isLaterAddedNiceReference(s.reference)),
+    );
+    expect(laterAddedNiceRecords).toHaveLength(22);
+
+    const allLaterAddedRecords = therapies.filter((t) => t.sources.some((s) => isLaterAddedReference(s.reference)));
+    expect(allLaterAddedRecords).toHaveLength(48);
   });
 
   it("extracts structured guideline details from a NICE recommendation citation", () => {
@@ -71,13 +79,13 @@ describe("therapy source governance", () => {
     });
   });
 
-  it("splits citations and extracts trailing non-clinical notes", () => {
+  it("splits citations and extracts trailing non-clinical notes without splitting on 4-digit year parentheses", () => {
     const text =
-      "Recommendation 1. (NICE NG222) Recommendation 2. (NICE NG225) These references were added on 9 October 2026.";
+      "Recommendation 1 from Frank et al. (2005) trial. (NICE NG222) Recommendation 2. (NICE NG225) These references were added on 9 October 2026.";
     const { citations, notes } = splitSourceCitations(text);
 
     expect(citations).toHaveLength(2);
-    expect(citations[0]).toEqual({ text: "Recommendation 1.", authority: "NICE NG222" });
+    expect(citations[0]).toEqual({ text: "Recommendation 1 from Frank et al. (2005) trial.", authority: "NICE NG222" });
     expect(citations[1]).toEqual({ text: "Recommendation 2.", authority: "NICE NG225" });
     expect(notes).toEqual(["These references were added on 9 October 2026."]);
   });

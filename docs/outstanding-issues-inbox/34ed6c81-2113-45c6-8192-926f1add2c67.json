@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "34ed6c81-2113-45c6-8192-926f1add2c67",
+  "createdOn": "2026-10-17",
+  "action": "done",
+  "payload": {
+    "id": "#GR72PF",
+    "outcome": "Wired CmeClaimPackButton onto src/components/cme/cme-annual-summary.tsx (.cme-print-controls) with guardExampleAction(example, \"export\") protection and verified with tests/cme-claim-pack-surface.dom.test.tsx (2/2) and tests/cme-claim-pack.test.ts (7/7).",
+    "baseRowFingerprint": "4e2167aadcd28f01f25e71453dd136b1bd9ecebdf947eaef2198522297ac4e18",
+    "targetUlid": "01M51JV9NVGR72PFX8VRN10Q7G"
+  }
+}

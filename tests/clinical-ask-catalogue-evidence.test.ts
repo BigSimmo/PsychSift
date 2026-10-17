@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { retrieveCatalogueEvidence } from "@/lib/clinical-ask/catalogue-evidence";
 import { isSpecifierClinicianReviewed, specifierCatalogItems } from "@/lib/specifiers-content";
+import { therapyRecords } from "@/lib/therapies";
 import { clinicalAskCases } from "./fixtures/clinical-ask-cases";
 
 describe("retrieveCatalogueEvidence", () => {
@@ -43,13 +44,22 @@ describe("retrieveCatalogueEvidence", () => {
 
   it("preserves Therapy governance without ranking needs-review records upward", async () => {
     const request = clinicalAskCases.find(({ mode }) => mode === "therapy-compass")!;
-    const evidence = await retrieveCatalogueEvidence({ ...request, question: "" }, new AbortController().signal);
+    const liveEvidence = await retrieveCatalogueEvidence({ ...request, question: "" }, new AbortController().signal);
+    expect(liveEvidence.every((item) => item.reviewState === "reviewed")).toBe(true);
 
-    const needsReview = evidence.find((item) => item.reviewState === "needs_review");
-    expect(needsReview).toBeDefined();
-    expect(evidence.map((item) => item.id)).toEqual(
-      [...evidence].sort((left, right) => left.title.localeCompare(right.title)).map((item) => item.id),
-    );
+    const sample = therapyRecords[0]!;
+    const originalStatus = sample.reviewStatus;
+    try {
+      (sample as { reviewStatus: string }).reviewStatus = "needs_review";
+      const evidence = await retrieveCatalogueEvidence({ ...request, question: "" }, new AbortController().signal);
+      const needsReview = evidence.find((item) => item.reviewState === "needs_review");
+      expect(needsReview).toBeDefined();
+      expect(evidence.map((item) => item.id)).toEqual(
+        [...evidence].sort((left, right) => left.title.localeCompare(right.title)).map((item) => item.id),
+      );
+    } finally {
+      (sample as { reviewStatus: string }).reviewStatus = originalStatus;
+    }
   });
 
   it("never sends an unsigned specifier definition to synthesis", async () => {

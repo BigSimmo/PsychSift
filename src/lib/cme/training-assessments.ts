@@ -1,19 +1,23 @@
 import { formatCmeRowDate } from "@/lib/cme/cpd-year";
+import { perthDateOf } from "@/lib/perth-time";
+import type { RegistrarMilestoneRecord } from "@/lib/cme/training-repository";
 import type { NextMilestone, TrainingMilestone, TrainingPeriod, TrainingPosition } from "@/lib/cme/training-timeline";
 
 /**
  * EPAs, WBAs, term assessments and clinical experience (A to D) on the
  * Training page, as a pure typed input.
  *
- * PsychSift has NO storage for any of these: no table, no API route, no
- * browser storage. So the page is only ever given one of two things:
+ * The page is given one of three states:
  *
  * - `sample`: the invented example records from the approved mock-up
  *   (`training-assessments-sample.ts`), shown in the signed-out sample and in
  *   demo mode, and labelled as examples on the page.
- * - `not-recorded`: what every signed-in doctor gets. The page then shows the
- *   headings with an honest line and NO counts, because a count of 0 would
- *   read as if PsychSift had looked and found nothing.
+ * - `recorded`: a signed-in registrar's recorded milestones from
+ *   `registrar_training_milestones` (`training-repository.ts`).
+ * - `not-recorded`: what a signed-in doctor with no recorded registrar
+ *   milestones gets. The page then shows the headings with an honest line and
+ *   NO counts, because a count of 0 would read as if PsychSift had looked and
+ *   found nothing.
  *
  * Every helper here is plain arithmetic and wording on that input. Nothing
  * here decides whether a requirement is met; the college, the term
@@ -25,7 +29,7 @@ export type TrainingEpa = {
   readonly id: string;
   readonly title: string;
   /** WBAs logged against this EPA so far. */
-  readonly wbasLogged: number;
+  readonly wbasLogged: number | null;
   /** An assessor's name. Only ever set in the sample fixture; PsychSift never stores one. */
   readonly assessor: string | null;
   /** The day the doctor marked the EPA attained (Perth `YYYY-MM-DD`), or null. */
@@ -33,7 +37,7 @@ export type TrainingEpa = {
 };
 
 export type RegistrarAssessments = {
-  readonly rotationEndsOn: string;
+  readonly rotationEndsOn: string | null;
   /** RANZCP minimum EPAs for a 6-month full-time rotation (not signed off). */
   readonly minimumEpas: number;
   /** WBAs shown against each EPA (RANZCP: 3). */
@@ -75,6 +79,7 @@ export type InternAssessments = {
 export type CmeTrainingAssessments =
   | { readonly status: "sample"; readonly view: "registrar"; readonly registrar: RegistrarAssessments }
   | { readonly status: "sample"; readonly view: "intern"; readonly intern: InternAssessments }
+  | { readonly status: "recorded"; readonly view: "registrar"; readonly registrar: RegistrarAssessments }
   | { readonly status: "not-recorded" };
 
 export type TrainingExampleView = "registrar" | "intern";
@@ -148,11 +153,11 @@ export function epasInProgress(registrar: RegistrarAssessments): readonly Traini
  * "At least 1 more by 29 January. The minimum is 2 for each 6-month full-time
  * rotation, pro rata if part-time." Once the minimum is reached, it says so.
  */
-export function epaNextBySentence(attained: number, minimum: number, rotationEndsOn: string): string {
+export function epaNextBySentence(attained: number, minimum: number, rotationEndsOn: string | null): string {
   const rule = `The minimum is ${minimum} for each 6-month full-time rotation, pro rata if part-time.`;
   const left = minimum - attained;
   if (left <= 0) return `You have marked ${attained} attained this rotation. ${rule}`;
-  return `At least ${left} more by ${formatDayFullMonth(rotationEndsOn)}. ${rule}`;
+  return `At least ${left} more${rotationEndsOn ? ` by ${formatDayFullMonth(rotationEndsOn)}` : ""}. ${rule}`;
 }
 
 /** The second line of an EPA row, in the mock-up's words. */
@@ -161,6 +166,8 @@ export function epaRowDetail(epa: TrainingEpa, wbasPerEpa: number): string {
     const [, month, day] = epa.attainedOn.split("-");
     return `You marked it attained on ${Number.parseInt(day, 10)} ${SHORT_MONTHS[Number.parseInt(month, 10) - 1]} · keep your COE form in InTrain`;
   }
+  if (epa.wbasLogged === null)
+    return epa.assessor ? `WBA count not recorded · ${epa.assessor}` : "WBA count not recorded";
   const logged = `${xOfY(epa.wbasLogged, wbasPerEpa)} WBAs logged`;
   if (epa.wbasLogged === 0) return `${logged} · not started`;
   return epa.assessor ? `${logged} · ${epa.assessor}` : logged;
@@ -281,4 +288,63 @@ export function milestoneSummary(
   if (!next?.projectedOn) return head;
   const date = formatCmeRowDate(next.projectedOn, today);
   return next.overdue ? `${head} · overdue since ${date}` : `${head} · next ${date}`;
+}
+
+// An EPA record carries "EPA" in its code or title (for example `st2-epa-1`, "EPA 3"), or a RANZCP
+// EPA code such as "ST2.A1" or "ST1.AP2" at the start of its title.
+const epaCodePattern = /(?:^|[^a-z])epa(?:[^a-z]|$)/i;
+const ranzcpEpaTitlePattern = /^ST\d\.[A-Z]{1,4}\d+\b/;
+
+export function isEpaMilestoneRecord(record: RegistrarMilestoneRecord): boolean {
+  return (
+    epaCodePattern.test(record.milestoneCode) ||
+    epaCodePattern.test(record.milestoneTitle) ||
+    ranzcpEpaTitlePattern.test(record.milestoneTitle.trim())
+  );
+}
+
+/**
+ * Builds the signed-in owner's assessment view from `registrar_training_milestones`
+ * and their current rotation periods. When no registrar milestones are recorded,
+ * returns `{ status: "not-recorded" }` so the page keeps its honest no-count state.
+ */
+export function buildOwnerTrainingAssessments(
+  periods: readonly TrainingPeriod[],
+  registrarMilestones: readonly RegistrarMilestoneRecord[] = [],
+  today: string = perthDateOf(),
+): CmeTrainingAssessments {
+  // Only records explicitly typed as EPAs belong in the EPA list. Generic milestones (written
+  // examinations, psychotherapy cases, anything mirrored from the CME timeline) stay timeline
+  // milestones and are never shown as attained EPAs.
+  const epaRecords = registrarMilestones.filter(isEpaMilestoneRecord);
+  if (epaRecords.length === 0) {
+    return { status: "not-recorded" };
+  }
+  const currentRotation = periods.find(
+    (period) =>
+      period.kind === "rotation" && period.startsOn <= today && (period.endsOn === null || period.endsOn >= today),
+  );
+  // The deadline is the current rotation's own end date; with none recorded the page shows no date
+  // rather than borrowing an unrelated milestone's due date.
+  const rotationEndsOn = currentRotation?.endsOn ?? null;
+  const minimumEpas = currentRotation ? 2 * currentRotation.fte : 2;
+
+  const epas: TrainingEpa[] = epaRecords.map((record) => ({
+    id: record.id,
+    title: record.milestoneTitle,
+    wbasLogged: null,
+    assessor: null,
+    attainedOn: record.achievedAt ? record.achievedAt.slice(0, 10) : null,
+  }));
+
+  return {
+    status: "recorded",
+    view: "registrar",
+    registrar: {
+      rotationEndsOn,
+      minimumEpas,
+      wbasPerEpa: 3,
+      epas,
+    },
+  };
 }

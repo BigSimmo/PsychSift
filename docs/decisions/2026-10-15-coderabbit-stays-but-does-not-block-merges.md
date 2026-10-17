@@ -2,6 +2,7 @@
 
 - **Status:** decided 2026-10-15
 - **Source:** the owner, in chat
+- **Implemented in:** `docs/agents/pull-request-workflow.md`, find "never blocks merges or delays the merge queue"
 
 CodeRabbit stays as a review bot, but its reviews must stop acting as a barrier to merging.
 

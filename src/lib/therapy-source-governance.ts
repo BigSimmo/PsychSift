@@ -10,7 +10,7 @@ type TherapySourceInput = {
  * A source marker the catalogue writes inline at the end of a sentence, e.g.
  * "… as unsupported self-help. (PubMed)".
  */
-export const AUTHORITY_PATTERN = /(?<=[.!?])\s*\(([A-Z0-9][^().!?]{0,58})\)/g;
+export const AUTHORITY_PATTERN = /(?<=[.!?])\s*\((?!(?:19|20)\d{2}\))([A-Z0-9][^().!?]{0,58})\)/g;
 
 export type SourceCitation = { text: string; authority: string };
 
@@ -70,6 +70,12 @@ export function therapySourceMetadata(source: TherapySourceInput, recordReviewSt
 export function isLaterAddedNiceReference(text: string | null | undefined): boolean {
   if (!text) return false;
   return text.includes("9 October 2026") && text.includes("NICE");
+}
+
+/** Check if a reference blob contains later-added guideline or literature citations (2026-10-09 or 2026-10-17 sweeps). */
+export function isLaterAddedReference(text: string | null | undefined): boolean {
+  if (!text) return false;
+  return isLaterAddedNiceReference(text) || text.includes("added on 17 October 2026");
 }
 
 export type NiceGuidelineDetails = {

@@ -1,185 +1,5 @@
 {
-  "slugs": [
-    "acceptance-and-commitment-therapy-act",
-    "adherence-focused-brief-work-adherence-therapy",
-    "adolescent-cbt",
-    "adolescent-focused-psychotherapy-for-anorexia-nervosa",
-    "advocacy-informed-therapeutic-work",
-    "app-supported-therapy",
-    "applied-relaxation-relaxation-based-therapy",
-    "arts-therapies-for-psychosis",
-    "behavioural-activation-ba",
-    "behavioural-couples-therapy-bct",
-    "behavioural-couples-therapy-for-substance-use-disorders-bct-sud",
-    "behavioural-parent-training",
-    "brief-low-intensity-cbt",
-    "brief-supportive-psychotherapy",
-    "bright-light-therapy",
-    "carer-groups",
-    "carer-interventions",
-    "carer-focused-education-and-support-carer-psychoeducation-in-psychosis",
-    "carer-supported-meal-based-interventions",
-    "cbt-informed-psychological-intervention-for-self-harm",
-    "child-cbt",
-    "circadian-rhythm-based-interventions",
-    "client-directed-feedback-informed-brief-work",
-    "cognitive-analytic-therapy-cat",
-    "cognitive-behavioural-therapy-cbt",
-    "cognitive-behavioural-therapy-for-bipolar-depression-bipolar-relapse-prevention",
-    "cognitive-behavioural-therapy-for-insomnia",
-    "cognitive-behavioural-therapy-for-psychosis-cbtp",
-    "cognitive-processing-therapy-cpt",
-    "cognitive-remediation-therapy-crt",
-    "cognitive-stimulation-therapy",
-    "cognitive-therapy-for-ptsd-ct-ptsd",
-    "community-reinforcement-approach",
-    "community-based-psychosocial-intervention",
-    "compassion-focused-therapy",
-    "constructivist-therapies",
-    "coping-skills-interventions",
-    "couples-therapy",
-    "craving-management-interventions",
-    "crisis-intervention-crisis-oriented-brief-therapy",
-    "dbt-skills-groups",
-    "dbt-informed-adjunctive-emotion-regulation-work-for-eating-disorders",
-    "developmental-social-skills-interventions",
-    "developmentally-adapted-dbt",
-    "developmentally-adapted-erp",
-    "dialectical-behaviour-therapy-dbt",
-    "dignity-therapy",
-    "dyadic-therapy",
-    "dynamic-interpersonal-therapy",
-    "eating-disorder-focused-cognitive-behavioural-therapy-cbt-ed-cbt-e",
-    "eating-disorder-focused-focal-psychodynamic-therapy-fpt-for-adult-anorexia-nervosa",
-    "ect",
-    "emotion-focused-therapy",
-    "empowerment-focused-practice",
-    "existential-psychotherapy",
-    "experiential-therapies",
-    "exposure-and-response-prevention-erp",
-    "exposure-therapy",
-    "exposure-based-cbt-exposure-therapy",
-    "eye-movement-desensitisation-and-reprocessing-emdr",
-    "family-intervention-for-psychosis",
-    "family-problem-solving-interventions",
-    "family-psychoeducation-for-psychosis",
-    "family-therapy",
-    "family-based-treatment-for-adolescent-anorexia-nervosa-ft-an",
-    "family-based-treatment-for-bulimia-nervosa-ft-bn",
-    "family-focused-psychoeducation-for-bipolar-disorder",
-    "family-focused-therapy-for-bipolar-disorder-fft-bd",
-    "functional-family-therapy-fft",
-    "gestalt-therapy",
-    "good-psychiatric-management",
-    "graded-exposure",
-    "group-exposure-programmes",
-    "group-psychoeducation",
-    "group-psychoeducation-for-bipolar-disorder",
-    "group-relapse-prevention-programmes",
-    "group-social-skills-training",
-    "guided-self-help",
-    "guided-self-help-for-binge-eating-disorder",
-    "guided-self-help-for-bulimia-nervosa",
-    "habit-reversal-training-cbit",
-    "harm-reduction-counselling",
-    "health-anxiety-focused-cbt",
-    "humanistic-psychotherapy",
-    "illness-management-and-recovery-style-interventions-imr-style-interventions",
-    "imagery-rescripting",
-    "inference-based-cbt-for-ocd",
-    "integrated-dual-diagnosis-psychotherapy",
-    "intensive-psychodynamic-psychotherapy",
-    "internet-delivered-cbt",
-    "interoceptive-exposure",
-    "interpersonal-psychotherapy-ipt",
-    "life-review-therapy-reminiscence-therapy",
-    "low-intensity-relapse-prevention-programmes",
-    "maudsley-anorexia-nervosa-treatment-for-adults-mantra",
-    "meaning-centred-psychotherapy",
-    "metacognitive-therapy-mct",
-    "mindfulness-based-cognitive-therapy-mbct",
-    "mindfulness-based-stress-reduction",
-    "mindfulness-based-therapies-not-primarily-cbt-anchored",
-    "motivational-interviewing",
-    "motivational-interviewing-mi-for-substance-use-disorders",
-    "multi-family-interventions",
-    "multidimensional-family-therapy",
-    "multisystemic-therapy-mst",
-    "narrative-exposure-therapy-net",
-    "narrative-therapy",
-    "narrative-informed-community-work",
-    "neurodevelopmentally-adapted-psychosocial-interventions",
-    "panic-focused-cbt",
-    "parent-management-training-pmt",
-    "parent-training",
-    "peer-recovery-interventions",
-    "peer-support",
-    "peer-led-groups",
-    "person-centred-rogerian-therapy",
-    "phase-oriented-trauma-therapy",
-    "play-therapy-play-based-therapies",
-    "problem-management-plus-pm",
-    "problem-solving-therapy-pst",
-    "process-groups",
-    "prolonged-exposure-pe",
-    "psychoanalysis",
-    "psychodynamic-psychotherapy",
-    "psychoeducation",
-    "psychoeducational-recovery-groups",
-    "psychosis-specific-self-management-programmes",
-    "psychosocial-case-planning",
-    "recovery-groups",
-    "recovery-planning-for-addiction",
-    "recovery-oriented-case-management",
-    "relapse-prevention-psychotherapy",
-    "relational-psychodynamic-therapies",
-    "relational-cultural-therapy",
-    "relationship-focused-therapy",
-    "resource-linkage-coordination-as-therapeutic-intervention",
-    "rtms",
-    "schema-therapy",
-    "school-refusal-cbt",
-    "self-management-interventions",
-    "short-term-psychodynamic-psychotherapy-stpp",
-    "short-term-psychodynamic-psychotherapy-for-depression-stpp",
-    "skills-training-groups",
-    "sleep-compression-therapy-for-insomnia",
-    "social-cognition-training",
-    "social-skills-training-sst",
-    "social-anxiety-focused-cbt",
-    "social-role-restoration-work",
-    "solution-focused-brief-therapy",
-    "specialist-supportive-clinical-management-sscm",
-    "stabilisation-focused-trauma-preparation",
-    "stair-skills-training-in-affective-and-interpersonal-regulation",
-    "strengths-based-case-management",
-    "strengths-based-practice",
-    "structured-clinical-management",
-    "support-groups",
-    "supported-digital-cbt",
-    "supported-digital-trauma-focused-cbt",
-    "supported-digital-trauma-focused-cbt-self-help-and-digital-therapies",
-    "supported-education",
-    "supported-employment-individual-placement-and-support-ips",
-    "supportive-psychotherapy",
-    "supportive-expressive-psychodynamic-counselling-approaches-for-depression",
-    "systemic-family-therapy",
-    "task-centred-practice",
-    "telehealth-delivered-psychotherapy",
-    "telephone-delivered-cbt",
-    "transference-focused-psychotherapy-tfp",
-    "trauma-focused-cognitive-behavioural-therapy-tf-cbt",
-    "trauma-informed-skills-work",
-    "twelve-step-facilitation-tsf",
-    "values-based-therapies",
-    "vocational-rehabilitation",
-    "waitlist-bridging-brief-interventions",
-    "workbook-based-therapy",
-    "worry-focused-cbt",
-    "written-exposure-therapy",
-    "youth-ipt-ipt-a",
-    "youth-trauma-focused-cbt"
-  ],
+  "slugs": [],
   "signedBySlug": {
     "acceptance-and-commitment-therapy-act": {
       "reviewedBy": "PsychSift",
@@ -212,6 +32,10 @@
     "arts-therapies-for-psychosis": {
       "reviewedBy": "PsychSift",
       "reviewedAt": "2026-09-26T17:26:59.987Z"
+    },
+    "behaviour-therapy": {
+      "reviewedBy": "Psych Sift",
+      "reviewedAt": "2026-10-17T12:15:00.000Z"
     },
     "behavioural-activation-ba": {
       "reviewedBy": "Psych Sift",
@@ -289,6 +113,10 @@
       "reviewedBy": "PsychSift",
       "reviewedAt": "2026-09-26T17:26:59.987Z"
     },
+    "cognitive-behavioural-therapy-for-insomnia-cbt-i": {
+      "reviewedBy": "Psych Sift",
+      "reviewedAt": "2026-10-17T12:15:00.000Z"
+    },
     "cognitive-behavioural-therapy-for-psychosis-cbtp": {
       "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-10-16T00:09:15.298Z"
@@ -305,9 +133,17 @@
       "reviewedBy": "PsychSift",
       "reviewedAt": "2026-09-26T17:26:59.987Z"
     },
+    "cognitive-therapy": {
+      "reviewedBy": "Psych Sift",
+      "reviewedAt": "2026-10-17T12:15:00.000Z"
+    },
     "cognitive-therapy-for-ptsd-ct-ptsd": {
       "reviewedBy": "PsychSift",
       "reviewedAt": "2026-09-26T17:26:59.987Z"
+    },
+    "community-reinforcement-and-family-training-craft": {
+      "reviewedBy": "Psych Sift",
+      "reviewedAt": "2026-10-17T12:15:00.000Z"
     },
     "community-reinforcement-approach": {
       "reviewedBy": "PsychSift",
@@ -325,6 +161,10 @@
       "reviewedBy": "PsychSift",
       "reviewedAt": "2026-10-06T09:19:29.756Z"
     },
+    "contingency-management-cm": {
+      "reviewedBy": "Psych Sift",
+      "reviewedAt": "2026-10-17T12:15:00.000Z"
+    },
     "coping-skills-interventions": {
       "reviewedBy": "PsychSift",
       "reviewedAt": "2026-09-26T17:26:59.987Z"
@@ -340,6 +180,10 @@
     "crisis-intervention-crisis-oriented-brief-therapy": {
       "reviewedBy": "PsychSift",
       "reviewedAt": "2026-09-26T17:26:59.987Z"
+    },
+    "cue-exposure-therapy-cet-for-substance-use-disorders": {
+      "reviewedBy": "Psych Sift",
+      "reviewedAt": "2026-10-17T12:15:00.000Z"
     },
     "dbt-skills-groups": {
       "reviewedBy": "PsychSift",
@@ -408,6 +252,10 @@
     "exposure-and-response-prevention-erp": {
       "reviewedBy": "PsychSift",
       "reviewedAt": "2026-09-26T17:26:59.987Z"
+    },
+    "exposure-and-response-prevention-for-tics-erp-for-tics": {
+      "reviewedBy": "Psych Sift",
+      "reviewedAt": "2026-10-17T12:15:00.000Z"
     },
     "exposure-therapy": {
       "reviewedBy": "PsychSift",
@@ -505,6 +353,10 @@
       "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-10-16T00:09:15.298Z"
     },
+    "habit-reversal-training-for-trichotillomania-and-excoriation-disorder": {
+      "reviewedBy": "Psych Sift",
+      "reviewedAt": "2026-10-17T12:15:00.000Z"
+    },
     "harm-reduction-counselling": {
       "reviewedBy": "PsychSift",
       "reviewedAt": "2026-09-26T17:26:59.987Z"
@@ -521,6 +373,10 @@
       "reviewedBy": "PsychSift",
       "reviewedAt": "2026-09-26T17:26:59.987Z"
     },
+    "imagery-rehearsal-therapy-irt-for-nightmare-disorder": {
+      "reviewedBy": "Psych Sift",
+      "reviewedAt": "2026-10-17T12:15:00.000Z"
+    },
     "imagery-rescripting": {
       "reviewedBy": "PsychSift",
       "reviewedAt": "2026-09-26T17:26:59.987Z"
@@ -528,6 +384,10 @@
     "inference-based-cbt-for-ocd": {
       "reviewedBy": "PsychSift",
       "reviewedAt": "2026-09-26T17:26:59.987Z"
+    },
+    "integrated-cbt-for-ptsd-and-substance-use-disorders": {
+      "reviewedBy": "Psych Sift",
+      "reviewedAt": "2026-10-17T12:15:00.000Z"
     },
     "integrated-dual-diagnosis-psychotherapy": {
       "reviewedBy": "PsychSift",
@@ -545,6 +405,10 @@
       "reviewedBy": "PsychSift",
       "reviewedAt": "2026-09-26T17:26:59.987Z"
     },
+    "interpersonal-and-social-rhythm-therapy-ipsrt": {
+      "reviewedBy": "Psych Sift",
+      "reviewedAt": "2026-10-17T12:15:00.000Z"
+    },
     "interpersonal-psychotherapy-ipt": {
       "reviewedBy": "PsychSift",
       "reviewedAt": "2026-10-06T09:19:29.756Z"
@@ -557,6 +421,10 @@
       "reviewedBy": "PsychSift",
       "reviewedAt": "2026-10-06T09:19:29.756Z"
     },
+    "matrix-model": {
+      "reviewedBy": "Psych Sift",
+      "reviewedAt": "2026-10-17T12:15:00.000Z"
+    },
     "maudsley-anorexia-nervosa-treatment-for-adults-mantra": {
       "reviewedBy": "PsychSift",
       "reviewedAt": "2026-09-26T17:26:59.987Z"
@@ -564,6 +432,10 @@
     "meaning-centred-psychotherapy": {
       "reviewedBy": "PsychSift",
       "reviewedAt": "2026-10-06T09:19:29.756Z"
+    },
+    "mentalisation-based-therapy-mbt": {
+      "reviewedBy": "Psych Sift",
+      "reviewedAt": "2026-10-17T12:15:00.000Z"
     },
     "metacognitive-therapy-mct": {
       "reviewedBy": "PsychSift",
@@ -573,6 +445,10 @@
       "reviewedBy": "PsychSift",
       "reviewedAt": "2026-09-26T17:26:59.987Z"
     },
+    "mindfulness-based-relapse-prevention-mbrp": {
+      "reviewedBy": "Psych Sift",
+      "reviewedAt": "2026-10-17T12:15:00.000Z"
+    },
     "mindfulness-based-stress-reduction": {
       "reviewedBy": "PsychSift",
       "reviewedAt": "2026-10-06T09:19:29.756Z"
@@ -580,6 +456,18 @@
     "mindfulness-based-therapies-not-primarily-cbt-anchored": {
       "reviewedBy": "PsychSift",
       "reviewedAt": "2026-10-06T09:19:29.756Z"
+    },
+    "mindfulness-based-therapy-for-insomnia-mbti": {
+      "reviewedBy": "Psych Sift",
+      "reviewedAt": "2026-10-17T12:15:00.000Z"
+    },
+    "mother-infant-therapy-mother-infant-psychotherapy": {
+      "reviewedBy": "Psych Sift",
+      "reviewedAt": "2026-10-17T12:15:00.000Z"
+    },
+    "motivational-enhancement-therapy-met": {
+      "reviewedBy": "Psych Sift",
+      "reviewedAt": "2026-10-17T12:15:00.000Z"
     },
     "motivational-interviewing": {
       "reviewedBy": "PsychSift",
@@ -628,6 +516,18 @@
     "parent-training": {
       "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-10-16T00:09:15.298Z"
+    },
+    "parent-and-child-training": {
+      "reviewedBy": "Psych Sift",
+      "reviewedAt": "2026-10-17T12:15:00.000Z"
+    },
+    "parent-child-relational-therapy": {
+      "reviewedBy": "Psych Sift",
+      "reviewedAt": "2026-10-17T12:15:00.000Z"
+    },
+    "parent-child-interaction-therapy-pcit": {
+      "reviewedBy": "Psych Sift",
+      "reviewedAt": "2026-10-17T12:15:00.000Z"
     },
     "peer-recovery-interventions": {
       "reviewedBy": "PsychSift",
@@ -681,6 +581,10 @@
       "reviewedBy": "PsychSift",
       "reviewedAt": "2026-09-26T17:26:59.987Z"
     },
+    "psychoeducation-for-psychosis": {
+      "reviewedBy": "Psych Sift",
+      "reviewedAt": "2026-10-17T12:15:00.000Z"
+    },
     "psychoeducational-recovery-groups": {
       "reviewedBy": "PsychSift",
       "reviewedAt": "2026-10-06T09:19:29.756Z"
@@ -704,6 +608,14 @@
     "recovery-oriented-case-management": {
       "reviewedBy": "PsychSift",
       "reviewedAt": "2026-10-06T09:19:29.756Z"
+    },
+    "recovery-oriented-psychosocial-interventions": {
+      "reviewedBy": "Psych Sift",
+      "reviewedAt": "2026-10-17T12:15:00.000Z"
+    },
+    "relapse-prevention-therapy-for-substance-use-disorders": {
+      "reviewedBy": "Psych Sift",
+      "reviewedAt": "2026-10-17T12:15:00.000Z"
     },
     "relapse-prevention-psychotherapy": {
       "reviewedBy": "Psych Sift",
@@ -737,6 +649,10 @@
       "reviewedBy": "PsychSift",
       "reviewedAt": "2026-09-26T17:26:59.987Z"
     },
+    "seeking-safety": {
+      "reviewedBy": "Psych Sift",
+      "reviewedAt": "2026-10-17T12:15:00.000Z"
+    },
     "self-management-interventions": {
       "reviewedBy": "PsychSift",
       "reviewedAt": "2026-09-26T17:26:59.987Z"
@@ -768,6 +684,10 @@
     "social-anxiety-focused-cbt": {
       "reviewedBy": "PsychSift",
       "reviewedAt": "2026-09-26T17:26:59.987Z"
+    },
+    "social-communication-parent-mediated-autism-interventions": {
+      "reviewedBy": "Psych Sift",
+      "reviewedAt": "2026-10-17T12:15:00.000Z"
     },
     "social-role-restoration-work": {
       "reviewedBy": "PsychSift",
@@ -876,6 +796,10 @@
     "waitlist-bridging-brief-interventions": {
       "reviewedBy": "PsychSift",
       "reviewedAt": "2026-10-06T09:19:29.756Z"
+    },
+    "wake-therapy-sleep-deprivation-chronotherapy": {
+      "reviewedBy": "Psych Sift",
+      "reviewedAt": "2026-10-17T12:15:00.000Z"
     },
     "workbook-based-therapy": {
       "reviewedBy": "PsychSift",
