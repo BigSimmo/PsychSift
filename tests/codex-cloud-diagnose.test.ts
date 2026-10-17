@@ -6,6 +6,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  commandVersion,
   diagnoseCodexCloud,
   legacyCloudDiagnosticsSelected,
   parseDiagnosticArguments,
@@ -22,6 +23,10 @@ const healthy = {
 };
 
 describe("Codex Cloud diagnostics", () => {
+  it("bounds an unresponsive version probe without returning late output", () => {
+    expect(commandVersion(process.execPath, ["-e", 'setTimeout(() => console.log("3.12.0"), 800)'], 100)).toBeNull();
+  });
+
   it("reports a healthy aligned runtime", () => {
     expect(diagnoseCodexCloud(healthy)).toEqual([]);
   });

@@ -316,7 +316,7 @@ describe("Codex Cloud policy-only harness runtime isolation", () => {
       const executable = path.join(nodeBin, command);
       writeFileSync(
         executable,
-        command === "node" ? "#!/bin/bash\nprintf '%s\\n' '24.15.0'\n" : "#!/bin/bash\nexit 0\n",
+        command === "node" ? "#!/bin/bash\nprintf '%s\\n' '24.15.0'\n" : "#!/bin/bash\nprintf '%s\\n' '11.17.0'\n",
       );
       chmodSync(executable, 0o755);
     }
@@ -364,6 +364,38 @@ describe("Codex Cloud policy-only harness runtime isolation", () => {
     expect(existsSync(test.runtimeCalls)).toBe(false);
   });
 
+  it("repairs the toolchain when shim validation fails during maintenance", () => {
+    const test = fixture("mismatched");
+    const checkout = path.join(test.home, "checkout");
+    const scripts = path.join(checkout, "scripts");
+    mkdirSync(scripts, { recursive: true });
+    for (const name of ["maintain-codex-cloud.sh", "check-codex-cloud-raw-env.sh"]) {
+      copyFileSync(path.join(repoRoot, "scripts", name), path.join(scripts, name));
+    }
+    writeFileSync(
+      path.join(test.home, ".clinical-kb-codex-cloud.sh"),
+      "export CODEX_CLOUD_ACCESS_PROFILE=offline RAG_PROVIDER_MODE=offline\n",
+    );
+    writeFileSync(path.join(scripts, "refresh-codex-cloud-base.sh"), "exit 0\n");
+    writeFileSync(path.join(scripts, "install-codex-cloud-command-shims.sh"), "exit 42\n");
+    writeFileSync(path.join(scripts, "setup-codex-cloud.sh"), 'printf "%s\\n" fixture-setup\n');
+    const git = path.join(test.home, "bin/git");
+    writeFileSync(git, '#!/bin/bash\nprintf "%s\\n" "$CLOUD_POLICY_FIXTURE_CHECKOUT"\n');
+    chmodSync(git, 0o755);
+
+    const result = test.run(
+      { CLOUD_POLICY_FIXTURE_CHECKOUT: bashPath(checkout) },
+      false,
+      path.join(scripts, "maintain-codex-cloud.sh"),
+    );
+
+    expect(result.status, result.stderr || result.stdout).toBe(0);
+    expect(result.stdout).toContain("Shim validation failed; rerunning full setup.");
+    expect(result.stdout).toContain("fixture-setup");
+    expect(result.stdout).not.toContain("PASS: Cloud runtime");
+    expect(readFileSync(test.runtimeCalls, "utf8").trim()).toBe("node");
+  });
+
   it.each(["inherited-flag", "ordinary-runtime"] as const)("rejects a policy-only shortcut in %s setup", (scenario) => {
     const test = fixture("missing");
     const result = scenario === "inherited-flag" ? test.run({}, false) : test.run({ NODE_ENV: "production" });
@@ -402,6 +434,9 @@ describe("Codex Cloud policy-only harness runtime isolation", () => {
       const test = fixture("mismatched");
       const config = failure === "unmanaged-policy" ? '[shell_environment_policy]\ninherit = "all"\n' : test.config;
       writeFileSync(test.configPath, config);
+      const profilePath = path.join(test.home, ".clinical-kb-codex-cloud.sh");
+      const originalProfile = "# existing selected profile\nexport CODEX_CLOUD_ACCESS_PROFILE=connected\n";
+      writeFileSync(profilePath, originalProfile);
       const result = test.run(failure === "atomic-write" ? { CODEX_CLOUD_SETUP_TEST_FAIL_ATOMIC_WRITE: "1" } : {});
 
       expect(result.error).toBeUndefined();
@@ -416,7 +451,63 @@ describe("Codex Cloud policy-only harness runtime isolation", () => {
       }
       expect(existsSync(test.runtimeCalls)).toBe(false);
       expect(readFileSync(test.configPath, "utf8")).toBe(config);
+      expect(readFileSync(profilePath, "utf8")).toBe(originalProfile);
+      expect(readdirSync(test.home).filter((name) => name.startsWith(".clinical-kb-codex-cloud.sh."))).toEqual([]);
       expect(readdirSync(path.dirname(test.configPath)).filter((name) => name.startsWith(".config.toml."))).toEqual([]);
+    },
+  );
+
+  it("writes exclusions to the selected CODEX_HOME without changing the default configuration", () => {
+    const test = fixture("missing");
+    const codexHome = path.join(test.home, "selected codex home");
+    mkdirSync(codexHome);
+    const selectedConfig = path.join(codexHome, "config.toml");
+    writeFileSync(selectedConfig, test.config);
+
+    const result = test.run({ CODEX_HOME: bashPath(codexHome) });
+
+    expect(result.status, result.stderr || result.stdout).toBe(0);
+    const contents = readFileSync(selectedConfig, "utf8");
+    expect(contents).toContain(test.config);
+    expect(contents).toContain("[shell_environment_policy]");
+    expect(contents).toContain('"GH_TOKEN"');
+    expect(readFileSync(test.configPath, "utf8")).toBe(test.config);
+    expect(existsSync(test.runtimeCalls)).toBe(false);
+    const repeated = test.run({ CODEX_HOME: bashPath(codexHome) });
+    expect(repeated.status, repeated.stderr || repeated.stdout).toBe(0);
+    expect(readFileSync(selectedConfig, "utf8")).toBe(contents);
+  });
+
+  it.each(["config.toml", ".clinical-kb-codex-cloud.sh", ".bashrc"])(
+    "rejects a directory at the %s file target before setup writes",
+    (name) => {
+      const test = fixture("missing");
+      const target = name === "config.toml" ? test.configPath : path.join(test.home, name);
+      rmSync(target, { force: true });
+      mkdirSync(target);
+      const result = test.run();
+
+      expect(result.status, result.stderr || result.stdout).toBe(1);
+      expect(result.stderr).toContain("must be a regular file");
+      expect(readdirSync(target)).toEqual([]);
+      expect(existsSync(test.runtimeCalls)).toBe(false);
+      if (name !== ".clinical-kb-codex-cloud.sh") {
+        expect(existsSync(path.join(test.home, ".clinical-kb-codex-cloud.sh"))).toBe(false);
+      }
+    },
+  );
+
+  it.each(["", "relative-codex-home"])(
+    "rejects an invalid CODEX_HOME before setup writes or runtime work: %j",
+    (value) => {
+      const test = fixture("missing");
+      const result = test.run({ CODEX_CLOUD_SETUP_STOP_AFTER_POLICY: "0", CODEX_HOME: value }, false);
+
+      expect(result.status, result.stderr || result.stdout).toBe(1);
+      expect(result.stderr).toContain("CODEX_HOME must be a nonempty absolute directory path");
+      expect(readFileSync(test.configPath, "utf8")).toBe(test.config);
+      expect(existsSync(path.join(test.home, ".clinical-kb-codex-cloud.sh"))).toBe(false);
+      expect(existsSync(test.runtimeCalls)).toBe(false);
     },
   );
 

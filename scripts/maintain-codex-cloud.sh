@@ -72,7 +72,10 @@ fi
 node scripts/ensure-codex-cloud-git-remote.mjs --configure-gh-helper
 bash scripts/refresh-codex-cloud-base.sh
 load_runtime_profile
-bash scripts/install-codex-cloud-command-shims.sh
+if ! bash scripts/install-codex-cloud-command-shims.sh; then
+  printf '[codex-cloud:maintenance] Shim validation failed; rerunning full setup.\n'
+  exec bash scripts/setup-codex-cloud.sh
+fi
 npm run check:codex-cloud
 if ! CODEX_CLOUD_PROVISIONING=1 npm run check:codex-cloud -- --runtime; then
   printf '[codex-cloud:maintenance] Runtime or toolchain drift detected; rerunning full setup.\n'

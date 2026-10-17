@@ -85,8 +85,8 @@ export function diagnoseCodexCloud({
   return issues;
 }
 
-function commandVersion(command, args = ["--version"]) {
-  const result = spawnSync(command, args, { encoding: "utf8", shell: false });
+export function commandVersion(command, args = ["--version"], timeoutMilliseconds = 5000) {
+  const result = spawnSync(command, args, { encoding: "utf8", shell: false, timeout: timeoutMilliseconds });
   if (result.status !== 0) return null;
   return `${result.stdout || result.stderr}`.match(/\d+(?:\.\d+){1,2}/)?.[0] ?? null;
 }
