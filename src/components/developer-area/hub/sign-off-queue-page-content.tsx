@@ -509,18 +509,19 @@ export function SignOffQueuePageContent({
               1. Ready to sign now with a local tool ({ledger.waitingByCategory.signableNow})
             </p>
             <p className="text-sm leading-6 text-[color:var(--text-muted)]">
-              0 records waiting. Every signable WA Mental Health Act form (54), Act section summary (110), statutory
-              timeframe (9), Chief Psychiatrist standard (7), MHA cultural/interpreter note (14), locally authored
-              differential overlay (11), Formulation record (58), written specifier definition (89), referenced Therapy
-              Compass record (179), dictionary definition rewrite (28), active source acquisition (95), WA service
-              record (21), and Today rule engine (3) has been signed off.
+              {ledger.waitingByCategory.signableNow === 0
+                ? `Everything that can currently be signed is signed off across ${ledger.domains.length} domains.`
+                : `These ${ledger.waitingByCategory.signableNow} records are ready to sign in ${ledger.domains.filter((domain) => domain.needsSigning.signableNow > 0).length} domains: ${ledger.domains
+                    .filter((domain) => domain.needsSigning.signableNow > 0)
+                    .map((domain) => domain.name)
+                    .join(", ")}.`}
             </p>
           </div>
 
           <div className={CARD_CLASS} data-testid="developer-sign-off-category-indigenous-hold">
             <p className="text-sm font-bold text-[color:var(--text-heading)]">
               2. Held for Aboriginal &amp; Torres Strait Islander governance review (
-              {ledger.waitingByCategory.indigenousHold} records across 5 domains)
+              {ledger.waitingByCategory.indigenousHold} records across {ledger.domains.filter((domain) => domain.needsSigning.indigenousHold > 0).length} domains)
             </p>
             <p className="text-sm leading-6 text-[color:var(--text-muted)]">
               Owner rule (2026-09-26): content specific to Aboriginal and Torres Strait Islander peoples requires
@@ -552,7 +553,7 @@ export function SignOffQueuePageContent({
           <div className={CARD_CLASS} data-testid="developer-sign-off-category-prerequisites">
             <p className="text-sm font-bold text-[color:var(--text-heading)]">
               3. Awaiting source references or written clinical text ({ledger.waitingByCategory.awaitingPrerequisites}{" "}
-              items across 3 domains)
+              items across {ledger.domains.filter((domain) => domain.needsSigning.awaitingPrerequisites > 0).length} domains)
             </p>
             <p className="text-sm leading-6 text-[color:var(--text-muted)]">
               These items belong to domains that have a local sign-off tool, but the tool refuses to sign them until
@@ -604,7 +605,7 @@ export function SignOffQueuePageContent({
           <div className={CARD_CLASS} data-testid="developer-sign-off-category-awaiting-tool">
             <p className="text-sm font-bold text-[color:var(--text-heading)]">
               4. Unverified exports &amp; unpublished drafts with no sign-off tool yet (
-              {ledger.waitingByCategory.awaitingTool} items across 2 domains)
+              {ledger.waitingByCategory.awaitingTool} items across {ledger.domains.filter((domain) => domain.needsSigning.awaitingTool > 0).length} domains)
             </p>
             <ul className="grid gap-1.5 text-xs text-[color:var(--text-muted)]">
               <li>

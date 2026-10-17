@@ -196,8 +196,9 @@ function SignOffLedgerOverview() {
             <span className="nums font-semibold text-[color:var(--text)]">
               1. Ready to sign now with a local tool ({ledger.waitingByCategory.signableNow}):
             </span>{" "}
-            Every signable form, Act section, timeframe, standard, cultural note, differential overlay, formulation
-            record, written specifier, referenced therapy, dictionary rewrite, source, and WA service record is signed.
+            {ledger.waitingByCategory.signableNow === 0
+              ? `Everything currently signable is signed off across ${ledger.domains.length} domains.`
+              : `${ledger.waitingByCategory.signableNow} records are ready to sign in ${ledger.domains.filter((domain) => domain.needsSigning.signableNow > 0).length} domains.`}
           </li>
           <li>
             <span className="nums font-semibold text-[color:var(--text)]">
