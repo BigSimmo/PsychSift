@@ -4,6 +4,7 @@ import { ChevronDown } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { cardSurface } from "@/components/card-recipes";
 import { ApplicationsEntryLink } from "@/components/cme/applications/applications-entry-link";
+import { CmeClaimPackButton } from "@/components/cme/cme-claim-pack";
 import { CpdHomeEntryLink } from "@/components/cme/cpd-home/cpd-home-entry-link";
 import { CmeYearClosePanel } from "@/components/cme/cme-year-close-panel";
 import { Button, buttonFaceClass } from "@/components/ui/button";
@@ -164,6 +165,7 @@ export function CmeAnnualSummary({
                 Download CSV
               </a>
             )}
+            <CmeClaimPackButton entries={active} filename={`cme-claim-pack-${set.year}.txt`} />
           </div>
           <p className={cn(textMuted, "mt-2 text-xs")}>
             Opens your device&apos;s print screen. Choose Save as PDF, or Share on a phone, to send it to your college
