@@ -141,27 +141,52 @@ export function generationCompletedOutput(answer: OutputLike): GenerationComplet
   };
 }
 
+export function generationDegradationLogMetadata(
+  degradation: RagGenerationDegradationRecord | null | undefined,
+): Record<string, unknown> {
+  const projected = projectGenerationDegradation(degradation ?? undefined);
+  if (!projected || projected.attempts.length === 0) return {};
+  return {
+    generation_degradation_reason: projected.reason,
+    generation_degradation_attempt_count: projected.attempts.length,
+    generation_degradation_completed_response_count: projected.completedResponseCount,
+    generation_degradation_total_attempt_latency_ms: projected.totalAttemptLatencyMs,
+    generation_degradation_remaining_route_budget_ms: Math.max(
+      0,
+      projected.routeBudgetMs - projected.totalAttemptLatencyMs,
+    ),
+    provider_initial_attempt_timeout: projected.reason === "provider_initial_attempt_timeout",
+    provider_quality_retry_exhausted: projected.reason === "provider_quality_retry_exhausted",
+  };
+}
+
 export function createGenerationDegradationRecorder(options: {
-  enabled: boolean;
+  enabled?: boolean;
+  args?: { ragProgrammeRollout?: { servedMode?: string } | null; ragQueryPlanMode?: string | null };
   routeBudgetMs: number;
   contract?: RagAnswerGenerationContract;
 }) {
+  const enabled =
+    options.enabled ??
+    (options.args?.ragProgrammeRollout?.servedMode === "candidate" ||
+      options.args?.ragQueryPlanMode === "shadow" ||
+      options.args?.ragQueryPlanMode === "canary");
   const contract = options.contract ?? legacyAnswerGenerationContract;
   const attempts: GenerationAttempt[] = [];
   let nextStage: GenerationAttempt["stage"] = "initial";
   // The current ladder is initial + truncation self-heal + fast escalation + strong repair.
   // Fail closed if a future ladder exceeds that bound; never mutate the fourth record for a fifth call.
   let observationComplete = true;
+  let lastRecord: RagGenerationDegradationRecord | undefined;
   const current = () => (observationComplete ? attempts.at(-1) : undefined);
   return {
-    enabled: options.enabled,
+    enabled,
     start(
       input: Pick<
         GenerationAttempt,
         "route" | "timeoutMs" | "outputBudget" | "retrievalHealthy" | "coverage" | "contextCount"
       >,
     ) {
-      if (!options.enabled) return;
       if (attempts.length >= 4) {
         observationComplete = false;
         return;
@@ -228,10 +253,13 @@ export function createGenerationDegradationRecorder(options: {
       if (attempt) attempt.verificationFailed = true;
     },
     finish(answer: OutputLike, failed: boolean): RagGenerationDegradationRecord | undefined {
-      if (!options.enabled || !isRagAnswerGenerationContract(contract)) return undefined;
+      if (!isRagAnswerGenerationContract(contract)) {
+        lastRecord = undefined;
+        return undefined;
+      }
       const last = current();
       if (failed && last?.qualityReason && last.retryAdmission === "not_requested") last.retryAdmission = "exhausted";
-      return (
+      lastRecord =
         projectGenerationDegradation({
           version: "generation-degradation-v1",
           policy: "legacy-generation-policy-v1",
@@ -244,8 +272,11 @@ export function createGenerationDegradationRecorder(options: {
           completedResponseCount: attempts.filter((a) => a.responseReceived).length,
           totalAttemptLatencyMs: attempts.reduce((sum, a) => sum + a.latencyMs, 0),
           completedOutput: generationCompletedOutput(answer),
-        }) ?? undefined
-      );
+        }) ?? undefined;
+      return enabled ? lastRecord : undefined;
+    },
+    metadata(): Record<string, unknown> {
+      return generationDegradationLogMetadata(lastRecord);
     },
   };
 }

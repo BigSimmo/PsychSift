@@ -1770,9 +1770,11 @@ function buildFactSynthesizedAnswer(args: {
       sourceBackedDocumentFallbackIntent(args.query, args.queryClass, args.intent, fallbackResults) ||
       sourceBackedManagementReviewIntent(args.query, args.queryClass, args.intent, fallbackResults)
     ) {
+      const supportListAnswer = buildDocumentSupportListAnswer({ query: args.query, results: fallbackResults });
       return {
-        ...buildDocumentSupportListAnswer({ query: args.query, results: fallbackResults }),
-        supportListCitationResultIds: fallbackResults.map((result) => result.id),
+        ...supportListAnswer,
+        supportListCitationResultIds:
+          supportListAnswer.supportListCitationResultIds ?? fallbackResults.map((result) => result.id),
       };
     }
     const gapAnswer = finalQualityGapAnswer(args.query, args.queryClass, args.intent);
@@ -1966,9 +1968,48 @@ function buildTableOrVisualSourceLookupAnswer(args: { query: string; results: Se
   };
 }
 
+const documentLookupMetaTokenPattern =
+  /^(?:which|what|list|show|name|where|find|provide|support|supports|supporting|sources?|documents?|guidelines?|polic(?:y|ies|ie)|protocols?|procedures?|manuals?|guidance|sets?|states?|says?|describes?|mentions?|covers?|contains?|for|with|from|that|this|the|and)$/i;
+
 /** Build document support list answer. */
-function buildDocumentSupportListAnswer(args: { query: string; results: SearchResult[] }) {
-  const documents = buildDocumentBreakdown(args.results, extractQuoteCards(args.results, args.query)).slice(0, 5);
+function buildDocumentSupportListAnswer(args: {
+  query: string;
+  results: SearchResult[];
+  filterToClaimBearingDocuments?: boolean;
+}) {
+  let scopedResults = args.results;
+  if (args.filterToClaimBearingDocuments && args.results.length > 1) {
+    const qualifierTokens = normalizedClinicalSearchTokens(args.query).filter(
+      (token) => !documentLookupMetaTokenPattern.test(token),
+    );
+    if (qualifierTokens.length > 0) {
+      const evidenceByResult = new Map(args.results.map((result) => [result, evidenceTextForGate(result)]));
+      const distinguishingTokens = qualifierTokens.filter((token) => {
+        const matchCount = args.results.filter((result) =>
+          queryTokenMatchesText(token, evidenceByResult.get(result) ?? ""),
+        ).length;
+        return matchCount > 0 && matchCount < args.results.length;
+      });
+      const activeTokens = distinguishingTokens.length > 0 ? distinguishingTokens : qualifierTokens;
+      const scored = args.results.map((result) => ({
+        result,
+        matches: activeTokens.filter((token) => queryTokenMatchesText(token, evidenceByResult.get(result) ?? ""))
+          .length,
+      }));
+      const maxMatches = Math.max(...scored.map((entry) => entry.matches));
+      if (maxMatches >= 1) {
+        const singularDocumentQuery =
+          /\b(?:which|what)\s+(?:document|guideline|policy|protocol|source|procedure|manual)\b/i.test(args.query);
+        const filtered = scored
+          .filter((entry) => (singularDocumentQuery ? entry.matches === maxMatches : entry.matches > 0))
+          .map((entry) => entry.result);
+        if (filtered.length > 0 && filtered.length < args.results.length) {
+          scopedResults = filtered;
+        }
+      }
+    }
+  }
+  const documents = buildDocumentBreakdown(scopedResults, extractQuoteCards(scopedResults, args.query)).slice(0, 5);
   if (!documents.length) {
     const gapAnswer = finalQualityGapAnswer(args.query, "document_lookup", "document_lookup");
     return { answer: gapAnswer, citationChunkIds: [] as string[], answerSections: [] as AnswerSection[] };
@@ -1985,35 +2026,28 @@ function buildDocumentSupportListAnswer(args: { query: string; results: SearchRe
     names.length === 1
       ? `I found one indexed document that supports this query: ${names[0]}.`
       : `I found ${names.length} indexed documents that support this query: ${names.slice(0, -1).join("; ")}; and ${names.at(-1)}.`;
+  const citationChunkIds = Array.from(
+    new Set(
+      documents.flatMap((document) =>
+        scopedResults
+          .filter((result) => result.document_id === document.document_id)
+          .slice(0, 1)
+          .map((result) => result.id),
+      ),
+    ),
+  );
   return {
     answer,
     preformatted: true,
-    citationChunkIds: Array.from(
-      new Set(
-        documents.flatMap((document) =>
-          args.results
-            .filter((result) => result.document_id === document.document_id)
-            .slice(0, 1)
-            .map((result) => result.id),
-        ),
-      ),
-    ),
+    citationChunkIds,
+    supportListCitationResultIds: scopedResults.map((result) => result.id),
     answerSections: [
       {
         heading: "Document matches",
         kind: "documentation",
         supportLevel: "direct",
         body: names.join("; "),
-        citation_chunk_ids: Array.from(
-          new Set(
-            documents.flatMap((document) =>
-              args.results
-                .filter((result) => result.document_id === document.document_id)
-                .slice(0, 1)
-                .map((result) => result.id),
-            ),
-          ),
-        ),
+        citation_chunk_ids: citationChunkIds,
       },
     ] satisfies AnswerSection[],
   };
@@ -2135,7 +2169,7 @@ export function buildExtractiveAnswer(args: {
 
   const answerIntent = classifyAnswerIntent(args.query, args.queryClass);
   const naturalAnswer = documentSupportListIntent(args.query, args.queryClass)
-    ? buildDocumentSupportListAnswer({ query: args.query, results })
+    ? buildDocumentSupportListAnswer({ query: args.query, results, filterToClaimBearingDocuments: true })
     : tableOrVisualSourceLookupIntent(args.query, args.queryClass, answerIntent)
       ? buildTableOrVisualSourceLookupAnswer({ query: args.query, results })
       : buildFactSynthesizedAnswer({

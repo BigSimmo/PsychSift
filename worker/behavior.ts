@@ -684,3 +684,78 @@ export function serializeDocumentPageRowsForCommit(
   }
   return rows;
 }
+
+export type WorkerClaimScopeFilter = {
+  allowedDocumentIds: ReadonlySet<string>;
+  allowedFileTypes: ReadonlySet<string>;
+  active: boolean;
+};
+
+function normalizeClaimDocumentId(value?: string | null): string {
+  return (value ?? "").trim().toLowerCase();
+}
+
+function normalizeClaimMimeType(value?: string | null): string {
+  return (value ?? "").split(";")[0]!.trim().toLowerCase();
+}
+
+export function resolveWorkerClaimScopeFilter(
+  environment: Record<string, string | undefined> = process.env,
+): WorkerClaimScopeFilter {
+  const parseList = (raw: string | undefined, normalize: (item: string) => string) =>
+    new Set(
+      (raw ?? "")
+        .split(",")
+        .map((item) => normalize(item))
+        .filter(Boolean),
+    );
+  const allowedDocumentIds = parseList(environment.WORKER_ALLOWED_DOCUMENT_IDS, normalizeClaimDocumentId);
+  const allowedFileTypes = parseList(environment.WORKER_ALLOWED_FILE_TYPES, normalizeClaimMimeType);
+  return {
+    allowedDocumentIds,
+    allowedFileTypes,
+    active: allowedDocumentIds.size > 0 || allowedFileTypes.size > 0,
+  };
+}
+
+export function isPreClaimCandidateAllowed(
+  candidate: { document_id?: string | null; file_type?: string | null },
+  filter: WorkerClaimScopeFilter,
+): boolean {
+  if (!filter.active) return true;
+  const docId = normalizeClaimDocumentId(candidate.document_id);
+  const fileType = normalizeClaimMimeType(candidate.file_type);
+  if (filter.allowedDocumentIds.size > 0 && (!docId || !filter.allowedDocumentIds.has(docId))) {
+    return false;
+  }
+  if (filter.allowedFileTypes.size > 0 && (!fileType || !filter.allowedFileTypes.has(fileType))) {
+    return false;
+  }
+  return true;
+}
+
+export function isClaimableIngestionJobCandidate(
+  candidate: {
+    status?: string | null;
+    attempt_count?: number | null;
+    max_attempts?: number | null;
+    next_run_at?: string | null;
+    lease_expires_at?: string | null;
+  },
+  nowMs: number = Date.now(),
+): boolean {
+  const attemptCount = candidate.attempt_count ?? 0;
+  const maxAttempts = candidate.max_attempts ?? 3;
+  if (attemptCount >= maxAttempts) return false;
+  if (candidate.status === "pending") {
+    if (!candidate.next_run_at) return true;
+    const nextRunMs = Date.parse(candidate.next_run_at);
+    return Number.isFinite(nextRunMs) && nextRunMs <= nowMs;
+  }
+  if (candidate.status === "processing") {
+    if (!candidate.lease_expires_at) return false;
+    const leaseExpiresMs = Date.parse(candidate.lease_expires_at);
+    return Number.isFinite(leaseExpiresMs) && leaseExpiresMs <= nowMs;
+  }
+  return false;
+}

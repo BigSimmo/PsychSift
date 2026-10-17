@@ -116,7 +116,7 @@ const clinicalQuantityPattern =
 const scientificQuantityPattern =
   /(?:(below|under|less\s+than|above|over|greater\s+than|at\s+least|at\s+most|<=|>=|<|>|≤|≥)\s*)?(\d+(?:[.,]\d+)?)\s*[×x]\s*10\^?(\d+)\s*\/\s*([a-z])/giu;
 const unitlessThresholdPattern =
-  /(?:\b(below|under|less\s+than|above|over|greater\s+than|at\s+least|at\s+most)\s+|(<=|>=|<|>|≤|≥)\s*)(\d+(?:[.,]\d+)?)(?:\s*[-–—]\s*(\d+(?:[.,]\d+)?))?/giu;
+  /(?:\b(below|under|less\s+than|above|over|greater\s+than|at\s+least|at\s+most|no\s+more\s+than)\s+|(<=|>=|<|>|≤|≥)\s*)(\d+(?:[.,]\d+)?)(?:\s*[-–—]\s*(\d+(?:[.,]\d+)?))?/giu;
 // Infer omitted years only inside explicit adjacent population-age grammar.
 // Closed continuations exclude an unknown measurement/category noun after the value.
 const populationAgePrefixPattern = /\b(?:children|adolescents|adults|people|young[ \t]+people)(?:[ \t]+aged?)?[ \t]+$/i;
@@ -1287,7 +1287,10 @@ function clinicalValueAtomKey(atom: ClinicalValueAtom) {
 function clinicalValueAtomDisplay(atom: ClinicalValueAtom) {
   if (atom.kind !== "quantity") return atom.canonicalValue;
   return normalizeNumericToken(
-    atom.rawText.replace(/^\s*(?:below|under|less\s+than|above|over|greater\s+than|at\s+least|at\s+most)\s+/i, ""),
+    atom.rawText.replace(
+      /^\s*(?:below|under|less\s+than|above|over|greater\s+than|at\s+least|at\s+most|no\s+more\s+than)\s+/i,
+      "",
+    ),
   );
 }
 

@@ -125,4 +125,35 @@ describe("B1 telemetry canary absence", () => {
     });
     expect(findCanaryLeaks(JSON.stringify(shape), canaryTokens)).toEqual([]);
   });
+
+  it("generationDegradationLogMetadata (#231) drops contaminated reason/attempt fields and never leaks canaries", async () => {
+    const { generationDegradationLogMetadata } = await import("../src/lib/rag/rag-generation-degradation");
+    const contaminated = {
+      schemaVersion: "rag-generation-degradation-v1",
+      promptVersion: "clinical-rag-answer-v6",
+      answerSchemaVersion: "clinical-rag-answer-schema-v5",
+      routeBudgetMs: 35000,
+      totalAttemptLatencyMs: 30000,
+      completedResponseCount: 0,
+      degraded: true,
+      reason: canaryTokens[0],
+      attempts: [
+        {
+          attempt: 1,
+          route: "strong",
+          timeoutMs: 30000,
+          outputBudget: "standard",
+          retrievalHealthy: true,
+          coverage: "complete",
+          contextCount: 2,
+          latencyMs: 30000,
+          outcome: "timeout",
+          failureReason: canaryTokens[1] ?? canaryTokens[0],
+        },
+      ],
+    };
+    const emitted = generationDegradationLogMetadata(contaminated as never);
+    expect(emitted).toEqual({});
+    expect(findCanaryLeaks(JSON.stringify(emitted), canaryTokens)).toEqual([]);
+  });
 });

@@ -20,7 +20,9 @@ const primaryButton = primaryControl;
 const secondaryButton = floatingControl;
 
 function compactDocumentType(document: ClinicalDocument) {
-  return documentFileKind(document.file_name, "PDF");
+  return document.file_type?.trim().toLowerCase().startsWith("text/plain")
+    ? "TXT"
+    : documentFileKind(document.file_name, "PDF");
 }
 
 // Derive the header eyebrow from the document's real type instead of asserting

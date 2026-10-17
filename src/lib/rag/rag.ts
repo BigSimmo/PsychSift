@@ -3192,10 +3192,7 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
       });
 
   const generationDegradation = createGenerationDegradationRecorder({
-    enabled:
-      args.ragProgrammeRollout?.servedMode === "candidate" ||
-      args.ragQueryPlanMode === "shadow" ||
-      args.ragQueryPlanMode === "canary",
+    args,
     routeBudgetMs: routeDeadline.budgetMs,
     contract: answerContract,
   });
@@ -3871,6 +3868,7 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
           weighted_top_score: search.telemetry.weighted_top_score,
           rrf_top_score: search.telemetry.rrf_top_score,
           ...answerLatencyMetadata(searchLatencyMs, generationLatencyMs, answer.latencyTimings, startedAt),
+          ...generationDegradation.metadata(),
           openai_request_ids: openAIRequestIds,
           openai_usage: answer.openAIUsage ?? null,
           evidence_summary: answer.evidenceSummary,
@@ -4256,6 +4254,7 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
           weighted_top_score: search.telemetry.weighted_top_score,
           rrf_top_score: search.telemetry.rrf_top_score,
           ...answerLatencyMetadata(searchLatencyMs, generationLatencyMs, fallbackAnswer.latencyTimings, startedAt),
+          ...generationDegradation.metadata(),
           openai_request_ids: fallbackAnswer.openAIRequestIds,
           openai_usage: fallbackAnswer.openAIUsage,
           evidence_summary: fallbackAnswer.evidenceSummary,

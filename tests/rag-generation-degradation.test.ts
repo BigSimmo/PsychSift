@@ -407,3 +407,72 @@ describe("P12A selected generation diagnostic identity", () => {
       expect(projectGenerationDegradation({ ...record, ...pair } as unknown as typeof record)).toBeNull();
   });
 });
+
+describe("generationDegradationLogMetadata (#231) and worker pre-claim scope filter", () => {
+  it("emits scalar telemetry metadata even when public generationDegradation rollout is off", async () => {
+    const { generationDegradationLogMetadata } = await import("../src/lib/rag/rag-generation-degradation");
+    const r = createGenerationDegradationRecorder({ enabled: false, routeBudgetMs: 35000 });
+    r.start({
+      route: "strong",
+      timeoutMs: 30000,
+      outputBudget: "standard",
+      retrievalHealthy: true,
+      coverage: "complete",
+      contextCount: 2,
+    });
+    r.fail("timeout", 30000);
+    expect(r.finish(delivered, true)).toBeUndefined();
+    expect(r.metadata()).toEqual({
+      generation_degradation_reason: "provider_initial_attempt_timeout",
+      generation_degradation_attempt_count: 1,
+      generation_degradation_completed_response_count: 0,
+      generation_degradation_total_attempt_latency_ms: 30000,
+      generation_degradation_remaining_route_budget_ms: 5000,
+      provider_initial_attempt_timeout: true,
+      provider_quality_retry_exhausted: false,
+    });
+    expect(generationDegradationLogMetadata(undefined)).toEqual({});
+  });
+
+  it("enforces WORKER_ALLOWED_DOCUMENT_IDS, WORKER_ALLOWED_FILE_TYPES, and claim_ingestion_jobs candidate eligibility", async () => {
+    const { resolveWorkerClaimScopeFilter, isPreClaimCandidateAllowed, isClaimableIngestionJobCandidate } =
+      await import("../worker/behavior");
+    const inactive = resolveWorkerClaimScopeFilter({});
+    expect(inactive.active).toBe(false);
+    expect(isPreClaimCandidateAllowed({ document_id: "doc-1", file_type: "application/pdf" }, inactive)).toBe(true);
+
+    const active = resolveWorkerClaimScopeFilter({
+      WORKER_ALLOWED_DOCUMENT_IDS: "DOC-TXT-1, doc-txt-2",
+      WORKER_ALLOWED_FILE_TYPES: "TEXT/PLAIN; charset=utf-8",
+    });
+    expect(active.active).toBe(true);
+    expect(
+      isPreClaimCandidateAllowed({ document_id: "doc-txt-1", file_type: "text/plain; charset=utf-8" }, active),
+    ).toBe(true);
+    expect(isPreClaimCandidateAllowed({ document_id: "doc-txt-1", file_type: "application/pdf" }, active)).toBe(false);
+    expect(isPreClaimCandidateAllowed({ document_id: "doc-other", file_type: "text/plain" }, active)).toBe(false);
+
+    const nowMs = Date.parse("2026-10-17T12:00:00.000Z");
+    expect(isClaimableIngestionJobCandidate({ status: "pending", attempt_count: 0, max_attempts: 3 }, nowMs)).toBe(
+      true,
+    );
+    expect(
+      isClaimableIngestionJobCandidate(
+        { status: "pending", attempt_count: 1, max_attempts: 3, next_run_at: "2026-10-17T12:05:00.000Z" },
+        nowMs,
+      ),
+    ).toBe(false);
+    expect(
+      isClaimableIngestionJobCandidate(
+        { status: "processing", attempt_count: 1, max_attempts: 3, lease_expires_at: "2026-10-17T11:59:00.000Z" },
+        nowMs,
+      ),
+    ).toBe(true);
+    expect(
+      isClaimableIngestionJobCandidate(
+        { status: "processing", attempt_count: 3, max_attempts: 3, lease_expires_at: "2026-10-17T11:59:00.000Z" },
+        nowMs,
+      ),
+    ).toBe(false);
+  });
+});

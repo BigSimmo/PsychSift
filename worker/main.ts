@@ -88,6 +88,9 @@ import {
   runIngestionPreparedWork,
   writeIngestionTableFacts,
   visionImageRejectionSkipReason,
+  resolveWorkerClaimScopeFilter,
+  isPreClaimCandidateAllowed,
+  isClaimableIngestionJobCandidate,
 } from "./behavior";
 import { WorkerRuntimeControl, WorkerAbortError } from "./runtime-control";
 import { runWorkerLoop } from "./run-loop";
@@ -106,6 +109,9 @@ export {
   dataPlaneAbortSignal,
   withControlPlaneAbortClient,
   isWorkerClaimLoopPaused,
+  resolveWorkerClaimScopeFilter,
+  isPreClaimCandidateAllowed,
+  isClaimableIngestionJobCandidate,
 };
 import {
   captureGenerationImages,
@@ -394,6 +400,35 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
   async function claimJobs(stopSignal?: AbortSignal): Promise<JobRow[]> {
     if (isWorkerClaimLoopPaused(process.env)) {
       return [];
+    }
+    const scopeFilter = resolveWorkerClaimScopeFilter(process.env);
+    if (scopeFilter.active) {
+      const { data: candidates, error: candidateError } = await supabase
+        .from("ingestion_jobs")
+        .select(
+          "id,document_id,status,attempt_count,max_attempts,next_run_at,lease_expires_at,created_at,documents(file_type)",
+        )
+        .in("status", ["pending", "processing"])
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .abortSignal(controlPlaneAbortSignal(stopSignal ?? activeStopSignal));
+      if (candidateError) throw supabaseStageError("pre-claim scope check", candidateError);
+      const nowMs = Date.now();
+      const eligibleRows = (Array.isArray(candidates) ? candidates : []).filter((row) =>
+        isClaimableIngestionJobCandidate(row, nowMs),
+      );
+      if (
+        eligibleRows.length === 0 ||
+        eligibleRows.some((row) => {
+          const doc = Array.isArray(row.documents) ? row.documents[0] : row.documents;
+          return !isPreClaimCandidateAllowed(
+            { document_id: row.document_id, file_type: (doc as { file_type?: string | null } | null)?.file_type },
+            scopeFilter,
+          );
+        })
+      ) {
+        return [];
+      }
     }
     const { data, error } = await supabase
       .rpc("claim_ingestion_jobs", {
