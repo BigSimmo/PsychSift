@@ -65,14 +65,18 @@ export function semgrepCommands(text) {
     // pardon a different command on the same prose line.
     const fragments = source.includes("`") ? source.split("`").filter((_, part) => part % 2 === 1) : [source];
     for (const fragment of fragments) {
-      const pattern = /\bsemgrep\s+(?=--|\[--|scan\b|ci\b)/g;
-      const matches = [...fragment.matchAll(pattern)];
-      for (const [position, match] of matches.entries()) {
-        commands.push({
-          line,
-          text: fragment.slice(match.index, matches[position + 1]?.index).trim(),
-          source: fragment,
-        });
+      // A flag must belong to each invocation, not merely to an earlier command
+      // joined with it by a shell separator.
+      for (const commandFragment of fragment.split(/\s*(?:&&|\|\||[;|])\s*/)) {
+        const pattern = /\bsemgrep\s+(?=--|\[--|scan\b|ci\b)/g;
+        const matches = [...commandFragment.matchAll(pattern)];
+        for (const [position, match] of matches.entries()) {
+          commands.push({
+            line,
+            text: commandFragment.slice(match.index, matches[position + 1]?.index).trim(),
+            source: fragment,
+          });
+        }
       }
     }
   }
