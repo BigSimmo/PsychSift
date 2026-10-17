@@ -23,7 +23,9 @@ function curatedBody(record: SpecifierRecord) {
 }
 
 function catalogueBody(item: SpecifierCatalogItem) {
-  const clinicianReviewed = isSpecifierClinicianReviewed(item.review);
+  // Same fail-closed gate as catalogueValidation: unsigned or changed-since-review definitions
+  // are not published as site content (owner ruling, 18 Oct 2026 00:10 AWST).
+  const clinicianReviewed = !item.review.changedSinceReview && isSpecifierClinicianReviewed(item.review);
   return [
     `Disorder: ${item.disorderName}`,
     `Group: ${item.groupLabel}`,
