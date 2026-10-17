@@ -9,6 +9,7 @@ vi.mock("@/lib/extractors/xlsx-original-zip", async (importOriginal) => {
 });
 
 const { extractDocument } = await import("@/lib/extractors/document");
+const { XLSX_SOURCE_LIMITS } = await import("@/lib/extractors/xlsx-original-zip");
 const { preflightOriginalXlsx } = await import("@/lib/extractors/xlsx-source-preflight");
 const { validateXlsxSourcePages, xlsxPageSourceProvenanceSchema } =
   await import("@/lib/extractors/xlsx-source-provenance");
@@ -76,6 +77,75 @@ describe("per-worksheet XLSX dictionary projection", () => {
       );
       expect(packet.sourceFacts.worksheet.rows[0].cells[0].reasonCodes).not.toContain("xlsx_shared_string_unresolved");
     });
+  });
+
+  it("projects row-level and column-level style references per worksheet without cross-sheet leakage and validates multi-sheet shared strings within provenance budgets", async () => {
+    const sheets = Array.from({ length: sheetCount }, (_, i) => i);
+    const totalStyles = sheetCount * 3;
+    const sharedCrossSheetIndex = sheetCount;
+    const files: Record<string, string> = {
+      "[Content_Types].xml":
+        '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/xml"/><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/></Types>',
+      "_rels/.rels": `<Relationships xmlns="${pkg}"><Relationship Id="document" Type="${rel}/officeDocument" Target="xl/workbook.xml"/></Relationships>`,
+      "xl/workbook.xml": `<workbook xmlns="${ns}" xmlns:r="${rel}"><sheets>${sheets
+        .map((i) => `<sheet name="Sheet${i + 1}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`)
+        .join("")}</sheets></workbook>`,
+      "xl/_rels/workbook.xml.rels": `<Relationships xmlns="${pkg}">${sheets
+        .map((i) => `<Relationship Id="rId${i + 1}" Type="${rel}/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`)
+        .join(
+          "",
+        )}<Relationship Id="styles" Type="${rel}/styles" Target="styles.xml"/><Relationship Id="strings" Type="${rel}/sharedStrings" Target="sharedStrings.xml"/></Relationships>`,
+      "xl/styles.xml": `<styleSheet xmlns="${ns}"><fonts count="1"><font/></fonts><fills count="1"><fill/></fills><borders count="1"><border/></borders><cellXfs>${Array.from(
+        { length: totalStyles },
+        () => '<xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>',
+      ).join("")}</cellXfs></styleSheet>`,
+      "xl/sharedStrings.xml": `<sst xmlns="${ns}">${sheets
+        .map((i) => `<si><t>${longText(i)}</t></si>`)
+        .join("")}<si><t>shared-across-sheets</t></si></sst>`,
+    };
+    for (const i of sheets) {
+      const cellStyle = i * 3;
+      const rowStyle = i * 3 + 1;
+      const colStyle = i * 3 + 2;
+      files[`xl/worksheets/sheet${i + 1}.xml`] =
+        `<worksheet xmlns="${ns}"><cols><col min="1" max="1" style="${colStyle}"/></cols><sheetData><row r="1" s="${rowStyle}"><c r="A1" t="s" s="${cellStyle}"><v>${i}</v></c><c r="B1" t="s"><v>${sharedCrossSheetIndex}</v></c></row></sheetData></worksheet>`;
+    }
+    const zip = new JSZip();
+    for (const [name, text] of Object.entries(files)) zip.file(name, text, { createFolders: false });
+    const buffer = Buffer.from(await zip.generateAsync({ type: "nodebuffer", compression: "STORE" }));
+
+    const context = await preflightOriginalXlsx(buffer);
+    expect(context.worksheets).toHaveLength(sheetCount);
+    context.worksheets.forEach((facts, sheet) => {
+      const expectedStyles = [sheet * 3, sheet * 3 + 1, sheet * 3 + 2];
+      expect(facts.styleRefs.map((ref) => ref.sourceIndex)).toEqual(expectedStyles);
+      for (let styleIdx = 0; styleIdx < totalStyles; styleIdx++) {
+        if (!expectedStyles.includes(styleIdx)) {
+          expect(facts.styleRefs.some((ref) => ref.sourceIndex === styleIdx)).toBe(false);
+        }
+      }
+      expect(facts.sharedStringRefs.map((ref) => ref.sourceIndex)).toEqual([sheet, sharedCrossSheetIndex]);
+    });
+
+    const document = await extract(buffer);
+    expect(() => validateXlsxSourcePages(document.pages)).not.toThrow();
+
+    let totalProvenanceBytes = 0;
+    document.pages.forEach((page, sheet) => {
+      const serialized = JSON.stringify(page.metadata?.source_provenance);
+      const pageBytes = Buffer.byteLength(serialized, "utf8");
+      expect(pageBytes).toBeLessThanOrEqual(XLSX_SOURCE_LIMITS.pageBytes);
+      totalProvenanceBytes += pageBytes;
+
+      const packet = xlsxPageSourceProvenanceSchema.parse(page.metadata?.source_provenance);
+      expect(packet.sourceFacts.styleRefs.map((ref) => ref.sourceIndex)).toEqual([
+        sheet * 3,
+        sheet * 3 + 1,
+        sheet * 3 + 2,
+      ]);
+      expect(packet.sourceFacts.sharedStringRefs.map((ref) => ref.sourceIndex)).toEqual([sheet, sharedCrossSheetIndex]);
+    });
+    expect(totalProvenanceBytes).toBeLessThanOrEqual(XLSX_SOURCE_LIMITS.provenanceBytes);
   });
 
   it("still refuses a page whose cell resolves a shared string its projection does not carry", async () => {

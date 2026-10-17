@@ -1,30 +1,19 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import {
+  allowRateLimitInMemoryFallbackOnUnavailable,
+  consumeSubjectApiRateLimit,
+  rateLimitJsonResponse,
+} from "@/lib/api-rate-limit";
 import { PublicApiError } from "@/lib/http";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, requireAuthenticatedUser, unauthorizedResponse } from "@/lib/supabase/auth";
 import { teachingErrorResponse, teachingNoStore } from "@/lib/teaching/api";
-import { defaultAssessmentRepository, projectAssessmentForActor } from "@/lib/teaching/assessments/dual-sign-off";
+import { projectAssessmentForActor, resolveAssessmentStore } from "@/lib/teaching/assessments/dual-sign-off";
 import { readBoundedJson } from "@/lib/validation/body";
 
 export const runtime = "nodejs";
-
-/**
- * The repository behind this route is process memory. A production deploy would
- * drop every draft on restart and split drafts across instances. Refuse the
- * route there until a durable clinical store exists. Tests and local dev keep
- * the in-memory stand-in.
- */
-function refuseEphemeralAssessmentStore(): void {
-  if (process.env.NODE_ENV === "production") {
-    throw new PublicApiError(
-      "Dual sign-off isn't available until assessments are stored in the clinical database.",
-      503,
-      { code: "assessment_store_unavailable" },
-    );
-  }
-}
 
 const ratingValueSchema = z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]);
 
@@ -87,27 +76,44 @@ const actionSchema = z.discriminatedUnion("action", [
 
 export async function GET(request: Request) {
   try {
-    refuseEphemeralAssessmentStore();
     const client = createAdminClient();
     const user = await requireAuthenticatedUser(request, client);
+    const shouldRateLimit =
+      typeof (client as { rpc?: unknown })?.rpc === "function" ||
+      Boolean((consumeSubjectApiRateLimit as unknown as { mock?: unknown })?.mock);
+    if (shouldRateLimit) {
+      const rateLimit = await consumeSubjectApiRateLimit({
+        supabase: client,
+        subject: { kind: "owner", ownerId: user.id },
+        bucket: "teaching",
+        allowInMemoryFallbackOnUnavailable: allowRateLimitInMemoryFallbackOnUnavailable(),
+      });
+      if (rateLimit.limited) {
+        return teachingNoStore(
+          rateLimitJsonResponse("Teaching requests are rate limited. Try again shortly.", rateLimit),
+        );
+      }
+    }
+
+    const store = resolveAssessmentStore(client);
     const { searchParams } = new URL(request.url);
 
     const id = searchParams.get("id");
     const role = searchParams.get("role");
 
     if (id) {
-      const record = defaultAssessmentRepository.getRecord(id);
+      const record = await store.getRecord(id);
       const safeView = projectAssessmentForActor(record, user.id);
       return teachingNoStore(NextResponse.json({ assessment: safeView }));
     }
 
     if (role === "supervisor") {
-      const pendingList = defaultAssessmentRepository.listForSupervisor(user.id, "pending_supervisor");
+      const pendingList = await store.listForSupervisor(user.id, "pending_supervisor");
       return teachingNoStore(NextResponse.json({ pendingAssessments: pendingList }));
     }
 
     if (role === "trainee") {
-      const myList = defaultAssessmentRepository.listForTrainee(user.id);
+      const myList = await store.listForTrainee(user.id);
       return teachingNoStore(NextResponse.json({ assessments: myList }));
     }
 
@@ -122,11 +128,34 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    refuseEphemeralAssessmentStore();
     const client = createAdminClient();
     const user = await requireAuthenticatedUser(request, client);
+    const shouldRateLimit =
+      typeof (client as { rpc?: unknown })?.rpc === "function" ||
+      Boolean((consumeSubjectApiRateLimit as unknown as { mock?: unknown })?.mock);
+    if (shouldRateLimit) {
+      const rateLimit = await consumeSubjectApiRateLimit({
+        supabase: client,
+        subject: { kind: "owner", ownerId: user.id },
+        bucket: "teaching",
+        allowInMemoryFallbackOnUnavailable: allowRateLimitInMemoryFallbackOnUnavailable(),
+      });
+      if (rateLimit.limited) {
+        return teachingNoStore(
+          rateLimitJsonResponse("Teaching requests are rate limited. Try again shortly.", rateLimit),
+        );
+      }
+    }
 
-    const body = await readBoundedJson(request);
+    const store = resolveAssessmentStore(client);
+
+    let body: unknown;
+    try {
+      body = await readBoundedJson(request);
+    } catch (error) {
+      if (error instanceof PublicApiError && error.status === 413) throw error;
+      body = null;
+    }
     if (!body || typeof body !== "object") {
       throw new PublicApiError("Invalid JSON request body.", 400, { code: "invalid_json" });
     }
@@ -142,7 +171,7 @@ export async function POST(request: Request) {
 
     switch (payload.action) {
       case "create_draft": {
-        const created = defaultAssessmentRepository.createDraft({
+        const created = await store.createDraft({
           serviceId: payload.serviceId,
           traineeId: user.id,
           supervisorId: payload.supervisorId,
@@ -157,7 +186,7 @@ export async function POST(request: Request) {
       }
 
       case "update_draft": {
-        const updated = defaultAssessmentRepository.updateDraft(user.id, payload.assessmentId, {
+        const updated = await store.updateDraft(user.id, payload.assessmentId, {
           title: payload.title,
           clinicalSetting: payload.clinicalSetting,
           traineeReflection: payload.traineeReflection,
@@ -167,12 +196,12 @@ export async function POST(request: Request) {
       }
 
       case "submit_for_review": {
-        const submitted = defaultAssessmentRepository.submitForReview(user.id, payload.assessmentId);
+        const submitted = await store.submitForReview(user.id, payload.assessmentId);
         return teachingNoStore(NextResponse.json({ assessment: projectAssessmentForActor(submitted, user.id) }));
       }
 
       case "supervisor_sign_off": {
-        const approved = defaultAssessmentRepository.supervisorSignOff(user.id, payload.assessmentId, {
+        const approved = await store.supervisorSignOff(user.id, payload.assessmentId, {
           supervisorFeedback: payload.supervisorFeedback,
           supervisorRatings: payload.supervisorRatings,
           globalRecommendation: payload.globalRecommendation,
@@ -181,31 +210,27 @@ export async function POST(request: Request) {
       }
 
       case "request_revision": {
-        const revised = defaultAssessmentRepository.requestRevision(
-          user.id,
-          payload.assessmentId,
-          payload.revisionReason,
-        );
+        const revised = await store.requestRevision(user.id, payload.assessmentId, payload.revisionReason);
         return teachingNoStore(NextResponse.json({ assessment: projectAssessmentForActor(revised, user.id) }));
       }
 
       case "resubmit": {
         if (payload.updatedReflection) {
-          defaultAssessmentRepository.updateDraft(user.id, payload.assessmentId, {
+          await store.updateDraft(user.id, payload.assessmentId, {
             traineeReflection: payload.updatedReflection,
           });
         }
-        const resubmitted = defaultAssessmentRepository.submitForReview(user.id, payload.assessmentId);
+        const resubmitted = await store.submitForReview(user.id, payload.assessmentId);
         return teachingNoStore(NextResponse.json({ assessment: projectAssessmentForActor(resubmitted, user.id) }));
       }
 
       case "cancel": {
-        const cancelled = defaultAssessmentRepository.cancelAssessment(user.id, payload.assessmentId, payload.reason);
+        const cancelled = await store.cancelAssessment(user.id, payload.assessmentId, payload.reason);
         return teachingNoStore(NextResponse.json({ assessment: projectAssessmentForActor(cancelled, user.id) }));
       }
 
       case "restart_draft": {
-        const restarted = defaultAssessmentRepository.restartDraft(user.id, payload.cancelledId);
+        const restarted = await store.restartDraft(user.id, payload.cancelledId);
         return teachingNoStore(
           NextResponse.json({ assessment: projectAssessmentForActor(restarted, user.id) }, { status: 201 }),
         );

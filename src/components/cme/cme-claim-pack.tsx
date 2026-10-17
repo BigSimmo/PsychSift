@@ -6,6 +6,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useCopyToast } from "@/components/ui/toast";
 import type { CmeEntry } from "@/lib/cme/types";
+import { guardExampleAction } from "@/lib/example-data/guards";
+import { useExampleData } from "@/lib/example-data/store";
 
 /**
  * Formats a list of CME entries into an itemized, human-readable claim pack text
@@ -83,8 +85,10 @@ export interface CmeClaimPackButtonProps {
 export function CmeClaimPackButton({ entries, className, filename = "cme-claim-pack.txt" }: CmeClaimPackButtonProps) {
   const [downloaded, setDownloaded] = useState(false);
   const showToast = useCopyToast();
+  const example = useExampleData("cpd").active;
 
   const handleExport = async () => {
+    if (!guardExampleAction(example, "export")) return;
     const text = generateClaimPackText(entries);
     downloadClaimPackText(entries, filename);
     if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
