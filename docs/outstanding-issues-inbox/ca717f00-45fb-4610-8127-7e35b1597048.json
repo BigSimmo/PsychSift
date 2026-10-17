@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "ca717f00-45fb-4610-8127-7e35b1597048",
+  "createdOn": "2026-10-17",
+  "action": "add",
+  "payload": {
+    "pri": "P1",
+    "type": "issue",
+    "summary": "WA MHA Form 6A/6B print component: obtain legal/clinical sign-off or remove after 13 Nov 2026 (follow-up to #WFYDV6)",
+    "detail": "PR #3573 replaced official Department of Health branding with non-statutory study headers and corrected Form 6B report wording in src/components/forms/wa-mha-form-print.tsx, but the unverified statutory section lists, 7-day pre-expiry examination timing, and copy recipients still require either verified WA MHA 2014 legal/clinical sign-off or component removal after the 30-day dead-code window on 2026-11-13.",
+    "source": "PR #3609 review; follow-up to #WFYDV6; src/components/forms/wa-mha-form-print.tsx",
+    "issueUlid": "01M54ZYAB6BDFFYFA3ZA5MNPVB"
+  }
+}

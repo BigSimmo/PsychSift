@@ -9,8 +9,10 @@ import { parseTrainingRecordInput, trainingRecordBodySchema } from "@/lib/cme/tr
 import {
   createOwnerTrainingMilestone,
   createOwnerTrainingPeriod,
+  fetchOwnerRegistrarMilestones,
   fetchOwnerTrainingMilestones,
   fetchOwnerTrainingPeriods,
+  mergeTrainingAndRegistrarMilestones,
 } from "@/lib/cme/training-repository";
 import { isDemoMode } from "@/lib/env";
 import { jsonError, publicErrorResponse } from "@/lib/http";
@@ -23,7 +25,8 @@ export const runtime = "nodejs";
 /** The trainee's own stages, rotations, breaks and milestones. Demo mode has none. */
 export async function GET(request: Request) {
   try {
-    if (isDemoMode()) return NextResponse.json({ periods: [], milestones: [], demoMode: true });
+    if (isDemoMode())
+      return NextResponse.json({ periods: [], milestones: [], registrarMilestones: [], demoMode: true });
     const supabase = createAdminClient();
     // The owner comes from the validated session only — never from the request.
     const user = await requireAuthenticatedUser(request, supabase);
@@ -34,11 +37,16 @@ export async function GET(request: Request) {
       allowInMemoryFallbackOnUnavailable: allowRateLimitInMemoryFallbackOnUnavailable(),
     });
     if (limit.limited) return rateLimitJsonResponse("CPD requests are rate limited. Try again shortly.", limit);
-    const [periods, milestones] = await Promise.all([
+    const [periods, rawMilestones, registrarMilestones] = await Promise.all([
       fetchOwnerTrainingPeriods(supabase, user.id),
-      fetchOwnerTrainingMilestones(supabase, user.id),
+      fetchOwnerTrainingMilestones(supabase, user.id, { syncRegistrar: false }),
+      fetchOwnerRegistrarMilestones(supabase, user.id),
     ]);
-    return NextResponse.json({ periods, milestones }, { headers: { "Cache-Control": "private, no-store" } });
+    const milestones = mergeTrainingAndRegistrarMilestones(rawMilestones, registrarMilestones);
+    return NextResponse.json(
+      { periods, milestones, registrarMilestones },
+      { headers: { "Cache-Control": "private, no-store" } },
+    );
   } catch (error) {
     if (error instanceof AuthenticationError) return unauthorizedResponse();
     return jsonError(error);
