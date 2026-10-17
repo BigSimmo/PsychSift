@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "7c4a9e2b-6f1d-4a83-9c52-1e8b7d4f9026",
+  "createdOn": "2026-10-18",
+  "action": "amend-outcome",
+  "payload": {
+    "id": "#ES3KTG",
+    "outcome": "Correction: the prior PDF-upload outcome was unrelated and does not resolve this issue. The clozapine vocabulary used by the search rewrite and coverage gate, including corrected-query handling versus raw-query handling, still requires a clozapine-specific fix and regression verification; keep this issue open.",
+    "targetUlid": "01M2R5TH2HES3KTGGWNZ752BHM"
+  }
+}
