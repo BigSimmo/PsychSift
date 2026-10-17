@@ -227,7 +227,9 @@ export function classifyRepositoryPath(relativePath, options = {}) {
     /^src\/components\/(cme|roster|my-day|teaching|work-frame)(\/|$)/.test(lower) ||
     /^src\/lib\/(cme|roster|teaching|work-frame)(\/|$)/.test(lower) ||
     /^docs\/(personal|workspace|diary|cme)/.test(lower) ||
-    /^tests\/(cme|roster|my-day|teaching|open-shifts|work|diary|workspace|calendar|handover|notes)(-|\.)/.test(lower)
+    // No bare `work-` prefix: Work tests span several systems (App experience, data
+    // platform, design system), so an unmatched one stays unplaced for explicit ownership.
+    /^tests\/(cme|roster|my-day|teaching|open-shifts|diary|workspace|calendar|handover|notes)(-|\.)/.test(lower)
   ) {
     return buildResult(
       "personal-practice",

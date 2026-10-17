@@ -185,6 +185,14 @@ describe("maintain-docs-system pipeline", () => {
     });
   });
 
+  it("leaves an unmatched work-* test to explicit ownership rather than auto-claiming it for personal practice", () => {
+    // Work tests span several systems, so the bare prefix cannot identify the owner.
+    expect(classifyRepositoryPath("tests/work-side-nav-scroll.test.ts").resolvedSystem).not.toBe("personal-practice");
+    // Exact manifest rules still decide existing Work tests.
+    expect(classifyRepositoryPath("tests/work-side-nav.test.ts").resolvedSystem).toBe("app-experience");
+    expect(classifyRepositoryPath("tests/work-calendar-entries.test.ts").resolvedSystem).toBe("personal-practice");
+  });
+
   describe("placeUnplacedFiles", () => {
     it("places unplaced files into matching system manifests, deduplicating and sorting files[]", () => {
       const root = makeTempFixture();
