@@ -47,6 +47,22 @@ export function documentFileKind(fileName?: string | null, fallback = "PDF") {
   return extension || fallback;
 }
 
+const mimeFileKinds: Record<string, string> = {
+  "application/pdf": "PDF",
+  "text/plain": "TXT",
+  "text/csv": "CSV",
+  "application/msword": "DOC",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "DOCX",
+  "application/vnd.ms-excel": "XLS",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "XLSX",
+};
+
+/** The served file's kind: a recognised MIME type wins; the filename extension is only a fallback. */
+export function documentFileKindFromType(fileType?: string | null, fileName?: string | null, fallback = "PDF"): string {
+  const mime = fileType?.split(";")[0]?.trim().toLowerCase();
+  return (mime && mimeFileKinds[mime]) || documentFileKind(fileName, fallback);
+}
+
 export function documentTileTone(kind: string): DocumentTileTone {
   const normalized = kind.toUpperCase();
   return normalized === "DOC" || normalized === "DOCX" ? "info" : "teal";

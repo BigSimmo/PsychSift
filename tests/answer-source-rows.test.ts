@@ -9,7 +9,11 @@ import {
   sourceSupportSentence,
   type AnswerSourceRow,
 } from "@/components/clinical-dashboard/answer-source-rows";
-import { documentFileKind, documentSupportBadgeProps } from "@/components/clinical-dashboard/document-ui";
+import {
+  documentFileKind,
+  documentFileKindFromType,
+  documentSupportBadgeProps,
+} from "@/components/clinical-dashboard/document-ui";
 import { normalizeSourceMetadata } from "@/lib/source-metadata";
 import type { SearchResult } from "@/lib/types";
 
@@ -126,5 +130,9 @@ describe("answer-source-rows uncited / em-dash presentation labels (R17)", () =>
     expect(rows[0]?.snippet).toBe("Monitor CIWA-Ar every 1 to 4 hours during acute alcohol withdrawal.");
     expect(documentFileKind(rows[0]?.fileName)).toBe("TXT");
     expect(documentFileKind("guideline-without-extension")).toBe("PDF");
+    expect(documentFileKindFromType("application/pdf", "guideline.docx")).toBe("PDF");
+    expect(documentFileKindFromType("Text/Plain; charset=utf-8", "notes.pdf")).toBe("TXT");
+    expect(documentFileKindFromType("application/octet-stream", "notes.docx")).toBe("DOCX");
+    expect(documentFileKindFromType(null, "no-extension")).toBe("PDF");
   });
 });

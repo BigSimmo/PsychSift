@@ -15,7 +15,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { documentDisplayTitle } from "@/components/DocumentOrganizationBadges";
 import { ContextualBackLink } from "@/components/contextual-back-link";
-import { documentFileKind } from "@/components/clinical-dashboard/document-ui";
+import { documentFileKindFromType } from "@/components/clinical-dashboard/document-ui";
 import { useActiveScrollOwner } from "@/components/clinical-dashboard/use-active-scroll-owner";
 import { PhoneHeaderCollapsePortal } from "@/components/clinical-dashboard/phone-header-collapse-portal";
 import { useDocumentViewerChromeScroll } from "@/components/clinical-dashboard/use-document-viewer-chrome-scroll";
@@ -1011,9 +1011,7 @@ export function DocumentViewer({
   const generatedAnswerIsSummary = summaryQuery === documentSummaryQuestion;
   const storedSummaryText = document?.summary?.summary ?? null;
   const documentLabels = document?.labels;
-  const viewerFileKind = document?.file_type?.trim().toLowerCase().startsWith("text/plain")
-    ? "TXT"
-    : documentFileKind(document?.file_name, "PDF");
+  const viewerFileKind = documentFileKindFromType(document?.file_type, document?.file_name, "PDF");
   const formattedStoredSummary = useMemo(() => formatDocumentSummary(storedSummaryText), [storedSummaryText]);
   const summaryBadges = useMemo(
     () => buildDocumentSummaryBadges({ labels: documentLabels, summaryText: storedSummaryText }),
