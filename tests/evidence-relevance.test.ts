@@ -39,6 +39,80 @@ describe("evidence relevance", () => {
     expect(terms).not.toContain("reviewed");
   });
 
+  it("treats requirement verbs as question wording, not evidence terms", () => {
+    expect(queryCoreTerms("What assessment documentation is required?")).toEqual(["assessment", "documentation"]);
+    expect(queryCoreTerms("What monitoring does lithium require?")).not.toContain("require");
+    expect(queryCoreTerms("What monitoring is needed for valproate?")).not.toContain("needed");
+    expect(queryCoreTerms("What does the infant need?")).not.toContain("need");
+    expect(queryCoreTerms("What are the carers' support needs?")).toContain("need");
+    expect(queryCoreTerms("What documentation requirements apply?")).toContain("requirement");
+    expect(queryCoreTerms("What are the support needs in autism?")).toContain("need");
+    expect(queryCoreTerms("What assessment documentation needs to be completed?")).toEqual([
+      "assessment",
+      "documentation",
+      "completed",
+    ]);
+    expect(queryCoreTerms("What is the clinical need for lithium?")).toContain("need");
+    expect(queryCoreTerms("Is there a need for clozapine monitoring?")).toContain("need");
+    expect(queryCoreTerms("Is there an ongoing need for clozapine?")).toContain("need");
+    expect(queryCoreTerms("Does the patient need clozapine monitoring?")).not.toContain("need");
+    expect(queryCoreTerms("Which clozapine monitoring is required versus optional?")).toContain("required");
+  });
+
+  it("does not treat a lithium-only passage as direct evidence for the clinical need", () => {
+    const relevance = buildSourceRelevance(
+      "What is the clinical need for lithium?",
+      result({ content: "Lithium is available as 250 mg and 450 mg tablets." }),
+    );
+
+    expect(relevance.missingTerms).toContain("need");
+    expect(relevance.verdict).not.toBe("direct");
+  });
+
+  it("keeps the noun needs as evidence a passage must cover", () => {
+    const [source] = annotateSearchResults("What are the support needs in autism?", [
+      result({
+        title: "Autism overview",
+        content: "Autism is a neurodevelopmental condition with onset in early childhood and a range of presentations.",
+      }),
+    ]);
+
+    expect(source?.relevance?.verdict).not.toBe("direct");
+    expect(source?.relevance?.missingTerms).toContain("need");
+  });
+
+  it("does not treat a carers-only passage as direct evidence for their needs", () => {
+    const relevance = buildSourceRelevance(
+      "What are the carers' support needs?",
+      result({
+        content: "Carers are involved in discharge planning and ward communication.",
+      }),
+    );
+
+    expect(relevance.missingTerms).toContain("need");
+    expect(relevance.verdict).not.toBe("direct");
+  });
+
+  it("gives the on-topic guideline the same match level as a passage that merely says required", () => {
+    const query = "What assessment documentation is required?";
+    const [onTopic, offTopic] = annotateSearchResults(query, [
+      result({
+        id: "assessment-documentation",
+        title: "Assessment Documentation",
+        content:
+          "Any outstanding assessments must be documented, and assessment documentation is completed on admission.",
+      }),
+      result({
+        id: "admissions",
+        title: "Admissions Policy",
+        content: "Patients accepted for admission must have accompanying assessment documentation where required.",
+      }),
+    ]);
+
+    expect(onTopic?.relevance?.verdict).toBe("direct");
+    expect(offTopic?.relevance?.verdict).toBe("direct");
+  });
+
   it("classifies weak lithium-style neighboring sources as nearby, not direct", () => {
     const relevance = buildEvidenceRelevance("What toxicity safety-net symptoms should be reviewed for lithium?", [
       result({
