@@ -5,6 +5,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
+  anonymousFetchEnvironment,
   checkCloudContracts,
   inspectCheckout,
   repositoryMatrix,
@@ -84,6 +85,90 @@ function checkout(files: Record<string, string>) {
 }
 
 describe("cross-repository Cloud contracts", () => {
+  it("preserves Windows transport/runtime environment names regardless of their casing", () => {
+    const source = {
+      Path: "C:\\Synthetic\\bin",
+      SYSTEMROOT: "C:\\Windows",
+      TmpDir: "C:\\Synthetic\\temp",
+      Temp: "C:\\Synthetic\\temp",
+      Tmp: "C:\\Synthetic\\temp",
+      Https_Proxy: "https://proxy.example.invalid",
+      Http_Proxy: "http://proxy.example.invalid",
+      All_Proxy: "http://proxy.example.invalid",
+      No_Proxy: "localhost",
+      Ssl_Cert_File: "C:\\Synthetic\\ca.pem",
+      Ssl_Cert_Dir: "C:\\Synthetic\\certs",
+      Git_Ssl_CaInfo: "C:\\Synthetic\\git-ca.pem",
+      Git_Ssl_CaPath: "C:\\Synthetic\\git-certs",
+    };
+    expect(anonymousFetchEnvironment(source, "win32")).toEqual({
+      ...source,
+      GIT_TERMINAL_PROMPT: "0",
+      GIT_CONFIG_NOSYSTEM: "1",
+      GIT_CONFIG_GLOBAL: os.devNull,
+    });
+  });
+
+  it.each(["linux", "darwin"])("retains existing case-sensitive environment filtering on %s", (platform) => {
+    const allowed = {
+      PATH: "/synthetic/bin",
+      SystemRoot: "synthetic-system-root",
+      TMPDIR: "/synthetic/temp",
+      HTTPS_PROXY: "https://upper-proxy.example.invalid",
+      https_proxy: "https://lower-proxy.example.invalid",
+      ALL_PROXY: "http://upper-proxy.example.invalid",
+      all_proxy: "http://lower-proxy.example.invalid",
+      NO_PROXY: "localhost",
+      no_proxy: "127.0.0.1",
+      SSL_CERT_FILE: "/synthetic/ca.pem",
+      GIT_SSL_CAINFO: "/synthetic/git-ca.pem",
+    };
+    expect(
+      anonymousFetchEnvironment(
+        { ...allowed, Path: "excluded", SYSTEMROOT: "excluded", Https_Proxy: "excluded", Git_Ssl_CaInfo: "excluded" },
+        platform,
+      ),
+    ).toEqual({
+      ...allowed,
+      GIT_TERMINAL_PROMPT: "0",
+      GIT_CONFIG_NOSYSTEM: "1",
+      GIT_CONFIG_GLOBAL: os.devNull,
+    });
+  });
+
+  it.each(["win32", "linux", "darwin"])("blocks credentials and inherited Git config on %s", (platform) => {
+    const source = Object.fromEntries(
+      [
+        "GH_TOKEN",
+        "Github_Token",
+        "OPENAI_API_KEY",
+        "SUPABASE_ACCESS_TOKEN",
+        "DATABASE_URL",
+        "HOME",
+        "USERPROFILE",
+        "CODEX_HOME",
+        "NODE_OPTIONS",
+        "GIT_ASKPASS",
+        "SSH_ASKPASS",
+        "GIT_CONFIG",
+        "GIT_CONFIG_SYSTEM",
+        "Git_Config_Global",
+        "Git_Config_NoSystem",
+        "Git_Terminal_Prompt",
+        "GIT_CONFIG_COUNT",
+        "GIT_CONFIG_KEY_0",
+        "GIT_CONFIG_VALUE_0",
+        "GIT_SSH_COMMAND",
+        "GIT_SSL_NO_VERIFY",
+      ].map((key) => [key, "synthetic-blocked-value"]),
+    );
+    expect(anonymousFetchEnvironment(source, platform)).toEqual({
+      GIT_TERMINAL_PROMPT: "0",
+      GIT_CONFIG_NOSYSTEM: "1",
+      GIT_CONFIG_GLOBAL: os.devNull,
+    });
+  });
+
   it("maintains six active repository adapters and an explicitly inactive backup", () => {
     expect(repositoryMatrix.map((entry: { name: string }) => entry.name)).toEqual([
       "PsychSift",

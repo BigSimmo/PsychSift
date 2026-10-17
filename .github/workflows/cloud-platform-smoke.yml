@@ -50,6 +50,7 @@ jobs:
           $version = $Matches[1]
           $toolAppData = Join-Path $env:RUNNER_TEMP 'cloud-platform-appdata'
           $toolPrefix = Join-Path $toolAppData 'npm'
+          # Exact packageManager pin; intentionally lockfile-free in a disposable runner-only prefix.
           npm install --prefix $toolPrefix --ignore-scripts --no-save --package-lock=false --no-audit --no-fund "npm@$version"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           "APPDATA=$toolAppData" >> $env:GITHUB_ENV

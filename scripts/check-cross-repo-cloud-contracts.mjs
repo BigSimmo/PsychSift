@@ -361,18 +361,23 @@ export function inspectCheckout(name, root, revision) {
   return result;
 }
 
+/** @param {Record<string, string | undefined>} [source] @param {string} [platform] */
+export function anonymousFetchEnvironment(source = process.env, platform = process.platform) {
+  // No personal credential/helper/config inheritance. Preserve only transport/runtime configuration.
+  // Windows environment names are case-insensitive; retain POSIX's existing exact spellings.
+  const allowedNames = new RegExp(
+    "^(?:PATH|SystemRoot|TMPDIR|TEMP|TMP|HTTPS?_PROXY|https?_proxy|ALL_PROXY|all_proxy|NO_PROXY|no_proxy|SSL_CERT_FILE|SSL_CERT_DIR|GIT_SSL_CAINFO|GIT_SSL_CAPATH)$",
+    platform === "win32" ? "i" : "",
+  );
+  const env = Object.fromEntries(Object.entries(source).filter(([key]) => allowedNames.test(key)));
+  Object.assign(env, { GIT_TERMINAL_PROMPT: "0", GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: os.devNull });
+  return env;
+}
+
 function fetchMaintained() {
   const temporaryRoot = mkdtempSync(path.join(os.tmpdir(), "cloud-contract-audit-"));
   const results = [];
-  // No personal credential/helper/config inheritance. Preserve only transport/runtime configuration.
-  const env = Object.fromEntries(
-    Object.entries(process.env).filter(([key]) =>
-      /^(?:PATH|SystemRoot|TMPDIR|TEMP|TMP|HTTPS?_PROXY|https?_proxy|ALL_PROXY|all_proxy|NO_PROXY|no_proxy|SSL_CERT_FILE|SSL_CERT_DIR|GIT_SSL_CAINFO|GIT_SSL_CAPATH)$/.test(
-        key,
-      ),
-    ),
-  );
-  Object.assign(env, { GIT_TERMINAL_PROMPT: "0", GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: os.devNull });
+  const env = anonymousFetchEnvironment();
   try {
     for (const entry of repositoryMatrix.filter((item) => item.active && item.name !== "PsychSift")) {
       const root = path.join(temporaryRoot, entry.name);

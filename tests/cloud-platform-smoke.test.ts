@@ -188,7 +188,7 @@ describe("cloud platform acceptance fixtures", () => {
     ).toBe(false);
   });
 
-  it.each(["https://preview.invalid", "https://preview.invalid:8443", "https://192.0.2.1", "https://localhost."])(
+  it.each(["https://preview.invalid", "https://preview.invalid:8443", "https://192.0.2.1", "https://preview.invalid."])(
     "documents HTTPS opt-in acceptance without claiming identity verification: %s",
     (url) => {
       vi.stubEnv("PLAYWRIGHT_BASE_URL", url);
@@ -199,6 +199,8 @@ describe("cloud platform acceptance fixtures", () => {
 
   it.each([
     "https://localhost:4383",
+    "https://localhost.",
+    "https://LOCALHOST.:4383",
     "https://127.0.0.1:4383",
     "https://[::1]:4383",
     "http://preview.invalid",

@@ -1,28 +1,61 @@
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
+import { devNull, tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 const script = join(import.meta.dirname, "..", "scripts", "cloud-activation-evidence.mjs");
 const temporary: string[] = [];
-function fixture() {
-  const root = mkdtempSync(join(tmpdir(), "activation-evidence-"));
+// Synthetic checkouts must not inherit host Git configuration, injected config or repository paths.
+function fixtureEnvironment(): NodeJS.ProcessEnv {
+  return {
+    NODE_ENV: "test",
+    PATH: process.env.PATH,
+    SystemRoot: process.env.SystemRoot,
+    ComSpec: process.env.ComSpec,
+    WINDIR: process.env.WINDIR,
+    PATHEXT: process.env.PATHEXT,
+    TEMP: process.env.TEMP,
+    TMP: process.env.TMP,
+    GIT_CONFIG_GLOBAL: devNull,
+    GIT_CONFIG_SYSTEM: devNull,
+    GIT_CONFIG_NOSYSTEM: "1",
+    GIT_CONFIG_COUNT: "0",
+    GIT_TERMINAL_PROMPT: "0",
+  };
+}
+function fixture(parent = tmpdir()) {
+  const root = realpathSync(mkdtempSync(join(parent, "activation-evidence-")));
   temporary.push(root);
   mkdirSync(join(root, "scripts"));
   cpSync(script, join(root, "scripts", "cloud-activation-evidence.mjs"));
   writeFileSync(join(root, "AGENTS.md"), "Synthetic safeguards\n");
   mkdirSync(join(root, ".claude", "cloud-profile"), { recursive: true });
   writeFileSync(join(root, ".claude", "cloud-profile", "CLAUDE.md"), "Synthetic profile\n");
-  for (const args of [
-    ["init", "-q"],
-    ["add", "."],
-    ["-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-qm", "fixture"],
-  ]) {
-    expect(spawnSync("git", args, { cwd: root, encoding: "utf8" }).status).toBe(0);
-  }
-  const revision = spawnSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).stdout.trim();
+  const git = (...args: string[]) => {
+    const result = spawnSync(
+      "git",
+      ["-c", `core.hooksPath=${devNull}`, "-c", "commit.gpgsign=false", "-c", "init.templateDir=", ...args],
+      { cwd: root, encoding: "utf8", env: fixtureEnvironment(), timeout: 10_000 },
+    );
+    expect(result.status, result.stderr || result.error?.message).toBe(0);
+    return result.stdout.trim();
+  };
+  git("init", "-q");
+  git("add", ".");
+  git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-qm", "fixture");
+  const revision = git("rev-parse", "HEAD");
   return { root, revision };
 }
 function run(root: string, args: string[] = []) {
@@ -30,15 +63,68 @@ function run(root: string, args: string[] = []) {
     cwd: root,
     encoding: "utf8",
     timeout: 10_000,
-    env: { ...process.env, ACTIVATION_SECRET: "synthetic-secret-must-not-print" },
+    env: { ...fixtureEnvironment(), ACTIVATION_SECRET: "synthetic-secret-must-not-print" },
   });
 }
 afterEach(() => {
+  vi.unstubAllEnvs();
   for (const root of temporary.splice(0))
     rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 });
 
 describe("read-only Cloud activation evidence", () => {
+  it.each(["global-hook", "global-signing", "global-template", "system-config", "injected-config"])(
+    "isolates fixture Git from synthetic %s host configuration",
+    (kind) => {
+      const host = realpathSync(mkdtempSync(join(tmpdir(), "activation-host-config-")));
+      temporary.push(host);
+      const sentinel = join(host, "host-hook-ran");
+      const hooks = join(host, "hooks");
+      const templates = join(host, "templates");
+      mkdirSync(hooks);
+      mkdirSync(join(templates, "hooks"), { recursive: true });
+      // The hook would make fixture commits fail if host settings or templates leaked in.
+      const hook = `#!/bin/sh\nprintf 'ran' > '${sentinel.replaceAll("'", "'\\''")}'\nexit 73\n`;
+      writeFileSync(join(hooks, "pre-commit"), hook, { mode: 0o755 });
+      writeFileSync(join(templates, "hooks", "pre-commit"), hook, { mode: 0o755 });
+      const globalConfig = join(host, "gitconfig");
+      const quote = (value: string) => JSON.stringify(value.replaceAll("\\", "/"));
+      const config =
+        kind === "global-signing"
+          ? `[commit]\n  gpgsign = true\n[gpg]\n  program = ${quote(join(host, "nonexistent-signing-program"))}\n`
+          : kind === "global-template"
+            ? `[init]\n  templateDir = ${quote(templates)}\n`
+            : `[core]\n  hooksPath = ${quote(hooks)}\n`;
+      writeFileSync(globalConfig, config);
+      vi.stubEnv(kind === "system-config" ? "GIT_CONFIG_SYSTEM" : "GIT_CONFIG_GLOBAL", globalConfig);
+      if (kind === "system-config") vi.stubEnv("GIT_CONFIG_NOSYSTEM", "0");
+      if (kind === "injected-config") {
+        vi.stubEnv("GIT_CONFIG_COUNT", "1");
+        vi.stubEnv("GIT_CONFIG_KEY_0", "core.hooksPath");
+        vi.stubEnv("GIT_CONFIG_VALUE_0", hooks);
+      }
+      const { root, revision } = fixture();
+      expect(existsSync(sentinel)).toBe(false);
+      expect(existsSync(join(root, ".git", "hooks", "pre-commit"))).toBe(false);
+      const result = run(root, ["--expected-revision", revision]);
+      expect(result.status, result.stderr).toBe(0);
+      expect(JSON.parse(result.stdout).source.revision).toBe(revision);
+      expect(process.env[kind === "system-config" ? "GIT_CONFIG_SYSTEM" : "GIT_CONFIG_GLOBAL"]).toBe(globalConfig);
+    },
+  );
+  it("uses the physical fixture checkout when its temporary parent is a symlink", () => {
+    const parent = realpathSync(mkdtempSync(join(tmpdir(), "activation-symlink-parent-")));
+    temporary.push(parent);
+    const physical = join(parent, "physical");
+    mkdirSync(physical);
+    const linked = join(parent, "linked");
+    symlinkSync(physical, linked, "junction");
+    const { root, revision } = fixture(linked);
+    expect(root).toBe(realpathSync(root));
+    const result = run(root, ["--expected-revision", revision]);
+    expect(result.status, result.stderr).toBe(0);
+    expect(JSON.parse(result.stdout).source.checkout).toBe(root);
+  });
   it("pins exact source bytes and revision while leaving installation and session unverified", () => {
     const { root, revision } = fixture();
     const result = run(root, ["--expected-revision", revision]);

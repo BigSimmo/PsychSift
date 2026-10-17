@@ -27,6 +27,10 @@ function unescapeMount(text) {
   return text.replace(/\\([0-7]{3})/g, (_, octal) => String.fromCharCode(parseInt(octal, 8)));
 }
 
+function canonicalAbsolutePath(value) {
+  return value.startsWith("/") && !value.includes("\0") && path.posix.normalize(value) === value;
+}
+
 /** Read-only Linux cgroup v1/v2 discovery; injected readers keep tests off the real host. */
 export function discoverBuildMemory({
   readFile = (file) => readFileSync(file, "utf8"),
@@ -70,6 +74,18 @@ export function discoverBuildMemory({
     if (!v2 && !(type === "cgroup" && options?.split(",").includes("memory"))) continue;
     const mountFields = left.split(" ");
     const mountPoint = unescapeMount(mountFields[4] ?? "");
+    const mountRoot = unescapeMount(mountFields[3] ?? "");
+    // The kernel can expose /.. for a mount inherited across cgroup namespaces.
+    // It is a hidden-root marker, not a path to normalize into the global root.
+    const hiddenNamespaceRoot = mountRoot === "/..";
+    if (
+      mountFields.length < 6 ||
+      !canonicalAbsolutePath(mountPoint) ||
+      (!canonicalAbsolutePath(mountRoot) && !hiddenNamespaceRoot)
+    ) {
+      issues.push("Malformed cgroup memory mount paths; expected absolute normalized root and mountpoint.");
+      continue;
+    }
     if (v2) {
       const controllers = readOptional(readFile, path.posix.join(mountPoint, "cgroup.controllers"));
       if (controllers === null) {
@@ -88,7 +104,10 @@ export function discoverBuildMemory({
       continue;
     }
     const groupPath = entry.slice(entry.indexOf(":", entry.indexOf(":") + 1) + 1);
-    const mountRoot = unescapeMount(mountFields[3] ?? "");
+    if (!canonicalAbsolutePath(groupPath) || (hiddenNamespaceRoot && groupPath !== "/")) {
+      issues.push("Cgroup memory membership path cannot be resolved inside its visible mount.");
+      continue;
+    }
     // A cgroup namespace may expose / even when mountinfo's root is outside it.
     const relative = groupPath === "/" ? "" : path.posix.relative(mountRoot, groupPath);
     if (relative === ".." || relative.startsWith("../")) {
@@ -96,10 +115,21 @@ export function discoverBuildMemory({
       continue;
     }
     let directory = path.posix.join(mountPoint, relative);
-    for (;;) {
+    const maximumAncestors = relative ? relative.split("/").length + 1 : 1;
+    for (let depth = 0; depth < maximumAncestors; depth++) {
       const limitFile = path.posix.join(directory, v2 ? "memory.max" : "memory.limit_in_bytes");
-      const limitText = readOptional(readFile, limitFile);
-      if (limitText === null) {
+      let limitText = null;
+      let absent = false;
+      try {
+        limitText = readFile(limitFile).trim();
+      } catch (error) {
+        absent = error?.code === "ENOENT";
+      }
+      // memory.max is defined only for non-root v2 cgroups. Only an absent file
+      // at the global hierarchy root has that meaning; errors, intermediate
+      // ancestors and hidden namespace roots must still refuse unknown bounds.
+      const globalV2Root = v2 && mountRoot === "/" && directory === mountPoint;
+      if (limitText === null && !(globalV2Root && absent)) {
         issues.push(`Cgroup memory limit could not be read at ${limitFile}.`);
       }
       if (limitText !== null) {
@@ -127,7 +157,12 @@ export function discoverBuildMemory({
         }
       }
       if (directory === mountPoint) break;
-      directory = path.posix.dirname(directory);
+      const parent = path.posix.dirname(directory);
+      if (parent === directory || depth + 1 === maximumAncestors) {
+        issues.push("Cgroup memory ancestor traversal could not reach its visible mount.");
+        break;
+      }
+      directory = parent;
     }
   }
   return {

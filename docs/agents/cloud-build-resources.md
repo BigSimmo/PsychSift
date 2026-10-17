@@ -65,10 +65,14 @@ otherwise free memory. Cgroup availability subtracts current usage and credits
 bounded inactive file cache as reclaimable. A visible memory mount with unresolved
 process membership, any unreadable visible ancestor limit, invalid limits, or
 missing usage for a finite limit fails the preflight instead of trusting the
-larger host. Unlimited fallback requires explicit readable `max` or sentinel
-bounds through the visible hierarchy. Hierarchy roots without a readable memory
-limit are reported as not ready; the preflight cannot prove their capacity from
-the missing file alone.
+larger host. Mount paths must be absolute and normalized, and ancestor traversal
+is bounded. Unlimited fallback requires explicit readable `max` or sentinel
+bounds through the visible hierarchy, except that the global cgroup v2 root
+(mount root `/`) legitimately has no `memory.max`. Only `ENOENT` at that root is
+accepted; permission errors and unreadable intermediate bounds still fail. All
+finite ancestors below the root remain checked. A namespace-hidden root (including
+the kernel's `/..` mount-root marker) without a readable bound is reported as not
+ready. See the kernel's [memory controller reference](https://docs.kernel.org/admin-guide/cgroup-v2.html#memory-interface-files).
 
 This is a snapshot: another process can consume memory after it passes, and hidden
 ancestors cannot be inspected. Keep the existing heavy-run admission mechanism,

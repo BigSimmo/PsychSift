@@ -744,6 +744,7 @@ jobs:
           fi
           bootstrap_npm_version="${BASH_REMATCH[1]}"
           bootstrap_npm_home="$RUNNER_TEMP/cloud-platform-npm"
+          # Exact packageManager pin; intentionally lockfile-free in a disposable runner-only prefix.
           npm install --prefix "$bootstrap_npm_home/npm" --ignore-scripts --no-save --package-lock=false --no-audit --no-fund "npm@$bootstrap_npm_version"
           echo "home=$bootstrap_npm_home" >> "$GITHUB_OUTPUT"
 

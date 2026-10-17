@@ -4,10 +4,10 @@ import { describe, expect, it } from "vitest";
 import { assessCloudBuildResources, discoverBuildMemory } from "../scripts/check-cloud-build-resources.mjs";
 
 const GiB = 1024 ** 3;
-function memory(files: Record<string, string>, total = 64 * GiB, free = 60 * GiB) {
+function memory(files: Record<string, string>, total = 64 * GiB, free = 60 * GiB, missingCode?: string) {
   return discoverBuildMemory({
     readFile: (file: string) => {
-      if (!(file in files)) throw new Error("ENOENT");
+      if (!(file in files)) throw Object.assign(new Error("unreadable fixture"), { code: missingCode });
       return files[file];
     },
     totalMemoryBytes: total,
@@ -103,6 +103,88 @@ describe("cloud build resource preflight", () => {
     const report = assessCloudBuildResources({ memory: memory(files), inheritedHeapBytes: 8 * GiB });
     expect(report.ok).toBe(false);
     expect(report.issues.join(" ")).toContain("/sys/fs/cgroup/memory.max");
+  });
+
+  it("accepts an absent memory.max at the real v2 hierarchy root", () => {
+    const files: Record<string, string> = v2("max");
+    delete files["/sys/fs/cgroup/memory.max"];
+    const report = assessCloudBuildResources({
+      memory: memory(files, 64 * GiB, 60 * GiB, "ENOENT"),
+      inheritedHeapBytes: 8 * GiB,
+    });
+    expect(report.ok).toBe(true);
+    expect(report.limitBytes).toBe(64 * GiB);
+  });
+
+  it("retains finite ancestors below an unconstrained v2 hierarchy root", () => {
+    const files: Record<string, string> = v2("max", String(GiB), {
+      "/proc/self/cgroup": "0::/team/job",
+      "/sys/fs/cgroup/team/job/memory.max": "max",
+      "/sys/fs/cgroup/team/memory.max": String(8 * GiB),
+      "/sys/fs/cgroup/team/memory.current": String(GiB),
+    });
+    delete files["/sys/fs/cgroup/memory.max"];
+    const report = assessCloudBuildResources({
+      memory: memory(files, 64 * GiB, 60 * GiB, "ENOENT"),
+      inheritedHeapBytes: 8 * GiB,
+    });
+    expect(report.ok).toBe(false);
+    expect(report.limitBytes).toBe(8 * GiB);
+    expect(report.issues.join(" ")).not.toContain("could not be read");
+  });
+
+  it.each(["/tenant", "/.."])("refuses a missing limit at a hidden v2 hierarchy root (%s)", (root) => {
+    const files: Record<string, string> = v2("max", String(GiB), {
+      "/proc/self/cgroup": "0::/",
+      "/proc/self/mountinfo": `1 0 0:1 ${root} /sys/fs/cgroup rw - cgroup2 cgroup rw`,
+    });
+    delete files["/sys/fs/cgroup/memory.max"];
+    const report = assessCloudBuildResources({
+      memory: memory(files, 64 * GiB, 60 * GiB, "ENOENT"),
+      inheritedHeapBytes: 8 * GiB,
+    });
+    expect(report.ok).toBe(false);
+    expect(report.issues.join(" ")).toContain("/sys/fs/cgroup/memory.max");
+  });
+
+  it("does not turn a permission failure at a real v2 hierarchy root into unlimited capacity", () => {
+    const files: Record<string, string> = v2("max");
+    delete files["/sys/fs/cgroup/memory.max"];
+    const report = assessCloudBuildResources({
+      memory: memory(files, 64 * GiB, 60 * GiB, "EACCES"),
+      inheritedHeapBytes: 8 * GiB,
+    });
+    expect(report.ok).toBe(false);
+  });
+
+  it.each([
+    "1 0 0:1 / rw",
+    "1 0 0:1 /  rw",
+    "1 0 0:1 / relative rw",
+    "1 0 0:1 / /sys/../cgroup rw",
+    "1 0 0:1 relative /sys/fs/cgroup rw",
+    "1 0 0:1  /sys/fs/cgroup rw",
+  ])("rejects malformed memory mount paths without hanging (%s)", (mountFields) => {
+    const source = `
+      import { discoverBuildMemory } from ${JSON.stringify(new URL("../scripts/check-cloud-build-resources.mjs", import.meta.url).href)};
+      const files = {
+        '/proc/self/cgroup': '0::/job',
+        '/proc/self/mountinfo': ${JSON.stringify(`${mountFields} - cgroup2 cgroup rw`)}
+      };
+      const memory = discoverBuildMemory({
+        readFile: (file) => files[file] ?? (file.endsWith('cgroup.controllers') ? 'memory' : 'max'),
+        platform: 'linux', totalMemoryBytes: ${64 * GiB}, freeMemoryBytes: ${60 * GiB}
+      });
+      process.stdout.write(JSON.stringify(memory));
+    `;
+    const result = spawnSync(process.execPath, ["--input-type=module", "-e", source], {
+      encoding: "utf8",
+      timeout: 1000,
+      maxBuffer: 64 * 1024,
+    });
+    expect(result.error).toBeUndefined();
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout).issues.join(" ")).toContain("Malformed cgroup memory mount paths");
   });
 
   it("rejects a missing leaf limit even when the visible parent is readable", () => {

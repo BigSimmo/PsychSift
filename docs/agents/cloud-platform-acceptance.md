@@ -60,18 +60,17 @@ home layout; the fixture installs no toolchain and changes no caller environment
 
 Current URL behavior in `scripts/playwright-base-url.ts` is:
 
-| Input                                                                                   | Acceptance and identity                                                                                                                                                                 |
-| --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Explicit `http://localhost:<port>` or `http://127.0.0.1:<port>` with a non-default port | GET `/api/local-project-id`; require `appName=PsychSift`, checkout-derived `projectId`, and `localServer.safeLocalOrigin=true`. Real app identity marks ports outside 3100–4599 unsafe. |
-| HTTPS origin with literal `ALLOW_PREVIEW_URL=true`                                      | Accept any hostname except the exact parsed `localhost`, `127.0.0.1`, or `[::1]`; no remote identity request is performed. Custom HTTPS ports and non-loopback IPs are accepted.        |
-| HTTP remote host, HTTPS exact loopback, or missing literal preview opt-in               | Reject.                                                                                                                                                                                 |
-| Credentials, non-root path, query, fragment, invalid URL                                | Reject.                                                                                                                                                                                 |
-| Ambient `PREVIEW_URL`, `PLAYWRIGHT_PREVIEW_URL`, or `VERCEL_URL` in shared config       | Ignore; dedicated preview runner supplies the explicit target and opt-in.                                                                                                               |
+| Input                                                                                                  | Acceptance and identity                                                                                                                                                                                  |
+| ------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Explicit `http://localhost:<port>` or `http://127.0.0.1:<port>` with a non-default port                | GET `/api/local-project-id`; require `appName=PsychSift`, checkout-derived `projectId`, and `localServer.safeLocalOrigin=true`. Real app identity marks ports outside 3100–4599 unsafe.                  |
+| HTTPS origin with literal `ALLOW_PREVIEW_URL=true`                                                     | Accept any hostname except parsed `localhost`, `127.0.0.1`, or `[::1]` after removing a terminal DNS dot; no remote identity request is performed. Custom HTTPS ports and non-loopback IPs are accepted. |
+| HTTP remote host, HTTPS loopback (including trailing-dot localhost), or missing literal preview opt-in | Reject.                                                                                                                                                                                                  |
+| Credentials, non-root path, query, fragment, invalid URL                                               | Reject.                                                                                                                                                                                                  |
+| Ambient `PREVIEW_URL`, `PLAYWRIGHT_PREVIEW_URL`, or `VERCEL_URL` in shared config                      | Ignore; dedicated preview runner supplies the explicit target and opt-in.                                                                                                                                |
 
 The HTTPS branch has no provider allowlist, DNS ownership check, or authenticated
-project identity check. A trailing-dot `https://localhost.` is accepted by that
-branch because its parsed hostname is not the exact excluded spelling. HTTPS
-opt-in therefore authorizes a target; it does not verify a PsychSift deployment.
+project identity check. A trailing-dot `https://localhost.` is rejected as the same local host. HTTPS
+opt-in authorizes a target; it does not verify a PsychSift deployment.
 `SKIP_REMOTE_IDENTITY_CHECK` from the preview runner does not establish identity.
 
 `localProjectRequestIdentityPayload` derives local-host/port classification from
