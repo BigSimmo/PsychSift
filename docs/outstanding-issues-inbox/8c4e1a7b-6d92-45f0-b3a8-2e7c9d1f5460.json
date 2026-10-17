@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "8c4e1a7b-6d92-45f0-b3a8-2e7c9d1f5460",
+  "createdOn": "2026-10-18",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "task",
+    "summary": "Therapy catalogue: complete reproducible citation locators for CRAFT references",
+    "detail": "The CRAFT record now identifies Meyers, Miller, Hill & Tonigan (1999) with its article title, journal, pages and PMID 10689671. Archer et al. (2020) remains a prose systematic-review citation without a reproducible title or identifier; verify the exact source and add its locator before treating the therapy citation-detail work as complete.",
+    "source": "Follow-up to #NZ4X41; src/data/therapies-source.json CRAFT record; 18 Oct 2026 citation audit",
+    "issueUlid": "01M55CIT8C4E1A7B6D92C45F0B"
+  }
+}

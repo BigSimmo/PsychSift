@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "3b76119a-afbd-47cc-b499-39213f31bb02",
+  "createdOn": "2026-10-17",
+  "action": "update",
+  "payload": {
+    "id": "#8Y9169",
+    "detail": "#08216B was archived on 17 Oct with an outcome covering only the clinical-math calculators. Still open: src/app/api/proxy/route.ts (nothing calls it) and scripts/recalculate-answer-support-labels.ts (no production caller; reassess it as a deletion candidate) with its test (covered by the normal test suite; do not treat it as unused) - remove after the 30-day dead-code window (13 Nov 2026) via npm run check:dead-code-candidate. The developer tool pages under src/app/mockups/development are NOT dead code: /admin/developer-hub links to /mockups/development/clinical-answer-failures and the owner panel (owner-today-section.tsx) links to /mockups/development/clinical-sign-off, so do not delete them; review any consolidation into /admin/developer-hub separately. The safe-number editor remains to be assessed for wiring or removal. ClinicalNoteEditor is already wired into the on-call handover shift scratchpad with persistence callbacks (handover-page.tsx); any privacy review should address that existing de-identified use rather than precede it. The attendance roster and QR check-in helper are wired through organise-sheets.tsx and teaching-code-sheet.tsx. The 16 Oct clinical-math calculator changes (IBW guidance, lithium boundaries, dose rounding) need clinician verification before any clinical use; the panel is hidden from /calculators until then (#3620).",
+    "baseRowFingerprint": "4f28488b344a1e3a14a981e76c729f4ce551a7f1c469366603bf97b7ba3ad1cc",
+    "targetUlid": "01M54YEVKA8Y91694B291WKTQS"
+  }
+}

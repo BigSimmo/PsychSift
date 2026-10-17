@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "9d2a1f4e-6b83-4c91-a5d8-2f7e9b1c4d60",
+  "createdOn": "2026-10-18",
+  "action": "done",
+  "payload": {
+    "id": "#BDFFYF",
+    "targetUlid": "01M54ZYAB6BDFFYFA3ZA5MNPVB",
+    "outcome": "Consolidated into surviving reopened issue #Z12CBC, which retains the Form 6A/6B statutory-text and legal/clinical sign-off or removal decision."
+  }
+}

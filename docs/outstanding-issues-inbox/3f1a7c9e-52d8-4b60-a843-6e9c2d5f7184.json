@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "3f1a7c9e-52d8-4b60-a843-6e9c2d5f7184",
+  "createdOn": "2026-10-18",
+  "action": "update",
+  "payload": {
+    "id": "#54N8ZN",
+    "targetUlid": "01M520SQ7T54N8ZNCFC7KJ4HKC",
+    "detail": "PR #3546 landed; tests/xlsx-sheet-dictionary-projection.test.ts (4/4) verifies per-worksheet shared-string and row/column style dictionary projection within provenance budgets, and tests/admin-pilot-client-accessibility.dom.test.tsx (7/7) verifies native form semantics under dark and forced-colors modes, 320px narrow-viewport stacking, and QR enrollment alt/warning copy. Remaining: manual VoiceOver / NVDA screen-reader announcement check on /admin/pilot, plus a print-media verification against the current pilot-client digest. The cited accessibility tests do not cover that print check."
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "7a4c2e19-83d6-4f50-b927-1e6a8c3d5f72",
+  "createdOn": "2026-10-18",
+  "action": "done",
+  "payload": {
+    "id": "#YJXRS3",
+    "targetUlid": "01M54ZYA19YJXRS380P791XA0P",
+    "outcome": "Consolidated into surviving corrected issue #8Y9169. Its links and wired-feature findings remain tracked there; page consolidation is assessed separately from dead-code deletion."
+  }
+}
