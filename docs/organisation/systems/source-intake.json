@@ -129,6 +129,7 @@
     "tests/assertion-tagging.test.ts",
     "tests/bulk-*",
     "tests/check-indexing-contract.test.ts",
+    "tests/chunking-regex-hoist.test.ts",
     "tests/chunking.test.ts",
     "tests/classify-documents.test.ts",
     "tests/deep-*",
