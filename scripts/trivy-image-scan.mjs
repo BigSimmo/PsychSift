@@ -188,7 +188,7 @@ export function trivyDbNeedsRefresh(metadataText, now = new Date()) {
  * partial cache), or its metadata says it is stale. The main database lives in `db/trivy.db` and
  * the Java database in `java-db/trivy-java.db`, each beside its own metadata.json.
  */
-function cachedTrivyDbNeedsRefresh(cacheDir, subdir, dbFile) {
+export function cachedTrivyDbNeedsRefresh(cacheDir, subdir, dbFile, now = new Date()) {
   if (!existsSync(join(cacheDir, subdir, dbFile))) return true;
   let metadataText = null;
   try {
@@ -196,7 +196,7 @@ function cachedTrivyDbNeedsRefresh(cacheDir, subdir, dbFile) {
   } catch {
     // Unreadable metadata is treated as absent.
   }
-  return trivyDbNeedsRefresh(metadataText);
+  return trivyDbNeedsRefresh(metadataText, now);
 }
 
 /**

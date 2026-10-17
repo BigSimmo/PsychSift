@@ -1,10 +1,13 @@
-import { readFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   evaluateTrivySummaryText,
   isCompatibleLocalTrivyVersion,
   TRIVY_IMAGE,
   TRIVY_VERSION,
+  cachedTrivyDbNeedsRefresh,
   trivyDbNeedsRefresh,
   trivyDockerMounts,
   validateTrivyReportJson,
@@ -166,5 +169,34 @@ describe("Trivy vulnerability database freshness", () => {
 
   it("reuses a cached database that is still current", () => {
     expect(trivyDbNeedsRefresh(JSON.stringify({ NextUpdate: "2026-10-17T06:00:00Z" }), now)).toBe(false);
+  });
+});
+
+describe("Trivy cache directory freshness", () => {
+  const now = new Date("2026-10-17T00:00:00Z");
+  const current = JSON.stringify({ NextUpdate: "2026-10-17T06:00:00Z" });
+
+  function cacheWith({ dbFile, metadata }: { dbFile: boolean; metadata: string | null }) {
+    const cacheDir = mkdtempSync(join(tmpdir(), "trivy-cache-test-"));
+    mkdirSync(join(cacheDir, "db"), { recursive: true });
+    if (dbFile) writeFileSync(join(cacheDir, "db", "trivy.db"), "");
+    if (metadata !== null) writeFileSync(join(cacheDir, "db", "metadata.json"), metadata);
+    return cacheDir;
+  }
+
+  it("downloads when the database file is missing even though its metadata is current", () => {
+    expect(cachedTrivyDbNeedsRefresh(cacheWith({ dbFile: false, metadata: current }), "db", "trivy.db", now)).toBe(
+      true,
+    );
+  });
+
+  it("downloads when the metadata is missing", () => {
+    expect(cachedTrivyDbNeedsRefresh(cacheWith({ dbFile: true, metadata: null }), "db", "trivy.db", now)).toBe(true);
+  });
+
+  it("reuses a complete, current cache", () => {
+    expect(cachedTrivyDbNeedsRefresh(cacheWith({ dbFile: true, metadata: current }), "db", "trivy.db", now)).toBe(
+      false,
+    );
   });
 });
