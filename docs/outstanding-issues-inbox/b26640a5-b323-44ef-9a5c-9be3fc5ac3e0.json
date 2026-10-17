@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "b26640a5-b323-44ef-9a5c-9be3fc5ac3e0",
+  "createdOn": "2026-10-17",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "issue",
+    "summary": "Doc/instruction drift items left open when #WMGPSG was archived: ledger arrow, cloud-profile worktree rule, Caring Contacts decision, renewals wording",
+    "detail": "#WMGPSG was archived on 17 Oct with an outcome covering items 3 and 6 and the encoding repair in item 1 only. Still open: (1) docs/outstanding-issues.md:15 corrupted arrow (canonical ledger; fix only through reconciliation). (2) .claude/cloud-profile/skills/prompt/references/coding-workflow.md:21 pre-hardening worktree rule (owner decision: owned versus vendored). (4) docs/decisions/2026-09-26-remove-ward-flow-and-caring-contacts.md says Caring Contacts was removed but src/lib/caring-contacts/clock.ts is live with MHA, First Nations and On Call importers; add a dated superseding decision, do not delete the file. (5) Admin renewals page test dropped its checked-wording assertion while admin-renewed-sheet still forbids the word; record the decision.",
+    "source": "PR #3609 review (gitar-bot, chatgpt-codex-connector), 17 Oct 2026",
+    "issueUlid": "01M54YEVQ8WWTRM5RPCGA0FEVP"
+  }
+}
