@@ -7,8 +7,8 @@ export const ANSWER_PROVIDER_NOTICE_TEXT =
   "Questions are sent to an overseas AI service (OpenAI) to search and write answers. Don't include patient details.";
 
 /**
- * One quiet line under the latest answer. It was also on the Answer home before the first question
- * (owner decision, 13 Oct 2026) until the owner removed it from the home pages on 17 Oct 2026.
+ * One quiet line under the latest answer, and centred on the Answer home before the first question
+ * is sent (owner decisions, 13 and 17 Oct 2026).
  *
  * It says where a clinical question goes, which the composer's privacy line ("Do not enter
  * patient-identifiable information.") does not. It sits below the answer rather than beside
