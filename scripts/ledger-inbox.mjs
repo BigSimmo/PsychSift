@@ -68,7 +68,12 @@ function readOutstandingIssues() {
 }
 
 function validateFingerprint(payload, action, problems) {
-  if (payload?.baseRowFingerprint !== undefined && !isValidIssueRowFingerprint(payload.baseRowFingerprint)) {
+  if (
+    (action === "reopen" && !isValidIssueRowFingerprint(payload?.baseRowFingerprint)) ||
+    (action !== "reopen" &&
+      payload?.baseRowFingerprint !== undefined &&
+      !isValidIssueRowFingerprint(payload.baseRowFingerprint))
+  ) {
     problems.push(`${action} requires a valid baseRowFingerprint`);
   }
 }
@@ -1339,12 +1344,16 @@ function attachIssueFingerprint(action, payload) {
   }
 
   const current = readOutstandingIssues();
+  const rowTables = action === "reopen" ? ["archive"] : ["open", "archive"];
   const row = payload.targetUlid
-    ? findIssueRowByUlid(current, payload.targetUlid, ["open", "archive"])
-    : findIssueRow(current, payload.id, ["open", "archive"]);
+    ? findIssueRowByUlid(current, payload.targetUlid, rowTables)
+    : findIssueRow(current, payload.id, rowTables);
 
   if (row) {
     const isArchived = row.table === "archive";
+    if (action === "reopen" && !isArchived) {
+      throw new Error(`ledger request rejected: ${row.id} is still open; reopen requires an archived durable issue`);
+    }
     if (!isArchived) {
       if (action === "amend-outcome" || (action === "update" && payload.outcome !== undefined)) {
         throw new Error(
@@ -1358,6 +1367,9 @@ function attachIssueFingerprint(action, payload) {
       return;
     }
 
+    if (action === "reopen" && !row.ulid) {
+      throw new Error(`ledger request rejected: ${row.id} is not an archived durable issue`);
+    }
     if (action === "done") {
       payload.allowArchived = true;
       payload.targetTable = "archive";
@@ -1374,6 +1386,10 @@ function attachIssueFingerprint(action, payload) {
       payload.id = row.id;
       return;
     }
+  }
+
+  if (action === "reopen") {
+    throw new Error(`ledger request rejected: ${payload.id} is not an archived durable issue`);
   }
 
   const targetDisplayId = normalizeIssueDisplayId(payload.id);
