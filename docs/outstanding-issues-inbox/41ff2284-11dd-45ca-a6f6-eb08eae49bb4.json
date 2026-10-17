@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "id": "41ff2284-11dd-45ca-a6f6-eb08eae49bb4",
+  "createdOn": "2026-10-17",
+  "action": "reopen",
+  "payload": {
+    "id": "#WFYDV6",
+    "pri": "P1",
+    "detail": "Owner decision 17 Oct 2026 21:37 AWST: #WFYDV6 must stay open; PR #3609 archived it without the required sign-off. src/components/forms/wa-mha-form-print.tsx (PR #3538) was reworded on 16 Oct (Form 6B now a report to the Chief Psychiatrist; Non-Statutory Study Layout header), but section lists, the 7-day pre-expiry examination and copy recipients remain unverified and no legal or clinical sign-off is recorded. Nothing imports or renders it; it must stay unwired. Delete it once the 30-day dead-code window passes (after 13 Nov 2026) unless legal and clinical sign-off is obtained first.",
+    "source": "PR 3538 review, 15 Oct 2026; owner decision on PR #3609, 17 Oct 2026; reopened in place with the ledger reopen action (PR #3627), replacing duplicate row #Z12CBC",
+    "baseRowFingerprint": "0941d904e1d7f9ce734abf1146bcee4d394614250dda6e1ea8cb5b67d0f8d015",
+    "allowArchived": true,
+    "targetTable": "archive",
+    "targetUlid": "01M4ZM793BWFYDV65NNBHBP53K"
+  }
+}
