@@ -72,6 +72,7 @@ import { resolveModeHomeCanvasClass } from "@/components/clinical-dashboard/mode
 import { sanitizeAnswerDisplayText } from "@/components/clinical-dashboard/display-text";
 import { AnswerCancelledNotice } from "@/components/clinical-dashboard/answer-cancelled-notice";
 import {
+  ANSWER_PROVIDER_NOTICE_HOME_TEXT,
   AnswerProviderNotice,
   AnswerSummaryUnavailableNotice,
 } from "@/components/clinical-dashboard/answer-provider-notice";
@@ -2841,7 +2842,11 @@ function ClinicalDashboardContent({
                     {/* Before the first question is sent (owner decision, 13 Oct 2026): where an
                         Answer question goes. Below the home content, so the composer never moves. */}
                     {searchMode === "answer" && !clientDemoMode ? (
-                      <AnswerProviderNotice className="mt-2" testId="answer-provider-notice-home" />
+                      <AnswerProviderNotice
+                        className="mt-2"
+                        testId="answer-provider-notice-home"
+                        text={ANSWER_PROVIDER_NOTICE_HOME_TEXT}
+                      />
                     ) : null}
                   </>
                 ) : activeModeResultKind === "differentials" ? (

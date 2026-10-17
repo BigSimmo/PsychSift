@@ -11,6 +11,9 @@ import { isProviderGenerationFallbackCode, publicFallbackReason } from "@/lib/ra
  */
 export const ANSWER_PROVIDER_NOTICE_TEXT = "Sent to OpenAI overseas. Don't include patient details.";
 
+/** The same line on the Answer home, where nothing has been sent yet, so it must not say "Sent". */
+export const ANSWER_PROVIDER_NOTICE_HOME_TEXT = "Questions go to OpenAI overseas. Don't include patient details.";
+
 /** The visible words when the model could not write the answer and the source text is shown instead. */
 export const ANSWER_SUMMARY_UNAVAILABLE_TEXT = "AI summary unavailable";
 
@@ -29,9 +32,11 @@ export const ANSWER_SUMMARY_UNAVAILABLE_TEXT = "AI summary unavailable";
 export function AnswerProviderNotice({
   className,
   testId = "answer-provider-notice",
+  text = ANSWER_PROVIDER_NOTICE_TEXT,
 }: {
   className?: string;
   testId?: string;
+  text?: string;
 }) {
   return (
     <p
@@ -40,7 +45,7 @@ export function AnswerProviderNotice({
       className={cn("flex min-w-0 items-start gap-1.5 text-2xs leading-4", textMuted, className)}
     >
       <Globe aria-hidden="true" className="mt-0.5 size-icon-xs shrink-0" />
-      <span className="min-w-0">{ANSWER_PROVIDER_NOTICE_TEXT}</span>
+      <span className="min-w-0">{text}</span>
     </p>
   );
 }

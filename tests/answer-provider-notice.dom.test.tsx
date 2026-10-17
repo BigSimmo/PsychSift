@@ -5,6 +5,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import {
+  ANSWER_PROVIDER_NOTICE_HOME_TEXT,
   ANSWER_PROVIDER_NOTICE_TEXT,
   AnswerProviderNotice,
 } from "@/components/clinical-dashboard/answer-provider-notice";
@@ -20,8 +21,12 @@ describe("AnswerProviderNotice", () => {
   });
 
   it("takes its own test id for the pre-submit copy on the home", () => {
-    render(<AnswerProviderNotice testId="answer-provider-notice-home" />);
-    expect(screen.getByRole("note")).toHaveAttribute("data-testid", "answer-provider-notice-home");
+    render(<AnswerProviderNotice testId="answer-provider-notice-home" text={ANSWER_PROVIDER_NOTICE_HOME_TEXT} />);
+    const note = screen.getByRole("note");
+    expect(note).toHaveAttribute("data-testid", "answer-provider-notice-home");
+    // Nothing has been sent on the home yet, so the line must not say it was.
+    expect(note).toHaveTextContent("Questions go to OpenAI overseas. Don't include patient details.");
+    expect(note).not.toHaveTextContent(/^Sent/);
   });
 
   it("is mounted under the latest answer and on the Answer home, never in demo mode", () => {
