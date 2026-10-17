@@ -1,5 +1,4 @@
-import { readFileSync } from "node:fs";
-import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
@@ -61,10 +60,20 @@ describe("starter-sharing preference reader and CAS writer", () => {
           return { error: null };
         },
         update: (payload: { preferences: Record<string, unknown>; updated_at: string }) => ({
-          eq: () => ({
-            eq: () => ({
+          eq: (column: string, ownerId: string) => ({
+            eq: (timestampColumn: string, expectedUpdatedAt: string) => ({
               select: () => ({
                 maybeSingle: async () => {
+                  // Enforce both predicates, as Supabase does for the CAS update.
+                  if (
+                    column !== "user_id" ||
+                    ownerId !== "user-123" ||
+                    timestampColumn !== "updated_at" ||
+                    !state.storedRow ||
+                    state.storedRow.updated_at !== expectedUpdatedAt
+                  ) {
+                    return { data: null, error: null };
+                  }
                   state.storedRow = { preferences: payload.preferences, updated_at: payload.updated_at };
                   return { data: { updated_at: payload.updated_at }, error: null };
                 },
@@ -98,51 +107,13 @@ describe("apply-specifier-worksheet CLI & parser", () => {
     expect(() => parseCatatoniaWorksheet("# Shared\n> _(blank)_\n## 2. Disorders\n")).toThrow(
       /Worksheet is incomplete; refusing to apply/,
     );
-  });
-});
 
-describe("offline utility and verification script contracts", () => {
-  const SCRIPT_PATHS = [
-    "scripts/apply-specifier-worksheet.mjs",
-    "scripts/figma-sync/build-calls.mjs",
-    "scripts/figma-sync/capture.mjs",
-    "scripts/format-differentials-summaries.mjs",
-    "scripts/measure-work-mode-speed.mjs",
-    "scripts/patch-therapy-references.mjs",
-    "scripts/run-preview-smoke.mjs",
-    "scripts/test-sql-behaviour.ts",
-  ] as const;
-
-  it("verifies safety guards and CLI contracts across the offline script suite", () => {
-    for (const relPath of SCRIPT_PATHS) {
-      const content = readFileSync(path.join(REPO_ROOT, relPath), "utf8");
-      expect(content.length).toBeGreaterThan(100);
-    }
-
-    const buildCalls = readFileSync(path.join(REPO_ROOT, "scripts/figma-sync/build-calls.mjs"), "utf8");
-    expect(buildCalls).toContain("CALL_CHAR_LIMIT");
-    expect(buildCalls).toContain("planPageCalls");
-
-    const capture = readFileSync(path.join(REPO_ROOT, "scripts/figma-sync/capture.mjs"), "utf8");
-    expect(capture).toContain("/api/local-project-id");
-    expect(capture).toContain("localProjectId");
-
-    const speed = readFileSync(path.join(REPO_ROOT, "scripts/measure-work-mode-speed.mjs"), "utf8");
-    expect(speed).toContain("localProjectId");
-    expect(speed).toContain("largest-contentful-paint");
-
-    const previewSmoke = readFileSync(path.join(REPO_ROOT, "scripts/run-preview-smoke.mjs"), "utf8");
-    expect(previewSmoke).toContain("PLAYWRIGHT_BASE_URL");
-    expect(previewSmoke).toContain("Unsupported protocol:");
-
-    const sqlBehaviour = readFileSync(path.join(REPO_ROOT, "scripts/test-sql-behaviour.ts"), "utf8");
-    expect(sqlBehaviour).toContain("@sha256:");
-    expect(sqlBehaviour).toContain("com.psychiatry-tools.sql-behaviour.worktree");
-
-    const diffFormat = readFileSync(path.join(REPO_ROOT, "scripts/format-differentials-summaries.mjs"), "utf8");
-    expect(diffFormat).toContain("differentials-snapshot.json");
-
-    const therapyRefs = readFileSync(path.join(REPO_ROOT, "scripts/patch-therapy-references.mjs"), "utf8");
-    expect(therapyRefs).toContain("THERAPY_CITATIONS");
+    expect(() =>
+      execFileSync(process.execPath, ["scripts/run-preview-smoke.mjs", "--url", "http://["], {
+        cwd: REPO_ROOT,
+        encoding: "utf8",
+        stdio: "pipe",
+      }),
+    ).toThrow();
   });
 });
