@@ -34,7 +34,8 @@ function run(root: string, args: string[] = []) {
   });
 }
 afterEach(() => {
-  for (const root of temporary.splice(0)) rmSync(root, { recursive: true, force: true });
+  for (const root of temporary.splice(0))
+    rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 });
 
 describe("read-only Cloud activation evidence", () => {

@@ -27,10 +27,24 @@ function gitBash() {
 /** Runs existing bootstrap code against tiny offline fixtures, never the checkout's dependency tree. */
 export function runBootstrapSmoke() {
   const shell = gitBash();
+  const npmHome = process.env.CLOUD_PLATFORM_NPM_HOME;
+  if (npmHome !== undefined) {
+    assert.ok(
+      npmHome &&
+        path.isAbsolute(npmHome) &&
+        existsSync(path.join(npmHome, "npm", "node_modules", "npm", "bin", "npm-cli.js")),
+      "CLOUD_PLATFORM_NPM_HOME must name an existing absolute home containing npm/node_modules/npm/bin/npm-cli.js",
+    );
+  }
   const temporaryRoot = mkdtempSync(path.join(os.tmpdir(), "psychsift-platform-"));
   const donor = path.join(temporaryRoot, "donor checkout");
   const target = path.join(temporaryRoot, "worktree's space");
-  const shellEnvironment = { ...process.env, SMOKE_WORKTREE: target, SMOKE_NODE: process.execPath };
+  const shellEnvironment = {
+    ...process.env,
+    ...(npmHome !== undefined ? { APPDATA: npmHome } : {}),
+    SMOKE_WORKTREE: target,
+    SMOKE_NODE: process.execPath,
+  };
   const shellScript = `set -euo pipefail
 if [ -x /usr/bin/cygpath ]; then
   cd "$(/usr/bin/cygpath -u "$SMOKE_WORKTREE")"

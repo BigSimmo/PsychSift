@@ -11,7 +11,11 @@ import {
 } from "../scripts/check-cross-repo-cloud-contracts.mjs";
 
 const temporaryRoots: string[] = [];
-afterEach(() => temporaryRoots.splice(0).forEach((root) => rmSync(root, { recursive: true, force: true })));
+afterEach(() =>
+  temporaryRoots
+    .splice(0)
+    .forEach((root) => rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })),
+);
 const sourceRoot = path.resolve(import.meta.dirname, "..");
 const script = path.join(sourceRoot, "scripts/check-cross-repo-cloud-contracts.mjs");
 

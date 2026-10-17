@@ -49,6 +49,15 @@ Separate request fixtures exercise the actual local-project guard with forwardin
 headers and an unsafe local caller. These tests do not build or attach to an app,
 open a public port, use a forwarding provider, or prove TLS/browser behavior.
 
+The unit CI job stages the declared real npm below its runner temporary directory
+and supplies `CLOUD_PLATFORM_NPM_HOME` only to the test step. The fixture maps that
+home to `APPDATA` only for its bootstrap child, so the existing setup script finds
+`npm/node_modules/npm/bin/npm-cli.js` before ambient npm. An explicitly missing or
+invalid home fails; the setup script still enforces the repository's exact npm
+version. `packageManager` metadata alone does not install that version. Local
+callers can use an already installed matching npm on PATH or provide the same
+home layout; the fixture installs no toolchain and changes no caller environment.
+
 Current URL behavior in `scripts/playwright-base-url.ts` is:
 
 | Input                                                                                   | Acceptance and identity                                                                                                                                                                 |

@@ -34,7 +34,8 @@ function run(
   });
 }
 afterEach(() => {
-  for (const root of temporary.splice(0)) rmSync(root, { recursive: true, force: true });
+  for (const root of temporary.splice(0))
+    rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 });
 
 describe("explicit isolated Cloud subprocess", () => {
@@ -91,7 +92,7 @@ describe("explicit isolated Cloud subprocess", () => {
     expect(readdirSync(real)).toEqual([]);
     const root = join(parent, "owned");
     expect(run(root).status).toBe(0);
-    rmSync(join(root, "codex"), { recursive: true });
+    rmSync(join(root, "codex"), { recursive: true, maxRetries: 5, retryDelay: 100 });
     symlinkSync(real, join(root, "codex"));
     expect(run(root).status).not.toBe(0);
     expect(readdirSync(real)).toEqual([]);

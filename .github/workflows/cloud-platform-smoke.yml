@@ -38,6 +38,7 @@ jobs:
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: ".node-version"
+          package-manager-cache: false
 
       # Match the real bootstrap's npm lookup with an isolated job-local APPDATA.
       # No global install and no application dependency installation are needed.

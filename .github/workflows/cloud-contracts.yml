@@ -62,6 +62,7 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: ".nvmrc"
+          package-manager-cache: false
       - name: Check this checkout's static Cloud contracts
         run: node scripts/check-cross-repo-cloud-contracts.mjs --root .
       # No dependencies, foreign scripts, tokens, provider clients or remote workflow execution.
