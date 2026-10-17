@@ -381,7 +381,7 @@
       "archiver": "^8.0.0",
       "unzipper": "^0.12.5"
     },
-    "braces": "npm:brace-expansion@^1.1.21",
+    "braces": "^3.0.3",
     "argparse": "^2.0.1"
   },
   "devDependencies": {

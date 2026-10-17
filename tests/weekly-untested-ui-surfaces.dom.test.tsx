@@ -73,13 +73,4 @@ describe("weekly untested UI surfaces & re-export boundaries", () => {
     expect(screen.getByRole("button", { name: "Open menu" })).toBeInTheDocument();
     expect(screen.getByText("Safety first")).toBeInTheDocument();
   });
-
-});
-Document();
-  });
-
-});
-xpect(screen.getByText("Safety first")).toBeInTheDocument();
-  });
-
 });
