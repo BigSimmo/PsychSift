@@ -134,5 +134,7 @@ describe("answer-source-rows uncited / em-dash presentation labels (R17)", () =>
     expect(documentFileKindFromType("Text/Plain; charset=utf-8", "notes.pdf")).toBe("TXT");
     expect(documentFileKindFromType("application/octet-stream", "notes.docx")).toBe("DOCX");
     expect(documentFileKindFromType(null, "no-extension")).toBe("PDF");
+    expect(documentFileKindFromType("image/png", "scan")).toBe("PNG");
+    expect(documentFileKindFromType("image/tiff", "scan")).toBe("IMAGE");
   });
 });
