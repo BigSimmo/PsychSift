@@ -25,6 +25,13 @@ function collect(output) {
   }
 }
 collect(readFileSync(join(scratch, "bootstrap-output"), "utf8"));
+const bootstrapStatusPath = join(scratch, "bootstrap-status");
+try {
+  if (Number(readFileSync(bootstrapStatusPath, "utf8").trim()) !== 0)
+    contexts.push("SessionStart bootstrap failed; dependent setup ran with bootstrap diagnostics above.");
+} catch {
+  contexts.push("SessionStart bootstrap status was unavailable; review bootstrap diagnostics above.");
+}
 const steps = [
   ["cloud setup", "bash", ["scripts/setup-claude-cloud.sh", "--session"], 300_000],
   ["base freshness", process.execPath, ["scripts/check-base-freshness.mjs", "--hook"], 30_000],

@@ -10,9 +10,9 @@ trap 'rm -rf -- "$start_dir"' EXIT
 cat > "$start_dir/payload"
 : > "$start_dir/bootstrap-output"
 if [ "${CLAUDE_CODE_REMOTE:-}" = "true" ]; then
-  # Source in a fresh shell so bootstrap's exported Node PATH reaches every later step. An external
-  # shell retains bootstrap's errexit behavior even though this wrapper handles failure nonfatally.
-  bash -c 'source "$1" < "$3/payload" > "$3/bootstrap-output"; node "$2" "$3"' _ \
+  # Source in a fresh shell so bootstrap's exported Node PATH reaches every later step. Disable
+  # errexit only around bootstrap so the dependent runner always gets a chance to execute.
+  bash -c 'status=0; source "$1" < "$3/payload" > "$3/bootstrap-output" || status=$?; printf "%s\n" "$status" > "$3/bootstrap-status"; node "$2" "$3"' _ \
     "$repo_root/.claude/hooks/session-start.sh" "$repo_root/scripts/claude-session-start.mjs" "$start_dir"
 else
   node "$repo_root/scripts/claude-session-start.mjs" "$start_dir"
