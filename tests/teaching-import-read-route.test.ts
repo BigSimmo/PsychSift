@@ -33,6 +33,20 @@ describe("POST /api/teaching/import/read (server-side .xlsx read)", () => {
     expect(JSON.stringify(await response.json())).toContain("This file couldn't be read");
   });
 
+  it("names the row limit, not the file size, when a small sheet has too many rows", async () => {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Term");
+    for (let i = 0; i < 2_001; i += 1) sheet.addRow([`Session ${i}`]);
+    const bytes = new Uint8Array(await workbook.xlsx.writeBuffer());
+    expect(bytes.byteLength).toBeLessThan(1024 * 1024);
+    const response = await POST(upload(bytes));
+    expect(response.status).toBe(413);
+    const text = JSON.stringify(await response.json());
+    expect(text).toContain("up to 2,000 rows");
+    expect(text).toContain("too_many_rows");
+    expect(text).not.toContain("under 1 MB");
+  });
+
   it("asks for a file when none was sent", async () => {
     const response = await POST(upload(null));
     expect(response.status).toBe(400);

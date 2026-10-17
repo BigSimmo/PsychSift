@@ -912,7 +912,9 @@ export function evaluateAnswerCoverage(input: EvaluateAnswerCoverageInput): Answ
     if (completePartition) {
       primaryCoverage.status = "direct";
       primaryCoverage.chunkIds = [
-        ...new Set(independent.flatMap((part) => coverage.find((entry) => entry.subquestionId === part.id)!.chunkIds)),
+        ...new Set(
+          independent.flatMap((part) => coverage.find((entry) => entry.subquestionId === part.id)?.chunkIds ?? []),
+        ),
       ];
       primaryCoverage.reasonCodes = ["composed_from_direct_facet_coverage"];
     }

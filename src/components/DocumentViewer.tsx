@@ -1027,6 +1027,9 @@ export function DocumentViewer({
     });
   }, [activeChunkId, documentId]);
   const retryPreview = () => {
+    const signedUrlEndpoint = `/api/documents/${documentId}/signed-url`;
+    clearCachedSignedUrl(signedUrlEndpoint);
+    clearCachedSignedUrl(`${signedUrlEndpoint}?download=true`);
     setViewerError(null);
     setPreviewError(null);
     setDownloadError(null);
@@ -1547,6 +1550,7 @@ export function DocumentViewer({
                         title={document ? documentDisplayTitle(document) : "Source document"}
                         signedUrl={signedUrl}
                         downloadSignedUrl={downloadSignedUrl}
+                        onRetry={retryPreview}
                       />
                     )}
                   </DocumentFrame>

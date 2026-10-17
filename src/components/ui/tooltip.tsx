@@ -151,7 +151,7 @@ export function Tooltip({ children, content, placement = "top", className }: Too
               aria-hidden="true"
               data-testid="tooltip-visual"
               className="block overflow-hidden"
-              style={{ maxHeight: position.maxHeight ?? "calc(100vh - 1rem)" }}
+              style={{ maxHeight: position.maxHeight ?? "calc(100dvh - 1rem)" }}
             >
               {content}
             </span>

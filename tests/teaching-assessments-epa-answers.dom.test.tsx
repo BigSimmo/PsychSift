@@ -50,9 +50,11 @@ describe("Assessments: an assessor who can't do an EPA", () => {
     render(<Harness first={{ kind: "supepa", index: 0 }} />);
     fireEvent.click(screen.getByRole("button", { name: "Send back" }));
     const send = screen.getByRole("button", { name: "Send back to Sam" });
-    expect(send).toBeDisabled();
+    expect(send).toHaveAttribute("aria-disabled", "true");
+    fireEvent.click(send);
+    expect(screen.getByTestId("statuses")).not.toHaveTextContent("sent-back");
     fireEvent.change(screen.getByLabelText(/Why, for Sam/), { target: { value: "Ask the night registrar." } });
-    expect(send).toBeEnabled();
+    expect(send).not.toHaveAttribute("aria-disabled");
     fireEvent.click(send);
     expect(screen.getByTestId("statuses")).toHaveTextContent("sent-back");
   });
@@ -96,7 +98,7 @@ describe("Assessments: asking someone else", () => {
   it("needs their role before the request can go", () => {
     render(<Harness first={{ kind: "epa", pick: 2 }} />);
     fireEvent.click(screen.getByRole("radio", { name: /Someone else/ }));
-    expect(screen.getByRole("button", { name: "Send request" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Send request" })).toHaveAttribute("aria-disabled", "true");
     expect(screen.getByText(/Unapproved until your MEU approves them/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Nurse" }));
     fireEvent.click(screen.getByRole("button", { name: "Send request" }));
@@ -153,7 +155,11 @@ describe("Assessments: the quick record sheet", () => {
     render(<Harness first={{ kind: "supepa", index: 0 }} />);
     fireEvent.click(screen.getByRole("radio", { name: /Requires minimal supervision/ }));
     fireEvent.change(screen.getByLabelText(/One thing to keep doing/), { target: { value: "x".repeat(301) } });
-    expect(screen.getByRole("button", { name: "Save EPA 1" })).toBeDisabled();
+    const save = screen.getByRole("button", { name: "Save EPA 1" });
+    // aria-disabled (not native disabled) keeps the button focusable so the reason stays reachable.
+    expect(save).not.toBeDisabled();
+    expect(save).toHaveAttribute("aria-disabled", "true");
+    expect(save).toHaveAccessibleDescription("Keep it under 300 characters.");
     expect(screen.getByText("Keep it under 300 characters.")).toBeInTheDocument();
   });
 });

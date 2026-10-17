@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "177b7474-70f8-47a9-8299-8fdaf811c419",
+  "createdOn": "2026-10-17",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "task",
+    "summary": "Ledger tooling: add a reopen action that moves an archived issue back to the open table with its original ID and ULID",
+    "detail": "There is no sanctioned reopen in scripts/ledger-inbox.mjs (actions: add, done, update, amend-outcome, queue, cancel). Reopening #WFYDV6 by owner decision on 17 Oct 2026 therefore created a new open P1 row and amended the archived row, splitting the issue's history across two identities. Add a reopen request kind that the reconciler applies by moving the archive row back to the open table with its original ID and ULID, then use it to fold the new P1 row back into #WFYDV6.",
+    "source": "PR #3616 review (chatgpt-codex-connector), 17 Oct 2026",
+    "issueUlid": "01M552JNXFGYR7Q31XTTJSNQZD"
+  }
+}

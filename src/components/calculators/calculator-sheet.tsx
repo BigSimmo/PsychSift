@@ -139,13 +139,21 @@ export function CalculatorSheet({
         'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
       ),
     ).filter(
-      (element) => element.tabIndex !== -1 && (element.offsetParent !== null || element === document.activeElement),
+      (element) =>
+        element.tabIndex !== -1 &&
+        (element.offsetParent !== null || element === document.activeElement) &&
+        element.getAttribute("aria-hidden") !== "true" &&
+        !element.closest('[aria-hidden="true"], [inert]'),
     );
     if (!focusables.length) return;
     const first = focusables[0];
     const last = focusables[focusables.length - 1];
-    const active = document.activeElement;
-    if (event.shiftKey && active === first) {
+    const active = document.activeElement as HTMLElement | null;
+    const currentIndex = active ? focusables.indexOf(active) : -1;
+    if (currentIndex === -1) {
+      event.preventDefault();
+      (event.shiftKey ? last : first).focus();
+    } else if (event.shiftKey && active === first) {
       event.preventDefault();
       last.focus();
     } else if (!event.shiftKey && active === last) {
@@ -184,7 +192,7 @@ export function CalculatorSheet({
         onClick={dismissFromBackdrop}
         className="absolute inset-0 z-[80] animate-overlay-in bg-[color:var(--neutral-950)]/55 backdrop-blur-[2px]"
       />
-      <div className="relative z-[100] flex max-h-[calc(100dvh-max(0.75rem,var(--safe-area-top)))] w-full animate-sheet-up flex-col overflow-hidden rounded-t-xl border border-[color:var(--border-strong)] bg-[color:var(--background)] shadow-[var(--shadow-lux)] sm:max-h-[92dvh] sm:max-w-3xl sm:animate-dialog-rise sm:rounded-xl">
+      <div className="relative z-[100] flex max-h-[calc(100dvh-max(0.75rem,var(--safe-area-top))-var(--keyboard-height,0px))] w-full animate-sheet-up flex-col overflow-hidden rounded-t-xl border border-[color:var(--border-strong)] bg-[color:var(--background)] pb-[env(safe-area-inset-bottom,0px)] shadow-[var(--shadow-lux)] sm:max-h-[92dvh] sm:max-w-3xl sm:animate-dialog-rise sm:rounded-xl sm:pb-0">
         <header className="modal-landscape-container grid shrink-0 grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-3 border-b border-[color:var(--border)] bg-[color:var(--surface)] py-3">
           <span className="grid size-9 shrink-0 place-items-center rounded-md border border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]">
             <Icon className="size-icon-md" aria-hidden="true" />
@@ -287,25 +295,8 @@ export function CalculatorsPopupSheetMockup() {
 
   const calculatorSheetId = useId();
 
-  useEffect(() => {
-    if (!activeCalc) return;
-    pushSheet(calculatorSheetId);
-    const onKey = (event: KeyboardEvent) => {
-      if (!isTopmostSheet(calculatorSheetId)) return;
-      if (event.key === "Escape") {
-        event.preventDefault();
-        setOpenId(null);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      popSheet(calculatorSheetId);
-    };
-  }, [activeCalc, calculatorSheetId]);
-
   return (
-    <div className="min-h-screen bg-[color:var(--background)]">
+    <div className="min-h-dvh bg-[color:var(--background)]">
       <CalculatorSearchHome session={session} onOpen={setOpenId} />
       {activeCalc ? (
         <CalculatorSheet

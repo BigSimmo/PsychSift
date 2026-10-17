@@ -641,7 +641,7 @@ export function CalculatorsSearchDetailMockup() {
   const activeCalc = openId ? calculators.find((calc) => calc.id === openId) : undefined;
 
   return (
-    <div className="min-h-screen bg-[color:var(--background)]">
+    <div className="min-h-dvh bg-[color:var(--background)]">
       {activeCalc ? (
         <CalculatorDetail
           calc={activeCalc}

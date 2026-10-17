@@ -476,6 +476,10 @@ type RpcClient = {
   };
 };
 
+export function asPublicationRpcClient(client: { rpc: unknown }): RpcClient {
+  return client as RpcClient;
+}
+
 async function callRpc(
   client: RpcClient,
   name: string,

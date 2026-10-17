@@ -110,6 +110,7 @@
     "src/lib/retrieval-selection.ts",
     "src/lib/search-retrieval-health.ts",
     "src/lib/search-scope.ts",
+    "src/lib/search/search-coalesce.ts",
     "src/lib/semantic-rerank.ts",
     "src/lib/smart-rag-api.ts",
     "src/lib/source-authority-registry.ts",

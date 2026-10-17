@@ -243,10 +243,10 @@ export function fatigueWarningsUngated(shifts: readonly FatigueShift[]): Fatigue
     }
   }
 
+  const startMsByShiftId = new Map(rows.map((row) => [row.id, Date.parse(row.startsAt)]));
   return warnings.sort(
     (a, b) =>
-      Date.parse(rows.find((row) => row.id === a.shiftId)!.startsAt) -
-        Date.parse(rows.find((row) => row.id === b.shiftId)!.startsAt) || a.rule.localeCompare(b.rule),
+      (startMsByShiftId.get(a.shiftId) ?? 0) - (startMsByShiftId.get(b.shiftId) ?? 0) || a.rule.localeCompare(b.rule),
   );
 }
 

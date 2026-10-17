@@ -66,6 +66,7 @@ describe("teaching client", () => {
       "Check-in for this session has closed. You can still check in without code for 7 days.",
     );
     expect(say("teaching_role_denied")).toBe("That's for your service's organisers.");
+    expect(say("too_many_rows")).toBe("Use a sheet with up to 2,000 rows.");
     expect(say("something_new")).toBe("The outcome could not be confirmed. Check your records before trying again.");
   });
 
