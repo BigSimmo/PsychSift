@@ -186,7 +186,7 @@ export function AnswerSourceRail({
               <div
                 key={`${source.id}:${index}`}
                 role="listitem"
-                className={cn("snap-start", rows.length === 1 ? "min-w-0 max-w-full" : "flex-none")}
+                className={cn("snap-start", rows.length === 1 ? "min-w-0 w-full max-w-full" : "flex-none")}
               >
                 <AnswerSourceCard
                   source={source}
@@ -218,8 +218,8 @@ export function AnswerSourceRail({
               className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-[color:var(--surface-raised)] to-transparent"
             />
           ) : null}
-          <RailPagingControl direction="left" visible={edges.left} scroller={scroller} />
-          <RailPagingControl direction="right" visible={edges.right} scroller={scroller} />
+          <RailPagingControl direction="left" visible={edges.left} scroller={scroller} searchOnly={isSearchOnly} />
+          <RailPagingControl direction="right" visible={edges.right} scroller={scroller} searchOnly={isSearchOnly} />
         </div>
       )}
     </section>
@@ -355,10 +355,12 @@ function RailPagingControl({
   direction,
   visible,
   scroller,
+  searchOnly,
 }: {
   direction: "left" | "right";
   visible: boolean;
   scroller: RefObject<HTMLDivElement | null>;
+  searchOnly: boolean;
 }) {
   if (!visible) return null;
   const Icon = direction === "left" ? ChevronLeft : ChevronRight;
@@ -371,7 +373,15 @@ function RailPagingControl({
       // does something must still say what it does, and the design system's rule
       // is that a control never gives up its accessible name.
       tabIndex={-1}
-      aria-label={direction === "left" ? "Show earlier cited documents" : "Show more cited documents"}
+      aria-label={
+        searchOnly
+          ? direction === "left"
+            ? "Show earlier searched documents"
+            : "Show more searched documents"
+          : direction === "left"
+            ? "Show earlier cited documents"
+            : "Show more cited documents"
+      }
       data-testid={`answer-source-rail-page-${direction}`}
       onClick={() => {
         const element = scroller.current;
@@ -523,4 +533,4 @@ const cardClass =
   "flex min-h-12 min-w-0 items-center gap-2 rounded-[var(--radius-lg)] border bg-[color:var(--surface-raised)] py-1.5 pl-2 pr-2.5 text-left shadow-[var(--e1)] transition-[border-color,box-shadow] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]";
 // Fixed so every card in a row is the same size and snapping settles whole cards.
 const cardFixedWidth = "w-[156px]";
-const cardSoloWidth = "w-auto max-w-full";
+const cardSoloWidth = "w-full max-w-full";
