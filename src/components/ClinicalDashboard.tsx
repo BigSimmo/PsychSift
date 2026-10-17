@@ -2819,9 +2819,9 @@ function ClinicalDashboardContent({
                         void ask(recentQuery);
                       }}
                     />
-                    {/* Before the first question is sent: where an Answer question goes. Centred to
-                        match the line under each answer (owner decision, 17 Oct 2026). Below the home
-                        content, so the composer never moves. */}
+                    {/* Before the first question is sent: where an Answer question goes. Centred on the
+                        Answer home (owner decision, 17 Oct 2026); PR #3605 centres the line under each
+                        answer to match. Below the home content, so the composer never moves. */}
                     {searchMode === "answer" && !clientDemoMode ? (
                       <AnswerProviderNotice className="mt-2 justify-center text-center" />
                     ) : null}

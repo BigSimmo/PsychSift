@@ -1,7 +1,7 @@
 # Decision: The overseas AI line comes off the home pages
 
 - **Status:** decided 2026-10-17
-- **Source:** `src/components/ClinicalDashboard.tsx`, find "Centred to match the line under each answer"
+- **Source:** `src/components/ClinicalDashboard.tsx`, find "where an Answer question goes. Centred on the"
 
 The owner asked for the line "Questions are sent to an overseas AI service (OpenAI) to search and write
 answers. Don't include patient details." to be removed from the home pages. The Answer home was the only
