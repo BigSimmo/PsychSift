@@ -13,7 +13,7 @@ import { RosterReadError } from "@/lib/roster/import/table";
 import { perthDateOf } from "@/lib/roster/shifts/perth-time";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, requireAuthenticatedUser, unauthorizedResponse } from "@/lib/supabase/auth";
-import { readBoundedFormData } from "@/lib/validation/form-data";
+import { readBoundedFormData } from "@/lib/validation/body";
 
 /**
  * Reads an uploaded Excel or PDF roster into one grid shape, on the server,
@@ -63,14 +63,17 @@ export async function POST(request: Request) {
     const declaredLength = Number(request.headers.get("content-length"));
     if (Number.isFinite(declaredLength) && declaredLength > MAX_CONTENT_LENGTH) return tooLarge();
 
-    let form: FormData | null;
+    let form: FormData;
     try {
       form = await readBoundedFormData(request, MAX_CONTENT_LENGTH);
     } catch (error) {
       if (error instanceof PublicApiError && error.status === 413) return tooLarge();
+      if (error instanceof PublicApiError && error.status === 400) {
+        return publicErrorResponse("Choose a roster file to import.", 400, { code: "invalid_form_data" });
+      }
       throw error;
     }
-    const file = form?.get("file");
+    const file = form.get("file");
     if (!(file instanceof File)) {
       return publicErrorResponse("Choose a roster file to import.", 400, { code: "invalid_form_data" });
     }
