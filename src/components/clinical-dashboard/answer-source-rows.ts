@@ -352,20 +352,14 @@ export function tablesForSource(tables: CanonicalAnswerTableRecord[], sources: A
 /**
  * Attaches each image to the source it was cited from.
  *
- * Same rule as {@link tablesForSource}: a card whose `source_chunk_id` matches a
- * rail row stays on that row only. Anything unmatched falls to the first source
- * so it stays reachable after the table column was removed — never to every row
- * that happens to share a `documentId`.
+ * A card is attached only when its source chunk is one of the cited rail rows.
+ * Unmatched cards are document-level nearby material, not evidence for the first
+ * citation; silently attaching them would misattribute their location.
  */
 export function imagesForSource(visualEvidence: VisualEvidenceCard[], sources: AnswerSourceRow[], index: number) {
-  const chunkIds = new Set(sources.map((source) => source.id));
   const source = sources[index];
   if (!source) return [];
-  return visualEvidence.filter((card) => {
-    const chunkId = card.source_chunk_id;
-    if (chunkId && chunkIds.has(chunkId)) return chunkId === source.id;
-    return index === 0;
-  });
+  return visualEvidence.filter((card) => card.source_chunk_id === source.id);
 }
 
 /**

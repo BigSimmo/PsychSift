@@ -2401,7 +2401,7 @@ async function answerQuestionWithScopeUncoalesced(
   const answerContract = adaptiveCoverageUnavailable ? answerContractForRollout() : requestedAnswerContract;
   const searchLatencyMs = Date.now() - searchStartedAt;
   const buildArtifacts = (selected: SearchResult[]) =>
-    buildSelectedEvidenceArtifacts(answerFocusQuery, selected, results);
+    buildSelectedEvidenceArtifacts(answerFocusQuery, selected, sideEvidenceCandidates);
   const {
     relevance,
     quoteCards,
@@ -3448,7 +3448,7 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
     coverageSelections = modelContextSelection.coverageSelections;
     generationFallbackResults = strongRetryContextResults;
     let responseContextResults = modelContextResults;
-    let responseContextArtifacts = buildSelectedEvidenceArtifacts(answerFocusQuery, responseContextResults, results);
+    let responseContextArtifacts = buildSelectedEvidenceArtifacts(answerFocusQuery, responseContextResults, sideEvidenceCandidates);
     const modelContextSelectionSummary = summarizeAustralianSourceSelection(answerInputResults, modelContextResults);
     await args.onProgress?.({
       stage: "ranking",
@@ -3504,7 +3504,7 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
       });
       coverageSelections = strongRetryContextSelection.coverageSelections;
       responseContextResults = strongRetryContextResults;
-      responseContextArtifacts = buildSelectedEvidenceArtifacts(answerFocusQuery, responseContextResults, results);
+      responseContextArtifacts = buildSelectedEvidenceArtifacts(answerFocusQuery, responseContextResults, sideEvidenceCandidates);
       packedContextResults = strongRetryContextResults;
       // Boost the cap: a max_output_tokens truncation retried on the SAME budget with MORE
       // reasoning (strong) just re-truncates. This is the truncation self-heal.
@@ -3602,7 +3602,7 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
       });
       coverageSelections = strongRetryContextSelection.coverageSelections;
       responseContextResults = strongRetryContextResults;
-      responseContextArtifacts = buildSelectedEvidenceArtifacts(answerFocusQuery, responseContextResults, results);
+      responseContextArtifacts = buildSelectedEvidenceArtifacts(answerFocusQuery, responseContextResults, sideEvidenceCandidates);
       packedContextResults = strongRetryContextResults;
       generated = await generateWithModel(env.OPENAI_STRONG_ANSWER_MODEL, packedContextResults, {
         strong: true,
@@ -3728,7 +3728,7 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
     if (canRecoverExtractively && isUnusableGeneratedAnswer(answer)) {
       coverageSelections = strongRetryContextSelection.coverageSelections;
       responseContextResults = generationFallbackResults;
-      const recoveryArtifacts = buildSelectedEvidenceArtifacts(answerFocusQuery, responseContextResults, results);
+      const recoveryArtifacts = buildSelectedEvidenceArtifacts(answerFocusQuery, responseContextResults, sideEvidenceCandidates);
       responseContextArtifacts = recoveryArtifacts;
       answer = buildExtractiveAnswer({
         allowSourceProseRecovery: true,
@@ -3756,7 +3756,7 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
         query: args.query,
         results: packedContextResults,
         relatedDocuments,
-        artifacts: buildSelectedEvidenceArtifacts(answerFocusQuery, packedContextResults, results),
+        artifacts: buildSelectedEvidenceArtifacts(answerFocusQuery, packedContextResults, sideEvidenceCandidates),
       });
       answer.routingMode = retriedWithStrong ? "strong" : route.mode;
       answer.routingReason = routingReason;

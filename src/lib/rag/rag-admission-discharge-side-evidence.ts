@@ -83,28 +83,31 @@ export function withAdmissionDischargeSideEvidence(args: {
 }
 
 export function withAdmissionDischargeContextPair<
-  T extends { served: { results: SearchResult[] }; strongRetry: { results: SearchResult[] } },
+  T extends {
+    served: { results: SearchResult[]; coverageSelections: { orderedEvidence: SearchResult[] }[] };
+    strongRetry: { results: SearchResult[]; coverageSelections: { orderedEvidence: SearchResult[] }[] };
+  },
 >(args: { query: string; queryClass: RagQueryClass; pair: T; candidates: readonly SearchResult[] }): T {
   if (!isAdmissionDischargeRequirementsComparisonQuery(args.query, args.queryClass)) return args.pair;
-  return {
-    ...args.pair,
-    served: {
-      ...args.pair.served,
-      results: withAdmissionDischargeSideEvidence({
-        query: args.query,
-        queryClass: args.queryClass,
-        selected: args.pair.served.results,
-        candidates: args.candidates,
-      }),
-    },
-    strongRetry: {
-      ...args.pair.strongRetry,
-      results: withAdmissionDischargeSideEvidence({
-        query: args.query,
-        queryClass: args.queryClass,
-        selected: args.pair.strongRetry.results,
-        candidates: args.candidates,
-      }),
-    },
+  const addToCoverage = <S extends { results: SearchResult[]; coverageSelections: { orderedEvidence: SearchResult[] }[] }>(
+    selection: S,
+  ): S => {
+    const results = withAdmissionDischargeSideEvidence({
+      query: args.query,
+      queryClass: args.queryClass,
+      selected: selection.results,
+      candidates: args.candidates,
+    });
+    const selectedIds = new Set(selection.results.map((result) => result.id));
+    const additions = results.filter((result) => !selectedIds.has(result.id));
+    if (!additions.length || !selection.coverageSelections.length) return { ...selection, results };
+    return {
+      ...selection,
+      results,
+      coverageSelections: selection.coverageSelections.map((coverage, index) =>
+        index === 0 ? { ...coverage, orderedEvidence: [...coverage.orderedEvidence, ...additions] } : coverage,
+      ),
+    };
   };
+  return { ...args.pair, served: addToCoverage(args.pair.served), strongRetry: addToCoverage(args.pair.strongRetry) };
 }
