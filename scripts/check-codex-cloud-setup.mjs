@@ -1129,7 +1129,8 @@ function validateMaintenanceAndCommandShims(sources, errors) {
   requireMatch(
     errors,
     sources.setup,
-    /codex_config_dir="\$\{CODEX_HOME:-\$HOME\/\.codex\}"/,
+    // An explicitly empty CODEX_HOME is rejected (not defaulted) by the absolute-path check below it.
+    /codex_config_dir="\$\{CODEX_HOME-\$HOME\/\.codex\}"\ncase "\$codex_config_dir" in\n  \/\*\|/,
     "Cloud shell policy must use the active CODEX_HOME.",
   );
   requireMatch(

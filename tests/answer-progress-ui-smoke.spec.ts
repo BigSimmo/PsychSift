@@ -542,10 +542,12 @@ test("answer progress remains user-safe through fallback and discloses the unusu
 
   // This run went through `fallback`, so the build disclosure is offered. On an
   // ordinary run it is not — pinned in the follow-up test below.
-  const disclosure = progress.getByText("How this answer was built", { exact: true });
+  // It sits under the answer now, not inside the progress section (owner decision, 17 Oct 2026).
+  const buildDetails = page.getByTestId("answer-build-details");
+  const disclosure = buildDetails.getByText("How this answer was built", { exact: true });
   await expect(disclosure).toBeVisible();
   await disclosure.click();
-  await expect(progress).toContainText("Assembling the answer from the sources directly");
+  await expect(buildDetails).toContainText("Assembling the answer from the sources directly");
 
   await expect(page.getByText(/In the synthetic lithium document/i)).toBeVisible({ timeout: 8_000 });
   await expect(page.locator("body")).not.toContainText(
@@ -569,7 +571,7 @@ test("follow-up answer generation stays one line above the previous answer", asy
 
   const progress = page.getByTestId("answer-progress");
   // The first answer took the ordinary route, so nothing is disclosed about it.
-  await expect(progress.getByText("How this answer was built", { exact: true })).toHaveCount(0);
+  await expect(page.getByTestId("answer-build-details")).toHaveCount(0);
 
   const followUpSubmit = await fillHydratedAnswerQuestion(page, "What monitoring is needed?");
   await followUpSubmit.click();

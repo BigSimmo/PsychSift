@@ -2,6 +2,14 @@
   "version": 1,
   "rules": [
     {
+      "id": "cloud-imported-working-agreement",
+      "retired": "2026-10-17",
+      "summary": "The old imported full-stack review inputs and duplicate working agreement are removed. Use the maintained task prompt and canonical operating policy.",
+      "pattern": "Merge this content into the repository.s existing root.*AGENTS\\.md|docs/prompts/codex-full-stack-master-review\\.md|docs/prompts/codex-cloud-review/1-codex-full-stack-master-review-prompt\\.md",
+      "allowedContext": "removed|retired|historical|superseded",
+      "decision": "docs/decisions/2026-10-17-cloud-setup-repair-and-prompt-cleanup.md"
+    },
+    {
       "id": "cloud-unavailable-route-defaults",
       "retired": "2026-10-16",
       "summary": "General routing no longer imposes historical model IDs, an Astra controller or unavailable Ultra-mode subagents. Use current supported tool controls; specialist programme contracts remain scoped.",

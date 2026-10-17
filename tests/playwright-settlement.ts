@@ -136,7 +136,9 @@ export async function expectHydrated(locator: Locator, { timeout = 15_000 }: { t
           // preserving closed-page, strict-mode and other evaluation failures.
           if (
             error instanceof Error &&
-            error.message.includes("Execution context was destroyed, most likely because of a navigation.")
+            // Playwright reports this both with and without a trailing period (the
+            // context-destroyed path omits it), so match the stable stem only.
+            error.message.includes("Execution context was destroyed, most likely because of a navigation")
           ) {
             return false;
           }

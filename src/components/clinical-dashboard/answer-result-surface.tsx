@@ -43,7 +43,12 @@ import { answerSurface, cn } from "@/components/ui-primitives";
 import { isCurrencyReviewWarning, type AnswerRenderModel } from "@/lib/answer-render-policy";
 import { demoAnswerDisclosure } from "@/lib/answer-client-payload";
 import { formatRestoredAnswerAge } from "@/lib/answer-thread-storage";
-import { publicFallbackReason } from "@/lib/rag/rag-fallback-reason";
+import {
+  answerDegradationNoteText,
+  answerSummaryUnavailableReason,
+} from "@/components/clinical-dashboard/answer-provider-notice";
+import { AnswerBuildDetails } from "@/components/clinical-dashboard/answer-build-details";
+import type { TimedAnswerProgressUpdate } from "@/components/clinical-dashboard/answer-progress";
 import type {
   ClientBestSourceRecommendation,
   ClientQuoteCard,
@@ -78,7 +83,7 @@ import { compactVerificationWordingFor, VerificationNotice } from "@/components/
  * is the micro floor for count bubbles and legends.
  *
  * Nothing about what these state has changed: same words, same amber tokens, same icons. */
-const chipShape = "inline-flex min-h-6 items-center gap-1 rounded-full border px-2.5 text-xs font-semibold";
+const chipShape = "inline-flex min-h-6 items-center gap-1 rounded-md border px-2 text-xs font-semibold";
 /**
  * An interactive chip is a small pill inside a full-size button, not a small
  * button. `before:-inset-y-*` hit expansion draws the same 48px region and is
@@ -127,6 +132,7 @@ function StagedAnswerResultSurfaceImpl({
   restoredSavedAt = null,
   restoredNow,
   onRecheckAnswer,
+  buildEvents,
 }: {
   answer: ClientRagAnswerPayload & { interactionId?: string };
   query: string;
@@ -160,6 +166,8 @@ function StagedAnswerResultSurfaceImpl({
   restoredSavedAt?: number | null;
   /** Optional clock override for deterministic age formatting in tests. */
   restoredNow?: number;
+  /** Progress events for "How this answer was built", shown above the library row once generation ends. */
+  buildEvents?: TimedAnswerProgressUpdate[];
   /** Re-runs the current answer query against the live source library. */
   onRecheckAnswer?: () => void;
 }) {
@@ -390,7 +398,7 @@ function StagedAnswerResultSurfaceImpl({
           >
             <span
               className={cn(
-                "inline-flex min-h-8 items-center gap-1.5 rounded-full border px-2.5 text-2xs font-medium transition",
+                "inline-flex min-h-8 items-center gap-1.5 rounded-md border px-2.5 text-2xs font-medium transition",
                 group.tone === "stop"
                   ? "border-[color:var(--danger)]/35 bg-[color:var(--danger)]/8 text-[color:var(--text-heading)] group-hover:bg-[color:var(--danger)]/12"
                   : group.tone === "act"
@@ -447,6 +455,12 @@ function StagedAnswerResultSurfaceImpl({
   ]
     .filter(Boolean)
     .join(" · ");
+  // On screen the count goes when a prefix is there (owner decision, 17 Oct 2026: "Source-only",
+  // not "Source-only · 3 limitations"). The prefixes are the facts nothing else on screen carries,
+  // so they always stay. The full label, count included, stays in the accessible name and the
+  // sheet lists every limitation.
+  const answerLimitationsChipText =
+    answerLimitationsChipLabel.replace(/(?:^| · )\d+ limitations?$/, "") || answerLimitationsChipLabel;
   const answerMetaChipsWithGaps =
     renderModel.warnings.length > 0 || answerReviewDue || sourceOnlyAnswer ? (
       <>
@@ -480,7 +494,7 @@ function StagedAnswerResultSurfaceImpl({
             )}
           >
             <CircleAlert aria-hidden="true" className="size-icon-xs shrink-0 text-[color:var(--warning)]" />
-            {answerLimitationsChipLabel}
+            {answerLimitationsChipText}
             {/* No chevron. A chevron promises an expansion in place; this opens a sheet, and
                 the sheet's own arrival is the state change a reader sees. The earlier note
                 here — that the chip looked identical open and closed, so on a phone the only
@@ -627,13 +641,16 @@ function StagedAnswerResultSurfaceImpl({
                 {demoAnswerDisclosure}
               </p>
             ) : null}
-            {degradedAnswer ? (
+            {/* A provider failure says only that no model wrote this, so it moved to an amber
+                line under the overseas notice (owner decision, 17 Oct 2026). Every other reason
+                is about the evidence and keeps its sentence here, above the answer. */}
+            {degradedAnswer && !answerSummaryUnavailableReason(answer) ? (
               <p
                 role="note"
                 data-testid="current-answer-degradation"
                 className="text-sm text-[color:var(--text-muted)]"
               >
-                {publicFallbackReason(answer.fallbackReasonCode ?? "unknown")}
+                {answerDegradationNoteText(answer)}
               </p>
             ) : null}
             {typeof restoredSavedAt === "number" && Number.isFinite(restoredSavedAt) ? (
@@ -734,6 +751,9 @@ function StagedAnswerResultSurfaceImpl({
                 Differentials records behind it. Removing chrome a picture omits
                 is one thing; removing a navigation route on the same evidence is
                 another. Still collapsed, still below the caution. */}
+            {/* Under the actions, above the library row (owner decision, 17 Oct 2026). */}
+            {buildEvents && !generating ? <AnswerBuildDetails events={buildEvents} /> : null}
+
             {crossModeQueries?.length && onCrossModeSearch ? (
               // `universalMode` is what lets this line reach DSM, Formulation,
               // Specifiers, Therapy, Dictionary and Tools, which no catalogue in

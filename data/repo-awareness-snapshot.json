@@ -2640,11 +2640,6 @@
         "catalogued": true
       },
       {
-        "path": "docs/prompts/codex-cloud-review/2-codex-full-stack-master-prompt-review-and-stress-test.md",
-        "section": "prompts",
-        "catalogued": true
-      },
-      {
         "path": "docs/superpowers/plans/2026-09-26-cpd-elevation.md",
         "section": "superpowers",
         "catalogued": true
@@ -3505,11 +3500,6 @@
         "catalogued": true
       },
       {
-        "path": "docs/prompts/codex-cloud-review/3-codex-agents-md-companion.md",
-        "section": "prompts",
-        "catalogued": true
-      },
-      {
         "path": "docs/care-plan/clinical-language-trace.md",
         "section": "care-plan",
         "catalogued": true
@@ -3627,6 +3617,11 @@
       {
         "path": "docs/rag-improvement/231-diagnosis-2026-08-22.md",
         "section": "rag-improvement",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-17-answer-page-tidy-up.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -4332,6 +4327,11 @@
       {
         "path": "docs/archive/2026-10-agent-code-reviews/CODE_REVIEW_SUMMARY.md",
         "section": "archive",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-17-cloud-setup-repair-and-prompt-cleanup.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -5212,11 +5212,6 @@
       {
         "path": "docs/audit/codex-cloud-reliability-20260907.md",
         "section": "audit",
-        "catalogued": true
-      },
-      {
-        "path": "docs/prompts/codex-cloud-review/1-codex-full-stack-master-review-prompt.md",
-        "section": "prompts",
         "catalogued": true
       },
       {

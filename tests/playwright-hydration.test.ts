@@ -20,6 +20,22 @@ describe("hydration polling across streamed canonical redirects", () => {
     expect(evaluate.mock.calls[0]?.[2]?.timeout).toBe(0);
   });
 
+  it.each([
+    "locator.evaluate: Execution context was destroyed, most likely because of a navigation",
+    "locator.evaluate: Execution context was destroyed, most likely because of a navigation.",
+  ])("retries navigation context loss reported as %j", async (message) => {
+    let calls = 0;
+    const { locator, evaluate } = syntheticLocator(async () => {
+      calls += 1;
+      if (calls === 1) throw new Error(message);
+      return true;
+    });
+
+    await expectHydrated(locator, { timeout: 1_500 });
+
+    expect(evaluate).toHaveBeenCalledTimes(2);
+  });
+
   it("retries navigation context loss and waits for the replacement node to hydrate within one budget", async () => {
     let calls = 0;
     const { locator, evaluate } = syntheticLocator(async () => {

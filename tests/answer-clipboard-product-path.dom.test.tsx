@@ -2,10 +2,12 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
+import { AnswerSummaryUnavailableNotice } from "@/components/clinical-dashboard/answer-provider-notice";
 import { StagedAnswerResultSurface } from "@/components/clinical-dashboard/answer-result-surface";
 import { buildAnswerRenderModel } from "@/lib/answer-render-policy";
 import { toClientAnswerPayload } from "@/lib/answer-client-payload";
 import { PriorAnswerTurnSurface, type AnswerTurn } from "@/components/clinical-dashboard/answer-thread-turn";
+import { retrievalDeadlineExceededAnswer } from "@/lib/rag/rag-route-budget";
 import type { RagAnswer, SearchResult } from "@/lib/types";
 
 vi.mock("next/navigation", () => ({
@@ -232,8 +234,85 @@ it("R3 retains restored demo disclosure on the current answer", () => {
   expect(screen.getByText("Synthetic demo only: this is not clinical guidance.")).toBeInTheDocument();
 });
 
+it("R3 moves a provider failure to the amber line under the overseas notice, full reason kept for screen readers", () => {
+  const answer = toClientAnswerPayload({
+    ...serverAnswer(),
+    answerQualityTier: "source_only",
+    routingMode: "extractive",
+    fallbackReasonCode: "provider_timeout",
+  });
+  const phrase = "Answer generation timed out; the verified source-backed portion is shown.";
+  render(
+    <>
+      <StagedAnswerResultSurface
+        answer={answer}
+        query="clozapine starting dose"
+        bestSource={null}
+        renderModel={buildAnswerRenderModel(answer)}
+        weakEvidence={false}
+        answerViewMode="standard"
+        answerEvidenceMapRows={[]}
+        onScopeDocument={() => {}}
+        answerGrounded
+        sources={answer.sources}
+        demoMode={false}
+        safeAnswerSections={[]}
+        safetyFindings={[]}
+        copiedAnswer={false}
+        pendingFeedback={null}
+        onCopyAnswer={() => {}}
+        onSubmitFeedback={() => {}}
+      />
+      <AnswerSummaryUnavailableNotice answer={answer} />
+    </>,
+  );
+  const notes = screen.getAllByTestId("current-answer-degradation");
+  expect(notes).toHaveLength(1);
+  expect(notes[0]).toHaveTextContent("AI summary unavailable");
+  expect(notes[0]).toHaveTextContent(phrase);
+});
+
+it("R3 keeps a retrieval deadline warning above the answer, with no amber summary line", () => {
+  // The deadline answer reports provider_timeout but confirmed no evidence, so it must not
+  // claim a verified source-backed portion below the answer.
+  const answer = toClientAnswerPayload(
+    retrievalDeadlineExceededAnswer({ searchStartedAt: Date.now(), startedAt: Date.now(), budgetMs: 1000 }),
+  );
+  render(
+    <>
+      <StagedAnswerResultSurface
+        answer={answer}
+        query="clozapine starting dose"
+        bestSource={null}
+        renderModel={buildAnswerRenderModel(answer)}
+        weakEvidence={false}
+        answerViewMode="standard"
+        answerEvidenceMapRows={[]}
+        onScopeDocument={() => {}}
+        answerGrounded={false}
+        sources={answer.sources}
+        demoMode={false}
+        safeAnswerSections={[]}
+        safetyFindings={[]}
+        copiedAnswer={false}
+        pendingFeedback={null}
+        onCopyAnswer={() => {}}
+        onSubmitFeedback={() => {}}
+      />
+      <AnswerSummaryUnavailableNotice answer={answer} />
+    </>,
+  );
+  expect(screen.queryByText("AI summary unavailable")).not.toBeInTheDocument();
+  const notes = screen.getAllByTestId("current-answer-degradation");
+  expect(notes).toHaveLength(1);
+  expect(notes[0]).not.toHaveTextContent("AI summary unavailable");
+  expect(notes[0]).not.toHaveTextContent("source-backed portion");
+  expect(notes[0]).toHaveTextContent("Source evidence could not be confirmed");
+});
+
 it.each([
-  ["provider_timeout", "source_only", "Answer generation timed out; the verified source-backed portion is shown."],
+  // An evidence reason keeps its full sentence above the answer, even on a source-only answer.
+  ["retrieval_degraded", "source_only", "Search used a reduced retrieval path; review the cited sources carefully."],
   ["source_conflict", "model_synthesis", "Current sources contain a material difference that requires review."],
 ] as const)("R3 displays the current precise %s disclosure", (fallbackReasonCode, answerQualityTier, phrase) => {
   const answer = toClientAnswerPayload({

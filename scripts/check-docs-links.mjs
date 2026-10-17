@@ -14,8 +14,7 @@
  * and all Markdown files under docs/,
  * excluding docs/archive/, docs/audit/, dated point-in-time filenames
  * (docs/README.md classifies those as historical records that intentionally
- * reference the repo as it was), and docs/prompts/codex-cloud-review/ (verbatim
- * as-provided prompt inputs whose paths must not be edited). Pass --all to scan
+ * reference the repo as it was). Pass --all to scan
  * those too (informational deeper sweep; still fails on missing paths).
  *
  * Blocking for maintained docs and bundled skills: runs in docs:check-links and CI. Historical
@@ -128,9 +127,6 @@ function isAllowedPath(repoRelative, target) {
 const DATED_DOC = /\b20\d{2}-\d{2}(-\d{2})?\b/;
 // Historical directories: only scanned with --all.
 const HISTORICAL_DIRS = new Set(["archive", "audit"]);
-// Verbatim as-provided inputs: retained byte-for-byte, so their internal path
-// references cannot be corrected. Only scanned with --all.
-const VERBATIM_DIRS = new Set(["codex-cloud-review"]);
 const APP_ROUTE_GROUPS = ["(search-app)"];
 const OUTSTANDING_ISSUES = "docs/outstanding-issues.md";
 const OUTSTANDING_ISSUES_INBOX = "docs/outstanding-issues-inbox";
@@ -202,7 +198,7 @@ function collectDocs(dirRelative, targets) {
   for (const entry of readdirSync(absolute, { withFileTypes: true })) {
     const entryRelative = path.posix.join(dirRelative, entry.name);
     if (entry.isDirectory()) {
-      const isSkippable = HISTORICAL_DIRS.has(entry.name) || VERBATIM_DIRS.has(entry.name);
+      const isSkippable = HISTORICAL_DIRS.has(entry.name);
       if (isSkippable && !scanAll) continue;
       collectDocs(entryRelative, targets);
       continue;

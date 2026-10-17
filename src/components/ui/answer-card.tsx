@@ -186,10 +186,8 @@ export function AnswerCard({
   // tracking-eyebrow` among the sanctioned sites, and SPEC §11 has no gate. Recorded as
   // preference so a later reader does not take it for a rule.
   //
-  // Unlike the interactive chip beside it, this one keeps `--text-3xs`: it holds two words, it
-  // keeps `--warning` ink on `--warning-soft` with a `--warning` border and the triangle, so
-  // colour and glyph carry it even at the micro size. The chip beside it had a muted-grey label
-  // and no such fallback, which is why that one was resized and this one was not.
+  // Same square shape and `--text-xs` size as the limitations chip beside it (owner decision,
+  // 17 Oct 2026): two chips on one line read as a pair, and Clinical keeps square corners.
   const supportChip = (
     <p
       data-testid="answer-card-support"
@@ -198,7 +196,7 @@ export function AnswerCard({
         "font-semibold",
         bare
           ? cn(
-              "inline-flex min-h-6 items-center gap-1 rounded-full border px-2 text-3xs",
+              "inline-flex min-h-6 items-center gap-1 rounded-md border px-2 text-xs",
               support === "strong" || support === "supported"
                 ? "border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]"
                 : "border-[color:var(--warning-border)] bg-[color:var(--warning-soft)] text-[color:var(--warning)]",
