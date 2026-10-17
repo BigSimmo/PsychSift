@@ -95,6 +95,14 @@ export function resolveDeveloperAccessKey(
   return trimmed;
 }
 
+export function resolvePreviousDeveloperAccessKey(
+  environment: Record<string, string | undefined> = process.env,
+): string | null {
+  const trimmed = environment.DEVELOPER_AREA_ACCESS_KEY_PREVIOUS?.trim();
+  if (!trimmed || trimmed.length < MIN_DEVELOPER_ACCESS_KEY_LENGTH) return null;
+  return trimmed;
+}
+
 /** The exact bytes the signature covers: version and issue time together, so neither can move. */
 function signedMessage(issuedAtSeconds: number) {
   return `${TOKEN_VERSION}.${issuedAtSeconds}`;
@@ -158,7 +166,12 @@ export function developerAccessTokenValid(
   if (ageSeconds < -300) return false;
 
   const expected = createHmac("sha256", key).update(signedMessage(issuedAtSeconds)).digest("base64url");
-  return signatureMatches(signature, expected);
+  if (signatureMatches(signature, expected)) return true;
+
+  const previousKey = resolvePreviousDeveloperAccessKey(environment);
+  if (!previousKey) return false;
+  const expectedPrevious = createHmac("sha256", previousKey).update(signedMessage(issuedAtSeconds)).digest("base64url");
+  return signatureMatches(signature, expectedPrevious);
 }
 
 /** Whether a secret presented in a URL is the configured key. Constant-time, and false when unset. */
@@ -168,5 +181,9 @@ export function developerAccessKeyMatches(
 ): boolean {
   const key = resolveDeveloperAccessKey(environment);
   if (!key || !presented) return false;
-  return signatureMatches(presented, key);
+  if (signatureMatches(presented, key)) return true;
+
+  const previousKey = resolvePreviousDeveloperAccessKey(environment);
+  if (!previousKey) return false;
+  return signatureMatches(presented, previousKey);
 }

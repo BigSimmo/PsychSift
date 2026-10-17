@@ -3434,8 +3434,8 @@ AS $function$
 declare
   v_deleted integer;
 begin
-  if p_retention_days < 1 then
-    raise exception 'retention days must be positive';
+  if p_retention_days is null or p_retention_days < 1 then
+    raise exception 'retention days must be positive' using errcode = '22023';
   end if;
   delete from public.rag_queries where created_at < now() - make_interval(days => p_retention_days);
   get diagnostics v_deleted = row_count;
@@ -3455,8 +3455,8 @@ AS $function$
 declare
   v_deleted integer;
 begin
-  if p_retention_days < 1 then
-    raise exception 'retention days must be positive';
+  if p_retention_days is null or p_retention_days < 1 then
+    raise exception 'retention days must be positive' using errcode = '22023';
   end if;
   delete from public.rag_query_misses where created_at < now() - make_interval(days => p_retention_days);
   get diagnostics v_deleted = row_count;
@@ -6607,7 +6607,7 @@ create or replace function public.purge_expired_rag_response_cache(p_limit integ
 returns integer language plpgsql security definer set search_path = '' as $$
 declare v_deleted integer;
 begin
-  if p_limit < 1 or p_limit > 10000 then raise exception 'purge limit must be between 1 and 10000'; end if;
+  if p_limit is null or p_limit < 1 or p_limit > 10000 then raise exception 'purge limit must be between 1 and 10000' using errcode = '22023'; end if;
   with expired as (select id from public.rag_response_cache where expires_at <= now() order by expires_at asc limit p_limit)
   delete from public.rag_response_cache cache using expired where cache.id = expired.id;
   get diagnostics v_deleted = row_count;
@@ -19770,6 +19770,7 @@ create table public.calendar_feed_tokens (
   owner_id uuid primary key references auth.users (id) on delete cascade,
   token_hash text not null check (token_hash ~ '^[0-9a-f]{64}$'),
   created_at timestamptz not null default now(),
+  rotated_at timestamptz,
   last_used_at timestamptz,
   constraint calendar_feed_tokens_token_hash_key unique (token_hash)
 );
@@ -19787,10 +19788,10 @@ begin
   if p_owner_id is null or p_token_hash is null or p_token_hash !~ '^[0-9a-f]{64}$' then
     raise exception 'calendar_feed_invalid_request';
   end if;
-  insert into public.calendar_feed_tokens (owner_id, token_hash)
-  values (p_owner_id, p_token_hash)
+  insert into public.calendar_feed_tokens (owner_id, token_hash, rotated_at)
+  values (p_owner_id, p_token_hash, now())
   on conflict (owner_id) do update
-    set token_hash = excluded.token_hash, created_at = now(), last_used_at = null;
+    set token_hash = excluded.token_hash, created_at = now(), rotated_at = now(), last_used_at = null;
 end $$;
 revoke all on function public.calendar_feed_rotate(uuid, text) from public, anon, authenticated;
 grant execute on function public.calendar_feed_rotate(uuid, text) to service_role;
@@ -19814,6 +19815,7 @@ begin
   if p_token_hash is null or p_token_hash !~ '^[0-9a-f]{64}$' then return null; end if;
   update public.calendar_feed_tokens set last_used_at = now()
   where token_hash = p_token_hash
+    and coalesce(last_used_at, rotated_at, created_at) >= now() - interval '90 days'
   returning owner_id into v_owner;
   return v_owner;
 end $$;
@@ -27365,8 +27367,8 @@ as $$
 declare
   v_deleted integer;
 begin
-  if p_retention_days < 1 then
-    raise exception 'retention days must be positive';
+  if p_retention_days is null or p_retention_days < 1 then
+    raise exception 'retention days must be positive' using errcode = '22023';
   end if;
   delete from public.api_rate_limit_subjects where updated_at < now() - make_interval(days => p_retention_days);
   get diagnostics v_deleted = row_count;
@@ -30106,7 +30108,7 @@ begin
     or v_jwt->>'aal' is distinct from 'aal2'
     or pg_catalog.jsonb_typeof(v_jwt->'amr') is distinct from 'array'
   then
-    raise exception 'administrator_assurance_required';
+    raise exception 'administrator_assurance_required' using errcode = '42501';
   end if;
 
   select exists(
@@ -30123,7 +30125,21 @@ begin
   ;
 
   if not v_recent_assurance then
-    raise exception 'administrator_recent_authentication_required';
+    raise exception 'administrator_recent_authentication_required' using errcode = '42501';
+  end if;
+
+  perform 1
+  from auth.users u
+  where u.id = v_uid
+    and u.raw_app_meta_data->>'site_role' is not distinct from 'administrator'
+    and (pg_catalog.to_jsonb(u)->>'deleted_at') is null
+    and (
+      (pg_catalog.to_jsonb(u)->>'banned_until') is null
+      or (pg_catalog.to_jsonb(u)->>'banned_until')::timestamptz <= v_now
+    )
+  for share;
+  if not found then
+    raise exception 'administrator_assurance_required' using errcode = '42501';
   end if;
 
   return public.trusted_document_admission_core(
@@ -34246,7 +34262,11 @@ begin
     -- A key is only ever replayed for the person who first sent it.
     if v_key.posted_by is distinct from p_actor_id then raise exception 'roster_conflict'; end if;
     select status into v_status from public.roster_open_shifts where id = v_key.open_shift_id;
-    return jsonb_build_object('openShiftId', v_key.open_shift_id, 'status', v_status, 'replayed', true);
+    if v_status is null or v_status not in ('reported', 'open', 'claimed') then
+      delete from public.roster_open_post_keys where service_id = p_service_id and post_key = p_post_key;
+    else
+      return jsonb_build_object('openShiftId', v_key.open_shift_id, 'status', v_status, 'replayed', true);
+    end if;
   end if;
 
   v_result := public.roster_command(p_actor_id, p_service_id, 'open.post', coalesce(p_payload, '{}'::jsonb));
@@ -34711,3 +34731,16 @@ grant execute on function public.cleanup_ingestion_deep_memory_staging(jsonb, uu
 alter function public.commit_document_deep_memory_generation(jsonb, uuid, text, text, integer, integer, jsonb, jsonb, jsonb) owner to postgres;
 revoke all on function public.commit_document_deep_memory_generation(jsonb, uuid, text, text, integer, integer, jsonb, jsonb, jsonb) from public, anon, authenticated;
 grant execute on function public.commit_document_deep_memory_generation(jsonb, uuid, text, text, integer, integer, jsonb, jsonb, jsonb) to service_role;
+
+-- 20261016210000_adversarial_review_rpc_and_credential_hardening: durable open-shift post alert deduplication table.
+create table if not exists public.roster_open_post_alerts (
+  service_id text not null,
+  open_shift_id text not null,
+  delivered_at timestamptz not null default now(),
+  primary key (service_id, open_shift_id)
+);
+
+alter table public.roster_open_post_alerts owner to postgres;
+alter table public.roster_open_post_alerts enable row level security;
+revoke all on table public.roster_open_post_alerts from public, anon, authenticated;
+grant all on table public.roster_open_post_alerts to service_role;

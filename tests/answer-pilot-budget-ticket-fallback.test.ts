@@ -62,13 +62,24 @@ describe("answer pilot ticket fallback", () => {
     expect(work).toHaveBeenCalledTimes(1);
   });
 
-  it("still refuses an All-documents request from the pilot owner when the ticket has expired", async () => {
+  it("allows an unrelated All-documents or non-pilot document request from the pilot owner when the ticket has expired", async () => {
     vi.stubEnv("CONTROLLED_ANSWER_PILOT_TICKET_JSON", expiredTicket);
+    vi.spyOn(console, "warn").mockImplementation(() => {});
     const work = vi.fn(async () => "answered");
     await expect(
       runAnswerWithPilotBudget(request({ resolvedDocumentIds: undefined, ownerId: PILOT_OWNER_ID }), work),
-    ).rejects.toBeInstanceOf(AnswerPilotBudgetError);
-    expect(work).not.toHaveBeenCalled();
+    ).resolves.toBe("answered");
+    await expect(
+      runAnswerWithPilotBudget(
+        request({
+          ownerId: PILOT_OWNER_ID,
+          documentId: "22222222-2222-4222-8222-222222222222",
+          resolvedDocumentIds: ["22222222-2222-4222-8222-222222222222"],
+        }),
+        work,
+      ),
+    ).resolves.toBe("answered");
+    expect(work).toHaveBeenCalledTimes(2);
   });
 
   it("refuses every request while an unreadable ticket is configured", async () => {
@@ -79,10 +90,10 @@ describe("answer pilot ticket fallback", () => {
   });
 
   it.each([
-    ["the pilot owner", { ownerId: PILOT_OWNER_ID }],
     ["the pilot document", { documentId: PILOT_DOCUMENT_ID }],
     ["a scope that resolves to the pilot document", { resolvedDocumentIds: ["x", PILOT_DOCUMENT_ID] }],
     ["the pilot query", { query: "pilot question" }],
+    ["the pilot owner with the pilot query", { ownerId: PILOT_OWNER_ID, query: "pilot question" }],
   ])("still refuses requests from %s when the ticket has expired", async (_label, overrides) => {
     vi.stubEnv("CONTROLLED_ANSWER_PILOT_TICKET_JSON", expiredTicket);
     const work = vi.fn(async () => "answered");
@@ -92,7 +103,8 @@ describe("answer pilot ticket fallback", () => {
 
   it("treats only positively unrelated requests as unrelated", () => {
     vi.stubEnv("CONTROLLED_ANSWER_PILOT_TICKET_JSON", expiredTicket);
-    expect(couldBelongToAnswerPilot({ ownerId: PILOT_OWNER_ID }, "b".repeat(64))).toBe(true);
+    expect(couldBelongToAnswerPilot({ ownerId: PILOT_OWNER_ID }, "b".repeat(64))).toBe(false);
+    expect(couldBelongToAnswerPilot({ ownerId: PILOT_OWNER_ID }, PILOT_QUERY_DIGEST)).toBe(true);
     expect(couldBelongToAnswerPilot({ documentId: PILOT_DOCUMENT_ID }, "b".repeat(64))).toBe(true);
     expect(couldBelongToAnswerPilot({ resolvedDocumentIds: [PILOT_DOCUMENT_ID] }, "b".repeat(64))).toBe(true);
     expect(couldBelongToAnswerPilot(request(), PILOT_QUERY_DIGEST)).toBe(true);

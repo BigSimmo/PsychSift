@@ -17,7 +17,18 @@ export const maxStoredAnswerTurns = 12;
 export const answerThreadTtlMs = 12 * 60 * 60 * 1000;
 
 export function createAnswerThreadSnapshotMetadata(latestSubmissionSignature: string, now = Date.now()) {
-  return { latestSubmissionSignature, expiresAt: now + answerThreadTtlMs };
+  return { latestSubmissionSignature, savedAt: now, expiresAt: now + answerThreadTtlMs };
+}
+
+export function formatRestoredAnswerAge(savedAt: number, now = Date.now()): string {
+  const elapsedMs = Math.max(0, now - savedAt);
+  const minutes = Math.floor(elapsedMs / 60_000);
+  if (minutes < 1) return "Restored from earlier in this tab (less than a minute ago)";
+  if (minutes < 60) {
+    return `Restored from earlier in this tab (${minutes} minute${minutes === 1 ? "" : "s"} ago)`;
+  }
+  const hours = Math.floor(minutes / 60);
+  return `Restored from earlier in this tab (${hours} hour${hours === 1 ? "" : "s"} ago)`;
 }
 
 type AnswerThreadAuthStatus = "unconfigured" | "loading" | "signed_out" | "authenticated" | "expired" | "error";
@@ -54,6 +65,7 @@ export type PersistedAnswerThread = {
   collapsedTurnIds: string[];
   showEarlierTurns: boolean;
   latestSubmissionSignature: string;
+  savedAt?: number;
   expiresAt: number;
 };
 
@@ -160,6 +172,13 @@ export function normalizePersistedAnswerThread(value: Record<string, unknown>): 
   ) {
     return null;
   }
+  const savedAt =
+    typeof value.savedAt === "number" &&
+    Number.isFinite(value.savedAt) &&
+    value.savedAt <= value.expiresAt &&
+    value.savedAt >= value.expiresAt - answerThreadTtlMs
+      ? value.savedAt
+      : value.expiresAt - answerThreadTtlMs;
   return {
     version: 3,
     priorTurns,
@@ -167,6 +186,7 @@ export function normalizePersistedAnswerThread(value: Record<string, unknown>): 
     collapsedTurnIds: normalizeCollapsedTurnIds(value.collapsedTurnIds, priorTurns),
     showEarlierTurns: value.showEarlierTurns === true,
     latestSubmissionSignature: value.latestSubmissionSignature,
+    savedAt,
     expiresAt: value.expiresAt,
   };
 }
@@ -231,6 +251,13 @@ export function savePersistedAnswerThread(ownerId: string, thread: PersistedAnsw
       removeStoredThread(ownerId);
       return false;
     }
+    const savedAt =
+      typeof thread.savedAt === "number" &&
+      Number.isFinite(thread.savedAt) &&
+      thread.savedAt <= thread.expiresAt &&
+      thread.savedAt >= thread.expiresAt - answerThreadTtlMs
+        ? thread.savedAt
+        : thread.expiresAt - answerThreadTtlMs;
     const payload: PersistedAnswerThread = {
       version: 3,
       priorTurns,
@@ -238,6 +265,7 @@ export function savePersistedAnswerThread(ownerId: string, thread: PersistedAnsw
       collapsedTurnIds: normalizeCollapsedTurnIds(thread.collapsedTurnIds, priorTurns),
       showEarlierTurns: thread.showEarlierTurns,
       latestSubmissionSignature: thread.latestSubmissionSignature,
+      savedAt,
       expiresAt: thread.expiresAt,
     };
     const serialized = JSON.stringify(payload);

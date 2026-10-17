@@ -74,32 +74,38 @@ const clock = z
   .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
   .or(z.literal(""));
 
-const seasonDateSchema = z.object({
-  stage: z.enum(applicationStageIds),
-  on: dateKey,
-  time: clock,
-  source: z.string().max(SOURCE_LIMIT),
-  remind: z.boolean(),
-  addedOn: dateKey,
-});
+const seasonDateSchema = z
+  .object({
+    stage: z.enum(applicationStageIds),
+    on: dateKey,
+    time: clock,
+    source: z.string().max(SOURCE_LIMIT),
+    remind: z.boolean(),
+    addedOn: dateKey,
+  })
+  .strict();
 const historySchema = z.union([
-  z.object({ kind: z.literal("status"), status: z.enum(refereeStatusIds), on: dateKey }),
-  z.object({ kind: z.literal("nudge"), on: dateKey }),
+  z.object({ kind: z.literal("status"), status: z.enum(refereeStatusIds), on: dateKey }).strict(),
+  z.object({ kind: z.literal("nudge"), on: dateKey }).strict(),
 ]);
-const refereeSchema = z.object({
-  id: z.string().min(1).max(40),
-  name: z.string().min(1).max(NAME_LIMIT),
-  role: z.string().max(ROLE_LIMIT),
-  status: z.enum(refereeStatusIds),
-  history: z.array(historySchema).max(40),
-});
-const stateSchema = z.object({
-  version: z.literal(1),
-  dates: z.array(seasonDateSchema).max(APPLICATION_STAGES.length),
-  referees: z.array(refereeSchema).max(REFEREE_LIMIT),
-  statement: z.string().max(STATEMENT_LIMIT),
-  hiddenCvLines: z.array(z.string().min(1).max(120)).max(300),
-});
+const refereeSchema = z
+  .object({
+    id: z.string().min(1).max(40),
+    name: z.string().min(1).max(NAME_LIMIT),
+    role: z.string().max(ROLE_LIMIT),
+    status: z.enum(refereeStatusIds),
+    history: z.array(historySchema).max(40),
+  })
+  .strict();
+const stateSchema = z
+  .object({
+    version: z.literal(1),
+    dates: z.array(seasonDateSchema).max(APPLICATION_STAGES.length),
+    referees: z.array(refereeSchema).max(REFEREE_LIMIT),
+    statement: z.string().max(STATEMENT_LIMIT),
+    hiddenCvLines: z.array(z.string().min(1).max(120)).max(300),
+  })
+  .strict();
 
 export type SeasonDate = z.infer<typeof seasonDateSchema>;
 export type RefereeHistory = z.infer<typeof historySchema>;
@@ -122,10 +128,45 @@ function noDuplicateStages(state: ApplicationsState): boolean {
   return new Set(state.dates.map((date) => date.stage)).size === state.dates.length;
 }
 
+const seasonDateReadSchema = z.object({
+  stage: z.enum(applicationStageIds),
+  on: dateKey,
+  time: clock,
+  source: z.string().max(SOURCE_LIMIT),
+  remind: z.boolean(),
+  addedOn: dateKey,
+});
+const historyReadSchema = z.union([
+  z.object({ kind: z.literal("status"), status: z.enum(refereeStatusIds), on: dateKey }),
+  z.object({ kind: z.literal("nudge"), on: dateKey }),
+]);
+const refereeReadSchema = z.object({
+  id: z.string().min(1).max(40),
+  name: z.string().min(1).max(NAME_LIMIT),
+  role: z.string().max(ROLE_LIMIT),
+  status: z.enum(refereeStatusIds),
+  history: z.array(historyReadSchema).max(40),
+});
+const stateReadSchema = z.object({
+  version: z.literal(1),
+  dates: z.array(seasonDateReadSchema).max(APPLICATION_STAGES.length),
+  referees: z.array(refereeReadSchema).max(REFEREE_LIMIT),
+  statement: z.string().max(STATEMENT_LIMIT),
+  hiddenCvLines: z.array(z.string().min(1).max(120)).max(300),
+});
+
+export const cpdApplicationsSchema = stateSchema.refine(noDuplicateStages, {
+  message: "Duplicate application stages are not allowed.",
+});
+
+export const cpdApplicationsReadSchema = stateReadSchema.refine(noDuplicateStages, {
+  message: "Duplicate application stages are not allowed.",
+});
+
 export function parseApplications(raw: string | null): ApplicationsState {
   if (!raw) return EMPTY_APPLICATIONS;
   try {
-    const parsed = stateSchema.safeParse(JSON.parse(raw));
+    const parsed = stateReadSchema.safeParse(JSON.parse(raw));
     if (!parsed.success || !noDuplicateStages(parsed.data)) return EMPTY_APPLICATIONS;
     // A value saved before a check existed is read again, never shown if it fails now.
     return {

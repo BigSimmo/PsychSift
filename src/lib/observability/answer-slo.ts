@@ -10,6 +10,12 @@
 // deep probe. Cache hit-rate is exposed separately by cache-metrics.ts because it
 // is an in-process hot-path counter rather than a trailing database aggregate.
 
+export const ANSWER_LATENCY_BUDGET_MS = {
+  fast: 10_000,
+  strong: 25_000,
+  extractive: 6_000,
+} as const;
+
 export type AnswerSloSnapshot = {
   windowMinutes: number;
   totalQueries: number;
@@ -26,11 +32,17 @@ export type AnswerSloSnapshot = {
   // surfaced as scrapeable counters so a regression is visible without hand-running SQL.
   truncationFallbackQueries: number;
   timeoutFallbackQueries: number;
+  sourceGapQueries: number;
+  unsupportedQueries: number;
+  latencyBudgetBreachQueries: number;
   // 0..1; 0 when there were no queries in the window (avoid divide-by-zero noise).
   hybridRpcErrorRate: number;
   degradedRate: number;
   truncationFallbackRate: number;
   timeoutFallbackRate: number;
+  sourceGapRate: number;
+  unsupportedRate: number;
+  latencyBudgetBreachRate: number;
 };
 
 type CountResult = { count: number | null; error: unknown };
@@ -68,6 +80,71 @@ function rate(numerator: number, denominator: number) {
 
 const maxHybridRpcIdentityRows = 1000;
 const safeRpcIdentifier = /^[a-zA-Z][a-zA-Z0-9_]{0,127}$/;
+
+function resolveRouteLatencyBudgetMs(metadata: Record<string, unknown>): number {
+  const rawMode = String(
+    metadata.routing_mode ?? metadata.mode ?? metadata.route_mode ?? metadata.answer_mode ?? "fast",
+  )
+    .trim()
+    .toLowerCase();
+  if (rawMode === "strong") return ANSWER_LATENCY_BUDGET_MS.strong;
+  if (rawMode === "extractive" || rawMode === "source_only" || rawMode === "source-only") {
+    return ANSWER_LATENCY_BUDGET_MS.extractive;
+  }
+  return ANSWER_LATENCY_BUDGET_MS.fast;
+}
+
+// Source-gap and unsupported answers are counted server-side over the whole window (see
+// answerSloSnapshot) so a breach cannot hide behind the 1,000-row metadata sample. These
+// filter strings mirror the metadata keys the answer pipeline writes.
+const SOURCE_GAP_FILTER = [
+  "metadata->>source_gap.eq.true",
+  "metadata->>sourceGap.eq.true",
+  "metadata->>fallback_reason_code.in.(source_gap,coverage_gap,no_documents,no_chunks,insufficient_evidence)",
+  "metadata->>answer_outcome.in.(source_gap,coverage_gap)",
+  "metadata->>fallback_reason.ilike.%source_gap%",
+  "metadata->>fallback_reason.ilike.%coverage_gap%",
+].join(",");
+
+const UNSUPPORTED_FILTER = [
+  "metadata->>unsupported.eq.true",
+  "metadata->>answer_supported.eq.false",
+  "metadata->>confidence.eq.unsupported",
+  "metadata->>confidence_level.eq.unsupported",
+  "metadata->>grounding_status.eq.unsupported",
+  "metadata->>fallback_reason_code.eq.unsupported",
+  "metadata->>answer_outcome.eq.unsupported",
+].join(",");
+
+/**
+ * Latency-budget breaches still come from the bounded metadata sample, because the budget
+ * depends on each row's routing mode and one of several latency fields. When the sample is
+ * full and the window holds more queries, the rate uses the sampled row count as its
+ * denominator instead of being diluted by the whole window.
+ */
+export function computeLatencyBudgetSloMetrics(rows: Array<{ metadata: unknown }>, totalQueries: number) {
+  let latencyBudgetBreachQueries = 0;
+
+  for (const row of rows) {
+    if (!row.metadata || typeof row.metadata !== "object" || Array.isArray(row.metadata)) {
+      continue;
+    }
+    const meta = row.metadata as Record<string, unknown>;
+    const rawLatency = Number(meta.latency_ms ?? meta.duration_ms ?? meta.total_latency_ms ?? meta.response_ms);
+    const budgetMs = resolveRouteLatencyBudgetMs(meta);
+    if (meta.latency_budget_breached === true || (Number.isFinite(rawLatency) && rawLatency > budgetMs)) {
+      latencyBudgetBreachQueries += 1;
+    }
+  }
+
+  const effectiveDenominator =
+    rows.length >= maxHybridRpcIdentityRows && totalQueries > rows.length ? rows.length : totalQueries;
+
+  return {
+    latencyBudgetBreachQueries,
+    latencyBudgetBreachRate: rate(latencyBudgetBreachQueries, effectiveDenominator),
+  };
+}
 
 function hybridRpcIdentityEvidence(rows: Array<{ metadata: unknown }>, expectedRows: number) {
   const counts: Record<string, number> = {};
@@ -115,14 +192,13 @@ export async function answerSloSnapshot(client: SloProbeClient, windowMinutes = 
       // discriminator without hiding normal production answers from the SLO.
       .is("metadata->>event_type", null);
 
-  const hybridRpcIdentityRows = client
+  const windowMetadataRows = client
     .from("rag_queries")
     .select("metadata")
     .gt("created_at", sinceIso)
     .is("metadata->>event_type", null)
-    .not("metadata->hybrid_rpc_errors", "is", null)
     .limit(maxHybridRpcIdentityRows);
-  const [total, hybrid, degraded, truncation, timeout, hybridIdentity] = await Promise.all([
+  const [total, hybrid, degraded, truncation, timeout, sourceGap, unsupported, hybridIdentity] = await Promise.all([
     base(),
     base().not("metadata->hybrid_rpc_errors", "is", null),
     // Source-only/extractive answers can be intentional and healthy. Count only
@@ -135,10 +211,12 @@ export async function answerSloSnapshot(client: SloProbeClient, windowMinutes = 
     // and "...generation_fallback:provider_timeout" (confirmed in live rag_queries).
     base().or("metadata->>provider_generation_truncated.eq.true,metadata->>fallback_reason.ilike.%max_output_tokens%"),
     base().or("metadata->>fallback_reason_code.eq.provider_timeout,metadata->>fallback_reason.ilike.%timeout%"),
-    hybridRpcIdentityRows,
+    base().or(SOURCE_GAP_FILTER),
+    base().or(UNSUPPORTED_FILTER),
+    windowMetadataRows,
   ]);
 
-  for (const result of [total, hybrid, degraded, truncation, timeout, hybridIdentity]) {
+  for (const result of [total, hybrid, degraded, truncation, timeout, sourceGap, unsupported, hybridIdentity]) {
     if (result.error) {
       if (result.error instanceof Error) throw result.error;
       // Supabase surfaces a plain PostgrestError object ({ message, code, ... }),
@@ -156,7 +234,34 @@ export async function answerSloSnapshot(client: SloProbeClient, windowMinutes = 
   const degradedQueries = degraded.count ?? 0;
   const truncationFallbackQueries = truncation.count ?? 0;
   const timeoutFallbackQueries = timeout.count ?? 0;
-  const hybridRpcIdentity = hybridRpcIdentityEvidence(hybridIdentity.data ?? [], hybridRpcErrorQueries);
+  const sourceGapQueries = sourceGap.count ?? 0;
+  const unsupportedQueries = unsupported.count ?? 0;
+  const metadataRows = hybridIdentity.data ?? [];
+  let hybridErrorRows = metadataRows.filter(
+    (row) =>
+      row.metadata &&
+      typeof row.metadata === "object" &&
+      !Array.isArray(row.metadata) &&
+      "hybrid_rpc_errors" in row.metadata &&
+      (row.metadata as { hybrid_rpc_errors?: unknown }).hybrid_rpc_errors !== null &&
+      (row.metadata as { hybrid_rpc_errors?: unknown }).hybrid_rpc_errors !== undefined,
+  );
+  // If the unfiltered 1000-row sample missed some hybrid-error rows in a busy window,
+  // fetch a dedicated filtered sample of hybrid_rpc_errors rows so identity evidence stays complete.
+  if (hybridRpcErrorQueries > hybridErrorRows.length && metadataRows.length >= maxHybridRpcIdentityRows) {
+    const dedicatedHybrid = await client
+      .from("rag_queries")
+      .select("metadata")
+      .gt("created_at", sinceIso)
+      .is("metadata->>event_type", null)
+      .not("metadata->hybrid_rpc_errors", "is", null)
+      .limit(maxHybridRpcIdentityRows);
+    if (!dedicatedHybrid.error && Array.isArray(dedicatedHybrid.data)) {
+      hybridErrorRows = dedicatedHybrid.data;
+    }
+  }
+  const hybridRpcIdentity = hybridRpcIdentityEvidence(hybridErrorRows, hybridRpcErrorQueries);
+  const latencyMetrics = computeLatencyBudgetSloMetrics(metadataRows, totalQueries);
 
   return {
     windowMinutes,
@@ -167,9 +272,15 @@ export async function answerSloSnapshot(client: SloProbeClient, windowMinutes = 
     degradedQueries,
     truncationFallbackQueries,
     timeoutFallbackQueries,
+    sourceGapQueries,
+    unsupportedQueries,
+    latencyBudgetBreachQueries: latencyMetrics.latencyBudgetBreachQueries,
     hybridRpcErrorRate: rate(hybridRpcErrorQueries, totalQueries),
     degradedRate: rate(degradedQueries, totalQueries),
     truncationFallbackRate: rate(truncationFallbackQueries, totalQueries),
     timeoutFallbackRate: rate(timeoutFallbackQueries, totalQueries),
+    sourceGapRate: rate(sourceGapQueries, totalQueries),
+    unsupportedRate: rate(unsupportedQueries, totalQueries),
+    latencyBudgetBreachRate: latencyMetrics.latencyBudgetBreachRate,
   };
 }

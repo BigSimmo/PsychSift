@@ -32,4 +32,15 @@ describe("course bookings retention purge", () => {
     expect(sql).toContain("'work-bookings-retention-purge', '30 3 * * *'");
     expect(schema).toContain("'work-bookings-retention-purge', '30 3 * * *'");
   });
+
+  it("standardises SQLSTATE 22023 on retention purge parameter guards and exercises cutoff boundaries in two-user-privacy.sql", () => {
+    const privacySql = readFileSync("tests/sql/two-user-privacy.sql", "utf8");
+    expect(schema).toContain("raise exception 'retention days must be positive' using errcode = '22023';");
+    expect(schema).toContain("raise exception 'purge limit must be between 1 and 10000' using errcode = '22023';");
+    expect(privacySql).toContain("public.work_bookings_retention_purge()");
+    expect(privacySql).toContain("public.purge_expired_api_rate_limit_subjects(7)");
+    expect(privacySql).toContain("public.purge_expired_rag_queries(30)");
+    expect(privacySql).toContain("public.purge_expired_rag_query_misses(30)");
+    expect(privacySql).toContain("public.purge_expired_rag_response_cache(7)");
+  });
 });

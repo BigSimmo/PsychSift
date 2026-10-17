@@ -273,12 +273,27 @@ const ragRankingPatterns = [
   /^src\/lib\/(?:retrieval-rpc-rollout|clinical-evidence-haystack|cross-document-synthesis|corpus-grounding|keyword-query)\.ts$/,
   /^src\/lib\/(?:document-enrichment|visual-intelligence|image-filtering)\.ts$/,
   /^worker\/(?:embedding-fields|table-facts|assertion-tagging)\.ts$/,
+  /^worker\/(?:candidate-chunks|managed-local-memory-producer|managed-admin-text-terminal|managed-prepared-supplier|published-admin-source-layout|scoped-candidate-projection|whole-original-supplier)\.ts$/,
   /^scripts\/(?:eval-retrieval|build-ranking-snapshot|tune-search-weights)\.ts$/,
   /^scripts\/lib\/(?:clinical-aliases|ranking-tuning|ranking-snapshot-builder)\.ts$/,
   /^scripts\/fixtures\/(?:rag-retrieval-golden|rag-ranking-candidate-snapshot\.v1)\.json$/,
   // The contract-pinning tests are protected too: weakening them is the evasion route.
   /^tests\/(?:rag-fast-path-ordering|ranking-tuning|retrieval-selection|rag-second-stage-ranking|eval-retrieval|rag-imputation-contract)\.test\.ts$/,
 ];
+export const protectedPathSample = Object.freeze([
+  "src/lib/released-search-order.ts",
+  "src/lib/chunking.ts",
+  "worker/embedding-fields.ts",
+  "worker/table-facts.ts",
+  "worker/assertion-tagging.ts",
+  "worker/candidate-chunks.ts",
+  "worker/managed-local-memory-producer.ts",
+  "worker/managed-admin-text-terminal.ts",
+  "worker/managed-prepared-supplier.ts",
+  "worker/published-admin-source-layout.ts",
+  "worker/scoped-candidate-projection.ts",
+  "worker/whole-original-supplier.ts",
+]);
 export const safetyPathLists = Object.freeze({
   ragRanking: Object.freeze(ragRankingPatterns.map((p) => new RegExp(p.source, p.flags))),
   clinicalRisk: Object.freeze(clinicalRiskPatterns.map((p) => new RegExp(p.source, p.flags))),
@@ -1514,6 +1529,13 @@ function selfTest() {
     "worker/embedding-fields.ts",
     "worker/table-facts.ts",
     "worker/assertion-tagging.ts",
+    "worker/candidate-chunks.ts",
+    "worker/managed-local-memory-producer.ts",
+    "worker/managed-admin-text-terminal.ts",
+    "worker/managed-prepared-supplier.ts",
+    "worker/published-admin-source-layout.ts",
+    "worker/scoped-candidate-projection.ts",
+    "worker/whole-original-supplier.ts",
   ]) {
     assert.equal(classifyPullRequestFiles([file]).ragRanking, true, file);
   }

@@ -105,10 +105,11 @@ export function updateHybridRpcHourlyEvidence(rawHistory, health, observedAt = n
   const contiguous =
     lastThree.length === 3 &&
     lastThree.every((entry) => Array.isArray(entry.rpcNames)) &&
-    lastThree.every(
-      (entry, index) =>
-        index === 0 || Date.parse(entry.hour) - Date.parse(lastThree[index - 1].hour) === hourlyWindowMs,
-    );
+    lastThree.every((entry, index) => {
+      if (index === 0) return true;
+      const gapMs = Date.parse(entry.hour) - Date.parse(lastThree[index - 1].hour);
+      return gapMs === hourlyWindowMs || gapMs === 6 * hourlyWindowMs;
+    });
   const repeatedRpcNames = contiguous
     ? lastThree[0].rpcNames.filter((name) => lastThree.every((entry) => entry.rpcNames.includes(name)))
     : [];

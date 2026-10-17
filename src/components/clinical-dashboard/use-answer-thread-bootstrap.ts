@@ -3,6 +3,7 @@
 import { useEffect, useRef, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
 
 import {
+  answerThreadTtlMs,
   clearPersistedAnswerThread,
   guestAnswerThreadOwnerId,
   loadPersistedAnswerThread,
@@ -19,6 +20,7 @@ export function snapshotMetadataFromPersisted(persisted: PersistedAnswerThread):
   return {
     latestSubmissionSignature: persisted.latestSubmissionSignature,
     expiresAt: persisted.expiresAt,
+    ...(typeof persisted.savedAt === "number" ? { savedAt: persisted.savedAt } : {}),
   };
 }
 
@@ -61,6 +63,7 @@ export function useAnswerThreadBootstrap({
   setModeSearchSubmitted,
   setQuery,
   setAnswerThreadBootstrapped,
+  setRestoredAnswerSavedAt,
 }: {
   answerThreadOwnerId: string | null;
   authStatus: string;
@@ -84,6 +87,7 @@ export function useAnswerThreadBootstrap({
   setModeSearchSubmitted: (submitted: boolean, submittedText?: string) => void;
   setQuery: Dispatch<SetStateAction<string>>;
   setAnswerThreadBootstrapped: Dispatch<SetStateAction<boolean>>;
+  setRestoredAnswerSavedAt?: Dispatch<SetStateAction<number | null>>;
 }) {
   const previousAnswerThreadOwnerIdRef = useRef(answerThreadOwnerId);
   useEffect(() => {
@@ -111,6 +115,7 @@ export function useAnswerThreadBootstrap({
       setCollapsedTurnIds(new Set());
       setAnswer(null);
       setSources([]);
+      setRestoredAnswerSavedAt?.(null);
       latestAnswerTurnRef.current = null;
       latestAnswerSnapshotMetadataRef.current = null;
       setAnswerThreadBootstrapped(false);
@@ -127,6 +132,7 @@ export function useAnswerThreadBootstrap({
     setCollapsedTurnIds,
     setLatestAnswerQuery,
     setPriorAnswerTurns,
+    setRestoredAnswerSavedAt,
     setSources,
   ]);
 
@@ -147,6 +153,7 @@ export function useAnswerThreadBootstrap({
           latestAnswerTurnRef.current = persisted.latestTurn;
           setAnswer(persisted.latestTurn.answer);
           setSources(persisted.latestTurn.sources);
+          setRestoredAnswerSavedAt?.(persisted.savedAt ?? persisted.expiresAt - answerThreadTtlMs);
           // Restoring a persisted thread is a submission of that turn's query, not of
           // whatever happens to be in the composer.
           setModeSearchSubmitted(true, persisted.latestTurn.query);
@@ -179,6 +186,7 @@ export function useAnswerThreadBootstrap({
     setModeSearchSubmitted,
     setPriorAnswerTurns,
     setQuery,
+    setRestoredAnswerSavedAt,
     setShowEarlierTurns,
     setSources,
     submittedUrlQuery,

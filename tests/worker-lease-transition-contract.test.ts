@@ -125,9 +125,15 @@ describe("worker job transitions have no unfenced fallback", () => {
     expect(completeJob).not.toContain("markSupersededSiblingJobs");
     expect(completeJob).toContain('await mutation(attemptForJob(job.id), "complete_ingestion_job",');
     expect(completeJob).toMatch(/await mutation\([\s\S]*?\);\s*invalidateRagCachesForDocumentMutation/);
-    expect(mutationAdapter).toContain(
-      "runIngestionMutation(attempt, (rpcName, payload) => ingestionRpcClient.rpc(rpcName, payload), name, args)",
-    );
+    // The adapter still routes every call through the shared fenced mutation and the ingestion
+    // RPC client, now with a bounded deadline: control-plane calls get the short one and
+    // data-plane writes the longer one, both tied to the attempt's own signal.
+    expect(mutationAdapter).toContain("runIngestionMutation(");
+    expect(mutationAdapter).toContain("ingestionRpcClient");
+    expect(mutationAdapter).toContain(".rpc(rpcName, payload)");
+    expect(mutationAdapter).toContain("CONTROL_PLANE_RPCS.has(rpcName)");
+    expect(mutationAdapter).toContain("controlPlaneAbortSignal(attempt.signal)");
+    expect(mutationAdapter).toContain("dataPlaneAbortSignal(attempt.signal)");
     expect(fencedMutation).toContain("p_fence: attempt.fence");
     expect(fencedMutation).toContain("if (result.error) throw new Error(result.error.message)");
     expect(fencedMutation).toContain("attempt.accept(result.data)");

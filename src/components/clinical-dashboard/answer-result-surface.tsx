@@ -42,6 +42,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { answerSurface, cn } from "@/components/ui-primitives";
 import { isCurrencyReviewWarning, type AnswerRenderModel } from "@/lib/answer-render-policy";
 import { demoAnswerDisclosure } from "@/lib/answer-client-payload";
+import { formatRestoredAnswerAge } from "@/lib/answer-thread-storage";
 import { publicFallbackReason } from "@/lib/rag/rag-fallback-reason";
 import type {
   ClientBestSourceRecommendation,
@@ -123,6 +124,9 @@ function StagedAnswerResultSurfaceImpl({
   followUpSuggestionsDisabled = false,
   generating = false,
   onScopeDocument,
+  restoredSavedAt = null,
+  restoredNow,
+  onRecheckAnswer,
 }: {
   answer: ClientRagAnswerPayload & { interactionId?: string };
   query: string;
@@ -152,6 +156,12 @@ function StagedAnswerResultSurfaceImpl({
   generating?: boolean;
   /** Narrows the search to one document, from the source drawer's overflow menu. */
   onScopeDocument?: (documentId: string) => void;
+  /** Timestamp (ms) when the answer thread was originally saved, when restored from sessionStorage. */
+  restoredSavedAt?: number | null;
+  /** Optional clock override for deterministic age formatting in tests. */
+  restoredNow?: number;
+  /** Re-runs the current answer query against the live source library. */
+  onRecheckAnswer?: () => void;
 }) {
   const router = useRouter();
   const isDemoAnswer = demoMode || answer.demoMode === true || answer.fallbackMode === "non_production_demo";
@@ -625,6 +635,29 @@ function StagedAnswerResultSurfaceImpl({
               >
                 {publicFallbackReason(answer.fallbackReasonCode ?? "unknown")}
               </p>
+            ) : null}
+            {typeof restoredSavedAt === "number" && Number.isFinite(restoredSavedAt) ? (
+              <div
+                role="note"
+                data-testid="restored-answer-notice"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-3 py-1.5 text-xs text-[color:var(--text-muted)]"
+              >
+                <span>
+                  {formatRestoredAnswerAge(restoredSavedAt, restoredNow)} — library documents may have changed since
+                  this answer was generated.
+                </span>
+                {onRecheckAnswer ? (
+                  <button
+                    type="button"
+                    data-testid="restored-answer-recheck"
+                    disabled={generating}
+                    onClick={onRecheckAnswer}
+                    className="inline-flex min-h-tap shrink-0 items-center font-semibold text-[color:var(--clinical-accent)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] disabled:cursor-not-allowed disabled:text-[color:var(--disabled)] disabled:no-underline"
+                  >
+                    Recheck now
+                  </button>
+                ) : null}
+              </div>
             ) : null}
             {/* The question is a chat bubble on the current turn, exactly as it is
                 on every prior turn. It used to be a muted echo inside the card

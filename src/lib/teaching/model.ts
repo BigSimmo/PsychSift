@@ -411,7 +411,13 @@ export const teachingServiceActionSchema = z
       })
       .strict(),
     z.object({ action: z.literal("display.create"), occurrenceId: uuid, stream: z.enum(checkinStreams) }).strict(),
-    z.object({ action: z.literal("display.revoke"), token: secretToken }).strict(),
+    z
+      .object({
+        action: z.literal("display.revoke"),
+        token: secretToken.optional(),
+        occurrenceId: uuid.optional(),
+      })
+      .strict(),
     z.object({ action: z.literal("notice.read"), noticeId: uuid }).strict(),
     z.object({ action: z.literal("calendar.set"), enabled: z.boolean() }).strict(),
     seriesFields.extend({ action: z.literal("series.save") }).strict(),
@@ -445,6 +451,16 @@ export const teachingServiceActionSchema = z
     z.object({ action: z.literal("attendance.remove"), occurrenceId: uuid, userId: uuid }).strict(),
   ])
   .superRefine((value, ctx) => {
+    if (value.action === "display.revoke") {
+      if (!value.token && !value.occurrenceId) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Give a display link token or an occurrence id.",
+          path: ["token"],
+        });
+      }
+      return;
+    }
     if (value.action === "series.save") {
       for (const issue of seriesIssues(value))
         ctx.addIssue({ code: "custom", message: issue.message, path: [issue.path] });

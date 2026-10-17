@@ -210,8 +210,8 @@ export function AnswerSourceRail({
               className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-[color:var(--surface-raised)] to-transparent"
             />
           ) : null}
-          <RailPagingControl direction="left" visible={edges.left} scroller={scroller} />
-          <RailPagingControl direction="right" visible={edges.right} scroller={scroller} />
+          <RailPagingControl direction="left" visible={edges.left} scroller={scroller} hasCited={!isSearchOnly} />
+          <RailPagingControl direction="right" visible={edges.right} scroller={scroller} hasCited={!isSearchOnly} />
         </div>
       )}
     </section>
@@ -347,13 +347,16 @@ function RailPagingControl({
   direction,
   visible,
   scroller,
+  hasCited = true,
 }: {
   direction: "left" | "right";
   visible: boolean;
   scroller: RefObject<HTMLDivElement | null>;
+  hasCited?: boolean;
 }) {
   if (!visible) return null;
   const Icon = direction === "left" ? ChevronLeft : ChevronRight;
+  const kind = hasCited ? "cited" : "searched";
   return (
     <button
       type="button"
@@ -363,7 +366,7 @@ function RailPagingControl({
       // does something must still say what it does, and the design system's rule
       // is that a control never gives up its accessible name.
       tabIndex={-1}
-      aria-label={direction === "left" ? "Show earlier cited documents" : "Show more cited documents"}
+      aria-label={direction === "left" ? `Show earlier ${kind} documents` : `Show more ${kind} documents`}
       data-testid={`answer-source-rail-page-${direction}`}
       onClick={() => {
         const element = scroller.current;
