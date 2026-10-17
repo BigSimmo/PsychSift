@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "5b138aaf-016f-4fc3-8165-fd6b10f15a79",
+  "createdOn": "2026-10-17",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "task",
+    "summary": "Remove the remaining PR 3538 leftovers after 13 Nov 2026 (split from #08216B, which closed only the calculator fixes)",
+    "detail": "#08216B was archived on 17 Oct with an outcome covering only the clinical-math calculators. Still open: src/app/api/proxy/route.ts (nothing calls it), scripts/recalculate-answer-support-labels.ts and its test (run by nothing), and the developer tool pages under src/app/mockups/development (unreachable duplicates of /admin/developer-hub) - remove after the 30-day dead-code window (13 Nov 2026) via npm run check:dead-code-candidate. The safe-number editor, attendance roster, QR check-in helper and clinical note editor are unwired: wire or remove each; the note editor needs a privacy review before any use. The 16 Oct clinical-math calculator changes (IBW guidance, lithium boundaries, dose rounding) need clinician verification before any clinical use.",
+    "source": "PR #3609 review (gitar-bot, chatgpt-codex-connector), 17 Oct 2026",
+    "issueUlid": "01M54YEVKA8Y91694B291WKTQS"
+  }
+}
