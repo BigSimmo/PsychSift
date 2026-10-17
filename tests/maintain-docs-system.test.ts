@@ -193,6 +193,16 @@ describe("maintain-docs-system pipeline", () => {
     expect(classifyRepositoryPath("tests/work-calendar-entries.test.ts").resolvedSystem).toBe("personal-practice");
   });
 
+  it("keeps the recorded Roster and Open shifts page exceptions in Personal practice", () => {
+    // docs/organisation/README.md records these two page folders as Personal practice exceptions.
+    expect(classifyRepositoryPath("src/app/(search-app)/roster/page.tsx").resolvedSystem).toBe("personal-practice");
+    expect(classifyRepositoryPath("src/app/(search-app)/open-shifts/page.tsx").resolvedSystem).toBe(
+      "personal-practice",
+    );
+    // Every other page stays with App experience.
+    expect(classifyRepositoryPath("src/app/(search-app)/my-day/page.tsx").resolvedSystem).toBe("app-experience");
+  });
+
   it("lets explicit manifest globs win over the domain test prefixes for new tests", () => {
     // app-experience owns tests/search-* and tests/document-* by glob; source-intake owns
     // tests/document-enrichment-*. The classifier prefixes deliberately do not compete with them.

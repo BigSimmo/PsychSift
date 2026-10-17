@@ -35,6 +35,7 @@
     "src/app/**/loading.tsx",
     "src/app/**/not-found.tsx",
     "src/app/**/page.tsx",
+    "src/app/admin/pilot/pilot-client.tsx",
     "src/app/api/account/preferences/route.ts",
     "src/app/api/search/universal/route.ts",
     "src/app/apple-icon.tsx",
