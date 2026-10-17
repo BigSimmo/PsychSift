@@ -1,0 +1,58 @@
+name: Cloud platform smoke
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/cloud-platform-smoke.yml"
+      - "scripts/check-cloud-platform-smoke.mjs"
+      - "scripts/setup-codex-worktree.mjs"
+      - "scripts/check-installed-lock-parity.mjs"
+      - "scripts/install-git-hooks.mjs"
+      - "scripts/lib/is-entrypoint.mjs"
+      - "tests/cloud-platform-smoke.test.ts"
+      - "docs/agents/cloud-platform-acceptance.md"
+      - "package.json"
+      - ".node-version"
+      - ".nvmrc"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloud-platform-smoke-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows-bootstrap:
+    name: Native Windows bootstrap fixture
+    runs-on: windows-2025
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: ".node-version"
+
+      # Match the real bootstrap's npm lookup with an isolated job-local APPDATA.
+      # No global install and no application dependency installation are needed.
+      - name: Stage the declared npm in the runner temporary directory
+        shell: pwsh
+        run: |
+          $manifest = Get-Content package.json -Raw | ConvertFrom-Json
+          if ($manifest.packageManager -notmatch '^npm@(\d+\.\d+\.\d+)$') { throw 'Expected an exact npm packageManager version' }
+          $version = $Matches[1]
+          $toolAppData = Join-Path $env:RUNNER_TEMP 'cloud-platform-appdata'
+          $toolPrefix = Join-Path $toolAppData 'npm'
+          npm install --prefix $toolPrefix --ignore-scripts --no-save --package-lock=false --no-audit --no-fund "npm@$version"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "APPDATA=$toolAppData" >> $env:GITHUB_ENV
+
+      - name: Exercise native Windows Git Bash paths, donor copy, and hook installation
+        shell: pwsh
+        run: node scripts/check-cloud-platform-smoke.mjs --windows
