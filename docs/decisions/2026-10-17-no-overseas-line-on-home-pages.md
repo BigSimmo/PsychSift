@@ -1,6 +1,6 @@
 # Decision: The overseas AI line comes off the home pages
 
-- **Status:** decided 2026-10-17
+- **Status:** decided 2026-10-17; superseded by 2026-10-17-overseas-line-centred-on-answer-home.md
 - **Source:** `src/components/ClinicalDashboard.tsx`, find "where an Answer question goes. Centred on the"
 
 The owner asked for the line "Questions are sent to an overseas AI service (OpenAI) to search and write
