@@ -328,13 +328,7 @@ export async function teachingServiceMutation(
         eq?: (col: string, val: string) => DynamicCreateQueryChain;
         is?: (col: string, val: null) => DynamicCreateQueryChain;
       } & PromiseLike<{ data?: unknown; error?: { message: string; code?: string | null } | null }>;
-      const secret = newTeachingSecret();
-      const newHash = hashTeachingSecret(secret);
-      const data = await teachingCommand(client, actorId, serviceId, input.action, {
-        occurrenceId: input.occurrenceId,
-        stream: input.stream,
-        linkHash: newHash,
-      });
+      let priorRows: Array<{ link_hash?: string | null }> = [];
       const dynamicCreateClient = client as unknown as { from?: (table: string) => DynamicCreateQueryChain };
       if (typeof dynamicCreateClient.from === "function") {
         try {
@@ -347,22 +341,29 @@ export async function teachingServiceMutation(
           if (q5 && typeof q5.then === "function") {
             const existingRes = await q5;
             if (!existingRes?.error && existingRes?.data) {
-              const priorRows = (Array.isArray(existingRes.data) ? existingRes.data : [existingRes.data]) as Array<{
+              priorRows = (Array.isArray(existingRes.data) ? existingRes.data : [existingRes.data]) as Array<{
                 link_hash?: string | null;
               }>;
-              for (const prior of priorRows) {
-                if (prior?.link_hash && prior.link_hash !== newHash) {
-                  try {
-                    await teachingCommand(client, actorId, serviceId, "display.revoke", { linkHash: prior.link_hash });
-                  } catch {
-                    // Best-effort cleanup: a presenter creating a new link may not own an earlier link created by an organiser.
-                  }
-                }
-              }
             }
           }
         } catch {
-          // Best-effort prior-link cleanup when table query helper is not available on mock clients.
+          // Best-effort prior-link snapshot when table query helper is not available on mock clients.
+        }
+      }
+      const secret = newTeachingSecret();
+      const newHash = hashTeachingSecret(secret);
+      const data = await teachingCommand(client, actorId, serviceId, input.action, {
+        occurrenceId: input.occurrenceId,
+        stream: input.stream,
+        linkHash: newHash,
+      });
+      for (const prior of priorRows) {
+        if (prior?.link_hash && prior.link_hash !== newHash) {
+          try {
+            await teachingCommand(client, actorId, serviceId, "display.revoke", { linkHash: prior.link_hash });
+          } catch {
+            // Best-effort cleanup: a presenter creating a new link may not own an earlier link created by an organiser.
+          }
         }
       }
       // `token` for the UI part's own link building, `path` for callers that only need the address.

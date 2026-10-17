@@ -84,7 +84,7 @@ These are short operator checklists. Preserve evidence and identifiers, but do n
           d.source_review_status,
           d.metadata->>'rag_indexed' AS rag_indexed,
           (SELECT count(*) FROM public.document_chunks c WHERE c.document_id = d.id) AS chunk_count,
-          (SELECT count(*) FROM public.rag_response_cache r WHERE r.cache_key LIKE '%' || d.id::text || '%' OR r.answer LIKE '%' || d.id::text || '%') AS cached_answer_count
+          (SELECT count(*) FROM public.rag_response_cache r WHERE r.payload::text LIKE '%' || d.id::text || '%') AS cached_answer_count
    FROM public.documents d
    WHERE d.id = '<document-uuid>';
    ```
@@ -99,8 +99,8 @@ These are short operator checklists. Preserve evidence and identifiers, but do n
 
 1. Preserve interaction IDs, hashes, timestamps, configuration-posture versions, and provider request IDs; do not preserve raw clinical prose unless an authorised incident process requires it:
    ```sql
-   SELECT id, created_at, query_hash, config_posture_version, provider_request_id
-   FROM public.rag_audit_log
+   SELECT id, created_at, metadata
+   FROM public.rag_queries
    WHERE created_at >= timezone('utc', now()) - interval '24 hours'
    ORDER BY created_at DESC;
    ```
