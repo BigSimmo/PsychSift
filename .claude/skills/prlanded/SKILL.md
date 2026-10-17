@@ -18,13 +18,16 @@ Otherwise ask before GitHub access; never infer provider authority merely from l
 1. **Confirm the merge:** `gh pr view <pr> --json state,mergeCommit,mergedAt` → `MERGED`.
 2. **Verify by content, branching on the merge shape.** `git fetch --quiet origin main`, read the
    parent count with `git rev-list --parents -n 1 <merge-commit>`, then run the comparison
-   [Landed](../../../docs/agents/pull-request-workflow.md#landed) names for that shape: `merge-base --is-ancestor` on `^2` plus
-   `git show --remerge-diff` for a merge commit; a two-dot
-   `git diff --stat <squash-commit> <your-branch-tip>` for a squash (never three-dot). Any
-   unexplained remaining line is work that did not land — investigate before deleting anything.
+   [Landed](../../../docs/agents/pull-request-workflow.md#landed) names for that shape: for a
+   two-parent merge, run `git merge-base --is-ancestor <your-branch-tip> <merge-commit>^2`
+   and `git show --remerge-diff <merge-commit>`; for a squash, run the two-dot
+   `git diff --stat <squash-commit> <your-branch-tip>` (never three-dot). Any unexplained
+   remaining line is work that did not land — investigate before deleting anything.
    If the branch was behind `main` when it merged (always true for a merge-queue merge), that
-   two-dot diff also shows `main`'s changes: compare the PR's own change with `git patch-id`
-   instead, exactly as [Landed](../../../docs/agents/pull-request-workflow.md#landed) describes.
+   two-dot diff also shows `main`'s changes: compare the explicit PR diff
+   `git diff <squash-commit>^ <squash-commit> | git patch-id --stable` with
+   `git diff $(git merge-base <squash-commit>^ <your-branch-tip>) <your-branch-tip> | git patch-id --stable`,
+   exactly as [Landed](../../../docs/agents/pull-request-workflow.md#landed) describes.
 3. **Check for orphaned late commits** pushed after auto-merge was armed; if missing,
    fix-forward with a new PR — do not force-push.
 4. **Prepare cleanup only after the content diff is empty.** Worktree removal, remote branch
