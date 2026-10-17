@@ -94,6 +94,49 @@ describe.runIf(hasPyMuPDF)("PDF table edge-strip row recovery (3344a3a9)", () =>
     ]);
   });
 
+  function recoverBottomRow(lines: string[]): string[][] {
+    const script = [
+      "import json, sys",
+      "import pymupdf as fitz",
+      `sys.path.insert(0, ${JSON.stringify(extractorDir)})`,
+      "import extract_pdf_assets as e",
+      "doc = fitz.open()",
+      "page = doc.new_page(width=595, height=842)",
+      "original_rect = fitz.Rect(50, 120, 560, 200)",
+      "extended_rect = fitz.Rect(50, 120, 560, 250)",
+      "existing_rows = [['0', 'Asleep', 'Monitor vitals']]",
+      "column_ranges = [(50.0, 120.0), (120.0, 310.0), (310.0, 560.0)]",
+      "page.insert_text((54, 218), '5', fontsize=9)",
+      "page.insert_text((124, 218), 'Highly aroused', fontsize=9)",
+      ...lines,
+      "recovered = e.recover_table_rows_from_edge_strip(",
+      "    page, original_rect, extended_rect, existing_rows, column_count=3, column_ranges=column_ranges",
+      ")",
+      "print(json.dumps(recovered))",
+    ].join("\n");
+    return JSON.parse(execFileSync(pythonBin, ["-c", script], { cwd: process.cwd(), encoding: "utf8" }).trim());
+  }
+
+  it("keeps a short note under a recovered row out of that row's cells", () => {
+    expect(
+      recoverBottomRow([
+        "page.insert_text((314, 218), 'Call the duty registrar', fontsize=9)",
+        "page.insert_text((54, 229), 'See note', fontsize=9)",
+      ]),
+    ).toEqual([["5", "Highly aroused", "Call the duty registrar"]]);
+  });
+
+  it("still joins a cell whose text wrapped onto the next line", () => {
+    expect(
+      recoverBottomRow([
+        "page.insert_text((314, 218), 'Give oral medication first, then call the duty registrar,', fontsize=9)",
+        "page.insert_text((314, 229), 'security and nurse in charge', fontsize=9)",
+      ]),
+    ).toEqual([
+      ["5", "Highly aroused", "Give oral medication first, then call the duty registrar, security and nurse in charge"],
+    ]);
+  });
+
   it("extracts column ranges cleanly when a table row contains (None, None, None, None) merged/empty cells", () => {
     const script = [
       "import json, sys",
