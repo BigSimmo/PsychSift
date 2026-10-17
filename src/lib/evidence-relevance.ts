@@ -116,6 +116,13 @@ function normalizeTerm(term: string) {
   return cleaned;
 }
 
+// "Need" can frame a question ("what does the infant need?") or name the
+// subject being asked about ("what are the carers' needs?"). Singularization
+// makes both forms identical, so retain the latter before filtering generic
+// question wording.
+const substantiveNeedNounPattern =
+  /\b(?:[a-z][a-z-]*['’]s?\s+needs?|(?:support|clinical|care|health|service|practical|emotional|communication|additional|specific|individual|complex|unmet|patient|carer|carers)\s+needs?|needs?\s+(?:of|assessment|include|are|were|do|does|did|have|has))\b/i;
+
 // Only this interrogative scaffold becomes a semantic cadence requirement.
 const monitoringFrequencyQuestion =
   /\bHow often (?:is|are) ([^?.]+?) (?:checked|monitored|measured|reviewed)(?=[?.]|$|\s+(?:in|for|with|without|among)\b)/i;
@@ -143,8 +150,16 @@ export function queryCoreTerms(query: string) {
   const normalized = normalizedClinicalSearchTokens(semanticQuery).map(normalizeTerm).filter(Boolean);
   const raw = (semanticQuery.toLowerCase().match(/[a-z0-9]+/g) ?? []).map(normalizeTerm).filter(Boolean);
   const candidates = uniq([...normalized, ...raw], 14);
-  const specific = candidates.filter((term) => term.length >= 3 && !genericQueryTerms.has(term));
-  return specific.length ? specific.slice(0, 10) : candidates.filter((term) => term.length >= 3).slice(0, 10);
+  const hasSubstantiveNeedNoun = substantiveNeedNounPattern.test(semanticQuery);
+  const specific = candidates.filter(
+    (term) =>
+      term.length >= 3 &&
+      (!genericQueryTerms.has(term) || (term === "need" && hasSubstantiveNeedNoun)),
+  );
+  const fallback = candidates.filter(
+    (term) => term.length >= 3 && (term !== "need" || hasSubstantiveNeedNoun),
+  );
+  return specific.length ? specific.slice(0, 10) : fallback.slice(0, 10);
 }
 
 function textIncludesTerm(text: string, term: string) {
