@@ -16044,6 +16044,14 @@
         "checks": "vitest:54/54; prettier:pass; pr-policy:pass; static-pr:pass; pr-required:pass"
       },
       {
+        "date": "2026-10-17",
+        "ref": "codex/cloud-policy-clarity",
+        "head": "7c719b2bc43688d3620336d043d1c13d98750725",
+        "scope": "prlanded",
+        "outcome": "PR #3581 (a5b118f952) and PR #3587 (7c719b2bc4) squash-merged cleanly into origin/main; content diff empty and local branch tip db82acc1df is an ancestor of merged PR head adf52eac1c; worktree and branch preserved (no cleanup requested)",
+        "checks": "gh pr view 3581/3587, git fetch origin, git merge-base --is-ancestor db82acc1df adf52eac1c, git diff 7c719b2bc4 adf52eac1c"
+      },
+      {
         "date": "2026-07-31",
         "ref": "origin/claude/clinical-design-system-update-e34ca9",
         "head": "7c7a5263ee44f4a4a2bfa2b0381b76d7d9a9c3b1",

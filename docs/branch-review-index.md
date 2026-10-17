@@ -15,13 +15,14 @@ Retention and rotation: [`branch-review-archival-policy.md`](branch-review-archi
 
 ## Summary
 
-- Records: 703
-- Distinct ref cells: 452
-- Distinct reviewed heads: 685
-- Date range: `2026-08-12` to `2026-10-16`
+- Records: 707
+- Distinct ref cells: 453
+- Distinct reviewed heads: 689
+- Date range: `2026-08-12` to `2026-10-17`
 
 Records per date, newest first:
 
+- `2026-10-17` — 4 records
 - `2026-10-16` — 4 records
 - `2026-10-15` — 3 records
 - `2026-10-14` — 1 record
@@ -78,6 +79,10 @@ Scope and outcome are truncated; follow the record link for the full six-cell ro
 
 | Date | Ref | Scope | Outcome | Record |
 | --- | --- | --- | --- | --- |
+| 2026-10-17 | codex/cloud-policy-clarity | prlanded | PR #3581 (a5b118f952) and PR #3587 (7c719b2bc4) squash-merged cleanly… | [16df9092](branch-review-records/16df90928a34e2941ef9c2892b7f48d92e09e12f470af635ef15e4ee3677b0b9.record.md) |
+| 2026-10-17 | claude/rag-ingestion-hardening | prlanded | PR #3596 squash-merged cleanly into main at 45fc04c42f0867bc9802ffc93f… | [1ae2c7f8](branch-review-records/1ae2c7f8f7762d8e1d81898ed83a701be7cbd007c80be5a3d83e39470ced9461.record.md) |
+| 2026-10-17 | claude/rag-ingestion-hardening | RAG retrieval/summary/cache generation isolation and ingestion worker/edge hardening | resolved | [5349150e](branch-review-records/5349150e82f255e42866975fa7aa5e9fe76601433ebc427c75226677c5bef854.record.md) |
+| 2026-10-17 | claude/rag-ingestion-hardening | RAG and Ingestion review follow-ups | Resolved PR review findings, repaired bot-applied regressions, and res… | [94a7d790](branch-review-records/94a7d7908ea7ff58edaecb6ebd9fd41f72d422ad6d345190046cfd5ed2d4372d.record.md) |
 | 2026-10-16 | fix/adversarial-remediation-20261016 | Adversarial assessment + parallel fix swarm + post-fix adversarial review across calculato… | All P0/P1/P2 findings fixed and verified; zero RAG files touched | [2a6b6200](branch-review-records/2a6b620065f5371039438fdbff73be97da6baf6c40dace3596e26c7bad0047dd.record.md) |
 | 2026-10-16 | codex/cloud-policy-clarity | Codex Cloud reasoning-effort and raw-env policy overhaul | PASS (0 blocking findings; removed all xhigh prompt-marker references… | [3dd0e7e3](branch-review-records/3dd0e7e32634c00735102bf22ba9883745ad72dc5db730b1dce2c33f03e699f0.record.md) |
 | 2026-10-16 | codex/cloud-policy-clarity | Codex Cloud environment script and shell-profile hardening | PASS (0 blocking findings; hardened .bashrc prepend, command-shim fall… | [7f059fca](branch-review-records/7f059fca46aac02223aa9f81e3d88a1a08f2b8a4844646d3a8eaa2cabd493c33.record.md) |
