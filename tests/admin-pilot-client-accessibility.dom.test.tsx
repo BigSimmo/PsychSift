@@ -6,15 +6,20 @@
 // pilot-client digest. This pins it to the current client on every change.
 // It is not a screen-reader run.
 
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const listFactors = vi.hoisted(() => vi.fn());
+const challenge = vi.hoisted(() => vi.fn());
+const verifyCode = vi.hoisted(() => vi.fn());
+const getAuthenticatorAssuranceLevel = vi.hoisted(() => vi.fn());
 const announce = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/supabase/browser-client", () => ({
-  browserSupabaseClientFor: () => ({ auth: { mfa: { listFactors } } }),
+  browserSupabaseClientFor: () => ({
+    auth: { mfa: { listFactors, challenge, verify: verifyCode, getAuthenticatorAssuranceLevel } },
+  }),
 }));
 vi.mock("@/components/ui/live-announcer", () => ({ announce }));
 vi.mock("next/image", () => ({
@@ -36,6 +41,9 @@ function renderPilot() {
 afterEach(() => {
   cleanup();
   listFactors.mockReset();
+  challenge.mockReset();
+  verifyCode.mockReset();
+  getAuthenticatorAssuranceLevel.mockReset();
   announce.mockReset();
 });
 
@@ -45,31 +53,43 @@ describe("admin source pilot accessibility", () => {
     renderPilot();
 
     await screen.findByRole("combobox", { name: /authenticator/i });
-    expect(screen.getByRole("region", { name: /verify your authenticator/i })).toBeTruthy();
-    expect(screen.getByRole("region", { name: /admit one approved pilot source/i })).toBeTruthy();
-    expect(screen.getByLabelText(/six-digit authenticator code/i)).toBeTruthy();
-    expect(screen.getByRole("combobox", { name: /approved pilot source/i })).toBeTruthy();
-    expect(screen.getByLabelText(/reviewed four-page native pdf/i)).toBeTruthy();
-    expect(screen.getByRole("checkbox", { name: /operator-approved source authority/i })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /verify code/i })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /admit this pdf/i })).toBeTruthy();
+    const mfa = within(screen.getByRole("region", { name: /verify your authenticator/i }));
+    expect(mfa.getByRole("combobox", { name: /authenticator/i })).toBeTruthy();
+    expect(mfa.getByLabelText(/six-digit authenticator code/i)).toBeTruthy();
+    expect(mfa.getByRole("button", { name: /verify code/i })).toBeTruthy();
+
+    const upload = within(screen.getByRole("region", { name: /admit one approved pilot source/i }));
+    expect(upload.getByRole("combobox", { name: /approved pilot source/i })).toBeTruthy();
+    expect(upload.getByLabelText(/reviewed four-page native pdf/i)).toBeTruthy();
+    expect(upload.getByRole("checkbox", { name: /operator-approved source authority/i })).toBeTruthy();
+    expect(upload.getByRole("button", { name: /admit this pdf/i })).toBeTruthy();
   });
 
-  it("moves keyboard focus through the controls in reading order", async () => {
+  it("moves keyboard focus through the controls in reading order once verified", async () => {
     listFactors.mockResolvedValue(verifiedFactor);
+    challenge.mockResolvedValue({ data: { id: "challenge-synthetic" }, error: null });
+    verifyCode.mockResolvedValue({ data: {}, error: null });
+    getAuthenticatorAssuranceLevel.mockResolvedValue({ data: { currentLevel: "aal2" }, error: null });
     const user = userEvent.setup();
     renderPilot();
-    await waitFor(() =>
-      expect(screen.getByLabelText(/six-digit authenticator code/i)).toHaveProperty("disabled", false),
-    );
+    const code = screen.getByLabelText(/six-digit authenticator code/i);
+    await waitFor(() => expect(code).toHaveProperty("disabled", false));
+
+    // Verify first, so the admit button is enabled and must sit in the tab sequence too.
+    await user.type(code, "123456");
+    await user.click(screen.getByRole("button", { name: /verify code/i }));
+    const admit = screen.getByRole("button", { name: /admit this pdf/i });
+    await waitFor(() => expect(admit).toHaveProperty("disabled", false));
+    (document.activeElement as HTMLElement | null)?.blur();
 
     const expected = [
       screen.getByRole("combobox", { name: /authenticator/i }),
-      screen.getByLabelText(/six-digit authenticator code/i),
+      code,
       screen.getByRole("button", { name: /verify code/i }),
       screen.getByRole("combobox", { name: /approved pilot source/i }),
       screen.getByLabelText(/reviewed four-page native pdf/i),
       screen.getByRole("checkbox", { name: /operator-approved source authority/i }),
+      admit,
     ];
     for (const control of expected) {
       await user.tab();
