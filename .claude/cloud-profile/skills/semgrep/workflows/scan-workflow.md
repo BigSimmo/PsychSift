@@ -4,14 +4,14 @@ Complete 5-step scan execution process. Read from start to finish and follow eac
 
 ## Task System Enforcement
 
-On invocation, create these tasks with dependencies:
+Use the current host's supported task tracker if available; otherwise record these steps as a short checklist with the same dependencies. Tool names below describe tracking actions, not required APIs:
 
 ```
-TaskCreate: "Detect languages and Pro availability" (Step 1)
-TaskCreate: "Select scan mode and rulesets" (Step 2) - blockedBy: Step 1
-TaskCreate: "Present plan with rulesets, get approval" (Step 3) - blockedBy: Step 2
-TaskCreate: "Execute scans with approved rulesets and mode" (Step 4) - blockedBy: Step 3
-TaskCreate: "Merge results and report" (Step 5) - blockedBy: Step 4
+1. Detect languages and local engine evidence
+2. Select scan mode and rulesets — depends on Step 1
+3. Present exact plan, obtain missing approval — depends on Step 2
+4. Execute approved scans — depends on Step 3
+5. Merge results and report — depends on Step 4
 ```
 
 ### Mandatory Gate
@@ -27,7 +27,7 @@ Mark Step 3 as `completed` ONLY after user says "yes", "proceed", "approved", or
 ## Step 1: Resolve Output Directory, Detect Languages and Pro Availability
 
 > **Entry:** User has specified or confirmed the target directory.
-> **Exit:** `OUTPUT_DIR` resolved and created; language list with file counts produced; Pro availability determined.
+> **Exit:** `OUTPUT_DIR` resolved and created; language list with file counts produced; local engine evidence recorded, with Pro usability unverified until authorized execution.
 
 ### Resolve Output Directory
 
@@ -50,22 +50,23 @@ echo "Output directory: $OUTPUT_DIR"
 
 `$OUTPUT_DIR` is used by all subsequent steps. Pass its **absolute path** to scanner subagents. Scanners write raw output to `$OUTPUT_DIR/raw/`; merged/filtered results go to `$OUTPUT_DIR/results/`.
 
-**Detect Pro availability** (requires Bash):
+**Discover the local CLI** (use a supported shell):
 
 ```bash
 if ! command -v semgrep >/dev/null 2>&1; then
   echo "ERROR: semgrep is not installed. Install from https://semgrep.dev/docs/getting-started/"
   exit 1
 fi
-semgrep --version
-semgrep --pro --validate --config p/default 2>/dev/null && echo "Pro: AVAILABLE" || echo "Pro: NOT AVAILABLE"
+SEMGREP_ENABLE_VERSION_CHECK=0 semgrep --metrics=off --version
 ```
 
-**Detect languages** using Glob (not Bash). Run these patterns against the target directory and count matches:
+Inspect existing local installation metadata for Pro if useful; do not read or print credentials. Record installed, absent or unverified evidence without claiming license usability. **Before Step 3 approval, do not resolve registry configs, browse registries, clone rulesets, install tools or run Pro/license/network probes.** A version check is not scan or engine validation. Include any required registry/Pro/network validation in the plan for authorization, then run it only after Step 3.
+
+**Detect languages** using supported file-search tools (a glob tool when available, or `rg --files` with equivalent filters). Apply these patterns to the target directory and count matches:
 
 `**/*.py`, `**/*.js`, `**/*.ts`, `**/*.tsx`, `**/*.jsx`, `**/*.go`, `**/*.rb`, `**/*.java`, `**/*.php`, `**/*.c`, `**/*.cpp`, `**/*.rs`, `**/Dockerfile`, `**/*.tf`
 
-Also check for framework markers: `package.json`, `pyproject.toml`, `Gemfile`, `go.mod`, `Cargo.toml`, `pom.xml`. Use Read to inspect these files for framework dependencies (e.g., read `package.json` to detect React, Express, Next.js; read `pyproject.toml` for Django, Flask, FastAPI).
+Also check for framework markers: `package.json`, `pyproject.toml`, `Gemfile`, `go.mod`, `Cargo.toml`, `pom.xml`. Use supported file-reading tools to inspect framework dependencies (e.g., read `package.json` to detect React, Express, Next.js; read `pyproject.toml` for Django, Flask, FastAPI).
 
 Map findings to categories:
 
@@ -87,10 +88,10 @@ Map findings to categories:
 
 ## Step 2: Select Scan Mode and Rulesets
 
-> **Entry:** Step 1 complete — languages detected, Pro status known.
+> **Entry:** Step 1 complete — languages detected, local CLI evidence and Pro uncertainty recorded.
 > **Exit:** Scan mode selected; structured rulesets JSON compiled for all detected languages.
 
-**First, select scan mode** using `AskUserQuestion`:
+**First, select scan mode.** Preserve an explicit requested mode; otherwise ask using a supported user-input tool or ordinary chat:
 
 ```
 header: "Scan Mode"
@@ -113,7 +114,7 @@ The algorithm covers:
 3. Framework rulesets (if detected)
 4. Infrastructure rulesets
 5. **Required** third-party rulesets (Trail of Bits, 0xdea, Decurity — NOT optional)
-6. Registry verification
+6. Propose registry verification for after Step 3 approval; do not contact a registry during selection
 
 **Output:** Structured JSON passed to Step 3 for user review:
 
@@ -147,6 +148,9 @@ Present plan to user with **explicit ruleset listing**:
 **Target:** /path/to/codebase
 **Output directory:** $OUTPUT_DIR
 **Engine:** Semgrep Pro (cross-file analysis) | Semgrep OSS (single-file)
+**Engine evidence:** Local version/metadata; license usability unverified where applicable
+**Network/provider actions:** Exact registry lookups, ruleset downloads/clones and any Pro/license validation; or explicitly local-only
+**Execution:** Available authorized general worker(s), or bounded direct execution if workers are unavailable or delegation is not authorized
 **Scan mode:** Run all | Important only (security vulns, medium-high confidence/impact)
 
 ### Detected Languages/Technologies:
@@ -182,13 +186,13 @@ Present plan to user with **explicit ruleset listing**:
 **⛔ STOP: Await explicit user approval.**
 
 1. **If user wants to modify rulesets:** Add/remove as requested, re-present the updated plan, return to waiting.
-2. **Use AskUserQuestion** if user hasn't responded:
+2. **Use a supported user-input tool or ordinary chat** when exact-plan authorization is missing:
    ```
    "I've prepared the scan plan with N rulesets (including Trail of Bits). Proceed with scanning?"
    Options: ["Yes, run scan", "Modify rulesets first"]
    ```
 3. **Valid approval:** "yes", "proceed", "approved", "go ahead", "looks good", "run it"
-4. **NOT approval:** User's original request ("scan this codebase"), silence, questions about the plan
+4. **NOT approval:** A generic request ("scan this codebase"), silence, questions about the plan. Reuse an existing explicit approval of the exact target, rulesets, engine, mode and network/provider actions; do not ask for it again.
 
 ### Pre-Scan Checklist
 
@@ -200,7 +204,8 @@ Before marking Step 3 complete:
 - [ ] User given opportunity to modify rulesets
 - [ ] User explicitly approved (quote their confirmation)
 - [ ] **Final ruleset list captured for Step 4**
-- [ ] Agent type listed: `static-analysis:semgrep-scanner`
+- [ ] Registry/Pro/network validation, downloads and provider actions explicitly listed and authorized
+- [ ] Supported execution path listed; any delegation separately authorized
 
 ### Log Approved Rulesets
 
@@ -231,9 +236,10 @@ RULESETS
 
 **Use `$OUTPUT_DIR` resolved in Step 1.** It already exists; no need to create it again. Scanners write all output to `$OUTPUT_DIR/raw/`.
 
-**Spawn N Tasks in a SINGLE message** (one per language category) using `subagent_type: static-analysis:semgrep-scanner`.
+Inspect current-host worker capabilities. When delegation is authorized, use available general-purpose workers with shell/file access, dispatching independent language tasks together. A specialist scanner may be used only if actually exposed by the host; this seed requires no exact agent type. If workers are unavailable or delegation is not authorized, execute the bounded approved tasks directly. Report that fallback and retain host concurrency limits.
 
 Use the scanner task prompt template from [scanner-task-prompt.md](../references/scanner-task-prompt.md).
+Use its [scan-status helper](../scripts/scan-status.sh) for every approved scan. It records each PID and expected fresh JSON/SARIF pair. A nonzero exit, launch failure, missing artifact, invalid output or JSON-reported scan error makes the whole batch incomplete; bare `wait` and a successful subset are not completion evidence. Preserve all diagnostics and report the uncompleted rulesets instead of merging partial success.
 
 **Mode-dependent scanner flags:**
 - **Run all**: No additional flags
@@ -241,7 +247,7 @@ Use the scanner task prompt template from [scanner-task-prompt.md](../references
 
 **Example — 3 Language Scan (with approved rulesets):**
 
-Spawn these 3 Tasks in a SINGLE message:
+When supported and authorized, dispatch these 3 independent tasks together; otherwise run the same approved tasks directly:
 
 1. **Task: Python Scanner** — Rulesets: p/python, p/django, p/security-audit, p/secrets, trailofbits → `$OUTPUT_DIR/raw/python-*.json`
 2. **Task: JavaScript Scanner** — Rulesets: p/javascript, p/react, p/nodejs, p/security-audit, p/secrets, trailofbits → `$OUTPUT_DIR/raw/js-*.json`
@@ -250,16 +256,18 @@ Spawn these 3 Tasks in a SINGLE message:
 ### Operational Notes
 
 - Always use **absolute paths** for `[TARGET]` — subagents can't resolve relative paths
+- Run registry/Pro/network validation and ruleset downloads only when included in Step 3 authorization; `--metrics=off` disables telemetry, not registry access. Keep version checking disabled with `SEMGREP_ENABLE_VERSION_CHECK=0` during execution too.
+- If the approved engine or ruleset is unavailable, stop and report it. Obtain approval for a changed plan rather than silently substituting engines, rulesets or network access.
 - Clone GitHub URL rulesets into `$OUTPUT_DIR/repos/` — never pass URLs directly to `--config` (semgrep's URL handling fails on repos with non-standard YAML)
 - Delete `$OUTPUT_DIR/repos/` after all scans complete
-- Run rulesets in parallel with `&` and `wait`, not sequentially
+- Bound parallel ruleset execution to current-host resource and repository coordinator limits
 - Use `--include="*.py"` for language-specific rulesets, but NOT for cross-language rulesets (p/security-audit, p/secrets, third-party repos)
 
 ---
 
 ## Step 5: Merge Results and Report
 
-> **Entry:** Step 4 complete — all scan Tasks finished.
+> **Entry:** Step 4 complete — every scanner task reports `wait_semgrep_scans` passed for all approved rulesets and expected JSON/SARIF pairs. An incomplete task blocks success and merging even when other tasks produced results.
 > **Exit:** `results.sarif` exists in `$OUTPUT_DIR/results/` and is valid JSON.
 
 **Important-only mode: Post-filter before merge.** Apply the filter from [scan-modes.md](../references/scan-modes.md) ("Filter All Result Files in a Directory" section) to each result JSON in `$OUTPUT_DIR/raw/`. The filter creates `*-important.json` files alongside the originals — the originals are preserved unmodified.

@@ -665,8 +665,11 @@ describe("registration", () => {
 
   it("registers the session line as SessionStart", () => {
     const hooks = (settings.hooks.SessionStart as Entry[]).flatMap((e) => e.hooks);
-    const hook = hooks.find((h) => h.command.includes("organisation-session-line.sh"));
-    expect(hook?.command).toBe('bash "$CLAUDE_PROJECT_DIR/.claude/hooks/organisation-session-line.sh"');
+    const hook = hooks.find((h) => h.command.includes("scripts/claude-session-start.sh"));
+    expect(hook?.command).toBe('bash "$CLAUDE_PROJECT_DIR/scripts/claude-session-start.sh"');
     expect(typeof hook?.timeout).toBe("number");
+    expect(fs.readFileSync(path.join(repoRoot, "scripts", "claude-session-start.mjs"), "utf8")).toContain(
+      ".claude/hooks/organisation-session-line.sh",
+    );
   });
 });

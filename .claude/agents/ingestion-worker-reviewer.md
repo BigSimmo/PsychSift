@@ -23,7 +23,7 @@ Follow `AGENTS.md` review throttling and `docs/codex-review-protocol.md` before 
 
 ## Provider boundary
 
-Ingestion checks against live services and any reindex that spends OpenAI budget are confirmation-required (`AGENTS.md`). Report the command and ask. Note the worker stack (Deno edge functions, Python OCR in `worker/python/requirements.txt`) does not run in this VM — do not attempt to execute it.
+Ingestion checks against live services and any reindex that spends OpenAI budget are confirmation-required (`AGENTS.md`). Report the command and ask. Inspect current-host capabilities before selecting offline worker checks: confirm the required Deno/Python binaries and the specific command's local dependencies, fixtures and service needs. Run supported offline checks when available; report missing capabilities and unrun evidence precisely. A provisioned runtime does not authorize live ingestion, reindexing, downloads or provider spend.
 
 ## Review Checklist
 

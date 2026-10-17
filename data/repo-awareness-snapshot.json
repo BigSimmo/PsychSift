@@ -2535,6 +2535,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/agents/cloud-instruction-activation.md",
+        "section": "agents",
+        "catalogued": true
+      },
+      {
         "path": "docs/product/clinical-trust-direction.md",
         "section": "product",
         "catalogued": true
@@ -3047,6 +3052,11 @@
       {
         "path": "docs/superpowers/plans/2026-09-01-native-smart-catalogue-search.md",
         "section": "superpowers",
+        "catalogued": true
+      },
+      {
+        "path": "docs/agents/codex-cloud-legacy-bootstrap.md",
+        "section": "agents",
         "catalogued": true
       },
       {
@@ -4342,6 +4352,11 @@
       {
         "path": "docs/superpowers/plans/2026-08-20-rag-ingestion-reindex.md",
         "section": "superpowers",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-17-cloud-installed-guidance-ownership.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -11505,6 +11520,14 @@
         "checks": "`git diff --check` and `npm run sitemap:check` passed. `npm run test` was attempted twice but blocked by the repository-wide heavy-command lock held by a separate Playwright worktree; no provider-backed checks ran."
       },
       {
+        "date": "2026-10-17",
+        "ref": "claude/rag-ingestion-hardening",
+        "head": "45fc04c42f0867bc9802ffc93f0ed42fd658b371",
+        "scope": "prlanded",
+        "outcome": "PR #3596 squash-merged cleanly into main at 45fc04c42f0867bc9802ffc93f0ed42fd658b371; stable patch-id c6055c7a792f5f2a7bd96d5376a8cab43f8a1954 matches branch tip d4b592b0a0b375cbbc1df3d167dd720919afcf3f with zero orphaned commits",
+        "checks": "gh pr view 3596; git rev-list --parents; git patch-id --stable (c6055c7a792f5f2a7bd96d5376a8cab43f8a1954)"
+      },
+      {
         "date": "2026-08-11",
         "ref": "HEAD",
         "head": "45fd05c8c3947835c0368666ff576c7a38b33ee4",
@@ -16049,6 +16072,14 @@
         "checks": "vitest:54/54; prettier:pass; pr-policy:pass; static-pr:pass; pr-required:pass"
       },
       {
+        "date": "2026-10-17",
+        "ref": "codex/cloud-policy-clarity",
+        "head": "7c719b2bc43688d3620336d043d1c13d98750725",
+        "scope": "prlanded",
+        "outcome": "PR #3581 (a5b118f952) and PR #3587 (7c719b2bc4) squash-merged cleanly into origin/main; content diff empty and local branch tip db82acc1df is an ancestor of merged PR head adf52eac1c; worktree and branch preserved (no cleanup requested)",
+        "checks": "gh pr view 3581/3587, git fetch origin, git merge-base --is-ancestor db82acc1df adf52eac1c, git diff 7c719b2bc4 adf52eac1c"
+      },
+      {
         "date": "2026-07-31",
         "ref": "origin/claude/clinical-design-system-update-e34ca9",
         "head": "7c7a5263ee44f4a4a2bfa2b0381b76d7d9a9c3b1",
@@ -16319,6 +16350,14 @@
         "scope": "pr #1998 clinical filter overhaul",
         "outcome": "PASS",
         "checks": "typecheck, vitest (filters, sheets, search band, dom panels), prettier"
+      },
+      {
+        "date": "2026-10-17",
+        "ref": "claude/add-prlanded-skill",
+        "head": "7e6fd2d557d53e22dfa6ea37b8921007fe4b0dfa",
+        "scope": "prlanded",
+        "outcome": "PASS (0 blocking findings; added .agents/skills/prlanded canonical skill, registered cross-surface twin in list-database-skills.mjs, updated skill inventory tests, and recorded prlanded proofs for PRs #3581/#3587 and #3596)",
+        "checks": "npm run check:skills, vitest run tests/database-skills.test.ts tests/repository-skill-inventory.test.ts (15/15), npm run docs:maintain:check, check-format-changed"
       },
       {
         "date": "2026-07-13",

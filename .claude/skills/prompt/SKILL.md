@@ -7,6 +7,8 @@ description: Perfect a rough request or draft prompt using relevant context, att
 
 Turn the user's request and relevant supplied context into a precise, ready-to-use prompt, then carry it out. Preserve intent, avoid scope creep, and use only the detail, context, tools, and validation that change the result.
 
+**Default for this skill:** refine, show the perfected prompt, then execute within existing authority. The separately named repository `prompt-perfector` skill refines only unless execution is explicit; it is not an alias. Preserve the invoked skill's default and the user's latest explicit controls.
+
 ## Operating principles
 
 - Put the outcome, constraints, and success criteria ahead of process detail.

@@ -16,17 +16,17 @@ export const repositorySkillSurfaces = [
   { name: "PsychSift plugin", root: path.join(repositoryRoot, "plugins", "clinical-kb", "skills") },
 ];
 export const expectedRepositorySkillSurfaceCounts = {
-  Codex: 43,
+  Codex: 44,
   Claude: 9,
   Cursor: 15,
   "PsychSift plugin": 1,
 };
 
 /** Same frontmatter `name` across Claude/Codex/Cursor/plugin is allowed only for
- *  intentional twins. Today that is `ledger` (Codex thin-pointer → Claude procedure).
+ *  intentional twins. Today those are `ledger` and `prlanded` (Codex thin-pointer → Claude procedure).
  *  Opposite jobs under one name (the old Claude acquisition vs Codex governance
  *  `sources` collision) must fail closed. */
-export const CROSS_SURFACE_NAME_TWINS = new Set(["ledger"]);
+export const CROSS_SURFACE_NAME_TWINS = new Set(["ledger", "prlanded"]);
 
 function wordCount(value) {
   return String(value || "")
@@ -260,6 +260,10 @@ export function validateRepositorySkillPolicies(
     "run `npm run format`",
   ]);
   requireContract(".claude/skills/prlanded/SKILL.md", [
+    "require an explicit cleanup request",
+    "does not itself authorize deletion",
+  ]);
+  requireContract(".agents/skills/prlanded/SKILL.md", [
     "require an explicit cleanup request",
     "does not itself authorize deletion",
   ]);

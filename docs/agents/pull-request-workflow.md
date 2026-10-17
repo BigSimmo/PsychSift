@@ -106,7 +106,7 @@ Following the PR is ordinary work:
   to every fix before it is pushed. Never weaken workflows or delete required checks to force
   green.
 - Look on a **slow cadence** — roughly five minutes between checks, and wait with
-  `ScheduleWakeup` or `Monitor` (or the tool's own terminal-event wait) rather than polling
+  the current host's supported event/wait mechanism rather than polling
   tightly. Prefer a terminal-event wait over repeated log reads; never stream logs
   minute-by-minute.
 - **Stop as soon as CI settles.** A green run ends the follow; so does a failure that is not this
@@ -143,7 +143,7 @@ about sweep pacing, not about how long a session may follow its own just-opened 
 `.claude/settings.json`) drops a session-scoped marker when a PR-creating call — `gh pr create`
 or any `create_pull_request` MCP tool — returns a real PR URL, and denies `CronCreate` for the
 rest of that session. Nothing else is restricted: `gh pr` reads, GitHub MCP PR/CI tools,
-`Monitor`, `ScheduleWakeup`, committing, pushing, ledger appends, and PR create/merge are all
+supported event waits, committing, pushing, ledger appends, and PR create/merge are all
 ordinary work. Sessions that never create a PR are untouched, so `Run PR` sweeps, `pr-ci-fix`
 work, and review sessions on someone else's PR still function normally.
 

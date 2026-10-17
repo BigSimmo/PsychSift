@@ -27,7 +27,7 @@ Check these before believing any result.
   for exactly this reason — if installed packages do not match `package-lock.json`, treat any test,
   lint, or typecheck result as void until `npm ci` has run. Its own failure message says as much.
 - **`verify:full` stops at the first failing check.** Everything after that point never ran. Do not
-  describe the change as broadly verified when the gate died at check 2 of 45.
+  describe the change as broadly verified when the gate died at check 2 of 46.
 - **Changed-file formatting is required in CI but is part of neither gate.** A locally green
   `verify:cheap` can still fail CI on formatting. During iteration, format only task-owned files.
   Before a push, follow `AGENTS.md`: from an isolated or otherwise fully owned worktree run
@@ -42,16 +42,16 @@ Match the gate to what actually changed. Running a broader gate is not more rigo
 observe the change; running a narrower one is not sloppy if it can. Add a second gate only when it
 covers a distinct plausible regression and the incremental confidence justifies its cost.
 
-| Change                      | Gate that can actually fail                                                                                                                 |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| Markdown / docs only        | `prettier --check`, `docs:check-links`, `docs:check-index`                                                                                  |
-| Localised source behavior   | `test:focused -- --files <paths>`                                                                                                           |
-| Ordinary pre-PR check       | `verify:cheap` — `check:installed-lock-parity` + `check:diff-integrity` + `lint` + `typecheck` + `test`                                     |
-| Cross-module/unknown scope  | `verify:full` — 42 static gates (`check:runtime` through `check:offline-pack` terminal static gate) then `lint` + `typecheck` + unit `test` |
-| Before PR handoff           | `verify:pr-local` (risk-routed; inspect with `--dry-run`)                                                                                   |
-| UI, styling, routing, a11y  | `npm run ensure`, affected journey, broad UI only when shared                                                                               |
-| Phone chrome                | `verify:phone-chrome` (narrower than `verify:ui`; run it first)                                                                             |
-| Explicit release confidence | `verify:release` (includes `build` + full Playwright + governance/eval; provider approval required)                                         |
+| Change                      | Gate that can actually fail                                                                                                              |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Markdown / docs only        | `prettier --check`, `docs:check-links`, `docs:check-index`                                                                               |
+| Localised source behavior   | `test:focused -- --files <paths>`                                                                                                        |
+| Ordinary pre-PR check       | `verify:cheap` — `check:installed-lock-parity` + `check:diff-integrity` + `lint` + `typecheck` + `test`                                  |
+| Cross-module/unknown scope  | `verify:full` — static gates (`check:runtime` through `check:offline-pack` terminal static gate) then `lint` + `typecheck` + unit `test` |
+| Before PR handoff           | `verify:pr-local` (risk-routed; inspect with `--dry-run`)                                                                                |
+| UI, styling, routing, a11y  | `npm run ensure`, affected journey, broad UI only when shared                                                                            |
+| Phone chrome                | `verify:phone-chrome` (narrower than `verify:ui`; run it first)                                                                          |
+| Explicit release confidence | `verify:release` (includes `build` + full Playwright + governance/eval; provider approval required)                                      |
 
 `lint`, `typecheck`, and `test` cannot observe a markdown-only change. Say so rather than running
 them for appearance.
@@ -76,8 +76,11 @@ Never run provider-backed gates without explicit user confirmation: `eval:rag`, 
 `eval:retrieval:quality`, `verify:release`, `check:supabase-project`, `test:live`, and any GitHub,
 Supabase, OpenAI, or hosted-CI call. Report the command and ask instead of running it.
 
-The only standing exception is the user typing `Run PR`, and that authorises only the GitHub actions
-enumerated in the `run-pr` skill, for that sweep alone.
+Use the canonical [API and provider confirmation boundary](../../../AGENTS.md#api-and-provider-confirmation-boundary)
+for standing authorization, including the distinct `Run PR` and `Clear PRs` shortcut scopes.
+Preserve each shortcut's duration, actions and exclusions in
+[the PR workflow](../../../docs/agents/pull-request-workflow.md); do not ask again for an already
+authorized action or extend that authorization to another action.
 
 ## Third-party claims are not evidence
 

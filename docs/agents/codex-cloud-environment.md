@@ -61,6 +61,8 @@ The [archived legacy runbook](../archive/codex-cloud-legacy-profile-2026-10-16.m
 the owner or selected environment explicitly adopts it, or a task tests/repairs that bootstrap.
 Linux, a `connected` host label, `CODEX_CLOUD=1` or an earlier probe does not select it.
 Do not install its shims, force profile variables or rerun maintenance for an unrelated host.
+For the retained bootstrap's checkout containment, config-home selection, cache identity and
+read-only retirement inventory, use [the current legacy bootstrap notes](codex-cloud-legacy-bootstrap.md).
 
 An explicit legacy environment/runtime check retains its fail-closed credential, profile, base,
 toolchain and browser contracts. A configured legacy profile selects that validation; an invalid
@@ -95,6 +97,9 @@ an identical restart is not a repair. A repository edit cannot remove a variable
 by a running process. Do not claim which component injected a value without evidence.
 
 ### Activation and retained context
+
+Use [Cloud instruction activation](cloud-instruction-activation.md) to verify the selected source,
+installed host and fresh native session separately across supported clients.
 
 Host settings, repository revisions and active chat context update separately. Changing an
 environment does not edit Git files; local edits do not reach other checkouts until published and

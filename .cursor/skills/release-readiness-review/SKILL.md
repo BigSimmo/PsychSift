@@ -5,7 +5,7 @@ description: Reviews build validation, linting/type-checking, target database ch
 
 # Release Readiness Review Skill
 
-Use this skill when preparing a branch for merging, pull request submission, or production deployment.
+Use this skill for explicitly requested staging or production release readiness. For routine development or PR handoff, use [the canonical gate selector](../../../docs/agents/verification-gates.md#gate-selection). Bare PR publication follows the separate publication route in `AGENTS.md` and does not invoke readiness work.
 
 ## Repository Review Protocol
 
@@ -23,4 +23,4 @@ Follow `AGENTS.md` review throttling and `docs/codex-review-protocol.md` before 
 
 - **Preflight Verification:** Complete all checklist items in `.github/pull_request_template.md`.
 - **Secret Scan:** Confirm no private configuration files (`.env.local`), local debug logs, or keys are present in the git stage.
-- **Production Readiness Check:** Run `npm run check:production-readiness` for privacy, ingestion, or clinical behavior changes.
+- **Production Readiness Check:** Follow [the canonical gate selector](../../../docs/agents/verification-gates.md#gate-selection): routine work uses the smallest relevant offline domain check, with `npm run check:production-readiness:ci` when readiness or configuration structure is in scope. Before production release or activation, run the bare `npm run check:production-readiness` in release mode with all applicable clinical, privacy, legal, security and provider approvals. Pending release approvals block release or activation.
