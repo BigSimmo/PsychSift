@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "id": "4225c6be-7433-4217-a1d9-6e2f62cc6028",
+  "createdOn": "2026-10-17",
+  "action": "cancel",
+  "payload": {
+    "requestId": "d4e961f3-7642-4350-8405-ad335d16e01d",
+    "reason": "The hostile-class extraction cases use scripted extractor outcomes on an ordinary PDF, so they do not prove the real extractor handles hostile PDF bytes; #7D8WZ2 stays open until real hostile fixtures reach the production extractor."
+  }
+}

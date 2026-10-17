@@ -92,13 +92,21 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
     }
 
     const seed = publicRegistryDetailPayload(kind, normalizedSlug);
+    const isServiceRecordPayload = (value: Record<string, unknown>): value is ServiceRecord & Record<string, unknown> =>
+      typeof value.slug === "string" && typeof value.title === "string";
+    const assertServiceRecordPayload = (value: Record<string, unknown>): ServiceRecord => {
+      if (!isServiceRecordPayload(value)) {
+        throw new Error("Invalid canonical registry record payload.");
+      }
+      return value;
+    };
     const canonical = await readCanonicalSiteContentRecords({
       supabase,
       kind,
       slug: normalizedSlug,
       seeds: seed ? [seed] : [],
       mapRecord: ({ canonicalRecord, finalRenderPayload }) => ({
-        record: finalRenderPayload as unknown as ServiceRecord,
+        record: assertServiceRecordPayload(finalRenderPayload),
         governance: canonicalSiteContentGovernance(canonicalRecord),
         linkedDocuments: [],
       }),

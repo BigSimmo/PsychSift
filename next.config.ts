@@ -60,8 +60,8 @@ const nextConfig: NextConfig = {
   devIndicators: false,
   // Roster's file reader imports exceljs, whose zip dependency optionally requires
   // @aws-sdk/client-s3. Bundling it fails the build on that missing optional module, so the
-  // server loads exceljs from the runtime's production node_modules instead.
-  serverExternalPackages: ["exceljs"],
+  // server loads exceljs and native/binary document extractors from production node_modules.
+  serverExternalPackages: ["exceljs", "pdf-parse", "mammoth", "sharp"],
   experimental: {
     // Default 1 is the safe fallback for a Node-24 webpack WasmHash worker crash
     // seen on constrained local builds (see the webpack hashFunction override

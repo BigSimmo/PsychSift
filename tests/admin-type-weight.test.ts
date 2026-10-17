@@ -1,19 +1,11 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+
+import { scanOffendingLines, sourceFiles } from "./helpers/type-weight-scanner";
 
 const ADMIN_ROOTS = ["src/components/admin", "src/lib/admin", "src/app/(search-app)/admin"];
 
-function filesUnder(root: string): string[] {
-  return readdirSync(root).flatMap((name) => {
-    const path = join(root, name);
-    if (statSync(path).isDirectory()) return filesUnder(path);
-    return /\.tsx?$/.test(name) ? [path] : [];
-  });
-}
-
 /** Renewals renders On Call's compliance section, so Task 6 appends that file here. */
-const ADMIN_WEIGHT_FILES: readonly string[] = [...ADMIN_ROOTS.flatMap(filesUnder)];
+const ADMIN_WEIGHT_FILES: readonly string[] = sourceFiles(ADMIN_ROOTS);
 
 /**
  * Standard §1: 400 body, 500 names and labels, 600 headings and buttons, nothing heavier.
@@ -29,11 +21,6 @@ describe("Admin type weights (standard §1)", () => {
   });
 
   it("uses no weight above 600", () => {
-    const offending = ADMIN_WEIGHT_FILES.flatMap((file) =>
-      readFileSync(file, "utf8")
-        .split("\n")
-        .flatMap((line, index) => (HEAVIER_THAN_600.test(line) ? [`${file}:${index + 1}: ${line.trim()}`] : [])),
-    );
-    expect(offending).toEqual([]);
+    expect(scanOffendingLines(ADMIN_WEIGHT_FILES, HEAVIER_THAN_600)).toEqual([]);
   });
 });

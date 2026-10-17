@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "fc8e9191-056d-4912-95ee-097581ed463d",
+  "createdOn": "2026-10-17",
+  "action": "done",
+  "payload": {
+    "id": "#AW8SRK",
+    "outcome": "Removed the unconditional production 503 refusal in src/app/api/teaching/assessments/dual-sign-off/route.ts and connected GET/POST to DurableClinicalAssessmentRepository backed by public.registrar_assessments with actor authorization, pre-approval trainee redaction, rate limiting, and 413 bounded-JSON protection; verified with tests/teaching-dual-sign-off-durable.test.ts.",
+    "baseRowFingerprint": "c2bb35c9383203c21735861b4aeef216b8e706be77543a210dec147e2091c655",
+    "targetUlid": "01M4R2M9Y3AW8SRK103GE4JH9E"
+  }
+}

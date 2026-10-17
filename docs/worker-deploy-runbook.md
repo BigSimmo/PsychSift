@@ -661,3 +661,20 @@ Redeploy the previous image tag. The worker holds no durable local state; all
 artifact writes are idempotent per generation/chunk-key, and completion is
 gated by the strict completion RPCs plus the edge agent, so a redeploy costs at
 most one stale window of latency on any in-flight job and zero data loss.
+
+### Scoped Node worker claims
+
+`WORKER_ALLOWED_DOCUMENT_IDS` is a comma-separated UUID allowlist;
+`WORKER_ALLOWED_FILE_TYPES` is a comma-separated MIME-type allowlist (for example,
+`text/plain,application/pdf`). Blank lists leave that dimension unrestricted;
+when both lists are set, a job must satisfy both. MIME types are case-insensitive
+and ignore parameters such as `charset`. UUIDs are normalized to lowercase.
+
+The worker passes active lists to the five-argument `claim_ingestion_jobs` overload.
+The database filters candidates before acquiring leases, then rechecks the locked
+document's MIME type. Unrelated queued jobs neither block scoped jobs nor consume
+attempts. Existing workers with no scope keep using the three-argument contract.
+A scoped worker requires the scope migration; a missing overload fails closed
+rather than falling back to an unfiltered claim. The migration changes the live
+database when merged to `main`: merge only inside the owner's specifically
+approved database-change window. No live database change is authorized by this PR.

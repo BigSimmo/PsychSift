@@ -54,6 +54,32 @@ function notFoundResponse(slug: string) {
 
 const differentialSlugSchema = z.string().trim().min(1).max(128);
 
+function isPresentationWorkflowPayload(
+  payload: Record<string, unknown>,
+): payload is DifferentialPresentationWorkflow & Record<string, unknown> {
+  return typeof payload.id === "string" && typeof payload.title === "string" && Array.isArray(payload.candidates);
+}
+
+function assertPresentationWorkflowPayload(payload: Record<string, unknown>): DifferentialPresentationWorkflow {
+  if (!isPresentationWorkflowPayload(payload)) {
+    throw new Error("Invalid canonical differential presentation workflow payload.");
+  }
+  return payload;
+}
+
+function isDifferentialRecordPayload(
+  payload: Record<string, unknown>,
+): payload is DifferentialRecord & Record<string, unknown> {
+  return typeof payload.slug === "string" && typeof payload.title === "string" && Array.isArray(payload.sections);
+}
+
+function assertDifferentialRecordPayload(payload: Record<string, unknown>): DifferentialRecord {
+  if (!isDifferentialRecordPayload(payload)) {
+    throw new Error("Invalid canonical differential record payload.");
+  }
+  return payload;
+}
+
 export async function GET(request: Request, context: { params: Promise<{ slug: string }> }) {
   try {
     const { slug } = await context.params;
@@ -139,7 +165,7 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
           // Canonical payloads were seeded before presentation scope existed, so
           // they are relabelled here too — see scopeDifferentialRecord.
           mapRecord: ({ canonicalRecord, finalRenderPayload }) => ({
-            workflow: scopePresentationWorkflow(finalRenderPayload as unknown as DifferentialPresentationWorkflow),
+            workflow: scopePresentationWorkflow(assertPresentationWorkflowPayload(finalRenderPayload)),
             governance: canonicalSiteContentGovernance(canonicalRecord),
           }),
         });
@@ -175,7 +201,7 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
           ]
         : [],
       mapRecord: ({ canonicalRecord, finalRenderPayload }) => ({
-        record: scopeDifferentialRecord(finalRenderPayload as unknown as DifferentialRecord),
+        record: scopeDifferentialRecord(assertDifferentialRecordPayload(finalRenderPayload)),
         governance: canonicalSiteContentGovernance(canonicalRecord),
       }),
     });

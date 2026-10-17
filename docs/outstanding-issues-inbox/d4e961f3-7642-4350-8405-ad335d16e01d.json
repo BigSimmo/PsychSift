@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "d4e961f3-7642-4350-8405-ad335d16e01d",
+  "createdOn": "2026-10-17",
+  "action": "done",
+  "payload": {
+    "id": "#7D8WZ2",
+    "outcome": "Added end-to-end upload -> extraction -> chunking -> retrieval -> answer prompt assembly integration tests across all 7 hostile document classes in tests/hostile-document-ingestion-matrix.test.ts.",
+    "targetUlid": "01M51JV9GC7D8WZ29KQKRSF5HP"
+  }
+}

@@ -1736,3 +1736,23 @@ describe("dead stem regex fixes (#HD1C6W)", () => {
     expect(rendered?.answer.grounded).toBe(true);
   });
 });
+
+describe("upper-limit comparator with clinical units", () => {
+  it.each(["5 mg", "1.5 × 10^9/L"])("keeps no more than and its unit together: %s", (quantity) => {
+    for (const [answerComparator, sourceComparator] of [
+      ["no more than", "at most"],
+      ["at most", "no more than"],
+    ]) {
+      const evidence = source({ content: `Use ${sourceComparator} ${quantity}.` });
+      const verified = verifyAnswerNumbers(
+        `Use ${answerComparator} ${quantity}.`,
+        [{ chunk_id: evidence.id }],
+        [evidence],
+      );
+      expect(verified.unverifiedTokens).toEqual([]);
+      expect(
+        verifyAnswerNumbers(`Use at least ${quantity}.`, [{ chunk_id: evidence.id }], [evidence]).hasUnverifiedNumbers,
+      ).toBe(true);
+    }
+  });
+});

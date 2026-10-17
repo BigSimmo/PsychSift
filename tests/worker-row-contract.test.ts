@@ -324,6 +324,35 @@ describe("rejected claim terminal transition", () => {
 });
 
 describe("worker claim rejection isolation", () => {
+  it("passes scope into the atomic claim without a preflight queue read", async () => {
+    const { createWorkerRuntime } = await import("../worker/main");
+    const good = claimedRow();
+    vi.stubEnv("WORKER_ALLOWED_DOCUMENT_IDS", ` ${good.document_id.toUpperCase()} `);
+    vi.stubEnv("WORKER_ALLOWED_FILE_TYPES", " TEXT/PLAIN; charset=utf-8 ");
+    const from = vi.fn(() => {
+      throw new Error("scope must not use a queue snapshot");
+    });
+    const rpc = vi.fn(async (_name: string, args: Record<string, unknown>) => {
+      good.locked_by = String(args.p_worker_id);
+      good.documents.file_type = "text/plain";
+      return { data: [good], error: null };
+    });
+    try {
+      const runtime = createWorkerRuntime({ client: { rpc, from } as unknown as SupabaseClient });
+      expect(await runtime.claimJobs()).toEqual([good]);
+      expect(from).not.toHaveBeenCalled();
+      expect(rpc).toHaveBeenCalledWith(
+        "claim_ingestion_jobs",
+        expect.objectContaining({
+          p_allowed_document_ids: [good.document_id],
+          p_allowed_file_types: ["text/plain"],
+        }),
+      );
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it.each([
     { data: { ok: false, reason: "lease_lost" }, error: null },
     { data: null, error: { message: "synthetic transport failure" } },

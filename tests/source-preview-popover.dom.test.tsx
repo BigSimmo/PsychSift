@@ -145,6 +145,17 @@ describe("SourcePreviewPopover", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Preferred" })).toHaveFocus());
   });
 
+  it("lets Tab leave the non-modal preview from its last control instead of looping focus", async () => {
+    render(<Harness open onClose={() => {}} />);
+    const link = screen.getByRole("link", { name: "Open document" });
+    await waitFor(() => expect(link).toHaveFocus());
+
+    const tab = new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true });
+    link.dispatchEvent(tab);
+
+    expect(tab.defaultPrevented).toBe(false);
+  });
+
   it("focuses the surface itself when it holds nothing focusable", async () => {
     render(
       <Harness open onClose={() => {}}>

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   createGenerationDegradationRecorder,
   compareGenerationAlternatives,
@@ -408,10 +408,70 @@ describe("P12A selected generation diagnostic identity", () => {
   });
 });
 
+describe("#231 generation degradation telemetry switch and wire", () => {
+  it("records per-attempt observations when enabled=false while keeping answer.generationDegradation undefined", async () => {
+    const { readObservedGenerationDegradation } = await import("../src/lib/rag/rag-generation-degradation");
+    const { answerScopedEvidenceMetadata, generationDegradationTelemetryFields } =
+      await import("../src/lib/rag/rag-answer-telemetry-metadata");
+
+    const timeoutAnswer = structuredClone(delivered);
+    const timeoutRecorder = createGenerationDegradationRecorder({ enabled: false, routeBudgetMs: 35000 });
+    timeoutRecorder.start({
+      route: "fast",
+      timeoutMs: 12000,
+      outputBudget: "standard",
+      retrievalHealthy: true,
+      coverage: "complete",
+      contextCount: 3,
+    });
+    timeoutRecorder.fail("timeout", 12000);
+    expect(timeoutRecorder.finish(timeoutAnswer, true)).toBeUndefined();
+    expect(readObservedGenerationDegradation(timeoutAnswer)?.reason).toBe("provider_initial_attempt_timeout");
+    expect(generationDegradationTelemetryFields(timeoutAnswer)).toEqual({
+      generation_degradation_reason: "provider_initial_attempt_timeout",
+      generation_degradation_attempt_count: 1,
+      generation_degradation_completed_response_count: 0,
+      generation_degradation_total_attempt_latency_ms: 12000,
+      generation_degradation_initial_outcome: "timeout",
+      generation_degradation_initial_latency_ms: 12000,
+      generation_degradation_initial_timeout_ms: 12000,
+    });
+
+    const qualityAnswer = { ...structuredClone(delivered), sources: [] };
+    const qualityRecorder = createGenerationDegradationRecorder({ enabled: false, routeBudgetMs: 35000 });
+    response(qualityRecorder);
+    qualityRecorder.retry("template_like_answer", "admitted", 22000);
+    qualityRecorder.start({
+      route: "strong",
+      timeoutMs: 20000,
+      outputBudget: "recovery",
+      retrievalHealthy: true,
+      coverage: "complete",
+      contextCount: 3,
+    });
+    qualityRecorder.fail("timeout", 20000);
+    expect(qualityRecorder.finish(qualityAnswer, true)).toBeUndefined();
+    const metadata = answerScopedEvidenceMetadata("clozapine monitoring", "medication_dose_risk", qualityAnswer);
+    expect(metadata).toMatchObject({
+      generation_degradation_reason: "provider_quality_retry_exhausted",
+      generation_degradation_attempt_count: 2,
+      generation_degradation_completed_response_count: 1,
+      generation_degradation_total_attempt_latency_ms: 20012,
+      generation_degradation_initial_outcome: "completed",
+      generation_degradation_initial_latency_ms: 12,
+      generation_degradation_initial_timeout_ms: 30000,
+    });
+  });
+});
+
 describe("generationDegradationLogMetadata (#231) and worker pre-claim scope filter", () => {
   it("emits scalar telemetry metadata even when public generationDegradation rollout is off", async () => {
     const { generationDegradationLogMetadata } = await import("../src/lib/rag/rag-generation-degradation");
-    const r = createGenerationDegradationRecorder({ enabled: false, routeBudgetMs: 35000 });
+    const r = createGenerationDegradationRecorder({
+      enabled: false,
+      routeBudgetMs: 35000,
+      remainingRouteBudgetMs: () => 2000,
+    });
     r.start({
       route: "strong",
       timeoutMs: 30000,
@@ -427,7 +487,7 @@ describe("generationDegradationLogMetadata (#231) and worker pre-claim scope fil
       generation_degradation_attempt_count: 1,
       generation_degradation_completed_response_count: 0,
       generation_degradation_total_attempt_latency_ms: 30000,
-      generation_degradation_remaining_route_budget_ms: 5000,
+      generation_degradation_remaining_route_budget_ms: 2000,
       provider_initial_attempt_timeout: true,
       provider_quality_retry_exhausted: false,
     });
@@ -474,5 +534,49 @@ describe("generationDegradationLogMetadata (#231) and worker pre-claim scope fil
         nowMs,
       ),
     ).toBe(false);
+  });
+});
+
+describe("unserved production generator observations", () => {
+  it("records a real observed-generator timeout and captures the deadline at completion", async () => {
+    const { createObservedAnswerGenerator } = await import("../src/lib/rag/rag-provider");
+    const { createAnswerRouteDeadline } = await import("../src/lib/rag/rag-route-budget");
+    let elapsed = 8000;
+    const deadline = createAnswerRouteDeadline({ routeMode: "strong", startedAt: 0, now: () => elapsed });
+    const r = createGenerationDegradationRecorder({
+      enabled: false,
+      routeBudgetMs: deadline.budgetMs,
+      remainingRouteBudgetMs: deadline.remainingMs,
+    });
+    const generate = vi.fn(async () => {
+      elapsed += 25000;
+      throw new Error("Request timed out");
+    });
+    const observed = createObservedAnswerGenerator({
+      generate,
+      buildInput: () => "synthetic",
+      schemaFor: () => ({}),
+      deadline,
+      recorder: r,
+      contextObservation: () => ({ retrievalHealthy: true, coverage: "complete", contextCount: 2 }),
+      instructions: "synthetic",
+      promptCacheKey: "synthetic",
+      fastReasoningEffort: "low",
+      strongReasoningEffort: "low",
+      onResult: () => {},
+      onLatency: () => {},
+    });
+    try {
+      await expect(observed("synthetic-model", {})).rejects.toThrow("timed out");
+      expect(r.finish(delivered, true)).toBeUndefined();
+      elapsed += 1000;
+      expect(r.metadata()).toMatchObject({
+        generation_degradation_attempt_count: 1,
+        generation_degradation_remaining_route_budget_ms: 2000,
+        provider_initial_attempt_timeout: true,
+      });
+    } finally {
+      deadline.dispose();
+    }
   });
 });

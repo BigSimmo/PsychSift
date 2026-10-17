@@ -695,7 +695,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
   }
 
   useEffect(() => {
-    if (!modeMenuOpen || !usesPhoneSearchLayout) return undefined;
+    if (!modeMenuOpen || !usesPhoneSearchLayout || modeSheetView !== "modes") return undefined;
 
     let settledFrame: number | null = null;
     const frame = window.requestAnimationFrame(() => {
@@ -721,7 +721,17 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
       window.cancelAnimationFrame(frame);
       if (settledFrame !== null) window.cancelAnimationFrame(settledFrame);
     };
-  }, [modeMenuFocusIndex, modeMenuOpen, usesPhoneSearchLayout]);
+  }, [modeMenuFocusIndex, modeMenuOpen, modeSheetView, usesPhoneSearchLayout]);
+
+  useEffect(
+    () => () => {
+      if (modeMenuFocusRafRef.current !== null) {
+        window.cancelAnimationFrame(modeMenuFocusRafRef.current);
+        modeMenuFocusRafRef.current = null;
+      }
+    },
+    [],
+  );
 
   // Both the hero-portal composer and the default composer bind the caller's
   // queryInputRef. During home <-> result transitions the two briefly coexist,
@@ -859,16 +869,32 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
     const opensOnPages = modeOwnPagesAvailable && !inWorkArea;
     setModeSheetView(opensOnPages ? "sections" : "modes");
     setModeMenuOpen(true);
-    if (!phoneLayout && !opensOnPages) {
+    if (!phoneLayout) {
       cancelModeMenuFocus();
       modeMenuFocusRafRef.current = window.requestAnimationFrame(() => {
         modeMenuFocusRafRef.current = null;
-        if (modeMenuRef.current?.contains(document.activeElement)) {
+        if (!modeMenuRef.current?.contains(document.activeElement)) return;
+        if (opensOnPages) {
+          document
+            .getElementById("app-mode-menu")
+            ?.querySelector<HTMLElement>('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])')
+            ?.focus();
+        } else {
           setModeMenuFocusIndex(openingIndex);
           modeOptionRefs.current[openingIndex]?.focus();
         }
       });
     }
+  }
+
+  function returnToModeList() {
+    setModeSheetView("modes");
+    cancelModeMenuFocus();
+    modeMenuFocusRafRef.current = window.requestAnimationFrame(() => {
+      modeMenuFocusRafRef.current = null;
+      if (!document.getElementById("app-mode-menu")) return;
+      (modeOptionRefs.current[modeMenuFocusIndex] ?? modeOptionRefs.current[0])?.focus();
+    });
   }
 
   function handleModeTriggerKeyDown(event: ReactKeyboardEvent<HTMLButtonElement>) {
@@ -1103,7 +1129,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
         <div className="mt-1.5 border-t border-[color:var(--border)] pt-1.5">
           <button
             type="button"
-            onClick={() => setModeSheetView("modes")}
+            onClick={returnToModeList}
             data-testid="app-mode-section-all-modes"
             className={cn(modeMenuRowClass(false), "text-left")}
           >
@@ -2098,7 +2124,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
               <div className="m-1.5 mb-0 flex items-center gap-1.5 rounded-lg border border-[color:var(--border-lux)] bg-[color-mix(in_srgb,var(--surface-inset)_78%,transparent)] px-1.5 py-1 shadow-[var(--shadow-inset)]">
                 <button
                   type="button"
-                  onClick={() => setModeSheetView("modes")}
+                  onClick={returnToModeList}
                   aria-label="Back to all modes"
                   data-testid="app-mode-popover-back"
                   className="grid size-tap shrink-0 place-items-center rounded-md text-[color:var(--text-muted)] transition-colors hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text-heading)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--focus)]"
@@ -2233,7 +2259,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
             modeSheetView === "sections" ? (
               <button
                 type="button"
-                onClick={() => setModeSheetView("modes")}
+                onClick={returnToModeList}
                 aria-label="Back to all modes"
                 data-testid="app-mode-sheet-back"
                 className="grid size-tap shrink-0 place-items-center rounded-full text-[color:var(--text-muted)] transition-colors duration-[var(--duration-fast)] hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text-heading)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] motion-reduce:transition-none"

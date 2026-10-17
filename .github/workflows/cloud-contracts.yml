@@ -1,0 +1,71 @@
+name: Cloud source contracts
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "README.md"
+      - ".nvmrc"
+      - "AGENTS.md"
+      - "CLAUDE.md"
+      - "GEMINI.md"
+      - "PROJECT-INSTRUCTIONS-CONTINUATION.md"
+      - "package.json"
+      - "package-lock.json"
+      - "scripts/*codex-cloud*"
+      - "scripts/check-cross-repo-cloud-contracts.mjs"
+      - "scripts/lib/codex-cloud*"
+      - "tests/cross-repo-cloud-contracts.test.ts"
+      - "docs/agents/*cloud*"
+      - "docs/task-receipts.md"
+      - ".github/workflows/cloud-contracts.yml"
+  push:
+    branches: [main]
+    paths:
+      - "README.md"
+      - ".nvmrc"
+      - "AGENTS.md"
+      - "CLAUDE.md"
+      - "GEMINI.md"
+      - "PROJECT-INSTRUCTIONS-CONTINUATION.md"
+      - "package.json"
+      - "package-lock.json"
+      - "scripts/*codex-cloud*"
+      - "scripts/check-cross-repo-cloud-contracts.mjs"
+      - "scripts/lib/codex-cloud*"
+      - "tests/cross-repo-cloud-contracts.test.ts"
+      - "docs/agents/*cloud*"
+      - "docs/task-receipts.md"
+      - ".github/workflows/cloud-contracts.yml"
+  workflow_dispatch:
+    inputs:
+      audit_public_main:
+        description: "Read maintained repositories' main anonymously; inaccessible sources fail as unverified."
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloud-contracts-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-contracts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: ".nvmrc"
+          package-manager-cache: false
+      - name: Check this checkout's static Cloud contracts
+        run: node scripts/check-cross-repo-cloud-contracts.mjs --root .
+      # No dependencies, foreign scripts, tokens, provider clients or remote workflow execution.
+      - name: Audit maintained public main revisions (explicit request only)
+        if: github.event_name == 'workflow_dispatch' && inputs.audit_public_main
+        run: node scripts/check-cross-repo-cloud-contracts.mjs --root . --fetch-maintained

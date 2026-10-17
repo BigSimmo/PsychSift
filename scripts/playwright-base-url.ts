@@ -98,7 +98,9 @@ export function getPlaywrightBaseUrl({ allowEnsure = true }: { allowEnsure?: boo
       throw new Error("PLAYWRIGHT_BASE_URL must contain only an origin, without credentials, path, query or fragment.");
     }
     const isLocal = localUrlPattern.test(parsed.origin);
-    const loopback = ["localhost", "127.0.0.1", "[::1]"].includes(parsed.hostname);
+    // A terminal DNS dot denotes the same host and must not bypass the local guard.
+    const previewHostname = parsed.hostname.replace(/\.$/u, "");
+    const loopback = ["localhost", "127.0.0.1", "[::1]"].includes(previewHostname);
     const isPreview = process.env.ALLOW_PREVIEW_URL === "true" && parsed.protocol === "https:" && !loopback;
     if (!isLocal && !isPreview) {
       throw new Error(

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { jsonError, publicErrorResponse } from "@/lib/http";
 import { parseJsonBody } from "@/lib/validation/body";
 import {
+  asPublicationRpcClient,
   publishSiteContentCommand,
   recordSiteContentReconciliationPlan,
 } from "@/lib/site-content/site-content-publication";
@@ -64,12 +65,12 @@ export async function POST(request: Request) {
     const result =
       parsed.action === "record_reconciliation"
         ? await recordSiteContentReconciliationPlan({
-            publicationSupabase: publicationClient as never,
+            publicationSupabase: asPublicationRpcClient(publicationClient),
             plan: parsed.plan,
           })
         : await publishSiteContentCommand({
-            sourceSupabase: sourceSupabase as never,
-            publicationSupabase: publicationClient as never,
+            sourceSupabase: asPublicationRpcClient(sourceSupabase),
+            publicationSupabase: asPublicationRpcClient(publicationClient),
             command: parsed,
           });
     if (result.outcome === "conflict") {

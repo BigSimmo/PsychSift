@@ -210,7 +210,7 @@ export function FavouritesSelectBar({
       role="group"
       aria-label="Selected favourites"
       data-testid="favourites-select-bar"
-      className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-[var(--z-chrome)] mx-auto flex max-w-lg items-center gap-1 rounded-full border border-[color:var(--work-glass-line)] bg-[color:var(--work-glass-fill)] p-1 shadow-[var(--work-shadow-float)] backdrop-blur-xl"
+      className="fixed inset-x-3 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+var(--keyboard-height,0px))] z-[var(--z-chrome)] mx-auto flex max-w-lg items-center gap-1 rounded-full border border-[color:var(--work-glass-line)] bg-[color:var(--work-glass-fill)] p-1 shadow-[var(--work-shadow-float)] backdrop-blur-xl"
     >
       <button
         type="button"

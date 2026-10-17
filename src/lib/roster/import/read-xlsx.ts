@@ -1,27 +1,16 @@
 import "server-only";
 
 import ExcelJS from "exceljs";
-import JSZip from "jszip";
 
+import { loadOoxmlWorkbook } from "@/lib/ooxml-workbook";
 import type { RosterGrid } from "@/lib/roster/import/grid";
 import { RosterReadError, tableToGrid, type TableCell } from "@/lib/roster/import/table";
 
 const MAX_ROWS = 400;
 const MAX_COLUMNS = 120;
+const MAX_ARCHIVE_ENTRIES = 2_000;
 /** A roster workbook is small; anything that unpacks past this is refused before Excel parsing starts. */
 const MAX_EXPANDED_BYTES = 32 * 1024 * 1024;
-
-async function assertSmallWorkbook(buffer: Buffer): Promise<void> {
-  const zip = await JSZip.loadAsync(buffer).catch(() => {
-    throw new RosterReadError("unreadable");
-  });
-  const entries = Object.values(zip.files);
-  const expanded = entries.reduce((total, file) => {
-    const data = (file as unknown as { _data?: { uncompressedSize?: number } })._data;
-    return total + Math.max(0, Number(data?.uncompressedSize ?? 0));
-  }, 0);
-  if (entries.length > 2_000 || expanded > MAX_EXPANDED_BYTES) throw new RosterReadError("too_big");
-}
 
 function cellValue(value: ExcelJS.CellValue): TableCell {
   if (value === null || value === undefined) return null;
@@ -38,13 +27,13 @@ function cellValue(value: ExcelJS.CellValue): TableCell {
  * goes back to the doctor's phone.
  */
 export async function readRosterXlsx(buffer: Buffer, today: string): Promise<RosterGrid> {
-  await assertSmallWorkbook(buffer);
-  const workbook = new ExcelJS.Workbook();
-  try {
-    await workbook.xlsx.load(buffer as unknown as Parameters<typeof workbook.xlsx.load>[0]);
-  } catch {
-    throw new RosterReadError("unreadable");
-  }
+  const workbook = await loadOoxmlWorkbook(buffer, {
+    maxEntries: MAX_ARCHIVE_ENTRIES,
+    maxExpandedBytes: MAX_EXPANDED_BYTES,
+    onUnreadable: () => new RosterReadError("unreadable"),
+    onTooManyEntries: () => new RosterReadError("too_big"),
+    onExpandedBytesExceeded: () => new RosterReadError("too_big"),
+  });
   let lastError: RosterReadError = new RosterReadError("no_dates");
   for (const sheet of workbook.worksheets) {
     const table: TableCell[][] = [];
