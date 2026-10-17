@@ -96,8 +96,14 @@ describe("cloud platform acceptance fixtures", () => {
         if (accepted) expect(getPlaywrightBaseUrl({ allowEnsure: false })).toBe(`http://127.0.0.1:${port}`);
         else expect(() => getPlaywrightBaseUrl({ allowEnsure: false })).toThrow(/local-project-id guard/);
       } finally {
-        child.kill();
-        await new Promise<void>((resolve) => child.once("exit", () => resolve()));
+        await new Promise<void>((resolve) => {
+          if (child.exitCode !== null || child.signalCode !== null) {
+            resolve();
+            return;
+          }
+          child.once("exit", () => resolve());
+          child.kill();
+        });
       }
     },
   );
