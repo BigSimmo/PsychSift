@@ -9,7 +9,7 @@
  * daemon socket, which would be equivalent to root on the host.
  */
 import { basename, dirname, join, resolve } from "node:path";
-import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -163,6 +163,43 @@ export function trivyDockerMounts({ workDir, cacheDir = null, outputDir = null }
 }
 
 /**
+ * Whether the cached vulnerability database must be downloaded before an offline scan. Scans pass
+ * --skip-db-update, so a persistent TRIVY_CACHE_DIR would otherwise keep using an expired database
+ * and report STATUS=ok on stale data. A missing, unreadable or undated metadata file, or a
+ * NextUpdate time that has passed, all require a fresh download.
+ *
+ * @param {string | null} metadataText contents of <cache>/db/metadata.json, or null when absent
+ * @param {Date} [now]
+ * @returns {boolean}
+ */
+export function trivyDbNeedsRefresh(metadataText, now = new Date()) {
+  if (typeof metadataText !== "string") return true;
+  let nextUpdate;
+  try {
+    nextUpdate = Date.parse(JSON.parse(metadataText)?.NextUpdate);
+  } catch {
+    return true;
+  }
+  return !Number.isFinite(nextUpdate) || nextUpdate <= now.getTime();
+}
+
+/**
+ * Whether a cached Trivy database directory needs downloading: its database file is missing (a
+ * partial cache), or its metadata says it is stale. The main database lives in `db/trivy.db` and
+ * the Java database in `java-db/trivy-java.db`, each beside its own metadata.json.
+ */
+export function cachedTrivyDbNeedsRefresh(cacheDir, subdir, dbFile, now = new Date()) {
+  if (!existsSync(join(cacheDir, subdir, dbFile))) return true;
+  let metadataText = null;
+  try {
+    metadataText = readFileSync(join(cacheDir, subdir, "metadata.json"), "utf8");
+  } catch {
+    // Unreadable metadata is treated as absent.
+  }
+  return trivyDbNeedsRefresh(metadataText, now);
+}
+
+/**
  * @param {string} imageRef
  * @param {string[]} trivyArgs use "__IMAGE__" where the image ref belongs and
  *   "__OUT__" where an output path belongs (when outputHostPath is set)
@@ -179,7 +216,8 @@ function runDockerTrivy(imageRef, trivyArgs, { outputHostPath = null, needsVulne
         ? resolve(process.env.TRIVY_CACHE_DIR)
         : join(tmpdir(), `trivy-db-cache-${TRIVY_VERSION}`);
       mkdirSync(cacheDir, { recursive: true });
-      if (!existsSync(join(cacheDir, "db", "metadata.json"))) {
+      // A failed refresh fails the scan rather than falling back to the expired database.
+      if (cachedTrivyDbNeedsRefresh(cacheDir, "db", "trivy.db")) {
         const dbDownload = run("docker", [
           "run",
           "--rm",
@@ -198,7 +236,10 @@ function runDockerTrivy(imageRef, trivyArgs, { outputHostPath = null, needsVulne
             stderr: dbDownload.stderr || dbDownload.stdout || "Trivy DB download failed",
           };
         }
-        // Best-effort Java DB pre-population for Java archive inspection offline.
+      }
+      // The Java database expires on its own schedule, so it is checked separately. Its download
+      // stays best-effort: it only adds Java archive inspection, and a failure is retried next run.
+      if (cachedTrivyDbNeedsRefresh(cacheDir, "java-db", "trivy-java.db")) {
         run("docker", [
           "run",
           "--rm",

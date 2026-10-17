@@ -130,10 +130,11 @@ describe("worker job transitions have no unfenced fallback", () => {
     // data-plane writes the longer one, both tied to the attempt's own signal.
     expect(mutationAdapter).toContain("runIngestionMutation(");
     expect(mutationAdapter).toContain("ingestionRpcClient");
-    expect(mutationAdapter).toContain(".rpc(rpcName, payload)");
-    expect(mutationAdapter).toContain("CONTROL_PLANE_RPCS.has(rpcName)");
-    expect(mutationAdapter).toContain("controlPlaneAbortSignal(attempt.signal)");
-    expect(mutationAdapter).toContain("dataPlaneAbortSignal(attempt.signal)");
+    // The selected deadline must be attached to the RPC builder itself, not merely mentioned
+    // somewhere in the adapter.
+    expect(mutationAdapter).toMatch(
+      /\.rpc\(rpcName, payload\)\s*\.abortSignal\(\s*CONTROL_PLANE_RPCS\.has\(rpcName\)\s*\?\s*controlPlaneAbortSignal\(attempt\.signal\)\s*:\s*dataPlaneAbortSignal\(attempt\.signal\),?\s*\)/,
+    );
     expect(fencedMutation).toContain("p_fence: attempt.fence");
     expect(fencedMutation).toContain("if (result.error) throw new Error(result.error.message)");
     expect(fencedMutation).toContain("attempt.accept(result.data)");

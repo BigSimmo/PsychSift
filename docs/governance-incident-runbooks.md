@@ -112,9 +112,9 @@ These are short operator checklists. Preserve evidence and identifiers, but do n
 3. If raw query persistence, answer persistence, or provider response storage is enabled, disable the affected path. Verify all three controls are off before proceeding:
    ```bash
    railway variables --service clinical-kb-app \
-     --set "RAG_PERSIST_RAW_QUERY=false" \
-     --set "RAG_PERSIST_RAW_ANSWER=false" \
-     --set "RAG_STORE_PROVIDER_RESPONSES=false"
+     --set "RAG_PERSIST_RAW_QUERY_TEXT=false" \
+     --set "RAG_PERSIST_ANSWER_TEXT=false" \
+     --set "OPENAI_STORE_RESPONSES=false"
    ```
 4. Inspect affected answer copies in `rag_response_cache.payload`; invalidate affected owners and purge incident-related rows where appropriate, then verify the bounded retention purge before assessing other cache and telemetry retention:
    ```sql

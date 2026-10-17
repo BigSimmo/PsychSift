@@ -104,6 +104,27 @@ describe("sentry-release and release-identity manifest", () => {
     });
   });
 
+  it("picks the manifest commit in the runtime resolver's order, skipping invalid candidates", () => {
+    const vercel = "b".repeat(40);
+    const github = "c".repeat(40);
+    expect(
+      resolveReleaseManifestIdentity(
+        {
+          RAILWAY_GIT_COMMIT_SHA: "   ",
+          VERCEL_GIT_COMMIT_SHA: vercel,
+          GITHUB_SHA: github,
+        } as unknown as NodeJS.ProcessEnv,
+        { resolveGitHead: false },
+      ).commitSha,
+    ).toBe(vercel);
+    expect(
+      resolveReleaseManifestIdentity(
+        { RAILWAY_GIT_COMMIT_SHA: "short-sha", GITHUB_SHA: github } as unknown as NodeJS.ProcessEnv,
+        { resolveGitHead: false },
+      ).commitSha,
+    ).toBe(github);
+  });
+
   it("declares release identity build args and copies deploy/release-identity.json in both Dockerfiles", () => {
     const appDockerfile = readFileSync(new URL("../Dockerfile", import.meta.url), "utf8");
     const workerDockerfile = readFileSync(new URL("../Dockerfile.worker", import.meta.url), "utf8");

@@ -100,6 +100,31 @@ describe("R22: durable open.post alert delivery tracking and replay recovery", (
     expect(mocks.send).not.toHaveBeenCalled();
   });
 
+  it("treats a partial delivery as delivered so a replay does not resend the offer to everyone", async () => {
+    const OPEN_SHIFT_ID = "5e000000-0000-4000-8000-000000000299";
+    const client = {} as Parameters<typeof dispatchRosterAlerts>[0];
+    const action = makeOpenPostAction("5e000000-0000-4000-8000-000000000399");
+
+    // One recipient reached, one failed (for example a gone device): the offer has gone out.
+    mocks.send.mockResolvedValueOnce({ sent: 1, skipped: 0, failed: 1 });
+    await dispatchRosterAlerts(client, {
+      serviceId: SERVICE,
+      actorId: MANAGER,
+      action,
+      result: { openShiftId: OPEN_SHIFT_ID, status: "open" },
+    });
+    expect(mocks.send).toHaveBeenCalledTimes(1);
+
+    vi.clearAllMocks();
+    await dispatchRosterAlerts(client, {
+      serviceId: SERVICE,
+      actorId: MANAGER,
+      action,
+      result: { openShiftId: OPEN_SHIFT_ID, status: "open", replayed: true },
+    });
+    expect(mocks.send).not.toHaveBeenCalled();
+  });
+
   it("retries alert delivery on replay when sendRosterAlerts threw on the initial open.post", async () => {
     const OPEN_SHIFT_ID = "5e000000-0000-4000-8000-000000000202";
     const client = {} as Parameters<typeof dispatchRosterAlerts>[0];
