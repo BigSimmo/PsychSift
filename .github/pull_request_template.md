@@ -10,10 +10,10 @@ Paste the decisive line from whatever you ran — exit code 0 alone is not proof
 
 - [ ] Checks run:
 
-Use `npm run test:focused -- --files <paths>` while iterating, `npm run verify:cheap` (lint +
-typecheck + unit tests) before opening a PR, and `npm run verify:full` only when a change is
-broad enough to warrant the whole static suite. `npm run verify:ui` covers UI, routing, styling,
-reduced-motion and forced-colors changes.
+Select checks using [the canonical verification policy](../docs/agents/verification-gates.md).
+Use focused proof for the changed behavior and the applicable PR-local gate. Shared UI foundations
+or an applicable handoff requirement can require the complete browser gate; routine bounded work
+does not automatically require a full unit, browser or release suite.
 
 Nothing in this template blocks a merge. The gates that fail closed are migration history,
 required-check forgery, and CI itself.

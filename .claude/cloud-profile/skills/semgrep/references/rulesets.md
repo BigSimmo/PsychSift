@@ -138,16 +138,16 @@ These are **NOT optional**. Include automatically when language matches:
 | Java | [Atlassian Labs](https://github.com/atlassian-labs/atlassian-sast-ruleset) | Atlassian-maintained Java rules |
 | Python, JS/TS, Java, Ruby, Go, PHP | [Apiiro](https://github.com/apiiro/malicious-code-ruleset) | Malicious code detection, supply chain |
 
-### Step 5: Verify Rulesets
+### Step 5: Propose Ruleset Verification
 
-Before finalizing, verify official rulesets load:
+Before approval, record proposed ruleset identifiers without contacting registries. Registry validation and browsing are network actions: list the exact lookups in the Step 3 plan and perform them only after authorization. With that authority, verify approved rulesets load and retain the command's actual status:
 
 ```bash
-# Quick validation (exits 0 if valid)
-semgrep --config p/python --validate --metrics=off 2>&1 | head -3
+# After Step 3 authorizes this registry lookup (do not pipe away its status):
+SEMGREP_ENABLE_VERSION_CHECK=0 semgrep --config p/python --validate --metrics=off
 ```
 
-Or browse the [Semgrep Registry](https://semgrep.dev/explore).
+The [Semgrep Registry](https://semgrep.dev/explore) is an alternative after the same network authorization. For an approved local-only scan, validate only the approved local rule paths and report registry coverage as unverified.
 
 ### Output Format
 

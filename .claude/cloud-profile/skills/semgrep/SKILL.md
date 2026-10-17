@@ -1,27 +1,26 @@
 ---
 name: semgrep
 description: >-
-  Run Semgrep static analysis scan on a codebase using parallel subagents.
+  Run Semgrep static analysis on a codebase with capability-checked workers.
   Supports two scan modes — "run all" (full ruleset coverage) and "important
-  only" (high-confidence security vulnerabilities). Automatically detects and
-  uses Semgrep Pro for cross-file taint analysis when available. Use when asked
+  only" (high-confidence security vulnerabilities). Records local Semgrep Pro
+  evidence and uses the approved engine. Use when asked
   to scan code for vulnerabilities, run a security audit with Semgrep, find
-  bugs, or perform static analysis. Spawns parallel workers for multi-language
-  codebases.
-allowed-tools: Bash Read Glob Task AskUserQuestion TaskCreate TaskList TaskUpdate
+  bugs, or perform static analysis. Uses parallel workers when authorized and
+  supported, with bounded direct execution as a fallback.
 ---
 
 # Semgrep Security Scan
 
-Run a Semgrep scan with automatic language detection, parallel execution via Task subagents, and merged SARIF output.
+Run a Semgrep scan with local language detection, supported execution tools, and merged SARIF output. Inspect current-host capabilities; this seed does not install a scanner agent or prove hosted tool availability.
 
 ## Essential Principles
 
-1. **Always use `--metrics=off`** — Semgrep sends telemetry by default; `--config auto` also phones home. Every `semgrep` command must include `--metrics=off` to prevent data leakage during security audits.
-2. **User must approve the scan plan (Step 3 is a hard gate)** — The original "scan this codebase" request is NOT approval. Present exact rulesets, target, engine, and mode; wait for explicit "yes"/"proceed" before spawning scanners.
+1. **Always use `--metrics=off`** — Semgrep sends telemetry by default; `--config auto` also phones home. Every `semgrep` command must include `--metrics=off`. This disables telemetry, not registry or provider access; those actions still need authorization.
+2. **User must approve the scan plan (Step 3 is a hard gate)** — A generic "scan this codebase" request does not approve an unspecified plan. Present exact rulesets, target, engine, mode and network/provider actions before execution. Preserve existing explicit authorization for that exact plan; ask only for missing authority.
 3. **Third-party rulesets are required, not optional** — Trail of Bits, 0xdea, and Decurity rules catch vulnerabilities absent from the official registry. Include them whenever the detected language matches.
-4. **Spawn all scan Tasks in a single message** — Parallel execution is the core performance advantage. Never spawn Tasks sequentially; always emit all Task tool calls in one response.
-5. **Always check for Semgrep Pro before scanning** — Pro enables cross-file taint tracking and catches ~250% more true positives. Skipping the check means silently missing critical inter-file vulnerabilities.
+4. **Use supported execution capabilities** — When delegation is authorized and workers are available, dispatch independent language tasks together using the bounded scanner prompt. Otherwise execute the same approved tasks directly within current-host limits. Do not invent an agent type, tool or delegation authority.
+5. **Record engine evidence honestly** — Inspect only local binary/version/installation metadata before approval. Pro supports cross-file analysis; installed metadata does not prove a usable license. Any Pro, registry or network validation belongs after Step 3 authorization. Stop on an unavailable approved engine; do not silently substitute OSS.
 
 ## When to Use
 
@@ -79,15 +78,12 @@ $OUTPUT_DIR/
 
 ## Prerequisites
 
-**Required:** Semgrep CLI (`semgrep --version`). If not installed, see [Semgrep installation docs](https://semgrep.dev/docs/getting-started/).
+**Required:** Semgrep CLI. Discover it locally with `command -v semgrep` and `SEMGREP_ENABLE_VERSION_CHECK=0 semgrep --metrics=off --version`. If absent, report the missing capability; installation needs applicable authority. See [Semgrep installation docs](https://semgrep.dev/docs/getting-started/).
 
-**Optional:** Semgrep Pro — enables cross-file taint tracking, inter-procedural analysis, and additional languages (Apex, C#, Elixir). Check with:
-
-```bash
-semgrep --pro --validate --config p/default 2>/dev/null && echo "Pro available" || echo "OSS only"
-```
+**Optional:** Semgrep Pro — enables cross-file taint tracking, inter-procedural analysis, and additional languages (Apex, C#, Elixir). Read local installation metadata if available and record Pro as installed, absent or unverified. Do not use a registry ruleset or a Pro/license/network probe as an availability check before approval. Pro usability is established only by authorized execution; a failed probe is not evidence of OSS-only availability.
 
 **Limitations:** OSS mode cannot track data flow across files. Pro mode uses `-j 1` for cross-file analysis (slower per ruleset, but parallel rulesets compensate).
+The bundled scan-status helper requires a supported Bash shell and local Python 3 to validate each fresh JSON/SARIF pair. Check these local capabilities before execution; missing tooling does not authorize installation.
 
 ## Scan Modes
 
@@ -109,10 +105,10 @@ See [scan-modes.md](references/scan-modes.md) for metadata criteria and jq filte
 ```
 ┌──────────────────────────────────────────────────────────────────┐
 │ MAIN AGENT (this skill)                                          │
-│ Step 1: Detect languages + check Pro availability                │
+│ Step 1: Detect languages + inspect local engine evidence        │
 │ Step 2: Select scan mode + rulesets (ref: rulesets.md)           │
 │ Step 3: Present plan + rulesets, get approval [⛔ HARD GATE]     │
-│ Step 4: Spawn parallel scan Tasks (approved rulesets + mode)     │
+│ Step 4: Execute approved scans via workers or directly          │
 │ Step 5: Merge results and report                                 │
 └──────────────────────────────────────────────────────────────────┘
          │ Step 4
@@ -134,13 +130,13 @@ See [scan-modes.md](references/scan-modes.md) for metadata criteria and jq filte
 
 | Step | Action | Gate | Key Reference |
 |------|--------|------|---------------|
-| 1 | Resolve output dir, detect languages + Pro availability | — | Use Glob, not Bash |
+| 1 | Resolve output dir, detect languages + local engine evidence | Local only | Supported file search and local metadata |
 | 2 | Select scan mode + rulesets | — | [rulesets.md](references/rulesets.md) |
-| 3 | Present plan, get explicit approval | ⛔ HARD | AskUserQuestion |
-| 4 | Spawn parallel scan Tasks | — | [scanner-task-prompt.md](references/scanner-task-prompt.md) |
+| 3 | Present plan, get explicit approval | ⛔ HARD | Supported user-input tool or ordinary chat |
+| 4 | Execute approved scans via supported workers or directly | Approved actions only | [scanner-task-prompt.md](references/scanner-task-prompt.md) |
 | 5 | Merge results and report | — | Merge script (below) |
 
-**Task enforcement:** On invocation, create 5 tasks with blockedBy dependencies (each step blocks the previous). Step 3 is a HARD GATE — mark complete ONLY after user explicitly approves.
+**Task tracking:** Use the host's supported task tracker for the five ordered steps when available, with each step depending on the previous. Otherwise keep a short checklist. Step 3 is a HARD GATE regardless of tracking tools; mark it complete only with explicit authorization for the exact plan.
 
 **Merge command (Step 5):**
 
@@ -148,27 +144,23 @@ See [scan-modes.md](references/scan-modes.md) for metadata criteria and jq filte
 uv run {baseDir}/scripts/merge_sarif.py $OUTPUT_DIR/raw $OUTPUT_DIR/results/results.sarif
 ```
 
-## Agents
+## Execution capability
 
-| Agent | Tools | Purpose |
-|-------|-------|---------|
-| `static-analysis:semgrep-scanner` | Bash | Executes parallel semgrep scans for a language category |
-
-Use `subagent_type: static-analysis:semgrep-scanner` in Step 4 when spawning Task subagents.
+Use an available general-purpose worker with shell/file access and the bounded [scanner task prompt](references/scanner-task-prompt.md) when delegation is authorized. A specialist scanner is optional only when the current host actually exposes it; the repository bundles no exact scanner-agent dependency. If workers are unavailable or delegation is not authorized, use direct execution of the same approved task with bounded concurrency. Report the execution path actually used.
 
 ## Rationalizations to Reject
 
 | Shortcut | Why It's Wrong |
 |----------|----------------|
-| "User asked for scan, that's approval" | Original request ≠ plan approval. Present plan, use AskUserQuestion, await explicit "yes" |
+| "User asked for scan, that's approval" | A generic scan request does not specify a plan. Obtain missing exact-plan authority; preserve an existing explicit approval |
 | "Step 3 task is blocking, just mark complete" | Lying about task status defeats enforcement. Only mark complete after real approval |
 | "I already know what they want" | Assumptions cause scanning wrong directories/rulesets. Present plan for verification |
 | "Just use default rulesets" | User must see and approve exact rulesets before scan |
 | "Add extra rulesets without asking" | Modifying approved list without consent breaks trust |
 | "Third-party rulesets are optional" | Trail of Bits, 0xdea, Decurity catch vulnerabilities not in official registry — REQUIRED |
 | "Use --config auto" | Sends metrics; less control over rulesets |
-| "One Task at a time" | Defeats parallelism; spawn all Tasks together |
-| "Pro is too slow, skip --pro" | Cross-file analysis catches 250% more true positives; worth the time |
+| "A missing scanner agent blocks every scan" | Use a supported general worker when authorized, or execute the bounded approved tasks directly |
+| "Change the engine without asking" | Pro and OSS have different coverage; preserve the approved engine or obtain a changed plan |
 | "Semgrep handles GitHub URLs natively" | URL handling fails on repos with non-standard YAML; always clone first |
 | "Cleanup is optional" | Cloned repos pollute the user's workspace and accumulate across runs |
 | "Use `.` or relative path as target" | Subagents need absolute paths to avoid ambiguity |
@@ -190,11 +182,12 @@ Use `subagent_type: static-analysis:semgrep-scanner` in Step 4 when spawning Tas
 
 - [ ] Output directory resolved (user-specified or auto-incremented default)
 - [ ] All generated files stored inside `$OUTPUT_DIR`
-- [ ] Languages detected with file counts; Pro status checked
+- [ ] Languages detected with file counts; local engine evidence and Pro uncertainty recorded
 - [ ] Scan mode selected by user (run all / important only)
 - [ ] Rulesets include third-party rules for all detected languages
 - [ ] User explicitly approved the scan plan (Step 3 gate passed)
-- [ ] All scan Tasks spawned in a single message and completed
+- [ ] Approved scans completed via supported authorized workers or bounded direct execution
+- [ ] Every approved scan's PID/status and fresh JSON/SARIF pair passed `wait_semgrep_scans`; no incomplete batch or successful subset is reported as complete
 - [ ] Every `semgrep` command used `--metrics=off`
 - [ ] Approved rulesets logged to `$OUTPUT_DIR/rulesets.txt`
 - [ ] Raw per-scan outputs stored in `$OUTPUT_DIR/raw/`
