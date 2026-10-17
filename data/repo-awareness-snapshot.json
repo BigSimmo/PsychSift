@@ -4609,6 +4609,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-18-no-national-youth-crisis-line-pinning-yet.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/superpowers/rag-upgrade/canonical/approval-matrix.md",
         "section": "superpowers",
         "catalogued": true

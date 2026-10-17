@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "7831d0ad-846f-400a-a927-01dc2b70b7d8",
+  "createdOn": "2026-10-17",
+  "action": "amend-outcome",
+  "payload": {
+    "id": "#ES3KTG",
+    "outcome": "Corrected outcome (18 Oct 2026; the earlier outcome described unrelated PDF upload validation and was attached by #3617 request f175ee1d in error). Resolved on main: src/lib/rag/rag-coverage-gate.ts reads the raw query plus correctedTokens(query) for the clozapine blood-action check and accepts withhold/withheld/withholding/cease/ceased/ceasing/stop/stopped/stopping/discontinue/discontinued/discontinuing/discontinuation, so the gate and the search rewrite now agree on stop-drug wording; tests/rag-coverage-gate.test.ts covers 'ceased' and 'discontinuing' queries.",
+    "baseRowFingerprint": "d59663f207426c96c9f9b457ed3a248cd718fe2d90c0b80cc9e92f7c0c7d733a",
+    "allowArchived": true,
+    "targetTable": "archive",
+    "targetUlid": "01M2R5TH2HES3KTGGWNZ752BHM"
+  }
+}
