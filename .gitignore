@@ -25,6 +25,11 @@
 # check:codex-cloud reject secret-bearing keys in the tracked template.
 /.codex/*
 !/.codex/config.toml
+!/.codex/hooks.json
+!/.codex/hooks/
+/.codex/hooks/*
+!/.codex/hooks/dispatch.mjs
+!/.codex/hooks/dispatch.test.mjs
 /.agents/*
 !/.agents/README.md
 !/.agents/plugins/

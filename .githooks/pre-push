@@ -24,10 +24,10 @@ if [ "${GUARD_PUSH_DISABLE:-}" = "1" ]; then
   export SKIP_LEDGER_WRITE_GUARD=1
 fi
 
-# Resolve node; if unavailable, do not block the push (fail open).
+# Resolve node; if unavailable, block because required push guards cannot run.
 if ! command -v node >/dev/null 2>&1; then
-  echo "[pre-push] node not found on PATH — skipping push guards" >&2
-  exit 0
+  echo "[pre-push] node not found; cannot verify required push guards" >&2
+  exit 1
 fi
 
 repo_root=$(git rev-parse --show-toplevel)
