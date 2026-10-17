@@ -113,6 +113,27 @@ describe("claim-bearing document lookup", () => {
     expect(splitResult.citations.map((c) => c.chunk_id)).toEqual(expect.arrayContaining(["split-a", "split-b"]));
     expect(splitResult.citations.length).toBeLessThanOrEqual(5);
   });
+  it.each([
+    "Which guidelines support recommendations on anticoagulation in pregnancy?",
+    "Which documents support and give recommendations on anticoagulation in pregnancy?",
+  ])("treats 'give recommendations on' as lookup wording: %s", (query) => {
+    const result = answer(query, [partial, full, unrelated]);
+    expect(result.grounded).toBe(true);
+    expect(result.sources.map((r) => r.id)).toEqual([full.id]);
+  });
+  it("covers a document with its single complete chunk rather than earlier partial chunks", () => {
+    const lateFull = [
+      source("late-a", "late-full", "Anticoagulation requires specialist planning."),
+      source("late-p", "late-full", "Pregnancy care is addressed in this guidance."),
+      source("late-full-chunk", "late-full", full.content),
+    ];
+    const whole = Array.from({ length: 4 }, (_, i) => source(`whole-${i}`, `whole-guideline-${i}`, full.content));
+    const result = answer("Which documents support anticoagulation in pregnancy?", [...lateFull, ...whole]);
+    const citedDocuments = new Set(result.citations.map((c) => c.document_id));
+    expect(citedDocuments).toEqual(new Set(["late-full", ...whole.map((r) => r.document_id)]));
+    expect(result.citations.map((c) => c.chunk_id)).toContain("late-full-chunk");
+    expect(result.citations.length).toBeLessThanOrEqual(5);
+  });
   it("returns a gap without attributing support when no document matches", () => {
     const result = answer("Which documents support anticoagulation in pregnancy?", [unrelated]);
     expect(result.grounded).toBe(false);

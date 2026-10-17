@@ -7,7 +7,7 @@ import { queryTokenMatchesText } from "@/lib/rag/rag-extractive-signals";
 import type { AnswerSection, SearchResult } from "@/lib/types";
 
 const documentLookupMetaTokenPattern =
-  /^(?:which|what|list|show|name|where|find|provide|support|supports|supporting|sources?|documents?|guidelines?|polic(?:y|ies|ie)|protocols?|procedures?|manuals?|guidance|indexed|reviews?|sets?|states?|says?|describes?|mentions?|mentioned|covers?|contains?|discuss(?:e|es|ed|ing)?|address(?:e|es|ed|ing)?|outlines?|outlined|recommends?|recommended|explains?|explained|relevant|any|there|have|has|our|about|for|with|from|that|this|the|and)$/i;
+  /^(?:which|what|list|show|name|where|find|provide|give|gives|support|supports|supporting|sources?|documents?|guidelines?|polic(?:y|ies|ie)|protocols?|procedures?|manuals?|guidance|indexed|reviews?|sets?|states?|says?|describes?|mentions?|mentioned|covers?|contains?|discuss(?:e|es|ed|ing)?|address(?:e|es|ed|ing)?|outlines?|outlined|recommendations?|recommends?|recommended|explains?|explained|relevant|any|there|have|has|our|about|on|for|with|from|that|this|the|and)$/i;
 
 /** Build document support list answer. */
 export function buildDocumentSupportListAnswer(args: {
@@ -49,16 +49,23 @@ export function buildDocumentSupportListAnswer(args: {
   const coveringChunkIds = (documentId: string) => {
     const chunks = scopedResults.filter((result) => result.document_id === documentId);
     if (qualifierTokens.length === 0 || matchesByResult.size === 0) return chunks.slice(0, 1).map((r) => r.id);
+    // Greedy set cover: take the chunk adding the most uncovered qualifiers (earliest on
+    // ties), so one chunk carrying every qualifier beats several earlier partial chunks.
     const covered = new Set<string>();
     const ids: string[] = [];
-    for (const chunk of chunks) {
-      const added = (matchesByResult.get(chunk.id) ?? []).filter((token) => !covered.has(token));
-      if (added.length === 0) continue;
-      added.forEach((token) => covered.add(token));
-      ids.push(chunk.id);
-      if (covered.size === qualifierTokens.length) break;
+    while (covered.size < qualifierTokens.length) {
+      let best: { id: string; added: string[] } | null = null;
+      for (const chunk of chunks) {
+        if (ids.includes(chunk.id)) continue;
+        const added = (matchesByResult.get(chunk.id) ?? []).filter((token) => !covered.has(token));
+        if (added.length > (best?.added.length ?? 0)) best = { id: chunk.id, added };
+      }
+      if (!best) break;
+      best.added.forEach((token) => covered.add(token));
+      ids.push(best.id);
     }
-    return ids;
+    // Keep the citation order aligned with the source order.
+    return chunks.filter((chunk) => ids.includes(chunk.id)).map((chunk) => chunk.id);
   };
   const citationBudget = 5;
   const citationChunkIds: string[] = [];
