@@ -2803,11 +2803,13 @@ html[data-motion="reduced"] .shared-compare-tray-layer[data-scroll-hidden="true"
   transform: translateY(-50%);
 }
 
-.answer-source-mark + .answer-source-mark::before {
+.answer-source-mark + .answer-source-mark::before,
+.answer-source-mark + .answer-source-mark-overflow::before {
   left: calc(-0.5 * var(--answer-mark-gap));
 }
 
-.answer-source-mark:has(+ .answer-source-mark)::before {
+.answer-source-mark:has(+ .answer-source-mark)::before,
+.answer-source-mark:has(+ .answer-source-mark-overflow)::before {
   right: calc(-0.5 * var(--answer-mark-gap));
 }
 

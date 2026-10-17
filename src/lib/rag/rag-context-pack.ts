@@ -709,8 +709,9 @@ export async function packAdjacentSourceContext(
   supabase: ReturnType<typeof createAdminClient>,
   results: SearchResult[],
   queryClass: RagQueryClass,
-  options: { crossDocument?: boolean } = {},
+  options: { crossDocument?: boolean; signal?: AbortSignal } = {},
 ) {
+  options.signal?.throwIfAborted();
   const contextLimit = sourceContextPackLimit(queryClass, options);
   const targetResults = results.slice(0, contextLimit);
   const documentIds = Array.from(new Set(targetResults.map((result) => result.document_id)));
@@ -722,13 +723,17 @@ export async function packAdjacentSourceContext(
   if (documentIds.length === 0 || chunkIndexes.length === 0) return results;
 
   try {
-    const { data, error } = await supabase
+    const query = supabase
       .from("document_chunks")
       .select("id,document_id,page_number,chunk_index,section_heading,content,retrieval_synopsis,index_generation_id")
       .in("document_id", documentIds)
       .in("chunk_index", chunkIndexes)
       .order("chunk_index", { ascending: true })
       .limit(80);
+    const { data, error } = await (options.signal && typeof query.abortSignal === "function"
+      ? query.abortSignal(options.signal)
+      : query);
+    options.signal?.throwIfAborted();
     if (error || !data?.length) return results;
 
     const chunksByDocumentAndIndex = new Map<
@@ -764,6 +769,7 @@ export async function packAdjacentSourceContext(
       return adjacent.length ? { ...result, adjacent_context: adjacent.join(" ") } : result;
     });
   } catch {
+    options.signal?.throwIfAborted();
     return results;
   }
 }

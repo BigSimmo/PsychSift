@@ -67,7 +67,6 @@ export async function runPreparedAnswerPilotGeneration(input, schema, options, g
 function pilotIdentityMatches(ticket, request) {
   const digest = queryDigest(request.query);
   const related =
-    request.ownerId === ticket.ownerId ||
     request.documentId === ticket.documentId ||
     (Array.isArray(request.resolvedDocumentIds) && request.resolvedDocumentIds.includes(ticket.documentId)) ||
     digest === ticket.querySha256;

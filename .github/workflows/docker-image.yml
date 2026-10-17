@@ -178,30 +178,27 @@ jobs:
           if-no-files-found: warn
 
       - name: Vulnerability scan (HIGH,CRITICAL)
-        # Non-blocking by design — findings are reported, not merge-gating.
-        # The summary lines are kept so the next step can surface them.
+        # Non-blocking step wrapper so the evaluation step below can inspect the
+        # summary and fail closed with an explicit unassessed or finding error.
         continue-on-error: true
         run: |
           docker builder prune -af || true
           : > trivy-scan-summary.txt
-          node scripts/trivy-image-scan.mjs clinical-kb-app:ci | tee -a trivy-scan-summary.txt
-          node scripts/trivy-image-scan.mjs clinical-kb-worker:ci | tee -a trivy-scan-summary.txt
+          node scripts/trivy-image-scan.mjs clinical-kb-app:ci | tee -a trivy-scan-summary.txt || echo "Trivy scan failed (clinical-kb-app:ci): STATUS=unassessed reason=scanner_exit" | tee -a trivy-scan-summary.txt
+          node scripts/trivy-image-scan.mjs clinical-kb-worker:ci | tee -a trivy-scan-summary.txt || echo "Trivy scan failed (clinical-kb-worker:ci): STATUS=unassessed reason=scanner_exit" | tee -a trivy-scan-summary.txt
 
       - name: Fail on HIGH/CRITICAL image findings outside pull requests
-        # Audit M20: the worker image carries the Python parsers (PyMuPDF,
-        # Pillow, pytesseract, docling) that read attacker-supplied uploads, and
-        # until now a HIGH/CRITICAL finding reached only this run's log. Pull
-        # request runs stay advisory (a base-image CVE is not the PR author's
-        # change), but the weekly schedule, main pushes and manual dispatches
-        # now fail on any HIGH/CRITICAL so the run shows red in the Actions tab.
-        # A scanner that could not run (disk pressure, docker save) is still
-        # only a warning.
+        # Audit M20 + R13: the worker image carries the Python parsers (PyMuPDF,
+        # Pillow, pytesseract, docling) that read attacker-supplied uploads.
+        # Fail closed if trivy-scan-summary.txt is empty, contains STATUS=unassessed,
+        # or does not contain STATUS=ok lines for BOTH clinical-kb-app:ci and
+        # clinical-kb-worker:ci. Never report a broken/empty scan as clean.
         if: always()
         run: |
           set -euo pipefail
           if [ ! -s trivy-scan-summary.txt ]; then
-            echo "::warning::Trivy produced no scan summary; image vulnerabilities were not assessed this run."
-            exit 0
+            echo "::error::Trivy scan unassessed: trivy-scan-summary.txt is empty; image vulnerabilities were not assessed."
+            exit 1
           fi
           {
             echo "## Trivy image scan (HIGH,CRITICAL)"
@@ -210,6 +207,14 @@ jobs:
             cat trivy-scan-summary.txt
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+          if grep -q 'STATUS=unassessed' trivy-scan-summary.txt; then
+            echo "::error::Trivy scan unassessed: one or more images reported STATUS=unassessed."
+            exit 1
+          fi
+          if ! grep -q '^Trivy scan completed (clinical-kb-app:ci): STATUS=ok\b' trivy-scan-summary.txt || ! grep -q '^Trivy scan completed (clinical-kb-worker:ci): STATUS=ok\b' trivy-scan-summary.txt; then
+            echo "::error::Trivy scan unassessed: missing STATUS=ok evidence for both clinical-kb-app:ci and clinical-kb-worker:ci."
+            exit 1
+          fi
           high="$(grep -oE 'HIGH=[0-9]+' trivy-scan-summary.txt | cut -d= -f2 | paste -sd+ - | bc || echo 0)"
           critical="$(grep -oE 'CRITICAL=[0-9]+' trivy-scan-summary.txt | cut -d= -f2 | paste -sd+ - | bc || echo 0)"
           high="${high:-0}"

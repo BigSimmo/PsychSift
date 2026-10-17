@@ -1555,6 +1555,7 @@ async function searchChunksWithTiming(
         matchCount: candidateCount,
         cardCache: memoryCardCache,
         chunkLoadCache,
+        signal: args.signal,
       }),
     );
     const memoryBoost = applyMemoryBoostArtifacts(retrievalQuery, textCandidates, memoryArtifacts);
@@ -2040,15 +2041,12 @@ async function searchChunksWithTiming(
   return finishSearch(searchTiming, { results, telemetry });
 }
 
+type RelatedDocumentsArgs = { query: string; results: SearchResult[]; ownerId?: string; signal?: AbortSignal };
+
 /** Build related documents safe. */
-async function buildRelatedDocumentsSafe(args: { query: string; results: SearchResult[]; ownerId?: string }) {
+async function buildRelatedDocumentsSafe(args: RelatedDocumentsArgs) {
   try {
-    return await fetchRelatedDocuments({
-      supabase: createAdminClient(),
-      query: args.query,
-      results: args.results,
-      ownerId: args.ownerId,
-    });
+    return await fetchRelatedDocuments({ supabase: createAdminClient(), ...args });
   } catch {
     return [];
   }
@@ -2429,6 +2427,7 @@ async function answerQuestionWithScopeUncoalesced(
       candidates: sideEvidenceCandidates,
     }),
     ownerId: args.ownerId,
+    signal: args.signal,
   });
   const routingStartedAt = Date.now();
   const routeFromRouting = chooseAnswerRoute({
@@ -3186,6 +3185,7 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
           return routeDeadline.race(
             packAdjacentSourceContext(createAdminClient(), legacyResults, queryClass, {
               crossDocument: crossDocumentPlan.enabled,
+              signal: routeDeadline.signal,
             }),
           );
         },

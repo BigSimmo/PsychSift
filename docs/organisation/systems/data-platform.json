@@ -135,6 +135,7 @@
     "tests/client-secret-surface.test.ts",
     "tests/clinical-ask-rate-limit.test.ts",
     "tests/clinical-quality-triage-schema.test.ts",
+    "tests/credential-revocation-and-rotation.test.ts",
     "tests/cross-tenant-*",
     "tests/document-admin-rate-limit.test.ts",
     "tests/document-corpus-access-mode.test.ts",

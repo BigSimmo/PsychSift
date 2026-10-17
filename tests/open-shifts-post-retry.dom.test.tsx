@@ -96,28 +96,31 @@ describe("Posting a shift", () => {
     await waitFor(() => expect(mocks.post).toHaveBeenCalledOnce());
   });
 
-  it("after a post gets no answer, never sends it again once the team shows it went live", async () => {
+  it("after a post gets no answer, always sends the retry with the same postKey even when an identical shift is in the team list", async () => {
+    const SAVED = "5e000000-0000-4000-8000-0000000000b2";
     mocks.state = { ...mocks.state, shifts: [] };
-    mocks.post.mockResolvedValue({ ok: false, code: "roster_unavailable", message: "Couldn't reach the server." });
+    mocks.post.mockResolvedValueOnce({ ok: false, code: "roster_unavailable", message: "Couldn't reach the server." });
+    mocks.post.mockResolvedValueOnce({
+      ok: true,
+      result: { openShiftId: SAVED, status: "open", replayed: true },
+    });
     const view = render(<OpenShiftsPostPage />);
     fireEvent.click(screen.getByRole("button", { name: "Review and post" }));
     fireEvent.click(screen.getByRole("button", { name: "Yes, post it" }));
     await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/Not posted/));
     expect(mocks.state.reload).toHaveBeenCalledOnce();
 
-    // Tapping again before the team's shifts are read again holds the post rather than risk a second copy.
-    fireEvent.click(screen.getByRole("button", { name: "Yes, post it" }));
-    await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/Still checking/));
-    expect(mocks.post).toHaveBeenCalledOnce();
-
-    // The re-read shows the post did go live before its answer was lost.
+    // Even if an identical shift by this manager appears in the team list (e.g. a first opening for the same
+    // slot), retrying sends the saved postKey to the server rather than skipping via client similarity matching.
     mocks.state = { ...mocks.state, shifts: [liveShift()], readAt: new Date(Date.now() + 1000) };
     view.rerender(<OpenShiftsPostPage />);
     fireEvent.click(screen.getByRole("button", { name: "Yes, post it" }));
     await waitFor(() => expect(mocks.push).toHaveBeenCalledOnce());
-    expect(mocks.post).toHaveBeenCalledOnce();
-    expect(mocks.push.mock.calls[0]![0]).toContain(liveShift().id);
-    // Confirmed from the list, so the saved key is gone and a later post of the same slot is a new one.
+    expect(mocks.post).toHaveBeenCalledTimes(2);
+    const [firstKey, retryKey] = mocks.post.mock.calls.map((call) => (call[1] as { postKey?: string }).postKey);
+    expect(firstKey).toBeTruthy();
+    expect(retryKey).toBe(firstKey);
+    expect(mocks.push.mock.calls[0]![0]).toContain(SAVED);
     expect(window.sessionStorage.getItem("psychsift:open-shifts:post-keys-v1")).toBeNull();
   });
 
@@ -144,28 +147,39 @@ describe("Posting a shift", () => {
     await waitFor(() => expect(mocks.post).toHaveBeenCalledTimes(2));
   });
 
-  it("after a second post also gets no answer, waits again for a newer read before sending", async () => {
+  it("when the server replays an earlier post whose status is cancelled, refuses to mark it posted and rotates the postKey", async () => {
+    const CANCELLED_ID = "5e000000-0000-4000-8000-0000000000b9";
+    const FRESH_ID = "5e000000-0000-4000-8000-0000000000ba";
     mocks.state = { ...mocks.state, shifts: [] };
-    mocks.post.mockResolvedValue({ ok: false, code: "roster_unavailable", message: "Couldn't reach the server." });
-    const view = render(<OpenShiftsPostPage />);
+    mocks.post.mockResolvedValueOnce({ ok: false, code: "roster_unavailable", message: "Couldn't reach the server." });
+    mocks.post.mockResolvedValueOnce({
+      ok: true,
+      result: { openShiftId: CANCELLED_ID, status: "cancelled", replayed: true },
+    });
+    mocks.post.mockResolvedValueOnce({
+      ok: true,
+      result: { openShiftId: FRESH_ID, status: "open" },
+    });
+    render(<OpenShiftsPostPage />);
     fireEvent.click(screen.getByRole("button", { name: "Review and post" }));
     fireEvent.click(screen.getByRole("button", { name: "Yes, post it" }));
     await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/Not posted/));
 
-    // A fresh read, after the first attempt but before the second, shows the first post didn't go live. The
-    // retry sends it, and that answer is lost too.
-    await new Promise((resolve) => setTimeout(resolve, 5));
-    mocks.state = { ...mocks.state, readAt: new Date() };
-    view.rerender(<OpenShiftsPostPage />);
-    await new Promise((resolve) => setTimeout(resolve, 5));
+    // Retry gets a replayed shift that has already been cancelled: not marked posted, key dropped.
     fireEvent.click(screen.getByRole("button", { name: "Yes, post it" }));
-    await waitFor(() => expect(mocks.post).toHaveBeenCalledTimes(2));
-    await waitFor(() => expect(mocks.state.reload).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/no longer open/));
+    expect(mocks.push).not.toHaveBeenCalled();
 
-    // Tapping again before a read newer than the second attempt holds the post.
+    // Trying again sends a brand-new postKey and succeeds.
     fireEvent.click(screen.getByRole("button", { name: "Yes, post it" }));
-    await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/Still checking/));
-    expect(mocks.post).toHaveBeenCalledTimes(2);
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledOnce());
+    expect(mocks.post).toHaveBeenCalledTimes(3);
+    const keys = mocks.post.mock.calls.map((call) => (call[1] as { postKey?: string }).postKey);
+    expect(keys[0]).toBeTruthy();
+    expect(keys[1]).toBe(keys[0]);
+    expect(keys[2]).toBeTruthy();
+    expect(keys[2]).not.toBe(keys[0]);
+    expect(mocks.push.mock.calls[0]![0]).toContain(FRESH_ID);
   });
 
   it("after a post gets no answer, a retry sends the same post key, so the server answers with the saved shift", async () => {

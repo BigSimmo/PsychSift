@@ -87,3 +87,68 @@ LIMIT 5000;
 -- FROM pg_index i
 -- JOIN pg_stat_user_indexes s ON s.indexrelid = i.indexrelid
 -- WHERE s.relname = 'documents';
+
+-- ----------------------------------------------------------------------------
+-- Step 4: DB Advisor foreign-key index diagnostics (read-only)
+-- Candidates:
+--   * public.storage_cleanup_jobs(document_id)
+--   * public.rag_visual_eval_cases(document_id)
+--   * public.rag_visual_eval_runs(document_id)
+-- ----------------------------------------------------------------------------
+
+-- 4a: Inspect existing indexes on foreign-key advisor candidate tables
+SELECT
+  schemaname,
+  tablename,
+  indexname,
+  indexdef
+FROM pg_indexes
+WHERE schemaname = 'public'
+  AND tablename IN ('storage_cleanup_jobs', 'rag_visual_eval_cases', 'rag_visual_eval_runs')
+ORDER BY tablename, indexname;
+
+-- 4b: Check index scan statistics and unused/low-scan indexes via pg_stat_user_indexes
+SELECT
+  s.schemaname,
+  s.relname AS table_name,
+  s.indexrelname AS index_name,
+  s.idx_scan,
+  s.idx_tup_read,
+  s.idx_tup_fetch,
+  pg_size_pretty(pg_relation_size(s.indexrelid)) AS index_size
+FROM pg_stat_user_indexes s
+WHERE s.schemaname = 'public'
+  AND s.relname IN (
+    'documents',
+    'storage_cleanup_jobs',
+    'rag_visual_eval_cases',
+    'rag_visual_eval_runs'
+  )
+ORDER BY s.relname, s.idx_scan ASC, s.indexrelname;
+
+-- 4c: Verify whether foreign-key columns referencing public.documents(id) are covered by a leading index column
+SELECT
+  c.conrelid::regclass AS referencing_table,
+  c.conname AS constraint_name,
+  a.attname AS fk_column,
+  EXISTS (
+    SELECT 1
+    FROM pg_index i
+    WHERE i.indrelid = c.conrelid
+      AND i.indisvalid
+      AND i.indpred IS NULL
+      AND i.indkey[0] = a.attnum
+  ) AS has_leading_column_index
+FROM pg_constraint c
+JOIN pg_attribute a
+  ON a.attrelid = c.conrelid
+ AND a.attnum = c.conkey[1]
+WHERE c.contype = 'f'
+  AND c.confrelid = 'public.documents'::regclass
+  AND c.conrelid IN (
+    'public.storage_cleanup_jobs'::regclass,
+    'public.rag_visual_eval_cases'::regclass,
+    'public.rag_visual_eval_runs'::regclass
+  )
+ORDER BY referencing_table::text, fk_column;
+

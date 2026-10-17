@@ -157,6 +157,22 @@ describe("teachingServiceMutation display.revoke authorization", () => {
     });
   });
 
+  it("refuses a revoke by occurrence when the client cannot look up display links", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: { ok: true }, error: null });
+    const client = { rpc } as unknown as Parameters<typeof teachingServiceMutation>[0];
+
+    await expect(
+      teachingServiceMutation(client, actorId, serviceId, {
+        action: "display.revoke",
+        occurrenceId: "33333333-3333-4333-8333-333333333333",
+      }),
+    ).rejects.toMatchObject({
+      details: { code: "teaching_invalid_request" },
+    } satisfies Partial<PublicApiError>);
+
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
   it("allows the original creator even if not an organiser", async () => {
     const { client, rpc, from } = createMockClient({
       link: { id: "link-1", created_by: actorId },
