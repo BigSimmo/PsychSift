@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { execFileSync } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -52,7 +52,11 @@ export function resolveReleaseManifestIdentity(env = process.env, options = {}) 
 export function writeReleaseManifest(outputPath = DEFAULT_OUTPUT_PATH, env = process.env, options = {}) {
   const payload = resolveReleaseManifestIdentity(env, options);
   mkdirSync(dirname(outputPath), { recursive: true });
-  writeFileSync(outputPath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+  // Write to a temporary file beside the target, then rename, so a crash or a concurrent reader
+  // never sees a partial manifest.
+  const temporaryPath = `${outputPath}.${process.pid}.tmp`;
+  writeFileSync(temporaryPath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+  renameSync(temporaryPath, outputPath);
   return payload;
 }
 

@@ -53,6 +53,11 @@ export async function readBoundedJson(request: Request, maxBytes = defaultJsonBo
   }
 }
 
+/**
+ * Reads a multipart body with a hard cap on the total bytes streamed (`maxEnvelopeBytes`), so memory
+ * stays bounded. `maxBytes` limits only the combined size of File/Blob parts; ordinary text fields
+ * are not counted against it and can use whatever is left of the envelope allowance.
+ */
 export async function readBoundedFormData(
   request: Request,
   maxBytes: number,
