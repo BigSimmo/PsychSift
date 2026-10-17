@@ -112,8 +112,10 @@ function normalizeTerm(term: string) {
 // Requirement verbs frame the question like "should" does. Kept as terms, they
 // let any passage that happens to say "required" outrank the guideline on the
 // topic. They are removed before plural stripping, so the nouns "needs" and
-// "requirements" still name a subject.
-const requirementVerbs = /\b(?:need|needed|require|required|requires)\b/gi;
+// "requirements" still name a subject. "needs" goes only as the verb in "needs to",
+// and "need" stays after a determiner or modifier, as in "the clinical need for".
+const requirementVerbs =
+  /\b(?<!\b(?:a|an|the|this|that|any|no|clinical|unmet|support|care|their|his|her|its|our|your)\s+)need\b|\b(?:needed|require|required|requires)\b|\bneeds(?=\s+to\b)/gi;
 
 // Only this interrogative scaffold becomes a semantic cadence requirement.
 const monitoringFrequencyQuestion =

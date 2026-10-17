@@ -47,6 +47,23 @@ describe("evidence relevance", () => {
     expect(queryCoreTerms("What are the carers' support needs?")).toContain("need");
     expect(queryCoreTerms("What documentation requirements apply?")).toContain("requirement");
     expect(queryCoreTerms("What are the support needs in autism?")).toContain("need");
+    expect(queryCoreTerms("What assessment documentation needs to be completed?")).toEqual([
+      "assessment",
+      "documentation",
+      "completed",
+    ]);
+    expect(queryCoreTerms("What is the clinical need for lithium?")).toContain("need");
+    expect(queryCoreTerms("Is there a need for clozapine monitoring?")).toContain("need");
+  });
+
+  it("does not treat a lithium-only passage as direct evidence for the clinical need", () => {
+    const relevance = buildSourceRelevance(
+      "What is the clinical need for lithium?",
+      result({ content: "Lithium is available as 250 mg and 450 mg tablets." }),
+    );
+
+    expect(relevance.missingTerms).toContain("need");
+    expect(relevance.verdict).not.toBe("direct");
   });
 
   it("keeps the noun needs as evidence a passage must cover", () => {
