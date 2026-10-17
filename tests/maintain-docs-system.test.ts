@@ -185,12 +185,21 @@ describe("maintain-docs-system pipeline", () => {
     });
   });
 
-  it("leaves an unmatched work-* test to explicit ownership rather than auto-claiming it for personal practice", () => {
+  it("leaves an unmatched work-* test with the generic delivery owner rather than auto-claiming it for personal practice", () => {
     // Work tests span several systems, so the bare prefix cannot identify the owner.
-    expect(classifyRepositoryPath("tests/work-side-nav-scroll.test.ts").resolvedSystem).not.toBe("personal-practice");
+    expect(classifyRepositoryPath("tests/work-side-nav-scroll.test.ts").resolvedSystem).toBe("delivery");
     // Exact manifest rules still decide existing Work tests.
     expect(classifyRepositoryPath("tests/work-side-nav.test.ts").resolvedSystem).toBe("app-experience");
     expect(classifyRepositoryPath("tests/work-calendar-entries.test.ts").resolvedSystem).toBe("personal-practice");
+  });
+
+  it("lets explicit manifest globs win over the domain test prefixes for new tests", () => {
+    // app-experience owns tests/search-* and tests/document-* by glob; source-intake owns
+    // tests/document-enrichment-*. The classifier prefixes deliberately do not compete with them.
+    expect(classifyRepositoryPath("tests/search-new-widget.test.ts").resolvedSystem).toBe("app-experience");
+    expect(classifyRepositoryPath("tests/document-new-viewer.test.ts").resolvedSystem).toBe("app-experience");
+    expect(classifyRepositoryPath("tests/document-enrichment-new.test.ts").resolvedSystem).toBe("source-intake");
+    expect(classifyRepositoryPath("tests/calculators-new-score.test.ts").resolvedSystem).toBe("clinical-content");
   });
 
   describe("placeUnplacedFiles", () => {

@@ -178,7 +178,8 @@ export function classifyRepositoryPath(relativePath, options = {}) {
     /^docs\/(rag|answer|search(?!-chrome)|query)/.test(lower) ||
     (lower.startsWith("docs/") &&
       /\b(rag|retrieval|grounding|rerank|citation|citations|query-classification)\b/.test(base)) ||
-    /^tests\/(rag|answer|search(?!-chrome|-results-bar)|query-classification|retrieval|grounding|rerank|semantic-rerank|citation|citations|evidence|corpus-grounding|eval)(-|\.)/.test(
+    // No `search-` prefix: app-experience's explicit `tests/search-*` glob owns those tests.
+    /^tests\/(rag|answer|query-classification|retrieval|grounding|rerank|semantic-rerank|citation|citations|evidence|corpus-grounding|eval)(-|\.)/.test(
       lower,
     )
   ) {
@@ -205,7 +206,9 @@ export function classifyRepositoryPath(relativePath, options = {}) {
     lower.startsWith("src/app/sources/") ||
     lower === "src/app/sources" ||
     /^docs\/(source|ingest|document)/.test(lower) ||
-    /^tests\/(ingest|ingestion|document|upload|reindex|chunk|chunking|extract|extracted|docling|ocr|pdf|xlsx|docx|table|indexing|enrichment|storage-cleanup|storage-upload)(-|\.)/.test(
+    // No `document-` prefix: app-experience's `tests/document-*` glob owns those tests, and
+    // source-intake claims its document tests by explicit globs (e.g. `tests/document-enrichment-*`).
+    /^tests\/(ingest|ingestion|upload|reindex|chunk|chunking|extract|extracted|docling|ocr|pdf|xlsx|docx|table|indexing|enrichment|storage-cleanup|storage-upload)(-|\.)/.test(
       lower,
     )
   ) {
@@ -227,8 +230,9 @@ export function classifyRepositoryPath(relativePath, options = {}) {
     /^src\/components\/(cme|roster|my-day|teaching|work-frame)(\/|$)/.test(lower) ||
     /^src\/lib\/(cme|roster|teaching|work-frame)(\/|$)/.test(lower) ||
     /^docs\/(personal|workspace|diary|cme)/.test(lower) ||
-    // No bare `work-` prefix: Work tests span several systems (App experience, data
-    // platform, design system), so an unmatched one stays unplaced for explicit ownership.
+    // No bare `work-` prefix: Work tests span several systems (App experience, data platform,
+    // design system), so an unmatched one falls back to the generic delivery owner until a
+    // manifest rule names its real owner.
     /^tests\/(cme|roster|my-day|teaching|open-shifts|diary|workspace|calendar|handover|notes)(-|\.)/.test(lower)
   ) {
     return buildResult(
