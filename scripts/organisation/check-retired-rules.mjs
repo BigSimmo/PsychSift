@@ -91,10 +91,6 @@ export const INSTRUCTION_SCOPE = Object.freeze([
   ".codex/",
 ]);
 
-// These are preserved source inputs, not the repository's active working agreement.
-// Dated plans, audits, archives and execution evidence otherwise remain outside the scope above.
-const INSTRUCTION_EXCLUSIONS = Object.freeze(["docs/prompts/codex-cloud-review/"]);
-
 const PATHSPECS = INSTRUCTION_SCOPE.map((entry) => `:(literal)${entry.replace(/\/$/, "")}`);
 const RULE_KEYS = new Set(["id", "retired", "summary", "pattern", "allowedContext", "record", "decision"]);
 const REQUIRED_RULE_KEYS = ["id", "retired", "summary", "pattern", "allowedContext"];
@@ -102,7 +98,6 @@ const EXCERPT_MAX = 160;
 
 export function isInstructionFile(file) {
   const normal = file.replaceAll("\\", "/");
-  if (INSTRUCTION_EXCLUSIONS.some((prefix) => normal.startsWith(prefix))) return false;
   return INSTRUCTION_SCOPE.some((entry) => (entry.endsWith("/") ? normal.startsWith(entry) : normal === entry));
 }
 

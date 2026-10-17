@@ -15,7 +15,8 @@
 # this file does not force `model` or `model_reasoning_effort`, and Cloud agents accept
 # plain-language confirmation rather than a prompt token (see docs/agents/codex-reasoning-effort.md).
 # Cloud shell-environment exclusions (`[shell_environment_policy]`) are written to
-# `$HOME/.codex/config.toml` by `scripts/setup-codex-cloud.sh`, not committed here.
+# `$CODEX_HOME/config.toml` (default `$HOME/.codex/config.toml`) by the explicitly
+# selected legacy `scripts/setup-codex-cloud.sh`, not committed here.
 
 [mcp_servers.figma_cloud]
 url = "https://mcp.figma.com/mcp"
