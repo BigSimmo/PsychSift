@@ -786,11 +786,19 @@ describe("private document API access", () => {
     const summaryCalls = client.calls.filter((call) => call.table === "document_summaries");
     expect(labelCalls).toHaveLength(2);
     expect(summaryCalls).toHaveLength(2);
+    // Public-row queries read `metadata` server-side only so the hidden-label and committed-generation
+    // filters can run; the response projection below must still strip it. They never read owner-internal columns.
+    for (const call of [...labelCalls, ...summaryCalls]) {
+      expect(call.selected).toEqual(expect.stringContaining("metadata"));
+    }
     expect(labelCalls.map((call) => call.selected)).toEqual(
-      expect.arrayContaining([expect.stringContaining("metadata"), expect.not.stringContaining("metadata")]),
+      expect.arrayContaining([expect.stringContaining("owner_id"), expect.not.stringContaining("owner_id")]),
     );
     expect(summaryCalls.map((call) => call.selected)).toEqual(
-      expect.arrayContaining([expect.stringContaining("source_chunk_ids"), expect.not.stringContaining("metadata")]),
+      expect.arrayContaining([
+        expect.stringContaining("source_chunk_ids"),
+        expect.not.stringContaining("source_chunk_ids"),
+      ]),
     );
     expect((ownedRow.labels as Array<Record<string, unknown>>)[0]).toHaveProperty("metadata");
     expect(ownedRow.summary).toHaveProperty("source_chunk_ids");
@@ -804,6 +812,67 @@ describe("private document API access", () => {
       document_id: otherDocumentId,
       summary: "Shared summary",
     });
+  });
+
+  it("drops hidden labels and staged-generation labels and summaries on public documents in an authenticated list", async () => {
+    const shared = {
+      id: otherDocumentId,
+      owner_id: null,
+      title: "Public guideline",
+      status: "indexed",
+      metadata: { index_generation_id: "gen-current" },
+    };
+    const client = createSupabaseMock((call) => {
+      if (call.table === "documents") return ok([shared]);
+      if (call.table === "document_labels") {
+        return ok([
+          {
+            id: "visible",
+            document_id: otherDocumentId,
+            label: "Visible",
+            metadata: { index_generation_id: "gen-current" },
+          },
+          { id: "hidden", document_id: otherDocumentId, label: "Hidden", metadata: { hidden: true } },
+          {
+            id: "staged",
+            document_id: otherDocumentId,
+            label: "Staged",
+            metadata: { index_generation_id: "gen-staged" },
+          },
+        ]);
+      }
+      if (call.table === "document_summaries") {
+        return ok([
+          {
+            id: "staged-summary",
+            document_id: otherDocumentId,
+            summary: "Staged summary",
+            generated_at: "2026-02-01T00:00:00Z",
+            metadata: { index_generation_id: "gen-staged" },
+          },
+          {
+            id: "current-summary",
+            document_id: otherDocumentId,
+            summary: "Current summary",
+            generated_at: "2026-01-01T00:00:00Z",
+            metadata: { index_generation_id: "gen-current" },
+          },
+        ]);
+      }
+      return ok([]);
+    });
+    mockRuntime(client);
+    const { GET } = await import("../src/app/api/documents/route");
+
+    const response = await GET(authenticatedRequest("/api/documents?includeMeta=true"));
+    const body = await payload(response);
+    const [sharedRow] = body.documents as Array<Record<string, unknown>>;
+
+    expect(response.status).toBe(200);
+    expect((sharedRow.labels as Array<Record<string, unknown>>).map((label) => label.id)).toEqual(["visible"]);
+    expect(sharedRow.summary).toMatchObject({ id: "current-summary", summary: "Current summary" });
+    expect(sharedRow).not.toHaveProperty("metadata");
+    expect(sharedRow.summary).not.toHaveProperty("metadata");
   });
 
   it("accepts legacy Supabase auth cookies for private document access", async () => {
