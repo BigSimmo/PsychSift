@@ -312,11 +312,11 @@ export const display = {
       ...ratingRows(record, context),
       [
         "What signing does",
-        record.validationStatus === "locally_reviewed"
-          ? "Records your name, the time and a pin of every field above. validationStatus is already " +
-            "locally_reviewed and stays so, so its rating does not change; the review stops being prose only and " +
-            "counts as signed. It does not adopt the source: disposition stays as it is until clinical content is " +
-            "written to cite it."
+        record.validationStatus !== "unverified"
+          ? `Records your name, the time and a pin of every field above. validationStatus is already ` +
+            `${record.validationStatus} and stays so, so its rating does not change; the source counts as signed ` +
+            "against its content as it reads now. It does not adopt the source: disposition stays as it is until " +
+            "clinical content is written to cite it."
           : "Sets validationStatus to locally_reviewed and records your name, the time and a pin of every field above. " +
             "It takes the source off the owner review queue and changes its rating as shown above. It does not adopt " +
             "the source: disposition stays candidate until clinical content is written to cite it.",

@@ -279,9 +279,10 @@ The tool offers two kinds of source:
   first reviewed.
 
 A source marked `locally_reviewed` that already carries any part of a recorded sign-off (a
-signer, a date or a content pin) is not offered this way, and the tool refuses it by its id
-unless its content has changed since it was signed. (A partial sign-off is a ledger error that
-`npm run check:source-acquisitions` reports.) Signing a source never adopts it: whether clinical content cites it is a separate
+signer, a date or a content pin, even an empty one) is not offered this way. The one exception is
+a complete sign-off (signer, date and pin all recorded) whose content has changed since: the tool
+offers that for signing again. A partial or empty sign-off is never offered, even after the
+content changes; it is a ledger error that `npm run check:source-acquisitions` reports. Signing a source never adopts it: whether clinical content cites it is a separate
 decision. To send a source sign-off, add `src/data/source-acquisitions.json` in step 11 below.
 
 ## Indigenous content is never signed off here

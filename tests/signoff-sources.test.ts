@@ -387,7 +387,7 @@ describe("signing a source reviewed only in prose", () => {
       expect(view).toMatchObject({ status: "drafted", validationStatus: "locally_reviewed", reviewedBy: null });
       // The screen must not promise a rating change: validationStatus is already locally_reviewed.
       const text = rowsText(display.source(view, context));
-      expect(text).toContain("stays so, so its rating does not change");
+      expect(text).toContain("already locally_reviewed and stays so, so its rating does not change");
       expect(text).not.toContain("Sets validationStatus to locally_reviewed");
       expect(signOffEligibilityProblem(view, "source")).toBeNull();
       expect(signOffQueue("source", views())).toContain(id);
@@ -438,6 +438,13 @@ describe("signing a source reviewed only in prose", () => {
     const record = { ...native("ocp-wa-standards-for-clinical-care"), ...fields };
     expect(isUnattestedLocalReview(record)).toBe(false);
     expect(signOffEligibilityProblem(viewOf(record), "source")).not.toBeNull();
+  });
+
+  it("tells the owner an approved source keeps its status when a stale sign-off is redone", () => {
+    const record = { ...attestedNative(), validationStatus: "approved" };
+    const text = rowsText(display.source(viewOf(record), context));
+    expect(text).toContain("already approved and stays so");
+    expect(text).not.toContain("Sets validationStatus to locally_reviewed");
   });
 
   it.each([
