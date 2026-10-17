@@ -5178,6 +5178,8 @@ export type Database = {
       };
       claim_ingestion_jobs: {
         Args: {
+          p_allowed_document_ids?: string[];
+          p_allowed_file_types?: string[];
           p_claim_limit?: number;
           p_stale_after_minutes?: number;
           p_worker_id: string;
