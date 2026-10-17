@@ -2,11 +2,9 @@
   "version": 2,
   "id": "08c323e4-3a9d-4cd0-acd3-4531d899a0e1",
   "createdOn": "2026-10-17",
-  "action": "update",
+  "action": "cancel",
   "payload": {
-    "id": "#4DFNHJ",
-    "detail": "All 28 non-Indigenous dictionary definition rewrites with proposed wording are signed off by Psych Sift; 68 review verdicts without proposed rewrite text and 333 sense drafts remain.",
-    "baseRowFingerprint": "b02b4fde13684083ab84a21ca767c0dcba5b9522968d175f1543fbd738407aa5",
-    "targetUlid": "01M2MR66DN4DFNHJ36JHSPKJJ9"
+    "requestId": "01M2MR66DN4DFNHJ36JHSPKJJ9",
+    "reason": "This dictionary update must not overwrite the open six-source review issue; retarget it to the dictionary task's actual request before applying any update."
   }
 }
