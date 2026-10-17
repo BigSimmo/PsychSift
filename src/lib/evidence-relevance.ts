@@ -40,19 +40,12 @@ const genericQueryTerms = new Set([
   "item",
   "list",
   "management",
-  // Requirement verbs frame the question like "should" does. Kept as terms,
-  // they let any passage that happens to say "required" outrank the guideline
-  // on the topic. "requirement" stays: it names a subject.
-  "need",
-  "needed",
   "overview",
   "passage",
   "patient",
   "policy",
   "question",
   "recommendation",
-  "require",
-  "required",
   "review",
   "reviewed",
   "reviewing",
@@ -116,6 +109,12 @@ function normalizeTerm(term: string) {
   return cleaned;
 }
 
+// Requirement verbs frame the question like "should" does. Kept as terms, they
+// let any passage that happens to say "required" outrank the guideline on the
+// topic. They are removed before plural stripping, so the nouns "needs" and
+// "requirements" still name a subject.
+const requirementVerbs = /\b(?:need|needed|require|required|requires)\b/gi;
+
 // Only this interrogative scaffold becomes a semantic cadence requirement.
 const monitoringFrequencyQuestion =
   /\bHow often (?:is|are) ([^?.]+?) (?:checked|monitored|measured|reviewed)(?=[?.]|$|\s+(?:in|for|with|without|among)\b)/i;
@@ -139,7 +138,8 @@ export function queryCoreTerms(query: string) {
   const semanticQuery = request
     .replace(/\bFocus on the requested\s+/g, "")
     .replace(/\b(What|Which)\b([^?.]*?)\bappl(?:y|ies) to\b/gi, "$1$2for")
-    .replace(monitoringFrequencyQuestion, "$1 frequency");
+    .replace(monitoringFrequencyQuestion, "$1 frequency")
+    .replace(requirementVerbs, " ");
   const normalized = normalizedClinicalSearchTokens(semanticQuery).map(normalizeTerm).filter(Boolean);
   const raw = (semanticQuery.toLowerCase().match(/[a-z0-9]+/g) ?? []).map(normalizeTerm).filter(Boolean);
   const candidates = uniq([...normalized, ...raw], 14);

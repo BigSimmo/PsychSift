@@ -45,6 +45,19 @@ describe("evidence relevance", () => {
     expect(queryCoreTerms("What monitoring is needed for valproate?")).not.toContain("needed");
     expect(queryCoreTerms("What does the infant need?")).not.toContain("need");
     expect(queryCoreTerms("What documentation requirements apply?")).toContain("requirement");
+    expect(queryCoreTerms("What are the support needs in autism?")).toContain("need");
+  });
+
+  it("keeps the noun needs as evidence a passage must cover", () => {
+    const [source] = annotateSearchResults("What are the support needs in autism?", [
+      result({
+        title: "Autism overview",
+        content: "Autism is a neurodevelopmental condition with onset in early childhood and a range of presentations.",
+      }),
+    ]);
+
+    expect(source?.relevance?.verdict).not.toBe("direct");
+    expect(source?.relevance?.missingTerms).toContain("need");
   });
 
   it("gives the on-topic guideline the same match level as a passage that merely says required", () => {
