@@ -844,7 +844,10 @@ def _recover_table_rows_split(page, original_rect, extended_rect, existing_rows,
             populated_cols = sum(1 for cell in row_cells if clean_cell(cell))
             if populated_cols == 1 and rows_out and prev_band_y1 is not None and (band_y0 - prev_band_y1) <= 16.0:
                 col_idx = next(iter(first_segment))
-                if not _continues_wrapped_cell(
+                # A cell that starts lower than its neighbours (staggered or vertically
+                # centred text) fills a still-empty cell of the row above.
+                fills_empty_cell = col_idx not in prev_row_line_ends and not rows_out[-1][col_idx]
+                if not fills_empty_cell and not _continues_wrapped_cell(
                     prev_row_line_ends.get(col_idx), first_segment[col_idx], effective_ranges[col_idx]
                 ):
                     # A short note or caption under the table, not the rest of a wrapped cell.

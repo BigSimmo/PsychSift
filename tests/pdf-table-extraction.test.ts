@@ -138,6 +138,12 @@ describe.runIf(hasPyMuPDF)("PDF table edge-strip row recovery (3344a3a9)", () =>
     ).toEqual([["5", "Highly aroused", "Call the duty registrar"]]);
   });
 
+  it("still fills an empty cell whose text starts a line lower than the rest of the row", () => {
+    expect(recoverBottomRow(["page.insert_text((314, 229), 'Call the duty registrar', fontsize=9)"])).toEqual([
+      ["5", "Highly aroused", "Call the duty registrar"],
+    ]);
+  });
+
   it("still joins a cell whose text wrapped onto the next line", () => {
     expect(
       recoverBottomRow([
