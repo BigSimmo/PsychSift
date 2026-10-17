@@ -19,8 +19,38 @@ async function settle<T>(response: Response): Promise<T> {
   return (await response.json()) as T;
 }
 
+const teachingReads = new Map<string, Promise<unknown>>();
+
 export async function teachingGet<T>(url: string, signal?: AbortSignal): Promise<T> {
-  return settle<T>(await fetch(url, { cache: "no-store", signal }));
+  let shared = teachingReads.get(url) as Promise<T> | undefined;
+  if (!shared) {
+    shared = fetch(url, { cache: "no-store" }).then(settle<T>);
+    teachingReads.set(url, shared);
+    void shared.then(
+      () => {
+        if (teachingReads.get(url) === shared) teachingReads.delete(url);
+      },
+      () => {
+        if (teachingReads.get(url) === shared) teachingReads.delete(url);
+      },
+    );
+  }
+  if (!signal) return shared;
+  if (signal.aborted) throw new DOMException("The operation was aborted.", "AbortError");
+  return new Promise<T>((resolve, reject) => {
+    const abort = () => reject(new DOMException("The operation was aborted.", "AbortError"));
+    signal.addEventListener("abort", abort, { once: true });
+    shared!.then(
+      (value) => {
+        signal.removeEventListener("abort", abort);
+        resolve(value);
+      },
+      (error) => {
+        signal.removeEventListener("abort", abort);
+        reject(error);
+      },
+    );
+  });
 }
 
 /** `keepalive` lets a delayed post (Organise's undo window) finish if the page closes first. */
