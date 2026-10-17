@@ -676,14 +676,19 @@ export function ServicesNavigatorPage() {
   // erase another row's successful optimistic update.
   const savingSlugsRef = useRef(new Set<string>());
   const [savingSlugs, setSavingSlugs] = useState<ReadonlySet<string>>(() => new Set());
-  function navigateWorkflow(stage: ReferralStageId, nextSelection = selectedSlugs) {
+  function navigateWorkflow(
+    stage: ReferralStageId,
+    nextSelection = selectedSlugs,
+    mode: "push" | "replace" = "push",
+  ) {
     if (stage === "compare" && nextSelection.length < 2) return;
     const nextStage = nextSelection.length === 0 ? "search" : stage;
     if (nextStage !== "search") setFilterOpen(false);
     setWorkflowOverride({ urlKey: workflowUrlKey, selectedSlugs: nextSelection, stage: nextStage });
     // This is client-only view state: publish it synchronously before another
     // control can submit a query. Next's native-history integration updates
-    // useSearchParams without a server navigation; push keeps Back available.
+    // useSearchParams without a server navigation; real view transitions use
+    // push while same-stage shortlist changes replace the current entry.
     // Read the current address so rapid changes preserve each other's params.
     const params = new URLSearchParams(window.location.search);
     if (nextSelection.length) params.set("shortlist", nextSelection.join(","));
@@ -691,7 +696,7 @@ export function ServicesNavigatorPage() {
     if (nextStage === "search") params.delete("workflow");
     else params.set("workflow", nextStage);
     const queryString = params.toString();
-    window.history.pushState(
+    window.history[mode === "replace" ? "replaceState" : "pushState"](
       null,
       "",
       `${window.location.pathname}${queryString ? `?${queryString}` : ""}${window.location.hash}`,
@@ -734,7 +739,9 @@ export function ServicesNavigatorPage() {
     const next = selectedSlugs.includes(slug)
       ? selectedSlugs.filter((item) => item !== slug)
       : [...selectedSlugs, slug].slice(0, 5);
-    navigateWorkflow(showComparison && next.length < 2 ? "shortlist" : referralStage, next);
+    const nextStage = showComparison && next.length < 2 ? "shortlist" : referralStage;
+    const nextView = next.length === 0 ? "search" : nextStage;
+    navigateWorkflow(nextStage, next, nextView === referralStage ? "replace" : "push");
   }
 
   const updateNavigationParams = useCallback(
