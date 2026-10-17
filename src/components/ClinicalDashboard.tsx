@@ -2800,22 +2800,17 @@ function ClinicalDashboardContent({
                   // mode-specific branch so picking a mode on `/` changes only its
                   // presentation and composer target; mode-owned content stays behind
                   // its own route (/tools, /favourites, /dsm, …).
-                  <>
-                    <SharedHomeEmptyState
-                      modeId={searchMode}
-                      desktopComposerSlotId={desktopHomeComposerSlotId}
-                      recentQueries={recentQueries}
-                      onSelectRecent={(recentQuery) => {
-                        setQuery(recentQuery);
-                        void ask(recentQuery);
-                      }}
-                    />
-                    {/* Before the first question is sent (owner decision, 13 Oct 2026): where an
-                        Answer question goes. Below the home content, so the composer never moves. */}
-                    {searchMode === "answer" && !clientDemoMode ? (
-                      <AnswerProviderNotice className="mt-2" testId="answer-provider-notice-home" />
-                    ) : null}
-                  </>
+                  // No overseas-processing line here: the owner removed it from the home pages on
+                  // 17 Oct 2026. It still shows under each answer, and /privacy carries the full wording.
+                  <SharedHomeEmptyState
+                    modeId={searchMode}
+                    desktopComposerSlotId={desktopHomeComposerSlotId}
+                    recentQueries={recentQueries}
+                    onSelectRecent={(recentQuery) => {
+                      setQuery(recentQuery);
+                      void ask(recentQuery);
+                    }}
+                  />
                 ) : activeModeResultKind === "differentials" ? (
                   <DifferentialsHome
                     query={deferredQuery}

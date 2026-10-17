@@ -21,21 +21,14 @@ describe("AnswerProviderNotice", () => {
     expect(note).toHaveAttribute("data-testid", "answer-provider-notice");
   });
 
-  it("takes its own test id for the pre-submit copy on the home", () => {
-    render(<AnswerProviderNotice testId="answer-provider-notice-home" />);
-    expect(screen.getByRole("note")).toHaveAttribute("data-testid", "answer-provider-notice-home");
-  });
-
-  it("is mounted under the latest answer and on the Answer home, never in demo mode", () => {
+  it("is mounted under the latest answer only, never on the home and never in demo mode", () => {
     // Source check as a stopgap: mounting the full ClinicalDashboard in each mode is too heavy for a unit
     // test. Cost: harmless reformatting can break it, and it cannot tell live code from dead code; the
     // Production UI tests cover the rendered notice.
     const source = readFileSync(resolve(process.cwd(), "src/components/ClinicalDashboard.tsx"), "utf8");
-    expect(source.match(/<AnswerProviderNotice\b/g)).toHaveLength(2);
-    // Before the first question: on the shared home, only in Answer mode, never in demo mode.
-    expect(source).toMatch(
-      /<SharedHomeEmptyState[\s\S]{0,800}searchMode === "answer" && !clientDemoMode \? \(\s*<AnswerProviderNotice[^>]*answer-provider-notice-home/,
-    );
+    expect(source.match(/<AnswerProviderNotice\b/g)).toHaveLength(1);
+    // The owner removed it from the home pages on 17 Oct 2026.
+    expect(source).not.toContain("answer-provider-notice-home");
     expect(source).toMatch(
       /explicitDemoMode \|\|\s*answer\.demoMode === true[^?]*\? null : \(\s*<AnswerProviderNotice/,
     );
