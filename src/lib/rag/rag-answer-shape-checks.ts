@@ -293,19 +293,9 @@ export function retainCitedExtractiveFallbackEvidence<T extends RagAnswer>(candi
     .filter((section) => section.citation_chunk_ids.length > 0);
   const quoteCards = (candidate.quoteCards ?? []).filter((quote) => citedChunkIds.has(quote.chunk_id));
   const refreshResultDerivedArtifacts = rebuildDerivedArtifacts || sourcesNarrowed;
-  const strictVisualEvidence = refreshResultDerivedArtifacts
+  const visualEvidence = refreshResultDerivedArtifacts
     ? buildVisualEvidence(sources)
     : (candidate.visualEvidence ?? []).filter((card) => citedChunkIds.has(card.source_chunk_id));
-  const documentScopedVisualEvidence = () => {
-    const rebuilt = buildVisualEvidence(cleanSources.filter((source) => retainedDocumentIds.has(source.document_id)));
-    return rebuilt.length > 0
-      ? rebuilt
-      : (candidate.visualEvidence ?? []).filter((card) => retainedDocumentIds.has(card.document_id));
-  };
-  const visualEvidence =
-    strictVisualEvidence.length > 0 || retainedDocumentIds.size === 0
-      ? strictVisualEvidence
-      : documentScopedVisualEvidence();
   const bestSource = rebuildDerivedArtifacts
     ? selectBestSourceRecommendation(sources, quoteCards.length ? quoteCards : undefined)
     : candidate.bestSource && citedChunkIds.has(candidate.bestSource.chunk_id)

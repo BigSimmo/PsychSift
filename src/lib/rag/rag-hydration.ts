@@ -336,7 +336,6 @@ export async function attachPageVisualEvidence(
   const sourceImageIds = Array.from(
     new Set(
       results.flatMap((result) => [
-        ...(result.image_ids ?? []),
         result.index_unit?.source_image_id ?? null,
         ...(result.table_facts ?? []).map((fact) => fact.source_image_id),
       ]),
@@ -496,7 +495,6 @@ export async function attachPageVisualEvidence(
   return results.map((result) => {
     const pageImages = imagesByPage.get(`${result.document_id}:${result.page_number}`) ?? [];
     const directImages = [
-      ...(result.image_ids ?? []).map((id) => imagesById.get(id)),
       result.index_unit?.source_image_id ? imagesById.get(result.index_unit.source_image_id) : null,
       ...(result.table_facts ?? []).map((fact) => (fact.source_image_id ? imagesById.get(fact.source_image_id) : null)),
     ].filter((image): image is ChunkImage => Boolean(image));
