@@ -12,22 +12,21 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const listFactors = vi.hoisted(() => vi.fn());
 const challenge = vi.hoisted(() => vi.fn());
-const verifyCode = vi.hoisted(() => vi.fn());
+const verify = vi.hoisted(() => vi.fn());
 const getAuthenticatorAssuranceLevel = vi.hoisted(() => vi.fn());
-const announce = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/supabase/browser-client", () => ({
   browserSupabaseClientFor: () => ({
-    auth: { mfa: { listFactors, challenge, verify: verifyCode, getAuthenticatorAssuranceLevel } },
+    auth: { mfa: { listFactors, challenge, verify, getAuthenticatorAssuranceLevel } },
   }),
 }));
-vi.mock("@/components/ui/live-announcer", () => ({ announce }));
 vi.mock("next/image", () => ({
   // eslint-disable-next-line @next/next/no-img-element -- Stand-in for next/image inside jsdom.
   default: ({ alt, src }: { alt: string; src: string }) => <img alt={alt} src={src} />,
 }));
 
 import AdminPilot from "@/app/admin/pilot/pilot-client";
+import { LiveAnnouncer, resetAnnouncerForTests } from "@/components/ui/live-announcer";
 
 const verifiedFactor = {
   data: { totp: [{ id: "factor-synthetic", status: "verified", friendly_name: "Synthetic authenticator" }] },
@@ -35,16 +34,21 @@ const verifiedFactor = {
 };
 
 function renderPilot() {
-  return render(<AdminPilot url="https://synthetic.example" publishableKey="synthetic-key" />);
+  return render(
+    <>
+      <AdminPilot url="https://synthetic.example" publishableKey="synthetic-key" />
+      <LiveAnnouncer />
+    </>,
+  );
 }
 
 afterEach(() => {
   cleanup();
+  resetAnnouncerForTests();
   listFactors.mockReset();
   challenge.mockReset();
-  verifyCode.mockReset();
+  verify.mockReset();
   getAuthenticatorAssuranceLevel.mockReset();
-  announce.mockReset();
 });
 
 describe("admin source pilot accessibility", () => {
@@ -65,31 +69,32 @@ describe("admin source pilot accessibility", () => {
     expect(upload.getByRole("button", { name: /admit this pdf/i })).toBeTruthy();
   });
 
-  it("moves keyboard focus through the controls in reading order once verified", async () => {
+  it("moves keyboard focus through the controls in reading order", async () => {
     listFactors.mockResolvedValue(verifiedFactor);
     challenge.mockResolvedValue({ data: { id: "challenge-synthetic" }, error: null });
-    verifyCode.mockResolvedValue({ data: {}, error: null });
+    verify.mockResolvedValue({ error: null });
     getAuthenticatorAssuranceLevel.mockResolvedValue({ data: { currentLevel: "aal2" }, error: null });
     const user = userEvent.setup();
     renderPilot();
-    const code = screen.getByLabelText(/six-digit authenticator code/i);
-    await waitFor(() => expect(code).toHaveProperty("disabled", false));
-
-    // Verify first, so the admit button is enabled and must sit in the tab sequence too.
-    await user.type(code, "123456");
+    await waitFor(() =>
+      expect(screen.getByLabelText(/six-digit authenticator code/i)).toHaveProperty("disabled", false),
+    );
+    await user.type(screen.getByLabelText(/six-digit authenticator code/i), "123456");
     await user.click(screen.getByRole("button", { name: /verify code/i }));
-    const admit = screen.getByRole("button", { name: /admit this pdf/i });
-    await waitFor(() => expect(admit).toHaveProperty("disabled", false));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /admit this pdf/i })).toHaveProperty("disabled", false),
+    );
+    // Clicking Verify leaves focus on it, so start the walk from the top of the page.
     (document.activeElement as HTMLElement | null)?.blur();
 
     const expected = [
       screen.getByRole("combobox", { name: /authenticator/i }),
-      code,
+      screen.getByLabelText(/six-digit authenticator code/i),
       screen.getByRole("button", { name: /verify code/i }),
       screen.getByRole("combobox", { name: /approved pilot source/i }),
       screen.getByLabelText(/reviewed four-page native pdf/i),
       screen.getByRole("checkbox", { name: /operator-approved source authority/i }),
-      admit,
+      screen.getByRole("button", { name: /admit this pdf/i }),
     ];
     for (const control of expected) {
       await user.tab();
@@ -97,14 +102,38 @@ describe("admin source pilot accessibility", () => {
     }
   });
 
-  it("announces a fail-closed factor read through the shared polite announcer", async () => {
+  it("covers the no-factor enrollment control and its keyboard position", async () => {
+    listFactors.mockResolvedValue({ data: { totp: [] }, error: null });
+    const user = userEvent.setup();
+    renderPilot();
+
+    const setup = await screen.findByRole("button", { name: /set up an authenticator/i });
+    expect(setup).toHaveProperty("disabled", false);
+    document.body.focus();
+    await user.tab();
+    expect(document.activeElement).toBe(setup);
+  });
+
+  it("updates the file label and submit name for a TXT source", async () => {
+    listFactors.mockResolvedValue(verifiedFactor);
+    const user = userEvent.setup();
+    renderPilot();
+
+    await screen.findByRole("combobox", { name: /approved pilot source/i });
+    await user.selectOptions(screen.getByRole("combobox", { name: /approved pilot source/i }), "txt");
+    expect(screen.getByLabelText(/approved summary txt/i)).toBeTruthy();
+    expect(screen.getByRole("button", { name: /admit this txt/i })).toBeTruthy();
+  });
+
+  it("renders a fail-closed factor read in the shared polite live region", async () => {
     listFactors.mockResolvedValue({ data: null, error: new Error("synthetic") });
     renderPilot();
 
+    const politeRegion = await screen.findByTestId("live-announcer-polite");
+    expect(politeRegion).toHaveAttribute("aria-live", "polite");
     await waitFor(() =>
-      expect(announce).toHaveBeenCalledWith("Authenticator factors could not be read. Sign in again."),
+      expect(politeRegion).toHaveTextContent("Authenticator factors could not be read. Sign in again."),
     );
-    expect(announce.mock.calls[0]).toHaveLength(1);
     expect(screen.getByRole("button", { name: /verify code/i })).toHaveProperty("disabled", true);
   });
 });
