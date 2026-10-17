@@ -7,7 +7,6 @@ import {
   answerProgressDisplayMessage,
   answerProgressPreviewMessage,
   answerProgressStepIndex,
-  answerProgressTookUnusualRoute,
   type TimedAnswerProgressUpdate,
 } from "@/components/clinical-dashboard/answer-progress";
 import {
@@ -451,7 +450,6 @@ export function AnswerProgress({
   const finished = latest?.stage === "complete";
   const running = active && !finished;
   const slow = useSlowNotice(running, startedAt);
-  const unusualRoute = answerProgressTookUnusualRoute(events);
   const stepIndex = latest ? answerProgressStepIndex(latest.stage) : 0;
   // The only number the wait prints, and it counts the cards directly below it — which is
   // why it is the rail's visible cap, not the unit's length. A unit may carry up to twelve
@@ -464,10 +462,6 @@ export function AnswerProgress({
   const revealedSourceCount = useProgressiveReveal(previewSourceCount, evidencePreview);
   const previewMessage = latest ? answerProgressPreviewMessage(revealedSourceCount, latest.stage) : null;
   const currentMessage = previewMessage ?? (latest ? answerProgressDisplayMessage(latest) : "Reading your question…");
-  const details = events
-    .map((event) => ({ ...event, displayMessage: answerProgressDisplayMessage(event) }))
-    .filter((event, index, all) => index === 0 || event.displayMessage !== all[index - 1]?.displayMessage)
-    .slice(-8);
 
   return (
     <section
@@ -562,24 +556,9 @@ export function AnswerProgress({
         </>
       )}
 
-      {/* A routine answer has nothing to disclose — the retired panel offered the
-          same five stages every time. These three stages mean the answer did not
-          take the ordinary route, which is the case a reader may actually want to
-          read back. */}
-      {finished && unusualRoute ? (
-        <details className="text-2xs text-[color:var(--text-muted)]">
-          <summary className="w-fit cursor-pointer rounded-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]">
-            How this answer was built
-          </summary>
-          <ol className="mt-2 space-y-1 border-l border-[color:var(--border)] pl-3">
-            {details.map((event, index) => (
-              <li key={`${event.receivedAt}-${event.stage}-${index}`} className="leading-relaxed">
-                {event.displayMessage}
-              </li>
-            ))}
-          </ol>
-        </details>
-      ) : null}
+      {/* The build disclosure for a finished answer moved below the answer (owner decision,
+          17 Oct 2026): see answer-build-details.tsx. This section stays where it is so the
+          "Answer ready." live region is the same node that announced the progress. */}
     </section>
   );
 }

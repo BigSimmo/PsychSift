@@ -71,7 +71,10 @@ import { SystemNotice, DegradedNoticeFrame } from "@/components/clinical-dashboa
 import { resolveModeHomeCanvasClass } from "@/components/clinical-dashboard/mode-home-canvas";
 import { sanitizeAnswerDisplayText } from "@/components/clinical-dashboard/display-text";
 import { AnswerCancelledNotice } from "@/components/clinical-dashboard/answer-cancelled-notice";
-import { AnswerProviderNotice } from "@/components/clinical-dashboard/answer-provider-notice";
+import {
+  AnswerProviderNotice,
+  AnswerSummaryUnavailableNotice,
+} from "@/components/clinical-dashboard/answer-provider-notice";
 import { isPreformattedGroundedAnswer } from "@/components/clinical-dashboard/answer-content";
 import {
   AnswerProgress,
@@ -427,6 +430,8 @@ function ClinicalDashboardContent({
   const [loading, setLoading] = useState(false);
   const [answerProgress, setAnswerProgress] = useState<string | null>(null);
   const [answerProgressEvents, setAnswerProgressEvents] = useState<TimedAnswerProgressUpdate[]>([]);
+  const [answerBuildEvents, setAnswerBuildEvents] = useState<TimedAnswerProgressUpdate[]>([]);
+  const answerProgressEventsRef = useRef<TimedAnswerProgressUpdate[]>([]);
   const [answerProgressStartedAt, setAnswerProgressStartedAt] = useState<number | null>(null);
   const [answerEvidencePreview, setAnswerEvidencePreview] = useState<VerifiedEvidencePreviewUnit | null>(null);
   const [answerLifecycle, dispatchAnswerLifecycle] = useReducer(answerLifecycleReducer, initialAnswerLifecycle);
@@ -442,6 +447,7 @@ function ClinicalDashboardContent({
     setSourceGovernanceWarnings([]);
     setError(null);
     setAnswerProgress(null);
+    setAnswerBuildEvents([]);
     setAnswerEvidencePreview(null);
     setDifferentialEvidenceQuery(null);
   }, [
@@ -1177,6 +1183,7 @@ function ClinicalDashboardContent({
     setLoading(false);
     setAnswerProgress(null);
     setAnswerProgressEvents([]);
+    answerProgressEventsRef.current = [];
     setAnswerProgressStartedAt(null);
     setAnswerEvidencePreview(null);
     dispatchAnswerLifecycle({ type: "cancel" });
@@ -1353,20 +1360,23 @@ function ClinicalDashboardContent({
     const onAnswerProgress = (progress: AnswerProgressUpdate) => {
       if (!requestIsCurrent()) return;
       setAnswerProgress(progress.message);
-      setAnswerProgressEvents((current) => {
-        const latest = current.at(-1);
-        if (
-          latest?.stage === progress.stage &&
-          latest.message === progress.message &&
-          latest.resultCount === progress.resultCount &&
-          latest.selectedContextCount === progress.selectedContextCount &&
-          latest.australianSourceCount === progress.australianSourceCount &&
-          latest.waSourceCount === progress.waSourceCount
-        ) {
-          return current;
-        }
-        return [...current, { ...progress, receivedAt: Date.now() }].slice(-16);
-      });
+      // Work from the ref, not a lazy updater: the stream sends "complete" just before it returns
+      // the final payload, and the accepted answer copies this ref before React renders again.
+      const current = answerProgressEventsRef.current;
+      const latest = current.at(-1);
+      if (
+        latest?.stage === progress.stage &&
+        latest.message === progress.message &&
+        latest.resultCount === progress.resultCount &&
+        latest.selectedContextCount === progress.selectedContextCount &&
+        latest.australianSourceCount === progress.australianSourceCount &&
+        latest.waSourceCount === progress.waSourceCount
+      ) {
+        return;
+      }
+      const next = [...current, { ...progress, receivedAt: Date.now() }].slice(-16);
+      answerProgressEventsRef.current = next;
+      setAnswerProgressEvents(next);
     };
     const onAnswerEvidencePreview = (preview: VerifiedEvidencePreviewUnit | null) => {
       if (!requestIsCurrent()) return;
@@ -1395,16 +1405,19 @@ function ClinicalDashboardContent({
     if (isAnswerRequest) {
       const startedAt = Date.now();
       setAnswerProgressStartedAt(startedAt);
-      setAnswerProgressEvents([
+      const initialProgressEvents = [
         {
-          stage: "scoping",
+          stage: "scoping" as const,
           message: "Preparing the clinical search scope.",
           receivedAt: startedAt,
         },
-      ]);
+      ];
+      answerProgressEventsRef.current = initialProgressEvents;
+      setAnswerProgressEvents(initialProgressEvents);
       setAnswerProgress("Preparing the clinical search scope.");
     } else {
       setAnswerProgressStartedAt(null);
+      answerProgressEventsRef.current = [];
       setAnswerProgressEvents([]);
       onProgress(modeSearch.progressLabel);
     }
@@ -1528,6 +1541,12 @@ function ClinicalDashboardContent({
               scopeRef: privateScopeRef,
             }),
           );
+        }
+        if (successfulPayload.kind === "answer") {
+          // Keep the history that produced the accepted answer. A later failed
+          // request may replace the active progress events without replacing
+          // the answer shown on screen.
+          setAnswerBuildEvents(answerProgressEventsRef.current);
         }
         applySearchResult(successfulPayload, trimmedQuery, !replaceExistingAnswer);
         if (isDifferentialsMode) setDifferentialEvidenceQuery(trimmedQuery);
@@ -2982,13 +3001,16 @@ function ClinicalDashboardContent({
                         onScopeDocument={handleScopeDocument}
                         restoredSavedAt={restoredAnswerSavedAt}
                         onRecheckAnswer={handleRecheckRestoredAnswer}
+                        buildEvents={answerBuildEvents}
                       />
                       {/* Once per page, under the latest answer: where a question goes (audit S3). */}
                       {explicitDemoMode ||
                       answer.demoMode === true ||
                       answer.fallbackMode === "non_production_demo" ? null : (
-                        <AnswerProviderNotice className="mt-1" />
+                        <AnswerProviderNotice className="mt-1 justify-center text-center" />
                       )}
+                      {/* Directly under it: the model could not write this answer (owner decision, 17 Oct 2026). */}
+                      <AnswerSummaryUnavailableNotice answer={answer} />
                     </>
                   ) : null
                 ) : null}
