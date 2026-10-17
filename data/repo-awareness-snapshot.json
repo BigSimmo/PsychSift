@@ -4004,6 +4004,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-18-unsigned-clinical-text-withheld-from-site-content.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/superpowers/rag-upgrade/cloud/execution-order.md",
         "section": "superpowers",
         "catalogued": true
