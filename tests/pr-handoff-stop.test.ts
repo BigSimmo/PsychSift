@@ -287,6 +287,24 @@ describe.skipIf(process.platform === "win32")("pr-handoff-stop hook — CronCrea
       expect(out.stdout).toContain('"permissionDecision":"deny"');
     });
 
+    it("quotes shell syntax in the marker's checkout path when suggesting an unlock", () => {
+      const { root: parent } = freshRepo();
+      const root = join(parent, "repo $(touch injected-dollar) `touch injected-tick` 'quoted'");
+      mkdirSync(root);
+      execFileSync("git", ["init", "-q"], { cwd: root });
+      const gitDir = execFileSync("git", ["rev-parse", "--absolute-git-dir"], { cwd: root, encoding: "utf8" }).trim();
+      const marker = writeMarker(gitDir, "sess-quoted");
+      const out = runHook("pre", { tool_name: "CronCreate", session_id: "sess-quoted" }, root);
+      const reason = JSON.parse(out.stdout).hookSpecificOutput.permissionDecisionReason;
+      const command = reason.split("deleting the marker in Bash: ")[1];
+      expect(command).toBeDefined();
+      const result = spawnSync("bash", ["-c", command], { cwd: root, encoding: "utf8" });
+      expect(result.status).toBe(0);
+      expect(existsSync(marker)).toBe(false);
+      expect(existsSync(join(root, "injected-dollar"))).toBe(false);
+      expect(existsSync(join(root, "injected-tick"))).toBe(false);
+    });
+
     it("allows CronCreate when no PR was ever opened", () => {
       const { root } = freshRepo();
       const out = runHook("pre", { tool_name: "CronCreate", session_id: "sess-no-pr" }, root);

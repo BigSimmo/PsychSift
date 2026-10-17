@@ -491,33 +491,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh\"",
-            "timeout": 900
-          },
-          {
-            "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/setup-claude-cloud.sh\" --session",
-            "timeout": 300
-          },
-          {
-            "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/check-base-freshness.mjs\" --hook",
-            "timeout": 30
-          },
-          {
-            "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/issues-surface.sh\"",
-            "timeout": 30
-          },
-          {
-            "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/testing-policy.sh\"",
-            "timeout": 15
-          },
-          {
-            "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/organisation-session-line.sh\"",
-            "timeout": 20
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/claude-session-start.sh\"",
+            "timeout": 1300
           }
         ]
       }

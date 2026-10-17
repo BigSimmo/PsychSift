@@ -64,6 +64,14 @@
       "pattern": "npm run arbiter|gate[- ]arbiter|GATE_ARBITER|consult the arbiter|arbiter'?s? verdict",
       "allowedContext": "no longer|removed|removal|retir(ed|ement)|deleted|there is no|formerly|previously|superseded|dropped|replaced|deprecated|gone|do not wait|no need",
       "record": "diff-integrity.json: scripts/gate-arbiter.mjs deleted in the owner-approved governance cut of 2026-09-17; gate receipts kept"
+    },
+    {
+      "id": "cloud-worker-universal-vm-prohibition",
+      "retired": "2026-10-17",
+      "summary": "Worker verification depends on current host capabilities; a historical VM limitation is no longer a universal prohibition. Live ingestion/provider authority stays separate.",
+      "pattern": "does not run in this VM",
+      "allowedContext": "no longer|retired|historical|removed|replaced",
+      "decision": "docs/decisions/2026-10-17-cloud-installed-guidance-ownership.md"
     }
   ]
 }

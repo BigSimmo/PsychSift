@@ -626,6 +626,10 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
         run: npm run check:instructions
 
+      - name: Active agent rule consistency
+        if: ${{ !cancelled() }}
+        run: npm run check:rule-consistency
+
       - name: Offline pack
         if: ${{ !cancelled() }}
         run: npm run check:offline-pack
