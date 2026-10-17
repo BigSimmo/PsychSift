@@ -56,6 +56,45 @@ recover unknown earlier environment values. Use a fresh shell or a separate
 scoped process when switching projects. Host proxy and CA variables are preserved
 by the legacy profile; provider scrubbing keeps the existing inventory and policy.
 
+## Run an explicitly selected command in an isolated scope
+
+Use the subprocess wrapper when the legacy bootstrap has been explicitly selected and a host is
+shared. Choose a new scope directory beneath an existing real parent, then keep that same scope
+for maintenance of this checkout:
+
+```bash
+bash scripts/with-isolated-cloud-home.sh --root /absolute/private/psychsift-cloud -- bash scripts/setup-codex-cloud.sh
+bash scripts/with-isolated-cloud-home.sh --root /absolute/private/psychsift-cloud -- bash scripts/maintain-codex-cloud.sh
+```
+
+Select `CODEX_CLOUD_ACCESS_PROFILE` explicitly as required by setup; the wrapper does not select
+an access profile, provision anything by itself or grant provider authority. These examples are
+operational commands, not routine startup checks. A provider-free way to inspect the scoped file
+state after an authorized installation is:
+
+```bash
+node scripts/cloud-activation-evidence.mjs --installed-home /absolute/private/psychsift-cloud/home --codex-home /absolute/private/psychsift-cloud/codex --claude-config-dir /absolute/private/psychsift-cloud/claude
+```
+
+The wrapper requires Bash, Python 3 and Git. It creates three private directories (`home`, `codex`
+and `claude`) and sets `HOME`, `CODEX_HOME` and `CLAUDE_CONFIG_DIR` only in the selected child. It
+preserves standard input, command arguments and exit status. The parent shell and personal homes
+are unchanged. Proxy/CA and other inherited environment values remain inherited; no credentials,
+configuration or personal files are copied. This is directory isolation, not an environment scrub
+or process sandbox. Legacy setup's raw-shell admission and all provider boundaries still apply.
+
+An existing scope must have the wrapper's exact physical-checkout/user ownership record and private
+directory permissions. Unowned or foreign directories, symlink path components, modified ownership
+records and unsafe replacement home directories fail closed before launching the child. Scope
+ownership is local provenance, not content integrity or session-loading proof. Use a different new
+scope for another checkout; preserve an old scope for explicit review instead of rewriting its
+record. The wrapper does not clean up scopes or adopt existing personal homes.
+
+This wrapper does not change the retained migration contract: an older generated legacy profile
+without a checkout marker still migrates through explicit setup, and markerless maintenance still
+requires an explicit access-profile choice. The wrapper never executes or copies that historical
+profile automatically.
+
 ## Checkout base cache
 
 `refresh-codex-cloud-base.sh` writes the fetched merge base under
