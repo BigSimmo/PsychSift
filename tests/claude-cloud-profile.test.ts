@@ -29,8 +29,8 @@ import { afterEach, describe, expect, it } from "vitest";
  *   2. Settings are deep-merged, never replaced — platform-written keys must survive.
  *   3. Memories are skip-if-present — a memory written inside the container is newer than the
  *      snapshot, and clobbering it deletes work with no error.
- *   4. A skill entry replaces whatever is in its way. On the workstation these names are symlinks, and
- *      a plain recursive copy throws ERR_FS_CP_DIR_TO_NON_DIR and aborts the whole tier.
+ *   4. Ownership checks preserve unmanaged skill entries and host modifications; explicit adoption
+ *      claims only byte-identical files, including legacy installs without a manifest.
  *
  * The applier is driven through CLAUDE_CONFIG_DIR rather than HOME: Node resolves `os.homedir()` from
  * USERPROFILE on Windows, so a HOME override does NOT sandbox it there and the test would write into
@@ -191,15 +191,15 @@ describe("apply-claude-cloud-profile", () => {
   });
 
   it.each(["null", '["host data"]', '"host data"'])(
-    "preserves nonobject host settings %s before replacing them",
+    "refuses nonobject host settings %s without changing them",
     (settings) => {
       const configDir = makeConfigDir();
       const settingsPath = join(configDir, "settings.json");
       writeFileSync(settingsPath, settings);
       const result = runApplier(configDir);
-      expect(result.status, result.stderr).toBe(0);
-      expect(readFileSync(`${settingsPath}.unparseable`, "utf8")).toBe(settings);
-      expect(JSON.parse(readFileSync(settingsPath, "utf8")).permissions.defaultMode).toBe("auto");
+      expect(result.status).toBe(1);
+      expect(readFileSync(settingsPath, "utf8")).toBe(settings);
+      expect(existsSync(`${settingsPath}.unparseable`)).toBe(false);
     },
   );
 
@@ -208,9 +208,9 @@ describe("apply-claude-cloud-profile", () => {
     const syntheticSecret = "SYNTHETIC_PRIVATE_SETTING";
     writeFileSync(join(configDir, "settings.json"), syntheticSecret);
     const result = runApplier(configDir);
-    expect(result.status).toBe(0);
+    expect(result.status).toBe(1);
     expect(`${result.stdout}\n${result.stderr}`).not.toContain(syntheticSecret);
-    expect(readFileSync(join(configDir, "settings.json.unparseable"), "utf8")).toBe(syntheticSecret);
+    expect(readFileSync(join(configDir, "settings.json"), "utf8")).toBe(syntheticSecret);
   });
 
   it("rejects nonobject profile settings without replacing host settings", () => {
@@ -248,23 +248,22 @@ describe("apply-claude-cloud-profile", () => {
     writeFileSync(settingsPath, malformed);
     writeFileSync(`${settingsPath}.unparseable`, "earlier malformed settings\n");
 
-    expect(runApplier(configDir).status).toBe(0);
+    expect(runApplier(configDir).status).toBe(1);
 
     expect(readFileSync(`${settingsPath}.unparseable`, "utf8")).toBe("earlier malformed settings\n");
-    expect(readFileSync(`${settingsPath}.unparseable.1`, "utf8")).toBe(malformed);
-    expect(() => JSON.parse(readFileSync(settingsPath, "utf8"))).not.toThrow();
+    expect(readFileSync(settingsPath, "utf8")).toBe(malformed);
+    expect(existsSync(`${settingsPath}.unparseable.1`)).toBe(false);
   });
 
-  it("backs up an existing CLAUDE.md exactly once rather than losing it", () => {
+  it("refuses an unmanaged CLAUDE.md without overwriting it or its backup", () => {
     const configDir = makeConfigDir();
     writeFileSync(join(configDir, "CLAUDE.md"), "container-written guidance\n");
 
-    expect(runApplier(configDir).status).toBe(0);
-    expect(readFileSync(join(configDir, "CLAUDE.md.pre-cloud-profile"), "utf8")).toBe("container-written guidance\n");
-
-    // A second run must not overwrite the backup with the profile copy it just installed.
-    expect(runApplier(configDir).status).toBe(0);
-    expect(readFileSync(join(configDir, "CLAUDE.md.pre-cloud-profile"), "utf8")).toBe("container-written guidance\n");
+    expect(runApplier(configDir).status).toBe(1);
+    expect(readFileSync(join(configDir, "CLAUDE.md"), "utf8")).toBe("container-written guidance\n");
+    expect(existsSync(join(configDir, "CLAUDE.md.pre-cloud-profile"))).toBe(false);
+    expect(runApplier(configDir, {}, ["--adopt", "--skip=skills"]).status).toBe(1);
+    expect(readFileSync(join(configDir, "CLAUDE.md"), "utf8")).toBe("container-written guidance\n");
   });
 
   it("never clobbers a memory the container already wrote", () => {
@@ -391,7 +390,7 @@ describe("apply-claude-cloud-profile", () => {
     expect(existsSync(fixture.memoryTarget)).toBe(false);
   });
 
-  it.skipIf(!hasVendoredSkills)("replaces a skill entry that is not a directory", () => {
+  it.skipIf(!hasVendoredSkills)("preserves an unmanaged skill entry that is not a directory", () => {
     const configDir = makeConfigDir();
     const [firstSkill] = readdirSync(skillsDir);
     mkdirSync(join(configDir, "skills"), { recursive: true });
@@ -400,8 +399,10 @@ describe("apply-claude-cloud-profile", () => {
     const result = runApplier(configDir, {}, []);
 
     expect(result.stderr).not.toMatch(/ERR_FS_CP_DIR_TO_NON_DIR/);
-    expect(result.status).toBe(0);
-    expect(readdirSync(join(configDir, "skills", firstSkill)).length).toBeGreaterThan(0);
+    expect(result.status).toBe(1);
+    expect(readFileSync(join(configDir, "skills", firstSkill), "utf8")).toBe(
+      "a plain file where a directory belongs\n",
+    );
   });
 
   it("is idempotent", () => {
@@ -413,16 +414,15 @@ describe("apply-claude-cloud-profile", () => {
   });
 
   it("installs the rest of the profile even when the vendored skill tree is absent", () => {
-    // The skill tree ships in its own pull request, so a valid checkout can hold the profile without
-    // it. Copying skills therefore has to be conditional on the directory existing: an unguarded
-    // readdirSync would throw ENOENT and take the settings, CLAUDE.md and memory parts down with it,
-    // leaving a container with none of the profile and a SessionStart hook that swallowed the error.
-    // Asserted against the source because profileDir is resolved from the script's own location and
-    // cannot be pointed at a fixture.
-    const source = readFileSync(applier, "utf8");
-    const declaration = source.indexOf('const profileSkills = join(profileDir, "skills");');
-    expect(declaration).toBeGreaterThan(-1);
-    expect(source.slice(declaration)).toMatch(/^const profileSkills = [^\n]*\nif \(existsSync\(profileSkills\)/);
+    const fixture = makeMemoryProfileFixture();
+    const source = join(fixture.fixtureRoot, ".claude", "cloud-profile");
+    writeFileSync(join(source, "CLAUDE.md"), "Synthetic first-install instructions\n");
+    writeFileSync(join(source, "settings.json"), '{"syntheticProfile":true}');
+    const result = runApplier(fixture.configDir, {}, [], fixture.fixtureScript);
+    expect(result.status, result.stderr).toBe(0);
+    expect(readFileSync(join(fixture.configDir, "CLAUDE.md"), "utf8")).toBe("Synthetic first-install instructions\n");
+    expect(JSON.parse(readFileSync(join(fixture.configDir, "settings.json"), "utf8")).syntheticProfile).toBe(true);
+    expect(existsSync(join(fixture.configDir, "skills"))).toBe(false);
   });
 });
 
@@ -698,7 +698,8 @@ describe("setup-claude-cloud", () => {
     );
     const pluginsCase = signatureBody.slice(signatureBody.indexOf("plugins)"), signatureBody.indexOf("gh) printf"));
     expect(pluginsCase).toContain(".claude/settings.json");
-    expect(pluginsCase).toContain("$HOME/.claude/plugins/cache");
+    expect(pluginsCase).toContain("$claude_home/plugins/cache");
+    expect(pluginsCase).toContain('"$claude_home"');
   });
 });
 
@@ -718,19 +719,17 @@ describe("SessionStart registration", () => {
     expect(context).not.toContain("full suite left to CI");
   });
 
-  it("runs the provisioner after Node and node_modules exist", () => {
-    // The browsers tier shells out to ./node_modules/.bin/playwright, so ordering is load-bearing:
-    // session-start.sh is what installs Node and runs npm ci.
+  it("runs dependent setup through one sequential orchestrator", () => {
     const settings = JSON.parse(readFileSync(join(repoRoot, ".claude", "settings.json"), "utf8"));
-    const commands: string[] = settings.hooks.SessionStart.flatMap((entry: { hooks: { command: string }[] }) =>
-      entry.hooks.map((hook) => hook.command),
-    );
-    const nodeInstaller = commands.findIndex((command) => command.includes("session-start.sh"));
-    const provisionerIndex = commands.findIndex((command) => command.includes("setup-claude-cloud.sh"));
-
-    expect(nodeInstaller).toBeGreaterThanOrEqual(0);
-    expect(provisionerIndex).toBeGreaterThan(nodeInstaller);
-    expect(commands[provisionerIndex]).toContain("--session");
+    const hooks = settings.hooks.SessionStart.flatMap((entry: { hooks: { command: string }[] }) => entry.hooks);
+    expect(hooks).toHaveLength(1);
+    expect(hooks[0].command).toContain("scripts/claude-session-start.sh");
+    const source = readFileSync(join(repoRoot, "scripts", "claude-session-start.sh"), "utf8");
+    expect(source).toContain('source "$1"');
+    expect(source).toContain(".claude/hooks/session-start.sh");
+    const dependent = readFileSync(join(repoRoot, "scripts", "claude-session-start.mjs"), "utf8");
+    expect(dependent).toContain('["scripts/setup-claude-cloud.sh", "--session"]');
+    expect(dependent).toContain("for (const [label, command, args, timeout] of steps)");
   });
 
   it("enables the checked-in MCP servers, which settings.local.json cannot carry into a container", () => {

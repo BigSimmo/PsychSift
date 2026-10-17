@@ -1,6 +1,16 @@
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -59,6 +69,7 @@ const bashCommand =
   process.platform === "win32"
     ? path.join(process.env.ProgramFiles || "C:\\Program Files", "Git/bin/bash.exe")
     : "bash";
+const shellToolsPath = process.platform === "win32" ? "/mingw64/bin:/usr/bin:/bin" : "/usr/bin:/bin";
 const requiredPolicyExcludes = [
   "OPENAI_API_KEY",
   "OPENAI_ORG_ID",
@@ -1133,8 +1144,8 @@ describe("Codex Cloud environment contract", () => {
     expect(commandShims).toContain('IFS=: read -r -a path_entries <<< "\\$PATH"');
     expect(commandShims).toContain('[[ "\\$path_entry" == "\\$HOME/.local/bin" ]] && continue');
     expect(commandShims).toContain('if [[ -n "\\$clean_path" ]]; then');
-    expect(commandShims).toContain('export PATH="$node_bin"');
-    expect(commandShims).toContain('. "$runtime_profile"');
+    expect(commandShims).toContain("export PATH=$quoted_node_bin");
+    expect(commandShims).toContain(". $quoted_runtime_profile");
     expect(commandShims).toContain('mkdir -p "$HOME/.local/bin"');
     expect(checkoutBaseRefresh).toContain("git merge-base HEAD refs/remotes/origin/main");
     expect(checkoutBaseRefresh).toContain("cloud-expected-base-sha");
@@ -1181,7 +1192,7 @@ describe("Codex Cloud environment contract", () => {
     const result = spawnSync(bashCommand, [`${shimDir}/node`], {
       cwd: repoRoot,
       encoding: "utf8",
-      env: { ...fixtureEnvironment, HOME: bashHome, PATH: `${shimDir}:${shimDir}:/usr/bin:/bin` },
+      env: { ...fixtureEnvironment, HOME: bashHome, PATH: `${shimDir}:${shimDir}:${shellToolsPath}` },
     });
     expect(result.status, result.stderr || result.stdout).toBe(0);
     const resolvedPath = result.stdout.trim().split(":");
@@ -1220,6 +1231,128 @@ describe("Codex Cloud environment contract", () => {
     });
     expect(install.status, install.stderr || install.stdout).toBe(0);
   }, 120_000);
+
+  it.skipIf(process.platform === "win32").each([false, true])(
+    "atomically replaces runtime symlinks with intermediate aliases %s and preserves unrelated checkout commands",
+    (intermediateAliases) => {
+      const home = temporaryDirectory("codex-cloud-shim-symlinks-");
+      const bashHome = bashPathEntry(home);
+      const nodeBin = path.join(home, ".nvm/versions/node/v24.19.0/bin");
+      const runtimeBin = path.join(home, "realbin");
+      const shimDir = path.join(home, ".local/bin");
+      const fallbackBin = path.join(home, "fallback-bin");
+      mkdirSync(nodeBin, { recursive: true });
+      mkdirSync(runtimeBin);
+      mkdirSync(shimDir, { recursive: true });
+      mkdirSync(fallbackBin);
+      writeFileSync(
+        path.join(home, ".clinical-kb-codex-cloud.sh"),
+        [
+          `export NVM_DIR="${bashHome}/.nvm"`,
+          "nvm() { printf '%s\\n' v24.19.0; }",
+          "export CODEX_CLOUD_ACCESS_PROFILE=offline",
+          "unset SUPABASE_URL",
+          "",
+        ].join("\n"),
+      );
+      const targets = new Map<string, string>();
+      for (const command of ["node", "npm", "npx"]) {
+        const source = [
+          "#!/usr/bin/env bash",
+          command === "node" ? 'if [[ "${1:-}" = -p ]]; then printf "%s\\n" 24.19.0; exit; fi' : "",
+          'if [[ "${1:-}" = --version ]]; then printf "%s\\n" 11.17.0; exit; fi',
+          `printf '%s|%s|%s|%s' '${command}' "$CODEX_CLOUD_ACCESS_PROFILE" "\${SUPABASE_URL-unset}" "$HTTPS_PROXY"`,
+          "",
+        ].join("\n");
+        const target = path.join(intermediateAliases ? runtimeBin : nodeBin, command);
+        targets.set(target, source);
+        writeFileSync(target, source);
+        chmodSync(target, 0o755);
+        symlinkSync(target, path.join(shimDir, command));
+        if (intermediateAliases) symlinkSync(path.join(shimDir, command), path.join(nodeBin, command));
+        const fallback = path.join(fallbackBin, command);
+        writeFileSync(
+          fallback,
+          `#!/usr/bin/env bash\nprintf 'fallback-${command}|%s|%s|%s' "\${CODEX_CLOUD_ACCESS_PROFILE-unset}" "$SUPABASE_URL" "$HTTPS_PROXY"\n`,
+        );
+        chmodSync(fallback, 0o755);
+      }
+      const install = spawnSync(bashCommand, ["scripts/install-codex-cloud-command-shims.sh"], {
+        cwd: repoRoot,
+        encoding: "utf8",
+        env: { ...fixtureEnvironment, HOME: bashHome, PATH: "/usr/bin:/bin" },
+      });
+      expect(install.status, install.stderr || install.stdout).toBe(0);
+      const otherCheckout = temporaryGitRepository();
+      for (const command of ["node", "npm", "npx"]) {
+        const target = path.join(intermediateAliases ? runtimeBin : nodeBin, command);
+        expect(readFileSync(target, "utf8")).toBe(targets.get(target));
+        expect(lstatSync(path.join(shimDir, command)).isSymbolicLink()).toBe(false);
+        const commandEnvironment = {
+          ...fixtureEnvironment,
+          HOME: bashHome,
+          PATH: `${bashPathEntry(shimDir)}:${bashPathEntry(fallbackBin)}:/usr/bin:/bin`,
+          SUPABASE_URL: "synthetic-unrelated-value",
+          HTTPS_PROXY: "synthetic-proxy",
+        };
+        const selected = spawnSync(bashCommand, [path.join(shimDir, command)], {
+          cwd: repoRoot,
+          encoding: "utf8",
+          env: commandEnvironment,
+        });
+        expect(selected.status, selected.stderr).toBe(0);
+        expect(selected.stdout).toBe(`${command}|offline|unset|synthetic-proxy`);
+        const unrelated = spawnSync(bashCommand, [path.join(shimDir, command)], {
+          cwd: otherCheckout,
+          encoding: "utf8",
+          env: commandEnvironment,
+        });
+        expect(unrelated.status, unrelated.stderr).toBe(0);
+        expect(unrelated.stdout).toBe(`fallback-${command}|unset|synthetic-unrelated-value|synthetic-proxy`);
+      }
+      expect(readdirSync(shimDir).filter((name) => name.startsWith(".codex-cloud-"))).toEqual([]);
+    },
+    120_000,
+  );
+
+  it.skipIf(process.platform === "win32").each(["unmanaged-destination", "runtime-directory"])(
+    "preflights %s before replacing any command",
+    (failure) => {
+      const home = temporaryDirectory("codex-cloud-shim-preflight-");
+      const bashHome = bashPathEntry(home);
+      const nodeBin = path.join(home, ".nvm/versions/node/v24.19.0/bin");
+      const shimDir = path.join(home, ".local/bin");
+      mkdirSync(nodeBin, { recursive: true });
+      mkdirSync(shimDir, { recursive: true });
+      writeFileSync(
+        path.join(home, ".clinical-kb-codex-cloud.sh"),
+        `export NVM_DIR="${bashHome}/.nvm"\nnvm() { printf '%s\\n' v24.19.0; }\n`,
+      );
+      for (const command of ["node", "npm", "npx"]) {
+        if (command === "npm" && failure === "runtime-directory") {
+          mkdirSync(path.join(nodeBin, command));
+          continue;
+        }
+        writeFileSync(path.join(nodeBin, command), "#!/bin/bash\nprintf '%s\\n' 24.19.0\n");
+        chmodSync(path.join(nodeBin, command), 0o755);
+      }
+      for (const command of ["node", "npm"]) symlinkSync(path.join(nodeBin, command), path.join(shimDir, command));
+      writeFileSync(path.join(shimDir, "npx"), "host-owned destination\n");
+      const install = spawnSync(bashCommand, ["scripts/install-codex-cloud-command-shims.sh"], {
+        cwd: repoRoot,
+        encoding: "utf8",
+        env: { ...fixtureEnvironment, HOME: bashHome, PATH: "/usr/bin:/bin" },
+      });
+      expect(install.status).toBe(1);
+      expect(install.stderr).toContain(
+        failure === "runtime-directory" ? "npm is unavailable" : "npx destination is unmanaged",
+      );
+      for (const command of ["node", "npm"]) expect(lstatSync(path.join(shimDir, command)).isSymbolicLink()).toBe(true);
+      expect(readFileSync(path.join(shimDir, "npx"), "utf8")).toBe("host-owned destination\n");
+      expect(readdirSync(shimDir)).toEqual(["node", "npm", "npx"]);
+    },
+    120_000,
+  );
 
   it("only accepts a PATH fallback npm and npx that meet the repository npm range", () => {
     const home = temporaryDirectory("codex-cloud-shim-npm-home-");

@@ -4,10 +4,10 @@
 # Why: a cron entry parked on a PR outlives the session, so nothing later can
 # stop it. Everything else about following a PR — reading checks and run logs,
 # re-running a failed job, syncing the branch, pushing fixes, waiting between
-# looks — is ordinary work and is not restricted by this hook. AGENTS.md
-# "Babysit the pull request, then stop" states the plain policy: follow a
-# PR's CI while it is useful, fix only this change's breakage, stop when CI
-# settles, and never park a cron job on it. This hook enforces only the one
+# looks — is governed by docs/agents/pull-request-workflow.md#follow-ci and
+# the applicable authorization. Bare publication stops at the URL. Where CI
+# follow is in scope, stop when CI settles and never park a cron job on it.
+# This hook enforces only the one
 # clause prose cannot: cron survives the session that created it.
 #
 # Two modes, both registered in .claude/settings.json:
@@ -272,7 +272,7 @@ post)
   fi
   [ -f "$marker" ] || exit 0
 
-  context="The pull request is open: hand over its URL. Follow its CI while that is useful, fix only this change's breakage, and stop as soon as CI settles — see AGENTS.md \"Babysit the pull request, then stop\". Never park a cron job on this PR; it would outlive the session."
+  context="The pull request is open: hand over its URL. Follow docs/agents/pull-request-workflow.md#follow-ci within the requested scope: bare publication stops at the URL; where CI observation is in scope, fix only this change's breakage and stop as soon as CI settles. Never park a cron job on this PR; it would outlive the session."
   printf '{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"%s"}}\n' "$(json_escape "$context")"
   exit 0
   ;;
@@ -281,7 +281,7 @@ pre)
   [ -f "$marker" ] || exit 0
   [ "$tool_name" = "CronCreate" ] || exit 0
 
-  reason="Blocked: a cron entry parked on this pull request outlives the session, so nothing later could stop it. Use ScheduleWakeup or Monitor to wait between checks instead, then report where CI stands and stop. See AGENTS.md \"Babysit the pull request, then stop\". Unlock only on an explicit user ask, by deleting the marker: CLAUDE_ALLOW_PR_FOLLOW=1 rm \"$marker\"."
+  reason="Blocked: a cron entry parked on this pull request outlives the session, so nothing later could stop it. Where CI observation is authorized, inspect the current host's supported wait or terminal-event tools and use a bounded wait; if unavailable, report pending CI and stop. Follow docs/agents/pull-request-workflow.md#follow-ci. Unlock only on an explicit user ask, by deleting the marker: CLAUDE_ALLOW_PR_FOLLOW=1 rm \"$marker\"."
   printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"%s"}}\n' "$(json_escape "$reason")"
   exit 0
   ;;

@@ -145,6 +145,27 @@ if ! cd "$repo_root"; then
   exit 1
 fi
 
+# Resolve one active config home for the profile, plugin CLI, dependency repair and receipts.
+claude_home="$(node -e 'process.stdout.write(require("path").resolve(process.argv[1]))' "${CLAUDE_CONFIG_DIR:-$HOME/.claude}")" || exit 1
+export CLAUDE_CONFIG_DIR="$claude_home"
+skip_list=",${CLAUDE_CLOUD_SKIP_TIERS:-},"
+# Ownership admission precedes markers, installers and CLI calls, including plugins-only selections.
+# The applier checks source identity without loading profile/settings/memory inputs or writing files.
+for tier in "${selected[@]}" "${background_tiers[@]}"; do
+  case "$skip_list" in *",$tier,"*) continue ;; esac
+  case "$tier" in
+    profile|plugins)
+      if ! node scripts/apply-claude-cloud-profile.mjs --force --quiet --check-owner; then
+        warn "configuration ownership refused; no tiers were run; use an isolated CLAUDE_CONFIG_DIR"
+        if [ "$session_mode" -eq 1 ]; then
+          printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"claude-cloud configuration ownership refused; no tiers were run. Use an isolated CLAUDE_CONFIG_DIR or review the original installation."}}'
+        fi
+        exit 1
+      fi
+      break
+      ;;
+  esac
+done
 marker_dir="$HOME/.cache/clinical-kb-claude-cloud"
 if ! mkdir -p "$marker_dir"; then
   if [ "$session_mode" -eq 1 ]; then
@@ -158,14 +179,13 @@ fi
 # workstation, whose real ~/.claude is the ORIGIN of the checked-in profile. Getting this backwards
 # would overwrite the source of truth with a snapshot of itself.
 if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
-  warn "--allow-local on a non-cloud machine: the profile tier will OVERWRITE ~/.claude/CLAUDE.md and"
-  warn "~/.claude/skills/* with the checked-in snapshot in .claude/cloud-profile/. On the workstation"
-  warn "that snapshot's own source, this replaces the original with a copy of an older version of itself."
+  warn "--allow-local on a non-cloud machine: selected tiers may install tools outside this checkout."
+  warn "Use an isolated CLAUDE_CONFIG_DIR; profile ownership checks preserve unmanaged or modified files."
 fi
 
-skip_list=",${CLAUDE_CLOUD_SKIP_TIERS:-},"
 failed=()
 pending_locked=()
+config_tiers_blocked=0
 
 # A tier is "done" when its marker exists AND still carries the same signature, so a tier whose
 # inputs changed (a new lockfile, a different browser list) reprovisions instead of being skipped on
@@ -180,6 +200,7 @@ tier_is_done() {
   case "$tier" in
     gh) have gh && gh --version >/dev/null 2>&1 ;;
     deno) have deno && [ "$(deno --version 2>/dev/null | sed -n '1s/^deno \([0-9]*\).*/\1/p')" = "2" ] ;;
+    python) python_is_ready ;;
     *) return 0 ;;
   esac
 }
@@ -253,8 +274,7 @@ apt_install() {
 # --------------------------------------------------------------------------------------------
 
 tier_profile() {
-  # Cheap and always worth redoing: the checked-in profile can change with any pull, and a stale
-  # ~/.claude is invisible rather than loud.
+  # Always reconcile source changes against the ownership manifest. Host edits remain untouched.
   node scripts/apply-claude-cloud-profile.mjs --force
 }
 
@@ -281,7 +301,7 @@ declared_marketplaces() {
 # job here that nothing else does, so it runs unconditionally, including when the CLI is absent and
 # Claude Code did the installing.
 install_plugin_dependencies() {
-  local plugin_root="$HOME/.claude/plugins/cache" status=0 dir
+  local plugin_root="$claude_home/plugins/cache" status=0 dir
   [ -d "$plugin_root" ] || return 0
   while IFS= read -r manifest; do
     dir="$(dirname "$manifest")"
@@ -395,15 +415,36 @@ tier_python() {
   "$venv/bin/python" -m pip check || status=1
   log "OCR venv ready at ${venv}"
 
-  # Expose it the same way the Codex Cloud path does, so worker code finds an interpreter without
-  # each caller hard-coding the venv path.
-  if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
-    {
-      printf 'export PATH="%s/bin:$PATH"\n' "$venv"
-      printf 'export PYTHON_BIN="%s/bin/python"\n' "$venv"
-    } >> "$CLAUDE_ENV_FILE"
-  fi
+  python_is_ready || status=1
+
   return "$status"
+}
+
+# A receipt only caches installation work. Validate the actual venv and imports before trusting it,
+# and activate it separately for every session's fresh CLAUDE_ENV_FILE, including a warm cache hit.
+python_is_ready() {
+  local interpreter="$marker_dir/ocr-venv-3.12/bin/python"
+  [ -x "$interpreter" ] || return 1
+  "$interpreter" -c 'import sys; assert sys.version_info[:2] == (3, 12); import fitz, PIL, pytesseract, medspacy, spacy' >/dev/null 2>&1 || return 1
+  have tesseract && tesseract --version >/dev/null 2>&1
+}
+
+activate_tier() {
+  [ "$1" = "python" ] || return 0
+  python_is_ready || return 1
+  local venv="$marker_dir/ocr-venv-3.12" line
+  export PYTHON_BIN="$venv/bin/python"
+  export PATH="$venv/bin:$PATH"
+  [ -n "${CLAUDE_ENV_FILE:-}" ] || return 0
+  # %q preserves spaces, quotes and shell metacharacters in the selected home path.
+  printf -v line 'export PYTHON_BIN=%q' "$PYTHON_BIN"
+  if ! grep -Fqx -- "$line" "$CLAUDE_ENV_FILE" 2>/dev/null; then
+    printf '%s\n' "$line" >> "$CLAUDE_ENV_FILE" || return 1
+  fi
+  printf -v line 'export PATH=%q:"$PATH"' "$venv/bin"
+  if ! grep -Fqx -- "$line" "$CLAUDE_ENV_FILE" 2>/dev/null; then
+    printf '%s\n' "$line" >> "$CLAUDE_ENV_FILE" || return 1
+  fi
 }
 
 # --------------------------------------------------------------------------------------------
@@ -419,9 +460,11 @@ tier_signature() {
       # dependency repair, was skipped on the stale marker. Fold in each cached manifest's path and
       # mtime so any cache mutation invalidates the marker too.
       {
+        printf '%s\n' "$claude_home"
         sha256sum .claude/settings.json 2>/dev/null
-        find "$HOME/.claude/plugins/cache" -maxdepth 4 -name package.json -not -path '*/node_modules/*' \
+        find "$claude_home/plugins/cache" -maxdepth 4 -name package.json -not -path '*/node_modules/*' \
           -printf '%p %T@\n' 2>/dev/null | sort
+        find "$claude_home/plugins/cache" -maxdepth 4 -name node_modules -type d -printf '%p\n' 2>/dev/null | sort
       } | sha256sum | cut -d' ' -f1
       ;;
     gh) printf 'v1' ;;
@@ -465,6 +508,15 @@ release_tier_lock() {
 }
 
 for tier in "${selected[@]}"; do
+  if [ "$config_tiers_blocked" -eq 1 ]; then
+    case "$tier" in
+      profile|plugins)
+        warn "tier ${tier}: not run after profile refusal"
+        failed+=("$tier")
+        continue
+        ;;
+    esac
+  fi
   case "$skip_list" in
     *",$tier,"*)
       log "tier ${tier}: skipped by CLAUDE_CLOUD_SKIP_TIERS"
@@ -476,7 +528,12 @@ for tier in "${selected[@]}"; do
   # The profile tier is intentionally never marker-skipped: it is a sub-second file copy and a stale
   # ~/.claude is the failure this whole script exists to prevent.
   if [ "$tier" != "profile" ] && tier_is_done "$tier" "$signature"; then
-    log "tier ${tier}: already provisioned"
+    if activate_tier "$tier"; then
+      log "tier ${tier}: already provisioned (session activation checked)"
+    else
+      warn "tier ${tier}: cached runtime activation failed"
+      failed+=("$tier")
+    fi
     continue
   fi
 
@@ -487,12 +544,13 @@ for tier in "${selected[@]}"; do
   fi
 
   log "tier ${tier}: provisioning"
-  if "tier_${tier}"; then
-    mark_tier_done "$tier" "$signature"
+  if "tier_${tier}" && activate_tier "$tier"; then
+    mark_tier_done "$tier" "$(tier_signature "$tier")"
     log "tier ${tier}: done"
   else
     warn "tier ${tier}: failed (continuing)"
     failed+=("$tier")
+    [ "$tier" != "profile" ] || config_tiers_blocked=1
   fi
   release_tier_lock
 done
@@ -505,10 +563,18 @@ done
 if [ "$session_mode" -eq 1 ]; then
   pending=()
   for tier in "${background_tiers[@]}"; do
+    if [ "$config_tiers_blocked" -eq 1 ]; then
+      case "$tier" in profile|plugins) failed+=("$tier"); continue ;; esac
+    fi
     # Signature, not bare marker existence. A marker whose signature no longer matches means the
     # inputs moved — a new package-lock for browsers, a new requirements-cloud.txt for python — and a
     # presence-only check would leave the container silently running the previous provisioning.
-    tier_is_done "$tier" "$(tier_signature "$tier")" || pending+=("$tier")
+    case "$skip_list" in *",$tier,"*) continue ;; esac
+    if tier_is_done "$tier" "$(tier_signature "$tier")"; then
+      activate_tier "$tier" || failed+=("$tier")
+    else
+      pending+=("$tier")
+    fi
   done
   if [ "${#pending[@]}" -gt 0 ]; then
     child_flags=()

@@ -10,16 +10,17 @@ provisioners.
 
 ## What runs, and when
 
-`.claude/settings.json` registers these two provisioning commands under `SessionStart`,
-alongside base-freshness, issue-queue, testing-policy and organisation context hooks:
+`.claude/settings.json` registers one sequential orchestrator,
+`bash "$CLAUDE_PROJECT_DIR/scripts/claude-session-start.sh"`, with a 1,300-second timeout.
+It bootstraps Node/dependencies through `.claude/hooks/session-start.sh`, then runs
+`scripts/claude-session-start.mjs` with that runtime. The runner executes Cloud setup, base
+freshness, issues, testing-policy and organisation context in order and emits one SessionStart
+context envelope. Hook registration order is not used as a scheduling guarantee.
 
-| Order | Command                                   | Timeout | Does                                               |
-| ----- | ----------------------------------------- | ------- | -------------------------------------------------- |
-| 1     | `.claude/hooks/session-start.sh`          | 900s    | Installs Node 24 to `$HOME/.node24`, then `npm ci` |
-| 2     | `scripts/setup-claude-cloud.sh --session` | 300s    | Everything below                                   |
-
-Both no-op instantly unless `CLAUDE_CODE_REMOTE=true`. This guard selects their execution; it does
-not attest that provisioning succeeded or that the current host has provider authority.
+Provisioning runs only when `CLAUDE_CODE_REMOTE=true`; local sessions retain the context hooks.
+Bootstrap failure skips dependent provisioning and reports the failure without failing the
+session. Readiness must be checked before relying on any affected tool. The remote marker selects
+execution; it does not attest setup success or provider authority.
 
 ## The tiers
 
@@ -28,8 +29,10 @@ about a second; a cold one can be resumed after an interrupted run without redoi
 
 All selected tier names, including session and background overrides, are validated before any tier
 runs. Listing tiers and the local no-op path create no cache or profile state. Cached `gh` and `deno`
-markers also require their commands to work; Deno must still report major version 2. A marker alone
-is not current runtime evidence.
+markers also require their commands to work; Deno must still report major version 2. Python
+receipts require the actual Python 3.12 interpreter, OCR imports and Tesseract. Python activation
+is separate from installation caching: each session receives its own PATH/PYTHON_BIN exports,
+including a warm cache hit. A marker alone is not current runtime evidence.
 
 | Tier       | Installs                                                                                 | Cost when cold |
 | ---------- | ---------------------------------------------------------------------------------------- | -------------- |
@@ -76,20 +79,38 @@ empty string to disable it), and `CLAUDE_CLOUD_BROWSERS`.
 
 ## The checked-in user profile
 
-`.claude/cloud-profile/` is a reviewed, portable subset of the operator's user-level Claude Code configuration. The
-repository cannot reach into a Windows home directory, so the snapshot travels in-tree and
-`scripts/apply-claude-cloud-profile.mjs` unpacks it into the container's `~/.claude`.
+`.claude/cloud-profile/` is a reviewed portable seed. The applier installs it into the selected
+`CLAUDE_CONFIG_DIR`, falling back to `~/.claude`. Plugin repair and cache signatures use that same
+selected directory. Prefer a separate configuration home for each source checkout when a host is
+shared; project instructions continue to own project behavior.
 
-| Path                                  | Becomes                             | Merge rule                                    |
-| ------------------------------------- | ----------------------------------- | --------------------------------------------- |
-| `.claude/cloud-profile/CLAUDE.md`     | `~/.claude/CLAUDE.md`               | Replaced; any existing copy backed up once    |
-| `.claude/cloud-profile/settings.json` | `~/.claude/settings.json`           | **Deep-merged**, profile wins per key         |
-| `.claude/cloud-profile/skills/`       | `~/.claude/skills/`                 | Replaced per skill                            |
-| `.claude/cloud-profile/memory/`       | `~/.claude/projects/<slug>/memory/` | Reusable guidance copied **only when absent** |
+The `.cloud-profile-install.json` manifest binds the selected directory to its source checkout
+and records managed file hashes and setting values. Updates reconcile this ownership record:
 
-Any part can be skipped for a targeted re-run —
-`node scripts/apply-claude-cloud-profile.mjs --skip=skills,memory` — and `--dry-run` reports without
-writing.
+| Path                            | Update and retirement behavior                                                         |
+| ------------------------------- | -------------------------------------------------------------------------------------- |
+| `CLAUDE.md` and `skills/` files | Install absent files; update/retire unchanged owned files; preserve host modifications |
+| Profile settings                | Add missing keys; update/retire unchanged owned values; preserve other host settings   |
+| Project memory seeds            | Copy listed seeds only when absent; never claim ownership or remove host memory        |
+
+A different source checkout, differing unmanaged file or conflicting host setting causes an
+explicit refusal before the planned file changes. Use an isolated configuration home rather than
+overwriting another installation. To adopt an older installation, inspect a dry run and use
+`--adopt` only for byte-identical unmanaged files/settings. Adoption does not authorize replacing
+host edits. Modified owned entries remain recorded and reported for review.
+
+Use `node scripts/apply-claude-cloud-profile.mjs --dry-run` to inspect an update and add
+`--uninstall --dry-run` to inspect retirement. Remove `--dry-run` only for an authorized selected
+host operation. Uninstall removes only unchanged owned content; it preserves modified files,
+unowned resources and all personal memory. A different checkout must use a separate home or
+retire the original installation from its owning checkout first. Operations serialize with a
+configuration-local lock; interrupted operations require inspection, not deletion of unknown host
+files. A retained modified entry can leave the ownership record in place after uninstall.
+
+Any part can be skipped with `--skip=settings,claude-md,skills,memory` (choose only the intended
+parts). Local execution still requires `--force`; that flag does not bypass ownership checks.
+See [Cloud instruction activation](agents/cloud-instruction-activation.md) for the distinction
+between a repository update, host reconciliation and loaded chat context.
 
 The memory seed directory carries curated reusable guidance and dated examples. Its
 `seed-manifest.json` lists the only Markdown files the applier may copy. The manifest must use
@@ -113,13 +134,14 @@ retained memory disagrees.
 Three rules are load-bearing:
 
 - **Settings are merged, never replaced.** Whatever the platform put in `~/.claude/settings.json` —
-  auth state, machine ids, feature flags — survives. Only the profile's own keys are imposed.
+  auth state, machine ids, feature flags — survives. Only absent or unchanged owned profile values
+  are installed or updated; conflicting unmanaged values are preserved and reported.
 - **Memories are never clobbered.** The copy is skip-if-present to preserve host-written work.
   Existence or recency does not make memory authoritative; current instructions and verified facts
   win when content conflicts. Correcting host memory requires its applicable exact-content approval.
 - **The applier refuses to run unless `CLAUDE_CODE_REMOTE=true`**, or `--force` is passed. The
   operator's real `~/.claude` is the _origin_ of this snapshot; overwriting it with a copy of itself
-  is the one genuinely destructive thing this tooling could do. `scripts/setup-claude-cloud.sh` carries
+  would replace user-owned guidance; the installer now refuses those collisions. `scripts/setup-claude-cloud.sh` carries
   the same guard, needing `--allow-local` to provision a non-cloud machine.
 
 ### Refreshing the snapshot
@@ -150,10 +172,11 @@ Two things about `skills/` in particular:
   over 150 files. Land a snapshot refresh as its own pull request, separate from any code change to
   the provisioner or the applier.
 
-Because the tree can legitimately be absent from a checkout mid-refresh, nothing may assume it is
-there: `scripts/apply-claude-cloud-profile.mjs` copies skills only when the directory exists, and
-`tests/claude-cloud-profile.test.ts` states which of its assertions need the tree rather than failing
-on a valid intermediate state. Both properties are pinned by that test file.
+A partial checkout may omit the skills tree. Fresh installation tolerates that absence, but an
+existing installation with owned skills refuses ambiguous whole-tree absence. Use `--skip=skills`
+for that partial checkout; `--uninstall` is the explicit retirement route. Removing individual
+source files, or deliberately retaining an empty source skills directory, retires unchanged owned
+files. Host modifications remain preserved. Fixture tests cover these distinct cases.
 
 ## What still needs a human
 

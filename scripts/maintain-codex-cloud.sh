@@ -12,6 +12,7 @@ repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || {
   exit 1
 }
 cd "$repo_root"
+repo_root="$(pwd -P)"
 
 if bash --noprofile --norc scripts/check-codex-cloud-raw-env.sh; then
   :
@@ -31,6 +32,7 @@ if [[ "$requested_cloud_profile_set" = "yes" ]]; then
   esac
 fi
 requested_cloud_rag_mode="${RAG_PROVIDER_MODE:-offline}"
+requested_base_set="${CODEX_CLOUD_EXPECTED_BASE_SHA+yes}"
 if [[ "$requested_cloud_profile" = "connected" && "$requested_cloud_rag_mode" != "offline" ]]; then
   fail "The selected legacy Codex Cloud profile must keep RAG_PROVIDER_MODE=offline."
 fi
@@ -43,8 +45,17 @@ if [[ ! -f "$runtime_profile" ]]; then
   printf '[codex-cloud:maintenance] Generated runtime profile unavailable; rerunning full setup.\n'
   exec bash scripts/setup-codex-cloud.sh
 fi
+if grep -q '^# PsychSift checkout: ' "$runtime_profile"; then
+  grep -Fqx "# PsychSift checkout: $repo_root" "$runtime_profile" ||
+    fail "The cached runtime profile belongs to another checkout; use an isolated HOME and CODEX_HOME."
+fi
 
 load_runtime_profile() {
+  # A base loaded by this maintenance process may be refreshed below. Only the
+  # pin inherited when maintenance started is an explicit task selection.
+  if [[ "$requested_base_set" != yes ]]; then
+    unset CODEX_CLOUD_EXPECTED_BASE_SHA
+  fi
   # shellcheck source=/dev/null
   source "$runtime_profile"
   case "${CODEX_CLOUD_ACCESS_PROFILE-}" in

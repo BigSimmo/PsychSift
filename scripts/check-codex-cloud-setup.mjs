@@ -1107,9 +1107,37 @@ function validateMaintenanceAndCommandShims(sources, errors) {
   ]) {
     requireMatch(errors, commandShims, pattern, message);
   }
-  if (!commandShims.includes('exec "$command_path" "\\$@"')) {
+  if (!commandShims.includes('exec $quoted_command_path "\\$@"')) {
     errors.push("Cloud command shims must execute absolute Node commands.");
   }
+  for (const [pattern, message] of [
+    [
+      /command_paths=\(\)[\s\S]*command_paths\+=\("\$resolved_command"\)[\s\S]*candidates=\(\)/,
+      "Cloud command shims must preflight all targets before staging replacements.",
+    ],
+    [
+      /mktemp "\$shim_dir\/[\s\S]*mv -fT --/,
+      "Cloud command shims must atomically replace destination links without writing through them.",
+    ],
+    [
+      /git rev-parse --show-toplevel[\s\S]*fallback_command=/,
+      "Cloud command shims must preserve unrelated checkout runtimes.",
+    ],
+  ]) {
+    requireMatch(errors, commandShims, pattern, message);
+  }
+  requireMatch(
+    errors,
+    sources.setup,
+    /codex_config_dir="\$\{CODEX_HOME:-\$HOME\/\.codex\}"/,
+    "Cloud shell policy must use the active CODEX_HOME.",
+  );
+  requireMatch(
+    errors,
+    sources.setup,
+    /\$\{CODEX_CLOUD_EXPECTED_BASE_SHA\+x\}/,
+    "The generated Cloud profile must preserve an explicit task base pin.",
+  );
 }
 
 function validateCheckoutAndRawEnvironmentContracts(sources, errors) {
@@ -1125,6 +1153,12 @@ function validateCheckoutAndRawEnvironmentContracts(sources, errors) {
     checkoutBaseRefresh,
     /cloud-expected-base-sha/,
     "Checkout-base refresh must persist the verified base outside the repository.",
+  );
+  requireMatch(
+    errors,
+    checkoutBaseRefresh,
+    /checkouts\/\$checkout_key/,
+    "Checkout-base cache must be scoped to the physical checkout identity.",
   );
   requireMatch(
     errors,

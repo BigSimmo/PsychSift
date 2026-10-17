@@ -101,7 +101,7 @@ completed passing evidence; skipped or pending checks are not passes.
 | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `npm run test:focused -- --files <paths>` | Source-only iteration. Fails closed for deleted files and test infrastructure — then run `npm run test`.                                                                                                                                                                                                                                   |
 | `npm run verify:cheap`                    | **Ordinary offline gate:** `check:installed-lock-parity` then `check:diff-integrity` + `lint` + `typecheck` + full offline unit suite. Nothing else. Prefer `test:focused` while iterating; run cheap before an ordinary PR push when the diff needs those five checks. CI selects the heavy static set when classified scope requires it. |
-| `npm run verify:full`                     | **Broad offline gate:** the 42 static/consistency gates (docs index, ledgers, knip, design tokens, owner-scope…; `npm run check:gate-manifest` lists them), then `lint` + `typecheck` + `test`. Does not invoke the `verify:cheap` script. For cross-module risk or before a release — not routinely.                                      |
+| `npm run verify:full`                     | **Broad offline gate:** the 43 static/consistency gates (docs index, ledgers, knip, design tokens, owner-scope…; `npm run check:gate-manifest` lists them), then `lint` + `typecheck` + `test`. Does not invoke the `verify:cheap` script. For cross-module risk or before a release — not routinely.                                      |
 | `npm run verify:pr-local`                 | Risk-routed PR mirror: focused docs/workflow contracts for recognised light scope, fail-closed heavy checks for executable or unknown scope. `-- --dry-run --files <paths>` shows selection.                                                                                                                                               |
 | `npm run verify:ui`                       | Chromium production journeys. Run `npm run ensure` first.                                                                                                                                                                                                                                                                                  |
 | `npm run verify:phone-chrome`             | Phone-chrome changes; selects affected owners/journeys before escalating to `verify:ui`                                                                                                                                                                                                                                                    |
@@ -114,8 +114,11 @@ static gate (lint + source typecheck; override `SKIP_STATIC_GUARD=1`). The auto-
 automation override; the other guards retain their documented override env vars.
 
 Domain changes (auth, Supabase, ingestion, answer generation, search/ranking, clinical
-output, source governance) additionally want the smallest relevant domain check plus
-`npm run check:production-readiness`.
+output, source governance) follow the [canonical gate selector](docs/agents/verification-gates.md#gate-selection):
+use the smallest relevant offline domain check, adding `npm run check:production-readiness:ci`
+when readiness or configuration structure is in scope. The bare
+`npm run check:production-readiness` is the release-mode gate for production release or
+activation; retain all applicable clinical, privacy, legal, security and provider approvals.
 
 CI (`.github/workflows/ci.yml`) is risk-scoped: a `changes` job classifies paths, `static-pr`
 always runs a small baseline and conditionally selects docs/workflow or heavy static checks,

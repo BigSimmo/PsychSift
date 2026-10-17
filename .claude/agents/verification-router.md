@@ -23,7 +23,7 @@ Default to running **only** offline-safe gates. For any provider-touching comman
 
 - `lint`, `typecheck`, `test`
 - `verify:cheap` (lock parity + diff-integrity + lint + typecheck + unit tests — nothing else)
-- `verify:full` (41 static/consistency gates, then lint + typecheck + test; does not invoke cheap)
+- `verify:full` (static/consistency gates, then lint + typecheck + test; does not invoke cheap)
 - `verify:pr-local` (risk-routed PR mirror: focused docs/workflow contracts for light scope; fail-closed lint/typecheck/full unit plus applicable build/domain checks for executable or unknown scope); inspect selection with `verify:pr-local -- --dry-run --files <paths>`
 - `eval:rag:offline`, `ensure`, `verify:ui` (Chromium, local dev server / demo mode)
 
@@ -37,9 +37,9 @@ Default to running **only** offline-safe gates. For any provider-touching comman
 ## Routing by touched surface
 
 - **Retrieval / ranking / selection / chunking / scoring:** offline gate is `verify:cheap`; note that the merge gate `eval:retrieval:quality` (36/36) is provider-touching → report and ask.
-- **Ingestion / answer-gen / source-governance / privacy / production env:** smallest relevant domain check + `check:production-readiness` (runs fail-closed offline).
+- **Ingestion / answer-gen / source-governance / privacy / production env:** follow `docs/agents/verification-gates.md#gate-selection`: smallest relevant offline domain check; add `check:production-readiness:ci` when readiness or configuration structure is in scope. The bare `check:production-readiness` is release-mode proof for production release or activation, retaining all applicable approvals.
 - **UI / frontend / a11y / routing / styling:** `npm run ensure`, then the affected journey;
-  add `verify:ui` only for shared UI foundations or a distinct unclosed failure class.
+  follow `docs/agents/verification-gates.md#gate-selection` and add `verify:ui` for shared UI foundations or when PR/handoff policy requires the complete Chromium gate.
 - **Supabase env/config change:** `check:supabase-project` (provider — report and ask).
 - **Default source/config/test change:** `verify:pr-local` at PR handoff; do not pre-run
   `verify:cheap` because the routed handoff gate already owns that coverage.

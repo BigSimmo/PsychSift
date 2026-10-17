@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   chmodSync,
   copyFileSync,
@@ -9,6 +10,7 @@ import {
   readdirSync,
   rmSync,
   writeFileSync,
+  symlinkSync,
 } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -19,6 +21,7 @@ const bashCommand =
   process.platform === "win32"
     ? path.join(process.env.ProgramFiles || "C:\\Program Files", "Git/bin/bash.exe")
     : "/bin/bash";
+const shellToolsPath = process.platform === "win32" ? "/mingw64/bin:/usr/bin:/bin" : "/usr/bin:/bin";
 const temporaryDirectories: string[] = [];
 
 afterEach(() => {
@@ -336,7 +339,7 @@ describe("Codex Cloud policy-only harness runtime isolation", () => {
     expect(result.stderr).toContain("raw boundary remains failed");
     expect(result.stdout + result.stderr).not.toContain("synthetic-known-launcher-value");
     expect(existsSync(test.runtimeCalls)).toBe(false);
-    expect(readFileSync(path.join(test.home, ".local/bin/node"), "utf8")).toContain('.clinical-kb-codex-cloud.sh"');
+    expect(readFileSync(path.join(test.home, ".local/bin/node"), "utf8")).toContain(".clinical-kb-codex-cloud.sh'");
   });
 
   it("restores a missing maintenance profile before repository or runtime work", () => {
@@ -396,6 +399,99 @@ describe("Codex Cloud policy-only harness runtime isolation", () => {
     }
   });
 
+  it("writes and repairs only the active CODEX_HOME configuration", () => {
+    const test = fixture("missing");
+    const configHome = path.join(test.home, "chosen-codex-home");
+    mkdirSync(configHome);
+    const activeConfig = path.join(configHome, "config.toml");
+    writeFileSync(activeConfig, '[mcp_servers.active]\ncommand = "echo"\n');
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const result = test.run({ CODEX_HOME: bashPath(configHome) });
+      expect(result.status, result.stderr || result.stdout).toBe(0);
+      const contents = readFileSync(activeConfig, "utf8");
+      expect(contents).toContain("[mcp_servers.active]");
+      expect(contents.match(/^\[shell_environment_policy\]$/gm)).toHaveLength(1);
+      expect(contents).toContain('"SUPABASE_URL"');
+      expect(readFileSync(test.configPath, "utf8")).toBe(test.config);
+    }
+    expect(existsSync(test.runtimeCalls)).toBe(false);
+  });
+
+  it.skipIf(process.platform === "win32").each(["directory", "symlink-to-directory"])(
+    "rejects active config %s before runtime or profile writes",
+    (destination) => {
+      const test = fixture("missing");
+      const configHome = path.join(test.home, "chosen-codex-home");
+      const configPath = path.join(configHome, "config.toml");
+      const externalDirectory = path.join(test.home, "external-directory");
+      mkdirSync(configHome);
+      mkdirSync(externalDirectory);
+      if (destination === "directory") mkdirSync(configPath);
+      else symlinkSync(externalDirectory, configPath);
+      const result = test.run({ CODEX_HOME: bashPath(configHome) });
+      expect(result.status, result.stderr || result.stdout).toBe(1);
+      expect(result.stderr).toContain("active Codex config destination");
+      expect(readdirSync(configPath)).toEqual([]);
+      expect(readdirSync(externalDirectory)).toEqual([]);
+      expect(readFileSync(test.configPath, "utf8")).toBe(test.config);
+      expect(existsSync(path.join(test.home, ".clinical-kb-codex-cloud.sh"))).toBe(false);
+      expect(existsSync(test.runtimeCalls)).toBe(false);
+    },
+  );
+
+  it("leaves a fresh unrelated checkout shell unchanged and rejects retargeting its profile", () => {
+    const test = fixture("missing");
+    const result = test.run();
+    expect(result.status, result.stderr || result.stdout).toBe(0);
+    const otherCheckout = path.join(test.home, "other-checkout");
+    mkdirSync(otherCheckout);
+    expect(spawnSync("git", ["init", "--quiet", otherCheckout]).status).toBe(0);
+    const loaded = spawnSync(
+      bashCommand,
+      [
+        "--noprofile",
+        "--norc",
+        "-c",
+        '. "$HOME/.profile"; printf "%s|%s|%s|%s" "$PATH" "${CODEX_CLOUD-unset}" "$SUPABASE_URL" "$HTTPS_PROXY"',
+      ],
+      {
+        cwd: otherCheckout,
+        encoding: "utf8",
+        env: {
+          NODE_ENV: "test",
+          HOME: bashPath(test.home),
+          PATH: shellToolsPath,
+          SystemRoot: process.env.SystemRoot,
+          WINDIR: process.env.WINDIR,
+          SUPABASE_URL: "synthetic-unrelated-environment",
+          HTTPS_PROXY: "synthetic-proxy",
+          CLOUD_POLICY_RUNTIME_CALLS: test.runtimeCalls,
+        },
+      },
+    );
+    expect(loaded.status, loaded.stderr).toBe(0);
+    expect(loaded.stdout).toBe(`${shellToolsPath}|unset|synthetic-unrelated-environment|synthetic-proxy`);
+    expect(existsSync(test.runtimeCalls)).toBe(false);
+
+    const profilePath = path.join(test.home, ".clinical-kb-codex-cloud.sh");
+    const profile = readFileSync(profilePath, "utf8");
+    writeFileSync(
+      profilePath,
+      profile.replace(`# PsychSift checkout: ${bashPath(repoRoot)}`, "# PsychSift checkout: /another-checkout"),
+    );
+    for (const script of [
+      "scripts/setup-codex-cloud.sh",
+      "scripts/maintain-codex-cloud.sh",
+      "scripts/install-codex-cloud-command-shims.sh",
+    ]) {
+      const rejected = test.run({}, script === "scripts/setup-codex-cloud.sh", script);
+      expect(rejected.status, rejected.stderr || rejected.stdout).toBe(1);
+      expect(rejected.stderr).toContain("another checkout");
+      expect(existsSync(test.runtimeCalls)).toBe(false);
+    }
+  });
+
   it.each(["unmanaged-policy", "atomic-write"] as const)(
     "preserves configuration and failure status without runtime diagnostics after %s failure",
     (failure) => {
@@ -447,7 +543,8 @@ describe("Codex Cloud policy-only harness runtime isolation", () => {
       const result = test.run();
       expect(result.status, result.stderr || result.stdout).toBe(0);
       rmSync(path.join(test.home, ".nvm/nvm.sh"));
-      const cache = path.join(test.home, ".cache/clinical-kb-codex");
+      const checkoutKey = createHash("sha256").update(bashPath(repoRoot)).digest("hex");
+      const cache = path.join(test.home, ".cache/clinical-kb-codex/checkouts", checkoutKey);
       mkdirSync(cache, { recursive: true });
       writeFileSync(path.join(cache, "cloud-expected-base-sha"), `${base}\n`);
 
@@ -460,6 +557,7 @@ describe("Codex Cloud policy-only harness runtime isolation", () => {
           'exec sh -eu -c \'. "$HOME/.clinical-kb-codex-cloud.sh"; printf "%s" "${CODEX_CLOUD_EXPECTED_BASE_SHA:-unset}"\'',
         ],
         {
+          cwd: repoRoot,
           encoding: "utf8",
           env: {
             NODE_ENV: "test",
@@ -474,6 +572,230 @@ describe("Codex Cloud policy-only harness runtime isolation", () => {
       expect(loaded.status, loaded.stderr).toBe(0);
       expect(loaded.stderr).toBe("");
       expect(loaded.stdout).toBe(base === "a".repeat(40) ? base : "unset");
+    },
+  );
+
+  it.each(["b".repeat(40), "invalid-explicit-pin", ""])(
+    "keeps explicit base pin %j instead of cached or old global state",
+    (pin) => {
+      const test = fixture("missing");
+      expect(test.run().status).toBe(0);
+      rmSync(path.join(test.home, ".nvm/nvm.sh"));
+      const cache = path.join(test.home, ".cache/clinical-kb-codex");
+      const checkoutKey = createHash("sha256").update(bashPath(repoRoot)).digest("hex");
+      mkdirSync(path.join(cache, "checkouts", checkoutKey), { recursive: true });
+      writeFileSync(path.join(cache, "checkouts", checkoutKey, "cloud-expected-base-sha"), `${"a".repeat(40)}\n`);
+      writeFileSync(path.join(cache, "cloud-expected-base-sha"), `${"c".repeat(40)}\n`);
+      const loaded = spawnSync(
+        bashCommand,
+        [
+          "--noprofile",
+          "--norc",
+          "-c",
+          '. "$HOME/.clinical-kb-codex-cloud.sh"; printf "%s" "$CODEX_CLOUD_EXPECTED_BASE_SHA"',
+        ],
+        {
+          cwd: repoRoot,
+          encoding: "utf8",
+          env: {
+            NODE_ENV: "test",
+            HOME: bashPath(test.home),
+            PATH: shellToolsPath,
+            SystemRoot: process.env.SystemRoot,
+            WINDIR: process.env.WINDIR,
+            CODEX_CLOUD_EXPECTED_BASE_SHA: pin,
+          },
+        },
+      );
+      expect(loaded.status, loaded.stderr).toBe(0);
+      expect(loaded.stdout).toBe(pin);
+    },
+  );
+
+  it("refreshes independent checkout base caches in one home without changing the historical global cache", () => {
+    const test = fixture("missing");
+    const cache = path.join(test.home, ".cache/clinical-kb-codex");
+    mkdirSync(cache, { recursive: true });
+    writeFileSync(path.join(cache, "cloud-expected-base-sha"), `${"c".repeat(40)}\n`);
+    const fakeGit = path.join(test.home, "bin/git");
+    writeFileSync(
+      fakeGit,
+      [
+        "#!/bin/bash",
+        'case "$1" in',
+        'rev-parse) printf "%s\\n" "$PWD" ;;',
+        "fetch) exit 0 ;;", // This synthetic fixture never contacts a remote.
+        'merge-base) printf "%s\\n" "$CLOUD_POLICY_BASE" ;;',
+        "*) exit 91 ;;",
+        "esac",
+        "",
+      ].join("\n"),
+    );
+    chmodSync(fakeGit, 0o755);
+    for (const [index, base] of ["a".repeat(40), "b".repeat(40)].entries()) {
+      const checkout = path.join(test.home, `checkout-${index}`);
+      mkdirSync(path.join(checkout, "scripts/lib"), { recursive: true });
+      copyFileSync(
+        path.join(repoRoot, "scripts/refresh-codex-cloud-base.sh"),
+        path.join(checkout, "scripts/refresh-codex-cloud-base.sh"),
+      );
+      copyFileSync(
+        path.join(repoRoot, "scripts/lib/codex-cloud-paths.sh"),
+        path.join(checkout, "scripts/lib/codex-cloud-paths.sh"),
+      );
+      const result = spawnSync(bashCommand, ["scripts/refresh-codex-cloud-base.sh"], {
+        cwd: checkout,
+        encoding: "utf8",
+        env: {
+          NODE_ENV: "test",
+          HOME: bashPath(test.home),
+          PATH: `${bashPath(path.join(test.home, "bin"))}:${shellToolsPath}`,
+          SystemRoot: process.env.SystemRoot,
+          WINDIR: process.env.WINDIR,
+          CLOUD_POLICY_BASE: base,
+        },
+      });
+      expect(result.status, result.stderr || result.stdout).toBe(0);
+      const key = createHash("sha256").update(bashPath(checkout)).digest("hex");
+      expect(readFileSync(path.join(cache, "checkouts", key, "cloud-expected-base-sha"), "utf8")).toBe(`${base}\n`);
+    }
+    expect(readdirSync(path.join(cache, "checkouts"))).toHaveLength(2);
+    expect(readFileSync(path.join(cache, "cloud-expected-base-sha"), "utf8")).toBe(`${"c".repeat(40)}\n`);
+    expect(existsSync(test.runtimeCalls)).toBe(false);
+  });
+
+  it("audits bounded managed artifacts without changing files or running a runtime", () => {
+    const test = fixture("missing");
+    expect(test.run().status).toBe(0);
+    const artifacts = [".clinical-kb-codex-cloud.sh", ".bashrc", ".profile", ".bash_profile", ".codex/config.toml"];
+    const before = artifacts.map((artifact) => readFileSync(path.join(test.home, artifact), "utf8"));
+    const result = test.run(
+      { SUPABASE_SERVICE_ROLE_KEY: "synthetic-must-not-print" },
+      false,
+      "scripts/audit-codex-cloud-artifacts.sh",
+    );
+    expect(result.status, result.stderr || result.stdout).toBe(0);
+    expect(result.stdout).toContain("DRY-RUN only");
+    expect(result.stdout).toContain("managed-marker-review sha256=");
+    expect(result.stdout).toContain("No files changed");
+    expect(result.stdout).not.toContain("synthetic-must-not-print");
+    expect(artifacts.map((artifact) => readFileSync(path.join(test.home, artifact), "utf8"))).toEqual(before);
+    expect(existsSync(test.runtimeCalls)).toBe(false);
+  });
+
+  it.each([undefined, "c".repeat(40)])(
+    "maintenance reloads its own refreshed cache while preserving inherited pin %j",
+    (pin) => {
+      const test = fixture("missing");
+      const checkout = path.join(test.home, "selected-checkout");
+      mkdirSync(path.join(checkout, "scripts/lib"), { recursive: true });
+      for (const file of [
+        ".node-version",
+        "package.json",
+        "scripts/setup-codex-cloud.sh",
+        "scripts/maintain-codex-cloud.sh",
+        "scripts/check-codex-cloud-raw-env.sh",
+        "scripts/lib/codex-cloud-paths.sh",
+      ]) {
+        copyFileSync(path.join(repoRoot, file), path.join(checkout, file));
+      }
+      const fakeGit = path.join(test.home, "bin/git");
+      writeFileSync(fakeGit, '#!/bin/bash\nprintf "%s\\n" "$CLOUD_POLICY_FIXTURE_CHECKOUT"\n');
+      chmodSync(fakeGit, 0o755);
+      const environment = { CLOUD_POLICY_FIXTURE_CHECKOUT: bashPath(checkout), CODEX_CLOUD_EXPECTED_BASE_SHA: pin };
+      const setup = test.run(environment, true, path.join(checkout, "scripts/setup-codex-cloud.sh"));
+      expect(setup.status, setup.stderr || setup.stdout).toBe(0);
+      rmSync(path.join(test.home, ".nvm/nvm.sh"));
+      const key = createHash("sha256").update(bashPath(checkout)).digest("hex");
+      const cache = path.join(test.home, ".cache/clinical-kb-codex/checkouts", key, "cloud-expected-base-sha");
+      mkdirSync(path.dirname(cache), { recursive: true });
+      writeFileSync(cache, `${"a".repeat(40)}\n`);
+      writeFileSync(
+        path.join(checkout, "scripts/refresh-codex-cloud-base.sh"),
+        `printf '%s\\n' '${"b".repeat(40)}' > '${bashPath(cache)}'\n`,
+      );
+      writeFileSync(path.join(checkout, "scripts/install-codex-cloud-command-shims.sh"), "exit 0\n");
+      for (const command of ["node", "npm"]) {
+        const executable = path.join(test.home, "bin", command);
+        writeFileSync(
+          executable,
+          `#!/bin/bash\nprintf '${command}:%s\\n' "$CODEX_CLOUD_EXPECTED_BASE_SHA" >> "$CLOUD_POLICY_RUNTIME_CALLS"\n`,
+        );
+        chmodSync(executable, 0o755);
+      }
+      const maintained = test.run(environment, false, path.join(checkout, "scripts/maintain-codex-cloud.sh"));
+      expect(maintained.status, maintained.stderr || maintained.stdout).toBe(0);
+      expect(readFileSync(test.runtimeCalls, "utf8").trim().split("\n")).toEqual([
+        `node:${pin ?? "a".repeat(40)}`,
+        `npm:${pin ?? "b".repeat(40)}`,
+        `npm:${pin ?? "b".repeat(40)}`,
+      ]);
+    },
+  );
+  it.each([undefined, "c".repeat(40)])(
+    "full setup refreshes a warm base cache and preserves inherited pin %j",
+    (pin) => {
+      const test = fixture("missing");
+      const checkout = path.join(test.home, "setup-checkout");
+      mkdirSync(path.join(checkout, "scripts/lib"), { recursive: true });
+      for (const file of [
+        ".node-version",
+        "package.json",
+        "scripts/check-codex-cloud-raw-env.sh",
+        "scripts/lib/codex-cloud-paths.sh",
+      ]) {
+        copyFileSync(path.join(repoRoot, file), path.join(checkout, file));
+      }
+      // Exercise actual setup through its second profile load, stopping before
+      // Deno/system/Python provisioning. Every executable dependency is synthetic.
+      const setupSource = readFileSync(path.join(repoRoot, "scripts/setup-codex-cloud.sh"), "utf8");
+      writeFileSync(
+        path.join(checkout, "scripts/setup-codex-cloud.sh"),
+        setupSource.replace(
+          'setup_step="deno-runtime"',
+          'printf "[setup-base-fixture] %s\\n" "$CODEX_CLOUD_EXPECTED_BASE_SHA"\nexit 0\nsetup_step="deno-runtime"',
+        ),
+      );
+      const key = createHash("sha256").update(bashPath(checkout)).digest("hex");
+      const cache = path.join(test.home, ".cache/clinical-kb-codex/checkouts", key, "cloud-expected-base-sha");
+      mkdirSync(path.dirname(cache), { recursive: true });
+      writeFileSync(cache, `${"a".repeat(40)}\n`);
+      writeFileSync(
+        path.join(checkout, "scripts/refresh-codex-cloud-base.sh"),
+        `printf '%s\\n' '${"b".repeat(40)}' > '${bashPath(cache)}'\n`,
+      );
+      writeFileSync(path.join(checkout, "scripts/install-codex-cloud-command-shims.sh"), "exit 0\n");
+      rmSync(path.join(test.home, ".nvm/nvm.sh"));
+      const stubs: Record<string, string> = {
+        git: 'printf "%s\\n" "$CLOUD_POLICY_FIXTURE_CHECKOUT"',
+        node: 'if [[ "${1:-}" = -p ]]; then printf "%s\\n" 24.19.0; fi',
+        codex: 'printf "%s\\n" 0.147.0',
+        npm: [
+          'case "$1" in',
+          '--version) printf "%s\\n" 11.17.0 ;;',
+          'config) if [[ "$3" = package-lock ]]; then printf "%s\\n" true; else printf "%s\\n" false; fi ;;',
+          'ci) printf "npm-ci:%s\\n" "$CODEX_CLOUD_EXPECTED_BASE_SHA" >> "$CLOUD_POLICY_RUNTIME_CALLS" ;;',
+          "*) exit 92 ;;",
+          "esac",
+        ].join("\n"),
+      };
+      for (const [command, body] of Object.entries(stubs)) {
+        const executable = path.join(test.home, "bin", command);
+        writeFileSync(executable, `#!/bin/bash\n${body}\n`);
+        chmodSync(executable, 0o755);
+      }
+      const result = test.run(
+        {
+          CLOUD_POLICY_FIXTURE_CHECKOUT: bashPath(checkout),
+          CODEX_CLOUD_EXPECTED_BASE_SHA: pin,
+          CODEX_CLOUD_SETUP_STOP_AFTER_POLICY: "0",
+        },
+        false,
+        path.join(checkout, "scripts/setup-codex-cloud.sh"),
+      );
+      expect(result.status, result.stderr || result.stdout).toBe(0);
+      expect(result.stdout).toContain(`[setup-base-fixture] ${pin ?? "b".repeat(40)}`);
+      expect(readFileSync(test.runtimeCalls, "utf8").trim()).toBe(`npm-ci:${pin ?? "a".repeat(40)}`);
     },
   );
 });
