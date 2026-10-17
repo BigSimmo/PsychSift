@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "id": "6e1a6d7a-6e6d-4e5c-9dd0-1c0f4f7f6d4a",
+  "createdOn": "2026-10-17",
+  "action": "cancel",
+  "payload": {
+    "requestId": "f8628e25-fe07-442f-9221-119b40e34213",
+    "reason": "Replaced by the sanctioned reopen request for #WFYDV6, which preserves the original ledger identity"
+  }
+}
