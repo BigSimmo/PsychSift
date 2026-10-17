@@ -335,13 +335,15 @@ export async function attachPageVisualEvidence(
   );
   const sourceImageIds = Array.from(
     new Set(
-      // Index-unit and table-fact source images come first, so a chunk's ordinary image links
-      // can never push an explicitly cited source image out of the bounded fetch.
-      results.flatMap((result) => [
-        result.index_unit?.source_image_id ?? null,
-        ...(result.table_facts ?? []).map((fact) => fact.source_image_id),
-        ...(result.image_ids ?? []),
-      ]),
+      // Every result's cited index-unit and table-fact images come before any ordinary image_ids,
+      // so ordinary links can never push a cited source image out of the bounded fetch.
+      [
+        ...results.flatMap((result) => [
+          result.index_unit?.source_image_id ?? null,
+          ...(result.table_facts ?? []).map((fact) => fact.source_image_id),
+        ]),
+        ...results.flatMap((result) => result.image_ids ?? []),
+      ],
     ),
   )
     .filter((id): id is string => Boolean(id))
