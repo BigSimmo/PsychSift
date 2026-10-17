@@ -960,6 +960,60 @@ describe("teaching migration: admins may export attendance (20261016134500)", ()
     );
   });
 
+  it("is recorded in the teaching_command migration chain", () => {
+    const redefiners = readdirSync("supabase/migrations")
+      .filter((name) => name.endsWith(".sql"))
+      .filter((name) =>
+        /create (or replace )?function public\.teaching_command\(/.test(
+          readFileSync(`supabase/migrations/${name}`, "utf8"),
+        ),
+      )
+      .sort();
+    expect(redefiners).toContain(followUpName);
+  });
+});
+
+describe("teaching migration: display.revoke null creator guard (20261017120000)", () => {
+  const prevName = "20261016134500_teaching_admin_attendance_export.sql";
+  const followUpName = "20261017120000_teaching_display_revoke_null_creator_guard.sql";
+  const prevSql = readFileSync(`supabase/migrations/${prevName}`, "utf8");
+  const followUp = readFileSync(`supabase/migrations/${followUpName}`, "utf8");
+  const schema = readFileSync("supabase/schema.sql", "utf8");
+  const oldRevokeGuard =
+    "if not (v_link.created_by = p_actor_id or v_role = 'organiser') then raise exception 'teaching_role_denied'; end if;";
+  const newRevokeGuard =
+    "if coalesce(v_link.created_by = p_actor_id, false) is not true and v_role <> 'organiser' then raise exception 'teaching_role_denied'; end if;";
+
+  function commandDefinition(text: string, opener: string): string {
+    const start = text.indexOf(`${opener} public.teaching_command(`);
+    if (start < 0) return "";
+    const grant = "grant execute on function public.teaching_command(uuid, uuid, text, jsonb) to service_role;";
+    const end = text.indexOf(grant, start);
+    return end < 0 ? "" : text.slice(start, end + grant.length);
+  }
+
+  const prevDef = commandDefinition(prevSql, "create or replace function");
+  const replaced = commandDefinition(followUp, "create or replace function");
+
+  it("denies non-organisers when display link created_by is NULL", () => {
+    const revokeBranch = actionBranch(replaced, "display.revoke");
+    expect(revokeBranch).not.toBe("");
+    expect(revokeBranch).toContain(newRevokeGuard);
+    expect(revokeBranch).not.toContain(oldRevokeGuard);
+    expect(actionBranch(prevDef, "display.revoke")).toContain(oldRevokeGuard);
+  });
+
+  it("changes nothing else in teaching_command from 20261016134500, and restates the same grants", () => {
+    expect(prevDef).not.toBe("");
+    expect(replaced).not.toBe("");
+    const expected = prevDef.replace(oldRevokeGuard, newRevokeGuard);
+    expect(expected).not.toBe(prevDef);
+    expect(replaced).toBe(expected);
+    expect(replaced).toContain(
+      "revoke all on function public.teaching_command(uuid, uuid, text, jsonb) from public, anon, authenticated;",
+    );
+  });
+
   it("is the latest definition of teaching_command, and schema.sql mirrors it", () => {
     const redefiners = readdirSync("supabase/migrations")
       .filter((name) => name.endsWith(".sql"))

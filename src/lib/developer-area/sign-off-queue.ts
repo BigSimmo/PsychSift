@@ -1503,9 +1503,11 @@ function therapyDomain(): SignOffDomainSummary {
     awaitingPrerequisites: prerequisiteRows.length,
     prerequisiteRows,
     needsSigningSummary:
-      signableNow === 0
-        ? `All ${signedRows.length} therapies with source references are signed off. The remaining ${prerequisiteRows.length} therapy records have empty references: [] arrays and become signable once guideline references are added.`
-        : `${signableNow} therapy record(s) ready to sign now; ${prerequisiteRows.length} awaiting guideline references.`,
+      signableNow === 0 && prerequisiteRows.length === 0
+        ? "Nothing waiting — all 205 Therapy Compass profiles are signed off."
+        : signableNow === 0
+          ? `All ${signedRows.length} therapies with source references are signed off. The remaining ${prerequisiteRows.length} therapy records have empty references: [] arrays and become signable once guideline references are added.`
+          : `${signableNow} therapy record(s) ready to sign now; ${prerequisiteRows.length} awaiting guideline references.`,
     queueFamilyId: "therapy",
   });
 }
