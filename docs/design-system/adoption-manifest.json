@@ -449,6 +449,7 @@
         "src/components/cme/applications/applications-referees.tsx",
         "src/components/cme/applications/applications-season.tsx",
         "src/components/cme/cme-annual-summary.tsx",
+        "src/components/cme/cme-claim-pack.tsx",
         "src/components/cme/cme-dashboard.tsx",
         "src/components/cme/cme-drafts-section.tsx",
         "src/components/cme/cme-entry-form.tsx",

@@ -4,7 +4,7 @@ import { ClipboardCheck, FileText } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { useCopyToast } from "@/components/ui/toast";
+import { useOptionalToast } from "@/components/ui/toast";
 import type { CmeEntry } from "@/lib/cme/types";
 import { guardExampleAction } from "@/lib/example-data/guards";
 import { useExampleData } from "@/lib/example-data/store";
@@ -96,7 +96,7 @@ export function CmeClaimPackButton({
   const [downloaded, setDownloaded] = useState(false);
   const resetTimerRef = useRef<number | null>(null);
   const example = useExampleData("cpd").active;
-  const showToast = useCopyToast();
+  const toast = useOptionalToast();
 
   useEffect(() => {
     return () => {
@@ -109,16 +109,28 @@ export function CmeClaimPackButton({
   const handleExport = () => {
     if (!guardExampleAction(example || demoMode, "export")) return;
     if (claimableEntries(entries).length === 0) {
-      showToast("No claimable expenses recorded for this year");
+      toast?.push({
+        tone: "info",
+        title: "No claimable expenses recorded for this year",
+        duration: 3000,
+      });
       return;
     }
     const ok = downloadClaimPackText(entries, filename);
     if (!ok) {
-      showToast("Could not export claim pack");
+      toast?.push({
+        tone: "danger",
+        title: "Could not export claim pack",
+        duration: 3000,
+      });
       return;
     }
     setDownloaded(true);
-    showToast("Claim pack downloaded");
+    toast?.push({
+      tone: "success",
+      title: "Claim pack downloaded",
+      duration: 3000,
+    });
     if (resetTimerRef.current !== null) {
       window.clearTimeout(resetTimerRef.current);
     }
