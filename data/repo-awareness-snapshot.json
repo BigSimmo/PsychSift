@@ -3040,6 +3040,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-17-answer-sources-stay-a-swipe-row.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/reindex-runbook.md",
         "section": "root",
         "catalogued": true

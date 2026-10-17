@@ -11,23 +11,27 @@ import {
 import { PanelPageShell } from "@/components/developer-area/hub/panel-page-shell";
 import { resolveLiveFreshness } from "@/lib/developer-area/freshness";
 import {
+  loadSignOffLedger,
   loadSignOffQueue,
+  type SignedRecordRow,
+  type SignOffDomainId,
+  type SignOffDomainSummary,
   type SignOffFamily,
   type SignOffFamilyId,
   type SignOffRow,
 } from "@/lib/developer-area/sign-off-queue";
 
 /**
- * The clinical sign-off queue.
+ * The clinical sign-off queue and complete sign-off ledger.
  *
  * Four rules shape this page, and the first three come from what the underlying
  * files actually say rather than from a preference about layout.
  *
- * **It groups, and never merges.** Seven families, five review vocabularies, one
- * section each. Each section states the file it was read from and the native
- * field its status comes from, and each row prints that source's own word before
- * any label this page invented. A single unified status column would make seven
- * different clinical decisions look like one decision someone forgot to take.
+ * **It groups, and never merges.** Seven unsigned queue families and thirteen
+ * governed sign-off domains, read from the files that already hold them. Each
+ * section states the file it was read from and the native field its status
+ * comes from, and each unsigned row prints that source's own word before any
+ * label this page invented.
  *
  * **It reads, and never signs.** No control on this page publishes, approves or
  * unhides anything. The dictionary drafts stay unpublished; this list is the
@@ -35,23 +39,13 @@ import {
  * point of including them.
  *
  * **It links only where a record exists to open.** A row with no route carries
- * no link rather than one that 404s, and the section says so. Two families are in
- * that position today: the 333 dictionary sense drafts, which nothing in the app
- * renders, and the source acquisition candidates, which live only in the ledger.
+ * no link rather than one that 404s, and the section says so.
  *
- * It does not claim to cover every clinical record. It reads seven families this
- * repository holds on disk and knows nothing about any other, so the heading, the
- * tiles and the hub card all avoid a completeness word on purpose.
- *
- * **One family, one page of rows, sliced on the server.** The queue holds 1,592
- * records, and rendering them all produced a 4.66 MB response — heavier than the
- * `/sources/search` page already being repaired for the same reason. So the
- * family is chosen by `?family=`, the rows within it by `?page=`, and both slices
- * happen here rather than in the browser. `ReviewStatePageContent` learned this
- * the expensive way (PR #2449): slicing after the full array has already crossed
- * the boundary does not reduce a single transferred byte. Every family's total
- * stays on screen on every page, in the counts list below, so narrowing the view
- * never narrows the numbers.
+ * **One family and one signed domain page at a time, sliced on the server.**
+ * Both the unsigned family rows (`?family=&page=`) and the signed domain
+ * inspector (`?domain=&signedPage=`) slice at 50 rows on the server so the
+ * response stays compact while every domain's and every family's full totals
+ * remain visible on screen.
  */
 export const SIGN_OFF_PAGE_SIZE = 50;
 
@@ -70,6 +64,29 @@ const FAMILY_LINK_ACTIVE_CLASS =
 /** `?family=…&page=…`. Page 1 is left implicit so the shortest link is the common one. */
 function queueHref(family: SignOffFamilyId, page: number): string {
   return page <= 1 ? `?family=${family}` : `?family=${family}&page=${page}`;
+}
+
+/** `?domain=…&signedPage=…`. Page 1 is left implicit. */
+function domainSignedHref(domain: SignOffDomainId, signedPage: number): string {
+  return signedPage <= 1 ? `?domain=${domain}` : `?domain=${domain}&signedPage=${signedPage}`;
+}
+
+function formatSignedBySummary(counts: Readonly<Record<string, number>>): string {
+  const entries = Object.entries(counts);
+  if (entries.length === 0) return "None signed yet";
+  return entries.map(([name, count]) => `${name} (${count})`).join(", ");
+}
+
+function formatSignedDate(iso: string | null): string | null {
+  if (!iso) return null;
+  const parsed = new Date(iso.includes("T") ? iso : `${iso}T00:00:00+08:00`);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toLocaleDateString("en-AU", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "Australia/Perth",
+  });
 }
 
 function QueueRow({ row }: { row: SignOffRow }) {
@@ -104,6 +121,39 @@ function QueueRow({ row }: { row: SignOffRow }) {
        * become one.
        */}
       <p className={META_CLASS}>Recorded as: {row.nativeStatus}</p>
+    </li>
+  );
+}
+
+function SignedRowItem({ row }: { row: SignedRecordRow }) {
+  const dateLabel = formatSignedDate(row.signedAt);
+  return (
+    <li className={CARD_CLASS}>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <div className="flex flex-wrap items-baseline gap-2">
+          <span className={MONO_CLASS}>{row.id}</span>
+          <span className="rounded-full border border-[color:var(--border-strong)] px-2 py-0.5 text-xs font-bold text-[color:var(--text-heading)]">
+            Signed off by {row.signedBy}
+          </span>
+        </div>
+        {dateLabel ? <span className={META_CLASS}>Signed {dateLabel} (AWST)</span> : null}
+      </div>
+      <p className="text-sm font-bold leading-6 text-[color:var(--text-heading)]">
+        {row.href ? (
+          <Link
+            href={row.href}
+            className="underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
+          >
+            {row.title}
+          </Link>
+        ) : (
+          row.title
+        )}
+      </p>
+      <p className="text-sm leading-6 text-[color:var(--text-muted)]">
+        <span className="font-bold">What it is for: </span>
+        {row.whatFor}
+      </p>
     </li>
   );
 }
@@ -147,6 +197,118 @@ function Pager({
         </span>
       )}
     </div>
+  );
+}
+
+function SignedDomainPager({
+  domain,
+  page,
+  totalPages,
+  ariaLabel,
+}: {
+  domain: SignOffDomainId;
+  page: number;
+  totalPages: number;
+  ariaLabel: string;
+}) {
+  return (
+    <div className="flex items-center gap-2" role="navigation" aria-label={ariaLabel}>
+      {page > 1 ? (
+        <Link
+          href={domainSignedHref(domain, page - 1)}
+          aria-label="Previous signed records page"
+          className={PAGER_LINK_CLASS}
+        >
+          <ChevronLeft aria-hidden="true" className="size-icon-sm" />
+          Previous
+        </Link>
+      ) : (
+        <span aria-label="Previous signed records page" aria-disabled="true" className={PAGER_DISABLED_CLASS}>
+          <ChevronLeft aria-hidden="true" className="size-icon-sm" />
+          Previous
+        </span>
+      )}
+      <span className="px-2 text-xs font-bold text-[color:var(--text-heading)]">
+        {page} / {totalPages}
+      </span>
+      {page < totalPages ? (
+        <Link
+          href={domainSignedHref(domain, page + 1)}
+          aria-label="Next signed records page"
+          className={PAGER_LINK_CLASS}
+        >
+          Next
+          <ChevronRight aria-hidden="true" className="size-icon-sm" />
+        </Link>
+      ) : (
+        <span aria-label="Next signed records page" aria-disabled="true" className={PAGER_DISABLED_CLASS}>
+          Next
+          <ChevronRight aria-hidden="true" className="size-icon-sm" />
+        </span>
+      )}
+    </div>
+  );
+}
+
+function SignedRecordsInspector({
+  domain,
+  requestedSignedPage,
+}: {
+  domain: SignOffDomainSummary;
+  requestedSignedPage: number;
+}) {
+  const totalPages = Math.max(1, Math.ceil(domain.signedRows.length / SIGN_OFF_PAGE_SIZE));
+  const page = Math.min(Math.max(1, requestedSignedPage), totalPages);
+  const startIndex = (page - 1) * SIGN_OFF_PAGE_SIZE;
+  const pageRows = domain.signedRows.slice(startIndex, startIndex + SIGN_OFF_PAGE_SIZE);
+
+  return (
+    <PanelSection
+      testId="developer-sign-off-signed-records"
+      headingId="developer-sign-off-signed-records-heading"
+      heading={`Signed-off records in ${domain.name} — ${domain.signedCount} of ${domain.total} signed`}
+    >
+      <p className="text-sm leading-6 text-[color:var(--text-muted)]">
+        <span className="font-bold text-[color:var(--text-heading)]">What this domain is for: </span>
+        {domain.whatFor}
+      </p>
+      <p className={META_CLASS}>
+        Signed off by: {formatSignedBySummary(domain.signedByCounts)}. Read from {domain.source}. Signing tool:{" "}
+        <code className="font-mono">{domain.toolHint}</code>.
+      </p>
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p data-testid="developer-sign-off-signed-pagination-summary" className={META_CLASS}>
+          Showing {domain.signedRows.length === 0 ? 0 : startIndex + 1}–{startIndex + pageRows.length} of{" "}
+          {domain.signedRows.length} signed-off records in this domain (page {page} of {totalPages}).
+        </p>
+        {totalPages > 1 ? (
+          <SignedDomainPager
+            domain={domain.id}
+            page={page}
+            totalPages={totalPages}
+            ariaLabel={`${domain.name} signed records pagination`}
+          />
+        ) : null}
+      </div>
+
+      <ul data-testid={`developer-sign-off-signed-rows-${domain.id}`} className="grid gap-2">
+        {pageRows.map((row) => (
+          <SignedRowItem key={row.key} row={row} />
+        ))}
+      </ul>
+
+      {totalPages > 1 ? (
+        <div className="flex justify-end pt-2">
+          <SignedDomainPager
+            domain={domain.id}
+            page={page}
+            totalPages={totalPages}
+            ariaLabel={`${domain.name} signed records pagination bottom`}
+          />
+        </div>
+      ) : null}
+    </PanelSection>
   );
 }
 
@@ -201,11 +363,16 @@ function FamilySection({ family, requestedPage }: { family: SignOffFamily; reque
 export function SignOffQueuePageContent({
   requestedFamily,
   requestedPage = 1,
+  requestedDomain,
+  requestedSignedPage = 1,
 }: {
   requestedFamily?: string;
   requestedPage?: number;
+  requestedDomain?: string;
+  requestedSignedPage?: number;
 }) {
   const queue = loadSignOffQueue();
+  const ledger = loadSignOffLedger();
   // Live, not snapshot-backed: every count is derived at read time from files
   // committed in this repository, so there is no capture date to report and no
   // generated snapshot that can go stale behind the page.
@@ -214,6 +381,10 @@ export function SignOffQueuePageContent({
   // A developer who hand-edits the query string should land on the queue, not on
   // an error page that reads as though the data is gone.
   const selected = queue.families.find((family) => family.id === requestedFamily) ?? queue.families[0]!;
+  const selectedDomain =
+    ledger.domains.find((domain) => domain.id === requestedDomain) ??
+    ledger.domains.find((domain) => domain.id === "wa-mha-forms") ??
+    ledger.domains[0]!;
   // Counted per row, not per family: the dictionary family is flagged unrouted
   // because its 333 sense drafts have nowhere to go, but its 96 definition
   // reviews do point at a live entry. Counting the family whole would report 429
@@ -222,6 +393,20 @@ export function SignOffQueuePageContent({
     (sum, family) => sum + family.rows.filter((row) => row.href === null).length,
     0,
   );
+  const allIndigenousHolds = ledger.domains.flatMap((domain) => domain.needsSigning.indigenousHoldRows);
+  const therapyPrerequisiteRows =
+    ledger.domains.find((domain) => domain.id === "therapy")?.needsSigning.prerequisiteRows ?? [];
+  // Every count in the category text comes from the ledger, so a new sign-off or a
+  // new record cannot leave fixed prose contradicting the live heading beside it.
+  const domainById = new Map(ledger.domains.map((domain) => [domain.id, domain]));
+  const waitingIn = (id: SignOffDomainId, category: "awaitingPrerequisites" | "awaitingTool") =>
+    domainById.get(id)?.needsSigning[category] ?? 0;
+  const signedIn = (id: SignOffDomainId) => domainById.get(id)?.signedCount ?? 0;
+  const sourcePrerequisiteRows = domainById.get("sources")?.needsSigning.prerequisiteRows ?? [];
+  const signerNames = Object.keys(ledger.signedByTotals)
+    .sort()
+    .map((name) => `\`${name}\``)
+    .join(", ");
 
   return (
     <PanelPageShell
@@ -231,12 +416,36 @@ export function SignOffQueuePageContent({
       freshnessLabel="Sign-off queue"
     >
       <p className="text-sm leading-6 text-[color:var(--text-muted)]">
-        The clinical records this repository holds on disk that are waiting for a person to sign them off, grouped by
-        the family they belong to. Seven families, read from the files that already hold them — this is not a claim
-        about every clinical record anywhere, only about these. The page is read-only: nothing on it publishes, approves
-        or unhides a record. The families use five unrelated review vocabularies and keep them, so every row prints the
-        word its own source file uses underneath the label shown beside it.
+        Complete sign-off register and waiting queue across all {ledger.domains.length} governed clinical and rule
+        domains in this repository. Everything below is read directly from the committed review registers on disk: what
+        has been signed off, who signed it ({signerNames}), when it was signed, what it is for, and what still needs
+        signing off (grouped by whether it is ready for a local tool today, held for Aboriginal and Torres Strait
+        Islander governance review, awaiting source references or written clinical text, or awaiting a sign-off tool).
+        This page is read-only: nothing on it publishes, approves or unhides a record.
       </p>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4" data-testid="developer-sign-off-ledger-tiles">
+        <CountTile
+          testId="developer-sign-off-count-signed"
+          value={ledger.totalSigned}
+          label={`items signed off across ${ledger.domains.length} domains`}
+        />
+        <CountTile
+          testId="developer-sign-off-count-signable-now"
+          value={ledger.waitingByCategory.signableNow}
+          label="ready to sign with a tool now"
+        />
+        <CountTile
+          testId="developer-sign-off-count-indigenous-hold"
+          value={ledger.waitingByCategory.indigenousHold}
+          label="held for Aboriginal governance review"
+        />
+        <CountTile
+          testId="developer-sign-off-count-prerequisites"
+          value={ledger.waitingByCategory.awaitingPrerequisites}
+          label="awaiting references or written text"
+        />
+      </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <CountTile testId="developer-sign-off-count-total" value={queue.total} label="records awaiting sign-off" />
@@ -248,6 +457,216 @@ export function SignOffQueuePageContent({
           label="records with a page to open"
         />
       </div>
+
+      <PanelSection
+        testId="developer-sign-off-ledger-domains"
+        headingId="developer-sign-off-ledger-domains-heading"
+        heading={`Everything signed off & remaining by domain (${ledger.totalSigned} signed · ${ledger.totalWaiting} waiting)`}
+      >
+        <p className={META_CLASS}>
+          All {ledger.domains.length} governed sign-off domains across the repository. Total signed:{" "}
+          <span className="font-bold text-[color:var(--text-heading)]">{ledger.totalSigned}</span> (
+          {formatSignedBySummary(ledger.signedByTotals)}). Select any domain below to inspect every signed record in it,{" "}
+          {SIGN_OFF_PAGE_SIZE} at a time.
+        </p>
+        <ul className="grid gap-3 sm:grid-cols-2">
+          {ledger.domains.map((domain) => {
+            const active = domain.id === selectedDomain.id;
+            const latestDate = formatSignedDate(domain.latestSignedAt);
+            return (
+              <li key={domain.id} className={CARD_CLASS} data-testid={`developer-sign-off-ledger-domain-${domain.id}`}>
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <Link
+                    href={domainSignedHref(domain.id, 1)}
+                    aria-current={active ? "true" : undefined}
+                    className="text-sm font-bold text-[color:var(--text-heading)] underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
+                  >
+                    {domain.name}
+                  </Link>
+                  <span className="nums rounded-full border border-[color:var(--border-strong)] px-2 py-0.5 text-xs font-bold text-[color:var(--text-heading)]">
+                    {domain.signedCount} / {domain.total} signed
+                  </span>
+                </div>
+                <p className="text-xs leading-5 text-[color:var(--text)]">
+                  <span className="font-bold text-[color:var(--text-heading)]">What it is for: </span>
+                  {domain.whatFor}
+                </p>
+                <p className="text-xs leading-5 text-[color:var(--text-muted)]">
+                  <span className="font-bold text-[color:var(--text)]">Signed off by: </span>
+                  {formatSignedBySummary(domain.signedByCounts)}
+                  {latestDate ? ` · latest ${latestDate}` : ""}
+                </p>
+                <p className="text-xs leading-5 text-[color:var(--text-muted)]">
+                  <span className="font-bold text-[color:var(--text)]">Needs signing off: </span>
+                  {domain.needsSigning.summary}
+                </p>
+                <p className={META_CLASS}>Source: {domain.source}</p>
+              </li>
+            );
+          })}
+        </ul>
+      </PanelSection>
+
+      <SignedRecordsInspector domain={selectedDomain} requestedSignedPage={requestedSignedPage} />
+
+      <PanelSection
+        testId="developer-sign-off-needs-signing-breakdown"
+        headingId="developer-sign-off-needs-signing-breakdown-heading"
+        heading={`What still needs signing off — organized by why (${ledger.totalWaiting} items)`}
+      >
+        <div className="grid gap-3">
+          <div className={CARD_CLASS} data-testid="developer-sign-off-category-signable-now">
+            <p className="text-sm font-bold text-[color:var(--text-heading)]">
+              1. Ready to sign now with a local tool ({ledger.waitingByCategory.signableNow})
+            </p>
+            <p className="text-sm leading-6 text-[color:var(--text-muted)]">
+              {ledger.waitingByCategory.signableNow === 0
+                ? `Everything that can currently be signed is signed off across ${ledger.domains.length} domains.`
+                : `These ${ledger.waitingByCategory.signableNow} records are ready to sign in ${ledger.domains.filter((domain) => domain.needsSigning.signableNow > 0).length} domains: ${ledger.domains
+                    .filter((domain) => domain.needsSigning.signableNow > 0)
+                    .map((domain) => domain.name)
+                    .join(", ")}.`}
+            </p>
+          </div>
+
+          <div className={CARD_CLASS} data-testid="developer-sign-off-category-indigenous-hold">
+            <p className="text-sm font-bold text-[color:var(--text-heading)]">
+              2. Held for Aboriginal &amp; Torres Strait Islander governance review (
+              {ledger.waitingByCategory.indigenousHold} records across{" "}
+              {ledger.domains.filter((domain) => domain.needsSigning.indigenousHold > 0).length} domains)
+            </p>
+            <p className="text-sm leading-6 text-[color:var(--text-muted)]">
+              Owner rule (2026-09-26): content specific to Aboriginal and Torres Strait Islander peoples requires
+              Aboriginal governance review rather than a clinician sign-off, and both local sign-off tools refuse to
+              sign these records until that governance pathway is completed.
+            </p>
+            <ul className="grid gap-1.5 pt-1 text-xs" data-testid="developer-sign-off-indigenous-hold-list">
+              {allIndigenousHolds.map((item) => (
+                <li
+                  key={item.key}
+                  className="flex flex-wrap items-baseline justify-between gap-2 border-b border-[color:var(--border)] py-1.5 last:border-b-0"
+                >
+                  <span className="text-[color:var(--text)]">
+                    <span className={MONO_CLASS}>{item.id}</span> ·{" "}
+                    {item.href ? (
+                      <Link href={item.href} className="underline underline-offset-2">
+                        {item.title}
+                      </Link>
+                    ) : (
+                      item.title
+                    )}
+                  </span>
+                  <span className="text-[color:var(--text-muted)]">{item.domainName}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className={CARD_CLASS} data-testid="developer-sign-off-category-prerequisites">
+            <p className="text-sm font-bold text-[color:var(--text-heading)]">
+              3. Awaiting source references, written clinical text, or a structured attestation (
+              {ledger.waitingByCategory.awaitingPrerequisites} items across{" "}
+              {ledger.domains.filter((domain) => domain.needsSigning.awaitingPrerequisites > 0).length} domains)
+            </p>
+            <p className="text-sm leading-6 text-[color:var(--text-muted)]">
+              These items belong to domains that have a local sign-off tool, but the tool refuses to sign them until
+              their missing clinical text, guideline reference, or structured attestation is recorded:
+            </p>
+            <ul className="grid gap-1.5 text-xs text-[color:var(--text-muted)]">
+              <li>
+                <span className="font-bold text-[color:var(--text)]">
+                  {therapyPrerequisiteRows.length} Therapy Compass records (
+                  <Link href={queueHref("therapy", 1)} className="underline">
+                    open in queue
+                  </Link>
+                  ):
+                </span>{" "}
+                Currently have <code className="font-mono">references: []</code> in{" "}
+                <code className="font-mono">src/data/therapies-source.json</code>:{" "}
+                <span data-testid="developer-sign-off-therapy-prereq-list">
+                  {therapyPrerequisiteRows.map((row) => row.id).join(", ")}
+                </span>
+                .
+              </li>
+              <li>
+                <span className="font-bold text-[color:var(--text)]">
+                  {waitingIn("specifiers", "awaitingPrerequisites")} DSM-5-TR specifier catalog placeholders (
+                  <Link href={queueHref("specifiers", 1)} className="underline">
+                    open in queue
+                  </Link>
+                  ):
+                </span>{" "}
+                Carry <code className="font-mono">definition: null</code> in{" "}
+                <code className="font-mono">data/specifiers-content.json</code>; all {signedIn("specifiers")} specifiers
+                that have written definitions are already signed off.
+              </li>
+              <li>
+                <span className="font-bold text-[color:var(--text)]">
+                  {waitingIn("dictionary", "awaitingPrerequisites")} Dictionary definition verdicts (
+                  <Link href={queueHref("dictionary", 1)} className="underline">
+                    open in queue
+                  </Link>
+                  ):
+                </span>{" "}
+                Record an editorial verdict with <code className="font-mono">proposedWording: null</code> in{" "}
+                <code className="font-mono">src/data/dictionary-definition-reviews.json</code>; all{" "}
+                {signedIn("dictionary")} reviews that propose a rewrite are already signed off.
+              </li>
+              {sourcePrerequisiteRows.length > 0 ? (
+                <li>
+                  <span className="font-bold text-[color:var(--text)]">
+                    {sourcePrerequisiteRows.length} governed source acquisitions:
+                  </span>{" "}
+                  Marked reviewed in <code className="font-mono">src/data/source-acquisitions.json</code> without a
+                  structured attestation (<code className="font-mono">attestedBy</code>,{" "}
+                  <code className="font-mono">attestedAt</code>,{" "}
+                  <code className="font-mono">attestedAgainstSha256</code>), so they are not counted as signed:{" "}
+                  <span data-testid="developer-sign-off-source-prereq-list">
+                    {sourcePrerequisiteRows.map((row) => row.id).join(", ")}
+                  </span>
+                  .
+                </li>
+              ) : null}
+            </ul>
+          </div>
+
+          <div className={CARD_CLASS} data-testid="developer-sign-off-category-awaiting-tool">
+            <p className="text-sm font-bold text-[color:var(--text-heading)]">
+              4. Unverified exports &amp; unpublished drafts with no sign-off tool yet (
+              {ledger.waitingByCategory.awaitingTool} items across{" "}
+              {ledger.domains.filter((domain) => domain.needsSigning.awaitingTool > 0).length} domains)
+            </p>
+            <ul className="grid gap-1.5 text-xs text-[color:var(--text-muted)]">
+              <li>
+                <span className="font-bold text-[color:var(--text)]">
+                  {waitingIn("differentials", "awaitingTool")} exported differential snapshot records (
+                  <Link href={queueHref("differentials", 1)} className="underline">
+                    open in queue
+                  </Link>
+                  ):
+                </span>{" "}
+                Diagnosis exports and presentation workflows in{" "}
+                <code className="font-mono">data/differentials-snapshot.json</code> derive{" "}
+                <code className="font-mono">validation_status: unverified</code> from the snapshot governance header
+                (while all {signedIn("differentials")} locally authored bedside clinical overlays layered on top of them
+                are signed off).
+              </li>
+              <li>
+                <span className="font-bold text-[color:var(--text)]">
+                  {waitingIn("dictionary", "awaitingTool")} unpublished dictionary sense drafts (
+                  <Link href={queueHref("dictionary", 1)} className="underline">
+                    open in queue
+                  </Link>
+                  ):
+                </span>{" "}
+                Held unpublished in <code className="font-mono">src/data/dictionary-sense-drafts.json</code> with{" "}
+                <code className="font-mono">publicationAllowed: false</code>; no route renders them and no CLI tool
+                signs them yet.
+              </li>
+            </ul>
+          </div>
+        </div>
+      </PanelSection>
 
       {/*
        * Every family's total, on every page. This list is what makes the
