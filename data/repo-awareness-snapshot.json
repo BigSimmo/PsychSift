@@ -11500,6 +11500,14 @@
         "checks": "`git diff --check` and `npm run sitemap:check` passed. `npm run test` was attempted twice but blocked by the repository-wide heavy-command lock held by a separate Playwright worktree; no provider-backed checks ran."
       },
       {
+        "date": "2026-10-17",
+        "ref": "claude/rag-ingestion-hardening",
+        "head": "45fc04c42f0867bc9802ffc93f0ed42fd658b371",
+        "scope": "prlanded",
+        "outcome": "PR #3596 squash-merged cleanly into main at 45fc04c42f0867bc9802ffc93f0ed42fd658b371; stable patch-id c6055c7a792f5f2a7bd96d5376a8cab43f8a1954 matches branch tip d4b592b0a0b375cbbc1df3d167dd720919afcf3f with zero orphaned commits",
+        "checks": "gh pr view 3596; git rev-list --parents; git patch-id --stable (c6055c7a792f5f2a7bd96d5376a8cab43f8a1954)"
+      },
+      {
         "date": "2026-08-11",
         "ref": "HEAD",
         "head": "45fd05c8c3947835c0368666ff576c7a38b33ee4",
