@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "bfa17445-b2b8-47a5-9f9e-90d4c82dc372",
+  "createdOn": "2026-10-17",
+  "action": "done",
+  "payload": {
+    "id": "#GYR7Q3",
+    "outcome": "The ledger reopen action landed in PR #3627: an archived durable issue moves back to the open table with its original ID and ULID, with identity, fingerprint and prior-outcome checks. It was used to fold duplicate #Z12CBC back into #WFYDV6.",
+    "baseRowFingerprint": "0b6108b7834cc2ec53f80a0642abe1de0ef1d983a629e8501c4920802c46270e",
+    "targetUlid": "01M552JNXFGYR7Q31XTTJSNQZD"
+  }
+}

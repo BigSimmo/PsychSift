@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "id": "54ddf357-efbb-4a8d-8615-9ca0914a8b10",
+  "createdOn": "2026-10-17",
+  "action": "update",
+  "payload": {
+    "id": "#WWTRM5",
+    "summary": "Doc/instruction drift items left open when #WMGPSG was archived: ledger arrow and Caring Contacts decision",
+    "detail": "#WMGPSG was archived on 17 Oct with an outcome covering items 3 and 6 and the encoding repair in item 1 only. Still open: (1) docs/outstanding-issues.md:15 corrupted arrow (canonical ledger; fix only through reconciliation). (4) docs/decisions/2026-09-26-remove-ward-flow-and-caring-contacts.md says Caring Contacts was removed but src/lib/caring-contacts/clock.ts is live with MHA, First Nations and On Call importers; add a dated superseding decision, do not delete the file. Dropped on 18 Oct after checking the code: item 2 (.claude/cloud-profile/skills/prompt/references/coding-workflow.md:21 describes continuing same-task work in the supplied checkout, not a pre-hardening worktree rule) and item 5 (tests/admin-renewals-page.dom.test.tsx and tests/admin-renewals.test.ts still assert the 'Not checked with issuers' wording; admin-renewed-sheet separately forbids 'checked').",
+    "baseRowFingerprint": "ac47dbe8f39aab0b5688d45923b98e29f6b50a738e5f843db4b86f8e3ae170ff",
+    "targetUlid": "01M54YEVQ8WWTRM5RPCGA0FEVP"
+  }
+}

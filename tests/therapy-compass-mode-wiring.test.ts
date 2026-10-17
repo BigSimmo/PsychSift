@@ -175,6 +175,25 @@ describe("Therapy Compass production-mode wiring", () => {
     }
   });
 
+  it("does not keep serving revoked therapy sign-offs through the retained previous generation", () => {
+    // A retained generation is fetched by pre-deploy bundles without any status
+    // check, so it must never present a therapy as reviewed when the current
+    // source has it awaiting review (sign-offs revoked 17 Oct 2026; regenerate
+    // with `--revoke-previous` when that happens).
+    const current = JSON.parse(readFileSync(new URL(THERAPY_CATALOGUE_ASSETS.full, dataDir), "utf8")) as Array<{
+      slug: string;
+      reviewStatus?: string;
+    }>;
+    const awaitingReview = new Set(current.filter((t) => t.reviewStatus !== "reviewed").map((t) => t.slug));
+    const previous = JSON.parse(
+      readFileSync(new URL(THERAPY_CATALOGUE_ASSETS_PREVIOUS.full, dataDir), "utf8"),
+    ) as Array<{ slug: string; reviewStatus?: string }>;
+    const revokedButServed = previous
+      .filter((t) => awaitingReview.has(t.slug) && t.reviewStatus === "reviewed")
+      .map((t) => t.slug);
+    expect(revokedButServed).toEqual([]);
+  });
+
   it("falls back from a stale hashed catalogue URL to the unversioned alias", () => {
     // Covers bundles older than the grace generation, and mid-rollout clients.
     expect(loaderSrc).toContain("async function fetchCatalogue");

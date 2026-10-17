@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -323,5 +323,56 @@ describe("Sheet stacked-overlay coordination", () => {
     await user.click(screen.getByRole("button", { name: "Close to updated target" }));
 
     await waitFor(() => expect(screen.getByRole("button", { name: "Updated return target" })).toHaveFocus());
+  });
+});
+
+describe("Sheet close handler freshness", () => {
+  it("calls the latest onClose when Close is clicked right after a commit, before passive effects flush", async () => {
+    // Reproduces the admin-renewed-sheet flake: an async save re-renders the
+    // sheet with a new onClose, and a click that lands between that commit and
+    // the passive-effect flush must not reach the previous render's handler.
+    const { createRoot } = await import("react-dom/client");
+    const previousActEnvironment = (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT;
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = false;
+    const calls: number[] = [];
+    const bump: { current: (() => void) | null } = { current: null };
+    function Harness() {
+      const [n, setN] = useState(0);
+      useEffect(() => {
+        bump.current = () => setN(1);
+      }, []);
+      return (
+        <Sheet open onClose={() => calls.push(n)} title="Freshness sheet" dismissOnBack={false}>
+          <p data-testid="freshness-n">{n}</p>
+        </Sheet>
+      );
+    }
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    try {
+      root.render(<Harness />);
+      for (let i = 0; i < 50 && !document.querySelector('[data-testid="freshness-n"]'); i += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+      const label = document.querySelector('[data-testid="freshness-n"]')!;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      const clickedAfterCommit = new Promise<void>((resolve) => {
+        const observer = new MutationObserver(() => {
+          if (label.textContent !== "1") return;
+          observer.disconnect();
+          (document.querySelector('button[aria-label="Close"]') as HTMLButtonElement).click();
+          resolve();
+        });
+        observer.observe(label, { childList: true, characterData: true, subtree: true });
+      });
+      setTimeout(() => bump.current?.(), 0);
+      await clickedAfterCommit;
+      expect(calls).toEqual([1]);
+    } finally {
+      root.unmount();
+      container.remove();
+      (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = previousActEnvironment;
+    }
   });
 });

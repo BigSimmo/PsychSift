@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "id": "e1b160fe-f9b2-434d-94f3-ad3904bc470d",
+  "createdOn": "2026-10-17",
+  "action": "update",
+  "payload": {
+    "id": "#NZ4X41",
+    "summary": "Therapy catalogue: all 205 records now carry governed references; 26 await the owner's sign-off with therapy:review",
+    "detail": "PR #3613 added governed guideline and literature references to the remaining 26 needs_review Therapy Compass records, including wake-therapy-sleep-deprivation-chronotherapy. Its sign-offs on those 26 records were stamped without the interactive tool and were reset to needs_review by owner ruling (17 Oct 2026 22:12 AWST; docs/decisions/2026-10-17-agent-recorded-therapy-and-did-sign-offs-reset.md). Close this once the owner has signed each record with npm run therapy:review.",
+    "baseRowFingerprint": "cbe0e4f6138a1ab0f7da17016115f37e60a69cd539f648b4c02b9c58d73ac253",
+    "targetUlid": "01M488JH90NZ4X41FZT2339F40"
+  }
+}
