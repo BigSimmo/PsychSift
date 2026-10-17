@@ -531,6 +531,8 @@ async function loadEdgeProviderSourceBinding(job: ClaimedJob) {
     from public.documents d
     left join public.document_admission_events a on a.document_id = d.id
     where d.id = ${job.document_id}::uuid
+    order by a.created_at desc nulls last, a.id desc
+    limit 1
   `;
   attempt.check();
   return edgeProviderEgressBinding(attempt.fence, job.attempt_count, rows[0]);
@@ -1101,7 +1103,7 @@ async function upsertCoreEmbeddingFields(job: ClaimedJob, payload: SourceAnchore
       assertEmbeddingDim(embeddings[index], `${row.field_type} embedding field`);
       return {
         document_id: job.document_id,
-        source_chunk_id: null,
+        source_chunk_id: payload.source_chunk_ids[0] ?? null,
         ...row,
         embedding: embeddings[index],
         content_hash: await sha256Hex(row.content),

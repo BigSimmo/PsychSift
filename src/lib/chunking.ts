@@ -640,7 +640,7 @@ function matchesNativeTableBlock(
   imageIndex: number,
 ) {
   if (
-    args.chunkerVersion !== CHUNKER_VERSION ||
+    (args.chunkerVersion !== CHUNKER_VERSION && args.chunkerVersion !== DOCUMENT_CHUNKER_VERSION) ||
     !Number.isInteger(image.pageNumber) ||
     (image.pageNumber ?? 0) <= 0 ||
     args.spanPages.length !== 1 ||

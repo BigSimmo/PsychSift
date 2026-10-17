@@ -587,28 +587,26 @@ describe("shared RAG search cache", () => {
     vi.doMock("@/lib/clinical-search", () => ({
       buildClinicalTextSearchQuery: (query: string) => query.trim(),
     }));
+    const docBuilder = {
+      select: () => docBuilder,
+      eq: () => docBuilder,
+      is: () => docBuilder,
+      or: () => docBuilder,
+      gt: () => docBuilder,
+      order: () => docBuilder,
+      limit: () => docBuilder,
+      then: (resolve: (value: { data: unknown[]; error: null }) => unknown, reject?: (reason: unknown) => unknown) =>
+        Promise.resolve({
+          data: [{ id: "doc-1", updated_at: "2026-07-14T00:00:00.000Z", metadata: {} }],
+          error: null,
+        }).then(resolve, reject),
+      maybeSingle: async () => ({ data: null, error: null }),
+    };
     vi.doMock("@/lib/supabase/admin", () => ({
       createAdminClient: () => ({
         from: (table: string) => {
           if (table === "rag_response_cache") return shared.builder;
-          return {
-            select: () => shared.sharedBuilder,
-            eq: () => shared.sharedBuilder,
-            is: () => shared.sharedBuilder,
-            or: () => shared.sharedBuilder,
-            gt: () => shared.sharedBuilder,
-            order: () => shared.sharedBuilder,
-            limit: () => shared.sharedBuilder,
-            then: (
-              resolve: (value: { data: unknown[]; error: null }) => unknown,
-              reject?: (reason: unknown) => unknown,
-            ) =>
-              Promise.resolve({
-                data: [{ id: "doc-1", updated_at: "2026-07-14T00:00:00.000Z", metadata: {} }],
-                error: null,
-              }).then(resolve, reject),
-            maybeSingle: async () => ({ data: null, error: null }),
-          };
+          return docBuilder;
         },
       }),
     }));
@@ -626,5 +624,131 @@ describe("shared RAG search cache", () => {
 
     expect(result).toBeNull();
     expect(shared.deletionCalls).toBe(1);
+  });
+
+  it("fails closed on local and shared cache reads/writes when the indexing stamp is unavailable", async () => {
+    vi.resetModules();
+    let sharedCacheReads = 0;
+    let sharedCacheWrites = 0;
+
+    const failingDocBuilder = {
+      select: () => failingDocBuilder,
+      eq: () => failingDocBuilder,
+      is: () => failingDocBuilder,
+      or: () => failingDocBuilder,
+      in: () => failingDocBuilder,
+      order: () => failingDocBuilder,
+      limit: () => failingDocBuilder,
+      then: (resolve: (value: { data: unknown; error: { message: string } | null }) => unknown) =>
+        Promise.resolve({ data: null, error: { message: "db_unavailable" } }).then(resolve),
+    };
+    const cacheTableBuilder = {
+      select: () => cacheTableBuilder,
+      delete: () => cacheTableBuilder,
+      insert: () => {
+        sharedCacheWrites += 1;
+        return Promise.resolve({ data: null, error: null });
+      },
+      eq: () => cacheTableBuilder,
+      is: () => cacheTableBuilder,
+      gt: () => cacheTableBuilder,
+      limit: () => cacheTableBuilder,
+      maybeSingle: async () => {
+        sharedCacheReads += 1;
+        return {
+          data: {
+            payload: {
+              results: [],
+              telemetry: { query_class: "general_clinical_management" },
+            },
+          },
+          error: null,
+        };
+      },
+      then: (resolve: (value: { data: null; error: null }) => unknown) =>
+        Promise.resolve({ data: null, error: null }).then(resolve),
+    };
+
+    vi.doMock("@/lib/env", () => ({
+      env: {
+        RAG_SEARCH_CACHE_TTL_MS: 60_000,
+        RAG_SEARCH_CACHE_SIZE: 200,
+        RAG_ANSWER_CACHE_TTL_MS: 60_000,
+        RAG_ANSWER_CACHE_SIZE: 200,
+        RAG_PERSIST_RAW_QUERY_TEXT: false,
+        RAG_QUERY_HASH_SECRET: "test-query-hash-secret",
+      },
+      isDemoMode: () => false,
+      isLocalNoAuthMode: () => false,
+    }));
+    vi.doMock("@/lib/deep-memory", () => ({ ragDeepMemoryVersion: "test-rag-version" }));
+    vi.doMock("@/lib/clinical-search", () => ({
+      buildClinicalTextSearchQuery: (query: string) => query.trim(),
+    }));
+    vi.doMock("@/lib/supabase/admin", () => ({
+      createAdminClient: () => ({
+        from: (table: string) => (table === "documents" ? failingDocBuilder : cacheTableBuilder),
+      }),
+    }));
+
+    const {
+      cacheIndexingVersion,
+      getCachedAnswer,
+      getCachedSearch,
+      getSharedCachedAnswer,
+      getSharedCachedSearch,
+      setCachedAnswer,
+      setCachedSearch,
+    } = await import("../src/lib/rag/rag-cache");
+
+    const args = { query: "lithium toxicity", ownerId };
+    await setCachedSearch(args, [], {
+      search_cache_hit: false,
+      text_fast_path_latency_ms: 0,
+      embedding_skipped: true,
+      embedding_latency_ms: 0,
+      embedding_cache_hit: false,
+      supabase_rpc_latency_ms: 0,
+      rerank_latency_ms: 0,
+    });
+    await setCachedAnswer(args, {
+      answer: "Grounded answer.",
+      grounded: true,
+      confidence: "high",
+      citations: [],
+      sources: [],
+    });
+
+    expect(await getCachedSearch(args)).toBeNull();
+    expect(await getCachedAnswer(args, Date.now())).toBeNull();
+    expect(await getSharedCachedSearch(args)).toEqual({ kind: "miss", reason: "cache_lookup_error" });
+    expect(await getSharedCachedAnswer(args, Date.now())).toBeNull();
+    expect(sharedCacheReads).toBe(0);
+    expect(sharedCacheWrites).toBe(0);
+
+    // Now test that a valid local entry is NOT evicted when a transient DB stamp failure occurs,
+    // and that cacheIndexingVersion does not cache the :unavailable stamp for 5s.
+    let dbUnavailable = false;
+    failingDocBuilder.then = (resolve: (value: { data: unknown; error: { message: string } | null }) => unknown) =>
+      Promise.resolve(
+        dbUnavailable
+          ? { data: null, error: { message: "transient_db_error" } }
+          : { data: [{ id: "doc-1", updated_at: "2026-08-30T00:00:00.000Z", metadata: {} }], error: null },
+      ).then(resolve);
+
+    await setCachedAnswer(args, {
+      answer: "Recovered grounded answer.",
+      grounded: true,
+      confidence: "high",
+      citations: [],
+      sources: [],
+    });
+    dbUnavailable = true;
+    const unavailableStamp = await cacheIndexingVersion(args, { forceRefresh: true });
+    expect(unavailableStamp).toContain(":index-stamp-unavailable");
+    expect(await getCachedAnswer(args, Date.now())).toBeNull();
+    dbUnavailable = false;
+    const hitAfterRecovery = await getCachedAnswer(args, Date.now());
+    expect(hitAfterRecovery?.answer).toBe("Recovered grounded answer.");
   });
 });

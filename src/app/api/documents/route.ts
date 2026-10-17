@@ -17,6 +17,7 @@ import {
   redactNonOwnedDocumentFields,
   withOwnerReadScope,
 } from "@/lib/public-api-access";
+import { committedIndexGeneration, isCommittedGenerationMetadata } from "@/lib/reindex-pipeline";
 import { parseRequestQuery, queryBoolean, queryInteger } from "@/lib/validation/query";
 
 export const runtime = "nodejs";
@@ -244,7 +245,8 @@ export async function GET(request: Request) {
         supabase
           .from("document_summaries")
           .select(SUMMARY_LIST_COLUMNS)
-          .in("document_id", ownedIds.slice(i, i + 100)),
+          .in("document_id", ownedIds.slice(i, i + 100))
+          .order("generated_at", { ascending: false }),
       );
     }
     const publicSummariesPromises = [];
@@ -253,7 +255,8 @@ export async function GET(request: Request) {
         supabase
           .from("document_summaries")
           .select(PUBLIC_SUMMARY_LIST_COLUMNS)
-          .in("document_id", publicDocumentIds.slice(i, i + 100)),
+          .in("document_id", publicDocumentIds.slice(i, i + 100))
+          .order("generated_at", { ascending: false }),
       );
     }
 
@@ -273,12 +276,35 @@ export async function GET(request: Request) {
       if (res.error) throw new Error(res.error.message);
     }
 
+    const committedGenerationByDocument = new Map<string, string | null>(
+      rawDocuments.map((doc) => [doc.id, committedIndexGeneration((doc as { metadata?: unknown }).metadata)]),
+    );
+    const isHiddenLabelRow = (row: Record<string, unknown>) => {
+      if (!row.metadata || typeof row.metadata !== "object" || Array.isArray(row.metadata)) return false;
+      const meta = row.metadata as Record<string, unknown>;
+      return (
+        meta.hidden === true ||
+        meta.hidden === "true" ||
+        meta.review_status === "hidden" ||
+        meta.label_review_status === "hidden"
+      );
+    };
+
     const labelsByDocument = new Map<string, unknown[]>();
     const labelRows = parseListRows(
       [...ownedLabelsResults.flatMap((res) => res.data ?? []), ...publicLabelsResults.flatMap((res) => res.data ?? [])],
       labelListRowSchema,
     );
     for (const label of labelRows) {
+      if (isHiddenLabelRow(label)) continue;
+      if (
+        !isCommittedGenerationMetadata({
+          rowMetadata: label.metadata,
+          committedGeneration: committedGenerationByDocument.get(label.document_id) ?? null,
+        })
+      ) {
+        continue;
+      }
       const existing = labelsByDocument.get(label.document_id) ?? [];
       existing.push(
         ownedDocumentIds.has(label.document_id) ? label : projectPublicFields(label, PUBLIC_LABEL_LIST_COLUMNS),
@@ -292,19 +318,34 @@ export async function GET(request: Request) {
       ],
       summaryListRowSchema,
     );
-    const summariesByDocument = new Map(
-      summaryRows.map((summary) => [
-        summary.document_id,
-        ownedDocumentIds.has(summary.document_id) ? summary : projectPublicFields(summary, PUBLIC_SUMMARY_LIST_COLUMNS),
-      ]),
-    );
+    const summariesByDocument = new Map<string, { row: unknown; generatedAt: string }>();
+    for (const summary of summaryRows) {
+      if (
+        !isCommittedGenerationMetadata({
+          rowMetadata: summary.metadata,
+          committedGeneration: committedGenerationByDocument.get(summary.document_id) ?? null,
+        })
+      ) {
+        continue;
+      }
+      const generatedAt = typeof summary.generated_at === "string" ? summary.generated_at : "";
+      const existing = summariesByDocument.get(summary.document_id);
+      if (!existing || (generatedAt && (!existing.generatedAt || generatedAt > existing.generatedAt))) {
+        summariesByDocument.set(summary.document_id, {
+          row: ownedDocumentIds.has(summary.document_id)
+            ? summary
+            : projectPublicFields(summary, PUBLIC_SUMMARY_LIST_COLUMNS),
+          generatedAt,
+        });
+      }
+    }
 
     return documentsResponse(
       {
         documents: documents.map((document) => ({
           ...document,
           labels: labelsByDocument.get(document.id) ?? [],
-          summary: summariesByDocument.get(document.id) ?? null,
+          summary: summariesByDocument.get(document.id)?.row ?? null,
         })),
         pagination,
       },

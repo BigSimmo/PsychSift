@@ -578,4 +578,31 @@ describe("document-mode chunking (CI-1)", () => {
     expect(chunks.filter((chunk) => chunk.content.includes("ANC threshold 0.5 x 10^9/L"))).toHaveLength(2);
     expect(chunks.map((chunk) => chunk.metadata.page_start)).toEqual([4, 7]);
   });
+
+  it("links captionless single-page native table crops in document mode (DOCUMENT_CHUNKER_VERSION)", async () => {
+    const tableMarkdown = "| Code | Dose |\n| --- | --- |\n| CLOZ-01 | 12.5 mg |";
+    const chunks = await buildDocumentChunks([
+      {
+        documentId: "doc-1",
+        pageNumber: 1,
+        pageText: `Clozapine Titration\n\n${tableMarkdown}`,
+        metadata: {},
+        images: [
+          {
+            id: "native-table-crop-1",
+            caption: "",
+            pageNumber: 1,
+            sourceKind: "table_crop",
+            accessibleTableMarkdown: tableMarkdown,
+            tableColumns: ["Code", "Dose"],
+            tableRows: [["CLOZ-01", "12.5 mg"]],
+          },
+        ],
+      },
+    ]);
+
+    expect(chunks).toHaveLength(1);
+    expect(chunks[0]?.metadata.chunker_version).toBe(DOCUMENT_CHUNKER_VERSION);
+    expect(chunks[0]?.image_ids).toContain("native-table-crop-1");
+  });
 });

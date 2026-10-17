@@ -427,4 +427,85 @@ describe("indexing-v3-agent claimed-batch request loop (L13)", () => {
     // stranded the batch; it must not come back.
     expect(handler).not.toContain("await markJobFailure(job, msg)");
   });
+
+  it("accepts local-worker rag-deep-memory-v2 structured summaries in normalizeSourceAnchoredSummary and persists primary source_chunk_id", async () => {
+    const {
+      SOURCE_ANCHORED_STRUCTURED_MODEL_VERSION,
+      SOURCE_ANCHORED_SUMMARY_VERSION,
+      normalizeSourceAnchoredSummary,
+      projectSourceAnchoredSummary,
+    } = await import("../supabase/functions/_shared/source-anchored-summary");
+
+    const docId = "00000000-0000-4000-8000-000000000001";
+    const genId = "00000000-0000-4000-8000-000000000002";
+    const chunkId = "11111111-1111-4111-8111-111111111111";
+    const authority = {
+      documentId: docId,
+      indexGenerationId: genId,
+      expectedStructuredModel: "gpt-4.1-mini",
+      expectedStructuredModelVersion: SOURCE_ANCHORED_STRUCTURED_MODEL_VERSION,
+      selectedChunks: [{ id: chunkId, page_number: 1, index_generation_id: genId }],
+      selectedImages: [],
+    };
+    const actionItem = {
+      text: "Check baseline ANC before starting clozapine.",
+      source_chunk_ids: [chunkId],
+      source_image_ids: [],
+      pages: [1],
+      evidence_type: "text" as const,
+      support: "direct" as const,
+    };
+    const baseProfile = {
+      overview: "placeholder",
+      applies_to: [],
+      key_clinical_actions: [actionItem],
+      medication_dose_monitoring: [],
+      thresholds_timing: [],
+      escalation_risk_warnings: [],
+      required_forms_documentation: [],
+      not_covered: [],
+      important_tables_images: [],
+      best_questions: [],
+      source_quality_notes: [],
+    };
+    const projectedOverview = projectSourceAnchoredSummary(baseProfile);
+    const profile = { ...baseProfile, overview: projectedOverview };
+
+    const normalized = normalizeSourceAnchoredSummary(
+      {
+        summary_kind: "structured",
+        summary_version: SOURCE_ANCHORED_SUMMARY_VERSION,
+        document_id: docId,
+        index_generation_id: genId,
+        model: "gpt-4.1-mini",
+        model_version: "rag-deep-memory-v2",
+        generated_at: "2026-07-01T00:00:00.000Z",
+        source_chunk_ids: [chunkId],
+        source_image_ids: [],
+        summary: projectedOverview,
+        clinical_specifics: {
+          profile,
+          actions: [actionItem.text],
+          thresholds_timing: [],
+          medication_monitoring: [],
+          risk_escalation: [],
+          documentation_forms: [],
+          exceptions_gaps: [],
+        },
+        labels: [],
+        heuristic_fallback: false,
+      },
+      authority,
+    );
+
+    expect(normalized.model_version).toBe("rag-deep-memory-v2");
+
+    const edgeSource = String(
+      await import("node:fs/promises").then((fs) =>
+        fs.readFile(new URL("../supabase/functions/indexing-v3-agent/index.ts", import.meta.url), "utf8"),
+      ),
+    );
+    expect(edgeSource).toContain("order by a.created_at desc nulls last, a.id desc");
+    expect(edgeSource).toContain("source_chunk_id: payload.source_chunk_ids[0] ?? null");
+  });
 });

@@ -614,7 +614,13 @@ export function normalizeSourceAnchoredSummary(
 
   const labels = validateLabels(raw.labels, profile);
   if (structured) {
-    if (model !== authority.expectedStructuredModel || model_version !== authority.expectedStructuredModelVersion) {
+    const isLocalWorkerStructuredSummary =
+      authority.expectedStructuredModelVersion === SOURCE_ANCHORED_STRUCTURED_MODEL_VERSION &&
+      model_version === "rag-deep-memory-v2";
+    const validStructuredModelVersion =
+      model_version === authority.expectedStructuredModelVersion || isLocalWorkerStructuredSummary;
+    const validStructuredModel = model === authority.expectedStructuredModel || isLocalWorkerStructuredSummary;
+    if (!validStructuredModel || !validStructuredModelVersion) {
       fail("source_anchored_summary_structured_model_invalid");
     }
     const projection = projectSourceAnchoredSummary(profile);

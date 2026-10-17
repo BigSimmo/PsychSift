@@ -4280,8 +4280,10 @@ export async function summarizeDocument(
 ) {
   const { document, chunks } = await loadDocumentSummaryContext(documentId, ownerId, options?.signal);
   const committedGeneration = committedIndexGeneration((document as { metadata?: unknown }).metadata);
-  const committedChunks = chunks.filter(
-    (chunk) => !chunk.index_generation_id || chunk.index_generation_id === committedGeneration,
+  const committedChunks = chunks.filter((chunk) =>
+    committedGeneration
+      ? chunk.index_generation_id === undefined || chunk.index_generation_id === committedGeneration
+      : !chunk.index_generation_id,
   );
   if (!committedChunks.length) {
     return observeRagAnswer(
@@ -4331,7 +4333,12 @@ ${buildRagSourceBlock(results)}`;
   answer.documentBreakdown = buildDocumentBreakdown(results, answer.quoteCards);
   answer.evidenceSummary = buildEvidenceSummary(results, answer.quoteCards);
   answer.sourceCoverage = buildSourceCoverage(results);
-  answer.conflictsOrGaps = detectConflictsOrGaps(results);
+  const detectedConflicts = detectConflictsOrGaps(results);
+  const existingConflictMessages = new Set((answer.conflictsOrGaps ?? []).map((gap) => gap.message));
+  answer.conflictsOrGaps = [
+    ...(answer.conflictsOrGaps ?? []),
+    ...detectedConflicts.filter((gap) => !existingConflictMessages.has(gap.message)),
+  ];
   answer.visualEvidence = buildVisualEvidence(results);
   answer.bestSource = selectBestSourceRecommendation(results, answer.quoteCards);
   answer.smartPanel = { ...buildSmartPanel("summary", results), bestSource: answer.bestSource };
@@ -4342,7 +4349,16 @@ ${buildRagSourceBlock(results)}`;
     generation_latency_ms: generated.latencyMs,
     total_latency_ms: generated.latencyMs,
   };
-  return observeRagAnswer(assessAndEnforceClaimSupport(answer), options?.observationContext);
+  const verifiedAnswer = applyNumericVerification(assessAndEnforceClaimSupport(answer), results);
+  if (!verifiedAnswer.grounded || verifiedAnswer.confidence === "unsupported") {
+    verifiedAnswer.bestSource = null;
+    verifiedAnswer.supportedClaims = undefined;
+    verifiedAnswer.evidenceAssessments = undefined;
+    if (verifiedAnswer.smartPanel) {
+      verifiedAnswer.smartPanel = { ...verifiedAnswer.smartPanel, bestSource: null };
+    }
+  }
+  return observeRagAnswer(verifiedAnswer, options?.observationContext);
 }
 
 export function sanitizePromptUserQuery(query: string): string {

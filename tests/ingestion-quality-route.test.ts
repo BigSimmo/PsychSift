@@ -307,4 +307,184 @@ describe("/api/ingestion/quality", () => {
     expect(payload).toEqual({ items: [], demoMode: true });
     expect(client.from).not.toHaveBeenCalled();
   });
+
+  it("ignores historical failed jobs and OCR stages when a newer job completed for the same document", async () => {
+    const completedJobId = "99999999-9999-4999-8999-999999999999";
+    const client = clientWithTables({
+      documents: [
+        {
+          id: documentId,
+          title: "Recovered guideline",
+          file_name: "recovered.pdf",
+          status: "indexed",
+          page_count: 2,
+          chunk_count: 4,
+          image_count: 0,
+          error_message: null,
+          metadata: {
+            extraction_quality: "good",
+            clinical_validation_status: "approved",
+            document_status: "current",
+          },
+          updated_at: "2026-06-25T00:10:00.000Z",
+        },
+      ],
+      document_index_quality: [],
+      // Ordered newest first (updated_at DESC), matching the route query
+      ingestion_jobs: [
+        {
+          id: completedJobId,
+          document_id: documentId,
+          status: "completed",
+          stage: "completed",
+          error_message: null,
+          updated_at: "2026-06-25T00:10:00.000Z",
+        },
+        {
+          id: jobId,
+          document_id: documentId,
+          status: "failed",
+          stage: "ocr",
+          error_message: "Historical OCR failure.",
+          updated_at: "2026-06-25T00:02:00.000Z",
+        },
+      ],
+      ingestion_job_stages: [
+        {
+          id: "55555555-5555-4555-8555-555555555555",
+          document_id: documentId,
+          job_id: "99999999-9999-4999-8999-999999999999",
+          stage_name: "visual_extract",
+          stage_status: "completed",
+          error_message: null,
+          metadata: {},
+          artifact_counts: {},
+          started_at: "2026-06-25T00:12:00.000Z",
+          finished_at: "2026-06-25T00:13:00.000Z",
+        },
+        {
+          id: "44444444-4444-4444-8444-444444444444",
+          document_id: documentId,
+          job_id: "99999999-9999-4999-8999-999999999999",
+          stage_name: "visual_extract",
+          stage_status: "failed",
+          error_message: "Transient extract timeout.",
+          metadata: {},
+          artifact_counts: {},
+          started_at: "2026-06-25T00:11:00.000Z",
+          finished_at: "2026-06-25T00:11:30.000Z",
+        },
+        {
+          id: "33333333-3333-4333-8333-333333333333",
+          document_id: documentId,
+          job_id: jobId,
+          stage_name: "ocr",
+          stage_status: "failed",
+          error_message: "Historical OCR failure.",
+          metadata: {},
+          artifact_counts: {},
+          started_at: "2026-06-25T00:02:00.000Z",
+          finished_at: "2026-06-25T00:03:00.000Z",
+        },
+      ],
+      document_pages: [
+        {
+          document_id: documentId,
+          page_number: 1,
+          text: "Sufficient extracted clinical text after successful retry of the document ingestion job.",
+          ocr_used: true,
+          metadata: {},
+        },
+      ],
+      document_images: [],
+    });
+    vi.doMock("@/lib/env", () => ({ isDemoMode: () => false }));
+    vi.doMock("@/lib/supabase/admin", () => ({ createAdminClient: () => client }));
+    vi.doMock("@/lib/supabase/auth", () => ({
+      AuthenticationError: class AuthenticationError extends Error {},
+      requireAuthenticatedUser: vi.fn(async () => ({ id: userId })),
+      unauthorizedResponse: () => Response.json({ error: "Authentication required." }, { status: 401 }),
+    }));
+    const { GET } = await import("../src/app/api/ingestion/quality/route");
+
+    const response = await GET(new Request("http://localhost/api/ingestion/quality"));
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.items.map((item: { type: string }) => item.type)).not.toContain("failed_job");
+    expect(payload.items.map((item: { type: string }) => item.type)).not.toContain("failed_ocr");
+  });
+
+  it("rolls back non-atomic document status when enqueueDocumentReindexJob loses a 23505 race to a processing job", async () => {
+    const documentUpdates: unknown[] = [];
+    const supabase = {
+      from: vi.fn((table: string) => {
+        if (table === "ingestion_jobs") {
+          let isSelect = false;
+          const chain = {
+            select: vi.fn(() => {
+              isSelect = true;
+              return chain;
+            }),
+            insert: vi.fn(() => chain),
+            eq: vi.fn(() => chain),
+            in: vi.fn(() => chain),
+            order: vi.fn(() => chain),
+            limit: vi.fn(() => chain),
+            single: vi.fn(async () => ({
+              data: null,
+              error: { code: "23505", message: "duplicate key value violates unique constraint" },
+            })),
+            then: (resolve: (value: { data: unknown[]; error: null }) => unknown) =>
+              Promise.resolve({
+                // First select returns no open jobs; second select (after 23505) returns a processing job
+                data: isSelect && documentUpdates.length > 0 ? [{ id: jobId, status: "processing" }] : [],
+                error: null,
+              }).then(resolve),
+          };
+          return chain;
+        }
+        const docChain = {
+          update: vi.fn((payload: unknown) => {
+            documentUpdates.push(payload);
+            return docChain;
+          }),
+          eq: vi.fn(() => docChain),
+          is: vi.fn(() => docChain),
+          then: (resolve: (value: { data: null; error: null }) => unknown) =>
+            Promise.resolve({ data: null, error: null }).then(resolve),
+        };
+        return docChain;
+      }),
+    };
+
+    vi.doMock("@/lib/env", () => ({ env: { WORKER_MAX_ATTEMPTS: 3 }, isDemoMode: () => false }));
+    const { enqueueDocumentReindexJob } = await import("../src/lib/ingestion-enqueue");
+    const result = await enqueueDocumentReindexJob({
+      supabase: supabase as never,
+      document: {
+        id: documentId,
+        owner_id: userId,
+        status: "failed",
+        page_count: 5,
+        chunk_count: 12,
+        image_count: 2,
+        error_message: "Prior failure",
+      },
+    });
+
+    expect(result).toEqual({
+      outcome: "already_active",
+    });
+    // First update set status: "queued" and zeroed counts; second update rolled back to the prior state
+    expect(documentUpdates).toHaveLength(2);
+    expect(documentUpdates[0]).toMatchObject({ status: "queued", page_count: 0, chunk_count: 0, image_count: 0 });
+    expect(documentUpdates[1]).toMatchObject({
+      status: "failed",
+      page_count: 5,
+      chunk_count: 12,
+      image_count: 2,
+      error_message: "Prior failure",
+    });
+  });
 });

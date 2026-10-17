@@ -31,6 +31,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { classifyDocumentOrganization } from "@/lib/document-organization";
 import { env } from "@/lib/env";
+import { committedIndexGeneration, isCommittedGenerationMetadata } from "@/lib/reindex-pipeline";
 import {
   PUBLIC_OWNER_FILTER_SENTINEL,
   retrievalAccessScopeForArgs,
@@ -1074,10 +1075,21 @@ export async function fetchRelatedDocumentMetadata(args: {
     rpcData = [...merged.values()];
   }
 
+  const isHiddenLabel = (label: { metadata?: unknown }) => {
+    if (!label.metadata || typeof label.metadata !== "object" || Array.isArray(label.metadata)) return false;
+    const meta = label.metadata as Record<string, unknown>;
+    return (
+      meta.hidden === true ||
+      meta.hidden === "true" ||
+      meta.review_status === "hidden" ||
+      meta.label_review_status === "hidden"
+    );
+  };
+
   if (!rpcError) {
     return ((rpcData ?? []) as RelatedDocumentMetadataRow[]).map((row) => ({
       document_id: row.document_id,
-      labels: row.labels ?? [],
+      labels: (row.labels ?? []).filter((label) => !isHiddenLabel(label)),
       summary: row.summary ?? null,
     }));
   }
@@ -1088,45 +1100,83 @@ export async function fetchRelatedDocumentMetadata(args: {
     .in("document_id", args.documentIds);
   let summariesQuery = args.supabase
     .from("document_summaries")
-    .select("document_id,owner_id,summary")
+    .select("document_id,owner_id,summary,generated_at,metadata")
     .in("document_id", args.documentIds);
+  if (typeof (summariesQuery as { order?: unknown }).order === "function") {
+    summariesQuery = summariesQuery.order("generated_at", { ascending: false });
+  }
+  let documentsQuery = args.supabase.from("documents").select("id,metadata").in("id", args.documentIds);
 
   if (accessScope.ownerId && accessScope.includePublic) {
     labelsQuery = labelsQuery.or(`owner_id.eq.${accessScope.ownerId},owner_id.is.null`);
     summariesQuery = summariesQuery.or(`owner_id.eq.${accessScope.ownerId},owner_id.is.null`);
+    documentsQuery = documentsQuery.or(`owner_id.eq.${accessScope.ownerId},owner_id.is.null`);
   } else if (accessScope.ownerId) {
     labelsQuery = labelsQuery.eq("owner_id", accessScope.ownerId);
     summariesQuery = summariesQuery.eq("owner_id", accessScope.ownerId);
+    documentsQuery = documentsQuery.eq("owner_id", accessScope.ownerId);
   } else {
     labelsQuery = labelsQuery.is("owner_id", null);
     summariesQuery = summariesQuery.is("owner_id", null);
+    documentsQuery = documentsQuery.is("owner_id", null);
   }
 
   if (args.signal) {
     labelsQuery = labelsQuery.abortSignal(args.signal);
     summariesQuery = summariesQuery.abortSignal(args.signal);
+    documentsQuery = documentsQuery.abortSignal(args.signal);
   }
 
-  const [labelsResult, summariesResult] = await Promise.all([labelsQuery, summariesQuery]);
+  const [labelsResult, summariesResult, documentsResult] = await Promise.all([
+    labelsQuery,
+    summariesQuery,
+    documentsQuery,
+  ]);
   args.signal?.throwIfAborted();
   const metadataError = labelsResult.error ?? summariesResult.error;
   if (metadataError) throw metadataError;
-  const labels = (labelsResult.data ?? []) as DocumentLabel[];
-  const summaries = (summariesResult.data ?? []) as Pick<DocumentSummary, "document_id" | "summary">[];
+  const committedGenerationByDocument = new Map<string, string | null>();
+  for (const doc of (documentsResult?.data ?? []) as Array<{ id: string; metadata?: unknown }>) {
+    committedGenerationByDocument.set(doc.id, committedIndexGeneration(doc.metadata));
+  }
+  const labels = ((labelsResult.data ?? []) as DocumentLabel[]).filter(
+    (label) =>
+      !isHiddenLabel(label) &&
+      isCommittedGenerationMetadata({
+        rowMetadata: label.metadata,
+        committedGeneration: committedGenerationByDocument.get(label.document_id) ?? null,
+      }),
+  );
+  const summaries = (
+    (summariesResult.data ?? []) as Array<
+      Pick<DocumentSummary, "document_id" | "summary"> & { generated_at?: string | null; metadata?: unknown }
+    >
+  ).filter((summary) =>
+    isCommittedGenerationMetadata({
+      rowMetadata: summary.metadata,
+      committedGeneration: committedGenerationByDocument.get(summary.document_id) ?? null,
+    }),
+  );
   const labelsByDocument = new Map<string, DocumentLabel[]>();
-  const summariesByDocument = new Map<string, string | null>();
+  const summariesByDocument = new Map<string, { summary: string | null; generatedAt: string }>();
 
   for (const label of labels) {
     const existing = labelsByDocument.get(label.document_id) ?? [];
     existing.push(label);
     labelsByDocument.set(label.document_id, existing);
   }
-  for (const summary of summaries) summariesByDocument.set(summary.document_id, summary.summary ?? null);
+  for (const summary of summaries) {
+    const generatedAt = typeof summary.generated_at === "string" ? summary.generated_at : "";
+    const existing = summariesByDocument.get(summary.document_id);
+    if (!existing || (generatedAt && (!existing.generatedAt || generatedAt > existing.generatedAt))) {
+      summariesByDocument.set(summary.document_id, { summary: summary.summary ?? null, generatedAt });
+    }
+  }
 
   return args.documentIds.map((documentId) => ({
     document_id: documentId,
     labels: labelsByDocument.get(documentId) ?? [],
-    summary: summariesByDocument.get(documentId) ?? null,
+    summary: summariesByDocument.get(documentId)?.summary ?? null,
   }));
 }
 

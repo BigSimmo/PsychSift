@@ -73,7 +73,10 @@ export async function enqueueDocumentReindexJob(args: {
     .eq("id", document.id);
   // Owner scope is the app's single tenancy layer (RLS is bypassed by the
   // service-role client); scope the write to the owning row when we have it.
-  const { error: updateError } = await (ownerId ? queueUpdate.eq("owner_id", ownerId) : queueUpdate);
+  const applyOwnerFilter = <T extends { eq: (col: string, val: string) => T; is?: (col: string, val: null) => T }>(
+    query: T,
+  ) => (ownerId ? query.eq("owner_id", ownerId) : typeof query.is === "function" ? query.is("owner_id", null) : query);
+  const { error: updateError } = await applyOwnerFilter(queueUpdate);
   if (updateError) throw new Error(updateError.message);
 
   const { data: job, error: jobError } = await supabase
@@ -102,17 +105,25 @@ export async function enqueueDocumentReindexJob(args: {
   if (jobError.code === "23505") {
     const { data: competingJobs, error: competingJobsError } = await supabase
       .from("ingestion_jobs")
-      .select("id")
+      .select("id,status")
       .eq("document_id", document.id)
       .in("status", ["pending", "processing"])
       .limit(1);
-    if (!competingJobsError && (competingJobs?.length ?? 0) === 0) {
+    const hasCompetingProcessingJob =
+      !atomicReindex &&
+      Boolean(document.status) &&
+      (competingJobs ?? []).some((row) => (row as { status?: unknown }).status === "processing");
+    if (!competingJobsError && ((competingJobs?.length ?? 0) === 0 || hasCompetingProcessingJob)) {
+      const payloadToRestore =
+        hasCompetingProcessingJob && document.status === "queued"
+          ? { ...rollbackDocumentPayload, status: "processing" }
+          : rollbackDocumentPayload;
       const rollback = supabase
         .from("documents")
-        .update(rollbackDocumentPayload)
+        .update(payloadToRestore)
         .eq("id", document.id)
         .eq("updated_at", rollbackFence);
-      await (ownerId ? rollback.eq("owner_id", ownerId) : rollback);
+      await applyOwnerFilter(rollback);
     }
     return { outcome: "already_active" };
   }

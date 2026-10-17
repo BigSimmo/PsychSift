@@ -413,6 +413,7 @@ export function answerCacheLookupAllowedForRequest(args: AnswerCachePolicyArgs, 
     args.reviewedPolicyRequest?.state !== "reviewed" &&
     answerCacheAllowedForSourcePolicyConflicts(args.sourcePolicyConflicts) &&
     answerCacheAllowedForOwner(args.ownerId) &&
+    isRagCacheAccessAllowed(args) &&
     !args.skipCache &&
     env.RAG_ANSWER_CACHE_TTL_MS > 0
   );
@@ -682,6 +683,11 @@ export async function getCachedAnswer(
     return null;
   }
   const indexingVersion = options?.indexingVersionAtRequestStart ?? (await cacheIndexingVersion(args));
+  if (isUnavailableIndexingStamp(cached.indexingVersion)) {
+    answerCache.delete(key);
+    return null;
+  }
+  if (isUnavailableIndexingStamp(indexingVersion)) return null;
   if (cached.indexingVersion !== indexingVersion) {
     answerCache.delete(key);
     return null;
@@ -776,6 +782,7 @@ export async function setCachedAnswer(
     throwIfAborted(descriptor.signal);
     if (invalidationEpochChanged(descriptor.invalidationOwnerId, invalidationEpochAtStart)) return;
     if (indexingVersionAtRetrievalStart && indexingVersion !== indexingVersionAtRetrievalStart) return;
+    if (isUnavailableIndexingStamp(indexingVersion)) return;
     answerCache.set(descriptor.localCacheKey, {
       expiresAt: Date.now() + env.RAG_ANSWER_CACHE_TTL_MS,
       answer: capturedAnswer,
@@ -975,6 +982,7 @@ export async function getCachedSearch(
   options?: { indexingVersionAtRequestStart?: string | null },
 ): Promise<{ results: SearchResult[]; telemetry: SearchTelemetry } | null> {
   throwIfAborted(args.signal);
+  if (args.ragQueryPlanMode === "shadow" && !isIssuedRagShadowControl(args)) return null;
   if (!isSearchCacheEnabled(args) || !isRagCacheAccessAllowed(args)) return null;
 
   const key = scopedSearchCacheKey(args, queryClass, queryVariants);
@@ -986,6 +994,11 @@ export async function getCachedSearch(
   }
   const indexingVersion = options?.indexingVersionAtRequestStart ?? (await cacheIndexingVersion(args));
   throwIfAborted(args.signal);
+  if (isUnavailableIndexingStamp(cached.indexingVersion)) {
+    searchCache.delete(key);
+    return null;
+  }
+  if (isUnavailableIndexingStamp(indexingVersion)) return null;
   if (cached.indexingVersion !== indexingVersion) {
     searchCache.delete(key);
     return null;
@@ -1040,9 +1053,12 @@ export async function setCachedSearch(
     const descriptor = createSiteAwareSearchWriteDescriptor(args, capturedTelemetry.query_class, queryVariants);
     if (!cacheWriteProofAllows(descriptor.args, "search", capturedResults, proof)) return;
     const indexingVersionAtRetrievalStart = options?.indexingVersionAtRetrievalStart;
+    const invalidationEpochAtStart = captureInvalidationEpoch(descriptor.invalidationOwnerId);
     const indexingVersion = await cacheIndexingVersion(descriptor.args, { forceRefresh: true });
     throwIfAborted(descriptor.signal);
+    if (invalidationEpochChanged(descriptor.invalidationOwnerId, invalidationEpochAtStart)) return;
     if (indexingVersionAtRetrievalStart && indexingVersion !== indexingVersionAtRetrievalStart) return;
+    if (isUnavailableIndexingStamp(indexingVersion)) return;
     searchCache.set(descriptor.localCacheKey, {
       expiresAt: Date.now() + env.RAG_SEARCH_CACHE_TTL_MS,
       results: capturedResults,
@@ -1055,6 +1071,10 @@ export async function setCachedSearch(
       if (!oldestKey) break;
       searchCache.delete(oldestKey);
     }
+    if (invalidationEpochChanged(descriptor.invalidationOwnerId, invalidationEpochAtStart)) {
+      searchCache.delete(descriptor.localCacheKey);
+      return;
+    }
     setSharedSiteAwareCachedSearch(descriptor, capturedResults, capturedTelemetry, indexingVersion, proof);
     return;
   }
@@ -1062,8 +1082,10 @@ export async function setCachedSearch(
   const cacheTelemetry = normalizeCacheStorageTelemetry(telemetry, isIssuedRagShadowControl(args));
   const clonedResults = cloneSearchResults(results);
 
+  const invalidationEpochAtStart = captureInvalidationEpoch(args.ownerId);
   const indexingVersion = await cacheIndexingVersion(args, { forceRefresh: true });
   throwIfAborted(args.signal);
+  if (invalidationEpochChanged(args.ownerId, invalidationEpochAtStart)) return;
   if (options?.indexingVersionAtRetrievalStart && indexingVersion !== options.indexingVersionAtRetrievalStart) return;
   if (isUnavailableIndexingStamp(indexingVersion)) return;
   const key = scopedSearchCacheKey(args, telemetry.query_class, queryVariants);
@@ -1079,6 +1101,10 @@ export async function setCachedSearch(
     const oldestKey = searchCache.keys().next().value;
     if (!oldestKey) break;
     searchCache.delete(oldestKey);
+  }
+  if (invalidationEpochChanged(args.ownerId, invalidationEpochAtStart)) {
+    searchCache.delete(key);
+    return;
   }
   setSharedCachedSearch(
     args,
@@ -1190,6 +1216,10 @@ export async function cacheIndexingVersion(
     value = `${ragDeepMemoryVersion}:${INDEXING_STAMP_UNAVAILABLE}`;
   }
   throwIfAborted(args.signal);
+  if (isUnavailableIndexingStamp(value)) {
+    cacheIndexingVersionCache.delete(cacheKey);
+    return value;
+  }
   writeBoundedExpiringCacheEntry(
     cacheIndexingVersionCache,
     cacheKey,
@@ -1210,9 +1240,11 @@ export async function getSharedCachedSearch(
   | null
 > {
   throwIfAborted(args.signal);
+  if (args.ragQueryPlanMode === "shadow" && !isIssuedRagShadowControl(args)) return null;
   if (args.skipCache || env.RAG_SEARCH_CACHE_TTL_MS <= 0 || !isRagCacheAccessAllowed(args)) return null;
   const normalizedQuery = retrievalPlanCacheQuery(args, queryClass, queryVariants);
   const indexingVersion = options?.indexingVersionAtRequestStart ?? (await cacheIndexingVersion(args));
+  if (isUnavailableIndexingStamp(indexingVersion)) return { kind: "miss", reason: "cache_lookup_error" };
   try {
     let query = sharedCacheSelector(createAdminClient(), "search", args, indexingVersion, normalizedQuery);
     if (args.signal) query = query.abortSignal(args.signal);
@@ -1328,6 +1360,7 @@ export async function getSharedCachedAnswer(
     return null;
   try {
     const indexingVersion = options?.indexingVersionAtRequestStart ?? (await cacheIndexingVersion(args));
+    if (isUnavailableIndexingStamp(indexingVersion)) return null;
     const { data, error } = await sharedCacheSelector(
       createAdminClient(),
       "answer",
@@ -1697,7 +1730,7 @@ export function invalidateRagCachesForDocumentMutation(
   options: { affectsPublicCorpus?: boolean } = {},
 ) {
   invalidateRagCachesForOwner(ownerId);
-  if (options.affectsPublicCorpus !== false) invalidateAnonymousSharedRagCaches();
+  if (options.affectsPublicCorpus !== false && ownerId !== "anonymous") invalidateAnonymousSharedRagCaches();
 }
 
 export {
