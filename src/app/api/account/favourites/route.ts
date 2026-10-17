@@ -415,7 +415,7 @@ export async function PATCH(request: Request) {
           code: "favourite_order_stale",
         });
       }
-      await Promise.all(
+      const applied = await Promise.all(
         plan.updates.map(async (row) => {
           // Scope each write to the set the plan was built from, so a favourite moved
           // to another set after the membership snapshot is not reordered there.
@@ -425,12 +425,20 @@ export async function PATCH(request: Request) {
             .eq("user_id", user.id)
             .eq("content_type", row.contentType as (typeof input.items)[number]["contentType"])
             .eq("content_key", row.contentKey);
-          const { error } = await (input.setId
-            ? updateQuery.eq("set_id", input.setId)
-            : updateQuery.is("set_id", null));
+          const { data: updated, error } = await (
+            input.setId ? updateQuery.eq("set_id", input.setId) : updateQuery.is("set_id", null)
+          ).select("content_key");
           if (error) throw new Error(error.message);
+          return (updated?.length ?? 0) > 0;
         }),
       );
+      // A favourite that left the set after the snapshot matches no row; report the
+      // order as stale rather than claiming it was saved.
+      if (applied.includes(false)) {
+        throw new PublicApiError("The set changed before the new order was saved.", 409, {
+          code: "favourite_order_stale",
+        });
+      }
       return Response.json(favouriteUpdateResponseSchema.parse({ version: contractVersion, updated: true }));
     }
     if (input.action === "reorderItem") {
