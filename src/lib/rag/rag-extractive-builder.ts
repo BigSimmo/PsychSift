@@ -1991,21 +1991,25 @@ function buildDocumentSupportListAnswer(args: {
         return matchCount > 0 && matchCount < args.results.length;
       });
       const activeTokens = distinguishingTokens.length > 0 ? distinguishingTokens : qualifierTokens;
-      const scored = args.results.map((result) => ({
-        result,
-        matches: activeTokens.filter((token) => queryTokenMatchesText(token, evidenceByResult.get(result) ?? ""))
-          .length,
-      }));
-      const maxMatches = Math.max(...scored.map((entry) => entry.matches));
-      if (maxMatches >= 1) {
-        const singularDocumentQuery =
-          /\b(?:which|what)\s+(?:document|guideline|policy|protocol|source|procedure|manual)\b/i.test(args.query);
-        const filtered = scored
-          .filter((entry) => (singularDocumentQuery ? entry.matches === maxMatches : entry.matches > 0))
-          .map((entry) => entry.result);
-        if (filtered.length > 0 && filtered.length < args.results.length) {
-          scopedResults = filtered;
+      // A document can distribute the evidence for a compound claim across chunks.
+      // Aggregate tokens by document before filtering so both the complete claim and
+      // the chunks that support it survive citation construction.
+      const matchesByDocument = new Map<string, Set<string>>();
+      for (const result of args.results) {
+        const documentId = result.document_id ?? result.id;
+        const matches = matchesByDocument.get(documentId) ?? new Set<string>();
+        for (const token of activeTokens) {
+          if (queryTokenMatchesText(token, evidenceByResult.get(result) ?? "")) matches.add(token);
         }
+        matchesByDocument.set(documentId, matches);
+      }
+      const supportingDocumentIds = new Set(
+        [...matchesByDocument].filter(([, matches]) => matches.size === activeTokens.length).map(([id]) => id),
+      );
+      if (supportingDocumentIds.size < matchesByDocument.size) {
+        scopedResults = args.results.filter((result) =>
+          supportingDocumentIds.has(result.document_id ?? result.id),
+        );
       }
     }
   }
