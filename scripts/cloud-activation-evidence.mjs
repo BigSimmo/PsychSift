@@ -124,7 +124,7 @@ function codexEvidence(home, configHome) {
     let generatedMarker = false;
     if (bytes) {
       const lines = bytes.toString("utf8").split("\n");
-      generatedMarker = lines.includes(marker);
+      generatedMarker = lines.some((line) => line.startsWith(marker));
       const owners = lines.filter((line) => line.startsWith("# PsychSift checkout: "));
       if (owners.length)
         owner =
