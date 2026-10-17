@@ -1082,8 +1082,7 @@ async function fetchBestDocumentLookupChunks(args: {
       "id,document_id,page_number,chunk_index,section_heading,section_path,heading_level,parent_heading,anchor_id,content,retrieval_synopsis,image_ids,index_generation_id",
     )
     .in("document_id", args.documentIds)
-    .order("chunk_index", { ascending: true })
-    .limit(Math.max(args.limit * 2, args.limit));
+    .order("chunk_index", { ascending: true });
   const { data: fallbackChunks, error: fallbackError } = await fallbackQuery;
   if (fallbackError || !fallbackChunks?.length) return { chunks: [] as DocumentLookupChunkRow[], terms };
   return {
