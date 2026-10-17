@@ -36,6 +36,11 @@ and any inherited base pin. Without an explicit selection it stops with guidance
 instead of silently changing the access profile. Setup still rejects unmanaged
 or symbolic-link runtime profiles.
 
+An older generated profile has no checkout marker, so it records no owner. Setup
+rewrites it for whichever worktree runs setup first, which means a second
+worktree can take over a shared home. Use an isolated `HOME` and `CODEX_HOME`
+per worktree when more than one checkout shares a machine.
+
 The active shell policy is written to `${CODEX_HOME:-$HOME/.codex}/config.toml`.
 Unrelated settings are preserved and the managed block is replaced atomically.
 An existing config destination must be a regular file; directories and symbolic
