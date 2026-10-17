@@ -202,6 +202,7 @@ export function classifyRepositoryPath(relativePath, options = {}) {
   if (
     lower.startsWith("src/lib/ingest/") ||
     lower === "src/lib/ingest" ||
+    lower.startsWith("src/lib/deep-memory") ||
     lower.startsWith("src/app/sources/") ||
     lower === "src/app/sources" ||
     /^docs\/(source|ingest|document)/.test(lower) ||
@@ -223,11 +224,17 @@ export function classifyRepositoryPath(relativePath, options = {}) {
     lower.startsWith("src/app/diary/") ||
     lower === "src/app/diary" ||
     /^src\/app\/(cme|roster|my-day|teaching|open-shifts|work)(\/|$)/.test(lower) ||
-    /^src\/app\/api\/(cme|roster|teaching|work)(\/|$)/.test(lower) ||
-    /^src\/components\/(cme|roster|my-day|teaching|work-frame)(\/|$)/.test(lower) ||
-    /^src\/lib\/(cme|roster|teaching|work-frame)(\/|$)/.test(lower) ||
-    /^docs\/(personal|workspace|diary|cme)/.test(lower) ||
-    /^tests\/(cme|roster|my-day|teaching|open-shifts|work|diary|workspace|calendar|handover|notes)(-|\.)/.test(lower)
+    /^src\/app\/api\/(cme|roster|teaching|work|on-call|alerts|calendar)(\/|$)/.test(lower) ||
+    /^src\/components\/(cme|roster|my-day|teaching|open-shifts|on-call|alerts|admin|favourites|needs-you|calendar|work-frame|work-profile|work-screens|work-search|work-sync|work-time|work-calendar)(\/|$)/.test(
+      lower,
+    ) ||
+    /^src\/lib\/(cme|roster|my-day|teaching|open-shifts|on-call|alerts|admin|favourites|needs-you|calendar|work-frame|work-profile|work-roles|work-screens|work-search|work-sync|work-text|work-time|work-calendar)(\/|$)/.test(
+      lower,
+    ) ||
+    /^docs\/(personal|workspace|diary|cme|on-call)/.test(lower) ||
+    /^tests\/(cme|roster|my-day|teaching|open-shifts|work|diary|workspace|calendar|handover|notes|alerts|favourites|needs-you|admin)(-|\.)/.test(
+      lower,
+    )
   ) {
     return buildResult(
       "personal-practice",
@@ -291,12 +298,14 @@ export function classifyRepositoryPath(relativePath, options = {}) {
   if (
     lower.startsWith("src/components/") ||
     lower === "src/components" ||
+    lower.startsWith("src/app/(search-app)/") ||
+    /^src\/app\/(?!api\/).*\.tsx$/.test(lower) ||
     lower === "src/app/globals.css" ||
     lower === "src/app/design-tokens.css" ||
     /^docs\/(design|brand|ui|search-chrome|search-results-bar|filter-contract|wiring-conventions|frontend-architecture|pwa|navigation)/.test(
       lower,
     ) ||
-    /^tests\/(design-system|type-scale|icon-scale|theme|brand|ui-style-contract|phone-chrome|search-chrome|search-results-bar|navigation|header|dock|pwa)(-|\.)/.test(
+    /^tests\/(design-system|type-scale|icon-scale|theme|brand|ui-style-contract|phone-chrome|search-chrome|search-results-bar|navigation|header|dock|pwa|dashboard-kit|work-setup)(-|\.)/.test(
       lower,
     )
   ) {

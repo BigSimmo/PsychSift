@@ -380,7 +380,9 @@
     "exceljs": {
       "archiver": "^8.0.0",
       "unzipper": "^0.12.5"
-    }
+    },
+    "braces": "npm:brace-expansion@^1.1.21",
+    "argparse": "^2.0.1"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
