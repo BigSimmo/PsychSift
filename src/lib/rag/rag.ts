@@ -2041,21 +2041,12 @@ async function searchChunksWithTiming(
   return finishSearch(searchTiming, { results, telemetry });
 }
 
+type RelatedDocumentsArgs = { query: string; results: SearchResult[]; ownerId?: string; signal?: AbortSignal };
+
 /** Build related documents safe. */
-async function buildRelatedDocumentsSafe(args: {
-  query: string;
-  results: SearchResult[];
-  ownerId?: string;
-  signal?: AbortSignal;
-}) {
+async function buildRelatedDocumentsSafe(args: RelatedDocumentsArgs) {
   try {
-    return await fetchRelatedDocuments({
-      supabase: createAdminClient(),
-      query: args.query,
-      results: args.results,
-      ownerId: args.ownerId,
-      signal: args.signal,
-    });
+    return await fetchRelatedDocuments({ supabase: createAdminClient(), ...args });
   } catch {
     return [];
   }
