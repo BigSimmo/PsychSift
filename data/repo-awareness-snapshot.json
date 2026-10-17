@@ -8813,6 +8813,14 @@
         "checks": "verify:pr-local (runtime, lock-parity, format, lint, typecheck, test 602 files/6518 passed/4 skipped, rag:fixtures, medication-interactions PASS; medication-lexicon-report pre-existing unrelated FAIL); focused vitest check-playwright-browser-revision.test.ts 10/10, playwright-browser-preflight.test.ts 12/12"
       },
       {
+        "date": "2026-10-16",
+        "ref": "claude/swarm-12-remaining-20261016",
+        "head": "24eeea365e782c651047eebf0ecbe9db87e4fd07",
+        "scope": "prlanded",
+        "outcome": "PR #3573 squash-merged as 24eeea365e; two-dot diff and stable patch-id ba25a7b05c match branch tip 03a9d35d79 byte-for-byte with zero orphaned commits",
+        "checks": "gh pr view 3573 MERGED; 1-parent squash; git diff --stat 24eeea365e 03a9d35d79 empty; git patch-id --stable match"
+      },
+      {
         "date": "2026-07-11",
         "ref": "PR #481 / claude/perf-r2-auth-roundtrip",
         "head": "24fad070fb9834510309e74e1dc0e216cd08646b",
@@ -13387,6 +13395,14 @@
         "scope": "PR #1785 unblock/fix",
         "outcome": "before: Production UI (3) failed on service-detail scroll endpoint (remaining 67px) at 38b3bd0c; GitHub DIRTY behind-but-clean vs #1791. after: merged origin/main + re-scroll toPass fix in ui-tools service-detail test; threads untouched; do not merge",
         "checks": "CI Production UI (3) logs; git merge-tree clean; prettier ui-tools; product fix in same tip commit as this row"
+      },
+      {
+        "date": "2026-10-16",
+        "ref": "claude/swarm-16-issues-20261016",
+        "head": "5cbe4ec63a32f841c9445380232875c9106cb170",
+        "scope": "prlanded",
+        "outcome": "PR #3567 squash-merged as 5cbe4ec63a; all 68 source/test/doc files match branch tip 10d53b7624 byte-for-byte with zero orphaned commits",
+        "checks": "gh pr view 3567 MERGED; 1-parent squash; per-file diff empty across all non-snapshot PR files"
       },
       {
         "date": "2026-07-30",
@@ -24773,6 +24789,14 @@
         "checks": "hosted-pr-required,static,unit,build,circleci"
       },
       {
+        "date": "2026-10-17",
+        "ref": "docs/audit-remediation-20261014",
+        "head": "def6fabcc8235e8592fea2613d07170e23dd9836",
+        "scope": "prlanded",
+        "outcome": "Verified PR #3544 squash-merged at def6fabcc8235e8592fea2613d07170e23dd9836 with zero content diff against final PR head f519ae94fafab3e2ce7b221a054faa7d66939eea and zero orphaned commits",
+        "checks": "gh pr view 3544, git rev-list --parents -n 1 def6fabcc8235e8592fea2613d07170e23dd9836, git diff --stat def6fabcc8235e8592fea2613d07170e23dd9836 f519ae94fafab3e2ce7b221a054faa7d66939eea"
+      },
+      {
         "date": "2026-07-14",
         "ref": "worktrees (6244, 8ba3, b6ff, e6b5, repo-improvement-review-09945c)",
         "head": "detached HEADs",
@@ -27107,6 +27131,14 @@
         "scope": "tests/search-route-round-trip-budget.test.ts (PR #1950, ledger #098 residual + #189)",
         "outcome": "Author handoff: offline test-only diff adding a pinned Supabase round-trip budget for POST /api/search, no production/RAG code changed",
         "checks": "verify:pr-local full run (lint/typecheck clean; test 602 files, 6511 passed, 4 skipped; check:rag:fixtures + check:medication-interactions passed; check:medication-lexicon-report pre-existing unrelated staleness)"
+      },
+      {
+        "date": "2026-10-16",
+        "ref": "claude/reconcile-inbox-20261016",
+        "head": "fa526775c6ca0751f9609e4fc5133190efa19c16",
+        "scope": "prlanded",
+        "outcome": "PR #3570 squash-merged as fa526775c6; stable patch-id 87375f76eaf matches branch tip d8eefbb91e with zero orphaned commits",
+        "checks": "gh pr view 3570 MERGED; 1-parent squash; git patch-id --stable match"
       },
       {
         "date": "2026-08-05",
