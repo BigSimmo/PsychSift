@@ -324,11 +324,11 @@ real reason each group exists, so the next reader does not re-derive this.
 
 **Three-way boundary (module-local constant vs shared `:root` custom property vs `@theme` scale token):**
 
-1. **Keep single-consumer component metrics local.** A metric used only by a single owning JS/TS component or module (such as `cardTextWidth` / `max-w-[158px]` in `src/components/clinical-dashboard/answer-source-rail.tsx`) must remain a module-local constant or inline Tailwind class; do not promote it to a global CSS custom property or an `@theme` token.
+1. **Keep single-consumer component metrics local.** A metric used only by a single owning JS/TS component or module (such as `cardFixedWidth` / `w-[156px]` in `src/components/clinical-dashboard/answer-source-rail.tsx`) must remain a module-local constant or inline Tailwind class; do not promote it to a global CSS custom property or an `@theme` token.
 2. **Use `:root` only for shared off-scale CSS custom properties across multiple non-nested consumers.** When multiple components share an off-scale computed dimension or metric (such as `--answer-message-gutter: calc(2.75rem + 1px)` with transparent-border compensation), define it in `:root` in `src/app/globals.css`.
 3. **Reserve `@theme` for deliberate design-scale tokens.** The Tailwind `@theme` block is reserved for systematic, reusable scale tokens that generate utility families across the entire design system. Any deliberate `@theme --spacing-*` token requires corresponding `CLINICAL_TWMERGE_THEME.spacing` test coverage in `tests/tailwind-merge-config.test.ts`.
 
-Neither `cardTextWidth` nor `--answer-message-gutter` is converted; both remain in their correct architectural homes.
+Neither `cardFixedWidth` nor `--answer-message-gutter` is converted; both remain in their correct architectural homes.
 
 ## 4 · Recorded verification evidence
 

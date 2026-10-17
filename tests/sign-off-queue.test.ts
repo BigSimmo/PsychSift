@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import formsContentReview from "../data/forms-content-review.json";
-import { loadSignOffQueue, type SignOffFamilyId } from "@/lib/developer-area/sign-off-queue";
+import {
+  loadSignOffLedger,
+  loadSignOffQueue,
+  type SignOffDomainId,
+  type SignOffFamilyId,
+} from "@/lib/developer-area/sign-off-queue";
 import { formSlug as catalogueFormSlug } from "@/lib/form-catalog";
 import { formPageHref } from "@/lib/form-register";
 import { formStaticParams } from "@/lib/forms";
@@ -280,5 +285,102 @@ describe("clinical sign-off queue", () => {
         family.rows.length,
       );
     }
+  });
+});
+
+const EXPECTED_SIGNED_BY_DOMAIN: Record<SignOffDomainId, { signed: number; waiting: number }> = {
+  "today-rules": { signed: 3, waiting: 0 },
+  "wa-mha-forms": { signed: 54, waiting: 0 },
+  "mha-sections": { signed: 110, waiting: 0 },
+  "mha-timeframes": { signed: 9, waiting: 0 },
+  "cp-standards": { signed: 7, waiting: 1 },
+  "cultural-notes": { signed: 14, waiting: 9 },
+  differentials: { signed: 11, waiting: 232 },
+  formulation: { signed: 58, waiting: 6 },
+  specifiers: { signed: 89, waiting: 514 },
+  therapy: { signed: 179, waiting: 26 },
+  dictionary: { signed: 28, waiting: 401 },
+  // 93 sources carry a structured, current attestation. Two OCP standards are marked
+  // locally_reviewed in prose only and wait for one; six Indigenous sources are held.
+  sources: { signed: 93, waiting: 8 },
+  services: { signed: 21, waiting: 4 },
+};
+
+describe("clinical & rule sign-off ledger", () => {
+  const ledger = loadSignOffLedger();
+
+  it("reports all 13 governed sign-off domains in a stable order", () => {
+    expect(ledger.domains.map((domain) => domain.id)).toEqual(Object.keys(EXPECTED_SIGNED_BY_DOMAIN));
+  });
+
+  it.each(Object.entries(EXPECTED_SIGNED_BY_DOMAIN))(
+    "counts %s as %o signed and waiting",
+    (id, { signed, waiting }) => {
+      const domain = ledger.domains.find((candidate) => candidate.id === id);
+      expect(domain, `${id} missing from ledger`).toBeDefined();
+      expect(domain!.signedCount).toBe(signed);
+      expect(domain!.signedRows).toHaveLength(signed);
+      expect(domain!.waitingCount).toBe(waiting);
+      expect(domain!.total).toBe(signed + waiting);
+    },
+  );
+
+  it("derives the overall totals, signer breakdown, and categorized waiting counts from the domain rows", () => {
+    expect(ledger.totalSigned).toBe(676);
+    expect(ledger.totalWaiting).toBe(1201);
+    expect(ledger.totalGoverned).toBe(1877);
+    expect(ledger.signedByTotals).toEqual({
+      "Josh Simpson": 3,
+      "Psych Sift": 196,
+      PsychSift: 477,
+    });
+    expect(ledger.waitingByCategory).toEqual({
+      signableNow: 0,
+      indigenousHold: 26,
+      awaitingPrerequisites: 610,
+      awaitingTool: 565,
+    });
+  });
+
+  it("counts a clinical:review record as signed only when the tool's own contract says its pin is current", async () => {
+    const tool = await import("../scripts/review-clinical-record.mjs");
+    const contract = await import("../scripts/lib/clinical-record-review-contract.mjs");
+    // An edited (stale) or unpinned record goes back to the tool's queue, so it
+    // must not be counted as signed here either.
+    const kinds: [string, SignOffDomainId, (id: string) => string][] = [
+      ["form", "wa-mha-forms", (id) => id],
+      ["section", "mha-sections", (id) => `s${id}`],
+      ["timeframe", "mha-timeframes", (id) => id],
+      ["service", "services", (id) => id],
+      ["differential", "differentials", (id) => id],
+    ];
+    for (const [kind, domainId, rowId] of kinds) {
+      const loaded = tool.loadKindDocument(kind);
+      expect(loaded.status, kind).toBe("ok");
+      const records = contract.collectionOf(kind, loaded.document) as Record<string, unknown>[];
+      const context = await tool.loadContext(kind, process.cwd());
+      const idField = (contract.recordKinds as Record<string, { idField: string }>)[kind]!.idField;
+      const current = records
+        .filter((record) => contract.recordPinState(record, kind, context) === "current")
+        .map((record) => rowId(String(record[idField])));
+      const domain = ledger.domains.find((candidate) => candidate.id === domainId)!;
+      const signed = domain.signedRows.map((row) => row.id);
+      expect([...signed].sort(), kind).toEqual([...current].sort());
+    }
+  });
+
+  it("gives every signed record a unique key, non-empty reviewer, and purpose description", () => {
+    const keys = new Set<string>();
+    for (const domain of ledger.domains) {
+      for (const row of domain.signedRows) {
+        expect(keys.has(row.key), `duplicate signed row key ${row.key}`).toBe(false);
+        keys.add(row.key);
+        expect(row.id.trim()).not.toBe("");
+        expect(row.title.trim()).not.toBe("");
+        expect(row.whatFor.trim()).not.toBe("");
+        expect(row.signedBy.trim()).not.toBe("");
+      }
+    }
+    expect(keys.size).toBe(ledger.totalSigned);
   });
 });
