@@ -52,6 +52,10 @@ export function AnswerProviderNotice({
 export function answerSummaryUnavailableReason(answer: AnswerStateInput): string | null {
   const code = answer.fallbackReasonCode;
   if (!answerUsesDegradedMode(answer) || !code || !isProviderGenerationFallbackCode(code)) return null;
+  // A retrieval deadline also reports provider_timeout, but no evidence was confirmed. The client
+  // payload drops routingReason, so the empty source list is the guard that holds in the browser:
+  // with nothing confirmed, the warning stays above the answer.
+  if (answer.routingReason === "retrieval_deadline_exceeded" || !answer.sources?.length) return null;
   return publicFallbackReason(code);
 }
 

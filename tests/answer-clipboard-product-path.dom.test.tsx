@@ -7,6 +7,7 @@ import { StagedAnswerResultSurface } from "@/components/clinical-dashboard/answe
 import { buildAnswerRenderModel } from "@/lib/answer-render-policy";
 import { toClientAnswerPayload } from "@/lib/answer-client-payload";
 import { PriorAnswerTurnSurface, type AnswerTurn } from "@/components/clinical-dashboard/answer-thread-turn";
+import { retrievalDeadlineExceededAnswer } from "@/lib/rag/rag-route-budget";
 import type { RagAnswer, SearchResult } from "@/lib/types";
 
 vi.mock("next/navigation", () => ({
@@ -269,6 +270,42 @@ it("R3 moves a provider failure to the amber line under the overseas notice, ful
   expect(notes).toHaveLength(1);
   expect(notes[0]).toHaveTextContent("AI summary unavailable");
   expect(notes[0]).toHaveTextContent(phrase);
+});
+
+it("R3 keeps a retrieval deadline warning above the answer, with no amber summary line", () => {
+  // The deadline answer reports provider_timeout but confirmed no evidence, so it must not
+  // claim a verified source-backed portion below the answer.
+  const answer = toClientAnswerPayload(
+    retrievalDeadlineExceededAnswer({ searchStartedAt: Date.now(), startedAt: Date.now(), budgetMs: 1000 }),
+  );
+  render(
+    <>
+      <StagedAnswerResultSurface
+        answer={answer}
+        query="clozapine starting dose"
+        bestSource={null}
+        renderModel={buildAnswerRenderModel(answer)}
+        weakEvidence={false}
+        answerViewMode="standard"
+        answerEvidenceMapRows={[]}
+        onScopeDocument={() => {}}
+        answerGrounded={false}
+        sources={answer.sources}
+        demoMode={false}
+        safeAnswerSections={[]}
+        safetyFindings={[]}
+        copiedAnswer={false}
+        pendingFeedback={null}
+        onCopyAnswer={() => {}}
+        onSubmitFeedback={() => {}}
+      />
+      <AnswerSummaryUnavailableNotice answer={answer} />
+    </>,
+  );
+  expect(screen.queryByText("AI summary unavailable")).not.toBeInTheDocument();
+  const notes = screen.getAllByTestId("current-answer-degradation");
+  expect(notes).toHaveLength(1);
+  expect(notes[0]).not.toHaveTextContent("AI summary unavailable");
 });
 
 it.each([
