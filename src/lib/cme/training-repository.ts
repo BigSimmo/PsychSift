@@ -357,12 +357,9 @@ export function mergeTrainingAndRegistrarMilestones(
   if (registrarMilestones.length === 0) return [...milestones];
   const merged = [...milestones];
   const seenIds = new Set(milestones.map((m) => m.id));
-  const seenLabels = new Set(milestones.map((m) => m.label.trim().toLowerCase()));
   for (const record of registrarMilestones) {
-    const normalizedTitle = record.milestoneTitle.trim().toLowerCase();
-    if (seenIds.has(record.id) || seenLabels.has(normalizedTitle)) continue;
+    if (seenIds.has(record.id)) continue;
     seenIds.add(record.id);
-    seenLabels.add(normalizedTitle);
     merged.push(registrarMilestoneToTrainingMilestone(record));
   }
   return merged;
@@ -380,11 +377,7 @@ function registrarMilestoneColumns(input: RegistrarMilestoneInput) {
 
 function shouldSyncRegistrarTable(supabase: AdminClient, options?: { readonly syncRegistrar?: boolean }): boolean {
   if (typeof options?.syncRegistrar === "boolean") return options.syncRegistrar;
-  return Boolean(
-    supabase &&
-    typeof supabase === "object" &&
-    ("rpc" in supabase || "rest" in supabase || "auth" in supabase || "registrarSync" in supabase),
-  );
+  return false;
 }
 
 export async function fetchOwnerRegistrarMilestones(
@@ -475,24 +468,18 @@ export async function syncOwnerMilestoneToRegistrarTable(
     evidenceSummary: toEvidenceSummary(milestone),
   });
   try {
-    if (mode === "update") {
-      await registrarMilestonesTable(supabase)
-        .from("registrar_training_milestones")
-        .update(columns)
-        .eq("registrar_id", ownerId)
-        .eq("id", milestone.id)
-        .select(REGISTRAR_MILESTONE_COLUMNS)
-        .maybeSingle();
-      return;
+    const table = registrarMilestonesTable(supabase).from("registrar_training_milestones");
+    const result =
+      mode === "update"
+        ? await table.update(columns).eq("registrar_id", ownerId).eq("id", milestone.id).select(REGISTRAR_MILESTONE_COLUMNS).maybeSingle()
+        : await table.insert({ ...columns, id: milestone.id, registrar_id: ownerId }).select(REGISTRAR_MILESTONE_COLUMNS).maybeSingle();
+    if (result.error) throw cmeRepositoryError(result.error);
+    if (mode === "update" && !result.data) {
+      const inserted = await table.insert({ ...columns, id: milestone.id, registrar_id: ownerId }).select(REGISTRAR_MILESTONE_COLUMNS).maybeSingle();
+      if (inserted.error) throw cmeRepositoryError(inserted.error);
     }
-    await registrarMilestonesTable(supabase)
-      .from("registrar_training_milestones")
-      .insert({ ...columns, id: milestone.id, registrar_id: ownerId })
-      .eq("registrar_id", ownerId)
-      .select(REGISTRAR_MILESTONE_COLUMNS)
-      .maybeSingle();
-  } catch {
-    // Gracefully ignore when a unit-test mock only provides cme_training_milestones
+  } catch (error) {
+    throw error;
   }
 }
 

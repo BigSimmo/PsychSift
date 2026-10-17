@@ -28,7 +28,7 @@ export type TrainingEpa = {
   readonly id: string;
   readonly title: string;
   /** WBAs logged against this EPA so far. */
-  readonly wbasLogged: number;
+  readonly wbasLogged: number | null;
   /** An assessor's name. Only ever set in the sample fixture; PsychSift never stores one. */
   readonly assessor: string | null;
   /** The day the doctor marked the EPA attained (Perth `YYYY-MM-DD`), or null. */
@@ -36,7 +36,7 @@ export type TrainingEpa = {
 };
 
 export type RegistrarAssessments = {
-  readonly rotationEndsOn: string;
+  readonly rotationEndsOn: string | null;
   /** RANZCP minimum EPAs for a 6-month full-time rotation (not signed off). */
   readonly minimumEpas: number;
   /** WBAs shown against each EPA (RANZCP: 3). */
@@ -152,11 +152,11 @@ export function epasInProgress(registrar: RegistrarAssessments): readonly Traini
  * "At least 1 more by 29 January. The minimum is 2 for each 6-month full-time
  * rotation, pro rata if part-time." Once the minimum is reached, it says so.
  */
-export function epaNextBySentence(attained: number, minimum: number, rotationEndsOn: string): string {
+export function epaNextBySentence(attained: number, minimum: number, rotationEndsOn: string | null): string {
   const rule = `The minimum is ${minimum} for each 6-month full-time rotation, pro rata if part-time.`;
   const left = minimum - attained;
   if (left <= 0) return `You have marked ${attained} attained this rotation. ${rule}`;
-  return `At least ${left} more by ${formatDayFullMonth(rotationEndsOn)}. ${rule}`;
+  return `At least ${left} more${rotationEndsOn ? ` by ${formatDayFullMonth(rotationEndsOn)}` : ""}. ${rule}`;
 }
 
 /** The second line of an EPA row, in the mock-up's words. */
@@ -165,6 +165,7 @@ export function epaRowDetail(epa: TrainingEpa, wbasPerEpa: number): string {
     const [, month, day] = epa.attainedOn.split("-");
     return `You marked it attained on ${Number.parseInt(day, 10)} ${SHORT_MONTHS[Number.parseInt(month, 10) - 1]} · keep your COE form in InTrain`;
   }
+  if (epa.wbasLogged === null) return epa.assessor ? `WBA count not recorded · ${epa.assessor}` : "WBA count not recorded";
   const logged = `${xOfY(epa.wbasLogged, wbasPerEpa)} WBAs logged`;
   if (epa.wbasLogged === 0) return `${logged} · not started`;
   return epa.assessor ? `${logged} · ${epa.assessor}` : logged;
@@ -300,26 +301,24 @@ export function buildOwnerTrainingAssessments(
   if (registrarMilestones.length === 0) {
     return { status: "not-recorded" };
   }
+  const today = new Date().toISOString().slice(0, 10);
+  const currentRotation = periods.find(
+    (period) => period.kind === "rotation" && period.startsOn <= today && (period.endsOn === null || period.endsOn >= today),
+  );
   const rotationEndsOn =
-    periods
-      .filter(
-        (period): period is TrainingPeriod & { readonly endsOn: string } =>
-          period.kind === "rotation" && period.endsOn !== null,
-      )
-      .map((period) => period.endsOn)
-      .sort()
-      .at(-1) ??
+    currentRotation?.endsOn ??
     milestones
       .filter((milestone): milestone is TrainingMilestone & { readonly dueOn: string } => milestone.dueOn !== null)
       .map((milestone) => milestone.dueOn)
       .sort()
       .at(0) ??
-    "2027-01-29";
+    null;
+  const minimumEpas = currentRotation ? 2 * currentRotation.fte : 2;
 
   const epas: TrainingEpa[] = registrarMilestones.map((record) => ({
     id: record.id,
     title: record.milestoneTitle,
-    wbasLogged: record.achievedAt ? 3 : 0,
+    wbasLogged: null,
     assessor: null,
     attainedOn: record.achievedAt ? record.achievedAt.slice(0, 10) : null,
   }));
@@ -329,7 +328,7 @@ export function buildOwnerTrainingAssessments(
     view: "registrar",
     registrar: {
       rotationEndsOn,
-      minimumEpas: 2,
+      minimumEpas,
       wbasPerEpa: 3,
       epas,
     },
