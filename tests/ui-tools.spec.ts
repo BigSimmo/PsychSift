@@ -3398,10 +3398,15 @@ test.describe("Responsive layout guards", () => {
     await expect(resultFilter).toHaveAccessibleName(/No filters active/);
     await expect(bottomDock).toBeVisible();
     await scrollPrimarySurface(page, "end");
+    // Late result content can extend the page after the first scroll, leaving the old
+    // endpoint short of the new one. Re-scroll whenever the end moved, but only pass on a
+    // reading taken before any re-scroll, so the page must stay at its end between polls.
     await expect
       .poll(async () => {
         const geometry = await readPrimaryScrollGeometry(page);
-        return geometry.maxScrollTop - geometry.scrollTop;
+        const distanceFromEnd = geometry.maxScrollTop - geometry.scrollTop;
+        if (distanceFromEnd > 1) await scrollPrimarySurface(page, "end");
+        return distanceFromEnd;
       })
       .toBeLessThanOrEqual(1);
     expect((await readPrimaryScrollGeometry(page)).owner).toBe("document");
