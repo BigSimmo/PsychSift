@@ -77,7 +77,6 @@ import {
 } from "@/components/clinical-dashboard/answer-provider-notice";
 import { isPreformattedGroundedAnswer } from "@/components/clinical-dashboard/answer-content";
 import {
-  AnswerBuildDetails,
   AnswerProgress,
   AnswerSkeleton,
   SearchProgressBanner,
@@ -2991,9 +2990,8 @@ function ClinicalDashboardContent({
                         onScopeDocument={handleScopeDocument}
                         restoredSavedAt={restoredAnswerSavedAt}
                         onRecheckAnswer={handleRecheckRestoredAnswer}
+                        buildEvents={answerProgressEvents}
                       />
-                      {/* Under the answer, not above the question (owner decision, 17 Oct 2026). */}
-                      {loading ? null : <AnswerBuildDetails events={answerProgressEvents} />}
                       {/* Once per page, under the latest answer: where a question goes (audit S3). */}
                       {explicitDemoMode ||
                       answer.demoMode === true ||

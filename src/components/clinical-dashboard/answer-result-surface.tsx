@@ -45,6 +45,8 @@ import { demoAnswerDisclosure } from "@/lib/answer-client-payload";
 import { formatRestoredAnswerAge } from "@/lib/answer-thread-storage";
 import { publicFallbackReason } from "@/lib/rag/rag-fallback-reason";
 import { answerSummaryUnavailableReason } from "@/components/clinical-dashboard/answer-provider-notice";
+import { AnswerBuildDetails } from "@/components/clinical-dashboard/answer-build-details";
+import type { TimedAnswerProgressUpdate } from "@/components/clinical-dashboard/answer-progress";
 import type {
   ClientBestSourceRecommendation,
   ClientQuoteCard,
@@ -128,6 +130,7 @@ function StagedAnswerResultSurfaceImpl({
   restoredSavedAt = null,
   restoredNow,
   onRecheckAnswer,
+  buildEvents,
 }: {
   answer: ClientRagAnswerPayload & { interactionId?: string };
   query: string;
@@ -161,6 +164,8 @@ function StagedAnswerResultSurfaceImpl({
   restoredSavedAt?: number | null;
   /** Optional clock override for deterministic age formatting in tests. */
   restoredNow?: number;
+  /** Progress events for "How this answer was built", shown above the library row once generation ends. */
+  buildEvents?: TimedAnswerProgressUpdate[];
   /** Re-runs the current answer query against the live source library. */
   onRecheckAnswer?: () => void;
 }) {
@@ -744,6 +749,9 @@ function StagedAnswerResultSurfaceImpl({
                 Differentials records behind it. Removing chrome a picture omits
                 is one thing; removing a navigation route on the same evidence is
                 another. Still collapsed, still below the caution. */}
+            {/* Under the actions, above the library row (owner decision, 17 Oct 2026). */}
+            {buildEvents && !generating ? <AnswerBuildDetails events={buildEvents} /> : null}
+
             {crossModeQueries?.length && onCrossModeSearch ? (
               // `universalMode` is what lets this line reach DSM, Formulation,
               // Specifiers, Therapy, Dictionary and Tools, which no catalogue in
