@@ -850,9 +850,6 @@ export function selectRetrievalEvidence(args: {
     if ((right.lexicalScore ?? 0) !== (left.lexicalScore ?? 0))
       return (right.lexicalScore ?? 0) - (left.lexicalScore ?? 0);
     if ((right.rerankScore ?? 0) !== (left.rerankScore ?? 0)) return (right.rerankScore ?? 0) - (left.rerankScore ?? 0);
-    const leftTitlePhrase = left.matchedSignals.includes("document_title_phrase") ? 1 : 0;
-    const rightTitlePhrase = right.matchedSignals.includes("document_title_phrase") ? 1 : 0;
-    if (rightTitlePhrase !== leftTitlePhrase) return rightTitlePhrase - leftTitlePhrase;
     // Exact tie on every clamped key (routine on the embedding-free fast path, where imputed
     // primaries are byte-identical and confidences saturate at 1.0): prefer the candidate whose
     // content actually covers the query's terms over an arbitrary chunk-id ordering. This never
@@ -860,6 +857,9 @@ export function selectRetrievalEvidence(args: {
     // clamped-score contract holds, and generic boost stacking cannot outvote query relevance.
     if ((right.contentCoverageScore ?? 0) !== (left.contentCoverageScore ?? 0))
       return (right.contentCoverageScore ?? 0) - (left.contentCoverageScore ?? 0);
+    const leftTitlePhrase = left.matchedSignals.includes("document_title_phrase") ? 1 : 0;
+    const rightTitlePhrase = right.matchedSignals.includes("document_title_phrase") ? 1 : 0;
+    if (rightTitlePhrase !== leftTitlePhrase) return rightTitlePhrase - leftTitlePhrase;
     return left.chunkId.localeCompare(right.chunkId);
   });
   const candidateById = new Map(candidates.map((candidate) => [candidate.chunkId, candidate]));
