@@ -104,6 +104,8 @@ export type SupervisorSignOffInput = {
 };
 
 export type RegistrarAssessmentRatingsPayload = {
+  /** Marks rows written by the dual sign-off flow; reads accept nothing else. */
+  kind: typeof DUAL_SIGN_OFF_KIND;
   serviceId: string;
   clinicalSetting: string;
   traineeReflection: string;
@@ -115,7 +117,6 @@ export type RegistrarAssessmentRatingsPayload = {
   supervisorSignedAt: string | null;
   revisionReason: string | null;
   cancelReason: string | null;
-  kind?: string;
 };
 
 export type RegistrarAssessmentRow = {
@@ -163,6 +164,8 @@ export type RegistrarAssessmentsFilterBuilder<T> = QueryResult<T> & {
 export type RegistrarAssessmentsTableClient = {
   from(table: "registrar_assessments"): RegistrarAssessmentsQueryBuilder;
 };
+
+export const DUAL_SIGN_OFF_KIND = "dual_sign_off" as const;
 
 const ASSESSMENT_SELECT_COLUMNS =
   "id, registrar_id, assessor_id, category, title, ratings, feedback, status, created_at, updated_at";
@@ -231,6 +234,7 @@ export function assessmentRecordToRow(
   category: RegistrarAssessmentCategory = "wba",
 ): RegistrarAssessmentRow {
   const ratingsPayload: RegistrarAssessmentRatingsPayload = {
+    kind: DUAL_SIGN_OFF_KIND,
     serviceId: record.serviceId,
     clinicalSetting: record.clinicalSetting,
     traineeReflection: record.traineeReflection,
@@ -297,13 +301,35 @@ export function rowToAssessmentRecord(row: RegistrarAssessmentRow): AssessmentRe
   };
 }
 
-function isSupervisorBookingRow(row: RegistrarAssessmentRow): boolean {
-  return Boolean(
-    row.category === "supervisor_review" &&
-    row.ratings &&
-    typeof row.ratings === "object" &&
-    (row.ratings as Record<string, unknown>).kind === "supervisor_booking",
+/**
+ * Rows written by the current dual sign-off flow carry an explicit discriminator.
+ *
+ * Before that discriminator was added, dual sign-off rows had the same payload
+ * below without `kind`.  Keep accepting only that recognisable legacy shape so
+ * those assessments can still be read and updated; in particular, do not treat
+ * every row with a missing kind as a dual sign-off assessment.
+ */
+function isLegacyDualSignOffRow(row: RegistrarAssessmentRow): boolean {
+  if (!row.ratings || typeof row.ratings !== "object") return false;
+  const ratings = row.ratings as Record<string, unknown>;
+  if ("kind" in ratings || typeof ratings.serviceId !== "string") return false;
+
+  return (
+    typeof ratings.clinicalSetting === "string" &&
+    typeof ratings.traineeReflection === "string" &&
+    ratings.traineeSelfRatings !== null &&
+    typeof ratings.traineeSelfRatings === "object" &&
+    typeof ratings.state === "string" &&
+    VALID_LIFECYCLE_STATES.has(ratings.state as AssessmentLifecycleState) &&
+    !("startsAt" in ratings) &&
+    !("bookingState" in ratings)
   );
+}
+
+function isDualSignOffRow(row: RegistrarAssessmentRow): boolean {
+  if (!row.ratings || typeof row.ratings !== "object") return false;
+  const ratings = row.ratings as Record<string, unknown>;
+  return ratings.kind === DUAL_SIGN_OFF_KIND || isLegacyDualSignOffRow(row);
 }
 
 function assessmentDatabaseError(error: DbErrorLike | null): PublicApiError {
@@ -753,7 +779,7 @@ export class DurableClinicalAssessmentRepository {
       throw assessmentDatabaseError(error);
     }
 
-    if (!data || isSupervisorBookingRow(data)) {
+    if (!data || !isDualSignOffRow(data)) {
       throw new AssessmentNotFoundError(id);
     }
 
@@ -862,7 +888,7 @@ export class DurableClinicalAssessmentRepository {
 
     const results: SafeAssessmentView[] = [];
     for (const row of data ?? []) {
-      if (isSupervisorBookingRow(row)) continue;
+      if (!isDualSignOffRow(row)) continue;
       const record = rowToAssessmentRecord(row);
       if (!filterState || record.state === filterState) {
         results.push(projectAssessmentForActor(record, supervisorId));
@@ -884,7 +910,7 @@ export class DurableClinicalAssessmentRepository {
 
     const results: SafeAssessmentView[] = [];
     for (const row of data ?? []) {
-      if (isSupervisorBookingRow(row)) continue;
+      if (!isDualSignOffRow(row)) continue;
       const record = rowToAssessmentRecord(row);
       results.push(projectAssessmentForActor(record, traineeId));
     }

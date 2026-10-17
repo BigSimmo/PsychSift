@@ -414,6 +414,70 @@ describe("Durable Teaching Assessments & Supervisor Bookings (registrar_assessme
       expect(mockDb.rows.size).toBe(0);
     });
 
+    it("never reads a registrar_assessments row the dual sign-off flow did not write", async () => {
+      vi.stubEnv("NODE_ENV", "production");
+      const foreignId = "77777777-7777-4777-8777-777777777777";
+      mockDb.rows.set(foreignId, {
+        id: foreignId,
+        registrar_id: TRAINEE_ID,
+        assessor_id: SUPERVISOR_ID,
+        category: "epa",
+        title: "Imported EPA record",
+        ratings: { state: "approved", somethingElse: true },
+        feedback: null,
+        status: "draft",
+        created_at: "2026-10-01T00:00:00.000Z",
+        updated_at: "2026-10-01T00:00:00.000Z",
+      });
+
+      mocks.user = { id: TRAINEE_ID };
+      expect((await getDualSignOff(makeDualSignOffGet(`id=${foreignId}`))).status).toBe(404);
+      const update = await postDualSignOff(
+        makeDualSignOffPost({ action: "update_draft", assessmentId: foreignId, title: "Overwrite" }),
+      );
+      expect(update.status).toBe(404);
+      expect(mockDb.rows.get(foreignId)?.ratings).toEqual({ state: "approved", somethingElse: true });
+    });
+
+    it("keeps a pre-marker dual sign-off row (no ratings.kind) readable, listable and updatable", async () => {
+      vi.stubEnv("NODE_ENV", "production");
+      const legacyId = "88888888-8888-4888-8888-888888888888";
+      mockDb.rows.set(legacyId, {
+        id: legacyId,
+        registrar_id: TRAINEE_ID,
+        assessor_id: SUPERVISOR_ID,
+        category: "wba",
+        title: "Legacy assessment",
+        ratings: {
+          serviceId: SERVICE_ID,
+          clinicalSetting: "Adult Acute Inpatient Unit",
+          traineeReflection: "Reflection.",
+          traineeSelfRatings: { 1: 3 },
+          traineeSignedAt: null,
+          state: "draft",
+          supervisorRatings: null,
+          globalRecommendation: null,
+          supervisorSignedAt: null,
+          revisionReason: null,
+          cancelReason: null,
+        },
+        feedback: null,
+        status: "draft",
+        created_at: "2026-10-17T14:30:00.000Z",
+        updated_at: "2026-10-17T14:30:00.000Z",
+      });
+
+      mocks.user = { id: TRAINEE_ID };
+      expect((await getDualSignOff(makeDualSignOffGet(`id=${legacyId}`))).status).toBe(200);
+      const list = await getDualSignOff(makeDualSignOffGet("role=trainee"));
+      expect(JSON.stringify(await list.json())).toContain(legacyId);
+      const update = await postDualSignOff(
+        makeDualSignOffPost({ action: "update_draft", assessmentId: legacyId, title: "Legacy assessment edited" }),
+      );
+      expect(update.status).toBe(200);
+      expect((mockDb.rows.get(legacyId)?.ratings as Record<string, unknown>).kind).toBe("dual_sign_off");
+    });
+
     it("fails closed with 503 assessment_store_unavailable in production when admin client lacks durable table access", async () => {
       vi.stubEnv("NODE_ENV", "production");
       mocks.adminClient = {};
