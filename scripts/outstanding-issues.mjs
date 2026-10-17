@@ -335,7 +335,8 @@ export function reopenIssue(markdown, id, fields, options = {}) {
       String(fields.pri),
       archiveCells[1],
       archiveCells[2],
-      escapeCell(fields.detail),
+      // Keep the prior resolution discoverable: the archive row that held it is removed.
+      `${escapeCell(fields.detail)} (Previously archived ${archiveCells[4]}: ${archiveCells[3]})`,
       escapeCell(fields.source),
       today(options),
     ]);

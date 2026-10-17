@@ -515,6 +515,27 @@ export function planRequestBatch(requests, options = {}) {
   return { active, cancellations, cancelledIds: [...cancelledIds], ineffectiveCancellations: ineffective };
 }
 
+// A reopen names its target twice: by display id and by targetUlid. They must agree.
+// The id may be the ULID's own display prefix (the CLI derives "#XXXXXX" from a full
+// ULID), which still identifies a collision-extended archived row such as "#XXXXXXY".
+function reopenIdNamesUlid(id, targetUlid, rowId) {
+  const normalized = normalizeIssueDisplayId(id);
+  if (rowId && normalized === normalizeIssueDisplayId(rowId)) return true;
+  const length = normalized.length - 1;
+  return length >= 6 && length <= 16 && normalized === displayIdForUlid(targetUlid, length);
+}
+
+function assertReopenIdentity(markdown, request) {
+  const { id, targetUlid } = request.payload ?? {};
+  if (request.action !== "reopen" || !targetUlid || !id) return;
+  const row = parseIssues(markdown).rows.find((entry) => entry.ulid === targetUlid);
+  if (!reopenIdNamesUlid(id, targetUlid, row?.id)) {
+    throw new Error(
+      `ledger request rejected: reopen id ${id} and targetUlid ${targetUlid}${row ? ` (${row.id})` : ""} name different issues`,
+    );
+  }
+}
+
 export function applyRequestBatch(markdown, requests, options = {}) {
   const plan = planRequestBatch(requests, options);
   let next = markdown;
@@ -544,6 +565,8 @@ export function applyRequestBatch(markdown, requests, options = {}) {
         }
       }
     } else {
+      // Check a reopen's two identities before the targetUlid rewrite below replaces its id.
+      assertReopenIdentity(next, request);
       if (request.payload?.targetUlid && ulidToDisplayId.has(request.payload.targetUlid)) {
         request.payload.id = ulidToDisplayId.get(request.payload.targetUlid);
       }
@@ -1351,15 +1374,7 @@ function attachIssueFingerprint(action, payload) {
 
   if (row) {
     const isArchived = row.table === "archive";
-    if (
-      action === "reopen" &&
-      payload.targetUlid &&
-      normalizeIssueDisplayId(row.id) !== normalizeIssueDisplayId(payload.id)
-    ) {
-      throw new Error(
-        `ledger request rejected: reopen id ${payload.id} and targetUlid ${payload.targetUlid} (${row.id}) name different issues`,
-      );
-    }
+    if (action === "reopen") assertReopenIdentity(current, { action, payload });
     if (action === "reopen" && !isArchived) {
       throw new Error(`ledger request rejected: ${row.id} is still open; reopen requires an archived durable issue`);
     }

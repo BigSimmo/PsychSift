@@ -1029,7 +1029,9 @@ describe("ledger-inbox idempotent close and duplicate done handling", () => {
       expect(rows).toHaveLength(1);
       expect(rows[0].table).toBe("open");
       expect(rows[0].ulid).toBe(REOPEN_ULID);
-      expect(rows[0].raw).toContain("| P1 | issue | Archived durable issue | Reopened by owner decision |");
+      expect(rows[0].raw).toContain(
+        "| P1 | issue | Archived durable issue | Reopened by owner decision (Previously archived 2026-10-16: Archived early) |",
+      );
       expect(rows[0].raw).toContain("| owner decision | 2026-10-17 |");
       expect(archiveRowFingerprint(result, "#WFYDV6")).toBeNull();
       expect(issueRowFingerprint(result, "#WFYDV6")).toBeTruthy();
@@ -1047,6 +1049,41 @@ describe("ledger-inbox idempotent close and duplicate done handling", () => {
       expect(() => applyRequest(once, reopenRequest({ baseRowFingerprint: undefined }))).toThrow(
         /reopen requires a valid baseRowFingerprint/,
       );
+    });
+
+    it("keeps the prior outcome and resolved date discoverable on the reopened row", () => {
+      const [row] = parseIssues(applyRequest(REOPEN_LEDGER, reopenRequest())).rows.filter(
+        (entry) => entry.id === "#WFYDV6",
+      );
+      expect(row.raw).toContain("Previously archived 2026-10-16: Archived early");
+    });
+
+    it("refuses, before the batch id rewrite, a reopen whose id and targetUlid name different archived issues", () => {
+      const OTHER_ULID = "01M4WDK09FCFHRJY1KW36CHJAA";
+      const ledger = REOPEN_LEDGER.replace(
+        `| #WFYDV6 <!-- issue-ulid:${REOPEN_ULID} --> |`,
+        [
+          `| #CFHRJY <!-- issue-ulid:${OTHER_ULID} --> | issue | Other archived issue | Archived too | 2026-10-15 |`,
+          `| #WFYDV6 <!-- issue-ulid:${REOPEN_ULID} --> |`,
+        ].join("\n"),
+      );
+      const mismatched = reopenRequest({
+        targetUlid: OTHER_ULID,
+        baseRowFingerprint: archiveRowFingerprint(ledger, "#CFHRJY"),
+      });
+      expect(() => applyRequestBatch(ledger, [mismatched])).toThrow(/name different issues/);
+    });
+
+    it("accepts the ULID-derived prefix for a collision-extended archived id", () => {
+      const ledger = REOPEN_LEDGER.replace(
+        `| #WFYDV6 <!-- issue-ulid:${REOPEN_ULID} --> |`,
+        `| #WFYDV65 <!-- issue-ulid:${REOPEN_ULID} --> |`,
+      );
+      const request = reopenRequest({ id: "#WFYDV6", baseRowFingerprint: archiveRowFingerprint(ledger, "#WFYDV65") });
+      const rows = parseIssues(applyRequestBatch(ledger, [request]).markdown).rows;
+      const reopened = rows.find((row) => row.ulid === REOPEN_ULID);
+      expect(reopened?.table).toBe("open");
+      expect(reopened?.id).toBe("#WFYDV65");
     });
 
     it("refuses a targetUlid that names a different issue from the id", () => {
