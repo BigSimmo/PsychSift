@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "id": "b8d8175c-652e-47e6-88d0-e45b1fb11971",
+  "createdOn": "2026-10-16",
+  "action": "cancel",
+  "payload": {
+    "requestId": "43a957c6-eee9-45af-b9ce-fc850ab0308b",
+    "reason": "Superseded by d72ccad1 (same item, newer detail after the pilot accessibility test landed)."
+  }
+}
