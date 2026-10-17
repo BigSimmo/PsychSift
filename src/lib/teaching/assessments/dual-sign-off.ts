@@ -306,7 +306,9 @@ function isSupervisorBookingRow(row: RegistrarAssessmentRow): boolean {
 }
 
 function assessmentDatabaseError(error: DbErrorLike | null): PublicApiError {
-  return new PublicApiError(error?.message || "Clinical assessment database operation failed.", 500, {
+  if (error?.code === "22P02") return new PublicApiError("Invalid assessment identifier.", 400, { code: "invalid_id" });
+  if (error?.code === "23503") return new PublicApiError("Referenced assessment user was not found.", 400, { code: "invalid_reference" });
+  return new PublicApiError("Clinical assessment database operation failed.", 500, {
     code: "assessment_database_error",
   });
 }
@@ -758,7 +760,7 @@ export class DurableClinicalAssessmentRepository {
     return rowToAssessmentRecord(data);
   }
 
-  private async persistUpdatedRecord(updated: AssessmentRecord): Promise<AssessmentRecord> {
+  private async persistUpdatedRecord(original: AssessmentRecord, updated: AssessmentRecord): Promise<AssessmentRecord> {
     const row = assessmentRecordToRow(updated);
     const { data, error } = await this.db
       .from("registrar_assessments")
@@ -772,12 +774,12 @@ export class DurableClinicalAssessmentRepository {
       })
       .eq("id", updated.id)
       .eq("registrar_id", updated.traineeId)
+      .eq("updated_at", original.updatedAt)
       .select(ASSESSMENT_SELECT_COLUMNS)
-      .single();
+      .maybeSingle();
 
-    if (error || !data) {
-      throw assessmentDatabaseError(error);
-    }
+    if (error) throw assessmentDatabaseError(error);
+    if (!data) throw new AssessmentStateConflictError("This assessment changed before the update could be saved.");
 
     return rowToAssessmentRecord(data);
   }
@@ -802,25 +804,25 @@ export class DurableClinicalAssessmentRepository {
   async updateDraft(actorId: string, id: string, updates: UpdateAssessmentDraftFields): Promise<AssessmentRecord> {
     const record = await this.getRecord(id);
     const updated = applyDraftUpdates(record, actorId, updates);
-    return this.persistUpdatedRecord(updated);
+    return this.persistUpdatedRecord(record, updated);
   }
 
   async submitForReview(actorId: string, id: string): Promise<AssessmentRecord> {
     const record = await this.getRecord(id);
     const updated = applySubmitForReviewTransition(record, actorId);
-    return this.persistUpdatedRecord(updated);
+    return this.persistUpdatedRecord(record, updated);
   }
 
   async supervisorSignOff(actorId: string, id: string, signOff: SupervisorSignOffInput): Promise<AssessmentRecord> {
     const record = await this.getRecord(id);
     const updated = applySupervisorSignOffTransition(record, actorId, signOff);
-    return this.persistUpdatedRecord(updated);
+    return this.persistUpdatedRecord(record, updated);
   }
 
   async requestRevision(actorId: string, id: string, revisionReason: string): Promise<AssessmentRecord> {
     const record = await this.getRecord(id);
     const updated = applyRequestRevisionTransition(record, actorId, revisionReason);
-    return this.persistUpdatedRecord(updated);
+    return this.persistUpdatedRecord(record, updated);
   }
 
   async cancelAssessment(actorId: string, id: string, reason = "Withdrawn by user"): Promise<AssessmentRecord> {
@@ -829,7 +831,7 @@ export class DurableClinicalAssessmentRepository {
     if (!changed) {
       return updated;
     }
-    return this.persistUpdatedRecord(updated);
+    return this.persistUpdatedRecord(record, updated);
   }
 
   async restartDraft(actorId: string, cancelledId: string): Promise<AssessmentRecord> {

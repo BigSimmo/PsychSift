@@ -23,6 +23,35 @@ const assessmentTypeSchema = z.enum(["epa", "wba", "ita", "general"]);
 const bookingStateSchema = z.enum(["open", "booked", "completed", "cancelled"]);
 const roleQuerySchema = z.enum(["supervisor", "trainee", "open"]);
 
+type MembershipQuery = {
+  select: (columns: string) => MembershipQuery;
+  eq: (column: string, value: string) => MembershipQuery;
+  is: (column: string, value: null) => MembershipQuery;
+  maybeSingle: () => Promise<{ data: unknown; error: { message?: string } | null }>;
+};
+
+async function requireServiceMember(client: unknown, userId: string, serviceId: string, supervisor = false) {
+  const from = (client as { from?: (table: string) => MembershipQuery }).from;
+  if (typeof from !== "function") throw new BookingAccessDeniedError("You are not a member of this service.");
+  const member = await from("on_call_service_members")
+    .select("user_id")
+    .eq("service_id", serviceId)
+    .eq("user_id", userId)
+    .is("revoked_at", null)
+    .maybeSingle();
+  if (member.error || !member.data) throw new BookingAccessDeniedError("You are not a member of this service.");
+  if (supervisor) {
+    const role = await from("teaching_member_roles")
+      .select("role")
+      .eq("service_id", serviceId)
+      .eq("user_id", userId)
+      .eq("role", "supervisor")
+      .is("revoked_at", null)
+      .maybeSingle();
+    if (role.error || !role.data) throw new BookingAccessDeniedError("Supervisor access is required.");
+  }
+}
+
 const bookingActionSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("create_slot"),
@@ -38,14 +67,14 @@ const bookingActionSchema = z.discriminatedUnion("action", [
   }),
   z.object({
     action: z.literal("book_slot"),
-    slotId: z.string().min(1),
+    slotId: z.string().uuid(),
     traineeId: z.string().uuid().optional(),
     assessmentType: assessmentTypeSchema.optional(),
     notes: z.string().max(2000).optional(),
   }),
   z.object({
     action: z.literal("cancel_booking"),
-    slotId: z.string().min(1),
+    slotId: z.string().uuid(),
     reason: z.string().max(500).optional(),
   }),
 ]);
@@ -54,10 +83,7 @@ export async function GET(request: Request) {
   try {
     const client = createAdminClient();
     const user = await requireAuthenticatedUser(request, client);
-    const shouldRateLimit =
-      typeof (client as { rpc?: unknown })?.rpc === "function" ||
-      Boolean((consumeSubjectApiRateLimit as unknown as { mock?: unknown })?.mock);
-    if (shouldRateLimit) {
+    {
       const rateLimit = await consumeSubjectApiRateLimit({
         supabase: client,
         subject: { kind: "owner", ownerId: user.id },
@@ -76,7 +102,13 @@ export async function GET(request: Request) {
 
     const id = searchParams.get("id");
     if (id) {
+      if (!z.string().uuid().safeParse(id).success) {
+        throw new PublicApiError("Invalid booking identifier.", 400, { code: "invalid_id" });
+      }
       const slot = await store.getSlot(id);
+      if (slot.bookingState === "open") {
+        await requireServiceMember(client, user.id, slot.serviceId);
+      }
       const canView = slot.supervisorId === user.id || slot.traineeId === user.id || slot.bookingState === "open";
       if (!canView) {
         throw new BookingAccessDeniedError("Access denied: You are not a participant on this supervision booking.");
@@ -101,10 +133,17 @@ export async function GET(request: Request) {
     }
 
     const serviceId = searchParams.get("serviceId") ?? undefined;
+    if (parsedRole?.data === "open" && !serviceId) {
+      throw new PublicApiError("serviceId is required for open-slot listings.", 400, { code: "service_required" });
+    }
     if (serviceId && !z.string().uuid().safeParse(serviceId).success) {
       throw new PublicApiError("Invalid 'serviceId' query parameter.", 400, {
         code: "invalid_query",
       });
+    }
+
+    if (serviceId && (parsedRole?.data === "open" || !parsedRole)) {
+      await requireServiceMember(client, user.id, serviceId);
     }
 
     const bookings = await store.listBookingsForActor({
@@ -125,10 +164,7 @@ export async function POST(request: Request) {
   try {
     const client = createAdminClient();
     const user = await requireAuthenticatedUser(request, client);
-    const shouldRateLimit =
-      typeof (client as { rpc?: unknown })?.rpc === "function" ||
-      Boolean((consumeSubjectApiRateLimit as unknown as { mock?: unknown })?.mock);
-    if (shouldRateLimit) {
+    {
       const rateLimit = await consumeSubjectApiRateLimit({
         supabase: client,
         subject: { kind: "owner", ownerId: user.id },
@@ -169,6 +205,8 @@ export async function POST(request: Request) {
         if (payload.supervisorId && payload.supervisorId !== user.id) {
           throw new BookingAccessDeniedError("You can only publish supervision availability slots for yourself.");
         }
+        await requireServiceMember(client, user.id, payload.serviceId, true);
+        if (payload.traineeId) await requireServiceMember(client, payload.traineeId, payload.serviceId);
         const created = await store.createAvailabilitySlot({
           serviceId: payload.serviceId,
           supervisorId: user.id,
@@ -187,6 +225,8 @@ export async function POST(request: Request) {
         if (payload.traineeId && payload.traineeId !== user.id) {
           throw new BookingAccessDeniedError("You can only book supervision slots for yourself.");
         }
+        const slot = await store.getSlot(payload.slotId);
+        await requireServiceMember(client, user.id, slot.serviceId);
         const booked = await store.bookSupervisorSlot({
           slotId: payload.slotId,
           traineeId: user.id,

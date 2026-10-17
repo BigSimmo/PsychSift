@@ -395,8 +395,10 @@ export class SupervisorBookingRepository {
   }
 }
 
-function bookingDatabaseError(error: { message?: string } | null): PublicApiError {
-  return new PublicApiError(error?.message || "Supervision booking database operation failed.", 500, {
+function bookingDatabaseError(error: { message?: string; code?: string } | null): PublicApiError {
+  if (error?.code === "22P02") return new PublicApiError("Invalid booking identifier.", 400, { code: "invalid_id" });
+  if (error?.code === "23503") return new PublicApiError("Referenced booking user was not found.", 400, { code: "invalid_reference" });
+  return new PublicApiError("Supervision booking database operation failed.", 500, {
     code: "booking_database_error",
   });
 }
@@ -521,12 +523,13 @@ export class DurableSupervisorBookingRepository {
       })
       .eq("category", "supervisor_review")
       .eq("id", slot.id)
+      .eq("status", bookingStateToDbStatus(slot.bookingState))
+      .eq("updated_at", slot.updatedAt)
       .select(BOOKING_SELECT_COLUMNS)
-      .single();
+      .maybeSingle();
 
-    if (error || !data) {
-      throw bookingDatabaseError(error);
-    }
+    if (error) throw bookingDatabaseError(error);
+    if (!data) throw new BookingSlotConflictError("This booking changed before it could be cancelled.");
 
     return rowToBookingRecord(data);
   }
@@ -542,8 +545,11 @@ export class DurableSupervisorBookingRepository {
     } else if (filter.role === "trainee") {
       query = query.eq("registrar_id", filter.actorId);
     }
+    if (filter.serviceId) query = query.eq("ratings->>serviceId", filter.serviceId);
+    if (filter.bookingState) query = query.eq("status", bookingStateToDbStatus(filter.bookingState));
+    if (filter.role === "open") query = query.eq("status", "draft");
 
-    const { data, error } = await query.order("created_at", { ascending: true });
+    const { data, error } = await query.order("created_at", { ascending: true }).limit(500);
     if (error) {
       throw bookingDatabaseError(error);
     }

@@ -36,7 +36,7 @@ const actionSchema = z.discriminatedUnion("action", [
   }),
   z.object({
     action: z.literal("update_draft"),
-    assessmentId: z.string().min(1),
+    assessmentId: z.string().uuid(),
     title: z.string().min(3).max(200).optional(),
     clinicalSetting: z.string().min(2).max(100).optional(),
     traineeReflection: z.string().min(1).max(10000).optional(),
@@ -44,33 +44,33 @@ const actionSchema = z.discriminatedUnion("action", [
   }),
   z.object({
     action: z.literal("submit_for_review"),
-    assessmentId: z.string().min(1),
+    assessmentId: z.string().uuid(),
   }),
   z.object({
     action: z.literal("supervisor_sign_off"),
-    assessmentId: z.string().min(1),
+    assessmentId: z.string().uuid(),
     supervisorFeedback: z.string().min(10).max(10000),
     supervisorRatings: domainRatingsSchema,
     globalRecommendation: z.enum(["sat", "cond", "unsat"]),
   }),
   z.object({
     action: z.literal("request_revision"),
-    assessmentId: z.string().min(1),
+    assessmentId: z.string().uuid(),
     revisionReason: z.string().min(5).max(2000),
   }),
   z.object({
     action: z.literal("resubmit"),
-    assessmentId: z.string().min(1),
+    assessmentId: z.string().uuid(),
     updatedReflection: z.string().min(1).max(10000).optional(),
   }),
   z.object({
     action: z.literal("cancel"),
-    assessmentId: z.string().min(1),
+    assessmentId: z.string().uuid(),
     reason: z.string().max(500).optional(),
   }),
   z.object({
     action: z.literal("restart_draft"),
-    cancelledId: z.string().min(1),
+    cancelledId: z.string().uuid(),
   }),
 ]);
 
@@ -78,10 +78,7 @@ export async function GET(request: Request) {
   try {
     const client = createAdminClient();
     const user = await requireAuthenticatedUser(request, client);
-    const shouldRateLimit =
-      typeof (client as { rpc?: unknown })?.rpc === "function" ||
-      Boolean((consumeSubjectApiRateLimit as unknown as { mock?: unknown })?.mock);
-    if (shouldRateLimit) {
+    {
       const rateLimit = await consumeSubjectApiRateLimit({
         supabase: client,
         subject: { kind: "owner", ownerId: user.id },
@@ -130,10 +127,7 @@ export async function POST(request: Request) {
   try {
     const client = createAdminClient();
     const user = await requireAuthenticatedUser(request, client);
-    const shouldRateLimit =
-      typeof (client as { rpc?: unknown })?.rpc === "function" ||
-      Boolean((consumeSubjectApiRateLimit as unknown as { mock?: unknown })?.mock);
-    if (shouldRateLimit) {
+    {
       const rateLimit = await consumeSubjectApiRateLimit({
         supabase: client,
         subject: { kind: "owner", ownerId: user.id },
