@@ -738,19 +738,27 @@ def _match_segment_to_column(sx0, sx1, effective_ranges):
     return col_idx
 
 
-def _continues_wrapped_cell(prev_line_end, segment, column_range, slack=12.0):
-    """True when a lone line under a row reads as the wrapped remainder of that row's cell.
+def _continues_wrapped_cell(prev_line, segment, column_range, slack=12.0):
+    """True when a lone line under a row reads as the rest of that row's cell.
 
     Text wraps because its next word did not fit, so the line above must end
     closer to the column's right edge than the width of this line's first word.
+    A deliberate break also counts: a line starting at the cell's own left edge
+    with a bullet, a lower-case word or a number (a dose under a drug name).
     """
-    if prev_line_end is None:
+    if prev_line is None:
         return False
+    prev_line_start, prev_line_end = prev_line
     sx0, sx1, text = segment
-    words = clean_cell(text).split(" ")
+    cleaned = clean_cell(text)
+    words = cleaned.split(" ")
     if not words or not words[0]:
         return False
-    first_word_width = (sx1 - sx0) * (len(words[0]) / max(1, len(clean_cell(text))))
+    if abs(sx0 - prev_line_start) <= 3.0 and (
+        cleaned[0] in "•·-–*" or cleaned[0].islower() or cleaned[0].isdigit()
+    ):
+        return True
+    first_word_width = (sx1 - sx0) * (len(words[0]) / max(1, len(cleaned)))
     return (column_range[1] - prev_line_end) <= first_word_width + slack
 
 
@@ -805,7 +813,7 @@ def _recover_table_rows_split(page, original_rect, extended_rect, existing_rows,
 
         rows_out = []
         prev_band_y1 = None
-        # Right edge of the last line of text in each column of the latest row,
+        # Left and right edges of the last line of text in each column of the latest row,
         # used to tell a wrapped cell from a note that merely sits below it.
         prev_row_line_ends = {}
         for band in bands:
@@ -822,7 +830,8 @@ def _recover_table_rows_split(page, original_rect, extended_rect, existing_rows,
                     valid_band = False
                     break
                 row_cells[col_idx] = clean_cell(f"{row_cells[col_idx]} {text}") if row_cells[col_idx] else clean_cell(text)
-                line_ends[col_idx] = max(line_ends.get(col_idx, sx1), sx1)
+                start, end = line_ends.get(col_idx, (sx0, sx1))
+                line_ends[col_idx] = (min(start, sx0), max(end, sx1))
                 first_segment.setdefault(col_idx, (sx0, sx1, text))
             if not valid_band:
                 prev_band_y1 = None

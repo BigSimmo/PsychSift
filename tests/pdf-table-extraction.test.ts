@@ -137,6 +137,16 @@ describe.runIf(hasPyMuPDF)("PDF table edge-strip row recovery (3344a3a9)", () =>
     ]);
   });
 
+  it("still joins a deliberate line break inside a cell, such as a dose under a drug name", () => {
+    expect(
+      recoverBottomRow([
+        "page.insert_text((314, 218), 'Lorazepam', fontsize=9)",
+        "page.insert_text((314, 229), '1 to 2 mg orally', fontsize=9)",
+        "page.insert_text((314, 240), '- repeat once after 1 hour', fontsize=9)",
+      ]),
+    ).toEqual([["5", "Highly aroused", "Lorazepam 1 to 2 mg orally - repeat once after 1 hour"]]);
+  });
+
   it("extracts column ranges cleanly when a table row contains (None, None, None, None) merged/empty cells", () => {
     const script = [
       "import json, sys",
