@@ -738,6 +738,35 @@ def _match_segment_to_column(sx0, sx1, effective_ranges):
     return col_idx
 
 
+def _continues_wrapped_cell(prev_line, segment, column_range, slack=12.0):
+    """True when a lone line under a row reads as the rest of that row's cell.
+
+    Text wraps because its next word did not fit, so the free space left in
+    the column beside the line above (on either side, which covers right-aligned
+    and centred cells) must be narrower than this line's first word.
+    A deliberate break also counts: a line starting at the cell's own left edge
+    with a bullet, a lower-case word or a number (a dose under a drug name).
+    Footnotes look alike, so '*' never counts and a number counts only when
+    the word after it is not capitalised ('1 Not PBS listed' stays out).
+    """
+    if prev_line is None:
+        return False
+    prev_line_start, prev_line_end = prev_line
+    sx0, sx1, text = segment
+    cleaned = clean_cell(text)
+    words = cleaned.split(" ")
+    if not words or not words[0]:
+        return False
+    numbered_footnote = cleaned[0].isdigit() and len(words) > 1 and words[1][:1].isupper()
+    if abs(sx0 - prev_line_start) <= 3.0 and (
+        cleaned[0] in "•·-–" or cleaned[0].islower() or (cleaned[0].isdigit() and not numbered_footnote)
+    ):
+        return True
+    first_word_width = (sx1 - sx0) * (len(words[0]) / max(1, len(cleaned)))
+    free_space = (column_range[1] - prev_line_end) + max(0.0, prev_line_start - column_range[0])
+    return free_space <= first_word_width + slack
+
+
 def _recover_table_rows_split(page, original_rect, extended_rect, existing_rows, column_count=0, column_ranges=None):
     existing_keys = {
         tuple(clean_cell(cell) for cell in row)
@@ -789,11 +818,16 @@ def _recover_table_rows_split(page, original_rect, extended_rect, existing_rows,
 
         rows_out = []
         prev_band_y1 = None
+        # Left and right edges of the last line of text in each column of the latest row,
+        # used to tell a wrapped cell from a note that merely sits below it.
+        prev_row_line_ends = {}
         for band in bands:
             band.sort(key=lambda s: s[0])
             band_y0 = min(s[1] for s in band)
             band_y1 = max(s[3] for s in band)
             row_cells = [""] * num_cols
+            line_ends = {}
+            first_segment = {}
             valid_band = True
             for sx0, _sy0, sx1, _sy1, text in band:
                 col_idx = _match_segment_to_column(sx0, sx1, effective_ranges)
@@ -801,11 +835,25 @@ def _recover_table_rows_split(page, original_rect, extended_rect, existing_rows,
                     valid_band = False
                     break
                 row_cells[col_idx] = clean_cell(f"{row_cells[col_idx]} {text}") if row_cells[col_idx] else clean_cell(text)
+                start, end = line_ends.get(col_idx, (sx0, sx1))
+                line_ends[col_idx] = (min(start, sx0), max(end, sx1))
+                first_segment.setdefault(col_idx, (sx0, sx1, text))
             if not valid_band:
                 prev_band_y1 = None
                 continue
             populated_cols = sum(1 for cell in row_cells if clean_cell(cell))
             if populated_cols == 1 and rows_out and prev_band_y1 is not None and (band_y0 - prev_band_y1) <= 16.0:
+                col_idx = next(iter(first_segment))
+                # A cell that starts lower than its neighbours (staggered or vertically
+                # centred text) fills a still-empty cell of the row above.
+                fills_empty_cell = col_idx not in prev_row_line_ends and not rows_out[-1][col_idx]
+                if not fills_empty_cell and not _continues_wrapped_cell(
+                    prev_row_line_ends.get(col_idx), first_segment[col_idx], effective_ranges[col_idx]
+                ):
+                    # A short note or caption under the table, not the rest of a wrapped cell.
+                    prev_band_y1 = None
+                    continue
+                prev_row_line_ends[col_idx] = line_ends[col_idx]
                 prev_row = rows_out[-1]
                 existing_keys.discard(tuple(prev_row))
                 for idx, val in enumerate(row_cells):
@@ -822,6 +870,7 @@ def _recover_table_rows_split(page, original_rect, extended_rect, existing_rows,
                 continue
             existing_keys.add(key)
             rows_out.append(row_cells)
+            prev_row_line_ends = line_ends
             prev_band_y1 = band_y1
         return rows_out
 

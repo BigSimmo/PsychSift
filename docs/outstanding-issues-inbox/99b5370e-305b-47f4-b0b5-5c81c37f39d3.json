@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "id": "99b5370e-305b-47f4-b0b5-5c81c37f39d3",
+  "createdOn": "2026-10-17",
+  "action": "update",
+  "payload": {
+    "id": "#ZWJCK4",
+    "pri": "P2",
+    "detail": "Rechecked 17 Oct 2026 against main 99507ebca. The original fault is fixed: PR #3571 made worker/python/extract_pdf_assets.py _recover_table_rows_split admit a recovered line only when each piece fits one column, keep top and bottom strips in order, and tests/pdf-table-extraction.test.ts pins full-width prose being rejected. A leftover was fixed on 17 Oct: a short note under a recovered row (for example 'See note') was glued into that row's first cell; a lone line now joins the row above only when that cell actually wrapped (_continues_wrapped_cell), with tests both ways. Still open, low risk: text laid out in the table's own columns directly under a table (an abbreviation key, or a two-column page) becomes an extra row, and only when a drawing below the table extends the crop over it. Geometry alone cannot tell such a key from a real row. Changes reach search only after a re-index.",
+    "baseRowFingerprint": "4167a93e573dfb9618b0f1ccf98de7b816ead5366c7370fe5dddd6919e264eae",
+    "targetUlid": "01M4T67MV6ZWJCK4234NWY7VKF"
+  }
+}
