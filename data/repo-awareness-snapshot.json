@@ -3610,6 +3610,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-17-answer-page-tidy-up.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/superpowers/specs/2026-08-20-care-plan-design.md",
         "section": "superpowers",
         "catalogued": true
@@ -9168,6 +9173,14 @@
         "scope": "Babysit closeout / merge readiness",
         "outcome": "MERGE-READY for product scope once exact-head required checks finish after final main sync. Fixed: Bugbot pathname searchMode (Compiler-safe previous-state sync); docs index; PR_POLICY_BODY/governance; maintainability extract; prescribing Safety filters (no fields=index); Sheet teardown document guard. Unresolved threads: none. Residual: human approving review; title still stale (gh/ManagePullRequest cannot edit); main may move again.",
         "checks": "Hosted on prior tip 973d5d88: PR policy/Static/Unit/Build/Production UI/PR required all SUCCESS. Final sync pushed; awaiting exact-head recheck. No OpenAI/live Supabase writes."
+      },
+      {
+        "date": "2026-10-17",
+        "ref": "claude/rag-ingestion-hardening",
+        "head": "2a9d44e0015358e4e7d197e4cf15f83df0a9ce35",
+        "scope": "RAG retrieval/summary/cache generation isolation and ingestion worker/edge hardening",
+        "outcome": "resolved",
+        "checks": "typecheck:internal, eslint, check:diff-integrity, check:migration-immutability, check:owner-scope, check:rag:fixtures, eval:rag:offline (26 files/979 tests), eval:rag:adversarial:offline (25 tests), vitest (8 suites/254 tests)"
       },
       {
         "date": "2026-07-28",
@@ -21280,6 +21293,14 @@
         "scope": "Authorized babysit sweep",
         "outcome": "Already MERGED to main before code changes needed; tip had correct sidebar absence assertion; 0 unresolved threads at close.",
         "checks": "Hosted PR required + Production UI SUCCESS on merged tip. No provider-backed checks."
+      },
+      {
+        "date": "2026-10-17",
+        "ref": "claude/rag-ingestion-hardening",
+        "head": "b8278363b9e55ca218133ac52f6191a2edf60502",
+        "scope": "RAG and Ingestion review follow-ups",
+        "outcome": "Resolved PR review findings, repaired bot-applied regressions, and restored rag.ts maintainability budget",
+        "checks": "npm run typecheck:internal; node scripts/check-maintainability-budgets.mjs; npx eslint; npx vitest run (11 suites)"
       },
       {
         "date": "2026-08-10",
