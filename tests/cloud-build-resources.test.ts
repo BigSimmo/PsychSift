@@ -20,6 +20,7 @@ function v2(limit: string, current = String(GiB), extra: Record<string, string> 
   return {
     "/proc/self/cgroup": "0::/job",
     "/proc/self/mountinfo": "1 0 0:1 / /sys/fs/cgroup rw - cgroup2 cgroup rw",
+    "/sys/fs/cgroup/cgroup.controllers": "memory pids",
     "/sys/fs/cgroup/job/memory.max": limit,
     "/sys/fs/cgroup/job/memory.current": current,
     "/sys/fs/cgroup/memory.max": "max",
@@ -72,6 +73,28 @@ describe("cloud build resource preflight", () => {
     });
     expect(report.ok).toBe(false);
     expect(report.issues.join(" ")).toContain("membership");
+  });
+
+  it("fails closed when cgroup discovery is unavailable despite sufficient host memory", () => {
+    const report = assessCloudBuildResources({
+      memory: memory({ "/proc/meminfo": `MemAvailable: ${60 * 1024 ** 2} kB\n` }),
+      inheritedHeapBytes: 8 * GiB,
+    });
+    expect(report.ok).toBe(false);
+    expect(report.issues.join(" ")).toContain("could not be determined");
+  });
+
+  it("skips a controller-less cgroup v2 mount on a hybrid host", () => {
+    const discovered = memory({
+      "/proc/self/cgroup": "5:memory:/job\n0::/",
+      "/proc/self/mountinfo":
+        "1 0 0:1 / /sys/fs/cgroup/memory rw - cgroup cgroup rw,memory\n2 0 0:2 / /sys/fs/cgroup/unified rw - cgroup2 cgroup rw",
+      "/sys/fs/cgroup/unified/cgroup.controllers": "pids",
+      "/sys/fs/cgroup/memory/job/memory.limit_in_bytes": String(16 * GiB),
+      "/sys/fs/cgroup/memory/job/memory.usage_in_bytes": String(2 * GiB),
+      "/sys/fs/cgroup/memory/memory.limit_in_bytes": "max",
+    });
+    expect(assessCloudBuildResources({ memory: discovered, inheritedHeapBytes: 8 * GiB }).ok).toBe(true);
   });
 
   it("fails closed when an unlimited leaf has an unreadable visible ancestor limit", () => {

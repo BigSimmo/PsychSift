@@ -56,13 +56,28 @@ export function discoverBuildMemory({
 
   const membership = platform === "linux" ? readOptional(readFile, "/proc/self/cgroup") : null;
   const mounts = platform === "linux" ? readOptional(readFile, "/proc/self/mountinfo") : null;
-  if (membership && !mounts) issues.push("Cgroup membership exists but its memory mount could not be inspected.");
+  if (platform === "linux" && !membership) issues.push("Cgroup membership could not be determined.");
+  if (platform === "linux" && !mounts) issues.push("Cgroup mount information could not be determined.");
   for (const line of mounts?.split("\n") ?? []) {
+    if (!line.trim()) continue;
     const [left, right] = line.split(" - ");
-    if (!right) continue;
+    if (!right) {
+      issues.push("Cgroup mount information contains an unparseable record.");
+      continue;
+    }
     const [type, , options] = right.split(" ");
     const v2 = type === "cgroup2";
     if (!v2 && !(type === "cgroup" && options?.split(",").includes("memory"))) continue;
+    const mountFields = left.split(" ");
+    const mountPoint = unescapeMount(mountFields[4] ?? "");
+    if (v2) {
+      const controllers = readOptional(readFile, path.posix.join(mountPoint, "cgroup.controllers"));
+      if (controllers === null) {
+        issues.push(`Cgroup v2 controllers could not be read at ${path.posix.join(mountPoint, "cgroup.controllers")}.`);
+        continue;
+      }
+      if (!controllers.split(/\s+/).includes("memory")) continue;
+    }
     const entry = membership?.split("\n").find((item) => {
       const record = item.match(/^(\d+):([^:]*):(\/.*)$/);
       if (!record) return false;
@@ -73,9 +88,7 @@ export function discoverBuildMemory({
       continue;
     }
     const groupPath = entry.slice(entry.indexOf(":", entry.indexOf(":") + 1) + 1);
-    const mountFields = left.split(" ");
-    const mountRoot = unescapeMount(mountFields[3]);
-    const mountPoint = unescapeMount(mountFields[4]);
+    const mountRoot = unescapeMount(mountFields[3] ?? "");
     // A cgroup namespace may expose / even when mountinfo's root is outside it.
     const relative = groupPath === "/" ? "" : path.posix.relative(mountRoot, groupPath);
     if (relative === ".." || relative.startsWith("../")) {
@@ -160,9 +173,10 @@ export function assessCloudBuildResources({ memory, inheritedHeapBytes }) {
 function inheritedHeap() {
   // Deliberately omit parent execArgv: a flag applied only to this script proves
   // nothing about the environment inherited by Next.js subprocesses.
+  const marker = "__PSYCHSIFT_HEAP_LIMIT__:";
   const result = spawnSync(
     process.execPath,
-    ["-e", 'process.stdout.write(String(require("node:v8").getHeapStatistics().heap_size_limit))'],
+    ["-e", `process.stdout.write(${JSON.stringify(marker)} + String(require("node:v8").getHeapStatistics().heap_size_limit))`],
     {
       env: process.env,
       encoding: "utf8",
@@ -170,7 +184,9 @@ function inheritedHeap() {
       maxBuffer: 64 * 1024,
     },
   );
-  return result.status === 0 ? nonnegativeBytes(result.stdout.trim()) : null;
+  const measurement =
+    typeof result.stdout === "string" ? result.stdout.match(new RegExp(`${marker}(\\d+)`))?.[1] : undefined;
+  return result.status === 0 ? nonnegativeBytes(measurement) : null;
 }
 
 if (isDirectEntrypoint(import.meta.url)) {
