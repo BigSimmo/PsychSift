@@ -396,6 +396,17 @@ export function SignOffQueuePageContent({
   const allIndigenousHolds = ledger.domains.flatMap((domain) => domain.needsSigning.indigenousHoldRows);
   const therapyPrerequisiteRows =
     ledger.domains.find((domain) => domain.id === "therapy")?.needsSigning.prerequisiteRows ?? [];
+  // Every count in the category text comes from the ledger, so a new sign-off or a
+  // new record cannot leave fixed prose contradicting the live heading beside it.
+  const domainById = new Map(ledger.domains.map((domain) => [domain.id, domain]));
+  const waitingIn = (id: SignOffDomainId, category: "awaitingPrerequisites" | "awaitingTool") =>
+    domainById.get(id)?.needsSigning[category] ?? 0;
+  const signedIn = (id: SignOffDomainId) => domainById.get(id)?.signedCount ?? 0;
+  const sourcePrerequisiteRows = domainById.get("sources")?.needsSigning.prerequisiteRows ?? [];
+  const signerNames = Object.keys(ledger.signedByTotals)
+    .sort()
+    .map((name) => `\`${name}\``)
+    .join(", ");
 
   return (
     <PanelPageShell
@@ -405,19 +416,19 @@ export function SignOffQueuePageContent({
       freshnessLabel="Sign-off queue"
     >
       <p className="text-sm leading-6 text-[color:var(--text-muted)]">
-        Complete sign-off register and waiting queue across all 13 governed clinical and rule domains in this
-        repository. Everything below is read directly from the committed review registers on disk: what has been signed
-        off, who signed it (`PsychSift`, `Psych Sift`, `Josh Simpson`), when it was signed, what it is for, and what
-        still needs signing off (grouped by whether it is ready for a local tool today, held for Aboriginal and Torres
-        Strait Islander governance review, awaiting source references or written clinical text, or awaiting a sign-off
-        tool). This page is read-only: nothing on it publishes, approves or unhides a record.
+        Complete sign-off register and waiting queue across all {ledger.domains.length} governed clinical and rule
+        domains in this repository. Everything below is read directly from the committed review registers on disk: what
+        has been signed off, who signed it ({signerNames}), when it was signed, what it is for, and what still needs
+        signing off (grouped by whether it is ready for a local tool today, held for Aboriginal and Torres Strait
+        Islander governance review, awaiting source references or written clinical text, or awaiting a sign-off tool).
+        This page is read-only: nothing on it publishes, approves or unhides a record.
       </p>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4" data-testid="developer-sign-off-ledger-tiles">
         <CountTile
           testId="developer-sign-off-count-signed"
           value={ledger.totalSigned}
-          label="items signed off across 13 domains"
+          label={`items signed off across ${ledger.domains.length} domains`}
         />
         <CountTile
           testId="developer-sign-off-count-signable-now"
@@ -453,7 +464,7 @@ export function SignOffQueuePageContent({
         heading={`Everything signed off & remaining by domain (${ledger.totalSigned} signed · ${ledger.totalWaiting} waiting)`}
       >
         <p className={META_CLASS}>
-          All 13 governed sign-off domains across the repository. Total signed:{" "}
+          All {ledger.domains.length} governed sign-off domains across the repository. Total signed:{" "}
           <span className="font-bold text-[color:var(--text-heading)]">{ledger.totalSigned}</span> (
           {formatSignedBySummary(ledger.signedByTotals)}). Select any domain below to inspect every signed record in it,{" "}
           {SIGN_OFF_PAGE_SIZE} at a time.
@@ -521,7 +532,8 @@ export function SignOffQueuePageContent({
           <div className={CARD_CLASS} data-testid="developer-sign-off-category-indigenous-hold">
             <p className="text-sm font-bold text-[color:var(--text-heading)]">
               2. Held for Aboriginal &amp; Torres Strait Islander governance review (
-              {ledger.waitingByCategory.indigenousHold} records across {ledger.domains.filter((domain) => domain.needsSigning.indigenousHold > 0).length} domains)
+              {ledger.waitingByCategory.indigenousHold} records across{" "}
+              {ledger.domains.filter((domain) => domain.needsSigning.indigenousHold > 0).length} domains)
             </p>
             <p className="text-sm leading-6 text-[color:var(--text-muted)]">
               Owner rule (2026-09-26): content specific to Aboriginal and Torres Strait Islander peoples requires
@@ -552,17 +564,18 @@ export function SignOffQueuePageContent({
 
           <div className={CARD_CLASS} data-testid="developer-sign-off-category-prerequisites">
             <p className="text-sm font-bold text-[color:var(--text-heading)]">
-              3. Awaiting source references or written clinical text ({ledger.waitingByCategory.awaitingPrerequisites}{" "}
-              items across {ledger.domains.filter((domain) => domain.needsSigning.awaitingPrerequisites > 0).length} domains)
+              3. Awaiting source references, written clinical text, or a structured attestation (
+              {ledger.waitingByCategory.awaitingPrerequisites} items across{" "}
+              {ledger.domains.filter((domain) => domain.needsSigning.awaitingPrerequisites > 0).length} domains)
             </p>
             <p className="text-sm leading-6 text-[color:var(--text-muted)]">
               These items belong to domains that have a local sign-off tool, but the tool refuses to sign them until
-              their missing clinical text or guideline reference is authored:
+              their missing clinical text, guideline reference, or structured attestation is recorded:
             </p>
             <ul className="grid gap-1.5 text-xs text-[color:var(--text-muted)]">
               <li>
                 <span className="font-bold text-[color:var(--text)]">
-                  26 Therapy Compass records (
+                  {therapyPrerequisiteRows.length} Therapy Compass records (
                   <Link href={queueHref("therapy", 1)} className="underline">
                     open in queue
                   </Link>
@@ -577,53 +590,70 @@ export function SignOffQueuePageContent({
               </li>
               <li>
                 <span className="font-bold text-[color:var(--text)]">
-                  514 DSM-5-TR specifier catalog placeholders (
+                  {waitingIn("specifiers", "awaitingPrerequisites")} DSM-5-TR specifier catalog placeholders (
                   <Link href={queueHref("specifiers", 1)} className="underline">
                     open in queue
                   </Link>
                   ):
                 </span>{" "}
                 Carry <code className="font-mono">definition: null</code> in{" "}
-                <code className="font-mono">data/specifiers-content.json</code>; all 89 specifiers that have written
-                definitions are already signed off.
+                <code className="font-mono">data/specifiers-content.json</code>; all {signedIn("specifiers")} specifiers
+                that have written definitions are already signed off.
               </li>
               <li>
                 <span className="font-bold text-[color:var(--text)]">
-                  68 Dictionary definition verdicts (
+                  {waitingIn("dictionary", "awaitingPrerequisites")} Dictionary definition verdicts (
                   <Link href={queueHref("dictionary", 1)} className="underline">
                     open in queue
                   </Link>
                   ):
                 </span>{" "}
                 Record an editorial verdict with <code className="font-mono">proposedWording: null</code> in{" "}
-                <code className="font-mono">src/data/dictionary-definition-reviews.json</code>; all 28 reviews that
-                propose a rewrite are already signed off.
+                <code className="font-mono">src/data/dictionary-definition-reviews.json</code>; all{" "}
+                {signedIn("dictionary")} reviews that propose a rewrite are already signed off.
               </li>
+              {sourcePrerequisiteRows.length > 0 ? (
+                <li>
+                  <span className="font-bold text-[color:var(--text)]">
+                    {sourcePrerequisiteRows.length} governed source acquisitions:
+                  </span>{" "}
+                  Marked reviewed in <code className="font-mono">src/data/source-acquisitions.json</code> without a
+                  structured attestation (<code className="font-mono">attestedBy</code>,{" "}
+                  <code className="font-mono">attestedAt</code>,{" "}
+                  <code className="font-mono">attestedAgainstSha256</code>), so they are not counted as signed:{" "}
+                  <span data-testid="developer-sign-off-source-prereq-list">
+                    {sourcePrerequisiteRows.map((row) => row.id).join(", ")}
+                  </span>
+                  .
+                </li>
+              ) : null}
             </ul>
           </div>
 
           <div className={CARD_CLASS} data-testid="developer-sign-off-category-awaiting-tool">
             <p className="text-sm font-bold text-[color:var(--text-heading)]">
               4. Unverified exports &amp; unpublished drafts with no sign-off tool yet (
-              {ledger.waitingByCategory.awaitingTool} items across {ledger.domains.filter((domain) => domain.needsSigning.awaitingTool > 0).length} domains)
+              {ledger.waitingByCategory.awaitingTool} items across{" "}
+              {ledger.domains.filter((domain) => domain.needsSigning.awaitingTool > 0).length} domains)
             </p>
             <ul className="grid gap-1.5 text-xs text-[color:var(--text-muted)]">
               <li>
                 <span className="font-bold text-[color:var(--text)]">
-                  232 exported differential snapshot records (
+                  {waitingIn("differentials", "awaitingTool")} exported differential snapshot records (
                   <Link href={queueHref("differentials", 1)} className="underline">
                     open in queue
                   </Link>
                   ):
                 </span>{" "}
-                201 diagnosis exports and 31 presentation workflows in{" "}
+                Diagnosis exports and presentation workflows in{" "}
                 <code className="font-mono">data/differentials-snapshot.json</code> derive{" "}
                 <code className="font-mono">validation_status: unverified</code> from the snapshot governance header
-                (while all 11 locally authored bedside clinical overlays layered on top of them are signed off).
+                (while all {signedIn("differentials")} locally authored bedside clinical overlays layered on top of them
+                are signed off).
               </li>
               <li>
                 <span className="font-bold text-[color:var(--text)]">
-                  333 unpublished dictionary sense drafts (
+                  {waitingIn("dictionary", "awaitingTool")} unpublished dictionary sense drafts (
                   <Link href={queueHref("dictionary", 1)} className="underline">
                     open in queue
                   </Link>

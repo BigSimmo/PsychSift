@@ -1,7 +1,11 @@
 import Link from "next/link";
 
 import type { OwnerToday } from "@/lib/developer-area/owner-today";
-import { loadSignOffLedger, type SignOffDomainSummary } from "@/lib/developer-area/sign-off-queue";
+import {
+  loadSignOffLedger,
+  type SignOffDomainId,
+  type SignOffDomainSummary,
+} from "@/lib/developer-area/sign-off-queue";
 import type { SignOffToday } from "@/lib/developer-area/sign-off-today";
 
 const LINK_CLASS =
@@ -152,6 +156,8 @@ function DomainLedgerCard({ domain }: { domain: SignOffDomainSummary }) {
 function SignOffLedgerOverview() {
   const ledger = loadSignOffLedger();
   const signerSummary = formatSignedBySummary(ledger.signedByTotals);
+  const waitingIn = (id: SignOffDomainId, category: "awaitingPrerequisites" | "awaitingTool") =>
+    ledger.domains.find((domain) => domain.id === id)?.needsSigning[category] ?? 0;
 
   return (
     <section
@@ -179,9 +185,10 @@ function SignOffLedgerOverview() {
         </span>{" "}
         ready to sign with a local tool today · <span className="nums">{ledger.waitingByCategory.indigenousHold}</span>{" "}
         held for Aboriginal &amp; Torres Strait Islander governance review ·{" "}
-        <span className="nums">{ledger.waitingByCategory.awaitingPrerequisites}</span> awaiting source references or
-        written text · <span className="nums">{ledger.waitingByCategory.awaitingTool}</span> unverified exports &amp;
-        unpublished drafts with no sign-off tool yet.
+        <span className="nums">{ledger.waitingByCategory.awaitingPrerequisites}</span> awaiting source references,
+        written text, or a structured attestation ·{" "}
+        <span className="nums">{ledger.waitingByCategory.awaitingTool}</span> unverified exports &amp; unpublished
+        drafts with no sign-off tool yet.
       </p>
 
       <div
@@ -189,7 +196,8 @@ function SignOffLedgerOverview() {
         data-testid="owner-panel-needs-signing-breakdown"
       >
         <p className="font-semibold text-[color:var(--text-heading)]">
-          What still needs signing off ({ledger.totalWaiting} items across all 13 domains, grouped by why):
+          What still needs signing off ({ledger.totalWaiting} items across all {ledger.domains.length} domains, grouped
+          by why):
         </p>
         <ul className="grid gap-1.5 text-[color:var(--text-muted)]">
           <li>
@@ -213,20 +221,26 @@ function SignOffLedgerOverview() {
           </li>
           <li>
             <span className="nums font-semibold text-[color:var(--text)]">
-              3. Awaiting source references or written clinical text ({ledger.waitingByCategory.awaitingPrerequisites}):
+              3. Awaiting source references, written clinical text, or a structured attestation (
+              {ledger.waitingByCategory.awaitingPrerequisites}):
             </span>{" "}
-            26 Therapy Compass records with empty <code className="font-mono">references: []</code> arrays, 514 DSM-5-TR
-            specifier catalog placeholders with <code className="font-mono">definition: null</code>, and 68 Dictionary
-            definition verdicts with <code className="font-mono">proposedWording: null</code>.
+            {waitingIn("therapy", "awaitingPrerequisites")} Therapy Compass records with empty{" "}
+            <code className="font-mono">references: []</code> arrays, {waitingIn("specifiers", "awaitingPrerequisites")}{" "}
+            DSM-5-TR specifier catalog placeholders with <code className="font-mono">definition: null</code>,{" "}
+            {waitingIn("dictionary", "awaitingPrerequisites")} Dictionary definition verdicts with{" "}
+            <code className="font-mono">proposedWording: null</code>, and{" "}
+            {waitingIn("sources", "awaitingPrerequisites")} source acquisitions reviewed only in prose (no structured
+            attestation).
           </li>
           <li>
             <span className="nums font-semibold text-[color:var(--text)]">
               4. Unverified exports &amp; unpublished drafts with no sign-off tool yet (
               {ledger.waitingByCategory.awaitingTool}):
             </span>{" "}
-            232 exported differential snapshot records (201 diagnoses + 31 presentation workflows in{" "}
-            <code className="font-mono">data/differentials-snapshot.json</code>) and 333 unpublished dictionary sense
-            drafts (<code className="font-mono">src/data/dictionary-sense-drafts.json</code>).
+            {waitingIn("differentials", "awaitingTool")} exported differential snapshot records (diagnoses and
+            presentation workflows in <code className="font-mono">data/differentials-snapshot.json</code>) and{" "}
+            {waitingIn("dictionary", "awaitingTool")} unpublished dictionary sense drafts (
+            <code className="font-mono">src/data/dictionary-sense-drafts.json</code>).
           </li>
         </ul>
       </div>

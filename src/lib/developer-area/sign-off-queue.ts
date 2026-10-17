@@ -170,13 +170,28 @@ function canonicalize(value: unknown): unknown {
   );
 }
 
-function therapyContentSha256(record: Record<string, unknown>): string {
-  const content = Object.fromEntries(
-    Object.entries(record).filter(
-      ([key]) => !["reviewStatus", "reviewChecklist", "reviewedBy", "reviewedAt", "reviewedContentSha256"].includes(key),
-    ),
+const SHA256_PIN = /^[a-f0-9]{64}$/;
+
+/** A well-formed lowercase SHA-256 content pin, as `npm run clinical:review` writes it. */
+function isContentPin(value: unknown): value is string {
+  return typeof value === "string" && SHA256_PIN.test(value);
+}
+
+/**
+ * Mirrors `recordPinState(record, kind) === "current"` in
+ * scripts/lib/clinical-record-review-contract.mjs for the kinds whose attested
+ * content is the review row itself minus its review metadata (sections and
+ * timeframes): reviewed, attributed, and pinned to the content as it is now.
+ * `tests/sign-off-queue.test.ts` pins every ledger domain to the contract.
+ */
+function reviewRowPinIsCurrent(entry: Record<string, unknown>): boolean {
+  if (entry.status !== "reviewed" || !isContentPin(entry.reviewedContentSha256)) return false;
+  const content = Object.fromEntries(Object.entries(entry).filter(([key]) => !REVIEW_METADATA_KEYS.includes(key)));
+  return (
+    createHash("sha256")
+      .update(JSON.stringify(canonicalize(content)))
+      .digest("hex") === entry.reviewedContentSha256
   );
-  return createHash("sha256").update(JSON.stringify(canonicalize(content))).digest("hex");
 }
 
 /**
@@ -696,12 +711,13 @@ function todayRulesDomain(): SignOffDomainSummary {
     enabled?: boolean;
     signedBy?: string | null;
     signedAt?: string | null;
+    signedContentSha256?: string | null;
   };
   const raw = todayRuleSignOffsJson as {
     fatigue?: RuleSignOffBlock;
     cpd?: RuleSignOffBlock;
     mhaTimerSwitch?: {
-      medicalDeviceRuling?: { confirmedOn?: string };
+      medicalDeviceRuling?: { confirmedOn?: string; record?: string };
       signOff?: RuleSignOffBlock;
     };
   };
@@ -735,14 +751,11 @@ function todayRulesDomain(): SignOffDomainSummary {
   let signableNow = 0;
   for (const item of items) {
     const signedBy = item.block?.signedBy?.trim();
-    const signedContentSha256 = (item.block as (RuleSignOffBlock & { signedContentSha256?: string }) | undefined)
-      ?.signedContentSha256;
     if (
       item.block?.enabled === true &&
       signedBy &&
       item.block.signedAt &&
-      typeof signedContentSha256 === "string" &&
-      /^[a-f0-9]{64}$/.test(signedContentSha256) &&
+      isContentPin(item.block.signedContentSha256) &&
       (item.id !== "mha-timer-switch" || raw.mhaTimerSwitch?.medicalDeviceRuling?.record === "local")
     ) {
       signedRows.push({
@@ -801,8 +814,7 @@ function formsDomain(): SignOffDomainSummary {
       details.contentReviewStatus === "reviewed" &&
       review?.reviewedBy?.trim() &&
       review.reviewedAt &&
-      typeof review.reviewedContentSha256 === "string" &&
-      /^[a-f0-9]{64}$/.test(review.reviewedContentSha256)
+      isContentPin(review.reviewedContentSha256)
     ) {
       signedRows.push({
         domain: "wa-mha-forms",
@@ -866,7 +878,7 @@ function mhaSectionsDomain(): SignOffDomainSummary {
     const id = `s${entry.section}`;
     const title = `s ${entry.section} — ${entry.title}`;
     const signedBy = entry.reviewedBy?.trim();
-    if (entry.status === "reviewed" && signedBy && entry.reviewedAt) {
+    if (signedBy && entry.reviewedAt && reviewRowPinIsCurrent(entry)) {
       signedRows.push({
         domain: "mha-sections",
         key: `signed-mha-section:${entry.section}`,
@@ -931,7 +943,7 @@ function mhaTimeframesDomain(): SignOffDomainSummary {
     const title = `Form ${formLabel} (s ${entry.section}) — ${entry.trigger}`;
     const href = formPageHref(entry.formCodes[0] ?? "1A");
     const signedBy = entry.reviewedBy?.trim();
-    if (entry.status === "reviewed" && signedBy && entry.reviewedAt) {
+    if (signedBy && entry.reviewedAt && reviewRowPinIsCurrent(entry)) {
       signedRows.push({
         domain: "mha-timeframes",
         key: `signed-timeframe:${entry.id}`,
@@ -1120,7 +1132,12 @@ function differentialsDomain(): SignOffDomainSummary {
     const title = `${diagnosis?.title ?? entry.slug} — locally authored clinical overlay`;
     const href = `/differentials/diagnoses/${entry.slug}`;
     const waits = differentialOverlayWaitsForSignOff(entry.slug, overlay);
-    if (!waits && entry.status === "reviewed" && entry.reviewedBy?.trim()) {
+    if (
+      !waits &&
+      entry.status === "reviewed" &&
+      entry.reviewedBy?.trim() &&
+      isContentPin(entry.reviewedContentSha256)
+    ) {
       signedRows.push({
         domain: "differentials",
         key: `signed-differential-overlay:${entry.slug}`,
@@ -1356,29 +1373,33 @@ function specifiersDomain(): SignOffDomainSummary {
 }
 
 function therapyDomain(): SignOffDomainSummary {
+  // Reviewer attribution comes from the small `signedBySlug` projection, not
+  // `therapyRecords`: the index rows omit reviewedBy/reviewedAt/reviewedContentSha256,
+  // and reading `therapies-source.json` would trace 2.6 MB into this route's bundle.
+  // `tests/sign-off-today.test.ts` fails unless the projection lists exactly the
+  // reviewed source records whose content pin is current, with their exact attribution.
+  const signedBySlug =
+    (
+      signableTherapySlugList as {
+        signedBySlug?: Record<string, { reviewedBy: string; reviewedAt: string | null }>;
+      }
+    ).signedBySlug ?? {};
   const signedRows: SignedRecordRow[] = [];
   const prerequisiteRows: UnsignedHoldRow[] = [];
   let signableNow = 0;
 
   for (const record of therapyRecords) {
     const href = `/therapy-compass/${record.slug}`;
-    const canonical = record as unknown as Record<string, unknown>;
-    if (
-      !therapyNeedsReview(record) &&
-      typeof canonical.reviewedBy === "string" &&
-      canonical.reviewedBy.trim() &&
-      typeof canonical.reviewedAt === "string" &&
-      typeof canonical.reviewedContentSha256 === "string" &&
-      canonical.reviewedContentSha256 === therapyContentSha256(canonical)
-    ) {
+    const meta = signedBySlug[record.slug];
+    if (!therapyNeedsReview(record) && meta?.reviewedBy?.trim() && meta.reviewedAt) {
       signedRows.push({
         domain: "therapy",
         key: `signed-therapy:${record.slug}`,
         id: record.slug,
         title: record.name,
         whatFor: `Evidence-based therapy profile (${record.category ?? "Psychological & psychosocial therapy"}) in Therapy Compass.`,
-        signedBy: String(canonical.reviewedBy).trim(),
-        signedAt: String(canonical.reviewedAt),
+        signedBy: meta.reviewedBy.trim(),
+        signedAt: meta.reviewedAt,
         href,
       });
     } else if (signableTherapySlugs.has(record.slug)) {
@@ -1482,6 +1503,7 @@ function sourcesDomain(): SignOffDomainSummary {
   const rejectedCount = sourceAcquisitionRecords.length - activeRecords.length;
   const signedRows: SignedRecordRow[] = [];
   const indigenousHoldRows: UnsignedHoldRow[] = [];
+  const prerequisiteRows: UnsignedHoldRow[] = [];
   let signableNow = 0;
 
   for (const record of activeRecords) {
@@ -1512,8 +1534,20 @@ function sourcesDomain(): SignOffDomainSummary {
         reason: "Held for Aboriginal and Torres Strait Islander governance review.",
         href: null,
       });
-    } else {
+    } else if (record.validationStatus === "unverified") {
       signableNow += 1;
+    } else {
+      // Reviewed only in prose: the source sign-off kind reads this as `pending`, and
+      // clinical:review signs drafted (unverified) sources only, so it is not signable now.
+      prerequisiteRows.push({
+        domain: "sources",
+        domainName: "Source acquisitions",
+        key: `prereq-source:${record.id}`,
+        id: record.id,
+        title: record.title,
+        reason: `Marked ${record.validationStatus} without a structured attestation (attestedBy, attestedAt, attestedAgainstSha256 over its current content), so it does not count as signed; clinical:review only signs unverified sources.`,
+        href: null,
+      });
     }
   }
 
@@ -1526,10 +1560,9 @@ function sourcesDomain(): SignOffDomainSummary {
     signedRows,
     signableNow,
     indigenousHoldRows,
-    needsSigningSummary:
-      indigenousHoldRows.length > 0 && signableNow === 0
-        ? `All ${signedRows.length} non-Indigenous active sources are signed off. ${indigenousHoldRows.length} Indigenous health and SEWB sources are held for Aboriginal governance review.`
-        : `${signableNow} source(s) ready to sign now; ${indigenousHoldRows.length} held for Aboriginal governance review.`,
+    awaitingPrerequisites: prerequisiteRows.length,
+    prerequisiteRows,
+    needsSigningSummary: `${signableNow} source(s) ready to sign now; ${indigenousHoldRows.length} Indigenous health and SEWB source(s) held for Aboriginal governance review; ${prerequisiteRows.length} reviewed only in prose and awaiting a structured attestation.`,
     queueFamilyId: "sources",
   });
 }
@@ -1552,7 +1585,7 @@ function servicesDomain(): SignOffDomainSummary {
     const service = canonicalById.get(entry.id);
     const title = service ? `${service.name} (${entry.id})` : entry.id;
     const signedBy = entry.reviewedBy?.trim();
-    if (entry.status === "reviewed" && signedBy && entry.reviewedAt) {
+    if (entry.status === "reviewed" && signedBy && entry.reviewedAt && isContentPin(entry.reviewedContentSha256)) {
       signedRows.push({
         domain: "services",
         key: `signed-service:${entry.id}`,

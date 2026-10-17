@@ -265,11 +265,25 @@ describe("tool-order and pin-awareness", () => {
       expect(projected.has(record.slug), record.slug).toBe(walk.has(record.slug));
       expect(signedBySlug[record.slug], record.slug).toBeUndefined();
     }
+    const { therapyReviewedContentSha256 } = await import("../scripts/lib/therapy-review-contract.mjs");
     for (const record of records.filter((item) => item.reviewStatus === "reviewed")) {
-      expect(signedBySlug[record.slug], record.slug).toEqual({
-        reviewedBy: record.reviewedBy,
-        reviewedAt: record.reviewedAt,
-      });
+      // The ledger counts a projected therapy as signed, so the projection may only
+      // carry a reviewed record whose content pin still matches its content now.
+      const pinCurrent =
+        typeof record.reviewedBy === "string" &&
+        record.reviewedBy.trim().length > 0 &&
+        typeof record.reviewedAt === "string" &&
+        (record as { reviewedContentSha256?: unknown }).reviewedContentSha256 === therapyReviewedContentSha256(record);
+      expect(signedBySlug[record.slug], record.slug).toEqual(
+        pinCurrent ? { reviewedBy: record.reviewedBy, reviewedAt: record.reviewedAt } : undefined,
+      );
     }
+    expect(Object.keys(signedBySlug).sort()).toEqual(
+      records
+        .filter((item) => item.reviewStatus === "reviewed")
+        .map((item) => item.slug)
+        .filter((slug) => signedBySlug[slug] !== undefined)
+        .sort(),
+    );
   });
 });
