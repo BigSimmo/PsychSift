@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import type { OwnerToday } from "@/lib/developer-area/owner-today";
+import { loadSignOffLedger, type SignOffDomainSummary } from "@/lib/developer-area/sign-off-queue";
 import type { SignOffToday } from "@/lib/developer-area/sign-off-today";
 
 const LINK_CLASS =
@@ -15,6 +16,24 @@ function plural(count: number, one: string, many: string) {
 function formatReviewBy(date: string | null) {
   if (!date) return null;
   const parsed = new Date(`${date}T00:00:00+08:00`);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toLocaleDateString("en-AU", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "Australia/Perth",
+  });
+}
+
+function formatSignedBySummary(counts: Readonly<Record<string, number>>): string {
+  const entries = Object.entries(counts);
+  if (entries.length === 0) return "None signed yet";
+  return entries.map(([name, count]) => `${name} (${count})`).join(", ");
+}
+
+function formatShortDate(iso: string | null): string | null {
+  if (!iso) return null;
+  const parsed = new Date(iso.includes("T") ? iso : `${iso}T00:00:00+08:00`);
   if (Number.isNaN(parsed.getTime())) return null;
   return parsed.toLocaleDateString("en-AU", {
     day: "numeric",
@@ -93,6 +112,133 @@ function SignOffTodayList({ signOff }: { signOff: SignOffToday }) {
   );
 }
 
+function DomainLedgerCard({ domain }: { domain: SignOffDomainSummary }) {
+  const latestDate = formatShortDate(domain.latestSignedAt);
+  const fullySigned = domain.waitingCount === 0;
+  return (
+    <li
+      className="grid gap-1.5 rounded-xl border border-[color:var(--border)] px-4 py-3 text-sm"
+      data-testid={`owner-panel-sign-off-domain-${domain.id}`}
+    >
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <Link
+          href={`/mockups/development/clinical-sign-off?domain=${domain.id}`}
+          className="font-semibold text-[color:var(--text-heading)] underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
+        >
+          {domain.name}
+        </Link>
+        <span className="nums text-xs font-semibold text-[color:var(--text-muted)]">
+          {domain.signedCount} / {domain.total} signed
+          {fullySigned ? " · complete" : ` · ${domain.waitingCount} remaining`}
+        </span>
+      </div>
+      <p className="text-xs text-[color:var(--text)]">
+        <span className="font-semibold text-[color:var(--text-heading)]">What it is for: </span>
+        {domain.whatFor}
+      </p>
+      <p className="text-xs text-[color:var(--text-muted)]">
+        <span className="font-semibold text-[color:var(--text)]">Signed off by: </span>
+        {formatSignedBySummary(domain.signedByCounts)}
+        {latestDate ? ` · latest ${latestDate}` : ""}
+      </p>
+      <p className="text-xs text-[color:var(--text-muted)]">
+        <span className="font-semibold text-[color:var(--text)]">Needs signing off: </span>
+        {domain.needsSigning.summary}
+      </p>
+    </li>
+  );
+}
+
+function SignOffLedgerOverview() {
+  const ledger = loadSignOffLedger();
+  const signerSummary = formatSignedBySummary(ledger.signedByTotals);
+
+  return (
+    <section
+      aria-labelledby="owner-panel-sign-off-ledger-heading"
+      className="grid gap-3"
+      data-testid="owner-panel-sign-off-ledger"
+    >
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h3 id="owner-panel-sign-off-ledger-heading" className={LIST_HEADING_CLASS}>
+          Clinical &amp; rule sign-off register (signed off vs needs signing off)
+        </h3>
+        <Link
+          href="/mockups/development/clinical-sign-off"
+          className="text-xs font-semibold text-[color:var(--text-heading)] underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
+        >
+          Inspect every signed &amp; waiting record ›
+        </Link>
+      </div>
+
+      <p className="text-sm text-[color:var(--text-muted)]" data-testid="owner-panel-sign-off-ledger-summary">
+        <span className="nums font-semibold text-[color:var(--text-heading)]">{ledger.totalSigned}</span> items signed
+        off across <span className="nums">{ledger.domains.length}</span> governed domains ({signerSummary}) ·{" "}
+        <span className="nums font-semibold text-[color:var(--text-heading)]">
+          {ledger.waitingByCategory.signableNow}
+        </span>{" "}
+        ready to sign with a local tool today · <span className="nums">{ledger.waitingByCategory.indigenousHold}</span>{" "}
+        held for Aboriginal &amp; Torres Strait Islander governance review ·{" "}
+        <span className="nums">{ledger.waitingByCategory.awaitingPrerequisites}</span> awaiting source references or
+        written text · <span className="nums">{ledger.waitingByCategory.awaitingTool}</span> unverified exports &amp;
+        unpublished drafts with no sign-off tool yet.
+      </p>
+
+      <div
+        className="grid gap-2 rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-subtle)] p-3 text-xs"
+        data-testid="owner-panel-needs-signing-breakdown"
+      >
+        <p className="font-semibold text-[color:var(--text-heading)]">
+          What still needs signing off ({ledger.totalWaiting} items across all 13 domains, grouped by why):
+        </p>
+        <ul className="grid gap-1.5 text-[color:var(--text-muted)]">
+          <li>
+            <span className="nums font-semibold text-[color:var(--text)]">
+              1. Ready to sign now with a local tool ({ledger.waitingByCategory.signableNow}):
+            </span>{" "}
+            Every signable form, Act section, timeframe, standard, cultural note, differential overlay, formulation
+            record, written specifier, referenced therapy, dictionary rewrite, source, and WA service record is signed.
+          </li>
+          <li>
+            <span className="nums font-semibold text-[color:var(--text)]">
+              2. Held for Aboriginal &amp; Torres Strait Islander governance review (
+              {ledger.waitingByCategory.indigenousHold}):
+            </span>{" "}
+            1 Chief Psychiatrist standard (<code className="font-mono">cp-standard-aboriginal-practice</code>), 9 MHA
+            cultural &amp; interpreter notes (8 <code className="font-mono">aboriginal-liaison</code> +{" "}
+            <code className="font-mono">1A-interpreter-3</code>), 6 Formulation cultural/SEWB records, 6 Indigenous
+            health source acquisitions, and 4 Aboriginal service records (Thirrili, StandBy WA, Kimberley CADS Youth,
+            Legal Yarn). Both sign-off tools refuse these by rule until Aboriginal governance review is recorded.
+          </li>
+          <li>
+            <span className="nums font-semibold text-[color:var(--text)]">
+              3. Awaiting source references or written clinical text ({ledger.waitingByCategory.awaitingPrerequisites}):
+            </span>{" "}
+            26 Therapy Compass records with empty <code className="font-mono">references: []</code> arrays, 514 DSM-5-TR
+            specifier catalog placeholders with <code className="font-mono">definition: null</code>, and 68 Dictionary
+            definition verdicts with <code className="font-mono">proposedWording: null</code>.
+          </li>
+          <li>
+            <span className="nums font-semibold text-[color:var(--text)]">
+              4. Unverified exports &amp; unpublished drafts with no sign-off tool yet (
+              {ledger.waitingByCategory.awaitingTool}):
+            </span>{" "}
+            232 exported differential snapshot records (201 diagnoses + 31 presentation workflows in{" "}
+            <code className="font-mono">data/differentials-snapshot.json</code>) and 333 unpublished dictionary sense
+            drafts (<code className="font-mono">src/data/dictionary-sense-drafts.json</code>).
+          </li>
+        </ul>
+      </div>
+
+      <ul className="grid gap-2 sm:grid-cols-2" data-testid="owner-panel-signed-domains">
+        {ledger.domains.map((domain) => (
+          <DomainLedgerCard key={domain.id} domain={domain} />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 /**
  * What is waiting on the owner, first on the page. Every figure comes from a
  * committed file, so it is as current as the deployed build and never implies a
@@ -111,6 +257,8 @@ export function OwnerTodaySection({ today }: { today: OwnerToday }) {
       </p>
 
       <SignOffTodayList signOff={signOff} />
+
+      <SignOffLedgerOverview />
 
       <section aria-labelledby="owner-panel-decisions" className="grid gap-2">
         <h3 id="owner-panel-decisions" className={LIST_HEADING_CLASS}>

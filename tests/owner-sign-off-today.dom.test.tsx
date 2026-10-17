@@ -80,4 +80,18 @@ describe("Owner panel: Sign off today", () => {
     expect(screen.queryByTestId("owner-panel-sign-off-today-list")).toBeNull();
     expect(screen.getByTestId("owner-panel-sign-off-today")).toHaveTextContent("No record the sign-off tools can sign");
   });
+
+  it("renders the organized clinical & rule sign-off register with signed counts, signers, purposes, and categorized remaining items", () => {
+    render(<OwnerTodaySection today={today({ rows: [], waiting: 1185, signable: 0 })} />);
+    const ledgerSection = screen.getByTestId("owner-panel-sign-off-ledger");
+    expect(ledgerSection).toHaveTextContent("678 items signed off across 13 governed domains");
+    expect(ledgerSection).toHaveTextContent("Josh Simpson (3)");
+    expect(ledgerSection).toHaveTextContent("Psych Sift (196)");
+    expect(ledgerSection).toHaveTextContent("PsychSift (479)");
+    expect(screen.getByTestId("owner-panel-needs-signing-breakdown")).toHaveTextContent(
+      "Held for Aboriginal & Torres Strait Islander governance review (26)",
+    );
+    const domainList = screen.getByTestId("owner-panel-signed-domains");
+    expect(within(domainList).getAllByRole("listitem")).toHaveLength(13);
+  });
 });

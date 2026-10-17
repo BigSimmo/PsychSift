@@ -5,6 +5,13 @@ import { formPageHref } from "@/lib/form-register";
 import formulationContent from "@/data/formulation-content.json";
 import { curatedDifferentials } from "@/lib/differential-curated";
 import differentialCuratedReview from "../../../data/differential-curated-review.json";
+import formsContentReviewJson from "../../../data/forms-content-review.json";
+import mhaSectionsJson from "../../../data/mha-2014-sections.json";
+import mhaTimeframesJson from "../../../data/mha-timeframes.json";
+import cpStandardsJson from "../../../data/chief-psychiatrist-standards.json";
+import formsCulturalNotesJson from "../../../data/forms-cultural-notes.json";
+import serviceRecordsReviewJson from "../../../data/service-records-review.json";
+import todayRuleSignOffsJson from "@/lib/admin/today-rule-sign-offs.json";
 import { loadDifferentialSnapshot } from "@/lib/differential-fixtures";
 import { deriveGovernanceFromSnapshot } from "@/lib/differential-records";
 import {
@@ -15,10 +22,15 @@ import { dictionarySenseDrafts } from "@/lib/dictionary-editorial/sense-drafts";
 import { isSpecifierClinicianReviewed, loadSpecifiersContent, specifierCatalogItems } from "@/lib/specifiers-content";
 import { therapyNeedsReview, therapyRecords } from "@/lib/therapies";
 import signableTherapySlugList from "@/data/therapy-signable-slugs.json";
-import { isIndigenousContent } from "@/lib/forms-reference-sign-off";
-import { acquisitionReviewQueue } from "@/lib/sources/acquisition-ledger";
-import { conceptReviewState, isFormulationSignedOffStatus } from "@/lib/formulation-review-status";
+import { isIndigenousContent, signedOffReviewer } from "@/lib/forms-reference-sign-off";
+import { acquisitionReviewQueue, sourceAcquisitionRecords } from "@/lib/sources/acquisition-ledger";
+import {
+  conceptReviewState,
+  isFormulationSignedOffStatus,
+  mechanismReviewState,
+} from "@/lib/formulation-review-status";
 import { formulationConcepts, formulationGuides } from "@/lib/formulation-concepts";
+import { canonicalServiceRecords } from "@/lib/service-governance";
 
 /**
  * Every clinical record in this repository that is waiting for a person to sign
@@ -517,5 +529,1095 @@ export function loadSignOffQueue(): SignOffQueue {
   return {
     families,
     total: families.reduce((sum, family) => sum + family.rows.length, 0),
+  };
+}
+
+/**
+ * All 13 governed sign-off domains across the repository: both the 7 families
+ * that appear in `loadSignOffQueue()` and the 6 additional governed registers
+ * (`today-rules`, `mha-sections`, `mha-timeframes`, `cp-standards`,
+ * `cultural-notes`, and `services`).
+ */
+export type SignOffDomainId =
+  | "today-rules"
+  | "wa-mha-forms"
+  | "mha-sections"
+  | "mha-timeframes"
+  | "cp-standards"
+  | "cultural-notes"
+  | "differentials"
+  | "formulation"
+  | "specifiers"
+  | "therapy"
+  | "dictionary"
+  | "sources"
+  | "services";
+
+export type SignedRecordRow = {
+  domain: SignOffDomainId;
+  key: string;
+  id: string;
+  title: string;
+  whatFor: string;
+  signedBy: string;
+  signedAt: string | null;
+  href: string | null;
+};
+
+export type UnsignedHoldRow = {
+  domain: SignOffDomainId;
+  domainName: string;
+  key: string;
+  id: string;
+  title: string;
+  reason: string;
+  href: string | null;
+};
+
+export type SignOffDomainSummary = {
+  id: SignOffDomainId;
+  name: string;
+  whatFor: string;
+  source: string;
+  toolHint: string;
+  total: number;
+  signedCount: number;
+  waitingCount: number;
+  signedByCounts: Readonly<Record<string, number>>;
+  latestSignedAt: string | null;
+  signedRows: readonly SignedRecordRow[];
+  needsSigning: {
+    signableNow: number;
+    indigenousHold: number;
+    awaitingPrerequisites: number;
+    awaitingTool: number;
+    summary: string;
+    indigenousHoldRows: readonly UnsignedHoldRow[];
+    prerequisiteRows: readonly UnsignedHoldRow[];
+  };
+  queueFamilyId: SignOffFamilyId | null;
+};
+
+export type SignOffLedger = {
+  domains: readonly SignOffDomainSummary[];
+  totalGoverned: number;
+  totalSigned: number;
+  totalWaiting: number;
+  signedByTotals: Readonly<Record<string, number>>;
+  waitingByCategory: {
+    signableNow: number;
+    indigenousHold: number;
+    awaitingPrerequisites: number;
+    awaitingTool: number;
+  };
+};
+
+function countSignedBy(rows: readonly SignedRecordRow[]): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const row of rows) {
+    const signer = row.signedBy.trim() || "Unknown";
+    counts[signer] = (counts[signer] ?? 0) + 1;
+  }
+  return counts;
+}
+
+function latestTimestamp(rows: readonly SignedRecordRow[]): string | null {
+  let latest: string | null = null;
+  for (const row of rows) {
+    if (!row.signedAt) continue;
+    if (latest === null || row.signedAt > latest) {
+      latest = row.signedAt;
+    }
+  }
+  return latest;
+}
+
+function buildDomainSummary(input: {
+  id: SignOffDomainId;
+  name: string;
+  whatFor: string;
+  source: string;
+  toolHint: string;
+  signedRows: readonly SignedRecordRow[];
+  signableNow: number;
+  indigenousHoldRows: readonly UnsignedHoldRow[];
+  awaitingPrerequisites?: number;
+  prerequisiteRows?: readonly UnsignedHoldRow[];
+  awaitingTool?: number;
+  needsSigningSummary: string;
+  queueFamilyId: SignOffFamilyId | null;
+}): SignOffDomainSummary {
+  const indigenousHold = input.indigenousHoldRows.length;
+  const prerequisiteRows = input.prerequisiteRows ?? [];
+  const awaitingPrerequisites = input.awaitingPrerequisites ?? prerequisiteRows.length;
+  const awaitingTool = input.awaitingTool ?? 0;
+  const waitingCount = input.signableNow + indigenousHold + awaitingPrerequisites + awaitingTool;
+  const signedCount = input.signedRows.length;
+  return {
+    id: input.id,
+    name: input.name,
+    whatFor: input.whatFor,
+    source: input.source,
+    toolHint: input.toolHint,
+    total: signedCount + waitingCount,
+    signedCount,
+    waitingCount,
+    signedByCounts: countSignedBy(input.signedRows),
+    latestSignedAt: latestTimestamp(input.signedRows),
+    signedRows: input.signedRows,
+    needsSigning: {
+      signableNow: input.signableNow,
+      indigenousHold,
+      awaitingPrerequisites,
+      awaitingTool,
+      summary: input.needsSigningSummary,
+      indigenousHoldRows: input.indigenousHoldRows,
+      prerequisiteRows,
+    },
+    queueFamilyId: input.queueFamilyId,
+  };
+}
+
+function todayRulesDomain(): SignOffDomainSummary {
+  type RuleSignOffBlock = {
+    enabled?: boolean;
+    signedBy?: string | null;
+    signedAt?: string | null;
+  };
+  const raw = todayRuleSignOffsJson as {
+    fatigue?: RuleSignOffBlock;
+    cpd?: RuleSignOffBlock;
+    mhaTimerSwitch?: {
+      medicalDeviceRuling?: { confirmedOn?: string };
+      signOff?: RuleSignOffBlock;
+    };
+  };
+  const items: { id: string; title: string; whatFor: string; block: RuleSignOffBlock | undefined; href: string }[] = [
+    {
+      id: "fatigue",
+      title: "Roster fatigue rules (WA AMA 2024 cl 15)",
+      whatFor:
+        "Turns on consecutive-day, night-shift recovery, 48-hour break, and fortnightly hours fatigue alerts on Today (/).",
+      block: raw.fatigue,
+      href: "/",
+    },
+    {
+      id: "cpd",
+      title: "CPD category minimums & coaching",
+      whatFor: "Turns on Medical Board of Australia annual CPD hour and category minimum coaching on Today (/).",
+      block: raw.cpd,
+      href: "/",
+    },
+    {
+      id: "mha-timer-switch",
+      title: `Mental Health Act per-order countdown switch (non-device ruling confirmed ${raw.mhaTimerSwitch?.medicalDeviceRuling?.confirmedOn ?? "2026-10-04"})`,
+      whatFor:
+        "Authorises the per-order statutory countdown switch after the owner's TGA non-device ruling confirmation.",
+      block: raw.mhaTimerSwitch?.signOff,
+      href: "/on-call",
+    },
+  ];
+
+  const signedRows: SignedRecordRow[] = [];
+  let signableNow = 0;
+  for (const item of items) {
+    const signedBy = item.block?.signedBy?.trim();
+    if (item.block?.enabled === true && signedBy && item.block.signedAt) {
+      signedRows.push({
+        domain: "today-rules",
+        key: `today-rule:${item.id}`,
+        id: item.id,
+        title: item.title,
+        whatFor: item.whatFor,
+        signedBy,
+        signedAt: item.block.signedAt,
+        href: item.href,
+      });
+    } else {
+      signableNow += 1;
+    }
+  }
+
+  return buildDomainSummary({
+    id: "today-rules",
+    name: "Today rule engines & medical device ruling",
+    whatFor:
+      "Turns on Roster fatigue warnings, CPD category coaching, and the MHA per-order countdown switch on Today and On Call.",
+    source: "src/lib/admin/today-rule-sign-offs.json",
+    toolHint: "Owner rule sign-off register (src/lib/admin/today-rule-sign-offs.json)",
+    signedRows,
+    signableNow,
+    indigenousHoldRows: [],
+    needsSigningSummary:
+      signableNow === 0
+        ? "Nothing waiting — all 3 rule engines and the medical device ruling are signed off."
+        : `${signableNow} rule engine(s) awaiting owner sign-off.`,
+    queueFamilyId: null,
+  });
+}
+
+function formsDomain(): SignOffDomainSummary {
+  type FormReviewRow = {
+    code: string;
+    status: string;
+    reviewedBy?: string | null;
+    reviewedAt?: string | null;
+  };
+  const reviewRows = new Map(
+    ((formsContentReviewJson as { forms: FormReviewRow[] }).forms ?? []).map((row) => [row.code, row]),
+  );
+  const signedRows: SignedRecordRow[] = [];
+  const indigenousHoldRows: UnsignedHoldRow[] = [];
+  let signableNow = 0;
+
+  for (const details of loadFormCatalogDetails()) {
+    const review = reviewRows.get(details.form);
+    const href = formPageHref(details.form);
+    const title = `Form ${details.form} — ${details.name}`;
+    if (details.contentReviewStatus === "reviewed") {
+      signedRows.push({
+        domain: "wa-mha-forms",
+        key: `signed-form:${details.id}`,
+        id: details.form,
+        title,
+        whatFor:
+          "Operational clinical guidance, maker/threshold rules, statutory clock, pre-use checks, and filing pathway.",
+        signedBy: review?.reviewedBy?.trim() || "Psych Sift",
+        signedAt: review?.reviewedAt ?? null,
+        href,
+      });
+    } else if (isIndigenousContent([JSON.stringify(details)])) {
+      indigenousHoldRows.push({
+        domain: "wa-mha-forms",
+        domainName: "WA Mental Health Act forms",
+        key: `hold-form:${details.id}`,
+        id: details.form,
+        title,
+        reason: "Held for Aboriginal and Torres Strait Islander governance review.",
+        href,
+      });
+    } else {
+      signableNow += 1;
+    }
+  }
+
+  return buildDomainSummary({
+    id: "wa-mha-forms",
+    name: "WA Mental Health Act 2014 forms",
+    whatFor:
+      "Operational clinical guidance, priority facts, statutory clocks, and filing pathways for all 54 WA Mental Health Act forms.",
+    source: "data/forms-content-review.json, data/forms-catalog.json",
+    toolHint: 'npm run clinical:review -- --write --kind form --code "<form>" --reviewed-by',
+    signedRows,
+    signableNow,
+    indigenousHoldRows,
+    needsSigningSummary:
+      signableNow === 0 && indigenousHoldRows.length === 0
+        ? "Nothing waiting — all 54 WA Mental Health Act forms are signed off."
+        : `${signableNow} ready to sign now; ${indigenousHoldRows.length} held for Aboriginal governance review.`,
+    queueFamilyId: "wa-mha-forms",
+  });
+}
+
+function mhaSectionsDomain(): SignOffDomainSummary {
+  type SectionEntry = {
+    section: string;
+    title: string;
+    summary: string;
+    status: string;
+    reviewedBy?: string | null;
+    reviewedAt?: string | null;
+  };
+  const sections = (mhaSectionsJson as { sections: SectionEntry[] }).sections ?? [];
+  const signedRows: SignedRecordRow[] = [];
+  const indigenousHoldRows: UnsignedHoldRow[] = [];
+  let signableNow = 0;
+
+  for (const entry of sections) {
+    const id = `s${entry.section}`;
+    const title = `s ${entry.section} — ${entry.title}`;
+    const signedBy = entry.reviewedBy?.trim();
+    if (entry.status === "reviewed" && signedBy && entry.reviewedAt) {
+      signedRows.push({
+        domain: "mha-sections",
+        key: `signed-mha-section:${entry.section}`,
+        id,
+        title,
+        whatFor: "Plain-English statutory section summary on /forms/act and form guidance sheets, pinned to Act text.",
+        signedBy,
+        signedAt: entry.reviewedAt,
+        href: "/forms/act",
+      });
+    } else if (isIndigenousContent([entry.title, entry.summary])) {
+      indigenousHoldRows.push({
+        domain: "mha-sections",
+        domainName: "WA Mental Health Act section summaries",
+        key: `hold-mha-section:${entry.section}`,
+        id,
+        title,
+        reason: "Held for Aboriginal and Torres Strait Islander governance review.",
+        href: "/forms/act",
+      });
+    } else {
+      signableNow += 1;
+    }
+  }
+
+  return buildDomainSummary({
+    id: "mha-sections",
+    name: "WA Mental Health Act section summaries",
+    whatFor:
+      "Plain-English summaries of 110 WA Mental Health Act 2014 sections displayed on /forms/act and form guidance pages.",
+    source: "data/mha-2014-sections.json",
+    toolHint: 'npm run clinical:review -- --write --kind section --code "<section>" --reviewed-by',
+    signedRows,
+    signableNow,
+    indigenousHoldRows,
+    needsSigningSummary:
+      signableNow === 0 && indigenousHoldRows.length === 0
+        ? "Nothing waiting — all 110 WA Mental Health Act section summaries are signed off."
+        : `${signableNow} ready to sign now; ${indigenousHoldRows.length} held for Aboriginal governance review.`,
+    queueFamilyId: null,
+  });
+}
+
+function mhaTimeframesDomain(): SignOffDomainSummary {
+  type TimeframeEntry = {
+    id: string;
+    formCodes: string[];
+    trigger: string;
+    section: string;
+    duration: { value: number; unit: string };
+    status: string;
+    reviewedBy?: string | null;
+    reviewedAt?: string | null;
+  };
+  const entries = (mhaTimeframesJson as { entries: TimeframeEntry[] }).entries ?? [];
+  const signedRows: SignedRecordRow[] = [];
+  const indigenousHoldRows: UnsignedHoldRow[] = [];
+  let signableNow = 0;
+
+  for (const entry of entries) {
+    const formLabel = entry.formCodes.join("/");
+    const title = `Form ${formLabel} (s ${entry.section}) — ${entry.trigger}`;
+    const href = formPageHref(entry.formCodes[0] ?? "1A");
+    const signedBy = entry.reviewedBy?.trim();
+    if (entry.status === "reviewed" && signedBy && entry.reviewedAt) {
+      signedRows.push({
+        domain: "mha-timeframes",
+        key: `signed-timeframe:${entry.id}`,
+        id: entry.id,
+        title,
+        whatFor: `Quoted statutory duration (${entry.duration.value} ${entry.duration.unit}) driving form timelines and On Call MHA timers.`,
+        signedBy,
+        signedAt: entry.reviewedAt,
+        href,
+      });
+    } else if (isIndigenousContent([JSON.stringify(entry)])) {
+      indigenousHoldRows.push({
+        domain: "mha-timeframes",
+        domainName: "WA Mental Health Act statutory timeframes",
+        key: `hold-timeframe:${entry.id}`,
+        id: entry.id,
+        title,
+        reason: "Held for Aboriginal and Torres Strait Islander governance review.",
+        href,
+      });
+    } else {
+      signableNow += 1;
+    }
+  }
+
+  return buildDomainSummary({
+    id: "mha-timeframes",
+    name: "WA Mental Health Act statutory timeframes",
+    whatFor:
+      "Quoted statutory detention, examination, transport, and review durations driving form timelines and On Call MHA timers.",
+    source: "data/mha-timeframes.json",
+    toolHint: 'npm run clinical:review -- --write --kind timeframe --code "<id>" --reviewed-by',
+    signedRows,
+    signableNow,
+    indigenousHoldRows,
+    needsSigningSummary:
+      signableNow === 0 && indigenousHoldRows.length === 0
+        ? "Nothing waiting — all 9 statutory timeframes are signed off and owner-confirmed."
+        : `${signableNow} ready to sign now; ${indigenousHoldRows.length} held for Aboriginal governance review.`,
+    queueFamilyId: null,
+  });
+}
+
+function cpStandardsDomain(): SignOffDomainSummary {
+  type StandardEntry = {
+    id: string;
+    title: string;
+    summary: string;
+    status?: string;
+    reviewedBy?: string | null;
+    reviewedAt?: string | null;
+    reviewedContentSha256?: string | null;
+  };
+  const standards = (cpStandardsJson as { standards: StandardEntry[] }).standards ?? [];
+  const signedRows: SignedRecordRow[] = [];
+  const indigenousHoldRows: UnsignedHoldRow[] = [];
+  let signableNow = 0;
+
+  for (const standard of standards) {
+    const reviewer = signedOffReviewer(standard, [standard.title, standard.summary]);
+    if (reviewer) {
+      signedRows.push({
+        domain: "cp-standards",
+        key: `signed-cp-standard:${standard.id}`,
+        id: standard.id,
+        title: standard.title,
+        whatFor: "Summary of the WA Chief Psychiatrist's Standard for Clinical Care on /forms/act.",
+        signedBy: reviewer,
+        signedAt: standard.reviewedAt ?? null,
+        href: "/forms/act",
+      });
+    } else if (isIndigenousContent([standard.title, standard.summary])) {
+      indigenousHoldRows.push({
+        domain: "cp-standards",
+        domainName: "Chief Psychiatrist's Standards",
+        key: `hold-cp-standard:${standard.id}`,
+        id: standard.id,
+        title: standard.title,
+        reason:
+          "Held for Aboriginal and Torres Strait Islander governance review (owner rule 2026-09-26: Aboriginal practice standard requires Aboriginal governance review, not a clinician sign-off).",
+        href: "/forms/act",
+      });
+    } else {
+      signableNow += 1;
+    }
+  }
+
+  return buildDomainSummary({
+    id: "cp-standards",
+    name: "Chief Psychiatrist's Standards for Clinical Care",
+    whatFor: "Plain-English summaries of the 8 WA Chief Psychiatrist's Standards for Clinical Care on /forms/act.",
+    source: "data/chief-psychiatrist-standards.json",
+    toolHint: 'npm run clinical:review -- --write --kind standard --code "<id>" --reviewed-by',
+    signedRows,
+    signableNow,
+    indigenousHoldRows,
+    needsSigningSummary:
+      indigenousHoldRows.length > 0 && signableNow === 0
+        ? "1 standard (Aboriginal Practice) held for Aboriginal and Torres Strait Islander governance review."
+        : `${signableNow} ready to sign now; ${indigenousHoldRows.length} held for Aboriginal governance review.`,
+    queueFamilyId: null,
+  });
+}
+
+function culturalNotesDomain(): SignOffDomainSummary {
+  type CulturalNoteEntry = {
+    formCode: string;
+    kind: string;
+    text: string;
+    sourceId: string;
+    status?: string;
+    reviewedBy?: string | null;
+    reviewedAt?: string | null;
+    reviewedContentSha256?: string | null;
+  };
+  const notes = (formsCulturalNotesJson as { notes: CulturalNoteEntry[] }).notes ?? [];
+  const countsByPrefix = new Map<string, number>();
+  const signedRows: SignedRecordRow[] = [];
+  const indigenousHoldRows: UnsignedHoldRow[] = [];
+  let signableNow = 0;
+
+  for (const note of notes) {
+    const prefix = `${note.formCode}-${note.kind}`;
+    const ordinal = (countsByPrefix.get(prefix) ?? 0) + 1;
+    countsByPrefix.set(prefix, ordinal);
+    const code = `${prefix}-${ordinal}`;
+    const snippet = note.text.length > 96 ? `${note.text.slice(0, 93).trimEnd()}…` : note.text;
+    const title = `Form ${note.formCode} (${note.kind} #${ordinal}) — ${snippet}`;
+    const href = formPageHref(note.formCode);
+    const reviewer = signedOffReviewer(note, [note.kind, note.text]);
+    if (reviewer) {
+      signedRows.push({
+        domain: "cultural-notes",
+        key: `signed-cultural-note:${code}`,
+        id: code,
+        title,
+        whatFor: `Statutory communication and interpreter duty note shown on Form ${note.formCode}.`,
+        signedBy: reviewer,
+        signedAt: note.reviewedAt ?? null,
+        href,
+      });
+    } else if (isIndigenousContent([note.kind, note.text])) {
+      indigenousHoldRows.push({
+        domain: "cultural-notes",
+        domainName: "WA Mental Health Act cultural & communication notes",
+        key: `hold-cultural-note:${code}`,
+        id: code,
+        title,
+        reason:
+          "Held for Aboriginal and Torres Strait Islander governance review (Aboriginal liaison s 50 / Principle 7 and Aboriginal Interpreting WA notes).",
+        href,
+      });
+    } else {
+      signableNow += 1;
+    }
+  }
+
+  return buildDomainSummary({
+    id: "cultural-notes",
+    name: "WA Mental Health Act cultural & communication notes",
+    whatFor:
+      "Statutory language, interpreter (s 9(2) / MP 0051/17), cultural exclusion (s 6(2)), and Aboriginal liaison (s 50) notes on MHA form pages.",
+    source: "data/forms-cultural-notes.json",
+    toolHint: 'npm run clinical:review -- --write --kind cultural-note --code "<formCode-kind-N>" --reviewed-by',
+    signedRows,
+    signableNow,
+    indigenousHoldRows,
+    needsSigningSummary:
+      indigenousHoldRows.length > 0 && signableNow === 0
+        ? `${indigenousHoldRows.length} notes (8 Aboriginal liaison notes + 1 Aboriginal Interpreting WA note) held for Aboriginal governance review.`
+        : `${signableNow} ready to sign now; ${indigenousHoldRows.length} held for Aboriginal governance review.`,
+    queueFamilyId: null,
+  });
+}
+
+function differentialsDomain(): SignOffDomainSummary {
+  const snapshot = loadDifferentialSnapshot();
+  const diagnosesBySlug = new Map(snapshot.diagnoses.map((d) => [d.slug, d]));
+  const signedRows: SignedRecordRow[] = [];
+  const indigenousHoldRows: UnsignedHoldRow[] = [];
+  let signableNow = 0;
+
+  for (const entry of differentialReviewEntries) {
+    const overlay = curatedDifferentials[entry.slug as keyof typeof curatedDifferentials];
+    const diagnosis = diagnosesBySlug.get(entry.slug);
+    const title = `${diagnosis?.title ?? entry.slug} — locally authored clinical overlay`;
+    const href = `/differentials/diagnoses/${entry.slug}`;
+    const waits = differentialOverlayWaitsForSignOff(entry.slug, overlay);
+    if (!waits && entry.status === "reviewed" && entry.reviewedBy?.trim()) {
+      signedRows.push({
+        domain: "differentials",
+        key: `signed-differential-overlay:${entry.slug}`,
+        id: entry.slug,
+        title,
+        whatFor:
+          "Locally authored bedside red flags, discriminators, and first-line steps layered on top of the differential diagnosis page.",
+        signedBy: entry.reviewedBy.trim(),
+        signedAt: entry.reviewedAt ?? null,
+        href,
+      });
+    } else if (isIndigenousContent([JSON.stringify([diagnosis, overlay])])) {
+      indigenousHoldRows.push({
+        domain: "differentials",
+        domainName: "Differentials",
+        key: `hold-differential-overlay:${entry.slug}`,
+        id: entry.slug,
+        title,
+        reason: "Held for Aboriginal and Torres Strait Islander governance review.",
+        href,
+      });
+    } else {
+      signableNow += 1;
+    }
+  }
+
+  const awaitingTool = snapshot.diagnoses.length + snapshot.presentations.length;
+
+  return buildDomainSummary({
+    id: "differentials",
+    name: "Differential diagnosis overlays & exported snapshot",
+    whatFor:
+      "11 locally authored bedside clinical overlays (red flags, discriminators, first-line steps) plus 232 exported diagnosis and presentation records in data/differentials-snapshot.json.",
+    source: "data/differential-curated-review.json, src/lib/differential-curated.ts, data/differentials-snapshot.json",
+    toolHint: 'npm run clinical:review -- --write --kind differential --code "<slug>" --reviewed-by',
+    signedRows,
+    signableNow,
+    indigenousHoldRows,
+    awaitingTool,
+    needsSigningSummary:
+      signableNow === 0
+        ? `All ${signedRows.length} locally authored clinical overlays are signed off. The ${awaitingTool} underlying exported snapshot records (${snapshot.diagnoses.length} diagnoses + ${snapshot.presentations.length} presentation workflows) have no sign-off tool yet.`
+        : `${signableNow} locally authored overlay(s) ready to sign; ${awaitingTool} exported snapshot records have no sign-off tool yet.`,
+    queueFamilyId: "differentials",
+  });
+}
+
+function formulationDomain(): SignOffDomainSummary {
+  type FormulationMechanismRow = {
+    id: string;
+    name: string;
+    reviewStatus: string;
+    reviewedBy?: string | null;
+    reviewedAt?: string | null;
+  };
+  const mechanisms = (formulationContent as { mechanisms: FormulationMechanismRow[] }).mechanisms ?? [];
+  const signedRows: SignedRecordRow[] = [];
+  const indigenousHoldRows: UnsignedHoldRow[] = [];
+  let signableNow = 0;
+
+  for (const mechanism of mechanisms) {
+    const state = mechanismReviewState(mechanism);
+    const href = `/formulation/${mechanism.id}`;
+    if (state.reviewed && mechanism.reviewedBy?.trim()) {
+      signedRows.push({
+        domain: "formulation",
+        key: `signed-formulation-mechanism:${mechanism.id}`,
+        id: mechanism.id,
+        title: `Mechanism — ${mechanism.name}`,
+        whatFor: "Maintaining cycle mechanism description, fit indicators, and treatment implications.",
+        signedBy: mechanism.reviewedBy.trim(),
+        signedAt: mechanism.reviewedAt ?? null,
+        href,
+      });
+    } else if (isIndigenousContent([JSON.stringify(mechanism)])) {
+      indigenousHoldRows.push({
+        domain: "formulation",
+        domainName: "Formulation mechanisms, guides & concepts",
+        key: `hold-formulation-mechanism:${mechanism.id}`,
+        id: mechanism.id,
+        title: `Mechanism — ${mechanism.name}`,
+        reason: "Held for Aboriginal and Torres Strait Islander governance review.",
+        href,
+      });
+    } else {
+      signableNow += 1;
+    }
+  }
+
+  for (const { record, kind } of [
+    ...formulationGuides.map((record) => ({ record, kind: "guide" as const })),
+    ...formulationConcepts.map((record) => ({ record, kind: "concept" as const })),
+  ]) {
+    const state = conceptReviewState(record);
+    const href = record.release === "published" ? `/formulation/${record.id}` : null;
+    const prefix = kind === "guide" ? "Guide" : "Concept";
+    const title = `${prefix} — ${record.title}`;
+    if (state.reviewed && record.review.reviewer?.trim()) {
+      signedRows.push({
+        domain: "formulation",
+        key: `signed-formulation-${kind}:${record.id}`,
+        id: record.id,
+        title,
+        whatFor:
+          kind === "guide"
+            ? "Structured clinical formulation guide module and instructions."
+            : "Contextual formulation concept summary, qualifications, clinical warnings, and evidence links.",
+        signedBy: record.review.reviewer.trim(),
+        signedAt: record.review.reviewedAt ?? record.review.preparedAt ?? null,
+        href,
+      });
+    } else if (isIndigenousContent([JSON.stringify(record)])) {
+      indigenousHoldRows.push({
+        domain: "formulation",
+        domainName: "Formulation mechanisms, guides & concepts",
+        key: `hold-formulation-${kind}:${record.id}`,
+        id: record.id,
+        title,
+        reason:
+          record.releaseNote ??
+          "Held for Aboriginal and Torres Strait Islander governance review (not published until cultural governance signs off).",
+        href,
+      });
+    } else {
+      signableNow += 1;
+    }
+  }
+
+  return buildDomainSummary({
+    id: "formulation",
+    name: "Formulation mechanisms, guides & concepts",
+    whatFor:
+      "12 maintaining mechanisms, 6 structured guide modules, and 46 contextual formulation concepts across Biological, Psychological, Social, and Cultural domains.",
+    source: "src/data/formulation-content.json, src/data/formulation-concepts.json",
+    toolHint:
+      'npm run clinical:review -- --write --kind formulation-mechanism|formulation-guide|formulation-concept --code "<id>" --reviewed-by',
+    signedRows,
+    signableNow,
+    indigenousHoldRows,
+    needsSigningSummary:
+      indigenousHoldRows.length > 0 && signableNow === 0
+        ? `All 12 mechanisms, 5 non-Indigenous guides, and 41 non-Indigenous concepts are signed off. ${indigenousHoldRows.length} Cultural/SEWB records (1 guide + 5 concepts) are held for Aboriginal governance review.`
+        : `${signableNow} ready to sign now; ${indigenousHoldRows.length} held for Aboriginal governance review.`,
+    queueFamilyId: "formulation",
+  });
+}
+
+function specifiersDomain(): SignOffDomainSummary {
+  const content = loadSpecifiersContent();
+  const signedRows: SignedRecordRow[] = [];
+  const indigenousHoldRows: UnsignedHoldRow[] = [];
+  let signableNow = 0;
+  let awaitingPrerequisites = 0;
+
+  for (const item of specifierCatalogItems()) {
+    const title = `${item.disorderName} · ${item.groupLabel} · ${item.label}`;
+    const href = `/specifiers/${item.slug}`;
+    if (isSpecifierClinicianReviewed(item.review)) {
+      signedRows.push({
+        domain: "specifiers",
+        key: `signed-specifier:${item.slug}`,
+        id: item.review.rowKey,
+        title,
+        whatFor: "Written DSM-5-TR / ICD-11 disorder-specific specifier definition and clinical note.",
+        signedBy: item.review.reviewedBy!.trim(),
+        signedAt: item.review.reviewedAt ?? null,
+        href,
+      });
+    } else if (item.definitionStatus === "defined" && item.definition !== null) {
+      if (isIndigenousContent([JSON.stringify(item)])) {
+        indigenousHoldRows.push({
+          domain: "specifiers",
+          domainName: "Specifiers",
+          key: `hold-specifier:${item.slug}`,
+          id: item.review.rowKey,
+          title,
+          reason: "Held for Aboriginal and Torres Strait Islander governance review.",
+          href,
+        });
+      } else {
+        signableNow += 1;
+      }
+    } else {
+      awaitingPrerequisites += 1;
+    }
+  }
+
+  for (const universal of content.universalSpecifiers) {
+    const title = `Universal · ${universal.title}`;
+    if (isSpecifierClinicianReviewed(universal.review)) {
+      signedRows.push({
+        domain: "specifiers",
+        key: `signed-specifier-universal:${universal.review.rowKey}`,
+        id: universal.review.rowKey,
+        title,
+        whatFor: "Cross-disorder universal DSM-5-TR / ICD-11 course, severity, or feature specifier definition.",
+        signedBy: universal.review.reviewedBy!.trim(),
+        signedAt: universal.review.reviewedAt ?? null,
+        href: null,
+      });
+    } else if (isIndigenousContent([JSON.stringify(universal)])) {
+      indigenousHoldRows.push({
+        domain: "specifiers",
+        domainName: "Specifiers",
+        key: `hold-specifier-universal:${universal.review.rowKey}`,
+        id: universal.review.rowKey,
+        title,
+        reason: "Held for Aboriginal and Torres Strait Islander governance review.",
+        href: null,
+      });
+    } else {
+      signableNow += 1;
+    }
+  }
+
+  return buildDomainSummary({
+    id: "specifiers",
+    name: "DSM-5-TR & ICD-11 diagnostic specifiers",
+    whatFor:
+      "71 written disorder-specific specifier definitions, 18 cross-disorder universal specifiers, and 514 catalog placeholders in Specifiers mode.",
+    source: "data/specifiers-content.json",
+    toolHint: 'npm run clinical:review -- --write --kind specifier --code "<rowKey>" --reviewed-by',
+    signedRows,
+    signableNow,
+    indigenousHoldRows,
+    awaitingPrerequisites,
+    needsSigningSummary:
+      signableNow === 0
+        ? `All 89 written specifier definitions (71 disorder-specific + 18 universal) are signed off. The remaining ${awaitingPrerequisites} catalog rows have no written definition text yet (definition: null) and cannot be signed until definitions are authored.`
+        : `${signableNow} written specifier(s) ready to sign now; ${awaitingPrerequisites} catalog placeholders awaiting written definition text.`,
+    queueFamilyId: "specifiers",
+  });
+}
+
+function therapyDomain(): SignOffDomainSummary {
+  const signedBySlug =
+    (
+      signableTherapySlugList as {
+        signedBySlug?: Record<string, { reviewedBy: string; reviewedAt: string | null }>;
+      }
+    ).signedBySlug ?? {};
+
+  const signedRows: SignedRecordRow[] = [];
+  const prerequisiteRows: UnsignedHoldRow[] = [];
+  let signableNow = 0;
+
+  for (const record of therapyRecords) {
+    const href = `/therapy-compass/${record.slug}`;
+    if (!therapyNeedsReview(record)) {
+      const meta = signedBySlug[record.slug];
+      signedRows.push({
+        domain: "therapy",
+        key: `signed-therapy:${record.slug}`,
+        id: record.slug,
+        title: record.name,
+        whatFor: `Evidence-based therapy profile (${record.category ?? "Psychological & psychosocial therapy"}) in Therapy Compass.`,
+        signedBy: meta?.reviewedBy?.trim() || "PsychSift",
+        signedAt: meta?.reviewedAt ?? null,
+        href,
+      });
+    } else if (signableTherapySlugs.has(record.slug)) {
+      signableNow += 1;
+    } else {
+      prerequisiteRows.push({
+        domain: "therapy",
+        domainName: "Therapy Compass records",
+        key: `prereq-therapy:${record.slug}`,
+        id: record.slug,
+        title: record.name,
+        reason:
+          "Has an empty references: [] list in src/data/therapies-source.json; npm run therapy:review unlocks it once at least one governed guideline reference is added.",
+        href,
+      });
+    }
+  }
+
+  return buildDomainSummary({
+    id: "therapy",
+    name: "Therapy Compass records",
+    whatFor: "205 psychological, psychosocial, and biological therapy profiles in Therapy Compass.",
+    source: "src/data/therapies-index.json, src/data/therapies-source.json",
+    toolHint: 'npm run therapy:review -- --write --slug "<slug>" --reviewed-by',
+    signedRows,
+    signableNow,
+    indigenousHoldRows: [],
+    awaitingPrerequisites: prerequisiteRows.length,
+    prerequisiteRows,
+    needsSigningSummary:
+      signableNow === 0
+        ? `All ${signedRows.length} therapies with source references are signed off. The remaining ${prerequisiteRows.length} therapy records have empty references: [] arrays and become signable once guideline references are added.`
+        : `${signableNow} therapy record(s) ready to sign now; ${prerequisiteRows.length} awaiting guideline references.`,
+    queueFamilyId: "therapy",
+  });
+}
+
+function dictionaryDomain(): SignOffDomainSummary {
+  const signedRows: SignedRecordRow[] = [];
+  const indigenousHoldRows: UnsignedHoldRow[] = [];
+  let signableNow = 0;
+  let awaitingPrerequisites = 0;
+
+  for (const review of dictionaryDefinitionReviews) {
+    const href = `/dictionary/${review.entrySlug}`;
+    const title = `${review.title} — ${review.verdict}`;
+    if (isDefinitionReviewClinicallyApproved(review) && review.clinicalApproval) {
+      signedRows.push({
+        domain: "dictionary",
+        key: `signed-dictionary-rewrite:${review.id}`,
+        id: review.id,
+        title,
+        whatFor: `Clinician-approved proposed wording rewrite for /dictionary/${review.entrySlug}.`,
+        signedBy: review.clinicalApproval.reviewer.trim(),
+        signedAt: review.clinicalApproval.reviewedAt,
+        href,
+      });
+    } else if (review.proposedWording) {
+      if (isIndigenousContent([JSON.stringify(review)])) {
+        indigenousHoldRows.push({
+          domain: "dictionary",
+          domainName: "Dictionary editorial layer",
+          key: `hold-dictionary-rewrite:${review.id}`,
+          id: review.id,
+          title,
+          reason: "Held for Aboriginal and Torres Strait Islander governance review.",
+          href,
+        });
+      } else {
+        signableNow += 1;
+      }
+    } else {
+      awaitingPrerequisites += 1;
+    }
+  }
+
+  const awaitingTool = dictionarySenseDrafts.length;
+
+  return buildDomainSummary({
+    id: "dictionary",
+    name: "Dictionary editorial rewrites & sense drafts",
+    whatFor:
+      "96 editorial definition reviews (28 with proposed rewrites, 68 verdicts without rewrite text) and 333 unpublished sense drafts.",
+    source: "src/data/dictionary-definition-reviews.json, src/data/dictionary-sense-drafts.json",
+    toolHint: 'npm run clinical:review -- --write --kind dictionary-rewrite --code "<id>" --reviewed-by',
+    signedRows,
+    signableNow,
+    indigenousHoldRows,
+    awaitingPrerequisites,
+    awaitingTool,
+    needsSigningSummary:
+      signableNow === 0
+        ? `All ${signedRows.length} dictionary reviews that propose a rewrite are signed off. The remaining ${awaitingPrerequisites} definition reviews record a verdict without proposed rewrite text yet, and the ${awaitingTool} unpublished sense drafts have no sign-off tool yet.`
+        : `${signableNow} proposed rewrite(s) ready to sign; ${awaitingPrerequisites} verdicts have no rewrite text yet; ${awaitingTool} sense drafts have no sign-off tool yet.`,
+    queueFamilyId: "dictionary",
+  });
+}
+
+function sourcesDomain(): SignOffDomainSummary {
+  const activeRecords = sourceAcquisitionRecords.filter((record) => record.disposition !== "rejected");
+  const rejectedCount = sourceAcquisitionRecords.length - activeRecords.length;
+  const signedRows: SignedRecordRow[] = [];
+  const indigenousHoldRows: UnsignedHoldRow[] = [];
+  let signableNow = 0;
+
+  for (const record of activeRecords) {
+    if (record.validationStatus !== "unverified") {
+      signedRows.push({
+        domain: "sources",
+        key: `signed-source:${record.id}`,
+        id: record.id,
+        title: record.title,
+        whatFor: `Governed Rung ${record.rung} (${record.jurisdiction}) clinical source (${record.publisher}, ${record.disposition}).`,
+        signedBy: record.attestedBy?.trim() || "PsychSift",
+        signedAt: record.attestedAt ?? record.capturedAt ?? null,
+        href: null,
+      });
+    } else if (isIndigenousContent([JSON.stringify(record)])) {
+      indigenousHoldRows.push({
+        domain: "sources",
+        domainName: "Source acquisitions",
+        key: `hold-source:${record.id}`,
+        id: record.id,
+        title: record.title,
+        reason: "Held for Aboriginal and Torres Strait Islander governance review.",
+        href: null,
+      });
+    } else {
+      signableNow += 1;
+    }
+  }
+
+  return buildDomainSummary({
+    id: "sources",
+    name: "Governed source acquisitions",
+    whatFor: `${activeRecords.length} active clinical guidelines, legislation, and reference sources verified under the 5-rung acquisition protocol (${rejectedCount} rejected captures are excluded).`,
+    source: "src/data/source-acquisitions.json",
+    toolHint: 'npm run clinical:review -- --write --kind source --code "<id>" --reviewed-by',
+    signedRows,
+    signableNow,
+    indigenousHoldRows,
+    needsSigningSummary:
+      indigenousHoldRows.length > 0 && signableNow === 0
+        ? `All ${signedRows.length} non-Indigenous active sources are signed off. ${indigenousHoldRows.length} Indigenous health and SEWB sources are held for Aboriginal governance review.`
+        : `${signableNow} source(s) ready to sign now; ${indigenousHoldRows.length} held for Aboriginal governance review.`,
+    queueFamilyId: "sources",
+  });
+}
+
+function servicesDomain(): SignOffDomainSummary {
+  type ServiceReviewEntry = {
+    id: string;
+    status: string;
+    reviewedBy: string | null;
+    reviewedAt: string | null;
+    reviewedContentSha256: string | null;
+  };
+  const entries = (serviceRecordsReviewJson as { entries: ServiceReviewEntry[] }).entries ?? [];
+  const canonicalById = new Map(canonicalServiceRecords().map((service) => [service.id, service]));
+  const signedRows: SignedRecordRow[] = [];
+  const indigenousHoldRows: UnsignedHoldRow[] = [];
+  let signableNow = 0;
+
+  for (const entry of entries) {
+    const service = canonicalById.get(entry.id);
+    const title = service ? `${service.name} (${entry.id})` : entry.id;
+    const signedBy = entry.reviewedBy?.trim();
+    if (entry.status === "reviewed" && signedBy && entry.reviewedAt) {
+      signedRows.push({
+        domain: "services",
+        key: `signed-service:${entry.id}`,
+        id: entry.id,
+        title,
+        whatFor: service
+          ? `Curated WA service directory record (${service.category} · ${service.catchments.slice(0, 2).join(", ")}).`
+          : "Curated WA mental health service directory record.",
+        signedBy,
+        signedAt: entry.reviewedAt,
+        href: "/services",
+      });
+    } else if (isIndigenousContent([JSON.stringify(service ?? entry)])) {
+      indigenousHoldRows.push({
+        domain: "services",
+        domainName: "WA service directory records",
+        key: `hold-service:${entry.id}`,
+        id: entry.id,
+        title,
+        reason: "Held for Aboriginal and Torres Strait Islander governance review.",
+        href: "/services",
+      });
+    } else {
+      signableNow += 1;
+    }
+  }
+
+  return buildDomainSummary({
+    id: "services",
+    name: "Stand-alone WA service directory records",
+    whatFor:
+      "25 curated WA mental health, crisis, postvention, youth, interpreter, and legal service records added after the 2026-08-24 site-content freeze.",
+    source: "data/service-records-review.json, src/lib/services-canonical-data/",
+    toolHint: 'npm run clinical:review -- --write --kind service --code "<SVC-...>" --reviewed-by',
+    signedRows,
+    signableNow,
+    indigenousHoldRows,
+    needsSigningSummary:
+      indigenousHoldRows.length > 0 && signableNow === 0
+        ? `All ${signedRows.length} non-Indigenous stand-alone WA service records are signed off. ${indigenousHoldRows.length} Aboriginal-specific service records (Thirrili, StandBy WA, Kimberley CADS Youth, Legal Yarn) are held for Aboriginal governance review.`
+        : `${signableNow} service record(s) ready to sign now; ${indigenousHoldRows.length} held for Aboriginal governance review.`,
+    queueFamilyId: null,
+  });
+}
+
+/**
+ * Complete sign-off ledger across all 13 governed domains in the repository:
+ * every item that has been signed off (who signed it, when, and what it is for)
+ * and every item that still needs signing off, grouped by why it is waiting.
+ */
+export function loadSignOffLedger(): SignOffLedger {
+  const domains: readonly SignOffDomainSummary[] = [
+    todayRulesDomain(),
+    formsDomain(),
+    mhaSectionsDomain(),
+    mhaTimeframesDomain(),
+    cpStandardsDomain(),
+    culturalNotesDomain(),
+    differentialsDomain(),
+    formulationDomain(),
+    specifiersDomain(),
+    therapyDomain(),
+    dictionaryDomain(),
+    sourcesDomain(),
+    servicesDomain(),
+  ];
+
+  const signedByTotals: Record<string, number> = {};
+  let totalGoverned = 0;
+  let totalSigned = 0;
+  let totalWaiting = 0;
+  let signableNow = 0;
+  let indigenousHold = 0;
+  let awaitingPrerequisites = 0;
+  let awaitingTool = 0;
+
+  for (const domain of domains) {
+    totalGoverned += domain.total;
+    totalSigned += domain.signedCount;
+    totalWaiting += domain.waitingCount;
+    signableNow += domain.needsSigning.signableNow;
+    indigenousHold += domain.needsSigning.indigenousHold;
+    awaitingPrerequisites += domain.needsSigning.awaitingPrerequisites;
+    awaitingTool += domain.needsSigning.awaitingTool;
+    for (const [signer, count] of Object.entries(domain.signedByCounts)) {
+      signedByTotals[signer] = (signedByTotals[signer] ?? 0) + count;
+    }
+  }
+
+  return {
+    domains,
+    totalGoverned,
+    totalSigned,
+    totalWaiting,
+    signedByTotals,
+    waitingByCategory: {
+      signableNow,
+      indigenousHold,
+      awaitingPrerequisites,
+      awaitingTool,
+    },
   };
 }

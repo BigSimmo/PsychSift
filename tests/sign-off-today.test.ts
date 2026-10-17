@@ -248,13 +248,28 @@ describe("tool-order and pin-awareness", () => {
     expect(staleWaiting).toContain(reviewed);
   });
 
-  it("the signable therapy projection matches the source and the tool's walk queue", async () => {
+  it("the signable therapy projection matches the source, the tool's walk queue, and every signed therapy's reviewer metadata", async () => {
     const therapy = await import("../scripts/review-therapy.mjs");
-    const records = therapiesSource as { slug: string; reviewStatus: string }[];
+    const records = therapiesSource as {
+      slug: string;
+      reviewStatus: string;
+      reviewedBy?: string;
+      reviewedAt?: string;
+    }[];
     const walk = new Set<string>(therapy.therapyWalkQueue(records));
     const projected = new Set<string>(signableTherapySlugList.slugs);
+    const signedBySlug = (
+      signableTherapySlugList as { signedBySlug: Record<string, { reviewedBy: string; reviewedAt: string }> }
+    ).signedBySlug;
     for (const record of records.filter((item) => item.reviewStatus !== "reviewed")) {
       expect(projected.has(record.slug), record.slug).toBe(walk.has(record.slug));
+      expect(signedBySlug[record.slug], record.slug).toBeUndefined();
+    }
+    for (const record of records.filter((item) => item.reviewStatus === "reviewed")) {
+      expect(signedBySlug[record.slug], record.slug).toEqual({
+        reviewedBy: record.reviewedBy,
+        reviewedAt: record.reviewedAt,
+      });
     }
   });
 });

@@ -8,7 +8,12 @@ export const metadata: Metadata = {
 };
 
 type DeveloperClinicalSignOffPageProps = {
-  searchParams?: Promise<{ family?: string | string[]; page?: string | string[] }>;
+  searchParams?: Promise<{
+    family?: string | string[];
+    page?: string | string[];
+    domain?: string | string[];
+    signedPage?: string | string[];
+  }>;
 };
 
 function firstValue(value: string | string[] | undefined): string | undefined {
@@ -31,10 +36,13 @@ function parsePageParam(value: string | string[] | undefined): number {
 export default async function DeveloperClinicalSignOffPage({ searchParams }: DeveloperClinicalSignOffPageProps) {
   const params = searchParams ? await searchParams : {};
   const family = firstValue(params.family);
+  const domain = firstValue(params.domain);
   return (
     <SignOffQueuePageContent
       {...(family === undefined ? {} : { requestedFamily: family })}
       requestedPage={parsePageParam(params.page)}
+      {...(domain === undefined ? {} : { requestedDomain: domain })}
+      requestedSignedPage={parsePageParam(params.signedPage)}
     />
   );
 }
