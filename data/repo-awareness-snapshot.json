@@ -16332,6 +16332,14 @@
         "checks": "typecheck, vitest (filters, sheets, search band, dom panels), prettier"
       },
       {
+        "date": "2026-10-17",
+        "ref": "claude/add-prlanded-skill",
+        "head": "7e6fd2d557d53e22dfa6ea37b8921007fe4b0dfa",
+        "scope": "prlanded",
+        "outcome": "PASS (0 blocking findings; added .agents/skills/prlanded canonical skill, registered cross-surface twin in list-database-skills.mjs, updated skill inventory tests, and recorded prlanded proofs for PRs #3581/#3587 and #3596)",
+        "checks": "npm run check:skills, vitest run tests/database-skills.test.ts tests/repository-skill-inventory.test.ts (15/15), npm run docs:maintain:check, check-format-changed"
+      },
+      {
         "date": "2026-07-13",
         "ref": "claude/icon-glyph-refinements",
         "head": "7e807c1c7346ae998557911421500dce70fe3cd0",
