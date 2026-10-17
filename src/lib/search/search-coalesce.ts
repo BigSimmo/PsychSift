@@ -27,7 +27,7 @@ export function isSourceLibrarySearchMode(mode: SearchCoalesceMode) {
   return mode === "documents" || mode === "differentials";
 }
 
-export function buildSearchCoalesceKey(body: SearchCoalesceKeyInput, ownerId?: string | null, publicOnly = false) {
+export function scopedSearchKey(body: SearchCoalesceKeyInput, ownerId?: string | null, publicOnly = false) {
   return JSON.stringify({
     ownerId: ownerId ?? undefined,
     publicOnly,
@@ -42,8 +42,6 @@ export function buildSearchCoalesceKey(body: SearchCoalesceKeyInput, ownerId?: s
     includeRelatedDocuments: body.includeRelatedDocuments,
   });
 }
-
-export const scopedSearchKey = buildSearchCoalesceKey;
 
 export function callerAbortReason(signal: AbortSignal): Error {
   return signal.reason instanceof Error ? signal.reason : new DOMException("The operation was aborted.", "AbortError");
