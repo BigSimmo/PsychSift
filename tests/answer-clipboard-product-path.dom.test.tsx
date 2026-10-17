@@ -306,6 +306,8 @@ it("R3 keeps a retrieval deadline warning above the answer, with no amber summar
   const notes = screen.getAllByTestId("current-answer-degradation");
   expect(notes).toHaveLength(1);
   expect(notes[0]).not.toHaveTextContent("AI summary unavailable");
+  expect(notes[0]).not.toHaveTextContent("source-backed portion");
+  expect(notes[0]).toHaveTextContent("Source evidence could not be confirmed");
 });
 
 it.each([

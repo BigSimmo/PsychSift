@@ -43,8 +43,10 @@ import { answerSurface, cn } from "@/components/ui-primitives";
 import { isCurrencyReviewWarning, type AnswerRenderModel } from "@/lib/answer-render-policy";
 import { demoAnswerDisclosure } from "@/lib/answer-client-payload";
 import { formatRestoredAnswerAge } from "@/lib/answer-thread-storage";
-import { publicFallbackReason } from "@/lib/rag/rag-fallback-reason";
-import { answerSummaryUnavailableReason } from "@/components/clinical-dashboard/answer-provider-notice";
+import {
+  answerDegradationNoteText,
+  answerSummaryUnavailableReason,
+} from "@/components/clinical-dashboard/answer-provider-notice";
 import { AnswerBuildDetails } from "@/components/clinical-dashboard/answer-build-details";
 import type { TimedAnswerProgressUpdate } from "@/components/clinical-dashboard/answer-progress";
 import type {
@@ -648,7 +650,7 @@ function StagedAnswerResultSurfaceImpl({
                 data-testid="current-answer-degradation"
                 className="text-sm text-[color:var(--text-muted)]"
               >
-                {publicFallbackReason(answer.fallbackReasonCode ?? "unknown")}
+                {answerDegradationNoteText(answer)}
               </p>
             ) : null}
             {typeof restoredSavedAt === "number" && Number.isFinite(restoredSavedAt) ? (

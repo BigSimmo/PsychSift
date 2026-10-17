@@ -59,6 +59,19 @@ export function answerSummaryUnavailableReason(answer: AnswerStateInput): string
   return publicFallbackReason(code);
 }
 
+export const ANSWER_NO_CONFIRMED_SOURCES_TEXT =
+  "Source evidence could not be confirmed, so no verified passages are shown. Please try again.";
+
+/**
+ * The sentence above a degraded answer. A provider code's own wording promises a verified
+ * source-backed portion, which is false when no source came back (a retrieval deadline, for one).
+ */
+export function answerDegradationNoteText(answer: AnswerStateInput): string {
+  const code = answer.fallbackReasonCode ?? "unknown";
+  if (isProviderGenerationFallbackCode(code) && !answer.sources?.length) return ANSWER_NO_CONFIRMED_SOURCES_TEXT;
+  return publicFallbackReason(code);
+}
+
 /**
  * Amber line directly under the overseas notice when the model could not write the answer
  * (owner decision, 17 Oct 2026). It replaced the grey sentence above the question, which pushed the
