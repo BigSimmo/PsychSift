@@ -9,16 +9,22 @@ start_dir="$(mktemp -d)" || {
 trap 'rm -rf -- "$start_dir"' EXIT
 cat > "$start_dir/payload"
 : > "$start_dir/bootstrap-output"
+printf '0\n' > "$start_dir/bootstrap-status"
 if [ "${CLAUDE_CODE_REMOTE:-}" = "true" ]; then
-  # Source in a fresh shell so bootstrap's exported Node PATH reaches every later step. Disable
-  # errexit only around bootstrap so the dependent runner always gets a chance to execute.
-  bash -c 'status=0; source "$1" < "$3/payload" > "$3/bootstrap-output" || status=$?; printf "%s\n" "$status" > "$3/bootstrap-status"; node "$2" "$3"' _ \
-    "$repo_root/.claude/hooks/session-start.sh" "$repo_root/scripts/claude-session-start.mjs" "$start_dir"
+  # A source in an OR-list disables errexit inside the bootstrap. Use an EXIT trap in a fresh
+  # shell instead: it records the first failure (including explicit exit), retains exported PATH,
+  # and starts the independent guidance runner without resuming failed bootstrap commands.
+  bash -s -- "$repo_root/.claude/hooks/session-start.sh" "$repo_root/scripts/claude-session-start.mjs" "$start_dir" <<'BOOTSTRAP_WRAPPER'
+exec 3>&1
+trap 'status=$?; trap - EXIT; printf "%s\n" "$status" > "$3/bootstrap-status"; runner_status=0; node "$2" "$3" >&3 || runner_status=$?; exit "$runner_status"' EXIT
+source "$1" < "$3/payload" > "$3/bootstrap-output"
+BOOTSTRAP_WRAPPER
 else
   node "$repo_root/scripts/claude-session-start.mjs" "$start_dir"
 fi
 status=$?
 if [ "$status" -ne 0 ]; then
-  printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"Session bootstrap failed; dependent setup was skipped. Review setup diagnostics before running checks."}}'
+  cat "$start_dir/bootstrap-output" >&2
+  printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"Session hook runner failed; cloud provisioning was not verified. Review hook diagnostics before running checks."}}'
 fi
 exit 0

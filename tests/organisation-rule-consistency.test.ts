@@ -102,6 +102,30 @@ describe("active client rule consistency", () => {
     expect(semgrepCommands("command -v semgrep\nSemgrep rules catalog\n")).toEqual([]);
   });
 
+  it("checks raw commands beside backticks without borrowing another command's flags or environment", () => {
+    const file = `${SEMGREP_ROOT}references/mixed-example.md`;
+    expect(rulesFor({ ...sources, [file]: "semgrep --config ./local.yml # see `reference`" })).toContain(
+      "semgrep-metrics",
+    );
+    expect(rulesFor({ ...sources, [file]: "`semgrep --metrics=off --version`; semgrep --version" })).toContain(
+      "semgrep-metrics",
+    );
+    const commands = semgrepCommands(
+      "SEMGREP_ENABLE_VERSION_CHECK=0 semgrep --metrics=off --version && semgrep --metrics=off --version",
+    );
+    expect(commands).toHaveLength(2);
+    expect(commands[1].source).not.toContain("SEMGREP_ENABLE_VERSION_CHECK=0");
+    expect(
+      rulesFor({
+        ...sources,
+        [workflow]: sources[workflow].replace(
+          "SEMGREP_ENABLE_VERSION_CHECK=0 semgrep --metrics=off --version",
+          "semgrep --metrics=off --pro --validate --config p/default # see `reference`",
+        ),
+      }),
+    ).toContain("network-preflight");
+  });
+
   it("rejects registry or Pro discovery before approval even with telemetry disabled", () => {
     const localVersion = "SEMGREP_ENABLE_VERSION_CHECK=0 semgrep --metrics=off --version";
     const registryProbe = "SEMGREP_ENABLE_VERSION_CHECK=0 semgrep --metrics=off --pro --validate --config p/default";
@@ -196,8 +220,19 @@ describe.skipIf(process.platform === "win32")("approved scan batch completion", 
       `
 const fs = require('node:fs');
 const [json, sarif, mode] = process.argv.slice(2);
-fs.writeFileSync(json, mode === 'invalid' ? '{invalid' : JSON.stringify({results: [], errors: mode === 'reported-error' ? [{message: 'synthetic scan error'}] : []}));
-if (mode !== 'missing') fs.writeFileSync(sarif, JSON.stringify({runs: [{results: []}]}));
+const errors = {
+  'reported-error': [{level: 'error', message: 'synthetic scan error'}],
+  'missing-level': [{message: 'unclassified synthetic scan error'}],
+  'unknown-level': [{level: 'other', message: 'unknown synthetic scan diagnostic'}],
+  'warning': [{level: 'warn', message: 'synthetic warning'}],
+};
+fs.writeFileSync(json, mode === 'invalid' ? '{invalid' : JSON.stringify({results: [], errors: errors[mode] || []}));
+const run = mode === 'optional-sarif'
+  ? {tool: {driver: {name: 'synthetic-semgrep'}}}
+  : {tool: {driver: {name: 'synthetic-semgrep', rules: []}}, results: []};
+if (mode === 'bad-sarif-rules') run.tool.driver.rules = {};
+if (mode === 'bad-sarif-results') run.results = {};
+if (mode !== 'missing') fs.writeFileSync(sarif, JSON.stringify({version: '2.1.0', runs: [run]}));
 process.exit(mode === 'failed-child' ? 7 : 0);
 `,
     );
@@ -241,15 +276,34 @@ wait_semgrep_scans "$expected"
     expect(result.stdout).toContain("2 approved scans completed with valid JSON/SARIF pairs");
   });
 
-  it.each(["failed-child", "missing", "invalid", "reported-error"])(
-    "rejects %s even when another scan succeeds",
-    (mode) => {
-      const result = runBatch([mode, "good"]);
-      expect(result.status).toBe(1);
-      expect(result.stderr).toContain("incomplete scan batch");
-      expect(result.stdout).not.toContain("approved scans completed");
-    },
-  );
+  it.each([
+    "failed-child",
+    "missing",
+    "invalid",
+    "reported-error",
+    "missing-level",
+    "unknown-level",
+    "bad-sarif-rules",
+    "bad-sarif-results",
+  ])("rejects %s even when another scan succeeds", (mode) => {
+    const result = runBatch([mode, "good"]);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("incomplete scan batch");
+    expect(result.stdout).not.toContain("approved scans completed");
+  });
+
+  it("reports explicit warnings without rejecting an otherwise complete batch", () => {
+    const result = runBatch(["warning", "good"]);
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stderr).toContain("1 warning-level scan diagnostics");
+    expect(result.stdout).toContain("2 approved scans completed");
+  });
+
+  it("accepts valid empty SARIF runs with optional rules and results omitted", () => {
+    const result = runBatch(["optional-sarif"]);
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout).toContain("1 approved scans completed");
+  });
 
   it("rejects an unlaunched stale-output job and preserves its prior result", () => {
     const result = runBatch(["good", "good"], true);

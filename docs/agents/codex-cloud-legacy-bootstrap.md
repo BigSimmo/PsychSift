@@ -29,6 +29,13 @@ target and destination before staging all three wrappers. It refuses unmanaged
 regular destination files and runtime targets inside the shim directory. Atomic
 replacement replaces a destination symlink itself, preserving its runtime target.
 
+Maintenance does not execute or infer a selection from an older profile without
+a checkout marker. Select `CODEX_CLOUD_ACCESS_PROFILE=offline` or `connected`
+explicitly when migrating it; maintenance then reruns setup with that selection
+and any inherited base pin. Without an explicit selection it stops with guidance
+instead of silently changing the access profile. Setup still rejects unmanaged
+or symbolic-link runtime profiles.
+
 The active shell policy is written to `${CODEX_HOME:-$HOME/.codex}/config.toml`.
 Unrelated settings are preserved and the managed block is replaced atomically.
 An existing config destination must be a regular file; directories and symbolic

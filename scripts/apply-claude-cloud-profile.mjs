@@ -247,6 +247,10 @@ function run() {
     return;
   }
   if (checkOwner) {
+    if (!entry(manifestPath))
+      fail(
+        "configuration home is unclaimed; install the profile first, or explicitly --adopt identical legacy files before running plugins-only setup",
+      );
     readOwnership();
     note("configuration ownership check passed; nothing was written");
     return;
@@ -351,49 +355,49 @@ function run() {
     if (existing === null) {
       // Do not touch the malformed settings file or its ownership records.
     } else {
-    const settings = structuredClone(existing);
-    const desiredByKey = new Map(desiredSettings.map((item) => [JSON.stringify(item.path), item]));
-    const previousByKey = new Map(previous.settings.map((item) => [JSON.stringify(item.path), item]));
-    const nextByKey = new Map(previousByKey);
-    for (const [key, item] of previousByKey) {
-      const current = getSetting(settings, item.path);
-      if (current.present && !equal(current.value, item.value)) {
-        note(`preserved host setting modification: ${item.path.join(".")}`);
-        kept += 1;
-        continue;
+      const settings = structuredClone(existing);
+      const desiredByKey = new Map(desiredSettings.map((item) => [JSON.stringify(item.path), item]));
+      const previousByKey = new Map(previous.settings.map((item) => [JSON.stringify(item.path), item]));
+      const nextByKey = new Map(previousByKey);
+      for (const [key, item] of previousByKey) {
+        const current = getSetting(settings, item.path);
+        if (current.present && !equal(current.value, item.value)) {
+          note(`preserved host setting modification: ${item.path.join(".")}`);
+          kept += 1;
+          continue;
+        }
+        const desired = desiredByKey.get(key);
+        if (!desired) {
+          deleteSetting(settings, item.path);
+          nextByKey.delete(key);
+        } else {
+          setSetting(settings, item.path, desired.value);
+          nextByKey.set(key, desired);
+        }
+        desiredByKey.delete(key);
       }
-      const desired = desiredByKey.get(key);
-      if (!desired) {
-        deleteSetting(settings, item.path);
-        nextByKey.delete(key);
-      } else {
-        setSetting(settings, item.path, desired.value);
-        nextByKey.set(key, desired);
+      for (const [key, item] of desiredByKey) {
+        // A modified owned setting remains host-owned in practice; never reclaim it on an update.
+        if (previousByKey.has(key)) continue;
+        const current = getSetting(settings, item.path);
+        if (current.present && !equal(current.value, item.value))
+          fail(
+            `host setting collision at ${item.path.join(".")}; preserve it and use an isolated CLAUDE_CONFIG_DIR; --adopt accepts identical content only`,
+          );
+        if (!current.present || adopt) {
+          setSetting(settings, item.path, item.value);
+          nextByKey.set(key, item);
+        }
       }
-      desiredByKey.delete(key);
-    }
-    for (const [key, item] of desiredByKey) {
-      // A modified owned setting remains host-owned in practice; never reclaim it on an update.
-      if (previousByKey.has(key)) continue;
-      const current = getSetting(settings, item.path);
-      if (current.present && !equal(current.value, item.value))
-        fail(
-          `host setting collision at ${item.path.join(".")}; preserve it and use an isolated CLAUDE_CONFIG_DIR; --adopt accepts identical content only`,
-        );
-      if (!current.present || adopt) {
-        setSetting(settings, item.path, item.value);
-        nextByKey.set(key, item);
-      }
-    }
-    next.settings = [...nextByKey.values()];
-    if (!equal(settings, existing))
-      operations.push({
-        kind: "write",
-        path: settingsPath,
-        relative: "settings.json",
-        content: `${JSON.stringify(settings, null, 2)}\n`,
-      });
-    else note("settings.json already matches the profile or preserved host values");
+      next.settings = [...nextByKey.values()];
+      if (!equal(settings, existing))
+        operations.push({
+          kind: "write",
+          path: settingsPath,
+          relative: "settings.json",
+          content: `${JSON.stringify(settings, null, 2)}\n`,
+        });
+      else note("settings.json already matches the profile or preserved host values");
     }
   }
   // Preflight memory parents too; host memory entries themselves, including symlinks, always win.

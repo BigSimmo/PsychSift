@@ -155,7 +155,13 @@ for tier in "${selected[@]}" "${background_tiers[@]}"; do
   case "$skip_list" in *",$tier,"*) continue ;; esac
   case "$tier" in
     profile|plugins)
-      if ! node scripts/apply-claude-cloud-profile.mjs --force --quiet --check-owner; then
+      admission=(--check-owner)
+      if [ "$tier" = "profile" ] && [ ! -e "$claude_home/.cloud-profile-install.json" ] && [ ! -L "$claude_home/.cloud-profile-install.json" ]; then
+        # Profile-first setup may establish ownership after a complete read-only install preflight.
+        # Plugins-only setup must use an existing receipt; an absent manifest is never ownership.
+        admission=(--dry-run)
+      fi
+      if ! node scripts/apply-claude-cloud-profile.mjs --force --quiet "${admission[@]}"; then
         warn "configuration ownership refused; no tiers were run; use an isolated CLAUDE_CONFIG_DIR"
         if [ "$session_mode" -eq 1 ]; then
           printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"claude-cloud configuration ownership refused; no tiers were run. Use an isolated CLAUDE_CONFIG_DIR or review the original installation."}}'

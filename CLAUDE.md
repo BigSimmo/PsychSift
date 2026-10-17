@@ -113,12 +113,10 @@ It also guards user-owned auto-merge state on every PR branch, drift-manifest st
 static gate (lint + source typecheck; override `SKIP_STATIC_GUARD=1`). The auto-merge guard has no
 automation override; the other guards retain their documented override env vars.
 
-Domain changes (auth, Supabase, ingestion, answer generation, search/ranking, clinical
-output, source governance) follow the [canonical gate selector](docs/agents/verification-gates.md#gate-selection):
-use the smallest relevant offline domain check, adding `npm run check:production-readiness:ci`
-when readiness or configuration structure is in scope. The bare
-`npm run check:production-readiness` is the release-mode gate for production release or
-activation; retain all applicable clinical, privacy, legal, security and provider approvals.
+Domain changes follow [gate selection](docs/agents/verification-gates.md#gate-selection): run the
+smallest relevant offline domain check, adding `npm run check:production-readiness:ci` for readiness
+or configuration structure. Reserve `npm run check:production-readiness` for production release or
+activation with all applicable clinical, privacy, legal, security and provider approvals.
 
 CI (`.github/workflows/ci.yml`) is risk-scoped: a `changes` job classifies paths, `static-pr`
 always runs a small baseline and conditionally selects docs/workflow or heavy static checks,

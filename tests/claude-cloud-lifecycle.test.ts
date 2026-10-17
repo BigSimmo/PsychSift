@@ -8,6 +8,7 @@ import {
   mkdtempSync,
   readFileSync,
   readdirSync,
+  realpathSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -119,6 +120,43 @@ describe("Claude profile ownership lifecycle", () => {
     const other = profileFixture(fixture.home);
     expect(other.run().status).toBe(0);
   });
+
+  it("does not certify ownership when no installation manifest exists", () => {
+    const fixture = profileFixture();
+    const before = snapshot(fixture.home);
+    const result = fixture.run(["--check-owner"]);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("configuration home is unclaimed");
+    expect(snapshot(fixture.home)).toEqual(before);
+  });
+
+  it.each(["{malformed", "null", "[]"])(
+    "uninstalls independent owned files while preserving malformed settings %s and their ownership records",
+    (malformed) => {
+      const fixture = profileFixture();
+      expect(fixture.run().status).toBe(0);
+      const manifest = join(fixture.home, ".cloud-profile-install.json");
+      const ownedSettings = JSON.parse(readFileSync(manifest, "utf8")).settings;
+      const settingsPath = join(fixture.home, "settings.json");
+      put(settingsPath, malformed);
+      const before = snapshot(fixture.home);
+      expect(fixture.run(["--uninstall", "--dry-run"]).status).toBe(0);
+      expect(snapshot(fixture.home)).toEqual(before);
+      const result = fixture.run(["--uninstall"]);
+      expect(result.status, result.stderr).toBe(0);
+      expect(result.stdout).toContain("preserved malformed host settings");
+      expect(readFileSync(settingsPath, "utf8")).toBe(malformed);
+      expect(JSON.parse(readFileSync(manifest, "utf8")).settings).toEqual(ownedSettings);
+      expect(existsSync(join(fixture.home, "CLAUDE.md"))).toBe(false);
+      expect(existsSync(join(fixture.home, "skills", "retired", "SKILL.md"))).toBe(false);
+      expect(
+        readFileSync(
+          join(fixture.home, "projects", fixture.source.replace(/[/\\:]/g, "-"), "memory", "MEMORY.md"),
+          "utf8",
+        ),
+      ).toBe("Synthetic reusable seed\n");
+    },
+  );
 
   it("refuses a second checkout sharing a home even when adoption is requested", () => {
     const first = profileFixture();
@@ -264,6 +302,11 @@ function setupFixture() {
     config,
     markers,
     env,
+    claim: (selectedConfig = config) =>
+      put(
+        join(selectedConfig, ".cloud-profile-install.json"),
+        JSON.stringify({ version: 1, source: realpathSync(source), files: {}, settings: [] }),
+      ),
     run: (args: string[], extra: Record<string, string> = {}) =>
       spawnSync("bash", [script, ...args], { encoding: "utf8", env: { ...env, ...extra } }),
   };
@@ -336,6 +379,36 @@ describe.skipIf(process.platform === "win32")("Claude cached setup uses active r
     },
   );
 
+  it.each([false, true])("refuses plugins-only setup in an unclaimed home (legacy=%s)", (legacy) => {
+    const fixture = setupFixture();
+    if (legacy) put(join(fixture.config, "CLAUDE.md"), "Unmanaged legacy instructions\n");
+    put(join(fixture.source, ".claude", "settings.json"), '{"enabledPlugins":{"fixture@market":true}}');
+    executable(join(fixture.bins, "claude"), 'printf "claude invoked\\n" >> "$FIXTURE_TRACE"');
+    const before = snapshot(fixture.config);
+    const result = fixture.run(["plugins"]);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("configuration home is unclaimed");
+    expect(snapshot(fixture.config)).toEqual(before);
+    expect(existsSync(fixture.env.FIXTURE_TRACE)).toBe(false);
+    expect(existsSync(fixture.markers)).toBe(false);
+  });
+
+  it("lets profile-first setup establish durable ownership before invoking plugins", () => {
+    const fixture = setupFixture();
+    put(join(fixture.source, ".claude", "cloud-profile", "CLAUDE.md"), "Synthetic source instructions\n");
+    put(join(fixture.source, ".claude", "settings.json"), '{"enabledPlugins":{"fixture@market":true}}');
+    executable(
+      join(fixture.bins, "claude"),
+      'test -f "$CLAUDE_CONFIG_DIR/.cloud-profile-install.json" || exit 9; printf "claude invoked\\n" >> "$FIXTURE_TRACE"',
+    );
+    const result = fixture.run(["profile", "plugins"]);
+    expect(result.status, result.stderr).toBe(0);
+    expect(JSON.parse(readFileSync(join(fixture.config, ".cloud-profile-install.json"), "utf8")).source).toBe(
+      realpathSync(fixture.source),
+    );
+    expect(readFileSync(fixture.env.FIXTURE_TRACE, "utf8")).toContain("claude invoked");
+  });
+
   it("blocks later plugin mutation after an unmanaged profile-file refusal", () => {
     const fixture = setupFixture();
     put(join(fixture.source, ".claude", "cloud-profile", "CLAUDE.md"), "Synthetic source instructions\n");
@@ -344,13 +417,14 @@ describe.skipIf(process.platform === "win32")("Claude cached setup uses active r
     executable(join(fixture.bins, "claude"), 'printf "claude invoked\\n" >> "$FIXTURE_TRACE"');
     const result = fixture.run(["profile", "plugins"]);
     expect(result.status).toBe(1);
-    expect(result.stderr).toContain("tier plugins: not run after profile refusal");
+    expect(result.stderr).toContain("configuration ownership refused");
     expect(existsSync(fixture.env.FIXTURE_TRACE)).toBe(false);
     expect(readFileSync(join(fixture.config, "CLAUDE.md"), "utf8")).toBe("Unmanaged host instructions\n");
   });
 
   it("repairs only the selected config cache and invalidates receipts when that identity changes", () => {
     const fixture = setupFixture();
+    fixture.claim();
     const defaultPlugin = join(fixture.home, ".claude", "plugins", "cache", "market", "plugin", "1");
     const selectedPlugin = join(fixture.config, "plugins", "cache", "market", "plugin", "1");
     for (const path of [defaultPlugin, selectedPlugin])
@@ -359,6 +433,7 @@ describe.skipIf(process.platform === "win32")("Claude cached setup uses active r
     expect(readFileSync(fixture.env.FIXTURE_TRACE, "utf8").trim()).toBe(selectedPlugin);
     expect(existsSync(join(defaultPlugin, "node_modules"))).toBe(false);
     const secondConfig = join(fixture.source, "second-config");
+    fixture.claim(secondConfig);
     const secondPlugin = join(secondConfig, "plugins", "cache", "market", "plugin", "1");
     put(join(secondPlugin, "package.json"), '{"dependencies":{"synthetic":"1"}}');
     const second = fixture.run(["plugins"], { CLAUDE_CONFIG_DIR: secondConfig });
@@ -376,7 +451,12 @@ describe.skipIf(process.platform === "win32")("Claude cached setup uses active r
 });
 
 describe.skipIf(process.platform === "win32")("sequential Claude SessionStart", () => {
-  function fixture(failBootstrap = false) {
+  function fixture(
+    failure: "none" | "exit" | "command" = "none",
+    pending = false,
+    remote = true,
+    runnerFailure: "none" | "process" | "unavailable" = "none",
+  ) {
     const source = sandbox();
     const home = sandbox();
     const trace = join(source, "trace");
@@ -384,9 +464,13 @@ describe.skipIf(process.platform === "win32")("sequential Claude SessionStart", 
       mkdirSync(join(source, "scripts"), { recursive: true });
       cpSync(join(root, "scripts", file), join(source, "scripts", file));
     }
+    const exportedBin = join(source, "exported-bin");
+    executable(join(exportedBin, "fixture-bootstrap-ready"), "exit 0");
+    if (runnerFailure === "unavailable") executable(join(exportedBin, "node"), "exit 127");
+    if (runnerFailure === "process") put(join(source, "scripts", "claude-session-start.mjs"), "process.exit(23);\n");
     put(
       join(source, ".claude", "hooks", "session-start.sh"),
-      `set -euo pipefail\ncat >/dev/null\nprintf 'bootstrap\\n' >> "$FIXTURE_TRACE"\n${failBootstrap ? "exit 7" : "export BOOTSTRAP_READY=yes"}\n`,
+      `set -euo pipefail\ncat >/dev/null\nprintf 'bootstrap\\n' >> "$FIXTURE_TRACE"\nprintf 'bootstrap diagnostic\\n'\nexport PATH="$FIXTURE_EXPORTED_BIN:$PATH"\n${failure === "exit" ? "exit 7" : failure === "command" ? 'false\nprintf "bootstrap-continued\\n" >> "$FIXTURE_TRACE"' : "export BOOTSTRAP_READY=yes"}\n`,
     );
     for (const [path, label, isNode] of [
       ["scripts/setup-claude-cloud.sh", "setup", false],
@@ -401,14 +485,33 @@ describe.skipIf(process.platform === "win32")("sequential Claude SessionStart", 
       put(
         join(source, path),
         isNode
-          ? `import { appendFileSync } from 'node:fs'; if(process.env.BOOTSTRAP_READY !== 'yes') process.exit(9); appendFileSync(process.env.FIXTURE_TRACE, '${label}\\n'); console.log(${JSON.stringify(context)});`
-          : `test "$BOOTSTRAP_READY" = yes || exit 9\nprintf '${label}\\n' >> "$FIXTURE_TRACE"\nprintf '%s\\n' '${context}'\n`,
+          ? `import { appendFileSync } from 'node:fs'; appendFileSync(process.env.FIXTURE_TRACE, '${label}\\n'); console.log(${JSON.stringify(context)});`
+          : `${label === "setup" && remote ? 'test "$BOOTSTRAP_READY" = yes || exit 9; fixture-bootstrap-ready || exit 8\n' : ""}printf '${label}\\n' >> "$FIXTURE_TRACE"\nprintf '%s\\n' '${context}'\n${label === "setup" && pending ? "printf '[claude-cloud] browsers python provisioning in the background; log: fixture\\n'" : ""}\n`,
       );
+    }
+    if (pending) {
+      // Exercise the actual setup log producer, replacing only detached execution so no installers run.
+      cpSync(join(root, "scripts", "setup-claude-cloud.sh"), join(source, "scripts", "setup-claude-cloud.sh"));
+      executable(join(exportedBin, "nohup"), "exit 0");
     }
     const result = spawnSync("bash", [join(source, "scripts", "claude-session-start.sh")], {
       encoding: "utf8",
       input: '{"hook_event_name":"SessionStart"}',
-      env: { ...process.env, HOME: home, CLAUDE_CODE_REMOTE: "true", CLAUDE_PROJECT_DIR: source, FIXTURE_TRACE: trace },
+      env: {
+        ...process.env,
+        HOME: home,
+        CLAUDE_CODE_REMOTE: remote ? "true" : "",
+        CLAUDE_PROJECT_DIR: source,
+        FIXTURE_TRACE: trace,
+        FIXTURE_EXPORTED_BIN: exportedBin,
+        ...(pending
+          ? {
+              CLAUDE_CLOUD_SESSION_TIERS: "",
+              CLAUDE_CLOUD_BACKGROUND_TIERS: "browsers python",
+              CLAUDE_CLOUD_SKIP_TIERS: "",
+            }
+          : {}),
+      },
     });
     return { result, trace };
   }
@@ -426,10 +529,49 @@ describe.skipIf(process.platform === "win32")("sequential Claude SessionStart", 
     const context = JSON.parse(result.stdout).hookSpecificOutput.additionalContext;
     expect(context).toBe("setup\n\nfreshness\n\nissues\n\npolicy\n\norganisation");
   });
-  it("keeps bootstrap failure nonfatal while skipping dependent setup", () => {
-    const { result, trace } = fixture(true);
+  it.each(["exit", "command"] as const)(
+    "keeps bootstrap %s failure nonfatal without suppressing errexit",
+    (failure) => {
+      const { result, trace } = fixture(failure);
+      expect(result.status).toBe(0);
+      expect(readFileSync(trace, "utf8").trim().split("\n")).toEqual([
+        "bootstrap",
+        "freshness",
+        "issues",
+        "policy",
+        "organisation",
+      ]);
+      const context = JSON.parse(result.stdout).hookSpecificOutput.additionalContext;
+      expect(context).toContain("cloud provisioning was skipped");
+      expect(context).toContain("bootstrap failed");
+      expect(context).toContain("policy");
+      expect(result.stderr).toContain("bootstrap diagnostic");
+    },
+  );
+
+  it("keeps pending background tools and their confirmation command in model context", () => {
+    const { result } = fixture("none", true);
     expect(result.status).toBe(0);
-    expect(readFileSync(trace, "utf8")).toBe("bootstrap\n");
-    expect(JSON.parse(result.stdout).hookSpecificOutput.additionalContext).toContain("dependent setup was skipped");
+    const context = JSON.parse(result.stdout).hookSpecificOutput.additionalContext;
+    expect(context).toContain("Cloud tools are still provisioning: browsers python");
+    expect(context).toContain("bash scripts/setup-claude-cloud.sh browsers python");
+  });
+
+  it.each(["process", "unavailable"] as const)(
+    "reports a failed hook runner (%s) without losing bootstrap diagnostics",
+    (runnerFailure) => {
+      const { result, trace } = fixture("none", false, true, runnerFailure);
+      expect(result.status).toBe(0);
+      expect(readFileSync(trace, "utf8")).toBe("bootstrap\n");
+      expect(JSON.parse(result.stdout).hookSpecificOutput.additionalContext).toContain("Session hook runner failed");
+      expect(result.stderr).toContain("bootstrap diagnostic");
+    },
+  );
+
+  it("does not invent bootstrap warnings outside a cloud session", () => {
+    const { result, trace } = fixture("none", false, false);
+    expect(result.status).toBe(0);
+    expect(readFileSync(trace, "utf8")).not.toContain("bootstrap");
+    expect(JSON.parse(result.stdout).hookSpecificOutput.additionalContext).not.toContain("bootstrap");
   });
 });

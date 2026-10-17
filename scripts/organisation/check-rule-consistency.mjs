@@ -61,9 +61,9 @@ export function semgrepCommands(text) {
     while (/\\\s*$/.test(source) && index + 1 < lines.length) {
       source = source.replace(/\\\s*$/, " ") + lines[++index].trim();
     }
-    // Inline code fragments are separate commands; one fragment's flag cannot
-    // pardon a different command on the same prose line.
-    const fragments = source.includes("`") ? source.split("`").filter((_, part) => part % 2 === 1) : [source];
+    // Inspect both inline code and raw text: a backticked comment must not hide
+    // a raw command. Each fragment keeps its own flags and environment settings.
+    const fragments = source.split("`");
     for (const fragment of fragments) {
       // A flag must belong to each invocation, not merely to an earlier command
       // joined with it by a shell separator.
@@ -74,7 +74,7 @@ export function semgrepCommands(text) {
           commands.push({
             line,
             text: commandFragment.slice(match.index, matches[position + 1]?.index).trim(),
-            source: fragment,
+            source: commandFragment,
           });
         }
       }

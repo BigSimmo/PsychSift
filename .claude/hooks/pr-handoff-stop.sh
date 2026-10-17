@@ -281,7 +281,8 @@ pre)
   [ -f "$marker" ] || exit 0
   [ "$tool_name" = "CronCreate" ] || exit 0
 
-  reason="Blocked: a cron entry parked on this pull request outlives the session, so nothing later could stop it. Where CI observation is authorized, inspect the current host's supported wait or terminal-event tools and use a bounded wait; if unavailable, report pending CI and stop. Follow docs/agents/pull-request-workflow.md#follow-ci. Unlock only on an explicit user ask, by deleting the marker: CLAUDE_ALLOW_PR_FOLLOW=1 rm \"$marker\"."
+  printf -v quoted_marker '%q' "$marker"
+  reason="Blocked: a cron entry parked on this pull request outlives the session, so nothing later could stop it. Where CI observation is authorized, inspect the current host's supported wait or terminal-event tools and use a bounded wait; if unavailable, report pending CI and stop. Follow docs/agents/pull-request-workflow.md#follow-ci. Unlock only on an explicit user ask, by deleting the marker in Bash: CLAUDE_ALLOW_PR_FOLLOW=1 rm -- $quoted_marker"
   printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"%s"}}\n' "$(json_escape "$reason")"
   exit 0
   ;;

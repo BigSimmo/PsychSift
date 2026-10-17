@@ -71,10 +71,12 @@ try:
     error_count = 0
     warning_count = 0
     for error in errors:
-        if not isinstance(error, dict) or error.get("level") == "error":
-            error_count += 1
-        elif error.get("level") == "warn":
+        if isinstance(error, dict) and error.get("level") == "warn":
             warning_count += 1
+        else:
+            # Only an explicitly classified warning is non-blocking. Missing
+            # or unknown levels cannot prove that analysis completed.
+            error_count += 1
     if warning_count:
         print(f"scan-status: ignoring {warning_count} warning-level scan diagnostics", file=sys.stderr)
     if error_count:
@@ -85,13 +87,19 @@ try:
         if not isinstance(run, dict) or not isinstance(run.get("tool"), dict):
             raise ValueError("invalid SARIF run")
         driver = run["tool"].get("driver")
-        if not isinstance(driver, dict) or not isinstance(driver.get("rules"), list) or not isinstance(run.get("results"), list):
+        if not isinstance(driver, dict):
             raise ValueError("invalid SARIF run structure")
-        if any(not isinstance(rule, dict) for rule in driver["rules"]):
+        # SARIF permits absent rules/results for an empty run, and the merger
+        # uses these same empty-list defaults. Present malformed values fail.
+        rules = driver.get("rules", [])
+        results = run.get("results", [])
+        if not isinstance(rules, list) or not isinstance(results, list):
+            raise ValueError("invalid SARIF run structure")
+        if any(not isinstance(rule, dict) for rule in rules):
             raise ValueError("invalid SARIF rule")
-        if any(not isinstance(item, dict) for item in run["results"]):
+        if any(not isinstance(item, dict) for item in results):
             raise ValueError("invalid SARIF result")
-        for item in run["results"]:
+        for item in results:
             locations = item.get("locations", [])
             if not isinstance(locations, list) or any(not isinstance(location, dict) for location in locations):
                 raise ValueError("invalid SARIF result locations")

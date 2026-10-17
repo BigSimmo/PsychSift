@@ -9,7 +9,7 @@ const repoRoot = process.env.CLAUDE_PROJECT_DIR || resolve(dirname(fileURLToPath
 const scratch = process.argv[2];
 const payload = readFileSync(join(scratch, "payload"), "utf8");
 const contexts = [];
-function collect(output) {
+function collect(output, cloudSetup = false) {
   for (const line of output.split(/\r?\n/).filter(Boolean)) {
     try {
       const parsed = JSON.parse(line);
@@ -21,16 +21,27 @@ function collect(output) {
     } catch {
       /* Bootstrap/setup progress is diagnostic output, never a second JSON envelope. */
     }
+    const background = cloudSetup && line.match(/^\[claude-cloud\] ([a-z ]+) provisioning in the background;/);
+    if (background)
+      contexts.push(
+        `Cloud tools are still provisioning: ${background[1]}. Before trusting their checks, confirm completion with: bash scripts/setup-claude-cloud.sh ${background[1]}`,
+      );
     process.stderr.write(`${line}\n`);
   }
 }
 collect(readFileSync(join(scratch, "bootstrap-output"), "utf8"));
-const bootstrapStatusPath = join(scratch, "bootstrap-status");
+let bootstrapReady = false;
 try {
-  if (Number(readFileSync(bootstrapStatusPath, "utf8").trim()) !== 0)
-    contexts.push("SessionStart bootstrap failed; dependent setup ran with bootstrap diagnostics above.");
+  const status = readFileSync(join(scratch, "bootstrap-status"), "utf8").trim();
+  bootstrapReady = status === "0";
+  if (!bootstrapReady)
+    contexts.push(
+      `SessionStart bootstrap ${/^\d+$/.test(status) ? `failed (exit ${status})` : "status was invalid"}; cloud provisioning was skipped. Review hook diagnostics before trusting dependency checks.`,
+    );
 } catch {
-  contexts.push("SessionStart bootstrap status was unavailable; review bootstrap diagnostics above.");
+  contexts.push(
+    "SessionStart bootstrap status was unavailable; cloud provisioning was skipped. Review hook diagnostics before trusting dependency checks.",
+  );
 }
 const steps = [
   ["cloud setup", "bash", ["scripts/setup-claude-cloud.sh", "--session"], 300_000],
@@ -40,8 +51,9 @@ const steps = [
   ["organisation", "bash", [".claude/hooks/organisation-session-line.sh"], 20_000],
 ];
 for (const [label, command, args, timeout] of steps) {
+  if (label === "cloud setup" && !bootstrapReady) continue;
   const result = spawnSync(command, args, { cwd: repoRoot, input: payload, encoding: "utf8", timeout });
-  collect(result.stdout || "");
+  collect(result.stdout || "", label === "cloud setup");
   if (result.stderr) process.stderr.write(result.stderr);
   if (result.status !== 0 || result.error)
     contexts.push(`SessionStart ${label} did not complete; check its diagnostics before trusting related checks.`);

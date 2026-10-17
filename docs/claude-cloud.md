@@ -99,6 +99,10 @@ overwriting another installation. To adopt an older installation, inspect a dry 
 `--adopt` only for byte-identical unmanaged files/settings. Adoption does not authorize replacing
 host edits. Modified owned entries remain recorded and reported for review.
 
+Plugins-only setup requires an existing manifest owned by this checkout. For a fresh or legacy
+configuration home, install the profile first (or explicitly adopt identical legacy content)
+before running the plugins tier. A read-only ownership check never claims an unowned home.
+
 Use `node scripts/apply-claude-cloud-profile.mjs --dry-run` to inspect an update and add
 `--uninstall --dry-run` to inspect retirement. Remove `--dry-run` only for an authorized selected
 host operation. Uninstall removes only unchanged owned content; it preserves modified files,
