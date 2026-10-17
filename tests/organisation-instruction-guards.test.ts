@@ -197,6 +197,9 @@ describe("retired rules: the list itself", () => {
 
   it.each([
     "docs/codex-cloud.md",
+    ".claude/hooks/pr-handoff-stop.sh",
+    ".claude/settings.json",
+    ".claude/cloud-profile/skills/prompt/SKILL.md",
     "plugins/clinical-kb/skills/clinical-kb-workflow/SKILL.md",
     "plugins/clinical-kb/skills/new-workflow/references/cloud.md",
     "docs/prompts/codex-cloud-detailed-task.md",
@@ -242,6 +245,25 @@ describe("retired rules: the list itself", () => {
 });
 
 describe("retired rules: Cloud instruction copies", () => {
+  it.each([".claude/hooks/pr-handoff-stop.sh", ".claude/settings.json"])(
+    "checks policy emitted from %s in both the working tree and CI ranges",
+    (file) => {
+      const { root, base } = repo({});
+      const text = file.endsWith(".json")
+        ? JSON.stringify({ hooks: { Stop: [{ prompt: "Use the blue form" }] } })
+        : 'context="Use the blue form"\n';
+      const head = commit(root, { [file]: text });
+      for (const args of [
+        ["--root", root],
+        ["--root", root, "--base", base, "--head", head],
+      ]) {
+        const result = run(RETIRED, args);
+        expect(result.code).toBe(1);
+        expect(result.out).toContain(`${file}:1 [blue-form]`);
+      }
+    },
+  );
+
   it.each([
     {
       file: "docs/prompts/codex-cloud-review/3-codex-agents-md-companion.md",

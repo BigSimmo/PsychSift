@@ -501,8 +501,9 @@ describe("browser test plan", () => {
         hooks: { SessionStart: Array<{ hooks: HookCommand[] }> };
       };
       const commands = settings.hooks.SessionStart.flatMap((entry) => entry.hooks);
-      const policy = commands.find((hook: HookCommand) => hook.command.includes("testing-policy.sh"));
-      expect(policy, "testing-policy.sh must be registered as a SessionStart hook").toBeTruthy();
+      const policy = commands.find((hook: HookCommand) => hook.command.includes("scripts/claude-session-start.sh"));
+      expect(policy, "the sequential SessionStart orchestrator must be registered").toBeTruthy();
+      expect(read("scripts/claude-session-start.mjs")).toContain(".claude/hooks/testing-policy.sh");
       expect(policy!.command.startsWith("bash ")).toBe(true);
       expect(typeof policy!.timeout).toBe("number");
     });

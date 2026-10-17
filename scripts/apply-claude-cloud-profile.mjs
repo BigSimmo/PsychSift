@@ -1,236 +1,182 @@
 #!/usr/bin/env node
 /**
- * apply-claude-cloud-profile — materialise .claude/cloud-profile/ into the container's ~/.claude.
- *
- * Claude Code on the web starts from a bare Linux container holding the repository checkout and
- * nothing else. Everything that lives in the operator's Windows home directory — the personal
- * CLAUDE.md writing-style file, the enabled user skills, curated project guidance seeds, and the
- * user-level settings that turn on auto permission mode and the four plugins — is absent, so a cloud
- * session behaves noticeably differently from a local one. The repository cannot reach into that home
- * directory, so the durable fix is to carry a copy in-tree (.claude/cloud-profile/) and unpack it into
- * the container at SessionStart. That directory is the source of truth for the container; the
- * container is disposable.
- *
- * SAFETY — this writes outside the repository, so it is deliberately narrow:
- *   - It refuses to run unless CLAUDE_CODE_REMOTE=true, or --force is passed explicitly. A local
- *     Windows workstation must never have its real ~/.claude overwritten by a checked-in snapshot.
- *   - Memory files are copied only when absent. Memories the container writes during a session are
- *     newer than the snapshot and must win; clobbering them would silently delete work.
- *     Only seed-manifest.json entries are installed; unlisted files and archived session state are
- *     never fallback sources. Existing host memory is never purged.
- *   - ~/.claude/settings.json is DEEP-MERGED, not replaced, with the profile winning per key, so
- *     anything the platform put there (auth state, machine ids, feature flags) survives.
- *   - An existing ~/.claude/CLAUDE.md is backed up once to CLAUDE.md.pre-cloud-profile before the
- *     profile copy replaces it, so nothing is lost irrecoverably.
- *   - It never reads, writes, or prints an environment variable value.
- *
- * Exit codes are real (non-zero on failure) so this stays testable. The SessionStart hook that calls
- * it is what swallows failure, because a hook must never be able to fail a session.
+ * Install/reconcile a checkout-owned Claude profile. Uninstall removes only unchanged owned files
+ * and settings. Memory seeds are always copy-if-absent and never enter the ownership manifest.
+ * --adopt claims byte-identical unmanaged files/settings; it never overwrites differing host data.
+ * A configuration home belongs to one source checkout. Use a separate CLAUDE_CONFIG_DIR for another
+ * checkout, or uninstall from the original source before deliberately adopting matching leftovers.
  */
-
 import { createHash } from "node:crypto";
 import {
   constants,
   copyFileSync,
-  cpSync,
   existsSync,
   lstatSync,
   mkdirSync,
   readFileSync,
   readdirSync,
+  realpathSync,
   renameSync,
-  rmSync,
+  rmdirSync,
+  unlinkSync,
   writeFileSync,
 } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const scriptDir = dirname(fileURLToPath(import.meta.url));
-const repoRoot = resolve(scriptDir, "..");
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const profileDir = join(repoRoot, ".claude", "cloud-profile");
-
 const args = process.argv.slice(2);
 const force = args.includes("--force");
 const dryRun = args.includes("--dry-run");
 const quiet = args.includes("--quiet");
-for (const arg of args) {
-  if (!["--force", "--dry-run", "--quiet"].includes(arg) && !arg.startsWith("--skip=")) {
-    console.error("[cloud-profile] ERROR: unknown argument; use --force, --dry-run, --quiet or --skip=<parts>");
-    process.exit(2);
-  }
-}
-
-// --skip=settings,claude-md,skills,memory. The skills part is several megabytes across ~500 files, so
-// re-copying it is by far the slowest thing here; skipping it keeps a targeted re-run (and the tests
-// that do not exercise skills) fast.
+const uninstall = args.includes("--uninstall");
+const adopt = args.includes("--adopt");
+const checkOwner = args.includes("--check-owner");
 const KNOWN_PARTS = new Set(["settings", "claude-md", "skills", "memory"]);
 const skipped = new Set(
   args
     .filter((arg) => arg.startsWith("--skip="))
-    .flatMap((arg) => arg.slice("--skip=".length).split(","))
-    .map((part) => part.trim())
+    .flatMap((arg) => arg.slice(7).split(","))
     .filter(Boolean),
 );
-for (const part of skipped) {
-  if (!KNOWN_PARTS.has(part)) {
-    console.error(`[cloud-profile] ERROR: unknown --skip part '${part}' (known: ${[...KNOWN_PARTS].join(", ")})`);
+for (const arg of args) {
+  if (
+    !["--force", "--dry-run", "--quiet", "--uninstall", "--adopt", "--check-owner"].includes(arg) &&
+    !arg.startsWith("--skip=")
+  ) {
+    console.error(
+      "[cloud-profile] ERROR: unknown argument; use --force, --dry-run, --quiet, --adopt, --uninstall, --check-owner or --skip=<parts>",
+    );
     process.exit(2);
   }
 }
-
+for (const part of skipped) {
+  if (!KNOWN_PARTS.has(part)) {
+    console.error(`[cloud-profile] ERROR: unknown --skip part '${part}'`);
+    process.exit(2);
+  }
+}
 function note(message) {
   if (!quiet) console.log(`[cloud-profile] ${message}`);
 }
-
 function fail(message) {
-  console.error(`[cloud-profile] ERROR: ${message}`);
-  process.exit(1);
+  throw new Error(message);
 }
-
-if (process.env.CLAUDE_CODE_REMOTE !== "true" && !force) {
-  // Not an error: the hook calls this unconditionally and this is the normal local outcome.
-  note("not a remote container (CLAUDE_CODE_REMOTE is not true); nothing to do");
-  process.exit(0);
-}
-
-if (!existsSync(profileDir)) {
-  fail(`profile directory is missing at ${profileDir}`);
-}
-
-const claudeHome = process.env.CLAUDE_CONFIG_DIR ? resolve(process.env.CLAUDE_CONFIG_DIR) : join(homedir(), ".claude");
-
-function ensureDir(dir) {
-  if (dryRun) return;
-  mkdirSync(dir, { recursive: true });
-}
-
 function isPlainObject(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
-
-/**
- * Deep-merge with `overlay` winning. Plain objects recurse; arrays and scalars are replaced whole,
- * because a half-merged array (a permission list, a marketplace list) is more surprising than a
- * replaced one.
- */
-function deepMerge(base, overlay) {
-  if (!isPlainObject(base) || !isPlainObject(overlay)) return overlay;
-  const out = { ...base };
-  for (const [key, value] of Object.entries(overlay)) {
-    out[key] = key in base ? deepMerge(base[key], value) : value;
-  }
-  return out;
+function entry(path) {
+  return lstatSync(path, { throwIfNoEntry: false });
 }
-
-function readJsonOr(path, fallback) {
-  if (!existsSync(path)) return fallback;
-  const content = readFileSync(path, "utf8");
-  try {
-    const parsed = JSON.parse(content);
-    if (!isPlainObject(parsed)) throw new Error("settings must be an object");
-    return parsed;
-  } catch {
-    // A corrupt settings file must not take the session down with it. Preserve it and start clean:
-    // losing the merge is recoverable, losing whatever the platform wrote there may not be.
-    let backup = `${path}.unparseable`;
-    let suffix = 1;
-    while (existsSync(backup)) {
-      backup = `${path}.unparseable.${suffix}`;
-      suffix += 1;
-    }
-    if (!dryRun) renameSync(path, backup);
-    // JSON.parse errors can contain snippets of private host settings. Keep the content in the
-    // backup only, and report neither the parser message nor the original text.
-    note(`WARNING: ${path} was not a valid settings object; preserved as ${backup}`);
-    return fallback;
-  }
+function hashBytes(bytes) {
+  return createHash("sha256").update(bytes).digest("hex");
 }
-
 function sha256(path) {
-  return createHash("sha256").update(readFileSync(path)).digest("hex");
+  return hashBytes(readFileSync(path));
 }
+function equal(a, b) {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+const claudeHome = process.env.CLAUDE_CONFIG_DIR ? resolve(process.env.CLAUDE_CONFIG_DIR) : join(homedir(), ".claude");
+const manifestPath = join(claudeHome, ".cloud-profile-install.json");
+const lockPath = join(claudeHome, ".cloud-profile-install.lock");
+const source = realpathSync(repoRoot);
+let locked = false;
 
-// Validate the selected seed source before changing settings, instructions or skills. A rejected
-// manifest must not leave an otherwise-applied profile behind.
-const profileMemory = join(profileDir, "memory");
-const memoryFiles = existsSync(profileMemory) && !skipped.has("memory") ? memorySeedNames(profileMemory) : [];
-
-// ---------------------------------------------------------------------------
-// 1. user-level settings — deep merge, profile wins
-// ---------------------------------------------------------------------------
-const profileSettingsPath = join(profileDir, "settings.json");
-if (existsSync(profileSettingsPath) && !skipped.has("settings")) {
-  const settingsPath = join(claudeHome, "settings.json");
-  let profileSettings;
+function safeParent(path) {
+  for (let parent = dirname(path); ; parent = dirname(parent)) {
+    const info = entry(parent);
+    if (info && (!info.isDirectory() || info.isSymbolicLink()))
+      fail("a managed destination parent is not a real directory; use an isolated CLAUDE_CONFIG_DIR");
+    if (parent === claudeHome) return;
+    if (parent === dirname(parent)) fail("managed destination escaped the configuration home");
+  }
+}
+function atomicWrite(path, content, mode = 0o600) {
+  mkdirSync(dirname(path), { recursive: true });
+  const temporary = `${path}.cloud-profile-${process.pid}.tmp`;
+  let created = false;
   try {
-    profileSettings = JSON.parse(readFileSync(profileSettingsPath, "utf8"));
+    writeFileSync(temporary, content, { flag: "wx", mode });
+    created = true;
+    renameSync(temporary, path);
+  } finally {
+    if (created && entry(temporary)) unlinkSync(temporary);
+  }
+}
+function readObject(path, label) {
+  let value;
+  try {
+    value = JSON.parse(readFileSync(path, "utf8"));
   } catch {
-    fail("profile settings must be valid JSON");
+    fail(`${label} is not valid JSON; preserved unchanged for manual repair`);
   }
-  if (!isPlainObject(profileSettings)) fail("profile settings must be an object");
-  const existing = readJsonOr(settingsPath, {});
-  const merged = deepMerge(existing, profileSettings);
-  const serialised = `${JSON.stringify(merged, null, 2)}\n`;
-  const unchanged = existsSync(settingsPath) && readFileSync(settingsPath, "utf8") === serialised;
-  if (unchanged) {
-    note("settings.json already matches the profile");
-  } else {
-    ensureDir(claudeHome);
-    if (!dryRun) writeFileSync(settingsPath, serialised);
-    note(`settings.json merged (${Object.keys(profileSettings).join(", ")})`);
+  if (!isPlainObject(value)) fail(`${label} must be an object; preserved unchanged for manual repair`);
+  return value;
+}
+function safeKeys(keys) {
+  return (
+    Array.isArray(keys) &&
+    keys.length > 0 &&
+    keys.every((key) => typeof key === "string" && !["__proto__", "prototype", "constructor"].includes(key))
+  );
+}
+function settingLeaves(value, keys = [], result = []) {
+  for (const [key, child] of Object.entries(value)) {
+    const path = [...keys, key];
+    if (!safeKeys(path)) fail("profile settings contain an unsafe key");
+    if (isPlainObject(child) && Object.keys(child).length) settingLeaves(child, path, result);
+    else result.push({ path, value: child });
+  }
+  return result;
+}
+function getSetting(root, keys) {
+  let current = root;
+  for (const key of keys) {
+    if (!isPlainObject(current) || !Object.hasOwn(current, key)) return { present: false };
+    current = current[key];
+  }
+  return { present: true, value: current };
+}
+function setSetting(root, keys, value) {
+  let current = root;
+  for (const key of keys.slice(0, -1)) {
+    if (Object.hasOwn(current, key) && !isPlainObject(current[key]))
+      fail("a host setting conflicts with the profile; preserve it and use an isolated CLAUDE_CONFIG_DIR");
+    current = current[key] ??= {};
+  }
+  current[keys.at(-1)] = value;
+}
+function deleteSetting(root, keys) {
+  let current = root;
+  for (const key of keys.slice(0, -1)) {
+    if (!isPlainObject(current[key])) return;
+    current = current[key];
+  }
+  delete current[keys.at(-1)];
+}
+function filePart(path) {
+  return path === "CLAUDE.md" ? "claude-md" : "skills";
+}
+function validFile(path) {
+  return (
+    path === "CLAUDE.md" ||
+    (/^skills\/[A-Za-z0-9._-]+\/(?!.*(?:^|\/)\.\.?\/)[^\\]+$/.test(path) &&
+      !path.split("/").some((part) => [".", "..", ""].includes(part)))
+  );
+}
+function collectFiles(directory, prefix, out) {
+  for (const item of readdirSync(directory, { withFileTypes: true })) {
+    const relative = `${prefix}/${item.name}`;
+    const path = join(directory, item.name);
+    if (item.isDirectory()) collectFiles(path, relative, out);
+    else if (item.isFile() && validFile(relative)) out[relative] = { hash: sha256(path), source: path };
+    else fail("profile skills must contain regular files and directories only");
   }
 }
 
-// ---------------------------------------------------------------------------
-// 2. personal CLAUDE.md — back up any existing copy once, then install
-// ---------------------------------------------------------------------------
-const profileClaudeMd = join(profileDir, "CLAUDE.md");
-if (existsSync(profileClaudeMd) && !skipped.has("claude-md")) {
-  const target = join(claudeHome, "CLAUDE.md");
-  if (existsSync(target) && sha256(target) === sha256(profileClaudeMd)) {
-    note("CLAUDE.md already matches the profile");
-  } else {
-    ensureDir(claudeHome);
-    const backup = `${target}.pre-cloud-profile`;
-    if (existsSync(target) && !existsSync(backup)) {
-      if (!dryRun) cpSync(target, backup);
-      note(`existing CLAUDE.md backed up to ${backup}`);
-    }
-    if (!dryRun) cpSync(profileClaudeMd, target);
-    note("CLAUDE.md installed");
-  }
-}
-
-// ---------------------------------------------------------------------------
-// 3. user skills — overwrite; these are vendored copies with no container-side edits
-// ---------------------------------------------------------------------------
-const profileSkills = join(profileDir, "skills");
-if (existsSync(profileSkills) && !skipped.has("skills")) {
-  const target = join(claudeHome, "skills");
-  ensureDir(target);
-  const names = readdirSync(profileSkills, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name);
-  for (const name of names) {
-    const destination = join(target, name);
-    // Remove first. `cp -r` cannot replace a non-directory with a directory, and on the workstation
-    // these very names ARE symlinks into ~/.agents/skills — so a plain copy throws
-    // ERR_FS_CP_DIR_TO_NON_DIR on the first entry and aborts the whole tier (observed 2026-08-21).
-    // Replacing outright is also the correct semantic: the checked-in profile is the source of truth
-    // for a container, and a half-updated skill directory left from an older profile is worse than a
-    // clean one.
-    if (!dryRun) {
-      rmSync(destination, { recursive: true, force: true });
-      cpSync(join(profileSkills, name), destination, { recursive: true });
-    }
-  }
-  note(`${names.length} user skills installed`);
-}
-
-// ---------------------------------------------------------------------------
-// 4. curated project memories — copy only listed, absent files; host memories always win
-// ---------------------------------------------------------------------------
 function memorySeedNames(directory) {
   let manifest;
   try {
@@ -271,39 +217,242 @@ function memorySeedNames(directory) {
   return manifest.files;
 }
 
-if (existsSync(profileMemory) && !skipped.has("memory")) {
-  // Claude Code keys project state by the working directory with path separators and the Windows
-  // drive colon flattened to dashes: D:\Repos\Database -> D--Repos-Database, and in a Linux container
-  // /home/user/Database -> -home-user-Database. Derive it rather than hard-coding either shape.
-  const projectDir = process.env.CLAUDE_PROJECT_DIR ? resolve(process.env.CLAUDE_PROJECT_DIR) : repoRoot;
-  const slug = projectDir.replace(/[/\\:]/g, "-");
-  const target = join(claudeHome, "projects", slug, "memory");
-  ensureDir(target);
-  let copied = 0;
+// Read-only admission for every tier that changes the selected Claude config home.
+function readOwnership() {
+  if (entry(claudeHome) && (!entry(claudeHome).isDirectory() || entry(claudeHome).isSymbolicLink()))
+    fail("configuration home must be a real directory");
+  if (entry(manifestPath) && !entry(manifestPath).isFile()) fail("installation manifest must be a regular file");
+  const previous = existsSync(manifestPath)
+    ? readObject(manifestPath, "installation manifest")
+    : { version: 1, source, files: {}, settings: [] };
+  if (
+    previous.version !== 1 ||
+    typeof previous.source !== "string" ||
+    !isPlainObject(previous.files) ||
+    !Array.isArray(previous.settings) ||
+    Object.entries(previous.files).some(([path, hash]) => !validFile(path) || !/^[a-f0-9]{64}$/.test(hash)) ||
+    previous.settings.some((item) => !isPlainObject(item) || !safeKeys(item.path) || !Object.hasOwn(item, "value"))
+  )
+    fail("installation manifest has an unsupported structure; preserved unchanged");
+  if (previous.source !== source)
+    fail(
+      "configuration home is owned by another source checkout; use a separate CLAUDE_CONFIG_DIR, or run --uninstall from the original checkout, then --adopt here for identical leftovers; ownership is never migrated automatically",
+    );
+  return previous;
+}
+
+function run() {
+  if (process.env.CLAUDE_CODE_REMOTE !== "true" && !force) {
+    note("not a remote container (CLAUDE_CODE_REMOTE is not true); nothing to do");
+    return;
+  }
+  if (checkOwner) {
+    if (!entry(manifestPath))
+      fail(
+        "configuration home is unclaimed; install the profile first, or explicitly --adopt identical legacy files before running plugins-only setup",
+      );
+    readOwnership();
+    note("configuration ownership check passed; nothing was written");
+    return;
+  }
+  if (!uninstall && !existsSync(profileDir)) fail("profile directory is missing");
+  const profileMemory = join(profileDir, "memory");
+  // Validate all selected source inputs before acquiring ownership or changing any host file.
+  const memoryFiles =
+    !uninstall && existsSync(profileMemory) && !skipped.has("memory") ? memorySeedNames(profileMemory) : [];
+  const desiredFiles = {};
+  const profileClaudeMd = join(profileDir, "CLAUDE.md");
+  if (!uninstall && existsSync(profileClaudeMd) && !skipped.has("claude-md")) {
+    if (!entry(profileClaudeMd).isFile()) fail("profile CLAUDE.md must be a regular file");
+    desiredFiles["CLAUDE.md"] = { hash: sha256(profileClaudeMd), source: profileClaudeMd };
+  }
+  const profileSkills = join(profileDir, "skills");
+  if (existsSync(profileSkills) && !uninstall && !skipped.has("skills"))
+    collectFiles(profileSkills, "skills", desiredFiles);
+  const profileSettingsPath = join(profileDir, "settings.json");
+  const desiredSettings =
+    !uninstall && !skipped.has("settings") && existsSync(profileSettingsPath)
+      ? settingLeaves(readObject(profileSettingsPath, "profile settings"))
+      : [];
+  if (entry(claudeHome) && (!entry(claudeHome).isDirectory() || entry(claudeHome).isSymbolicLink()))
+    fail("configuration home must be a real directory");
+  if (!dryRun) {
+    mkdirSync(claudeHome, { recursive: true });
+    try {
+      mkdirSync(lockPath);
+      locked = true;
+    } catch {
+      fail(
+        "another profile operation owns the configuration lock; retry after it finishes (remove a stale .cloud-profile-install.lock manually)",
+      );
+    }
+  }
+  const previous = readOwnership();
+  if (
+    !uninstall &&
+    !skipped.has("skills") &&
+    !existsSync(profileSkills) &&
+    Object.keys(previous.files).some((path) => path.startsWith("skills/"))
+  ) {
+    fail(
+      "owned skills exist but the source skills directory is missing; restore the complete checkout or use --skip=skills; use --uninstall for deliberate removal",
+    );
+  }
+  const next = structuredClone(previous);
+  const operations = [];
   let kept = 0;
-  for (const file of memoryFiles) {
-    const destination = join(target, file);
-    // A dangling symlink is still a host-owned record. existsSync follows it and would treat it as
-    // absent, replacing the link. Exclusive creation also preserves a file created by another run
-    // after this check.
-    if (lstatSync(destination, { throwIfNoEntry: false })) {
+  for (const relative of new Set([...Object.keys(previous.files), ...Object.keys(desiredFiles)])) {
+    if (skipped.has(filePart(relative))) continue;
+    const path = join(claudeHome, relative);
+    safeParent(path);
+    const info = entry(path);
+    const actual = info?.isFile() ? sha256(path) : null;
+    const owned = Object.hasOwn(previous.files, relative);
+    const desired = desiredFiles[relative];
+    if (owned && info && actual !== previous.files[relative]) {
       kept += 1;
+      note(`preserved host modification: ${relative}`);
       continue;
     }
+    if (!desired) {
+      if (owned && info) operations.push({ kind: "remove", path, relative });
+      delete next.files[relative];
+    } else if (info && !owned) {
+      if (!adopt || actual !== desired.hash)
+        fail(
+          `unmanaged file collision at ${relative}; preserve it and use a separate CLAUDE_CONFIG_DIR, or review matching content and rerun with --adopt (identical files only)`,
+        );
+      next.files[relative] = desired.hash;
+      note(`adopted identical file: ${relative}`);
+    } else {
+      next.files[relative] = desired.hash;
+      if (actual !== desired.hash)
+        operations.push({
+          kind: "write",
+          path,
+          relative,
+          content: readFileSync(desired.source),
+          mode: entry(desired.source).mode & 0o777,
+        });
+      else note(`${relative} already matches the profile`);
+    }
+  }
+  if (!skipped.has("settings")) {
+    const settingsPath = join(claudeHome, "settings.json");
+    safeParent(settingsPath);
+    if (entry(settingsPath) && !entry(settingsPath).isFile())
+      fail("host settings must be a regular file; preserved unchanged");
+    let existing = {};
+    if (existsSync(settingsPath)) {
+      try {
+        existing = readObject(settingsPath, "host settings");
+      } catch (error) {
+        if (!uninstall) throw error;
+        note("preserved malformed host settings during uninstall; ownership entries retained for review");
+        existing = null;
+      }
+    }
+    if (existing === null) {
+      // Do not touch the malformed settings file or its ownership records.
+    } else {
+      const settings = structuredClone(existing);
+      const desiredByKey = new Map(desiredSettings.map((item) => [JSON.stringify(item.path), item]));
+      const previousByKey = new Map(previous.settings.map((item) => [JSON.stringify(item.path), item]));
+      const nextByKey = new Map(previousByKey);
+      for (const [key, item] of previousByKey) {
+        const current = getSetting(settings, item.path);
+        if (current.present && !equal(current.value, item.value)) {
+          note(`preserved host setting modification: ${item.path.join(".")}`);
+          kept += 1;
+          continue;
+        }
+        const desired = desiredByKey.get(key);
+        if (!desired) {
+          deleteSetting(settings, item.path);
+          nextByKey.delete(key);
+        } else {
+          setSetting(settings, item.path, desired.value);
+          nextByKey.set(key, desired);
+        }
+        desiredByKey.delete(key);
+      }
+      for (const [key, item] of desiredByKey) {
+        // A modified owned setting remains host-owned in practice; never reclaim it on an update.
+        if (previousByKey.has(key)) continue;
+        const current = getSetting(settings, item.path);
+        if (current.present && !equal(current.value, item.value))
+          fail(
+            `host setting collision at ${item.path.join(".")}; preserve it and use an isolated CLAUDE_CONFIG_DIR; --adopt accepts identical content only`,
+          );
+        if (!current.present || adopt) {
+          setSetting(settings, item.path, item.value);
+          nextByKey.set(key, item);
+        }
+      }
+      next.settings = [...nextByKey.values()];
+      if (!equal(settings, existing))
+        operations.push({
+          kind: "write",
+          path: settingsPath,
+          relative: "settings.json",
+          content: `${JSON.stringify(settings, null, 2)}\n`,
+        });
+      else note("settings.json already matches the profile or preserved host values");
+    }
+  }
+  // Preflight memory parents too; host memory entries themselves, including symlinks, always win.
+  const projectDir = process.env.CLAUDE_PROJECT_DIR ? resolve(process.env.CLAUDE_PROJECT_DIR) : repoRoot;
+  const memoryTarget = join(claudeHome, "projects", projectDir.replace(/[/\\:]/g, "-"), "memory");
+  for (const file of memoryFiles) safeParent(join(memoryTarget, file));
+  for (const op of operations) {
+    note(`${dryRun ? "would " : ""}${op.kind}: ${op.relative}`);
+    if (dryRun) continue;
+    if (op.kind === "write") atomicWrite(op.path, op.content, op.mode);
+    else {
+      unlinkSync(op.path);
+      // Remove empty skill directories only; extra host files make rmdir fail harmlessly.
+      for (
+        let parent = dirname(op.path);
+        parent !== claudeHome && parent !== join(claudeHome, "skills");
+        parent = dirname(parent)
+      ) {
+        try {
+          rmdirSync(parent);
+        } catch {
+          break;
+        }
+      }
+    }
+  }
+  let copied = 0;
+  for (const file of memoryFiles) {
+    const destination = join(memoryTarget, file);
+    if (entry(destination)) continue;
     if (!dryRun) {
+      mkdirSync(memoryTarget, { recursive: true });
       try {
         copyFileSync(join(profileMemory, file), destination, constants.COPYFILE_EXCL);
       } catch (error) {
-        if (error.code !== "EEXIST") throw error;
-        kept += 1;
-        continue;
+        if (error.code === "EEXIST") continue;
+        throw error;
       }
     }
     copied += 1;
   }
-  note(`memories: ${copied} installed, ${kept} already present (kept) in projects/${slug}/memory`);
+  if (memoryFiles.length) note(`memories: ${copied} installed; existing host records kept`);
+  if (!dryRun) {
+    if (uninstall && Object.keys(next.files).length === 0 && next.settings.length === 0) {
+      if (entry(manifestPath)) unlinkSync(manifestPath);
+    } else atomicWrite(manifestPath, `${JSON.stringify(next, null, 2)}\n`);
+  }
+  if (kept) note(`${kept} modified owned entries retained; ownership stays recorded for review`);
+  if (dryRun) note("dry run — nothing was written");
 }
-
-if (dryRun) {
-  note("dry run — nothing was written");
+try {
+  run();
+} catch (error) {
+  console.error(`[cloud-profile] ERROR: ${error.message}`);
+  process.exitCode = 1;
+} finally {
+  if (locked) rmdirSync(lockPath);
 }

@@ -114,12 +114,45 @@ export async function clickWhenSettled(locator: Locator, { timeout = 10_000 }: {
  * spec on most runs.
  */
 export async function expectHydrated(locator: Locator, { timeout = 15_000 }: { timeout?: number } = {}) {
+  const deadline = timeout === 0 ? Number.POSITIVE_INFINITY : performance.now() + timeout;
+  // Unexpected evaluation failures are captured and end the poll, then re-thrown
+  // below, so they fail fast instead of depending on whether `expect.poll`
+  // propagates or retries a throwing callback until the timeout.
+  let unexpectedError: { error: unknown } | undefined;
   await expect
-    .poll(() => locator.evaluate((element) => Object.keys(element).some((key) => key.startsWith("__reactProps$"))), {
-      message: "the control must be hydrated before it is used",
-      timeout,
-    })
+    .poll(
+      async () => {
+        const remaining = deadline - performance.now();
+        if (remaining <= 0) return false;
+        try {
+          return await locator.evaluate(
+            (element) => Object.keys(element).some((key) => key.startsWith("__reactProps$")),
+            undefined,
+            { timeout: Number.isFinite(remaining) ? remaining : 0 },
+          );
+        } catch (error) {
+          // A streamed canonical redirect can replace the document after
+          // DOMContentLoaded. Poll the locator again in its new context, while
+          // preserving closed-page, strict-mode and other evaluation failures.
+          if (
+            error instanceof Error &&
+            // Playwright reports this both with and without a trailing period (the
+            // context-destroyed path omits it), so match the stable stem only.
+            error.message.includes("Execution context was destroyed, most likely because of a navigation")
+          ) {
+            return false;
+          }
+          unexpectedError = { error };
+          return true;
+        }
+      },
+      {
+        message: "the control must be hydrated before it is used",
+        timeout,
+      },
+    )
     .toBe(true);
+  if (unexpectedError) throw unexpectedError.error;
 }
 
 /** `expectHydrated`, then click: for controls that are interacted with straight after navigation. */

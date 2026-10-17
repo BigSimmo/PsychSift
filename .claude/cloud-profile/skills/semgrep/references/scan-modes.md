@@ -102,8 +102,10 @@ done
 In important-only mode, add `[SEVERITY_FLAGS]` to the scanner template:
 
 ```bash
-semgrep [--pro if available] --metrics=off [SEVERITY_FLAGS] --config [RULESET] --json -o [OUTPUT_DIR]/raw/[lang]-[ruleset].json --sarif-output=[OUTPUT_DIR]/raw/[lang]-[ruleset].sarif [TARGET] &
+start_semgrep_scan [OUTPUT_DIR]/raw/[lang]-[ruleset].json [OUTPUT_DIR]/raw/[lang]-[ruleset].sarif env SEMGREP_ENABLE_VERSION_CHECK=0 semgrep [--pro if approved] --metrics=off [SEVERITY_FLAGS] --config [RULESET] --json -o [OUTPUT_DIR]/raw/[lang]-[ruleset].json --sarif-output=[OUTPUT_DIR]/raw/[lang]-[ruleset].sarif [TARGET] || SEMGREP_SCAN_LAUNCH_FAILED=1
 ```
+
+Source the scan-status helper and require `wait_semgrep_scans` to pass as described in [scanner-task-prompt.md](scanner-task-prompt.md). Severity filtering never waives process-status or expected-artifact checks.
 
 Where `[SEVERITY_FLAGS]` is:
 - **Run all**: *(empty)*
