@@ -16,7 +16,7 @@ const ONE_HOUR_MS = 3_600_000;
  */
 export function couldBelongToAnswerPilot(request, queryDigest) {
   if (!request || typeof request !== "object") return true;
-  if (request.ownerId === OWNER_ID || request.documentId === DOCUMENT_ID) return true;
+  if (request.documentId === DOCUMENT_ID) return true;
   if (Array.isArray(request.resolvedDocumentIds) && request.resolvedDocumentIds.includes(DOCUMENT_ID)) return true;
   // An unrestricted scope (resolvedDocumentIds undefined, e.g. "All documents") is judged on owner
   // and query alone, exactly as pilotIdentityMatches judges it while the ticket is valid. Refusing

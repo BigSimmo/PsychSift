@@ -16,6 +16,7 @@ import {
 } from "@/lib/cme/missed-sessions-repository";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, requireAuthenticatedUser, unauthorizedResponse } from "@/lib/supabase/auth";
+import { readBoundedJson } from "@/lib/validation/body";
 import { parseRouteParams } from "@/lib/validation/params";
 
 export const runtime = "nodejs";
@@ -57,10 +58,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       return rateLimitJsonResponse("CPD requests are rate limited. Try again shortly.", rateLimit);
     }
 
-    let rawBody: unknown;
-    try {
-      rawBody = await request.json();
-    } catch {
+    const rawBody = await readBoundedJson(request);
+    if (rawBody === null) {
       return publicErrorResponse("Invalid missed session.", 400);
     }
 

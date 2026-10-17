@@ -6,7 +6,7 @@ import { ExternalLink, FileText, type LucideIcon } from "lucide-react";
 
 import { cn } from "@/components/ui-primitives";
 
-export type DocumentBadgeVariant = "best" | "high" | "relevant" | "neutral";
+export type DocumentBadgeVariant = "best" | "high" | "relevant" | "neutral" | "searched";
 export type DocumentTileTone = "teal" | "info";
 
 const badgeStyles: Record<DocumentBadgeVariant, string> = {
@@ -14,7 +14,26 @@ const badgeStyles: Record<DocumentBadgeVariant, string> = {
   high: "border-[color:var(--clinical-accent)]/18 bg-[color:var(--surface-raised)] text-[color:var(--clinical-accent)] shadow-[var(--shadow-inset)]",
   relevant: "border-[color:var(--info)]/15 bg-[color:var(--info-soft)]/70 text-[color:var(--info)]",
   neutral: "border-[color:var(--border-lux)] bg-[color:var(--surface-subtle)] text-[color:var(--text-muted)]",
+  searched:
+    "border-dashed border-[color:var(--border-strong)] bg-[color:var(--surface-subtle)] text-[color:var(--text-muted)]",
 };
+
+export function documentSupportBadgeProps(options: {
+  cited?: boolean;
+  badge?: string;
+  sourceStrength?: "strong" | "moderate" | "weak" | "none" | null;
+}): { variant: DocumentBadgeVariant; label: string } {
+  if (options.cited === false || options.badge === "—") {
+    return { variant: "searched", label: "Searched, not cited" };
+  }
+  if (!options.sourceStrength || options.sourceStrength === "none") {
+    return { variant: "neutral", label: "Unsupported" };
+  }
+  if (options.sourceStrength === "strong") {
+    return { variant: "best", label: "Direct" };
+  }
+  return { variant: "relevant", label: "Partial" };
+}
 
 const tileStyles: Record<DocumentTileTone, string> = {
   teal: "border-[color:var(--clinical-accent)]/12 bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]",
@@ -22,7 +41,9 @@ const tileStyles: Record<DocumentTileTone, string> = {
 };
 
 export function documentFileKind(fileName?: string | null, fallback = "PDF") {
-  const extension = fileName?.split(".").pop()?.trim().toUpperCase();
+  const trimmed = fileName?.trim();
+  if (!trimmed || !trimmed.includes(".")) return fallback;
+  const extension = trimmed.split(".").pop()?.trim().toUpperCase();
   return extension || fallback;
 }
 

@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   compareMigrations,
@@ -13,6 +13,7 @@ import {
   resealAllowed,
   readSealedVersions,
   resealBlockedWithoutApproval,
+  seal,
 } from "../scripts/check-migration-immutability.mjs";
 
 /**
@@ -136,5 +137,54 @@ describe("migration sealing is append-only", () => {
     expect(plan.refused).toBe(false);
     expect(plan.edited).toEqual(["b"]);
     expect(plan.versions).toEqual({ a: "1", b: "restored" });
+  });
+
+  it("never calls the write callback and returns 1 when seal() refuses historical mutation, unapproved reseal, or unreadable manifest", () => {
+    const current = hashMigrations();
+    const firstFile = Object.keys(current)[0]!;
+    const mutatedManifest = {
+      versions: {
+        ...current,
+        [firstFile]: "0".repeat(64),
+      },
+    };
+    const write = vi.fn();
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const parseSpy = vi.spyOn(JSON, "parse");
+
+    try {
+      // 1. Historical mutation without --allow-reseal
+      parseSpy.mockReturnValueOnce(mutatedManifest);
+      const codeEdited = seal({
+        argv: ["node", "script", "--write"],
+        env: { NODE_ENV: "test" } as NodeJS.ProcessEnv,
+        write,
+      });
+      expect(codeEdited).toBe(1);
+      expect(write).not.toHaveBeenCalled();
+
+      // 2. --allow-reseal without MIGRATION_RESEAL_OWNER_APPROVAL
+      parseSpy.mockReturnValueOnce(mutatedManifest);
+      const codeUnapprovedReseal = seal({
+        argv: ["node", "script", "--write", "--allow-reseal"],
+        env: { NODE_ENV: "test" } as NodeJS.ProcessEnv,
+        write,
+      });
+      expect(codeUnapprovedReseal).toBe(1);
+      expect(write).not.toHaveBeenCalled();
+
+      // 3. Missing/unreadable manifest (null versions) without approval
+      parseSpy.mockReturnValueOnce({});
+      const codeMissingManifest = seal({
+        argv: ["node", "script", "--write"],
+        env: { NODE_ENV: "test" } as NodeJS.ProcessEnv,
+        write,
+      });
+      expect(codeMissingManifest).toBe(1);
+      expect(write).not.toHaveBeenCalled();
+    } finally {
+      parseSpy.mockRestore();
+      errorSpy.mockRestore();
+    }
   });
 });

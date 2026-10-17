@@ -12,7 +12,10 @@ import {
 import { demoRecentQueryOwnerId } from "@/lib/recent-query-storage";
 import type { ClientRagAnswerPayload } from "@/lib/answer-client-payload";
 
-export type AnswerThreadSnapshotMetadata = Pick<PersistedAnswerThread, "latestSubmissionSignature" | "expiresAt">;
+export type AnswerThreadSnapshotMetadata = Pick<
+  PersistedAnswerThread,
+  "latestSubmissionSignature" | "expiresAt" | "savedAt"
+>;
 
 export function resolveDashboardAnswerThreadOwnerId(
   userId: string | undefined,
@@ -62,6 +65,7 @@ export function usePersistedAnswerThread({
       showEarlierTurns,
       latestSubmissionSignature: metadata.latestSubmissionSignature,
       expiresAt: metadata.expiresAt,
+      ...(typeof metadata.savedAt === "number" ? { savedAt: metadata.savedAt } : {}),
     });
   }, [answer, collapsedTurnIds, enabled, latestTurnRef, metadataRef, ownerId, priorTurns, showEarlierTurns]);
 }

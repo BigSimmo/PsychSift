@@ -14,6 +14,8 @@ function expectPublicFixtureCache(response: Response, options: { variesByEncodin
 
 function expectPrivateCache(response: Response) {
   expect(response.headers.get("cache-control")).toBe("private, no-store");
+  expect(response.headers.get("vary")).toContain("Cookie");
+  expect(response.headers.get("vary")).toContain("Authorization");
 }
 const recordId = "11111111-1111-4111-8111-111111111111";
 

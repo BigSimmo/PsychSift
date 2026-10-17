@@ -62,6 +62,10 @@ ARG MAX_UPLOAD_MB=
 # declares the matching build argument. This non-secret SHA keeps build-time
 # source maps and runtime Sentry events on the same release identity.
 ARG RAILWAY_GIT_COMMIT_SHA=
+ARG GITHUB_SHA=
+ARG SOURCE_COMMIT_SHA=
+ARG COMMIT_SHA=
+ARG SENTRY_RELEASE=
 # Next reads this during the build to stamp navigation and static asset URLs with
 # the operator-selected release identity instead of the commit SHA fallback.
 ARG NEXT_DEPLOYMENT_ID=
@@ -95,8 +99,13 @@ ENV NEXT_PUBLIC_SUPABASE_STAGING_PROJECT_REF=${NEXT_PUBLIC_SUPABASE_STAGING_PROJ
 ENV NEXT_PUBLIC_SUPABASE_STAGING_PROJECT_NAME=${NEXT_PUBLIC_SUPABASE_STAGING_PROJECT_NAME}
 ENV NEXT_PUBLIC_MAX_UPLOAD_MB=${NEXT_PUBLIC_MAX_UPLOAD_MB}
 ENV RAILWAY_GIT_COMMIT_SHA=${RAILWAY_GIT_COMMIT_SHA}
+ENV GITHUB_SHA=${GITHUB_SHA}
+ENV SOURCE_COMMIT_SHA=${SOURCE_COMMIT_SHA}
+ENV COMMIT_SHA=${COMMIT_SHA}
+ENV SENTRY_RELEASE=${SENTRY_RELEASE}
 ENV NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
 ENV RAILWAY_PUBLIC_DOMAIN=${RAILWAY_PUBLIC_DOMAIN}
+RUN node scripts/deploy/write-release-manifest.mjs
 # The repo build script allocates an 8 GiB heap. Prefer builders with >= 10 GiB
 # locally (Docker Desktop hard-fails under the RAM guard by default). CI image
 # builds pass ALLOW_LOW_RAM_BUILD=1 because GitHub buildx runners report ~7–8 GiB
@@ -123,9 +132,17 @@ RUN for attempt in 1 2 3; do \
 
 FROM node-base AS runner
 WORKDIR /app
+ARG RAILWAY_GIT_COMMIT_SHA=
+ARG GITHUB_SHA=
+ARG SOURCE_COMMIT_SHA=
+ARG COMMIT_SHA=
+ARG SENTRY_RELEASE=
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
+ENV RAILWAY_GIT_COMMIT_SHA=${RAILWAY_GIT_COMMIT_SHA}
+ENV COMMIT_SHA=${COMMIT_SHA}
+ENV SENTRY_RELEASE=${SENTRY_RELEASE}
 COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=build /app/.next ./.next
 # From the build stage, not the build context: `stamp-service-worker.mjs` rewrites
@@ -141,6 +158,7 @@ COPY --from=build /app/src/data/therapy-catalogue-assets.ts ./src/data/therapy-c
 # Railway deploy pre-deploy gate (docs/worker-deploy-runbook.md §0): blocks/
 # observes this service's deploy until migrations this build expects are live.
 COPY --from=build /app/deploy/expected-migrations.json ./deploy/expected-migrations.json
+COPY --from=build /app/deploy/release-identity.json ./deploy/release-identity.json
 COPY --from=build /app/scripts/deploy/await-migrations.mjs ./scripts/deploy/await-migrations.mjs
 COPY --from=build /app/scripts/deploy/migration-versions.mjs ./scripts/deploy/migration-versions.mjs
 COPY package.json next.config.ts ./

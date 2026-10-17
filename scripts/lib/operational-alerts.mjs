@@ -6,6 +6,9 @@ const RUNBOOKS = {
   hybridPage: "docs/observability-slos.md#ops_hybrid_rpc_error_rate_page",
   degradedWarning: "docs/observability-slos.md#ops_degraded_answer_rate_warning",
   degradedPage: "docs/observability-slos.md#ops_degraded_answer_rate_page",
+  sourceGapWarning: "docs/observability-slos.md#ops_source_gap_rate_warning",
+  unsupportedWarning: "docs/observability-slos.md#ops_unsupported_answer_rate_warning",
+  latencyBudgetWarning: "docs/observability-slos.md#ops_answer_latency_budget_warning",
   spend: "docs/observability-slos.md#ops_projected_daily_spend_warning",
   canary: "docs/observability-slos.md#ops_eval_canary_stale_warning",
 };
@@ -61,6 +64,27 @@ const policies = {
     owner: "AI platform owner",
     escalationOwner: "Clinical safety owner",
     runbook: RUNBOOKS.degradedPage,
+  },
+  sourceGapWarning: {
+    code: "OPS_SOURCE_GAP_RATE_WARNING",
+    severity: "warning",
+    owner: "Clinical evaluation owner",
+    escalationOwner: "Clinical safety owner",
+    runbook: RUNBOOKS.sourceGapWarning,
+  },
+  unsupportedWarning: {
+    code: "OPS_UNSUPPORTED_ANSWER_RATE_WARNING",
+    severity: "warning",
+    owner: "AI platform owner",
+    escalationOwner: "Clinical safety owner",
+    runbook: RUNBOOKS.unsupportedWarning,
+  },
+  latencyBudgetWarning: {
+    code: "OPS_ANSWER_LATENCY_BUDGET_WARNING",
+    severity: "warning",
+    owner: "Platform operations",
+    escalationOwner: "AI platform owner",
+    runbook: RUNBOOKS.latencyBudgetWarning,
   },
   spend: {
     code: "OPS_PROJECTED_DAILY_SPEND_WARNING",
@@ -177,6 +201,37 @@ export function evaluateOperationalAlerts(health, context = {}) {
           windowMinutes: finiteNumber(slo.windowMinutes) ? slo.windowMinutes : 60,
         }),
       );
+    }
+
+    if (slo.totalQueries >= 20) {
+      const windowMinutes = finiteNumber(slo.windowMinutes) ? slo.windowMinutes : 60;
+      if (validRate(slo.sourceGapRate) && slo.sourceGapRate > 0.15) {
+        alerts.push(
+          alert(policies.sourceGapWarning, {
+            observedValue: slo.sourceGapRate,
+            threshold: { operator: ">", value: 0.15, unit: "rate" },
+            windowMinutes,
+          }),
+        );
+      }
+      if (validRate(slo.unsupportedRate) && slo.unsupportedRate > 0.15) {
+        alerts.push(
+          alert(policies.unsupportedWarning, {
+            observedValue: slo.unsupportedRate,
+            threshold: { operator: ">", value: 0.15, unit: "rate" },
+            windowMinutes,
+          }),
+        );
+      }
+      if (validRate(slo.latencyBudgetBreachRate) && slo.latencyBudgetBreachRate > 0.15) {
+        alerts.push(
+          alert(policies.latencyBudgetWarning, {
+            observedValue: slo.latencyBudgetBreachRate,
+            threshold: { operator: ">", value: 0.15, unit: "rate" },
+            windowMinutes,
+          }),
+        );
+      }
     }
   }
 

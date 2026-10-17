@@ -2220,18 +2220,28 @@ test.describe("PsychSift UI smoke coverage", () => {
     const marks = plainAnswer.getByTestId("answer-source-mark");
     await expect(marks.first()).toBeVisible();
     const markGeometry = await plainAnswer.getByTestId("plain-answer-prose").evaluate((prose) => {
-      const nodes = [...prose.querySelectorAll('[data-testid="answer-source-mark"]')];
+      const nodes = [...prose.querySelectorAll<HTMLButtonElement>('[data-testid="answer-source-mark"]')];
       const boxes = nodes.map((node) => node.getBoundingClientRect());
       let minGap = Number.POSITIVE_INFINITY;
+      const hitTargetOwned = nodes.every((button, index) => {
+        const rect = boxes[index];
+        const centerY = rect.top + rect.height / 2;
+        const sampleX = [rect.left + rect.width / 2, rect.left + 1, rect.right - 1];
+        return sampleX.every((x) => {
+          const hit = document.elementFromPoint(x, centerY);
+          return hit !== null && button.contains(hit);
+        });
+      });
       for (let index = 1; index < boxes.length; index += 1) {
         const previous = boxes[index - 1];
         const current = boxes[index];
         if (Math.abs(previous.top - current.top) > 2) continue;
         minGap = Math.min(minGap, current.left - previous.right);
       }
-      return { count: boxes.length, minGap };
+      return { count: boxes.length, minGap, hitTargetOwned };
     });
     expect(markGeometry.count).toBeGreaterThan(0);
+    expect(markGeometry.hitTargetOwned).toBe(true);
     // Two marks in one cluster must not touch. An earlier shape painted the box
     // from a pseudo-element wider than the control, so "2" and "3" overlapped.
     if (markGeometry.count > 1) expect(markGeometry.minGap).toBeGreaterThan(0);

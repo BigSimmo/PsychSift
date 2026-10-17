@@ -189,6 +189,7 @@ export async function hydrateCandidatesWithMetadataAndMemory(args: {
         matchCount: args.matchCount,
         cardCache: args.cardCache,
         chunkLoadCache: args.chunkLoadCache,
+        signal: args.signal,
       }),
     ]),
   );
