@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "7fa40430-3e1e-41d7-abc9-005660219c26",
+  "createdOn": "2026-10-17",
+  "action": "done",
+  "payload": {
+    "id": "#231",
+    "outcome": "Wired per-attempt generation degradation observations into rag_queries.metadata via generationDegradationTelemetryFields and answerScopedEvidenceMetadata in src/lib/rag/rag-answer-telemetry-metadata.ts and src/lib/rag/rag-generation-degradation.ts without altering the rollout-gated RagAnswer.generationDegradation response property; pinned by tests/rag-generation-degradation.test.ts and tests/rag-telemetry-canary-absence.test.ts.",
+    "baseRowFingerprint": "ed0831eef465d29a6bfa9f3fccd33ffee7cb985b59c7e27b72c1633b2e803cb9"
+  }
+}

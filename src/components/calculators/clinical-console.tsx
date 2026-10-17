@@ -97,7 +97,7 @@ export function CalculatorsClinicalConsoleMockup() {
   const setAnswers = (next: AnswerMap) => setSession((prev) => ({ ...prev, [calc.id]: next }));
 
   return (
-    <div className="min-h-screen bg-[color:var(--background)]">
+    <div className="min-h-dvh bg-[color:var(--background)]">
       <header className="border-b border-[color:var(--border)] bg-[color:var(--surface)]">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3">

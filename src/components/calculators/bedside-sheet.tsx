@@ -164,7 +164,7 @@ export function CalculatorsBedsideSheetMockup() {
   };
 
   return (
-    <div className="min-h-screen bg-[color:var(--background)]">
+    <div className="min-h-dvh bg-[color:var(--background)]">
       <header className="sticky top-0 z-20 border-b border-[color:var(--border)] bg-[color:var(--surface-glass)] backdrop-blur-md">
         <div className="mx-auto grid max-w-4xl gap-3 px-4 py-3 sm:px-6">
           <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3">

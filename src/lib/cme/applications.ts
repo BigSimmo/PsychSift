@@ -42,7 +42,7 @@ export const applicationStageIds = APPLICATION_STAGES.map((stage) => stage.id) a
   ...ApplicationStageId[],
 ];
 export function stageLabel(id: ApplicationStageId): string {
-  return APPLICATION_STAGES.find((stage) => stage.id === id)!.label;
+  return APPLICATION_STAGES.find((stage) => stage.id === id)?.label ?? id;
 }
 
 export const REFEREE_STATUSES = [
@@ -55,7 +55,7 @@ export const REFEREE_STATUSES = [
 export type RefereeStatus = (typeof REFEREE_STATUSES)[number]["id"];
 const refereeStatusIds = REFEREE_STATUSES.map((status) => status.id) as [RefereeStatus, ...RefereeStatus[]];
 export function refereeStatusLabel(id: RefereeStatus): string {
-  return REFEREE_STATUSES.find((status) => status.id === id)!.label;
+  return REFEREE_STATUSES.find((status) => status.id === id)?.label ?? id;
 }
 
 export const REFEREE_LIMIT = 8;

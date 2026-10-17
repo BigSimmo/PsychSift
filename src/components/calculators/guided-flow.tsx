@@ -395,8 +395,8 @@ export function CalculatorsGuidedFlowMockup() {
   };
 
   return (
-    <div className="min-h-screen bg-[color:var(--surface-wash)]">
-      <main className="mx-auto grid min-h-screen max-w-5xl content-start gap-6 px-4 py-6 pb-28 text-[color:var(--text)] sm:px-6 lg:px-8">
+    <div className="min-h-dvh bg-[color:var(--surface-wash)]">
+      <main className="mx-auto grid min-h-dvh max-w-5xl content-start gap-6 px-4 py-6 pb-28 text-[color:var(--text)] sm:px-6 lg:px-8">
         {!calc ? (
           <PickerScreen onPick={start} />
         ) : finished ? (

@@ -123,21 +123,6 @@ export function SourcePreviewPopover({
   }, [open, updateLayout]);
 
   useEffect(() => {
-    if (!open) return undefined;
-
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      event.stopPropagation();
-      onClose();
-      window.requestAnimationFrame(() => anchorRef.current?.focus({ preventScroll: true }));
-    }
-
-    document.addEventListener("keydown", handleEscape, true);
-    return () => document.removeEventListener("keydown", handleEscape, true);
-  }, [anchorRef, open, onClose]);
-
-  useEffect(() => {
     if (!open) return;
     const focusFrame = window.requestAnimationFrame(() => {
       const focusTarget =

@@ -1095,7 +1095,7 @@ This generated snapshot is a local source-derived inventory. It does not assert 
 | `SegmentedControl`       | controls | yes   | yes                | inherited-global-root | yes            | no                 |              33 |
 | `Select`                 | controls | yes   | yes                | inherited-global-root | yes            | no                 |              16 |
 | `Sheet`                  | layout   | yes   | yes                | inherited-global-root | yes            | no                 |             137 |
-| `Skeleton`               | feedback | yes   | yes                | inherited-global-root | yes            | no                 |               9 |
+| `Skeleton`               | feedback | yes   | yes                | inherited-global-root | yes            | no                 |              10 |
 | `SourceDesignationBadge` | source   | yes   | yes                | inherited-global-root | yes            | no                 |               4 |
 | `SourceProvenance`       | source   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
 | `SourceStatusBadge`      | source   | yes   | yes                | inherited-global-root | yes            | no                 |               4 |

@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "78baadbb-7abe-4714-b94f-131131546930",
+  "createdOn": "2026-10-17",
+  "action": "done",
+  "payload": {
+    "id": "#FZP7VW",
+    "outcome": "Already implemented on main: interactive query embedding uses interactiveSearchEmbeddingBudget (4000 ms timeout, maxRetries: 0) in src/lib/rag/rag.ts and src/lib/rag/rag-governed-search.ts with lexical fallback and telemetry; pinned by tests/rag-governed-entrypoint.test.ts.",
+    "baseRowFingerprint": "b237f643f228e621dd2e8da91d5991bad89dce38bb596d232c13e791ffe0ff52",
+    "targetUlid": "01M3GND2NVFZP7VWK32ZS8QSZP"
+  }
+}

@@ -141,6 +141,17 @@ export function generationCompletedOutput(answer: OutputLike): GenerationComplet
   };
 }
 
+const observedGenerationDegradationByAnswer = new WeakMap<object, RagGenerationDegradationRecord>();
+
+export function readObservedGenerationDegradation(answer: unknown): RagGenerationDegradationRecord | undefined {
+  if (!answer || typeof answer !== "object") return undefined;
+  const candidate = (answer as { generationDegradation?: unknown }).generationDegradation;
+  return (
+    projectGenerationDegradation(candidate as RagGenerationDegradationRecord | null | undefined) ??
+    observedGenerationDegradationByAnswer.get(answer)
+  );
+}
+
 export function createGenerationDegradationRecorder(options: {
   enabled: boolean;
   routeBudgetMs: number;
@@ -161,7 +172,6 @@ export function createGenerationDegradationRecorder(options: {
         "route" | "timeoutMs" | "outputBudget" | "retrievalHealthy" | "coverage" | "contextCount"
       >,
     ) {
-      if (!options.enabled) return;
       if (attempts.length >= 4) {
         observationComplete = false;
         return;
@@ -228,10 +238,10 @@ export function createGenerationDegradationRecorder(options: {
       if (attempt) attempt.verificationFailed = true;
     },
     finish(answer: OutputLike, failed: boolean): RagGenerationDegradationRecord | undefined {
-      if (!options.enabled || !isRagAnswerGenerationContract(contract)) return undefined;
+      if (!isRagAnswerGenerationContract(contract)) return undefined;
       const last = current();
       if (failed && last?.qualityReason && last.retryAdmission === "not_requested") last.retryAdmission = "exhausted";
-      return (
+      const record =
         projectGenerationDegradation({
           version: "generation-degradation-v1",
           policy: "legacy-generation-policy-v1",
@@ -244,8 +254,11 @@ export function createGenerationDegradationRecorder(options: {
           completedResponseCount: attempts.filter((a) => a.responseReceived).length,
           totalAttemptLatencyMs: attempts.reduce((sum, a) => sum + a.latencyMs, 0),
           completedOutput: generationCompletedOutput(answer),
-        }) ?? undefined
-      );
+        }) ?? undefined;
+      if (record && answer && typeof answer === "object") {
+        observedGenerationDegradationByAnswer.set(answer, record);
+      }
+      return options.enabled ? record : undefined;
     },
   };
 }

@@ -104,7 +104,22 @@ for (const { mode, route } of appModeHeaderRoutes) {
     expect(hidden.mainRight, "content reaches the right edge").toBeCloseTo(hidden.viewportWidth, 0);
     expect(await readFlipCount(page), "descent produces one stable hide transition").toBe(1);
 
-    await page.waitForTimeout(350);
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) => {
+          const start = performance.now();
+          let frames = 0;
+          const step = () => {
+            frames += 1;
+            if (frames >= 18 && performance.now() - start >= 300) {
+              resolve();
+              return;
+            }
+            requestAnimationFrame(step);
+          };
+          requestAnimationFrame(step);
+        }),
+    );
     expect(await readFlipCount(page), "resting after hide cannot oscillate").toBe(1);
 
     await dragScrollBy(page, -48, 8);
@@ -615,8 +630,13 @@ test("a cold phone load never moves Open comparison when the nav row joins the h
 
   await page.goto("/differentials/compare?ids=wernicke-encephalopathy", { waitUntil: "load" });
   await expect(visibleByTestId(page, "differential-compare-open")).toBeVisible({ timeout: 30_000 });
-  // Keep sampling well past the reserve hook's 80ms quiet window.
-  await page.waitForTimeout(1_500);
+  // Keep sampling well past the reserve hook's 80ms quiet window once the nav row occupies the slot.
+  await page.waitForFunction(() => {
+    const samples =
+      (window as typeof window & { __compareOpenTops?: { top: number; occupied: boolean }[] }).__compareOpenTops ?? [];
+    const occupiedSamples = samples.filter((entry) => entry.occupied).length;
+    return occupiedSamples >= 12;
+  });
 
   const samples = await page.evaluate(
     () =>
