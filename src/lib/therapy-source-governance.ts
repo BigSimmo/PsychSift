@@ -10,7 +10,7 @@ type TherapySourceInput = {
  * A source marker the catalogue writes inline at the end of a sentence, e.g.
  * "… as unsupported self-help. (PubMed)".
  */
-export const AUTHORITY_PATTERN = /(?<=[.!?])\s*\(([A-Z0-9][^().!?]{0,58})\)/g;
+export const AUTHORITY_PATTERN = /(?<=[.!?)])\s*\(([A-Z0-9][^().!?]{0,58})\)/g;
 
 export type SourceCitation = { text: string; authority: string };
 
