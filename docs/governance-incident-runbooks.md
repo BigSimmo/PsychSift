@@ -77,12 +77,18 @@ These are short operator checklists. Preserve evidence and identifiers, but do n
    WHERE owner_id = '<owner-uuid>'
       OR payload::text LIKE '%<document-uuid>%';
    ```
-4. Before declaring containment, verify the source remains directly browsable but cannot participate in retrieval or answer generation:
+4. Before declaring containment, verify the source remains directly browsable (`source_review_status = 'decommissioned'`), that retrieval exclusion is active (`RAG_PROVIDER_MODE=offline` or zero active retrieval chunks for the quarantined `document_id`), and that `rag_response_cache` contains zero entries referencing the quarantined document:
    ```sql
-   SELECT id, title, source_review_status
-   FROM public.documents
-   WHERE id = '<document-uuid>';
+   SELECT d.id,
+          d.title,
+          d.source_review_status,
+          d.metadata->>'rag_indexed' AS rag_indexed,
+          (SELECT count(*) FROM public.document_chunks c WHERE c.document_id = d.id) AS chunk_count,
+          (SELECT count(*) FROM public.rag_response_cache r WHERE r.cache_key LIKE '%' || d.id::text || '%' OR r.answer LIKE '%' || d.id::text || '%') AS cached_answer_count
+   FROM public.documents d
+   WHERE d.id = '<document-uuid>';
    ```
+   Confirm via `railway variables --service clinical-kb-app` (or a probe query against `/api/ask`) that the quarantined `document_id` is not returned in retrieval citations before lifting `RAG_PROVIDER_MODE=offline`.
 5. Re-run source-governance and focused answer tests. Live data repair or migration requires explicit approval (if the primary owner is unavailable, the backup operator must leave the source quarantined and `rag_response_cache` purged until explicit approval is obtained):
    ```bash
    npm run audit:source-governance

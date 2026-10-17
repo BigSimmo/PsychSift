@@ -105,12 +105,19 @@ export function computeAnswerQualitySloMetrics(rows: Array<{ metadata: unknown }
     }
     const meta = row.metadata as Record<string, unknown>;
 
+    const fallbackReasonCode = typeof meta.fallback_reason_code === "string" ? meta.fallback_reason_code : "";
     const isSourceGap =
       meta.source_gap === true ||
       meta.sourceGap === true ||
-      meta.fallback_reason_code === "source_gap" ||
+      fallbackReasonCode === "source_gap" ||
+      fallbackReasonCode === "coverage_gap" ||
+      fallbackReasonCode === "no_documents" ||
+      fallbackReasonCode === "no_chunks" ||
+      fallbackReasonCode === "insufficient_evidence" ||
       meta.answer_outcome === "source_gap" ||
-      (typeof meta.fallback_reason === "string" && meta.fallback_reason.includes("source_gap"));
+      meta.answer_outcome === "coverage_gap" ||
+      (typeof meta.fallback_reason === "string" &&
+        (meta.fallback_reason.includes("source_gap") || meta.fallback_reason.includes("coverage_gap")));
     if (isSourceGap) {
       sourceGapQueries += 1;
     }
@@ -118,8 +125,10 @@ export function computeAnswerQualitySloMetrics(rows: Array<{ metadata: unknown }
     const isUnsupported =
       meta.unsupported === true ||
       meta.answer_supported === false ||
+      meta.confidence === "unsupported" ||
+      meta.confidence_level === "unsupported" ||
       meta.grounding_status === "unsupported" ||
-      meta.fallback_reason_code === "unsupported" ||
+      fallbackReasonCode === "unsupported" ||
       meta.answer_outcome === "unsupported";
     if (isUnsupported) {
       unsupportedQueries += 1;
@@ -132,13 +141,18 @@ export function computeAnswerQualitySloMetrics(rows: Array<{ metadata: unknown }
     }
   }
 
+  // When the metadata row sample hits maxHybridRpcIdentityRows in a high-volume window,
+  // compute sample rates against the sampled row count rather than diluting by totalQueries.
+  const effectiveDenominator =
+    rows.length >= maxHybridRpcIdentityRows && totalQueries > rows.length ? rows.length : totalQueries;
+
   return {
     sourceGapQueries,
     unsupportedQueries,
     latencyBudgetBreachQueries,
-    sourceGapRate: rate(sourceGapQueries, totalQueries),
-    unsupportedRate: rate(unsupportedQueries, totalQueries),
-    latencyBudgetBreachRate: rate(latencyBudgetBreachQueries, totalQueries),
+    sourceGapRate: rate(sourceGapQueries, effectiveDenominator),
+    unsupportedRate: rate(unsupportedQueries, effectiveDenominator),
+    latencyBudgetBreachRate: rate(latencyBudgetBreachQueries, effectiveDenominator),
   };
 }
 
@@ -229,7 +243,7 @@ export async function answerSloSnapshot(client: SloProbeClient, windowMinutes = 
   const truncationFallbackQueries = truncation.count ?? 0;
   const timeoutFallbackQueries = timeout.count ?? 0;
   const metadataRows = hybridIdentity.data ?? [];
-  const hybridErrorRows = metadataRows.filter(
+  let hybridErrorRows = metadataRows.filter(
     (row) =>
       row.metadata &&
       typeof row.metadata === "object" &&
@@ -238,6 +252,20 @@ export async function answerSloSnapshot(client: SloProbeClient, windowMinutes = 
       (row.metadata as { hybrid_rpc_errors?: unknown }).hybrid_rpc_errors !== null &&
       (row.metadata as { hybrid_rpc_errors?: unknown }).hybrid_rpc_errors !== undefined,
   );
+  // If the unfiltered 1000-row sample missed some hybrid-error rows in a busy window,
+  // fetch a dedicated filtered sample of hybrid_rpc_errors rows so identity evidence stays complete.
+  if (hybridRpcErrorQueries > hybridErrorRows.length && metadataRows.length >= maxHybridRpcIdentityRows) {
+    const dedicatedHybrid = await client
+      .from("rag_queries")
+      .select("metadata")
+      .gt("created_at", sinceIso)
+      .is("metadata->>event_type", null)
+      .not("metadata->hybrid_rpc_errors", "is", null)
+      .limit(maxHybridRpcIdentityRows);
+    if (!dedicatedHybrid.error && Array.isArray(dedicatedHybrid.data)) {
+      hybridErrorRows = dedicatedHybrid.data;
+    }
+  }
   const hybridRpcIdentity = hybridRpcIdentityEvidence(hybridErrorRows, hybridRpcErrorQueries);
   const qualityMetrics = computeAnswerQualitySloMetrics(metadataRows, totalQueries);
 

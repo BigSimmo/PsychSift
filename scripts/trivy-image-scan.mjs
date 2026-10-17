@@ -9,7 +9,7 @@
  * daemon socket, which would be equivalent to root on the host.
  */
 import { basename, dirname, join, resolve } from "node:path";
-import { mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -68,9 +68,14 @@ export function validateTrivyReportJson(rawStdout) {
     return { ok: false, reason: "invalid_trivy_json" };
   }
   const hasResultsArray = Array.isArray(report.Results);
-  const hasMetadataObject =
-    report.Metadata !== null && typeof report.Metadata === "object" && !Array.isArray(report.Metadata);
-  if (!hasResultsArray && !hasMetadataObject) {
+  const hasVerifiedMetadata =
+    report.Metadata !== null &&
+    typeof report.Metadata === "object" &&
+    !Array.isArray(report.Metadata) &&
+    (typeof report.Metadata.ImageID === "string" ||
+      (report.Metadata.OS !== null && typeof report.Metadata.OS === "object") ||
+      Array.isArray(report.Metadata.DiffIDs));
+  if (!hasResultsArray && !hasVerifiedMetadata) {
     return { ok: false, reason: "invalid_trivy_json" };
   }
 
@@ -145,13 +150,53 @@ export function evaluateTrivySummaryText(summaryText, requiredImages = REQUIRED_
  * @param {string} imageRef
  * @param {string[]} trivyArgs use "__IMAGE__" where the image ref belongs and
  *   "__OUT__" where an output path belongs (when outputHostPath is set)
- * @param {{ outputHostPath?: string | null }} [opts]
+ * @param {{ outputHostPath?: string | null; needsVulnerabilityDb?: boolean }} [opts]
  */
-function runDockerTrivy(imageRef, trivyArgs, { outputHostPath = null } = {}) {
+function runDockerTrivy(imageRef, trivyArgs, { outputHostPath = null, needsVulnerabilityDb = false } = {}) {
   const workDir = mkdtempSync(join(tmpdir(), "trivy-scan-"));
   const tarName = "image.tar";
   const tarPath = join(workDir, tarName);
   try {
+    let cacheDir = null;
+    if (needsVulnerabilityDb) {
+      cacheDir = process.env.TRIVY_CACHE_DIR
+        ? resolve(process.env.TRIVY_CACHE_DIR)
+        : join(tmpdir(), `trivy-db-cache-${TRIVY_VERSION}`);
+      mkdirSync(cacheDir, { recursive: true });
+      if (!existsSync(join(cacheDir, "db", "metadata.json"))) {
+        const dbDownload = run("docker", [
+          "run",
+          "--rm",
+          "-v",
+          `${cacheDir}:/cache`,
+          TRIVY_IMAGE,
+          "image",
+          "--download-db-only",
+          "--cache-dir",
+          "/cache",
+        ]);
+        if (dbDownload.status !== 0) {
+          return {
+            status: dbDownload.status ?? 1,
+            stdout: dbDownload.stdout,
+            stderr: dbDownload.stderr || dbDownload.stdout || "Trivy DB download failed",
+          };
+        }
+        // Best-effort Java DB pre-population for Java archive inspection offline.
+        run("docker", [
+          "run",
+          "--rm",
+          "-v",
+          `${cacheDir}:/cache`,
+          TRIVY_IMAGE,
+          "image",
+          "--download-java-db-only",
+          "--cache-dir",
+          "/cache",
+        ]);
+      }
+    }
+
     // Keep Docker's save temp files inside workDir so finally{} can reclaim them
     // and CI runners do not fill the shared /tmp between sequential scans.
     const saveEnv = { ...process.env, TMPDIR: workDir, DOCKER_TMPDIR: workDir };
@@ -169,6 +214,9 @@ function runDockerTrivy(imageRef, trivyArgs, { outputHostPath = null } = {}) {
     }
 
     const mounts = ["-v", `${workDir}:/work:ro`];
+    if (cacheDir) {
+      mounts.push("-v", `${cacheDir}:/cache:ro`);
+    }
     if (outputHostPath) {
       mounts.push("-v", `${dirname(resolve(outputHostPath))}:/out`);
     }
@@ -182,6 +230,9 @@ function runDockerTrivy(imageRef, trivyArgs, { outputHostPath = null } = {}) {
       } else {
         dockerArgs.push(arg);
       }
+    }
+    if (cacheDir) {
+      dockerArgs.push("--cache-dir", "/cache", "--skip-db-update", "--skip-java-db-update");
     }
 
     return run("docker", dockerArgs);
@@ -229,7 +280,9 @@ function main() {
 
   const result = trivy
     ? run(trivy, ["image", "--format", "json", "--exit-code", "0", "--severity", severity, imageRef])
-    : runDockerTrivy(imageRef, ["image", "--format", "json", "--exit-code", "0", "--severity", severity, "__IMAGE__"]);
+    : runDockerTrivy(imageRef, ["image", "--format", "json", "--exit-code", "0", "--severity", severity, "__IMAGE__"], {
+        needsVulnerabilityDb: true,
+      });
 
   if (result.status !== 0) {
     console.error(result.stderr || result.stdout || `Trivy failed to scan ${imageRef}`);

@@ -21,13 +21,28 @@ import { ProviderEgressDeniedError } from "../src/lib/document-ingress-safety";
 import { IngestionProviderEgressRefusal } from "../src/lib/ingestion-provider-egress";
 
 export const WORKER_CONTROL_PLANE_TIMEOUT_MS = 30_000;
+export const WORKER_DATA_PLANE_TIMEOUT_MS = 240_000;
 export const WORKER_SUPABASE_TIMEOUT_MS = 120_000;
+
+export const CONTROL_PLANE_RPCS: ReadonlySet<string> = new Set([
+  "claim_ingestion_jobs",
+  "heartbeat_ingestion_job",
+  "update_ingestion_job_progress",
+  "patch_ingestion_document_state",
+  "complete_ingestion_job",
+  "fail_or_retry_ingestion_job",
+]);
 
 export function resolveWorkerControlPlaneTimeoutMs(
   environment: Record<string, string | undefined> = process.env,
 ): number {
   const raw = Number(environment.WORKER_CONTROL_PLANE_TIMEOUT_MS);
   return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : WORKER_CONTROL_PLANE_TIMEOUT_MS;
+}
+
+export function resolveWorkerDataPlaneTimeoutMs(environment: Record<string, string | undefined> = process.env): number {
+  const raw = Number(environment.WORKER_DATA_PLANE_TIMEOUT_MS);
+  return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : WORKER_DATA_PLANE_TIMEOUT_MS;
 }
 
 export function resolveWorkerSupabaseTimeoutMs(environment: Record<string, string | undefined> = process.env): number {
@@ -38,6 +53,14 @@ export function resolveWorkerSupabaseTimeoutMs(environment: Record<string, strin
 export function controlPlaneAbortSignal(
   stopSignal?: AbortSignal,
   timeoutMs = resolveWorkerControlPlaneTimeoutMs(),
+): AbortSignal {
+  const timeoutSignal = AbortSignal.timeout(timeoutMs);
+  return stopSignal ? AbortSignal.any([stopSignal, timeoutSignal]) : timeoutSignal;
+}
+
+export function dataPlaneAbortSignal(
+  stopSignal?: AbortSignal,
+  timeoutMs = resolveWorkerDataPlaneTimeoutMs(),
 ): AbortSignal {
   const timeoutSignal = AbortSignal.timeout(timeoutMs);
   return stopSignal ? AbortSignal.any([stopSignal, timeoutSignal]) : timeoutSignal;
@@ -116,24 +139,34 @@ export function ensureAbortableQuery<T extends object>(
 }
 
 const CONTROL_PLANE_WRAPPED = Symbol.for("psychsift.worker.controlPlaneWrapped");
+const CONTROL_PLANE_BASE_CLIENT = Symbol.for("psychsift.worker.controlPlaneBaseClient");
 
 export function withControlPlaneAbortClient<T extends object>(
   client: T,
   signalFactory: (stopSignal?: AbortSignal) => AbortSignal = (stopSignal) => controlPlaneAbortSignal(stopSignal),
 ): T {
-  if (client && typeof client === "object" && (client as Record<symbol, unknown>)[CONTROL_PLANE_WRAPPED]) {
-    return client;
-  }
-  const wrapped = Object.create(client) as T & {
+  const underlying =
+    client && typeof client === "object" && (client as Record<symbol, unknown>)[CONTROL_PLANE_BASE_CLIENT]
+      ? ((client as Record<symbol, unknown>)[CONTROL_PLANE_BASE_CLIENT] as T)
+      : client;
+  const wrapped = Object.create(underlying) as T & {
     rpc?: (...args: unknown[]) => object;
     from?: (...args: unknown[]) => { select?: (...selectArgs: unknown[]) => object };
   };
-  const baseClient = client as {
+  const baseClient = underlying as {
     rpc: (...args: unknown[]) => object;
     from?: (...args: unknown[]) => { select?: (...selectArgs: unknown[]) => object };
   };
   Object.defineProperty(wrapped, CONTROL_PLANE_WRAPPED, { value: true, enumerable: false });
-  wrapped.rpc = (...args: unknown[]) => ensureAbortableQuery(baseClient.rpc(...args));
+  Object.defineProperty(wrapped, CONTROL_PLANE_BASE_CLIENT, { value: underlying, enumerable: false });
+  if (typeof baseClient.rpc === "function") {
+    wrapped.rpc = (...args: unknown[]) => {
+      const rpcQuery = ensureAbortableQuery(baseClient.rpc(...args));
+      return typeof args[0] === "string" && CONTROL_PLANE_RPCS.has(args[0])
+        ? rpcQuery.abortSignal(signalFactory())
+        : rpcQuery;
+    };
+  }
   if (typeof baseClient.from === "function") {
     wrapped.from = (...fromArgs: unknown[]) => {
       const tableBuilder = baseClient.from!(...fromArgs);

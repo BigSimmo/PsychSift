@@ -41,15 +41,16 @@ export function firstAdminPatientProblem(
 
 function stripRequestDates(req: AdminPaperwork["requests"][number]): string {
   let message = req.message;
-  if (req.dueOn) {
-    const formattedDue = formatRecordedDate(req.dueOn);
-    if (formattedDue) message = message.replaceAll(formattedDue, "");
-    message = message.replaceAll(req.dueOn, "");
+  const formattedDue = req.dueOn ? formatRecordedDate(req.dueOn) : "";
+  const formattedAsked = req.askedFor ? formatRecordedDate(req.askedFor) : "";
+  if (formattedDue && formattedAsked) {
+    message = message.replace(`, ${formattedDue} to ${formattedAsked}?`, "?");
+  } else if (formattedAsked) {
+    message = message.replace(`, until ${formattedAsked}?`, "?");
   }
-  if (req.askedFor) {
-    const formattedAsked = formatRecordedDate(req.askedFor);
-    if (formattedAsked) message = message.replaceAll(formattedAsked, "");
-    message = message.replaceAll(req.askedFor, "");
+  if (formattedDue) {
+    message = message.replace(`, due ${formattedDue}.`, ".");
+    message = message.replace(`I need to know by ${formattedDue}.`, "");
   }
   return message;
 }

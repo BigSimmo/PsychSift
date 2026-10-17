@@ -121,6 +121,13 @@ export function readInstalledNodeTypesVersion(
   }
 }
 
+/**
+ * Validates installed `@types/node` against the supported Node 24 runtime.
+ * Fails closed if `@types/node` is older than Node 24 (`< 24`), and emits a
+ * surfaced warning (`driftDetected: true`) when `@types/node` is ahead of
+ * Node 24 (`> 24`, e.g. `@types/node` 25.x in `package-lock.json`) unless
+ * `strictMajor` (`CHECK_NODE_TYPES_STRICT_MAJOR=1`) is enabled.
+ */
 export function checkNodeTypesRuntime(
   version = readInstalledNodeTypesVersion(),
   expectedMajor = 24,

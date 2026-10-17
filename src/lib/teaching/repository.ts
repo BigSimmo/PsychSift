@@ -328,22 +328,30 @@ export async function teachingServiceMutation(
         eq?: (col: string, val: string) => DynamicCreateQueryChain;
         is?: (col: string, val: null) => DynamicCreateQueryChain;
       } & PromiseLike<{ data?: unknown; error?: { message: string; code?: string | null } | null }>;
+      const secret = newTeachingSecret();
+      const newHash = hashTeachingSecret(secret);
+      const data = await teachingCommand(client, actorId, serviceId, input.action, {
+        occurrenceId: input.occurrenceId,
+        stream: input.stream,
+        linkHash: newHash,
+      });
       const dynamicCreateClient = client as unknown as { from?: (table: string) => DynamicCreateQueryChain };
       if (typeof dynamicCreateClient.from === "function") {
         try {
           const linkTable = dynamicCreateClient.from("teaching_display_links");
           const q1 = linkTable?.select?.("id, link_hash, teaching_occurrences!inner(service_id)");
           const q2 = q1?.eq?.("occurrence_id", input.occurrenceId);
-          const q3 = q2?.eq?.("teaching_occurrences.service_id", serviceId);
-          const q4 = q3?.is?.("revoked_at", null);
-          if (q4 && typeof q4.then === "function") {
-            const existingRes = await q4;
+          const q3 = q2?.eq?.("stream", input.stream) ?? q2;
+          const q4 = q3?.eq?.("teaching_occurrences.service_id", serviceId) ?? q3;
+          const q5 = q4?.is?.("revoked_at", null);
+          if (q5 && typeof q5.then === "function") {
+            const existingRes = await q5;
             if (!existingRes?.error && existingRes?.data) {
               const priorRows = (Array.isArray(existingRes.data) ? existingRes.data : [existingRes.data]) as Array<{
                 link_hash?: string | null;
               }>;
               for (const prior of priorRows) {
-                if (prior?.link_hash) {
+                if (prior?.link_hash && prior.link_hash !== newHash) {
                   try {
                     await teachingCommand(client, actorId, serviceId, "display.revoke", { linkHash: prior.link_hash });
                   } catch {
@@ -357,12 +365,6 @@ export async function teachingServiceMutation(
           // Best-effort prior-link cleanup when table query helper is not available on mock clients.
         }
       }
-      const secret = newTeachingSecret();
-      const data = await teachingCommand(client, actorId, serviceId, input.action, {
-        occurrenceId: input.occurrenceId,
-        stream: input.stream,
-        linkHash: hashTeachingSecret(secret),
-      });
       // `token` for the UI part's own link building, `path` for callers that only need the address.
       return { ...parseTeachingResult(displayCreatedSchema, data), token: secret, path: teachingDisplayPath(secret) };
     }

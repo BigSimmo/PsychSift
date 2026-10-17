@@ -42,13 +42,14 @@ export function withAdmissionDischargeSideEvidence(args: {
   if (!isAdmissionDischargeRequirementsComparisonQuery(args.query, args.queryClass)) return args.selected;
   const selectedIds = new Set(args.selected.map((result) => result.id));
   const pool = [...args.selected, ...args.candidates.filter((result) => !selectedIds.has(result.id))];
-  const [rawAdmissionFacts, dischargeFacts] = sides.map((side) =>
-    sourceBoundComparisonFacts({ ...side, results: pool }),
-  );
-  const communityAdmissionFacts = rawAdmissionFacts.filter((fact) => isCommunityAdmissionResult(fact.result));
-  const admissionFacts = communityAdmissionFacts.length > 0 ? communityAdmissionFacts : rawAdmissionFacts;
+  const [admissionFacts, dischargeFacts] = sides.map((side) => sourceBoundComparisonFacts({ ...side, results: pool }));
+  const prefersCommunity = !/\binpatient\b/i.test(args.query);
   const selectedAdmissionDocs = new Set(
-    admissionFacts.filter((fact) => selectedIds.has(fact.result.id)).map((fact) => fact.result.document_id),
+    admissionFacts
+      .filter(
+        (fact) => selectedIds.has(fact.result.id) && (!prefersCommunity || isCommunityAdmissionResult(fact.result)),
+      )
+      .map((fact) => fact.result.document_id),
   );
   const selectedDischargeDocs = new Set(
     dischargeFacts.filter((fact) => selectedIds.has(fact.result.id)).map((fact) => fact.result.document_id),
@@ -58,13 +59,19 @@ export function withAdmissionDischargeSideEvidence(args: {
     return args.selected;
   }
   const cost = (result: SearchResult) => (selectedIds.has(result.id) ? 0 : 1);
-  let best: { admission: SearchResult; discharge: SearchResult; cost: number } | undefined;
+  let best: { admission: SearchResult; discharge: SearchResult; communityRank: number; cost: number } | undefined;
   for (const admission of admissionFacts) {
     for (const discharge of dischargeFacts) {
       if (admission.result.document_id === discharge.result.document_id) continue;
+      const communityRank = prefersCommunity && isCommunityAdmissionResult(admission.result) ? 0 : 1;
       const pairCost = cost(admission.result) + cost(discharge.result);
-      if (!best || pairCost < best.cost)
-        best = { admission: admission.result, discharge: discharge.result, cost: pairCost };
+      if (
+        !best ||
+        communityRank < best.communityRank ||
+        (communityRank === best.communityRank && pairCost < best.cost)
+      ) {
+        best = { admission: admission.result, discharge: discharge.result, communityRank, cost: pairCost };
+      }
     }
   }
   const additions = best

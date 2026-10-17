@@ -129,17 +129,13 @@ export async function readBoundedFormData(
     reader.releaseLock();
   }
 
-  const buffer = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    buffer.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
+  const bodyBlob = new Blob(chunks as BlobPart[]);
+  chunks.length = 0;
 
   const formData = await new Request(request.url, {
     method: request.method,
     headers: request.headers,
-    body: buffer,
+    body: bodyBlob,
   })
     .formData()
     .catch((cause) => {

@@ -66,11 +66,15 @@ import { annotateChunkAssertions, defaultAssertionTargets } from "./assertion-ta
 import { runShadowExtraction } from "./shadow-extraction";
 import { buildTableFactRows } from "./table-facts";
 import {
+  CONTROL_PLANE_RPCS,
   WORKER_CONTROL_PLANE_TIMEOUT_MS,
+  WORKER_DATA_PLANE_TIMEOUT_MS,
   WORKER_SUPABASE_TIMEOUT_MS,
   resolveWorkerControlPlaneTimeoutMs,
+  resolveWorkerDataPlaneTimeoutMs,
   resolveWorkerSupabaseTimeoutMs,
   controlPlaneAbortSignal,
+  dataPlaneAbortSignal,
   withControlPlaneAbortClient,
   buildDocumentPageRowsForPersistence,
   serializeDocumentPageRowsForCommit,
@@ -91,11 +95,15 @@ import { isWorkerClaimLoopPaused, recordClaimProcessed, startWorkerHealthServerI
 import type { JobRow } from "./types";
 
 export {
+  CONTROL_PLANE_RPCS,
   WORKER_CONTROL_PLANE_TIMEOUT_MS,
+  WORKER_DATA_PLANE_TIMEOUT_MS,
   WORKER_SUPABASE_TIMEOUT_MS,
   resolveWorkerControlPlaneTimeoutMs,
+  resolveWorkerDataPlaneTimeoutMs,
   resolveWorkerSupabaseTimeoutMs,
   controlPlaneAbortSignal,
+  dataPlaneAbortSignal,
   withControlPlaneAbortClient,
   isWorkerClaimLoopPaused,
 };
@@ -252,7 +260,19 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
     return attempt;
   }
   const mutation = (attempt: IngestionAttempt, name: string, args: Record<string, unknown> = {}) =>
-    runIngestionMutation(attempt, (rpcName, payload) => ingestionRpcClient.rpc(rpcName, payload), name, args);
+    runIngestionMutation(
+      attempt,
+      (rpcName, payload) =>
+        ingestionRpcClient
+          .rpc(rpcName, payload)
+          .abortSignal(
+            CONTROL_PLANE_RPCS.has(rpcName)
+              ? controlPlaneAbortSignal(attempt.signal)
+              : dataPlaneAbortSignal(attempt.signal),
+          ),
+      name,
+      args,
+    );
   async function updateJob(jobId: string, patch: { stage?: string; progress?: number }) {
     await updateJobProgress(jobId, { stage: patch.stage ?? "processing", progress: patch.progress ?? 0 });
   }
@@ -301,7 +321,7 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
     const attempt = attemptForJob(job.id);
     return runIngestionStrictCompletion(
       attempt,
-      (name, payload) => ingestionRpcClient.rpc(name, payload).abortSignal(controlPlaneAbortSignal(attempt.signal)),
+      (name, payload) => ingestionRpcClient.rpc(name, payload).abortSignal(dataPlaneAbortSignal(attempt.signal)),
       {
         p_stage: "indexed; enrichment completed",
         p_agent_version: "visual-core-v3",
@@ -1465,7 +1485,7 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
       const attempt = attemptForJob(job.id);
       await writeIngestionTableFacts(
         attempt,
-        (name, payload) => ingestionRpcClient.rpc(name, payload).abortSignal(controlPlaneAbortSignal(attempt.signal)),
+        (name, payload) => ingestionRpcClient.rpc(name, payload).abortSignal(dataPlaneAbortSignal(attempt.signal)),
         indexGenerationId,
         tableFacts,
       );

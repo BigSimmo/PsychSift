@@ -70,7 +70,7 @@ function draftsDifferFromSaved(
   if (filledDrafts.length !== savedGoals.length) return true;
   return filledDrafts.some((draft, index) => {
     const original = savedGoals[index];
-    return !original || (draft.id ?? original.id) !== original.id || draft.goal.trim() !== original.goal.trim();
+    return !original || draft.id !== original.id || draft.goal.trim() !== original.goal.trim();
   });
 }
 
@@ -170,21 +170,10 @@ export function CmePlanPage({
   const router = useRouter();
   const readOnly = Boolean(set.closedAt) || demoMode;
   const [savedGoals, setSavedGoals] = useState(() => goals.map((goal) => ({ id: goal.id, goal: goal.goal })));
-  const [initialRestoredDrafts] = useState<Draft[] | null>(() =>
-    readOnly
-      ? null
-      : readPersistedCmePlanDraft(
-          set.year,
-          draftOwnerId,
-          goals.map((goal) => ({ id: goal.id, goal: goal.goal })),
-        ),
-  );
   const [drafts, setDrafts] = useState<Draft[]>(() =>
-    initialRestoredDrafts
-      ? initialRestoredDrafts
-      : goals.length
-        ? goals.map((goal) => ({ key: nextKey(), id: goal.id, goal: goal.goal }))
-        : [{ key: nextKey(), goal: "" }],
+    goals.length
+      ? goals.map((goal) => ({ key: nextKey(), id: goal.id, goal: goal.goal }))
+      : [{ key: nextKey(), goal: "" }],
   );
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -195,8 +184,9 @@ export function CmePlanPage({
   const [saveConflict, setSaveConflict] = useState(false);
   // Goals read as text until Edit. A plan with no goals yet has nothing to
   // read, so an editable year opens straight into the editor. Restored
-  // unsaved drafts also reopen directly in the editor.
-  const [editing, setEditing] = useState(() => !readOnly && (goals.length === 0 || initialRestoredDrafts !== null));
+  // unsaved drafts reopen in the editor inside the post-mount effect so SSR
+  // and initial client hydration render identical HTML.
+  const [editing, setEditing] = useState(() => !readOnly && goals.length === 0);
   const planRequirement = set.requirements.find((requirement) => requirement.id === "plan");
   // From the goals as last saved here, so a just-saved wording shows at once rather than after a refresh.
   const tally = hoursByGoal(
@@ -242,24 +232,32 @@ export function CmePlanPage({
 
   const isDirty = useMemo(() => draftsDifferFromSaved(drafts, savedGoals), [drafts, savedGoals]);
   useDirtyStateGuard(isDirty && !readOnly);
-  const activeYearRef = useRef(set.year);
+  const hydratedTargetRef = useRef<string | null>(null);
+  const accountGenerationRef = useRef(0);
 
   useEffect(() => {
-    if (activeYearRef.current !== set.year) {
-      activeYearRef.current = set.year;
+    const targetKey = `${draftOwnerId}:${set.year}`;
+    if (hydratedTargetRef.current !== targetKey) {
+      const isInitialMount = hydratedTargetRef.current === null;
+      if (!isInitialMount) {
+        accountGenerationRef.current += 1;
+      }
+      hydratedTargetRef.current = targetKey;
       const nextSaved = goals.map((goal) => ({ id: goal.id, goal: goal.goal }));
       const restored = readOnly ? null : readPersistedCmePlanDraft(set.year, draftOwnerId, nextSaved);
-      setSavedGoals(nextSaved);
-      setDrafts(
-        restored
-          ? restored
-          : nextSaved.length > 0
-            ? nextSaved.map((goal) => ({ key: nextKey(), id: goal.id, goal: goal.goal }))
-            : [{ key: nextKey(), goal: "" }],
-      );
-      setEditing(!readOnly && (nextSaved.length === 0 || restored !== null));
-      setSaveConflict(false);
-      setMessage(null);
+      if (!isInitialMount || restored !== null) {
+        setSavedGoals(nextSaved);
+        setDrafts(
+          restored
+            ? restored
+            : nextSaved.length > 0
+              ? nextSaved.map((goal) => ({ key: nextKey(), id: goal.id, goal: goal.goal }))
+              : [{ key: nextKey(), goal: "" }],
+        );
+        setEditing(!readOnly && (nextSaved.length === 0 || restored !== null));
+        setSaveConflict(false);
+        setMessage(null);
+      }
       return;
     }
     if (readOnly) return;
@@ -272,6 +270,7 @@ export function CmePlanPage({
 
   useEffect(() => {
     return subscribeAccountTransition(() => {
+      accountGenerationRef.current += 1;
       clearPersistedCmePlanDraft(set.year, draftOwnerId);
       const nextSaved = goals.map((goal) => ({ id: goal.id, goal: goal.goal }));
       setSavedGoals(nextSaved);
@@ -287,6 +286,9 @@ export function CmePlanPage({
   }, [draftOwnerId, goals, readOnly, set.year]);
 
   async function save() {
+    const saveGeneration = accountGenerationRef.current;
+    const saveOwnerId = draftOwnerId;
+    const saveYear = set.year;
     setSaving(true);
     setMessage(null);
     try {
@@ -294,7 +296,7 @@ export function CmePlanPage({
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          year: set.year,
+          year: saveYear,
           expectedGoals: savedGoals,
           goals: filled.map((draft) =>
             draft.id ? { id: draft.id, goal: draft.goal.trim() } : { goal: draft.goal.trim() },
@@ -306,13 +308,16 @@ export function CmePlanPage({
         message?: string;
         code?: string;
       } | null;
+      if (accountGenerationRef.current !== saveGeneration || draftOwnerId !== saveOwnerId || set.year !== saveYear) {
+        return;
+      }
       if (response.status === 409 && payload?.code === "cme_plan_conflict") {
         setSaveConflict(true);
         throw new Error("This plan changed elsewhere. Copy any unsaved edits, then reload before saving.");
       }
       if (!response.ok) throw new Error(payload?.message ?? `Could not save your plan (${response.status}).`);
       const nextSavedGoals = (payload?.goals ?? []).map((goal) => ({ id: goal.id, goal: goal.goal }));
-      clearPersistedCmePlanDraft(set.year, draftOwnerId);
+      clearPersistedCmePlanDraft(saveYear, saveOwnerId);
       setSavedGoals(nextSavedGoals);
       setDrafts(
         nextSavedGoals.length > 0
@@ -323,6 +328,9 @@ export function CmePlanPage({
       setEditing(false);
       router.refresh();
     } catch (error) {
+      if (accountGenerationRef.current !== saveGeneration || draftOwnerId !== saveOwnerId || set.year !== saveYear) {
+        return;
+      }
       setMessage(cmeSaveErrorText(error, "Could not save your plan."));
     } finally {
       setSaving(false);

@@ -197,7 +197,7 @@ as $function$
 declare
   v_deleted integer;
 begin
-  if p_retention_days < 1 then
+  if p_retention_days is null or p_retention_days < 1 then
     raise exception 'retention days must be positive' using errcode = '22023';
   end if;
   delete from public.rag_queries where created_at < now() - make_interval(days => p_retention_days);
@@ -217,7 +217,7 @@ as $function$
 declare
   v_deleted integer;
 begin
-  if p_retention_days < 1 then
+  if p_retention_days is null or p_retention_days < 1 then
     raise exception 'retention days must be positive' using errcode = '22023';
   end if;
   delete from public.rag_query_misses where created_at < now() - make_interval(days => p_retention_days);
@@ -232,7 +232,7 @@ create or replace function public.purge_expired_rag_response_cache(p_limit integ
 returns integer language plpgsql security definer set search_path = '' as $$
 declare v_deleted integer;
 begin
-  if p_limit < 1 or p_limit > 10000 then
+  if p_limit is null or p_limit < 1 or p_limit > 10000 then
     raise exception 'purge limit must be between 1 and 10000' using errcode = '22023';
   end if;
   with expired as (select id from public.rag_response_cache where expires_at <= now() order by expires_at asc limit p_limit)
@@ -253,7 +253,7 @@ as $$
 declare
   v_deleted integer;
 begin
-  if p_retention_days < 1 then
+  if p_retention_days is null or p_retention_days < 1 then
     raise exception 'retention days must be positive' using errcode = '22023';
   end if;
   delete from public.api_rate_limit_subjects where updated_at < now() - make_interval(days => p_retention_days);

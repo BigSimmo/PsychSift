@@ -193,8 +193,8 @@ describe("R33 credential revocation, audit logging, and rotation overlap", () =>
       const priorHash = hashTeachingSecret("c".repeat(64));
       const rpc = vi
         .fn()
-        .mockResolvedValueOnce({ data: {}, error: null })
-        .mockResolvedValueOnce({ data: { expiresAt: "2026-10-16T12:00:00Z" }, error: null });
+        .mockResolvedValueOnce({ data: { expiresAt: "2026-10-16T12:00:00Z" }, error: null })
+        .mockResolvedValueOnce({ data: {}, error: null });
       const from = vi.fn(() => ({
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
@@ -219,18 +219,18 @@ describe("R33 credential revocation, audit logging, and rotation overlap", () =>
       expect(rpc).toHaveBeenNthCalledWith(1, "teaching_command", {
         p_actor_id: actorId,
         p_service_id: serviceId,
-        p_action: "display.revoke",
-        p_payload: { linkHash: priorHash },
-      });
-      expect(rpc).toHaveBeenNthCalledWith(2, "teaching_command", {
-        p_actor_id: actorId,
-        p_service_id: serviceId,
         p_action: "display.create",
         p_payload: {
           occurrenceId,
           stream: "room",
           linkHash: hashTeachingSecret(created.token),
         },
+      });
+      expect(rpc).toHaveBeenNthCalledWith(2, "teaching_command", {
+        p_actor_id: actorId,
+        p_service_id: serviceId,
+        p_action: "display.revoke",
+        p_payload: { linkHash: priorHash },
       });
     });
   });

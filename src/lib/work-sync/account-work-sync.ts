@@ -4,10 +4,12 @@ import { z } from "zod";
 
 import type { Json } from "@/lib/supabase/database.types";
 
-import { cpdApplicationsSchema, parseApplications } from "@/lib/cme/applications";
+import { cpdApplicationsReadSchema, cpdApplicationsSchema, parseApplications } from "@/lib/cme/applications";
 import { PublicApiError } from "@/lib/http";
 import {
+  examPrepReadSchema,
   examPrepSchema,
+  termTrackerReadSchema,
   termTrackerSchema,
   type ExamPrepState,
   type TermTrackerState,
@@ -209,11 +211,18 @@ function requireOwner(ownerId: string) {
   if (!ownerId) throw new Error("Missing work sync owner.");
 }
 
+const WORK_SYNC_READ_SCHEMAS = {
+  ...WORK_SYNC_VALUE_SCHEMAS,
+  teachingTermTracker: termTrackerReadSchema,
+  teachingExamPrep: examPrepReadSchema,
+  cpdApplications: cpdApplicationsReadSchema,
+} as const satisfies Record<WorkSyncSection, z.ZodType>;
+
 /** A table row back to an entry; a record that no longer validates is left out, as if never saved. */
 function tableEntry(section: WorkSyncSection, record: unknown, updatedAt: unknown): WorkSyncEntry | null {
   if (typeof updatedAt !== "string" || !Number.isFinite(Date.parse(updatedAt))) return null;
   if (record === null) return { value: null, updatedAt };
-  const parsed = WORK_SYNC_VALUE_SCHEMAS[section].safeParse(record);
+  const parsed = WORK_SYNC_READ_SCHEMAS[section].safeParse(record);
   return parsed.success ? { value: parsed.data, updatedAt } : null;
 }
 

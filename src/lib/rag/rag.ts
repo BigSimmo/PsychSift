@@ -2380,8 +2380,8 @@ async function answerQuestionWithScopeUncoalesced(
     useGovernedContextPacking || loadCheckedPublishedOriginal
       ? await packModelContextEvidence(routeSelection, packGovernedContext, useGovernedContextPacking)
       : routeSelection;
-  // Side-evidence top-up candidates must pass the same admission receipt the governed packer requires.
-  const sideEvidencePool = [...eligibleAnswerResults, ...results];
+  // Side-evidence top-up candidates must come from selection-eligible results and pass the same admission receipt the governed packer requires.
+  const sideEvidencePool = eligibleAnswerResults;
   const sideEvidenceCandidates = useGovernedContextPacking
     ? sideEvidencePool.filter((result) =>
         contextPackAdmissionMatches(result, contextPackAccessScope, args.ragRequestContext!.snapshot),

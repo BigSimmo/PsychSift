@@ -123,6 +123,8 @@ export function resetHealthStateForTests() {
   lastPythonCheckAt = 0;
 }
 
+export const WORKER_HEALTH_PROBE_TIMEOUT_MS = 5_000;
+
 export async function performHealthCheck(): Promise<WorkerHealthSnapshot> {
   const checks: WorkerHealthSnapshot["checks"] = {
     supabase: { status: "ok" },
@@ -133,7 +135,7 @@ export async function performHealthCheck(): Promise<WorkerHealthSnapshot> {
 
   // Check 1: Supabase connectivity
   try {
-    const health = await probeSupabaseHealth(createAdminClient(), AbortSignal.timeout(30_000));
+    const health = await probeSupabaseHealth(createAdminClient(), AbortSignal.timeout(WORKER_HEALTH_PROBE_TIMEOUT_MS));
     // The probe returns an unhealthy result for query/network failures rather
     // than throwing. Honour that result so Railway cannot promote a worker
     // whose database check failed. Keep provider details out of this endpoint.

@@ -31,9 +31,20 @@ function resultOf(value: unknown): {
   return value && typeof value === "object" ? (value as ReturnType<typeof resultOf>) : {};
 }
 
+const MAX_OPEN_POST_ALERT_CACHE_ENTRIES = 2_000;
 const deliveredOpenPostAlerts = new Set<string>();
 const pendingOrFailedOpenPostAlerts = new Set<string>();
 const inFlightOpenPostAlerts = new Map<string, Promise<void>>();
+
+function addBoundedSetEntry(set: Set<string>, key: string): void {
+  if (set.has(key)) {
+    set.delete(key);
+  } else if (set.size >= MAX_OPEN_POST_ALERT_CACHE_ENTRIES) {
+    const oldest = set.values().next().value;
+    if (oldest !== undefined) set.delete(oldest);
+  }
+  set.add(key);
+}
 
 function openPostAlertKey(serviceId: string, openShiftId: string): string {
   return `${serviceId}:${openShiftId}`;
@@ -71,13 +82,14 @@ async function isOpenPostAlertDelivered(
       const query = table?.select?.("open_shift_id")?.eq?.("service_id", serviceId)?.eq?.("open_shift_id", openShiftId);
       if (query && typeof query.maybeSingle === "function") {
         const { data, error } = await query.maybeSingle();
-        if (error) return false;
-        if (data?.open_shift_id) {
-          deliveredOpenPostAlerts.add(key);
-          pendingOrFailedOpenPostAlerts.delete(key);
-          return true;
+        if (!error) {
+          if (data?.open_shift_id) {
+            addBoundedSetEntry(deliveredOpenPostAlerts, key);
+            pendingOrFailedOpenPostAlerts.delete(key);
+            return true;
+          }
+          return false;
         }
-        return false;
       }
     }
   } catch {
@@ -93,8 +105,6 @@ async function markOpenPostAlertDelivered(
   openShiftId: string,
 ): Promise<void> {
   const key = openPostAlertKey(serviceId, openShiftId);
-  deliveredOpenPostAlerts.add(key);
-  pendingOrFailedOpenPostAlerts.delete(key);
   try {
     const fromFn = (client as unknown as { from?: (table: string) => unknown })?.from;
     if (typeof fromFn === "function") {
@@ -104,23 +114,27 @@ async function markOpenPostAlertDelivered(
           options: { onConflict: string },
         ) => Promise<unknown>;
       } | null;
-      const result = await table?.upsert?.(
-        {
-          service_id: serviceId,
-          open_shift_id: openShiftId,
-          delivered_at: new Date().toISOString(),
-        },
-        { onConflict: "service_id,open_shift_id" },
-      );
-      if (result && typeof result === "object" && "error" in result && result.error) {
-        pendingOrFailedOpenPostAlerts.add(key);
-        return;
+      if (typeof table?.upsert === "function") {
+        const result = await table.upsert(
+          {
+            service_id: serviceId,
+            open_shift_id: openShiftId,
+            delivered_at: new Date().toISOString(),
+          },
+          { onConflict: "service_id,open_shift_id" },
+        );
+        if (result && typeof result === "object" && "error" in result && result.error) {
+          deliveredOpenPostAlerts.delete(key);
+          addBoundedSetEntry(pendingOrFailedOpenPostAlerts, key);
+          return;
+        }
       }
     }
-    deliveredOpenPostAlerts.add(key);
+    addBoundedSetEntry(deliveredOpenPostAlerts, key);
     pendingOrFailedOpenPostAlerts.delete(key);
   } catch {
-    pendingOrFailedOpenPostAlerts.add(key);
+    deliveredOpenPostAlerts.delete(key);
+    addBoundedSetEntry(pendingOrFailedOpenPostAlerts, key);
   }
 }
 
@@ -239,16 +253,19 @@ export async function dispatchRosterAlerts(client: RosterAdminClient, event: Ros
     if (!isOpenPostOffer && result.replayed === true) return;
 
     if (isOpenPostOffer && result.openShiftId) {
-      const key = openPostAlertKey(event.serviceId, result.openShiftId);
-      const existingInFlight = inFlightOpenPostAlerts.get(key);
-      if (existingInFlight) {
-        await existingInFlight.catch(() => undefined);
-      }
-      if (await isOpenPostAlertDelivered(client, event.serviceId, result.openShiftId, result.replayed === true)) {
-        return;
-      }
-      pendingOrFailedOpenPostAlerts.add(key);
-      const runPromise = runRosterAlertDispatch(client, event, result, true);
+      const openShiftId = result.openShiftId;
+      const key = openPostAlertKey(event.serviceId, openShiftId);
+      const previousInFlight = inFlightOpenPostAlerts.get(key);
+      const runPromise = (async () => {
+        if (previousInFlight) {
+          await previousInFlight.catch(() => undefined);
+        }
+        if (await isOpenPostAlertDelivered(client, event.serviceId, openShiftId, result.replayed === true)) {
+          return;
+        }
+        addBoundedSetEntry(pendingOrFailedOpenPostAlerts, key);
+        await runRosterAlertDispatch(client, event, result, true);
+      })();
       inFlightOpenPostAlerts.set(key, runPromise);
       try {
         await runPromise;

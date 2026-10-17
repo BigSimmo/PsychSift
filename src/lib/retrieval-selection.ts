@@ -849,10 +849,10 @@ export function selectRetrievalEvidence(args: {
     if (right.score !== left.score) return right.score - left.score;
     if ((right.lexicalScore ?? 0) !== (left.lexicalScore ?? 0))
       return (right.lexicalScore ?? 0) - (left.lexicalScore ?? 0);
+    if ((right.rerankScore ?? 0) !== (left.rerankScore ?? 0)) return (right.rerankScore ?? 0) - (left.rerankScore ?? 0);
     const leftTitlePhrase = left.matchedSignals.includes("document_title_phrase") ? 1 : 0;
     const rightTitlePhrase = right.matchedSignals.includes("document_title_phrase") ? 1 : 0;
     if (rightTitlePhrase !== leftTitlePhrase) return rightTitlePhrase - leftTitlePhrase;
-    if ((right.rerankScore ?? 0) !== (left.rerankScore ?? 0)) return (right.rerankScore ?? 0) - (left.rerankScore ?? 0);
     // Exact tie on every clamped key (routine on the embedding-free fast path, where imputed
     // primaries are byte-identical and confidences saturate at 1.0): prefer the candidate whose
     // content actually covers the query's terms over an arbitrary chunk-id ordering. This never

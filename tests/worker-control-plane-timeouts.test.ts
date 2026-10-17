@@ -148,7 +148,7 @@ describe("worker pause and finite control-plane deadlines (R01, R18, R34)", () =
     };
 
     const wrapped = withControlPlaneAbortClient(mockClient);
-    await wrapped.rpc("claim_ingestion_jobs", {}).abortSignal(controlPlaneAbortSignal());
+    await wrapped.rpc("claim_ingestion_jobs", {});
     await wrapped.from("documents").select("id").eq("id", "doc-1");
 
     expect(observedRpcSignals).toHaveLength(1);
