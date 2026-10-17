@@ -499,6 +499,34 @@ describe("indexing-v3-agent claimed-batch request loop (L13)", () => {
     );
 
     expect(normalized.model_version).toBe("rag-deep-memory-v2");
+    expect(() =>
+      normalizeSourceAnchoredSummary(
+        {
+          summary_kind: "structured",
+          summary_version: SOURCE_ANCHORED_SUMMARY_VERSION,
+          document_id: docId,
+          index_generation_id: genId,
+          model: "unexpected-model",
+          model_version: "rag-deep-memory-v2",
+          generated_at: "2026-07-01T00:00:00.000Z",
+          source_chunk_ids: [chunkId],
+          source_image_ids: [],
+          summary: projectedOverview,
+          clinical_specifics: {
+            profile,
+            actions: [actionItem.text],
+            thresholds_timing: [],
+            medication_monitoring: [],
+            risk_escalation: [],
+            documentation_forms: [],
+            exceptions_gaps: [],
+          },
+          labels: [],
+          heuristic_fallback: false,
+        },
+        authority,
+      ),
+    ).toThrow("source_anchored_summary_structured_model_invalid");
 
     const edgeSource = String(
       await import("node:fs/promises").then((fs) =>

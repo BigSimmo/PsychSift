@@ -36,8 +36,6 @@ const PUBLIC_DOCUMENT_LIST_COLUMNS = [
   "updated_at",
 ].join(",");
 
-const PUBLIC_DOCUMENT_QUERY_COLUMNS = `${PUBLIC_DOCUMENT_LIST_COLUMNS},metadata`;
-
 const DOCUMENT_LIST_COLUMNS = [
   "id",
   "owner_id",
@@ -71,8 +69,6 @@ const PUBLIC_LABEL_LIST_COLUMNS = [
   "updated_at",
 ].join(",");
 
-const PUBLIC_LABEL_QUERY_COLUMNS = `${PUBLIC_LABEL_LIST_COLUMNS},metadata`;
-
 const LABEL_LIST_COLUMNS = [
   "id",
   "document_id",
@@ -86,15 +82,7 @@ const LABEL_LIST_COLUMNS = [
   "updated_at",
 ].join(",");
 
-const PUBLIC_SUMMARY_LIST_COLUMNS = [
-  "id",
-  "document_id",
-  "summary",
-  "clinical_specifics",
-  "generated_at",
-].join(",");
-
-const PUBLIC_SUMMARY_QUERY_COLUMNS = `${PUBLIC_SUMMARY_LIST_COLUMNS},metadata`;
+const PUBLIC_SUMMARY_LIST_COLUMNS = ["id", "document_id", "summary", "clinical_specifics", "generated_at"].join(",");
 
 const SUMMARY_LIST_COLUMNS = [
   "id",
@@ -193,7 +181,7 @@ export async function GET(request: Request) {
     }
 
     const effectiveIncludeMeta = access.authenticated ? includeMeta : false;
-    const listColumns = access.authenticated ? DOCUMENT_LIST_COLUMNS : PUBLIC_DOCUMENT_QUERY_COLUMNS;
+    const listColumns = access.authenticated ? DOCUMENT_LIST_COLUMNS : PUBLIC_DOCUMENT_LIST_COLUMNS;
     let query = withOwnerReadScope(supabase.from("documents").select(listColumns, { count: "exact" }), access.ownerId)
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
@@ -223,16 +211,13 @@ export async function GET(request: Request) {
       .filter((document) => !ownedDocumentIds.has(document.id))
       .map((document) => document.id);
     const documents = rawDocuments.map((document) => redactNonOwnedDocumentFields(document, access.ownerId));
-    const responseDocuments = documents.map((document) =>
-      ownedDocumentIds.has(document.id) ? document : projectPublicFields(document, PUBLIC_DOCUMENT_LIST_COLUMNS),
-    );
     const documentIds = documents.map((document) => document.id);
     const indexing = indexingState(documents);
 
     const pagination = offsetPagination({ limit, offset, pageLength: documents.length, count });
 
     if (documentIds.length === 0 || !effectiveIncludeMeta) {
-      return documentsResponse({ documents: responseDocuments, pagination }, indexing);
+      return documentsResponse({ documents, pagination }, indexing);
     }
 
     const ownedIds = [...ownedDocumentIds];
@@ -250,7 +235,7 @@ export async function GET(request: Request) {
       publicLabelsPromises.push(
         supabase
           .from("document_labels")
-          .select(PUBLIC_LABEL_QUERY_COLUMNS)
+          .select(PUBLIC_LABEL_LIST_COLUMNS)
           .in("document_id", publicDocumentIds.slice(i, i + 100)),
       );
     }
@@ -269,7 +254,7 @@ export async function GET(request: Request) {
       publicSummariesPromises.push(
         supabase
           .from("document_summaries")
-          .select(PUBLIC_SUMMARY_QUERY_COLUMNS)
+          .select(PUBLIC_SUMMARY_LIST_COLUMNS)
           .in("document_id", publicDocumentIds.slice(i, i + 100))
           .order("generated_at", { ascending: false }),
       );
@@ -358,9 +343,7 @@ export async function GET(request: Request) {
     return documentsResponse(
       {
         documents: documents.map((document) => ({
-          ...(ownedDocumentIds.has(document.id)
-            ? document
-            : projectPublicFields(document, PUBLIC_DOCUMENT_LIST_COLUMNS)),
+          ...document,
           labels: labelsByDocument.get(document.id) ?? [],
           summary: summariesByDocument.get(document.id)?.row ?? null,
         })),
@@ -373,16 +356,5 @@ export async function GET(request: Request) {
       return unauthorizedResponse();
     }
     return jsonError(error);
-  }
-}
-urn jsonError(error);
-  }
-}
-n unauthorizedResponse();
-    }
-    return jsonError(error);
-  }
-}
-urn jsonError(error);
   }
 }

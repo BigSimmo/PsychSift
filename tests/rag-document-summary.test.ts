@@ -118,7 +118,7 @@ describe("document summary context", () => {
     );
   });
 
-  it("excludes uncommitted null-generation chunks and enforces numeric verification on document summaries", async () => {
+  it("excludes uncommitted staged-generation chunks and enforces numeric verification on document summaries", async () => {
     vi.stubEnv("OPENAI_API_KEY", "test-key");
 
     const documentId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -133,6 +133,7 @@ describe("document summary context", () => {
           id: documentId,
           title: "Clozapine Initiation Guideline",
           file_name: "clozapine-initiation.pdf",
+          status: "indexed",
           metadata: {
             index_generation_id: "generation-current",
             publisher: "WA Health",
@@ -155,7 +156,7 @@ describe("document summary context", () => {
         content: "Uncommitted draft says start at 999 mg daily.",
         retrieval_synopsis: null,
         image_ids: [],
-        index_generation_id: null,
+        index_generation_id: "generation-staged-uncommitted",
       },
       {
         id: "committed-chunk",
@@ -208,6 +209,7 @@ describe("document summary context", () => {
     const { summarizeDocument } = await import("../src/lib/rag/rag");
     const answer = await summarizeDocument(documentId, ownerId);
 
+    expect(documentQuery.select).toHaveBeenCalledWith("id,title,file_name,status,metadata");
     const summaryPrompt = (generateStructuredTextResult.mock.calls[0] as unknown[] | undefined)?.[0] ?? "";
     expect(summaryPrompt).not.toContain("Uncommitted draft");
     expect(summaryPrompt).toContain("Commence clozapine at 12.5 mg");
@@ -218,6 +220,47 @@ describe("document summary context", () => {
     expect(answer.smartPanel?.bestSource).toBeNull();
     expect(answer.supportedClaims).toBeUndefined();
     expect(answer.evidenceAssessments).toBeUndefined();
+  });
+
+  it("refuses to summarize non-indexed documents without querying chunks or OpenAI", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "test-key");
+    const documentId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const documentQuery = {
+      select: vi.fn().mockReturnThis(),
+      or: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn(async () => ({
+        data: {
+          id: documentId,
+          title: "Queued Guideline",
+          file_name: "queued.pdf",
+          status: "queued",
+          metadata: {},
+        },
+        error: null,
+      })),
+    };
+    const from = vi.fn(() => documentQuery);
+    const generateStructuredTextResult = vi.fn();
+
+    vi.doMock("@/lib/supabase/admin", () => ({
+      createAdminClient: () => ({ from, rpc: vi.fn() }),
+    }));
+    vi.doMock("@/lib/openai", () => ({
+      embedTextWithTelemetry: vi.fn(),
+      generateStructuredTextResult,
+    }));
+
+    const { summarizeDocument } = await import("../src/lib/rag/rag");
+    const answer = await summarizeDocument(documentId, "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
+
+    expect(documentQuery.or).toHaveBeenCalledWith(
+      "owner_id.eq.bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb,and(owner_id.is.null,metadata->>public_corpus.eq.true)",
+    );
+    expect(from).toHaveBeenCalledTimes(1);
+    expect(generateStructuredTextResult).not.toHaveBeenCalled();
+    expect(answer.grounded).toBe(false);
+    expect(answer.confidence).toBe("unsupported");
   });
 
   it("stops before the first database read when the caller already disconnected", async () => {

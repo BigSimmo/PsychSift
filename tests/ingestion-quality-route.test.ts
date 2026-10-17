@@ -476,15 +476,15 @@ describe("/api/ingestion/quality", () => {
     expect(result).toEqual({
       outcome: "already_active",
     });
-    // First update set status: "queued" and zeroed counts; second update rolled back to the prior state
+    // First update set status: "queued" and zeroed counts; second update restored prior counts with status: "processing"
     expect(documentUpdates).toHaveLength(2);
     expect(documentUpdates[0]).toMatchObject({ status: "queued", page_count: 0, chunk_count: 0, image_count: 0 });
     expect(documentUpdates[1]).toMatchObject({
-      status: "failed",
+      status: "processing",
       page_count: 5,
       chunk_count: 12,
       image_count: 2,
-      error_message: "Prior failure",
+      error_message: null,
     });
   });
 });

@@ -1105,41 +1105,55 @@ export async function fetchRelatedDocumentMetadata(args: {
   if (typeof (summariesQuery as { order?: unknown }).order === "function") {
     summariesQuery = summariesQuery.order("generated_at", { ascending: false });
   }
-  let documentsQuery = args.supabase.from("documents").select("id,metadata").in("id", args.documentIds);
 
   if (accessScope.ownerId && accessScope.includePublic) {
     labelsQuery = labelsQuery.or(`owner_id.eq.${accessScope.ownerId},owner_id.is.null`);
     summariesQuery = summariesQuery.or(`owner_id.eq.${accessScope.ownerId},owner_id.is.null`);
-    documentsQuery = documentsQuery.or(`owner_id.eq.${accessScope.ownerId},owner_id.is.null`);
   } else if (accessScope.ownerId) {
     labelsQuery = labelsQuery.eq("owner_id", accessScope.ownerId);
     summariesQuery = summariesQuery.eq("owner_id", accessScope.ownerId);
-    documentsQuery = documentsQuery.eq("owner_id", accessScope.ownerId);
   } else {
     labelsQuery = labelsQuery.is("owner_id", null);
     summariesQuery = summariesQuery.is("owner_id", null);
-    documentsQuery = documentsQuery.is("owner_id", null);
   }
 
   if (args.signal) {
     labelsQuery = labelsQuery.abortSignal(args.signal);
     summariesQuery = summariesQuery.abortSignal(args.signal);
-    documentsQuery = documentsQuery.abortSignal(args.signal);
   }
 
-  const [labelsResult, summariesResult, documentsResult] = await Promise.all([
-    labelsQuery,
-    summariesQuery,
-    documentsQuery,
-  ]);
+  const [labelsResult, summariesResult] = await Promise.all([labelsQuery, summariesQuery]);
   args.signal?.throwIfAborted();
-  const metadataError = labelsResult.error ?? summariesResult.error ?? documentsResult?.error;
+  const metadataError = labelsResult.error ?? summariesResult.error;
   if (metadataError) throw metadataError;
+  const rawLabels = (labelsResult.data ?? []) as DocumentLabel[];
+  const rawSummaries = (summariesResult.data ?? []) as Array<
+    Pick<DocumentSummary, "document_id" | "summary"> & { generated_at?: string | null; metadata?: unknown }
+  >;
+  const hasGenerationStampedMetadata =
+    rawLabels.some((label) => Boolean(committedIndexGeneration(label.metadata))) ||
+    rawSummaries.some((summary) => Boolean(committedIndexGeneration(summary.metadata)));
   const committedGenerationByDocument = new Map<string, string | null>();
-  for (const doc of (documentsResult?.data ?? []) as Array<{ id: string; metadata?: unknown }>) {
-    committedGenerationByDocument.set(doc.id, committedIndexGeneration(doc.metadata));
+  if (hasGenerationStampedMetadata) {
+    let documentsQuery = args.supabase.from("documents").select("id,metadata").in("id", args.documentIds);
+    if (accessScope.ownerId && accessScope.includePublic) {
+      documentsQuery = documentsQuery.or(`owner_id.eq.${accessScope.ownerId},owner_id.is.null`);
+    } else if (accessScope.ownerId) {
+      documentsQuery = documentsQuery.eq("owner_id", accessScope.ownerId);
+    } else {
+      documentsQuery = documentsQuery.is("owner_id", null);
+    }
+    if (args.signal) {
+      documentsQuery = documentsQuery.abortSignal(args.signal);
+    }
+    const documentsResult = await documentsQuery;
+    args.signal?.throwIfAborted();
+    if (documentsResult?.error) throw documentsResult.error;
+    for (const doc of (documentsResult?.data ?? []) as Array<{ id: string; metadata?: unknown }>) {
+      committedGenerationByDocument.set(doc.id, committedIndexGeneration(doc.metadata));
+    }
   }
-  const labels = ((labelsResult.data ?? []) as DocumentLabel[]).filter(
+  const labels = rawLabels.filter(
     (label) =>
       !isHiddenLabel(label) &&
       isCommittedGenerationMetadata({
@@ -1147,11 +1161,7 @@ export async function fetchRelatedDocumentMetadata(args: {
         committedGeneration: committedGenerationByDocument.get(label.document_id) ?? null,
       }),
   );
-  const summaries = (
-    (summariesResult.data ?? []) as Array<
-      Pick<DocumentSummary, "document_id" | "summary"> & { generated_at?: string | null; metadata?: unknown }
-    >
-  ).filter((summary) =>
+  const summaries = rawSummaries.filter((summary) =>
     isCommittedGenerationMetadata({
       rowMetadata: summary.metadata,
       committedGeneration: committedGenerationByDocument.get(summary.document_id) ?? null,

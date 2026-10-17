@@ -1014,11 +1014,10 @@ async function fetchBestDocumentLookupChunks(args: {
 }) {
   const terms = documentLookupChunkTerms(args.query);
   const matchesCommittedGeneration = (chunk: DocumentLookupChunkRow) => {
-    if (chunk.index_generation_id === undefined || !args.committedGenerationByDocument?.has(chunk.document_id)) {
+    if (!chunk.index_generation_id || !args.committedGenerationByDocument?.has(chunk.document_id)) {
       return true;
     }
-    const committed = args.committedGenerationByDocument.get(chunk.document_id);
-    return committed ? chunk.index_generation_id === committed : !chunk.index_generation_id;
+    return chunk.index_generation_id === args.committedGenerationByDocument.get(chunk.document_id);
   };
   const { data: rpcChunks, error: rpcError } = await callVersionedRetrievalRpc(
     args.supabase,
@@ -1082,7 +1081,8 @@ async function fetchBestDocumentLookupChunks(args: {
       "id,document_id,page_number,chunk_index,section_heading,section_path,heading_level,parent_heading,anchor_id,content,retrieval_synopsis,image_ids,index_generation_id",
     )
     .in("document_id", args.documentIds)
-    .order("chunk_index", { ascending: true });
+    .order("chunk_index", { ascending: true })
+    .limit(Math.max(args.limit * 4, 24));
   const { data: fallbackChunks, error: fallbackError } = await fallbackQuery;
   if (fallbackError || !fallbackChunks?.length) return { chunks: [] as DocumentLookupChunkRow[], terms };
   return {
@@ -1413,10 +1413,7 @@ export async function loadChunksForMemoryCards(
       const document = documentById.get(chunk.document_id);
       if (!document) return null;
       const committedGeneration = committedIndexGeneration(document.metadata) ?? document.index_generation_id ?? null;
-      const chunkMatchesGeneration =
-        chunk.index_generation_id === undefined ||
-        (committedGeneration ? chunk.index_generation_id === committedGeneration : !chunk.index_generation_id);
-      if (!chunkMatchesGeneration) return null;
+      if (chunk.index_generation_id && chunk.index_generation_id !== committedGeneration) return null;
       const card = bestCardByChunk.get(chunk.id);
       // Not a cosine: fabricated from memory-card confidence (RC9 — tagged below).
       const similarity = Math.min(0.92, 0.58 + (card?.confidence ?? 0.5) * 0.28);
@@ -1662,10 +1659,7 @@ export async function loadChunksForSignalMatches(args: {
       const match = bestMatchByChunk.get(chunk.id);
       if (!document || !match) return null;
       const committedGeneration = committedIndexGeneration(document.metadata) ?? document.index_generation_id ?? null;
-      const chunkMatchesGeneration =
-        chunk.index_generation_id === undefined ||
-        (committedGeneration ? chunk.index_generation_id === committedGeneration : !chunk.index_generation_id);
-      if (!chunkMatchesGeneration) return null;
+      if (chunk.index_generation_id && chunk.index_generation_id !== committedGeneration) return null;
       return {
         id: chunk.id,
         document_id: chunk.document_id,

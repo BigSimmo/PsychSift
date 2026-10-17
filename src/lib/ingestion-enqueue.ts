@@ -114,10 +114,9 @@ export async function enqueueDocumentReindexJob(args: {
       Boolean(document.status) &&
       (competingJobs ?? []).some((row) => (row as { status?: unknown }).status === "processing");
     if (!competingJobsError && ((competingJobs?.length ?? 0) === 0 || hasCompetingProcessingJob)) {
-      const payloadToRestore =
-        hasCompetingProcessingJob && document.status === "queued"
-          ? { ...rollbackDocumentPayload, status: "processing" }
-          : rollbackDocumentPayload;
+      const payloadToRestore = hasCompetingProcessingJob
+        ? { ...rollbackDocumentPayload, status: "processing", error_message: null }
+        : rollbackDocumentPayload;
       const rollback = supabase
         .from("documents")
         .update(payloadToRestore)

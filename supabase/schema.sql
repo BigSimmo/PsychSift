@@ -4139,7 +4139,6 @@ as $$
         from public.document_labels l
         where l.document_id = d.id
           and public.retrieval_owner_matches(owner_filter, l.owner_id)
-          and public.is_committed_document_generation((l.metadata->>'index_generation_id')::uuid, d.index_generation_id)
           and coalesce(l.metadata->>'review_status', 'new') <> 'hidden'
           and coalesce(l.metadata->>'hidden', 'false') <> 'true'
       ),

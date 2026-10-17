@@ -15,7 +15,7 @@ export async function loadDocumentSummaryContext(documentId: string, ownerId?: s
   if (ownerId) {
     documentQuery =
       typeof (documentQuery as { or?: unknown }).or === "function"
-        ? documentQuery.or(`owner_id.eq.${ownerId},owner_id.is.null`)
+        ? documentQuery.or(`owner_id.eq.${ownerId},and(owner_id.is.null,metadata->>public_corpus.eq.true)`)
         : documentQuery.eq("owner_id", ownerId);
   } else {
     documentQuery = documentQuery.is("owner_id", null);
@@ -27,7 +27,7 @@ export async function loadDocumentSummaryContext(documentId: string, ownerId?: s
   if (documentError) throw new Error(documentError.message);
   if (!document) throw new Error("Document not found.");
   const documentStatus = (document as { status?: unknown }).status;
-  if (documentStatus !== "indexed") {
+  if (typeof documentStatus === "string" && documentStatus !== "indexed") {
     return { document, chunks: [] };
   }
 
@@ -52,5 +52,30 @@ export async function loadDocumentSummaryContext(documentId: string, ownerId?: s
 
   throwIfAborted(signal);
   if (error) throw new Error(error.message);
-  return { document, chunks: chunks ?? [] };
+  const committedChunks = (chunks ?? []).filter(
+    (chunk) =>
+      !chunk.index_generation_id || (Boolean(committedGeneration) && chunk.index_generation_id === committedGeneration),
+  );
+  return { document, chunks: committedChunks };
+}
+
+export function sanitizeUnsupportedSummaryAnswer<
+  T extends {
+    grounded?: boolean;
+    confidence?: string;
+    bestSource?: unknown;
+    supportedClaims?: unknown;
+    evidenceAssessments?: unknown;
+    smartPanel?: Record<string, unknown> | null;
+  },
+>(answer: T): T {
+  if (!answer.grounded || answer.confidence === "unsupported") {
+    answer.bestSource = null;
+    answer.supportedClaims = undefined;
+    answer.evidenceAssessments = undefined;
+    if (answer.smartPanel) {
+      answer.smartPanel = { ...answer.smartPanel, bestSource: null };
+    }
+  }
+  return answer;
 }
