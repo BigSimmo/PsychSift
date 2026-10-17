@@ -278,7 +278,5 @@ export function rankServiceRecords(
   if (urgent.length === 0) return ranked.slice(0, limit);
 
   const pinned = new Set(urgent.map(({ service }) => service.slug));
-  const remaining = ranked.filter(({ service }) => !pinned.has(service.slug));
-
-  return [...urgent, ...remaining].slice(0, limit);
+  return [...urgent, ...ranked.filter(({ service }) => !pinned.has(service.slug))].slice(0, limit);
 }

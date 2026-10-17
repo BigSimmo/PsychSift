@@ -314,7 +314,12 @@ describe("hostile-document ingestion matrix across 7 audit F18 classes (#F3SGCM)
     });
   });
 
-  describe("end-to-end upload -> extraction -> chunking -> retrieval -> answer pipeline across all 7 hostile classes (#7D8WZ2)", () => {
+  // Pipeline contract, not a hostile-bytes proof: classes 1-5 hand an ordinary PDF to a
+  // scripted extractor that emits each class's documented outcome, so these cases pin how
+  // upload, worker classification, chunking, retrieval and prompt assembly react to those
+  // outcomes. They do not show that the production extractor detects encrypted, corrupt,
+  // nested or oversized PDF bytes; #7D8WZ2 stays open until real hostile fixtures do.
+  describe("upload -> extraction -> chunking -> retrieval -> answer pipeline contract for scripted hostile-class extractor outcomes (#7D8WZ2)", () => {
     async function createMockSuccessExtractor(pageText: string) {
       const root = await mkdtemp(path.join(tmpdir(), "hostile-matrix-ok-"));
       cleanupRoots.push(root);

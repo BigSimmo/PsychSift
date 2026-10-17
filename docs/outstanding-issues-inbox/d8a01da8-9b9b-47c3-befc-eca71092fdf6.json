@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "id": "d8a01da8-9b9b-47c3-befc-eca71092fdf6",
+  "createdOn": "2026-10-17",
+  "action": "cancel",
+  "payload": {
+    "requestId": "d8f0c7b0-3e94-4b02-a17a-339f317274ec",
+    "reason": "The national-line promotion for camhs_crisis queries was removed from this PR (d95d6cd32) pending owner clinical approval, so #8CKX6F stays open."
+  }
+}
