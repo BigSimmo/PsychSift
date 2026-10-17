@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "a5c25ca4-4fa3-421f-a944-35621169e55e",
+  "createdOn": "2026-10-17",
+  "action": "add",
+  "payload": {
+    "pri": "P1",
+    "type": "issue",
+    "summary": "Reopened #WFYDV6: unwired WA MHA Form 6A/6B print component carries unverified statutory text; keep unwired until legal and clinical sign-off",
+    "detail": "Owner decision 17 Oct 2026 21:37 AWST: #WFYDV6 must stay open; PR #3609 archived it without the required sign-off. src/components/forms/wa-mha-form-print.tsx (PR #3538) was reworded on 16 Oct (Form 6B now a report to the Chief Psychiatrist; Non-Statutory Study Layout header), but section lists, the 7-day pre-expiry examination and copy recipients remain unverified and no legal or clinical sign-off is recorded. Nothing imports or renders it; it must stay unwired. Delete it once the 30-day dead-code window passes (after 13 Nov 2026) unless legal and clinical sign-off is obtained first.",
+    "source": "PR 3538 review, 15 Oct 2026; owner decision on PR #3609, 17 Oct 2026",
+    "issueUlid": "01M551BSHWZ12CBC9F0K21CPEN"
+  }
+}
