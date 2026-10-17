@@ -1,6 +1,6 @@
 import { normalizeSearchText, rankCatalogRecords } from "@/lib/catalog-search";
 import { smartSearchExpansions } from "@/lib/smart-search-intent";
-import { detectServiceUrgentIntents, rankServiceUrgentRoutes } from "@/lib/service-urgent-routing";
+import { rankServiceUrgentRoutes } from "@/lib/service-urgent-routing";
 
 export type ServiceChipTone = "danger" | "info" | "warning" | "success" | "neutral";
 export type ServiceCriterionTone = "meet" | "caution" | "reject";
@@ -279,53 +279,6 @@ export function rankServiceRecords(
 
   const pinned = new Set(urgent.map(({ service }) => service.slug));
   const remaining = ranked.filter(({ service }) => !pinned.has(service.slug));
-
-  if (detectServiceUrgentIntents(query).includes("camhs_crisis")) {
-    const nationalSupportTitlePatterns = [
-      /^Lifeline(?: WA)?$/i,
-      /^Suicide Call Back Service$/i,
-      /^Kids Helpline$/i,
-      /^13\s*YARN$/i,
-    ] as const;
-    const nationalMatches: ServiceSearchMatch[] = [];
-    for (const pattern of nationalSupportTitlePatterns) {
-      if (urgent.some(({ service }) => pattern.test(service.title))) continue;
-      const existing = remaining.find(
-        ({ service }) =>
-          pattern.test(service.title) &&
-          !pinned.has(service.slug) &&
-          (service.verification?.availabilityStatus ?? "active") === "active",
-      );
-      if (existing) {
-        nationalMatches.push({
-          ...existing,
-          reasons: existing.reasons.includes("crisis support line")
-            ? existing.reasons
-            : [...existing.reasons, "crisis support line"],
-        });
-        pinned.add(existing.service.slug);
-        continue;
-      }
-      const record = records.find(
-        (candidate) =>
-          pattern.test(candidate.title) &&
-          !pinned.has(candidate.slug) &&
-          (candidate.verification?.availabilityStatus ?? "active") === "active",
-      );
-      if (record) {
-        nationalMatches.push({
-          service: record,
-          score: Math.max(1, (remaining[0]?.score ?? 10) - nationalMatches.length),
-          reasons: ["crisis support line"],
-        });
-        pinned.add(record.slug);
-      }
-    }
-    return [...urgent, ...nationalMatches, ...remaining.filter(({ service }) => !pinned.has(service.slug))].slice(
-      0,
-      limit,
-    );
-  }
 
   return [...urgent, ...remaining].slice(0, limit);
 }

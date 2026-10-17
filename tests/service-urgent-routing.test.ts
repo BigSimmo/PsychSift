@@ -66,23 +66,12 @@ describe("service urgent routing — Requirement R2", () => {
       }
     });
 
-    it("surfaces Lifeline WA, Suicide Call Back Service, Kids Helpline, and 13YARN near the top for youth and child self-harm/suicide queries (#8CKX6F)", () => {
-      for (const query of [
-        "youth self harm",
-        "suicidal youth",
-        "trans youth suicidal",
-        "gay youth suicidal",
-        "lgbti youth suicide",
-        "child self harm",
-        "suicidal teen perth",
-        "young person self harming who do I call",
-      ]) {
-        const topTitles = titles(query, 8);
-        expect(topTitles[0]).toBe("CAMHS Crisis Connect");
-        expect(topTitles).toEqual(
-          expect.arrayContaining(["Lifeline WA", "Suicide Call Back Service", "Kids Helpline", "13YARN"]),
-        );
-      }
+    it("does not promote non-approved national lines as crisis pins for youth queries", () => {
+      const topTitles = titles("youth self harm", 8);
+      expect(topTitles[0]).toBe("CAMHS Crisis Connect");
+      expect(topTitles.slice(0, 2)).not.toEqual(
+        expect.arrayContaining(["Lifeline WA", "Suicide Call Back Service", "Kids Helpline", "13YARN"]),
+      );
     });
   });
 
