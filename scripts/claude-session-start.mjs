@@ -55,7 +55,10 @@ for (const [label, command, args, timeout] of steps) {
   const result = spawnSync(command, args, { cwd: repoRoot, input: payload, encoding: "utf8", timeout });
   collect(result.stdout || "", label === "cloud setup");
   if (result.stderr) process.stderr.write(result.stderr);
-  if (result.status !== 0 || result.error)
+  // A dependent that exits 0 without reading stdin races the payload write and leaves
+  // EPIPE in result.error; it still completed, so only other errors count as failure.
+  const failed = result.status !== 0 || (result.error && result.error.code !== "EPIPE");
+  if (failed)
     contexts.push(`SessionStart ${label} did not complete; check its diagnostics before trusting related checks.`);
 }
 if (contexts.length)
