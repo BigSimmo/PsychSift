@@ -2809,9 +2809,8 @@ function ClinicalDashboardContent({
                   // mode-specific branch so picking a mode on `/` changes only its
                   // presentation and composer target; mode-owned content stays behind
                   // its own route (/tools, /favourites, /dsm, …).
-                  // One grid item for the home and its line, so the canvas centres them together
-                  // instead of splitting them into two stretched rows on tall desktop windows.
-                  <div className="flex w-full flex-col items-center">
+                  // One grid item, so a tall canvas cannot split the home and its line into two rows.
+                  <div className="relative w-full">
                     <SharedHomeEmptyState
                       modeId={searchMode}
                       desktopComposerSlotId={desktopHomeComposerSlotId}
@@ -2823,9 +2822,10 @@ function ClinicalDashboardContent({
                     />
                     {/* Before the first question is sent: where an Answer question goes. Centred on the
                         Answer home (owner decision, 17 Oct 2026); PR #3605 centres the line under each
-                        answer to match. Below the home content, so the composer never moves. */}
+                        answer to match. It hangs below the home without taking layout space, so the
+                        centred home and its composer sit in the same place in every mode. */}
                     {searchMode === "answer" && !clientDemoMode ? (
-                      <AnswerProviderNotice className="mt-2 justify-center text-center" />
+                      <AnswerProviderNotice className="absolute inset-x-0 top-full mt-2 justify-center px-4 text-center" />
                     ) : null}
                   </div>
                 ) : activeModeResultKind === "differentials" ? (

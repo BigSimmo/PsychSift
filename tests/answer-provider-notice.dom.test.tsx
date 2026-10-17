@@ -35,11 +35,13 @@ describe("AnswerProviderNotice", () => {
     expect(mounts).toEqual(["components/ClinicalDashboard.tsx"]);
     // The home line is Answer-only, centred like the answer line (owner decision, 17 Oct 2026).
     expect(source).toMatch(
-      /searchMode === "answer" && !clientDemoMode \? \(\s*<AnswerProviderNotice className="[^"]*justify-center text-center[^"]*"/,
+      /searchMode === "answer" && !clientDemoMode \? \(\s*<AnswerProviderNotice className="(?=[^"]*\bjustify-center\b)(?=[^"]*\btext-center\b)[^"]*"/,
     );
-    // The home and its line share one grid item, so a tall canvas cannot split them into two rows.
+    // The home and its line share one grid item, so a tall canvas cannot split them into two rows, and
+    // the line is out of flow, so it cannot move the centred home or its composer.
+    expect(source).toMatch(/<AnswerProviderNotice className="absolute inset-x-0 top-full [^"]*"/);
     expect(source).toMatch(
-      /<div className="flex w-full flex-col items-center">\s*<SharedHomeEmptyState[\s\S]*?<AnswerProviderNotice className="[^"]*"[^>]*\/>\s*\) : null\}\s*<\/div>/,
+      /<div className="relative w-full">\s*<SharedHomeEmptyState[\s\S]*?<AnswerProviderNotice className="[^"]*"[^>]*\/>\s*\) : null\}\s*<\/div>/,
     );
     expect(source).toMatch(
       /explicitDemoMode \|\|\s*answer\.demoMode === true[^?]*\? null : \(\s*<AnswerProviderNotice/,
