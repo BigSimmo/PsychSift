@@ -555,10 +555,10 @@ function sourcesFamily(): SignOffFamily {
   // queue's own order (worst rung first, then title), as the tool walks them.
   const ordered = [
     ...acquisitionReviewQueue(),
-    ...sourceAcquisitionRecords.filter((record) => isUnattestedLocalSourceReview(record) || isStaleAttestedSourceReview(record)),
-  ].sort(
-    (left, right) => left.rung - right.rung || SOURCE_TITLE_COLLATOR.compare(left.title, right.title),
-  );
+    ...sourceAcquisitionRecords.filter(
+      (record) => isUnattestedLocalSourceReview(record) || isStaleAttestedSourceReview(record),
+    ),
+  ].sort((left, right) => left.rung - right.rung || SOURCE_TITLE_COLLATOR.compare(left.title, right.title));
   const rows = ordered.map<SignOffRow>((record) =>
     isStaleAttestedSourceReview(record)
       ? {
@@ -587,17 +587,17 @@ function sourcesFamily(): SignOffFamily {
             signOff: toolUnlessIndigenous({ script: "clinical:review", kind: "source", code: record.id }, record),
           }
         : {
-          family: "sources",
-          key: `source-acquisition:${record.id}`,
-          id: record.id,
-          title: record.title,
-          nativeStatus: `${record.disposition} / validationStatus: ${record.validationStatus} (rung ${record.rung})`,
-          statusLabel: "Captured, not yet verified",
-          requires:
-            "The owner verifies the source against the acquisition protocol before any clinical content may cite it; an adopted source with validationStatus unverified is already a ledger error.",
-          href: null,
-          signOff: toolUnlessIndigenous({ script: "clinical:review", kind: "source", code: record.id }, record),
-        },
+            family: "sources",
+            key: `source-acquisition:${record.id}`,
+            id: record.id,
+            title: record.title,
+            nativeStatus: `${record.disposition} / validationStatus: ${record.validationStatus} (rung ${record.rung})`,
+            statusLabel: "Captured, not yet verified",
+            requires:
+              "The owner verifies the source against the acquisition protocol before any clinical content may cite it; an adopted source with validationStatus unverified is already a ledger error.",
+            href: null,
+            signOff: toolUnlessIndigenous({ script: "clinical:review", kind: "source", code: record.id }, record),
+          },
   );
   return {
     id: "sources",
@@ -1601,7 +1601,11 @@ function sourcesDomain(): SignOffDomainSummary {
         reason: "Held for Aboriginal and Torres Strait Islander governance review.",
         href: null,
       });
-    } else if (record.validationStatus === "unverified" || isUnattestedLocalSourceReview(record) || isStaleAttestedSourceReview(record)) {
+    } else if (
+      record.validationStatus === "unverified" ||
+      isUnattestedLocalSourceReview(record) ||
+      isStaleAttestedSourceReview(record)
+    ) {
       // Unverified, locally_reviewed in prose only, or reviewed with a stale attestation:
       // clinical:review offers all three for signing (scripts/lib/signoff-kinds/sources.mjs).
       signableNow += 1;
