@@ -115,6 +115,10 @@ export async function clickWhenSettled(locator: Locator, { timeout = 10_000 }: {
  */
 export async function expectHydrated(locator: Locator, { timeout = 15_000 }: { timeout?: number } = {}) {
   const deadline = timeout === 0 ? Number.POSITIVE_INFINITY : performance.now() + timeout;
+  // Unexpected evaluation failures are captured and end the poll, then re-thrown
+  // below, so they fail fast instead of depending on whether `expect.poll`
+  // propagates or retries a throwing callback until the timeout.
+  let unexpectedError: { error: unknown } | undefined;
   await expect
     .poll(
       async () => {
@@ -136,7 +140,8 @@ export async function expectHydrated(locator: Locator, { timeout = 15_000 }: { t
           ) {
             return false;
           }
-          throw error;
+          unexpectedError = { error };
+          return true;
         }
       },
       {
@@ -145,6 +150,7 @@ export async function expectHydrated(locator: Locator, { timeout = 15_000 }: { t
       },
     )
     .toBe(true);
+  if (unexpectedError) throw unexpectedError.error;
 }
 
 /** `expectHydrated`, then click: for controls that are interacted with straight after navigation. */

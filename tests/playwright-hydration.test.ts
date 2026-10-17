@@ -1,5 +1,5 @@
 import type { Locator } from "playwright/test";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { expectHydrated } from "./playwright-settlement";
 
@@ -40,13 +40,15 @@ describe("hydration polling across streamed canonical redirects", () => {
     expect(budgets[2]).toBeLessThan(budgets[1]!);
   });
 
-  it.each([
+  const unexpectedFailures = [
     "locator.evaluate: Target page, context or browser has been closed",
     'locator.evaluate: Error: strict mode violation: locator("#main-content") resolved to 2 elements',
     "locator.evaluate: Timeout 20ms exceeded.",
     "locator.evaluate: TypeError: Object.keys is unavailable",
     "locator.evaluate: Cannot find context with specified id",
-  ])("preserves unexpected failures: %s", async (message) => {
+  ];
+
+  it.each(unexpectedFailures)("preserves unexpected failures: %s", async (message) => {
     const failure = new Error(message);
     const { locator, evaluate } = syntheticLocator(async () => {
       throw failure;
@@ -54,6 +56,63 @@ describe("hydration polling across streamed canonical redirects", () => {
 
     await expect(expectHydrated(locator, { timeout: 500 })).rejects.toBe(failure);
     expect(evaluate).toHaveBeenCalledTimes(1);
+  });
+
+  // Playwright 1.63's `expect.poll` happens to propagate a throwing callback
+  // immediately, so the test above cannot tell a helper that captures the error
+  // apart from one that re-throws it inside the poll. Swap in a poll that
+  // swallows and retries callback errors (as `toPass` does) to prove the helper
+  // itself ends the poll and surfaces the failure after a single evaluation.
+  describe("when expect.poll retries a throwing callback", () => {
+    afterEach(() => {
+      vi.doUnmock("playwright/test");
+      vi.resetModules();
+    });
+
+    async function loadWithRetryingPoll() {
+      vi.resetModules();
+      vi.doMock("playwright/test", async (importOriginal) => {
+        const actual = await importOriginal<typeof import("playwright/test")>();
+        const retryingPoll = ((generator: () => unknown, options?: object) =>
+          actual.expect.poll(async () => {
+            try {
+              return await generator();
+            } catch {
+              return undefined;
+            }
+          }, options)) as typeof actual.expect.poll;
+        const expectWithRetryingPoll = new Proxy(actual.expect, {
+          get: (target, property, receiver) =>
+            property === "poll" ? retryingPoll : Reflect.get(target, property, receiver),
+        });
+        return { ...actual, expect: expectWithRetryingPoll };
+      });
+      return import("./playwright-settlement");
+    }
+
+    it("still retries navigation context loss", async () => {
+      const { expectHydrated: hydrated } = await loadWithRetryingPoll();
+      let calls = 0;
+      const { locator, evaluate } = syntheticLocator(async () => {
+        calls += 1;
+        if (calls === 1) throw navigationError();
+        return true;
+      });
+
+      await hydrated(locator, { timeout: 1_500 });
+      expect(evaluate).toHaveBeenCalledTimes(2);
+    });
+
+    it.each(unexpectedFailures)("surfaces %s after exactly one evaluation", async (message) => {
+      const { expectHydrated: hydrated } = await loadWithRetryingPoll();
+      const failure = new Error(message);
+      const { locator, evaluate } = syntheticLocator(async () => {
+        throw failure;
+      });
+
+      await expect(hydrated(locator, { timeout: 500 })).rejects.toBe(failure);
+      expect(evaluate).toHaveBeenCalledTimes(1);
+    });
   });
 
   it("fails by the existing deadline when navigation keeps replacing the document", async () => {
