@@ -498,10 +498,9 @@ export async function teachingServiceMutation(
         }
       }
 
-      return parseTeachingResult(
-        emptyTeachingResultSchema,
-        await teachingCommand(client, actorId, serviceId, input.action, { occurrenceId: input.occurrenceId }),
-      );
+      // Only reached when the client cannot query tables. The database command takes a link
+      // hash, not an occurrence id, so sending `{ occurrenceId }` would be rejected anyway.
+      throw teachingRpcError({ message: "teaching_invalid_request" });
     }
     case "series.save":
       return parseTeachingResult(
