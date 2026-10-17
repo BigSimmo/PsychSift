@@ -2,11 +2,9 @@
   "version": 2,
   "id": "305609a4-8ca3-4d3a-a4bd-3760f851755a",
   "createdOn": "2026-10-17",
-  "action": "done",
+  "action": "cancel",
   "payload": {
-    "id": "#NBJQD8",
-    "outcome": "All 18 universal specifiers and 71 written specifier items signed off by Psych Sift, including the updated Dissociative Identity Disorder possession-form specifier wording.",
-    "baseRowFingerprint": "667bbcaa67f45cd7f26f7c62d443e4ec5f482830fe3422cdf775c3d306134c79",
-    "targetUlid": "01M4T65YMSNBJQD8DBMDCNM2SF"
+    "requestId": "01M4T65YMSNBJQD8DBMDCNM2SF",
+    "reason": "Specifier sign-off does not resolve the medication interaction lexicon re-approval; leave that high-priority issue open until the changed groupings are approved."
   }
 }
