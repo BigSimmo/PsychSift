@@ -10,7 +10,7 @@ function throwIfAborted(signal?: AbortSignal) {
 export async function loadDocumentSummaryContext(documentId: string, ownerId?: string, signal?: AbortSignal) {
   throwIfAborted(signal);
   const supabase = createAdminClient();
-  let documentQuery = supabase.from("documents").select("id,title,file_name,metadata").eq("id", documentId);
+  let documentQuery = supabase.from("documents").select("id,title,file_name,status,metadata").eq("id", documentId);
 
   if (ownerId) {
     documentQuery =
@@ -27,7 +27,7 @@ export async function loadDocumentSummaryContext(documentId: string, ownerId?: s
   if (documentError) throw new Error(documentError.message);
   if (!document) throw new Error("Document not found.");
   const documentStatus = (document as { status?: unknown }).status;
-  if (typeof documentStatus === "string" && documentStatus !== "indexed") {
+  if (documentStatus !== "indexed") {
     return { document, chunks: [] };
   }
 
