@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   chmodSync,
+  existsSync,
   lstatSync,
   mkdirSync,
   mkdtempSync,
@@ -1548,6 +1549,8 @@ describe("Codex Cloud environment contract", () => {
     expect(unmanaged.status).not.toBe(0);
     expect(unmanaged.stderr).toContain("Unmanaged [shell_environment_policy] table found");
     expect(readFileSync(unmanagedPath, "utf8")).toBe(unmanagedConfig);
+    // Config validation precedes the runtime-profile write, so a rejected setup changes nothing.
+    expect(existsSync(path.join(unmanagedHome, ".clinical-kb-codex-cloud.sh"))).toBe(false);
 
     for (const tableHeader of [
       "  [shell_environment_policy] # valid TOML",

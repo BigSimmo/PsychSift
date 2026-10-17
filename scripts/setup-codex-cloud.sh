@@ -103,6 +103,32 @@ source scripts/lib/codex-cloud-paths.sh
 checkout_key="$(codex_cloud_checkout_key "$repo_root")"
 quoted_checkout="$(codex_cloud_shell_quote "$repo_root")"
 trap diagnose_setup_failure ERR
+# Validate the existing Codex config before any runtime install or profile write, so an
+# unmanaged shell policy cannot leave a replaced runtime profile behind a failed setup.
+codex_policy_begin="# BEGIN clinical-kb-codex-cloud shell policy (managed by setup-codex-cloud.sh)"
+codex_policy_end="# END clinical-kb-codex-cloud shell policy (managed by setup-codex-cloud.sh)"
+if [[ -f "$codex_config_file" ]]; then
+  # Validate ordering as well as presence: END before BEGIN also makes sed
+  # discard everything from BEGIN to EOF. Reject duplicate/partial blocks.
+  if ! awk -v begin="$codex_policy_begin" -v end="$codex_policy_end" '
+    $0 == begin { if (seen_begin || seen_end) invalid = 1; seen_begin++; next }
+    $0 == end { if (seen_begin != 1 || seen_end) invalid = 1; seen_end++; next }
+    END { exit (invalid || seen_begin != seen_end) ? 1 : 0 }
+  ' "$codex_config_file"; then
+    fail "Incomplete managed shell policy block or invalid marker order in $codex_config_file; repair the managed markers before re-running setup."
+  fi
+  codex_config_preserved="$(sed "/^${codex_policy_begin}\$/,/^${codex_policy_end}\$/d" "$codex_config_file")"
+  # After stripping the managed block, reject every supported TOML declaration
+  # of shell_environment_policy before appending ours. This covers bare or
+  # quoted table headers, dotted keys, and inline tables, while full-line
+  # comments are ignored.
+  if printf '%s\n' "$codex_config_preserved" | sed '/^[[:space:]]*#/d' | grep -Eq \
+    '^[[:space:]]*\[[^]]*shell_environment_policy[^]]*\]|^[[:space:]]*[^[:space:]]*shell_environment_policy[^[:space:]]*[[:space:]]*\.|^[[:space:]]*[^[:space:]]*shell_environment_policy[^[:space:]]*[[:space:]]*=[[:space:]]*\{'; then
+    fail "Unmanaged [shell_environment_policy] table found in $codex_config_file; remove it before re-running setup."
+  fi
+else
+  codex_config_preserved=""
+fi
 
 expected_node_major="$(tr -cd '0-9' < .node-version)"
 expected_node_range="$(sed -n 's/.*"node"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' package.json | head -n 1)"
@@ -272,30 +298,6 @@ for exclude_var in "${codex_shell_policy_excludes[@]}"; do
 done
 
 mkdir -p "$codex_config_dir"
-codex_policy_begin="# BEGIN clinical-kb-codex-cloud shell policy (managed by setup-codex-cloud.sh)"
-codex_policy_end="# END clinical-kb-codex-cloud shell policy (managed by setup-codex-cloud.sh)"
-if [[ -f "$codex_config_file" ]]; then
-  # Validate ordering as well as presence: END before BEGIN also makes sed
-  # discard everything from BEGIN to EOF. Reject duplicate/partial blocks.
-  if ! awk -v begin="$codex_policy_begin" -v end="$codex_policy_end" '
-    $0 == begin { if (seen_begin || seen_end) invalid = 1; seen_begin++; next }
-    $0 == end { if (seen_begin != 1 || seen_end) invalid = 1; seen_end++; next }
-    END { exit (invalid || seen_begin != seen_end) ? 1 : 0 }
-  ' "$codex_config_file"; then
-    fail "Incomplete managed shell policy block or invalid marker order in $codex_config_file; repair the managed markers before re-running setup."
-  fi
-  codex_config_preserved="$(sed "/^${codex_policy_begin}\$/,/^${codex_policy_end}\$/d" "$codex_config_file")"
-  # After stripping the managed block, reject every supported TOML declaration
-  # of shell_environment_policy before appending ours. This covers bare or
-  # quoted table headers, dotted keys, and inline tables, while full-line
-  # comments are ignored.
-  if printf '%s\n' "$codex_config_preserved" | sed '/^[[:space:]]*#/d' | grep -Eq \
-    '^[[:space:]]*\[[^]]*shell_environment_policy[^]]*\]|^[[:space:]]*[^[:space:]]*shell_environment_policy[^[:space:]]*[[:space:]]*\.|^[[:space:]]*[^[:space:]]*shell_environment_policy[^[:space:]]*[[:space:]]*=[[:space:]]*\{'; then
-    fail "Unmanaged [shell_environment_policy] table found in $codex_config_file; remove it before re-running setup."
-  fi
-else
-  codex_config_preserved=""
-fi
 
 # Write beside the destination then rename it atomically. If setup is
 # interrupted or output fails, the existing Codex configuration remains intact.
