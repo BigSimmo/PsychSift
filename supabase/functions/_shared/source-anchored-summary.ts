@@ -5,6 +5,7 @@ export const SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY =
 export const SOURCE_ANCHORED_HEURISTIC_MODEL = "deterministic-source-coverage-heuristic" as const;
 export const SOURCE_ANCHORED_HEURISTIC_MODEL_VERSION = SOURCE_ANCHORED_SUMMARY_VERSION;
 export const SOURCE_ANCHORED_STRUCTURED_MODEL_VERSION = "rag-deep-memory-v1" as const;
+export const SOURCE_ANCHORED_LOCAL_WORKER_MODEL_VERSION = "rag-deep-memory-v2" as const;
 export const SOURCE_ANCHORED_SOURCE_PAGE_SIZE = 1000;
 export const SOURCE_ANCHORED_MAX_CHUNKS = 5000;
 export const SOURCE_ANCHORED_MAX_IMAGES = 1000;
@@ -616,10 +617,10 @@ export function normalizeSourceAnchoredSummary(
   if (structured) {
     const isLocalWorkerStructuredSummary =
       authority.expectedStructuredModelVersion === SOURCE_ANCHORED_STRUCTURED_MODEL_VERSION &&
-      model_version === "rag-deep-memory-v2";
+      model_version === SOURCE_ANCHORED_LOCAL_WORKER_MODEL_VERSION;
     const validStructuredModelVersion =
       model_version === authority.expectedStructuredModelVersion || isLocalWorkerStructuredSummary;
-    const validStructuredModel = model === authority.expectedStructuredModel || isLocalWorkerStructuredSummary;
+    const validStructuredModel = model === authority.expectedStructuredModel;
     if (!validStructuredModel || !validStructuredModelVersion) {
       fail("source_anchored_summary_structured_model_invalid");
     }
