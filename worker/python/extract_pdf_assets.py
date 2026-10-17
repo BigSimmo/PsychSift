@@ -741,8 +741,9 @@ def _match_segment_to_column(sx0, sx1, effective_ranges):
 def _continues_wrapped_cell(prev_line, segment, column_range, slack=12.0):
     """True when a lone line under a row reads as the rest of that row's cell.
 
-    Text wraps because its next word did not fit, so the line above must end
-    closer to the column's right edge than the width of this line's first word.
+    Text wraps because its next word did not fit, so the free space left in
+    the column beside the line above (on either side, which covers right-aligned
+    and centred cells) must be narrower than this line's first word.
     A deliberate break also counts: a line starting at the cell's own left edge
     with a bullet, a lower-case word or a number (a dose under a drug name).
     Footnotes look alike, so '*' never counts and a number counts only when
@@ -762,7 +763,8 @@ def _continues_wrapped_cell(prev_line, segment, column_range, slack=12.0):
     ):
         return True
     first_word_width = (sx1 - sx0) * (len(words[0]) / max(1, len(cleaned)))
-    return (column_range[1] - prev_line_end) <= first_word_width + slack
+    free_space = (column_range[1] - prev_line_end) + max(0.0, prev_line_start - column_range[0])
+    return free_space <= first_word_width + slack
 
 
 def _recover_table_rows_split(page, original_rect, extended_rect, existing_rows, column_count=0, column_ranges=None):
