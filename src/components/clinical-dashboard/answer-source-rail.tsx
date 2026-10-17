@@ -14,13 +14,14 @@ import {
   sourceBadgeDisplay,
   sourceCapsuleDisplay,
   sourceSpokenName,
+  sourceStatusDotClass,
   sourceStatusShortLabel,
   sourceSupportLabel,
 } from "@/components/clinical-dashboard/answer-source-rows";
 
 /**
- * The cited documents under an answer: a vertical list on a phone, a horizontally
- * scrolling row of cards from `sm` up.
+ * The cited documents under an answer: a horizontally scrolling row of small
+ * two-line cards at every width.
  *
  * This is the single source-chrome surface: it replaced the "Sources" capsule
  * and its popover/sheet pair, the Evidence sheet's Claims and Quotes tabs, the
@@ -31,10 +32,13 @@ import {
  * stacked 48 px rows is ~290 px of phone scroll spent on chrome, and a vertical
  * list of documents reads as the answer's conclusion rather than as its
  * references. Cards in a scroller cost one row whatever the source count.
- * The 13 Oct 2026 audit (D07) reversed that on phones only: a strip at 390px
- * cut the second source off mid-title, so checking the answer meant a hidden
- * sideways swipe. The phone list is short (the drawer still holds the detail),
- * and desktop keeps the scroller.
+ * The 13 Oct 2026 audit (D07) briefly made phones a vertical list, because a
+ * strip at 390px cut the second source off mid-title. The owner reversed that on
+ * 17 Oct 2026 (docs/decisions/2026-10-17-answer-sources-stay-a-swipe-row.md):
+ * the cards are now a fixed 156px with a two-line body, so snapping settles
+ * whole cards and the next one peeks in as an invitation rather than a fault.
+ * A lone source widens to the column and lets its title wrap to two lines,
+ * because there is nothing to swipe to.
  *
  * Four behaviours are load-bearing rather than decorative:
  *
@@ -174,13 +178,16 @@ export function AnswerSourceRail({
             // so a rest position is always a whole card. Proximity rather than mandatory because
             // mandatory fights momentum scrolling on iOS and can strand a reader between cards.
             //
-            // Phone: a plain vertical list, every source visible at once (audit D07,
-            // 2026-10-13). A sideways strip cut the second source off at the screen edge.
-            // From sm up it is the scrolling rail described above, unchanged.
-            className="flex flex-col gap-1.5 sm:flex-row sm:snap-x sm:snap-proximity sm:overflow-x-auto sm:overscroll-x-contain sm:pb-1 sm:pr-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            // The 1px top and 3px bottom padding keep the active card's ring and the
+            // card shadow from being clipped by the overflow container.
+            className="flex snap-x snap-proximity gap-1.5 overflow-x-auto overscroll-x-contain pt-px pb-1 pr-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             {rows.map((source, index) => (
-              <div key={`${source.id}:${index}`} role="listitem" className="min-w-0 sm:flex-none sm:snap-start">
+              <div
+                key={`${source.id}:${index}`}
+                role="listitem"
+                className={cn("snap-start", rows.length === 1 ? "min-w-0 max-w-full" : "flex-none")}
+              >
                 <AnswerSourceCard
                   source={source}
                   index={index}
@@ -188,6 +195,7 @@ export function AnswerSourceRail({
                   query={query}
                   onOpenSource={onOpenSource}
                   searchOnly={isRefusal}
+                  solo={rows.length === 1}
                 />
               </div>
             ))}
@@ -397,6 +405,7 @@ function AnswerSourceCard({
   query,
   onOpenSource,
   searchOnly = false,
+  solo = false,
 }: {
   source: AnswerSourceRow;
   index: number;
@@ -405,6 +414,8 @@ function AnswerSourceCard({
   onOpenSource?: (index: number) => void;
   /** The card belongs to a refusal, so it must not be announced as Direct/Partial support. */
   searchOnly?: boolean;
+  /** The only card on the rail: it widens to the column and its title may wrap. */
+  solo?: boolean;
 }) {
   const stale = source.metadata.document_status === "review_due" || source.metadata.document_status === "outdated";
   const cited = source.cited !== false;
@@ -412,7 +423,7 @@ function AnswerSourceCard({
     <>
       <span
         className={cn(
-          "nums grid h-[22px] min-w-[22px] shrink-0 place-items-center rounded-[var(--radius-sm)] border px-1 text-2xs font-bold",
+          "nums grid h-5 min-w-5 shrink-0 place-items-center rounded-[var(--radius-sm)] border px-1 text-2xs font-bold",
           !cited
             ? "border-dashed border-[color:var(--border-strong)] text-[color:var(--text-muted)]"
             : stale
@@ -426,19 +437,19 @@ function AnswerSourceCard({
       <span className="grid min-w-0 gap-0.5 text-left">
         <span
           className={cn(
-            "block truncate text-xs font-semibold leading-tight text-[color:var(--text-heading)]",
-            cardTextWidth,
+            "block text-xs font-semibold leading-tight text-[color:var(--text-heading)]",
+            solo ? "line-clamp-2" : "truncate",
           )}
         >
           {cleanDisplayTitle(source.title)}
         </span>
-        <span className={cn("flex items-center gap-1.5 truncate text-2xs leading-tight", cardTextWidth, textMuted)}>
+        <span className={cn("flex items-center gap-1.5 truncate text-2xs leading-tight", textMuted)}>
           {/* Tabular figures keep page numbers aligned between cards; the mono
               face the old list row used opened a visible gap after "p." at this
               size. */}
           <span className="shrink-0 tabular-nums">p. {source.pageNumber ?? "n/a"}</span>
-          <span aria-hidden>·</span>
-          <span className={stale ? "font-semibold text-[color:var(--warning)]" : undefined}>
+          <span aria-hidden className={sourceStatusDotClass(source.metadata)} />
+          <span className={cn("truncate", stale && "font-semibold text-[color:var(--warning)]")}>
             {sourceStatusShortLabel(source.metadata)}
           </span>
           {source.hasTable ? (
@@ -460,7 +471,7 @@ function AnswerSourceCard({
         href={source.href}
         data-testid="answer-source-rail-row"
         onClick={() => query && logSourceOpen(query, source)}
-        className={cn(cardClass, "border-[color:var(--border)]")}
+        className={cn(cardClass, solo ? cardSoloWidth : cardFixedWidth, "border-[color:var(--border)]")}
         aria-label={`${cardLabel(source, index, searchOnly)} — open source`}
       >
         {body}
@@ -478,8 +489,9 @@ function AnswerSourceCard({
       onClick={() => onOpenSource(index)}
       className={cn(
         cardClass,
+        solo ? cardSoloWidth : cardFixedWidth,
         active
-          ? "border-[color:var(--clinical-accent)] shadow-[var(--e1)]"
+          ? "border-[color:var(--clinical-accent)] ring-1 ring-inset ring-[color:var(--clinical-accent)]"
           : "border-[color:var(--border)] hover:border-[color:var(--border-strong)]",
       )}
       aria-label={`${cardLabel(source, index, searchOnly)} — open source detail`}
@@ -508,6 +520,7 @@ function cardLabel(source: AnswerSourceRow, index: number, searchOnly = false) {
 }
 
 const cardClass =
-  "flex w-full sm:inline-flex sm:w-auto min-h-12 min-w-0 items-center gap-2.5 rounded-[var(--radius-lg)] border bg-[color:var(--surface-raised)] px-3 py-1.5 text-left shadow-[var(--shadow-inset)] transition-[border-color,box-shadow] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]";
-// Phone rows are full width, so the title may use it; the rail's cards cap at 158px.
-const cardTextWidth = "sm:max-w-[158px]";
+  "flex min-h-12 min-w-0 items-center gap-2 rounded-[var(--radius-lg)] border bg-[color:var(--surface-raised)] py-1.5 pl-2 pr-2.5 text-left shadow-[var(--e1)] transition-[border-color,box-shadow] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]";
+// Fixed so every card in a row is the same size and snapping settles whole cards.
+const cardFixedWidth = "w-[156px]";
+const cardSoloWidth = "w-auto max-w-full";
