@@ -689,6 +689,8 @@ export type WorkerClaimScopeFilter = {
   allowedDocumentIds: ReadonlySet<string>;
   allowedFileTypes: ReadonlySet<string>;
   active: boolean;
+  /** A non-blank allowlist with no valid entries (for example ","): claim nothing rather than everything. */
+  claimsNothing: boolean;
 };
 
 function normalizeClaimDocumentId(value?: string | null): string {
@@ -711,10 +713,18 @@ export function resolveWorkerClaimScopeFilter(
     );
   const allowedDocumentIds = parseList(environment.WORKER_ALLOWED_DOCUMENT_IDS, normalizeClaimDocumentId);
   const allowedFileTypes = parseList(environment.WORKER_ALLOWED_FILE_TYPES, normalizeClaimMimeType);
+  // Blank means unset (the .env.example default). A configured list that parses to no
+  // entries is malformed; dropping it would silently widen the scope to every job.
+  const malformed = (raw: string | undefined, parsed: ReadonlySet<string>) =>
+    (raw ?? "").trim() !== "" && parsed.size === 0;
+  const claimsNothing =
+    malformed(environment.WORKER_ALLOWED_DOCUMENT_IDS, allowedDocumentIds) ||
+    malformed(environment.WORKER_ALLOWED_FILE_TYPES, allowedFileTypes);
   return {
     allowedDocumentIds,
     allowedFileTypes,
-    active: allowedDocumentIds.size > 0 || allowedFileTypes.size > 0,
+    active: claimsNothing || allowedDocumentIds.size > 0 || allowedFileTypes.size > 0,
+    claimsNothing,
   };
 }
 
@@ -723,6 +733,7 @@ export function isPreClaimCandidateAllowed(
   filter: WorkerClaimScopeFilter,
 ): boolean {
   if (!filter.active) return true;
+  if (filter.claimsNothing) return false;
   const docId = normalizeClaimDocumentId(candidate.document_id);
   const fileType = normalizeClaimMimeType(candidate.file_type);
   if (filter.allowedDocumentIds.size > 0 && (!docId || !filter.allowedDocumentIds.has(docId))) {

@@ -354,6 +354,35 @@ describe("worker claim rejection isolation", () => {
   });
 
   it.each([
+    { WORKER_ALLOWED_DOCUMENT_IDS: "," },
+    { WORKER_ALLOWED_DOCUMENT_IDS: " , , " },
+    { WORKER_ALLOWED_FILE_TYPES: ",," },
+    { WORKER_ALLOWED_DOCUMENT_IDS: "doc-1", WORKER_ALLOWED_FILE_TYPES: " , " },
+  ])("claims nothing, rather than every job, for a malformed allowlist: %j", async (scope) => {
+    const { createWorkerRuntime } = await import("../worker/main");
+    const { resolveWorkerClaimScopeFilter, isPreClaimCandidateAllowed } = await import("../worker/behavior");
+    const filter = resolveWorkerClaimScopeFilter(scope);
+    expect(filter).toMatchObject({ active: true, claimsNothing: true });
+    expect(isPreClaimCandidateAllowed({ document_id: "doc-1", file_type: "text/plain" }, filter)).toBe(false);
+    for (const [name, value] of Object.entries(scope)) vi.stubEnv(name, value);
+    const rpc = vi.fn(async () => ({ data: [claimedRow()], error: null }));
+    try {
+      const runtime = createWorkerRuntime({ client: { rpc } as unknown as SupabaseClient });
+      expect(await runtime.claimJobs()).toEqual([]);
+      expect(rpc).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("treats blank allowlists as unset", async () => {
+    const { resolveWorkerClaimScopeFilter } = await import("../worker/behavior");
+    expect(
+      resolveWorkerClaimScopeFilter({ WORKER_ALLOWED_DOCUMENT_IDS: "", WORKER_ALLOWED_FILE_TYPES: "  " }),
+    ).toMatchObject({ active: false, claimsNothing: false });
+  });
+
+  it.each([
     { data: { ok: false, reason: "lease_lost" }, error: null },
     { data: null, error: { message: "synthetic transport failure" } },
     { data: { unexpected: true }, error: null },

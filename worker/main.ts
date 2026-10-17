@@ -402,6 +402,8 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
       return [];
     }
     const scopeFilter = resolveWorkerClaimScopeFilter(process.env);
+    // A malformed allowlist (e.g. ",") must never fall through to the unscoped claim.
+    if (scopeFilter.claimsNothing) return [];
     const { data, error } = await supabase
       .rpc("claim_ingestion_jobs", {
         p_worker_id: workerId,
