@@ -279,13 +279,12 @@ export function isClinicalImageEvidence(image: {
     tableRole: image.tableRole ?? (typeof metadata.table_role === "string" ? metadata.table_role : null),
     tableTitle: image.tableTitle ?? (typeof metadata.table_title === "string" ? metadata.table_title : null),
     tableLabel: image.tableLabel ?? (typeof metadata.table_label === "string" ? metadata.table_label : null),
+    // Full table text first: a truncated snippet can hide administrative terms.
     tableText:
-      image.tableTextSnippet ??
-      (typeof metadata.table_text === "string"
+      typeof metadata.table_text === "string"
         ? metadata.table_text
-        : typeof metadata.table_text_snippet === "string"
-          ? metadata.table_text_snippet
-          : null),
+        : (image.tableTextSnippet ??
+          (typeof metadata.table_text_snippet === "string" ? metadata.table_text_snippet : null)),
   });
   if (assessment.clinical_use_class === "clinical_evidence") return true;
   if (

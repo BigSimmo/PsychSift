@@ -207,4 +207,55 @@ describe("RAG cancellation propagation, visual evidence hydration, and compariso
     const artifacts = buildSelectedEvidenceArtifacts("Clozapine missed dose > 48 hours management", [proseOnlyChunk]);
     expect(artifacts.visualEvidence).toEqual([]);
   });
+
+  it("R07: a direct image_id that points at another document is not attached to the chunk", async () => {
+    const chunk = makeSearchResult({
+      id: "lithium-chunk-1",
+      document_id: "doc-lithium",
+      title: "Lithium Monitoring",
+      page_number: 1,
+      image_ids: ["img-from-other-doc"],
+    });
+    const otherDocumentImage = {
+      id: "img-from-other-doc",
+      document_id: "doc-other",
+      page_number: 1,
+      storage_path: "docs/doc-other/page-1.png",
+      caption: "Another document's table",
+      bbox: null,
+      image_type: "clinical_table",
+      searchable: true,
+      clinical_relevance_score: 0.9,
+      source_kind: "embedded",
+      width: 800,
+      height: 600,
+      labels: [],
+      metadata: { clinical_use_class: "clinical_evidence" },
+    };
+    const supabase = {
+      from() {
+        let isDirectIdQuery = false;
+        const builder = {
+          select: () => builder,
+          in(column: string) {
+            if (column === "id") isDirectIdQuery = true;
+            return builder;
+          },
+          eq: () => builder,
+          neq: () => builder,
+          order: () => builder,
+          limit: () => builder,
+          abortSignal: () => builder,
+          // biome-ignore lint/suspicious/noThenProperty: Supabase PostgREST builder mock
+          then(resolve: (value: unknown) => void) {
+            resolve({ data: isDirectIdQuery ? [otherDocumentImage] : [], error: null });
+          },
+        };
+        return builder;
+      },
+    };
+
+    const hydrated = await attachPageVisualEvidence(supabase as never, [chunk]);
+    expect(hydrated[0]?.images ?? []).toEqual([]);
+  });
 });

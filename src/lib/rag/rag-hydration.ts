@@ -335,10 +335,12 @@ export async function attachPageVisualEvidence(
   );
   const sourceImageIds = Array.from(
     new Set(
+      // Index-unit and table-fact source images come first, so a chunk's ordinary image links
+      // can never push an explicitly cited source image out of the bounded fetch.
       results.flatMap((result) => [
-        ...(result.image_ids ?? []),
         result.index_unit?.source_image_id ?? null,
         ...(result.table_facts ?? []).map((fact) => fact.source_image_id),
+        ...(result.image_ids ?? []),
       ]),
     ),
   )
@@ -450,6 +452,7 @@ export async function attachPageVisualEvidence(
   );
   const imagesByPage = new Map<string, ChunkImage[]>();
   const imagesById = new Map<string, ChunkImage>();
+  const documentIdByImageId = new Map<string, string>();
   for (const image of data) {
     if (imagesById.has(image.id)) continue;
     const metadata = safeRecord(image.metadata);
@@ -489,16 +492,21 @@ export async function attachPageVisualEvidence(
       metadata,
     };
     imagesById.set(image.id, publicImage);
+    documentIdByImageId.set(image.id, image.document_id);
     const key = `${image.document_id}:${image.page_number}`;
     imagesByPage.set(key, [...(imagesByPage.get(key) ?? []), publicImage]);
   }
 
   return results.map((result) => {
     const pageImages = imagesByPage.get(`${result.document_id}:${result.page_number}`) ?? [];
+    // A chunk's own image_ids link is attached only when the image belongs to the result's
+    // document, so a stale or mismatched id can never carry another document's caption or table text.
     const directImages = [
-      ...(result.image_ids ?? []).map((id) => imagesById.get(id)),
       result.index_unit?.source_image_id ? imagesById.get(result.index_unit.source_image_id) : null,
       ...(result.table_facts ?? []).map((fact) => (fact.source_image_id ? imagesById.get(fact.source_image_id) : null)),
+      ...(result.image_ids ?? [])
+        .filter((id) => documentIdByImageId.get(id) === result.document_id)
+        .map((id) => imagesById.get(id)),
     ].filter((image): image is ChunkImage => Boolean(image));
     if (pageImages.length === 0 && directImages.length === 0) return result;
     const seen = new Set((result.images ?? []).map((image) => image.id));
