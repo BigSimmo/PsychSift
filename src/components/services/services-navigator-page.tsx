@@ -676,11 +676,7 @@ export function ServicesNavigatorPage() {
   // erase another row's successful optimistic update.
   const savingSlugsRef = useRef(new Set<string>());
   const [savingSlugs, setSavingSlugs] = useState<ReadonlySet<string>>(() => new Set());
-  function navigateWorkflow(
-    stage: ReferralStageId,
-    nextSelection = selectedSlugs,
-    mode: "push" | "replace" = "push",
-  ) {
+  function navigateWorkflow(stage: ReferralStageId, nextSelection = selectedSlugs, mode: "push" | "replace" = "push") {
     if (stage === "compare" && nextSelection.length < 2) return;
     const nextStage = nextSelection.length === 0 ? "search" : stage;
     if (nextStage !== "search") setFilterOpen(false);
