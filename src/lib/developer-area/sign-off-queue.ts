@@ -24,6 +24,7 @@ import { therapyNeedsReview, therapyRecords } from "@/lib/therapies";
 import signableTherapySlugList from "@/data/therapy-signable-slugs.json";
 import { isIndigenousContent, signedOffReviewer } from "@/lib/forms-reference-sign-off";
 import {
+  ACQUISITION_ATTESTATION_FIELDS,
   acquisitionAttestedContentSha256,
   acquisitionReviewQueue,
   sourceAcquisitionRecords,
@@ -517,7 +518,6 @@ function therapyFamily(): SignOffFamily {
   };
 }
 
-const SOURCE_ATTESTATION_FIELDS = ["attestedBy", "attestedAt", "attestedAgainstSha256"] as const;
 const SOURCE_TITLE_COLLATOR = new Intl.Collator("en-AU");
 
 /**
@@ -529,7 +529,19 @@ function isUnattestedLocalSourceReview(record: SourceAcquisitionRecord): boolean
   return (
     record.disposition !== "rejected" &&
     record.validationStatus === "locally_reviewed" &&
-    !SOURCE_ATTESTATION_FIELDS.some((field) => Object.hasOwn(record, field))
+    !ACQUISITION_ATTESTATION_FIELDS.some((field) => Object.hasOwn(record, field))
+  );
+}
+
+/** A reviewed source whose content changed after its structured sign-off. */
+function isStaleAttestedSourceReview(record: SourceAcquisitionRecord): boolean {
+  return (
+    record.disposition !== "rejected" &&
+    (record.validationStatus === "locally_reviewed" || record.validationStatus === "approved") &&
+    typeof record.attestedBy === "string" &&
+    record.attestedBy.trim().length > 0 &&
+    typeof record.attestedAgainstSha256 === "string" &&
+    record.attestedAgainstSha256 !== acquisitionAttestedContentSha256(record)
   );
 }
 
@@ -538,27 +550,43 @@ function sourcesFamily(): SignOffFamily {
   // function already encodes which records count as awaiting sign-off (not
   // rejected, still unverified) and the worst-rung-first order the source
   // acquisition protocol reads them in.
-  // Reviews recorded only in prose are offered by clinical:review too (owner decision,
-  // 2026-10-17), so the owner can record the structured attestation they lack. They are
-  // merged into the queue's own order (worst rung first, then title), as the tool walks them.
-  const ordered = [...acquisitionReviewQueue(), ...sourceAcquisitionRecords.filter(isUnattestedLocalSourceReview)].sort(
+  // Reviews recorded only in prose and stale attestations are offered by clinical:review too,
+  // so the owner can record or refresh the structured attestation. They are merged into the
+  // queue's own order (worst rung first, then title), as the tool walks them.
+  const ordered = [
+    ...acquisitionReviewQueue(),
+    ...sourceAcquisitionRecords.filter((record) => isUnattestedLocalSourceReview(record) || isStaleAttestedSourceReview(record)),
+  ].sort(
     (left, right) => left.rung - right.rung || SOURCE_TITLE_COLLATOR.compare(left.title, right.title),
   );
   const rows = ordered.map<SignOffRow>((record) =>
-    isUnattestedLocalSourceReview(record)
+    isStaleAttestedSourceReview(record)
       ? {
           family: "sources",
           key: `source-acquisition:${record.id}`,
           id: record.id,
           title: record.title,
-          nativeStatus: `${record.disposition} / validationStatus: ${record.validationStatus} (rung ${record.rung}), no attestation`,
-          statusLabel: "Reviewed in prose only, not yet signed",
+          nativeStatus: `${record.disposition} / validationStatus: ${record.validationStatus} (rung ${record.rung}), stale attestation`,
+          statusLabel: "Edited since sign-off, needs signing again",
           requires:
-            "The owner re-reads the source as it reads today and signs it, which records attestedBy, attestedAt and attestedAgainstSha256; validationStatus stays locally_reviewed.",
+            "The source changed after its last sign-off; the owner re-reads it as it reads today and signs it again.",
           href: null,
           signOff: toolUnlessIndigenous({ script: "clinical:review", kind: "source", code: record.id }, record),
         }
-      : {
+      : isUnattestedLocalSourceReview(record)
+        ? {
+            family: "sources",
+            key: `source-acquisition:${record.id}`,
+            id: record.id,
+            title: record.title,
+            nativeStatus: `${record.disposition} / validationStatus: ${record.validationStatus} (rung ${record.rung}), no attestation`,
+            statusLabel: "Reviewed in prose only, not yet signed",
+            requires:
+              "The owner re-reads the source as it reads today and signs it, which records attestedBy, attestedAt and attestedAgainstSha256; validationStatus stays locally_reviewed.",
+            href: null,
+            signOff: toolUnlessIndigenous({ script: "clinical:review", kind: "source", code: record.id }, record),
+          }
+        : {
           family: "sources",
           key: `source-acquisition:${record.id}`,
           id: record.id,
@@ -576,8 +604,8 @@ function sourcesFamily(): SignOffFamily {
     name: "Source acquisitions",
     source: "src/data/source-acquisitions.json",
     nativeField:
-      "disposition + validationStatus, via acquisitionReviewQueue(), plus locally_reviewed records with no attestation field",
-    note: "Worst rung first, then title: the order the source acquisition protocol reads them in, with reviews recorded only in prose merged in. Rejected records are excluded.",
+      "disposition + validationStatus, via acquisitionReviewQueue(), plus prose-only reviews and stale attestations",
+    note: "Worst rung first, then title: the order the source acquisition protocol reads them in, with prose-only reviews and stale attestations merged in. Rejected records are excluded.",
     unrouted: true,
     rows,
   };
@@ -1573,20 +1601,20 @@ function sourcesDomain(): SignOffDomainSummary {
         reason: "Held for Aboriginal and Torres Strait Islander governance review.",
         href: null,
       });
-    } else if (record.validationStatus === "unverified" || isUnattestedLocalSourceReview(record)) {
-      // Unverified, or locally_reviewed in prose only with no attestation field at all:
-      // clinical:review offers both as drafted (scripts/lib/signoff-kinds/sources.mjs).
+    } else if (record.validationStatus === "unverified" || isUnattestedLocalSourceReview(record) || isStaleAttestedSourceReview(record)) {
+      // Unverified, locally_reviewed in prose only, or reviewed with a stale attestation:
+      // clinical:review offers all three for signing (scripts/lib/signoff-kinds/sources.mjs).
       signableNow += 1;
     } else {
-      // Approved in prose only, or a partial or stale attestation: the source sign-off kind
-      // does not offer it, so it is not signable now.
+      // Approved in prose only or a partial attestation: the source sign-off kind does
+      // not offer it, so it is not signable now.
       prerequisiteRows.push({
         domain: "sources",
         domainName: "Source acquisitions",
         key: `prereq-source:${record.id}`,
         id: record.id,
         title: record.title,
-        reason: `Marked ${record.validationStatus} without a complete, current structured attestation (attestedBy, attestedAt, attestedAgainstSha256 over its current content), so it does not count as signed; clinical:review signs only unverified sources and locally_reviewed ones with no attestation field.`,
+        reason: `Marked ${record.validationStatus} without a complete, current structured attestation (attestedBy, attestedAt, attestedAgainstSha256 over its current content), so it does not count as signed; clinical:review does not offer approved prose-only or partially attested sources.`,
         href: null,
       });
     }
@@ -1603,7 +1631,7 @@ function sourcesDomain(): SignOffDomainSummary {
     indigenousHoldRows,
     awaitingPrerequisites: prerequisiteRows.length,
     prerequisiteRows,
-    needsSigningSummary: `${signableNow} source(s) ready to sign now; ${indigenousHoldRows.length} Indigenous health and SEWB source(s) held for Aboriginal governance review; ${prerequisiteRows.length} awaiting a complete structured attestation the tool cannot yet record.`,
+    needsSigningSummary: `${signableNow} source(s) ready to sign now; ${indigenousHoldRows.length} Indigenous health and SEWB source(s) held for Aboriginal governance review; ${prerequisiteRows.length} awaiting a complete structured attestation or a supported review status.`,
     queueFamilyId: "sources",
   });
 }
