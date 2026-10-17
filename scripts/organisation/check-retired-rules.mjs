@@ -73,6 +73,9 @@ export const INSTRUCTION_SCOPE = Object.freeze([
   "docs/agents/",
   ".claude/skills/",
   ".claude/agents/",
+  // Hooks emit policy into active context; settings can embed hook instructions too.
+  ".claude/hooks/",
+  ".claude/settings.json",
   ".claude/cloud-profile/",
   ".agents/rules/",
   ".agents/skills/",

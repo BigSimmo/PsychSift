@@ -1,11 +1,13 @@
 ---
 name: prompt-perfector
-description: Refine or evaluate LLM and agent prompts while preserving intent with explicit output and action controls. Use when asked to polish, perfect, rewrite, structure, optimize, or assess a prompt.
+description: Refine or evaluate prompts, preserving intent, output controls and authority. Use for prompt refinement or assessment.
 ---
 
 # Prompt Perfector
 
-Produce a ready-to-use prompt that preserves intent. Refine only unless evaluation or execution is explicit.
+Refine only unless evaluation or execution is explicit.
+
+Claude’s separately named `prompt` skill refines then executes within existing authority. These are distinct defaults; explicit user controls win.
 
 ## Workflow
 

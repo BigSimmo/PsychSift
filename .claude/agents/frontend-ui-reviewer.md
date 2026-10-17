@@ -22,7 +22,7 @@ Follow `AGENTS.md` review throttling and `docs/codex-review-protocol.md` before 
 
 ## Gate
 
-For UI/browser/styling/routing/reduced-motion/forced-colors changes, run `npm run ensure` before browser QA (never assume port 3000/3001/3002), then use `npm run verify:ui` (Chromium) as the gate. These are local/offline-safe (demo mode).
+Follow `docs/agents/verification-gates.md#gate-selection`. For UI/browser/styling/routing/reduced-motion/forced-colors changes, run `npm run ensure` before browser QA, use its printed URL and verify `/api/local-project-id`, then prove the changed owner or journey first. Use `npm run verify:ui` for shared UI foundations or when PR/handoff policy requires the complete Chromium gate. Report focused proof as focused proof, retaining required broad gates and any physical Safari or installed-PWA acceptance gaps.
 
 ## Review Checklist
 
