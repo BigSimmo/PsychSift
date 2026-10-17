@@ -302,15 +302,34 @@ export function rowToAssessmentRecord(row: RegistrarAssessmentRow): AssessmentRe
 }
 
 /**
- * Only rows the dual sign-off flow wrote (`ratings.kind = "dual_sign_off"`) are assessments here.
- * Bookings and any other registrar_assessments rows are never read as, or rewritten into, one.
+ * Rows written by the current dual sign-off flow carry an explicit discriminator.
+ *
+ * Before that discriminator was added, dual sign-off rows had the same payload
+ * below without `kind`.  Keep accepting only that recognisable legacy shape so
+ * those assessments can still be read and updated; in particular, do not treat
+ * every row with a missing kind as a dual sign-off assessment.
  */
-function isDualSignOffRow(row: RegistrarAssessmentRow): boolean {
-  return Boolean(
-    row.ratings &&
-    typeof row.ratings === "object" &&
-    (row.ratings as Record<string, unknown>).kind === DUAL_SIGN_OFF_KIND,
+function isLegacyDualSignOffRow(row: RegistrarAssessmentRow): boolean {
+  if (!row.ratings || typeof row.ratings !== "object") return false;
+  const ratings = row.ratings as Record<string, unknown>;
+  if ("kind" in ratings || typeof ratings.serviceId !== "string") return false;
+
+  return (
+    typeof ratings.clinicalSetting === "string" &&
+    typeof ratings.traineeReflection === "string" &&
+    ratings.traineeSelfRatings !== null &&
+    typeof ratings.traineeSelfRatings === "object" &&
+    typeof ratings.state === "string" &&
+    VALID_LIFECYCLE_STATES.has(ratings.state as AssessmentLifecycleState) &&
+    !("startsAt" in ratings) &&
+    !("bookingState" in ratings)
   );
+}
+
+function isDualSignOffRow(row: RegistrarAssessmentRow): boolean {
+  if (!row.ratings || typeof row.ratings !== "object") return false;
+  const ratings = row.ratings as Record<string, unknown>;
+  return ratings.kind === DUAL_SIGN_OFF_KIND || isLegacyDualSignOffRow(row);
 }
 
 function assessmentDatabaseError(error: DbErrorLike | null): PublicApiError {
@@ -861,7 +880,6 @@ export class DurableClinicalAssessmentRepository {
       .from("registrar_assessments")
       .select(ASSESSMENT_SELECT_COLUMNS)
       .eq("assessor_id", supervisorId)
-      .eq("ratings->>kind", DUAL_SIGN_OFF_KIND)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -884,7 +902,6 @@ export class DurableClinicalAssessmentRepository {
       .from("registrar_assessments")
       .select(ASSESSMENT_SELECT_COLUMNS)
       .eq("registrar_id", traineeId)
-      .eq("ratings->>kind", DUAL_SIGN_OFF_KIND)
       .order("created_at", { ascending: false });
 
     if (error) {
