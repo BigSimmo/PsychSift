@@ -1360,23 +1360,23 @@ function ClinicalDashboardContent({
     const onAnswerProgress = (progress: AnswerProgressUpdate) => {
       if (!requestIsCurrent()) return;
       setAnswerProgress(progress.message);
-      setAnswerProgressEvents((current) => {
-        const latest = current.at(-1);
-        if (
-          latest?.stage === progress.stage &&
-          latest.message === progress.message &&
-          latest.resultCount === progress.resultCount &&
-          latest.selectedContextCount === progress.selectedContextCount &&
-          latest.australianSourceCount === progress.australianSourceCount &&
-          latest.waSourceCount === progress.waSourceCount
-        ) {
-          answerProgressEventsRef.current = current;
-          return current;
-        }
-        const next = [...current, { ...progress, receivedAt: Date.now() }].slice(-16);
-        answerProgressEventsRef.current = next;
-        return next;
-      });
+      // Work from the ref, not a lazy updater: the stream sends "complete" just before it returns
+      // the final payload, and the accepted answer copies this ref before React renders again.
+      const current = answerProgressEventsRef.current;
+      const latest = current.at(-1);
+      if (
+        latest?.stage === progress.stage &&
+        latest.message === progress.message &&
+        latest.resultCount === progress.resultCount &&
+        latest.selectedContextCount === progress.selectedContextCount &&
+        latest.australianSourceCount === progress.australianSourceCount &&
+        latest.waSourceCount === progress.waSourceCount
+      ) {
+        return;
+      }
+      const next = [...current, { ...progress, receivedAt: Date.now() }].slice(-16);
+      answerProgressEventsRef.current = next;
+      setAnswerProgressEvents(next);
     };
     const onAnswerEvidencePreview = (preview: VerifiedEvidencePreviewUnit | null) => {
       if (!requestIsCurrent()) return;
@@ -1417,6 +1417,7 @@ function ClinicalDashboardContent({
       setAnswerProgress("Preparing the clinical search scope.");
     } else {
       setAnswerProgressStartedAt(null);
+      answerProgressEventsRef.current = [];
       setAnswerProgressEvents([]);
       onProgress(modeSearch.progressLabel);
     }

@@ -3954,13 +3954,14 @@ test.describe("PsychSift UI smoke coverage", () => {
 
     const gapsChip = page.getByTestId("answer-limitations-trigger");
     await expect(gapsChip).toBeVisible({ timeout: uiAssertionTimeoutMs });
-    // All three parts, not one. This chip is the only thing on the default view
+    // Both prefixes stay visible. This chip is the only thing on the default view
     // that says no model wrote the answer AND that a cited source is overdue —
-    // `VerificationNotice` is print-only here — so a limitation count must never
-    // displace either prefix.
+    // `VerificationNotice` is print-only here. The limitation count left the visible
+    // text (owner decision, 17 Oct 2026) and is still read out from the label.
     await expect(gapsChip).toContainText("Source-only");
     await expect(gapsChip).toContainText("Review due");
-    await expect(gapsChip).toContainText(/\d+ limitations?/);
+    await expect(gapsChip).not.toContainText(/\d+ limitations?/);
+    await expect(gapsChip).toHaveAttribute("aria-label", /Source-only · Review due · \d+ limitations?/);
     await expect(gapsChip).toHaveAttribute("aria-haspopup", "dialog");
     const gapsDetail = page.locator("#answer-limitations-detail");
     await expect(gapsDetail).toHaveCount(0);
