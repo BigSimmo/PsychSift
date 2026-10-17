@@ -48,6 +48,9 @@ fi
 if grep -q '^# PsychSift checkout: ' "$runtime_profile"; then
   grep -Fqx "# PsychSift checkout: $repo_root" "$runtime_profile" ||
     fail "The cached runtime profile belongs to another checkout; use an isolated HOME and CODEX_HOME."
+else
+  printf '[codex-cloud:maintenance] Legacy runtime profile format; regenerating it.\n'
+  exec bash scripts/setup-codex-cloud.sh
 fi
 
 load_runtime_profile() {
