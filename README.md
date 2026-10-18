@@ -148,7 +148,7 @@ connected-workload approval for the target:
 `docker compose --env-file .env.local --profile worker up --build`.
 The worker container serves `/health` on internal port 8080 for its Compose
 healthcheck (nothing is published). The Compose app mapping is
-`http://localhost:3000`; stop the stack with `docker compose --profile worker down`.
+`http://localhost:3000`; stop the stack with `docker compose --env-file .env.local --profile worker down`.
 This mapping does not replace the project-identity checks for development servers above.
 
 ### Node.js runtime and lifecycle
