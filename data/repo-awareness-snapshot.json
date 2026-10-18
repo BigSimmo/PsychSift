@@ -7629,6 +7629,14 @@
         "checks": "Vitest repo-awareness-generator 31/31; tsc -p tsconfig.typecheck.json --noEmit; Prettier --check; git diff --check; coordinated typecheck wrapper interrupted by environment but underlying tsc passed"
       },
       {
+        "date": "2026-10-18",
+        "ref": "fix/remaining-review-reliability-20261018",
+        "head": "1401eaa8b18471a1ded492626f1730805f9ac1d5",
+        "scope": "Independent recovered Supabase manifest integrity and semantic inventory review",
+        "outcome": "Accepted: recovered file, working file and immutable Git blob are857833bytes with SHA470f2adf6f51487d27d8833d73169386c02491d8c2aef5ebfe77a32a98adfa18. Schema/image/generator/probe match; source schema and all seals unchanged. No unexpected removals or permission relaxation; additions match source SQL. Hosted parity still pending.",
+        "checks": "Independent byte/schema hashes and semantic diff; parent observed trusted GitHub recovery log39112988994/job117632966128 and66focusedtests pass. No providers/writes by reviewer; requested route is not verified execution telemetry."
+      },
+      {
         "date": "2026-07-30",
         "ref": "codex/issue-ledger-upload-parity",
         "head": "140d04415747e568ed3f799c9b9ed7b97d331346",

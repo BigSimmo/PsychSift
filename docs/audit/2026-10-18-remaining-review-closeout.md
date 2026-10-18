@@ -277,3 +277,9 @@ Migration-role, function-grant and owner-scope checks passed, as did **45 existi
 freshness/immutability/parity contract tests in three files**. The first scratch
 fixture omitted the global default revoke and failed its setup assertion; the
 corrected setup matches the chain's actual global plus per-schema defaults.
+
+Independent read-only correction review confirmed the terminal helper-specific
+revoke, preserved owner privileges, unchanged sealed bytes and new schema hash.
+It inspected the actual-migration PGlite permission/UUID proof and passing log
+without rerunning it. No actionable finding; genuine regeneration of the corrected
+mirror and actual hosted strict parity remain pending.
