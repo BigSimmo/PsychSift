@@ -89,7 +89,7 @@ A bot or agent saying it fixed something is a claim, not a result.
 - Verify against the actual ref content before repeating it as fact. Prefer refs already available
   locally (`git log`, `git show`); fetching from the remote is a network action subject to the
   provider boundary above.
-- A squash merge breaks ancestry. `git merge-base --is-ancestor` returning false does **not** mean
+- A squash merge (older history; new PRs land as merge commits) breaks ancestry. `git merge-base --is-ancestor` returning false does **not** mean
   the work is missing — compare file content on `origin/main` instead.
 - Absence of evidence in one place is not proof. Grepping `.github/workflows` for `auto-merge`
   returns nothing even though GitHub's per-PR auto-merge is in active use here, because that setting
