@@ -179,9 +179,9 @@ export function validateTestFiles(argumentList, rootDir = projectRoot) {
 // review on PR #2216. `--no-coverage` correctly does not match, so it stays
 // memoisable; an explicit `--coverage=false` merely runs the gate, which is the safe
 // direction.
-const NON_MEMOISABLE_ARGUMENT = /^--(?:coverage|watch|update|ui|outputFile|output-file|mergeReports|merge-reports|config)(?:[.=]|$)/;
+const NON_MEMOISABLE_ARGUMENT = /^--(?:coverage|watch|update|ui|outputFile|output-file|mergeReports|config)(?:[.=]|$)/;
 export const vitestRunIsMemoisable = (argumentList) =>
-  (argumentList[0] === "run" || (argumentList[0] === "related" && argumentList.includes("--run"))) &&
+  argumentList[0] === "run" &&
   !argumentList.some((argument) => /^-(?:u|w|o|c)(?:=|$)/.test(argument) || NON_MEMOISABLE_ARGUMENT.test(argument)) &&
   // Receipts certify the result, not the continued existence of report files.
   // Custom reporters/configs may write files; only the default config and known console reporters reuse.

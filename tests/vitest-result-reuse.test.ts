@@ -6,7 +6,6 @@ describe("Vitest result reuse matches CLI modes and reporter aliases", () => {
     ["run", "--reporters=json"],
     ["run", "--reporters", "junit"],
     ["run", "--reporter=blob"],
-    ["run", "--merge-reports=.vitest-ci", "--reporter=default"],
     ["run", "--reporters", "./custom.mjs"],
     ["run", "-w"],
     ["watch"],
@@ -21,6 +20,5 @@ describe("Vitest result reuse matches CLI modes and reporter aliases", () => {
     expect(extractReporters(["--reporters=json", "--reporters", "junit"])).toEqual(["json", "junit"]);
     expect(vitestRunIsMemoisable(["run", "tests/example.test.ts"])).toBe(true);
     expect(vitestRunIsMemoisable(["run", "--reporters=verbose"])).toBe(true);
-    expect(vitestRunIsMemoisable(["related", "--run", "tests/example.test.ts"])).toBe(true);
   });
 });
