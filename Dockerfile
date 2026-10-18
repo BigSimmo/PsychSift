@@ -10,6 +10,7 @@
 # The publishable key is public by design; pass the real one for a
 # production image:
 #   docker build \
+#     --build-arg NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co \
 #     --build-arg NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_... \
 #     --build-arg MAX_UPLOAD_MB=150 \
 #     --build-arg NEXT_PUBLIC_MAX_UPLOAD_MB=150 \
@@ -48,7 +49,14 @@ COPY . .
 # versions this build expects is baked in now and copied into the runner
 # below (see scripts/deploy/write-migration-manifest.mjs).
 RUN node scripts/deploy/write-migration-manifest.mjs
-ARG NEXT_PUBLIC_SUPABASE_URL=https://sjrfecxgysukkwxsowpy.supabase.co
+# No default: Next inlines this into the client bundle, so a bare `docker build`
+# must not silently bake in the production project. Railway passes it from the
+# service variable; CI and scripts/build-multiplatform.sh pass it explicitly.
+ARG NEXT_PUBLIC_SUPABASE_URL
+RUN if [ -z "${NEXT_PUBLIC_SUPABASE_URL}" ]; then \
+      echo "ERROR: build arg NEXT_PUBLIC_SUPABASE_URL is required (e.g. --build-arg NEXT_PUBLIC_SUPABASE_URL=https://<ref>.supabase.co)" >&2; \
+      exit 1; \
+    fi
 ARG NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=placeholder-build-publishable-key
 # Non-secret identity metadata lets the browser-side project guard explicitly
 # accept staging instead of treating its URL as an accidental production mismatch.
