@@ -306,6 +306,74 @@ the private `final-acceptance/approved-staging-execution/` directory. The local 
 and canonical handoff distinguish this approved staging mutation from absent production,
 reserved-role, migration, merge and deployment operations.
 
+### Rapid PR follow-through — 2026-10-18
+
+The owner requested parallel resolution of the remaining conditions. Three bounded specialists
+investigated CI, dependencies and hosted/platform evidence; a fourth independently challenged
+the consequential claims and integration. Requested routing was gpt-6.1-sol/high; execution
+telemetry was unavailable. The lead remained the only integration writer and check owner.
+
+The live PR had independently advanced to `f70929e5306413bab2f90348fb68f9ddec8cf450`
+and was ready for review rather than draft. This continuation preserved those concurrent changes
+by fast-forwarding the clean local branch. Those changes include the unchanged-byte rename of
+the audit draft from version `20261017221129` to `20261018082910`; the earlier filename and
+seal-union counts in this report remain dated history. No migration, seal, schema or catalog
+manifest was changed by this continuation's integration with fetched main
+`807ce0cb2b8f0850e6c41f04b0b00e856bd585fb`. One clean merge incorporates its five later
+commits, including worker container health configuration and verification/hook improvements.
+
+At f70929e, all 40 observed checks were complete: 28 succeeded, ten were skipped, one was
+neutral and **Supabase Preview failed**. CI run `39115639624` passed its selected unit coverage,
+lint/types, build, container, local migration/schema/manifest, Chromium UI and offline RAG jobs;
+PR-policy checks also passed. It tested synthetic merge `fbda6cc51193de86dd7c6f8c85d5a38b8fa1bd06`
+against base `9ba5b29008d3122b0d6fd817fc8ebf0b0110e1ad`, not the new main integration.
+After integration, all **314/314** selected complete owning tests and **15/15** Codex hook
+fixture tests passed locally. New-head hosted checks must be observed separately; earlier
+green results do not establish them. Full browser/device and live provider acceptance remain open.
+
+The Preview check reported `Remote migration versions not found in local migrations directory.`
+Read-only inventory identifies PR 3640's preview branch `d16a8c2f-cc76-4263-a367-7efcbbd9e907`,
+project `enkvvwbeyhkbzavburcq`, with status MIGRATIONS_FAILED. Comparing the complete
+322-version sets identifies only the old timestamp `20261017221129` remotely and only the new
+timestamp `20261018082910` locally. The old entry records 39 statements. This explains the
+history-alignment failure; it does not prove remote SQL bytes or schema equivalence. Supabase's
+documented delete/recreate recovery is prepared for this exact PR preview, but **not executed**:
+it deletes preview-only state and can incur compute cost. `with_data=false` is its creation profile,
+not proof that no valuable state exists now. Exact owner approval must bind the final candidate,
+branch and preview project, exclude Production and dedicated Staging, and preserve evidence.
+No history repair, placeholder migration, reseal or production workaround was performed.
+
+The dependency investigator confirmed **GHSA-vfj7-8cjw-p6xm / CVE-2026-93687**, high, affects
+`braces` through 3.0.3; the official registry and reviewed advisory provide **no fixed release**.
+It is development-only through Next's ESLint plugin, fast-glob and micromatch. No application/
+worker import or identified clinical-input route was found; this limits demonstrated reachability
+but does not fix or dismiss the advisory. The existing framework-modernization checklist already
+records the residual. No invented version, incompatible brace-expansion alias or weakened lint
+gate was introduced. The GitHub security-alert endpoint was unavailable through the connector;
+exact repository alert IDs and the second high alert remain unidentified. Deno npm advisory
+lookup returned none; Python advisory lookup was blocked by the proxy, not passed.
+
+Fresh staging catalogs confirm the previously approved postgres default repair remains effective.
+Reserved-creator defaults remain broad, and the connector is still non-superuser postgres without
+authority to administer that creator. A platform-support handoff with explicit global/non-public
+compatibility questions is prepared but unsent. No new live database operation was performed.
+
+The observed staging app deployed `675fec3051d700942072dc1675549411c53fe51c`, not this PR;
+its existing worker remains live. Executor credentials/target HTTP are unavailable. The hosted
+tenancy harness also changes both synthetic users' administrator metadata and writes CME,
+On Call and roster fixtures; those effects need an explicitly scoped execution plan. The live
+canary workflow targets trusted-default-branch production identity, so dispatching it would not
+verify an arbitrary unmerged staging candidate. Generic 37ms service telemetry is not endpoint-
+specific authenticated load evidence. Candidate-matched Auth/Storage/RAG/cache/performance/
+rollback acceptance therefore remains unverified. Four privacy/provider/legal conditions and
+qualified physiological/staff approvals remain pending; no holds or approval records were cleared.
+
+Private evidence is retained in `rapid-followthrough/`: exact CI snapshot and decisive excerpts,
+advisory metadata/lock exposure, read-only hosted inventory/history, owning-test JSON and
+independent challenge. The same task identity and historical score are preserved. This wave
+resolves fetched-main reconciliation and local integration proof; preview recovery, platform
+authority, genuine approvals, unknown alert identity and actual hosted acceptance remain visible.
+
 ## Issue disposition
 
 “Implemented” below means local source and regressions exist. Acceptance checks and operational

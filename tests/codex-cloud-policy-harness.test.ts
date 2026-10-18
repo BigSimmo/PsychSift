@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process";
+import { spawnSync, type SpawnSyncOptionsWithStringEncoding } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   chmodSync,
@@ -39,6 +39,29 @@ function scopedProfile(contents: string) {
   return `# PsychSift checkout: ${bashPath(repoRoot)}\n${contents}`;
 }
 
+function runBash(args: string[], options: SpawnSyncOptionsWithStringEncoding) {
+  // Git Bash prepends native tool directories at startup. Re-establish the
+  // fixture PATH inside the shell so a fake git/node can never select host tools.
+  const environment: NodeJS.ProcessEnv = options.env ?? { NODE_ENV: "test" };
+  const commandIndex = args.indexOf("-c");
+  const body = commandIndex >= 0 ? args[commandIndex + 1] : 'source "$0" "$@"';
+  const parameters = commandIndex >= 0 ? args.slice(commandIndex + 2) : [bashPath(args[0]), ...args.slice(1)];
+  const prelude = [
+    'export PATH="$CLOUD_FIXTURE_PATH"; unset CLOUD_FIXTURE_PATH',
+    'for tool in git node npm; do [[ "$(command -v "$tool")" = "$CLOUD_FIXTURE_BIN/$tool" ]] || exit 96; done',
+    "unset CLOUD_FIXTURE_BIN",
+  ].join("; ");
+  return spawnSync(bashCommand, ["--noprofile", "--norc", "-c", `${prelude}; ${body}`, ...parameters], {
+    ...options,
+    timeout: options.timeout ?? 10_000,
+    env: {
+      ...environment,
+      CLOUD_FIXTURE_PATH: environment.PATH ?? shellToolsPath,
+      CLOUD_FIXTURE_BIN: environment.CLOUD_FIXTURE_BIN ?? `${environment.HOME}/bin`,
+    },
+  });
+}
+
 function fixture(runtime: "missing" | "mismatched") {
   const home = mkdtempSync(path.join(os.tmpdir(), "cloud-policy-harness-"));
   temporaryDirectories.push(home);
@@ -48,6 +71,14 @@ function fixture(runtime: "missing" | "mismatched") {
   mkdirSync(nvmDirectory);
   mkdirSync(path.join(home, ".codex"));
   const runtimeCalls = path.join(home, "runtime-calls.log");
+  // The Cloud scripts target Linux. Model its physical POSIX Git root without
+  // consulting host Git configuration or permitting remote commands.
+  const fakeGit = path.join(bin, "git");
+  writeFileSync(
+    fakeGit,
+    '#!/bin/bash\nif [[ "$#" = 2 && "$1" = rev-parse && "$2" = --show-toplevel ]]; then pwd -P; else exit 91; fi\n',
+  );
+  chmodSync(fakeGit, 0o755);
   for (const command of ["node", "npm"]) {
     const executable = path.join(bin, command);
     writeFileSync(
@@ -82,7 +113,7 @@ function fixture(runtime: "missing" | "mismatched") {
       // A minimal environment keeps inherited provider credentials and user
       // setup flags out of this isolated shell. Runtime shims precede system
       // utilities and log every invocation, including failure diagnostics.
-      return spawnSync(bashCommand, [script, ...(explicitHarness ? ["--policy-only-test-harness"] : [])], {
+      return runBash([script, ...(explicitHarness ? ["--policy-only-test-harness"] : [])], {
         cwd: repoRoot,
         encoding: "utf8",
         env: {
@@ -95,6 +126,7 @@ function fixture(runtime: "missing" | "mismatched") {
           NVM_DIR: bashPath(nvmDirectory),
           PATH: `${bashPath(bin)}:${process.platform === "win32" ? "/mingw64/bin:" : ""}/usr/bin:/bin`,
           CLOUD_POLICY_RUNTIME_CALLS: bashPath(runtimeCalls),
+          CLOUD_FIXTURE_BIN: bashPath(bin),
           CODEX_CLOUD_ACCESS_PROFILE: "offline",
           CODEX_CLOUD_SETUP_STOP_AFTER_POLICY: "1",
           ...extraEnvironment,
@@ -152,6 +184,22 @@ function legacyMaintenanceFixture() {
 }
 
 describe("Codex Cloud policy-only harness runtime isolation", () => {
+  it("rejects a mismatched synthetic tool path before executing the target script", () => {
+    const test = fixture("missing");
+    const marker = path.join(test.home, "target-ran");
+    const target = path.join(test.home, "target.sh");
+    writeFileSync(
+      target,
+      'bash --noprofile --norc -c \'for tool in git node npm; do [[ "$(command -v "$tool")" = "$HOME/bin/$tool" ]] || exit 96; done\' || exit $?\nprintf ran > "$HOME/target-ran"\n',
+    );
+    const rejected = test.run({ CLOUD_FIXTURE_BIN: `${bashPath(test.home)}/wrong-bin` }, false, target);
+    expect(rejected.status, rejected.stderr).toBe(96);
+    expect(existsSync(marker)).toBe(false);
+    const accepted = test.run({}, false, target);
+    expect(accepted.status, accepted.stderr).toBe(0);
+    expect(readFileSync(marker, "utf8")).toBe("ran");
+  });
+
   it.each(["", "invalid-profile", "synthetic-invalid-profile-value"])(
     "rejects invalid explicit profile %j before ordinary bootstrap runtime work",
     (profile) => {
@@ -555,52 +603,56 @@ describe("Codex Cloud policy-only harness runtime isolation", () => {
     expect(result.stdout).toContain("Shim validation failed; rerunning full setup.");
   });
 
-  it("reads a legacy double-quoted shim target verbatim, without the single-quote unescape", () => {
-    const test = fixture("mismatched");
-    const checkout = path.join(test.home, "checkout");
-    const scripts = path.join(checkout, "scripts");
-    mkdirSync(scripts, { recursive: true });
-    for (const name of ["maintain-codex-cloud.sh", "check-codex-cloud-raw-env.sh"]) {
-      copyFileSync(path.join(repoRoot, "scripts", name), path.join(scripts, name));
-    }
-    writeFileSync(
-      path.join(test.home, ".clinical-kb-codex-cloud.sh"),
-      `# PsychSift checkout: ${bashPath(checkout)}\nexport CODEX_CLOUD_ACCESS_PROFILE=offline RAG_PROVIDER_MODE=offline\n`,
-    );
-    // A literal '\\'' in a legacy (double-quoted) target is part of the filename.
-    const targetDirectory = path.join(test.home, "legacy'\\''runtime");
-    mkdirSync(targetDirectory);
-    const target = path.join(targetDirectory, "node");
-    writeFileSync(target, "#!/usr/bin/env bash\nexit 0\n");
-    chmodSync(target, 0o755);
-    const shimDirectory = path.join(test.home, ".local/bin");
-    mkdirSync(shimDirectory, { recursive: true });
-    writeFileSync(
-      path.join(shimDirectory, "node"),
-      [
-        "#!/usr/bin/env bash",
-        "# Generated by scripts/install-codex-cloud-command-shims.sh. Re-running setup",
-        `exec "${bashPath(target)}" "$@"`,
-        "",
-      ].join("\n"),
-    );
-    writeFileSync(path.join(scripts, "refresh-codex-cloud-base.sh"), "exit 0\n");
-    writeFileSync(path.join(scripts, "install-codex-cloud-command-shims.sh"), "exit 42\n");
-    writeFileSync(path.join(scripts, "setup-codex-cloud.sh"), 'printf "%s\\n" fixture-setup\n');
-    const git = path.join(test.home, "bin/git");
-    writeFileSync(git, '#!/bin/bash\nprintf "%s\\n" "$CLOUD_POLICY_FIXTURE_CHECKOUT"\n');
-    chmodSync(git, 0o755);
+  it.each(process.platform === "win32" ? ["legacy' runtime"] : ["legacy' runtime", "legacy'\\''runtime"])(
+    "reads a legacy double-quoted shim target verbatim, without the single-quote unescape: %s",
+    (directoryName) => {
+      const test = fixture("mismatched");
+      const checkout = path.join(test.home, "checkout");
+      const scripts = path.join(checkout, "scripts");
+      mkdirSync(scripts, { recursive: true });
+      for (const name of ["maintain-codex-cloud.sh", "check-codex-cloud-raw-env.sh"]) {
+        copyFileSync(path.join(repoRoot, "scripts", name), path.join(scripts, name));
+      }
+      writeFileSync(
+        path.join(test.home, ".clinical-kb-codex-cloud.sh"),
+        `# PsychSift checkout: ${bashPath(checkout)}\nexport CODEX_CLOUD_ACCESS_PROFILE=offline RAG_PROVIDER_MODE=offline\n`,
+      );
+      // Literal backslashes are valid filename characters only on POSIX. Keep
+      // that regression there, and exercise quotes/spaces on every platform.
+      const targetDirectory = path.join(test.home, directoryName);
+      mkdirSync(targetDirectory);
+      const target = path.join(targetDirectory, "node");
+      writeFileSync(target, "#!/usr/bin/env bash\nexit 0\n");
+      chmodSync(target, 0o755);
+      const shimDirectory = path.join(test.home, ".local/bin");
+      mkdirSync(shimDirectory, { recursive: true });
+      writeFileSync(
+        path.join(shimDirectory, "node"),
+        [
+          "#!/usr/bin/env bash",
+          "# Generated by scripts/install-codex-cloud-command-shims.sh. Re-running setup",
+          `exec "${bashPath(target)}" "$@"`,
+          "",
+        ].join("\n"),
+      );
+      writeFileSync(path.join(scripts, "refresh-codex-cloud-base.sh"), "exit 0\n");
+      writeFileSync(path.join(scripts, "install-codex-cloud-command-shims.sh"), "exit 42\n");
+      writeFileSync(path.join(scripts, "setup-codex-cloud.sh"), 'printf "%s\\n" fixture-setup\n');
+      const git = path.join(test.home, "bin/git");
+      writeFileSync(git, '#!/bin/bash\nprintf "%s\\n" "$CLOUD_POLICY_FIXTURE_CHECKOUT"\n');
+      chmodSync(git, 0o755);
 
-    const result = test.run(
-      { CLOUD_POLICY_FIXTURE_CHECKOUT: bashPath(checkout) },
-      false,
-      path.join(scripts, "maintain-codex-cloud.sh"),
-    );
+      const result = test.run(
+        { CLOUD_POLICY_FIXTURE_CHECKOUT: bashPath(checkout) },
+        false,
+        path.join(scripts, "maintain-codex-cloud.sh"),
+      );
 
-    expect(result.status, result.stderr || result.stdout).toBe(0);
-    expect(result.stdout).not.toContain("Node/npm unavailable");
-    expect(result.stdout).toContain("Shim validation failed; rerunning full setup.");
-  });
+      expect(result.status, result.stderr || result.stdout).toBe(0);
+      expect(result.stdout).not.toContain("Node/npm unavailable");
+      expect(result.stdout).toContain("Shim validation failed; rerunning full setup.");
+    },
+  );
 
   it("reruns setup before any Node call when a generated shim target is missing", () => {
     const test = fixture("mismatched");
@@ -725,9 +777,9 @@ describe("Codex Cloud policy-only harness runtime isolation", () => {
     expect(result.status, result.stderr || result.stdout).toBe(0);
     const otherCheckout = path.join(test.home, "other-checkout");
     mkdirSync(otherCheckout);
-    expect(spawnSync("git", ["init", "--quiet", otherCheckout]).status).toBe(0);
-    const loaded = spawnSync(
-      bashCommand,
+    // The fixture Git reports its physical cwd, including this unrelated root.
+    const fixturePath = `${bashPath(path.join(test.home, "bin"))}:${shellToolsPath}`;
+    const loaded = runBash(
       [
         "--noprofile",
         "--norc",
@@ -740,7 +792,7 @@ describe("Codex Cloud policy-only harness runtime isolation", () => {
         env: {
           NODE_ENV: "test",
           HOME: bashPath(test.home),
-          PATH: shellToolsPath,
+          PATH: fixturePath,
           SystemRoot: process.env.SystemRoot,
           WINDIR: process.env.WINDIR,
           SUPABASE_URL: "synthetic-unrelated-environment",
@@ -750,7 +802,7 @@ describe("Codex Cloud policy-only harness runtime isolation", () => {
       },
     );
     expect(loaded.status, loaded.stderr).toBe(0);
-    expect(loaded.stdout).toBe(`${shellToolsPath}|unset|synthetic-unrelated-environment|synthetic-proxy`);
+    expect(loaded.stdout).toBe(`${fixturePath}|unset|synthetic-unrelated-environment|synthetic-proxy`);
     expect(existsSync(test.runtimeCalls)).toBe(false);
 
     const profilePath = path.join(test.home, ".clinical-kb-codex-cloud.sh");
@@ -904,8 +956,7 @@ describe("Codex Cloud policy-only harness runtime isolation", () => {
       mkdirSync(cache, { recursive: true });
       writeFileSync(path.join(cache, "cloud-expected-base-sha"), `${base}\n`);
 
-      const loaded = spawnSync(
-        bashCommand,
+      const loaded = runBash(
         [
           "--noprofile",
           "--norc",
@@ -918,7 +969,7 @@ describe("Codex Cloud policy-only harness runtime isolation", () => {
           env: {
             NODE_ENV: "test",
             HOME: bashPath(test.home),
-            PATH: process.platform === "win32" ? "/mingw64/bin:/usr/bin:/bin" : "/usr/bin:/bin",
+            PATH: `${bashPath(path.join(test.home, "bin"))}:${shellToolsPath}`,
             SystemRoot: process.env.SystemRoot,
             WINDIR: process.env.WINDIR,
           },
@@ -942,8 +993,7 @@ describe("Codex Cloud policy-only harness runtime isolation", () => {
       mkdirSync(path.join(cache, "checkouts", checkoutKey), { recursive: true });
       writeFileSync(path.join(cache, "checkouts", checkoutKey, "cloud-expected-base-sha"), `${"a".repeat(40)}\n`);
       writeFileSync(path.join(cache, "cloud-expected-base-sha"), `${"c".repeat(40)}\n`);
-      const loaded = spawnSync(
-        bashCommand,
+      const loaded = runBash(
         [
           "--noprofile",
           "--norc",
@@ -956,7 +1006,7 @@ describe("Codex Cloud policy-only harness runtime isolation", () => {
           env: {
             NODE_ENV: "test",
             HOME: bashPath(test.home),
-            PATH: shellToolsPath,
+            PATH: `${bashPath(path.join(test.home, "bin"))}:${shellToolsPath}`,
             SystemRoot: process.env.SystemRoot,
             WINDIR: process.env.WINDIR,
             CODEX_CLOUD_EXPECTED_BASE_SHA: pin,
@@ -979,7 +1029,7 @@ describe("Codex Cloud policy-only harness runtime isolation", () => {
       [
         "#!/bin/bash",
         'case "$1" in',
-        'rev-parse) printf "%s\\n" "$PWD" ;;',
+        'rev-parse) printf "%s\\n" "$CLOUD_POLICY_FIXTURE_CHECKOUT" ;;',
         "fetch) exit 0 ;;", // This synthetic fixture never contacts a remote.
         'merge-base) printf "%s\\n" "$CLOUD_POLICY_BASE" ;;',
         "*) exit 91 ;;",
@@ -999,7 +1049,7 @@ describe("Codex Cloud policy-only harness runtime isolation", () => {
         path.join(repoRoot, "scripts/lib/codex-cloud-paths.sh"),
         path.join(checkout, "scripts/lib/codex-cloud-paths.sh"),
       );
-      const result = spawnSync(bashCommand, ["scripts/refresh-codex-cloud-base.sh"], {
+      const result = runBash(["scripts/refresh-codex-cloud-base.sh"], {
         cwd: checkout,
         encoding: "utf8",
         env: {
@@ -1009,6 +1059,9 @@ describe("Codex Cloud policy-only harness runtime isolation", () => {
           SystemRoot: process.env.SystemRoot,
           WINDIR: process.env.WINDIR,
           CLOUD_POLICY_BASE: base,
+          // Git Bash may spell a native temp cwd as /tmp rather than /d/Temp.
+          // Use the same explicit checkout spelling as the cache assertion.
+          CLOUD_POLICY_FIXTURE_CHECKOUT: bashPath(checkout),
         },
       });
       expect(result.status, result.stderr || result.stdout).toBe(0);

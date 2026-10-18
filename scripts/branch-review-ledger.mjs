@@ -517,7 +517,7 @@ function runLookup(_liveMarkdown, argv) {
     console.log(`ALREADY REVIEWED - ${atHead.length} record(s) at this HEAD${scope ? " and scope" : ""}:`);
     for (const row of atHead) console.log(summarize(row));
     console.log(
-      "\nSummarize the prior outcome and skip the repeat review unless a fresh pass was explicitly requested.",
+      "\nCommitted HEAD/scope record found; this lookup does not compare the base, working tree, environment or artifacts. Reuse only within that evidence scope; verify additional inputs for current-diff/readiness claims. Skip an unchanged committed-content review unless a fresh pass was explicitly requested.",
     );
     return;
   }
