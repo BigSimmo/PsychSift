@@ -16,6 +16,8 @@ import { createHash, randomUUID } from "node:crypto";
 import { verifyAnswerFeedbackToken } from "@/lib/answer-feedback-token";
 import { ANSWER_FEEDBACK_NOTE_MAX_LENGTH, answerFeedbackTypes, feedbackRecordIdPattern } from "@/lib/answer-feedback";
 import { rejectPatientDetailFeedbackNote } from "@/lib/clinical-question-patient-check-server";
+import { getMedicationRecord } from "@/lib/medication-snapshot";
+import { findTherapyRecord } from "@/lib/therapies";
 
 export const runtime = "nodejs";
 
@@ -50,6 +52,12 @@ const recordFeedbackBodySchema = z
   .strict();
 const feedbackBodySchema = z.union([answerFeedbackBodySchema, recordFeedbackBodySchema]);
 
+/** True only for an exact slug in the canonical medication or therapy catalogue. */
+function isCatalogueRecord(recordType: "medication" | "therapy", recordId: string): boolean {
+  if (recordType === "therapy") return findTherapyRecord(recordId)?.slug === recordId;
+  return getMedicationRecord(recordId)?.slug === recordId;
+}
+
 export async function POST(request: Request) {
   try {
     if (isDemoMode())
@@ -78,6 +86,12 @@ export async function POST(request: Request) {
       if (!access.authenticated) {
         throw new PublicApiError("Sign in to report a problem with this record.", 401, {
           code: "sign_in_required",
+        });
+      }
+      // Only a real catalogue slug is stored, so the record id can never carry free text.
+      if (!isCatalogueRecord(body.recordType, body.recordId)) {
+        throw new PublicApiError("This record could not be found. Reload the page and try again.", 400, {
+          code: "unknown_feedback_record",
         });
       }
       row = {

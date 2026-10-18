@@ -116,8 +116,9 @@ type ReadPlan = ReturnType<typeof buildFeedbackReadPlan>;
 
 /*
  * Weekly summary: counts by category and by page for the last seven days, read from the one
- * feedback table. It selects only the category, the page type and the record slug, never the
- * note, the owner, the answer hash or any id that joins to query telemetry, so it needs no
+ * feedback table. It selects only the category and the page type, never the note, the record
+ * slug, the owner, the answer hash or any id that joins to query telemetry (the job summary is
+ * readable by anyone who can see the repository's Actions runs), so it needs no
  * per-run authorization receipt: the scheduled workflow that runs it is the approval, and the
  * exact production identity check still runs before any read.
  */
@@ -126,13 +127,11 @@ const weeklyLimits = Object.freeze({
   pageSize: 100,
   maxPages: 10,
   maxRows: 1000,
-  topRecords: 20,
   requestTimeoutMs: 15_000,
 });
 const weeklyOperation = "answer_feedback_weekly_summary_read";
-const weeklyProjection = "feedback_category,record_type,record_id";
+const weeklyProjection = "feedback_category,record_type";
 const summaryPageTypes = ["answer", "medication", "therapy"] as const;
-const summaryRecordIdPattern = /^[a-z0-9][a-z0-9-]{0,119}$/;
 
 export function buildWeeklySummaryPlan(args: { projectRef: string }, now = Date.now()) {
   if (args.projectRef !== expectedSupabaseProject.ref || !Number.isFinite(now))
@@ -158,7 +157,6 @@ type WeeklyPlan = ReturnType<typeof buildWeeklySummaryPlan>;
 export function summariseWeeklyFeedback(rows: readonly unknown[], window: { from: string; to: string }) {
   const categoryCounts: Record<string, number> = {};
   const pageCounts: Record<string, number> = {};
-  const recordCounts = new Map<string, number>();
   for (const row of rows) {
     const value = record(row) ? row : {};
     const category =
@@ -174,10 +172,6 @@ export function summariseWeeklyFeedback(rows: readonly unknown[], window: { from
           : "unknown";
     categoryCounts[category] = (categoryCounts[category] ?? 0) + 1;
     pageCounts[page] = (pageCounts[page] ?? 0) + 1;
-    if ((page === "medication" || page === "therapy") && typeof value.record_id === "string") {
-      const key = summaryRecordIdPattern.test(value.record_id) ? `${page}:${value.record_id}` : `${page}:unknown`;
-      recordCounts.set(key, (recordCounts.get(key) ?? 0) + 1);
-    }
   }
   const sortCounts = (entries: Iterable<[string, number]>) =>
     [...entries].sort(([leftKey, left], [rightKey, right]) => right - left || leftKey.localeCompare(rightKey));
@@ -188,9 +182,6 @@ export function summariseWeeklyFeedback(rows: readonly unknown[], window: { from
     totalReports: rows.length,
     categoryCounts: Object.fromEntries(sortCounts(Object.entries(categoryCounts))),
     pageCounts: Object.fromEntries(sortCounts(Object.entries(pageCounts))),
-    mostReportedRecords: sortCounts(recordCounts.entries())
-      .slice(0, weeklyLimits.topRecords)
-      .map(([key, count]) => ({ record: key, count })),
     freeText: "excluded",
     requiresDeidentificationReview: true,
     mayAutoPromote: false,
@@ -211,7 +202,6 @@ export function weeklySummaryMarkdown(summary: unknown): string {
       .map(([key, count]) => `| ${key} | ${count} |`)
       .join("\n")}\n`;
   };
-  const records = summary.mostReportedRecords as { record: string; count: number }[];
   return [
     "## Answer feedback weekly summary",
     "",
@@ -219,7 +209,6 @@ export function weeklySummaryMarkdown(summary: unknown): string {
     "",
     table("Category", summary.categoryCounts as Record<string, number>),
     table("Page", summary.pageCounts as Record<string, number>),
-    table("Record", Object.fromEntries(records.map((row) => [row.record, row.count]))),
   ].join("\n");
 }
 

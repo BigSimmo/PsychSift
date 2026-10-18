@@ -2,6 +2,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { rejectPatientDetailFeedbackNote } from "@/lib/clinical-question-patient-check-server";
 import { PublicApiError } from "@/lib/http";
+import { loadMedicationSnapshot } from "@/lib/medication-snapshot";
+import { therapySlugs } from "@/lib/therapies";
+
+const catalogueSlug = {
+  medication: loadMedicationSnapshot()[0]!.slug,
+  therapy: therapySlugs()[0]!,
+} as const;
 
 const interactionId = "11111111-1111-4111-8111-111111111111";
 
@@ -131,7 +138,7 @@ describe("answer feedback route: medication and therapy record reports", () => {
     const { post, insert } = await loadRoute(true);
     const response = await post({
       recordType,
-      recordId: "lithium-carbonate",
+      recordId: catalogueSlug[recordType],
       feedbackCategory: "outdated_guidance",
       note: "Monitoring interval differs from the cited guideline.",
     });
@@ -139,7 +146,7 @@ describe("answer feedback route: medication and therapy record reports", () => {
     expect(insert).toHaveBeenCalledWith(
       expect.objectContaining({
         record_type: recordType,
-        record_id: "lithium-carbonate",
+        record_id: catalogueSlug[recordType],
         feedback_category: "outdated_guidance",
         note: "Monitoring interval differs from the cited guideline.",
         answer_hash: expect.stringMatching(/^[a-f0-9]{64}$/),
@@ -158,6 +165,19 @@ describe("answer feedback route: medication and therapy record reports", () => {
   ])("rejects a malformed record report %j", async (body) => {
     const { post, insert } = await loadRoute(true);
     expect((await post(body)).status).toBe(400);
+    expect(insert).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["medication", "not-a-real-medication-jane-citizen"],
+    ["therapy", "not-a-real-therapy-jane-citizen"],
+  ] as const)("rejects a %s slug that is not in the catalogue", async (recordType, recordId) => {
+    const { post, insert } = await loadRoute(true);
+    const response = await post({ recordType, recordId, feedbackCategory: "numeric_error" });
+    expect(response.status).toBe(400);
+    const payload = (await response.json()) as { error: string; code: string };
+    expect(payload.code).toBe("unknown_feedback_record");
+    expect(JSON.stringify(payload)).not.toContain("jane");
     expect(insert).not.toHaveBeenCalled();
   });
 

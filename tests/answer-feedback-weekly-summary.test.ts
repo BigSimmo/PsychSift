@@ -71,17 +71,23 @@ describe("answer feedback weekly summary", () => {
       totalReports: 4,
       categoryCounts: { numeric_error: 2, outdated_guidance: 1, wrong_source: 1 },
       pageCounts: { medication: 2, answer: 1, therapy: 1 },
-      mostReportedRecords: [
-        { record: "medication:lithium", count: 2 },
-        { record: "therapy:cbt-i", count: 1 },
-      ],
       freeText: "excluded",
       window: { from: "2026-10-11T12:00:00.000Z", to: "2026-10-18T12:00:00.000Z" },
     });
     const select = calls[0]!.find(([method]) => method === "select")!;
-    expect(select[1]).toBe("feedback_category,record_type,record_id");
-    expect(String(select[1])).not.toMatch(/note|owner|hash|interaction/);
+    expect(select[1]).toBe("feedback_category,record_type");
+    expect(String(select[1])).not.toMatch(/note|owner|hash|interaction|record_id/);
     expect(dependencies.readJson).not.toHaveBeenCalled();
+  });
+
+  it("never prints a record id, even one that arrives in a row", () => {
+    const summary = summariseWeeklyFeedback(
+      [{ feedback_category: "numeric_error", record_type: "medication", record_id: "jane-citizen-1960" }],
+      { from: "a", to: "b" },
+    );
+    const text = JSON.stringify(summary) + weeklySummaryMarkdown(summary);
+    expect(text).not.toContain("jane");
+    expect(summary.pageCounts).toEqual({ medication: 1 });
   });
 
   it("does not echo unexpected values or text from rows", () => {

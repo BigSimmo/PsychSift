@@ -4,7 +4,7 @@ name: Answer feedback weekly summary
 # medication record, therapy record), written to this run's job summary.
 #
 # Content-free by construction: scripts/report-answer-feedback.ts --weekly-summary selects only
-# the category, the page type and the record slug. It never selects the optional note, the owner,
+# the category and the page type. It never selects the optional note, the record slug, the owner,
 # the answer hash or any id that joins to query telemetry, so no free text reaches the log or the
 # summary. The notes stay in the database only, and are cleared after 90 days.
 #
