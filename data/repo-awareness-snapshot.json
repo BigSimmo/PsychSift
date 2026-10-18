@@ -7557,6 +7557,14 @@
         "checks": "Hosted PR required SUCCESS; Migration replay/Unit/Static/PR policy SUCCESS; Semgrep fail was Docker Hub pull timeout (infra). `npm run check:branch-review-ledger` pass. No provider-backed checks."
       },
       {
+        "date": "2026-10-18",
+        "ref": "fix/remaining-review-reliability-20261018",
+        "head": "12d2c9dc30b4c77d58f85d290c433301bc2313e9",
+        "scope": "Independent trigger-helper ACL parity correction review",
+        "outcome": "Accepted: terminal helper-specific mirror revoke matches reported owner-only chain ACL, retains owner privileges and trigger behavior. Migration tree, seals and existing manifest unchanged. New schema hash5118a8dc. Genuine regeneration and hosted parity still required.",
+        "checks": "Independent immutable SQL diff, schema hash and unchanged protected bytes; inspected actual-migration PGlite ACL/UUID proof and passing log. Parent45contract tests and CI mismatch observation reused; no reviewer writes/providers or broad reruns."
+      },
+      {
         "date": "2026-07-30",
         "ref": "PR-1507",
         "head": "12e5c8c977a873a7b900596fdc310a1a78d863f0",
