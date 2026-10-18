@@ -22,7 +22,7 @@ import { IngestionProviderEgressRefusal } from "../src/lib/ingestion-provider-eg
 
 export const WORKER_CONTROL_PLANE_TIMEOUT_MS = 30_000;
 export const WORKER_DATA_PLANE_TIMEOUT_MS = 240_000;
-export const WORKER_SUPABASE_TIMEOUT_MS = 120_000;
+export const WORKER_SUPABASE_TIMEOUT_MS = WORKER_DATA_PLANE_TIMEOUT_MS;
 
 export const CONTROL_PLANE_RPCS: ReadonlySet<string> = new Set([
   "claim_ingestion_jobs",
@@ -47,7 +47,13 @@ export function resolveWorkerDataPlaneTimeoutMs(environment: Record<string, stri
 
 export function resolveWorkerSupabaseTimeoutMs(environment: Record<string, string | undefined> = process.env): number {
   const raw = Number(environment.WORKER_SUPABASE_TIMEOUT_MS);
-  return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : WORKER_SUPABASE_TIMEOUT_MS;
+  return Number.isFinite(raw) && raw > 0
+    ? Math.floor(raw)
+    : Math.max(
+        WORKER_SUPABASE_TIMEOUT_MS,
+        resolveWorkerDataPlaneTimeoutMs(environment),
+        resolveWorkerControlPlaneTimeoutMs(environment),
+      );
 }
 
 export function controlPlaneAbortSignal(

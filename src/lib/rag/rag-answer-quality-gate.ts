@@ -469,6 +469,9 @@ function finalQualityFailure(answer: RagAnswer, query: string, queryClass: RagQu
     ...answer,
     answer: finalQualityGapAnswer(query, queryClass),
     rejectedCandidateText: answer.answer,
+    citations: answer.citations.filter((citation) =>
+      answer.sources.some((source) => source.id === citation.chunk_id && source.document_id === citation.document_id),
+    ),
     grounded: false,
     confidence: "unsupported",
     answerSections: [],
@@ -767,7 +770,18 @@ function shouldPreserveSourceBackedGeneratedAnswer(answer: RagAnswer, reason: st
   if (!sourceSelection?.selectedCount || !sourceSelection.requiredSignalsSatisfied) return false;
   if (sourceSelection.missingRequiredSignals.length > 0) return false;
 
-  const matchedSignals = sourceSelection.matchedSignals;
+  // Selection-wide signals can belong to an uncited document. Recovery needs
+  // evidence from the exact cited chunks, including their document identities.
+  const citedSources = answer.sources.filter((source) =>
+    answer.citations.some((citation) => citation.chunk_id === source.id && citation.document_id === source.document_id),
+  );
+  const matchedSignals = citedSources.flatMap((source) =>
+    (source.match_explanation?.reasons ?? [])
+      .filter((reason) => reason.startsWith("retrieval_signal:"))
+      .map((reason) => reason.slice("retrieval_signal:".length)),
+  );
+  const requiredSignals = answer.smartApiPlan?.answerPlan.retrievalIntent?.requiredTermSignals ?? [];
+  if (requiredSignals.some((signal) => !matchedSignals.includes(signal))) return false;
   const hasSpecificSourceSignal = matchedSignals.some(
     (signal) =>
       signal.startsWith("index_unit:") ||
@@ -787,11 +801,9 @@ function shouldPreserveSourceBackedGeneratedAnswer(answer: RagAnswer, reason: st
         "flowchart_or_pathway",
       ].includes(signal),
   );
-  const hasStructuredChunk =
-    sourceSelection.topChunkTypes.table > 0 ||
-    sourceSelection.topChunkTypes.flowchart > 0 ||
-    sourceSelection.topChunkTypes.medication_chart > 0 ||
-    sourceSelection.topChunkTypes.patient_education > 0;
+  const hasStructuredChunk = matchedSignals.some((signal) =>
+    ["table", "flowchart", "medication_chart", "patient_education"].includes(signal),
+  );
 
   return hasSpecificSourceSignal || hasStructuredChunk;
 }
@@ -1620,7 +1632,6 @@ function finalizeRagAnswerQualityCore(
     if (shouldPreserveSourceBackedGeneratedAnswer(answer, qualityFailureReason, cleanedAnswer)) {
       answer = {
         ...answer,
-        confidence: answer.confidence === "low" ? "medium" : answer.confidence,
         routingReason: [answer.routingReason, `final_quality_gate_source_backed_recovery:${qualityFailureReason}`]
           .filter(Boolean)
           .join("; "),

@@ -1,5 +1,5 @@
 import { execFileSync, spawn } from "node:child_process";
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -39,6 +39,24 @@ describe("cloud platform acceptance fixtures", () => {
       expect(process.env.APPDATA).toBe(callerAppData);
     } finally {
       rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    }
+  }, 30_000);
+
+  it("ignores inherited Git redirection and injected configuration during fixture mutations", () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), "cloud-platform-git-isolation-"));
+    try {
+      const indexPath = path.join(root, "caller-index");
+      writeFileSync(indexPath, "caller index must survive");
+      vi.stubEnv("GIT_DIR", path.join(root, "caller.git"));
+      vi.stubEnv("GIT_WORK_TREE", root);
+      vi.stubEnv("GIT_INDEX_FILE", indexPath);
+      vi.stubEnv("GIT_CONFIG_COUNT", "1");
+      vi.stubEnv("GIT_CONFIG_KEY_0", "core.bare");
+      vi.stubEnv("GIT_CONFIG_VALUE_0", "true");
+      expect(runBootstrapSmoke().donorCopied).toBe(true);
+      expect(readFileSync(indexPath, "utf8")).toBe("caller index must survive");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
     }
   }, 30_000);
 

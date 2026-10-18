@@ -32,14 +32,8 @@ import { z } from "zod";
 import { classifyDocumentOrganization } from "@/lib/document-organization";
 import { env } from "@/lib/env";
 import { committedIndexGeneration, isCommittedGenerationMetadata } from "@/lib/reindex-pipeline";
-import {
-  PUBLIC_OWNER_FILTER_SENTINEL,
-  retrievalAccessScopeForArgs,
-  retrievalRpcScopeArgs,
-  type RetrievalAccessScope,
-} from "@/lib/owner-scope";
+import { retrievalAccessScopeForArgs, type RetrievalAccessScope } from "@/lib/owner-scope";
 import { isClinicalImageEvidence } from "@/lib/image-filtering";
-import { isMissingRetrievalRpcError } from "@/lib/retrieval-rpc-rollout";
 import {
   buildCoveragePromptNote,
   buildIndexingCoverageProfile,
@@ -1021,18 +1015,22 @@ function compactSummary(summary?: string | null) {
   return clean.length <= 220 ? clean : `${clean.slice(0, 217).trim()}...`;
 }
 
-type RelatedDocumentMetadataRow = {
-  document_id: string;
-  labels: DocumentLabel[] | null;
-  summary: string | null;
-};
-
-async function withOptionalAbortSignal<T>(query: PromiseLike<T>, signal?: AbortSignal): Promise<T> {
-  signal?.throwIfAborted();
-  const abortable = query as PromiseLike<T> & { abortSignal?: (value: AbortSignal) => PromiseLike<T> };
-  const result = await (signal && typeof abortable.abortSignal === "function" ? abortable.abortSignal(signal) : query);
-  signal?.throwIfAborted();
-  return result;
+async function readMetadataPages<T>(
+  page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
+  signal?: AbortSignal,
+): Promise<T[]> {
+  const rows: T[] = [];
+  const pageSize = 500;
+  for (let offset = 0; offset < 100_000; offset += pageSize) {
+    signal?.throwIfAborted();
+    const result = await page(offset, offset + pageSize - 1);
+    signal?.throwIfAborted();
+    if (result.error) throw result.error;
+    const batch = result.data ?? [];
+    rows.push(...batch);
+    if (batch.length < pageSize) return rows;
+  }
+  throw new Error("Related-document metadata exceeded the paging limit.");
 }
 
 export async function fetchRelatedDocumentMetadata(args: {
@@ -1042,39 +1040,11 @@ export async function fetchRelatedDocumentMetadata(args: {
   documentIds: string[];
   signal?: AbortSignal;
 }) {
+  args.signal?.throwIfAborted();
+  if (args.documentIds.length === 0) return [];
   const accessScope = retrievalAccessScopeForArgs(args);
-  const versionedQuery = args.supabase.rpc("get_related_document_metadata_v2", {
-    document_ids: args.documentIds,
-    ...retrievalRpcScopeArgs(accessScope),
-  });
-  const versionedResult = await withOptionalAbortSignal(versionedQuery, args.signal);
-  let rpcData = versionedResult?.data;
-  let rpcError = versionedResult?.error;
-  if (!versionedResult || isMissingRetrievalRpcError(versionedResult.error)) {
-    const ownerFilter = accessScope.ownerId ?? PUBLIC_OWNER_FILTER_SENTINEL;
-    const ownerQuery = args.supabase.rpc("get_related_document_metadata", {
-      document_ids: args.documentIds,
-      owner_filter: ownerFilter,
-    });
-    const ownerResult = await withOptionalAbortSignal(ownerQuery, args.signal);
-    const publicResult =
-      accessScope.ownerId && accessScope.includePublic
-        ? await (() => {
-            const query = args.supabase.rpc("get_related_document_metadata", {
-              document_ids: args.documentIds,
-              owner_filter: PUBLIC_OWNER_FILTER_SENTINEL,
-            });
-            return withOptionalAbortSignal(query, args.signal);
-          })()
-        : { data: [], error: null };
-    rpcError = ownerResult.error ?? publicResult.error;
-    const merged = new Map<string, RelatedDocumentMetadataRow>();
-    for (const row of [...(ownerResult.data ?? []), ...(publicResult.data ?? [])] as RelatedDocumentMetadataRow[]) {
-      if (!merged.has(row.document_id)) merged.set(row.document_id, row);
-    }
-    rpcData = [...merged.values()];
-  }
-
+  // The deployed metadata RPC omits summary generation stamps. Read stamped
+  // source rows on every path so successful RPCs cannot bypass the fence.
   const isHiddenLabel = (label: { metadata?: unknown }) => {
     if (!label.metadata || typeof label.metadata !== "object" || Array.isArray(label.metadata)) return false;
     const meta = label.metadata as Record<string, unknown>;
@@ -1085,14 +1055,6 @@ export async function fetchRelatedDocumentMetadata(args: {
       meta.label_review_status === "hidden"
     );
   };
-
-  if (!rpcError) {
-    return ((rpcData ?? []) as RelatedDocumentMetadataRow[]).map((row) => ({
-      document_id: row.document_id,
-      labels: (row.labels ?? []).filter((label) => !isHiddenLabel(label)),
-      summary: row.summary ?? null,
-    }));
-  }
 
   let labelsQuery = args.supabase
     .from("document_labels")
@@ -1122,50 +1084,52 @@ export async function fetchRelatedDocumentMetadata(args: {
     summariesQuery = summariesQuery.abortSignal(args.signal);
   }
 
-  const [labelsResult, summariesResult] = await Promise.all([labelsQuery, summariesQuery]);
-  args.signal?.throwIfAborted();
-  const metadataError = labelsResult.error ?? summariesResult.error;
-  if (metadataError) throw metadataError;
-  const rawLabels = (labelsResult.data ?? []) as DocumentLabel[];
-  const rawSummaries = (summariesResult.data ?? []) as Array<
+  const [labelRows, summaryRows] = await Promise.all([
+    readMetadataPages((from, to) => labelsQuery.order("id").range(from, to), args.signal),
+    readMetadataPages((from, to) => summariesQuery.order("id").range(from, to), args.signal),
+  ]);
+  const rawLabels = labelRows as DocumentLabel[];
+  const rawSummaries = summaryRows as Array<
     Pick<DocumentSummary, "document_id" | "summary"> & { generated_at?: string | null; metadata?: unknown }
   >;
-  const hasGenerationStampedMetadata =
-    rawLabels.some((label) => Boolean(committedIndexGeneration(label.metadata))) ||
-    rawSummaries.some((summary) => Boolean(committedIndexGeneration(summary.metadata)));
   const committedGenerationByDocument = new Map<string, string | null>();
-  if (hasGenerationStampedMetadata) {
-    let documentsQuery = args.supabase.from("documents").select("id,metadata").in("id", args.documentIds);
-    if (accessScope.ownerId && accessScope.includePublic) {
-      documentsQuery = documentsQuery.or(`owner_id.eq.${accessScope.ownerId},owner_id.is.null`);
-    } else if (accessScope.ownerId) {
-      documentsQuery = documentsQuery.eq("owner_id", accessScope.ownerId);
-    } else {
-      documentsQuery = documentsQuery.is("owner_id", null);
-    }
-    if (args.signal) {
-      documentsQuery = documentsQuery.abortSignal(args.signal);
-    }
-    const documentsResult = await documentsQuery;
-    args.signal?.throwIfAborted();
-    if (documentsResult?.error) throw documentsResult.error;
-    for (const doc of (documentsResult?.data ?? []) as Array<{ id: string; metadata?: unknown }>) {
-      committedGenerationByDocument.set(doc.id, committedIndexGeneration(doc.metadata));
-    }
+  // Keep the RPC's indexed-document and access admission rules while reading
+  // the source rows that carry generation stamps.
+  let documentsQuery = args.supabase
+    .from("documents")
+    .select("id,metadata")
+    .in("id", args.documentIds)
+    .eq("status", "indexed");
+  if (accessScope.ownerId && accessScope.includePublic) {
+    documentsQuery = documentsQuery.or(
+      `owner_id.eq.${accessScope.ownerId},and(owner_id.is.null,metadata->>public_corpus.eq.true)`,
+    );
+  } else if (accessScope.ownerId) {
+    documentsQuery = documentsQuery.eq("owner_id", accessScope.ownerId);
+  } else {
+    documentsQuery = documentsQuery.is("owner_id", null).eq("metadata->>public_corpus", "true");
+  }
+  if (args.signal) documentsQuery = documentsQuery.abortSignal(args.signal);
+  const documents = await readMetadataPages((from, to) => documentsQuery.order("id").range(from, to), args.signal);
+  for (const doc of documents as Array<{ id: string; metadata?: unknown }>) {
+    committedGenerationByDocument.set(doc.id, committedIndexGeneration(doc.metadata));
   }
   const labels = rawLabels.filter(
     (label) =>
+      committedGenerationByDocument.has(label.document_id) &&
       !isHiddenLabel(label) &&
       isCommittedGenerationMetadata({
         rowMetadata: label.metadata,
         committedGeneration: committedGenerationByDocument.get(label.document_id) ?? null,
       }),
   );
-  const summaries = rawSummaries.filter((summary) =>
-    isCommittedGenerationMetadata({
-      rowMetadata: summary.metadata,
-      committedGeneration: committedGenerationByDocument.get(summary.document_id) ?? null,
-    }),
+  const summaries = rawSummaries.filter(
+    (summary) =>
+      committedGenerationByDocument.has(summary.document_id) &&
+      isCommittedGenerationMetadata({
+        rowMetadata: summary.metadata,
+        committedGeneration: committedGenerationByDocument.get(summary.document_id) ?? null,
+      }),
   );
   const labelsByDocument = new Map<string, DocumentLabel[]>();
   const summariesByDocument = new Map<string, { summary: string | null; generatedAt: string }>();

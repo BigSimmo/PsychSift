@@ -46,32 +46,47 @@ export function useDashboardBulkActions({
       activeBulkRequestsRef.current += 1;
       setBulkActionBusy(true);
       setBulkActionStatus(null);
+      let succeeded = 0;
+      let failed = 0;
+      let lastEpoch: number | null = null;
       try {
-        const { response, requestEpoch } = await authBoundFetch("/api/documents/bulk/reindex", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...authorizationHeader,
-          },
-          body: JSON.stringify({ documentIds: selectedDocumentIds, mode }),
-        });
-        if (response.status === 401) {
-          markSessionExpired();
-          return;
+        for (let offset = 0; offset < selectedDocumentIds.length; offset += 10) {
+          const { response, requestEpoch } = await authBoundFetch("/api/documents/bulk/reindex", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...authorizationHeader },
+            body: JSON.stringify({ documentIds: selectedDocumentIds.slice(offset, offset + 10), mode }),
+          });
+          lastEpoch = requestEpoch;
+          if (!isAuthEpochCurrent(requestEpoch)) return;
+          if (response.status === 401) {
+            lastEpoch = null;
+            markSessionExpired();
+            return;
+          }
+          const payload = await response.json().catch(() => ({}));
+          if (!isAuthEpochCurrent(requestEpoch)) return;
+          if (!response.ok) throw new Error(payload.error || errorCopy.bulkReindexFailed);
+          const summary = summarizeBulkReindexPayload(payload);
+          succeeded += summary.succeeded;
+          failed += summary.failed;
+          setBulkActionStatus(
+            `Bulk reindex: ${succeeded} queue request${succeeded === 1 ? "" : "s"} succeeded; ${failed} failed.`,
+          );
         }
-        const payload = await response.json().catch(() => ({}));
-        if (!isAuthEpochCurrent(requestEpoch)) return;
-        if (!response.ok) throw new Error(payload.error || errorCopy.bulkReindexFailed);
-        const summary = summarizeBulkReindexPayload(payload);
-        setBulkActionStatus(summary.message);
-        if (!summary.hasSuccessfulWork) return;
-        setUserStartedIngestion(true);
-        setIndexingActive(true);
-        await refresh({ includeSetup: false, includeDashboardData: true, includeDocumentMeta: false });
       } catch (error) {
         if (isAbortError(error)) return;
         setBulkActionStatus(error instanceof Error ? error.message : errorCopy.bulkReindexFailed);
       } finally {
+        // Earlier batches remain queued even when a later batch fails.
+        if (succeeded > 0 && lastEpoch !== null && isAuthEpochCurrent(lastEpoch)) {
+          setUserStartedIngestion(true);
+          setIndexingActive(true);
+          try {
+            await refresh({ includeSetup: false, includeDashboardData: true, includeDocumentMeta: false });
+          } catch (error) {
+            if (!isAbortError(error)) setBulkActionStatus(errorCopy.bulkReindexFailed);
+          }
+        }
         activeBulkRequestsRef.current -= 1;
         if (activeBulkRequestsRef.current === 0) setBulkActionBusy(false);
       }

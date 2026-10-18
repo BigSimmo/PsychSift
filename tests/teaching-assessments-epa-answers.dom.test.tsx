@@ -132,7 +132,13 @@ describe("Assessments: the assessor's full EPA form", () => {
   it("asks how they know and the level, then submits the whole form", () => {
     render(<FormHarness />);
     const submit = screen.getByRole("button", { name: "Submit EPA 1" });
-    expect(submit).toBeDisabled();
+    expect(submit).not.toBeDisabled();
+    expect(submit).toHaveAttribute("aria-disabled", "true");
+    submit.focus();
+    expect(submit).toHaveFocus();
+    expect(submit).toHaveAccessibleDescription();
+    fireEvent.click(submit);
+    expect(screen.queryByTestId("assess-epa-form-done")).toBeNull();
     fireEvent.click(screen.getByRole("radio", { name: /I directly observed some part of it/ }));
     fireEvent.click(screen.getByRole("radio", { name: /Requires minimal supervision/ }));
     fireEvent.click(screen.getByRole("button", { name: "Yes" }));

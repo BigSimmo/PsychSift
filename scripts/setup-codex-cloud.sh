@@ -184,8 +184,14 @@ bounded_probe() {
   if command -v timeout >/dev/null 2>&1; then
     timeout -k 5s 30s "$@"
   else
-    "$@"
+    fail "GNU timeout is required for bounded runtime version probes; install coreutils and re-run setup."
   fi
+}
+
+probe_version() {
+  local output
+  output="$(bounded_probe "$1" --version 2>/dev/null)" || return $?
+  printf '%s\n' "$output" | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1
 }
 
 install_npm_cli() {
@@ -193,12 +199,11 @@ install_npm_cli() {
   local expected_version="$2"
   local command_name="$3"
   local actual_version
-  actual_version="$(bounded_probe "$command_name" --version 2>/dev/null | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1 || true)"
-  if [[ "$actual_version" != "$expected_version" ]]; then
+  if ! actual_version="$(probe_version "$command_name")" || [[ "$actual_version" != "$expected_version" ]]; then
     log "Installing ${package_name}@${expected_version}."
     npm install --global "${package_name}@${expected_version}"
     hash -r
-    actual_version="$(bounded_probe "$command_name" --version 2>/dev/null | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1 || true)"
+    actual_version="$(probe_version "$command_name")" || fail "${command_name} version probe failed."
   fi
   [[ "$actual_version" = "$expected_version" ]] || fail "${command_name} ${expected_version} is required; detected ${actual_version:-unavailable}."
 }
@@ -223,7 +228,7 @@ if [[ "$policy_only_harness" != "1" ]]; then
   actual_node_version="$(node -p 'process.versions.node' 2>/dev/null || true)"
   node_version_supported "$actual_node_version" || fail "Node ${expected_node_range} is required; detected ${actual_node_version:-unavailable}."
 
-  if [[ "$(bounded_probe npm --version 2>/dev/null || true)" != "$expected_npm_version" ]]; then
+  if ! actual_npm_version="$(probe_version npm)" || [[ "$actual_npm_version" != "$expected_npm_version" ]]; then
     log "Installing the repository npm version ${expected_npm_version}."
     npm install --global "npm@${expected_npm_version}"
     hash -r
@@ -242,6 +247,22 @@ write_runtime_profile() {
 if [ "\$(git rev-parse --show-toplevel 2>/dev/null || true)" != $quoted_checkout ]; then
   return 0
 fi
+# Connected access is provided by host-installed, OAuth-backed apps, never by
+# repository MCP registration or raw provider variables in the agent shell.
+# Scrub the complete inventory in both profiles in case setup-only secrets were inherited.
+unset OPENAI_API_KEY OPENAI_ORG_ID OPENAI_PROJECT_ID OPENAI_BASE_URL
+unset NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY NEXT_PUBLIC_SUPABASE_ANON_KEY
+unset SUPABASE_URL SUPABASE_ANON_KEY SUPABASE_PUBLISHABLE_KEY SUPABASE_SECRET_KEY
+unset SUPABASE_PROJECT_REF SUPABASE_PROJECT_NAME SUPABASE_STAGING_PROJECT_REF SUPABASE_STAGING_PROJECT_NAME
+unset SUPABASE_ACCESS_TOKEN SUPABASE_SERVICE_ROLE_KEY SUPABASE_DB_URL DATABASE_URL POSTGRES_PASSWORD
+unset CROSS_TENANT_SERVICE_ROLE_KEY
+unset RAILWAY_API_TOKEN RAILWAY_TOKEN
+unset GH_TOKEN GITHUB_TOKEN GITLAB_TOKEN GLAB_TOKEN CODEX_TRIGGER_TOKEN CODEX_CLOUD_GITHUB_PAT
+unset HEALTH_DEEP_PROBE_SECRET INDEXING_V3_AGENT_SECRET
+unset FIGMA_CLIENT_ID FIGMA_CLIENT_SECRET FIGMA_ACCESS_TOKEN FIGMA_PERSONAL_ACCESS_TOKEN
+unset FIGMA_TOKEN FIGMA_NPM_TOKEN
+unset SENTRY_AUTH_TOKEN SENTRY_DSN NEXT_PUBLIC_SENTRY_DSN
+unset E2E_AUTH_ENABLED E2E_USER_EMAIL E2E_USER_PASSWORD ALLOW_PROVIDER_TESTS
 export NVM_DIR="\${NVM_DIR:-\$HOME/.nvm}"
 if [ -s "\$NVM_DIR/nvm.sh" ]; then
   . "\$NVM_DIR/nvm.sh"
@@ -270,22 +291,6 @@ if [ -z "\${CODEX_CLOUD_EXPECTED_BASE_SHA+x}" ] && [ -r "\$cloud_expected_base_f
 fi
 unset cloud_expected_base cloud_expected_base_file
 unset npm_config_http_proxy npm_config_https_proxy npm_config_proxy
-# Connected access is provided by host-installed, OAuth-backed apps, never by
-# repository MCP registration or raw provider variables in the agent shell.
-# Scrub the complete inventory in both profiles in case setup-only secrets were inherited.
-unset OPENAI_API_KEY OPENAI_ORG_ID OPENAI_PROJECT_ID OPENAI_BASE_URL
-unset NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY NEXT_PUBLIC_SUPABASE_ANON_KEY
-unset SUPABASE_URL SUPABASE_ANON_KEY SUPABASE_PUBLISHABLE_KEY SUPABASE_SECRET_KEY
-unset SUPABASE_PROJECT_REF SUPABASE_PROJECT_NAME SUPABASE_STAGING_PROJECT_REF SUPABASE_STAGING_PROJECT_NAME
-unset SUPABASE_ACCESS_TOKEN SUPABASE_SERVICE_ROLE_KEY SUPABASE_DB_URL DATABASE_URL POSTGRES_PASSWORD
-unset CROSS_TENANT_SERVICE_ROLE_KEY
-unset RAILWAY_API_TOKEN RAILWAY_TOKEN
-unset GH_TOKEN GITHUB_TOKEN GITLAB_TOKEN GLAB_TOKEN CODEX_TRIGGER_TOKEN CODEX_CLOUD_GITHUB_PAT
-unset HEALTH_DEEP_PROBE_SECRET INDEXING_V3_AGENT_SECRET
-unset FIGMA_CLIENT_ID FIGMA_CLIENT_SECRET FIGMA_ACCESS_TOKEN FIGMA_PERSONAL_ACCESS_TOKEN
-unset FIGMA_TOKEN FIGMA_NPM_TOKEN
-unset SENTRY_AUTH_TOKEN SENTRY_DSN NEXT_PUBLIC_SENTRY_DSN
-unset E2E_AUTH_ENABLED E2E_USER_EMAIL E2E_USER_PASSWORD ALLOW_PROVIDER_TESTS
 if [ "\$CODEX_CLOUD_ACCESS_PROFILE" = "connected" ]; then
   export RAG_PROVIDER_MODE="${rag_provider_mode}"
 else

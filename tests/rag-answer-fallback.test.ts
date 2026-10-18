@@ -90,6 +90,14 @@ class EmptyQuery implements PromiseLike<{ data: unknown[]; error: null }> {
     return this;
   }
 
+  is() {
+    return this;
+  }
+
+  or() {
+    return this;
+  }
+
   neq() {
     return this;
   }
@@ -3834,7 +3842,7 @@ describe("RAG structured-output fallback", () => {
     );
 
     expect(answer.grounded).toBe(true);
-    expect(answer.confidence).toBe("medium");
+    expect(answer.confidence).toBe("low");
     expect(answer.routingReason).toContain("final_quality_gate_source_backed_recovery:missing_query_overlap");
     expect(answer.answer).not.toMatch(/not enough source evidence|No current source/i);
   });

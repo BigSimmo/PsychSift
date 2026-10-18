@@ -433,6 +433,19 @@ export async function POST(request: Request) {
       userSupabase,
     );
     if (replay.outcome !== "not_found") {
+      // A previous attempt may have committed its recovery sibling and then
+      // stopped before cleanup. The replay is durable proof of the winning path.
+      durableAdmission = true;
+      const committedReplayPath = replay.document.storage_path;
+      if (typeof committedReplayPath !== "string") {
+        throw new PublicApiError("Stored admission storage path is invalid.", 409);
+      }
+      await releaseSupersededUpload({
+        ownerId: uploadOwnerId,
+        documentId,
+        supersededPath: storagePath,
+        committedPath: committedReplayPath,
+      });
       return NextResponse.json({ document: replay.document, job: replay.job });
     }
 

@@ -39,8 +39,15 @@ export function runBootstrapSmoke() {
   const temporaryRoot = mkdtempSync(path.join(os.tmpdir(), "psychsift-platform-"));
   const donor = path.join(temporaryRoot, "donor checkout");
   const target = path.join(temporaryRoot, "worktree's space");
+  // Drop all Git repository/config selectors before any fixture or bootstrap child.
+  const isolatedEnvironment = Object.fromEntries(
+    Object.entries(process.env).filter(([name]) => !name.toUpperCase().startsWith("GIT_")),
+  );
+  const emptyGitConfig = path.join(temporaryRoot, "empty.gitconfig");
+  writeFileSync(emptyGitConfig, "");
+  Object.assign(isolatedEnvironment, { GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: emptyGitConfig });
   const shellEnvironment = {
-    ...process.env,
+    ...isolatedEnvironment,
     ...(npmHome !== undefined ? { APPDATA: npmHome } : {}),
     SMOKE_WORKTREE: target,
     SMOKE_NODE: process.execPath,
@@ -56,7 +63,7 @@ fi
 "$smoke_node" scripts/setup-codex-worktree.mjs "$@"`;
   const setup = (...args) =>
     run(shell, ["-c", shellScript, "cloud-platform-smoke", ...args], { env: shellEnvironment });
-  const git = (cwd, ...args) => run("git", args, { cwd });
+  const git = (cwd, ...args) => run("git", args, { cwd, env: isolatedEnvironment });
   try {
     if (process.platform === "win32") {
       assert.match(

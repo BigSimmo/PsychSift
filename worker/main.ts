@@ -1100,7 +1100,13 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
         generation: indexGenerationId,
         extension: ext.slice(1).toLowerCase(),
         rpc: (name, payload) =>
-          ingestionRpcClient.rpc(name, payload).abortSignal(controlPlaneAbortSignal(attempt.signal)),
+          ingestionRpcClient
+            .rpc(name, payload)
+            .abortSignal(
+              CONTROL_PLANE_RPCS.has(name)
+                ? controlPlaneAbortSignal(attempt.signal)
+                : dataPlaneAbortSignal(attempt.signal),
+            ),
         upload: (storagePath, options) =>
           supabase.storage
             .from(env.SUPABASE_IMAGE_BUCKET)
@@ -1936,7 +1942,13 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
             packet: terminalPacket,
             stopHeartbeat: () => clearInterval(heartbeat),
             rpc: (name, payload) =>
-              ingestionRpcClient.rpc(name, payload).abortSignal(controlPlaneAbortSignal(attempt.signal)),
+              ingestionRpcClient
+                .rpc(name, payload)
+                .abortSignal(
+                  CONTROL_PLANE_RPCS.has(name)
+                    ? controlPlaneAbortSignal(attempt.signal)
+                    : dataPlaneAbortSignal(attempt.signal),
+                ),
           });
           invalidateRagCachesForDocumentMutation(job.documents.owner_id ?? "anonymous", {
             affectsPublicCorpus: !job.documents.owner_id,
@@ -2038,7 +2050,13 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
                 }),
                 stopHeartbeat: () => clearInterval(heartbeat),
                 rpc: (name, payload) =>
-                  ingestionRpcClient.rpc(name, payload).abortSignal(controlPlaneAbortSignal(attempt.signal)),
+                  ingestionRpcClient
+                    .rpc(name, payload)
+                    .abortSignal(
+                      CONTROL_PLANE_RPCS.has(name)
+                        ? controlPlaneAbortSignal(attempt.signal)
+                        : dataPlaneAbortSignal(attempt.signal),
+                    ),
               });
               return;
             }
@@ -2060,7 +2078,13 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
                 packet: evaluated.packet,
                 stopHeartbeat: () => clearInterval(heartbeat),
                 rpc: (name, payload) =>
-                  ingestionRpcClient.rpc(name, payload).abortSignal(controlPlaneAbortSignal(attempt.signal)),
+                  ingestionRpcClient
+                    .rpc(name, payload)
+                    .abortSignal(
+                      CONTROL_PLANE_RPCS.has(name)
+                        ? controlPlaneAbortSignal(attempt.signal)
+                        : dataPlaneAbortSignal(attempt.signal),
+                    ),
               });
               invalidateRagCachesForDocumentMutation(job.documents.owner_id ?? "anonymous", {
                 affectsPublicCorpus: !job.documents.owner_id,

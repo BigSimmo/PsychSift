@@ -41,8 +41,7 @@ export async function enqueueDocumentReindexJob(args: {
   const ownerId = document.owner_id;
   const atomicReindex = isAtomicReindexCandidate(document);
 
-  // Rollback fence: stamp updated_at with a per-request value so a stale rollback
-  // matches zero rows once an overlapping request re-stamps the row.
+  // Read the stored timestamp back: the database trigger replaces caller stamps.
   const rollbackFence = ingestionRollbackFenceStamp();
   const rollbackDocumentPayload: TablesUpdate<"documents"> = atomicReindex
     ? { error_message: document.error_message ?? null }
@@ -76,8 +75,13 @@ export async function enqueueDocumentReindexJob(args: {
   const applyOwnerFilter = <T extends { eq: (col: string, val: string) => T; is?: (col: string, val: null) => T }>(
     query: T,
   ) => (ownerId ? query.eq("owner_id", ownerId) : typeof query.is === "function" ? query.is("owner_id", null) : query);
-  const { error: updateError } = await applyOwnerFilter(queueUpdate);
+  const { data: queuedDocument, error: updateError } = await applyOwnerFilter(queueUpdate)
+    .select("updated_at")
+    .maybeSingle();
   if (updateError) throw new Error(updateError.message);
+  if (!queuedDocument) return { outcome: "document_deleted" };
+  const storedFence = queuedDocument.updated_at;
+  if (!storedFence) throw new Error("Queue update returned no database timestamp.");
 
   const { data: job, error: jobError } = await supabase
     .from("ingestion_jobs")
@@ -121,7 +125,7 @@ export async function enqueueDocumentReindexJob(args: {
         .from("documents")
         .update(payloadToRestore)
         .eq("id", document.id)
-        .eq("updated_at", rollbackFence);
+        .eq("updated_at", storedFence);
       await applyOwnerFilter(rollback);
     }
     return { outcome: "already_active" };

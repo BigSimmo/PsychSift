@@ -46,6 +46,7 @@ describe("document summary context", () => {
       })),
     };
     const chunkQuery = {
+      or: vi.fn().mockReturnThis(),
       select: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
       order: vi.fn().mockReturnThis(),
@@ -97,7 +98,7 @@ describe("document summary context", () => {
 
     expect(documentQuery.eq).toHaveBeenCalledWith("owner_id", ownerId);
     expect(documentQuery.abortSignal).toHaveBeenCalledWith(controller.signal);
-    expect(chunkQuery.eq).toHaveBeenCalledWith("index_generation_id", "generation-current");
+    expect(chunkQuery.or).toHaveBeenCalledWith("index_generation_id.is.null,index_generation_id.eq.generation-current");
     expect(chunkQuery.order).toHaveBeenCalledWith("chunk_index", { ascending: true });
     expect(chunkQuery.limit).toHaveBeenCalledWith(40);
     expect(chunkQuery.abortSignal).toHaveBeenCalledWith(controller.signal);
@@ -171,6 +172,7 @@ describe("document summary context", () => {
       },
     ];
     const chunkQuery = {
+      or: vi.fn().mockReturnThis(),
       select: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
       order: vi.fn().mockReturnThis(),
