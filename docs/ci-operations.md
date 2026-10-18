@@ -1,5 +1,7 @@
 # CI Operations and Runner Usage Assessment
 
+_Updated 2026-10-17 — clarified undraft CI selection and cancellation; Documentation owns._
+
 See also [continuous-integration.md](continuous-integration.md) for pre-push safety controls and Guard 2 in-flight CI push guard details.
 
 ## Efficiency changes, October 2026
@@ -142,7 +144,7 @@ Automatic reviews require at least 10 repository stars on GitHub, not additional
 
 - **Eligibility Requirement:** As verified on PRs #2522 and #2542, CodeRabbit reports: _"This repository does not receive automatic reviews because it has fewer than 10 stars"_ (`Plan: Team`, repository star count: 0).
 - **Not a Spending Cap Issue:** This is a categorical repository eligibility requirement, not a credit exhaustion or spending cap issue.
-- **Operational Guidance:** Sessions should not treat a missing CodeRabbit review as a budget symptom. Do not undraft PRs solely in an attempt to trigger review, as draft status is skipped by CodeRabbit outright and undrafting mid-CI unnecessarily escalates workflows to the full heavy test set.
+- **Operational Guidance:** Sessions should not treat a missing CodeRabbit review as a budget symptom. Do not undraft PRs solely in an attempt to trigger review, as draft status is skipped by CodeRabbit outright and undrafting mid-CI can cancel or restart work and enable readiness jobs. Changed-file predicates still select which jobs run; undrafting does not force the full heavy test set. See the change-scoping and reuse rules above.
 
 ## Scheduled Workflows (#QSHHGK)
 

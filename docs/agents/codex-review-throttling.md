@@ -1,5 +1,7 @@
 # Codex Review Throttling & Thread Resolution
 
+_Updated 2026-10-17 — clarified review-history evidence scope; Documentation owns._
+
 <!-- BEGIN:codex-review-throttling -->
 
 ## Codex review throttling and routing
@@ -11,7 +13,7 @@ Use `docs/codex-review-protocol.md` as the shared review protocol for every repo
 Before reviewing a branch or PR:
 
 - Run `npm run ledger:lookup -- <branch-or-ref> --scope "<scope>"`. It resolves the HEAD, matches the abbreviated SHAs older records used, and prints an explicit verdict. Do not read `docs/branch-review-ledger.md` by eye — live + archive rows are many, and eyeballing is how repeat reviews slipped through. `ledger:lookup` reads archives under `docs/archive/branch-review-ledger-*.md` too.
-- On `ALREADY REVIEWED`, summarize the prior ledger outcome and skip the repeat review unless the user explicitly requests a fresh pass.
+- `ledger:lookup` certifies only that a record matches the named ref, committed HEAD and scope. It does not compare the review base, staged/unstaged/untracked inputs, environment or required artifacts. For a committed-content review, summarize the prior outcome and skip unchanged work unless a fresh pass was explicitly requested. For a current-diff, comparison-base or readiness claim, establish equivalence of the relevant additional inputs before reuse; review any changed scope or record the precise evidence gap.
 - On `NOT REVIEWED at this HEAD`, review only the changed scope and append a record after the review.
 
 Before reviewing multiple branches:

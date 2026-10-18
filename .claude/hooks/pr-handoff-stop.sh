@@ -250,7 +250,7 @@ post)
   # without the URL check a failed create would mark this session as having an
   # open PR with nothing to babysit.
   created=1
-  if is_shell_tool && shell_input_matches 'gh[[:space:]]+pr[[:space:]]+create'; then
+  if is_shell_tool && shell_input_matches 'gh([[:space:]]+(-R[[:space:]]*[^[:space:]]+|--repo(=|[[:space:]]+)[^[:space:]]+|--?[[:alnum:]-]+(=[^[:space:]]*)?))*[[:space:]]+pr([[:space:]]+(-R[[:space:]]*[^[:space:]]+|--repo(=|[[:space:]]+)[^[:space:]]+|--?[[:alnum:]-]+(=[^[:space:]]*)?))*[[:space:]]+create'; then
     created=0
   fi
   # End-anchor required: create_pull_request_review / _review_comment must NOT
