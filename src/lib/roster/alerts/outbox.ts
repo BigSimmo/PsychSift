@@ -73,7 +73,8 @@ export async function drainRosterOfferAlerts(
                 .maybeSingle();
               if (error) throw new Error("Offer alert device unavailable");
               const ttl = Math.min(6 * 60 * 60, Math.floor((Date.parse(event.expires_at) - Date.now()) / 1000));
-              if (ttl <= 0) break;
+              // Expired: stop the whole batch, not just this page; finally still releases the lease.
+              if (ttl <= 0) return true;
               if (row) outcome = await pushRosterOfferDevice(client, row, ttl);
             }
           }

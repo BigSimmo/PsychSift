@@ -472,8 +472,12 @@ export class DurableSupervisorBookingRepository {
     // id) exists, this one withdraws itself, so exactly one of any concurrent overlapping pair survives.
     const earlier = (await this.overlappingActiveSlots(created)).filter((other) => compareCreation(other, created) < 0);
     if (earlier.length > 0) {
-      await this.withdrawConcurrentDuplicate(created);
-      throw new BookingSlotConflictError("Supervisor already has an overlapping availability slot in this window.");
+      if (await this.withdrawConcurrentDuplicate(created)) {
+        throw new BookingSlotConflictError("Supervisor already has an overlapping availability slot in this window.");
+      }
+      // A trainee booked this slot before it could be withdrawn. The booking stands, so report the
+      // slot as it now is rather than a conflict the supervisor would read as a failed publish.
+      return this.getSlot(created.id);
     }
 
     return created;
@@ -490,14 +494,15 @@ export class DurableSupervisorBookingRepository {
     );
   }
 
-  private async withdrawConcurrentDuplicate(slot: SupervisorBookingRecord): Promise<void> {
+  /** Withdraws `slot` only while it is still open and unchanged; returns whether it was withdrawn. */
+  private async withdrawConcurrentDuplicate(slot: SupervisorBookingRecord): Promise<boolean> {
     const { updated } = applyCancelBookingTransition(slot, {
       slotId: slot.id,
       actorId: slot.supervisorId,
       reason: "Withdrawn automatically: an overlapping slot was published at the same time.",
     });
     const row = bookingRecordToRow(updated);
-    const { error } = await this.db
+    const { data, error } = await this.db
       .from("registrar_assessments")
       .update({ feedback: row.feedback, status: row.status, ratings: row.ratings, updated_at: row.updated_at })
       .eq("category", "supervisor_review")
@@ -507,6 +512,7 @@ export class DurableSupervisorBookingRepository {
       .select(BOOKING_SELECT_COLUMNS)
       .maybeSingle();
     if (error) throw bookingDatabaseError(error);
+    return data !== null;
   }
 
   async bookSupervisorSlot(input: BookSupervisorSlotInput): Promise<SupervisorBookingRecord> {
