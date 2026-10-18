@@ -15589,6 +15589,14 @@
         "checks": "outstanding-issues snapshot; outstanding-issues integrity; staged diff check"
       },
       {
+        "date": "2026-10-18",
+        "ref": "fix/remaining-review-reliability-20261018",
+        "head": "72b9a22e77039350e248bf43a3c539be95ce9c0b",
+        "scope": "Independent remaining-review PDF association and durable alert delivery review with correction rechecks",
+        "outcome": "No remaining actionable findings in bounded source/correction reviews. Filled or invisible paths, overflow text loss, transient lookup loss and post-lock expiry were found, corrected and rechecked. No clinical or production acceptance inferred.",
+        "checks": "60 Python extractor tests;50 TypeScript cases7files;fresh complete typecheck;native PostgreSQL17.6 rollback,device retry,RLS,actual2session claims/reclaim/stale ack and wait-across-expiry passed. Full pinned Supabase replay blocked by ENOSPC; browser proof pending."
+      },
+      {
         "date": "2026-08-22",
         "ref": "PR #2292 / claude/dev-hub-phase-2-plan",
         "head": "73477b2a9b3aa92c351f6e3a9a15cced0f2f3859",
