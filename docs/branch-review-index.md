@@ -15,14 +15,14 @@ Retention and rotation: [`branch-review-archival-policy.md`](branch-review-archi
 
 ## Summary
 
-- Records: 726
-- Distinct ref cells: 464
-- Distinct reviewed heads: 707
+- Records: 727
+- Distinct ref cells: 465
+- Distinct reviewed heads: 708
 - Date range: `2026-08-12` to `2026-10-18`
 
 Records per date, newest first:
 
-- `2026-10-18` — 8 records
+- `2026-10-18` — 9 records
 - `2026-10-17` — 12 records
 - `2026-10-16` — 7 records
 - `2026-10-15` — 3 records
@@ -83,6 +83,7 @@ Scope and outcome are truncated; follow the record link for the full six-cell ro
 | 2026-10-18 | codex/design-audit-acceptance | Design audit acceptance follow-up (supersedes 2026-10-18) | Wording correction only (CodeRabbit). Railway deployment status was ve… | [0f870b9a](branch-review-records/0f870b9af5a6c1a2295cb7d9462fa0126769cbf78d566bdff78f8e468bce23d0.record.md) |
 | 2026-10-18 | main | PR 3632 landed-content verification | PR was externally squash-merged during the review at 2026-10-18T05:13:… | [2c05f34a](branch-review-records/2c05f34aa08168b0caac1ae79287955541f16c3f91d5a00f2df4c34e0b3223ff.record.md) |
 | 2026-10-18 | codex/agent-policy-delivery-20261017 | current-head residual hook and managed-guidance repair | Independent review: no confirmed blocking finding in six-file residual… | [2fe7bb2f](branch-review-records/2fe7bb2f3b87b710b26cd25245660dea4b6dc4d7e6d2fcb8cd228e41aef2b09f.record.md) |
+| 2026-10-18 | codex/agent-policy-final-followup-20261018 | main-preserving integration of accepted agent-policy residual repairs | Independent bounded integration accepted: retained newer main migratio… | [319e0e7f](branch-review-records/319e0e7f3ddc83fabb3b5b0b766336fe2bafb04bebe5e2fcce4d65d7f643ed20.record.md) |
 | 2026-10-18 | codex/agent-policy-delivery-20261017 | complete container evidence bound and verification preservation | Independent corrected-diff acceptance: no confirmed blocker. Complete… | [479f91d1](branch-review-records/479f91d15b90c2a4011b808f31960d356d8602298dd84b059c6004a4516f0336.record.md) |
 | 2026-10-18 | codex/agent-policy-delivery-20261017 | container evidence helper trigger correction | Independent scoped acceptance: no confirmed blocker. Helper-only chang… | [611d5dd4](branch-review-records/611d5dd408f6ba42ed7c869a095389b8ef918a511c6cb3020774e633bbdecd5f.record.md) |
 | 2026-10-18 | codex/design-audit-resolution | CI failure and merge-safety review | No confirmed code/CI blocker. Historical failures repaired in publishe… | [c170fe7a](branch-review-records/c170fe7a3e64c79da528e48e7c39626e4afc9bfd7ceffaf8a1a6b1747cd0e7af.record.md) |

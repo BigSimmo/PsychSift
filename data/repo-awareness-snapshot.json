@@ -18528,6 +18528,14 @@
         "checks": "LOCAL OFFLINE GATES, run in this container: typecheck exit 0; full offline unit suite 949 files / 12293 passed | 1 skipped; lint --max-warnings 0 exit 0; prettier --check clean; caring-contacts db suite 218 passed against a disposable local Postgres 16 (not the live Supabase project; assertNotClinicalKbProject refuses that ref by construction); cc-guards 1069 passed. HOSTED CI: green on the main-based head — PR required, Unit coverage, Build, Static PR checks, Safety and config, Caring Contacts database, Lighthouse budget, Semgrep, Gitleaks, GitGuardian, PR policy, PR mergeability. Hosted CI results named here were OBSERVED, not inherited: this Claude Code session read them directly from the GitHub check runs via the GitHub MCP tools, under Josh's standing instruction to babysit these PRs, which is the explicit confirmation the provider boundary requires for that read. Provider-backed gates NOT run: no eval:* retrieval canary, no verify:release, no check:supabase-project, no live Supabase or OpenAI test:live path, and no live-drift dispatch."
       },
       {
+        "date": "2026-10-18",
+        "ref": "codex/agent-policy-final-followup-20261018",
+        "head": "94b9b8ed9e38230f55c9b6d6b250a44b03c20fb1",
+        "scope": "main-preserving integration of accepted agent-policy residual repairs",
+        "outcome": "Independent bounded integration accepted: retained newer main migration decision and guards, external gh matcher changes and accepted Windows/bootstrap/guidance/container/routing fixes. Generated snapshot adds only three retained review objects. No full-tree replacement or hosted acceptance.",
+        "checks": "Source/hash and JSON-union comparison; diff-check; docs-maintain pass; source typecheck and scoped lint pass. Fresh Node15pass1timeout then exact isolated case1pass; Vitest92pass1timeout31platformskips then exact isolated case1pass. All assertions/timeouts unchanged. Earlier focused acceptance retained by matching inputs; native lifecycle/Ubuntu Docker/raw-upload unrun."
+      },
+      {
         "date": "2026-07-29",
         "ref": "codex/document-results-responsive-polish",
         "head": "94bef3d193f449e6396b1bf4688180281d260ca7",
