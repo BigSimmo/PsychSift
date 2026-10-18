@@ -18,7 +18,7 @@ except Exception as exc:
 # parser defect can be traced to the documents it touched. Bump the date and label whenever a
 # change alters the text, tables or images produced for the same PDF. 2026-09-16 is PR #2810,
 # which replaced line-major table text with table_aware_page_text (#GJHKYC).
-EXTRACTOR_VERSION = "2026-10-16.bounded-ocr-detail-v6"
+EXTRACTOR_VERSION = "2026-10-18.ruled-edge-provenance-v7"
 TABLE_STRATEGY = "table_aware_page_text"
 
 # IDX-H6: caps on serialized table size. Raised from the previous 80/120-row and 8000-char
@@ -738,143 +738,73 @@ def _match_segment_to_column(sx0, sx1, effective_ranges):
     return col_idx
 
 
-def _continues_wrapped_cell(prev_line, segment, column_range, slack=12.0):
-    """True when a lone line under a row reads as the rest of that row's cell.
+def _edge_grid_cells(page, original_rect, extended_rect, column_ranges):
+    """Require actual PDF ruling on all four sides; proximity is not row authority."""
+    horizontals, verticals = [], []
+    rotation = getattr(page, "rotation_matrix", fitz.Identity)
+    for drawing in page.get_drawings():
+        for item in drawing.get("items", []):
+            pairs = []
+            if item[0] == "l":
+                pairs = [(item[1], item[2])]
+            elif item[0] == "re":
+                r = fitz.Rect(item[1])
+                pairs = [(r.tl, r.tr), (r.tr, r.br), (r.br, r.bl), (r.bl, r.tl)]
+            for a, b in pairs:
+                a, b = a * rotation, b * rotation
+                if abs(a.y - b.y) <= 1:
+                    horizontals.append((min(a.x,b.x), max(a.x,b.x), (a.y+b.y)/2))
+                elif abs(a.x - b.x) <= 1:
+                    verticals.append(((a.x+b.x)/2, min(a.y,b.y), max(a.y,b.y)))
+    cells = []
+    for col, (left, right) in enumerate(column_ranges):
+        ys = sorted(set(round(y, 2) for x0, x1, y in horizontals
+            if x0 <= left + 1 and x1 >= right - 1
+            and extended_rect.y0 - 1 <= y <= extended_rect.y1 + 1))
+        for top, bottom in zip(ys, ys[1:]):
+            if bottom <= top + 2:
+                continue
+            if all(any(abs(x-edge) <= 1 and y0 <= top+1 and y1 >= bottom-1
+                       for x,y0,y1 in verticals) for edge in (left,right)):
+                cells.append((col, left, top, right, bottom))
+    return cells
 
-    Text wraps because its next word did not fit, so the free space left in
-    the column beside the line above (on either side, which covers right-aligned
-    and centred cells) must be narrower than this line's first word.
-    A deliberate break also counts: a line starting at the cell's own left edge
-    with a bullet, a lower-case word or a number (a dose under a drug name).
-    Footnotes look alike, so '*' never counts and a number counts only when
-    the word after it is not capitalised ('1 Not PBS listed' stays out).
-    """
-    if prev_line is None:
-        return False
-    prev_line_start, prev_line_end = prev_line
-    sx0, sx1, text = segment
-    cleaned = clean_cell(text)
-    words = cleaned.split(" ")
-    if not words or not words[0]:
-        return False
-    numbered_footnote = cleaned[0].isdigit() and len(words) > 1 and words[1][:1].isupper()
-    if abs(sx0 - prev_line_start) <= 3.0 and (
-        cleaned[0] in "•·-–" or cleaned[0].islower() or (cleaned[0].isdigit() and not numbered_footnote)
-    ):
-        return True
-    first_word_width = (sx1 - sx0) * (len(words[0]) / max(1, len(cleaned)))
-    free_space = (column_range[1] - prev_line_end) + max(0.0, prev_line_start - column_range[0])
-    return free_space <= first_word_width + slack
 
-
-def _recover_table_rows_split(page, original_rect, extended_rect, existing_rows, column_count=0, column_ranges=None):
-    existing_keys = {
-        tuple(clean_cell(cell) for cell in row)
-        for row in existing_rows or []
-        if any(clean_cell(cell) for cell in row)
-    }
-    inferred_col_count = int(
-        column_count
-        or (len(column_ranges) if column_ranges else 0)
-        or max((len(row) for row in (existing_rows or [])), default=0)
-        or 0
-    )
+def _recover_table_rows_split(page, original_rect, extended_rect, existing_rows, column_count=0,
+                              column_ranges=None, unassigned_segments=None):
+    """Recover ruled edge cells; retain ambiguous edge text separately, never infer a clinical row."""
     all_segments = _extract_page_line_segments(page)
-    effective_ranges = _resolve_effective_column_ranges(
-        original_rect,
-        inferred_col_count,
-        column_ranges,
-        all_segments,
-    )
-    if len(effective_ranges) < 2 or not all_segments:
+    ranges = _resolve_effective_column_ranges(original_rect, column_count, column_ranges, all_segments)
+    if len(ranges) < 2:
         return [], []
-
-    num_cols = len(effective_ranges)
-    top_segments = []
-    bottom_segments = []
-    for sx0, sy0, sx1, sy1, text in all_segments:
-        seg_rect = fitz.Rect(sx0, sy0, sx1, sy1)
-        if (extended_rect & seg_rect).is_empty:
+    cells = _edge_grid_cells(page, original_rect, extended_rect, ranges)
+    grouped = {}
+    for x0,y0,x1,y1,text in sorted(all_segments, key=lambda seg: (seg[1],seg[0])):
+        rect = fitz.Rect(x0,y0,x1,y1)
+        if (extended_rect & rect).is_empty or x0 < original_rect.x0-8 or x1 > original_rect.x1+8:
             continue
-        if sx0 < original_rect.x0 - 8.0 or sx1 > original_rect.x1 + 8.0:
+        side = "bottom" if y1 > original_rect.y1+0.5 and y0 >= original_rect.y1-2 else (
+            "top" if y0 < original_rect.y0-0.5 and y1 <= original_rect.y0+2 else None)
+        if side is None:
             continue
-        outside_bottom = sy1 > original_rect.y1 + 0.5 and sy0 >= original_rect.y1 - 2.0
-        outside_top = sy0 < original_rect.y0 - 0.5 and sy1 <= original_rect.y0 + 2.0
-        if outside_top:
-            top_segments.append((sx0, sy0, sx1, sy1, text))
-        elif outside_bottom:
-            bottom_segments.append((sx0, sy0, sx1, sy1, text))
-
-    def collect_rows(strip_segments):
-        if not strip_segments:
-            return []
-        strip_segments.sort(key=lambda s: (s[1], s[0]))
-        bands = []
-        for seg in strip_segments:
-            if not bands or abs(seg[1] - bands[-1][0][1]) > 3.0:
-                bands.append([seg])
-            else:
-                bands[-1].append(seg)
-
-        rows_out = []
-        prev_band_y1 = None
-        # Left and right edges of the last line of text in each column of the latest row,
-        # used to tell a wrapped cell from a note that merely sits below it.
-        prev_row_line_ends = {}
-        for band in bands:
-            band.sort(key=lambda s: s[0])
-            band_y0 = min(s[1] for s in band)
-            band_y1 = max(s[3] for s in band)
-            row_cells = [""] * num_cols
-            line_ends = {}
-            first_segment = {}
-            valid_band = True
-            for sx0, _sy0, sx1, _sy1, text in band:
-                col_idx = _match_segment_to_column(sx0, sx1, effective_ranges)
-                if col_idx is None:
-                    valid_band = False
-                    break
-                row_cells[col_idx] = clean_cell(f"{row_cells[col_idx]} {text}") if row_cells[col_idx] else clean_cell(text)
-                start, end = line_ends.get(col_idx, (sx0, sx1))
-                line_ends[col_idx] = (min(start, sx0), max(end, sx1))
-                first_segment.setdefault(col_idx, (sx0, sx1, text))
-            if not valid_band:
-                prev_band_y1 = None
-                continue
-            populated_cols = sum(1 for cell in row_cells if clean_cell(cell))
-            if populated_cols == 1 and rows_out and prev_band_y1 is not None and (band_y0 - prev_band_y1) <= 16.0:
-                col_idx = next(iter(first_segment))
-                # A cell that starts lower than its neighbours (staggered or vertically
-                # centred text) fills a still-empty cell of the row above.
-                fills_empty_cell = col_idx not in prev_row_line_ends and not rows_out[-1][col_idx]
-                if not fills_empty_cell and not _continues_wrapped_cell(
-                    prev_row_line_ends.get(col_idx), first_segment[col_idx], effective_ranges[col_idx]
-                ):
-                    # A short note or caption under the table, not the rest of a wrapped cell.
-                    prev_band_y1 = None
-                    continue
-                prev_row_line_ends[col_idx] = line_ends[col_idx]
-                prev_row = rows_out[-1]
-                existing_keys.discard(tuple(prev_row))
-                for idx, val in enumerate(row_cells):
-                    if val:
-                        prev_row[idx] = clean_cell(f"{prev_row[idx]} {val}") if prev_row[idx] else val
-                existing_keys.add(tuple(prev_row))
-                prev_band_y1 = band_y1
-                continue
-            if populated_cols < 2:
-                continue
-            key = tuple(row_cells)
-            if key in existing_keys:
-                prev_band_y1 = band_y1
-                continue
-            existing_keys.add(key)
-            rows_out.append(row_cells)
-            prev_row_line_ends = line_ends
-            prev_band_y1 = band_y1
-        return rows_out
-
-    return collect_rows(top_segments), collect_rows(bottom_segments)
+        matches = [(col,top,bottom) for col,left,top,right,bottom in cells
+                   if x0 >= left-0.5 and x1 <= right+0.5 and y0 >= top-0.5 and y1 <= bottom+0.5]
+        if len(matches) != 1:
+            if unassigned_segments is not None:
+                unassigned_segments.append({"text": clean_cell(text), "bbox": rect_payload(rect), "edge": side})
+            continue
+        col,top,bottom = matches[0]
+        key = (side,top,bottom)
+        row = grouped.setdefault(key, [""] * len(ranges))
+        row[col] = clean_cell(f"{row[col]} {text}")
+    existing = {tuple(clean_cell(c) for c in row) for row in existing_rows or []}
+    top_rows, bottom_rows = [], []
+    for (side,top,bottom), row in sorted(grouped.items(), key=lambda item: item[0][1]):
+        if tuple(row) in existing:
+            continue
+        # A genuine ruled row may contain an empty or staggered cell.
+        (top_rows if side == "top" else bottom_rows).append(row)
+    return top_rows, bottom_rows
 
 
 def recover_table_rows_from_edge_strip(
@@ -1861,6 +1791,7 @@ def _extract_document(document, output_dir, budget, identity):
             table_rows = list(table_candidate.get("table_rows") or [])
             column_count = int(table_candidate.get("column_count") or (len(table_rows[0]) if table_rows else 0) or 0)
             recovered_rows = []
+            unassigned_edge_text = []
             recovered_truncated = False
             if edge_info["extended"]:
                 top_rows, bottom_rows = _recover_table_rows_split(
@@ -1870,6 +1801,7 @@ def _extract_document(document, output_dir, budget, identity):
                     table_rows,
                     column_count,
                     table_candidate.get("column_ranges"),
+                    unassigned_segments=unassigned_edge_text,
                 )
                 recovered_rows = top_rows + bottom_rows
                 if recovered_rows:
@@ -1914,6 +1846,11 @@ def _extract_document(document, output_dir, budget, identity):
                 "extraction_method": table_candidate.get("extraction_method"),
                 "table_index": table_candidate.get("table_index"),
             }
+            if unassigned_edge_text:
+                crop_metadata["unassigned_edge_text"] = unassigned_edge_text
+                crop_metadata["edge_recovery_needs_review"] = True
+                warnings.append(f"table_edge_association_unverified: page {page_number}; "
+                                "retained edge text without assigning it to clinical cells")
             if edge_info["extended"]:
                 crop_metadata["edge_content_extended"] = True
                 crop_metadata["edge_content_edges"] = edge_info["edges"]
