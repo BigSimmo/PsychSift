@@ -99,11 +99,23 @@ export function extractNiceGuidelineDetails(citationText: string, authority?: st
   };
 }
 
+/** Explicit citation authority wins over publisher names or links mentioned in its prose. */
+export function isNiceGuidelineCitation(citation: { authority?: string; text?: string }): boolean {
+  if (citation.authority?.trim()) return /^NICE(?:\s+[A-Z]{1,5}\d+)?$/i.test(citation.authority.trim());
+  return /https:\/\/(?:www\.)?nice\.org\.uk\/guidance\//i.test(citation.text ?? "");
+}
+
 /** Explicit source metadata for later-added NICE guideline citations. */
 export function therapyNiceGuidelineMetadata(
   citation: { authority?: string; text?: string },
   recordReviewStatus: string,
 ): ClinicalSourceMetadata {
+  if (!isNiceGuidelineCitation(citation)) {
+    return therapySourceMetadata(
+      { title: citation.text ?? null, sourceType: null, reference: citation.text ?? null },
+      recordReviewStatus,
+    );
+  }
   const details = extractNiceGuidelineDetails(citation.text ?? "", citation.authority);
   return {
     source_kind: "guideline",

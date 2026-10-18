@@ -2,7 +2,7 @@
   "generated_at": "2026-10-18T10:29:05.818Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "deeee8f86fe40c6e07c7ff56e5c97a85cab409112af961eda4403b9f4384dadf",
+  "schema_sha256": "2e8d1d11c7a8effd99147b717425afc437167cef8304e180e5885812b354053d",
   "replay_seconds": 14,
   "snapshot": {
     "views": [
@@ -9238,6 +9238,158 @@
           "postgres=arwdDxtm/postgres",
           "service_role=arwdDxtm/postgres"
         ],
+        "name": "roster_offer_alert_devices",
+        "columns": [
+          {
+            "name": "attempts",
+            "type": "integer",
+            "default": "0",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "available_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "open_shift_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "outcome",
+            "type": "text",
+            "default": "'pending'::text",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "owner_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "subscription_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
+        "rls_forced": false,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=arwdDxtm/postgres"
+        ],
+        "name": "roster_offer_alert_outbox",
+        "columns": [
+          {
+            "name": "actor_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "available_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "completed_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "created_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "expires_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "initialized",
+            "type": "boolean",
+            "default": "false",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "lease_token",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "lease_until",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "open_shift_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "service_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
+        "rls_forced": false,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=arwdDxtm/postgres"
+        ],
         "name": "roster_open_post_alerts",
         "columns": [
           {
@@ -16148,6 +16300,24 @@
         "def_hash": "590bcff136e7af842298b48ee261e3f2"
       },
       {
+        "def": "CREATE UNIQUE INDEX roster_offer_alert_devices_pkey ON public.roster_offer_alert_devices USING btree (open_shift_id, subscription_id)",
+        "name": "roster_offer_alert_devices_pkey",
+        "table": "roster_offer_alert_devices",
+        "def_hash": "d08f116cc6279363d5cf78ff56696d25"
+      },
+      {
+        "def": "CREATE INDEX roster_offer_alert_due ON public.roster_offer_alert_outbox USING btree (available_at, created_at) WHERE (completed_at IS NULL)",
+        "name": "roster_offer_alert_due",
+        "table": "roster_offer_alert_outbox",
+        "def_hash": "239cd5bd0090ba73e64d3fe2e3ab52d3"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX roster_offer_alert_outbox_pkey ON public.roster_offer_alert_outbox USING btree (open_shift_id)",
+        "name": "roster_offer_alert_outbox_pkey",
+        "table": "roster_offer_alert_outbox",
+        "def_hash": "b15bdbc810b12682660735d65c80b307"
+      },
+      {
         "def": "CREATE UNIQUE INDEX roster_open_post_alerts_pkey ON public.roster_open_post_alerts USING btree (service_id, open_shift_id)",
         "name": "roster_open_post_alerts_pkey",
         "table": "roster_open_post_alerts",
@@ -18433,6 +18603,11 @@
         "table": "roster_leave"
       },
       {
+        "def": "CREATE TRIGGER enqueue_roster_offer_alert AFTER INSERT ON public.roster_open_post_keys FOR EACH ROW EXECUTE FUNCTION public.enqueue_roster_offer_alert()",
+        "name": "enqueue_roster_offer_alert",
+        "table": "roster_open_post_keys"
+      },
+      {
         "def": "CREATE TRIGGER roster_open_shifts_mark_reported BEFORE INSERT ON public.roster_open_shifts FOR EACH ROW EXECUTE FUNCTION public.roster_open_shifts_mark_reported()",
         "name": "roster_open_shifts_mark_reported",
         "table": "roster_open_shifts"
@@ -19200,6 +19375,14 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
+        "def_hash": "f4c06824b3702b8b959d6772fe4b2ce7",
+        "signature": "public.enqueue_roster_offer_alert()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
         "def_hash": "c22bbe7ec1655a2c623b43b3e74cb23b",
         "signature": "public.explain_retrieval_rpc(text,text,integer,uuid,uuid[],boolean)"
       },
@@ -19635,6 +19818,14 @@
         ],
         "def_hash": "4e8e4f9ee726a5eef77d6d6a646fe787",
         "signature": "public.migration_history_versions()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "290eb2b8447860400f8fab5d06cd9899",
+        "signature": "public.mutate_owner_training_milestone(uuid,uuid,text,jsonb,jsonb)"
       },
       {
         "acl": [
@@ -20203,6 +20394,14 @@
         ],
         "def_hash": "c9251a5932317b94efc0fbe02273849a",
         "signature": "public.roster_needs_replace(uuid,uuid,jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "dbc1a581ba252a08d74da026c4c3955f",
+        "signature": "public.roster_offer_alert_work(text,uuid,uuid,uuid[],uuid,text)"
       },
       {
         "acl": [
@@ -23976,6 +24175,51 @@
         "def": "FOREIGN KEY (service_id, user_id) REFERENCES public.on_call_service_members(service_id, user_id) ON DELETE CASCADE",
         "name": "roster_member_roles_service_id_user_id_fkey",
         "table": "roster_member_roles"
+      },
+      {
+        "def": "FOREIGN KEY (open_shift_id) REFERENCES public.roster_offer_alert_outbox(open_shift_id) ON DELETE CASCADE",
+        "name": "roster_offer_alert_devices_open_shift_id_fkey",
+        "table": "roster_offer_alert_devices"
+      },
+      {
+        "def": "CHECK ((outcome = ANY (ARRAY['pending'::text, 'sent'::text, 'skipped'::text])))",
+        "name": "roster_offer_alert_devices_outcome_check",
+        "table": "roster_offer_alert_devices"
+      },
+      {
+        "def": "FOREIGN KEY (owner_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+        "name": "roster_offer_alert_devices_owner_id_fkey",
+        "table": "roster_offer_alert_devices"
+      },
+      {
+        "def": "PRIMARY KEY (open_shift_id, subscription_id)",
+        "name": "roster_offer_alert_devices_pkey",
+        "table": "roster_offer_alert_devices"
+      },
+      {
+        "def": "FOREIGN KEY (subscription_id) REFERENCES public.web_push_subscriptions(id) ON DELETE CASCADE",
+        "name": "roster_offer_alert_devices_subscription_id_fkey",
+        "table": "roster_offer_alert_devices"
+      },
+      {
+        "def": "FOREIGN KEY (actor_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+        "name": "roster_offer_alert_outbox_actor_id_fkey",
+        "table": "roster_offer_alert_outbox"
+      },
+      {
+        "def": "FOREIGN KEY (open_shift_id) REFERENCES public.roster_open_shifts(id) ON DELETE CASCADE",
+        "name": "roster_offer_alert_outbox_open_shift_id_fkey",
+        "table": "roster_offer_alert_outbox"
+      },
+      {
+        "def": "PRIMARY KEY (open_shift_id)",
+        "name": "roster_offer_alert_outbox_pkey",
+        "table": "roster_offer_alert_outbox"
+      },
+      {
+        "def": "FOREIGN KEY (service_id) REFERENCES public.on_call_services(id) ON DELETE CASCADE",
+        "name": "roster_offer_alert_outbox_service_id_fkey",
+        "table": "roster_offer_alert_outbox"
       },
       {
         "def": "PRIMARY KEY (service_id, open_shift_id)",

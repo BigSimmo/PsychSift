@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "id": "3d33317d-4a51-4a3f-ac76-5a85aa0c036e",
+  "createdOn": "2026-10-18",
+  "action": "reopen",
+  "payload": {
+    "id": "#NZ4X41",
+    "pri": "P2",
+    "detail": "PS-062 verified against the 2026-10-18 checkout: 179 therapies remain reviewed and 26 were reset to needs_review under the owner ruling recorded in docs/decisions/2026-10-17-agent-recorded-therapy-and-did-sign-offs-reset.md. The previous completion described all 205 as signed; that outcome is superseded. Governed references are present, but the 26 need genuine owner review through therapy:review. Clinical approval, corpus refresh and loaded-client revocation are not established.",
+    "source": "PS-062 supplied merged-PR review; canonical therapies-source.json and reset decision, inspected 2026-10-18",
+    "baseRowFingerprint": "443d1f1bbc33c4bd4036c922e109c0c80400342c910618c8fa8b9b79ac35ff32",
+    "allowArchived": true,
+    "targetTable": "archive",
+    "targetUlid": "01M488JH90NZ4X41FZT2339F40"
+  }
+}

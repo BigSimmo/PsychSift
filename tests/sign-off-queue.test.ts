@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+import { TODAY_RULE_SIGN_OFFS } from "@/lib/admin/rule-sign-off";
 
 import formsContentReview from "../data/forms-content-review.json";
 import {
@@ -62,7 +64,7 @@ const EXPECTED: Record<SignOffFamilyId, number> = {
   // All 93 signable candidates and the 3 adopted medicine sources were reviewed; six Indigenous
   // sources remain held, and two OCP WA standards reviewed only in prose wait for the owner to
   // sign them with clinical:review (owner decision, 17 Oct 2026).
-  sources: 8,
+  sources: 9,
 };
 
 describe("clinical sign-off queue", () => {
@@ -322,8 +324,8 @@ const EXPECTED_SIGNED_BY_DOMAIN: Record<SignOffDomainId, { signed: number; waiti
   dictionary: { signed: 28, waiting: 401 },
   // 93 sources carry a structured, current attestation. Two OCP standards are marked
   // locally_reviewed in prose only and are ready for the owner to sign with clinical:review;
-  // six Indigenous sources are held.
-  sources: { signed: 93, waiting: 8 },
+  // six Indigenous sources are held; PS-009 withdraws the edited lithium record's stale attestation.
+  sources: { signed: 92, waiting: 9 },
   services: { signed: 21, waiting: 4 },
 };
 
@@ -346,17 +348,37 @@ describe("clinical & rule sign-off ledger", () => {
     },
   );
 
+  it("uses the runtime gate for stale hashes, unapproved signers, and future timestamps", () => {
+    const signOff = TODAY_RULE_SIGN_OFFS.fatigue as { signedContentSha256: string; signedBy: string; signedAt: string };
+    const original = { ...signOff };
+    try {
+      for (const mutation of [
+        { signedContentSha256: "0".repeat(64) },
+        { signedBy: "Unapproved person" },
+        { signedAt: "2099-01-01T00:00:00.000Z" },
+      ]) {
+        Object.assign(signOff, original, mutation);
+        const domain = loadSignOffLedger().domains.find((item) => item.id === "today-rules")!;
+        expect(domain.signedRows.map((row) => row.id)).not.toContain("fatigue");
+        expect(domain.needsSigning.signableNow).toBe(1);
+      }
+    } finally {
+      Object.assign(signOff, original);
+      vi.restoreAllMocks();
+    }
+  });
+
   it("derives the overall totals, signer breakdown, and categorized waiting counts from the domain rows", () => {
-    expect(ledger.totalSigned).toBe(675);
-    expect(ledger.totalWaiting).toBe(1202);
+    expect(ledger.totalSigned).toBe(674);
+    expect(ledger.totalWaiting).toBe(1203);
     expect(ledger.totalGoverned).toBe(1877);
     expect(ledger.signedByTotals).toEqual({
       "Josh Simpson": 3,
       "Psych Sift": 195,
-      PsychSift: 477,
+      PsychSift: 476,
     });
     expect(ledger.waitingByCategory).toEqual({
-      signableNow: 29,
+      signableNow: 30,
       indigenousHold: 26,
       awaitingPrerequisites: 582,
       awaitingTool: 565,

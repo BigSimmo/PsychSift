@@ -4912,6 +4912,21 @@ export type Database = {
       };
     };
     Functions: {
+      roster_offer_alert_work: {
+        Args: {
+          p_operation: string;
+          p_open_shift_id?: string;
+          p_token?: string;
+          p_owner_ids?: string[];
+          p_subscription_id?: string;
+          p_outcome?: string;
+        };
+        Returns: Json;
+      };
+      mutate_owner_training_milestone: {
+        Args: { p_owner_id: string; p_id: string; p_operation: string; p_milestone: Json; p_registrar: Json };
+        Returns: Json;
+      };
       calendar_feed_rotate: { Args: { p_owner_id: string; p_token_hash: string }; Returns: undefined };
       calendar_feed_revoke: { Args: { p_owner_id: string }; Returns: undefined };
       calendar_feed_owner: { Args: { p_token_hash: string }; Returns: string | null };
