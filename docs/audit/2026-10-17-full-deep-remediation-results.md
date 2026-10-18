@@ -349,9 +349,26 @@ It is development-only through Next's ESLint plugin, fast-glob and micromatch. N
 worker import or identified clinical-input route was found; this limits demonstrated reachability
 but does not fix or dismiss the advisory. The existing framework-modernization checklist already
 records the residual. No invented version, incompatible brace-expansion alias or weakened lint
-gate was introduced. The GitHub security-alert endpoint was unavailable through the connector;
-exact repository alert IDs and the second high alert remain unidentified. Deno npm advisory
-lookup returned none; Python advisory lookup was blocked by the proxy, not passed.
+gate was introduced. A fallback through the existing authorized Composio GitHub connection
+subsequently identified both open high alerts: **#24** and **#27**, both NLTK 3.10.3 in the
+two Python requirements files, **GHSA-8mgp-746c-j5xp / CVE-2026-81726**. The advisory has
+no patched version and official PyPI still publishes 3.10.3 as latest. Static repository and
+installed medspaCy/QuickUMLS tracing found no application call to the affected model-path
+persistence APIs; that limits demonstrated reachability, but leaves both vulnerable dependency
+alerts open. These are distinct from the braces advisory. Deno npm advisory lookup returned
+none; the broader Python advisory lookup was blocked by the proxy, not passed.
+
+The new-head CI run `39117859413` exposed a real Advisory UI test failure at
+`tests/ui-tools-search-mode-mockup.spec.ts`: the immediate result count was zero before
+the first result appeared. The shared setup waits for the shell and input, not the result rows.
+The test-only correction explicitly waits for the first result before retaining both the
+positive-count and exact reported-count assertions. The precise hydration timing cause remains
+unproven; the separate asynchronous universal-search component does not populate these rows.
+Independent source review accepted the correction without weakening assertions. With retries
+disabled, the failed case passed **5/5** repetitions and the complete owning spec passed
+**16/16**, using the local offline Next development server and custom Chromium executable.
+This is local browser evidence, not production-build, other-browser or new-head CI evidence.
+The owned development listener was stopped and its port confirmed closed after verification.
 
 Fresh staging catalogs confirm the previously approved postgres default repair remains effective.
 Reserved-creator defaults remain broad, and the connector is still non-superuser postgres without
