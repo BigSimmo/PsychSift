@@ -287,3 +287,65 @@ describe("document summary context", () => {
     expect(from).not.toHaveBeenCalled();
   });
 });
+
+describe("document summary legacy-chunk handling", () => {
+  function mockSummaryClient(rows: Array<{ id: string; index_generation_id: string | null }>) {
+    const documentQuery = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      is: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn(async () => ({
+        data: {
+          id: "doc-1",
+          title: "Guideline",
+          file_name: "guideline.pdf",
+          status: "indexed",
+          metadata: { index_generation_id: "generation-current" },
+        },
+        error: null,
+      })),
+    };
+    const chunkRows = rows.map((row, index) => ({
+      document_id: "doc-1",
+      page_number: 1,
+      chunk_index: index,
+      section_heading: null,
+      content: `Chunk ${row.id}.`,
+      retrieval_synopsis: null,
+      image_ids: [],
+      ...row,
+    }));
+    const chunkQuery = {
+      or: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      limit: vi.fn(async () => ({ data: chunkRows, error: null })),
+    };
+    vi.doMock("@/lib/supabase/admin", () => ({
+      createAdminClient: () => ({
+        from: (table: string) => (table === "documents" ? documentQuery : chunkQuery),
+      }),
+    }));
+  }
+
+  it("drops stale NULL-generation chunks once the committed generation has rows", async () => {
+    mockSummaryClient([
+      { id: "current-1", index_generation_id: "generation-current" },
+      { id: "legacy-1", index_generation_id: null },
+    ]);
+    const { loadDocumentSummaryContext } = await import("../src/lib/rag/rag-document-summary-context");
+    const { chunks } = await loadDocumentSummaryContext("doc-1", undefined);
+    expect(chunks.map((chunk) => chunk.id)).toEqual(["current-1"]);
+  });
+
+  it("keeps NULL-generation chunks while the committed generation has written none", async () => {
+    mockSummaryClient([
+      { id: "legacy-1", index_generation_id: null },
+      { id: "legacy-2", index_generation_id: null },
+    ]);
+    const { loadDocumentSummaryContext } = await import("../src/lib/rag/rag-document-summary-context");
+    const { chunks } = await loadDocumentSummaryContext("doc-1", undefined);
+    expect(chunks.map((chunk) => chunk.id)).toEqual(["legacy-1", "legacy-2"]);
+  });
+});
