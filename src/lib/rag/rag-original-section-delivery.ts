@@ -594,10 +594,10 @@ function legacyOriginalSectionSentenceSupported(
     return true;
   const adultAge = source.eligibility?.match(/aged (\d+) years and over/),
     limits = source.recommendation?.match(
-      /no more than (\d+) standard drinks a week and no more than (\d+) standard drinks on any one day/,
+      /(?:no more than|at most) (\d+) standard drinks a week and (?:no more than|at most) (\d+) standard drinks on any one day/,
     );
   const original = text.match(
-    /^for healthy adults aged (\d+) years and over, drink no more than (\d+) standard drinks a week and no more than (\d+) standard drinks on any one day(?:; less is lower risk, and these limits are not risk-free)?\.$/,
+    /^for healthy adults aged (\d+) years and over, drink (?:no more than|at most) (\d+) standard drinks a week and (?:no more than|at most) (\d+) standard drinks on any one day(?:; less is lower risk, and these limits are not risk-free)?\.$/,
   );
   if (
     original &&
@@ -647,16 +647,16 @@ function originalSectionSentenceSupported(
   ): VerifiedOriginalSectionSentence => ({ sourceId: row.id, role, renderedText, pregnancyPurposeAdded });
   const age = source.eligibility?.match(/aged (\d+) years and over/)?.[1];
   const limits = source.recommendation?.match(
-    /no more than (\d+) standard drinks a week and no more than (\d+) standard drinks on any one day/,
+    /(?:no more than|at most) (\d+) standard drinks a week and (?:no more than|at most) (\d+) standard drinks on any one day/,
   );
   const genuineAdult = text.match(
-    /^for healthy adults aged (\d+) years and over, the recommendation is no more than (\d+) standard drinks a week and no more than (\d+) standard drinks on any one day; (?:drinking less, or not drinking, further reduces harm|less drinking further lowers risk)\.$/,
+    /^for healthy adults aged (\d+) years and over, the recommendation is (?:no more than|at most) (\d+) standard drinks a week and (?:no more than|at most) (\d+) standard drinks on any one day; (?:drinking less, or not drinking, further reduces harm|less drinking further lowers risk)\.$/,
   );
   const qualifiedAdult = text.match(
-    /^for healthy adults aged (\d+) years and over, drink no more than (\d+) standard drinks a week and no more than (\d+) standard drinks on any one day; less alcohol further reduces harm, and no drinking is best for reducing risk\.$/,
+    /^for healthy adults aged (\d+) years and over, drink (?:no more than|at most) (\d+) standard drinks a week and (?:no more than|at most) (\d+) standard drinks on any one day; less alcohol further reduces harm, and no drinking is best for reducing risk\.$/,
   );
   const sharedLimiterAdult = text.match(
-    /^for healthy adults aged (\d+) years and over, drink no more than (\d+) standard drinks a week and (\d+) standard drinks on any one day; drinking less further reduces risk\.$/,
+    /^for healthy adults aged (\d+) years and over, drink (?:no more than|at most) (\d+) standard drinks a week and (\d+) standard drinks on any one day; drinking less further reduces risk\.$/,
   );
   const legacySupported = legacyOriginalSectionSentenceSupported(sentence, ids, source);
   const legacyAdult = legacySupported && /^for healthy adults aged\b/.test(text);
@@ -800,7 +800,7 @@ function sectionDeliveryObligations(
       : [];
   const a = construction;
   const adultValues = a.recommendation?.match(
-    /no more than (\d+) standard drinks a week and no more than (\d+) standard drinks on any one day/,
+    /(?:no more than|at most) (\d+) standard drinks a week and (?:no more than|at most) (\d+) standard drinks on any one day/,
   );
   const adultAge = a.eligibility?.match(/aged (\d+) years and over/);
   const youngAge = a.youngRecommendation?.match(/under (\d+) years of age/);
@@ -814,7 +814,7 @@ function sectionDeliveryObligations(
               Boolean(
                 adultValues &&
                 new RegExp(
-                  `healthy (?:men and women|adults).*no more than ${adultValues[1]} standard drinks a week and no more than ${adultValues[2]} standard drinks on any one day`,
+                  `healthy (?:men and women|adults).*(?:no more than|at most) ${adultValues[1]} standard drinks (?:a|per|each) week and (?:no more than|at most) ${adultValues[2]} standard drinks (?:on any one day|in any (?:one|single) day|per day)`,
                   "i",
                 ).test(sectionProse(text)),
               ),

@@ -163,7 +163,11 @@ export function renderSourceBoundAlcoholSummary(
       week.claim.match(/\d+/)?.[0] !== weekly ||
       day.claim.match(/\d+/)?.[0] !== daily ||
       !/^(?:(?:for|should|drink|and)\b|[\s,;:.])*$/i.test(attribution ? attribution.text : adultRemainder) ||
-      !sourceDirectlySupportsAnswerText(adultClause, adult)
+      !(
+        sourceDirectlySupportsAnswerText(adultClause, adult) ||
+        (sourceDirectlySupportsAnswerText(scope.claim, adult) &&
+          sourceDirectlySupportsAnswerText(`${week.claim} and ${day.claim}`, adult))
+      )
     )
       return reject();
     let remaining = lead.replace(adultClause, " ");
@@ -307,7 +311,10 @@ export function renderSourceBoundAlcoholSummary(
       },
     };
   }
-  const expectedLead = `For healthy adults aged ${age} years and over, drink no more than ${weekly} standard drinks a week and no more than ${daily} standard drinks on any one day; less drinking further lowers risk. People under ${age} years should not drink alcohol. Women who are pregnant or planning pregnancy should not drink alcohol, and for women who are breastfeeding, not drinking alcohol is safest for the baby. These recommendations do not imply a safe or no-risk level of alcohol use.`;
+  const expectedLeadPattern = new RegExp(
+    `^for healthy adults aged ${age} years and over, drink (?:no more than|at most) ${weekly} standard drinks a week and (?:no more than|at most) ${daily} standard drinks on any one day; less drinking further lowers risk\\. people under ${age} years should not drink alcohol\\. women who are pregnant or planning pregnancy should not drink alcohol, and for women who are breastfeeding, not drinking alcohol is safest for the baby\\. these recommendations do not imply a safe or no-risk level of alcohol use\\.$`,
+    "i",
+  );
   const expectedRisk =
     "For healthy adults, the recommended limits reduce risk but do not eliminate it; not drinking is the best way to reduce alcohol-related harm. No safe level has been identified during pregnancy, and the evidence does not indicate a safe amount for pregnant or breastfeeding mothers.";
   const risk = answer.answerSections?.find(
@@ -317,7 +324,7 @@ export function renderSourceBoundAlcoholSummary(
       section.citation_chunk_ids.includes(maternal.id) &&
       section.citation_chunk_ids.every((id) => id === adult.id || id === maternal.id),
   );
-  if (!equal(answer.answer, expectedLead) || !risk) return null;
+  if (!expectedLeadPattern.test(prose(answer.answer)) || !risk) return null;
   const remainingLead = `People under ${age} years should not drink alcohol. Women who are pregnant or planning pregnancy should not drink alcohol, and for women who are breastfeeding, not drinking alcohol is safest for the baby.`;
   if (
     !sourceDirectlySupportsAnswerText(recommendation, adult) ||

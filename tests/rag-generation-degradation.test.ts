@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   createGenerationDegradationRecorder,
   compareGenerationAlternatives,
@@ -461,5 +461,130 @@ describe("#231 generation degradation telemetry switch and wire", () => {
       generation_degradation_initial_latency_ms: 12,
       generation_degradation_initial_timeout_ms: 30000,
     });
+  });
+});
+
+describe("generationDegradationLogMetadata (#231) and worker pre-claim scope filter", () => {
+  it("emits scalar telemetry metadata even when public generationDegradation rollout is off", async () => {
+    const { generationDegradationLogMetadata } = await import("../src/lib/rag/rag-generation-degradation");
+    const r = createGenerationDegradationRecorder({
+      enabled: false,
+      routeBudgetMs: 35000,
+      remainingRouteBudgetMs: () => 2000,
+    });
+    r.start({
+      route: "strong",
+      timeoutMs: 30000,
+      outputBudget: "standard",
+      retrievalHealthy: true,
+      coverage: "complete",
+      contextCount: 2,
+    });
+    r.fail("timeout", 30000);
+    expect(r.finish(delivered, true)).toBeUndefined();
+    expect(r.metadata()).toEqual({
+      generation_degradation_reason: "provider_initial_attempt_timeout",
+      generation_degradation_attempt_count: 1,
+      generation_degradation_completed_response_count: 0,
+      generation_degradation_total_attempt_latency_ms: 30000,
+      generation_degradation_remaining_route_budget_ms: 2000,
+      provider_initial_attempt_timeout: true,
+      provider_quality_retry_exhausted: false,
+    });
+    expect(generationDegradationLogMetadata(undefined)).toEqual({});
+  });
+
+  it("enforces WORKER_ALLOWED_DOCUMENT_IDS, WORKER_ALLOWED_FILE_TYPES, and claim_ingestion_jobs candidate eligibility", async () => {
+    const { resolveWorkerClaimScopeFilter, isPreClaimCandidateAllowed, isClaimableIngestionJobCandidate } =
+      await import("../worker/behavior");
+    const inactive = resolveWorkerClaimScopeFilter({});
+    expect(inactive.active).toBe(false);
+    expect(isPreClaimCandidateAllowed({ document_id: "doc-1", file_type: "application/pdf" }, inactive)).toBe(true);
+
+    const active = resolveWorkerClaimScopeFilter({
+      WORKER_ALLOWED_DOCUMENT_IDS: "7D0C4A52-1B9E-4F6A-9C2D-3E4F5A6B7C81, 7d0c4a52-1b9e-4f6a-9c2d-3e4f5a6b7c82",
+      WORKER_ALLOWED_FILE_TYPES: "TEXT/PLAIN; charset=utf-8",
+    });
+    expect(active.active).toBe(true);
+    expect(
+      isPreClaimCandidateAllowed(
+        { document_id: "7d0c4a52-1b9e-4f6a-9c2d-3e4f5a6b7c81", file_type: "text/plain; charset=utf-8" },
+        active,
+      ),
+    ).toBe(true);
+    expect(
+      isPreClaimCandidateAllowed(
+        { document_id: "7d0c4a52-1b9e-4f6a-9c2d-3e4f5a6b7c81", file_type: "application/pdf" },
+        active,
+      ),
+    ).toBe(false);
+    expect(isPreClaimCandidateAllowed({ document_id: "doc-other", file_type: "text/plain" }, active)).toBe(false);
+
+    const nowMs = Date.parse("2026-10-17T12:00:00.000Z");
+    expect(isClaimableIngestionJobCandidate({ status: "pending", attempt_count: 0, max_attempts: 3 }, nowMs)).toBe(
+      true,
+    );
+    expect(
+      isClaimableIngestionJobCandidate(
+        { status: "pending", attempt_count: 1, max_attempts: 3, next_run_at: "2026-10-17T12:05:00.000Z" },
+        nowMs,
+      ),
+    ).toBe(false);
+    expect(
+      isClaimableIngestionJobCandidate(
+        { status: "processing", attempt_count: 1, max_attempts: 3, lease_expires_at: "2026-10-17T11:59:00.000Z" },
+        nowMs,
+      ),
+    ).toBe(true);
+    expect(
+      isClaimableIngestionJobCandidate(
+        { status: "processing", attempt_count: 3, max_attempts: 3, lease_expires_at: "2026-10-17T11:59:00.000Z" },
+        nowMs,
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("unserved production generator observations", () => {
+  it("records a real observed-generator timeout and captures the deadline at completion", async () => {
+    const { createObservedAnswerGenerator } = await import("../src/lib/rag/rag-provider");
+    const { createAnswerRouteDeadline } = await import("../src/lib/rag/rag-route-budget");
+    let elapsed = 8000;
+    const deadline = createAnswerRouteDeadline({ routeMode: "strong", startedAt: 0, now: () => elapsed });
+    const r = createGenerationDegradationRecorder({
+      enabled: false,
+      routeBudgetMs: deadline.budgetMs,
+      remainingRouteBudgetMs: deadline.remainingMs,
+    });
+    const generate = vi.fn(async () => {
+      elapsed += 25000;
+      throw new Error("Request timed out");
+    });
+    const observed = createObservedAnswerGenerator({
+      generate,
+      buildInput: () => "synthetic",
+      schemaFor: () => ({}),
+      deadline,
+      recorder: r,
+      contextObservation: () => ({ retrievalHealthy: true, coverage: "complete", contextCount: 2 }),
+      instructions: "synthetic",
+      promptCacheKey: "synthetic",
+      fastReasoningEffort: "low",
+      strongReasoningEffort: "low",
+      onResult: () => {},
+      onLatency: () => {},
+    });
+    try {
+      await expect(observed("synthetic-model", {})).rejects.toThrow("timed out");
+      expect(r.finish(delivered, true)).toBeUndefined();
+      elapsed += 1000;
+      expect(r.metadata()).toMatchObject({
+        generation_degradation_attempt_count: 1,
+        generation_degradation_remaining_route_budget_ms: 2000,
+        provider_initial_attempt_timeout: true,
+      });
+    } finally {
+      deadline.dispose();
+    }
   });
 });

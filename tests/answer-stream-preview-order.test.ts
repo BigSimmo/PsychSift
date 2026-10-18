@@ -459,4 +459,79 @@ describe("answer stream verified preview ordering", () => {
     expect(rankingFrame?.data.verifiedUnit).toBeUndefined();
     expect(readLastEvidencePreviewReason()?.reason).toBe("contract_rejected");
   });
+
+  it("filters out danger-level sources and emits only clean sources in the SSE evidence_preview unit", async () => {
+    const { buildEvidencePreviewProgress, readLastEvidencePreviewReason } = await import("../src/lib/answer-preview");
+    const dangerSource = {
+      id: "danger-chunk-1",
+      document_id: "danger-doc-1",
+      title: "Superseded Clozapine Protocol",
+      file_name: "superseded-clozapine.pdf",
+      page_number: 1,
+      chunk_index: 0,
+      section_heading: "Monitoring",
+      content: "Outdated ANC monitoring interval from a retired guideline.",
+      image_ids: [],
+      images: [],
+      similarity: 0.91,
+      source_metadata: {
+        document_status: "outdated",
+        clinical_validation_status: "unverified",
+        extraction_quality: "poor",
+      } as unknown as import("../src/lib/types").SearchResult["source_metadata"],
+    };
+    const cleanSource = {
+      id: "clean-chunk-1",
+      document_id: "clean-doc-1",
+      title: "Approved Clozapine Guideline",
+      file_name: "approved-clozapine.pdf",
+      page_number: 2,
+      chunk_index: 1,
+      section_heading: "Monitoring",
+      content: "Standard weekly ANC monitoring requirements for clozapine initiation.",
+      image_ids: [],
+      images: [],
+      similarity: 0.85,
+    };
+
+    answerQuestionWithScope.mockImplementationOnce(
+      async ({ onProgress }: { onProgress?: (event: unknown) => void }) => {
+        onProgress?.({
+          stage: "ranking",
+          ...buildEvidencePreviewProgress({
+            normalResults: [dangerSource, cleanSource],
+            fallbackResults: [dangerSource, cleanSource],
+          }),
+        });
+        onProgress?.({ stage: "generating" });
+        return {
+          answer: "Standard weekly ANC monitoring is required.",
+          grounded: true,
+          confidence: "high",
+          citations: [],
+          sources: [cleanSource],
+        };
+      },
+    );
+
+    const { POST } = await import("../src/app/api/answer/stream/route");
+    const response = await POST(
+      new Request("http://localhost/api/answer/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: "clozapine monitoring interval" }),
+      }),
+    );
+    const frames = parseSseFrames(await response.text());
+
+    const rankingFrame = frames.find((frame) => frame.event === "progress" && frame.data.stage === "ranking");
+    expect(rankingFrame).toBeDefined();
+    expect(rankingFrame?.data.previewReason).toBe("ok");
+    const verifiedUnit = rankingFrame?.data.verifiedUnit as
+      { kind?: string; selectedContextCount?: number; sources?: Array<{ id: string }> } | undefined;
+    expect(verifiedUnit?.kind).toBe("evidence_preview");
+    expect(verifiedUnit?.selectedContextCount).toBe(1);
+    expect(verifiedUnit?.sources?.map((source) => source.id)).toEqual(["clean-chunk-1"]);
+    expect(readLastEvidencePreviewReason()?.reason).toBe("ok");
+  });
 });

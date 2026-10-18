@@ -4,10 +4,13 @@ import { buildCrossDocumentFusionBrief, buildCrossDocumentSynthesisPlan } from "
 import { buildAnswerScoreExplanations, buildIndexingQuality, collectMemoryCards } from "@/lib/rag/rag-answer-support";
 import { memoryCardChunkScore } from "@/lib/rag/rag-candidate-sources";
 import {
+  generationDegradationLogMetadata,
   readObservedGenerationDegradation,
   type RagGenerationDegradationReason,
 } from "@/lib/rag/rag-generation-degradation";
 import type { RagAnswer, RagQueryClass } from "@/lib/types";
+
+export { generationDegradationLogMetadata };
 
 type AnswerLatencyTimings = NonNullable<RagAnswer["latencyTimings"]>;
 

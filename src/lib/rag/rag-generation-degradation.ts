@@ -152,11 +152,39 @@ export function readObservedGenerationDegradation(answer: unknown): RagGeneratio
   );
 }
 
+export function generationDegradationLogMetadata(
+  degradation: RagGenerationDegradationRecord | null | undefined,
+  remainingRouteBudgetMs?: number,
+): Record<string, unknown> {
+  const projected = projectGenerationDegradation(degradation ?? undefined);
+  if (!projected || projected.attempts.length === 0) return {};
+  return {
+    generation_degradation_reason: projected.reason,
+    generation_degradation_attempt_count: projected.attempts.length,
+    generation_degradation_completed_response_count: projected.completedResponseCount,
+    generation_degradation_total_attempt_latency_ms: projected.totalAttemptLatencyMs,
+    ...(typeof remainingRouteBudgetMs === "number" && Number.isFinite(remainingRouteBudgetMs)
+      ? { generation_degradation_remaining_route_budget_ms: count(remainingRouteBudgetMs, 35000) }
+      : {}),
+    provider_initial_attempt_timeout: projected.reason === "provider_initial_attempt_timeout",
+    provider_quality_retry_exhausted: projected.reason === "provider_quality_retry_exhausted",
+  };
+}
+
 export function createGenerationDegradationRecorder(options: {
-  enabled: boolean;
+  enabled?: boolean;
+  args?: { ragProgrammeRollout?: { servedMode?: string } | null; ragQueryPlanMode?: string | null };
+  remainingRouteBudgetMs?: () => number;
   routeBudgetMs: number;
   contract?: RagAnswerGenerationContract;
 }) {
+  const enabled =
+    options.enabled ??
+    (options.args?.ragProgrammeRollout?.servedMode === "candidate" ||
+      options.args?.ragQueryPlanMode === "shadow" ||
+      options.args?.ragQueryPlanMode === "canary");
+  let lastRecord: RagGenerationDegradationRecord | undefined;
+  let remainingRouteBudgetMs: number | undefined;
   const contract = options.contract ?? legacyAnswerGenerationContract;
   const attempts: GenerationAttempt[] = [];
   let nextStage: GenerationAttempt["stage"] = "initial";
@@ -165,7 +193,7 @@ export function createGenerationDegradationRecorder(options: {
   let observationComplete = true;
   const current = () => (observationComplete ? attempts.at(-1) : undefined);
   return {
-    enabled: options.enabled,
+    enabled,
     start(
       input: Pick<
         GenerationAttempt,
@@ -255,10 +283,15 @@ export function createGenerationDegradationRecorder(options: {
           totalAttemptLatencyMs: attempts.reduce((sum, a) => sum + a.latencyMs, 0),
           completedOutput: generationCompletedOutput(answer),
         }) ?? undefined;
+      lastRecord = record;
+      remainingRouteBudgetMs = options.remainingRouteBudgetMs?.();
       if (record && answer && typeof answer === "object") {
         observedGenerationDegradationByAnswer.set(answer, record);
       }
-      return options.enabled ? record : undefined;
+      return enabled ? record : undefined;
+    },
+    metadata(): Record<string, unknown> {
+      return generationDegradationLogMetadata(lastRecord, remainingRouteBudgetMs);
     },
   };
 }

@@ -2649,6 +2649,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-18-migration-prs-may-auto-merge.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/archive/design-qa-2026-07-15.md",
         "section": "archive",
         "catalogued": true
@@ -6313,6 +6318,14 @@
         "checks": "outstanding-issues guard; Prettier; diff review; zero unresolved threads"
       },
       {
+        "date": "2026-10-17",
+        "ref": "HEAD",
+        "head": "0537cc935b86824db40ca0c117894b67638e2d95",
+        "scope": "PR 3628 review and fixes",
+        "outcome": "Found atomic worker-scope, comparator-unit, telemetry-budget, and document-source retention defects; fixes prepared with regression coverage.",
+        "checks": "Independent standards and specification inspection of the pinned PR diff; follow-up working-tree targeted proof 295/295 tests and 10 local SQL scenarios; hosted CI pending."
+      },
+      {
         "date": "2026-08-06",
         "ref": "claude/pr-handoff-stop-hook (PR #1649)",
         "head": "057a5579e538fcacc15feb8a0ac7fa580b3decb4",
@@ -9175,6 +9188,22 @@
         "scope": "branch-cleanup-deletion-pending",
         "outcome": "Pending deletion: content already on origin/main or superseded old-lineage snapshot / throwaway CI-retry branch; branch-only-file sweep found no novel work. Remote deletion DENIED (HTTP 403, session lacks ref-delete permission); branch still exists at this HEAD — operator must complete deletion. Scope is deletion-pending so future cleanup passes re-evaluate rather than skip.",
         "checks": "Provider-backed GitHub PR inventory via MCP (400 PRs #264-#674, all merged=false); local read-only git: rewritten-main-aware cherry-pick + two-dot tree + branch-only-file novelty sweep vs origin/main e75fad90; adversarial re-check. Remote `git push --delete` attempted (provider-backed write) and DENIED with HTTP 403. No OpenAI/Supabase/live-eval checks."
+      },
+      {
+        "date": "2026-10-18",
+        "ref": "codex/design-audit-acceptance",
+        "head": "2900a6363462efb6eaab614280c7a40b89eb28d8",
+        "scope": "Design audit acceptance follow-up",
+        "outcome": "Independent scoped adversarial review found no confirmed defect in the stateful calculator regression or acceptance handoff. Dedicated same-URL recovery coverage is added; production source is unchanged. Railway health verified, direct HTTP blocked by network proxy, six device/clinical acceptance checks remain explicit.",
+        "checks": "Owning calculator suite26passed3.62s; negative-control removal of clearQuery yields1failed25passed with PHQ-9 retained, then restored26pass. Independent static review verifies modified-click preservation and URL cleanup. Merged545treeequalsreviewed58e302. No browser/fullsuite/release/clinicaleval claimed for newtest-onlydiff."
+      },
+      {
+        "date": "2026-10-18",
+        "ref": "codex/design-audit-acceptance",
+        "head": "2900a6363462efb6eaab614280c7a40b89eb28d8",
+        "scope": "Design audit acceptance follow-up (supersedes 2026-10-18)",
+        "outcome": "Wording correction only (CodeRabbit). Railway deployment status was verified; public HTTP health remains unverified because direct HTTP was blocked by the network proxy. Otherwise unchanged: independent scoped adversarial review found no confirmed defect in the stateful calculator regression or acceptance handoff; dedicated same-URL recovery coverage is added; production source is unchanged; six device/clinical acceptance checks remain explicit.",
+        "checks": "No new checks: restates the superseded record's evidence (owning calculator suite 26 passed; negative-control removal of clearQuery 1 failed 25 passed, restored 26 passed; static review of modified-click preservation and URL cleanup). No public HTTP health, browser, full-suite, release or clinical eval claimed."
       },
       {
         "date": "2026-07-28",
@@ -12673,6 +12702,14 @@
         "checks": "pwa DOM 10/10; PWA Chromium 5/5; format; exact-head merge-tree"
       },
       {
+        "date": "2026-10-18",
+        "ref": "main",
+        "head": "54559adabe5b51396c2d1c0eb395f2cf79b43fbf",
+        "scope": "PR 3632 landed-content verification",
+        "outcome": "PR was externally squash-merged during the review at 2026-10-18T05:13:46Z. Landed commit tree exactly equals reviewed head58e30257a45c0e19107b734f5ce2416eb9e6c8ad. No missing work detected. This agent did not merge, arm auto-merge, push or deploy. Manual acceptance and deployment health remain unverified.",
+        "checks": "Fresh origin/main54559adabe5b51396c2d1c0eb395f2cf79b43fbf has one parent; git diff --stat against reviewed head is empty; both tree hashes9e7fab3150b0448392438152c96e459d81a06c9d. Reviewed head required CI39098909136 and PR required117593597228 succeeded. No production-health or provider clinical eval invoked."
+      },
+      {
         "date": "2026-07-26",
         "ref": "PR #1246 / `codex/standardize-header-and-footer-behavior`",
         "head": "547d3a100c73333895554cf66eb0efd8d8dde8da",
@@ -13095,6 +13132,14 @@
         "scope": "branch-cleanup",
         "outcome": "safe remote delete: signed-URL cache invalidation landed more strongly in merged PR #1374 with pre-publish identity clearing and extra tests; archived batch18",
         "checks": "current auth source/test inspection; origin/main pickaxe history; redundant cherry-pick proof; bundle verify"
+      },
+      {
+        "date": "2026-10-18",
+        "ref": "codex/design-audit-resolution",
+        "head": "58e30257a45c0e19107b734f5ce2416eb9e6c8ad",
+        "scope": "CI failure and merge-safety review",
+        "outcome": "No confirmed code/CI blocker. Historical failures repaired in published commits; independent scoped review found no defect. All five review threads resolved. Technically ready for owner merge; manual Safari/PWA/keyboard/AT and populated clinical-state acceptance remains unverified. No merge or push performed.",
+        "checks": "Hosted CI 39098909136 at exact head: PR required 117593597228 success; both coverage partitions and aggregate, all production UI shards and critical, builds, static, safety and Lighthouse success; Secret Scan and SAST success. Local audit:final-merge dry-run and git diff --check passed. No new local test suite or provider-backed clinical eval run; reused prior versioned regression evidence."
       },
       {
         "date": "2026-07-22",
@@ -14039,6 +14084,14 @@
         "scope": "Run PR sweep: CI fix + threads + drift",
         "outcome": "before: CONFLICTING + PR policy FAIL + unresolved Codex P1 (conflict markers in answer/route.ts). after: conflict markers removed and pushed (80212dd91, 632e84c94); merge origin/main aborted (non-trivial conflicts: privacy/page.tsx, answer-render-policy.ts, source-authority-metadata.ts, upload/route.ts, supabase/drift-manifest.json, settings-dialog, validation/answer-request, plus UI/docs/tests); PR policy still FAIL (Clinical Governance Preflight missing — body edit forbidden this sweep); thread reply/resolve needs parent (comment 3644028277 / thread PRRT_kwDOSh5Fis6Tfkev) — ManagePullRequest/GitHub write MCP unavailable",
         "checks": "typecheck:internal pass; vitest clinical-dashboard-merge-artifacts + visual-evidence-tabs pass (9); no provider-backed checks run"
+      },
+      {
+        "date": "2026-10-18",
+        "ref": "codex/design-audit-acceptance",
+        "head": "633a8b7a509b6c0863059f09f849a2ec1a58e8ba",
+        "scope": "Automated acceptance follow-up review",
+        "outcome": "Two confirmed automated-edit issues: a missing usePathname mock prevents the new header fixture from rendering, and an already published immutable review was rewritten. Restore the scoped page/provider harness and original record bytes. The test name explicitly limits its contract; no production shell or physical-device coverage is claimed. Corrections verified locally; publication pending.",
+        "checks": "Independent source review and local reproduction: 1 failed, 25 passed at bot head, missing next/navigation usePathname export. Corrected owning suite: 26 passed. Original regression negative control: removing clearQuery left PHQ-9 in the input. Original immutable record restored byte-for-byte against ed3dc82abd26be523d0d643dc7bfd1545587162e. Production source unchanged."
       },
       {
         "date": "2026-07-13",

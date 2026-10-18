@@ -456,6 +456,7 @@ describe.skipIf(process.platform === "win32")("sequential Claude SessionStart", 
     pending = false,
     remote = true,
     runnerFailure: "none" | "process" | "unavailable" = "none",
+    payload = '{"hook_event_name":"SessionStart"}',
   ) {
     const source = sandbox();
     const home = sandbox();
@@ -496,7 +497,7 @@ describe.skipIf(process.platform === "win32")("sequential Claude SessionStart", 
     }
     const result = spawnSync("bash", [join(source, "scripts", "claude-session-start.sh")], {
       encoding: "utf8",
-      input: '{"hook_event_name":"SessionStart"}',
+      input: payload,
       env: {
         ...process.env,
         HOME: home,
@@ -526,6 +527,14 @@ describe.skipIf(process.platform === "win32")("sequential Claude SessionStart", 
       "policy",
       "organisation",
     ]);
+    const context = JSON.parse(result.stdout).hookSpecificOutput.additionalContext;
+    expect(context).toBe("setup\n\nfreshness\n\nissues\n\npolicy\n\norganisation");
+  });
+  it("treats a dependent that exits 0 without reading the payload (EPIPE) as complete", () => {
+    // Larger than a pipe buffer, so writing it to dependents that never read stdin always hits EPIPE.
+    const payload = JSON.stringify({ hook_event_name: "SessionStart", padding: "x".repeat(256 * 1024) });
+    const { result } = fixture("none", false, true, "none", payload);
+    expect(result.status, result.stderr).toBe(0);
     const context = JSON.parse(result.stdout).hookSpecificOutput.additionalContext;
     expect(context).toBe("setup\n\nfreshness\n\nissues\n\npolicy\n\norganisation");
   });
