@@ -4969,6 +4969,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/audit/2026-10-18-merged-pr-resolution.md",
+        "section": "audit",
+        "catalogued": true
+      },
+      {
         "path": "docs/archive/codex-cloud-legacy-profile-2026-10-16.md",
         "section": "archive",
         "catalogued": true
@@ -6281,6 +6286,14 @@
         "scope": "archive issue 105 after browser proof",
         "outcome": "PASS: closure evidence is specific and internally consistent; removed incidental ledger-row reordering",
         "checks": "outstanding-issues guard; Prettier; diff review; zero unresolved threads"
+      },
+      {
+        "date": "2026-10-17",
+        "ref": "HEAD",
+        "head": "0537cc935b86824db40ca0c117894b67638e2d95",
+        "scope": "PR 3628 review and fixes",
+        "outcome": "Found atomic worker-scope, comparator-unit, telemetry-budget, and document-source retention defects; fixes prepared with regression coverage.",
+        "checks": "Independent standards and specification inspection of the pinned PR diff; follow-up working-tree targeted proof 295/295 tests and 10 local SQL scenarios; hosted CI pending."
       },
       {
         "date": "2026-08-06",
@@ -27233,6 +27246,14 @@
         "scope": "prlanded",
         "outcome": "PR #3570 squash-merged as fa526775c6; stable patch-id 87375f76eaf matches branch tip d8eefbb91e with zero orphaned commits",
         "checks": "gh pr view 3570 MERGED; 1-parent squash; git patch-id --stable match"
+      },
+      {
+        "date": "2026-10-18",
+        "ref": "claude/reconcile-ledger-20261016",
+        "head": "fa526775c6ca0751f9609e4fc5133190efa19c16",
+        "scope": "PS-044 provenance correction for PR #3570",
+        "outcome": "Corrects the branch label in a7be2760026da4bc040fa90bf847382bdcded2a8a7510ceaf7be4ac49c042211.record.md: the supplied review identifies claude/reconcile-ledger-20261016, final head d8eefbb91e9e623fcdb9029fade9f3eda661091e and merge fa526775c6ca0751f9609e4fc5133190efa19c16. Original immutable record retained. This correction does not re-run or extend its landed proof.",
+        "checks": "Compared supplied PS-044 correction with the local immutable receipt; no new GitHub request, patch-id execution, CI or deployment verification."
       },
       {
         "date": "2026-08-05",
