@@ -96,13 +96,17 @@ jobs:
           const net = require('node:net');
           const { execFileSync } = require('node:child_process');
           const sockets = new Set();
+          const gateway = process.argv[2] === 'gateway';
+          const listenPort = gateway ? 54321 : 54322;
+          const targetPort = gateway ? 8000 : 5432;
+          const containerFilter = gateway ? 'name=^supabase_kong_' : 'name=^supabase_db_';
           let server, polling;
           const deadline = Date.now() + 300000;
           function start(target) {
-            if (net.isIP(target) !== 4) throw new Error('Expected one inspected IPv4 DB endpoint');
+            if (net.isIP(target) !== 4) throw new Error('Expected one inspected IPv4 endpoint');
             clearInterval(polling);
             server = net.createServer(client => {
-              const upstream = net.connect({ host: target, port: 5432 });
+              const upstream = net.connect({ host: target, port: targetPort });
               sockets.add(client); sockets.add(upstream);
               const close = () => { client.destroy(); upstream.destroy(); sockets.delete(client); sockets.delete(upstream); };
               client.on('error', close); upstream.on('error', close);
@@ -113,22 +117,22 @@ jobs:
             });
             server.maxConnections = 32;
             server.once('error', error => { console.error(error.code); process.exit(1); });
-            server.listen(54322, '127.0.0.1', () => console.log('RELAY_LISTENING_127.0.0.1_54322_TO_INSPECTED_DB_5432'));
+            server.listen(listenPort, '127.0.0.1', () => console.log(`RELAY_LISTENING_127.0.0.1_${listenPort}_TO_INSPECTED_${gateway ? 'GATEWAY' : 'DB'}_${targetPort}`));
           }
           function discover() {
-            if (Date.now() >= deadline) throw new Error('No task-internal local DB appeared within300seconds');
-            const ids = execFileSync(process.env.DB_DIAGNOSTIC_REAL_DOCKER, ['ps','-q','--filter','name=^supabase_db_'], { encoding:'utf8',timeout:5000 }).trim().split(/\s+/).filter(Boolean);
+            if (Date.now() >= deadline) throw new Error('No task-internal target appeared within300seconds');
+            const ids = execFileSync(process.env.DB_DIAGNOSTIC_REAL_DOCKER, ['ps','-q','--filter',containerFilter], { encoding:'utf8',timeout:5000 }).trim().split(/\s+/).filter(Boolean);
             if (!ids.length) return;
-            if (ids.length !== 1) throw new Error('Expected exactly one local emulator DB');
+            if (ids.length !== 1) throw new Error('Expected exactly one local emulator target');
             const state = JSON.parse(execFileSync(process.env.DB_DIAGNOSTIC_REAL_DOCKER, ['inspect',ids[0]], { encoding:'utf8',timeout:5000 }))[0];
             const networks = state.NetworkSettings.Networks;
-            if (JSON.stringify(Object.keys(networks)) !== JSON.stringify([process.env.DB_DIAGNOSTIC_NETWORK])) throw new Error('DB escaped expected internal network');
+            if (JSON.stringify(Object.keys(networks)) !== JSON.stringify([process.env.DB_DIAGNOSTIC_NETWORK])) throw new Error('Target escaped expected internal network');
             const target = networks[process.env.DB_DIAGNOSTIC_NETWORK].IPAddress;
             if (target) start(target);
           }
           const stop = () => { clearInterval(polling); for (const socket of sockets) socket.destroy(); if (server) server.close(); process.exit(0); };
           process.on('SIGTERM', stop); process.on('SIGINT', stop);
-          if (process.argv[2] === 'discover') { discover(); if (!server) polling = setInterval(discover,250); }
+          if (process.argv[2] === 'discover' || gateway) { discover(); if (!server) polling = setInterval(discover,250); }
           else start(process.argv[2]);
           JS
 
@@ -137,6 +141,7 @@ jobs:
         run: docker pull supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83
 
       - name: Prove authenticated internal Postgres TCP and loopback relay
+        id: routing-preflight
         timeout-minutes: 2
         run: |
           set -euo pipefail
@@ -211,6 +216,8 @@ jobs:
           trap restore_bootstrap EXIT
           node "${RUNNER_TEMP}/db-loopback-relay.cjs" discover > "${RUNNER_TEMP}/emulator-relay.log" 2>&1 &
           echo "$!" > "${RUNNER_TEMP}/emulator-relay.pid"
+          node "${RUNNER_TEMP}/db-loopback-relay.cjs" gateway > "${RUNNER_TEMP}/gateway-relay.log" 2>&1 &
+          echo "$!" > "${RUNNER_TEMP}/gateway-relay.pid"
           supabase --network-id "${DB_DIAGNOSTIC_NETWORK}" start
           restore_bootstrap
           trap - EXIT
@@ -242,12 +249,14 @@ jobs:
 
       - name: Regenerate manifest with reviewed exec-only generator and original default image
         id: generate
+        if: ${{ !cancelled() && steps.original-image.outcome == 'success' && steps.routing-preflight.outcome == 'success' }}
         run: |
           cp supabase/drift-manifest.json "${RUNNER_TEMP}/committed-drift-manifest.json"
           npm run drift:manifest -- --no-publish
 
       - name: Verify strict canonical manifest freshness
         id: freshness
+        if: ${{ !cancelled() && steps.generate.outcome == 'success' }}
         run: |
           npm run check:drift-manifest-freshness -- \
             --committed "${RUNNER_TEMP}/committed-drift-manifest.json" \
@@ -315,15 +324,19 @@ jobs:
           set -euo pipefail
           cleanup_status=0
           supabase stop --no-backup || cleanup_status=$?
-          if test -f "${RUNNER_TEMP}/emulator-relay.log"; then
-            tail -n 30 "${RUNNER_TEMP}/emulator-relay.log" | sed -E '/[Pp]assword|[Ss]ecret|[Tt]oken|[Aa]uthorization|[Jj][Ww][Tt]/d'
-          fi
-          if test -f "${RUNNER_TEMP}/emulator-relay.pid"; then
-            relay_pid="$(cat "${RUNNER_TEMP}/emulator-relay.pid")"
-            if ps -p "${relay_pid}" -o args= | grep -Fq "${RUNNER_TEMP}/db-loopback-relay.cjs discover"; then
-              kill "${relay_pid}" 2>/dev/null || true
+          for relay_kind in emulator gateway; do
+            relay_mode=discover
+            if test "${relay_kind}" = gateway; then relay_mode=gateway; fi
+            if test -f "${RUNNER_TEMP}/${relay_kind}-relay.log"; then
+              tail -n 30 "${RUNNER_TEMP}/${relay_kind}-relay.log" | sed -E '/[Pp]assword|[Ss]ecret|[Tt]oken|[Aa]uthorization|[Jj][Ww][Tt]/d'
             fi
-          fi
+            if test -f "${RUNNER_TEMP}/${relay_kind}-relay.pid"; then
+              relay_pid="$(cat "${RUNNER_TEMP}/${relay_kind}-relay.pid")"
+              if ps -p "${relay_pid}" -o args= | grep -Fq "${RUNNER_TEMP}/db-loopback-relay.cjs ${relay_mode}"; then
+                kill "${relay_pid}" 2>/dev/null || true
+              fi
+            fi
+          done
           probe="psychsift-db-route-${GITHUB_RUN_ID}"
           if test "$(docker inspect --format '{{index .Config.Labels "psychsift.task"}}' "${probe}" 2>/dev/null || true)" = canonical-db-route; then
             docker rm -f "${probe}" || cleanup_status=$?
