@@ -743,6 +743,8 @@ def _edge_grid_cells(page, original_rect, extended_rect, column_ranges):
     horizontals, verticals = [], []
     rotation = getattr(page, "rotation_matrix", fitz.Identity)
     for drawing in page.get_drawings():
+        if drawing.get("type") not in ("s", "fs") or drawing.get("color") is None or drawing.get("stroke_opacity", 1) <= 0:
+            continue
         for item in drawing.get("items", []):
             pairs = []
             if item[0] == "l":
@@ -1426,8 +1428,8 @@ def fallback_visual_region(page, image_coverage=0.0, ocr_used=False):
     )
 
 
-# Fraction of a text block's area that must fall inside a detected table grid
-# before the block is treated as table content rather than surrounding prose.
+# Fraction of a native line's area that must fall inside a detected table grid
+# before the line is treated as table content rather than surrounding prose.
 TABLE_BLOCK_CONTAINMENT_RATIO = 0.6
 # If table-aware assembly drops more than this share of the page's characters,
 # detection is assumed to have misfired and the raw reading-order text is kept.
@@ -1442,7 +1444,7 @@ def _dense_length(value):
     return len(re.sub(r"\s+", "", value or ""))
 
 
-def _intact_display_text_pieces(page):
+def _intact_display_text_pieces(page, exclude_rects=None):
     """Keep native lines intact, using displayed geometry only for text assembly.
 
     Native text boxes are unrotated, whereas find_tables() boxes describe the
@@ -1460,6 +1462,10 @@ def _intact_display_text_pieces(page):
             if not text:
                 continue
             rect = fitz.Rect(line["bbox"]) * page.rotation_matrix
+            area = _rect_area(rect)
+            if area > 0 and any(_rect_area(rect & table_rect) / area >= TABLE_BLOCK_CONTAINMENT_RATIO
+                                for table_rect in exclude_rects or []):
+                continue
             lines.append((rect, text))
             direction = line.get("dir", (1, 0))
             needs_layout = needs_layout or abs(direction[0] - 1) > 0.001 or abs(direction[1]) > 0.001
@@ -1516,19 +1522,11 @@ def table_aware_page_text(page, grid_candidates, raw_text=None):
         return raw
 
     try:
-        text_pieces, needs_layout = _intact_display_text_pieces(page)
+        table_rects = [fitz.Rect(candidate["rect"]) for candidate in usable]
+        text_pieces, needs_layout = _intact_display_text_pieces(page, exclude_rects=table_rects)
         if not usable and not needs_layout:
             return raw
-        table_rects = [fitz.Rect(candidate["rect"]) for candidate in usable]
-        pieces = []
-        for rect, body in text_pieces:
-            area = _rect_area(rect)
-            if area > 0 and any(
-                _rect_area(rect & table_rect) / area >= TABLE_BLOCK_CONTAINMENT_RATIO
-                for table_rect in table_rects
-            ):
-                continue
-            pieces.append((rect.y0, rect.x0, body))
+        pieces = [(rect.y0,rect.x0,body) for rect,body in text_pieces]
         for candidate, table_rect in zip(usable, table_rects):
             markdown = (candidate.get("accessible_table_markdown") or "").strip()
             if markdown:
