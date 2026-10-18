@@ -15,14 +15,15 @@ Retention and rotation: [`branch-review-archival-policy.md`](branch-review-archi
 
 ## Summary
 
-- Records: 712
-- Distinct ref cells: 458
-- Distinct reviewed heads: 694
-- Date range: `2026-08-12` to `2026-10-17`
+- Records: 726
+- Distinct ref cells: 464
+- Distinct reviewed heads: 707
+- Date range: `2026-08-12` to `2026-10-18`
 
 Records per date, newest first:
 
-- `2026-10-17` — 6 records
+- `2026-10-18` — 8 records
+- `2026-10-17` — 12 records
 - `2026-10-16` — 7 records
 - `2026-10-15` — 3 records
 - `2026-10-14` — 1 record
@@ -79,11 +80,25 @@ Scope and outcome are truncated; follow the record link for the full six-cell ro
 
 | Date | Ref | Scope | Outcome | Record |
 | --- | --- | --- | --- | --- |
+| 2026-10-18 | codex/design-audit-acceptance | Design audit acceptance follow-up (supersedes 2026-10-18) | Wording correction only (CodeRabbit). Railway deployment status was ve… | [0f870b9a](branch-review-records/0f870b9af5a6c1a2295cb7d9462fa0126769cbf78d566bdff78f8e468bce23d0.record.md) |
+| 2026-10-18 | main | PR 3632 landed-content verification | PR was externally squash-merged during the review at 2026-10-18T05:13:… | [2c05f34a](branch-review-records/2c05f34aa08168b0caac1ae79287955541f16c3f91d5a00f2df4c34e0b3223ff.record.md) |
+| 2026-10-18 | codex/agent-policy-delivery-20261017 | current-head residual hook and managed-guidance repair | Independent review: no confirmed blocking finding in six-file residual… | [2fe7bb2f](branch-review-records/2fe7bb2f3b87b710b26cd25245660dea4b6dc4d7e6d2fcb8cd228e41aef2b09f.record.md) |
+| 2026-10-18 | codex/agent-policy-delivery-20261017 | complete container evidence bound and verification preservation | Independent corrected-diff acceptance: no confirmed blocker. Complete… | [479f91d1](branch-review-records/479f91d15b90c2a4011b808f31960d356d8602298dd84b059c6004a4516f0336.record.md) |
+| 2026-10-18 | codex/agent-policy-delivery-20261017 | container evidence helper trigger correction | Independent scoped acceptance: no confirmed blocker. Helper-only chang… | [611d5dd4](branch-review-records/611d5dd408f6ba42ed7c869a095389b8ef918a511c6cb3020774e633bbdecd5f.record.md) |
+| 2026-10-18 | codex/design-audit-resolution | CI failure and merge-safety review | No confirmed code/CI blocker. Historical failures repaired in publishe… | [c170fe7a](branch-review-records/c170fe7a3e64c79da528e48e7c39626e4afc9bfd7ceffaf8a1a6b1747cd0e7af.record.md) |
+| 2026-10-18 | codex/design-audit-acceptance | Design audit acceptance follow-up | Independent scoped adversarial review found no confirmed defect in the… | [cdadbdc7](branch-review-records/cdadbdc777c94ee4285dddd1e039765c54d9714fd9c08f1b5b7d9bbc07f21d22.record.md) |
+| 2026-10-18 | codex/design-audit-acceptance | Automated acceptance follow-up review | Two confirmed automated-edit issues: a missing usePathname mock preven… | [e3261b42](branch-review-records/e3261b4213a536fc48f788e20f3bd7a7e7baecc818190ef9e5b875b6087d43f5.record.md) |
 | 2026-10-17 | docs/audit-remediation-20261014 | prlanded | Verified PR #3544 squash-merged at def6fabcc8235e8592fea2613d07170e23d… | [0dbb74fa](branch-review-records/0dbb74fa24e427d3d012744657555374a0da336ad41ba1439663c24cf88e5342.record.md) |
 | 2026-10-17 | codex/cloud-policy-clarity | prlanded | PR #3581 (a5b118f952) and PR #3587 (7c719b2bc4) squash-merged cleanly… | [16df9092](branch-review-records/16df90928a34e2941ef9c2892b7f48d92e09e12f470af635ef15e4ee3677b0b9.record.md) |
+| 2026-10-17 | codex/design-audit-resolution | adversarial correction review | Both introduced P2 defects repaired; independent corrective review fou… | [1a9da0d4](branch-review-records/1a9da0d496a77e27a013ec20673df9cf5102e924765b188fb113953c8574ea72.record.md) |
 | 2026-10-17 | claude/rag-ingestion-hardening | prlanded | PR #3596 squash-merged cleanly into main at 45fc04c42f0867bc9802ffc93f… | [1ae2c7f8](branch-review-records/1ae2c7f8f7762d8e1d81898ed83a701be7cbd007c80be5a3d83e39470ced9461.record.md) |
+| 2026-10-17 | fix/final-non-design-recommendations-20261017 | Telemetry switch & wire for generation degradation (#231), CAMHS crisis support lines (#8C… | Adversarial review completed; all 3 findings remediated; zero UI/desig… | [38575cd6](branch-review-records/38575cd685617fb6c6ed064429801945d31810ca690ea36da9cafb7e8e3e2915.record.md) |
 | 2026-10-17 | claude/rag-ingestion-hardening | RAG retrieval/summary/cache generation isolation and ingestion worker/edge hardening | resolved | [5349150e](branch-review-records/5349150e82f255e42866975fa7aa5e9fe76601433ebc427c75226677c5bef854.record.md) |
+| 2026-10-17 | codex/design-audit-resolution | adversarial review of settled design audit changes | Two introduced P2 interaction defects reproduced and repaired before p… | [8f2296de](branch-review-records/8f2296de123e06f0430a7b841f8492f7573d6382a2c6be2e536b193e8645b11a.record.md) |
 | 2026-10-17 | claude/rag-ingestion-hardening | RAG and Ingestion review follow-ups | Resolved PR review findings, repaired bot-applied regressions, and res… | [94a7d790](branch-review-records/94a7d7908ea7ff58edaecb6ebd9fd41f72d422ad6d345190046cfd5ed2d4372d.record.md) |
+| 2026-10-17 | HEAD | PR 3628 review and fixes | Found atomic worker-scope, comparator-unit, telemetry-budget, and docu… | [98cae095](branch-review-records/98cae095170833559454abb42fc538e3a295a1536724bbf956e26b442827879b.record.md) |
+| 2026-10-17 | PR #3609 (claude/reconcile-inbox-20261017) | Reconcile 21 pending inbox requests and bundle prlanded review records for PRs #3567, #357… | landed (squash-merged into main as 679d2bfeb8fb2082a09ae75009bc07d4547… | [9c60effa](branch-review-records/9c60effaeedf2efcb19b772b7c36053aca9b50bc090abb3fc564f9c96ea3f8b1.record.md) |
+| 2026-10-17 | codex/design-audit-resolution | concurrent automated review integration | Two Therapy P2 regressions in automated follow-up reproduced and repai… | [de814fe9](branch-review-records/de814fe974a6169563899e3eb5707bc3c1ffa98ef2783f8f983f7df6274bbd9b.record.md) |
 | 2026-10-17 | claude/add-prlanded-skill | Canonical prlanded skill and landed ledger records | PASS (0 blocking findings; added .agents/skills/prlanded canonical ski… | [e60fd2b5](branch-review-records/e60fd2b5f608cf1e9d5bbabab48952b87feff63f27ad911b96a1e9fc22250fa7.record.md) |
 | 2026-10-16 | claude/swarm-12-remaining-20261016 | prlanded | PR #3573 squash-merged as 24eeea365e; two-dot diff and stable patch-id… | [05e48734](branch-review-records/05e48734fb477ce17ef2f6b85df92af8aaf4e7c8281586c9e87ea8f873af629a.record.md) |
 | 2026-10-16 | fix/adversarial-remediation-20261016 | Adversarial assessment + parallel fix swarm + post-fix adversarial review across calculato… | All P0/P1/P2 findings fixed and verified; zero RAG files touched | [2a6b6200](branch-review-records/2a6b620065f5371039438fdbff73be97da6baf6c40dace3596e26c7bad0047dd.record.md) |
@@ -800,6 +815,7 @@ this section stays short. Grouping is best-effort: ref cells are free text.
 
 | Ref | Head | Records |
 | --- | --- | --- |
+| codex/design-audit-acceptance | `2900a636` | 2026-10-18 [cdadbdc7](branch-review-records/cdadbdc777c94ee4285dddd1e039765c54d9714fd9c08f1b5b7d9bbc07f21d22.record.md), 2026-10-18 [0f870b9a](branch-review-records/0f870b9af5a6c1a2295cb7d9462fa0126769cbf78d566bdff78f8e468bce23d0.record.md) |
 | codex/chat-selective-railway-previews-b95c | `aa2cd554` | 2026-09-22 [383a4235](branch-review-records/383a4235f5ed25e18d6e9a1f50dc6cadfb08ec6283831517962201f77b0fb1ec.record.md), 2026-09-22 [285ec2e4](branch-review-records/285ec2e41ed6da36d001e71db724f91c1b65a9bfae987b5deff765154760122d.record.md) |
 | claude/phase-5-closeout | `c3ca68fa` | 2026-08-21 [da9eaddd](branch-review-records/da9eadddac4befebc995b1000caa73f1fa0ced0d25d52b5789223410bac06c08.record.md), 2026-08-21 [4dd785f6](branch-review-records/4dd785f6a227e847467c76e68e4c08df2fc9394343295e0985c70bd306ab2861.record.md) |
 | claude/services-navigation-removal-7bnknn (PR #2040) | `e0c3f640` | 2026-08-17 [db385c81](branch-review-records/db385c8181a9620272ece6df071f3b5afabd6085d21755f30dddf9e6e0ffaf10.record.md), 2026-08-17 [02471c51](branch-review-records/02471c51928a64ed4d9010f91d3c62ef5391134683ddd67a7652b9e8d45621ac.record.md) |
