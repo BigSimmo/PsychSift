@@ -61,7 +61,9 @@ describe("container delivery contract", () => {
     expect(dockerfile).toMatch(/^ARG NEXT_PUBLIC_SUPABASE_URL\s*$/m);
     expect(dockerfile).not.toMatch(/^ARG NEXT_PUBLIC_SUPABASE_URL=/m);
     expect(dockerfile).toMatch(/if \[ -z "\$\{NEXT_PUBLIC_SUPABASE_URL\}" \]; then[\s\S]*?exit 1/);
-    expect(read(".github/workflows/docker-image.yml")).toMatch(/^\s*NEXT_PUBLIC_SUPABASE_URL=https:\/\/\S+\.supabase\.co\s*$/m);
+    expect(read(".github/workflows/docker-image.yml")).toMatch(
+      /^\s*NEXT_PUBLIC_SUPABASE_URL=https:\/\/\S+\.supabase\.co\s*$/m,
+    );
     expect(read("scripts/build-multiplatform.sh")).toContain('--build-arg "NEXT_PUBLIC_SUPABASE_URL=');
   });
 
