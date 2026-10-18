@@ -78,7 +78,7 @@ case "$tool_name" in
 esac
 
 # --- is this a push? ----------------------------------------------------------
-printf '%s' "$command_text" | grep -Eq '(^|[;&|[:space:]])git([[:space:]]+(-[Cc][[:space:]]+("[^"]*"|[^[:space:]]+)|--?[[:alnum:]-]+(=[^[:space:]]*)?))*[[:space:]]+push([[:space:]]|$)' || exit 0
+printf '%s' "$command_text" | grep -Eq '(^|[;&|[:space:]])git([[:space:]]+(-[Cc][[:space:]]*("[^"]*"|'"'"'[^'"'"']*'"'"'|[^[:space:]]+)|--?[[:alnum:]-]+(=[^[:space:]]*)?))*[[:space:]]+push([[:space:]]|$)' || exit 0
 
 # --- documented escape hatch (leading prefix only, not an incidental mention) --
 printf '%s' "$command_text" \

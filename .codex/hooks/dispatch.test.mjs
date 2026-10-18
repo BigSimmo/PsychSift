@@ -98,6 +98,9 @@ test("only relevant canonical actions are planned", () => {
     'git -C "C:/My Repo" push',
     "git -c core.hooksPath=x push",
     "git --no-pager push",
+    "git -C '/tmp/My Repo' push",
+    "git -C/tmp/repo push",
+    'git -C"/tmp/My Repo" push',
   ])
     assert.equal(
       plan("PreToolUse", payload("Bash", { command: cmd }))[0]?.file,
