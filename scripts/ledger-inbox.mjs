@@ -529,8 +529,10 @@ function assertReopenIdentity(markdown, request) {
   const { id, targetUlid } = request.payload ?? {};
   if (request.action !== "reopen" || !targetUlid || !id) return;
   const rows = parseIssues(markdown).rows;
-  const idOwner = rows.find((entry) => normalizeIssueDisplayId(entry.id) === normalizeIssueDisplayId(id));
-  if (idOwner && idOwner.ulid !== targetUlid) {
+  // Every row carrying this display id must belong to targetUlid; a duplicate
+  // display id owned by another issue makes the reopen ambiguous.
+  const idOwners = rows.filter((entry) => normalizeIssueDisplayId(entry.id) === normalizeIssueDisplayId(id));
+  if (idOwners.some((entry) => entry.ulid !== targetUlid)) {
     throw new Error(`ledger request rejected: reopen id ${id} and targetUlid ${targetUlid} name different issues`);
   }
   const row = rows.find((entry) => entry.ulid === targetUlid);

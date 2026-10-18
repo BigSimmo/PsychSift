@@ -46,7 +46,12 @@ export async function loadDocumentSummaryContext(documentId: string, ownerId?: s
       null,
     );
   }
-  chunksQuery = chunksQuery.order("chunk_index", { ascending: true }).limit(40);
+  // Committed-generation rows sort ahead of legacy NULL-generation rows so the
+  // 40-row cap cannot be filled by legacy chunks alone.
+  chunksQuery = chunksQuery
+    .order("index_generation_id", { ascending: true, nullsFirst: false })
+    .order("chunk_index", { ascending: true })
+    .limit(40);
   if (signal) chunksQuery = chunksQuery.abortSignal(signal);
   const { data: chunks, error } = await chunksQuery;
 

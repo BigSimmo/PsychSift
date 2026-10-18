@@ -99,6 +99,7 @@ describe("document summary context", () => {
     expect(documentQuery.eq).toHaveBeenCalledWith("owner_id", ownerId);
     expect(documentQuery.abortSignal).toHaveBeenCalledWith(controller.signal);
     expect(chunkQuery.or).toHaveBeenCalledWith("index_generation_id.is.null,index_generation_id.eq.generation-current");
+    expect(chunkQuery.order).toHaveBeenCalledWith("index_generation_id", { ascending: true, nullsFirst: false });
     expect(chunkQuery.order).toHaveBeenCalledWith("chunk_index", { ascending: true });
     expect(chunkQuery.limit).toHaveBeenCalledWith(40);
     expect(chunkQuery.abortSignal).toHaveBeenCalledWith(controller.signal);

@@ -48,6 +48,7 @@ export function useDashboardBulkActions({
       setBulkActionStatus(null);
       let succeeded = 0;
       let failed = 0;
+      let submitted = 0;
       let lastEpoch: number | null = null;
       try {
         for (let offset = 0; offset < selectedDocumentIds.length; offset += 10) {
@@ -69,13 +70,20 @@ export function useDashboardBulkActions({
           const summary = summarizeBulkReindexPayload(payload);
           succeeded += summary.succeeded;
           failed += summary.failed;
+          submitted = Math.min(offset + 10, selectedDocumentIds.length);
           setBulkActionStatus(
             `Bulk reindex: ${succeeded} queue request${succeeded === 1 ? "" : "s"} succeeded; ${failed} failed.`,
           );
         }
       } catch (error) {
         if (isAbortError(error)) return;
-        setBulkActionStatus(error instanceof Error ? error.message : errorCopy.bulkReindexFailed);
+        const message = error instanceof Error ? error.message : errorCopy.bulkReindexFailed;
+        // Keep earlier batch totals visible when a later batch fails.
+        setBulkActionStatus(
+          submitted > 0
+            ? `${message} (bulk reindex: ${succeeded} succeeded; ${failed} failed; ${selectedDocumentIds.length - submitted} not queued).`
+            : message,
+        );
       } finally {
         // Earlier batches remain queued even when a later batch fails.
         if (succeeded > 0 && lastEpoch !== null && isAuthEpochCurrent(lastEpoch)) {
