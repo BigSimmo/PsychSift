@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-17T12:36:45.338Z",
+  "generated_at": "2026-10-17T18:37:12.668Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "0f466b3c08396bd4568810c8d493f53ff29cd37b30e3b850f71acd94db9db4e0",
-  "replay_seconds": 43,
+  "schema_sha256": "6e5913909f23c2e627413a4fcce0508e2002f129b958eafd27868ed5ab0f8b6a",
+  "replay_seconds": 18,
   "snapshot": {
     "views": [
       {
@@ -18635,6 +18635,14 @@
         ],
         "def_hash": "0d1f396d2b8eabcfd5902f0c326b6559",
         "signature": "public.claim_indexing_v3_agent_jobs(text,integer,integer)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "8d0a15ae0b00bcfd8b0d9701287d48d2",
+        "signature": "public.claim_ingestion_jobs(text,integer,integer,uuid[],text[])"
       },
       {
         "acl": [

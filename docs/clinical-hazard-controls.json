@@ -199,6 +199,13 @@
       "expiresOn": "2026-10-21"
     },
     {
+      "path": "tests/answer-verification.test.ts",
+      "reason": "PR #3628 adds regression tests for the 'no more than' comparator/unit parsing in src/lib/answer-verification.ts (itself under the existing PR #3546 drift exception). Engineering drift exception per owner ruling 2026-10-18: the owner will review and reseal this test file before this exception expires. Not a clinical review, sign-off or reseal.",
+      "recordedBy": "Engineering, Grok Bot sweep session for PR #3628, per owner ruling 2026-10-18. Engineering drift record only; not clinical-owner approval or release signoff.",
+      "recordedOn": "2026-10-18",
+      "expiresOn": "2026-12-02"
+    },
+    {
       "path": "src/lib/clinical-safety.ts",
       "reason": "Drift predates the blocking gate. Safety-behaviour changes since the 2026-08-23 review (e.g. 41b5a025a escalate/monitoring matching, 64db243a9 stop-instruction labelling, 1aa717e88 no all-clear over a failed medication check) need clinical re-review, then a re-seal.",
       "recordedBy": "Engineering, Claude session 2026-09-25. Not a clinical review; the owner must re-review.",

@@ -324,6 +324,95 @@ describe("rejected claim terminal transition", () => {
 });
 
 describe("worker claim rejection isolation", () => {
+  it("passes scope into the atomic claim without a preflight queue read", async () => {
+    const { createWorkerRuntime } = await import("../worker/main");
+    const good = claimedRow();
+    vi.stubEnv("WORKER_ALLOWED_DOCUMENT_IDS", ` ${good.document_id.toUpperCase()} `);
+    vi.stubEnv("WORKER_ALLOWED_FILE_TYPES", " TEXT/PLAIN; charset=utf-8 ");
+    const from = vi.fn(() => {
+      throw new Error("scope must not use a queue snapshot");
+    });
+    const rpc = vi.fn(async (_name: string, args: Record<string, unknown>) => {
+      good.locked_by = String(args.p_worker_id);
+      good.documents.file_type = "text/plain";
+      return { data: [good], error: null };
+    });
+    try {
+      const runtime = createWorkerRuntime({ client: { rpc, from } as unknown as SupabaseClient });
+      expect(await runtime.claimJobs()).toEqual([good]);
+      expect(from).not.toHaveBeenCalled();
+      expect(rpc).toHaveBeenCalledWith(
+        "claim_ingestion_jobs",
+        expect.objectContaining({
+          p_allowed_document_ids: [good.document_id],
+          p_allowed_file_types: ["text/plain"],
+        }),
+      );
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it.each([
+    { WORKER_ALLOWED_DOCUMENT_IDS: "," },
+    { WORKER_ALLOWED_DOCUMENT_IDS: " , , " },
+    { WORKER_ALLOWED_FILE_TYPES: ",," },
+    { WORKER_ALLOWED_DOCUMENT_IDS: "doc-1", WORKER_ALLOWED_FILE_TYPES: " , " },
+  ])("claims nothing, rather than every job, for a malformed allowlist: %j", async (scope) => {
+    const { createWorkerRuntime } = await import("../worker/main");
+    const { resolveWorkerClaimScopeFilter, isPreClaimCandidateAllowed } = await import("../worker/behavior");
+    const filter = resolveWorkerClaimScopeFilter(scope);
+    expect(filter).toMatchObject({ active: true, claimsNothing: true });
+    expect(isPreClaimCandidateAllowed({ document_id: "doc-1", file_type: "text/plain" }, filter)).toBe(false);
+    for (const [name, value] of Object.entries(scope)) vi.stubEnv(name, value);
+    const rpc = vi.fn(async () => ({ data: [claimedRow()], error: null }));
+    try {
+      const runtime = createWorkerRuntime({ client: { rpc } as unknown as SupabaseClient });
+      expect(await runtime.claimJobs()).toEqual([]);
+      expect(rpc).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("rejects a non-UUID document ID before the uuid[] claim RPC and reports it once", async () => {
+    const { createWorkerRuntime } = await import("../worker/main");
+    const { resolveWorkerClaimScopeFilter } = await import("../worker/behavior");
+    const valid = claimedRow().document_id;
+    for (const value of ["not-a-uuid", `${valid}, doc-1`]) {
+      expect(resolveWorkerClaimScopeFilter({ WORKER_ALLOWED_DOCUMENT_IDS: value })).toMatchObject({
+        active: true,
+        claimsNothing: true,
+        configurationError: expect.stringContaining("non-UUID"),
+      });
+    }
+    expect(resolveWorkerClaimScopeFilter({ WORKER_ALLOWED_DOCUMENT_IDS: valid.toUpperCase() })).toMatchObject({
+      claimsNothing: false,
+      configurationError: null,
+    });
+    vi.stubEnv("WORKER_ALLOWED_DOCUMENT_IDS", `${valid}, doc-1`);
+    const rpc = vi.fn(async () => ({ data: [claimedRow()], error: null }));
+    const report = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const runtime = createWorkerRuntime({ client: { rpc } as unknown as SupabaseClient });
+      expect(await runtime.claimJobs()).toEqual([]);
+      expect(await runtime.claimJobs()).toEqual([]);
+      expect(rpc).not.toHaveBeenCalled();
+      expect(report).toHaveBeenCalledTimes(1);
+      expect(String(report.mock.calls[0]?.[0])).toContain("doc-1");
+    } finally {
+      report.mockRestore();
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("treats blank allowlists as unset", async () => {
+    const { resolveWorkerClaimScopeFilter } = await import("../worker/behavior");
+    expect(
+      resolveWorkerClaimScopeFilter({ WORKER_ALLOWED_DOCUMENT_IDS: "", WORKER_ALLOWED_FILE_TYPES: "  " }),
+    ).toMatchObject({ active: false, claimsNothing: false });
+  });
+
   it.each([
     { data: { ok: false, reason: "lease_lost" }, error: null },
     { data: null, error: { message: "synthetic transport failure" } },

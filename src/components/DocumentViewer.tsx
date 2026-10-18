@@ -15,6 +15,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { documentDisplayTitle } from "@/components/DocumentOrganizationBadges";
 import { ContextualBackLink } from "@/components/contextual-back-link";
+import { documentFileKindFromType } from "@/components/clinical-dashboard/document-ui";
 import { useActiveScrollOwner } from "@/components/clinical-dashboard/use-active-scroll-owner";
 import { PhoneHeaderCollapsePortal } from "@/components/clinical-dashboard/phone-header-collapse-portal";
 import { useDocumentViewerChromeScroll } from "@/components/clinical-dashboard/use-document-viewer-chrome-scroll";
@@ -1010,6 +1011,7 @@ export function DocumentViewer({
   const generatedAnswerIsSummary = summaryQuery === documentSummaryQuestion;
   const storedSummaryText = document?.summary?.summary ?? null;
   const documentLabels = document?.labels;
+  const viewerFileKind = documentFileKindFromType(document?.file_type, document?.file_name, "PDF");
   const formattedStoredSummary = useMemo(() => formatDocumentSummary(storedSummaryText), [storedSummaryText]);
   const summaryBadges = useMemo(
     () => buildDocumentSummaryBadges({ labels: documentLabels, summaryText: storedSummaryText }),
@@ -1332,7 +1334,7 @@ export function DocumentViewer({
                   <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--surface-subtle)] text-[color:var(--text-muted)]">
                     <ExternalLink aria-hidden="true" className="h-4 w-4" />
                   </span>
-                  Open original PDF
+                  {`Open original ${viewerFileKind}`}
                 </a>
               ) : (
                 <a
@@ -1343,7 +1345,7 @@ export function DocumentViewer({
                   <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--surface-subtle)] text-[color:var(--text-muted)]">
                     <ExternalLink aria-hidden="true" className="h-4 w-4" />
                   </span>
-                  Open original PDF
+                  {`Open original ${viewerFileKind}`}
                 </a>
               )}
               <button
@@ -1362,7 +1364,7 @@ export function DocumentViewer({
                     <Download aria-hidden="true" className="h-4 w-4" />
                   )}
                 </span>
-                {downloadingSource ? "Preparing PDF" : "Download PDF"}
+                {downloadingSource ? `Preparing ${viewerFileKind}` : `Download ${viewerFileKind}`}
               </button>
             </div>
             {canUseAdministrativeApis ? (
@@ -1476,7 +1478,7 @@ export function DocumentViewer({
                     src={previewFrameSource}
                     controls={pdfFrameControls}
                     {...(effectiveLoadingDocument
-                      ? { state: "loading" as const, loadingLabel: "Preparing PDF preview" }
+                      ? { state: "loading" as const, loadingLabel: `Preparing ${viewerFileKind} preview` }
                       : effectiveViewerError || previewError
                         ? {
                             state: "error" as const,
@@ -1488,7 +1490,7 @@ export function DocumentViewer({
                       effectiveLoadingDocument ? (
                         <ul className="mt-3 space-y-1 text-left text-xs font-medium text-[color:var(--text-muted)]">
                           <li>Loading source metadata</li>
-                          <li>Preparing PDF preview</li>
+                          <li>{`Preparing ${viewerFileKind} preview`}</li>
                           <li>Loading extracted tables</li>
                         </ul>
                       ) : undefined
@@ -1498,7 +1500,7 @@ export function DocumentViewer({
                         {signedUrl ? (
                           <a href={signedUrl} target="_blank" rel="noreferrer" className={secondaryButton}>
                             <ExternalLink aria-hidden="true" className="h-4 w-4" />
-                            Source PDF
+                            {`Source ${viewerFileKind}`}
                           </a>
                         ) : null}
                         {downloadSignedUrl ? (
@@ -1513,7 +1515,7 @@ export function DocumentViewer({
                             ) : (
                               <Download aria-hidden="true" className="h-4 w-4" />
                             )}
-                            {downloadingSource ? "Preparing PDF" : "Download PDF"}
+                            {downloadingSource ? `Preparing ${viewerFileKind}` : `Download ${viewerFileKind}`}
                           </button>
                         ) : null}
                       </>

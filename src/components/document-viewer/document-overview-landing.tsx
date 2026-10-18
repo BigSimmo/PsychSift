@@ -9,7 +9,7 @@ import {
   DocumentActionButton,
   DocumentFileTile,
   DocumentMetaRow,
-  documentFileKind,
+  documentFileKindFromType,
   documentTileTone,
 } from "@/components/clinical-dashboard/document-ui";
 import { cn, panel, floatingControl, ignoreUnavailableActivation, primaryControl } from "@/components/ui-primitives";
@@ -20,7 +20,7 @@ const primaryButton = primaryControl;
 const secondaryButton = floatingControl;
 
 function compactDocumentType(document: ClinicalDocument) {
-  return documentFileKind(document.file_name, "PDF");
+  return documentFileKindFromType(document.file_type, document.file_name, "PDF");
 }
 
 // Derive the header eyebrow from the document's real type instead of asserting

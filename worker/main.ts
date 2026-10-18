@@ -88,6 +88,9 @@ import {
   runIngestionPreparedWork,
   writeIngestionTableFacts,
   visionImageRejectionSkipReason,
+  resolveWorkerClaimScopeFilter,
+  isPreClaimCandidateAllowed,
+  isClaimableIngestionJobCandidate,
 } from "./behavior";
 import { WorkerRuntimeControl, WorkerAbortError } from "./runtime-control";
 import { runWorkerLoop } from "./run-loop";
@@ -106,6 +109,9 @@ export {
   dataPlaneAbortSignal,
   withControlPlaneAbortClient,
   isWorkerClaimLoopPaused,
+  resolveWorkerClaimScopeFilter,
+  isPreClaimCandidateAllowed,
+  isClaimableIngestionJobCandidate,
 };
 import {
   captureGenerationImages,
@@ -391,8 +397,19 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
 
   // The declared JobRow[] return is the compile-time proof that the claim contract's
   // inferred row type stays assignable to JobRow — weakening the schema fails here.
+  let reportedClaimScopeError: string | null = null;
   async function claimJobs(stopSignal?: AbortSignal): Promise<JobRow[]> {
     if (isWorkerClaimLoopPaused(process.env)) {
+      return [];
+    }
+    const scopeFilter = resolveWorkerClaimScopeFilter(process.env);
+    // A malformed allowlist (e.g. "," or a non-UUID ID) must never fall through to the
+    // unscoped claim, nor reach the uuid[] RPC parameter and fail every poll.
+    if (scopeFilter.claimsNothing) {
+      if (scopeFilter.configurationError !== reportedClaimScopeError) {
+        reportedClaimScopeError = scopeFilter.configurationError;
+        console.error(`Worker claim scope rejected; claiming no jobs: ${scopeFilter.configurationError}`);
+      }
       return [];
     }
     const { data, error } = await supabase
@@ -400,6 +417,12 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
         p_worker_id: workerId,
         p_claim_limit: env.WORKER_CONCURRENCY,
         p_stale_after_minutes: env.WORKER_STALE_AFTER_MINUTES,
+        ...(scopeFilter.active
+          ? {
+              p_allowed_document_ids: scopeFilter.allowedDocumentIds.size ? [...scopeFilter.allowedDocumentIds] : null,
+              p_allowed_file_types: scopeFilter.allowedFileTypes.size ? [...scopeFilter.allowedFileTypes] : null,
+            }
+          : {}),
       })
       .abortSignal(controlPlaneAbortSignal(stopSignal ?? activeStopSignal));
 
