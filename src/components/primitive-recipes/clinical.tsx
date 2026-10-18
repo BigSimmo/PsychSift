@@ -23,7 +23,7 @@ import { cn, panelSubtle, toneDanger, toneInfo, toneSuccess, toneWarning } from 
  */
 export type SourceMetadataInput = Partial<ClinicalSourceMetadata> | null;
 
-export const sourceCard = `${panelSubtle} transition hover:border-[color:var(--border-strong)] hover:shadow-[var(--shadow-hover)]`;
+export const sourceCard = `${panelSubtle} transition hover:border-[color:var(--border-strong)] hover:shadow-[var(--e3)]`;
 // Answer "Sources" capsule. `sourceCapsuleHit` is an invisible tap-sized WCAG touch
 // target that wraps the compact visible pill `sourceCapsule` (`.source-capsule-face`),
 // so the control reads smaller and lighter without shrinking the tap area. Hover,

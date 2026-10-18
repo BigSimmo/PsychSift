@@ -120,14 +120,15 @@ export function WorkRail({
                 aria-current={current ? "true" : undefined}
                 data-mode-identity={WORK_AREAS[entry.id].identity}
                 data-testid={`work-rail-area-${entry.id}`}
-                title={entry.label}
+                title={count && count.total > 0 ? `${entry.label}, ${workSideCountLabel(count)}` : entry.label}
                 className="work-rail__item"
               >
                 <span className="work-rail__pill" aria-hidden="true">
                   <Icon aria-hidden="true" className="size-icon-sm" strokeWidth={2} />
                   {count && count.total > 0 ? (
                     <em className="work-rail__count" data-overdue={count.overdue > 0 ? "true" : undefined}>
-                      {workSideBadgeText(count.total)}
+                      {/* Only overdue items carry urgency; the title and accessible name retain both exact counts. */}
+                      {workSideBadgeText(count.overdue > 0 ? count.overdue : count.total)}
                     </em>
                   ) : null}
                 </span>

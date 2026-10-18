@@ -90,6 +90,7 @@ import { AnswerCrisisBanner } from "@/components/clinical-dashboard/answer-crisi
 import { EmergencyProtocolBanner } from "@/components/clinical-dashboard/emergency-protocol-banner";
 import { selectEmergencyProtocolsForSurface } from "@/lib/emergency-protocols";
 import { requestAnswerStream } from "@/components/clinical-dashboard/answer-request";
+import { RegistryModeNav } from "@/components/mode-nav/registry-mode-nav";
 import { MasterSearchHeader } from "@/components/clinical-dashboard/master-search-header";
 import { PhoneFooterLayerFrame } from "@/components/clinical-dashboard/phone-footer-layer-portal";
 import { UniversalSearchAlsoMatches } from "@/components/clinical-dashboard/universal-search-also-matches";
@@ -164,6 +165,7 @@ import {
   type SearchError,
 } from "@/components/clinical-dashboard/search-utils";
 import {
+  appModeDefinition,
   appModeQueryMode,
   appModeHomeHref,
   appModeResultKind,
@@ -2587,7 +2589,7 @@ function ClinicalDashboardContent({
                 : "mb-0",
           )}
         >
-          <h1 className="sr-only">PsychSift</h1>
+          <h1 className="sr-only">{appModeDefinition(searchMode).label}</h1>
           {privateScopeStatus === "unavailable" ? (
             // Lives inside <main> (not as a header sibling): in the answer view
             // the header is absolute, so a sibling alert would reflow to the
@@ -2830,6 +2832,13 @@ function ClinicalDashboardContent({
                   // its own route (/tools, /favourites, /dsm, …).
                   // One grid item, so a tall canvas cannot split the home and its line into two rows.
                   <div className="relative w-full">
+                    {searchMode === "therapy-compass" ? (
+                      <RegistryModeNav
+                        modeId="therapy-compass"
+                        activeId="search"
+                        searchParamString={searchParams.toString()}
+                      />
+                    ) : null}
                     <SharedHomeEmptyState
                       modeId={searchMode}
                       desktopComposerSlotId={desktopHomeComposerSlotId}

@@ -364,7 +364,7 @@ function CommandDropdown({
       className={cn(
         // text-left: the hero composer slot sits inside the centred mode-home
         // template, so without it the section headings inherit text-center.
-        "universal-command-dropdown absolute left-0 right-0 z-30 overflow-hidden rounded-2xl border border-[color:var(--border-strong)] bg-[color:var(--surface)] text-left shadow-[var(--shadow-elevated)]",
+        "universal-command-dropdown absolute left-0 right-0 z-30 overflow-hidden rounded-2xl border border-[color:var(--border-strong)] bg-[color:var(--surface)] text-left shadow-[var(--e4)]",
         opensUpward ? "bottom-[calc(100%+0.5rem)] top-auto" : "top-[calc(100%+0.5rem)]",
         placement === "bottom-dock" ? "hidden sm:block" : "hidden lg:block",
       )}
@@ -1201,18 +1201,6 @@ export function UniversalSearchCommandSurface({
       )}
     >
       <SmartIntentCue active={smartNaturalSearch} modeLabel={mode.label} />
-      {smartNaturalSearch ? null : (
-        // The phone ticker demonstrates an ordinary example search. It does
-        // not depend on Clinical Ask or a provider flag, and it is home-only.
-        <ExampleTicker
-          examples={config.examples}
-          showPhoneTicker={showPhoneSuggestionTicker}
-          onPickExample={(example) => {
-            onQueryChange(example);
-            onFocusSearchInput?.();
-          }}
-        />
-      )}
       <div
         className="relative w-full"
         onKeyDownCapture={(event) => {
@@ -1273,6 +1261,18 @@ export function UniversalSearchCommandSurface({
           />
         ) : null}
       </div>
+      {smartNaturalSearch ? null : (
+        // The phone ticker demonstrates an ordinary example search. It does
+        // not depend on Clinical Ask or a provider flag, and it is home-only.
+        <ExampleTicker
+          examples={config.examples}
+          showPhoneTicker={showPhoneSuggestionTicker}
+          onPickExample={(example) => {
+            onQueryChange(example);
+            onFocusSearchInput?.();
+          }}
+        />
+      )}
       {showHomeSuggestions ? (
         <SmartPromptRow
           modeId={modeId}

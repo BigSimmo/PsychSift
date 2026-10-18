@@ -39,21 +39,24 @@
   --mode-band-line: color-mix(in srgb, var(--mode-identity) 26%, var(--background));
 }
 
-/* The faint mode icon. Large on purpose and cropped by the band's right and
-   bottom edge (owner, 5 Oct 05:55 UTC: "big and extending, not shrunk"). */
+/* Decorative artwork stays clear of navigation (owner audit, 17 Oct 2026). */
 .mode-band__mark {
   position: absolute;
-  /* The icon is 8.125rem square, with its right 2.125rem cropped. The box
-     stops at the band's edge and the mask is anchored left, so the crop comes
-     from the box, not from anything running past the screen (see ModeMark). */
-  right: 0;
-  top: 2.5rem;
-  width: 6rem;
-  height: 8.125rem;
+  display: none;
+  right: var(--mode-band-gutter);
+  top: calc(var(--spacing) * 2);
+  bottom: calc(var(--spacing) * 2);
+  width: min(8.125rem, 18%);
   background: var(--mode-identity);
-  mask: var(--mode-band-mark, none) left top / 8.125rem 8.125rem no-repeat;
-  opacity: 0.07;
+  mask: var(--mode-band-mark, none) center / contain no-repeat;
+  opacity: 0.045;
   pointer-events: none;
+}
+
+@media (min-width: 768px) {
+  .mode-band__mark {
+    display: block;
+  }
 }
 
 .mode-band__mark:not([data-ready]) {
@@ -61,7 +64,7 @@
 }
 
 .dark .mode-band__mark {
-  opacity: 0.11;
+  opacity: 0.045;
 }
 
 .mode-band__inner {
@@ -78,6 +81,10 @@
   justify-content: space-between;
   gap: calc(var(--spacing) * 2);
   min-height: var(--spacing-tap, 3rem);
+}
+
+.mode-band__utility:empty {
+  display: none;
 }
 
 .mode-band__back {
@@ -121,9 +128,9 @@
    then breaks inside the word as a last resort. */
 .mode-band__title {
   margin: 0;
-  font-size: min(var(--text-3xl, 1.875rem), 12cqi);
+  font-size: min(var(--text-xl), 12cqi);
   overflow-wrap: break-word;
-  font-weight: 700;
+  font-weight: var(--font-weight-heading);
   letter-spacing: -0.02em;
   line-height: var(--mode-band-title-leading);
   text-wrap: balance;
@@ -236,7 +243,7 @@
 .mode-band__tabs {
   position: relative;
   max-width: calc(45rem + var(--mode-band-gutter) * 2);
-  margin: calc(var(--spacing) * 2.5) auto 0;
+  margin: calc(var(--spacing) * 1.5) auto 0;
 }
 
 /* 12px between tabs and 6px inside each, so the labels sit 24px apart and

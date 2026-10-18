@@ -21,7 +21,7 @@ import type {
   ModeActionModeOption,
 } from "@/components/clinical-dashboard/mode-action-popup";
 import { SectionHeading } from "@/components/ui/section-heading";
-import { cn } from "@/components/ui-primitives";
+import { controlDisabled, cn } from "@/components/ui-primitives";
 import { appModeDefinition, appModeHomeHref, type AppModeId } from "@/lib/app-modes";
 import { appModeIcons } from "@/lib/app-mode-icons";
 import {
@@ -445,7 +445,8 @@ export function SearchPinsMenu({
             disabled={!editor.name.trim()}
             aria-describedby={editorNotice ? editorNoticeId : undefined}
             className={cn(
-              "min-h-12 rounded-xl bg-[color:var(--clinical-accent)] px-4 text-sm font-extrabold text-[color:var(--clinical-accent-contrast)] disabled:cursor-not-allowed disabled:opacity-45",
+              controlDisabled,
+              "min-h-12 rounded-xl bg-[color:var(--clinical-accent)] px-4 text-sm font-extrabold text-[color:var(--clinical-accent-contrast)] disabled:cursor-not-allowed",
               focusRing,
             )}
           >
@@ -486,23 +487,31 @@ export function SearchPinsMenu({
                 disabled={mode.disabled}
                 onClick={() => onModeSelect(mode.id)}
                 className={cn(
-                  "flex min-h-12 items-center gap-3 rounded-xl px-3 text-left hover:bg-[color:var(--surface-subtle)] disabled:opacity-45",
+                  controlDisabled,
+                  "group flex min-h-12 items-center gap-3 rounded-xl px-3 text-left hover:bg-[color:var(--surface-subtle)]",
                   active && "bg-[color:var(--clinical-accent-soft)]/55",
                   focusRing,
                 )}
               >
-                <span className="grid h-9 w-9 place-items-center rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--clinical-accent)]">
+                <span className="grid h-9 w-9 place-items-center rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--clinical-accent)] group-disabled:text-[color:var(--disabled)]">
                   <Icon aria-hidden="true" className="h-4 w-4" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-bold text-[color:var(--text-heading)]">
+                  <span className="block truncate text-sm font-bold text-[color:var(--text-heading)] group-disabled:text-[color:var(--disabled)]">
                     {mode.label}
                   </span>
                   {mode.description ? (
-                    <span className="block truncate text-xs text-[color:var(--text-muted)]">{mode.description}</span>
+                    <span className="block truncate text-xs text-[color:var(--text-muted)] group-disabled:text-[color:var(--disabled)]">
+                      {mode.description}
+                    </span>
                   ) : null}
                 </span>
-                {active ? <Check aria-hidden="true" className="h-4 w-4 text-[color:var(--clinical-accent)]" /> : null}
+                {active ? (
+                  <Check
+                    aria-hidden="true"
+                    className="h-4 w-4 text-[color:var(--clinical-accent)] group-disabled:text-[color:var(--disabled)]"
+                  />
+                ) : null}
               </button>
             );
           })}
@@ -523,7 +532,8 @@ export function SearchPinsMenu({
             disabled={pins.length >= maximumSearchPins}
             title={pins.length >= maximumSearchPins ? `Maximum ${maximumSearchPins} pins reached` : undefined}
             className={cn(
-              "inline-flex min-h-12 items-center gap-1 rounded-lg px-2 text-xs font-extrabold text-[color:var(--clinical-accent)] hover:bg-[color:var(--clinical-accent-soft)] disabled:cursor-not-allowed disabled:opacity-45",
+              controlDisabled,
+              "inline-flex min-h-12 items-center gap-1 rounded-lg px-2 text-xs font-extrabold text-[color:var(--clinical-accent)] hover:bg-[color:var(--clinical-accent-soft)] disabled:cursor-not-allowed",
               focusRing,
             )}
           >

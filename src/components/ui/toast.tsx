@@ -221,7 +221,7 @@ function ToastCard({ toast, onClose }: { toast: Toast; onClose: (id: string, rea
       // its lift — never a border AND a shadow on one element (register #39/#40).
       // `app-toast*` hooks let the work-mode frame draw its dark Undo toast
       // (work-mode.css) without a second toast system.
-      className="app-toast pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-lg bg-[color:var(--surface-raised)] p-3 shadow-[var(--shadow-elevated)] ring-1 ring-[color:var(--border-lux)]"
+      className="app-toast pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-lg bg-[color:var(--surface-raised)] p-3 shadow-[var(--e4)] ring-1 ring-[color:var(--border-lux)]"
     >
       <span
         aria-hidden

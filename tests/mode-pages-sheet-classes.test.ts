@@ -55,18 +55,23 @@ describe("mode pages sheet recipes", () => {
     }
   });
 
-  it("keeps the pill's page and mode lines at 600", () => {
-    // All four text lines of the pill: page, mode, a work area's name alone
-    // (pill 4b) and the mode name (the "Mode" eyebrow went on 11 Oct 2026). The owner's rule is
-    // nothing heavier than 600 in the shared pill.
+  it("keeps the direct mode label and every page/area label at 600", () => {
+    // The direct switcher says Modes away from the shared home; home and Work
+    // retain the page/mode and area-only variants. All visible label branches
+    // share the owner's 600-weight ceiling.
     const source = readFileSync(
       path.join(process.cwd(), "src/components/clinical-dashboard/master-search-header.tsx"),
       "utf8",
     );
-    const start = source.indexOf("{pillPageLine ? (");
+    const start = source.indexOf('{!routeWorkArea && currentPathname !== "/" ? (');
+    expect(start).toBeGreaterThan(-1);
     const pill = source.slice(start, source.indexOf("<ChevronDown", start));
-    expect(pill.length).toBeGreaterThan(0);
-    expect(pill).not.toMatch(/font-(bold|extrabold|black)/);
-    expect(pill.match(/font-semibold/g)).toHaveLength(4);
+    expect(pill).toContain(">Modes</span>");
+    const labelClasses = Array.from(pill.matchAll(/<span\b[^>]*className="([^"]*)"[^>]*>/g), (match) => match[1]);
+    expect(labelClasses).toHaveLength(5);
+    for (const classes of labelClasses) {
+      expect(classes).toMatch(/\bfont-semibold\b/);
+      expect(classes).not.toMatch(/font-(bold|extrabold|black)/);
+    }
   });
 });

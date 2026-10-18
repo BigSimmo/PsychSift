@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 
 import type { PageSection } from "@/components/in-page-nav/page-section-index";
 import { planModeNavBands, type ModeNavDensityProfile } from "@/components/mode-nav/mode-nav-bands";
@@ -39,6 +39,7 @@ export function InPageSectionRail({
   countedLabels = false,
   modeIdentity,
   flush = false,
+  collapsedControl,
 }: {
   sections: readonly PageSection[];
   activeId: string | null;
@@ -89,6 +90,8 @@ export function InPageSectionRail({
    * for a 48px bar, against 57px with this on.
    */
   flush?: boolean;
+  /** Optional disclosure for headers whose title trigger is hidden; shares the rail's exact density breakpoint. */
+  collapsedControl?: ReactNode;
 }) {
   const plan = useMemo(() => {
     const sharedPlan = planModeNavBands(sections.length);
@@ -131,6 +134,7 @@ export function InPageSectionRail({
       )}
     >
       <div className="mode-nav" data-density-profile={density}>
+        {collapsedControl ? <div className="mode-nav__control">{collapsedControl}</div> : null}
         <ul className="mode-nav__bar h-12 items-stretch px-1">
           {sections.map((section, index) => {
             const band = plan.firstVisibleBand.get(index);

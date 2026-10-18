@@ -74,7 +74,7 @@ function CalculatorResultCard({
       type="button"
       onClick={onOpen}
       className={cn(
-        "group grid min-w-0 content-start gap-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] p-4 text-left shadow-[var(--e2)] transition hover:-translate-y-0.5 hover:border-[color:var(--clinical-accent-border)] hover:shadow-[var(--shadow-hover)] motion-reduce:transition-none motion-reduce:hover:translate-y-0",
+        "group grid min-w-0 content-start gap-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] p-4 text-left shadow-[var(--e2)] transition hover:-translate-y-0.5 hover:border-[color:var(--clinical-accent-border)] hover:shadow-[var(--e3)] motion-reduce:transition-none motion-reduce:hover:translate-y-0",
         focusRing,
       )}
     >

@@ -3324,6 +3324,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-17-design-audit-resolution.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/rag-improvement/gate-b-decision-record.md",
         "section": "rag-improvement",
         "catalogued": true
@@ -4247,6 +4252,11 @@
         "path": "docs/agents/claude-hook-scripts.md",
         "section": "agents",
         "catalogued": true
+      },
+      {
+        "path": "docs/design-system/audit-resolution-2026-10-17.md",
+        "section": "design-system",
+        "catalogued": false
       },
       {
         "path": "docs/archive/rag-scalability-wip-review-handover-2026-07-15.md",
@@ -5759,6 +5769,14 @@
         "scope": "services detail redesign responsive UX and referral actions",
         "outcome": "Three P2 findings fixed; no remaining high-confidence defects",
         "checks": "DOM 40/40; typecheck; lint; design-system contract; production Chromium 11/11"
+      },
+      {
+        "date": "2026-10-17",
+        "ref": "codex/design-audit-resolution",
+        "head": "0022c8121463669f222de38f642089a87e2ea932",
+        "scope": "adversarial review of settled design audit changes",
+        "outcome": "Two introduced P2 interaction defects reproduced and repaired before publication; independent corrective review found no additional issue; manual acceptance remains open",
+        "checks": "Standards and Spec source reviews: zero findings. Interaction review: stale Services shortlist capacity and Therapy zero-result announcement behind inert Sheet. RED 4 failed/19 passed; GREEN 23 passed; affected 6 suites/35 passed. Correction-specific browser verification pending."
       },
       {
         "date": "2026-08-27",
@@ -14791,6 +14809,14 @@
         "scope": "branch-cleanup",
         "outcome": "safe remote delete: experimental task-ledger variant superseded by merged PR #1106 canonical outstanding-issues ledger; archived batch16",
         "checks": "PR #1106 contract/history; current task-ledger architecture; bundle verify"
+      },
+      {
+        "date": "2026-10-17",
+        "ref": "codex/design-audit-resolution",
+        "head": "6c91636b26fc7f2f5849a97f30b4a292a73057ad",
+        "scope": "concurrent automated review integration",
+        "outcome": "Two Therapy P2 regressions in automated follow-up reproduced and repaired; valid Services history replacement retained; independent corrective review found no additional issue",
+        "checks": "RED3failed22passed; affected6suites37passed6.66s; original initial-zero/inert-sheet and realBackForward assertions preserved; pending/delivered loading-cycle regressions added; fresh combined-source browser proof pending."
       },
       {
         "date": "2026-08-02",
@@ -27111,6 +27137,14 @@
         "scope": "design tokens: --shadow-tight retirement reland, contract ratchet re-pin, search-band badge token, DS Track A3 closeout",
         "outcome": "self-review; 4 commits, value-preserving, gates green except a pre-existing main failure",
         "checks": "verify:pr-local (all stages pass except pre-existing check:medication-lexicon-report, reproduced on pristine origin/main); vitest 601 files/6510 passed; design-token-contract + tailwind-merge 69 passed; check:design-system-contract zero slack, mutation-verified; tailwind emission probe for the new utilities"
+      },
+      {
+        "date": "2026-10-17",
+        "ref": "codex/design-audit-resolution",
+        "head": "f98ed9f2c6a79fc6ba46e8270726248d17857097",
+        "scope": "adversarial correction review",
+        "outcome": "Both introduced P2 defects repaired; independent corrective review found zero additional confirmed findings; manual device and clinical-state acceptance remains open",
+        "checks": "Regression-first 4 failed/19 passed then23passed; affected6suites35passed6.52s; freshproductionbuild and completeTypeScript passed; completeui-tools andui-mode-nav-density172passed4.3m; scopedlint anddesigncontractpassed; diffintegrity47files741to795selftest27; whole-repoformatpassed."
       },
       {
         "date": "2026-07-30",

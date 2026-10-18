@@ -7,7 +7,7 @@ import { ArrowRight, Search } from "lucide-react";
 import { filterCompareCatalog, padCompareIds, slotLetters } from "@/components/compare/filter-catalog";
 import type { CompareCatalogItem, CompareStarterChip } from "@/components/compare/types";
 import { buttonFaceClass } from "@/components/ui/button-face";
-import { cn, searchShell, searchShellInput } from "@/components/ui-primitives";
+import { cn, controlDisabled, searchShell, searchShellInput } from "@/components/ui-primitives";
 
 export function CompareCatalogPicker({
   items,
@@ -207,16 +207,25 @@ export function CompareCatalogPicker({
                 type="button"
                 role="option"
                 aria-selected={highlight === index}
+                aria-label={[item.title, item.tag, item.snippet].filter(Boolean).join(" ")}
                 onClick={() => choose(item.id)}
                 disabled={duplicate}
                 className={cn(
-                  "group grid min-h-[4.5rem] w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-[color:var(--border)] px-3 py-3 text-left transition-colors last:border-b-0 hover:bg-[color:var(--surface-subtle)] disabled:cursor-not-allowed disabled:opacity-45",
+                  "group grid min-h-[4.5rem] w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-[color:var(--border)] px-3 py-3 text-left transition-colors last:border-b-0 hover:bg-[color:var(--surface-subtle)]",
+                  controlDisabled,
                   highlight === index && !duplicate ? "bg-[color:var(--surface-subtle)]" : null,
                 )}
               >
                 <span className="min-w-0">
                   <span className="flex flex-wrap items-center gap-2">
-                    <strong className="text-sm text-[color:var(--text-heading)]">{item.title}</strong>
+                    <strong
+                      className={cn(
+                        "text-sm",
+                        duplicate ? "text-[color:var(--disabled)]" : "text-[color:var(--text-heading)]",
+                      )}
+                    >
+                      {item.title}
+                    </strong>
                     {item.tag ? (
                       <span className="inline-flex items-center rounded-full border border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-2 py-0.5 text-3xs font-bold uppercase tracking-wide text-[color:var(--text-muted)]">
                         {item.tag}
@@ -224,7 +233,12 @@ export function CompareCatalogPicker({
                     ) : null}
                   </span>
                   {item.snippet ? (
-                    <span className="mt-1 line-clamp-2 block text-xs leading-4 text-[color:var(--text-muted)]">
+                    <span
+                      className={cn(
+                        "mt-1 line-clamp-2 block text-xs leading-4",
+                        duplicate ? "text-[color:var(--disabled)]" : "text-[color:var(--text-muted)]",
+                      )}
+                    >
                       {item.snippet}
                     </span>
                   ) : null}

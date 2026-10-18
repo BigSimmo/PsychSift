@@ -29,7 +29,6 @@ function TherapyCompassDataError() {
   return (
     <section
       role="alert"
-      aria-live="assertive"
       aria-busy={b.loading}
       className="mx-auto my-10 max-w-2xl rounded-xl border border-[color:var(--danger)] bg-[color:var(--danger-soft)] p-6"
     >

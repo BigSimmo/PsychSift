@@ -4,7 +4,8 @@ import { ArrowRight, Search } from "lucide-react";
 import type { FormEvent } from "react";
 
 import { focusRing } from "@/components/card-recipes";
-import { cn, searchShellInput } from "@/components/ui-primitives";
+import { buttonFaceClass } from "@/components/ui/button-face";
+import { cn, searchShell, searchShellInput } from "@/components/ui-primitives";
 
 /**
  * The tools directory's own filter box, ported from the retired `/?mode=tools` hub.
@@ -35,18 +36,12 @@ export function ToolLocalSearch({
         event.preventDefault();
         onSubmit();
       }}
-      className={cn(
-        // Both end tracks hold tap-sized children and the row has no gap, so they read
-        // the tap knob rather than a copy of its value: a literal here overlaps the
-        // input the moment `--spacing-tap` moves.
-        "search-shell grid min-h-13 grid-cols-[var(--spacing-tap)_minmax(0,1fr)_var(--spacing-tap)] items-center rounded-full border border-[color:var(--border)] bg-[color:var(--surface-lux)] text-left shadow-[var(--e2)]",
-        className,
-      )}
+      className={cn(searchShell, "bg-[color:var(--surface-lux)] py-1.5 text-left shadow-[var(--e2)]", className)}
     >
-      <span className="grid h-tap w-tap place-items-center rounded-full text-[color:var(--text-muted)]">
+      <span className="grid shrink-0 place-items-center text-[color:var(--text-muted)]">
         <Search className="size-icon-lg" aria-hidden />
       </span>
-      <label className="min-w-0">
+      <label className="min-w-0 flex-1">
         <span className="sr-only">Search tools</span>
         <input
           data-testid="tools-local-search-input"
@@ -55,7 +50,7 @@ export function ToolLocalSearch({
           placeholder="Search tools"
           className={cn(
             searchShellInput,
-            "w-full text-sm font-medium text-[color:var(--text)] placeholder:text-[color:var(--text-placeholder)]",
+            "min-h-tap w-full text-sm font-medium text-[color:var(--text)] placeholder:text-[color:var(--text-placeholder)]",
           )}
         />
       </label>
@@ -63,10 +58,7 @@ export function ToolLocalSearch({
         type="submit"
         aria-label="Search tools"
         data-testid="tools-local-search-submit"
-        className={cn(
-          "grid h-tap w-tap place-items-center rounded-full bg-[color:var(--clinical-accent)] text-[color:var(--clinical-accent-contrast)] shadow-[var(--e1)] transition hover:bg-[color:var(--clinical-accent-hover)]",
-          focusRing,
-        )}
+        className={cn(buttonFaceClass({ variant: "primary", size: "sm" }), "h-tap w-tap shrink-0 px-0", focusRing)}
       >
         <ArrowRight className="size-icon-lg" aria-hidden />
       </button>

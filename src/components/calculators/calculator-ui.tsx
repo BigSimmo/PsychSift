@@ -3,7 +3,7 @@
 import { AlertTriangle, Check, CheckCheck, ClipboardCopy, RotateCcw, type LucideIcon } from "lucide-react";
 import { useId, useState } from "react";
 
-import { cn, ignoreUnavailableActivation } from "@/components/ui-primitives";
+import { cn, controlDisabled, ignoreUnavailableActivation } from "@/components/ui-primitives";
 import { useCopyToast } from "@/components/ui/toast";
 
 import type { CalculatorFixture, CalculatorItem, CalculatorTone, ScoreBand } from "./calculator-fixtures";
@@ -515,7 +515,8 @@ export function ResetButton({ onReset, disabled }: { onReset: () => void; disabl
       onClick={onReset}
       disabled={disabled}
       className={cn(
-        "inline-flex min-h-tap items-center gap-2 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-3 text-sm-minus font-bold text-[color:var(--text-muted)] transition hover:border-[color:var(--border-strong)] hover:text-[color:var(--text)] disabled:pointer-events-none disabled:opacity-40",
+        "inline-flex min-h-tap items-center gap-2 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-3 text-sm-minus font-bold text-[color:var(--text-muted)] transition hover:border-[color:var(--border-strong)] hover:text-[color:var(--text)]",
+        controlDisabled,
         focusRing,
       )}
     >
@@ -586,7 +587,8 @@ export function CopyResultButton({
         aria-describedby={!isComplete ? copyUnavailableId : undefined}
         title={!isComplete ? unavailableReason : undefined}
         className={cn(
-          "inline-flex min-h-tap items-center gap-1.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-2.5 text-2xs font-bold text-[color:var(--text-muted)] transition hover:border-[color:var(--border-strong)] hover:text-[color:var(--text)] aria-disabled:cursor-not-allowed aria-disabled:opacity-40",
+          "inline-flex min-h-tap items-center gap-1.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-2.5 text-2xs font-bold text-[color:var(--text-muted)] transition hover:border-[color:var(--border-strong)] hover:text-[color:var(--text)]",
+          controlDisabled,
           focusRing,
           className,
         )}

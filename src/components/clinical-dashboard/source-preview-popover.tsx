@@ -163,7 +163,7 @@ export function SourcePreviewPopover({
       data-popover-placement={layout?.placement ?? "below"}
       style={style}
       className={cn(
-        "fixed z-[95] min-w-[min(100vw-1.5rem,20rem)] max-w-[calc(100vw-1.5rem)] overflow-y-auto overscroll-contain rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-lux)] p-3 shadow-[var(--shadow-elevated)] motion-safe:animate-pop-in motion-reduce:animate-none",
+        "fixed z-[95] min-w-[min(100vw-1.5rem,20rem)] max-w-[calc(100vw-1.5rem)] overflow-y-auto overscroll-contain rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-lux)] p-3 shadow-[var(--e4)] motion-safe:animate-pop-in motion-reduce:animate-none",
       )}
     >
       {children}

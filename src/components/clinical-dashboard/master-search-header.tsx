@@ -27,7 +27,6 @@ import {
   Briefcase,
   Search,
   Send,
-  ShieldCheck,
   Stethoscope,
   X,
   ArrowLeft,
@@ -73,7 +72,6 @@ import { Sheet } from "@/components/ui/sheet";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { useHeaderModePill } from "@/components/clinical-dashboard/master-search-header-mode-pill";
 import { useScopeDocumentList } from "@/components/clinical-dashboard/master-search-header-scope-documents";
-import { workAreaFor } from "@/lib/work-frame/areas";
 import { TWO_PANE_SIDE_MENU } from "@/lib/work-frame/side-menu-choice";
 import { LargeTextFlag } from "@/components/work-frame/use-large-text";
 import { modePickerHint } from "@/lib/mode-picker-hints";
@@ -225,7 +223,6 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
     mobileControls?.onBottomComposerHiddenChange ??
     props.onBottomComposerHiddenChange;
 
-  const sharedHomeIdentity = mobileControls?.sharedHomeIdentity ?? props.sharedHomeIdentity ?? false;
   const mobileSearchPlacement = mobileControls?.mobileSearchPlacement ?? props.mobileSearchPlacement ?? "default";
   const mobileBottomSearchVariant =
     mobileControls?.mobileBottomSearchVariant ?? props.mobileBottomSearchVariant ?? "default";
@@ -266,7 +263,6 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
   const selectedAppMode = appModeDefinition(searchMode);
   const selectedSearchable = isSearchableAppMode(searchMode);
   const isAnswerFooterComposer = searchMode === "answer";
-  const isServicesMode = searchMode === "services";
   const isMobileBottomComposer = searchComposerVisible && mobileSearchPlacement === "bottom" && !isAnswerFooterComposer;
   const isHeroDesktopComposer = desktopSearchPlacement === "hero" && isMobileBottomComposer;
   // Documents search is API-backed (`requestSourceLibrarySearch`) and
@@ -477,7 +473,6 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
         : [],
     [selectedAppMode, teachingRoles, rosterHasTeam, openShiftsPoster],
   );
-  const modeOwnPagesAvailable = modeOwnPages.length > 0;
   /**
    * Whether the pages sheet offers "Manage service": true for an editor, and
    * while the role is still unknown (S3), false only once the hub's own
@@ -862,27 +857,16 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
     setModeMenuSide(side);
     setUsesPhoneSearchLayout(phoneLayout);
     setModeMenuFocusIndex(openingIndex);
-    // In a work area the tabs and More already move between pages, so the pill
-    // opens on the area list with the Clinical and Work toggle (Josh, 7 Oct
-    // 2026, "Area list first"). Elsewhere a mode's own pages still come first.
-    const inWorkArea = Boolean(workAreaFor(selectedAppMode.id, currentPathname ?? ""));
-    const opensOnPages = modeOwnPagesAvailable && !inWorkArea;
-    setModeSheetView(opensOnPages ? "sections" : "modes");
+    // The pill switches modes directly; page tabs already own section navigation.
+    setModeSheetView("modes");
     setModeMenuOpen(true);
     if (!phoneLayout) {
       cancelModeMenuFocus();
       modeMenuFocusRafRef.current = window.requestAnimationFrame(() => {
         modeMenuFocusRafRef.current = null;
         if (!modeMenuRef.current?.contains(document.activeElement)) return;
-        if (opensOnPages) {
-          document
-            .getElementById("app-mode-menu")
-            ?.querySelector<HTMLElement>('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])')
-            ?.focus();
-        } else {
-          setModeMenuFocusIndex(openingIndex);
-          modeOptionRefs.current[openingIndex]?.focus();
-        }
+        setModeMenuFocusIndex(openingIndex);
+        modeOptionRefs.current[openingIndex]?.focus();
       });
     }
   }
@@ -1994,21 +1978,6 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
           {/* The shared home draws no wordmark here (owner design review, 12 Oct
               2026): the side rail already carries the PsychSift mark on every
               desktop page, so a second lockup in the header showed the logo twice. */}
-          {sharedHomeIdentity ? null : isServicesMode ? (
-            <div className="hidden min-w-0 items-center gap-3 lg:flex">
-              <span className="grid h-10 w-10 place-items-center rounded-xl bg-[color:var(--clinical-accent)] text-[color:var(--clinical-accent-contrast)] shadow-[var(--e1)]">
-                <ShieldCheck className="h-5 w-5" aria-hidden />
-              </span>
-              <span className="min-w-0">
-                <span className="block truncate text-lg font-extrabold leading-5 text-[color:var(--text-heading)]">
-                  Services Navigator
-                </span>
-                <span className="block truncate text-xs font-semibold text-[color:var(--text-muted)]">
-                  Psychiatry referral directory
-                </span>
-              </span>
-            </div>
-          ) : null}
         </div>
 
         <div
@@ -2039,10 +2008,17 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
             // this control by that exact opening. The page is appended rather
             // than substituted, so the name gains information without any of
             // them going looking for a control that no longer answers.
+            //
+            // Where the pill shows the visible word "Modes" (non-work routes
+            // other than `/`), the name must contain it (WCAG 2.5.3 Label in
+            // Name). "Modes, current mode X" still contains `Mode X` for the
+            // substring lookups above.
             aria-label={
-              activeModePage
-                ? `Mode ${selectedAppMode.label}, page ${activeModePage.label}`
-                : `Mode ${selectedAppMode.label}`
+              !routeWorkArea && currentPathname !== "/"
+                ? `Modes, current mode ${selectedAppMode.label}${activeModePage ? `, page ${activeModePage.label}` : ""}`
+                : activeModePage
+                  ? `Mode ${selectedAppMode.label}, page ${activeModePage.label}`
+                  : `Mode ${selectedAppMode.label}`
             }
             // The mode's own hue, on the mode's own control. Resolves to the
             // product accent for every mode that names no identity, so this is
@@ -2064,7 +2040,9 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
               <SelectedAppModeIcon aria-hidden="true" className="size-icon-md" strokeWidth={2.25} />
             </span>
             <span className="min-w-0">
-              {pillPageLine ? (
+              {!routeWorkArea && currentPathname !== "/" ? (
+                <span className="block text-sm font-semibold text-[color:var(--text-heading)]">Modes</span>
+              ) : pillPageLine ? (
                 // Page first, mode underneath. The order is the point: the big
                 // line answers "where am I", which changes, and the small
                 // coloured line answers "which mode", which does not. Reversing

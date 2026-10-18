@@ -243,9 +243,9 @@ export function MobileSectionFab({
         aria-expanded={open}
         aria-controls={panelId}
         className={cn(
-          "fixed z-40 grid h-14 w-14 place-items-center rounded-full border border-[color:var(--command)] bg-[color:var(--command)] text-[color:var(--command-contrast)] shadow-[var(--shadow-elevated)] transition motion-safe:duration-[var(--duration-quick)] hover:-translate-y-0.5 hover:bg-[color:var(--command-hover)] active:translate-y-px",
+          "fixed z-40 grid h-14 w-14 place-items-center rounded-full border border-[color:var(--border-strong)] bg-[color:var(--surface-raised)] text-[color:var(--text)] shadow-[var(--e4)] transition motion-safe:duration-[var(--duration-quick)] hover:-translate-y-0.5 hover:bg-[color:var(--surface-subtle)] active:translate-y-px",
           "right-[max(0.75rem,var(--safe-area-right))] bottom-[max(0.75rem,var(--safe-area-bottom))]",
-          open && "bg-[color:var(--command-hover)]",
+          open && "bg-[color:var(--surface-subtle)]",
         )}
         onClick={() => setOpen((current) => !current)}
       >

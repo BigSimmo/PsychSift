@@ -1,3 +1,5 @@
+import { controlDisabled } from "@/components/ui-primitives";
+
 /**
  * The two class strings every page converted onto `InPageNavHeader` repeats.
  *
@@ -28,5 +30,4 @@ export const inPageAnchor = "scroll-mt-[var(--inpage-anchor-offset,6rem)]";
  * not the element. Built by the differentials detail page first; shared here
  * once six more pages started rendering the same sheet.
  */
-export const inPageActionRowClass =
-  "focus-ring-tab flex min-h-tap w-full items-center gap-2.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-2.5 text-left text-sm font-bold text-[color:var(--text-heading)] transition hover:not-aria-disabled:border-[color:var(--border-strong)] hover:not-aria-disabled:bg-[color:var(--surface-raised)] aria-disabled:cursor-not-allowed aria-disabled:opacity-60";
+export const inPageActionRowClass = `${controlDisabled} focus-ring-tab flex min-h-tap w-full items-center gap-2.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-2.5 text-left text-sm font-bold text-[color:var(--text-heading)] transition hover:not-aria-disabled:border-[color:var(--border-strong)] hover:not-aria-disabled:bg-[color:var(--surface-raised)] aria-disabled:cursor-not-allowed`;

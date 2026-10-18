@@ -735,7 +735,7 @@ function ComparePanel({
       <Link
         data-testid="differential-compare-open"
         href={compareHref}
-        className="mt-3 inline-flex min-h-tap w-full items-center justify-center gap-2 rounded-lg bg-[color:var(--clinical-accent)] px-4 text-sm font-semibold text-[color:var(--clinical-accent-contrast)] shadow-[var(--e2)] hover:bg-[color:var(--primary-strong)]"
+        className="mt-3 inline-flex min-h-tap w-full items-center justify-center gap-2 rounded-lg bg-[color:var(--clinical-accent)] px-4 text-sm font-semibold text-[color:var(--clinical-accent-contrast)] shadow-[var(--e0)] hover:bg-[color:var(--clinical-accent-hover)]"
       >
         <GitCompareArrows className="h-4 w-4" aria-hidden />
         Open comparison workspace

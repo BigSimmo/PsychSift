@@ -577,6 +577,7 @@
         "tests/helpers/type-weight-scanner.ts",
         "tests/on-call-compliance.test.ts",
         "tests/therapy-compass-responsive-contract.test.ts",
+        "tests/ui-primitives.dom.test.tsx",
         "tests/ui-v2-components.dom.test.tsx"
       ],
       "baseline": {

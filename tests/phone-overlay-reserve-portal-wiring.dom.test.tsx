@@ -41,7 +41,17 @@ import {
 import { phoneHeaderCollapseAddonSlotId } from "@/lib/mode-home-composer";
 
 const baseStackPx = 72;
-const addonRowPx = 49;
+// The 24px title's 1.12 leading makes the current row fractional. Replacing
+// this in-flow box with an integer reserve moved the cold-load target.
+const addonRowPx = 79.875;
+
+function stubHeight(element: HTMLElement, measure: () => number) {
+  Object.defineProperty(element, "offsetHeight", { configurable: true, get: () => Math.round(measure()) });
+  vi.spyOn(element, "getBoundingClientRect").mockImplementation(() => {
+    const height = measure();
+    return { x: 0, y: 0, top: 0, bottom: height, left: 0, right: 0, width: 0, height, toJSON: () => ({}) };
+  });
+}
 
 // These cases drive `createRoot` directly rather than through Testing Library,
 // because the subject IS commit ordering and a render helper that flushes for
@@ -96,13 +106,10 @@ function mountChrome() {
   const collapse = document.querySelector<HTMLElement>('[data-testid="universal-header-collapse"]')!;
   const slot = document.getElementById(phoneHeaderCollapseAddonSlotId)!;
   const measure = () => baseStackPx + (slot.childElementCount > 0 ? addonRowPx : 0);
-  Object.defineProperty(stack, "offsetHeight", { configurable: true, get: measure });
-  Object.defineProperty(collapse, "offsetHeight", { configurable: true, get: measure });
+  stubHeight(stack, measure);
+  stubHeight(collapse, measure);
   // The slot holds one page-owned row, so its own height is that row's height.
-  Object.defineProperty(slot, "offsetHeight", {
-    configurable: true,
-    get: () => (slot.childElementCount > 0 ? addonRowPx : 0),
-  });
+  stubHeight(slot, () => (slot.childElementCount > 0 ? addonRowPx : 0));
   return { slot, container: document.getElementById("app-root")! };
 }
 
@@ -155,7 +162,7 @@ describe("portal wiring into the immediate reserve publisher", () => {
     expect(reserve()).toBe(`${baseStackPx}px`);
 
     // Now the route with the nav row arrives. The row leaves page flow in this
-    // commit, so the reserve must be 121px by the end of it — with no frame run
+    // commit, so the reserve must include its exact height by the end of it — with no frame run
     // in between, which is what the absent `flushFrames` call below asserts.
     act(() => {
       root.render(
@@ -241,7 +248,7 @@ describe("portal wiring into the immediate reserve publisher", () => {
     });
   });
 
-  it("gives back the row's current height when it grew after the claim", () => {
+  it("gives back the row's current fractional height after it grows and shrinks while claimed", () => {
     // A medication route's nav row renders without its section rail while the
     // record is null, then grows in place once it loads. The settled reserve is
     // republished at the taller height, so the release must subtract the row's
@@ -249,13 +256,12 @@ describe("portal wiring into the immediate reserve publisher", () => {
     const { slot, container } = mountChrome();
     const stack = document.querySelector<HTMLElement>(".phone-sticky-header-stack")!;
     const collapse = document.querySelector<HTMLElement>('[data-testid="universal-header-collapse"]')!;
-    const railPx = 40;
-    let grown = false;
-    const rowHeight = () => (slot.childElementCount > 0 ? addonRowPx + (grown ? railPx : 0) : 0);
+    let railPx = 0;
+    const rowHeight = () => (slot.childElementCount > 0 ? addonRowPx + railPx : 0);
     for (const element of [stack, collapse]) {
-      Object.defineProperty(element, "offsetHeight", { configurable: true, get: () => baseStackPx + rowHeight() });
+      stubHeight(element, () => baseStackPx + rowHeight());
     }
-    Object.defineProperty(slot, "offsetHeight", { configurable: true, get: rowHeight });
+    stubHeight(slot, rowHeight);
     const root = createRoot(container);
 
     act(() => {
@@ -274,7 +280,12 @@ describe("portal wiring into the immediate reserve publisher", () => {
     expect(reserve()).toBe(`${baseStackPx + addonRowPx}px`);
 
     // The rail arrives and the settled reserve is republished at the new height.
-    grown = true;
+    railPx = 40.25;
+    publishPhoneOverlayChromeReserveNow();
+    expect(reserve()).toBe(`${baseStackPx + addonRowPx + railPx}px`);
+
+    // Resizing the rail smaller keeps its fractional size through release too.
+    railPx = 20.5;
     publishPhoneOverlayChromeReserveNow();
     expect(reserve()).toBe(`${baseStackPx + addonRowPx + railPx}px`);
 

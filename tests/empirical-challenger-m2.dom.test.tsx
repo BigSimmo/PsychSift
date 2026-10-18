@@ -21,58 +21,34 @@ describe("Empirical Challenger M2-1: Stress-Testing Typography Floor, Icon Scali
   const tailwindMergeSource = readFileSync("src/lib/tailwind-merge.ts", "utf8");
 
   describe("1. Typography Floor (>= 12px / 0.75rem) in Touched CSS Rules & Components", () => {
-    it("verifies all 10 touched CSS rules in globals.css declare font-size >= 0.75rem or var(--text-xs)", () => {
-      // 1. Therapy compare tray pip
-      const pipMatch = globalsCss.match(/\.therapy-compare-tray__pip\s*\{[\s\S]*?font-size:\s*([^;]+);/);
-      expect(pipMatch).toBeTruthy();
-      expect(pipMatch![1].trim()).toBe("0.75rem");
+    it("keeps all 10 touched typography roles on the shared 12px floor", () => {
+      const floor = ckbTokensCss.match(/--text-xs:\s*([\d.]+)rem;/);
+      expect(floor, "canonical xs must retain a numeric rem floor").toBeTruthy();
+      expect(Number(floor![1])).toBeGreaterThanOrEqual(0.75);
 
-      // 2. The therapy compare tray's count line moved into the shared Compare
-      //    tray, which sets it with the text-xs utility (0.75rem) rather than CSS.
+      // These roles consume the same floor rather than copying its current value.
+      for (const selector of [
+        ".therapy-compare-tray__pip",
+        ".answer-source-mark",
+        ".answer-source-mark-overflow",
+        ".smart-search-phone-ticker-kicker",
+        ".answer-suggestion-label",
+        ".answer-suggestion-label-eyebrow",
+        ".pwa-install-dismiss",
+        ".search-band-shelf-label",
+        ".smart-search-intent-cue",
+      ]) {
+        const escapedSelector = selector.replaceAll(".", "\\.");
+        const fontSize = globalsCss.match(new RegExp(`${escapedSelector}\\s*\\{[^}]*?font-size:\\s*([^;]+);`));
+        expect(fontSize, `${selector} must keep its readable font-size role`).toBeTruthy();
+        expect(fontSize![1].trim(), selector).toBe("var(--text-xs)");
+      }
+
+      // The tray count is now a shared component using the same floor utility.
       expect(globalsCss).not.toMatch(/\.therapy-compare-tray__count\s*\{/);
       expect(readFileSync("src/components/compare/shared-compare-tray.tsx", "utf8")).toContain(
         "block truncate text-xs text-[color:var(--text-muted)]",
       );
-
-      // 3. Answer source mark
-      const markMatch = globalsCss.match(/\.answer-source-mark\s*\{[\s\S]*?font-size:\s*([^;]+);/);
-      expect(markMatch).toBeTruthy();
-      expect(markMatch![1].trim()).toBe("0.75rem");
-
-      // 4. Answer source mark overflow
-      const overflowMatch = globalsCss.match(/\.answer-source-mark-overflow\s*\{[\s\S]*?font-size:\s*([^;]+);/);
-      expect(overflowMatch).toBeTruthy();
-      expect(overflowMatch![1].trim()).toBe("0.75rem");
-
-      // 5. Smart search phone ticker kicker
-      const kickerMatch = globalsCss.match(/\.smart-search-phone-ticker-kicker\s*\{[\s\S]*?font-size:\s*([^;]+);/);
-      expect(kickerMatch).toBeTruthy();
-      expect(kickerMatch![1].trim()).toBe("0.75rem");
-
-      // 7. Answer suggestion label
-      const suggLabelMatch = globalsCss.match(/\.answer-suggestion-label\s*\{[\s\S]*?font-size:\s*([^;]+);/);
-      expect(suggLabelMatch).toBeTruthy();
-      expect(suggLabelMatch![1].trim()).toBe("0.75rem");
-
-      // 8. Answer suggestion label eyebrow
-      const eyebrowMatch = globalsCss.match(/\.answer-suggestion-label-eyebrow\s*\{[\s\S]*?font-size:\s*([^;]+);/);
-      expect(eyebrowMatch).toBeTruthy();
-      expect(eyebrowMatch![1].trim()).toBe("0.75rem");
-
-      // 10. PWA install dismiss
-      const pwaDismissMatch = globalsCss.match(/\.pwa-install-dismiss\s*\{[\s\S]*?font-size:\s*([^;]+);/);
-      expect(pwaDismissMatch).toBeTruthy();
-      expect(pwaDismissMatch![1].trim()).toBe("0.75rem");
-
-      // 11. Search band shelf label
-      const shelfMatch = globalsCss.match(/\.search-band-shelf-label\s*\{[\s\S]*?font-size:\s*([^;]+);/);
-      expect(shelfMatch).toBeTruthy();
-      expect(shelfMatch![1].trim()).toBe("0.75rem");
-
-      // 12. Smart search intent cue
-      const cueMatch = globalsCss.match(/\.smart-search-intent-cue\s*\{[\s\S]*?font-size:\s*([^;]+);/);
-      expect(cueMatch).toBeTruthy();
-      expect(cueMatch![1].trim()).toBe("var(--text-xs)");
     });
 
     it("verifies --text-xs is mapped to 0.75rem (12px) in ckb-v2-tokens.css", () => {
@@ -95,13 +71,18 @@ describe("Empirical Challenger M2-1: Stress-Testing Typography Floor, Icon Scali
           // Check for sub-12px px (<12px)
           const pxMatch = line.match(/font-size\s*:\s*(?:[1-9]|1[01])(?:\.\d+)?px/i);
           if (pxMatch) forbiddenSub12.push({ line: idx + 1, text: line.trim() });
-          // Check for sub-floor tokens text-2xs or text-3xs
-          if (/var\(--text-(?:2xs|3xs|4xs)\)/i.test(line)) {
+          // 2xs/3xs are valid readability-floor aliases; 4xs remains retired.
+          if (/var\(--text-4xs\)/i.test(line)) {
             forbiddenSub12.push({ line: idx + 1, text: line.trim() });
           }
         }
       });
 
+      for (const alias of ["2xs", "3xs"]) {
+        const value = globalsCss.match(new RegExp(`--text-${alias}:\\s*([\\d.]+)rem;`));
+        expect(value, `${alias} must remain a defined readability-floor alias`).toBeTruthy();
+        expect(Number(value![1])).toBeGreaterThanOrEqual(0.75);
+      }
       expect(forbiddenSub12).toEqual([]);
     });
 
@@ -115,7 +96,7 @@ describe("Empirical Challenger M2-1: Stress-Testing Typography Floor, Icon Scali
       const { container } = render(<OnCallPrivateFlag />);
       const badge = container.querySelector('[data-testid="on-call-private-flag"]');
       expect(badge).toBeInTheDocument();
-      // Observation: The badge uses `text-2xs` (11px / 0.6875rem) from the design system chip scale.
+      // The compact badge keeps its legacy class, now a 12px readability-floor alias.
       expect(badge?.className).toContain("text-2xs");
     });
   });
