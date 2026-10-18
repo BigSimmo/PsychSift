@@ -153,3 +153,20 @@ that correction. The outstanding hash-approval question must be assessed against
 these final draft bytes. The first run's artifact remains applicable only after
 verifying its schema hash matches the final unchanged `schema.sql`; its bytes are
 still unavailable through this environment's transfer path.
+
+Final pre-push hosted snapshot: run
+[39110598058](https://github.com/BigSimmo/PsychSift/actions/runs/39110598058)
+on concurrent head `6ad017616` settled red. Its unit failures are the old
+provenance fixture, the two reproduced per-device regressions, stale drift and
+unsealed hashes. Its worker image failed the same two reproduced PDF safety-text
+regressions (68 Python tests, two failures, one skip), so downstream image scans
+were unassessed. The corresponding code/fixture regressions are corrected and
+locally verified above. Both hosted builds, Lighthouse and safety checks passed;
+no fresh complete hosted pass is inferred for the successor correction. Final
+diff integrity passed **855 → 907 cases in 40 changed test files**, 27/27 self-tests.
+
+A broader local `test_*.py` attempt discovered 68 tests but failed to import the
+unchanged assertion-reader module because `medspacy` is absent from this shell.
+It is recorded as incomplete infrastructure evidence, not a complete worker
+Python pass. The targeted 60-test PDF scope passed; hosted worker images install
+their separately pinned requirements and still need a fresh complete pass.
