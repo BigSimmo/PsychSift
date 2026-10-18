@@ -2500,7 +2500,11 @@ export async function runWorkerMain() {
     );
     captureWorkerException(error, "fatal");
     const failureDetails = contentFreeErrorDetails(error);
-    const failureCode = failureDetails.errorCode ?? "unclassified";
+    // WorkerAbortError wraps the underlying failure in `cause`; read its allowlisted code too.
+    const failureCode =
+      failureDetails.errorCode ??
+      (abort?.cause ? contentFreeErrorDetails(abort.cause).errorCode : undefined) ??
+      "unclassified";
     if (env.WORKER_FAILURE_WEBHOOK_URL) {
       try {
         await fetch(env.WORKER_FAILURE_WEBHOOK_URL, {

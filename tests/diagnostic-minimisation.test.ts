@@ -69,4 +69,28 @@ describe("content-free operational diagnostics", () => {
     expect(sent).not.toContain(privateText);
     expect(JSON.stringify(printed.mock.calls)).not.toContain(privateText);
   });
+
+  it("reports the allowlisted code of a wrapped abort cause without its content", async () => {
+    const cause = Object.assign(new Error(privateText), { code: "23505" });
+    const { WorkerAbortError } = await import("../worker/runtime-control");
+    vi.doMock("@/lib/supabase/admin", () => ({
+      createAdminClient: () => {
+        throw new WorkerAbortError("Ingestion job claim failed in --once mode", 1, { cause });
+      },
+    }));
+    vi.doMock("../worker/observability", () => ({
+      captureWorkerException: vi.fn(),
+      flushWorkerErrorTracking: vi.fn(async () => undefined),
+    }));
+    vi.stubEnv("WORKER_FAILURE_WEBHOOK_URL", "https://hooks.invalid/synthetic-audit");
+    const post = vi.fn<typeof fetch>(async () => new Response(null, { status: 200 }));
+    vi.stubGlobal("fetch", post);
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
+    const { runWorkerMain } = await import("../worker/main");
+    await runWorkerMain();
+    const sent = String(post.mock.calls[0]?.[1]?.body);
+    expect(sent).toContain("errorCode=23505");
+    expect(sent).not.toContain(privateText);
+  });
 });
