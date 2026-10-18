@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildIngestionRecoveryPlan,
+  applyIngestionRecoveryActions,
   reconcileIngestionRecoveryPlan,
   INGESTION_RECOVERY_JOB_STATUSES,
   isFreshProcessingJob,
@@ -10,6 +11,42 @@ import {
 
 describe("ingestion queue recovery planning", () => {
   const now = new Date("2026-06-15T00:00:00.000Z");
+
+  it("keeps a current lease even when the legacy lock timestamp is old", () => {
+    const plan = buildIngestionRecoveryPlan({
+      now,
+      staleAfterMinutes: 45,
+      jobs: [
+        {
+          id: "current",
+          document_id: "doc",
+          status: "processing",
+          locked_at: "2026-06-14T20:00:00Z",
+          lease_expires_at: "2026-06-15T00:10:00Z",
+          documents: { status: "processing" },
+        },
+      ],
+    });
+    expect(plan.actions).toEqual([]);
+  });
+
+  it("recovers an expired final attempt even with a recent legacy timestamp", () => {
+    const plan = buildIngestionRecoveryPlan({
+      now,
+      staleAfterMinutes: 45,
+      jobs: [
+        {
+          id: "expired",
+          document_id: "doc",
+          status: "processing",
+          locked_at: "2026-06-14T23:59:00Z",
+          lease_expires_at: "2026-06-14T23:59:59Z",
+          documents: { status: "processing" },
+        },
+      ],
+    });
+    expect(plan.actions).toEqual([{ action: "retry", jobId: "expired", documentId: "doc", resetDocument: false }]);
+  });
 
   it("loads pending jobs alongside failed and processing siblings", () => {
     expect(INGESTION_RECOVERY_JOB_STATUSES).toEqual(["pending", "processing", "failed"]);
@@ -37,7 +74,7 @@ describe("ingestion queue recovery planning", () => {
     });
 
     expect(plan.retryCount).toBe(2);
-    expect(plan.resetDocumentIds.sort()).toEqual(["doc-a", "doc-b"]);
+    expect(plan.resetDocumentIds).toEqual([]);
   });
 
   it("supersedes obsolete failed jobs for already indexed documents", () => {
@@ -233,6 +270,8 @@ describe("ingestion recovery plan reconciliation (R20/R21)", () => {
       expected: {
         jobStatus: "processing",
         jobLockedAt: "2026-06-14T22:00:00.000Z",
+        jobLeaseToken: null,
+        jobLeaseExpiresAt: null,
         documentStatus: "processing",
         documentOwnerId: "owner-1",
       },
@@ -300,5 +339,46 @@ describe("ingestion recovery plan reconciliation (R20/R21)", () => {
     const { applicable } = reconcileIngestionRecoveryPlan({ planned, jobs, now, staleAfterMinutes });
 
     expect(applicable.map((entry) => entry.action.action)).toEqual(["supersede", "retry"]);
+  });
+});
+
+describe("shared operator recovery application", () => {
+  const expected = {
+    jobStatus: "failed",
+    jobLockedAt: null,
+    jobLeaseToken: "lease",
+    jobLeaseExpiresAt: null,
+    documentStatus: "failed",
+    documentOwnerId: "owner",
+  };
+  const action = { action: "retry" as const, jobId: "job", documentId: "doc", resetDocument: false };
+  it("passes the complete observed authority snapshot to SQL and respects ownership loss", async () => {
+    const calls: unknown[] = [];
+    const client = {
+      rpc: async (...args: unknown[]) => {
+        calls.push(args);
+        return { data: { ok: false, reason: "active_lease" }, error: null };
+      },
+    };
+    expect(await applyIngestionRecoveryActions(client, [{ action, expected }])).toEqual([
+      { action, applied: false, reason: "active_lease" },
+    ]);
+    expect(calls).toEqual([["recover_ingestion_job", { p_job_id: "job", p_action: "retry", p_expected: expected }]]);
+  });
+  it("stops before any follow-up operation when required recovery SQL is unavailable", async () => {
+    let calls = 0;
+    const client = {
+      rpc: async () => {
+        calls += 1;
+        return { data: null, error: { message: "Missing recovery RPC" } };
+      },
+    };
+    await expect(
+      applyIngestionRecoveryActions(client, [
+        { action, expected },
+        { action, expected },
+      ]),
+    ).rejects.toThrow("Missing recovery RPC");
+    expect(calls).toBe(1);
   });
 });

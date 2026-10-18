@@ -16,7 +16,7 @@ const MAX_DEPTH = 5;
 // `answer_text` through. Over-redacting a `queryMode`-style label is the accepted
 // cost of a redaction layer that does not depend on call-site discipline.
 const SENSITIVE_KEY =
-  /authorization|cookie|token|secret|api[-_]?key|password|service[-_]?role|email|query|question|prompt|\bcontent\b|answer|patient|\bmrn\b/i;
+  /authorization|cookie|token|secret|api[-_]?key|password|service[-_]?role|email|query|question|prompt|\bcontent\b|answer|patient|\bmrn\b|file[-_]?name|storage[-_]?path|document[-_]?path/i;
 
 const SENSITIVE_VALUE_PATTERN = /\b(?:mrn|ur|unit\s*no\.?)\s*[:#]?\s*\d{6,10}\b|\b\d{3}\s\d{3}\s\d{4}\b/i;
 

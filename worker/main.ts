@@ -38,7 +38,7 @@ import {
 import { shouldPersistJobProgress } from "../src/lib/ingestion";
 import { assessDocumentIndexQuality } from "../src/lib/index-quality";
 import { classifyAndCaptionImageFromBase64, embedTexts } from "../src/lib/openai";
-import { safeErrorLogDetails, redactCaptionIdentifiers } from "../src/lib/privacy";
+import { contentFreeErrorDetails, safeErrorLogDetails, redactCaptionIdentifiers } from "../src/lib/privacy";
 import { isAtomicReindexCandidate } from "../src/lib/reindex-pipeline";
 // Deliberate exception to the "ingestion does not import rag.ts" rule in the archived
 // architecture handover: after a document commits, the worker must drop that owner's cached
@@ -2496,22 +2496,28 @@ export async function runWorkerMain() {
     const abort = error instanceof WorkerAbortError ? error : null;
     console.error(
       abort ? "PsychSift worker aborted" : "PsychSift worker stopped unexpectedly",
-      safeErrorLogDetails(error),
+      contentFreeErrorDetails(error),
     );
     captureWorkerException(error, "fatal");
+    const failureDetails = contentFreeErrorDetails(error);
+    // WorkerAbortError wraps the underlying failure in `cause`; read its allowlisted code too.
+    const failureCode =
+      failureDetails.errorCode ??
+      (abort?.cause ? contentFreeErrorDetails(abort.cause).errorCode : undefined) ??
+      "unclassified";
     if (env.WORKER_FAILURE_WEBHOOK_URL) {
       try {
         await fetch(env.WORKER_FAILURE_WEBHOOK_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            text: `CRITICAL: PsychSift worker ${abort ? "aborted" : "stopped unexpectedly"}. Error: ${error instanceof Error ? error.message : String(error)}`,
+            text: `CRITICAL: PsychSift worker ${abort ? "aborted" : "stopped unexpectedly"}. errorType=${failureDetails.errorType} errorCode=${failureCode}.`,
           }),
           // Bounded so a stalled endpoint cannot hold the exit, and with it Railway's restart.
           signal: AbortSignal.timeout(FAILURE_WEBHOOK_TIMEOUT_MS),
         });
       } catch (webhookError) {
-        console.error("Failed to dispatch worker failure webhook", safeErrorLogDetails(webhookError));
+        console.error("Failed to dispatch worker failure webhook", contentFreeErrorDetails(webhookError));
       }
     }
     // Flush last: the process is about to exit and buffered events would be lost.

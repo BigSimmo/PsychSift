@@ -1,3 +1,4 @@
+import { withMockRagScopeRevision, mockRagScopeRevision } from "./rag-cache-test-revision";
 import { createHash } from "node:crypto";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -223,15 +224,16 @@ function installDeferredCacheHarness(
   vi.doMock("@/lib/deep-memory", () => ({ ragDeepMemoryVersion: "test-rag-version" }));
   vi.doMock("@/lib/clinical-search", () => ({ buildClinicalTextSearchQuery: (query: string) => query.trim() }));
   vi.doMock("@/lib/supabase/admin", () => ({
-    createAdminClient: () => ({
-      from: (table: string) => {
-        if (table === "documents") {
-          documentReads += 1;
-          return documentBuilder;
-        }
-        return responseBuilder;
-      },
-    }),
+    createAdminClient: () =>
+      withMockRagScopeRevision({
+        from: (table: string) => {
+          if (table === "documents") {
+            documentReads += 1;
+            return documentBuilder;
+          }
+          return responseBuilder;
+        },
+      }),
   }));
 
   return {
@@ -679,7 +681,7 @@ describe("RAG request site-content snapshot", () => {
     expect(legacy.ragRequestContext.snapshot.publicSiteContent.state).toBe("disabled");
     expect(legacy.ragRequestContext.snapshotCacheKey).toBe("");
     const answerKey = ragCacheModule.scopedAnswerCacheKey(legacy);
-    expect(answerKey).toMatch(/^rag-cache-v25\|[0-9a-f]{64}\|answer-owner:[0-9a-f]{64}\|answer-request:[0-9a-f]{64}$/);
+    expect(answerKey).toMatch(/^rag-cache-v26\|[0-9a-f]{64}\|answer-owner:[0-9a-f]{64}\|answer-request:[0-9a-f]{64}$/);
     for (const privateValue of ["owner-a", "clozapine monitoring", generation]) {
       expect(answerKey).not.toContain(privateValue);
     }
@@ -912,7 +914,8 @@ describe("site-aware RAG cache isolation", () => {
     vi.doMock("@/lib/deep-memory", () => ({ ragDeepMemoryVersion: "test-rag-version" }));
     vi.doMock("@/lib/clinical-search", () => ({ buildClinicalTextSearchQuery: (query: string) => query.trim() }));
     vi.doMock("@/lib/supabase/admin", () => ({
-      createAdminClient: () => ({ from: () => makeBuilder() }),
+      createAdminClient: () =>
+        withMockRagScopeRevision({ from: () => makeBuilder() }, "rag-cache-scope-v1:" + "0".repeat(32)),
     }));
     const cache = await import("../src/lib/rag/rag-cache");
     const base = snapshotModule.withRagRequestContext({
@@ -922,14 +925,14 @@ describe("site-aware RAG cache isolation", () => {
     });
 
     await cache.getSharedCachedSearch({ ...base, ownerId: "owner-a" }, "table_threshold", [], {
-      indexingVersionAtRequestStart: "index-v1",
+      indexingVersionAtRequestStart: "test-rag-version:rag-cache-scope-v1:" + "0".repeat(32),
     });
     expect(selectors).toContainEqual({ kind: "is", column: "owner_id", value: null });
     expect(selectors).not.toContainEqual({ kind: "eq", column: "owner_id", value: "owner-a" });
 
     selectors.length = 0;
     await cache.getSharedCachedAnswer({ ...base, ownerId: "owner-a" }, Date.now(), {
-      indexingVersionAtRequestStart: "index-v1",
+      indexingVersionAtRequestStart: "test-rag-version:rag-cache-scope-v1:" + "0".repeat(32),
     });
     expect(selectors).toContainEqual({ kind: "eq", column: "owner_id", value: "owner-a" });
   });
@@ -980,7 +983,9 @@ describe("site-aware RAG cache isolation", () => {
     vi.doMock("@/lib/supabase/admin", () => ({
       createAdminClient: () => {
         adminClients += 1;
-        return { from: (table: string) => (table === "documents" ? documentBuilder : responseBuilder) };
+        return withMockRagScopeRevision({
+          from: (table: string) => (table === "documents" ? documentBuilder : responseBuilder),
+        });
       },
     }));
     const cache = await import("../src/lib/rag/rag-cache");
@@ -1163,7 +1168,7 @@ describe("site-aware RAG cache isolation", () => {
     await write;
     await vi.waitFor(() => expect(harness.inserts).toHaveLength(1));
     const hit = await cache.getCachedSearch(originalArgs, "table_threshold", ["variant-original"], {
-      indexingVersionAtRequestStart: "test-rag-version:document-original:2026-08-29T00:00:00.000Z:",
+      indexingVersionAtRequestStart: `test-rag-version:${mockRagScopeRevision([{ id: "document-original", updated_at: "2026-08-29T00:00:00.000Z", metadata: {} }])}`,
     });
     expect(hit?.results[0]).toMatchObject({
       id: "chunk-canary-1",
@@ -1176,8 +1181,8 @@ describe("site-aware RAG cache isolation", () => {
       cache_kind: "search",
       scope_key: "public-only|document-original",
       normalized_query: expectedSharedQuery,
-      indexing_version: "test-rag-version:document-original:2026-08-29T00:00:00.000Z:",
-      dependency_version: "rag-cache-v25",
+      indexing_version: `test-rag-version:${mockRagScopeRevision([{ id: "document-original", updated_at: "2026-08-29T00:00:00.000Z", metadata: {} }])}`,
+      dependency_version: "rag-cache-v26",
       payload: {
         results: [
           expect.objectContaining({
@@ -1263,7 +1268,7 @@ describe("site-aware RAG cache isolation", () => {
     await write;
     await vi.waitFor(() => expect(harness.inserts).toHaveLength(1));
     const hit = await cache.getCachedAnswer(originalArgs, Date.now(), {
-      indexingVersionAtRequestStart: "test-rag-version:document-original:2026-08-29T00:00:00.000Z:",
+      indexingVersionAtRequestStart: `test-rag-version:${mockRagScopeRevision([{ id: "document-original", updated_at: "2026-08-29T00:00:00.000Z", metadata: {} }])}`,
     });
     expect(hit).toMatchObject({
       answer: "Original answer text.",
@@ -1461,7 +1466,7 @@ describe("site-aware RAG cache isolation", () => {
     expect(harness.inserts).toHaveLength(0);
     expect(
       await cache.getCachedSearch({ ...request, signal: undefined }, "table_threshold", [], {
-        indexingVersionAtRequestStart: "test-rag-version:document-original:2026-08-29T00:00:00.000Z:",
+        indexingVersionAtRequestStart: `test-rag-version:${mockRagScopeRevision([{ id: "document-original", updated_at: "2026-08-29T00:00:00.000Z", metadata: {} }])}`,
       }),
     ).toBeNull();
   });

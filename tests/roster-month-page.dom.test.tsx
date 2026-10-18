@@ -20,6 +20,8 @@ const state = vi.hoisted(() => ({
   reads: {} as Record<string, unknown>,
   readCalls: [] as [string | null, string][],
   entries: [] as unknown[],
+  sources: {} as Record<string, { status: string; entries: unknown[] }>,
+  retryCalendar: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -41,7 +43,7 @@ vi.mock("@/components/roster/use-roster-team", () => ({
 // The Open shifts row reads every team's list; its own tests cover it.
 vi.mock("@/components/open-shifts/open-shifts-fit-line", () => ({ OpenShiftsFitLine: () => null }));
 vi.mock("@/components/work-calendar/use-work-calendar-entries", () => ({
-  useWorkCalendarEntries: () => ({ entries: state.entries }),
+  useWorkCalendarEntries: () => ({ entries: state.entries, sources: state.sources, retry: state.retryCalendar }),
 }));
 vi.mock("@/components/roster/use-roster-links", () => ({ useRosterLinks: () => ({ links: [], add: vi.fn() }) }));
 vi.mock("@/components/roster/use-roster-settings", () => ({ useRosterSettings: () => ({}) }));
@@ -91,6 +93,8 @@ function ready(shifts: unknown[], extra: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   state.entries = [];
+  state.sources = {};
+  state.retryCalendar.mockClear();
   state.readCalls = [];
   state.reads = {};
   state.teams = {
@@ -112,6 +116,31 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("Roster Month tab", () => {
+  it.each([
+    ["rotations", "Rotations"],
+    ["bookings", "Course bookings"],
+  ])("names failed %s, keeps shifts visible and retries only that source", (id, label) => {
+    state.sources = { [id]: { status: "error", entries: [] } };
+    state.entries = [
+      { id: "successful", kind: "course", title: "Loaded course", start: "2026-10-07", end: "2026-10-07" },
+    ];
+    const { rerender } = render(<RosterMonthPage now={NOW} />);
+    const warning = screen.getByTestId(`roster-month-source-${id}`);
+    expect(warning).toHaveTextContent(`${label} could not be loaded`);
+    expect(screen.getByTestId("roster-month-lead")).toHaveTextContent("On call tonight");
+    expect(screen.getByTestId("roster-month-coming")).toHaveTextContent("Loaded course");
+    fireEvent.click(within(warning).getByRole("button", { name: `Retry ${label.toLowerCase()}` }));
+    expect(state.retryCalendar).toHaveBeenCalledWith(id);
+    state.sources = { [id]: { status: "ready", entries: [] } };
+    state.entries = [
+      ...state.entries,
+      { id: "recovered", kind: "rotation", title: "Recovered rotation", start: "2026-10-09", end: "2026-10-10" },
+    ];
+    rerender(<RosterMonthPage now={NOW} />);
+    expect(screen.queryByTestId(`roster-month-source-${id}`)).toBeNull();
+    expect(screen.getByRole("button", { name: /Fri 9 Oct:.*Recovered rotation/ })).toBeInTheDocument();
+  });
+
   it("draws the month with a spoken shift code on every day and marks today", () => {
     render(<RosterMonthPage now={NOW} />);
     const grid = screen.getByRole("grid", { name: "Your shifts, October 2026" });
