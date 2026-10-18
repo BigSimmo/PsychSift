@@ -46,28 +46,35 @@ export function buildDocumentSupportListAnswer(args: {
   // Each named document is cited by the chunks that together cover the qualifiers
   // (one chunk when no qualifier filter applies). A document is named only when its
   // whole covering set fits the five-citation budget, never with partial support.
+  const citationBudget = 5;
   const coveringChunkIds = (documentId: string) => {
     const chunks = scopedResults.filter((result) => result.document_id === documentId);
     if (qualifierTokens.length === 0 || matchesByResult.size === 0) return chunks.slice(0, 1).map((r) => r.id);
-    // Greedy set cover: take the chunk adding the most uncovered qualifiers (earliest on
-    // ties), so one chunk carrying every qualifier beats several earlier partial chunks.
-    const covered = new Set<string>();
-    const ids: string[] = [];
-    while (covered.size < qualifierTokens.length) {
-      let best: { id: string; added: string[] } | null = null;
-      for (const chunk of chunks) {
-        if (ids.includes(chunk.id)) continue;
-        const added = (matchesByResult.get(chunk.id) ?? []).filter((token) => !covered.has(token));
-        if (added.length > (best?.added.length ?? 0)) best = { id: chunk.id, added };
-      }
-      if (!best) break;
-      best.added.forEach((token) => covered.add(token));
-      ids.push(best.id);
+    // Smallest covering set within the citation budget (earliest chunks on ties), so a
+    // document never spends citations another named document needs. Chunks whose matches
+    // are a subset of an earlier chunk's add nothing, which keeps the search tiny.
+    const candidates: { id: string; matches: string[] }[] = [];
+    for (const chunk of chunks) {
+      const matches = matchesByResult.get(chunk.id) ?? [];
+      if (matches.length === 0) continue;
+      if (candidates.some((c) => matches.every((token) => c.matches.includes(token)))) continue;
+      candidates.push({ id: chunk.id, matches });
     }
+    let ids: string[] = [];
+    const search = (from: number, picked: number[], size: number): boolean => {
+      if (picked.length === size) {
+        const covered = new Set(picked.flatMap((i) => candidates[i].matches));
+        if (covered.size < qualifierTokens.length) return false;
+        ids = picked.map((i) => candidates[i].id);
+        return true;
+      }
+      for (let i = from; i < candidates.length; i += 1) if (search(i + 1, [...picked, i], size)) return true;
+      return false;
+    };
+    for (let size = 1; size <= Math.min(citationBudget, candidates.length); size += 1) if (search(0, [], size)) break;
     // Keep the citation order aligned with the source order.
     return chunks.filter((chunk) => ids.includes(chunk.id)).map((chunk) => chunk.id);
   };
-  const citationBudget = 5;
   const citationChunkIds: string[] = [];
   const documents = buildDocumentBreakdown(scopedResults, extractQuoteCards(scopedResults, args.query))
     .filter((document) => {

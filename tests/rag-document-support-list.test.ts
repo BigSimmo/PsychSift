@@ -134,6 +134,25 @@ describe("claim-bearing document lookup", () => {
     expect(result.citations.map((c) => c.chunk_id)).toContain("late-full-chunk");
     expect(result.citations.length).toBeLessThanOrEqual(5);
   });
+  it("cites the smallest covering chunk set so a second split document still fits five citations", () => {
+    const query = "Which documents support anticoagulation, pregnancy, postpartum, epilepsy, warfarin and lithium?";
+    const greedyTrap = [
+      source("trap-abcd", "trap", "Anticoagulation, pregnancy, postpartum and epilepsy care."),
+      source("trap-abe", "trap", "Anticoagulation in pregnancy with warfarin."),
+      source("trap-cdf", "trap", "Postpartum epilepsy care with lithium."),
+    ];
+    const other = [
+      source("other-1", "other", "Anticoagulation and pregnancy."),
+      source("other-2", "other", "Postpartum and epilepsy."),
+      source("other-3", "other", "Warfarin and lithium."),
+    ];
+    const result = answer(query, [...greedyTrap, ...other]);
+    expect(result.answer).toContain("Synthetic trap");
+    expect(result.answer).toContain("Synthetic other");
+    const cited = result.citations.map((c) => c.chunk_id);
+    expect(cited).toEqual(expect.arrayContaining(["trap-abe", "trap-cdf", "other-1", "other-2", "other-3"]));
+    expect(cited).toHaveLength(5);
+  });
   it("returns a gap without attributing support when no document matches", () => {
     const result = answer("Which documents support anticoagulation in pregnancy?", [unrelated]);
     expect(result.grounded).toBe(false);
