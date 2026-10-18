@@ -688,3 +688,26 @@ A scoped worker requires the scope migration; a missing overload fails closed
 rather than falling back to an unfiltered claim. The migration changes the live
 database when merged to `main`: merge only inside the owner's specifically
 approved database-change window. No live database change is authorized by this PR.
+
+### Draft roster-offer retry consumer
+
+The follow-up for PS-008 adds a worker-owned, one-minute retry consumer for the
+service-role-only roster offer outbox. It is a database proposal: merge only after
+specific owner approval for the outbox migration and inside the approved window.
+The original milestone/mutation proposals retain their separate merge gates.
+
+After approval and verified schema application, an operator must verify that the
+worker has the intended `ROSTER_TEAM_RELEASE_ENABLED` setting and its own valid
+`WEB_PUSH_PUBLIC_KEY`, `WEB_PUSH_PRIVATE_KEY` and `WEB_PUSH_SUBJECT` bindings.
+The consumer remains inactive while the staff release is held or push is not
+configured. Do not copy credentials into a PR preview or enable staff release just
+to test the consumer. No bindings or release flags were changed by this repair.
+
+Use the synthetic PostgreSQL fixtures under `tests/fixtures/roster-offer-outbox/`
+for transaction checks; they are minimal disposable-cluster scaffolding, never a
+hosted database script. Provider acceptance is at least once: after an accepted
+push and lost acknowledgement, that device can receive a duplicate. Device IDs,
+owner IDs, endpoints and payloads must not enter worker logs. The outbox retains
+no endpoints; eligible device receipts are terminal independently, and pending
+ones retry until the event expires. Expired rows are removed in bounded batches
+when the configured consumer next claims work.
