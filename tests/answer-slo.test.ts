@@ -270,7 +270,7 @@ describe("answerSloSnapshot", () => {
     }));
     const snapshot = await answerSloSnapshot(
       fakeClient({
-        total: 24,
+        total: 26,
         hybrid: 0,
         degraded: 0,
         hybridRows: [
@@ -279,6 +279,9 @@ describe("answerSloSnapshot", () => {
           { metadata: { routing_mode: "source_only", total_latency_ms: 4_000 } },
           { metadata: { routing_mode: "unsupported", total_latency_ms: 90_000 } },
           { metadata: { routing_mode: "fast", total_latency_ms: "not a number" } },
+          // Missing timings are not zero-latency samples.
+          { metadata: { routing_mode: "strong", response_ms: null } },
+          { metadata: { routing_mode: "strong", total_latency_ms: "" } },
           // No declared mode: left out of every p95 rather than guessed as fast.
           { metadata: { total_latency_ms: 120_000 } },
           { metadata: { routing_mode: null, total_latency_ms: 120_000 } },

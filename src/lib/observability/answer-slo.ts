@@ -168,7 +168,9 @@ export function computeLatencyBudgetSloMetrics(rows: Array<{ metadata: unknown }
       continue;
     }
     const meta = row.metadata as Record<string, unknown>;
-    const rawLatency = Number(meta.latency_ms ?? meta.duration_ms ?? meta.total_latency_ms ?? meta.response_ms);
+    const selectedLatency = meta.latency_ms ?? meta.duration_ms ?? meta.total_latency_ms ?? meta.response_ms;
+    // Number(null) and Number("") are 0, so a missing timing must not count as a zero-latency sample.
+    const rawLatency = selectedLatency === null || selectedLatency === "" ? Number.NaN : Number(selectedLatency);
     const budgetMs = resolveRouteLatencyBudgetMs(meta);
     if (meta.latency_budget_breached === true || (Number.isFinite(rawLatency) && rawLatency > budgetMs)) {
       latencyBudgetBreachQueries += 1;
