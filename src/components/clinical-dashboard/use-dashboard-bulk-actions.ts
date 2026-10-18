@@ -4,8 +4,13 @@ import { useCallback, useRef, useState } from "react";
 
 import { isAbortError } from "@/components/clinical-dashboard/clinical-dashboard-helpers";
 import { type RefreshOptions } from "@/components/clinical-dashboard/clinical-dashboard-payloads";
+import { parseRetryAfterMs } from "@/lib/api-client-error";
 import { summarizeBulkReindexPayload } from "@/lib/bulk-reindex-results";
 import { errorCopy } from "@/lib/ui-copy";
+
+// The bulk_reindex bucket allows a few requests a minute, so a large selection
+// waits out one rate-limit window per batch instead of failing at the 429.
+const BULK_RATE_LIMIT_MAX_WAIT_MS = 60_000;
 
 type DashboardBulkActionsOptions = {
   authBoundFetch: (
@@ -53,11 +58,23 @@ export function useDashboardBulkActions({
       let progressStatus = "";
       try {
         for (let offset = 0; offset < selectedDocumentIds.length; offset += 10) {
-          const { response, requestEpoch } = await authBoundFetch("/api/documents/bulk/reindex", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", ...authorizationHeader },
-            body: JSON.stringify({ documentIds: selectedDocumentIds.slice(offset, offset + 10), mode }),
-          });
+          const send = () =>
+            authBoundFetch("/api/documents/bulk/reindex", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", ...authorizationHeader },
+              body: JSON.stringify({ documentIds: selectedDocumentIds.slice(offset, offset + 10), mode }),
+            });
+          let { response, requestEpoch } = await send();
+          if (response.status === 429 && isAuthEpochCurrent(requestEpoch)) {
+            const waitMs = parseRetryAfterMs(response);
+            if (waitMs !== null && waitMs <= BULK_RATE_LIMIT_MAX_WAIT_MS) {
+              setBulkActionStatus(
+                `${progressStatus ? `${progressStatus} ` : ""}Waiting ${Math.ceil(waitMs / 1000)}s before the next batch.`,
+              );
+              await new Promise((resolve) => setTimeout(resolve, waitMs));
+              ({ response, requestEpoch } = await send());
+            }
+          }
           lastEpoch = requestEpoch;
           if (!isAuthEpochCurrent(requestEpoch)) return;
           if (response.status === 401) {

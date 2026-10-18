@@ -75,4 +75,25 @@ describe("active dashboard bulk reindex hook", () => {
     expect(result.current.bulkActionStatus).toBe("First batch failed");
     expect(options.refresh).not.toHaveBeenCalled();
   });
+
+  it("waits out a rate-limited batch once and continues instead of failing", async () => {
+    vi.useFakeTimers();
+    try {
+      const { options, batches } = fixture(23);
+      const original = options.authBoundFetch.getMockImplementation()!;
+      options.authBoundFetch.mockImplementationOnce(original).mockImplementationOnce(original);
+      options.authBoundFetch.mockImplementationOnce(async () => ({
+        requestEpoch: 1,
+        response: Response.json({ error: "Too many" }, { status: 429, headers: { "Retry-After": "2" } }),
+      }));
+      const { result } = renderHook(() => useDashboardBulkActions(options));
+      const run = act(() => result.current.bulkReindexSelected("full"));
+      await act(() => vi.advanceTimersByTimeAsync(2_000));
+      await run;
+      expect(batches.flat()).toEqual(options.selectedDocumentIds);
+      expect(result.current.bulkActionStatus).toContain("23 queue requests succeeded; 0 failed");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
