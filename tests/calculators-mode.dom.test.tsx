@@ -2,6 +2,7 @@
 
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 const navigation = vi.hoisted(() => ({
@@ -426,6 +427,53 @@ describe("calculator results surface", () => {
     expect(within(screen.getByTestId("calculator-result-list")).getAllByRole("listitem")).toHaveLength(
       calculators.length,
     );
+  });
+
+  it("clears a typed shared query when Show all targets the current URL, preserving modified clicks", async () => {
+    const user = userEvent.setup();
+    const previousUrl = window.location.href;
+    window.history.replaceState(null, "", "/calculators/search");
+
+    // Keep the provider state live: a callback spy alone would not prove that
+    // clearing the shared composer also restores the visible catalogue.
+    function SharedQueryCalculator() {
+      const [query, setQuery] = useState("");
+      return (
+        <SearchCommandProvider value={{ query, modeId: "calculators", clearQuery: () => setQuery("") }}>
+          <input
+            aria-label="Shared calculator query"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+          <CalculatorsSearchPage />
+        </SearchCommandProvider>
+      );
+    }
+
+    try {
+      render(<SharedQueryCalculator />);
+      const input = screen.getByRole("textbox", { name: "Shared calculator query" });
+      await user.type(input, "PHQ-9");
+      const results = screen.getByTestId("calculator-result-list");
+      expect(within(results).getAllByRole("listitem")).toHaveLength(1);
+      expect(within(results).getByRole("button", { name: /^Open PHQ-9/ })).toBeVisible();
+      const showAll = screen.getByRole("link", { name: "Show all calculators" });
+      expect(showAll).toHaveAttribute("href", window.location.pathname);
+
+      for (const modifier of [{ ctrlKey: true }, { metaKey: true }, { shiftKey: true }, { altKey: true }]) {
+        fireEvent.click(showAll, modifier);
+        expect(input).toHaveValue("PHQ-9");
+        expect(within(results).getAllByRole("listitem")).toHaveLength(1);
+      }
+
+      await user.click(showAll);
+      expect(input).toHaveValue("");
+      expect(within(results).getAllByRole("listitem")).toHaveLength(calculators.length);
+      expect(screen.queryByTestId("calculators-show-all")).toBeNull();
+      expect(window.location.pathname + window.location.search).toBe("/calculators/search");
+    } finally {
+      window.history.replaceState(null, "", previousUrl);
+    }
   });
 
   it("distinguishes filtered and query-only empty recovery", async () => {
