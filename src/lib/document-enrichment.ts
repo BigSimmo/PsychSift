@@ -1021,16 +1021,25 @@ async function readMetadataPages<T>(
 ): Promise<T[]> {
   const rows: T[] = [];
   const pageSize = 500;
-  for (let offset = 0; offset < 100_000; offset += pageSize) {
+  const maxRows = 100_000;
+  const readPage = async (from: number, to: number) => {
     signal?.throwIfAborted();
-    const result = await page(offset, offset + pageSize - 1);
+    const result = await page(from, to);
     signal?.throwIfAborted();
     if (result.error) throw result.error;
-    const batch = result.data ?? [];
+    return result.data ?? [];
+  };
+  for (let offset = 0; offset < maxRows; offset += pageSize) {
+    const batch = await readPage(offset, offset + pageSize - 1);
     rows.push(...batch);
     if (batch.length < pageSize) return rows;
   }
-  throw new Error("Related-document metadata exceeded the paging limit.");
+  // The last permitted page was full. A result of exactly the cap is complete, so only
+  // an additional row proves the cap was exceeded.
+  if ((await readPage(maxRows, maxRows)).length > 0) {
+    throw new Error("Related-document metadata exceeded the paging limit.");
+  }
+  return rows;
 }
 
 export async function fetchRelatedDocumentMetadata(args: {
