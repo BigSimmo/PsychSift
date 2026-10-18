@@ -730,6 +730,28 @@ describe("Codex Cloud policy-only harness runtime isolation", () => {
     }
   });
 
+  it("scrubs inherited provider names before sourcing nvm in the generated profile", () => {
+    const test = fixture("missing");
+    expect(test.run().status).toBe(0);
+    writeFileSync(
+      path.join(test.home, ".nvm/nvm.sh"),
+      'if [ "${GITHUB_TOKEN+x}" = x ] || [ "${DATABASE_URL+x}" = x ]; then exit 93; fi; nvm() { return 0; }\n',
+    );
+    const result = spawnSync(bashCommand, ["-c", '. "$HOME/.clinical-kb-codex-cloud.sh"'], {
+      cwd: repoRoot,
+      encoding: "utf8",
+      env: {
+        NODE_ENV: "test",
+        SystemRoot: process.env.SystemRoot,
+        HOME: bashPath(test.home),
+        PATH: shellToolsPath,
+        GITHUB_TOKEN: "synthetic",
+        DATABASE_URL: "synthetic",
+      },
+    });
+    expect(result.status, result.stderr).toBe(0);
+  });
+
   it("writes and repairs only the active CODEX_HOME configuration", () => {
     const test = fixture("missing");
     const configHome = path.join(test.home, "chosen-codex-home");

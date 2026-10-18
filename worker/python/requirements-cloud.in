@@ -1,0 +1,6 @@
+# Optional Python 3.12 bootstrap dependency input; production uses requirements.in.
+-r requirements.in
+
+# quicksectx 0.4.1 (via medspacy-quickumls) requires Cython>=0.25,<3.2.0.
+# Keep the resolver's build/runtime Cython selection within that supported range.
+Cython>=0.25,<3.2.0

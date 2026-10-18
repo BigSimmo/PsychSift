@@ -1,4 +1,58 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { createRequire } from "node:module";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+// Exercise the installed Next webpack parser/DefinePlugin, rather than only
+// calling register() with Vitest's runtime import mocks. A negative early return
+// can be safe at execution time while webpack still resolves later Node imports
+// into its Edge graph. Externalizing dependencies records that resolution without
+// executing boot work, starting timers or reaching any provider.
+async function compiledRuntimeImports(runtime: "nodejs" | "edge") {
+  type Stats = { toJson: (options: { all: boolean; errors: boolean }) => { errors?: unknown[] } };
+  type Compiler = { close: (callback: (error?: Error | null) => void) => void };
+  type ExternalCallback = (error?: Error | null, external?: string) => void;
+  const { webpack } = createRequire(import.meta.url)("next/dist/compiled/webpack/webpack") as {
+    webpack: ((config: unknown, callback: (error: Error | null, stats?: Stats) => void) => Compiler) & {
+      DefinePlugin: new (definitions: Record<string, string>) => unknown;
+    };
+  };
+  const directory = await mkdtemp(join(tmpdir(), "instrumentation-runtime-"));
+  const imports = new Set<string>();
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const compiler = webpack(
+        {
+          mode: "none",
+          target: "webworker",
+          entry: join(process.cwd(), "src/instrumentation.ts"),
+          output: { path: directory, filename: "instrumentation.js" },
+          plugins: [new webpack.DefinePlugin({ "process.env.NEXT_RUNTIME": JSON.stringify(runtime) })],
+          externals: [
+            ({ request }: { request?: string }, callback: ExternalCallback) => {
+              if (request?.startsWith("@/") || request?.startsWith("./sentry.")) {
+                imports.add(request);
+                callback(null, `commonjs ${request}`);
+              } else callback();
+            },
+          ],
+        },
+        (error, stats) => {
+          compiler.close((closeError) => {
+            if (error || closeError) return reject(error ?? closeError);
+            const errors = stats?.toJson({ all: false, errors: true }).errors ?? [];
+            if (errors.length) return reject(new Error(JSON.stringify(errors)));
+            resolve();
+          });
+        },
+      );
+    });
+    return imports;
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+}
 
 // The boot guard (src/instrumentation.ts) must refuse to start a production server
 // that is misconfigured (missing/mismatched Supabase or required OpenAI config),
@@ -65,6 +119,29 @@ afterEach(() => {
 });
 
 describe("instrumentation boot guard", () => {
+  it("excludes Node-only startup dependencies from the actual Edge webpack graph", async () => {
+    const imports = await compiledRuntimeImports("edge");
+    expect(imports).toContain("./sentry.edge.config");
+    for (const nodeOnly of [
+      "./sentry.server.config",
+      "@/lib/env",
+      "@/lib/rag/rag-retrieval-variants",
+      "@/lib/site-content/warm-catalogue-caches",
+      "@/app/api/setup-status/route",
+      "@/lib/alerts/timed-sender",
+      "@/lib/supabase/admin",
+    ])
+      expect(imports, `${nodeOnly} must not resolve in the Edge compilation`).not.toContain(nodeOnly);
+  });
+
+  it("retains Node boot dependencies in the actual Node webpack graph", async () => {
+    const imports = await compiledRuntimeImports("nodejs");
+    expect(imports).toContain("./sentry.server.config");
+    expect(imports).toContain("@/lib/alerts/timed-sender");
+    expect(imports).toContain("@/lib/supabase/admin");
+    expect(imports).not.toContain("./sentry.edge.config");
+  });
+
   it("refuses to start a production server with missing Supabase config", async () => {
     const register = await loadRegister({ ...PRODUCTION_NODE });
     await expect(register()).rejects.toThrow(/Missing server environment variables/);

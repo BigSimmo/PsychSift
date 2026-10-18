@@ -1,4 +1,5 @@
 import "server-only";
+import { randomUUID } from "node:crypto";
 
 import type { createAdminClient } from "@/lib/supabase/admin";
 import { PublicApiError } from "@/lib/http";
@@ -372,11 +373,13 @@ export async function rosterCommand(
             p_expected_ids: action.expectedIds as never,
             p_needs: action.needs as never,
           })
-        : action.action === "open.post" && action.postKey
+        : action.action === "open.post"
           ? await client.rpc("roster_open_post_once", {
               p_actor_id: actorId,
               p_service_id: serviceId,
-              p_post_key: action.postKey,
+              // A keyless post gets a one-use server key so it still records a post key, which is what
+              // enqueues its durable offer alert; without one the post saved but no one was alerted.
+              p_post_key: action.postKey ?? randomUUID(),
               p_payload: withoutPostKey(payload) as never,
             })
           : await client.rpc("roster_command", {

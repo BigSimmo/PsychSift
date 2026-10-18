@@ -28,6 +28,7 @@ import {
   rosterOutlineButton,
 } from "./roster-list";
 import { describeLinkFailure, useRosterLinks } from "./use-roster-links";
+import { useAccountRequestScope } from "@/components/use-account-request-scope";
 import { useRosterSettings } from "./use-roster-settings";
 import { useRosterShifts } from "./use-roster-shifts";
 import { RosterPageHeader } from "./roster-ui";
@@ -60,6 +61,8 @@ const EVENING_BEFORE: ReminderLeadTime = "evening-before";
 type DeleteState = "idle" | "pending" | "deleting" | "deleted";
 
 export function RosterSettingsPage() {
+  const { scope, isCurrent } = useAccountRequestScope();
+  const [owner, setOwner] = useState(scope);
   const shifts = useRosterShifts();
   const links = useRosterLinks();
   const settings = useRosterSettings();
@@ -71,6 +74,14 @@ export function RosterSettingsPage() {
     { kind: "workplace"; name: string } | { kind: "link"; id: string; host: string } | null
   >(null);
   const [confirmBusy, setConfirmBusy] = useState(false);
+
+  if (owner !== scope) {
+    setOwner(scope);
+    setDeleteState("idle");
+    setNotice(null);
+    setConfirm(null);
+    setConfirmBusy(false);
+  }
 
   const reminderOn = preferences.reminders.types[SHIFTS_REMINDER]?.calendarAlert === EVENING_BEFORE;
   const calendarShifts = settings.settings.calendarShifts;
@@ -85,12 +96,14 @@ export function RosterSettingsPage() {
   const { deleteAll, reload: reloadShifts } = shifts;
   const { reload: reloadLinks } = links;
   const sendDelete = useCallback(() => {
+    if (!isCurrent()) return;
     if (timer.current !== null) window.clearTimeout(timer.current);
     timer.current = null;
     setDeleteState("deleting");
     // Committed once the undo window ends: `keepalive` lets the request outlive
     // the page if it is closed or left now. Only the pending window cancels.
     void deleteAll({ keepalive: true }).then((result) => {
+      if (!isCurrent()) return;
       // A delete that removed your own data but left some team requests is done, with a note.
       setDeleteState(result.ok ? "deleted" : "idle");
       if (result.ok) {
@@ -105,7 +118,7 @@ export function RosterSettingsPage() {
         text: `${result.message ?? "Your roster data couldn't be deleted."} Some of it may already be gone. This page now shows what is left.`,
       });
     });
-  }, [deleteAll, reloadShifts, reloadLinks]);
+  }, [deleteAll, reloadShifts, reloadLinks, isCurrent]);
 
   // Leaving the page during the 30 seconds, closed or navigated away from
   // inside the app, cancels the pending delete: nothing is sent.
@@ -126,27 +139,32 @@ export function RosterSettingsPage() {
       window.clearTimeout(timer.current);
       timer.current = null;
     },
-    [],
+    [scope],
   );
 
   function startDelete() {
+    if (!isCurrent()) return;
     setNotice(null);
     setDeleteState("pending");
     timer.current = window.setTimeout(sendDelete, ROSTER_DELETE_UNDO_MS);
   }
 
   function undoDelete() {
+    if (!isCurrent()) return;
     if (timer.current !== null) window.clearTimeout(timer.current);
     timer.current = null;
     setDeleteState("idle");
   }
 
   async function toggleCalendarShifts() {
+    if (!isCurrent()) return;
     const failure = await settings.update({ calendarShifts: !calendarShifts });
+    if (!isCurrent()) return;
     if (failure) setNotice({ tone: "warning", text: failure });
   }
 
   function toggleReminder() {
+    if (!isCurrent()) return;
     setPreference(
       "reminders",
       updateReminderType(preferences.reminders, SHIFTS_REMINDER, {
@@ -156,19 +174,24 @@ export function RosterSettingsPage() {
   }
 
   async function removeWorkplace(name: string) {
+    if (!isCurrent()) return;
     // Its calendar links and imported shifts go together, so no refresh brings it back; then its codes.
     const removed = await shifts.removeWorkplace(name);
+    if (!isCurrent()) return;
     if (removed) {
       setNotice({ tone: "warning", text: removed });
       return;
     }
     void links.reload();
     const failure = await settings.update({ codes: { [name]: null } });
+    if (!isCurrent()) return;
     setNotice(failure ? { tone: "warning", text: failure } : { tone: "neutral", text: "Removed" });
   }
 
   async function linkAction(action: Promise<string | null>, done: string) {
+    if (!isCurrent()) return;
     const failure = await action;
+    if (!isCurrent()) return;
     setNotice(failure ? { tone: "warning", text: failure } : { tone: "neutral", text: done });
   }
 
@@ -192,10 +215,12 @@ export function RosterSettingsPage() {
   }
 
   async function confirmRemoval() {
+    if (!isCurrent()) return;
     if (!confirm) return;
     setConfirmBusy(true);
     if (confirm.kind === "workplace") await removeWorkplace(confirm.name);
     else await linkAction(links.remove(confirm.id), "Removed");
+    if (!isCurrent()) return;
     setConfirmBusy(false);
     setConfirm(null);
   }

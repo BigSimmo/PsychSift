@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useAccountRequestScope } from "@/components/use-account-request-scope";
 import { useRosterTeams, rosterTeamUrl } from "./use-roster-team";
 import { mergeMyShifts, type RosterDisplayShift } from "@/lib/roster/team/team-view";
 import { rosterAssignmentsSchema, type RosterAssignment, type RosterTeam } from "@/lib/roster/team/model";
@@ -134,6 +135,8 @@ export function useRosterShifts(
   teamRange?: { from: string; to: string },
   options?: { readonly ownHistory?: boolean; readonly skipWhenUnauthenticated?: boolean },
 ): RosterShiftsState {
+  const { scope, isCurrent } = useAccountRequestScope();
+  const [owner, setOwner] = useState(scope);
   const { zone } = useWorkTimeZone();
   const skipGuest = Boolean(options?.skipWhenUnauthenticated && !hasSupabaseAuthSession());
   const teams = useRosterTeams({ skip: skipGuest });
@@ -170,14 +173,14 @@ export function useRosterShifts(
       .then(async (response) => {
         if (!response.ok) throw new Error("older shifts unavailable");
         const payload = await readPayload(response);
-        if (!controller.signal.aborted)
+        if (!controller.signal.aborted && isCurrent())
           setHistory({ from, to: historyTo, shifts: payload.shifts ?? [], failed: false });
       })
       .catch(() => {
-        if (!controller.signal.aborted) setHistory({ from, to: historyTo, shifts: [], failed: true });
+        if (!controller.signal.aborted && isCurrent()) setHistory({ from, to: historyTo, shifts: [], failed: true });
       });
     return () => controller.abort();
-  }, [wantsHistory, from, historyTo, historyReload, options?.skipWhenUnauthenticated]);
+  }, [wantsHistory, from, historyTo, historyReload, options?.skipWhenUnauthenticated, isCurrent]);
   const [teamData, setTeamData] = useState<{
     payload: typeof teams.data;
     owner: string;
@@ -207,11 +210,11 @@ export function useRosterShifts(
       }),
     )
       .then((rows) => {
-        if (!controller.signal.aborted)
+        if (!controller.signal.aborted && isCurrent())
           setTeamData({ payload: teamPayload, owner: actorId, from, to, rows, message: null });
       })
       .catch(() => {
-        if (!controller.signal.aborted)
+        if (!controller.signal.aborted && isCurrent())
           setTeamData({
             payload: teamPayload,
             owner: actorId,
@@ -222,7 +225,7 @@ export function useRosterShifts(
           });
       });
     return () => controller.abort();
-  }, [actorId, teamPayload, from, to]);
+  }, [actorId, teamPayload, from, to, isCurrent]);
   const [status, setStatus] = useState<RosterShiftsStatus>(() =>
     options?.skipWhenUnauthenticated && !hasSupabaseAuthSession() ? "signed-out" : "loading",
   );
@@ -231,40 +234,52 @@ export function useRosterShifts(
   const [demoMode, setDemoMode] = useState(false);
   const [sample, setSample] = useState(false);
 
-  const accept = useCallback((payload: Payload) => {
-    setShifts(payload.shifts ?? []);
-    setLatestImport(payload.latestImport ?? null);
-    setDemoMode(Boolean(payload.demoMode));
-    setSample(Boolean(payload.sample));
-    setStatus("ready");
-    // Tells auto mode whether Roster has real shifts (the sample gate waits for it).
-    if (!payload.demoMode && !payload.sample) {
-      reportAreaData("rost", (payload.shifts?.length ?? 0) > 0 || payload.latestImport ? "has-data" : "empty");
-    }
-  }, []);
+  const accept = useCallback(
+    (payload: Payload) => {
+      if (!isCurrent()) return;
+      setShifts(payload.shifts ?? []);
+      setLatestImport(payload.latestImport ?? null);
+      setDemoMode(Boolean(payload.demoMode));
+      setSample(Boolean(payload.sample));
+      setStatus("ready");
+      // Tells auto mode whether Roster has real shifts (the sample gate waits for it).
+      if (!payload.demoMode && !payload.sample) {
+        reportAreaData("rost", (payload.shifts?.length ?? 0) > 0 || payload.latestImport ? "has-data" : "empty");
+      }
+    },
+    [isCurrent],
+  );
 
   const apply = useCallback(
     (result: Loaded) => {
-      if (result === "aborted") return;
+      if (!isCurrent() || result === "aborted") return;
       if (result === "signed-out" || result === "error") setStatus(result);
       else accept(result);
     },
-    [accept],
+    [accept, isCurrent],
   );
 
-  const load = useCallback(async () => apply(await fetchShifts()), [apply]);
+  const load = useCallback(async () => {
+    if (isCurrent()) apply(await fetchShifts());
+  }, [apply, isCurrent]);
 
   useEffect(() => {
     if (options?.skipWhenUnauthenticated && !hasSupabaseAuthSession()) {
       return;
     }
     const controller = new AbortController();
-    fetchShifts(controller.signal).then(apply, () => undefined);
+    fetchShifts(controller.signal).then(
+      (result) => {
+        if (!controller.signal.aborted) apply(result);
+      },
+      () => undefined,
+    );
     return () => controller.abort();
   }, [apply, options?.skipWhenUnauthenticated]);
 
   const save = useCallback(
     async (request: OnCallShiftImportRequest) => {
+      if (!isCurrent()) return null;
       try {
         const response = await fetch(ROSTER_SHIFTS_URL, {
           method: "POST",
@@ -272,22 +287,37 @@ export function useRosterShifts(
           body: JSON.stringify(request),
         });
         const payload = await readPayload(response);
+        if (!isCurrent()) return null;
         if (response.status === 401) return "Sign in to save your roster.";
         if (!response.ok) return errorText(payload, "Your roster could not be saved. Try again.");
         accept(payload);
         refreshHistory();
         return null;
       } catch {
+        if (!isCurrent()) return null;
         return "Your roster could not be saved. Check your connection and try again.";
       }
     },
-    [accept, refreshHistory],
+    [isCurrent, accept, refreshHistory],
   );
 
   const [lastManualConflicts, setLastManualConflicts] = useState<readonly unknown[]>([]);
 
+  if (owner !== scope) {
+    setOwner(scope);
+    setStatus(skipGuest ? "signed-out" : "loading");
+    setShifts([]);
+    setLatestImport(null);
+    setDemoMode(false);
+    setSample(false);
+    setHistory(null);
+    setTeamData(null);
+    setLastManualConflicts([]);
+  }
+
   const addManual = useCallback(
     async (request: OnCallManualShiftRequest) => {
+      if (!isCurrent()) return null;
       try {
         const response = await fetch(`${ROSTER_SHIFTS_URL}/manual`, {
           method: "POST",
@@ -295,61 +325,72 @@ export function useRosterShifts(
           body: JSON.stringify(request),
         });
         const payload = await readPayload(response);
+        if (!isCurrent()) return null;
         if (response.status === 401) return "Sign in to add a shift.";
         if (!response.ok) return errorText(payload, "That shift could not be saved. Try again.");
         setLastManualConflicts(Array.isArray(payload.conflicts) ? payload.conflicts : []);
         await load();
+        if (!isCurrent()) return null;
         refreshHistory();
         return null;
       } catch {
+        if (!isCurrent()) return null;
         return "That shift could not be saved. Check your connection and try again.";
       }
     },
-    [load, refreshHistory],
+    [isCurrent, load, refreshHistory],
   );
 
   const removeSeries = useCallback(
     async (seriesId: string) => {
+      if (!isCurrent()) return null;
       try {
         const response = await fetch(`${ROSTER_SHIFTS_URL}/manual/${encodeURIComponent(seriesId)}`, {
           method: "DELETE",
         });
+        if (!isCurrent()) return null;
         if (!response.ok) return errorText(await readPayload(response), "That shift could not be removed. Try again.");
         setShifts((current) => current.filter((shift) => shift.seriesId !== seriesId));
         refreshHistory();
         return null;
       } catch {
+        if (!isCurrent()) return null;
         return "That shift could not be removed. Check your connection and try again.";
       }
     },
-    [refreshHistory],
+    [isCurrent, refreshHistory],
   );
 
   const deleteAll = useCallback(
     async (options?: { keepalive?: boolean }) => {
+      if (!isCurrent()) return { ok: false, message: null };
       try {
         const response = await fetch(ROSTER_SHIFTS_URL, { method: "DELETE", keepalive: options?.keepalive ?? false });
         const payload = await readPayload(response);
+        if (!isCurrent()) return { ok: false, message: null };
         if (!response.ok)
           return { ok: false, message: errorText(payload, "Your data could not be deleted. Try again.") };
         accept(payload);
         refreshHistory();
         return { ok: true, message: payload.message ?? null };
       } catch {
+        if (!isCurrent()) return { ok: false, message: null };
         return { ok: false, message: "Your data could not be deleted. Check your connection and try again." };
       }
     },
-    [accept, refreshHistory],
+    [isCurrent, accept, refreshHistory],
   );
 
   const removeWorkplace = useCallback(
     async (workplace: string) => {
+      if (!isCurrent()) return null;
       try {
         const response = await fetch(ROSTER_WORKPLACES_URL, {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ workplace }),
         });
+        if (!isCurrent()) return null;
         if (!response.ok) {
           return errorText(await readPayload(response), "That workplace could not be removed. Try again.");
         }
@@ -359,25 +400,28 @@ export function useRosterShifts(
         refreshHistory();
         return null;
       } catch {
+        if (!isCurrent()) return null;
         return "That workplace could not be removed. Check your connection and try again.";
       }
     },
-    [refreshHistory],
+    [isCurrent, refreshHistory],
   );
 
   const dismissChanges = useCallback(async () => {
+    if (!isCurrent()) return;
     const current = latestImport;
     if (!current || current.seenAt) return;
     setLatestImport({ ...current, seenAt: new Date().toISOString() });
     await fetch(`${ROSTER_SHIFTS_URL}/imports/${current.id}`, { method: "PATCH" }).catch(() => undefined);
-  }, [latestImport]);
+  }, [latestImport, isCurrent]);
 
   const reloadTeams = teams.reload;
   const reload = useCallback(async () => {
+    if (!isCurrent()) return;
     reloadTeams();
     setHistoryReload((count) => count + 1);
     await load();
-  }, [reloadTeams, load]);
+  }, [reloadTeams, load, isCurrent]);
 
   const sameTeams =
     teamData &&

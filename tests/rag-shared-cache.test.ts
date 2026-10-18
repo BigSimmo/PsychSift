@@ -1,3 +1,4 @@
+import { withMockRagScopeRevision } from "./rag-cache-test-revision";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { SearchTelemetry } from "../src/lib/rag/rag-contracts";
 
@@ -65,7 +66,7 @@ describe("shared RAG search cache", () => {
     const from = vi.fn(() => {
       throw new Error("shadow must not access answer cache");
     });
-    vi.doMock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({ from }) }));
+    vi.doMock("@/lib/supabase/admin", () => ({ createAdminClient: () => withMockRagScopeRevision({ from }) }));
     const cache = await import("../src/lib/rag/rag-cache");
     const args = { query: "What is clozapine?", ownerId, ragQueryPlanMode: "shadow" as const };
     const answer = {
@@ -128,9 +129,10 @@ describe("shared RAG search cache", () => {
     vi.doMock("@/lib/deep-memory", () => ({ ragDeepMemoryVersion: "test-rag-version" }));
     vi.doMock("@/lib/clinical-search", () => ({ buildClinicalTextSearchQuery: (query: string) => query.trim() }));
     vi.doMock("@/lib/supabase/admin", () => ({
-      createAdminClient: () => ({
-        from: (table: string) => (table === "documents" ? documentBuilder : responseBuilder),
-      }),
+      createAdminClient: () =>
+        withMockRagScopeRevision({
+          from: (table: string) => (table === "documents" ? documentBuilder : responseBuilder),
+        }),
     }));
 
     const { getCachedSearch, setCachedSearch } = await import("../src/lib/rag/rag-cache");
@@ -229,9 +231,10 @@ describe("shared RAG search cache", () => {
     vi.doMock("@/lib/deep-memory", () => ({ ragDeepMemoryVersion: "test-rag-version" }));
     vi.doMock("@/lib/clinical-search", () => ({ buildClinicalTextSearchQuery: (query: string) => query.trim() }));
     vi.doMock("@/lib/supabase/admin", () => ({
-      createAdminClient: () => ({
-        from: (table: string) => (table === "documents" ? documentBuilder : responseBuilder),
-      }),
+      createAdminClient: () =>
+        withMockRagScopeRevision({
+          from: (table: string) => (table === "documents" ? documentBuilder : responseBuilder),
+        }),
     }));
 
     const { withRagRequestContext } = await import("../src/lib/rag/rag-context-snapshot");
@@ -331,7 +334,10 @@ describe("shared RAG search cache", () => {
     }));
     vi.doMock("@/lib/deep-memory", () => ({ ragDeepMemoryVersion: "test-rag-version" }));
     vi.doMock("@/lib/clinical-search", () => ({ buildClinicalTextSearchQuery: (query: string) => query.trim() }));
-    vi.doMock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({ from: () => builder }) }));
+    vi.doMock("@/lib/supabase/admin", () => ({
+      createAdminClient: () =>
+        withMockRagScopeRevision({ from: () => builder }, "rag-cache-scope-v1:" + "0".repeat(32)),
+    }));
 
     const { withRagRequestContext } = await import("../src/lib/rag/rag-context-snapshot");
     const { getSharedCachedAnswer, getSharedCachedSearch } = await import("../src/lib/rag/rag-cache");
@@ -360,7 +366,9 @@ describe("shared RAG search cache", () => {
       ragContextSnapshotInput: snapshotInput,
     });
 
-    await getSharedCachedSearch(request, "table_threshold", [], { indexingVersionAtRequestStart: "index-v1" });
+    await getSharedCachedSearch(request, "table_threshold", [], {
+      indexingVersionAtRequestStart: "test-rag-version:rag-cache-scope-v1:" + "0".repeat(32),
+    });
     const firstSearchQuery = selectors.find(
       (selector) => selector.method === "eq" && selector.column === "normalized_query",
     )?.value;
@@ -368,7 +376,9 @@ describe("shared RAG search cache", () => {
     expect(selectors).not.toContainEqual({ method: "eq", column: "owner_id", value: ownerId });
 
     selectors.length = 0;
-    await getSharedCachedAnswer(request, Date.now(), { indexingVersionAtRequestStart: "index-v1" });
+    await getSharedCachedAnswer(request, Date.now(), {
+      indexingVersionAtRequestStart: "test-rag-version:rag-cache-scope-v1:" + "0".repeat(32),
+    });
     expect(selectors).toContainEqual({ method: "eq", column: "owner_id", value: ownerId });
 
     selectors.length = 0;
@@ -378,7 +388,9 @@ describe("shared RAG search cache", () => {
       accessScope: request.accessScope,
       ragContextSnapshotInput: { ...snapshotInput, publicSiteChangeEpoch: "2" },
     });
-    await getSharedCachedSearch(nextRequest, "table_threshold", [], { indexingVersionAtRequestStart: "index-v1" });
+    await getSharedCachedSearch(nextRequest, "table_threshold", [], {
+      indexingVersionAtRequestStart: "test-rag-version:rag-cache-scope-v1:" + "0".repeat(32),
+    });
     const nextSearchQuery = selectors.find(
       (selector) => selector.method === "eq" && selector.column === "normalized_query",
     )?.value;
@@ -404,32 +416,35 @@ describe("shared RAG search cache", () => {
       buildClinicalTextSearchQuery: (query: string) => query.trim(),
     }));
     vi.doMock("@/lib/supabase/admin", () => ({
-      createAdminClient: () => ({
-        from: (table: string) => {
-          const builder = {
-            select: () => builder,
-            eq: () => builder,
-            is: () => builder,
-            in: () => builder,
-            or: () => builder,
-            gt: () => builder,
-            order: () => builder,
-            limit: () => builder,
-            maybeSingle: async () => {
-              expect(table).toBe("rag_response_cache");
-              sharedCacheReads += 1;
-              return { data: null, error: null };
-            },
-            then: (resolve: (value: { data: unknown[]; error: null }) => unknown) =>
-              Promise.resolve({
-                data:
-                  table === "documents" ? [{ id: "doc-1", updated_at: "2026-07-14T00:00:00.000Z", metadata: {} }] : [],
-                error: null,
-              }).then(resolve),
-          };
-          return builder;
-        },
-      }),
+      createAdminClient: () =>
+        withMockRagScopeRevision({
+          from: (table: string) => {
+            const builder = {
+              select: () => builder,
+              eq: () => builder,
+              is: () => builder,
+              in: () => builder,
+              or: () => builder,
+              gt: () => builder,
+              order: () => builder,
+              limit: () => builder,
+              maybeSingle: async () => {
+                expect(table).toBe("rag_response_cache");
+                sharedCacheReads += 1;
+                return { data: null, error: null };
+              },
+              then: (resolve: (value: { data: unknown[]; error: null }) => unknown) =>
+                Promise.resolve({
+                  data:
+                    table === "documents"
+                      ? [{ id: "doc-1", updated_at: "2026-07-14T00:00:00.000Z", metadata: {} }]
+                      : [],
+                  error: null,
+                }).then(resolve),
+            };
+            return builder;
+          },
+        }),
     }));
 
     const { getSharedCachedSearch } = await import("../src/lib/rag/rag-cache");
@@ -460,39 +475,42 @@ describe("shared RAG search cache", () => {
       buildClinicalTextSearchQuery: (query: string) => query.trim(),
     }));
     vi.doMock("@/lib/supabase/admin", () => ({
-      createAdminClient: () => ({
-        from: (table: string) => {
-          const builder = {
-            select: () => builder,
-            eq: () => builder,
-            is: () => builder,
-            in: () => builder,
-            or: () => builder,
-            gt: () => builder,
-            order: () => builder,
-            limit: () => builder,
-            maybeSingle: async () => {
-              if (table !== "rag_response_cache") return { data: null, error: null };
-              return {
-                data: {
-                  payload: {
-                    results: [],
-                    telemetry: { query_class: "unsupported_or_general", corpus_grounding: "in_corpus_topic" },
+      createAdminClient: () =>
+        withMockRagScopeRevision({
+          from: (table: string) => {
+            const builder = {
+              select: () => builder,
+              eq: () => builder,
+              is: () => builder,
+              in: () => builder,
+              or: () => builder,
+              gt: () => builder,
+              order: () => builder,
+              limit: () => builder,
+              maybeSingle: async () => {
+                if (table !== "rag_response_cache") return { data: null, error: null };
+                return {
+                  data: {
+                    payload: {
+                      results: [],
+                      telemetry: { query_class: "unsupported_or_general", corpus_grounding: "in_corpus_topic" },
+                    },
                   },
-                },
-                error: null,
-              };
-            },
-            then: (resolve: (value: { data: unknown[]; error: null }) => unknown) =>
-              Promise.resolve({
-                data:
-                  table === "documents" ? [{ id: "doc-1", updated_at: "2026-07-14T00:00:00.000Z", metadata: {} }] : [],
-                error: null,
-              }).then(resolve),
-          };
-          return builder;
-        },
-      }),
+                  error: null,
+                };
+              },
+              then: (resolve: (value: { data: unknown[]; error: null }) => unknown) =>
+                Promise.resolve({
+                  data:
+                    table === "documents"
+                      ? [{ id: "doc-1", updated_at: "2026-07-14T00:00:00.000Z", metadata: {} }]
+                      : [],
+                  error: null,
+                }).then(resolve),
+            };
+            return builder;
+          },
+        }),
     }));
 
     const { getSharedCachedSearch } = await import("../src/lib/rag/rag-cache");
@@ -543,11 +561,14 @@ describe("shared RAG search cache", () => {
     }));
     vi.doMock("@/lib/deep-memory", () => ({ ragDeepMemoryVersion: "test-rag-version" }));
     vi.doMock("@/lib/clinical-search", () => ({ buildClinicalTextSearchQuery: (query: string) => query.trim() }));
-    vi.doMock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({ from: () => builder }) }));
+    vi.doMock("@/lib/supabase/admin", () => ({
+      createAdminClient: () =>
+        withMockRagScopeRevision({ from: () => builder }, "rag-cache-scope-v1:" + "0".repeat(32)),
+    }));
 
     const { getSharedCachedSearch } = await import("../src/lib/rag/rag-cache");
     const result = await getSharedCachedSearch({ query: "lithium monitoring", ownerId }, undefined, [], {
-      indexingVersionAtRequestStart: "index-v1",
+      indexingVersionAtRequestStart: "test-rag-version:rag-cache-scope-v1:" + "0".repeat(32),
     });
 
     expect(result?.kind).toBe("hit");
@@ -603,12 +624,13 @@ describe("shared RAG search cache", () => {
       maybeSingle: async () => ({ data: null, error: null }),
     };
     vi.doMock("@/lib/supabase/admin", () => ({
-      createAdminClient: () => ({
-        from: (table: string) => {
-          if (table === "rag_response_cache") return shared.builder;
-          return docBuilder;
-        },
-      }),
+      createAdminClient: () =>
+        withMockRagScopeRevision({
+          from: (table: string) => {
+            if (table === "rag_response_cache") return shared.builder;
+            return docBuilder;
+          },
+        }),
     }));
 
     const { getSharedCachedAnswer } = await import("../src/lib/rag/rag-cache");
@@ -686,9 +708,10 @@ describe("shared RAG search cache", () => {
       buildClinicalTextSearchQuery: (query: string) => query.trim(),
     }));
     vi.doMock("@/lib/supabase/admin", () => ({
-      createAdminClient: () => ({
-        from: (table: string) => (table === "documents" ? failingDocBuilder : cacheTableBuilder),
-      }),
+      createAdminClient: () =>
+        withMockRagScopeRevision({
+          from: (table: string) => (table === "documents" ? failingDocBuilder : cacheTableBuilder),
+        }),
     }));
 
     const {

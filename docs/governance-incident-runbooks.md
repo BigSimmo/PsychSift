@@ -1,6 +1,6 @@
 # Clinical governance incident runbooks
 
-Last reviewed: 2026-10-16
+Last reviewed: 2026-10-18 (repository contracts; not live execution)
 
 These are short operator checklists. Preserve evidence and identifiers, but do not copy patient-identifying question or answer prose into tickets or chat.
 
@@ -14,23 +14,28 @@ These are short operator checklists. Preserve evidence and identifiers, but do n
 
 1. Record the answer interaction ID, feedback category, cited source IDs, time, and affected workflow:
    ```sql
-   SELECT id, created_at, feedback_category, cited_document_ids, config_posture_version
-   FROM public.rag_query_feedback
-   WHERE id = '<interaction-or-feedback-id>';
+   SELECT id, interaction_id, created_at, feedback_category, cited_source_ids, source_ids
+   FROM public.rag_answer_feedback
+   WHERE interaction_id = '<interaction-uuid>'::uuid;
    ```
 2. If harm is plausible, disable the affected answer mode or narrow its source scope; keep direct source browsing available:
    ```bash
    # Switch answer generation to deterministic offline/source-only mode immediately
-   railway variables --service clinical-kb-app --set "RAG_PROVIDER_MODE=offline"
+   railway variables --service PsychSift --set "RAG_PROVIDER_MODE=offline"
    # Pause background worker ingestion/enrichment claims if source mutation is in flight
-   railway variables --service clinical-kb-worker --set "WORKER_PAUSED=true"
+   railway variables --service worker --set "WORKER_PAUSED=true"
    ```
 3. Quarantine an implicated source through a `decommissioned` or `superseded` source-review event when appropriate:
    ```sql
-   UPDATE public.documents
-   SET source_review_status = 'decommissioned',
-       updated_at = timezone('utc', now())
-   WHERE id = '<document-uuid>';
+   -- The reviewer must own the document. This existing RPC locks the row,
+   -- appends source_review_events, and updates its governance metadata atomically.
+   SELECT public.record_source_review(
+     p_document_id => '<document-uuid>'::uuid,
+     p_reviewer_id => '<document-owner-reviewer-uuid>'::uuid,
+     p_decision => 'decommissioned',
+     p_reason => '<ticket-or-incident-ref>',
+     p_evidence_references => ARRAY['<evidence-reference>']
+   );
    ```
 4. Reproduce with a synthetic or minimised fixture, add a regression test, and identify whether retrieval, generation, rendering, or copy caused the defect:
    ```bash
@@ -45,31 +50,21 @@ These are short operator checklists. Preserve evidence and identifiers, but do n
    ```sql
    BEGIN;
 
-   INSERT INTO public.document_governance_events (
-     document_id,
-     event_type,
-     review_status,
-     reason,
-     replacement_document_id
-   ) VALUES (
-     '<document-uuid>',
-     'quarantine',
-     'decommissioned',
-     '<ticket-or-incident-ref>',
-     NULLIF('<replacement-document-uuid>', '')
+   -- The reviewer must own the document. This existing RPC locks the row,
+   -- appends source_review_events, and updates its governance metadata atomically.
+   SELECT public.record_source_review(
+     p_document_id => '<document-uuid>'::uuid,
+     p_reviewer_id => '<document-owner-reviewer-uuid>'::uuid,
+     p_decision => 'decommissioned',
+     p_reason => '<ticket-or-incident-ref>',
+     p_evidence_references => ARRAY['<evidence-reference>']
    );
-
-   UPDATE public.documents
-   SET source_review_status = 'decommissioned',
-       updated_at = timezone('utc', now())
-   WHERE id = '<document-uuid>';
-
    COMMIT;
    ```
 2. If immediate containment is required, disable the affected answer mode or narrow its source scope; do not treat review status alone as a retrieval exclusion:
    ```bash
-   railway variables --service clinical-kb-app --set "RAG_PROVIDER_MODE=offline"
-   railway variables --service clinical-kb-worker --set "WORKER_PAUSED=true"
+   railway variables --service PsychSift --set "RAG_PROVIDER_MODE=offline"
+   railway variables --service worker --set "WORKER_PAUSED=true"
    ```
 3. Confirm answer caches for the owner are invalidated after the transaction commits:
    ```sql
@@ -77,18 +72,18 @@ These are short operator checklists. Preserve evidence and identifiers, but do n
    WHERE owner_id = '<owner-uuid>'
       OR payload::text LIKE '%<document-uuid>%';
    ```
-4. Before declaring containment, verify the source remains directly browsable (`source_review_status = 'decommissioned'`), that retrieval exclusion is active (`RAG_PROVIDER_MODE=offline` or zero active retrieval chunks for the quarantined `document_id`), and that `rag_response_cache` contains zero entries referencing the quarantined document:
+4. Before declaring containment, verify the source remains directly browsable (`metadata->>'governance_disposition' = 'decommissioned'`), that retrieval exclusion is active (`RAG_PROVIDER_MODE=offline` or zero active retrieval chunks for the quarantined `document_id`), and that `rag_response_cache` contains zero entries referencing the quarantined document:
    ```sql
    SELECT d.id,
           d.title,
-          d.source_review_status,
+          d.metadata->>'governance_disposition' AS governance_disposition,
           d.metadata->>'rag_indexed' AS rag_indexed,
           (SELECT count(*) FROM public.document_chunks c WHERE c.document_id = d.id) AS chunk_count,
           (SELECT count(*) FROM public.rag_response_cache r WHERE r.payload::text LIKE '%' || d.id::text || '%') AS cached_answer_count
    FROM public.documents d
    WHERE d.id = '<document-uuid>';
    ```
-   Confirm via `railway variables --service clinical-kb-app` (or a probe query against `/api/ask`) that the quarantined `document_id` is not returned in retrieval citations before lifting `RAG_PROVIDER_MODE=offline`.
+   Before lifting `RAG_PROVIDER_MODE=offline`, require retrieval evidence rather than the containment setting itself: `chunk_count` above must be `0`, or the restored retrieval path must be shown to exclude the quarantined `document_id` from the `sources` it returns (a non-offline staging probe; the answer's `citations` are not enough, because retrieved results reach answer generation whether or not they are cited). An `/api/ask` probe made while offline, or reading the Railway variable, only confirms the temporary containment. To read that one setting, print only it (`railway variables --service PsychSift --kv | grep '^RAG_PROVIDER_MODE='`), never the whole service environment, which contains credentials.
 5. Re-run source-governance and focused answer tests. Live data repair or migration requires explicit approval (if the primary owner is unavailable, the backup operator must leave the source quarantined and `rag_response_cache` purged until explicit approval is obtained):
    ```bash
    npm run audit:source-governance
@@ -106,12 +101,12 @@ These are short operator checklists. Preserve evidence and identifiers, but do n
    ```
 2. Disable provider generation or switch to the source-only path if external processing must stop:
    ```bash
-   railway variables --service clinical-kb-app --set "RAG_PROVIDER_MODE=offline"
-   railway variables --service clinical-kb-worker --set "WORKER_PAUSED=true"
+   railway variables --service PsychSift --set "RAG_PROVIDER_MODE=offline"
+   railway variables --service worker --set "WORKER_PAUSED=true"
    ```
 3. If raw query persistence, answer persistence, or provider response storage is enabled, disable the affected path. Verify all three controls are off before proceeding:
    ```bash
-   railway variables --service clinical-kb-app \
+   railway variables --service PsychSift \
      --set "RAG_PERSIST_RAW_QUERY_TEXT=false" \
      --set "RAG_PERSIST_ANSWER_TEXT=false" \
      --set "OPENAI_STORE_RESPONSES=false"
@@ -130,8 +125,8 @@ These are short operator checklists. Preserve evidence and identifiers, but do n
 
 1. Revert or disable the smallest affected generation or ranking feature while retaining source browsing and deterministic source-only answers:
    ```bash
-   railway variables --service clinical-kb-app --set "RAG_PROVIDER_MODE=offline"
-   railway variables --service clinical-kb-worker --set "WORKER_PAUSED=true"
+   railway variables --service PsychSift --set "RAG_PROVIDER_MODE=offline"
+   railway variables --service worker --set "WORKER_PAUSED=true"
    ```
    Verify `/api/health` (`deploymentCommitSha`) and worker `/health` (`claimLoopPaused: true`, `deploymentCommitSha`) confirm the active release and paused worker loop:
    ```bash

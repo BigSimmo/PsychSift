@@ -92,6 +92,9 @@ async function searchWithCountedClient(query: string, textSources: SearchResult[
     neq() {
       return this;
     }
+    range() {
+      return this;
+    }
     order() {
       return this;
     }
@@ -227,15 +230,19 @@ describe("Supabase round-trip budgets on the offline search retrieval core", () 
     // Measured, not derived — this is what the path does today, pinned so a
     // change has to be deliberate. Update in the commit that moves it. 11 -> 10 on 2026-09-26:
     // a later page-image hydration reuses the rows an earlier read returned for the same pages.
-    expect(counter.total(), `search round trips changed — ${JSON.stringify(counter.breakdown())}`).toBe(10);
+    // PS-025 (2026-10-18): 10 -> 12 replaces one unstamped RPC with batched
+    // label, stamped summary and admitted parent reads. This is a measured safety cost.
+    expect(counter.total(), `search round trips changed — ${JSON.stringify(counter.breakdown())}`).toBe(12);
 
     // The shape matters as much as the total: a refactor that removed one probe
-    // and added an unrelated query would keep 10 while changing the traffic.
+    // and added an unrelated query would keep 12 while changing the traffic.
     expect(counter.breakdown(), "search round-trip shape changed").toEqual({
       "from:rag_aliases": 1,
       "rpc:match_document_chunks_text_v2": 3,
       "rpc:match_document_table_facts_text_v2": 3,
-      "rpc:get_related_document_metadata_v2": 1,
+      "from:document_labels": 1,
+      "from:document_summaries": 1,
+      "from:documents": 1,
       "from:document_index_quality": 1,
       "from:document_images": 1,
     });

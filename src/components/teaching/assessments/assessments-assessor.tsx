@@ -297,7 +297,6 @@ export function AssessorForm({ s, params, saveEpa, dispatch, role }: ScreenProps
           <WorkButton
             icon={Send}
             size="wide"
-            disabled={!!why}
             aria-disabled={why ? "true" : undefined}
             aria-describedby={why ? "assess-epa-form-why" : undefined}
             onClick={submit}
