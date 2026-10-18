@@ -564,7 +564,7 @@ describe("superseded collision object release", () => {
     }
   });
 
-  it("reports an unrecorded object, with both failure reasons, when removal and the ledger fail", async () => {
+  it("reports an unrecorded object, with both failure stages and safe codes, when removal and the ledger fail", async () => {
     await expect(
       release(
         vi.fn(async () => failed),
@@ -572,14 +572,24 @@ describe("superseded collision object release", () => {
       ),
     ).resolves.toEqual({
       outcome: "unrecorded",
-      failures: ["remove: storage unavailable", "queue: storage unavailable"],
+      failures: [
+        { stage: "remove", code: "unknown" },
+        { stage: "queue", code: "unknown" },
+      ],
     });
-    await expect(
-      release(
-        vi.fn(async () => failed),
-        vi.fn(async () => Promise.reject(new Error("db"))),
-      ),
-    ).resolves.toEqual({ outcome: "unrecorded", failures: ["remove: storage unavailable", "queue: db"] });
+    const rejected = await release(
+      vi.fn(async () => failed),
+      vi.fn(async () => Promise.reject(new Error("db"))),
+    );
+    expect(rejected).toEqual({
+      outcome: "unrecorded",
+      failures: [
+        { stage: "remove", code: "unknown" },
+        { stage: "queue", code: "provider_error" },
+      ],
+    });
+    // Only a stage and a safe code are reported; raw provider messages never reach the logs.
+    expect(JSON.stringify(rejected)).not.toMatch(/storage unavailable|db/);
   });
 
   it("never touches the path the committed document still uses", async () => {
