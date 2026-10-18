@@ -13,7 +13,11 @@ vi.mock("@/lib/roster/settings", () => ({ fetchRosterSettings: m.settings }));
 vi.mock("@/lib/roster/alerts/night", () => ({ recipientsOnNightNow: m.night }));
 vi.mock("@/lib/roster/alerts/send", () => ({ pushRosterOfferDevice: m.push, webPushConfigured: m.configured }));
 vi.mock("@/lib/roster/team/release", () => ({ rosterTeamReleaseEnabled: m.release }));
-import { drainRosterOfferAlerts, startRosterOfferAlertConsumer } from "@/lib/roster/alerts/outbox";
+import {
+  drainRosterOfferAlerts,
+  ROSTER_OFFER_STOP_GRACE_MS,
+  startRosterOfferAlertConsumer,
+} from "@/lib/roster/alerts/outbox";
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const owner = id(3),
   other = id(4),
@@ -213,5 +217,23 @@ describe("durable per-device offer consumer", () => {
     expect(f.outcomes.get(device)).toBe("sent");
     expect(f.outcomes.get(device2)).toBe("pending");
     expect(f.rpc.mock.calls.some(([, a]) => a.p_operation === "release")).toBe(true);
+  });
+  it("does not let a stalled push hold shutdown past the grace period", async () => {
+    const f = fixture();
+    m.push.mockImplementationOnce(() => new Promise(() => {})); // never settles
+    const stop = startRosterOfferAlertConsumer(f.client, new AbortController().signal);
+    await vi.waitFor(() => expect(m.push).toHaveBeenCalledOnce());
+    vi.useFakeTimers();
+    try {
+      let done = false;
+      const stopped = stop().then(() => (done = true));
+      await vi.advanceTimersByTimeAsync(ROSTER_OFFER_STOP_GRACE_MS - 1);
+      expect(done).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      await stopped;
+      expect(done).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

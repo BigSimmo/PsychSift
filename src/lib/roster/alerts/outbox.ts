@@ -19,6 +19,9 @@ const devicesSchema = z.array(z.object({ subscription_id: z.string().uuid(), own
 
 class OfferLeaseError extends Error {}
 
+/** How long worker shutdown waits for an in-flight offer alert batch before leaving it to lease expiry. */
+export const ROSTER_OFFER_STOP_GRACE_MS = 15_000;
+
 /** One bounded batch. No process-local delivery authority and no legacy fan-out fallback. */
 export async function drainRosterOfferAlerts(
   client: RosterAdminClient,
@@ -125,6 +128,17 @@ export function startRosterOfferAlertConsumer(
   return async () => {
     clearInterval(timer);
     stopController.abort();
-    await current;
+    // A stalled push or RPC must not hold worker shutdown open. The claim is a lease that expires on its
+    // own, so an abandoned batch is retried later (at-least-once) rather than lost.
+    if (!current) return;
+    let grace: ReturnType<typeof setTimeout> | undefined;
+    await Promise.race([
+      current,
+      new Promise<void>((resolve) => {
+        grace = setTimeout(resolve, ROSTER_OFFER_STOP_GRACE_MS);
+        grace.unref?.();
+      }),
+    ]);
+    clearTimeout(grace);
   };
 }
