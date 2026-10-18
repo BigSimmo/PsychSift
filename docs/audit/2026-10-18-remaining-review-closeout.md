@@ -89,3 +89,45 @@ and the disposable roster SQL fixtures were placed in the existing Personal
 practice organisation map. No canonical ledger or historical sealed migration
 was edited. Permission to append only the three new migration hashes was
 requested separately; absence of a response is not approval.
+
+## Hosted follow-up CI and provenance correction
+
+Run [39110057708](https://github.com/BigSimmo/PsychSift/actions/runs/39110057708)
+tested PR #3641 head `7fc7de0ea248d52b7dfafa898ceab6ac58e24862` against
+main `1bd7ea309`. The migration chain applied, database behaviour tests passed,
+and the exact pinned Supabase image replayed `schema.sql` and generated its
+manifest. This supersedes the local image-extraction limitation for these hosted
+steps. Freshness then failed against the committed old manifest; chain/mirror
+parity was consequently skipped and remains unproved.
+
+The generated replacement is artifact **12129961926**, named
+`drift-manifest-39110057708`, ZIP digest
+`93546b59639d123947eac8967f4fea2250b8f6c7792bf932132b1d8857cf0f54`.
+Its workflow metadata identifies the exact head above. Generation reported
+normalized schema SHA-256
+`ba60b09ee6307eed83bfa94a8a9160c3abd9c36b05f08088680901852d22e5ca`.
+The GitHub connector returned a File Service download reference, but its signed
+URL returned HTTP 403 from this execution environment. No archive bytes were
+retrieved or substituted and no manifest was fabricated. Download that actual
+artifact, verify its archive digest and schema hash, and commit it before the
+next replay. The protected migration-hash file remains untouched pending the
+specific owner response.
+
+Hosted production build, bundle budget/boot checks, Playwright build, Lighthouse,
+safety/configuration, ingestion SAST, source contracts, platform smoke, secret scan
+and SAST passed. Static checks passed through the immutability guard, which failed
+on exactly the three unsealed drafts; its later lint/typecheck stages were
+skipped (separate fresh local results are above). Container work was cancelled
+before complete image/smoke/vulnerability proof; an empty scan summary is
+unassessed, not a vulnerability finding or a pass.
+
+Unit partition 1 reported **14,366 passed and one failed**: the TypeScript
+provenance fixture still named extractor version v6 after Python moved to v7.
+The follow-up aligns only that fixture with the declared
+`2026-10-18.ruled-edge-provenance-v7`, preserving the equality assertion. Its
+focused rerun passed **9/9** (`/tmp/psychsift-followup-provenance-version.log`).
+Partition 2 reported **18,004 passed, three failed and one skipped**: one stale
+manifest test and two migration-seal tests. These are overlapping evidence,
+not a green complete repository run. The required aggregate cannot pass while
+sealing and the expected drift file remain unresolved. No full hosted pass is
+claimed for the fixture-only correction until its own run completes.
