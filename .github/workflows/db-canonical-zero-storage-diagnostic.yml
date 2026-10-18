@@ -86,12 +86,112 @@ jobs:
             for argument in "$@"; do
               case "${argument}" in --network|--network=*) exit 2;; esac
             done
-            exec "${DB_DIAGNOSTIC_REAL_DOCKER}" run --network none "$@"
+            exec "${DB_DIAGNOSTIC_REAL_DOCKER}" run --network "${DB_DIAGNOSTIC_NETWORK}" "$@"
           fi
           exec "${DB_DIAGNOSTIC_REAL_DOCKER}" "$@"
           SH
           chmod 700 "${RUNNER_TEMP}/db-diagnostic-bin/docker"
           echo "${RUNNER_TEMP}/db-diagnostic-bin" >> "${GITHUB_PATH}"
+          cat > "${RUNNER_TEMP}/db-loopback-relay.cjs" <<'JS'
+          const net = require('node:net');
+          const { execFileSync } = require('node:child_process');
+          const sockets = new Set();
+          let server, polling;
+          const deadline = Date.now() + 300000;
+          function start(target) {
+            if (net.isIP(target) !== 4) throw new Error('Expected one inspected IPv4 DB endpoint');
+            clearInterval(polling);
+            server = net.createServer(client => {
+              const upstream = net.connect({ host: target, port: 5432 });
+              sockets.add(client); sockets.add(upstream);
+              const close = () => { client.destroy(); upstream.destroy(); sockets.delete(client); sockets.delete(upstream); };
+              client.on('error', close); upstream.on('error', close);
+              upstream.setTimeout(10000, close);
+              upstream.once('connect', () => upstream.setTimeout(0));
+              client.once('close', close); upstream.once('close', close);
+              client.pipe(upstream); upstream.pipe(client);
+            });
+            server.maxConnections = 32;
+            server.once('error', error => { console.error(error.code); process.exit(1); });
+            server.listen(54322, '127.0.0.1', () => console.log('RELAY_LISTENING_127.0.0.1_54322_TO_INSPECTED_DB_5432'));
+          }
+          function discover() {
+            if (Date.now() >= deadline) throw new Error('No task-internal local DB appeared within300seconds');
+            const ids = execFileSync(process.env.DB_DIAGNOSTIC_REAL_DOCKER, ['ps','-q','--filter','name=^supabase_db_'], { encoding:'utf8',timeout:5000 }).trim().split(/\s+/).filter(Boolean);
+            if (!ids.length) return;
+            if (ids.length !== 1) throw new Error('Expected exactly one local emulator DB');
+            const state = JSON.parse(execFileSync(process.env.DB_DIAGNOSTIC_REAL_DOCKER, ['inspect',ids[0]], { encoding:'utf8',timeout:5000 }))[0];
+            const networks = state.NetworkSettings.Networks;
+            if (JSON.stringify(Object.keys(networks)) !== JSON.stringify([process.env.DB_DIAGNOSTIC_NETWORK])) throw new Error('DB escaped expected internal network');
+            const target = networks[process.env.DB_DIAGNOSTIC_NETWORK].IPAddress;
+            if (target) start(target);
+          }
+          const stop = () => { clearInterval(polling); for (const socket of sockets) socket.destroy(); if (server) server.close(); process.exit(0); };
+          process.on('SIGTERM', stop); process.on('SIGINT', stop);
+          if (process.argv[2] === 'discover') { discover(); if (!server) polling = setInterval(discover,250); }
+          else start(process.argv[2]);
+          JS
+
+      - name: Pull original immutable default image
+        id: original-image
+        run: docker pull supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83
+
+      - name: Prove healthy internal Postgres routing and exact generator port command
+        timeout-minutes: 2
+        run: |
+          set -euo pipefail
+          probe="psychsift-db-route-${GITHUB_RUN_ID}"
+          relay_pid=""
+          finish_probe() {
+            docker inspect --format 'PROBE_STATE {{json .State}} PROBE_NETWORKS {{json .NetworkSettings.Networks}} PROBE_PORTS {{json .NetworkSettings.Ports}}' "${probe}" || true
+            docker logs --tail 40 "${probe}" 2>&1 | sed -E '/[Pp]assword|[Ss]ecret|[Tt]oken|[Jj][Ww][Tt]/d' || true
+            if test -f "${RUNNER_TEMP}/probe-relay.log"; then
+              tail -n 20 "${RUNNER_TEMP}/probe-relay.log" | sed -E '/[Pp]assword|[Ss]ecret|[Tt]oken|[Aa]uthorization|[Jj][Ww][Tt]/d'
+            fi
+            if test -n "${relay_pid}"; then kill "${relay_pid}" 2>/dev/null || true; wait "${relay_pid}" 2>/dev/null || true; fi
+            docker rm -f "${probe}" || true
+          }
+          trap finish_probe EXIT
+          export POSTGRES_PASSWORD="$(openssl rand -hex 16)"
+          docker run -d --pull=never --name "${probe}" --label psychsift.task=canonical-db-route \
+            -e POSTGRES_PASSWORD -p 127.0.0.1:54322:5432 \
+            supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83
+          ready=0
+          for attempt in $(seq 1 45); do
+            if docker exec "${probe}" pg_isready -U postgres -q; then ready=$((ready+1)); else ready=0; fi
+            if test "${ready}" -ge 5; then break; fi
+            sleep 2
+          done
+          test "${ready}" -ge 5
+          test "$(docker exec "${probe}" psql -X -U postgres -d postgres -tA -v ON_ERROR_STOP=1 -c 'select 1')" = 1
+          printf 'PROBE_INSIDE_SQL_SELECT1_PASS\n'
+          port_output="$(docker port "${probe}" 5432/tcp)"
+          printf 'PROBE_EXACT_DOCKER_PORT_EXIT0 output=%s\n' "${port_output}"
+          python3 - <<'PYCODE'
+          import errno,socket
+          try:
+              with socket.create_connection(('127.0.0.1',54322),timeout=2): pass
+          except OSError as error:
+              assert error.errno==errno.ECONNREFUSED,repr(error)
+              print('PROBE_INTERNAL_PUBLISHED_HOST_PORT_REFUSED_WITH_HEALTHY_SQL')
+          else: raise AssertionError('Host mapping works; the assumed isolation failure was not reproduced')
+          PYCODE
+          target="$(docker inspect --format "{{(index .NetworkSettings.Networks \"${DB_DIAGNOSTIC_NETWORK}\").IPAddress}}" "${probe}")"
+          node "${RUNNER_TEMP}/db-loopback-relay.cjs" "${target}" > "${RUNNER_TEMP}/probe-relay.log" 2>&1 &
+          relay_pid=$!
+          for attempt in $(seq 1 20); do
+            kill -0 "${relay_pid}"
+            if grep -q '^RELAY_LISTENING_' "${RUNNER_TEMP}/probe-relay.log"; then break; fi
+            sleep 0.1
+          done
+          grep '^RELAY_LISTENING_' "${RUNNER_TEMP}/probe-relay.log"
+          python3 - <<'PYCODE'
+          import socket
+          with socket.create_connection(('127.0.0.1',54322),timeout=2) as connection:
+              connection.sendall(bytes.fromhex('0000000804d2162f'))
+              assert connection.recv(1) in (b'S',b'N'),'expected a real PostgreSQL SSL negotiation response'
+          print('PROBE_HOST_RELAY_REAL_POSTGRES_PROTOCOL_PASS')
+          PYCODE
 
       - name: Start local emulator and bootstrap canonical default ACLs
         run: |
@@ -106,6 +206,8 @@ jobs:
             mv "${bootstrap_dir}/roles.sql" supabase/roles.sql
           }
           trap restore_bootstrap EXIT
+          node "${RUNNER_TEMP}/db-loopback-relay.cjs" discover > "${RUNNER_TEMP}/emulator-relay.log" 2>&1 &
+          echo "$!" > "${RUNNER_TEMP}/emulator-relay.pid"
           supabase --network-id "${DB_DIAGNOSTIC_NETWORK}" start
           restore_bootstrap
           trap - EXIT
@@ -134,9 +236,6 @@ jobs:
             docker exec -i "${db_container}" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -q -1 < "${test_file}"
             echo "::endgroup::"
           done
-
-      - name: Pull original immutable default image
-        run: docker pull supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83
 
       - name: Regenerate manifest with unchanged official generator and default image
         id: generate
@@ -211,7 +310,22 @@ jobs:
         if: always()
         run: |
           set -euo pipefail
-          supabase stop --no-backup
-          if test -n "${DB_DIAGNOSTIC_NETWORK:-}"; then
-            docker network rm "${DB_DIAGNOSTIC_NETWORK}"
+          cleanup_status=0
+          supabase stop --no-backup || cleanup_status=$?
+          if test -f "${RUNNER_TEMP}/emulator-relay.log"; then
+            tail -n 30 "${RUNNER_TEMP}/emulator-relay.log" | sed -E '/[Pp]assword|[Ss]ecret|[Tt]oken|[Aa]uthorization|[Jj][Ww][Tt]/d'
           fi
+          if test -f "${RUNNER_TEMP}/emulator-relay.pid"; then
+            relay_pid="$(cat "${RUNNER_TEMP}/emulator-relay.pid")"
+            if ps -p "${relay_pid}" -o args= | grep -Fq "${RUNNER_TEMP}/db-loopback-relay.cjs discover"; then
+              kill "${relay_pid}" 2>/dev/null || true
+            fi
+          fi
+          probe="psychsift-db-route-${GITHUB_RUN_ID}"
+          if test "$(docker inspect --format '{{index .Config.Labels "psychsift.task"}}' "${probe}" 2>/dev/null || true)" = canonical-db-route; then
+            docker rm -f "${probe}" || cleanup_status=$?
+          fi
+          if test -n "${DB_DIAGNOSTIC_NETWORK:-}"; then
+            docker network rm "${DB_DIAGNOSTIC_NETWORK}" || cleanup_status=$?
+          fi
+          exit "${cleanup_status}"
