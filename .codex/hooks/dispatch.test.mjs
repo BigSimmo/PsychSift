@@ -3,8 +3,8 @@ import test, { after } from "node:test";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
+import childProcess, { spawnSync } from "node:child_process";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import net from "node:net";
 import http from "node:http";
 import https from "node:https";
@@ -64,6 +64,128 @@ const payload = (tool_name, tool_input = {}) => ({
   tool_input,
   cwd: path.join(root, "nested/deep"),
   session_id: "synthetic",
+});
+
+// Use the maintained handler, with its session-memory writes disabled. Only Git
+// root discovery is injected: no Git repository or native hook is created/run.
+for (const [alias, canonical] of [
+  ["edit_file", "Edit"],
+  ["write_file", "Write"],
+  ["functions.edit_file", "Edit"],
+  ["functions.write_file", "Write"],
+]) {
+  test(`edit alias ${alias} reaches the actual canonical warning`, { concurrency: false }, async () => {
+    const canonicalRoot = sourceRoot;
+    const { editHookOutput } = await import(
+      pathToFileURL(path.join(canonicalRoot, "scripts/organisation/agent-hooks.mjs")).href
+    );
+    const fixture = fs.mkdtempSync(path.join(root, "edit-alias-"));
+    fs.mkdirSync(path.join(fixture, "scripts"));
+    fs.writeFileSync(path.join(fixture, "scripts/pr-policy.mjs"), "// synthetic project marker\n");
+    const originalSpawn = childProcess.spawnSync;
+    const calls = [];
+    childProcess.spawnSync = (binary, args) => {
+      assert.equal(binary, "git");
+      assert.deepEqual(args, ["-C", fs.realpathSync.native(fixture), "rev-parse", "--show-toplevel"]);
+      calls.push(args);
+      return { status: 0, stdout: fixture, stderr: "" };
+    };
+    syncBuiltinESMExports();
+    const invoke = async (tool, input) =>
+      run("PreToolUse", { ...payload(tool, input), cwd: fixture }, fixture, {
+        execute: async (action, p) => {
+          assert.equal(action.file, ".claude/hooks/organisation-edit-warning.sh");
+          return {
+            stdout: editHookOutput(JSON.stringify(p), { stateDir: null, ownRoot: fixture }) ?? "",
+            stderr: "",
+            code: 0,
+          };
+        },
+      });
+    try {
+      const input = { file_path: "supabase/migrations/synthetic.sql" };
+      const control = await invoke(canonical, input);
+      assert.match(control.stdout, /database migration/);
+      const result = await invoke(alias, input);
+      assert.equal(result.stdout, control.stdout, "alias must retain the canonical warning");
+      assert.equal(normalize(payload(alias, input)).tool_name, canonical);
+      assert.equal(result.code, 0);
+      assert.equal(JSON.parse(result.stdout).hookSpecificOutput.permissionDecision, undefined);
+      assert.equal((await invoke(alias, { file_path: "synthetic-ordinary.txt" })).stdout, "");
+      assert.equal(calls.length, 3);
+      assert.deepEqual(fs.readdirSync(fixture), ["scripts"], "handler must not create session memory");
+    } finally {
+      childProcess.spawnSync = originalSpawn;
+      syncBuiltinESMExports();
+    }
+  });
+
+  test(`edit alias ${alias} refuses unsupported path schemas`, async () => {
+    for (const input of [
+      undefined,
+      null,
+      [],
+      {},
+      { path: "supabase/migrations/synthetic.sql" },
+      { notebook_path: "synthetic.ipynb" },
+      { file_path: "" },
+      { file_path: "  " },
+      { file_path: 12 },
+    ]) {
+      const p = { tool_name: alias, tool_input: input };
+      assert.equal(normalize(p), null);
+      assert.deepEqual(plan("PreToolUse", p), []);
+      let called = false;
+      assert.deepEqual(
+        await run("PreToolUse", p, root, {
+          execute: () => {
+            called = true;
+          },
+        }),
+        { stdout: "", stderr: "", code: 0 },
+      );
+      assert.equal(called, false);
+    }
+  });
+}
+
+test("Windows hook refusals survive a WSL-first ambient Bash lookup", { concurrency: false }, async () => {
+  const originalSpawn = childProcess.spawnSync;
+  const platform = Object.getOwnPropertyDescriptor(process, "platform");
+  const calls = [];
+  Object.defineProperty(process, "platform", { value: "win32", configurable: true });
+  childProcess.spawnSync = (binary, args) => {
+    calls.push({ binary, args });
+    if (binary === "where.exe")
+      return {
+        status: 0,
+        stdout: "C:\\Windows\\System32\\bash.exe\r\nC:\\Program Files\\Git\\bin\\bash.exe\r\n",
+        stderr: "",
+      };
+    if (binary === "bash") return { status: 127, stdout: "", stderr: "WSL cannot open this Windows script path" };
+    if (binary === "C:/Program Files/Git/bin/bash.exe")
+      return {
+        status: 2,
+        stdout: JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny" } }),
+        stderr: "",
+      };
+    throw Error("Unexpected process in isolated Windows shell control");
+  };
+  syncBuiltinESMExports();
+  let result;
+  try {
+    result = await run("PreToolUse", payload("Bash", { command: "git push" }), root);
+  } finally {
+    childProcess.spawnSync = originalSpawn;
+    Object.defineProperty(process, "platform", platform);
+    syncBuiltinESMExports();
+  }
+  assert.equal(result.code, 2, "the canonical hook refusal must not become an advisory no-decision");
+  assert.equal(JSON.parse(result.stdout).hookSpecificOutput.permissionDecision, "deny");
+  assert.deepEqual(
+    calls.map(({ binary }) => binary),
+    ["C:/Program Files/Git/bin/bash.exe"],
+  );
 });
 test("nested checkout and linked-worktree markers resolve without primary path", () => {
   assert.equal(findRoot(path.join(root, "nested/deep")), root);
@@ -186,7 +308,7 @@ test("registration is portable, pins Windows Node, and resolves current payload 
     for (const g of groups)
       for (const entry of g.hooks) {
         assert.ok(entry.command.startsWith("node -e "));
-        assert.ok(entry.commandWindows.includes('C:/Program Files/nodejs/node.exe'));
+        assert.ok(entry.commandWindows.includes("C:/Program Files/nodejs/node.exe"));
         assert.ok(entry.commandWindows.includes('else { "node" }'));
         assert.ok(!/CLAUDE_PROJECT_DIR|D:[/\\]|setup-claude-cloud/.test(entry.command));
       }
@@ -217,6 +339,38 @@ test("registration launch handles a real nested synthetic checkout and malformed
   assert.equal(bad.status, 0);
   assert.equal(bad.stdout, "");
 });
+test("registration accepts the same Windows checkout casing and refuses a foreign checkout", () => {
+  const entry = registration().hooks.PreToolUse[0].hooks[0];
+  const shell = process.platform === "win32" ? "powershell.exe" : "/bin/bash";
+  const args = process.platform === "win32" ? ["-NoProfile", "-Command", entry.commandWindows] : ["-c", entry.command];
+  const adapter = path.join(root, ".codex/hooks/dispatch.mjs");
+  fs.mkdirSync(path.dirname(adapter), { recursive: true });
+  fs.writeFileSync(adapter, 'export async function run(){return {stdout:"trusted-checkout",stderr:"",code:0}}');
+  const launch = (workdir) =>
+    spawnSync(shell, args, {
+      input: JSON.stringify(payload("exec_command", { cmd: "git push", workdir })),
+      encoding: "utf8",
+      cwd: root,
+      windowsHide: true,
+      timeout: 5000,
+    });
+  const equivalent = launch(process.platform === "win32" ? root.toLowerCase() : root);
+  assert.equal(equivalent.status, 0);
+  assert.equal(equivalent.stdout, "trusted-checkout");
+  const foreign = path.join(root, "untrusted-checkout");
+  const marker = path.join(foreign, "module-was-imported");
+  fs.mkdirSync(path.join(foreign, ".git"), { recursive: true });
+  fs.mkdirSync(path.join(foreign, ".codex/hooks"), { recursive: true });
+  fs.writeFileSync(
+    path.join(foreign, ".codex/hooks/dispatch.mjs"),
+    `import fs from "node:fs";fs.writeFileSync(${JSON.stringify(marker)},"unexpected import");export async function run(){return {stdout:"foreign",stderr:"",code:0}}`,
+  );
+  const rejected = launch(foreign);
+  assert.equal(rejected.status, 0);
+  assert.equal(rejected.stdout, "");
+  assert.equal(fs.existsSync(marker), false, "a foreign adapter must never be imported");
+});
+
 test("pre-push fails closed when Node cannot be found", () => {
   const source = fs.existsSync(path.join(directory, "pre-push"))
     ? path.join(directory, "pre-push")

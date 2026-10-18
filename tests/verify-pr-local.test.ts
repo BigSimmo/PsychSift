@@ -21,7 +21,8 @@ describe("verify-pr-local CLI", () => {
     };
     expect(source).not.toContain("acquireHeavyRunLock");
     expect(source).not.toContain("lock.environment");
-    expect(packageJson.scripts["verify:cheap"]).toBe("npm run verify:cheap:internal");
+    expect(packageJson.scripts["verify:cheap"]).toBe("npm run test:codex-hooks && npm run verify:cheap:internal");
+    expect(packageJson.scripts["test:codex-hooks"]).toBe("node --test .codex/hooks/dispatch.test.mjs");
   });
 
   it("uses the explicit file list and does not execute checks in dry-run mode", () => {
