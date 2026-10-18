@@ -1,7 +1,7 @@
 {
   "note": "sha256 of every migration this repository has shipped, with newlines normalised. An entry whose hash changes means an applied migration was edited, which cannot reach the live database. See scripts/check-migration-immutability.mjs.",
   "generator": "scripts/check-migration-immutability.mjs",
-  "sealed_at": "2026-10-18T06:29:14.181Z",
+  "sealed_at": "2026-10-18T08:32:50.679Z",
   "versions": {
     "20260527000000_bulk_ingestion.sql": "813e8e314064a6dcbaaa55e2765a8ce901d5783b304b4a7af7bb7417a07daf7c",
     "20260527001000_documents_policy_cleanup.sql": "559c26f3172bf75e545a41adef75538b2bf648ea7d53c8eb3d3ea7c244c65a48",
@@ -323,6 +323,9 @@
     "20261017120000_teaching_display_revoke_null_creator_guard.sql": "3b92e22983206cbaa8950c07a6b3e6910b3701fa9c49a9f9e5504c232b4397e4",
     "20261017175448_scope_ingestion_claim_atomically.sql": "af192755dd24aa8a6e6146013e1b7abd1b2954a53410c301dedfcb7576c88eba",
     "20261018053558_recheck_ingestion_claim_scope_after_job_lock.sql": "a427b8aacce70579ad26bd701adb65912a345ab78d54e5b34386bbd05d261b6c",
-    "20261018062736_recheck_legacy_ingestion_claim_document_after_job_lock.sql": "39f08a91ed4c15a8aff0dff80341242604101886de873c5cadafa65e9b92e3c8"
+    "20261018062736_recheck_legacy_ingestion_claim_document_after_job_lock.sql": "39f08a91ed4c15a8aff0dff80341242604101886de873c5cadafa65e9b92e3c8",
+    "20261018055300_atomic_training_milestone_mirror.sql": "ed1b24ba2eb486c9d3acca05908c1d28ee0b91aed15b74a32acad871a8ffcee2",
+    "20261018073435_durable_roster_offer_device_outbox.sql": "5ece69d4b218a16ddb67727ff1454e5cb694f56d3014b4956b2b91bf50e5c74e",
+    "20261018100000_fence_document_queue_rollbacks.sql": "54f26e207645fd9e90fe24cd67feab4ce65514adeec472978dba6fa4cda4ad9a"
   }
 }

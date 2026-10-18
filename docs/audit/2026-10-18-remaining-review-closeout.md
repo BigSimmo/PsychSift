@@ -170,3 +170,32 @@ unchanged assertion-reader module because `medspacy` is absent from this shell.
 It is recorded as incomplete infrastructure evidence, not a complete worker
 Python pass. The targeted 60-test PDF scope passed; hosted worker images install
 their separately pinned requirements and still need a fresh complete pass.
+
+## Owner-approved migration sealing and drift recovery
+
+The owner selected the two remaining database-proposal items and requested
+“Resolve these please” on 2026-10-18. This authorizes append-only sealing of the
+three already named, reviewed migrations and recovery of the genuine expected
+drift manifest in this unmerged PR. It does not authorize a production merge,
+live SQL, historical resealing or changes to drift exceptions.
+
+`npm run migrations:seal` added exactly these new entries, preserving every
+previous entry:
+
+- `20261018055300_atomic_training_milestone_mirror.sql`:
+  `ed1b24ba2eb486c9d3acca05908c1d28ee0b91aed15b74a32acad871a8ffcee2`
+- `20261018073435_durable_roster_offer_device_outbox.sql`:
+  `5ece69d4b218a16ddb67727ff1454e5cb694f56d3014b4956b2b91bf50e5c74e`
+- `20261018100000_fence_document_queue_rollbacks.sql`:
+  `54f26e207645fd9e90fe24cd67feab4ce65514adeec472978dba6fa4cda4ad9a`
+
+The immutability guard now passes all 324 migrations. Ninety existing freshness,
+immutability, chain-parity and CI-audit contract tests passed. A scratch harness
+executed the actual modified workflow shell with controlled generation/check
+commands: fresh output remains successful, stale output remains a failure, and
+the emitted recovery JSON and SHA-256 are byte-exact. The workflow fallback only
+prints the generated scratch-schema inventory on freshness failure, with clear
+markers and a file checksum; it contains no row data and still exits nonzero.
+This provides a supported GitHub-log recovery path while the execution
+environment blocks the artifact download host. No expected catalogue is edited
+by hand.
