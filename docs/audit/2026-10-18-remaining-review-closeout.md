@@ -325,3 +325,20 @@ no actionable finding. It reused the controller's test execution evidence.
 The corrected manifest, schema, migration tree and seal entries remain identical
 to the reviewed generated-file commit, so its provenance is unchanged. No force
 push or SQL change occurred. Final hosted freshness and parity remain pending.
+
+### Missing CI diagnosed as a real base-branch conflict
+
+The published head `0738bf2ff081c09116966a68e972ca4b38891e61` had no
+PR-triggered CI. The unfiltered Actions API and mergeability job
+`117645549671` identify a real conflict with newly advanced `main`; missing checks
+were not treated as passing. Local merge analysis against main
+`30c3f5e1e` found conflicts only in the two Cloud fixture suites. Main has no
+Supabase changes since the prior reviewed base, preserving the genuine artifact.
+
+The resolution keeps main's stronger isolated shell/tool-path and temporary Git
+configuration fixtures, together with this branch's bounded-probe regression
+cases. **171 tests in two files** pass after resolution. Manual conflict review
+checked both parent diffs and verified no schema, manifest, migration or seal
+change. Existing independent protected-file/source reviews are reused only for
+their unchanged scope; this fixture merge is controller-reviewed. Final hosted
+freshness, parity and required CI still await the conflict-free published head.

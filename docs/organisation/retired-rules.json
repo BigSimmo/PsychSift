@@ -104,6 +104,14 @@
       "pattern": "(?:Work|AI) Search.{0,60}(?:must|should|always) (?:automatically )?(?:show|display).{0,40}(?:coachmark|New note|promotional halo)",
       "allowedContext": "no longer|retired|historical|superseded|removed|replaced",
       "decision": "docs/decisions/2026-10-17-design-audit-resolution.md"
+    },
+    {
+      "id": "migration-pr-no-auto-merge",
+      "retired": "2026-10-18",
+      "summary": "Migration pull requests may auto-merge once all required checks pass, including Migration replay and the drift checks. Never merging outside an approved window and never promising a deferred deploy remain.",
+      "pattern": "never (?:enable|arm) auto-merge (?:on one|on a migration|for migration PRs)",
+      "allowedContext": "no longer|retired|superseded|historical|previously|reversed|formerly",
+      "decision": "docs/decisions/2026-10-18-migration-prs-may-auto-merge.md"
     }
   ]
 }

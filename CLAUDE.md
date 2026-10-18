@@ -144,7 +144,7 @@ Prefer these over improvising — they encode traps this repo has already hit:
 
 - **Claude skills** (`.claude/skills/`): `newtask` (fresh worktree off latest `main`),
   `gates` (pick and prove the right gate), `handoff` (commit → verify → push → PR → ledger),
-  `prlanded` (verify a squash-merge actually landed), `issues` (`/issues` cross-session
+  `prlanded` (verify a merged PR actually landed), `issues` (`/issues` cross-session
   memory), `run-pr` (open-PR sweep), `sources` (find, capture, score and index a clinical
   source — see `docs/source-acquisition-protocol.md`), `ledger` (extract this session's outstanding work into
   the task ledger), `prompt`.

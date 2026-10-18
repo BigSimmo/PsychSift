@@ -304,6 +304,22 @@ describe.skipIf(process.platform === "win32")("push-format-guard", () => {
       expect(out.stdout).toBe("");
     });
 
+    it("still fires when git global options precede push", () => {
+      const { root, binDir } = riggedRepo();
+      setHooksPath(root, null);
+      for (const command of [
+        `git -C ${root} push origin HEAD`,
+        "git -c core.hooksPath=x push origin HEAD",
+        "git --no-pager push",
+        "git -C '/tmp/My Repo' push origin HEAD",
+        `git -C${root} push origin HEAD`,
+        'git -C"/tmp/My Repo" push',
+      ]) {
+        expect(runHook(root, binDir, command).denied, command).toBe(true);
+      }
+      expect(runHook(root, binDir, `git -C ${root} status`).denied).toBe(false);
+    });
+
     it("honours the documented CLAUDE_ALLOW_UNFORMATTED_PUSH=1 prefix", () => {
       const { root, binDir } = riggedRepo();
       setHooksPath(root, null);

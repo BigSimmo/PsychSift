@@ -2649,6 +2649,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-18-migration-prs-may-auto-merge.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/archive/design-qa-2026-07-15.md",
         "section": "archive",
         "catalogued": true
@@ -24395,6 +24400,14 @@
         "scope": "branch-cleanup",
         "outcome": "Protected base branch retained.",
         "checks": "Resolved as main / origin/main; deletion prohibited."
+      },
+      {
+        "date": "2026-10-18",
+        "ref": "fix/remaining-review-reliability-20261018",
+        "head": "d8a2e5daee19ca99f50ab2af65ddd87c170009a0",
+        "scope": "Independent concurrent paging and consumer shutdown merge review",
+        "outcome": "Accepted: exact-cap probe retains abort/error/access fences; owned stop signal prevents subsequent devices and waits acknowledgment/release. Four merged files match concurrent commit, genuine manifest3555/schema5118/sealed SQL unchanged. Hosted final parity pending.",
+        "checks": "Independent four-file diff and relevant callers, immutable merged bytes and protected-file comparisons. Inspected26tests2files log; controller execution reused, no broad rerun/providers/writes."
       },
       {
         "date": "2026-07-30",
