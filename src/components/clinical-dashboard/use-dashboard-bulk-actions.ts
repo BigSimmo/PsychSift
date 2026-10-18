@@ -55,9 +55,13 @@ export function useDashboardBulkActions({
       let failed = 0;
       let submitted = 0;
       let lastEpoch: number | null = null;
+      // Every batch must run under the account that started the action; a later
+      // send would otherwise register under a new account with the old header.
+      let startEpoch: number | null = null;
       let progressStatus = "";
       try {
         for (let offset = 0; offset < selectedDocumentIds.length; offset += 10) {
+          if (startEpoch !== null && !isAuthEpochCurrent(startEpoch)) return;
           const send = () =>
             authBoundFetch("/api/documents/bulk/reindex", {
               method: "POST",
@@ -65,6 +69,7 @@ export function useDashboardBulkActions({
               body: JSON.stringify({ documentIds: selectedDocumentIds.slice(offset, offset + 10), mode }),
             });
           let { response, requestEpoch } = await send();
+          startEpoch ??= requestEpoch;
           if (response.status === 429 && isAuthEpochCurrent(requestEpoch)) {
             const waitMs = parseRetryAfterMs(response);
             if (waitMs !== null && waitMs <= BULK_RATE_LIMIT_MAX_WAIT_MS) {
@@ -72,9 +77,11 @@ export function useDashboardBulkActions({
                 `${progressStatus ? `${progressStatus} ` : ""}Waiting ${Math.ceil(waitMs / 1000)}s before the next batch.`,
               );
               await new Promise((resolve) => setTimeout(resolve, waitMs));
+              if (!isAuthEpochCurrent(startEpoch)) return;
               ({ response, requestEpoch } = await send());
             }
           }
+          if (requestEpoch !== startEpoch) return;
           lastEpoch = requestEpoch;
           if (!isAuthEpochCurrent(requestEpoch)) return;
           if (response.status === 401) {
