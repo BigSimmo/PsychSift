@@ -186,7 +186,8 @@ test("registration is portable, pins Windows Node, and resolves current payload 
     for (const g of groups)
       for (const entry of g.hooks) {
         assert.ok(entry.command.startsWith("node -e "));
-        assert.ok(entry.commandWindows.startsWith('& "C:/Program Files/nodejs/node.exe" -e '));
+        assert.ok(entry.commandWindows.includes('C:/Program Files/nodejs/node.exe'));
+        assert.ok(entry.commandWindows.includes('else { "node" }'));
         assert.ok(!/CLAUDE_PROJECT_DIR|D:[/\\]|setup-claude-cloud/.test(entry.command));
       }
   const matcher = new RegExp(h.hooks.PreToolUse[0].matcher);
