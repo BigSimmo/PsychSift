@@ -9,6 +9,7 @@ import {
   recoverCheckedOriginalSectionRecommendation,
   enforceOriginalSectionDeliveredCompleteness,
 } from "@/lib/rag/rag-original-section-delivery";
+import { hasCitedRecoverySupport } from "@/lib/rag/rag-cited-recovery-support";
 import { adaptiveAnswerLimits, answerWithinLimits } from "@/lib/rag/rag-answer-contract-limits";
 import { type CheckedOriginalSectionAuthority as CheckedOriginalSectionLayout } from "@/lib/rag/rag-source-block";
 import { buildSourceConflictSection } from "@/lib/rag/source-conflict-section";
@@ -469,6 +470,9 @@ function finalQualityFailure(answer: RagAnswer, query: string, queryClass: RagQu
     ...answer,
     answer: finalQualityGapAnswer(query, queryClass),
     rejectedCandidateText: answer.answer,
+    citations: answer.citations.filter((citation) =>
+      answer.sources.some((source) => source.id === citation.chunk_id && source.document_id === citation.document_id),
+    ),
     grounded: false,
     confidence: "unsupported",
     answerSections: [],
@@ -763,37 +767,7 @@ function shouldPreserveSourceBackedGeneratedAnswer(answer: RagAnswer, reason: st
   if (!answer.grounded || answer.confidence === "unsupported" || answer.citations.length === 0) return false;
   if (hasInvalidModelEvidenceIds(answer)) return false;
 
-  const sourceSelection = answer.smartApiPlan?.answerPlan.sourceSelection;
-  if (!sourceSelection?.selectedCount || !sourceSelection.requiredSignalsSatisfied) return false;
-  if (sourceSelection.missingRequiredSignals.length > 0) return false;
-
-  const matchedSignals = sourceSelection.matchedSignals;
-  const hasSpecificSourceSignal = matchedSignals.some(
-    (signal) =>
-      signal.startsWith("index_unit:") ||
-      [
-        "document_title",
-        "document_title_phrase",
-        "document_label",
-        "table_fact",
-        "source_image",
-        "visual_table",
-        "direct_relevance",
-        "active_community",
-        "ed",
-        "agitation",
-        "dose_amount",
-        "route",
-        "flowchart_or_pathway",
-      ].includes(signal),
-  );
-  const hasStructuredChunk =
-    sourceSelection.topChunkTypes.table > 0 ||
-    sourceSelection.topChunkTypes.flowchart > 0 ||
-    sourceSelection.topChunkTypes.medication_chart > 0 ||
-    sourceSelection.topChunkTypes.patient_education > 0;
-
-  return hasSpecificSourceSignal || hasStructuredChunk;
+  return hasCitedRecoverySupport(answer);
 }
 
 /** Section heading kind. */
@@ -1620,7 +1594,6 @@ function finalizeRagAnswerQualityCore(
     if (shouldPreserveSourceBackedGeneratedAnswer(answer, qualityFailureReason, cleanedAnswer)) {
       answer = {
         ...answer,
-        confidence: answer.confidence === "low" ? "medium" : answer.confidence,
         routingReason: [answer.routingReason, `final_quality_gate_source_backed_recovery:${qualityFailureReason}`]
           .filter(Boolean)
           .join("; "),

@@ -8,8 +8,10 @@ import { WorkStateLoading, WorkStateNotice } from "@/components/mode-kit/work-st
 import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/components/ui-primitives";
 import { TextField } from "@/components/ui/text-field";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 import { fetchRosterRead, postRosterAction, useRosterRead } from "@/components/roster/use-roster-team";
-import { addDaysToDate, formatPerthDay, perthDateOf } from "@/lib/roster/shifts/perth-time";
+import { addDaysToDate, formatPerthDay, perthDateOf, perthWallToIso } from "@/lib/roster/shifts/perth-time";
+import { workTimeZoneLabel } from "@/lib/work-time/zones";
 import { coverForDay, needsOn } from "@/lib/roster/team/cover";
 import { fairnessCounts } from "@/lib/roster/team/fairness";
 import { openShiftCandidates } from "@/lib/roster/team/eligibility";
@@ -148,6 +150,7 @@ export function RosterCoverGap({
   serviceId: string;
   onPosted: () => void;
 }) {
+  const { zone } = useWorkTimeZone();
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [code, setCode] = useState("");
@@ -161,14 +164,15 @@ export function RosterCoverGap({
         Gap: {formatPerthDay(date)} {need.kind}. Clarify the required grade before posting this shift.
       </p>
     );
-  const startsAt = start ? `${date}T${start}:00+08:00` : "";
-  const endsAt = end ? `${end <= start ? addDaysToDate(date, 1) : date}T${end}:00+08:00` : "";
+  const startsAt = start ? perthWallToIso(date, start, zone) : null;
+  const endsAt = end ? perthWallToIso(end <= start ? addDaysToDate(date, 1) : date, end, zone) : null;
+  const invalidTime = Boolean(start && end && (!startsAt || !endsAt));
   const candidates =
     startsAt && endsAt
       ? openShiftCandidates(assignments, { startsAt, endsAt, minGrade: need.grade }, overview.settings, null)
       : [];
   async function post() {
-    if (!start || !end || !code.trim() || busy || need.kind === "leave") return;
+    if (!startsAt || !endsAt || !code.trim() || busy || need.kind === "leave") return;
     setBusy(true);
     const result = await postRosterAction(serviceId, {
       action: "open.post",
@@ -206,11 +210,26 @@ export function RosterCoverGap({
       <Sheet open={opened} onClose={() => setOpened(false)} title="Post gap" description={summary}>
         <div className="grid gap-3">
           <div className="grid grid-cols-2 gap-2">
-            <TextField label="Starts (Perth)" type="time" value={start} onChange={(e) => setStart(e.target.value)} />
-            <TextField label="Ends (Perth)" type="time" value={end} onChange={(e) => setEnd(e.target.value)} />
+            <TextField
+              label={`Starts (${workTimeZoneLabel(zone)})`}
+              type="time"
+              value={start}
+              onChange={(e) => setStart(e.target.value)}
+            />
+            <TextField
+              label={`Ends (${workTimeZoneLabel(zone)})`}
+              type="time"
+              value={end}
+              onChange={(e) => setEnd(e.target.value)}
+            />
           </div>
           <TextField label="Shift code" maxLength={12} value={code} onChange={(e) => setCode(e.target.value)} />
-          {start && end ? (
+          {invalidTime ? (
+            <p role="alert">
+              Choose valid times in your work time zone. A daylight-saving clock change can skip a time.
+            </p>
+          ) : null}
+          {startsAt && endsAt ? (
             <p className="text-sm">
               {candidates.length
                 ? `${candidates.map((person) => person.name ?? "Team member").join(", ")} may be able to take it. Team rules are checked again on acceptance.`
@@ -218,7 +237,7 @@ export function RosterCoverGap({
             </p>
           ) : null}
           {message ? <p role="status">{message}</p> : null}
-          <Button variant="primary" disabled={busy || !start || !end || !code.trim()} onClick={() => void post()}>
+          <Button variant="primary" disabled={busy || !startsAt || !endsAt || !code.trim()} onClick={() => void post()}>
             Post gap
           </Button>
         </div>

@@ -183,6 +183,19 @@ describe("temporary path cleanup", () => {
 });
 
 describe("repository-wide heavyweight lock", () => {
+  it.each([
+    ["State:\tZ (zombie)\nThreads:\t1\n", true],
+    ["State:\tX (dead)\nThreads:\t1\n", true],
+    ["State:\tZ (zombie)\nThreads:\t2\n", false],
+    ["State:\tZ (zombie)\n", false],
+    ["State:\tZ (zombie)\nThreads:\tunknown\n", false],
+    ["State:\tZ (zombie)\nThreads:\t1 extra\n", false],
+    ["State:\tZ (zombie)\nThreads:\t0\n", false],
+    ["State:\tS (sleeping)\nThreads:\t1\n", false],
+  ])("reclaims only an explicitly single-thread defunct Linux status %j", (status, expected) => {
+    expect(testRunLockInternals.linuxProcessIsDefunct(status)).toBe(expected);
+  });
+
   it("lets exclusive work queue through long browser or build leases without making focused runs wait indefinitely", () => {
     expect(testRunLockInternals.defaultWaitTimeoutFor("shared")).toBe(30_000);
     expect(testRunLockInternals.defaultWaitTimeoutFor("exclusive")).toBe(15 * 60_000);
@@ -675,6 +688,168 @@ describe("repository-wide heavyweight lock", () => {
     );
     replacement.release();
   });
+
+  it.runIf(process.platform === "linux")(
+    "reclaims an actual zombie owner's lease while preserving a live owner",
+    async () => {
+      const baseDirectory = temporaryDirectory("clinical-kb-zombie-lock-");
+      const repositoryIdentity = path.join(baseDirectory, "shared.git");
+      // Node reaps its own children automatically. A tiny Python parent keeps its
+      // exited fork unreaped until stdin closes, then always waitpids it in finally.
+      const fixture = spawn(
+        process.env.PYTHON_BIN || "python3",
+        [
+          "-u",
+          "-c",
+          `
+import os, sys
+reader, writer = os.pipe()
+pid = os.fork()
+if pid == 0:
+    os.close(writer)
+    os.read(reader, 1)
+    os._exit(0)
+os.close(reader)
+print(pid, flush=True)
+try:
+    sys.stdin.readline()
+    os.write(writer, b"x")
+    os.close(writer)
+    sys.stdin.readline()
+finally:
+    os.waitpid(pid, 0)
+`,
+        ],
+        { stdio: ["pipe", "pipe", "pipe"] },
+      );
+      let stdout = "";
+      let stderr = "";
+      let launchError: Error | undefined;
+      fixture.stdout.on("data", (chunk) => (stdout += String(chunk)));
+      fixture.stderr.on("data", (chunk) => (stderr += String(chunk)));
+      fixture.on("error", (error) => {
+        launchError = error;
+      });
+      const finished = new Promise<number | null>((resolve) => fixture.on("close", resolve));
+      let first: ReturnType<typeof acquireHeavyRunLock> | undefined;
+      let replacement: ReturnType<typeof acquireHeavyRunLock> | undefined;
+      try {
+        await waitForCondition(() => {
+          if (launchError) throw launchError;
+          return /^\d+\n/.test(stdout);
+        });
+        const pid = Number(stdout.trim());
+        expect(testRunLockInternals.processIsAlive(pid)).toBe(true);
+        const acquire = (processId: number, worktree: string) =>
+          acquireHeavyRunLock({
+            projectRoot: path.join(baseDirectory, worktree),
+            repositoryIdentity,
+            baseDirectory,
+            environment: {},
+            processId,
+            command: "zombie liveness fixture",
+            waitTimeoutMs: 0,
+          });
+        first = acquire(pid, "worktree-a");
+        expect(() => acquire(process.pid, "worktree-b")).toThrow(/heavyweight command is active/);
+
+        fixture.stdin.write("exit-child\n");
+        await waitForCondition(() => /^State:\s+Z\b/m.test(readFileSync(`/proc/${pid}/status`, "utf8")));
+        expect(() => process.kill(pid, 0)).not.toThrow();
+        // The public API must prune the defunct lease immediately, without force
+        // or an aged heartbeat; kill(pid, 0) alone incorrectly blocks this call.
+        replacement = acquire(process.pid, "worktree-b");
+        expect(testRunLockInternals.processIsAlive(pid)).toBe(false);
+        expect(testRunLockInternals.processIsAlive(process.pid)).toBe(true);
+        first.release();
+        expect(readFileSync(path.join(requireLeasePath(replacement), "owner.json"), "utf8")).toContain(
+          replacement.owner.token,
+        );
+      } finally {
+        replacement?.release();
+        first?.release();
+        fixture.stdin.end("finish\nfinish\n");
+        expect(await finished, stderr).toBe(0);
+      }
+    },
+  );
+
+  it.runIf(process.platform === "linux")(
+    "preserves a lease when its zombie leader still has a live worker thread",
+    async () => {
+      const baseDirectory = temporaryDirectory("clinical-kb-threaded-zombie-lock-");
+      const repositoryIdentity = path.join(baseDirectory, "shared.git");
+      const fixture = spawn(
+        process.env.PYTHON_BIN || "python3",
+        [
+          "-u",
+          "-c",
+          `
+import ctypes, os, sys, threading
+def worker():
+    while sys.stdin.readline():
+        print("worker-alive", flush=True)
+print("ready", flush=True)
+sys.stdin.readline()
+threading.Thread(target=worker).start()
+ctypes.CDLL(None).pthread_exit(None)
+`,
+        ],
+        { stdio: ["pipe", "pipe", "pipe"] },
+      );
+      let stdout = "";
+      let stderr = "";
+      let launchError: Error | undefined;
+      fixture.stdout.on("data", (chunk) => (stdout += String(chunk)));
+      fixture.stderr.on("data", (chunk) => (stderr += String(chunk)));
+      fixture.on("error", (error) => {
+        launchError = error;
+      });
+      const finished = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolve) =>
+        fixture.on("close", (code, signal) => resolve({ code, signal })),
+      );
+      let first: ReturnType<typeof acquireHeavyRunLock> | undefined;
+      let replacement: ReturnType<typeof acquireHeavyRunLock> | undefined;
+      try {
+        await waitForCondition(() => {
+          if (launchError) throw launchError;
+          return stdout.includes("ready");
+        });
+        const pid = fixture.pid!;
+        const acquire = (processId: number, worktree: string) =>
+          acquireHeavyRunLock({
+            projectRoot: path.join(baseDirectory, worktree),
+            repositoryIdentity,
+            baseDirectory,
+            environment: {},
+            processId,
+            command: "live threaded leader fixture",
+            waitTimeoutMs: 0,
+          });
+        first = acquire(pid, "worktree-a");
+        fixture.stdin.write("exit-leader\n");
+        await waitForCondition(() => {
+          const status = readFileSync(`/proc/${pid}/status`, "utf8");
+          return /^State:\s+Z\b/m.test(status) && /^Threads:\s+2\s*$/m.test(status);
+        });
+        fixture.stdin.write("ping-worker\n");
+        await waitForCondition(() => stdout.includes("worker-alive"));
+        expect(() => process.kill(pid, 0)).not.toThrow();
+        // Even though the leader exited, the heartbeat's owner process can still
+        // execute work. A competing lease must not prune its current token.
+        expect(() => {
+          replacement = acquire(process.pid, "worktree-b");
+        }).toThrow(/heavyweight command is active/);
+        expect(testRunLockInternals.processIsAlive(pid)).toBe(true);
+        expect(readFileSync(path.join(requireLeasePath(first), "owner.json"), "utf8")).toContain(first.owner.token);
+      } finally {
+        replacement?.release();
+        first?.release();
+        fixture.kill("SIGTERM");
+        expect(await finished, stderr).toMatchObject({ code: null, signal: "SIGTERM" });
+      }
+    },
+  );
 
   it("allows an explicit force-lock-release to replace a live owner", () => {
     const baseDirectory = temporaryDirectory("clinical-kb-force-lock-");

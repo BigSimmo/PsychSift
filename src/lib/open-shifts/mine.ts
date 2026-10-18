@@ -1,7 +1,7 @@
 import { fatigueWarnings, type FatigueShift } from "@/lib/roster/fatigue-rules";
 import { FATIGUE_RULE_SET } from "@/lib/roster/fatigue-rules-source";
 import { isWorkedKind } from "@/lib/roster/shift-kind";
-import { addDaysToDate, perthDateOf } from "@/lib/roster/shifts/perth-time";
+import { addDaysToDate, perthDateOf, perthWallToIso } from "@/lib/roster/shifts/perth-time";
 
 import type { OpenShiftListing } from "./model";
 
@@ -55,7 +55,7 @@ function hoursInside(row: { startsAt: string; endsAt: string }, fromMs: number, 
   return end > start ? (end - start) / HOUR_MS : 0;
 }
 
-const perthMidnight = (date: string) => Date.parse(`${date}T00:00:00+08:00`);
+const workMidnight = (date: string) => Date.parse(perthWallToIso(date, "00:00")!);
 
 /**
  * The busiest 14 consecutive days among the windows that start today or in
@@ -87,8 +87,8 @@ export function hoursMeter(
   for (let offset = 0; offset < 14; offset += 1) {
     const from = addDaysToDate(today, offset);
     const to = addDaysToDate(from, 13);
-    const fromMs = perthMidnight(from);
-    const toMs = perthMidnight(addDaysToDate(to, 1));
+    const fromMs = workMidnight(from);
+    const toMs = workMidnight(addDaysToDate(to, 1));
     const sum = (rows: readonly { startsAt: string; endsAt: string }[]) =>
       rows.reduce((total, row) => total + hoursInside(row, fromMs, toMs), 0);
     const r = sum(worked);

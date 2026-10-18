@@ -3154,6 +3154,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/audit/2026-10-17-full-deep-remediation-results.md",
+        "section": "audit",
+        "catalogued": true
+      },
+      {
         "path": "docs/superpowers/plans/2026-09-01-calculators-clinical-safety.md",
         "section": "superpowers",
         "catalogued": true
@@ -3446,6 +3451,11 @@
       {
         "path": "docs/source-governance-refresh-worklist-2026-07-22.md",
         "section": "root",
+        "catalogued": true
+      },
+      {
+        "path": "docs/governance/clinical-release-remediation-handoff-2026-10-17.md",
+        "section": "governance",
         "catalogued": true
       },
       {
@@ -4124,6 +4134,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/audit/2026-10-17-full-deep-remediation-spec.md",
+        "section": "audit",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-08-07-weak-evidence-banner-only-when-it-adds.md",
         "section": "decisions",
         "catalogued": true
@@ -4531,6 +4546,11 @@
       {
         "path": "docs/care-plan/HANDOFF-START-HERE.md",
         "section": "care-plan",
+        "catalogued": true
+      },
+      {
+        "path": "docs/audit/2026-10-18-remaining-review-closeout.md",
+        "section": "audit",
         "catalogued": true
       },
       {
@@ -4994,6 +5014,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/audit/2026-10-18-merged-pr-resolution.md",
+        "section": "audit",
+        "catalogued": true
+      },
+      {
         "path": "docs/archive/codex-cloud-legacy-profile-2026-10-16.md",
         "section": "archive",
         "catalogued": true
@@ -5284,6 +5309,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/governance/physiological-calculator-hold-2026-10-17.md",
+        "section": "governance",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-10-15-no-default-ai-coding-tool.md",
         "section": "decisions",
         "catalogued": true
@@ -5296,6 +5326,11 @@
       {
         "path": "docs/brand/canvas/README.md",
         "section": "brand",
+        "catalogued": true
+      },
+      {
+        "path": "docs/rag-behaviour/cache-freshness.md",
+        "section": "rag-behaviour",
         "catalogued": true
       },
       {
@@ -5376,6 +5411,11 @@
       {
         "path": "docs/tooling-follow-through-decisions-2026-08-12.md",
         "section": "root",
+        "catalogued": true
+      },
+      {
+        "path": "docs/superpowers/plans/2026-10-17-full-deep-remediation.md",
+        "section": "superpowers",
         "catalogued": true
       },
       {
@@ -6620,6 +6660,14 @@
         "checks": "GitHub merged exact head, branch not checked out, no open PR claim, batch3 bundle verify ok SHA256 48AF30DD07A04703D02F4A2FFBDE65F1E573D081E4660D4C7E240D8DB1079B8C"
       },
       {
+        "date": "2026-10-18",
+        "ref": "fix/remaining-review-reliability-20261018",
+        "head": "08f9eefc3de72036704d85cddc5b9c59e64e98a7",
+        "scope": "Independent append-only migration seals and drift recovery failure-path review",
+        "outcome": "Accepted: all321priorhashes preserved, exactly3owner-approved additions match migration bytes; generated scratch-schema recovery logging preserves stale-check failure and excludes application rows/credentials. No live SQL, historical reseal or merge.",
+        "checks": "Independent read-only diff and hashing; supplied90scope tests plus765workflow contracts and actual shell fresh/stale recovery harness passed. Manifest recovery and hosted parity still pending; requested model not independently verified telemetry."
+      },
+      {
         "date": "2026-08-24",
         "ref": "cursor/dictionary-control-row-polish-4ee0 (PR #2316)",
         "head": "090c5f274e293fa5209cff6fa1565e2e50fa3c6d",
@@ -7476,6 +7524,14 @@
         "checks": "merge origin/main and/or conflict re-check only; no provider-backed checks run"
       },
       {
+        "date": "2026-10-18",
+        "ref": "fix/remaining-review-reliability-20261018",
+        "head": "11a29e1d3183fe6a129297cefd196736bc69b324",
+        "scope": "Independent recheck of concurrent bot corrections in PDF and durable alerts",
+        "outcome": "Accepted: restore complete crossing PDF instructions and per-device eligibility while retaining paged draining. No new material defect in bounded read-only PDF and alert correction reviews. Queue draft single ADD preserves fresh-schema UUID/default/trigger result without UPDATE side effects.",
+        "checks": "Existing tests reproduced two PDF and two roster regressions before correction. Corrected Python60passed; focused TS35passed4files including26-device page regression; fresh full lint and typecheck passed. Reviews read-only; no clinical acceptance or providers."
+      },
+      {
         "date": "2026-07-28",
         "ref": "claude/branch-review-ledger-fixes-42575f",
         "head": "11a4ed746be7a83b144876f7a16948cad280df25",
@@ -7556,6 +7612,14 @@
         "checks": "Hosted PR required SUCCESS; Migration replay/Unit/Static/PR policy SUCCESS; Semgrep fail was Docker Hub pull timeout (infra). `npm run check:branch-review-ledger` pass. No provider-backed checks."
       },
       {
+        "date": "2026-10-18",
+        "ref": "fix/remaining-review-reliability-20261018",
+        "head": "12d2c9dc30b4c77d58f85d290c433301bc2313e9",
+        "scope": "Independent trigger-helper ACL parity correction review",
+        "outcome": "Accepted: terminal helper-specific mirror revoke matches reported owner-only chain ACL, retains owner privileges and trigger behavior. Migration tree, seals and existing manifest unchanged. New schema hash5118a8dc. Genuine regeneration and hosted parity still required.",
+        "checks": "Independent immutable SQL diff, schema hash and unchanged protected bytes; inspected actual-migration PGlite ACL/UUID proof and passing log. Parent45contract tests and CI mismatch observation reused; no reviewer writes/providers or broad reruns."
+      },
+      {
         "date": "2026-07-30",
         "ref": "PR-1507",
         "head": "12e5c8c977a873a7b900596fdc310a1a78d863f0",
@@ -7626,6 +7690,14 @@
         "scope": "PR #2292 developer-hub review and P2 fixes",
         "outcome": "Merged current main; confirmed the external Markdown URL guard and added a fail-closed staging requirement for non-ignored untracked Markdown docs. Both actionable review findings are covered by focused regressions; ignored scratch notes remain excluded.",
         "checks": "Vitest repo-awareness-generator 31/31; tsc -p tsconfig.typecheck.json --noEmit; Prettier --check; git diff --check; coordinated typecheck wrapper interrupted by environment but underlying tsc passed"
+      },
+      {
+        "date": "2026-10-18",
+        "ref": "fix/remaining-review-reliability-20261018",
+        "head": "1401eaa8b18471a1ded492626f1730805f9ac1d5",
+        "scope": "Independent recovered Supabase manifest integrity and semantic inventory review",
+        "outcome": "Accepted: recovered file, working file and immutable Git blob are857833bytes with SHA470f2adf6f51487d27d8833d73169386c02491d8c2aef5ebfe77a32a98adfa18. Schema/image/generator/probe match; source schema and all seals unchanged. No unexpected removals or permission relaxation; additions match source SQL. Hosted parity still pending.",
+        "checks": "Independent byte/schema hashes and semantic diff; parent observed trusted GitHub recovery log39112988994/job117632966128 and66focusedtests pass. No providers/writes by reviewer; requested route is not verified execution telemetry."
       },
       {
         "date": "2026-07-30",
@@ -8834,6 +8906,14 @@
         "scope": "Required base sync through main d301d8f4",
         "outcome": "approved",
         "checks": "git diff --check; CI scope self-test; ledger and issue guards"
+      },
+      {
+        "date": "2026-10-18",
+        "ref": "fix/remaining-review-reliability-20261018",
+        "head": "23350178ad15740755dccb81c281ea06cd63276a",
+        "scope": "Independent corrected genuine drift-manifest integrity review",
+        "outcome": "Accepted: recovered, working and Git blob identical857796bytes SHA3555daf0; schema5118/image/probe match. Only timestamp/schema hash/helper service-role EXECUTE removal changed. All other catalog values, migrations and seals unchanged; hosted freshness/parity still pending.",
+        "checks": "Independent immutable byte/hash/schema/full recursive comparisons; inspected verification and66tests4files logs without rerun. GitHub-log provenance and test execution reused from controller, not independently observed. Read-only bounded review."
       },
       {
         "date": "2026-07-30",
@@ -10762,6 +10842,14 @@
         "scope": "Fix calculator regression tests from exact-head CI and merge main d301d8f4",
         "outcome": "fixed",
         "checks": "git diff --check; static ledger guards; focused tests blocked without node_modules"
+      },
+      {
+        "date": "2026-10-18",
+        "ref": "fix/remaining-review-reliability-20261018",
+        "head": "3bf7aa7eead5e4c0e663353a50e939ba44f1bc2c",
+        "scope": "Independent generated-catalogue correction integrity review",
+        "outcome": "Accepted: regenerated full/index filenames match canonical bytes, actual main grace asset is preserved, unmerged intermediate removed, ownership pointer resolves, and CET remains unverified/excluded. No clinical approval or frozen SQL change.",
+        "checks": "Bounded read-only review of28cc93dc generated bytes and c632f2899 ownership pointer, unchanged in this head;1081 IDs preserved,205lineage digests only, content hashes/governance/eligibility unchanged. Therapy/static-manifest checks passed; owning domain1805passed1skipped131files."
       },
       {
         "date": "2026-08-29",
@@ -13292,6 +13380,14 @@
         "checks": "Provider-backed GitHub PR inventory via MCP (400 PRs #264-#674, all merged=false); local read-only git: rewritten-main-aware cherry-pick + two-dot tree + branch-only-file novelty sweep vs origin/main e75fad90; adversarial re-check. Remote `git push --delete` attempted (provider-backed write) and DENIED with HTTP 403. No OpenAI/Supabase/live-eval checks."
       },
       {
+        "date": "2026-10-18",
+        "ref": "fix/merged-pr-review-20261018",
+        "head": "5acc2553e1df16c57bf7b47dd2ccc0a29575284c",
+        "scope": "Bounded correction review of full-suite fixture and metadata-budget findings",
+        "outcome": "Two independent reviewers accepted the corrections; no remaining actionable source finding. Three draft database assertions remain blocked; no clinical or production acceptance.",
+        "checks": "Fresh lint/typecheck and production build passed; Teaching/current-manifest scope 2169 passed in77files; corrected budget scope10passed. Prior full run32330passed24failed2skipped;21nonDBfailures addressed by focused evidence, no green full rerun claimed."
+      },
+      {
         "date": "2026-08-19",
         "ref": "gemini/safe-workflow-guards-and-motion-contracts",
         "head": "5ad1f0d687bb4999c25ae96194f467c542569fac",
@@ -15602,6 +15698,14 @@
         "scope": "CI repair",
         "outcome": "refreshed outstanding-issues snapshot after latest-main sync",
         "checks": "outstanding-issues snapshot; outstanding-issues integrity; staged diff check"
+      },
+      {
+        "date": "2026-10-18",
+        "ref": "fix/remaining-review-reliability-20261018",
+        "head": "72b9a22e77039350e248bf43a3c539be95ce9c0b",
+        "scope": "Independent remaining-review PDF association and durable alert delivery review with correction rechecks",
+        "outcome": "No remaining actionable findings in bounded source/correction reviews. Filled or invisible paths, overflow text loss, transient lookup loss and post-lock expiry were found, corrected and rechecked. No clinical or production acceptance inferred.",
+        "checks": "60 Python extractor tests;50 TypeScript cases7files;fresh complete typecheck;native PostgreSQL17.6 rollback,device retry,RLS,actual2session claims/reclaim/stale ack and wait-across-expiry passed. Full pinned Supabase replay blocked by ENOSPC; browser proof pending."
       },
       {
         "date": "2026-08-22",
@@ -21356,6 +21460,14 @@
         "checks": "Local: align Vitest 5/5; ui-overlap 12/12; differentials fold Playwright 1/1. Hosted: Production UI, Advisory UI, Static, Unit, Build, PR policy, PR required, Sync PR policy body all pass."
       },
       {
+        "date": "2026-10-18",
+        "ref": "fix/merged-pr-review-20261018",
+        "head": "b6419f98f826170993a4f2f7dc0b2efec8747179",
+        "scope": "Independent adversarial review of merged-PR remediation; bounded correction verification",
+        "outcome": "Confirmed Teaching stale GET and metadata pagination defects corrected; obsolete scope suites and CET claims repaired. No remaining actionable source finding; draft only, migration/browser/live acceptance blocked.",
+        "checks": "Read-only source review by two independent reviewers; focused correction suite 61 passed in eight files; newer main worker and schema integration checked. Full handoff gate in progress; no production acceptance."
+      },
+      {
         "date": "2026-08-18",
         "ref": "claude/development-index-page (PR #2135)",
         "head": "b6451a1f90cd8488e67b8807fa1740902f2c77f5",
@@ -24364,6 +24476,14 @@
         "checks": "Resolved as main / origin/main; deletion prohibited."
       },
       {
+        "date": "2026-10-18",
+        "ref": "fix/remaining-review-reliability-20261018",
+        "head": "d8a2e5daee19ca99f50ab2af65ddd87c170009a0",
+        "scope": "Independent concurrent paging and consumer shutdown merge review",
+        "outcome": "Accepted: exact-cap probe retains abort/error/access fences; owned stop signal prevents subsequent devices and waits acknowledgment/release. Four merged files match concurrent commit, genuine manifest3555/schema5118/sealed SQL unchanged. Hosted final parity pending.",
+        "checks": "Independent four-file diff and relevant callers, immutable merged bytes and protected-file comparisons. Inspected26tests2files log; controller execution reused, no broad rerun/providers/writes."
+      },
+      {
         "date": "2026-07-30",
         "ref": "PR #1441",
         "head": "d8bd22192ce974d4d2340ff26959ee41480218e9",
@@ -25306,6 +25426,14 @@
         "scope": "Run PR sweep: CI fix + threads + drift",
         "outcome": "supersedes prior #1162 row: post-sweep HEAD includes ledger commit; conflict-marker fixes at 80212dd91+632e84c94; merge-from-main skipped (privacy/clinical/source-authority/supabase conflicts); PR policy + thread resolve deferred to human/parent",
         "checks": "same gates as prior row; no provider-backed checks run"
+      },
+      {
+        "date": "2026-10-18",
+        "ref": "fix/merged-pr-review-20261018",
+        "head": "e3b3f15774dbef5ecaeedcb38d8d6880128faccb",
+        "scope": "Bounded independent review of hosted catalogue-manifest correction",
+        "outcome": "Accepted: 1081 IDs preserved; 205 therapy lineage digests alone changed. Eligibility, governance and content hashes unchanged; frozen database seeds untouched.",
+        "checks": "216 site-content and ownership cases passed in 17 files, including epoch-zero freeze checks; exact hosted static and synthetic freshness commands passed. Synthetic evidence is not live acceptance."
       },
       {
         "date": "2026-07-24",
@@ -27338,6 +27466,14 @@
         "scope": "prlanded",
         "outcome": "PR #3570 squash-merged as fa526775c6; stable patch-id 87375f76eaf matches branch tip d8eefbb91e with zero orphaned commits",
         "checks": "gh pr view 3570 MERGED; 1-parent squash; git patch-id --stable match"
+      },
+      {
+        "date": "2026-10-18",
+        "ref": "claude/reconcile-ledger-20261016",
+        "head": "fa526775c6ca0751f9609e4fc5133190efa19c16",
+        "scope": "PS-044 provenance correction for PR #3570",
+        "outcome": "Corrects the branch label in a7be2760026da4bc040fa90bf847382bdcded2a8a7510ceaf7be4ac49c042211.record.md: the supplied review identifies claude/reconcile-ledger-20261016, final head d8eefbb91e9e623fcdb9029fade9f3eda661091e and merge fa526775c6ca0751f9609e4fc5133190efa19c16. Original immutable record retained. This correction does not re-run or extend its landed proof.",
+        "checks": "Compared supplied PS-044 correction with the local immutable receipt; no new GitHub request, patch-id execution, CI or deployment verification."
       },
       {
         "date": "2026-08-05",

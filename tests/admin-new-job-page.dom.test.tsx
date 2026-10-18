@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AdminNewJobPage } from "@/components/admin/admin-new-job-page";
@@ -64,6 +64,11 @@ const entryState = vi.hoisted(() => ({
   cachedAt: null as string | null,
   retry: vi.fn(),
 }));
+
+const identity = vi.hoisted(() => ({
+  auth: { status: "authenticated", authEpoch: 1, session: { user: { id: "synthetic-A" } } },
+}));
+vi.mock("@/lib/supabase/client", () => ({ useAuthSession: () => identity.auth }));
 
 const cacheOnCallEntries = vi.fn();
 vi.mock("@/lib/on-call/entry-store", () => ({
@@ -343,4 +348,34 @@ describe("AdminNewJobPage credentials wallet", () => {
     render(<AdminNewJobPage now={NOW} />);
     expect(screen.queryByTestId("admin-credentials-wallet")).toBeNull();
   });
+});
+
+describe("New job captured-account writes", () => {
+  for (const status of [200, 500]) {
+    it(`drops A PATCH completion (${status}) after the entry store resets for B`, async () => {
+      let resolve!: (response: Response) => void;
+      vi.spyOn(globalThis, "fetch").mockImplementation(
+        () =>
+          new Promise<Response>((done) => {
+            resolve = done;
+          }),
+      );
+      const view = render(<AdminNewJobPage now={NOW} />);
+      fireEvent.click(screen.getByTestId(`admin-new-job-step-${loginOwn.slug}-checkbox`));
+      // AuthProvider clears the real store before publishing the next immutable identity.
+      identity.auth = {
+        ...identity.auth,
+        authEpoch: identity.auth.authEpoch + 1,
+        session: { user: { id: "synthetic-B" } },
+      };
+      Object.assign(entryState, { entries: [], loading: false });
+      view.rerender(<AdminNewJobPage now={NOW} />);
+      await act(async () =>
+        resolve(Response.json({ entry: { ...loginOwn, details: { category: "Logins", done: true } } }, { status })),
+      );
+      expect(cacheOnCallEntries).not.toHaveBeenCalled();
+      expect(screen.queryByTestId("admin-new-job-undo")).toBeNull();
+      expect(screen.queryByTestId("admin-new-job-error")).toBeNull();
+    });
+  }
 });

@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "releaseStatus": "held",
+  "scope": "All bedside physiological outputs, including numerical results, dose suggestions, thresholds, and management guidance. Psychometric calculator fixtures are governed separately.",
+  "clinicalReview": {
+    "status": "pending",
+    "reviewer": null,
+    "reviewedOn": null,
+    "approvalEvidence": null
+  },
+  "evidenceLimit": "Implementation inventory and engineering drift pins only. Source leads below are unverified implementation attributions, not reviewed primary-source correspondence, clinical validation, or release approval.",
+  "algorithms": [
+    {
+      "id": "cockcroft-gault",
+      "implementation": "src/lib/calculators/clinical-math/renal.ts",
+      "exports": ["calculateCockcroftGault", "calculateIdealBodyWeightKg"],
+      "formula": "CrCl=(140-age)*weight*1.23/SCr for male or 1.04 for female (SCr umol/L); (140-age)*weight/(72*SCr)*(0.85 if female) for mg/dL. Devine IBW base 50/45.5 kg + 0.9*(heightCm-152.4); adjusted weight=IBW+0.4*(actual-IBW).",
+      "sourceLeads": [
+        "Cockcroft-Gault and Devine formulas named in implementation; exact primary publications and claim correspondence not recorded.",
+        "AMH / Therapeutic Guidelines named in implementation; edition, page and correspondence not recorded."
+      ],
+      "reviewRequired": [
+        "Unit conversion and sex coefficients",
+        "Adult population and invalid-input limits",
+        "Weight selection, rounding and application to renal drug dosing",
+        "Renal stages, warnings and lithium management note"
+      ]
+    },
+    {
+      "id": "ckd-epi-2021",
+      "implementation": "src/lib/calculators/clinical-math/renal.ts",
+      "exports": ["calculateCkdEpi2021"],
+      "formula": "eGFR=142*min(SCr/kappa,1)^alpha*max(SCr/kappa,1)^-1.2*0.9938^age*(1.012 if female); kappa=0.7/0.9 and alpha=-0.241/-0.302 for female/male; SCr mg/dL, conversion umol/L /88.42.",
+      "sourceLeads": [
+        "2021 CKD-EPI creatinine equation (race-free) named in implementation; exact primary publication and claim correspondence not recorded.",
+        "KDIGO / Australian guidelines named in implementation; edition and correspondence not recorded."
+      ],
+      "reviewRequired": [
+        "Primary equation and conversion correspondence",
+        "Adults, indexing to 1.73m2 and exclusions",
+        "Stages and any dose-use implications"
+      ]
+    },
+    {
+      "id": "qtc",
+      "implementation": "src/lib/calculators/clinical-math/qtc.ts",
+      "exports": ["calculateQtc"],
+      "formula": "RR seconds=60/HR; Bazett QTc=QT/sqrt(RR); Fridericia QTc=QT/cbrt(RR); Framingham QTc=QT+154*(1-RR); Hodges QTc=QT+1.75*(HR-60), QT/QTc milliseconds.",
+      "sourceLeads": [
+        "Bazett, Fridericia, Framingham and Hodges equations named in implementation; primary papers, versions and correspondence not recorded."
+      ],
+      "reviewRequired": [
+        "Primary formula sources and units",
+        "Heart-rate/sex selection, measurement population and invalid-input limits",
+        "Risk thresholds, kinetic cautions and medication/cardiology advice"
+      ]
+    },
+    {
+      "id": "lithium-level",
+      "implementation": "src/lib/calculators/clinical-math/lithium.ts",
+      "exports": ["evaluateLithiumLevel"],
+      "formula": "Rule-based age/indication target ranges and level classifications; no independent clinical validation recorded.",
+      "sourceLeads": [
+        "Therapeutic Guidelines, RANZCP monitoring standards and EXTRIP named in implementation; exact editions and claim correspondence not recorded."
+      ],
+      "reviewRequired": [
+        "Target ranges, age and indication population",
+        "Sampling and steady-state restrictions",
+        "Toxicity thresholds, withholding/admission/dialysis and repeat-monitoring advice"
+      ]
+    },
+    {
+      "id": "proportional-lithium-dose",
+      "implementation": "src/lib/calculators/clinical-math/lithium.ts",
+      "exports": ["validateLithiumDoseInput", "calculateProportionalLithiumDose"],
+      "formula": "Raw dose=current dose*(target level/current level); rounded dose=round(raw dose/increment)*increment. Additional input/ratio/dose bounds are implementation controls, not validated safe prescribing limits.",
+      "sourceLeads": [
+        "Linear kinetics and Australian tablet increments asserted in implementation; dedicated primary source and prescribing validation not recorded."
+      ],
+      "reviewRequired": [
+        "Dedicated dose-calculator clinical validation",
+        "Linear kinetics, sampling, steady state and patient exclusions",
+        "Tablet splitting/formulations, rounding, bounds and dose/monitoring advice"
+      ]
+    }
+  ],
+  "implementationPins": {
+    "src/lib/calculators/clinical-math/renal.ts": "51617e6db4aba04ce6ea89ad0830e21a5902d4a2be75b373821e05ae42cb42d7",
+    "src/lib/calculators/clinical-math/qtc.ts": "f34b5852a82759ef83fcd19863fb45ad62765953120c5d2a5ac490aede404bd4",
+    "src/lib/calculators/clinical-math/lithium.ts": "5319dedd327f3312c1ad0ada409a8f737c67e68a82199a76e032cdbbf37806ab",
+    "src/lib/calculators/clinical-math/types.ts": "2a3a846b4f5bb7a21ea915ebfa032c2eb95409d3c9ef34fa5fbc6a609c9004f3",
+    "src/lib/calculators/clinical-math/index.ts": "93ec21888c7292f2b4667ba85ccb48f5f8027f1617c3110285aa3d895e050a0d",
+    "src/components/calculators/clinical-math-panel.tsx": "62f5704c81b5d440ebf2662387f469c7dd92097277b668ee383a688718503efd"
+  }
+}
