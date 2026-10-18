@@ -44,7 +44,11 @@ Evidence on corrected source `72b9a22e77039350e248bf43a3c539be95ce9c0b` unless q
 
 PostgreSQL fixture proof is **not** a complete Supabase-chain replay. The pinned Supabase image again failed registering a layer with `no space left on device` despite available workspace storage; no image substitution, historical hash rewrite, forged expected drift or safety-gate change was used. The small PostgreSQL image was used only for the explicitly scoped transaction/concurrency proof.
 
-Browser evidence and final handoff checks are recorded below when complete. The first Chromium attempt compiled webpack but its TypeScript child hit the default approximately 4 GiB heap limit before browser tests; it is a failed infrastructure attempt, not a product-test result. The retry explicitly supplies the repository's supported 8 GiB Node heap. Physical Safari, an installed PWA and assistive technology still require their own observed acceptance.
+Fresh browser proof: the complete assessment spec passed **7/7** on system Chromium `151.0.7922.173`, including unchanged 2px gesture assertions in browser/installed layouts, normal/reduced motion, widths 320–1920, 200% text, forced colours, focus clearance and performance capture. The complete Teaching spec passed **16/16**, reusing that same production build. The captured assessment trace had 4 layouts (maximum 0.177ms), 1,355 tasks and no tasks of at least 50ms; this is local developer evidence, not physical-phone performance. Screenshots were inspected and retained locally. The build includes the corrected application code; subsequent catalogue regeneration changed only generated data/lineage and is checked separately.
+
+Fresh lint passed with zero warnings. Migration-role, function-grant, owner-scope, maintainability and dependency/export checks passed. Offline RAG fixture/adversarial contracts passed, including 25 harness tests. CI-mode production-readiness structure passed with its expected outstanding-acceptance warnings; its `READY` line does not attest to production readiness. Read-only clinical review printed `Report only; no file was changed.`
+
+The first Chromium attempt compiled webpack but its TypeScript child hit the default approximately 4 GiB heap limit before browser tests; it is a failed infrastructure attempt, not a product-test result. The retry explicitly supplies the repository's supported 8 GiB Node heap. Physical Safari, an installed PWA and assistive technology still require their own observed acceptance.
 
 ## Precise remaining owner and integration gates
 

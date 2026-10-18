@@ -84,6 +84,7 @@
     "tests/favourite-set-name.test.ts",
     "tests/favourites-*",
     "tests/favourites.test.ts",
+    "tests/fixtures/roster-offer-outbox/**",
     "tests/main-calendar-ungated.test.ts",
     "tests/main-calendar.test.ts",
     "tests/my-day-*",
