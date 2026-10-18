@@ -8845,6 +8845,14 @@
         "checks": "git diff --check; CI scope self-test; ledger and issue guards"
       },
       {
+        "date": "2026-10-18",
+        "ref": "fix/remaining-review-reliability-20261018",
+        "head": "23350178ad15740755dccb81c281ea06cd63276a",
+        "scope": "Independent corrected genuine drift-manifest integrity review",
+        "outcome": "Accepted: recovered, working and Git blob identical857796bytes SHA3555daf0; schema5118/image/probe match. Only timestamp/schema hash/helper service-role EXECUTE removal changed. All other catalog values, migrations and seals unchanged; hosted freshness/parity still pending.",
+        "checks": "Independent immutable byte/hash/schema/full recursive comparisons; inspected verification and66tests4files logs without rerun. GitHub-log provenance and test execution reused from controller, not independently observed. Read-only bounded review."
+      },
+      {
         "date": "2026-07-30",
         "ref": "codex/ledger-next-20260730",
         "head": "23572a4ad4a6f1520d86715c647ad9d40ff6bb01",

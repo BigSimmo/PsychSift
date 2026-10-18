@@ -310,3 +310,18 @@ verified temporary/working/Git-blob byte identity, schema/image/probe metadata,
 the complete three-path recursive difference and unchanged sealed SQL/hashes.
 It inspected the passing verification/test logs without rerunning them, and reused
 the controller's GitHub-log provenance observation. No actionable finding.
+
+### Concurrent branch update preserved before final publication
+
+The final normal push was rejected because another contributor published
+`d652a70824051cab0df71c4bdb277739ed5542a5` while CI settled. It adds
+an owned cancellation signal when stopping the offer consumer and a one-row probe
+past the metadata paging cap, accepting exactly 100,000 rows while rejecting more.
+The four-file change was merged cleanly into
+`d8a2e5daee19ca99f50ab2af65ddd87c170009a0`, preserving both histories.
+**26 focused tests in two files**, scoped ESLint/format checks and full typechecking
+passed. Independent read-only review checked the affected callers and merge bytes;
+no actionable finding. It reused the controller's test execution evidence.
+The corrected manifest, schema, migration tree and seal entries remain identical
+to the reviewed generated-file commit, so its provenance is unchanged. No force
+push or SQL change occurred. Final hosted freshness and parity remain pending.
