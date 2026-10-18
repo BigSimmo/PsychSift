@@ -60,6 +60,8 @@ services:
       WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-2}
       WORKER_CLAIM_BATCH_SIZE: ${WORKER_CLAIM_BATCH_SIZE:-5}
       WORKER_STALE_CLAIM_WINDOW_MS: ${WORKER_STALE_CLAIM_WINDOW_MS:-60000}
+      # Internal-only listener for the Docker HEALTHCHECK; no host port is needed.
+      WORKER_HEALTH_PORT: 8000
     env_file:
       - .env.local
     restart: unless-stopped

@@ -41,7 +41,7 @@ IFS= read -r -d '' payload || true
 # tool call. The test below uses shell builtins only.
 #
 # It is deliberately a SUPERSET of the real check further down
-# (`git[[:space:]]+push`), so it can only ever let MORE through, never less: that
+# (`git`, optional global options such as `-C <dir>`, then `push`), so it can only ever let MORE through, never less: that
 # regex cannot match unless the bytes `git` appear before the bytes `push`,
 # whether the command reaches it jq-decoded, grep-extracted, or as the raw
 # payload. The `\u` arm covers the one theoretical gap in that argument — an
@@ -78,7 +78,7 @@ case "$tool_name" in
 esac
 
 # --- is this a push? ----------------------------------------------------------
-printf '%s' "$command_text" | grep -Eq '(^|[;&|[:space:]])git[[:space:]]+push([[:space:]]|$)' || exit 0
+printf '%s' "$command_text" | grep -Eq '(^|[;&|[:space:]])git([[:space:]]+(-[Cc][[:space:]]*("[^"]*"|'"'"'[^'"'"']*'"'"'|[^[:space:]]+)|--?[[:alnum:]-]+(=[^[:space:]]*)?))*[[:space:]]+push([[:space:]]|$)' || exit 0
 
 # --- documented escape hatch (leading prefix only, not an incidental mention) --
 printf '%s' "$command_text" \
