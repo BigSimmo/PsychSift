@@ -18,6 +18,12 @@ IMAGE_TAG=docling-lab
 cd "$REPO_ROOT"
 
 command -v docker >/dev/null || { echo "run-lab: docker is required" >&2; exit 1; }
+if ! docker buildx inspect >/dev/null 2>&1; then
+  echo "run-lab: a working Docker BuildKit builder (docker buildx) is required to build the lab image" >&2
+  exit 1
+fi
+# The lab Dockerfile uses BuildKit cache mounts.
+export DOCKER_BUILDKIT=1
 if [ ! -d node_modules ]; then
   echo "run-lab: node_modules missing — run 'npm ci --include=dev' first (the legacy runner needs tsx)" >&2
   exit 1

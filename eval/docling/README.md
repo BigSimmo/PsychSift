@@ -121,7 +121,9 @@ npm run generate:docling-lab-lock
 
 The docker build stage needs network (hash-verified PyPI + CPU-torch index
 installs, docling model prefetch from HuggingFace); the benchmark run itself has
-none. A local run needs Docker and ~10 GB free disk for the image.
+none. A local run needs Docker with BuildKit enabled (the `docker buildx` plugin) and
+~10 GB free disk for the image. The runner checks for `docker buildx` before
+building because the Dockerfile uses BuildKit cache mounts.
 
 ## Interpreting a run (Gate B)
 
