@@ -84,6 +84,9 @@ function installStorage() {
     owner_id: ownerId as string | null,
     status: "indexed",
     updated_at: "2026-10-16T00:00:00.000Z",
+    // Models public.document_evidence_revisions: bumped by the DB triggers when a table fact or
+    // image of this document changes (tests/sql/rag-cache-scope-evidence-revision.sql proves it).
+    evidence_revision: 0,
     metadata: {
       indexed_at: "2026-10-15T00:00:00.000Z",
       index_generation_id: "generation-1",
@@ -253,6 +256,28 @@ describe("durable source-governance cache fence (F13)", () => {
       document.updated_at = "2026-10-17T00:00:00.000Z";
       document.metadata.document_status = "outdated";
       document.metadata = { ...document.metadata, governance_disposition: decision } as typeof document.metadata;
+      expect(await cache.getCachedAnswer(args, Date.now(), { indexingVersionAtRequestStart: start })).toBeNull();
+      expect(
+        await cache.getCachedSearch(args, telemetry.query_class, [], { indexingVersionAtRequestStart: start }),
+      ).toBeNull();
+      expect(await cache.getSharedCachedAnswer(args, Date.now(), { indexingVersionAtRequestStart: start })).toBeNull();
+      expect(
+        await cache.getSharedCachedSearch(args, telemetry.query_class, [], { indexingVersionAtRequestStart: start }),
+      ).toMatchObject({ kind: "miss" });
+    },
+  );
+
+  it.each(["table fact threshold", "image caption"])(
+    "rejects retained local and shared entries after a %s edit that leaves the document row unchanged",
+    async () => {
+      const { cache, state, document } = await setup();
+      await seedBoth(cache, state);
+      const start = await cache.cacheIndexingVersion(args, { forceRefresh: true });
+      expect(await cache.getCachedAnswer(args, Date.now(), { indexingVersionAtRequestStart: start })).not.toBeNull();
+      // Another replica edits evidence only: updated_at, status and metadata stay as they were.
+      document.evidence_revision += 1;
+      const after = await cache.cacheIndexingVersion(args, { forceRefresh: true });
+      expect(after).not.toBe(start);
       expect(await cache.getCachedAnswer(args, Date.now(), { indexingVersionAtRequestStart: start })).toBeNull();
       expect(
         await cache.getCachedSearch(args, telemetry.query_class, [], { indexingVersionAtRequestStart: start }),
