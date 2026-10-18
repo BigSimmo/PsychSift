@@ -3184,6 +3184,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/operator-rehearsal-plan.md",
+        "section": "root",
+        "catalogued": true
+      },
+      {
         "path": "docs/archive/2026-10-agent-code-reviews/MASTER_ISSUE_TRACKER.md",
         "section": "archive",
         "catalogued": true
@@ -4501,6 +4506,11 @@
       {
         "path": "docs/redesign/clinical-white-aegean-master-implementation-plan.md",
         "section": "redesign",
+        "catalogued": true
+      },
+      {
+        "path": "docs/process-cleanup-proposal-2026-10.md",
+        "section": "root",
         "catalogued": true
       },
       {
