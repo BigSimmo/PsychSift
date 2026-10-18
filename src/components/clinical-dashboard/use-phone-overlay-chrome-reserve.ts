@@ -25,10 +25,14 @@ export const phoneOverlayReserveGeometryQuietWindowMs = 80;
 export function readPhoneOverlayChromeReservePx(root: ParentNode = document): number {
   const collapse = root.querySelector<HTMLElement>(collapseSelector);
   const stack = collapse?.closest<HTMLElement>(headerStackSelector) ?? null;
-  // Prefer `||` over `??`: a present stack with offsetHeight 0 (display:contents
+  // Heights are fractional border-box CSS pixels throughout measurement,
+  // claiming and release. Integer offsetHeight rounded a 79.875px addon to
+  // 80px, moving page content when the portal replaced its in-flow box.
+  // The overlay only translates, so its rect height is unchanged while hidden.
+  // Prefer `||` over `??`: a present stack with height 0 (display:contents
   // / empty mid-unmount) must fall through to the collapse row, and a 0 from
   // both must stay 0 so the publisher can refuse to clobber the CSS seed.
-  return Math.round(stack?.offsetHeight || collapse?.offsetHeight || 0);
+  return stack?.getBoundingClientRect().height || collapse?.getBoundingClientRect().height || 0;
 }
 
 /**
@@ -116,12 +120,12 @@ export function publishPhoneOverlayChromeReserveNow(): void {
 export function claimPhoneOverlayAddonReserve(host: HTMLElement): () => void {
   if (typeof window === "undefined") return () => {};
   if (!window.matchMedia(phoneMediaQuery).matches) return () => {};
-  const rowPx = Math.round(host.offsetHeight);
+  const rowPx = host.getBoundingClientRect().height;
   if (rowPx <= 0) return () => {};
   const root = document.documentElement;
   // The row's height when it is released, falling back to the claimed height
   // if the host no longer measures (see the release note above).
-  const releasedRowPx = () => Math.round(host.offsetHeight) || rowPx;
+  const releasedRowPx = () => host.getBoundingClientRect().height || rowPx;
 
   if (!hasSettledPhoneOverlayReserve) {
     const previousInline = root.style.getPropertyValue(reserveProperty);
@@ -183,7 +187,7 @@ export function __setPhoneOverlayReserveSettledForTests(settled: boolean): void 
  * scroller no layout and content does not shift.
  *
  * The measurement is safe to take in either state: hiding translates the stack
- * (`-translate-y-full`) and `offsetHeight` ignores transforms, so the value is
+ * (`-translate-y-full`) without changing its border-box rect height, so the value is
  * the revealed height whether or not the chrome is currently away. That is why
  * this hook deliberately does *not* read `data-scroll-hidden` — unlike
  * `use-document-chrome-metrics`, which zeroes its anchor offset while hidden

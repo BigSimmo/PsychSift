@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "38224881-4405-4290-9248-12af6da757f6",
+  "createdOn": "2026-10-17",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "task",
+    "summary": "Remove remaining PR 3538 leftovers after 13 Nov 2026 (follow-up to #08216B)",
+    "detail": "After the 30-day dead-code candidate window (2026-11-13), delete or wire the remaining PR 3538 leftovers flagged in #08216B: /api/proxy route (remove or restrict to an explicit allowlist), scripts/recalculate-answer-support-labels.ts (replace regex chunk-tag stripping with shared parser or delete), src/app/mockups/development/* pages, and unwired safe-number editor / attendance roster / QR helper / note editor privacy review.",
+    "source": "PR #3609 review; follow-up to #08216B",
+    "issueUlid": "01M54ZYA19YJXRS380P791XA0P"
+  }
+}

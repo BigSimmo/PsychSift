@@ -727,13 +727,12 @@ describe("compat layer agrees with the v2 layer", () => {
   // files declare, the v2 value is the one that paints and the globals.css value
   // is dead — editing it has NO visible effect, silently.
   //
-  // The v2 migration is deliberate and unfinished, so divergence is pinned rather
-  // than banned: `docs/design-system/token-layer-divergences.json` is the reviewed
-  // set. A role that STARTS diverging fails here, and so does one that stops,
-  // because a stale pin overstates the debt exactly the way GATES.md's hand-copied
-  // figures did. Refresh with `npm run design-system:token-divergence:update`.
+  // Compatibility fallbacks are retained for rollback and isolated mounts, but
+  // their overlapping values now match canonical v2. Keep the reviewed divergence
+  // set empty; changing the pin alone must not silently reintroduce dual ownership.
   it("has no unreviewed divergence between globals.css and ckb-v2-tokens.css", () => {
     expect(diffAgainstPin()).toEqual([]);
+    expect(computeDivergences()).toEqual({ light: {}, dark: {}, forcedColors: {} });
   });
 
   // A conditional `@media` override is a different comparison context from an
@@ -760,7 +759,7 @@ describe("compat layer agrees with the v2 layer", () => {
   it("rejects a pin whose counts metadata disagrees with divergences", () => {
     const pin = readPin();
     const bad = structuredClone(pin);
-    bad.counts = { ...pin.counts, light: 0, dark: 999 };
+    bad.counts = { ...pin.counts, light: 999, dark: 999 };
     const problems = diffAgainstPin(computeDivergences(), bad);
     expect(problems.some((problem) => problem.includes("counts.light"))).toBe(true);
     expect(problems.some((problem) => problem.includes("counts.dark"))).toBe(true);

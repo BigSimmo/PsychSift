@@ -56,9 +56,17 @@ describe("MedicinesHome", () => {
     fireEvent.submit(input.closest("form") as HTMLFormElement);
     expect(push).not.toHaveBeenCalled();
 
+    fireEvent.change(input, { target: { value: "   " } });
+    fireEvent.submit(input.closest("form") as HTMLFormElement);
+    expect(push).not.toHaveBeenCalled();
+
     fireEvent.change(input, { target: { value: "  lithium  " } });
     fireEvent.submit(input.closest("form") as HTMLFormElement);
     expect(push).toHaveBeenCalledWith(appModeHomeHref("prescribing", { query: "lithium", run: true }));
+    expect(input).toHaveValue("  lithium  ");
+    expect(screen.getByRole("search", { name: "Search medication guidance" })).toContainElement(input);
+    expect(screen.getByRole("searchbox", { name: "Medicine or question" })).toBe(input);
+    expect(screen.getByTestId("medicines-find-submit")).toHaveAttribute("type", "submit");
   });
 
   it("opens every outside reference and chart in a new tab, and never copies their content", () => {

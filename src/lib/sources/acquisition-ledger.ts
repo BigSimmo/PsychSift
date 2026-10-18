@@ -417,6 +417,16 @@ export function acquisitionLedgerIssues(
         `${id}: an attestation must record attestedBy, attestedAt and attestedAgainstSha256; missing ${missing.join(", ")}`,
       );
     }
+    // An attestation field that is present but null or empty records no sign-off, yet it still
+    // keeps a prose-only review out of `clinical:review`, so name it rather than pass it silently.
+    const blank = ACQUISITION_ATTESTATION_FIELDS.filter(
+      (field) => Object.hasOwn(record, field) && presentText(record[field]) === null,
+    );
+    if (attestation.length === 0 && blank.length > 0) {
+      issues.push(
+        `${id}: ${blank.join(", ")} present but empty; remove the field, or record a complete attestation with clinical:review`,
+      );
+    }
     // `npm run clinical:review -- --kind source` writes the exact UTC instant of the
     // sign-off, the same rule every other sign-off kind holds; a bare date is still
     // accepted for an attestation written by hand.

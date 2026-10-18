@@ -141,7 +141,7 @@ layer at once.
   report a wrong number (a prefilled email to a configured role address: the owner now, the EMHS content owner later; PsychSift stores nothing).
 - **Hospital choice** limited to the profile's hospitals, stored with
   `account-scoped-browser-state` so it clears at sign-out. The page works before a choice.
-- **Primer** shown once (a per-device dismissal flag, no personal data); reopened from •••.
+- **Reference notice / About**: keep the non-CDS and cultural-governance caveat persistently inline; open the full About sheet only from •••, without a dismissal flag. This replaces the original first-visit Primer policy under the [17 October decision](../../decisions/2026-10-17-design-audit-resolution.md).
 - **Pocket card**: a print view of liaison, switchboard and crisis numbers, reusing On Call's pocket
   card layout. Public numbers only, from enabled layers only.
 - **Links in**: the s 81 note in Forms and the Aboriginal filter in Services link to the mode; the

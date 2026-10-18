@@ -43,6 +43,7 @@ describe("custom @theme scales are not misclassified", () => {
     "text-3xs",
     "text-2xs",
     "text-sm-minus",
+    "text-secondary",
     "text-base-minus",
     "text-lg-minus",
     "text-2xl-minus",
@@ -64,6 +65,8 @@ describe("custom @theme scales are not misclassified", () => {
   it("treats custom text steps as sizes that conflict with each other", () => {
     expect(cn("text-sm-minus", "text-base-minus")).toBe("text-base-minus");
     expect(cn("text-2xs", "text-sm")).toBe("text-sm");
+    expect(cn("text-secondary", "text-sm")).toBe("text-sm");
+    expect(cn("text-sm", "text-secondary")).toBe("text-secondary");
     expect(cn("text-hero", "text-2xl")).toBe("text-2xl");
   });
 

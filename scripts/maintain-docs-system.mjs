@@ -177,7 +177,11 @@ export function classifyRepositoryPath(relativePath, options = {}) {
     lower === "src/app/api/search" ||
     /^docs\/(rag|answer|search(?!-chrome)|query)/.test(lower) ||
     (lower.startsWith("docs/") &&
-      /\b(rag|retrieval|grounding|rerank|citation|citations|query-classification)\b/.test(base))
+      /\b(rag|retrieval|grounding|rerank|citation|citations|query-classification)\b/.test(base)) ||
+    // No `search-` prefix: app-experience's explicit `tests/search-*` glob owns those tests.
+    /^tests\/(rag|answer|query-classification|retrieval|grounding|rerank|semantic-rerank|citation|citations|evidence|corpus-grounding|eval)(-|\.)/.test(
+      lower,
+    )
   ) {
     return buildResult(
       "search-and-answers",
@@ -199,9 +203,15 @@ export function classifyRepositoryPath(relativePath, options = {}) {
   if (
     lower.startsWith("src/lib/ingest/") ||
     lower === "src/lib/ingest" ||
+    lower.startsWith("src/lib/deep-memory") ||
     lower.startsWith("src/app/sources/") ||
     lower === "src/app/sources" ||
-    /^docs\/(source|ingest|document)/.test(lower)
+    /^docs\/(source|ingest|document)/.test(lower) ||
+    // No `document-` prefix: app-experience's `tests/document-*` glob owns those tests, and
+    // source-intake claims its document tests by explicit globs (e.g. `tests/document-enrichment-*`).
+    /^tests\/(ingest|ingestion|upload|reindex|chunk|chunking|extract|extracted|docling|ocr|pdf|xlsx|docx|table|indexing|enrichment|storage-cleanup|storage-upload)(-|\.)/.test(
+      lower,
+    )
   ) {
     return buildResult(
       "sources-and-ingestion",
@@ -217,10 +227,23 @@ export function classifyRepositoryPath(relativePath, options = {}) {
     lower.startsWith("src/app/diary/") ||
     lower === "src/app/diary" ||
     /^src\/app\/(cme|roster|my-day|teaching|open-shifts|work)(\/|$)/.test(lower) ||
-    /^src\/app\/api\/(cme|roster|teaching|work)(\/|$)/.test(lower) ||
-    /^src\/components\/(cme|roster|my-day|teaching|work-frame)(\/|$)/.test(lower) ||
-    /^src\/lib\/(cme|roster|teaching|work-frame)(\/|$)/.test(lower) ||
-    /^docs\/(personal|workspace|diary|cme)/.test(lower)
+    // Recorded exception (docs/organisation/README.md): the Roster and Open shifts page folders
+    // belong to Personal practice, ahead of the shared `(search-app)` App experience rule.
+    /^src\/app\/\(search-app\)\/(roster|open-shifts)(\/|$)/.test(lower) ||
+    /^src\/app\/api\/(cme|roster|teaching|work|on-call|alerts|calendar)(\/|$)/.test(lower) ||
+    /^src\/components\/(cme|roster|my-day|teaching|open-shifts|on-call|alerts|admin|favourites|needs-you|calendar|work-frame|work-profile|work-screens|work-search|work-sync|work-time|work-calendar)(\/|$)/.test(
+      lower,
+    ) ||
+    /^src\/lib\/(cme|roster|my-day|teaching|open-shifts|on-call|alerts|admin|favourites|needs-you|calendar|work-frame|work-profile|work-roles|work-screens|work-search|work-sync|work-text|work-time|work-calendar)(\/|$)/.test(
+      lower,
+    ) ||
+    /^docs\/(personal|workspace|diary|cme|on-call)/.test(lower) ||
+    // No bare `work-` prefix: Work tests span several systems (App experience, data platform,
+    // design system), so an unmatched one falls back to the generic delivery owner until a
+    // manifest rule names its real owner.
+    /^tests\/(cme|roster|my-day|teaching|open-shifts|diary|workspace|calendar|handover|notes|alerts|favourites|needs-you|admin)(-|\.)/.test(
+      lower,
+    )
   ) {
     return buildResult(
       "personal-practice",
@@ -241,6 +264,9 @@ export function classifyRepositoryPath(relativePath, options = {}) {
       lower,
     ) ||
     /^docs\/(clinical(?!-safety|-governance|-hazard|-sign-off)|medication|therapy|psychiatry|formulation|diagnosis|dsm|differential|dictionary|care-plan|scales|calculators|ect|sleep|ranzcp)/.test(
+      lower,
+    ) ||
+    /^tests\/(medications|medicine|medicines|therapy|psychiatry|formulation|diagnosis|dsm|differential|differentials|dictionary|care-plan|calculator|calculators|forms|services|mha|specifier|specifiers|tall-man|clozapine|lithium|ect|scales|sleep|ranzcp|new-starters|on-call)(-|\.)/.test(
       lower,
     )
   ) {
@@ -265,7 +291,10 @@ export function classifyRepositoryPath(relativePath, options = {}) {
       lower,
     ) ||
     lower === "scripts/maintain-docs-system.mjs" ||
-    lower === "tests/maintain-docs-system.test.ts"
+    lower === "tests/maintain-docs-system.test.ts" ||
+    /^tests\/(decisions|retired-rules|instruction|ledger|outstanding-issues|branch-review|database-skills|check-docs)(-|\.)/.test(
+      lower,
+    )
   ) {
     return buildResult(
       "knowledge",
@@ -278,16 +307,22 @@ export function classifyRepositoryPath(relativePath, options = {}) {
   if (
     lower.startsWith("src/components/") ||
     lower === "src/components" ||
+    lower.startsWith("src/app/(search-app)/") ||
+    /^src\/app\/(?!api\/).*\.tsx$/.test(lower) ||
     lower === "src/app/globals.css" ||
     lower === "src/app/design-tokens.css" ||
     /^docs\/(design|brand|ui|search-chrome|search-results-bar|filter-contract|wiring-conventions|frontend-architecture|pwa|navigation)/.test(
+      lower,
+    ) ||
+    /^tests\/(design-system|type-scale|icon-scale|theme|brand|ui-style-contract|phone-chrome|search-chrome|search-results-bar|navigation|header|dock|pwa|dashboard-kit|work-setup)(-|\.)/.test(
       lower,
     )
   ) {
     const isDesignTokensOrSystem =
       lower === "src/app/globals.css" ||
       lower === "src/app/design-tokens.css" ||
-      /^docs\/(design|brand|ui)/.test(lower);
+      /^docs\/(design|brand|ui)/.test(lower) ||
+      /^tests\/(design-system|type-scale|icon-scale|theme|brand|ui-style-contract)(-|\.)/.test(lower);
     return buildResult(
       "shell-and-design",
       isDesignTokensOrSystem ? "design-system" : "app-experience",

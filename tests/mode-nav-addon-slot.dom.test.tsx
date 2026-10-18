@@ -324,7 +324,7 @@ describe("header addon slot ownership", () => {
     // There are three forms of that evidence, and all must be scanned. A page can
     // render `PhoneHeaderCollapsePortal` itself (DocumentViewer still does), use
     // `InPageNavHeader`, or render the shared `RegistryModeNav` directly.
-    const claimsSlot = /<(PhoneHeaderCollapsePortal|InPageNavHeader|RegistryModeNav)\b/;
+    const claimsSlot = /<(PhoneHeaderCollapsePortal|ModeNavHeaderPortal|InPageNavHeader|RegistryModeNav)\b/;
     // The shared header and shell adapter are mechanisms, not claimants: neither
     // represents a route that can own the slot on its own.
     const sharedHeader = "src/components/in-page-nav/in-page-nav-header.tsx";
@@ -344,7 +344,12 @@ describe("header addon slot ownership", () => {
         // `${cwd}/` matches nothing on Windows, so both the shared-header
         // exclusion below and the comparison at the end silently missed.
         const relative = relativePath(process.cwd(), path).split(sep).join("/");
-        if (relative === sharedHeader || relative === shellModeNav) continue;
+        if (
+          relative === sharedHeader ||
+          relative === shellModeNav ||
+          relative === "src/components/mode-nav/mode-nav.tsx"
+        )
+          continue;
         if (claimsSlot.test(readFileSync(path, "utf8"))) {
           claimants.push(relative);
         }
@@ -364,10 +369,12 @@ describe("header addon slot ownership", () => {
     // — its sections carry `LucideIcon` values and the header itself needs
     // hooks (`useInPageSectionNav`).
     expect(claimants.sort()).toEqual([
+      "src/components/ClinicalDashboard.tsx",
       "src/components/DocumentViewer.tsx",
       // Work-mode redesign, owner request 6 Oct 2026: Admin's section chips now sit
       // inside the page (the shared chip row), so `admin-nav-header.tsx` no longer
       // claims the header slot. The work frame's own tabs fill that place.
+      "src/components/calculators/search-page.tsx",
       "src/components/clinical-dashboard/medication-nav-header.tsx",
       // CME's Programme and Setup pages share one `*-nav-header.tsx` sibling
       // (`cmeSections` is a superset the header narrows per render), so the
@@ -408,6 +415,7 @@ describe("header addon slot ownership", () => {
       // Roster manage owns its own header for the manager surface.
       "src/components/roster/manage/roster-manage-nav-header.tsx",
       "src/components/services/service-detail-page.tsx",
+      "src/components/services/services-navigator-page.tsx",
       // The source record has no section index, so it renders the header's
       // breadcrumb shape (back, title) straight from the Server Component page
       // and needs no `*-nav-header.tsx` sibling to carry hooks or icons.

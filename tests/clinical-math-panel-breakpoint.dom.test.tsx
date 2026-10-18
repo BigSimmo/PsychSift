@@ -11,6 +11,7 @@ vi.mock("@/components/clinical-dashboard/universal-search-also-matches", () => (
   UniversalSearchAlsoMatches: () => null,
 }));
 
+import { ClinicalMathPanel } from "@/components/calculators/clinical-math-panel";
 import { CalculatorsSearchPage } from "@/components/calculators/search-page";
 
 // A controllable (min-width: 1280px) query, so the test can cross the desktop breakpoint.
@@ -44,27 +45,23 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("bedside calculator panel across the desktop breakpoint", () => {
-  it("keeps the clinician's entries when the panel moves between the sidebar and the mobile column", () => {
+// Owner decision 17 Oct 2026 22:12 AWST: the bedside calculator panel (renal, QTc, lithium) stays
+// hidden from /calculators until clinician verification. See
+// docs/decisions/2026-10-17-clinical-math-panel-hidden-until-clinician-verification.md.
+describe("bedside calculator panel on the calculators page", () => {
+  it("is not rendered in the sidebar or the mobile column at either breakpoint", () => {
     const setDesktop = installDesktopQuery(false);
     render(<CalculatorsSearchPage />);
-
-    fireEvent.click(screen.getByTestId("clinical-math-panel-toggle"));
-    fireEvent.change(screen.getByLabelText("Age (years)"), { target: { value: "72" } });
-    fireEvent.change(screen.getByLabelText("Weight (kg)"), { target: { value: "64" } });
+    expect(screen.queryByTestId("clinical-math-panel-toggle")).toBeNull();
 
     setDesktop(true);
-    expect(screen.getAllByTestId("clinical-math-panel-toggle")).toHaveLength(1);
-    expect(screen.getByLabelText("Age (years)")).toHaveValue(72);
-    expect(screen.getByLabelText("Weight (kg)")).toHaveValue(64);
-
-    setDesktop(false);
-    expect(screen.getByLabelText("Age (years)")).toHaveValue(72);
+    expect(screen.queryByTestId("clinical-math-panel-toggle")).toBeNull();
   });
+});
 
+describe("bedside calculator panel component (unwired, kept for clinician verification)", () => {
   it("shows the lithium toxicity alert from 1.2 mmol/L before an age is entered", () => {
-    installDesktopQuery(false);
-    render(<CalculatorsSearchPage />);
+    render(<ClinicalMathPanel />);
 
     fireEvent.click(screen.getByTestId("clinical-math-panel-toggle"));
     fireEvent.click(screen.getByTestId("clinical-math-tab-lithium"));

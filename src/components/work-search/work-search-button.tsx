@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useEffectEvent, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 
 import {
   LazyWorkSearchKeys,
@@ -11,36 +11,6 @@ import { WorkSearchGlyph } from "@/components/work-search/work-search-glyph";
 import type { AppModeId } from "@/lib/app-modes";
 import { cn } from "@/components/ui-primitives";
 import { isWorkSearchArea } from "@/lib/work-search/model";
-
-/** Remembered per device so the one-time "New" note never comes back once read. A convenience only. */
-const COACH_KEY = "psychsift:work-search-coach-seen";
-/** How long the one-time note stays before it goes by itself. */
-const COACH_SHOW_MS = 8000;
-
-function coachSeen(): boolean {
-  try {
-    return window.localStorage.getItem(COACH_KEY) === "1";
-  } catch {
-    return true;
-  }
-}
-
-function markCoachSeen() {
-  try {
-    window.localStorage.setItem(COACH_KEY, "1");
-  } catch {
-    // Storage blocked: the note simply shows again next time.
-  }
-}
-
-/** The note itself only shows from 1024px (the `lg` breakpoint); below that only the ring does. */
-function noteVisible(): boolean {
-  return typeof window.matchMedia === "function" && window.matchMedia("(min-width: 64rem)").matches;
-}
-
-function subscribeNever() {
-  return () => {};
-}
 
 /** Typing in a field (or a rich-text box): the shortcut keys are the reader's letters there, not ours. */
 function isTyping(target: EventTarget | null): boolean {
@@ -85,7 +55,7 @@ function prefetchWhenIdle(): () => void {
  * the header names `header-trailing`) has room for it beside the bell: 20.75rem is the bell,
  * the gap and the 18rem pill, less the grid gap it may lean into. Measured in rem, so at large
  * text sizes the control stays a round icon rather than running under the mode switcher. It opens a full-screen search across Roster, Teaching, CPD, Admin and On Call.
- * The first time it appears, a small "New" note points at it for a few seconds, once per device.
+ * Discovery stays in the labelled control, search screen and keyboard-shortcut help.
  *
  * Keys (work-mode redesign, ideas list #3): "/" or Ctrl K (Command K on a Mac) opens
  * it from anywhere on a work page that is not a text field, and "?" shows the list.
@@ -93,50 +63,10 @@ function prefetchWhenIdle(): () => void {
 export function WorkSearchButton({ modeId, className }: { modeId: AppModeId; className?: string }) {
   const [open, setOpen] = useState(false);
   const [keysOpen, setKeysOpen] = useState(false);
-  // Read from storage after hydration (the server snapshot says "seen"), then hidden for good once dismissed.
-  const seen = useSyncExternalStore(subscribeNever, coachSeen, () => true);
-  const [dismissed, setDismissed] = useState(false);
-  // Any tap elsewhere hides the note for this visit, without counting it as read,
-  // so it never sits over the page the reader is trying to use.
-  const [setAside, setSetAside] = useState(false);
-  const coach = !seen && !dismissed && !setAside;
-  const coachRef = useRef<HTMLSpanElement>(null);
-
-  useEffect(() => {
-    if (!coach) return;
-    // On a wide screen the note hangs below the header over the top of the page (it covered
-    // CPD's Customise button and the My Day heading, 15 Oct 2026). So it goes by itself after a
-    // few seconds, or at the reader's first tap, key or scroll, whichever comes first. It is
-    // counted as read only when it goes and only if the note was on screen: storing it as it
-    // appears would hide it at the next re-render (the stored value is read on every render),
-    // and a phone shows only the ring, so a phone visit must not use up the note.
-    const setAsideNow = () => {
-      if (noteVisible()) markCoachSeen();
-      setSetAside(true);
-    };
-    const onPointerDown = (event: PointerEvent) => {
-      if (!coachRef.current?.contains(event.target as Node)) setAsideNow();
-    };
-    const timer = window.setTimeout(setAsideNow, COACH_SHOW_MS);
-    document.addEventListener("pointerdown", onPointerDown, true);
-    document.addEventListener("keydown", setAsideNow, true);
-    window.addEventListener("scroll", setAsideNow, { capture: true, passive: true });
-    return () => {
-      window.clearTimeout(timer);
-      document.removeEventListener("pointerdown", onPointerDown, true);
-      document.removeEventListener("keydown", setAsideNow, true);
-      window.removeEventListener("scroll", setAsideNow, { capture: true });
-    };
-  }, [coach]);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
-  const dismissCoach = () => {
-    setDismissed(true);
-    markCoachSeen();
-  };
   const openSearch = () => {
     markOpening();
-    dismissCoach();
     setOpen(true);
   };
   const openSearchFromKeys = useEffectEvent(openSearch);
@@ -162,13 +92,7 @@ export function WorkSearchButton({ modeId, className }: { modeId: AppModeId; cla
   }, []);
 
   return (
-    <span
-      className={cn(
-        "relative inline-flex shrink-0 rounded-full",
-        // While the note shows, a soft halo in the page's colour draws the eye to the button it is about.
-        coach && "ring-4 ring-[color:color-mix(in_srgb,var(--mode-identity,var(--focus))_20%,transparent)]",
-      )}
-    >
+    <span className="relative inline-flex shrink-0 rounded-full">
       <button
         ref={buttonRef}
         type="button"
@@ -178,8 +102,8 @@ export function WorkSearchButton({ modeId, className }: { modeId: AppModeId; cla
         aria-label="AI Search"
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-describedby={coach ? "work-search-coach" : undefined}
         title="AI Search"
+        aria-keyshortcuts="/ Control+k Meta+k"
         data-testid="work-search-button"
         className={cn(
           "universal-header-icon-control relative inline-flex h-tap w-tap shrink-0 items-center justify-center gap-2.5 rounded-full border border-[color:var(--border)] bg-[color:var(--surface-raised)] text-[color:var(--text-heading)] shadow-[var(--e2)] transition hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] motion-reduce:transition-none @min-[20.75rem]/header-trailing:w-72 @min-[20.75rem]/header-trailing:justify-start @min-[20.75rem]/header-trailing:px-3.5",
@@ -191,38 +115,6 @@ export function WorkSearchButton({ modeId, className }: { modeId: AppModeId; cla
           AI Search
         </span>
       </button>
-      {/* Below 1024px the note would sit over the page title or the end of the tab row (on a
-          tablet it hid More), so phones and upright tablets get only the ring above; tapping the
-          button still marks the note as read. From 1024px it shows below the button. */}
-      {coach ? (
-        <span
-          ref={coachRef}
-          id="work-search-coach"
-          role="note"
-          className="pointer-events-none absolute right-0 top-full z-[var(--z-popover)] mt-3 hidden w-[min(14.75rem,calc(100vw-2rem))] gap-1 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-raised)] p-3.5 text-left shadow-[var(--e4)] lg:grid"
-        >
-          <span
-            aria-hidden="true"
-            className="absolute -top-1.5 right-4 size-3 rotate-45 border-l border-t border-[color:var(--border)] bg-[color:var(--surface-raised)]"
-          />
-          <span className="text-3xs font-extrabold uppercase tracking-widest text-[color:var(--mode-identity,var(--focus))]">
-            New
-          </span>
-          <span className="text-base-minus font-bold text-[color:var(--text-heading)]">AI Search</span>
-          <span className="text-xs text-[color:var(--text-muted)]">
-            Find shifts, leave, CPD, forms and renewals in one place.
-          </span>
-          <button
-            type="button"
-            onClick={dismissCoach}
-            className="pointer-events-auto inline-flex min-h-12 items-center justify-self-end focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--mode-identity,var(--focus))]"
-          >
-            <span className="rounded-full bg-[color:var(--mode-identity,var(--focus))] px-4 py-2 text-sm-minus font-bold text-[color:var(--mode-identity-contrast,var(--surface-raised))]">
-              Got it
-            </span>
-          </button>
-        </span>
-      ) : null}
       <LazyWorkSearchSheet
         open={open}
         onClose={(navigated) => {

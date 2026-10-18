@@ -1,4 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { spawnSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { PassThrough } from "node:stream";
+import { afterEach, describe, expect, it } from "vitest";
 
 import {
   applyClinicalReview,
@@ -14,10 +19,12 @@ import {
 import {
   display,
   duplicateSources,
+  isUnattestedLocalReview,
   loadContext,
   possibleDuplicateSources,
 } from "../scripts/lib/signoff-kinds/sources.mjs";
-import { renderClinicalPack } from "../scripts/review-clinical-record.mjs";
+import { removePathSync } from "../scripts/retryable-fs.mjs";
+import { main, renderClinicalPack } from "../scripts/review-clinical-record.mjs";
 
 import sourceAcquisitions from "../src/data/source-acquisitions.json";
 
@@ -84,15 +91,28 @@ describe("source sign-offs on disk", () => {
 
   it("offers exactly the acquisition review queue, in its order, less the records held from sign-off", () => {
     const queue = acquisitionReviewQueue().map((record) => record.id);
+    // Reviews recorded only in prose are also drafted (owner decision, 2026-10-17); the
+    // ledger's own queue lists unverified records only, so compare without them.
     const drafted = views()
-      .filter((record) => record.status === "drafted")
+      .filter((record) => record.status === "drafted" && record.validationStatus === "unverified")
       .map((record) => record.id);
     expect(drafted).toEqual(queue);
 
-    const held = views().filter((record) => record.status === "drafted" && signOffEligibilityProblem(record, "source"));
-    const offered = signOffQueue("source", views());
-    expect(offered).toEqual(queue.filter((id) => !held.some((record) => record.id === id)));
-    expect(offered.length + held.length).toBe(acquisitionReviewQueue().length);
+    const held = views().filter(
+      (record) =>
+        record.status === "drafted" &&
+        record.validationStatus === "unverified" &&
+        signOffEligibilityProblem(record, "source"),
+    );
+    const unattested = views()
+      .filter((record) => record.status === "drafted" && record.validationStatus === "locally_reviewed")
+      .map((record) => record.id as string);
+    const offered = signOffQueue("source", views()) as string[];
+    expect(offered.filter((id) => !unattested.includes(id))).toEqual(
+      queue.filter((id) => !held.some((record) => record.id === id)),
+    );
+    expect(offered.filter((id) => unattested.includes(id))).toEqual(unattested);
+    expect(offered.length - unattested.length + held.length).toBe(acquisitionReviewQueue().length);
     // The owner rule of 2026-09-26 holds Indigenous content back; this one is the named example.
     expect(held.map((record) => record.id)).toContain("therapy-wa-aboriginal-impact-policy");
     for (const record of held) expect(indigenousContentIn(record, "source")).not.toBeNull();
@@ -297,5 +317,184 @@ describe("source sign-off ratings", () => {
       expect(ifReviewed.score - now.score).toBe(15);
       expect(ifReviewed.warnings).not.toContain("verification_unknown");
     }
+  });
+});
+
+/**
+ * Owner decision, 2026-10-17: a source marked locally_reviewed whose review was recorded only in
+ * prose (no attestation field at all) can be signed with clinical:review like a drafted source,
+ * so the owner can record the structured attestation it lacks. Every other guard stays.
+ */
+describe("signing a source reviewed only in prose", () => {
+  const PROSE_ONLY = ["ocp-wa-standard-authorisation-of-hospitals", "ocp-wa-standards-for-clinical-care"];
+  const LEDGER = join("src", "data", "source-acquisitions.json");
+  // A person's full name, which the --write attribution rule accepts.
+  const SIGNER = "Dr Alex Morgan";
+  const temporaryDirectories: string[] = [];
+  afterEach(() => {
+    for (const directory of temporaryDirectories.splice(0)) removePathSync(directory, { recursive: true });
+  });
+
+  const native = (id: string) => clone(ledger.find((record) => record.id === id)!);
+  const attestedNative = () =>
+    clone(
+      ledger.find(
+        (record) =>
+          record.validationStatus === "locally_reviewed" &&
+          typeof record.attestedBy === "string" &&
+          record.disposition !== "rejected" &&
+          !indigenousContentIn(record, "source"),
+      )!,
+    );
+  const viewOf = (record: Json) => (collectionOf("source", [record]) as Json[])[0]!;
+
+  function fixtureRoot(records: Json[]) {
+    const root = mkdtempSync(join(tmpdir(), "source-signoff-"));
+    temporaryDirectories.push(root);
+    mkdirSync(join(root, "src", "data"), { recursive: true });
+    writeFileSync(join(root, LEDGER), `${JSON.stringify(records, null, 2)}\n`);
+    return root;
+  }
+
+  async function runWrite(root: string, code: string, answers: string[]) {
+    const input = Object.assign(new PassThrough(), { isTTY: true });
+    const output = Object.assign(new PassThrough(), { isTTY: true, columns: 80 });
+    const text: string[] = [];
+    output.on("data", (chunk: Buffer) => {
+      const value = chunk.toString();
+      text.push(value);
+      if (/(Type yes, no, or quit: |type its code \([^)]*\), or quit to stop: )$/.test(value)) {
+        const next = answers.shift();
+        if (next !== undefined) setImmediate(() => input.write(`${next}\n`));
+      }
+    });
+    const errors = new PassThrough();
+    errors.resume();
+    const exit = await main(["--write", "--kind", "source", "--code", code, "--reviewed-by", SIGNER], {
+      root,
+      input,
+      output,
+      errorOutput: errors,
+    });
+    return { exit, text: text.join("") };
+  }
+
+  it("finds exactly the two OCP WA standards in the ledger today, and offers them for sign-off", () => {
+    const proseOnly = ledger.filter((record) => isUnattestedLocalReview(record)).map((record) => record.id);
+    expect([...proseOnly].sort()).toEqual(PROSE_ONLY);
+    for (const id of PROSE_ONLY) {
+      const view = views().find((record) => record.id === id)!;
+      expect(view).toMatchObject({ status: "drafted", validationStatus: "locally_reviewed", reviewedBy: null });
+      // The screen must not promise a rating change: validationStatus is already locally_reviewed.
+      const text = rowsText(display.source(view, context));
+      expect(text).toContain("already locally_reviewed and stays so, so its rating does not change");
+      expect(text).not.toContain("Sets validationStatus to locally_reviewed");
+      expect(signOffEligibilityProblem(view, "source")).toBeNull();
+      expect(signOffQueue("source", views())).toContain(id);
+    }
+  });
+
+  it("accepts a reviewed-but-unsigned source for --write and records only the attestation", async () => {
+    const id = "ocp-wa-standards-for-clinical-care";
+    const before = [native(id), attestedNative()];
+    const root = fixtureRoot(before);
+    const { exit, text } = await runWrite(root, id, ["yes", "yes", "yes", id]);
+    expect(exit).toBe(0);
+    expect(text).toContain(`Saved: Source ${id} is signed off.`);
+
+    const after = JSON.parse(readFileSync(join(root, LEDGER), "utf8")) as Json[];
+    expect(after[1]).toEqual(before[1]);
+    const changed = Object.keys({ ...before[0], ...after[0] }).filter(
+      (key) => JSON.stringify(after[0]![key]) !== JSON.stringify(before[0]![key]),
+    );
+    expect(changed.sort()).toEqual(["attestedAgainstSha256", "attestedAt", "attestedBy"]);
+    expect(after[0]).toMatchObject({ validationStatus: "locally_reviewed", attestedBy: SIGNER });
+    expect(after[0]!.attestedAgainstSha256).toBe(
+      acquisitionAttestedContentSha256(after[0] as unknown as SourceAcquisitionRecord),
+    );
+    expect(acquisitionLedgerIssues(after as unknown as SourceAcquisitionRecord[])).toEqual([]);
+    const view = viewOf(after[0]!);
+    expect(view.status).toBe("reviewed");
+    expect(recordPinState(view, "source")).toBe("current");
+  }, 60_000);
+
+  it("refuses a source that already carries an attestation, before asking anything", async () => {
+    const attested = attestedNative();
+    expect(isUnattestedLocalReview(attested)).toBe(false);
+    expect(signOffEligibilityProblem(viewOf(attested), "source")).toMatch(/already signed off/);
+    const root = fixtureRoot([attested]);
+    const raw = readFileSync(join(root, LEDGER), "utf8");
+    await expect(runWrite(root, attested.id as string, [])).rejects.toThrow(/already signed off/);
+    expect(readFileSync(join(root, LEDGER), "utf8")).toBe(raw);
+  });
+
+  it.each([
+    ["attestedBy only", { attestedBy: "Dr Someone Else" }],
+    ["attestedAt only", { attestedAt: "2026-09-06T00:00:00.000Z" }],
+    ["attestedAgainstSha256 only", { attestedAgainstSha256: "0".repeat(64) }],
+    ["a null attestation field", { attestedBy: null }],
+    ["an empty attestation field", { attestedAt: "" }],
+  ])("refuses a locally_reviewed source with a partial attestation (%s)", (_label, fields) => {
+    const record = { ...native("ocp-wa-standards-for-clinical-care"), ...fields };
+    expect(isUnattestedLocalReview(record)).toBe(false);
+    expect(signOffEligibilityProblem(viewOf(record), "source")).not.toBeNull();
+  });
+
+  it("tells the owner an approved source keeps its status when a stale sign-off is redone", () => {
+    const record = { ...attestedNative(), validationStatus: "approved" };
+    const text = rowsText(display.source(viewOf(record), context));
+    expect(text).toContain("already approved and stays so");
+    expect(text).not.toContain("Sets validationStatus to locally_reviewed");
+  });
+
+  it.each([
+    ["approved", { validationStatus: "approved" }],
+    ["rejected", { disposition: "rejected" }],
+  ])("does not offer a prose-only review that is %s", (_label, fields) => {
+    const record = { ...native("ocp-wa-standards-for-clinical-care"), ...fields };
+    expect(isUnattestedLocalReview(record)).toBe(false);
+    expect(signOffEligibilityProblem(viewOf(record), "source")).toMatch(/Only a drafted source/);
+  });
+
+  it("still refuses --write for a reviewed-but-unsigned source without an interactive TTY", () => {
+    const path = join(process.cwd(), LEDGER);
+    const before = readFileSync(path, "utf8");
+    for (const id of PROSE_ONLY) {
+      const refused = spawnSync(
+        process.execPath,
+        [
+          join(process.cwd(), "scripts", "review-clinical-record.mjs"),
+          "--write",
+          "--kind",
+          "source",
+          "--code",
+          id,
+          "--reviewed-by",
+          SIGNER,
+        ],
+        { cwd: process.cwd(), encoding: "utf8", input: `yes\nyes\nyes\n${id}\n` },
+      );
+      expect(refused.status).not.toBe(0);
+      expect(refused.stderr).toContain("interactive TTY");
+    }
+    expect(readFileSync(path, "utf8")).toBe(before);
+  });
+
+  it("still refuses a product name as the signer for a reviewed-but-unsigned source", async () => {
+    const id = "ocp-wa-standards-for-clinical-care";
+    const root = fixtureRoot([native(id)]);
+    const raw = readFileSync(join(root, LEDGER), "utf8");
+    const input = Object.assign(new PassThrough(), { isTTY: true });
+    const output = Object.assign(new PassThrough(), { isTTY: true, columns: 80 });
+    output.resume();
+    await expect(
+      main(["--write", "--kind", "source", "--code", id, "--reviewed-by", "PsychSift"], {
+        root,
+        input,
+        output,
+        errorOutput: output,
+      }),
+    ).rejects.toThrow();
+    expect(readFileSync(join(root, LEDGER), "utf8")).toBe(raw);
   });
 });

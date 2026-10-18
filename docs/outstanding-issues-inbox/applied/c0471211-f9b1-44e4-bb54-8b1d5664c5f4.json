@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "c0471211-f9b1-44e4-bb54-8b1d5664c5f4",
+  "createdOn": "2026-10-17",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "task",
+    "summary": "Possible dead code: older calculator mockups (audit M5-2), split from #1WAA0Z",
+    "detail": "#1WAA0Z was archived on 17 Oct after confirming only the On Call Education, Compliance and Logistics screens are live (audit L4D-05). The older calculator mockups under src/app/mockups (calculators-*) from audit M5-2 were not checked. Delete nothing without npm run check:dead-code-candidate (see docs/agents/dead-code-deletion.md).",
+    "source": "PR #3609 review (gitar-bot), 17 Oct 2026",
+    "issueUlid": "01M54YEVVBC4Q3T76N15KMZVWV"
+  }
+}

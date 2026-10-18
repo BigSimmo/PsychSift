@@ -45,6 +45,7 @@ import {
   PdfUnreadableError,
   type PdfExtractionBudget,
 } from "@/lib/extractors/pdf-extraction-budget";
+import { assertOoxmlArchiveLimits } from "@/lib/ooxml-workbook";
 import { resolvePythonBin } from "@/lib/python-bin";
 import { PdfjsFallbackParser } from "@/lib/extractors/pdfjs-fallback";
 
@@ -562,9 +563,9 @@ export async function extractPdf(
   }
 }
 
-async function extractDocx(buffer: Buffer) {
+async function extractDocx(buffer: Buffer, prevalidatedZip?: JSZip) {
   const budget = new DocxExtractionBudgetTracker();
-  const zip = await JSZip.loadAsync(buffer);
+  const zip = prevalidatedZip ?? (await JSZip.loadAsync(buffer));
   const wordXml = Object.keys(zip.files)
     .filter((name) => name.startsWith("word/") && name.endsWith(".xml"))
     .map((name) => zip.files[name])
@@ -636,18 +637,11 @@ async function extractDocx(buffer: Buffer) {
 }
 
 export async function assertOoxmlArchiveBudget(buffer: Buffer) {
-  const zip = await JSZip.loadAsync(buffer);
-  const entries = Object.values(zip.files);
-  if (entries.length > 10_000) throw new Error("OOXML archive contains too many entries.");
-  const expandedBytes = entries.reduce((total, file) => {
-    const data = (file as unknown as { _data?: { uncompressedSize?: number } })._data;
-    return total + Math.max(0, Number(data?.uncompressedSize ?? 0));
-  }, 0);
-  const maxExpandedBytes = 512 * 1024 * 1024;
-  const maxRatioBytes = Math.max(buffer.byteLength * 100, 16 * 1024 * 1024);
-  if (expandedBytes > maxExpandedBytes || expandedBytes > maxRatioBytes) {
-    throw new Error("OOXML archive exceeds the safe expanded-size budget.");
-  }
+  return assertOoxmlArchiveLimits(buffer, {
+    maxEntries: 10_000,
+    maxExpandedBytes: 512 * 1024 * 1024,
+    maxRatioBytes: Math.max(buffer.byteLength * 100, 16 * 1024 * 1024),
+  });
 }
 
 function extractTxt(buffer: Buffer, knownText = false) {
@@ -672,8 +666,8 @@ export async function extractDocument(args: {
     args.mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
     args.fileName.toLowerCase().endsWith(".docx")
   ) {
-    await assertOoxmlArchiveBudget(args.buffer);
-    return extractDocx(args.buffer);
+    const zip = await assertOoxmlArchiveBudget(args.buffer);
+    return extractDocx(args.buffer, zip);
   }
 
   if (

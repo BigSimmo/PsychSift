@@ -100,33 +100,39 @@ function parsePlan(value: unknown): SyncPlan {
   return plan;
 }
 
+const EMBEDDING_BATCH_SIZE = 256;
+
 async function embedChangedRecords(plan: SyncPlan, records: PlanItem[]) {
   const required = records.filter((record) => !record.tombstone && !record.reuseEmbedding);
   if (required.length === 0) return new Map<string, number[]>();
-  const response = await fetch("https://api.openai.com/v1/embeddings", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${requiredEnvironment("OPENAI_API_KEY")}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: plan.embedding.model,
-      dimensions: plan.embedding.dimensions,
-      input: required.map((record) => record.normalizedText),
-    }),
-  });
-  if (!response.ok) throw new Error("SITE_CONTENT_PROVIDER_FAILED");
-  const payload = (await response.json()) as { data?: Array<{ index: number; embedding: number[] }> };
-  if (!Array.isArray(payload.data) || payload.data.length !== required.length) {
-    throw new Error("SITE_CONTENT_PROVIDER_INVALID");
-  }
   const result = new Map<string, number[]>();
-  for (const item of payload.data) {
-    const source = required[item.index];
-    if (!source || !Array.isArray(item.embedding) || item.embedding.length !== plan.embedding.dimensions) {
+  for (let i = 0; i < required.length; i += EMBEDDING_BATCH_SIZE) {
+    const batch = required.slice(i, i + EMBEDDING_BATCH_SIZE);
+    const response = await fetch("https://api.openai.com/v1/embeddings", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${requiredEnvironment("OPENAI_API_KEY")}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: plan.embedding.model,
+        dimensions: plan.embedding.dimensions,
+        input: batch.map((record) => record.normalizedText),
+      }),
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!response.ok) throw new Error("SITE_CONTENT_PROVIDER_FAILED");
+    const payload = (await response.json()) as { data?: Array<{ index: number; embedding: number[] }> };
+    if (!Array.isArray(payload.data) || payload.data.length !== batch.length) {
       throw new Error("SITE_CONTENT_PROVIDER_INVALID");
     }
-    result.set(source.logicalId, item.embedding);
+    for (const item of payload.data) {
+      const source = batch[item.index];
+      if (!source || !Array.isArray(item.embedding) || item.embedding.length !== plan.embedding.dimensions) {
+        throw new Error("SITE_CONTENT_PROVIDER_INVALID");
+      }
+      result.set(source.logicalId, item.embedding);
+    }
   }
   return result;
 }

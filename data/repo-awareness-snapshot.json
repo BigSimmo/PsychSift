@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-17"
+    "committed_at": "2026-10-18"
   },
   "routes": {
     "modes": [
@@ -2161,6 +2161,10 @@
         "file": "src/app/api/roster/settings/route.ts"
       },
       {
+        "path": "/api/teaching/assessments/bookings",
+        "file": "src/app/api/teaching/assessments/bookings/route.ts"
+      },
+      {
         "path": "/api/account/preferences",
         "file": "src/app/api/account/preferences/route.ts"
       },
@@ -2451,6 +2455,11 @@
       },
       {
         "path": "docs/decisions/2026-09-16-withhold-unreliable-differential-bodies.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-17-remaining-therapy-compass-sign-offs.md",
         "section": "decisions",
         "catalogued": true
       },
@@ -3315,6 +3324,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-17-design-audit-resolution.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/rag-improvement/gate-b-decision-record.md",
         "section": "rag-improvement",
         "catalogued": true
@@ -3800,6 +3814,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-17-agent-recorded-therapy-and-did-sign-offs-reset.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/audit/ux-accessibility-review-2026-07-07.md",
         "section": "audit",
         "catalogued": true
@@ -3880,6 +3899,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-17-clinical-math-panel-hidden-until-clinician-verification.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/superpowers/plans/2026-08-23-favourites-and-reconciliation.md",
         "section": "superpowers",
         "catalogued": true
@@ -3940,6 +3964,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/agents/cross-repo-cloud-contracts.md",
+        "section": "agents",
+        "catalogued": true
+      },
+      {
         "path": "docs/medication-lexicon-review-worklist.md",
         "section": "root",
         "catalogued": true
@@ -3970,8 +3999,18 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-17-wfydv6-stays-open-until-sign-off.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/agents/native-startup/external-skill-precedence.md",
         "section": "agents",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-18-unsigned-clinical-text-withheld-from-site-content.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -4205,9 +4244,19 @@
         "catalogued": true
       },
       {
+        "path": "docs/agents/cloud-platform-acceptance.md",
+        "section": "agents",
+        "catalogued": true
+      },
+      {
         "path": "docs/agents/claude-hook-scripts.md",
         "section": "agents",
         "catalogued": true
+      },
+      {
+        "path": "docs/design-system/audit-resolution-2026-10-17.md",
+        "section": "design-system",
+        "catalogued": false
       },
       {
         "path": "docs/archive/rag-scalability-wip-review-handover-2026-07-15.md",
@@ -4400,6 +4449,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-17-sign-prose-only-source-reviews.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/brand/psychsift-logo.md",
         "section": "brand",
         "catalogued": true
@@ -4562,6 +4616,11 @@
       {
         "path": "docs/archive/2026-10-agent-code-reviews/READY_TO_DEPLOY.md",
         "section": "archive",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-18-no-national-youth-crisis-line-pinning-yet.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -5225,6 +5284,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/agents/cloud-build-resources.md",
+        "section": "agents",
+        "catalogued": true
+      },
+      {
         "path": "docs/superpowers/rag-upgrade/cloud/plans/2026-08-20-rag-adaptive-answer.md",
         "section": "superpowers",
         "catalogued": true
@@ -5705,6 +5769,14 @@
         "scope": "services detail redesign responsive UX and referral actions",
         "outcome": "Three P2 findings fixed; no remaining high-confidence defects",
         "checks": "DOM 40/40; typecheck; lint; design-system contract; production Chromium 11/11"
+      },
+      {
+        "date": "2026-10-17",
+        "ref": "codex/design-audit-resolution",
+        "head": "0022c8121463669f222de38f642089a87e2ea932",
+        "scope": "adversarial review of settled design audit changes",
+        "outcome": "Two introduced P2 interaction defects reproduced and repaired before publication; independent corrective review found no additional issue; manual acceptance remains open",
+        "checks": "Standards and Spec source reviews: zero findings. Interaction review: stale Services shortlist capacity and Therapy zero-result announcement behind inert Sheet. RED 4 failed/19 passed; GREEN 23 passed; affected 6 suites/35 passed. Correction-specific browser verification pending."
       },
       {
         "date": "2026-08-27",
@@ -8801,6 +8873,14 @@
         "scope": "scripts/check-playwright-browser-revision.mjs, tests/check-playwright-browser-revision.test.ts — ledger #312 fix",
         "outcome": "authored — verified real Chromium binary presence check on disk; reproduced original false-OK bug live against this session's /opt/pw-browsers container (chromium-1194 present, pinned revision 1234 missing)",
         "checks": "verify:pr-local (runtime, lock-parity, format, lint, typecheck, test 602 files/6518 passed/4 skipped, rag:fixtures, medication-interactions PASS; medication-lexicon-report pre-existing unrelated FAIL); focused vitest check-playwright-browser-revision.test.ts 10/10, playwright-browser-preflight.test.ts 12/12"
+      },
+      {
+        "date": "2026-10-16",
+        "ref": "claude/swarm-12-remaining-20261016",
+        "head": "24eeea365e782c651047eebf0ecbe9db87e4fd07",
+        "scope": "prlanded",
+        "outcome": "PR #3573 squash-merged as 24eeea365e; two-dot diff and stable patch-id ba25a7b05c match branch tip 03a9d35d79 byte-for-byte with zero orphaned commits",
+        "checks": "gh pr view 3573 MERGED; 1-parent squash; git diff --stat 24eeea365e 03a9d35d79 empty; git patch-id --stable match"
       },
       {
         "date": "2026-07-11",
@@ -13379,6 +13459,14 @@
         "checks": "CI Production UI (3) logs; git merge-tree clean; prettier ui-tools; product fix in same tip commit as this row"
       },
       {
+        "date": "2026-10-16",
+        "ref": "claude/swarm-16-issues-20261016",
+        "head": "5cbe4ec63a32f841c9445380232875c9106cb170",
+        "scope": "prlanded",
+        "outcome": "PR #3567 squash-merged as 5cbe4ec63a; all 68 source/test/doc files match branch tip 10d53b7624 byte-for-byte with zero orphaned commits",
+        "checks": "gh pr view 3567 MERGED; 1-parent squash; per-file diff empty across all non-snapshot PR files"
+      },
+      {
         "date": "2026-07-30",
         "ref": "codex/playwright-container-alignment",
         "head": "5ce50f64993a43efb00c4f8cfa86c26c895b8532",
@@ -14339,6 +14427,14 @@
         "checks": "UI 3 passed; unit 8 passed; lint, typecheck, build, design-system and offline RAG passed; full suite 6022 passed with 16 unchanged baseline failures"
       },
       {
+        "date": "2026-10-17",
+        "ref": "PR #3609 (claude/reconcile-inbox-20261017)",
+        "head": "679d2bfeb8fb2082a09ae75009bc07d454731276",
+        "scope": "Reconcile 21 pending inbox requests and bundle prlanded review records for PRs #3567, #3570, and #3573",
+        "outcome": "landed (squash-merged into main as 679d2bfeb8fb2082a09ae75009bc07d454731276; 4 follow-up inbox items queued from review)",
+        "checks": "PR required, Static PR checks, Safety and config checks, Build, Production UI (1-3), Unit coverage (1-2), Semgrep, Gitleaks, Gitar, CodeAnt all green"
+      },
+      {
         "date": "2026-08-18",
         "ref": "claude/dictionary-mode-ui-updates-uwoicy",
         "head": "67a290f393702f36021a470e6b00b0d1aa335227",
@@ -14713,6 +14809,14 @@
         "scope": "branch-cleanup",
         "outcome": "safe remote delete: experimental task-ledger variant superseded by merged PR #1106 canonical outstanding-issues ledger; archived batch16",
         "checks": "PR #1106 contract/history; current task-ledger architecture; bundle verify"
+      },
+      {
+        "date": "2026-10-17",
+        "ref": "codex/design-audit-resolution",
+        "head": "6c91636b26fc7f2f5849a97f30b4a292a73057ad",
+        "scope": "concurrent automated review integration",
+        "outcome": "Two Therapy P2 regressions in automated follow-up reproduced and repaired; valid Services history replacement retained; independent corrective review found no additional issue",
+        "checks": "RED3failed22passed; affected6suites37passed6.66s; original initial-zero/inert-sheet and realBackForward assertions preserved; pending/delivered loading-cycle regressions added; fresh combined-source browser proof pending."
       },
       {
         "date": "2026-08-02",
@@ -16350,7 +16454,7 @@
         "date": "2026-10-17",
         "ref": "claude/add-prlanded-skill",
         "head": "7e6fd2d557d53e22dfa6ea37b8921007fe4b0dfa",
-        "scope": "prlanded",
+        "scope": "Canonical prlanded skill and landed ledger records",
         "outcome": "PASS (0 blocking findings; added .agents/skills/prlanded canonical skill, registered cross-surface twin in list-database-skills.mjs, updated skill inventory tests, and recorded prlanded proofs for PRs #3581/#3587 and #3596)",
         "checks": "npm run check:skills, vitest run tests/database-skills.test.ts tests/repository-skill-inventory.test.ts (15/15), npm run docs:maintain:check, check-format-changed"
       },
@@ -17689,6 +17793,14 @@
         "scope": "PR #1377 CI/review babysit",
         "outcome": "Merged #1376 from main with real conflicts: kept admission-before-scope + L1-2 REFUTED docs; took #1376 invalidation epochs / empty-scope Server-Timing / stream signal. Codex threads resolved earlier. MERGEABLE; CI re-running.",
         "checks": "vitest preamble+rag-cache-invalidation 7/7; check:rag:fixtures 36/21; prior tip PR-required green before #1376 land"
+      },
+      {
+        "date": "2026-10-17",
+        "ref": "fix/final-non-design-recommendations-20261017",
+        "head": "8babcd56ad73a08ee314fda8f7d02f3e279bf72d",
+        "scope": "Telemetry switch & wire for generation degradation (#231), CAMHS crisis support lines (#8CKX6F), hostile PDF ingestion-to-answer pipeline tests (#7D8WZ2), and issue-inbox closures (#231, #FZP7VW, #ES3KTG; the #7D8WZ2 and #8CKX6F done requests were later cancelled in f7b67e374 and both issues stay open)",
+        "outcome": "Adversarial review completed; all 3 findings remediated; zero UI/design or DB migration changes",
+        "checks": "vitest (145/145 across 5 suites), typecheck:internal, lint:internal, check-clinical-hazard-controls"
       },
       {
         "date": "2026-08-15",
@@ -24763,6 +24875,14 @@
         "checks": "hosted-pr-required,static,unit,build,circleci"
       },
       {
+        "date": "2026-10-17",
+        "ref": "docs/audit-remediation-20261014",
+        "head": "def6fabcc8235e8592fea2613d07170e23dd9836",
+        "scope": "prlanded",
+        "outcome": "Verified PR #3544 squash-merged at def6fabcc8235e8592fea2613d07170e23dd9836 with zero content diff against final PR head f519ae94fafab3e2ce7b221a054faa7d66939eea and zero orphaned commits",
+        "checks": "gh pr view 3544, git rev-list --parents -n 1 def6fabcc8235e8592fea2613d07170e23dd9836, git diff --stat def6fabcc8235e8592fea2613d07170e23dd9836 f519ae94fafab3e2ce7b221a054faa7d66939eea"
+      },
+      {
         "date": "2026-07-14",
         "ref": "worktrees (6244, 8ba3, b6ff, e6b5, repo-improvement-review-09945c)",
         "head": "detached HEADs",
@@ -27019,6 +27139,14 @@
         "checks": "verify:pr-local (all stages pass except pre-existing check:medication-lexicon-report, reproduced on pristine origin/main); vitest 601 files/6510 passed; design-token-contract + tailwind-merge 69 passed; check:design-system-contract zero slack, mutation-verified; tailwind emission probe for the new utilities"
       },
       {
+        "date": "2026-10-17",
+        "ref": "codex/design-audit-resolution",
+        "head": "f98ed9f2c6a79fc6ba46e8270726248d17857097",
+        "scope": "adversarial correction review",
+        "outcome": "Both introduced P2 defects repaired; independent corrective review found zero additional confirmed findings; manual device and clinical-state acceptance remains open",
+        "checks": "Regression-first 4 failed/19 passed then23passed; affected6suites35passed6.52s; freshproductionbuild and completeTypeScript passed; completeui-tools andui-mode-nav-density172passed4.3m; scopedlint anddesigncontractpassed; diffintegrity47files741to795selftest27; whole-repoformatpassed."
+      },
+      {
         "date": "2026-07-30",
         "ref": "codex/repair-pr1462",
         "head": "f99bb06030780efab7c98806cbb0b2171d1a4284",
@@ -27097,6 +27225,14 @@
         "scope": "tests/search-route-round-trip-budget.test.ts (PR #1950, ledger #098 residual + #189)",
         "outcome": "Author handoff: offline test-only diff adding a pinned Supabase round-trip budget for POST /api/search, no production/RAG code changed",
         "checks": "verify:pr-local full run (lint/typecheck clean; test 602 files, 6511 passed, 4 skipped; check:rag:fixtures + check:medication-interactions passed; check:medication-lexicon-report pre-existing unrelated staleness)"
+      },
+      {
+        "date": "2026-10-16",
+        "ref": "claude/reconcile-inbox-20261016",
+        "head": "fa526775c6ca0751f9609e4fc5133190efa19c16",
+        "scope": "prlanded",
+        "outcome": "PR #3570 squash-merged as fa526775c6; stable patch-id 87375f76eaf matches branch tip d8eefbb91e with zero orphaned commits",
+        "checks": "gh pr view 3570 MERGED; 1-parent squash; git patch-id --stable match"
       },
       {
         "date": "2026-08-05",

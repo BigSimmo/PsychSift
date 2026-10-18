@@ -195,7 +195,7 @@ function PinnedTools({ tools }: { tools: ToolCatalogRecord[] }) {
         <p className="text-xs text-[color:var(--text-muted)]">Pin or unpin from a tool&apos;s About button</p>
       </div>
       {tools.length ? (
-        <ul className="grid grid-cols-4 gap-2 sm:gap-3">
+        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {tools.map((tool) => (
             <li key={tool.id} className="min-w-0">
               <Link
@@ -204,15 +204,13 @@ function PinnedTools({ tools }: { tools: ToolCatalogRecord[] }) {
                 rel={tool.external ? "noreferrer" : undefined}
                 data-testid={`tool-pin-${tool.id}`}
                 className={cn(
-                  "flex h-full min-h-tap flex-col items-center gap-1.5 rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-1 py-3 text-center shadow-[var(--e1)] transition hover:border-[color:var(--clinical-accent-border)]",
-                  "sm:flex-row sm:gap-3 sm:px-3 sm:text-left",
+                  "flex h-full min-h-tap items-center gap-3 rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-3 py-3 text-left shadow-[var(--e1)] transition hover:border-[color:var(--clinical-accent-border)]",
                   focusRing,
                 )}
               >
                 <ToolIcon tool={tool} />
-                <span className="text-2xs font-semibold leading-tight text-[color:var(--text-heading)] [overflow-wrap:anywhere] sm:text-sm">
-                  <span className="sm:hidden">{tool.mobileTitle ?? tool.title}</span>
-                  <span className="hidden sm:inline">{tool.title}</span>
+                <span className="min-w-0 text-sm font-semibold leading-5 text-[color:var(--text-heading)] [overflow-wrap:anywhere]">
+                  {tool.title}
                 </span>
               </Link>
             </li>

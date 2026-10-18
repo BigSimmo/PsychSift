@@ -1,3 +1,4 @@
+import { toPgVectorRpcParam } from "@/lib/rag/pgvector-literal";
 import { createSearchTelemetry } from "@/lib/rag/rag-search-telemetry";
 import {
   buildAdaptiveAnswerPlan,
@@ -1839,7 +1840,7 @@ async function searchChunksWithTiming(
         "match_document_chunks_hybrid_v2",
         "match_document_chunks_hybrid",
         {
-          query_embedding: embedding as unknown as string,
+          query_embedding: toPgVectorRpcParam(embedding),
           query_text: args.forceEmbedding ? "" : textSearchQuery,
           match_count: candidateCount,
           min_similarity: minSimilarity,
@@ -1957,7 +1958,7 @@ async function searchChunksWithTiming(
         "match_document_chunks_v2",
         "match_document_chunks",
         {
-          query_embedding: embedding as unknown as string,
+          query_embedding: toPgVectorRpcParam(embedding),
           match_count: candidateCount,
           min_similarity: minSimilarity,
           document_filter: documentFilter ?? undefined,
@@ -3192,11 +3193,9 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
       });
 
   const generationDegradation = createGenerationDegradationRecorder({
-    enabled:
-      args.ragProgrammeRollout?.servedMode === "candidate" ||
-      args.ragQueryPlanMode === "shadow" ||
-      args.ragQueryPlanMode === "canary",
+    args,
     routeBudgetMs: routeDeadline.budgetMs,
+    remainingRouteBudgetMs: routeDeadline.remainingMs,
     contract: answerContract,
   });
   function parseCheckedContextAnswerWithoutPilotDiagnostic(raw: string, contextResults: SearchResult[]) {
@@ -3871,6 +3870,7 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
           weighted_top_score: search.telemetry.weighted_top_score,
           rrf_top_score: search.telemetry.rrf_top_score,
           ...answerLatencyMetadata(searchLatencyMs, generationLatencyMs, answer.latencyTimings, startedAt),
+          ...generationDegradation.metadata(),
           openai_request_ids: openAIRequestIds,
           openai_usage: answer.openAIUsage ?? null,
           evidence_summary: answer.evidenceSummary,
@@ -4256,6 +4256,7 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
           weighted_top_score: search.telemetry.weighted_top_score,
           rrf_top_score: search.telemetry.rrf_top_score,
           ...answerLatencyMetadata(searchLatencyMs, generationLatencyMs, fallbackAnswer.latencyTimings, startedAt),
+          ...generationDegradation.metadata(),
           openai_request_ids: fallbackAnswer.openAIRequestIds,
           openai_usage: fallbackAnswer.openAIUsage,
           evidence_summary: fallbackAnswer.evidenceSummary,

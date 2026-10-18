@@ -227,7 +227,7 @@ dark mode, the owner approved these seven rules for both modes:
    controls and illustrations, in Clinical blue. No search bar is added at the top.
 2. **Calmer bands.** The band and top bar carry no dot texture, and the band's line drawing
    is fainter (0.08 light, 0.11 dark, from 0.11 and 0.14).
-3. **Primary buttons take the area colour.** Never black or ink-filled buttons, in either mode. First Nations keeps its own standard (v13.1), which holds its olive to the pill, current tab, icon tiles, day track and quotation accents, so its buttons stay neutral.
+3. **Primary buttons take the area colour.** This governs area primary actions in either mode; neutral account/system commands have their explicit responsibility under C10. First Nations keeps its own standard (v13.1), which holds its olive to the pill, current tab, icon tiles, day track and quotation accents, so its buttons stay neutral.
 4. **Filter chips stay on one line.** They scroll sideways with an edge fade and never wrap to
    leave one chip alone.
 5. **Red means overdue, lapsed or urgent only,** in both modes. Priority and category labels
@@ -269,6 +269,44 @@ without retraining the reader.
 
 **Rejected.** Moving the side rail to 1024 px: it was the owner's own 7 October pick, and an
 upright tablet reads well with it.
+
+---
+
+## C10 · Design-audit resolution (17 October 2026)
+
+**Chose.** The owner accepted the refined audit direction with the corrections recorded in the
+[local implementation handoff](audit-resolution-2026-10-17.md). This is bounded convergence:
+Clinical blue, Work ambient identities and approved dashboard display weights remain intentional.
+The 12px readability floor, 13px metadata and 17px medium roles remain; 14px supporting body copy
+uses the additive `--text-secondary` role rather than changing every `text-sm` consumer.
+
+**Access and discovery.** First Nations keeps its existing non-CDS/cultural-governance caveat
+persistently inline, with full About available only on request. No automatic first-visit Primer
+or dismissal flag is required. Work search has no automatic timed coachmark or promotional halo;
+its labelled control, requested help, shortcuts and actual focus outlines remain. Waiting counts
+are quiet; urgent styling belongs to overdue items, with exact totals accessible and discoverable.
+Decorative band watermarks hide below 768px and are inset at larger widths, without clipping
+interactive content. This insetting replaces the earlier intentional desktop-cropping treatment.
+
+**Action responsibility.** Area primary actions share `actionPrimary` through Button and
+`primaryControl`: Clinical blue by default and the Work area's action inside its frame. Neutral
+account/system actions explicitly use `commandControl`; destructive actions retain the danger
+face. This clarifies C8 rule 3's scope: an account/system command is not an area primary action.
+First Nations retains its own neutral-action standard. Choose the responsibility before the API;
+a Button import alone does not make an action primary, and native anchors may borrow a face
+without losing link behavior. The matching disabled recipe must accompany actual activation
+blocking for unavailable custom controls.
+
+**Preserved constraints.** Work reading pages stay 45rem and wide pages 64rem from 1024px under
+C9; no audit-wide conversion of CME reading pages is intended. Effective production targets stay
+48px with the existing documented exceptions; a checkbox square does not replace its whole label
+as the hit area. Existing composer ownership, hidden-zero reserve, cultural governance, clinical
+content/retrieval safeguards and the separate overseas-processing disclosure decisions remain.
+The bedside calculator panel stays hidden pending the separately recorded clinician verification.
+
+**Evidence.** The handoff distinguishes source changes, focused checks, browser journeys and
+unresolved acceptance. It does not declare every audit item fixed, approve visual baselines,
+replace the canonical task ledger, authorize provider actions or establish release readiness.
 
 ---
 

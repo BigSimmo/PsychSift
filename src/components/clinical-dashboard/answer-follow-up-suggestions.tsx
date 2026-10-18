@@ -3,7 +3,7 @@
 import { ChevronRight } from "lucide-react";
 
 import { AnswerSuggestionChips } from "@/components/clinical-dashboard/answer-suggestion-chips";
-import { cn } from "@/components/ui-primitives";
+import { controlDisabled, cn } from "@/components/ui-primitives";
 
 const focusRing =
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]";
@@ -61,7 +61,8 @@ export function AnswerFollowUpSuggestions({
             onClick={() => onPick(suggestion)}
             disabled={disabled}
             className={cn(
-              "flex min-h-12 w-full items-center gap-2 px-3 text-left text-xs font-medium leading-5 text-[color:var(--text-heading)] transition hover:bg-[color:var(--surface-subtle)] disabled:opacity-60",
+              controlDisabled,
+              "flex min-h-12 w-full items-center gap-2 px-3 text-left text-xs font-medium leading-5 text-[color:var(--text-heading)] transition hover:bg-[color:var(--surface-subtle)]",
               index > 0 && "border-t border-[color:var(--border)]",
               focusRing,
             )}

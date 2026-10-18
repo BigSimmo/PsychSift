@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { retrieveCatalogueEvidence } from "@/lib/clinical-ask/catalogue-evidence";
 import { isSpecifierClinicianReviewed, specifierCatalogItems } from "@/lib/specifiers-content";
+import { therapyRecords } from "@/lib/therapies";
 import { clinicalAskCases } from "./fixtures/clinical-ask-cases";
 
 describe("retrieveCatalogueEvidence", () => {
@@ -67,6 +68,22 @@ describe("retrieveCatalogueEvidence", () => {
     expect(match).toBeDefined();
     expect(match!.reviewState).toBe("needs_review");
     expect(match!.extract).not.toContain(unsigned!.definition!.meaning);
+  });
+
+  it("never sends unsigned therapy clinical text to synthesis", async () => {
+    const unsigned = therapyRecords.find((record) => record.reviewStatus !== "reviewed" && record.clinicalSummary);
+    expect(unsigned).toBeDefined();
+    const request = clinicalAskCases.find(({ mode }) => mode === "therapy-compass")!;
+    const evidence = await retrieveCatalogueEvidence(
+      { ...request, question: unsigned!.name },
+      new AbortController().signal,
+    );
+
+    const match = evidence.find((item) => item.href === `/therapy-compass/${unsigned!.slug}`);
+    expect(match).toBeDefined();
+    expect(match!.reviewState).toBe("needs_review");
+    expect(match!.extract).not.toContain(unsigned!.clinicalSummary!);
+    if (unsigned!.bestUsedFor) expect(match!.extract).not.toContain(unsigned!.bestUsedFor);
   });
 
   it("fails with AbortError before catalogue work", async () => {

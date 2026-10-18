@@ -6,6 +6,7 @@ import {
   type CSSProperties,
   type ReactNode,
   type UIEvent,
+  useDeferredValue,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -128,7 +129,11 @@ import {
   modeHomeComposerReservePendingValue,
   modeHomeDesktopComposerSlotId,
 } from "@/lib/mode-home-composer";
-import { readSearchNavigationContext, type SearchNavigationOptions } from "@/lib/search-navigation-context";
+import {
+  preserveServicesShortlist,
+  readSearchNavigationContext,
+  type SearchNavigationOptions,
+} from "@/lib/search-navigation-context";
 import { isTherapyPhoneDockRoute, readTherapyCompareSlugCount } from "@/lib/therapy-compass-navigation";
 import { useDifferentialsCompareHasSelection } from "@/components/differentials/compare-presence";
 import {
@@ -456,6 +461,7 @@ function GlobalStandaloneSearchShellBody({
       ? requestedMode
       : initialSearchMode;
   const [query, setQuery] = useState(requestedQuery);
+  const deferredQuery = useDeferredValue(query);
   const [, setLastAppMode] = useLastAppMode();
   // Previous URL snapshot for during-render sync (React "adjusting state when a
   // prop changes"). Pathname must be tracked separately: with the shared
@@ -480,10 +486,11 @@ function GlobalStandaloneSearchShellBody({
   const [recentQueries, setRecentQueries] = useState<string[]>([]);
   const searchCommandContextValue = useMemo(
     () => ({
-      query,
+      query: deferredQuery,
       modeId: searchMode,
+      clearQuery: () => setQuery(""),
     }),
-    [query, searchMode],
+    [deferredQuery, searchMode],
   );
   const auth = useAuthSession();
   const sidebarIdentity = useMemo(() => deriveSidebarIdentity(auth.session?.user.email), [auth.session?.user.email]);
@@ -798,7 +805,14 @@ function GlobalStandaloneSearchShellBody({
       router.push(documentsSearchHref(nextOptions));
       return;
     }
-    router.push(appModeHomeHref(mode, nextOptions));
+    const href = appModeHomeHref(mode, nextOptions);
+    router.push(
+      mode === "services" && searchMode === "services"
+        ? // Workflow selection writes native history synchronously; a React params
+          // snapshot can lag behind a rapid selection followed by a new search.
+          preserveServicesShortlist(href, new URLSearchParams(window.location.search))
+        : href,
+    );
   }
 
   function submitSearch(queryOverride?: string) {

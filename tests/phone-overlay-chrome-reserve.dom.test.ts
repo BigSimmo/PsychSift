@@ -11,10 +11,25 @@ import {
   usePhoneOverlayChromeReserve,
 } from "@/components/clinical-dashboard/use-phone-overlay-chrome-reserve";
 
-function stubOffsetHeight(element: Element, height: number) {
+function stubHeight(element: Element, height: number | (() => number)) {
+  const read = () => (typeof height === "function" ? height() : height);
   Object.defineProperty(element, "offsetHeight", {
     configurable: true,
-    get: () => height,
+    get: () => Math.round(read()),
+  });
+  vi.spyOn(element, "getBoundingClientRect").mockImplementation(() => {
+    const measured = read();
+    return {
+      x: 0,
+      y: 0,
+      top: 0,
+      bottom: measured,
+      left: 0,
+      right: 0,
+      width: 0,
+      height: measured,
+      toJSON: () => ({}),
+    };
   });
 }
 
@@ -39,8 +54,8 @@ describe("readPhoneOverlayChromeReservePx", () => {
     const collapse = document.querySelector('[data-testid="universal-header-collapse"]');
     expect(stack).toBeTruthy();
     expect(collapse).toBeTruthy();
-    stubOffsetHeight(stack!, 0);
-    stubOffsetHeight(collapse!, 72);
+    stubHeight(stack!, 0);
+    stubHeight(collapse!, 72);
     expect(readPhoneOverlayChromeReservePx()).toBe(72);
   });
 
@@ -52,12 +67,12 @@ describe("readPhoneOverlayChromeReservePx", () => {
     `;
     const stack = document.querySelector(".phone-sticky-header-stack");
     const collapse = document.querySelector('[data-testid="universal-header-collapse"]');
-    stubOffsetHeight(stack!, 0);
-    stubOffsetHeight(collapse!, 0);
+    stubHeight(stack!, 0);
+    stubHeight(collapse!, 0);
     expect(readPhoneOverlayChromeReservePx()).toBe(0);
   });
 
-  it("prefers the stack height when the overlay stack is measurable", () => {
+  it.each([131, 151.875])("preserves the measurable stack height of %s CSS pixels", (height) => {
     document.body.innerHTML = `
       <div class="phone-sticky-header-stack">
         <div data-testid="universal-header-collapse"></div>
@@ -65,9 +80,9 @@ describe("readPhoneOverlayChromeReservePx", () => {
     `;
     const stack = document.querySelector(".phone-sticky-header-stack");
     const collapse = document.querySelector('[data-testid="universal-header-collapse"]');
-    stubOffsetHeight(stack!, 131);
-    stubOffsetHeight(collapse!, 72);
-    expect(readPhoneOverlayChromeReservePx()).toBe(131);
+    stubHeight(stack!, height);
+    stubHeight(collapse!, 72);
+    expect(readPhoneOverlayChromeReservePx()).toBe(height);
   });
 
   it("publishes only a frame-confirmed observer height and preserves later geometry changes", () => {
@@ -88,14 +103,8 @@ describe("readPhoneOverlayChromeReservePx", () => {
     const collapse = document.querySelector('[data-testid="universal-header-collapse"]');
     expect(stack).toBeTruthy();
     expect(collapse).toBeTruthy();
-    Object.defineProperty(stack!, "offsetHeight", {
-      configurable: true,
-      get: () => stackHeight,
-    });
-    Object.defineProperty(collapse!, "offsetHeight", {
-      configurable: true,
-      get: () => collapseHeight,
-    });
+    stubHeight(stack!, () => stackHeight);
+    stubHeight(collapse!, () => collapseHeight);
 
     vi.stubGlobal("matchMedia", () => ({
       get matches() {
@@ -173,14 +182,14 @@ describe("readPhoneOverlayChromeReservePx", () => {
 
     // A legitimate later addon/orientation geometry change uses the same
     // confirmation path and is not starved after the initial stabilization.
-    stackHeight = 96;
+    stackHeight = 151.875;
     act(deliverResize);
     expect(document.documentElement.style.getPropertyValue("--phone-overlay-chrome-h")).toBe("72px");
     act(() => flushFrame(200));
     act(() => flushFrame(200 + phoneOverlayReserveGeometryQuietWindowMs - 1));
     expect(document.documentElement.style.getPropertyValue("--phone-overlay-chrome-h")).toBe("72px");
     act(() => flushFrame(200 + phoneOverlayReserveGeometryQuietWindowMs));
-    expect(document.documentElement.style.getPropertyValue("--phone-overlay-chrome-h")).toBe("96px");
+    expect(document.documentElement.style.getPropertyValue("--phone-overlay-chrome-h")).toBe("151.875px");
 
     // A transient zero invalidates a pending positive candidate and keeps the
     // last confirmed value; its stale callback cannot revive that candidate.
@@ -191,7 +200,7 @@ describe("readPhoneOverlayChromeReservePx", () => {
     collapseHeight = 0;
     act(deliverResize);
     act(() => staleBeforeZero(400));
-    expect(document.documentElement.style.getPropertyValue("--phone-overlay-chrome-h")).toBe("96px");
+    expect(document.documentElement.style.getPropertyValue("--phone-overlay-chrome-h")).toBe("151.875px");
     expect(pendingFrames.size).toBe(0);
 
     // Desktop owns an explicit zero. Returning to phone releases that inline
@@ -271,14 +280,8 @@ describe("readPhoneOverlayChromeReservePx", () => {
     const collapse = document.createElement("div");
     collapse.dataset.testid = "universal-header-collapse";
     stack.append(collapse);
-    Object.defineProperty(stack, "offsetHeight", {
-      configurable: true,
-      get: () => stackHeight,
-    });
-    Object.defineProperty(collapse, "offsetHeight", {
-      configurable: true,
-      get: () => stackHeight,
-    });
+    stubHeight(stack, () => stackHeight);
+    stubHeight(collapse, () => stackHeight);
 
     act(() => {
       document.body.append(stack);
@@ -362,8 +365,8 @@ describe("publishPhoneOverlayChromeReserveNow", () => {
     `;
     const stack = document.querySelector(".phone-sticky-header-stack");
     const collapse = document.querySelector('[data-testid="universal-header-collapse"]');
-    stubOffsetHeight(stack!, stackHeight);
-    stubOffsetHeight(collapse!, stackHeight);
+    stubHeight(stack!, stackHeight);
+    stubHeight(collapse!, stackHeight);
     vi.stubGlobal("matchMedia", () => ({
       matches,
       addEventListener: vi.fn(),
@@ -380,13 +383,13 @@ describe("publishPhoneOverlayChromeReserveNow", () => {
     __setPhoneOverlayReserveSettledForTests(true);
   }
 
-  it("publishes the measured height with no frames and no quiet window", () => {
-    mountStack({ stackHeight: 121, matches: true });
+  it.each([121, 151.875])("publishes %s CSS pixels with no frames and no quiet window", (height) => {
+    mountStack({ stackHeight: height, matches: true });
     settleReserve();
     publishPhoneOverlayChromeReserveNow();
     // No requestAnimationFrame is stubbed: if this needed a frame to land, the
     // assertion below could not pass at all.
-    expect(document.documentElement.style.getPropertyValue("--phone-overlay-chrome-h")).toBe("121px");
+    expect(document.documentElement.style.getPropertyValue("--phone-overlay-chrome-h")).toBe(`${height}px`);
   });
 
   it("is a no-op above the phone breakpoint, where the stack stays in flow", () => {

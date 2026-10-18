@@ -3,7 +3,7 @@ import { type ReactNode } from "react";
 import { type LucideIcon, ArrowRight } from "lucide-react";
 
 import { DesktopComposerPortalSlot } from "@/components/desktop-composer-portal-slot";
-import { cn, EmptyState, eyebrowText } from "@/components/ui-primitives";
+import { controlDisabled, cn, EmptyState, eyebrowText } from "@/components/ui-primitives";
 import { modeHomeComposerReservePendingValue } from "@/lib/mode-home-composer";
 
 export type ModeHomeAction = {
@@ -320,8 +320,6 @@ export function ModeHomeTemplate({
         stabilizePhoneCopy={stabilizePhoneCopy}
       />
 
-      {heroAction}
-
       {/* Reserve settled composer height only while adoption is pending or the
           portal host is present. SSR starts pending so first paint does not CLS;
           MasterSearchHeader clears the attribute when the home media query does
@@ -333,6 +331,8 @@ export function ModeHomeTemplate({
           className="mode-home-composer-slot block w-full px-4 sm:px-0 min-h-0 data-[composer-reserve=pending]:min-h-[var(--spacing-mode-home-composer-phone)] sm:data-[composer-reserve=pending]:min-h-[var(--spacing-mode-home-composer-wide)] [&:not(:empty)]:min-h-[var(--spacing-mode-home-composer-phone)] sm:[&:not(:empty)]:min-h-[var(--spacing-mode-home-composer-wide)]"
         />
       ) : null}
+
+      {heroAction}
 
       {actions?.length ? (
         <section
@@ -361,7 +361,8 @@ export function ModeHomeTemplate({
               </>
             );
             const actionClassName = cn(
-              "mode-home-action group grid min-h-[4.4rem] w-full grid-cols-[2.5rem_minmax(0,1fr)_1.25rem] items-center gap-3 bg-[color:var(--surface)] px-4 py-3 text-left transition hover:bg-[color:var(--surface-subtle)] focus-visible:relative focus-visible:z-10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[color:var(--focus)] disabled:cursor-wait disabled:opacity-60 sm:min-h-[4.4rem] sm:grid-cols-[2.5rem_minmax(0,1fr)_1.25rem] sm:rounded-lg sm:border sm:border-[color:var(--border)] sm:px-4 sm:py-3 sm:shadow-[var(--e2)] lg:min-h-[4.75rem] lg:grid-cols-[2.75rem_minmax(0,1fr)_1rem] lg:gap-3 lg:px-5 lg:py-3.5",
+              "mode-home-action group grid min-h-[4.4rem] w-full grid-cols-[2.5rem_minmax(0,1fr)_1.25rem] items-center gap-3 bg-[color:var(--surface)] px-4 py-3 text-left transition hover:bg-[color:var(--surface-subtle)] focus-visible:relative focus-visible:z-10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[color:var(--focus)] disabled:cursor-wait sm:min-h-[4.4rem] sm:grid-cols-[2.5rem_minmax(0,1fr)_1.25rem] sm:rounded-lg sm:border sm:border-[color:var(--border)] sm:px-4 sm:py-3 sm:shadow-[var(--e2)] lg:min-h-[4.75rem] lg:grid-cols-[2.75rem_minmax(0,1fr)_1rem] lg:gap-3 lg:px-5 lg:py-3.5",
+              controlDisabled,
               // Phone stack separator only — the action grid becomes multi-column
               // at `sm`, where each action also becomes its own bordered card,
               // so do not keep a top edge that would double the card border.

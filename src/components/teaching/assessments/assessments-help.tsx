@@ -367,7 +367,8 @@ function RequestEpaSheet({
       <WorkButton
         icon={Send}
         size="wide"
-        disabled={!!dup || !!why}
+        aria-disabled={dup || why ? "true" : undefined}
+        aria-describedby={dup ? "assess-epa-dup" : why ? "assess-epa-guest-why" : undefined}
         onClick={() => {
           if (who === "guest") {
             if (!guest) return;
@@ -484,9 +485,10 @@ function RecordEpaSheet({
       />
       <WorkButton
         size="wide"
-        disabled={!!why}
+        aria-disabled={why ? "true" : undefined}
+        aria-describedby={why ? "assess-save-epa-why" : undefined}
         onClick={() => {
-          if (!epa || !level) return;
+          if (why || !epa || !level) return;
           const trimmed = note.trim() || undefined;
           const extra = { ...(complexity ? { complexity } : {}), note: trimmed };
           if (index !== undefined) saveEpa({ type: "record-epa", index, level, ...extra });
@@ -553,7 +555,9 @@ export function AnswerEpaRequest({
         ? `Keep it under ${EPA_REPLY_MAX} characters.`
         : looksLikePatientDetails(trimmed)
           ? "Take out the patient details first."
-          : null;
+          : !validReply(trimmed, back)
+            ? "Write a reply before sending."
+            : null;
   if (done) return <AssessNote center>{done}</AssessNote>;
   return (
     <div className="grid gap-3">
@@ -575,7 +579,8 @@ export function AnswerEpaRequest({
       />
       <WorkButton
         size="wide"
-        disabled={!!why || !validReply(trimmed, back)}
+        aria-disabled={why ? "true" : undefined}
+        aria-describedby={why ? `assess-epa-${kind}-why` : undefined}
         onClick={() => {
           const message = back
             ? `Sent back to ${SAMPLE_DOCTOR.name}`

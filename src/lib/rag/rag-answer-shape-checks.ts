@@ -171,13 +171,13 @@ const openingSentenceActionPattern =
 const drinkLimitQuantityPeriodPattern = String.raw`\d+(?:\.\d+)?\s+standard\s+drinks?\s+(?:a\s+(?:week|day)|per\s+(?:week|day)|on\s+any\s+one\s+day)`;
 
 const openingDrinkLimitImperativePattern = new RegExp(
-  String.raw`^(?:for\s+[^,.;!?]{1,140},\s*)?drink\s+no\s+more\s+than\s+${drinkLimitQuantityPeriodPattern}(?:\s+and\s+no\s+more\s+than\s+${drinkLimitQuantityPeriodPattern})?(?:;\s+less\s+drinking\s+further\s+lowers\s+risk)?[.!?]["')\]]*$`,
+  String.raw`^(?:for\s+[^,.;!?]{1,140},\s*)?drink\s+(?:no\s+more\s+than|at\s+most)\s+${drinkLimitQuantityPeriodPattern}(?:\s+and\s+(?:no\s+more\s+than|at\s+most)\s+${drinkLimitQuantityPeriodPattern})?(?:;\s+less\s+drinking\s+further\s+lowers\s+risk)?[.!?]["')\]]*$`,
   "i",
 );
 
 // The recorded adult instruction shares its upper-limit verb across both periods.
 const openingSharedDrinkLimitImperativePattern =
-  /^for healthy adults aged \d+ years and over, drink no more than \d+ standard drinks a week and \d+ standard drinks on any one day;? drinking less further reduces risk\.$/i;
+  /^for healthy adults aged \d+ years and over, drink (?:no more than|at most) \d+ standard drinks a week and \d+ standard drinks on any one day;? drinking less further reduces risk\.$/i;
 
 /** First sentence. */
 export function firstSentence(value: string) {

@@ -59,6 +59,7 @@ describe("useTeachingMyDaySource in the synthetic demo", () => {
     const { result } = renderHook(() => useTeachingMyDaySource({ enabled: true, now }));
     expect(result.current.result.status).toBe("unavailable");
     expect(mocks.asked.some((url) => url.startsWith("/api/teaching/depth"))).toBe(false);
+    expect(mocks.asked).toContain("/api/teaching?view=week&from=2026-09-28&to=2026-11-08");
   });
 
   it("still reports a real error as failed", () => {

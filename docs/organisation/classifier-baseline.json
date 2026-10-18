@@ -23,6 +23,11 @@
     },
     {
       "classifier": "CI change scope: database lane",
+      "file": "supabase/functions/indexing-v3-agent/auth.ts",
+      "area": "source-intake"
+    },
+    {
+      "classifier": "CI change scope: database lane",
       "file": "supabase/functions/indexing-v3-agent/behavior.ts",
       "area": "source-intake"
     },

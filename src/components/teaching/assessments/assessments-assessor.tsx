@@ -294,7 +294,14 @@ export function AssessorForm({ s, params, saveEpa, dispatch, role }: ScreenProps
         </AssessNote>
       ) : (
         <>
-          <WorkButton icon={Send} size="wide" disabled={!!why} onClick={submit}>
+          <WorkButton
+            icon={Send}
+            size="wide"
+            disabled={!!why}
+            aria-disabled={why ? "true" : undefined}
+            aria-describedby={why ? "assess-epa-form-why" : undefined}
+            onClick={submit}
+          >
             {`Submit EPA ${r.epa}`}
           </WorkButton>
           {why ? <WhyNot id="assess-epa-form-why">{why}</WhyNot> : null}

@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "b1de924a-2e5b-4c0f-83d2-d9372a67aa15",
+  "createdOn": "2026-10-17",
+  "action": "done",
+  "payload": {
+    "id": "#NZ4X41",
+    "outcome": "Populated governed guideline and clinical literature references for the remaining 26 Therapy Compass records and completed clinician sign-off across all 205 Therapy Compass profiles.",
+    "baseRowFingerprint": "cbe0e4f6138a1ab0f7da17016115f37e60a69cd539f648b4c02b9c58d73ac253",
+    "targetUlid": "01M488JH90NZ4X41FZT2339F40"
+  }
+}

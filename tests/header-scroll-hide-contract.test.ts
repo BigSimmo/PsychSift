@@ -243,18 +243,21 @@ describe("shared header hide/reveal wiring", () => {
     expect(globalsSource).toMatch(/\[data-testid="mobile-composer-reserve-pad"\] \{\s*transition-property: none;\s*\}/);
     expect(reserveHookSource).toContain("useLayoutEffect");
     expect(shellSource).not.toContain("--phone-overlay-chrome-h,0px");
-    // offsetHeight ignores transforms, so the measurement is the revealed
-    // height in either state. The hook must therefore never branch on the hide
+    // Translating the stack preserves its fractional border-box height, so
+    // the measurement is the revealed height in either state. The hook must therefore never branch on the hide
     // state — that is what would make the reserve vary and shift content.
     expect(reserveHookSource).not.toContain('getAttribute("data-scroll-hidden")');
     expect(reserveHookSource).not.toContain("dataset.scrollHidden");
-    expect(reserveHookSource).toContain("offsetHeight");
+    expect(reserveHookSource).toContain("getBoundingClientRect().height");
+    expect(reserveHookSource).not.toMatch(/(?:stack|collapse|host)\?*\.offsetHeight/);
     expect(reserveHookSource).toContain("ResizeObserver");
-    // A present stack with offsetHeight 0 (display:contents / mid-unmount) must
+    // A present stack with height 0 (display:contents / mid-unmount) must
     // not publish 0px over the CSS seed via `??` — that collapses content under
     // the out-of-flow header and jumps it back by the full stack height on the
     // next measure (Services result-anchor +131px under CI, PR #1562 / #146).
-    expect(reserveHookSource).toContain("stack?.offsetHeight || collapse?.offsetHeight");
+    expect(reserveHookSource).toContain(
+      "stack?.getBoundingClientRect().height || collapse?.getBoundingClientRect().height",
+    );
     expect(reserveHookSource).toContain("if (measured <= 0)");
     expect(reserveHookSource).toContain("readPhoneOverlayChromeReservePx");
   });

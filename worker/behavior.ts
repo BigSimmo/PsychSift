@@ -684,3 +684,103 @@ export function serializeDocumentPageRowsForCommit(
   }
   return rows;
 }
+
+export type WorkerClaimScopeFilter = {
+  allowedDocumentIds: ReadonlySet<string>;
+  allowedFileTypes: ReadonlySet<string>;
+  active: boolean;
+  /** A malformed allowlist (no valid entries, or a non-UUID document ID): claim nothing rather than everything. */
+  claimsNothing: boolean;
+  /** Why the configured scope was rejected, for one operator-facing warning. */
+  configurationError: string | null;
+};
+
+const claimDocumentIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+function normalizeClaimDocumentId(value?: string | null): string {
+  return (value ?? "").trim().toLowerCase();
+}
+
+function normalizeClaimMimeType(value?: string | null): string {
+  return (value ?? "").split(";")[0]!.trim().toLowerCase();
+}
+
+export function resolveWorkerClaimScopeFilter(
+  environment: Record<string, string | undefined> = process.env,
+): WorkerClaimScopeFilter {
+  const parseList = (raw: string | undefined, normalize: (item: string) => string) =>
+    new Set(
+      (raw ?? "")
+        .split(",")
+        .map((item) => normalize(item))
+        .filter(Boolean),
+    );
+  const allowedDocumentIds = parseList(environment.WORKER_ALLOWED_DOCUMENT_IDS, normalizeClaimDocumentId);
+  const allowedFileTypes = parseList(environment.WORKER_ALLOWED_FILE_TYPES, normalizeClaimMimeType);
+  // Blank means unset (the .env.example default). A configured list that parses to no
+  // entries is malformed; dropping it would silently widen the scope to every job.
+  const malformed = (raw: string | undefined, parsed: ReadonlySet<string>) =>
+    (raw ?? "").trim() !== "" && parsed.size === 0;
+  // claim_ingestion_jobs takes uuid[]; one bad ID would fail every claim request, so
+  // reject the whole document scope instead of sending it or silently dropping the entry.
+  const invalidDocumentIds = [...allowedDocumentIds].filter((id) => !claimDocumentIdPattern.test(id));
+  const configurationError =
+    invalidDocumentIds.length > 0
+      ? `WORKER_ALLOWED_DOCUMENT_IDS contains non-UUID value(s): ${invalidDocumentIds.slice(0, 3).join(", ")}`
+      : malformed(environment.WORKER_ALLOWED_DOCUMENT_IDS, allowedDocumentIds)
+        ? "WORKER_ALLOWED_DOCUMENT_IDS is set but lists no document IDs"
+        : malformed(environment.WORKER_ALLOWED_FILE_TYPES, allowedFileTypes)
+          ? "WORKER_ALLOWED_FILE_TYPES is set but lists no MIME types"
+          : null;
+  const claimsNothing = configurationError !== null;
+  return {
+    allowedDocumentIds,
+    allowedFileTypes,
+    active: claimsNothing || allowedDocumentIds.size > 0 || allowedFileTypes.size > 0,
+    claimsNothing,
+    configurationError,
+  };
+}
+
+export function isPreClaimCandidateAllowed(
+  candidate: { document_id?: string | null; file_type?: string | null },
+  filter: WorkerClaimScopeFilter,
+): boolean {
+  if (!filter.active) return true;
+  if (filter.claimsNothing) return false;
+  const docId = normalizeClaimDocumentId(candidate.document_id);
+  const fileType = normalizeClaimMimeType(candidate.file_type);
+  if (filter.allowedDocumentIds.size > 0 && (!docId || !filter.allowedDocumentIds.has(docId))) {
+    return false;
+  }
+  if (filter.allowedFileTypes.size > 0 && (!fileType || !filter.allowedFileTypes.has(fileType))) {
+    return false;
+  }
+  return true;
+}
+
+export function isClaimableIngestionJobCandidate(
+  candidate: {
+    status?: string | null;
+    attempt_count?: number | null;
+    max_attempts?: number | null;
+    next_run_at?: string | null;
+    lease_expires_at?: string | null;
+  },
+  nowMs: number = Date.now(),
+): boolean {
+  const attemptCount = candidate.attempt_count ?? 0;
+  const maxAttempts = candidate.max_attempts ?? 3;
+  if (attemptCount >= maxAttempts) return false;
+  if (candidate.status === "pending") {
+    if (!candidate.next_run_at) return true;
+    const nextRunMs = Date.parse(candidate.next_run_at);
+    return Number.isFinite(nextRunMs) && nextRunMs <= nowMs;
+  }
+  if (candidate.status === "processing") {
+    if (!candidate.lease_expires_at) return false;
+    const leaseExpiresMs = Date.parse(candidate.lease_expires_at);
+    return Number.isFinite(leaseExpiresMs) && leaseExpiresMs <= nowMs;
+  }
+  return false;
+}

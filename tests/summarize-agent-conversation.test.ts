@@ -4,24 +4,19 @@ const setAgentConversationId = vi.fn();
 const summarizeDocument = vi.fn(async () => ({
   answer: "Summary body.",
   grounded: true,
-  confidence: "high",
+  confidence: "high" as const,
   citations: [],
   sources: [],
   smartPanel: { query: "summary" },
-  smartApiPlan: { displayMode: "direct" },
+  smartApiPlan: { displayMode: "direct" as const },
 }));
 
 vi.mock("@/lib/observability/agent-monitoring", () => ({
   setAgentConversationId,
 }));
 
-vi.mock("@/lib/demo-data", () => ({
-  isDemoMode: () => false,
-  getDemoDocument: () => null,
-  demoSummary: () => ({}),
-}));
-
-vi.mock("@/lib/env", () => ({
+vi.mock("@/lib/env", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/env")>()),
   isDemoMode: () => false,
 }));
 
@@ -29,23 +24,12 @@ vi.mock("@/lib/rag/rag", () => ({
   summarizeDocument,
 }));
 
-vi.mock("@/lib/answer-response", () => ({
-  buildGovernedAnswerClientResponse: (answer: { answer: string }) => ({
-    payload: { answer: answer.answer, grounded: true },
-    telemetryAnswer: answer,
-  }),
-  buildGovernedDemoAnswerClientResponse: (payload: unknown) => payload,
-}));
-
 vi.mock("@/lib/answer-telemetry", () => ({
   persistAnswerDiagnostics: vi.fn(async () => undefined),
 }));
 
-vi.mock("@/lib/answer-feedback-token", () => ({
-  answerFeedbackMetadata: (interactionId: string) => ({ interactionId }),
-}));
-
-vi.mock("@/lib/api-rate-limit", () => ({
+vi.mock("@/lib/api-rate-limit", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api-rate-limit")>()),
   consumeApiRateLimit: vi.fn(async () => ({
     limited: false,
     limit: 12,
@@ -53,17 +37,15 @@ vi.mock("@/lib/api-rate-limit", () => ({
     retryAfterSeconds: 60,
     resetAt: new Date().toISOString(),
   })),
-  rateLimitJsonResponse: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => ({}),
 }));
 
-vi.mock("@/lib/supabase/auth", () => ({
-  AuthenticationError: class AuthenticationError extends Error {},
+vi.mock("@/lib/supabase/auth", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/supabase/auth")>()),
   requireAuthenticatedUser: vi.fn(async () => ({ id: "11111111-1111-4111-8111-111111111111" })),
-  unauthorizedResponse: () => new Response(null, { status: 401 }),
 }));
 
 describe("document summarize Sentry conversation id", () => {
@@ -73,7 +55,7 @@ describe("document summarize Sentry conversation id", () => {
     vi.resetModules();
   });
 
-  it("sets the agent conversation id before any LLM summarize work", async () => {
+  it("sets the agent conversation id before any LLM summarize work and returns a governed payload", async () => {
     const { POST } = await import("../src/app/api/documents/[id]/summarize/route");
     const documentId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 
@@ -89,7 +71,19 @@ describe("document summarize Sentry conversation id", () => {
     expect(setAgentConversationId.mock.invocationCallOrder[0]).toBeLessThan(
       summarizeDocument.mock.invocationCallOrder[0]!,
     );
-    const body = (await response.json()) as { interactionId?: string };
+    const body = (await response.json()) as {
+      answer?: string;
+      grounded?: boolean;
+      interactionId?: string;
+      degradedMode?: { active: boolean; reason: string | null };
+      sourceGovernanceWarnings?: unknown[];
+      safetyWarnings?: unknown[];
+    };
+    expect(body.answer).toBe("Summary body.");
+    expect(body.grounded).toBe(true);
+    expect(body.degradedMode).toEqual({ active: false, reason: null });
+    expect(body.sourceGovernanceWarnings).toEqual([]);
+    expect(body.safetyWarnings).toEqual([]);
     expect(body.interactionId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
     expect(setAgentConversationId).toHaveBeenCalledWith(body.interactionId);
   });

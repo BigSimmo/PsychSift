@@ -17,6 +17,7 @@ import {
   isAtomicNmhsClozapineRedRangeSource,
   buildClozapineBloodActionThresholdAnswer,
 } from "@/lib/rag/rag-source-bound-policy-procedures";
+import { buildDocumentSupportListAnswer } from "@/lib/rag/rag-document-support-list";
 import { boldHighYieldClinicalText } from "@/lib/answer-ranking";
 import {
   adjacentLabelledNumericBandConflicts,
@@ -1770,9 +1771,11 @@ function buildFactSynthesizedAnswer(args: {
       sourceBackedDocumentFallbackIntent(args.query, args.queryClass, args.intent, fallbackResults) ||
       sourceBackedManagementReviewIntent(args.query, args.queryClass, args.intent, fallbackResults)
     ) {
+      const supportListAnswer = buildDocumentSupportListAnswer({ query: args.query, results: fallbackResults });
       return {
-        ...buildDocumentSupportListAnswer({ query: args.query, results: fallbackResults }),
-        supportListCitationResultIds: fallbackResults.map((result) => result.id),
+        ...supportListAnswer,
+        supportListCitationResultIds:
+          supportListAnswer.supportListCitationResultIds ?? fallbackResults.map((result) => result.id),
       };
     }
     const gapAnswer = finalQualityGapAnswer(args.query, args.queryClass, args.intent);
@@ -1966,59 +1969,6 @@ function buildTableOrVisualSourceLookupAnswer(args: { query: string; results: Se
   };
 }
 
-/** Build document support list answer. */
-function buildDocumentSupportListAnswer(args: { query: string; results: SearchResult[] }) {
-  const documents = buildDocumentBreakdown(args.results, extractQuoteCards(args.results, args.query)).slice(0, 5);
-  if (!documents.length) {
-    const gapAnswer = finalQualityGapAnswer(args.query, "document_lookup", "document_lookup");
-    return { answer: gapAnswer, citationChunkIds: [] as string[], answerSections: [] as AnswerSection[] };
-  }
-  const names = documents
-    .map((document) =>
-      normalizeSectionText(document.title || document.file_name)
-        .replace(/([a-zA-Z])\(/g, "$1 (")
-        .replace(/\s{2,}/g, " ")
-        .trim(),
-    )
-    .filter(Boolean);
-  const answer =
-    names.length === 1
-      ? `I found one indexed document that supports this query: ${names[0]}.`
-      : `I found ${names.length} indexed documents that support this query: ${names.slice(0, -1).join("; ")}; and ${names.at(-1)}.`;
-  return {
-    answer,
-    preformatted: true,
-    citationChunkIds: Array.from(
-      new Set(
-        documents.flatMap((document) =>
-          args.results
-            .filter((result) => result.document_id === document.document_id)
-            .slice(0, 1)
-            .map((result) => result.id),
-        ),
-      ),
-    ),
-    answerSections: [
-      {
-        heading: "Document matches",
-        kind: "documentation",
-        supportLevel: "direct",
-        body: names.join("; "),
-        citation_chunk_ids: Array.from(
-          new Set(
-            documents.flatMap((document) =>
-              args.results
-                .filter((result) => result.document_id === document.document_id)
-                .slice(0, 1)
-                .map((result) => result.id),
-            ),
-          ),
-        ),
-      },
-    ] satisfies AnswerSection[],
-  };
-}
-
 /**
  * Keep the citations that support delivered extractive answer text ahead of
  * already-ranked supporting citations, without admitting unknown sources.
@@ -2083,7 +2033,7 @@ export function buildExtractiveAnswer(args: {
 }) {
   const results = args.results.filter((result) => !resultContainsProceduralFlowEdgeArtifact(result));
   const removedProceduralArtifact = results.length !== args.results.length;
-  const rebuildDerivedArtifacts =
+  let rebuildDerivedArtifacts =
     removedProceduralArtifact ||
     derivedArtifactsContainProceduralFlowEdge({
       quoteCards: args.quoteCards,
@@ -2135,7 +2085,7 @@ export function buildExtractiveAnswer(args: {
 
   const answerIntent = classifyAnswerIntent(args.query, args.queryClass);
   const naturalAnswer = documentSupportListIntent(args.query, args.queryClass)
-    ? buildDocumentSupportListAnswer({ query: args.query, results })
+    ? buildDocumentSupportListAnswer({ query: args.query, results, filterToClaimBearingDocuments: true })
     : tableOrVisualSourceLookupIntent(args.query, args.queryClass, answerIntent)
       ? buildTableOrVisualSourceLookupAnswer({ query: args.query, results })
       : buildFactSynthesizedAnswer({
@@ -2213,6 +2163,7 @@ export function buildExtractiveAnswer(args: {
         (card.source_chunk_ids ?? []).some((chunkId) => supportListCitationIdSet.has(chunkId)),
       )
     : memoryCards;
+  rebuildDerivedArtifacts ||= answerSources.length !== results.length;
   const rebuiltDocumentBreakdown = rebuildDerivedArtifacts
     ? buildDocumentBreakdown(answerSources, finalQuoteCards)
     : args.documentBreakdown;

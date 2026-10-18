@@ -5,12 +5,14 @@ import { useCallback, useMemo } from "react";
 import { useCmeMyDaySource } from "@/components/my-day/sources/cme";
 import { useEntriesMyDaySources } from "@/components/my-day/sources/entries";
 import { useRosterMyDaySource } from "@/components/my-day/sources/roster";
-import { useTeachingMyDaySource } from "@/components/my-day/sources/teaching";
+import { myDayTeachingWeekUrl, useTeachingMyDaySource } from "@/components/my-day/sources/teaching";
 import { useWorkCalendarMyDayItems, withWorkCalendarItems } from "@/components/my-day/sources/work-calendar";
 import type { NewJobProgress } from "@/lib/admin/new-job-progress";
 import type { CmeRoutine } from "@/lib/cme/routines";
 import { mergeMyDayItems } from "@/lib/my-day/merge";
 import type { MyDaySourceResult, MyDayState } from "@/lib/my-day/model";
+
+export { myDayTeachingWeekUrl };
 
 /**
  * The one My Day read, shared by the `/my-day` page and the home card.

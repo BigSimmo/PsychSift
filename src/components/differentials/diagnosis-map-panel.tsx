@@ -29,7 +29,7 @@ import {
 import { useEventCallback } from "@/components/clinical-dashboard/use-event-callback";
 import { DiagnosisMapInsights } from "@/components/differentials/diagnosis-map-insights";
 import { Sheet } from "@/components/ui/sheet";
-import { cn, floatingControl, primaryControl, toolbarButton } from "@/components/ui-primitives";
+import { controlDisabled, cn, floatingControl, primaryControl, toolbarButton } from "@/components/ui-primitives";
 import type { DifferentialCuratedEntry } from "@/lib/differential-curated";
 import {
   buildDiscriminators,
@@ -1131,7 +1131,10 @@ export function DiagnosisMapPanel({
                   type="button"
                   onClick={() => changeScale(-0.14)}
                   disabled={view.scale <= minScale + 0.001}
-                  className="grid h-tap w-tap place-items-center border-r border-[color:var(--border)] enabled:hover:bg-[color:var(--surface-subtle)] disabled:opacity-40"
+                  className={cn(
+                    controlDisabled,
+                    "grid h-tap w-tap place-items-center border-r border-[color:var(--border)] enabled:hover:bg-[color:var(--surface-subtle)]",
+                  )}
                   aria-label="Zoom out"
                 >
                   <Minus className="h-4 w-4" aria-hidden />
@@ -1146,7 +1149,10 @@ export function DiagnosisMapPanel({
                   type="button"
                   onClick={() => changeScale(0.14)}
                   disabled={view.scale >= maxScale - 0.001}
-                  className="grid h-tap w-tap place-items-center border-l border-[color:var(--border)] enabled:hover:bg-[color:var(--surface-subtle)] disabled:opacity-40"
+                  className={cn(
+                    controlDisabled,
+                    "grid h-tap w-tap place-items-center border-l border-[color:var(--border)] enabled:hover:bg-[color:var(--surface-subtle)]",
+                  )}
                   aria-label="Zoom in"
                 >
                   <Plus className="h-4 w-4" aria-hidden />

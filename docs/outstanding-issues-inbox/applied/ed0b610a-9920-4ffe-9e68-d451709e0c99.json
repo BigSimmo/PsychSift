@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "ed0b610a-9920-4ffe-9e68-d451709e0c99",
+  "createdOn": "2026-10-17",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "issue",
+    "summary": "Complete remaining doc/decision drift items from #WMGPSG",
+    "detail": "Follow-up to #WMGPSG for the remaining documentation and decision-record items: (1) add a superseding decision next to docs/decisions/2026-09-26-remove-ward-flow-and-caring-contacts.md covering live src/lib/caring-contacts/clock.ts, (2) record the admin renewals wording decision, (3) document the cloud-profile worktree rule, and (4) replace the mojibake arrow on docs/outstanding-issues.md:15 during a canonical ledger header maintenance pass.",
+    "source": "PR #3609 review; follow-up to #WMGPSG",
+    "issueUlid": "01M54ZYADRWWV98H3N76EDCNCT"
+  }
+}

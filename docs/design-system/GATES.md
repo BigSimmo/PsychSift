@@ -31,33 +31,33 @@ than CI, two of them by the second reader; review does not scale past two carefu
 | `arbitraryTracking`               | **0** (hard floor) | 0            |
 | `colourOnlyStatusIndicators`      | **0** (hard floor) | 0            |
 | `darkColorOverrides`              | **0** (hard floor) | 0            |
-| `disabledOpacityUses`             | 30                 | 21           |
-| `edgeOwnershipConflicts`          | 5                  | 2            |
-| `elevationInversions`             | 5                  | 4            |
+| `disabledOpacityUses`             | **0** (hard floor) | 0            |
+| `edgeOwnershipConflicts`          | **0** (hard floor) | 0            |
+| `elevationInversions`             | **0** (hard floor) | 0            |
 | `errorStateCountProps`            | **0** (hard floor) | 0            |
 | `failedStateResultCounts`         | **0** (hard floor) | 0            |
-| `handRolledCommandButtons`        | 8                  | 7            |
+| `handRolledCommandButtons`        | **0** (hard floor) | 0            |
 | `hardcodedCssMotionDurations`     | 21                 | 1            |
-| `interactiveTapFloorDeclarations` | 4                  | 3            |
+| `interactiveTapFloorDeclarations` | 2                  | 2            |
 | `layoutTransitionExceptions`      | 10                 | 4            |
 | `legacyPaletteUtilities`          | **0** (hard floor) | 0            |
-| `legacyShadowAliases`             | 30                 | 24           |
+| `legacyShadowAliases`             | 12                 | 11           |
 | `legacyTapClasses`                | **0** (hard floor) | 0            |
 | `literalShadowClasses`            | **0** (hard floor) | 0            |
 | `onePixelShadowSpreads`           | **0** (hard floor) | 0            |
 | `rawColorLiterals`                | **0** (hard floor) | 0            |
 | `rawCssZIndices`                  | 4                  | 1            |
-| `rawGapLiterals`                  | 10                 | 1            |
+| `rawGapLiterals`                  | 9                  | 1            |
 | `rawLineHeightLiterals`           | **0** (hard floor) | 0            |
 | `rawMarginLiterals`               | 6                  | 2            |
-| `rawPaddingLiterals`              | 21                 | 4            |
-| `rawRadiusLiterals`               | 14                 | 3            |
-| `sameFileTextSmMinusMix`          | 32                 | 32           |
+| `rawPaddingLiterals`              | 17                 | 2            |
+| `rawRadiusLiterals`               | 8                  | 3            |
+| `sameFileTextSmMinusMix`          | 30                 | 30           |
 | `statusColouredNumerals`          | **0** (hard floor) | 0            |
 | `textSoftConsumers`               | **0** (hard floor) | 0            |
-| `visibleLiveRegions`              | 17                 | 17           |
+| `visibleLiveRegions`              | 13                 | 13           |
 
-28 metrics, 13 of them pinned at zero. A metric at zero is a hard floor:
+28 metrics, 17 of them pinned at zero. A metric at zero is a hard floor:
 the check asserts `value <= baseline`, so any reintroduction fails. A non-zero pin is
 recorded debt with per-path pins, so a new occurrence fails even while the total stands.
 

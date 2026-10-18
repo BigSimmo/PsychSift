@@ -591,7 +591,7 @@ function UndoBar({
   return (
     <div
       role="status"
-      className="pointer-events-none fixed inset-x-0 bottom-[max(1rem,env(safe-area-inset-bottom))] z-[var(--z-toast)] flex justify-center px-4"
+      className="pointer-events-none fixed inset-x-0 bottom-[calc(max(1rem,env(safe-area-inset-bottom))+var(--keyboard-height,0px))] z-[var(--z-toast)] flex justify-center px-4"
     >
       {removed || message ? (
         <div

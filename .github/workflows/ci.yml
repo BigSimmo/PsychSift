@@ -733,6 +733,21 @@ jobs:
       - name: Setup Node and dependencies
         uses: ./.github/actions/setup-node-cached
 
+      - name: Stage declared npm for Cloud bootstrap acceptance fixtures
+        id: cloud-platform-npm
+        shell: bash
+        run: |
+          package_manager=$(node -p 'require("./package.json").packageManager')
+          if [[ ! "$package_manager" =~ ^npm@([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            echo "Cloud bootstrap fixtures require an exact npm packageManager version" >&2
+            exit 1
+          fi
+          bootstrap_npm_version="${BASH_REMATCH[1]}"
+          bootstrap_npm_home="$RUNNER_TEMP/cloud-platform-npm"
+          # Exact packageManager pin; intentionally lockfile-free in a disposable runner-only prefix.
+          npm install --prefix "$bootstrap_npm_home/npm" --ignore-scripts --no-save --package-lock=false --no-audit --no-fund "npm@$bootstrap_npm_version"
+          echo "home=$bootstrap_npm_home" >> "$GITHUB_OUTPUT"
+
       - name: Install deterministic Python PDF test prerequisite
         run: python3 -m pip install --disable-pip-version-check "PyMuPDF==1.28.0"
 
@@ -743,6 +758,8 @@ jobs:
         # worker that never exits) is what this catches: the step now fails at 13 minutes instead,
         # 7 minutes sooner, with the same red result. Nothing is skipped or retried.
         timeout-minutes: 13
+        env:
+          CLOUD_PLATFORM_NPM_HOME: ${{ steps.cloud-platform-npm.outputs.home }}
         run: >-
           node scripts/run-vitest.mjs run --config=vitest.coverage-shard.config.mts
           --coverage --shard=${{ matrix.shard }}/2 --reporter=default --reporter=blob

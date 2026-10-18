@@ -29,6 +29,15 @@ describe("BeforeYouGoIn", () => {
     const source = within(first).getAllByText(model.beforeYouGoIn[0].source.title, { exact: false });
     for (const el of source) expect(el.closest("label")).toBeNull();
   });
+  it("toggles from the full step label while keeping source attribution outside the target", () => {
+    const sheet = openSheet();
+    const first = within(sheet).getAllByRole("listitem")[0];
+    const checkbox = within(first).getByRole("checkbox");
+    fireEvent.click(within(first).getByText(model.beforeYouGoIn[0].title, { exact: false }));
+    expect(checkbox).toHaveProperty("checked", true);
+    fireEvent.click(within(first).getAllByText(model.beforeYouGoIn[0].source.title, { exact: false })[0]);
+    expect(checkbox).toHaveProperty("checked", true);
+  });
   it("clears at once with Undo for about six seconds, never 'Are you sure?'", () => {
     vi.useFakeTimers();
     const sheet = openSheet();

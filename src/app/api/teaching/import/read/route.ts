@@ -3,6 +3,7 @@ import { withTeachingApi } from "@/lib/teaching/api";
 import { IMPORT_MAX_FILE_BYTES } from "@/lib/teaching/depth-model";
 import {
   IMPORT_TOO_LARGE_MESSAGE,
+  IMPORT_TOO_MANY_ROWS_MESSAGE,
   IMPORT_UNREADABLE_MESSAGE,
   readXlsxRows,
   type SheetRow,
@@ -34,11 +35,14 @@ async function readRows(request: Request): Promise<{ rows: SheetRow[] }> {
   try {
     return { rows: await readXlsxRows(new Uint8Array(await file.arrayBuffer())) };
   } catch (error) {
-    const message =
-      error instanceof Error && error.message === IMPORT_TOO_LARGE_MESSAGE ? error.message : IMPORT_UNREADABLE_MESSAGE;
-    throw new PublicApiError(message, message === IMPORT_TOO_LARGE_MESSAGE ? 413 : 400, {
-      code: message === IMPORT_TOO_LARGE_MESSAGE ? "payload_too_large" : "unreadable_file",
-    });
+    const reason = error instanceof Error ? error.message : "";
+    if (reason === IMPORT_TOO_LARGE_MESSAGE) {
+      throw new PublicApiError(IMPORT_TOO_LARGE_MESSAGE, 413, { code: "payload_too_large" });
+    }
+    if (reason === IMPORT_TOO_MANY_ROWS_MESSAGE) {
+      throw new PublicApiError(IMPORT_TOO_MANY_ROWS_MESSAGE, 413, { code: "too_many_rows" });
+    }
+    throw new PublicApiError(IMPORT_UNREADABLE_MESSAGE, 400, { code: "unreadable_file" });
   }
 }
 

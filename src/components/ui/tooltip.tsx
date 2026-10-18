@@ -143,7 +143,7 @@ export function Tooltip({ children, content, placement = "top", className }: Too
               visibility: positioned ? "visible" : "hidden",
             }}
             className={cn(
-              "pointer-events-none w-max max-w-xs rounded-md bg-[color:var(--surface-raised)] px-2 py-1 text-xs text-[color:var(--text)] shadow-[var(--shadow-hover)] ring-1 ring-[color:var(--border-lux)]",
+              "pointer-events-none w-max max-w-xs rounded-md bg-[color:var(--surface-raised)] px-2 py-1 text-xs text-[color:var(--text)] shadow-[var(--e3)] ring-1 ring-[color:var(--border-lux)]",
               className,
             )}
           >
@@ -151,7 +151,7 @@ export function Tooltip({ children, content, placement = "top", className }: Too
               aria-hidden="true"
               data-testid="tooltip-visual"
               className="block overflow-hidden"
-              style={{ maxHeight: position.maxHeight ?? "calc(100vh - 1rem)" }}
+              style={{ maxHeight: position.maxHeight ?? "calc(100dvh - 1rem)" }}
             >
               {content}
             </span>

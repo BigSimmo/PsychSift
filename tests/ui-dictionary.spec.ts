@@ -237,19 +237,26 @@ test("merges search and browse into one catalogue with a measured phone header",
   await expect(page).not.toHaveURL(/view=abbreviations/);
 
   await page.setViewportSize({ width: 320, height: 760 });
-  await page.waitForTimeout(400);
-  const narrowRow = await page.evaluate(() => {
-    const box = (id: string) => document.querySelector(`[data-testid="${id}"]`)?.getBoundingClientRect() ?? null;
-    return {
-      toggleWidth: box("dictionary-scope-toggle")?.width ?? 0,
-      toggleTop: box("dictionary-scope-toggle")?.top ?? 0,
-      ribbonBottom: box("search-query-ribbon")?.bottom ?? 0,
-      overflow: Math.max(document.documentElement.scrollWidth, document.body?.scrollWidth ?? 0) - window.innerWidth,
-    };
-  });
-  expect(narrowRow.toggleTop).toBeGreaterThanOrEqual(narrowRow.ribbonBottom);
-  expect(narrowRow.toggleWidth).toBeGreaterThan(120);
-  expect(narrowRow.overflow).toBeLessThanOrEqual(2);
+  await expect
+    .poll(async () => {
+      return page.evaluate(() => {
+        if (window.innerWidth !== 320) return null;
+        const box = (id: string) => document.querySelector(`[data-testid="${id}"]`)?.getBoundingClientRect() ?? null;
+        const toggleTop = box("dictionary-scope-toggle")?.top ?? 0;
+        const ribbonBottom = box("search-query-ribbon")?.bottom ?? 0;
+        const toggleWidth = box("dictionary-scope-toggle")?.width ?? 0;
+        const overflow =
+          Math.max(document.documentElement.scrollWidth, document.body?.scrollWidth ?? 0) - window.innerWidth;
+        return {
+          settled: toggleTop >= ribbonBottom && toggleWidth > 120 && overflow <= 2,
+          toggleWidth,
+          toggleTop,
+          ribbonBottom,
+          overflow,
+        };
+      });
+    })
+    .toMatchObject({ settled: true });
 
   await page.setViewportSize({ width: 768, height: 900 });
   // Safari's phone emulation can take longer than a fixed pause to re-lay the
@@ -258,7 +265,6 @@ test("merges search and browse into one catalogue with a measured phone header",
   await page.setViewportSize({ width: 390, height: 844 });
 
   await gotoDictionary(page, "/dictionary/search?q=tardive+dyskinesia", "dictionary-catalogue-main");
-  await page.waitForTimeout(1200);
   await expect(dock).toBeVisible();
   await expect(dock.getByTestId("global-search-input")).toBeVisible();
   await expect(page.getByTestId("dictionary-catalogue-composer")).toBeHidden();
@@ -274,32 +280,45 @@ test("merges search and browse into one catalogue with a measured phone header",
   }
   expect((await page.getByTestId("dictionary-letter-chip").boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(48);
 
-  const resultControls = await page.evaluate(() => {
-    const ribbon = document.querySelector('[data-testid="search-query-ribbon"]');
-    const box = (testId: string) => ribbon?.querySelector(`[data-testid="${testId}"]`)?.getBoundingClientRect() ?? null;
-    return {
-      clearTop: box("dictionary-clear-query")?.top ?? -1,
-      filterTop: box("dictionary-filter-trigger-phone")?.top ?? -1,
-    };
-  });
-  expect(Math.abs(resultControls.clearTop - resultControls.filterTop)).toBeLessThanOrEqual(2);
+  await expect
+    .poll(async () => {
+      return page.evaluate(() => {
+        const ribbonNode = document.querySelector('[data-testid="search-query-ribbon"]');
+        const box = (testId: string) =>
+          ribbonNode?.querySelector(`[data-testid="${testId}"]`)?.getBoundingClientRect() ?? null;
+        const clearTop = box("dictionary-clear-query")?.top ?? -1;
+        const filterTop = box("dictionary-filter-trigger-phone")?.top ?? -1;
+        return clearTop >= 0 && filterTop >= 0 && Math.abs(clearTop - filterTop) <= 2;
+      });
+    })
+    .toBe(true);
 
-  const geometry = await page.evaluate(() => {
-    const box = (selector: string) => document.querySelector(selector)?.getBoundingClientRect() ?? null;
-    const subject = document.querySelector<HTMLElement>('[data-testid="search-query-ribbon"] .search-band-subject');
-    return {
-      ribbonBottom: box('[data-testid="search-query-ribbon"]')?.bottom ?? -1,
-      toggleTop: box('[data-testid="dictionary-scope-toggle"]')?.top ?? -1,
-      letterTop: box('[data-testid="dictionary-letter-chip"]')?.top ?? -1,
-      subjectText: subject?.textContent ?? "",
-      subjectClipped: subject ? subject.scrollWidth - subject.clientWidth > 1 : true,
-    };
-  });
-  expect(geometry.ribbonBottom).toBeGreaterThan(0);
-  expect(geometry.toggleTop).toBeGreaterThanOrEqual(geometry.ribbonBottom);
-  expect(Math.abs(geometry.toggleTop - geometry.letterTop)).toBeLessThanOrEqual(2);
-  expect(geometry.subjectText).toBe("tardive dyskinesia");
-  expect(geometry.subjectClipped).toBe(false);
+  await expect
+    .poll(async () => {
+      return page.evaluate(() => {
+        const box = (selector: string) => document.querySelector(selector)?.getBoundingClientRect() ?? null;
+        const subject = document.querySelector<HTMLElement>('[data-testid="search-query-ribbon"] .search-band-subject');
+        const ribbonBottom = box('[data-testid="search-query-ribbon"]')?.bottom ?? -1;
+        const toggleTop = box('[data-testid="dictionary-scope-toggle"]')?.top ?? -1;
+        const letterTop = box('[data-testid="dictionary-letter-chip"]')?.top ?? -1;
+        const subjectText = subject?.textContent ?? "";
+        const subjectClipped = subject ? subject.scrollWidth - subject.clientWidth > 1 : true;
+        return {
+          ribbonBottomGreaterThanZero: ribbonBottom > 0,
+          toggleBelowRibbon: toggleTop >= ribbonBottom,
+          controlsAligned: Math.abs(toggleTop - letterTop) <= 2,
+          subjectText,
+          subjectClipped,
+        };
+      });
+    })
+    .toEqual({
+      ribbonBottomGreaterThanZero: true,
+      toggleBelowRibbon: true,
+      controlsAligned: true,
+      subjectText: "tardive dyskinesia",
+      subjectClipped: false,
+    });
 
   await gotoDictionary(page, "/dictionary/search?q=MMSE&view=abbreviations", "dictionary-catalogue-main");
   await expect(ribbon.getByRole("status")).toHaveText(/^1 abbreviation$/);
