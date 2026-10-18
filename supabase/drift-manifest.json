@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-10-18T06:37:18.983Z",
+  "generated_at": "2026-10-18T10:29:05.818Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "ddba5299f794d7be628fe0e9a85a4f7c4c4218bd29854c9e209a25a3c24909e5",
+  "schema_sha256": "deeee8f86fe40c6e07c7ff56e5c97a85cab409112af961eda4403b9f4384dadf",
   "replay_seconds": 14,
   "snapshot": {
     "views": [
@@ -2976,6 +2976,34 @@
           "autovacuum_analyze_scale_factor=0.02",
           "autovacuum_vacuum_scale_factor=0.05"
         ],
+        "rls_forced": false,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=arwdDxtm/postgres"
+        ],
+        "name": "document_evidence_revisions",
+        "columns": [
+          {
+            "name": "document_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "revision",
+            "type": "bigint",
+            "default": "0",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
         "rls_forced": false,
         "rls_enabled": true
       },
@@ -14710,6 +14738,12 @@
         "def_hash": "7224a35b50c37a7394210ca930e4e99f"
       },
       {
+        "def": "CREATE UNIQUE INDEX document_evidence_revisions_pkey ON public.document_evidence_revisions USING btree (document_id)",
+        "name": "document_evidence_revisions_pkey",
+        "table": "document_evidence_revisions",
+        "def_hash": "2615588a76c4e5926413aec57fd7d419"
+      },
+      {
         "def": "CREATE INDEX document_images_created_at_idx ON public.document_images USING btree (created_at)",
         "name": "document_images_created_at_idx",
         "table": "document_images",
@@ -18189,6 +18223,21 @@
         "table": "document_embedding_fields"
       },
       {
+        "def": "CREATE TRIGGER document_images_evidence_delete AFTER DELETE ON public.document_images REFERENCING OLD TABLE AS old_rows FOR EACH STATEMENT EXECUTE FUNCTION public.document_evidence_rows_changed()",
+        "name": "document_images_evidence_delete",
+        "table": "document_images"
+      },
+      {
+        "def": "CREATE TRIGGER document_images_evidence_insert AFTER INSERT ON public.document_images REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION public.document_evidence_rows_changed()",
+        "name": "document_images_evidence_insert",
+        "table": "document_images"
+      },
+      {
+        "def": "CREATE TRIGGER document_images_evidence_update AFTER UPDATE ON public.document_images REFERENCING OLD TABLE AS old_rows NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION public.document_evidence_rows_changed()",
+        "name": "document_images_evidence_update",
+        "table": "document_images"
+      },
+      {
         "def": "CREATE TRIGGER document_index_units_updated_at BEFORE UPDATE ON public.document_index_units FOR EACH ROW EXECUTE FUNCTION public.set_updated_at()",
         "name": "document_index_units_updated_at",
         "table": "document_index_units"
@@ -18212,6 +18261,21 @@
         "def": "CREATE TRIGGER document_sections_updated_at BEFORE UPDATE ON public.document_sections FOR EACH ROW EXECUTE FUNCTION public.set_updated_at()",
         "name": "document_sections_updated_at",
         "table": "document_sections"
+      },
+      {
+        "def": "CREATE TRIGGER document_table_facts_evidence_delete AFTER DELETE ON public.document_table_facts REFERENCING OLD TABLE AS old_rows FOR EACH STATEMENT EXECUTE FUNCTION public.document_evidence_rows_changed()",
+        "name": "document_table_facts_evidence_delete",
+        "table": "document_table_facts"
+      },
+      {
+        "def": "CREATE TRIGGER document_table_facts_evidence_insert AFTER INSERT ON public.document_table_facts REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION public.document_evidence_rows_changed()",
+        "name": "document_table_facts_evidence_insert",
+        "table": "document_table_facts"
+      },
+      {
+        "def": "CREATE TRIGGER document_table_facts_evidence_update AFTER UPDATE ON public.document_table_facts REFERENCING OLD TABLE AS old_rows NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION public.document_evidence_rows_changed()",
+        "name": "document_table_facts_evidence_update",
+        "table": "document_table_facts"
       },
       {
         "def": "CREATE TRIGGER document_title_words_enforce_public_scope BEFORE INSERT OR UPDATE ON public.document_title_words FOR EACH ROW EXECUTE FUNCTION public.enforce_document_title_word_scope()",
@@ -18619,6 +18683,13 @@
         ],
         "def_hash": "f02e0c8d223bb2621468b958df75f1f1",
         "signature": "public.bind_public_source_upload_authority(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "e91b4cce6223c04f8e34780d31eb6aa9",
+        "signature": "public.bump_document_evidence_revisions(uuid[])"
       },
       {
         "acl": [
@@ -19085,6 +19156,13 @@
         ],
         "def_hash": "37f32cc93a66d9ce45bdcecf263ace70",
         "signature": "public.detect_legacy_ivfflat_indexes()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "58f5ef7258095fc953849fdb45a832d1",
+        "signature": "public.document_evidence_rows_changed()"
       },
       {
         "acl": [
@@ -19724,7 +19802,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "6495e84c303f7bfb857743ff77c613ee",
+        "def_hash": "6e2e9461e611d13573b2e1aea26f0d5e",
         "signature": "public.rag_cache_scope_revision_v1(uuid,boolean,uuid[])"
       },
       {
@@ -22153,6 +22231,16 @@
         "def": "FOREIGN KEY (source_chunk_id) REFERENCES public.document_chunks(id) ON DELETE CASCADE",
         "name": "document_embedding_fields_source_chunk_id_fkey",
         "table": "document_embedding_fields"
+      },
+      {
+        "def": "FOREIGN KEY (document_id) REFERENCES public.documents(id) ON DELETE CASCADE",
+        "name": "document_evidence_revisions_document_id_fkey",
+        "table": "document_evidence_revisions"
+      },
+      {
+        "def": "PRIMARY KEY (document_id)",
+        "name": "document_evidence_revisions_pkey",
+        "table": "document_evidence_revisions"
       },
       {
         "def": "FOREIGN KEY (document_id) REFERENCES public.documents(id) ON DELETE CASCADE",
