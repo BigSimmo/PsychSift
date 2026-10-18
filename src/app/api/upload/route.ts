@@ -204,14 +204,14 @@ async function releaseSupersededUpload(args: {
     documentId: args.documentId,
     supersededPath,
     committedPath: args.committedPath,
-  }).catch((error: unknown) => ({
+  }).catch(() => ({
     outcome: "unrecorded" as const,
-    failures: [error instanceof Error ? error.message : "release failed"],
+    failures: [{ stage: "unknown" as const, code: "unknown" as const }],
   }));
   if (release.outcome === "unrecorded") {
     logger.error("Superseded upload object cleanup failed; object requires manual reconciliation", {
       storageObjectRef: createHash("sha256").update(supersededPath).digest("hex"),
-      failureCount: release.failures.length,
+      failures: release.failures,
     });
   }
 }
