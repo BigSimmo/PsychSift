@@ -1428,9 +1428,6 @@ def fallback_visual_region(page, image_coverage=0.0, ocr_used=False):
     )
 
 
-# Fraction of a native line's area that must fall inside a detected table grid
-# before the line is treated as table content rather than surrounding prose.
-TABLE_BLOCK_CONTAINMENT_RATIO = 0.6
 # If table-aware assembly drops more than this share of the page's characters,
 # detection is assumed to have misfired and the raw reading-order text is kept.
 TABLE_TEXT_MIN_RETENTION_RATIO = 0.6
@@ -1462,9 +1459,7 @@ def _intact_display_text_pieces(page, exclude_rects=None):
             if not text:
                 continue
             rect = fitz.Rect(line["bbox"]) * page.rotation_matrix
-            area = _rect_area(rect)
-            if area > 0 and any(_rect_area(rect & table_rect) / area >= TABLE_BLOCK_CONTAINMENT_RATIO
-                                for table_rect in exclude_rects or []):
+            if any(table_rect.contains(rect) for table_rect in exclude_rects or []):
                 continue
             lines.append((rect, text))
             direction = line.get("dir", (1, 0))

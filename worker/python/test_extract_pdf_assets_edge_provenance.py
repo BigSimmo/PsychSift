@@ -59,6 +59,22 @@ class EdgeProvenanceTests(unittest.TestCase):
         self.assertIn('Medication A',text)
         doc.close()
 
+    def test_partially_contained_line_keeps_its_complete_safety_instruction(self):
+        doc = e.fitz.open()
+        page = doc.new_page(width=595,height=842)
+        for y in (100,120,135): page.draw_line((50,y),(360,y))
+        for x in (50,220,360): page.draw_line((x,100),(x,135))
+        page.insert_text((54,116),'Drug\nMedication A',fontsize=9)
+        page.insert_text((224,116),'Action',fontsize=9)
+        instruction='Use cautiously; do not repeat without assessment.'
+        page.insert_text((224,129),instruction+'\nImportant safety note remains outside this table.\nFurther paragraph continues here.',fontsize=9)
+        candidates=e.likely_table_candidates(page)
+        self.assertTrue(candidates)
+        text=e.table_aware_page_text(page,candidates)
+        self.assertIn(instruction,text)
+        self.assertIn('Important safety note remains outside this table.',text)
+        doc.close()
+
     def test_multicolumn_abbreviation_key_does_not_become_a_row(self):
         rows, unassigned = self.recover([(54,218,'ABC'),(124,218,'abbreviation key')])
         self.assertEqual(rows, [])
