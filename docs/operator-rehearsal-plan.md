@@ -121,12 +121,14 @@ cat supabase/.temp/project-ref                        # must print sjrfecxgysukk
 supabase storage ls ss:///clinical-documents --experimental --linked | head
 supabase storage cp -r ss:///clinical-documents "$DR_DIR/clinical-documents" --experimental --linked
 supabase storage cp -r ss:///clinical-images "$DR_DIR/clinical-images" --experimental --linked
+supabase storage cp -r ss:///cme-private-evidence "$DR_DIR/cme-private-evidence" --experimental --linked
 supabase unlink
 
 supabase link --project-ref <restore-ref>
 cat supabase/.temp/project-ref                        # must print <restore-ref>
 supabase storage cp -r "$DR_DIR/clinical-documents" ss:///clinical-documents --experimental --linked
 supabase storage cp -r "$DR_DIR/clinical-images" ss:///clinical-images --experimental --linked
+supabase storage cp -r "$DR_DIR/cme-private-evidence" ss:///cme-private-evidence --experimental --linked
 supabase unlink
 ```
 
@@ -145,9 +147,17 @@ WHERE d.storage_path IS NOT NULL
     SELECT 1 FROM storage.objects o
     WHERE o.bucket_id = 'clinical-documents' AND o.name = d.storage_path
   );
+-- CME evidence records whose file did not arrive (removed evidence has no file by design)
+SELECT count(*) AS missing_cme_evidence_files
+FROM public.cme_evidence e
+WHERE e.removed_at IS NULL
+  AND NOT EXISTS (
+    SELECT 1 FROM storage.objects o
+    WHERE o.bucket_id = 'cme-private-evidence' AND o.name = e.storage_path
+  );
 ```
 
-Run the same counts (not the last query) read-only on production for comparison. Then follow the
+Run the same counts (not the two missing-file queries) read-only on production for comparison. Then follow the
 "Post-restore environment recovery controls" checklist in the disaster-recovery runbook, but **keep
 `invoke_indexing_v3_agent` inactive** on the restore project, so it never calls the production agent.
 
@@ -166,7 +176,7 @@ plan's egress allowance; record the total size. Deleting the project the same da
 estimate; or the restore has not finished after four hours (record that as the finding).
 
 **Evidence to record:** backup plan setting and newest backup time; restore start, healthy and
-finish times; Storage size and copy time; the count comparison; `missing_files`; anything that had to
+finish times; Storage size and copy time; the count comparison; `missing_files` and `missing_cme_evidence_files` (both must be 0); anything that had to
 be re-entered by hand; and the eval result if run.
 
 ## 3. 30-user load test against staging
@@ -184,10 +194,14 @@ curl -fsS https://<staging-host>/api/health | jq '{status, deploymentCommitSha}'
 ```
 
 Then dispatch the tenancy workflow from that same SHA, so CME and On Call isolation (`#F9HZEG`) is
-actually exercised:
+actually exercised. `main` keeps moving, so pin the candidate to an immutable tag and dispatch that tag
+rather than `main`:
 
 ```bash
-gh workflow run staging-tenancy.yml --ref main     # only when main HEAD equals the candidate SHA
+export CANDIDATE_SHA=<candidate-sha>
+git tag "dr-rehearsal-$(date +%Y%m%d)" "$CANDIDATE_SHA"
+git push origin "dr-rehearsal-$(date +%Y%m%d)"
+gh workflow run staging-tenancy.yml --ref "dr-rehearsal-$(date +%Y%m%d)"
 gh run list --workflow staging-tenancy.yml --limit 1
 gh run view <run-id> --log | grep -E "returned|PASS|FAIL" | head -40
 ```
