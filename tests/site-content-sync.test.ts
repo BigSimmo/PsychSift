@@ -16,8 +16,8 @@ import { SITE_CONTENT_REGISTRY_VERSION } from "@/lib/site-content/site-content-r
 
 const SHA = "a".repeat(40);
 
-// Valid CLI plans use today's source population. The historical baseline and
-// applied epoch-zero SQL remain unchanged and keep their separate freeze tests.
+// Valid CLI plans derive their own current source manifest independently of
+// the checked-in expected catalogue. Applied epoch-zero SQL has separate freeze tests.
 const manifestDirectory = mkdtempSync(join(tmpdir(), "site-content-current-manifest-"));
 const currentManifestPath = join(manifestDirectory, "manifest.json");
 beforeAll(() => {
