@@ -112,6 +112,14 @@
       "pattern": "never (?:enable|arm) auto-merge (?:on one|on a migration|for migration PRs)",
       "allowedContext": "no longer|retired|superseded|historical|previously|reversed|formerly",
       "decision": "docs/decisions/2026-10-18-migration-prs-may-auto-merge.md"
+    },
+    {
+      "id": "cursor-cloud-agent-setup",
+      "retired": "2026-10-18",
+      "summary": "Cursor cloud agents are prohibited; the Cursor Cloud setup guidance (Cloud Agent Secrets, live-vs-demo setup) is retired.",
+      "pattern": "(?:add|set) (?:it )?as a Cloud Agent Secret|Cursor Cloud specific instructions",
+      "allowedContext": "no longer|retired|superseded|historical|previously|prohibited|formerly",
+      "decision": "docs/decisions/2026-10-18-cursor-cloud-agents-prohibited.md"
     }
   ]
 }

@@ -3069,6 +3069,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-18-clinical-sign-off-owner-only.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/agents/codex-cloud-legacy-bootstrap.md",
         "section": "agents",
         "catalogued": true
@@ -3820,6 +3825,11 @@
       },
       {
         "path": "docs/decisions/2026-10-17-agent-recorded-therapy-and-did-sign-offs-reset.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-18-cursor-cloud-agents-prohibited.md",
         "section": "decisions",
         "catalogued": true
       },

@@ -222,9 +222,9 @@ Remove `read_only=true` from the MCP URL only when you intentionally need write
 access (for example `execute_sql` schema experiments). Prefer the Supabase CLI
 and committed migrations for durable schema changes.
 
-Cloud agents do not inherit desktop OAuth automatically. After merging this
-config, authenticate MCP in the environment where the cloud agent runs and start
-a fresh agent session.
+Cursor cloud agents are prohibited for this repository (see `AGENTS.md`). Other
+hosted agents do not inherit desktop OAuth; authenticate MCP where that agent
+runs and start a fresh session.
 
 Never put `SUPABASE_SERVICE_ROLE_KEY` or other secrets into MCP config. The
 hosted Supabase MCP server uses OAuth, not repo secrets.
@@ -245,10 +245,9 @@ give design ↔ code access (capture live UI, read/write frames, Code Connect).
 Enable the plugin / MCP server, complete browser OAuth once, then verify with a
 prompt such as: _"Call Figma whoami and report only handle and plan tier."_
 
-**Cursor Cloud Agents:** official Figma remote MCP is **not supported** there today
-(Cloud/Automations return Forbidden; OAuth from desktop does not carry over). Use
+**Cursor Cloud Agents** are prohibited for this repository. Use
 **Cursor Desktop** (or Codex with its Figma plugin) for Figma MCP. Repo
-`.cursor/mcp.json` still helps the IDE; it does not unlock Cloud Agents. Details:
+`.cursor/mcp.json` helps the IDE only. Details:
 `docs/agents-guide.md`, `docs/codex-cloud.md`.
 
 ## Documentation

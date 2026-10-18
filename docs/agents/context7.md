@@ -46,7 +46,7 @@ This documents the Cursor configuration, not universal client activation.
 For authorised account setup, obtain a key through the
 [Context7 dashboard](https://context7.com/dashboard) and check current terms and
 limits there. Supply it through a user/OS environment variable, Cursor MCP
-settings, or an authorised Cursor Cloud Agent Secret. `.env.local` alone does
+or settings (Cursor cloud agents are prohibited). `.env.local` alone does
 not expand MCP `${env:}`. Reload MCP servers after environment changes because
 the stdio process captures its environment at startup. Never commit, print or
 paste the key; debug presence without dumping environment values.
