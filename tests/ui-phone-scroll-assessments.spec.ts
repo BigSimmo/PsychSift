@@ -1,5 +1,6 @@
 import { writeFile } from "node:fs/promises";
 import { expect, test } from "playwright/test";
+import { clickWhenHydrated } from "./playwright-settlement";
 import {
   blockExternalRequests,
   dragScrollBy,
@@ -12,6 +13,34 @@ import {
 test.beforeEach(async ({ page }) => {
   await blockExternalRequests(page);
   await page.setViewportSize(phoneViewport);
+});
+
+// Read the fallback itself after removing the hook's measured inline reserve.
+// This catches a bad first-paint seed even when the warmed scroll test passes.
+test("assessment cold header reserve includes both the safe area and bar padding", async ({ page }) => {
+  await gotoPhoneSurface(page, "/teaching/assessments");
+  await expect(page.getByTestId("assess-doctor-hero")).toBeVisible();
+  const geometry = await page.evaluate(() => {
+    const root = document.documentElement;
+    const previous = root.style.getPropertyValue("--phone-overlay-chrome-h");
+    root.style.removeProperty("--phone-overlay-chrome-h");
+    const probe = document.createElement("div");
+    probe.style.cssText = "position:absolute;visibility:hidden;height:var(--phone-overlay-chrome-h)";
+    document.body.append(probe);
+    try {
+      return {
+        seed: probe.getBoundingClientRect().height,
+        stack: document.querySelector<HTMLElement>(".phone-sticky-header-stack")!.offsetHeight,
+      };
+    } finally {
+      probe.remove();
+      if (previous) root.style.setProperty("--phone-overlay-chrome-h", previous);
+    }
+  });
+  expect(
+    Math.abs(geometry.seed - geometry.stack),
+    "cold CSS clearance matches the revealed header",
+  ).toBeLessThanOrEqual(1);
 });
 
 for (const standalone of [false, true]) {
@@ -93,7 +122,7 @@ for (const standalone of [false, true]) {
       // reveal container), which a strict locator rejects at once. Wait for the single settled copy.
       await expect(page.getByTestId("assess-doctor-hero")).toHaveCount(1, { timeout: 15_000 });
       await expect(page.getByTestId("assess-doctor-hero")).toBeVisible();
-      await page.getByRole("button", { name: /^Request an EPA From/ }).click();
+      await clickWhenHydrated(page.getByRole("button", { name: /^Request an EPA From/ }));
       await expect(page.getByRole("dialog")).toBeVisible();
       await page.keyboard.press("Escape");
       await expect(page.getByRole("dialog")).not.toBeVisible();

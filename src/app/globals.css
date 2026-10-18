@@ -765,6 +765,15 @@
   color-scheme: light;
 }
 
+/* Collapse hosts keep the OS inset in a separate row, in addition to the bar's
+   0.5rem top padding. Seed their full height before the measured reserve lands;
+   max(inset, 0.5rem) under-reserved by 8px on a notched phone. */
+@media (max-width: 639px) {
+  :root:has(.phone-sticky-header-stack[data-phone-motion="overlay"]) {
+    --phone-overlay-chrome-h: calc(var(--safe-area-top) + 0.5rem + var(--shell-header-h));
+  }
+}
+
 .dark {
   /* Dark neutral ramp (inverted): black-polish canvas to near-white ink. */
   --neutral-0: #060708;
