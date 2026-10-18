@@ -48,6 +48,7 @@ build_app() {
         --tag "$REGISTRY/$REPO_OWNER/psychsift-app:$BUILD_TAG" \
         --tag "$REGISTRY/$REPO_OWNER/psychsift-app:latest" \
         --build-arg "ALLOW_LOW_RAM_BUILD=1" \
+        --build-arg "NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL:?NEXT_PUBLIC_SUPABASE_URL must be set for the app image build}" \
         $OUTPUT_FLAG \
         .
     echo "✅ App tier build complete"
