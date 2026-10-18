@@ -245,3 +245,35 @@ limited to two outbox tables, three indexes, two triggers, four functions and ni
 constraints matching the unchanged source SQL. No actionable finding in this
 bounded recheck. The review reuses the controller's GitHub-log observation and
 test result; fresh hosted regeneration/parity is still required.
+
+### Strict parity exposed a trigger-helper ACL mismatch
+
+Final-head run
+[39114405197](https://github.com/BigSimmo/PsychSift/actions/runs/39114405197),
+migration job `117637216890`, proved the recovered manifest **matches a fresh
+pinned-image regeneration**. The subsequent strict chain/mirror check found one
+real divergence: `public.set_document_mutation_id()` has
+`[postgres=X/postgres, service_role=X/postgres]` in the mirror and
+`[postgres=X/postgres]` in the migration chain. Its function body/hash is equal;
+the difference is EXECUTE privileges.
+
+The mirror creates this helper before its blanket function grant, whereas the
+late queue-fence migration creates it after default function privileges have
+been revoked. The actual chain is already the more restrictive owner-only
+state. The correction adds an explicit revoke for this helper at the end of
+`schema.sql`, matching that chain without modifying any sealed migration or
+hash entry, widening a grant, or adding a drift exception. The corrected schema
+hash is `5118a8dcb45d715d0886d639b13a7f28e316adc0269a4aef77e8e39bbbcac112`.
+The expected manifest will be regenerated genuinely again; its existing hash is
+not edited by hand to match this new schema.
+
+A disposable PGlite smoke executed the actual sealed queue-fence migration under
+the global and schema-specific default privilege revokes, reproduced the mirror's
+extra service-role grant, then applied the exact new mirror revoke. All browser
+roles and service role lack direct helper EXECUTE, while a service-role UPDATE
+still fires the trigger and generates a fresh mutation UUID. This is scoped SQL
+permission/trigger proof, not a replacement for the pinned Supabase replay.
+Migration-role, function-grant and owner-scope checks passed, as did **45 existing
+freshness/immutability/parity contract tests in three files**. The first scratch
+fixture omitted the global default revoke and failed its setup assertion; the
+corrected setup matches the chain's actual global plus per-schema defaults.

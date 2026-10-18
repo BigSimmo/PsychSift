@@ -35132,3 +35132,8 @@ end $$;
 alter function public.roster_offer_alert_work(text,uuid,uuid,uuid[],uuid,text) owner to postgres;
 revoke all on function public.roster_offer_alert_work(text,uuid,uuid,uuid[],uuid,text) from public,anon,authenticated;
 grant execute on function public.roster_offer_alert_work(text,uuid,uuid,uuid[],uuid,text) to service_role;
+
+-- The late queue-fence migration creates this trigger helper after default
+-- function grants have been revoked. Match its owner-only ACL: trigger firing
+-- does not require the updating role to have direct EXECUTE on the helper.
+revoke all on function public.set_document_mutation_id() from public, anon, authenticated, service_role;
