@@ -22,6 +22,12 @@ All 317 previous entries are unchanged; the manifest now contains 318 seals. The
 immutability guard and complete 10-case owning test file passed. This records draft bytes
 locally and applies no SQL. The two initial migration-seal test failures are resolved.
 
+Later on 2026-10-18 the same bytes (`f0667fed…`) were renamed to
+`20261018082910_audit_durable_recovery_pairing_and_cache_fences.sql`, so that the migration sorts
+after main's newest migration, and resealed with `npm run migrations:reseal`. The owner approved
+this at 16:17 AWST, relayed by Grok Bot, and confirmed option (b) at 16:33 AWST: reseal only the
+reviewed bytes, reverting the unreviewed post-seal edit in `a62fc95418`. No SQL was applied.
+
 Three disposable, task-generated webpack caches were removed to recover approximately 6.6 GiB.
 All 3,600 retained non-cache production build files have identical before/after hashes. Source,
 dependencies, test evidence and the production artifact remain preserved. The one exact-image pull retry still failed after 208.4 seconds during Docker VFS layer

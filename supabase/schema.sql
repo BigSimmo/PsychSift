@@ -34922,7 +34922,7 @@ alter function public.claim_ingestion_jobs(text, integer, integer) owner to post
 revoke all on function public.claim_ingestion_jobs(text, integer, integer) from public, anon, authenticated;
 grant execute on function public.claim_ingestion_jobs(text, integer, integer) to service_role;
 
--- Projection: 20261017221129_audit_durable_recovery_pairing_and_cache_fences.sql
+-- Projection: 20261018082910_audit_durable_recovery_pairing_and_cache_fences.sql
 -- DRAFT. Merge only inside the owner's approved database-change window.
 set local lock_timeout = '5s';
 set local statement_timeout = '30s';

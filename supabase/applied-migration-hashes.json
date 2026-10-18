@@ -1,7 +1,7 @@
 {
   "note": "sha256 of every migration this repository has shipped, with newlines normalised. An entry whose hash changes means an applied migration was edited, which cannot reach the live database. See scripts/check-migration-immutability.mjs.",
   "generator": "scripts/check-migration-immutability.mjs",
-  "sealed_at": "2026-10-18T06:29:14.181Z",
+  "sealed_at": "2026-10-18T08:41:00.862Z",
   "versions": {
     "20260527000000_bulk_ingestion.sql": "813e8e314064a6dcbaaa55e2765a8ce901d5783b304b4a7af7bb7417a07daf7c",
     "20260527001000_documents_policy_cleanup.sql": "559c26f3172bf75e545a41adef75538b2bf648ea7d53c8eb3d3ea7c244c65a48",
@@ -324,6 +324,6 @@
     "20261017175448_scope_ingestion_claim_atomically.sql": "af192755dd24aa8a6e6146013e1b7abd1b2954a53410c301dedfcb7576c88eba",
     "20261018053558_recheck_ingestion_claim_scope_after_job_lock.sql": "a427b8aacce70579ad26bd701adb65912a345ab78d54e5b34386bbd05d261b6c",
     "20261018062736_recheck_legacy_ingestion_claim_document_after_job_lock.sql": "39f08a91ed4c15a8aff0dff80341242604101886de873c5cadafa65e9b92e3c8",
-    "20261017221129_audit_durable_recovery_pairing_and_cache_fences.sql": "f0667fed9f0294c1f5ba40252d11ee66e6de07be340a1ec789e0503a1192f2ac"
+    "20261018082910_audit_durable_recovery_pairing_and_cache_fences.sql": "f0667fed9f0294c1f5ba40252d11ee66e6de07be340a1ec789e0503a1192f2ac"
   }
 }

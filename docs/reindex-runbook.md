@@ -74,7 +74,7 @@ The preflight response also includes active job counts and job metadata for oper
 ## Recovery transaction and draft rollout
 
 The recovery application now requires `recover_ingestion_job(uuid,text,jsonb)` from
-`20261017221129_audit_durable_recovery_pairing_and_cache_fences.sql`. This migration is a
+`20261018082910_audit_durable_recovery_pairing_and_cache_fences.sql`. This migration is a
 draft: merge only inside the owner's specifically approved database-change window.
 Merging database migrations to main applies them to production automatically.
 
