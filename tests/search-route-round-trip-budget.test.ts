@@ -114,6 +114,9 @@ class RouteQuery implements PromiseLike<{ data: unknown[]; error: null }> {
   neq() {
     return this;
   }
+  range() {
+    return this;
+  }
   order() {
     return this;
   }
@@ -238,12 +241,16 @@ describe("Supabase round-trip budget on the /api/search route", () => {
       counter.countOf("match_document_chunks_text_v2") + counter.countOf("match_document_table_facts_text_v2");
     expect(retrievalRpcCount, "the route must issue retrieval RPCs, or the budget proves nothing").toBeGreaterThan(0);
 
-    // 15 total round trips:
+    // PS-025 (2026-10-18): 15 -> 19 replaces two unstamped metadata RPCs
+    // with two batched sets of labels, stamped summaries and admitted parents.
+    // 19 total round trips:
     //   1  consume_api_subject_rate_limit (route rate limiting)
     //   1  rag_aliases (query classification)
     //   3  match_document_chunks_text_v2 (primary probe + 2 lexical query variants)
     //   3  match_document_table_facts_text_v2 (primary probe + 2 lexical query variants)
-    //   2  get_related_document_metadata_v2 (metadata enrichment across 2 unique document_ids)
+    //   2  document_labels (batched metadata enrichment)
+    //   2  document_summaries (generation-stamped summaries)
+    //   2  documents (indexed owner/public admission and committed generation)
     //   1  document_index_quality (metadata enrichment index-status query)
     //   2  document_images (visual enrichment; a later hydration of the same pages reuses the
     //      rows an earlier read in the same search returned, 3 -> 2 on 2026-09-26)
@@ -253,17 +260,19 @@ describe("Supabase round-trip budget on the /api/search route", () => {
     // Total pinned so a reviewer does not have to eyeball every PR: an added
     // change (in the preamble, retrieval core, enrichment, or telemetry write)
     // has to be deliberate. Update in the commit that moves it.
-    expect(counter.total(), `search route round trips changed — ${JSON.stringify(counter.breakdown())}`).toBe(15);
+    expect(counter.total(), `search route round trips changed — ${JSON.stringify(counter.breakdown())}`).toBe(19);
 
     // The shape matters as much as the total: a refactor that removed one probe
-    // and added an unrelated query would keep 15 while changing the traffic.
+    // and added an unrelated query would keep 19 while changing the traffic.
     // See the file header for why the two text-RPC surfaces below are ×3, not ×1.
     expect(counter.breakdown(), "search route round-trip shape changed").toEqual({
       "rpc:consume_api_subject_rate_limit": 1,
       "from:rag_aliases": 1,
       "rpc:match_document_chunks_text_v2": 3,
       "rpc:match_document_table_facts_text_v2": 3,
-      "rpc:get_related_document_metadata_v2": 2,
+      "from:document_labels": 2,
+      "from:document_summaries": 2,
+      "from:documents": 2,
       "from:document_index_quality": 1,
       "from:document_images": 2,
       "from:rag_retrieval_logs": 1,

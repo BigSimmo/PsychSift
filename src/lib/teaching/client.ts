@@ -1,4 +1,5 @@
 import { ApiClientError, parseApiErrorResponse } from "@/lib/api-client-error";
+import { resetSharedGets, sharedGet } from "@/lib/shared-get";
 
 /*
  * The browser side of Teaching's API. Every read is `cache: "no-store"` and
@@ -19,8 +20,15 @@ async function settle<T>(response: Response): Promise<T> {
   return (await response.json()) as T;
 }
 
+async function settleWrite<T>(response: Response): Promise<T> {
+  // A subsequent refresh must not join a GET started before this write.
+  // Existing subscribers retain their independent completion/cancellation.
+  if (response.ok) resetSharedGets();
+  return settle<T>(response);
+}
+
 export async function teachingGet<T>(url: string, signal?: AbortSignal): Promise<T> {
-  return settle<T>(await fetch(url, { cache: "no-store", signal }));
+  return settle<T>(await sharedGet(url, { cache: "no-store", signal }));
 }
 
 /** `keepalive` lets a delayed post (Organise's undo window) finish if the page closes first. */
@@ -29,7 +37,7 @@ export async function teachingPost<T>(
   body: Record<string, unknown>,
   options: { keepalive?: boolean } = {},
 ): Promise<T> {
-  return settle<T>(
+  return settleWrite<T>(
     await fetch(url, {
       method: "POST",
       cache: "no-store",
@@ -58,13 +66,13 @@ export async function teachingPostTimed<T>(
   });
   const header = response.headers.get("date");
   const parsed = header ? Date.parse(header) : Number.NaN;
-  const data = await settle<T>(response);
+  const data = await settleWrite<T>(response);
   return { data, serverTime: Number.isFinite(parsed) ? parsed : null };
 }
 
 /** A multipart upload (the term import's .xlsx); the browser sets the boundary header itself. */
 export async function teachingUpload<T>(url: string, form: FormData): Promise<T> {
-  return settle<T>(await fetch(url, { method: "POST", cache: "no-store", body: form }));
+  return settleWrite<T>(await fetch(url, { method: "POST", cache: "no-store", body: form }));
 }
 
 export function teachingServiceUrl(serviceId: string, query?: Record<string, string>): string {

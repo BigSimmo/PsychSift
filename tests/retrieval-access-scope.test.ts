@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { mockRagScopeRevision } from "./rag-cache-test-revision";
 
 const root = process.cwd();
 const optimizedRetrievalMigration = readFileSync(
@@ -26,6 +27,11 @@ function between(source: string, start: string, end: string): string {
   return source.slice(startIndex, endIndex);
 }
 
+afterEach(() => {
+  vi.doUnmock("@/lib/supabase/admin");
+  vi.resetModules();
+});
+
 describe("owner-plus-public retrieval contract", () => {
   it("adds a separate public-only v3 candidate contract without changing v2", () => {
     expect(governedV3Migration).toContain("match_document_chunks_text_v3");
@@ -41,7 +47,81 @@ describe("owner-plus-public retrieval contract", () => {
     const cache = readFileSync(join(root, "src/lib/rag/rag-cache.ts"), "utf8");
     expect(contracts).toContain("accessScope?: RetrievalAccessScope");
     expect(cache).toContain("retrievalAccessScopeKey(retrievalAccessScopeForArgs(args))");
-    expect(cache).toContain("owner_id.is.null");
+    expect(cache).toContain('rpc("rag_cache_scope_revision_v1"');
+    expect(cache).toContain("p_owner_id: accessScope.ownerId ?? null");
+    expect(cache).toContain("p_include_public: accessScope.includePublic");
+    const revisionSql = between(
+      canonicalSchema,
+      "create function public.rag_cache_scope_revision_v1(",
+      "-- HY05:",
+    ).replace(/\s+/g, " ");
+    expect(revisionSql).toContain("d.owner_id = p_owner_id");
+    expect(revisionSql).toContain("coalesce(p_include_public,false) and d.owner_id is null");
+    expect(revisionSql).toContain("d.id = any(p_document_ids)");
+    expect(revisionSql).toMatch(
+      /revoke all on function public\.rag_cache_scope_revision_v1\([^]*from public, anon, authenticated;/,
+    );
+    expect(revisionSql).toMatch(/grant execute on function public\.rag_cache_scope_revision_v1\([^]*to service_role;/);
+  });
+
+  it("binds fresh revision reads to exact owner/public and document scopes without foreign-owner fallback", async () => {
+    const documents = [
+      { id: "owned", owner_id: "owner-a", metadata: { indexed_at: "unchanged", document_status: "current" } },
+      { id: "public", owner_id: null, metadata: { indexed_at: "unchanged", document_status: "current" } },
+      { id: "foreign", owner_id: "owner-b", metadata: { indexed_at: "unchanged", document_status: "current" } },
+    ];
+    const rpc = vi.fn(
+      async (
+        name: string,
+        params: { p_owner_id: string | null; p_include_public: boolean; p_document_ids: string[] | null },
+      ) => {
+        expect(name).toBe("rag_cache_scope_revision_v1");
+        const scoped = documents.filter(
+          (row) =>
+            ((params.p_owner_id !== null && row.owner_id === params.p_owner_id) ||
+              (row.owner_id === null && params.p_include_public)) &&
+            (!params.p_document_ids?.length || params.p_document_ids.includes(row.id)),
+        );
+        return { data: mockRagScopeRevision(scoped), error: null };
+      },
+    );
+    vi.doMock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({ rpc }) }));
+    const { cacheIndexingVersion } = await import("../src/lib/rag/rag-cache");
+    const version = async (
+      accessScope: { ownerId?: string; includePublic: boolean },
+      filters: { documentId?: string; documentIds?: string[] } = {},
+    ) => cacheIndexingVersion({ ownerId: accessScope.ownerId, accessScope, ...filters });
+    const publicOnly = await version({ includePublic: true });
+    expect(publicOnly).toContain(mockRagScopeRevision([documents[1]]));
+    const ownOnly = await version({ ownerId: "owner-a", includePublic: false });
+    expect(ownOnly).toContain(mockRagScopeRevision([documents[0]]));
+    const combined = await version(
+      { ownerId: "owner-a", includePublic: true },
+      { documentIds: ["public", "owned", "public"] },
+    );
+    expect(combined).toContain(mockRagScopeRevision(documents.slice(0, 2)));
+    expect(rpc).toHaveBeenLastCalledWith("rag_cache_scope_revision_v1", {
+      p_owner_id: "owner-a",
+      p_include_public: true,
+      p_document_ids: ["owned", "public"],
+    });
+    expect(await version({ ownerId: "owner-a", includePublic: true }, { documentId: "foreign" })).toContain(
+      mockRagScopeRevision([]),
+    );
+    expect(rpc).toHaveBeenLastCalledWith("rag_cache_scope_revision_v1", {
+      p_owner_id: "owner-a",
+      p_include_public: true,
+      p_document_ids: ["foreign"],
+    });
+    expect(await version({ includePublic: false })).toContain(mockRagScopeRevision([]));
+    documents[1]!.metadata.document_status = "outdated";
+    expect(await version({ includePublic: true })).not.toBe(publicOnly);
+    expect(await version({ ownerId: "owner-a", includePublic: false })).toBe(ownOnly);
+    const beforeMismatch = rpc.mock.calls.length;
+    expect(
+      await cacheIndexingVersion({ ownerId: "owner-a", accessScope: { ownerId: "owner-b", includePublic: true } }),
+    ).toContain("index-stamp-unavailable");
+    expect(rpc).toHaveBeenCalledTimes(beforeMismatch);
   });
 
   it("keeps answer cache namespaces distinct across public and owner-plus-public scopes", async () => {

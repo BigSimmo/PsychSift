@@ -4,6 +4,7 @@ import { Disclosure } from "@/components/ui/disclosure";
 import { SourceDesignationBadge, SourceStatusBadge } from "@/components/ui-primitives";
 import {
   isLaterAddedReference,
+  isNiceGuidelineCitation,
   splitSourceCitations,
   therapyNiceGuidelineMetadata,
   therapySourceMetadata,
@@ -55,9 +56,7 @@ export function TherapySourceProvenance({ therapy }: { therapy: Therapy }) {
           {citations.length ? (
             <ol className="m-0 list-none space-y-2 p-0">
               {citations.map((citation, index) => {
-                const isNiceCitation =
-                  citation.authority.toUpperCase().includes("NICE") ||
-                  citation.text.toLowerCase().includes("nice.org.uk");
+                const isNiceCitation = isNiceGuidelineCitation(citation);
                 const niceMetadata =
                   isNiceCitation && hasLaterAdded ? therapyNiceGuidelineMetadata(citation, therapy.reviewStatus) : null;
 

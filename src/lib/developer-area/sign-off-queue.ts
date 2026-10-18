@@ -11,7 +11,10 @@ import mhaTimeframesJson from "../../../data/mha-timeframes.json";
 import cpStandardsJson from "../../../data/chief-psychiatrist-standards.json";
 import formsCulturalNotesJson from "../../../data/forms-cultural-notes.json";
 import serviceRecordsReviewJson from "../../../data/service-records-review.json";
-import todayRuleSignOffsJson from "@/lib/admin/today-rule-sign-offs.json";
+import { ruleGate, TODAY_RULE_SIGN_OFFS, type RuleSignOff } from "@/lib/admin/rule-sign-off";
+import { FATIGUE_RULE_SET } from "@/lib/roster/fatigue-rules-source";
+import { CPD_CATEGORY_RULE_SET } from "@/lib/cme/category-rules-source";
+import { mhaTimerGate } from "@/lib/on-call/mha-timers";
 import { loadDifferentialSnapshot } from "@/lib/differential-fixtures";
 import { deriveGovernanceFromSnapshot } from "@/lib/differential-records";
 import {
@@ -780,21 +783,13 @@ function buildDomainSummary(input: {
 }
 
 function todayRulesDomain(): SignOffDomainSummary {
-  type RuleSignOffBlock = {
-    enabled?: boolean;
-    signedBy?: string | null;
-    signedAt?: string | null;
-    signedContentSha256?: string | null;
+  const raw = TODAY_RULE_SIGN_OFFS;
+  const gates = {
+    fatigue: ruleGate(raw.fatigue, FATIGUE_RULE_SET),
+    cpd: ruleGate(raw.cpd, CPD_CATEGORY_RULE_SET),
+    "mha-timer-switch": mhaTimerGate(),
   };
-  const raw = todayRuleSignOffsJson as {
-    fatigue?: RuleSignOffBlock;
-    cpd?: RuleSignOffBlock;
-    mhaTimerSwitch?: {
-      medicalDeviceRuling?: { confirmedOn?: string; record?: string };
-      signOff?: RuleSignOffBlock;
-    };
-  };
-  const items: { id: string; title: string; whatFor: string; block: RuleSignOffBlock | undefined; href: string }[] = [
+  const items: { id: keyof typeof gates; title: string; whatFor: string; block: RuleSignOff; href: string }[] = [
     {
       id: "fatigue",
       title: "Roster fatigue rules (WA AMA 2024 cl 15)",
@@ -824,13 +819,7 @@ function todayRulesDomain(): SignOffDomainSummary {
   let signableNow = 0;
   for (const item of items) {
     const signedBy = item.block?.signedBy?.trim();
-    if (
-      item.block?.enabled === true &&
-      signedBy &&
-      item.block.signedAt &&
-      isContentPin(item.block.signedContentSha256) &&
-      (item.id !== "mha-timer-switch" || raw.mhaTimerSwitch?.medicalDeviceRuling?.record === "local")
-    ) {
+    if (gates[item.id].on && signedBy && item.block.signedAt) {
       signedRows.push({
         domain: "today-rules",
         key: `today-rule:${item.id}`,

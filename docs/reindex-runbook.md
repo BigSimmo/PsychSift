@@ -71,6 +71,58 @@ The preflight response also includes active job counts and job metadata for oper
 - Do not use `--force-large-import` unless Supabase health is stable and you have intentionally chosen a larger import wave.
 - Do not re-index to fix "OCR corruption" or to add table/heading-aware chunking without new evidence. Both were measured negligible/neutral on 2026-07-08 (`noisy_unit_rate` is a saturated visual-coverage metric, not corruption; heading/table-aware chunking already exists and chunks are well-bounded). See `docs/chunking-ocr-reindex-lever-finding-2026-07-08.md`.
 
+## Recovery transaction and draft rollout
+
+The recovery application now requires `recover_ingestion_job(uuid,text,jsonb)` from
+`20261018082910_audit_durable_recovery_pairing_and_cache_fences.sql`. This migration is a
+draft: merge only inside the owner's specifically approved database-change window.
+Merging database migrations to main applies them to production automatically.
+
+Apply the SQL before running the new recovery application. An application ahead of SQL
+fails its RPC call before changing the document or queue. The old recovery application
+must not be used after rollout: it retains obsolete lock and destructive-reset semantics.
+Do not roll back to it as an operational workaround.
+
+Both `recover:ingestion` and the consolidated `reindex` pipeline use the shared RPC-only
+application helper. Recovery uses the same current document-authority lock and sorted node/Edge job locks as
+worker claims. It rechecks the observed owner, document status, job status, lease token,
+lease expiry and legacy timestamp while holding those locks through commit. Current leases
+are left alone. Expired final attempts and failed jobs that were never leased requeue
+without manufacturing a processing lease. All generations, pages, image references,
+artifact families, metadata and counts remain intact; the next worker claim creates a
+fresh write generation. Retained obsolete generations use the existing generation-cleanup
+procedure after successful indexing, not the recovery command.
+
+`managed_recovery_required` means immutable managed-generation evidence exists. Leave it
+held and use the specialist managed-ingestion recovery procedure; do not delete evidence or
+switch to `reset_document_index`. `authority_unavailable` also leaves everything intact.
+A changed snapshot is skipped. Re-read the preview after resolving the reason. A lost RPC
+response can be retried: either the whole transaction rolled back or its committed pending
+job is left to the worker. No partial document reset requires compensation.
+
+The same draft adds `cme_remove_evidence_v2(uuid,uuid,text)` so an application ahead of SQL
+refuses before mutation, while the corrected original RPC remains compatible with old callers.
+CME removal commits an owner/object-specific cleanup row with the
+privacy tombstone, backfills existing tombstones and preserves that row on retry, including
+completed cleanup. Storage/janitor replay is idempotent. Teaching supervision writes lock
+pairings before authorization; confirmations lock sorted pairings before sorted entries.
+An old supervisor's confirmation admitted before a reassignment commits remains historical;
+if reassignment obtains the pairing first, the former supervisor's confirmation refuses.
+`work_move_team_v1(uuid,uuid,uuid,uuid)` makes a new application ahead of SQL refuse
+before moving. Whole-team supervisor revocation is transactional with a team move; a failed revocation
+rolls the move back. Concurrent grants validate the current hospital under the team lock.
+
+The cache revision RPC hashes the entire exact owner/public/document scope, including every
+status and governance metadata. SQL first remains compatible with old cache clients; new
+clients before SQL fail cold. Each scope read costs a document scan/hash, so measure realistic
+corpus latency before approval. No retrieved text is returned by this RPC.
+
+Rollback requires a reviewed forward migration and compatible application version. Preserve
+cleanup obligations and completed Teaching history; do not edit applied migrations, reseal
+hashes or restore the obsolete recovery path. Isolated reduced PostgreSQL function probes
+and mocked application tests do not replace full Supabase migration replay, Storage/RLS,
+or hosted validation, which remain separate gates.
+
 ## Recommended recovery defaults
 
 ```env

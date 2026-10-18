@@ -39,13 +39,19 @@ export async function swapParties(
   return { requesterId: data.requester_id, counterpartyId: data.counterparty_id };
 }
 
-export async function openParties(client: RosterAdminClient, serviceId: string, openShiftId: string) {
+export async function openParties(
+  client: RosterAdminClient,
+  serviceId: string,
+  openShiftId: string,
+  failOnError = false,
+) {
   const { data, error } = await client
     .from("roster_open_shifts")
     .select("posted_by,claimed_by,assignment_id,starts_at,ends_at,min_grade,status")
     .eq("service_id", serviceId)
     .eq("id", openShiftId)
     .maybeSingle();
+  if (error && failOnError) throw new Error("Opening check unavailable");
   return error ? null : data;
 }
 

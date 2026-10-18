@@ -73,7 +73,13 @@ async function safeCount(label: string, countPromise: PromiseLike<CountResult>) 
 async function main() {
   const [
     { env, requireServerEnv },
-    { buildIngestionRecoveryPlan, INGESTION_RECOVERY_JOB_STATUSES, isFreshProcessingJob },
+    {
+      buildIngestionRecoveryPlan,
+      reconcileIngestionRecoveryPlan,
+      applyIngestionRecoveryActions,
+      INGESTION_RECOVERY_JOB_STATUSES,
+      isFreshProcessingJob,
+    },
     { hasIncompleteDocumentsWithoutOpenJobs, isReindexQueueClear },
     { createAdminClient },
     { assertSupabaseHealthy, probeSupabaseHealth },
@@ -147,7 +153,9 @@ async function main() {
           .from("ingestion_jobs")
           .select("id", { count: "exact", head: true })
           .eq("status", "processing")
-          .or(`locked_at.is.null,locked_at.lt.${staleCutoff}`),
+          .or(
+            `lease_expires_at.lte.${snapshotNow.toISOString()},and(lease_expires_at.is.null,or(locked_at.is.null,locked_at.lt.${staleCutoff}))`,
+          ),
       ),
       safeCount(
         "documents_queued",
@@ -226,11 +234,15 @@ async function main() {
     if (needsRecovery) {
       console.log(`\n[Step 3] Queue recovery (stale: ${staleJobs.count}, failed: ${failedJobs.count})...`);
 
-      const { data, error } = await supabase
-        .from("ingestion_jobs")
-        .select("id,document_id,status,locked_at,documents(status,page_count,chunk_count)")
-        .in("status", [...INGESTION_RECOVERY_JOB_STATUSES])
-        .order("created_at", { ascending: true });
+      const recoveryJobsQuery = () =>
+        supabase
+          .from("ingestion_jobs")
+          .select(
+            "id,document_id,status,locked_at,lease_token,lease_expires_at,documents(status,page_count,chunk_count,owner_id)",
+          )
+          .in("status", [...INGESTION_RECOVERY_JOB_STATUSES])
+          .order("created_at", { ascending: true });
+      const { data, error } = await recoveryJobsQuery();
 
       if (error) {
         console.error(`  Failed to load jobs for recovery: ${error.message}`);
@@ -238,12 +250,19 @@ async function main() {
         return;
       }
 
-      type RecoveryDocument = { status?: string | null; page_count?: number | null; chunk_count?: number | null };
+      type RecoveryDocument = {
+        status?: string | null;
+        page_count?: number | null;
+        chunk_count?: number | null;
+        owner_id?: string | null;
+      };
       type RawJobRow = {
         id: string;
         document_id: string;
         status: string | null;
         locked_at: string | null;
+        lease_token: string | null;
+        lease_expires_at: string | null;
         documents: RecoveryDocument | RecoveryDocument[] | null;
       };
       // Pass every queried job (pending/processing/failed) to the planner and let its
@@ -267,13 +286,11 @@ async function main() {
         .some((job) => isFreshProcessingJob(job, snapshotNow, staleAfterMinutes));
       const plan = buildIngestionRecoveryPlan({ jobs, staleAfterMinutes });
       const actions = plan.actions.slice(0, limit);
-      const resetDocumentIds = Array.from(
-        new Set(actions.filter((a) => a.action === "retry").map((a) => a.documentId)),
-      );
+      const resetDocumentIds = plan.resetDocumentIds;
       const supersedeCount = actions.filter((a) => a.action === "supersede").length;
       const retryCount = actions.filter((a) => a.action === "retry").length;
 
-      console.log(`  Documents to reset: ${resetDocumentIds.length}`);
+      console.log(`  Documents to reset: ${resetDocumentIds.length} (all artifacts preserved)`);
       console.log(`  Jobs to supersede : ${supersedeCount}`);
       console.log(`  Jobs to retry     : ${retryCount}`);
 
@@ -291,68 +308,23 @@ async function main() {
           console.log("  Recovery skipped. Re-checking queue before worker run.");
           skipWorkerRun = true;
         } else {
-          for (const documentId of resetDocumentIds) {
-            const { error: resetError } = await supabase.rpc("reset_document_index", {
-              p_document_id: documentId,
-            });
-            if (resetError) {
-              console.error(`  Failed to reset document index ${documentId}: ${resetError.message}`);
-              process.exitCode = 1;
-              return;
-            }
-            const { error: docError } = await supabase
-              .from("documents")
-              .update({ status: "queued", error_message: null, page_count: 0, chunk_count: 0, image_count: 0 })
-              .eq("id", documentId);
-            if (docError) {
-              console.error(`  Failed to reset document status ${documentId}: ${docError.message}`);
-              process.exitCode = 1;
-              return;
-            }
+          const { data: freshData, error: freshError } = await recoveryJobsQuery();
+          if (freshError) throw new Error(freshError.message);
+          const freshJobs = (freshData ?? []).map((job: RawJobRow) => ({
+            ...job,
+            documents: Array.isArray(job.documents) ? job.documents[0] : job.documents,
+          }));
+          const { applicable, skipped } = reconcileIngestionRecoveryPlan({
+            planned: actions,
+            jobs: freshJobs,
+            staleAfterMinutes,
+          });
+          const results = await applyIngestionRecoveryActions(supabase, applicable);
+          for (const { action, applied, reason } of results) {
+            if (!applied) console.log(`  Skipped ${action.action} job ${action.jobId}: ${reason}`);
           }
-
-          for (const action of actions) {
-            if (action.action === "supersede") {
-              const { error: supersedeError } = await supabase
-                .from("ingestion_jobs")
-                .update({
-                  status: "completed",
-                  stage: "superseded by successful index",
-                  progress: 100,
-                  error_message: null,
-                  locked_at: null,
-                  locked_by: null,
-                  completed_at: new Date().toISOString(),
-                })
-                .eq("id", action.jobId);
-              if (supersedeError) {
-                console.error(`  Failed to supersede job ${action.jobId}: ${supersedeError.message}`);
-                process.exitCode = 1;
-                return;
-              }
-              continue;
-            }
-
-            const { error: retryError } = await supabase
-              .from("ingestion_jobs")
-              .update({
-                status: "pending",
-                stage: "queued after recovery",
-                progress: 0,
-                attempt_count: 0,
-                error_message: null,
-                locked_at: null,
-                locked_by: null,
-                next_run_at: new Date().toISOString(),
-                completed_at: null,
-              })
-              .eq("id", action.jobId);
-            if (retryError) {
-              console.error(`  Failed to requeue job ${action.jobId}: ${retryError.message}`);
-              process.exitCode = 1;
-              return;
-            }
-          }
+          // Re-snapshot before launching another worker when authority moved or a managed hold refused.
+          if (skipped.length > 0 || results.some((result) => !result.applied)) skipWorkerRun = true;
 
           console.log("  Recovery applied.");
         }

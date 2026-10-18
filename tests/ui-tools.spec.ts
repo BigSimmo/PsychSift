@@ -3603,3 +3603,35 @@ test.describe("Responsive layout guards", () => {
     expect(appRequests).toEqual([]);
   });
 });
+
+test.describe("physiological calculator validation hold", () => {
+  for (const viewport of [
+    { name: "phone", width: 390, height: 844 },
+    { name: "desktop", width: 1440, height: 900 },
+  ]) {
+    test(`withholds unvalidated physiological outputs and preserves psychometric tools on ${viewport.name}`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(viewport);
+      await blockExternalRequests(page);
+      await gotoLauncher(page, "/calculators/search");
+
+      // The whole panel stays off the page until clinician verification, even
+      // though the retained component independently enforces its release hold.
+      await expect(page.getByTestId("clinical-math-panel")).toHaveCount(0);
+      await expect(page.getByTestId("clinical-math-panel-toggle")).toHaveCount(0);
+      await expect(page.getByTestId("clinical-math-release-hold")).toHaveCount(0);
+      await expect(page.getByTestId("clinical-math-renal-results")).toHaveCount(0);
+      await expect(page.getByTestId("clinical-math-qtc-results")).toHaveCount(0);
+      await expect(page.getByTestId("clinical-math-lithium-level")).toHaveCount(0);
+      await expect(page.getByTestId("clinical-math-lithium-results")).toHaveCount(0);
+      await expect(page.getByTestId("clinical-math-lithium-suggested-dose")).toHaveCount(0);
+
+      const psychometricList = page.getByTestId("calculator-result-list");
+      await psychometricList.scrollIntoViewIfNeeded();
+      await expect(psychometricList.getByRole("button", { name: /^Open PHQ-9/ })).toBeVisible();
+      await expect(psychometricList.getByRole("button")).toHaveCount(5);
+      await expectNoPageHorizontalOverflow(page);
+    });
+  }
+});

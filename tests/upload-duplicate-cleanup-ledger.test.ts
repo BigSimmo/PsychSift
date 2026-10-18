@@ -15,17 +15,27 @@ describe("duplicate upload cleanup ledger", () => {
 describe("superseded collision object cleanup", () => {
   it("releases the collided intended-path object only after this request's admission is durable", () => {
     const calls = [...uploadRoute.matchAll(/await releaseSupersededUpload\(/g)].map((match) => match.index ?? -1);
-    expect(calls).toHaveLength(2);
+    expect(calls).toHaveLength(3);
     for (const call of calls) {
       const durable = uploadRoute.lastIndexOf("durableAdmission = true;", call);
       expect(durable, "durable admission precedes the release").toBeGreaterThan(-1);
       expect(uploadRoute.slice(durable, call)).not.toContain("catch");
     }
     expect(uploadRoute).toContain("storageUpload.collisionRecovered ? intendedStoragePath : null");
-    for (const call of calls) {
+    for (const call of calls.slice(1)) {
       const callArgs = uploadRoute.slice(call, uploadRoute.indexOf("});", call));
       expect(callArgs).toContain("supersededPath: supersededStoragePath,");
       expect(callArgs).toContain("committedPath: admissionStoragePath,");
     }
+  });
+  it("retries cleanup on a durable replay before returning, using the committed row's path", () => {
+    const replay = uploadRoute.slice(
+      uploadRoute.indexOf('if (replay.outcome !== "not_found")'),
+      uploadRoute.indexOf("const { data: duplicate", uploadRoute.indexOf('if (replay.outcome !== "not_found")')),
+    );
+    expect(replay).toContain("supersededPath: storagePath");
+    expect(replay).toContain("committedPath: committedReplayPath");
+    expect(replay).toContain("const committedReplayPath = replay.document.storage_path");
+    expect(replay.indexOf("await releaseSupersededUpload")).toBeLessThan(replay.indexOf("return NextResponse.json"));
   });
 });
