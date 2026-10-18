@@ -2476,13 +2476,15 @@ export async function runWorkerMain() {
       contentFreeErrorDetails(error),
     );
     captureWorkerException(error, "fatal");
+    const failureDetails = contentFreeErrorDetails(error);
+    const failureCode = failureDetails.errorCode ?? "unclassified";
     if (env.WORKER_FAILURE_WEBHOOK_URL) {
       try {
         await fetch(env.WORKER_FAILURE_WEBHOOK_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            text: `CRITICAL: PsychSift worker ${abort ? "aborted" : "stopped unexpectedly"}. See privacy-filtered error tracking for diagnostics.`,
+            text: `CRITICAL: PsychSift worker ${abort ? "aborted" : "stopped unexpectedly"}. errorType=${failureDetails.errorType} errorCode=${failureCode}.`,
           }),
           // Bounded so a stalled endpoint cannot hold the exit, and with it Railway's restart.
           signal: AbortSignal.timeout(FAILURE_WEBHOOK_TIMEOUT_MS),
