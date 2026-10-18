@@ -8,7 +8,9 @@ Target project: PsychSift Production (`sjrfecxgysukkwxsowpy`)
 
 - **Merging migrations to main applies them to production automatically.** Merge
   approval is production-deploy approval: merge only inside the approved window,
-  never arm auto-merge for migration PRs, and do not promise a deferred deploy.
+  and do not promise a deferred deploy. Migration PRs may auto-merge once all
+  required checks pass, including Migration replay and the drift checks (owner
+  decision 2026-10-18).
 - **Never edit a migration already on main.** Correct it with a new migration
   carrying the newest timestamp, including duplicate stems or absent effects.
   Do not convert an applied migration into a no-op.

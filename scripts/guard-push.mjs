@@ -283,16 +283,16 @@ export function autoMergeVerdict(branch, prPayload, isForcePush = false, carries
   if (!prPayload) return { block: false, warn: false, reason: "no-open-pr" };
   if (prPayload.state && prPayload.state !== "OPEN") return { block: false, warn: false, reason: "pr-not-open" };
   if (prPayload.autoMergeRequest) {
-    // Merging to `main` applies migrations to the live clinical database automatically,
-    // within seconds, with no deploy step in between (AGENTS.md, "Supabase project safety").
-    // Auto-merge on such a PR therefore schedules an unattended production schema change,
-    // which is why AGENTS.md forbids it outright. That rule was documentation-only until
-    // this branch: nothing in the push path knew what a migration was.
-    if (carriesMigration) {
-      return { block: true, warn: false, reason: "auto-merge-armed-migration", number: prPayload.number };
-    }
     if (isForcePush) {
       return { block: true, warn: false, reason: "auto-merge-armed-force-push", number: prPayload.number };
+    }
+    // Merging to `main` applies migrations to the live clinical database within seconds.
+    // Migration PRs may auto-merge (owner decision 2026-10-18, AGENTS.md "Supabase project
+    // safety") because GitHub re-validates every required check, including Migration replay
+    // and the drift checks, against the new head before it merges; so a fast-forward push
+    // carrying a migration warns like any other.
+    if (carriesMigration) {
+      return { block: false, warn: true, reason: "auto-merge-armed-migration", number: prPayload.number };
     }
     return { block: false, warn: true, reason: "auto-merge-armed-fast-forward", number: prPayload.number };
   }
@@ -325,18 +325,17 @@ function autoMergeGuard(branches, forcePushBranches = new Set(), changedFiles = 
     const verdict = autoMergeVerdict(branch, payload, forcePushBranches.has(branch), migrations);
     if (verdict.block) {
       const message =
-        verdict.reason === "auto-merge-armed-migration"
-          ? `PR #${verdict.number} on ${branch} has auto-merge ARMED and this push carries a hosted migration.\n` +
-            `  Merging to main applies migrations to the LIVE clinical database automatically, within seconds.\n` +
-            `  Auto-merge on a migration PR therefore schedules an unattended production schema change.\n` +
-            `  Ask the user to disable auto-merge and merge it inside an approved window. No override.`
-          : `PR #${verdict.number} on ${branch} has auto-merge ARMED and this push force-updates the branch.\n` +
-            `  A force-push while armed can discard the commit GitHub already validated or is mid-evaluating.\n` +
-            `  Push a fast-forward commit instead, or wait for the user to change the auto-merge state. No override.`;
+        `PR #${verdict.number} on ${branch} has auto-merge ARMED and this push force-updates the branch.\n` +
+        `  A force-push while armed can discard the commit GitHub already validated or is mid-evaluating.\n` +
+        `  Push a fast-forward commit instead, or wait for the user to change the auto-merge state. No override.`;
       return { name: "auto-merge", ok: false, message };
     }
     if (verdict.warn) {
-      warnings.push(`PR #${verdict.number} on ${branch} has auto-merge ARMED — pushing anyway (fast-forward).`);
+      warnings.push(
+        verdict.reason === "auto-merge-armed-migration"
+          ? `PR #${verdict.number} on ${branch} has auto-merge ARMED and this push carries a hosted migration — pushing anyway (fast-forward); it merges only after Migration replay and the drift checks pass.`
+          : `PR #${verdict.number} on ${branch} has auto-merge ARMED — pushing anyway (fast-forward).`,
+      );
     }
   }
   if (warnings.length > 0) {
