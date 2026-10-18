@@ -13232,6 +13232,14 @@
         "checks": "Provider-backed GitHub PR inventory via MCP (400 PRs #264-#674, all merged=false); local read-only git: rewritten-main-aware cherry-pick + two-dot tree + branch-only-file novelty sweep vs origin/main e75fad90; adversarial re-check. Remote `git push --delete` attempted (provider-backed write) and DENIED with HTTP 403. No OpenAI/Supabase/live-eval checks."
       },
       {
+        "date": "2026-10-18",
+        "ref": "fix/merged-pr-review-20261018",
+        "head": "5acc2553e1df16c57bf7b47dd2ccc0a29575284c",
+        "scope": "Bounded correction review of full-suite fixture and metadata-budget findings",
+        "outcome": "Two independent reviewers accepted the corrections; no remaining actionable source finding. Three draft database assertions remain blocked; no clinical or production acceptance.",
+        "checks": "Fresh lint/typecheck and production build passed; Teaching/current-manifest scope 2169 passed in77files; corrected budget scope10passed. Prior full run32330passed24failed2skipped;21nonDBfailures addressed by focused evidence, no green full rerun claimed."
+      },
+      {
         "date": "2026-08-19",
         "ref": "gemini/safe-workflow-guards-and-motion-contracts",
         "head": "5ad1f0d687bb4999c25ae96194f467c542569fac",
