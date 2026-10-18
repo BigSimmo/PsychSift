@@ -258,7 +258,55 @@ jobs:
               }
             }
 
+            // Bot-authored commits: read each bot commit's own files so the policy can block a bot
+            // change to Supabase, backend infra SQL or clinical paths. Unreadable data fails closed.
+            const { isBotAuthor } = await import(moduleUrl);
+            let commits;
+            try {
+              const prCommits = await github.paginate(github.rest.pulls.listCommits, {
+                ...repo,
+                pull_number: pr.number,
+                per_page: 100,
+              });
+              // pulls.listCommits returns at most 250 commits; fail closed rather than skip any.
+              if (prCommits.length >= 250 || prCommits.length !== latestPr.commits) {
+                core.setFailed(
+                  `PR commit list is incomplete (${prCommits.length} of ${latestPr.commits}); bot-authored changes cannot be verified.`,
+                );
+                return;
+              }
+              commits = [];
+              for (const item of prCommits) {
+                const author = { login: item.author?.login ?? "", email: item.commit?.author?.email ?? "" };
+                if (!isBotAuthor(author)) continue;
+                let files;
+                try {
+                  // getCommit returns at most 300 files per page; paginate (GitHub caps at 3000)
+                  // and fail closed if the cap may have been reached.
+                  const pages = await github.paginate(
+                    github.rest.repos.getCommit,
+                    { ...repo, ref: item.sha, per_page: 100 },
+                    (response) => response.data.files ?? [],
+                  );
+                  const commitFiles = pages.flat();
+                  if (commitFiles.length >= 3000) throw new Error("file list may be truncated at 3000");
+                  files = commitFiles.flatMap((file) =>
+                    [file.filename, file.previous_filename].filter(Boolean),
+                  );
+                } catch (error) {
+                  core.warning(`Unable to read files of bot commit ${item.sha}: ${error instanceof Error ? error.message : String(error)}.`);
+                }
+                commits.push({ sha: item.sha, author, files });
+              }
+            } catch (error) {
+              core.setFailed(
+                `Unable to list PR commits: ${error instanceof Error ? error.message : String(error)}. Bot-authored changes cannot be verified.`,
+              );
+              return;
+            }
+
             const result = evaluatePullRequestPolicy({
+              commits,
               title: latestPr.title,
               body: latestPr.body || "",
               headRef: latestPr.head.ref,

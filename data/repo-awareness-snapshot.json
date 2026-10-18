@@ -3529,6 +3529,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-18-bot-authored-sensitive-commits-blocked.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/superpowers/plans/2026-08-21-rag-repository-content-sync.md",
         "section": "superpowers",
         "catalogued": true

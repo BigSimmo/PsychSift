@@ -656,7 +656,7 @@ function renderMarkdown(report) {
       "",
       "Re-read the document against the files that changed in its area, then set its pin in",
       "docs/organisation/pins.json to the commit on main you read it against (the weekly report prints one).",
-      "Never a commit only on a PR branch: PRs are squash-merged.",
+      "Never a commit only on a PR branch: it is not on main until the PR merges (older PRs were squash-merged).",
       "",
     );
     lines.push(
