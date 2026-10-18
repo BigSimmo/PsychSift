@@ -221,32 +221,31 @@ describe("gate receipts — outcome-affecting environment (Codex review, PR #221
 });
 
 describe("gate receipts — coverage-enabling argument forms (Codex review, PR #2216)", () => {
-  const memoisable = (argumentList: string[]) => {
-    const source = readFileSync("scripts/run-vitest.mjs", "utf8");
-    const pattern = /const NON_MEMOISABLE_ARGUMENT = (\/.*\/);/.exec(source)?.[1];
-    expect(pattern).toBeTruthy();
-    const rx = new RegExp(pattern!.slice(1, pattern!.lastIndexOf("/")));
-    return !argumentList.some((argument) => argument === "-u" || rx.test(argument));
+  // Exercise the runner's real decision rather than scraping its source text, so a
+  // reformat of scripts/run-vitest.mjs cannot silently blind these assertions.
+  const memoisable = async (argumentList: string[]) => {
+    const { vitestRunIsMemoisable } = await import("../scripts/run-vitest.mjs");
+    return vitestRunIsMemoisable(argumentList) as boolean;
   };
 
-  it("refuses every accepted coverage form, not just the bare flag", () => {
+  it("refuses every accepted coverage form, not just the bare flag", async () => {
     // Vitest 4.1.10 documents `--coverage.enabled`; an exact-match list memoised it and
     // would then skip a later run, leaving `coverage/` stale for the gates that read it.
     for (const form of ["--coverage", "--coverage.enabled", "--coverage=true", "--coverage.provider=v8"]) {
-      expect(memoisable(["run", form]), form).toBe(false);
+      expect(await memoisable(["run", form]), form).toBe(false);
     }
   });
 
-  it("refuses watch, snapshot-update and UI runs in every form", () => {
+  it("refuses watch, snapshot-update and UI runs in every form", async () => {
     for (const form of ["--watch", "--watch=true", "--update", "-u", "--ui"]) {
-      expect(memoisable(["run", form]), form).toBe(false);
+      expect(await memoisable(["run", form]), form).toBe(false);
     }
   });
 
-  it("still memoises ordinary runs", () => {
-    expect(memoisable(["run"])).toBe(true);
-    expect(memoisable(["run", "tests/x.test.ts", "--reporter=dot"])).toBe(true);
-    expect(memoisable(["run", "--no-coverage"])).toBe(true);
+  it("still memoises ordinary runs", async () => {
+    expect(await memoisable(["run"])).toBe(true);
+    expect(await memoisable(["run", "tests/x.test.ts", "--reporter=dot"])).toBe(true);
+    expect(await memoisable(["run", "--no-coverage"])).toBe(true);
   });
 });
 
