@@ -35,6 +35,7 @@ import { CalculatorsSearchPage } from "@/components/calculators/search-page";
 import { deriveCalculator, type AnswerMap } from "@/components/calculators/calculator-ui";
 import { SharedHomeEmptyState } from "@/components/clinical-dashboard/answer-status";
 import { SearchCommandProvider } from "@/components/clinical-dashboard/search-command-context";
+import { MasterSearchHeader } from "@/components/clinical-dashboard/master-search-header";
 import { smartSearchExpansions } from "@/lib/smart-search-intent";
 
 // Cross-mode "also matches" panel is an AuthProvider-backed component of its own;
@@ -440,10 +441,26 @@ describe("calculator results surface", () => {
       const [query, setQuery] = useState("");
       return (
         <SearchCommandProvider value={{ query, modeId: "calculators", clearQuery: () => setQuery("") }}>
-          <input
-            aria-label="Shared calculator query"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
+          <MasterSearchHeader
+            demoMode={false}
+            documents={[]}
+            query={query}
+            searchMode="calculators"
+            loading={false}
+            selectedDocumentIds={[]}
+            queryMode="auto"
+            scopeFilters={{}}
+            realDataReady
+            queryModeOptions={[{ value: "auto", label: "Auto" }]}
+            onQueryChange={setQuery}
+            onSearchModeChange={() => undefined}
+            onAsk={() => undefined}
+            onClearQuery={() => setQuery("")}
+            onClearScope={() => undefined}
+            onQueryModeChange={() => undefined}
+            onScopeFiltersChange={() => undefined}
+            onToggleScope={() => undefined}
+            searchComposerVisible
           />
           <CalculatorsSearchPage />
         </SearchCommandProvider>
@@ -452,7 +469,7 @@ describe("calculator results surface", () => {
 
     try {
       render(<SharedQueryCalculator />);
-      const input = screen.getByRole("textbox", { name: "Shared calculator query" });
+      const input = screen.getAllByTestId("global-search-input")[0];
       await user.type(input, "PHQ-9");
       const results = screen.getByTestId("calculator-result-list");
       expect(within(results).getAllByRole("listitem")).toHaveLength(1);
