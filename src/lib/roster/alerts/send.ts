@@ -78,6 +78,31 @@ export async function pushCodeToOwnerDevice(
   return pushOne(client, row, code, ttlSeconds);
 }
 
+/** A device receipt distinguishes permanent removal from a transient provider failure. */
+export async function pushRosterOfferDevice(
+  client: RosterAdminClient,
+  row: PushRow,
+  ttlSeconds: number,
+): Promise<"sent" | "skipped" | "retry"> {
+  if (!webPushConfigured()) return "retry";
+  webpush.setVapidDetails(env.WEB_PUSH_SUBJECT!, env.WEB_PUSH_PUBLIC_KEY!, env.WEB_PUSH_PRIVATE_KEY!);
+  try {
+    await webpush.sendNotification(
+      { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } },
+      JSON.stringify({ t: "offer" }),
+      { TTL: ttlSeconds, timeout: 10_000 },
+    );
+    return "sent";
+  } catch (error) {
+    const status = (error as { statusCode?: number })?.statusCode;
+    if (status === 404 || status === 410) {
+      await removeGoneSubscription(client, row);
+      return "skipped";
+    }
+    return "retry";
+  }
+}
+
 async function pushOne(client: RosterAdminClient, row: PushRow, code: string, ttlSeconds: number): Promise<boolean> {
   try {
     await webpush.sendNotification(
