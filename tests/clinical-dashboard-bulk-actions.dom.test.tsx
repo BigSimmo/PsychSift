@@ -8,7 +8,7 @@ function fixture(count: number, failSecond = false) {
   const options = {
     selectedDocumentIds: Array.from({ length: count }, (_, i) => `doc-${i}`),
     authorizationHeader: {},
-    isAuthEpochCurrent: () => true,
+    isAuthEpochCurrent: (epoch: number): boolean => epoch > 0,
     markSessionExpired: vi.fn(),
     refresh: vi.fn(async () => {}),
     setIndexingActive: vi.fn(),
@@ -95,5 +95,44 @@ describe("active dashboard bulk reindex hook", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("does not resend a rate-limited batch after the account changes during the wait", async () => {
+    vi.useFakeTimers();
+    try {
+      const { options } = fixture(23);
+      let currentEpoch = 1;
+      options.isAuthEpochCurrent = (epoch: number) => epoch === currentEpoch;
+      options.authBoundFetch.mockImplementationOnce(async () => ({
+        requestEpoch: 1,
+        response: Response.json({ error: "Too many" }, { status: 429, headers: { "Retry-After": "2" } }),
+      }));
+      const { result } = renderHook(() => useDashboardBulkActions(options));
+      const run = act(() => result.current.bulkReindexSelected("full"));
+      await act(() => vi.advanceTimersByTimeAsync(1_000));
+      currentEpoch = 2;
+      await act(() => vi.advanceTimersByTimeAsync(1_000));
+      await run;
+      expect(options.authBoundFetch).toHaveBeenCalledTimes(1);
+      expect(options.refresh).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("stops at the first batch sent under a different account and does not refresh for it", async () => {
+    const { options, batches } = fixture(23);
+    let currentEpoch = 1;
+    options.isAuthEpochCurrent = (epoch: number) => epoch === currentEpoch;
+    const original = options.authBoundFetch.getMockImplementation()!;
+    options.authBoundFetch.mockImplementationOnce(original).mockImplementationOnce(async (url, init) => {
+      const sent = await original(url, init);
+      currentEpoch = 2;
+      return { ...sent, requestEpoch: 2 };
+    });
+    const { result } = renderHook(() => useDashboardBulkActions(options));
+    await act(() => result.current.bulkReindexSelected("full"));
+    expect(batches).toHaveLength(2);
+    expect(options.refresh).not.toHaveBeenCalled();
   });
 });
