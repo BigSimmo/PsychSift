@@ -7461,6 +7461,14 @@
         "checks": "merge origin/main and/or conflict re-check only; no provider-backed checks run"
       },
       {
+        "date": "2026-10-18",
+        "ref": "fix/remaining-review-reliability-20261018",
+        "head": "11a29e1d3183fe6a129297cefd196736bc69b324",
+        "scope": "Independent recheck of concurrent bot corrections in PDF and durable alerts",
+        "outcome": "Accepted: restore complete crossing PDF instructions and per-device eligibility while retaining paged draining. No new material defect in bounded read-only PDF and alert correction reviews. Queue draft single ADD preserves fresh-schema UUID/default/trigger result without UPDATE side effects.",
+        "checks": "Existing tests reproduced two PDF and two roster regressions before correction. Corrected Python60passed; focused TS35passed4files including26-device page regression; fresh full lint and typecheck passed. Reviews read-only; no clinical acceptance or providers."
+      },
+      {
         "date": "2026-07-28",
         "ref": "claude/branch-review-ledger-fixes-42575f",
         "head": "11a4ed746be7a83b144876f7a16948cad280df25",

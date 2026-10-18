@@ -199,3 +199,10 @@ markers and a file checksum; it contains no row data and still exits nonzero.
 This provides a supported GitHub-log recovery path while the execution
 environment blocks the artifact download host. No expected catalogue is edited
 by hand.
+
+The complete CI workflow contract scope passed **765 tests in 36 files**. An
+independent read-only reviewer verified all 321 prior entries, the three new
+file hashes, failure preservation and the absence of application rows/credentials
+in the scratch-schema snapshot. No actionable finding in this bounded review;
+recovery/parity remain pending until genuinely observed. Requested reviewer model
+settings are not independently verified routing telemetry.
