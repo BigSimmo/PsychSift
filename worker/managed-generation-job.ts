@@ -11,7 +11,9 @@ import { assertEmbeddingDim } from "../src/lib/embedding-dimensions";
 import { invalidateRagCachesForDocumentMutation } from "../src/lib/rag/rag";
 import type { ExtractedDocument } from "../src/lib/types";
 import {
+  CONTROL_PLANE_RPCS,
   controlPlaneAbortSignal,
+  dataPlaneAbortSignal,
   runIngestionPreparedWork,
   serializeDocumentPageRowsForCommit,
   type buildDocumentPageRowsForPersistence,
@@ -194,7 +196,13 @@ export async function runManagedGenerationJob(
       packet: terminalPacket,
       stopHeartbeat: () => clearInterval(heartbeat),
       rpc: (name, payload) =>
-        ingestionRpcClient.rpc(name, payload).abortSignal(controlPlaneAbortSignal(attempt.signal)),
+        ingestionRpcClient
+          .rpc(name, payload)
+          .abortSignal(
+            CONTROL_PLANE_RPCS.has(name)
+              ? controlPlaneAbortSignal(attempt.signal)
+              : dataPlaneAbortSignal(attempt.signal),
+          ),
     });
     invalidateRagCachesForDocumentMutation(job.documents.owner_id ?? "anonymous", {
       affectsPublicCorpus: !job.documents.owner_id,
@@ -294,7 +302,13 @@ export async function runManagedGenerationJob(
           }),
           stopHeartbeat: () => clearInterval(heartbeat),
           rpc: (name, payload) =>
-            ingestionRpcClient.rpc(name, payload).abortSignal(controlPlaneAbortSignal(attempt.signal)),
+            ingestionRpcClient
+              .rpc(name, payload)
+              .abortSignal(
+                CONTROL_PLANE_RPCS.has(name)
+                  ? controlPlaneAbortSignal(attempt.signal)
+                  : dataPlaneAbortSignal(attempt.signal),
+              ),
         });
         return;
       }
@@ -316,7 +330,13 @@ export async function runManagedGenerationJob(
           packet: evaluated.packet,
           stopHeartbeat: () => clearInterval(heartbeat),
           rpc: (name, payload) =>
-            ingestionRpcClient.rpc(name, payload).abortSignal(controlPlaneAbortSignal(attempt.signal)),
+            ingestionRpcClient
+              .rpc(name, payload)
+              .abortSignal(
+                CONTROL_PLANE_RPCS.has(name)
+                  ? controlPlaneAbortSignal(attempt.signal)
+                  : dataPlaneAbortSignal(attempt.signal),
+              ),
         });
         invalidateRagCachesForDocumentMutation(job.documents.owner_id ?? "anonymous", {
           affectsPublicCorpus: !job.documents.owner_id,

@@ -268,6 +268,14 @@ the client publishable key (build-time, app bundle only) or
   resolves both from the venv/PATH.
 - Automated pre-deploy migration gate (see §0.1): `DEPLOY_MIGRATION_GATE=enforce` (blocks deploy if migrations are pending; default `report` logs status without blocking; emergency bypass `off`; poll settings: `DEPLOY_MIGRATION_GATE_POLL_S=20`, `DEPLOY_MIGRATION_GATE_MAX_WAIT_S=600`).
 
+Database-operation deadlines are resolved in `worker/behavior.ts`. Control RPCs default to
+30 seconds (`WORKER_CONTROL_PLANE_TIMEOUT_MS`); data writes, including image persistence
+and managed terminal completion, default to 240 seconds (`WORKER_DATA_PLANE_TIMEOUT_MS`).
+Without an explicit `WORKER_SUPABASE_TIMEOUT_MS`, the shared transport cap covers both
+configured budgets (at least 240 seconds). An explicit transport override remains a hard
+cap and can shorten either operation budget. Shutdown/attempt abort signals still apply.
+These database deadlines are separate from the native extraction limits below.
+
 ### Shadow extraction mode (packet B4 — docling, default OFF)
 
 `WORKER_DOCUMENT_EXTRACTOR_MODE`, `WORKER_SHADOW_EXTRACTION_COHORT_PERCENT` and
@@ -680,3 +688,26 @@ A scoped worker requires the scope migration; a missing overload fails closed
 rather than falling back to an unfiltered claim. The migration changes the live
 database when merged to `main`: merge only inside the owner's specifically
 approved database-change window. No live database change is authorized by this PR.
+
+### Draft roster-offer retry consumer
+
+The follow-up for PS-008 adds a worker-owned, one-minute retry consumer for the
+service-role-only roster offer outbox. It is a database proposal: merge only after
+specific owner approval for the outbox migration and inside the approved window.
+The original milestone/mutation proposals retain their separate merge gates.
+
+After approval and verified schema application, an operator must verify that the
+worker has the intended `ROSTER_TEAM_RELEASE_ENABLED` setting and its own valid
+`WEB_PUSH_PUBLIC_KEY`, `WEB_PUSH_PRIVATE_KEY` and `WEB_PUSH_SUBJECT` bindings.
+The consumer remains inactive while the staff release is held or push is not
+configured. Do not copy credentials into a PR preview or enable staff release just
+to test the consumer. No bindings or release flags were changed by this repair.
+
+Use the synthetic PostgreSQL fixtures under `tests/fixtures/roster-offer-outbox/`
+for transaction checks; they are minimal disposable-cluster scaffolding, never a
+hosted database script. Provider acceptance is at least once: after an accepted
+push and lost acknowledgement, that device can receive a duplicate. Device IDs,
+owner IDs, endpoints and payloads must not enter worker logs. The outbox retains
+no endpoints; eligible device receipts are terminal independently, and pending
+ones retry until the event expires. Expired rows are removed in bounded batches
+when the configured consumer next claims work.

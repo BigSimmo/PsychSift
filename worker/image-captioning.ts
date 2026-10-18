@@ -25,7 +25,9 @@ import {
 import { classifyAndCaptionImageFromBase64 } from "../src/lib/openai";
 import type { ExtractedDocument, ImageEvidenceCategory } from "../src/lib/types";
 import {
+  CONTROL_PLANE_RPCS,
   controlPlaneAbortSignal,
+  dataPlaneAbortSignal,
   persistIngestionImage,
   runIngestionPreparedWork,
   visionImageRejectionSkipReason,
@@ -451,7 +453,13 @@ async function persistCaptionedImages(
       generation: indexGenerationId,
       extension: ext.slice(1).toLowerCase(),
       rpc: (name, payload) =>
-        ingestionRpcClient.rpc(name, payload).abortSignal(controlPlaneAbortSignal(attempt.signal)),
+        ingestionRpcClient
+          .rpc(name, payload)
+          .abortSignal(
+            CONTROL_PLANE_RPCS.has(name)
+              ? controlPlaneAbortSignal(attempt.signal)
+              : dataPlaneAbortSignal(attempt.signal),
+          ),
       upload: (storagePath, options) =>
         supabase.storage
           .from(env.SUPABASE_IMAGE_BUCKET)

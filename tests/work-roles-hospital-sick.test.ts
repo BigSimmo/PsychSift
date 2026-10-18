@@ -44,6 +44,23 @@ const shift = {
 };
 
 describe("hospital sick calls", () => {
+  it.each([
+    { userId: "unprivileged", ready: true, grants: [] },
+    {
+      userId: "wrong-hospital",
+      ready: true,
+      grants: [{ role: "workforce" as const, hospitalId: "h2", serviceIds: ["t2"] }],
+    },
+    { userId: "team-manager", ready: true, grants: [{ role: "manager" as const, serviceId: "t1" }] },
+  ])("rejects a caller without a current hospital-level role ($userId) before reading staff", async (context) => {
+    const from = () => {
+      throw new Error("Denied requests must not query staff tables");
+    };
+    await expect(
+      readHospitalSickCalls({ from } as unknown as Parameters<typeof readHospitalSickCalls>[0], context, "h1"),
+    ).rejects.toMatchObject({ status: 403, details: { code: "work_role_required" } });
+  });
+
   it("lists only reported shifts and names the doctor rostered when it was reported, not the poster or the cover", async () => {
     const calls: string[] = [];
     const client = fakeClient(

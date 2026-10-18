@@ -339,6 +339,24 @@ describe("removing a CME evidence file", () => {
     removal_reason: "Contains a patient name",
   };
 
+  it("fails closed before storage deletion when the required durable-removal RPC is absent", async () => {
+    results.push({ data: entry, error: null }, { data: evidence, error: null });
+    mocks.rpc.mockResolvedValueOnce({ data: null, error: { code: "PGRST202", message: "Missing durable RPC" } });
+    expect((await remove(removeRequest({ reason: "Wrong file uploaded" }), downloadContext)).status).toBe(503);
+    expect(mocks.rpc).toHaveBeenCalledWith("cme_remove_evidence_v2", expect.any(Object));
+    expect(mocks.remove).not.toHaveBeenCalled();
+  });
+
+  it("retries a committed removal after its response was lost", async () => {
+    results.push({ data: entry, error: null }, { data: evidence, error: null });
+    mocks.rpc.mockResolvedValueOnce({ data: null, error: { message: "Synthetic lost response after commit" } });
+    expect((await remove(removeRequest({ reason: "Wrong file uploaded" }), downloadContext)).status).toBe(503);
+    results.push({ data: entry, error: null }, { data: removedRow, error: null });
+    mocks.rpc.mockResolvedValueOnce({ data: removedRow, error: null });
+    expect((await remove(removeRequest({ reason: "Wrong file uploaded" }), downloadContext)).status).toBe(200);
+    expect(mocks.rpc).toHaveBeenCalledTimes(2);
+  });
+
   it("records the reason, deletes the stored file, and returns the tombstone", async () => {
     results.push({ data: entry, error: null }, { data: { ...evidence, removed_at: null }, error: null });
     mocks.rpc.mockResolvedValue({ data: removedRow, error: null });
@@ -346,7 +364,7 @@ describe("removing a CME evidence file", () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.evidence).toMatchObject({ removalReason: "Contains a patient name", fileName: "Removed file" });
-    expect(mocks.rpc).toHaveBeenCalledWith("cme_remove_evidence", {
+    expect(mocks.rpc).toHaveBeenCalledWith("cme_remove_evidence_v2", {
       p_owner_id: ownerId,
       p_evidence_id: evidenceId,
       p_reason: "Contains a patient name",
@@ -372,15 +390,15 @@ describe("removing a CME evidence file", () => {
     expect((await remove(removeRequest({ reason: "Wrong file uploaded" }), downloadContext)).status).toBe(200);
   });
 
-  it("queues cleanup when storage does not answer, and still reports success", async () => {
-    results.push({ data: entry, error: null }, { data: evidence, error: null }, { data: null, error: null });
+  it("relies on the atomic cleanup obligation when storage does not answer", async () => {
+    results.push({ data: entry, error: null }, { data: evidence, error: null });
     mocks.rpc.mockResolvedValue({ data: removedRow, error: null });
     mocks.remove.mockResolvedValue({ data: null, error: { message: "storage down" } });
     expect((await remove(removeRequest({ reason: "Wrong file uploaded" }), downloadContext)).status).toBe(200);
-    expect(queries.at(-1)?.table).toBe("storage_cleanup_jobs");
+    expect(queries.some((query) => query.table === "storage_cleanup_jobs")).toBe(false);
   });
 
-  it("says not found for a file already removed or owned by someone else", async () => {
+  it("says not found for a file owned by someone else", async () => {
     results.push({ data: entry, error: null }, { data: null, error: null });
     expect((await remove(removeRequest({ reason: "Wrong file uploaded" }), downloadContext)).status).toBe(404);
     expect(mocks.rpc).not.toHaveBeenCalled();

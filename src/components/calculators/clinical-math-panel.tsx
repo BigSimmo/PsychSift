@@ -17,6 +17,7 @@ import {
   type CreatinineUnit,
   type LithiumIndication,
 } from "@/lib/calculators/clinical-math";
+import clinicalMathGovernance from "@/lib/calculators/clinical-math/governance.json";
 
 type ActiveTab = "renal" | "qtc" | "lithium";
 
@@ -133,6 +134,30 @@ export function ClinicalMathPanel({
     tabletIncrementMg,
     setTabletIncrementMg,
   } = state ?? ownState;
+
+  // Arithmetic tests are not dedicated clinical validation. Keep all draft outputs,
+  // including dose and management advice, withheld while that review is pending.
+  if (
+    clinicalMathGovernance.releaseStatus !== "available" ||
+    clinicalMathGovernance.clinicalReview.status !== "approved" ||
+    !clinicalMathGovernance.clinicalReview.reviewer ||
+    !clinicalMathGovernance.clinicalReview.reviewedOn ||
+    !clinicalMathGovernance.clinicalReview.approvalEvidence
+  ) {
+    return (
+      <section
+        className="rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] p-4 shadow-[var(--e1)]"
+        data-testid="clinical-math-panel"
+        aria-label="Physiological calculators"
+      >
+        <h2 className={cn(eyebrowText, "text-[color:var(--text-muted)]")}>Physiological calculators unavailable</h2>
+        <p className="mt-2 text-xs text-[color:var(--text-muted)]" data-testid="clinical-math-release-hold">
+          Renal, QTc and lithium tools are withheld pending dedicated clinical validation. Use your approved local
+          reference and clinical assessment.
+        </p>
+      </section>
+    );
+  }
 
   const parsedAge = parseStrictNumber(age);
   const parsedWeight = parseStrictNumber(weightKg);

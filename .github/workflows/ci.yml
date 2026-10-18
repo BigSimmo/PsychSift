@@ -1552,9 +1552,19 @@ jobs:
         run: |
           cp supabase/drift-manifest.json /tmp/committed-drift-manifest.json
           npm run drift:manifest
-          npm run check:drift-manifest-freshness -- \
+          if npm run check:drift-manifest-freshness -- \
             --committed /tmp/committed-drift-manifest.json \
-            --generated supabase/drift-manifest.json
+            --generated supabase/drift-manifest.json; then
+            :
+          else
+            # Recovery path when an operator can read logs but cannot download
+            # artifacts. This scratch-schema inventory contains no row data.
+            sha256sum supabase/drift-manifest.json
+            printf '%s\n' 'BEGIN_GENERATED_DRIFT_MANIFEST'
+            cat supabase/drift-manifest.json
+            printf '%s\n' 'END_GENERATED_DRIFT_MANIFEST'
+            exit 1
+          fi
 
       # #QCNE6N. The step above proves the manifest is not stale and `supabase
       # migration up --local` proved the chain APPLIES. Neither compares the

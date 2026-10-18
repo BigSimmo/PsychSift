@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import { useAccountRequestScope } from "@/components/use-account-request-scope";
 import { isRosterLeaveKind, ROSTER_LEAVE_KIND_LABEL, type RosterLeaveKind } from "@/lib/roster/leave-kinds";
 
 /** The doctor's own planned, applied and approved leave from Roster, read once into memory. */
@@ -48,7 +49,8 @@ function parseLeave(value: unknown): JuniorRosterLeave[] {
  * `reload` reads it again (a page's Retry).
  */
 export function useJuniorRosterLeave(enabled: boolean, reload = 0): JuniorRosterLeaveState {
-  const [state, setState] = useState<JuniorRosterLeaveState>({ status: "loading" });
+  const { scope, isCurrent } = useAccountRequestScope();
+  const [state, setState] = useState<{ scope: string; value: JuniorRosterLeaveState } | null>(null);
   useEffect(() => {
     if (!enabled) return;
     const controller = new AbortController();
@@ -56,14 +58,15 @@ export function useJuniorRosterLeave(enabled: boolean, reload = 0): JuniorRoster
       .then(async (response) => {
         if (!response.ok) throw new Error("leave");
         const payload = (await response.json()) as { leave?: unknown };
-        if (!controller.signal.aborted) setState({ status: "ready", leave: parseLeave(payload?.leave) });
+        if (!controller.signal.aborted && isCurrent())
+          setState({ scope, value: { status: "ready", leave: parseLeave(payload?.leave) } });
       })
       .catch(() => {
-        if (!controller.signal.aborted) setState({ status: "failed" });
+        if (!controller.signal.aborted && isCurrent()) setState({ scope, value: { status: "failed" } });
       });
     return () => controller.abort();
-  }, [enabled, reload]);
-  return state;
+  }, [enabled, reload, scope, isCurrent]);
+  return state?.scope === scope ? state.value : { status: "loading" };
 }
 
 export const ROSTER_LEAVE_STATUS_WORDS: Record<JuniorRosterLeave["status"], string> = {

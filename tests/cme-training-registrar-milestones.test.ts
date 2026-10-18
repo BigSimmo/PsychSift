@@ -223,6 +223,43 @@ describe("registrar_training_milestones repository & Training page integration (
     }
   });
 
+  it("uses one atomic RPC for production create, update and delete without separate table writes", async () => {
+    const input = {
+      label: "Written case",
+      dueKind: "date" as const,
+      dueFteMonths: null,
+      dueOn: "2026-11-01",
+      completedOn: null,
+    };
+    const rpc = vi.fn(async (_name: string, args: Record<string, unknown>) => ({
+      data: args.p_operation === "delete" ? { deleted: true } : { id: args.p_id, ...(args.p_milestone as object) },
+      error: null,
+    }));
+    const from = vi.fn();
+    const client = { rpc, from } as never;
+    const created = await createOwnerTrainingMilestone(client, OWNER_A, input);
+    await updateOwnerTrainingMilestone(client, OWNER_A, created.id, input);
+    await deleteOwnerTrainingMilestone(client, OWNER_A, created.id);
+    expect(rpc.mock.calls.map(([, args]) => args.p_operation)).toEqual(["create", "update", "delete"]);
+    expect(rpc.mock.calls.every(([, args]) => args.p_owner_id === OWNER_A)).toBe(true);
+    expect(from).not.toHaveBeenCalled();
+  });
+
+  it("never falls back to separate writes after atomic mirror failure or an unapplied RPC", async () => {
+    const from = vi.fn();
+    const rpc = vi.fn(async () => ({ data: null, error: { message: "mirror failed", code: "23514" } }));
+    await expect(
+      createOwnerTrainingMilestone({ rpc, from } as never, OWNER_A, {
+        label: "Written case",
+        dueKind: "date",
+        dueFteMonths: null,
+        dueOn: "2026-11-01",
+        completedOn: null,
+      }),
+    ).rejects.toThrow("CME storage operation failed");
+    expect(from).not.toHaveBeenCalled();
+  });
+
   it("merges registrar_training_milestones with cme_training_milestones without duplicating matching items", () => {
     const registrarRecord = {
       id: sampleRegistrarRow.id,
@@ -378,7 +415,38 @@ describe("registrar_training_milestones repository & Training page integration (
     };
     const result = buildOwnerTrainingAssessments([past], [generic, epa], "2026-10-17");
     expect(result).toMatchObject({ status: "recorded", registrar: { rotationEndsOn: null } });
-    expect(result.status === "recorded" && result.view === "registrar" ? result.registrar.epas : []).toHaveLength(1);
+    expect(result.status === "recorded" && result.view === "registrar" ? result.registrar.epas : []).toHaveLength(0);
+  });
+
+  it("counts only attainments inside the current rotation, including its start date", () => {
+    const period = {
+      id: "current",
+      kind: "rotation" as const,
+      label: "Current",
+      startsOn: "2026-08-03",
+      endsOn: "2027-01-31",
+      fte: 1,
+    };
+    const dates = [
+      "2026-08-02T12:00:00Z",
+      "2026-08-03T00:00:00Z",
+      "2026-10-18T00:00:00Z",
+      null,
+      "2026-08-02T20:00:00Z",
+    ];
+    const records = dates.map((achievedAt, i) => ({
+      id: String(i),
+      registrarId: OWNER_A,
+      milestoneCode: `st2-epa-${i}`,
+      milestoneTitle: "EPA",
+      stage: "stage_2" as const,
+      achievedAt,
+      evidenceSummary: null,
+    }));
+    const result = buildOwnerTrainingAssessments([period], records, "2026-10-17");
+    expect(result).toMatchObject({
+      registrar: { epas: [{ id: "1" }, { id: "3" }, { id: "4", attainedOn: "2026-08-03" }] },
+    });
   });
 
   it("edits and deletes a registrar-only milestone through the Training page's ID routes", async () => {

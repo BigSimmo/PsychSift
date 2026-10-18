@@ -515,7 +515,10 @@ describe("document enrichment", () => {
     const docId = "doc-meta-1";
     const summaryOrderCalls: Array<{ column: string; options?: { ascending?: boolean } }> = [];
     const fallbackSupabase = {
-      rpc: vi.fn(async () => ({ data: null, error: { message: "rpc_unavailable" } })),
+      rpc: vi.fn(async () => ({
+        data: [{ document_id: docId, summary: "Unsafe staged RPC summary", labels: [] }],
+        error: null,
+      })),
       from: vi.fn((table: string) => {
         const builder = {
           select: () => builder,
@@ -528,6 +531,7 @@ describe("document enrichment", () => {
             return builder;
           },
           abortSignal: () => builder,
+          range: () => builder,
           then: (resolve: (value: { data: unknown[]; error: null }) => unknown) => {
             if (table === "documents") {
               return Promise.resolve({
@@ -547,6 +551,13 @@ describe("document enrichment", () => {
                     document_id: docId,
                     summary: "Newest committed summary",
                     generated_at: "2026-07-02T00:00:00.000Z",
+                    metadata: { index_generation_id: "gen-current" },
+                  },
+                  {
+                    document_id: docId,
+                    summary: "Staged summary",
+                    generated_at: "2026-07-03T00:00:00.000Z",
+                    metadata: { index_generation_id: "gen-staged" },
                   },
                 ],
                 error: null,
@@ -579,10 +590,69 @@ describe("document enrichment", () => {
       supabase: fallbackSupabase as never,
       documentIds: [docId],
     });
-    expect(summaryOrderCalls).toEqual([{ column: "generated_at", options: { ascending: false } }]);
+    expect(summaryOrderCalls).toEqual([
+      { column: "generated_at", options: { ascending: false } },
+      { column: "id", options: undefined },
+    ]);
     expect(fallbackRows[0]?.summary).toBe("Newest committed summary");
+    expect(fallbackSupabase.rpc).not.toHaveBeenCalled();
     expect(fallbackRows[0]?.labels).toEqual([
       expect.objectContaining({ label: "clozapine", label_type: "medication" }),
     ]);
+  });
+
+  describe("fetchRelatedDocumentMetadata paging limit", () => {
+    const docId = "doc-meta-cap";
+    function pagedSupabase(totalLabels: number) {
+      return {
+        from: vi.fn((table: string) => {
+          let range: [number, number] = [0, 0];
+          const builder = {
+            select: () => builder,
+            in: () => builder,
+            eq: () => builder,
+            is: () => builder,
+            or: () => builder,
+            order: () => builder,
+            abortSignal: () => builder,
+            range: (from: number, to: number) => {
+              range = [from, to];
+              return builder;
+            },
+            then: (resolve: (value: { data: unknown[]; error: null }) => unknown) => {
+              if (table === "documents") {
+                return Promise.resolve({ data: [{ id: docId, metadata: {} }], error: null }).then(resolve);
+              }
+              if (table === "document_summaries") return Promise.resolve({ data: [], error: null }).then(resolve);
+              const [from, to] = range;
+              const count = Math.max(0, Math.min(to + 1, totalLabels) - from);
+              const data = Array.from({ length: count }, (_, i) => ({
+                id: `label-${from + i}`,
+                document_id: docId,
+                label: `label-${from + i}`,
+                label_type: "topic",
+                metadata: {},
+              }));
+              return Promise.resolve({ data, error: null }).then(resolve);
+            },
+          };
+          return builder;
+        }),
+      };
+    }
+
+    it("accepts a result of exactly 100,000 rows", async () => {
+      const rows = await fetchRelatedDocumentMetadata({
+        supabase: pagedSupabase(100_000) as never,
+        documentIds: [docId],
+      });
+      expect(rows[0]?.labels).toHaveLength(100_000);
+    });
+
+    it("still rejects a result with more than 100,000 rows", async () => {
+      await expect(
+        fetchRelatedDocumentMetadata({ supabase: pagedSupabase(100_001) as never, documentIds: [docId] }),
+      ).rejects.toThrow("exceeded the paging limit");
+    });
   });
 });

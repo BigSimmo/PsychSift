@@ -588,10 +588,11 @@ function FeedbackSheet({
         icon={Send}
         variant="primary"
         block
-        disabled={blocker !== null}
         aria-disabled={blocker ? "true" : undefined}
         aria-describedby={blocker ? whyId : undefined}
-        onClick={() => onSend(draft)}
+        onClick={() => {
+          if (!blocker) onSend(draft);
+        }}
         testId="assessments-inbox-send"
       >
         {offline ? "Keep to send" : `Send to ${item.doctor.name}`}
