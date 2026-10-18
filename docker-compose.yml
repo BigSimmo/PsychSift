@@ -68,9 +68,9 @@ services:
       SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       # Binds worker/health.ts's /health server inside the container only
-      # (no published port); used by the healthcheck below. 3901 rather than
-      # 8080 so sibling-repo port-isolation audits (Medications uses 8080)
-      # do not flag a collision.
+      # (no published port); used by the healthcheck below. Deliberately not
+      # a common API port, so sibling-repo port-isolation audits (Medications
+      # serves its API on the usual 80xx port) do not flag a collision.
       WORKER_HEALTH_PORT: "3901"
       # Worker-specific tuning (from .env.example defaults)
       WORKER_DOCUMENT_EXTRACTOR_MODE: ${WORKER_DOCUMENT_EXTRACTOR_MODE:-legacy}
