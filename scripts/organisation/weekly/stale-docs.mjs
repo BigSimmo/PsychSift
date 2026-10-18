@@ -55,7 +55,7 @@ export async function section({ root, now } = {}) {
       "To clear one: re-read the document against the files listed and correct anything out of date, then set its " +
         `pin in \`${PINS_FILE}\` to the commit on main you read it against` +
         (head ? ` (this report was generated at \`${head}\`)` : "") +
-        ". Never pin a commit that exists only on a PR branch: PRs are squash-merged, so it never reaches main.",
+        ". Never pin a commit that exists only on a PR branch: it is not on main until the PR merges, and PRs squash-merged before 2026-10-18 never brought their branch commits to main.",
     );
   }
   return { title, markdown: `${lines.join("\n")}\n` };
