@@ -234,3 +234,14 @@ Hosted static checks on this source passed in full, including migration seals,
 lint and typechecking. The recovery run correctly remains red at stale committed
 manifest freshness; it could not yet execute chain/mirror parity. That final gate
 requires a fresh run after publishing the recovered file.
+
+Fresh local drift, freshness, immutability and parity-contract coverage passed
+**66 tests in four files** after copying the recovered manifest. An independent
+reviewer verified the recovered file, committed Git blob and working file share
+the emitted byte count/checksum, and independently checked schema/image metadata
+and unchanged seals. Semantic comparison found no removed objects or permission
+relaxations: the existing documents table gains `mutation_id`, with additions
+limited to two outbox tables, three indexes, two triggers, four functions and nine
+constraints matching the unchanged source SQL. No actionable finding in this
+bounded recheck. The review reuses the controller's GitHub-log observation and
+test result; fresh hosted regeneration/parity is still required.

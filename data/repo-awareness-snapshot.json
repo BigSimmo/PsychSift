@@ -6605,6 +6605,14 @@
         "checks": "GitHub merged exact head, branch not checked out, no open PR claim, batch3 bundle verify ok SHA256 48AF30DD07A04703D02F4A2FFBDE65F1E573D081E4660D4C7E240D8DB1079B8C"
       },
       {
+        "date": "2026-10-18",
+        "ref": "fix/remaining-review-reliability-20261018",
+        "head": "08f9eefc3de72036704d85cddc5b9c59e64e98a7",
+        "scope": "Independent append-only migration seals and drift recovery failure-path review",
+        "outcome": "Accepted: all321priorhashes preserved, exactly3owner-approved additions match migration bytes; generated scratch-schema recovery logging preserves stale-check failure and excludes application rows/credentials. No live SQL, historical reseal or merge.",
+        "checks": "Independent read-only diff and hashing; supplied90scope tests plus765workflow contracts and actual shell fresh/stale recovery harness passed. Manifest recovery and hosted parity still pending; requested model not independently verified telemetry."
+      },
+      {
         "date": "2026-08-24",
         "ref": "cursor/dictionary-control-row-polish-4ee0 (PR #2316)",
         "head": "090c5f274e293fa5209cff6fa1565e2e50fa3c6d",
