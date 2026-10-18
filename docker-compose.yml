@@ -1,4 +1,17 @@
-version: "3.8"
+# Local container stack for the PsychSift app tier.
+#
+# `docker compose up --build` starts ONLY the app. The ingestion worker sits
+# behind the opt-in `worker` profile because it claims jobs from whatever
+# Supabase project the credentials point at: with production keys in
+# .env.local, an unprofiled worker would start consuming the live ingestion
+# queue. Start it only with explicit connected-workload approval:
+#   docker compose --profile worker up --build
+#
+# NEXT_PUBLIC_SUPABASE_URL has no default on purpose: Compose fails fast when
+# it is missing instead of silently building against the production project.
+# `${VAR}` interpolation reads the shell and `.env`, not `env_file`, so pass
+# the approved values explicitly, e.g.:
+#   docker compose --env-file .env.local up --build
 
 services:
   # PsychSift Next.js app tier
@@ -6,9 +19,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      # Build args are optional; pass them only if you need to customize the build
       args:
-        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-https://sjrfecxgysukkwxsowpy.supabase.co}
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:?set NEXT_PUBLIC_SUPABASE_URL to the approved Supabase project URL}
         NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:-placeholder-build-publishable-key}
         MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-}
         NEXT_PUBLIC_MAX_UPLOAD_MB: ${NEXT_PUBLIC_MAX_UPLOAD_MB:-}
@@ -21,11 +33,12 @@ services:
       # Server-side secrets (never baked into the image)
       SUPABASE_URL: ${SUPABASE_URL}
       SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
-      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:?set NEXT_PUBLIC_SUPABASE_URL to the approved Supabase project URL}
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
     env_file:
-      - .env.local
+      - path: .env.local
+        required: false
     healthcheck:
       test:
         [
@@ -41,11 +54,10 @@ services:
     restart: unless-stopped
     networks:
       - psychsift
-    depends_on:
-      - worker
 
-  # PsychSift Node + Python OCR ingestion worker
+  # PsychSift Node + Python OCR ingestion worker (opt-in: --profile worker)
   worker:
+    profiles: [worker]
     build:
       context: .
       dockerfile: Dockerfile.worker
@@ -55,18 +67,32 @@ services:
       SUPABASE_URL: ${SUPABASE_URL}
       SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
+      # Binds worker/health.ts's /health server inside the container only
+      # (no published port); used by the healthcheck below.
+      WORKER_HEALTH_PORT: "8080"
       # Worker-specific tuning (from .env.example defaults)
       WORKER_DOCUMENT_EXTRACTOR_MODE: ${WORKER_DOCUMENT_EXTRACTOR_MODE:-legacy}
       WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-2}
       WORKER_CLAIM_BATCH_SIZE: ${WORKER_CLAIM_BATCH_SIZE:-5}
       WORKER_STALE_CLAIM_WINDOW_MS: ${WORKER_STALE_CLAIM_WINDOW_MS:-60000}
     env_file:
-      - .env.local
+      - path: .env.local
+        required: false
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:8080/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
     restart: unless-stopped
     networks:
       - psychsift
-    # The worker runs long-poll ingestion tasks; no exposed port needed
-    # but you can add `expose: ['8000']` for internal metrics if added later
 
 networks:
   psychsift:
