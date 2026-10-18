@@ -1060,6 +1060,73 @@ export function requiredCheckForgeryFindings({ files, workflowContents }) {
   return findings;
 }
 
+// Bot-authored sensitive changes (owner rule, 2026-10-18). A PR whose commits were AUTHORED by
+// a bot account (any `[bot]` login or noreply address, or a known review/coding bot such as
+// qodo) must not touch `supabase/**`, `backend/**/infra/*.sql` or a clinical-risk path: those
+// PRs would otherwise satisfy every check and auto-merge with no human review. Dependabot only
+// edits dependency manifests, lockfiles, Dockerfiles and workflow pins, none of which match,
+// so its PRs are unaffected. Only each bot commit's own files are judged, so a human commit
+// touching a sensitive path next to a bot formatting commit elsewhere still passes.
+export const knownBotLogins = new Set([
+  "qodo-merge",
+  "qodo-merge-pro",
+  "qodo-ai",
+  "qodo-code-review",
+  "codiumai-pr-agent",
+  "coderabbitai",
+  "copilot",
+  "copilot-swe-agent",
+  "devin-ai-integration",
+  "sweep-ai",
+  "github-actions",
+  "renovate",
+]);
+
+export function isBotAuthor(author) {
+  if (!author) return false;
+  const login = String(author.login ?? "")
+    .trim()
+    .toLowerCase();
+  const email = String(author.email ?? "")
+    .trim()
+    .toLowerCase();
+  if (login.endsWith("[bot]") || knownBotLogins.has(login)) return true;
+  if (/\[bot\]@users\.noreply\.github\.com$/.test(email)) return true;
+  const emailLogin = email.match(/^(?:\d+\+)?([^@]+)@users\.noreply\.github\.com$/)?.[1];
+  return Boolean(emailLogin && knownBotLogins.has(emailLogin));
+}
+
+const botSensitivePathPatterns = [/^supabase\//, /^backend\/(?:.+\/)?infra\/[^/]+\.sql$/i];
+
+export function isBotSensitivePath(filePath) {
+  const file = normalizePath(filePath);
+  if (!file) return false;
+  if (botSensitivePathPatterns.some((pattern) => pattern.test(file))) return true;
+  return classifyPullRequestFiles([file]).clinicalRisk;
+}
+
+// commits: [{ sha, author: { login, email }, files: [path, ...] }]. Returns one message per
+// offending commit. A bot commit whose file list could not be read fails closed.
+export function botSensitiveCommitViolations(commits) {
+  const violations = [];
+  for (const commit of commits ?? []) {
+    if (!isBotAuthor(commit?.author)) continue;
+    const who = commit.author.login || commit.author.email || "unknown bot";
+    const sha = String(commit.sha ?? "").slice(0, 12) || "unknown";
+    if (!Array.isArray(commit.files)) {
+      violations.push(`Bot-authored commit ${sha} (${who}) could not have its files verified; failing closed.`);
+      continue;
+    }
+    const sensitive = commit.files.filter(isBotSensitivePath);
+    if (sensitive.length > 0) {
+      violations.push(
+        `Bot-authored commit ${sha} (${who}) touches protected paths (${sensitive.slice(0, 5).join(", ")}${sensitive.length > 5 ? ", …" : ""}). Supabase, backend infra SQL and clinical paths need a human-authored commit and owner review; re-author the change by hand.`,
+      );
+    }
+  }
+  return violations;
+}
+
 export function evaluatePullRequestPolicy({
   title,
   body,
@@ -1069,6 +1136,8 @@ export function evaluatePullRequestPolicy({
   baseMigrationVersions,
   addedMigrationContents,
   changedWorkflowContents,
+  // [{ sha, author: { login, email }, files }] from the PR's commits; omitted → check not run.
+  commits,
   // true for the PR policy workflow (and other enforcing callers): fail closed when a
   // migration-touching PR cannot supply the inputs needed to verify applied-migration history.
   enforceMigrationHistory = false,
@@ -1103,6 +1172,9 @@ export function evaluatePullRequestPolicy({
       "PR_POLICY_BODY.md is a transport file: CI has synced it into this PR's description; delete it from the branch before merge so it never lands on main.",
     );
   }
+
+  // Blocking gate: bot-authored commits must not touch Supabase, backend infra SQL or clinical paths.
+  if (commits !== undefined) errors.push(...botSensitiveCommitViolations(commits));
 
   const summary = section(body, "Summary");
   // The summary must be its own prose: content nested under a sub-heading
