@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({
@@ -52,29 +52,32 @@ describe("bedside calculator panel on the calculators page", () => {
   it("is not rendered in the sidebar or the mobile column at either breakpoint", () => {
     const setDesktop = installDesktopQuery(false);
     render(<CalculatorsSearchPage />);
-    expect(screen.queryByTestId("clinical-math-panel-toggle")).toBeNull();
+    const expectPanelAbsent = () => {
+      expect(screen.queryByTestId("clinical-math-panel")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("clinical-math-panel-toggle")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("clinical-math-release-hold")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("clinical-math-lithium-suggested-dose")).not.toBeInTheDocument();
+    };
+    expectPanelAbsent();
 
     setDesktop(true);
-    expect(screen.queryByTestId("clinical-math-panel-toggle")).toBeNull();
+    expectPanelAbsent();
+
+    setDesktop(false);
+    expectPanelAbsent();
   });
 });
 
 describe("bedside calculator panel component (unwired, kept for clinician verification)", () => {
-  it("shows the lithium toxicity alert from 1.2 mmol/L before an age is entered", () => {
-    render(<ClinicalMathPanel />);
+  it("withholds lithium inputs and management advice while dedicated clinical validation is pending", () => {
+    render(<ClinicalMathPanel defaultOpen defaultTab="lithium" />);
 
-    fireEvent.click(screen.getByTestId("clinical-math-panel-toggle"));
-    fireEvent.click(screen.getByTestId("clinical-math-tab-lithium"));
-    const level = screen.getByTestId("clinical-math-lithium-level");
-
-    fireEvent.change(level, { target: { value: "0.9" } });
-    expect(screen.getByTestId("clinical-math-lithium-results")).toHaveTextContent("Enter current 12-hour trough level");
-
-    fireEvent.change(level, { target: { value: "1.2" } });
-    const results = screen.getByTestId("clinical-math-lithium-results");
-    expect(results).toHaveTextContent("Level status: toxic");
-    expect(results).toHaveTextContent("TOXICITY ALERT");
-    expect(results).toHaveTextContent("Enter patient age to see the target range.");
-    expect(results).not.toHaveTextContent("target 0");
+    expect(screen.getByTestId("clinical-math-release-hold")).toHaveTextContent("dedicated clinical validation");
+    expect(screen.getByTestId("clinical-math-release-hold")).toHaveTextContent("approved local reference");
+    expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
+    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("clinical-math-lithium-level")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("clinical-math-lithium-results")).not.toBeInTheDocument();
+    expect(screen.queryByText(/TOXICITY ALERT|Suggested dose:/)).not.toBeInTheDocument();
   });
 });

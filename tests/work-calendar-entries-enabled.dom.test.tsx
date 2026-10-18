@@ -7,6 +7,7 @@ import { renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 const reads = vi.hoisted(() => ({ rotations: vi.fn(), bookings: vi.fn() }));
+const failures = vi.hoisted(() => ({ on: false, rotations: vi.fn(), bookings: vi.fn() }));
 
 vi.mock("@/components/work-calendar/sources", () => ({
   WORK_CALENDAR_SOURCES: [
@@ -14,14 +15,14 @@ vi.mock("@/components/work-calendar/sources", () => ({
       id: "rotations",
       read: (enabled: boolean) => {
         reads.rotations(enabled);
-        return { status: enabled ? "ready" : "off", entries: [] };
+        return { status: enabled ? (failures.on ? "error" : "ready") : "off", entries: [], retry: failures.rotations };
       },
     },
     {
       id: "bookings",
       read: (enabled: boolean) => {
         reads.bookings(enabled);
-        return { status: enabled ? "ready" : "off", entries: [] };
+        return { status: enabled ? (failures.on ? "error" : "ready") : "off", entries: [], retry: failures.bookings };
       },
     },
   ],
@@ -45,5 +46,17 @@ describe("useWorkCalendarEntries enabled", () => {
     expect(reads.bookings).toHaveBeenLastCalledWith(false);
     expect(reads.rotations).not.toHaveBeenCalledWith(true);
     expect(result.current).toMatchObject({ status: "off", entries: [] });
+  });
+
+  it("retries only the named failed source and retains retry-all compatibility", () => {
+    failures.on = true;
+    const { result } = renderHook(() => useWorkCalendarEntries());
+    result.current.retry("bookings");
+    expect(failures.bookings).toHaveBeenCalledTimes(1);
+    expect(failures.rotations).not.toHaveBeenCalled();
+    result.current.retry();
+    expect(failures.bookings).toHaveBeenCalledTimes(2);
+    expect(failures.rotations).toHaveBeenCalledTimes(1);
+    failures.on = false;
   });
 });

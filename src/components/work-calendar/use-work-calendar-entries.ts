@@ -13,8 +13,8 @@ import { mergeEntries, type WorkCalendarEntry } from "@/lib/work-calendar/entrie
  * hides its screen, and then adds no entries.
  *
  * `status` is "loading" while any source is still loading and "ready" after.
- * A source that failed or is not available yet adds nothing: the calendar
- * views stay quiet about it, and the feature's own page says what went wrong.
+ * A source that failed or is not available yet adds nothing. Callers inspect
+ * `sources` to disclose failed reads alongside entries from successful sources.
  */
 export type WorkCalendarStatus = "off" | "loading" | "ready";
 
@@ -23,8 +23,8 @@ export type WorkCalendarEntriesRead = {
   readonly entries: readonly WorkCalendarEntry[];
   /** Each source's own read, by source id. */
   readonly sources: Readonly<Record<string, WorkCalendarSourceRead>>;
-  /** Reads every source that failed again. */
-  readonly retry: () => void;
+  /** Reads a failed source again, or every failed source when no id is given. */
+  readonly retry: (sourceId?: string) => void;
 };
 
 export function useWorkCalendarEntries({
@@ -42,8 +42,10 @@ export function useWorkCalendarEntries({
   useEffect(() => {
     latest.current = reads;
   });
-  const retry = useCallback(() => {
-    for (const read of latest.current) if (read.status === "error") read.retry?.();
+  const retry = useCallback((sourceId?: string) => {
+    latest.current.forEach((read, index) => {
+      if (read.status === "error" && (!sourceId || WORK_CALENDAR_SOURCES[index]!.id === sourceId)) read.retry?.();
+    });
   }, []);
   return useMemo<WorkCalendarEntriesRead>(() => {
     const parsed = JSON.parse(signature) as WorkCalendarSourceRead[];

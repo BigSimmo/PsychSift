@@ -209,6 +209,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     // Public documents participate in every owner's retrieval view, so a
     // public-corpus governance change must clear all local and shared scopes.
+    // These clears reclaim entries; the fresh database scope revision fences
+    // every cache hit even on another replica or when shared deletion fails.
     if (document.owner_id === null) invalidateRagCachesForOwner();
     else invalidateRagCachesForOwner(user.id);
     return NextResponse.json({ review: data }, { status: 201 });

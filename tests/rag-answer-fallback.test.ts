@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { mockRagScopeRevision } from "./rag-cache-test-revision";
 import clozapineThresholdChunks from "./fixtures/clozapine-threshold-source-chunks.json";
 import lithiumLiveExcerpts from "./fixtures/lithium-monitoring-live-excerpts.json";
 import { citationFromResult } from "../src/lib/citations";
@@ -123,6 +124,33 @@ class EmptyQuery implements PromiseLike<{ data: unknown[]; error: null }> {
   ): PromiseLike<TResult1 | TResult2> {
     return Promise.resolve({ data: [], error: null }).then(onfulfilled, onrejected);
   }
+}
+
+type CacheDocumentFixture = { id: string; owner_id: string | null; metadata: unknown };
+
+/** Revision RPC fixture filters the same owner/public/document population as the SQL. */
+function withScopeRevision<T extends object>(client: T, documents: readonly CacheDocumentFixture[]) {
+  const original = client as T & { rpc: (name: string, params?: Record<string, unknown>) => unknown };
+  return {
+    ...client,
+    rpc(name: string, params: Record<string, unknown>) {
+      if (name !== "rag_cache_scope_revision_v1") return original.rpc(name, params);
+      const ids = params.p_document_ids as string[] | null;
+      const scoped = documents.filter(
+        (row) =>
+          ((params.p_owner_id !== null && row.owner_id === params.p_owner_id) ||
+            (row.owner_id === null && params.p_include_public === true)) &&
+          (!ids?.length || ids.includes(row.id)),
+      );
+      const response = {
+        abortSignal: () => response,
+        then(yes?: (value: { data: string; error: null }) => unknown, no?: (error: unknown) => unknown) {
+          return Promise.resolve({ data: mockRagScopeRevision(scoped), error: null }).then(yes, no);
+        },
+      };
+      return response;
+    },
+  };
 }
 
 type GeneratedAnswerPayload = {
@@ -364,28 +392,73 @@ async function answerFromTextSources(
     };
     return query;
   };
+  const cacheDocuments = [
+    ...new Map(
+      governedSources.map((row) => [
+        row.document_id,
+        {
+          id: row.document_id,
+          owner_id: null,
+          metadata: row.source_metadata,
+        },
+      ]),
+    ).values(),
+  ];
+  let sharedRows: Array<Record<string, unknown>> = [];
   const cacheQuery = (table: string) => {
+    const filters = new Map<string, unknown>();
+    let operation = "select";
+    let inserted: Record<string, unknown> | undefined;
+    const matches = (row: Record<string, unknown>) =>
+      [...filters].every(([key, value]) =>
+        key === "expires_at"
+          ? String(row[key]) > String(value)
+          : Array.isArray(value)
+            ? value.includes(row[key])
+            : row[key] === value,
+      );
+    const result = () => {
+      if (table === "documents") return { data: cacheDocuments.filter(matches), error: null };
+      if (operation === "delete") sharedRows = sharedRows.filter((row) => !matches(row));
+      if (operation === "insert") sharedRows.push(inserted!);
+      return { data: [], error: null };
+    };
     const builder = {
       select: () => builder,
-      eq: () => builder,
-      is: () => builder,
+      eq: (key: string, value: unknown) => {
+        filters.set(key, value);
+        return builder;
+      },
+      is: (key: string, value: unknown) => {
+        filters.set(key, value);
+        return builder;
+      },
       or: () => builder,
-      in: () => builder,
-      gt: () => builder,
+      in: (key: string, value: unknown) => {
+        filters.set(key, value);
+        return builder;
+      },
+      gt: (key: string, value: unknown) => {
+        filters.set(key, value);
+        return builder;
+      },
       order: () => builder,
       limit: () => builder,
       abortSignal: () => builder,
-      delete: () => builder,
-      insert: () => builder,
-      maybeSingle: async () => ({ data: null, error: null }),
-      then: (resolve: (value: { data: unknown[]; error: null }) => unknown) =>
-        Promise.resolve({
-          data:
-            table === "documents"
-              ? [{ id: "agitation-doc", updated_at: "2026-08-30T00:00:00.000Z", metadata: {} }]
-              : [],
-          error: null,
-        }).then(resolve),
+      delete: () => {
+        operation = "delete";
+        return builder;
+      },
+      insert: (row: Record<string, unknown>) => {
+        operation = "insert";
+        inserted = structuredClone(row);
+        return builder;
+      },
+      maybeSingle: async () => {
+        const row = sharedRows.find(matches);
+        return { data: row ? { payload: structuredClone(row.payload) } : null, error: null };
+      },
+      then: (resolve: (value: { data: unknown[]; error: null }) => unknown) => Promise.resolve(result()).then(resolve),
     };
     return builder;
   };
@@ -445,25 +518,29 @@ async function answerFromTextSources(
     return query;
   };
   vi.doMock("@/lib/supabase/admin", () => ({
-    createAdminClient: () => ({
-      rpc,
-      from: vi.fn((table: string) =>
-        table === "document_chunks"
-          ? options.governed || options.reviewedPolicyFixture
-            ? admissionQuery()
-            : adjacentQuery()
-          : table === "rag_queries" && options.captureLoggedRow
-            ? {
-                insert: vi.fn(async (row) => {
-                  options.captureLoggedRow?.(row);
-                  return { error: null };
-                }),
-              }
-            : options.repeatRequest && ["documents", "rag_response_cache"].includes(table)
-              ? cacheQuery(table)
-              : new EmptyQuery(),
+    createAdminClient: () =>
+      withScopeRevision(
+        {
+          rpc,
+          from: vi.fn((table: string) =>
+            table === "document_chunks"
+              ? options.governed || options.reviewedPolicyFixture
+                ? admissionQuery()
+                : adjacentQuery()
+              : table === "rag_queries" && options.captureLoggedRow
+                ? {
+                    insert: vi.fn(async (row) => {
+                      options.captureLoggedRow?.(row);
+                      return { error: null };
+                    }),
+                  }
+                : options.repeatRequest && ["documents", "rag_response_cache"].includes(table)
+                  ? cacheQuery(table)
+                  : new EmptyQuery(),
+          ),
+        },
+        cacheDocuments,
       ),
-    }),
   }));
   let generatedAnswerAttemptIndex = 0;
   const generateStructuredTextResult = vi.fn(async (input: string, _schema: unknown, providerOptions = {}) => {
@@ -4917,7 +4994,7 @@ describe("RAG structured-output fallback", () => {
     }
   });
 
-  it("does not propagate an originating request's abort to a coalesced concurrent caller", async () => {
+  it("keeps an already-aborted request separate while live callers coalesce onto one fresh origination", async () => {
     vi.stubEnv("OPENAI_API_KEY", "test-key");
     vi.stubEnv("RAG_SEARCH_CACHE_TTL_MS", "0");
     vi.stubEnv("RAG_ANSWER_CACHE_TTL_MS", "300000");
@@ -4947,7 +5024,11 @@ describe("RAG structured-output fallback", () => {
     }));
 
     vi.doMock("@/lib/supabase/admin", () => ({
-      createAdminClient: () => ({ rpc, from: vi.fn(() => new EmptyQuery()) }),
+      createAdminClient: () =>
+        withScopeRevision(
+          { rpc, from: vi.fn(() => new EmptyQuery()) },
+          sources.map((row) => ({ id: row.document_id, owner_id: null, metadata: row.source_metadata })),
+        ),
     }));
     vi.doMock("@/lib/openai", () => ({
       embedTextWithTelemetry: vi.fn(async () => ({ embedding: [0.1, 0.2, 0.3], cacheHit: false })),
@@ -4956,7 +5037,7 @@ describe("RAG structured-output fallback", () => {
 
     const { answerQuestionWithScope } = await import("../src/lib/rag/rag");
 
-    // Originating request aborts before it can produce an answer; its shared in-flight promise rejects.
+    // This request is already aborted and never enters the in-flight map.
     const controller = new AbortController();
     controller.abort();
     const first = answerQuestionWithScope({
@@ -4965,7 +5046,7 @@ describe("RAG structured-output fallback", () => {
       logQuery: false,
       signal: controller.signal,
     });
-    // Two identical waiters coalesce onto the (now-doomed) in-flight promise.
+    // The two live callers must share one independently admitted origination.
     const second = answerQuestionWithScope({
       query: "Summarize inpatient approach",
       ownerId: "owner-1",
@@ -4979,11 +5060,12 @@ describe("RAG structured-output fallback", () => {
 
     // The originator's failure stays with the originator...
     await expect(first).rejects.toBeTruthy();
-    // ...and the coalesced caller still gets a real, independently generated answer rather than a 500.
+    // ...and the live callers get one independently generated answer rather than a 500.
     const [secondAnswer, thirdAnswer] = await Promise.all([second, third]);
     expect(secondAnswer.openAIRequestIds).toEqual(["req_independent"]);
     expect(thirdAnswer.openAIRequestIds).toEqual(["req_independent"]);
     expect(secondAnswer.routingReason ?? "").not.toContain("answer_inflight_coalesced");
+    expect(thirdAnswer.routingReason).toContain("answer_inflight_coalesced");
     // It ran its OWN pipeline (search + generation once) instead of cloning the failed one.
     expect(generateStructuredTextResult).toHaveBeenCalledTimes(1);
     expect(rpc.mock.calls.filter(([name]) => name === "match_document_chunks_text_v2")).toHaveLength(1);
@@ -5031,7 +5113,11 @@ describe("RAG structured-output fallback", () => {
     });
 
     vi.doMock("@/lib/supabase/admin", () => ({
-      createAdminClient: () => ({ rpc, from: vi.fn(() => new EmptyQuery()) }),
+      createAdminClient: () =>
+        withScopeRevision(
+          { rpc, from: vi.fn(() => new EmptyQuery()) },
+          sources.map((row) => ({ id: row.document_id, owner_id: null, metadata: row.source_metadata })),
+        ),
     }));
     vi.doMock("@/lib/openai", () => ({
       embedTextWithTelemetry: vi.fn(async () => ({ embedding: [0.1, 0.2, 0.3], cacheHit: false })),
@@ -5047,12 +5133,20 @@ describe("RAG structured-output fallback", () => {
     await generationStarted;
 
     const controller = new AbortController();
+    let markJoined!: () => void;
+    const joined = new Promise<void>((resolve) => {
+      markJoined = resolve;
+    });
     const second = answerQuestionWithScope({
       query: "Summarize inpatient approach",
       ownerId: "owner-waiter-cancel",
       logQuery: false,
       signal: controller.signal,
+      onProgress: (event) => {
+        if (event.reason === "answer_inflight_coalesced") markJoined();
+      },
     });
+    await joined;
     const reason = new DOMException("waiter left", "AbortError");
     controller.abort(reason);
     await expect(second).rejects.toBe(reason);

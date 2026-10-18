@@ -3,6 +3,8 @@ export type IngestionRecoveryJob = {
   document_id: string;
   status: string | null;
   locked_at?: string | null;
+  lease_token?: string | null;
+  lease_expires_at?: string | null;
   documents?: {
     status?: string | null;
     page_count?: number | null;
@@ -24,7 +26,11 @@ function parseLockedAt(value: string | null | undefined) {
 }
 
 export function isStaleProcessingJob(job: IngestionRecoveryJob, now: Date, staleAfterMinutes: number) {
-  if (job.status !== "processing" || !job.locked_at) return false;
+  if (job.status !== "processing") return false;
+  if (job.lease_expires_at != null) {
+    const expiry = parseLockedAt(job.lease_expires_at);
+    return expiry !== null && expiry <= now.getTime();
+  }
   const lockedAt = parseLockedAt(job.locked_at);
   if (lockedAt === null) return false;
   return lockedAt < now.getTime() - staleAfterMinutes * 60_000;
@@ -32,13 +38,21 @@ export function isStaleProcessingJob(job: IngestionRecoveryJob, now: Date, stale
 
 export function isRecoverableProcessingJob(job: IngestionRecoveryJob, now: Date, staleAfterMinutes: number) {
   if (job.status !== "processing") return false;
+  if (job.lease_expires_at != null) {
+    const expiry = parseLockedAt(job.lease_expires_at);
+    return expiry !== null && expiry <= now.getTime();
+  }
   const lockedAt = parseLockedAt(job.locked_at);
   if (lockedAt === null) return true;
   return lockedAt < now.getTime() - staleAfterMinutes * 60_000;
 }
 
 export function isFreshProcessingJob(job: IngestionRecoveryJob, now: Date, staleAfterMinutes: number) {
-  if (job.status !== "processing" || !job.locked_at) return false;
+  if (job.status !== "processing") return false;
+  if (job.lease_expires_at != null) {
+    const expiry = parseLockedAt(job.lease_expires_at);
+    return expiry === null || expiry > now.getTime();
+  }
   const lockedAt = parseLockedAt(job.locked_at);
   if (lockedAt === null) return false;
   return lockedAt >= now.getTime() - staleAfterMinutes * 60_000;
@@ -50,7 +64,6 @@ export function buildIngestionRecoveryPlan(args: {
   staleAfterMinutes: number;
 }) {
   const now = args.now ?? new Date();
-  const resetDocuments = new Set<string>();
   const actions: IngestionRecoveryAction[] = [];
 
   const jobsByDocument = new Map<string, IngestionRecoveryJob[]>();
@@ -95,8 +108,8 @@ export function buildIngestionRecoveryPlan(args: {
     for (const job of recoverableJobs) {
       if (job.id !== retryJob.id) actions.push({ action: "supersede", jobId: job.id, documentId });
     }
-    resetDocuments.add(documentId);
-    actions.push({ action: "retry", jobId: retryJob.id, documentId, resetDocument: true });
+    // Recovery preserves all generations; the next claim mints a fresh write generation.
+    actions.push({ action: "retry", jobId: retryJob.id, documentId, resetDocument: false });
   }
 
   // Apply supersedes before retries. A retry flips a row to `pending`; if a redundant sibling for
@@ -110,7 +123,8 @@ export function buildIngestionRecoveryPlan(args: {
 
   return {
     actions: orderedActions,
-    resetDocumentIds: Array.from(resetDocuments),
+    // Kept for callers that display the preview; recovery never deletes index artifacts.
+    resetDocumentIds: [] as string[],
     supersedeCount: orderedActions.filter((action) => action.action === "supersede").length,
     retryCount: orderedActions.filter((action) => action.action === "retry").length,
   };
@@ -125,6 +139,8 @@ export type IngestionRecoverySkipReason =
 export type IngestionRecoveryRowState = {
   jobStatus: string | null;
   jobLockedAt: string | null;
+  jobLeaseToken: string | null;
+  jobLeaseExpiresAt: string | null;
   documentStatus: string | null;
   documentOwnerId: string | null;
 };
@@ -153,9 +169,8 @@ function recoveryActionKey(action: IngestionRecoveryAction) {
  * `buildIngestionRecoveryPlan` runs against a point-in-time snapshot, and the operator then
  * spends unbounded wall-clock time reading the preview before confirming. In that window a job
  * can finish normally, a worker can re-claim it, or a document can become `indexed` — and the
- * plan's retry branch is destructive (`reset_document_index` deletes every chunk, page, image and
- * section for the document with no guard of its own). Applying a stale plan therefore destroys a
- * freshly committed index or races a live worker.
+ * retrying a stale plan can steal a current worker's authority. The RPC revalidates this
+ * snapshot under the same authority/job locks as worker claims and preserves index artifacts.
  *
  * This re-derives the plan from the fresh rows and keeps only actions the queue still asks for,
  * carrying the observed row state forward so the caller can guard each write on it.
@@ -192,6 +207,8 @@ export function reconcileIngestionRecoveryPlan(args: {
       expected: {
         jobStatus: job.status ?? null,
         jobLockedAt: job.locked_at ?? null,
+        jobLeaseToken: job.lease_token ?? null,
+        jobLeaseExpiresAt: job.lease_expires_at ?? null,
         documentStatus: job.documents?.status ?? null,
         documentOwnerId: job.documents?.owner_id ?? null,
       },
@@ -199,4 +216,37 @@ export function reconcileIngestionRecoveryPlan(args: {
   }
 
   return { applicable, skipped };
+}
+
+/** Shared by both operator entry points: every mutation uses the atomic SQL contract. */
+export async function applyIngestionRecoveryActions(
+  client: {
+    rpc(
+      name: "recover_ingestion_job",
+      args: {
+        p_job_id: string;
+        p_action: string;
+        p_expected: IngestionRecoveryRowState;
+      },
+    ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
+  },
+  applicable: ReconciledIngestionRecoveryAction[],
+) {
+  const results: Array<{ action: IngestionRecoveryAction; applied: boolean; reason: string | null }> = [];
+  for (const { action, expected } of applicable) {
+    const { data, error } = await client.rpc("recover_ingestion_job", {
+      p_job_id: action.jobId,
+      p_action: action.action,
+      p_expected: expected,
+    });
+    if (error) throw new Error(error.message);
+    const outcome = data && typeof data === "object" && !Array.isArray(data) ? (data as Record<string, unknown>) : null;
+    const applied = outcome?.ok === true;
+    results.push({
+      action,
+      applied,
+      reason: applied ? null : typeof outcome?.reason === "string" ? outcome.reason : "invalid_recovery_response",
+    });
+  }
+  return results;
 }

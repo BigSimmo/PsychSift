@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 
 import { calculators } from "@/lib/calculators/calculator-fixtures";
-import { factsheets } from "@/lib/factsheets-data";
+import { FACTSHEET_DEMO_NOTICE, factsheets } from "@/lib/factsheets-data";
 import { THERAPY_CATALOGUE_ASSETS } from "@/data/therapy-catalogue-assets";
 import type { Therapy } from "@/lib/therapy-compass-types";
 import { dictionaryEntries, dictionarySource } from "@/lib/dictionary-data";
@@ -252,7 +252,13 @@ function buildFactsheetRecords() {
       domain: "factsheets",
       route: producer.routeBuilder(sheet.slug),
       title: sheet.title,
-      body: [sheet.brand, `Audience: ${sheet.audience}`, sheet.summary, `Review date: ${sheet.reviewedOn}`]
+      body: [
+        sheet.brand,
+        `Audience: ${sheet.audience}`,
+        sheet.summary,
+        FACTSHEET_DEMO_NOTICE,
+        `Content month: ${sheet.reviewedOn}`,
+      ]
         .filter(Boolean)
         .join("\n"),
       sourceRole: "clinical_reference",
@@ -261,6 +267,10 @@ function buildFactsheetRecords() {
       sourceStatus: "current",
       sourceLineage: [
         ...repositoryLineage("src/components/factsheets/factsheets-data.ts", sheet),
+        ...repositoryLineage("src/lib/factsheets-data.ts:summary-context", {
+          notice: FACTSHEET_DEMO_NOTICE,
+          dateMeaning: "content-month",
+        }),
         ...sheet.sources.map((source) => ({
           sourceId: `reference:${source.org}:${source.n}`,
           sourceHash: siteContentValueHash(source),

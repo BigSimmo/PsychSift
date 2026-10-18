@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-18T07:30:17.033Z",
+  "generated_at": "2026-10-18T10:29:05.818Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "da47a2a220eaef16f45d515308cd5570db083d1ac7279de10cc5ee951cf204a9",
-  "replay_seconds": 16,
+  "schema_sha256": "2e8d1d11c7a8effd99147b717425afc437167cef8304e180e5885812b354053d",
+  "replay_seconds": 14,
   "snapshot": {
     "views": [
       {
@@ -2976,6 +2976,34 @@
           "autovacuum_analyze_scale_factor=0.02",
           "autovacuum_vacuum_scale_factor=0.05"
         ],
+        "rls_forced": false,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=arwdDxtm/postgres"
+        ],
+        "name": "document_evidence_revisions",
+        "columns": [
+          {
+            "name": "document_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "revision",
+            "type": "bigint",
+            "default": "0",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
         "rls_forced": false,
         "rls_enabled": true
       },
@@ -11611,6 +11639,14 @@
             "generated": ""
           },
           {
+            "name": "cme_evidence_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
             "name": "completed_at",
             "type": "timestamp with time zone",
             "default": null,
@@ -14854,6 +14890,12 @@
         "def_hash": "7224a35b50c37a7394210ca930e4e99f"
       },
       {
+        "def": "CREATE UNIQUE INDEX document_evidence_revisions_pkey ON public.document_evidence_revisions USING btree (document_id)",
+        "name": "document_evidence_revisions_pkey",
+        "table": "document_evidence_revisions",
+        "def_hash": "2615588a76c4e5926413aec57fd7d419"
+      },
+      {
         "def": "CREATE INDEX document_images_created_at_idx ON public.document_images USING btree (created_at)",
         "name": "document_images_created_at_idx",
         "table": "document_images",
@@ -16612,6 +16654,12 @@
         "def_hash": "616d06e4b7bca60c216c7c1a86d5e02f"
       },
       {
+        "def": "CREATE UNIQUE INDEX storage_cleanup_jobs_cme_evidence_key ON public.storage_cleanup_jobs USING btree (cme_evidence_id) WHERE (cme_evidence_id IS NOT NULL)",
+        "name": "storage_cleanup_jobs_cme_evidence_key",
+        "table": "storage_cleanup_jobs",
+        "def_hash": "285fe5104ce348207613e4bd62f0803d"
+      },
+      {
         "def": "CREATE INDEX storage_cleanup_jobs_document_idx ON public.storage_cleanup_jobs USING btree (document_id)",
         "name": "storage_cleanup_jobs_document_idx",
         "table": "storage_cleanup_jobs",
@@ -18345,6 +18393,21 @@
         "table": "document_embedding_fields"
       },
       {
+        "def": "CREATE TRIGGER document_images_evidence_delete AFTER DELETE ON public.document_images REFERENCING OLD TABLE AS old_rows FOR EACH STATEMENT EXECUTE FUNCTION public.document_evidence_rows_changed()",
+        "name": "document_images_evidence_delete",
+        "table": "document_images"
+      },
+      {
+        "def": "CREATE TRIGGER document_images_evidence_insert AFTER INSERT ON public.document_images REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION public.document_evidence_rows_changed()",
+        "name": "document_images_evidence_insert",
+        "table": "document_images"
+      },
+      {
+        "def": "CREATE TRIGGER document_images_evidence_update AFTER UPDATE ON public.document_images REFERENCING OLD TABLE AS old_rows NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION public.document_evidence_rows_changed()",
+        "name": "document_images_evidence_update",
+        "table": "document_images"
+      },
+      {
         "def": "CREATE TRIGGER document_index_units_updated_at BEFORE UPDATE ON public.document_index_units FOR EACH ROW EXECUTE FUNCTION public.set_updated_at()",
         "name": "document_index_units_updated_at",
         "table": "document_index_units"
@@ -18368,6 +18431,21 @@
         "def": "CREATE TRIGGER document_sections_updated_at BEFORE UPDATE ON public.document_sections FOR EACH ROW EXECUTE FUNCTION public.set_updated_at()",
         "name": "document_sections_updated_at",
         "table": "document_sections"
+      },
+      {
+        "def": "CREATE TRIGGER document_table_facts_evidence_delete AFTER DELETE ON public.document_table_facts REFERENCING OLD TABLE AS old_rows FOR EACH STATEMENT EXECUTE FUNCTION public.document_evidence_rows_changed()",
+        "name": "document_table_facts_evidence_delete",
+        "table": "document_table_facts"
+      },
+      {
+        "def": "CREATE TRIGGER document_table_facts_evidence_insert AFTER INSERT ON public.document_table_facts REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION public.document_evidence_rows_changed()",
+        "name": "document_table_facts_evidence_insert",
+        "table": "document_table_facts"
+      },
+      {
+        "def": "CREATE TRIGGER document_table_facts_evidence_update AFTER UPDATE ON public.document_table_facts REFERENCING OLD TABLE AS old_rows NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION public.document_evidence_rows_changed()",
+        "name": "document_table_facts_evidence_update",
+        "table": "document_table_facts"
       },
       {
         "def": "CREATE TRIGGER document_title_words_enforce_public_scope BEFORE INSERT OR UPDATE ON public.document_title_words FOR EACH ROW EXECUTE FUNCTION public.enforce_document_title_word_scope()",
@@ -18628,6 +18706,16 @@
         "def": "CREATE TRIGGER work_course_bookings_updated_at BEFORE UPDATE ON public.work_course_bookings FOR EACH ROW EXECUTE FUNCTION public.set_updated_at()",
         "name": "work_course_bookings_updated_at",
         "table": "work_course_bookings"
+      },
+      {
+        "def": "CREATE TRIGGER work_team_move_revokes_supervisors AFTER UPDATE OF hospital_id ON public.work_hospital_teams FOR EACH ROW EXECUTE FUNCTION public.work_revoke_supervisors_on_team_move()",
+        "name": "work_team_move_revokes_supervisors",
+        "table": "work_hospital_teams"
+      },
+      {
+        "def": "CREATE TRIGGER work_whole_team_supervisor_scope BEFORE INSERT OR UPDATE ON public.work_role_grants FOR EACH ROW EXECUTE FUNCTION public.work_guard_whole_team_supervisor()",
+        "name": "work_whole_team_supervisor_scope",
+        "table": "work_role_grants"
       }
     ],
     "functions": [
@@ -18770,6 +18858,13 @@
         ],
         "def_hash": "f02e0c8d223bb2621468b958df75f1f1",
         "signature": "public.bind_public_source_upload_authority(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "e91b4cce6223c04f8e34780d31eb6aa9",
+        "signature": "public.bump_document_evidence_revisions(uuid[])"
       },
       {
         "acl": [
@@ -18999,7 +19094,15 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "eefeb8717ae64afc070c1c312a5daf12",
+        "def_hash": "bc89ab638134abac5c12dd51fbce0284",
+        "signature": "public.cme_remove_evidence_v2(uuid,uuid,text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "d49e3fb5c0812ebc682ae49dce4ff426",
         "signature": "public.cme_remove_evidence(uuid,uuid,text)"
       },
       {
@@ -19228,6 +19331,13 @@
         ],
         "def_hash": "37f32cc93a66d9ce45bdcecf263ace70",
         "signature": "public.detect_legacy_ivfflat_indexes()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "58f5ef7258095fc953849fdb45a832d1",
+        "signature": "public.document_evidence_rows_changed()"
       },
       {
         "acl": [
@@ -19883,6 +19993,14 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
+        "def_hash": "6e2e9461e611d13573b2e1aea26f0d5e",
+        "signature": "public.rag_cache_scope_revision_v1(uuid,boolean,uuid[])"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
         "def_hash": "6c3ac9bb9b53f5b4eb5445392c4c0a31",
         "signature": "public.read_completed_admin_text_source_layout(uuid,uuid,uuid,uuid[])"
       },
@@ -20014,6 +20132,14 @@
         ],
         "def_hash": "874163cf5aa0b818f3e88ca1ac6f90b2",
         "signature": "public.record_source_review(uuid,uuid,text,text,text[],date,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "6855830fb99d24b7e0d3d47f477ffbbb",
+        "signature": "public.recover_ingestion_job(uuid,text,jsonb)"
       },
       {
         "acl": [
@@ -20855,7 +20981,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "a614e81532918d22c3a44d3d4008c54e",
+        "def_hash": "e0f61bafe44727727e8d3c8ff1c8164e",
         "signature": "public.teaching_depth_command(uuid,uuid,text,jsonb)"
       },
       {
@@ -21214,6 +21340,30 @@
         ],
         "def_hash": "648b41850477258c0d015136b043bb98",
         "signature": "public.work_cancel_course(uuid,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "f7b8cb8cfd954642c48c0358ddd8f619",
+        "signature": "public.work_guard_whole_team_supervisor()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "fdf89b88112ab0575fe3e595348dc200",
+        "signature": "public.work_move_team_v1(uuid,uuid,uuid,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "53214a1cf5949106be9192b3460ef059",
+        "signature": "public.work_revoke_supervisors_on_team_move()"
       },
       {
         "acl": [
@@ -22280,6 +22430,16 @@
         "def": "FOREIGN KEY (source_chunk_id) REFERENCES public.document_chunks(id) ON DELETE CASCADE",
         "name": "document_embedding_fields_source_chunk_id_fkey",
         "table": "document_embedding_fields"
+      },
+      {
+        "def": "FOREIGN KEY (document_id) REFERENCES public.documents(id) ON DELETE CASCADE",
+        "name": "document_evidence_revisions_document_id_fkey",
+        "table": "document_evidence_revisions"
+      },
+      {
+        "def": "PRIMARY KEY (document_id)",
+        "name": "document_evidence_revisions_pkey",
+        "table": "document_evidence_revisions"
       },
       {
         "def": "FOREIGN KEY (document_id) REFERENCES public.documents(id) ON DELETE CASCADE",
@@ -24965,6 +25125,11 @@
         "def": "CHECK (((char_length(reason) >= 3) AND (char_length(reason) <= 2000)))",
         "name": "source_review_events_reason_check",
         "table": "source_review_events"
+      },
+      {
+        "def": "FOREIGN KEY (cme_evidence_id) REFERENCES public.cme_evidence(id) ON DELETE SET NULL",
+        "name": "storage_cleanup_jobs_cme_evidence_id_fkey",
+        "table": "storage_cleanup_jobs"
       },
       {
         "def": "FOREIGN KEY (document_id) REFERENCES public.documents(id) ON DELETE SET NULL",

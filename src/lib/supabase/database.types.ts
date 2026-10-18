@@ -2216,6 +2216,12 @@ export type Database = {
           enrichment_status: string;
           id: string;
           last_error: string | null;
+          lease_authority_digest: string | null;
+          lease_duration_seconds: number | null;
+          lease_expected_generation_id: string | null;
+          lease_expires_at: string | null;
+          lease_token: string | null;
+          lease_write_generation_id: string | null;
           locked_at: string | null;
           locked_by: string | null;
           max_attempts: number;
@@ -2232,6 +2238,12 @@ export type Database = {
           enrichment_status?: string;
           id?: string;
           last_error?: string | null;
+          lease_authority_digest?: string | null;
+          lease_duration_seconds?: number | null;
+          lease_expected_generation_id?: string | null;
+          lease_expires_at?: string | null;
+          lease_token?: string | null;
+          lease_write_generation_id?: string | null;
           locked_at?: string | null;
           locked_by?: string | null;
           max_attempts?: number;
@@ -2248,6 +2260,12 @@ export type Database = {
           enrichment_status?: string;
           id?: string;
           last_error?: string | null;
+          lease_authority_digest?: string | null;
+          lease_duration_seconds?: number | null;
+          lease_expected_generation_id?: string | null;
+          lease_expires_at?: string | null;
+          lease_token?: string | null;
+          lease_write_generation_id?: string | null;
           locked_at?: string | null;
           locked_by?: string | null;
           max_attempts?: number;
@@ -2346,10 +2364,16 @@ export type Database = {
           document_id: string;
           error_message: string | null;
           id: string;
+          lease_authority_digest: string | null;
+          lease_duration_seconds: number | null;
+          lease_expected_generation_id: string | null;
+          lease_expires_at: string | null;
+          lease_token: string | null;
+          lease_write_generation_id: string | null;
           locked_at: string | null;
           locked_by: string | null;
           max_attempts: number;
-          next_run_at: string;
+          next_run_at: string | null;
           progress: number;
           stage: string;
           started_at: string | null;
@@ -2364,10 +2388,16 @@ export type Database = {
           document_id: string;
           error_message?: string | null;
           id?: string;
+          lease_authority_digest?: string | null;
+          lease_duration_seconds?: number | null;
+          lease_expected_generation_id?: string | null;
+          lease_expires_at?: string | null;
+          lease_token?: string | null;
+          lease_write_generation_id?: string | null;
           locked_at?: string | null;
           locked_by?: string | null;
           max_attempts?: number;
-          next_run_at?: string;
+          next_run_at?: string | null;
           progress?: number;
           stage?: string;
           started_at?: string | null;
@@ -2382,10 +2412,16 @@ export type Database = {
           document_id?: string;
           error_message?: string | null;
           id?: string;
+          lease_authority_digest?: string | null;
+          lease_duration_seconds?: number | null;
+          lease_expected_generation_id?: string | null;
+          lease_expires_at?: string | null;
+          lease_token?: string | null;
+          lease_write_generation_id?: string | null;
           locked_at?: string | null;
           locked_by?: string | null;
           max_attempts?: number;
-          next_run_at?: string;
+          next_run_at?: string | null;
           progress?: number;
           stage?: string;
           started_at?: string | null;
@@ -3708,6 +3744,7 @@ export type Database = {
       storage_cleanup_jobs: {
         Row: {
           attempts: number;
+          cme_evidence_id: string | null;
           completed_at: string | null;
           created_at: string;
           document_bucket: string;
@@ -3733,6 +3770,7 @@ export type Database = {
         };
         Insert: {
           attempts?: number;
+          cme_evidence_id?: string | null;
           completed_at?: string | null;
           created_at?: string;
           document_bucket?: string;
@@ -3758,6 +3796,7 @@ export type Database = {
         };
         Update: {
           attempts?: number;
+          cme_evidence_id?: string | null;
           completed_at?: string | null;
           created_at?: string;
           document_bucket?: string;
@@ -3782,6 +3821,13 @@ export type Database = {
           updated_at?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: "storage_cleanup_jobs_cme_evidence_id_fkey";
+            columns: ["cme_evidence_id"];
+            isOneToOne: true;
+            referencedRelation: "cme_evidence";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "storage_cleanup_jobs_public_source_reservation_id_fkey";
             columns: ["public_source_reservation_id"];
@@ -5048,6 +5094,22 @@ export type Database = {
       cme_set_entry_goal: { Args: { p_owner_id: string; p_entry_id: string; p_goal_id: string | null }; Returns: Json };
       cme_set_entry_archived: { Args: { p_owner_id: string; p_entry_id: string; p_archived: boolean }; Returns: Json };
       cme_evidence_counts: { Args: { p_owner_id: string; p_year: number }; Returns: Json };
+      work_move_team_v1: {
+        Args: { p_actor_id: string; p_service_id: string; p_expected_hospital_id: string; p_to_hospital_id: string };
+        Returns: string;
+      };
+      recover_ingestion_job: {
+        Args: { p_job_id: string; p_action: string; p_expected: Json };
+        Returns: Json;
+      };
+      rag_cache_scope_revision_v1: {
+        Args: { p_owner_id: string | null; p_include_public: boolean; p_document_ids?: string[] | null };
+        Returns: string;
+      };
+      cme_remove_evidence_v2: {
+        Args: { p_owner_id: string; p_evidence_id: string; p_reason: string };
+        Returns: Database["public"]["Tables"]["cme_evidence"]["Row"];
+      };
       cme_remove_evidence: {
         Args: { p_owner_id: string; p_evidence_id: string; p_reason: string };
         Returns: Database["public"]["Tables"]["cme_evidence"]["Row"];
