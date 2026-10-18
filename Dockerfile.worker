@@ -158,6 +158,15 @@ LABEL org.opencontainers.image.title="PsychSift ingestion worker"
 LABEL org.opencontainers.image.description="Node + Python OCR ingestion worker for the PsychSift medical guideline RAG knowledge base"
 LABEL org.opencontainers.image.licenses="UNLICENSED"
 STOPSIGNAL SIGTERM
+# Container-runtime health probe for Docker/Compose. worker/health.ts binds
+# /health on WORKER_HEALTH_PORT, falling back to Railway's PORT; with neither
+# set the health server is off and the probe reports unhealthy rather than
+# claiming a check it could not run. Railway ignores HEALTHCHECK and keeps
+# using railway.worker.json's healthcheckPath (/health on PORT), so this does
+# not change Railway deploy gating.
+# Kept on one line: tests/tsx-server-only-runner.test.ts treats the first line
+# starting with CMD as the worker entrypoint.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 CMD node -e "const p=process.env.WORKER_HEALTH_PORT||process.env.PORT;if(!p){console.error('worker health server disabled: set WORKER_HEALTH_PORT or PORT');process.exit(1)}fetch('http://127.0.0.1:'+p+'/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 # Long-poll worker; WORKER_* env vars control claim batch size, concurrency,
 # and the stale-claim window (see src/lib/env.ts).
 #
