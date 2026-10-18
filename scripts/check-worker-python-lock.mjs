@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * check-worker-python-lock — verify that worker/python/requirements.txt is
- * in sync with worker/python/requirements.in and is a hashed lockfile.
+ * check-worker-python-lock — verify that the selected Python runtime's lock
+ * is in sync with its source input and is a hashed lockfile.
  */
 import { mkdtempSync, mkdirSync, rmSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -17,8 +17,8 @@ import {
 
 const PYTHON = process.env.PYTHON_BIN?.trim() || (process.platform === "win32" ? "python" : "python3");
 const PIP_TOOLS_VERSION = "7.6.0";
-const IN_FILE = "worker/python/requirements.in";
 const target = requestedLockTarget();
+const IN_FILE = target.inputFile;
 
 function run(cmd, args, opts = {}) {
   const result = spawnSync(cmd, args, { encoding: "utf8", stdio: "pipe", ...opts });

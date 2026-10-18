@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import { evaluateOperationalAlerts, summarizeOperationalAlerts } from "../scripts/lib/operational-alerts.mjs";
 
 function snapshot(overrides = {}) {
@@ -15,6 +16,23 @@ function snapshot(overrides = {}) {
 }
 
 describe("evaluateOperationalAlerts", () => {
+  it("gives every configured alert a runbook with diagnosis and recovery actions", () => {
+    const source = readFileSync("scripts/lib/operational-alerts.mjs", "utf8");
+    const runbook = readFileSync("docs/observability-slos.md", "utf8");
+    const codes = [...source.matchAll(/code: "(OPS_[A-Z_]+)"/g)].map((match) => match[1]);
+    expect(codes.length).toBeGreaterThan(0);
+    for (const code of codes) {
+      const section = runbook.split(`### \`${code}\``)[1]?.split(/\n###? /)[0];
+      expect(section, `Missing runbook for ${code}`).toBeDefined();
+      for (const action of ["Diagnose", "Acknowledge", "Recover", "Escalate"]) {
+        expect(section, `${code} needs ${action}`).toContain(`**${action}:**`);
+      }
+    }
+    expect(runbook).not.toContain("Only two of the");
+    expect(runbook).toContain("latencyBudgetBreachRate");
+    expect(runbook).toContain("at least 20");
+  });
+
   it("warns only above the hybrid-RPC 0.5% boundary", () => {
     expect(evaluateOperationalAlerts(snapshot({ hybridRpcErrorRate: 0.005 }))).toEqual([]);
     expect(evaluateOperationalAlerts(snapshot({ hybridRpcErrorRate: 0.0051 }))).toMatchObject([
@@ -122,7 +140,7 @@ describe("evaluateOperationalAlerts", () => {
       evaluateOperationalAlerts(
         snapshot({
           totalQueries: 20,
-          sourceGapRate: 0.2,
+          sourceGapRate: 0.15,
           unsupportedRate: 0.15,
           latencyBudgetBreachRate: 0.15,
         }),
@@ -132,7 +150,7 @@ describe("evaluateOperationalAlerts", () => {
     const warnings = evaluateOperationalAlerts(
       snapshot({
         totalQueries: 25,
-        sourceGapRate: 0.21,
+        sourceGapRate: 0.16,
         unsupportedRate: 0.24,
         latencyBudgetBreachRate: 0.16,
       }),
@@ -145,7 +163,7 @@ describe("evaluateOperationalAlerts", () => {
     expect(warnings.every((w) => w.severity === "warning" && Boolean(w.runbook))).toBe(true);
     expect(warnings.find((w) => w.code === "OPS_SOURCE_GAP_RATE_WARNING")?.threshold).toEqual({
       operator: ">",
-      value: 0.2,
+      value: 0.15,
       unit: "rate",
     });
   });

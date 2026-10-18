@@ -52,7 +52,7 @@ describe("Python extracted-document payload validation", () => {
 describe("extraction provenance (audit F04)", () => {
   const provenance = {
     name: "extract_pdf_assets",
-    version: "2026-10-16.bounded-ocr-detail-v6",
+    version: "2026-10-18.ruled-edge-provenance-v7",
     pymupdf: "1.26.0",
     tableStrategy: "table_aware_page_text",
   };

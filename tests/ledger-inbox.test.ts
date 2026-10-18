@@ -1023,6 +1023,17 @@ describe("ledger-inbox idempotent close and duplicate done handling", () => {
       },
     });
 
+    it("rejects the short ID owned by another row when a colliding ULID is supplied", () => {
+      const otherUlid = "01M4ZM793BWFYDV675NNBHBP53K".slice(0, 26);
+      const ledger = REOPEN_LEDGER.replace(
+        "| #005 | issue | Prior resolved issue",
+        `| #WFYDV67 <!-- issue-ulid:${otherUlid} --> | issue | Prior resolved issue`,
+      );
+      expect(() => applyRequestBatch(ledger, [reopenRequest({ targetUlid: otherUlid })])).toThrow(
+        /name different issues/,
+      );
+    });
+
     it("moves the archived row back to the open table with its original ID and ULID", () => {
       const result = applyRequest(REOPEN_LEDGER, reopenRequest());
       const rows = parseIssues(result).rows.filter((row) => row.id === "#WFYDV6");

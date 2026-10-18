@@ -147,13 +147,13 @@ function validRate(value) {
 }
 
 /**
- * docs/observability-slos.md §2 thresholds, applied to the digest's 60-minute snapshot.
+ * docs/observability-slos.md §2 configured thresholds, applied to the digest's 60-minute snapshot.
  * Rates are 0..1 and strictly-greater-than; latencies are p95 milliseconds per routing mode.
  * Kept in one table so the doc and the code can be compared line by line.
  */
 export const ANSWER_QUALITY_THRESHOLDS = Object.freeze({
   minimumQueries: 20,
-  sourceGapRate: Object.freeze({ warning: 0.2, page: 0.3 }),
+  sourceGapRate: Object.freeze({ warning: 0.15, page: 0.3 }),
   unsupportedRate: Object.freeze({ warning: 0.15, page: 0.25 }),
   latencyBudgetBreachRate: Object.freeze({ warning: 0.15 }),
 });

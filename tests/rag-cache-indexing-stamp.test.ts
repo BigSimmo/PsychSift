@@ -1,3 +1,4 @@
+import { withMockRagScopeRevision } from "./rag-cache-test-revision";
 /**
  * The indexing-stamp corpus-staleness guard (audit L21).
  *
@@ -27,42 +28,43 @@ type DocumentsResult = { data: unknown; error: unknown };
 
 function mockDocumentsQuery(result: () => DocumentsResult) {
   vi.doMock("@/lib/supabase/admin", () => ({
-    createAdminClient: () => ({
-      from: vi.fn((table: string) => {
-        if (table !== "documents") {
-          return {
-            delete: vi.fn(() => ({
-              eq: vi.fn(function eq(this: unknown) {
-                return this;
-              }),
-              is: vi.fn(function is(this: unknown) {
-                return this;
-              }),
-              in: vi.fn(function inFilter(this: unknown) {
-                return this;
-              }),
-              then: (onfulfilled?: (value: { data: null; error: null }) => unknown) =>
-                Promise.resolve({ data: null, error: null }).then(onfulfilled),
-            })),
-            insert: vi.fn(async () => ({ data: null, error: null })),
-            select: vi.fn(() => ({
-              eq: vi.fn(function eq(this: unknown) {
-                return this;
-              }),
-              then: (onfulfilled?: (value: { data: null; error: null }) => unknown) =>
-                Promise.resolve({ data: null, error: null }).then(onfulfilled),
-            })),
-          };
-        }
-        const builder: Record<string, unknown> = {};
-        for (const method of ["select", "eq", "is", "or", "in", "order", "limit", "abortSignal"]) {
-          builder[method] = vi.fn(() => builder);
-        }
-        builder.then = (onfulfilled?: (value: DocumentsResult) => unknown) =>
-          Promise.resolve(result()).then(onfulfilled);
-        return builder;
+    createAdminClient: () =>
+      withMockRagScopeRevision({
+        from: vi.fn((table: string) => {
+          if (table !== "documents") {
+            return {
+              delete: vi.fn(() => ({
+                eq: vi.fn(function eq(this: unknown) {
+                  return this;
+                }),
+                is: vi.fn(function is(this: unknown) {
+                  return this;
+                }),
+                in: vi.fn(function inFilter(this: unknown) {
+                  return this;
+                }),
+                then: (onfulfilled?: (value: { data: null; error: null }) => unknown) =>
+                  Promise.resolve({ data: null, error: null }).then(onfulfilled),
+              })),
+              insert: vi.fn(async () => ({ data: null, error: null })),
+              select: vi.fn(() => ({
+                eq: vi.fn(function eq(this: unknown) {
+                  return this;
+                }),
+                then: (onfulfilled?: (value: { data: null; error: null }) => unknown) =>
+                  Promise.resolve({ data: null, error: null }).then(onfulfilled),
+              })),
+            };
+          }
+          const builder: Record<string, unknown> = {};
+          for (const method of ["select", "eq", "is", "or", "in", "order", "limit", "abortSignal"]) {
+            builder[method] = vi.fn(() => builder);
+          }
+          builder.then = (onfulfilled?: (value: DocumentsResult) => unknown) =>
+            Promise.resolve(result()).then(onfulfilled);
+          return builder;
+        }),
       }),
-    }),
   }));
 }
 
@@ -85,7 +87,7 @@ describe("indexing-stamp error is not an empty corpus (L21)", () => {
 
     expect(errorStamp).not.toBe(emptyStamp);
     expect(errorStamp).toContain("index-stamp-unavailable");
-    expect(emptyStamp).toContain("no-indexed-documents");
+    expect(emptyStamp).toContain("rag-cache-scope-v1:");
   });
 
   it("does not write an answer to the cache under an unavailable stamp", async () => {

@@ -56,6 +56,9 @@ describe.runIf(hasPyMuPDF)("PDF table edge-strip row recovery (3344a3a9)", () =>
       "extended_rect = fitz.Rect(50, 90, 560, 240)",
       "existing_rows = [['0', 'Asleep', 'Monitor vitals']]",
       "column_ranges = [(50.0, 120.0), (120.0, 310.0), (310.0, 560.0)]",
+      "for y0,y1 in [(94,112),(203,223)]:",
+      "    for y in (y0,y1): page.draw_line((50,y),(560,y))",
+      "    for x in (50,120,310,560): page.draw_line((x,y0),(x,y1))",
       "# Top-strip header row at y=108",
       "page.insert_text((54, 108), 'Score', fontsize=9)",
       "page.insert_text((124, 108), 'Patient state', fontsize=9)",
@@ -94,7 +97,7 @@ describe.runIf(hasPyMuPDF)("PDF table edge-strip row recovery (3344a3a9)", () =>
     ]);
   });
 
-  function recoverBottomRow(lines: string[], scoreX = 54): string[][] {
+  function recoverBottomRow(lines: string[], scoreX = 54, rowBottom = 224): string[][] {
     const script = [
       "import json, sys",
       "import pymupdf as fitz",
@@ -106,6 +109,8 @@ describe.runIf(hasPyMuPDF)("PDF table edge-strip row recovery (3344a3a9)", () =>
       "extended_rect = fitz.Rect(50, 120, 560, 250)",
       "existing_rows = [['0', 'Asleep', 'Monitor vitals']]",
       "column_ranges = [(50.0, 120.0), (120.0, 310.0), (310.0, 560.0)]",
+      `for y in (202,${rowBottom}): page.draw_line((50,y),(560,y))`,
+      `for x in (50,120,310,560): page.draw_line((x,202),(x,${rowBottom}))`,
       `page.insert_text((${scoreX}, 218), '5', fontsize=9)`,
       "page.insert_text((124, 218), 'Highly aroused', fontsize=9)",
       ...lines,
@@ -139,17 +144,21 @@ describe.runIf(hasPyMuPDF)("PDF table edge-strip row recovery (3344a3a9)", () =>
   });
 
   it("still fills an empty cell whose text starts a line lower than the rest of the row", () => {
-    expect(recoverBottomRow(["page.insert_text((314, 229), 'Call the duty registrar', fontsize=9)"])).toEqual([
+    expect(recoverBottomRow(["page.insert_text((314, 229), 'Call the duty registrar', fontsize=9)"], 54, 246)).toEqual([
       ["5", "Highly aroused", "Call the duty registrar"],
     ]);
   });
 
   it("still joins a cell whose text wrapped onto the next line", () => {
     expect(
-      recoverBottomRow([
-        "page.insert_text((314, 218), 'Give oral medication first, then call the duty registrar,', fontsize=9)",
-        "page.insert_text((314, 229), 'security and nurse in charge', fontsize=9)",
-      ]),
+      recoverBottomRow(
+        [
+          "page.insert_text((314, 218), 'Give oral medication first, then call the duty registrar,', fontsize=9)",
+          "page.insert_text((314, 229), 'security and nurse in charge', fontsize=9)",
+        ],
+        54,
+        246,
+      ),
     ).toEqual([
       ["5", "Highly aroused", "Give oral medication first, then call the duty registrar, security and nurse in charge"],
     ]);
@@ -157,11 +166,15 @@ describe.runIf(hasPyMuPDF)("PDF table edge-strip row recovery (3344a3a9)", () =>
 
   it("still joins a deliberate line break inside a cell, such as a dose under a drug name", () => {
     expect(
-      recoverBottomRow([
-        "page.insert_text((314, 218), 'Lorazepam', fontsize=9)",
-        "page.insert_text((314, 229), '1 to 2 mg orally', fontsize=9)",
-        "page.insert_text((314, 240), '- repeat once after 1 hour', fontsize=9)",
-      ]),
+      recoverBottomRow(
+        [
+          "page.insert_text((314, 218), 'Lorazepam', fontsize=9)",
+          "page.insert_text((314, 229), '1 to 2 mg orally', fontsize=9)",
+          "page.insert_text((314, 240), '- repeat once after 1 hour', fontsize=9)",
+        ],
+        54,
+        246,
+      ),
     ).toEqual([["5", "Highly aroused", "Lorazepam 1 to 2 mg orally - repeat once after 1 hour"]]);
   });
 

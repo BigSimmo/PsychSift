@@ -5,6 +5,7 @@ export const workerPythonLockTargets = Object.freeze({
   production: Object.freeze({
     name: "production",
     pythonVersion: "3.11",
+    inputFile: "worker/python/requirements.in",
     outputFile: "worker/python/requirements.txt",
     generateCommand: "npm run generate:worker-python-lock",
     includeUnsafe: false,
@@ -12,6 +13,7 @@ export const workerPythonLockTargets = Object.freeze({
   cloud: Object.freeze({
     name: "cloud",
     pythonVersion: "3.12",
+    inputFile: "worker/python/requirements-cloud.in",
     outputFile: "worker/python/requirements-cloud.txt",
     generateCommand: "npm run generate:worker-python-cloud-lock",
     includeUnsafe: true,

@@ -12,6 +12,7 @@ import {
 } from "@/components/teaching/teaching-dates";
 import type { LedgerGroup } from "@/components/teaching/teaching-modules";
 import { withUnit } from "@/components/teaching/teaching-number";
+import { perthWallToIso } from "@/lib/roster/shifts/perth-time";
 import {
   attendanceLabels,
   teachingCpdEntryHref,
@@ -34,7 +35,7 @@ export type SeriesRow = ModelSeriesRow;
 export type { GroupRow };
 export type OrganiseMember = z.infer<typeof organiseResultSchema>["members"][number];
 export type OrganiseRead = { series: SeriesRow[]; groups: GroupRow[]; members: OrganiseMember[] };
-export type Risk = { occurrenceId: string; rule: "room" | "clash"; text: string };
+export type Risk = { occurrenceId: string; rule: "room" | "clash" | "time"; text: string };
 export type ChangeDraft = {
   status: "moved" | "cancelled";
   date: string;
@@ -149,12 +150,17 @@ export function draftFor(session: SessionSummary): ChangeDraft {
   };
 }
 
-/** Perth has no daylight saving, so +08:00 is exact. An unreadable date or time keeps the session's own. */
+/** Work-zone wall clock to instant. An unreadable or skipped time keeps the session's own. */
 export function afterChange(session: SessionSummary, draft: ChangeDraft): SessionSummary {
   if (draft.status === "cancelled") return { ...session, status: "cancelled" };
-  const start = Date.parse(`${draft.date}T${draft.startTime}:00+08:00`);
-  const startsAt = Number.isFinite(start) ? new Date(start).toISOString() : session.startsAt;
-  const endsAt = Number.isFinite(start) ? new Date(start + draft.minutes * 60_000).toISOString() : session.endsAt;
+  // Preserve the exact instant for a room-only edit, including an ambiguous DST clock time.
+  const sameClock = draft.date === perthDateKey(session.startsAt) && draft.startTime === perthTime(session.startsAt);
+  const converted = sameClock ? session.startsAt : perthWallToIso(draft.date, draft.startTime);
+  const startsAt = converted ?? session.startsAt;
+  const endsAt =
+    !converted || (sameClock && draft.minutes === durationMinutes(session.startsAt, session.endsAt))
+      ? session.endsAt
+      : new Date(Date.parse(converted) + draft.minutes * 60_000).toISOString();
   return { ...session, status: "moved", startsAt, endsAt, venue: draft.venue.trim() || null };
 }
 
@@ -170,6 +176,10 @@ export function draftChangesSomething(session: SessionSummary, draft: ChangeDraf
 }
 
 export function changeRisks(session: SessionSummary, draft: ChangeDraft, others: readonly SessionSummary[]): Risk[] {
+  if (draft.status !== "cancelled" && !perthWallToIso(draft.date, draft.startTime))
+    return [
+      { occurrenceId: session.occurrenceId, rule: "time", text: "Choose a valid date and time in your work time zone" },
+    ];
   const after = afterChange(session, draft);
   return sessionRisks([after, ...others.filter((o) => o.occurrenceId !== session.occurrenceId)]).filter(
     (r) => r.occurrenceId === session.occurrenceId,

@@ -3,6 +3,7 @@
 import { RotateCcw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
+import { useAccountRequestScope } from "@/components/use-account-request-scope";
 import { AdminSection, AdminSkeleton, adminStyles } from "@/components/admin/admin-kit";
 import { focusRing } from "@/components/card-recipes";
 import { WorkButton, WorkCard } from "@/components/mode-kit/work";
@@ -30,17 +31,27 @@ type Read =
  * is kept on the device.
  */
 export function AdminNewJobSharing() {
+  const { scope, isCurrent } = useAccountRequestScope();
+  const [owner, setOwner] = useState(scope);
   const [attempt, setAttempt] = useState(0);
-  const [read, setRead] = useState<{ readonly key: number; readonly value: Read } | null>(null);
+  const [read, setRead] = useState<{ readonly key: number; readonly scope: string; readonly value: Read } | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  if (owner !== scope) {
+    setOwner(scope);
+    setSaving(false);
+    setSaveError(null);
+  }
 
   useEffect(() => {
     const controller = new AbortController();
     fetchStarterSharing({ signal: controller.signal }).then(
-      (outcome) =>
+      (outcome) => {
+        if (controller.signal.aborted || !isCurrent()) return;
         setRead({
           key: attempt,
+          scope,
           value:
             outcome.status === "ok"
               ? { status: "ok", share: outcome.share }
@@ -49,28 +60,32 @@ export function AdminNewJobSharing() {
                   offline: outcome.status === "offline",
                   message: outcome.status === "error" ? outcome.message : null,
                 },
-        }),
+        });
+      },
       () => {
         // Aborted: a newer read replaced this one.
       },
     );
     return () => controller.abort();
-  }, [attempt]);
+  }, [attempt, scope, isCurrent]);
 
   const retry = useCallback(() => {
+    if (!isCurrent()) return;
     setSaveError(null);
     setAttempt((n) => n + 1);
-  }, []);
+  }, [isCurrent]);
 
-  const state: Read = read?.key === attempt ? read.value : { status: "loading" };
+  const state: Read = read?.scope === scope && read.key === attempt ? read.value : { status: "loading" };
 
   async function toggle(next: boolean) {
+    if (!isCurrent()) return;
     setSaving(true);
     setSaveError(null);
     const outcome = await saveStarterSharing(next);
+    if (!isCurrent()) return;
     setSaving(false);
     if (outcome.status === "ok") {
-      setRead({ key: attempt, value: { status: "ok", share: outcome.share } });
+      setRead({ key: attempt, scope, value: { status: "ok", share: outcome.share } });
       return;
     }
     const stillOn = !next;

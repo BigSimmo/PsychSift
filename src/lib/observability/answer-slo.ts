@@ -18,7 +18,7 @@ export const ANSWER_LATENCY_BUDGET_MS = {
 
 export type AnswerLatencyRouteMode = keyof typeof ANSWER_LATENCY_BUDGET_MS;
 
-/** p95 of `total_latency_ms` for one routing mode, over the bounded metadata sample. */
+/** p95 answer latency for one routing mode (same latency field as the budget-breach rate), over the bounded metadata sample. */
 export type AnswerLatencyP95 = {
   /** Null when the sample held no row of this mode with a finite latency. */
   p95Ms: number | null;
@@ -81,6 +81,7 @@ type HybridRpcIdentityBuilder = PromiseLike<HybridRpcIdentityResult> & {
   gt(column: string, value: string): HybridRpcIdentityBuilder;
   is(column: string, value: null): HybridRpcIdentityBuilder;
   not(column: string, operator: string, value: null): HybridRpcIdentityBuilder;
+  order(column: string, options: { ascending: boolean }): HybridRpcIdentityBuilder;
   limit(count: number): HybridRpcIdentityBuilder;
 };
 
@@ -172,12 +173,10 @@ export function computeLatencyBudgetSloMetrics(rows: Array<{ metadata: unknown }
     if (meta.latency_budget_breached === true || (Number.isFinite(rawLatency) && rawLatency > budgetMs)) {
       latencyBudgetBreachQueries += 1;
     }
-    // The p95 reads total_latency_ms first: it is the whole-request figure the answer
-    // pipeline records and the one docs/observability-slos.md's SLO is written against.
-    const p95Latency = Number(meta.total_latency_ms ?? meta.latency_ms ?? meta.duration_ms ?? meta.response_ms);
+    // The p95 reuses the budget-breach latency field so both signals judge the same number.
     const mode = knownRouteMode(meta);
-    if (mode && Number.isFinite(p95Latency) && p95Latency >= 0) {
-      latenciesByMode[mode].push(p95Latency);
+    if (mode && Number.isFinite(rawLatency) && rawLatency >= 0) {
+      latenciesByMode[mode].push(rawLatency);
     }
   }
 
@@ -243,11 +242,14 @@ export async function answerSloSnapshot(client: SloProbeClient, windowMinutes = 
       // discriminator without hiding normal production answers from the SLO.
       .is("metadata->>event_type", null);
 
+  // Newest first, so a busy window's capped sample is the most recent answers, not an
+  // arbitrary slice that changes between identical probes.
   const windowMetadataRows = client
     .from("rag_queries")
     .select("metadata")
     .gt("created_at", sinceIso)
     .is("metadata->>event_type", null)
+    .order("created_at", { ascending: false })
     .limit(maxHybridRpcIdentityRows);
   const [total, hybrid, degraded, truncation, timeout, sourceGap, unsupported, hybridIdentity] = await Promise.all([
     base(),
@@ -306,6 +308,7 @@ export async function answerSloSnapshot(client: SloProbeClient, windowMinutes = 
       .gt("created_at", sinceIso)
       .is("metadata->>event_type", null)
       .not("metadata->hybrid_rpc_errors", "is", null)
+      .order("created_at", { ascending: false })
       .limit(maxHybridRpcIdentityRows);
     if (!dedicatedHybrid.error && Array.isArray(dedicatedHybrid.data)) {
       hybridErrorRows = dedicatedHybrid.data;

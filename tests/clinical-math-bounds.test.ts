@@ -4,7 +4,43 @@ import "./setup/jsdom.setup";
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createElement as h } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const syntheticRendererReview = vi.hoisted(() => ({ enabled: false }));
+
+// Exercise retained draft input ergonomics without changing real release metadata.
+// This module-local test fixture is not a clinician's review or publication approval.
+vi.mock("@/lib/calculators/clinical-math/governance.json", async (importOriginal) => {
+  const actual = await importOriginal<{
+    default: {
+      releaseStatus: string;
+      clinicalReview: {
+        status: string;
+        reviewer: string | null;
+        reviewedOn: string | null;
+        approvalEvidence: string | null;
+      };
+    };
+  }>();
+  return {
+    default: {
+      ...actual.default,
+      get releaseStatus() {
+        return syntheticRendererReview.enabled ? "available" : actual.default.releaseStatus;
+      },
+      get clinicalReview() {
+        return syntheticRendererReview.enabled
+          ? {
+              status: "approved",
+              reviewer: "Synthetic renderer test fixture; no clinical approval",
+              reviewedOn: "2000-01-01",
+              approvalEvidence: "test-only synthetic renderer state",
+            }
+          : actual.default.clinicalReview;
+      },
+    },
+  };
+});
 
 import { ClinicalMathPanel } from "@/components/calculators/clinical-math-panel";
 import { PatientProfileProvider } from "@/components/clinical-dashboard/patient-profile-context";
@@ -13,6 +49,10 @@ import { TextField } from "@/components/ui/text-field";
 import { calculateProportionalLithiumDose, evaluateLithiumLevel } from "@/lib/calculators/clinical-math/lithium";
 import { calculateQtc } from "@/lib/calculators/clinical-math/qtc";
 import { calculateCkdEpi2021, calculateCockcroftGault } from "@/lib/calculators/clinical-math/renal";
+
+afterEach(() => {
+  syntheticRendererReview.enabled = false;
+});
 
 describe("Clinical Math Physiological Bounds & Input Ergonomics", () => {
   describe("calculateQtc physiological bounds (P0-2)", () => {
@@ -390,7 +430,19 @@ describe("Clinical Math Physiological Bounds & Input Ergonomics", () => {
       expect(scrMgDlInput).toHaveAttribute("step", "0.01");
     });
 
-    it("renders ClinicalMathPanel bedside tabs for Renal, QTc, and Lithium calculators", async () => {
+    it("withholds bedside inputs and results under the actual pending clinical-review metadata", () => {
+      render(h(ClinicalMathPanel, { defaultOpen: true }));
+      expect(screen.getByTestId("clinical-math-release-hold")).toHaveTextContent("dedicated clinical validation");
+      expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+      expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("clinical-math-renal-results")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("clinical-math-qtc-results")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("clinical-math-lithium-results")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("clinical-math-lithium-suggested-dose")).not.toBeInTheDocument();
+    });
+
+    it("preserves dormant Renal, QTc and Lithium input ergonomics with an isolated synthetic review fixture", async () => {
+      syntheticRendererReview.enabled = true;
       const user = userEvent.setup();
       render(h(ClinicalMathPanel, { defaultOpen: true }));
 

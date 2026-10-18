@@ -23,6 +23,7 @@ function fakeClient(
   error?: unknown,
   observedBaseFilters: Array<{ column: string; value: null }> = [],
   observedNarrowingFilters: Array<{ method: "eq" | "not" | "or"; column: string; value: unknown }> = [],
+  observedSampleCalls: string[] = [],
 ): SloProbeClient {
   const build = (filter: SloFilterKey) => {
     const builder = {
@@ -71,7 +72,14 @@ function fakeClient(
         observedNarrowingFilters.push({ method: "not", column, value });
         return builder;
       },
-      limit: () => builder,
+      order: (column: string, options: { ascending: boolean }) => {
+        observedSampleCalls.push(`order:${column}:${options.ascending ? "asc" : "desc"}`);
+        return builder;
+      },
+      limit: (count: number) => {
+        observedSampleCalls.push(`limit:${count}`);
+        return builder;
+      },
       then: (resolve: (value: { data: Array<{ metadata: unknown }>; error: unknown }) => unknown) =>
         resolve({ data: error ? [] : (counts.hybridRows ?? []), error: error ?? null }),
     };
@@ -284,6 +292,12 @@ describe("answerSloSnapshot", () => {
       extractive: { p95Ms: 4_000, samples: 1 },
     });
     expect(snapshot.latencySampleTruncated).toBe(false);
+  });
+
+  it("samples the newest answers first so a capped window is deterministic and recent", async () => {
+    const calls: string[] = [];
+    await answerSloSnapshot(fakeClient({ total: 7, hybrid: 0, degraded: 0 }, undefined, [], [], calls));
+    expect(calls).toEqual(["order:created_at:desc", "limit:1000"]);
   });
 
   it("reports a null p95 and the cap flag honestly", async () => {

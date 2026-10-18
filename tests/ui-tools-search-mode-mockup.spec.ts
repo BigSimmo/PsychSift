@@ -114,6 +114,8 @@ test.describe("Perfected Tools results mode mockup @mockup", () => {
     // A hard-coded total silently rots the moment the catalogue gains a tool, which
     // is what "Add Ward Flow" (#2140, since retired) did to the 14 this line used to carry.
     const results = mockup.locator('section[aria-label="Tool results"] li');
+    // Shell visibility and input state can precede the results after hydration.
+    await expect(results.first()).toBeVisible();
     const rendered = await results.count();
     expect(rendered, "the Compare mockup must render at least one tool").toBeGreaterThan(0);
     await expect(mockup.getByText(`${rendered} ${rendered === 1 ? "tool" : "tools"}`, { exact: true })).toBeVisible();

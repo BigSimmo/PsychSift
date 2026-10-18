@@ -78,8 +78,8 @@ export function evidenceFromRow(row: EvidenceRow) {
 /**
  * Removes a file at its owner's request. The database records when and why
  * (and blanks the stored file name, which may itself carry an identifier);
- * the stored object is then deleted, or queued for cleanup if storage does
- * not answer. Allowed in a closed year and on an archived entry: removal
+ * and queues the exact stored object for deletion in the same transaction.
+ * Immediate Storage removal is best effort; the durable janitor obligation remains. Allowed in a closed year and on an archived entry: removal
  * exists for privacy, not bookkeeping.
  */
 export async function removeCmeEvidence(
@@ -98,8 +98,8 @@ export async function removeCmeEvidence(
     .eq("id", evidenceId)
     .maybeSingle();
   if (lookupError) throw new PublicApiError("Evidence could not be loaded. Try again.", 503);
-  if (!existing || existing.removed_at) throw new PublicApiError("Evidence not found.", 404);
-  const { data, error } = await client.rpc("cme_remove_evidence", {
+  if (!existing) throw new PublicApiError("Evidence not found.", 404);
+  const { data, error } = await client.rpc("cme_remove_evidence_v2", {
     p_owner_id: ownerId,
     p_evidence_id: evidenceId,
     p_reason: reason,
@@ -110,13 +110,13 @@ export async function removeCmeEvidence(
       throw new PublicApiError("Say why the file is being removed (3 to 500 characters).", 400);
     throw new PublicApiError("The file could not be removed. Try again.", 503);
   }
-  // The record of removal is committed; the stored object goes next, or is
-  // queued for cleanup if storage does not answer.
-  if (!(await deleteOrQueueCmeEvidenceObject(client, ownerId, existing.storage_path)))
-    throw new PublicApiError(
-      "The file was removed from this activity, but its stored copy still needs deleting by an administrator.",
-      503,
-    );
+  // The RPC has already committed the cleanup obligation with the tombstone. A lost
+  // response, process exit or unavailable Storage must not strand the private object.
+  try {
+    await client.storage.from("cme-private-evidence").remove([existing.storage_path]);
+  } catch {
+    // The janitor retries the durable, owner-bound cleanup row.
+  }
   return evidenceFromRow(data as EvidenceRow);
 }
 
