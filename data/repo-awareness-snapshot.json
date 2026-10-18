@@ -9160,7 +9160,7 @@
         "head": "2900a6363462efb6eaab614280c7a40b89eb28d8",
         "scope": "Design audit acceptance follow-up",
         "outcome": "Independent scoped adversarial review found no confirmed defect in the stateful calculator regression or acceptance handoff. Dedicated same-URL recovery coverage is added; production source is unchanged. Railway health verified, direct HTTP blocked by network proxy, six device/clinical acceptance checks remain explicit.",
-        "checks": "Owning calculator suite: 26 passed (3.62s); negative-control removal of clearQuery yields 1 failed, 25 passed with PHQ-9 retained, then restored 26 passed. Independent static review verifies modified-click preservation and URL cleanup. Merged 545 tree equals reviewed 58e302. No browser/fullsuite/release/clinicaleval claimed for new test-only diff."
+        "checks": "Owning calculator suite26passed3.62s; negative-control removal of clearQuery yields1failed25passed with PHQ-9 retained, then restored26pass. Independent static review verifies modified-click preservation and URL cleanup. Merged545treeequalsreviewed58e302. No browser/fullsuite/release/clinicaleval claimed for newtest-onlydiff."
       },
       {
         "date": "2026-07-28",
@@ -14041,6 +14041,14 @@
         "scope": "Run PR sweep: CI fix + threads + drift",
         "outcome": "before: CONFLICTING + PR policy FAIL + unresolved Codex P1 (conflict markers in answer/route.ts). after: conflict markers removed and pushed (80212dd91, 632e84c94); merge origin/main aborted (non-trivial conflicts: privacy/page.tsx, answer-render-policy.ts, source-authority-metadata.ts, upload/route.ts, supabase/drift-manifest.json, settings-dialog, validation/answer-request, plus UI/docs/tests); PR policy still FAIL (Clinical Governance Preflight missing — body edit forbidden this sweep); thread reply/resolve needs parent (comment 3644028277 / thread PRRT_kwDOSh5Fis6Tfkev) — ManagePullRequest/GitHub write MCP unavailable",
         "checks": "typecheck:internal pass; vitest clinical-dashboard-merge-artifacts + visual-evidence-tabs pass (9); no provider-backed checks run"
+      },
+      {
+        "date": "2026-10-18",
+        "ref": "codex/design-audit-acceptance",
+        "head": "633a8b7a509b6c0863059f09f849a2ec1a58e8ba",
+        "scope": "Automated acceptance follow-up review",
+        "outcome": "Two confirmed automated-edit issues: a missing usePathname mock prevents the new header fixture from rendering, and an already published immutable review was rewritten. Restore the scoped page/provider harness and original record bytes. The test name explicitly limits its contract; no production shell or physical-device coverage is claimed. Corrections verified locally; publication pending.",
+        "checks": "Independent source review and local reproduction: 1 failed, 25 passed at bot head, missing next/navigation usePathname export. Corrected owning suite: 26 passed. Original regression negative control: removing clearQuery left PHQ-9 in the input. Original immutable record restored byte-for-byte against ed3dc82abd26be523d0d643dc7bfd1545587162e. Production source unchanged."
       },
       {
         "date": "2026-07-13",
