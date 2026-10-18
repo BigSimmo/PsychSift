@@ -4219,6 +4219,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/agents/clinical-sign-off.md",
+        "section": "agents",
+        "catalogued": true
+      },
+      {
         "path": "docs/superpowers/specs/2026-07-02-triage-security-reliability-design.md",
         "section": "superpowers",
         "catalogued": true
