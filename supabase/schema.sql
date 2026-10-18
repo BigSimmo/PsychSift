@@ -124,8 +124,7 @@ create table if not exists public.documents (
     end
   ) stored,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  mutation_id uuid not null default gen_random_uuid()
+  updated_at timestamptz not null default now()
 );
 
 create table if not exists public.document_pages (
@@ -923,17 +922,6 @@ begin
 end;
 $$;
 
-create or replace function public.set_document_mutation_id()
-returns trigger
-language plpgsql
-set search_path = public, extensions, pg_temp
-as $$
-begin
-  new.mutation_id = gen_random_uuid();
-  return new;
-end;
-$$;
-
 create or replace function public.consume_api_rate_limit(
   p_owner_id uuid,
   p_bucket text,
@@ -1090,11 +1078,6 @@ drop trigger if exists documents_updated_at on public.documents;
 create trigger documents_updated_at
 before update on public.documents
 for each row execute function public.set_updated_at();
-
-drop trigger if exists documents_mutation_id on public.documents;
-create trigger documents_mutation_id
-before update on public.documents
-for each row execute function public.set_document_mutation_id();
 
 drop trigger if exists ingestion_jobs_updated_at on public.ingestion_jobs;
 create trigger ingestion_jobs_updated_at

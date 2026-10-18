@@ -417,7 +417,6 @@ describe("/api/ingestion/quality", () => {
 
   it("rolls back non-atomic document status when enqueueDocumentReindexJob loses a 23505 race to a processing job", async () => {
     const storedStamp = "2026-10-18T06:00:00.123456+00:00";
-    const storedMutationId = "queue-mutation-1";
     const filters: unknown[] = [];
     const documentUpdates: unknown[] = [];
     const supabase = {
@@ -453,10 +452,7 @@ describe("/api/ingestion/quality", () => {
             return docChain;
           }),
           select: vi.fn(() => docChain),
-          maybeSingle: vi.fn(async () => ({
-            data: { updated_at: storedStamp, mutation_id: storedMutationId },
-            error: null,
-          })),
+          maybeSingle: vi.fn(async () => ({ data: { updated_at: storedStamp }, error: null })),
           eq: vi.fn((column: string, value: unknown) => {
             filters.push([column, value]);
             return docChain;
@@ -488,7 +484,7 @@ describe("/api/ingestion/quality", () => {
       outcome: "already_active",
     });
     // First update set status: "queued" and zeroed counts; second update restored prior counts with status: "processing"
-    expect(filters).toContainEqual(["mutation_id", storedMutationId]);
+    expect(filters).toContainEqual(["updated_at", storedStamp]);
     expect(documentUpdates).toHaveLength(2);
     expect(documentUpdates[0]).toMatchObject({ status: "queued", page_count: 0, chunk_count: 0, image_count: 0 });
     expect(documentUpdates[1]).toMatchObject({

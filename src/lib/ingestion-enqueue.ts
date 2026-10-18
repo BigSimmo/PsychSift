@@ -76,13 +76,12 @@ export async function enqueueDocumentReindexJob(args: {
     query: T,
   ) => (ownerId ? query.eq("owner_id", ownerId) : typeof query.is === "function" ? query.is("owner_id", null) : query);
   const { data: queuedDocument, error: updateError } = await applyOwnerFilter(queueUpdate)
-    .select("updated_at,mutation_id")
+    .select("updated_at")
     .maybeSingle();
   if (updateError) throw new Error(updateError.message);
   if (!queuedDocument) return { outcome: "document_deleted" };
   const storedFence = queuedDocument.updated_at;
-  const storedMutationId = queuedDocument.mutation_id;
-  if (!storedFence || !storedMutationId) throw new Error("Queue update returned no database mutation fence.");
+  if (!storedFence) throw new Error("Queue update returned no database timestamp.");
 
   const { data: job, error: jobError } = await supabase
     .from("ingestion_jobs")
@@ -126,7 +125,7 @@ export async function enqueueDocumentReindexJob(args: {
         .from("documents")
         .update(payloadToRestore)
         .eq("id", document.id)
-        .eq("mutation_id", storedMutationId);
+        .eq("updated_at", storedFence);
       await applyOwnerFilter(rollback);
     }
     return { outcome: "already_active" };
