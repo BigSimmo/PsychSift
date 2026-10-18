@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
 // Mounted immutable identities; every fetch is intercepted. No backend authorization claim.
 import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AccountDataProvider, useAccountData } from "@/components/account-data-provider";
 
@@ -112,7 +113,7 @@ const setA = {
   createdAt: "2026-08-23T00:00:00.000Z",
   updatedAt: "2026-08-23T00:00:00.000Z",
 };
-const wrapper = ({ children }: { children: React.ReactNode }) => <AccountDataProvider>{children}</AccountDataProvider>;
+const wrapper = ({ children }: { children: ReactNode }) => <AccountDataProvider>{children}</AccountDataProvider>;
 
 describe("favourites identity fencing for reads, failures and queues", () => {
   beforeEach(() => {
