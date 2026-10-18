@@ -15,7 +15,7 @@ import {
   Search,
   X,
 } from "lucide-react";
-import { useCallback, useDeferredValue, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { cardSelected, cardSurface, stretchedRowLinkClass } from "@/components/card-recipes";
 import { useAccountData } from "@/components/account-data-provider";
@@ -641,6 +641,17 @@ export function ServicesNavigatorPage() {
   // Keep the clicked view immediate while Next adopts the native history
   // update. Retire it when the URL changes so Back cannot resurrect it.
   if (workflowOverride && workflowOverride.urlKey !== workflowUrlKey) setWorkflowOverride(null);
+  // Retiring on a key change alone is not enough. Next adopts the pushState in a
+  // transition, and a Back pressed before it commits (WebKit, main run 39120425367:
+  // Clear on Compare, then Back) returns the URL to the very key the override was
+  // stamped with, so useSearchParams never shows a change and the cleared view
+  // would be resurrected over the restored comparison. A history traversal means
+  // the address is the truth again, so it always retires the optimistic view.
+  useEffect(() => {
+    const retireOverride = () => setWorkflowOverride(null);
+    window.addEventListener("popstate", retireOverride);
+    return () => window.removeEventListener("popstate", retireOverride);
+  }, []);
   const pendingWorkflow = workflowOverride?.urlKey === workflowUrlKey ? workflowOverride : null;
   const requestedSlugs = pendingWorkflow?.selectedSlugs ?? readShortlist(urlShortlist);
   // Bookmarked identifiers can outlive catalogue records. Once the registry

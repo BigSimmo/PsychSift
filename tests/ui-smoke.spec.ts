@@ -3,7 +3,7 @@ import type { Route } from "playwright-core";
 import { expect, test, type Locator, type Page, type Request } from "playwright/test";
 import { stubZeroTouchPoints } from "./helpers/zero-touch";
 import { expectNoPageHorizontalOverflow, gotoApp } from "./helpers/spec-navigation";
-import { expectMinTouchTarget } from "./helpers/layout-tolerance";
+import { expectAtLeastCssPx, expectMinTouchTarget } from "./helpers/layout-tolerance";
 
 /**
  * Detect Next.js 16 prefetch requests across all prefetch strategies (RSC prefetch,
@@ -2702,7 +2702,8 @@ test.describe("PsychSift UI smoke coverage", () => {
         for (const row of await list.getByRole("link").all()) {
           if (!(await row.isVisible())) continue;
           const box = await row.boundingBox();
-          expect(box?.height ?? 0).toBeGreaterThanOrEqual(48);
+          // Firefox measured 47.999969482421875 here (main run 39120425367): float error, not a short row.
+          expectAtLeastCssPx(box?.height ?? 0, 48, "clinical record list row height");
         }
         // Beside the record, not above it.
         const listBox = await list.boundingBox();

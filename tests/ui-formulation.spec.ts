@@ -284,6 +284,17 @@ test("moves a selected mechanism through framework, quality review, and an edita
   // phantom low-contrast enabled state. Keep the live state explicit before scanning.
   await expect(previousStep).toBeEnabled();
   await expect(previousStep).toHaveCSS("opacity", "1");
+  // The Select -> Draft rail clicks disable and then re-enable Previous, and the shared
+  // `button` rule eases color/background/border over --duration-fast (120ms). The release
+  // matrix reached the scan inside that window, so axe measured the disabled-token start frame
+  // (#8794a8 on #fbfcfd, 2.99:1) of a button that was already enabled (main run 39120425367,
+  // webkit, tablet, mobile-webkit and mobile-pwa-standalone). Headless mobile WebKit can also
+  // leave those transitions pending (startTime null) with no rendering update for the whole
+  // test, so waiting for them is not enough. Jump this button's own transitions to their end
+  // state - the colours a user sees 120ms later - and scan that settled state.
+  await previousStep.evaluate((element) => {
+    for (const animation of element.getAnimations()) animation.finish();
+  });
   await expectNoBlockingAxeViolations(page, testInfo);
 });
 
