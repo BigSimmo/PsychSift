@@ -21272,6 +21272,14 @@
         "checks": "Local: align Vitest 5/5; ui-overlap 12/12; differentials fold Playwright 1/1. Hosted: Production UI, Advisory UI, Static, Unit, Build, PR policy, PR required, Sync PR policy body all pass."
       },
       {
+        "date": "2026-10-18",
+        "ref": "fix/merged-pr-review-20261018",
+        "head": "b6419f98f826170993a4f2f7dc0b2efec8747179",
+        "scope": "Independent adversarial review of merged-PR remediation; bounded correction verification",
+        "outcome": "Confirmed Teaching stale GET and metadata pagination defects corrected; obsolete scope suites and CET claims repaired. No remaining actionable source finding; draft only, migration/browser/live acceptance blocked.",
+        "checks": "Read-only source review by two independent reviewers; focused correction suite 61 passed in eight files; newer main worker and schema integration checked. Full handoff gate in progress; no production acceptance."
+      },
+      {
         "date": "2026-08-18",
         "ref": "claude/development-index-page (PR #2135)",
         "head": "b6451a1f90cd8488e67b8807fa1740902f2c77f5",

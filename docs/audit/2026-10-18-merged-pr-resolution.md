@@ -61,7 +61,7 @@ Fresh results (2026-10-18); the runs overlap and must not be summed as independe
 | Full pinned Supabase schema replay / drift-manifest generation                                                           | **Blocked**: image extraction exhausted Docker-daemon storage; the required image is not cached. The existing drift manifest is stale against the draft schema and was left unchanged.                                                                    |
 | Migration immutability/sealing gate                                                                                      | **Blocked on the new, unsealed draft migration only**. Existing migration hashes are unchanged. No sealing/production authorization is inferred from this task.                                                                                           |
 
-Earlier failed runs were diagnostic, not passing evidence. Full hosted CI, provider canaries and production/device acceptance were not run. Commit/PR ledger-write discipline was not presented as passing: that gate requires committed refs, whereas all task changes are intentionally uncommitted.
+Earlier failed runs were diagnostic, not passing evidence. At the initial local handoff, hosted CI, provider canaries and production/device acceptance had not been run; later PR-stage evidence is recorded below. Commit/PR ledger-write discipline was not presented as passing: that gate requires committed refs, whereas all task changes are intentionally uncommitted.
 
 The final citation-metadata follow-up also passed **25 tests in two files**, overlapping the 32-file suite and covering explicit mixed NICE/PubMed/APA authority markers. The final lint run passed after that edit.
 
@@ -90,3 +90,12 @@ Metadata admission has an explicit measured cost: the answer fixture moves 12 â†
 Catalogue CLI planning tests now build a temporary manifest from current source exports. The historical static-manifest fixture and every frozen epoch-zero migration remain untouched. These tests do not publish the revised clinical corpus.
 
 Draft publication requires the repository's documented `SKIP_DRIFT_GUARD=1` push override because pinned replay is unavailable. This is a disclosed publication exception only: the stale-drift and unsealed-migration checks remain failing, with no auto-merge or merge authority.
+
+Final local handoff evidence on the completed source revision `5acc2553e1df16c57bf7b47dd2ccc0a29575284c`:
+
+- Fresh repository lint with zero warnings and complete source/test typecheck passed after the fixture corrections.
+- Complete Teaching ownership scope plus current-manifest CLI suite: **2,169 tests passed in 77 files**.
+- Production build passed: optimized webpack compilation, generated-route TypeScript checks, **2,047 generated pages**, and the client-bundle secret-surface check. Its temporary pending-issue snapshot was restored by postbuild.
+- Ledger-write discipline and repository-awareness snapshot checks passed. Diff integrity passed: **828 â†’ 856 cases in 33 changed test files**, with its 27/27 self-tests.
+- The broad unit run remains a recorded failed run. The 21 non-database failures were addressed with the targeted passing evidence above; the two migration-sealing assertions and stale drift assertion remain blocked. A second full run was not claimed or performed.
+- All original unresolved scroll, alert-delivery, PDF, native-device, historical-provenance, canonical-ledger and clinical/provider acceptance boundaries remain explicit.
