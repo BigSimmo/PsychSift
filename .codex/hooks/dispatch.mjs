@@ -60,8 +60,6 @@ export function plan(event, payload) {
   const command = shell ? (p.tool_input.command ?? p.tool_input.script ?? p.tool_input.code) : "";
   if (shell && typeof command !== "string") return [];
   if (event === "PreToolUse") {
-    if (["Edit", "Write", "MultiEdit", "NotebookEdit", "edit_file", "write_file", "functions.edit_file", "functions.write_file"].includes(p.tool_name))
-      return [{ file: ".claude/hooks/organisation-edit-warning.sh", args: [] }];
     if (p.tool_name === "CronCreate") return [{ file: ".claude/hooks/pr-handoff-stop.sh", args: ["pre"] }];
     // The canonical formatter hook uses the same git + whitespace + push discriminator.
     if (shell && /git\s+push/.test(command)) return [{ file: ".claude/hooks/push-format-guard.sh", args: [] }];
@@ -85,7 +83,7 @@ function execute(action, payload, root) {
   const binary = action.file.endsWith(".mjs")
     ? process.execPath
     : process.platform === "win32"
-      ? (spawnSync("where.exe", ["bash"], { encoding: "utf8", windowsHide: true }).status === 0 ? "bash" : "C:/Program Files/Git/bin/bash.exe")
+      ? "C:/Program Files/Git/bin/bash.exe"
       : "/bin/bash";
   const result = spawnSync(binary, [script, ...action.args], {
     input: JSON.stringify(payload),
@@ -135,7 +133,7 @@ export async function run(event, payload, root, { execute: runner = execute } = 
 // Use only double quotes inside this string: it is enclosed in single quotes by both shells.
 export function registration() {
   const bootstrap =
-    '(async()=>{const f=require("node:fs"),p=require("node:path"),u=require("node:url");let s="";for await(const b of process.stdin){s+=b;if(s.length>1048576)return;}let v;try{v=JSON.parse(s)}catch{return}if(!v||typeof v!=="object"||Array.isArray(v))return;let d=v.tool_input?.workdir??v.tool_input?.cwd??v.cwd??process.cwd();if(typeof d!=="string"||!p.isAbsolute(d))return;d=p.resolve(d);let t=p.resolve(process.cwd());while(!f.existsSync(p.join(t,".git"))){let q=p.dirname(t);if(q===t)return;t=q;}if(["GIT_DIR","GIT_COMMON_DIR","GIT_WORK_TREE","GIT_CEILING_DIRECTORIES","GIT_DISCOVERY_ACROSS_FILESYSTEM"].some(k=>process.env[k])){const g=require("node:child_process").spawnSync("git",["-C",d,"rev-parse","--show-toplevel"],{encoding:"utf8",windowsHide:true,timeout:5000});if(g.status!==0)return;d=p.resolve(g.stdout.trim())}else{if(f.existsSync(p.join(d,"HEAD"))&&f.existsSync(p.join(d,"objects"))&&f.existsSync(p.join(d,"refs")))return;while(!f.existsSync(p.join(d,".git"))){const q=p.dirname(d);if(q===d)return;d=q;}}if(d!==t)return;const a=p.join(d,".codex/hooks/dispatch.mjs");if(!f.existsSync(a))return;const m=await import(u.pathToFileURL(a).href),r=await m.run(process.argv[1],v,d);process.stdout.write(r.stdout);process.stderr.write(r.stderr);process.exitCode=r.code;})().catch(()=>{process.stderr.write("Codex project hook adapter unavailable; no advisory decision was produced.\\n")})';
+    '(async()=>{const f=require("node:fs"),p=require("node:path"),u=require("node:url");let s="";for await(const b of process.stdin){s+=b;if(s.length>1048576)return;}let v;try{v=JSON.parse(s)}catch{return}if(!v||typeof v!=="object"||Array.isArray(v))return;let d=v.tool_input?.workdir??v.tool_input?.cwd??v.cwd??process.cwd();if(typeof d!=="string"||!p.isAbsolute(d))return;d=p.resolve(d);if(["GIT_DIR","GIT_COMMON_DIR","GIT_WORK_TREE","GIT_CEILING_DIRECTORIES","GIT_DISCOVERY_ACROSS_FILESYSTEM"].some(k=>process.env[k])){const g=require("node:child_process").spawnSync("git",["-C",d,"rev-parse","--show-toplevel"],{encoding:"utf8",windowsHide:true,timeout:5000});if(g.status!==0)return;d=p.resolve(g.stdout.trim())}else{if(f.existsSync(p.join(d,"HEAD"))&&f.existsSync(p.join(d,"objects"))&&f.existsSync(p.join(d,"refs")))return;while(!f.existsSync(p.join(d,".git"))){const q=p.dirname(d);if(q===d)return;d=q;}}const a=p.join(d,".codex/hooks/dispatch.mjs");if(!f.existsSync(a))return;const m=await import(u.pathToFileURL(a).href),r=await m.run(process.argv[1],v,d);process.stdout.write(r.stdout);process.stderr.write(r.stderr);process.exitCode=r.code;})().catch(()=>{process.stderr.write("Codex project hook adapter unavailable; no advisory decision was produced.\\n")})';
   // Windows PowerShell 5 strips embedded double quotes during native argument passing.
   // This bootstrap contains no dollar/backtick characters: switch JS literals to single
   // quotes inside PowerShell's double-quoted argument, preserving the actual Node source.
@@ -143,10 +141,10 @@ export function registration() {
   const hook = (event) => ({
     type: "command",
     command: `node -e '${bootstrap}' ${event}`,
-    commandWindows: `& $(if (Test-Path "C:/Program Files/nodejs/node.exe") { "C:/Program Files/nodejs/node.exe" } else { "node" }) -e "${windowsBootstrap}" ${event}`,
+    commandWindows: `& "C:/Program Files/nodejs/node.exe" -e "${windowsBootstrap}" ${event}`,
     timeout: event === "PreToolUse" ? 180 : 45,
   });
-  const shells = "Bash|PowerShell|exec_command|functions\\.exec_command|Edit|Write|MultiEdit|NotebookEdit|edit_file|write_file|functions\\.edit_file|functions\\.write_file";
+  const shells = "Bash|PowerShell|exec_command|functions\\.exec_command";
   return {
     hooks: {
       PreToolUse: [{ matcher: `^(?:${shells}|CronCreate)$`, hooks: [hook("PreToolUse")] }],
