@@ -287,6 +287,7 @@
     "tests/tsx-server-only-runner.test.ts",
     "tests/typecheck-config-isolation.test.ts",
     "tests/verify-*",
+    "tests/vitest-result-reuse.test.ts",
     "tests/wa-mha-form-print.dom.test.tsx",
     "tests/web-vitals-reporter.dom.test.tsx",
     "tests/webhooks-chat-notify.test.ts",

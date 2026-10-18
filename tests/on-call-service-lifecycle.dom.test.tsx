@@ -98,7 +98,7 @@ describe("Service handbook lifecycle isolation", () => {
     render(<ServicePage initialServiceId={serviceId} initialSiteId={siteId} />);
     const navigation = await screen.findByRole("navigation", { name: "Service handbook sections" });
     await user.click(within(navigation).getByRole("button", { name: "Members" }));
-    expect(screen.getByRole("button", { name: "Create invitation" })).toBeDisabled();
+    expect(await screen.findByRole("button", { name: "Create invitation" })).toBeDisabled();
     await user.type(screen.getByLabelText(/Invitee's email/), "dr.ivy@example.org");
     await user.click(screen.getByRole("button", { name: "Create invitation" }));
 

@@ -2649,6 +2649,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-18-migration-prs-may-auto-merge.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/archive/design-qa-2026-07-15.md",
         "section": "archive",
         "catalogued": true

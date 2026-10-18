@@ -68,7 +68,7 @@ gate is right.
 
 ### The default for an ordinary PR push
 
-**Run the narrowest gate that covers the diff, plus `npm run format`. Identify the heavy jobs
+**Run the narrowest gate that covers the diff, plus formatting of the owned paths. Identify the heavy jobs
 expected in CI and any policy-authorised local deferrals in the PR body.** CI is event- and
 risk-scoped: `push` covers `main` and `release/**`; PR and merge-group base/head classify paths,
 and individual jobs also apply draft and event conditions. Scheduled/manual runs with no
@@ -76,6 +76,8 @@ resolvable base conservatively select full scope; a Lighthouse-refresh dispatch 
 focused scope. Selected or deferred checks remain pending until their completion is observed.
 Skipped, missing or failed jobs are not passing evidence. Do not defer required local proof
 on a claim that CI will repeat it when the job conditions do not establish that coverage.
+
+For Run PR sweeps and normal readiness pushes, format only owned handoff paths with `node node_modules/prettier/bin/prettier.cjs --write <owned-path> ...` (requires the existing local dependency), then run `npm run verify:pr-local` or the smallest gate covering the change. Verify the exact candidate content that will be published; whole-tree formatting is a separate explicitly scoped operation.
 
 This is not a licence to push unverified work. The narrow gate still has to cover the diff's
 plausible failure classes — a two-file script change needs its own suites and `typecheck`, and a
