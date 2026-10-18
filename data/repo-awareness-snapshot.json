@@ -3069,6 +3069,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-18-clinical-sign-off-owner-only.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/agents/codex-cloud-legacy-bootstrap.md",
         "section": "agents",
         "catalogued": true
@@ -3829,6 +3834,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-18-cursor-cloud-agents-prohibited.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/audit/ux-accessibility-review-2026-07-07.md",
         "section": "audit",
         "catalogued": true
@@ -4221,6 +4231,11 @@
       {
         "path": "docs/care-plan/reports/task-3-report.md",
         "section": "care-plan",
+        "catalogued": true
+      },
+      {
+        "path": "docs/agents/clinical-sign-off.md",
+        "section": "agents",
         "catalogued": true
       },
       {
