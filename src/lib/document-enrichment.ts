@@ -1043,6 +1043,9 @@ export async function fetchRelatedDocumentMetadata(args: {
   args.signal?.throwIfAborted();
   if (args.documentIds.length === 0) return [];
   const accessScope = retrievalAccessScopeForArgs(args);
+  // An ownerless scope without public access matches no documents. Fail closed
+  // before querying the public (null-owner) metadata rows.
+  if (!accessScope.ownerId && !accessScope.includePublic) return [];
   // The deployed metadata RPC omits summary generation stamps. Read stamped
   // source rows on every path so successful RPCs cannot bypass the fence.
   const isHiddenLabel = (label: { metadata?: unknown }) => {
