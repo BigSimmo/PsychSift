@@ -206,3 +206,31 @@ file hashes, failure preservation and the absence of application rows/credential
 in the scratch-schema snapshot. No actionable finding in this bounded review;
 recovery/parity remain pending until genuinely observed. Requested reviewer model
 settings are not independently verified routing telemetry.
+
+### Genuine generated manifest recovered
+
+Run [39112988994](https://github.com/BigSimmo/PsychSift/actions/runs/39112988994),
+job `117632966128`, tested published source
+`a323e2bdcc858fac0244a362670a2cf593705038`. The pinned image replay completed
+and the generator wrote the manifest at `2026-10-18T08:55:44.392Z`. Its new
+failure-path log block supplied the actual complete JSON; no catalogue fields
+were reconstructed or edited. Stripping only GitHub's line timestamps recovered
+**857,833 bytes** with SHA-256
+`470f2adf6f51487d27d8833d73169386c02491d8c2aef5ebfe77a32a98adfa18`, exactly
+matching the job's emitted file checksum. Generator identity, pinned image digest,
+schema hash and v2 empty migration-history probe were also checked before copying
+the bytes into `supabase/drift-manifest.json`.
+
+The schema hash is
+`ba60b09ee6307eed83bfa94a8a9160c3abd9c36b05f08088680901852d22e5ca`, matching
+the unchanged local `schema.sql`. Inventory: 149 tables, 334 functions, 496 indexes,
+82 policies, 88 triggers, 975 constraints, two views, seven extensions and three
+seeded storage buckets. The generated file is already excluded by the existing
+Prettier configuration, so its verified bytes remain intact. This resolves the
+artifact-transfer obstruction through genuinely generated output in the authorized
+GitHub log path, without changing network policy or weakening freshness checks.
+
+Hosted static checks on this source passed in full, including migration seals,
+lint and typechecking. The recovery run correctly remains red at stale committed
+manifest freshness; it could not yet execute chain/mirror parity. That final gate
+requires a fresh run after publishing the recovered file.
