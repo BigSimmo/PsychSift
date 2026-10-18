@@ -49,6 +49,7 @@ function fixture() {
       return {
         data: [...outcomes]
           .filter(([, o]) => o === "pending")
+          .slice(0, 25)
           .map(([s]) => ({ subscription_id: s, owner_id: s === device ? owner : other })),
         error: null,
       };
@@ -82,6 +83,15 @@ beforeEach(() => {
   m.push.mockResolvedValue("sent");
 });
 describe("durable per-device offer consumer", () => {
+  it("drains a second device page within the same durable claim", async () => {
+    const f = fixture();
+    f.outcomes.clear();
+    for (let index = 100; index < 126; index += 1) f.outcomes.set(id(index), "pending");
+    await expect(drainRosterOfferAlerts(f.client)).resolves.toBe(true);
+    expect(m.push).toHaveBeenCalledTimes(26);
+    expect([...f.outcomes.values()]).toEqual(Array(26).fill("sent"));
+    expect(f.rpc.mock.calls.filter(([, args]) => args.p_operation === "claim")).toHaveLength(1);
+  });
   it("records each device separately and retries only a failed device", async () => {
     const f = fixture();
     m.push.mockResolvedValueOnce("sent").mockResolvedValueOnce("retry");

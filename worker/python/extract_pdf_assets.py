@@ -1459,9 +1459,9 @@ def _intact_display_text_pieces(page, exclude_rects=None):
             if not text:
                 continue
             rect = fitz.Rect(line["bbox"]) * page.rotation_matrix
-            # A line crossing a table is represented by the table markdown; keeping
-            # the native line as prose would duplicate its in-cell text.
-            if any(table_rect.intersects(rect) for table_rect in exclude_rects or []):
+            # Only completely contained lines are represented by table markdown.
+            # A crossing instruction may extend beyond the structured cell text.
+            if any(table_rect.contains(rect) for table_rect in exclude_rects or []):
                 continue
             lines.append((rect, text))
             direction = line.get("dir", (1, 0))

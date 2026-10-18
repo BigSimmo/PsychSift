@@ -44,28 +44,22 @@ export async function drainRosterOfferAlerts(
     return result.data;
   };
   try {
-    const eligible = await offerRecipients(client, event.actor_id, event.service_id, event.open_shift_id);
+    let eligible = await offerRecipients(client, event.actor_id, event.service_id, event.open_shift_id);
     if (!event.initialized) await work("prepare", { p_owner_ids: eligible });
     const deadline = Date.now() + 8 * 60 * 1000;
     while (!signal?.aborted && Date.now() < deadline) {
       const devices = devicesSchema.parse(await work("devices"));
       if (!devices.length) break;
-      const ownerChecks = new Map<string, Promise<boolean>>();
       for (const device of devices) {
         if (signal?.aborted || Date.now() >= deadline) break;
         let outcome: "sent" | "skipped" | "retry" = "skipped";
         try {
+          // Eligibility can change while earlier devices are being sent.
+          eligible = await offerRecipients(client, event.actor_id, event.service_id, event.open_shift_id);
           if (eligible.includes(device.owner_id)) {
-            let ownerCheck = ownerChecks.get(device.owner_id);
-            if (!ownerCheck) {
-              ownerCheck = (async () => {
-                const settings = await fetchRosterSettings(client, device.owner_id);
-                const quiet = await recipientsOnNightNow(client, event.actor_id, event.service_id, [device.owner_id]);
-                return settings.alerts.requests && !quiet.has(device.owner_id);
-              })();
-              ownerChecks.set(device.owner_id, ownerCheck);
-            }
-            if (await ownerCheck) {
+            const settings = await fetchRosterSettings(client, device.owner_id);
+            const quiet = await recipientsOnNightNow(client, event.actor_id, event.service_id, [device.owner_id]);
+            if (settings.alerts.requests && !quiet.has(device.owner_id)) {
               // Lease validation immediately before the external effect; expiry still permits at-least-once delivery after a crash.
               await work("devices");
               const { data: row, error } = await client
