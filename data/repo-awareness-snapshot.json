@@ -4509,6 +4509,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/audit/2026-10-18-remaining-review-closeout.md",
+        "section": "audit",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-10-16-admitted-upload-survives-client-cancel.md",
         "section": "decisions",
         "catalogued": true
@@ -25278,6 +25283,14 @@
         "scope": "Run PR sweep: CI fix + threads + drift",
         "outcome": "supersedes prior #1162 row: post-sweep HEAD includes ledger commit; conflict-marker fixes at 80212dd91+632e84c94; merge-from-main skipped (privacy/clinical/source-authority/supabase conflicts); PR policy + thread resolve deferred to human/parent",
         "checks": "same gates as prior row; no provider-backed checks run"
+      },
+      {
+        "date": "2026-10-18",
+        "ref": "fix/merged-pr-review-20261018",
+        "head": "e3b3f15774dbef5ecaeedcb38d8d6880128faccb",
+        "scope": "Bounded independent review of hosted catalogue-manifest correction",
+        "outcome": "Accepted: 1081 IDs preserved; 205 therapy lineage digests alone changed. Eligibility, governance and content hashes unchanged; frozen database seeds untouched.",
+        "checks": "216 site-content and ownership cases passed in 17 files, including epoch-zero freeze checks; exact hosted static and synthetic freshness commands passed. Synthetic evidence is not live acceptance."
       },
       {
         "date": "2026-07-24",
