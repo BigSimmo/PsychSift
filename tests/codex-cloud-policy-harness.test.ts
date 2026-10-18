@@ -42,7 +42,7 @@ function scopedProfile(contents: string) {
 function runBash(args: string[], options: SpawnSyncOptionsWithStringEncoding) {
   // Git Bash prepends native tool directories at startup. Re-establish the
   // fixture PATH inside the shell so a fake git/node can never select host tools.
-  const environment = options.env ?? {};
+  const environment: NodeJS.ProcessEnv = options.env ?? { NODE_ENV: "test" };
   const commandIndex = args.indexOf("-c");
   const body = commandIndex >= 0 ? args[commandIndex + 1] : 'source "$0" "$@"';
   const parameters = commandIndex >= 0 ? args.slice(commandIndex + 2) : [bashPath(args[0]), ...args.slice(1)];

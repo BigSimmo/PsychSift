@@ -109,7 +109,7 @@ beforeEach(() => {
 
 function runBash(args: string[], options: SpawnSyncOptionsWithStringEncoding) {
   // Establish PATH after Git Bash startup so synthetic tools retain precedence.
-  const environment = options.env ?? {};
+  const environment: NodeJS.ProcessEnv = options.env ?? { NODE_ENV: "test" };
   const commandIndex = args.indexOf("-c");
   const body = commandIndex >= 0 ? args[commandIndex + 1] : 'source "$0" "$@"';
   const parameters = commandIndex >= 0 ? args.slice(commandIndex + 2) : [bashPathEntry(args[0]), ...args.slice(1)];
