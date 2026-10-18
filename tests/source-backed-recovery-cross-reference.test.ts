@@ -157,6 +157,7 @@ describe("source-backed recovery gate — cross-reference guard", () => {
             image_ids: [],
             similarity: 0.9,
             images: [],
+            match_explanation: { reasons: ["retrieval_signal:document_title"] },
           },
         ],
       }),
@@ -165,15 +166,80 @@ describe("source-backed recovery gate — cross-reference guard", () => {
     );
 
     expect(answer.grounded).toBe(true);
-    expect(answer.confidence).toBe("medium");
+    expect(answer.confidence).toBe("low");
     expect(answer.routingReason).toContain("final_quality_gate_source_backed_recovery:missing_query_overlap");
     expect(answer.answer.replace(/\*\*/g, "")).toMatch(/Depot antipsychotic follow-up/i);
+  });
+
+  it("rejects an unrelated cited chunk when only an uncited document has the title or structure signal", () => {
+    const cited = citation();
+    const base = {
+      id: cited.chunk_id,
+      document_id: cited.document_id,
+      title: cited.title,
+      file_name: cited.file_name,
+      page_number: 1,
+      chunk_index: 0,
+      section_heading: null,
+      content: LAI_PARAPHRASE,
+      image_ids: [],
+      images: [],
+      similarity: 0.9,
+    };
+    const answer = finalizeRagAnswerQuality(
+      groundedExtractiveAnswer(LAI_PARAPHRASE, {
+        sources: [
+          base,
+          {
+            ...base,
+            id: "uncited",
+            document_id: "uncited-doc",
+            match_explanation: { reasons: ["retrieval_signal:document_title", "retrieval_signal:table"] },
+          },
+        ],
+      }),
+      LAI_QUERY,
+      queryClass,
+    );
+    expect(answer.grounded).toBe(false);
+    expect(answer.confidence).toBe("unsupported");
+    expect(answer.routingReason).not.toContain("source_backed_recovery");
+  });
+
+  it("does not borrow a required clinical signal from an uncited selection", () => {
+    const cited = citation();
+    const plan = strongSourceSelection()!;
+    const input = groundedExtractiveAnswer(LAI_PARAPHRASE, {
+      smartApiPlan: {
+        ...plan,
+        answerPlan: { ...plan.answerPlan, retrievalIntent: { requiredTermSignals: ["clinical_subject"] } },
+      } as RagAnswer["smartApiPlan"],
+      sources: [
+        {
+          id: cited.chunk_id,
+          document_id: cited.document_id,
+          title: cited.title,
+          file_name: cited.file_name,
+          page_number: 1,
+          chunk_index: 0,
+          section_heading: null,
+          content: LAI_PARAPHRASE,
+          image_ids: [],
+          images: [],
+          similarity: 0.9,
+          match_explanation: { reasons: ["retrieval_signal:dose_amount"] },
+        },
+      ],
+    });
+    const answer = finalizeRagAnswerQuality(input, LAI_QUERY, queryClass);
+    expect(answer.grounded).toBe(false);
+    expect(answer.routingReason).not.toContain("source_backed_recovery");
   });
 
   it("does not treat source-selection signals as support when the cited source is absent", () => {
     const answer = finalizeRagAnswerQuality(groundedExtractiveAnswer(LAI_PARAPHRASE), LAI_QUERY, queryClass);
     expect(answer.grounded).toBe(false);
     expect(answer.citations).toEqual([]);
-    expect(answer.routingReason).toContain("claim_support_factual_gap");
+    expect(answer.routingReason).toContain("final_quality_gate:missing_query_overlap");
   });
 });

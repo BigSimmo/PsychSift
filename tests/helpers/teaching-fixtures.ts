@@ -1,3 +1,4 @@
+import { resetSharedGets } from "@/lib/shared-get";
 import { cleanup, screen } from "@testing-library/react";
 import { afterEach, beforeEach, vi, type MockInstance } from "vitest";
 
@@ -110,6 +111,7 @@ export function fetchCalls(fetchMock: MockInstance<typeof fetch>, prefix: string
 /** Fake `Date` at `at`, a signed-in reader, and a clean DOM and mocks after each test. Call once per file. */
 export function useTeachingTestClock(at: Date = NOW) {
   beforeEach(() => {
+    resetSharedGets();
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(at);
     authState.status = "authenticated";

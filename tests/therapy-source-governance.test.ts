@@ -11,6 +11,16 @@ import {
 } from "@/lib/therapy-source-governance";
 
 describe("therapy source governance", () => {
+  it("withdraws CET claims attributed to the unidentified 2025 review", () => {
+    const cet = therapies.find((therapy) => therapy.slug === "cue-exposure-therapy-cet-for-substance-use-disorders")!;
+    expect(cet.reviewStatus).toBe("needs_review");
+    expect(cet.sourceNotes).toContain("excluded pending verification");
+    for (const [key, value] of Object.entries(cet)) {
+      if (key !== "sourceNotes" && typeof value === "string")
+        expect(value, key).not.toMatch(/2025|44 controlled trials/);
+    }
+  });
+
   const source = { title: "Example guideline", sourceType: "Guideline", reference: "Ref 12" };
 
   it("keeps imported source currency, designation and extraction quality unknown", () => {
@@ -77,6 +87,23 @@ describe("therapy source governance", () => {
       clinical_validation_status: "unverified",
       canonical_url: "https://www.nice.org.uk/guidance/ng222/chapter/recommendations",
     });
+  });
+
+  it("does not label PubMed or RANZCP citations NICE when their prose mentions a NICE guideline", () => {
+    for (const authority of ["PubMed", "RANZCP", "NICE NG222 / PubMed", "NICE / APA"]) {
+      expect(
+        therapyNiceGuidelineMetadata(
+          { authority, text: "Review comparing NICE NG222 https://www.nice.org.uk/guidance/ng222/." },
+          "needs_review",
+        ),
+      ).toMatchObject({
+        source_kind: "document",
+        publisher: null,
+        publisher_code: null,
+        jurisdiction: null,
+        version: null,
+      });
+    }
   });
 
   it("splits citations and extracts trailing non-clinical notes without splitting on 4-digit year parentheses", () => {

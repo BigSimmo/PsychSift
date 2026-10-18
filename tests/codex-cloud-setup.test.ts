@@ -64,7 +64,7 @@ const fixtureEnvironment: NodeJS.ProcessEnv = {
   ComSpec: process.env.ComSpec,
   NODE_ENV: "test",
   GIT_CONFIG_NOSYSTEM: "1",
-  GIT_CONFIG_GLOBAL: os.devNull,
+  GIT_CONFIG_GLOBAL: path.join(repoRoot, "tests/fixtures/empty.gitconfig"),
 };
 const bashCommand =
   process.platform === "win32"
@@ -1080,7 +1080,9 @@ describe("Codex Cloud environment contract", () => {
     expect(setup).toContain('profile_source=\'[ -f "$HOME/.clinical-kb-codex-cloud.sh" ]');
     expect(setup).toContain('grep -Fvx "$profile_source"');
     expect(setup).toContain("sed '/./,$!d'");
-    expect(setup).toContain('if [[ "$actual_version" != "$expected_version" ]]');
+    expect(setup).toContain(
+      'if ! actual_version="$(probe_version "$command_name")" || [[ "$actual_version" != "$expected_version" ]]',
+    );
     expect(setup).toContain('expected_node_range="$(sed');
     expect(setup).toContain('if ! node_version_supported "$actual_node_version"; then');
     expect(setup).toContain('node_version_supported "$actual_node_version" || fail');
@@ -1895,5 +1897,37 @@ describe("Codex Cloud origin repair", () => {
     expect(git(credentialed, "remote", "add", "origin", unsafe).status).toBe(0);
     expect(() => ensureOriginRemote(credentialed)).toThrow(/embedded credentials/);
     expect(configuredOriginUrl(credentialed)).toBe(unsafe);
+  });
+});
+
+describe("setup bounded probe failure status", () => {
+  const setup = readFileSync(path.join(repoRoot, setupScript), "utf8");
+  const functions = setup.slice(
+    setup.indexOf("bounded_probe()"),
+    setup.indexOf('setup_step="node-runtime"', setup.indexOf("bounded_probe()")),
+  );
+  const runProbe = (body: string) =>
+    spawnSync(
+      bashCommand,
+      ["-c", `fail() { printf '%s\\n' "$*" >&2; return 1; }; log() { :; }; ${functions}\n${body}`],
+      { encoding: "utf8", env: fixtureEnvironment },
+    );
+  it("rejects expected version text emitted by a tool that exits unsuccessfully", () => {
+    const result = runProbe(
+      'timeout() { shift 3; "$@"; }; bad_tool() { echo 11.17.0; return 9; }; probe_version bad_tool',
+    );
+    expect(result.status).toBe(9);
+    expect(result.stdout).toBe("");
+  });
+  it("fails with an actionable error when timeout is unavailable", () => {
+    const result = runProbe("command() { return 1; }; bounded_probe echo unreachable");
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("GNU timeout is required");
+    expect(result.stdout).toBe("");
+  });
+  it("preserves timeout status even when version text was printed", () => {
+    const result = runProbe("timeout() { echo 11.17.0; return 124; }; probe_version npm");
+    expect(result.status).toBe(124);
+    expect(result.stdout).toBe("");
   });
 });

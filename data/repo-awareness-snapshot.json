@@ -4969,6 +4969,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/audit/2026-10-18-merged-pr-resolution.md",
+        "section": "audit",
+        "catalogued": true
+      },
+      {
         "path": "docs/archive/codex-cloud-legacy-profile-2026-10-16.md",
         "section": "archive",
         "catalogued": true
@@ -13259,6 +13264,14 @@
         "checks": "Provider-backed GitHub PR inventory via MCP (400 PRs #264-#674, all merged=false); local read-only git: rewritten-main-aware cherry-pick + two-dot tree + branch-only-file novelty sweep vs origin/main e75fad90; adversarial re-check. Remote `git push --delete` attempted (provider-backed write) and DENIED with HTTP 403. No OpenAI/Supabase/live-eval checks."
       },
       {
+        "date": "2026-10-18",
+        "ref": "fix/merged-pr-review-20261018",
+        "head": "5acc2553e1df16c57bf7b47dd2ccc0a29575284c",
+        "scope": "Bounded correction review of full-suite fixture and metadata-budget findings",
+        "outcome": "Two independent reviewers accepted the corrections; no remaining actionable source finding. Three draft database assertions remain blocked; no clinical or production acceptance.",
+        "checks": "Fresh lint/typecheck and production build passed; Teaching/current-manifest scope 2169 passed in77files; corrected budget scope10passed. Prior full run32330passed24failed2skipped;21nonDBfailures addressed by focused evidence, no green full rerun claimed."
+      },
+      {
         "date": "2026-08-19",
         "ref": "gemini/safe-workflow-guards-and-motion-contracts",
         "head": "5ad1f0d687bb4999c25ae96194f467c542569fac",
@@ -21307,6 +21320,14 @@
         "checks": "Local: align Vitest 5/5; ui-overlap 12/12; differentials fold Playwright 1/1. Hosted: Production UI, Advisory UI, Static, Unit, Build, PR policy, PR required, Sync PR policy body all pass."
       },
       {
+        "date": "2026-10-18",
+        "ref": "fix/merged-pr-review-20261018",
+        "head": "b6419f98f826170993a4f2f7dc0b2efec8747179",
+        "scope": "Independent adversarial review of merged-PR remediation; bounded correction verification",
+        "outcome": "Confirmed Teaching stale GET and metadata pagination defects corrected; obsolete scope suites and CET claims repaired. No remaining actionable source finding; draft only, migration/browser/live acceptance blocked.",
+        "checks": "Read-only source review by two independent reviewers; focused correction suite 61 passed in eight files; newer main worker and schema integration checked. Full handoff gate in progress; no production acceptance."
+      },
+      {
         "date": "2026-08-18",
         "ref": "claude/development-index-page (PR #2135)",
         "head": "b6451a1f90cd8488e67b8807fa1740902f2c77f5",
@@ -27281,6 +27302,14 @@
         "scope": "prlanded",
         "outcome": "PR #3570 squash-merged as fa526775c6; stable patch-id 87375f76eaf matches branch tip d8eefbb91e with zero orphaned commits",
         "checks": "gh pr view 3570 MERGED; 1-parent squash; git patch-id --stable match"
+      },
+      {
+        "date": "2026-10-18",
+        "ref": "claude/reconcile-ledger-20261016",
+        "head": "fa526775c6ca0751f9609e4fc5133190efa19c16",
+        "scope": "PS-044 provenance correction for PR #3570",
+        "outcome": "Corrects the branch label in a7be2760026da4bc040fa90bf847382bdcded2a8a7510ceaf7be4ac49c042211.record.md: the supplied review identifies claude/reconcile-ledger-20261016, final head d8eefbb91e9e623fcdb9029fade9f3eda661091e and merge fa526775c6ca0751f9609e4fc5133190efa19c16. Original immutable record retained. This correction does not re-run or extend its landed proof.",
+        "checks": "Compared supplied PS-044 correction with the local immutable receipt; no new GitHub request, patch-id execution, CI or deployment verification."
       },
       {
         "date": "2026-08-05",

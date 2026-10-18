@@ -515,7 +515,10 @@ describe("document enrichment", () => {
     const docId = "doc-meta-1";
     const summaryOrderCalls: Array<{ column: string; options?: { ascending?: boolean } }> = [];
     const fallbackSupabase = {
-      rpc: vi.fn(async () => ({ data: null, error: { message: "rpc_unavailable" } })),
+      rpc: vi.fn(async () => ({
+        data: [{ document_id: docId, summary: "Unsafe staged RPC summary", labels: [] }],
+        error: null,
+      })),
       from: vi.fn((table: string) => {
         const builder = {
           select: () => builder,
@@ -528,6 +531,7 @@ describe("document enrichment", () => {
             return builder;
           },
           abortSignal: () => builder,
+          range: () => builder,
           then: (resolve: (value: { data: unknown[]; error: null }) => unknown) => {
             if (table === "documents") {
               return Promise.resolve({
@@ -547,6 +551,13 @@ describe("document enrichment", () => {
                     document_id: docId,
                     summary: "Newest committed summary",
                     generated_at: "2026-07-02T00:00:00.000Z",
+                    metadata: { index_generation_id: "gen-current" },
+                  },
+                  {
+                    document_id: docId,
+                    summary: "Staged summary",
+                    generated_at: "2026-07-03T00:00:00.000Z",
+                    metadata: { index_generation_id: "gen-staged" },
                   },
                 ],
                 error: null,
@@ -579,8 +590,12 @@ describe("document enrichment", () => {
       supabase: fallbackSupabase as never,
       documentIds: [docId],
     });
-    expect(summaryOrderCalls).toEqual([{ column: "generated_at", options: { ascending: false } }]);
+    expect(summaryOrderCalls).toEqual([
+      { column: "generated_at", options: { ascending: false } },
+      { column: "id", options: undefined },
+    ]);
     expect(fallbackRows[0]?.summary).toBe("Newest committed summary");
+    expect(fallbackSupabase.rpc).not.toHaveBeenCalled();
     expect(fallbackRows[0]?.labels).toEqual([
       expect.objectContaining({ label: "clozapine", label_type: "medication" }),
     ]);

@@ -39,7 +39,7 @@ export async function loadDocumentSummaryContext(documentId: string, ownerId?: s
     )
     .eq("document_id", documentId);
   if (committedGeneration) {
-    chunksQuery = chunksQuery.eq("index_generation_id", committedGeneration);
+    chunksQuery = chunksQuery.or(`index_generation_id.is.null,index_generation_id.eq.${committedGeneration}`);
   } else if (typeof (chunksQuery as { is?: unknown }).is === "function") {
     chunksQuery = (chunksQuery as typeof chunksQuery & { is: (column: string, value: null) => typeof chunksQuery }).is(
       "index_generation_id",

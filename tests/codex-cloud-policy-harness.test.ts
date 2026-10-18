@@ -82,7 +82,19 @@ function fixture(runtime: "missing" | "mismatched") {
       // A minimal environment keeps inherited provider credentials and user
       // setup flags out of this isolated shell. Runtime shims precede system
       // utilities and log every invocation, including failure diagnostics.
-      return spawnSync(bashCommand, [script, ...(explicitHarness ? ["--policy-only-test-harness"] : [])], {
+      const scriptArgs = [script, ...(explicitHarness ? ["--policy-only-test-harness"] : [])];
+      // Native Git for Windows may choose git.exe over an extensionless shim.
+      // Bind only the explicitly synthetic checkout fixture, before starting its script.
+      const args =
+        process.platform === "win32" && extraEnvironment.CLOUD_POLICY_FIXTURE_CHECKOUT
+          ? [
+              "-c",
+              'git() { /bin/bash "$CLOUD_POLICY_GIT_SHIM" "$@"; }; export -f git; exec /bin/bash "$@"',
+              "cloud-policy-fixture",
+              ...scriptArgs,
+            ]
+          : scriptArgs;
+      return spawnSync(bashCommand, args, {
         cwd: repoRoot,
         encoding: "utf8",
         env: {
@@ -95,6 +107,7 @@ function fixture(runtime: "missing" | "mismatched") {
           NVM_DIR: bashPath(nvmDirectory),
           PATH: `${bashPath(bin)}:${process.platform === "win32" ? "/mingw64/bin:" : ""}/usr/bin:/bin`,
           CLOUD_POLICY_RUNTIME_CALLS: bashPath(runtimeCalls),
+          CLOUD_POLICY_GIT_SHIM: bashPath(path.join(bin, "git")),
           CODEX_CLOUD_ACCESS_PROFILE: "offline",
           CODEX_CLOUD_SETUP_STOP_AFTER_POLICY: "1",
           ...extraEnvironment,
@@ -676,6 +689,28 @@ describe("Codex Cloud policy-only harness runtime isolation", () => {
       expect(contents.startsWith("# PsychSift Codex Cloud runtime\n")).toBe(true);
       expect(contents).toContain('. "$HOME/.clinical-kb-codex-cloud.sh"');
     }
+  });
+
+  it("scrubs inherited provider names before sourcing nvm in the generated profile", () => {
+    const test = fixture("missing");
+    expect(test.run().status).toBe(0);
+    writeFileSync(
+      path.join(test.home, ".nvm/nvm.sh"),
+      'if [ "${GITHUB_TOKEN+x}" = x ] || [ "${DATABASE_URL+x}" = x ]; then exit 93; fi; nvm() { return 0; }\n',
+    );
+    const result = spawnSync(bashCommand, ["-c", '. "$HOME/.clinical-kb-codex-cloud.sh"'], {
+      cwd: repoRoot,
+      encoding: "utf8",
+      env: {
+        NODE_ENV: "test",
+        SystemRoot: process.env.SystemRoot,
+        HOME: bashPath(test.home),
+        PATH: shellToolsPath,
+        GITHUB_TOKEN: "synthetic",
+        DATABASE_URL: "synthetic",
+      },
+    });
+    expect(result.status, result.stderr).toBe(0);
   });
 
   it("writes and repairs only the active CODEX_HOME configuration", () => {

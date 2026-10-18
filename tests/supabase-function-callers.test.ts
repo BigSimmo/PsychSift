@@ -20,6 +20,9 @@ const KNOWN_UNCALLED = new Set([
   "document_label_metadata",
   "document_summary_text",
   "get_visual_evidence_cards",
+  // PS-025: existing deployed RPC retired from application reads because it omits
+  // summary generation stamps. Retain SQL until owner-approved database removal.
+  "get_related_document_metadata_v2",
   "invoke_indexing_v3_agent",
   "match_document_embedding_fields_text",
   "on_call_shifts_replace",
