@@ -22,7 +22,7 @@ import { IngestionProviderEgressRefusal } from "../src/lib/ingestion-provider-eg
 
 export const WORKER_CONTROL_PLANE_TIMEOUT_MS = 30_000;
 export const WORKER_DATA_PLANE_TIMEOUT_MS = 240_000;
-export const WORKER_SUPABASE_TIMEOUT_MS = WORKER_DATA_PLANE_TIMEOUT_MS;
+export const WORKER_SUPABASE_TIMEOUT_MS = 240_000;
 
 export const CONTROL_PLANE_RPCS: ReadonlySet<string> = new Set([
   "claim_ingestion_jobs",
