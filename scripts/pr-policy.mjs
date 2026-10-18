@@ -1137,7 +1137,7 @@ export function evaluatePullRequestPolicy({
   addedMigrationContents,
   changedWorkflowContents,
   // [{ sha, author: { login, email }, files }] from the PR's commits; omitted → check not run.
-  commits,
+  commits = undefined,
   // true for the PR policy workflow (and other enforcing callers): fail closed when a
   // migration-touching PR cannot supply the inputs needed to verify applied-migration history.
   enforceMigrationHistory = false,

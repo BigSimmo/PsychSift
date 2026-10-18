@@ -58,6 +58,9 @@ describe("PR policy: bot-authored sensitive changes", () => {
       headRef: "chore/tidy",
       files: ["README.md"],
       fileStatuses: [{ filename: "README.md", status: "modified", previous_filename: null }],
+      baseMigrationVersions: undefined,
+      addedMigrationContents: undefined,
+      changedWorkflowContents: undefined,
     };
     const bad = evaluatePullRequestPolicy({
       ...base,
