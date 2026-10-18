@@ -88,8 +88,15 @@ export async function drainRosterOfferAlerts(
 }
 
 /** Worker-owned retry consumer; non-overlapping, bounded, and stopped/drained on shutdown. */
-export function startRosterOfferAlertConsumer(client: RosterAdminClient, signal: AbortSignal): () => Promise<void> {
+export function startRosterOfferAlertConsumer(
+  client: RosterAdminClient,
+  workerSignal: AbortSignal,
+): () => Promise<void> {
   let current: Promise<void> | undefined;
+  // The returned stop function aborts this too, so a one-shot (--once) worker, whose own signal never fires
+  // when its job loop simply finishes, does not wait out a long drain before exiting.
+  const stopController = new AbortController();
+  const signal = AbortSignal.any([workerSignal, stopController.signal]);
   const tick = () => {
     if (current || signal.aborted || !rosterTeamReleaseEnabled() || !webPushConfigured()) return;
     current = (async () => {
@@ -117,6 +124,7 @@ export function startRosterOfferAlertConsumer(client: RosterAdminClient, signal:
   tick();
   return async () => {
     clearInterval(timer);
+    stopController.abort();
     await current;
   };
 }

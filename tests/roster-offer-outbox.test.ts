@@ -199,4 +199,19 @@ describe("durable per-device offer consumer", () => {
       vi.useRealTimers();
     }
   });
+  it("stops an active drain at the next device when the consumer is stopped, without the worker signal firing", async () => {
+    const f = fixture();
+    let finishFirstPush: (outcome: "sent") => void = () => {};
+    m.push.mockImplementationOnce(() => new Promise((resolve) => (finishFirstPush = resolve)));
+    const workerSignal = new AbortController().signal; // never aborts, as in a --once run that just finishes
+    const stop = startRosterOfferAlertConsumer(f.client, workerSignal);
+    await vi.waitFor(() => expect(m.push).toHaveBeenCalledOnce());
+    const stopped = stop();
+    finishFirstPush("sent");
+    await stopped;
+    expect(m.push).toHaveBeenCalledOnce();
+    expect(f.outcomes.get(device)).toBe("sent");
+    expect(f.outcomes.get(device2)).toBe("pending");
+    expect(f.rpc.mock.calls.some(([, a]) => a.p_operation === "release")).toBe(true);
+  });
 });
