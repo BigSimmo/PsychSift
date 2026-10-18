@@ -54,6 +54,16 @@ describe("active dashboard bulk reindex hook", () => {
     expect(options.refresh).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps the batch totals when a later batch fails and the refresh also fails", async () => {
+    const { options } = fixture(23, true);
+    options.refresh.mockRejectedValueOnce(new Error("network down"));
+    const { result } = renderHook(() => useDashboardBulkActions(options));
+    await act(() => result.current.bulkReindexSelected("full"));
+    expect(result.current.bulkActionStatus).toBe(
+      "Second batch failed (bulk reindex: 10 succeeded; 0 failed; 13 not queued). The dashboard could not refresh.",
+    );
+  });
+
   it("keeps the plain error when the first batch fails", async () => {
     const { options } = fixture(5);
     options.authBoundFetch.mockImplementationOnce(async () => ({

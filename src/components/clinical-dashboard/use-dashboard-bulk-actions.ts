@@ -50,6 +50,7 @@ export function useDashboardBulkActions({
       let failed = 0;
       let submitted = 0;
       let lastEpoch: number | null = null;
+      let progressStatus = "";
       try {
         for (let offset = 0; offset < selectedDocumentIds.length; offset += 10) {
           const { response, requestEpoch } = await authBoundFetch("/api/documents/bulk/reindex", {
@@ -71,19 +72,18 @@ export function useDashboardBulkActions({
           succeeded += summary.succeeded;
           failed += summary.failed;
           submitted = Math.min(offset + 10, selectedDocumentIds.length);
-          setBulkActionStatus(
-            `Bulk reindex: ${succeeded} queue request${succeeded === 1 ? "" : "s"} succeeded; ${failed} failed.`,
-          );
+          progressStatus = `Bulk reindex: ${succeeded} queue request${succeeded === 1 ? "" : "s"} succeeded; ${failed} failed.`;
+          setBulkActionStatus(progressStatus);
         }
       } catch (error) {
         if (isAbortError(error)) return;
         const message = error instanceof Error ? error.message : errorCopy.bulkReindexFailed;
         // Keep earlier batch totals visible when a later batch fails.
-        setBulkActionStatus(
+        progressStatus =
           submitted > 0
             ? `${message} (bulk reindex: ${succeeded} succeeded; ${failed} failed; ${selectedDocumentIds.length - submitted} not queued).`
-            : message,
-        );
+            : message;
+        setBulkActionStatus(progressStatus);
       } finally {
         // Earlier batches remain queued even when a later batch fails.
         if (succeeded > 0 && lastEpoch !== null && isAuthEpochCurrent(lastEpoch)) {
@@ -92,7 +92,11 @@ export function useDashboardBulkActions({
           try {
             await refresh({ includeSetup: false, includeDashboardData: true, includeDocumentMeta: false });
           } catch (error) {
-            if (!isAbortError(error)) setBulkActionStatus(errorCopy.bulkReindexFailed);
+            // Keep the batch totals: they say what was queued and what to retry.
+            if (!isAbortError(error))
+              setBulkActionStatus(
+                progressStatus ? `${progressStatus} The dashboard could not refresh.` : errorCopy.bulkReindexFailed,
+              );
           }
         }
         activeBulkRequestsRef.current -= 1;
