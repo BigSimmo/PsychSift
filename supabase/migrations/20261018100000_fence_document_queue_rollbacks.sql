@@ -1,13 +1,8 @@
-alter table public.documents
-  add column if not exists mutation_id uuid;
-
-update public.documents
-set mutation_id = gen_random_uuid()
-where mutation_id is null;
+set local lock_timeout = '5s';
+set local statement_timeout = '5min';
 
 alter table public.documents
-  alter column mutation_id set default gen_random_uuid(),
-  alter column mutation_id set not null;
+  add column if not exists mutation_id uuid not null default gen_random_uuid();
 
 create or replace function public.set_document_mutation_id()
 returns trigger
