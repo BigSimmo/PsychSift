@@ -1,7 +1,9 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { readWorkerIngestionSource } from "./helpers/worker-ingestion-source";
 
-const workerSource = readFileSync(new URL("../worker/main.ts", import.meta.url), "utf8");
+// worker/main.ts plus the ingestion stages extracted from it, joined in pipeline order.
+const workerSource = readWorkerIngestionSource();
 const extractorSource = readFileSync(new URL("../worker/python/extract_pdf_assets.py", import.meta.url), "utf8");
 // Fenced leases (PR #3546) moved the lease-bound RPC seams into worker/behavior.ts.
 const behaviorSource = readFileSync(new URL("../worker/behavior.ts", import.meta.url), "utf8");

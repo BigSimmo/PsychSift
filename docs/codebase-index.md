@@ -1022,6 +1022,11 @@ Public-source control-plane tables: `public_source_policy_entries`, `public_sour
 | `assertion-tagging.ts`                                                     | medspaCy assertion tagging via `python/analyze_assertions.py` (`WORKER_MEDSPACY_ASSERTION`)              |
 | `shadow-extraction.ts`, `docling-structure.ts`, `compare-docling.ts`       | Docling shadow extraction (`python/shadow_docling_extract.py`), structure parsing, and parity comparison |
 | `main.ts`                                                                  | Polls `ingestion_jobs`, extracts, chunks, embeds, writes index artifacts                                 |
+| `ingestion-stage-context.ts`                                               | The runtime services `main.ts` hands each extracted ingestion stage                                      |
+| `job-attempt-setup.ts`, `managed-generation-job.ts`                        | Per-job provider egress and admin-source adoption; the managed-generation branch of `processJob`         |
+| `image-captioning.ts`, `image-classification.ts`                           | Image candidate selection, captioning and persistence; pure image classification helpers                 |
+| `chunk-indexing.ts`, `index-quality-payload.ts`, `inline-enrichment.ts`    | Chunk/field/table-fact/index-unit writes, index-quality payload, inline enrichment after commit          |
+| `ingestion-errors.ts`, `ingestion-sanitize.ts`                             | Shared ingestion error shaping; text, JSONB and hashing helpers                                          |
 | `pdf-pages.ts`, `body-headings.ts`, `extract-metadata.ts`                  | Page-level PDF text handling, section heading extraction, and document metadata extraction               |
 | `clinician-summary.ts`, `practice-review.ts`, `provenance-rescue.ts`       | Clinician summary generation, practice-review checks, and provenance rescue for extracted sources        |
 | `db-maintenance.ts`, `storage-cleanup.ts`, `link-checker.ts`               | Scheduled database maintenance, storage cleanup job execution, and source link checking                  |
