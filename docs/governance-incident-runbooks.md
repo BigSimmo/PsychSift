@@ -83,7 +83,7 @@ These are short operator checklists. Preserve evidence and identifiers, but do n
    FROM public.documents d
    WHERE d.id = '<document-uuid>';
    ```
-   Confirm via `railway variables --service PsychSift` (or a probe query against `/api/ask`) that the quarantined `document_id` is not returned in retrieval citations before lifting `RAG_PROVIDER_MODE=offline`.
+   Before lifting `RAG_PROVIDER_MODE=offline`, require retrieval evidence rather than the containment setting itself: `chunk_count` above must be `0`, or the restored retrieval path must be shown to exclude the quarantined `document_id` (for example, a non-offline staging probe whose citations omit it). An `/api/ask` probe made while offline, or reading the Railway variable, only confirms the temporary containment. To read that one setting, print only it (`railway variables --service PsychSift --kv | grep '^RAG_PROVIDER_MODE='`), never the whole service environment, which contains credentials.
 5. Re-run source-governance and focused answer tests. Live data repair or migration requires explicit approval (if the primary owner is unavailable, the backup operator must leave the source quarantined and `rag_response_cache` purged until explicit approval is obtained):
    ```bash
    npm run audit:source-governance
