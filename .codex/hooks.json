@@ -2,7 +2,7 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "^(?:Bash|PowerShell|exec_command|functions\\.exec_command|Edit|Write|MultiEdit|NotebookEdit|edit_file|write_file|functions\\.edit_file|functions\\.write_file|CronCreate)$",
+        "matcher": "^(?:Bash|PowerShell|exec_command|functions\\.exec_command|Edit|Write|MultiEdit|NotebookEdit|edit_file|write_file|functions\\.edit_file|functions\\.write_file|apply_patch|functions\\.apply_patch|CronCreate)$",
         "hooks": [
           {
             "type": "command",
@@ -15,7 +15,7 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "^(?:Bash|PowerShell|exec_command|functions\\.exec_command|Edit|Write|MultiEdit|NotebookEdit|edit_file|write_file|functions\\.edit_file|functions\\.write_file|.*[Cc]reate_?[Pp]ull_?[Rr]equest)$",
+        "matcher": "^(?:Bash|PowerShell|exec_command|functions\\.exec_command|Edit|Write|MultiEdit|NotebookEdit|edit_file|write_file|functions\\.edit_file|functions\\.write_file|apply_patch|functions\\.apply_patch|.*[Cc]reate_?[Pp]ull_?[Rr]equest)$",
         "hooks": [
           {
             "type": "command",

@@ -58,6 +58,45 @@ const GIT_PUSH = /git(?:\s+(?:-[Cc]\s+(?:"[^"]*"|'[^']*'|\S+)|--?[\w-]+(?:=\S*)?
 // Windows paths; prefer the pinned Git for Windows bash and use PATH only when it is absent.
 const GIT_BASH = "C:/Program Files/Git/bin/bash.exe";
 
+// The organisation warning hook understands Claude's Edit/Write payloads only. Codex's
+// edit_file/write_file aliases and its canonical apply_patch (patch text in
+// tool_input.command) are translated into that shape, one Edit payload per patched file.
+const EDIT_ALIASES = {
+  Edit: "Edit",
+  Write: "Write",
+  MultiEdit: "MultiEdit",
+  NotebookEdit: "NotebookEdit",
+  edit_file: "Edit",
+  "functions.edit_file": "Edit",
+  write_file: "Write",
+  "functions.write_file": "Write",
+};
+const APPLY_PATCH = new Set(["apply_patch", "functions.apply_patch"]);
+
+function editTargets(p) {
+  const input = p.tool_input && typeof p.tool_input === "object" && !Array.isArray(p.tool_input) ? p.tool_input : {};
+  const action = (tool_name, file_path) => ({
+    file: ".claude/hooks/organisation-edit-warning.sh",
+    args: [],
+    kind: "edit",
+    payload: { ...p, tool_name, tool_input: file_path === undefined ? input : { ...input, file_path } },
+  });
+  const alias = EDIT_ALIASES[p.tool_name];
+  if (alias) {
+    const target = [input.file_path, input.notebook_path, input.path, input.target_file].find(
+      (value) => typeof value === "string" && value.trim(),
+    );
+    return [action(alias, input.file_path ?? input.notebook_path ?? target)];
+  }
+  if (!APPLY_PATCH.has(p.tool_name)) return null;
+  const patch = [input.command, input.patch, input.input].find((value) => typeof value === "string");
+  if (!patch) return [];
+  const files = new Set();
+  for (const match of patch.matchAll(/^\*\*\* (?:Add|Update|Delete) File: (.+?)\s*$|^\*\*\* Move to: (.+?)\s*$/gm))
+    files.add(match[1] ?? match[2]);
+  return [...files].map((file) => action("Edit", file));
+}
+
 export function plan(event, payload) {
   const p = normalize(payload);
   if (!p) return [];
@@ -65,19 +104,8 @@ export function plan(event, payload) {
   const command = shell ? (p.tool_input.command ?? p.tool_input.script ?? p.tool_input.code) : "";
   if (shell && typeof command !== "string") return [];
   if (event === "PreToolUse") {
-    if (
-      [
-        "Edit",
-        "Write",
-        "MultiEdit",
-        "NotebookEdit",
-        "edit_file",
-        "write_file",
-        "functions.edit_file",
-        "functions.write_file",
-      ].includes(p.tool_name)
-    )
-      return [{ file: ".claude/hooks/organisation-edit-warning.sh", args: [] }];
+    const edits = editTargets(p);
+    if (edits) return edits;
     if (p.tool_name === "CronCreate") return [{ file: ".claude/hooks/pr-handoff-stop.sh", args: ["pre"] }];
     // Mirrors push-format-guard.sh: git, any global options (`-C <dir>`, `-c k=v`, `--git-dir=…`), then push.
     if (shell && GIT_PUSH.test(command)) return [{ file: ".claude/hooks/push-format-guard.sh", args: [] }];
@@ -122,8 +150,9 @@ export async function run(event, payload, root, { execute: runner = execute } = 
   let stdout = "",
     stderr = "",
     code = 0;
+  const editContext = [];
   for (const action of plan(event, p)) {
-    const result = await runner(action, p, root);
+    const result = await runner(action, action.payload ?? p, root);
     if (result.error || (result.code !== 0 && result.code !== 2)) {
       stderr += `Codex project hook unavailable: ${action.file}; no advisory decision was produced.\n`;
       continue;
@@ -133,6 +162,15 @@ export async function run(event, payload, root, { execute: runner = execute } = 
       stdout +=
         JSON.stringify({ hookSpecificOutput: { hookEventName: event, additionalContext: result.stdout.trim() } }) +
         "\n";
+    } else if (action.kind === "edit") {
+      for (const line of result.stdout.split(/\r?\n/).filter(Boolean)) {
+        try {
+          const context = JSON.parse(line).hookSpecificOutput?.additionalContext;
+          if (typeof context === "string" && context.trim()) editContext.push(context.trim());
+        } catch {
+          /* advisory non-JSON output is not a pass */
+        }
+      }
     } else {
       for (const line of result.stdout.split(/\r?\n/).filter(Boolean)) {
         try {
@@ -145,6 +183,10 @@ export async function run(event, payload, root, { execute: runner = execute } = 
     }
     if (result.code === 2) code = 2;
   }
+  if (editContext.length)
+    stdout +=
+      JSON.stringify({ hookSpecificOutput: { hookEventName: event, additionalContext: editContext.join("\n") } }) +
+      "\n";
   return { stdout, stderr, code };
 }
 
@@ -165,7 +207,7 @@ export function registration() {
     timeout: event === "PreToolUse" ? 180 : 45,
   });
   const shells =
-    "Bash|PowerShell|exec_command|functions\\.exec_command|Edit|Write|MultiEdit|NotebookEdit|edit_file|write_file|functions\\.edit_file|functions\\.write_file";
+    "Bash|PowerShell|exec_command|functions\\.exec_command|Edit|Write|MultiEdit|NotebookEdit|edit_file|write_file|functions\\.edit_file|functions\\.write_file|apply_patch|functions\\.apply_patch";
   return {
     hooks: {
       PreToolUse: [{ matcher: `^(?:${shells}|CronCreate)$`, hooks: [hook("PreToolUse")] }],

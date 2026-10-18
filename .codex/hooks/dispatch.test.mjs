@@ -292,3 +292,45 @@ test("canonical PR handoff runs only against synthetic marker state", async () =
   const unrelated = await run("PreToolUse", { ...payload("CronCreate"), session_id: "other" }, root);
   assert.equal(unrelated.stdout, "");
 });
+
+test("Codex edit aliases and apply_patch reach the organisation warning in Edit/Write shape", async () => {
+  const action = (tool, input) => plan("PreToolUse", { tool_name: tool, tool_input: input, cwd: sourceRoot });
+  assert.equal(action("edit_file", { path: "a.ts" })[0].payload.tool_name, "Edit");
+  assert.equal(action("functions.write_file", { path: "a.ts" })[0].payload.tool_input.file_path, "a.ts");
+  const patch =
+    "*** Begin Patch\n*** Update File: lib/a.ts\n@@\n-x\n+y\n*** Add File: supabase/migrations/1_x.sql\n+select 1;\n*** End Patch\n";
+  assert.deepEqual(
+    action("apply_patch", { command: patch }).map((a) => [a.payload.tool_name, a.payload.tool_input.file_path]),
+    [
+      ["Edit", "lib/a.ts"],
+      ["Edit", "supabase/migrations/1_x.sql"],
+    ],
+  );
+  assert.deepEqual(action("apply_patch", {}), []);
+  assert.match(registration().hooks.PreToolUse[0].matcher, /\|apply_patch\|/);
+
+  // The translated payload produces a real warning from the maintained hook logic.
+  const { editHookOutput } = await import(path.join(sourceRoot, "scripts/organisation/agent-hooks.mjs"));
+  const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), "psychsift-edit-warning-"));
+  const migration = action("apply_patch", {
+    command: "*** Begin Patch\n*** Add File: supabase/migrations/20990101000000_x.sql\n+select 1;\n*** End Patch\n",
+  })[0];
+  assert.match(editHookOutput(JSON.stringify(migration.payload), { stateDir }) ?? "", /migration/i);
+  assert.equal(editHookOutput(JSON.stringify({ ...migration.payload, tool_name: "apply_patch" }), { stateDir }), null);
+
+  // Several patched files produce one combined advisory line.
+  const out = await run("PreToolUse", { tool_name: "apply_patch", tool_input: { command: patch } }, root, {
+    execute: async (a, p) => ({
+      stdout: JSON.stringify({
+        hookSpecificOutput: { hookEventName: "PreToolUse", additionalContext: `warn ${p.tool_input.file_path}` },
+      }),
+      stderr: "",
+      code: 0,
+    }),
+  });
+  assert.equal(out.stdout.trim().split("\n").length, 1);
+  assert.equal(
+    JSON.parse(out.stdout).hookSpecificOutput.additionalContext,
+    "warn lib/a.ts\nwarn supabase/migrations/1_x.sql",
+  );
+});
