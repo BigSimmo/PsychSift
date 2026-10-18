@@ -1,4 +1,16 @@
-import { readFileSync } from "node:fs";
+import {
+  chmodSync,
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
+import { spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -393,4 +405,126 @@ describe("compareDriftSnapshots", () => {
       expect(diffUnexpected).toContain("unexpected_in_live(col_b:");
     });
   });
+});
+
+// Exercise the real CLI against a synthetic Docker executable: no daemon or provider.
+describe.skipIf(process.platform === "win32")("drift replay CLI publication modes", () => {
+  const image = "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83";
+  const schema = "create table public.synthetic_replay (id integer);\n";
+  const roles = "-- synthetic role bootstrap\n";
+  const scaffold = "-- synthetic storage scaffold\n";
+  const runCli = (flags: string[], rejectPortLookup = false) => {
+    const fixture = mkdtempSync(join(tmpdir(), "psychsift-drift-cli-"));
+    try {
+      mkdirSync(join(fixture, "scripts", "sql"), { recursive: true });
+      mkdirSync(join(fixture, "supabase"));
+      mkdirSync(join(fixture, "bin"));
+      for (const name of ["generate-drift-manifest.ts", "check-drift.ts"])
+        copyFileSync(join(root, "scripts", name), join(fixture, "scripts", name));
+      symlinkSync(join(root, "node_modules"), join(fixture, "node_modules"), "dir");
+      writeFileSync(join(fixture, "supabase", "schema.sql"), schema);
+      writeFileSync(join(fixture, "supabase", "roles.sql"), roles);
+      writeFileSync(join(fixture, "scripts", "sql", "drift-replay-scaffold.sql"), scaffold);
+      const fakeDocker = join(fixture, "bin", "docker");
+      writeFileSync(
+        fakeDocker,
+        [
+          "#!/usr/bin/env node",
+          "const fs=require('node:fs');",
+          "const args=process.argv.slice(2), input=fs.readFileSync(0,'utf8');",
+          "fs.appendFileSync(process.env.FAKE_DOCKER_LOG,JSON.stringify({args,input})+'\\n');",
+          "const statePath=process.env.FAKE_DOCKER_STATE;",
+          "if(args[0]==='run'){fs.writeFileSync(statePath,args[args.indexOf('--label')+1]);console.log('synthetic-container');}",
+          "else if(args[0]==='container'&&args[1]==='inspect'){",
+          " if(!fs.existsSync(statePath))process.exit(1);",
+          " const label=fs.readFileSync(statePath,'utf8'), split=label.indexOf('=');",
+          " console.log(JSON.stringify([{Config:{Labels:{[label.slice(0,split)]:label.slice(split+1)}}}]));",
+          "}",
+          "else if(args[0]==='rm'){fs.rmSync(statePath,{force:true});}",
+          "else if(args[0]==='port'){",
+          " if(process.env.FAKE_DOCKER_REJECT_PORT==='1'){console.error('No public port5432/tcp published');process.exit(1);}",
+          " console.log('127.0.0.1:55001');",
+          "}",
+          "else if(args.includes('-c')&&args.some(x=>x.includes('pg_namespace')))console.log('synthetic_storage_owner');",
+          "else if(input.includes('select public.schema_drift_snapshot()'))console.log(JSON.stringify({captured_at:'synthetic-clock',snapshot_version:2,tables:[{name:'synthetic_replay'}]}));",
+        ].join("\n"),
+      );
+      chmodSync(fakeDocker, 0o700);
+      const log = join(fixture, "calls.jsonl");
+      const result = spawnSync(
+        process.execPath,
+        [
+          join(root, "node_modules", "tsx", "dist", "cli.mjs"),
+          join(fixture, "scripts", "generate-drift-manifest.ts"),
+          ...flags,
+        ],
+        {
+          cwd: fixture,
+          encoding: "utf8",
+          timeout: 25_000,
+          env: {
+            NODE_ENV: "test",
+            PATH: join(fixture, "bin") + ":" + process.env.PATH,
+            FAKE_DOCKER_LOG: log,
+            FAKE_DOCKER_STATE: join(fixture, "container-state"),
+            FAKE_DOCKER_REJECT_PORT: rejectPortLookup ? "1" : "0",
+          },
+        },
+      );
+      const calls = existsSync(log)
+        ? readFileSync(log, "utf8")
+            .trim()
+            .split("\n")
+            .map((line) => JSON.parse(line) as { args: string[]; input: string })
+        : [];
+      const manifestPath = join(fixture, "supabase", "drift-manifest.json");
+      const manifest = existsSync(manifestPath) ? JSON.parse(readFileSync(manifestPath, "utf8")) : null;
+      return { ...result, calls, manifest };
+    } finally {
+      rmSync(fixture, { recursive: true, force: true });
+    }
+  };
+
+  it("preserves default loopback publication and the exact replay payload", () => {
+    const result = runCli([]);
+    expect(result.status, result.stderr).toBe(0);
+    const run = result.calls.find(({ args }) => args[0] === "run")!.args;
+    expect(run.slice(run.indexOf("-p"), run.indexOf("-p") + 2)).toEqual(["-p", "127.0.0.1::5432"]);
+    expect(result.calls.some(({ args }) => args[0] === "port")).toBe(true);
+    expect(
+      result.calls.filter(({ input }) => input && !input.includes("schema_drift_snapshot")).map(({ input }) => input),
+    ).toEqual([roles, scaffold, schema]);
+    expect(result.manifest).toMatchObject({
+      generator: "scripts/generate-drift-manifest.ts",
+      postgres_image: image,
+      schema_sha256: normalizedSchemaSha256(schema),
+      snapshot: { snapshot_version: 2, tables: [{ name: "synthetic_replay" }] },
+    });
+    expect(result.manifest.snapshot).not.toHaveProperty("captured_at");
+  }, 30_000);
+
+  it("completes an exec-only replay when Docker has no published-port mapping", () => {
+    const result = runCli(["--no-publish"], true);
+    expect(result.status, result.stderr).toBe(0);
+    const run = result.calls.find(({ args }) => args[0] === "run")!.args;
+    expect(run).not.toContain("-p");
+    expect(result.calls.some(({ args }) => args[0] === "port")).toBe(false);
+    expect(
+      result.calls.filter(({ input }) => input && !input.includes("schema_drift_snapshot")).map(({ input }) => input),
+    ).toEqual([roles, scaffold, schema]);
+    expect(result.manifest).toMatchObject({
+      generator: "scripts/generate-drift-manifest.ts",
+      postgres_image: image,
+      schema_sha256: normalizedSchemaSha256(schema),
+      snapshot: { snapshot_version: 2, tables: [{ name: "synthetic_replay" }] },
+    });
+    expect(result.stdout).toContain("exec-only");
+  }, 30_000);
+
+  it("rejects --port together with --no-publish before invoking Docker", () => {
+    const result = runCli(["--no-publish", "--port", "55001"]);
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("--no-publish cannot be combined with --port");
+    expect(result.calls).toEqual([]);
+  }, 30_000);
 });

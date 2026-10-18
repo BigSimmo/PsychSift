@@ -21,6 +21,7 @@ import { fileURLToPath } from "node:url";
  * Flags:
  *   --keep        leave the container running (for inspection / DR rehearsal)
  *   --port <n>    host port for the scratch Postgres (default: ephemeral loopback port)
+ *   --no-publish  use docker exec only; omit the host port and docker port lookup
  *   --container <name>  override the scratch container name for concurrent worktrees
  *   --image <x>   override the digest-pinned Postgres image reference
  */
@@ -83,6 +84,10 @@ async function main() {
     throw new Error("--image must use an immutable @sha256 digest reference");
   }
   const requestedPort = arg("--port");
+  const noPublish = process.argv.includes("--no-publish");
+  if (noPublish && requestedPort) {
+    throw new Error("--no-publish cannot be combined with --port");
+  }
   if (requestedPort && (!/^\d+$/.test(requestedPort) || Number(requestedPort) < 1 || Number(requestedPort) > 65535)) {
     throw new Error("--port must be an integer from 1 to 65535");
   }
@@ -128,15 +133,18 @@ async function main() {
         `${DRIFT_OWNER_LABEL}=${WORKTREE_IDENTITY}`,
         "-e",
         "POSTGRES_PASSWORD",
-        "-p",
-        publishedPort,
+        ...(noPublish ? [] : ["-p", publishedPort]),
         image,
       ],
       undefined,
       { POSTGRES_PASSWORD: scratchPassword },
     );
-    hostEndpoint = docker(["port", container, "5432/tcp"]).trim();
-    console.log(`Scratch Postgres published at ${hostEndpoint}.`);
+    if (noPublish) {
+      console.log("Scratch Postgres uses exec-only access (no host port published).");
+    } else {
+      hostEndpoint = docker(["port", container, "5432/tcp"]).trim();
+      console.log(`Scratch Postgres published at ${hostEndpoint}.`);
+    }
 
     // The Supabase image briefly accepts connections before its init migrations
     // deliberately restart Postgres. Require sustained readiness so replay does
@@ -209,7 +217,8 @@ async function main() {
     console.log("Next: run `npm run check:drift` against live (needs service-role env).");
   } finally {
     if (keep) {
-      console.log(`Container ${container} kept running at ${hostEndpoint} (--keep).`);
+      const access = noPublish ? "with exec-only access (no host port)" : `at ${hostEndpoint}`;
+      console.log(`Container ${container} kept running ${access} (--keep).`);
     } else {
       try {
         removeOwnedContainer(container);

@@ -136,7 +136,7 @@ jobs:
         id: original-image
         run: docker pull supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83
 
-      - name: Prove healthy internal Postgres routing and exact generator port command
+      - name: Prove authenticated internal Postgres TCP and loopback relay
         timeout-minutes: 2
         run: |
           set -euo pipefail
@@ -158,15 +158,18 @@ jobs:
             supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83
           ready=0
           for attempt in $(seq 1 45); do
-            if docker exec "${probe}" pg_isready -U postgres -q; then ready=$((ready+1)); else ready=0; fi
+            if docker exec "${probe}" pg_isready -h 127.0.0.1 -U postgres -q; then ready=$((ready+1)); else ready=0; fi
             if test "${ready}" -ge 5; then break; fi
             sleep 2
           done
           test "${ready}" -ge 5
-          test "$(docker exec "${probe}" psql -X -U postgres -d postgres -tA -v ON_ERROR_STOP=1 -c 'select 1')" = 1
-          printf 'PROBE_INSIDE_SQL_SELECT1_PASS\n'
-          port_output="$(docker port "${probe}" 5432/tcp)"
-          printf 'PROBE_EXACT_DOCKER_PORT_EXIT0 output=%s\n' "${port_output}"
+          test "$(PGPASSWORD="${POSTGRES_PASSWORD}" docker exec -e PGPASSWORD "${probe}" psql -X -h 127.0.0.1 -U postgres -d postgres -tA -v ON_ERROR_STOP=1 -c 'select 1')" = 1
+          printf 'PROBE_INSIDE_AUTHENTICATED_TCP_SELECT1_PASS\n'
+          port_status=0
+          port_output="$(docker port "${probe}" 5432/tcp 2>&1)" || port_status=$?
+          printf 'PROBE_EXPECTED_NO_PUBLISHED_PORT status=%s output=%s\n' "${port_status}" "${port_output}"
+          test "${port_status}" -eq 1
+          test "$(docker inspect --format '{{json .NetworkSettings.Ports}}' "${probe}")" = '{}'
           python3 - <<'PYCODE'
           import errno,socket
           try:
@@ -237,11 +240,11 @@ jobs:
             echo "::endgroup::"
           done
 
-      - name: Regenerate manifest with unchanged official generator and default image
+      - name: Regenerate manifest with reviewed exec-only generator and original default image
         id: generate
         run: |
           cp supabase/drift-manifest.json "${RUNNER_TEMP}/committed-drift-manifest.json"
-          npm run drift:manifest
+          npm run drift:manifest -- --no-publish
 
       - name: Verify strict canonical manifest freshness
         id: freshness
