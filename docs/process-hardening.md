@@ -790,7 +790,7 @@ the durable index for the tooling; `docs/operator-backlog.md` tracks the human-o
   non-bypassable auto-merge ownership guard (`autoMergeVerdict` in `scripts/guard-push.mjs`) plus five
   guards with explicit env-var overrides. The auto-merge ownership guard warns (but does not block) an
   ordinary push to a PR branch whose auto-merge is armed; it blocks only when that push force-updates
-  the branch (owner decision 2026-10-18: a hosted migration push only warns). The five overrideable guards are: format-before-push (closes
+  the branch or carries a hosted migration. The five overrideable guards are: format-before-push (closes
   the `verify:cheap` vs CI `format:check` gap; reuses only an exact-lock worktree dependency tree and
   otherwise blocks with `npm ci --include=dev`; `SKIP_FORMAT_GUARD=1`), drift-manifest freshness
   (`SKIP_DRIFT_GUARD=1`), static gate (changed-file lint + source-only typecheck through the run

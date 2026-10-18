@@ -550,24 +550,22 @@ describe("in-flight CI push guard (#HSSHRG)", () => {
     expect(verdict.reason).toBe("no-in-flight-ci");
   });
 
-  it("warns but does not block an armed auto-merge when a fast-forward push carries a hosted migration", () => {
-    // Owner decision 2026-10-18: migration PRs may auto-merge once all required checks,
-    // including Migration replay and the drift checks, pass on the new head.
+  it("blocks an armed auto-merge when the push carries a hosted migration", () => {
+    // Migration PRs may auto-merge (owner decision 2026-10-18), but a migration added after
+    // arming would merge a schema change nobody armed for.
     const armed = { autoMergeRequest: { enabledAt: "t" }, state: "OPEN", number: 88 };
     const v = autoMergeVerdict("claude/x", armed, false, true);
-    expect(v.block).toBe(false);
-    expect(v.warn).toBe(true);
+    expect(v.block).toBe(true);
     expect(v.reason).toBe("auto-merge-armed-migration");
     expect(v.number).toBe(88);
   });
 
-  it("still blocks a force-push carrying a migration while auto-merge is armed", () => {
+  it("blocks a migration push even when it is an ordinary fast-forward", () => {
+    // The fast-forward carve-out exists because GitHub re-validates required checks.
+    // It does not make an unattended production schema change acceptable.
     const armed = { autoMergeRequest: { enabledAt: "t" }, state: "OPEN", number: 89 };
     expect(autoMergeVerdict("claude/x", armed, false, false).block).toBe(false);
-    expect(autoMergeVerdict("claude/x", armed, true, true)).toMatchObject({
-      block: true,
-      reason: "auto-merge-armed-force-push",
-    });
+    expect(autoMergeVerdict("claude/x", armed, false, true).block).toBe(true);
   });
 
   it("does not block a migration push when auto-merge is not armed", () => {

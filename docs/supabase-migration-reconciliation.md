@@ -10,7 +10,8 @@ Target project: PsychSift Production (`sjrfecxgysukkwxsowpy`)
   approval is production-deploy approval: merge only inside the approved window,
   and do not promise a deferred deploy. Migration PRs may auto-merge once all
   required checks pass, including Migration replay and the drift checks (owner
-  decision 2026-10-18).
+  decision 2026-10-18; see
+  [the decision](decisions/2026-10-18-migration-prs-may-auto-merge.md)).
 - **Never edit a migration already on main.** Correct it with a new migration
   carrying the newest timestamp, including duplicate stems or absent effects.
   Do not convert an applied migration into a no-op.
