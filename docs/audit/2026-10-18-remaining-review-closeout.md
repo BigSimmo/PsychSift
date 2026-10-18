@@ -65,3 +65,27 @@ The first Chromium attempt compiled webpack but its TypeScript child hit the def
 ## Rollback and clinical implications
 
 Revert the application/extractor changes before release if their acceptance fails. A database rollback requires an explicitly approved forward migration, never an edit to applied history. The alert outbox has no clinical payload and preserves account/team/device ownership. The PDF change can reduce structured edge-row recall where ruling is absent; source text and coordinates remain available for review instead of asserting an uncertain clinical relationship. It can change retrieval inputs, so live RAG before/after canaries remain separately approval-gated. This engineering review does not determine TGA/SaMD classification or provide clinical activation approval.
+
+## Final local handoff checks
+
+The owning worker/PDF/roster/catalogue suites plus architecture, route reachability,
+React server boundaries and the configured design-preview TypeScript contract
+reported **`Test Files 131 passed (131)`** and **`Tests 1805 passed | 1 skipped
+(1806)`**. These overlap earlier focused evidence and are not a fresh complete
+repository unit run.
+
+`verify:pr-local` completed every selected static stage through
+`check:migration-role`, then failed `check:migration-immutability` on the three
+explicitly listed unsealed drafts. It did not execute its later stages. Function
+grants, owner scope, lint, complete typecheck, the production browser build, owning
+unit suites and offline RAG contracts have the separate evidence above. No
+complete PR-local or production-readiness pass is claimed. Whole-repository
+Prettier completed without changes; later metadata edits were formatted before
+commit. Diff integrity passed **846 → 897 cases in 39 changed test files**, with
+27/27 self-tests. The comparison base was current main `1bd7ea309`.
+
+The new catalogue ownership pointer was updated to its actual generated asset,
+and the disposable roster SQL fixtures were placed in the existing Personal
+practice organisation map. No canonical ledger or historical sealed migration
+was edited. Permission to append only the three new migration hashes was
+requested separately; absence of a response is not approval.
