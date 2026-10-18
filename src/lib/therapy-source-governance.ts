@@ -87,7 +87,7 @@ export type NiceGuidelineDetails = {
 /** Extract structured guideline details from a NICE recommendation citation. */
 export function extractNiceGuidelineDetails(citationText: string, authority?: string | null): NiceGuidelineDetails {
   const urlMatch = citationText.match(/https?:\/\/[^\s)]+/)?.[0]?.replace(/[.,;:)]+$/, "") ?? null;
-  const authorityCode = authority?.replace(/^NICE\s*/i, "").trim() || null;
+  const authorityCode = authority?.replace(/^NICE(?:\s+guideline)?\s*/i, "").trim() || null;
   const titleMatch = citationText.match(/^([^,]+)/);
   const rawTitle = titleMatch ? titleMatch[1].trim() : "NICE guideline";
   const title = `NICE guideline: ${rawTitle}${authorityCode ? ` (${authorityCode})` : ""}`;
@@ -101,7 +101,8 @@ export function extractNiceGuidelineDetails(citationText: string, authority?: st
 
 /** Explicit citation authority wins over publisher names or links mentioned in its prose. */
 export function isNiceGuidelineCitation(citation: { authority?: string; text?: string }): boolean {
-  if (citation.authority?.trim()) return /^NICE(?:\s+[A-Z]{1,5}\d+)?$/i.test(citation.authority.trim());
+  if (citation.authority?.trim())
+    return /^NICE(?:\s+guideline)?(?:\s+[A-Z]{1,5}\d+)?$/i.test(citation.authority.trim());
   return /https:\/\/(?:www\.)?nice\.org\.uk\/guidance\//i.test(citation.text ?? "");
 }
 

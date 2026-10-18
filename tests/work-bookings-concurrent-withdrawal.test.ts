@@ -49,15 +49,17 @@ describe("concurrent availability withdrawal", () => {
         },
       };
       const repo = new DurableSupervisorBookingRepository(client as never);
-      await expect(
-        repo.createAvailabilitySlot({
-          id: "new-slot",
-          serviceId: "service",
-          supervisorId: "supervisor",
-          startsAt: "2026-10-19T09:00:00Z",
-          endsAt: "2026-10-19T10:00:00Z",
-        }),
-      ).rejects.toThrow(/overlapping/);
+      const created = repo.createAvailabilitySlot({
+        id: "new-slot",
+        serviceId: "service",
+        supervisorId: "supervisor",
+        startsAt: "2026-10-19T09:00:00Z",
+        endsAt: "2026-10-19T10:00:00Z",
+      });
+      // A booked slot is reported as it now stands; only an unchanged open slot is withdrawn as a conflict.
+      if (bookDuringCheck)
+        await expect(created).resolves.toMatchObject({ bookingState: "booked", traineeId: "trainee" });
+      else await expect(created).rejects.toThrow(/overlapping/);
       expect(stored).toMatchObject(
         bookDuringCheck
           ? { status: "submitted", ratings: { bookingState: "booked", traineeId: "trainee" } }

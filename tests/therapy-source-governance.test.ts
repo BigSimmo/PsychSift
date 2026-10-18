@@ -89,6 +89,14 @@ describe("therapy source governance", () => {
     });
   });
 
+  it("accepts the single-authority 'NICE guideline NG222' form and normalises its code", () => {
+    const metadata = therapyNiceGuidelineMetadata(
+      { authority: "NICE guideline NG222", text: "Depression in adults: treatment and management." },
+      "needs_review",
+    );
+    expect(metadata).toMatchObject({ source_kind: "guideline", version: "NG222", publisher_code: "NICE" });
+  });
+
   it("does not label PubMed or RANZCP citations NICE when their prose mentions a NICE guideline", () => {
     for (const authority of ["PubMed", "RANZCP", "NICE NG222 / PubMed", "NICE / APA"]) {
       expect(
