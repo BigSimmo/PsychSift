@@ -4876,6 +4876,8 @@ export type Database = {
           p_subscription_id?: string;
           p_outcome?: string;
         };
+        Returns: Json;
+      };
       mutate_owner_training_milestone: {
         Args: { p_owner_id: string; p_id: string; p_operation: string; p_milestone: Json; p_registrar: Json };
         Returns: Json;
