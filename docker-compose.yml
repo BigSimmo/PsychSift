@@ -5,7 +5,7 @@
 # Supabase project the credentials point at: with production keys in
 # .env.local, an unprofiled worker would start consuming the live ingestion
 # queue. Start it only with explicit connected-workload approval:
-#   docker compose --profile worker up --build
+#   docker compose --env-file .env.local --profile worker up --build
 #
 # NEXT_PUBLIC_SUPABASE_URL has no default on purpose: Compose fails fast when
 # it is missing instead of silently building against the production project.
@@ -22,6 +22,10 @@ services:
       args:
         NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:?set NEXT_PUBLIC_SUPABASE_URL to the approved Supabase project URL}
         NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:-placeholder-build-publishable-key}
+        # Non-secret staging identity: without it the browser-side project
+        # guard rejects a staging URL as a production mismatch.
+        NEXT_PUBLIC_SUPABASE_STAGING_PROJECT_REF: ${NEXT_PUBLIC_SUPABASE_STAGING_PROJECT_REF:-}
+        NEXT_PUBLIC_SUPABASE_STAGING_PROJECT_NAME: ${NEXT_PUBLIC_SUPABASE_STAGING_PROJECT_NAME:-}
         MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-}
         NEXT_PUBLIC_MAX_UPLOAD_MB: ${NEXT_PUBLIC_MAX_UPLOAD_MB:-}
     ports:
