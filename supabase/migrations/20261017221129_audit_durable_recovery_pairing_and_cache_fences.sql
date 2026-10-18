@@ -94,13 +94,6 @@ begin
     if exists(select 1 from ingestion_generation_evidence.candidates where document_id = v_document_id) then
       return jsonb_build_object('ok',false,'reason','managed_recovery_required');
     end if;
-    -- Close redundant siblings in this same transaction as the retry. This prevents a
-    -- rejected retry from stranding a document after independently committed supersedes.
-    update public.ingestion_jobs set status = 'completed', stage = 'superseded during recovery',
-      progress = 100, completed_at = v_now, error_message = null, locked_by = null, locked_at = null,
-      lease_token = null, lease_expected_generation_id = null, lease_write_generation_id = null,
-      lease_authority_digest = null, lease_expires_at = null, lease_duration_seconds = null
-    where document_id = v_document_id and id <> p_job_id and status in ('failed','processing');
     update public.documents set status = 'queued', error_message = null where id = v_document_id;
   elsif not (v_active or v_indexed) then
     -- Stale redundant siblings may be closed before retry, in stable job id order.
@@ -131,13 +124,7 @@ create function public.rag_cache_scope_revision_v1(p_owner_id uuid, p_include_pu
 returns text language sql stable security invoker set search_path = '' as $$
   select 'rag-cache-scope-v1:' || pg_catalog.md5(coalesce(pg_catalog.string_agg(row_hash, '' order by id),''))
   from (
-    select d.id, pg_catalog.md5(pg_catalog.jsonb_build_array(
-      d.id,d.owner_id,d.status,d.updated_at,d.metadata,d.index_generation_id,
-      (select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_array(f.id,f.metadata) order by f.id)
-       from public.document_table_facts f where f.document_id = d.id),
-      (select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_array(i.id,i.metadata,i.searchable) order by i.id)
-       from public.document_images i where i.document_id = d.id)
-    )::text) as row_hash
+    select d.id, pg_catalog.md5(pg_catalog.jsonb_build_array(d.id,d.owner_id,d.status,d.updated_at,d.metadata,d.index_generation_id)::text) as row_hash
     from public.documents d
     where (d.owner_id = p_owner_id or (coalesce(p_include_public,false) and d.owner_id is null))
       and (coalesce(cardinality(p_document_ids),0) = 0 or d.id = any(p_document_ids))

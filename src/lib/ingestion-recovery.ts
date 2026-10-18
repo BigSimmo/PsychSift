@@ -112,9 +112,10 @@ export function buildIngestionRecoveryPlan(args: {
     actions.push({ action: "retry", jobId: retryJob.id, documentId, resetDocument: false });
   }
 
-  // Keep supersedes before retries for the preview/action contract. The apply path performs the
-  // document's sibling supersedes inside the retry transaction, so a rejected retry cannot strand
-  // the document after independently committed sibling changes. (Audit I2/E2)
+  // Apply supersedes before retries. A retry flips a row to `pending`; if a redundant sibling for
+  // the same document is still open when that happens, the two rows collide on the partial unique
+  // index. Both consumers apply `actions` in array order, so closing the siblings first here keeps
+  // recovery crash-safe regardless of the order jobs were fetched in. (Audit I2/E2)
   const orderedActions = [
     ...actions.filter((action) => action.action === "supersede"),
     ...actions.filter((action) => action.action === "retry"),
@@ -231,14 +232,8 @@ export async function applyIngestionRecoveryActions(
   },
   applicable: ReconciledIngestionRecoveryAction[],
 ) {
-  const retryDocuments = new Set(
-    applicable.filter(({ action }) => action.action === "retry").map(({ action }) => action.documentId),
-  );
   const results: Array<{ action: IngestionRecoveryAction; applied: boolean; reason: string | null }> = [];
   for (const { action, expected } of applicable) {
-    // The retry RPC supersedes this document's siblings in the same transaction. Do not
-    // commit those sibling changes separately, especially before generation-evidence checks.
-    if (action.action === "supersede" && retryDocuments.has(action.documentId)) continue;
     const { data, error } = await client.rpc("recover_ingestion_job", {
       p_job_id: action.jobId,
       p_action: action.action,
@@ -247,15 +242,11 @@ export async function applyIngestionRecoveryActions(
     if (error) throw new Error(error.message);
     const outcome = data && typeof data === "object" && !Array.isArray(data) ? (data as Record<string, unknown>) : null;
     const applied = outcome?.ok === true;
-    const reason = applied ? null : typeof outcome?.reason === "string" ? outcome.reason : "invalid_recovery_response";
-    results.push({ action, applied, reason });
-    if (action.action === "retry") {
-      for (const sibling of applicable) {
-        if (sibling.action.action === "supersede" && sibling.action.documentId === action.documentId) {
-          results.push({ action: sibling.action, applied, reason });
-        }
-      }
-    }
+    results.push({
+      action,
+      applied,
+      reason: applied ? null : typeof outcome?.reason === "string" ? outcome.reason : "invalid_recovery_response",
+    });
   }
   return results;
 }
