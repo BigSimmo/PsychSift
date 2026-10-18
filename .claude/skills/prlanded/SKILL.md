@@ -1,6 +1,6 @@
 ---
 name: prlanded
-description: Verify a merged PR actually landed correctly in this repo and clean up after it. Use right after a PR merges (especially squash + auto-merge) to confirm the squashed commit matches your branch by content, catch late commits that were orphaned by the auto-merge race, and update the ledger and memory.
+description: Verify a merged PR actually landed correctly in this repo and clean up after it. Use right after a PR merges (especially with auto-merge) to confirm the merge commit, or for older PRs the squashed commit, matches your branch by content, catch late commits that were orphaned by the auto-merge race, and update the ledger and memory.
 ---
 
 # prlanded — confirm a merge landed and tidy up

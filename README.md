@@ -135,13 +135,21 @@ heavy parsing, OCR, image captioning, chunking, embedding, and database inserts.
 It uses the worker defaults from `.env.example` when those vars are set in
 `.env.local`. These defaults do not prevent live database claims or provider calls.
 
-**Docker Compose also requires connected-workload approval.**
-`docker compose up --build` starts both the app and ingestion worker and loads
-`.env.local` into both. It does not create an isolated local Supabase database.
-Production credentials can therefore let the worker consume production jobs.
-Use only the explicitly approved target and workload. The Compose app mapping is
-`http://localhost:3000`; stop this stack with `docker compose down`. This mapping
-does not replace the project-identity checks for development servers above.
+**Docker Compose starts only the app; the worker is opt-in.**
+`docker compose --env-file .env.local up --build` builds and starts the app tier
+only. Compose has no default Supabase URL: it fails fast unless
+`NEXT_PUBLIC_SUPABASE_URL` is supplied (`--env-file`, the shell or `.env`; the
+optional `.env.local` `env_file` alone does not feed `${...}` interpolation).
+It does not create an isolated local Supabase database.
+
+The ingestion worker sits behind the `worker` profile because production
+credentials would let it consume production jobs. Start it only with explicit
+connected-workload approval for the target:
+`docker compose --env-file .env.local --profile worker up --build`.
+The worker container serves `/health` on internal port 3901 for its Compose
+healthcheck (nothing is published). The Compose app mapping is
+`http://localhost:3000`; stop the stack with `docker compose --env-file .env.local --profile worker down`.
+This mapping does not replace the project-identity checks for development servers above.
 
 ### Node.js runtime and lifecycle
 
