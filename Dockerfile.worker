@@ -166,7 +166,7 @@ STOPSIGNAL SIGTERM
 # not change Railway deploy gating.
 # Kept on one line: tests/tsx-server-only-runner.test.ts treats the first line
 # starting with CMD as the worker entrypoint.
-HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 CMD node -e "const p=process.env.WORKER_HEALTH_PORT||process.env.PORT;if(!p){console.error('worker health server disabled: set WORKER_HEALTH_PORT or PORT');process.exit(1)}fetch('http://127.0.0.1:'+p+'/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+HEALTHCHECK --interval=30s --timeout=20s --start-period=60s --retries=3 CMD node -e "const p=process.env.WORKER_HEALTH_PORT||process.env.PORT;if(!p){console.error('worker health server disabled: set WORKER_HEALTH_PORT or PORT');process.exit(1)}fetch('http://127.0.0.1:'+p+'/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 # Long-poll worker; WORKER_* env vars control claim batch size, concurrency,
 # and the stale-claim window (see src/lib/env.ts).
 #
