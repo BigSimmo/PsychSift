@@ -5,6 +5,7 @@ import { useCallback, useRef, useState } from "react";
 
 import { AnswerFeedbackPanel } from "@/components/clinical-dashboard/answer-feedback-panel";
 import { buttonFaceClass } from "@/components/ui/button-face";
+import { announce } from "@/components/ui/live-announcer";
 import { Sheet } from "@/components/ui/sheet";
 import { cn, textMuted } from "@/components/ui-primitives";
 import type { AnswerFeedbackType } from "@/lib/answer-feedback";
@@ -39,6 +40,13 @@ export function RecordReportProblem({
   const close = useCallback(() => setOpen(false), []);
   const noun = recordNoun[recordType];
 
+  // The app's shared announcer speaks the outcome; the visible line below is plain text, so the
+  // page gains no extra live region.
+  const report = (next: { tone: "success" | "warning"; message: string }) => {
+    setNotice(next);
+    announce(next.message);
+  };
+
   async function submit(feedbackCategory: AnswerFeedbackType, note?: string) {
     if (pending) return;
     setOpen(false);
@@ -52,15 +60,15 @@ export function RecordReportProblem({
       });
       if (!response.ok) {
         const payload = (await response.json().catch(() => ({}))) as { error?: unknown };
-        setNotice({
+        report({
           tone: "warning",
           message: typeof payload.error === "string" ? payload.error : "The report could not be saved.",
         });
         return;
       }
-      setNotice({ tone: "success", message: "Thanks. The report was saved for review." });
+      report({ tone: "success", message: "Thanks. The report was saved for review." });
     } catch {
-      setNotice({ tone: "warning", message: "The report could not be saved. Check the connection and try again." });
+      report({ tone: "warning", message: "The report could not be saved. Check the connection and try again." });
     } finally {
       setPending(null);
     }
@@ -81,9 +89,11 @@ export function RecordReportProblem({
         <ThumbsDown aria-hidden="true" className="h-3.5 w-3.5" />
         {pending ? "Saving report" : "Report a problem"}
       </button>
-      <p role="status" aria-live="polite" className={cn("m-0 text-xs", textMuted)}>
-        {notice ? notice.message : null}
-      </p>
+      {notice ? (
+        <p className={cn("m-0 text-xs", textMuted)} data-testid={`${recordType}-report-problem-notice`}>
+          {notice.message}
+        </p>
+      ) : null}
       <Sheet
         open={open}
         onClose={close}

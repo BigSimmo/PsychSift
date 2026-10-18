@@ -41,7 +41,11 @@ describe("report a problem: optional note", () => {
     const sheet = await screen.findByTestId("medication-report-problem-sheet");
     await user.type(within(sheet).getByTestId("answer-feedback-note"), "Synthetic note");
     await user.click(within(sheet).getByRole("button", { name: /Outdated guidance/ }));
-    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/looks like it holds a patient detail/));
+    await waitFor(() =>
+      expect(screen.getByTestId("medication-report-problem-notice")).toHaveTextContent(
+        /looks like it holds a patient detail/,
+      ),
+    );
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe("/api/answer-feedback");

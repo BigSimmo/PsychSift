@@ -94,7 +94,7 @@ describe("answer feedback route: optional note", () => {
     expect(insert).toHaveBeenCalledWith(expect.objectContaining({ note: null }));
   });
 
-  it("refuses an identifying note before rate limiting or saving, without echoing it", async () => {
+  it("rate limits, then refuses an identifying note before saving, without echoing it", async () => {
     const { post, insert, consumeSubjectApiRateLimit } = await loadRoute();
     const response = await post({ ...answerBody, note: "Mr Smith MRN 1234567 got the wrong dose" });
     expect(response.status).toBe(400);
@@ -103,7 +103,7 @@ describe("answer feedback route: optional note", () => {
     expect(JSON.stringify(payload)).not.toContain("Smith");
     expect(JSON.stringify(payload)).not.toContain("1234567");
     expect(insert).not.toHaveBeenCalled();
-    expect(consumeSubjectApiRateLimit).not.toHaveBeenCalled();
+    expect(consumeSubjectApiRateLimit).toHaveBeenCalledTimes(1);
   });
 
   it("refuses a note over 500 characters", async () => {

@@ -58,10 +58,9 @@ export async function POST(request: Request) {
       });
     const body = await parseJsonBody(request, feedbackBodySchema, "Invalid answer feedback.");
     const noteText = body.note ? body.note : null;
-    // Before any database or rate-limit work, so an identifying note never reaches storage.
-    rejectPatientDetailFeedbackNote(noteText);
     const supabase = createAdminClient();
     const access = await publicAccessContext(request, supabase);
+    // Rate limit first, so the patient-detail screen below cannot be probed without limit.
     const rateLimit = await consumeSubjectApiRateLimit({
       supabase,
       subject: access.rateLimitSubject,
@@ -69,8 +68,10 @@ export async function POST(request: Request) {
       allowInMemoryFallbackOnUnavailable: allowRateLimitInMemoryFallbackOnUnavailable(),
     });
     if (rateLimit.limited) return rateLimitJsonResponse("Too many feedback requests. Retry shortly.", rateLimit);
+    // Before any storage or logging, so an identifying note never reaches the database.
+    rejectPatientDetailFeedbackNote(noteText);
 
-    let row: TablesInsert<"rag_answer_feedback">;
+    let row: Omit<TablesInsert<"rag_answer_feedback">, "owner_id">;
     if ("recordId" in body) {
       // An answer report is bound to a signed answer token; a record report has no such proof,
       // so free-text reports on records are accepted only from a signed-in reader.
@@ -81,7 +82,6 @@ export async function POST(request: Request) {
       }
       row = {
         interaction_id: randomUUID(),
-        owner_id: access.ownerId ?? null,
         feedback_category: body.feedbackCategory,
         // Content-free identity of the reported record, so answer_hash stays populated.
         answer_hash: createHash("sha256").update(`${body.recordType}:${body.recordId}`, "utf8").digest("hex"),
@@ -103,7 +103,6 @@ export async function POST(request: Request) {
       }
       row = {
         interaction_id: body.interactionId,
-        owner_id: access.ownerId ?? null,
         feedback_category: body.feedbackCategory,
         answer_hash: body.answerHash,
         cited_source_ids: [...new Set(body.citedSourceIds)],
@@ -116,7 +115,7 @@ export async function POST(request: Request) {
       };
     }
 
-    const { error } = await supabase.from("rag_answer_feedback").insert(row);
+    const { error } = await supabase.from("rag_answer_feedback").insert({ ...row, owner_id: access.ownerId ?? null });
     if (error) {
       if (error.code === "23505") {
         return publicErrorResponse("Feedback has already been recorded for this answer.", 409, {

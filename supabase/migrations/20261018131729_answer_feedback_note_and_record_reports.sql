@@ -35,7 +35,7 @@ alter table public.rag_answer_feedback
   add constraint rag_answer_feedback_record_id_check
   check (
     (record_type = 'answer' and record_id is null)
-    or (record_type <> 'answer' and record_id ~ '^[a-z0-9][a-z0-9-]{0,119}$')
+    or (record_type <> 'answer' and record_id is not null and record_id ~ '^[a-z0-9][a-z0-9-]{0,119}$')
   );
 
 -- Re-assert the existing fail-closed access model for the widened table.
