@@ -2062,6 +2062,7 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          mutation_id?: string;
           chunk_count?: number;
           content_hash?: string | null;
           created_at?: string;
@@ -2086,6 +2087,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          mutation_id?: string;
           chunk_count?: number;
           content_hash?: string | null;
           created_at?: string;

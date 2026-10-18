@@ -146,6 +146,21 @@ describe("durable per-device offer consumer", () => {
     expect(f.outcomes.get(device2)).toBe("sent");
     expect(m.push).toHaveBeenCalledOnce();
   });
+  it("does not turn a transient opening lookup failure into an empty completed offer", async () => {
+    const f = fixture();
+    m.eligible.mockRejectedValueOnce(new Error("Opening check unavailable"));
+    await expect(drainRosterOfferAlerts(f.client)).rejects.toThrow("Opening check unavailable");
+    expect(f.rpc.mock.calls.some(([, a]) => a.p_operation === "prepare")).toBe(false);
+    expect(f.rpc.mock.calls.some(([, a]) => a.p_operation === "ack")).toBe(false);
+    expect(f.rpc.mock.calls.some(([, a]) => a.p_operation === "release")).toBe(true);
+  });
+  it("retries a transient per-device eligibility failure instead of terminally skipping", async () => {
+    const f = fixture();
+    m.eligible.mockResolvedValueOnce([owner, other]).mockRejectedValueOnce(new Error("Opening check unavailable"));
+    await drainRosterOfferAlerts(f.client);
+    expect(f.outcomes.get(device)).toBe("retry");
+    expect(f.outcomes.get(device2)).toBe("sent");
+  });
   it("does not activate during the staff release hold or missing provider setup", async () => {
     const f = fixture();
     m.release.mockReturnValue(false);

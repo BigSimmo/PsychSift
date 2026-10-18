@@ -75,8 +75,10 @@ begin
     return to_jsonb(v_event);
   end if;
   select * into v_event from public.roster_offer_alert_outbox where open_shift_id=p_open_shift_id
-    and lease_token=p_token and lease_until>v_now and expires_at>v_now for update;
-  if not found then return null; end if;
+    and lease_token=p_token for update;
+  -- A row-lock wait may outlive the lease: validate actual wall clock after acquiring it.
+  v_now := clock_timestamp();
+  if not found or v_event.lease_until<=v_now or v_event.expires_at<=v_now then return null; end if;
   if p_operation='prepare' then
     if coalesce(cardinality(p_owner_ids),0)>500 then raise exception 'roster_limit'; end if;
     if not v_event.initialized then

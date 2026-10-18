@@ -11,7 +11,7 @@ export async function offerRecipients(
   serviceId: string,
   openShiftId: string,
 ) {
-  const open = await openParties(client, serviceId, openShiftId);
+  const open = await openParties(client, serviceId, openShiftId, true);
   if (!open || open.status !== "open" || Date.parse(open.starts_at) <= Date.now()) return [];
   const overview = await rosterRead(client, actorId, serviceId, "overview");
   const date = perthDateOf(open.starts_at);
