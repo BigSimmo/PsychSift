@@ -69,6 +69,60 @@ export function safeErrorLogDetails(error: unknown) {
   };
 }
 
+/**
+ * Diagnostics for upload failures and fatal alerts must not contain free text.
+ * A filename, person's name or provider response need not match a redaction
+ * pattern to be sensitive. Preserve only fixed error classes and known codes.
+ */
+export function contentFreeErrorDetails(error: unknown): {
+  errorType: string;
+  errorCode?: string;
+  status?: number;
+} {
+  const errorTypes = new Set([
+    "Error",
+    "TypeError",
+    "RangeError",
+    "SyntaxError",
+    "ReferenceError",
+    "URIError",
+    "EvalError",
+    "AbortError",
+    "TimeoutError",
+    "WorkerAbortError",
+  ]);
+  const errorCodes = new Set([
+    "23502",
+    "23503",
+    "23505",
+    "42501",
+    "42703",
+    "42P01",
+    "57014",
+    "P0001",
+    "PGRST116",
+    "ECONNRESET",
+    "ECONNREFUSED",
+    "ETIMEDOUT",
+  ]);
+  try {
+    const record = error && typeof error === "object" ? (error as Record<string, unknown>) : {};
+    const errorType = typeof record.name === "string" && errorTypes.has(record.name) ? record.name : "UnknownError";
+    const errorCode = typeof record.code === "string" && errorCodes.has(record.code) ? record.code : undefined;
+    const status =
+      typeof record.status === "number" &&
+      Number.isInteger(record.status) &&
+      record.status >= 100 &&
+      record.status <= 599
+        ? record.status
+        : undefined;
+    return { errorType, ...(errorCode ? { errorCode } : {}), ...(status ? { status } : {}) };
+  } catch {
+    // Error-like objects can have throwing getters. Reporting must not prevent cleanup.
+    return { errorType: "UnknownError" };
+  }
+}
+
 export function redactCaptionIdentifiers(value: string): string {
   const clinicalRangePattern = /^\d+(?:\.\d+)?\s*-\s*\d+(?:\.\d+)?(?:\s*[A-Za-zµ/%][\w/%.-]*)?$/i;
   return value

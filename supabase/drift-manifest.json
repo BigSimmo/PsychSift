@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-17T12:36:45.338Z",
+  "generated_at": "2026-10-18T06:53:09.584Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "0f466b3c08396bd4568810c8d493f53ff29cd37b30e3b850f71acd94db9db4e0",
-  "replay_seconds": 43,
+  "schema_sha256": "5a095aebcb31d373f9ab80243a93ce47dd8546e136d4f154a7961f73453bff1e",
+  "replay_seconds": 42,
   "snapshot": {
     "views": [
       {
@@ -11459,6 +11459,14 @@
             "generated": ""
           },
           {
+            "name": "cme_evidence_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
             "name": "completed_at",
             "type": "timestamp with time zone",
             "default": null,
@@ -16442,6 +16450,12 @@
         "def_hash": "616d06e4b7bca60c216c7c1a86d5e02f"
       },
       {
+        "def": "CREATE UNIQUE INDEX storage_cleanup_jobs_cme_evidence_key ON public.storage_cleanup_jobs USING btree (cme_evidence_id) WHERE (cme_evidence_id IS NOT NULL)",
+        "name": "storage_cleanup_jobs_cme_evidence_key",
+        "table": "storage_cleanup_jobs",
+        "def_hash": "285fe5104ce348207613e4bd62f0803d"
+      },
+      {
         "def": "CREATE INDEX storage_cleanup_jobs_document_idx ON public.storage_cleanup_jobs USING btree (document_id)",
         "name": "storage_cleanup_jobs_document_idx",
         "table": "storage_cleanup_jobs",
@@ -18453,6 +18467,16 @@
         "def": "CREATE TRIGGER work_course_bookings_updated_at BEFORE UPDATE ON public.work_course_bookings FOR EACH ROW EXECUTE FUNCTION public.set_updated_at()",
         "name": "work_course_bookings_updated_at",
         "table": "work_course_bookings"
+      },
+      {
+        "def": "CREATE TRIGGER work_team_move_revokes_supervisors AFTER UPDATE OF hospital_id ON public.work_hospital_teams FOR EACH ROW EXECUTE FUNCTION public.work_revoke_supervisors_on_team_move()",
+        "name": "work_team_move_revokes_supervisors",
+        "table": "work_hospital_teams"
+      },
+      {
+        "def": "CREATE TRIGGER work_whole_team_supervisor_scope BEFORE INSERT OR UPDATE ON public.work_role_grants FOR EACH ROW EXECUTE FUNCTION public.work_guard_whole_team_supervisor()",
+        "name": "work_whole_team_supervisor_scope",
+        "table": "work_role_grants"
       }
     ],
     "functions": [
@@ -18816,7 +18840,15 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "eefeb8717ae64afc070c1c312a5daf12",
+        "def_hash": "bc89ab638134abac5c12dd51fbce0284",
+        "signature": "public.cme_remove_evidence_v2(uuid,uuid,text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "d49e3fb5c0812ebc682ae49dce4ff426",
         "signature": "public.cme_remove_evidence(uuid,uuid,text)"
       },
       {
@@ -19684,6 +19716,14 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
+        "def_hash": "6495e84c303f7bfb857743ff77c613ee",
+        "signature": "public.rag_cache_scope_revision_v1(uuid,boolean,uuid[])"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
         "def_hash": "6c3ac9bb9b53f5b4eb5445392c4c0a31",
         "signature": "public.read_completed_admin_text_source_layout(uuid,uuid,uuid,uuid[])"
       },
@@ -19815,6 +19855,14 @@
         ],
         "def_hash": "874163cf5aa0b818f3e88ca1ac6f90b2",
         "signature": "public.record_source_review(uuid,uuid,text,text,text[],date,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "6855830fb99d24b7e0d3d47f477ffbbb",
+        "signature": "public.recover_ingestion_job(uuid,text,jsonb)"
       },
       {
         "acl": [
@@ -20648,7 +20696,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "a614e81532918d22c3a44d3d4008c54e",
+        "def_hash": "e0f61bafe44727727e8d3c8ff1c8164e",
         "signature": "public.teaching_depth_command(uuid,uuid,text,jsonb)"
       },
       {
@@ -21007,6 +21055,30 @@
         ],
         "def_hash": "648b41850477258c0d015136b043bb98",
         "signature": "public.work_cancel_course(uuid,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "f7b8cb8cfd954642c48c0358ddd8f619",
+        "signature": "public.work_guard_whole_team_supervisor()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "fdf89b88112ab0575fe3e595348dc200",
+        "signature": "public.work_move_team_v1(uuid,uuid,uuid,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "53214a1cf5949106be9192b3460ef059",
+        "signature": "public.work_revoke_supervisors_on_team_move()"
       },
       {
         "acl": [
@@ -24713,6 +24785,11 @@
         "def": "CHECK (((char_length(reason) >= 3) AND (char_length(reason) <= 2000)))",
         "name": "source_review_events_reason_check",
         "table": "source_review_events"
+      },
+      {
+        "def": "FOREIGN KEY (cme_evidence_id) REFERENCES public.cme_evidence(id) ON DELETE SET NULL",
+        "name": "storage_cleanup_jobs_cme_evidence_id_fkey",
+        "table": "storage_cleanup_jobs"
       },
       {
         "def": "FOREIGN KEY (document_id) REFERENCES public.documents(id) ON DELETE SET NULL",

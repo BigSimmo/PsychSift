@@ -3144,6 +3144,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/audit/2026-10-17-full-deep-remediation-results.md",
+        "section": "audit",
+        "catalogued": true
+      },
+      {
         "path": "docs/superpowers/plans/2026-09-01-calculators-clinical-safety.md",
         "section": "superpowers",
         "catalogued": true
@@ -3436,6 +3441,11 @@
       {
         "path": "docs/source-governance-refresh-worklist-2026-07-22.md",
         "section": "root",
+        "catalogued": true
+      },
+      {
+        "path": "docs/governance/clinical-release-remediation-handoff-2026-10-17.md",
+        "section": "governance",
         "catalogued": true
       },
       {
@@ -4101,6 +4111,11 @@
       {
         "path": "docs/decisions/2026-08-21-developer-hub-first-design.md",
         "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/audit/2026-10-17-full-deep-remediation-spec.md",
+        "section": "audit",
         "catalogued": true
       },
       {
@@ -5259,6 +5274,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/governance/physiological-calculator-hold-2026-10-17.md",
+        "section": "governance",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-10-15-no-default-ai-coding-tool.md",
         "section": "decisions",
         "catalogued": true
@@ -5271,6 +5291,11 @@
       {
         "path": "docs/brand/canvas/README.md",
         "section": "brand",
+        "catalogued": true
+      },
+      {
+        "path": "docs/rag-behaviour/cache-freshness.md",
+        "section": "rag-behaviour",
         "catalogued": true
       },
       {
@@ -5351,6 +5376,11 @@
       {
         "path": "docs/tooling-follow-through-decisions-2026-08-12.md",
         "section": "root",
+        "catalogued": true
+      },
+      {
+        "path": "docs/superpowers/plans/2026-10-17-full-deep-remediation.md",
+        "section": "superpowers",
         "catalogued": true
       },
       {

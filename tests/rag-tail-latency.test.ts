@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { mockRagScopeRevision } from "./rag-cache-test-revision";
 import type { SearchTelemetry } from "../src/lib/rag/rag-contracts";
 import type { RagAnswer } from "../src/lib/types";
 
@@ -6,7 +7,7 @@ const ownerId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const ragVersion = "test-rag-version";
 
 function indexingVersion(stamp: string) {
-  return `${ragVersion}:doc-1:${stamp}:`;
+  return `${ragVersion}:${mockRagScopeRevision([{ id: "doc-1", metadata: { indexed_at: "unchanged-index", governance: stamp } }])}`;
 }
 
 function baseTelemetry(overrides: Partial<SearchTelemetry> = {}): SearchTelemetry {
@@ -26,17 +27,37 @@ type CacheHarness = ReturnType<typeof createCacheHarness>;
 
 function createCacheHarness() {
   let documentStamp = "request-start";
-  let documentReads = 0;
+  let revisionReads = 0;
   let clientCreations = 0;
   let advanceClockOnSecondClient = false;
+  let rows: Array<Record<string, unknown>> = [];
   const sharedReadVersions: string[] = [];
   const inserts: Array<Record<string, unknown>> = [];
 
   function chain(table: string) {
+    if (table !== "rag_response_cache") throw new Error(`Unexpected cache table: ${table}`);
     const filters = new Map<string, unknown>();
+    let operation = "select";
+    let inserted: Record<string, unknown> | undefined;
+    const matches = (row: Record<string, unknown>) =>
+      [...filters].every(([key, value]) =>
+        key === "expires_at"
+          ? String(row[key]) > String(value)
+          : Array.isArray(value)
+            ? value.includes(row[key])
+            : row[key] === value,
+      );
     const builder = {
       select: () => builder,
-      delete: () => builder,
+      delete: () => {
+        operation = "delete";
+        return builder;
+      },
+      insert: (row: Record<string, unknown>) => {
+        operation = "insert";
+        inserted = structuredClone(row);
+        return builder;
+      },
       eq: (column: string, value: unknown) => {
         filters.set(column, value);
         return builder;
@@ -45,27 +66,28 @@ function createCacheHarness() {
         filters.set(column, value);
         return builder;
       },
-      in: () => builder,
-      or: () => builder,
-      gt: () => builder,
+      in: (column: string, value: unknown) => {
+        filters.set(column, value);
+        return builder;
+      },
+      gt: (column: string, value: unknown) => {
+        filters.set(column, value);
+        return builder;
+      },
       order: () => builder,
       limit: () => builder,
       maybeSingle: async () => {
         sharedReadVersions.push(String(filters.get("indexing_version")));
-        return { data: null, error: null };
+        const row = rows.find(matches);
+        return { data: row ? { payload: structuredClone(row.payload) } : null, error: null };
       },
-      then: (
-        resolve: (value: { data: unknown[] | null; error: null }) => unknown,
-        reject?: (reason: unknown) => unknown,
-      ) => {
-        if (table === "documents") {
-          documentReads += 1;
-          return Promise.resolve({
-            data: [{ id: "doc-1", updated_at: documentStamp, metadata: {} }],
-            error: null,
-          }).then(resolve, reject);
+      then: (resolve: (value: { data: null; error: null }) => unknown, reject?: (reason: unknown) => unknown) => {
+        if (operation === "delete") rows = rows.filter((row) => !matches(row));
+        if (operation === "insert") {
+          rows.push(inserted!);
+          inserts.push(inserted!);
         }
-        return Promise.resolve({ data: [], error: null }).then(resolve, reject);
+        return Promise.resolve({ data: null, error: null }).then(resolve, reject);
       },
     };
     return builder;
@@ -73,24 +95,21 @@ function createCacheHarness() {
 
   const createAdminClient = vi.fn(() => {
     clientCreations += 1;
-    if (advanceClockOnSecondClient && clientCreations === 2) {
-      vi.setSystemTime(new Date(Date.now() + 6_000));
-    }
+    if (advanceClockOnSecondClient && clientCreations === 2) vi.setSystemTime(new Date(Date.now() + 6_000));
     return {
-      from: (table: string) => ({
-        ...chain(table),
-        insert: async (row: Record<string, unknown>) => {
-          inserts.push(row);
-          return { data: null, error: null };
-        },
+      rpc: vi.fn(async (name: string) => {
+        if (name !== "rag_cache_scope_revision_v1") throw new Error(`Unexpected cache RPC: ${name}`);
+        revisionReads += 1;
+        return { data: indexingVersion(documentStamp).slice(ragVersion.length + 1), error: null };
       }),
+      from: chain,
     };
   });
 
   return {
     createAdminClient,
-    get documentReads() {
-      return documentReads;
+    get revisionReads() {
+      return revisionReads;
     },
     get sharedReadVersions() {
       return sharedReadVersions;
@@ -101,7 +120,11 @@ function createCacheHarness() {
     setDocumentStamp(stamp: string) {
       documentStamp = stamp;
     },
-    expireVersionBeforeSharedWrite() {
+    resetReads() {
+      revisionReads = 0;
+      sharedReadVersions.length = 0;
+    },
+    advanceClockBeforeSharedWrite() {
       advanceClockOnSecondClient = true;
     },
   };
@@ -173,66 +196,90 @@ describe("governed corpus latency shape", () => {
 });
 
 describe("RAG cache request indexing version", () => {
-  it("reuses one request-start version across shared answer and search cache reads", async () => {
+  it("brackets real shared hits with fresh revisions and refuses a stale request-start hint", async () => {
     const harness = createCacheHarness();
     const cache = await loadCache(harness);
     const requestVersion = indexingVersion("request-start");
     const args = { query: "lithium monitoring", ownerId };
-
-    await cache.getSharedCachedAnswer(args, Date.now(), { indexingVersionAtRequestStart: requestVersion });
-    await cache.getSharedCachedSearch(args, "medication_dose_risk", [], {
-      indexingVersionAtRequestStart: requestVersion,
-    });
-
-    expect(harness.documentReads).toBe(0);
-    expect(harness.sharedReadVersions).toEqual([requestVersion, requestVersion]);
-  });
-
-  it("uses the request-start version for a process-local search cache read", async () => {
-    const harness = createCacheHarness();
-    const cache = await loadCache(harness);
-    const args = { query: "lithium monitoring", ownerId };
-    const requestVersion = indexingVersion("request-start");
-
+    await cache.setCachedAnswer(
+      args,
+      { answer: "Current cached evidence", grounded: false, confidence: "unsupported", citations: [], sources: [] },
+      { indexingVersionAtRetrievalStart: requestVersion },
+    );
     await cache.setCachedSearch(args, [], baseTelemetry({ query_class: "medication_dose_risk" }), [], {
       indexingVersionAtRetrievalStart: requestVersion,
     });
-    harness.setDocumentStamp("changed-after-request-start");
-    await cache.cacheIndexingVersion(args, { forceRefresh: true });
+    await vi.waitFor(() => expect(harness.inserts).toHaveLength(2));
+    harness.resetReads();
 
-    const cached = await cache.getCachedSearch(args, "medication_dose_risk", [], {
-      indexingVersionAtRequestStart: requestVersion,
-    });
+    expect(
+      (await cache.getSharedCachedAnswer(args, Date.now(), { indexingVersionAtRequestStart: requestVersion }))?.answer,
+    ).toBe("Current cached evidence");
+    expect(
+      await cache.getSharedCachedSearch(args, "medication_dose_risk", [], {
+        indexingVersionAtRequestStart: requestVersion,
+      }),
+    ).toMatchObject({ kind: "hit" });
+    expect(harness.revisionReads).toBe(4);
+    expect(harness.sharedReadVersions).toEqual([requestVersion, requestVersion]);
 
-    expect(cached?.telemetry.search_cache_hit).toBe(true);
+    // Governance changes while indexed_at remains fixed. A caller's old hint may not bypass the read fence.
+    harness.setDocumentStamp("reviewed-after-request-start");
+    expect(
+      await cache.getSharedCachedAnswer(args, Date.now(), { indexingVersionAtRequestStart: requestVersion }),
+    ).toBeNull();
+    expect(
+      await cache.getSharedCachedSearch(args, "medication_dose_risk", [], {
+        indexingVersionAtRequestStart: requestVersion,
+      }),
+    ).toMatchObject({ kind: "miss" });
+    expect(harness.revisionReads).toBe(6);
+    expect(harness.sharedReadVersions).toEqual([requestVersion, requestVersion]);
   });
 
-  it("keeps one forced write refresh, rejects changed indexing, and passes the refresh to the shared writer", async () => {
+  it("refreshes a local search hit and rejects it when governance changes after request start", async () => {
+    const harness = createCacheHarness();
+    const cache = await loadCache(harness);
+    const args = { query: "lithium monitoring", ownerId };
+    const requestVersion = indexingVersion("request-start");
+    await cache.setCachedSearch(args, [], baseTelemetry({ query_class: "medication_dose_risk" }), [], {
+      indexingVersionAtRetrievalStart: requestVersion,
+    });
+    expect(
+      (await cache.getCachedSearch(args, "medication_dose_risk", [], { indexingVersionAtRequestStart: requestVersion }))
+        ?.telemetry.search_cache_hit,
+    ).toBe(true);
+    expect(harness.revisionReads).toBe(2);
+    harness.setDocumentStamp("reviewed-after-request-start");
+    expect(
+      await cache.getCachedSearch(args, "medication_dose_risk", [], { indexingVersionAtRequestStart: requestVersion }),
+    ).toBeNull();
+    expect(harness.revisionReads).toBe(3);
+  });
+
+  it("keeps one authoritative write refresh, rejects changed governance, and persists that exact revision", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-07-14T00:00:00.000Z"));
     const harness = createCacheHarness();
     harness.setDocumentStamp("changed");
     const cache = await loadCache(harness);
     const args = { query: "lithium monitoring", ownerId };
-
     await cache.setCachedSearch(args, [], baseTelemetry({ query_class: "medication_dose_risk" }), [], {
       indexingVersionAtRetrievalStart: indexingVersion("request-start"),
     });
     await Promise.resolve();
-
-    expect(harness.documentReads).toBe(1);
+    expect(harness.revisionReads).toBe(1);
     expect(harness.inserts).toHaveLength(0);
 
     vi.resetModules();
     const matchingHarness = createCacheHarness();
-    matchingHarness.expireVersionBeforeSharedWrite();
+    matchingHarness.advanceClockBeforeSharedWrite();
     const matchingCache = await loadCache(matchingHarness);
     await matchingCache.setCachedSearch(args, [], baseTelemetry({ query_class: "medication_dose_risk" }), [], {
       indexingVersionAtRetrievalStart: indexingVersion("request-start"),
     });
     await vi.waitFor(() => expect(matchingHarness.inserts).toHaveLength(1));
-
-    expect(matchingHarness.documentReads).toBe(1);
+    expect(matchingHarness.revisionReads).toBe(1);
     expect(matchingHarness.inserts[0]?.indexing_version).toBe(indexingVersion("request-start"));
   });
 });
@@ -509,7 +556,6 @@ function createOrchestrationHarness() {
       onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
     ): PromiseLike<TResult1 | TResult2> {
       if (this.table === "documents") {
-        events.push({ kind: "index_version", value: documentStamp });
         return Promise.resolve({
           data: [{ id: "doc-1", updated_at: documentStamp, metadata: {} }],
           error: null,
@@ -521,7 +567,17 @@ function createOrchestrationHarness() {
 
   return {
     createAdminClient: () => ({
-      rpc: vi.fn(async () => ({ data: [], error: null })),
+      rpc: vi.fn((name: string) => {
+        let data: string | unknown[] = [];
+        if (name === "rag_cache_scope_revision_v1") {
+          events.push({ kind: "index_version", value: documentStamp });
+          data = mockRagScopeRevision([
+            { id: "doc-1", metadata: { indexed_at: "unchanged-index", governance: documentStamp } },
+          ]);
+        }
+        const query = Promise.resolve({ data, error: null });
+        return Object.assign(query, { abortSignal: () => query });
+      }),
       from: (table: string) =>
         Object.assign(new Query(table), {
           insert: async (row: Record<string, unknown>) => {
@@ -547,7 +603,7 @@ function createOrchestrationHarness() {
 }
 
 describe("answer-to-search cache request context", () => {
-  it("reuses one request-start indexing version across real answer and nested search cache reads", async () => {
+  it("shares request-start identity while refreshing every real answer and nested-search read fence", async () => {
     vi.doUnmock("@/lib/env");
     vi.doUnmock("@/lib/deep-memory");
     vi.doUnmock("@/lib/clinical-search");
@@ -567,14 +623,33 @@ describe("answer-to-search cache request context", () => {
 
     const rag = await import("../src/lib/rag/rag");
     const cache = await import("../src/lib/rag/rag-cache");
-    const args = { query: "coffee machine policy", ownerId, logQuery: false };
+    const { withRagProgrammeRollout } = await import("../src/lib/rag/rag-rollout");
+    const { analyzeClinicalQuery } = await import("../src/lib/clinical-search");
+    const { buildRetrievalQueryVariants } = await import("../src/lib/rag/rag-retrieval-variants");
+    const args = withRagProgrammeRollout({ query: "coffee machine policy", ownerId, logQuery: false });
 
     // Prime stale process-local answer and search entries. The orchestration request below
-    // must reject both local entries, continue through both shared reads, and carry the one
-    // request-start version into the nested search instead of resolving it again.
-    await rag.searchChunksWithTelemetry(args);
-    await cache.setCachedAnswer(args, {} as RagAnswer);
-    await vi.waitFor(() => expect(harness.events.some((event) => event.kind === "shared_write")).toBe(true));
+    // must reject both local entries and continue through both shared reads. Request-start
+    // identity is shared, while each hit/lookup and in-flight admission reads its own fresh fence.
+    const searchArgs = { ...args, topK: 12, minSimilarity: 0.12 };
+    const prime = await rag.searchChunksWithTelemetry(searchArgs);
+    // Empty source-only retrieval does not populate the search cache. Seed its exact
+    // production identity explicitly and prove the actual consumer can hit it first.
+    const variants = buildRetrievalQueryVariants(args.query, analyzeClinicalQuery(args.query));
+    await cache.setCachedSearch(searchArgs, prime.results, prime.telemetry, variants);
+    const primed = await rag.searchChunksWithTelemetry(searchArgs);
+    expect(primed.telemetry.search_cache_hit).toBe(true);
+    await cache.setCachedAnswer(args, {
+      answer: "Stale fixture",
+      grounded: false,
+      confidence: "unsupported",
+      citations: [],
+      sources: [],
+    } satisfies RagAnswer);
+    expect((await cache.getCachedAnswer(args, Date.now()))?.answer).toBe("Stale fixture");
+    await vi.waitFor(() =>
+      expect(harness.events.some((event) => event.kind === "shared_write" && event.cacheKind === "search")).toBe(true),
+    );
 
     harness.setDocumentStamp("request-start");
     harness.clearEvents();
@@ -600,7 +675,10 @@ describe("answer-to-search cache request context", () => {
 
     expect(answer.routingReason).not.toContain("cache_hit");
     expect(sharedReads.map((event) => event.indexingVersion)).toEqual([requestVersion, requestVersion]);
-    expect(requestVersion).toMatch(/:doc-1:request-start:$/);
-    expect(versionsResolvedBeforeNestedSearch).toEqual([{ kind: "index_version", value: "request-start" }]);
+    expect(requestVersion).toMatch(/:rag-cache-scope-v1:[0-9a-f]{32}$/);
+    // In-flight admission, request start, local-answer, shared-answer, local-search, shared-search.
+    expect(versionsResolvedBeforeNestedSearch).toEqual(
+      Array.from({ length: 6 }, () => ({ kind: "index_version", value: "request-start" })),
+    );
   });
 });

@@ -113,6 +113,7 @@
     "tests/work-profile*",
     "tests/work-roles-hook.dom.test.tsx",
     "tests/work-roles-hospital-hub.test.ts",
+    "tests/work-roles-hospital-sick-*.test.ts",
     "tests/work-roles-hospital-sick.test.ts",
     "tests/work-roles-hospital-starters-model.test.ts",
     "tests/work-roles-hospital-starters.test.ts",
