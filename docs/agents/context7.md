@@ -80,6 +80,6 @@ deprecations and installed behavior before adopting an example. No retrieved
 snippet or marketing claim replaces the project's clinical, privacy, retrieval
 or release gates.
 
-Related: [Cursor Cloud notes](cursor-cloud.md#context7-setup-and-peer-library-documentation),
+Related: [Cursor cloud agents are prohibited](cursor-cloud.md),
 [external skill precedence](external-skill-precedence.md), and
 [task lifecycle](../task-receipts.md).

@@ -29,7 +29,7 @@ Also see [DOCS-SYSTEM.md](DOCS-SYSTEM.md) for the documentation operating system
 | Start or prepare a Windows Desktop worktree                  | [Desktop worktree setup](agents/codex-desktop-worktree-setup.md)                                                                                                                                                                    |
 | Use the dependency shortcut                                  | [Dependency workflow](agents/codex-dependency-shortcut.md)                                                                                                                                                                          |
 | Work in Codex Cloud                                          | [Current Cloud policy](agents/codex-cloud-environment.md); [archived legacy setup, when selected](archive/codex-cloud-legacy-profile-2026-10-16.md#scope-and-selection)                                                             |
-| Work in Cursor Cloud                                         | [Cursor Cloud](agents/cursor-cloud.md)                                                                                                                                                                                              |
+| Cursor Cloud (prohibited)                                    | [Prohibited](agents/cursor-cloud.md)                                                                                                                                                                                                |
 | Apply repository productivity defaults                       | [Productivity defaults](agents/codex-productivity-defaults.md)                                                                                                                                                                      |
 | Choose a skill or handle outstanding work                    | [Skills and issue ledger](agents/repository-skills-and-issues.md#repository-productivity-skills), [.agents overview](../.agents/README.md)                                                                                          |
 | Review, maintain or publish a pull request                   | [Bare publication](../AGENTS.md#bare-pr-publication-is-not-readiness-work), [Run PR](agents/pull-request-workflow.md#run-pr) and [PR follow-through](agents/pull-request-workflow.md#follow-ci), using the exact requested workflow |
@@ -90,14 +90,14 @@ this navigator does not make every linked procedure a mandatory startup step.
   dashboard for an authorised change, not a raw SQL or MCP workaround. See the
   [connection-cap runbook](auth-connection-cap-runbook.md).
 - For peer-library documentation and the existing Context7 setup, see
-  [the platform guide](agents/cursor-cloud.md#context7-setup-and-peer-library-documentation).
+  [the Context7 guide](agents/context7.md).
   Next.js APIs use the bundled version's documentation as required by AGENTS.md.
 - Preserve the existing maintenance constraint: do not add another AI system or
   grow the skill count without retiring something. Prefer at most five active MCP
   servers per session; avoid loading redundant tool surfaces. Explicit user
   directions and the governing instruction hierarchy still control.
 - Figma Make is exploration; [the design system](design-system/README.md) and
-  its gates remain product design authority. Cursor Cloud does not inherit Desktop
+  its gates remain product design authority. Cursor cloud agents are prohibited and do not inherit Desktop
   OAuth. Use Chrome DevTools for relevant performance/debugging work without
   leaving redundant browser MCP servers active.
 - [The organisation map](organisation/README.md) records which area owns every
