@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # Docling lab sandbox image (docs/rag-improvement/README.md §B3).
 #
 # Build stage has network (hash-verified installs + model prefetch); the benchmark
@@ -7,7 +8,7 @@
 #
 # Same digest-pinned base as Dockerfile / Dockerfile.worker (Debian bookworm:
 # python3 is 3.11, matching both hashed locks consumed below).
-FROM node:24-bookworm-slim@sha256:235600a8101ab264e117b1768e925532262668dc9b581ef1dd7d96ced463b8e7
+FROM node:24-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20
 
 # libgl1 + libglib2.0-0: OpenCV's runtime shared libraries. docling's rapidocr
 # stage imports cv2 during `docling-tools models download` (and again at run
@@ -26,16 +27,24 @@ RUN apt-get update \
 
 # Legacy comparator venv: read-only consumption of the worker's production hashed
 # lock (the file is never modified — hard boundary in HANDOVER S6).
+#
+# BuildKit pip cache mount (local lab image only): wheels such as CPU torch are
+# reused across lab rebuilds without being written into an image layer, and
+# --require-hashes still verifies every cached artifact. The Railway images
+# (Dockerfile / Dockerfile.worker) deliberately keep cache mounts out; see
+# tests/container-ci-contract.test.ts.
 COPY worker/python/requirements.txt /tmp/legacy-requirements.txt
-RUN python3 -m venv /opt/legacy-venv \
-  && /opt/legacy-venv/bin/pip install --no-cache-dir --require-hashes -r /tmp/legacy-requirements.txt \
+RUN --mount=type=cache,target=/root/.cache/pip \
+  python3 -m venv /opt/legacy-venv \
+  && /opt/legacy-venv/bin/pip install --require-hashes -r /tmp/legacy-requirements.txt \
   && /opt/legacy-venv/bin/pip check \
   && rm /tmp/legacy-requirements.txt
 
 # Docling venv from the lab's own hashed lock (CPU-only torch).
 COPY eval/docling/requirements.txt /tmp/docling-requirements.txt
-RUN python3 -m venv /opt/docling-venv \
-  && /opt/docling-venv/bin/pip install --no-cache-dir --require-hashes -r /tmp/docling-requirements.txt \
+RUN --mount=type=cache,target=/root/.cache/pip \
+  python3 -m venv /opt/docling-venv \
+  && /opt/docling-venv/bin/pip install --require-hashes -r /tmp/docling-requirements.txt \
   && /opt/docling-venv/bin/pip check \
   && rm /tmp/docling-requirements.txt
 
