@@ -488,6 +488,7 @@ function GlobalStandaloneSearchShellBody({
     () => ({
       query: deferredQuery,
       modeId: searchMode,
+      clearQuery: () => setQuery(""),
     }),
     [deferredQuery, searchMode],
   );

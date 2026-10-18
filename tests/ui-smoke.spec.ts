@@ -5623,6 +5623,8 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(shortlist).toContainText("2 shortlisted");
     await expect(currentStage).toHaveText("Search");
     await expect(navigator.getByTestId("services-comparison")).toHaveCount(0);
+    // Same-document history updates reach page.url() asynchronously; wait for both slugs.
+    await expect.poll(() => new URL(page.url()).searchParams.get("shortlist")?.split(",").length ?? 0).toBe(2);
     const selectedSlugs = new URL(page.url()).searchParams.get("shortlist")?.split(",") ?? [];
     expect(selectedSlugs).toHaveLength(2);
 

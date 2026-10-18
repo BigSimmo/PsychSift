@@ -2008,10 +2008,17 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
             // this control by that exact opening. The page is appended rather
             // than substituted, so the name gains information without any of
             // them going looking for a control that no longer answers.
+            //
+            // Where the pill shows the visible word "Modes" (non-work routes
+            // other than `/`), the name must contain it (WCAG 2.5.3 Label in
+            // Name). "Modes, current mode X" still contains `Mode X` for the
+            // substring lookups above.
             aria-label={
-              activeModePage
-                ? `Mode ${selectedAppMode.label}, page ${activeModePage.label}`
-                : `Mode ${selectedAppMode.label}`
+              !routeWorkArea && currentPathname !== "/"
+                ? `Modes, current mode ${selectedAppMode.label}${activeModePage ? `, page ${activeModePage.label}` : ""}`
+                : activeModePage
+                  ? `Mode ${selectedAppMode.label}, page ${activeModePage.label}`
+                  : `Mode ${selectedAppMode.label}`
             }
             // The mode's own hue, on the mode's own control. Resolves to the
             // product accent for every mode that names no identity, so this is

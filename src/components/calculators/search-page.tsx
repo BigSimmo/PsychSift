@@ -585,6 +585,9 @@ export function CalculatorsSearchPage({
                   onClick={(event) => {
                     if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) {
                       clearFilters();
+                      // Show all can target the current URL (no navigation), so the
+                      // shell would keep the typed query; clear it explicitly.
+                      searchCommand?.clearQuery?.();
                     }
                   }}
                 />

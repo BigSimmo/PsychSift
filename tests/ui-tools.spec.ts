@@ -1572,7 +1572,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
         .getByRole("region", { name: "Service shortlist" })
         .getByRole("button", { name: "Clear", exact: true })
         .click();
-      expect(new URL(page.url()).searchParams.has("shortlist")).toBe(false);
+      await expect.poll(() => new URL(page.url()).searchParams.has("shortlist")).toBe(false);
       const nextInput = visibleGlobalSearchInput(page).first();
       await nextInput.fill("housing");
       await nextInput.press("Enter");
