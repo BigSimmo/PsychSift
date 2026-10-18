@@ -93,6 +93,19 @@ test("only relevant canonical actions are planned", () => {
     plan("PreToolUse", payload("functions.exec_command", { cmd: "git push" }))[0].file,
     ".claude/hooks/push-format-guard.sh",
   );
+  for (const cmd of [
+    "git -C /tmp/repo push origin HEAD",
+    'git -C "C:/My Repo" push',
+    "git -c core.hooksPath=x push",
+    "git --no-pager push",
+  ])
+    assert.equal(
+      plan("PreToolUse", payload("Bash", { command: cmd }))[0]?.file,
+      ".claude/hooks/push-format-guard.sh",
+      cmd,
+    );
+  for (const cmd of ["git pushd", "git log --grep push", "git -C /tmp/repo status"])
+    assert.deepEqual(plan("PreToolUse", payload("Bash", { command: cmd })), [], cmd);
   assert.equal(plan("PreToolUse", payload("CronCreate"))[0].file, ".claude/hooks/pr-handoff-stop.sh");
   assert.equal(plan("PostToolUse", payload("exec_command", { cmd: "gh pr create" }))[0].args[0], "post");
   assert.deepEqual(plan("PostToolUse", payload("mcp__github__create_pull_request_review")), []);
@@ -186,7 +199,8 @@ test("registration is portable, pins Windows Node, and resolves current payload 
     for (const g of groups)
       for (const entry of g.hooks) {
         assert.ok(entry.command.startsWith("node -e "));
-        assert.ok(entry.commandWindows.startsWith('& "C:/Program Files/nodejs/node.exe" -e '));
+        assert.ok(entry.commandWindows.includes("C:/Program Files/nodejs/node.exe"));
+        assert.ok(entry.commandWindows.includes('else { "node" }'));
         assert.ok(!/CLAUDE_PROJECT_DIR|D:[/\\]|setup-claude-cloud/.test(entry.command));
       }
   const matcher = new RegExp(h.hooks.PreToolUse[0].matcher);
