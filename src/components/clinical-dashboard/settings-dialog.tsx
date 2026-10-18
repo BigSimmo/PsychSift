@@ -24,10 +24,12 @@ import {
   ChevronDown,
   ChevronRight,
   CloudOff,
+  FileText,
   FlaskConical,
   CircleUserRound,
   Globe2,
   History,
+  Info,
   Layers,
   Loader2,
   LockKeyhole,
@@ -1504,6 +1506,26 @@ export function SettingsDialog({
                     <BookOpen aria-hidden="true" className="h-4 w-4" />
                     Guide & help
                   </button>
+                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                    <Link
+                      href="/about"
+                      onClick={onClose}
+                      className={cn(floatingControl, "w-full gap-2 text-sm")}
+                      data-testid="settings-row-about"
+                    >
+                      <Info aria-hidden="true" className="h-4 w-4" />
+                      About and intended use
+                    </Link>
+                    <Link
+                      href="/terms"
+                      onClick={onClose}
+                      className={cn(floatingControl, "w-full gap-2 text-sm")}
+                      data-testid="settings-row-terms"
+                    >
+                      <FileText aria-hidden="true" className="h-4 w-4" />
+                      Terms of Use
+                    </Link>
+                  </div>
                 </SettingsCard>
               </SettingsSection>
 
