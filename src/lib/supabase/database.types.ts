@@ -2050,6 +2050,7 @@ export type Database = {
           import_batch_id: string | null;
           index_generation_id: string | null;
           metadata: Json;
+          mutation_id: string;
           owner_id: string | null;
           page_count: number;
           search_tsv: unknown;
