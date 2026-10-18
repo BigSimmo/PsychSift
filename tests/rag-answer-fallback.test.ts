@@ -102,6 +102,9 @@ class EmptyQuery implements PromiseLike<{ data: unknown[]; error: null }> {
     return this;
   }
 
+  range() {
+    return this;
+  }
   order() {
     return this;
   }

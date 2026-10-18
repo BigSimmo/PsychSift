@@ -56,7 +56,7 @@ describe("cloud platform acceptance fixtures", () => {
       expect(runBootstrapSmoke().donorCopied).toBe(true);
       expect(readFileSync(indexPath, "utf8")).toBe("caller index must survive");
     } finally {
-      rmSync(root, { recursive: true, force: true });
+      rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     }
   }, 30_000);
 

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -11,8 +11,28 @@ import {
   siteContentValueHash,
 } from "@/lib/site-content/site-content-manifest";
 import { planSiteContentSync, type SiteContentSyncSourceRecord } from "@/lib/site-content/site-content-sync";
+import { allSiteContentRecords } from "@/lib/site-content/adapters";
+import { SITE_CONTENT_REGISTRY_VERSION } from "@/lib/site-content/site-content-registry";
 
 const SHA = "a".repeat(40);
+
+// Valid CLI plans use today's source population. The historical baseline and
+// applied epoch-zero SQL remain unchanged and keep their separate freeze tests.
+const manifestDirectory = mkdtempSync(join(tmpdir(), "site-content-current-manifest-"));
+const currentManifestPath = join(manifestDirectory, "manifest.json");
+beforeAll(() => {
+  writeFileSync(
+    currentManifestPath,
+    JSON.stringify(
+      buildStaticSiteContentManifest(allSiteContentRecords, {
+        gitSha: SHA,
+        registryVersion: SITE_CONTENT_REGISTRY_VERSION,
+        generatedAt: "2026-10-18T00:00:00.000Z",
+      }),
+    ),
+  );
+});
+afterAll(() => rmSync(manifestDirectory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
 
 function sourceRecord(
   logicalId: string,
@@ -78,7 +98,7 @@ describe("site-content synchronization planning", () => {
       "scripts/run-tsx.mjs",
       "scripts/sync-site-content-corpus.ts",
       "--manifest",
-      "tests/fixtures/site-content/static-manifest-baseline.json",
+      currentManifestPath,
       "--dynamic",
       "tests/fixtures/site-content/dynamic-empty.json",
       "--dry-run",
@@ -89,7 +109,11 @@ describe("site-content synchronization planning", () => {
     expect(JSON.parse(first)).toMatchObject({
       version: "site-content-sync-plan-v1",
       dryRun: true,
-      counts: { added: baseline.records.length, changed: 0, tombstones: 0 },
+      counts: {
+        added: JSON.parse(readFileSync(currentManifestPath, "utf8")).records.length,
+        changed: 0,
+        tombstones: 0,
+      },
     });
   });
 
@@ -271,7 +295,7 @@ describe("site-content synchronization planning", () => {
           "scripts/run-tsx.mjs",
           "scripts/sync-site-content-corpus.ts",
           "--manifest",
-          "tests/fixtures/site-content/static-manifest-baseline.json",
+          currentManifestPath,
           "--dynamic",
           "tests/fixtures/site-content/dynamic-empty.json",
           "--write",
@@ -302,7 +326,7 @@ describe("site-content synchronization planning", () => {
         "scripts/run-tsx.mjs",
         "scripts/sync-site-content-corpus.ts",
         "--manifest",
-        "tests/fixtures/site-content/static-manifest-baseline.json",
+        currentManifestPath,
         "--dynamic",
         "tests/fixtures/site-content/dynamic-empty.json",
         "--write",
@@ -381,12 +405,7 @@ describe("site-content synchronization planning", () => {
       };
       const reconciliation = { ...governed, planDigest: siteContentValueHash(governed) };
       writeFileSync(reconciliationPath, `${JSON.stringify(reconciliation)}\n`, "utf8");
-      const common = [
-        "scripts/run-tsx.mjs",
-        "scripts/sync-site-content-corpus.ts",
-        "--manifest",
-        "tests/fixtures/site-content/static-manifest-baseline.json",
-      ];
+      const common = ["scripts/run-tsx.mjs", "scripts/sync-site-content-corpus.ts", "--manifest", currentManifestPath];
       const initialDryRun = spawnSync(
         process.execPath,
         [...common, "--dynamic", initial, "--reconciliation", reconciliationPath, "--dry-run"],

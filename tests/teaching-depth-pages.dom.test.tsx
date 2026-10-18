@@ -1,4 +1,5 @@
 /** @vitest-environment jsdom */
+import { resetSharedGets } from "@/lib/shared-get";
 import { act, cleanup, fireEvent, render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -54,6 +55,7 @@ const reply = (value: unknown, status = 200) =>
 const posts = () => vi.mocked(fetch).mock.calls.filter(([, options]) => options?.method === "POST");
 
 beforeEach(() => {
+  resetSharedGets();
   auth.authEpoch = 1;
   auth.status = "authenticated";
   vi.stubGlobal("fetch", vi.fn());
