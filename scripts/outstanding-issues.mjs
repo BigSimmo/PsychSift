@@ -306,6 +306,52 @@ export function resolveIssue(markdown, id, outcome, options = {}) {
   });
 }
 
+/**
+ * Reopen an archived issue without allocating a second durable identity.
+ * The archived row supplies the original ID, type, summary, and ULID; the
+ * request supplies the open-row triage fields that are not retained in the
+ * archive table.
+ */
+export function reopenIssue(markdown, id, fields, options = {}) {
+  if (!fields?.pri || !fields?.detail || !fields?.source) {
+    throw new Error("reopen requires pri, detail, and source");
+  }
+  if (!PRIORITIES.has(String(fields.pri))) throw new Error(`--pri must be one of ${[...PRIORITIES].join(", ")}`);
+
+  return guarded(markdown, (current) => {
+    const parsed = parseIssues(current);
+    const targetId = normalizeIssueDisplayId(id);
+    const row = parsed.rows.find(
+      (entry) => entry.table === "archive" && normalizeIssueDisplayId(entry.id) === targetId,
+    );
+    if (!row || !row.ulid) throw new Error(`${id} is not an archived durable issue in ${ISSUES_PATH}`);
+    if (fields.targetUlid && fields.targetUlid !== row.ulid) {
+      throw new Error(`${id} has ULID ${row.ulid}, not the requested targetUlid ${fields.targetUlid}`);
+    }
+
+    const archiveCells = splitCells(row.raw);
+    const openRow = buildRow([
+      issueIdCell(row.id, row.ulid),
+      String(fields.pri),
+      archiveCells[1],
+      archiveCells[2],
+      // Keep the prior resolution discoverable: the archive row that held it is removed.
+      `${escapeCell(fields.detail)} (Previously archived ${archiveCells[4]}: ${archiveCells[3]})`,
+      escapeCell(fields.source),
+      today(options),
+    ]);
+    const lines = current.split("\n");
+    lines.splice(row.line - 1, 1);
+    const next = lines.join("\n");
+    const afterRemoval = parseIssues(next);
+    const anchor = lastRowIndex(afterRemoval, "open");
+    if (anchor === null) throw new Error("the open-items table has no rows to append after");
+    const nextLines = next.split("\n");
+    nextLines.splice(anchor + 1, 0, openRow);
+    return nextLines.join("\n");
+  });
+}
+
 export function updateIssue(markdown, id, fields) {
   const editable = { pri: 1, summary: 3, detail: 4, source: 5 };
   const requested = Object.keys(editable).filter((key) => fields[key] !== undefined);

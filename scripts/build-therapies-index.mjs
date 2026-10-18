@@ -23,6 +23,12 @@ const publicData = join(root, THERAPY_GENERATED_PATHS.publicDirectory);
 const serverTarget = join(root, THERAPY_GENERATED_PATHS.serverIndex);
 const manifestTarget = join(root, THERAPY_GENERATED_PATHS.manifest);
 const checkOnly = process.argv.includes("--check");
+// --revoke-previous: retire the retained previous generation instead of rotating
+// it in. Use when the replaced generation must not keep being served (e.g. it
+// carries sign-offs that were revoked). Pre-deploy bundles then 404 on the old
+// hashed URL and `useTherapyData` falls back to the unversioned alias, which
+// holds the current data.
+const revokePrevious = process.argv.includes("--revoke-previous");
 const currentManifest = existsSync(manifestTarget) ? readFileSync(manifestTarget, "utf8") : "";
 // The hand-edited source catalogue, deliberately OUTSIDE `publicData` — this
 // generator writes every file in that directory, and until 2026-08-12 the
@@ -269,6 +275,7 @@ if (!checkOnly) {
   // never written.
   const previous = Object.fromEntries(
     CATALOGUE_KINDS.map((kind) => {
+      if (revokePrevious) return [kind, current[kind]];
       const replaced = priorCurrent[kind];
       if (replaced && replaced !== current[kind]) return [kind, replaced];
       return [kind, priorPrevious[kind] ?? current[kind]];

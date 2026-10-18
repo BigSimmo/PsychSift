@@ -609,6 +609,10 @@ function signSpecifierReview(review, view) {
   return {
     ...review,
     clinicianReviewStatus: "clinician-reviewed",
+    // The new signature pins the current content, so it is no longer changed
+    // since review; leaving the flag set would keep the signed definition
+    // withheld from site content and Clinical Ask.
+    changedSinceReview: false,
     reviewedBy: view.reviewedBy,
     reviewedAt: view.reviewedAt,
     reviewedContentSha256: view.reviewedContentSha256,

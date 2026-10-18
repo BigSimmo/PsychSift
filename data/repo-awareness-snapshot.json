@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-17"
+    "committed_at": "2026-10-18"
   },
   "routes": {
     "modes": [
@@ -3814,6 +3814,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-17-agent-recorded-therapy-and-did-sign-offs-reset.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/audit/ux-accessibility-review-2026-07-07.md",
         "section": "audit",
         "catalogued": true
@@ -4001,6 +4006,11 @@
       {
         "path": "docs/agents/native-startup/external-skill-precedence.md",
         "section": "agents",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-18-unsigned-clinical-text-withheld-from-site-content.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -4606,6 +4616,11 @@
       {
         "path": "docs/archive/2026-10-agent-code-reviews/READY_TO_DEPLOY.md",
         "section": "archive",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-18-no-national-youth-crisis-line-pinning-yet.md",
+        "section": "decisions",
         "catalogued": true
       },
       {

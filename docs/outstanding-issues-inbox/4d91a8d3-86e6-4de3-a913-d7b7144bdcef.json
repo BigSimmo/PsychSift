@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "4d91a8d3-86e6-4de3-a913-d7b7144bdcef",
+  "createdOn": "2026-10-17",
+  "action": "done",
+  "payload": {
+    "id": "#WWV98H",
+    "outcome": "Closed as a duplicate of #WWTRM5 (verified 18 Oct 2026): both track the documentation and decision-record drift left open when #WMGPSG was archived (Caring Contacts superseding decision, admin renewals wording, remaining doc items). #WWTRM5 is the surviving row and carries the corrected item list (update 54ddf357). Provenance kept: #WWV98H came from a separate follow-up request.",
+    "baseRowFingerprint": "9e5940b9475288e0cc167dc35727b42b735c2f4cd35cb54e13ce8d4bc711ee81",
+    "targetUlid": "01M54ZYADRWWV98H3N76EDCNCT"
+  }
+}
