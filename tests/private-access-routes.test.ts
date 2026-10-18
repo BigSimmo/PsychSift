@@ -2195,6 +2195,9 @@ describe("private document API access", () => {
 
   it("returns first-class document matches for document-focused search", async () => {
     const client = createSupabaseMock((call) => {
+      if (call.table === "documents" && call.selected === "id,metadata") {
+        return ok([{ id: documentId, owner_id: userId, status: "indexed", metadata: {} }]);
+      }
       if (call.table === "document_labels") {
         return ok([
           {
@@ -2327,6 +2330,9 @@ describe("private document API access", () => {
 
   it("accepts differentials as a standalone source-library search mode", async () => {
     const client = createSupabaseMock((call) => {
+      if (call.table === "documents" && call.selected === "id,metadata") {
+        return ok([{ id: documentId, owner_id: userId, status: "indexed", metadata: {} }]);
+      }
       if (call.table === "document_labels") {
         return ok([
           {

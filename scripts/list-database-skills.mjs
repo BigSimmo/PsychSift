@@ -340,7 +340,7 @@ export function validateRepositorySkillPolicies(
       `Cross-surface skill name collision for "${name}" on ${surfaces.join(", ")} ` +
         `(${occurrences.map((skill) => skill.relative).join(", ")}). ` +
         `Rename one surface, or add an intentional twin to CROSS_SURFACE_NAME_TWINS ` +
-        `in scripts/list-database-skills.mjs (ledger is the only reviewed twin today).`,
+        `in scripts/list-database-skills.mjs (reviewed twins: ${[...CROSS_SURFACE_NAME_TWINS].join(", ")}).`,
     );
   }
 

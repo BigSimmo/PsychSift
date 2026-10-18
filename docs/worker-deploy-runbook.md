@@ -268,6 +268,14 @@ the client publishable key (build-time, app bundle only) or
   resolves both from the venv/PATH.
 - Automated pre-deploy migration gate (see §0.1): `DEPLOY_MIGRATION_GATE=enforce` (blocks deploy if migrations are pending; default `report` logs status without blocking; emergency bypass `off`; poll settings: `DEPLOY_MIGRATION_GATE_POLL_S=20`, `DEPLOY_MIGRATION_GATE_MAX_WAIT_S=600`).
 
+Database-operation deadlines are resolved in `worker/behavior.ts`. Control RPCs default to
+30 seconds (`WORKER_CONTROL_PLANE_TIMEOUT_MS`); data writes, including image persistence
+and managed terminal completion, default to 240 seconds (`WORKER_DATA_PLANE_TIMEOUT_MS`).
+Without an explicit `WORKER_SUPABASE_TIMEOUT_MS`, the shared transport cap covers both
+configured budgets (at least 240 seconds). An explicit transport override remains a hard
+cap and can shorten either operation budget. Shutdown/attempt abort signals still apply.
+These database deadlines are separate from the native extraction limits below.
+
 ### Shadow extraction mode (packet B4 — docling, default OFF)
 
 `WORKER_DOCUMENT_EXTRACTOR_MODE`, `WORKER_SHADOW_EXTRACTION_COHORT_PERCENT` and

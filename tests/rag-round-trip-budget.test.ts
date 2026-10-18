@@ -79,6 +79,9 @@ async function answerWithCountedClient(query: string, textSources: SearchResult[
     neq() {
       return this;
     }
+    range() {
+      return this;
+    }
     order() {
       return this;
     }
@@ -214,6 +217,12 @@ describe("Supabase round-trip budgets on the offline answer path", () => {
       "scenario must produce a cited answer, or the budget measures nothing",
     ).toBeGreaterThan(0);
     expect(counter.total(), "scenario must issue at least one round trip").toBeGreaterThan(0);
+    expect(counter.breakdown()).toMatchObject({
+      "from:document_labels": 2,
+      "from:document_summaries": 2,
+      "from:documents": 2,
+    });
+    expect(counter.breakdown()).not.toHaveProperty("rpc:get_related_document_metadata_v2");
     expect(counter.countOf("match_document_chunks_text_v2"), "text retrieval RPC must have run").toBeGreaterThan(0);
 
     // Measured budget. Update deliberately, in the same commit as any change
@@ -254,6 +263,12 @@ describe("Supabase round-trip budgets on the offline answer path", () => {
     // Ledger #ZK460W, same substitution as the single-source budget above.
     expect(answer.citations.length, "scenario must produce a cited answer").toBeGreaterThan(0);
     expect(counter.total(), "scenario must issue at least one round trip").toBeGreaterThan(0);
+    expect(counter.breakdown()).toMatchObject({
+      "from:document_labels": 2,
+      "from:document_summaries": 2,
+      "from:documents": 2,
+    });
+    expect(counter.breakdown()).not.toHaveProperty("rpc:get_related_document_metadata_v2");
     expect(
       counter.total(),
       `five sources must not cost more round trips than one — breakdown: ${JSON.stringify(counter.breakdown())}`,
@@ -266,11 +281,13 @@ describe("Supabase round-trip budgets on the offline answer path", () => {
  * not derived from first principles — it is what the path does today. See the
  * file header before changing it.
  *
- * The 12 break down as:
+ * The 16 break down as:
  *
  *   from:rag_aliases                        1
  *   rpc:match_document_chunks_text_v2       3
- *   rpc:get_related_document_metadata_v2    2
+ *   from:document_labels                   2
+ *   from:document_summaries                 2
+ *   from:documents                         2
  *   from:document_index_quality             1
  *   from:document_images                    2
  *   rpc:match_document_table_facts_text_v2  3
@@ -289,8 +306,13 @@ describe("Supabase round-trip budgets on the offline answer path", () => {
  * elsewhere. This budget does not endorse the count; it stops it growing
  * unnoticed and gives `#101` a number to improve against.
  *
+ * PS-025 (2026-10-18): 12 -> 16. Two unstamped metadata RPCs become two
+ * batched sets of labels, stamped summaries and admitted parent documents.
+ * These reads enforce generation/access fences; the five-document case must
+ * still match the single-document count.
+ *
  * 13 -> 12 on 2026-09-26: a later page-image hydration in the same search now reuses the
  * rows an earlier, un-truncated read already returned for the same pages (per-search
  * cache in `attachPageVisualEvidence`), so `document_images` went from 3 reads to 2.
  */
-const OFFLINE_SINGLE_SOURCE_ROUND_TRIPS = 12;
+const OFFLINE_SINGLE_SOURCE_ROUND_TRIPS = 16;

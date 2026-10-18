@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "id": "14e2a5cd-4d1e-4c1b-8b85-f5e573fb6be7",
+  "createdOn": "2026-10-18",
+  "action": "cancel",
+  "payload": {
+    "requestId": "2f15ec99-d824-4c5c-99e2-0801f58522d7",
+    "reason": "PS-062: superseded by a correction that includes the full prior worklist/detail as dated history, rather than replacing it with a short summary."
+  }
+}

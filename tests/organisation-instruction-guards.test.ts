@@ -118,6 +118,15 @@ describe("retired rules: negation handling", () => {
     ]);
   });
 
+  it("allows the current wake-therapy owner-review hold but rejects the obsolete missing-reference rationale", () => {
+    expect(
+      hitsFor("wake-therapy-sleep-deprivation-chronotherapy stays needs_review until the owner signs it."),
+    ).toEqual([]);
+    expect(
+      hitsFor("wake-therapy-sleep-deprivation-chronotherapy stays needs_review because it lacks references."),
+    ).toContain("wake-therapy-needs-review-hold");
+  });
+
   it("still fires when a later sentence on the same line records a different retirement", () => {
     expect(hitsFor("The `owner-approved` label gate still blocks merge. There is no longer a paper form.")).toEqual([
       "owner-approved-label-gate",
