@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-18T06:37:18.983Z",
+  "generated_at": "2026-10-18T07:30:17.033Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "58e7d9c92b1264426f6cd239fdc136f978afe90770e31f950a0b4c505628e4fb",
-  "replay_seconds": 14,
+  "schema_sha256": "a4fa8369b3c46035d115527e7a14b767e85d2c0dd4ed910fded55d8e72453f0f",
+  "replay_seconds": 16,
   "snapshot": {
     "views": [
       {
@@ -4534,6 +4534,14 @@
             "name": "metadata",
             "type": "jsonb",
             "default": "'{}'::jsonb",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "mutation_id",
+            "type": "uuid",
+            "default": "gen_random_uuid()",
             "identity": "",
             "not_null": true,
             "generated": ""
@@ -18215,6 +18223,11 @@
         "table": "documents"
       },
       {
+        "def": "CREATE TRIGGER documents_mutation_id BEFORE UPDATE ON public.documents FOR EACH ROW EXECUTE FUNCTION public.set_document_mutation_id()",
+        "name": "documents_mutation_id",
+        "table": "documents"
+      },
+      {
         "def": "CREATE TRIGGER documents_page_storage_mode_owner BEFORE INSERT OR UPDATE ON public.documents FOR EACH ROW EXECUTE FUNCTION ingestion_generation_evidence.guard_page_mode()",
         "name": "documents_page_storage_mode_owner",
         "table": "documents"
@@ -19531,6 +19544,14 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
+        "def_hash": "290eb2b8447860400f8fab5d06cd9899",
+        "signature": "public.mutate_owner_training_milestone(uuid,uuid,text,jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
         "def_hash": "2cea59a50141b1479ad8a3d493f80189",
         "signature": "public.notify_document_change_ingestion_webhook()"
       },
@@ -20298,6 +20319,14 @@
         ],
         "def_hash": "937a3e85da84f673d32b7a8f30acc654",
         "signature": "public.set_document_embedding_field_content_hash()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "586fe43ac9816462387152bb9554cb98",
+        "signature": "public.set_document_mutation_id()"
       },
       {
         "acl": [
