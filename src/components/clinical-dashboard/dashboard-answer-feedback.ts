@@ -28,7 +28,7 @@ export function useDashboardAnswerFeedback({
 }: UseDashboardAnswerFeedbackOptions) {
   const [pendingFeedback, setPendingFeedback] = useState<AnswerFeedbackType | null>(null);
 
-  async function submitAnswerFeedback(feedbackType: AnswerFeedbackType) {
+  async function submitAnswerFeedback(feedbackType: AnswerFeedbackType, note?: string) {
     if (!answer || pendingFeedback) return;
     if (clientDemoMode) {
       setActionNotice({ tone: "warning", message: "Answer review is unavailable for synthetic demo answers." });
@@ -61,6 +61,7 @@ export function useDashboardAnswerFeedback({
           route: answer.routingMode ?? null,
           model: null,
           providerRequestIds: [],
+          ...(note ? { note } : {}),
         }),
       });
 

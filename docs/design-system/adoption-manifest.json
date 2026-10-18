@@ -1317,6 +1317,7 @@
       "sourceExported": true,
       "entryExported": true,
       "directImportFiles": [
+        "src/components/clinical-dashboard/answer-feedback-panel.tsx",
         "src/components/cme/applications/applications-cv-page.tsx",
         "src/components/cme/cme-date-field.tsx",
         "src/components/cme/cme-entry-form.tsx",
@@ -1337,6 +1338,7 @@
         "src/components/ui/text-field.tsx"
       ],
       "productImportFiles": [
+        "src/components/clinical-dashboard/answer-feedback-panel.tsx",
         "src/components/cme/applications/applications-cv-page.tsx",
         "src/components/cme/cme-date-field.tsx",
         "src/components/cme/cme-entry-form.tsx",
@@ -2275,6 +2277,7 @@
         "src/components/clinical-dashboard/medication-record-page.tsx",
         "src/components/clinical-dashboard/mode-action-popup.tsx",
         "src/components/clinical-dashboard/patient-details-dock-action.tsx",
+        "src/components/clinical-dashboard/record-report-problem.tsx",
         "src/components/clinical-dashboard/result-filter-control.tsx",
         "src/components/clinical-dashboard/settings-dialog.tsx",
         "src/components/cme/applications/applications-cv-page.tsx",
@@ -2419,6 +2422,7 @@
         "src/components/clinical-dashboard/medication-record-page.tsx",
         "src/components/clinical-dashboard/mode-action-popup.tsx",
         "src/components/clinical-dashboard/patient-details-dock-action.tsx",
+        "src/components/clinical-dashboard/record-report-problem.tsx",
         "src/components/clinical-dashboard/result-filter-control.tsx",
         "src/components/clinical-dashboard/settings-dialog.tsx",
         "src/components/cme/applications/applications-cv-page.tsx",

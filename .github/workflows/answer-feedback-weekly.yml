@@ -1,0 +1,62 @@
+name: Answer feedback weekly summary
+
+# Item 16: a weekly count of "report a problem" feedback, by category and by page (answer,
+# medication record, therapy record), written to this run's job summary.
+#
+# Content-free by construction: scripts/report-answer-feedback.ts --weekly-summary selects only
+# the category, the page type and the record slug. It never selects the optional note, the owner,
+# the answer hash or any id that joins to query telemetry, so no free text reaches the log or the
+# summary. The notes stay in the database only, and are cleared after 90 days.
+#
+# It reads the production feedback table with the existing SUPABASE_SERVICE_ROLE_KEY secret (the
+# same secret live-drift.yml uses), scoped to the one step that runs the report, after the script's
+# exact production identity check. It writes nothing to the database, opens no issue and blocks
+# nothing.
+
+on:
+  schedule:
+    # Sunday 22:07 UTC, which is Monday 06:07 in Perth.
+    - cron: "7 22 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: answer-feedback-weekly
+  cancel-in-progress: false
+
+jobs:
+  summary:
+    name: Build the answer feedback weekly summary
+    # main only: a manual run from another branch must not run that branch's reader against production.
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://sjrfecxgysukkwxsowpy.supabase.co
+      SUPABASE_PROJECT_REF: sjrfecxgysukkwxsowpy
+      SUPABASE_PROJECT_NAME: PsychSift Production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node and dependencies
+        uses: ./.github/actions/setup-node-cached
+
+      - name: Write the weekly summary
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -o pipefail
+          if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "::error::Answer feedback weekly summary cannot run - missing repo secret SUPABASE_SERVICE_ROLE_KEY"
+            exit 1
+          fi
+          node scripts/run-tsx.mjs scripts/report-answer-feedback.ts --weekly-summary \
+            --project-ref "$SUPABASE_PROJECT_REF" --confirm-project-ref "$SUPABASE_PROJECT_REF" --markdown \
+            | tee -a "$GITHUB_STEP_SUMMARY"
