@@ -131,3 +131,25 @@ manifest test and two migration-seal tests. These are overlapping evidence,
 not a green complete repository run. The required aggregate cannot pass while
 sealing and the expected drift file remain unresolved. No full hosted pass is
 claimed for the fixture-only correction until its own run completes.
+
+Three automated commits arrived during the first hosted run and cancelled it.
+They were merged locally to preserve concurrent work. Their batch-draining
+improvement is retained, but removing per-device eligibility checks reproduced
+two roster regressions, and excluding intersecting PDF lines reproduced two
+native-PDF safety-instruction regressions. Correction `11a29e1d3` restores fresh
+per-device eligibility/settings/night checks and fully-contained-line exclusion,
+while retaining bounded device-page and event draining. A new 26-device test
+crosses the page boundary under one durable claim. Fresh correction evidence:
+**35 TypeScript tests in four files**, **60 Python tests**, full zero-warning lint
+and full source/test typecheck passed. Independent PDF and alert reviewers
+rechecked this composition with no new material finding; these are bounded
+engineering reviews, not clinical signatures.
+
+The concurrent unsealed queue draft now uses one `ADD COLUMN ... uuid NOT NULL
+DEFAULT gen_random_uuid()` with lock/statement timeouts, avoiding document UPDATE
+trigger side effects during backfill. Its intended fresh-schema catalogue is
+unchanged; historical sealed files and the schema mirror are not modified by
+that correction. The outstanding hash-approval question must be assessed against
+these final draft bytes. The first run's artifact remains applicable only after
+verifying its schema hash matches the final unchanged `schema.sql`; its bytes are
+still unavailable through this environment's transfer path.
