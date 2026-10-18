@@ -188,3 +188,7 @@ A schema restore is not operationally complete until all five environment-owned 
 - Re-rehearse the **data** layer (platform restore to a scratch project +
   golden eval) before any risky bulk operation (re-index, mass migration), and
   record the measured restore time here.
+- The first data-layer rehearsal (restore to a new project, Storage copy,
+  timed) is planned step by step in
+  [`operator-rehearsal-plan.md`](operator-rehearsal-plan.md) (ledger `#QVVS6W`).
+  It needs the owner's approval before it runs.
