@@ -218,6 +218,11 @@ export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
 # installing a runtime. Ordinary setup retains the full bootstrap below.
 if [[ "$policy_only_harness" != "1" ]]; then
   setup_step="node-runtime"
+  # Check this once in the parent shell: probe_version runs in a command
+  # substitution with stderr discarded, so a missing timeout would otherwise read as a
+  # version mismatch and reinstall npm globally before any message surfaced.
+  command -v timeout >/dev/null 2>&1 ||
+    fail "GNU timeout is required for bounded runtime version probes; install coreutils and re-run setup."
   actual_node_version="$(node -p 'process.versions.node' 2>/dev/null || true)"
   if ! node_version_supported "$actual_node_version"; then
     [[ -s "$NVM_DIR/nvm.sh" ]] || fail "Node ${expected_node_range} is required; detected ${actual_node_version:-unavailable}. Select it in the Codex Cloud environment or provide nvm."
