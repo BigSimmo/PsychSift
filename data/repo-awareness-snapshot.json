@@ -9163,6 +9163,14 @@
         "checks": "Owning calculator suite26passed3.62s; negative-control removal of clearQuery yields1failed25passed with PHQ-9 retained, then restored26pass. Independent static review verifies modified-click preservation and URL cleanup. Merged545treeequalsreviewed58e302. No browser/fullsuite/release/clinicaleval claimed for newtest-onlydiff."
       },
       {
+        "date": "2026-10-18",
+        "ref": "codex/design-audit-acceptance",
+        "head": "2900a6363462efb6eaab614280c7a40b89eb28d8",
+        "scope": "Design audit acceptance follow-up (supersedes 2026-10-18)",
+        "outcome": "Wording correction only (CodeRabbit). Railway deployment status was verified; public HTTP health remains unverified because direct HTTP was blocked by the network proxy. Otherwise unchanged: independent scoped adversarial review found no confirmed defect in the stateful calculator regression or acceptance handoff; dedicated same-URL recovery coverage is added; production source is unchanged; six device/clinical acceptance checks remain explicit.",
+        "checks": "No new checks: restates the superseded record's evidence (owning calculator suite 26 passed; negative-control removal of clearQuery 1 failed 25 passed, restored 26 passed; static review of modified-click preservation and URL cleanup). No public HTTP health, browser, full-suite, release or clinical eval claimed."
+      },
+      {
         "date": "2026-07-28",
         "ref": "claude/navigation-pane-mockups-0600af",
         "head": "29372bb5a53df26902bef53f8a1cb5dd4be5b239",
