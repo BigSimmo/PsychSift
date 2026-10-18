@@ -47,6 +47,7 @@ plugins/          plugins/clinical-kb/ Codex plugin manifest and workflow skill
 .agents/          Single-word skill catalogue (`npm run skills`)
 .cursor/          Cursor project rules and local-agent configuration
 .design-sync/     Generated design-system package metadata and validation notes
+.gitar/           Gitar auto-merge criteria (`config/merge.md`), read from main
 .githooks/        Installed by `npm install`; pre-push runs scripts/guard-push.mjs
 .docker/           Buildx configuration for reproducible container builds
 .vscode/          Shared VS Code workspace recommendations and settings
@@ -140,6 +141,7 @@ Smaller top-level directories that are easy to miss:
 | `.codex/`       | Trusted Desktop/CLI config; tracked `config.toml` has disabled, secret-free Figma, Supabase, Railway, and Sentry MCP templates. Hosted ChatGPT/Codex apps are installed and authenticated separately; OAuth stays in the host credential store.                                                                     |
 | `.cursor/`      | Cursor project rules and local-agent configuration                                                                                                                                                                                                                                                                  |
 | `.design-sync/` | Generated design-system package metadata, validation notes, and project-sync artifacts                                                                                                                                                                                                                              |
+| `.gitar/`       | Gitar auto-merge criteria: `config/merge.md`, read from `main` (merge commits only; never arm on owner-seal holds)                                                                                                                                                                                                  |
 | `.githooks/`    | Installed by `npm install`; `pre-push` runs `scripts/guard-push.mjs` (user-owned auto-merge preservation, format, drift staleness, static lint+typecheck, ledger write discipline)                                                                                                                                  |
 | `.docker/`      | Buildx configuration for reproducible container builds                                                                                                                                                                                                                                                              |
 | `.vscode/`      | Shared VS Code workspace recommendations and settings                                                                                                                                                                                                                                                               |
