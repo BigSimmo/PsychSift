@@ -255,4 +255,46 @@ describe("answerSloSnapshot", () => {
     expect(snapshot.latencyBudgetBreachQueries).toBe(2);
     expect(snapshot.latencyBudgetBreachRate).toBeCloseTo(0.2, 5);
   });
+
+  it("computes per-route p95 latency from total_latency_ms and leaves unknown modes out", async () => {
+    const fastRows = Array.from({ length: 20 }, (_, index) => ({
+      metadata: { routing_mode: "fast", total_latency_ms: (index + 1) * 1000 },
+    }));
+    const snapshot = await answerSloSnapshot(
+      fakeClient({
+        total: 24,
+        hybrid: 0,
+        degraded: 0,
+        hybridRows: [
+          ...fastRows,
+          { metadata: { routing_mode: "strong", total_latency_ms: 30_000 } },
+          { metadata: { routing_mode: "source_only", total_latency_ms: 4_000 } },
+          { metadata: { routing_mode: "unsupported", total_latency_ms: 90_000 } },
+          { metadata: { routing_mode: "fast", total_latency_ms: "not a number" } },
+        ],
+      }),
+    );
+    // Nearest-rank p95 of 1..20 s is the 19th value.
+    expect(snapshot.latencyP95MsByRouteMode).toEqual({
+      fast: { p95Ms: 19_000, samples: 20 },
+      strong: { p95Ms: 30_000, samples: 1 },
+      extractive: { p95Ms: 4_000, samples: 1 },
+    });
+    expect(snapshot.latencySampleTruncated).toBe(false);
+  });
+
+  it("reports a null p95 and the cap flag honestly", async () => {
+    const empty = await answerSloSnapshot(fakeClient({ total: 0, hybrid: 0, degraded: 0 }));
+    expect(empty.latencyP95MsByRouteMode.fast).toEqual({ p95Ms: null, samples: 0 });
+
+    const capped = await answerSloSnapshot(
+      fakeClient({
+        total: 5000,
+        hybrid: 0,
+        degraded: 0,
+        hybridRows: Array.from({ length: 1000 }, () => ({ metadata: { routing_mode: "fast", total_latency_ms: 1 } })),
+      }),
+    );
+    expect(capped.latencySampleTruncated).toBe(true);
+  });
 });

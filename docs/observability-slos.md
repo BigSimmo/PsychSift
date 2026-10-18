@@ -30,31 +30,48 @@ Measurement window is trailing 24 h unless stated; "page" means the loudest
 channel available (today: GitHub issue from the canary + host alert; later:
 host-native alerting per `docs/deployment-architecture.md`).
 
-**Automation status — read this before trusting a threshold.** Only two of the
-objectives below are actually computed and alerted by this repository: the
-hybrid-RPC error rate and the degraded/source-only answer rate, both from
+**Automation status — read this before trusting a threshold.** Five of the
+objectives below are computed and alerted by this repository, all from
 `answerSloSnapshot` (`src/lib/observability/answer-slo.ts`), surfaced on the
-`/api/health?deep=1` deep probe and raised by the ops digest as
-`OPS_HYBRID_RPC_ERROR_RATE_*` and `OPS_DEGRADED_ANSWER_RATE_*`
-(`scripts/lib/operational-alerts.mjs`, whose complete code list is
-`OPS_ANSWER_SLO_UNKNOWN`, `OPS_HYBRID_RPC_ERROR_RATE_{UNKNOWN,WARNING,PAGE}`,
+`/api/health?deep=1` deep probe and raised by the ops digest
+(`scripts/lib/operational-alerts.mjs`, `.github/workflows/ops-digest.yml`):
+the hybrid-RPC error rate, the degraded/source-only answer rate, answer p95
+latency by route mode, the source-gap rate and the unsupported rate. The
+complete code list is `OPS_ANSWER_SLO_UNKNOWN`,
+`OPS_HYBRID_RPC_ERROR_RATE_{UNKNOWN,WARNING,PAGE}`,
 `OPS_DEGRADED_ANSWER_RATE_{UNKNOWN,WARNING,PAGE}`,
-`OPS_PROJECTED_DAILY_SPEND_WARNING` and `OPS_EVAL_CANARY_STALE_WARNING`).
+`OPS_ANSWER_LATENCY_P95_{WARNING,PAGE}`, `OPS_ANSWER_LATENCY_BUDGET_WARNING`,
+`OPS_SOURCE_GAP_RATE_{WARNING,PAGE}`, `OPS_UNSUPPORTED_ANSWER_RATE_{WARNING,PAGE}`,
+`OPS_PROJECTED_DAILY_SPEND_WARNING` and `OPS_EVAL_CANARY_STALE_WARNING`.
 
-No **production monitor** computes an answer-latency percentile, a source-gap
-rate, or an unsupported rate, and no alert code exists for any of them. (The
-eval harness does compute a latency percentile - `scripts/eval-retrieval.ts`
-enforces a p90 budget over its evaluated cases, cited under "Anchors" below -
-but it runs on demand against a fixture corpus, so it says nothing about live
-traffic.) Their "warn" and "page" rows below are **targets with a hand-run SQL
-probe, not alerts**: a breach is invisible until an operator runs the query.
-Each such section is labelled `Manual SQL - not alerted`. Do not cite an unlabelled
-threshold as evidence of monitoring coverage, and if one of these is wired up
-later, add its `OPS_*` code here and remove the label in the same change.
+**What "alerted" means here, and its limits.** Every digest-raised alert is
+evaluated on the deep probe's single trailing **60-minute** window, and
+reported through the digest's existing channel: the rolling GitHub ops-digest
+issue, with an attention comment on scheduled runs whose highest severity is
+`warning` or `page`. This change picked no new notification channel; that is
+the owner's choice. Where a section below states a longer window (24 h, 6 h,
+7 days), the digest applies that section's warn/page threshold to the 60-minute
+window instead, which is stricter and noisier than written. The 7-day SLO
+targets themselves, the unsupported-rate "doubling versus trailing 7 days"
+rule and the `/api/search` latency row are **not** computed by any monitor and
+remain hand-run SQL. Separately, Sentry alert routing is still an owner
+dashboard setting that nothing in this repository configures or verifies
+(ledger `#TN512M`), so a Sentry-side alert can fire without reaching anyone.
 
 ### Latency — answer p95 by route mode
 
-_Manual SQL - not alerted. No code computes these percentiles; run the query below._
+_Alerted: `OPS_ANSWER_LATENCY_P95_{WARNING,PAGE}` for `fast`, `strong` and `extractive` via `answerSloSnapshot`. The `/api/search` row is manual SQL - not alerted._
+
+The deep probe computes a nearest-rank p95 of `metadata->>'total_latency_ms'`
+per routing mode over its bounded metadata sample (at most 1,000 answers in the
+60-minute window; the digest says when the sample was capped). A route is only
+judged once the sample holds at least 20 of its answers, so a quiet hour is
+silent rather than alarming. Rows with any other routing mode (for example
+`unsupported`) are left out of every route's p95. The digest raises one alert
+per severity naming each breaching route. The older
+`OPS_ANSWER_LATENCY_BUDGET_WARNING` stays alongside it: it warns when more than
+15 % of sampled answers (with at least 20 answers in the window) exceed their
+route's p95 budget.
 
 | Route mode (`metadata->>'routing_mode'`) | SLO (p95) | Warn               | Page               |
 | ---------------------------------------- | --------- | ------------------ | ------------------ |
@@ -92,10 +109,10 @@ provider confirmation boundary. `LIVE_DOMAIN_URL` and `ANSWER_PROBE_QUERY` overr
 Read its output with the nesting in mind: `search` already contains `rpc`, `embedding` and
 `rerank`, and `answer`/`total` are whole-request totals, so the column does not sum.
 
-**This does not make the section above alerted.** It is an operator probe run by hand, not a
-monitor: nothing schedules it and no workflow calls it, so the `Manual SQL - not alerted` label
-stands and no `OPS_*` code exists for answer latency. `#TN512M` is the reason it was deliberately
-left unscheduled — detection here already outruns attention.
+**This probe is not the monitor.** It is an operator tool run by hand: nothing schedules it and no
+workflow calls it. The scheduled answer-latency alerts above come from the deep probe's existing
+`rag_queries` data, not from this script. `#TN512M` is the reason it was deliberately left
+unscheduled — detection here already outruns attention.
 
 ### Database latency — Sentry production DB span SLO (#183)
 
@@ -110,7 +127,7 @@ Sentry metric alert criteria for production database query span duration. Guards
 
 ### Quality — source-gap rate
 
-_Manual SQL - not alerted. No code computes this rate._
+_Alerted: `OPS_SOURCE_GAP_RATE_{WARNING,PAGE}` via `answerSloSnapshot`, on the 60-minute window with at least 20 answers. The 7-day SLO is manual._
 
 Share of answered queries whose confidence collapsed to a gap
 (`fallback_reason` or support modules report `source_gap`).
@@ -121,7 +138,7 @@ Share of answered queries whose confidence collapsed to a gap
 
 ### Quality — unsupported rate
 
-_Manual SQL - not alerted. No code computes this rate._
+_Alerted: `OPS_UNSUPPORTED_ANSWER_RATE_{WARNING,PAGE}` via `answerSloSnapshot`, on the 60-minute window with at least 20 answers. The 7-day SLO and the doubling rule are manual._
 
 Share of queries with `routing_mode = 'unsupported'` or
 `confidence = 'unsupported'`. A base rate is legitimate (out-of-corpus
@@ -466,6 +483,55 @@ The rolling issue is the provider-neutral queue. For every alert, the on-duty op
 - **Recover:** require a subsequent valid hourly snapshot at or below `20%` plus confirmation that fallback messaging remains intact.
 - **Escalate:** Clinical safety owner immediately; involve the product owner if service restriction or rollback is considered.
 
+### `OPS_ANSWER_LATENCY_P95_WARNING`
+
+- **Diagnose:** read which routes the alert names and their sample counts; compare the route's p95 with the `fast` 10 s, `strong` 25 s and `extractive` 6 s budgets. Check provider latency, recent deploys and whether the sample was capped. The `Server-Timing` probe above can split one request by stage, with provider approval.
+- **Acknowledge:** Platform operations records the route, p95, sample count and window.
+- **Recover:** require the next valid 60-minute snapshot with that route's p95 at or under its budget (or under 20 sampled answers, recorded as unassessed rather than recovered).
+- **Escalate:** AI platform owner if the warning persists into a second window or `strong` answers approach the 30 s provider timeout.
+
+### `OPS_ANSWER_LATENCY_P95_PAGE`
+
+- **Diagnose:** confirm the named route's p95 is over its page line (`fast` 20 s, `strong` 35 s, `extractive` 12 s) with at least 20 sampled answers. A `strong` p95 near 35 s means answers are riding the timeout and silently falling back; check the degraded-answer rate in the same digest.
+- **Acknowledge:** Platform operations opens the configured incident route and records the route, p95 and sample count.
+- **Recover:** require a subsequent valid 60-minute snapshot with the route back under its warning budget.
+- **Escalate:** AI platform owner immediately.
+
+### `OPS_ANSWER_LATENCY_BUDGET_WARNING`
+
+- **Diagnose:** more than 15 % of sampled answers exceeded their route's p95 budget; read the p95-by-route line in the same digest to find the slow route.
+- **Acknowledge:** Platform operations records the breach rate and the slow route.
+- **Recover:** require the next valid 60-minute snapshot at or below 15 %.
+- **Escalate:** AI platform owner if it persists into a second window.
+
+### `OPS_SOURCE_GAP_RATE_WARNING`
+
+- **Diagnose:** more than 20 % of the window's answers recorded a source gap. Check recent ingestion, enrichment and retrieval changes and the eval canary; do not read query text.
+- **Acknowledge:** Clinical evaluation owner records the rate, answer count and any recent corpus or retrieval change.
+- **Recover:** require the next valid 60-minute snapshot at or below 20 %.
+- **Escalate:** Clinical safety owner if it persists into a second window.
+
+### `OPS_SOURCE_GAP_RATE_PAGE`
+
+- **Diagnose:** more than 30 % of the window's answers recorded a source gap; this step change suggests a retrieval, enrichment or corpus regression rather than user behaviour.
+- **Acknowledge:** Clinical evaluation owner opens the configured incident route and records the rate and suspected change.
+- **Recover:** require a subsequent valid 60-minute snapshot at or below 20 %.
+- **Escalate:** Clinical safety owner immediately.
+
+### `OPS_UNSUPPORTED_ANSWER_RATE_WARNING`
+
+- **Diagnose:** more than 15 % of the window's answers were unsupported. A base rate is legitimate, so first rule out a burst of out-of-corpus questions and the nondeterministic unsupported short-circuit (finding #11).
+- **Acknowledge:** AI platform owner records the rate, answer count and whether the short-circuit was checked.
+- **Recover:** require the next valid 60-minute snapshot at or below 15 %.
+- **Escalate:** Clinical safety owner if it persists into a second window.
+
+### `OPS_UNSUPPORTED_ANSWER_RATE_PAGE`
+
+- **Diagnose:** more than 25 % of the window's answers were unsupported; check the same confounders, then grounding and retrieval health.
+- **Acknowledge:** AI platform owner opens the configured incident route and records the rate.
+- **Recover:** require a subsequent valid 60-minute snapshot at or below 15 %.
+- **Escalate:** Clinical safety owner immediately.
+
 ### `OPS_PROJECTED_DAILY_SPEND_WARNING`
 
 - **Diagnose:** compare the projection threshold, sample-truncation flag, answer volume, and route-level spend; treat a truncated sample as a lower bound.
@@ -485,6 +551,8 @@ The rolling issue is the provider-neutral queue. For every alert, the on-duty op
 ## 6. Remaining gaps
 
 - Exercise and record the acknowledgement/recovery drill through the configured provider channel.
+- Sentry alert routing is an owner dashboard setting this repository neither configures nor verifies (ledger `#TN512M`).
+- The 7-day quality SLOs, the unsupported-rate doubling rule and `/api/search` latency are still hand-run SQL; the digest alerts only on its 60-minute window.
 - Retain and periodically exercise the GitHub Actions cache path for the three-consecutive-hour hybrid escalation. Cache loss intentionally downgrades the condition to warning or unknown rather than inferring history.
 - **Host-level metrics** (CPU, memory, restart count) and log drains once the
   container host exists (`docs/deployment-architecture.md` §2).

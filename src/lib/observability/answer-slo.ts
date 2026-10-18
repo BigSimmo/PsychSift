@@ -16,6 +16,15 @@ export const ANSWER_LATENCY_BUDGET_MS = {
   extractive: 6_000,
 } as const;
 
+export type AnswerLatencyRouteMode = keyof typeof ANSWER_LATENCY_BUDGET_MS;
+
+/** p95 of `total_latency_ms` for one routing mode, over the bounded metadata sample. */
+export type AnswerLatencyP95 = {
+  /** Null when the sample held no row of this mode with a finite latency. */
+  p95Ms: number | null;
+  samples: number;
+};
+
 export type AnswerSloSnapshot = {
   windowMinutes: number;
   totalQueries: number;
@@ -43,6 +52,14 @@ export type AnswerSloSnapshot = {
   sourceGapRate: number;
   unsupportedRate: number;
   latencyBudgetBreachRate: number;
+  /**
+   * Per-route p95 answer latency from the same bounded metadata sample as the budget-breach
+   * rate. Rows whose routing mode is not fast, strong or extractive/source-only are left out
+   * rather than guessed, so an unsupported short-circuit cannot flatter the fast route.
+   */
+  latencyP95MsByRouteMode: Record<AnswerLatencyRouteMode, AnswerLatencyP95>;
+  /** True when the metadata sample hit its row cap while the window held more answers. */
+  latencySampleTruncated: boolean;
 };
 
 type CountResult = { count: number | null; error: unknown };
@@ -81,12 +98,28 @@ function rate(numerator: number, denominator: number) {
 const maxHybridRpcIdentityRows = 1000;
 const safeRpcIdentifier = /^[a-zA-Z][a-zA-Z0-9_]{0,127}$/;
 
-function resolveRouteLatencyBudgetMs(metadata: Record<string, unknown>): number {
-  const rawMode = String(
-    metadata.routing_mode ?? metadata.mode ?? metadata.route_mode ?? metadata.answer_mode ?? "fast",
-  )
+function rawRouteMode(metadata: Record<string, unknown>): string {
+  return String(metadata.routing_mode ?? metadata.mode ?? metadata.route_mode ?? metadata.answer_mode ?? "fast")
     .trim()
     .toLowerCase();
+}
+
+function knownRouteMode(metadata: Record<string, unknown>): AnswerLatencyRouteMode | null {
+  const rawMode = rawRouteMode(metadata);
+  if (rawMode === "fast" || rawMode === "strong") return rawMode;
+  if (rawMode === "extractive" || rawMode === "source_only" || rawMode === "source-only") return "extractive";
+  return null;
+}
+
+/** Nearest-rank p95: the smallest sample at or above 95% of the ordered values. */
+export function nearestRankP95(values: number[]): number | null {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((left, right) => left - right);
+  return sorted[Math.max(0, Math.ceil(0.95 * sorted.length) - 1)] ?? null;
+}
+
+function resolveRouteLatencyBudgetMs(metadata: Record<string, unknown>): number {
+  const rawMode = rawRouteMode(metadata);
   if (rawMode === "strong") return ANSWER_LATENCY_BUDGET_MS.strong;
   if (rawMode === "extractive" || rawMode === "source_only" || rawMode === "source-only") {
     return ANSWER_LATENCY_BUDGET_MS.extractive;
@@ -124,6 +157,7 @@ const UNSUPPORTED_FILTER = [
  */
 export function computeLatencyBudgetSloMetrics(rows: Array<{ metadata: unknown }>, totalQueries: number) {
   let latencyBudgetBreachQueries = 0;
+  const latenciesByMode: Record<AnswerLatencyRouteMode, number[]> = { fast: [], strong: [], extractive: [] };
 
   for (const row of rows) {
     if (!row.metadata || typeof row.metadata !== "object" || Array.isArray(row.metadata)) {
@@ -135,14 +169,28 @@ export function computeLatencyBudgetSloMetrics(rows: Array<{ metadata: unknown }
     if (meta.latency_budget_breached === true || (Number.isFinite(rawLatency) && rawLatency > budgetMs)) {
       latencyBudgetBreachQueries += 1;
     }
+    // The p95 reads total_latency_ms first: it is the whole-request figure the answer
+    // pipeline records and the one docs/observability-slos.md's SLO is written against.
+    const p95Latency = Number(meta.total_latency_ms ?? meta.latency_ms ?? meta.duration_ms ?? meta.response_ms);
+    const mode = knownRouteMode(meta);
+    if (mode && Number.isFinite(p95Latency) && p95Latency >= 0) {
+      latenciesByMode[mode].push(p95Latency);
+    }
   }
 
   const effectiveDenominator =
     rows.length >= maxHybridRpcIdentityRows && totalQueries > rows.length ? rows.length : totalQueries;
 
+  const p95 = (mode: AnswerLatencyRouteMode): AnswerLatencyP95 => ({
+    p95Ms: nearestRankP95(latenciesByMode[mode]),
+    samples: latenciesByMode[mode].length,
+  });
+
   return {
     latencyBudgetBreachQueries,
     latencyBudgetBreachRate: rate(latencyBudgetBreachQueries, effectiveDenominator),
+    latencyP95MsByRouteMode: { fast: p95("fast"), strong: p95("strong"), extractive: p95("extractive") },
+    latencySampleTruncated: rows.length >= maxHybridRpcIdentityRows && totalQueries > rows.length,
   };
 }
 
@@ -282,5 +330,7 @@ export async function answerSloSnapshot(client: SloProbeClient, windowMinutes = 
     sourceGapRate: rate(sourceGapQueries, totalQueries),
     unsupportedRate: rate(unsupportedQueries, totalQueries),
     latencyBudgetBreachRate: latencyMetrics.latencyBudgetBreachRate,
+    latencyP95MsByRouteMode: latencyMetrics.latencyP95MsByRouteMode,
+    latencySampleTruncated: latencyMetrics.latencySampleTruncated,
   };
 }

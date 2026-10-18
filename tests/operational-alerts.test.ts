@@ -105,7 +105,7 @@ describe("evaluateOperationalAlerts", () => {
     expect(alerts.every((item) => item.escalationOwner && item.runbook)).toBe(true);
   });
 
-  it("emits source-gap, unsupported-answer, and latency-budget warnings when >15% with at least 20 queries", () => {
+  it("emits quality warnings only above the documented thresholds with at least 20 queries", () => {
     expect(
       evaluateOperationalAlerts(
         snapshot({
@@ -117,11 +117,12 @@ describe("evaluateOperationalAlerts", () => {
       ),
     ).toEqual([]);
 
+    // Exactly on each warning boundary is still within the SLO.
     expect(
       evaluateOperationalAlerts(
         snapshot({
           totalQueries: 20,
-          sourceGapRate: 0.15,
+          sourceGapRate: 0.2,
           unsupportedRate: 0.15,
           latencyBudgetBreachRate: 0.15,
         }),
@@ -131,7 +132,7 @@ describe("evaluateOperationalAlerts", () => {
     const warnings = evaluateOperationalAlerts(
       snapshot({
         totalQueries: 25,
-        sourceGapRate: 0.2,
+        sourceGapRate: 0.21,
         unsupportedRate: 0.24,
         latencyBudgetBreachRate: 0.16,
       }),
@@ -142,5 +143,108 @@ describe("evaluateOperationalAlerts", () => {
       "OPS_UNSUPPORTED_ANSWER_RATE_WARNING",
     ]);
     expect(warnings.every((w) => w.severity === "warning" && Boolean(w.runbook))).toBe(true);
+    expect(warnings.find((w) => w.code === "OPS_SOURCE_GAP_RATE_WARNING")?.threshold).toEqual({
+      operator: ">",
+      value: 0.2,
+      unit: "rate",
+    });
+  });
+
+  it("pages source-gap above 30% and unsupported above 25%, without also warning", () => {
+    expect(
+      evaluateOperationalAlerts(snapshot({ totalQueries: 40, sourceGapRate: 0.3, unsupportedRate: 0.25 })).map(
+        (a) => a.code,
+      ),
+    ).toEqual(["OPS_SOURCE_GAP_RATE_WARNING", "OPS_UNSUPPORTED_ANSWER_RATE_WARNING"]);
+
+    const pages = evaluateOperationalAlerts(snapshot({ totalQueries: 40, sourceGapRate: 0.31, unsupportedRate: 0.26 }));
+    expect(pages).toMatchObject([
+      { code: "OPS_SOURCE_GAP_RATE_PAGE", severity: "page", observedValue: 0.31, owner: "Clinical evaluation owner" },
+      { code: "OPS_UNSUPPORTED_ANSWER_RATE_PAGE", severity: "page", observedValue: 0.26, owner: "AI platform owner" },
+    ]);
+    expect(pages.every((a) => a.escalationOwner === "Clinical safety owner" && a.runbook.includes("_page"))).toBe(true);
+  });
+
+  it("ignores malformed quality rates instead of alerting on them", () => {
+    expect(
+      evaluateOperationalAlerts(snapshot({ totalQueries: 40, sourceGapRate: 1.5, unsupportedRate: Number.NaN })),
+    ).toEqual([]);
+  });
+
+  describe("answer latency p95 by routing mode", () => {
+    const latency = (byMode: Record<string, unknown>, extra: Record<string, unknown> = {}) =>
+      snapshot({ latencyP95MsByRouteMode: byMode, ...extra });
+
+    it("stays quiet on or under each route's p95 budget", () => {
+      expect(
+        evaluateOperationalAlerts(
+          latency({
+            fast: { p95Ms: 10_000, samples: 50 },
+            strong: { p95Ms: 25_000, samples: 50 },
+            extractive: { p95Ms: 6_000, samples: 50 },
+          }),
+        ),
+      ).toEqual([]);
+    });
+
+    it("warns above the budget and pages above the page line, one alert per severity", () => {
+      const alerts = evaluateOperationalAlerts(
+        latency({
+          fast: { p95Ms: 20_001, samples: 30 },
+          strong: { p95Ms: 25_001, samples: 20 },
+          extractive: { p95Ms: 6_500, samples: 40 },
+        }),
+      );
+      expect(alerts).toMatchObject([
+        {
+          code: "OPS_ANSWER_LATENCY_P95_PAGE",
+          severity: "page",
+          observedValue: ["fast=20001ms (n=30)"],
+          threshold: { operator: ">", value: { fast: 20_000 }, unit: "p95 ms by routing mode" },
+        },
+        {
+          code: "OPS_ANSWER_LATENCY_P95_WARNING",
+          severity: "warning",
+          observedValue: ["strong=25001ms (n=20)", "extractive=6500ms (n=40)"],
+          threshold: { value: { strong: 25_000, extractive: 6_000 } },
+        },
+      ]);
+      expect(alerts.every((a) => a.owner === "Platform operations" && a.escalationOwner === "AI platform owner")).toBe(
+        true,
+      );
+    });
+
+    it("pages strong above 35 s and extractive above 12 s", () => {
+      const alerts = evaluateOperationalAlerts(
+        latency({ strong: { p95Ms: 35_001, samples: 25 }, extractive: { p95Ms: 12_001, samples: 25 } }),
+      );
+      expect(alerts.map((a) => a.code)).toEqual(["OPS_ANSWER_LATENCY_P95_PAGE"]);
+      expect(alerts[0]?.threshold.value).toEqual({ strong: 35_000, extractive: 12_000 });
+    });
+
+    it("does not judge a route with fewer than 20 sampled answers or a missing p95", () => {
+      expect(
+        evaluateOperationalAlerts(
+          latency({ fast: { p95Ms: 60_000, samples: 19 }, strong: { p95Ms: null, samples: 0 }, extractive: {} }),
+        ),
+      ).toEqual([]);
+      expect(evaluateOperationalAlerts(latency(undefined as unknown as Record<string, unknown>))).toEqual([]);
+    });
+
+    it("says so when the latency sample was capped", () => {
+      const [warning] = evaluateOperationalAlerts(
+        latency({ fast: { p95Ms: 11_000, samples: 1000 } }, { latencySampleTruncated: true }),
+      );
+      expect(warning?.code).toBe("OPS_ANSWER_LATENCY_P95_WARNING");
+      expect(warning?.reason).toContain("capped");
+    });
+
+    it("never evaluates latency when the SLO window itself is unknown", () => {
+      expect(
+        evaluateOperationalAlerts(latency({ fast: { p95Ms: 60_000, samples: 50 } }, { totalQueries: 0 })).map(
+          (a) => a.code,
+        ),
+      ).toEqual(["OPS_ANSWER_SLO_UNKNOWN"]);
+    });
   });
 });

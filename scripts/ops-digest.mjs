@@ -202,7 +202,19 @@ export function renderDigest(health, meta = {}) {
         `- degraded/source-only: ${s.degradedQueries ?? 0} (${sloPct(s.degradedRate)})`,
         `- truncation fallbacks: ${s.truncationFallbackQueries ?? 0} (${sloPct(s.truncationFallbackRate)})`,
         `- timeout fallbacks: ${s.timeoutFallbackQueries ?? 0} (${sloPct(s.timeoutFallbackRate)})`,
+        `- source gaps: ${s.sourceGapQueries ?? 0} (${sloPct(s.sourceGapRate)})`,
+        `- unsupported: ${s.unsupportedQueries ?? 0} (${sloPct(s.unsupportedRate)})`,
       );
+      if (s.latencyP95MsByRouteMode && typeof s.latencyP95MsByRouteMode === "object" && !noAnswerActivity) {
+        const routes = ["fast", "strong", "extractive"]
+          .map((mode) => {
+            const entry = s.latencyP95MsByRouteMode[mode];
+            const p95 = typeof entry?.p95Ms === "number" ? `${(entry.p95Ms / 1000).toFixed(1)}s` : "—";
+            return `${mode} ${p95} (n=${Number.isInteger(entry?.samples) ? entry.samples : 0})`;
+          })
+          .join(", ");
+        lines.push(`- p95 latency: ${routes}${s.latencySampleTruncated ? " ⚠ sample capped" : ""}`);
+      }
     }
 
     if (health.cache) {
