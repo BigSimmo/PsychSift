@@ -42,7 +42,10 @@ function makeClient(cfg: ClientConfig) {
       return Promise.resolve(cfg.competing ?? { data: [], error: null });
     };
     b.maybeSingle = () =>
-      Promise.resolve({ data: { updated_at: "2026-10-18T05:00:00.123456+00:00" }, error: cfg.updateError ?? null });
+      Promise.resolve({
+        data: { updated_at: "2026-10-18T05:00:00.123456+00:00", mutation_id: "queue-mutation-1" },
+        error: cfg.updateError ?? null,
+      });
     b.single = () => Promise.resolve(cfg.jobInsert ?? { data: { id: "job1" }, error: null });
     // Awaiting a documents.update chain resolves here.
     b.then = (resolve: (v: unknown) => void, reject?: (e: unknown) => void) =>
@@ -106,7 +109,7 @@ describe("enqueueDocumentReindexJob", () => {
     expect(result).toEqual({ outcome: "already_active" });
     // Initial queue update + the compensating rollback update, both owner-scoped.
     expect(calls.documentUpdates).toBe(2);
-    expect(calls.eqValues).toContainEqual(["updated_at", "2026-10-18T05:00:00.123456+00:00"]);
+    expect(calls.eqValues).toContainEqual(["mutation_id", "queue-mutation-1"]);
     expect(calls.eqCalls.filter((col) => col === "owner_id").length).toBeGreaterThanOrEqual(2);
   });
 
@@ -131,6 +134,7 @@ describe("database-trigger rollback fence", () => {
         image_count: 1,
         error_message: "old",
         updated_at: "before",
+        mutation_id: "before",
       };
       const from = (table: string) => {
         const filters: [string, unknown][] = [];
@@ -141,9 +145,12 @@ describe("database-trigger rollback fence", () => {
               ([key, value]) => key === "id" || key === "owner_id" || state[key as keyof typeof state] === value,
             )
           ) {
-            Object.assign(state, patch, { updated_at: "database-trigger-value" });
+            Object.assign(state, patch, {
+              updated_at: "database-trigger-value",
+              mutation_id: "database-trigger-value",
+            });
           }
-          return { data: { updated_at: state.updated_at }, error: null };
+          return { data: { updated_at: state.updated_at, mutation_id: state.mutation_id }, error: null };
         };
         const chain = {
           update: (values: Record<string, unknown>) => {
@@ -161,7 +168,12 @@ describe("database-trigger rollback fence", () => {
           single: async () => ({ data: null, error: { code: "23505", message: "collision" } }),
           limit: async () => {
             if (scenario === "newer")
-              Object.assign(state, { status: "indexed", chunk_count: 99, updated_at: "newer-trigger-value" });
+              Object.assign(state, {
+                status: "indexed",
+                chunk_count: 99,
+                updated_at: "newer-trigger-value",
+                mutation_id: "newer-trigger-value",
+              });
             return { data: scenario === "processing" ? [{ id: "competitor", status: "processing" }] : [], error: null };
           },
           then: (resolve: (value: unknown) => unknown) =>

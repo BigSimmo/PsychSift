@@ -134,10 +134,3 @@ export async function enqueueDocumentReindexJob(args: {
 
   throw new Error(jobError.message);
 }
-erFilter(rollback);
-    }
-    return { outcome: "already_active" };
-  }
-
-  throw new Error(jobError.message);
-}
