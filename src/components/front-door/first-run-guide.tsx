@@ -17,23 +17,24 @@ import { GUIDE_METADATA_KEY, isFirstRunGuideDismissed, markFirstRunGuideDismisse
 /**
  * Three-step getting started guide on the Answer home, shown once per user.
  *
- * Dismissal is remembered in this browser per user (or as "guest" before
- * sign-in) and, when signed in, in the account's metadata so other devices
- * skip it too. Loaded with `ssr: false` (see `answer-status.tsx`), so the
+ * Dismissal is remembered in this browser per user id and in the account's
+ * metadata, so other devices skip it too. Loaded with `ssr: false` (see `answer-status.tsx`), so the
  * server markup never depends on browser storage.
  */
 export function FirstRunGuide() {
   const { client, session, status } = useAuthSession();
-  const owner = session?.user.id ?? "guest";
+  const owner = session?.user.id ?? "";
   const [dismissedFor, setDismissedFor] = useState<string | null>(null);
 
-  if (status === "loading") return null;
+  // Signed-in users only. A late card on the signed-out home would shift the
+  // centred composer and become its largest paint (Lighthouse CLS/LCP budget).
+  if (status !== "authenticated" || !session) return null;
   if (dismissedFor === owner || isFirstRunGuideDismissed(owner, session?.user.user_metadata)) return null;
 
   function dismiss() {
     markFirstRunGuideDismissed(owner);
     setDismissedFor(owner);
-    if (session && client) {
+    if (client) {
       // Best effort: the browser copy above already keeps it dismissed here.
       void client.auth.updateUser({ data: { [GUIDE_METADATA_KEY]: new Date().toISOString() } }).catch(() => undefined);
     }

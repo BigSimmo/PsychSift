@@ -107,7 +107,6 @@ export function SharedHomeEmptyState({
               stays the first thing on the home screen (one owner, no shift),
               and the card renders nothing at all until it has items. */}
           <LazyMyDayHomeCard />
-          {modeId === "answer" ? <FirstRunGuide /> : null}
           {recents.length > 0 && (
             // One grouped list with hairline rows, as Work draws its lists (owner
             // design review, 12 Oct 2026), rather than loose chips: a question
@@ -146,6 +145,8 @@ export function SharedHomeEmptyState({
               </ul>
             </section>
           )}
+          {/* Last in the footer, so nothing below it moves when it appears. */}
+          {modeId === "answer" ? <FirstRunGuide /> : null}
         </div>
       }
     />

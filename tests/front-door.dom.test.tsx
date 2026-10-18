@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { FirstRunGuide } from "@/components/front-door/first-run-guide";
 import { TermsAcceptancePrompt } from "@/components/front-door/terms-acceptance-prompt";
-import { TERMS_PROMPT_ACCEPT_LABEL, TERMS_VERSION } from "@/lib/front-door-content";
+import { TERMS_PROMPT_ACCEPT_LABEL, TERMS_PROMPT_SAVE_ERROR, TERMS_VERSION } from "@/lib/front-door-content";
 import { TERMS_METADATA_KEY } from "@/lib/terms-acceptance";
 
 const updateUser = vi.fn(async () => ({ data: {}, error: null as unknown }));
@@ -57,6 +57,20 @@ describe("Terms acceptance prompt", () => {
     expect(window.localStorage.getItem("psychsift:terms-accepted:user-1")).toBe(TERMS_VERSION);
   });
 
+  it("keeps the prompt open with a warning when the account save fails", async () => {
+    signedIn();
+    updateUser.mockRejectedValueOnce(new Error("network down"));
+    render(<TermsAcceptancePrompt />);
+    fireEvent.click(screen.getByRole("button", { name: TERMS_PROMPT_ACCEPT_LABEL }));
+    expect(screen.getByTestId("terms-acceptance-prompt")).toBeTruthy();
+    expect(window.localStorage.getItem("psychsift:terms-accepted:user-1")).toBeNull();
+    expect(await screen.findByText(TERMS_PROMPT_SAVE_ERROR)).toBeTruthy();
+    expect(screen.getByTestId("terms-acceptance-prompt")).toBeTruthy();
+    expect(window.localStorage.getItem("psychsift:terms-accepted:user-1")).toBe(TERMS_VERSION);
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.queryByTestId("terms-acceptance-prompt")).toBeNull();
+  });
+
   it("stays hidden for the accepted version and re-prompts for a new one", () => {
     signedIn({ [TERMS_METADATA_KEY]: { version: TERMS_VERSION, acceptedAt: "2026-10-18T00:00:00Z" } });
     const { unmount } = render(<TermsAcceptancePrompt />);
@@ -90,6 +104,12 @@ describe("First-run guide", () => {
     expect(screen.queryByTestId("first-run-guide")).toBeNull();
     expect(updateUser).toHaveBeenCalledTimes(1);
     unmount();
+    render(<FirstRunGuide />);
+    expect(screen.queryByTestId("first-run-guide")).toBeNull();
+  });
+
+  it("is not shown signed out, so the signed-out home layout never shifts", () => {
+    auth = { status: "signed_out", session: null, client: null };
     render(<FirstRunGuide />);
     expect(screen.queryByTestId("first-run-guide")).toBeNull();
   });

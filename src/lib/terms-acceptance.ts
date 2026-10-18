@@ -76,7 +76,7 @@ export function writeLocalTermsVersion(userId: string, version: string) {
   safeSet(`${LOCAL_TERMS_PREFIX}${userId}`, version);
 }
 
-/** `owner` is the user id, or `"guest"` before sign-in. */
+/** `owner` is the signed-in user id. */
 export function isFirstRunGuideDismissed(owner: string, metadata: unknown): boolean {
   if (metadata && typeof metadata === "object" && (metadata as Record<string, unknown>)[GUIDE_METADATA_KEY]) {
     return true;

@@ -48,14 +48,19 @@ export function TermsAcceptancePrompt() {
   if (status !== "authenticated" || !userId) return null;
   if (PROMPT_EXEMPT_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))) return null;
   if (acceptedFor === userId || laterFor === userId) return null;
-  if (hasAcceptedTerms({ metadata: session?.user.user_metadata, localVersion: readLocalTermsVersion(userId) })) {
+  // Stay mounted while the save is in flight or its error is showing: the local
+  // copy written after a failed save would otherwise hide the warning at once.
+  const settling = saving || saveError;
+  if (
+    !settling &&
+    hasAcceptedTerms({ metadata: session?.user.user_metadata, localVersion: readLocalTermsVersion(userId) })
+  ) {
     return null;
   }
 
   async function accept() {
     if (!userId) return;
     const record = buildTermsAcceptance();
-    writeLocalTermsVersion(userId, record.version);
     setSaving(true);
     setSaveError(false);
     let saved = false;
@@ -64,11 +69,13 @@ export function TermsAcceptancePrompt() {
       saved = Boolean(result && !result.error);
     } catch {
       saved = false;
-    } finally {
-      setSaving(false);
     }
+    // Written only once the account save has answered, so this device remembers
+    // the acceptance either way and the outcome is never reported early.
+    writeLocalTermsVersion(userId, record.version);
     if (saved) setAcceptedFor(userId);
     else setSaveError(true);
+    setSaving(false);
   }
 
   return (
