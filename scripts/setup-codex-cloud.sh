@@ -189,6 +189,10 @@ bounded_probe() {
 }
 
 probe_version() {
+  if ! command -v timeout >/dev/null 2>&1; then
+    fail "GNU timeout is required for bounded runtime version probes; install coreutils and re-run setup."
+    return 1
+  fi
   local output
   output="$(bounded_probe "$1" --version 2>/dev/null)" || return $?
   printf '%s\n' "$output" | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1
