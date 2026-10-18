@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { fetchRelatedDocumentMetadata, fetchRelatedDocuments } from "../src/lib/document-enrichment";
 import type { SearchResult } from "../src/lib/types";
+import { documentMetadataFixture } from "./helpers/document-metadata-fixture";
 
 const results = [
   {
@@ -20,19 +21,18 @@ const results = [
   },
 ] as SearchResult[];
 
-function metadataRpc() {
-  return vi.fn(async () => ({
-    data: [{ document_id: "document-1", labels: [], summary: "Monitoring guidance." }],
-    error: null,
-  }));
+function metadataTables() {
+  return documentMetadataFixture({
+    documents: [{ id: "document-1", owner_id: null, status: "indexed", metadata: { public_corpus: true } }],
+    document_summaries: [
+      { id: "summary-1", document_id: "document-1", owner_id: null, summary: "Monitoring guidance.", metadata: {} },
+    ],
+  });
 }
 
 describe("related-document visual counts", () => {
   it("skips the visual-count query when includeVisualCounts is false", async () => {
-    const from = vi.fn(() => {
-      throw new Error("visual-count query should not run");
-    });
-    const supabase = { rpc: metadataRpc(), from };
+    const supabase = metadataTables();
 
     const related = await fetchRelatedDocuments({
       supabase: supabase as never,
@@ -41,7 +41,7 @@ describe("related-document visual counts", () => {
       includeVisualCounts: false,
     });
 
-    expect(from).not.toHaveBeenCalled();
+    expect(supabase.from).not.toHaveBeenCalledWith("document_images");
     expect(related[0]).toMatchObject({ document_id: "document-1", image_count: 0, table_count: 0 });
   });
 
@@ -77,8 +77,9 @@ describe("related-document visual counts", () => {
     };
     query.select.mockReturnValue(query);
     query.in.mockReturnValue(query);
-    const from = vi.fn(() => query);
-    const supabase = { rpc: metadataRpc(), from };
+    const metadata = metadataTables();
+    const from = vi.fn((table: string) => (table === "document_images" ? query : metadata.from(table)));
+    const supabase = { from };
 
     const related = await fetchRelatedDocuments({
       supabase: supabase as never,
@@ -86,7 +87,7 @@ describe("related-document visual counts", () => {
       results,
     });
 
-    expect(from).toHaveBeenCalledTimes(1);
+    expect(from.mock.calls.filter(([table]) => table === "document_images")).toHaveLength(1);
     expect(from).toHaveBeenCalledWith("document_images");
     expect(related[0]).toMatchObject({
       document_id: "document-1",
@@ -96,20 +97,17 @@ describe("related-document visual counts", () => {
     });
   });
 
-  it("attaches the caller signal to metadata RPC builders", async () => {
+  it("aborts metadata source reads with the caller signal", async () => {
     const controller = new AbortController();
-    const abortSignal = vi.fn(async () => ({
-      data: [{ document_id: "document-1", labels: [], summary: null }],
-      error: null,
-    }));
-    const supabase = { rpc: vi.fn(() => ({ abortSignal })) };
+    const reason = new DOMException("cancelled", "AbortError");
+    const supabase = documentMetadataFixture({}, { onRead: () => controller.abort(reason) });
 
-    await fetchRelatedDocumentMetadata({
-      supabase: supabase as never,
-      documentIds: ["document-1"],
-      signal: controller.signal,
-    });
-
-    expect(abortSignal).toHaveBeenCalledWith(controller.signal);
+    await expect(
+      fetchRelatedDocumentMetadata({
+        supabase: supabase as never,
+        documentIds: ["document-1"],
+        signal: controller.signal,
+      }),
+    ).rejects.toBe(reason);
   });
 });

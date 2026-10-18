@@ -1,3 +1,4 @@
+import { startRosterOfferAlertConsumer } from "../src/lib/roster/alerts/outbox";
 import { createHash, randomUUID } from "node:crypto";
 import { readFile, rm } from "node:fs/promises";
 import os from "node:os";
@@ -1100,7 +1101,13 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
         generation: indexGenerationId,
         extension: ext.slice(1).toLowerCase(),
         rpc: (name, payload) =>
-          ingestionRpcClient.rpc(name, payload).abortSignal(controlPlaneAbortSignal(attempt.signal)),
+          ingestionRpcClient
+            .rpc(name, payload)
+            .abortSignal(
+              CONTROL_PLANE_RPCS.has(name)
+                ? controlPlaneAbortSignal(attempt.signal)
+                : dataPlaneAbortSignal(attempt.signal),
+            ),
         upload: (storagePath, options) =>
           supabase.storage
             .from(env.SUPABASE_IMAGE_BUCKET)
@@ -1936,7 +1943,13 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
             packet: terminalPacket,
             stopHeartbeat: () => clearInterval(heartbeat),
             rpc: (name, payload) =>
-              ingestionRpcClient.rpc(name, payload).abortSignal(controlPlaneAbortSignal(attempt.signal)),
+              ingestionRpcClient
+                .rpc(name, payload)
+                .abortSignal(
+                  CONTROL_PLANE_RPCS.has(name)
+                    ? controlPlaneAbortSignal(attempt.signal)
+                    : dataPlaneAbortSignal(attempt.signal),
+                ),
           });
           invalidateRagCachesForDocumentMutation(job.documents.owner_id ?? "anonymous", {
             affectsPublicCorpus: !job.documents.owner_id,
@@ -2038,7 +2051,13 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
                 }),
                 stopHeartbeat: () => clearInterval(heartbeat),
                 rpc: (name, payload) =>
-                  ingestionRpcClient.rpc(name, payload).abortSignal(controlPlaneAbortSignal(attempt.signal)),
+                  ingestionRpcClient
+                    .rpc(name, payload)
+                    .abortSignal(
+                      CONTROL_PLANE_RPCS.has(name)
+                        ? controlPlaneAbortSignal(attempt.signal)
+                        : dataPlaneAbortSignal(attempt.signal),
+                    ),
               });
               return;
             }
@@ -2060,7 +2079,13 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
                 packet: evaluated.packet,
                 stopHeartbeat: () => clearInterval(heartbeat),
                 rpc: (name, payload) =>
-                  ingestionRpcClient.rpc(name, payload).abortSignal(controlPlaneAbortSignal(attempt.signal)),
+                  ingestionRpcClient
+                    .rpc(name, payload)
+                    .abortSignal(
+                      CONTROL_PLANE_RPCS.has(name)
+                        ? controlPlaneAbortSignal(attempt.signal)
+                        : dataPlaneAbortSignal(attempt.signal),
+                    ),
               });
               invalidateRagCachesForDocumentMutation(job.documents.owner_id ?? "anonymous", {
                 affectsPublicCorpus: !job.documents.owner_id,
@@ -2454,6 +2479,7 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
       }
     }
 
+    const stopOfferAlerts = startRosterOfferAlertConsumer(supabase, controller.signal);
     try {
       await runWorkerLoop({
         once,
@@ -2470,6 +2496,7 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
         captureException: captureWorkerException,
       });
     } finally {
+      await stopOfferAlerts();
       healthServer?.close();
     }
     console.log("PsychSift worker stopped gracefully");

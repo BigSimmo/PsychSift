@@ -9,8 +9,12 @@ import {
   teachingGet,
   teachingLoadFailure,
   teachingPost,
+  teachingPostTimed,
+  teachingUpload,
   teachingServiceUrl,
 } from "@/lib/teaching/client";
+
+import { resetSharedGets } from "@/lib/shared-get";
 
 import { apiError, json, serveFetch } from "./helpers/teaching-fixtures";
 
@@ -28,12 +32,59 @@ describe("teaching client", () => {
     expect(JSON.parse(String(fetchMock.mock.calls[1][1]!.body))).toEqual({ action: "notice.read", noticeId: "n1" });
   });
 
+  it("coalesces simultaneous reads while keeping cancellation independent", async () => {
+    resetSharedGets();
+    let resolve!: (response: Response) => void;
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(
+      () =>
+        new Promise<Response>((done) => {
+          resolve = done;
+        }),
+    );
+    const controller = new AbortController();
+    const first = teachingGet("/same", controller.signal).catch((error: unknown) => error);
+    const second = teachingGet("/same");
+    controller.abort();
+    resolve(Response.json({ owner: "current" }));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await expect(first).resolves.toMatchObject({ name: "AbortError" });
+    await expect(second).resolves.toEqual({ owner: "current" });
+  });
+
   it("turns 401 into signed out and keeps the server's code otherwise", async () => {
     serveFetch((url) => (url === "/a" ? json(401, {}) : apiError(410, "teaching_code_expired")));
     await expect(teachingGet("/a")).rejects.toBeInstanceOf(TeachingSignedOutError);
     const error = await teachingGet("/b").catch((cause: unknown) => cause);
     expect((error as ApiClientError).code).toBe("teaching_code_expired");
   });
+
+  it.each(["post", "timed", "upload"])(
+    "starts a fresh read after a successful %s while an older GET remains pending",
+    async (kind) => {
+      resetSharedGets();
+      let completeOld!: (response: Response) => void;
+      let reads = 0;
+      const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (_url, init) => {
+        if (init?.method === "POST") return Response.json({ saved: true });
+        if (++reads === 1)
+          return new Promise<Response>((resolve) => {
+            completeOld = resolve;
+          });
+        return Response.json({ revision: "after-write" });
+      });
+      const controller = new AbortController();
+      const old = teachingGet("/organise", controller.signal).catch((error: unknown) => error);
+      if (kind === "post") await teachingPost("/save", {});
+      else if (kind === "timed") await teachingPostTimed("/save", {});
+      else await teachingUpload("/save", new FormData());
+      controller.abort();
+      const refreshed = teachingGet("/organise");
+      completeOld(Response.json({ revision: "before-write" }));
+      await expect(refreshed).resolves.toEqual({ revision: "after-write" });
+      await expect(old).resolves.toMatchObject({ name: "AbortError" });
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+    },
+  );
 
   it("classifies load failures, and calls a failure offline only when the browser is", () => {
     expect(teachingLoadFailure(new TeachingSignedOutError(), true)).toBe("signed-out");

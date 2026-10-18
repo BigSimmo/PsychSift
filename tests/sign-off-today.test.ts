@@ -124,7 +124,12 @@ describe("the real queue", () => {
     // so the two OCP WA standards are signable by the owner.
     // 17 Oct 2026 22:12 AWST: the 26 Therapy records stamped without therapy:review went back to
     // needs_review (owner ruling); they list references, so the owner can sign each one.
-    expect(signable.map((item) => item.family)).toEqual([...Array<string>(26).fill("therapy"), "sources", "sources"]);
+    expect(signable.map((item) => item.family)).toEqual([
+      ...Array<string>(26).fill("therapy"),
+      "sources",
+      "sources",
+      "sources",
+    ]);
     expect(signable.map((item) => item.id)).toEqual([
       "behaviour-therapy",
       "cognitive-behavioural-therapy-for-insomnia-cbt-i",
@@ -154,6 +159,7 @@ describe("the real queue", () => {
       "wake-therapy-sleep-deprivation-chronotherapy",
       "ocp-wa-standard-authorisation-of-hospitals",
       "ocp-wa-standards-for-clinical-care",
+      "ps-diff-src-au-ausprescr-lithium-2020",
     ]);
     expect(today.signable).toBe(signable.length);
     expect(today.rows.length).toBe(Math.min(SIGN_OFF_TODAY_SIZE, signable.length));
