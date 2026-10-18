@@ -104,8 +104,11 @@ function rawRouteMode(metadata: Record<string, unknown>): string {
     .toLowerCase();
 }
 
+// The p95 path never guesses: a row with no declared mode is left out rather than counted as fast.
 function knownRouteMode(metadata: Record<string, unknown>): AnswerLatencyRouteMode | null {
-  const rawMode = rawRouteMode(metadata);
+  const declared = metadata.routing_mode ?? metadata.mode ?? metadata.route_mode ?? metadata.answer_mode;
+  if (declared === null || declared === undefined) return null;
+  const rawMode = String(declared).trim().toLowerCase();
   if (rawMode === "fast" || rawMode === "strong") return rawMode;
   if (rawMode === "extractive" || rawMode === "source_only" || rawMode === "source-only") return "extractive";
   return null;
