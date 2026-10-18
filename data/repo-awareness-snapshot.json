@@ -3069,6 +3069,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-18-clinical-sign-off-owner-only.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/agents/codex-cloud-legacy-bootstrap.md",
         "section": "agents",
         "catalogued": true
@@ -3529,6 +3534,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-18-bot-authored-sensitive-commits-blocked.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/superpowers/plans/2026-08-21-rag-repository-content-sync.md",
         "section": "superpowers",
         "catalogued": true
@@ -3820,6 +3830,11 @@
       },
       {
         "path": "docs/decisions/2026-10-17-agent-recorded-therapy-and-did-sign-offs-reset.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-18-cursor-cloud-agents-prohibited.md",
         "section": "decisions",
         "catalogued": true
       },
@@ -4216,6 +4231,11 @@
       {
         "path": "docs/care-plan/reports/task-3-report.md",
         "section": "care-plan",
+        "catalogued": true
+      },
+      {
+        "path": "docs/agents/clinical-sign-off.md",
+        "section": "agents",
         "catalogued": true
       },
       {

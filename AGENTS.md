@@ -226,6 +226,10 @@ surface, read `docs/rag-behaviour/` (README → behaviour-map → refuted-approa
 
 <!-- END:api-confirmation-boundary -->
 
+# Clinical sign-off is owner-only
+
+Only the owner (Josh, `BigSimmo`) signs off clinical content; agents stop and ask. Read [Clinical sign-off](docs/agents/clinical-sign-off.md).
+
 # Publication workflows
 
 - If a PR has auto-merge armed, its auto-merge state is user-owned and automation must not disable or re-enable it. Ordinary fast-forward pushes, bundled additions, and permitted branch syncs may proceed. A force-push, history rewrite, or base/target change while armed still hard-blocks with no override; wait for the user to change that state first.
@@ -238,10 +242,9 @@ Read and follow [Publication workflows](docs/agents/native-startup/publication-w
 
 For current-host capability checks and the scope of the optional legacy Cloud setup, see [`docs/agents/codex-cloud-environment.md`](docs/agents/codex-cloud-environment.md).
 
-## Cursor Cloud specific instructions (not Codex Cloud)
+## Cursor cloud agents are prohibited
 
-For Cursor Cloud agent setup, live-vs-demo mode detection, verification commands, and GitHub
-connector guidance, see [`docs/agents/cursor-cloud.md`](docs/agents/cursor-cloud.md).
+Never use Cursor cloud agents here, for any task; work locally only ([stub](docs/agents/cursor-cloud.md)).
 
 # Commit as you go — the thing that loses work here is interruption, not carelessness
 

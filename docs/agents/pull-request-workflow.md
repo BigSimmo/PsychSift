@@ -79,8 +79,9 @@ ranking-protected file changed, a `RAG impact:` placeholder to replace; include 
   `Verification not run: <reason>`; an unchecked box is never the only evidence.
 
 **Arming auto-merge at open (owner ruling 2026-09-16).** An agent that opens an **ordinary** PR
-may arm squash auto-merge as part of opening it (`gh pr merge --squash --auto`), with no further
-confirmation. Once a PR exists, its auto-merge state is user-owned — see
+may arm auto-merge as part of opening it (`gh pr merge --merge --auto`), with no further
+confirmation. Merge commits are the only merge method enabled (squash and rebase merging are
+off since 2026-10-18), so `--squash` or `--rebase` will be rejected. Once a PR exists, its auto-merge state is user-owned — see
 [Merge authority](#merge-authority) for what that forbids. Merging a `supabase/` change is a live
 clinical-database deploy; treat that merge as production.
 
@@ -336,7 +337,7 @@ tripwire, not a boundary — an expression-built name or a later re-post gets pa
 boundary needs live settings: post required checks from a dedicated GitHub App whose key lives
 in an environment secret limited to `main`, and pin the ruleset to that app.
 
-**Ordinary PRs.** An agent may arm squash auto-merge when it opens the PR (see [Open](#open)).
+**Ordinary PRs.** An agent may arm merge-commit auto-merge (`--merge`) when it opens the PR (see [Open](#open)).
 Merging a PR directly into `main` or any protected branch still needs the user's explicit
 request; the only standing batch authority is [`Clear PRs`](#clear-prs). [`Run PR`](#run-pr)
 never merges and never arms.
@@ -366,7 +367,8 @@ authorization.
 
 ## Landed
 
-A merged PR here may land as a squash commit or an ordinary merge commit. **Decide which by
+Since 2026-10-18 PRs here land only as ordinary merge commits (squash and rebase merging are
+disabled), but older history also contains squash commits. **Decide which by
 parent count, never by assumption:** `git rev-list --parents -n 1 <merge-commit>` prints the
 commit followed by its parents — one parent is a squash (or fast-forward), two is a merge commit.
 Squash-merge history has twice orphaned a late follow-up commit and once needed a fix-forward.

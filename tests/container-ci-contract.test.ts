@@ -56,6 +56,17 @@ describe("container delivery contract", () => {
     expect(read(".github/workflows/docker-image.yml")).toMatch(/ALLOW_LOW_RAM_BUILD=1/);
   });
 
+  it("requires NEXT_PUBLIC_SUPABASE_URL as an explicit app build arg instead of defaulting to production", () => {
+    const dockerfile = read("Dockerfile");
+    expect(dockerfile).toMatch(/^ARG NEXT_PUBLIC_SUPABASE_URL\s*$/m);
+    expect(dockerfile).not.toMatch(/^ARG NEXT_PUBLIC_SUPABASE_URL=/m);
+    expect(dockerfile).toMatch(/if \[ -z "\$\{NEXT_PUBLIC_SUPABASE_URL\}" \]; then[\s\S]*?exit 1/);
+    expect(read(".github/workflows/docker-image.yml")).toMatch(
+      /^\s*NEXT_PUBLIC_SUPABASE_URL=https:\/\/\S+\.supabase\.co\s*$/m,
+    );
+    expect(read("scripts/build-multiplatform.sh")).toContain('--build-arg "NEXT_PUBLIC_SUPABASE_URL=');
+  });
+
   it("keeps sensitive and machine-local files out of Docker build contexts", () => {
     const dockerignore = read(".dockerignore").split(/\r?\n/);
 

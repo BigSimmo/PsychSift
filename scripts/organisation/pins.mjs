@@ -6,8 +6,8 @@
 // This is information for the weekly report and is never a PR block.
 //
 // Pins must name a commit on main (for example the commit a weekly report was generated at).
-// PRs are squash-merged, so a commit that only ever existed on a PR branch is not in main's
-// history; its doc reports "pin not in history" instead of a guess. A shallow clone that does not
+// A commit that only ever existed on a PR branch is not in main's history until that PR merges, and
+// commits from PRs squash-merged before 2026-10-18 (merge commits only since) never reach it; its doc reports "pin not in history" instead of a guess. A shallow clone that does not
 // reach the pin degrades the same way. Everything is read from HEAD, so the answer never depends
 // on today's date.
 import { areasOf, git, mapAtHead } from "./map-placement.mjs";

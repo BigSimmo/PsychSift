@@ -246,7 +246,7 @@ Every remaining tracked document in this category (process, plus the `agents/` r
 - [agents/codex-reasoning-effort.md](agents/codex-reasoning-effort.md) — User-selected model/effort, ordinary-language confirmation and scoped specialist contracts
 - [agents/codex-review-throttling.md](agents/codex-review-throttling.md) — Codex Review Throttling & Thread Resolution — Do not review branches opportunistically.
 - [agents/context7.md](agents/context7.md) — shared library-docs workflow, version matching, authentication and query privacy
-- [agents/cursor-cloud.md](agents/cursor-cloud.md) — Cursor Cloud Specific Instructions — Durable notes for Cloud Agents.
+- [agents/cursor-cloud.md](agents/cursor-cloud.md) — Cursor Cloud Agents Are Prohibited — stub recording that Cursor cloud agents are prohibited.
 - [agents/dead-code-deletion.md](agents/dead-code-deletion.md) — Deleting Code You Believe Is Dead — "Nothing imports it" is necessary and nowhere near sufficient.
 - [agents/external-skill-precedence.md](agents/external-skill-precedence.md) — External Skill Precedence and Evidence — User-global skills and output-style plugins are installed outside this repo and know nothing about its contracts.
 - [agents/pull-request-workflow.md](agents/pull-request-workflow.md) — Pull Request Workflow — The one canonical pull-request rulebook for every AI tool: open, follow CI, review threads, records, merge authority, landed, branch sync, Run PR, Clear PRs, bundling.

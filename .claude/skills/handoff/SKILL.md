@@ -84,8 +84,8 @@ force-push, or discard work.
 7. **Open a PR** with `gh pr create --base main`, body ending with the Claude Code
    attribution line. Write the body from `.github/pull_request_template.md` exactly as
    [Open](../../../docs/agents/pull-request-workflow.md#open) requires — full prose, verbatim Preflight lines checked only
-   where true, a satisfying `RAG impact:` line. On an ordinary PR you may arm squash
-   auto-merge at open (`gh pr merge --squash --auto`)
+   where true, a satisfying `RAG impact:` line. On an ordinary PR you may arm
+   auto-merge at open (`gh pr merge --merge --auto`; merge commits are the only enabled method)
    ([Merge authority](../../../docs/agents/pull-request-workflow.md#merge-authority)).
 8. **Record** the review per [Records](../../../docs/agents/pull-request-workflow.md#records) with `npm run ledger:append`.
 9. **Follow CI while it is useful, then stop** per [Follow CI](../../../docs/agents/pull-request-workflow.md#follow-ci):
