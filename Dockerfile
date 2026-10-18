@@ -10,6 +10,7 @@
 # The publishable key is public by design; pass the real one for a
 # production image:
 #   docker build \
+#     --build-arg NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co \
 #     --build-arg NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_... \
 #     --build-arg MAX_UPLOAD_MB=150 \
 #     --build-arg NEXT_PUBLIC_MAX_UPLOAD_MB=150 \

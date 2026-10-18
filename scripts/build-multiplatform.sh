@@ -1,6 +1,7 @@
 #!/bin/bash
 # Docker multi-platform build script
-# Usage: ./scripts/build-multiplatform.sh [app|worker|all]
+# Usage: NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co ./scripts/build-multiplatform.sh [app|worker|all]
+#   (NEXT_PUBLIC_SUPABASE_URL is required for app/all builds; the Dockerfile has no default.)
 # Requires: docker buildx with multiplatform support enabled
 
 set -e
