@@ -323,6 +323,7 @@
     "20261017120000_teaching_display_revoke_null_creator_guard.sql": "3b92e22983206cbaa8950c07a6b3e6910b3701fa9c49a9f9e5504c232b4397e4",
     "20261017175448_scope_ingestion_claim_atomically.sql": "af192755dd24aa8a6e6146013e1b7abd1b2954a53410c301dedfcb7576c88eba",
     "20261018053558_recheck_ingestion_claim_scope_after_job_lock.sql": "a427b8aacce70579ad26bd701adb65912a345ab78d54e5b34386bbd05d261b6c",
-    "20261018062736_recheck_legacy_ingestion_claim_document_after_job_lock.sql": "39f08a91ed4c15a8aff0dff80341242604101886de873c5cadafa65e9b92e3c8"
+    "20261018062736_recheck_legacy_ingestion_claim_document_after_job_lock.sql": "39f08a91ed4c15a8aff0dff80341242604101886de873c5cadafa65e9b92e3c8",
+    "20261018063556_scoped_atomic_ingestion_recovery.sql": "ec1492dd3b53f6f37e174b54a8d0cab9c2f8a2de163280c47d211a0c52084d35"
   }
 }

@@ -1,0 +1,217 @@
+name: DB canonical zero-storage diagnostic
+
+# Temporary feature-branch diagnostic only. Never merge this replacement.
+on:
+  push:
+    branches: [diag/canonical-db-zero-storage-20261018]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: canonical-db-zero-storage-${{ github.run_id }}
+  cancel-in-progress: false
+
+env:
+  CI: "true"
+  SUPABASE_CLI_VERSION: "2.108.0"
+  SUPABASE_TELEMETRY_DISABLED: "1"
+  DO_NOT_TRACK: "1"
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  db-reset-verify:
+    name: Migration replay diagnostic
+    if: >-
+      github.repository == 'BigSimmo/PsychSift' &&
+      github.event.repository.private == false &&
+      github.ref == 'refs/heads/diag/canonical-db-zero-storage-20261018'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact diagnostic commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node with all remote caches disabled
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+
+      - name: Record exact source and local-only execution scope
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REPOSITORY}" = BigSimmo/PsychSift
+          test "${GITHUB_REF}" = refs/heads/diag/canonical-db-zero-storage-20261018
+          test ! -f .env
+          test ! -f .env.local
+          test ! -f supabase/.temp/project-ref
+          printf 'DIAGNOSTIC_SOURCE %s\n' "${GITHUB_SHA}"
+          sha256sum supabase/schema.sql supabase/roles.sql package-lock.json \
+            supabase/applied-migration-hashes.json scripts/generate-drift-manifest.ts \
+            scripts/check-drift-manifest-freshness.ts scripts/check-chain-mirror-parity.ts
+          docker info --format 'DOCKER_STORAGE_DRIVER {{.Driver}}'
+          df -h /
+
+      # Same npm-prefix installation used by the pinned supabase/setup-cli action.
+      # Its nested setup-bun action uploads a cache by default, so do not invoke it.
+      - name: Install exact CLI and exact project lock on ephemeral disk only
+        run: |
+          set -euo pipefail
+          cli_root="${RUNNER_TEMP}/supabase-cli-2.108.0"
+          npm install --prefix "${cli_root}" --omit=dev --include=optional \
+            --no-audit --no-fund --no-package-lock --offline=false --bin-links=true \
+            "supabase@${SUPABASE_CLI_VERSION}"
+          echo "${cli_root}/node_modules/.bin" >> "${GITHUB_PATH}"
+          test "$("${cli_root}/node_modules/.bin/supabase" --version)" = "${SUPABASE_CLI_VERSION}"
+          npm ci --include=dev --no-audit --no-fund
+
+      - name: Create isolated emulator network and isolate bare-image docker runs
+        run: |
+          set -euo pipefail
+          db_network="psychsift-db-diagnostic-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          docker network create --internal --label psychsift.task=canonical-db-zero-storage "${db_network}"
+          test "$(docker network inspect --format '{{.Internal}}' "${db_network}")" = true
+          echo "DB_DIAGNOSTIC_NETWORK=${db_network}" >> "${GITHUB_ENV}"
+          echo "DB_DIAGNOSTIC_REAL_DOCKER=$(command -v docker)" >> "${GITHUB_ENV}"
+          mkdir -p "${RUNNER_TEMP}/db-diagnostic-bin"
+          cat > "${RUNNER_TEMP}/db-diagnostic-bin/docker" <<'SH'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          if [[ "${1:-}" == run ]]; then
+            shift
+            for argument in "$@"; do
+              case "${argument}" in --network|--network=*) exit 2;; esac
+            done
+            exec "${DB_DIAGNOSTIC_REAL_DOCKER}" run --network none "$@"
+          fi
+          exec "${DB_DIAGNOSTIC_REAL_DOCKER}" "$@"
+          SH
+          chmod 700 "${RUNNER_TEMP}/db-diagnostic-bin/docker"
+          echo "${RUNNER_TEMP}/db-diagnostic-bin" >> "${GITHUB_PATH}"
+
+      - name: Start local emulator and bootstrap canonical default ACLs
+        run: |
+          set -euo pipefail
+          bootstrap_dir="$(mktemp -d)"
+          mv supabase/roles.sql "${bootstrap_dir}/roles.sql"
+          mv supabase/migrations "${bootstrap_dir}/migrations"
+          mkdir supabase/migrations
+          restore_bootstrap() {
+            rmdir supabase/migrations
+            mv "${bootstrap_dir}/migrations" supabase/migrations
+            mv "${bootstrap_dir}/roles.sql" supabase/roles.sql
+          }
+          trap restore_bootstrap EXIT
+          supabase --network-id "${DB_DIAGNOSTIC_NETWORK}" start
+          restore_bootstrap
+          trap - EXIT
+          docker ps -q > "${RUNNER_TEMP}/diagnostic-container-ids"
+          test -s "${RUNNER_TEMP}/diagnostic-container-ids"
+          while read -r container_id; do
+            docker inspect --format '{{json .NetworkSettings.Networks}}' "${container_id}" \
+              | python3 -c 'import json,os,sys; networks=json.load(sys.stdin); assert list(networks)==[os.environ["DB_DIAGNOSTIC_NETWORK"]],networks'
+          done < "${RUNNER_TEMP}/diagnostic-container-ids"
+          db_container="$(docker ps --format '{{.Names}}' --filter 'name=^supabase_db_' | head -n 1)"
+          test -n "${db_container}"
+          docker exec -i "${db_container}" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/roles.sql
+
+      - name: Verify canonical migration replay
+        id: replay
+        run: supabase migration up --local
+
+      - name: Run every canonical SQL behaviour test against the chain
+        id: sql-tests
+        run: |
+          set -euo pipefail
+          db_container="$(docker ps --format '{{.Names}}' --filter 'name=^supabase_db_' | head -n 1)"
+          test -n "${db_container}"
+          for test_file in tests/sql/*.sql; do
+            echo "::group::${test_file}"
+            docker exec -i "${db_container}" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -q -1 < "${test_file}"
+            echo "::endgroup::"
+          done
+
+      - name: Pull original immutable default image
+        run: docker pull supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83
+
+      - name: Regenerate manifest with unchanged official generator and default image
+        id: generate
+        run: |
+          cp supabase/drift-manifest.json "${RUNNER_TEMP}/committed-drift-manifest.json"
+          npm run drift:manifest
+
+      - name: Verify strict canonical manifest freshness
+        id: freshness
+        run: |
+          npm run check:drift-manifest-freshness -- \
+            --committed "${RUNNER_TEMP}/committed-drift-manifest.json" \
+            --generated supabase/drift-manifest.json
+
+      # A stale manifest remains a failed job. Capture parity independently so
+      # the first diagnostic still proves the chain against the generated mirror.
+      - name: Capture canonical chain snapshot even when freshness is red
+        id: chain-snapshot
+        if: ${{ !cancelled() && steps.generate.outcome == 'success' && steps.sql-tests.outcome == 'success' }}
+        run: |
+          set -euo pipefail
+          db_container="$(docker ps --format '{{.Names}}' --filter 'name=^supabase_db_' | head -n 1)"
+          test -n "${db_container}"
+          docker exec -i "${db_container}" psql -U postgres -d postgres -tA -v ON_ERROR_STOP=1 \
+            -c 'select public.schema_drift_snapshot()::text;' > "${RUNNER_TEMP}/chain-snapshot.json"
+          test -s "${RUNNER_TEMP}/chain-snapshot.json"
+
+      - name: Verify canonical strict chain-mirror parity
+        id: parity
+        if: ${{ !cancelled() && steps.chain-snapshot.outcome == 'success' }}
+        run: |
+          npm run check:chain-mirror-parity -- \
+            --chain "${RUNNER_TEMP}/chain-snapshot.json" \
+            --mirror-manifest supabase/drift-manifest.json --strict
+
+      - name: Emit bounded byte-exact generated manifest through free logs only
+        if: ${{ !cancelled() && steps.generate.outcome == 'success' }}
+        run: |
+          python3 - <<'PY'
+          import base64,gzip,hashlib,json,os,pathlib
+          raw=pathlib.Path('supabase/drift-manifest.json').read_bytes()
+          assert len(raw)<=2*1024*1024, 'raw manifest exceeds 2MiB log transport bound'
+          manifest=json.loads(raw)
+          assert manifest['postgres_image']=='supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83'
+          assert manifest['generator']=='scripts/generate-drift-manifest.ts'
+          packed=gzip.compress(raw,mtime=0)
+          assert len(packed)<=512*1024, 'compressed manifest exceeds 512KiB log transport bound'
+          encoded=base64.b64encode(packed).decode('ascii')
+          chunks=[encoded[i:i+4096] for i in range(0,len(encoded),4096)]
+          meta={'version':1,'commit':os.environ['GITHUB_SHA'],'raw_bytes':len(raw),'raw_sha256':hashlib.sha256(raw).hexdigest(),'gzip_bytes':len(packed),'gzip_sha256':hashlib.sha256(packed).hexdigest(),'chunks':len(chunks)}
+          print('PSYCHSIFT_MANIFEST_META '+json.dumps(meta,sort_keys=True,separators=(',',':')))
+          for index,chunk in enumerate(chunks,1):
+            print(f'PSYCHSIFT_MANIFEST_CHUNK {index:04d}/{len(chunks):04d} {chunk}')
+          print('PSYCHSIFT_MANIFEST_END '+meta['raw_sha256'])
+          PY
+
+      - name: Report actual gate outcomes without accepting failed gates
+        if: always()
+        env:
+          REPLAY: ${{ steps.replay.outcome }}
+          SQL_TESTS: ${{ steps.sql-tests.outcome }}
+          GENERATE: ${{ steps.generate.outcome }}
+          FRESHNESS: ${{ steps.freshness.outcome }}
+          PARITY: ${{ steps.parity.outcome }}
+        run: |
+          python3 - <<'PY'
+          import json,os
+          print('CANONICAL_DB_GATE_OUTCOMES '+json.dumps({key:os.environ[key] for key in ['REPLAY','SQL_TESTS','GENERATE','FRESHNESS','PARITY']},sort_keys=True))
+          PY
+
+      - name: Stop only task-local platform and isolated network
+        if: always()
+        run: |
+          set -euo pipefail
+          supabase stop --no-backup
+          if test -n "${DB_DIAGNOSTIC_NETWORK:-}"; then
+            docker network rm "${DB_DIAGNOSTIC_NETWORK}"
+          fi
