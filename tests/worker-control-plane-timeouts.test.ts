@@ -83,10 +83,11 @@ describe("worker pause and finite control-plane deadlines (R01, R18, R34)", () =
 
   it("resolves finite control-plane and Supabase client timeouts with safe defaults", () => {
     expect(WORKER_CONTROL_PLANE_TIMEOUT_MS).toBe(30_000);
-    expect(WORKER_SUPABASE_TIMEOUT_MS).toBe(120_000);
+    expect(WORKER_SUPABASE_TIMEOUT_MS).toBe(240_000);
     expect(resolveWorkerControlPlaneTimeoutMs({})).toBe(30_000);
     expect(resolveWorkerControlPlaneTimeoutMs({ WORKER_CONTROL_PLANE_TIMEOUT_MS: "15000" })).toBe(15_000);
-    expect(resolveWorkerSupabaseTimeoutMs({})).toBe(120_000);
+    expect(resolveWorkerSupabaseTimeoutMs({})).toBe(240_000);
+    expect(resolveWorkerSupabaseTimeoutMs({ WORKER_DATA_PLANE_TIMEOUT_MS: "300000" })).toBe(300_000);
     expect(resolveWorkerSupabaseTimeoutMs({ WORKER_SUPABASE_TIMEOUT_MS: "90000" })).toBe(90_000);
   });
 

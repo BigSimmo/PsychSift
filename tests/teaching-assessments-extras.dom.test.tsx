@@ -68,7 +68,12 @@ describe("consultant inbox", () => {
     fireEvent.click(screen.getByRole("button", { name: /Dr Frankie Mulga · EPA 2/ }));
     const sheet = await screen.findByTestId("assessments-inbox-feedback");
     const send = within(sheet).getByTestId("assessments-inbox-send");
-    expect(send).toBeDisabled();
+    expect(send).not.toBeDisabled();
+    expect(send).toHaveAttribute("aria-disabled", "true");
+    send.focus();
+    expect(send).toHaveFocus();
+    expect(send).toHaveAccessibleDescription();
+    fireEvent.click(send);
     expect(within(sheet).getByText("Choose the supervision the doctor needed.")).toBeInTheDocument();
     fireEvent.click(within(sheet).getByRole("radio", { name: "Proximal" }));
     fireEvent.click(within(sheet).getByRole("radio", { name: /I directly observed some part of it/ }));
@@ -76,7 +81,12 @@ describe("consultant inbox", () => {
       target: { value: "Calm review of bed 12 overnight" },
     });
     expect(within(sheet).getByRole("alert")).toHaveTextContent("catches some details, not all");
-    expect(send).toBeDisabled();
+    expect(send).not.toBeDisabled();
+    expect(send).toHaveAttribute("aria-disabled", "true");
+    send.focus();
+    expect(send).toHaveFocus();
+    expect(send).toHaveAccessibleDescription();
+    fireEvent.click(send);
     fireEvent.change(within(sheet).getByLabelText(/A few lines/), { target: { value: "Calm, clear escalation." } });
     expect(within(sheet).queryByRole("alert")).toBeNull();
     fireEvent.click(send);
@@ -668,7 +678,12 @@ describe("term overview", () => {
     expect(send).toHaveTextContent("Send 2 reminders");
     fireEvent.click(within(bulk).getByRole("checkbox", { name: /Dr Morgan Grevillea/ }));
     fireEvent.click(within(bulk).getByRole("checkbox", { name: /Dr Robin Wattle/ }));
-    expect(send).toBeDisabled();
+    expect(send).not.toBeDisabled();
+    expect(send).toHaveAttribute("aria-disabled", "true");
+    send.focus();
+    expect(send).toHaveFocus();
+    expect(send).toHaveAccessibleDescription();
+    fireEvent.click(send);
     expect(within(bulk).getByText("Tick at least one supervisor.")).toBeInTheDocument();
     fireEvent.click(within(bulk).getByRole("checkbox", { name: /Dr Morgan Grevillea/ }));
     fireEvent.click(send);
@@ -694,7 +709,7 @@ describe("term overview", () => {
     expect(
       await screen.findByText("Reminder to Dr Morgan Grevillea about Dr Taylor Kwongan's mid-term"),
     ).toBeInTheDocument();
-    expect(within(page).getByTestId("assessments-overview-doctor-remind")).toBeDisabled();
+    expect(within(page).getByTestId("assessments-overview-doctor-remind")).toHaveAttribute("aria-disabled", "true");
     expect(within(page).getByText("Reminded today. One reminder a day per form.")).toBeInTheDocument();
     expect(within(page).getByText("Dr Morgan Grevillea reminded")).toBeInTheDocument();
   });

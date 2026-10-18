@@ -13,6 +13,30 @@ installer. The direct installer alone permits the documented inherited
 `GH_TOKEN`/`OPENAI_BASE_URL` exit `2` path; that remains a failed raw boundary.
 No cache, scoped profile or child scrub makes the raw parent clean.
 
+## Optional Python 3.12 dependency lock
+
+The selected legacy bootstrap installs `worker/python/requirements-cloud.txt`
+with `--require-hashes`. Its source is `worker/python/requirements-cloud.in`,
+which includes the shared OCR requirements and constrains Cython to the range
+required by quicksectx 0.4.1 (`>=0.25,<3.2.0`). Regenerate with Python 3.12:
+
+```bash
+PYTHON_BIN=python3.12 npm run generate:worker-python-cloud-lock
+```
+
+The native generator uses pip-tools 7.6.0, resolves dependencies and emits hashes;
+do not hand-edit versions or hashes in the generated lock. After an authorised,
+coordinated regeneration, install that exact file in a fresh Python 3.12 venv
+with `python -m pip install --require-hashes -r worker/python/requirements-cloud.txt`,
+then require `python -m pip check` to succeed. A static lock-header check alone
+does not prove dependency resolution or installation.
+
+The default worker Docker image uses Python 3.11 and
+`worker/python/requirements.txt`, generated from `requirements.in`. An optional
+Cloud-lock failure does not establish a default worker failure. Never install
+the production lock on Python 3.12 as a substitute: medspaCy has different
+spaCy constraints for the two Python versions.
+
 ## Select one checkout and config home
 
 Setup binds its generated `~/.clinical-kb-codex-cloud.sh` and command shims to

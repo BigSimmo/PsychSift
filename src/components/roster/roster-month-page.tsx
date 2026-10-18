@@ -240,7 +240,7 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
   const assignments = useRosterRead(sheetDate ? oneTeamId : null, "assignments", sheetRange);
   const links = useRosterLinks();
   const settings = useRosterSettings();
-  // Rotations (and later booked courses): empty for readers outside the rotation preferences preview.
+  // Successful sources remain visible even when another calendar source fails.
   const calendar = useWorkCalendarEntries();
 
   const holidays = WA_PUBLIC_HOLIDAY_DATES;
@@ -353,6 +353,21 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
     <>
       {notice ? <ModeNotice>{notice}</ModeNotice> : null}
       {shifts.teamMessage ? <ModeNotice tone="warning">{shifts.teamMessage}</ModeNotice> : null}
+      {(
+        [
+          ["rotations", "Rotations"],
+          ["bookings", "Course bookings"],
+        ] as const
+      ).map(([id, label]) =>
+        calendar.sources[id]?.status === "error" ? (
+          <ModeNotice key={id} tone="warning" testId={`roster-month-source-${id}`}>
+            {label} could not be loaded. Your shifts and other loaded calendar entries are still shown.{" "}
+            <WorkButton variant="secondary" onClick={() => calendar.retry(id)}>
+              Retry {label.toLowerCase()}
+            </WorkButton>
+          </ModeNotice>
+        ) : null,
+      )}
     </>
   );
 

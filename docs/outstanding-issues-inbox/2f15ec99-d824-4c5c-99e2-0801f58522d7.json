@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "id": "2f15ec99-d824-4c5c-99e2-0801f58522d7",
+  "createdOn": "2026-10-18",
+  "action": "update",
+  "payload": {
+    "id": "#Z3GZ5P",
+    "summary": "DSM-5-TR specifier catalogue: 515 of 585 items await clinician review, including the reset DID possession-form item",
+    "detail": "PS-062 correction verified 2026-10-18: the owner reset the DID possession-form sign-off under docs/decisions/2026-10-17-agent-recorded-therapy-and-did-sign-offs-reset.md. The previous statement that all 71 written disorder-specific items were signed is superseded: 70 remain signed and one written DID item plus 514 unwritten placeholders await review (515 pending). The 18 universal specifiers remain separate. Preserve all earlier worklist and clinician-only acceptance requirements; no new clinical approval is supplied.",
+    "baseRowFingerprint": "4d06e751ebc35fa92082f662f62fdf7b5d000d3e6bacf75bce1ed246e93dc09b",
+    "targetUlid": "01M1XS1N1YZ3GZ5PDNEACPWDY8"
+  }
+}

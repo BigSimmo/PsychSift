@@ -330,12 +330,24 @@ export function buildOwnerTrainingAssessments(
   // Pro rata for part-time, rounded up so the page never asks for a fraction of an EPA.
   const minimumEpas = currentRotation ? Math.max(1, Math.ceil(2 * currentRotation.fte)) : 2;
 
-  const epas: TrainingEpa[] = epaRecords.map((record) => ({
+  // Undated records stay in progress; attained records count only inside the current
+  // rotation and never in the future. With no current rotation, no attainment is credited.
+  const rotationEpas = epaRecords.filter((record) => {
+    if (!record.achievedAt) return true;
+    if (!currentRotation) return false;
+    const attainedOn = perthDateOf(record.achievedAt);
+    return (
+      attainedOn >= currentRotation.startsOn &&
+      attainedOn <= today &&
+      (currentRotation.endsOn === null || attainedOn <= currentRotation.endsOn)
+    );
+  });
+  const epas: TrainingEpa[] = rotationEpas.map((record) => ({
     id: record.id,
     title: record.milestoneTitle,
     wbasLogged: null,
     assessor: null,
-    attainedOn: record.achievedAt ? record.achievedAt.slice(0, 10) : null,
+    attainedOn: record.achievedAt ? perthDateOf(record.achievedAt) : null,
   }));
 
   return {

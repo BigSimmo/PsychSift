@@ -37,14 +37,29 @@ function defaultWaitTimeoutFor(mode) {
   return mode === "exclusive" ? defaultExclusiveWaitTimeoutMs : defaultSharedWaitTimeoutMs;
 }
 
+function linuxProcessIsDefunct(status) {
+  // A zombie group leader can still have live worker threads after pthread_exit.
+  // Reclaim only a known terminal state with a positively identified sole thread.
+  return /^State:[ \t]+[ZX]\b/m.test(status) && /^Threads:[ \t]+1[ \t]*$/m.test(status);
+}
+
 function processIsAlive(pid) {
   if (!Number.isInteger(pid) || pid <= 0) return false;
   try {
     process.kill(pid, 0);
-    return true;
   } catch (error) {
-    return error?.code === "EPERM";
+    if (error?.code !== "EPERM") return false;
   }
+  if (process.platform === "linux") {
+    try {
+      // kill(pid, 0) also succeeds for unreaped zombies. Require that no worker
+      // threads remain before normal stale-owner pruning can reclaim the lease.
+      if (linuxProcessIsDefunct(readFileSync(`/proc/${pid}/status`, "utf8"))) return false;
+    } catch {
+      // Unavailable procfs must not weaken the existing kill/EPERM boundary.
+    }
+  }
+  return true;
 }
 
 function sleepSync(milliseconds) {
@@ -512,6 +527,7 @@ export const testRunLockInternals = {
   coordinatorPaths,
   defaultWaitTimeoutFor,
   isCoordinator,
+  linuxProcessIsDefunct,
   lockPathFor,
   processIsAlive,
   readOwner,

@@ -1,6 +1,6 @@
 # Clinical governance incident runbooks
 
-Last reviewed: 2026-10-18
+Last reviewed: 2026-10-18 (repository contracts; not live execution)
 
 These are short operator checklists. Preserve evidence and identifiers, but do not copy patient-identifying question or answer prose into tickets or chat.
 
@@ -16,7 +16,8 @@ These are short operator checklists. Preserve evidence and identifiers, but do n
    ```sql
    SELECT id, interaction_id, created_at, feedback_category, cited_source_ids, source_ids, route, model, owner_id
    FROM public.rag_answer_feedback
-   WHERE id = '<feedback-id>' OR interaction_id = '<interaction-id>';
+   WHERE interaction_id = '<interaction-uuid>'::uuid;
+   -- or, with only the feedback row: WHERE id = '<feedback-uuid>'::uuid
    ```
    The table stores an answer hash, not answer prose. There is no configuration-posture column; record the active release from `/api/health` (`deploymentCommitSha`) instead.
 2. If harm is plausible, disable the affected answer mode or narrow its source scope; keep direct source browsing available:
@@ -41,8 +42,8 @@ These are short operator checklists. Preserve evidence and identifiers, but do n
    - If the app is unavailable, run the same function in the Supabase SQL editor (it is granted to `service_role` only). `superseded` requires `p_replacement_document_id`; `decommissioned` does not:
    ```sql
    SELECT public.record_source_review_v2(
-     p_document_id => '<document-uuid>',
-     p_reviewer_id => '<owner-uuid>',
+     p_document_id => '<document-uuid>'::uuid,
+     p_reviewer_id => '<document-owner-reviewer-uuid>'::uuid,
      p_decision => 'decommissioned',
      p_reason => '<ticket-or-incident-ref>',
      p_evidence_references => ARRAY['<ticket-or-incident-ref>'],
@@ -73,7 +74,7 @@ These are short operator checklists. Preserve evidence and identifiers, but do n
    FROM public.documents d
    WHERE d.id = '<document-uuid>';
    ```
-   Confirm with `railway variables --environment production --service PsychSift` that offline mode is still set, and with a synthetic probe question sent through the app (it calls `POST /api/answer`), that the quarantined `document_id` is not returned in retrieval citations before lifting `RAG_PROVIDER_MODE=offline`.
+   Before lifting `RAG_PROVIDER_MODE=offline`, require retrieval evidence rather than the containment setting itself: `chunk_count` above must be `0`, or the restored retrieval path must be shown to exclude the quarantined `document_id` from the `sources` it returns (a non-offline staging probe; the answer's `citations` are not enough, because retrieved results reach answer generation whether or not they are cited). An `/api/answer` probe made while offline, or reading the Railway variable, only confirms the temporary containment. To read that one setting, print only it (`railway variables --environment production --service PsychSift --kv | grep '^RAG_PROVIDER_MODE='`), never the whole service environment, which contains credentials.
 5. Re-run source-governance and focused answer tests. Live data repair or migration requires explicit approval (if the primary owner is unavailable, the backup operator must leave the source quarantined and `rag_response_cache` purged until explicit approval is obtained):
    ```bash
    npm run audit:source-governance        # reads the live database: needs the owner's explicit approval

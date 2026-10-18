@@ -286,6 +286,15 @@ Every remaining tracked document in this category (process, plus the `agents/` r
 - [plans/edge-ingestion-overhaul-3pr-plan.md](plans/edge-ingestion-overhaul-3pr-plan.md) — Edge Ingestion Overhaul — 3-PR Execution Plan — Status: Planning only.
 - [plans/tooling-activation-implementation-plan.md](plans/tooling-activation-implementation-plan.md) — Tooling activation — implementation plan — Status: local workstreams (WS-B, WS-C) implemented 2026-08-01;
 
+## Full Deep audit remediation (2026-10-17)
+
+- [Remediation spec](audit/2026-10-17-full-deep-remediation-spec.md) — observed defects and acceptance expectations.
+- [Parallel implementation plan](superpowers/plans/2026-10-17-full-deep-remediation.md) — six implementation lanes, dependencies and review gates.
+- [Local implementation results](audit/2026-10-17-full-deep-remediation-results.md) — issue disposition, verification limits and operator handoff.
+- [Clinical release handoff](governance/clinical-release-remediation-handoff-2026-10-17.md) — genuine outstanding privacy and clinical evidence.
+- [Physiological calculator hold](governance/physiological-calculator-hold-2026-10-17.md) — containment pending sourced clinical review.
+- [Cache freshness](rag-behaviour/cache-freshness.md) — durable revision fences and mixed-deployment limits.
+
 ## Plans and workstreams (living)
 
 - [maturity-backlog-workorders.md](maturity-backlog-workorders.md) — actionable work orders tracking the repository-maturity audit backlog
