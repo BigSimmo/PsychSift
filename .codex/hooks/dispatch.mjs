@@ -53,6 +53,9 @@ export function normalize(payload) {
   return p;
 }
 
+// `gh` accepts its inherited `-R/--repo` selector before or between the subcommands.
+const GH_FLAGS = String.raw`(?:\s+(?:-R\s*\S+|--repo(?:=|\s+)\S+|--?[\w-]+(?:=\S*)?))*`;
+const GH_PR_CREATE = new RegExp(String.raw`(?:^|[;&|\s])gh${GH_FLAGS}\s+pr${GH_FLAGS}\s+create(?:\s|$)`);
 const GIT_PUSH = /git(?:\s+(?:-[Cc]\s*(?:"[^"]*"|'[^']*'|\S+)|--?[\w-]+(?:=\S*)?))*\s+push(?:\s|$)/;
 // PATH `bash` on Windows is usually the WSL launcher (System32), which cannot see this checkout's
 // Windows paths; prefer the pinned Git for Windows bash and use PATH only when it is absent.
@@ -112,7 +115,7 @@ export function plan(event, payload) {
   }
   if (
     event === "PostToolUse" &&
-    ((shell && /gh\s+pr\s+create/.test(command)) || /create_?pull_?request$/i.test(p.tool_name ?? ""))
+    ((shell && GH_PR_CREATE.test(command)) || /create_?pull_?request$/i.test(p.tool_name ?? ""))
   )
     return [{ file: ".claude/hooks/pr-handoff-stop.sh", args: ["post"] }];
   if (event === "PreCompact") return [{ file: ".claude/hooks/precompact-issues-capture.sh", args: [] }];
