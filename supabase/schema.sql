@@ -124,7 +124,8 @@ create table if not exists public.documents (
     end
   ) stored,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  mutation_id uuid not null default gen_random_uuid()
 );
 
 create table if not exists public.document_pages (
@@ -922,6 +923,17 @@ begin
 end;
 $$;
 
+create or replace function public.set_document_mutation_id()
+returns trigger
+language plpgsql
+set search_path = public, extensions, pg_temp
+as $$
+begin
+  new.mutation_id = gen_random_uuid();
+  return new;
+end;
+$$;
+
 create or replace function public.consume_api_rate_limit(
   p_owner_id uuid,
   p_bucket text,
@@ -1078,6 +1090,11 @@ drop trigger if exists documents_updated_at on public.documents;
 create trigger documents_updated_at
 before update on public.documents
 for each row execute function public.set_updated_at();
+
+drop trigger if exists documents_mutation_id on public.documents;
+create trigger documents_mutation_id
+before update on public.documents
+for each row execute function public.set_document_mutation_id();
 
 drop trigger if exists ingestion_jobs_updated_at on public.ingestion_jobs;
 create trigger ingestion_jobs_updated_at
@@ -34921,3 +34938,202 @@ end $$;
 alter function public.claim_ingestion_jobs(text, integer, integer) owner to postgres;
 revoke all on function public.claim_ingestion_jobs(text, integer, integer) from public, anon, authenticated;
 grant execute on function public.claim_ingestion_jobs(text, integer, integer) to service_role;
+
+-- PS-047: commit the CME milestone and registrar mirror in one transaction.
+-- Merge only after the owner explicitly approves this database change/window.
+-- Service-role-only: application authentication supplies the owner identity.
+create or replace function public.mutate_owner_training_milestone(
+  p_owner_id uuid,
+  p_id uuid,
+  p_operation text,
+  p_milestone jsonb,
+  p_registrar jsonb
+) returns jsonb
+language plpgsql
+set search_path = ''
+as $$
+declare
+  v_row public.cme_training_milestones%rowtype;
+  v_count integer;
+  v_deleted integer;
+  v_registrar_id uuid;
+begin
+  if p_owner_id is null or p_id is null or p_operation not in ('create', 'update', 'delete') or p_operation is null then
+    raise exception 'invalid training milestone mutation' using errcode = '22023';
+  end if;
+  -- Serialize this owner's writes, including the maximum-row check.
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('training-milestone:' || p_owner_id::text, 0));
+  if p_operation = 'delete' then
+    delete from public.cme_training_milestones where id = p_id and owner_id = p_owner_id;
+    get diagnostics v_count = row_count;
+    delete from public.registrar_training_milestones where id = p_id and registrar_id = p_owner_id;
+    get diagnostics v_deleted = row_count;
+    if v_count + v_deleted = 0 then
+      raise exception 'milestone not found' using errcode = 'P0002';
+    end if;
+    return pg_catalog.jsonb_build_object('deleted', true);
+  end if;
+
+  if p_operation = 'create' then
+    select count(*) into v_count from public.cme_training_milestones where owner_id = p_owner_id;
+    if v_count >= 200 then raise exception 'training milestone limit reached' using errcode = '54000'; end if;
+    insert into public.cme_training_milestones (id, owner_id, label, due_kind, due_fte_months, due_on, completed_on)
+    values (p_id, p_owner_id, p_milestone->>'label', p_milestone->>'due_kind',
+      (p_milestone->>'due_fte_months')::numeric, (p_milestone->>'due_on')::date, (p_milestone->>'completed_on')::date)
+    returning * into v_row;
+  else
+    update public.cme_training_milestones set
+      label = p_milestone->>'label', due_kind = p_milestone->>'due_kind',
+      due_fte_months = (p_milestone->>'due_fte_months')::numeric,
+      due_on = (p_milestone->>'due_on')::date, completed_on = (p_milestone->>'completed_on')::date
+    where id = p_id and owner_id = p_owner_id returning * into v_row;
+    if not found then
+      -- A registrar-only record retains its own code and training stage.
+      update public.registrar_training_milestones set milestone_title = p_registrar->>'milestone_title',
+        achieved_at = (p_registrar->>'achieved_at')::timestamptz, evidence_summary = p_registrar->>'evidence_summary'
+      where id = p_id and registrar_id = p_owner_id returning id into v_registrar_id;
+      if not found then raise exception 'milestone not found' using errcode = 'P0002'; end if;
+      return p_milestone || pg_catalog.jsonb_build_object('id', p_id);
+    end if;
+  end if;
+
+  insert into public.registrar_training_milestones (id, registrar_id, milestone_code, milestone_title, stage, achieved_at, evidence_summary)
+  values (p_id, p_owner_id, p_registrar->>'milestone_code', p_registrar->>'milestone_title',
+    p_registrar->>'stage', (p_registrar->>'achieved_at')::timestamptz, p_registrar->>'evidence_summary')
+  on conflict (id) do update set milestone_code = excluded.milestone_code, milestone_title = excluded.milestone_title,
+    stage = excluded.stage, achieved_at = excluded.achieved_at, evidence_summary = excluded.evidence_summary
+  where public.registrar_training_milestones.registrar_id = p_owner_id
+  returning id into v_registrar_id;
+  if not found then raise exception 'milestone identity conflict' using errcode = '23505'; end if;
+  return pg_catalog.to_jsonb(v_row);
+end;
+$$;
+revoke all on function public.mutate_owner_training_milestone(uuid, uuid, text, jsonb, jsonb) from public, anon, authenticated;
+grant execute on function public.mutate_owner_training_milestone(uuid, uuid, text, jsonb, jsonb) to service_role;
+
+-- Draft only. Merge applies this to production: specific owner approval and an approved window required.
+-- At-least-once: a crash after push acceptance but before acknowledgement can duplicate that device.
+set local lock_timeout = '5s';
+set local statement_timeout = '30s';
+
+create table public.roster_offer_alert_outbox (
+  open_shift_id uuid primary key references public.roster_open_shifts(id) on delete cascade,
+  service_id uuid not null references public.on_call_services(id) on delete cascade,
+  actor_id uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null,
+  initialized boolean not null default false,
+  completed_at timestamptz,
+  available_at timestamptz not null default now(),
+  lease_token uuid,
+  lease_until timestamptz
+);
+create index roster_offer_alert_due on public.roster_offer_alert_outbox(available_at,created_at)
+  where completed_at is null;
+create table public.roster_offer_alert_devices (
+  open_shift_id uuid not null references public.roster_offer_alert_outbox(open_shift_id) on delete cascade,
+  subscription_id uuid not null references public.web_push_subscriptions(id) on delete cascade,
+  owner_id uuid not null references auth.users(id) on delete cascade,
+  outcome text not null default 'pending' check (outcome in ('pending','sent','skipped')),
+  attempts integer not null default 0,
+  available_at timestamptz not null default now(),
+  primary key(open_shift_id,subscription_id)
+);
+alter table public.roster_offer_alert_outbox owner to postgres;
+alter table public.roster_offer_alert_devices owner to postgres;
+alter table public.roster_offer_alert_outbox enable row level security;
+alter table public.roster_offer_alert_devices enable row level security;
+revoke all on public.roster_offer_alert_outbox, public.roster_offer_alert_devices from public,anon,authenticated;
+grant all on public.roster_offer_alert_outbox, public.roster_offer_alert_devices to service_role;
+
+-- Idempotency keys are inserted in the same transaction as open.post. Never enqueue old posts/backfill staff.
+create function public.enqueue_roster_offer_alert() returns trigger
+language plpgsql security invoker set search_path = public,pg_temp as $$
+begin
+  insert into public.roster_offer_alert_outbox(open_shift_id,service_id,actor_id,expires_at)
+  select o.id,o.service_id,new.posted_by,least(o.starts_at,now()+interval '6 hours')
+  from public.roster_open_shifts o
+  where o.id=new.open_shift_id and o.service_id=new.service_id and o.status='open'
+    and o.starts_at>now() and new.posted_by is not null
+  on conflict do nothing;
+  return new;
+end $$;
+alter function public.enqueue_roster_offer_alert() owner to postgres;
+revoke all on function public.enqueue_roster_offer_alert() from public,anon,authenticated;
+grant execute on function public.enqueue_roster_offer_alert() to service_role;
+create trigger enqueue_roster_offer_alert after insert on public.roster_open_post_keys
+  for each row execute function public.enqueue_roster_offer_alert();
+
+-- Service-only, invoker privileges. All operations after claim are fenced by an expiring random token.
+create function public.roster_offer_alert_work(
+  p_operation text, p_open_shift_id uuid default null, p_token uuid default null,
+  p_owner_ids uuid[] default null, p_subscription_id uuid default null, p_outcome text default null
+) returns jsonb language plpgsql security invoker set search_path=public,pg_temp as $$
+declare v_event public.roster_offer_alert_outbox; v_result jsonb; v_now timestamptz := clock_timestamp();
+begin
+  if p_operation='claim' then
+    -- Bounded TTL cleanup includes completed events and cascades device receipts.
+    delete from public.roster_offer_alert_outbox where open_shift_id in (
+      select open_shift_id from public.roster_offer_alert_outbox where expires_at<=v_now limit 500
+    );
+    select q.* into v_event from public.roster_offer_alert_outbox q
+      join public.roster_open_shifts o on o.id=q.open_shift_id and o.service_id=q.service_id
+      where q.completed_at is null and q.expires_at>v_now and q.available_at<=v_now
+        and (q.lease_until is null or q.lease_until<=v_now) and o.status='open'
+        and (p_open_shift_id is null or q.open_shift_id=p_open_shift_id)
+      order by q.available_at,q.created_at for update of q skip locked limit 1;
+    if not found then return null; end if;
+    update public.roster_offer_alert_outbox set lease_token=gen_random_uuid(),lease_until=v_now+interval '10 minutes'
+      where open_shift_id=v_event.open_shift_id returning * into v_event;
+    return to_jsonb(v_event);
+  end if;
+  select * into v_event from public.roster_offer_alert_outbox where open_shift_id=p_open_shift_id
+    and lease_token=p_token for update;
+  -- A row-lock wait may outlive the lease: validate actual wall clock after acquiring it.
+  v_now := clock_timestamp();
+  if not found or v_event.lease_until<=v_now or v_event.expires_at<=v_now then return null; end if;
+  if p_operation='prepare' then
+    if coalesce(cardinality(p_owner_ids),0)>500 then raise exception 'roster_limit'; end if;
+    if not v_event.initialized then
+      insert into public.roster_offer_alert_devices(open_shift_id,subscription_id,owner_id)
+        select v_event.open_shift_id,s.id,s.owner_id from public.web_push_subscriptions s
+        join public.on_call_service_members m on m.user_id=s.owner_id and m.service_id=v_event.service_id
+        where s.owner_id=any(coalesce(p_owner_ids,'{}'::uuid[])) and s.owner_id<>v_event.actor_id
+          and m.revoked_at is null on conflict do nothing;
+      update public.roster_offer_alert_outbox set initialized=true where open_shift_id=p_open_shift_id;
+    end if;
+    return 'true'::jsonb;
+  elsif p_operation='devices' then
+    select coalesce(jsonb_agg(to_jsonb(d)),'[]'::jsonb) into v_result from (
+      select subscription_id,owner_id from public.roster_offer_alert_devices
+      where open_shift_id=p_open_shift_id and outcome='pending' and available_at<=v_now
+      order by subscription_id limit 25
+    ) d;
+    return v_result;
+  elsif p_operation='ack' then
+    if p_outcome not in ('sent','skipped','retry') or p_outcome is null then raise exception 'roster_invalid_request'; end if;
+    update public.roster_offer_alert_devices set
+      outcome=case when p_outcome='retry' then 'pending' else p_outcome end,
+      available_at=v_now+make_interval(secs=>least(900,60*power(2,least(attempts,4)))::integer),
+      attempts=attempts+1
+      where open_shift_id=p_open_shift_id and subscription_id=p_subscription_id and outcome='pending';
+    return to_jsonb(found);
+  elsif p_operation='release' then
+    update public.roster_offer_alert_outbox set lease_token=null,lease_until=null,
+      completed_at=case when initialized and not exists(select 1 from public.roster_offer_alert_devices
+        where open_shift_id=p_open_shift_id and outcome='pending') then v_now else null end,
+      available_at=coalesce((select min(available_at) from public.roster_offer_alert_devices
+        where open_shift_id=p_open_shift_id and outcome='pending'),v_now+interval '1 minute')
+      where open_shift_id=p_open_shift_id;
+    return 'true'::jsonb;
+  end if;
+  raise exception 'roster_invalid_request';
+end $$;
+alter function public.roster_offer_alert_work(text,uuid,uuid,uuid[],uuid,text) owner to postgres;
+revoke all on function public.roster_offer_alert_work(text,uuid,uuid,uuid[],uuid,text) from public,anon,authenticated;
+grant execute on function public.roster_offer_alert_work(text,uuid,uuid,uuid[],uuid,text) to service_role;
+
+-- The late queue-fence migration creates this trigger helper after default
+-- function grants have been revoked. Match its owner-only ACL: trigger firing
+-- does not require the updating role to have direct EXECUTE on the helper.
+revoke all on function public.set_document_mutation_id() from public, anon, authenticated, service_role;

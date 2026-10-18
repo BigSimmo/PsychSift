@@ -502,6 +502,8 @@ export class DurableSupervisorBookingRepository {
       .update({ feedback: row.feedback, status: row.status, ratings: row.ratings, updated_at: row.updated_at })
       .eq("category", "supervisor_review")
       .eq("id", slot.id)
+      .eq("status", bookingStateToDbStatus("open"))
+      .eq("updated_at", slot.updatedAt)
       .select(BOOKING_SELECT_COLUMNS)
       .maybeSingle();
     if (error) throw bookingDatabaseError(error);

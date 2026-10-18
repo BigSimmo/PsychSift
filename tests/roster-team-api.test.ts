@@ -355,7 +355,8 @@ describe("writing to a team", () => {
     await vi.waitFor(() => expect(mocks.dispatch).toHaveBeenCalledTimes(1));
     expect(mocks.dispatch.mock.calls[0][1]).toMatchObject({ result: { replayed: true } });
 
-    // A give-away with a key goes the same way; a post without one still goes through roster_command.
+    // A give-away with a key goes the same way; a post without one gets a one-use server key, so its
+    // post-key row still enqueues the durable offer alert.
     mocks.rpc.mockClear();
     mocks.rpc.mockResolvedValue({ data: { openShiftId: OPEN, status: "open" }, error: null });
     expect((await POST(jsonRequest({ action: "open.post", assignmentId: SWAP, postKey: KEY }), ctx())).status).toBe(
@@ -368,12 +369,13 @@ describe("writing to a team", () => {
       p_payload: { assignmentId: SWAP },
     });
     expect((await POST(jsonRequest(gap), ctx())).status).toBe(200);
-    expect(mocks.rpc).toHaveBeenLastCalledWith("roster_command", {
+    expect(mocks.rpc).toHaveBeenLastCalledWith("roster_open_post_once", {
       p_actor_id: ALEX,
       p_service_id: SERVICE,
-      p_action: "open.post",
+      p_post_key: expect.stringMatching(/^[0-9a-f-]{36}$/),
       p_payload: payload,
     });
+    expect(mocks.rpc.mock.lastCall?.[1].p_post_key).not.toBe(KEY);
   });
 
   it("refuses a post key that isn't a uuid before the database is asked", async () => {
