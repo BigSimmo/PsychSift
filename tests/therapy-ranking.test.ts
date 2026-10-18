@@ -83,6 +83,8 @@ describe("shared Therapy ranker", () => {
     expect(therapySlugs()).toContain(unreviewed!.slug);
     expect(findTherapyRecord(unreviewed!.slug)).toBe(unreviewed);
     expect(searchTherapyRecords("CBT").length).toBeGreaterThan(0);
+    // Search must reach the needs-review record itself, not only reviewed neighbours.
+    expect(searchTherapyRecords(unreviewed!.name).map((match) => match.record.slug)).toContain(unreviewed!.slug);
   });
 
   it.each([

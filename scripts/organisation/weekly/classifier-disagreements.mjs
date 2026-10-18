@@ -33,7 +33,7 @@ import { areasOf, codeSpan, headCommit, mapAtHead, mdEscape } from "../map-place
 export const BASELINE_FILE = "docs/organisation/classifier-baseline.json";
 const BASELINE_VERSION = 1;
 const LIST_CAP = 30;
-const CHUNK = 400;
+const CHUNK = 100;
 
 /**
  * @typedef {{ cls: string, flag: string, expect: string[], only?: RegExp }} Pairing

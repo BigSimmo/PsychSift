@@ -2,7 +2,7 @@
 
 import { Loader2, type LucideIcon } from "lucide-react";
 import type { ButtonHTMLAttributes, ReactNode, Ref } from "react";
-import { cn } from "@/components/ui-primitives";
+import { cn, ignoreUnavailableActivation } from "@/components/ui-primitives";
 import { buttonFaceClass, type ButtonSize, type ButtonVariant } from "@/components/ui/button-face";
 
 export type { ButtonSize, ButtonVariant };
@@ -58,6 +58,7 @@ export function Button({
   type,
   ref,
   testId,
+  onClick,
   ...props
 }: ButtonProps) {
   return (
@@ -68,6 +69,13 @@ export function Button({
       type={type ?? "button"}
       disabled={busy || disabled}
       aria-busy={busy || undefined}
+      onClick={(event) => {
+        if (props["aria-disabled"] === true || props["aria-disabled"] === "true") {
+          ignoreUnavailableActivation(event);
+          return;
+        }
+        onClick?.(event);
+      }}
       className={cn(buttonFaceClass({ variant, size, block }), className)}
     >
       {busy ? (

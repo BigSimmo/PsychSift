@@ -1,6 +1,5 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { pathToFileURL } from "node:url";
 import { loadEnvConfig } from "@next/env";
 import { z } from "zod";
 import { loadCapturedRagEvalCases, type RagEvalCase, type SupabaseEvalCaseClient } from "@/lib/rag/rag-eval-cases";
@@ -15,6 +14,7 @@ import {
 // Alias tables live in a shared module so the offline ranking-snapshot builder grades
 // candidates with the same sanctioned expansions this live eval's gates use.
 import { clinicalContentAliases, clinicalDocumentAliases } from "./lib/clinical-aliases";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 loadEnvConfig(process.cwd());
 
@@ -1114,7 +1114,7 @@ async function main() {
   if (args.failOnThreshold && (qualityThresholdFailed || latencyThresholdFailed)) process.exit(1);
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isDirectEntrypoint(import.meta.url)) {
   main().catch((error) => {
     console.error(error instanceof Error ? error.message : error);
     process.exit(1);

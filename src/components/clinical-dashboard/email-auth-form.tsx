@@ -5,7 +5,7 @@ import { useState, type FormEvent } from "react";
 import { LockKeyhole, Mail } from "lucide-react";
 
 import { TextField } from "@/components/ui/text-field";
-import { AsyncButton, cn, floatingControl, InlineNotice, primaryControl } from "@/components/ui-primitives";
+import { AsyncButton, cn, floatingControl, InlineNotice, commandControl } from "@/components/ui-primitives";
 import { useAuthSession } from "@/lib/supabase/client";
 
 type EmailMode = "signin" | "signup" | "link";
@@ -133,7 +133,7 @@ export function EmailAuthForm({
         busy={pending}
         busyLabel={mode === "link" ? "Sending link…" : "Please wait…"}
         disabled={busy || !auth.isConfigured || !email.trim() || (mode !== "link" && !password)}
-        className={cn(primaryControl, "min-h-12 w-full")}
+        className={cn(commandControl, "min-h-12 w-full")}
       >
         {mode === "link" ? "Send sign-in link" : mode === "signup" ? "Create account with email" : "Sign in with email"}
       </AsyncButton>

@@ -18,7 +18,6 @@ function trustDialog() {
 
 describe("First Nations reading-trust sheet", () => {
   it("opens from the example line with the four plain trust statuses", () => {
-    window.localStorage.setItem("first-nations-primer-dismissed", "1");
     render(
       <FirstNationsLayout>
         <ExampleLine />
@@ -34,11 +33,9 @@ describe("First Nations reading-trust sheet", () => {
     expect(dialog.textContent).toMatch(/PsychSift templates/);
     expect(dialog.textContent).toMatch(/EMHS off/);
     expect(dialog.textContent).not.toMatch(/Reviewed by|signed off|Not yet reviewed|No cultural review recorded yet/i);
-    window.localStorage.removeItem("first-nations-primer-dismissed");
   });
 
   it("opens from the page menu and closes without writing storage", () => {
-    window.localStorage.setItem("first-nations-primer-dismissed", "1");
     const setItem = vi.spyOn(Storage.prototype, "setItem");
     render(
       <FirstNationsLayout>
@@ -55,6 +52,5 @@ describe("First Nations reading-trust sheet", () => {
     expect(screen.queryByRole("dialog", { name: "What am I reading?" })).toBeNull();
     expect(setItem).not.toHaveBeenCalled();
     setItem.mockRestore();
-    window.localStorage.removeItem("first-nations-primer-dismissed");
   });
 });

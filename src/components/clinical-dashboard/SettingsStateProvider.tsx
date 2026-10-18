@@ -8,6 +8,7 @@ type SettingsStateContextType = {
   setGuideOpen: React.Dispatch<React.SetStateAction<boolean>>;
   settingsOpen: boolean;
   setSettingsOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  closeSettings: () => void;
   mobileSidebarOpen: boolean;
   setMobileSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
   sidebarCollapsed: boolean;
@@ -39,7 +40,7 @@ const SETTINGS_OPEN_PARAM = "settings";
 const SETTINGS_OPEN_VALUE = "open";
 
 /**
- * Read once per page load, and latched.
+ * Read once per page load, and latched until explicitly dismissed.
  *
  * `useSyncExternalStore` rather than an effect that calls `setSettingsOpen`, which is what
  * `react-hooks/set-state-in-effect` correctly rejects and what `useSidebarCollapsed` in this same
@@ -49,6 +50,19 @@ const SETTINGS_OPEN_VALUE = "open";
  */
 let settingsParamRead = false;
 let settingsParamOpen = false;
+const settingsParamListeners = new Set<() => void>();
+
+function notifySettingsParamListeners(): void {
+  for (const listener of settingsParamListeners) {
+    listener();
+  }
+}
+
+function clearSettingsParamOpen(): void {
+  if (!settingsParamOpen) return;
+  settingsParamOpen = false;
+  notifySettingsParamListeners();
+}
 
 function settingsParamSnapshot(): boolean {
   if (settingsParamRead) return settingsParamOpen;
@@ -67,15 +81,19 @@ function settingsParamServerSnapshot(): boolean {
   return false;
 }
 
-/** Nothing changes it after the first read, so there is nothing to subscribe to. */
-function subscribeToSettingsParam(): () => void {
-  return () => {};
+/** Subscribes so dismissing the URL-opened dialog clears the external latch snapshot. */
+function subscribeToSettingsParam(listener: () => void): () => void {
+  settingsParamListeners.add(listener);
+  return () => {
+    settingsParamListeners.delete(listener);
+  };
 }
 
 /** Test seam: the latch is module-scoped, so a suite rendering several URLs must be able to clear it. */
 export function __resetSettingsParamForTests(): void {
   settingsParamRead = false;
   settingsParamOpen = false;
+  settingsParamListeners.clear();
 }
 
 export function SettingsStateProvider({ children }: { children: React.ReactNode }) {
@@ -85,7 +103,20 @@ export function SettingsStateProvider({ children }: { children: React.ReactNode 
     settingsParamSnapshot,
     settingsParamServerSnapshot,
   );
-  const [settingsOpen, setSettingsOpen] = React.useState(false);
+  const [settingsOpenState, setSettingsOpenState] = React.useState(false);
+  const setSettingsOpen = React.useCallback<React.Dispatch<React.SetStateAction<boolean>>>((action) => {
+    const wasOpenedByUrl = settingsParamOpen;
+    if (wasOpenedByUrl) {
+      clearSettingsParamOpen();
+    }
+    setSettingsOpenState((prev) => {
+      const current = prev || wasOpenedByUrl;
+      return typeof action === "function" ? action(current) : action;
+    });
+  }, []);
+  const closeSettings = React.useCallback(() => {
+    setSettingsOpen(false);
+  }, [setSettingsOpen]);
   const [mobileSidebarOpen, setMobileSidebarOpen] = React.useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useSidebarCollapsed();
   const [documentsDrawerOpen, setDocumentsDrawerOpen] = React.useState(false);
@@ -119,8 +150,9 @@ export function SettingsStateProvider({ children }: { children: React.ReactNode 
     () => ({
       guideOpen,
       setGuideOpen,
-      settingsOpen: settingsOpen || openedByUrl,
+      settingsOpen: settingsOpenState || openedByUrl,
       setSettingsOpen,
+      closeSettings,
       mobileSidebarOpen,
       setMobileSidebarOpen,
       sidebarCollapsed,
@@ -139,7 +171,9 @@ export function SettingsStateProvider({ children }: { children: React.ReactNode 
     [
       guideOpen,
       openedByUrl,
-      settingsOpen,
+      settingsOpenState,
+      setSettingsOpen,
+      closeSettings,
       mobileSidebarOpen,
       sidebarCollapsed,
       documentsDrawerOpen,

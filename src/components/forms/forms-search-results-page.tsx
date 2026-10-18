@@ -949,6 +949,7 @@ function FormsSearchResultsPageContent({ query }: FormsSearchResultsPageProps) {
             modeId="forms"
             query={query}
             degraded
+            announce={false}
             appliedFilters={appliedFilters}
             onClearFilters={activeFilterCount > 0 ? clearFilters : undefined}
           />

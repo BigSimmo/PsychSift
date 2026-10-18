@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "id": "d4b025bd-9c1a-4ee1-828b-b75ccb82cf5d",
+  "createdOn": "2026-10-17",
+  "action": "cancel",
+  "payload": {
+    "requestId": "b1de924a-2e5b-4c0f-83d2-d9372a67aa15",
+    "reason": "Owner ruling 17 Oct 2026 22:12 AWST: the 26 Therapy Compass sign-offs recorded in #3613 were not the owner's and went back to needs_review, so #NZ4X41 is not done."
+  }
+}

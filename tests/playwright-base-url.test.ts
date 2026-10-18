@@ -62,6 +62,9 @@ describe("explicit Playwright target approval", () => {
     "https://remote.invalid/#fragment",
     "not a URL",
     "https://localhost:4383",
+    "https://localhost.",
+    "https://localhost.:4383",
+    "https://LOCALHOST.:4383",
     "https://127.0.0.1:4383",
     "https://[::1]:4383",
   ])("rejects unsafe or non-origin targets even with opt-in: %s", (url) => {

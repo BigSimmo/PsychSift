@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { Search } from "lucide-react";
 import { describe, expect, it, vi } from "vitest";
 
+import { Button } from "@/components/ui/button";
 import { AsyncButton, EmptyState, ToggleSwitch } from "@/components/ui-primitives";
 
 describe("EmptyState", () => {
@@ -131,5 +132,47 @@ describe("ToggleSwitch", () => {
     const onKnob = screen.getByRole("switch", { name: "Notify" }).querySelector("[aria-hidden]");
     expect(onKnob?.className).toMatch(/translate-x-5/);
     expect(onKnob?.className).not.toMatch(/\bright-1\b/);
+  });
+});
+
+describe("Button unavailable state", () => {
+  it("keeps the stated reason focusable and blocks pointer and keyboard activation", async () => {
+    const user = userEvent.setup();
+    const onClick = vi.fn();
+    const onParentClick = vi.fn();
+    render(
+      <div onClick={onParentClick}>
+        <Button aria-disabled="true" aria-describedby="source-unavailable" onClick={onClick}>
+          Open source
+        </Button>
+        <span id="source-unavailable">No official source URL is recorded.</span>
+      </div>,
+    );
+    const button = screen.getByRole("button", { name: "Open source" });
+    expect(button).not.toBeDisabled();
+    await user.tab();
+    expect(button).toHaveFocus();
+    expect(button).toHaveAccessibleDescription("No official source URL is recorded.");
+    await user.keyboard("{Enter} ");
+    await user.click(button);
+    expect(onClick).not.toHaveBeenCalled();
+    expect(onParentClick).not.toHaveBeenCalled();
+  });
+
+  it("allows activation again when the unavailable state clears", async () => {
+    const user = userEvent.setup();
+    const onClick = vi.fn();
+    const { rerender } = render(
+      <Button aria-disabled onClick={onClick}>
+        Open source
+      </Button>,
+    );
+    rerender(
+      <Button aria-disabled={false} onClick={onClick}>
+        Open source
+      </Button>,
+    );
+    await user.click(screen.getByRole("button", { name: "Open source" }));
+    expect(onClick).toHaveBeenCalledOnce();
   });
 });

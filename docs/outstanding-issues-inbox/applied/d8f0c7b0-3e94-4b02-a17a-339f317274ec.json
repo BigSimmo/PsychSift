@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "d8f0c7b0-3e94-4b02-a17a-339f317274ec",
+  "createdOn": "2026-10-17",
+  "action": "done",
+  "payload": {
+    "id": "#8CKX6F",
+    "outcome": "Surfaced active national and youth crisis support lines (Lifeline WA, Suicide Call Back Service, Kids Helpline, 13YARN) immediately after urgent-route pins for camhs_crisis queries in src/lib/service-ranker.ts while preserving CAMHS Crisis Connect and MHERL priority; pinned by tests/service-urgent-routing.test.ts.",
+    "baseRowFingerprint": "9670257d2eec72cae4a29b9f245a9f0759995b16da76d1627a40371bf6fbb303",
+    "targetUlid": "01M3CT4CFM8CKX6FCRKGSK2RRS"
+  }
+}

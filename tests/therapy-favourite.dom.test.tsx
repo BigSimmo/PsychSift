@@ -8,6 +8,9 @@ const accountState = vi.hoisted(() => ({
   authenticated: false,
   setFavourite: vi.fn<(kind: "therapy", slug: string, saved: boolean) => Promise<boolean>>(),
 }));
+const announcements = vi.hoisted(() => ({ announce: vi.fn() }));
+
+vi.mock("@/components/ui/live-announcer", () => announcements);
 
 vi.mock("@/components/account-data-provider", () => ({
   useAccountData: () => ({
@@ -47,6 +50,7 @@ describe("Therapy favourite feedback", () => {
   afterEach(() => {
     accountState.authenticated = false;
     accountState.setFavourite.mockReset();
+    announcements.announce.mockClear();
   });
 
   it("announces the sign-in requirement when a signed-out save is rejected", async () => {
@@ -56,7 +60,9 @@ describe("Therapy favourite feedback", () => {
 
     await user.click(screen.getByRole("button", { name: `Save ${therapy.name} to favourites` }));
 
-    expect(await screen.findByRole("status")).toHaveTextContent("Sign in or create an account to save therapies.");
+    expect(await screen.findByText("Sign in or create an account to save therapies.")).toBeVisible();
+    expect(announcements.announce).toHaveBeenCalledExactlyOnceWith("Sign in or create an account to save therapies.");
+    expect(screen.queryByRole("status")).toBeNull();
   });
 
   it("announces a mutation failure for an authenticated account", async () => {
@@ -67,7 +73,8 @@ describe("Therapy favourite feedback", () => {
 
     await user.click(screen.getByRole("button", { name: `Save ${therapy.name} to favourites` }));
 
-    expect(await screen.findByRole("status")).toHaveTextContent("Save failed. Try again.");
+    expect(await screen.findByText("Save failed. Try again.")).toBeVisible();
+    expect(announcements.announce).toHaveBeenCalledExactlyOnceWith("Save failed. Try again.");
   });
 
   it("retries the same save intent after a failed mutation", async () => {
@@ -78,13 +85,14 @@ describe("Therapy favourite feedback", () => {
 
     const saveButton = screen.getByRole("button", { name: `Save ${therapy.name} to favourites` });
     await user.click(saveButton);
-    expect(await screen.findByRole("status")).toHaveTextContent("Save failed. Try again.");
+    expect(await screen.findByText("Save failed. Try again.")).toBeVisible();
 
     await user.click(saveButton);
 
     expect(accountState.setFavourite).toHaveBeenNthCalledWith(1, "therapy", therapy.slug, true);
     expect(accountState.setFavourite).toHaveBeenNthCalledWith(2, "therapy", therapy.slug, true);
-    expect(await screen.findByRole("status")).toHaveTextContent("Therapy saved.");
+    expect(await screen.findByText("Therapy saved.")).toBeVisible();
+    expect(announcements.announce).toHaveBeenLastCalledWith("Therapy saved.");
   });
 
   it("preserves the final intent across rapid opposite favourite toggles", async () => {
@@ -107,6 +115,7 @@ describe("Therapy favourite feedback", () => {
 
     await act(async () => pending[0]?.resolve(true));
     await act(async () => pending[1]?.resolve(true));
-    expect(await screen.findByRole("status")).toHaveTextContent("Therapy removed from saved items.");
+    expect(await screen.findByText("Therapy removed from saved items.")).toBeVisible();
+    expect(announcements.announce).toHaveBeenLastCalledWith("Therapy removed from saved items.");
   });
 });

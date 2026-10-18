@@ -23,7 +23,6 @@ const serviceNavigatorSource = readFileSync(
   new URL("../src/components/services/services-navigator-page.tsx", import.meta.url),
   "utf8",
 );
-const normalizedServiceNavigatorSource = serviceNavigatorSource.replace(/\s+/g, " ");
 
 function service(slug: string, fields: Partial<ServiceRecord> = {}): ServiceRecord {
   return { slug, title: slug, ...fields };
@@ -70,9 +69,7 @@ describe("content and services audit regressions", () => {
     expect(canCompareServices([])).toBe(false);
     expect(canCompareServices(records.slice(0, 1))).toBe(false);
     expect(canCompareServices(records.slice(0, 2))).toBe(true);
-    expect(normalizedServiceNavigatorSource).toContain(
-      "const [selectedSlugs, setSelectedSlugs] = useState<string[]>([])",
-    );
+    expect(serviceNavigatorSource).toContain('searchParams.get("shortlist")');
     expect(serviceNavigatorSource).toContain('data-testid="services-shortlist-bar"');
     expect(serviceNavigatorSource).toContain("disabled={selected.length < 2}");
     expect(serviceNavigatorSource).not.toContain("useEffect(");
@@ -84,10 +81,10 @@ describe("content and services audit regressions", () => {
     expect(serviceNavigatorSource).toContain("deferredQuery === query && displayedMatches.length === 0");
     // Shortlist Compare/Clear keep keyboard focus rings (shared focus-visible contract).
     expect(serviceNavigatorSource).toMatch(
-      /setShowComparison\(true\)[\s\S]*?focus-visible:outline-\[color:var\(--focus\)\]/,
+      /navigateWorkflow\("compare"\)[\s\S]*?focus-visible:outline-\[color:var\(--focus\)\]/,
     );
     expect(serviceNavigatorSource).toMatch(
-      /setSelectedSlugs\(\[\]\)[\s\S]*?focus-visible:outline-\[color:var\(--focus\)\]/,
+      /navigateWorkflow\("search", \[\]\)[\s\S]*?focus-visible:outline-\[color:var\(--focus\)\]/,
     );
   });
 

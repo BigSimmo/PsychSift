@@ -1,11 +1,19 @@
 import "server-only";
 
+import { buildOwnerTrainingAssessments, type CmeTrainingAssessments } from "@/lib/cme/training-assessments";
 import {
   SAMPLE_TRAINING_MILESTONES,
   SAMPLE_TRAINING_NOW_ISO,
   SAMPLE_TRAINING_PERIODS,
+  sampleTrainingAssessments,
 } from "@/lib/cme/training-assessments-sample";
-import { fetchOwnerTrainingMilestones, fetchOwnerTrainingPeriods } from "@/lib/cme/training-repository";
+import {
+  fetchOwnerRegistrarMilestones,
+  fetchOwnerTrainingMilestones,
+  fetchOwnerTrainingPeriods,
+  mergeTrainingAndRegistrarMilestones,
+  type RegistrarMilestoneRecord,
+} from "@/lib/cme/training-repository";
 import type { TrainingMilestone, TrainingPeriod } from "@/lib/cme/training-timeline";
 import { isDemoMode } from "@/lib/env";
 import { exampleDataOn } from "@/lib/example-data/server";
@@ -17,6 +25,8 @@ export type CmeTrainingPageData = {
   readonly demoMode: boolean;
   readonly periods: readonly TrainingPeriod[];
   readonly milestones: readonly TrainingMilestone[];
+  readonly registrarMilestones?: readonly RegistrarMilestoneRecord[];
+  readonly assessments: CmeTrainingAssessments;
   readonly now: Date;
 };
 
@@ -40,11 +50,20 @@ export async function loadCmeTrainingPageData(): Promise<CmeTrainingPageData> {
       demoMode: true,
       periods: SAMPLE_TRAINING_PERIODS,
       milestones: SAMPLE_TRAINING_MILESTONES,
+      registrarMilestones: [],
+      assessments: sampleTrainingAssessments("registrar"),
       now: new Date(SAMPLE_TRAINING_NOW_ISO),
     };
   }
   const now = new Date();
-  const empty = { demoMode: false, periods: [], milestones: [], now };
+  const empty = {
+    demoMode: false,
+    periods: [],
+    milestones: [],
+    registrarMilestones: [],
+    assessments: { status: "not-recorded" } as const,
+    now,
+  };
   try {
     const server = await createSupabaseServerClient();
     if (!server) return { ...empty, state: "unavailable" };
@@ -52,11 +71,22 @@ export async function loadCmeTrainingPageData(): Promise<CmeTrainingPageData> {
     if (error) return { ...empty, state: error.name === "AuthSessionMissingError" ? "signed-out" : "unavailable" };
     if (!auth.user) return { ...empty, state: "signed-out" };
     const admin = createAdminClient();
-    const [periods, milestones] = await Promise.all([
+    const [periods, rawMilestones, registrarMilestones] = await Promise.all([
       fetchOwnerTrainingPeriods(admin, auth.user.id),
-      fetchOwnerTrainingMilestones(admin, auth.user.id),
+      fetchOwnerTrainingMilestones(admin, auth.user.id, { syncRegistrar: false }),
+      fetchOwnerRegistrarMilestones(admin, auth.user.id),
     ]);
-    return { state: "ready", demoMode: false, periods, milestones, now };
+    const milestones = mergeTrainingAndRegistrarMilestones(rawMilestones, registrarMilestones);
+    const assessments = buildOwnerTrainingAssessments(periods, registrarMilestones);
+    return {
+      state: "ready",
+      demoMode: false,
+      periods,
+      milestones,
+      registrarMilestones,
+      assessments,
+      now,
+    };
   } catch {
     return { ...empty, state: "unavailable" };
   }

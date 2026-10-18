@@ -15,7 +15,7 @@ import {
   dictionaryDefinitionReviews,
   isDefinitionReviewClinicallyApproved,
 } from "@/lib/dictionary-editorial/definition-reviews";
-import { acquisitionReviewQueue } from "@/lib/sources/acquisition-ledger";
+import { acquisitionReviewQueue, sourceAcquisitionRecords } from "@/lib/sources/acquisition-ledger";
 import { isSpecifierClinicianReviewed, loadSpecifiersContent, specifierCatalogItems } from "@/lib/specifiers-content";
 import { formulationConcepts, formulationGuides } from "@/lib/formulation-concepts";
 import { conceptReviewState } from "@/lib/formulation-review-status";
@@ -50,15 +50,19 @@ const EXPECTED: Record<SignOffFamilyId, number> = {
   // 333 unpublished sense drafts + 68 reviews without approved rewrite text.
   dictionary: 401,
   // 514 placeholders remain; the 71 written items and 18 universals (including the 22
-  // corrected on 15 Oct) have now been signed off by "Psych Sift" (owner decision, 16 Oct 2026).
-  specifiers: 514,
+  // corrected on 15 Oct) were signed off by "Psych Sift" (owner decision, 16 Oct 2026). The
+  // reworded DID possession-form item went back to clinician-review-pending (owner ruling,
+  // 17 Oct 2026 22:12 AWST), so 515 wait.
+  specifiers: 515,
   // The 27 signable records with references (including the 5 edited on #3510 and the 15 Oct
-  // corrections) have now been signed off by "Psych Sift", leaving the 26 records that list
-  // no references yet (47 originally unsigned - 22 that gained references + 1 wake-therapy).
+  // corrections) have now been signed off by "Psych Sift". The 26 records stamped on 17 Oct
+  // without the interactive review tool went back to needs_review (owner ruling, 17 Oct 2026
+  // 22:12 AWST) until the owner signs each one with therapy:review.
   therapy: 26,
   // All 93 signable candidates and the 3 adopted medicine sources were reviewed; six Indigenous
-  // sources remain held.
-  sources: 6,
+  // sources remain held, and two OCP WA standards reviewed only in prose wait for the owner to
+  // sign them with clinical:review (owner decision, 17 Oct 2026).
+  sources: 8,
 };
 
 describe("clinical sign-off queue", () => {
@@ -134,7 +138,23 @@ describe("clinical sign-off queue", () => {
 
   it("reuses the source acquisition ledger's own queue rather than re-deriving the filter", () => {
     const sources = queue.families.find((family) => family.id === "sources")!;
-    expect(sources.rows.map((row) => row.id)).toEqual(acquisitionReviewQueue().map((record) => record.id));
+    const proseOnly = sourceAcquisitionRecords.filter(
+      (record) =>
+        record.disposition !== "rejected" &&
+        record.validationStatus === "locally_reviewed" &&
+        !["attestedBy", "attestedAt", "attestedAgainstSha256"].some((field) => Object.hasOwn(record, field)),
+    );
+    // The ledger's queue plus the reviews recorded only in prose (which clinical:review also
+    // offers), in the queue's own order: most local rung first, then title.
+    const collator = new Intl.Collator("en-AU");
+    expect(sources.rows.map((row) => row.id)).toEqual(
+      [...acquisitionReviewQueue(), ...proseOnly]
+        .sort((left, right) => left.rung - right.rung || collator.compare(left.title, right.title))
+        .map((record) => record.id),
+    );
+    expect(
+      sources.rows.filter((row) => row.statusLabel === "Reviewed in prose only, not yet signed").map((row) => row.id),
+    ).toEqual(["ocp-wa-standard-authorisation-of-hospitals", "ocp-wa-standards-for-clinical-care"]);
   });
 
   it("carries the whole dictionary editorial layer, which nothing else in the app renders", () => {
@@ -297,11 +317,12 @@ const EXPECTED_SIGNED_BY_DOMAIN: Record<SignOffDomainId, { signed: number; waiti
   "cultural-notes": { signed: 14, waiting: 9 },
   differentials: { signed: 11, waiting: 232 },
   formulation: { signed: 58, waiting: 6 },
-  specifiers: { signed: 89, waiting: 514 },
+  specifiers: { signed: 88, waiting: 515 },
   therapy: { signed: 179, waiting: 26 },
   dictionary: { signed: 28, waiting: 401 },
   // 93 sources carry a structured, current attestation. Two OCP standards are marked
-  // locally_reviewed in prose only and wait for one; six Indigenous sources are held.
+  // locally_reviewed in prose only and are ready for the owner to sign with clinical:review;
+  // six Indigenous sources are held.
   sources: { signed: 93, waiting: 8 },
   services: { signed: 21, waiting: 4 },
 };
@@ -326,18 +347,18 @@ describe("clinical & rule sign-off ledger", () => {
   );
 
   it("derives the overall totals, signer breakdown, and categorized waiting counts from the domain rows", () => {
-    expect(ledger.totalSigned).toBe(676);
-    expect(ledger.totalWaiting).toBe(1201);
+    expect(ledger.totalSigned).toBe(675);
+    expect(ledger.totalWaiting).toBe(1202);
     expect(ledger.totalGoverned).toBe(1877);
     expect(ledger.signedByTotals).toEqual({
       "Josh Simpson": 3,
-      "Psych Sift": 196,
+      "Psych Sift": 195,
       PsychSift: 477,
     });
     expect(ledger.waitingByCategory).toEqual({
-      signableNow: 0,
+      signableNow: 29,
       indigenousHold: 26,
-      awaitingPrerequisites: 610,
+      awaitingPrerequisites: 582,
       awaitingTool: 565,
     });
   });

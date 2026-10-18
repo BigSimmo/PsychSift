@@ -250,7 +250,7 @@ export function FactsheetsSearchPage({
                 key={sheet.slug}
                 href={factsheetDetailHref(sheet.slug)}
                 data-testid="factsheets-result"
-                className="group flex flex-col rounded-xl border border-[color:var(--border)] border-t-[3px] bg-[color:var(--surface)] p-4 shadow-[var(--e2)] transition hover:border-[color:var(--border-strong)] hover:shadow-[var(--shadow-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
+                className="group flex flex-col rounded-xl border border-[color:var(--border)] border-t-[3px] bg-[color:var(--surface)] p-4 shadow-[var(--e2)] transition hover:border-[color:var(--border-strong)] hover:shadow-[var(--e3)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
                 style={{ borderTopColor: theme.accent }}
               >
                 <div className="flex items-center justify-between">

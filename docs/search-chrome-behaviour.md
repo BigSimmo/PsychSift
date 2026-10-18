@@ -712,8 +712,8 @@ active. Three properties are load-bearing.
 
 It is **measured, not tokenised**, because the collapse row grows with portaled
 page navigation (`header-collapse-addon`) and a fixed `4rem` would clip those
-routes. It **never varies with hide state** — `offsetHeight` ignores the hide
-transform, so the same value is correct in both states; a reserve that animated
+routes. It **never varies with hide state** — translating the stack preserves its
+`getBoundingClientRect().height`, so the same value is correct in both states; a reserve that animated
 or zeroed on hide would reintroduce exactly the shift overlay removes. And it
 must be **correct before the first paint**, which is a separate requirement from
 both of those: the property is seeded in `globals.css` as
@@ -724,6 +724,14 @@ content underneath the out-of-flow header and then pushed it down at hydration �
 a cold-load jump, which is the same defect class as the scroll jump this design
 exists to remove (Codex P1, 2026-07-30). SSR cannot measure, so the seed is exact
 only for routes without an addon row; addon routes refine by that row's height.
+
+Keep these measurements in fractional border-box CSS pixels through addon claim,
+quiet-window settlement, immediate publication and release. Integer `offsetHeight`
+rounded a 79.875px navigation row to 80px after the 17 October type-role migration;
+replacing that in-flow row with the rounded reserve moved the cold-load target.
+The matching reader and portal-wiring tests cover fractional growth, shrinkage and
+release. Sticky Work-tab clipping also retains the relative fractional rectangle
+offset, so a focused 48px tab remains fully visible.
 
 The clearance is only visible near scroll top, where the header is always
 revealed, so it costs no usable height.
@@ -817,7 +825,7 @@ await expect
       return page.evaluate(() => {
         const stack = document.querySelector<HTMLElement>(".phone-sticky-header-stack");
         const reserve = getComputedStyle(document.documentElement).getPropertyValue("--phone-overlay-chrome-h");
-        const stackHeight = stack ? Math.round(stack.getBoundingClientRect().height) : 0;
+        const stackHeight = stack?.getBoundingClientRect().height ?? 0;
         const reservePx = parseFloat(reserve) || 0;
         return stackHeight > 0 && Math.abs(stackHeight - reservePx) <= 1;
       });

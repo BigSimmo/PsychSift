@@ -456,8 +456,8 @@ describe("InPageNavHeader with titleHidden", () => {
   /**
    * Four sections, because More exists only when the bar cannot show them all.
    * `planModeNavBands` fits three at every band, so a three-section bar has no
-   * overflow slot and therefore no sheet to reach — which is correct, and also
-   * why the sheet cases below need a fourth.
+   * overflow slot. The collapsed disclosure remains the fallback below the
+   * rail's minimum width; the More cases below need a fourth section.
    */
   const overflowingRailProps = {
     ...railProps,
@@ -471,9 +471,36 @@ describe("InPageNavHeader with titleHidden", () => {
     renderHeader(railProps);
     const header = screen.getByTestId("service-detail-header");
     expect(header.textContent).not.toContain("Community Alcohol");
-    expect(screen.queryByTestId("service-section-trigger")).toBeNull();
+    const trigger = screen.getByTestId("service-section-trigger");
+    // The fallback and rail share the same query container, so the existing
+    // density profile hides this disclosure exactly when the bar appears.
+    expect(trigger.closest(".mode-nav__control")?.parentElement).toBe(
+      screen.getByTestId("service-section-rail").querySelector(".mode-nav"),
+    );
     expect(screen.queryByTestId("service-action-group")).toBeNull();
     expect(screen.getByTestId("service-section-rail")).toBeInTheDocument();
+  });
+
+  it("keeps every section keyboard reachable through the collapsed rail disclosure", async () => {
+    const user = userEvent.setup();
+    const selected = vi.fn();
+    renderHeader({ ...railProps, onSelectSection: selected });
+    const trigger = screen.getByTestId("service-section-trigger");
+    Object.defineProperty(trigger, "getClientRects", {
+      configurable: true,
+      value: () => [{ width: 288, height: 48 }] as unknown as DOMRectList,
+    });
+    expect(trigger).toHaveAccessibleName("Sections of this page, current section: Referral");
+    trigger.focus();
+    await user.keyboard("{Enter}");
+    const sheet = await screen.findByTestId("service-section-sheet");
+    for (const section of sections) {
+      expect(within(sheet).getByRole("button", { name: new RegExp(section.label) })).toBeInTheDocument();
+    }
+    await user.click(within(sheet).getByRole("button", { name: /Verification/ }));
+    expect(selected).toHaveBeenCalledWith("service-verification");
+    await waitFor(() => expect(screen.queryByTestId("service-section-sheet")).toBeNull());
+    await waitFor(() => expect(trigger).toHaveFocus());
   });
 
   it("still names the page where a screen reader will meet it", async () => {

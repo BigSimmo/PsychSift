@@ -283,7 +283,7 @@ export const SUPERVISION_LEVELS: readonly { id: SupervisionLevel; title: string;
   ];
 
 export function supervisionLevelName(id: SupervisionLevel): string {
-  return SUPERVISION_LEVELS.find((level) => level.id === id)!.title;
+  return SUPERVISION_LEVELS.find((level) => level.id === id)?.title ?? id;
 }
 
 /** Case complexity, as the EPA form records it. */
@@ -295,7 +295,7 @@ export const CASE_COMPLEXITIES: readonly { id: CaseComplexity; title: string }[]
 ];
 
 export function caseComplexityName(id: CaseComplexity): string {
-  return CASE_COMPLEXITIES.find((c) => c.id === id)!.title;
+  return CASE_COMPLEXITIES.find((c) => c.id === id)?.title ?? id;
 }
 
 /**

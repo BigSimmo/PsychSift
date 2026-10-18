@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   appendSearchNavigationContext,
+  preserveServicesShortlist,
   privateScopeReadyForRoute,
   readSearchNavigationContext,
   routedSubmissionContextChanged,
@@ -10,6 +11,27 @@ import {
 } from "@/lib/search-navigation-context";
 
 describe("search navigation context", () => {
+  it("retains a Services shortlist across a new query without reopening the previous workflow", () => {
+    const current = new URLSearchParams("q=first&shortlist=service-a,service-b&workflow=compare");
+    const destination = preserveServicesShortlist("/services/search?q=second&run=1&scope.locality=local", current);
+    const next = new URL(destination, "https://example.org");
+    expect(next.pathname).toBe("/services/search");
+    expect(next.searchParams.get("q")).toBe("second");
+    expect(next.searchParams.get("shortlist")).toBe("service-a,service-b");
+    expect(next.searchParams.get("scope.locality")).toBe("local");
+    expect(next.searchParams.has("workflow")).toBe(false);
+    expect(current.get("workflow")).toBe("compare");
+  });
+
+  it("keeps an explicitly cleared shortlist empty and never carries it to another mode", () => {
+    expect(preserveServicesShortlist("/services/search?q=second", new URLSearchParams())).toBe(
+      "/services/search?q=second",
+    );
+    expect(preserveServicesShortlist("/forms/search?q=second", new URLSearchParams("shortlist=service-a"))).toBe(
+      "/forms/search?q=second",
+    );
+  });
+
   it("round-trips query intent and active scope filters", () => {
     const params = new URLSearchParams();
     appendSearchNavigationContext(params, {

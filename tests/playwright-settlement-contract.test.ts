@@ -103,8 +103,8 @@ describe("playwright settlement contract (#093)", () => {
     expect(source).not.toMatch(/locator\("#main-content"\)\.first\(\)/);
     expect(source).toContain('animations: "disabled"');
     expect(source).toMatch(/Unable to capture screenshot/);
-    expect(source).toContain("psychsift:work-search-coach-seen");
-    expect(button).toContain("psychsift:work-search-coach-seen");
+    expect(source).not.toContain("psychsift:work-search-coach-seen");
+    expect(button).not.toContain("psychsift:work-search-coach-seen");
     expect(source).toContain("/cme/setup");
     expect(source).not.toContain("/cme/programme");
   });

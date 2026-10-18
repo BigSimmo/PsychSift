@@ -120,7 +120,41 @@ describe("the real queue", () => {
     // 16 Oct 2026: the 27 corrected Therapy records and the 3 adopted medicine sources
     // have been signed off by "Psych Sift", so no signable rows remain; everything still
     // waiting is an Indigenous governance hold or has no sign-off tool / references.
-    expect(signable.map((item) => item.family)).toEqual([]);
+    // 17 Oct 2026: clinical:review now offers sources reviewed only in prose (owner decision),
+    // so the two OCP WA standards are signable by the owner.
+    // 17 Oct 2026 22:12 AWST: the 26 Therapy records stamped without therapy:review went back to
+    // needs_review (owner ruling); they list references, so the owner can sign each one.
+    expect(signable.map((item) => item.family)).toEqual([...Array<string>(26).fill("therapy"), "sources", "sources"]);
+    expect(signable.map((item) => item.id)).toEqual([
+      "behaviour-therapy",
+      "cognitive-behavioural-therapy-for-insomnia-cbt-i",
+      "cognitive-therapy",
+      "community-reinforcement-and-family-training-craft",
+      "contingency-management-cm",
+      "cue-exposure-therapy-cet-for-substance-use-disorders",
+      "exposure-and-response-prevention-for-tics-erp-for-tics",
+      "habit-reversal-training-for-trichotillomania-and-excoriation-disorder",
+      "imagery-rehearsal-therapy-irt-for-nightmare-disorder",
+      "integrated-cbt-for-ptsd-and-substance-use-disorders",
+      "interpersonal-and-social-rhythm-therapy-ipsrt",
+      "matrix-model",
+      "mentalisation-based-therapy-mbt",
+      "mindfulness-based-relapse-prevention-mbrp",
+      "mindfulness-based-therapy-for-insomnia-mbti",
+      "mother-infant-therapy-mother-infant-psychotherapy",
+      "motivational-enhancement-therapy-met",
+      "parent-and-child-training",
+      "parent-child-relational-therapy",
+      "parent-child-interaction-therapy-pcit",
+      "psychoeducation-for-psychosis",
+      "recovery-oriented-psychosocial-interventions",
+      "relapse-prevention-therapy-for-substance-use-disorders",
+      "seeking-safety",
+      "social-communication-parent-mediated-autism-interventions",
+      "wake-therapy-sleep-deprivation-chronotherapy",
+      "ocp-wa-standard-authorisation-of-hospitals",
+      "ocp-wa-standards-for-clinical-care",
+    ]);
     expect(today.signable).toBe(signable.length);
     expect(today.rows.length).toBe(Math.min(SIGN_OFF_TODAY_SIZE, signable.length));
     for (const item of today.rows) {
@@ -285,5 +319,27 @@ describe("tool-order and pin-awareness", () => {
         .filter((slug) => signedBySlug[slug] !== undefined)
         .sort(),
     );
+  });
+  it("the therapy sign-off transaction regenerates the signable projection, so a newly signed therapy leaves the to-do list", async () => {
+    const therapy = await import("../scripts/review-therapy.mjs");
+    const { therapyReviewedContentSha256 } = await import("../scripts/lib/therapy-review-contract.mjs");
+    const records = structuredClone(therapiesSource) as Record<string, unknown>[];
+    // The committed projection is exactly what the transaction writes.
+    expect(therapy.therapySignableProjection(records)).toEqual(signableTherapySlugList);
+    const slug = signableTherapySlugList.slugs[0];
+    const record = records.find((item) => item.slug === slug)!;
+    // Fixture only: simulate the tool recording an owner signature on a copy.
+    Object.assign(record, {
+      reviewStatus: "reviewed",
+      reviewedBy: "Fixture Reviewer",
+      reviewedAt: "2026-10-18T00:00:00.000Z",
+    });
+    record.reviewedContentSha256 = therapyReviewedContentSha256(record);
+    const projected = therapy.therapySignableProjection(records);
+    expect(projected.slugs).not.toContain(slug);
+    expect(projected.signedBySlug[slug]).toEqual({
+      reviewedBy: "Fixture Reviewer",
+      reviewedAt: "2026-10-18T00:00:00.000Z",
+    });
   });
 });

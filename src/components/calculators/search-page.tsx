@@ -19,6 +19,7 @@ import {
   type AppliedFilterChip,
 } from "@/components/clinical-dashboard/search-results-header-band";
 import { ShowAllChip } from "@/components/show-all-chip";
+import { ModeNavHeaderPortal } from "@/components/mode-nav/mode-nav-portal";
 import { restoreFocusUnlessMoved } from "@/components/use-dismissable-layer";
 import { cn, eyebrowText } from "@/components/ui-primitives";
 import { appModeIcons } from "@/lib/app-mode-icons";
@@ -45,7 +46,6 @@ import {
   type CalculatorFixture,
 } from "./calculator-fixtures";
 import { CalculatorSheet } from "./calculator-sheet";
-import { ClinicalMathPanel, useClinicalMathPanelState } from "./clinical-math-panel";
 import { calculatorRecordById } from "./calculator-routes";
 import {
   MetaPill,
@@ -62,22 +62,6 @@ type SessionAnswers = Record<string, AnswerMap>;
 type Density = "comfortable" | "compact";
 
 const subscribeNoop = () => () => undefined;
-
-function subscribeDesktopSidebar(onStoreChange: () => void) {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
-    return () => undefined;
-  }
-  const mql = window.matchMedia("(min-width: 1280px)");
-  mql.addEventListener("change", onStoreChange);
-  return () => mql.removeEventListener("change", onStoreChange);
-}
-
-function getDesktopSidebarSnapshot() {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
-    return false;
-  }
-  return window.matchMedia("(min-width: 1280px)").matches;
-}
 
 /**
  * The calculator whose tile should take focus back once closing it has finished
@@ -233,7 +217,7 @@ function DensityControl({ density, onDensity }: { density: Density; onDensity: (
           title={`${label} density`}
           onClick={() => onDensity(value)}
           className={cn(
-            "relative grid size-9 place-items-center rounded-md transition motion-reduce:transition-none before:absolute before:-inset-y-1.5 before:inset-x-0",
+            "grid size-12 place-items-center rounded-md transition motion-reduce:transition-none",
             density === value
               ? "bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]"
               : "text-[color:var(--text-muted)] hover:text-[color:var(--text)]",
@@ -344,8 +328,6 @@ export function CalculatorsSearchPage({
     () => true,
     () => false,
   );
-  const isDesktopSidebar = useSyncExternalStore(subscribeDesktopSidebar, getDesktopSidebarSnapshot, () => false);
-  const clinicalMath = useClinicalMathPanelState();
   const query = hydrated ? (searchCommand?.query ?? initialQuery) : initialQuery;
   const normalizedQuery = normalizeCalculatorQuery(query);
   const smartExpansions = useMemo(() => smartSearchExpansions("calculators", query), [query]);
@@ -541,6 +523,18 @@ export function CalculatorsSearchPage({
 
   return (
     <>
+      <ModeNavHeaderPortal>
+        <div
+          data-testid="mode-nav"
+          className="mode-nav-rail border-b border-[color:var(--border)] bg-[color:var(--surface)]"
+        >
+          <div className="mode-nav">
+            <h1 className="mode-nav__heading" data-testid="mode-nav-title">
+              Calculators
+            </h1>
+          </div>
+        </div>
+      </ModeNavHeaderPortal>
       <SearchResultsLayout
         testId="calculators-search-page"
         resultsLabel="Calculator results"
@@ -552,7 +546,7 @@ export function CalculatorsSearchPage({
               modeId="calculators"
               query={query}
               matchCount={results.length}
-              headingLevel={1}
+              headingLevel={2}
               filterLabel="Filter calculator results"
               appliedFilters={appliedFilters}
               onClearFilters={activeFilterCount > 0 ? clearFilters : undefined}
@@ -581,14 +575,24 @@ export function CalculatorsSearchPage({
                 </span>
               }
             />
-            <div className="pt-2.5">
-              <ShowAllChip
-                href={consolidatedModeSearchPath("calculators")}
-                icon={appModeIcons.calculators}
-                ariaLabel="Show all calculators"
-                testId="calculators-show-all"
-              />
-            </div>
+            {query.trim() || activeFilterCount > 0 ? (
+              <div className="pt-2.5">
+                <ShowAllChip
+                  href={consolidatedModeSearchPath("calculators")}
+                  icon={appModeIcons.calculators}
+                  ariaLabel="Show all calculators"
+                  testId="calculators-show-all"
+                  onClick={(event) => {
+                    if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) {
+                      clearFilters();
+                      // Show all can target the current URL (no navigation), so the
+                      // shell would keep the typed query; clear it explicitly.
+                      searchCommand?.clearQuery?.();
+                    }
+                  }}
+                />
+              </div>
+            ) : null}
             <ResultFilterSheet
               open={filterOpen}
               onClose={() => setFilterOpen(false)}
@@ -606,14 +610,12 @@ export function CalculatorsSearchPage({
         sidebar={
           <>
             <ContinuePanel inProgress={inProgress} onOpen={openCalculator} />
-            {isDesktopSidebar ? <ClinicalMathPanel state={clinicalMath} /> : null}
             <AboutPanel />
           </>
         }
         sidebarMobile={
           <div className="grid gap-4 xl:hidden">
             <ContinuePanel inProgress={inProgress} onOpen={openCalculator} />
-            {!isDesktopSidebar ? <ClinicalMathPanel state={clinicalMath} /> : null}
             <AboutPanel />
           </div>
         }

@@ -132,7 +132,7 @@ export function Pagination({
               className={cn(
                 "nums grid size-tap shrink-0 place-items-center rounded-lg px-2 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]",
                 item === current
-                  ? "bg-[color:var(--command)] text-[color:var(--command-contrast)]"
+                  ? "bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]"
                   : "text-[color:var(--text-muted)] hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text)]",
               )}
             >

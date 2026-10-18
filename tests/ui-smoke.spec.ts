@@ -1165,7 +1165,7 @@ test.describe("PsychSift UI smoke coverage", () => {
       await gotoApp(page, "/");
       await waitForDemoDashboardReady(page);
 
-      await expect(page.getByRole("heading", { level: 1, name: "PsychSift" })).toHaveCount(1);
+      await expect(page.getByRole("heading", { level: 1, name: "Answer", exact: true })).toHaveCount(1);
       await expect(page.getByRole("heading", { name: "Clinical Answers", exact: true })).toBeVisible();
       await expect(visibleQuestionInput(page)).toBeVisible();
       await expect(page.getByRole("button", { name: "Generate source-backed answer" })).toHaveText(/^\s*Ask\s*$/);
@@ -1936,7 +1936,7 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(submitAnswer).toBeDisabled();
     await expect(page.getByTestId("answer-grounding-chip")).toHaveCount(0);
     expect(answerRequests).toEqual([]);
-    await expect(page.getByRole("heading", { level: 1, name: "PsychSift" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Answer", exact: true })).toBeVisible();
     await expectDomIntegrity(page, { mobileNav: true, mobileFabReady: false });
     await expectNoPageHorizontalOverflow(page);
   });
@@ -5541,9 +5541,8 @@ test.describe("PsychSift UI smoke coverage", () => {
     await page.keyboard.press("Escape");
     await expect(page.getByTestId("scope-command-popover")).toHaveCount(0);
     await page
-      .getByRole("main")
-      .getByRole("heading", { name: "Documents" })
-      .first()
+      .getByTestId("shared-home-empty-state")
+      .getByRole("heading", { name: "Clinical Documents", level: 2, exact: true })
       .click({ position: { x: 2, y: 2 } });
     // Scope restore can land on the composer + trigger; the command listbox must
     // stay closed so it cannot cover the composer's "Open documents options" menu.
@@ -5594,11 +5593,12 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(navigator.getByTestId("services-shortlist-bar")).toHaveCount(0);
     await expect(navigator.getByTestId("services-comparison")).toHaveCount(0);
 
-    // The compact rail is progressive: it tracks shortlist state rather than
-    // standing there as an always-on four-card walkthrough (ledger #163).
-    const progress = navigator.getByRole("navigation", { name: "Referral progress" });
+    // The shared header owns workflow navigation. The selected view stays
+    // Search while the shortlist grows; each view opens only when requested.
+    const progress = page.getByRole("navigation", { name: "Referral progress" });
     const currentStage = progress.locator('[aria-current="step"]');
     await expect(currentStage).toHaveText("Search");
+    expect(new URL(page.url()).searchParams.get("q")).toBe("mental health");
 
     // Shortlisting sits behind each card's "More" toggle; the card's visible
     // action is the call button.
@@ -5610,20 +5610,61 @@ test.describe("PsychSift UI smoke coverage", () => {
     const shortlist = navigator.getByTestId("services-shortlist-bar");
     await expect(shortlist).toContainText("1 shortlisted");
     await expect(shortlist.getByRole("button", { name: "Compare" })).toBeDisabled();
-    await expect(currentStage).toHaveText("Shortlist");
+    await expect(progress.getByRole("button", { name: "Compare", exact: true })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    await expect(currentStage).toHaveText("Search");
+    await expect(navigator.getByTestId("services-comparison")).toHaveCount(0);
 
     // The first card's button now reads "Remove … from shortlist", so the second
     // open card's button is the only "Add" match left.
     await addButtons.first().click();
     await expect(shortlist).toContainText("2 shortlisted");
+    await expect(currentStage).toHaveText("Search");
+    await expect(navigator.getByTestId("services-comparison")).toHaveCount(0);
+    // Same-document history updates reach page.url() asynchronously; wait for both slugs.
+    await expect.poll(() => new URL(page.url()).searchParams.get("shortlist")?.split(",").length ?? 0).toBe(2);
+    const selectedSlugs = new URL(page.url()).searchParams.get("shortlist")?.split(",") ?? [];
+    expect(selectedSlugs).toHaveLength(2);
+
+    await progress.getByRole("button", { name: "Shortlist (2)", exact: true }).click();
+    await expect(currentStage).toHaveAccessibleName("Shortlist (2)");
+    const selectedResults = navigator.getByTestId("service-search-results");
+    await expect(selectedResults.locator(":scope > article")).toHaveCount(2);
+    for (const slug of selectedSlugs) {
+      await expect(selectedResults.getByTestId(`service-search-result-${slug}`)).toBeVisible();
+    }
+    expect(new URL(page.url()).searchParams.get("q")).toBe("mental health");
+
     await shortlist.getByRole("button", { name: "Compare" }).click();
-    await expect(navigator.getByTestId("services-comparison")).toBeVisible();
+    const comparison = navigator.getByTestId("services-comparison");
+    await expect(comparison).toBeVisible();
+    await expect(comparison.getByRole("link", { name: "Review referral", exact: true })).toHaveCount(2);
     await expect(currentStage).toHaveText("Compare");
+    expect(new URL(page.url()).searchParams.get("q")).toBe("mental health");
 
     await shortlist.getByRole("button", { name: "Clear" }).click();
     await expect(navigator.getByTestId("services-shortlist-bar")).toHaveCount(0);
     await expect(navigator.getByTestId("services-comparison")).toHaveCount(0);
     await expect(currentStage).toHaveText("Search");
+    expect(new URL(page.url()).searchParams.has("shortlist")).toBe(false);
+    expect(new URL(page.url()).searchParams.has("workflow")).toBe(false);
+    expect(new URL(page.url()).searchParams.get("q")).toBe("mental health");
+
+    await page.goBack();
+    await expect(comparison).toBeVisible();
+    await expect(shortlist).toContainText("2 shortlisted");
+    await expect(currentStage).toHaveText("Compare");
+    expect(new URL(page.url()).searchParams.get("shortlist")?.split(",")).toEqual(selectedSlugs);
+    expect(new URL(page.url()).searchParams.get("q")).toBe("mental health");
+
+    await page.goForward();
+    await expect(shortlist).toHaveCount(0);
+    await expect(comparison).toHaveCount(0);
+    await expect(currentStage).toHaveText("Search");
+    expect(new URL(page.url()).searchParams.has("shortlist")).toBe(false);
+    expect(new URL(page.url()).searchParams.get("q")).toBe("mental health");
   });
 
   test("search regressions avoid fetch errors and open viewer hits @critical", async ({ page }) => {

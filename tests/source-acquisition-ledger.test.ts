@@ -497,6 +497,16 @@ describe("source acquisition attestation", () => {
     ]);
   });
 
+  it.each([
+    ["attestedBy", null],
+    ["attestedAt", ""],
+    ["attestedAgainstSha256", "  "],
+  ])("reports an attestation field %s that is present but empty, with no sign-off recorded", (field, value) => {
+    expect(issuesFor({ [field]: value })).toEqual([
+      `ocp-wa-test-guideline: ${field} present but empty; remove the field, or record a complete attestation with clinical:review`,
+    ]);
+  });
+
   it("rejects a malformed digest rather than calling it stale", () => {
     expect(issuesFor({ attestedBy: "Owner", attestedAt: "2026-09-18", attestedAgainstSha256: "not-a-digest" })).toEqual(
       ["ocp-wa-test-guideline: attestedAgainstSha256 must be a lower-case 64-character SHA-256 digest"],

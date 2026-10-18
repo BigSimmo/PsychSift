@@ -94,6 +94,9 @@ describe("Forms search registry states", () => {
     window.history.replaceState(null, "", "/forms/search?q=transport");
     render(<FormsSearchResultsPage query="transport" />);
     expect(screen.getByText("Search could not complete")).toBeTruthy();
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+    expect(screen.getByRole("status").getAttribute("aria-live")).toBe("off");
+    expect(document.querySelectorAll('[aria-live="polite"]')).toHaveLength(0);
     expect(screen.queryByText(/^No matches for/)).toBeNull();
     expect(screen.queryByRole("status", { name: "Loading results" })).toBeNull();
   });

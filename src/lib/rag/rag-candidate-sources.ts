@@ -33,6 +33,7 @@ import {
 import { applyMemoryCardBoosts, fetchMemoryCardsForQuery } from "@/lib/deep-memory";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
+import { toPgVectorRpcParam } from "@/lib/rag/pgvector-literal";
 import {
   RetrievalRowShapeError,
   assertEmbeddingFieldRows,
@@ -454,7 +455,7 @@ export async function searchGovernedCorpora(args: {
           "match_document_chunks_v3",
           {
             ...sharedArgs(phase.corpusScopes),
-            query_embedding: queryEmbedding as unknown as string,
+            query_embedding: toPgVectorRpcParam(queryEmbedding),
             min_similarity: args.minSimilarity ?? 0.15,
             document_filter: documentFilter,
           },
@@ -467,7 +468,7 @@ export async function searchGovernedCorpora(args: {
       "match_document_chunks_hybrid_v3",
       {
         ...sharedArgs(phase.corpusScopes),
-        query_embedding: queryEmbedding as unknown as string,
+        query_embedding: toPgVectorRpcParam(queryEmbedding),
         query_text: queryText,
         min_similarity: args.minSimilarity ?? 0.15,
         document_filters: args.documentFilters ?? null,
@@ -482,7 +483,7 @@ export async function searchGovernedCorpora(args: {
           "match_document_chunks_v3",
           {
             ...sharedArgs(phase.corpusScopes),
-            query_embedding: queryEmbedding as unknown as string,
+            query_embedding: toPgVectorRpcParam(queryEmbedding),
             min_similarity: args.minSimilarity ?? 0.15,
             document_filter: documentFilter,
           },
@@ -1858,7 +1859,7 @@ export async function searchEmbeddingFieldCandidates(args: {
     "match_document_embedding_fields_hybrid_v2",
     "match_document_embedding_fields_hybrid",
     {
-      query_embedding: args.queryEmbedding as unknown as string,
+      query_embedding: toPgVectorRpcParam(args.queryEmbedding),
       query_text: buildClinicalTextSearchQuery(args.query),
       match_count: args.matchCount,
       min_similarity: 0.12,
@@ -1919,7 +1920,7 @@ export async function searchIndexUnitCandidates(args: {
     "match_document_index_units_hybrid_v2",
     "match_document_index_units_hybrid",
     {
-      query_embedding: args.queryEmbedding as unknown as string,
+      query_embedding: toPgVectorRpcParam(args.queryEmbedding),
       query_text: buildClinicalTextSearchQuery(args.query),
       match_count: args.matchCount,
       min_similarity: 0.1,

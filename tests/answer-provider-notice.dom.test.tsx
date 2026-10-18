@@ -38,8 +38,15 @@ describe("AnswerProviderNotice", () => {
     // The home and its line share one grid item, so a tall canvas cannot split them into two rows, and
     // the line is out of flow, so it cannot move the centred home or its composer.
     expect(source).toMatch(/<AnswerProviderNotice className="absolute inset-x-0 top-full [^"]*"/);
-    expect(source).toMatch(
-      /<div className="relative w-full">\s*<SharedHomeEmptyState[\s\S]*?<AnswerProviderNotice className="[^"]*"[^>]*\/>\s*\) : null\}\s*<\/div>/,
+    const homeStart = source.indexOf(") : showSharedHome ? (");
+    const homeEnd = source.indexOf(') : activeModeResultKind === "differentials" ? (', homeStart);
+    expect(homeStart).toBeGreaterThan(-1);
+    expect(homeEnd).toBeGreaterThan(homeStart);
+    const home = source.slice(homeStart, homeEnd);
+    // Mode-owned navigation may precede the home. The provider line still belongs
+    // to the same wrapper after its composer/home, rather than a separate grid row.
+    expect(home).toMatch(
+      /<div className="relative w-full">[\s\S]*?<SharedHomeEmptyState\b[\s\S]*?searchMode === "answer" && !clientDemoMode \? \(\s*<AnswerProviderNotice className="[^"]*"[^>]*\/>\s*\) : null\}\s*<\/div>/,
     );
     expect(source).toMatch(
       /explicitDemoMode \|\|\s*answer\.demoMode === true[^?]*\? null : \(\s*<AnswerProviderNotice/,

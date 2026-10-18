@@ -166,49 +166,43 @@ describe("Empirical Challenger M4-2 Verification Suite", () => {
    * 2. Calculators Search Page Density Toggle Buttons
    * ======================================================================== */
   describe("2. Calculators Search Page Density Toggle Hitbox & Deterministic Dismissal", () => {
-    it("verifies vertical hitbox is 48px via before:-inset-y-1.5 on size-9 buttons", () => {
+    it("declares native 48px square density targets without pseudo-element expansion", () => {
       render(<CalculatorsSearchPage />);
 
       const comfortableBtn = screen.getByRole("button", { name: /Comfortable density/i });
       const compactBtn = screen.getByRole("button", { name: /Compact density/i });
 
       for (const btn of [comfortableBtn, compactBtn]) {
-        expect(btn.className).toContain("size-9"); // 36px base
-        expect(btn.className).toContain("before:absolute");
-        expect(btn.className).toContain("before:-inset-y-1.5"); // 6px top and 6px bottom
-
-        // Hitbox calculation:
-        const baseHeight = 36;
-        const insetY = 1.5 * 4; // 6px
-        const totalHitboxHeight = baseHeight + insetY * 2;
-        expect(totalHitboxHeight).toBe(48); // Meets 48px tap target
+        expect(btn).toHaveAttribute("type", "button");
+        expect(btn).toHaveClass("size-12");
+        expect(btn.className).not.toMatch(/\b(?:before|after):/);
+        expect(btn.className).not.toMatch(/\b(?:sm|md|lg|xl|2xl):(?:size|h|w)-/);
       }
     });
 
-    it("verifies horizontal boundary before:inset-x-0 completely avoids overlap between adjacent density buttons", () => {
+    it("keeps density buttons adjacent in normal flex flow and activates each independently", async () => {
+      const user = userEvent.setup();
       render(<CalculatorsSearchPage />);
 
       const comfortableBtn = screen.getByRole("button", { name: /Comfortable density/i });
       const compactBtn = screen.getByRole("button", { name: /Compact density/i });
 
-      // Both buttons declare before:inset-x-0
-      expect(comfortableBtn.className).toContain("before:inset-x-0");
-      expect(compactBtn.className).toContain("before:inset-x-0");
-
-      // Verify neither button extends horizontally into its neighbor
-      expect(comfortableBtn.className).not.toMatch(/before:-inset-x/);
-      expect(compactBtn.className).not.toMatch(/before:-inset-x/);
-
-      // Mathematical proof of non-overlap:
-      // Button 1 (Comfortable): origin x1 = 0, width = 36px. Hitbox x range = [0, 36]
-      // Button 2 (Compact): origin x2 = 36, width = 36px. Hitbox x range = [36, 72]
-      // Overlap width = max(0, min(36, 72) - max(0, 36)) = max(0, 36 - 36) = 0px
-      const b1_left = 0;
-      const b1_right = 36;
-      const b2_left = 36;
-      const b2_right = 72;
-      const overlap = Math.max(0, Math.min(b1_right, b2_right) - Math.max(b1_left, b2_left));
-      expect(overlap).toBe(0);
+      // These are declaration/DOM checks; browser hit testing owns geometric
+      // proof. Neither target extends outside its own normal-flow box.
+      expect(comfortableBtn.parentElement).toHaveClass("inline-flex");
+      expect(comfortableBtn.nextElementSibling).toBe(compactBtn);
+      for (const btn of [comfortableBtn, compactBtn]) {
+        expect(btn).toHaveClass("size-12");
+        expect(btn.className).not.toMatch(/(?:^|\s)(?:absolute|fixed|-m[^\s]*|(?:before|after):[^\s]*)\b/);
+      }
+      expect(comfortableBtn).toHaveAttribute("aria-pressed", "true");
+      expect(compactBtn).toHaveAttribute("aria-pressed", "false");
+      await user.click(compactBtn);
+      expect(compactBtn).toHaveAttribute("aria-pressed", "true");
+      expect(comfortableBtn).toHaveAttribute("aria-pressed", "false");
+      await user.click(comfortableBtn);
+      expect(comfortableBtn).toHaveAttribute("aria-pressed", "true");
+      expect(compactBtn).toHaveAttribute("aria-pressed", "false");
     });
 
     it("verifies Escape dismissal behaves deterministically without duplicate router.push calls", async () => {
@@ -246,23 +240,20 @@ describe("Empirical Challenger M4-2 Verification Suite", () => {
     const servicesFilePath = resolve(process.cwd(), "src/components/services/services-navigator-page.tsx");
     const servicesFileContent = readFileSync(servicesFilePath, "utf8");
 
-    it("verifies touch target is 48px on mobile (size-12) and 40px on desktop (sm:size-10)", () => {
-      // Line 401 remove button and line 384 close button
-      const removeBtnRegex = /aria-label=\{`Remove \$\{service\.title\} from comparison`\}[\s\S]*?className="([^"]+)"/;
-      const match = servicesFileContent.match(removeBtnRegex);
-      expect(match).not.toBeNull();
-
-      const className = match![1];
-      expect(className).toContain("size-12"); // 48px touch target on mobile
-      expect(className).toContain("sm:size-10"); // 40px desktop alignment
-
-      // Verify mobile pixels
-      const mobilePixels = 12 * 4; // size-12 = 3rem = 48px
-      expect(mobilePixels).toBe(48);
-
-      // Verify desktop pixels
-      const desktopPixels = 10 * 4; // sm:size-10 = 2.5rem = 40px
-      expect(desktopPixels).toBe(40);
+    it("keeps comparison remove and close controls at 48px across breakpoints", () => {
+      const controls = [
+        /aria-label=\{`Remove \$\{service\.title\} from comparison`\}[\s\S]*?className="([^"]+)"/,
+        /aria-label="Close service comparison"[\s\S]*?className="([^"]+)"/,
+      ];
+      expect(controls).toHaveLength(2);
+      for (const pattern of controls) {
+        const match = servicesFileContent.match(pattern);
+        expect(match).not.toBeNull();
+        const className = match![1];
+        expect(className.split(/\s+/)).toContain("size-12");
+        expect(className).not.toMatch(/\b(?:sm|md|lg|xl|2xl):(?:size|h|w)-/);
+        expect(className).not.toMatch(/\b(?:before|after):-inset/);
+      }
     });
 
     it("confirms zero prohibited size-11 or *-11 legacy tokens in services navigator", () => {
@@ -368,8 +359,15 @@ describe("Empirical Challenger M4-2 Verification Suite", () => {
       expect(button.parentElement?.className ?? "").not.toContain("min-h-12");
     });
 
-    it("verifies design system contract baseline reflects 4 sub-floor declarations (down from 5)", () => {
-      expect(baselineJson.metrics.interactiveTapFloorDeclarations).toBe(4);
+    it("pins the two remaining sub-floor declarations and the repaired path absence", () => {
+      expect(baselineJson.metrics.interactiveTapFloorDeclarations).toBe(2);
+      expect(baselineJson.debtByPath.interactiveTapFloorDeclarations).toEqual({
+        "src/components/clinical-dashboard/universal-search-also-matches.tsx": 1,
+        "src/components/privacy-input-notice.tsx": 1,
+      });
+      expect(Object.keys(baselineJson.debtByPath.interactiveTapFloorDeclarations)).not.toContain(
+        "src/components/DocumentTagCloud.tsx",
+      );
     });
   });
 });

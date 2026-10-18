@@ -221,7 +221,12 @@ function therapyEvidence(request: ClinicalAskRequest) {
       title: record.name,
       publisher: "Therapy Compass catalogue",
       href: therapyRecordHref(record.slug),
-      extract: text([record.clinicalSummary, record.bestUsedFor, record.targetSymptoms, record.indications]),
+      // Keep unsigned therapies discoverable, but do not let their clinical text
+      // serve as answer support until qualified-clinician review is complete.
+      extract:
+        source.clinical_validation_status === "locally_reviewed"
+          ? text([record.clinicalSummary, record.bestUsedFor, record.targetSymptoms, record.indications])
+          : text([record.name, record.category]),
       reviewState: source.clinical_validation_status === "locally_reviewed" ? "reviewed" : "needs_review",
     });
   });

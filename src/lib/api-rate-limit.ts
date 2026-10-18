@@ -66,6 +66,7 @@ export type ApiRateLimitBucket =
   | "teaching_code"
   | "roster"
   | "work_sync"
+  | "account_sync"
   | "work_bookings";
 
 export type ApiRateLimitResult = {
@@ -122,6 +123,8 @@ const apiRateLimitDefaults = {
   // Work choices that follow the doctor between devices (saved work pages, My Day
   // choices). Each change is one small write; same shape as roster.
   work_sync: { limit: 60, windowSeconds: 60 },
+  // Favourites and account preferences, including per-open favourite updates.
+  account_sync: { limit: 240, windowSeconds: 60 },
   // Admin Bookings: booking or cancelling a place, and an organiser posting or changing a
   // course. Each is one small write; same shape as work_sync.
   work_bookings: { limit: 60, windowSeconds: 60 },

@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "131d0d13-8675-44b9-bc7c-ef412f260972",
+  "createdOn": "2026-10-17",
+  "action": "done",
+  "payload": {
+    "id": "#YJXRS3",
+    "outcome": "Closed as a duplicate of #8Y9169 (verified 18 Oct 2026): both track removing the remaining PR 3538 leftovers after the 13 Nov 2026 dead-code window (/api/proxy, recalculate-answer-support-labels, dev pages). #8Y9169 is the surviving row and records that the /mockups/development pages are reachable and must not be deleted (update 076f119e). Provenance kept: #YJXRS3 was the #08216B follow-up request.",
+    "baseRowFingerprint": "abb488eb1c2122d95b2ad8aceea75da2c6fba7406ed43ab5fe510d15152c23e4",
+    "targetUlid": "01M54ZYA19YJXRS380P791XA0P"
+  }
+}

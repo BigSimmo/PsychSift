@@ -1,6 +1,6 @@
 "use client";
 
-import { cn, ignoreUnavailableActivation, textMuted } from "@/components/ui-primitives";
+import { controlDisabled, cn, ignoreUnavailableActivation, textMuted } from "@/components/ui-primitives";
 import { missingValuePhrase } from "@/components/ui/missing-value";
 import type { ImageRow } from "@/components/document-viewer/types";
 
@@ -51,7 +51,8 @@ export function DocumentImageFilmstrip({
               className={cn(
                 "inline-flex min-h-tap shrink-0 items-center gap-1.5 rounded-md border px-2.5 text-xs font-semibold transition",
                 "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]",
-                "aria-disabled:cursor-not-allowed aria-disabled:opacity-45 hover:not-aria-disabled:bg-[color:var(--surface-subtle)] hover:not-aria-disabled:text-[color:var(--text)]",
+                controlDisabled,
+                "aria-disabled:cursor-not-allowed hover:not-aria-disabled:bg-[color:var(--surface-subtle)] hover:not-aria-disabled:text-[color:var(--text)]",
                 isActive
                   ? "border-[color:var(--clinical-accent)]/40 bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]"
                   : "border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--text-muted)]",
@@ -63,7 +64,7 @@ export function DocumentImageFilmstrip({
                   prefix belongs to a page number, not to the absence of one. The button's
                   accessible name and its sr-only description already read "page unknown", so the
                   visible text now agrees with them instead of showing a dash. */}
-              <span className={cn("nums shrink-0", isActive ? undefined : textMuted)}>
+              <span className={cn("nums shrink-0", isActive || page === null ? undefined : textMuted)}>
                 {page === null ? missingValuePhrase("unknown") : `p.${page}`}
               </span>
               <span className="max-w-[9rem] truncate">{shortLabel}</span>

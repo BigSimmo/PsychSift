@@ -64,6 +64,9 @@ export function ResultCard({
   const b = useTcBindings();
   const sheetUnavailableId = useId();
   const { notice, saved, toggleFavourite } = useTherapyFavourite(therapy.slug);
+  useEffect(() => {
+    if (notice) announce(notice);
+  }, [notice]);
   const inCompare = b.isInCompare(therapy.slug);
   // A full tray keeps its tab stop and states why, per the wiring convention.
   const compareFull = !inCompare && b.compareSlugs.length >= THERAPY_MAX_COMPARE;
@@ -181,11 +184,7 @@ export function ResultCard({
         </div>
       </div>
       {notice ? (
-        <p
-          role="status"
-          aria-live="polite"
-          className="mx-4 mb-0 rounded-md border border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-3 py-2 text-xs font-semibold text-[color:var(--text-muted)] sm:mx-5"
-        >
+        <p className="mx-4 mb-0 rounded-md border border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-3 py-2 text-xs font-semibold text-[color:var(--text-muted)] sm:mx-5">
           {notice}
         </p>
       ) : null}

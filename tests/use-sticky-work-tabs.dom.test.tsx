@@ -27,6 +27,37 @@ function rectAt(top: number): DOMRect {
 afterEach(() => vi.restoreAllMocks());
 
 describe("useStickyWorkTabs", () => {
+  it("preserves fractional tab geometry while the whole band slides", () => {
+    let bandTop = 300.25;
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      if (this.dataset.testid === "band") {
+        return { ...rectAt(bandTop), height: 103.875, bottom: bandTop + 103.875 };
+      }
+      return rectAt(bandTop + 54.875);
+    });
+    // These integer DOM properties caused the 0.125px clip at the tab's top.
+    vi.spyOn(HTMLElement.prototype, "offsetTop", "get").mockReturnValue(55);
+    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(104);
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      callback(0);
+      return 0;
+    });
+    const { getByTestId, unmount } = render(<Band />);
+    const band = getByTestId("band");
+    try {
+      expect(band.style.getPropertyValue("--work-band-tabs-top")).toBe("54.875px");
+      expect(document.documentElement.style.getPropertyValue("--work-tabs-h")).toBe("49px");
+
+      // A shared compositor translation must not change the layout offset.
+      bandTop = -104.125;
+      act(() => window.dispatchEvent(new Event("resize")));
+      expect(band.style.getPropertyValue("--work-band-tabs-top")).toBe("54.875px");
+      expect(document.documentElement.style.getPropertyValue("--work-tabs-h")).toBe("49px");
+    } finally {
+      unmount();
+    }
+  });
+
   it("coalesces scroll bursts and does not poll geometry while a compositor animation runs", () => {
     let nextId = 0;
     const frames = new Map<number, FrameRequestCallback>();

@@ -873,7 +873,10 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
 
     await gotoLauncher(page, "/services?q=13YARN&focus=1&run=1");
     await expect(page.getByRole("button", { name: "Mode Services" })).toBeVisible();
-    await expect(page.getByText("Services Navigator", { exact: true })).toBeVisible();
+    const servicesIdentity = page.getByRole("navigation", { name: "Referral progress" }).getByTestId("mode-nav-title");
+    await expect(servicesIdentity).toBeVisible();
+    await expect(servicesIdentity).toHaveText("Services");
+    await expect(page.locator(".universal-header").getByText("Services Navigator", { exact: true })).toHaveCount(0);
     await expect(page.getByTestId("shared-home-brand")).toHaveCount(0);
     await expect(page.getByTestId("service-search-results")).toBeVisible();
     await expect(page.getByTestId("service-search-result-13yarn")).toBeVisible();
@@ -1529,6 +1532,91 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
       await expect(composer, path).toBeVisible();
       await expect(composer, path).toBeFocused();
     }
+  });
+
+  for (const width of [390, 1280]) {
+    test(`Services keeps its shortlist when the shared composer submits another query at ${width}px`, async ({
+      page,
+    }) => {
+      await mockAnswerDashboardApi(page);
+      await page.setViewportSize({ width, height: 900 });
+      await gotoLauncher(page, "/services/search?q=13YARN&run=1");
+      const result = page.getByTestId("service-search-result-13yarn");
+      await expect(result).toBeVisible();
+      await result.getByRole("button", { name: "More actions for 13YARN" }).click();
+      await page.getByRole("button", { name: "Add 13YARN to shortlist", exact: true }).click();
+      await expect(
+        page
+          .getByRole("navigation", { name: "Referral progress" })
+          .getByRole("button", { name: "Shortlist (1)", exact: true }),
+      ).toBeVisible();
+      const input = visibleGlobalSearchInput(page).first();
+      await input.fill("crisis");
+      await input.press("Enter");
+      await expect.poll(() => new URL(page.url()).searchParams.get("q")).toBe("crisis");
+      expect(new URL(page.url()).searchParams.get("shortlist")).toBe("13yarn");
+      expect(new URL(page.url()).searchParams.has("workflow")).toBe(false);
+      await expect(
+        page.getByRole("navigation", { name: "Referral progress" }).locator('[aria-current="step"]'),
+      ).toHaveText("Search");
+
+      await page.goBack();
+      await expect.poll(() => new URL(page.url()).searchParams.get("q")).toBe("13YARN");
+      expect(new URL(page.url()).searchParams.get("shortlist")).toBe("13yarn");
+      await expect(result).toBeVisible();
+      await page.goForward();
+      await expect.poll(() => new URL(page.url()).searchParams.get("q")).toBe("crisis");
+      expect(new URL(page.url()).searchParams.get("shortlist")).toBe("13yarn");
+
+      await page
+        .getByRole("region", { name: "Service shortlist" })
+        .getByRole("button", { name: "Clear", exact: true })
+        .click();
+      await expect.poll(() => new URL(page.url()).searchParams.has("shortlist")).toBe(false);
+      const nextInput = visibleGlobalSearchInput(page).first();
+      await nextInput.fill("housing");
+      await nextInput.press("Enter");
+      await expect.poll(() => new URL(page.url()).searchParams.get("q")).toBe("housing");
+      expect(new URL(page.url()).searchParams.has("shortlist")).toBe(false);
+      await expect(
+        page
+          .getByRole("navigation", { name: "Referral progress" })
+          .getByRole("button", { name: "Shortlist", exact: true }),
+      ).toHaveAttribute("aria-disabled", "true");
+      await expectNoPageHorizontalOverflow(page);
+    });
+
+    test(`Services can replace unavailable bookmarked shortlist records at ${width}px`, async ({ page }) => {
+      await mockAnswerDashboardApi(page);
+      await page.setViewportSize({ width, height: 900 });
+      await gotoLauncher(
+        page,
+        "/services/search?q=13YARN&run=1&shortlist=missing1,missing2,missing3,missing4,missing5&workflow=compare",
+      );
+      const result = page.getByTestId("service-search-result-13yarn");
+      await expect(result).toBeVisible();
+      await result.getByRole("button", { name: "More actions for 13YARN" }).click();
+      await page.getByRole("button", { name: "Add 13YARN to shortlist", exact: true }).click();
+      await expect(page.getByTestId("services-shortlist-bar")).toContainText("1 shortlisted");
+      expect(new URL(page.url()).searchParams.get("shortlist")).toBe("13yarn");
+      await expectNoPageHorizontalOverflow(page);
+    });
+  }
+
+  test("Therapy shared-home tabs retain compatible query and comparison state", async ({ page }) => {
+    await mockAnswerDashboardApi(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    const comparison = "cognitive-behavioural-therapy-cbt,acceptance-and-commitment-therapy-act";
+    await gotoLauncher(page, `/?mode=therapy-compass&q=insomnia&ids=${comparison}&topic=sleep`);
+    const nav = page.getByRole("navigation", { name: "Therapy pages" });
+    await expect(nav).toBeVisible();
+    await nav.getByRole("link", { name: "Compare", exact: true }).click();
+    await expect(page).toHaveURL(/\/therapy-compass\/compare/);
+    const params = new URL(page.url()).searchParams;
+    expect(params.get("q")).toBe("insomnia");
+    expect(params.get("ids")).toBe(comparison);
+    expect(params.get("topic")).toBe("sleep");
+    await expect(page.getByRole("button", { name: "Copy set", exact: true })).toBeEnabled();
   });
 
   test("services mode shows source-backed records in search results", async ({ page }) => {

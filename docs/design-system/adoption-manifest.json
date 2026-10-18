@@ -449,6 +449,7 @@
         "src/components/cme/applications/applications-referees.tsx",
         "src/components/cme/applications/applications-season.tsx",
         "src/components/cme/cme-annual-summary.tsx",
+        "src/components/cme/cme-claim-pack.tsx",
         "src/components/cme/cme-dashboard.tsx",
         "src/components/cme/cme-drafts-section.tsx",
         "src/components/cme/cme-entry-form.tsx",
@@ -567,15 +568,16 @@
         "tests/challenger-m4-stress.dom.test.tsx",
         "tests/challenger-m5-1-locator-uniqueness.dom.test.tsx",
         "tests/challenger-m5-stress.dom.test.tsx",
-        "tests/cme-type-weight.test.ts",
         "tests/cme-visual-contract.dom.test.tsx",
         "tests/copy-button.dom.test.tsx",
         "tests/design-sync-visual-exports.test.ts",
         "tests/design-system-adoption.test.ts",
         "tests/design-system-contract-utils.test.ts",
         "tests/filter-highlight.dom.test.tsx",
+        "tests/helpers/type-weight-scanner.ts",
         "tests/on-call-compliance.test.ts",
         "tests/therapy-compass-responsive-contract.test.ts",
+        "tests/ui-primitives.dom.test.tsx",
         "tests/ui-v2-components.dom.test.tsx"
       ],
       "baseline": {
@@ -2609,6 +2611,7 @@
         "src/components/clinical-dashboard/document-search-results.tsx",
         "src/components/clinical-dashboard/result-rows-placeholder.tsx",
         "src/components/clinical-dashboard/signed-image.tsx",
+        "src/components/document-viewer/non-pdf-source-preview.tsx",
         "src/components/mode-home-page-skeleton.tsx"
       ],
       "productImportFiles": [
@@ -2620,6 +2623,7 @@
         "src/components/clinical-dashboard/document-search-results.tsx",
         "src/components/clinical-dashboard/result-rows-placeholder.tsx",
         "src/components/clinical-dashboard/signed-image.tsx",
+        "src/components/document-viewer/non-pdf-source-preview.tsx",
         "src/components/mode-home-page-skeleton.tsx"
       ],
       "designSync": {
@@ -2928,7 +2932,6 @@
         "src/components/admin/renewals/record-dates-sheet.tsx",
         "src/components/admin/starter/starter-date-sheet.tsx",
         "src/components/alerts/remind-me-sheet.tsx",
-        "src/components/calculators/clinical-math-panel.tsx",
         "src/components/clinical-dashboard/email-auth-form.tsx",
         "src/components/clinical-dashboard/password-recovery-form.tsx",
         "src/components/clinical-dashboard/patient-profile-panel.tsx",

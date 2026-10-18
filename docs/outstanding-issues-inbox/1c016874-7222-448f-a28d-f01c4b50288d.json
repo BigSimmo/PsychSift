@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "1c016874-7222-448f-a28d-f01c4b50288d",
+  "createdOn": "2026-10-17",
+  "action": "done",
+  "payload": {
+    "id": "#BDFFYF",
+    "outcome": "Duplicate tracker for #WFYDV6: the same src/components/forms/wa-mha-form-print.tsx, the same unverified statutory section lists, 7-day pre-expiry examination timing and copy recipients, and the same 'legal/clinical sign-off or removal after 2026-11-13' condition. Folded into #WFYDV6, which is reopened in place as P1 (ledger reopen action, PR #3627) and whose detail already covers the PR #3573 non-statutory study headers. Tracking continues on #WFYDV6. Nothing is signed off.",
+    "baseRowFingerprint": "840dd59529b40fccd31777189478ca9fe605eb1cadd819583f293dd49cf83e5f",
+    "targetUlid": "01M54ZYAB6BDFFYFA3ZA5MNPVB"
+  }
+}

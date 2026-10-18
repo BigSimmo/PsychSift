@@ -44,5 +44,6 @@ describe("CompareCatalogPicker", () => {
         name: (accessibleName: string) => accessibleName.startsWith("MSE") && !accessibleName.startsWith("MMSE"),
       }),
     ).toBeDisabled();
+    expect(screen.getByRole("option", { name: /^MSE / })).toHaveClass("disabled:text-[color:var(--disabled)]!");
   });
 });

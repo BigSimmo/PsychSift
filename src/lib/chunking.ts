@@ -12,7 +12,47 @@ export const CHUNKER_VERSION = "1.2.0-page";
 export const DOCUMENT_CHUNKER_VERSION = "1.2.0-document";
 
 const sentenceBoundary = /(?<=[.!?])\s+/;
+const sentenceBoundaryGlobal = new RegExp(sentenceBoundary.source, "g");
 const paragraphBoundary = /\n{2,}/;
+const lineBreakPattern = /\r?\n/;
+const whitespaceRunPattern = /\s+/g;
+const whitespaceSplitPattern = /\s+/;
+const horizontalWhitespaceRunPattern = /[ \t]+/g;
+const trailingHorizontalWhitespaceBeforeNewlinePattern = /[ \t]+\n/g;
+const excessBlankLinesPattern = /\n{3,}/g;
+const nonAlphanumericRunPattern = /[^a-z0-9]+/g;
+const lookupArtifactWordPattern = /\b(?:table|figure|appendix)\b/g;
+const headingLinePattern = /^[A-Z0-9][A-Za-z0-9\s,;:()[\]/-]{3,}$/;
+const trailingHeadingPunctuationPattern = /[:.\s]+$/;
+const digitsOnlyLinePattern = /^\d+$/;
+const boilerplateOrgPrefixPattern =
+  /^(?:clinical|corporate|mental health|government|department|hospital|health service)\b/i;
+const boilerplateKeywordPattern =
+  /\b(?:confidential|printed|uncontrolled|guideline|procedure|policy|document|version|review date)\b/i;
+const trailingDigitPattern = /\d$/;
+const sectionHeadingTextPattern = /^[A-Z][A-Za-z0-9\s,;:()\/\-\[\]]+$/;
+const numberedSectionHeadingPattern = /^\d+\.?\s+[A-Z]/;
+const edgeHyphenPattern = /(^-|-$)/g;
+const headingNumberPrefixPattern = /^(\d+(?:\.\d+){0,5})\b/;
+const tableSeparatorRowPattern = /^\s*\|?[\s:|-]+\|?\s*$/;
+const nonWhitespaceCharPattern = /\S/;
+const whitespaceCharPattern = /\s/;
+const sentenceTerminalPunctuationPattern = /[.!?]/;
+const trailingClausePunctuationPattern = /[\s,;:([{\-–—]+$/;
+const imageDataStartEndBlockPattern = /\[\[IMAGE_DATA_START\]\][\s\S]*?\[\[IMAGE_DATA_END\]\]/g;
+const imageDataOmittedBlockPattern = /\[\[IMAGE_DATA_OMITTED\]\][\s\S]*?\[\[\/IMAGE_DATA_OMITTED\]\]/g;
+const sentenceOrLineSplitPattern = /(?<=[.!?])\s+|\n+/;
+const invalidTableCellCharPattern = /[\r\n|\\]/;
+const markdownTableAlignmentCellPattern = /^:?-{3,}:?$/;
+const imageDataMarkerGlobalPattern =
+  /\[\[(IMAGE_DATA_START|IMAGE_DATA_END|IMAGE_DATA_OMITTED|\/IMAGE_DATA_OMITTED)\]\]/g;
+const danglingImageDataMarkerPattern = /\[\[\/?IMAGE_DATA|\bIMAGE_DATA_/;
+const tableIdentifierUnitPattern =
+  /^(?:mg|mcg|µg|μg|ug|g|kg|ng|pg|ml|l|dl|h|hr|hrs|hour|hours|min|s|sec|second|seconds|day|days|wk|week|weeks|mmol|mol|meq|iu|u|unit|units|mmhg|cm|bpm|x)$/i;
+const explicitRowIdentifierShapePattern = /^[A-Z0-9]+(?:[-_][A-Z0-9]+)+$/;
+const uppercaseAsciiLetterPattern = /[A-Z]/;
+const numericLiteralGlobalPattern = /[+-]?(?:\d+(?:[.,]\d+)?|\.\d+)(?:e[+-]?\d+)?/gi;
+const nonUnicodeLetterSplitPattern = /[^\p{L}]+/u;
 const metadataNoisePatterns: RegExp[] = [
   /\b(?:copyright|all rights reserved|document revision|do not distribute|downloaded from|www\.\S+)\b/i,
   /\b(?:version|revision)\s+\d+\s*$/i,
@@ -46,24 +86,20 @@ export function estimateTokens(text: string) {
 
 export function detectHeading(text: string) {
   const firstMeaningfulLine = text
-    .split(/\r?\n/)
+    .split(lineBreakPattern)
     .map((line) => line.trim())
     .find((line) => line.length > 0 && line.length < 120);
 
   if (!firstMeaningfulLine) return null;
-  if (/^[A-Z0-9][A-Za-z0-9\s,;:()[\]/-]{3,}$/.test(firstMeaningfulLine)) {
-    return firstMeaningfulLine.replace(/[:.\s]+$/, "");
+  if (headingLinePattern.test(firstMeaningfulLine)) {
+    return firstMeaningfulLine.replace(trailingHeadingPunctuationPattern, "");
   }
 
   return null;
 }
 
 function normalizeLookupText(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .replace(/\b(?:table|figure|appendix)\b/g, "")
-    .trim();
+  return value.toLowerCase().replace(nonAlphanumericRunPattern, " ").replace(lookupArtifactWordPattern, "").trim();
 }
 
 // A line that is nothing but a PSPF protective marking ("OFFICIAL",
@@ -74,7 +110,7 @@ function isClassificationBannerLine(line: string) {
 
 function looksLikeMetadataNoise(line: string) {
   if (!line || line.length <= 2) return true;
-  if (/^\d+$/.test(line)) return true;
+  if (digitsOnlyLinePattern.test(line)) return true;
   if (isClassificationBannerLine(line)) return true;
   if (metadataNoisePatterns.some((pattern) => pattern.test(line))) return true;
   if (lineNoisePatterns.some((pattern) => pattern.test(line))) return true;
@@ -82,18 +118,15 @@ function looksLikeMetadataNoise(line: string) {
 }
 
 function normalizeRepeatedLine(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
+  return value.toLowerCase().replace(nonAlphanumericRunPattern, " ").trim();
 }
 
 function looksLikeRepeatingBoilerplate(line: string) {
   const normalized = normalizeRepeatedLine(line);
   if (!normalized || normalized.length < 5 || normalized.length > 90) return false;
   if (looksLikeMetadataNoise(line)) return true;
-  if (/^(?:clinical|corporate|mental health|government|department|hospital|health service)\b/i.test(line)) return true;
-  if (/\b(?:confidential|printed|uncontrolled|guideline|procedure|policy|document|version|review date)\b/i.test(line)) {
+  if (boilerplateOrgPrefixPattern.test(line)) return true;
+  if (boilerplateKeywordPattern.test(line)) {
     return true;
   }
   return false;
@@ -107,7 +140,7 @@ function buildRepeatedBoilerplateLines(inputs: ChunkInput[]) {
     // ("Conﬁdential") would produce a mismatched key and survive filtering.
     const pageLines = new Set(
       normalizeExtractedGlyphs(input.pageText)
-        .split(/\r?\n/)
+        .split(lineBreakPattern)
         .map((line) => line.trim())
         .filter(looksLikeRepeatingBoilerplate)
         .map(normalizeRepeatedLine)
@@ -132,7 +165,7 @@ function buildRepeatedBoilerplateLines(inputs: ChunkInput[]) {
 function isWrappedDoseUnitContinuation(previousLine: string | undefined, line: string) {
   return Boolean(
     previousLine &&
-    /\d$/.test(previousLine) &&
+    trailingDigitPattern.test(previousLine) &&
     clinicalUnitLinePattern.test(line) &&
     !lineNoisePatterns.some((pattern) => pattern.test(previousLine)),
   );
@@ -157,7 +190,7 @@ function rejoinWrappedDoseUnits(lines: string[]) {
 // removePageNoise sees), since the deleted unit is not recoverable from stored
 // chunks. Shares isWrappedDoseUnitContinuation with the fix so the two can't drift.
 export function countWrappedDoseUnitLines(text: string) {
-  const lines = text.split(/\r?\n/).map((line) => line.trim());
+  const lines = text.split(lineBreakPattern).map((line) => line.trim());
   let count = 0;
   for (let index = 1; index < lines.length; index += 1) {
     if (isWrappedDoseUnitContinuation(lines[index - 1], lines[index])) count += 1;
@@ -166,7 +199,7 @@ export function countWrappedDoseUnitLines(text: string) {
 }
 
 function removePageNoise(text: string, repeatedBoilerplateLines = new Set<string>()) {
-  const lines = rejoinWrappedDoseUnits(text.split(/\r?\n/).map((line) => line.trim()));
+  const lines = rejoinWrappedDoseUnits(text.split(lineBreakPattern).map((line) => line.trim()));
   return lines
     .filter((line) => {
       if (line === "") return true;
@@ -175,20 +208,20 @@ function removePageNoise(text: string, repeatedBoilerplateLines = new Set<string
       return true;
     })
     .join("\n")
-    .replace(/[ \t]+\n/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
+    .replace(trailingHorizontalWhitespaceBeforeNewlinePattern, "\n")
+    .replace(excessBlankLinesPattern, "\n\n")
     .trim();
 }
 
 function extractSectionHeadings(text: string) {
   return text
-    .split(/\r?\n/)
+    .split(lineBreakPattern)
     .map((line) => line.trim())
     .filter((line) => {
       if (!line || line.length < 4) return false;
       if (looksLikeMetadataNoise(line)) return false;
-      if (line.length < 90 && /^[A-Z][A-Za-z0-9\s,;:()\/\-\[\]]+$/.test(line)) return true;
-      if (/^\d+\.?\s+[A-Z]/.test(line) && line.length < 110) return true;
+      if (line.length < 90 && sectionHeadingTextPattern.test(line)) return true;
+      if (numberedSectionHeadingPattern.test(line) && line.length < 110) return true;
       return false;
     });
 }
@@ -196,17 +229,13 @@ function extractSectionHeadings(text: string) {
 function sectionAnchorId(heading: string | null) {
   if (!heading) return null;
   return (
-    heading
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "")
-      .slice(0, 40) || null
+    heading.toLowerCase().replace(nonAlphanumericRunPattern, "-").replace(edgeHyphenPattern, "").slice(0, 40) || null
   );
 }
 
 function headingLevel(heading: string | null, sectionPath: string[]) {
   if (!heading) return sectionPath.length > 0 ? Math.min(sectionPath.length, 6) : null;
-  const numbered = heading.match(/^(\d+(?:\.\d+){0,5})\b/);
+  const numbered = heading.match(headingNumberPrefixPattern);
   if (numbered) return Math.min(numbered[1].split(".").length, 6);
   return sectionPath.includes(heading)
     ? Math.max(1, sectionPath.indexOf(heading) + 1)
@@ -215,23 +244,23 @@ function headingLevel(heading: string | null, sectionPath: string[]) {
 
 function imageMatchScore(lookupText: string, sourceText: string) {
   if (!lookupText || !sourceText) return 0;
-  const source = new Set(sourceText.split(/\s+/).filter(Boolean));
+  const source = new Set(sourceText.split(whitespaceSplitPattern).filter(Boolean));
   const hits = lookupText
-    .split(/\s+/)
+    .split(whitespaceSplitPattern)
     .filter(Boolean)
     .filter((token) => source.has(token)).length;
   return hits;
 }
 
 function dedupeChunkFingerprint(text: string) {
-  return normalizeLookupText(text).replace(/\s+/g, " ").trim();
+  return normalizeLookupText(text).replace(whitespaceRunPattern, " ").trim();
 }
 
 const imageDataTagPattern =
   /\[\[IMAGE_DATA_START\]\][\s\S]*?\[\[IMAGE_DATA_END\]\]|\[\[IMAGE_DATA_OMITTED\]\][\s\S]*?\[\[\/IMAGE_DATA_OMITTED\]\]/g;
 
 function normalizeChunkKeyContent(content: string) {
-  return content.replace(imageDataTagPattern, " ").replace(/\s+/g, " ").trim().toLowerCase();
+  return content.replace(imageDataTagPattern, " ").replace(whitespaceRunPattern, " ").trim().toLowerCase();
 }
 
 // CI-4: a stable, position-independent identity for a chunk. Keyed on the document, the
@@ -283,8 +312,8 @@ function adaptiveChunkProfile(text: string, sectionPath: string[]) {
 
 export function chunkTextWithOverlap(text: string, chunkSize = env.CHUNK_SIZE, overlap = env.CHUNK_OVERLAP) {
   const clean = removePageNoise(normalizeExtractedGlyphs(text))
-    .replace(/[ \t]+\n/g, "\n")
-    .replace(/[ \t]+/g, " ")
+    .replace(trailingHorizontalWhitespaceBeforeNewlinePattern, "\n")
+    .replace(horizontalWhitespaceRunPattern, " ")
     .trim();
   if (!clean) return [];
   if (clean.length <= chunkSize) return [clean];
@@ -350,16 +379,16 @@ function readableOverlapTail(text: string, overlap: number) {
 const tableRowPattern = /^\s*\|.*\|\s*$/;
 
 function isTableBlock(block: string) {
-  const lines = block.split(/\r?\n/).filter((line) => line.trim().length > 0);
+  const lines = block.split(lineBreakPattern).filter((line) => line.trim().length > 0);
   if (lines.length < 2) return false;
   return lines.every((line) => tableRowPattern.test(line));
 }
 
 function chunkTableBlock(block: string, chunkSize: number) {
-  const lines = block.split(/\r?\n/).filter((line) => line.trim().length > 0);
+  const lines = block.split(lineBreakPattern).filter((line) => line.trim().length > 0);
   if (block.length <= chunkSize) return [block.trim()];
 
-  const separatorIndex = lines.findIndex((line) => /^\s*\|?[\s:|-]+\|?\s*$/.test(line) && line.includes("-"));
+  const separatorIndex = lines.findIndex((line) => tableSeparatorRowPattern.test(line) && line.includes("-"));
   const headerLines = separatorIndex > 0 ? lines.slice(0, separatorIndex + 1) : lines.slice(0, 1);
   const bodyLines = lines.slice(headerLines.length);
   const header = headerLines.join("\n");
@@ -387,10 +416,15 @@ function readableOverlapStart(clean: string, end: number, overlap: number) {
   if (overlap <= 0) return end;
   let start = Math.max(0, end - overlap);
 
-  while (start > 0 && start < end && /\S/.test(clean[start - 1] ?? "") && /\S/.test(clean[start] ?? "")) {
+  while (
+    start > 0 &&
+    start < end &&
+    nonWhitespaceCharPattern.test(clean[start - 1] ?? "") &&
+    nonWhitespaceCharPattern.test(clean[start] ?? "")
+  ) {
     start -= 1;
   }
-  while (start < end && /\s/.test(clean[start] ?? "")) {
+  while (start < end && whitespaceCharPattern.test(clean[start] ?? "")) {
     start += 1;
   }
 
@@ -398,11 +432,14 @@ function readableOverlapStart(clean: string, end: number, overlap: number) {
   let sentenceStart = start;
   while (
     sentenceStart > 0 &&
-    !(/[.!?]/.test(clean[sentenceStart - 1] ?? "") && /\s/.test(clean[sentenceStart] ?? ""))
+    !(
+      sentenceTerminalPunctuationPattern.test(clean[sentenceStart - 1] ?? "") &&
+      whitespaceCharPattern.test(clean[sentenceStart] ?? "")
+    )
   ) {
     sentenceStart -= 1;
   }
-  while (sentenceStart < end && /\s/.test(clean[sentenceStart] ?? "")) sentenceStart += 1;
+  while (sentenceStart < end && whitespaceCharPattern.test(clean[sentenceStart] ?? "")) sentenceStart += 1;
   const sentenceWindow = clean.slice(sentenceStart, end);
   const boundary = sentenceEndPattern.exec(sentenceWindow);
   const governingSentence = sentenceWindow.slice(0, boundary?.index ?? sentenceWindow.length);
@@ -414,7 +451,7 @@ function readableOverlapStart(clean: string, end: number, overlap: number) {
 function chunkTextBySentence(clean: string, chunkSize: number, overlap: number) {
   const chunks: string[] = [];
   // Record actual offsets once; never scan the remaining document for every chunk.
-  const sentenceEnds = Array.from(clean.matchAll(new RegExp(sentenceBoundary.source, "g")), (match) => match.index);
+  const sentenceEnds = Array.from(clean.matchAll(sentenceBoundaryGlobal), (match) => match.index);
   if (sentenceEnds.at(-1) !== clean.length) sentenceEnds.push(clean.length);
   let boundaryIndex = 0;
   let start = 0;
@@ -457,16 +494,13 @@ function truncateAtWordBoundary(value: string, limit: number) {
   const clauseCut = Math.max(window.lastIndexOf(". "), window.lastIndexOf("; "), window.lastIndexOf(": "));
   const wordCut = window.lastIndexOf(" ");
   const cut = clauseCut >= limit * 0.6 ? clauseCut + 1 : wordCut > 0 ? wordCut : window.length;
-  const trimmed = window
-    .slice(0, cut)
-    .replace(/[\s,;:([{\-–—]+$/, "")
-    .trim();
+  const trimmed = window.slice(0, cut).replace(trailingClausePunctuationPattern, "").trim();
   return trimmed ? `${trimmed}...` : `${window.trim()}...`;
 }
 
 function compactImageText(value: string | null | undefined, limit = 420) {
   const text = String(value ?? "")
-    .replace(/\s+/g, " ")
+    .replace(whitespaceRunPattern, " ")
     .trim();
   if (!text) return "";
   return truncateAtWordBoundary(text, limit);
@@ -474,18 +508,18 @@ function compactImageText(value: string | null | undefined, limit = 420) {
 
 function compactSynopsisText(value: string | null | undefined, limit = 720) {
   const withoutImageTags = String(value ?? "")
-    .replace(/\[\[IMAGE_DATA_START\]\][\s\S]*?\[\[IMAGE_DATA_END\]\]/g, " ")
-    .replace(/\[\[IMAGE_DATA_OMITTED\]\][\s\S]*?\[\[\/IMAGE_DATA_OMITTED\]\]/g, " ");
+    .replace(imageDataStartEndBlockPattern, " ")
+    .replace(imageDataOmittedBlockPattern, " ");
   const sentences = withoutImageTags
-    .split(/(?<=[.!?])\s+|\n+/)
+    .split(sentenceOrLineSplitPattern)
     // Extraction glues the protective-marking header onto body sentences
     // ("OFFICIAL: OFFICIAL Lithium Therapy …"); shed the banner prefix so it
     // never enters the stored synopsis.
-    .map((sentence) => stripClassificationBanner(sentence.replace(/\s+/g, " ").trim()).trim())
+    .map((sentence) => stripClassificationBanner(sentence.replace(whitespaceRunPattern, " ").trim()).trim())
     .filter((sentence) => sentence.length >= 12 && !boilerplateSynopsisPattern.test(sentence));
   const highYieldSentences = sentences.filter((sentence) => highYieldSectionPattern.test(sentence));
   const selected = (highYieldSentences.length ? highYieldSentences : sentences).slice(0, 4).join(" ");
-  const compact = selected.replace(/\s+/g, " ").trim();
+  const compact = selected.replace(whitespaceRunPattern, " ").trim();
   if (!compact) return "";
   return truncateAtWordBoundary(compact, limit);
 }
@@ -558,7 +592,9 @@ function nativeTableBlock(image: ChunkImages[number]) {
   const rows = image.tableRows;
   if (!Array.isArray(columns) || columns.length < 2 || !Array.isArray(rows)) return null;
   const normalizeCell = (cell: unknown) =>
-    typeof cell === "string" && !/[\r\n|\\]/.test(cell) ? cell.replace(/\s+/g, " ").trim() : null;
+    typeof cell === "string" && !invalidTableCellCharPattern.test(cell)
+      ? cell.replace(whitespaceRunPattern, " ").trim()
+      : null;
   const normalizedColumns = columns.map(normalizeCell);
   if (normalizedColumns.some((cell) => !cell)) return null;
   const dataRows: string[][] = [];
@@ -570,7 +606,7 @@ function nativeTableBlock(image: ChunkImages[number]) {
     if (cells.some((cell) => !cell)) return null;
     const checked = cells as string[];
     if (checked.every((cell, index) => cell === normalizedColumns[index])) continue;
-    if (checked.every((cell) => /^:?-{3,}:?$/.test(cell))) continue;
+    if (checked.every((cell) => markdownTableAlignmentCellPattern.test(cell))) continue;
     dataRows.push(checked);
   }
   if (!dataRows.length) return null;
@@ -579,9 +615,7 @@ function nativeTableBlock(image: ChunkImages[number]) {
 
 function narrativeTableBlocks(text: string) {
   let openMarker: string | null = null;
-  for (const marker of text.matchAll(
-    /\[\[(IMAGE_DATA_START|IMAGE_DATA_END|IMAGE_DATA_OMITTED|\/IMAGE_DATA_OMITTED)\]\]/g,
-  )) {
+  for (const marker of text.matchAll(imageDataMarkerGlobalPattern)) {
     if (marker[1] === "IMAGE_DATA_START" || marker[1] === "IMAGE_DATA_OMITTED") {
       if (openMarker) return null;
       openMarker = marker[1];
@@ -593,8 +627,8 @@ function narrativeTableBlocks(text: string) {
   }
   if (openMarker) return null;
   const narrative = text.replace(imageDataTagPattern, " ");
-  if (/\[\[\/?IMAGE_DATA|\bIMAGE_DATA_/.test(narrative)) return null;
-  const lines = narrative.split(/\r?\n/).map((line) => line.trim());
+  if (danglingImageDataMarkerPattern.test(narrative)) return null;
+  const lines = narrative.split(lineBreakPattern).map((line) => line.trim());
   const blocks: Array<{ columns: string[]; rows: string[][] }> = [];
   for (let index = 0; index < lines.length; index += 1) {
     if (!lines[index].startsWith("|")) continue;
@@ -606,19 +640,19 @@ function narrativeTableBlocks(text: string) {
         line
           .slice(1, -1)
           .split("|")
-          .map((cell) => cell.replace(/\s+/g, " ").trim()),
+          .map((cell) => cell.replace(whitespaceRunPattern, " ").trim()),
       );
       index += 1;
     }
     index -= 1;
     const [columns, ...remaining] = rows;
     if (columns.some((cell) => !cell)) return null;
-    if (remaining[0]?.every((cell) => /^:?-{3,}:?$/.test(cell))) {
+    if (remaining[0]?.every((cell) => markdownTableAlignmentCellPattern.test(cell))) {
       if (remaining[0].length !== columns.length) return null;
       remaining.shift();
     }
     if (remaining.some((row) => row.length !== columns.length || row.some((cell) => !cell))) return null;
-    if (remaining.some((row) => row.every((cell) => /^:?-{3,}:?$/.test(cell)))) return null;
+    if (remaining.some((row) => row.every((cell) => markdownTableAlignmentCellPattern.test(cell)))) return null;
     if (remaining.length) blocks.push({ columns, rows: remaining });
   }
   return blocks;
@@ -652,13 +686,13 @@ function matchesNativeTableBlock(
     return false;
   const table = nativeTableBlock(image);
   if (!table) return false;
-  const units =
-    /^(?:mg|mcg|µg|μg|ug|g|kg|ng|pg|ml|l|dl|h|hr|hrs|hour|hours|min|s|sec|second|seconds|day|days|wk|week|weeks|mmol|mol|meq|iu|u|unit|units|mmhg|cm|bpm|x)$/i;
   const hasRowIdentifier = table.rows.some((row) => {
     // First slice supports explicit labels, not a semantic classifier for plain words/units.
-    if (!/^[A-Z0-9]+(?:[-_][A-Z0-9]+)+$/.test(row[0]) || !/[A-Z]/.test(row[0])) return false;
-    const withoutNumbers = row[0].replace(/[+-]?(?:\d+(?:[.,]\d+)?|\.\d+)(?:e[+-]?\d+)?/gi, " ");
-    return withoutNumbers.split(/[^\p{L}]+/u).some((word) => word && !units.test(word));
+    if (!explicitRowIdentifierShapePattern.test(row[0]) || !uppercaseAsciiLetterPattern.test(row[0])) return false;
+    const withoutNumbers = row[0].replace(numericLiteralGlobalPattern, " ");
+    return withoutNumbers
+      .split(nonUnicodeLetterSplitPattern)
+      .some((word) => word && !tableIdentifierUnitPattern.test(word));
   });
   if (!hasRowIdentifier) return false;
   const rowSignatures = new Set(table.rows.map((row) => JSON.stringify(row)));
@@ -700,22 +734,22 @@ function matchesNativeTableBlock(
 }
 
 function pageLocalExcerptForChunk(chunkExcerpt: string, pageText: string) {
-  const compactPage = pageText.replace(/\s+/g, " ").trim();
+  const compactPage = pageText.replace(whitespaceRunPattern, " ").trim();
   if (!compactPage) return chunkExcerpt;
 
   const chunkWords = new Set(
     normalizeLookupText(chunkExcerpt)
-      .split(/\s+/)
+      .split(whitespaceSplitPattern)
       .filter((word) => word.length >= 3),
   );
   if (chunkWords.size === 0) return compactPage;
 
   const candidates = compactPage
-    .split(/(?<=[.!?])\s+|\n+/)
+    .split(sentenceOrLineSplitPattern)
     .map((part) => part.trim())
     .filter(Boolean)
     .map((part) => {
-      const words = normalizeLookupText(part).split(/\s+/).filter(Boolean);
+      const words = normalizeLookupText(part).split(whitespaceSplitPattern).filter(Boolean);
       const hits = words.filter((word) => chunkWords.has(word)).length;
       return { part, hits };
     })
@@ -768,21 +802,23 @@ function emitChunk(args: {
       const label = normalizeLookupText(image.tableLabel ?? "");
       const title = normalizeLookupText(image.tableTitle ?? "");
       const caption = normalizeLookupText(image.caption);
-      const imageText = [label, title, caption].filter(Boolean).flatMap((value) => value.split(/\s+/).filter(Boolean));
+      const imageText = [label, title, caption]
+        .filter(Boolean)
+        .flatMap((value) => value.split(whitespaceSplitPattern).filter(Boolean));
       const imageLookup = imageText.join(" ");
       const headerBoost = heading && imageText.some((token) => normalizeLookupText(heading).includes(token)) ? 1 : 0;
       const direct = imageMatchScore(caption, contentLookup) >= 1 || imageMatchScore(imageLookup, contentLookup) >= 2;
       const pathHit =
         sectionContext.some((candidate) =>
           normalizeLookupText(candidate)
-            .split(/\s+/)
+            .split(whitespaceSplitPattern)
             .some((token) => imageLookup.includes(token)),
         ) && image.sourceKind !== "embedded";
       return direct || pathHit || (image.sourceKind === "table_crop" && headerBoost > 0) || headerBoost >= 1;
     })
     .map((image) => image.id);
 
-  const excerpt = content.replace(/\[\[IMAGE_DATA_START\]\][\s\S]*?\[\[IMAGE_DATA_END\]\]/g, "").trim();
+  const excerpt = content.replace(imageDataStartEndBlockPattern, "").trim();
   args.chunks.push({
     document_id: args.documentId,
     page_number: args.pageNumber,
@@ -941,7 +977,7 @@ function buildDocumentModeChunks(inputs: ChunkInput[]) {
       images: input.images ?? [],
       metadata: input.metadata ?? {},
       sectionHeadings: extractSectionHeadings(cleanedText),
-      wordSet: new Set(normalizeLookupText(cleanedText).split(/\s+/).filter(Boolean)),
+      wordSet: new Set(normalizeLookupText(cleanedText).split(whitespaceSplitPattern).filter(Boolean)),
     };
   });
 
@@ -974,7 +1010,7 @@ function buildDocumentModeChunks(inputs: ChunkInput[]) {
 
     sectionChunks.forEach((content, pageChunkIndex) => {
       const contentWords = new Set(
-        normalizeLookupText(content.replace(imageDataTagPattern, " ")).split(/\s+/).filter(Boolean),
+        normalizeLookupText(content.replace(imageDataTagPattern, " ")).split(whitespaceSplitPattern).filter(Boolean),
       );
       const contributing = attributeChunkToPages(contentWords, section.pages);
       const pageNumbers = contributing

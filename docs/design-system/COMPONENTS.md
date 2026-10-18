@@ -678,25 +678,26 @@ Two carriers, never a third:
 ### 9.1 `Button`
 
 **Purpose.** The one action primitive. `AsyncButton` and hand-rolled `<button>`s converge
-here. **Variants.** `primary` (filled `--command` — one per surface), `secondary`,
+here. **Variants.** `primary` (shared `actionPrimary` mapping — one area primary per surface), `secondary`,
 `ghost`, `quiet`, `danger` (filled `--danger-solid`, paired `--danger-solid-contrast`).
 **States.** Full DoD set; `busy` integrated (spinner + `busyLabel`, control stays in the
 tab order, never removes its accessible name); disabled via `controlBase` encoding.
 **Keyboard & SR.** Native button; `type="button"` default; icons `aria-hidden`.
-**Tokens.** command triplet + contrast · danger pair · `--radius-md` · tap utilities ·
+**Tokens.** area action roles resolved through `actionPrimary` · explicit neutral command triplet for account/system actions · danger pair · `--radius-md` · tap utilities ·
 `--focus` outline only. **Rules.** Verb-first specific labels, never "OK"/bare "Confirm" ·
 hover/active from semantic tokens, never `brightness-*` filters · one filled command per
 surface. **Landed.** Danger contrast and hover/active tokens plus the 48px tap-floor comment.
 **Tap vs compact-meta (DS-P1-09 / DS-P2-24).** Primary `Button` / `primaryControl` / filled command actions stay `min-h-tap` at **all** breakpoints — no `sm:min-h-10`, `sm:min-h-9`, `lg:min-h-9`, or `min-h-11`. Metadata, disclosure, filter chips, and table micro-actions may use `min-h-compact-meta` (40px) or a documented prefixed compact (`sm:min-h-compact-meta`). `--row-compact` / `min-h-9` (36px) is row height, not a tap target. Recipes: `interactiveCompact` and `tableMicroActionRow` are the named compact-meta exceptions in `ui-primitives.tsx`; `controlBase` stays tap-sized. Full table: TOKENS §2 “Compact-meta vs tap”.
 **Open defects → PR.** ref forwarding and the needless client boundary → follow-on.
 
-**Command CTA path.** Pick one encoding; do not invent a fourth.
+**Action and command paths.** Pick by responsibility, following [DECISIONS C10](DECISIONS.md#c10--design-audit-resolution-17-october-2026). `Button` defaults to secondary; merely importing it does not make an action primary. `actionPrimary` is shared by `Button variant="primary"` and `primaryControl`: Clinical blue by default, the owning Work action inside its frame, and native system colors in forced colors. `commandControl` explicitly retains neutral account/system actions. Destructive actions use the danger face.
 
-| Situation                                         | Winner                                                                                                                       |
-| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| Real button action (copy, continue, submit, busy) | `<Button variant="primary">` from `src/components/ui/button.tsx`                                                             |
-| Navigation that must look like the filled command | `Link` + `primaryControl` (`Button` has no `href` / `asChild`)                                                               |
-| Unavailable placeholder                           | `aria-disabled` + `ignoreUnavailableActivation` from ui-primitives; **never** native `disabled` and `aria-disabled` together |
+| Situation                                                 | Winner                                                                                                                       |
+| --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| The area's primary button action (continue, submit, busy) | `<Button variant="primary">` from `src/components/ui/button.tsx`                                                             |
+| Navigation that is the area primary action                | `Link` + `primaryControl` or `buttonFaceClass({ variant: "primary" })`; native anchors retain open-in-new-tab behavior       |
+| Neutral account/system action                             | Native button or link + `commandControl`; classify the responsibility before changing its color                              |
+| Unavailable placeholder                                   | `aria-disabled` + `ignoreUnavailableActivation` from ui-primitives; **never** native `disabled` and `aria-disabled` together |
 
 ### 9.2 `IconButton`
 
@@ -1058,7 +1059,7 @@ This generated snapshot is a local source-derived inventory. It does not assert 
 | `AnswerFooter`           | answer   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
 | `AsyncButton`            | controls | yes   | yes                | inherited-global-root | yes            | no                 |               5 |
 | `Breadcrumb`             | layout   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
-| `Button`                 | controls | yes   | yes                | inherited-global-root | yes            | no                 |             128 |
+| `Button`                 | controls | yes   | yes                | inherited-global-root | yes            | no                 |             129 |
 | `Checkbox`               | controls | yes   | yes                | inherited-global-root | yes            | no                 |              14 |
 | `Chip`                   | controls | yes   | yes                | inherited-global-root | yes            | no                 |               8 |
 | `ChoiceChip`             | controls | yes   | yes                | inherited-global-root | yes            | no                 |               7 |
@@ -1095,14 +1096,14 @@ This generated snapshot is a local source-derived inventory. It does not assert 
 | `SegmentedControl`       | controls | yes   | yes                | inherited-global-root | yes            | no                 |              33 |
 | `Select`                 | controls | yes   | yes                | inherited-global-root | yes            | no                 |              16 |
 | `Sheet`                  | layout   | yes   | yes                | inherited-global-root | yes            | no                 |             137 |
-| `Skeleton`               | feedback | yes   | yes                | inherited-global-root | yes            | no                 |               9 |
+| `Skeleton`               | feedback | yes   | yes                | inherited-global-root | yes            | no                 |              10 |
 | `SourceDesignationBadge` | source   | yes   | yes                | inherited-global-root | yes            | no                 |               4 |
 | `SourceProvenance`       | source   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
 | `SourceStatusBadge`      | source   | yes   | yes                | inherited-global-root | yes            | no                 |               4 |
 | `StageList`              | feedback | yes   | yes                | no                    | yes            | no                 |               0 |
 | `StatusMark`             | source   | yes   | yes                | inherited-global-root | yes            | no                 |               6 |
 | `Tabs`                   | controls | yes   | yes                | inherited-global-root | yes            | no                 |               3 |
-| `TextField`              | controls | yes   | yes                | inherited-global-root | yes            | no                 |              49 |
+| `TextField`              | controls | yes   | yes                | inherited-global-root | yes            | no                 |              48 |
 | `TextLink`               | controls | yes   | yes                | inherited-global-root | yes            | no                 |               3 |
 | `ToastRegion`            | feedback | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
 | `ToggleSwitch`           | controls | yes   | yes                | inherited-global-root | yes            | no                 |               2 |

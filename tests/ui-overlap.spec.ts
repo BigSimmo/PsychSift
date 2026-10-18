@@ -779,15 +779,15 @@ test.describe("Tablet usability regressions", () => {
     });
     await page.goto("/forms/search?q=transport&run=1", { waitUntil: "domcontentloaded" });
 
-    // Two nodes carry this copy and both are meant to: the visible paragraph,
-    // and the sr-only live region the empty state populates after mount so the
-    // degraded state is announced rather than heard as a silent zero. Playwright
-    // matches text by substring, so the bare string resolved to both and failed
-    // strict mode. Name each one instead of loosening the assertion.
+    // The registry fault owns the announcement and retry. The body explains
+    // that an incomplete search is not a reliable absence without speaking twice.
+    const fault = page.getByTestId("search-query-ribbon-fault");
+    await expect(fault).toHaveAttribute("role", "alert");
+    await expect(fault).toContainText("Could not load forms");
+    await expect(fault.getByRole("button", { name: "Retry", exact: true })).toBeEnabled();
     await expect(page.getByText("Search could not complete", { exact: true })).toBeVisible();
-    await expect(page.getByText(/^Search could not complete\. Part of the search index did not respond/)).toHaveCount(
-      1,
-    );
+    await expect(page.getByText(/^The search did not complete, so this is not a reliable/)).toBeVisible();
+    await expect(page.locator('[aria-live="polite"]').filter({ hasText: "Search could not complete" })).toHaveCount(0);
     await expect(page.getByText(/^No matches for/)).toHaveCount(0);
   });
 

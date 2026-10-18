@@ -20,7 +20,7 @@
     "specifierItems": 585,
     "universalSpecifiers": 18,
     "itemsWithDefinitions": 71,
-    "itemsPendingClinicianReview": 514
+    "itemsPendingClinicianReview": 515
   },
   "authoritativeSources": [
     {
@@ -5438,7 +5438,7 @@
                 {
                   "label": "With/without possession form",
                   "definition": {
-                    "meaning": "The dissociative presentation may occur with or without experiences of being taken over by an external identity, spirit, or power (the possession vs non-possession form).",
+                    "meaning": "Neither DSM-5-TR nor ICD-11 (6B64) defines a separate possession-form specifier for Dissociative Identity Disorder: both manuals encompass presentations with or without experiences of being taken over by an external identity, spirit, or power (the possession vs non-possession form) directly within the core diagnostic criteria.",
                     "clinicalNote": null,
                     "sourceFamily": "WHO ICD-11 CDDR/MMS",
                     "status": "defined"
@@ -5448,11 +5448,8 @@
                     "rowKey": "specifier:dis:dissociative-identity-disorder:features:with-without-possession-form",
                     "contentHash": "7a3bdeaa",
                     "sourceVerificationStatus": "source-verified",
-                    "clinicianReviewStatus": "clinician-reviewed",
-                    "changedSinceReview": false,
-                    "reviewedBy": "Psych Sift",
-                    "reviewedAt": "2026-10-15T17:28:22.207Z",
-                    "reviewedContentSha256": "db23e943759c72ddd63fe06438003a175f15a43bc518345961f103d6b468fbcc"
+                    "clinicianReviewStatus": "clinician-review-pending",
+                    "changedSinceReview": true
                   }
                 }
               ]

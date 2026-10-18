@@ -90,18 +90,31 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
     }
 
     const seed = publicMedicationDetailPayload(normalizedSlug);
+    const isMedicationRecordPayload = (
+      value: Record<string, unknown>,
+    ): value is MedicationRecord & Record<string, unknown> =>
+      typeof value.slug === "string" && typeof value.name === "string";
+    const assertMedicationRecordPayload = (value: Record<string, unknown>): MedicationRecord => {
+      if (!isMedicationRecordPayload(value)) {
+        throw new Error("Invalid canonical medication record payload.");
+      }
+      return value;
+    };
     const canonical = await readCanonicalSiteContentRecords({
       supabase,
       kind: "medication",
       slug: normalizedSlug,
       seeds: seed ? [seed] : [],
-      mapRecord: ({ canonicalRecord, finalRenderPayload }) => ({
-        record: finalRenderPayload as unknown as MedicationRecord,
-        governance: {
-          ...publicMedicationGovernance(finalRenderPayload as unknown as MedicationRecord),
-          ...canonicalSiteContentGovernance(canonicalRecord),
-        },
-      }),
+      mapRecord: ({ canonicalRecord, finalRenderPayload }) => {
+        const record = assertMedicationRecordPayload(finalRenderPayload);
+        return {
+          record,
+          governance: {
+            ...publicMedicationGovernance(record),
+            ...canonicalSiteContentGovernance(canonicalRecord),
+          },
+        };
+      },
     });
     const payload = canonical.records[0];
     if (!payload) return notFoundResponse(normalizedSlug);

@@ -112,11 +112,11 @@ export type LabelledNumericBandConflict = {
 };
 
 const clinicalQuantityPattern =
-  /\b(?:(below|under|less\s+than|above|over|greater\s+than|at\s+least|at\s+most)\s+)?(\d+(?:[.,]\d+)?)(?:\s*[-–—]\s*(\d+(?:[.,]\d+)?))?\s*(ug|µg|μg|mcg|micrograms?|mg|g|kg|ml|l|mmol|mol|umol|µmol|ng|units?|iu|milliseconds?|msecs?|ms|tablets?|puffs?|hours?|hrs?|h|days?|weeks?|wk|months?|minutes?|mins?|years?|°c|mmhg|bpm|%)\b((?:\s*\/\s*(?:kg|m2|dose|seconds?|secs?|minutes?|mins?|hours?|hrs?|h|days?|weeks?|wk|ml|l)){0,3})/giu;
+  /\b(?:(below|under|less\s+than|above|over|greater\s+than|at\s+least|at\s+most|no\s+more\s+than)\s+)?(\d+(?:[.,]\d+)?)(?:\s*[-–—]\s*(\d+(?:[.,]\d+)?))?\s*(ug|µg|μg|mcg|micrograms?|mg|g|kg|ml|l|mmol|mol|umol|µmol|ng|units?|iu|milliseconds?|msecs?|ms|tablets?|puffs?|hours?|hrs?|h|days?|weeks?|wk|months?|minutes?|mins?|years?|°c|mmhg|bpm|%)\b((?:\s*\/\s*(?:kg|m2|dose|seconds?|secs?|minutes?|mins?|hours?|hrs?|h|days?|weeks?|wk|ml|l)){0,3})/giu;
 const scientificQuantityPattern =
-  /(?:(below|under|less\s+than|above|over|greater\s+than|at\s+least|at\s+most|<=|>=|<|>|≤|≥)\s*)?(\d+(?:[.,]\d+)?)\s*[×x]\s*10\^?(\d+)\s*\/\s*([a-z])/giu;
+  /(?:(below|under|less\s+than|above|over|greater\s+than|at\s+least|at\s+most|no\s+more\s+than|<=|>=|<|>|≤|≥)\s*)?(\d+(?:[.,]\d+)?)\s*[×x]\s*10\^?(\d+)\s*\/\s*([a-z])/giu;
 const unitlessThresholdPattern =
-  /(?:\b(below|under|less\s+than|above|over|greater\s+than|at\s+least|at\s+most)\s+|(<=|>=|<|>|≤|≥)\s*)(\d+(?:[.,]\d+)?)(?:\s*[-–—]\s*(\d+(?:[.,]\d+)?))?/giu;
+  /(?:\b(below|under|less\s+than|above|over|greater\s+than|at\s+least|at\s+most|no\s+more\s+than)\s+|(<=|>=|<|>|≤|≥)\s*)(\d+(?:[.,]\d+)?)(?:\s*[-–—]\s*(\d+(?:[.,]\d+)?))?/giu;
 // Infer omitted years only inside explicit adjacent population-age grammar.
 // Closed continuations exclude an unknown measurement/category noun after the value.
 const populationAgePrefixPattern = /\b(?:children|adolescents|adults|people|young[ \t]+people)(?:[ \t]+aged?)?[ \t]+$/i;
@@ -344,11 +344,11 @@ type LabelledNumericBand = {
 };
 
 const labelledNumericBandPattern =
-  /\b(very\s+(?:high|low|severe)|borderline|moderate|medium|minimal|normal|high|low|mild|severe|green|amber|red)\b(?:\s+(?:scores?|ranges?|bands?|categor(?:y|ies)|zones?|severit(?:y|ies)|risks?|levels?))?\s*(?:(?:is|are|of|:|=|\|)\s*|(?:ranges?\s+)?from\s*)?\(?\s*(?:scores?\s*)?(?:(below|under|less\s+than|above|over|greater\s+than|at\s+least|at\s+most|<=|>=|<|>|≤|≥)\s*)?(\d+(?:[.,]\d+)?)(?:\s*(?:[-–—]|\bto\b|\bthrough\b)\s*(\d+(?:[.,]\d+)?))?(?:\s*(%|points?|mg|mcg|ug|µg|μg|g|kg|mmol(?:\s*\/\s*l)?|mol(?:\s*\/\s*l)?|ng(?:\s*\/\s*ml)?))?\s*\)?/giu;
+  /\b(very\s+(?:high|low|severe)|borderline|moderate|medium|minimal|normal|high|low|mild|severe|green|amber|red)\b(?:\s+(?:scores?|ranges?|bands?|categor(?:y|ies)|zones?|severit(?:y|ies)|risks?|levels?))?\s*(?:(?:is|are|of|:|=|\|)\s*|(?:ranges?\s+)?from\s*)?\(?\s*(?:scores?\s*)?(?:(below|under|less\s+than|above|over|greater\s+than|at\s+least|at\s+most|no\s+more\s+than|<=|>=|<|>|≤|≥)\s*)?(\d+(?:[.,]\d+)?)(?:\s*(?:[-–—]|\bto\b|\bthrough\b)\s*(\d+(?:[.,]\d+)?))?(?:\s*(%|points?|mg|mcg|ug|µg|μg|g|kg|mmol(?:\s*\/\s*l)?|mol(?:\s*\/\s*l)?|ng(?:\s*\/\s*ml)?))?\s*\)?/giu;
 const numericBeforeLabelBandPattern =
-  /(?:(below|under|less\s+than|above|over|greater\s+than|at\s+least|at\s+most|<=|>=|<|>|≤|≥)\s*)?(\d+(?:[.,]\d+)?)(?:\s*(?:[-–—]|\bto\b|\bthrough\b)\s*(\d+(?:[.,]\d+)?))?(?:\s*(%|points?|mg|mcg|ug|µg|μg|g|kg|mmol(?:\s*\/\s*l)?|mol(?:\s*\/\s*l)?|ng(?:\s*\/\s*ml)?))?\s*(?:\(\s*|\|\s*)(very\s+(?:high|low|severe)|borderline|moderate|medium|minimal|normal|high|low|mild|severe|green|amber|red)\s*(?:\)|\|)/giu;
+  /(?:(below|under|less\s+than|above|over|greater\s+than|at\s+least|at\s+most|no\s+more\s+than|<=|>=|<|>|≤|≥)\s*)?(\d+(?:[.,]\d+)?)(?:\s*(?:[-–—]|\bto\b|\bthrough\b)\s*(\d+(?:[.,]\d+)?))?(?:\s*(%|points?|mg|mcg|ug|µg|μg|g|kg|mmol(?:\s*\/\s*l)?|mol(?:\s*\/\s*l)?|ng(?:\s*\/\s*ml)?))?\s*(?:\(\s*|\|\s*)(very\s+(?:high|low|severe)|borderline|moderate|medium|minimal|normal|high|low|mild|severe|green|amber|red)\s*(?:\)|\|)/giu;
 const numericBandPredicatePattern =
-  /(?:(below|under|less\s+than|above|over|greater\s+than|at\s+least|at\s+most|<=|>=|<|>|≤|≥)\s*)?(\d+(?:[.,]\d+)?)(?:\s*(?:[-–—]|\bto\b|\bthrough\b)\s*(\d+(?:[.,]\d+)?))?(?:\s*(%|points?|mg|mcg|ug|µg|μg|g|kg|mmol(?:\s*\/\s*l)?|mol(?:\s*\/\s*l)?|ng(?:\s*\/\s*ml)?))?\s+(?:is|are|means?|indicates?|corresponds?\s+to)\s+(very\s+(?:high|low|severe)|borderline|moderate|medium|minimal|normal|high|low|mild|severe|green|amber|red)\b/giu;
+  /(?:(below|under|less\s+than|above|over|greater\s+than|at\s+least|at\s+most|no\s+more\s+than|<=|>=|<|>|≤|≥)\s*)?(\d+(?:[.,]\d+)?)(?:\s*(?:[-–—]|\bto\b|\bthrough\b)\s*(\d+(?:[.,]\d+)?))?(?:\s*(%|points?|mg|mcg|ug|µg|μg|g|kg|mmol(?:\s*\/\s*l)?|mol(?:\s*\/\s*l)?|ng(?:\s*\/\s*ml)?))?\s+(?:is|are|means?|indicates?|corresponds?\s+to)\s+(very\s+(?:high|low|severe)|borderline|moderate|medium|minimal|normal|high|low|mild|severe|green|amber|red)\b/giu;
 const labelFirstBetweenBandPattern =
   /\b(very\s+(?:high|low|severe)|borderline|moderate|medium|minimal|normal|high|low|mild|severe|green|amber|red)\b(?:\s+(?:scores?|ranges?|bands?|categor(?:y|ies)|zones?|severit(?:y|ies)|risks?|levels?))?\s*(?:(?:is|are|of|:|=|\|)\s*)?\(?\s*(?:scores?\s*)?between\s+(\d+(?:[.,]\d+)?)\s+and\s+(\d+(?:[.,]\d+)?)(?:\s*(%|points?|mg|mcg|ug|µg|μg|g|kg|mmol(?:\s*\/\s*l)?|mol(?:\s*\/\s*l)?|ng(?:\s*\/\s*ml)?))?\s*\)?/giu;
 const betweenFirstLabelBandPattern =
@@ -902,7 +902,7 @@ type NumericBandReference = {
 };
 
 const numericBandReferencePattern =
-  /\bbetween\s+(\d+(?:[.,]\d+)?)\s+and\s+(\d+(?:[.,]\d+)?)|(?:(below|under|less\s+than|above|over|greater\s+than|at\s+least|at\s+most|<=|>=|<|>|≤|≥)\s*)?(\d+(?:[.,]\d+)?)(?:\s*(?:[-–—]|\bto\b|\bthrough\b)\s*(\d+(?:[.,]\d+)?))?/giu;
+  /\bbetween\s+(\d+(?:[.,]\d+)?)\s+and\s+(\d+(?:[.,]\d+)?)|(?:(below|under|less\s+than|above|over|greater\s+than|at\s+least|at\s+most|no\s+more\s+than|<=|>=|<|>|≤|≥)\s*)?(\d+(?:[.,]\d+)?)(?:\s*(?:[-–—]|\bto\b|\bthrough\b)\s*(\d+(?:[.,]\d+)?))?/giu;
 
 function numericBandReferences(text: string): NumericBandReference[] {
   return Array.from(text.matchAll(numericBandReferencePattern), (match) => {
@@ -1287,7 +1287,10 @@ function clinicalValueAtomKey(atom: ClinicalValueAtom) {
 function clinicalValueAtomDisplay(atom: ClinicalValueAtom) {
   if (atom.kind !== "quantity") return atom.canonicalValue;
   return normalizeNumericToken(
-    atom.rawText.replace(/^\s*(?:below|under|less\s+than|above|over|greater\s+than|at\s+least|at\s+most)\s+/i, ""),
+    atom.rawText.replace(
+      /^\s*(?:below|under|less\s+than|above|over|greater\s+than|at\s+least|at\s+most|no\s+more\s+than)\s+/i,
+      "",
+    ),
   );
 }
 

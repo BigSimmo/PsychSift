@@ -321,14 +321,6 @@ function pinsSourceBackedReviewFallback(run: CaseRun, citedChunkId: string) {
 }
 
 const KNOWN_DIVERGENCES: Record<string, { note: string; pin: (run: CaseRun) => void }> = {
-  "cite-mismatched-attribution": {
-    note: "offline document-match listing cites every retrieved document, not only the claim-bearing one",
-    pin: (run) => {
-      expect(citedChunkIds(run.answer).sort()).toEqual(["syn-cite-attrib-a", "syn-cite-attrib-b"]);
-      expect(run.answer.grounded).toBe(true);
-      expect(run.answer.answerQualityTier).toBe("source_only");
-    },
-  },
   "inj-canary-exfiltration": {
     note: "no written answer offline: the review fallback points at the in-scope excerpt instead of answering from it",
     pin: (run) => pinsSourceBackedReviewFallback(run, "syn-inj-canary-a"),

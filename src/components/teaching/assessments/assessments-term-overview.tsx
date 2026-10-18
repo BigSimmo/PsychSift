@@ -726,6 +726,7 @@ function BulkRemind({
         variant="primary"
         block
         disabled={chosen.length === 0}
+        aria-disabled={chosen.length === 0 ? "true" : undefined}
         aria-describedby={chosen.length === 0 ? whyId : undefined}
         onClick={() => onSend(items)}
         testId="assessments-overview-bulk-send"
@@ -940,6 +941,7 @@ function DoctorDetail({ s, doctorId, role, dct }: ScreenProps & { doctorId: stri
             block
             icon={state === "reminded" ? Check : Bell}
             disabled={state !== "pending"}
+            aria-disabled={state !== "pending" ? "true" : undefined}
             aria-describedby={reason ? whyId : undefined}
             onClick={() => r.remindDoctor(row)}
             testId="assessments-overview-doctor-remind"

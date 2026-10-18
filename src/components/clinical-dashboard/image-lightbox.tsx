@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from "react"
 import { CircleAlert, Loader2, Minus, Plus, RefreshCw, RotateCw } from "lucide-react";
 
 import { Sheet } from "@/components/ui/sheet";
-import { cn, IconButton, toolbarButton } from "@/components/ui-primitives";
+import { controlDisabled, cn, IconButton, toolbarButton } from "@/components/ui-primitives";
 import { useViewerGestures } from "@/components/document-viewer/use-viewer-gestures";
 import { useSignedImageUrl } from "@/components/clinical-dashboard/use-signed-image-url";
 import {
@@ -289,7 +289,10 @@ export function ImageLightbox(props: ImageLightboxProps) {
             type="button"
             onClick={resetView}
             disabled={!url}
-            className="inline-flex min-h-tap min-w-14 items-center justify-center rounded-md px-2 text-xs font-semibold tabular-nums text-[color:var(--text)] transition hover:bg-[color:var(--surface-subtle)] disabled:opacity-45"
+            className={cn(
+              controlDisabled,
+              "inline-flex min-h-tap min-w-14 items-center justify-center rounded-md px-2 text-xs font-semibold tabular-nums text-[color:var(--text)] transition hover:bg-[color:var(--surface-subtle)]",
+            )}
             aria-label="Reset zoom"
             // 100% means "the whole image, fitted" — in whatever orientation is
             // current. A 300% readout on open is otherwise unexplained.
@@ -357,7 +360,10 @@ export function ImageLightbox(props: ImageLightboxProps) {
               type="button"
               onClick={handleRetry}
               disabled={retryDisabled}
-              className="inline-flex min-h-tap items-center gap-1.5 rounded-lg border border-[color:var(--warning)]/30 bg-[color:var(--surface)] px-3 text-[color:var(--warning)] disabled:opacity-50 disabled:cursor-not-allowed transition"
+              className={cn(
+                controlDisabled,
+                "inline-flex min-h-tap items-center gap-1.5 rounded-lg border border-[color:var(--warning)]/30 bg-[color:var(--surface)] px-3 text-[color:var(--warning)] disabled:cursor-not-allowed transition",
+              )}
             >
               <RefreshCw aria-hidden="true" className={cn("h-4 w-4", retryDisabled && "animate-spin")} />
               {retryDisabled ? "Retrying…" : "Retry"}

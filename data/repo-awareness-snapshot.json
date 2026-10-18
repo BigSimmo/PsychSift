@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-17"
+    "committed_at": "2026-10-18"
   },
   "routes": {
     "modes": [
@@ -2161,6 +2161,10 @@
         "file": "src/app/api/roster/settings/route.ts"
       },
       {
+        "path": "/api/teaching/assessments/bookings",
+        "file": "src/app/api/teaching/assessments/bookings/route.ts"
+      },
+      {
         "path": "/api/account/preferences",
         "file": "src/app/api/account/preferences/route.ts"
       },
@@ -2451,6 +2455,11 @@
       },
       {
         "path": "docs/decisions/2026-09-16-withhold-unreliable-differential-bodies.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-17-remaining-therapy-compass-sign-offs.md",
         "section": "decisions",
         "catalogued": true
       },
@@ -3315,6 +3324,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-17-design-audit-resolution.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/rag-improvement/gate-b-decision-record.md",
         "section": "rag-improvement",
         "catalogued": true
@@ -3800,6 +3814,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-17-agent-recorded-therapy-and-did-sign-offs-reset.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/audit/ux-accessibility-review-2026-07-07.md",
         "section": "audit",
         "catalogued": true
@@ -3880,6 +3899,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-17-clinical-math-panel-hidden-until-clinician-verification.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/superpowers/plans/2026-08-23-favourites-and-reconciliation.md",
         "section": "superpowers",
         "catalogued": true
@@ -3940,6 +3964,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/agents/cross-repo-cloud-contracts.md",
+        "section": "agents",
+        "catalogued": true
+      },
+      {
         "path": "docs/medication-lexicon-review-worklist.md",
         "section": "root",
         "catalogued": true
@@ -3970,8 +3999,18 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-17-wfydv6-stays-open-until-sign-off.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/agents/native-startup/external-skill-precedence.md",
         "section": "agents",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-18-unsigned-clinical-text-withheld-from-site-content.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -4205,9 +4244,19 @@
         "catalogued": true
       },
       {
+        "path": "docs/agents/cloud-platform-acceptance.md",
+        "section": "agents",
+        "catalogued": true
+      },
+      {
         "path": "docs/agents/claude-hook-scripts.md",
         "section": "agents",
         "catalogued": true
+      },
+      {
+        "path": "docs/design-system/audit-resolution-2026-10-17.md",
+        "section": "design-system",
+        "catalogued": false
       },
       {
         "path": "docs/archive/rag-scalability-wip-review-handover-2026-07-15.md",
@@ -4400,6 +4449,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-17-sign-prose-only-source-reviews.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/brand/psychsift-logo.md",
         "section": "brand",
         "catalogued": true
@@ -4562,6 +4616,11 @@
       {
         "path": "docs/archive/2026-10-agent-code-reviews/READY_TO_DEPLOY.md",
         "section": "archive",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-18-no-national-youth-crisis-line-pinning-yet.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -5225,6 +5284,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/agents/cloud-build-resources.md",
+        "section": "agents",
+        "catalogued": true
+      },
+      {
         "path": "docs/superpowers/rag-upgrade/cloud/plans/2026-08-20-rag-adaptive-answer.md",
         "section": "superpowers",
         "catalogued": true
@@ -5705,6 +5769,14 @@
         "scope": "services detail redesign responsive UX and referral actions",
         "outcome": "Three P2 findings fixed; no remaining high-confidence defects",
         "checks": "DOM 40/40; typecheck; lint; design-system contract; production Chromium 11/11"
+      },
+      {
+        "date": "2026-10-17",
+        "ref": "codex/design-audit-resolution",
+        "head": "0022c8121463669f222de38f642089a87e2ea932",
+        "scope": "adversarial review of settled design audit changes",
+        "outcome": "Two introduced P2 interaction defects reproduced and repaired before publication; independent corrective review found no additional issue; manual acceptance remains open",
+        "checks": "Standards and Spec source reviews: zero findings. Interaction review: stale Services shortlist capacity and Therapy zero-result announcement behind inert Sheet. RED 4 failed/19 passed; GREEN 23 passed; affected 6 suites/35 passed. Correction-specific browser verification pending."
       },
       {
         "date": "2026-08-27",
@@ -6209,6 +6281,14 @@
         "scope": "archive issue 105 after browser proof",
         "outcome": "PASS: closure evidence is specific and internally consistent; removed incidental ledger-row reordering",
         "checks": "outstanding-issues guard; Prettier; diff review; zero unresolved threads"
+      },
+      {
+        "date": "2026-10-17",
+        "ref": "HEAD",
+        "head": "0537cc935b86824db40ca0c117894b67638e2d95",
+        "scope": "PR 3628 review and fixes",
+        "outcome": "Found atomic worker-scope, comparator-unit, telemetry-budget, and document-source retention defects; fixes prepared with regression coverage.",
+        "checks": "Independent standards and specification inspection of the pinned PR diff; follow-up working-tree targeted proof 295/295 tests and 10 local SQL scenarios; hosted CI pending."
       },
       {
         "date": "2026-08-06",
@@ -8803,6 +8883,14 @@
         "checks": "verify:pr-local (runtime, lock-parity, format, lint, typecheck, test 602 files/6518 passed/4 skipped, rag:fixtures, medication-interactions PASS; medication-lexicon-report pre-existing unrelated FAIL); focused vitest check-playwright-browser-revision.test.ts 10/10, playwright-browser-preflight.test.ts 12/12"
       },
       {
+        "date": "2026-10-16",
+        "ref": "claude/swarm-12-remaining-20261016",
+        "head": "24eeea365e782c651047eebf0ecbe9db87e4fd07",
+        "scope": "prlanded",
+        "outcome": "PR #3573 squash-merged as 24eeea365e; two-dot diff and stable patch-id ba25a7b05c match branch tip 03a9d35d79 byte-for-byte with zero orphaned commits",
+        "checks": "gh pr view 3573 MERGED; 1-parent squash; git diff --stat 24eeea365e 03a9d35d79 empty; git patch-id --stable match"
+      },
+      {
         "date": "2026-07-11",
         "ref": "PR #481 / claude/perf-r2-auth-roundtrip",
         "head": "24fad070fb9834510309e74e1dc0e216cd08646b",
@@ -9065,6 +9153,22 @@
         "scope": "branch-cleanup-deletion-pending",
         "outcome": "Pending deletion: content already on origin/main or superseded old-lineage snapshot / throwaway CI-retry branch; branch-only-file sweep found no novel work. Remote deletion DENIED (HTTP 403, session lacks ref-delete permission); branch still exists at this HEAD — operator must complete deletion. Scope is deletion-pending so future cleanup passes re-evaluate rather than skip.",
         "checks": "Provider-backed GitHub PR inventory via MCP (400 PRs #264-#674, all merged=false); local read-only git: rewritten-main-aware cherry-pick + two-dot tree + branch-only-file novelty sweep vs origin/main e75fad90; adversarial re-check. Remote `git push --delete` attempted (provider-backed write) and DENIED with HTTP 403. No OpenAI/Supabase/live-eval checks."
+      },
+      {
+        "date": "2026-10-18",
+        "ref": "codex/design-audit-acceptance",
+        "head": "2900a6363462efb6eaab614280c7a40b89eb28d8",
+        "scope": "Design audit acceptance follow-up",
+        "outcome": "Independent scoped adversarial review found no confirmed defect in the stateful calculator regression or acceptance handoff. Dedicated same-URL recovery coverage is added; production source is unchanged. Railway health verified, direct HTTP blocked by network proxy, six device/clinical acceptance checks remain explicit.",
+        "checks": "Owning calculator suite26passed3.62s; negative-control removal of clearQuery yields1failed25passed with PHQ-9 retained, then restored26pass. Independent static review verifies modified-click preservation and URL cleanup. Merged545treeequalsreviewed58e302. No browser/fullsuite/release/clinicaleval claimed for newtest-onlydiff."
+      },
+      {
+        "date": "2026-10-18",
+        "ref": "codex/design-audit-acceptance",
+        "head": "2900a6363462efb6eaab614280c7a40b89eb28d8",
+        "scope": "Design audit acceptance follow-up (supersedes 2026-10-18)",
+        "outcome": "Wording correction only (CodeRabbit). Railway deployment status was verified; public HTTP health remains unverified because direct HTTP was blocked by the network proxy. Otherwise unchanged: independent scoped adversarial review found no confirmed defect in the stateful calculator regression or acceptance handoff; dedicated same-URL recovery coverage is added; production source is unchanged; six device/clinical acceptance checks remain explicit.",
+        "checks": "No new checks: restates the superseded record's evidence (owning calculator suite 26 passed; negative-control removal of clearQuery 1 failed 25 passed, restored 26 passed; static review of modified-click preservation and URL cleanup). No public HTTP health, browser, full-suite, release or clinical eval claimed."
       },
       {
         "date": "2026-07-28",
@@ -12563,6 +12667,14 @@
         "checks": "pwa DOM 10/10; PWA Chromium 5/5; format; exact-head merge-tree"
       },
       {
+        "date": "2026-10-18",
+        "ref": "main",
+        "head": "54559adabe5b51396c2d1c0eb395f2cf79b43fbf",
+        "scope": "PR 3632 landed-content verification",
+        "outcome": "PR was externally squash-merged during the review at 2026-10-18T05:13:46Z. Landed commit tree exactly equals reviewed head58e30257a45c0e19107b734f5ce2416eb9e6c8ad. No missing work detected. This agent did not merge, arm auto-merge, push or deploy. Manual acceptance and deployment health remain unverified.",
+        "checks": "Fresh origin/main54559adabe5b51396c2d1c0eb395f2cf79b43fbf has one parent; git diff --stat against reviewed head is empty; both tree hashes9e7fab3150b0448392438152c96e459d81a06c9d. Reviewed head required CI39098909136 and PR required117593597228 succeeded. No production-health or provider clinical eval invoked."
+      },
+      {
         "date": "2026-07-26",
         "ref": "PR #1246 / `codex/standardize-header-and-footer-behavior`",
         "head": "547d3a100c73333895554cf66eb0efd8d8dde8da",
@@ -12987,6 +13099,14 @@
         "checks": "current auth source/test inspection; origin/main pickaxe history; redundant cherry-pick proof; bundle verify"
       },
       {
+        "date": "2026-10-18",
+        "ref": "codex/design-audit-resolution",
+        "head": "58e30257a45c0e19107b734f5ce2416eb9e6c8ad",
+        "scope": "CI failure and merge-safety review",
+        "outcome": "No confirmed code/CI blocker. Historical failures repaired in published commits; independent scoped review found no defect. All five review threads resolved. Technically ready for owner merge; manual Safari/PWA/keyboard/AT and populated clinical-state acceptance remains unverified. No merge or push performed.",
+        "checks": "Hosted CI 39098909136 at exact head: PR required 117593597228 success; both coverage partitions and aggregate, all production UI shards and critical, builds, static, safety and Lighthouse success; Secret Scan and SAST success. Local audit:final-merge dry-run and git diff --check passed. No new local test suite or provider-backed clinical eval run; reused prior versioned regression evidence."
+      },
+      {
         "date": "2026-07-22",
         "ref": "PR #1075 / `codex/reconcile-route-reachability-ast`",
         "head": "58e57a79b4e7766aebd3d0404a6c431f3a286bbe (merged as 46f143d135afcd2f449ae6bedd05332a7af35f4d)",
@@ -13377,6 +13497,14 @@
         "scope": "PR #1785 unblock/fix",
         "outcome": "before: Production UI (3) failed on service-detail scroll endpoint (remaining 67px) at 38b3bd0c; GitHub DIRTY behind-but-clean vs #1791. after: merged origin/main + re-scroll toPass fix in ui-tools service-detail test; threads untouched; do not merge",
         "checks": "CI Production UI (3) logs; git merge-tree clean; prettier ui-tools; product fix in same tip commit as this row"
+      },
+      {
+        "date": "2026-10-16",
+        "ref": "claude/swarm-16-issues-20261016",
+        "head": "5cbe4ec63a32f841c9445380232875c9106cb170",
+        "scope": "prlanded",
+        "outcome": "PR #3567 squash-merged as 5cbe4ec63a; all 68 source/test/doc files match branch tip 10d53b7624 byte-for-byte with zero orphaned commits",
+        "checks": "gh pr view 3567 MERGED; 1-parent squash; per-file diff empty across all non-snapshot PR files"
       },
       {
         "date": "2026-07-30",
@@ -13923,6 +14051,14 @@
         "checks": "typecheck:internal pass; vitest clinical-dashboard-merge-artifacts + visual-evidence-tabs pass (9); no provider-backed checks run"
       },
       {
+        "date": "2026-10-18",
+        "ref": "codex/design-audit-acceptance",
+        "head": "633a8b7a509b6c0863059f09f849a2ec1a58e8ba",
+        "scope": "Automated acceptance follow-up review",
+        "outcome": "Two confirmed automated-edit issues: a missing usePathname mock prevents the new header fixture from rendering, and an already published immutable review was rewritten. Restore the scoped page/provider harness and original record bytes. The test name explicitly limits its contract; no production shell or physical-device coverage is claimed. Corrections verified locally; publication pending.",
+        "checks": "Independent source review and local reproduction: 1 failed, 25 passed at bot head, missing next/navigation usePathname export. Corrected owning suite: 26 passed. Original regression negative control: removing clearQuery left PHQ-9 in the input. Original immutable record restored byte-for-byte against ed3dc82abd26be523d0d643dc7bfd1545587162e. Production source unchanged."
+      },
+      {
         "date": "2026-07-13",
         "ref": "claude/scroll-icon-design-8b7675",
         "head": "636630a035df2da70353e4b7601d97744cdf0819",
@@ -14339,6 +14475,14 @@
         "checks": "UI 3 passed; unit 8 passed; lint, typecheck, build, design-system and offline RAG passed; full suite 6022 passed with 16 unchanged baseline failures"
       },
       {
+        "date": "2026-10-17",
+        "ref": "PR #3609 (claude/reconcile-inbox-20261017)",
+        "head": "679d2bfeb8fb2082a09ae75009bc07d454731276",
+        "scope": "Reconcile 21 pending inbox requests and bundle prlanded review records for PRs #3567, #3570, and #3573",
+        "outcome": "landed (squash-merged into main as 679d2bfeb8fb2082a09ae75009bc07d454731276; 4 follow-up inbox items queued from review)",
+        "checks": "PR required, Static PR checks, Safety and config checks, Build, Production UI (1-3), Unit coverage (1-2), Semgrep, Gitleaks, Gitar, CodeAnt all green"
+      },
+      {
         "date": "2026-08-18",
         "ref": "claude/dictionary-mode-ui-updates-uwoicy",
         "head": "67a290f393702f36021a470e6b00b0d1aa335227",
@@ -14713,6 +14857,14 @@
         "scope": "branch-cleanup",
         "outcome": "safe remote delete: experimental task-ledger variant superseded by merged PR #1106 canonical outstanding-issues ledger; archived batch16",
         "checks": "PR #1106 contract/history; current task-ledger architecture; bundle verify"
+      },
+      {
+        "date": "2026-10-17",
+        "ref": "codex/design-audit-resolution",
+        "head": "6c91636b26fc7f2f5849a97f30b4a292a73057ad",
+        "scope": "concurrent automated review integration",
+        "outcome": "Two Therapy P2 regressions in automated follow-up reproduced and repaired; valid Services history replacement retained; independent corrective review found no additional issue",
+        "checks": "RED3failed22passed; affected6suites37passed6.66s; original initial-zero/inert-sheet and realBackForward assertions preserved; pending/delivered loading-cycle regressions added; fresh combined-source browser proof pending."
       },
       {
         "date": "2026-08-02",
@@ -16350,7 +16502,7 @@
         "date": "2026-10-17",
         "ref": "claude/add-prlanded-skill",
         "head": "7e6fd2d557d53e22dfa6ea37b8921007fe4b0dfa",
-        "scope": "prlanded",
+        "scope": "Canonical prlanded skill and landed ledger records",
         "outcome": "PASS (0 blocking findings; added .agents/skills/prlanded canonical skill, registered cross-surface twin in list-database-skills.mjs, updated skill inventory tests, and recorded prlanded proofs for PRs #3581/#3587 and #3596)",
         "checks": "npm run check:skills, vitest run tests/database-skills.test.ts tests/repository-skill-inventory.test.ts (15/15), npm run docs:maintain:check, check-format-changed"
       },
@@ -17689,6 +17841,14 @@
         "scope": "PR #1377 CI/review babysit",
         "outcome": "Merged #1376 from main with real conflicts: kept admission-before-scope + L1-2 REFUTED docs; took #1376 invalidation epochs / empty-scope Server-Timing / stream signal. Codex threads resolved earlier. MERGEABLE; CI re-running.",
         "checks": "vitest preamble+rag-cache-invalidation 7/7; check:rag:fixtures 36/21; prior tip PR-required green before #1376 land"
+      },
+      {
+        "date": "2026-10-17",
+        "ref": "fix/final-non-design-recommendations-20261017",
+        "head": "8babcd56ad73a08ee314fda8f7d02f3e279bf72d",
+        "scope": "Telemetry switch & wire for generation degradation (#231), CAMHS crisis support lines (#8CKX6F), hostile PDF ingestion-to-answer pipeline tests (#7D8WZ2), and issue-inbox closures (#231, #FZP7VW, #ES3KTG; the #7D8WZ2 and #8CKX6F done requests were later cancelled in f7b67e374 and both issues stay open)",
+        "outcome": "Adversarial review completed; all 3 findings remediated; zero UI/design or DB migration changes",
+        "checks": "vitest (145/145 across 5 suites), typecheck:internal, lint:internal, check-clinical-hazard-controls"
       },
       {
         "date": "2026-08-15",
@@ -24763,6 +24923,14 @@
         "checks": "hosted-pr-required,static,unit,build,circleci"
       },
       {
+        "date": "2026-10-17",
+        "ref": "docs/audit-remediation-20261014",
+        "head": "def6fabcc8235e8592fea2613d07170e23dd9836",
+        "scope": "prlanded",
+        "outcome": "Verified PR #3544 squash-merged at def6fabcc8235e8592fea2613d07170e23dd9836 with zero content diff against final PR head f519ae94fafab3e2ce7b221a054faa7d66939eea and zero orphaned commits",
+        "checks": "gh pr view 3544, git rev-list --parents -n 1 def6fabcc8235e8592fea2613d07170e23dd9836, git diff --stat def6fabcc8235e8592fea2613d07170e23dd9836 f519ae94fafab3e2ce7b221a054faa7d66939eea"
+      },
+      {
         "date": "2026-07-14",
         "ref": "worktrees (6244, 8ba3, b6ff, e6b5, repo-improvement-review-09945c)",
         "head": "detached HEADs",
@@ -27019,6 +27187,14 @@
         "checks": "verify:pr-local (all stages pass except pre-existing check:medication-lexicon-report, reproduced on pristine origin/main); vitest 601 files/6510 passed; design-token-contract + tailwind-merge 69 passed; check:design-system-contract zero slack, mutation-verified; tailwind emission probe for the new utilities"
       },
       {
+        "date": "2026-10-17",
+        "ref": "codex/design-audit-resolution",
+        "head": "f98ed9f2c6a79fc6ba46e8270726248d17857097",
+        "scope": "adversarial correction review",
+        "outcome": "Both introduced P2 defects repaired; independent corrective review found zero additional confirmed findings; manual device and clinical-state acceptance remains open",
+        "checks": "Regression-first 4 failed/19 passed then23passed; affected6suites35passed6.52s; freshproductionbuild and completeTypeScript passed; completeui-tools andui-mode-nav-density172passed4.3m; scopedlint anddesigncontractpassed; diffintegrity47files741to795selftest27; whole-repoformatpassed."
+      },
+      {
         "date": "2026-07-30",
         "ref": "codex/repair-pr1462",
         "head": "f99bb06030780efab7c98806cbb0b2171d1a4284",
@@ -27097,6 +27273,14 @@
         "scope": "tests/search-route-round-trip-budget.test.ts (PR #1950, ledger #098 residual + #189)",
         "outcome": "Author handoff: offline test-only diff adding a pinned Supabase round-trip budget for POST /api/search, no production/RAG code changed",
         "checks": "verify:pr-local full run (lint/typecheck clean; test 602 files, 6511 passed, 4 skipped; check:rag:fixtures + check:medication-interactions passed; check:medication-lexicon-report pre-existing unrelated staleness)"
+      },
+      {
+        "date": "2026-10-16",
+        "ref": "claude/reconcile-inbox-20261016",
+        "head": "fa526775c6ca0751f9609e4fc5133190efa19c16",
+        "scope": "prlanded",
+        "outcome": "PR #3570 squash-merged as fa526775c6; stable patch-id 87375f76eaf matches branch tip d8eefbb91e with zero orphaned commits",
+        "checks": "gh pr view 3570 MERGED; 1-parent squash; git patch-id --stable match"
       },
       {
         "date": "2026-08-05",

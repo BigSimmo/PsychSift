@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -303,10 +303,22 @@ describe("document search state matrix", () => {
     expect(onOpenSourcePdf).toHaveBeenCalledTimes(1);
   });
 
-  it("reports an unavailable document search alongside the empty-result guidance", () => {
+  it("reports an unavailable document search once with its reason and recovery", async () => {
     render(<DocumentSearchResultsPanel {...documentProps} query="lithium" realDataReady={false} apiUnavailable />);
 
-    expect(screen.getByRole("alert")).toBeInTheDocument();
-    expect(screen.getByText(/No matches for/)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 3, name: "Search could not complete" })).toBeInTheDocument();
+    const reason = screen.getByText(/^Reason:/);
+    expect(reason).toHaveTextContent(/PsychSift could not be reached|The local API is unavailable/);
+    expect(screen.getByRole("button", { name: "Browse all sources" })).toBeInTheDocument();
+    expect(screen.queryByText(/No matches for|0 documents/)).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(within(screen.getByTestId("search-query-ribbon")).queryByRole("status")).toBeNull();
+
+    const liveRegions = screen.getByTestId("document-search-workspace").querySelectorAll('[aria-live="polite"]');
+    expect(liveRegions).toHaveLength(1);
+    await waitFor(() => {
+      expect(liveRegions[0]).toHaveTextContent("Search could not complete");
+      expect(liveRegions[0]).toHaveTextContent(reason.textContent!);
+    });
   });
 });

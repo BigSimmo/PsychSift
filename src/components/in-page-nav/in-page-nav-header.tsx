@@ -52,8 +52,8 @@ type InPageNavHeaderSharedProps = {
    * With nothing else claiming the row (no back, no promoted action, no view
    * mode, no actions sheet), the row is omitted rather than drawn empty, and a
    * rail becomes the whole header. That combination is only safe alongside a
-   * rail, whose More slot is then the page's overflow: without one, hiding the
-   * title would also hide the section disclosure and strand every section.
+   * rail, which keeps a collapsed section disclosure below its minimum width:
+   * without one, hiding the title would strand every section.
    */
   titleHidden?: boolean;
   /**
@@ -530,6 +530,23 @@ export function InPageNavHeader(props: InPageNavHeaderProps) {
                   density={rail.density}
                   countedLabels={rail.countedLabels}
                   modeIdentity={rail.modeIdentity}
+                  collapsedControl={
+                    titleHidden ? (
+                      <button
+                        ref={sectionTitleTriggerRef}
+                        type="button"
+                        onClick={(event) => openSectionSheet(event.currentTarget)}
+                        aria-haspopup="dialog"
+                        aria-expanded={sectionSheetOpen}
+                        aria-label={`${rail.label}${activeSection ? `, current section: ${activeSection.label}` : ""}`}
+                        data-testid={`${testIdPrefix}-section-trigger`}
+                        className="flex min-h-tap min-w-0 w-full items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold text-[color:var(--text-heading)] hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--focus)]"
+                      >
+                        <span className="min-w-0 flex-1 break-words">{activeSection?.label ?? rail.label}</span>
+                        <ChevronDown aria-hidden="true" className="size-icon-md shrink-0" />
+                      </button>
+                    ) : undefined
+                  }
                   flush={!rowHasContent}
                   testIdPrefix={testIdPrefix}
                 />

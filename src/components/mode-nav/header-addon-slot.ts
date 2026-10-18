@@ -24,6 +24,8 @@ import { isSlugDetail } from "@/lib/information-pages";
  * `PhoneHeaderCollapsePortal`, `InPageNavHeader`, or `RegistryModeNav`.
  */
 export function isHeaderAddonSlotOwnedRoute(pathname: string): boolean {
+  // Catalogue-owned clinical title/workflow bands share the same measured slot.
+  if (pathname === "/calculators/search" || pathname === "/services/search") return true;
   // DocumentViewer.tsx
   if (isDocumentViewerOwnedRoute(pathname)) return true;
   // Differentials detail and presentation workflows both provide their own
