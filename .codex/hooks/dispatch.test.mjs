@@ -116,9 +116,14 @@ test("only relevant canonical actions are planned", () => {
     "gh pr --repo github.com/BigSimmo/PsychSift create",
     "gh pr create -R BigSimmo/PsychSift",
     "gh pr create --repo=BigSimmo/PsychSift",
+    "url=$(gh pr create --fill)",
+    'bash -lc "gh pr create"',
+    "(gh pr create)",
+    "/usr/bin/gh pr create",
   ])
     assert.equal(plan("PostToolUse", payload("exec_command", { cmd }))[0].args[0], "post", cmd);
   assert.deepEqual(plan("PostToolUse", payload("exec_command", { cmd: "gh pr list --repo BigSimmo/PsychSift" })), []);
+  assert.deepEqual(plan("PostToolUse", payload("exec_command", { cmd: "ghx pr create" })), []);
   assert.deepEqual(plan("PostToolUse", payload("mcp__github__create_pull_request_review")), []);
   assert.equal(plan("PreCompact", {})[0].file, ".claude/hooks/precompact-issues-capture.sh");
 });

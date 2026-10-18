@@ -55,7 +55,7 @@ export function normalize(payload) {
 
 // `gh` accepts its inherited `-R/--repo` selector before or between the subcommands.
 const GH_FLAGS = String.raw`(?:\s+(?:-R\s*\S+|--repo(?:=|\s+)\S+|--?[\w-]+(?:=\S*)?))*`;
-const GH_PR_CREATE = new RegExp(String.raw`(?:^|[;&|\s])gh${GH_FLAGS}\s+pr${GH_FLAGS}\s+create(?:\s|$)`);
+const GH_PR_CREATE = new RegExp(String.raw`(?<![\w-])gh${GH_FLAGS}\s+pr${GH_FLAGS}\s+create(?![\w-])`);
 const GIT_PUSH = /git(?:\s+(?:-[Cc]\s*(?:"[^"]*"|'[^']*'|\S+)|--?[\w-]+(?:=\S*)?))*\s+push(?:\s|$)/;
 // PATH `bash` on Windows is usually the WSL launcher (System32), which cannot see this checkout's
 // Windows paths; prefer the pinned Git for Windows bash and use PATH only when it is absent.
