@@ -136,7 +136,8 @@ These are short operator checklists. Preserve evidence and identifiers, but do n
    curl -fsS https://<app-host>/api/health | jq '{status, version, deploymentCommitSha}'
    # The worker has no public domain; it binds /health on Railway's PORT (or WORKER_HEALTH_PORT).
    # Check it from inside the service, or confirm the pause in `railway logs --service worker`.
-   railway ssh --environment production --service worker -- sh -c 'curl -fsS "http://127.0.0.1:${WORKER_HEALTH_PORT:-$PORT}/health"'
+   # The worker image has no curl, so use the Node runtime it ships with.
+   railway ssh --environment production --service worker -- node -e 'fetch("http://127.0.0.1:"+(process.env.WORKER_HEALTH_PORT||process.env.PORT)+"/health").then(r=>r.text()).then(t=>console.log(t))'
    ```
    Expect `claimLoopPaused: true` and the expected `deploymentCommitSha` in the worker output. Changing a Railway variable redeploys that service, so wait for the new deployment to finish before checking.
 2. Do not weaken danger-source exclusion, query and answer minimisation, or private-document access to restore availability.
