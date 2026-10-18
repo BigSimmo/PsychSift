@@ -13,5 +13,6 @@ Pull requests that touch `supabase/migrations/**` may be armed once required che
 standing rule for migration PRs), but only when no owner-seal hold note is present. If the PR
 touches `supabase/migrations/**` and you are unsure whether a hold applies, do not arm.
 
-Once a pull request exists, its auto-merge state belongs to the owner: if auto-merge was turned
-off on a PR, do not turn it back on.
+Once a pull request exists, its auto-merge state belongs to the owner: do not disable or re-enable
+it. In particular, if auto-merge was turned off on a PR, do not turn it back on after a new push
+or a new approval.
