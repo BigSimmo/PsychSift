@@ -1,5 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { nonNullDocumentIds, partitionStorageCleanupJobs } from "@/lib/storage-cleanup-safety";
+import { nonNullDocumentIds, partitionStorageCleanupJobs, withoutReferencedPaths } from "@/lib/storage-cleanup-safety";
+
+describe("withoutReferencedPaths (audit F-09)", () => {
+  it("never returns a path a live image row still points at", () => {
+    const referenced = new Set(["doc/lease/g2/live.png"]);
+    expect(withoutReferencedPaths(["doc/lease/g1/old.png", "doc/lease/g2/live.png"], referenced)).toEqual([
+      "doc/lease/g1/old.png",
+    ]);
+  });
+
+  it("drops empty and duplicate paths", () => {
+    expect(withoutReferencedPaths(["a.png", "", "a.png", "b.png"], new Set())).toEqual(["a.png", "b.png"]);
+  });
+
+  it("returns nothing when every queued path is still referenced", () => {
+    expect(withoutReferencedPaths(["a.png"], new Set(["a.png"]))).toEqual([]);
+  });
+});
 
 describe("partitionStorageCleanupJobs (audit R11)", () => {
   const job = (id: string, document_id: string | null) => ({ id, document_id });

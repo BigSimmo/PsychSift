@@ -1,5 +1,5 @@
 import { loadEnvConfig } from "@next/env";
-import { nonNullDocumentIds, partitionStorageCleanupJobs } from "@/lib/storage-cleanup-safety";
+import { nonNullDocumentIds, partitionStorageCleanupJobs, withoutReferencedPaths } from "@/lib/storage-cleanup-safety";
 import { loadAdminClient } from "./eval-utils";
 import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
@@ -166,6 +166,18 @@ async function removePaths(args: {
   return { removed, warnings };
 }
 
+async function referencedImagePaths(supabase: Awaited<ReturnType<typeof loadAdminClient>>, paths: string[]) {
+  const referenced = new Set<string>();
+  const uniquePaths = Array.from(new Set(paths.filter(Boolean)));
+  for (let start = 0; start < uniquePaths.length; start += 50) {
+    const batch = uniquePaths.slice(start, start + 50);
+    const { data, error } = await supabase.from("document_images").select("storage_path").in("storage_path", batch);
+    if (error) throw new Error(error.message);
+    for (const row of data ?? []) referenced.add(row.storage_path);
+  }
+  return referenced;
+}
+
 async function main() {
   loadEnvConfig(process.cwd());
   const args = parseArgs(process.argv.slice(2));
@@ -236,10 +248,11 @@ async function main() {
       bucket: job.document_bucket ?? "clinical-documents",
       paths: job.document_paths ?? [],
     });
+    const imagePaths = job.image_paths ?? [];
     const imageCleanup = await removePaths({
       supabase,
       bucket: job.image_bucket ?? "clinical-images",
-      paths: job.image_paths ?? [],
+      paths: withoutReferencedPaths(imagePaths, await referencedImagePaths(supabase, imagePaths)),
     });
     const warnings = [...documentCleanup.warnings, ...imageCleanup.warnings];
     const nextStatus = warnings.length > 0 ? "failed" : "completed";

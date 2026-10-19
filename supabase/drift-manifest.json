@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-19T11:44:24.728Z",
+  "generated_at": "2026-10-19T17:06:08.402Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "55ec75553076a6ca82c048004b9e5b2ed6857a453e8bc3a5735fbc50313ce19a",
-  "replay_seconds": 30,
+  "schema_sha256": "253372bf15d47c66627c5f2fcf22253fc4e06522996c93c157fd13dda78d0097",
+  "replay_seconds": 19,
   "snapshot": {
     "views": [
       {
@@ -18492,6 +18492,11 @@
         "table": "documents"
       },
       {
+        "def": "CREATE TRIGGER documents_prune_superseded_index_generations AFTER UPDATE OF metadata ON public.documents FOR EACH ROW WHEN (((new.index_generation_id IS NOT NULL) AND (old.index_generation_id IS DISTINCT FROM new.index_generation_id))) EXECUTE FUNCTION public.prune_superseded_index_generations_after_commit()",
+        "name": "documents_prune_superseded_index_generations",
+        "table": "documents"
+      },
+      {
         "def": "CREATE TRIGGER documents_require_australian_source_activation AFTER UPDATE ON public.documents FOR EACH ROW EXECUTE FUNCTION public.guard_australian_source_activation()",
         "name": "documents_require_australian_source_activation",
         "table": "documents"
@@ -18580,6 +18585,11 @@
         "def": "CREATE TRIGGER rag_aliases_updated_at BEFORE UPDATE ON public.rag_aliases FOR EACH ROW EXECUTE FUNCTION public.set_updated_at()",
         "name": "rag_aliases_updated_at",
         "table": "rag_aliases"
+      },
+      {
+        "def": "CREATE TRIGGER rag_answer_feedback_update_guard BEFORE UPDATE ON public.rag_answer_feedback FOR EACH ROW EXECUTE FUNCTION public.guard_rag_answer_feedback_update()",
+        "name": "rag_answer_feedback_update_guard",
+        "table": "rag_answer_feedback"
       },
       {
         "def": "CREATE TRIGGER trg_set_owner_id_rag_queries BEFORE INSERT ON public.rag_queries FOR EACH ROW EXECUTE FUNCTION public.set_owner_id_from_auth_uid()",
@@ -19514,6 +19524,14 @@
       },
       {
         "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "92c30d79f1cfd29c37ab7214534a5c14",
+        "signature": "public.guard_rag_answer_feedback_update()"
+      },
+      {
+        "acl": [
           "postgres=X/postgres"
         ],
         "def_hash": "ee87e61b04cad7ede3d39aea104b7af3",
@@ -19965,6 +19983,20 @@
       },
       {
         "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "7e3cd8caeeedb7a48256da892f6470b2",
+        "signature": "public.prune_superseded_document_index_generations(uuid,uuid[],integer)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "f2ef44d2b6bb1e15d3326eae8e01974f",
+        "signature": "public.prune_superseded_index_generations_after_commit()"
+      },
+      {
+        "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
@@ -19977,7 +20009,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "3c021e0243c1052b4928112c9dcc96c7",
+        "def_hash": "9a282154d54a006597e81610303a4057",
         "signature": "public.publish_site_content_record(text,uuid,text,bigint,text,text,text)"
       },
       {
@@ -20130,7 +20162,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "b9a4ce368d6d3b48382c1ea5f888fe6b",
+        "def_hash": "234aeb307ef66bbfa674360ecb191820",
         "signature": "public.record_site_content_reconciliation_plan(jsonb)"
       },
       {
@@ -20286,6 +20318,13 @@
       },
       {
         "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "ed665023f2990f6a70dcf149dede94e4",
+        "signature": "public.require_recent_site_content_administrator_assurance()"
+      },
+      {
+        "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
@@ -20337,7 +20376,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "8cca178909ebadcd9fd6da7a05395dda",
+        "def_hash": "46b92bde9ce13ffa9579baae719576dc",
         "signature": "public.retire_site_content_record(text,uuid,text,bigint,text,text,text)"
       },
       {

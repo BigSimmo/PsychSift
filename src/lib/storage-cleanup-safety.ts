@@ -28,6 +28,14 @@ export function partitionStorageCleanupJobs<T extends StorageCleanupCandidate>(
   return { safe, skipped };
 }
 
+// Audit F-09: superseded index generations queue their image objects with a null
+// document_id (the document itself is still live), so the R11 guard above cannot protect
+// them. The database checks references when it queues a path; re-check when draining, and
+// never remove an image object that a document_images row still points at.
+export function withoutReferencedPaths(paths: readonly string[], referencedPaths: ReadonlySet<string>): string[] {
+  return Array.from(new Set(paths.filter((path) => Boolean(path) && !referencedPaths.has(path))));
+}
+
 export function nonNullDocumentIds(jobs: StorageCleanupCandidate[]): string[] {
   return Array.from(new Set(jobs.map((job) => job.document_id).filter((id): id is string => Boolean(id))));
 }
