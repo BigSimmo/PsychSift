@@ -236,6 +236,13 @@ describe("shared header hide/reveal wiring", () => {
       "--phone-overlay-chrome-h: calc(max(0.5rem, var(--safe-area-top)) + var(--shell-header-h))",
     );
     expect(headerSource).toContain("pt-[max(0.5rem,var(--safe-area-top))]");
+    // The sticky header stack is a separate inset spacer plus a `pt-2` bar, so
+    // its seed adds the inset and the pad rather than taking their max; the
+    // shared seed was 8px short on notched phones (main run 39120425367).
+    expect(globalsSource).toMatch(
+      /:root:has\(\.phone-sticky-header-stack\) \{\s*--phone-overlay-chrome-h: calc\(var\(--safe-area-top\) \+ 0\.5rem \+ var\(--shell-header-h\)\);\s*\}/,
+    );
+    expect(headerSource).toContain('data-testid="chrome-safe-area-top"');
     // The pad must never transition padding-top: under reduced motion every
     // element gets a 0.01ms duration, and a claimed reserve then painted the
     // stale value for one frame (#CHPC5C). The Playwright cold-load check pins
