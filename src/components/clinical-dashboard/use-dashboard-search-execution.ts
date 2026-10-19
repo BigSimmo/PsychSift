@@ -80,9 +80,9 @@ const maxClientRetryWaitMs = 10_000;
 const SEARCH_IDENTIFIER_HELD_BACK =
   "This search looks like it holds a record number, date of birth, phone number or email. Remove it and search again.";
 
-/** A refused deep link (?q=…&run=1) must not leave the patient detail sitting in the address bar. */
-/** Drops a refused question from the address, when the address is what holds it (a deep link).
- *  An address holding a different, earlier question belongs to the result still on screen. */
+/** A refused deep link (?q=…&run=1) must not leave the patient detail sitting in the address bar,
+ *  so the refused question is dropped when the address is what holds it. An address holding a
+ *  different, earlier question belongs to the result still on screen. */
 function clearRefusedQueryFromAddress(refused: string) {
   const url = new URL(window.location.href);
   // The dashboard runs a deep link from `q`, or from its older alias `query`.
