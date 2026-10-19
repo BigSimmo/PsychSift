@@ -6,6 +6,7 @@ import { LockKeyhole, Mail } from "lucide-react";
 
 import { TextField } from "@/components/ui/text-field";
 import { AsyncButton, cn, floatingControl, InlineNotice, commandControl } from "@/components/ui-primitives";
+import { TERMS_SIGN_IN_NOTE } from "@/lib/front-door-content";
 import { useAuthSession } from "@/lib/supabase/client";
 
 type EmailMode = "signin" | "signup" | "link";
@@ -145,6 +146,17 @@ export function EmailAuthForm({
       {mode === "signup" && (
         <p className="text-sm text-[color:var(--text-muted)]">Confirm your email address before signing in.</p>
       )}
+      <p className="text-sm text-[color:var(--text-muted)]" data-testid="email-auth-terms-note">
+        {TERMS_SIGN_IN_NOTE}{" "}
+        <Link
+          href="/terms"
+          prefetch={false}
+          className="font-semibold text-[color:var(--clinical-accent)] underline underline-offset-4"
+        >
+          Terms of Use
+        </Link>
+        .
+      </p>
       <Link href="/auth/reset-password" prefetch={false} className={cn(floatingControl, "justify-center text-sm")}>
         Forgot password?
       </Link>

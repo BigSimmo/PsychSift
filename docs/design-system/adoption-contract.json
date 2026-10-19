@@ -666,8 +666,10 @@
       "id": "privacy-safety-and-reference",
       "disposition": "owned",
       "routes": [
+        "src/app/about/page.tsx",
         "src/app/auth/reset-password/page.tsx",
         "src/app/privacy/page.tsx",
+        "src/app/terms/page.tsx",
         "src/app/reference/colour-coding/page.tsx",
         "src/app/(search-app)/safety-plan/page.tsx"
       ],
