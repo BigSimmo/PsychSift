@@ -308,6 +308,11 @@ describe("live-drift workflow triggers and privileges", () => {
   it("still routes when the drift job fails", () => {
     expect(workflow).toContain("if: ${{ !cancelled() }}");
   });
+
+  it("routes only runs on main, so a refused branch run raises no production alarm", () => {
+    const routing = workflow.slice(workflow.indexOf("  drift-routing:"));
+    expect(routing).toContain("if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}");
+  });
 });
 
 describe("live-drift failure routing", () => {

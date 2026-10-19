@@ -173,7 +173,9 @@ jobs:
   # repository code — the drift job above keeps contents: read only.
   drift-routing:
     needs: live-drift
-    if: ${{ !cancelled() }}
+    # Only main can deploy to production-secrets, so a manual run from another branch is refused
+    # before the drift job checks anything. Routing it would open a false production alarm.
+    if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
