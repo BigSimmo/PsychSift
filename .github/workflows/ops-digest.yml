@@ -164,7 +164,10 @@ jobs:
             const severity = allowedSeverities.has(rawSeverity) ? rawSeverity : "unknown";
             const publishAttentionComment =
               (context.eventName === "workflow_dispatch" && process.env.OPS_DIGEST_PUBLISH_ALERT_COMMENT === "true") ||
-              (context.eventName === "schedule" && (severity === "warning" || severity === "page"));
+              // An unreachable, degraded or unparseable service is the outage the phone alert exists
+              // for, even when no SLO severity could be computed. A zero-traffic window (status ok,
+              // severity unknown) stays silent so quiet nights do not page.
+              (context.eventName === "schedule" && (severity === "warning" || severity === "page" || status !== "ok"));
             let parsedSummary;
             try {
               parsedSummary = JSON.parse(process.env.OPS_DIGEST_ALERT_SUMMARY || "{}");
@@ -199,6 +202,24 @@ jobs:
               canonicalSummary.alerting ||
               severity === "unknown" ||
               canaryStale;
+            // Route alerts to a person, not only a label. The attention comment @mentions the owner,
+            // and GitHub mobile pushes direct mentions to their phone, the owner's chosen alert channel
+            // (docs/decisions/2026-10-19-production-alerts-by-phone.md). The rolling issue is reused, so
+            // assignment alone would push only the first alert. Assignment stays best-effort, so a
+            // refused assignment never costs the digest.
+            const alertAssignee = context.repo.owner;
+            async function assignAlert(issueNumber) {
+              try {
+                await github.rest.issues.addAssignees({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                  assignees: [alertAssignee],
+                });
+              } catch (error) {
+                core.warning(`Could not assign @${alertAssignee} to #${issueNumber}: ${error.message}`);
+              }
+            }
             const { data: existing } = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -227,11 +248,12 @@ jobs:
             }
             // Publish attention comments on confirmed manual dispatches or scheduled warning/page breaches.
             if (publishAttentionComment && (status !== "ok" || alerting)) {
+              await assignAlert(issueNumber);
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: issueNumber,
-                body: `⚠ Attention (status=${status}, alerting=${alerting}, severity=${severity}${canaryStale ? ", eval-canary-stale=true" : ""}) — ${new Date().toISOString()}\n\nAlert summary: \`${alertSummary}\`\n\n${body}`,
+                body: `@${alertAssignee} ⚠ Attention (status=${status}, alerting=${alerting}, severity=${severity}${canaryStale ? ", eval-canary-stale=true" : ""}) — ${new Date().toISOString()}\n\nAlert summary: \`${alertSummary}\`\n\n${body}`,
               });
             } else if (status !== "ok" || alerting) {
               core.info("Attention comment skipped: neither manual confirmation nor scheduled warning/page severity was met.");
