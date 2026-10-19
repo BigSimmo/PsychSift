@@ -581,7 +581,7 @@ export function PatientSafetyPlan() {
   const [reasons, setReasons] = useState<Entry[]>([]);
   const [planDate, setPlanDate] = useState("");
   const [mobileTab, setMobileTab] = useState<"build" | "preview">("build");
-  const [copied, setCopied] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
   const [finalised, setFinalised] = useState(false);
   const finaliseUnavailableId = useId();
   const [draftDirtyByRow, setDraftDirtyByRow] = useState<Record<string, boolean>>({});
@@ -828,19 +828,26 @@ export function PatientSafetyPlan() {
     return lines.filter((line, index, all) => !(line === "" && all[index - 1] === "")).join("\n");
   }, [entries, exampleActive, planDate, ready, reasons]);
 
+  const showCopyStatus = (status: "copied" | "failed", ms: number) => {
+    setCopyStatus(status);
+    if (copiedResetRef.current != null) clearTimeout(copiedResetRef.current);
+    copiedResetRef.current = setTimeout(() => {
+      copiedResetRef.current = null;
+      if (!mountedRef.current) return;
+      setCopyStatus("idle");
+    }, ms);
+  };
+
   const copyPlan = async () => {
     try {
       await navigator.clipboard.writeText(planText);
       if (!mountedRef.current) return;
-      setCopied(true);
-      if (copiedResetRef.current != null) clearTimeout(copiedResetRef.current);
-      copiedResetRef.current = setTimeout(() => {
-        copiedResetRef.current = null;
-        if (!mountedRef.current) return;
-        setCopied(false);
-      }, 1600);
+      showCopyStatus("copied", 1600);
     } catch {
-      /* clipboard unavailable in some embeds — safe no-op */
+      // Clipboard is unavailable in some embeds and browsers. Say so, so nobody
+      // pastes an older plan believing this one was copied.
+      if (!mountedRef.current) return;
+      showCopyStatus("failed", 4000);
     }
   };
 
@@ -860,6 +867,12 @@ export function PatientSafetyPlan() {
   };
 
   const clearAll = () => {
+    // Nothing to lose when the plan is empty or is the untouched example. Anything
+    // else is a clinician's work with a patient that is never stored, so ask first.
+    const untouchedExample = entries === SEED && reasons === SEED_REASONS && planDate.trim() === "";
+    const hasContent =
+      Object.values(entries).some((rows) => rows.length > 0) || reasons.length > 0 || planDate.trim() !== "";
+    if (hasContent && !untouchedExample && !window.confirm("Clear the whole plan? This can’t be undone.")) return;
     setEntries(EMPTY_ENTRIES);
     setReasons([]);
     setPlanDate("");
@@ -1159,13 +1172,20 @@ export function PatientSafetyPlan() {
             </h2>
             <div className="flex flex-wrap items-center gap-1.5">
               <button type="button" onClick={copyPlan} className={softButton}>
-                {copied ? (
+                {copyStatus === "copied" ? (
                   <CheckCheck className="size-icon-sm text-[color:var(--success)]" aria-hidden="true" />
                 ) : (
                   <ClipboardCopy className="size-icon-sm" aria-hidden="true" />
                 )}
-                {copied ? "Copied" : "Copy"}
+                {copyStatus === "copied" ? "Copied" : copyStatus === "failed" ? "Copy failed" : "Copy"}
               </button>
+              <span className="sr-only" role="status" aria-live="polite">
+                {copyStatus === "copied"
+                  ? "Plan copied."
+                  : copyStatus === "failed"
+                    ? "Copy didn’t work. Use Print / PDF instead."
+                    : ""}
+              </span>
               <button type="button" onClick={printPlan} className={softButton}>
                 <Printer className="size-icon-sm" aria-hidden="true" />
                 Print / PDF
@@ -1250,8 +1270,9 @@ export function PatientSafetyPlan() {
               </div>
             ) : null}
 
-            {/* Emergency escalation */}
-            <div className="grid gap-3 rounded-lg border border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] p-4">
+            {/* Emergency escalation. Kept on one printed page so the heading never
+                separates from the numbers. */}
+            <div className="grid gap-3 rounded-lg border print:break-inside-avoid border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] p-4">
               <div className="flex items-center gap-1.5 text-[color:var(--clinical-accent-hover)]">
                 <PhoneCall className="size-icon-sm" aria-hidden="true" />
                 <span className={cn(eyebrowText, "text-[color:var(--clinical-accent-hover)]")}>

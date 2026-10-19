@@ -331,6 +331,57 @@ describe("PatientSafetyPlan — incomplete-plan draft guard", () => {
   });
 });
 
+describe("PatientSafetyPlan — Clear all and Copy feedback", () => {
+  // fireEvent rather than userEvent: an earlier case in this file uses fake timers.
+  it("asks before Clear all wipes a plan with real entries, and keeps it when the doctor says no", () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    render(<PatientSafetyPlan />);
+
+    const supportStep = screen.getByRole("region", { name: "Step 4: People I can ask for help" });
+    fireEvent.change(within(supportStep).getByLabelText("Name & relationship"), {
+      target: { value: "Sam — a friend" },
+    });
+    fireEvent.click(within(supportStep).getByRole("button", { name: /^Add$/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Clear all/ }));
+
+    expect(confirm).toHaveBeenCalledOnce();
+    expect(confirm).toHaveBeenCalledWith(expect.stringMatching(/Clear the whole plan\?.*can’t be undone/));
+    expect(within(supportStep).getAllByText("Sam — a friend").length).toBeGreaterThan(0);
+
+    confirm.mockReturnValue(true);
+    fireEvent.click(screen.getByRole("button", { name: /Clear all/ }));
+    expect(within(supportStep).queryByText("Sam — a friend")).toBeNull();
+    confirm.mockRestore();
+  });
+
+  it("clears an untouched example or an empty plan without asking", () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    render(<PatientSafetyPlan />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Clear all/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Load example/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Clear all/ }));
+
+    expect(confirm).not.toHaveBeenCalled();
+    expect(screen.queryByText(examplePattern)).toBeNull();
+    confirm.mockRestore();
+  });
+
+  it("says so when copying fails instead of failing silently", async () => {
+    const writeText = vi.fn().mockRejectedValue(new Error("denied"));
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    render(<PatientSafetyPlan />);
+
+    fireEvent.click(screen.getByRole("button", { name: /^Copy$/ }));
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole("button", { name: /^Copy failed$/ })).toBeTruthy();
+    expect(screen.getByText(/Copy didn’t work\. Use Print \/ PDF instead\./)).toBeTruthy();
+  });
+});
+
 describe("PatientSafetyPlan — in-app links inside the shell", () => {
   function renderWithShellLink() {
     render(
