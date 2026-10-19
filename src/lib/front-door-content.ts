@@ -167,6 +167,22 @@ export const TERMS_PROMPT_LATER_NOTE = "If you choose Not now, we will ask again
 export const TERMS_PROMPT_SAVE_ERROR =
   "Your acceptance could not be saved to your account, so it is remembered on this device only.";
 
+/*
+ * The Terms step at the first Ask (audit F-13). Shown before the first AI answer,
+ * to signed-out visitors once per device and to signed-in users who have not
+ * accepted the current version. It reuses the prompt's lead and points above;
+ * only the title, the accept label and the closing note are its own.
+ */
+export const ASK_TERMS_STEP_TITLE = "Before your first answer";
+export const ASK_TERMS_STEP_ACCEPT_LABEL = "I'm a health professional and I accept the Terms";
+export const ASK_TERMS_STEP_NOTE_DEVICE =
+  "Students and trainees under supervision count. We'll remember this on this device.";
+export const ASK_TERMS_STEP_NOTE_ACCOUNT =
+  "Students and trainees under supervision count. We'll remember this on your account.";
+/** Shown over the matching documents after Not now. */
+export const ASK_TERMS_DECLINED_NOTICE = "No AI answer yet. To get one, accept the Terms.";
+export const ASK_TERMS_REVIEW_LABEL = "Review";
+
 /** Shown under the sign-in and create-account forms. */
 export const TERMS_SIGN_IN_NOTE = "By signing in or creating an account, you agree to the";
 

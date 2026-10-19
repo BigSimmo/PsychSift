@@ -74,3 +74,10 @@ export const ClinicalAskWorkspace = dynamic(
   // (Lighthouse CLS on `/`) and pushes the in-flow composer into the PWA sheet.
   { ssr: false, loading: () => null },
 );
+
+// The Terms step at the first Ask. Mounted only while a question is held, so a
+// visitor who has accepted never downloads it.
+export const AskTermsStep = dynamic(
+  () => import("@/components/front-door/ask-terms-step").then((m) => m.AskTermsStep),
+  { ssr: false },
+);

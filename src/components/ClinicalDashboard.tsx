@@ -95,6 +95,9 @@ import { PrivateScopeUnavailableAlert } from "@/components/clinical-dashboard/pr
 import { DashboardSearchErrorState } from "@/components/clinical-dashboard/dashboard-search-error-state";
 import { useDashboardShellActions } from "@/components/clinical-dashboard/use-dashboard-shell-actions";
 import { useDashboardSearchExecution } from "@/components/clinical-dashboard/use-dashboard-search-execution";
+import { useAskTermsGate } from "@/components/front-door/use-ask-terms-gate";
+import { Button } from "@/components/ui/button";
+import { ASK_TERMS_DECLINED_NOTICE, ASK_TERMS_REVIEW_LABEL } from "@/lib/front-door-content";
 import { focusComposerInput as scheduleComposerFocus } from "@/components/clinical-dashboard/focus-composer-input";
 import {
   resolveDashboardHideOnScroll,
@@ -129,6 +132,7 @@ import { IndexingAdminDrawer } from "@/components/clinical-dashboard/indexing-ad
 import { DashboardDocumentsDrawer } from "@/components/clinical-dashboard/dashboard-documents-drawer";
 import { useHomeModeSeed } from "@/components/clinical-dashboard/use-home-mode-seed";
 import {
+  AskTermsStep,
   DifferentialsHome,
   DocumentSearchResultsPanel,
   FavouritesHub,
@@ -876,7 +880,7 @@ function ClinicalDashboardContent({
     requestSourceLibrarySearch,
     runWithRetries,
     setMedicationSearchQuery,
-    ask,
+    ask: sendAsk,
   } = useDashboardSearchExecution({
     router,
     auth,
@@ -935,6 +939,31 @@ function ClinicalDashboardContent({
     setDemoMode,
     setActionNotice,
   });
+
+  // The Terms step at the first Ask (audit F-13). An Answer question waits here,
+  // unsent, until the current Terms are accepted. Not now runs the same question
+  // as a Documents search instead, through the cross-mode path the results use.
+  const askTermsGate = useAskTermsGate({
+    onNotNow: (heldQuery) => {
+      // Review from the documents notice, then Not now again: those documents are already shown.
+      if (searchMode === "documents" && query.trim() === heldQuery) return;
+      crossModeSearch("documents", heldQuery);
+    },
+    onSaveFailed: (message) => setActionNotice({ tone: "warning", message }),
+  });
+  // Every way into an Answer request in this dashboard goes through `ask`: the
+  // composer, a ?run=1 link, a recent question, retry and the filter relaxers.
+  // A held question is sent later by the latest render's `sendAsk`, unchanged.
+  const sendAskRef = useRef(sendAsk);
+  useLayoutEffect(() => {
+    sendAskRef.current = sendAsk;
+  });
+  const ask: typeof sendAsk = async (searchText = query, contextOverride, replaceExistingAnswer = false) => {
+    if (searchMode !== "answer" || !searchText.trim()) {
+      return sendAsk(searchText, contextOverride, replaceExistingAnswer);
+    }
+    return askTermsGate.guard(searchText, () => sendAskRef.current(searchText, contextOverride, replaceExistingAnswer));
+  };
 
   // The URL sync reads the current mode to tell a stale UI-change flag from a
   // genuine one, without the mode becoming one of its dependencies.
@@ -1124,7 +1153,16 @@ function ClinicalDashboardContent({
   }
 
   function crossModeSearch(mode: AppModeId, crossQuery: string) {
-    // An Answer cross-search reaches executeSearch, which holds back patient details.
+    // An Answer cross-search reaches executeSearch, which holds back patient details,
+    // after the Terms step has had its say.
+    if (mode === "answer" && crossQuery.trim()) {
+      askTermsGate.guard(crossQuery, () => latestCrossModeSearchAfterTerms(mode, crossQuery));
+      return;
+    }
+    crossModeSearchAfterTerms(mode, crossQuery);
+  }
+
+  function crossModeSearchAfterTerms(mode: AppModeId, crossQuery: string) {
     if (mode === "favourites" && !favouritesAccessible) {
       openAccountSetup("favourites");
       return;
@@ -1375,7 +1413,7 @@ function ClinicalDashboardContent({
   }
 
   function handlePickFollowUpSuggestion(suggestion: string) {
-    void executeSearch(suggestion);
+    askTermsGate.guard(suggestion, () => void executeSearchRef.current(suggestion));
   }
 
   function startNewChat() {
@@ -1630,9 +1668,13 @@ function ClinicalDashboardContent({
   const handleRecheckRestoredAnswer = useEventCallback(() => {
     const queryToRerun = (latestAnswerQuery ?? deferredQuery).trim();
     if (!queryToRerun) return;
-    void executeSearch(queryToRerun, "answer", scopeFilters, queryMode, true);
+    askTermsGate.guard(
+      queryToRerun,
+      () => void executeSearchRef.current(queryToRerun, "answer", scopeFilters, queryMode, true),
+    );
   });
   const handleCrossModeSearch = useEventCallback(crossModeSearch);
+  const latestCrossModeSearchAfterTerms = useEventCallback(crossModeSearchAfterTerms);
   const handleDocumentTagSearch = useEventCallback(handleTagSearch);
   const handleScopeFiltersChange = useScopeFilterRelax(query, queryMode, setScopeFilters, ask);
   const handleDocumentFiltersApply = useApplyFilters(query, queryMode, setScopeFilters, setSelectedDocumentIds, askRef);
@@ -1690,7 +1732,11 @@ function ClinicalDashboardContent({
     setSelectedDocumentIds([]);
     setPrivateScopeStatus("none");
     autoRunSearchSignatureRef.current = null;
-    void executeSearch(submittedUrlQuery || query, searchMode, scopeFilters, queryMode, false, undefined);
+    const rerunQuery = submittedUrlQuery || query;
+    const rerun = () =>
+      void executeSearchRef.current(rerunQuery, searchMode, scopeFilters, queryMode, false, undefined);
+    if (searchMode === "answer") askTermsGate.guard(rerunQuery, rerun);
+    else rerun();
   }
 
   // The card is local and provider-independent, so it also shows for a submitted answer
@@ -1983,6 +2029,34 @@ function ClinicalDashboardContent({
                   {actionNotice.message}
                 </InlineNotice>
               )}
+              {searchMode === "documents" &&
+              askTermsGate.declinedQuery &&
+              askTermsGate.declinedQuery === query.trim() ? (
+                <InlineNotice tone="info" onDismiss={askTermsGate.clearDeclined} animated>
+                  <span className="flex flex-wrap items-center gap-x-3 gap-y-2" data-testid="ask-terms-declined">
+                    <span>{ASK_TERMS_DECLINED_NOTICE}</span>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        const declined = askTermsGate.declinedQuery;
+                        if (declined) crossModeSearch("answer", declined);
+                      }}
+                    >
+                      {ASK_TERMS_REVIEW_LABEL}
+                    </Button>
+                  </span>
+                </InlineNotice>
+              ) : null}
+              {askTermsGate.heldQuery !== null ? (
+                <AskTermsStep
+                  open
+                  saving={askTermsGate.saving}
+                  signedIn={askTermsGate.signedIn}
+                  onAccept={() => void askTermsGate.accept()}
+                  onNotNow={askTermsGate.notNow}
+                />
+              ) : null}
               <DegradedNoticeFrame visible={showDegradedNotice} isOnline={isOnline} reserveSpace={centeredModeHome} />
               {showSystemNotice && answer ? (
                 <SystemNotice demoMode={demoMode} setupWarning={setupWarning} className="hidden sm:block" />

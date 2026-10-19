@@ -14,6 +14,11 @@ import { TERMS_VERSION } from "@/lib/front-door-content";
  * the user clicked Accept, not a tamper-proof audit trail. A server-owned audit
  * record would need a reviewed table and the owner's permission for that
  * database change.
+ *
+ * Signed-out visitors meet the Terms step the first time they tap Ask. Their
+ * acceptance has no account to live on, so it is kept in this browser only,
+ * under one key that names no user (`readDeviceTermsVersion`). Clearing site
+ * data, a private window or another device asks again.
  */
 
 export const TERMS_METADATA_KEY = "psychsift_terms";
@@ -21,6 +26,8 @@ export const TERMS_METADATA_KEY = "psychsift_terms";
 export type TermsAcceptanceRecord = { version: string; acceptedAt: string };
 
 const LOCAL_TERMS_PREFIX = "psychsift:terms-accepted:";
+/** Signed-out acceptance on this browser. Deliberately not under the per-user prefix. */
+export const DEVICE_TERMS_KEY = "psychsift:terms-accepted-on-device";
 const LOCAL_GUIDE_PREFIX = "psychsift:first-run-guide-dismissed:";
 /** Metadata flag so the first-run guide stays dismissed on other devices too. */
 export const GUIDE_METADATA_KEY = "psychsift_first_run_guide_dismissed";
@@ -64,7 +71,8 @@ function safeSet(key: string, value: string) {
   try {
     window.localStorage.setItem(key, value);
   } catch {
-    // Private mode or blocked storage: the account record still holds it.
+    // Private mode or blocked storage: a signed-in account record still holds it;
+    // a signed-out visitor is simply asked again next time.
   }
 }
 
@@ -74,6 +82,15 @@ export function readLocalTermsVersion(userId: string): string | null {
 
 export function writeLocalTermsVersion(userId: string, version: string) {
   safeSet(`${LOCAL_TERMS_PREFIX}${userId}`, version);
+}
+
+/** The terms version a signed-out visitor accepted in this browser, or null. */
+export function readDeviceTermsVersion(): string | null {
+  return safeGet(DEVICE_TERMS_KEY);
+}
+
+export function writeDeviceTermsVersion(version: string) {
+  safeSet(DEVICE_TERMS_KEY, version);
 }
 
 /** `owner` is the signed-in user id. */

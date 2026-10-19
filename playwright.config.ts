@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "playwright/test";
 import { stableProjectPort } from "./src/lib/local-server-utils.mjs";
 import { getPlaywrightBaseUrl } from "./scripts/playwright-base-url";
+import { TERMS_VERSION } from "./src/lib/front-door-content";
 
 process.env.PORT = process.env.PORT || String(stableProjectPort(process.cwd()));
 
@@ -38,12 +39,24 @@ const mockupTag = /@mockup/;
 // same sheet; once WebKit could launch it covered tablet clicks across shards, matrix run
 // 38236585559). `ui-pwa.spec.ts` resets it to prove the sheet itself.
 const IOS_INSTALL_DISMISSAL_KEY = "clinical-kb-pwa-ios-install-dismissed-at";
+// The first Ask for an AI answer opens a Terms step and holds the question until the
+// visitor accepts (audit F-13, `use-ask-terms-gate.ts`). Every journey that asks a
+// question is about a visitor who has already accepted on this device, so every
+// project starts from that state, the same way the iOS projects start with the
+// install hint dismissed. The step itself is proved by
+// `tests/ask-terms-gate.dom.test.tsx`. Must equal `DEVICE_TERMS_KEY` in
+// `src/lib/terms-acceptance.ts`; that test pins the match.
+const TERMS_ACCEPTED_ON_DEVICE = { name: "psychsift:terms-accepted-on-device", value: TERMS_VERSION };
+const returningVisitor = {
+  cookies: [],
+  origins: [{ origin: new URL(baseURL).origin, localStorage: [TERMS_ACCEPTED_ON_DEVICE] }],
+};
 const iosInstallHintDismissed = {
   cookies: [],
   origins: [
     {
       origin: new URL(baseURL).origin,
-      localStorage: [{ name: IOS_INSTALL_DISMISSAL_KEY, value: String(Date.now()) }],
+      localStorage: [TERMS_ACCEPTED_ON_DEVICE, { name: IOS_INSTALL_DISMISSAL_KEY, value: String(Date.now()) }],
     },
   ],
 };
@@ -98,6 +111,8 @@ export default defineConfig({
     //    neither default active transitions nor reduced-motion accessibility fallbacks freeze
     //    or blank out UI elements.
     contextOptions: { reducedMotion: "reduce" },
+    // Terms already accepted on this device; see `returningVisitor` above.
+    storageState: returningVisitor,
     // Phone PWA standalone mode emulation strategy (#71NT23):
     // Validates the phone PWA bounded scroll shell (globals.css:3755-3793) by
     // allowing phone scroll journeys to emulate `display-mode: standalone` either
