@@ -20,7 +20,7 @@
 # NEVER baked into the image — inject them at run time from the host's
 # secret store.
 
-FROM node:24-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20 AS node-base
+FROM node:24-bookworm-slim@sha256:a5f4366e834695d5f363b920c104953a535d3a9864d1bdf74566a0ebe01daee5 AS node-base
 FROM node:24-trixie-slim@sha256:7f486cabe892bff8fef04c0f7da8dba84a560be3e4e2740b7a86afc57ebec315 AS app-node-runtime-base
 # Keep the command-string shell used by Railway pre-deploy hooks, without
 # inheriting the donor's package manager or unrelated operating-system tools.
