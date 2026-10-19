@@ -46,6 +46,13 @@
 #   an `environment:` key makes GitHub auto-create it UNPROTECTED, which would read as safer
 #   than it is. Create the protected environment first, then wire it, then consider arming.
 #
+# * The job DOES name one environment, `production-secrets`, and it is not that approval
+#   gate. It only scopes SUPABASE_SERVICE_ROLE_KEY to `main` (audit F-21): it has no required
+#   reviewers, so it approves nothing and adds no per-run control to the apply path. The
+#   auto-create hazard above applies to it too, which is why the owner creates it (restricted
+#   to `main`, secret added) BEFORE the change that names it merges. Setup, verification and
+#   rollback: docs/deployment-architecture.md, "The production-secrets environment".
+#
 # * The probe will very likely be permanently red. The RPC's predicate treats every
 #   generation-bearing row as eligible on any document whose `metadata.index_generation_id` is
 #   absent — so documents that predate generation stamping, first ingests that crashed before
@@ -97,6 +104,9 @@ jobs:
   reindex-reaper:
     # Gate 1. Deliberately unset, so this whole job is a no-op until the owner arms it.
     if: vars.REINDEX_REAPER_ENABLED == 'true'
+    # Secret scoping only, NOT the apply-approval environment described in the header: it holds
+    # SUPABASE_SERVICE_ROLE_KEY, is restricted to main and has no required reviewers.
+    environment: production-secrets
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -110,7 +120,7 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
-            echo "::error::Reindex reaper cannot run — missing repo secret SUPABASE_SERVICE_ROLE_KEY"
+            echo "::error::Reindex reaper cannot run — missing secret SUPABASE_SERVICE_ROLE_KEY (production-secrets environment)"
             exit 1
           fi
 

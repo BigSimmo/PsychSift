@@ -11,7 +11,8 @@ name: Answer feedback weekly summary
 # It reads the production feedback table with the existing SUPABASE_SERVICE_ROLE_KEY secret (the
 # same secret live-drift.yml uses), scoped to the one step that runs the report, after the script's
 # exact production identity check. It writes nothing to the database, opens no issue and blocks
-# nothing.
+# nothing. The secret comes from the `production-secrets` GitHub environment, which only `main` may
+# use (audit F-21; docs/deployment-architecture.md, "The production-secrets environment").
 
 on:
   schedule:
@@ -31,6 +32,8 @@ jobs:
     name: Build the answer feedback weekly summary
     # main only: a manual run from another branch must not run that branch's reader against production.
     if: ${{ github.ref == 'refs/heads/main' }}
+    # Holds SUPABASE_SERVICE_ROLE_KEY; restricted to main, no required reviewers (unattended schedule).
+    environment: production-secrets
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -54,7 +57,7 @@ jobs:
         run: |
           set -o pipefail
           if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
-            echo "::error::Answer feedback weekly summary cannot run - missing repo secret SUPABASE_SERVICE_ROLE_KEY"
+            echo "::error::Answer feedback weekly summary cannot run - missing secret SUPABASE_SERVICE_ROLE_KEY (production-secrets environment)"
             exit 1
           fi
           node scripts/run-tsx.mjs scripts/report-answer-feedback.ts --weekly-summary \

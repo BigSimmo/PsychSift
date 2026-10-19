@@ -300,7 +300,9 @@ Failing loudly:
   failures and the all-cases/no-retrieval-layers signature are classified as
   provider or live-configuration failures.
 
-Required repo secrets: `SUPABASE_SERVICE_ROLE_KEY` and `OPENAI_API_KEY`.
+Required secrets: `SUPABASE_SERVICE_ROLE_KEY` from the `production-secrets`
+GitHub environment (`main` only; see `docs/deployment-architecture.md`, "The
+production-secrets environment") and the repository secret `OPENAI_API_KEY`.
 The workflow preflights these and fails with an explicit message when absent.
 
 Operational notes:

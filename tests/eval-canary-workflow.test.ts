@@ -37,6 +37,11 @@ describe("eval canary workflow input", () => {
     expect(projectGuardStart).toBeGreaterThan(installStart);
     expect(workflow.slice(installStart, projectGuardStart)).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
     expect(workflow.slice(installStart, projectGuardStart)).not.toContain("OPENAI_API_KEY");
+    // Audit F-21: the service-role key comes from the main-only production-secrets environment.
+    expect(workflow).toContain("  eval-canary:\n    # Holds SUPABASE_SERVICE_ROLE_KEY");
+    expect(workflow.match(/^\s+environment:.*$/gm)?.map((line) => line.trim())).toEqual([
+      "environment: production-secrets",
+    ]);
   });
 
   it("opens the failure issue for scheduled AND dispatched runs", () => {

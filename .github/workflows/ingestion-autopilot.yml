@@ -38,6 +38,10 @@ env:
 
 jobs:
   ingestion-autopilot:
+    # Holds SUPABASE_SERVICE_ROLE_KEY; restricted to main, no required reviewers, so the
+    # 6-hourly schedule keeps running unattended. This is NOT an approval gate for --apply.
+    # See docs/deployment-architecture.md, "The production-secrets environment" (audit F-21).
+    environment: production-secrets
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -51,7 +55,7 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
-            echo "::error::Ingestion autopilot cannot run — missing repo secret SUPABASE_SERVICE_ROLE_KEY"
+            echo "::error::Ingestion autopilot cannot run — missing secret SUPABASE_SERVICE_ROLE_KEY (production-secrets environment)"
             exit 1
           fi
 
