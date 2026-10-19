@@ -141,24 +141,30 @@ function BrowseRow({ kind, summary, href }: { kind: SourcesBrowseKind; summary: 
 
   return (
     <li>
-      <Link
-        href={href}
-        aria-label={`View ${summary.label} sources`}
+      <div
         className={cn(
           // A row of its section's one card: no border, shadow or lift of its
           // own. The list draws the box and divides rows with a hairline.
-          "group grid min-h-12 grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 px-3.5 py-3.5 transition-colors",
+          "group relative grid min-h-12 grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 px-3.5 py-3.5 transition-colors",
           "hover:bg-[color:var(--surface-subtle)] motion-reduce:transition-none",
-          "focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--focus)]",
+          "has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:-outline-offset-2 has-[:focus-visible]:outline-[color:var(--focus)]",
         )}
       >
         <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]">
           <Icon className="size-icon-md" aria-hidden="true" />
         </span>
         <span className="min-w-0">
-          <span className="block overflow-hidden text-sm-minus font-extrabold leading-5 text-[color:var(--text-heading)] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] group-hover:text-[color:var(--clinical-accent)]">
+          {/* The link wraps only the label and stretches over the row, so the
+              whole row stays one target. Wrapping the whole row gave the link
+              every word on it as visible text, which its "View … sources" name
+              cannot contain (WCAG 2.5.3, axe `label-content-name-mismatch`). */}
+          <Link
+            href={href}
+            aria-label={`View ${summary.label} sources`}
+            className="block overflow-hidden text-sm-minus font-extrabold leading-5 text-[color:var(--text-heading)] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] after:absolute after:inset-0 focus-visible:outline-none group-hover:text-[color:var(--clinical-accent)]"
+          >
             {summary.label}
-          </span>
+          </Link>
           {/* The quality mix as a bar, drawn inside the row's labelled link and
               always accompanied by the sentence below it. Band is a clinical
               signal, so it is never carried by hue alone — under forced colors
@@ -217,7 +223,7 @@ function BrowseRow({ kind, summary, href }: { kind: SourcesBrowseKind; summary: 
             aria-hidden="true"
           />
         </span>
-      </Link>
+      </div>
     </li>
   );
 }
