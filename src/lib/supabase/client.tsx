@@ -672,6 +672,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+/**
+ * The session when an AuthProvider is mounted, else null. For small optional controls (such as a
+ * record's "Report a problem") that must not take the page down when rendered outside the provider.
+ */
+export function useOptionalAuthSession() {
+  return useContext(AuthContext);
+}
+
 export function useAuthSession() {
   const context = useContext(AuthContext);
   if (!context) {

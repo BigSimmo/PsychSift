@@ -3256,8 +3256,11 @@ export type Database = {
           id: string;
           interaction_id: string;
           model: string | null;
+          note: string | null;
           owner_id: string | null;
           provider_request_ids: string[];
+          record_id: string | null;
+          record_type: string;
           route: string | null;
           source_ids: string[];
         };
@@ -3269,8 +3272,11 @@ export type Database = {
           id?: string;
           interaction_id: string;
           model?: string | null;
+          note?: string | null;
           owner_id?: string | null;
           provider_request_ids?: string[];
+          record_id?: string | null;
+          record_type?: string;
           route?: string | null;
           source_ids?: string[];
         };
@@ -3282,8 +3288,11 @@ export type Database = {
           id?: string;
           interaction_id?: string;
           model?: string | null;
+          note?: string | null;
           owner_id?: string | null;
           provider_request_ids?: string[];
+          record_id?: string | null;
+          record_type?: string;
           route?: string | null;
           source_ids?: string[];
         };
@@ -6183,6 +6192,10 @@ export type Database = {
       rollback_site_content_release: {
         Args: { p_expected_active_release_id: string; p_target_release_id: string; p_recovery_digest: string; p_rollback_receipt: Json };
         Returns: boolean;
+      };
+      purge_expired_rag_answer_feedback_notes: {
+        Args: { p_retention_days?: number };
+        Returns: number;
       };
       purge_expired_rag_queries: {
         Args: { p_retention_days?: number };

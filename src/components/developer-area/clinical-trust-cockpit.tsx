@@ -176,6 +176,16 @@ export function ClinicalTrustCockpit() {
                   Signal {item.signalId}
                   {item.interactionId ? ` · interaction ${item.interactionId}` : ""}
                 </p>
+                {item.recordType && item.recordType !== "answer" ? (
+                  <p className="text-xs text-[color:var(--text-muted)]" data-testid="quality-queue-record">
+                    Reported on the {item.recordType} record {item.recordId ?? "unknown"}
+                  </p>
+                ) : null}
+                {item.note ? (
+                  <p className="whitespace-pre-wrap text-sm" data-testid="quality-queue-note">
+                    Reader note: {item.note}
+                  </p>
+                ) : null}
                 <p className="text-xs text-[color:var(--text-muted)]">
                   {item.documentIds.length} linked source identifiers · observed{" "}
                   {new Date(item.createdAt).toLocaleString()}
