@@ -19,6 +19,9 @@ timeout 30s docker run --rm --network=none --entrypoint=node node:24-trixie-slim
 timeout 30s docker run --rm --network=none --cap-drop=ALL --security-opt=no-new-privileges:true --entrypoint=node -v "$PWD/$probe/runtime-proof.mjs:/proof.mjs:ro" -v "$proof/donor-inventory.json:/donor-inventory.json:ro" "$image" /proof.mjs
 # Rebuild the unchanged, synthetic Next fixture once with this repository's exact lock.
 mkdir -p "$probe/fixture/node_modules"
+# Match the product image's real offline deploy manifest, generated from this checkout.
+node --input-type=module -e 'import {writeManifest} from "./scripts/deploy/write-migration-manifest.mjs";const m=writeManifest({manifestPath:process.argv[1]});if(!m.count)throw Error("empty manifest");console.log("Diagnostic migration manifest",m.count)' "$probe/fixture/deploy/expected-migrations.json"
+sha256sum "$probe/fixture/deploy/expected-migrations.json"
 NEXT_TELEMETRY_DISABLED=1 timeout --kill-after=5s 120s docker run --rm --network=none --env=NEXT_TELEMETRY_DISABLED=1 -v "$PWD/$probe/fixture:/fixture" -v "$PWD/node_modules:/fixture/node_modules:ro" --entrypoint=node node:24-trixie-slim@sha256:7f486cabe892bff8fef04c0f7da8dba84a560be3e4e2740b7a86afc57ebec315 /fixture/node_modules/next/dist/bin/next build /fixture --webpack
 mounts=(-v "$PWD/$probe/fixture:/app:ro" -v "$PWD/node_modules:/app/node_modules:ro" -v "$PWD/$probe/compatibility.mjs:/compatibility.mjs:ro" -v "$PWD/scripts/deploy:/app/scripts/deploy:ro")
 # Create mountpoint directories before readonly parent mounts; no root source changes.
