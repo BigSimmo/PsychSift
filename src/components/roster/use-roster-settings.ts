@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+
+import { useAccountRequestScope } from "@/components/use-account-request-scope";
 
 import type { CodeMeaning } from "@/lib/roster/import/grid";
 
@@ -84,39 +86,55 @@ export function readRosterSettings(payload: unknown): RosterSettings | null {
 }
 
 export function useRosterSettings(): RosterSettingsState {
+  const { scope, isCurrent } = useAccountRequestScope();
+  const [owner, setOwner] = useState(scope);
   const [status, setStatus] = useState<RosterSettingsStatus>("loading");
   const [settings, setSettings] = useState<RosterSettings>(EMPTY_ROSTER_SETTINGS);
   const current = useRef(settings);
+  // Same-account writes remain serial; a new account starts an independent queue.
+  const queue = useRef<Promise<unknown>>(Promise.resolve());
 
   const accept = useCallback((next: RosterSettings) => {
     current.current = next;
     setSettings(next);
   }, []);
 
+  if (owner !== scope) {
+    setOwner(scope);
+    setSettings(EMPTY_ROSTER_SETTINGS);
+    setStatus("loading");
+  }
+  useLayoutEffect(() => {
+    current.current = EMPTY_ROSTER_SETTINGS;
+    queue.current = Promise.resolve();
+  }, [scope]);
+
   useEffect(() => {
     const controller = new AbortController();
     fetch(SETTINGS_URL, { cache: "no-store", signal: controller.signal })
       .then(async (response) => {
+        if (controller.signal.aborted || !isCurrent()) return;
         if (response.status === 401) {
           setStatus("signed-out");
           return;
         }
         if (!response.ok) throw new Error(`status ${response.status}`);
-        accept(readRosterSettings(await response.json().catch(() => null)) ?? EMPTY_ROSTER_SETTINGS);
+        const saved = readRosterSettings(await response.json().catch(() => null));
+        if (controller.signal.aborted || !isCurrent()) return;
+        accept(saved ?? EMPTY_ROSTER_SETTINGS);
         setStatus("ready");
       })
       .catch((error: unknown) => {
+        if (controller.signal.aborted || !isCurrent()) return;
         if ((error as { name?: string })?.name === "AbortError") return;
         setStatus("error");
       });
     return () => controller.abort();
-  }, [accept]);
-
-  // Writes run one at a time so an older completion (or its rollback) can never overwrite a newer state.
-  const queue = useRef<Promise<unknown>>(Promise.resolve());
+  }, [accept, isCurrent]);
 
   const write = useCallback(
     async (patch: RosterSettingsPatch) => {
+      if (!isCurrent()) return null;
       const before = current.current;
       accept(applyRosterSettingsPatch(before, patch));
       try {
@@ -125,28 +143,32 @@ export function useRosterSettings(): RosterSettingsState {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(patch),
         });
+        if (!isCurrent()) return null;
         if (!response.ok) {
           accept(before);
           return response.status === 401 ? "Sign in to change Roster settings." : "That setting could not be saved.";
         }
         const saved = readRosterSettings(await response.json().catch(() => null));
+        if (!isCurrent()) return null;
         if (saved) accept(saved);
         return null;
       } catch {
+        if (!isCurrent()) return null;
         accept(before);
         return "That setting could not be saved. Check your connection and try again.";
       }
     },
-    [accept],
+    [accept, isCurrent],
   );
 
   const update = useCallback(
     (patch: RosterSettingsPatch) => {
+      if (!isCurrent()) return Promise.resolve(null);
       const next = queue.current.then(() => write(patch));
       queue.current = next.catch(() => undefined);
       return next;
     },
-    [write],
+    [write, isCurrent],
   );
 
   return { status, settings, update };

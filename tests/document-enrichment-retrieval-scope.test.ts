@@ -1,113 +1,112 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { fetchRelatedDocumentMetadata } from "../src/lib/document-enrichment";
+import { documentMetadataFixture } from "./helpers/document-metadata-fixture";
 
-describe("related-document metadata RPC rollout", () => {
-  it.each(["42883", "PGRST202"])("merges owner and public legacy rows for missing code %s", async (missingCode) => {
-    const rpc = vi.fn(async (name: string, args: { owner_filter?: string }) => {
-      if (name === "get_related_document_metadata_v2") {
-        return { data: null, error: { code: missingCode, message: "missing versioned RPC" } };
-      }
-      return args.owner_filter === "owner-a"
-        ? { data: [{ document_id: "owner-doc", labels: [], summary: "Owner" }], error: null }
-        : { data: [{ document_id: "public-doc", labels: [], summary: "Public" }], error: null };
+const documents = [
+  { id: "owned", owner_id: "owner-a", status: "indexed", metadata: {} },
+  { id: "public", owner_id: null, status: "indexed", metadata: { public_corpus: true } },
+  { id: "unpublished", owner_id: null, status: "indexed", metadata: {} },
+  { id: "foreign", owner_id: "owner-b", status: "indexed", metadata: {} },
+  { id: "queued", owner_id: "owner-a", status: "queued", metadata: {} },
+];
+const ids = documents.map((doc) => doc.id);
+function fixture(options: Parameters<typeof documentMetadataFixture>[1] = {}) {
+  return documentMetadataFixture(
+    {
+      documents,
+      document_labels: documents.map((doc) => ({
+        id: doc.id,
+        document_id: doc.id,
+        owner_id: doc.owner_id,
+        label: doc.id,
+        metadata: {},
+      })),
+      document_summaries: documents.map((doc) => ({
+        id: doc.id,
+        document_id: doc.id,
+        owner_id: doc.owner_id,
+        summary: doc.id,
+        metadata: {},
+      })),
+    },
+    options,
+  );
+}
+
+describe("related-document metadata source-row access", () => {
+  it.each([
+    [{ ownerId: "owner-a", includePublic: true }, ["owned", "public"]],
+    [{ ownerId: "owner-a", includePublic: false }, ["owned"]],
+    [{ includePublic: true }, ["public"]],
+  ] as const)("admits only indexed parents in scope %j", async (accessScope, admitted) => {
+    const supabase = fixture();
+    const rows = await fetchRelatedDocumentMetadata({ supabase: supabase as never, accessScope, documentIds: ids });
+    expect(rows.filter((row) => row.summary).map((row) => row.document_id)).toEqual(admitted);
+    expect(rows.filter((row) => row.labels.length).map((row) => row.document_id)).toEqual(admitted);
+  });
+
+  it.each(["document_labels", "document_summaries"])(
+    "propagates %s permission errors without an alternate path",
+    async (failedTable) => {
+      const error = Object.assign(new Error("permission denied"), { code: "42501" });
+      const supabase = fixture({ failedTable, error });
+      await expect(fetchRelatedDocumentMetadata({ supabase: supabase as never, documentIds: ids })).rejects.toBe(error);
+      expect(supabase.from).not.toHaveBeenCalledWith("documents");
+    },
+  );
+
+  it("does not start any lookup after caller cancellation", async () => {
+    const controller = new AbortController();
+    const reason = new DOMException("metadata cancelled", "AbortError");
+    controller.abort(reason);
+    const supabase = fixture();
+    await expect(
+      fetchRelatedDocumentMetadata({ supabase: supabase as never, documentIds: ids, signal: controller.signal }),
+    ).rejects.toBe(reason);
+    expect(supabase.from).not.toHaveBeenCalled();
+  });
+
+  it("preserves the caller's abort reason over a returned error envelope", async () => {
+    const controller = new AbortController();
+    const reason = new DOMException("metadata cancelled", "AbortError");
+    const supabase = fixture({ onRead: () => controller.abort(reason) });
+    await expect(
+      fetchRelatedDocumentMetadata({ supabase: supabase as never, documentIds: ids, signal: controller.signal }),
+    ).rejects.toBe(reason);
+    expect(supabase.from).not.toHaveBeenCalledWith("documents");
+  });
+
+  it("reads beyond hidden and staged rows occupying two API pages", async () => {
+    const labels = Array.from({ length: 1000 }, (_, index) => ({
+      id: String(index).padStart(4, "0"),
+      document_id: "owned",
+      owner_id: "owner-a",
+      label: `hidden-${index}`,
+      metadata: index < 500 ? { hidden: true } : { index_generation_id: "staged" },
+    }));
+    const supabase = documentMetadataFixture({
+      documents: [{ ...documents[0], metadata: { index_generation_id: "committed" } }],
+      document_labels: [
+        ...labels,
+        {
+          id: "1000",
+          document_id: "owned",
+          owner_id: "owner-a",
+          label: "visible",
+          metadata: { index_generation_id: "committed" },
+        },
+      ],
     });
     const rows = await fetchRelatedDocumentMetadata({
-      supabase: { rpc } as never,
+      supabase: supabase as never,
       ownerId: "owner-a",
-      accessScope: { ownerId: "owner-a", includePublic: true },
-      documentIds: ["owner-doc", "public-doc"],
+      documentIds: ["owned"],
     });
-    expect(rows.map((row) => row.document_id).sort()).toEqual(["owner-doc", "public-doc"]);
-  });
-
-  it("does not fallback for permission errors", async () => {
-    const rpc = vi.fn(async () => ({ data: null, error: { code: "42501", message: "permission denied" } }));
-    const emptyQuery = {
-      select: () => emptyQuery,
-      in: () => emptyQuery,
-      is: () => emptyQuery,
-      then: (resolve: (value: unknown) => unknown) => Promise.resolve({ data: [], error: null }).then(resolve),
-    };
-    await fetchRelatedDocumentMetadata({
-      supabase: { rpc, from: vi.fn(() => emptyQuery) } as never,
-      accessScope: { includePublic: true },
-      documentIds: ["public-doc"],
-    });
-    expect(rpc).toHaveBeenCalledTimes(1);
-  });
-
-  it("does not fan out to legacy or table fallbacks after caller cancellation", async () => {
-    const controller = new AbortController();
-    const reason = new DOMException("metadata lookup cancelled", "AbortError");
-    const abortSignal = vi.fn(async (signal: AbortSignal) => {
-      controller.abort(reason);
-      return { data: null, error: { code: "PGRST202", message: "missing versioned RPC" }, signal };
-    });
-    const rpc = vi.fn(() => ({ abortSignal }));
-    const from = vi.fn();
-
-    await expect(
-      fetchRelatedDocumentMetadata({
-        supabase: { rpc, from } as never,
-        accessScope: { includePublic: true },
-        documentIds: ["public-doc"],
-        signal: controller.signal,
-      }),
-    ).rejects.toBe(reason);
-    expect(abortSignal).toHaveBeenCalledWith(controller.signal);
-    expect(rpc).toHaveBeenCalledTimes(1);
-    expect(from).not.toHaveBeenCalled();
-  });
-
-  it("preserves the caller abort reason when a direct-table fallback resolves an abort error envelope", async () => {
-    const controller = new AbortController();
-    const reason = new DOMException("fallback metadata lookup cancelled", "AbortError");
-    const envelopeError = { code: "PGRST000", message: "request aborted" };
-    const rpc = vi.fn(async () => ({ data: null, error: { code: "42501", message: "permission denied" } }));
-    const from = vi.fn((table: string) => {
-      const query = {
-        select: () => query,
-        in: () => query,
-        is: () => query,
-        abortSignal: vi.fn(async () => {
-          if (table === "document_labels") controller.abort(reason);
-          return { data: null, error: envelopeError };
-        }),
-      };
-      return query;
-    });
-
-    await expect(
-      fetchRelatedDocumentMetadata({
-        supabase: { rpc, from } as never,
-        accessScope: { includePublic: true },
-        documentIds: ["public-doc"],
-        signal: controller.signal,
-      }),
-    ).rejects.toBe(reason);
-    expect(from).toHaveBeenCalledTimes(2);
-  });
-
-  it.each(["document_labels", "document_summaries"])("propagates %s fallback query errors", async (failedTable) => {
-    const rpc = vi.fn(async () => ({ data: null, error: { code: "42501", message: "permission denied" } }));
-    const fallbackError = Object.assign(new Error(`${failedTable} fallback failed`), { code: "PGRST000" });
-    const from = vi.fn((table: string) => {
-      const result = table === failedTable ? { data: null, error: fallbackError } : { data: [], error: null };
-      const query = {
-        select: () => query,
-        in: () => query,
-        is: () => query,
-        then: (resolve: (value: typeof result) => unknown) => Promise.resolve(result).then(resolve),
-      };
-      return query;
-    });
-
-    await expect(
-      fetchRelatedDocumentMetadata({
-        supabase: { rpc, from } as never,
-        accessScope: { includePublic: true },
-        documentIds: ["public-doc"],
-      }),
-    ).rejects.toBe(fallbackError);
+    expect(rows[0].labels.map((label) => label.label)).toEqual(["visible"]);
+    expect(supabase.queries.find((query) => query.table === "document_labels")?.ranges).toEqual([
+      [0, 499],
+      [500, 999],
+      [1000, 1499],
+    ]);
   });
 });

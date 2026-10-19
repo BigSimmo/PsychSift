@@ -430,6 +430,46 @@ before the list existed.
 - After the pending-migration backlog lands, delete the matching allowlist
   entries; check:drift reports stale entries so they cannot silently linger.
 
+### Optional offline rootless replay
+
+Docker remains the default backend and CI continues to use the cached pinned image. On a
+non-root Linux amd64 host with usable bwrap user namespaces, an explicit rootless route can
+consume a separately acquired local OCI image and trusted umoci executable:
+
+```bash
+npm run drift:manifest -- --backend rootless --oci-layout /absolute/private/oci --scratch-root /absolute/private/scratch --umoci /absolute/private/tools/umoci --umoci-sha256 <verified-binary-sha256> --evidence /absolute/private/evidence/replay.json
+```
+
+The scratch and evidence parent directories must already exist, belong to the calling user and
+have private permissions (0700); the evidence filename must be new. OCI and scratch directories
+must be separate. The generator never downloads images/tools, installs packages or falls back
+between backends. Obtain the executable from verified package/publisher provenance separately;
+a caller-supplied hash checks matching bytes and does not itself establish publisher authenticity.
+Rootless rejects Docker-specific `--keep`, `--port` and `--container` options.
+
+This route verifies the original pinned index, selected linux/amd64 manifest, config, compressed
+layers and ordered uncompressed diff IDs, then freshly unpacks through the hash-checked OCI-aware
+extractor. It checks the actual image's postgres UID/GID (100/101) and supported native startup
+settings. The original image root stays read-only; only private data/socket/tmp and copied
+PostgreSQL/config-key directories are writable. It clears inherited host environment, isolates
+network/PID/user/mount namespaces and publishes no TCP port. The ephemeral password travels on
+stdin; native private-key material and raw logs are not exported to evidence.
+
+One guest supervisor runs the original entrypoint, waits for its initialization-complete marker
+and five consecutive readiness successes, then serves the native generator's shared role
+bootstrap, dynamically owned Storage scaffold, complete postgres schema replay and actual catalog
+capture. The same PID namespace also performs shutdown. A forced stop or nonzero pg_ctl/server
+exit fails acceptance. Only after successful replay and confirmed graceful cleanup does the
+native generator atomically replace the manifest; SQL/capture/cleanup failure preserves the
+previous manifest. Cleanup removes only its newly created owned run directory.
+
+The committed manifest retains the original requested image reference, the same native generator
+identity and existing fields; runtime/provenance details and the produced manifest hash live in
+the separate private evidence JSON. Freshness still deep-compares everything except generated_at
+and replay_seconds. This local schema-mirror replay does not establish migration-chain replay,
+hosted deployment, real Storage behavior or live acceptance. Retain those distinct gates and
+production approval boundaries.
+
 ## 2026-07-07 baseline audit (three-way: live vs schema.sql vs migration chain)
 
 Both repo lineages were replayed into scratch containers and compared with the

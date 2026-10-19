@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "3b65ad4f-0ab4-4266-bbd9-a6073b12993c",
+  "createdOn": "2026-10-18",
+  "action": "update",
+  "payload": {
+    "id": "#QVVS6W",
+    "detail": "UPDATE 2026-10-18: a step-by-step, timed, owner-approved drill (restore to a new project, Storage copy, count comparison, cost and stop conditions) is drafted in docs/operator-rehearsal-plan.md step 2; it has not run. PRIOR DETAIL: Run one real restore-to-a-new-project drill and record the wall-clock time and what was lost. Why: docs/disaster-recovery-runbook.md states plainly that only the schema layer was rehearsed (2026-07-07, ~19s local container replay) and that the platform restore plus golden retrieval eval has never been executed — so 'we have backups' is currently an untested claim on the live clinical corpus. Distinct from #1K6T35, which is the accepted ~24h recovery-point decision, not whether a restore works at all. Owner: user + operator (provider-backed). Confidence: high — the runbook says so itself. Depends on: #1K6T35 context.",
+    "baseRowFingerprint": "d0bc7688afb57634c7a14c453265040c26026499da63572cb7d1fa18ddb343bd",
+    "targetUlid": "01M2ZHJ750QVVS6WX5AYF21BNA"
+  }
+}

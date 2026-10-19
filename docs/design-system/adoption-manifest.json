@@ -333,6 +333,7 @@
         "src/components/favourites/edit-favourite-sheet.tsx",
         "src/components/favourites/favourite-sheets.tsx",
         "src/components/favourites/number-sheets.tsx",
+        "src/components/front-door/terms-acceptance-prompt.tsx",
         "src/components/mode-kit/signed-out-sample.tsx",
         "src/components/mode-kit/today/today-shell.tsx",
         "src/components/my-day/my-day-calendar-page.tsx",
@@ -467,6 +468,7 @@
         "src/components/favourites/edit-favourite-sheet.tsx",
         "src/components/favourites/favourite-sheets.tsx",
         "src/components/favourites/number-sheets.tsx",
+        "src/components/front-door/terms-acceptance-prompt.tsx",
         "src/components/mode-kit/signed-out-sample.tsx",
         "src/components/mode-kit/today/today-shell.tsx",
         "src/components/my-day/my-day-calendar-page.tsx",
@@ -1072,11 +1074,11 @@
       "sourceExported": true,
       "entryExported": true,
       "directImportFiles": [
-        "src/components/ClinicalDashboard.tsx",
         "src/components/applications-launcher-page.tsx",
         "src/components/clinical-dashboard/DocumentManagerPanel.tsx",
         "src/components/clinical-dashboard/clinical-output-helpers.tsx",
         "src/components/clinical-dashboard/dashboard-notices.tsx",
+        "src/components/clinical-dashboard/dashboard-search-error-state.tsx",
         "src/components/clinical-dashboard/document-admin.tsx",
         "src/components/clinical-dashboard/evidence-panels.tsx",
         "src/components/clinical-dashboard/favourites-command-library-page.tsx",
@@ -1091,11 +1093,11 @@
         "src/components/mode-home-template.tsx"
       ],
       "productImportFiles": [
-        "src/components/ClinicalDashboard.tsx",
         "src/components/applications-launcher-page.tsx",
         "src/components/clinical-dashboard/DocumentManagerPanel.tsx",
         "src/components/clinical-dashboard/clinical-output-helpers.tsx",
         "src/components/clinical-dashboard/dashboard-notices.tsx",
+        "src/components/clinical-dashboard/dashboard-search-error-state.tsx",
         "src/components/clinical-dashboard/document-admin.tsx",
         "src/components/clinical-dashboard/evidence-panels.tsx",
         "src/components/clinical-dashboard/favourites-command-library-page.tsx",
@@ -1390,11 +1392,13 @@
       "directImportFiles": [
         "src/components/clinical-dashboard/image-lightbox.tsx",
         "src/components/cme/cme-customise-page.tsx",
+        "src/components/front-door/first-run-guide.tsx",
         "src/components/navigation-back-button.tsx"
       ],
       "productImportFiles": [
         "src/components/clinical-dashboard/image-lightbox.tsx",
         "src/components/cme/cme-customise-page.tsx",
+        "src/components/front-door/first-run-guide.tsx",
         "src/components/navigation-back-button.tsx"
       ],
       "designSync": {
@@ -1708,6 +1712,7 @@
         "src/components/differentials/differential-compare-queue-page.tsx",
         "src/components/dsm/dsm-page-header.tsx",
         "src/components/factsheets/factsheets-topics-page.tsx",
+        "src/components/front-door/front-door-page.tsx",
         "src/components/information-page-shell.tsx",
         "src/components/specifiers/specifier-compare-page.tsx",
         "src/components/specifiers/specifier-map-page.tsx",
@@ -1724,6 +1729,7 @@
         "src/components/differentials/differential-compare-queue-page.tsx",
         "src/components/dsm/dsm-page-header.tsx",
         "src/components/factsheets/factsheets-topics-page.tsx",
+        "src/components/front-door/front-door-page.tsx",
         "src/components/information-page-shell.tsx",
         "src/components/specifiers/specifier-compare-page.tsx",
         "src/components/specifiers/specifier-map-page.tsx",
@@ -2306,6 +2312,7 @@
         "src/components/first-nations/situation-module.tsx",
         "src/components/first-nations/where-is-home.tsx",
         "src/components/forms/form-priority-facts-section.tsx",
+        "src/components/front-door/terms-acceptance-prompt.tsx",
         "src/components/in-page-nav/in-page-nav-header.tsx",
         "src/components/keyboard-shortcuts/keyboard-shortcuts-sheet.tsx",
         "src/components/mode-kit/dial-sheet.tsx",
@@ -2449,6 +2456,7 @@
         "src/components/first-nations/situation-module.tsx",
         "src/components/first-nations/where-is-home.tsx",
         "src/components/forms/form-priority-facts-section.tsx",
+        "src/components/front-door/terms-acceptance-prompt.tsx",
         "src/components/in-page-nav/in-page-nav-header.tsx",
         "src/components/keyboard-shortcuts/keyboard-shortcuts-sheet.tsx",
         "src/components/mode-kit/dial-sheet.tsx",
@@ -3266,7 +3274,7 @@
         {
           "file": "src/components/ClinicalDashboard.tsx",
           "exists": true,
-          "imports": ["EmptyState", "InlineNotice"],
+          "imports": ["InlineNotice"],
           "importedFamilies": ["feedback"],
           "literalCkbV2": false,
           "dynamicCkbV2": false,
@@ -6121,9 +6129,11 @@
       "documentedDisposition": null,
       "routes": [
         "src/app/(search-app)/safety-plan/page.tsx",
+        "src/app/about/page.tsx",
         "src/app/auth/reset-password/page.tsx",
         "src/app/privacy/page.tsx",
-        "src/app/reference/colour-coding/page.tsx"
+        "src/app/reference/colour-coding/page.tsx",
+        "src/app/terms/page.tsx"
       ],
       "routeRoots": true,
       "proofApplicability": "required",
@@ -6179,6 +6189,16 @@
           "sanctionedPatternsPresent": ["PatientSafetyPlan"]
         },
         {
+          "file": "src/app/about/page.tsx",
+          "exists": true,
+          "imports": [],
+          "importedFamilies": [],
+          "literalCkbV2": false,
+          "dynamicCkbV2": false,
+          "v2MountMode": "inherited-global-root",
+          "sanctionedPatternsPresent": []
+        },
+        {
           "file": "src/app/auth/reset-password/page.tsx",
           "exists": true,
           "imports": [],
@@ -6207,6 +6227,16 @@
           "dynamicCkbV2": false,
           "v2MountMode": "inherited-global-root",
           "sanctionedPatternsPresent": ["ColourCodingReferencePage"]
+        },
+        {
+          "file": "src/app/terms/page.tsx",
+          "exists": true,
+          "imports": [],
+          "importedFamilies": [],
+          "literalCkbV2": false,
+          "dynamicCkbV2": false,
+          "v2MountMode": "inherited-global-root",
+          "sanctionedPatternsPresent": []
         }
       ]
     },
@@ -6675,10 +6705,12 @@
       "src/app/(search-app)/therapy-compass/review/page.tsx",
       "src/app/(search-app)/therapy-compass/search/page.tsx",
       "src/app/(search-app)/tools/page.tsx",
+      "src/app/about/page.tsx",
       "src/app/admin/pilot/page.tsx",
       "src/app/auth/reset-password/page.tsx",
       "src/app/privacy/page.tsx",
-      "src/app/reference/colour-coding/page.tsx"
+      "src/app/reference/colour-coding/page.tsx",
+      "src/app/terms/page.tsx"
     ],
     "declared": [
       "src/app/(display)/teaching/display/[token]/page.tsx",
@@ -6903,10 +6935,12 @@
       "src/app/(search-app)/therapy-compass/review/page.tsx",
       "src/app/(search-app)/therapy-compass/search/page.tsx",
       "src/app/(search-app)/tools/page.tsx",
+      "src/app/about/page.tsx",
       "src/app/admin/pilot/page.tsx",
       "src/app/auth/reset-password/page.tsx",
       "src/app/privacy/page.tsx",
-      "src/app/reference/colour-coding/page.tsx"
+      "src/app/reference/colour-coding/page.tsx",
+      "src/app/terms/page.tsx"
     ],
     "undeclared": [],
     "missing": [],
@@ -6914,7 +6948,7 @@
   },
   "adoption": {
     "literalCkbV2RootCount": 1,
-    "inheritedCkbV2RootCount": 234,
+    "inheritedCkbV2RootCount": 236,
     "dynamicCkbV2RootCount": 0,
     "v2MountedSurfaceCount": 15,
     "declaredV2SurfaceCount": 15
@@ -6923,8 +6957,8 @@
     "registeredComponentCount": 55,
     "previewCount": 55,
     "productImportedComponentCount": 48,
-    "rootCount": 235,
-    "productionRouteCount": 226,
-    "nextUiEntryCount": 346
+    "rootCount": 237,
+    "productionRouteCount": 228,
+    "nextUiEntryCount": 348
   }
 }

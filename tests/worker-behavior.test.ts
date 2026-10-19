@@ -128,8 +128,11 @@ describe("vision per-image error isolation (L12)", () => {
   });
 
   it("routes the worker's per-task vision call through the isolation guard", async () => {
+    // The captioning stage moved out of worker/main.ts into worker/image-captioning.ts.
     const source = String(
-      await import("node:fs/promises").then((fs) => fs.readFile(new URL("../worker/main.ts", import.meta.url), "utf8")),
+      await import("node:fs/promises").then((fs) =>
+        fs.readFile(new URL("../worker/image-captioning.ts", import.meta.url), "utf8"),
+      ),
     );
     // Fenced leases: the vision call now runs inside runIngestionPreparedWork (lease heartbeat
     // + attempt signal), and terminal egress/abort errors are rethrown before the L12 skip.

@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { useAccountRequestScope } from "@/components/use-account-request-scope";
+
 import type { RosterCalendarLink, RosterCalendarLinkReason } from "@/lib/roster/calendar-links";
 
 /**
@@ -165,47 +167,72 @@ async function fetchLinks(signal?: AbortSignal): Promise<LoadedLinks> {
 }
 
 export function useRosterLinks(): RosterLinksState {
+  const { scope, isCurrent } = useAccountRequestScope();
+  const [owner, setOwner] = useState(scope);
   const [status, setStatus] = useState<RosterLinksState["status"]>("loading");
   const [links, setLinks] = useState<readonly RosterCalendarLink[]>([]);
 
-  const apply = useCallback((result: LoadedLinks) => {
-    if (result === "aborted") return;
-    if (result === "signed-out" || result === "error") {
-      setStatus(result);
-      return;
-    }
-    setLinks(result);
-    setStatus("ready");
-  }, []);
+  if (owner !== scope) {
+    setOwner(scope);
+    setStatus("loading");
+    setLinks([]);
+  }
 
-  const load = useCallback(async () => apply(await fetchLinks()), [apply]);
+  const apply = useCallback(
+    (result: LoadedLinks) => {
+      if (!isCurrent() || result === "aborted") return;
+      if (result === "signed-out" || result === "error") {
+        setStatus(result);
+        return;
+      }
+      setLinks(result);
+      setStatus("ready");
+    },
+    [isCurrent],
+  );
+
+  const load = useCallback(async () => {
+    if (isCurrent()) apply(await fetchLinks());
+  }, [apply, isCurrent]);
 
   useEffect(() => {
     const controller = new AbortController();
-    fetchLinks(controller.signal).then(apply, () => undefined);
+    fetchLinks(controller.signal).then(
+      (result) => {
+        if (!controller.signal.aborted) apply(result);
+      },
+      () => undefined,
+    );
     return () => controller.abort();
   }, [apply]);
 
   /** Refresh one link. Null when it worked, or the sentence saying why not. */
-  const refreshOne = useCallback(async (id: string): Promise<string | null> => {
-    try {
-      const response = await fetch(`${LINKS_URL}/refresh`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id }),
-      });
-      const payload = await response.json().catch(() => null);
-      if (!response.ok) return describeLinkFailure(errorCodeOf(payload)) ?? "Refresh did not work.";
-      const result = readRefreshResults(payload)?.find((item) => item.id === id);
-      if (!result) return "Refresh did not work.";
-      return result.ok ? null : (describeLinkFailure(result.reason ?? null) ?? "Refresh did not work.");
-    } catch {
-      return "That link could not be refreshed. Check your connection and try again.";
-    }
-  }, []);
+  const refreshOne = useCallback(
+    async (id: string): Promise<string | null> => {
+      if (!isCurrent()) return null;
+      try {
+        const response = await fetch(`${LINKS_URL}/refresh`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id }),
+        });
+        const payload = await response.json().catch(() => null);
+        if (!isCurrent()) return null;
+        if (!response.ok) return describeLinkFailure(errorCodeOf(payload)) ?? "Refresh did not work.";
+        const result = readRefreshResults(payload)?.find((item) => item.id === id);
+        if (!result) return "Refresh did not work.";
+        return result.ok ? null : (describeLinkFailure(result.reason ?? null) ?? "Refresh did not work.");
+      } catch {
+        if (!isCurrent()) return null;
+        return "That link could not be refreshed. Check your connection and try again.";
+      }
+    },
+    [isCurrent],
+  );
 
   const add = useCallback(
     async (url: string, workplace: string | null) => {
+      if (!isCurrent()) return null;
       try {
         const response = await fetch(LINKS_URL, {
           method: "POST",
@@ -213,6 +240,7 @@ export function useRosterLinks(): RosterLinksState {
           body: JSON.stringify({ url, workplace }),
         });
         const payload = await response.json().catch(() => null);
+        if (!isCurrent()) return null;
         if (!response.ok) {
           const code = errorCodeOf(payload);
           if (code === "duplicate_workplace") return "You already have a calendar link for that workplace.";
@@ -225,34 +253,42 @@ export function useRosterLinks(): RosterLinksState {
         await load();
         return null;
       } catch {
+        if (!isCurrent()) return null;
         return "That link could not be added. Check your connection and try again.";
       }
     },
-    [load, refreshOne],
+    [load, refreshOne, isCurrent],
   );
 
-  const remove = useCallback(async (id: string) => {
-    try {
-      const response = await fetch(LINKS_URL, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id }),
-      });
-      if (!response.ok) return "That link could not be removed.";
-      setLinks((current) => current.filter((link) => link.id !== id));
-      return null;
-    } catch {
-      return "That link could not be removed. Check your connection and try again.";
-    }
-  }, []);
+  const remove = useCallback(
+    async (id: string) => {
+      if (!isCurrent()) return null;
+      try {
+        const response = await fetch(LINKS_URL, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id }),
+        });
+        if (!isCurrent()) return null;
+        if (!response.ok) return "That link could not be removed.";
+        setLinks((current) => current.filter((link) => link.id !== id));
+        return null;
+      } catch {
+        if (!isCurrent()) return null;
+        return "That link could not be removed. Check your connection and try again.";
+      }
+    },
+    [isCurrent],
+  );
 
   const refresh = useCallback(
     async (id: string) => {
       const failure = await refreshOne(id);
+      if (!isCurrent()) return null;
       await load();
       return failure;
     },
-    [load, refreshOne],
+    [load, refreshOne, isCurrent],
   );
 
   return { status, links, add, remove, refresh, reload: load };

@@ -212,10 +212,7 @@ const nextConfig: NextConfig = {
       // Settings is a dialog, so it is addressed by the query parameter SettingsStateProvider
       // consumes and then strips.
       { source: "/settings", destination: "/?settings=open", permanent: true },
-      // The nearest thing to an "about this product" page, and the one that answers what a
-      // clinician arriving at /about actually wants to know: what this is and what it does with
-      // what they type.
-      { source: "/about", destination: "/privacy", permanent: true },
+      // `/about` is a real page now (About and intended use), so it no longer redirects.
       // Developer-gated tools relocated from /mockups to /admin (Task #0QXGAN).
       { source: "/mockups/development", destination: "/admin/developer-hub", permanent: true },
       { source: "/mockups/development/:path*", destination: "/admin/developer-hub/:path*", permanent: true },

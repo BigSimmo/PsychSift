@@ -215,6 +215,20 @@ function PrivacyFooter({ className }: { className?: string }) {
           Privacy and data processing
           <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
         </Link>
+        <span className="mt-0.5 flex flex-wrap gap-x-4">
+          <Link
+            href="/terms"
+            className="inline-flex min-h-tap items-center font-semibold text-[color:var(--clinical-accent)] underline decoration-transparent underline-offset-4 transition hover:decoration-current focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] motion-reduce:transition-none"
+          >
+            Terms of Use
+          </Link>
+          <Link
+            href="/about"
+            className="inline-flex min-h-tap items-center font-semibold text-[color:var(--clinical-accent)] underline decoration-transparent underline-offset-4 transition hover:decoration-current focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] motion-reduce:transition-none"
+          >
+            About and intended use
+          </Link>
+        </span>
       </p>
     </div>
   );

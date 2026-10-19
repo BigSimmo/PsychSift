@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { Check, ChevronRight, History, Square } from "lucide-react";
 
@@ -27,6 +28,11 @@ import type { AppModeId } from "@/lib/app-modes";
 import { consolidatedModeSearchPath } from "@/lib/consolidated-mode-home-redirect";
 import { motionIsSuppressed } from "@/lib/scroll-behavior";
 import { sharedHomeEmptyState, sharedHomePresentation, type SharedHomePresentation } from "@/lib/ui-copy";
+
+/** Getting started guide: Answer home only, loaded after the page so it adds nothing to first paint. */
+const FirstRunGuide = dynamic(() => import("@/components/front-door/first-run-guide").then((m) => m.FirstRunGuide), {
+  ssr: false,
+});
 
 export { CopyButton } from "@/components/ui/copy-button";
 // The skeleton lives apart so the lazy-load fallbacks can draw it without this module.
@@ -139,6 +145,8 @@ export function SharedHomeEmptyState({
               </ul>
             </section>
           )}
+          {/* Last in the footer, so nothing below it moves when it appears. */}
+          {modeId === "answer" ? <FirstRunGuide /> : null}
         </div>
       }
     />

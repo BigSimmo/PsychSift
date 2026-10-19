@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "id": "95bba750-da9d-4dc3-babd-36264d71cdc4",
+  "createdOn": "2026-10-18",
+  "action": "cancel",
+  "payload": {
+    "requestId": "e1b160fe-f9b2-434d-94f3-ad3904bc470d",
+    "reason": "PS-062: archived non-outcome updates are skipped; superseded by a fingerprinted reopen preserving NZ4X41 and its prior history."
+  }
+}

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * generate-worker-python-lock — pin worker/python/requirements.txt from
- * worker/python/requirements.in using pip-tools.
+ * generate-worker-python-lock — pin the selected Python runtime's dependency
+ * input using pip-tools. Target paths live in worker-python-lock-config.mjs.
  */
 import { mkdtempSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -12,8 +12,8 @@ import { pythonMajorMinor, requestedLockTarget } from "./worker-python-lock-conf
 
 const PYTHON = process.env.PYTHON_BIN?.trim() || (process.platform === "win32" ? "python" : "python3");
 const PIP_TOOLS_VERSION = "7.6.0";
-const IN_FILE = "worker/python/requirements.in";
 const target = requestedLockTarget();
+const IN_FILE = target.inputFile;
 
 function run(cmd, args, opts = {}) {
   const result = spawnSync(cmd, args, { encoding: "utf8", stdio: "pipe", ...opts });

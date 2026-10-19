@@ -522,6 +522,45 @@ export async function fetchOwnerTrainingMilestones(
   return milestones;
 }
 
+/** Production clients use a single database transaction; never fall back after RPC failure. */
+async function mutateTrainingMilestoneAtomically(
+  supabase: AdminClient,
+  ownerId: string,
+  id: string,
+  operation: "create" | "update" | "delete",
+  input?: TrainingMilestoneInput,
+  stage: RegistrarTrainingStage = "stage_1",
+): Promise<TrainingMilestone | null> {
+  requireOwner(ownerId);
+  const registrar = input
+    ? registrarMilestoneColumns({
+        milestoneCode: toMilestoneCode(input.label, id),
+        milestoneTitle: input.label,
+        stage,
+        achievedAt: input.completedOn,
+        evidenceSummary: toEvidenceSummary({ id, ...input }),
+      })
+    : {};
+  const { data, error } = await supabase.rpc("mutate_owner_training_milestone", {
+    p_owner_id: ownerId,
+    p_id: id,
+    p_operation: operation,
+    p_milestone: input ? milestoneColumns(input) : {},
+    p_registrar: registrar,
+  });
+  if (error?.code === "P0002") throw milestoneNotFound();
+  if (error?.code === "54000")
+    throw new PublicApiError(`A training record holds at most ${CME_TRAINING_MAX_ROWS} milestones.`, 409, {
+      code: "cme_training_limit",
+    });
+  if (error) throw cmeRepositoryError(error);
+  if (operation === "delete") return null;
+  if (!data || typeof data !== "object" || Array.isArray(data) || !("id" in data)) {
+    throw new Error("Atomic training milestone returned no saved record.");
+  }
+  return rowToTrainingMilestone(data as unknown as MilestoneRow);
+}
+
 export async function createOwnerTrainingMilestone(
   supabase: AdminClient,
   ownerId: string,
@@ -529,6 +568,9 @@ export async function createOwnerTrainingMilestone(
   options?: { readonly syncRegistrar?: boolean; readonly stage?: RegistrarTrainingStage },
 ): Promise<TrainingMilestone> {
   requireOwner(ownerId);
+  if (typeof supabase.rpc === "function" && shouldSyncRegistrarTable(supabase, options)) {
+    return (await mutateTrainingMilestoneAtomically(supabase, ownerId, randomUUID(), "create", input, options?.stage))!;
+  }
   const { count, error: countError } = await supabase
     .from("cme_training_milestones")
     .select("id", { count: "exact", head: true })
@@ -560,6 +602,9 @@ export async function updateOwnerTrainingMilestone(
   options?: { readonly syncRegistrar?: boolean; readonly stage?: RegistrarTrainingStage },
 ): Promise<TrainingMilestone> {
   requireOwner(ownerId);
+  if (typeof supabase.rpc === "function" && shouldSyncRegistrarTable(supabase, options)) {
+    return (await mutateTrainingMilestoneAtomically(supabase, ownerId, id, "update", input, options?.stage))!;
+  }
   const { data, error } = await supabase
     .from("cme_training_milestones")
     .update(milestoneColumns(input))
@@ -589,6 +634,10 @@ export async function deleteOwnerTrainingMilestone(
   options?: { readonly syncRegistrar?: boolean },
 ): Promise<void> {
   requireOwner(ownerId);
+  if (typeof supabase.rpc === "function" && shouldSyncRegistrarTable(supabase, options)) {
+    await mutateTrainingMilestoneAtomically(supabase, ownerId, id, "delete");
+    return;
+  }
   const { data, error } = await supabase
     .from("cme_training_milestones")
     .delete()

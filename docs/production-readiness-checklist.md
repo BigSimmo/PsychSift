@@ -26,6 +26,12 @@ This is the runbook to make the app publishable in one focused pass.
 
 Last reviewed: 2026-07-10. Applies to any feature branch or release candidate.
 
+**Ledger status (refreshed 2026-10-18):** the six approvals are still open (`#BS3SN9`), and the owner's
+constraint stands: no identifiable patient information enters the app until they close. Also open:
+staging soak and rollback rehearsal (`#057`), data-layer restore rehearsal (`#QVVS6W`), and Railway
+deploying `main` before required checks finish (`#HYSWAF`). The first two are planned in
+[`operator-rehearsal-plan.md`](operator-rehearsal-plan.md).
+
 - Runtime target: the Next.js version pinned in `package.json`, Node >=24.15.0 <25, npm 11.x.
 - Supabase target: `sjrfecxgysukkwxsowpy` (`PsychSift Production`).
 

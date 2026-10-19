@@ -540,6 +540,7 @@ const ingestionSastPatterns = [
 ];
 
 const containerPatterns = [
+  "scripts/ci/archive-container-evidence.mjs",
   "Dockerfile",
   "Dockerfile.worker",
   ".dockerignore",

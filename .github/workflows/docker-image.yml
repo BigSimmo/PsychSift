@@ -28,6 +28,7 @@ on:
   push:
     branches: [main, "release/**"]
     paths:
+      - "scripts/ci/archive-container-evidence.mjs"
       - "Dockerfile"
       - "Dockerfile.worker"
       - ".dockerignore"
@@ -85,6 +86,9 @@ jobs:
   build-and-verify:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
+    env:
+      # Keep build summaries, but admit complete records only through the bounded bundle.
+      DOCKER_BUILD_RECORD_UPLOAD: "false"
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -92,6 +96,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Docker Buildx
+        id: buildx
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
 
       - name: Build app image (load, no push)
@@ -127,6 +132,13 @@ jobs:
           # mode=max PR exports were 8.7 GB of the 10 GB Actions cache and evicted npm,
           # Playwright and Next caches within hours. An empty cache-to disables export.
           cache-to: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && 'type=gha,scope=clinical-kb-worker,mode=max,timeout=2m,ignore-error=true' || '' }}
+
+      - name: Export complete build records before pruning
+        id: build-records
+        # Preserve downstream verification; the final admission step makes export failure fatal.
+        continue-on-error: true
+        if: always() && steps.buildx.outcome == 'success'
+        run: docker buildx history export --all --finalize --output container-builds.dockerbuild
 
       - name: Verify image content contract
         run: node scripts/check-image-content-contract.mjs
@@ -165,17 +177,6 @@ jobs:
           df -h || true
           node scripts/trivy-image-scan.mjs clinical-kb-app:ci --sbom sbom-app.cdx.json
           node scripts/trivy-image-scan.mjs clinical-kb-worker:ci --sbom sbom-worker.cdx.json
-
-      - name: Upload SBOMs
-        if: always()
-        continue-on-error: true
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: sboms
-          path: |
-            sbom-app.cdx.json
-            sbom-worker.cdx.json
-          if-no-files-found: warn
 
       - name: Vulnerability scan (HIGH,CRITICAL)
         # Non-blocking step wrapper so the evaluation step below can inspect the
@@ -228,3 +229,24 @@ jobs:
             exit 1
           fi
           echo "::warning::Trivy found HIGH=${high} CRITICAL=${critical} in the production images (advisory on pull requests)."
+
+      - name: Admit complete bounded container evidence
+        id: container-evidence
+        if: always() && steps.buildx.outcome == 'success'
+        run: |
+          if [ "${{ steps.build-records.outcome }}" != "success" ]; then
+            echo "::error::Complete build-record export failed; refusing partial evidence upload."
+            exit 1
+          fi
+          node scripts/ci/archive-container-evidence.mjs --input . --output sboms --max-bytes 67108864
+
+      - name: Upload SBOMs and complete build records
+        if: always() && steps.container-evidence.outcome == 'success'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: sboms
+          path: sboms
+          archive: false
+          if-no-files-found: warn
+          retention-days: 7
+          compression-level: 0
