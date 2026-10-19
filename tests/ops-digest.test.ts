@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   normalizeOpsStatus,
   renderDigest,
+  renderStorageCleanupBacklog,
   resolveHealthUrl,
   serializeGitHubOutputs,
   updateHybridRpcHourlyEvidence,
@@ -332,5 +333,70 @@ describe("renderDigest", () => {
     expect(md).toContain("OVER THRESHOLD");
     expect(md).toContain("sample truncated");
     expect(md).toContain("OPS_PROJECTED_DAILY_SPEND_WARNING");
+  });
+});
+
+// Audit F-10: failed storage deletions queue in storage_cleanup_jobs and are drained only by hand.
+describe("storage cleanup backlog line", () => {
+  const now = Date.parse("2026-10-19T12:00:00.000Z");
+
+  it("shows an empty queue without a drain prompt", () => {
+    expect(renderStorageCleanupBacklog({ pending: 0, failed: 0, outstanding: 0, oldestOutstandingAt: null }, now)).toBe(
+      "**Storage cleanup backlog:** 0 outstanding (pending 0, failed 0)",
+    );
+  });
+
+  it("prompts the manual drain when a storage removal failed", () => {
+    const line = renderStorageCleanupBacklog(
+      { pending: 1, failed: 2, outstanding: 3, oldestOutstandingAt: "2026-10-19T11:59:00.000Z" },
+      now,
+    );
+    expect(line).toContain("3 outstanding (pending 1, failed 2)");
+    expect(line).toContain("oldest 2026-10-19T11:59:00.000Z");
+    expect(line).toContain("npm run cleanup:storage");
+    expect(line).toContain("docs/observability-slos.md#storage-cleanup-backlog");
+  });
+
+  it("treats a fresh pending row as an in-flight delete, and an hour-old one as stuck", () => {
+    const fresh = renderStorageCleanupBacklog(
+      { pending: 1, failed: 0, outstanding: 1, oldestOutstandingAt: "2026-10-19T11:59:30.000Z" },
+      now,
+    );
+    const stuck = renderStorageCleanupBacklog(
+      { pending: 1, failed: 0, outstanding: 1, oldestOutstandingAt: "2026-10-19T10:30:00.000Z" },
+      now,
+    );
+    expect(fresh).not.toContain("cleanup:storage");
+    expect(stuck).toContain("cleanup:storage");
+  });
+
+  it("counts expired processing claims when the probe reports them", () => {
+    const line = renderStorageCleanupBacklog(
+      { pending: 0, failed: 0, expiredClaims: 2, outstanding: 2, oldestOutstandingAt: "2026-10-19T10:00:00.000Z" },
+      now,
+    );
+    expect(line).toContain("2 outstanding (pending 0, failed 0, expired claims 2)");
+    expect(line).toContain("cleanup:storage");
+  });
+
+  it("omits the line when the probe did not report usable counts", () => {
+    expect(renderStorageCleanupBacklog(undefined, now)).toBeNull();
+    expect(renderStorageCleanupBacklog({ pending: -1, failed: 0 }, now)).toBeNull();
+    expect(renderStorageCleanupBacklog({ pending: 1.5, failed: 0 }, now)).toBeNull();
+    expect(renderStorageCleanupBacklog({ pending: "3", failed: 0 }, now)).toBeNull();
+  });
+
+  it("renders the backlog in the digest without changing the alert state", () => {
+    const health = {
+      status: "ok",
+      storageCleanup: { pending: 0, failed: 4, outstanding: 4, oldestOutstandingAt: "2026-10-18T00:00:00.000Z" },
+    };
+    expect(renderDigest(health)).toContain("**Storage cleanup backlog:** 4 outstanding (pending 0, failed 4)");
+    const withoutBacklog = evaluateOperationalAlerts({ status: "ok" }).map((item) => item.code);
+    expect(evaluateOperationalAlerts(health).map((item) => item.code)).toEqual(withoutBacklog);
+  });
+
+  it("leaves the digest unchanged when the probe has no storageCleanup block", () => {
+    expect(renderDigest({ status: "ok" })).not.toContain("Storage cleanup backlog");
   });
 });

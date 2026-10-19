@@ -132,12 +132,12 @@ export function AuthPanel() {
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]">
               <ShieldCheck aria-hidden="true" className="h-4 w-4" />
             </span>
-            <span className="min-w-0">
+            <div className="min-w-0">
               <p className="text-sm font-semibold text-[color:var(--text)]">Signed in for private documents</p>
               <p className={cn("mt-1 text-xs leading-5", textMuted)}>
                 {session?.user.email ?? "Authenticated session"}
               </p>
-            </span>
+            </div>
           </div>
           <button type="button" onClick={signOut} className={cn(floatingControl, "px-3 text-xs")}>
             <LogOut aria-hidden="true" className="h-4 w-4" />

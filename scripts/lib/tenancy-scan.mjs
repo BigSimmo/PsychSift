@@ -68,6 +68,7 @@ export const SCANNED_LIB_MODULES = [
   // Operator observability aggregates read by /api/health's deep probe.
   "src/lib/observability/answer-slo.ts",
   "src/lib/observability/spend-metrics.ts",
+  "src/lib/observability/cleanup-backlog.ts",
   // The delegate behind the ONE dynamic table dispatch in the scanned set: /api/upload
   // hands it `(table) => adminSupabase.from(table)`, so its `documents` query is the real
   // owner filter for that path and was previously scanned by nothing (Codex review).
@@ -1391,6 +1392,15 @@ export const SCOPE_EXEMPTIONS = [
     proof: PROOF_KINDS.REVIEWED_INDIRECT,
     reason:
       "Deliberate cross-tenant operator aggregate: reads `query_class` and token counters from answer-path metadata to price the trailing window, behind the same HEALTH_DEEP_PROBE_SECRET gate. Per-owner spend is not the question being asked and no row content is returned.",
+  },
+  {
+    file: "src/lib/observability/cleanup-backlog.ts",
+    table: "storage_cleanup_jobs",
+    fn: "storageCleanupBacklogSnapshot",
+    queries: 4,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason:
+      "Deliberate cross-tenant operator aggregate (audit F-10): three head-only counts of actionable rows and the oldest actionable `created_at`, behind the same HEALTH_DEEP_PROBE_SECRET gate. No paths, titles or owner ids are read; an owner filter would hide every other tenant's orphaned files.",
   },
   {
     file: "src/lib/sources/document-source-loader.ts",

@@ -1,3 +1,4 @@
+// @ts-check
 import { createAdminClient } from "@/lib/supabase/admin";
 
 // Finite server-only pilot. Root must first reserve USD 6 in the existing local
@@ -13,6 +14,10 @@ const ONE_HOUR_MS = 3_600_000;
  * A ticket can only ever name this owner and document (parseTrustedTicket pins
  * both). When a configured ticket is unreadable or expired, only requests that
  * could belong to the pilot are refused; every other Answer keeps working.
+ *
+ * @param {Readonly<Record<string, unknown>> | null | undefined} request
+ * @param {string} queryDigest
+ * @returns {boolean}
  */
 export function couldBelongToAnswerPilot(request, queryDigest) {
   if (!request || typeof request !== "object") return true;
@@ -91,9 +96,11 @@ const prices = Object.freeze({
 const fail = () => {
   throw new Error("answer_pilot_ticket_invalid");
 };
+/** @param {unknown} value */
 const utcMs = (value) =>
   typeof value === "string" && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?Z$/.test(value) ? Date.parse(value) : NaN;
 
+/** @param {string} raw */
 function parseTrustedTicket(raw) {
   let ticket;
   try {
@@ -146,6 +153,10 @@ function parseTrustedTicket(raw) {
   });
 }
 
+/**
+ * @param {unknown} data
+ * @param {number} expiryMs
+ */
 function acceptedClaim(data, expiryMs) {
   if (!Array.isArray(data) || data.length !== 1) return false;
   const row = data[0];
@@ -168,8 +179,10 @@ export async function loadServerAnswerPilotTicket() {
   const assertCurrent = () => {
     if (process.env[TICKET_SOURCE] !== raw || Date.now() >= pinned.expiresAtMs) fail();
   };
+  /** @type {Promise<void> | undefined} */
   let claimPromise;
   let claimedResponseAttempt = false;
+  /** @param {import("@/lib/answer-wire-budget-guard").WireReservation} [reservation] */
   const onReserve = async (reservation) => {
     assertCurrent();
     // The SQL RPC atomically increments the same (subject_key,bucket) row across

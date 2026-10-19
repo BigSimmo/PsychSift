@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ServiceGovernancePanel } from "@/components/on-call/service-governance-panel";
@@ -83,7 +83,7 @@ describe("Independent service review", () => {
     const user = userEvent.setup();
     const action = vi.fn().mockResolvedValue({ ok: true });
     const edit = vi.fn();
-    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
+    const confirm = vi.spyOn(window, "confirm");
     render(
       <ServiceGovernancePanel
         detail={{ ...detail, membership: { role: "editor", clinicalReviewer: false } }}
@@ -95,10 +95,21 @@ describe("Independent service review", () => {
     );
     await user.click(screen.getByRole("button", { name: "Edit entry" }));
     expect(edit).toHaveBeenCalledWith(entry);
+    // F-36: the app's own confirmation sheet, not the browser's native confirm().
     await user.click(screen.getByRole("button", { name: "Withdraw entry from handbook" }));
+    const firstDialog = await screen.findByRole("dialog", { name: "Withdraw entry" });
+    expect(firstDialog).toHaveTextContent(
+      'Members will stop seeing "Synthetic clinical reference" in the service handbook, including any revision approved earlier.',
+    );
+    await user.click(within(firstDialog).getAllByRole("button", { name: "Cancel" }).at(-1)!);
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Withdraw entry" })).toBeNull());
     expect(action).not.toHaveBeenCalled();
+
     await user.click(screen.getByRole("button", { name: "Withdraw entry from handbook" }));
-    expect(confirm).toHaveBeenCalledWith("Withdraw this entry from the service handbook?");
+    const secondDialog = await screen.findByRole("dialog", { name: "Withdraw entry" });
+    await user.click(within(secondDialog).getByRole("button", { name: "Withdraw entry" }));
     expect(action).toHaveBeenCalledWith({ action: "entry.withdraw", entryId: "entry", expectedRevision: 3 });
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Withdraw entry" })).toBeNull());
+    expect(confirm).not.toHaveBeenCalled();
   });
 });
