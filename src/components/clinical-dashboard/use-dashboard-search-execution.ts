@@ -85,8 +85,11 @@ const SEARCH_IDENTIFIER_HELD_BACK =
  *  An address holding a different, earlier question belongs to the result still on screen. */
 function clearRefusedQueryFromAddress(refused: string) {
   const url = new URL(window.location.href);
-  if (url.searchParams.get("q")?.trim() !== refused) return;
+  // The dashboard runs a deep link from `q`, or from its older alias `query`.
+  const held = (url.searchParams.get("q") ?? url.searchParams.get("query"))?.trim();
+  if (held !== refused) return;
   url.searchParams.delete("q");
+  url.searchParams.delete("query");
   url.searchParams.delete("run");
   const rest = url.searchParams.toString();
   window.history.replaceState(window.history.state, "", `${url.pathname}${rest ? `?${rest}` : ""}${url.hash}`);

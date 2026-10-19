@@ -192,6 +192,14 @@ describe("dashboard search: patient details are held back in every mode", () => 
     expect(window.location.search).toBe("?mode=answer");
   });
 
+  it("removes a refused question from a deep link that uses the older query alias", async () => {
+    window.history.replaceState(null, "", "/?mode=answer&query=dob%3A+01%2F02%2F1960+lithium&run=1");
+    vi.stubGlobal("fetch", vi.fn());
+    const { execution } = harness("answer");
+    await execution.ask("dob: 01/02/1960 lithium");
+    expect(window.location.search).toBe("?mode=answer");
+  });
+
   it("keeps the address of the answer on screen when a new draft is refused", async () => {
     window.history.replaceState(null, "", "/?mode=answer&q=lithium&run=1");
     vi.stubGlobal("fetch", vi.fn());
