@@ -1,7 +1,22 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
+import { workerPythonLockTargets } from "../scripts/worker-python-lock-config.mjs";
+
 describe("worker Python lockfile", () => {
+  it("includes production setuptools in the lock while retaining the split Cloud input", () => {
+    expect(workerPythonLockTargets.production.includeUnsafe).toBe(true);
+    expect(workerPythonLockTargets.production.inputFile).toBe("worker/python/requirements.in");
+    expect(workerPythonLockTargets.cloud.inputFile).toBe("worker/python/requirements-cloud.in");
+    expect(readFileSync(workerPythonLockTargets.production.inputFile, "utf8")).toMatch(/^setuptools>=84\.0\.0$/m);
+    expect(readFileSync(workerPythonLockTargets.production.outputFile, "utf8")).toContain(
+      "--hash=sha256:51a52592b3b99e102b609654876bd65f19f999935166d1352678931132b0c670",
+    );
+    expect(readFileSync(workerPythonLockTargets.production.outputFile, "utf8")).toContain(
+      "--hash=sha256:f4695c21257f0d9b537ec2692c941d02ee143b7cc1276941349a546573b2ef73",
+    );
+  });
+
   it("keeps the Cloud Cython pin compatible with quicksectx 0.4.1", () => {
     const contents = readFileSync("worker/python/requirements-cloud.txt", "utf8");
     expect(contents).toMatch(/^quicksectx==0\.4\.1\s/m);
@@ -43,7 +58,7 @@ describe("worker Python lockfile", () => {
         `${file} has no hashes`,
       ).toBe(true);
       expect(contents.includes("medspacy"), `medspacy not present in ${file}`).toBe(true);
-      if (version === "3.12") expect(contents).toMatch(/^setuptools==/m);
+      expect(contents).toMatch(/^setuptools==84\.0\.0/m);
     }
   });
 });

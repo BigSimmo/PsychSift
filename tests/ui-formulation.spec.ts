@@ -2,7 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page, type TestInfo } from "playwright/test";
 import { stubZeroTouchPoints } from "./helpers/zero-touch";
 import { readPrimaryScrollGeometry } from "./playwright-scroll";
-import { visibleByTestId, visibleByText } from "./playwright-settlement";
+import { clickWhenHydrated, visibleByTestId, visibleByText } from "./playwright-settlement";
 
 const axeWcagTags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
 const axeBlockingImpacts = new Set(["critical", "serious"]);
@@ -237,7 +237,8 @@ test("moves a selected mechanism through framework, quality review, and an edita
   await expect(previousStep).toBeDisabled();
   await expect(previousStep).toHaveCSS("opacity", "1");
   await expect(continueStep).toBeEnabled();
-  await continueStep.click();
+  // The initial checked mechanism and enabled pager are server-rendered too.
+  await clickWhenHydrated(continueStep);
   await expect(page.getByTestId("formulation-builder-structure")).toBeVisible();
   const frameworkGroup = page.getByRole("radiogroup", { name: "Formulation framework" });
   const cbtCycle = frameworkGroup.getByRole("radio", { name: /CBT cycle/ });
@@ -295,6 +296,14 @@ test("moves a selected mechanism through framework, quality review, and an edita
   await previousStep.evaluate((element) => {
     for (const animation of element.getAnimations()) animation.finish();
   });
+  // Native availability and visible availability must agree after re-enabling.
+  // Disabled text is exempt from axe; the same paint on an enabled pager is not.
+  const enabledColor = await previousStep.evaluate((button) => {
+    const probe = document.createElement("span");
+    probe.style.color = getComputedStyle(button).getPropertyValue("--text-muted");
+    return probe.style.color;
+  });
+  await expect(previousStep).toHaveCSS("color", enabledColor);
   await expectNoBlockingAxeViolations(page, testInfo);
 });
 

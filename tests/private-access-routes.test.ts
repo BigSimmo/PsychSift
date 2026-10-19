@@ -1925,6 +1925,109 @@ describe("private document API access", () => {
     expect(client.storageMocks.remove).toHaveBeenCalledTimes(1);
   });
 
+  it.each([
+    ["initial", "cancellation"],
+    ["recovery", "cancellation"],
+    ["initial", "timeout"],
+    ["recovery", "timeout"],
+  ] as const)(
+    "retains only opaque reconciliation references after %s upload %s and releases capacity",
+    async (stage, failure) => {
+      const client = createSupabaseMock((call) => {
+        if (call.table === "documents" && call.operation === "select" && call.maybeSingle) return ok(null);
+        if (call.table === "documents" && call.operation === "insert") return ok({ id: documentId });
+        if (call.table === "ingestion_jobs" && call.operation === "insert") return ok({ id: "job-1" });
+        return ok([]);
+      });
+      mockRuntime(client, undefined, { maxConcurrentUploads: 1 });
+      const controller = new AbortController();
+      const correlationId = "66666666-6666-4666-8666-666666666666";
+      const fileName = "Synthetic Private Name.pdf";
+      const bytes = "%PDF-1.7\n%%EOF";
+      let attemptedPath = "";
+      let rejectTransfer!: (reason: unknown) => void;
+      let started!: () => void;
+      const ready = new Promise<void>((resolve) => {
+        started = resolve;
+      });
+      let stall = true;
+      let collided = false;
+      let storageClientCount = 0;
+      vi.doMock("@/lib/supabase/admin", () => ({
+        createAdminClient: (options?: { signal?: AbortSignal; timeoutMs?: number }) => {
+          if (!options?.signal) return client;
+          expect(options.timeoutMs).toBe(120_000);
+          if (storageClientCount++ === 0) expect(options.signal).toBe(firstRequest.signal);
+          return {
+            ...client,
+            storage: {
+              from: () => ({
+                upload: async (path: string) => {
+                  if (!stall) return { data: { path: "uploaded" }, error: null };
+                  if (stage === "recovery" && !collided) {
+                    collided = true;
+                    return { data: null, error: { code: "ResourceAlreadyExists" } };
+                  }
+                  stall = false;
+                  attemptedPath = path;
+                  return new Promise((_resolve, reject) => {
+                    rejectTransfer = reject;
+                    options.signal!.addEventListener("abort", () => reject(options.signal!.reason), { once: true });
+                    started();
+                  });
+                },
+                download: async () => ({ data: new Blob([bytes]), error: null }),
+              }),
+            },
+          };
+        },
+      }));
+      const { POST } = await import("../src/app/api/upload/route");
+      const { logger, redactLogContext } = await import("../src/lib/logger");
+      const errorLog = vi.spyOn(logger, "error");
+      const uploadRequest = () => {
+        const form = new FormData();
+        form.set("file", new File([bytes], fileName, { type: "application/pdf" }));
+        form.set("authority", uploadAuthorityJson);
+        return authenticatedRequest("/api/upload", {
+          method: "POST",
+          headers: { "idempotency-key": correlationId },
+          body: form,
+          signal: controller.signal.aborted ? undefined : controller.signal,
+        });
+      };
+      const firstRequest = uploadRequest();
+      const response = POST(firstRequest);
+      await ready;
+      if (failure === "cancellation") controller.abort();
+      else rejectTransfer(new DOMException(`${fileName} Storage deadline expired`, "TimeoutError"));
+      expect((await response).status).toBe(failure === "cancellation" ? 499 : 500);
+      const reconciliation = errorLog.mock.calls.find(
+        ([message]) => message === "Document Storage upload outcome unknown; manual reconciliation required",
+      );
+      expect(reconciliation).toBeDefined();
+      const safeContext = redactLogContext(reconciliation![1]!);
+      expect(safeContext).toEqual({
+        code: "upload_storage_outcome_unknown",
+        correlationId,
+        storageObjectRef: createHash("sha256").update(attemptedPath).digest("hex"),
+      });
+      expect(attemptedPath.includes("/recovery-")).toBe(stage === "recovery");
+      expect(JSON.stringify(safeContext)).not.toContain(userId);
+      expect(JSON.stringify(safeContext)).not.toContain(attemptedPath.split("/")[2]);
+      expect(JSON.stringify(safeContext)).not.toContain(fileName);
+      expect(JSON.stringify(safeContext)).not.toContain(attemptedPath);
+      const rawLogs = JSON.stringify(errorLog.mock.calls);
+      expect(rawLogs).not.toContain(userId);
+      expect(rawLogs).not.toContain(attemptedPath.split("/")[2]);
+      expect(rawLogs).not.toContain(fileName);
+      expect(rawLogs).not.toContain(attemptedPath);
+      expect(client.storageMocks.remove).not.toHaveBeenCalled();
+      expect(client.calls.some((call) => call.table === "storage_cleanup_jobs")).toBe(false);
+      expect((await POST(uploadRequest())).status).toBe(201);
+    },
+  );
+
   it("rejects concurrent upload capacity and releases it after the first request", async () => {
     const client = createSupabaseMock((call) => {
       if (call.table === "documents" && call.operation === "select" && call.maybeSingle) return ok(null);

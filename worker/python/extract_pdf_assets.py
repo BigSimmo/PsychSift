@@ -5,6 +5,11 @@ import math
 import os
 import re
 import sys
+import shlex
+import shutil
+import subprocess
+import time
+from functools import lru_cache
 from statistics import median
 
 try:
@@ -18,7 +23,7 @@ except Exception as exc:
 # parser defect can be traced to the documents it touched. Bump the date and label whenever a
 # change alters the text, tables or images produced for the same PDF. 2026-09-16 is PR #2810,
 # which replaced line-major table text with table_aware_page_text (#GJHKYC).
-EXTRACTOR_VERSION = "2026-10-18.ruled-edge-provenance-v7"
+EXTRACTOR_VERSION = "2026-10-19.ruled-edge-raster-table-ocr-v9"
 TABLE_STRATEGY = "table_aware_page_text"
 
 # IDX-H6: caps on serialized table size. Raised from the previous 80/120-row and 8000-char
@@ -211,7 +216,425 @@ def bounded_render_scale(rect, desired_scale, max_pixels, max_scale=MAX_RENDER_S
     return scale
 
 
-def maybe_ocr_page(page, budget):
+RASTER_TABLE_MODEL_SHA256 = "6dbdaf8ecc6c40f025c2648bf3b3f3fbffe073e1fd2df2047fde2e2b2f020d53"
+RASTER_TABLE_MODEL_BYTES = 89_384_811
+RASTER_TABLE_MODEL_PATH = "/opt/psychsift-ocr-models/Latin.traineddata"
+# Optional cell OCR must leave time for the existing whole-page reader. Small
+# custom page budgets use that reader directly; no extraction budget is reset.
+RASTER_TABLE_FALLBACK_RESERVE_SECONDS = 10
+
+
+class RasterTableModelError(ValueError):
+    pass
+
+
+def checked_raster_table_model(deadline):
+    """Verify the provisioned cell model; never download or repair source glyphs."""
+    path = os.environ.get("PDF_RASTER_TABLE_MODEL_PATH", RASTER_TABLE_MODEL_PATH)
+    if time.monotonic() >= deadline:
+        raise TimeoutError("model check exhausted page OCR timeout")
+    try:
+        if os.path.basename(path) != "Latin.traineddata" or os.path.getsize(path) != RASTER_TABLE_MODEL_BYTES:
+            raise RasterTableModelError("raster cell model size or basename mismatch")
+        digest = hashlib.sha256()
+        with open(path, "rb") as model:
+            while True:
+                if time.monotonic() >= deadline:
+                    raise TimeoutError("model hash exhausted page OCR timeout")
+                chunk = model.read(1024 * 1024)
+                if not chunk:
+                    break
+                digest.update(chunk)
+        if digest.hexdigest() != RASTER_TABLE_MODEL_SHA256:
+            raise RasterTableModelError("raster cell model sha256 mismatch")
+        return os.path.dirname(os.path.abspath(path))
+    except TimeoutError:
+        raise
+    except OSError:
+        raise RasterTableModelError("provisioned raster cell model unavailable") from None
+
+
+@lru_cache(maxsize=8)
+def observed_tesseract_version(command, timeout=2):
+    """Observe the executable, not a configured version; bound and cache the probe."""
+    try:
+        result = subprocess.run([command, "--version"], capture_output=True, text=True,
+                                encoding="utf-8", errors="replace", timeout=timeout, check=False)
+        line = (result.stdout or "").splitlines()[0] if result.stdout else ""
+        match = re.fullmatch(r"tesseract\s+([0-9][A-Za-z0-9.+_-]{0,127})", line.strip())
+        return match.group(1) if result.returncode == 0 and match else None
+    except Exception:
+        return None
+
+
+def observed_raster_runtime(pytesseract, deadline):
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise TimeoutError("runtime observation exhausted page OCR timeout")
+    command = pytesseract.pytesseract.tesseract_cmd
+    version = observed_tesseract_version(shutil.which(command) or command, min(2, remaining))
+    if not version:
+        raise ValueError("raster OCR engine identity unavailable")
+    return {"pythonVersion": sys.version.split()[0], "pymupdfVersion": str(fitz.VersionBind),
+            "mupdfVersion": str(fitz.VersionFitz), "tesseractVersion": version}
+
+
+def raster_ruled_cells(image, deadline=None, grid_bounds=None):
+    """Conservative physical cells for one complete ruled raster grid.
+
+    No text, numeric vocabulary, OCR confidence or clinical values select cells.
+    Merged bands use their observed vertical rules; ambiguous side content and
+    incomplete/multiple grids return None rather than being silently reordered.
+    """
+    def check_deadline():
+        if deadline is not None and time.monotonic() >= deadline:
+            raise TimeoutError("raster geometry exhausted page OCR timeout")
+
+    check_deadline()
+    ink = image.convert("L").point(lambda value: 255 if value < 96 else 0)
+    check_deadline()
+    width, height = ink.size
+    rules = []
+    for y in range(height):
+        if y % 32 == 0:
+            check_deadline()
+        strip = ink.crop((0, y, width, y + 1))
+        box = strip.getbbox()
+        if not box or box[2] - box[0] < width * 0.3:
+            continue
+        if strip.histogram()[255] < (box[2] - box[0]) * 0.96:
+            continue
+        left, right = box[0], box[2]
+        if rules and y <= rules[-1][1] + 2:
+            rules[-1][1] = y
+        else:
+            rules.append([y, y, left, right])
+        if len(rules) > 24:
+            return None
+    if len(rules) < 4:
+        return None
+    left, right = rules[0][2:]
+    if any(abs(rule[2] - left) > 3 or abs(rule[3] - right) > 3 for rule in rules):
+        return None
+    grid_top, grid_bottom = rules[0][0], rules[-1][1] + 1
+    # Rule detection may ignore faint ink; source preservation must not.
+    side_ink = image.convert("L").point(lambda value: 255 if value < 255 else 0)
+    check_deadline()
+    # Do not move or silently omit even light-gray side qualifications.
+    if (left > 3 and side_ink.crop((0, grid_top, left - 3, grid_bottom)).getbbox()) or (
+        right + 3 < width and side_ink.crop((right + 3, grid_top, width, grid_bottom)).getbbox()
+    ):
+        return None
+    rows = []
+    for upper, lower in zip(rules, rules[1:]):
+        check_deadline()
+        top, bottom = upper[1] + 2, lower[0] - 1
+        if bottom - top < 6:
+            return None
+        columns = []
+        for x in range(max(0, left - 2), min(width, right + 2)):
+            if x % 32 == 0:
+                check_deadline()
+            count = ink.crop((x, top, x + 1, bottom)).histogram()[255]
+            if count < (bottom - top) * 0.96:
+                continue
+            if columns and x <= columns[-1][1] + 2:
+                columns[-1][1] = x
+            else:
+                columns.append([x, x])
+        if len(columns) < 2 or abs(columns[0][0] - left) > 3 or abs(columns[-1][1] - right) > 3:
+            return None
+        row = [(a[1] + 2, top, b[0] - 1, bottom) for a, b in zip(columns, columns[1:])]
+        if any(x1 - x0 < 4 for x0, _, x1, _ in row):
+            return None
+        rows.append(row)
+    if sum(len(row) > 1 for row in rows) < 2 or sum(map(len, rows)) > 80:
+        return None
+    if grid_bounds is not None:
+        # Cell interiors are not outside-region bounds. Preserve the observed
+        # outer rule, including its adjacent antialiased raster fringe.
+        fringe = image.convert("L").point(lambda value: 255 if value < 255 else 0)
+        outer_top, outer_bottom = grid_top, grid_bottom
+        for y in range(grid_top - 1, max(-1, grid_top - 4), -1):
+            check_deadline()
+            if fringe.crop((left, y, right, y + 1)).histogram()[255] < (right - left) * 0.96:
+                break
+            outer_top = y
+        for y in range(grid_bottom, min(height, grid_bottom + 3)):
+            check_deadline()
+            if fringe.crop((left, y, right, y + 1)).histogram()[255] < (right - left) * 0.96:
+                break
+            outer_bottom = y + 1
+        grid_bounds.update(top=outer_top, bottom=outer_bottom)
+    return rows
+
+
+def bounded_clip_render_scale(rect, desired_scale, max_pixels):
+    """Bound independently rounded clip edges, not just width/height products."""
+    scale = bounded_render_scale(rect, desired_scale, max_pixels, max_scale=MAX_OCR_RENDER_SCALE)
+    if scale is None:
+        return None
+    for _ in range(4):
+        width = math.ceil(rect.x1 * scale) - math.floor(rect.x0 * scale)
+        height = math.ceil(rect.y1 * scale) - math.floor(rect.y0 * scale)
+        pixels = width * height
+        if pixels <= max_pixels:
+            return scale
+        scale *= math.sqrt(max_pixels / pixels) * (1 - 1e-9)
+    return None
+
+
+class RasterLayoutAmbiguous(ValueError):
+    pass
+
+
+def raster_prose_regions(image, bounds, deadline):
+    """Bounded physical whitespace cuts; never infer columns from source words."""
+    def check():
+        if time.monotonic() >= deadline:
+            raise TimeoutError("outside raster layout exhausted page OCR timeout")
+
+    def runs(values, populated):
+        groups = []
+        for index, value in enumerate(values):
+            if index % 32 == 0:
+                check()
+            if bool(value) != populated:
+                continue
+            if groups and index == groups[-1][1]:
+                groups[-1][1] = index + 1
+            else:
+                groups.append([index, index + 1])
+        return groups
+
+    def physical_lines(projection):
+        bands = runs(projection, True)
+        if not bands:
+            return []
+        # Join dots/accents before measuring interline whitespace, as in cells.
+        small_gap = max(2, median(end - start for start, end in bands) * 0.35)
+        merged = [bands[0][:]]
+        for start, end in bands[1:]:
+            check()
+            if start - merged[-1][1] <= small_gap:
+                merged[-1][1] = end
+            else:
+                merged.append([start, end])
+        return merged
+
+    def aligned_multiline_rows(left, right):
+        left, right = physical_lines(left), physical_lines(right)
+        i = j = 0
+        aligned = 0
+        while i < len(left) and j < len(right):
+            check()
+            a0, a1 = left[i]
+            b0, b1 = right[j]
+            if min(a1, b1) > max(a0, b0):
+                aligned += 1
+                if aligned >= 2:
+                    return True
+                i += 1
+                j += 1
+                continue
+            if a1 <= b1:
+                i += 1
+            else:
+                j += 1
+        return False
+
+    check()
+    # Geometry must not silently discard light source glyphs. Non-white noise
+    # may conservatively prevent a cut, leaving that full region for real OCR.
+    ink = image.convert("L").point(lambda value: 255 if value < 255 else 0)
+    check()
+    regions = []
+
+    def partition(box, depth=0):
+        check()
+        crop = ink.crop(box)
+        content = crop.getbbox()
+        if not content:
+            return
+        x0, y0 = box[0] + content[0], box[1] + content[1]
+        x1, y1 = box[0] + content[2], box[1] + content[3]
+        crop = ink.crop((x0, y0, x1, y1))
+        xs, ys = crop.getprojection()
+        check()
+        def column_cut(region):
+            check()
+            region_image = ink.crop(region)
+            content = region_image.getbbox()
+            if not content:
+                return None
+            rx0, ry0 = region[0] + content[0], region[1] + content[1]
+            rx1, ry1 = region[0] + content[2], region[1] + content[3]
+            projection = ink.crop((rx0, ry0, rx1, ry1)).getprojection()[0]
+            gaps = runs(projection, False)
+            if not gaps:
+                return None
+            gap = max(gaps, key=lambda span: span[1] - span[0])
+            cut = rx0 + (gap[0] + gap[1]) // 2
+            if gap[1] - gap[0] < max(12, (rx1 - rx0) * 0.04):
+                return None
+            if min(cut - rx0, rx1 - cut) < (rx1 - rx0) * 0.2:
+                return None
+            left = ink.crop((rx0, ry0, cut, ry1)).getprojection()[1]
+            right = ink.crop((cut, ry0, rx1, ry1)).getprojection()[1]
+            # Aligned lines may be paired rows at any spacing. Independent
+            # paragraphs can share this geometry too; retain the full-page
+            # unverified fallback rather than guessing their associations.
+            if aligned_multiline_rows(left, right):
+                raise RasterLayoutAmbiguous("outside raster notes have ambiguous row/column ownership")
+            return cut if len(runs(left, True)) >= 2 and len(runs(right, True)) >= 2 else None
+
+        if depth < 4:
+            # Keep each physical column's paragraphs together before considering
+            # their internal horizontal whitespace.
+            cut = column_cut((x0, y0, x1, y1))
+            if cut is not None:
+                partition((x0, y0, cut, y1), depth + 1)
+                partition((cut, y0, x1, y1), depth + 1)
+                return
+            gaps = runs(ys, False)
+            for gap in gaps:
+                # Only a short leading spanning heading may precede columns.
+                # Never split two multi-paragraph columns into cross-page rows.
+                if len(runs(ys[:gap[0]], True)) > 2:
+                    break
+                if gap[1] - gap[0] <= max(6, median(span[1] - span[0] for span in gaps) * 1.8):
+                    continue
+                if column_cut((x0, y0 + gap[1], x1, y1)) is not None:
+                    cut = y0 + (gap[0] + gap[1]) // 2
+                    partition((x0, y0, x1, cut), depth + 1)
+                    partition((x0, cut, x1, y1), depth + 1)
+                    return
+        # Restore a small source margin around antialiased glyph fringes.
+        regions.append((max(bounds[0], x0 - 3), max(bounds[1], y0 - 3),
+                        min(bounds[2], x1 + 3), min(bounds[3], y1 + 3)))
+
+    partition(tuple(map(int, bounds)))
+    check()
+    return regions
+
+
+def raster_ink_line_count(image, deadline):
+    if time.monotonic() >= deadline:
+        raise TimeoutError("cell line analysis exhausted page OCR timeout")
+    rows = image.convert("L").point(lambda value: 255 if value < 96 else 0).getprojection()[1]
+    bands = []
+    for index, value in enumerate(rows):
+        if index % 32 == 0 and time.monotonic() >= deadline:
+            raise TimeoutError("cell line analysis exhausted page OCR timeout")
+        if value:
+            if bands and index == bands[-1][1]:
+                bands[-1][1] = index + 1
+            else:
+                bands.append([index, index + 1])
+    if not bands:
+        return 0
+    # Dots, accents and raised punctuation can be disconnected within one line.
+    small_gap = max(2, median(end - start for start, end in bands) * 0.35)
+    return 1 + sum(right[0] - left[1] > small_gap for left, right in zip(bands, bands[1:]))
+
+
+def maybe_raster_table_ocr(page, image, render_scale, budget, pytesseract, deadline, observations=None):
+    """Default-off candidate; preserve full-page fallback on uncertain geometry.
+
+    OCR each physical cell at the existing target and per-render pixel bound.
+    All calls share the candidate deadline inside the page OCR budget. No source glyph is rewritten.
+    """
+    if os.environ.get("PDF_RASTER_TABLE_OCR") != "1" or page.rotation or page.get_text("text").strip():
+        return None
+    grid_bounds = {}
+    rows = raster_ruled_cells(image, deadline=deadline, grid_bounds=grid_bounds)
+    if not rows:
+        return None
+    # Plan both outside areas before launching any cell OCR. Ambiguous note
+    # rows retain the existing full-page fallback, never a partial replacement.
+    top = min(cell[1] for row in rows for cell in row) / render_scale
+    bottom = max(cell[3] for row in rows for cell in row) / render_scale
+    try:
+        before = raster_prose_regions(
+            image, (0, 0, image.width, max(0, grid_bounds["top"])), deadline,
+        ) if top > 2 else []
+        after = raster_prose_regions(
+            image, (0, min(image.height, grid_bounds["bottom"]), image.width, image.height), deadline,
+        ) if bottom < page.rect.height - 2 else []
+    except RasterLayoutAmbiguous:
+        return None
+    from PIL import Image
+    model_directory = checked_raster_table_model(deadline)
+    record = {"version": "raster-table-ocr-observations-v1", "status": "unverified",
+              "cellModel": {"language": "Latin", "sha256": "sha256:" + RASTER_TABLE_MODEL_SHA256,
+                            "bytes": RASTER_TABLE_MODEL_BYTES},
+              "outsideModel": {"language": "eng", "sha256": None, "status": "not_observed"},
+              "runtime": observed_raster_runtime(pytesseract, deadline),
+              "detector": {"width": image.width, "height": image.height, "scale": render_scale}, "crops": []}
+
+    def read_region(rect, cell=False):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError("raster cell OCR exhausted page timeout")
+        scale = bounded_clip_render_scale(rect, MAX_OCR_RENDER_SCALE, budget.limits["maxRenderPixels"])
+        if scale is None:
+            raise ValueError("unsafe raster cell geometry")
+        if time.monotonic() >= deadline:
+            raise TimeoutError("raster cell render exhausted page timeout")
+        pixels = page.get_pixmap(matrix=fitz.Matrix(scale, scale), clip=rect, alpha=False)
+        if pixels.width * pixels.height > budget.limits["maxRenderPixels"]:
+            raise ValueError("raster cell render exceeded pixel limit")
+        png = pixels.tobytes("png")
+        bitmap = Image.open(io.BytesIO(png))
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError("raster cell OCR exhausted page timeout")
+        config = f"--dpi {round(scale * 72)}"
+        if cell:
+            mode = 7 if raster_ink_line_count(bitmap, deadline) == 1 else 6
+            config = f"--psm {mode} --tessdata-dir {shlex.quote(model_directory)} " + config
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError("cell layout exhausted page OCR timeout before launch")
+        text = pytesseract.image_to_string(bitmap, lang="Latin" if cell else "eng", config=config, timeout=remaining).strip()
+        if time.monotonic() >= deadline:
+            raise TimeoutError("raster OCR completed after page deadline")
+        if len(record["crops"]) >= 112:
+            raise ValueError("raster OCR observation limit")
+        record["crops"].append({"kind": "cell" if cell else "outside", "language": "Latin" if cell else "eng",
+                                "sourceRect": list(rect), "scale": scale, "width": pixels.width, "height": pixels.height,
+                                "pngSha256": "sha256:" + hashlib.sha256(png).hexdigest(),
+                                "pixelsSha256": "sha256:" + hashlib.sha256(pixels.samples).hexdigest(),
+                                "textSha256": text_sha256(text)})
+        if time.monotonic() >= deadline:
+            raise TimeoutError("raster crop observation exhausted page deadline")
+        return text
+
+    pieces = []
+    # Outside prose is retained from non-overlapping source regions; side prose
+    # within the grid band was rejected above rather than assigned to a cell.
+    for box in before:
+        pieces.append(read_region(fitz.Rect(*(coordinate / render_scale for coordinate in box))))
+    for row in rows:
+        cells = []
+        for box in row:
+            rect = fitz.Rect(*(coordinate / render_scale for coordinate in box))
+            cells.append(" ".join(read_region(rect, cell=True).split()))
+        pieces.append(" | ".join(cells))
+    for box in after:
+        pieces.append(read_region(fitz.Rect(*(coordinate / render_scale for coordinate in box))))
+    if observations is not None:
+        observations.update(record)
+    return "\n".join(piece for piece in pieces if piece)
+
+
+def maybe_ocr_page(page, budget, raster_observations=None, runtime_identity=None):
+    deadline = time.monotonic() + budget.limits["ocrPageTimeoutSeconds"]
+    raster_enabled = os.environ.get("PDF_RASTER_TABLE_OCR") == "1"
+    if raster_enabled and raster_observations is not None:
+        raster_observations.clear()
+    if runtime_identity is not None:
+        runtime_identity["tesseractVersion"] = None
     # OCR needs the source glyph detail that thumbnail/crop rendering can omit.
     # Keep its larger target separate from other renders and bounded by the
     # caller's existing pixel limit; a 4M budget does not promise 450 DPI.
@@ -237,16 +660,56 @@ def maybe_ocr_page(page, budget):
                     pytesseract.pytesseract.tesseract_cmd = candidate
                     break
 
+        if runtime_identity is not None:
+            command = pytesseract.pytesseract.tesseract_cmd
+            remaining = deadline - time.monotonic()
+            if remaining > 0:
+                runtime_identity["tesseractVersion"] = observed_tesseract_version(
+                    shutil.which(command) or command, min(2, remaining)
+                )
+        if os.environ.get("PDF_RASTER_TABLE_OCR") == "1" and time.monotonic() >= deadline:
+            raise TimeoutError("raster OCR exhausted page timeout before rendering")
         pix = page.get_pixmap(
             matrix=fitz.Matrix(render_scale, render_scale), alpha=False
         )
         if pix.width * pix.height > budget.limits["maxRenderPixels"]:
             return "", f"render_skipped: OCR page {page.number + 1} exceeded the rounded pixel limit"
         image = Image.open(io.BytesIO(pix.tobytes("png")))
-        return pytesseract.image_to_string(
-            image, config=f"--dpi {round(render_scale * 72)}",
-            timeout=budget.limits["ocrPageTimeoutSeconds"]
-        ), None
+        candidate_warning = None
+        if raster_enabled:
+            reserve = min(RASTER_TABLE_FALLBACK_RESERVE_SECONDS, budget.limits["ocrPageTimeoutSeconds"])
+            candidate_deadline = deadline - reserve
+            if time.monotonic() < candidate_deadline:
+                candidate_observations = {}
+                try:
+                    candidate = maybe_raster_table_ocr(
+                        page, image, render_scale, budget, pytesseract, candidate_deadline, candidate_observations,
+                    )
+                    if time.monotonic() >= candidate_deadline:
+                        raise TimeoutError("optional raster OCR completed after its deadline")
+                    if candidate is not None:
+                        if raster_observations is not None:
+                            raster_observations.update(candidate_observations)
+                        return candidate, None
+                except (RasterTableModelError, ExtractionBudgetExceeded):
+                    raise  # Model identity and document-wide limits remain fail-closed.
+                except Exception as exc:
+                    # Discard every candidate crop/text observation; only the
+                    # original full-page render can reach the legacy reader.
+                    candidate_warning = f"raster_table_ocr_refused: page {page.number + 1}: {type(exc).__name__}"
+        timeout = budget.limits["ocrPageTimeoutSeconds"]
+        if os.environ.get("PDF_RASTER_TABLE_OCR") == "1":
+            timeout = deadline - time.monotonic()
+            if timeout <= 0:
+                raise TimeoutError("raster OCR exhausted page timeout before fallback")
+        text = pytesseract.image_to_string(
+            image, config=f"--dpi {round(render_scale * 72)}", timeout=timeout
+        )
+        if raster_enabled and time.monotonic() >= deadline:
+            raise TimeoutError("full-page OCR completed after page deadline")
+        return text, candidate_warning
+    except ExtractionBudgetExceeded:
+        raise
     except Exception as exc:
         return "", f"OCR failed on page {page.number + 1}: {type(exc).__name__}: {exc}"
 
@@ -1579,6 +2042,7 @@ def extract(pdf_path, output_dir, budget=None):
                 "scriptSha256": file_sha256(__file__),
                 "pythonVersion": sys.version.split()[0] or None,
                 "pymupdfVersion": str(getattr(fitz, "VersionBind", "") or getattr(fitz, "__version__", "")) or None,
+                "mupdfVersion": str(getattr(fitz, "VersionFitz", "") or "") or None,
             },
         }
         return _extract_document(document, output_dir, budget, identity)
@@ -1610,7 +2074,7 @@ def text_sha256(text):
     return "sha256:" + hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-def page_source_provenance(geometry, page_number, native_text, text, ocr_used, needs_ocr, identity):
+def page_source_provenance(geometry, page_number, native_text, text, ocr_used, needs_ocr, identity, ocr_runtime=None):
     """Per-page source observations checked by src/lib/extractors/pdf-source-provenance.ts.
 
     Metadata only: it records hashes of the final page text and never alters that text.
@@ -1621,7 +2085,10 @@ def page_source_provenance(geometry, page_number, native_text, text, ocr_used, n
         reasons.append("pdf_geometry_transform_unverified")
     if ocr_unverified:
         reasons.append("pdf_ocr_unverified")
-    if identity["producer"]["pythonVersion"] is None or identity["producer"]["pymupdfVersion"] is None:
+    producer = {**identity["producer"], **(ocr_runtime or {})}
+    if any(producer.get(key) is None for key in ("pythonVersion", "pymupdfVersion", "mupdfVersion")) or (
+        "tesseractVersion" in producer and producer["tesseractVersion"] is None
+    ):
         reasons.append("pdf_runtime_identity_unknown")
     text_hash = text_sha256(text)
     return {
@@ -1630,6 +2097,7 @@ def page_source_provenance(geometry, page_number, native_text, text, ocr_used, n
         "coordinateSpace": "pymupdf_observed_page_points",
         "physicalPageNumber": page_number,
         **identity,
+        "producer": producer,
         "pageGeometry": geometry,
         "nativeTextSha256": text_sha256(native_text),
         "structuralDisposition": "unverified" if reasons else "retained",
@@ -1686,6 +2154,8 @@ def _extract_document(document, output_dir, budget, identity):
         text = table_aware_page_text(page, grid_table_candidates, raw_text=raw_page_text)
         ocr_used = False
         needs_ocr = False
+        raster_observations = {}
+        ocr_runtime = {}
         image_coverage = page_image_coverage_ratio(page)
 
         # IDX-H4: trigger OCR by text-density relative to image coverage, not only a flat
@@ -1693,7 +2163,7 @@ def _extract_document(document, output_dir, budget, identity):
         # rendered as an image with a short caption) are OCR'd and merged with the existing
         # text layer so caption + table contents are both retained.
         if should_ocr_page(raw_page_text, page):
-            ocr_text, ocr_warning = maybe_ocr_page(page, budget)
+            ocr_text, ocr_warning = maybe_ocr_page(page, budget, raster_observations, ocr_runtime)
             if ocr_warning:
                 warnings.append(ocr_warning)
             if ocr_text.strip():
@@ -1710,9 +2180,10 @@ def _extract_document(document, output_dir, budget, identity):
                 "ocrUsed": ocr_used,
                 "needsOcr": needs_ocr,
                 "metadata": {
+                    **({"raster_table_ocr": raster_observations} if raster_observations else {}),
                     "image_coverage_ratio": round(image_coverage, 4),
                     "source_provenance": page_source_provenance(
-                        source_geometry, page_number, raw_page_text, text, ocr_used, needs_ocr, identity
+                        source_geometry, page_number, raw_page_text, text, ocr_used, needs_ocr, identity, ocr_runtime
                     ),
                 },
             }

@@ -46,11 +46,12 @@ describe("Railway config as code", () => {
   const worker = readConfig("railway.worker.json");
   const appDockerfile = readFileSync(new URL("../Dockerfile", import.meta.url), "utf8");
 
-  it("lets the app image shell expand Railway PORT instead of overriding it in exec form", () => {
+  it("lets Next read Railway PORT directly without a shell or hardcoded port", () => {
     expect(app.deploy).not.toHaveProperty("startCommand");
-    expect(appDockerfile).toContain(
-      'CMD ["sh", "-c", "exec node node_modules/next/dist/bin/next start -H 0.0.0.0 -p ${PORT:-3000}"]',
-    );
+    const command = JSON.parse(/^CMD (\[.+\])$/m.exec(appDockerfile)?.[1] ?? "null");
+    expect(command).toEqual(["node", "node_modules/next/dist/bin/next", "start", "-H", "0.0.0.0"]);
+    expect(command).not.toContain("-p");
+    expect(command).not.toContain("--port");
   });
 
   it("retains worker readiness with supported Railway configuration", () => {

@@ -711,3 +711,38 @@ owner IDs, endpoints and payloads must not enter worker logs. The outbox retains
 no endpoints; eligible device receipts are terminal independently, and pending
 ones retry until the event expires. Expired rows are removed in bounded batches
 when the configured consumer next claims work.
+
+### Administrator upload transfer deadline
+
+Administrator uploads use a request-scoped Storage client with a finite 120-second
+deadline per network operation, including collision downloads and recovery uploads.
+Disconnects abort that client; signal-bound clients are never cached. Database/auth/RPC
+clients retain their normal 30-second default, and worker batch deadlines are unchanged.
+A caller disconnect does not remove an already committed admission.
+
+Unknown Storage outcomes retain the existing durable reconciliation/replay path and
+are logged before cancellation becomes a 499 response. The additional
+`upload_storage_outcome_unknown` record contains only `correlationId` and the opaque
+`storageObjectRef`; it does not add owner/document IDs, filenames, content or Storage
+paths. An unknown outcome is not permission to delete an object. Use the existing
+privileged reconciliation workflow after checking admission and live references.
+
+### Legacy smart-index backfill
+
+`node scripts/run-tsx.mjs scripts/backfill-smart-index.ts --write --confirm`
+refuses before loading provider/database clients or changing index rows. This legacy
+path lacks a scanner-bound ingestion permit and may mutate a committed generation
+before requesting embeddings. `--metadata-only` also requests embeddings and has the
+same refusal. Read-only preview retains its existing credential/confirmation
+requirements. Use admitted, scanner-bound worker ingestion for writes; command-line
+confirmation and a service-role key do not supply source/scanner authority.
+
+### Managed extraction cleanup ownership
+
+The worker adopts native prepared extraction paths immediately after extraction,
+before cancellation checks, capture, packet construction or registration. Its existing
+outer cleanup then owns those paths through later inventory/download failures.
+Preparations not transferred to that owner are cleaned locally, with duplicate paths
+removed only once. Successful native extraction remains available until its owner
+finishes; the callback does not enable a claim, resume queues or change generation
+commit rules.

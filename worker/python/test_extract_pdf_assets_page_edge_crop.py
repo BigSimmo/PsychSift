@@ -101,5 +101,46 @@ class PageEdgeTableCropGeometryTests(unittest.TestCase):
             self.assertIn("bottom", metadata.get("edge_content_edges") or [])
 
 
+class UnassignedEdgeTextTests(unittest.TestCase):
+    def test_column_aligned_key_in_an_outline_is_retained_without_table_cell_assignment(self):
+        """Real PDF -> detection -> expanded crop, using current ruled-cell semantics."""
+        rows = [["Score", "State", "Action"], ["0", "Asleep", "Observe"], ["5", "Aroused", "Call registrar"]]
+        with tempfile.TemporaryDirectory(prefix="table-edge-key-") as directory:
+            path = os.path.join(directory, "column-aligned-key.pdf")
+            with extractor.fitz.open() as document:
+                page = document.new_page(width=595, height=842)
+                xs = [50, 120, 310, 560]
+                ys = [100, 130, 160, 190]
+                for row_index, row in enumerate(rows):
+                    for column_index, text in enumerate(row):
+                        page.draw_rect(extractor.fitz.Rect(
+                            xs[column_index], ys[row_index], xs[column_index + 1], ys[row_index + 1],
+                        ), width=0.5)
+                        page.insert_text((xs[column_index] + 4, ys[row_index] + 18), text, fontsize=9)
+                # The outline can extend the source crop, but supplies no
+                # individual ruled cells for this aligned explanatory key.
+                page.draw_rect(extractor.fitz.Rect(50, 195, 560, 250), width=0.5)
+                page.insert_text((54, 212), "BELOW", fontsize=9)
+                page.insert_text((124, 212), "Explanatory key", fontsize=9)
+                document.save(path)
+            result = extractor.extract(path, os.path.join(directory, "out"))
+
+        crops = [image for image in result["images"] if image.get("sourceKind") == "table_crop"]
+        self.assertEqual(len(crops), 1)
+        crop = crops[0]
+        metadata = crop["metadata"]
+        self.assertEqual(metadata["table_rows"], rows)
+        self.assertNotIn("BELOW", metadata["accessible_table_markdown"])
+        self.assertNotIn("Explanatory key", metadata["table_text"])
+        self.assertIn("BELOW", result["pages"][0]["text"])
+        self.assertIn("Explanatory key", result["pages"][0]["text"])
+        self.assertGreaterEqual(crop["bbox"][3], 250, "expanded crop must retain the source artwork")
+        self.assertTrue(metadata["edge_recovery_needs_review"])
+        unassigned = metadata["unassigned_edge_text"]
+        self.assertEqual([segment["text"] for segment in unassigned], ["BELOW", "Explanatory key"])
+        self.assertTrue(all(segment["edge"] == "bottom" and len(segment["bbox"]) == 4 for segment in unassigned))
+        self.assertTrue(any("table_edge_association_unverified" in warning for warning in result["warnings"]))
+
+
 if __name__ == "__main__":
     unittest.main()

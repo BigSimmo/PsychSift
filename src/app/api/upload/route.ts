@@ -38,6 +38,9 @@ import { assertUploadStructure } from "@/lib/upload-structure";
 
 export const runtime = "nodejs";
 
+// Allow large document transfers while bounding every Storage call, including collision reads.
+const UPLOAD_STORAGE_TIMEOUT_MS = 120_000;
+
 const uploadMetadataSchema = z
   .object({
     title: optionalFormText(180),
@@ -474,8 +477,10 @@ export async function POST(request: Request) {
     let storageUpload;
     try {
       storageUpload = await uploadTrustedDocumentBytes({
-        // Large document transfers may legitimately exceed the default deadline; keep database/auth/RPC calls bounded.
-        storage: createAdminClient({ timeoutMs: null }).storage.from(env.SUPABASE_DOCUMENT_BUCKET),
+        // This client is request-scoped: aborts must not leak into the shared admin client.
+        storage: createAdminClient({ timeoutMs: UPLOAD_STORAGE_TIMEOUT_MS, signal: request.signal }).storage.from(
+          env.SUPABASE_DOCUMENT_BUCKET,
+        ),
         ownerId: uploadOwnerId,
         documentId,
         intendedStoragePath: admissionStoragePath,
@@ -488,7 +493,14 @@ export async function POST(request: Request) {
       if (storageError instanceof TrustedDocumentStorageUploadError && storageError.kind === "outcome_unknown") {
         uploadedPath = storageError.storagePath;
         preserveUploadedArtifact = true;
+        // Preserve a content-free lookup before cancellation replaces this error with 499.
+        logger.error("Document Storage upload outcome unknown; manual reconciliation required", {
+          code: "upload_storage_outcome_unknown",
+          correlationId,
+          storageObjectRef: uploadedPath ? createHash("sha256").update(uploadedPath).digest("hex") : null,
+        });
       }
+      assertUploadNotAborted(request);
       throw storageError;
     }
     uploadedPath = storageUpload.storagePath;

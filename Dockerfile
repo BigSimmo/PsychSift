@@ -2,7 +2,8 @@
 # PsychSift app tier (Next.js). See docs/deployment-architecture.md.
 #
 # The repo is engine-strict (Node 24.x / npm 11.x via .npmrc + preinstall
-# guard), so every stage pins the same Node 24 base image. The build stage
+# guard), so every stage pins Node 24. Build stages retain Bookworm; the
+# app runner copies a pinned Node binary onto the minimal GNU runtime. The build stage
 # runs the repo's own `npm run build` (guard-next-build + next build) so the
 # image build fails exactly where a local build would.
 #
@@ -20,6 +21,14 @@
 # secret store.
 
 FROM node:24-bookworm-slim@sha256:a5f4366e834695d5f363b920c104953a535d3a9864d1bdf74566a0ebe01daee5 AS node-base
+FROM node:24-trixie-slim@sha256:7f486cabe892bff8fef04c0f7da8dba84a560be3e4e2740b7a86afc57ebec315 AS app-node-runtime-base
+# Keep the command-string shell used by Railway pre-deploy hooks, without
+# inheriting the donor's package manager or unrelated operating-system tools.
+RUN test "$(id -u node)" = 1000 && test "$(id -g node)" = 1000 \
+  && mkdir -p /tmp/app-runtime-home \
+  && chown 1000:1000 /tmp/app-runtime-home \
+  && dpkg-query --status dash > /tmp/app-runtime-dash.status
+FROM gcr.io/distroless/cc-debian13:nonroot@sha256:e792ab3d241a468a4fd7519ddbbebe66b49b5f365771716ea688ad40b6c6f1c2 AS app-runtime-base
 
 FROM node-base AS deps
 WORKDIR /app
@@ -138,7 +147,14 @@ RUN for attempt in 1 2 3; do \
       sleep $((attempt * 10)); \
     done
 
-FROM node-base AS runner
+FROM app-runtime-base AS runner
+COPY --from=app-node-runtime-base /usr/local/bin/node /usr/local/bin/node
+COPY --from=app-node-runtime-base /usr/bin/dash /bin/sh
+COPY --from=app-node-runtime-base /tmp/app-runtime-dash.status /var/lib/dpkg/status.d/dash
+COPY --from=app-node-runtime-base /usr/share/doc/dash/copyright /usr/share/doc/dash/copyright
+COPY --from=app-node-runtime-base /etc/passwd /etc/passwd
+COPY --from=app-node-runtime-base /etc/group /etc/group
+COPY --from=app-node-runtime-base --chown=1000:1000 /tmp/app-runtime-home/ /home/node/
 WORKDIR /app
 ARG RAILWAY_GIT_COMMIT_SHA=
 ARG GITHUB_SHA=
@@ -148,6 +164,7 @@ ARG SENTRY_RELEASE=
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
+ENV HOME=/home/node
 ENV RAILWAY_GIT_COMMIT_SHA=${RAILWAY_GIT_COMMIT_SHA}
 ENV COMMIT_SHA=${COMMIT_SHA}
 ENV SENTRY_RELEASE=${SENTRY_RELEASE}
@@ -179,7 +196,9 @@ LABEL org.opencontainers.image.licenses="UNLICENSED"
 STOPSIGNAL SIGTERM
 # /api/health is the app's own ops health route.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/api/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+  CMD ["node", "-e", "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/api/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
 # Bypass scripts/dev-free-port.mjs (a local-dev port picker): a container has
 # exactly one app, so bind 0.0.0.0 on $PORT directly.
-CMD ["sh", "-c", "exec node node_modules/next/dist/bin/next start -H 0.0.0.0 -p ${PORT:-3000}"]
+# Next's production CLI reads PORT itself (default 3000), preserving Railway's
+# selected port while making Node PID 1 without a shell wrapper.
+CMD ["node", "node_modules/next/dist/bin/next", "start", "-H", "0.0.0.0"]
