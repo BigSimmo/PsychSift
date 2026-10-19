@@ -139,6 +139,7 @@
     "tests/cursor-mcp-contract.test.ts",
     "tests/database-skills.test.ts",
     "tests/docs-*",
+    "tests/fixtures/empty.gitconfig",
     "tests/github-shell-access.test.ts",
     "tests/instruction-continuation-guards.test.ts",
     "tests/issues-report.test.ts",

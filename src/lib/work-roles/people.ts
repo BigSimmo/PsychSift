@@ -189,8 +189,7 @@ export async function readPeople(
   const roleRows = check(managers);
   const grantRows = check(grants);
 
-  // A whole-team supervisor whose team has moved away (the move could not remove them) stays filed
-  // under the hospital that gave the role, so name that team too.
+  // Legacy grants may remain filed under a hospital a team has left; name that team too.
   const serviceNames = new Map(serviceRows.map((row) => [row.id, row.name]));
   const elsewhere = [
     ...new Set(
@@ -434,7 +433,7 @@ function writeFailed(error: { code?: string | null }): PublicApiError {
  * grant is filed under the old hospital but `work_can` matches it by team alone, so it would keep
  * working at the new hospital where nobody there could see or remove it. Supervisors of named
  * trainees are left alone, because they are scoped to the old hospital and simply stop matching.
- * There is no transaction, so the move goes first and a failed removal is reported, never hidden.
+ * The database trigger revokes whole-team supervisors in the same transaction as the move.
  * Answers with the hospital the team left.
  */
 async function moveTeam(
@@ -459,34 +458,22 @@ async function moveTeam(
     await client.from("work_hospitals").select("id").eq("id", change.toHospitalId).is("archived_at", null).limit(1),
   );
   if (!target.length) throw hospitalUnavailable();
-  // Only while it is still where it was read, so two moves at once cannot both land.
-  const { data, error } = await client
-    .from("work_hospital_teams")
-    .update({ hospital_id: change.toHospitalId, linked_by: context.userId, linked_at: new Date().toISOString() })
-    .eq("service_id", change.serviceId)
-    .eq("hospital_id", from)
-    .select("service_id");
-  if (error?.code === "23503") throw hospitalUnavailable();
-  if (error) throw writeFailed(error);
-  if (!data?.length) {
+  // The versioned RPC requires atomic move/revocation SQL before any mutation.
+  const { data, error } = await client.rpc("work_move_team_v1", {
+    p_actor_id: context.userId,
+    p_service_id: change.serviceId,
+    p_expected_hospital_id: from,
+    p_to_hospital_id: change.toHospitalId,
+  });
+  if (error?.message.includes("work_role_denied")) throw denied();
+  if (error?.code === "23503" || error?.message.includes("work_hospital_unavailable")) throw hospitalUnavailable();
+  if (error?.message.includes("work_team_changed")) {
     throw new PublicApiError("That team changed while you were moving it. Try again.", 409, {
       code: "work_team_changed",
     });
   }
-  const { error: supervisorError } = await client
-    .from("work_role_grants")
-    .update({ revoked_at: new Date().toISOString(), revoked_by: context.userId })
-    .eq("role", "supervisor")
-    .eq("service_id", change.serviceId)
-    .is("subject_user_id", null)
-    .is("revoked_at", null);
-  if (supervisorError) {
-    throw new PublicApiError(
-      "The team moved, but its whole-team supervisors weren't removed. Remove them under the hospital it left.",
-      503,
-      { code: "work_team_supervisors_left" },
-    );
-  }
+  if (error) throw writeFailed(error);
+  if (data !== from) throw unavailable();
   return from;
 }
 

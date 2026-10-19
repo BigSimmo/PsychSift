@@ -39,14 +39,19 @@ export async function loadDocumentSummaryContext(documentId: string, ownerId?: s
     )
     .eq("document_id", documentId);
   if (committedGeneration) {
-    chunksQuery = chunksQuery.eq("index_generation_id", committedGeneration);
+    chunksQuery = chunksQuery.or(`index_generation_id.is.null,index_generation_id.eq.${committedGeneration}`);
   } else if (typeof (chunksQuery as { is?: unknown }).is === "function") {
     chunksQuery = (chunksQuery as typeof chunksQuery & { is: (column: string, value: null) => typeof chunksQuery }).is(
       "index_generation_id",
       null,
     );
   }
-  chunksQuery = chunksQuery.order("chunk_index", { ascending: true }).limit(40);
+  // Committed-generation rows sort ahead of legacy NULL-generation rows so the
+  // 40-row cap cannot be filled by legacy chunks alone.
+  chunksQuery = chunksQuery
+    .order("index_generation_id", { ascending: true, nullsFirst: false })
+    .order("chunk_index", { ascending: true })
+    .limit(40);
   if (signal) chunksQuery = chunksQuery.abortSignal(signal);
   const { data: chunks, error } = await chunksQuery;
 

@@ -12,6 +12,7 @@ selection, release-ordering, or eval-ground-truth surface.
 | `behaviour-map.md`      | The verified mechanics: score imputation sites, the release comparator chains, the gate/threshold ladder, second-stage engagement rules, and which live cases exercise which path.   |
 | `refuted-approaches.md` | Live-refuted improvement attempts (feature-weight tuning, saturation-tail spread, governance ranking penalties/boosts) with numbers, post-mortems, and binding constraints.          |
 | `safeguards.md`         | The protection stack: protected-surface list, the advisory pr-policy `RAG impact:` warning, the source-pin contract test, the canary-pair protocol, and the regeneration procedures. |
+| `cache-freshness.md`    | Document-governance cache revisions, read/write fences, safe application/database compatibility and local proof limits.                                                              |
 
 Standing rules (mirrored in `AGENTS.md` so every agent session inherits them):
 

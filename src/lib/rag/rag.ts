@@ -167,20 +167,16 @@ import {
   answerCacheAllowedForSourcePolicyConflicts,
   answerCacheLookupAllowedForRequest,
   answerCoalescingAllowedForRequest,
-  answerInflight,
   cacheIndexingVersion,
-  cloneAnswer,
   getCachedAnswer,
   getCachedSearch,
   getSharedCachedAnswer,
   getSharedCachedSearch,
   isSearchCacheEnabled,
   isSearchCacheLookupEnabled,
-  scopedAnswerCacheKey,
   setCachedAnswer,
   setCachedSearch,
   restoreRagAnswerQueryPlanArgs,
-  withRagAnswerQueryPlanDiagnostics,
 } from "@/lib/rag/rag-cache";
 export {
   invalidateRagCachesForDocumentMutation,
@@ -198,11 +194,6 @@ import {
 } from "@/lib/rag/rag-context-pack";
 export { packedContextCacheKey } from "@/lib/rag/rag-context-pack";
 import { classifySearchCacheOutcome, recordCacheLookup } from "@/lib/observability/cache-metrics";
-import {
-  recordAnswerOrigination,
-  recordAnswerOriginationFinished,
-  recordCoalescedAnswerWaiter,
-} from "@/lib/observability/answer-coalescing-metrics";
 import {
   buildRagSourceBlock,
   neutralizeIdentityField,
@@ -284,7 +275,7 @@ export {
   analyzeQueryWithClassifierFallback,
   resetClassifierVerdictMemoForTests,
 } from "@/lib/rag/rag-classifier-fallback";
-import { awaitWithCallerSignal } from "@/lib/rag/rag-abort-signal";
+import { answerWithCoalescing } from "@/lib/rag/rag-answer-coalescing";
 import {
   hasAdmissionCommunityLookupIntent,
   hasAdmissionCommunityTitleSupport,
@@ -2130,51 +2121,9 @@ export async function answerQuestionWithScope(args: AnswerQuestionWithScopeArgs)
     !isAnswerPilotBudgetActive() &&
     !args.loadRegisteredPublishedOriginalSectionLayout &&
     answerCoalescingAllowedForRequest(args);
-  const inflightKey = coalescingEnabled ? scopedAnswerCacheKey(args) : null;
-  let existing = inflightKey ? answerInflight.get(inflightKey) : undefined;
-
-  while (existing) {
-    recordCoalescedAnswerWaiter();
-    await args.onProgress?.({
-      stage: "cached",
-      message: "Waiting for an identical cited answer request already in progress.",
-      reason: "answer_inflight_coalesced",
-    });
-    try {
-      const answer = cloneAnswer(await awaitWithCallerSignal(existing, args.signal));
-      answer.routingReason = answer.routingReason
-        ? `${answer.routingReason}; answer_inflight_coalesced`
-        : "answer_inflight_coalesced";
-      answer.latencyTimings = {
-        ...answer.latencyTimings,
-        total_latency_ms: Date.now() - startedAt,
-      };
-      return observeRagAnswer(answer, args.observationContext);
-    } catch {
-      throwIfAborted(args.signal);
-      // An originating caller's abort/failure must not fail this connected waiter.
-      // Recheck first: another waiter may have installed a replacement while the
-      // rejected promise's microtasks drained.
-      const replacement = inflightKey ? answerInflight.get(inflightKey) : undefined;
-      if (replacement && replacement !== existing) {
-        existing = replacement;
-        continue;
-      }
-      break;
-    }
-  }
-
-  if (inflightKey) recordAnswerOrigination();
-  const pending = answerQuestionWithScopeUncoalesced(args, startedAt)
-    .then((answer) => withRagAnswerQueryPlanDiagnostics(answer, args))
-    .finally(() => {
-      if (inflightKey) {
-        answerInflight.delete(inflightKey);
-        recordAnswerOriginationFinished();
-      }
-    });
-  if (inflightKey) answerInflight.set(inflightKey, pending);
-  return observeRagAnswer(await pending, args.observationContext);
+  return answerWithCoalescing(args, startedAt, coalescingEnabled, () =>
+    answerQuestionWithScopeUncoalesced(args, startedAt),
+  );
 }
 async function answerQuestionWithScopeUncoalesced(
   args: AnswerQuestionWithScopeArgs,

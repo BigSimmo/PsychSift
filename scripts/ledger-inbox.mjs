@@ -528,7 +528,14 @@ function reopenIdNamesUlid(id, targetUlid, rowId) {
 function assertReopenIdentity(markdown, request) {
   const { id, targetUlid } = request.payload ?? {};
   if (request.action !== "reopen" || !targetUlid || !id) return;
-  const row = parseIssues(markdown).rows.find((entry) => entry.ulid === targetUlid);
+  const rows = parseIssues(markdown).rows;
+  // Every row carrying this display id must belong to targetUlid; a duplicate
+  // display id owned by another issue makes the reopen ambiguous.
+  const idOwners = rows.filter((entry) => normalizeIssueDisplayId(entry.id) === normalizeIssueDisplayId(id));
+  if (idOwners.some((entry) => entry.ulid !== targetUlid)) {
+    throw new Error(`ledger request rejected: reopen id ${id} and targetUlid ${targetUlid} name different issues`);
+  }
+  const row = rows.find((entry) => entry.ulid === targetUlid);
   if (!reopenIdNamesUlid(id, targetUlid, row?.id)) {
     throw new Error(
       `ledger request rejected: reopen id ${id} and targetUlid ${targetUlid}${row ? ` (${row.id})` : ""} name different issues`,
@@ -1285,7 +1292,9 @@ function requestTargetId(argv) {
   const rawTargetId = argValue(argv, "id") ?? positionalId;
   if (!rawTargetId) return undefined;
   const stripped = rawTargetId.startsWith("#") ? rawTargetId.slice(1) : rawTargetId;
-  if (isIssueUlid(stripped)) return displayIdForUlid(stripped);
+  if (isIssueUlid(stripped)) {
+    return findIssueRowByUlid(readOutstandingIssues(), stripped, ["open", "archive"])?.id ?? displayIdForUlid(stripped);
+  }
   return rawTargetId.startsWith("#") || rawTargetId.includes("-") ? rawTargetId : `#${rawTargetId}`;
 }
 

@@ -139,6 +139,8 @@ Every remaining tracked document in this category (architecture and design, plus
 - [retrieval-quality-runbook.md](retrieval-quality-runbook.md) — RAG/retrieval eval gates and tuning
 - [worker-deploy-runbook.md](worker-deploy-runbook.md) — worker build contract, run recipe, secrets, docling shadow extraction (B4)
 - [disaster-recovery-runbook.md](disaster-recovery-runbook.md) — backup/restore and recovery drills
+- [operator-rehearsal-plan.md](operator-rehearsal-plan.md): one-day owner-approved rehearsal: data restore, Railway rollback, 30-user staging soak, stray staging worker removal
+- [process-cleanup-proposal-2026-10.md](process-cleanup-proposal-2026-10.md): proposal only: check-script overlap, ledger trimming and stale companion docs
 - [auth-connection-cap-runbook.md](auth-connection-cap-runbook.md) — Supabase auth connection cap (operator)
 - [staging-setup.md](staging-setup.md) — staging environment bootstrap
 - [database-drift-detection.md](database-drift-detection.md) — schema drift detection (`npm run check:drift`)
@@ -186,7 +188,7 @@ Every remaining tracked document in this category (operations, plus the `rag-beh
 - [clinical-sign-off-how-to.md](clinical-sign-off-how-to.md) — plain-English guide for the clinical owner: signing off forms and Act-section summaries one at a time with `npm run clinical:review`, and sending the sign-offs
 - [source-acquisition-protocol.md](source-acquisition-protocol.md) — how a clinical source is found, captured, scored and indexed: the WA-first locality ladder, the capture register, the metadata floor, and clinical sign-off
 - [error-tracking.md](error-tracking.md) — privacy-safe, opt-in production exception tracking envelope
-- [governance-incident-runbooks.md](governance-incident-runbooks.md) — operator response checklists for clinical, source, privacy, provider, and answer-pipeline rollback incidents
+- [governance-incident-runbooks.md](governance-incident-runbooks.md) — operator response checklists for clinical, source, privacy, provider, notifiable data breach (draft), and answer-pipeline rollback incidents
 - [clinical-hazard-analysis.md](clinical-hazard-analysis.md) — clinical hazard register
 - [care-plan/crisis-lines-verification.md](care-plan/crisis-lines-verification.md) — **DRAFT, unsigned** verification record for every crisis number printed by the Care Plan prototype: source, verification date, and the six-monthly re-verification cadence
 - [rag-injection-threat-model.md](rag-injection-threat-model.md) — prompt-injection threat model
@@ -283,6 +285,15 @@ Every remaining tracked document in this category (process, plus the `agents/` r
 - [plans/document-viewer-redesign-plan.md](plans/document-viewer-redesign-plan.md) — Document viewer redesign — PDF + photo surfaces — Status: programme plan (Phases 0–3 landed;
 - [plans/edge-ingestion-overhaul-3pr-plan.md](plans/edge-ingestion-overhaul-3pr-plan.md) — Edge Ingestion Overhaul — 3-PR Execution Plan — Status: Planning only.
 - [plans/tooling-activation-implementation-plan.md](plans/tooling-activation-implementation-plan.md) — Tooling activation — implementation plan — Status: local workstreams (WS-B, WS-C) implemented 2026-08-01;
+
+## Full Deep audit remediation (2026-10-17)
+
+- [Remediation spec](audit/2026-10-17-full-deep-remediation-spec.md) — observed defects and acceptance expectations.
+- [Parallel implementation plan](superpowers/plans/2026-10-17-full-deep-remediation.md) — six implementation lanes, dependencies and review gates.
+- [Local implementation results](audit/2026-10-17-full-deep-remediation-results.md) — issue disposition, verification limits and operator handoff.
+- [Clinical release handoff](governance/clinical-release-remediation-handoff-2026-10-17.md) — genuine outstanding privacy and clinical evidence.
+- [Physiological calculator hold](governance/physiological-calculator-hold-2026-10-17.md) — containment pending sourced clinical review.
+- [Cache freshness](rag-behaviour/cache-freshness.md) — durable revision fences and mixed-deployment limits.
 
 ## Plans and workstreams (living)
 

@@ -11,6 +11,7 @@ import {
   type RosterRules,
   type RosterTeam,
 } from "@/lib/roster/team/model";
+import { useAccountRequestScope } from "@/components/use-account-request-scope";
 import { useExampleData } from "@/lib/example-data/store";
 import { setRosterHasEnabledTeam } from "@/lib/teaching/page-visibility";
 import { sharedGet } from "@/lib/shared-get";
@@ -78,10 +79,13 @@ async function load<T>(url: string, what: RosterReadWhat | "teams", signal: Abor
 }
 
 function useLoaded<T>(url: string | null, what: RosterReadWhat | "teams"): RosterReadState<T> {
+  const { scope, isCurrent } = useAccountRequestScope();
   // Each answer remembers the address it was read from, so a new address shows
   // "loading" at once instead of the previous team's data. A reload of the same
   // address keeps the current answer on screen until the fresh one arrives.
-  const [state, setState] = useState<(Omit<RosterReadState<T>, "reload"> & { url: string }) | null>(null);
+  const [state, setState] = useState<(Omit<RosterReadState<T>, "reload"> & { url: string; scope: string }) | null>(
+    null,
+  );
   const [generation, setGeneration] = useState(0);
   const reload = useCallback(() => setGeneration((value) => value + 1), []);
 
@@ -89,17 +93,18 @@ function useLoaded<T>(url: string | null, what: RosterReadWhat | "teams"): Roste
     if (!url) return;
     const controller = new AbortController();
     void load<T>(url, what, controller.signal).then((result) => {
-      if (result.status === "aborted" || controller.signal.aborted) return;
+      if (result.status === "aborted" || controller.signal.aborted || !isCurrent()) return;
       if (result.status === "ready") {
-        setState({ url, status: "ready", data: result.data, message: null, readAt: result.readAt });
+        setState({ url, scope, status: "ready", data: result.data, message: null, readAt: result.readAt });
       } else {
-        setState({ url, status: result.status, data: null, message: result.message, readAt: null });
+        setState({ url, scope, status: result.status, data: null, message: result.message, readAt: null });
       }
     });
     return () => controller.abort();
-  }, [url, what, generation]);
+  }, [url, what, generation, scope, isCurrent]);
 
-  if (!state || state.url !== url) return { status: "loading", data: null, message: null, readAt: null, reload };
+  if (!state || state.url !== url || state.scope !== scope)
+    return { status: "loading", data: null, message: null, readAt: null, reload };
   return { status: state.status, data: state.data, message: state.message, readAt: state.readAt, reload };
 }
 

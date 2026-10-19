@@ -1072,11 +1072,11 @@
       "sourceExported": true,
       "entryExported": true,
       "directImportFiles": [
-        "src/components/ClinicalDashboard.tsx",
         "src/components/applications-launcher-page.tsx",
         "src/components/clinical-dashboard/DocumentManagerPanel.tsx",
         "src/components/clinical-dashboard/clinical-output-helpers.tsx",
         "src/components/clinical-dashboard/dashboard-notices.tsx",
+        "src/components/clinical-dashboard/dashboard-search-error-state.tsx",
         "src/components/clinical-dashboard/document-admin.tsx",
         "src/components/clinical-dashboard/evidence-panels.tsx",
         "src/components/clinical-dashboard/favourites-command-library-page.tsx",
@@ -1091,11 +1091,11 @@
         "src/components/mode-home-template.tsx"
       ],
       "productImportFiles": [
-        "src/components/ClinicalDashboard.tsx",
         "src/components/applications-launcher-page.tsx",
         "src/components/clinical-dashboard/DocumentManagerPanel.tsx",
         "src/components/clinical-dashboard/clinical-output-helpers.tsx",
         "src/components/clinical-dashboard/dashboard-notices.tsx",
+        "src/components/clinical-dashboard/dashboard-search-error-state.tsx",
         "src/components/clinical-dashboard/document-admin.tsx",
         "src/components/clinical-dashboard/evidence-panels.tsx",
         "src/components/clinical-dashboard/favourites-command-library-page.tsx",
@@ -3270,7 +3270,7 @@
         {
           "file": "src/components/ClinicalDashboard.tsx",
           "exists": true,
-          "imports": ["EmptyState", "InlineNotice"],
+          "imports": ["InlineNotice"],
           "importedFamilies": ["feedback"],
           "literalCkbV2": false,
           "dynamicCkbV2": false,

@@ -515,7 +515,7 @@ describe("hosted migration-role guard", { timeout: 60_000 }, () => {
     const runbook = readFileSync("docs/disaster-recovery-runbook.md", "utf8");
 
     expect(generator).toContain("pg_catalog.pg_get_userbyid(nspowner)");
-    expect(generator).toContain("psql(storageSchemaOwner, scaffoldSql)");
+    expect(generator).toContain("await sql(storageSchemaOwner, inputs.scaffoldSql)");
     expect(runbook).toContain("storage_owner=");
     expect(runbook).toContain('psql -U "${storage_owner}"');
     expect(generator).not.toContain(RESERVED_HOSTED_ROLE);

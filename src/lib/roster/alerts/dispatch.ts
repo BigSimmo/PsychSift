@@ -4,6 +4,8 @@ import { addDaysToDate, perthDateOf } from "@/lib/roster/shifts/perth-time";
 import { openShiftCandidates } from "@/lib/roster/team/eligibility";
 import { rosterRead } from "@/lib/roster/team/repository";
 
+import { drainRosterOfferAlerts } from "./outbox";
+
 import type { RosterAlertType } from "./messages";
 import { recipientsOnNightNow } from "./night";
 import { activeRecipientIds, openParties, previousOpenHolder, swapParties } from "./recipients";
@@ -31,118 +33,10 @@ function resultOf(value: unknown): {
   return value && typeof value === "object" ? (value as ReturnType<typeof resultOf>) : {};
 }
 
-const MAX_OPEN_POST_ALERT_CACHE_ENTRIES = 2_000;
-const deliveredOpenPostAlerts = new Set<string>();
-const pendingOrFailedOpenPostAlerts = new Set<string>();
-const inFlightOpenPostAlerts = new Map<string, Promise<void>>();
-
-function addBoundedSetEntry(set: Set<string>, key: string): void {
-  if (set.has(key)) {
-    set.delete(key);
-  } else if (set.size >= MAX_OPEN_POST_ALERT_CACHE_ENTRIES) {
-    const oldest = set.values().next().value;
-    if (oldest !== undefined) set.delete(oldest);
-  }
-  set.add(key);
-}
-
-function openPostAlertKey(serviceId: string, openShiftId: string): string {
-  return `${serviceId}:${openShiftId}`;
-}
-
-async function isOpenPostAlertDelivered(
-  client: RosterAdminClient,
-  serviceId: string,
-  openShiftId: string,
-  replayed: boolean,
-): Promise<boolean> {
-  const key = openPostAlertKey(serviceId, openShiftId);
-  if (deliveredOpenPostAlerts.has(key)) return true;
-  try {
-    const fromFn = (client as unknown as { from?: (table: string) => unknown })?.from;
-    if (typeof fromFn === "function") {
-      const table = fromFn.call(client, "roster_open_post_alerts") as {
-        select?: (columns: string) => {
-          eq?: (
-            col: string,
-            val: string,
-          ) => {
-            eq?: (
-              col2: string,
-              val2: string,
-            ) => {
-              maybeSingle?: () => Promise<{
-                data: { open_shift_id?: string } | null;
-                error: unknown;
-              }>;
-            };
-          };
-        };
-      } | null;
-      const query = table?.select?.("open_shift_id")?.eq?.("service_id", serviceId)?.eq?.("open_shift_id", openShiftId);
-      if (query && typeof query.maybeSingle === "function") {
-        const { data, error } = await query.maybeSingle();
-        if (!error) {
-          if (data?.open_shift_id) {
-            addBoundedSetEntry(deliveredOpenPostAlerts, key);
-            pendingOrFailedOpenPostAlerts.delete(key);
-            return true;
-          }
-          return false;
-        }
-      }
-    }
-  } catch {
-    // Fall back to in-memory tracking when the table query is unavailable.
-  }
-  if (pendingOrFailedOpenPostAlerts.has(key)) return false;
-  return replayed;
-}
-
-async function markOpenPostAlertDelivered(
-  client: RosterAdminClient,
-  serviceId: string,
-  openShiftId: string,
-): Promise<void> {
-  const key = openPostAlertKey(serviceId, openShiftId);
-  try {
-    const fromFn = (client as unknown as { from?: (table: string) => unknown })?.from;
-    if (typeof fromFn === "function") {
-      const table = fromFn.call(client, "roster_open_post_alerts") as {
-        upsert?: (
-          values: { service_id: string; open_shift_id: string; delivered_at: string },
-          options: { onConflict: string },
-        ) => Promise<unknown>;
-      } | null;
-      if (typeof table?.upsert === "function") {
-        const result = await table.upsert(
-          {
-            service_id: serviceId,
-            open_shift_id: openShiftId,
-            delivered_at: new Date().toISOString(),
-          },
-          { onConflict: "service_id,open_shift_id" },
-        );
-        if (result && typeof result === "object" && "error" in result && result.error) {
-          deliveredOpenPostAlerts.delete(key);
-          addBoundedSetEntry(pendingOrFailedOpenPostAlerts, key);
-          return;
-        }
-      }
-    }
-    addBoundedSetEntry(deliveredOpenPostAlerts, key);
-    pendingOrFailedOpenPostAlerts.delete(key);
-  } catch {
-    deliveredOpenPostAlerts.delete(key);
-    addBoundedSetEntry(pendingOrFailedOpenPostAlerts, key);
-  }
-}
-
 async function runRosterAlertDispatch(
   client: RosterAdminClient,
   event: RosterAlertEvent,
   result: ReturnType<typeof resultOf>,
-  isOpenPostOffer: boolean,
 ): Promise<void> {
   // The overview checks the actor's team access. G3's manager list is the
   // only authority for manager alerts; active membership is checked below.
@@ -225,23 +119,12 @@ async function runRosterAlertDispatch(
   ].slice(0, 500);
   const active = await activeRecipientIds(client, event.serviceId, candidateIds);
   const eligible = candidateIds.filter((id) => active.has(id));
-  if (!eligible.length) {
-    if (isOpenPostOffer && result.openShiftId) {
-      await markOpenPostAlertDelivered(client, event.serviceId, result.openShiftId);
-    }
-    return;
-  }
+  if (!eligible.length) return;
   const quiet =
     type === "changed"
       ? new Set<string>()
       : await recipientsOnNightNow(client, event.actorId, event.serviceId, eligible);
-  const delivery = await sendRosterAlerts(client, eligible, type, quiet);
-  // Any successful send marks the offer delivered: a replay resends to the whole eligible list, so
-  // retrying a partial delivery would duplicate the offer for everyone it already reached. A gone
-  // device also counts as a failed send, so only a delivery that reached nobody is retried.
-  if (isOpenPostOffer && result.openShiftId && ((delivery?.sent ?? 0) > 0 || (delivery?.failed ?? 0) === 0)) {
-    await markOpenPostAlertDelivered(client, event.serviceId, result.openShiftId);
-  }
+  await sendRosterAlerts(client, eligible, type, quiet);
 }
 
 export async function dispatchRosterAlerts(client: RosterAdminClient, event: RosterAlertEvent): Promise<void> {
@@ -256,31 +139,11 @@ export async function dispatchRosterAlerts(client: RosterAdminClient, event: Ros
     if (!isOpenPostOffer && result.replayed === true) return;
 
     if (isOpenPostOffer && result.openShiftId) {
-      const openShiftId = result.openShiftId;
-      const key = openPostAlertKey(event.serviceId, openShiftId);
-      const previousInFlight = inFlightOpenPostAlerts.get(key);
-      const runPromise = (async () => {
-        if (previousInFlight) {
-          await previousInFlight.catch(() => undefined);
-        }
-        if (await isOpenPostAlertDelivered(client, event.serviceId, openShiftId, result.replayed === true)) {
-          return;
-        }
-        addBoundedSetEntry(pendingOrFailedOpenPostAlerts, key);
-        await runRosterAlertDispatch(client, event, result, true);
-      })();
-      inFlightOpenPostAlerts.set(key, runPromise);
-      try {
-        await runPromise;
-      } finally {
-        if (inFlightOpenPostAlerts.get(key) === runPromise) {
-          inFlightOpenPostAlerts.delete(key);
-        }
-      }
+      await drainRosterOfferAlerts(client, result.openShiftId);
       return;
     }
 
-    await runRosterAlertDispatch(client, event, result, false);
+    await runRosterAlertDispatch(client, event, result);
   } catch {
     // A phone alert must never turn a successful roster change into an error.
     // No identity, endpoint or payload is logged here.

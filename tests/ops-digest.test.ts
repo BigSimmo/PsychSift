@@ -124,6 +124,32 @@ describe("hybrid RPC hourly evidence", () => {
 });
 
 describe("renderDigest", () => {
+  it("renders source-gap, unsupported and per-route p95 latency lines", () => {
+    const md = renderDigest({
+      status: "ok",
+      slo: {
+        windowMinutes: 60,
+        totalQueries: 40,
+        hybridRpcErrorRate: 0,
+        degradedRate: 0,
+        sourceGapQueries: 4,
+        sourceGapRate: 0.1,
+        unsupportedQueries: 2,
+        unsupportedRate: 0.05,
+        latencyP95MsByRouteMode: {
+          fast: { p95Ms: 21_000, samples: 30 },
+          strong: { p95Ms: null, samples: 0 },
+          extractive: { p95Ms: 3_000, samples: 10 },
+        },
+        latencySampleTruncated: true,
+      },
+    });
+    expect(md).toContain("- source gaps: 4 (10.0%)");
+    expect(md).toContain("- unsupported: 2 (5.0%)");
+    expect(md).toContain("- p95 latency: fast 21.0s (n=30), strong — (n=0), extractive 3.0s (n=10) ⚠ sample capped");
+    expect(md).toContain("PAGE OPS_ANSWER_LATENCY_P95_PAGE");
+  });
+
   it("distinguishes an empty hourly window without clearing its unknown-quality alert", () => {
     const health = {
       status: "ok",

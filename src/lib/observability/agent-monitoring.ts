@@ -53,12 +53,17 @@ export function instrumentOpenAIClientForAgentMonitoring<T extends object>(clien
  * interaction UUID — never query text or any derived clinical identifier.
  */
 export function setAgentConversationId(conversationId: string): void {
+  // Only UUID syntax crosses this boundary; callers must use the generated
+  // interaction UUID, never a patient/document identifier or clinical text.
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(conversationId)) return;
   if (!isSentryAgentMonitoringEnabled()) {
     return;
   }
 
   try {
-    Sentry.setConversationId(conversationId);
+    // The SDK's Node convenience export delegates to this public Scope API.
+    // Next's Edge entry omits that export but exposes the same isolation scope.
+    Sentry.getIsolationScope().setConversationId(conversationId);
   } catch {
     // Optional observability must never take down answer generation.
   }

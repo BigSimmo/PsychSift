@@ -140,10 +140,17 @@ export function CalculatorsBedsideSheetMockup() {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({ phq9: true });
   const [copied, setCopied] = useState(false);
   const copiedTimer = useRef<number | undefined>(undefined);
+  const mounted = useRef(true);
   const showToast = useCopyToast();
 
   // A pending reset must not fire after unmount (it threw "window is not defined" after jsdom teardown).
-  useEffect(() => () => window.clearTimeout(copiedTimer.current), []);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      window.clearTimeout(copiedTimer.current);
+    };
+  }, []);
 
   const startedCalcs = calculators
     .map((calc) => ({ calc, derived: deriveCalculator(calc, session[calc.id] ?? {}) }))
@@ -159,6 +166,8 @@ export function CalculatorsBedsideSheetMockup() {
     const lines = completedCalcs.map(({ calc, derived }) => formatResultSummary(calc, derived));
     try {
       await navigator.clipboard.writeText(lines.join("\n"));
+      // The sheet can unmount while the clipboard write is pending; schedule nothing then.
+      if (!mounted.current) return;
       setCopied(true);
       showToast("Copied bedside summary");
       window.clearTimeout(copiedTimer.current);

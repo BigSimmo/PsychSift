@@ -85,7 +85,7 @@
       "id": "wake-therapy-needs-review-hold",
       "retired": "2026-10-17",
       "summary": "Wake therapy (sleep deprivation / chronotherapy) now carries governed clinical references in src/data/therapies-source.json, so the hold until it had references no longer applies. Its 17 Oct sign-off was reset by owner ruling (17 Oct 2026 22:12 AWST; docs/decisions/2026-10-17-agent-recorded-therapy-and-did-sign-offs-reset.md), so it is needs_review only until the owner signs it with therapy:review.",
-      "pattern": "wake-therapy-sleep-deprivation-chronotherapy[^.\\n]{0,80}(must remain|stays|held in) `?needs_review`?",
+      "pattern": "wake-therapy-sleep-deprivation-chronotherapy[^.\\n]{0,80}(must remain|stays|held in) `?needs_review`?[^.\\n]{0,120}(missing references|no references|lacks references|until (it has (governed |clinical )?references|references (are|have)))",
       "allowedContext": "no longer|retir(ed|ement)|removed|formerly|previously|superseded|dropped|replaced|historical|rather than",
       "decision": "docs/decisions/2026-10-17-remaining-therapy-compass-sign-offs.md"
     },

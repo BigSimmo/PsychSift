@@ -12,7 +12,9 @@ const mocks = vi.hoisted(() => ({
   remove: vi.fn(),
   send: vi.fn(),
   vapid: vi.fn(),
+  drain: vi.fn(),
 }));
+vi.mock("@/lib/roster/alerts/outbox", () => ({ drainRosterOfferAlerts: mocks.drain }));
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/env", () => ({
   env: {
@@ -114,7 +116,7 @@ describe("generic phone alerts", () => {
     expect(mocks.subscriptions).toHaveBeenCalledWith(client, [SAM]);
   });
 
-  it("offers a newly posted gap, but never re-sends the offer for a replayed post", async () => {
+  it("routes both new and replayed offers through the durable device outbox", async () => {
     const OPEN = "5e000000-0000-4000-8000-000000000007";
     const gap = {
       action: "open.post",
@@ -138,12 +140,7 @@ describe("generic phone alerts", () => {
       action: gap,
       result: { openShiftId: OPEN, status: "open" },
     });
-    expect(mocks.open).toHaveBeenCalledWith(client, SERVICE, OPEN);
-    // The new post took the offer path: it read the week either side of the gap to find who to offer it to.
-    expect(mocks.read).toHaveBeenCalledWith(client, ALEX, SERVICE, "assignments", {
-      from: "2026-11-13",
-      to: "2026-11-27",
-    });
+    expect(mocks.drain).toHaveBeenCalledWith(client, OPEN);
 
     vi.clearAllMocks();
     await dispatchRosterAlerts(client, {
@@ -152,6 +149,7 @@ describe("generic phone alerts", () => {
       action: gap,
       result: { openShiftId: OPEN, status: "open", replayed: true },
     });
+    expect(mocks.drain).toHaveBeenCalledWith(client, OPEN);
     expect(mocks.read).not.toHaveBeenCalled();
     expect(mocks.open).not.toHaveBeenCalled();
     expect(mocks.send).not.toHaveBeenCalled();
