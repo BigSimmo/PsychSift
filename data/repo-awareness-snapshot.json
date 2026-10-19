@@ -5524,6 +5524,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-19-service-role-key-in-production-secrets-environment.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/archive/design-qa.md",
         "section": "archive",
         "catalogued": true
