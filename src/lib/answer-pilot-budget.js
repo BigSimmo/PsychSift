@@ -1,3 +1,4 @@
+// @ts-check
 export { answerPilotDiagnosticSources } from "@/lib/answer-pilot-diagnostic";
 import {
   answerPilotResponseMatches,
@@ -11,8 +12,35 @@ import { PublicApiError } from "@/lib/http";
 import { createWireBudgetGuard } from "@/lib/answer-wire-budget-guard";
 import { couldBelongToAnswerPilot, loadServerAnswerPilotTicket } from "@/lib/answer-pilot-ticket";
 
+/** @typedef {import("@/lib/answer-wire-budget-guard").WireBudgetGuard} WireBudgetGuard */
+/** @typedef {import("@/lib/answer-pilot-diagnostic").AnswerPilotDiagnostic} AnswerPilotDiagnostic */
+/** @typedef {import("@/lib/answer-pilot-diagnostic").GenerationSeed} GenerationSeed */
+/** @typedef {import("@/lib/answer-pilot-diagnostic").GenerationProof} GenerationProof */
+/**
+ * The Answer request identity the pilot compares against its ticket.
+ * @typedef {object} AnswerPilotRequest
+ * @property {string | null} [ownerId]
+ * @property {string | null} [documentId]
+ * @property {string} query
+ * @property {string | null} [queryMode]
+ * @property {boolean | null} [summaryMode]
+ * @property {number | null} [activeFilterCount]
+ * @property {readonly string[] | null} [resolvedDocumentIds]
+ */
+/**
+ * The per-request pilot scope that openai.ts and rag.ts read.
+ * @typedef {object} PilotBudgetScope
+ * @property {WireBudgetGuard["fetch"]} fetch
+ * @property {Readonly<WireBudgetGuard>} guard
+ * @property {Readonly<AnswerPilotDiagnostic> | null} diagnostic
+ * @property {(proof: unknown) => boolean} wasResponseReserved
+ */
+
+/** @type {AsyncLocalStorage<Readonly<PilotBudgetScope>>} */
 const budgetScope = new AsyncLocalStorage();
+/** @type {AsyncLocalStorage<Readonly<{ seed?: Readonly<GenerationSeed>, proof?: Readonly<GenerationProof> }>>} */
 const generationScope = new AsyncLocalStorage();
+/** @param {string} query */
 const queryDigest = (query) => createHash("sha256").update(query, "utf8").digest("hex");
 
 export class AnswerPilotBudgetError extends PublicApiError {
@@ -23,6 +51,11 @@ export class AnswerPilotBudgetError extends PublicApiError {
 
 export const currentAnswerPilotBudget = () => budgetScope.getStore() ?? null;
 // Diagnostics are best-effort and cannot change ordinary answer control flow.
+/**
+ * @param {string} stage
+ * @param {unknown} sources
+ * @param {() => unknown} details
+ */
 export function captureAnswerPilotDiagnostic(stage, sources, details) {
   try {
     currentAnswerPilotBudget()?.diagnostic?.capture(stage, sources, details);
@@ -30,6 +63,15 @@ export function captureAnswerPilotDiagnostic(stage, sources, details) {
 }
 export const isAnswerPilotBudgetActive = () => Boolean(currentAnswerPilotBudget());
 
+/**
+ * @template C, T
+ * @param {C} context
+ * @param {string} model
+ * @param {number} attemptOrdinal
+ * @param {(context: C) => unknown} schemaFor
+ * @param {() => T} generationWork
+ * @returns {T}
+ */
 export function runAnswerPilotGeneration(context, model, attemptOrdinal, schemaFor, generationWork) {
   const budget = currentAnswerPilotBudget();
   if (!budget) return generationWork();
@@ -44,9 +86,18 @@ export function runAnswerPilotGeneration(context, model, attemptOrdinal, schemaF
 
 // This boundary receives the actual synchronously built input/schema/model from
 // createObservedAnswerGenerator. One immutable proof follows that SDK invocation.
+/**
+ * @template T
+ * @param {unknown} input
+ * @param {unknown} schema
+ * @param {unknown} options
+ * @param {() => Promise<T>} generationWork
+ * @returns {Promise<T>}
+ */
 export async function runPreparedAnswerPilotGeneration(input, schema, options, generationWork) {
   const budget = currentAnswerPilotBudget();
   if (!budget) return generationWork();
+  /** @type {Readonly<GenerationProof> | undefined} */
   let proof;
   try {
     proof = prepareAnswerPilotGeneration(generationScope.getStore()?.seed, input, schema, options);
@@ -64,6 +115,10 @@ export async function runPreparedAnswerPilotGeneration(input, schema, options, g
   });
 }
 
+/**
+ * @param {Readonly<{ ownerId: string, documentId: string, querySha256: string }>} ticket
+ * @param {AnswerPilotRequest} request
+ */
 function pilotIdentityMatches(ticket, request) {
   const digest = queryDigest(request.query);
   const related =
@@ -85,7 +140,14 @@ function pilotIdentityMatches(ticket, request) {
   return exact ? "exact" : "near_match_refused";
 }
 
-/** Called only after the real route's authentication, rate limit and document-scope checks. */
+/**
+ * Called only after the real route's authentication, rate limit and document-scope checks.
+ *
+ * @template T
+ * @param {AnswerPilotRequest} request
+ * @param {() => Promise<T>} answerWork
+ * @returns {Promise<T>}
+ */
 export async function runAnswerWithPilotBudget(request, answerWork) {
   let ticket;
   try {
@@ -107,7 +169,9 @@ export async function runAnswerWithPilotBudget(request, answerWork) {
     throw new AnswerPilotBudgetError("answer_pilot_ticket_incomplete");
   }
   // One ticket, one guard, every SDK transport attempt. No global fetch replacement.
+  /** @type {Readonly<WireBudgetGuard>} */
   let guard;
+  /** @type {WeakSet<object>} */
   const reservedProofs = new WeakSet();
   try {
     guard = createWireBudgetGuard({
@@ -123,7 +187,8 @@ export async function runAnswerWithPilotBudget(request, answerWork) {
         if (reservation.endpoint === "responses") {
           const proof = generationScope.getStore()?.proof;
           if (!proof) guard.reject();
-          reservedProofs.add(proof);
+          // guard.reject() always throws, but the checker cannot narrow through a `let` binding.
+          reservedProofs.add(/** @type {Readonly<GenerationProof>} */ (proof));
         }
       },
     });
@@ -159,7 +224,14 @@ export async function runAnswerWithPilotBudget(request, answerWork) {
     } catch {} // A failed diagnostic sink cannot change the public error path.
   };
   return budgetScope.run(
-    Object.freeze({ fetch: guard.fetch, guard, diagnostic, wasResponseReserved: (proof) => reservedProofs.has(proof) }),
+    Object.freeze({
+      fetch: guard.fetch,
+      guard,
+      diagnostic,
+      // WeakSet.has is false for any non-object at runtime; the cast only tells the checker.
+      /** @param {unknown} proof */
+      wasResponseReserved: (proof) => reservedProofs.has(/** @type {object} */ (proof)),
+    }),
     async () => {
       try {
         const answer = await answerWork();

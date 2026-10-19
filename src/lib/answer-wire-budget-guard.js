@@ -1,6 +1,60 @@
+// @ts-check
 // Offline candidate for ONE finite, text-only Answer pilot. No SDK import or network call.
 // The caller supplies its current remaining balance, verified worst-case rates, and transport.
+
+/**
+ * Untrusted JSON-shaped caller data. Fields are `any` because every one is checked before it
+ * is used; the type says "a plain object", not "a validated one".
+ * @typedef {Record<string, any>} UntrustedRecord
+ */
+/**
+ * One verified price-table entry. Output fields are validated only for `responses` entries.
+ * @typedef {object} VerifiedPrice
+ * @property {"responses" | "embeddings"} endpoint
+ * @property {number} worstInputUsdPerMillion
+ * @property {number | undefined} worstOutputUsdPerMillion
+ * @property {number | undefined} maxOutputTokens
+ * @property {number} maxContextTokens
+ */
+/**
+ * What the guard reserves before each dispatch; handed to `onReserve`.
+ * @typedef {object} WireReservation
+ * @property {number} attempt
+ * @property {"responses" | "embeddings"} endpoint
+ * @property {string} model
+ * @property {number} wireBytes
+ * @property {number} inputTokenAllowance
+ * @property {number} outputTokenAllowance
+ * @property {string} reservedMicroUsd
+ * @property {string} cumulativeMicroUsd
+ */
+/**
+ * @typedef {object} WireBudgetSnapshot
+ * @property {number} attempts
+ * @property {string} reservedMicroUsd
+ * @property {string} remainingMicroUsd
+ * @property {string | null} denied
+ * @property {Readonly<{ stage: string, reason: string }> | null} firstRefusal
+ * @property {Readonly<{ embeddings: number, responses: number }>} reservationAttempts
+ * @property {Readonly<{ embeddings: number, responses: number }>} dispatchAttempts
+ * @property {"exact" | "saturated"} counterState
+ */
+/**
+ * @typedef {object} WireBudgetGuard
+ * @property {(input: unknown, init?: RequestInit) => Promise<Response>} fetch
+ * @property {(stage?: string, error?: unknown) => never} reject
+ * @property {() => Readonly<WireBudgetSnapshot>} snapshot
+ */
+
+/**
+ * @param {unknown} value
+ * @returns {value is UntrustedRecord}
+ */
 const isRecord = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+/**
+ * @param {object} value
+ * @param {Set<string>} allowed
+ */
 const ownKeysOnly = (value, allowed) => Object.keys(value).every((key) => allowed.has(key));
 const responseKeys = new Set([
   "model",
@@ -20,6 +74,7 @@ const responseKeys = new Set([
 const embeddingKeys = new Set(["model", "input", "dimensions", "encoding_format"]);
 
 export class WireBudgetDenied extends Error {
+  /** @param {string} code */
   constructor(code) {
     super(code);
     this.name = "WireBudgetDenied";
@@ -27,10 +82,18 @@ export class WireBudgetDenied extends Error {
   }
 }
 
+/**
+ * @param {string} code
+ * @returns {never}
+ */
 function deny(code) {
   throw new WireBudgetDenied(code);
 }
 
+/**
+ * @param {unknown} value
+ * @returns {bigint}
+ */
 function usdToMicroFloor(value) {
   if (typeof value !== "string" || !/^\d+(?:\.\d{1,9})?$/.test(value)) deny("invalid_remaining_usd");
   const [whole, fraction = ""] = value.split(".");
@@ -39,6 +102,7 @@ function usdToMicroFloor(value) {
   return micros;
 }
 
+/** @param {unknown} value */
 function rate(value) {
   if (typeof value !== "number" || !Number.isFinite(value) || value <= 0 || value > 1000000) {
     deny("invalid_verified_rate");
@@ -46,8 +110,13 @@ function rate(value) {
   return value;
 }
 
+/**
+ * @param {unknown} prices
+ * @returns {Readonly<Record<string, Readonly<VerifiedPrice>>>}
+ */
 function snapshotPriceTable(prices) {
   if (!isRecord(prices) || Object.keys(prices).length === 0) deny("missing_verified_price_table");
+  /** @type {Record<string, Readonly<VerifiedPrice>>} */
   const snapshot = Object.create(null);
   for (const [model, entry] of Object.entries(prices)) {
     if (!model || !isRecord(entry)) deny("invalid_verified_price_table");
@@ -73,6 +142,7 @@ function snapshotPriceTable(prices) {
   return Object.freeze(snapshot);
 }
 
+/** @param {HeadersInit | undefined} headers */
 function headersContainJson(headers) {
   try {
     const value = new Headers(headers).get("content-type");
@@ -82,6 +152,7 @@ function headersContainJson(headers) {
   }
 }
 
+/** @param {unknown} input */
 function validateTextInput(input) {
   if (typeof input === "string") return;
   if (!Array.isArray(input) || input.length === 0) deny("unsupported_response_input");
@@ -108,6 +179,12 @@ function validateTextInput(input) {
   }
 }
 
+/**
+ * @param {"responses" | "embeddings"} endpoint
+ * @param {unknown} body
+ * @param {Readonly<Record<string, Readonly<VerifiedPrice>>>} prices
+ * @returns {Readonly<VerifiedPrice>}
+ */
 function validateBody(endpoint, body, prices) {
   if (!isRecord(body) || typeof body.model !== "string") deny("unsupported_json_body");
   const price = prices[body.model];
@@ -118,7 +195,8 @@ function validateBody(endpoint, body, prices) {
       typeof body.instructions !== "string" ||
       !Number.isSafeInteger(body.max_output_tokens) ||
       body.max_output_tokens <= 0 ||
-      body.max_output_tokens > price.maxOutputTokens ||
+      // snapshotPriceTable validated maxOutputTokens as a safe integer for every responses entry.
+      body.max_output_tokens > /** @type {number} */ (price.maxOutputTokens) ||
       body.store !== false ||
       body.service_tier !== "default"
     )
@@ -198,6 +276,12 @@ const wireRefusalReasons = new Set([
   "reservation_commit_failed",
   "transport_aborted_before_dispatch",
 ]);
+/**
+ * @param {unknown} error
+ * @param {string} key
+ * @param {Set<string>} allowed
+ * @returns {string}
+ */
 function refusalReason(error, key, allowed) {
   try {
     if (!error || (typeof error !== "object" && typeof error !== "function")) return "unknown";
@@ -210,7 +294,20 @@ function refusalReason(error, key, allowed) {
   }
 }
 
-/** Every accepted fetch call consumes an irrevocable reservation before forwarding. */
+/**
+ * Every accepted fetch call consumes an irrevocable reservation before forwarding.
+ *
+ * @param {object} options
+ * @param {(input: string, init: RequestInit) => Promise<Response>} options.dispatch
+ * @param {string} options.remainingUsd decimal USD string, validated below
+ * @param {unknown} options.prices
+ * @param {string} options.verifiedPriceTableRef
+ * @param {string | URL} options.expectedOrigin
+ * @param {number} options.maxSerializedJsonBytes validated below as a positive safe integer
+ * @param {(reservation: WireReservation) => unknown} [options.onReserve]
+ * @param {(serializedBody: string) => unknown} [options.admitResponse]
+ * @returns {Readonly<WireBudgetGuard>}
+ */
 export function createWireBudgetGuard({
   dispatch,
   remainingUsd,
@@ -229,24 +326,41 @@ export function createWireBudgetGuard({
   const budgetMicroUsd = usdToMicroFloor(remainingUsd);
   let reservedMicroUsd = 0n;
   let attempts = 0;
+  /** @type {WireBudgetDenied | null} */
   let denial = null;
+  /** @type {Readonly<{ stage: string, reason: string }> | null} */
   let firstRefusal = null;
   const reservationAttempts = { embeddings: 0, responses: 0 };
   const dispatchAttempts = { embeddings: 0, responses: 0 };
+  /** @type {"exact" | "saturated"} */
   let counterState = "exact";
+  /**
+   * @param {{ embeddings: number, responses: number }} counts
+   * @param {"responses" | "embeddings"} endpoint
+   */
   const increment = (counts, endpoint) => {
     if (counts[endpoint] < 65535) counts[endpoint] += 1;
     else counterState = "saturated";
   };
+  /**
+   * @param {string} stage
+   * @param {string} reason
+   */
   const latchRefusal = (stage, reason) => {
     firstRefusal ??= Object.freeze({ stage: refusalStages.has(stage) ? stage : "unknown", reason });
   };
+  /** @type {Promise<unknown>} */
   let reservationWriteTail = Promise.resolve();
   const origin = new URL(expectedOrigin);
   if (origin.href !== "https://api.openai.com/") {
     deny("invalid_expected_origin");
   }
 
+  /**
+   * @param {unknown} input
+   * @param {RequestInit} [init]
+   * @returns {Promise<Response>}
+   */
   const fetch = async (input, init) => {
     if (denial) throw denial; // SDK may retry a failed fetch; keep refusal sticky.
     let refusalStage = "serialized_wire";
@@ -353,6 +467,11 @@ export function createWireBudgetGuard({
   };
   return Object.freeze({
     fetch,
+    /**
+     * @param {string} [stage]
+     * @param {unknown} [error]
+     * @returns {never}
+     */
     reject: (stage = "prepared", error) => {
       latchRefusal(stage, refusalReason(error, "message", helperRefusalReasons));
       denial ??= new WireBudgetDenied("generation_proof_refused");
