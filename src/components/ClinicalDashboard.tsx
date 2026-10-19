@@ -95,6 +95,7 @@ import { PrivateScopeUnavailableAlert } from "@/components/clinical-dashboard/pr
 import { DashboardSearchErrorState } from "@/components/clinical-dashboard/dashboard-search-error-state";
 import { useDashboardShellActions } from "@/components/clinical-dashboard/use-dashboard-shell-actions";
 import { useDashboardSearchExecution } from "@/components/clinical-dashboard/use-dashboard-search-execution";
+import { notNowDocumentsSearch } from "@/components/front-door/ask-terms-not-now";
 import { useAskTermsGate } from "@/components/front-door/use-ask-terms-gate";
 import { Button } from "@/components/ui/button";
 import { ASK_TERMS_DECLINED_NOTICE, ASK_TERMS_REVIEW_LABEL } from "@/lib/front-door-content";
@@ -944,10 +945,15 @@ function ClinicalDashboardContent({
   // unsent, until the current Terms are accepted. Not now runs the same question
   // as a Documents search instead, through the cross-mode path the results use.
   const askTermsGate = useAskTermsGate({
-    onNotNow: (heldQuery) => {
+    onNotNow: async (heldQuery) => {
       // Review from the documents notice, then Not now again: those documents are already shown.
       if (searchMode === "documents" && query.trim() === heldQuery) return;
-      crossModeSearch("documents", heldQuery);
+      const fallback = await notNowDocumentsSearch(heldQuery);
+      if ("notice" in fallback) {
+        setActionNotice({ tone: "warning", message: fallback.notice });
+        return;
+      }
+      crossModeSearch("documents", fallback.query);
     },
     onSaveFailed: (message) => setActionNotice({ tone: "warning", message }),
   });

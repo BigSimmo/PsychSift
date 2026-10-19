@@ -253,8 +253,10 @@ describe("Terms step wiring", () => {
     expect(dashboard).toContain("ask: sendAsk,");
     expect(dashboard).toMatch(/const ask: typeof sendAsk = async[\s\S]*?askTermsGate\.guard\(searchText/);
     expect(dashboard).toContain("onAsk={ask}");
-    // Not now runs the same question as a Documents search.
-    expect(dashboard).toContain('crossModeSearch("documents", heldQuery)');
+    // Not now runs the same question as a Documents search, only after the patient check passes.
+    expect(dashboard).toMatch(
+      /const fallback = await notNowDocumentsSearch\(heldQuery\);[\s\S]*?if \("notice" in fallback\) \{[\s\S]*?return;\s*\}\s*crossModeSearch\("documents", fallback\.query\);/,
+    );
     // An Answer cross-search, a follow-up pick and a re-check all wait for the step too.
     expect(dashboard).toMatch(/if \(mode === "answer" && crossQuery\.trim\(\)\) \{\s*askTermsGate\.guard/);
     expect(dashboard).toContain("askTermsGate.guard(suggestion,");
@@ -265,5 +267,37 @@ describe("Terms step wiring", () => {
     const config = read("playwright.config.ts");
     expect(config).toContain(`name: "${DEVICE_TERMS_KEY}", value: TERMS_VERSION`);
     expect(config).toContain("storageState: returningVisitor");
+  });
+});
+
+describe("Not now documents fallback (audit S2)", () => {
+  it("runs a question with no patient detail as a Documents search", async () => {
+    const { notNowDocumentsSearch } = await import("@/components/front-door/ask-terms-not-now");
+    await expect(notNowDocumentsSearch("lithium monitoring interval")).resolves.toEqual({
+      query: "lithium monitoring interval",
+    });
+  });
+
+  it("does not run a question that looks like it holds a patient detail", async () => {
+    const { notNowDocumentsSearch } = await import("@/components/front-door/ask-terms-not-now");
+    const check = await import("@/lib/clinical-question-patient-check");
+    const loadCheck = async () => ({
+      ...check,
+      clinicalQuestionPatientDetail: () => ({ kind: "synthetic" }) as never,
+      clinicalQuestionPatientDetailMessage: () => "Remove the patient detail first.",
+    });
+    await expect(notNowDocumentsSearch("synthetic question", loadCheck)).resolves.toEqual({
+      notice: "Remove the patient detail first.",
+    });
+  });
+
+  it("does not run a question it could not check", async () => {
+    const { notNowDocumentsSearch } = await import("@/components/front-door/ask-terms-not-now");
+    const result = await notNowDocumentsSearch("lithium monitoring interval", () =>
+      Promise.reject(new Error("offline")),
+    );
+    expect(result).toEqual({
+      notice: "Could not check your question for patient details. Check your connection and try again.",
+    });
   });
 });
