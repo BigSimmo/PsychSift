@@ -354,6 +354,11 @@
         "area": "mockup"
       },
       {
+        "path": "/terms",
+        "file": "src/app/terms/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/privacy-page-directions",
         "file": "src/app/mockups/privacy-page-directions/page.tsx",
         "area": "mockup"
@@ -842,6 +847,11 @@
         "path": "/mockups/document-search/search",
         "file": "src/app/mockups/document-search/search/page.tsx",
         "area": "mockup"
+      },
+      {
+        "path": "/about",
+        "file": "src/app/about/page.tsx",
+        "area": "product"
       },
       {
         "path": "/roster/requests",

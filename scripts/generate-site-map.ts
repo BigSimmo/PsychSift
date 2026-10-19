@@ -95,6 +95,8 @@ const documentedRedirectTargets: Record<string, string> = {
 
 const routeDescriptions: Record<string, string> = {
   "/": "Main PsychSift shell.",
+  "/about":
+    "About and intended use: what PsychSift is, who it is for, and how to use it safely (draft wording, owner sign-off pending).",
   "/applications": "Legacy application launcher redirect to Tools.",
   "/calculators": "Psychiatry rating scale scoring and clinical decision calculators.",
   "/calculators/search":
@@ -149,6 +151,8 @@ const routeDescriptions: Record<string, string> = {
   "/medications": "Compatibility redirect to the shared Medication (prescribing) home.",
   "/medications/[slug]": "Medication detail.",
   "/privacy": "Public privacy and data-processing transparency notice; governance approval pending.",
+  "/terms":
+    "Versioned Terms of Use; signed-in users accept each new version once (draft wording, owner sign-off pending).",
   "/reference/colour-coding": "Clinical domain and category colour-coding palette reference.",
   "/safety-plan":
     "Patient safety plan generator (Stanley-Brown six steps), inside the search shell under Psychiatry; opened from the Psychiatry page's For a shift row.",

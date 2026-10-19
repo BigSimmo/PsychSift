@@ -1,6 +1,7 @@
 // tests/route-redirects.test.ts
 //
 // `/login`, `/signin`, `/settings` and `/about` returned 404 (2026-09-17 audit, finding L3).
+// `/about` redirected to `/privacy` until it became a real page (About and intended use, 2026-10-18).
 // Each of them already HAS a home in the app -- the account wall on Favourites, the settings
 // dialog, the privacy page -- so they are redirects rather than new pages: a real route would be
 // a second surface to keep in step with the first, plus an orphan-route entry for a page that
@@ -26,11 +27,14 @@ describe("routes people type that would otherwise 404", () => {
     ["/signin", "/favourites"],
     ["/sign-in", "/favourites"],
     ["/settings", "/?settings=open"],
-    ["/about", "/privacy"],
   ])("sends %s to %s", async (source, destination) => {
     const found = (await redirects()).find((entry) => entry.source === source);
     expect(found, `no redirect configured for ${source}`).toBeDefined();
     expect(found!.destination).toBe(destination);
+  });
+
+  it("does not redirect /about, which is now the About and intended use page", async () => {
+    expect((await redirects()).find((entry) => entry.source === "/about")).toBeUndefined();
   });
 
   it("marks them permanent, because each destination is where the feature lives", async () => {
