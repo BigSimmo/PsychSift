@@ -2509,6 +2509,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-19-invite-only-sign-up-until-launch.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/care-plan/interaction-matrix.md",
         "section": "care-plan",
         "catalogued": true
@@ -2736,6 +2741,11 @@
       {
         "path": "docs/dsm5tr-handover-reconciliation-2026-09-16.md",
         "section": "root",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-19-on-call-example-rows-stay-shared.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -3201,6 +3211,11 @@
       {
         "path": "docs/operator-rehearsal-plan.md",
         "section": "root",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-19-answer-stays-open-to-signed-out-visitors.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -4106,6 +4121,11 @@
       {
         "path": "docs/archive/2026-10-agent-code-reviews/EXTENDED_ISSUE_INVENTORY.md",
         "section": "archive",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-19-no-patient-details-rollout-rule.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
