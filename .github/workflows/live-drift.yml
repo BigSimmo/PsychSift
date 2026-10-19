@@ -25,6 +25,11 @@ permissions:
 
 jobs:
   live-drift:
+    # Holds SUPABASE_SERVICE_ROLE_KEY; restricted to main, no required reviewers, so the weekly
+    # schedule and the post-merge push run unattended. A manual dispatch from any other branch is
+    # refused by the environment's branch rule (the job fails, and drift-routing reports it).
+    # See docs/deployment-architecture.md, "The production-secrets environment" (audit F-21).
+    environment: production-secrets
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
@@ -57,7 +62,7 @@ jobs:
           missing=""
           [ -z "$SUPABASE_SERVICE_ROLE_KEY" ] && missing="$missing SUPABASE_SERVICE_ROLE_KEY"
           if [ -n "$missing" ]; then
-            echo "::error::Live drift check cannot run - missing repo secrets:$missing"
+            echo "::error::Live drift check cannot run - missing secrets (production-secrets environment):$missing"
             exit 1
           fi
 
@@ -168,7 +173,9 @@ jobs:
   # repository code — the drift job above keeps contents: read only.
   drift-routing:
     needs: live-drift
-    if: ${{ !cancelled() }}
+    # Only main can deploy to production-secrets, so a manual run from another branch is refused
+    # before the drift job checks anything. Routing it would open a false production alarm.
+    if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:

@@ -270,7 +270,14 @@ describe("live-drift workflow triggers and privileges", () => {
 
   it("keeps the secret preflight so a missing key fails loudly rather than silently passing", () => {
     expect(workflow).toContain("Preflight required secrets");
-    expect(workflow).toContain("Live drift check cannot run - missing repo secrets:");
+    expect(workflow).toContain("Live drift check cannot run - missing secrets (production-secrets environment):");
+  });
+
+  it("reads the service-role key only through the main-only production-secrets environment (audit F-21)", () => {
+    const environments = workflow.match(/^\s+environment:.*$/gm) ?? [];
+    expect(environments.map((line) => line.trim())).toEqual(["environment: production-secrets"]);
+    const liveDriftJob = workflow.slice(workflow.indexOf("  live-drift:\n"), workflow.indexOf("  drift-routing:\n"));
+    expect(liveDriftJob).toContain("    environment: production-secrets\n");
   });
 
   it("grants issues: write only to the routing job", () => {
@@ -300,6 +307,11 @@ describe("live-drift workflow triggers and privileges", () => {
 
   it("still routes when the drift job fails", () => {
     expect(workflow).toContain("if: ${{ !cancelled() }}");
+  });
+
+  it("routes only runs on main, so a refused branch run raises no production alarm", () => {
+    const routing = workflow.slice(workflow.indexOf("  drift-routing:"));
+    expect(routing).toContain("if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}");
   });
 });
 
