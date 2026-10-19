@@ -1,5 +1,10 @@
 import { loadEnvConfig } from "@next/env";
-import { nonNullDocumentIds, partitionStorageCleanupJobs } from "@/lib/storage-cleanup-safety";
+import {
+  cleanupJobMetadata,
+  nonNullDocumentIds,
+  partitionStorageCleanupJobs,
+  withoutReferencedPaths,
+} from "@/lib/storage-cleanup-safety";
 import { loadAdminClient } from "./eval-utils";
 import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
@@ -23,6 +28,7 @@ export type CleanupJob = {
   public_source_cleanup_not_before: string | null;
   public_source_claim_token?: string | null;
   public_source_claim_expires_at?: string | null;
+  metadata?: Record<string, unknown> | null;
 };
 
 type ClaimedPublicSourceCleanup = {
@@ -166,6 +172,18 @@ async function removePaths(args: {
   return { removed, warnings };
 }
 
+async function referencedImagePaths(supabase: Awaited<ReturnType<typeof loadAdminClient>>, paths: string[]) {
+  const referenced = new Set<string>();
+  const uniquePaths = Array.from(new Set(paths.filter(Boolean)));
+  for (let start = 0; start < uniquePaths.length; start += 50) {
+    const batch = uniquePaths.slice(start, start + 50);
+    const { data, error } = await supabase.from("document_images").select("storage_path").in("storage_path", batch);
+    if (error) throw new Error(error.message);
+    for (const row of data ?? []) referenced.add(row.storage_path);
+  }
+  return referenced;
+}
+
 async function main() {
   loadEnvConfig(process.cwd());
   const args = parseArgs(process.argv.slice(2));
@@ -173,7 +191,7 @@ async function main() {
   const { data, error } = await supabase
     .from("storage_cleanup_jobs")
     .select(
-      "id,document_id,document_bucket,document_paths,image_bucket,image_paths,attempts,public_source_reservation_id,public_source_upload_attempt_id,public_source_storage_bucket,public_source_storage_path,public_source_cleanup_not_before",
+      "id,document_id,document_bucket,document_paths,image_bucket,image_paths,attempts,public_source_reservation_id,public_source_upload_attempt_id,public_source_storage_bucket,public_source_storage_path,public_source_cleanup_not_before,metadata",
     )
     .in("status", ["pending", "failed"])
     .is("public_source_reservation_id", null)
@@ -224,7 +242,7 @@ async function main() {
           attempts: job.attempts + 1,
           last_error: identityError,
           completed_at: null,
-          metadata: { operation: "storage_cleanup_identity_rejected" },
+          metadata: cleanupJobMetadata(job.metadata, "storage_cleanup_identity_rejected"),
         })
         .eq("id", job.id);
       if (identityUpdateError) throw new Error(identityUpdateError.message);
@@ -236,10 +254,11 @@ async function main() {
       bucket: job.document_bucket ?? "clinical-documents",
       paths: job.document_paths ?? [],
     });
+    const imagePaths = job.image_paths ?? [];
     const imageCleanup = await removePaths({
       supabase,
       bucket: job.image_bucket ?? "clinical-images",
-      paths: job.image_paths ?? [],
+      paths: withoutReferencedPaths(imagePaths, await referencedImagePaths(supabase, imagePaths)),
     });
     const warnings = [...documentCleanup.warnings, ...imageCleanup.warnings];
     const nextStatus = warnings.length > 0 ? "failed" : "completed";
@@ -251,10 +270,7 @@ async function main() {
         storage_removed: documentCleanup.removed + imageCleanup.removed,
         last_error: warnings.length ? warnings.join("; ") : null,
         completed_at: nextStatus === "completed" ? new Date().toISOString() : null,
-        metadata: {
-          operation: "storage_cleanup_retry",
-          storage_warnings: warnings,
-        },
+        metadata: cleanupJobMetadata(job.metadata, "storage_cleanup_retry", { storage_warnings: warnings }),
       })
       .eq("id", job.id);
 

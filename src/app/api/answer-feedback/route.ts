@@ -58,6 +58,46 @@ function isCatalogueRecord(recordType: "medication" | "therapy", recordId: strin
   return getMedicationRecord(recordId)?.slug === recordId;
 }
 
+/**
+ * A problem report replaces an earlier "supported" ('verified') verdict on the same answer.
+ * One conditional update, so it can only ever touch a 'verified' row: an existing problem
+ * report is never overwritten, and a second concurrent report finds no row and gets the
+ * usual 409. The database trigger gives the replaced row a fresh id and created_at, so it
+ * reaches the review queue as a new signal. Returns true when a row was replaced.
+ */
+async function supersedeVerifiedFeedback(
+  supabase: ReturnType<typeof createAdminClient>,
+  row: Omit<TablesInsert<"rag_answer_feedback">, "owner_id">,
+  ownerId: string | null,
+): Promise<boolean> {
+  const report = {
+    feedback_category: row.feedback_category,
+    note: row.note ?? null,
+    cited_source_ids: row.cited_source_ids ?? [],
+    source_ids: row.source_ids ?? [],
+    route: row.route ?? null,
+    model: row.model ?? null,
+    provider_request_ids: row.provider_request_ids ?? [],
+  };
+  // Only the same reader's (or the same anonymous) 'verified' row for this exact answer.
+  const earlierVerdict = {
+    interaction_id: row.interaction_id,
+    answer_hash: row.answer_hash,
+    record_type: "answer",
+    feedback_category: "verified",
+  };
+  const { data, error } = ownerId
+    ? await supabase
+        .from("rag_answer_feedback")
+        .update(report)
+        .match(earlierVerdict)
+        .eq("owner_id", ownerId)
+        .select("id")
+    : await supabase.from("rag_answer_feedback").update(report).match(earlierVerdict).is("owner_id", null).select("id");
+  if (error) throw new PublicApiError("Answer feedback could not be saved.", 500, { code: "feedback_insert_failed" });
+  return (data?.length ?? 0) > 0;
+}
+
 export async function POST(request: Request) {
   try {
     if (isDemoMode())
@@ -129,9 +169,13 @@ export async function POST(request: Request) {
       };
     }
 
-    const { error } = await supabase.from("rag_answer_feedback").insert({ ...row, owner_id: access.ownerId ?? null });
+    const ownerId = access.ownerId ?? null;
+    const { error } = await supabase.from("rag_answer_feedback").insert({ ...row, owner_id: ownerId });
     if (error) {
       if (error.code === "23505") {
+        if (row.record_type === "answer" && row.feedback_category !== "verified") {
+          if (await supersedeVerifiedFeedback(supabase, row, ownerId)) return NextResponse.json({ ok: true });
+        }
         return publicErrorResponse("Feedback has already been recorded for this answer.", 409, {
           code: "feedback_already_recorded",
         });
