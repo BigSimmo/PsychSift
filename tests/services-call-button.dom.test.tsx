@@ -23,10 +23,13 @@ const withoutPhone: ServiceRecord = {
 const registryRecords = [withPhone, withoutPhone];
 const navigation = vi.hoisted(() => ({ push: vi.fn() }));
 const registryState = vi.hoisted(() => ({ status: "ready" }));
+// `null` reads the live address on every render. A string pins what useSearchParams
+// reports, to model Next not having committed a native history update yet.
+const searchParamsState = vi.hoisted(() => ({ pinned: null as string | null }));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: navigation.push, replace: vi.fn() }),
-  useSearchParams: () => new URLSearchParams(window.location.search),
+  useSearchParams: () => new URLSearchParams(searchParamsState.pinned ?? window.location.search),
 }));
 
 vi.mock("next/link", () => ({
@@ -76,6 +79,7 @@ beforeEach(() => {
   setSearch("");
   navigation.push.mockClear();
   registryState.status = "ready";
+  searchParamsState.pinned = null;
 });
 
 function setSearch(search: string) {
@@ -242,6 +246,31 @@ describe("services clinical workflow navigation", () => {
     rerender(<ServicesNavigatorPage />);
     expect(new URLSearchParams(window.location.search).has("shortlist")).toBe(false);
     expect(screen.queryByTestId("services-shortlist-bar")).toBeNull();
+  });
+
+  it("restores the comparison when Back lands before the cleared address was adopted", async () => {
+    const compareSearch = `q=Call&scope=all&shortlist=${withPhone.slug},${withoutPhone.slug}&workflow=compare`;
+    setSearch(compareSearch);
+    const { rerender } = render(<ServicesNavigatorPage />);
+    expect(screen.getByTestId("services-comparison")).toBeInTheDocument();
+
+    // Next has not yet adopted the Clear pushState when Back arrives, so
+    // useSearchParams keeps reporting the comparison address throughout.
+    searchParamsState.pinned = compareSearch;
+    fireEvent.click(within(screen.getByTestId("services-shortlist-bar")).getByRole("button", { name: "Clear" }));
+    expect(new URLSearchParams(window.location.search).has("shortlist")).toBe(false);
+    expect(screen.queryByTestId("services-comparison")).toBeNull();
+
+    await act(async () => {
+      await new Promise<void>((resolve) => {
+        window.addEventListener("popstate", () => resolve(), { once: true });
+        window.history.back();
+      });
+    });
+    rerender(<ServicesNavigatorPage />);
+    expect(new URLSearchParams(window.location.search).get("workflow")).toBe("compare");
+    expect(screen.getByTestId("services-comparison")).toBeInTheDocument();
+    expect(screen.getByTestId("services-shortlist-bar")).toHaveTextContent("2 shortlisted");
   });
 
   it.each([

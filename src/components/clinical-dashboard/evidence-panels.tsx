@@ -170,7 +170,7 @@ export function AnswerUtilityActions({
             type="button"
             onClick={onCopy}
             className={cn(chatMicroAction, "min-w-0")}
-            aria-label="Copy answer with source status"
+            aria-label={`${copied ? "Copied" : "Copy"} with sources: answer and source status`}
           >
             <Copy aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
             {/* Below 360px (small phones) the full label truncated to "Copy …".
@@ -185,7 +185,7 @@ export function AnswerUtilityActions({
             href={cpdHref}
             data-testid="answer-log-cpd"
             className={cn(chatMicroAction, "shrink-0")}
-            aria-label="Log learning from this answer's source as CPD"
+            aria-label="Log as CPD: learning from this answer's source"
           >
             <GraduationCap aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
             Log as CPD

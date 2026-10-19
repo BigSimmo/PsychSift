@@ -32,7 +32,9 @@ describe("AnswerUtilityActions · feedback on a clean answer", () => {
         onSubmitFeedback={() => undefined}
       />,
     );
-    expect(screen.getByRole("button", { name: "Copy answer with source status" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /^Cop(?:y|ied) with sources: answer and source status$/ }),
+    ).toBeInTheDocument();
 
     const report = screen.getByTestId("answer-feedback-trigger");
     expect(report).toHaveAccessibleName("Report a problem with this answer");

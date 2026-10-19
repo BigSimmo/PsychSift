@@ -765,6 +765,20 @@
   color-scheme: light;
 }
 
+/* The seed above is exact for the answer-mode overlay header, which pads its own
+   top with `pt-[max(0.5rem,var(--safe-area-top))]`. Every other phone overlay host
+   renders `.phone-sticky-header-stack` instead: a `chrome-safe-area-top` spacer the
+   height of the inset, then the bar with a plain `pt-2`. That stack is
+   inset + 0.5rem + --shell-header-h tall, so on a notched phone the shared seed was
+   8px short (123px against a measured 131px) until the reserve hook's quiet window
+   republished, moving the page 8px after it had painted. In headless WebKit that
+   settle waited for the first gesture and showed as an 8px post-gesture scroll jump
+   (release-browser-matrix, main run 39120425367). With no inset the two formulas are
+   equal, and the hook still refines addon rows. */
+:root:has(.phone-sticky-header-stack) {
+  --phone-overlay-chrome-h: calc(var(--safe-area-top) + 0.5rem + var(--shell-header-h));
+}
+
 .dark {
   /* Dark neutral ramp (inverted): black-polish canvas to near-white ink. */
   --neutral-0: #060708;

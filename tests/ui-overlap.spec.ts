@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "playwright/test";
+import { expectAtLeastCssPx } from "./helpers/layout-tolerance";
 import { clickWhenSettled } from "./playwright-settlement";
 
 /**
@@ -748,7 +749,9 @@ test.describe("Tablet usability regressions", () => {
       const name = await control.getAttribute("aria-label");
       const box = await control.boundingBox();
       expect(box, `${name}: control must render`).not.toBeNull();
-      expect(box!.height, `${name}: must meet the 48px tap floor at 820px`).toBeGreaterThanOrEqual(48);
+      // Firefox measured 47.999969482421875 for the favourites button (main run 39120425367):
+      // float error from the rect, not a control below the min-h-12 floor.
+      expectAtLeastCssPx(box!.height, 48, `${name}: must meet the 48px tap floor at 820px`);
     }
   });
 

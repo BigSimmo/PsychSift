@@ -16,13 +16,16 @@ import { meetsCssPxFloor, subpixelTolerance } from "./helpers/layout-tolerance";
  * still fails a real regression, so every floor here is also pinned from below.
  */
 describe("meetsCssPxFloor", () => {
-  it("accepts the three values Firefox actually reported", () => {
+  it("accepts the values Firefox actually reported", () => {
     // A 16px card gap Firefox reported (formerly tests/ui-formulation-result-cards.spec.ts).
     expect(meetsCssPxFloor(15.999969482421875, 16)).toBe(true);
     // tests/ui-stress.spec.ts:624 — a 12px medication column gap.
     expect(meetsCssPxFloor(11.999954223632812, 12)).toBe(true);
     // tests/ui-smoke.spec.ts:754 — a 48px tap target, plus its 2px allowance.
     expect(meetsCssPxFloor(45.98333740234375 + 2, 48)).toBe(true);
+    // Main run 39120425367: a 48px clinical-record row and a 48px Services favourites
+    // button, both 2^-15 px short (tests/ui-smoke.spec.ts, tests/ui-overlap.spec.ts).
+    expect(meetsCssPxFloor(47.999969482421875, 48)).toBe(true);
   });
 
   it("still fails a real regression at each of those floors", () => {

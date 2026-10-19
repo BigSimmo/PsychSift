@@ -641,6 +641,15 @@ export function ServicesNavigatorPage() {
   // Keep the clicked view immediate while Next adopts the native history
   // update. Retire it when the URL changes so Back cannot resurrect it.
   if (workflowOverride && workflowOverride.urlKey !== workflowUrlKey) setWorkflowOverride(null);
+  // Retiring on a key change alone is not enough. Next adopts the pushState in a
+  // transition, and a Back pressed before it commits (WebKit, main run 39120425367:
+  // Clear on Compare, then Back) returns the URL to the very key the override was
+  // stamped with, so useSearchParams never shows a change and the cleared view
+  // would be resurrected over the restored comparison. A history traversal means
+  // the address is the truth again, so it always retires the optimistic view.
+  // The listener is armed by the click that stamps the override (no effect: this
+  // surface derives its view from the URL during render) and fires at most once.
+  const retireOverrideOnTraversalRef = useRef<(() => void) | null>(null);
   const pendingWorkflow = workflowOverride?.urlKey === workflowUrlKey ? workflowOverride : null;
   const requestedSlugs = pendingWorkflow?.selectedSlugs ?? readShortlist(urlShortlist);
   // Bookmarked identifiers can outlive catalogue records. Once the registry
@@ -681,6 +690,14 @@ export function ServicesNavigatorPage() {
     const nextStage = nextSelection.length === 0 ? "search" : stage;
     if (nextStage !== "search") setFilterOpen(false);
     setWorkflowOverride({ urlKey: workflowUrlKey, selectedSlugs: nextSelection, stage: nextStage });
+    if (!retireOverrideOnTraversalRef.current) {
+      const retireOverride = () => {
+        retireOverrideOnTraversalRef.current = null;
+        setWorkflowOverride(null);
+      };
+      retireOverrideOnTraversalRef.current = retireOverride;
+      window.addEventListener("popstate", retireOverride, { once: true });
+    }
     // This is client-only view state: publish it synchronously before another
     // control can submit a query. Next's native-history integration updates
     // useSearchParams without a server navigation; real view transitions use
