@@ -41,6 +41,8 @@ describe("ops digest workflow contract", () => {
     expect(workflow).toContain("ops-digest-rpc-history");
     // Alerts reach the owner's phone through GitHub mobile, which pushes an assignee's issue activity.
     expect(workflow).toContain("github.rest.issues.addAssignees");
+    // The rolling issue is reused, so the mention, not the assignment, pushes every later alert.
+    expect(workflow).toContain("body: `@${alertAssignee} ⚠ Attention");
     expect(workflow.indexOf("await assignAlert(issueNumber);")).toBeGreaterThan(
       workflow.indexOf('if (publishAttentionComment && (status !== "ok" || alerting))'),
     );
