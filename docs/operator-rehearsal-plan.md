@@ -105,23 +105,37 @@ restore does and does not bring back.
 
 **2a. Start the database restore (timed).**
 
+**Prerequisite, before requesting any restore.** Supabase copies enabled `pg_cron` jobs into a
+restored project and starts them as soon as the restore finishes. The copied
+`invoke_indexing_v3_agent` job carries the production Vault secret and, with its base URL unset,
+falls back to the production agent, so it could call production before anyone can switch it off.
+Disabling it afterwards only shortens that window. Do not start the restore until one of these is
+confirmed in writing and recorded:
+
+- the restore screen, or Supabase support, confirms a restore option that brings cron jobs back
+  disabled, and you will use it; or
+- the owner approves another control that stops the copied job reaching production before it can
+  run, and you have checked it is in place.
+
+If neither is confirmed, **stop here**. Skip section 2, record "restore not rehearsed: no pre-restore
+cron containment", and tell the owner.
+
 1. Start a stopwatch.
 2. Supabase dashboard, project `PsychSift Production` (`sjrfecxgysukkwxsowpy`), Database, Backups.
    Note the plan setting (daily backups or point-in-time recovery) and the time of the newest backup.
 3. Choose **Restore to a new project**. Name it `PsychSift DR Rehearsal YYYY-MM-DD`, region
    ap-southeast-2. Record the compute size and the hourly price the screen shows.
 4. Record the time the restore was requested and the time the new project reports healthy.
-5. **Straight away, before anything else**, disable every copied `pg_cron` job on the restore project.
-   Supabase copies enabled cron jobs into a restored project and starts them as soon as the restore
-   finishes, so `invoke_indexing_v3_agent` could otherwise call the production agent:
+5. **Straight away, before anything else**, make sure every copied `pg_cron` job on the restore
+   project is disabled:
    ```sql
    -- Run on the restore project only. Check the project ref in the SQL editor header first.
    UPDATE cron.job SET active = false;
    SELECT jobname, active FROM cron.job ORDER BY jobname;  -- every row must show active = false
    ```
-   Record how long the jobs were active (healthy time to this step) and check the production agent's
-   logs for any call from the restore project in that window. If one arrived, record it and tell the
-   owner. If Supabase offers a restore option that leaves cron jobs disabled, use it instead.
+   This is a second check, not the containment: the prerequisite above must already hold. Still
+   check the production agent's logs for any call from the restore project since it reported
+   healthy. If one arrived, the prerequisite failed: record it and tell the owner.
 
 **2b. Copy Storage files (timed).** A database restore does not copy Storage objects. The Supabase CLI
 Storage commands are marked experimental; check `supabase storage --help` on the CLI version you use.
