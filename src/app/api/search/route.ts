@@ -24,6 +24,7 @@ import {
 import { publicAccessContext } from "@/lib/public-api-access";
 import { clinicalQueryModeSchema, queryClassForClinicalMode, queryForClinicalMode } from "@/lib/clinical-query-mode";
 import { parseJsonBody } from "@/lib/validation/body";
+import { rejectPatientDetailQuestion } from "@/lib/clinical-question-patient-check-server";
 import { resolveSearchScope, searchScopeFiltersSchema } from "@/lib/search-scope";
 import { retrievalHealthFromTelemetry } from "@/lib/search-retrieval-health";
 import { resolveRetrievalAccessScope } from "@/lib/owner-scope";
@@ -910,6 +911,9 @@ export async function POST(request: Request) {
 
   try {
     const searchBody = await parseJsonBody(request, searchSchema, "Invalid search request.");
+    // Search text is embedded by the same overseas AI service as Answer, so refuse a query that
+    // looks like it holds a patient detail before retrieval runs (repository audit F-01).
+    rejectPatientDetailQuestion(searchBody);
     body = searchBody;
     if (isDemoMode()) {
       return NextResponse.json(buildDemoSearchPayload(searchBody));

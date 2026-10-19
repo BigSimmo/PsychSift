@@ -56,6 +56,20 @@ function isBotTrafficEvent(event: Sentry.Event): boolean {
   );
 }
 
+/**
+ * A 5xx response or an unhandled exception is a server fault whoever sent the request, so
+ * automated traffic (uptime monitors, curl, headless browsers) must not hide it. Only a bot
+ * event that is demonstrably not a server error, such as a 4xx response or a warning-level
+ * capture, is noise worth dropping. Without a status code, an error- or fatal-level event is
+ * kept, so an unclear event fails towards being seen.
+ */
+function isServerErrorEvent(event: Sentry.Event): boolean {
+  const statusCode = event.contexts?.response?.status_code;
+  if (typeof statusCode === "number") return statusCode >= 500;
+  if (event.exception?.values?.some((exception) => exception.mechanism?.handled === false)) return true;
+  return event.level === undefined || event.level === "error" || event.level === "fatal";
+}
+
 /** Bootstrap client used only to attach constructor-level Supabase DB instrumentation. */
 function supabaseTracingIntegrations() {
   // Inert unless DSN is set and tracing sample rate is > 0 (docs/error-tracking.md).
@@ -117,7 +131,7 @@ try {
     ignoreErrors: ignoredServerErrors,
     integrations: supabaseTracingIntegrations(),
     beforeSend(event) {
-      if (isBotTrafficEvent(event)) return null;
+      if (isBotTrafficEvent(event) && !isServerErrorEvent(event)) return null;
       return privacySafeErrorEvent(event);
     },
     beforeSendTransaction(event) {
