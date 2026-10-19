@@ -530,6 +530,7 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
           evidenceInventory,
           issuedControlSnapshot,
         });
+        recordClaimProcessed(); // A managed terminal is a successful claim for the health check too
         return;
       }
       const {
@@ -716,6 +717,7 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
       if (enrichmentStatus === "completed") {
         const strictCompletion = await completeStrictEnrichmentJob(job);
         if (strictCompletion.completed) {
+          recordClaimProcessed(); // Strict completion finished the job; count it for the health check
           invalidateRagCachesForDocumentMutation(job.documents.owner_id ?? "anonymous", {
             affectsPublicCorpus: !job.documents.owner_id,
           });

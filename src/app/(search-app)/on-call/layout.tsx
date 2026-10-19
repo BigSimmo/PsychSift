@@ -4,6 +4,13 @@ import "@/components/on-call/on-call-work.css";
 
 import { ModeBand } from "@/components/mode-band/mode-band";
 import { OnCallExampleDataScope } from "@/lib/on-call/entry-store";
+import type { Metadata } from "next";
+import { PRIVATE_APP_ROBOTS_METADATA } from "@/lib/crawler-policy";
+
+// Personal work area: kept out of search results (repository audit F-30).
+export const metadata: Metadata = {
+  robots: PRIVATE_APP_ROBOTS_METADATA,
+};
 
 export default function OnCallLayout({ children }: { children: ReactNode }) {
   // A top-level mode: today's date where the back link would be.

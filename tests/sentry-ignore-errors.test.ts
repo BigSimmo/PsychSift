@@ -89,3 +89,81 @@ describe("Sentry server ignoreErrors", () => {
     }
   });
 });
+
+describe("Sentry server beforeSend bot filter", () => {
+  type BeforeSend = (event: Record<string, unknown>) => unknown;
+
+  async function loadServerBeforeSend(): Promise<BeforeSend> {
+    vi.stubEnv("SENTRY_ENABLE_LOGS", "false");
+    vi.stubEnv("SENTRY_DSN", "https://public@example.invalid/1");
+    await import("@/sentry.server.config");
+    const options = sentry.init.mock.calls[0]?.[0] as { beforeSend?: BeforeSend } | undefined;
+    expect(typeof options?.beforeSend).toBe("function");
+    return options!.beforeSend!;
+  }
+
+  const headlessChrome =
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/120.0.0.0 Safari/537.36";
+
+  it("keeps a 500-class server error from an automated user agent", async () => {
+    const beforeSend = await loadServerBeforeSend();
+    const kept = beforeSend({
+      level: "error",
+      request: { headers: { "user-agent": headlessChrome } },
+      contexts: { response: { status_code: 500 } },
+      exception: { values: [{ type: "TypeError", value: "boom", mechanism: { type: "generic", handled: true } }] },
+    });
+    expect(kept).not.toBeNull();
+    // An unhandled exception with no response status is kept too.
+    expect(
+      beforeSend({
+        level: "error",
+        request: { headers: { "user-agent": "curl/8.5.0" } },
+        exception: {
+          values: [
+            {
+              type: "Error",
+              value: "boom",
+              mechanism: { type: "auto.function.nextjs.on_request_error", handled: false },
+            },
+          ],
+        },
+      }),
+    ).not.toBeNull();
+  });
+
+  it("still drops bot noise that is not a server error", async () => {
+    const beforeSend = await loadServerBeforeSend();
+    expect(
+      beforeSend({
+        level: "error",
+        request: { headers: { "user-agent": headlessChrome } },
+        contexts: { response: { status_code: 404 } },
+        exception: {
+          values: [{ type: "Error", value: "missing page", mechanism: { type: "generic", handled: true } }],
+        },
+      }),
+    ).toBeNull();
+    expect(
+      beforeSend({
+        level: "warning",
+        request: { headers: { "user-agent": "Googlebot/2.1" } },
+        message: "probe for a missing path",
+      }),
+    ).toBeNull();
+  });
+
+  it("keeps a 4xx-type event from a human browser", async () => {
+    const beforeSend = await loadServerBeforeSend();
+    expect(
+      beforeSend({
+        level: "error",
+        request: { headers: { "user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)" } },
+        contexts: { response: { status_code: 404 } },
+        exception: {
+          values: [{ type: "Error", value: "missing page", mechanism: { type: "generic", handled: true } }],
+        },
+      }),
+    ).not.toBeNull();
+  });
+});

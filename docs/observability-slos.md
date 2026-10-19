@@ -29,7 +29,8 @@ text.
 Manual target windows are stated below. Configured ops-digest answer alerts use
 exactly one trailing 60-minute snapshot from `answerSloSnapshot`
 (`src/lib/observability/answer-slo.ts`) through the secret-gated
-`/api/health?deep=1` probe. The checked-in digest runs daily, so this does not
+`/api/health?deep=1` probe. The checked-in digest runs every six hours
+(`15 */6 * * *`), so this samples four 60-minute windows a day and does not
 provide continuous hourly coverage. "Page" is a policy severity; configuration
 does not establish that any provider notification was delivered or acknowledged.
 
@@ -39,7 +40,7 @@ does not establish that any provider notification was delivered or acknowledged.
 | Signal                            | Configured code(s)                                 | Trigger in a valid 60-minute snapshot                                                                                                    |
 | --------------------------------- | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | Missing/unassessed SLO telemetry  | `OPS_ANSWER_SLO_UNKNOWN`                           | Missing SLO block, nonpositive/invalid query count, or window other than 60 minutes                                                      |
-| Hybrid-RPC error rate             | `OPS_HYBRID_RPC_ERROR_RATE_{UNKNOWN,WARNING,PAGE}` | Unknown for an invalid rate; warn above 0.5%; page only for the same RPC in three persisted contiguous hourly windows                    |
+| Hybrid-RPC error rate             | `OPS_HYBRID_RPC_ERROR_RATE_{UNKNOWN,WARNING,PAGE}` | Unknown for an invalid rate; warn above 0.5%; page only for the same RPC in three persisted consecutive digest samples                   |
 | Provider-generation degradation   | `OPS_DEGRADED_ANSWER_RATE_{UNKNOWN,WARNING,PAGE}`  | Unknown for an invalid rate; warn above 20%; page above 50%                                                                              |
 | Source-gap rate                   | `OPS_SOURCE_GAP_RATE_{WARNING,PAGE}`               | Warn `sourceGapRate > 0.15`; page `> 0.30`; at least 20 answered queries                                                                 |
 | Unsupported-answer rate           | `OPS_UNSUPPORTED_ANSWER_RATE_{WARNING,PAGE}`       | Warn `unsupportedRate > 0.15`; page `> 0.25`; at least 20 answered queries                                                               |
@@ -204,9 +205,11 @@ tolerance is near zero.
 - **SLO:** 0 sustained errors. Isolated blips (< 0.1 % over 24 h) tolerated.
 - **Warn:** > 0.5 % of queries in any 1 h window.
 - **Page:** a positive current rate plus complete persisted evidence of the
-  same safe RPC identifier failing in each of three contiguous UTC-hour
-  buckets. A generic sustained rate or repeated names in one snapshot is
-  insufficient. The daily schedule alone cannot supply that history.
+  same safe RPC identifier failing in each of three consecutive digest
+  samples (scheduled or manual, each no more than 12 hours after the last).
+  A generic sustained rate or repeated names in one snapshot is
+  insufficient. Three consecutive six-hourly scheduled runs can supply that
+  history on their own.
 
 ```sql
 select
@@ -465,7 +468,7 @@ thresholds map directly onto these fields.
 
 ## 5. Operational alert delivery and drill
 
-`scripts/lib/operational-alerts.mjs` is the provider-neutral policy owner for the §2 answer SLOs. The daily (`0 22 * * *`, 22:00 UTC) digest emits stable alert codes with owner, escalation owner and this runbook, and publishes `alerting`, highest `severity`, and a compact JSON summary to the workflow. Missing SLO telemetry and a zero-query denominator are `unknown`, never healthy. Each authorised deep probe returns only safe internal hybrid-RPC identifiers and counts. The workflow stores the last three identity-only 60-minute observations in the GitHub Actions cache, then pages `OPS_HYBRID_RPC_ERROR_RATE_PAGE` only when the same RPC has a nonzero count in all three contiguous UTC-hour buckets. The digest runs once daily at `0 22 * * *` (`.github/workflows/ops-digest.yml`), so each scheduled run measures a single 60-minute window and consecutive scheduled windows are a day apart: this three-contiguous-hour condition needs one successful run in each of three consecutive UTC-hour buckets; scheduled and manual runs both count, so in practice manual dispatches supply at least two of them (a second run in the same bucket replaces that hour's observation rather than adding one); the daily schedule alone can never page it, because at least two of the three buckets must come from manual dispatches. A missing, evicted, malformed, incomplete, or non-contiguous history is never promoted to a page. Degraded answers page independently and immediately only above the documented 50% 60-minute threshold.
+`scripts/lib/operational-alerts.mjs` is the provider-neutral policy owner for the §2 answer SLOs. The six-hourly (`15 */6 * * *`) digest emits stable alert codes with owner, escalation owner and this runbook, and publishes `alerting`, highest `severity`, and a compact JSON summary to the workflow. Missing SLO telemetry and a zero-query denominator are `unknown`, never healthy. Each authorised deep probe returns only safe internal hybrid-RPC identifiers and counts. The workflow stores the last three identity-only 60-minute observations in the GitHub Actions cache, then pages `OPS_HYBRID_RPC_ERROR_RATE_PAGE` only when the same RPC has a nonzero count in three consecutive digest samples. The digest runs every six hours at `15 */6 * * *` (`.github/workflows/ops-digest.yml`), so each scheduled run measures a single 60-minute window and consecutive scheduled windows are six hours apart. The condition counts consecutive samples, not consecutive UTC hours: scheduled and manual runs both count, and a sample joins the sequence when it lands no more than 12 hours (two schedule intervals) after the previous one, so a late or dropped GitHub cron fire does not break it. Three consecutive scheduled runs can therefore page on their own. A second run in the same UTC hour replaces that hour's observation rather than adding one. A missing, evicted, malformed, incomplete, or non-contiguous history is never promoted to a page. Degraded answers page independently and immediately only above the documented 50% 60-minute threshold.
 
 The digest's **Service readiness** headline describes the service checks, not answer quality. An exactly 60-minute snapshot with zero answered queries displays **No answered queries observed—answer quality not assessed**, with answer-SLO rates shown as **N/A**. The underlying counters and machine-readable `OPS_ANSWER_SLO_UNKNOWN` alert remain unchanged: this is an unassessed window, not a measured degraded-answer incident or proof of healthy answers. A missing SLO block or invalid window must not be labelled as no answer activity.
 
@@ -496,14 +499,14 @@ The rolling issue is the provider-neutral queue. For every alert, the on-duty op
 
 ### `OPS_HYBRID_RPC_ERROR_RATE_WARNING`
 
-- **Diagnose:** inspect the 60-minute hybrid-RPC error count, database function availability, latency, and recent deployment/migration events. Do not infer a three-hour condition from a single daily (`0 22 * * *`) snapshot.
+- **Diagnose:** inspect the 60-minute hybrid-RPC error count, database function availability, latency, and recent deployment/migration events. Do not infer a sustained condition from a single six-hourly (`15 */6 * * *`) snapshot.
 - **Acknowledge:** Platform operations records the measured rate and start of the affected 60-minute snapshot window.
-- **Recover:** require the next valid 60-minute snapshot (from a manual dispatch or the next daily digest) at or below `0.5%`.
+- **Recover:** require the next valid 60-minute snapshot (from a manual dispatch or the next six-hourly digest) at or below `0.5%`.
 - **Escalate:** Clinical safety owner if user-visible retrieval is affected or the warning persists into a second 60-minute snapshot window.
 
 ### `OPS_HYBRID_RPC_ERROR_RATE_PAGE`
 
-- **Diagnose:** verify the cached identity-only history contains the same safe RPC identifier in three contiguous UTC-hour buckets with a nonzero count in each. Treat missing, incomplete, malformed, evicted, or non-contiguous history as insufficient for paging; inspect database/RPC availability and recent changes.
+- **Diagnose:** verify the cached identity-only history contains the same safe RPC identifier in three consecutive digest samples (each no more than 12 hours after the last) with a nonzero count in each. Treat missing, incomplete, malformed, evicted, or non-contiguous history as insufficient for paging; inspect database/RPC availability and recent changes.
 - **Acknowledge:** Platform operations opens the configured incident route and records all three window references.
 - **Recover:** require a valid hourly snapshot with zero hybrid-RPC errors, followed by owner confirmation that the failing RPC path is restored.
 - **Escalate:** Clinical safety owner immediately; keep the incident open until recovery evidence is attached.

@@ -68,3 +68,10 @@ it("re-reads NEXT_PUBLIC_SITE_URL per call instead of freezing it at module load
     else process.env.RAILWAY_PUBLIC_DOMAIN = originalRailwayDomain;
   }
 });
+
+it("keeps personal work areas out of search results (audit F-30)", () => {
+  for (const area of ["roster", "my-day", "admin", "on-call", "cme", "teaching", "open-shifts"]) {
+    const layout = readFileSync(join(process.cwd(), `src/app/(search-app)/${area}/layout.tsx`), "utf8");
+    expect(layout, area).toMatch(/robots:\s*PRIVATE_APP_ROBOTS_METADATA/);
+  }
+});
