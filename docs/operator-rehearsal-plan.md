@@ -28,10 +28,6 @@ It closes, or moves forward, these ledger rows in [`outstanding-issues.md`](outs
 
 A blank row means that step does not run.
 
-**Owner approval, 2026-10-19:** the owner approved the rehearsal day's cost in principle (a few US dollars at
-the smallest restore size, plus the optional soak). The date and each row above are still filled in before
-the day, and the stop rule on price below still applies.
-
 ## Ground rules for the whole day
 
 - **Production is read from, never written to.** The only production actions are reading the backup
