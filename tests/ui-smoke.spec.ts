@@ -2296,7 +2296,9 @@ test.describe("PsychSift UI smoke coverage", () => {
       await page.context().grantPermissions(["clipboard-read", "clipboard-write"], {
         origin: new URL(page.url()).origin,
       });
-      const copyWithSources = page.getByRole("button", { name: "Copy answer with source status" });
+      const copyWithSources = page.getByRole("button", {
+        name: /^Cop(?:y|ied) with sources: answer and source status$/,
+      });
       await expect(copyWithSources).toBeVisible();
       await expectMinTouchTarget(copyWithSources);
       await copyWithSources.click();
@@ -2744,7 +2746,7 @@ test.describe("PsychSift UI smoke coverage", () => {
       await visibleAnswerSubmitButton(page).click();
       const answerSurface = page.getByTestId("plain-answer-response");
       await expect(answerSurface).toBeVisible({ timeout: uiAssertionTimeoutMs });
-      await page.getByRole("button", { name: "Copy answer with source status" }).click();
+      await page.getByRole("button", { name: /^Cop(?:y|ied) with sources: answer and source status$/ }).click();
 
       const copiedText = await page.evaluate(() => navigator.clipboard.readText());
       expect(copiedText).toContain("toxicity safety-net review");
@@ -2836,7 +2838,7 @@ test.describe("PsychSift UI smoke coverage", () => {
       expect(seenTables.sort()).toEqual(["ANC actions", "Metabolic monitoring"]);
       expect(sawCaveat).toBe(true);
 
-      await page.getByRole("button", { name: "Copy answer with source status" }).click();
+      await page.getByRole("button", { name: /^Cop(?:y|ied) with sources: answer and source status$/ }).click();
       const copiedText = await page.evaluate(() => navigator.clipboard.readText());
       expect(copiedText).toContain("ANC range | [header missing] | Action");
       expect(copiedText).toContain("1.0–1.5 × 10⁹/L | [blank] | Increase monitoring");

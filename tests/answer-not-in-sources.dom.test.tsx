@@ -49,7 +49,9 @@ describe("AnswerUtilityActions · reportOnly", () => {
       />,
     );
     expect(screen.getByTestId("answer-feedback-trigger")).toHaveAccessibleName("Report a problem with this answer");
-    expect(screen.queryByRole("button", { name: "Copy answer with source status" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /^Cop(?:y|ied) with sources: answer and source status$/ }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByTestId("answer-log-cpd")).not.toBeInTheDocument();
     expect(screen.queryByTestId("answer-feedback-useful")).not.toBeInTheDocument();
   });

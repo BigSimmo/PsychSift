@@ -407,7 +407,7 @@ export function NaturalLanguageAnswer({
               type="button"
               onClick={onCopy}
               className={chatMicroAction}
-              aria-label="Copy answer with source status"
+              aria-label={`${copied ? "Copied" : "Copy"} with sources: answer and source status`}
             >
               <Copy aria-hidden="true" className="h-3.5 w-3.5" />
               {copied ? "Copied with sources" : "Copy with sources"}

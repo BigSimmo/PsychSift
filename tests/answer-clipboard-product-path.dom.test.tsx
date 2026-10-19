@@ -72,7 +72,7 @@ async function copiedTextFor(answer: Partial<RagAnswer>) {
     />,
   );
 
-  await userEvent.click(screen.getByRole("button", { name: "Copy answer with source status" }));
+  await userEvent.click(screen.getByRole("button", { name: /^Cop(?:y|ied) with sources: answer and source status$/ }));
   expect(onCopy).toHaveBeenCalledOnce();
   return onCopy.mock.calls[0]?.[0] as string;
 }

@@ -509,14 +509,24 @@ function AnswerSourceCard({
  * status, because an `aria-label` replaces the card's own text: without them a
  * screen reader would hear the title and page but never that the document is
  * outdated or that it only partly supports the answer.
+ *
+ * It also keeps the card's visible words in their on-screen order (badge
+ * number, title, "p. N", status) so a speech-input user can say what they see
+ * (WCAG 2.5.3, axe `label-content-name-mismatch`). The support grade, which the
+ * card shows only as colour, comes after them.
  */
 function cardLabel(source: AnswerSourceRow, index: number, searchOnly = false) {
+  const spoken = sourceSpokenName(source, index);
+  const badge = sourceBadgeDisplay(source, index);
+  // "Source 1" already ends with the visible "1"; a searched document's spoken
+  // name does not, and the dash an uncited card shows is not a word.
+  const lead = badge === "—" || spoken.endsWith(badge) ? spoken : `${spoken} ${badge}`;
   return [
-    `${sourceSpokenName(source, index)}: ${cleanDisplayTitle(source.title)}`,
-    `page ${source.pageNumber ?? "not available"}`,
+    `${lead}: ${cleanDisplayTitle(source.title)}`,
+    `p. ${source.pageNumber ?? "n/a"}`,
+    sourceStatusShortLabel(source.metadata),
     // A refusal's card was searched, not relied on, so it carries no support grade.
     searchOnly ? null : sourceSupportLabel(source),
-    sourceStatusShortLabel(source.metadata),
   ]
     .filter(Boolean)
     .join(", ");
