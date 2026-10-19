@@ -303,3 +303,34 @@ describe("groupIsWorthShowing", () => {
     expect(groupIsWorthShowing(group({ items: [], total: 0, error: true, degraded: true }))).toBe(false);
   });
 });
+
+describe("useUniversalSearch patient-detail screening (design audit D-03)", () => {
+  it("fetches no suggestions for text shaped like a labelled date of birth", async () => {
+    const { result } = renderHook(() =>
+      useUniversalSearch({ query: "dob: 01/02/1960 lithium", enabled: true, contextMode: "documents" }),
+    );
+    await startDebouncedRequest();
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(result.current).toMatchObject({ groups: [], loading: false, withheld: true });
+  });
+
+  it("fetches no suggestions for a named patient once the fuller check has loaded", async () => {
+    fetchMock.mockResolvedValue(new Response("", { status: 500 }));
+    const { result, rerender } = renderHook(
+      ({ query }) => useUniversalSearch({ query, enabled: true, contextMode: "prescribing" }),
+      { initialProps: { query: "lithium" } },
+    );
+    await startDebouncedRequest();
+    await act(async () => {
+      await vi.dynamicImportSettled();
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    rerender({ query: "Mr John Citizen lithium" });
+    await startDebouncedRequest();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(result.current).toMatchObject({ groups: [], loading: false, withheld: true });
+  });
+});

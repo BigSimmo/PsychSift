@@ -14,6 +14,7 @@ import { universalSearchDomains, type UniversalSearchDomain } from "@/lib/univer
 import { consumeUniversalSearchNdjson } from "@/lib/universal-search-stream";
 import type { AppModeId } from "@/lib/app-modes";
 import { useAuthSession } from "@/lib/supabase/client";
+import { identifierShapeWarning } from "@/lib/clinical-ask/context";
 
 export type UniversalSearchState = {
   groups: UniversalSearchGroup[];
@@ -37,6 +38,8 @@ export type UniversalSearchState = {
   tooLong?: boolean;
   /** The request failed (non-OK response or network error). Never cached. */
   error?: string;
+  /** The text looks like it holds a patient detail, so no suggestions were fetched. */
+  withheld?: boolean;
 };
 
 type UniversalSearchResult = {
@@ -50,6 +53,7 @@ type UniversalSearchResult = {
   contextMode?: AppModeId;
   preferredDomains?: UniversalSearchDomain[];
   error?: string;
+  withheld?: boolean;
 };
 
 type UniversalSearchCacheEntry = {
@@ -58,6 +62,34 @@ type UniversalSearchCacheEntry = {
 };
 
 const debounceMs = 250;
+
+// Suggestions are fetched while the clinician is still typing, before any Ask, so the text is
+// screened first: a name, date of birth or record number must never reach a request URL or a
+// server log line (design audit D-03). The fuller check loads on demand once typing starts, as
+// the composer's does, so pages that never type don't download it. Until it has loaded, the
+// narrower shape check (labelled DOB, record number, phone, email) still holds suggestions back.
+type PatientCheckModule = typeof import("@/lib/clinical-question-patient-check");
+let patientCheckModule: PatientCheckModule | null = null;
+let patientCheckLoading = false;
+
+function preloadPatientCheck() {
+  if (patientCheckModule || patientCheckLoading) return;
+  patientCheckLoading = true;
+  import("@/lib/clinical-question-patient-check").then(
+    (mod) => {
+      patientCheckModule = mod;
+    },
+    () => {
+      patientCheckLoading = false;
+    },
+  );
+}
+
+function looksLikePatientDetail(text: string): boolean {
+  if (identifierShapeWarning(text)) return true;
+  return patientCheckModule ? patientCheckModule.clinicalQuestionPatientDetail(text) !== null : false;
+}
+
 const minQueryLength = 2;
 // Mirrors the `q` bound in the universal search route (`z.string().trim().min(2).max(200)`).
 // A longer query would only earn a 400, so it is reported locally instead of fetched.
@@ -198,11 +230,17 @@ export function useUniversalSearch(args: {
     }
 
     const requestId = ++requestSeqRef.current;
+    preloadPatientCheck();
 
     // Cancel the superseded request on the next keystroke: dropping the stale response client-side
     // is not enough — abort frees the server/DB work too.
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
+      if (looksLikePatientDetail(trimmedQuery)) {
+        if (controller.signal.aborted || requestId !== requestSeqRef.current) return;
+        setResult({ groups: [], query: trimmedQuery, contextMode: args.contextMode, complete: true, withheld: true });
+        return;
+      }
       const excludedDomains = new Set(excludedDomainsKey ? excludedDomainsKey.split(",") : []);
       const domains = universalSearchDomains.filter((domain) => !excludedDomains.has(domain));
       const params = new URLSearchParams({
@@ -315,5 +353,6 @@ export function useUniversalSearch(args: {
     contextMode: fresh ? result.contextMode : undefined,
     preferredDomains: fresh ? result.preferredDomains : undefined,
     ...(fresh && result.error ? { error: result.error } : {}),
+    ...(fresh && result.withheld ? { withheld: true } : {}),
   };
 }
