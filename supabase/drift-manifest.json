@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-19T18:41:34.613Z",
+  "generated_at": "2026-10-19T23:44:28.557Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "db3bbc7d548d85a7ca4ee39da7bc4c87d49371684ecd7c521a7d1344679caef9",
-  "replay_seconds": 19,
+  "schema_sha256": "1f50f13587aba5d8915e1a10989f51d4019d73eac79368dc325c346ba0eb51f8",
+  "replay_seconds": 21,
   "snapshot": {
     "views": [
       {
@@ -18587,6 +18587,11 @@
         "table": "rag_aliases"
       },
       {
+        "def": "CREATE TRIGGER rag_answer_feedback_retire_superseded_triage AFTER UPDATE ON public.rag_answer_feedback FOR EACH ROW WHEN ((old.id IS DISTINCT FROM new.id)) EXECUTE FUNCTION public.retire_superseded_feedback_triage()",
+        "name": "rag_answer_feedback_retire_superseded_triage",
+        "table": "rag_answer_feedback"
+      },
+      {
         "def": "CREATE TRIGGER rag_answer_feedback_update_guard BEFORE UPDATE ON public.rag_answer_feedback FOR EACH ROW EXECUTE FUNCTION public.guard_rag_answer_feedback_update()",
         "name": "rag_answer_feedback_update_guard",
         "table": "rag_answer_feedback"
@@ -20378,6 +20383,14 @@
         ],
         "def_hash": "46b92bde9ce13ffa9579baae719576dc",
         "signature": "public.retire_site_content_record(text,uuid,text,bigint,text,text,text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "fe486935175f0957eb725c1e5af9e8ac",
+        "signature": "public.retire_superseded_feedback_triage()"
       },
       {
         "acl": [
