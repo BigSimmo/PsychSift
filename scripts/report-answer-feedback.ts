@@ -205,7 +205,7 @@ export function weeklySummaryMarkdown(summary: unknown): string {
   return [
     "## Answer feedback weekly summary",
     "",
-    `${window.from} to ${window.to}: **${String(summary.totalReports)}** reports. Notes are not included here; they are cleared from the database after 90 days.`,
+    `${window.from} to ${window.to}: **${String(summary.totalReports)}** reports. Notes are not included here; they are cleared from the database after 30 days.`,
     "",
     table("Category", summary.categoryCounts as Record<string, number>),
     table("Page", summary.pageCounts as Record<string, number>),

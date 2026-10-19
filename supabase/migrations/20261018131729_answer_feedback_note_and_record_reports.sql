@@ -2,9 +2,9 @@
 --
 -- 1. An optional short note (at most 500 characters) on each feedback row. The API runs the
 --    shared patient-detail check before saving and refuses text that looks identifying; this
---    column is still treated as possibly sensitive, so the note alone is cleared after 90 days
---    (the longest query-telemetry window in docs/privacy-impact-assessment.md section 6) while
---    the content-free category row is kept.
+--    column is still treated as possibly sensitive, so the note alone is cleared after 30 days
+--    (the same 30-day window the admin review queue reads, so no note outlives the only place a
+--    reviewer can act on it) while the content-free category row is kept.
 -- 2. Reports on medication and therapy records, not only on answers: record_type says which
 --    page the report came from, and record_id holds that record's public slug.
 --
@@ -48,10 +48,10 @@ create policy "rag answer feedback service role"
 
 comment on column public.rag_answer_feedback.note is
   'Optional reviewer note, at most 500 characters, checked for patient details before saving.
-   Never logged. Cleared (set to null) 90 days after created_at by the pg_cron job
+   Never logged. Cleared (set to null) 30 days after created_at by the pg_cron job
    "purge-rag-answer-feedback-notes" (see purge_expired_rag_answer_feedback_notes).';
 
-create or replace function public.purge_expired_rag_answer_feedback_notes(p_retention_days integer default 90)
+create or replace function public.purge_expired_rag_answer_feedback_notes(p_retention_days integer default 30)
 returns integer
 language plpgsql
 security definer
@@ -90,7 +90,7 @@ begin
   perform cron.schedule(
     'purge-rag-answer-feedback-notes',
     '50 3 * * *',
-    $job$select public.purge_expired_rag_answer_feedback_notes(90);$job$
+    $job$select public.purge_expired_rag_answer_feedback_notes(30);$job$
   );
 end
 $cron$;

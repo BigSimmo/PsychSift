@@ -46,6 +46,9 @@ describe("report a problem: optional note", () => {
         /looks like it holds a patient detail/,
       ),
     );
+    // A refused note stays in the open sheet, next to the refusal, so it can be edited and resent.
+    expect(within(sheet).getByTestId("medication-report-problem-notice")).toBeInTheDocument();
+    expect(within(sheet).getByTestId("answer-feedback-note")).toHaveValue("Synthetic note");
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe("/api/answer-feedback");

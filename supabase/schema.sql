@@ -6457,12 +6457,12 @@ drop policy if exists "rag answer feedback service role" on public.rag_answer_fe
 create policy "rag answer feedback service role" on public.rag_answer_feedback for all to service_role using (true) with check (true);
 comment on column public.rag_answer_feedback.note is
   'Optional reviewer note, at most 500 characters, checked for patient details before saving.
-   Never logged. Cleared (set to null) 90 days after created_at by the pg_cron job
+   Never logged. Cleared (set to null) 30 days after created_at by the pg_cron job
    "purge-rag-answer-feedback-notes" (see purge_expired_rag_answer_feedback_notes).';
 
--- Migration 20261018131729: the optional feedback note is cleared after 90 days; the
+-- Migration 20261018131729: the optional feedback note is cleared after 30 days; the
 -- content-free category row is kept.
-create or replace function public.purge_expired_rag_answer_feedback_notes(p_retention_days integer default 90)
+create or replace function public.purge_expired_rag_answer_feedback_notes(p_retention_days integer default 30)
 returns integer
 language plpgsql
 security definer
@@ -6495,7 +6495,7 @@ begin
   perform cron.schedule(
     'purge-rag-answer-feedback-notes',
     '50 3 * * *',
-    $job$select public.purge_expired_rag_answer_feedback_notes(90);$job$
+    $job$select public.purge_expired_rag_answer_feedback_notes(30);$job$
   );
 end
 $cron$;

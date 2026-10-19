@@ -111,7 +111,7 @@ export const ragAnswerFeedbackRowSchema = z
     cited_source_ids: z.array(z.string().trim().min(1).max(160)).max(80),
     created_at: z.iso.datetime({ offset: true }),
     // Which page the report came from, and the reader's optional note (administrators only;
-    // the note is cleared after 90 days and never enters the weekly summary).
+    // the note is cleared after 30 days and never enters the weekly summary).
     record_type: z.enum(feedbackRecordTypes).default("answer"),
     record_id: z.string().regex(feedbackRecordIdPattern).nullable().default(null),
     note: z.string().max(ANSWER_FEEDBACK_NOTE_MAX_LENGTH).nullable().default(null),

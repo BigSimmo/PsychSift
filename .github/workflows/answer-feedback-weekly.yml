@@ -6,7 +6,7 @@ name: Answer feedback weekly summary
 # Content-free by construction: scripts/report-answer-feedback.ts --weekly-summary selects only
 # the category and the page type. It never selects the optional note, the record slug, the owner,
 # the answer hash or any id that joins to query telemetry, so no free text reaches the log or the
-# summary. The notes stay in the database only, and are cleared after 90 days.
+# summary. The notes stay in the database only, and are cleared after 30 days.
 #
 # It reads the production feedback table with the existing SUPABASE_SERVICE_ROLE_KEY secret (the
 # same secret live-drift.yml uses), scoped to the one step that runs the report, after the script's

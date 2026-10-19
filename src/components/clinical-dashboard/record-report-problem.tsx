@@ -49,7 +49,8 @@ export function RecordReportProblem({
 
   async function submit(feedbackCategory: AnswerFeedbackType, note?: string) {
     if (pending) return;
-    setOpen(false);
+    // The sheet stays open until the report is saved, so a refused or failed note stays on screen
+    // to edit and resend instead of being lost when the panel unmounts.
     setPending(feedbackCategory);
     setNotice(null);
     try {
@@ -66,6 +67,7 @@ export function RecordReportProblem({
         });
         return;
       }
+      setOpen(false);
       report({ tone: "success", message: "Thanks. The report was saved for review." });
     } catch {
       report({ tone: "warning", message: "The report could not be saved. Check the connection and try again." });
@@ -79,7 +81,10 @@ export function RecordReportProblem({
       <button
         ref={triggerRef}
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setNotice(null);
+          setOpen(true);
+        }}
         disabled={Boolean(pending)}
         aria-haspopup="dialog"
         aria-expanded={open}
@@ -89,7 +94,7 @@ export function RecordReportProblem({
         <ThumbsDown aria-hidden="true" className="h-3.5 w-3.5" />
         {pending ? "Saving report" : "Report a problem"}
       </button>
-      {notice ? (
+      {notice && !open ? (
         <p className={cn("m-0 text-xs", textMuted)} data-testid={`${recordType}-report-problem-notice`}>
           {notice.message}
         </p>
@@ -103,6 +108,11 @@ export function RecordReportProblem({
         closeLabel="Close report a problem"
         testId={`${recordType}-report-problem-sheet`}
       >
+        {notice ? (
+          <p className={cn("m-0 mb-2 text-xs", textMuted)} data-testid={`${recordType}-report-problem-notice`}>
+            {notice.message}
+          </p>
+        ) : null}
         <AnswerFeedbackPanel pending={pending} onSubmit={submit} tone="problems" chrome="bare" />
       </Sheet>
     </div>
