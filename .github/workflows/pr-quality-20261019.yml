@@ -1,0 +1,66 @@
+name: Quality-only pre-PR repair 20261019
+on:
+  push:
+    branches: [diag/pr-quality-20261019]
+permissions:
+  contents: read
+concurrency:
+  group: psychsift-pr-quality-20261019
+  cancel-in-progress: false
+env:
+  # Frozen product source and baseline reviewed by root before diagnostic publication.
+  SOURCE_SHA: "97f000dc8b5595c51910d304665b75d4a91da29f"
+  BASE_SHA: "0995deabf1065cbdc716272b87b86fbbcd941279"
+  HEAD_SHA: "97f000dc8b5595c51910d304665b75d4a91da29f"
+  CI: "true"
+  NEXT_TELEMETRY_DISABLED: "1"
+  DO_NOT_TRACK: "1"
+  RAG_PROVIDER_MODE: offline
+  NEXT_PUBLIC_SUPABASE_URL: https://sjrfecxgysukkwxsowpy.supabase.co
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: placeholder-ci-publishable-key
+jobs:
+  quality:
+    if: github.repository == 'BigSimmo/PsychSift' && github.event.repository.private == false && github.event_name == 'push' && github.ref == 'refs/heads/diag/pr-quality-20261019'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout exact diagnostic commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Setup pinned Node without cache
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 24.22.0
+          package-manager-cache: false
+      - name: Verify exact source, scope and public repository
+        id: source
+        run: bash .github/diagnostics/pr-quality-20261019/source.sh
+      - name: Install actual exact lock and lifecycle scripts once
+        id: deps
+        run: timeout --kill-after=10s 360s npm ci --include=dev --fetch-retries=0 --no-audit --fund=false --update-notifier=false
+      - name: Selected normal PR gates, full source TypeScript and offline readiness
+        id: quality
+        run: timeout --kill-after=15s 2220s node /tmp/psychsift-pr-quality-helpers/quality.mjs
+      - name: Retain bounded sanitized proof in logs
+        id: proof
+        if: always()
+        run: |
+          test -s /tmp/psychsift-pr-quality-proof/quality-plan.json
+          python3 /tmp/psychsift-pr-quality-helpers/log-proof.py
+      - name: Require every quality gate
+        if: always()
+        env:
+          SOURCE: ${{ steps.source.outcome }}
+          DEPS: ${{ steps.deps.outcome }}
+          QUALITY: ${{ steps.quality.outcome }}
+          PROOF: ${{ steps.proof.outcome }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          result={k:os.environ[k] for k in ['SOURCE','DEPS','QUALITY','PROOF']}
+          print('PREFLIGHT_GATES',json.dumps(result,sort_keys=True))
+          if any(v!='success' for v in result.values()): raise SystemExit(1)
+          PY
