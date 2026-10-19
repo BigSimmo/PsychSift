@@ -212,9 +212,9 @@ function StepProgress({
                 )}
               >
                 {isComplete ? <Check className="h-3.5 w-3.5" aria-hidden /> : index + 1}
-              </span>
+              </span>{" "}
               <span className="min-w-0">
-                <span className="block text-2xs font-extrabold break-words sm:text-xs">{step.shortLabel}</span>
+                <span className="block text-2xs font-extrabold break-words sm:text-xs">{step.shortLabel}</span>{" "}
                 <span className="hidden text-2xs font-semibold break-words lg:block">{step.detail}</span>
               </span>
             </button>

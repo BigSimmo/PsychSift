@@ -436,7 +436,7 @@ function AnswerSourceCard({
         aria-hidden="true"
       >
         {sourceBadgeDisplay(source, index)}
-      </span>
+      </span>{" "}
       <span className="grid min-w-0 gap-0.5 text-left">
         <span
           className={cn(
@@ -445,13 +445,13 @@ function AnswerSourceCard({
           )}
         >
           {cleanDisplayTitle(source.title)}
-        </span>
+        </span>{" "}
         <span className={cn("flex items-center gap-1.5 truncate text-2xs leading-tight", textMuted)}>
           {/* Tabular figures keep page numbers aligned between cards; the mono
               face the old list row used opened a visible gap after "p." at this
               size. */}
           <span className="shrink-0 tabular-nums">p. {source.pageNumber ?? "n/a"}</span>
-          <span aria-hidden className={sourceStatusDotClass(source.metadata)} />
+          <span aria-hidden className={sourceStatusDotClass(source.metadata)} />{" "}
           <span className={cn("truncate", stale && "font-semibold text-[color:var(--warning)]")}>
             {sourceStatusShortLabel(source.metadata)}
           </span>

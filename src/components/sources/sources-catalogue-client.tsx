@@ -128,15 +128,13 @@ function SourceTile({ entry }: { entry: ClinicalSourceClientEntry }) {
   const currency = latestKnownDate(entry);
 
   return (
-    <Link
-      href={`/sources/${entry.id}`}
-      aria-label={`View source details: ${entry.title}`}
+    <div
       className={cn(
         // A row of the one catalogue card, not a card of its own: the list
         // draws the box and a hairline divides each source from the next.
-        "group grid min-h-12 grid-cols-[minmax(0,1fr)_auto] items-start gap-3 px-4 py-3.5 transition-colors",
+        "group relative grid min-h-12 grid-cols-[minmax(0,1fr)_auto] items-start gap-3 px-4 py-3.5 transition-colors",
         "hover:bg-[color:var(--surface-subtle)] motion-reduce:transition-none",
-        "focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--focus)]",
+        "has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:-outline-offset-2 has-[:focus-visible]:outline-[color:var(--focus)]",
       )}
     >
       <span className="min-w-0">
@@ -160,9 +158,17 @@ function SourceTile({ entry }: { entry: ClinicalSourceClientEntry }) {
             </Chip>
           ))}
         </span>
-        <span className="mt-2 block text-sm-minus font-extrabold leading-5 text-[color:var(--text-heading)]">
+        {/* The link wraps only the title and stretches over the row, so the
+            whole row stays one target. Wrapping the whole row gave the link
+            every word on it as visible text, which a "View source details"
+            label cannot contain (WCAG 2.5.3, axe `label-content-name-mismatch`). */}
+        <Link
+          href={`/sources/${entry.id}`}
+          aria-label={`View source details: ${entry.title}`}
+          className="mt-2 block text-sm-minus font-extrabold leading-5 text-[color:var(--text-heading)] after:absolute after:inset-0 focus-visible:outline-none"
+        >
           {entry.title}
-        </span>
+        </Link>
         <span className="mt-1 block truncate text-2xs font-semibold leading-4 text-[color:var(--text-muted)]">
           {entry.publisher ?? "Publisher unknown"} · {entry.geography.label} · {titleCase(entry.sourceType)}
         </span>
@@ -182,7 +188,7 @@ function SourceTile({ entry }: { entry: ClinicalSourceClientEntry }) {
         )}
         aria-hidden="true"
       />
-    </Link>
+    </div>
   );
 }
 
