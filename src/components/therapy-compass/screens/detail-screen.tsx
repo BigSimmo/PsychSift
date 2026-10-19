@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 
+import { RecordReportProblem } from "@/components/clinical-dashboard/record-report-problem";
 import { InformationPageFooter, InformationPageShell } from "@/components/information-page-shell";
 import { RecordBody, RecordIntro } from "@/components/clinical-record-panels";
 import { DesktopSplitList, type DesktopSplitGroup } from "@/components/work-frame/desktop-split-list";
@@ -125,6 +126,7 @@ export function DetailScreen() {
                   <TherapySourceProvenance therapy={t} />
                 </RecordBody>
               </section>
+              <RecordReportProblem recordType="therapy" recordId={t.slug} className="mt-4" />
               <InformationPageFooter className="mt-4">
                 {/* Therapy records name their sources but do not link to them yet (ledger #05WXHX). */}
                 Source-grounded therapy reference — verify the record against the sources named under Source &amp;

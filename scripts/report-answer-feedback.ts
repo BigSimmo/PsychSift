@@ -11,6 +11,7 @@ import {
   expectedSupabaseProject,
   type SupabaseProjectConfig,
 } from "../src/lib/supabase/project";
+import { answerFeedbackTypes } from "../src/lib/answer-feedback";
 import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 const limits = Object.freeze({
@@ -112,11 +113,140 @@ export function buildFeedbackReadPlan(args: { projectRef: string; from: string; 
 }
 
 type ReadPlan = ReturnType<typeof buildFeedbackReadPlan>;
-type Options = { mode: "input"; input: string } | { mode: "live" | "print-plan"; plan: ReadPlan; receipt?: string };
+
+/*
+ * Weekly summary: counts by category and by page for the last seven days, read from the one
+ * feedback table. It selects only the category and the page type, never the note, the record
+ * slug, the owner, the answer hash or any id that joins to query telemetry (the job summary is
+ * readable by anyone who can see the repository's Actions runs), so it needs no
+ * per-run authorization receipt: the scheduled workflow that runs it is the approval, and the
+ * exact production identity check still runs before any read.
+ */
+const weeklyLimits = Object.freeze({
+  windowMs: 7 * 24 * 60 * 60_000,
+  pageSize: 100,
+  maxPages: 10,
+  maxRows: 1000,
+  requestTimeoutMs: 15_000,
+});
+const weeklyOperation = "answer_feedback_weekly_summary_read";
+const weeklyProjection = "feedback_category,record_type";
+const summaryPageTypes = ["answer", "medication", "therapy"] as const;
+
+export function buildWeeklySummaryPlan(args: { projectRef: string }, now = Date.now()) {
+  if (args.projectRef !== expectedSupabaseProject.ref || !Number.isFinite(now))
+    throw new ReportError("FEEDBACK_ARGUMENTS_INVALID");
+  const to = new Date(now).toISOString();
+  const from = new Date(now - weeklyLimits.windowMs).toISOString();
+  return {
+    version: "answer-feedback-weekly-summary-plan-v1",
+    operation: weeklyOperation,
+    projectRef: expectedSupabaseProject.ref,
+    projectUrl: expectedSupabaseProject.url,
+    window: { from, to, predicate: "created_at >= from AND created_at < to" },
+    table: "rag_answer_feedback",
+    projection: weeklyProjection,
+    order: "interaction_id.asc",
+    freeText: "never_selected",
+    limits: weeklyLimits,
+  };
+}
+type WeeklyPlan = ReturnType<typeof buildWeeklySummaryPlan>;
+
+/** Content-free counts. Unknown categories or pages count as "unknown"; no input text is echoed. */
+export function summariseWeeklyFeedback(rows: readonly unknown[], window: { from: string; to: string }) {
+  const categoryCounts: Record<string, number> = {};
+  const pageCounts: Record<string, number> = {};
+  for (const row of rows) {
+    const value = record(row) ? row : {};
+    const category =
+      typeof value.feedback_category === "string" &&
+      (answerFeedbackTypes as readonly string[]).includes(value.feedback_category)
+        ? value.feedback_category
+        : "unknown";
+    const page =
+      value.record_type === undefined || value.record_type === null
+        ? "answer"
+        : typeof value.record_type === "string" && (summaryPageTypes as readonly string[]).includes(value.record_type)
+          ? value.record_type
+          : "unknown";
+    categoryCounts[category] = (categoryCounts[category] ?? 0) + 1;
+    pageCounts[page] = (pageCounts[page] ?? 0) + 1;
+  }
+  const sortCounts = (entries: Iterable<[string, number]>) =>
+    [...entries].sort(([leftKey, left], [rightKey, right]) => right - left || leftKey.localeCompare(rightKey));
+  return {
+    version: "answer-feedback-weekly-summary-v1",
+    status: "complete",
+    window,
+    totalReports: rows.length,
+    categoryCounts: Object.fromEntries(sortCounts(Object.entries(categoryCounts))),
+    pageCounts: Object.fromEntries(sortCounts(Object.entries(pageCounts))),
+    freeText: "excluded",
+    requiresDeidentificationReview: true,
+    mayAutoPromote: false,
+  };
+}
+
+/** The summary as Markdown for a GitHub job summary. Every value is an allowlisted label or a count. */
+export function weeklySummaryMarkdown(summary: unknown): string {
+  if (!record(summary) || summary.version !== "answer-feedback-weekly-summary-v1") {
+    const reason = record(summary) && typeof summary.reasonCode === "string" ? summary.reasonCode : "unknown";
+    return `## Answer feedback weekly summary\n\nThe summary could not be built (${reason}). No feedback text was read.\n`;
+  }
+  const window = summary.window as { from: string; to: string };
+  const table = (heading: string, counts: Record<string, number>) => {
+    const rows = Object.entries(counts);
+    if (!rows.length) return `### ${heading}\n\nNone.\n`;
+    return `### ${heading}\n\n| ${heading} | Reports |\n| --- | ---: |\n${rows
+      .map(([key, count]) => `| ${key} | ${count} |`)
+      .join("\n")}\n`;
+  };
+  return [
+    "## Answer feedback weekly summary",
+    "",
+    `${window.from} to ${window.to}: **${String(summary.totalReports)}** reports. Notes are not included here; they are cleared from the database after 30 days.`,
+    "",
+    table("Category", summary.categoryCounts as Record<string, number>),
+    table("Page", summary.pageCounts as Record<string, number>),
+  ].join("\n");
+}
+
+async function weeklyExport(plan: WeeklyPlan, client: FeedbackReadClient): Promise<Row[]> {
+  const rows: Row[] = [];
+  let total: number | null = null;
+  for (let page = 0; page < plan.limits.maxPages; page++) {
+    const offset = page * plan.limits.pageSize;
+    const { data, error, count } = await client
+      .from(plan.table)
+      .select(plan.projection, { count: "exact" })
+      .gte("created_at", plan.window.from)
+      .lt("created_at", plan.window.to)
+      .order("interaction_id", { ascending: true })
+      .range(offset, offset + plan.limits.pageSize - 1)
+      .retry(false)
+      .abortSignal(AbortSignal.timeout(plan.limits.requestTimeoutMs));
+    if (error || !Array.isArray(data) || !data.every(record) || typeof count !== "number" || count < 0)
+      throw new ReportError("FEEDBACK_READ_FAILED");
+    if (count > plan.limits.maxRows || (total !== null && total !== count))
+      throw new ReportError("FEEDBACK_READ_EXHAUSTED");
+    total = count;
+    rows.push(...data);
+    if (rows.length >= count || data.length < plan.limits.pageSize) {
+      if (rows.length !== count) throw new ReportError("FEEDBACK_READ_EXHAUSTED");
+      return rows;
+    }
+  }
+  throw new ReportError("FEEDBACK_READ_EXHAUSTED");
+}
+type Options =
+  | { mode: "input"; input: string }
+  | { mode: "live" | "print-plan"; plan: ReadPlan; receipt?: string }
+  | { mode: "weekly-summary"; plan: WeeklyPlan };
 function parseArgs(argv: readonly string[], now: number): Options {
   const values = new Map<string, string>();
   const seen = new Set<string>();
-  const flags = ["--live", "--print-plan"];
+  const flags = ["--live", "--print-plan", "--weekly-summary"];
   const valueFlags = ["--input", "--from", "--to", "--project-ref", "--confirm-project-ref", "--authorization-receipt"];
   for (let i = 0; i < argv.length; i++) {
     const flag = argv[i]!;
@@ -128,6 +258,15 @@ function parseArgs(argv: readonly string[], now: number): Options {
     if (!value || value.startsWith("--") || /[\u0000-\u001f\u007f]/.test(value))
       throw new ReportError("FEEDBACK_ARGUMENTS_INVALID");
     values.set(flag, value);
+  }
+  if (seen.has("--weekly-summary")) {
+    if (
+      seen.size !== 3 ||
+      !values.get("--project-ref") ||
+      values.get("--project-ref") !== values.get("--confirm-project-ref")
+    )
+      throw new ReportError("FEEDBACK_ARGUMENTS_INVALID");
+    return { mode: "weekly-summary", plan: buildWeeklySummaryPlan({ projectRef: values.get("--project-ref")! }, now) };
   }
   if (seen.has("--input")) {
     if (seen.size !== 1) throw new ReportError("FEEDBACK_ARGUMENTS_INVALID");
@@ -172,7 +311,7 @@ function assertReceipt(value: unknown, plan: ReadPlan, now: number) {
   )
     throw new ReportError("FEEDBACK_APPROVAL_INVALID");
 }
-function assertIdentity(config: SupabaseProjectConfig, plan: ReadPlan) {
+function assertIdentity(config: SupabaseProjectConfig, plan: { projectRef: string }) {
   const check = checkSupabaseProjectConfig(config, { requireMetadata: true });
   // Exact spelling also rejects explicit :443, userinfo, paths, query, fragments and normalization tricks.
   if (
@@ -496,6 +635,13 @@ export async function runFeedbackReport(
     if (options.mode === "input")
       return { exitCode: 0, output: report(exportInput(await dependencies.readJson(options.input))) };
     if (options.mode === "print-plan") return { exitCode: 0, output: options.plan };
+    if (options.mode === "weekly-summary") {
+      assertIdentity(await dependencies.loadConfig(), options.plan);
+      live = true;
+      const client = await dependencies.createClient(options.plan.projectUrl);
+      const rows = await weeklyExport(options.plan, client);
+      return { exitCode: 0, output: summariseWeeklyFeedback(rows, options.plan.window) };
+    }
     const receipt = await dependencies.readJson(options.receipt!);
     assertReceipt(receipt, options.plan, dependencies.now());
     assertIdentity(await dependencies.loadConfig(), options.plan);
@@ -519,8 +665,12 @@ export async function runFeedbackReport(
 }
 
 if (isDirectEntrypoint(import.meta.url)) {
-  void runFeedbackReport(process.argv.slice(2)).then((result) => {
-    process.stdout.write(`${JSON.stringify(result.output, null, 2)}\n`);
+  const argv = process.argv.slice(2);
+  const markdown = argv.includes("--markdown");
+  void runFeedbackReport(argv.filter((arg) => arg !== "--markdown")).then((result) => {
+    process.stdout.write(
+      markdown ? weeklySummaryMarkdown(result.output) : `${JSON.stringify(result.output, null, 2)}\n`,
+    );
     process.exitCode = result.exitCode;
   });
 }

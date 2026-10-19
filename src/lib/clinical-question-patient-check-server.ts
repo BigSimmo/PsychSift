@@ -19,3 +19,21 @@ export function rejectPatientDetailQuestion(body: { query: string; summaryMode?:
     code: PATIENT_DETAIL_QUESTION_CODE,
   });
 }
+
+export const PATIENT_DETAIL_FEEDBACK_NOTE_CODE = "patient_detail_in_feedback_note";
+
+/**
+ * Throws a 400 when a feedback note looks like it holds a patient detail, before anything is
+ * saved. Like the question check, the message names the kind of detail only, never the text.
+ */
+export function rejectPatientDetailFeedbackNote(note: string | null | undefined): void {
+  if (!note) return;
+  const problem = clinicalQuestionPatientDetail(note);
+  if (!problem) return;
+  const finding = problem.title.replace(/^This looks like /, "").replace(/^This may be /, "");
+  throw new PublicApiError(
+    `This note looks like it holds a patient detail (${finding}). Remove it and send the report again. This check catches some details, not all.`,
+    400,
+    { code: PATIENT_DETAIL_FEEDBACK_NOTE_CODE },
+  );
+}

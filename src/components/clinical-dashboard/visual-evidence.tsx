@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 
 import { AccessibleTable } from "@/components/AccessibleTable";
-import { type AnswerFeedbackType } from "@/lib/answer-feedback";
+import { type AnswerFeedbackType, type SubmitAnswerFeedback } from "@/lib/answer-feedback";
 import { SourceImage } from "@/components/clinical-dashboard/answer-content";
 import { SectionHeading, UtilityDrawer } from "@/components/clinical-dashboard/dashboard-shell";
 import { cleanDisplayTitle } from "@/components/clinical-dashboard/display-text";
@@ -486,7 +486,7 @@ export function MobileEvidenceSheetContent({
   pendingFeedback: AnswerFeedbackType | null;
   copiedQuotes: boolean;
   onCopyQuotes: () => void;
-  onSubmitFeedback: (feedbackType: AnswerFeedbackType) => void;
+  onSubmitFeedback: SubmitAnswerFeedback;
   onFollowUpQuote?: (quote: ClientQuoteCard) => void;
   onScopeDocument: (documentId: string) => void;
 }) {

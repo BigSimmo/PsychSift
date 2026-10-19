@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-18T10:29:05.818Z",
+  "generated_at": "2026-10-19T11:44:24.728Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "2e8d1d11c7a8effd99147b717425afc437167cef8304e180e5885812b354053d",
-  "replay_seconds": 14,
+  "schema_sha256": "55ec75553076a6ca82c048004b9e5b2ed6857a453e8bc3a5735fbc50313ce19a",
+  "replay_seconds": 30,
   "snapshot": {
     "views": [
       {
@@ -7525,6 +7525,14 @@
             "generated": ""
           },
           {
+            "name": "note",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
             "name": "owner_id",
             "type": "uuid",
             "default": null,
@@ -7536,6 +7544,22 @@
             "name": "provider_request_ids",
             "type": "text[]",
             "default": "'{}'::text[]",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "record_id",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "record_type",
+            "type": "text",
+            "default": "'answer'::text",
             "identity": "",
             "not_null": true,
             "generated": ""
@@ -19969,6 +19993,14 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
+        "def_hash": "71606ee281d95a9682b27c5da9d49bd6",
+        "signature": "public.purge_expired_rag_answer_feedback_notes(integer)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
         "def_hash": "0f44716661f2d214c514dc00618d7694",
         "signature": "public.purge_expired_rag_queries(integer)"
       },
@@ -23752,6 +23784,11 @@
         "table": "rag_answer_feedback"
       },
       {
+        "def": "CHECK (((note IS NULL) OR ((char_length(note) >= 1) AND (char_length(note) <= 500))))",
+        "name": "rag_answer_feedback_note_length_check",
+        "table": "rag_answer_feedback"
+      },
+      {
         "def": "FOREIGN KEY (owner_id) REFERENCES auth.users(id) ON DELETE SET NULL",
         "name": "rag_answer_feedback_owner_id_fkey",
         "table": "rag_answer_feedback"
@@ -23759,6 +23796,16 @@
       {
         "def": "PRIMARY KEY (id)",
         "name": "rag_answer_feedback_pkey",
+        "table": "rag_answer_feedback"
+      },
+      {
+        "def": "CHECK ((((record_type = 'answer'::text) AND (record_id IS NULL)) OR ((record_type <> 'answer'::text) AND (record_id IS NOT NULL) AND (record_id ~ '^[a-z0-9][a-z0-9-]{0,119}$'::text))))",
+        "name": "rag_answer_feedback_record_id_check",
+        "table": "rag_answer_feedback"
+      },
+      {
+        "def": "CHECK ((record_type = ANY (ARRAY['answer'::text, 'medication'::text, 'therapy'::text])))",
+        "name": "rag_answer_feedback_record_type_check",
         "table": "rag_answer_feedback"
       },
       {

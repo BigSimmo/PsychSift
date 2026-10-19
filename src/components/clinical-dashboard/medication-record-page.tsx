@@ -29,6 +29,7 @@ import {
   type MedicationTabId,
 } from "@/components/clinical-dashboard/medication-nav-header";
 import { PatientProfilePanel } from "@/components/clinical-dashboard/patient-profile-panel";
+import { RecordReportProblem } from "@/components/clinical-dashboard/record-report-problem";
 import { mayRecordRecentSearches, useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
 import { useMedicationDetail } from "@/components/clinical-dashboard/use-medication-catalog";
 import {
@@ -737,6 +738,7 @@ export function MedicationRecordPage({
             <MedicationLoadFailed slug={slug} error={error} onRetry={retryAndKeepFocus} />
           )}
         </div>
+        {record ? <RecordReportProblem recordType="medication" recordId={record.slug} className="mt-4" /> : null}
         <InformationPageFooter className="mt-4 pb-1">
           {/* A record with owner-confirmed source links points at them (they render in the Additional tab's
               Sources list). A record without any keeps the owner's chosen default: a TGA Product Information

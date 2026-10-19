@@ -616,6 +616,17 @@ raw question/answer text, owner identifiers, content or provider errors in expor
 The report ignores extra metadata and emits only allowlisted values; it never
 echoes input errors. A completed scan may still report `incompleteRecords`.
 
+A weekly, content-free summary runs from `.github/workflows/answer-feedback-weekly.yml` (Monday
+morning Perth time, `main` only) and writes counts by category and by page (answer, medication record,
+therapy record) to the run's job summary:
+
+```text
+node scripts/run-tsx.mjs scripts/report-answer-feedback.ts --weekly-summary --project-ref <ref> --confirm-project-ref <ref> --markdown
+```
+
+It selects only the category and page type, never the optional note, record slug, owner, answer
+hash or any id that joins to query telemetry, after the same exact production identity check.
+
 The eight feedback categories remain supported. `verified` is aggregate-only;
 other complete records nominate an evaluation candidate, with `numeric_error`
 and `outdated_guidance` routed to clinical review. Incomplete records require a
