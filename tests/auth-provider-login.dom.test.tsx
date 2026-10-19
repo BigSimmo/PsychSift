@@ -88,6 +88,21 @@ describe("provider login requests", () => {
     });
   });
 
+  it("returns to the current page after sign-in without carrying search text", async () => {
+    window.history.replaceState({}, "", "/medications?q=lithium+level&run=1");
+    const user = userEvent.setup();
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    );
+    await screen.findByText("signed_out");
+    await user.click(screen.getByRole("button", { name: "Google" }));
+    const redirectTo = api.signInWithOAuth.mock.calls[0]?.[0]?.options?.redirectTo as string;
+    expect(redirectTo).toBe(`${window.location.origin}/auth/callback?next=%2Fmedications`);
+    expect(redirectTo).not.toMatch(/lithium|run=/);
+  });
+
   it("settles a rejected password request so the user can retry", async () => {
     api.signInWithPassword.mockRejectedValue(new Error("offline"));
     const user = userEvent.setup();

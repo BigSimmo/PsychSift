@@ -1893,12 +1893,13 @@ input.field-control {
 
 /* Standalone field recipe (`fieldControl`). Tailwind `outline-none` loses to
    the unlayered rule above; this is the real owner. Focus is a quiet border
-   shift — no second outline. */
+   shift — no second outline. The mix is 70% accent so the focused border reaches 3:1 against the
+   page in light mode (38% measured 2.4:1, design audit D-19, WCAG 1.4.11). */
 input.field-control:focus-visible,
 textarea.field-control:focus-visible,
 select.field-control:focus-visible {
   outline: none;
-  border-color: color-mix(in srgb, var(--clinical-accent) 38%, var(--border-strong));
+  border-color: color-mix(in srgb, var(--clinical-accent) 70%, var(--border-strong));
 }
 
 input.field-control[aria-invalid="true"]:focus-visible,
@@ -2606,7 +2607,7 @@ html[data-motion="reduced"] .shared-compare-tray-layer[data-scroll-hidden="true"
 }
 
 .answer-footer-search-pill:focus-within {
-  border-color: color-mix(in srgb, var(--clinical-accent) 38%, var(--border-strong));
+  border-color: color-mix(in srgb, var(--clinical-accent) 70%, var(--border-strong));
   box-shadow:
     0 0 0 3px color-mix(in srgb, var(--clinical-accent) 16%, transparent),
     0 8px 20px rgb(16 24 40 / 8%),
@@ -2875,7 +2876,7 @@ html[data-motion="reduced"] .shared-compare-tray-layer[data-scroll-hidden="true"
    does not jump height. A second outline here is what made the composer look
    like a default browser ring. */
 .chat-composer-shell-delta:focus-within {
-  border-color: color-mix(in srgb, var(--clinical-accent) 38%, var(--border-strong));
+  border-color: color-mix(in srgb, var(--clinical-accent) 70%, var(--border-strong));
   outline: none;
 }
 
@@ -4016,7 +4017,7 @@ html[data-motion="reduced"] .shared-compare-tray-layer[data-scroll-hidden="true"
   }
 
   .answer-footer-search-dock .answer-footer-search-pill:focus-within {
-    border-color: color-mix(in srgb, var(--clinical-accent) 38%, var(--border-strong));
+    border-color: color-mix(in srgb, var(--clinical-accent) 70%, var(--border-strong));
     box-shadow:
       0 0 0 3px color-mix(in srgb, var(--clinical-accent) 16%, transparent),
       0 -1px 0 color-mix(in srgb, var(--border) 60%, transparent),

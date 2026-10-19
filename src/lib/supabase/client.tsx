@@ -233,10 +233,21 @@ export function shouldFailInitialAuthVerification(error: unknown) {
 /** `next` must be a same-origin relative path; /auth/callback re-validates it
  *  regardless (open-redirect defense-in-depth), so a bad value here just falls
  *  back to "/" rather than being a security boundary in itself. */
-function authCallbackRedirect(next?: string) {
+function authCallbackRedirect(next: string | undefined = currentPageForReturn()) {
   if (typeof window === "undefined") return undefined;
   const base = `${window.location.origin}${AUTH_CALLBACK_PATH}`;
   return next ? `${base}?next=${encodeURIComponent(next)}` : base;
+}
+
+/** The page to come back to after sign-in, so signing in does not lose your place.
+ *  Only the path travels: a query string can hold clinical search text, which
+ *  must never ride through the sign-in email or the provider. Home and auth
+ *  pages fall back to the callback's default. */
+function currentPageForReturn(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  const { pathname } = window.location;
+  if (pathname === "/" || pathname.startsWith("/auth")) return undefined;
+  return pathname;
 }
 
 /** Consume route errors and Supabase's direct provider-error fragments without exposing diagnostics. */
