@@ -560,6 +560,20 @@ describe("MhaClockPage", () => {
     expect(screen.getByTestId("mha-clock-message")).toHaveTextContent("later than now");
     expect(loadMhaClocks()).toEqual([]);
   });
+
+  it("refuses a start time more than 7 days ago, but takes one exactly 7 days back", () => {
+    render(<MhaClockPage forms={forms} now={now} />);
+    fireEvent.change(screen.getByTestId("mha-clock-form"), { target: { value: "2" } });
+    fireEvent.change(screen.getByTestId("mha-clock-time"), { target: { value: "2025-10-05T18:00" } });
+    fireEvent.click(screen.getByTestId("mha-clock-start"));
+    expect(screen.getByTestId("mha-clock-message")).toHaveTextContent("more than 7 days ago");
+    expect(screen.getByTestId("mha-clock-time")).toHaveAttribute("aria-invalid", "true");
+    expect(loadMhaClocks()).toEqual([]);
+
+    fireEvent.change(screen.getByTestId("mha-clock-time"), { target: { value: "2026-09-28T18:00" } });
+    fireEvent.click(screen.getByTestId("mha-clock-start"));
+    expect(loadMhaClocks()).toHaveLength(1);
+  });
 });
 
 describe("Psychiatry hub · For a shift", () => {
