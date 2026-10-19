@@ -81,9 +81,11 @@ const SEARCH_IDENTIFIER_HELD_BACK =
   "This search looks like it holds a record number, date of birth, phone number or email. Remove it and search again.";
 
 /** A refused deep link (?q=…&run=1) must not leave the patient detail sitting in the address bar. */
-function clearRefusedQueryFromAddress() {
+/** Drops a refused question from the address, when the address is what holds it (a deep link).
+ *  An address holding a different, earlier question belongs to the result still on screen. */
+function clearRefusedQueryFromAddress(refused: string) {
   const url = new URL(window.location.href);
-  if (!url.searchParams.has("q") && !url.searchParams.has("run")) return;
+  if (url.searchParams.get("q")?.trim() !== refused) return;
   url.searchParams.delete("q");
   url.searchParams.delete("run");
   const rest = url.searchParams.toString();
@@ -886,7 +888,7 @@ export function useDashboardSearchExecution(deps: DashboardSearchExecutionDeps) 
       }
       if (refusal) {
         setActionNotice({ tone: "warning", message: refusal });
-        clearRefusedQueryFromAddress();
+        clearRefusedQueryFromAddress(trimmedQuery);
         return;
       }
     }

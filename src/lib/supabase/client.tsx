@@ -245,14 +245,19 @@ function authCallbackRedirect(next: string | undefined = currentPageForReturn())
   return next ? `${base}?next=${encodeURIComponent(next)}` : base;
 }
 
+/** Paths whose segments are bearer credentials (a teaching check-in, an assessment
+ *  response link, a display screen), and any long unbroken token-like segment. */
+const SECRET_PATH = /^\/teaching\/(?:c|display|assessments\/respond)\/|\/[A-Za-z0-9_]{32,}(?:\/|$)/;
+
 /** The page to come back to after sign-in, so signing in does not lose your place.
  *  Only the path travels: a query string can hold clinical search text, which
- *  must never ride through the sign-in email or the provider. Home and auth
- *  pages fall back to the callback's default. */
+ *  must never ride through the sign-in email or the provider. Home, auth pages
+ *  and pages whose address is itself a secret link fall back to the callback's
+ *  default, so a link token never reaches the sign-in flow. */
 function currentPageForReturn(): string | undefined {
   if (typeof window === "undefined") return undefined;
   const { pathname } = window.location;
-  if (pathname === "/" || pathname.startsWith("/auth")) return undefined;
+  if (pathname === "/" || pathname.startsWith("/auth") || SECRET_PATH.test(pathname)) return undefined;
   return pathname;
 }
 

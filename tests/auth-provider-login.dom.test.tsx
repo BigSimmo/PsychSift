@@ -120,6 +120,25 @@ describe("provider login requests", () => {
     expect(redirectTo).not.toMatch(/lithium|run=/);
   });
 
+  it.each([
+    "/teaching/c/synthetic-checkin-token",
+    "/teaching/assessments/respond/synthetic-response-token",
+    "/teaching/display/synthetic-display-token",
+    `/somewhere/${"a1".repeat(32)}`,
+  ])("never sends a secret link path (%s) through sign-in", async (path) => {
+    window.history.replaceState({}, "", path);
+    const user = userEvent.setup();
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    );
+    await screen.findByText("signed_out");
+    await user.click(screen.getByRole("button", { name: "Google" }));
+    const redirectTo = api.signInWithOAuth.mock.calls[0]?.[0]?.options?.redirectTo as string;
+    expect(redirectTo).toBe(`${window.location.origin}/auth/callback`);
+  });
+
   it("records that an ended sign-in cleared this device, for the notice that says so", async () => {
     const user = userEvent.setup();
     render(

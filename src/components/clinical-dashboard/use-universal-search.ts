@@ -66,28 +66,22 @@ const debounceMs = 250;
 // Suggestions are fetched while the clinician is still typing, before any Ask, so the text is
 // screened first: a name, date of birth or record number must never reach a request URL or a
 // server log line (design audit D-03). The fuller check loads on demand once typing starts, as
-// the composer's does, so pages that never type don't download it. Until it has loaded, the
-// narrower shape check (labelled DOB, record number, phone, email) still holds suggestions back.
+// the composer's does, so pages that never type don't download it. No suggestion request goes
+// out until it has loaded, and if it cannot load, none goes out at all.
 type PatientCheckModule = typeof import("@/lib/clinical-question-patient-check");
-let patientCheckModule: PatientCheckModule | null = null;
-let patientCheckLoading = false;
+let patientCheckLoad: Promise<PatientCheckModule | null> | null = null;
 
-function preloadPatientCheck() {
-  if (patientCheckModule || patientCheckLoading) return;
-  patientCheckLoading = true;
-  import("@/lib/clinical-question-patient-check").then(
-    (mod) => {
-      patientCheckModule = mod;
-    },
-    () => {
-      patientCheckLoading = false;
-    },
-  );
+function loadPatientCheck(): Promise<PatientCheckModule | null> {
+  patientCheckLoad ??= import("@/lib/clinical-question-patient-check").catch(() => {
+    patientCheckLoad = null;
+    return null;
+  });
+  return patientCheckLoad;
 }
 
-function looksLikePatientDetail(text: string): boolean {
-  if (identifierShapeWarning(text)) return true;
-  return patientCheckModule ? patientCheckModule.clinicalQuestionPatientDetail(text) !== null : false;
+/** Test-only: stand in for the check's load, to model a slow or failed download. */
+export function setPatientCheckLoadForTests(load: Promise<PatientCheckModule | null> | null) {
+  patientCheckLoad = load;
 }
 
 const minQueryLength = 2;
@@ -230,14 +224,25 @@ export function useUniversalSearch(args: {
     }
 
     const requestId = ++requestSeqRef.current;
-    preloadPatientCheck();
+    const patientCheck = loadPatientCheck();
 
     // Cancel the superseded request on the next keystroke: dropping the stale response client-side
     // is not enough — abort frees the server/DB work too.
     const controller = new AbortController();
-    const timer = window.setTimeout(() => {
-      if (looksLikePatientDetail(trimmedQuery)) {
-        if (controller.signal.aborted || requestId !== requestSeqRef.current) return;
+    const timer = window.setTimeout(async () => {
+      const check = await patientCheck;
+      if (controller.signal.aborted || requestId !== requestSeqRef.current) return;
+      if (!check) {
+        setResult({
+          groups: [],
+          query: trimmedQuery,
+          contextMode: args.contextMode,
+          complete: true,
+          error: requestFailedMessage,
+        });
+        return;
+      }
+      if (identifierShapeWarning(trimmedQuery) || check.clinicalQuestionPatientDetail(trimmedQuery) !== null) {
         setResult({ groups: [], query: trimmedQuery, contextMode: args.contextMode, complete: true, withheld: true });
         return;
       }

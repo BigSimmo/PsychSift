@@ -5,6 +5,7 @@ import {
   groupIsWorthShowing,
   useUniversalSearch,
   clearUniversalSearchCacheForTests,
+  setPatientCheckLoadForTests,
 } from "@/components/clinical-dashboard/use-universal-search";
 import type { UniversalSearchGroup, UniversalSearchResponse } from "@/lib/universal-search";
 import type { UniversalSearchStreamEvent } from "@/lib/universal-search-stream";
@@ -63,9 +64,12 @@ function searchGroup(kind: "medications" | "tools", title: string): UniversalSea
   };
 }
 
+// The request waits for the patient-detail check to load (design audit D-03), so a started
+// request is the debounce plus that import.
 async function startDebouncedRequest() {
   await act(async () => {
     await vi.advanceTimersByTimeAsync(250);
+    await vi.dynamicImportSettled();
   });
 }
 
@@ -332,5 +336,39 @@ describe("useUniversalSearch patient-detail screening (design audit D-03)", () =
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(result.current).toMatchObject({ groups: [], loading: false, withheld: true });
+  });
+
+  it("waits for a slow check to load instead of sending a named patient", async () => {
+    let finishLoad: (module: typeof import("@/lib/clinical-question-patient-check")) => void = () => {};
+    setPatientCheckLoadForTests(new Promise((resolve) => (finishLoad = resolve)));
+    const { result } = renderHook(() =>
+      useUniversalSearch({ query: "Mr John Citizen lithium", enabled: true, contextMode: "prescribing" }),
+    );
+    await startDebouncedRequest();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    const realCheck = await import("@/lib/clinical-question-patient-check");
+    await act(async () => {
+      finishLoad(realCheck);
+    });
+    await flushStream();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(result.current).toMatchObject({ groups: [], loading: false, withheld: true });
+    setPatientCheckLoadForTests(null);
+  });
+
+  it("sends nothing when the check cannot load", async () => {
+    setPatientCheckLoadForTests(Promise.resolve(null));
+    const { result } = renderHook(() =>
+      useUniversalSearch({ query: "lithium levels", enabled: true, contextMode: "prescribing" }),
+    );
+    await startDebouncedRequest();
+    await flushStream();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(result.current.error).toBeTruthy();
+    setPatientCheckLoadForTests(null);
   });
 });

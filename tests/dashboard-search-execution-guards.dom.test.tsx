@@ -192,6 +192,14 @@ describe("dashboard search: patient details are held back in every mode", () => 
     expect(window.location.search).toBe("?mode=answer");
   });
 
+  it("keeps the address of the answer on screen when a new draft is refused", async () => {
+    window.history.replaceState(null, "", "/?mode=answer&q=lithium&run=1");
+    vi.stubGlobal("fetch", vi.fn());
+    const { execution } = harness("answer");
+    await execution.ask("dob: 01/02/1960 lithium");
+    expect(window.location.search).toBe("?mode=answer&q=lithium&run=1");
+  });
+
   it("still lets an ordinary DSM search through", async () => {
     const { execution, router } = harness("dsm");
     await execution.ask("bipolar criteria");
