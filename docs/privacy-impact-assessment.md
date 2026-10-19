@@ -869,7 +869,7 @@ Raw Clinical Ask question, transcript, Case Context, audio, answer, and external
 history, browser storage, logs, content-free telemetry, structured feedback fields, public errors, and default copy
 output. The one exception is the optional "Report a problem" note: the system never fills it, but a reader can paste
 an excerpt of a question or answer into it. It is screened for patient details, never logged, and kept for at most
-90 days (section 6).
+30 days (section 6).
 Offline and mode-unavailable outcomes retain the question only in tab memory; no automatic ordinary-search fallback
 may place it in recents or navigation state. Retry is manual, and returning to search clears the question before
 focusing the ordinary composer.
