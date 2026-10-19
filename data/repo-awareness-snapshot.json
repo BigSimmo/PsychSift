@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-19"
+    "committed_at": "2026-10-20"
   },
   "routes": {
     "modes": [
@@ -2856,6 +2856,11 @@
       {
         "path": "docs/source-review-priority-2026-07-02.md",
         "section": "root",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-20-mha-clock-made-at-window.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -10990,6 +10995,14 @@
         "scope": "Refresh all six Linux visual baselines from hosted-CI artifact visual-baseline-32189416778 (main @ 9b1e7248) plus provenance and regenerated adoption manifest",
         "outcome": "Approved — all six actual renders opened and reviewed before adopting; no source changed; provenance reviewerType:human is overstated for an automated pass and is flagged in the PR for owner confirmation",
         "checks": "adopt-visual-baselines --write (6/6 replaced, capture kind refresh); check:design-system-adoption (54 components, 82 roots); vitest tests/adopt-visual-baselines.test.ts 4 passed; prettier --check provenance.json clean. No broader gate: PNG/JSON-only diff with no changed source failure path"
+      },
+      {
+        "date": "2026-10-19",
+        "ref": "fix/worker-security-remediation-20261019",
+        "head": "3d86f6f6fa5abfb32bda7954a8a68e32ca54ce85",
+        "scope": "worker Perl security remediation current diff",
+        "outcome": "No actionable findings in independent read-only candidate review; seven supported vendor fixes targeted; remaining image advisories unresolved.",
+        "checks": "Signed Debian Release/Packages/deb SHA verification passed; u3 rejected and u4/u5 accepted; Docker RUN shell syntax passed; exact-lock Prettier3.9.10 unchanged; diff integrity passed; complete-image rebuild/runtime/scan pending CI; broad local JS gates not run with stale installed lock."
       },
       {
         "date": "2026-07-20",
@@ -28022,6 +28035,14 @@
         "scope": "Run PR sweep: CI fix + threads + drift",
         "outcome": "before: 5 unresolved threads (Devin create-from-output + 4 CodeRabbit), mergeable/BLOCKED, Actions major outage leaving CI pending; after: hardened jq-less input/output separation + session fail-open + prefix unlock + tests (9 passed) in fff524d73ebfafeef7bdc50752a6d14f253ebc2e, threads replied+resolved, branch current with main, CI re-triggered (Actions outage — not babysat)",
         "checks": "npx vitest run tests/pr-handoff-stop.test.ts (9 passed); bash -n hook OK; no provider-backed checks run"
+      },
+      {
+        "date": "2026-10-19",
+        "ref": "PR #3674 fix/audit-rag-complete-20261019",
+        "head": "fff9194c492004456abdb4e89aa7f7601c98b997",
+        "scope": "working-tree OCR fallback correction fe6a983590b5 / 9d61e5fcde85",
+        "outcome": "Independent source review clear; transient fallback corrected with 10s reserved within existing 60s page budget. Model integrity and global budget refusal preserved. Full corrected image acceptance pending.",
+        "checks": "All26 original tests unchanged;11new regressions. Original baseline RED reproduced. Owning103 local5.5:101pass2clinicaltimeouts;100nonclinical passed. Genuine signed-Debian Tesseract5.3/Leptonica1.82 probe: unchanged3clinical cases passed70.769s,0skips/errors/failures. No assertion/global-limit relaxation. Actual final-head fullworker CI still required."
       },
       {
         "date": "2026-07-26",

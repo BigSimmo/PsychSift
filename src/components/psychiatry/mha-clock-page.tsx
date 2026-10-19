@@ -35,6 +35,7 @@ import {
   keepReadableMhaClocks,
   loadMhaClockState,
   MHA_CLOCK_LIMIT,
+  mhaClockMadeAtProblem,
   MHA_CLOCK_UNREADABLE,
   removeMhaClock,
   restoreMhaClock,
@@ -263,8 +264,14 @@ function AddClock({ forms, now }: { readonly forms: readonly MhaClockForm[]; rea
       fail(ADD_MESSAGE.invalid, Boolean(code));
       return;
     }
-    if (now && start.getTime() > now.getTime()) {
+    // The allowed window is the owner's ruling of 2026-10-20 (see `mhaClockMadeAtProblem`).
+    const problem = mhaClockMadeAtProblem(start.getTime(), (now ?? new Date()).getTime());
+    if (problem === "future") {
       fail("That time is later than now. Enter when the form was made.", true);
+      return;
+    }
+    if (problem === "too-old") {
+      fail("That time is more than 7 days ago. Check the date the form was made.", true);
       return;
     }
     const result = addMhaClock(code, start);
