@@ -12,6 +12,8 @@ import {
 import { documentsSearchHref, DOCUMENTS_MODE_HOME_ROUTE } from "@/lib/document-flow-routes";
 import { factsheetSlugs } from "@/components/factsheets/factsheets-data";
 import { dictionaryEntries, dictionaryTopics } from "@/lib/dictionary-data";
+import { curatedEntryFor } from "@/lib/differential-curated";
+import { generatedBodyWithheld } from "@/lib/differential-detail";
 import { differentialRecords } from "@/lib/differentials";
 import { dsmDiagnoses } from "@/lib/dsm";
 import { formulationMechanisms } from "@/lib/formulation";
@@ -548,6 +550,20 @@ export function collectSiteMapData(): SiteMapData {
   };
 }
 
+// Derived from the curated-content registry rather than written by hand, so the
+// caveat names exactly the records whose generated body is withheld and
+// disappears once curated content replaces the last one.
+function withheldDifferentialCaveats() {
+  return differentialRecords
+    .filter((record) => generatedBodyWithheld(curatedEntryFor(record.slug)))
+    .map((record) => record.slug)
+    .sort()
+    .map(
+      (slug) =>
+        `- \`/differentials/diagnoses/${slug}\` withholds its generated clinical body because the export carried material from other conditions; the page replaces it with locally curated content and a note explaining why.`,
+    );
+}
+
 function bullet(route: string, description?: string) {
   return `- \`${route}\`${description ? ` - ${description}` : ""}`;
 }
@@ -976,7 +992,7 @@ function renderSiteMapRaw(data = collectSiteMapData()) {
       "- Registry-backed service and form pages may show sign-in, load-error, or in-app not-found states for missing per-user records.",
       "- Live user registries may contain additional service or form slugs beyond the seeded/demo slugs listed here.",
       "- `/documents/[id]` is intentionally summarized as a route family; individual document IDs are private runtime data.",
-      "- Several differential records are placeholder scaffolds pending source-backed local clinical content.",
+      ...withheldDifferentialCaveats(),
     ]),
     ...section("Route ownership/source map", [
       "| Area | Source |",
