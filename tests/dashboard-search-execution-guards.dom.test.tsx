@@ -1,7 +1,8 @@
 /** @vitest-environment jsdom */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { useDashboardSearchExecution } from "@/components/clinical-dashboard/use-dashboard-search-execution";
+// It calls no React hooks (see its doc comment), so a test can call it as a plain function.
+import { useDashboardSearchExecution as dashboardSearchExecution } from "@/components/clinical-dashboard/use-dashboard-search-execution";
 import type { AppModeId } from "@/lib/app-modes";
 
 // The design audit (19 Oct 2026, D-01 to D-03) found three ways the dashboard's search left the
@@ -9,7 +10,7 @@ import type { AppModeId } from "@/lib/app-modes";
 // network retry showed the server's "revising the draft" step, and a search outside Answer could
 // put a patient detail into the address bar, recent searches or a request line.
 
-type Deps = Parameters<typeof useDashboardSearchExecution>[0];
+type Deps = Parameters<typeof dashboardSearchExecution>[0];
 
 function harness(searchMode: AppModeId) {
   let epoch = 0;
@@ -60,7 +61,7 @@ function harness(searchMode: AppModeId) {
     if (!spies.has(name)) spies.set(name, vi.fn());
     return spies.get(name)!;
   };
-  return { execution: useDashboardSearchExecution(deps), router, spy };
+  return { execution: dashboardSearchExecution(deps), router, spy };
 }
 
 function hangingFetch() {

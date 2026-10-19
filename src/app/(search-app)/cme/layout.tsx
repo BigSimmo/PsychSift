@@ -41,7 +41,13 @@ export default async function CmeLayout({ children }: { children: ReactNode }) {
     // A record, a form, the summary and Customise keep their own back-arrow headers.
     // Each page names its own band (eyebrow: when its records loaded) and puts
     // its own one action in the band (work-mode redesign, owner request 6 Oct 2026).
-    <ModeBand modeId="cme" hiddenOn={["/cme/log/", "/cme/new", "/cme/summary", "/cme/customise"]}>
+    // The CPD home names the band with when its records loaded; its line is kept from the
+    // first paint so the page does not jump down when that arrives (design audit D-28).
+    <ModeBand
+      modeId="cme"
+      hiddenOn={["/cme/log/", "/cme/new", "/cme/summary", "/cme/customise"]}
+      eyebrowSlot={["/cme"]}
+    >
       <CmeOwnerBoundary serverOwnerId={serverOwnerId} serverAuthVerified={serverAuthVerified} demoMode={demoMode}>
         <Suspense fallback={null}>
           <CmePageTabs />
