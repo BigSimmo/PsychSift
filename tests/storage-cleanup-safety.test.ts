@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { nonNullDocumentIds, partitionStorageCleanupJobs, withoutReferencedPaths } from "@/lib/storage-cleanup-safety";
+import {
+  cleanupJobMetadata,
+  nonNullDocumentIds,
+  partitionStorageCleanupJobs,
+  withoutReferencedPaths,
+} from "@/lib/storage-cleanup-safety";
 
 describe("withoutReferencedPaths (audit F-09)", () => {
   it("never returns a path a live image row still points at", () => {
@@ -43,5 +48,36 @@ describe("partitionStorageCleanupJobs (audit R11)", () => {
   it("collects distinct non-null document ids for the liveness probe", () => {
     const ids = nonNullDocumentIds([job("j1", "a"), job("j2", "a"), job("j3", null), job("j4", "b")]);
     expect(ids.sort()).toEqual(["a", "b"]);
+  });
+});
+
+describe("cleanupJobMetadata (audit F-09)", () => {
+  it("keeps a prune job's provenance when a drain run records its outcome", () => {
+    const queued = {
+      operation: "superseded_index_generation_prune",
+      source_document_id: "doc-1",
+      pruned_generation_ids: ["gen-1"],
+    };
+    const first = cleanupJobMetadata(queued, "storage_cleanup_retry", { storage_warnings: ["timeout"] });
+    expect(first).toEqual({
+      operation: "storage_cleanup_retry",
+      queued_operation: "superseded_index_generation_prune",
+      source_document_id: "doc-1",
+      pruned_generation_ids: ["gen-1"],
+      storage_warnings: ["timeout"],
+    });
+    const second = cleanupJobMetadata(first, "storage_cleanup_retry", { storage_warnings: [] });
+    expect(second.queued_operation).toBe("superseded_index_generation_prune");
+    expect(second.source_document_id).toBe("doc-1");
+    expect(second.storage_warnings).toEqual([]);
+  });
+
+  it("starts fresh when there is no usable earlier metadata", () => {
+    expect(cleanupJobMetadata(null, "storage_cleanup_identity_rejected")).toEqual({
+      operation: "storage_cleanup_identity_rejected",
+    });
+    expect(cleanupJobMetadata(["not", "an", "object"], "storage_cleanup_retry")).toEqual({
+      operation: "storage_cleanup_retry",
+    });
   });
 });

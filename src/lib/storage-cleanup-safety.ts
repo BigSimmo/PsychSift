@@ -39,3 +39,23 @@ export function withoutReferencedPaths(paths: readonly string[], referencedPaths
 export function nonNullDocumentIds(jobs: StorageCleanupCandidate[]): string[] {
   return Array.from(new Set(jobs.map((job) => job.document_id).filter((id): id is string => Boolean(id))));
 }
+
+// A drain run records its own outcome without erasing why the job was queued: a prune job's
+// source document and pruned generations stay, and the queuing operation moves to queued_operation.
+export function cleanupJobMetadata(
+  previous: unknown,
+  operation: string,
+  extra: Record<string, unknown> = {},
+): Record<string, unknown> {
+  const base =
+    previous && typeof previous === "object" && !Array.isArray(previous)
+      ? { ...(previous as Record<string, unknown>) }
+      : {};
+  const queuedOperation = base.queued_operation ?? base.operation;
+  return {
+    ...base,
+    ...(queuedOperation === undefined ? {} : { queued_operation: queuedOperation }),
+    ...extra,
+    operation,
+  };
+}

@@ -6,7 +6,8 @@
 --
 -- After a generation commit moves a document's pointer, keep the new generation and the one
 -- it replaced, and prune the rest for that document only, children before parents, never a
--- legacy (NULL-generation) row and never a row that a kept row still references. Image
+-- legacy (NULL-generation) row and never a row that a remaining row still references (by
+-- foreign key, or for images by the uuid arrays on chunks, memory cards and summaries). Image
 -- objects whose rows were pruned and that no remaining row points at are queued in
 -- storage_cleanup_jobs for the existing janitor; nothing is removed from Storage here.
 -- Retrieval reads only the committed generation or NULL-generation rows
@@ -60,6 +61,7 @@ declare
   v_paths text[] := '{}'::text[];
   v_stale_paths text[] := '{}'::text[];
   v_job uuid;
+  v_cited_images uuid[];
 begin
   if p_document_id is null or p_row_limit is null or p_row_limit not between 1 and 50000 then
     raise exception 'invalid_index_generation_prune_request';
@@ -214,12 +216,28 @@ begin
 
       elsif v_step = 'document_images' then
         -- Keep the live cover image and any image a remaining fact or index unit still cites.
+        -- Chunks, memory cards and the summary cite images through uuid arrays with no foreign
+        -- key, possibly across generations, so any image any of them still names is kept too.
+        v_cited_images := array(
+          select distinct r.image_id from (
+            select pg_catalog.unnest(c.image_ids) as image_id
+            from public.document_chunks c where c.document_id = p_document_id
+            union all
+            select pg_catalog.unnest(m.source_image_ids)
+            from public.document_memory_cards m where m.document_id = p_document_id
+            union all
+            select pg_catalog.unnest(s.source_image_ids)
+            from public.document_summaries s where s.document_id = p_document_id
+          ) r
+          where r.image_id is not null
+        );
         with victims as (
           select t.id from public.document_images t
           where t.document_id = p_document_id and t.index_generation_id is not null
             and t.index_generation_id <> all(v_keep)
             and pg_catalog.lower(coalesce(t.metadata->>'index_generation_id', '')) <> all(v_keep_text)
             and t.id::text is distinct from v_cover
+            and t.id <> all(v_cited_images)
             and not exists (select 1 from public.document_table_facts f where f.source_image_id = t.id)
             and not exists (select 1 from public.document_index_units u where u.source_image_id = t.id)
           order by t.index_generation_id, t.id

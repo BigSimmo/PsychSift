@@ -169,12 +169,28 @@ values (pg_temp.uid('D:d3:cross'), pg_temp.uid('D'), '11111111-1111-4111-8111-11
   pg_temp.uid('D:d1:chunk'), pg_temp.uid('d3'));
 insert into public.document_images(id, document_id, storage_path, index_generation_id)
 values (pg_temp.uid('D:d1:cover'), pg_temp.uid('D'), 'synthetic/d1-cover.png', pg_temp.uid('d1'));
+-- Kept chunks and memory cards cite images through uuid arrays with no foreign key.
+insert into public.document_images(id, document_id, storage_path, index_generation_id)
+values (pg_temp.uid('D:d1:chunk-cited'), pg_temp.uid('D'), 'synthetic/d1-chunk-cited.png', pg_temp.uid('d1')),
+  (pg_temp.uid('D:d1:card-cited'), pg_temp.uid('D'), 'synthetic/d1-card-cited.png', pg_temp.uid('d1'));
+insert into public.document_chunks(document_id, chunk_index, content, embedding, image_ids, index_generation_id)
+values (pg_temp.uid('D'), 1000, 'Synthetic chunk citing an older image',
+  array_fill(0.1::real, array[1536])::extensions.vector, array[pg_temp.uid('D:d1:chunk-cited')], pg_temp.uid('d3'));
+insert into public.document_memory_cards(document_id, card_type, title, content, embedding, source_image_ids, index_generation_id)
+values (pg_temp.uid('D'), 'section_summary', 'Synthetic card citing an older image', 'Fixture',
+  array_fill(0.1::real, array[1536])::extensions.vector, array[pg_temp.uid('D:d1:card-cited')], pg_temp.uid('d3'));
 select pg_temp.move_pointer(pg_temp.uid('D'), pg_temp.uid('d3'), jsonb_build_object('cover_image_id', pg_temp.uid('D:d1:cover')));
 select pg_temp.assert_true(exists (select 1 from public.document_chunks where id = pg_temp.uid('D:d1:chunk'))
   and exists (select 1 from public.document_table_facts where id = pg_temp.uid('D:d3:cross')),
   'a chunk still cited by a kept row must survive so its cascade cannot reach the kept row');
 select pg_temp.assert_true(exists (select 1 from public.document_images where id = pg_temp.uid('D:d1:cover')),
   'the live cover image must survive');
+select pg_temp.assert_true(exists (select 1 from public.document_images where id = pg_temp.uid('D:d1:chunk-cited'))
+  and exists (select 1 from public.document_images where id = pg_temp.uid('D:d1:card-cited'))
+  and not exists (select 1 from public.storage_cleanup_jobs
+    where metadata->>'source_document_id' = pg_temp.uid('D')::text
+      and image_paths && array['synthetic/d1-chunk-cited.png', 'synthetic/d1-card-cited.png']),
+  'an older image a kept chunk or memory card still names in its image array must survive and stay unqueued');
 select pg_temp.assert_true(not exists (select 1 from public.document_embedding_fields
     where document_id = pg_temp.uid('D') and index_generation_id = pg_temp.uid('d1'))
   and not exists (select 1 from public.document_images where id = pg_temp.uid('D:d1:image')),
