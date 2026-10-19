@@ -386,7 +386,7 @@
     "argparse": "^2.0.1"
   },
   "devDependencies": {
-    "@axe-core/playwright": "^4.14.0",
+    "@axe-core/playwright": "^4.13.0",
     "@babel/parser": "^8.0.7",
     "@codspeed/tinybench-plugin": "^5.7.1",
     "@next/bundle-analyzer": "16.4.2",
