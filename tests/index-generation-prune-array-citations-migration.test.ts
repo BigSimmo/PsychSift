@@ -22,7 +22,9 @@ describe("prune keeps array-cited images migration", () => {
     expect(code).not.toMatch(/create trigger/i);
     expect(code).toContain("security definer");
     expect(code).toContain("set search_path = ''");
-    expect(code).toMatch(/revoke all on function public\.prune_superseded_document_index_generations\(uuid, uuid\[\], integer\)\s+from public, anon, authenticated, service_role;/);
+    expect(code).toMatch(
+      /revoke all on function public\.prune_superseded_document_index_generations\(uuid, uuid\[\], integer\)\s+from public, anon, authenticated, service_role;/,
+    );
   });
 
   it("keeps images named by chunk, memory card and summary arrays, and prunes images last", () => {
