@@ -115,7 +115,7 @@ describe("container delivery contract", () => {
         expect(unreadable.status).not.toBe(0);
         expect(unreadable.stderr.toString()).toContain("ENOTDIR");
       } finally {
-        rmSync(directory, { recursive: true, force: true });
+        rmSync(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
       }
     },
   );
@@ -164,7 +164,7 @@ describe("container delivery contract", () => {
         expect(result.status).toBe(expected);
       }
     } finally {
-      rmSync(directory, { recursive: true, force: true });
+      rmSync(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     }
   });
 
@@ -181,7 +181,7 @@ describe("container delivery contract", () => {
       expect(result.signal).toBeNull();
       expect(result.status).toBe(1);
     } finally {
-      rmSync(directory, { recursive: true, force: true });
+      rmSync(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     }
   });
 
@@ -207,7 +207,7 @@ describe("container delivery contract", () => {
       expect(invalid.status).toBe(1);
       expect(invalid.stderr).toContain("ENOTDIR");
     } finally {
-      rmSync(directory, { recursive: true, force: true });
+      rmSync(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     }
   });
 

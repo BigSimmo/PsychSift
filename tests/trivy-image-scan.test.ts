@@ -111,7 +111,7 @@ else { fs.writeFileSync(process.env.TRIVY_TEST_ARGS, JSON.stringify(args)); proc
           reason: "high_or_critical_vulnerabilities_found",
         });
       } finally {
-        rmSync(dir, { recursive: true, force: true });
+        rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
       }
     },
   );
