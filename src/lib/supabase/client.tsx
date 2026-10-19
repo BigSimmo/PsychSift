@@ -42,6 +42,12 @@ type AuthContextValue = {
   signInWithOAuth: (provider: OAuthProvider, next?: string) => Promise<void>;
   signOut: () => Promise<void>;
   markSessionExpired: () => void;
+  /**
+   * When an ended sign-in last cleared this device's private notes (MHA clocks, drafts, recent
+   * searches). Null until it happens and again after the next sign-in. `SignInEndedNotice` says so,
+   * because the clearing itself is silent (design audit D-04, owner yes 19 Oct 2026).
+   */
+  deviceDataClearedAt?: number | null;
 };
 
 export const AUTH_EMAIL_STORAGE_KEY = "clinical.dashboard.lastAuthEmail";
@@ -275,6 +281,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>(config ? "loading" : "unconfigured");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [deviceDataClearedAt, setDeviceDataClearedAt] = useState<number | null>(null);
   const callbackErrorRef = useRef<string | null | undefined>(undefined);
   const authRequestsRef = useRef(createAuthRequestLifecycle());
   const authFingerprintRef = useRef<string | null>(null);
@@ -395,6 +402,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             clearAccountScopedBrowserState();
             // MHA clocks (form codes and times) also drop their in-memory copy.
             clearMhaClocks();
+            setDeviceDataClearedAt(Date.now());
           }
           if (callbackError) {
             setError(callbackError);
@@ -449,6 +457,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (nextSession) {
         setError(null);
         setNotice(null);
+        setDeviceDataClearedAt(null);
       }
     });
 
@@ -615,6 +624,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // failure is reported as expiry — accepted: a stale profile surviving to the
     // next sign-in is the worse failure on a shared workstation.
     clearAccountScopedBrowserState();
+    setDeviceDataClearedAt(Date.now());
     publishedUserIdRef.current = null;
     setSession(null);
     setStatus("expired");
@@ -659,6 +669,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signInWithOAuth,
       signOut,
       markSessionExpired,
+      deviceDataClearedAt,
     }),
     [
       client,
@@ -677,6 +688,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signInWithOAuth,
       signOut,
       markSessionExpired,
+      deviceDataClearedAt,
     ],
   );
 

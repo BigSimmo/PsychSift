@@ -33,6 +33,10 @@ function Probe() {
       <button type="button" onClick={() => void auth.signInWithPassword("person@example.com", "passphrase")}>
         Password
       </button>
+      <button type="button" onClick={() => auth.markSessionExpired()}>
+        Expire
+      </button>
+      <p data-testid="cleared">{auth.deviceDataClearedAt ? "cleared" : "kept"}</p>
     </>
   );
 }
@@ -101,6 +105,19 @@ describe("provider login requests", () => {
     const redirectTo = api.signInWithOAuth.mock.calls[0]?.[0]?.options?.redirectTo as string;
     expect(redirectTo).toBe(`${window.location.origin}/auth/callback?next=%2Fmedications`);
     expect(redirectTo).not.toMatch(/lithium|run=/);
+  });
+
+  it("records that an ended sign-in cleared this device, for the notice that says so", async () => {
+    const user = userEvent.setup();
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    );
+    await screen.findByText("signed_out");
+    expect(screen.getByTestId("cleared")).toHaveTextContent("kept");
+    await user.click(screen.getByRole("button", { name: "Expire" }));
+    expect(screen.getByTestId("cleared")).toHaveTextContent("cleared");
   });
 
   it("settles a rejected password request so the user can retry", async () => {
