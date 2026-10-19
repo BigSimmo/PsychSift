@@ -8,7 +8,7 @@ ruled raster OCR candidate and minimal app runtime. Newer phone safe-area, layou
 tolerance, lease-aware recovery, single-thread zombie detection and ruled native
 edge-cell implementations are retained.
 
-The OCR correction refuses clearly separated paired-note rows instead of flattening
+The OCR correction refuses ambiguous paired-note rows instead of flattening
 conditions and actions into column-major text. Runtime identity is observational;
 OCR/source confidence remains unverified. The three original clinical source
 assertions and default-off behavior remain acceptance requirements.

@@ -413,27 +413,21 @@ def raster_prose_regions(image, bounds, deadline):
                 merged.append([start, end])
         return merged
 
-    def separated_line_gaps(projection):
-        bands = physical_lines(projection)
-        if len(bands) < 2:
-            return []
-        gaps = []
-        for left, right in zip(bands, bands[1:]):
-            check()
-            threshold = max(12, 3 * max(left[1] - left[0], right[1] - right[0]))
-            if right[0] - left[1] <= threshold:
-                return []  # Ordinary interline spacing establishes a paragraph run.
-            gaps.append((left[1], right[0], threshold))
-        return gaps
-
-    def shared_line_break(left, right):
+    def aligned_multiline_rows(left, right):
+        left, right = physical_lines(left), physical_lines(right)
         i = j = 0
+        aligned = 0
         while i < len(left) and j < len(right):
             check()
-            a0, a1, at = left[i]
-            b0, b1, bt = right[j]
-            if min(a1, b1) - max(a0, b0) > max(at, bt):
-                return True
+            a0, a1 = left[i]
+            b0, b1 = right[j]
+            if min(a1, b1) > max(a0, b0):
+                aligned += 1
+                if aligned >= 2:
+                    return True
+                i += 1
+                j += 1
+                continue
             if a1 <= b1:
                 i += 1
             else:
@@ -478,10 +472,10 @@ def raster_prose_regions(image, bounds, deadline):
                 return None
             left = ink.crop((rx0, ry0, cut, ry1)).getprojection()[1]
             right = ink.crop((cut, ry0, rx1, ry1)).getprojection()[1]
-            # Widely separated single-line notes can be row-paired across this
-            # gutter. Pixels do not prove independent columns; refuse reordering.
-            left_gaps, right_gaps = separated_line_gaps(left), separated_line_gaps(right)
-            if shared_line_break(left_gaps, right_gaps):
+            # Aligned lines may be paired rows at any spacing. Independent
+            # paragraphs can share this geometry too; retain the full-page
+            # unverified fallback rather than guessing their associations.
+            if aligned_multiline_rows(left, right):
                 raise RasterLayoutAmbiguous("outside raster notes have ambiguous row/column ownership")
             return cut if len(runs(left, True)) >= 2 and len(runs(right, True)) >= 2 else None
 

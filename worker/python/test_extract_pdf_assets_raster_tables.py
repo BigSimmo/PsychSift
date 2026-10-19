@@ -50,6 +50,42 @@ def scanned_table(directory, merged=True, outside_columns=False):
 
 @unittest.skipIf(Image is None, "Pillow is required for raster geometry")
 class RasterGridGeometryTests(unittest.TestCase):
+    def assert_unverified_fallback(self, image, text):
+        """Retain legacy OCR bytes when optional column interpretation is refused."""
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+        import io
+        source = Image.new("L", (image.width, image.height + 220), 255)
+        source.paste(image, (0, 0))
+        draw = ImageDraw.Draw(source)
+        for y in (image.height + 20, image.height + 70, image.height + 120, image.height + 170):
+            draw.line((30, y, image.width - 30, y), fill=0, width=2)
+        for x in (30, 180, 330, image.width - 30):
+            draw.line((x, image.height + 20, x, image.height + 170), fill=0, width=2)
+        stream = io.BytesIO()
+        source.save(stream, format="PNG")
+        pixels = SimpleNamespace(width=source.width, height=source.height, tobytes=lambda _: stream.getvalue())
+        page = SimpleNamespace(number=0, rotation=0, rect=extractor.fitz.Rect(0, 0, *source.size),
+                               get_text=lambda _: "", get_pixmap=lambda **_: pixels)
+        engine = SimpleNamespace(pytesseract=SimpleNamespace(tesseract_cmd="fixture-tesseract"),
+                                 image_to_string=Mock(return_value=text))
+        observations = {}
+        with patch.dict(os.environ, {"PDF_RASTER_TABLE_OCR": "1", "TESSERACT_CMD": "fixture-tesseract"}), patch.dict(
+            "sys.modules", {"pytesseract": engine},
+        ), patch.object(extractor, "checked_raster_table_model", side_effect=AssertionError("no cell model")):
+            actual, warning = extractor.maybe_ocr_page(page, extractor.ExtractionBudget(), observations)
+        self.assertEqual(actual, text)
+        self.assertIsNone(warning)
+        self.assertEqual(observations, {})
+        engine.image_to_string.assert_called_once()
+        self.assertNotIn("--psm", engine.image_to_string.call_args.kwargs["config"])
+        geometry = {"rotation": 0, "cropBox": list(page.rect), "mediaBox": list(page.rect)}
+        provenance = extractor.page_source_provenance(geometry, 1, "", actual, True, False, {
+            "producer": {"pythonVersion": "fixture", "pymupdfVersion": "fixture", "mupdfVersion": "fixture"},
+        })
+        self.assertEqual(provenance["ocr"]["status"], "unverified")
+        self.assertEqual(provenance["ocr"]["comparison"], "not_compared")
+
     def test_merged_heading_and_empty_cells_use_physical_cell_boundaries(self):
         image = Image.new("L", (600, 400), 255)
         draw = ImageDraw.Draw(image)
@@ -75,7 +111,14 @@ class RasterGridGeometryTests(unittest.TestCase):
         bounds = {}
         rows = extractor.raster_ruled_cells(image, time.monotonic() + 5, grid_bounds=bounds)
         self.assertIsNotNone(rows)
-        regions = extractor.raster_prose_regions(image, (0, 0, image.width, bounds["top"]), time.monotonic() + 5)
+        with self.assertRaises(extractor.RasterLayoutAmbiguous):
+            extractor.raster_prose_regions(image, (0, 0, image.width, bounds["top"]), time.monotonic() + 5)
+        # Check fringe preservation within each known fixture column separately;
+        # their ambiguous combined alignment now retains full-page fallback.
+        middle = image.width // 2
+        regions = []
+        for left, right in ((0, middle), (middle, image.width)):
+            regions.extend(extractor.raster_prose_regions(image, (left, 0, right, bounds["top"]), time.monotonic() + 5))
         # The synthetic source heading fits inside the left physical column.
         self.assertEqual(len(regions), 2)
         self.assertLess(regions[0][2], regions[1][0])
@@ -99,17 +142,16 @@ class RasterGridGeometryTests(unittest.TestCase):
         self.assertLessEqual(pixels.width * pixels.height, 4_000_000)
         document.close()
 
-    def test_physical_columns_follow_a_separate_spanning_heading(self):
+    def test_aligned_columns_after_a_spanning_heading_retain_unverified_fallback(self):
         image = Image.new("L", (600, 280), 255)
         draw = ImageDraw.Draw(image)
         draw.text((40, 20), "Spanning explanatory heading across both independent physical columns", fill=0)
         for y in (80, 100, 120):
             draw.text((40, y), "Left paragraph words", fill=0)
             draw.text((350, y), "Right paragraph words", fill=0)
-        regions = extractor.raster_prose_regions(image, (0, 0, 600, 280), time.monotonic() + 1)
-        self.assertEqual(len(regions), 3)
-        self.assertLess(regions[0][3], regions[1][1])
-        self.assertLess(regions[1][2], regions[2][0])
+        with self.assertRaises(extractor.RasterLayoutAmbiguous):
+            extractor.raster_prose_regions(image, (0, 0, 600, 280), time.monotonic() + 1)
+        self.assert_unverified_fallback(image, "Spanning heading\nLeft paragraph words\nRight paragraph words")
 
     def test_light_gray_outside_paragraph_is_preserved_for_ocr(self):
         image = Image.new("L", (600, 180), 255)
@@ -120,24 +162,20 @@ class RasterGridGeometryTests(unittest.TestCase):
         self.assertLessEqual(regions[0][0], 40)
         self.assertGreater(regions[0][2], 100)
 
-    def test_column_context_precedes_large_internal_paragraph_gaps(self):
+    def test_aligned_paragraphs_with_large_internal_gaps_retain_unverified_fallback(self):
         image = Image.new("L", (600, 240), 255)
         draw = ImageDraw.Draw(image)
         for y in (40, 60, 150, 170):
             draw.text((40, y), "Left paragraph words", fill=0)
             draw.text((350, y), "Right paragraph words", fill=0)
-        regions = extractor.raster_prose_regions(image, (0, 0, 600, 240), time.monotonic() + 1)
-        self.assertEqual(len(regions), 2)
-        self.assertLess(regions[0][2], regions[1][0])
-        self.assertLessEqual(regions[0][1], 40)
-        self.assertGreater(regions[0][3], 170)
-        self.assertLessEqual(regions[1][1], 40)
-        self.assertGreater(regions[1][3], 170)
+        with self.assertRaises(extractor.RasterLayoutAmbiguous):
+            extractor.raster_prose_regions(image, (0, 0, 600, 240), time.monotonic() + 1)
+        self.assert_unverified_fallback(image, "Left paragraph words\nRight paragraph words")
 
-    def test_widely_separated_paired_notes_refuse_column_major_reordering(self):
+    def test_paired_notes_at_ordinary_and_wide_spacing_refuse_column_major_reordering(self):
         # Same source geometry as the independently reproduced condition/action
         # defect. Three rows must be refused too, without a two-row count rule.
-        for ys in ((60, 220), (40, 130, 220)):
+        for ys in ((60, 76), (60, 76, 92), (60, 220), (40, 130, 220)):
             with self.subTest(rows=len(ys)):
                 image = Image.new("L", (600, 300), 255)
                 draw = ImageDraw.Draw(image)
@@ -148,18 +186,28 @@ class RasterGridGeometryTests(unittest.TestCase):
                 with self.assertRaises(extractor.RasterLayoutAmbiguous):
                     extractor.raster_prose_regions(image, (0, 0, 600, 300), time.monotonic() + 1)
 
-    def test_continuous_paragraph_columns_keep_their_own_source_regions(self):
+    def test_aligned_continuous_paragraphs_retain_unverified_fallback_content(self):
         image = Image.new("L", (600, 300), 255)
         draw = ImageDraw.Draw(image)
         for x, lines in ((40, ("LEFT CONTEXT", "Keep this qualification", "attached to its own", "paragraph.")),
                          (330, ("RIGHT CONTEXT", "Keep this independent", "explanation with its", "own source."))):
             for y, line in zip((60, 76, 92, 108), lines):
                 draw.text((x, y), line, fill=0)
-        regions = extractor.raster_prose_regions(image, (0, 0, 600, 300), time.monotonic() + 1)
+        with self.assertRaises(extractor.RasterLayoutAmbiguous):
+            extractor.raster_prose_regions(image, (0, 0, 600, 300), time.monotonic() + 1)
+        self.assert_unverified_fallback(image, "LEFT CONTEXT Keep this qualification attached to its own paragraph.\n"
+                                      "RIGHT CONTEXT Keep this independent explanation with its own source.")
+
+    def test_clearly_non_row_aligned_columns_can_still_be_partitioned(self):
+        image = Image.new("L", (600, 240), 255)
+        draw = ImageDraw.Draw(image)
+        for y in (40, 60, 80):
+            draw.text((40, y), "Left paragraph words", fill=0)
+        for y in (130, 150, 170):
+            draw.text((330, y), "Right paragraph words", fill=0)
+        regions = extractor.raster_prose_regions(image, (0, 0, 600, 240), time.monotonic() + 1)
         self.assertEqual(len(regions), 2)
         self.assertLess(regions[0][2], regions[1][0])
-        self.assertGreater(regions[0][3], 108)
-        self.assertGreater(regions[1][3], 108)
 
     def test_outside_line_gap_analysis_merges_disconnected_dots_before_classifying_rows(self):
         image = Image.new("L", (600, 200), 255)
@@ -168,9 +216,9 @@ class RasterGridGeometryTests(unittest.TestCase):
             for y in (40, 70, 100):
                 draw.rectangle((x, y, x + 60, y + 3), fill=0)
                 draw.rectangle((x, y + 6, x + 60, y + 20), fill=0)
-        regions = extractor.raster_prose_regions(image, (0, 0, 600, 200), time.monotonic() + 1)
-        self.assertEqual(len(regions), 2)
-        self.assertLess(regions[0][2], regions[1][0])
+        with self.assertRaises(extractor.RasterLayoutAmbiguous):
+            extractor.raster_prose_regions(image, (0, 0, 600, 200), time.monotonic() + 1)
+        self.assert_unverified_fallback(image, "Dotted left paragraph.\nDotted right paragraph.")
         for ys in ((20, 180), (20, 130, 240)):
             with self.subTest(separated_rows=len(ys)):
                 image = Image.new("L", (600, 300), 255)
