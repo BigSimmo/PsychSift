@@ -39,6 +39,20 @@ describe("ops digest workflow contract", () => {
     expect(workflow).toContain("publish_alert_comment");
     expect(workflow).toContain("publishAttentionComment");
     expect(workflow).toContain("ops-digest-rpc-history");
+    // Alerts reach the owner's phone through GitHub mobile, which pushes an assignee's issue activity.
+    expect(workflow).toContain("github.rest.issues.addAssignees");
+    // A scheduled outage (unreachable, degraded or unknown status) must reach the phone too.
+    expect(workflow).toContain(
+      '(context.eventName === "schedule" && (severity === "warning" || severity === "page" || status !== "ok"))',
+    );
+    // The rolling issue is reused, so the mention, not the assignment, pushes every later alert.
+    expect(workflow).toContain("body: `@${alertAssignee} ⚠ Attention");
+    expect(workflow.indexOf("await assignAlert(issueNumber);")).toBeGreaterThan(
+      workflow.indexOf('if (publishAttentionComment && (status !== "ok" || alerting))'),
+    );
+    expect(workflow.indexOf("await assignAlert(issueNumber);")).toBeLessThan(
+      workflow.indexOf("github.rest.issues.createComment"),
+    );
     expect(workflow).not.toContain('const status = "${{ steps.digest.outputs.status }}"');
     expect(workflow).not.toContain("const alertSummary = '${{ steps.digest.outputs.alert_summary }}'");
   });

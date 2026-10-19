@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-18"
+    "committed_at": "2026-10-19"
   },
   "routes": {
     "modes": [
@@ -352,6 +352,11 @@
         "path": "/mockups/development/ledger",
         "file": "src/app/mockups/development/ledger/page.tsx",
         "area": "mockup"
+      },
+      {
+        "path": "/terms",
+        "file": "src/app/terms/page.tsx",
+        "area": "product"
       },
       {
         "path": "/mockups/privacy-page-directions",
@@ -842,6 +847,11 @@
         "path": "/mockups/document-search/search",
         "file": "src/app/mockups/document-search/search/page.tsx",
         "area": "mockup"
+      },
+      {
+        "path": "/about",
+        "file": "src/app/about/page.tsx",
+        "area": "product"
       },
       {
         "path": "/roster/requests",
@@ -3334,6 +3344,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-19-rag-ts-split-deferred-until-after-launch.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/redesign/04-deferred.md",
         "section": "redesign",
         "catalogued": true
@@ -5421,6 +5436,11 @@
       {
         "path": "docs/tooling-follow-through-decisions-2026-08-12.md",
         "section": "root",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-19-production-alerts-by-phone.md",
+        "section": "decisions",
         "catalogued": true
       },
       {

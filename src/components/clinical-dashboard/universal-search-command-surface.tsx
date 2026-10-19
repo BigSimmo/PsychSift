@@ -271,7 +271,7 @@ function ExampleTicker({
               the trailing "Tap to search" squeezed the example to a few letters
               on a 320-390px phone. The whole line is the button, and its name
               still says what a tap does. */}
-          <span className="smart-search-phone-ticker-kicker">Try this</span>
+          <span className="smart-search-phone-ticker-kicker">Try this</span>{" "}
           <span className="smart-search-phone-ticker-query">{resolvedTickerExample}</span>
         </button>
       ) : null}

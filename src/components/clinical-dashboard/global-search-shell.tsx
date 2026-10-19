@@ -641,11 +641,25 @@ function GlobalStandaloneSearchShellBody({
   // prop changes"). Typing never changes the URL, so a URL-gated sync cannot
   // clobber in-progress input; the initial mount is a no-op because synced*
   // state is seeded from the current URL.
+  //
+  // Typing does not change the URL, but a page's own client-only history update
+  // can land while the reader types: the Services shortlist Clear turns
+  // `?q=crisis&shortlist=...` into `?q=crisis`, and Next adopts that a beat later.
+  // Re-seeding the composer then overwrote the next query already typed (WebKit
+  // tablet, main run 39120425367: "housing" was submitted as "crisis"). Re-seed the
+  // composer only when the URL's own query, mode or pathname moved; a change to
+  // other params leaves a draft alone.
   if (searchParamString !== syncedSearchParamString || pathname !== syncedPathname) {
+    const syncedSearchParams = new URLSearchParams(syncedSearchParamString);
+    const urlQueryMoved =
+      pathname !== syncedPathname ||
+      syncedSearchParams.get("mode") !== requestedMode ||
+      (syncedSearchParams.has("q") || syncedSearchParams.has("query")) !== currentUrlHasQuery ||
+      (syncedSearchParams.get("q") ?? syncedSearchParams.get("query") ?? "").trim() !== requestedQuery;
     setSyncedSearchParamString(searchParamString);
     setSyncedPathname(pathname);
     setSearchMode(resolvedSearchMode);
-    setQuery(currentUrlHasQuery ? requestedQuery : "");
+    if (urlQueryMoved) setQuery(currentUrlHasQuery ? requestedQuery : "");
     const nextSearchContext = readSearchNavigationContext(new URLSearchParams(searchParamString));
     setQueryMode(nextSearchContext.queryMode);
     setScopeFilters(nextSearchContext.scopeFilters);

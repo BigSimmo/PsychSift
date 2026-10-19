@@ -326,7 +326,7 @@ for (const viewport of viewports) {
     // local copy action inside the historical answer surface.
     await page
       .getByLabel("Answer utilities")
-      .getByRole("button", { name: "Copy answer with source status" })
+      .getByRole("button", { name: /^Cop(?:y|ied) with sources: answer and source status$/ })
       .press("Enter");
     const currentCopy = await page.evaluate(() => navigator.clipboard.readText());
     for (const text of [
@@ -342,7 +342,10 @@ for (const viewport of viewports) {
     }
     expect(currentCopy).not.toContain("Prior adaptive lead");
 
-    await answerSurfaces.nth(0).getByRole("button", { name: "Copy answer with source status" }).press("Enter");
+    await answerSurfaces
+      .nth(0)
+      .getByRole("button", { name: /^Cop(?:y|ied) with sources: answer and source status$/ })
+      .press("Enter");
     const priorCopy = await page.evaluate(() => navigator.clipboard.readText());
     expect(priorCopy).toContain("Prior adaptive lead remains complete for review.");
     expect(priorCopy).toContain("Prior source difference");

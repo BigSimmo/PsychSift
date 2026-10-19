@@ -57,9 +57,15 @@ export async function loadDocumentSummaryContext(documentId: string, ownerId?: s
 
   throwIfAborted(signal);
   if (error) throw new Error(error.message);
-  const committedChunks = (chunks ?? []).filter(
-    (chunk) =>
-      !chunk.index_generation_id || (Boolean(committedGeneration) && chunk.index_generation_id === committedGeneration),
+  const rows = chunks ?? [];
+  // Legacy NULL-generation rows only stand in while the committed generation
+  // has written no replacements, matching the commit RPC's preserve rule.
+  const hasCommittedRows =
+    Boolean(committedGeneration) && rows.some((chunk) => chunk.index_generation_id === committedGeneration);
+  const committedChunks = rows.filter((chunk) =>
+    chunk.index_generation_id
+      ? Boolean(committedGeneration) && chunk.index_generation_id === committedGeneration
+      : !hasCommittedRows,
   );
   return { document, chunks: committedChunks };
 }
