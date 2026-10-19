@@ -112,7 +112,11 @@ export function AdminHospitalShortStaffedPage() {
       />
     );
 
-  return <WorkBody testId="admin-hospital-short" landmark>{body}</WorkBody>;
+  return (
+    <WorkBody testId="admin-hospital-short" landmark>
+      {body}
+    </WorkBody>
+  );
 }
 
 function NotForYou({ onExample }: { readonly onExample?: () => void }) {

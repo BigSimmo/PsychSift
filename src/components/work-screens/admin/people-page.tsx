@@ -131,7 +131,11 @@ export function AdminPeoplePage() {
   else if (!peopleScreenAllowed(grants)) body = <NotForYou />;
   else body = <PeopleLive grants={grants} online={online} onExample={example.turnOn} />;
 
-  return <WorkBody testId="admin-people" landmark>{body}</WorkBody>;
+  return (
+    <WorkBody testId="admin-people" landmark>
+      {body}
+    </WorkBody>
+  );
 }
 
 /* ------------------------------------------------------------- states */
