@@ -5,9 +5,14 @@
 runs automatically — every **⏸ PAUSE** is a provider-touching action (Supabase / Railway / OpenAI /
 GitHub) that needs your explicit go-ahead, per the AGENTS.md provider boundary.
 
-**Current-state note (2026-07-14):** production app and worker deployment is already recorded as live.
-Use this as a verification/release sequence, not evidence that staging, migrations, or first deployment
-are still pending. Confirm current provider state before repeating any historical action.
+**Current-state note (refreshed 2026-10-18 from the ledger):** production app and worker deployment has
+been live since 2026-07-14, and staging exists. Still open: the staging soak and rollback rehearsal
+(step 4, ledger `#057`), which is blocked in practice because staging is not redeployed on pushes to
+`main`; CME and On Call staging isolation proof (`#F9HZEG`); a data-layer disaster-recovery restore
+(`#QVVS6W`); and the six provider, legal and clinical approvals (`#BS3SN9`). The stray staging worker
+`worker-5g6o` still holds `OPENAI_API_KEY`. [operator-rehearsal-plan.md](operator-rehearsal-plan.md)
+plans steps 3 and 4 plus the restore as one approved day. Use this as a verification/release sequence,
+and confirm current provider state before repeating any historical action.
 
 Host note: production app + worker run on **Railway** (user directive 2026-07-12), not Fly. The image is
 host-agnostic. Railway has no Sydney region (closest Singapore); data at rest stays in Supabase Sydney,

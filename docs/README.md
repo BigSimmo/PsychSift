@@ -139,6 +139,8 @@ Every remaining tracked document in this category (architecture and design, plus
 - [retrieval-quality-runbook.md](retrieval-quality-runbook.md) — RAG/retrieval eval gates and tuning
 - [worker-deploy-runbook.md](worker-deploy-runbook.md) — worker build contract, run recipe, secrets, docling shadow extraction (B4)
 - [disaster-recovery-runbook.md](disaster-recovery-runbook.md) — backup/restore and recovery drills
+- [operator-rehearsal-plan.md](operator-rehearsal-plan.md): one-day owner-approved rehearsal: data restore, Railway rollback, 30-user staging soak, stray staging worker removal
+- [process-cleanup-proposal-2026-10.md](process-cleanup-proposal-2026-10.md): proposal only: check-script overlap, ledger trimming and stale companion docs
 - [auth-connection-cap-runbook.md](auth-connection-cap-runbook.md) — Supabase auth connection cap (operator)
 - [staging-setup.md](staging-setup.md) — staging environment bootstrap
 - [database-drift-detection.md](database-drift-detection.md) — schema drift detection (`npm run check:drift`)
@@ -186,7 +188,7 @@ Every remaining tracked document in this category (operations, plus the `rag-beh
 - [clinical-sign-off-how-to.md](clinical-sign-off-how-to.md) — plain-English guide for the clinical owner: signing off forms and Act-section summaries one at a time with `npm run clinical:review`, and sending the sign-offs
 - [source-acquisition-protocol.md](source-acquisition-protocol.md) — how a clinical source is found, captured, scored and indexed: the WA-first locality ladder, the capture register, the metadata floor, and clinical sign-off
 - [error-tracking.md](error-tracking.md) — privacy-safe, opt-in production exception tracking envelope
-- [governance-incident-runbooks.md](governance-incident-runbooks.md) — operator response checklists for clinical, source, privacy, provider, and answer-pipeline rollback incidents
+- [governance-incident-runbooks.md](governance-incident-runbooks.md) — operator response checklists for clinical, source, privacy, provider, notifiable data breach (draft), and answer-pipeline rollback incidents
 - [clinical-hazard-analysis.md](clinical-hazard-analysis.md) — clinical hazard register
 - [care-plan/crisis-lines-verification.md](care-plan/crisis-lines-verification.md) — **DRAFT, unsigned** verification record for every crisis number printed by the Care Plan prototype: source, verification date, and the six-monthly re-verification cadence
 - [rag-injection-threat-model.md](rag-injection-threat-model.md) — prompt-injection threat model

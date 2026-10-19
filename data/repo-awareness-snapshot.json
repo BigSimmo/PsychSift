@@ -3189,6 +3189,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/operator-rehearsal-plan.md",
+        "section": "root",
+        "catalogued": true
+      },
+      {
         "path": "docs/archive/2026-10-agent-code-reviews/MASTER_ISSUE_TRACKER.md",
         "section": "archive",
         "catalogued": true
@@ -4516,6 +4521,11 @@
       {
         "path": "docs/redesign/clinical-white-aegean-master-implementation-plan.md",
         "section": "redesign",
+        "catalogued": true
+      },
+      {
+        "path": "docs/process-cleanup-proposal-2026-10.md",
+        "section": "root",
         "catalogued": true
       },
       {
@@ -22722,6 +22732,14 @@
         "scope": "CI babysit + Bugbot + conflict closeout",
         "outcome": "READY. Merged origin/main; resolved real Dockerfile/guard-next-build conflicts by adopting main's evaluateNextBuildRamGuard + ALLOW_LOW_RAM_BUILD. Motion fixes retained: ISSUE-02/05, IMP-01 spring token, IMP-04 shimmer ::after wiring, IMP-02 AnswerSkeleton stagger. Bugbot re-review: no remaining P0/P1/P2. 0 review threads. Hosted PR required SUCCESS.",
         "checks": "focused vitest earlier; guard-next-build Vitest 3/3; hosted Build/Static/Unit/Production UI/PR required SUCCESS; no provider checks."
+      },
+      {
+        "date": "2026-10-18",
+        "ref": "fix/remaining-review-reliability-20261018",
+        "head": "c5d26c3bdbe9f352bb06b1a71c272efb6d3a154b",
+        "scope": "Controller review of real main-conflict fixture resolution",
+        "outcome": "Resolved two fixture conflicts using main isolated shell/tool-path and temporary Git config, retaining branch bounded-probe regressions. Genuine3555manifest/schema5118/migration tree/seals unchanged. No fresh independent review claimed for fixture resolution; prior reviews reused only for unchanged SQL/artifact scope.",
+        "checks": "Manual two-parent conflict review;171tests2files, fulltypecheck, scopedESLint/Prettier passed. Unfiltered Actions+mergeability job diagnose missing CI as conflict, not pass; final hosted parity required."
       },
       {
         "date": "2026-07-28",
