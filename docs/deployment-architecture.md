@@ -262,7 +262,22 @@ comparable (~200 ms) from Singapore or Sydney and does not favour either host.
 ### Image contract (`Dockerfile`)
 
 - `node:24-bookworm-slim` is pinned by multi-platform SHA-256 digest in a
-  shared `node-base` stage and used by every stage. Dependency installs use
+  shared `node-base` stage for dependency/build stages and the worker. The app
+  runner uses the pinned official `distroless/cc-debian13:nonroot` multi-platform
+  image, copying only Node 24.22 from its pinned Trixie donor rather than the
+  donor's operating system. This is an app runtime version change; dependency
+  and build stages retain their existing Node pin. The runner retains user
+  `node` with UID/GID 1000 and a writable `/home/node`.
+  Railway's pre-deploy command is a command string, so the app also retains
+  `/bin/sh` by copying only the donor's dash binary, copyright and package-status
+  record. No shellless Railway execution is assumed. Both startup and health
+  check use explicit Node argv; Next reads `PORT` itself, defaulting to 3000.
+  The image-content gate uses Node filesystem probes and fails on probe errors,
+  present secret/test paths and forbidden app operating-system tools. A minimal
+  base is not proof of advisory closure: actual package inventory, native binding
+  compatibility, runtime health and the unchanged vulnerability gate remain
+  required. Worker/NLTK and development-only braces findings remain separate.
+  Dependency installs use
   ordinary Docker layer caching. The shared Dockerfiles deliberately avoid
   BuildKit cache mounts because Railway requires hard-coded, service-specific
   cache IDs, which would couple each image to one Railway service.

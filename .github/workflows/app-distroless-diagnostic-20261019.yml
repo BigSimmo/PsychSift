@@ -1,0 +1,175 @@
+name: App and OCR isolated runtime diagnostic 20261019
+permissions:
+  contents: read
+concurrency:
+  group: app-distroless-isolated-diagnostic-20261019
+  cancel-in-progress: false
+jobs:
+  app-native-runtime:
+    if:
+      github.repository == 'BigSimmo/PsychSift' && github.event.repository.private == false && github.event_name == 'push'
+      && github.ref == 'refs/heads/diag/app-distroless-zero-storage-20261019'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CI: "true"
+      NEXT_TELEMETRY_DISABLED: "1"
+      DO_NOT_TRACK: "1"
+    steps:
+      - name: Checkout exact diagnostic commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Setup Node without persistent cache
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 24.22.0
+          package-manager-cache: false
+      - name: Assert exact repository and synthetic-only source
+        id: source
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = BigSimmo/PsychSift
+          test "$GITHUB_REF" = refs/heads/diag/app-distroless-zero-storage-20261019
+          test ! -f .env
+          test ! -f .env.local
+          echo "DIAGNOSTIC_SOURCE $GITHUB_SHA"
+          sha256sum Dockerfile scripts/check-image-content-contract.mjs tests/container-ci-contract.test.ts docs/deployment-architecture.md package-lock.json
+          find .github/diagnostics/app-runtime-20261019 -type f -print0 | sort -z | xargs -0 sha256sum
+
+          echo "SCOPE: native-only app runtime proof; no complete production image or release acceptance"
+      - name: Install exact lock once without lifecycle scripts
+        id: deps
+        run: timeout --kill-after=10s 240s npm ci --include=dev --ignore-scripts --fetch-retries=0 --no-audit --fund=false --update-notifier=false
+      - name: Focused complete source container contract
+        id: contract
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
+        run: timeout --kill-after=5s 30s node scripts/run-vitest.mjs run tests/container-ci-contract.test.ts --reporter=verbose
+      - name: Build exact native-only app image and record donor identity
+        id: image
+        if: ${{ !cancelled() && steps.source.outcome == 'success' }}
+        run: timeout --kill-after=10s 120s bash .github/diagnostics/app-runtime-20261019/run.sh build
+      - name: Actual app runtime and synthetic Next production fixture
+        id: runtime
+        if: ${{ !cancelled() && steps.image.outcome == 'success' && steps.deps.outcome == 'success' }}
+        run: timeout --kill-after=10s 180s bash .github/diagnostics/app-runtime-20261019/run.sh runtime
+      - name: Independent complete OS inventory, SBOM and fail-closed image guard
+        id: scan
+        if: ${{ !cancelled() && steps.image.outcome == 'success' }}
+        run: timeout --kill-after=10s 150s bash .github/diagnostics/app-runtime-20261019/run.sh scan
+      - name: Retain sanitized raw proof in free job logs only
+        if: always()
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib,base64
+          root=Path('/tmp/psychsift-runtime-proof')
+          files=['donor-inventory.json','image-inspect.json','stopped-state.json','trivy-all.json','sbom.cdx.json','scan-summary.json','cache/db/metadata.json']
+          for name in files:
+              path=root/name
+              if not path.is_file():
+                  print('PROOF_MISSING',name)
+                  continue
+              data=path.read_bytes()
+              if len(data)>1500000:
+                  raise RuntimeError('proof exceeds bounded log size: '+name)
+              print('PROOF_BEGIN',name,len(data),hashlib.sha256(data).hexdigest())
+              encoded=base64.b64encode(data).decode()
+              for offset in range(0,len(encoded),2048): print(encoded[offset:offset+2048])
+              print('PROOF_END',name)
+          PY
+      - name: Require every diagnostic gate without masking any earlier failure
+        if: always()
+        env:
+          SOURCE: ${{ steps.source.outcome }}
+          DEPS: ${{ steps.deps.outcome }}
+          CONTRACT: ${{ steps.contract.outcome }}
+          IMAGE: ${{ steps.image.outcome }}
+          RUNTIME: ${{ steps.runtime.outcome }}
+          SCAN: ${{ steps.scan.outcome }}
+        run: |
+          python3 - <<'PYCODE'
+          import os,json
+          results={k:os.environ[k] for k in ['SOURCE','DEPS','CONTRACT','IMAGE','RUNTIME','SCAN']}
+          print('DIAGNOSTIC_GATES',json.dumps(results,sort_keys=True))
+          if any(v!='success' for v in results.values()): raise SystemExit(1)
+          PYCODE
+  ocr-locked-runtime:
+    if:
+      github.repository == 'BigSimmo/PsychSift' && github.event.repository.private == false && github.event_name == 'push'
+      && github.ref == 'refs/heads/diag/app-distroless-zero-storage-20261019'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Checkout exact diagnostic commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Assert exact repository and diagnostic-only OCR source
+        id: source
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = BigSimmo/PsychSift
+          test "$GITHUB_REF" = refs/heads/diag/app-distroless-zero-storage-20261019
+          test ! -f .env
+          test ! -f .env.local
+          echo "DIAGNOSTIC_SOURCE $GITHUB_SHA"
+          echo "SCOPE: matching locked parser diagnostic; prior host clinical case timed out; no product adoption or clinical acceptance inferred"
+          sha256sum Dockerfile.worker src/lib/extractors/document.ts tests/extracted-document-validation.test.ts worker/python/extract_pdf_assets.py worker/python/test_extract_pdf_assets_raster_tables.py worker/python/ocr-model-LICENSE.txt worker/python/fixtures/*
+          find .github/diagnostics/ocr-runtime-20261019 -type f -print0 | sort -z | xargs -0 sha256sum
+      - name: Matching locked Bookworm parser diagnostic once
+        id: ocr
+        if: ${{ !cancelled() && steps.source.outcome == 'success' }}
+        run: timeout --kill-after=10s 660s bash .github/diagnostics/ocr-runtime-20261019/run.sh
+      - name: Retain sanitized OCR identities and partial quality proof in free logs only
+        if: always()
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib,base64,gzip
+          root=Path('/tmp/psychsift-runtime-proof')
+          files=['ocr/locked-inputs.txt','ocr/image-inspect.json','ocr/versions.json']
+          result=root/'ocr/output/result'
+          if result.is_dir():
+              inventory=[{'path':str(p.relative_to(result)),'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(result.rglob('*')) if p.is_file()]
+              (root/'ocr/output-inventory.json').write_text(__import__('json').dumps(inventory,indent=2)+'\n')
+              files.append('ocr/output-inventory.json')
+              files.extend(str(p.relative_to(root)) for p in sorted(result.glob('*.json')))
+              files.extend(str(p.relative_to(root)) for p in sorted(result.glob('gated-*.pdf')))
+              files.extend(str(p.relative_to(root)) for p in sorted(result.glob('*.jsonl')))
+              files.extend(str(p.relative_to(root)) for p in sorted(result.glob('first-test-*.txt')))
+          for name in files:
+              path=root/name
+              if not path.is_file():
+                  print('PROOF_MISSING',name)
+                  continue
+              data=path.read_bytes()
+              if len(data)>16000000:
+                  raise RuntimeError('proof exceeds bounded raw input size: '+name)
+              body=gzip.compress(data,mtime=0) if name.endswith('.pdf') else data
+              encoding='gzip' if name.endswith('.pdf') else 'identity'
+              if len(body)>1500000:
+                  raise RuntimeError('proof exceeds bounded encoded log size: '+name)
+              print('PROOF_BEGIN',name,len(data),hashlib.sha256(data).hexdigest(),encoding,len(body),hashlib.sha256(body).hexdigest())
+              encoded=base64.b64encode(body).decode()
+              for offset in range(0,len(encoded),2048): print(encoded[offset:offset+2048])
+              print('PROOF_END',name)
+          PY
+      - name: Require every OCR diagnostic gate without masking failure
+        if: always()
+        env:
+          SOURCE: ${{ steps.source.outcome }}
+          OCR: ${{ steps.ocr.outcome }}
+        run: |
+          python3 - <<'PYCODE'
+          import os,json
+          results={k:os.environ[k] for k in ['SOURCE','OCR']}
+          print('OCR_DIAGNOSTIC_GATES',json.dumps(results,sort_keys=True))
+          if any(v!='success' for v in results.values()): raise SystemExit(1)
+          PYCODE
+"on":
+  push:
+    branches:
+      - diag/app-distroless-zero-storage-20261019
+    paths:
+      - .github/workflows/app-distroless-diagnostic-20261019.yml

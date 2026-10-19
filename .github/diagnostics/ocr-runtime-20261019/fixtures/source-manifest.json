@@ -1,0 +1,204 @@
+{
+  "version": "ocr-source-fixture-matrix-v1",
+  "qualification": "Four existing/derived synthetic sources; not clinical guidance or seven-class product E2E",
+  "producerSha256": "cfbacdb7067e0c8561340ad3b0e8dbb1fc9dc52d5e95dd73febf9cfdffb590e7",
+  "productionLockSha256": "7034b238aba92b65e99f76c9fee87522409362bc2877f253d1441b1463e0806e",
+  "parserSubsetSha256": "05e2163a6179a50639943c8fba3e773f8dea066458b5ff2e1f26653e2e43d1bd",
+  "hardTableSourceSha256": "903976601bfe45cf8abae733d5ebad375a0048f7d0e53765483c6cf0954163ec",
+  "generatorPyMuPDFVersion": "1.26.6",
+  "requiredPackageVersions": {
+    "packaging": "26.2",
+    "pillow": "12.3.0",
+    "pymupdf": "1.28.2",
+    "pytesseract": "0.3.13"
+  },
+  "cases": [
+    {
+      "id": "plain",
+      "file": "plain-scan.pdf",
+      "sha256": "ad6f98aebc9fd16765f4ea6b2667a423c7e44b23be25f61a43cbd7fd89984229",
+      "sourceOrigin": "prior immutable nonclinical scan ad6f98ae",
+      "heading": "SYNTHETIC OCR FIXTURE - NOT CLINICAL GUIDANCE",
+      "mergedHeading": null,
+      "requiredCells": [
+        "Label",
+        "Reading",
+        "Qualifier",
+        "Alpha",
+        ">= 12.5 units",
+        "Do not repeat before 30 minutes",
+        "Beta",
+        "<= 0.8 units",
+        "Only if condition B is present"
+      ],
+      "rows": [
+        {
+          "label": "Alpha",
+          "cells": [
+            "Alpha",
+            ">= 12.5 units",
+            "Do not repeat before 30 minutes"
+          ]
+        },
+        {
+          "label": "Beta",
+          "cells": [
+            "Beta",
+            "<= 0.8 units",
+            "Only if condition B is present"
+          ]
+        }
+      ],
+      "numericTokens": [
+        "12.5",
+        "30",
+        "0.8"
+      ]
+    },
+    {
+      "id": "rotated",
+      "file": "rotated-scan.pdf",
+      "sha256": "0e2b72c3b989faf0b829f2f567da5b511b9af969e5d23e6e95d45fc308477468",
+      "sourceOrigin": "same prior scan; only PDF page rotation changed to 90 degrees",
+      "heading": "SYNTHETIC OCR FIXTURE - NOT CLINICAL GUIDANCE",
+      "mergedHeading": null,
+      "requiredCells": [
+        "Label",
+        "Reading",
+        "Qualifier",
+        "Alpha",
+        ">= 12.5 units",
+        "Do not repeat before 30 minutes",
+        "Beta",
+        "<= 0.8 units",
+        "Only if condition B is present"
+      ],
+      "rows": [
+        {
+          "label": "Alpha",
+          "cells": [
+            "Alpha",
+            ">= 12.5 units",
+            "Do not repeat before 30 minutes"
+          ]
+        },
+        {
+          "label": "Beta",
+          "cells": [
+            "Beta",
+            "<= 0.8 units",
+            "Only if condition B is present"
+          ]
+        }
+      ],
+      "numericTokens": [
+        "12.5",
+        "30",
+        "0.8"
+      ]
+    },
+    {
+      "id": "wrapped",
+      "file": "wrapped-scan.pdf",
+      "sha256": "09e9859bf86fd80311f8dcbcc3729ec7785d357b8b77c7c92a62405d2a3d2da4",
+      "sourceOrigin": "worker/python/test_extract_pdf_assets_hard_tables.py; source values unchanged",
+      "heading": "SYNTHETIC TEST SOURCE - NOT CLINICAL GUIDANCE",
+      "mergedHeading": null,
+      "requiredCells": [
+        "Level",
+        "Timing",
+        "Action",
+        "Follow-up",
+        "Below 0.4 mmol/L",
+        "Check timing: 12 hours after the last dose",
+        "Review adherence and interacting drugs before increasing the dose",
+        "Recheck in 5 to 7 days",
+        "Above 1.2 mmol/L",
+        "Any time",
+        "Withhold lithium. Urgent medical review for toxicity",
+        "Check renal function and electrolytes"
+      ],
+      "rows": [
+        {
+          "label": "Below 0.4 mmol/L",
+          "cells": [
+            "Below 0.4 mmol/L",
+            "Check timing: 12 hours after the last dose",
+            "Review adherence and interacting drugs before increasing the dose",
+            "Recheck in 5 to 7 days"
+          ]
+        },
+        {
+          "label": "Above 1.2 mmol/L",
+          "cells": [
+            "Above 1.2 mmol/L",
+            "Any time",
+            "Withhold lithium. Urgent medical review for toxicity",
+            "Check renal function and electrolytes"
+          ]
+        }
+      ],
+      "numericTokens": [
+        "0.4",
+        "12",
+        "5",
+        "7",
+        "1.2"
+      ]
+    },
+    {
+      "id": "merged",
+      "file": "merged-scan.pdf",
+      "sha256": "92839dcb20bf9519d7f422931477b9155e35495113854b06d34a2481cb97b8ab",
+      "sourceOrigin": "worker/python/test_extract_pdf_assets_hard_tables.py; source values unchanged",
+      "heading": "SYNTHETIC TEST SOURCE - NOT CLINICAL GUIDANCE",
+      "mergedHeading": "Clozapine full blood count ranges",
+      "requiredCells": [
+        "Count (x 10^9/L)",
+        "Green",
+        "Amber",
+        "Red",
+        "WBC",
+        "3.5 or above",
+        "3.0 to 3.5: repeat twice weekly",
+        "Below 3.0: stop clozapine",
+        "Neutrophils",
+        "2.0 or above",
+        "1.5 to 2.0: repeat twice weekly",
+        "Below 1.5: stop clozapine"
+      ],
+      "rows": [
+        {
+          "label": "WBC",
+          "cells": [
+            "WBC",
+            "3.5 or above",
+            "3.0 to 3.5: repeat twice weekly",
+            "Below 3.0: stop clozapine"
+          ]
+        },
+        {
+          "label": "Neutrophils",
+          "cells": [
+            "Neutrophils",
+            "2.0 or above",
+            "1.5 to 2.0: repeat twice weekly",
+            "Below 1.5: stop clozapine"
+          ]
+        }
+      ],
+      "numericTokens": [
+        "10",
+        "9",
+        "3.5",
+        "3.0",
+        "3.5",
+        "3.0",
+        "2.0",
+        "1.5",
+        "2.0",
+        "1.5"
+      ]
+    }
+  ]
+}

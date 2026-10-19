@@ -49,6 +49,65 @@ import { assertOoxmlArchiveLimits } from "@/lib/ooxml-workbook";
 import { resolvePythonBin } from "@/lib/python-bin";
 import { PdfjsFallbackParser } from "@/lib/extractors/pdfjs-fallback";
 
+const rasterScaleSchema = z.number().finite().min(0.25).max(6.25);
+const rasterShaSchema = z.string().regex(/^sha256:[a-f0-9]{64}$/);
+const rasterCropSchema = z
+  .object({
+    kind: z.enum(["cell", "outside"]),
+    language: z.enum(["Latin", "eng"]),
+    sourceRect: z
+      .tuple([
+        z.number().finite().nonnegative(),
+        z.number().finite().nonnegative(),
+        z.number().finite().positive(),
+        z.number().finite().positive(),
+      ])
+      .refine(([x0, y0, x1, y1]) => x0 < x1 && y0 < y1, "raster_crop_geometry"),
+    scale: rasterScaleSchema,
+    width: z.number().int().positive().max(4_000_000),
+    height: z.number().int().positive().max(4_000_000),
+    pngSha256: rasterShaSchema,
+    pixelsSha256: rasterShaSchema,
+    textSha256: rasterShaSchema,
+  })
+  .strict()
+  .refine(({ width, height }) => width * height <= 4_000_000, "raster_crop_pixel_limit")
+  .refine(({ kind, language }) => language === (kind === "cell" ? "Latin" : "eng"), "raster_crop_model_scope");
+const rasterTableOcrSchema = z
+  .object({
+    version: z.literal("raster-table-ocr-observations-v1"),
+    status: z.literal("unverified"),
+    cellModel: z
+      .object({
+        language: z.literal("Latin"),
+        sha256: z.literal("sha256:6dbdaf8ecc6c40f025c2648bf3b3f3fbffe073e1fd2df2047fde2e2b2f020d53"),
+        bytes: z.literal(89_384_811),
+      })
+      .strict(),
+    // The existing outside English model is not claimed to have the cell model's identity.
+    outsideModel: z
+      .object({ language: z.literal("eng"), sha256: z.null(), status: z.literal("not_observed") })
+      .strict(),
+    runtime: z
+      .object({
+        pythonVersion: z.string().min(1).max(128),
+        pymupdfVersion: z.string().min(1).max(128),
+        mupdfVersion: z.string().min(1).max(128),
+        tesseractVersion: z.string().min(1).max(128),
+      })
+      .strict(),
+    detector: z
+      .object({
+        width: z.number().int().positive().max(4_000_000),
+        height: z.number().int().positive().max(4_000_000),
+        scale: rasterScaleSchema,
+      })
+      .strict()
+      .refine(({ width, height }) => width * height <= 4_000_000, "raster_detector_pixel_limit"),
+    crops: z.array(rasterCropSchema).min(1).max(112),
+  })
+  .strict();
+
 const extractedPageSchema = z.object({
   pageNumber: z.number().int().positive(),
   text: z.string(),
@@ -66,6 +125,7 @@ const extractedPageSchema = z.object({
         .optional(),
       // Existing Python PDF diagnostic; validate explicitly without accepting arbitrary metadata.
       image_coverage_ratio: z.number().finite().min(0).max(1).optional(),
+      raster_table_ocr: rasterTableOcrSchema.optional(),
     })
     .strict()
     .optional(),
