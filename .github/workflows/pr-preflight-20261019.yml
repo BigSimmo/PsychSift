@@ -1,0 +1,246 @@
+name: Full production pre-PR preflight 20261019
+on:
+  push:
+    branches: [diag/pr-preflight-20261019]
+permissions:
+  contents: read
+concurrency:
+  group: psychsift-pr-preflight-20261019
+  cancel-in-progress: false
+env:
+  # Frozen product source and baseline reviewed by root before diagnostic publication.
+  SOURCE_SHA: "97f000dc8b5595c51910d304665b75d4a91da29f"
+  BASE_SHA: "0995deabf1065cbdc716272b87b86fbbcd941279"
+  HEAD_SHA: "97f000dc8b5595c51910d304665b75d4a91da29f"
+  CI: "true"
+  NEXT_TELEMETRY_DISABLED: "1"
+  DO_NOT_TRACK: "1"
+  RAG_PROVIDER_MODE: offline
+  NEXT_PUBLIC_SUPABASE_URL: https://sjrfecxgysukkwxsowpy.supabase.co
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: placeholder-ci-publishable-key
+  DOCKER_BUILD_RECORD_UPLOAD: "false"
+  DOCKER_BUILD_SUMMARY: "false"
+jobs:
+  quality:
+    if: github.repository == 'BigSimmo/PsychSift' && github.event.repository.private == false && github.event_name == 'push' && github.ref == 'refs/heads/diag/pr-preflight-20261019'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout exact diagnostic commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Setup pinned Node without cache
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 24.22.0
+          package-manager-cache: false
+      - name: Verify exact source, scope and public repository
+        id: source
+        run: bash .github/diagnostics/pr-preflight-20261019/source.sh
+      - name: Install actual exact lock and lifecycle scripts once
+        id: deps
+        run: timeout --kill-after=10s 360s npm ci --include=dev --fetch-retries=0 --no-audit --fund=false --update-notifier=false
+      - name: Selected normal PR gates, full source TypeScript and offline readiness
+        id: quality
+        run: timeout --kill-after=15s 2220s node /tmp/psychsift-pr-helpers/quality.mjs
+      - name: Retain bounded sanitized proof in logs
+        id: proof
+        if: always()
+        run: python3 /tmp/psychsift-pr-helpers/log-proof.py
+      - name: Require every quality gate
+        if: always()
+        env:
+          SOURCE: ${{ steps.source.outcome }}
+          DEPS: ${{ steps.deps.outcome }}
+          QUALITY: ${{ steps.quality.outcome }}
+          PROOF: ${{ steps.proof.outcome }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          result={k:os.environ[k] for k in ['SOURCE','DEPS','QUALITY','PROOF']}
+          print('PREFLIGHT_GATES',json.dumps(result,sort_keys=True))
+          if any(v!='success' for v in result.values()): raise SystemExit(1)
+          PY
+  focused-browser:
+    if: github.repository == 'BigSimmo/PsychSift' && github.event.repository.private == false && github.event_name == 'push' && github.ref == 'refs/heads/diag/pr-preflight-20261019'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Checkout exact diagnostic commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Setup pinned Node without cache
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 24.22.0
+          package-manager-cache: false
+      - name: Verify source and detach exact product checkout
+        id: source
+        run: bash .github/diagnostics/pr-preflight-20261019/source.sh
+      - name: Install actual exact lock once
+        id: deps
+        run: timeout --kill-after=10s 360s npm ci --include=dev --fetch-retries=0 --no-audit --fund=false --update-notifier=false
+      - name: Normal Chromium prerequisites without cache or install retry loop
+        id: browser
+        run: |
+          sudo sed -i 's/azure\.archive\.ubuntu\.com/archive.ubuntu.com/g' /etc/apt/sources.list /etc/apt/sources.list.d/*.sources /etc/apt/sources.list.d/*.list /etc/apt/apt-mirrors.txt 2>/dev/null || true
+          sudo mkdir -p /etc/apt/apt.conf.d
+          sudo tee /etc/apt/apt.conf.d/99psychsift-diagnostic-timeouts >/dev/null <<'EOF'
+          Acquire::Retries "0";
+          Acquire::http::Timeout "30";
+          Acquire::https::Timeout "30";
+          EOF
+          timeout --kill-after=10s 240s node node_modules/playwright/cli.js install --with-deps chromium
+          node scripts/check-playwright-browser-revision.mjs
+      - name: Ensure identity and complete focused production Chromium specs
+        id: runtime
+        run: timeout --kill-after=15s 780s node /tmp/psychsift-pr-helpers/browser.mjs
+      - name: Retain browser result JSON and bounded sanitized proof in logs
+        id: proof
+        if: always()
+        run: |
+          test -s test-results/playwright-results.json
+          cp test-results/playwright-results.json /tmp/psychsift-pr-proof/browser-results.json
+          python3 /tmp/psychsift-pr-helpers/log-proof.py
+      - name: Classify exact failed browser tests
+        if: failure() && steps.deps.outcome == 'success'
+        run: node scripts/classify-playwright-failures.mjs
+      - name: Require every browser gate
+        if: always()
+        env:
+          SOURCE: ${{ steps.source.outcome }}
+          DEPS: ${{ steps.deps.outcome }}
+          BROWSER: ${{ steps.browser.outcome }}
+          RUNTIME: ${{ steps.runtime.outcome }}
+          PROOF: ${{ steps.proof.outcome }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          result={k:os.environ[k] for k in ['SOURCE','DEPS','BROWSER','RUNTIME','PROOF']}
+          print('PREFLIGHT_GATES',json.dumps(result,sort_keys=True))
+          if any(v!='success' for v in result.values()): raise SystemExit(1)
+          PY
+  full-app-image:
+    if: github.repository == 'BigSimmo/PsychSift' && github.event.repository.private == false && github.event_name == 'push' && github.ref == 'refs/heads/diag/pr-preflight-20261019'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - name: Checkout exact diagnostic commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Setup pinned Node without cache
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 24.22.0
+          package-manager-cache: false
+      - name: Verify exact source, scope and public repository
+        id: source
+        run: bash .github/diagnostics/pr-preflight-20261019/source.sh
+      - name: Full actual app Dockerfile, final runner, local image only
+        id: image
+        run: |
+          timeout --kill-after=15s 1500s docker build --progress=plain --target runner -f Dockerfile -t clinical-kb-app:ci \
+            --build-arg NEXT_PUBLIC_SUPABASE_URL=https://sjrfecxgysukkwxsowpy.supabase.co \
+            --build-arg NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=placeholder-ci-publishable-key \
+            --build-arg MAX_UPLOAD_MB=50 --build-arg NEXT_PUBLIC_MAX_UPLOAD_MB=50 \
+            --build-arg ALLOW_LOW_RAM_BUILD=1 --build-arg GITHUB_SHA="$SOURCE_SHA" \
+            --build-arg COMMIT_SHA="$SOURCE_SHA" --build-arg SOURCE_COMMIT_SHA="$SOURCE_SHA" .
+      - name: Assembled image content, normal boot, native dependencies, PORT, healthcheck and SSR
+        id: runtime
+        if: ${{ !cancelled() && steps.image.outcome == 'success' }}
+        run: |
+          timeout --kill-after=10s 60s node /tmp/psychsift-pr-helpers/image-contract.mjs app clinical-kb-app:ci
+          timeout --kill-after=10s 100s node scripts/app-container-smoke.mjs clinical-kb-app:ci
+          timeout --kill-after=10s 60s docker run --rm --network=none --cap-drop=ALL --security-opt no-new-privileges:true \
+            --mount "type=bind,src=/tmp/psychsift-pr-helpers/native-compatibility.mjs,dst=/proof/native-compatibility.mjs,readonly" \
+            --entrypoint node clinical-kb-app:ci /proof/native-compatibility.mjs
+          timeout --kill-after=10s 100s node /tmp/psychsift-pr-helpers/app-extra.mjs
+          timeout --kill-after=5s 30s docker run --rm --network=none --entrypoint node clinical-kb-app:ci scripts/deploy/await-migrations.mjs --self-test
+      - name: Independent full raw scan, OS inventory and SBOM
+        id: scan
+        if: ${{ !cancelled() && steps.image.outcome == 'success' }}
+        run: timeout --kill-after=10s 300s bash /tmp/psychsift-pr-helpers/scan.sh clinical-kb-app:ci
+      - name: Retain bounded sanitized proof in logs
+        id: proof
+        if: always()
+        run: python3 /tmp/psychsift-pr-helpers/log-proof.py
+      - name: Clean task-owned runtime containers
+        if: always()
+        run: docker rm -f clinical-kb-app-smoke psychsift-pr-app-port 2>/dev/null || true
+      - name: Require every app gate
+        if: always()
+        env:
+          SOURCE: ${{ steps.source.outcome }}
+          IMAGE: ${{ steps.image.outcome }}
+          RUNTIME: ${{ steps.runtime.outcome }}
+          SCAN: ${{ steps.scan.outcome }}
+          PROOF: ${{ steps.proof.outcome }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          result={k:os.environ[k] for k in ['SOURCE','IMAGE','RUNTIME','SCAN','PROOF']}
+          print('PREFLIGHT_GATES',json.dumps(result,sort_keys=True))
+          if any(v!='success' for v in result.values()): raise SystemExit(1)
+          PY
+  full-worker-image:
+    if: github.repository == 'BigSimmo/PsychSift' && github.event.repository.private == false && github.event_name == 'push' && github.ref == 'refs/heads/diag/pr-preflight-20261019'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout exact diagnostic commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Setup pinned Node without cache
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 24.22.0
+          package-manager-cache: false
+      - name: Verify exact source, scope and public repository
+        id: source
+        run: bash .github/diagnostics/pr-preflight-20261019/source.sh
+      - name: Full actual worker Dockerfile including packaged worker, Python owner tests and model verification
+        id: image
+        run: |
+          timeout --kill-after=15s 1200s docker build --progress=plain --target runner -f Dockerfile.worker -t clinical-kb-worker:ci \
+            --build-arg GITHUB_SHA="$SOURCE_SHA" --build-arg COMMIT_SHA="$SOURCE_SHA" --build-arg SOURCE_COMMIT_SHA="$SOURCE_SHA" .
+      - name: Assembled worker JS, Python parser and NLP runtime, offline model identities
+        id: runtime
+        if: ${{ !cancelled() && steps.image.outcome == 'success' }}
+        run: |
+          timeout --kill-after=10s 60s node /tmp/psychsift-pr-helpers/image-contract.mjs worker clinical-kb-worker:ci
+          timeout --kill-after=10s 150s bash /tmp/psychsift-pr-helpers/worker-runtime.sh
+      - name: Independent full raw scan, OS inventory and SBOM
+        id: scan
+        if: ${{ !cancelled() && steps.image.outcome == 'success' }}
+        run: timeout --kill-after=10s 300s bash /tmp/psychsift-pr-helpers/scan.sh clinical-kb-worker:ci
+      - name: Retain bounded sanitized proof in logs
+        id: proof
+        if: always()
+        run: python3 /tmp/psychsift-pr-helpers/log-proof.py
+      - name: Require every worker gate
+        if: always()
+        env:
+          SOURCE: ${{ steps.source.outcome }}
+          IMAGE: ${{ steps.image.outcome }}
+          RUNTIME: ${{ steps.runtime.outcome }}
+          SCAN: ${{ steps.scan.outcome }}
+          PROOF: ${{ steps.proof.outcome }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          result={k:os.environ[k] for k in ['SOURCE','IMAGE','RUNTIME','SCAN','PROOF']}
+          print('PREFLIGHT_GATES',json.dumps(result,sort_keys=True))
+          if any(v!='success' for v in result.values()): raise SystemExit(1)
+          PY
