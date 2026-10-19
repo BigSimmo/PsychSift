@@ -190,6 +190,28 @@ values (pg_temp.uid('D:d1:old-cited'), pg_temp.uid('D'), 'synthetic/d1-old-cited
 insert into public.document_chunks(document_id, chunk_index, content, embedding, image_ids, index_generation_id)
 values (pg_temp.uid('D'), 1001, 'Synthetic older chunk citing an older image',
   array_fill(0.1::real, array[1536])::extensions.vector, array[pg_temp.uid('D:d1:old-cited')], pg_temp.uid('d1'));
+-- The summary, kept sections and kept memory cards cite chunks through uuid arrays with no
+-- foreign key; a chunk only a pruned older section names goes in the same pass.
+insert into public.document_chunks(id, document_id, chunk_index, content, embedding, index_generation_id)
+values
+  (pg_temp.uid('D:d1:summary-chunk'), pg_temp.uid('D'), 1002, 'Synthetic older chunk the summary cites',
+    array_fill(0.1::real, array[1536])::extensions.vector, pg_temp.uid('d1')),
+  (pg_temp.uid('D:d1:section-chunk'), pg_temp.uid('D'), 1003, 'Synthetic older chunk a kept section cites',
+    array_fill(0.1::real, array[1536])::extensions.vector, pg_temp.uid('d1')),
+  (pg_temp.uid('D:d1:card-chunk'), pg_temp.uid('D'), 1004, 'Synthetic older chunk a kept card cites',
+    array_fill(0.1::real, array[1536])::extensions.vector, pg_temp.uid('d1')),
+  (pg_temp.uid('D:d1:old-section-chunk'), pg_temp.uid('D'), 1005, 'Synthetic older chunk only an older section cites',
+    array_fill(0.1::real, array[1536])::extensions.vector, pg_temp.uid('d1'));
+update public.document_summaries set source_chunk_ids = array[pg_temp.uid('D:d1:summary-chunk')]
+where document_id = pg_temp.uid('D');
+update public.document_sections set chunk_ids = array[pg_temp.uid('D:d1:section-chunk')]
+where id = pg_temp.uid('D:d3:section');
+insert into public.document_memory_cards(document_id, card_type, title, content, embedding, source_chunk_ids, index_generation_id)
+values (pg_temp.uid('D'), 'section_summary', 'Synthetic card citing an older chunk', 'Fixture',
+  array_fill(0.1::real, array[1536])::extensions.vector, array[pg_temp.uid('D:d1:card-chunk')], pg_temp.uid('d3'));
+insert into public.document_sections(id, document_id, section_index, heading, chunk_ids, index_generation_id)
+values (pg_temp.uid('D:d1:old-section'), pg_temp.uid('D'), 1000, 'Synthetic older section',
+  array[pg_temp.uid('D:d1:old-section-chunk')], pg_temp.uid('d1'));
 select pg_temp.move_pointer(pg_temp.uid('D'), pg_temp.uid('d3'), jsonb_build_object('cover_image_id', pg_temp.uid('D:d1:cover')));
 select pg_temp.assert_true(exists (select 1 from public.document_chunks where id = pg_temp.uid('D:d1:chunk'))
   and exists (select 1 from public.document_table_facts where id = pg_temp.uid('D:d3:cross')),
@@ -209,6 +231,13 @@ select pg_temp.assert_true(not exists (select 1 from public.document_images wher
     where metadata->>'source_document_id' = pg_temp.uid('D')::text
       and 'synthetic/d1-old-cited.png' = any(image_paths)),
   'an older image cited only by a pruned older chunk is pruned and queued in the same pass');
+select pg_temp.assert_true(exists (select 1 from public.document_chunks where id = pg_temp.uid('D:d1:summary-chunk'))
+  and exists (select 1 from public.document_chunks where id = pg_temp.uid('D:d1:section-chunk'))
+  and exists (select 1 from public.document_chunks where id = pg_temp.uid('D:d1:card-chunk')),
+  'an older chunk the summary, a kept section or a kept memory card still names in its chunk array must survive');
+select pg_temp.assert_true(not exists (select 1 from public.document_sections where id = pg_temp.uid('D:d1:old-section'))
+  and not exists (select 1 from public.document_chunks where id = pg_temp.uid('D:d1:old-section-chunk')),
+  'an older chunk named only by a pruned older section is pruned in the same pass');
 select pg_temp.assert_true(not exists (select 1 from public.document_embedding_fields
     where document_id = pg_temp.uid('D') and index_generation_id = pg_temp.uid('d1'))
   and not exists (select 1 from public.document_images where id = pg_temp.uid('D:d1:image')),
