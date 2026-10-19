@@ -65,7 +65,11 @@ class RasterGridGeometryTests(unittest.TestCase):
         stream = io.BytesIO()
         source.save(stream, format="PNG")
         pixels = SimpleNamespace(width=source.width, height=source.height, tobytes=lambda _: stream.getvalue())
-        page = SimpleNamespace(number=0, rotation=0, rect=extractor.fitz.Rect(0, 0, *source.size),
+        # Fixed mock pixels must match the requested render scale, rather than
+        # posing as a much larger point-sized page at the render-pixel ceiling.
+        scale = extractor.MAX_OCR_RENDER_SCALE
+        page = SimpleNamespace(number=0, rotation=0,
+                               rect=extractor.fitz.Rect(0, 0, source.width / scale, source.height / scale),
                                get_text=lambda _: "", get_pixmap=lambda **_: pixels)
         engine = SimpleNamespace(pytesseract=SimpleNamespace(tesseract_cmd="fixture-tesseract"),
                                  image_to_string=Mock(return_value=text))
@@ -74,8 +78,8 @@ class RasterGridGeometryTests(unittest.TestCase):
             "sys.modules", {"pytesseract": engine},
         ), patch.object(extractor, "checked_raster_table_model", side_effect=AssertionError("no cell model")):
             actual, warning = extractor.maybe_ocr_page(page, extractor.ExtractionBudget(), observations)
-        self.assertEqual(actual, text)
         self.assertIsNone(warning)
+        self.assertEqual(actual, text)
         self.assertEqual(observations, {})
         engine.image_to_string.assert_called_once()
         self.assertNotIn("--psm", engine.image_to_string.call_args.kwargs["config"])
