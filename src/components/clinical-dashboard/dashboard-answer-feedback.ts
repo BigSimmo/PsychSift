@@ -28,15 +28,16 @@ export function useDashboardAnswerFeedback({
 }: UseDashboardAnswerFeedbackOptions) {
   const [pendingFeedback, setPendingFeedback] = useState<AnswerFeedbackType | null>(null);
 
-  async function submitAnswerFeedback(feedbackType: AnswerFeedbackType, note?: string) {
-    if (!answer || pendingFeedback) return;
+  /** Resolves `true` only when the report was saved. */
+  async function submitAnswerFeedback(feedbackType: AnswerFeedbackType, note?: string): Promise<boolean> {
+    if (!answer || pendingFeedback) return false;
     if (clientDemoMode) {
       setActionNotice({ tone: "warning", message: "Answer review is unavailable for synthetic demo answers." });
-      return;
+      return false;
     }
     if (!answer.interactionId || !answer.feedbackToken) {
       setActionNotice({ tone: "warning", message: "This answer predates traceable feedback. Run the question again." });
-      return;
+      return false;
     }
 
     setPendingFeedback(feedbackType);
@@ -68,7 +69,7 @@ export function useDashboardAnswerFeedback({
       if (response.status === 401) {
         markSessionExpired();
         setActionNotice({ tone: "warning", message: "The session could not be validated for feedback." });
-        return;
+        return false;
       }
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}));
@@ -78,11 +79,13 @@ export function useDashboardAnswerFeedback({
         tone: "success",
         message: feedbackType === "verified" ? "Verified answer feedback saved." : "Answer issue feedback saved.",
       });
+      return true;
     } catch (feedbackError) {
       setActionNotice({
         tone: "warning",
         message: feedbackError instanceof Error ? feedbackError.message : "Answer review could not be saved.",
       });
+      return false;
     } finally {
       setPendingFeedback(null);
     }

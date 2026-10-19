@@ -136,12 +136,19 @@ export function AnswerUtilityActions({
    *
    * This did not arise until the list became a modal (2026-09-02). As an in-flow
    * disclosure the notice was simply visible above it, so nothing had to close.
+   *
+   * Closing unmounts the panel, so the typed note lives here and is cleared only
+   * once the host reports the save succeeded: a refused or failed note reopens
+   * intact for the reader to edit and resend.
    */
+  const [draftNote, setDraftNote] = useState("");
   const submitFeedbackAndClose = useCallback(
     (feedbackType: AnswerFeedbackType, note?: string) => {
-      if (note) onSubmitFeedback?.(feedbackType, note);
-      else onSubmitFeedback?.(feedbackType);
+      const result = note ? onSubmitFeedback?.(feedbackType, note) : onSubmitFeedback?.(feedbackType);
       setFeedbackOpen(false);
+      void Promise.resolve(result).then((saved) => {
+        if (saved === true) setDraftNote("");
+      });
     },
     [onSubmitFeedback],
   );
@@ -269,6 +276,8 @@ export function AnswerUtilityActions({
             onSubmit={submitFeedbackAndClose}
             tone="problems"
             chrome="bare"
+            note={draftNote}
+            onNoteChange={setDraftNote}
           />
         </Sheet>
       ) : null}

@@ -28,5 +28,8 @@ export type FeedbackRecordType = (typeof feedbackRecordTypes)[number];
 /** A record's public slug, the same shape the database check accepts. */
 export const feedbackRecordIdPattern = /^[a-z0-9][a-z0-9-]{0,119}$/;
 
-/** What a report control hands its host: the category, and the trimmed note when one was typed. */
-export type SubmitAnswerFeedback = (feedbackType: AnswerFeedbackType, note?: string) => void;
+/**
+ * What a report control hands its host: the category, and the trimmed note when one was typed.
+ * A host may resolve `true` once the report is saved, so a control can keep a typed note until then.
+ */
+export type SubmitAnswerFeedback = (feedbackType: AnswerFeedbackType, note?: string) => void | Promise<boolean | void>;

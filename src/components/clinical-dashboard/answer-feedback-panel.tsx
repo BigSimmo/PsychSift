@@ -63,6 +63,8 @@ export function AnswerFeedbackPanel({
   onSubmit,
   tone = "full",
   chrome = "card",
+  note: controlledNote,
+  onNoteChange,
 }: {
   pending: AnswerFeedbackType | null;
   /** Called with the trimmed note only when the reader typed one. */
@@ -82,6 +84,12 @@ export function AnswerFeedbackPanel({
    * this exists to avoid.
    */
   chrome?: "card" | "bare";
+  /**
+   * A host that closes the panel before the outcome is known keeps the note itself, so a
+   * refused or failed report reopens with the reader's text instead of an empty field.
+   */
+  note?: string;
+  onNoteChange?: (note: string) => void;
 }) {
   const problemsOnly = tone === "problems";
   const bare = chrome === "bare";
@@ -89,7 +97,9 @@ export function AnswerFeedbackPanel({
     ? answerFeedbackOptions.filter((item) => item.tone !== "success")
     : answerFeedbackOptions;
   const question = answerFeedbackQuestion[problemsOnly ? "problems" : "full"];
-  const [note, setNote] = useState("");
+  const [ownNote, setOwnNote] = useState("");
+  const note = controlledNote ?? ownNote;
+  const setNote = onNoteChange ?? setOwnNote;
   const submit = (feedbackType: AnswerFeedbackType) => {
     const trimmed = note.trim();
     if (trimmed) onSubmit(feedbackType, trimmed);

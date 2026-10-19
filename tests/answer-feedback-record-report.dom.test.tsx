@@ -27,6 +27,28 @@ describe("report a problem: optional note", () => {
     expect(onSubmitFeedback).toHaveBeenCalledWith("numeric_error", "The cited table says 250 mg.");
   });
 
+  it("keeps a refused answer note for the next open, and clears it once a report is saved", async () => {
+    const user = userEvent.setup();
+    const onSubmitFeedback = vi.fn().mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    render(<AnswerUtilityActions copied={false} onCopy={() => undefined} onSubmitFeedback={onSubmitFeedback} />);
+    await user.click(screen.getByTestId("answer-feedback-trigger"));
+    let sheet = await screen.findByTestId("answer-feedback-sheet");
+    await user.type(within(sheet).getByTestId("answer-feedback-note"), "Synthetic note");
+    await user.click(within(sheet).getByRole("button", { name: /Numeric error/ }));
+    await waitFor(() => expect(screen.queryByTestId("answer-feedback-sheet")).not.toBeInTheDocument());
+
+    await user.click(screen.getByTestId("answer-feedback-trigger"));
+    sheet = await screen.findByTestId("answer-feedback-sheet");
+    expect(within(sheet).getByTestId("answer-feedback-note")).toHaveValue("Synthetic note");
+    await user.click(within(sheet).getByRole("button", { name: /Numeric error/ }));
+    await waitFor(() => expect(screen.queryByTestId("answer-feedback-sheet")).not.toBeInTheDocument());
+
+    await user.click(screen.getByTestId("answer-feedback-trigger"));
+    sheet = await screen.findByTestId("answer-feedback-sheet");
+    expect(within(sheet).getByTestId("answer-feedback-note")).toHaveValue("");
+    expect(onSubmitFeedback).toHaveBeenNthCalledWith(2, "numeric_error", "Synthetic note");
+  });
+
   it("sends a medication record report and shows the server's refusal message", async () => {
     const fetchMock = vi.fn(
       async () =>
