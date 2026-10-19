@@ -172,7 +172,8 @@ describe("private fixture terminal caller", () => {
     expect(attempt.signal.aborted).toBe(true);
   });
   it("wires only the exact source private native path to terminal return before ordinary completion or cache mutation", () => {
-    const main = readFileSync("worker/main.ts", "utf8");
+    // The managed branch of processJob moved from worker/main.ts into this module.
+    const main = readFileSync("worker/managed-generation-job.ts", "utf8");
     const hook = sourceSegment(
       main,
       "const nativeReadback = await stageManagedNativeParentClosure",

@@ -16,8 +16,9 @@
  * WHAT IT IS NOT. It is not a monitor. Nothing schedules it, no workflow calls it, and it joins no
  * verification chain. That is deliberate: `#TN512M` records that this repository already has more
  * working detection than it has attention, and says "do not add further monitoring checks" until a
- * red check reaches a human. An operator tool you run on purpose is a different class of thing, and
- * the manual-SQL section it is documented beside keeps its "not alerted" label.
+ * red check reaches a human. An operator tool you run on purpose is a different class of thing. The
+ * answer-latency alerts in that doc come from the ops digest reading existing `rag_queries` data,
+ * never from this script.
  *
  * IT REFUSES TO RUN WITHOUT PERMISSION. Asking the live site a question spends OpenAI credit and
  * writes a telemetry row, so it is provider-backed under the API and provider confirmation boundary

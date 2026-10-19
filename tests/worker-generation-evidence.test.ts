@@ -468,10 +468,14 @@ describe("actual source to retained prerequisite packet", () => {
       process.indexOf("await resetDocumentIndex("),
     );
     expect(process).toContain("if (evidenceInventory.managed !== true)");
-    expect(process).toContain("resumeGenerationRetentionPacket(");
+    // The managed branch moved into worker/managed-generation-job.ts.
+    expect(process).toContain("await runManagedGenerationJob(");
+    expect(readFileSync("worker/managed-generation-job.ts", "utf8")).toContain("resumeGenerationRetentionPacket(");
   });
   it("enables genuine local memory only in the retained-witness managed branch and preserves its refusal", () => {
-    const source = readFileSync("worker/main.ts", "utf8");
+    // The managed branch moved out of worker/main.ts; main must no longer carry the flag at all.
+    expect(readFileSync("worker/main.ts", "utf8")).not.toMatch(/includeLocalMemory/);
+    const source = readFileSync("worker/managed-generation-job.ts", "utf8");
     const start = source.indexOf('if (originalWitness.status === "retained") {');
     const end = source.indexOf("await stageGenerationPrerequisite(", start);
     expect(start).toBeGreaterThan(-1);

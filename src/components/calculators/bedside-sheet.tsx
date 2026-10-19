@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertTriangle, CheckCheck, ChevronDown, ClipboardCopy, ClipboardList, NotebookPen } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { cn, controlDisabled } from "@/components/ui-primitives";
 import { useCopyToast } from "@/components/ui/toast";
@@ -139,7 +139,18 @@ export function CalculatorsBedsideSheetMockup() {
   const [session, setSession] = useState<SessionAnswers>({});
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({ phq9: true });
   const [copied, setCopied] = useState(false);
+  const copiedTimer = useRef<number | undefined>(undefined);
+  const mounted = useRef(true);
   const showToast = useCopyToast();
+
+  // A pending reset must not fire after unmount (it threw "window is not defined" after jsdom teardown).
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      window.clearTimeout(copiedTimer.current);
+    };
+  }, []);
 
   const startedCalcs = calculators
     .map((calc) => ({ calc, derived: deriveCalculator(calc, session[calc.id] ?? {}) }))
@@ -155,9 +166,12 @@ export function CalculatorsBedsideSheetMockup() {
     const lines = completedCalcs.map(({ calc, derived }) => formatResultSummary(calc, derived));
     try {
       await navigator.clipboard.writeText(lines.join("\n"));
+      // The sheet can unmount while the clipboard write is pending; schedule nothing then.
+      if (!mounted.current) return;
       setCopied(true);
       showToast("Copied bedside summary");
-      window.setTimeout(() => setCopied(false), 1500);
+      window.clearTimeout(copiedTimer.current);
+      copiedTimer.current = window.setTimeout(() => setCopied(false), 1500);
     } catch {
       /* clipboard unavailable in some embeds — mockup-safe no-op */
     }

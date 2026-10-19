@@ -545,9 +545,12 @@ describe("shared-search route ownership", () => {
   });
 
   it("routes a submitted shared-composer search to the selected mode's own surface", () => {
-    const dashboardSource = readFileSync(resolve(process.cwd(), "src/components/ClinicalDashboard.tsx"), "utf8");
-    const ask = sourceFrom(dashboardSource, "async function ask(", {
-      label: "ClinicalDashboard async function ask",
+    const searchExecutionSource = readFileSync(
+      resolve(process.cwd(), "src/components/clinical-dashboard/use-dashboard-search-execution.ts"),
+      "utf8",
+    );
+    const ask = sourceFrom(searchExecutionSource, "async function ask(", {
+      label: "useDashboardSearchExecution async function ask",
     });
 
     // Natural-language Smart search uses the same selected-mode route as a

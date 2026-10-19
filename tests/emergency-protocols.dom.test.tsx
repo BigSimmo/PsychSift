@@ -277,7 +277,13 @@ describe("selectEmergencyProtocolsForSurface (degraded setup)", () => {
   it("is wired into the dashboard", () => {
     const source = readFileSync(resolve(process.cwd(), "src/components/ClinicalDashboard.tsx"), "utf8");
     expect(source).toContain("selectEmergencyProtocolsForSurface({");
-    expect(source).toContain("setSetupBlockedQuery(trimmedQuery)");
+    // The setup-blocked query is recorded where the dashboard's search runs.
+    const searchExecution = readFileSync(
+      resolve(process.cwd(), "src/components/clinical-dashboard/use-dashboard-search-execution.ts"),
+      "utf8",
+    );
+    expect(searchExecution).toContain("setSetupBlockedQuery(trimmedQuery)");
+    expect(source).toContain("setSetupBlockedQuery,");
   });
 });
 

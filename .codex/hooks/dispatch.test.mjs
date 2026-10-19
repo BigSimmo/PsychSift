@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import net from "node:net";
 import http from "node:http";
 import https from "node:https";
@@ -246,6 +246,37 @@ test("registration launch handles a real nested synthetic checkout and malformed
   assert.equal(bad.status, 0);
   assert.equal(bad.stdout, "");
 });
+test("registration accepts the same Windows checkout casing and refuses a foreign checkout", () => {
+  const entry = registration().hooks.PreToolUse[0].hooks[0];
+  const shell = process.platform === "win32" ? "powershell.exe" : "/bin/bash";
+  const args = process.platform === "win32" ? ["-NoProfile", "-Command", entry.commandWindows] : ["-c", entry.command];
+  const adapter = path.join(root, ".codex/hooks/dispatch.mjs");
+  fs.mkdirSync(path.dirname(adapter), { recursive: true });
+  fs.writeFileSync(adapter, 'export async function run(){return {stdout:"trusted-checkout",stderr:"",code:0}}');
+  const launch = (workdir) =>
+    spawnSync(shell, args, {
+      input: JSON.stringify(payload("exec_command", { cmd: "git push", workdir })),
+      encoding: "utf8",
+      cwd: root,
+      windowsHide: true,
+      timeout: 5000,
+    });
+  const equivalent = launch(process.platform === "win32" ? root.toLowerCase() : root);
+  assert.equal(equivalent.status, 0);
+  assert.equal(equivalent.stdout, "trusted-checkout");
+  const foreign = path.join(root, "untrusted-checkout");
+  const marker = path.join(foreign, "module-was-imported");
+  fs.mkdirSync(path.join(foreign, ".git"), { recursive: true });
+  fs.mkdirSync(path.join(foreign, ".codex/hooks"), { recursive: true });
+  fs.writeFileSync(
+    path.join(foreign, ".codex/hooks/dispatch.mjs"),
+    `import fs from "node:fs";fs.writeFileSync(${JSON.stringify(marker)},"unexpected import");export async function run(){return {stdout:"foreign",stderr:"",code:0}}`,
+  );
+  const rejected = launch(foreign);
+  assert.equal(rejected.status, 0);
+  assert.equal(rejected.stdout, "");
+  assert.equal(fs.existsSync(marker), false, "a foreign adapter must never be imported");
+});
 test("pre-push fails closed when Node cannot be found", () => {
   const source = fs.existsSync(path.join(directory, "pre-push"))
     ? path.join(directory, "pre-push")
@@ -326,7 +357,9 @@ test("Codex edit aliases and apply_patch reach the organisation warning in Edit/
   assert.match(registration().hooks.PreToolUse[0].matcher, /\|apply_patch\|/);
 
   // The translated payload produces a real warning from the maintained hook logic.
-  const { editHookOutput } = await import(path.join(sourceRoot, "scripts/organisation/agent-hooks.mjs"));
+  const { editHookOutput } = await import(
+    pathToFileURL(path.join(sourceRoot, "scripts/organisation/agent-hooks.mjs")).href
+  );
   const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), "psychsift-edit-warning-"));
   const migration = action("apply_patch", {
     command: "*** Begin Patch\n*** Add File: supabase/migrations/20990101000000_x.sql\n+select 1;\n*** End Patch\n",

@@ -3199,6 +3199,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/operator-rehearsal-plan.md",
+        "section": "root",
+        "catalogued": true
+      },
+      {
         "path": "docs/archive/2026-10-agent-code-reviews/MASTER_ISSUE_TRACKER.md",
         "section": "archive",
         "catalogued": true
@@ -4526,6 +4531,11 @@
       {
         "path": "docs/redesign/clinical-white-aegean-master-implementation-plan.md",
         "section": "redesign",
+        "catalogued": true
+      },
+      {
+        "path": "docs/process-cleanup-proposal-2026-10.md",
+        "section": "root",
         "catalogued": true
       },
       {
@@ -8172,6 +8182,14 @@
         "scope": "branch-cleanup",
         "outcome": "Redundant: exact source HEAD was squash-merged by PR #483; eligible for deletion when unreferenced.",
         "checks": "GitHub merged-PR source HEAD matched exactly."
+      },
+      {
+        "date": "2026-10-18",
+        "ref": "codex/agent-policy-delivery-20261017",
+        "head": "190c660135c6a9c6061b1589a74aa9c44bf0b11a",
+        "scope": "current-head residual hook and managed-guidance repair",
+        "outcome": "Independent review: no confirmed blocking finding in six-file residual diff; project suffix and newer bot fixes preserved. Local synthetic proof only; native loading and hosted acceptance separate.",
+        "checks": "Windows Node hooks16/16;7bootstrap edge probes;focused verifier/receipt Vitest46/46;source typecheck exit0;exact-lock724locations;docs maintenance and inner checks pass;format/rule-consistency/diff checks pass. Reviewed six source hashes independently matched by parent; base fd4831e44b."
       },
       {
         "date": "2026-07-27",
@@ -18126,6 +18144,14 @@
         "checks": "check:outstanding-issues PASS; check:branch-review-ledger PASS; diff review; no unresolved threads"
       },
       {
+        "date": "2026-10-18",
+        "ref": "codex/agent-policy-delivery-20261017",
+        "head": "8d4316ea45ed8d870e8f85db8be65628e0496594",
+        "scope": "container evidence helper trigger correction",
+        "outcome": "Independent scoped acceptance: no confirmed blocker. Helper-only changes select container validation in actual classifier and standalone main/release workflow; accepted raw-cap and verification jobs unchanged.",
+        "checks": "Routing regression red before two-line fix; focused artifact/container/CI-scope47/47pass; classifier self-test and action pins pass; scoped lint and final source typecheck pass; independent actual CLI/workflow/hash comparison and diff-check pass. Hosted dispatch remains unrun; no paid authorization."
+      },
+      {
         "date": "2026-07-14",
         "ref": "claude/remove-client-sentry",
         "head": "8d54ddc980a0c883d1f8013e05aa1f96a85e622a",
@@ -18644,6 +18670,14 @@
         "scope": "PR #2532 (#59JT7W + #RZVMPD, squashed to main): src/lib/caring-contacts/message-policy.ts, db/postgres-repository.ts, schedule-view.ts and their tests",
         "outcome": "MERGED to main 2026-09-02. Closing-message refusal routed through the validateGovernedMessage chokepoint and widened to every message type; caseload list read narrowed to PLAN_LIST_COLUMNS. A clinical-governance review round caught the first draft granting a NEW permission (validateGovernedMessage returned valid:true for a standard message with no body at all) and masking the more serious record-level refusal behind 'write a body'; both fixed before merge. Bugbot reviewed and rated Low Risk.",
         "checks": "LOCAL OFFLINE GATES, run in this container: typecheck exit 0; full offline unit suite 949 files / 12293 passed | 1 skipped; lint --max-warnings 0 exit 0; prettier --check clean; caring-contacts db suite 218 passed against a disposable local Postgres 16 (not the live Supabase project; assertNotClinicalKbProject refuses that ref by construction); cc-guards 1069 passed. HOSTED CI: green on the main-based head — PR required, Unit coverage, Build, Static PR checks, Safety and config, Caring Contacts database, Lighthouse budget, Semgrep, Gitleaks, GitGuardian, PR policy, PR mergeability. Hosted CI results named here were OBSERVED, not inherited: this Claude Code session read them directly from the GitHub check runs via the GitHub MCP tools, under Josh's standing instruction to babysit these PRs, which is the explicit confirmation the provider boundary requires for that read. Provider-backed gates NOT run: no eval:* retrieval canary, no verify:release, no check:supabase-project, no live Supabase or OpenAI test:live path, and no live-drift dispatch."
+      },
+      {
+        "date": "2026-10-18",
+        "ref": "codex/agent-policy-final-followup-20261018",
+        "head": "94b9b8ed9e38230f55c9b6d6b250a44b03c20fb1",
+        "scope": "main-preserving integration of accepted agent-policy residual repairs",
+        "outcome": "Independent bounded integration accepted: retained newer main migration decision and guards, external gh matcher changes and accepted Windows/bootstrap/guidance/container/routing fixes. Generated snapshot adds only three retained review objects. No full-tree replacement or hosted acceptance.",
+        "checks": "Source/hash and JSON-union comparison; diff-check; docs-maintain pass; source typecheck and scoped lint pass. Fresh Node15pass1timeout then exact isolated case1pass; Vitest92pass1timeout31platformskips then exact isolated case1pass. All assertions/timeouts unchanged. Earlier focused acceptance retained by matching inputs; native lifecycle/Ubuntu Docker/raw-upload unrun."
       },
       {
         "date": "2026-07-29",
@@ -22710,6 +22744,14 @@
         "checks": "focused vitest earlier; guard-next-build Vitest 3/3; hosted Build/Static/Unit/Production UI/PR required SUCCESS; no provider checks."
       },
       {
+        "date": "2026-10-18",
+        "ref": "fix/remaining-review-reliability-20261018",
+        "head": "c5d26c3bdbe9f352bb06b1a71c272efb6d3a154b",
+        "scope": "Controller review of real main-conflict fixture resolution",
+        "outcome": "Resolved two fixture conflicts using main isolated shell/tool-path and temporary Git config, retaining branch bounded-probe regressions. Genuine3555manifest/schema5118/migration tree/seals unchanged. No fresh independent review claimed for fixture resolution; prior reviews reused only for unchanged SQL/artifact scope.",
+        "checks": "Manual two-parent conflict review;171tests2files, fulltypecheck, scopedESLint/Prettier passed. Unfiltered Actions+mergeability job diagnose missing CI as conflict, not pass; final hosted parity required."
+      },
+      {
         "date": "2026-07-28",
         "ref": "PR #1285 / `cursor/pdf-extractor-sigkill-137-0687`",
         "head": "c5ee34f2a17222a0ec6fb592a2dd7db4e43f1496",
@@ -25436,6 +25478,14 @@
         "scope": "prlanded",
         "outcome": "PR #2901 merged by owner 2026-09-19T16:59:56Z as merge commit 4960c6f7fa3b. Landed verified by content: two parents (63e44c9d9683, e3f954ea1a25), branch tip is an ancestor of origin/main, and git show --remerge-diff is empty, so the merge introduced nothing beyond its parents. Both corrected assurance decisions confirmed present on main and still state=open.",
         "checks": "All PR check runs on e3f954ea1a25 succeeded, PR required green at 16:59:34 (22s before merge): Static PR checks, Build, Safety and config checks, Unit coverage, Production UI critical + shards 1-3, Ward Flow browser journeys, Lighthouse budget, Caring Contacts database, PR policy, PR mergeability. No automated code review ran (CodeRabbit under-10-stars skip; Codex and Cursor Bugbot both out of quota)."
+      },
+      {
+        "date": "2026-10-18",
+        "ref": "codex/agent-policy-delivery-20261017",
+        "head": "e3ffb0eca376014b2916c362e6305b69894b4e29",
+        "scope": "complete container evidence bound and verification preservation",
+        "outcome": "Independent corrected-diff acceptance: no confirmed blocker. Complete raw64MiB artifact retains all available SBOMs and required finalized build records; seven-day retention; artifact failure cannot suppress image or vulnerability checks. No hosted acceptance claimed.",
+        "checks": "New regressions observed red; focused container suites30/30pass; byte-exact native archive replay and oversize refusal; independent unsafe/mutation/stale-output and outcome gate probes; pinned raw-upload source and package SRI verified; lint/typecheck/docs/format pass. Windows Node inside Git Bash tar replay failed; Ubuntu/Docker/hosted dispatch unrun. Earlier zero-artifact cost claim retracted."
       },
       {
         "date": "2026-08-16",
