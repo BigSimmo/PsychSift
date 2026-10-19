@@ -179,7 +179,8 @@ function ActSectionsCard({
               onClick={onOpenIndex}
               aria-haspopup="dialog"
               className={actChipClass}
-              aria-label={`Show all ${sections.length} Act sections. Open detail.`}
+              // Leads with the visible "+n" count so a speech-input user can say what they see.
+              aria-label={`${overflow} more. Show all ${sections.length} Act sections. Open detail.`}
             >
               {`+${overflow}`}
             </button>

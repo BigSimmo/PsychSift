@@ -109,17 +109,21 @@ export function SpecifierMatchCard({ record, isTopMatch }: { record: SpecifierRe
         isTopMatch && "border-2 border-[color:var(--clinical-accent)]",
       )}
     >
-      <Link
-        href={`/specifiers/${record.slug}`}
-        aria-label={`Open ${record.name}`}
-        className="block focus-visible:outline-none"
-      >
+      {/* The link wraps only the name and stretches over the card with an
+          overlay, so the whole card stays one tap target. Wrapping the whole card
+          gave the link every word on it as visible text, which an "Open <name>"
+          label cannot contain (WCAG 2.5.3, axe `label-content-name-mismatch`). */}
+      <div>
         <div data-specifier-card-main className="p-4 sm:p-5">
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
-              <span className="text-lg font-extrabold text-[color:var(--text-heading)] transition group-hover:text-[color:var(--clinical-accent)] motion-reduce:transition-none sm:text-xl">
+              <Link
+                href={`/specifiers/${record.slug}`}
+                aria-label={`Open ${record.name}`}
+                className="text-lg font-extrabold text-[color:var(--text-heading)] transition after:absolute after:inset-0 focus-visible:outline-none group-hover:text-[color:var(--clinical-accent)] motion-reduce:transition-none sm:text-xl"
+              >
                 {record.name}
-              </span>
+              </Link>
               {isTopMatch ? (
                 <span className="inline-flex min-h-6 items-center gap-1 rounded-md bg-[color:var(--success-soft)] px-2 text-2xs font-extrabold text-[color:var(--success)]">
                   <CheckCircle2 className="size-icon-xs" aria-hidden />
@@ -181,7 +185,7 @@ export function SpecifierMatchCard({ record, isTopMatch }: { record: SpecifierRe
             </div>
           ) : null}
         </div>
-      </Link>
+      </div>
     </article>
   );
 }

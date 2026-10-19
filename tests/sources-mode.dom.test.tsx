@@ -278,12 +278,13 @@ describe("Sources browse tabs", () => {
     currentPathname = "/sources/topics";
     render(await SourcesTopicsPage());
 
-    const governance = screen.getByRole("link", { name: "View Governance sources" });
+    // The link names the row and stretches over it; the tally sits beside it in the row.
+    const governance = screen.getByRole("link", { name: "View Governance sources" }).closest("li")!;
     expect(within(governance).getByText(/1 preferred/)).toBeVisible();
 
     // Band colour is never the only channel: the review-due entry states its
     // attention in words beside the meter.
-    const assessment = screen.getByRole("link", { name: "View Assessment sources" });
+    const assessment = screen.getByRole("link", { name: "View Assessment sources" }).closest("li")!;
     expect(within(assessment).getByText(/1 needs review/)).toBeVisible();
     expect(within(assessment).getByText(/1 needs attention/)).toBeVisible();
   });

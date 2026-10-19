@@ -199,7 +199,7 @@ describe("answer source rail", () => {
     // entirely rather than relocating it.
     render(<AnswerSourceRail sources={SOURCES} onOpenSource={vi.fn()} />);
     const rows = screen.getAllByTestId("answer-source-rail-row");
-    expect(rows[0]).toHaveAccessibleName(/Source 1: Clozapine monitoring protocol, page 4, Direct/);
+    expect(rows[0]).toHaveAccessibleName(/Source 1: Clozapine monitoring protocol, p\. 4, [A-Za-z ]+, Direct/);
     expect(rows[1]).toHaveAccessibleName(/Partial/);
     expect(rows[2]).toHaveAccessibleName(/Outdated/);
   });
@@ -470,7 +470,9 @@ describe("evidence gaps stay answer-level", () => {
 
   it("keeps the utility row to copy and the two verdicts", () => {
     render(<AnswerUtilityActions copied={false} onCopy={vi.fn()} onSubmitFeedback={vi.fn()} />);
-    expect(screen.getByRole("button", { name: "Copy answer with source status" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /^Cop(?:y|ied) with sources: answer and source status$/ }),
+    ).toBeInTheDocument();
     expect(screen.getByTestId("answer-feedback-useful")).toBeInTheDocument();
     expect(screen.getByTestId("answer-feedback-trigger")).toBeInTheDocument();
     expect(screen.queryByTestId("answer-limitations-trigger")).not.toBeInTheDocument();

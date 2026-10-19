@@ -174,7 +174,7 @@ describe("adaptive answer inline sections", () => {
 
     const conflict = screen.getAllByTestId("adaptive-answer-section")[1]!;
     expect(within(conflict).getAllByTestId("citation")).toHaveLength(2);
-    await userEvent.click(within(conflict).getByRole("button", { name: /WA clinical guideline, p\. 9/i }));
+    await userEvent.click(within(conflict).getByRole("button", { name: /Source \d+, WA clinical guideline, p\. 9/i }));
     expect(push).toHaveBeenCalledWith("/documents/doc-wa?page=9&chunk=chunk-wa");
     expect(within(screen.getAllByTestId("adaptive-answer-section")[0]!).getAllByTestId("citation")).toHaveLength(1);
     expect(
@@ -364,7 +364,7 @@ describe("adaptive answer inline sections", () => {
     ).toHaveAttribute("href", "/documents/doc-lead-e?page=5&chunk=chunk-lead-e");
     expect(
       screen.getByText("Section-only difference").closest('[data-testid="adaptive-answer-section"]'),
-    ).toContainElement(screen.getByRole("button", { name: /WA clinical guideline, p\. 9/i }));
+    ).toContainElement(screen.getByRole("button", { name: /Source \d+, WA clinical guideline, p\. 9/i }));
   });
 });
 
