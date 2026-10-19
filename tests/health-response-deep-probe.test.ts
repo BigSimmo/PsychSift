@@ -326,8 +326,12 @@ describe("storageCleanupBacklogSnapshot", () => {
                 call.filters.push([`eq:${column}`, value]);
                 return builder;
               },
-              in(column: string, values: unknown) {
-                call.filters.push([`in:${column}`, values]);
+              lte(column: string, value: unknown) {
+                call.filters.push([`lte:${column}`, value]);
+                return builder;
+              },
+              or(filters: string) {
+                call.filters.push(["or", filters]);
                 return builder;
               },
               order(column: string, value: unknown) {
@@ -350,20 +354,23 @@ describe("storageCleanupBacklogSnapshot", () => {
     return { client, calls };
   }
 
-  it("counts pending and failed jobs and reads only the oldest outstanding timestamp", async () => {
+  it("counts only actionable jobs and reads only the oldest actionable timestamp", async () => {
     vi.resetModules();
     const { storageCleanupBacklogSnapshot } = await import("../src/lib/observability/cleanup-backlog");
+    const now = new Date("2026-10-19T12:00:00.000Z");
     const { client, calls } = fakeClient((call) => {
       const status = call.filters.find(([key]) => key === "eq:status")?.[1];
       if (status === "pending") return { count: 2, error: null };
       if (status === "failed") return { count: 5, error: null };
+      if (status === "processing") return { count: 1, error: null };
       return { data: [{ created_at: "2026-10-17T03:04:05.000Z" }], error: null };
     });
 
-    await expect(storageCleanupBacklogSnapshot(client as never)).resolves.toEqual({
+    await expect(storageCleanupBacklogSnapshot(client as never, now)).resolves.toEqual({
       pending: 2,
       failed: 5,
-      outstanding: 7,
+      expiredClaims: 1,
+      outstanding: 8,
       oldestOutstandingAt: "2026-10-17T03:04:05.000Z",
     });
     expect(calls.every((call) => call.table === "storage_cleanup_jobs")).toBe(true);
@@ -371,9 +378,32 @@ describe("storageCleanupBacklogSnapshot", () => {
     expect(calls.filter((call) => call.columns === "id").map((call) => call.options)).toEqual([
       { count: "exact", head: true },
       { count: "exact", head: true },
+      { count: "exact", head: true },
+    ]);
+    // A governed public-source row is not counted before its cleanup deadline; an expired
+    // processing claim is, because the drain reclaims it.
+    const due =
+      'public_source_cleanup_not_before.is.null,public_source_cleanup_not_before.lte."2026-10-19T12:00:00.000Z"';
+    const countFilters = calls.filter((call) => call.columns === "id").map((call) => call.filters);
+    expect(countFilters).toEqual([
+      [
+        ["eq:status", "pending"],
+        ["or", due],
+      ],
+      [
+        ["eq:status", "failed"],
+        ["or", due],
+      ],
+      [
+        ["eq:status", "processing"],
+        ["lte:public_source_claim_expires_at", "2026-10-19T12:00:00.000Z"],
+      ],
     ]);
     expect(calls.find((call) => call.columns === "created_at")?.filters).toEqual([
-      ["in:status", ["pending", "failed"]],
+      [
+        "or",
+        `and(status.in.(pending,failed),or(${due})),and(status.eq.processing,public_source_claim_expires_at.lte."2026-10-19T12:00:00.000Z")`,
+      ],
       ["order:created_at", { ascending: true }],
       ["limit", 1],
     ]);
@@ -389,6 +419,7 @@ describe("storageCleanupBacklogSnapshot", () => {
     await expect(storageCleanupBacklogSnapshot(client as never)).resolves.toEqual({
       pending: 0,
       failed: 0,
+      expiredClaims: 0,
       outstanding: 0,
       oldestOutstandingAt: null,
     });

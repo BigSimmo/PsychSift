@@ -161,7 +161,9 @@ export function renderStorageCleanupBacklog(block, now = Date.now()) {
   const pending = backlogCount(block.pending);
   const failed = backlogCount(block.failed);
   if (pending === null || failed === null) return null;
-  const outstanding = pending + failed;
+  // Older builds do not report expired claims; treat that as none.
+  const expiredClaims = backlogCount(block.expiredClaims) ?? 0;
+  const outstanding = pending + failed + expiredClaims;
   const oldestEpoch = typeof block.oldestOutstandingAt === "string" ? Date.parse(block.oldestOutstandingAt) : NaN;
   const oldest = Number.isFinite(oldestEpoch) ? new Date(oldestEpoch).toISOString() : null;
   // A `pending` row exists for the few seconds a delete is running, so only a failed row, or an
@@ -171,7 +173,8 @@ export function renderStorageCleanupBacklog(block, now = Date.now()) {
     failed > 0 || (outstanding > 0 && stale)
       ? `  ⚠ drain with \`npm run cleanup:storage\` ([runbook](${storageCleanupRunbook}))`
       : "";
-  return `**Storage cleanup backlog:** ${outstanding} outstanding (pending ${pending}, failed ${failed})${
+  const expired = expiredClaims > 0 ? `, expired claims ${expiredClaims}` : "";
+  return `**Storage cleanup backlog:** ${outstanding} outstanding (pending ${pending}, failed ${failed}${expired})${
     oldest ? ` · oldest ${oldest}` : ""
   }${attention}`;
 }

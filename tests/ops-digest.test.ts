@@ -370,6 +370,15 @@ describe("storage cleanup backlog line", () => {
     expect(stuck).toContain("cleanup:storage");
   });
 
+  it("counts expired processing claims when the probe reports them", () => {
+    const line = renderStorageCleanupBacklog(
+      { pending: 0, failed: 0, expiredClaims: 2, outstanding: 2, oldestOutstandingAt: "2026-10-19T10:00:00.000Z" },
+      now,
+    );
+    expect(line).toContain("2 outstanding (pending 0, failed 0, expired claims 2)");
+    expect(line).toContain("cleanup:storage");
+  });
+
   it("omits the line when the probe did not report usable counts", () => {
     expect(renderStorageCleanupBacklog(undefined, now)).toBeNull();
     expect(renderStorageCleanupBacklog({ pending: -1, failed: 0 }, now)).toBeNull();

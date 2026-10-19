@@ -445,8 +445,11 @@ blocks (each is omitted when its probe is unavailable):
 
 - **`storageCleanup`** — `storageCleanupBacklogSnapshot`
   (`src/lib/observability/cleanup-backlog.ts`), gated like `spend`. It reports
-  `{ pending, failed, outstanding, oldestOutstandingAt }` for `storage_cleanup_jobs`:
-  head-only counts and one timestamp, never paths, titles or owners. The ops
+  `{ pending, failed, expiredClaims, outstanding, oldestOutstandingAt }` for the
+  `storage_cleanup_jobs` rows a drain can act on now (a governed public-source row
+  is not counted before its `public_source_cleanup_not_before` deadline, and a
+  `processing` row counts once its claim expires): head-only counts and one
+  timestamp, never paths, titles or owners. The ops
   digest prints it as **Storage cleanup backlog**; see
   [Storage cleanup backlog](#storage-cleanup-backlog) for the manual drain.
 

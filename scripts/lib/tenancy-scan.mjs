@@ -1397,10 +1397,10 @@ export const SCOPE_EXEMPTIONS = [
     file: "src/lib/observability/cleanup-backlog.ts",
     table: "storage_cleanup_jobs",
     fn: "storageCleanupBacklogSnapshot",
-    queries: 3,
+    queries: 4,
     proof: PROOF_KINDS.REVIEWED_INDIRECT,
     reason:
-      "Deliberate cross-tenant operator aggregate (audit F-10): two head-only status counts and the oldest outstanding `created_at`, behind the same HEALTH_DEEP_PROBE_SECRET gate. No paths, titles or owner ids are read; an owner filter would hide every other tenant's orphaned files.",
+      "Deliberate cross-tenant operator aggregate (audit F-10): three head-only counts of actionable rows and the oldest actionable `created_at`, behind the same HEALTH_DEEP_PROBE_SECRET gate. No paths, titles or owner ids are read; an owner filter would hide every other tenant's orphaned files.",
   },
   {
     file: "src/lib/sources/document-source-loader.ts",
