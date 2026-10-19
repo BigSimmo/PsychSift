@@ -7,6 +7,9 @@ const factId = "33333333-3333-4333-8333-333333333333";
 const imageId = "44444444-4444-4444-8444-444444444444";
 const committedGeneration = "55555555-5555-4555-8555-555555555555";
 const replacementGeneration = "66666666-6666-4666-8666-666666666666";
+// Synthetic `updated_at` row versions: what the route read, and what a worker commit wrote.
+const readVersion = "2026-10-19T01:00:00.000001+00:00";
+const workerCommitVersion = "2026-10-19T01:00:05.000002+00:00";
 
 type QueryError = { message: string };
 type QueryResult = { data: unknown; error: QueryError | null };
@@ -117,6 +120,15 @@ function createSupabaseMock(resolveCall: QueryResolver) {
       }),
     },
   };
+}
+
+// A version-matched document update that reaches its row returns that row's id.
+function committedDocumentUpdate(): QueryResult {
+  return { data: [{ id: documentId }], error: null };
+}
+
+function filterValue(call: QueryCall, column: string) {
+  return call.filters.find((filter) => filter.column === column)?.value;
 }
 
 function mockRouteRuntime(client: ReturnType<typeof createSupabaseMock>["client"]) {
@@ -253,10 +265,11 @@ describe("/api/documents/bulk", () => {
     const supabase = createSupabaseMock((call) => {
       if (call.table === "documents" && call.operation === "select") {
         return {
-          data: [{ id: documentId, title: "Old title", metadata: { retained: true } }],
+          data: [{ id: documentId, title: "Old title", metadata: { retained: true }, updated_at: readVersion }],
           error: null,
         };
       }
+      if (call.table === "documents" && call.operation === "update") return committedDocumentUpdate();
       return { data: null, error: null };
     });
     const { invalidateRagCachesForOwner } = mockRouteRuntime(supabase.client);
@@ -321,9 +334,140 @@ describe("/api/documents/bulk", () => {
       expect.arrayContaining([
         { column: "id", value: documentId },
         { column: "owner_id", value: ownerId },
+        { column: "updated_at", value: readVersion },
       ]),
     );
     expect(invalidateRagCachesForOwner).toHaveBeenCalledWith(ownerId);
+  });
+
+  // F-08: a worker commit landing between the route's read and its write must not be
+  // overwritten by the stale metadata object the route read.
+  it("keeps an index pointer the worker commits between the read and the write", async () => {
+    const stored = {
+      id: documentId,
+      title: "Lithium monitoring",
+      metadata: { index_generation_id: committedGeneration, retained: true } as Record<string, unknown>,
+      updated_at: readVersion,
+    };
+    const snapshot = () => ({ ...stored, metadata: { ...stored.metadata } });
+    let workerCommitted = false;
+    const supabase = createSupabaseMock((call) => {
+      if (call.table !== "documents") return { data: null, error: null };
+      if (call.operation === "select") {
+        return call.inFilters.length ? { data: [snapshot()], error: null } : { data: snapshot(), error: null };
+      }
+      if (call.operation === "update") {
+        if (!workerCommitted) {
+          // The worker commits a replacement generation just before the route's write lands.
+          workerCommitted = true;
+          stored.metadata = { ...stored.metadata, index_generation_id: replacementGeneration };
+          stored.updated_at = workerCommitVersion;
+        }
+        if (filterValue(call, "updated_at") !== stored.updated_at) return { data: [], error: null };
+        const payload = call.payload as { metadata: Record<string, unknown> };
+        stored.metadata = payload.metadata;
+        stored.updated_at = "2026-10-19T01:00:06.000003+00:00";
+        return committedDocumentUpdate();
+      }
+      return { data: null, error: null };
+    });
+    mockRouteRuntime(supabase.client);
+    const { POST } = await import("../src/app/api/documents/bulk/route");
+
+    const response = await POST(
+      new Request("http://localhost/api/documents/bulk", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ documentIds: [documentId], metadata: { collection: "Mood disorders" } }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ ok: true, updatedCount: 1 });
+    expect(stored.metadata).toMatchObject({
+      index_generation_id: replacementGeneration,
+      retained: true,
+      collection: "Mood disorders",
+    });
+    const updates = supabase.calls.filter((call) => call.table === "documents" && call.operation === "update");
+    expect(updates.map((call) => filterValue(call, "updated_at"))).toEqual([readVersion, workerCommitVersion]);
+  });
+
+  it("reports a per-document conflict instead of writing when the row keeps changing", async () => {
+    const supabase = createSupabaseMock((call) => {
+      if (call.table !== "documents") return { data: null, error: null };
+      if (call.operation === "select") {
+        const row = {
+          id: documentId,
+          title: "Lithium monitoring",
+          metadata: { index_generation_id: committedGeneration },
+          updated_at: readVersion,
+        };
+        return call.inFilters.length ? { data: [row], error: null } : { data: row, error: null };
+      }
+      // Every write races another commit, so the version match never reaches the row.
+      if (call.operation === "update") return { data: [], error: null };
+      return { data: null, error: null };
+    });
+    const { invalidateRagCachesForOwner } = mockRouteRuntime(supabase.client);
+    const { POST } = await import("../src/app/api/documents/bulk/route");
+
+    const response = await POST(
+      new Request("http://localhost/api/documents/bulk", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ documentIds: [documentId], metadata: { collection: "Mood disorders" } }),
+      }),
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload).toMatchObject({
+      ok: false,
+      updatedCount: 0,
+      results: [
+        {
+          documentId,
+          updated: false,
+          error: "This document changed while the edit was saving (for example, indexing finished). Retry the edit.",
+        },
+      ],
+    });
+    expect(supabase.calls.filter((call) => call.table === "documents" && call.operation === "update")).toHaveLength(3);
+    expect(invalidateRagCachesForOwner).toHaveBeenCalledWith(ownerId);
+  });
+
+  it("stops an identity edit when the re-read row became a reviewed source", async () => {
+    let reads = 0;
+    const supabase = createSupabaseMock((call) => {
+      if (call.table !== "documents") return { data: null, error: null };
+      if (call.operation === "select") {
+        reads += 1;
+        const metadata =
+          reads === 1
+            ? { index_generation_id: committedGeneration }
+            : { index_generation_id: committedGeneration, clinical_validation_status: "approved" };
+        const row = { id: documentId, title: "Lithium monitoring", metadata, updated_at: readVersion };
+        return call.inFilters.length ? { data: [row], error: null } : { data: row, error: null };
+      }
+      if (call.operation === "update") return { data: [], error: null };
+      return { data: null, error: null };
+    });
+    mockRouteRuntime(supabase.client);
+    const { POST } = await import("../src/app/api/documents/bulk/route");
+
+    const response = await POST(
+      new Request("http://localhost/api/documents/bulk", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ documentIds: [documentId], metadata: { publisher: "WA Health" } }),
+      }),
+    );
+    const payload = await response.json();
+
+    expect(payload).toMatchObject({ ok: false, results: [{ documentId, updated: false }] });
+    expect(payload.results[0].error).toContain("reviewed sources");
+    expect(supabase.calls.filter((call) => call.table === "documents" && call.operation === "update")).toHaveLength(1);
   });
 
   it("does not leak the raw database error in a per-document bulk failure", async () => {
@@ -383,6 +527,7 @@ describe("/api/documents/bulk", () => {
           error: null,
         };
       }
+      if (call.table === "documents" && call.operation === "update") return committedDocumentUpdate();
       return { data: null, error: null };
     });
     mockRouteRuntime(supabase.client);
@@ -437,6 +582,7 @@ describe("/api/documents/bulk", () => {
           error: null,
         };
       }
+      if (call.table === "documents" && call.operation === "update") return committedDocumentUpdate();
       return { data: null, error: null };
     });
     mockRouteRuntime(supabase.client);
@@ -502,6 +648,7 @@ describe("/api/documents/bulk", () => {
           error: null,
         };
       }
+      if (call.table === "documents" && call.operation === "update") return committedDocumentUpdate();
       return { data: null, error: null };
     });
     mockRouteRuntime(supabase.client);

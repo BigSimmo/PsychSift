@@ -404,7 +404,7 @@ cost lower bounds:
 
 The §2 reliability SQL is now also a scrape. An **authorized deep probe** —
 `GET /api/health?deep=1` with the `x-health-deep-token: $HEALTH_DEEP_PROBE_SECRET`
-header (same operator gate as the Supabase probe) — returns up to four counter
+header (same operator gate as the Supabase probe) — returns up to five counter
 blocks (each is omitted when its probe is unavailable):
 
 - **`slo`** — `answerSloSnapshot` (`src/lib/observability/answer-slo.ts`) counts
@@ -442,6 +442,16 @@ blocks (each is omitted when its probe is unavailable):
   gated exactly like `slo` on the admin client. It carries the projected daily
   answer-generation spend that raises `OPS_PROJECTED_DAILY_SPEND_WARNING`; it is
   a cost signal, not a liveness or quality gate.
+
+- **`storageCleanup`** — `storageCleanupBacklogSnapshot`
+  (`src/lib/observability/cleanup-backlog.ts`), gated like `spend`. It reports
+  `{ pending, failed, expiredClaims, outstanding, oldestOutstandingAt }` for the
+  `storage_cleanup_jobs` rows a drain can act on now (a governed public-source row
+  is not counted before its `public_source_cleanup_not_before` deadline, and a
+  `processing` row counts once its claim expires): head-only counts and one
+  timestamp, never paths, titles or owners. The ops
+  digest prints it as **Storage cleanup backlog**; see
+  [Storage cleanup backlog](#storage-cleanup-backlog) for the manual drain.
 
 ```jsonc
 // GET /api/health?deep=1  (authorized, live)
@@ -592,9 +602,42 @@ The rolling issue is the provider-neutral queue. For every alert, the on-duty op
 
 **Acknowledgement/recovery drill:** dispatch the digest only with existing operator/provider approval; use a synthetic or staging snapshot to trigger one warning; execute that alert's exact diagnosis, acknowledgement, recovery, and escalation route above; retain the run link and timestamps outside this repository. Do not manufacture production failures or paste health-probe secrets into evidence. Until this drill is exercised, alert delivery is configured but externally unaccepted.
 
+### Storage cleanup backlog
+
+When a document delete cannot remove its stored files, the delete still succeeds and the leftover
+paths are queued as a `storage_cleanup_jobs` row: `pending` while the delete handler runs, `failed`
+when a storage removal failed. **Nothing drains this queue on a schedule.** The digest line
+**Storage cleanup backlog** shows the outstanding count (audit F-10) and adds a ⚠ when any row
+is `failed` or the oldest outstanding row is more than an hour old. It is a digest line, not an
+alert code: it does not change the digest's alert severity.
+
+- **Diagnose:** read the counts and the oldest timestamp in the latest digest. A growing `failed`
+  count usually means storage removals are being refused (bucket permissions, a storage outage);
+  a `pending` row older than an hour means a delete was interrupted after its ledger row was
+  written.
+- **Drain (manual, live):** `npm run cleanup:storage` (`scripts/cleanup-storage.ts`) runs
+  against the live Supabase project with the service-role key, so it falls under the API and
+  provider confirmation boundary in `AGENTS.md`: get the owner's explicit yes first. Run it with
+  `--dry-run` first, which lists how many generic jobs are safe to process and claims nothing:
+
+  ```bash
+  npm run cleanup:storage -- --dry-run --limit 50
+  npm run cleanup:storage -- --limit 50
+  ```
+
+  It retries the oldest `pending` and `failed` generic jobs (default `--limit 50`), marks each
+  `completed` or `failed` with the storage warning, then runs the separately bounded
+  controlled public-source cleanup. It never removes files for a job whose document still
+  exists (the audit R11 guard): those jobs are skipped and listed by id.
+
+- **Recover:** a later digest shows the outstanding count back at zero, or only `pending` rows
+  younger than an hour. Rows that stay `failed` after a drain need their `last_error` read in
+  the Supabase dashboard (owner-approved, read-only) before any further retry.
+
 ## 6. Remaining gaps
 
 - Exercise and record the acknowledgement/recovery drill through the configured provider channel.
+- The storage cleanup backlog is reported but drained only by hand; there is no scheduled drain and no alert code for it.
 - The 7-day quality SLOs, the unsupported-rate doubling rule and `/api/search` latency are still hand-run SQL; the digest alerts only on its 60-minute window.
 - Retain and periodically exercise the GitHub Actions cache path for the three-consecutive-hour hybrid escalation. Cache loss intentionally downgrades the condition to warning or unknown rather than inferring history.
 - **Host-level metrics** (CPU, memory, restart count) and log drains once the

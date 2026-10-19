@@ -1,3 +1,4 @@
+// @ts-check
 import { createHash, randomUUID } from "node:crypto";
 
 // Private finite licensed-pilot diagnostic only. Never log prompt/context, request
@@ -5,6 +6,43 @@ import { createHash, randomUUID } from "node:crypto";
 const OWNER = "3ea89594-b3a1-46b7-b570-33c198ce5524";
 const DOCUMENT = "d69a6b9c-3e80-556a-b887-53d209238293";
 const QUERY = "83ac78d0637271b2162b3bc45d884fb08f6b5471833e96f47bd844e36ba55591";
+
+/**
+ * The prepared seed for one observed generation attempt.
+ * @typedef {object} GenerationSeed
+ * @property {unknown} context
+ * @property {string} model
+ * @property {number} attemptOrdinal
+ * @property {unknown} sourceBinding
+ * @property {unknown} schema
+ * @property {string} schemaJson
+ */
+/**
+ * The immutable proof that follows one SDK invocation.
+ * @typedef {object} GenerationProof
+ * @property {string} model
+ * @property {number} attemptOrdinal
+ * @property {string} input
+ * @property {string} instructions
+ * @property {unknown} schema
+ * @property {string} schemaJson
+ * @property {unknown} sourceBinding
+ */
+/**
+ * The ticket fields this diagnostic reads (a loaded server ticket carries more).
+ * @typedef {object} DiagnosticTicket
+ * @property {string} ownerId
+ * @property {string} documentId
+ * @property {string} querySha256
+ * @property {() => boolean} diagnosticCurrent
+ */
+/**
+ * @typedef {object} AnswerPilotDiagnostic
+ * @property {(stage: string, sources: unknown, details: () => unknown) => void} capture
+ * @property {(proof: unknown, generated: unknown) => void} capturePreparedGeneration
+ */
+
+/** @type {Readonly<Record<string, string>>} */
 const LICENSED_CHUNKS = Object.freeze({
   "b58ce314-0deb-572a-b9f3-4dd1f854f808": "b87e0fff2cccc397eda991cb04a0ef0eb3140cad034cf6f8c21fa241478f7129",
   "d910494d-5850-558b-9c0f-1e0f7a5f8869": "f012e0656fc311fdd4a1c61285bc581c91dbef93070329b01b74f4e041000b69",
@@ -13,6 +51,16 @@ const LICENSED_CHUNKS = Object.freeze({
   "2b86f224-148f-54ce-99bb-caba6489789f": "26be9b715bd1a419e6fb4d9fefe5f65a66358f750abcbc2a6bcd2b0447fe96b1",
   "b89bcb03-8d9a-5a79-a8c4-e6371b9c21a2": "f7b87e96c9f088fdab9a522a1156fdc446efb8b6a43605a3e81c6ffa6befbcbc",
 });
+/**
+ * @type {{
+ *   title: string,
+ *   file_name: string,
+ *   governance: Record<string, string>,
+ *   indexIssues: string[],
+ *   chunks: Record<string, Record<string, unknown> & { section_path: string[] }>,
+ *   cards: Record<string, { card_type: string, contentSha256: string, source_chunk_ids: string[] }>,
+ * }}
+ */
 const APPROVED_GENERATION = {
   title: "NHMRC Australian Alcohol Guidelines Approved Summary TXT",
   file_name: "source.txt",
@@ -108,7 +156,14 @@ const STAGES = new Set([
   "finalize.after",
   "finalize.error",
 ]);
+/** @param {string} text */
 const hash = (text) => createHash("sha256").update(text, "utf8").digest("hex");
+/**
+ * An own data property, or undefined. The value is untrusted (`any`): every caller checks it.
+ * @param {unknown} value
+ * @param {string} key
+ * @returns {any}
+ */
 const own = (value, key) => {
   if (!value || typeof value !== "object") return undefined;
   const descriptor = Object.getOwnPropertyDescriptor(value, key);
@@ -116,11 +171,20 @@ const own = (value, key) => {
   if (!("value" in descriptor)) throw new Error("accessor_refused");
   return descriptor.value;
 };
+/**
+ * @param {unknown} value
+ * @param {number} [cap]
+ * @returns {any[]}
+ */
 const list = (value, cap = 128) => {
   if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype || value.length > cap)
     throw new Error("array_refused");
   return Array.from({ length: value.length }, (_, i) => own(value, String(i)));
 };
+/**
+ * @param {unknown} value
+ * @returns {asserts value is Record<string, unknown>}
+ */
 function plain(value) {
   if (!value || typeof value !== "object" || ![Object.prototype, null].includes(Object.getPrototypeOf(value)))
     throw new Error("object_refused");
@@ -128,6 +192,10 @@ function plain(value) {
     if (Object.hasOwn(value, key)) throw new Error("prototype_key_refused");
   }
 }
+/**
+ * @param {unknown} value
+ * @returns {string | number | boolean | null | undefined}
+ */
 function scalar(value) {
   if (value === undefined) return undefined;
   if (
@@ -139,8 +207,14 @@ function scalar(value) {
     return value;
   throw new Error("scalar_refused");
 }
+/**
+ * @param {unknown} value
+ * @param {readonly string[]} keys
+ * @returns {Record<string, unknown>}
+ */
 function selected(value, keys) {
   plain(value);
+  /** @type {Record<string, unknown>} */
   const result = Object.create(null);
   for (const key of keys) {
     const item = scalar(own(value, key));
@@ -148,12 +222,21 @@ function selected(value, keys) {
   }
   return result;
 }
+/**
+ * @param {unknown} value
+ * @returns {string[]}
+ */
 function strings(value) {
   return list(value).map((entry) => {
     if (typeof entry !== "string") throw new Error("string_refused");
     return entry;
   });
 }
+/**
+ * @param {unknown} value
+ * @param {readonly string[]} keys
+ * @param {readonly string[]} [arrayKeys]
+ */
 function rows(value, keys, arrayKeys = []) {
   return list(value).map((entry) => {
     const row = selected(entry, keys);
@@ -167,6 +250,10 @@ function rows(value, keys, arrayKeys = []) {
 
 // Construct a fresh, selected snapshot using descriptors: getters and inherited
 // fields cannot emit private values, and caller mutation cannot change log bytes.
+/**
+ * @param {unknown} answer
+ * @returns {Record<string, unknown>}
+ */
 export function answerPilotDiagnosticState(answer) {
   const result = selected(answer, [
     "answer",
@@ -181,12 +268,12 @@ export function answerPilotDiagnosticState(answer) {
     "faithfulnessWarning",
     "rejectedCandidateText",
   ]);
-  for (const [key, keys, arrayKeys] of [
+  for (const [key, keys, arrayKeys] of /** @type {Array<[string, string[], string[]]>} */ ([
     ["citations", ["chunk_id", "provenance"], []],
     ["answerSections", ["heading", "kind", "supportLevel", "body"], ["citation_chunk_ids"]],
     ["supportedClaims", ["claimId", "text", "riskClass", "supportStatus"], ["supportingChunkIds"]],
     ["conflictsOrGaps", ["type", "message"], ["source_chunk_ids"]],
-  ]) {
+  ])) {
     const item = own(answer, key);
     if (item !== undefined) result[key] = rows(item, keys, arrayKeys);
   }
@@ -197,9 +284,11 @@ export function answerPilotDiagnosticState(answer) {
     plain(assessments);
     const keys = Object.keys(assessments);
     if (keys.length > 128) throw new Error("assessment_bound");
-    result.evidenceAssessments = Object.create(null);
+    /** @type {Record<string, unknown>} */
+    const evidenceAssessments = Object.create(null);
+    result.evidenceAssessments = evidenceAssessments;
     for (const key of keys) {
-      result.evidenceAssessments[key] = selected(own(assessments, key), [
+      evidenceAssessments[key] = selected(own(assessments, key), [
         "relevance",
         "claimSupport",
         "authority",
@@ -213,6 +302,10 @@ export function answerPilotDiagnosticState(answer) {
 
 // Only the same data properties the model source block can read are admitted.
 // No source data is rewritten: mismatches disable this private diagnostic only.
+/**
+ * @param {Record<string, unknown>} source
+ * @param {string} id
+ */
 function generationMetadataBinding(source, id) {
   const expected = APPROVED_GENERATION.chunks[id];
   if (own(source, "title") !== APPROVED_GENERATION.title || own(source, "file_name") !== APPROVED_GENERATION.file_name)
@@ -294,12 +387,18 @@ function generationMetadataBinding(source, id) {
   };
 }
 
+/**
+ * @param {unknown} answer
+ * @param {unknown} numericVerificationSources
+ * @returns {unknown}
+ */
 export function answerPilotDiagnosticSources(answer, numericVerificationSources) {
   if (numericVerificationSources !== undefined) return numericVerificationSources;
   plain(answer);
   return own(answer, "sources");
 }
 
+/** @param {unknown} sources */
 function binding(sources) {
   const seen = new Set();
   const result = list(sources, 6).map((source) => {
@@ -326,11 +425,18 @@ function binding(sources) {
   if (!result.length) throw new Error("source_empty");
   return result;
 }
+/**
+ * @param {unknown} value
+ * @param {number} [depth]
+ * @param {{ n: number }} [counter]
+ * @returns {unknown}
+ */
 function schemaSnapshot(value, depth = 0, counter = { n: 0 }) {
   if (++counter.n > 8192 || depth > 24) throw new Error("schema_bound");
   if (value === null || typeof value !== "object") return scalar(value);
   if (Array.isArray(value)) return list(value, 256).map((entry) => schemaSnapshot(entry, depth + 1, counter));
   plain(value);
+  /** @type {Record<string, unknown>} */
   const result = Object.create(null);
   const keys = Object.keys(value);
   if (keys.length > 256) throw new Error("schema_bound");
@@ -338,11 +444,24 @@ function schemaSnapshot(value, depth = 0, counter = { n: 0 }) {
   return result;
 }
 
+/** @type {WeakSet<object>} */
 const preparedGenerationProofs = new WeakSet();
+/** @type {WeakMap<object, Readonly<{ wireSha256: string }>>} */
 const generationWireAdmissions = new WeakMap();
+/**
+ * `WeakSet.has` is false for every non-object at runtime; this states that to the checker only.
+ * @param {unknown} value
+ * @returns {value is GenerationProof}
+ */
+const isPreparedProof = (value) => preparedGenerationProofs.has(/** @type {object} */ (value));
+/**
+ * @template T
+ * @param {T} value
+ * @returns {T}
+ */
 function freezeSnapshot(value) {
   if (value && typeof value === "object") {
-    for (const key of Object.keys(value)) freezeSnapshot(value[key]);
+    for (const key of Object.keys(value)) freezeSnapshot(/** @type {Record<string, unknown>} */ (value)[key]);
     Object.freeze(value);
   }
   return value;
@@ -350,6 +469,14 @@ function freezeSnapshot(value) {
 
 // Preclaim eligibility has no logging authority. The caller supplies the same
 // schema function that the real observed generator will use for this context.
+/**
+ * @template C
+ * @param {C} context
+ * @param {string} model
+ * @param {number} attemptOrdinal
+ * @param {(context: C) => unknown} schemaFor
+ * @returns {Readonly<GenerationSeed>}
+ */
 export function prepareAnswerPilotGenerationSeed(context, model, attemptOrdinal, schemaFor) {
   if (
     !["gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.6-sol"].includes(model) ||
@@ -363,6 +490,13 @@ export function prepareAnswerPilotGenerationSeed(context, model, attemptOrdinal,
   return Object.freeze({ context, model, attemptOrdinal, sourceBinding, schema, schemaJson: JSON.stringify(schema) });
 }
 
+/**
+ * @param {Readonly<GenerationSeed> | undefined} seed
+ * @param {unknown} input
+ * @param {unknown} schema
+ * @param {unknown} options
+ * @returns {Readonly<GenerationProof>}
+ */
 export function prepareAnswerPilotGeneration(seed, input, schema, options) {
   if (!seed || typeof input !== "string") throw new Error("generation_proof_missing");
   plain(options);
@@ -393,9 +527,14 @@ export function prepareAnswerPilotGeneration(seed, input, schema, options) {
 
 // The existing SDK receives a string input and serializes it unchanged. Other
 // input envelopes are refused for this finite pilot, without transforming them.
+/**
+ * @param {unknown} proof
+ * @param {unknown} serializedBody
+ * @returns {boolean}
+ */
 export function answerPilotResponseMatches(proof, serializedBody) {
   try {
-    if (!preparedGenerationProofs.has(proof) || typeof serializedBody !== "string") return false;
+    if (!isPreparedProof(proof) || typeof serializedBody !== "string") return false;
     const body = JSON.parse(serializedBody);
     const format = body.text?.format;
     const matches =
@@ -420,6 +559,11 @@ export function answerPilotResponseMatches(proof, serializedBody) {
   }
 }
 
+/**
+ * @param {Readonly<DiagnosticTicket>} ticket
+ * @param {{ snapshot: () => { denied: string | null } }} guard
+ * @returns {Readonly<AnswerPilotDiagnostic> | null}
+ */
 export function createAnswerPilotDiagnostic(ticket, guard) {
   // Only the exact reviewed query and licensed owner/document can activate this seam.
   if (
@@ -434,6 +578,7 @@ export function createAnswerPilotDiagnostic(ticket, guard) {
     sequence = 0,
     closed = false;
   const active = () => !closed && ticket.diagnosticCurrent() === true && !guard.snapshot().denied;
+  /** @param {Record<string, unknown>} line */
   const emit = (line) => {
     if (!active()) return false;
     const wire = PREFIX + JSON.stringify(line);
@@ -443,19 +588,21 @@ export function createAnswerPilotDiagnostic(ticket, guard) {
     console.info(wire);
     return true;
   };
+  /**
+   * @param {string} stage
+   * @param {unknown} sources
+   * @param {() => unknown} details
+   * @param {Readonly<GenerationProof>} [preparedProof]
+   */
   const capture = (stage, sources, details, preparedProof) => {
     try {
-      if (
-        !active() ||
-        !STAGES.has(stage) ||
-        (stage === "generation.return" && !preparedGenerationProofs.has(preparedProof))
-      )
-        return;
+      if (!active() || !STAGES.has(stage) || (stage === "generation.return" && !isPreparedProof(preparedProof))) return;
       const sourceBinding = preparedProof
         ? preparedProof.sourceBinding
         : binding(typeof sources === "function" ? sources() : sources); // Refusal emits nothing and never evaluates details.
       if (!active()) return;
       const selectedDetails = details();
+      /** @type {Record<string, unknown>} */
       const payload = { sourceBinding };
       if (stage === "parse.before" || stage === "generation.return") {
         const generated = stage === "generation.return" ? own(selectedDetails, "generated") : null;
@@ -528,9 +675,18 @@ export function createAnswerPilotDiagnostic(ticket, guard) {
     }
   };
   return Object.freeze({
+    /**
+     * @param {string} stage
+     * @param {unknown} sources
+     * @param {() => unknown} details
+     */
     capture: (stage, sources, details) => capture(stage, sources, details),
+    /**
+     * @param {unknown} proof
+     * @param {unknown} generated
+     */
     capturePreparedGeneration: (proof, generated) => {
-      if (!preparedGenerationProofs.has(proof)) return;
+      if (!isPreparedProof(proof)) return;
       if (!generationWireAdmissions.has(proof)) return;
       capture(
         "generation.return",
