@@ -37,7 +37,7 @@ These are short operator checklists. Preserve evidence and identifiers, but do n
 
 ## Source quarantine, recall, or replacement
 
-1. Record an evidence-bearing review event with a reason and replacement document where applicable. There is no `source_review_status` column and no `document_governance_events` table. Review events live in `source_review_events`, and the only supported writer is `record_source_review_v2`, which writes the event and updates `documents.metadata` (`document_status = 'outdated'`, `governance_disposition = '<decision>'`) in one transaction.
+1. Record an evidence-bearing review event with a reason and replacement document where applicable. There is no `source_review_status` column and no `document_governance_events` table. Review events live in `source_review_events`. The reviews route uses `record_source_review_v2` for public documents and third-party attestations, and the older `record_source_review` for owner-owned documents. Both write the event and update `documents.metadata` (`document_status = 'outdated'`, `governance_disposition = '<decision>'`) in one transaction. The SQL fallback below shows the v2 call; for an owner-owned document, prefer the app path so the route picks the right writer.
    - Preferred: the signed-in owner records the decision in the app (it calls `POST /api/documents/<document-uuid>/reviews` with `decision`, `reason`, `evidenceReferences` and, for `superseded`, `replacementDocumentId`).
    - If the app is unavailable, run the same function in the Supabase SQL editor (it is granted to `service_role` only). `superseded` requires `p_replacement_document_id`; `decommissioned` does not:
    ```sql
@@ -61,7 +61,7 @@ These are short operator checklists. Preserve evidence and identifiers, but do n
    WHERE owner_id = '<owner-uuid>'
       OR payload::text LIKE '%<document-uuid>%';
    ```
-4. Before declaring containment, verify the review event is recorded and the source remains directly browsable (`metadata->>'governance_disposition'` is `decommissioned` or `superseded`), that retrieval exclusion is active (`RAG_PROVIDER_MODE=offline` or zero active retrieval chunks for the quarantined `document_id`), and that `rag_response_cache` contains zero entries referencing the quarantined document:
+4. Before declaring containment, verify the review event is recorded and the source remains directly browsable (`metadata->>'governance_disposition'` is `decommissioned` or `superseded`), that retrieval exclusion is active (zero active retrieval chunks for the quarantined `document_id`, or a synthetic probe confirming that `document_id` is absent from returned sources; `RAG_PROVIDER_MODE=offline` stops generation but is not, on its own, evidence that retrieval excludes the document), and that `rag_response_cache` contains zero entries referencing the quarantined document:
    ```sql
    SELECT d.id,
           d.title,
@@ -116,9 +116,9 @@ These are short operator checklists. Preserve evidence and identifiers, but do n
 
 > **Draft for the owner to confirm.** This section summarises the Office of the Australian Information Commissioner (OAIC) Notifiable Data Breaches scheme under Part IIIC of the _Privacy Act 1988_. It is not legal advice, and the owner has not yet confirmed it.
 
-1. Treat any unauthorised access to, disclosure of, or loss of personal or health information as a suspected eligible data breach. Contain it first with the [privacy or provider incident](#privacy-or-provider-incident) steps.
-2. Start a written assessment straight away. Record the date the suspicion arose, what information was involved, whose information it was, and what containment was done. The assessment must be reasonable, quick, and finished within **30 days** of becoming aware of the suspected breach.
-3. Decide whether serious harm is likely for any affected person. Health information is high risk. If remedial action taken before any harm occurs means serious harm is no longer likely, the breach is not notifiable, but keep the record.
+1. Treat any unauthorised access to, disclosure of, or loss of personal or health information as a suspected data breach, and assess whether it is an eligible data breach (one where serious harm is likely). Contain it first with the [privacy or provider incident](#privacy-or-provider-incident) steps.
+2. Start a written assessment straight away. Record the date the suspicion arose, what information was involved, whose information it was, and what containment was done. Take all reasonable steps to complete the assessment within **30 days** of becoming aware of the suspected breach.
+3. Decide whether serious harm is likely for any affected person. Health information is high risk. If remedial action prevents serious harm from becoming likely, the breach is not notifiable, but keep the record.
 4. If serious harm is likely, notify **as soon as practicable**:
    - the OAIC, using the Notifiable Data Breach form on the OAIC website, with the organisation's contact details, a description of the breach, the kinds of information involved, and recommended steps for affected people; and
    - each affected person (or, if that is not practicable, publish the statement and take reasonable steps to bring it to their attention).

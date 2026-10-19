@@ -67,21 +67,25 @@ should depend on it.
 railway status
 # Variable names only, never values
 railway variables --environment staging --service worker-5g6o --kv | cut -d= -f1
-# Last activity: confirm it is idle and not claiming jobs
-railway logs --environment staging --service worker-5g6o | tail -n 50
+# Last activity: fetch the past 24 hours of logs (no streaming) and look for job claims
+railway logs --environment staging --service worker-5g6o --since 24h > worker-5g6o-24h.log
+grep -ci "claim" worker-5g6o-24h.log
 ```
+
+Check `railway logs --help` first: if your CLI version has no `--since` option, use the dashboard's
+log view for the service and filter it to the last 24 hours instead.
+
+Before deleting, open the service's Variables tab in the Railway dashboard and note the last four
+characters of its `OPENAI_API_KEY` value. On the OpenAI API keys page, find the key with the same
+ending and decide what happens to it:
+
+- If it is a staging-only key that nothing else uses, revoke it after the service is deleted.
+- If it matches the production key, stop and tell the owner before deleting anything. Rotating the
+  production key is a separate change with its own redeploy.
 
 Then delete it in the Railway dashboard: project `PsychSift`, environment `staging`, service
 `worker-5g6o`, Settings, Danger, Delete service. The dashboard is the recommended route because it
 shows the project and environment names on the confirmation screen.
-
-Afterwards, in the Railway dashboard, note the last four characters of the `OPENAI_API_KEY` value the
-worker held (before deleting, from its Variables tab). On the OpenAI API keys page, find the key with
-the same ending:
-
-- If it is a staging-only key that nothing else uses, revoke it.
-- If it matches the production key, stop and tell the owner. Rotating the production key is a separate
-  change with its own redeploy.
 
 **Expected cost:** none. Deleting the service stops any idle compute charge it was accruing.
 
@@ -107,6 +111,17 @@ restore does and does not bring back.
 3. Choose **Restore to a new project**. Name it `PsychSift DR Rehearsal YYYY-MM-DD`, region
    ap-southeast-2. Record the compute size and the hourly price the screen shows.
 4. Record the time the restore was requested and the time the new project reports healthy.
+5. **Straight away, before anything else**, disable every copied `pg_cron` job on the restore project.
+   Supabase copies enabled cron jobs into a restored project and starts them as soon as the restore
+   finishes, so `invoke_indexing_v3_agent` could otherwise call the production agent:
+   ```sql
+   -- Run on the restore project only. Check the project ref in the SQL editor header first.
+   UPDATE cron.job SET active = false;
+   SELECT jobname, active FROM cron.job ORDER BY jobname;  -- every row must show active = false
+   ```
+   Record how long the jobs were active (healthy time to this step) and check the production agent's
+   logs for any call from the restore project in that window. If one arrived, record it and tell the
+   owner. If Supabase offers a restore option that leaves cron jobs disabled, use it instead.
 
 **2b. Copy Storage files (timed).** A database restore does not copy Storage objects. The Supabase CLI
 Storage commands are marked experimental; check `supabase storage --help` on the CLI version you use.
@@ -199,10 +214,13 @@ rather than `main`:
 
 ```bash
 export CANDIDATE_SHA=<candidate-sha>
-git tag "dr-rehearsal-$(date +%Y%m%d)" "$CANDIDATE_SHA"
-git push origin "dr-rehearsal-$(date +%Y%m%d)"
-gh workflow run staging-tenancy.yml --ref "dr-rehearsal-$(date +%Y%m%d)"
-gh run list --workflow staging-tenancy.yml --limit 1
+TAG="dr-rehearsal-$(date +%Y%m%d)-${CANDIDATE_SHA:0:12}"
+git tag "$TAG" "$CANDIDATE_SHA" && git push origin "$TAG" && \
+  gh workflow run staging-tenancy.yml --ref "$TAG"
+# Pick the dispatched run for this tag, not simply the newest run (a scheduled run can be newer)
+gh run list --workflow staging-tenancy.yml --event workflow_dispatch --branch "$TAG" \
+  --json databaseId,headSha,status --limit 5
+# Confirm headSha equals $CANDIDATE_SHA, then use that run's id below
 gh run view <run-id> --log | grep -E "returned|PASS|FAIL" | head -40
 ```
 
@@ -213,8 +231,8 @@ A dispatched run fails loudly; only scheduled runs use `continue-on-error`. Down
 so answers are source-only and there is no model cost.
 
 ```bash
-# Token for a staging test user; keep it out of the command line
-export SOAK_BEARER_TOKEN="<staging access token>"
+# Token for a staging test user; read it without echo so it stays out of shell history
+read -rs SOAK_BEARER_TOKEN && export SOAK_BEARER_TOKEN
 npx tsx scripts/soak-test.ts \
   --target https://<staging-host> \
   --confirm-staging \
