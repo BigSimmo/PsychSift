@@ -1205,7 +1205,7 @@ test.describe("PsychSift UI smoke coverage", () => {
     await waitForDemoDashboardReady(page);
 
     await expect(page.getByText("Create your PsychSift account")).toHaveCount(0);
-    await expect(page.getByText("Search request was not authorized by the server.")).toHaveCount(0);
+    await expect(page.getByText("Your session expired. Sign in again, then try again.")).toHaveCount(0);
     await expect(page.locator('[data-testid="global-search-input"]:visible').first()).toBeEnabled();
   });
 
@@ -1221,7 +1221,7 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(page.getByText("Create your PsychSift account")).toHaveCount(0);
     await expect(page.getByText("Service unavailable")).toHaveCount(0);
     await expect(page.getByText("API unavailable")).toHaveCount(0);
-    await expect(page.getByText("Search request was not authorized by the server.")).toHaveCount(0);
+    await expect(page.getByText("Your session expired. Sign in again, then try again.")).toHaveCount(0);
     await expect(page.locator('[data-testid="global-search-input"]:visible').first()).toBeEnabled();
   });
 

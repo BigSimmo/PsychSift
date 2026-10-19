@@ -4,7 +4,11 @@ import {
   compactScopeFilters,
   isAbortError,
 } from "@/components/clinical-dashboard/clinical-dashboard-helpers";
-import { makeSearchError, readAnswerStream } from "@/components/clinical-dashboard/search-utils";
+import {
+  makeSearchError,
+  readAnswerStream,
+  SEARCH_SESSION_EXPIRED_MESSAGE,
+} from "@/components/clinical-dashboard/search-utils";
 import { parseApiErrorResponse } from "@/lib/api-client-error";
 import type { VerifiedEvidencePreviewUnit } from "@/lib/answer-stream-contract";
 import type { SearchScopeFilters } from "@/lib/search-scope";
@@ -66,7 +70,7 @@ export async function requestAnswerStream({
 
   if (response.status === 401) {
     onSessionExpired();
-    throw makeSearchError("Search request was not authorized by the server.", 401, false);
+    throw makeSearchError(SEARCH_SESSION_EXPIRED_MESSAGE, 401, false);
   }
   if (!response.ok) {
     throw await parseApiErrorResponse(response);

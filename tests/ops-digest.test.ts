@@ -73,8 +73,8 @@ describe("ops digest workflow contract", () => {
   });
 });
 
-describe("hybrid RPC hourly evidence", () => {
-  it("requires three contiguous identity-complete hourly windows for the same RPC", () => {
+describe("hybrid RPC digest-sample evidence", () => {
+  it("requires three consecutive identity-complete samples for the same RPC", () => {
     let history: unknown;
     for (const observedAt of ["2026-08-23T01:20:00Z", "2026-08-23T02:20:00Z", "2026-08-23T03:20:00Z"]) {
       const result = updateHybridRpcHourlyEvidence(
@@ -107,22 +107,41 @@ describe("hybrid RPC hourly evidence", () => {
     expect(result.repeatedRpcNames).toEqual(["hybrid_search"]);
   });
 
-  it("does not join windows more than six hours apart", () => {
+  it("pages from three consecutive six-hourly scheduled samples of the same failing RPC", () => {
+    const failing = { slo: { hybridRpcIdentityEvidenceComplete: true, hybridRpcErrorCounts: { hybrid_search: 2 } } };
+    let history: unknown;
+    let repeated: string[] = [];
+    // The schedule is `15 */6 * * *`; the middle fire arrives late, as GitHub cron fires often do.
+    for (const observedAt of ["2026-08-23T00:15:00Z", "2026-08-23T07:05:00Z", "2026-08-23T12:15:00Z"]) {
+      const result = updateHybridRpcHourlyEvidence(history, failing, new Date(observedAt));
+      history = result.history;
+      repeated = result.repeatedRpcNames;
+    }
+    expect(repeated).toEqual(["hybrid_search"]);
+    expect(
+      evaluateOperationalAlerts(
+        { status: "ok", slo: { windowMinutes: 60, totalQueries: 100, hybridRpcErrorRate: 0.02, degradedRate: 0 } },
+        { repeatedHybridRpcNames: repeated },
+      ).map((item) => item.code),
+    ).toContain("OPS_HYBRID_RPC_ERROR_RATE_PAGE");
+  });
+
+  it("does not join samples more than two schedule intervals apart", () => {
     const result = updateHybridRpcHourlyEvidence(
       {
         version: 1,
         windows: [
           { hour: "2026-08-23T00:00:00.000Z", rpcNames: ["hybrid_search"] },
-          { hour: "2026-08-23T07:00:00.000Z", rpcNames: ["hybrid_search"] },
+          { hour: "2026-08-23T13:00:00.000Z", rpcNames: ["hybrid_search"] },
         ],
       },
       { slo: { hybridRpcIdentityEvidenceComplete: true, hybridRpcErrorCounts: { hybrid_search: 1 } } },
-      new Date("2026-08-23T08:20:00Z"),
+      new Date("2026-08-23T14:20:00Z"),
     );
     expect(result.repeatedRpcNames).toEqual([]);
   });
 
-  it("breaks the paging sequence when an hourly identity snapshot is incomplete", () => {
+  it("breaks the paging sequence when an identity snapshot is incomplete", () => {
     const result = updateHybridRpcHourlyEvidence(
       {
         version: 1,

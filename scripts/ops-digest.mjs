@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * ops-digest — render a one-screen operational summary from the live deep health
- * probe, for the daily ops-digest workflow.
+ * probe, for the six-hourly ops-digest workflow.
  *
  * The app already exposes rich signal at GET /api/health?deep=1 (SLO counters,
  * cache hit-rate, answer spend, degraded/truncation rates), but nothing surfaces
@@ -61,6 +61,12 @@ function argValue(name) {
 
 const hourlyWindowMs = 60 * 60 * 1000;
 const hourlyHistoryVersion = 1;
+// The paging rule counts consecutive digest samples, not consecutive UTC hours. Scheduled runs are
+// six hours apart, GitHub cron fires can arrive late or be dropped, and a manual run between them
+// shares the same history file. Any positive gap up to two schedule intervals therefore joins the
+// sequence; samples further apart than that are not treated as the same persistent failure.
+const scheduleIntervalMs = 6 * hourlyWindowMs;
+const maxConsecutiveSampleGapMs = 2 * scheduleIntervalMs;
 
 function hourStart(instant) {
   const epoch = instant instanceof Date ? instant.getTime() : Date.parse(String(instant));
@@ -108,9 +114,7 @@ export function updateHybridRpcHourlyEvidence(rawHistory, health, observedAt = n
     lastThree.every((entry, index) => {
       if (index === 0) return true;
       const gapMs = Date.parse(entry.hour) - Date.parse(lastThree[index - 1].hour);
-      // Scheduled runs are six hours apart, and a manual run between them shares the same history
-      // file, so any positive whole-hour gap up to six hours still counts as consecutive evidence.
-      return gapMs > 0 && gapMs <= 6 * hourlyWindowMs;
+      return gapMs > 0 && gapMs <= maxConsecutiveSampleGapMs;
     });
   const repeatedRpcNames = contiguous
     ? lastThree[0].rpcNames.filter((name) => lastThree.every((entry) => entry.rpcNames.includes(name)))

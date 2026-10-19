@@ -7,6 +7,7 @@ import { jsonError, publicErrorResponse, PublicApiError } from "@/lib/http";
 import { buildStorageCleanupJobUpdate } from "@/lib/ingestion";
 import { invalidateRagCachesForDocumentMutation } from "@/lib/rag/rag";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requireRecentAdministratorAssurance } from "@/lib/supabase/admin-assurance";
 import { AuthenticationError, requireAuthenticatedUser, unauthorizedResponse } from "@/lib/supabase/auth";
 import { writeAuditLog } from "@/lib/audit";
 import {
@@ -222,6 +223,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     const { id } = parseRouteParams({ id: rawId }, documentRouteParamsSchema, "Invalid document id.");
     const supabase = createAdminClient();
     const user = await requireAuthenticatedUser(request, supabase, { administrator: true });
+    await requireRecentAdministratorAssurance(request, supabase, user.id);
     const { data, error } = await supabase.rpc("delete_document_if_idle", {
       p_document_id: id,
       p_owner_id: user.id,

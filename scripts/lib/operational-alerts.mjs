@@ -226,9 +226,10 @@ function latencyP95Alerts(byMode, sampleTruncated, windowMinutes) {
 }
 
 /**
- * Evaluate one provider-neutral operations snapshot. The hourly digest supplies
- * identity-only history when it has three contiguous, persisted observations of
- * the same failed RPC. Missing or incomplete history never upgrades a warning.
+ * Evaluate one provider-neutral operations snapshot. The six-hourly digest supplies
+ * identity-only history when three consecutive persisted digest samples (scheduled
+ * or manual, whatever their spacing within the joining limit in ops-digest.mjs)
+ * observed the same failed RPC. Missing or incomplete history never upgrades a warning.
  */
 export function evaluateOperationalAlerts(health, context = {}) {
   const alerts = [];
@@ -270,9 +271,9 @@ export function evaluateOperationalAlerts(health, context = {}) {
         alerts.push(
           alert(policies.hybridPage, {
             observedValue: repeatedHybridRpcNames,
-            threshold: { operator: ">=", value: 3, unit: "contiguous hourly windows for the same RPC" },
+            threshold: { operator: ">=", value: 3, unit: "consecutive digest samples for the same RPC" },
             windowMinutes: finiteNumber(slo.windowMinutes) ? slo.windowMinutes : 60,
-            reason: `Persisted hourly evidence observed ${repeatedHybridRpcNames.join(", ")} in three contiguous windows.`,
+            reason: `Persisted digest evidence observed ${repeatedHybridRpcNames.join(", ")} in three consecutive samples.`,
           }),
         );
       } else if (hybridRate > 0.005) {

@@ -409,7 +409,16 @@ function createSupabaseMock(resolve: QueryResolver = defaultQueryResolver) {
     return ok([]);
   });
   const client = {
-    auth: { getUser, admin: { listUsers } },
+    auth: {
+      getUser,
+      // Destructive admin routes read MFA claims from the presented token (audit F-12).
+      getClaims: vi.fn(async (jwt?: string) =>
+        jwt === token
+          ? { data: { claims: administratorClaims() as Record<string, unknown> }, error: null }
+          : { data: null, error: new Error("invalid token") },
+      ),
+      admin: { listUsers },
+    },
     calls,
     from: vi.fn((table: string) => {
       const call: QueryCall = {
@@ -4546,6 +4555,25 @@ describe("private document API access", () => {
     expect(client.storageMocks.storageFrom).toHaveBeenCalledWith("clinical-images");
     expect(client.storageMocks.remove).toHaveBeenCalledWith([sourcePath]);
     expect(client.storageMocks.remove).toHaveBeenCalledWith([imagePath]);
+  });
+
+  it("refuses permanent delete without a recent multi-factor sign-in (audit F-12)", async () => {
+    const client = createSupabaseMock(() => ok([]));
+    client.auth.getClaims.mockResolvedValue({
+      data: { claims: { ...administratorClaims(), aal: "aal1" } },
+      error: null,
+    });
+    mockRuntime(client);
+    const { DELETE } = await import("../src/app/api/documents/[id]/route");
+
+    const response = await DELETE(authenticatedRequest(`/api/documents/${documentId}`, { method: "DELETE" }), {
+      params: Promise.resolve({ id: documentId }),
+    });
+    const body = await payload(response);
+
+    expect(response.status).toBe(403);
+    expect(body).toMatchObject({ code: "administrator_assurance_required" });
+    expect(client.rpc).not.toHaveBeenCalledWith("delete_document_if_idle", expect.anything());
   });
 
   it("removes transactionally snapshotted image paths in storage batches", async () => {
