@@ -1,0 +1,78 @@
+name: Worker-only production repair 20261019
+on:
+  push:
+    branches: [diag/pr-worker-20261019]
+permissions:
+  contents: read
+concurrency:
+  group: psychsift-pr-worker-20261019
+  cancel-in-progress: false
+env:
+  # Root must replace both source placeholders with the reviewed final worker-test repair commit.
+  SOURCE_SHA: "119ace22a4c14f8027282c79145621078bdbd826"
+  BASE_SHA: "0995deabf1065cbdc716272b87b86fbbcd941279"
+  HEAD_SHA: "119ace22a4c14f8027282c79145621078bdbd826"
+  CI: "true"
+  NEXT_TELEMETRY_DISABLED: "1"
+  DO_NOT_TRACK: "1"
+  RAG_PROVIDER_MODE: offline
+  NEXT_PUBLIC_SUPABASE_URL: https://sjrfecxgysukkwxsowpy.supabase.co
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: placeholder-ci-publishable-key
+  DOCKER_BUILD_RECORD_UPLOAD: "false"
+  DOCKER_BUILD_SUMMARY: "false"
+jobs:
+  full-worker-image:
+    if: github.repository == 'BigSimmo/PsychSift' && github.event.repository.private == false && github.event_name == 'push' && github.ref == 'refs/heads/diag/pr-worker-20261019'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout exact diagnostic commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Setup pinned Node without cache
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 24.22.0
+          package-manager-cache: false
+      - name: Verify exact source, scope and public repository
+        id: source
+        run: bash .github/diagnostics/pr-worker-20261019/source.sh
+      - name: Full actual worker Dockerfile including packaged worker, Python owner tests and model verification
+        id: image
+        run: |
+          timeout --kill-after=15s 1200s docker build --progress=plain --target runner -f Dockerfile.worker -t clinical-kb-worker:ci \
+            --build-arg GITHUB_SHA="$SOURCE_SHA" --build-arg COMMIT_SHA="$SOURCE_SHA" --build-arg SOURCE_COMMIT_SHA="$SOURCE_SHA" .
+      - name: Assembled worker JS, Python parser and NLP runtime, offline model identities
+        id: runtime
+        if: ${{ !cancelled() && steps.image.outcome == 'success' }}
+        run: |
+          timeout --kill-after=10s 60s node /tmp/psychsift-pr-worker-helpers/image-contract.mjs worker clinical-kb-worker:ci
+          timeout --kill-after=10s 150s bash /tmp/psychsift-pr-worker-helpers/worker-runtime.sh
+      - name: Independent full raw scan, OS inventory and SBOM
+        id: scan
+        if: ${{ !cancelled() && steps.image.outcome == 'success' }}
+        run: timeout --kill-after=10s 300s bash /tmp/psychsift-pr-worker-helpers/scan.sh clinical-kb-worker:ci
+      - name: Retain bounded sanitized proof in logs
+        id: proof
+        if: always()
+        run: |
+          test -s /tmp/psychsift-pr-worker-proof/source-scope.json
+          python3 /tmp/psychsift-pr-worker-helpers/log-proof.py
+      - name: Require every worker gate
+        if: always()
+        env:
+          SOURCE: ${{ steps.source.outcome }}
+          IMAGE: ${{ steps.image.outcome }}
+          RUNTIME: ${{ steps.runtime.outcome }}
+          SCAN: ${{ steps.scan.outcome }}
+          PROOF: ${{ steps.proof.outcome }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          result={k:os.environ[k] for k in ['SOURCE','IMAGE','RUNTIME','SCAN','PROOF']}
+          print('PREFLIGHT_GATES',json.dumps(result,sort_keys=True))
+          if any(v!='success' for v in result.values()): raise SystemExit(1)
+          PY
