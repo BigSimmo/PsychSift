@@ -358,6 +358,187 @@ class RasterModelContractTests(unittest.TestCase):
             with self.assertRaises(TimeoutError):
                 extractor.checked_raster_table_model(time.monotonic() - 1)
 
+    def test_deadline_during_model_hash_is_a_timeout_not_a_model_identity_failure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            model = Path(directory) / "Latin.traineddata"
+            model.write_bytes(b"synthetic model bytes")
+            with patch.dict(os.environ, {"PDF_RASTER_TABLE_MODEL_PATH": str(model)}), patch.object(
+                extractor, "RASTER_TABLE_MODEL_BYTES", model.stat().st_size,
+            ), patch.object(extractor.time, "monotonic", side_effect=[0, 0, 1]):
+                with self.assertRaises(TimeoutError):
+                    extractor.checked_raster_table_model(1)
+
+
+class RasterCandidateFallbackTests(unittest.TestCase):
+    """Real PDF/render geometry; deterministic OCR failures and a shared clock."""
+
+    def setUp(self):
+        import pytesseract
+        self.engine = pytesseract
+        self.document = extractor.fitz.open()
+        self.page = self.document.new_page(width=96, height=64)
+        for y in (8, 16, 24, 32):
+            self.page.draw_line((5, y), (90, y), width=0.5)
+        for x in (5, 30, 55, 90):
+            self.page.draw_line((x, 8), (x, 32), width=0.5)
+        self.now = 0.0
+        self.budget = extractor.ExtractionBudget()
+        self.observations = {}
+
+    def tearDown(self):
+        self.document.close()
+
+    def extract(self, **kwargs):
+        with patch.dict(os.environ, {"PDF_RASTER_TABLE_OCR": "1"}), patch.object(
+            extractor.time, "monotonic", side_effect=lambda: self.now,
+        ):
+            return extractor.maybe_ocr_page(self.page, self.budget, self.observations, **kwargs)
+
+    def test_transient_candidate_failures_preserve_full_page_ocr_without_partial_observations(self):
+        for failure in (TimeoutError("geometry timeout"), ValueError("unsafe raster cell geometry"),
+                        RuntimeError("Tesseract process timeout")):
+            with self.subTest(failure=type(failure).__name__):
+                def candidate(_page, _image, _scale, budget, _engine, deadline, observations):
+                    self.assertIs(budget, self.budget)
+                    self.assertLessEqual(deadline, 50)
+                    observations["partial"] = "discard"
+                    self.now = deadline
+                    raise failure
+                self.now = 0
+                self.observations = {"stale": "discard"}
+                with patch.object(extractor, "maybe_raster_table_ocr", side_effect=candidate), patch.object(
+                    self.engine, "image_to_string", return_value="Full page source retained.",
+                ) as full_page:
+                    text, _warning = self.extract()
+                self.assertEqual(text, "Full page source retained.")
+                self.assertEqual(self.observations, {})
+                full_page.assert_called_once()
+                self.assertEqual(full_page.call_args.kwargs["timeout"], 10)
+                self.assertNotIn("lang", full_page.call_args.kwargs)
+                self.assertNotIn("--psm", full_page.call_args.kwargs["config"])
+
+    def test_real_candidate_crop_failure_uses_original_full_page_render(self):
+        calls = []
+        def ocr(image, **kwargs):
+            calls.append((image.size, kwargs))
+            if "lang" in kwargs:
+                raise RuntimeError("Tesseract process timeout")
+            return "Original full page source."
+        with patch.object(extractor, "checked_raster_table_model", return_value="/unused"), patch.object(
+            extractor, "observed_raster_runtime", return_value={},
+        ), patch.object(self.engine, "image_to_string", side_effect=ocr):
+            text, _warning = self.extract()
+        self.assertEqual(text, "Original full page source.")
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(calls[0][1]["lang"], "Latin")
+        self.assertEqual(calls[1][0], (600, 400))
+        self.assertNotIn("lang", calls[1][1])
+        self.assertEqual(self.observations, {})
+
+    def test_model_provision_failures_remain_terminal_even_with_fallback_time(self):
+        with tempfile.TemporaryDirectory() as directory:
+            model = Path(directory) / "Latin.traineddata"
+            model.write_bytes(b"untrusted model")
+            for failure in ("missing", "size", "hash"):
+                with self.subTest(failure=failure), patch.dict(os.environ, {
+                    "PDF_RASTER_TABLE_MODEL_PATH": str(model) if failure != "missing" else str(model.parent / "missing" / model.name),
+                }), patch.object(extractor, "RASTER_TABLE_MODEL_BYTES", model.stat().st_size if failure == "hash" else 89_384_811), patch.object(
+                    self.engine, "image_to_string",
+                ) as full_page:
+                    text, warning = self.extract()
+                self.assertEqual(text, "")
+                self.assertIn("RasterTableModelError", warning)
+                full_page.assert_not_called()
+                self.assertEqual(self.observations, {})
+
+    def test_candidate_window_reserves_time_after_initial_render_cost(self):
+        original_render = self.page.get_pixmap
+        def render(**kwargs):
+            pixels = original_render(**kwargs)
+            self.now = 42
+            return pixels
+        def candidate(*args):
+            self.assertEqual(args[5], 50)
+            self.now = args[5]
+            raise TimeoutError("optional time consumed")
+        with patch.object(self.page, "get_pixmap", side_effect=render), patch.object(
+            extractor, "maybe_raster_table_ocr", side_effect=candidate,
+        ), patch.object(self.engine, "image_to_string", return_value="Reserved fallback.") as full_page:
+            text, _warning = self.extract()
+        self.assertEqual(text, "Reserved fallback.")
+        self.assertEqual(full_page.call_args.kwargs["timeout"], 10)
+
+    def test_refused_candidate_cannot_publish_partial_observations(self):
+        def candidate(*args):
+            args[6]["partial"] = "discard"
+            return None
+        self.observations = {"stale": "discard"}
+        with patch.object(extractor, "maybe_raster_table_ocr", side_effect=candidate), patch.object(
+            self.engine, "image_to_string", return_value="Unmodified fallback.",
+        ):
+            text, _warning = self.extract()
+        self.assertEqual(text, "Unmodified fallback.")
+        self.assertEqual(self.observations, {})
+
+    def test_late_candidate_success_is_discarded_and_fallback_keeps_reserved_time(self):
+        def candidate(*args):
+            self.now = args[5] + 1
+            args[6]["late"] = "discard"
+            return "Late candidate text."
+        with patch.object(extractor, "maybe_raster_table_ocr", side_effect=candidate), patch.object(
+            self.engine, "image_to_string", return_value="On-time fallback.",
+        ) as full_page:
+            text, _warning = self.extract()
+        self.assertEqual(text, "On-time fallback.")
+        self.assertEqual(full_page.call_args.kwargs["timeout"], 9)
+        self.assertEqual(self.observations, {})
+
+    def test_candidate_can_finish_within_page_budget_without_an_arbitrary_short_cap(self):
+        def candidate(*args):
+            self.now = 34
+            args[6]["complete"] = "observed"
+            return "Complete candidate source."
+        with patch.object(extractor, "maybe_raster_table_ocr", side_effect=candidate), patch.object(
+            self.engine, "image_to_string",
+        ) as full_page:
+            text, warning = self.extract()
+        self.assertEqual(text, "Complete candidate source.")
+        self.assertIsNone(warning)
+        self.assertEqual(self.observations, {"complete": "observed"})
+        full_page.assert_not_called()
+
+    def test_short_custom_page_budget_skips_optional_candidate(self):
+        self.budget = extractor.ExtractionBudget({"ocrPageTimeoutSeconds": 2})
+        with patch.object(extractor, "maybe_raster_table_ocr") as candidate, patch.object(
+            self.engine, "image_to_string", return_value="Short-budget fallback.",
+        ) as full_page:
+            text, _warning = self.extract()
+        self.assertEqual(text, "Short-budget fallback.")
+        candidate.assert_not_called()
+        self.assertEqual(full_page.call_args.kwargs["timeout"], 2)
+
+    def test_late_full_page_result_does_not_escape_original_page_deadline(self):
+        def ocr(*_args, **_kwargs):
+            self.now = 61
+            return "Late full page text."
+        with patch.object(extractor, "maybe_raster_table_ocr", return_value=None), patch.object(
+            self.engine, "image_to_string", side_effect=ocr,
+        ):
+            text, warning = self.extract()
+        self.assertEqual(text, "")
+        self.assertIn("deadline", warning)
+
+    def test_global_budget_failure_is_terminal_without_resetting_shared_usage(self):
+        self.budget.add_artifact(25)
+        with patch.object(extractor, "maybe_raster_table_ocr", side_effect=extractor.ExtractionBudgetExceeded("artifact cap")), patch.object(
+            self.engine, "image_to_string",
+        ) as full_page:
+            with self.assertRaises(extractor.ExtractionBudgetExceeded):
+                self.extract()
+        full_page.assert_not_called()
+        self.assertEqual(self.budget.artifact_count, 1)
+        self.assertEqual(self.budget.artifact_bytes, 25)
+
 
 @unittest.skipUnless(shutil.which("tesseract") and importlib.util.find_spec("pytesseract") and Image,
                      "Actual Tesseract and locked parser dependencies are required")

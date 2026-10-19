@@ -219,6 +219,13 @@ def bounded_render_scale(rect, desired_scale, max_pixels, max_scale=MAX_RENDER_S
 RASTER_TABLE_MODEL_SHA256 = "6dbdaf8ecc6c40f025c2648bf3b3f3fbffe073e1fd2df2047fde2e2b2f020d53"
 RASTER_TABLE_MODEL_BYTES = 89_384_811
 RASTER_TABLE_MODEL_PATH = "/opt/psychsift-ocr-models/Latin.traineddata"
+# Optional cell OCR must leave time for the existing whole-page reader. Small
+# custom page budgets use that reader directly; no extraction budget is reset.
+RASTER_TABLE_FALLBACK_RESERVE_SECONDS = 10
+
+
+class RasterTableModelError(ValueError):
+    pass
 
 
 def checked_raster_table_model(deadline):
@@ -228,7 +235,7 @@ def checked_raster_table_model(deadline):
         raise TimeoutError("model check exhausted page OCR timeout")
     try:
         if os.path.basename(path) != "Latin.traineddata" or os.path.getsize(path) != RASTER_TABLE_MODEL_BYTES:
-            raise ValueError("raster cell model size or basename mismatch")
+            raise RasterTableModelError("raster cell model size or basename mismatch")
         digest = hashlib.sha256()
         with open(path, "rb") as model:
             while True:
@@ -239,10 +246,12 @@ def checked_raster_table_model(deadline):
                     break
                 digest.update(chunk)
         if digest.hexdigest() != RASTER_TABLE_MODEL_SHA256:
-            raise ValueError("raster cell model sha256 mismatch")
+            raise RasterTableModelError("raster cell model sha256 mismatch")
         return os.path.dirname(os.path.abspath(path))
+    except TimeoutError:
+        raise
     except OSError:
-        raise ValueError("provisioned raster cell model unavailable") from None
+        raise RasterTableModelError("provisioned raster cell model unavailable") from None
 
 
 @lru_cache(maxsize=8)
@@ -533,7 +542,7 @@ def maybe_raster_table_ocr(page, image, render_scale, budget, pytesseract, deadl
     """Default-off candidate; preserve full-page fallback on uncertain geometry.
 
     OCR each physical cell at the existing target and per-render pixel bound.
-    All calls share the original page OCR deadline. No source glyph is rewritten.
+    All calls share the candidate deadline inside the page OCR budget. No source glyph is rewritten.
     """
     if os.environ.get("PDF_RASTER_TABLE_OCR") != "1" or page.rotation or page.get_text("text").strip():
         return None
@@ -621,6 +630,9 @@ def maybe_raster_table_ocr(page, image, render_scale, budget, pytesseract, deadl
 
 def maybe_ocr_page(page, budget, raster_observations=None, runtime_identity=None):
     deadline = time.monotonic() + budget.limits["ocrPageTimeoutSeconds"]
+    raster_enabled = os.environ.get("PDF_RASTER_TABLE_OCR") == "1"
+    if raster_enabled and raster_observations is not None:
+        raster_observations.clear()
     if runtime_identity is not None:
         runtime_identity["tesseractVersion"] = None
     # OCR needs the source glyph detail that thumbnail/crop rendering can omit.
@@ -663,17 +675,41 @@ def maybe_ocr_page(page, budget, raster_observations=None, runtime_identity=None
         if pix.width * pix.height > budget.limits["maxRenderPixels"]:
             return "", f"render_skipped: OCR page {page.number + 1} exceeded the rounded pixel limit"
         image = Image.open(io.BytesIO(pix.tobytes("png")))
-        candidate = maybe_raster_table_ocr(page, image, render_scale, budget, pytesseract, deadline, raster_observations)
-        if candidate is not None:
-            return candidate, None
+        candidate_warning = None
+        if raster_enabled:
+            reserve = min(RASTER_TABLE_FALLBACK_RESERVE_SECONDS, budget.limits["ocrPageTimeoutSeconds"])
+            candidate_deadline = deadline - reserve
+            if time.monotonic() < candidate_deadline:
+                candidate_observations = {}
+                try:
+                    candidate = maybe_raster_table_ocr(
+                        page, image, render_scale, budget, pytesseract, candidate_deadline, candidate_observations,
+                    )
+                    if time.monotonic() >= candidate_deadline:
+                        raise TimeoutError("optional raster OCR completed after its deadline")
+                    if candidate is not None:
+                        if raster_observations is not None:
+                            raster_observations.update(candidate_observations)
+                        return candidate, None
+                except (RasterTableModelError, ExtractionBudgetExceeded):
+                    raise  # Model identity and document-wide limits remain fail-closed.
+                except Exception as exc:
+                    # Discard every candidate crop/text observation; only the
+                    # original full-page render can reach the legacy reader.
+                    candidate_warning = f"raster_table_ocr_refused: page {page.number + 1}: {type(exc).__name__}"
         timeout = budget.limits["ocrPageTimeoutSeconds"]
         if os.environ.get("PDF_RASTER_TABLE_OCR") == "1":
             timeout = deadline - time.monotonic()
             if timeout <= 0:
                 raise TimeoutError("raster OCR exhausted page timeout before fallback")
-        return pytesseract.image_to_string(
+        text = pytesseract.image_to_string(
             image, config=f"--dpi {round(render_scale * 72)}", timeout=timeout
-        ), None
+        )
+        if raster_enabled and time.monotonic() >= deadline:
+            raise TimeoutError("full-page OCR completed after page deadline")
+        return text, candidate_warning
+    except ExtractionBudgetExceeded:
+        raise
     except Exception as exc:
         return "", f"OCR failed on page {page.number + 1}: {type(exc).__name__}: {exc}"
 
