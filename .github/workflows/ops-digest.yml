@@ -164,7 +164,10 @@ jobs:
             const severity = allowedSeverities.has(rawSeverity) ? rawSeverity : "unknown";
             const publishAttentionComment =
               (context.eventName === "workflow_dispatch" && process.env.OPS_DIGEST_PUBLISH_ALERT_COMMENT === "true") ||
-              (context.eventName === "schedule" && (severity === "warning" || severity === "page"));
+              // An unreachable, degraded or unparseable service is the outage the phone alert exists
+              // for, even when no SLO severity could be computed. A zero-traffic window (status ok,
+              // severity unknown) stays silent so quiet nights do not page.
+              (context.eventName === "schedule" && (severity === "warning" || severity === "page" || status !== "ok"));
             let parsedSummary;
             try {
               parsedSummary = JSON.parse(process.env.OPS_DIGEST_ALERT_SUMMARY || "{}");
