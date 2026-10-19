@@ -15,7 +15,7 @@ import {
   Search,
   X,
 } from "lucide-react";
-import { useCallback, useDeferredValue, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useId, useMemo, useRef, useState } from "react";
 
 import { cardSelected, cardSurface, stretchedRowLinkClass } from "@/components/card-recipes";
 import { useAccountData } from "@/components/account-data-provider";
@@ -647,11 +647,9 @@ export function ServicesNavigatorPage() {
   // stamped with, so useSearchParams never shows a change and the cleared view
   // would be resurrected over the restored comparison. A history traversal means
   // the address is the truth again, so it always retires the optimistic view.
-  useEffect(() => {
-    const retireOverride = () => setWorkflowOverride(null);
-    window.addEventListener("popstate", retireOverride);
-    return () => window.removeEventListener("popstate", retireOverride);
-  }, []);
+  // The listener is armed by the click that stamps the override (no effect: this
+  // surface derives its view from the URL during render) and fires at most once.
+  const retireOverrideOnTraversalRef = useRef<(() => void) | null>(null);
   const pendingWorkflow = workflowOverride?.urlKey === workflowUrlKey ? workflowOverride : null;
   const requestedSlugs = pendingWorkflow?.selectedSlugs ?? readShortlist(urlShortlist);
   // Bookmarked identifiers can outlive catalogue records. Once the registry
@@ -692,6 +690,14 @@ export function ServicesNavigatorPage() {
     const nextStage = nextSelection.length === 0 ? "search" : stage;
     if (nextStage !== "search") setFilterOpen(false);
     setWorkflowOverride({ urlKey: workflowUrlKey, selectedSlugs: nextSelection, stage: nextStage });
+    if (!retireOverrideOnTraversalRef.current) {
+      const retireOverride = () => {
+        retireOverrideOnTraversalRef.current = null;
+        setWorkflowOverride(null);
+      };
+      retireOverrideOnTraversalRef.current = retireOverride;
+      window.addEventListener("popstate", retireOverride, { once: true });
+    }
     // This is client-only view state: publish it synchronously before another
     // control can submit a query. Next's native-history integration updates
     // useSearchParams without a server navigation; real view transitions use
