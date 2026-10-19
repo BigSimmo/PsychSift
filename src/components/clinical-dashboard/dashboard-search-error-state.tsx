@@ -66,13 +66,20 @@ export function DashboardSearchErrorState({
   ) : error && !documentsResultsOwnError ? (
     <EmptyState
       icon={CircleAlert}
-      title={activeModeResultKind === "answer" ? "Answer unavailable" : "Search unavailable"}
+      title={
+        errorKind === "session-expired"
+          ? "Sign in again"
+          : activeModeResultKind === "answer"
+            ? "Answer unavailable"
+            : "Search unavailable"
+      }
       body={error}
       live="assertive"
       tone="danger"
       testId="answer-error"
       actions={
-        activeModeResultKind === "answer" && lastFailedQuery ? (
+        // Retry would resend the expired session, so the expired state offers only the sign-in copy.
+        activeModeResultKind === "answer" && lastFailedQuery && errorKind !== "session-expired" ? (
           <>
             <button
               type="button"

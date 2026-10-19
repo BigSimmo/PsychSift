@@ -354,7 +354,10 @@ export function createAnswerRequestWatchdog(
   };
 }
 
-export type AnswerErrorKind = "no-results" | "failure";
+export type AnswerErrorKind = "no-results" | "session-expired" | "failure";
+
+/** Shown when the server answers 401: retrying with the expired session cannot help (audit F-15). */
+export const SEARCH_SESSION_EXPIRED_MESSAGE = "Your session expired. Sign in again, then try again.";
 
 /**
  * Classify an answer/search failure so the UI can offer the right recovery.
@@ -368,6 +371,9 @@ export type AnswerErrorKind = "no-results" | "failure";
 export function classifyAnswerError(error: unknown): AnswerErrorKind {
   if (error instanceof Error && (error as SearchError).status === 404) {
     return "no-results";
+  }
+  if (error instanceof Error && (error as SearchError).status === 401) {
+    return "session-expired";
   }
   return "failure";
 }

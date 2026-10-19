@@ -15,7 +15,6 @@
     "docs/mockup-retirement-policy.md",
     "mockups/**",
     "public/mockups/**",
-    "public/referral-board-mockup.html",
     "scripts/check-mockup-retirement.mjs",
     "scripts/check-outstanding-issues-snapshot.mjs",
     "scripts/check-repo-awareness-snapshot.ts",

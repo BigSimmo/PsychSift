@@ -34,6 +34,7 @@ import {
   type AnswerErrorKind,
   type AnswerPayload,
   type SearchError,
+  SEARCH_SESSION_EXPIRED_MESSAGE,
 } from "@/components/clinical-dashboard/search-utils";
 import type { AnswerThreadSnapshotMetadata } from "@/components/clinical-dashboard/use-persisted-answer-thread";
 import { parseApiErrorResponse } from "@/lib/api-client-error";
@@ -265,7 +266,7 @@ export function useDashboardSearchExecution(deps: DashboardSearchExecutionDeps) 
 
       if (response.status === 401) {
         markSessionExpired();
-        throw makeSearchError("Search request was not authorized by the server.", 401, false);
+        throw makeSearchError(SEARCH_SESSION_EXPIRED_MESSAGE, 401, false);
       }
       if (!response.ok) {
         throw await parseApiErrorResponse(response);
@@ -437,7 +438,12 @@ export function useDashboardSearchExecution(deps: DashboardSearchExecutionDeps) 
     const modeSearch = appModeSearchConfig(targetMode);
     const isDifferentialsMode = modeSearch.resultKind === "differentials";
     const isAnswerRequest = modeSearch.resultKind === "answer";
-    if (isAnswerRequest) {
+    // Document and differentials search text is embedded by the same overseas AI service as
+    // Answer, so it gets the same patient-detail check (repository audit F-01). /api/search
+    // refuses it again.
+    const sendsQueryToProvider =
+      isAnswerRequest || modeSearch.kind === "documents" || modeSearch.kind === "differentials";
+    if (sendsQueryToProvider) {
       // A mode switch, Stop or newer search while the check loads makes this submission stale.
       const submittedSeq = searchRequestSeqRef.current;
       const patientCheck = await loadClinicalQuestionPatientCheck().catch(() => null);
