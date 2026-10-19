@@ -1,12 +1,19 @@
+import type { Metadata } from "next";
 import { Suspense, type ReactNode } from "react";
 import { CmePageTabs } from "@/components/cme/cme-page-tabs";
 import { CmeOwnerBoundary } from "@/components/cme/cme-owner-boundary";
 import { isDemoMode } from "@/lib/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ModeBand } from "@/components/mode-band/mode-band";
+import { PRIVATE_APP_ROBOTS_METADATA } from "@/lib/crawler-policy";
 
 // CPD's own work-mode pieces (copper shades, hours bar, month chart, switch).
 import "@/components/cme/cme-work.css";
+
+// Personal work area: kept out of search results (repository audit F-30).
+export const metadata: Metadata = {
+  robots: PRIVATE_APP_ROBOTS_METADATA,
+};
 
 /** Bind server-rendered private records to the owner verified for this response. */
 export default async function CmeLayout({ children }: { children: ReactNode }) {

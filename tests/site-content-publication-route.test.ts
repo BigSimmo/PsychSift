@@ -55,6 +55,7 @@ const sourceRow = {
   updated_at: "2026-08-24T00:00:00.000Z",
 };
 const requireAuthenticatedUserContext = vi.fn();
+const requireRecentAdministratorAssurance = vi.fn(async () => undefined);
 
 const ownerId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 const rowAudit = {
@@ -99,6 +100,7 @@ function mockRuntime() {
     const actual = await original<typeof import("@/lib/supabase/auth")>();
     return { ...actual, requireAuthenticatedUserContext };
   });
+  vi.doMock("@/lib/supabase/admin-assurance", () => ({ requireRecentAdministratorAssurance }));
 }
 
 afterEach(() => {
@@ -106,6 +108,8 @@ afterEach(() => {
   rpc.mockReset();
   sourceRpc.mockReset();
   requireAuthenticatedUserContext.mockReset();
+  requireRecentAdministratorAssurance.mockReset();
+  requireRecentAdministratorAssurance.mockImplementation(async () => undefined);
 });
 
 describe("site-content publication POST", () => {
@@ -235,6 +239,44 @@ describe("site-content publication POST", () => {
 
     expect(response.status).toBe(401);
     expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("refuses an administrator without a recent multi-factor sign-in before any RPC (audit F-12)", async () => {
+    mockRuntime();
+    const { PublicApiError } = await import("@/lib/http");
+    requireAuthenticatedUserContext.mockResolvedValue({
+      user: { id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" },
+      publicationClient: { rpc },
+    });
+    requireRecentAdministratorAssurance.mockRejectedValue(
+      new PublicApiError("Recent multi-factor administrator authentication is required.", 403, {
+        code: "administrator_recent_authentication_required",
+      }),
+    );
+    const { POST } = await import("../src/app/api/site-content/publications/route");
+
+    const response = await POST(
+      new Request("http://localhost/api/site-content/publications", {
+        method: "POST",
+        body: JSON.stringify({
+          action: "publish",
+          kind: "medication",
+          sourceRowId: "11111111-1111-4111-8111-111111111111",
+          expectedSourceVersion: "2026-08-24T00:00:00.000Z",
+          expectedChangeEpoch: "0",
+          reconciliationPlanDigest: "a".repeat(64),
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(403);
+    expect(requireRecentAdministratorAssurance).toHaveBeenCalledWith(
+      expect.any(Request),
+      expect.anything(),
+      "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    );
+    expect(rpc).not.toHaveBeenCalled();
+    expect(sourceRpc).not.toHaveBeenCalled();
   });
 
   it("derives the actor from administrator authentication and never accepts public JSON", async () => {

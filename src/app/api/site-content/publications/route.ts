@@ -13,6 +13,7 @@ import {
   type SiteContentReconciliationInput,
 } from "@/lib/site-content/site-content-reconciliation";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requireRecentAdministratorAssurance } from "@/lib/supabase/admin-assurance";
 import { AuthenticationError, requireAuthenticatedUserContext, unauthorizedResponse } from "@/lib/supabase/auth";
 
 export const runtime = "nodejs";
@@ -53,9 +54,10 @@ const commandSchema = z.discriminatedUnion("action", [publicationCommandSchema, 
 export async function POST(request: Request) {
   try {
     const sourceSupabase = createAdminClient();
-    const { publicationClient } = await requireAuthenticatedUserContext(request, sourceSupabase, {
+    const { user, publicationClient } = await requireAuthenticatedUserContext(request, sourceSupabase, {
       administrator: true,
     });
+    await requireRecentAdministratorAssurance(request, sourceSupabase, user.id);
     let parsed: z.infer<typeof commandSchema>;
     try {
       parsed = await parseJsonBody(request, commandSchema);
