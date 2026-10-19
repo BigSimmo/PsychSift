@@ -225,7 +225,6 @@ const ADD_MESSAGE: Readonly<Record<Exclude<AddMhaClockResult, "added">, string>>
 };
 
 const ADD_SECTION_ID = "mha-clock-start";
-const MAX_START_AGE_MS = 7 * 24 * HOUR_MS;
 
 function AddClock({ forms, now }: { readonly forms: readonly MhaClockForm[]; readonly now: Date | null }) {
   const formId = useId();
@@ -266,12 +265,6 @@ function AddClock({ forms, now }: { readonly forms: readonly MhaClockForm[]; rea
     }
     if (now && start.getTime() > now.getTime()) {
       fail("That time is later than now. Enter when the form was made.", true);
-      return;
-    }
-    // The longest limit on any listed form is 144 hours, so a start over 7 days back is almost
-    // always a mistyped month or year (owner decision, 19 Oct 2026).
-    if (now && now.getTime() - start.getTime() > MAX_START_AGE_MS) {
-      fail("That time is more than 7 days ago. Check the date the form was made.", true);
       return;
     }
     const result = addMhaClock(code, start);

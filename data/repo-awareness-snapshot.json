@@ -5194,11 +5194,6 @@
         "catalogued": true
       },
       {
-        "path": "docs/decisions/2026-10-19-mha-clock-start-time-within-7-days.md",
-        "section": "decisions",
-        "catalogued": true
-      },
-      {
         "path": "docs/archive/cloud-chat-reconciliation-2026-07-22.md",
         "section": "archive",
         "catalogued": true
