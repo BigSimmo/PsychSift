@@ -199,6 +199,23 @@ jobs:
               canonicalSummary.alerting ||
               severity === "unknown" ||
               canaryStale;
+            // Route alerts to a person, not only a label: GitHub pushes an assignee's issue activity
+            // to the GitHub mobile app, which is the owner's chosen phone alert channel
+            // (docs/decisions/2026-10-19-production-alerts-by-phone.md). Best-effort, so a refused
+            // assignment never costs the digest.
+            const alertAssignee = context.repo.owner;
+            async function assignAlert(issueNumber) {
+              try {
+                await github.rest.issues.addAssignees({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                  assignees: [alertAssignee],
+                });
+              } catch (error) {
+                core.warning(`Could not assign @${alertAssignee} to #${issueNumber}: ${error.message}`);
+              }
+            }
             const { data: existing } = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -227,6 +244,7 @@ jobs:
             }
             // Publish attention comments on confirmed manual dispatches or scheduled warning/page breaches.
             if (publishAttentionComment && (status !== "ok" || alerting)) {
+              await assignAlert(issueNumber);
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
