@@ -43,4 +43,19 @@ describe("sign-in ended notice", () => {
     });
     expect(screen.getAllByText(SIGN_IN_ENDED_BODY)).toHaveLength(1);
   });
+
+  it("takes the notice down once the reader signs in again", () => {
+    clearedAt = 1_760_000_000_000;
+    const view = renderNotice();
+    expect(screen.getByText(SIGN_IN_ENDED_BODY)).toBeTruthy();
+    clearedAt = null;
+    act(() => {
+      view.rerender(
+        <ToastProvider>
+          <SignInEndedNotice />
+        </ToastProvider>,
+      );
+    });
+    expect(screen.queryByText(SIGN_IN_ENDED_BODY)).toBeNull();
+  });
 });

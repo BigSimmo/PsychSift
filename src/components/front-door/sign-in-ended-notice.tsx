@@ -18,11 +18,19 @@ export function SignInEndedNotice() {
   const { deviceDataClearedAt } = useAuthSession();
   const toast = useOptionalToast();
   const shownFor = useRef<number | null>(null);
+  const toastId = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!toast || !deviceDataClearedAt || shownFor.current === deviceDataClearedAt) return;
+    if (!toast) return;
+    if (!deviceDataClearedAt) {
+      // Signed in again: "Sign in again to carry on" no longer applies.
+      if (toastId.current) toast.dismiss(toastId.current);
+      toastId.current = null;
+      return;
+    }
+    if (shownFor.current === deviceDataClearedAt) return;
     shownFor.current = deviceDataClearedAt;
-    toast.push({ tone: "info", title: SIGN_IN_ENDED_TITLE, body: SIGN_IN_ENDED_BODY, duration: 0 });
+    toastId.current = toast.push({ tone: "info", title: SIGN_IN_ENDED_TITLE, body: SIGN_IN_ENDED_BODY, duration: 0 });
   }, [deviceDataClearedAt, toast]);
 
   return null;

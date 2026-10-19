@@ -1,16 +1,24 @@
 /** @vitest-environment jsdom */
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const api = vi.hoisted(() => ({ signInWithOAuth: vi.fn(), signInWithPassword: vi.fn() }));
+const api = vi.hoisted(() => ({ signInWithOAuth: vi.fn(), signInWithPassword: vi.fn(), signOut: vi.fn() }));
+// A synthetic signed-in session, and the auth listener, for the tests where a session ends.
+const authState = vi.hoisted(() => ({
+  session: null as { user: { id: string }; access_token: string } | null,
+  listeners: [] as Array<(event: string, session: unknown) => void>,
+}));
 vi.mock("@supabase/ssr", () => ({
   createBrowserClient: () => ({
     auth: {
-      getUser: async () => ({ data: { user: null }, error: null }),
-      getSession: async () => ({ data: { session: null }, error: null }),
-      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+      getUser: async () => ({ data: { user: authState.session?.user ?? null }, error: null }),
+      getSession: async () => ({ data: { session: authState.session }, error: null }),
+      onAuthStateChange: (listener: (event: string, session: unknown) => void) => {
+        authState.listeners.push(listener);
+        return { data: { subscription: { unsubscribe: () => {} } } };
+      },
       ...api,
     },
   }),
@@ -36,6 +44,9 @@ function Probe() {
       <button type="button" onClick={() => auth.markSessionExpired()}>
         Expire
       </button>
+      <button type="button" onClick={() => void auth.signOut()}>
+        Sign out
+      </button>
       <p data-testid="cleared">{auth.deviceDataClearedAt ? "cleared" : "kept"}</p>
     </>
   );
@@ -49,6 +60,8 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  authState.session = null;
+  authState.listeners = [];
   vi.unstubAllEnvs();
   window.history.replaceState({}, "", "/");
 });
@@ -117,6 +130,37 @@ describe("provider login requests", () => {
     await screen.findByText("signed_out");
     expect(screen.getByTestId("cleared")).toHaveTextContent("kept");
     await user.click(screen.getByRole("button", { name: "Expire" }));
+    expect(screen.getByTestId("cleared")).toHaveTextContent("cleared");
+  });
+
+  it("records a session that ended by itself in an open tab, but not the reader's own Sign out", async () => {
+    authState.session = { user: { id: "synthetic-user" }, access_token: "synthetic-token" };
+    api.signOut.mockImplementation(async () => {
+      for (const listener of authState.listeners) listener("SIGNED_OUT", null);
+      return { error: null };
+    });
+    const user = userEvent.setup();
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    );
+    await screen.findByText("authenticated");
+    await user.click(screen.getByRole("button", { name: "Sign out" }));
+    await screen.findByText("signed_out");
+    expect(screen.getByTestId("cleared")).toHaveTextContent("kept");
+
+    cleanup();
+    authState.listeners = [];
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    );
+    await screen.findByText("authenticated");
+    act(() => {
+      for (const listener of authState.listeners) listener("SIGNED_OUT", null);
+    });
     expect(screen.getByTestId("cleared")).toHaveTextContent("cleared");
   });
 

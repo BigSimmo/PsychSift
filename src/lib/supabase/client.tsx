@@ -293,6 +293,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // SIGNED_IN replay would read as null -> user, i.e. an account switch. See the
   // guard in onAuthStateChange below.
   const initialSessionPublishedRef = useRef(false);
+  // True while this tab's own signOut() runs, so its SIGNED_OUT event is not
+  // mistaken for a session that ended by itself (which says so, below).
+  const userSignOutRef = useRef(false);
   const [authEpoch, setAuthEpoch] = useState(0);
 
   const invalidateAuthRequests = useCallback(() => {
@@ -450,6 +453,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // as a different user still clears.
       if (initialSessionPublishedRef.current && publishedUserIdRef.current !== nextUserId) {
         clearAccountScopedBrowserState();
+        // A session that ended without this tab's Sign out (a refresh the auth
+        // server refused) cleared this device too, so the notice says so.
+        if (!nextUserId && !userSignOutRef.current) setDeviceDataClearedAt(Date.now());
       }
       publishedUserIdRef.current = nextUserId;
       setSession(nextSession);
@@ -585,6 +591,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     if (!client) return;
+    userSignOutRef.current = true;
     invalidateAuthRequests();
     // Phone alerts belong to the account, not the device: stop them here while
     // the session can still tell the server which subscription to drop.
@@ -598,6 +605,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     // A failed global sign-out can leave the persisted session in place; drop it locally so a reload is signed out.
     if (remoteSignOutFailed) await client.auth.signOut({ scope: "local" }).catch(() => undefined);
+    userSignOutRef.current = false;
     clearAccountScopedBrowserState();
     publishedUserIdRef.current = null;
     setSession(null);
