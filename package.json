@@ -388,7 +388,7 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
     "@babel/parser": "^8.0.7",
-    "@codspeed/tinybench-plugin": "^5.7.1",
+    "@codspeed/tinybench-plugin": "^6.0.1",
     "@next/bundle-analyzer": "16.4.0",
     "@sentry/core": "^11.6.0",
     "@tailwindcss/postcss": "^4.3.3",
