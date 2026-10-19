@@ -149,8 +149,9 @@ These jobs name it. Each runs only from the default branch:
 - `ingestion-autopilot.yml`, job `ingestion-autopilot` (schedule and
   repository dispatch).
 - `live-drift.yml`, job `live-drift` (schedule, push to `main`, manual run). A
-  manual run from any other branch is now refused by the environment, and the
-  `drift-routing` job reports that as a failed run.
+  manual run from any other branch is now refused by the environment and shows
+  as a failed run. The `drift-routing` job is skipped off `main`, so a refused
+  run opens no drift issue and raises no production alarm.
 - `eval-canary.yml`, job `eval-canary` (schedule and repository dispatch).
   `OPENAI_API_KEY` stays a repository secret; an environment job still gets it.
 - `reindex-reaper.yml`, job `reindex-reaper` (schedule and repository
