@@ -34,26 +34,14 @@
       "rows": [
         {
           "label": "Alpha",
-          "cells": [
-            "Alpha",
-            ">= 12.5 units",
-            "Do not repeat before 30 minutes"
-          ]
+          "cells": ["Alpha", ">= 12.5 units", "Do not repeat before 30 minutes"]
         },
         {
           "label": "Beta",
-          "cells": [
-            "Beta",
-            "<= 0.8 units",
-            "Only if condition B is present"
-          ]
+          "cells": ["Beta", "<= 0.8 units", "Only if condition B is present"]
         }
       ],
-      "numericTokens": [
-        "12.5",
-        "30",
-        "0.8"
-      ]
+      "numericTokens": ["12.5", "30", "0.8"]
     },
     {
       "id": "rotated",
@@ -76,26 +64,14 @@
       "rows": [
         {
           "label": "Alpha",
-          "cells": [
-            "Alpha",
-            ">= 12.5 units",
-            "Do not repeat before 30 minutes"
-          ]
+          "cells": ["Alpha", ">= 12.5 units", "Do not repeat before 30 minutes"]
         },
         {
           "label": "Beta",
-          "cells": [
-            "Beta",
-            "<= 0.8 units",
-            "Only if condition B is present"
-          ]
+          "cells": ["Beta", "<= 0.8 units", "Only if condition B is present"]
         }
       ],
-      "numericTokens": [
-        "12.5",
-        "30",
-        "0.8"
-      ]
+      "numericTokens": ["12.5", "30", "0.8"]
     },
     {
       "id": "wrapped",
@@ -138,13 +114,7 @@
           ]
         }
       ],
-      "numericTokens": [
-        "0.4",
-        "12",
-        "5",
-        "7",
-        "1.2"
-      ]
+      "numericTokens": ["0.4", "12", "5", "7", "1.2"]
     },
     {
       "id": "merged",
@@ -170,35 +140,14 @@
       "rows": [
         {
           "label": "WBC",
-          "cells": [
-            "WBC",
-            "3.5 or above",
-            "3.0 to 3.5: repeat twice weekly",
-            "Below 3.0: stop clozapine"
-          ]
+          "cells": ["WBC", "3.5 or above", "3.0 to 3.5: repeat twice weekly", "Below 3.0: stop clozapine"]
         },
         {
           "label": "Neutrophils",
-          "cells": [
-            "Neutrophils",
-            "2.0 or above",
-            "1.5 to 2.0: repeat twice weekly",
-            "Below 1.5: stop clozapine"
-          ]
+          "cells": ["Neutrophils", "2.0 or above", "1.5 to 2.0: repeat twice weekly", "Below 1.5: stop clozapine"]
         }
       ],
-      "numericTokens": [
-        "10",
-        "9",
-        "3.5",
-        "3.0",
-        "3.5",
-        "3.0",
-        "2.0",
-        "1.5",
-        "2.0",
-        "1.5"
-      ]
+      "numericTokens": ["10", "9", "3.5", "3.0", "3.5", "3.0", "2.0", "1.5", "2.0", "1.5"]
     }
   ]
 }
