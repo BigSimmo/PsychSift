@@ -161,11 +161,12 @@ function BrowseRow({ kind, summary, href }: { kind: SourcesBrowseKind; summary: 
           <Link
             href={href}
             aria-label={`View ${summary.label} sources`}
-            className="block overflow-hidden text-sm-minus font-extrabold leading-5 text-[color:var(--text-heading)] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] after:absolute after:inset-0 focus-visible:outline-none group-hover:text-[color:var(--clinical-accent)]"
+            className="block after:absolute after:inset-0 focus-visible:outline-none"
           >
-            {summary.label}
-          </Link>
-          {/* The quality mix as a bar, drawn inside the row's labelled link and
+            <span className="block overflow-hidden text-sm-minus font-extrabold leading-5 text-[color:var(--text-heading)] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] group-hover:text-[color:var(--clinical-accent)]">
+              {summary.label}
+            </span>
+            {/* The quality mix as a bar, drawn inside the row's labelled link and
               always accompanied by the sentence below it. Band is a clinical
               signal, so it is never carried by hue alone — under forced colors
               every fill collapses to the same system colour, and the tally in
@@ -175,20 +176,21 @@ function BrowseRow({ kind, summary, href }: { kind: SourcesBrowseKind; summary: 
               band renders a single solid bar that says nothing the sentence does
               not, and on a corpus where one band dominates that is a whole page of
               identical coloured rules reading as an alert. */}
-          {bands.length > 1 ? (
-            <span
-              aria-hidden
-              className="mt-1.5 flex h-0.5 w-full max-w-40 overflow-hidden rounded-full bg-[color:var(--surface-inset)]"
-            >
-              {bands.map((band) => (
-                <span
-                  key={band}
-                  className={cn("h-full", bandFill[band])}
-                  style={{ flexGrow: summary.bandCounts[band] }}
-                />
-              ))}
-            </span>
-          ) : null}
+            {bands.length > 1 ? (
+              <span
+                aria-hidden
+                className="mt-1.5 flex h-0.5 w-full max-w-40 overflow-hidden rounded-full bg-[color:var(--surface-inset)]"
+              >
+                {bands.map((band) => (
+                  <span
+                    key={band}
+                    className={cn("h-full", bandFill[band])}
+                    style={{ flexGrow: summary.bandCounts[band] }}
+                  />
+                ))}
+              </span>
+            ) : null}
+          </Link>
           <span className="mt-1 block text-xs font-semibold leading-5 text-[color:var(--text-muted)]">
             {qualityPhrase(summary)}
             {summary.attentionCount > 0 ? (
