@@ -830,8 +830,7 @@ function SupervisionPage({ demoMode }: { demoMode: boolean }) {
   else body = <SupervisionBody pairings={pairings} today={today} sender={sender} />;
   return (
     <WorkBody testId="teaching-supervision" landmark>
-      <h1 className="sr-only">Registrar supervision</h1>
-      <AssessHeader eyebrow="Confirmed hours" title="Registrar supervision" />
+      <AssessHeader eyebrow="Confirmed hours" title="Registrar supervision" headingLevel={1} />
       {body}
       {sender.busy ? (
         <p role="status" className="assess-note" data-center="">
