@@ -119,6 +119,14 @@ describe("extraction provenance (audit F04)", () => {
     tableStrategy: "table_aware_page_text",
   };
 
+  it("preserves the previous reader's provenance on existing artifacts", () => {
+    const previousProvenance = { ...provenance, version: "2026-10-18.ruled-edge-provenance-v7" };
+    const parsed = parseExtractedDocumentPayload(
+      JSON.stringify({ pages: [], images: [], extractor: previousProvenance }),
+    );
+    expect(parsed.extractor).toEqual(previousProvenance);
+  });
+
   it("keeps the reader's provenance so the worker can record it on the document", () => {
     const parsed = parseExtractedDocumentPayload(JSON.stringify({ pages: [], images: [], extractor: provenance }));
     expect(parsed.extractor).toEqual(provenance);

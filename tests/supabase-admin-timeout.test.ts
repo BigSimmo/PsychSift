@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createHash } from "node:crypto";
+import { uploadTrustedDocumentBytes } from "@/lib/trusted-document-admission";
 import { isAbortError } from "../src/lib/abort-error";
 import {
   DEFAULT_SUPABASE_ADMIN_TIMEOUT_MS,
@@ -193,6 +195,100 @@ describe("Supabase admin client timeout (#1DYJJQ)", () => {
         isAbortError(res.error),
     ).toBe(true);
   });
+
+  it.each(["upload", "download"] as const)("cancels a request-bound Storage %s", async (operation) => {
+    const controller = new AbortController();
+    let started!: () => void;
+    const ready = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    vi.stubGlobal(
+      "fetch",
+      (_input: RequestInfo | URL, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          const signal = init?.signal;
+          if (signal?.aborted) {
+            reject(signal.reason);
+            return;
+          }
+          signal?.addEventListener("abort", () => reject(signal.reason), { once: true });
+          started();
+        }),
+    );
+    const client = createAdminClient({ signal: controller.signal, timeoutMs: 100 });
+    const bucket = client.storage.from("clinical-documents");
+    const result = Promise.resolve(
+      operation === "upload"
+        ? bucket.upload("test.pdf", new Uint8Array([1]), { upsert: false })
+        : bucket.download("test.pdf"),
+    );
+    await ready;
+    controller.abort(new DOMException("request cancelled", "AbortError"));
+    expect((await result).error?.message).toContain("request cancelled");
+  });
+
+  it("does not share a request-bound client with another request or the singleton", () => {
+    const signal = new AbortController().signal;
+    const shared = createAdminClient();
+    const first = createAdminClient({ signal });
+    expect(first).not.toBe(shared);
+    expect(createAdminClient({ signal: new AbortController().signal })).not.toBe(first);
+    expect(createAdminClient()).toBe(shared);
+  });
+
+  it.each([1, 2, 3])(
+    "retains the correct reconciliation path when Storage stage %i times out",
+    async (stalledStage) => {
+      const ownerId = "11111111-1111-4111-8111-111111111111";
+      const documentId = "22222222-2222-4222-8222-222222222222";
+      const recoveryId = "33333333-3333-4333-8333-333333333333";
+      const path = `${ownerId}/documents/${documentId}/test.pdf`;
+      const bytes = new TextEncoder().encode("validated PDF bytes");
+      let stage = 0;
+      vi.stubGlobal("fetch", (_input: RequestInfo | URL, init?: RequestInit) => {
+        stage += 1;
+        if (stage === stalledStage)
+          return new Promise<Response>((_resolve, reject) => {
+            const signal = init?.signal;
+            if (signal?.aborted) {
+              reject(signal.reason);
+              return;
+            }
+            signal?.addEventListener("abort", () => reject(signal.reason), { once: true });
+          });
+        return Promise.resolve(
+          stage === 1
+            ? new Response(
+                JSON.stringify({ message: "already exists", statusCode: "409", code: "ResourceAlreadyExists" }),
+                { status: 400 },
+              )
+            : new Response(bytes),
+        );
+      });
+      const storage = createAdminClient({ timeoutMs: 20, fresh: true }).storage.from("clinical-documents");
+      const result = uploadTrustedDocumentBytes({
+        storage,
+        ownerId,
+        documentId,
+        intendedStoragePath: path,
+        bytes,
+        byteCount: bytes.length,
+        contentSha256: createHash("sha256").update(bytes).digest("hex"),
+        contentType: "application/pdf",
+        createRecoveryId: () => recoveryId,
+      });
+      await expect(result).rejects.toMatchObject(
+        stalledStage === 2
+          ? { kind: "collision_mismatch", storagePath: null }
+          : {
+              kind: "outcome_unknown",
+              storagePath:
+                stalledStage === 1 ? path : `${ownerId}/documents/${documentId}/recovery-${recoveryId}-test.pdf`,
+            },
+      );
+      expect(stage).toBe(stalledStage);
+    },
+  );
 
   it("manages singletons for default and unbounded clients", () => {
     expect(DEFAULT_SUPABASE_ADMIN_TIMEOUT_MS).toBe(30_000);

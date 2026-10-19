@@ -7,7 +7,14 @@ import { afterEach, describe, expect, it } from "vitest";
 
 const helper = fileURLToPath(new URL("../scripts/ci/archive-container-evidence.mjs", import.meta.url));
 const roots: string[] = [];
-const names = ["sbom-app.cdx.json", "sbom-worker.cdx.json", "container-builds.dockerbuild"];
+const names = [
+  "sbom-app.cdx.json",
+  "sbom-worker.cdx.json",
+  "container-builds.dockerbuild",
+  "trivy-app.report.json",
+  "trivy-worker.report.json",
+  "trivy-scan-summary.txt",
+];
 function fixture() {
   const root = mkdtempSync(path.join(os.tmpdir(), "container-evidence-"));
   roots.push(root);
@@ -45,7 +52,7 @@ describe("complete bounded container evidence", () => {
       '      - "scripts/ci/archive-container-evidence.mjs"',
     );
   });
-  it("replays every available SBOM and complete build record byte for byte, with a manifest", () => {
+  it("replays every available SBOM, Trivy report, summary and complete build record byte for byte, with a manifest", () => {
     const f = fixture();
     const result = archive(f.input, f.output);
     expect(result.status, result.stderr).toBe(0);
@@ -68,13 +75,13 @@ describe("complete bounded container evidence", () => {
     expect(result.stderr).toContain("exceeds");
     expect(existsSync(refused)).toBe(false);
   });
-  it("records missing optional SBOMs explicitly while retaining complete build records", () => {
+  it("records missing optional SBOMs and scanner evidence explicitly while retaining complete build records", () => {
     const f = fixture();
-    rmSync(path.join(f.input, names[0]));
-    rmSync(path.join(f.input, names[1]));
+    const optional = names.filter((name) => name !== "container-builds.dockerbuild");
+    optional.forEach((name) => rmSync(path.join(f.input, name)));
     expect(archive(f.input, f.output).status).toBe(0);
     expect(unpack(f.output, names[2])).toEqual(f.bytes[2]);
-    expect(JSON.parse(unpack(f.output, "manifest.json").toString()).missing).toEqual(names.slice(0, 2));
+    expect(JSON.parse(unpack(f.output, "manifest.json").toString()).missing).toEqual(optional);
   });
   it("refuses missing mandatory build records without producing a partial upload", () => {
     const f = fixture();
@@ -155,6 +162,8 @@ describe("complete bounded container evidence", () => {
     expect(workflow).toContain("retention-days: 7");
     expect(workflow).toContain("compression-level: 0");
     expect(workflow.match(/uses: actions\/upload-artifact@/g)).toHaveLength(1);
+    expect(workflow).toContain("clinical-kb-app:ci --report trivy-app.report.json");
+    expect(workflow).toContain("clinical-kb-worker:ci --report trivy-worker.report.json");
     expect(workflow.match(/uses: docker\/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc/g)).toHaveLength(2);
     expect(workflow.match(/push: false/g)).toHaveLength(2);
     expect(workflow).toContain("name: Verify image content contract");

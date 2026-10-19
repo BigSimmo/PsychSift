@@ -17,7 +17,14 @@ import {
 import path from "node:path";
 
 const ceiling = 64 * 1024 * 1024;
-const inputs = ["sbom-app.cdx.json", "sbom-worker.cdx.json", "container-builds.dockerbuild"];
+const inputs = [
+  "sbom-app.cdx.json",
+  "sbom-worker.cdx.json",
+  "container-builds.dockerbuild",
+  "trivy-app.report.json",
+  "trivy-worker.report.json",
+  "trivy-scan-summary.txt",
+];
 const digest = (bytes) => createHash("sha256").update(bytes).digest("hex");
 function argument(name) {
   const index = process.argv.indexOf(name);

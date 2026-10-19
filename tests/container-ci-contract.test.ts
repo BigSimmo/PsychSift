@@ -1,5 +1,6 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -8,12 +9,33 @@ import { describe, expect, it } from "vitest";
 import {
   imageListingProbe,
   imagePathAbsenceProbe,
+  imagePrivilegeBitsProbe,
   isExpectedAppCommand,
 } from "../scripts/check-image-content-contract.mjs";
 
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
 describe("container delivery contract", () => {
+  it("parses Compose without duplicate keys and keeps the worker health port aligned", () => {
+    // Reuse the existing transitive parser as other CI contracts do. json:false
+    // rejects duplicate mapping keys instead of silently accepting the last port.
+    const compose = createRequire(import.meta.url)("js-yaml").load(read("docker-compose.yml"), { json: false }) as {
+      services: {
+        worker: {
+          environment: Record<string, string>;
+          healthcheck: { test: string[] };
+        };
+      };
+    };
+    const worker = compose.services.worker;
+    expect(worker.environment.WORKER_HEALTH_PORT).toBe("3901");
+    expect(worker.healthcheck.test.slice(0, 3)).toEqual(["CMD", "node", "-e"]);
+    const healthUrl = new URL(worker.healthcheck.test[3].match(/fetch\(['"]([^'"]+)['"]\)/)?.[1] ?? "");
+    expect(healthUrl.hostname).toBe("127.0.0.1");
+    expect(healthUrl.port).toBe(worker.environment.WORKER_HEALTH_PORT);
+    expect(healthUrl.pathname).toBe("/health");
+  });
+
   it.each([
     "eval/docling/requirements.txt",
     "eval/docling/verify-model-artifacts.mjs",
@@ -53,6 +75,50 @@ describe("container delivery contract", () => {
     expect(dockerfile).toContain("python -m compileall -q worker/python");
     expect(dockerfile).toContain('python -m unittest discover -s worker/python -p "test_*.py"');
   });
+
+  it("removes worker package managers and mount-helper privilege bits without changing its runtime base", () => {
+    const dockerfile = read("Dockerfile.worker");
+    const contract = read("scripts/check-image-content-contract.mjs");
+    expect(dockerfile).toContain("FROM node-base AS runner");
+    expect(dockerfile).toContain("chmod u-s,g-s /usr/bin/mount /usr/bin/umount");
+    expect(dockerfile).toContain("/usr/local/lib/node_modules/npm /opt/yarn-*");
+    for (const executable of ["npm", "npx", "yarn", "yarnpkg"]) {
+      expect(dockerfile).toContain(`/usr/local/bin/${executable}`);
+      expect(contract).toContain(`"/usr/local/bin/${executable}"`);
+    }
+    expect(contract).toContain("assertPathUnprivileged(WORKER_IMAGE, path)");
+    expect(contract).toContain('assertListingClean(WORKER_IMAGE, "/opt", "^yarn-"');
+    expect(dockerfile).toContain("COPY worker/python/ocr-model-LICENSE.txt /opt/psychsift-ocr-models/LICENSE");
+    expect(dockerfile).toContain('model = model_dir / "Latin.traineddata"');
+  });
+
+  it.skipIf(process.platform === "win32")(
+    "rejects either mount privilege bit and accepts stripped or absent helpers",
+    () => {
+      const directory = mkdtempSync(join(tmpdir(), "image-privilege-contract-"));
+      try {
+        const helper = join(directory, "mount");
+        writeFileSync(helper, "synthetic");
+        for (const mode of [0o4755, 0o2755, 0o6755, 0o755]) {
+          chmodSync(helper, mode);
+          const result = spawnSync(process.execPath, ["-e", imagePrivilegeBitsProbe(helper)], {
+            encoding: "utf8",
+            timeout: 2000,
+          });
+          expect(result.error).toBeUndefined();
+          expect(result.signal).toBeNull();
+          expect(result.status).toBe(mode & 0o6000 ? 1 : 0);
+        }
+        const missing = spawnSync(process.execPath, ["-e", imagePrivilegeBitsProbe(join(directory, "absent"))]);
+        expect(missing.status).toBe(0);
+        const unreadable = spawnSync(process.execPath, ["-e", imagePrivilegeBitsProbe(join(helper, "invalid"))]);
+        expect(unreadable.status).not.toBe(0);
+        expect(unreadable.stderr.toString()).toContain("ENOTDIR");
+      } finally {
+        rmSync(directory, { recursive: true, force: true });
+      }
+    },
+  );
 
   it("forwards termination signals to the app process", () => {
     const command = JSON.parse(/^CMD (\[.+\])$/m.exec(read("Dockerfile"))?.[1] ?? "null");

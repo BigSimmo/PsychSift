@@ -756,7 +756,9 @@ export function FormulationBuilderPage({
               disabled={activeIndex === 0}
               className={cn(
                 "inline-flex min-h-tap items-center gap-2 rounded-lg border border-[color:var(--border-strong)] bg-[color:var(--surface)] px-4 text-sm font-semibold text-[color:var(--text-muted)]",
-                controlDisabled,
+                // Remove the disabled recipe when the pager becomes available:
+                // WebKit can retain its pseudo-state paint after re-enabling.
+                activeIndex === 0 && controlDisabled,
               )}
             >
               <ArrowLeft className="h-4 w-4" aria-hidden />

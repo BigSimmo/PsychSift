@@ -134,6 +134,79 @@ class RasterGridGeometryTests(unittest.TestCase):
         self.assertLessEqual(regions[1][1], 40)
         self.assertGreater(regions[1][3], 170)
 
+    def test_widely_separated_paired_notes_refuse_column_major_reordering(self):
+        # Same source geometry as the independently reproduced condition/action
+        # defect. Three rows must be refused too, without a two-row count rule.
+        for ys in ((60, 220), (40, 130, 220)):
+            with self.subTest(rows=len(ys)):
+                image = Image.new("L", (600, 300), 255)
+                draw = ImageDraw.Draw(image)
+                for y, condition, action in zip(ys, ("If pregnant", "If breastfeeding", "If unwell"),
+                                                ("avoid X", "consult Y", "review Z")):
+                    draw.text((40, y), condition, fill=0)
+                    draw.text((330, y), action, fill=0)
+                with self.assertRaises(extractor.RasterLayoutAmbiguous):
+                    extractor.raster_prose_regions(image, (0, 0, 600, 300), time.monotonic() + 1)
+
+    def test_continuous_paragraph_columns_keep_their_own_source_regions(self):
+        image = Image.new("L", (600, 300), 255)
+        draw = ImageDraw.Draw(image)
+        for x, lines in ((40, ("LEFT CONTEXT", "Keep this qualification", "attached to its own", "paragraph.")),
+                         (330, ("RIGHT CONTEXT", "Keep this independent", "explanation with its", "own source."))):
+            for y, line in zip((60, 76, 92, 108), lines):
+                draw.text((x, y), line, fill=0)
+        regions = extractor.raster_prose_regions(image, (0, 0, 600, 300), time.monotonic() + 1)
+        self.assertEqual(len(regions), 2)
+        self.assertLess(regions[0][2], regions[1][0])
+        self.assertGreater(regions[0][3], 108)
+        self.assertGreater(regions[1][3], 108)
+
+    def test_outside_line_gap_analysis_merges_disconnected_dots_before_classifying_rows(self):
+        image = Image.new("L", (600, 200), 255)
+        draw = ImageDraw.Draw(image)
+        for x in (40, 330):
+            for y in (40, 70, 100):
+                draw.rectangle((x, y, x + 60, y + 3), fill=0)
+                draw.rectangle((x, y + 6, x + 60, y + 20), fill=0)
+        regions = extractor.raster_prose_regions(image, (0, 0, 600, 200), time.monotonic() + 1)
+        self.assertEqual(len(regions), 2)
+        self.assertLess(regions[0][2], regions[1][0])
+        for ys in ((20, 180), (20, 130, 240)):
+            with self.subTest(separated_rows=len(ys)):
+                image = Image.new("L", (600, 300), 255)
+                draw = ImageDraw.Draw(image)
+                for x in (40, 330):
+                    for y in ys:
+                        draw.rectangle((x, y, x + 60, y + 3), fill=0)
+                        draw.rectangle((x, y + 6, x + 60, y + 20), fill=0)
+                with self.assertRaises(extractor.RasterLayoutAmbiguous):
+                    extractor.raster_prose_regions(image, (0, 0, 600, 300), time.monotonic() + 1)
+
+    def test_ambiguous_outside_notes_refuse_replacement_before_model_or_cell_ocr(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+        image = Image.new("L", (600, 600), 255)
+        draw = ImageDraw.Draw(image)
+        for y in (40, 180):
+            draw.text((40, y), "If qualified", fill=0)
+            draw.text((330, y), "retain instruction", fill=0)
+        for y in (350, 400, 450, 500):
+            draw.line((30, y, 570, y), fill=0, width=2)
+        for x in (30, 180, 330, 570):
+            draw.line((x, 350, x, 500), fill=0, width=2)
+        page = SimpleNamespace(rotation=0, rect=extractor.fitz.Rect(0, 0, 600, 600), get_text=lambda _: "")
+        engine = SimpleNamespace(image_to_string=Mock(side_effect=AssertionError("no candidate OCR")))
+        observations = {}
+        with patch.dict(os.environ, {"PDF_RASTER_TABLE_OCR": "1"}), patch.object(
+            extractor, "checked_raster_table_model", side_effect=AssertionError("no candidate model load"),
+        ):
+            candidate = extractor.maybe_raster_table_ocr(
+                page, image, 1, extractor.ExtractionBudget(), engine, time.monotonic() + 1, observations,
+            )
+        self.assertIsNone(candidate)
+        self.assertEqual(observations, {})
+        engine.image_to_string.assert_not_called()
+
     def test_one_paragraph_is_not_split_into_word_columns(self):
         image = Image.new("L", (600, 180), 255)
         draw = ImageDraw.Draw(image)

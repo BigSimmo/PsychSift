@@ -471,7 +471,15 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
         createJobProviderEgressContext(stageContext, options, managedEmbeddingScope, job, attempt),
       );
       // Registration is the explicit adoption authority, captured before public mutations.
-      const managedPreparation = await initializeManagedAdminGeneration(stageContext, options, job, attempt);
+      const managedPreparation = await initializeManagedAdminGeneration(
+        stageContext,
+        options,
+        job,
+        attempt,
+        (original) => {
+          extracted = original;
+        },
+      );
       attempt.check();
       const evidenceInventory = await mutation(attempt, "read_ingestion_generation_inventory", {
         p_generation: job.lease_write_generation_id,

@@ -31,6 +31,10 @@ export function imagePathAbsenceProbe(path) {
   return `const fs = require('node:fs'); try { fs.lstatSync(${JSON.stringify(path)}); process.exit(1); } catch (error) { if (error.code !== 'ENOENT') throw error; }`;
 }
 
+export function imagePrivilegeBitsProbe(path) {
+  return `const fs = require('node:fs'); try { if (fs.statSync(${JSON.stringify(path)}).mode & 0o6000) process.exit(1); } catch (error) { if (error.code !== 'ENOENT') throw error; }`;
+}
+
 export function imageListingProbe(directory, pattern) {
   return `const fs = require('node:fs'); const names = fs.readdirSync(${JSON.stringify(directory)}).filter(name => new RegExp(${JSON.stringify(pattern)}).test(name)); if (names.length) console.log(names.join('\\n'));`;
 }
@@ -93,6 +97,24 @@ function assertListingClean(image, directory, pattern, failureMessage) {
   if (r.stdout?.trim()) throw new Error(`${image}: ${failureMessage}`);
 }
 
+function assertPathUnprivileged(image, path) {
+  const r = run([
+    "docker",
+    "run",
+    "--rm",
+    "--network=none",
+    "--entrypoint",
+    "node",
+    image,
+    "-e",
+    imagePrivilegeBitsProbe(path),
+  ]);
+  if (r.status !== 0)
+    throw new Error(
+      `${image}: setuid/setgid bits are present or could not be checked: ${path}: ${r.stderr || r.stdout}`,
+    );
+}
+
 function assertWorkerPythonClean(image) {
   // Absolute path so a wrong WORKDIR cannot silently skip the listing.
   assertListingClean(image, "/app/worker/python", "^test_.*\\.py$", "worker/python test_*.py files were not removed");
@@ -126,6 +148,20 @@ function main() {
   ]) {
     assertPathAbsent(APP_IMAGE, path);
   }
+
+  for (const path of ["/usr/bin/mount", "/usr/bin/umount"]) {
+    assertPathUnprivileged(WORKER_IMAGE, path);
+  }
+  for (const path of [
+    "/usr/local/lib/node_modules/npm",
+    "/usr/local/bin/npm",
+    "/usr/local/bin/npx",
+    "/usr/local/bin/yarn",
+    "/usr/local/bin/yarnpkg",
+  ]) {
+    assertPathAbsent(WORKER_IMAGE, path);
+  }
+  assertListingClean(WORKER_IMAGE, "/opt", "^yarn-", "Yarn runtime files were not removed");
 
   assertWorkerPythonClean(WORKER_IMAGE);
 

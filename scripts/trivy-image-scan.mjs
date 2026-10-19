@@ -9,7 +9,7 @@
  * daemon socket, which would be equivalent to root on the host.
  */
 import { basename, dirname, join, resolve } from "node:path";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -22,7 +22,9 @@ export const TRIVY_IMAGE =
 export const REQUIRED_TRIVY_SCAN_IMAGES = Object.freeze(["clinical-kb-app:ci", "clinical-kb-worker:ci"]);
 
 function run(cmd, args, opts = {}) {
-  const result = spawnSync(cmd, args, { encoding: "utf8", stdio: "pipe", ...opts });
+  // Full worker inventories exceed spawnSync's default 1MiB buffer.
+  // Bound both local and Docker scanner evidence at 32MiB.
+  const result = spawnSync(cmd, args, { encoding: "utf8", stdio: "pipe", maxBuffer: 32 * 1024 * 1024, ...opts });
   if (result.error) throw result.error;
   return result;
 }
@@ -299,7 +301,9 @@ function runDockerTrivy(imageRef, trivyArgs, { outputHostPath = null, needsVulne
 function main() {
   const [imageRef, ...rest] = process.argv.slice(2);
   if (!imageRef) {
-    console.error("Usage: node scripts/trivy-image-scan.mjs <image:tag> [--severity SEV] [--sbom <output.json>]");
+    console.error(
+      "Usage: node scripts/trivy-image-scan.mjs <image:tag> [--severity SEV] [--sbom <output.json>] [--report <output.json>]",
+    );
     process.exit(1);
   }
 
@@ -315,6 +319,7 @@ function main() {
   }
 
   const sbomPath = optionValue("--sbom");
+  const reportPath = optionValue("--report");
   const severity = optionValue("--severity") ?? "HIGH,CRITICAL";
 
   const trivy = localTrivy();
@@ -334,10 +339,14 @@ function main() {
   }
 
   const result = trivy
-    ? run(trivy, ["image", "--format", "json", "--exit-code", "0", "--severity", severity, imageRef])
-    : runDockerTrivy(imageRef, ["image", "--format", "json", "--exit-code", "0", "--severity", severity, "__IMAGE__"], {
-        needsVulnerabilityDb: true,
-      });
+    ? run(trivy, ["image", "--format", "json", "--list-all-pkgs", "--exit-code", "0", "--severity", severity, imageRef])
+    : runDockerTrivy(
+        imageRef,
+        ["image", "--format", "json", "--list-all-pkgs", "--exit-code", "0", "--severity", severity, "__IMAGE__"],
+        {
+          needsVulnerabilityDb: true,
+        },
+      );
 
   if (result.status !== 0) {
     console.error(result.stderr || result.stdout || `Trivy failed to scan ${imageRef}`);
@@ -353,6 +362,7 @@ function main() {
   }
 
   const { counts } = validated;
+  if (reportPath) writeFileSync(resolve(reportPath), `${JSON.stringify(validated.report, null, 2)}\n`);
   console.log(
     `Trivy scan completed (${imageRef}): STATUS=ok HIGH=${counts.HIGH} CRITICAL=${counts.CRITICAL} MEDIUM=${counts.MEDIUM} LOW=${counts.LOW} UNKNOWN=${counts.UNKNOWN}`,
   );

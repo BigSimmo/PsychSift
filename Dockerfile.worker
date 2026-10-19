@@ -81,7 +81,9 @@ FROM node-base AS runner
 # `ImportError: libGL.so.1`). ca-certificates covers the build-time model fetch.
 RUN apt-get update \
   && apt-get install -y --no-install-recommends python3 python3-venv tesseract-ocr ca-certificates libgl1 libglib2.0-0 \
-  && rm -rf /var/lib/apt/lists/*
+  && chmod u-s,g-s /usr/bin/mount /usr/bin/umount \
+  && rm -rf /var/lib/apt/lists/* /usr/local/lib/node_modules/npm /opt/yarn-* \
+  && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/yarn /usr/local/bin/yarnpkg
 # Optional ruled-table OCR: bake the official, hash-pinned cell model at build time.
 # The extraction flag remains off; the runtime never downloads model data.
 RUN python3 - <<'PYMODEL'
