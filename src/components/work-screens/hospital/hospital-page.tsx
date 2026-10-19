@@ -109,7 +109,7 @@ export function AdminHospitalPage() {
     );
   else body = <HubLive grants={roles.grants} onExample={state.turnOnExample} />;
 
-  return <WorkBody testId="admin-hospital">{body}</WorkBody>;
+  return <WorkBody testId="admin-hospital" landmark>{body}</WorkBody>;
 }
 
 /* ------------------------------------------------------------------ live */

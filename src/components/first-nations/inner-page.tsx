@@ -48,6 +48,8 @@ export function InnerPageView({
         }
       />
       <div className="mx-auto grid w-full max-w-[48rem] content-start gap-3 px-3 pb-6 pt-3">
+        {/* The header draws the title visually; this names the page for screen readers, as Bedside does. */}
+        <h1 className="sr-only">{model.title}</h1>
         {model.showExampleLine ? <ExampleLine /> : null}
         <OfflineState />
         <CrisisStrip />

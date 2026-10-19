@@ -209,7 +209,7 @@ export function AdminPayPage({ now: pinned }: { now?: Date } = {}) {
   const current = roster.kind === "ready" ? roster.windows[0]! : null;
 
   return (
-    <WorkBody testId="admin-pay">
+    <WorkBody testId="admin-pay" landmark>
       <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">Pay</PageTitleUnderBand>
       {page.signedOut ? (
         <PaperworkSampleNotice what="payslip checks" testId="admin-pay-signed-out" examples={page.examplesShown} />

@@ -367,6 +367,21 @@ describe("PatientSafetyPlan — Clear all and Copy feedback", () => {
     confirm.mockRestore();
   });
 
+  it("moves between Build and Plan preview with the arrow keys", () => {
+    render(<PatientSafetyPlan />);
+    const build = screen.getByRole("tab", { name: "Build" });
+    expect(build).toHaveAttribute("tabindex", "0");
+
+    fireEvent.keyDown(build, { key: "ArrowRight" });
+    const preview = screen.getByRole("tab", { name: "Plan preview" });
+    expect(preview).toHaveAttribute("aria-selected", "true");
+    expect(document.activeElement).toBe(preview);
+    expect(build).toHaveAttribute("tabindex", "-1");
+
+    fireEvent.keyDown(preview, { key: "Home" });
+    expect(build).toHaveAttribute("aria-selected", "true");
+  });
+
   it("says so when copying fails instead of failing silently", async () => {
     const writeText = vi.fn().mockRejectedValue(new Error("denied"));
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });

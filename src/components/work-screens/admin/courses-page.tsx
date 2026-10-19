@@ -83,7 +83,7 @@ export function AdminCoursesPage() {
   const canPost = bookings.examples || Boolean(posting && (posting.administrator || posting.teams.length));
 
   return (
-    <WorkBody testId="admin-courses">
+    <WorkBody testId="admin-courses" landmark>
       <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
         Courses
       </PageTitleUnderBand>

@@ -1005,7 +1005,23 @@ export function PatientSafetyPlan() {
               id={`spg-tab-${tab}`}
               aria-selected={mobileTab === tab}
               aria-controls={`spg-panel-${tab}`}
+              tabIndex={mobileTab === tab ? 0 : -1}
               onClick={() => setMobileTab(tab)}
+              onKeyDown={(event) => {
+                // The tab pattern: arrows, Home and End move between the two tabs (design audit D-16).
+                if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+                event.preventDefault();
+                const next =
+                  event.key === "Home"
+                    ? "build"
+                    : event.key === "End"
+                      ? "preview"
+                      : tab === "build"
+                        ? "preview"
+                        : "build";
+                setMobileTab(next);
+                document.getElementById(`spg-tab-${next}`)?.focus();
+              }}
               className={cn(
                 "min-h-tap rounded-md px-3 text-sm-minus font-bold transition",
                 mobileTab === tab

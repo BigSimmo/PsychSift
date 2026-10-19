@@ -76,9 +76,9 @@ export default function manifest(): MetadataRoute.Manifest {
         icons: [{ src: "/icons/icon-192", type: "image/png", sizes: "192x192" }],
       },
       {
-        name: "CME Tracking",
-        short_name: "CME",
-        description: "Track continuing medical education credits and activities",
+        name: "CPD Tracking",
+        short_name: "CPD",
+        description: "Track continuing professional development hours and activities",
         url: "/cme?focus=1",
         icons: [{ src: "/icons/icon-192", type: "image/png", sizes: "192x192" }],
       },

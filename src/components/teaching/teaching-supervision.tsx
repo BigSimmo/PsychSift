@@ -829,7 +829,8 @@ function SupervisionPage({ demoMode }: { demoMode: boolean }) {
   else if (!pairings || !today) body = <ModeModuleSkeleton rows={3} />;
   else body = <SupervisionBody pairings={pairings} today={today} sender={sender} />;
   return (
-    <WorkBody testId="teaching-supervision">
+    <WorkBody testId="teaching-supervision" landmark>
+      <h1 className="sr-only">Registrar supervision</h1>
       <AssessHeader eyebrow="Confirmed hours" title="Registrar supervision" />
       {body}
       {sender.busy ? (

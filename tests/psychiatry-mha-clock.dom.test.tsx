@@ -522,7 +522,7 @@ describe("MhaClockPage", () => {
   it("says clocks are kept until removed or sign-out", () => {
     render(<MhaClockPage forms={forms} now={now} />);
     expect(screen.getByTestId("mha-clock-retention")).toHaveTextContent(
-      "Kept until you remove it or you are signed out.",
+      "Kept until you remove it, sign out or your sign-in ends.",
     );
     expect(screen.getByTestId("mha-clock-retention")).not.toHaveTextContent(/end of your shift/);
   });

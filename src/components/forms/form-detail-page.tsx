@@ -356,13 +356,30 @@ function PathwayContextCard({
         className="grid grid-cols-2 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] p-1 text-xs font-semibold"
         role="tablist"
         aria-label="Decision context sections"
+        onKeyDown={(event) => {
+          // The tab pattern: arrows, Home and End move between the two tabs (design audit D-16).
+          if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+          event.preventDefault();
+          const next =
+            event.key === "Home"
+              ? "pathway"
+              : event.key === "End"
+                ? "source"
+                : activeTab === "pathway"
+                  ? "source"
+                  : "pathway";
+          setActiveTab(next);
+          document.getElementById(next === "pathway" ? tabPathwayId : tabSourceId)?.focus();
+        }}
       >
         <button
           type="button"
           id={tabPathwayId}
           role="tab"
           aria-selected={activeTab === "pathway"}
-          aria-controls={panelPathwayId}
+          // Only the shown panel exists, so only the selected tab points at one.
+          aria-controls={activeTab === "pathway" ? panelPathwayId : undefined}
+          tabIndex={activeTab === "pathway" ? 0 : -1}
           onClick={() => setActiveTab("pathway")}
           className={cn(
             "min-h-tap rounded-md px-3 py-2 text-center transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] sm:min-h-compact-meta",
@@ -378,7 +395,9 @@ function PathwayContextCard({
           id={tabSourceId}
           role="tab"
           aria-selected={activeTab === "source"}
-          aria-controls={panelSourceId}
+          // Only the shown panel exists, so only the selected tab points at one.
+          aria-controls={activeTab === "source" ? panelSourceId : undefined}
+          tabIndex={activeTab === "source" ? 0 : -1}
           onClick={() => setActiveTab("source")}
           className={cn(
             "min-h-tap rounded-md px-3 py-2 text-center transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] sm:min-h-compact-meta",
