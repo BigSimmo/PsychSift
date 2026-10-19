@@ -1,11 +1,41 @@
-import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { chmodSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
+
+import {
+  imageListingProbe,
+  imagePathAbsenceProbe,
+  imagePrivilegeBitsProbe,
+  isExpectedAppCommand,
+} from "../scripts/check-image-content-contract.mjs";
 
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
 describe("container delivery contract", () => {
+  it("parses Compose without duplicate keys and keeps the worker health port aligned", () => {
+    // Reuse the existing transitive parser as other CI contracts do. json:false
+    // rejects duplicate mapping keys instead of silently accepting the last port.
+    const compose = createRequire(import.meta.url)("js-yaml").load(read("docker-compose.yml"), { json: false }) as {
+      services: {
+        worker: {
+          environment: Record<string, string>;
+          healthcheck: { test: string[] };
+        };
+      };
+    };
+    const worker = compose.services.worker;
+    expect(worker.environment.WORKER_HEALTH_PORT).toBe("3901");
+    expect(worker.healthcheck.test.slice(0, 3)).toEqual(["CMD", "node", "-e"]);
+    const healthUrl = new URL(worker.healthcheck.test[3].match(/fetch\(['"]([^'"]+)['"]\)/)?.[1] ?? "");
+    expect(healthUrl.hostname).toBe("127.0.0.1");
+    expect(healthUrl.port).toBe(worker.environment.WORKER_HEALTH_PORT);
+    expect(healthUrl.pathname).toBe("/health");
+  });
+
   it.each([
     "eval/docling/requirements.txt",
     "eval/docling/verify-model-artifacts.mjs",
@@ -46,8 +76,139 @@ describe("container delivery contract", () => {
     expect(dockerfile).toContain('python -m unittest discover -s worker/python -p "test_*.py"');
   });
 
+  it("removes worker package managers and mount-helper privilege bits without changing its runtime base", () => {
+    const dockerfile = read("Dockerfile.worker");
+    const contract = read("scripts/check-image-content-contract.mjs");
+    expect(dockerfile).toContain("FROM node-base AS runner");
+    expect(dockerfile).toContain("chmod u-s,g-s /usr/bin/mount /usr/bin/umount");
+    expect(dockerfile).toContain("/usr/local/lib/node_modules/npm /opt/yarn-*");
+    for (const executable of ["npm", "npx", "yarn", "yarnpkg"]) {
+      expect(dockerfile).toContain(`/usr/local/bin/${executable}`);
+      expect(contract).toContain(`"/usr/local/bin/${executable}"`);
+    }
+    expect(contract).toContain("assertPathUnprivileged(WORKER_IMAGE, path)");
+    expect(contract).toContain('assertListingClean(WORKER_IMAGE, "/opt", "^yarn-"');
+    expect(dockerfile).toContain("COPY worker/python/ocr-model-LICENSE.txt /opt/psychsift-ocr-models/LICENSE");
+    expect(dockerfile).toContain('model = model_dir / "Latin.traineddata"');
+  });
+
+  it.skipIf(process.platform === "win32")(
+    "rejects either mount privilege bit and accepts stripped or absent helpers",
+    () => {
+      const directory = mkdtempSync(join(tmpdir(), "image-privilege-contract-"));
+      try {
+        const helper = join(directory, "mount");
+        writeFileSync(helper, "synthetic");
+        for (const mode of [0o4755, 0o2755, 0o6755, 0o755]) {
+          chmodSync(helper, mode);
+          const result = spawnSync(process.execPath, ["-e", imagePrivilegeBitsProbe(helper)], {
+            encoding: "utf8",
+            timeout: 2000,
+          });
+          expect(result.error).toBeUndefined();
+          expect(result.signal).toBeNull();
+          expect(result.status).toBe(mode & 0o6000 ? 1 : 0);
+        }
+        const missing = spawnSync(process.execPath, ["-e", imagePrivilegeBitsProbe(join(directory, "absent"))]);
+        expect(missing.status).toBe(0);
+        const unreadable = spawnSync(process.execPath, ["-e", imagePrivilegeBitsProbe(join(helper, "invalid"))]);
+        expect(unreadable.status).not.toBe(0);
+        expect(unreadable.stderr.toString()).toContain("ENOTDIR");
+      } finally {
+        rmSync(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      }
+    },
+  );
+
   it("forwards termination signals to the app process", () => {
-    expect(read("Dockerfile")).toContain("exec node node_modules/next/dist/bin/next start");
+    const command = JSON.parse(/^CMD (\[.+\])$/m.exec(read("Dockerfile"))?.[1] ?? "null");
+    expect(isExpectedAppCommand(command)).toBe(true);
+    expect(isExpectedAppCommand(["sh", "-c", "echo next start"])).toBe(false);
+    expect(isExpectedAppCommand(["node", "node_modules/next/dist/bin/next", "dev"])).toBe(false);
+  });
+
+  it("keeps the minimal app runtime and pre-deploy shell pinned and inventoried", () => {
+    const dockerfile = read("Dockerfile");
+    expect(dockerfile).toContain(
+      "gcr.io/distroless/cc-debian13:nonroot@sha256:e792ab3d241a468a4fd7519ddbbebe66b49b5f365771716ea688ad40b6c6f1c2",
+    );
+    expect(dockerfile).toContain(
+      "node:24-trixie-slim@sha256:7f486cabe892bff8fef04c0f7da8dba84a560be3e4e2740b7a86afc57ebec315",
+    );
+    expect(dockerfile).toContain("COPY --from=app-node-runtime-base /usr/local/bin/node /usr/local/bin/node");
+    expect(dockerfile).toContain("COPY --from=app-node-runtime-base /usr/bin/dash /bin/sh");
+    expect(dockerfile).toContain("dpkg-query --status dash > /tmp/app-runtime-dash.status");
+    expect(dockerfile).toContain("/var/lib/dpkg/status.d/dash");
+    expect(dockerfile).toContain("--chown=1000:1000 /tmp/app-runtime-home/ /home/node/");
+    expect(dockerfile).toContain("ENV HOME=/home/node");
+    const health = JSON.parse(/HEALTHCHECK[^\n]*\\\n\s+CMD (\[.+\])/.exec(dockerfile)?.[1] ?? "null");
+    expect(health?.slice(0, 2)).toEqual(["node", "-e"]);
+    expect(health?.[2]).toContain("process.env.PORT||3000");
+  });
+
+  it("runs absence probes without shell tools and rejects present paths", () => {
+    const directory = mkdtempSync(join(tmpdir(), "image-content-contract-"));
+    try {
+      const present = join(directory, "secret.pem");
+      writeFileSync(present, "synthetic");
+      for (const [path, expected] of [
+        [present, 1],
+        [join(directory, "absent"), 0],
+      ] as const) {
+        const result = spawnSync(process.execPath, ["-e", imagePathAbsenceProbe(path)], {
+          encoding: "utf8",
+          timeout: 2000,
+        });
+        expect(result.error).toBeUndefined();
+        expect(result.signal).toBeNull();
+        expect(result.status).toBe(expected);
+      }
+    } finally {
+      rmSync(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    }
+  });
+
+  it.skipIf(process.platform === "win32")("rejects a dangling symlink as a present path", () => {
+    const directory = mkdtempSync(join(tmpdir(), "image-content-symlink-"));
+    try {
+      const link = join(directory, "secret.pem");
+      symlinkSync(join(directory, "missing-target"), link);
+      const result = spawnSync(process.execPath, ["-e", imagePathAbsenceProbe(link)], {
+        encoding: "utf8",
+        timeout: 2000,
+      });
+      expect(result.error).toBeUndefined();
+      expect(result.signal).toBeNull();
+      expect(result.status).toBe(1);
+    } finally {
+      rmSync(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    }
+  });
+
+  it("reports secret filenames and fails closed on an unreadable listing", () => {
+    const directory = mkdtempSync(join(tmpdir(), "image-content-listing-"));
+    try {
+      const file = join(directory, ".private.pem");
+      writeFileSync(file, "synthetic");
+      writeFileSync(join(directory, "safe.txt"), "synthetic");
+      const listed = spawnSync(process.execPath, ["-e", imageListingProbe(directory, "\\.pem$")], {
+        encoding: "utf8",
+        timeout: 2000,
+      });
+      expect(listed.error).toBeUndefined();
+      expect(listed.status).toBe(0);
+      expect(listed.stdout.trim()).toBe(".private.pem");
+      const invalid = spawnSync(process.execPath, ["-e", imageListingProbe(file, "\\.pem$")], {
+        encoding: "utf8",
+        timeout: 2000,
+      });
+      expect(invalid.error).toBeUndefined();
+      expect(invalid.signal).toBeNull();
+      expect(invalid.status).toBe(1);
+      expect(invalid.stderr).toContain("ENOTDIR");
+    } finally {
+      rmSync(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    }
   });
 
   it("lets CI Docker app builds opt out of the local low-RAM hard-fail", () => {
@@ -190,12 +351,14 @@ describe("container delivery contract", () => {
     expect(sleep).not.toMatch(/Promise\.race\(\[\s*new Promise/);
   });
 
-  it("fails closed on missing Cmd, shell listing errors, and SIGKILL smoke exits", () => {
+  it("fails closed on missing Cmd, filesystem probe errors, and SIGKILL smoke exits", () => {
     const contract = read("scripts/check-image-content-contract.mjs");
     const smoke = read("scripts/app-container-smoke.mjs");
     expect(contract).toContain('cmd === "null"');
-    expect(contract).toContain("assertShellListingClean");
-    expect(contract).toContain("/app/worker/python/test_*.py");
+    expect(contract).toContain("assertListingClean");
+    expect(contract).toContain('"/app/worker/python"');
+    expect(contract).not.toContain('"--entrypoint", "sh"');
+    expect(contract).not.toContain('"--entrypoint", "test"');
     expect(smoke).toContain('exitCode === "137"');
     expect(smoke).toContain("State.Running");
   });

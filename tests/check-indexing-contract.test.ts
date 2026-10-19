@@ -1,5 +1,8 @@
 import { readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { offlineTestEnvironment } from "../scripts/test-environment.mjs";
 import {
   hasChunkCountMismatch,
   isEmptyIndexedDocument,
@@ -56,4 +59,36 @@ describe("smart-index repair selection", () => {
   it("does not combine an exact document id with an ambient owner default", () => {
     expect(smartBackfillSource).toContain("if (args.documentId) args.ownerId = undefined");
   });
+
+  it.each([{ mode: [] }, { mode: ["--metadata-only"] }])(
+    "refuses legacy writes before credential validation, provider calls or database mutations ($mode)",
+    ({ mode }) => {
+      const result = spawnSync(
+        process.execPath,
+        [
+          "scripts/run-tsx.mjs",
+          "scripts/backfill-smart-index.ts",
+          "--document-id",
+          "11111111-1111-4111-8111-111111111111",
+          "--write",
+          "--confirm",
+          ...mode,
+        ],
+        {
+          cwd: fileURLToPath(new URL("../", import.meta.url)),
+          env: { ...offlineTestEnvironment(process.env), NODE_ENV: "test" },
+          encoding: "utf8",
+          timeout: 15_000,
+        },
+      );
+
+      expect(result.error).toBeUndefined();
+      expect(result.signal).toBeNull();
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain("Legacy smart-index writes require scanner-bound worker admission");
+      expect(result.stderr).not.toContain("Missing server environment variables");
+      expect(result.stdout).not.toMatch(/WROTE|REPAIRED/);
+    },
+    20_000,
+  );
 });

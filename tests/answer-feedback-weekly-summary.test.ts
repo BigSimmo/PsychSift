@@ -142,6 +142,8 @@ describe("answer feedback weekly summary", () => {
     const workflow = readFileSync(".github/workflows/answer-feedback-weekly.yml", "utf8");
     expect(workflow).toMatch(/schedule:\n(?:\s+#[^\n]*\n)*\s+- cron: "\d+ \d+ \* \* \d"/);
     expect(workflow).toContain("if: ${{ github.ref == 'refs/heads/main' }}");
+    // Audit F-21: the key comes from the main-only production-secrets environment.
+    expect(workflow).toContain("    environment: production-secrets\n");
     expect(workflow).toContain("--weekly-summary");
     expect(workflow).toContain('"$GITHUB_STEP_SUMMARY"');
     expect(workflow).not.toMatch(/issues: write|pull-requests: write|contents: write/);

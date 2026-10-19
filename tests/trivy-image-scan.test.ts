@@ -1,6 +1,8 @@
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   evaluateTrivySummaryText,
@@ -12,6 +14,108 @@ import {
   trivyDockerMounts,
   validateTrivyReportJson,
 } from "../scripts/trivy-image-scan.mjs";
+
+describe("Trivy retained scanner evidence", () => {
+  it.skipIf(process.platform === "win32").each(["local", "docker"])(
+    "persists a >1MiB report through the %s scanner path without suppressing findings",
+    (scanner) => {
+      const dir = mkdtempSync(join(tmpdir(), "trivy-evidence-"));
+      try {
+        const bin = join(dir, "bin");
+        mkdirSync(bin);
+        const fixture = join(dir, "fixture.json");
+        const output = join(dir, "report.json");
+        const invocation = join(dir, "args.json");
+        const raw = {
+          SchemaVersion: 2,
+          Metadata: { OS: { Family: "debian", Name: "12" } },
+          Results: [
+            {
+              Type: "debian",
+              Vulnerabilities: [{ VulnerabilityID: "CVE-2026-0001", Severity: "HIGH" }],
+              Packages: Array.from({ length: 300 }, (_, i) => ({
+                Name: `library-${i}`,
+                Version: "1.0",
+                InstalledFiles: Array.from(
+                  { length: 60 },
+                  (_, j) =>
+                    `/usr/lib/python3.11/site-packages/library_${i}/tests/data/representative-resource-file-${j}.json`,
+                ),
+              })),
+            },
+          ],
+        };
+        expect(Buffer.byteLength(JSON.stringify(raw))).toBeGreaterThan(1024 * 1024);
+        writeFileSync(fixture, JSON.stringify(raw));
+        writeFileSync(
+          join(bin, "trivy"),
+          `#!/usr/bin/env node
+const fs = require("node:fs");
+if (process.argv.includes("--version")) { console.log("Version: 0.59.1"); }
+else { fs.writeFileSync(process.env.TRIVY_TEST_ARGS, JSON.stringify(process.argv.slice(2))); process.stdout.write(fs.readFileSync(process.env.TRIVY_TEST_FIXTURE)); }
+`,
+          { mode: 0o755 },
+        );
+        const cache = join(dir, "cache");
+        if (scanner === "docker") {
+          // Local fixtures replace Docker and Trivy: no daemon, downloads or network.
+          writeFileSync(join(bin, "which"), "#!/usr/bin/env node\nprocess.exit(1);\n", { mode: 0o755 });
+          writeFileSync(
+            join(bin, "docker"),
+            `#!/usr/bin/env node
+const fs = require("node:fs");
+const args = process.argv.slice(2);
+if (args[0] === "save") fs.writeFileSync(args[args.indexOf("-o") + 1], "fixture");
+else { fs.writeFileSync(process.env.TRIVY_TEST_ARGS, JSON.stringify(args)); process.stdout.write(fs.readFileSync(process.env.TRIVY_TEST_FIXTURE)); }
+`,
+            { mode: 0o755 },
+          );
+          for (const [subdir, dbFile] of [
+            ["db", "trivy.db"],
+            ["java-db", "trivy-java.db"],
+          ]) {
+            mkdirSync(join(cache, subdir), { recursive: true });
+            writeFileSync(join(cache, subdir, dbFile), "fixture");
+            writeFileSync(join(cache, subdir, "metadata.json"), JSON.stringify({ NextUpdate: "2099-01-01T00:00:00Z" }));
+          }
+        }
+        const result = spawnSync(
+          process.execPath,
+          [
+            fileURLToPath(new URL("../scripts/trivy-image-scan.mjs", import.meta.url)),
+            "fixture:ci",
+            "--report",
+            output,
+          ],
+          {
+            encoding: "utf8",
+            env: {
+              ...process.env,
+              PATH: `${bin}${delimiter}${process.env.PATH ?? ""}`,
+              TRIVY_PREFER_LOCAL: "1",
+              TRIVY_CACHE_DIR: cache,
+              TRIVY_TEST_FIXTURE: fixture,
+              TRIVY_TEST_ARGS: invocation,
+            },
+          },
+        );
+        expect(result.error).toBeUndefined();
+        expect(result.status, result.stderr).toBe(0);
+        expect(result.stdout).toContain("STATUS=ok HIGH=1 CRITICAL=0");
+        expect(JSON.parse(readFileSync(output, "utf8"))).toEqual(raw);
+        expect(JSON.parse(readFileSync(invocation, "utf8"))).toContain("--list-all-pkgs");
+        expect(evaluateTrivySummaryText(result.stdout, ["fixture:ci"])).toMatchObject({
+          assessed: true,
+          ok: false,
+          high: 1,
+          reason: "high_or_critical_vulnerabilities_found",
+        });
+      } finally {
+        rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      }
+    },
+  );
+});
 
 describe("Trivy image scan evidence validation (R13)", () => {
   it("rejects empty stdout, invalid JSON, and JSON missing SchemaVersion or Results/Metadata", () => {

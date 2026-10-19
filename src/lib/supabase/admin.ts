@@ -7,7 +7,7 @@ import type { Database } from "./database.types";
 // reuses the same instance (and its underlying HTTP agent) rather than allocating
 // a fresh one on every call. Mirrors the openAIClient singleton in openai.ts.
 // The service-role client carries no user-specific session state, so sharing it
-// across requests is safe.
+// across requests is safe. Clients bound to a request AbortSignal are never cached.
 export const DEFAULT_SUPABASE_ADMIN_TIMEOUT_MS = 30_000;
 
 export type CreateAdminClientOptions = {
@@ -20,6 +20,8 @@ export type CreateAdminClientOptions = {
    * Force allocation of a new instance instead of returning the shared singleton.
    */
   fresh?: boolean;
+  /** Bind this client to one request. Signal-bound clients are never cached. */
+  signal?: AbortSignal;
 };
 
 let defaultAdminClient: ReturnType<typeof createClient<Database>> | null = null;
@@ -28,6 +30,7 @@ let unboundedAdminClient: ReturnType<typeof createClient<Database>> | null = nul
 export function createTimeoutFetch(
   timeoutMs: number | null | false | undefined,
   baseFetch: typeof fetch = fetch,
+  requestSignal?: AbortSignal,
 ): typeof fetch {
   if (
     timeoutMs === null ||
@@ -35,13 +38,22 @@ export function createTimeoutFetch(
     timeoutMs === 0 ||
     (typeof timeoutMs === "number" && (!Number.isFinite(timeoutMs) || timeoutMs < 0))
   ) {
-    return baseFetch;
+    if (!requestSignal) return baseFetch;
+    return (input, init) => {
+      const existingSignal = init?.signal ?? (input instanceof Request ? input.signal : undefined);
+      const signal = existingSignal ? AbortSignal.any([existingSignal, requestSignal]) : requestSignal;
+      return baseFetch(input, { ...init, signal });
+    };
   }
   const effectiveTimeout = timeoutMs ?? DEFAULT_SUPABASE_ADMIN_TIMEOUT_MS;
   return (input, init) => {
     const timeoutSignal = AbortSignal.timeout(effectiveTimeout);
     const existingSignal = init?.signal ?? (input instanceof Request ? input.signal : undefined);
-    const signal = existingSignal ? AbortSignal.any([existingSignal, timeoutSignal]) : timeoutSignal;
+    const signal = AbortSignal.any([
+      timeoutSignal,
+      ...(existingSignal ? [existingSignal] : []),
+      ...(requestSignal ? [requestSignal] : []),
+    ]);
     return baseFetch(input, { ...init, signal });
   };
 }
@@ -56,7 +68,7 @@ export function createAdminClient(options?: CreateAdminClientOptions) {
   const isDefaultTimeout = timeoutMs === undefined || timeoutMs === DEFAULT_SUPABASE_ADMIN_TIMEOUT_MS;
   const isUnbounded = timeoutMs === null || timeoutMs === false || timeoutMs === 0;
 
-  if (!options?.fresh) {
+  if (!options?.fresh && !options?.signal) {
     if (isDefaultTimeout && defaultAdminClient) return defaultAdminClient;
     if (isUnbounded && unboundedAdminClient) return unboundedAdminClient;
   }
@@ -77,7 +89,7 @@ export function createAdminClient(options?: CreateAdminClientOptions) {
         }
       : {}),
     global: {
-      fetch: createTimeoutFetch(timeoutMs),
+      fetch: createTimeoutFetch(timeoutMs, fetch, options?.signal),
     },
   });
 
@@ -85,7 +97,7 @@ export function createAdminClient(options?: CreateAdminClientOptions) {
   // No-op when DSN is unset or SENTRY_TRACES_SAMPLE_RATE=0; never attaches filters/bodies.
   instrumentSupabaseClientForTracing(client);
 
-  if (!options?.fresh) {
+  if (!options?.fresh && !options?.signal) {
     if (isDefaultTimeout) defaultAdminClient = client;
     else if (isUnbounded) unboundedAdminClient = client;
   }

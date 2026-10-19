@@ -2,7 +2,16 @@
 
 This repo uses one shared search experience across the global shell, dashboard result pages, and document-detail/source routes. Keep the behaviour page-aware but predictable.
 
-Work-area tabs remain in page flow and follow their universal header's hide/reveal state. Their sticky hook batches scroll and geometry notifications into animation frames and rechecks compositor motion on completion rather than polling layout throughout the animation. Focus changes also recheck the sticky position. Work action docks keep their sticky page-flow placement; their focus clearance applies to both the document and `#main-content`, so installed phones receive the same clearance as browser tabs. Assessment browser and installed-layout regression coverage lives in `tests/ui-phone-scroll-assessments.spec.ts`; emulation does not establish physical iPhone acceptance.
+Work-area tabs remain in page flow and follow their universal header's hide/reveal state. Their sticky hook batches scroll and geometry notifications into animation frames and rechecks compositor motion on completion rather than polling layout throughout the animation. Focus changes also recheck the sticky position. Work action docks keep their sticky page-flow placement; their focus clearance applies to both the document and `#main-content`, so installed phones receive the same clearance as browser tabs. Assessment browser and installed-layout regression coverage lives in `tests/ui-phone-scroll-assessments.spec.ts`; emulation does not establish physical iPhone acceptance. Clinical split-record regression coverage checks the same twelve route/viewport combinations in separate 60-second viewport cases.
+
+On phones, collapse hosts overlay a stack with a separate OS safe-area row. Their
+cold CSS clearance is the inset **plus** the bar's 0.5rem top padding and inner
+height. Direct overlay headers instead own the inset in their own top padding.
+Keep those seeds distinct: treating the collapse stack as a direct overlay left
+its clearance 8px short on notched phones until the measured reserve arrived,
+moving the document during the reader's first scroll. The Assessment browser
+regression checks the cold seed against the actual revealed stack as well as the
+existing gesture-drift limit.
 
 ## Page ownership model
 

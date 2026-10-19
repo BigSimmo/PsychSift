@@ -64,6 +64,10 @@ env:
 
 jobs:
   eval-canary:
+    # Holds SUPABASE_SERVICE_ROLE_KEY; restricted to main, no required reviewers, so the weekly
+    # schedule runs unattended. OPENAI_API_KEY stays a repository secret, which an environment job
+    # still receives. See docs/deployment-architecture.md, "The production-secrets environment".
+    environment: production-secrets
     runs-on: ubuntu-24.04
     timeout-minutes: 45
 
@@ -104,7 +108,7 @@ jobs:
           [ -z "$SUPABASE_SERVICE_ROLE_KEY" ] && missing="$missing SUPABASE_SERVICE_ROLE_KEY"
           [ -z "$OPENAI_API_KEY" ] && missing="$missing OPENAI_API_KEY"
           if [ -n "$missing" ]; then
-            echo "::error::Eval canary cannot run — missing repo secrets:$missing"
+            echo "::error::Eval canary cannot run — missing secrets (SUPABASE_SERVICE_ROLE_KEY from the production-secrets environment, OPENAI_API_KEY from the repository):$missing"
             exit 1
           fi
 

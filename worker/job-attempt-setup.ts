@@ -2,6 +2,8 @@
 // provider egress context, then let a registered admin source adopt the generation.
 // Moved from processJob in worker/main.ts; the runtime services arrive through
 // IngestionStageContext.
+import { rm } from "node:fs/promises";
+import { contentFreeErrorDetails } from "../src/lib/privacy";
 import type { IngestionAttempt } from "../supabase/functions/_shared/ingestion-attempt";
 import { ProviderEgressDeniedError } from "../src/lib/document-ingress-safety";
 import { env } from "../src/lib/env";
@@ -69,76 +71,97 @@ export function createJobProviderEgressContext(
 
 /**
  * Registration is the explicit adoption authority, captured before public mutations.
- * The returned holder is filled by the hook's prepare callback when it adopts a native
- * PDF, and processJob reads it afterwards at the same points it read its own local.
+ * Native PDF extraction ownership transfers immediately to processJob, before checks or
+ * registration can fail. Other preparations stay locally owned until cleanup.
  */
 export async function initializeManagedAdminGeneration(
   ctx: IngestionStageContext,
   options: Pick<WorkerRuntimeOptions, "initializeManagedAdminTextGeneration">,
   job: JobRow,
   attempt: IngestionAttempt,
+  adoptNativeExtraction?: (extracted: ExtractedDocument) => void,
 ) {
   const { mutation } = ctx;
   const prepared: { pdf?: PreparedManagedPdf } = {};
-  await options.initializeManagedAdminTextGeneration?.(job, attempt, {
-    readInventory: () =>
-      mutation(attempt, "read_ingestion_generation_inventory", {
-        p_generation: job.lease_write_generation_id,
-      }),
-    mutation: (name, payload) => mutation(attempt, name, payload),
-    async prepare(source, bytes) {
-      const original = await extractDocument({
-        buffer: bytes,
-        fileName: job.documents.file_name,
-        mimeType: job.documents.file_type,
-      });
-      attempt.check();
-      const pages = buildDocumentPageRowsForPersistence(job.document_id, original, {
-        cleanString,
-        sanitizeJsonbRecord,
-      });
-      const originalCapturedImages =
-        source.sourceFamily === "native_pdf"
-          ? await captureGenerationImages({
-              extracted: original,
-              trustedTemporaryRoots: "temporaryPaths" in original ? (original.temporaryPaths ?? []) : [],
-              fileName: job.documents.file_name,
-              mimeType: job.documents.file_type,
-              check: () => attempt.check(),
-            })
-          : [];
-      attempt.check();
-      const packet = buildGenerationRetentionPacket({
-        documentId: job.document_id,
-        generationId: job.lease_write_generation_id,
-        originalBytes: bytes,
-        extracted: original,
-        persistedPages: serializeDocumentPageRowsForCommit(pages, { sanitizeJsonbRecord }),
-        fileSize: bytes.length,
-        maximumUploadMb: env.MAX_UPLOAD_MB,
-        sourceExpectation: source.sourceExpectation,
-        sourceExpectationWitnessBytes: source.sourceExpectationWitnessBytes,
-        documentMetadata: job.documents.metadata,
-        capturedImages: originalCapturedImages,
-        deferOptionalProducerDeclarations: true,
-      });
-      if (source.sourceFamily !== "native_pdf")
-        buildManagedAdminTextChunks({
-          documentId: job.document_id,
-          packet,
-          originalBytes: bytes,
-          witnessBytes: source.sourceExpectationWitnessBytes,
-          extracted: original,
-          sourceSectionLayout: source.sourceSectionLayout,
+  const locallyOwned = new Set<ExtractedDocument>();
+  try {
+    await options.initializeManagedAdminTextGeneration?.(job, attempt, {
+      readInventory: () =>
+        mutation(attempt, "read_ingestion_generation_inventory", {
+          p_generation: job.lease_write_generation_id,
+        }),
+      mutation: (name, payload) => mutation(attempt, name, payload),
+      async prepare(source, bytes) {
+        const original = await extractDocument({
+          buffer: bytes,
+          fileName: job.documents.file_name,
+          mimeType: job.documents.file_type,
         });
-      if (source.sourceFamily === "native_pdf")
-        prepared.pdf = {
-          sourceSha256: source.sourceSha256,
+        locallyOwned.add(original);
+        if (source.sourceFamily === "native_pdf" && adoptNativeExtraction) {
+          // Ownership transfers only after the callback returns successfully.
+          adoptNativeExtraction(original);
+          locallyOwned.delete(original);
+        }
+        attempt.check();
+        const pages = buildDocumentPageRowsForPersistence(job.document_id, original, {
+          cleanString,
+          sanitizeJsonbRecord,
+        });
+        const originalCapturedImages =
+          source.sourceFamily === "native_pdf"
+            ? await captureGenerationImages({
+                extracted: original,
+                trustedTemporaryRoots: "temporaryPaths" in original ? (original.temporaryPaths ?? []) : [],
+                fileName: job.documents.file_name,
+                mimeType: job.documents.file_type,
+                check: () => attempt.check(),
+              })
+            : [];
+        attempt.check();
+        const packet = buildGenerationRetentionPacket({
+          documentId: job.document_id,
+          generationId: job.lease_write_generation_id,
+          originalBytes: bytes,
           extracted: original,
+          persistedPages: serializeDocumentPageRowsForCommit(pages, { sanitizeJsonbRecord }),
+          fileSize: bytes.length,
+          maximumUploadMb: env.MAX_UPLOAD_MB,
+          sourceExpectation: source.sourceExpectation,
+          sourceExpectationWitnessBytes: source.sourceExpectationWitnessBytes,
+          documentMetadata: job.documents.metadata,
           capturedImages: originalCapturedImages,
-        };
-      return packet;
-    },
-  });
-  return prepared;
+          deferOptionalProducerDeclarations: true,
+        });
+        if (source.sourceFamily !== "native_pdf")
+          buildManagedAdminTextChunks({
+            documentId: job.document_id,
+            packet,
+            originalBytes: bytes,
+            witnessBytes: source.sourceExpectationWitnessBytes,
+            extracted: original,
+            sourceSectionLayout: source.sourceSectionLayout,
+          });
+        if (source.sourceFamily === "native_pdf")
+          prepared.pdf = {
+            sourceSha256: source.sourceSha256,
+            extracted: original,
+            capturedImages: originalCapturedImages,
+          };
+        return packet;
+      },
+    });
+    // Without an adoption callback, a successful native result belongs to the caller.
+    if (prepared.pdf) locallyOwned.delete(prepared.pdf.extracted);
+    return prepared;
+  } finally {
+    const temporaryPaths = new Set([...locallyOwned].flatMap((original) => original.temporaryPaths ?? []));
+    for (const temporaryPath of temporaryPaths) {
+      try {
+        await rm(temporaryPath, { recursive: true, force: true });
+      } catch (error) {
+        console.warn("Temporary extraction cleanup failed", contentFreeErrorDetails(error));
+      }
+    }
+  }
 }

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import os
 import gc
+import json
 import subprocess
 import sys
 import tempfile
@@ -86,6 +87,50 @@ class HostilePdfTests(unittest.TestCase):
         with open(path, "w", encoding="utf-8") as handle:
             handle.write("This is a plain text file, not a PDF.\n")
         self.assert_unreadable(path, "could not be opened")
+
+    def test_real_zero_page_catalog_is_refused_instead_of_treated_as_an_empty_file(self):
+        # PyMuPDF refuses to save an empty document, so construct a complete tiny
+        # PDF catalog and empty page tree, including a valid xref/trailer.
+        parts = [b"%PDF-1.7\n"]
+        offsets = [0]
+        for number, body in enumerate((
+            b"<< /Type /Catalog /Pages 2 0 R >>",
+            b"<< /Type /Pages /Kids [] /Count 0 >>",
+        ), 1):
+            offsets.append(sum(len(part) for part in parts))
+            parts.append(str(number).encode("ascii") + b" 0 obj\n" + body + b"\nendobj\n")
+        xref_offset = sum(len(part) for part in parts)
+        parts.append(b"xref\n0 3\n0000000000 65535 f \n")
+        parts.extend(f"{offset:010d} 00000 n \n".encode("ascii") for offset in offsets[1:])
+        parts.append(f"trailer\n<< /Size 3 /Root 1 0 R >>\nstartxref\n{xref_offset}\n%%EOF\n".encode("ascii"))
+        path = self.path("zero-page.pdf")
+        with open(path, "wb") as handle:
+            handle.write(b"".join(parts))
+        with fitz.open(path) as document:
+            self.assertEqual(document.page_count, 0, "fixture must reach the zero-page refusal branch")
+        self.assert_unreadable(path, "it has no pages")
+        self.assertFalse(os.listdir(self.out), "refusal must not produce extractable artifacts")
+
+    def test_real_multi_page_pdf_hits_the_cli_page_budget_without_emitting_a_result(self):
+        path = self.path("page-budget.pdf")
+        with fitz.open() as document:
+            for _ in range(2):
+                document.new_page().insert_text((40, 60), "Synthetic page budget fixture.")
+            document.save(path)
+        budget_path = self.path("budget.json")
+        with open(budget_path, "w", encoding="utf-8") as handle:
+            json.dump({"maxPages": 1}, handle)
+        result_path = self.path("extracted.json")
+        completed = subprocess.run(
+            [sys.executable, SCRIPT, path, self.out, result_path, budget_path],
+            capture_output=True, text=True, timeout=30,
+        )
+        self.assertEqual(completed.returncode, 3, completed.stderr)
+        self.assertIn("PDF_EXTRACTION_BUDGET_EXCEEDED: page count 2 exceeds 1", completed.stderr)
+        self.assertNotIn("Traceback", completed.stderr)
+        self.assertEqual(completed.stdout, "")
+        self.assertFalse(os.path.exists(result_path))
+        self.assertFalse(os.listdir(self.out), "budget refusal must happen before rendering or emitting artifacts")
 
     def test_command_line_exits_4_with_a_readable_message(self):
         path = self.path("locked.pdf")

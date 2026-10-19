@@ -3309,6 +3309,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/audit/2026-10-19-chat-remediation-handoff.md",
+        "section": "audit",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-09-18-specifier-sign-off-rules.md",
         "section": "decisions",
         "catalogued": true
@@ -5521,6 +5526,11 @@
       {
         "path": "docs/superpowers/plans/2026-10-11-parallel-repository-audit.md",
         "section": "superpowers",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-19-service-role-key-in-production-secrets-environment.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -19048,6 +19058,14 @@
         "scope": "pr-ci-fix",
         "outcome": "merge-ready",
         "checks": "pr-required:pass,static:pass,build:pass,production-ui:pass,policy:pass,mergeability:pass,coderabbit-thread:resolved"
+      },
+      {
+        "date": "2026-10-19",
+        "ref": "fix/audit-rag-complete-20261019",
+        "head": "97f000dc8b5595c51910d304665b75d4a91da29f",
+        "scope": "full chat remediation adversarial review",
+        "outcome": "Independent full42 review and correction review complete; paired-row OCR P2 corrected. Runtime acceptance remains pending.",
+        "checks": "Source review all42paths; independent correction review; exact-source geometry4refusals; diff/owned-format. Actual app/worker/browser/quality preflight run39271748995 pending; first quality runner rejected conservative dbscope beforegates, repairquality-only pending."
       },
       {
         "date": "2026-08-17",

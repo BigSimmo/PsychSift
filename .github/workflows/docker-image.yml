@@ -185,8 +185,8 @@ jobs:
         run: |
           docker builder prune -af || true
           : > trivy-scan-summary.txt
-          node scripts/trivy-image-scan.mjs clinical-kb-app:ci | tee -a trivy-scan-summary.txt || echo "Trivy scan failed (clinical-kb-app:ci): STATUS=unassessed reason=scanner_exit" | tee -a trivy-scan-summary.txt
-          node scripts/trivy-image-scan.mjs clinical-kb-worker:ci | tee -a trivy-scan-summary.txt || echo "Trivy scan failed (clinical-kb-worker:ci): STATUS=unassessed reason=scanner_exit" | tee -a trivy-scan-summary.txt
+          node scripts/trivy-image-scan.mjs clinical-kb-app:ci --report trivy-app.report.json | tee -a trivy-scan-summary.txt || echo "Trivy scan failed (clinical-kb-app:ci): STATUS=unassessed reason=scanner_exit" | tee -a trivy-scan-summary.txt
+          node scripts/trivy-image-scan.mjs clinical-kb-worker:ci --report trivy-worker.report.json | tee -a trivy-scan-summary.txt || echo "Trivy scan failed (clinical-kb-worker:ci): STATUS=unassessed reason=scanner_exit" | tee -a trivy-scan-summary.txt
 
       - name: Fail on HIGH/CRITICAL image findings outside pull requests
         # Audit M20 + R13: the worker image carries the Python parsers (PyMuPDF,
