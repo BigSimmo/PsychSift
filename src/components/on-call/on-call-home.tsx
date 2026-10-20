@@ -19,7 +19,6 @@ import { NowEmergencyPin } from "@/components/on-call/now/emergency-pin";
 import { NowOnCallHero } from "@/components/on-call/now/on-call-hero";
 import { NowNeedsYou, onCallNeedsYouAnswered, useOnCallCallMarks } from "@/components/on-call/now/needs-you";
 import { NowRightNow } from "@/components/on-call/now/right-now";
-import { NowShiftClock } from "@/components/on-call/now/shift-clock";
 import { NowShiftPulseCard } from "@/components/on-call/now/shift-pulse-card";
 import { NowShiftShortcuts } from "@/components/on-call/now/shift-shortcuts";
 import { NowShiftLists } from "@/components/on-call/now/shift-lists";
@@ -68,12 +67,13 @@ import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
  *  2. the hospital's pinned emergency route, above everything else;
  *  3. the public crisis lines whenever the hospital's own numbers are not on
  *     screen (loading, a failure, or none recorded);
- *  4. "Right now", the one dark hero: who covers this hour, then "Your
- *     shift", the countdown to the end of the reader's own rostered shift;
- *  5. "Needs you", only while a call to a rung of the reader's ladder waits;
- *  6. "Your usual", four tiles;
- *  7. "Your team", three roles;
- *  8. the shift tools: Log a call, Handover, the shift lists and Shift pulse;
+ *  4. "Right now", who covers this hour, then "Your usual", four tiles. The
+ *     countdown to the end of the reader's own rostered shift is in the hero;
+ *  5. "Needs you", only while a call to a rung of the reader's ladder waits,
+ *     then "Who do I call now?";
+ *  6. "Your team", three roles;
+ *  7. the shift tools: Log a call, Handover, the shift lists and Shift pulse;
+ *  8. the public crisis lines, folded, when the hospital's numbers are on screen;
  *  9. the state modules: example content, then first run.
  *
  * There is no ask box and no search box on Now (amendment r6, Task 2), no tile
@@ -365,14 +365,10 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
           nowSurface="own"
           now={
             <>
-              {/* The reader's own numbers first, straight under the header (usefulness audit, 11 Oct 2026). */}
-              <NowYourUsual
-                tiles={tiles}
-                outlineCount={usualOutlines}
-                canClear={usual.length > 0}
-                hospitalName={hospitalName}
-                now={now}
-              />
+              {/* Who covers this hour leads (On Call overhaul, owner approval 20 Oct 2026): the page
+                  answers "who do I ring, right now" before anything else. The reader's own usual
+                  numbers follow. The shift countdown lives in the hero above, so there is no second
+                  "Your shift" card repeating it. */}
               {ready || handbookLoading ? (
                 <NowRightNow
                   status={ready ? "ready" : "loading"}
@@ -383,9 +379,13 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
                   now={now}
                 />
               ) : null}
-              {/* Your own rostered shift, counting down to its end. Drawn only
-                  while a rostered shift is on, whatever the handbook's state. */}
-              <NowShiftClock context={context} now={now} />
+              <NowYourUsual
+                tiles={tiles}
+                outlineCount={usualOutlines}
+                canClear={usual.length > 0}
+                hospitalName={hospitalName}
+                now={now}
+              />
             </>
           }
           needsYouNode={
@@ -456,8 +456,9 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
           shortcuts={
             <>
               {/* The public lines close the page whenever the hospital's own
-                  numbers are on screen; otherwise they sit near the top. */}
-              {numbersOnScreen ? <NowCrisisLines now={now} /> : null}
+                  numbers are on screen, folded to 000 and one "More crisis lines" row
+                  (On Call overhaul, 20 Oct 2026); otherwise they sit near the top in full. */}
+              {numbersOnScreen ? <NowCrisisLines now={now} compact /> : null}
             </>
           }
         />

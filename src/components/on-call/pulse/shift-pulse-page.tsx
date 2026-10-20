@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { InformationPageShell } from "@/components/information-page-shell";
+import { OnCallShiftSwitch } from "@/components/on-call/shift/shift-switch";
 import { modeSecondaryText } from "@/components/mode-kit/type";
 import { onCallActionLink, onCallFilledButton, onCallLeadingIcon } from "@/components/on-call/kit/calm";
 import { OnCallGroupedList, OnCallRow } from "@/components/on-call/kit/grouped-list";
@@ -449,6 +450,7 @@ export function OnCallShiftPulsePage() {
       <InformationPageShell testId="on-call-pulse-main" width="narrow">
         <h1 className="sr-only">Shift pulse</h1>
         <div className="mt-2 grid min-w-0 gap-5" data-mode-identity="on-call">
+          <OnCallShiftSwitch current="breaks" />
           {breaks === null || now === null ? (
             <p role="status">Reading this phone&apos;s break times…</p>
           ) : (

@@ -54,6 +54,7 @@ describe("which pages Recent pages may hold", () => {
   it("never records call notes, handover, the MHA clock, drafts, searches, mock-ups or developer pages", () => {
     for (const path of [
       "/on-call/call",
+      "/on-call/calls",
       "/on-call/handover",
       "/on-call/referrals",
       "/forms/clock",

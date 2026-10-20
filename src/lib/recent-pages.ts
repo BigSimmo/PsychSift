@@ -156,7 +156,7 @@ const WORK_AREA_ROOTS: Readonly<Record<string, RecentPageSection>> = {
  * reports, posting a shift, requests).
  */
 const WORK_PRIVATE_TABS: Readonly<Record<string, ReadonlySet<string>>> = {
-  "on-call": new Set(["call", "handover", "refer", "referrals", "find"]),
+  "on-call": new Set(["call", "calls", "handover", "refer", "referrals", "find"]),
   cme: new Set(["new", "applications", "log"]),
   teaching: new Set(["c", "feedback", "import", "review", "assessments"]),
   roster: new Set(["sick", "join", "requests"]),
