@@ -2061,7 +2061,7 @@ export function parseAnswerJson(
     const parsed = (contract.adaptive ? adaptiveAnswerJsonSchema : answerJsonSchema).parse(JSON.parse(raw));
     const { citations, modelCited, proposedCount, invalidCount } = sanitizeCitations(parsed.citations, results);
     const derivedConfidence = modelCited ? deriveConfidence(results, citations) : "unsupported";
-    const confidence = modelCited ? clampConfidence(parsed.confidence, derivedConfidence) : "unsupported";
+    const citedConfidence = modelCited ? clampConfidence(parsed.confidence, derivedConfidence) : "unsupported";
     const parsedAnswer = parsed.answer ?? "";
     const nonArtifactParsedAnswer = parsedAnswer.trim() && !looksLikeJsonArtifact(parsedAnswer) ? parsedAnswer : "";
     const sanitizedAnswer =
@@ -2070,7 +2070,15 @@ export function parseAnswerJson(
       nonArtifactParsedAnswer ||
       machineReadableFallbackAnswer;
     const answerSections = sanitizeAnswerSections(parsed.answerSections, results, query);
-    const grounded = parsed.grounded !== false && modelCited && citations.length > 0 && confidence !== "unsupported";
+    const grounded =
+      parsed.grounded !== false && modelCited && citations.length > 0 && citedConfidence !== "unsupported";
+    // Audit RAG-B-01. A parsed model answer is either grounded or unsupported, never an
+    // ungrounded answer that keeps a citation-derived confidence. Claim-support enforcement and
+    // the browser-boundary governance refusal both skip ungrounded answers, so an answer the
+    // model itself marked `grounded: false` but still cited used to bypass both and reach the
+    // clinician as figure-free unverified prose. Marking it unsupported sends it through the
+    // final quality gate's ungrounded/unsupported path (and the fast route's recovery) instead.
+    const confidence = grounded ? citedConfidence : "unsupported";
     const answer: RagAnswer = {
       answer: boldHighYieldClinicalText(sanitizedAnswer, query),
       grounded,
