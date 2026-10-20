@@ -128,6 +128,22 @@
       "pattern": "(?:add|set) (?:it )?as a Cloud Agent Secret|Cursor Cloud specific instructions",
       "allowedContext": "no longer|retired|superseded|historical|previously|prohibited|formerly",
       "decision": "docs/decisions/2026-10-18-cursor-cloud-agents-prohibited.md"
+    },
+    {
+      "id": "start-of-task-required-reads",
+      "retired": "2026-10-20",
+      "summary": "Task receipts and the organisation map are no longer required reading at the start of every task. They are read only when the work needs them, through the AGENTS.md index.",
+      "pattern": "At task start, read \\[task lifecycle and receipt handoff\\]|At task start, read .{0,80}organisation map",
+      "allowedContext": "no longer|retired|superseded|historical|previously|formerly|replaces",
+      "decision": "docs/decisions/2026-10-20-instruction-tidy-up.md"
+    },
+    {
+      "id": "contextual-working-defaults-file",
+      "retired": "2026-10-20",
+      "summary": "The separate context-aware working defaults file is retired. Its content is covered by the shared working rules at the top of AGENTS.md.",
+      "pattern": "contextual-working-defaults\\.md|# Context-aware working defaults",
+      "allowedContext": "no longer|retired|superseded|historical|previously|formerly|replaces",
+      "decision": "docs/decisions/2026-10-20-instruction-tidy-up.md"
     }
   ]
 }
