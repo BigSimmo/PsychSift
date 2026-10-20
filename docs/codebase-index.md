@@ -1376,18 +1376,18 @@ One shared composer (`master-search-header.tsx`) serves every mode. Placement:
 
 ## Related docs
 
-| Topic                      | Doc                                                                    |
-| -------------------------- | ---------------------------------------------------------------------- |
-| Full documentation index   | `docs/README.md`                                                       |
-| Routes and modes           | `docs/site-map.md`                                                     |
-| Search/RAG roadmap         | `docs/search-rag-master-plan.md`                                       |
-| Universal task ledger      | `docs/outstanding-issues.md`                                           |
-| Reindex operations         | `docs/reindex-runbook.md`                                              |
-| Production readiness       | `docs/production-readiness-checklist.md`                               |
-| Capacity / scale-up        | `docs/audit/capacity-review.md`, `docs/auth-connection-cap-runbook.md` |
-| Frontend architecture      | `docs/frontend-architecture.md`                                        |
-| Repo audit (2026-07-01)    | `docs/audit/repo-audit-2026-07-01.md`                                  |
-| Latency audit (2026-07-28) | `docs/audit/latency-audit-2026-07-28.md`                               |
+| Topic                           | Doc                                                                    |
+| ------------------------------- | ---------------------------------------------------------------------- |
+| Full documentation index        | `docs/README.md`                                                       |
+| Routes and modes                | `docs/site-map.md`                                                     |
+| Search/RAG roadmap (historical) | `docs/search-rag-master-plan.md`                                       |
+| Universal task ledger           | `docs/outstanding-issues.md`                                           |
+| Reindex operations              | `docs/reindex-runbook.md`                                              |
+| Production readiness            | `docs/production-readiness-checklist.md`                               |
+| Capacity / scale-up             | `docs/audit/capacity-review.md`, `docs/auth-connection-cap-runbook.md` |
+| Frontend architecture           | `docs/frontend-architecture.md`                                        |
+| Repo audit (2026-07-01)         | `docs/audit/repo-audit-2026-07-01.md`                                  |
+| Latency audit (2026-07-28)      | `docs/audit/latency-audit-2026-07-28.md`                               |
 
 ---
 

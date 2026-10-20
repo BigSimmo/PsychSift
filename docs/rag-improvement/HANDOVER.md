@@ -1,5 +1,15 @@
 # RAG improvement programme — multi-session handover
 
+> **Status (2026-10-20): programme complete; kept as history.** Every packet in the
+> status table below has merged or been closed, and S8 onward stays gated on an owner
+> decision. This is no longer the operational board: open RAG work lives in
+> [`docs/outstanding-issues.md`](../outstanding-issues.md), and the rules live in
+> [`docs/rag-behaviour/`](../rag-behaviour/README.md). Code comments still cite its sections, so it stays in
+> place rather than moving to `docs/archive/`.
+>
+> The 4,362-line `rag.ts` budget mentioned below is historical: `src/lib/rag/rag.ts` was 4,310 lines on
+> 2026-10-20.
+
 **Status:** maintained handover ledger (2026-08-17). This is the context file every cloud
 session implementing the programme reads first. The design authority is
 [README.md](README.md) in this directory; the protected-surface rules live in
