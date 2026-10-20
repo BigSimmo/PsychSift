@@ -40,7 +40,7 @@ describe("applied inbox archive paths", () => {
 
   describe("on disk", () => {
     let root: string;
-    afterEach(() => rmSync(root, { recursive: true, force: true }));
+    afterEach(() => rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
 
     it("finds a record wherever it sits, applied/ first", () => {
       root = mkdtempSync(join(tmpdir(), "inbox-archive-"));
