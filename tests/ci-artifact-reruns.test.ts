@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const load = createRequire(import.meta.url)("js-yaml").load;
-type Step = { uses?: string; with?: { name?: string; overwrite?: boolean } };
+type Step = { uses?: string; with?: { name?: string; path?: string; archive?: boolean | string; overwrite?: boolean } };
 type Definition = { jobs?: Record<string, { steps?: Step[] }>; runs?: { steps?: Step[] } };
 const read = (file: string) => load(readFileSync(path.join(root, file), "utf8")) as Definition;
 const discover = (directory: string): string[] =>
@@ -28,12 +28,18 @@ describe("workflow artifact rerun contract", () => {
       for (const upload of uploads(read(file))) {
         count += 1;
         const inputs = upload.with ?? {};
-        expect(inputs.name, file).toBeTruthy();
-        const attemptSpecific = inputs.name?.includes("${{ github.run_attempt }}");
-        expect(attemptSpecific || inputs.overwrite === true, `${file}: ${inputs.name}`).toBe(true);
+        const raw = inputs.archive === false || inputs.archive === "false";
+        if (raw) {
+          expect(inputs.path, `${file}: a raw upload requires a single file`).toBeTruthy();
+          expect(inputs.path).not.toMatch(/[\r\n*?\[\]]/);
+        }
+        const effectiveName = raw ? path.posix.basename(inputs.path!.trim().replaceAll("\\", "/")) : inputs.name;
+        expect(effectiveName, file).toBeTruthy();
+        const attemptSpecific = effectiveName?.includes("${{ github.run_attempt }}");
+        expect(attemptSpecific || inputs.overwrite === true, `${file}: ${effectiveName}`).toBe(true);
         if (attemptSpecific) {
-          expect(inputs.name!.replaceAll("${{ github.run_attempt }}", "1")).not.toBe(
-            inputs.name!.replaceAll("${{ github.run_attempt }}", "2"),
+          expect(effectiveName!.replaceAll("${{ github.run_attempt }}", "1")).not.toBe(
+            effectiveName!.replaceAll("${{ github.run_attempt }}", "2"),
           );
           expect(inputs.overwrite, `${file}: preserve previous diagnostics`).not.toBe(true);
         }

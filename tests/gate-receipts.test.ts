@@ -417,6 +417,91 @@ importlib.metadata.distributions = lambda: []
     expect(signature({ ...observed, executableHash: "" })).toBeNull();
   });
 
+  it("executes the Python probe with damaged distribution metadata without losing other identities", ({ skip }) => {
+    const python = process.env.PYTHON_BIN?.trim() || (process.platform === "win32" ? "python" : "python3");
+    const controlledDistributions = `
+import importlib, importlib.metadata, types
+importlib.import_module = lambda name: types.SimpleNamespace(__file__="/synthetic/" + name + ".py")
+importlib.metadata.version = lambda name: "1.0-synthetic"
+class RaisingDistribution:
+    _path = "/synthetic/raising.dist-info"
+    @property
+    def metadata(self):
+        raise OSError("synthetic metadata failure")
+    @property
+    def version(self):
+        raise ValueError("synthetic version failure")
+inventory = [
+    types.SimpleNamespace(metadata={"Name": "healthy-package"}, version="1.0", _path="/synthetic/healthy.dist-info"),
+    types.SimpleNamespace(metadata={}, version=None, _path="/synthetic/missing.dist-info"),
+    RaisingDistribution(),
+    types.SimpleNamespace(metadata={"Name": " "}, version="", _path="/synthetic/blank.dist-info"),
+    types.SimpleNamespace(metadata={"Name": 17}, version={}, _path="/synthetic/nonstring.dist-info"),
+]
+importlib.metadata.distributions = lambda: inventory
+`;
+    const execute = (extra = "") =>
+      spawnSync(python, ["-c", controlledDistributions + extra + pythonIdentityProgram], {
+        cwd: process.cwd(),
+        env: process.env,
+        encoding: "utf8",
+        timeout: 5000,
+        maxBuffer: 1024 * 1024,
+        shell: false,
+      });
+    const first = execute();
+    if (first.error && "code" in first.error && first.error.code === "ENOENT")
+      return skip("Python is unavailable for the actual probe regression");
+    expect(first.error).toBeUndefined();
+    expect(first.status, first.stderr).toBe(0);
+    const observed = JSON.parse(first.stdout);
+    expect(observed.distributions).toContainEqual(["healthy-package", "1.0"]);
+    const unidentified = observed.distributions.filter((entry: unknown) => !Array.isArray(entry)) as Array<{
+      identified: boolean;
+      name: string | null;
+      version: string | null;
+      path: string | null;
+      nameError: string | null;
+      versionError: string | null;
+      pathError: string | null;
+    }>;
+    expect(unidentified).toHaveLength(4);
+    expect(
+      unidentified.every((entry) => entry.identified === false && entry.name === null && entry.version === null),
+    ).toBe(true);
+    expect(new Set(unidentified.map((entry) => entry.path)).size).toBe(4);
+    expect(unidentified.find((entry) => entry.path?.endsWith("missing.dist-info"))).toMatchObject({
+      nameError: "KeyError",
+      versionError: "DistributionVersionUnavailable",
+    });
+    expect(unidentified.find((entry) => entry.path?.endsWith("raising.dist-info"))).toMatchObject({
+      nameError: "OSError",
+      versionError: "ValueError",
+    });
+    for (const suffix of ["blank.dist-info", "nonstring.dist-info"]) {
+      expect(unidentified.find((entry) => entry.path?.endsWith(suffix))).toMatchObject({
+        nameError: "DistributionNameUnavailable",
+        versionError: "DistributionVersionUnavailable",
+      });
+    }
+    const firstSignature = signature(observed);
+    expect(firstSignature).toBeTruthy();
+    const reverse = execute("\ninventory.reverse()\n");
+    expect(reverse.status, reverse.stderr).toBe(0);
+    expect(signature(JSON.parse(reverse.stdout))).toBe(firstSignature);
+    const repaired = execute('\ninventory[1].metadata = {"Name": "repaired-package"}\ninventory[1].version = "2.0"\n');
+    expect(repaired.status, repaired.stderr).toBe(0);
+    const repairedIdentity = JSON.parse(repaired.stdout);
+    expect(repairedIdentity.distributions).toContainEqual(["repaired-package", "2.0"]);
+    expect(signature(repairedIdentity)).not.toBe(firstSignature);
+    expect(signature({ ...observed, executableHash: "" })).toBeNull();
+    expect(signature({ ...observed, distributions: [{ identified: false }] })).toBeNull();
+    expect(
+      signature({ ...observed, distributions: [{ ...unidentified[0], path: null, pathError: "OSError" }] }),
+    ).toBeNull();
+    expect(signature({ ...observed, distributions: [{ ...unidentified[0], path: "relative.dist-info" }] })).toBeNull();
+  });
+
   it("does not depend on Python availability for lint or typecheck receipts", () => {
     const { root } = gitFixture({ "a.ts": "1\n" });
     const env = { PYTHON_BIN: path.join(root, "missing-python") };

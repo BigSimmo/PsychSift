@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync, existsSync } from "node:fs";
+import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -114,14 +115,15 @@ describe("complete bounded container evidence", () => {
     expect(workflow.indexOf(command)).toBeGreaterThan(workflow.indexOf("name: Build worker image"));
     expect(workflow.indexOf(command)).toBeLessThan(workflow.indexOf("docker builder prune"));
     expect(workflow).toContain(
-      "node scripts/ci/archive-container-evidence.mjs --input . --output sboms --max-bytes 67108864",
+      "node scripts/ci/archive-container-evidence.mjs --input . --output 'sboms-${{ github.run_attempt }}' --max-bytes 67108864",
     );
     expect(workflow).toContain("if: always() && steps.container-evidence.outcome == 'success'");
-    expect(workflow).toContain("name: sboms-${{ github.run_attempt }}");
-    const name = /name: (sboms-\$\{\{ github.run_attempt \}\})/.exec(workflow)?.[1];
-    expect(name?.replace("${{ github.run_attempt }}", "1")).not.toBe(name?.replace("${{ github.run_attempt }}", "2"));
-    expect(workflow).toContain("path: sboms");
-    expect(workflow).toContain("archive: false");
+    const parsed = createRequire(import.meta.url)("js-yaml").load(workflow);
+    const upload = parsed.jobs["build-and-verify"].steps.find((step: { uses?: string }) =>
+      step.uses?.startsWith("actions/upload-artifact@"),
+    );
+    expect(upload.with.archive).toBe(false);
+    expect(upload.with.name).toBeUndefined();
     const exportStep = workflow.slice(
       workflow.indexOf("      - name: Export complete build records"),
       workflow.indexOf("      - name: Verify image content contract"),
@@ -141,25 +143,39 @@ describe("complete bounded container evidence", () => {
     expect(runScript).toBeDefined();
     const f = fixture();
     const shell = process.platform === "win32" ? "C:/Program Files/Git/bin/bash.exe" : "/bin/bash";
-    const replay = (outcome: string) => {
+    const replay = (outcome: string, attempt: number) => {
       const script = runScript
         .split("\n")
         .map((line) => line.slice(10))
         .join("\n")
         .replaceAll("${{ steps.build-records.outcome }}", outcome)
-        .replace(
-          "node scripts/ci/archive-container-evidence.mjs --input . --output sboms --max-bytes 67108864",
-          "printf admitted > sboms",
-        );
-      return spawnSync(shell, ["-c", script], { cwd: f.input, encoding: "utf8" });
+        .replaceAll("${{ github.run_attempt }}", String(attempt))
+        .replace("node scripts/ci/archive-container-evidence.mjs", 'node "$CONTAINER_EVIDENCE_HELPER"');
+      return spawnSync(shell, ["-c", script], {
+        cwd: f.input,
+        encoding: "utf8",
+        env: { ...process.env, CONTAINER_EVIDENCE_HELPER: helper },
+      });
     };
-    const failedExport = replay("failure");
+    const failedExport = replay("failure", 1);
     expect(failedExport.status).not.toBe(0);
     expect(failedExport.stdout).toContain("Complete build-record export failed");
-    expect(existsSync(path.join(f.input, "sboms"))).toBe(false);
-    const successfulExport = replay("success");
-    expect(successfulExport.status, successfulExport.stderr).toBe(0);
-    expect(existsSync(path.join(f.input, "sboms"))).toBe(true);
+    expect(existsSync(path.join(f.input, "sboms-1"))).toBe(false);
+    const uploadedNames: string[] = [];
+    for (const attempt of [1, 2]) {
+      const successfulExport = replay("success", attempt);
+      expect(successfulExport.status, successfulExport.stderr).toBe(0);
+      // upload-artifact's pinned archive:false contract names the artifact from
+      // this actual file, regardless of any ignored `name` input.
+      const uploadPath = upload.with.path.replaceAll("${{ github.run_attempt }}", String(attempt));
+      const output = path.join(f.input, uploadPath);
+      expect(statSync(output).isFile()).toBe(true);
+      expect(statSync(output).size).toBeLessThanOrEqual(67108864);
+      expect(unpack(output, "container-builds.dockerbuild")).toEqual(f.bytes[2]);
+      uploadedNames.push(path.basename(output));
+    }
+    expect(uploadedNames).toEqual(["sboms-1", "sboms-2"]);
+    expect(new Set(uploadedNames).size).toBe(2);
 
     expect(workflow).toContain("retention-days: 7");
     expect(workflow).toContain("compression-level: 0");

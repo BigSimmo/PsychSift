@@ -40,7 +40,8 @@ the existing coverage thresholds, required aggregates, advisory policies and rel
   its dependency versions/integrities and no longer snapshots that unrelated workspace metadata.
 - Vitest receipts include Python runtime/prerequisite identity. Imported modules with missing
   package metadata or file paths record explicit unavailable prerequisite states instead of
-  aborting the interpreter probe; unidentifiable runtimes still cannot certify reuse. Offline release builds scrub
+  aborting the interpreter probe. Damaged distribution metadata retains explicit error states and
+  path provenance in a deterministic inventory; unidentifiable runtimes still cannot certify reuse. Offline release builds scrub
   inherited provider credentials through the shared environment policy. Broad or ambiguous
   selectors cannot obtain a shared focused-test lease.
 - Dependency audit findings fail immediately; incomplete/tooling results get at most three

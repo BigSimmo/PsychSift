@@ -56,7 +56,7 @@ import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
  * @typedef {{ reuse: boolean, reason: string, message: string | null, gate: string, args: string[], key: string | null, inputHash: string | null, environmentHash: string | null, fileCount: number }} GateDecision
  */
 
-export const RECEIPT_FORMAT_VERSION = 3;
+export const RECEIPT_FORMAT_VERSION = 4;
 
 /** Receipts kept per gate before the oldest is dropped (branch switching thrashes otherwise). */
 export const MAX_RECEIPTS_PER_GATE = 8;
@@ -361,7 +361,41 @@ for name, distribution in (("fitz", "PyMuPDF"), ("pymupdf", "PyMuPDF"), ("PIL", 
             prerequisites[name] = {"available": False, "imported": True, "error": "PrerequisiteIdentityUnavailable", "version": version, "path": module_path, "pathError": path_error, "metadataError": metadata_error}
         else:
             prerequisites[name] = {"available": True, "version": version, "path": module_path}
-distributions = sorted((item.metadata["Name"], item.version) for item in importlib.metadata.distributions())
+distributions = []
+for item in importlib.metadata.distributions():
+    name, name_error = None, None
+    try:
+        name = item.metadata["Name"]
+        if not isinstance(name, str) or not name.strip():
+            name, name_error = None, "DistributionNameUnavailable"
+    except Exception as error:
+        name_error = type(error).__name__
+    version, version_error = None, None
+    try:
+        version = item.version
+        if not isinstance(version, str) or not version.strip():
+            version, version_error = None, "DistributionVersionUnavailable"
+    except Exception as error:
+        version_error = type(error).__name__
+    if name_error or version_error:
+        distribution_path, path_error = None, None
+        try:
+            raw_path = getattr(item, "_path", None)
+            if raw_path is None:
+                raw_path = item.locate_file("")
+            raw_path = os.fspath(raw_path)
+            if isinstance(raw_path, str) and raw_path.strip():
+                distribution_path = os.path.realpath(raw_path)
+            else:
+                path_error = "DistributionPathUnavailable"
+        except Exception as error:
+            path_error = type(error).__name__
+        distributions.append({"identified": False, "name": name, "version": version, "path": distribution_path, "nameError": name_error, "versionError": version_error, "pathError": path_error})
+    else:
+        distributions.append([name, version])
+# Broken metadata must neither abort collection nor compare None with strings.
+# Canonical ordering retains separate broken entries and their path provenance.
+distributions.sort(key=lambda entry: json.dumps(entry, sort_keys=True))
 print(json.dumps({"executable": executable, "executableHash": executable_hash, "version": sys.version, "prefix": sys.prefix, "path": sys.path, "prerequisites": prerequisites, "distributions": distributions}, sort_keys=True))
 `;
 
@@ -394,12 +428,23 @@ export function pythonToolchainSignature(projectRoot, env = process.env, { probe
       typeof identity.prefix !== "string" ||
       !Array.isArray(identity.path) ||
       !Array.isArray(identity.distributions) ||
-      !identity.distributions.every(
-        (entry) =>
-          Array.isArray(entry) &&
-          entry.length === 2 &&
-          entry.every((value) => typeof value === "string" && value.length > 0),
-      ) ||
+      !identity.distributions.every((entry) => {
+        if (Array.isArray(entry)) {
+          return entry.length === 2 && entry.every((value) => typeof value === "string" && value.trim().length > 0);
+        }
+        return (
+          entry?.identified === false &&
+          typeof entry.path === "string" &&
+          path.isAbsolute(entry.path) &&
+          ["name", "version"].every(
+            (field) => entry[field] === null || (typeof entry[field] === "string" && entry[field].trim().length > 0),
+          ) &&
+          ["nameError", "versionError", "pathError"].every(
+            (field) => entry[field] === null || (typeof entry[field] === "string" && entry[field].length > 0),
+          ) &&
+          Boolean(entry.nameError || entry.versionError)
+        );
+      }) ||
       !["fitz", "pymupdf", "PIL", "pytesseract"].every((name) => {
         const prerequisite = identity.prerequisites?.[name];
         return prerequisite?.available === false
