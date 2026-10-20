@@ -19,8 +19,8 @@ it is laid out, how work flows through it. It deliberately does not restate AGEN
 where the two ever disagree, **AGENTS.md wins**.
 
 `AGENTS.md` is a small always-loaded core — the boundaries that prevent irreversible harm, plus
-the sections a gate parses by exact text — and an index. Every other rule keeps its heading there
-and its full text in a named file under `docs/agents/`. Read that file before acting in its area;
+the sections a gate parses by exact text — and one index, `# Where the rest of the rules live`.
+Every other rule has a row there and its full text in the named file. Read that file before acting in its area;
 its rules are in force whether or not you have opened it.
 
 | Need                                        | Read                                                                                                         |
@@ -29,7 +29,7 @@ its rules are in force whether or not you have opened it.
 | Architecture, modules, schema, domain flows | `docs/codebase-index.md` — the deep map; start there for any real task                                       |
 | Design-system rules before any UI building  | `docs/design-system/README.md` — the system of record: tokens, component contracts, gates, adoption playbook |
 | Routes and modes                            | `docs/site-map.md` (generated — `npm run sitemap:update`)                                                    |
-| Which gate to run for a change              | `docs/process-hardening.md`, or the `gates` skill                                                            |
+| Which gate to run for a change              | `docs/agents/verification-gates.md`, or the `gates` skill                                                    |
 | Test execution, focused/live, flake policy  | `docs/testing.md`                                                                                            |
 | Every maintained doc, categorised           | `docs/README.md`                                                                                             |
 | Outstanding work across sessions            | `docs/outstanding-issues.md` (`/issues`)                                                                     |
@@ -37,8 +37,8 @@ its rules are in force whether or not you have opened it.
 | Which area owns a file, and its key docs    | `docs/organisation/README.md` — the organisation map; `npm run check:organisation -- --files <path>`         |
 
 When adding to this file, add **orientation**. Policy belongs in `AGENTS.md`; deep structure
-belongs in `docs/codebase-index.md`. Keeping those three non-overlapping is what stops five
-AI systems (Claude Code, Codex, Cursor, CodeRabbit, `.agents/`) from drifting apart —
+belongs in `docs/codebase-index.md`. Keeping those three non-overlapping is what stops the
+AI tools that read this repository (Claude Code, Codex, Cursor, Gemini, Antigravity via `.agents/`, and the review bots) from drifting apart —
 see the AI tooling and documentation ownership map in `docs/agents-guide.md` (§ Tooling and documentation ownership).
 
 ## Highest-consequence rules
@@ -46,7 +46,7 @@ see the AI tooling and documentation ownership map in `docs/agents-guide.md` (§
 Full text and rationale in `AGENTS.md`, which now carries these boundaries in its core, ahead of
 everything else: the provider confirmation boundary, Supabase project safety (merging a migration
 reaches the live clinical database within seconds), RAG ranking protection, Railway project safety
-and local server safety. The Next.js warning is the block at the top of `AGENTS.md`. Review-ledger
+and local server safety. The Next.js warning is its own marked block in `AGENTS.md`. Review-ledger
 lookup before reviewing a branch or PR is in
 [`docs/agents/codex-review-throttling.md`](docs/agents/codex-review-throttling.md), and the rule
 that evidence is never compressed is in
@@ -129,7 +129,8 @@ applies; unknown non-document paths fail closed to heavy scope.
 These fail builds, so they are worth knowing before you write code. Button wiring, orphan routes,
 internal navigation and the mockup exemptions are in
 [`docs/agents/wiring-and-bundle-budget.md`](docs/agents/wiring-and-bundle-budget.md); the
-one-composer rule is in `AGENTS.md` "Search chrome behaviour"; PR bodies as parsed input are in
+one-composer rule is in
+[`docs/agents/native-startup/search-chrome-behaviour.md`](docs/agents/native-startup/search-chrome-behaviour.md); PR bodies as parsed input are in
 [`docs/agents/external-skill-precedence.md`](docs/agents/external-skill-precedence.md). One
 convention has no home in the rules layer and stays here:
 

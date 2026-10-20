@@ -261,7 +261,6 @@ Every remaining tracked document in this category (process, plus the `agents/` r
 - [agents/verification-gates.md](agents/verification-gates.md) — Verification Gates — the verification pyramid, gate receipts, and the browser-gate planner
 - [agents/wiring-and-bundle-budget.md](agents/wiring-and-bundle-budget.md) — Page Wiring and Bundle Budget — Interactive controls and routes follow conventions the codebase already holds to.
 - [agents/native-startup/commit-as-you-go.md](agents/native-startup/commit-as-you-go.md) — Commit as you go: committing coherent units before switching context
-- [agents/native-startup/contextual-working-defaults.md](agents/native-startup/contextual-working-defaults.md) — Context-aware working defaults for workflows and boundaries
 - [agents/native-startup/external-skill-precedence.md](agents/native-startup/external-skill-precedence.md) — External skill precedence and evidence calibration rules
 - [agents/native-startup/process-hardening.md](agents/native-startup/process-hardening.md) — Process hardening phases and verification gates
 - [agents/native-startup/publication-workflows.md](agents/native-startup/publication-workflows.md) — Safe Git publication workflows, PR shortcuts, and anti-churn sync

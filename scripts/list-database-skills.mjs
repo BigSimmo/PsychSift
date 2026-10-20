@@ -547,7 +547,6 @@ export const userFacingProductSurfaces = [
   "docs/agents/dead-code-deletion.md",
   "docs/agents/external-skill-precedence.md",
   "docs/agents/native-startup/commit-as-you-go.md",
-  "docs/agents/native-startup/contextual-working-defaults.md",
   "docs/agents/native-startup/external-skill-precedence.md",
   "docs/agents/native-startup/process-hardening.md",
   "docs/agents/native-startup/publication-workflows.md",
