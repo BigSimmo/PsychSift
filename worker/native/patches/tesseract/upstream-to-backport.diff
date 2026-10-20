@@ -1,0 +1,236 @@
+--- upstream/CVE-2026-88053-8b0574680f3b22f246ade6a4c8e3029104255c63.patch
++++ patches/tesseract/03-CVE-2026-88053.patch
+@@ -237,7 +237,7 @@
+   */
+ -void Classify::InitAdaptiveClassifier(TessdataManager *mgr) {
+ +bool Classify::InitAdaptiveClassifier(TessdataManager *mgr) {
+-   if (!CLASSIFY_ENABLE_ADAPTIVE_MATCHER_OVERRIDE) {
++   if (!classify_enable_adaptive_matcher) {
+ -    return;
+ +    return true;
+    }
+@@ -325,7 +325,7 @@
+  
+    return (Index);
+  }
+-@@ -583,41 +582,36 @@ INT_CLASS_STRUCT::INT_CLASS_STRUCT(int MaxNumProtos) :
++@@ -583,38 +582,36 @@ INT_CLASS_STRUCT::INT_CLASS_STRUCT(int MaxNumProtos) :
+    assert(NumProtoSets <= MAX_NUM_PROTO_SETS);
+  
+    for (int i = 0; i < NumProtoSets; i++) {
+@@ -358,9 +358,6 @@
+ -
+ -  for (int i = 0; i < MAX_NUM_CLASSES; i++) {
+ -    ClassForClassId(this, i) = nullptr;
+--  }
+--  for (int i = 0; i < MAX_NUM_CLASS_PRUNERS; i++) {
+--    ClassPruners[i] = nullptr;
+ -  }
+ +INT_TEMPLATES_STRUCT::INT_TEMPLATES_STRUCT() : NumClasses(0), NumClassPruners(0) {
+ +  // Class and ClassPruners are value-initialized to nullptr in-class.
+@@ -537,7 +534,7 @@
+ -  void program_editup(const std::string &textbase, TessdataManager *init_classifier,
+ +  bool program_editup(const std::string &textbase, TessdataManager *init_classifier,
+                        TessdataManager *init_dict);
+-   void program_editdown();
++   void program_editdown(int32_t elapsed_time);
+    int end_recog();
+ @@ -243,7 +243,7 @@ class TESS_API Wordrec : public Classify {
+    }
+@@ -547,19 +544,7 @@
+ +  bool program_editup(const std::string &textbase, TessdataManager *init_classifier,
+                        TessdataManager *init_dict);
+    void cc_recog(WERD_RES *word);
+-   void program_editdown();
+-diff --git a/unittest/CMakeLists.txt b/unittest/CMakeLists.txt
+-index a660c9b185..c5294955de 100644
+---- a/unittest/CMakeLists.txt
+-+++ b/unittest/CMakeLists.txt
+-@@ -58,6 +58,7 @@ set(LEGACY_TESTS
+-     equationdetect_test.cc
+-     indexmapbidi_test.cc
+-     intfeaturemap_test.cc
+-+    intproto_test.cc
+-     mastertrainer_test.cc
+-     osd_test.cc
+-     params_model_test.cc
++   void program_editdown(int32_t elapsed_time);
+ diff --git a/unittest/intproto_test.cc b/unittest/intproto_test.cc
+ new file mode 100644
+ index 0000000000..ea0c602efb
+--- upstream/CVE-2026-88047-1bda5079b1c8a7e25f523486837426903d29ce84.patch
++++ patches/tesseract/05-CVE-2026-88047.patch
+@@ -45,18 +45,6 @@
+      if (stream.fail()) {
+        continue;
+      }
+-diff --git a/unittest/CMakeLists.txt b/unittest/CMakeLists.txt
+-index c5294955de..66b7f9996c 100644
+---- a/unittest/CMakeLists.txt
+-+++ b/unittest/CMakeLists.txt
+-@@ -60,6 +60,7 @@ set(LEGACY_TESTS
+-     intfeaturemap_test.cc
+-     intproto_test.cc
+-     mastertrainer_test.cc
+-+    normproto_test.cc
+-     osd_test.cc
+-     params_model_test.cc
+-     shapetable_test.cc
+ diff --git a/unittest/normproto_test.cc b/unittest/normproto_test.cc
+ new file mode 100644
+ index 0000000000..574b2f3d5a
+--- upstream/CVE-2026-88051-56e09ca12e751623fe796ce1554ce704bffd2ef0.patch
++++ patches/tesseract/06-CVE-2026-88051.patch
+@@ -1,16 +1,16 @@
+ diff --git a/Makefile.am b/Makefile.am
+-index cb206915ab..b392066dda 100644
+ --- a/Makefile.am
+ +++ b/Makefile.am
+-@@ -1159,6 +1159,7 @@ check_PROGRAMS += equationdetect_test
++@@ -1191,6 +1191,8 @@
+  endif # !DISABLED_LEGACY_ENGINE
+  check_PROGRAMS += fileio_test
+  check_PROGRAMS += fullyconnected_test
+ +check_PROGRAMS += genericvector_test
+++check_PROGRAMS += genericvector_rejected_cleanup_test
+  check_PROGRAMS += heap_test
+  check_PROGRAMS += imagedata_test
+  if !DISABLED_LEGACY_ENGINE
+-@@ -1299,6 +1300,10 @@ fullyconnected_test_SOURCES = unittest/fullyconnected_test.cc
++@@ -1329,6 +1331,14 @@
+  fullyconnected_test_CPPFLAGS = $(unittest_CPPFLAGS)
+  fullyconnected_test_LDADD = $(TESS_LIBS)
+  
+@@ -18,14 +18,17 @@
+ +genericvector_test_CPPFLAGS = $(unittest_CPPFLAGS)
+ +genericvector_test_LDADD = $(TESS_LIBS)
+ +
+++genericvector_rejected_cleanup_test_SOURCES = unittest/genericvector_rejected_cleanup_test.cc
+++genericvector_rejected_cleanup_test_CPPFLAGS = $(unittest_CPPFLAGS)
+++genericvector_rejected_cleanup_test_LDADD = $(TESS_LIBS)
+++
+  heap_test_SOURCES = unittest/heap_test.cc
+  heap_test_CPPFLAGS = $(unittest_CPPFLAGS)
+  heap_test_LDADD = $(TESS_LIBS)
+ diff --git a/src/ccutil/genericvector.h b/src/ccutil/genericvector.h
+-index 4a5bbe12d6..cbe1e203d2 100644
+ --- a/src/ccutil/genericvector.h
+ +++ b/src/ccutil/genericvector.h
+-@@ -654,10 +654,20 @@ bool GenericVector<T>::read(TFile *f, const std::function<bool(TFile *, T *)> &c
++@@ -654,10 +654,22 @@
+    if (f->FReadEndian(&reserved, sizeof(reserved), 1) != 1) {
+      return false;
+    }
+@@ -35,20 +38,24 @@
+ +    return false;
+ +  }
+    reserve(reserved);
+-   if (f->FReadEndian(&size_used_, sizeof(size_used_), 1) != 1) {
+-     return false;
+-   }
+-+  // size_used_ is an independent file field; without this check the reads
+-+  // below land past the end of the buffer sized from reserved.
+-+  if (size_used_ < 0 || size_used_ > reserved) {
++-  if (f->FReadEndian(&size_used_, sizeof(size_used_), 1) != 1) {
++-    return false;
++-  }
+++  int32_t used;
+++  if (f->FReadEndian(&used, sizeof(used), 1) != 1) {
+ +    return false;
+ +  }
+++  // Validate the independent file count before publishing it: clear() and
+++  // its callback must still see a valid vector size after rejected input.
+++  if (used < 0 || used > reserved) {
+++    return false;
+++  }
+++  size_used_ = used;
+    if (cb != nullptr) {
+      for (int i = 0; i < size_used_; ++i) {
+        if (!cb(f, data_ + i)) {
+ diff --git a/unittest/genericvector_test.cc b/unittest/genericvector_test.cc
+ new file mode 100644
+-index 0000000000..269b00f023
+ --- /dev/null
+ +++ b/unittest/genericvector_test.cc
+ @@ -0,0 +1,91 @@
+@@ -143,3 +150,80 @@
+ +
+ +} // namespace
+ +} // namespace tesseract
++diff --git a/unittest/genericvector_rejected_cleanup_test.cc b/unittest/genericvector_rejected_cleanup_test.cc
++new file mode 100644
++--- /dev/null
+++++ b/unittest/genericvector_rejected_cleanup_test.cc
++@@ -0,0 +1,72 @@
+++// PsychSift hardening beyond upstream CVE-2026-88051: rejected counts must
+++// leave the vector's cleanup bound valid. Existing upstream tests are unchanged.
+++// SPDX-License-Identifier: Apache-2.0
+++#include "include_gunit.h"
+++#include "genericvector.h"
+++#include "serialis.h"
+++#include <cstdint>
+++#include <vector>
+++
+++namespace tesseract {
+++namespace {
+++void PutCleanupInt32(std::vector<char> *bytes, int32_t value) {
+++  uint32_t bits = static_cast<uint32_t>(value);
+++  for (int i = 0; i != 4; ++i) {
+++    bytes->push_back(static_cast<char>((bits >> (8 * i)) & 255));
+++  }
+++}
+++std::vector<char> CleanupVectorBytes(int32_t used) {
+++  std::vector<char> bytes;
+++  PutCleanupInt32(&bytes, 4);
+++  PutCleanupInt32(&bytes, used);
+++  if (used == 2) {
+++    PutCleanupInt32(&bytes, 17);
+++    PutCleanupInt32(&bytes, 23);
+++  }
+++  return bytes;
+++}
+++
+++TEST(GenericVectorCleanupTest, RejectedCountsPreserveSizeAndCallbackCleanup) {
+++  for (int32_t used : {int32_t{65536}, int32_t{-1}}) {
+++    for (int existing_count : {0, 1}) {
+++      std::vector<char> bytes = CleanupVectorBytes(used);
+++      TFile file;
+++      ASSERT_TRUE(file.Open(bytes.data(), bytes.size()));
+++      GenericVector<int> vector;
+++      int cleaned = 0;
+++      vector.set_clear_callback([&cleaned](int value) {
+++        EXPECT_EQ(value, 17);
+++        ++cleaned;
+++      });
+++      if (existing_count) vector.push_back(17);
+++      EXPECT_FALSE(vector.read(&file, [](TFile *f, int *p) { return f->DeSerialize(p); }));
+++      EXPECT_EQ(vector.size(), existing_count);
+++      // If this assertion fails on the original upstream patch, avoid an
+++      // out-of-bounds cleanup while still retaining the failed expectation.
+++      if (vector.size() != existing_count) vector.set_clear_callback(nullptr);
+++      vector.clear();
+++      EXPECT_EQ(cleaned, existing_count);
+++      EXPECT_EQ(vector.size(), 0);
+++    }
+++  }
+++}
+++
+++TEST(GenericVectorCleanupTest, ValidCountsRunCleanupForEachElement) {
+++  std::vector<char> bytes = CleanupVectorBytes(2);
+++  TFile file;
+++  ASSERT_TRUE(file.Open(bytes.data(), bytes.size()));
+++  GenericVector<int> vector;
+++  int cleaned = 0;
+++  int sum = 0;
+++  vector.set_clear_callback([&cleaned, &sum](int value) {
+++    ++cleaned;
+++    sum += value;
+++  });
+++  ASSERT_TRUE(vector.read(&file, [](TFile *f, int *p) { return f->DeSerialize(p); }));
+++  EXPECT_EQ(vector.size(), 2);
+++  vector.clear();
+++  EXPECT_EQ(cleaned, 2);
+++  EXPECT_EQ(sum, 40);
+++}
+++} // namespace
+++} // namespace tesseract

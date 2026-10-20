@@ -1,0 +1,171 @@
+{
+  "schema_version": 1,
+  "source": "tesseract",
+  "source_version": "5.5.0-1",
+  "dsc_sha256": "80dc6a0e5d6189b3fe9df632a114642b17ed8582a43b55e45ca508efb995cf1c",
+  "backport_version": "5.5.0-1+psychsift1",
+  "patches": [
+    {
+      "file": "patches/tesseract/01-CVE-2026-73066.patch",
+      "sha256": "ea9c0917e5e9bd9466d46fce67a48d1121a44816d3cd80d3d5aae146f08a01e4",
+      "upstream_commit": "2f4d2f4bf45c363785d7bf1da29b6628f8939a72",
+      "upstream_patch_sha256": "3c9d471d9c261ed641697bceb1ca10280016c8c3d48e624013d6c2254696e27e",
+      "upstream_url": "https://github.com/tesseract-ocr/tesseract/commit/2f4d2f4bf45c363785d7bf1da29b6628f8939a72.patch",
+      "cve": "CVE-2026-73066",
+      "adaptations": []
+    },
+    {
+      "file": "patches/tesseract/02-CVE-2026-88052.patch",
+      "sha256": "8110ab96f964fa6e55e88fe534751dc95fa276c4d4d82aeb90c596da9742d54e",
+      "upstream_commit": "2d04d640db2e8c7e3bab2369d599343b5a8b8443",
+      "upstream_patch_sha256": "8bfd76c5dbe80249ad48152d286fc87fcefd8a57129099413a70476321cb7feb",
+      "upstream_url": "https://github.com/tesseract-ocr/tesseract/commit/2d04d640db2e8c7e3bab2369d599343b5a8b8443.patch",
+      "cve": "CVE-2026-88052",
+      "adaptations": []
+    },
+    {
+      "file": "patches/tesseract/03-CVE-2026-88053.patch",
+      "sha256": "094e5f25d7f180fa769d9f187747533779b6a16cb3b47a7bd53d31ded9bb53a0",
+      "upstream_commit": "8b0574680f3b22f246ade6a4c8e3029104255c63",
+      "upstream_patch_sha256": "1b80580e4d3e33f9f4d31e3f88cddbf2a7ede75408d2ccc4159ece6acbcd4b46",
+      "upstream_url": "https://github.com/tesseract-ocr/tesseract/commit/8b0574680f3b22f246ade6a4c8e3029104255c63.patch",
+      "cve": "CVE-2026-88053",
+      "adaptations": [
+        "Use existing 5.5.0 classify_enable_adaptive_matcher condition; no condition behavior change.",
+        "Rebase constructor hunk onto 5.5.0, which lacks newer explicit ClassPruners null loop; retain upstream value-initialized arrays fix.",
+        "Retain existing 5.5.0 program_editdown(int32_t elapsed_time) context.",
+        "Omit upstream-only unittest/CMakeLists.txt registration: absent in Debian 5.5.0; preserve upstream Automake registration and test source."
+      ]
+    },
+    {
+      "file": "patches/tesseract/04-CVE-2026-88048.patch",
+      "sha256": "87216b973682fcf19f94ceab529c4fbd7bce25ad405a0f7505e97d3e107dd43e",
+      "upstream_commit": "103dc134eb36411ddc6833ec20aa2c76795bd0ff",
+      "upstream_patch_sha256": "21af537b323ccfd44501ec07b54476580c8132499de2bd5014ddbff46cc114dd",
+      "upstream_url": "https://github.com/tesseract-ocr/tesseract/commit/103dc134eb36411ddc6833ec20aa2c76795bd0ff.patch",
+      "cve": "CVE-2026-88048",
+      "adaptations": []
+    },
+    {
+      "file": "patches/tesseract/05-CVE-2026-88047.patch",
+      "sha256": "2a66c04299f5ebff9b5ab40cf6b02b36f28cddedfe8296ac692382bc2a266554",
+      "upstream_commit": "1bda5079b1c8a7e25f523486837426903d29ce84",
+      "upstream_patch_sha256": "81cfeadb66eaaa62215963f4eb613212da3b153cac3685e1c8b8b6d19a9e6980",
+      "upstream_url": "https://github.com/tesseract-ocr/tesseract/commit/1bda5079b1c8a7e25f523486837426903d29ce84.patch",
+      "cve": "CVE-2026-88047",
+      "adaptations": [
+        "Omit upstream-only unittest/CMakeLists.txt registration: absent in Debian 5.5.0; preserve upstream Automake registration and test source."
+      ]
+    },
+    {
+      "file": "patches/tesseract/06-CVE-2026-88051.patch",
+      "sha256": "c4364f3ac34cfd41f2b8656405bf4b92798020615ae1f74752ec20d5f81412dd",
+      "upstream_commit": "56e09ca12e751623fe796ce1554ce704bffd2ef0",
+      "upstream_patch_sha256": "fe931cd9ccc6787ef22076d9b12507b6429043e0f7792272bdbc8e3c47cacf41",
+      "upstream_url": "https://github.com/tesseract-ocr/tesseract/commit/56e09ca12e751623fe796ce1554ce704bffd2ef0.patch",
+      "cve": "CVE-2026-88051",
+      "adaptations": [
+        "Additional PsychSift hardening beyond upstream: read size_used into local int32_t used, validate 0 <= used <= reserved, then assign size_used_; rejected input preserves a valid cleanup bound.",
+        "Add separate genericvector_rejected_cleanup_test with two cases; retain all original upstream genericvector_test source bytes and three cases unchanged."
+      ]
+    }
+  ],
+  "runtime_packages": ["libtesseract5", "tesseract-ocr"],
+  "extra_build_packages": ["libgtest-dev"],
+  "test_commands": [["sh", "/tmp/worker-native/tesseract-regressions.sh"]],
+  "change_summary": "Backport six upstream traineddata deserialization security fixes plus local rejected-vector-count cleanup hardening onto Debian Tesseract 5.5.0-1. Keep archive support, legacy engine, model formats and installed model artifacts unchanged. Run five unchanged upstream regression suites (15 cases), two separate vector cleanup cases, and 11 local Convolve/Reconfig deserialization boundary cases.",
+  "source_date_epoch": 1792454400,
+  "upstream_version": "5.5.0",
+  "upstream_to_backport_diff": "patches/tesseract/upstream-to-backport.diff",
+  "source_components": [
+    {
+      "file": "tesseract_5.5.0.orig.tar.gz",
+      "url": "https://deb.debian.org/debian/pool/main/t/tesseract/tesseract_5.5.0.orig.tar.gz",
+      "bytes": 1905018,
+      "sha256": "f2fb34ca035b6d087a42875a35a7a5c4155fa9979c6132365b1e5a28ebc3fc11"
+    },
+    {
+      "file": "tesseract_5.5.0-1.debian.tar.xz",
+      "url": "https://deb.debian.org/debian/pool/main/t/tesseract/tesseract_5.5.0-1.debian.tar.xz",
+      "bytes": 55240,
+      "sha256": "339c1e99003ed57552296f0ce758650b8c62d5f1222bb22c6c93a519dc90d20d"
+    },
+    {
+      "file": "tesseract_5.5.0.orig-test.tar.gz",
+      "url": "https://deb.debian.org/debian/pool/main/t/tesseract/tesseract_5.5.0.orig-test.tar.gz",
+      "bytes": 14949199,
+      "sha256": "2788d27de6e448f8ffa7dd19a22c5781768440dee60a34607099f0c66d44b911"
+    }
+  ],
+  "upstream_regression_tests": [
+    {
+      "cve": "CVE-2026-88052",
+      "file": "unittest/unicharset_load_test.cc",
+      "sha256": "404e53e067ddf0017196ea2f52c1b61b37be6b4d15048f2225f9d497d257633a",
+      "unchanged_from_upstream": true,
+      "cases": [
+        ["UnicharsetLoadTest", "RejectsDuplicateRepresentation"],
+        ["UnicharsetLoadTest", "RejectsNonPositiveCount"],
+        ["UnicharsetLoadTest", "AcceptsValidUnicharset"]
+      ]
+    },
+    {
+      "cve": "CVE-2026-88053",
+      "file": "unittest/intproto_test.cc",
+      "sha256": "ab57c1fbb220ee1d883eb57a93f67d5766062fa06b4075b479ed7cc3e5a94e05",
+      "unchanged_from_upstream": true,
+      "cases": [
+        ["IntprotoTest", "RejectsTooManyClassPruners"],
+        ["IntprotoTest", "RejectsTooManyClasses"],
+        ["IntprotoTest", "RejectsTooManyProtoSets"],
+        ["IntprotoTest", "RejectsTooLargeUnicharsetSize"]
+      ]
+    },
+    {
+      "cve": "CVE-2026-88048",
+      "file": "unittest/fullyconnected_test.cc",
+      "sha256": "e227324177c1c11ec854d9cf243216e3bc2e4190ab4423bc2ba40c53dba328d6",
+      "unchanged_from_upstream": true,
+      "cases": [
+        ["FullyconnectedTest", "RejectsWeightMatrixDimensionMismatch"],
+        ["FullyconnectedTest", "AcceptsMatchingDimensions"]
+      ]
+    },
+    {
+      "cve": "CVE-2026-88047",
+      "file": "unittest/normproto_test.cc",
+      "sha256": "67433de9281a0fd9394ea87d2a77049764ece86ec4ba64bbf3a32b3ac7f6b19c",
+      "unchanged_from_upstream": true,
+      "cases": [
+        ["NormprotoTest", "ToleratesOverlongUnicharToken"],
+        ["NormprotoTest", "ToleratesMaxLenUnicharToken"],
+        ["NormprotoTest", "ReadsValidNormprotos"]
+      ]
+    },
+    {
+      "cve": "CVE-2026-88051",
+      "file": "unittest/genericvector_test.cc",
+      "sha256": "8f956b5b9600339c61783df33c7dc568d3c4748e1087117a1073d740f202bf04",
+      "unchanged_from_upstream": true,
+      "cases": [
+        ["GenericVectorTest", "RejectsSizeUsedBeyondReserved"],
+        ["GenericVectorTest", "RejectsNegativeCounts"],
+        ["GenericVectorTest", "AcceptsConsistentVector"]
+      ]
+    }
+  ],
+  "verification_boundary": [
+    "Patch applicability and regression source identity verified locally; compilation and execution pending image build.",
+    "No claim that every binary from this source contains every vulnerable path.",
+    "Internal C++ ABI changes in upstream CVE-2026-88053 require rebuilding CLI and library together and checking all actual native consumers.",
+    "Focused deserializer rejection is additional proof; runtime OCR/Docling/model parity and fresh complete-image scan are separate gates."
+  ],
+  "local_regression_tests": [
+    {
+      "file": "unittest/genericvector_rejected_cleanup_test.cc",
+      "cases": 2,
+      "sha256": "f2ea041bb1a7cff1595ba0dcc0e2c494012a71f5df3ca41069ba2c5039e0ddc3",
+      "purpose": "Reject oversized/negative counts without corrupting empty/populated vector cleanup state, with valid callback-cleanup control."
+    }
+  ]
+}

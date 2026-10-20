@@ -103,6 +103,33 @@ export function validateTrivyReportJson(rawStdout) {
   };
 }
 
+// Put actionable public package/CVE metadata in job logs as well as the full
+// retained report. Keep stderr separate from the strictly parsed summary.
+export function trivyFindingDetails(report, limit = 512) {
+  if (!Number.isSafeInteger(limit) || limit < 0 || limit > 512) throw new RangeError("Invalid finding log limit");
+  const rows = [];
+  let total = 0;
+  const field = (value) => (typeof value === "string" ? value.replace(/[^\x20-\x7e]/g, "?").slice(0, 256) : "");
+  for (const result of Array.isArray(report.Results) ? report.Results : []) {
+    for (const vulnerability of Array.isArray(result?.Vulnerabilities) ? result.Vulnerabilities : []) {
+      if (!["HIGH", "CRITICAL"].includes(vulnerability?.Severity)) continue;
+      total += 1;
+      if (rows.length < limit) {
+        rows.push({
+          type: field(result.Type),
+          package: field(vulnerability.PkgName),
+          source: field(vulnerability.SrcName),
+          installed: field(vulnerability.InstalledVersion),
+          fixed: field(vulnerability.FixedVersion),
+          cve: field(vulnerability.VulnerabilityID),
+          severity: vulnerability.Severity,
+        });
+      }
+    }
+  }
+  return { rows, total, truncated: total > rows.length };
+}
+
 export function evaluateTrivySummaryText(summaryText, requiredImages = REQUIRED_TRIVY_SCAN_IMAGES) {
   const unassessed = (reason) => ({ assessed: false, ok: false, high: 0, critical: 0, reason });
   const text = typeof summaryText === "string" ? summaryText.trim() : "";
@@ -399,6 +426,10 @@ function main() {
 
   const { counts } = validated;
   if (reportPath) writeFileSync(resolve(reportPath), `${JSON.stringify(validated.report, null, 2)}\n`);
+  const details = trivyFindingDetails(validated.report);
+  for (const row of details.rows) console.error(`Trivy finding: ${JSON.stringify(row)}`);
+  if (details.truncated)
+    console.error(`Trivy finding details truncated: ${details.rows.length}/${details.total}; see retained report.`);
   console.log(
     `Trivy scan completed (${imageRef}): STATUS=ok HIGH=${counts.HIGH} CRITICAL=${counts.CRITICAL} MEDIUM=${counts.MEDIUM} LOW=${counts.LOW} UNKNOWN=${counts.UNKNOWN}`,
   );

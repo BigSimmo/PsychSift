@@ -75,8 +75,41 @@ RUN for attempt in 1 2 3; do \
       sleep $((attempt * 10)); \
     done
 
+# Build security backports using the same signed Trixie sources and ordinary
+# Debian packaging. Compilers/source trees never enter the runtime image.
+FROM python-runtime-base AS native-security-build-base
+RUN printf '%s\n' \
+    'deb-src [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] https://deb.debian.org/debian trixie main' \
+    'deb-src [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] https://deb.debian.org/debian-security trixie-security main' \
+    > /etc/apt/sources.list.d/worker-native-security-sources.list \
+  && apt-get update \
+  && apt-get install -y --no-install-recommends build-essential dpkg-dev quilt
+COPY worker/native/build_security_debs.py worker/native/test_build_security_debs.py /tmp/worker-native/
+RUN python3 /tmp/worker-native/test_build_security_debs.py
+
+FROM native-security-build-base AS native-util-linux
+COPY worker/native/components/util-linux.json /tmp/worker-native/components/util-linux.json
+COPY worker/native/patches/util-linux/ /tmp/worker-native/patches/util-linux/
+RUN python3 /tmp/worker-native/build_security_debs.py util-linux
+
+FROM native-security-build-base AS native-tesseract
+COPY worker/native/components/tesseract.json /tmp/worker-native/components/tesseract.json
+COPY worker/native/patches/tesseract/ /tmp/worker-native/patches/tesseract/
+COPY worker/native/tesseract-regressions.sh /tmp/worker-native/tesseract-regressions.sh
+RUN python3 /tmp/worker-native/build_security_debs.py tesseract
+
+FROM native-security-build-base AS native-ncurses
+COPY worker/native/components/ncurses.json /tmp/worker-native/components/ncurses.json
+COPY worker/native/patches/ncurses/ /tmp/worker-native/patches/ncurses/
+COPY worker/native/ncurses-regressions.sh /tmp/worker-native/ncurses-regressions.sh
+RUN python3 /tmp/worker-native/build_security_debs.py ncurses
+
 FROM python-runtime-base AS runner
 COPY --from=node-base /usr/local/bin/node /usr/local/bin/node
+COPY --from=native-util-linux /out/ /tmp/worker-native-debs/
+COPY --from=native-tesseract /out/ /tmp/worker-native-debs/
+COPY --from=native-ncurses /out/ /tmp/worker-native-debs/
+COPY worker/native/build_security_debs.py /tmp/worker-native-verify.py
 # libgl1 + libglib2.0-0t64 are OpenCV's runtime shared libraries: docling's rapidocr
 # stage imports cv2 during `docling-tools models download` and again at run time,
 # and the slim base ships neither (Gate B run 32165911181 failed the prefetch with
@@ -98,9 +131,12 @@ RUN printf '%s\n' \
     'Pin-Priority: -1' \
     > /etc/apt/preferences.d/worker-native-backports \
   && apt-get update \
-  && apt-get install -y --no-install-recommends perl-base tesseract-ocr ca-certificates libgl1 libglib2.0-0t64 \
+  && apt-get install -y --no-install-recommends --no-remove perl-base tesseract-ocr ca-certificates libgl1 libglib2.0-0t64 \
     libcurl4t64=8.21.0-2~bpo13+1 libnghttp3-9=1.15.0-1~bpo13+1 \
     libngtcp2-16=1.22.1-1~bpo13+1 libngtcp2-crypto-ossl0=1.22.1-1~bpo13+1 \
+    /tmp/worker-native-debs/*.deb \
+  && mkdir -p /usr/share/psychsift/native-security \
+  && cp /tmp/worker-native-debs/*.json /usr/share/psychsift/native-security/ \
   && dpkg --compare-versions "$(dpkg-query --show --showformat='${Version}' perl-base)" ge 5.40.1-6+deb13u1 \
   && dpkg --compare-versions "$(dpkg-query --show --showformat='${Version}' libcurl4t64)" ge 8.21.0-2~bpo13+1 \
   && dpkg --compare-versions "$(dpkg-query --show --showformat='${Version}' libngtcp2-16)" ge 1.22.1-1~bpo13+1 \
@@ -111,8 +147,10 @@ RUN printf '%s\n' \
   && for helper in /usr/bin/mount /usr/bin/umount; do \
        if [ -e "$helper" ]; then chmod u-s,g-s "$helper"; fi; \
      done \
-  && rm -rf /var/lib/apt/lists/* /usr/local/lib/node_modules/npm /opt/yarn-* \
+  && rm -rf /var/lib/apt/lists/* /usr/local/lib/node_modules/npm /opt/yarn-* /tmp/worker-native-debs \
   && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/yarn /usr/local/bin/yarnpkg
+RUN python3 /tmp/worker-native-verify.py --verify-installed /usr/share/psychsift/native-security \
+  && rm /tmp/worker-native-verify.py
 # Optional ruled-table OCR: bake the official, hash-pinned cell model at build time.
 # The extraction flag remains off; the runtime never downloads model data.
 RUN python3 - <<'PYMODEL'
@@ -203,10 +241,12 @@ RUN python -m compileall -q worker/python \
   && find worker/python -type d -name __pycache__ -prune -exec rm -rf '{}' + \
   && rm -f worker/python/test_*.py
 COPY package.json ./package.json
+COPY worker/native/check_docling_runtime.py /tmp/check-native-docling.py
 USER node
 # The runtime validator proves the bundle, Node, Python and module resolution
 # before the image is promoted. It never calls Supabase/OpenAI or claims jobs.
 RUN node dist/worker/validate-runtime.mjs
+RUN timeout 180 /opt/docling-venv/bin/python /tmp/check-native-docling.py
 LABEL org.opencontainers.image.source="https://github.com/BigSimmo/PsychSift"
 LABEL org.opencontainers.image.title="PsychSift ingestion worker"
 LABEL org.opencontainers.image.description="Node + Python OCR ingestion worker for the PsychSift medical guideline RAG knowledge base"

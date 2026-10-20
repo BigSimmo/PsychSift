@@ -81,6 +81,21 @@ identities unchanged; validate the complete rebuilt image, actual OCR cases
 and full scan before accepting its dependency changes. Ingestion restoration
 remains a separate operational action.
 
+Native util-linux, Tesseract and ncurses security repairs are built separately
+from signed, exact-version Debian sources. `worker/native/components/` pins the
+source descriptors and upstream patch hashes. The packages retain their real
+upstream versions with a `+psychsift1` Debian revision, normal package metadata,
+ABI/dependency declarations and enabled Debian tests. Only selected runtime
+packages enter the image; compilers and sources remain in builder stages.
+The final image verifies installed binary/source versions against retained
+`/usr/share/psychsift/native-security/` receipts. Mount helper privilege bits are
+stripped after the package upgrades. Tesseract's extra deserialization tests,
+ncurses's long-capability control and a non-root, model-backed Docling raster-PDF
+control must pass. See [the native backport contract](../worker/native/README.md).
+These are source repairs, not scanner exceptions: Debian advisories without a
+fixed-version entry may still match the local package revision. Preserve the
+complete scan and distinguish source verification from scanner-count reduction.
+
 ### 0.1 Automated pre-deploy gate
 
 Railway deploys the app and worker images, and the Supabase GitHub integration

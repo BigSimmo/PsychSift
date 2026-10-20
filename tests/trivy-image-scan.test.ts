@@ -13,7 +13,63 @@ import {
   trivyDbNeedsRefresh,
   trivyDockerMounts,
   validateTrivyReportJson,
+  trivyFindingDetails,
 } from "../scripts/trivy-image-scan.mjs";
+
+describe("bounded actionable Trivy finding logs", () => {
+  it("retains high/critical package and fixed-version metadata without affecting the strict summary", () => {
+    const report = {
+      Results: [
+        {
+          Type: "debian",
+          Vulnerabilities: [
+            {
+              Severity: "HIGH",
+              PkgName: "library",
+              InstalledVersion: "1.0",
+              FixedVersion: "1.1",
+              VulnerabilityID: "CVE-2026-1234",
+            },
+            { Severity: "LOW", PkgName: "unrelated" },
+            { Severity: "CRITICAL", PkgName: "other", VulnerabilityID: "CVE-2026-5678" },
+          ],
+        },
+      ],
+    };
+    const details = trivyFindingDetails(report);
+    expect(details.total).toBe(2);
+    expect(details.truncated).toBe(false);
+    expect(details.rows[0]).toMatchObject({ package: "library", installed: "1.0", fixed: "1.1", cve: "CVE-2026-1234" });
+    expect(details.rows[1].severity).toBe("CRITICAL");
+    expect(validateTrivyReportJson(JSON.stringify({ SchemaVersion: 2, ...report }))).toMatchObject({
+      counts: { HIGH: 1, CRITICAL: 1, LOW: 1 },
+    });
+  });
+
+  it("bounds diagnostics, neutralizes control characters and accepts optional/malformed inventory sections", () => {
+    const details = trivyFindingDetails(
+      {
+        Results: [
+          {
+            Vulnerabilities: [
+              { Severity: "HIGH", PkgName: "\n::error::injected\u001b" },
+              { Severity: "HIGH", PkgName: "second" },
+            ],
+          },
+        ],
+      },
+      1,
+    );
+    expect(details.total).toBe(2);
+    expect(details.truncated).toBe(true);
+    expect(details.rows).toHaveLength(1);
+    expect(details.rows[0].package).not.toMatch(/[\n\r\u001b]/);
+    for (const report of [{}, { Results: {} }, { Results: [null, { Vulnerabilities: {} }] }]) {
+      expect(trivyFindingDetails(report).rows).toEqual([]);
+    }
+    expect(() => trivyFindingDetails({}, 513)).toThrow(RangeError);
+  });
+});
 
 describe("Trivy retained scanner evidence", () => {
   it.skipIf(process.platform === "win32").each(["local", "docker"])(
@@ -102,6 +158,8 @@ else { fs.writeFileSync(process.env.TRIVY_TEST_ARGS, JSON.stringify(args)); proc
         expect(result.error).toBeUndefined();
         expect(result.status, result.stderr).toBe(0);
         expect(result.stdout).toContain("STATUS=ok HIGH=1 CRITICAL=0");
+        expect(result.stdout).not.toContain("Trivy finding:");
+        expect(result.stderr).toContain('"cve":"CVE-2026-0001"');
         expect(JSON.parse(readFileSync(output, "utf8"))).toEqual(raw);
         expect(JSON.parse(readFileSync(invocation, "utf8"))).toContain("--list-all-pkgs");
         expect(evaluateTrivySummaryText(result.stdout, ["fixture:ci"])).toMatchObject({
