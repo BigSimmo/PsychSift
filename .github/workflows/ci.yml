@@ -79,11 +79,12 @@ jobs:
     name: Change scope
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    # actions/pull-requests read only for the main tree proof below (find the merged PR and its
-    # CI run). Nothing here writes; every other job keeps the workflow-level `contents: read`.
+    # Read-only permissions for the main tree proof below: find the merged PR, CI run and
+    # Checks API annotations. Nothing here writes; other jobs keep workflow `contents: read`.
     permissions:
       contents: read
       actions: read
+      checks: read
       pull-requests: read
     # Export only signals consumed by job/step routing. Unknown non-document
     # paths fail closed to static_heavy_changed in ci-change-scope.mjs.
@@ -293,6 +294,9 @@ jobs:
       - name: Setup Node and dependencies
         uses: ./.github/actions/setup-node-cached
 
+      - name: Validate collected quarantine registrations
+        run: node scripts/flake-ledger.mjs --validate-collected
+
       # Lint and Typecheck were ~3 of this job's ~5 minutes, re-checking every file from cold on
       # every run because both caches live in places a fresh runner never has. Both tools already
       # run incrementally locally; this carries their caches between runs. Neither can skip a
@@ -351,6 +355,10 @@ jobs:
       - name: GitHub Actions pin check
         if: needs.changes.outputs.workflow_changed == 'true'
         run: npm run check:github-actions
+
+      - name: GitHub Actions semantic check
+        if: needs.changes.outputs.workflow_changed == 'true'
+        run: npm run check:github-actions:semantics
 
       - name: CI scope self-test
         run: npm run check:ci-scope
@@ -666,13 +674,7 @@ jobs:
       # full run still enforces registry drift without querying it on every PR.
       - name: Dependency audit (blocking on dependency changes)
         if: needs.changes.outputs.lockfile_changed == 'true'
-        run: |
-          for attempt in 1 2 3; do
-            if npm audit --omit=dev --audit-level=high; then exit 0; fi
-            echo "npm audit attempt ${attempt} failed (likely a transient registry error); retrying in 10s" >&2
-            sleep 10
-          done
-          npm audit --omit=dev --audit-level=high
+        run: node scripts/ci-dependency-audit.mjs
 
       - name: Edge function typecheck
         run: npm run check:edge:functions
@@ -751,7 +753,12 @@ jobs:
       - name: Install deterministic Python PDF test prerequisite
         run: python3 -m pip install --disable-pip-version-check "PyMuPDF==1.28.0"
 
+      - name: Start coverage diagnostic timing
+        run: >-
+          node -e 'const fs=require("node:fs"); fs.mkdirSync(".vitest-diagnostics",{recursive:true}); fs.writeFileSync(".vitest-diagnostics/timing.json",JSON.stringify({startedAt:Date.now()}));'
+
       - name: Unit tests with partial coverage
+        id: coverage-tests
         # A partition takes 5-9 minutes. On PR #3450 (run 38102156845) partition 1 printed its last
         # result after 6.5 minutes, went silent, and held the run until the 20-minute job cap. Every
         # test already has a 30-second timeout, so a freeze outside a test body (a file import or a
@@ -762,8 +769,28 @@ jobs:
           CLOUD_PLATFORM_NPM_HOME: ${{ steps.cloud-platform-npm.outputs.home }}
         run: >-
           node scripts/run-vitest.mjs run --config=vitest.coverage-shard.config.mts
-          --coverage --shard=${{ matrix.shard }}/2 --reporter=default --reporter=blob
+          --coverage --shard=${{ matrix.shard }}/2 --reporter=default --reporter=blob --reporter=json
           --outputFile.blob=.vitest-ci/coverage-${{ matrix.shard }}.json
+          --outputFile.json=.vitest-diagnostics/coverage-${{ matrix.shard }}.json
+
+      - name: Record coverage diagnostic outcome
+        if: always()
+        env:
+          TEST_OUTCOME: ${{ steps.coverage-tests.outcome }}
+        run: >-
+          node -e 'const fs=require("node:fs"); fs.mkdirSync(".vitest-diagnostics",{recursive:true}); const p=".vitest-diagnostics/timing.json"; let start={}; try {start=JSON.parse(fs.readFileSync(p,"utf8"));} catch {} const endedAt=Date.now(); fs.writeFileSync(p,JSON.stringify({...start,endedAt,durationMs:start.startedAt ? endedAt-start.startedAt : null,outcome:process.env.TEST_OUTCOME || "not-started"}));'
+
+      # JSON includes per-test/file durations and failure details when Vitest can finish reporting.
+      # A timeout/import freeze may leave no test report; timing/outcome JSON is still recorded.
+      - name: Preserve coverage failure diagnostics and timings
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: unit-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.shard }}
+          path: .vitest-diagnostics/*.json
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Preserve test and coverage results
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -1332,8 +1359,9 @@ jobs:
     #
     # Labels mirror the codex-review / skip-codex-review convention; an explicit skip
     # always wins. `on.pull_request.types` has no `labeled`, so the opt-in label takes
-    # effect on the next synchronize or re-run — adding `labeled` would re-run all of
-    # CI on every label change, so the escape hatch is workflow_dispatch instead.
+    # effect on the next synchronize (new push). Re-running retains the original event's
+    # labels, so it cannot reevaluate a later label edit. A new workflow_dispatch run
+    # provides the explicit manual route; adding `labeled` would run CI on every label edit.
     #
     # Two expression traps, both load-bearing:
     #   - `github.event.inputs.X` is a STRING ('true'/'false') and is safely null on
@@ -2084,16 +2112,20 @@ jobs:
       - name: Setup Node and dependencies
         uses: ./.github/actions/setup-node-cached
 
+      - name: Resolve Playwright browser cache key
+        id: browser-cache-key
+        env:
+          BROWSER_ENGINE: ${{ matrix.engine }}
+        run: node scripts/playwright-browser-cache-key.mjs --engine "$BROWSER_ENGINE" --os "${{ runner.os }}" --arch "${{ runner.arch }}" >> "$GITHUB_OUTPUT"
+
       - name: Restore browser cache
         id: pw-cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-engine-${{ matrix.engine }}-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          key: ${{ steps.browser-cache-key.outputs.key }}
           # Each job installs one engine. A shared immutable key would let the
           # first completed engine populate the cache for all its siblings.
-          restore-keys: |
-            playwright-engine-${{ matrix.engine }}-${{ runner.os }}-
 
       - name: Install Playwright browsers
         env:
@@ -2288,6 +2320,7 @@ jobs:
           BROWSER_MATRIX_RESULT: ${{ needs.release-browser-matrix.result }}
           VISUAL_BASELINE_RESULT: ${{ needs.visual-baseline.result }}
           HEAD_SHA: ${{ github.sha }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
           HEAD_MESSAGE: ${{ github.event.head_commit.message }}
         with:
           script: |
@@ -2320,6 +2353,7 @@ jobs:
             // back to the three declared results above if the listing is unavailable — a naming
             // failure must never swallow the alert itself.
             let failingJobs = [];
+            let listedJobs = [];
             let jobListing = "listed";
             try {
               const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun, {
@@ -2327,7 +2361,9 @@ jobs:
                 repo,
                 run_id: context.runId,
                 per_page: 100,
+                filter: "latest",
               });
+              listedJobs = jobs;
               // Every non-passing conclusion counts, so a matrix leg that hits its timeout is
               // still reported now that continue-on-error hides it from `needs`.
               const failingConclusions = new Set(["failure", "cancelled", "timed_out", "startup_failure"]);
@@ -2380,13 +2416,25 @@ jobs:
             // merge streak cannot suppress every alert: an older red run still speaks when nothing
             // newer has. Fails open: an unreadable ordering routes rather than loses an alert.
             const ROUTED_PATTERN = /<!-- routed-sha:([0-9a-f]{7,40}) -->/;
+            const ROUTED_RUN_PATTERN = /<!-- routed-run:([1-9][0-9]*):([1-9][0-9]*) -->/;
             const withRoutedStamp = (text) => {
-              const base = String(text ?? "").replace(ROUTED_PATTERN, "").trimEnd();
-              return headSha ? `${base}\n<!-- routed-sha:${headSha} -->` : base;
+              const base = String(text ?? "").replace(ROUTED_PATTERN, "").replace(ROUTED_RUN_PATTERN, "").trimEnd();
+              return headSha ? `${base}\n<!-- routed-sha:${headSha} -->\n<!-- routed-run:${context.runId}:${process.env.RUN_ATTEMPT || "1"} -->` : base;
             };
             async function isSuperseded(issue) {
-              const routedSha = ROUTED_PATTERN.exec(String(issue?.body ?? ""))?.[1];
-              if (!headSha || !routedSha || routedSha === headSha) return false;
+              const body = String(issue?.body ?? "");
+              const routedSha = ROUTED_PATTERN.exec(body)?.[1];
+              if (!headSha || !routedSha) return false;
+              if (routedSha === headSha) {
+                // A closed issue must retain run/attempt ordering too: a late red attempt of
+                // this same commit cannot undo the newer successful attempt that closed it.
+                const routedRun = ROUTED_RUN_PATTERN.exec(body);
+                if (!routedRun) return false; // Legacy issues only recorded commit ordering.
+                const currentRunId = BigInt(context.runId);
+                const previousRunId = BigInt(routedRun[1]);
+                return currentRunId < previousRunId ||
+                  (currentRunId === previousRunId && BigInt(process.env.RUN_ATTEMPT || "1") < BigInt(routedRun[2]));
+              }
               try {
                 const { data: comparison } = await github.rest.repos.compareCommits({
                   owner,
@@ -2456,7 +2504,114 @@ jobs:
               return;
             }
 
-            if (!red) {
+            // Persist check identities, not just the newest run's colour. A scoped push can
+            // observe healthy static checks while an earlier WebKit failure remains unverified.
+            const PENDING_PATTERN = /<!-- main-ci-pending:v1:([^\n]*?) -->/;
+            function previousFailures(issue) {
+              if (!issue) return [];
+              const text = String(issue.body ?? "");
+              const encoded = PENDING_PATTERN.exec(text)?.[1];
+              if (encoded !== undefined || text.includes("<!-- main-ci-pending:v1:")) {
+                try {
+                  if (encoded === undefined) throw new Error("incomplete pending check state");
+                  const saved = JSON.parse(decodeURIComponent(encoded));
+                  if (!Array.isArray(saved) || !saved.every((item) =>
+                    item && typeof item.name === "string" && item.name.length > 0 &&
+                    typeof item.sha === "string" && /^(?:[0-9a-f]{7,40})?$/.test(item.sha) &&
+                    typeof item.runId === "string" && typeof item.conclusion === "string" &&
+                    (item.runAttempt === undefined || typeof item.runAttempt === "string"))) {
+                    throw new Error("invalid pending check state");
+                  }
+                  return saved;
+                } catch (error) {
+                  core.warning(`Cannot read outstanding checks: ${error.message}; retaining the alert.`);
+                  return [{ name: "Unidentified prior failure (manual review required)", sha: "", runId: "", conclusion: "unknown" }];
+                }
+              }
+              // Migrate issues written before structured state: only the failing-jobs section
+              // contains failures; terminal summaries also contain successful and skipped jobs.
+              const section = text.split("### Failing jobs")[1]?.split("### ")[0] ?? "";
+              const migrated = [...section.matchAll(/^- `([^`]+)`: (failure|cancelled|timed_out|startup_failure|unknown|verdict unknown)/gm)]
+                .map((match) => ({ name: match[1], sha: ROUTED_PATTERN.exec(text)?.[1] ?? "", runId: "", conclusion: match[2] }));
+              return migrated.length || !section.trim() ? migrated :
+                [{ name: "Unidentified prior failure (manual review required)", sha: "", runId: "", conclusion: "unknown" }];
+            }
+            const pending = new Map(previousFailures(existing).map((item) => [item.name, item]));
+            const successes = new Set(listedJobs.filter((job) => job.conclusion === "success").map((job) => job.name));
+            // A matrix cancelled before expansion has no individual failing check identity.
+            // Recover that aggregate only from the complete configured matrix, never one leg.
+            // The regression contract pins these trusted constants to strategy.matrix.include.
+            const MATRIX_RECOVERY_GROUPS = [
+              ["chromium", "chromium-mockups", 1],
+              ["firefox", "firefox", 4],
+              ["webkit", "webkit", 4],
+              ["webkit", "mobile-webkit", 5],
+              ["webkit", "mobile-pwa-standalone", 5],
+              ["webkit", "tablet", 4],
+            ];
+            const expectedMatrixNames = MATRIX_RECOVERY_GROUPS.flatMap(([engine, project, total]) =>
+              Array.from({ length: total }, (_, index) => `release-browser-matrix (${engine}, ${project}, ${index + 1}, ${total})`));
+            // The present workflow runs fallback production Chromium inside the mockup leg.
+            // If a distinct fallback appears in a listing, it must also pass, exactly once.
+            const optionalFallbackName = "release-browser-matrix (chromium, chromium, 1, 1)";
+            const matrixJobs = listedJobs.filter((job) => job.name.startsWith("release-browser-matrix ("));
+            const matrixNames = new Set([...expectedMatrixNames, optionalFallbackName]);
+            const completeMatrixInventory = expectedMatrixNames.every((name) =>
+              matrixJobs.filter((job) => job.name === name).length === 1) &&
+              matrixJobs.every((job) => matrixNames.has(job.name)) &&
+              matrixJobs.filter((job) => job.name === optionalFallbackName).length <= 1;
+            successes.delete("release-browser-matrix");
+            if (declared["release-browser-matrix"] === "success" && completeMatrixInventory &&
+                matrixJobs.every((job) => job.conclusion === "success")) successes.add("release-browser-matrix");
+            // Only a successful listed check is evidence; a scoped aggregate cannot prove
+            // the identity of a check that an unavailable listing never named.
+            if (jobListing === "listed") {
+              for (const [name, failure] of pending) {
+                if (!successes.has(name)) continue;
+                // Ordering errors fail open for alerts, but cannot become recovery evidence.
+                const laterRun = !failure.runId || Number(context.runId) > Number(failure.runId) ||
+                  (String(context.runId) === failure.runId && Number(process.env.RUN_ATTEMPT || 1) > Number(failure.runAttempt || 1));
+                let applicable = Boolean(headSha && failure.sha && headSha === failure.sha && laterRun);
+                if (headSha && failure.sha && headSha !== failure.sha) {
+                  try {
+                    const { data } = await github.rest.repos.compareCommits({ owner, repo, base: failure.sha, head: headSha });
+                    applicable = data?.status === "ahead" || data?.status === "identical";
+                  } catch (error) {
+                    core.warning(`Cannot prove recovery ordering for ${name}: ${error.message}`);
+                  }
+                }
+                if (applicable) pending.delete(name);
+              }
+            }
+            function recordFailure(name, conclusion) {
+              const prior = pending.get(name);
+              const sameRun = prior && String(context.runId) === prior.runId;
+              const olderSameCommit = prior?.sha === headSha &&
+                (Number(context.runId) < Number(prior.runId) ||
+                  (sameRun && Number(process.env.RUN_ATTEMPT || 1) < Number(prior.runAttempt || 1)));
+              if (!olderSameCommit) {
+                pending.set(name, { name, sha: headSha, runId: String(context.runId), runAttempt: process.env.RUN_ATTEMPT || "1", conclusion });
+              }
+            }
+            for (const job of listedJobs) {
+              if (["failure", "cancelled", "timed_out", "startup_failure"].includes(job.conclusion)) {
+                recordFailure(job.name, job.conclusion);
+              }
+            }
+            for (const [name, result] of Object.entries(declared)) {
+              if (badResult(result) || (name === "release-browser-matrix" && jobListing !== "listed" && matrixRan)) {
+                // With a complete expanded inventory the failed/cancelled legs above are the
+                // exact unresolved checks. An extra aggregate identity would never match a leg.
+                if (name === "release-browser-matrix" && jobListing === "listed" && completeMatrixInventory &&
+                    matrixJobs.some((job) => ["failure", "cancelled", "timed_out", "startup_failure"].includes(job.conclusion))) continue;
+                const identity = jobListing === "listed" ? name : `${name} (unidentified checks; manual review required)`;
+                recordFailure(identity, result);
+              }
+            }
+            const pendingStamp = `<!-- main-ci-pending:v1:${encodeURIComponent(JSON.stringify([...pending.values()]))} -->`;
+            const withPendingStamp = (text) => `${String(text ?? "").replace(PENDING_PATTERN, "").trimEnd()}\n${pendingStamp}`;
+
+            if (!red && pending.size === 0) {
               if (!existing) {
                 // Record this green run on the closed issue, so a still-older red run that finishes
                 // after it cannot reopen the issue for a failure main no longer has.
@@ -2476,9 +2631,8 @@ jobs:
                   `- Run: ${runUrl}`,
                   headSha ? `- Commit: \`${headSha.slice(0, 12)}\`${headSubject ? ` — ${headSubject}` : ""}` : "- Commit: unrecorded",
                   "",
-                  "This states that the jobs which ran concluded successfully. Jobs skipped by",
-                  "change-scope routing verified nothing either way, so this is not a statement",
-                  "about the parts of the tree this push did not touch.",
+                  "Every recorded outstanding check has applicable successful evidence. Jobs",
+                  "skipped by change-scope routing do not count as recovery evidence.",
                   MARKER,
                 ].join("\n"),
               });
@@ -2488,24 +2642,29 @@ jobs:
                 issue_number: existing.number,
                 state: "closed",
                 state_reason: "completed",
-                body: withRoutedStamp(existing.body),
+                body: withRoutedStamp(withPendingStamp(existing.body)),
               });
               core.info(`Closed #${existing.number} after a green main run.`);
               return;
             }
 
             const body = [
-              "CI is failing on `main`. This issue is updated in place by `.github/workflows/ci.yml`",
-              "and closes automatically on the next green `main` run, so an open issue means `main`",
-              "is red **right now** — not that it once was.",
+              "CI has unresolved failures on `main`. This issue is updated in place by `.github/workflows/ci.yml`",
+              "and closes only after every outstanding check has later applicable successful evidence.",
+              "A successful scoped run does not resolve checks that it skipped.",
               "",
-              `- Latest failing run: ${runUrl}`,
+              `- Latest observed run: ${runUrl}`,
+              `- Current run: ${red ? "failing or unassessed" : "successful for its selected scope"}`,
               headSha ? `- Commit: \`${headSha.slice(0, 12)}\`${headSubject ? ` — ${headSubject}` : ""}` : "- Commit: unrecorded",
               `- Last updated: ${now}`,
               "",
               failingJobs.length > 0
                 ? `### Failing jobs\n\n${failingJobs.join("\n")}`
-                : `### Failing jobs\n\nNone could be named (job listing ${jobListing}), so this is **not** evidence that the run is healthy. Read the run log linked above.`,
+                : `### Failing jobs\n\nNo current failures were named (job listing ${jobListing}). Earlier outstanding checks remain listed below.`,
+              "",
+              "### Outstanding checks",
+              "",
+              ...[...pending.values()].map((item) => `- \`${item.name}\`: ${item.conclusion}; failing commit \`${item.sha || "unrecorded"}\`; run ${item.runId || "unrecorded"}`),
               "",
               "### Terminal job results",
               "",
@@ -2520,18 +2679,20 @@ jobs:
               "is a standing defect rather than a regression this push introduced.",
               MARKER,
             ].join("\n");
-            const stampedBody = withRoutedStamp(body);
+            const stampedBody = withRoutedStamp(withPendingStamp(body));
 
             if (existing) {
               await github.rest.issues.update({ owner, repo, issue_number: existing.number, body: stampedBody });
-              await github.rest.issues.createComment({
-                owner,
-                repo,
-                issue_number: existing.number,
-                body: `Still failing as of ${now} — ${runUrl}`,
-              });
-              await assignAlert(existing.number);
-              core.warning(`CI on main is failing; updated #${existing.number}.`);
+              if (red) {
+                await github.rest.issues.createComment({
+                  owner,
+                  repo,
+                  issue_number: existing.number,
+                  body: `Still failing as of ${now} — ${runUrl}`,
+                });
+                await assignAlert(existing.number);
+              }
+              core.warning(`CI on main has unresolved checks; updated #${existing.number}.`);
             } else {
               // Reopen the most recent issue this job closed rather than opening a new one per red
               // spell (owner decision, 2026-09-26: main flips red and green often, and 25 issues in a

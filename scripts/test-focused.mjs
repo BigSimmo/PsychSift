@@ -4,6 +4,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { childProcessExitCode } from "./child-process-result.mjs";
+import { selectFocusedTests } from "./focused-test-selection.mjs";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const unsafeSelectionPattern =
@@ -59,14 +60,22 @@ if (filesIndex >= 0) {
   selectionArgs.add(filesIndex + 1);
 }
 const forwarded = args.filter((argument, index) => !selectionArgs.has(index) && argument !== "--dry-run");
-console.log(`Focused test inputs: ${selection.files.join(", ")}`);
+if (forwarded.length) failClosed("additional Vitest selectors/options require an explicit test command");
+let plan;
+try {
+  plan = selectFocusedTests({ root: projectRoot, files: selection.files });
+} catch (error) {
+  failClosed(error.message);
+}
+console.log(`Focused test inputs: ${plan.inputs.join(", ")}`);
+console.log(`Selected ${plan.tests.length} test files, including filesystem and subprocess consumers.`);
 if (args.includes("--dry-run")) {
-  console.log("Command: vitest related --run <changed files>");
+  console.log(`Command: vitest run ${plan.tests.join(" ")}`);
   process.exit(0);
 }
 
 const runnerPath = path.join(projectRoot, "scripts", "run-vitest.mjs");
-const result = spawnSync(process.execPath, [runnerPath, "related", "--run", ...selection.files, ...forwarded], {
+const result = spawnSync(process.execPath, [runnerPath, "run", ...plan.tests], {
   cwd: projectRoot,
   stdio: "inherit",
 });

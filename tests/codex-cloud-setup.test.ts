@@ -158,6 +158,10 @@ const requiredPolicyExcludes = [
   "DATABASE_URL",
   "POSTGRES_PASSWORD",
   "CROSS_TENANT_SERVICE_ROLE_KEY",
+  "CROSS_TENANT_SUPABASE_URL",
+  "CROSS_TENANT_SUPABASE_SERVICE_ROLE_KEY",
+  "SENTRY_ORG",
+  "SENTRY_PROJECT",
   "RAILWAY_API_TOKEN",
   "RAILWAY_TOKEN",
   "GH_TOKEN",
@@ -1076,6 +1080,26 @@ describe("Codex Cloud environment contract", () => {
     expect(result.stderr).toContain("OPENAI_API_KEY");
     expect(result.stderr).toContain("STOP:");
     expect(result.stderr).not.toContain(secret);
+  }, 120_000);
+
+  it("scrubs staging and Sentry build coordinates at the raw Cloud boundary", () => {
+    const additions = [
+      "CROSS_TENANT_SUPABASE_URL",
+      "CROSS_TENANT_SUPABASE_SERVICE_ROLE_KEY",
+      "SENTRY_ORG",
+      "SENTRY_PROJECT",
+    ];
+    const synthetic = Object.fromEntries(additions.map((name) => [name, `never-print-${name}`]));
+    const result = runBash(["scripts/check-codex-cloud-raw-env.sh"], {
+      cwd: repoRoot,
+      encoding: "utf8",
+      env: { PATH: shellToolsPath, NODE_ENV: "test", ...synthetic },
+    });
+    expect(result.status).toBe(1);
+    for (const name of additions) {
+      expect(result.stderr).toContain(name);
+      expect(result.stderr).not.toContain(synthetic[name]);
+    }
   }, 120_000);
 
   it("name-scopes the documented launcher names separately from unexpected provider names", () => {

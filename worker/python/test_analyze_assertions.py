@@ -44,5 +44,34 @@ class MalformedChunkWarningTests(unittest.TestCase):
         self.assertIn("index 1", warning)
 
 
+class RuntimeCompatibilityTests(unittest.TestCase):
+    def test_default_pipeline_preserves_clinical_assertion_categories(self):
+        # Exercise the real medspaCy/QuickUMLS/NLTK import and pipeline after
+        # dependency updates; empty-target logging tests never construct it.
+        cases = [
+            ("Nil auditory hallucinations at present.", "auditory hallucinations", "negated_terms"),
+            (
+                "Suspected myocarditis in week three of clozapine titration.",
+                "myocarditis", "uncertain_terms",
+            ),
+            (
+                "Family history of bipolar disorder in her mother.",
+                "bipolar disorder", "family_terms",
+            ),
+            (
+                "Previous episode of catatonia responded well to electroconvulsive therapy.",
+                "catatonia", "historical_terms",
+            ),
+        ]
+        nlp = analyze_assertions.build_nlp([term for _, term, _ in cases])
+        for index, (text, term, expected_category) in enumerate(cases):
+            with self.subTest(category=expected_category):
+                result = analyze_assertions.analyze_chunk(nlp, {"id": str(index), "text": text})
+                self.assertIn(term, result[expected_category])
+                for category in ("negated_terms", "uncertain_terms"):
+                    if category != expected_category:
+                        self.assertNotIn(term, result[category])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 import { execFileSync } from "node:child_process";
-import { appendFileSync, existsSync, lstatSync, readFileSync, realpathSync } from "node:fs";
+import { appendFileSync, existsSync, lstatSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import { isAbsolute, posix as posixPath, relative, sep } from "node:path";
+import { browserInputClosure } from "./browser-inputs.mjs";
+
+let browserInputs;
 
 const zeroSha = /^0{40}$/;
 
@@ -212,7 +215,9 @@ const siteContentPatterns = [
 /** App Router API handlers are not browser journeys — keep them out of ui_changed. */
 function isUiChangedPath(filePath) {
   if (filePath === "src/app/api" || filePath.startsWith("src/app/api/")) return false;
-  return pathMatches(filePath, uiPatterns);
+  if (pathMatches(filePath, uiPatterns)) return true;
+  browserInputs ??= browserInputClosure();
+  return browserInputs.has(filePath);
 }
 
 /**
@@ -221,10 +226,10 @@ function isUiChangedPath(filePath) {
  * tests — measured at ~3m14 on every UI pull request (#137).
  *
  * So it runs when there is something for it to cover: a mockup surface changed,
- * or the flake ledger is non-empty. Reading the ledger rather than hard-coding
- * "no quarantines exist" makes the gate self-correcting — the moment a test is
- * quarantined, the lane comes back on every UI PR without anyone remembering to
- * re-enable it.
+ * or a quarantine appears in source/ledger state. This dependency-free early
+ * scheduler is conservative; required collected-test validation after npm ci
+ * rejects unknown tags, stale entries, expired owners and critical overlap.
+ * The source check also keeps title-only tags visible with an empty ledger.
  */
 const mockupPatterns = [
   "src/app/mockups",
@@ -256,6 +261,20 @@ function quarantineLedgerHasEntries(readLedger) {
   } catch {
     // Fail OPEN: an unreadable or malformed ledger must not silently drop the
     // advisory lane. `npm run flake:ledger` is what validates its shape.
+    return true;
+  }
+}
+
+// Scheduling is conservative; required collected-test validation below the
+// dependency install proves exact registration, inherited tags and ownership.
+// A title-only or unregistered tag must never disappear from both browser lanes.
+function quarantineSourceHasTags() {
+  try {
+    return readdirSync("tests")
+      .filter((file) => /\.spec\.[cm]?[jt]sx?$/.test(file))
+      .some((file) => readFileSync(`tests/${file}`, "utf8").includes("@quarantine"));
+  } catch {
+    // Missing/unreadable collection inputs cannot prove the advisory lane empty.
     return true;
   }
 }
@@ -293,7 +312,8 @@ const workflowPatterns = [
   "docs/agents",
   "docs/codex-review-protocol.md",
   "docs/process-hardening.md",
-  /^scripts\/(?:ci-change-scope|pr-policy|verify-pr-local|eval-rag-offline|run-gitleaks-pinned|check-github-action-pins|list-database-skills|sync-skills|productivity-core|productivity-workflow|external-workflow)\.mjs$/,
+  "scripts/actionlint-release.json",
+  /^scripts\/(?:ci-change-scope|pr-policy|verify-pr-local|eval-rag-offline|run-gitleaks-pinned|check-github-action-pins|check-github-actions-semantics|list-database-skills|sync-skills|productivity-core|productivity-workflow|external-workflow)\.mjs$/,
 ];
 
 const uiPatterns = [
@@ -631,13 +651,15 @@ function isRecognisedLightPath(filePath) {
 // drive both the empty and non-empty cases without touching the real file.
 const readFlakeLedger = () => readFileSync("tests/flake-ledger.json", "utf8");
 
-function directChangeScopes(normalized, readLedger) {
+function directChangeScopes(normalized, readLedger, hasQuarantineTags) {
   const docsChanged = normalized.some((file) => pathMatches(file, docPatterns));
   const sourceChanged = normalized.some((file) => pathMatches(file, [...sourcePatterns, ...staticConfigPatterns]));
   const uiChanged = normalized.some((file) => isUiChangedPath(file));
   const perfChanged = normalized.some((file) => isPerfChangedPath(file));
   const advisoryUiChanged =
-    normalized.some((file) => pathMatches(file, mockupPatterns)) || quarantineLedgerHasEntries(readLedger);
+    normalized.some((file) => pathMatches(file, mockupPatterns)) ||
+    hasQuarantineTags ||
+    quarantineLedgerHasEntries(readLedger);
   const dbChanged = normalized.some((file) => pathMatches(file, dbPatterns));
   const containerChanged = normalized.some((file) => pathMatches(file, containerPatterns));
   const ragEvalChanged = normalized.some((file) => pathMatches(file, ragEvalPatterns));
@@ -706,9 +728,9 @@ function derivedChangeScopes(normalized, direct) {
   return { coverageChanged, docsOnly, staticHeavyChanged, workflowOnly };
 }
 
-function classify(files, { readLedger = readFlakeLedger } = {}) {
+function classify(files, { readLedger = readFlakeLedger, hasQuarantineTags = quarantineSourceHasTags() } = {}) {
   const normalized = [...new Set(files.map(normalizePath).filter(Boolean))].sort();
-  const direct = directChangeScopes(normalized, readLedger);
+  const direct = directChangeScopes(normalized, readLedger, hasQuarantineTags);
   const derived = derivedChangeScopes(normalized, direct);
 
   return {
@@ -888,7 +910,12 @@ function writeOutputs(result) {
 const emptyLedger = () => '{"flakes":[]}';
 
 function assertScope(name, files, expected, options = {}) {
-  const result = classify(files, { readLedger: emptyLedger, prPolicyBodyPresent: false, ...options });
+  const result = classify(files, {
+    readLedger: emptyLedger,
+    hasQuarantineTags: false,
+    prPolicyBodyPresent: false,
+    ...options,
+  });
   for (const [key, value] of Object.entries(expected)) {
     if (result[key] !== value) {
       throw new Error(`${name}: expected ${key}=${value}, received ${result[key]} for ${files.join(", ")}`);
@@ -999,6 +1026,11 @@ function assertBrowserAndAdvisoryScopes() {
     "src/lib/theme.ts",
     "src/lib/client-store-factory.ts",
     "src/lib/supabase/client.tsx",
+    "src/lib/scroll-behavior.ts",
+    "src/lib/navigation-guards.ts",
+    "src/lib/keyboard-shortcuts.ts",
+    "src/lib/terms-acceptance.ts",
+    "src/lib/supabase/browser-client.ts",
   ]) {
     assertScope(`browser-runtime-input:${file}`, [file], { ui_changed: true });
   }
@@ -1057,6 +1089,12 @@ function assertBrowserAndAdvisoryScopes() {
     ["src/components/clinical-dashboard/dashboard-nav.tsx"],
     { advisory_ui_changed: true },
     { readLedger: () => '{"flakes":[{"id":"F-1"}]}' },
+  );
+  assertScope(
+    "advisory-on-for-title-tag-with-empty-ledger",
+    ["tests/ui-smoke.spec.ts"],
+    { ui_changed: true, advisory_ui_changed: true },
+    { hasQuarantineTags: true },
   );
   // Fail OPEN: an unreadable ledger must not quietly drop the lane.
   assertScope(

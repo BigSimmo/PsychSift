@@ -36,6 +36,7 @@ function runSelectorWithInjectedOwner(owner: string, cwd = process.cwd()): void 
     );
     expect(injected).not.toBe(source);
     writeFileSync(temporaryScript, injected, "utf8");
+    writeFileSync(join(temporaryDirectory, "browser-inputs.mjs"), readFileSync("scripts/browser-inputs.mjs"));
     execFileSync("node", [temporaryScript, "--files", "docs/ordinary-note.md"], {
       cwd,
       encoding: "utf8",

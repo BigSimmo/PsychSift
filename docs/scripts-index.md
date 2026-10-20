@@ -1,6 +1,6 @@
 # Scripts index
 
-Curated map of `scripts/` (426 files) and the `package.json` script surface (332 entries),
+Curated map of `scripts/` (433 files) and the `package.json` script surface (333 entries),
 grouped by purpose. This is orientation, not an exhaustive per-file listing — the authoritative
 command list is `package.json`, and `npm run docs:check-scripts` verifies every `npm run <x>`
 referenced in docs resolves to a real script. `npm run docs:update` refreshes the exact counts above.
@@ -95,7 +95,7 @@ Also catalogued (2026-09-02), gate and CI helpers:
 - `browser-test-plan.mjs` (`plan:browser`, `check:browser-test-plan`) — chooses the smallest browser gate that still covers a change.
 - `classify-visual-baseline-outcome.mjs` — decides whether a failed `test:e2e:visual` run was pixel drift (advisory) or an infrastructure failure that stays red.
 - `lighthouse-measurement-outcome.mjs`, `lighthouse-time-budget.mjs`, `live-web-vitals-inputs.mjs` — Lighthouse budget runner helpers: whether a cell produced gradeable evidence, bounded-stage timing, and validation of the dispatch-only live Web Vitals matrix.
-- `check-image-content-contract.mjs`, `trivy-image-scan.mjs`, `resolve-oci-image-digest.mjs`, `app-container-smoke.mjs` (`smoke:app-container`) — container CI: final-image hardening assertions, pinned Trivy scan + SBOM, multi-platform digest lookup for pinning base images, and a provider-free boot smoke of the built app image.
+- `check-image-content-contract.mjs`, `trivy-image-scan.mjs`, `resolve-oci-image-digest.mjs`, `app-container-smoke.mjs` (`smoke:app-container`) — container CI: final-image hardening assertions, pinned Trivy scan + SBOM, multi-platform digest lookup for pinning base images, and a required provider-free, read-only boot smoke of the built app image. The smoke starts the image's default server command, waits for shallow health, verifies PID 1 and graceful shutdown, with network disabled and capabilities dropped; it does not establish live backend readiness.
 - `check-worker-python-lock.mjs` (`check:worker-python-lock`, `check:worker-python-cloud-lock`, `check:worker-python-locks:static`), `generate-worker-python-lock.mjs` (`generate:worker-python-lock`, `generate:worker-python-cloud-lock`), `worker-python-lock-config.mjs` — the hashed `worker/python/requirements.txt` lock targets.
 - `check-dev-drive-cache.mjs` (`check:dev-drive-cache`) — Windows Dev Drive npm cache registration and Defender trust (`#6SMMB4`).
 

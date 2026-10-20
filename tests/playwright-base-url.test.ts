@@ -15,6 +15,7 @@ describe("explicit Playwright target approval", () => {
       "PLAYWRIGHT_PREVIEW_URL",
       "PREVIEW_URL",
       "VERCEL_URL",
+      "PORT",
     ]) {
       vi.stubEnv(key, "");
     }
@@ -89,5 +90,41 @@ describe("explicit Playwright target approval", () => {
       JSON.stringify({ appName, projectId: "another-project", localServer: { safeLocalOrigin: true } }),
     );
     expect(() => getPlaywrightBaseUrl({ allowEnsure: false })).toThrow(/local-project-id guard/);
+  });
+
+  it("loads the real config without a target only for the actual --list switch", async () => {
+    const originalArgv = process.argv;
+    try {
+      process.argv = [process.execPath, "playwright", "test", "--list"];
+      vi.stubEnv("PLAYWRIGHT_BASE_URL", "https://unapproved.invalid/path");
+      vi.resetModules();
+      const { default: config } = await import("../playwright.config");
+      expect(config.use?.baseURL).toBe("http://127.0.0.1:9");
+      expect(config.webServer).toBeUndefined();
+      expect(config.projects?.every((project) => project.grep === undefined && project.grepInvert === undefined)).toBe(
+        true,
+      );
+      expect(execFileSync).not.toHaveBeenCalled();
+      expect(spawnSync).not.toHaveBeenCalled();
+    } finally {
+      process.argv = originalArgv;
+    }
+  });
+
+  it("keeps real config identity checks when --list is merely an argument value", async () => {
+    const originalArgv = process.argv;
+    try {
+      process.argv = [process.execPath, "playwright", "test", "--grep=--list"];
+      vi.stubEnv("PLAYWRIGHT_BASE_URL", "http://127.0.0.1:9");
+      vi.mocked(execFileSync).mockReturnValue(
+        JSON.stringify({ appName, projectId: "another-project", localServer: { safeLocalOrigin: true } }),
+      );
+      vi.resetModules();
+      await expect(import("../playwright.config")).rejects.toThrow(/local-project-id guard/);
+      expect(execFileSync).toHaveBeenCalledOnce();
+      expect(spawnSync).not.toHaveBeenCalled();
+    } finally {
+      process.argv = originalArgv;
+    }
   });
 });
