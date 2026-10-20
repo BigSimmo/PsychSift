@@ -5,7 +5,10 @@ import { TERMS_VERSION } from "./src/lib/front-door-content";
 
 process.env.PORT = process.env.PORT || String(stableProjectPort(process.cwd()));
 
-const baseURL = getPlaywrightBaseUrl({ allowEnsure: false });
+// Collection loads config but never opens the app. Only Playwright's actual
+// --list switch selects this inert origin; browser runs retain identity checks.
+const collectionOnly = process.argv.includes("--list");
+const baseURL = collectionOnly ? "http://127.0.0.1:9" : getPlaywrightBaseUrl({ allowEnsure: false });
 
 // Sandboxed CI/cloud containers often ship a preinstalled Chromium and block
 // browser downloads; point this at that binary instead of the managed one.
@@ -61,7 +64,7 @@ const iosInstallHintDismissed = {
   ],
 };
 
-export default defineConfig({
+const config = defineConfig({
   testDir: "./tests",
   // Top-level testMatch is parsed directly as a single-line regex literal by
   // tests/playwright-project-isolation.test.ts and tests/playwright-pr-shards.test.ts.
@@ -85,14 +88,15 @@ export default defineConfig({
         ["json", { outputFile: "test-results/playwright-results.json" }],
       ]
     : "list",
-  webServer: process.env.PLAYWRIGHT_BASE_URL
-    ? undefined
-    : {
-        command: "npm run ensure",
-        url: `${baseURL}/api/local-project-id`,
-        reuseExistingServer: false,
-        timeout: 120_000,
-      },
+  webServer:
+    collectionOnly || process.env.PLAYWRIGHT_BASE_URL
+      ? undefined
+      : {
+          command: "npm run ensure",
+          url: `${baseURL}/api/local-project-id`,
+          reuseExistingServer: false,
+          timeout: 120_000,
+        },
   use: {
     baseURL,
     headless: process.env.CI ? true : process.env.HEADED === "true" ? false : undefined,
@@ -167,6 +171,10 @@ export default defineConfig({
       name: "mobile-pwa-standalone",
       testMatch: productionSpecPattern,
       grepInvert: mockupTag,
+      // This is the full-height iPhone geometry backstop, not an OS install.
+      // Installed CSS is enabled and asserted by the explicit phone-scroll
+      // fixtures in every project; physical iOS acceptance remains separate.
+      metadata: { phoneViewportContract: "full-height", installedLayoutContract: "explicit-compiled-css-fixture" },
       use: {
         ...devices["iPhone 14"],
         storageState: iosInstallHintDismissed,
@@ -188,3 +196,15 @@ export default defineConfig({
     },
   ],
 });
+
+// In Playwright 1.63 CLI grep filters are additive: they cannot undo project
+// exclusions. Collection must see every identity before quarantine validation.
+// This branch never changes the filters used by an executing browser run.
+if (collectionOnly) {
+  for (const project of config.projects ?? []) {
+    delete project.grep;
+    delete project.grepInvert;
+  }
+}
+
+export default config;

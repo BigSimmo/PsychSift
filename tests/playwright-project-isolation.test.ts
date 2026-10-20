@@ -23,6 +23,33 @@ function configPattern(source: string, name: string): RegExp {
 }
 
 describe("Playwright production-project isolation", () => {
+  it("states the full-height phone project and proves installed layout through explicit CSS fixtures", () => {
+    const config = readFileSync(resolve(process.cwd(), "playwright.config.ts"), "utf8");
+    const phone = readFileSync(resolve(process.cwd(), "tests/helpers/phone-scroll.ts"), "utf8");
+    const installed = readFileSync(resolve(process.cwd(), "tests/ui-phone-scroll.spec.ts"), "utf8");
+    const project = config.slice(config.indexOf('name: "mobile-pwa-standalone"'), config.indexOf('name: "tablet"'));
+    expect(project).toContain('phoneViewportContract: "full-height"');
+    expect(project).toContain('installedLayoutContract: "explicit-compiled-css-fixture"');
+    expect(project).toContain('...devices["iPhone 14"]');
+    expect(project).toContain("viewport: { width: 390, height: 844 }");
+    expect(phone).toContain('rule.conditionText.includes("display-mode: standalone")');
+    expect(phone).toContain("const rulesCount = await forceCompiledStandalonePhoneCss(page)");
+    expect(installed).toContain('"standalone PWA delegates scrolling to #main-content"');
+    expect(installed).toContain('"document remains un-scrolled"');
+  });
+
+  it("settles phone hydration, fonts, safe areas and layout before geometry instead of sleeping", () => {
+    const phone = readFileSync(resolve(process.cwd(), "tests/helpers/phone-scroll.ts"), "utf8");
+    const setup = phone.slice(
+      phone.indexOf("export async function gotoPhoneSurface"),
+      phone.indexOf("export function forceCompiledStandalonePhoneCss"),
+    );
+    expect(setup).toContain("await expectHydrated(main)");
+    expect(setup).toContain("await document.fonts.ready");
+    expect(setup).toContain("stableSamples >= 2");
+    expect(setup).toContain('getPropertyValue("--safe-area-bottom")');
+    expect(setup).not.toContain("waitForTimeout");
+  });
   it("excludes advisory mockup cases from every required browser project", () => {
     const source = readFileSync(resolve(process.cwd(), "playwright.config.ts"), "utf8");
 

@@ -6,12 +6,12 @@
  *   - PID 1 is the Next production server (`next start` argv, or Next 16's
  *     rewritten `next-server (v…)` process title after boot)
  *   - container stops cleanly within a bounded timeout
+ * The legacy --read-only flag remains accepted; startup always uses a read-only root.
  */
 import { spawnSync } from "node:child_process";
-
 import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
-const IMAGE_REF = process.argv[2] ?? "clinical-kb-app:ci";
+const IMAGE_REF = process.argv.slice(2).find((arg) => arg !== "--read-only") ?? "clinical-kb-app:ci";
 const CONTAINER_NAME = "clinical-kb-app-smoke";
 const STOP_TIMEOUT_SECONDS = 30;
 
@@ -36,26 +36,27 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+export function appHealthProbe(healthUrl) {
+  return `fetch(${JSON.stringify(healthUrl)}, {signal: AbortSignal.timeout(5000)}).then(async (r)=>{if(r.status!==200)throw new Error('Expected HTTP 200, got '+r.status);const j=await r.json();if(!j||typeof j!=='object'||Array.isArray(j))throw new Error('Invalid health JSON');console.log(JSON.stringify(j));}).catch((e)=>{console.error(e.message);process.exit(1);})`;
+}
+
 async function waitForHealth(port = 3000, attempts = 30) {
   const healthUrl = `http://127.0.0.1:${port}/api/health`;
+  let lastError = "No successful health response";
   for (let i = 0; i < attempts; i += 1) {
-    const result = run([
-      "docker",
-      "exec",
-      CONTAINER_NAME,
-      "node",
-      "-e",
-      `fetch("${healthUrl}").then((r)=>r.json()).then((j)=>{console.log(JSON.stringify(j));process.exit(0);}).catch((e)=>{console.error(e.message);process.exit(1);})`,
-    ]);
+    const result = run(["docker", "exec", CONTAINER_NAME, "node", "-e", appHealthProbe(healthUrl)]);
     if (result.status === 0) {
       try {
         return JSON.parse(result.stdout);
       } catch {
-        /* not ready yet */
+        lastError = "Health probe returned invalid JSON";
       }
+    } else {
+      lastError = result.stderr?.trim() || result.error?.message || `docker exec exited ${result.status}`;
     }
     await sleep(1000);
   }
+  console.error("Health readiness probe failed:", lastError);
   return null;
 }
 
@@ -144,7 +145,7 @@ async function main() {
   // Next 16 rewrites the process title to `next-server (vX.Y.Z)` after
   // `next start` boots; accept either form so smoke tracks the live server.
   const pid1LooksLikeNextServer = pid1.includes("next start") || /\bnext-server\b/.test(pid1);
-  if (!pid1LooksLikeNextServer) {
+  if (psResult.status !== 0 || psResult.signal || psResult.error || !pid1LooksLikeNextServer) {
     console.error("PID 1 is not the expected Next production server:", pid1);
     const logs = run(["docker", "logs", "--tail", "80", CONTAINER_NAME]);
     if (logs.stdout) console.error(logs.stdout);
@@ -170,7 +171,10 @@ async function main() {
   if (!isCleanContainerExit(inspectResult)) {
     console.error(
       "Container shutdown inspection failed or reported an abnormal exit:",
-      inspectResult.stderr || inspectResult.stdout,
+      inspectResult.stderr ||
+        inspectResult.error?.message ||
+        inspectResult.stdout ||
+        `docker inspect exited ${inspectResult.status}, signal ${inspectResult.signal}`,
     );
     cleanContainer();
     process.exit(1);

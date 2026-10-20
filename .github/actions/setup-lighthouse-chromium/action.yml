@@ -14,7 +14,7 @@ description: >
 # mismatched runner failed it again (#1690).
 #
 # Pin Playwright's own managed Chromium instead, the same binary the Production UI / Visual
-# baselines jobs already use, cached by lockfile hash so it is identical across every runner
+# baselines jobs already use, cached by browser revision so it is identical across every runner
 # for a given commit. run-lighthouse-budget.mjs already honours
 # CHROME_PATH/PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH.
 #
@@ -26,14 +26,17 @@ description: >
 runs:
   using: composite
   steps:
+    - name: Resolve Playwright browser cache key
+      id: browser-cache-key
+      shell: bash
+      run: node scripts/playwright-browser-cache-key.mjs --engine chromium --os "${{ runner.os }}" --arch "${{ runner.arch }}" >> "$GITHUB_OUTPUT"
+
     - name: Restore Chromium browser cache
       id: pw-cache
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
       with:
         path: ~/.cache/ms-playwright
-        key: playwright-chromium-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-        restore-keys: |
-          playwright-chromium-${{ runner.os }}-
+        key: ${{ steps.browser-cache-key.outputs.key }}
 
     # The browser archive is cached, but apt libraries are runner-local and must be
     # installed even on a browser-cache hit. `install-deps` shells out to `apt-get

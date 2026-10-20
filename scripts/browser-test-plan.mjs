@@ -72,6 +72,9 @@ import { fileURLToPath } from "node:url";
 
 import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 import { deriveCiCoverage } from "./ci-coverage.mjs";
+import { browserInputClosure } from "./browser-inputs.mjs";
+
+let browserInputs;
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -184,6 +187,12 @@ export function projectsForSpecs(specs, patterns) {
 }
 
 export function isSharedFoundation(file) {
+  // Browser libraries have no reliable rendered-identifier attribution. Share
+  // the actual client dependency graph with CI instead of another name list.
+  if (file.startsWith("src/lib/")) {
+    browserInputs ??= browserInputClosure(projectRoot);
+    if (browserInputs.has(file)) return true;
+  }
   return SHARED_FOUNDATION_PATTERNS.some((pattern) => pattern.test(file));
 }
 
@@ -225,7 +234,7 @@ export const BROWSER_LANE_PATTERNS = [
 
 export function isBrowserLanePath(file) {
   if (file === "src/app/api" || file.startsWith("src/app/api/")) return false;
-  return BROWSER_LANE_PATTERNS.some((pattern) => pattern.test(file));
+  return isSharedFoundation(file) || BROWSER_LANE_PATTERNS.some((pattern) => pattern.test(file));
 }
 
 /**

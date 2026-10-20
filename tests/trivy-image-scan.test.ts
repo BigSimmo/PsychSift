@@ -234,13 +234,119 @@ describe("Trivy image scan evidence validation (R13)", () => {
     });
   });
 
-  it("enforces fail-closed STATUS=ok checks for both images in docker-image.yml", () => {
-    const workflow = readFileSync(new URL("../.github/workflows/docker-image.yml", import.meta.url), "utf8");
+  it.each([
+    ["missing HIGH", "HIGH=0 ", ""],
+    ["missing CRITICAL", "CRITICAL=0 ", ""],
+    ["negative count", "HIGH=0", "HIGH=-1"],
+    ["decimal count", "HIGH=0", "HIGH=0.5"],
+    ["partial count", "HIGH=0", "HIGH=0x"],
+    ["non-numeric count", "CRITICAL=0", "CRITICAL=NaN"],
+    ["unsafe count", "HIGH=0", "HIGH=9007199254740992"],
+    ["duplicate field", "HIGH=0", "HIGH=0 HIGH=0"],
+  ])("rejects %s instead of treating the scan as clean", (_name, before, after) => {
+    const clean =
+      "Trivy scan completed (clinical-kb-app:ci): STATUS=ok HIGH=0 CRITICAL=0 MEDIUM=0 LOW=0 UNKNOWN=0\n" +
+      "Trivy scan completed (clinical-kb-worker:ci): STATUS=ok HIGH=0 CRITICAL=0 MEDIUM=0 LOW=0 UNKNOWN=0";
+    // Each image must independently carry valid evidence.
+    for (const line of [0, 1]) {
+      const records = clean.split("\n");
+      records[line] = records[line].replace(before, after);
+      expect(evaluateTrivySummaryText(records.join("\n"))).toMatchObject({ assessed: false, ok: false });
+    }
+  });
 
-    expect(workflow).toContain("STATUS=unassessed");
-    expect(workflow).toContain("Trivy scan completed (clinical-kb-app:ci): STATUS=ok");
-    expect(workflow).toContain("Trivy scan completed (clinical-kb-worker:ci): STATUS=ok");
-    expect(workflow).toContain("Trivy scan unassessed:");
+  it("rejects duplicate images and aggregate overflow", () => {
+    const app = "Trivy scan completed (clinical-kb-app:ci): STATUS=ok HIGH=0 CRITICAL=0 MEDIUM=0 LOW=0 UNKNOWN=0";
+    const worker = app.replace("clinical-kb-app:ci", "clinical-kb-worker:ci");
+    expect(evaluateTrivySummaryText(`${app}\n${worker}\n${app}`)).toMatchObject({ assessed: false, ok: false });
+    expect(
+      evaluateTrivySummaryText(
+        `${app.replace("HIGH=0", "HIGH=9007199254740991")}\n${worker.replace("HIGH=0", "HIGH=1")}`,
+      ),
+    ).toMatchObject({ assessed: false, ok: false, reason: "count_overflow" });
+  });
+
+  it.each([
+    ["push", 0, 0, 0],
+    ["schedule", 0, 0, 0],
+    ["push", 2, 1, 1],
+    ["schedule", 2, 1, 1],
+    ["workflow_dispatch", 2, 1, 1],
+    ["pull_request", 2, 1, 0],
+    ["merge_group", 2, 1, 0],
+  ])("evaluates actual CLI policy for %s with HIGH=%i CRITICAL=%i", (event, high, critical, exitCode) => {
+    const dir = mkdtempSync(join(tmpdir(), "trivy-evaluation-"));
+    try {
+      const summary = join(dir, "summary.txt");
+      writeFileSync(
+        summary,
+        `Trivy scan completed (clinical-kb-app:ci): STATUS=ok HIGH=${high} CRITICAL=${critical} MEDIUM=0 LOW=0 UNKNOWN=0\n` +
+          "Trivy scan completed (clinical-kb-worker:ci): STATUS=ok HIGH=0 CRITICAL=0 MEDIUM=0 LOW=0 UNKNOWN=0\n",
+      );
+      const result = spawnSync(
+        process.execPath,
+        [
+          fileURLToPath(new URL("../scripts/trivy-image-scan.mjs", import.meta.url)),
+          "--evaluate-summary",
+          summary,
+          event,
+        ],
+        { encoding: "utf8", env: { ...process.env, GITHUB_STEP_SUMMARY: join(dir, "job-summary.md"), PATH: "" } },
+      );
+      expect(result.status, result.stderr).toBe(exitCode);
+      expect(result.stdout).toContain(`HIGH=${high} CRITICAL=${critical}`);
+      if (high || critical)
+        expect(result.stdout + result.stderr).toContain(exitCode === 0 ? "::warning::" : "::error::");
+      expect(readFileSync(join(dir, "job-summary.md"), "utf8")).toContain("clinical-kb-worker:ci");
+    } finally {
+      rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    }
+  });
+
+  it.each(["pull_request", "merge_group", "push", "schedule"])(
+    "fails closed on missing and malformed CLI evidence for %s",
+    (event) => {
+      const dir = mkdtempSync(join(tmpdir(), "trivy-unassessed-"));
+      try {
+        const summary = join(dir, "summary.txt");
+        const run = () =>
+          spawnSync(
+            process.execPath,
+            [
+              fileURLToPath(new URL("../scripts/trivy-image-scan.mjs", import.meta.url)),
+              "--evaluate-summary",
+              summary,
+              event,
+            ],
+            { encoding: "utf8", env: { ...process.env, GITHUB_STEP_SUMMARY: "", PATH: "" } },
+          );
+        for (const text of [
+          null,
+          "",
+          "Trivy scan completed (clinical-kb-app:ci): STATUS=ok\nTrivy scan completed (clinical-kb-worker:ci): STATUS=ok",
+        ]) {
+          if (text !== null) writeFileSync(summary, text);
+          const result = run();
+          expect(result.status).toBe(1);
+          expect(result.stderr).toContain("::error::Trivy scan unassessed:");
+        }
+      } finally {
+        rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      }
+    },
+  );
+
+  it("uses the strict Node evaluator in docker-image.yml without an arithmetic fallback", () => {
+    const workflow = readFileSync(new URL("../.github/workflows/docker-image.yml", import.meta.url), "utf8");
+    expect(workflow).toContain('--evaluate-summary trivy-scan-summary.txt "$SCAN_EVENT_NAME"');
+    expect(workflow).toContain("SCAN_EVENT_NAME: ${{ github.event_name }}");
+    expect(workflow).not.toContain("| bc");
+    const evaluation = workflow.slice(
+      workflow.indexOf("      - name: Fail on HIGH/CRITICAL"),
+      workflow.indexOf("      - name: Admit complete bounded"),
+    );
+    expect(evaluation).toContain("if: always()");
+    expect(evaluation).not.toContain("continue-on-error:");
   });
 });
 
