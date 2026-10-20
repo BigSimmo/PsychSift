@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
-import { pathToFileURL } from "node:url";
+
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 /**
  * Minimal process evidence consumed by the audit policy, independent of spawnSync internals.
@@ -59,6 +60,6 @@ export async function runDependencyAudit({
   return 1;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isDirectEntrypoint(import.meta.url)) {
   process.exitCode = await runDependencyAudit();
 }

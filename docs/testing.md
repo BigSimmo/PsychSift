@@ -474,7 +474,9 @@ and executable SHA-256 pins, and rechecks cached executable bytes before use. Po
 negative semantic probes precede validation of every workflow. Optional ambient ShellCheck and
 Pyflakes integrations are disabled so this gate has a stable schema/expression remit. Existing
 pin/policy and composite-action contract checks remain necessary. The manifest and validator
-are themselves workflow-scoped inputs.
+are themselves workflow-scoped inputs. The focused workflow suite also enforces the shared
+`isDirectEntrypoint` helper across scripts, preventing new CI helpers from silently doing nothing
+when launcher paths differ.
 
 PR CI uses the same fail-closed classifier as `verify:pr-local`. `static-pr` always proves runtime/install parity, the classifier and verification-plan invariants, and changed-file formatting. Recognised documentation changes add documentation integrity checks; recognised workflow/policy-only changes add action/policy self-tests and `test:ci-workflows`. Mixed executable+workflow changes skip that focused Vitest invocation locally and in CI because the full unit or coverage invocation already contains the same workflow-reading suites. Executable, test, build/config, dependency, database/container, mixed, or unknown non-document paths set `static_heavy_changed`, retaining lint, typecheck, safety/config/RAG, and the full unit coverage job. Build, migration, Docker, and browser jobs remain separately scoped. A dependency audit blocks on lockfile/npm-config changes and the scheduled full-run sentinel, instead of making a low-value registry request on every PR. `verify:pr-local` additionally runs `npm ci --dry-run --ignore-scripts` first when `package.json` or `package-lock.json` changes, catching lockfile/install disagreement before the broad local plan or CI fan-out.
 
