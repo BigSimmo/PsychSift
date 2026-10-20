@@ -937,12 +937,15 @@ jobs:
         timeout-minutes: 8
         run: node scripts/check-bundle-budget.mjs
 
+      # Placeholders, never secrets: the smoke only proves the production build boots and
+      # answers /api/local-project-id. This step runs branch code (manual runs from any
+      # branch), so a real key here reached that branch's code (audit CC-05, 2026-10-20).
       - name: Deployment boot smoke
         if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/')
         env:
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          RAG_QUERY_HASH_SECRET: ${{ secrets.RAG_QUERY_HASH_SECRET }}
+          SUPABASE_SERVICE_ROLE_KEY: placeholder-ci-service-role
+          OPENAI_API_KEY: placeholder-ci-openai
+          RAG_QUERY_HASH_SECRET: placeholder-ci-query-hash-secret
         run: npm run check:deployment-readiness
 
   container-images:
