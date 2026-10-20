@@ -125,7 +125,7 @@ describe("container delivery contract", () => {
 
   it("builds pinned native security repairs with normal package provenance and runtime acceptance", () => {
     const worker = read("Dockerfile.worker");
-    for (const component of ["util-linux", "tesseract", "ncurses"]) {
+    for (const component of ["util-linux", "tesseract", "ncurses", "libxml2"]) {
       expect(worker).toContain(`AS native-${component}`);
       expect(worker).toContain(`build_security_debs.py ${component}`);
       expect(worker).toContain(`COPY --from=native-${component} /out/ /tmp/worker-native-debs/`);

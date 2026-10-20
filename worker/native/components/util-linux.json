@@ -12,8 +12,10 @@
     },
     {
       "file": "patches/util-linux/03-4cccf4edc256507734e3484cfaedf5980945c2fa.patch",
-      "sha256": "95a3ecfea9c019a7e68b86589f54cfdc6e5f938b9186d9e7a9cc7b10da96a9a3",
-      "upstream_commit": "4cccf4edc256507734e3484cfaedf5980945c2fa"
+      "sha256": "64200e3a728e04f44c272677363f2e4a795d1e7a75037cc263e003ac7037e40d",
+      "upstream_commit": "4cccf4edc256507734e3484cfaedf5980945c2fa",
+      "upstream_sha256": "95a3ecfea9c019a7e68b86589f54cfdc6e5f938b9186d9e7a9cc7b10da96a9a3",
+      "local_adaptation": "Correct RESOLVE_NO_SYMLINKS fallback from upstream 0x02 (NO_MAGICLINKS) to Linux UAPI 0x04; all other patch bytes unchanged."
     },
     {
       "file": "patches/util-linux/04-71ff1c94be2fd2577bf600accb5c6ad2782276ef.patch",
@@ -43,8 +45,8 @@
     "util-linux"
   ],
   "extra_build_packages": ["quilt"],
-  "test_commands": [],
-  "change_summary": "CVE-2026-76642, CVE-2026-78408 and CVE-2026-78410; immutable upstream stable fixes and prerequisites; preserve Debian source version and existing fixes.",
+  "test_commands": [["sh", "/tmp/worker-native/util-linux-regressions.sh"]],
+  "change_summary": "CVE-2026-76642, CVE-2026-78408 and CVE-2026-78410; upstream stable fixes and prerequisites, with explicit Linux UAPI correction to RESOLVE_NO_SYMLINKS fallback; preserve Debian source version and existing fixes.",
   "source_date_epoch": 1792497600,
-  "test_policy": "Normal Debian dh_auto_test runs the existing upstream suite. Do not duplicate its subset after a successful package build; privileged exploit reproduction remains separate evidence."
+  "test_policy": "Normal Debian dh_auto_test remains enabled. After the build, compile and run the actual libcommon openat2 wrappers against ordinary leaf/ancestor symlinks and RESOLVE_BENEATH traversal; unavailable openat2 fails rather than skips."
 }

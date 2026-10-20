@@ -90,6 +90,7 @@ RUN python3 /tmp/worker-native/test_build_security_debs.py
 FROM native-security-build-base AS native-util-linux
 COPY worker/native/components/util-linux.json /tmp/worker-native/components/util-linux.json
 COPY worker/native/patches/util-linux/ /tmp/worker-native/patches/util-linux/
+COPY worker/native/util-linux-regressions.sh /tmp/worker-native/util-linux-regressions.sh
 RUN python3 /tmp/worker-native/build_security_debs.py util-linux
 
 FROM native-security-build-base AS native-tesseract
@@ -104,11 +105,19 @@ COPY worker/native/patches/ncurses/ /tmp/worker-native/patches/ncurses/
 COPY worker/native/ncurses-regressions.sh /tmp/worker-native/ncurses-regressions.sh
 RUN python3 /tmp/worker-native/build_security_debs.py ncurses
 
+FROM native-security-build-base AS native-libxml2
+COPY worker/native/components/libxml2.json /tmp/worker-native/components/libxml2.json
+COPY worker/native/patches/libxml2/ /tmp/worker-native/patches/libxml2/
+COPY worker/native/libxml2-tests/ /tmp/worker-native/libxml2-tests/
+COPY worker/native/libxml2-regressions.sh /tmp/worker-native/libxml2-regressions.sh
+RUN python3 /tmp/worker-native/build_security_debs.py libxml2
+
 FROM python-runtime-base AS runner
 COPY --from=node-base /usr/local/bin/node /usr/local/bin/node
 COPY --from=native-util-linux /out/ /tmp/worker-native-debs/
 COPY --from=native-tesseract /out/ /tmp/worker-native-debs/
 COPY --from=native-ncurses /out/ /tmp/worker-native-debs/
+COPY --from=native-libxml2 /out/ /tmp/worker-native-debs/
 COPY worker/native/build_security_debs.py /tmp/worker-native-verify.py
 # libgl1 + libglib2.0-0t64 are OpenCV's runtime shared libraries: docling's rapidocr
 # stage imports cv2 during `docling-tools models download` and again at run time,

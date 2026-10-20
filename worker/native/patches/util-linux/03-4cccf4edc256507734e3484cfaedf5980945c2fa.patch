@@ -34,7 +34,7 @@ index 996e183221d..09395620aa6 100644
 +			     mode_t mode, unsigned long long resolve);
 +
 +#ifndef RESOLVE_NO_SYMLINKS
-+# define RESOLVE_NO_SYMLINKS	0x02
++# define RESOLVE_NO_SYMLINKS	0x04
 +#endif
 +#ifndef RESOLVE_BENEATH
 +# define RESOLVE_BENEATH	0x08

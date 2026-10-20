@@ -81,7 +81,7 @@ identities unchanged; validate the complete rebuilt image, actual OCR cases
 and full scan before accepting its dependency changes. Ingestion restoration
 remains a separate operational action.
 
-Native util-linux, Tesseract and ncurses security repairs are built separately
+Native util-linux, Tesseract, ncurses and libxml2 security repairs are built separately
 from signed, exact-version Debian sources. `worker/native/components/` pins the
 source descriptors and upstream patch hashes. The packages retain their real
 upstream versions with a `+psychsift1` Debian revision, normal package metadata,
