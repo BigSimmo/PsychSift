@@ -6381,10 +6381,10 @@
         },
         {
           "name": "Avoidant/Restrictive Food Intake Disorder (ARFID)",
-          "icd11Context": "ICD-11 (6B83): Specifically codes for inadequate intake, sensory avoidance, or aversive consequences.",
+          "icd11Context": "ICD-11 (6B83): Single category with no subtype codes for lack of interest, sensory avoidance or aversive consequences; these manifestations are DSM-5-TR Criterion A descriptors.",
           "groups": [
             {
-              "label": "Features (ICD-11)",
+              "label": "DSM-5-TR manifestations",
               "items": [
                 {
                   "label": "With apparent lack of interest in eating or food",
@@ -6399,11 +6399,8 @@
                     "rowKey": "specifier:eat:avoidant-restrictive-food-intake-disorder-arfid:features-icd-11:with-inadequate-food-intake-associated-with-limited-availability",
                     "contentHash": "10cc9990",
                     "sourceVerificationStatus": "source-verified",
-                    "clinicianReviewStatus": "clinician-reviewed",
-                    "changedSinceReview": false,
-                    "reviewedBy": "Psych Sift",
-                    "reviewedAt": "2026-10-15T17:15:54.631Z",
-                    "reviewedContentSha256": "a95fead5ea02aeb1c677e774c07e111d12a7f58d83a6753dafb112da905b3bd4"
+                    "clinicianReviewStatus": "clinician-review-pending",
+                    "changedSinceReview": true
                   }
                 },
                 {
@@ -6419,11 +6416,8 @@
                     "rowKey": "specifier:eat:avoidant-restrictive-food-intake-disorder-arfid:features-icd-11:with-avoidance-restriction-based-on-sensory-characteristics",
                     "contentHash": "0745a1f7",
                     "sourceVerificationStatus": "source-verified",
-                    "clinicianReviewStatus": "clinician-reviewed",
-                    "changedSinceReview": false,
-                    "reviewedBy": "Psych Sift",
-                    "reviewedAt": "2026-10-15T17:15:54.631Z",
-                    "reviewedContentSha256": "364eb5c07659270291291f32412bd499dd3f890bda5fe3b4cab00e2f648d1137"
+                    "clinicianReviewStatus": "clinician-review-pending",
+                    "changedSinceReview": true
                   }
                 },
                 {
@@ -6439,11 +6433,8 @@
                     "rowKey": "specifier:eat:avoidant-restrictive-food-intake-disorder-arfid:features-icd-11:with-avoidance-related-to-aversive-consequences-of-eating",
                     "contentHash": "38dfc6bb",
                     "sourceVerificationStatus": "source-verified",
-                    "clinicianReviewStatus": "clinician-reviewed",
-                    "changedSinceReview": false,
-                    "reviewedBy": "Psych Sift",
-                    "reviewedAt": "2026-10-15T17:15:54.631Z",
-                    "reviewedContentSha256": "85e88bf3dd8d29555b115bfeffda06f2d6f785e62c32f510050abf90ed2d4d04"
+                    "clinicianReviewStatus": "clinician-review-pending",
+                    "changedSinceReview": true
                   }
                 }
               ]

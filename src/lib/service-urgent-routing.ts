@@ -18,6 +18,11 @@ const CRISIS =
   /\b(?:suicid\w*|crisis|acute|unsafe|self[- ]?harm\w*|mental health emergency|kill (?:myself|oneself|themselves|himself|herself)|end (?:my|one['’]?s|their|his|her) life|take (?:my|one['’]?s|their|his|her) own life|hang (?:myself|oneself|themselves|himself|herself)|bottle of pills)\b/i;
 const IMMEDIATE_DANGER =
   /\b(?:actively suicidal|immediate danger|life[- ]?threatening|severe injury|overdose|about to (?:kill|harm)|cannot keep (?:myself|them|him|her|the patient) safe|emergency (?:now|in progress)|strangl\w*|chok(?:ing|ed)?|can[’']?t breathe|cannot breathe)\b/i;
+// Medical emergencies (a seizure, collapse, unconsciousness, not breathing) pin Emergency
+// services (000) first. Unlike IMMEDIATE_DANGER they do not also pin the mental-health crisis
+// lines; an alcohol-withdrawal seizure keeps the Alcohol and Drug Support Line after 000.
+const MEDICAL_EMERGENCY =
+  /\b(?:seizures?|seizing|convuls\w*|unconscious|unresponsive|not breathing|stopped breathing|collapsed|anaphyla\w*)\b/i;
 // Wording that says the person is under 18: CAMHS Crisis Connect alone.
 const CHILD =
   /(?:\b(?:child(?:ren)?|kids?|teen(?:ager)?s?|adolescents?|minors?|under[- ]?18|(?:[0-9]|1[0-7])\s*[- ]?\s*(?:year|yr)s?[- ]?old)\b|<\s*18\b)/i;
@@ -172,6 +177,7 @@ export function detectServiceUrgentIntents(query: string): ServiceUrgentIntent[]
   const intents: ServiceUrgentIntent[] = [];
   const crisis = CRISIS.test(clean);
   const immediateDanger = IMMEDIATE_DANGER.test(clean);
+  const medicalEmergency = MEDICAL_EMERGENCY.test(clean);
   const postvention = POSTVENTION.test(clean);
   const child = CHILD.test(clean);
   const youthAnyAge = !child && YOUTH.test(clean);
@@ -192,8 +198,13 @@ export function detectServiceUrgentIntents(query: string): ServiceUrgentIntent[]
     intents.push("regional_after_hours");
   }
 
-  // Emergency (000): immediate danger, or acute crisis (adult/youth) where a local daytime clinic is not handling it
-  if (immediateDanger || (acuteCrisis && !child && !youthAnyAge && !(isRegional && region && !isAfterHours))) {
+  // Emergency (000): immediate danger, a medical emergency, or acute crisis (adult/youth) where a
+  // local daytime clinic is not handling it
+  if (
+    immediateDanger ||
+    medicalEmergency ||
+    (acuteCrisis && !child && !youthAnyAge && !(isRegional && region && !isAfterHours))
+  ) {
     if (!intents.includes("emergency")) {
       intents.push("emergency");
     }

@@ -410,7 +410,7 @@ export const toolCatalogRecords: ToolCatalogRecord[] = [
     id: "calculators",
     title: "Calculators",
     mobileTitle: "Calculators",
-    description: "Score psychiatry rating scales and clinical decision calculators with source-cited guidance.",
+    description: "Score psychiatry rating scales with source-cited guidance.",
     bestFor: "Bedside scoring and severity banding",
     detail:
       "Search and complete clinical calculators (PHQ-9, GAD-7, and related scales). Scores support clinical judgement and cite their source — they never replace a full assessment.",

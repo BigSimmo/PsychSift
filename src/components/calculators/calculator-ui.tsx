@@ -626,7 +626,14 @@ export function formatResultSummary(calc: CalculatorFixture, state: DerivedCalcu
     : `${calc.abbrev} ${state.score}/${calc.maxScore} — ${state.result.label}${
         state.complete ? "" : ` (${progressLabel(state)})`
       }`;
-  return `${score}\nClinical reference — not validated decision support. Confirm scoring and interpretation against the source instrument.`;
+  // An active safety flag (PHQ-9 item 9 endorsed) travels with the copied score, so a pasted
+  // "PHQ-9 6/27 — Mild" can never drop the self-harm item. Provisional until the scale is complete.
+  const flagLines = state.flags.map((flag) => `Flag${state.complete ? "" : " (provisional)"}: ${flag}`);
+  return [
+    score,
+    ...flagLines,
+    "Clinical reference — not validated decision support. Confirm scoring and interpretation against the source instrument.",
+  ].join("\n");
 }
 
 /**
