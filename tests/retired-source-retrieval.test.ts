@@ -239,3 +239,27 @@ describe("legacy search and answer paths", () => {
     expect(results.map((result) => result.document_id)).toEqual(["replacement-doc"]);
   });
 });
+
+describe("answer boundary backstop", () => {
+  it("flags every retired source as outdated danger, using the same predicate retrieval filters on", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(NOW);
+    const { sourceGovernanceWarnings, OUTDATED_SOURCE_WARNING_MESSAGE } = await import("../src/lib/source-governance");
+    const retired = [
+      supersededOld,
+      chunk({ id: "w", document_id: "w-doc", source_metadata: { change_state: "withdrawn" } }),
+      chunk({ id: "s", document_id: "s-doc", source_metadata: { change_state: "superseded" } }),
+      chunk({ id: "e", document_id: "e-doc", source_metadata: { expiry_date: "2026-10-19" } }),
+    ];
+
+    for (const result of retired) {
+      expect(sourceGovernanceWarnings({ results: [result] })).toContainEqual(
+        expect.objectContaining({ severity: "danger", message: OUTDATED_SOURCE_WARNING_MESSAGE }),
+      );
+    }
+    const inDate = chunk({ source_metadata: { expiry_date: "2026-10-20" } });
+    expect(sourceGovernanceWarnings({ results: [inDate] }).some((warning) => warning.severity === "danger")).toBe(
+      false,
+    );
+  });
+});

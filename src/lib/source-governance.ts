@@ -205,7 +205,8 @@ export function sourceGovernanceWarnings(args: {
         title,
       });
     }
-    if (source.document_status === "outdated") {
+    // The same predicate retrieval filters on, so this backstop and the filter cannot drift.
+    if (isRetiredSourceMetadata(source)) {
       pushUnique(warnings, {
         code: SOURCE_GOVERNANCE_CODES.OUTDATED,
         severity: GOVERNANCE_SEVERITY_MATRIX[SOURCE_GOVERNANCE_CODES.OUTDATED] as SourceGovernanceWarning["severity"],
