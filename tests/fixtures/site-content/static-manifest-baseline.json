@@ -1,8 +1,8 @@
 {
   "version": "clinical-kb-site-static-manifest-v1",
-  "gitSha": "03066faa328cd0bae0fbdb1f6085e0eb0334fe9d",
+  "gitSha": "035f997a1147c7d010036df7c9951a838a02ddf2",
   "registryVersion": "site-content-registry-v1",
-  "generatedAt": "2026-10-20T17:31:41.461Z",
+  "generatedAt": "2026-10-20T18:44:38.638Z",
   "records": [
     {
       "logicalId": "calculators:auditc",
@@ -4408,34 +4408,34 @@
       "logicalId": "specifiers:specifier-eat-avoidant-restrictive-food-intake-disorder-arfid-features-icd-11-with-avoidance-related-to-aversive-consequences-of-eating",
       "domain": "specifiers",
       "route": "/specifiers/specifier-eat-avoidant-restrictive-food-intake-disorder-arfid-features-icd-11-with-avoidance-related-to-aversive-consequences-of-eating",
-      "contentHash": "3248e4c8c6ce70a0e53906206d29894608340ac0b208e0d8fd38aec378826c73",
-      "lineageDigest": "74a02197fa782aa116c2121d3dc20be5821b4101ac7bea6bf5670c0ed0f63ce0",
-      "validationStatus": "locally_reviewed",
-      "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "contentHash": "4c698d08c7728059a44aaba741c7db08d98eec270aa49221e4692037afab668f",
+      "lineageDigest": "0f71ddc567f205a926236fcfda64e9fe40cabff646438a37e6e4f364d7b584e1",
+      "validationStatus": "unverified",
+      "sourceStatus": "review_due",
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-eat-avoidant-restrictive-food-intake-disorder-arfid-features-icd-11-with-avoidance-restriction-based-on-sensory-characteristics",
       "domain": "specifiers",
       "route": "/specifiers/specifier-eat-avoidant-restrictive-food-intake-disorder-arfid-features-icd-11-with-avoidance-restriction-based-on-sensory-characteristics",
-      "contentHash": "320800e226c10b98f05cf9e02cbad17f863428e7feba7c7beaf83d4deda8c10d",
-      "lineageDigest": "a7b617b3e0254cfac6fbad1ca0f7e894c36055c5fee31fb589c0b315025f1665",
-      "validationStatus": "locally_reviewed",
-      "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "contentHash": "88b4bce2e69138c946c3ba30348323c81582314b51e7be0b144a3ce9ce0edb8f",
+      "lineageDigest": "b20aef999bd6a178d274b215e7b55c100690c983cc77934d70b5bc52d9ae7a45",
+      "validationStatus": "unverified",
+      "sourceStatus": "review_due",
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-eat-avoidant-restrictive-food-intake-disorder-arfid-features-icd-11-with-inadequate-food-intake-associated-with-limited-availability",
       "domain": "specifiers",
       "route": "/specifiers/specifier-eat-avoidant-restrictive-food-intake-disorder-arfid-features-icd-11-with-inadequate-food-intake-associated-with-limited-availability",
-      "contentHash": "48b952d03a09f19ffc98009de2a9cbdcc61546f37aec3d0f227a500848333789",
-      "lineageDigest": "cb4e351bbff5682f65263c31014c79a76176a777a58711a0f081fb7be685ffd6",
-      "validationStatus": "locally_reviewed",
-      "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "contentHash": "46eca8655bc1e9a00e2a45799d76318ec780356910d556ffe0c1026956c782bf",
+      "lineageDigest": "f238d9948ff83becdd21ce6f7797468768cc56368ffaea2c78f8093df1b0f18b",
+      "validationStatus": "unverified",
+      "sourceStatus": "review_due",
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-eat-binge-eating-disorder-course-severity-extreme-14-or-more-episodes-week",
@@ -11822,8 +11822,8 @@
       "logicalId": "tools:calculators",
       "domain": "tools",
       "route": "/?mode=calculators",
-      "contentHash": "e54fbefca7021b3e6d041e757cd8764ea087d94ee8e300adf53c6dc109a8f3df",
-      "lineageDigest": "5768cbe83da22f64d7631278f9162e5fdf9dc8f477060c8a6188aaa724c56251",
+      "contentHash": "acd2e026e9a0f9445452df1329c99885eb2f847237d558577e81727ff215be57",
+      "lineageDigest": "e7f0257d7801832084fc3bacbd93c14ce66ffb3c316fb6eb2a5ad78912383cec",
       "validationStatus": "locally_reviewed",
       "sourceStatus": "current",
       "eligible": true,
@@ -11896,5 +11896,5 @@
       "exclusionReason": null
     }
   ],
-  "staticManifestDigest": "b554b2214150d82382894e9cf42c986c4fbd4d4728ea6597ef259049a2a66ad0"
+  "staticManifestDigest": "a1df36a2e8ffdd70c32ab3be72f53c3fc4bd43ad7bf2fd9f2a1f182241781485"
 }
