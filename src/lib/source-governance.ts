@@ -111,18 +111,6 @@ function pushUnique(warnings: SourceGovernanceWarning[], warning: SourceGovernan
   warnings.push(warning);
 }
 
-const PERTH_CALENDAR_DATE = new Intl.DateTimeFormat("en-AU", {
-  timeZone: "Australia/Perth",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
-
-function perthIsoDate(now: Date) {
-  const parts = Object.fromEntries(PERTH_CALENDAR_DATE.formatToParts(now).map((part) => [part.type, part.value]));
-  return `${parts.year}-${parts.month}-${parts.day}`;
-}
-
 /**
  * True when a source has been taken out of use: the owner marked it superseded, rejected or
  * decommissioned (`record_source_review` stores each as `document_status: "outdated"`), its
@@ -139,9 +127,10 @@ export function isRetiredSourceMetadata(
 ) {
   if (source.document_status === "outdated") return true;
   if (source.change_state === "withdrawn" || source.change_state === "superseded") return true;
-  // expiry_date is already a validated ISO date or date-time after normalisation.
+  // expiry_date is already a validated ISO date or date-time after normalisation. Compared on
+  // the UTC calendar date, the same as isPastExpiryDate in src/lib/sources/catalogue-core.ts.
   const expiry = source.expiry_date?.slice(0, 10);
-  return Boolean(expiry && expiry < perthIsoDate(now));
+  return Boolean(expiry && expiry < now.toISOString().slice(0, 10));
 }
 
 /** Drop retired sources; returns the same array when nothing is removed. */

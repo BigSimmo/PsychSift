@@ -102,8 +102,11 @@ describe("isRetiredSourceMetadata", () => {
     expect(isRetiredSourceMetadata({ ...base, document_status: "unknown", change_state: "unknown" }, NOW)).toBe(false);
     expect(isRetiredSourceMetadata({ ...base, document_status: "review_due" }, NOW)).toBe(false);
     expect(isRetiredSourceMetadata({ ...base, change_state: "changed" }, NOW)).toBe(false);
-    // The expiry day itself is still in date (Perth calendar date).
+    // The expiry day itself is still in date, on the same UTC calendar date as the catalogue's
+    // isPastExpiryDate, so retrieval and the catalogue never disagree about the same source.
     expect(isRetiredSourceMetadata({ ...base, expiry_date: "2026-10-20" }, NOW)).toBe(false);
+    const earlyPerthMorningNextDay = new Date("2026-10-20T20:00:00.000Z"); // 04:00 on 21 Oct in Perth
+    expect(isRetiredSourceMetadata({ ...base, expiry_date: "2026-10-20" }, earlyPerthMorningNextDay)).toBe(false);
     expect(isRetiredSourceMetadata({ ...base, expiry_date: "2027-01-01" }, NOW)).toBe(false);
     expect(isRetiredSourceMetadata({}, NOW)).toBe(false);
   });
