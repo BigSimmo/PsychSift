@@ -5,6 +5,7 @@ import { stubZeroTouchPoints } from "./helpers/zero-touch";
 import { expectNoPageHorizontalOverflow, gotoApp } from "./helpers/spec-navigation";
 import { demoAnswer, demoDocuments } from "../src/lib/demo-data";
 import { toClientAnswerPayload } from "../src/lib/answer-client-payload";
+import { TERMS_VERSION } from "../src/lib/front-door-content";
 
 /**
  * Live Browser Testing — User Journeys Suite.
@@ -440,7 +441,12 @@ test.describe("Synthetic preview-origin navigation", () => {
       origins: [
         {
           origin: "https://approved-preview.invalid",
-          localStorage: [{ name: "clinical-kb-pwa-ios-install-dismissed-at", value: String(Date.now()) }],
+          localStorage: [
+            { name: "clinical-kb-pwa-ios-install-dismissed-at", value: String(Date.now()) },
+            // This journey asks a question, so it starts with the Terms accepted on this
+            // device, as every project does (see `returningVisitor` in playwright.config.ts).
+            { name: "psychsift:terms-accepted-on-device", value: TERMS_VERSION },
+          ],
         },
       ],
     },

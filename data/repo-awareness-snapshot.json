@@ -3864,6 +3864,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-20-terms-step-wording-signed-off.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/care-plan/CLAUDE-START-HERE.md",
         "section": "care-plan",
         "catalogued": true

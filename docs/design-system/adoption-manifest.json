@@ -290,6 +290,7 @@
       "entryExported": true,
       "directImportFiles": [
         "src/components/AccessibleTable.tsx",
+        "src/components/ClinicalDashboard.tsx",
         "src/components/admin/admin-credentials-wallet.tsx",
         "src/components/admin/admin-setup-sheet.tsx",
         "src/components/admin/contract/contract-end-page.tsx",
@@ -426,6 +427,7 @@
       ],
       "productImportFiles": [
         "src/components/AccessibleTable.tsx",
+        "src/components/ClinicalDashboard.tsx",
         "src/components/admin/admin-credentials-wallet.tsx",
         "src/components/admin/admin-setup-sheet.tsx",
         "src/components/admin/contract/contract-end-page.tsx",
@@ -844,6 +846,7 @@
         "src/components/cme/cme-entry-route-client.tsx",
         "src/components/cme/cme-training-page.tsx",
         "src/components/cme/cme-year-close-panel.tsx",
+        "src/components/front-door/ask-terms-step.tsx",
         "src/components/on-call/on-call-entry-editor.tsx",
         "src/components/on-call/service-governance-panel.tsx",
         "src/components/roster/manage/roster-decision-sheet.tsx",
@@ -860,6 +863,7 @@
         "src/components/cme/cme-entry-route-client.tsx",
         "src/components/cme/cme-training-page.tsx",
         "src/components/cme/cme-year-close-panel.tsx",
+        "src/components/front-door/ask-terms-step.tsx",
         "src/components/on-call/on-call-entry-editor.tsx",
         "src/components/on-call/service-governance-panel.tsx",
         "src/components/roster/manage/roster-decision-sheet.tsx",
@@ -3280,8 +3284,8 @@
         {
           "file": "src/components/ClinicalDashboard.tsx",
           "exists": true,
-          "imports": ["InlineNotice"],
-          "importedFamilies": ["feedback"],
+          "imports": ["Button", "InlineNotice"],
+          "importedFamilies": ["controls", "feedback"],
           "literalCkbV2": false,
           "dynamicCkbV2": false,
           "v2MountMode": "inherited-global-root",
