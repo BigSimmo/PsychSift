@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { CmeOfflineBanner } from "@/components/cme/cme-offline-banner";
 import { CmeSampleContext } from "@/components/cme/cme-sample-context";
-import { ModeBandStatus } from "@/components/mode-band/mode-band";
+import { ModeBandStatus, useModeBandHeading } from "@/components/mode-band/mode-band";
 import { WorkButton } from "@/components/mode-kit/work";
 import { WorkStateLoading, WorkStateNotice } from "@/components/mode-kit/work-state";
 import { useExampleData } from "@/lib/example-data/store";
@@ -110,6 +110,7 @@ export function CmeOwnerBoundary({ serverOwnerId, serverAuthVerified, demoMode, 
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6" data-testid="cme-owner-boundary">
       <h1 className="sr-only">CPD</h1>
+      <CmeBandEyebrow text={isOffline ? "Offline" : unavailable ? "Session not verified" : "Checking your session"} />
       {/* The mode band's line: offline, or loading while the session is checked.
           Nothing when the session could not be verified; the line below says so. */}
       <ModeBandStatus value={isOffline ? { kind: "offline" } : unavailable ? null : { kind: "loading" }} />
@@ -144,8 +145,15 @@ export function CmeOwnerBoundary({ serverOwnerId, serverAuthVerified, demoMode, 
 }
 
 /** A signed-out visitor who turned example data off: the plain sign-in state, nothing made up. */
+/** The band keeps an eyebrow line on the CPD home (layout `eyebrowSlot`), so every state names it. */
+function CmeBandEyebrow({ text }: { text: string }) {
+  useModeBandHeading({ eyebrow: text });
+  return null;
+}
+
 function CmeSignInRequired() {
   const [open, setOpen] = useState(false);
+  useModeBandHeading({ eyebrow: "Not signed in" });
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6" data-testid="cme-signed-out">
       <h1 className="sr-only">CPD</h1>

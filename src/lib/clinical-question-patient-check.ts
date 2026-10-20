@@ -87,6 +87,12 @@ export function clinicalQuestionPatientDetailMessage(problem: PatientDetailProbl
   return `This question looks like it holds a patient detail (${finding}). Remove it and ask again: questions are sent to an overseas AI service. This check catches some details, not all.`;
 }
 
+/** The held-back sentence for a search that stays on our own servers (Medication, DSM, Forms and the like). */
+export function searchPatientDetailMessage(problem: PatientDetailProblem): string {
+  const finding = problem.title.replace(/^This looks like /, "").replace(/^This may be /, "");
+  return `This search looks like it holds a patient detail (${finding}). Remove it and search again. This check catches some details, not all.`;
+}
+
 /** The search box's warning line: the held-back sentence for a clinical question, else the advisory one. */
 export function composerPatientDetailWarning(problem: PatientDetailProblem | null): string {
   return problem

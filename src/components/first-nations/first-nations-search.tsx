@@ -30,7 +30,8 @@ export function FirstNationsSearch({ entries }: { entries: readonly SearchEntry[
           autoComplete="off"
           spellCheck={false}
           enterKeyHint="search"
-          aria-controls={listId}
+          // Only point at the results once they exist; an id with no element is invalid ARIA.
+          aria-controls={query.trim() ? listId : undefined}
           className="min-h-12 min-w-0 flex-1 bg-transparent text-sm-minus text-[color:var(--text-heading)] outline-none"
         />
       </div>

@@ -1,4 +1,10 @@
+import type { Metadata } from "next";
 import { FormulationComparePage } from "@/components/formulation/formulation-compare-page";
+
+export const metadata: Metadata = {
+  title: "Compare | Formulation | PsychSift",
+  description: "Compare formulation models side by side.",
+};
 
 type CompareRouteProps = {
   searchParams?: Promise<{ a?: string | string[]; b?: string | string[] }>;

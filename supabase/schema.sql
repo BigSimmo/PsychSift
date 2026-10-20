@@ -6500,6 +6500,59 @@ begin
 end
 $cron$;
 
+-- Migration 20261019155000: a problem report may replace an earlier 'verified' verdict for the
+-- same interaction (finding F-02). service_role may update only the report columns; the trigger
+-- refuses every other change, so a problem report is never downgraded or replaced.
+grant update (feedback_category, note, cited_source_ids, source_ids, route, model, provider_request_ids)
+  on table public.rag_answer_feedback to service_role;
+
+create or replace function public.guard_rag_answer_feedback_update()
+returns trigger
+language plpgsql
+security invoker
+set search_path = public, pg_catalog, pg_temp
+as $$
+declare
+  v_report_columns constant text[] := array[
+    'id', 'created_at', 'feedback_category', 'note', 'cited_source_ids', 'source_ids',
+    'route', 'model', 'provider_request_ids'
+  ];
+begin
+  -- Housekeeping in place: the note purge and account deletion only ever clear a value.
+  if new.feedback_category = old.feedback_category
+     and (to_jsonb(new) - 'note' - 'owner_id') = (to_jsonb(old) - 'note' - 'owner_id')
+     and (new.note is null or new.note is not distinct from old.note)
+     and (new.owner_id is null or new.owner_id is not distinct from old.owner_id) then
+    return new;
+  end if;
+
+  -- A problem report replaces an earlier 'verified' answer verdict for the same interaction.
+  if old.feedback_category = 'verified'
+     and new.feedback_category <> 'verified'
+     and old.record_type = 'answer'
+     and (to_jsonb(new) - v_report_columns) = (to_jsonb(old) - v_report_columns) then
+    new.id := gen_random_uuid();
+    new.created_at := now();
+    return new;
+  end if;
+
+  raise exception 'rag_answer_feedback_update_not_allowed' using errcode = '42501';
+end;
+$$;
+
+revoke all on function public.guard_rag_answer_feedback_update() from public, anon, authenticated;
+grant execute on function public.guard_rag_answer_feedback_update() to service_role;
+
+drop trigger if exists rag_answer_feedback_update_guard on public.rag_answer_feedback;
+create trigger rag_answer_feedback_update_guard
+  before update on public.rag_answer_feedback
+  for each row execute function public.guard_rag_answer_feedback_update();
+
+comment on function public.guard_rag_answer_feedback_update() is
+  'Answer feedback rows are immutable except: a problem report may replace a verified row for the
+   same interaction (new id and created_at), the note purge may clear a note, and account
+   deletion may clear owner_id. A problem report is never downgraded or replaced.';
+
 -- Administrator-managed workflow metadata for privacy-safe clinical quality triage.
 -- The table deliberately contains no query, answer, excerpt, or patient text.
 create table if not exists public.clinical_quality_feedback_triage (
@@ -35832,3 +35885,1582 @@ $$;
 alter function public.rag_cache_scope_revision_v1(uuid,boolean,uuid[]) owner to postgres;
 revoke all on function public.rag_cache_scope_revision_v1(uuid,boolean,uuid[]) from public, anon, authenticated;
 grant execute on function public.rag_cache_scope_revision_v1(uuid,boolean,uuid[]) to service_role;
+
+-- Projection: 20261019155200_prune_superseded_index_generations_on_commit.sql
+-- Audit F-09 (#EG02B7, #Q4Y7TR): every reindex leaves the previous generation's artifact
+-- rows and image objects in place, and the only pruner is the manual, all-tenant
+-- cleanup_abandoned_document_index_generations. That pruner cannot run on the commit path:
+-- it deletes every non-current generation (including the one just replaced), has no row
+-- ceiling and schedules no storage cleanup.
+--
+-- After a generation commit moves a document's pointer, keep the new generation and the one
+-- it replaced, and prune the rest for that document only, children before parents, never a
+-- legacy (NULL-generation) row and never a row that a kept row still references. Image
+-- objects whose rows were pruned and that no remaining row points at are queued in
+-- storage_cleanup_jobs for the existing janitor; nothing is removed from Storage here.
+-- Retrieval reads only the committed generation or NULL-generation rows
+-- (is_committed_artifact_generation, is_visible_document_page), so pruned rows were already
+-- invisible to search. The commit function itself is unchanged; a trigger on the pointer
+-- covers every commit route.
+--
+-- What can and cannot fail the commit. The prune runs inside the committing statement, so it
+-- spends that statement's time. It is bounded three ways: at most p_row_limit rows per call
+-- (2000 from the trigger), deleted in batches of at most 250 rows; a deadline checked before
+-- every batch, at 500 ms from the start of the prune or half of the caller's statement_timeout
+-- measured from statement start, whichever is earlier (no headroom left means no prune); and
+-- a 100 ms lock_timeout, so a row lock held elsewhere fails fast instead of waiting. Ordinary
+-- errors, including that lock timeout, are caught, logged as a warning and rolled back to the
+-- savepoint, and the commit proceeds. A statement_timeout or cancel is deliberately NOT
+-- caught: once the outer statement's timer has fired, the commit must fail. The bounds make
+-- that very unlikely (one batch of at most 250 rows started inside the first half of the
+-- budget would have to outlast the whole second half), but this trigger cannot guarantee it.
+-- Rows left behind by any cut-off are pruned by the next commit of the same document.
+
+set local lock_timeout = '5s';
+set local statement_timeout = '30s';
+
+create function public.prune_superseded_document_index_generations(
+  p_document_id uuid,
+  p_keep_generation_ids uuid[],
+  p_row_limit integer default 2000
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+set lock_timeout = '100ms'
+as $$
+declare
+  v_owner uuid;
+  v_cover text;
+  v_keep uuid[];
+  v_keep_text text[];
+  v_budget integer;
+  v_batch integer;
+  v_timeout_ms bigint;
+  v_deadline timestamptz;
+  v_step text;
+  v_step_total integer;
+  v_deleted integer;
+  v_step_generations uuid[];
+  v_step_paths text[];
+  v_counts jsonb := '{}'::jsonb;
+  v_generations uuid[] := '{}'::uuid[];
+  v_paths text[] := '{}'::text[];
+  v_stale_paths text[] := '{}'::text[];
+  v_job uuid;
+begin
+  if p_document_id is null or p_row_limit is null or p_row_limit not between 1 and 50000 then
+    raise exception 'invalid_index_generation_prune_request';
+  end if;
+
+  -- Time budget: 500 ms, and never past half of the caller's statement_timeout.
+  select s.setting::bigint into v_timeout_ms from pg_catalog.pg_settings s where s.name = 'statement_timeout';
+  v_deadline := pg_catalog.clock_timestamp() + interval '500 milliseconds';
+  if coalesce(v_timeout_ms, 0) > 0 then
+    v_deadline := least(v_deadline,
+      pg_catalog.statement_timestamp() + pg_catalog.make_interval(secs => v_timeout_ms / 2000.0));
+  end if;
+  if pg_catalog.clock_timestamp() >= v_deadline then
+    return jsonb_build_object('ok', true, 'document_id', p_document_id, 'skipped', 'no_time_headroom');
+  end if;
+
+  select d.owner_id, d.metadata->>'cover_image_id'
+  into v_owner, v_cover
+  from public.documents d
+  where d.id = p_document_id;
+  if not found then
+    return jsonb_build_object('ok', true, 'document_id', p_document_id, 'skipped', 'document_missing');
+  end if;
+
+  -- Never prune the caller's keep set, the live pointer, any generation an open job for this
+  -- document still expects or writes (an in-flight build or enrichment pass), or a staged
+  -- evidence candidate whose job has not completed (it may still await an admin-gated commit).
+  select coalesce(array_agg(distinct k.generation_id), '{}'::uuid[])
+  into v_keep
+  from (
+    select unnest(coalesce(p_keep_generation_ids, '{}'::uuid[])) as generation_id
+    union all
+    select d.index_generation_id from public.documents d where d.id = p_document_id
+    union all
+    select g.generation_id
+    from public.ingestion_jobs j
+    cross join lateral (values (j.lease_expected_generation_id), (j.lease_write_generation_id)) g(generation_id)
+    where j.document_id = p_document_id and j.status in ('pending', 'processing')
+    union all
+    select g.generation_id
+    from public.indexing_v3_agent_jobs j
+    cross join lateral (values (j.lease_expected_generation_id), (j.lease_write_generation_id)) g(generation_id)
+    where j.document_id = p_document_id and j.status in ('pending', 'processing')
+    union all
+    select c.generation_id
+    from ingestion_generation_evidence.candidates c
+    where c.document_id = p_document_id
+      and not exists (select 1 from public.ingestion_jobs j where j.id = c.job_id and j.status = 'completed')
+  ) k
+  where k.generation_id is not null;
+
+  if cardinality(v_keep) = 0 then
+    return jsonb_build_object('ok', true, 'document_id', p_document_id, 'skipped', 'no_live_generation');
+  end if;
+  -- A row whose metadata names a kept generation is kept even if its typed column disagrees.
+  v_keep_text := array(select pg_catalog.lower(g::text) from unnest(v_keep) g);
+
+  v_budget := p_row_limit;
+
+  -- Children first, so a parent is reached only once its prunable children are gone and the
+  -- FK cascades or set-nulls below can never reach a kept row.
+  foreach v_step in array array[
+    'document_embedding_fields', 'document_index_units', 'document_table_facts',
+    'document_memory_cards', 'document_sections', 'document_images', 'document_pages',
+    'document_chunks'
+  ] loop
+    v_step_total := 0;
+    loop
+      exit when v_budget <= 0 or pg_catalog.clock_timestamp() > v_deadline;
+      v_batch := least(v_budget, 250);
+      v_deleted := 0;
+      v_step_generations := '{}'::uuid[];
+      v_step_paths := '{}'::text[];
+
+      if v_step = 'document_embedding_fields' then
+        with victims as (
+          select t.id from public.document_embedding_fields t
+          where t.document_id = p_document_id and t.index_generation_id is not null
+            and t.index_generation_id <> all(v_keep)
+            and pg_catalog.lower(coalesce(t.metadata->>'index_generation_id', '')) <> all(v_keep_text)
+          order by t.index_generation_id, t.id
+          limit v_batch
+        ), gone as (
+          delete from public.document_embedding_fields t using victims v where t.id = v.id
+          returning t.index_generation_id
+        )
+        select count(*)::integer, coalesce(array_agg(distinct gone.index_generation_id), '{}'::uuid[])
+        into v_deleted, v_step_generations from gone;
+
+      elsif v_step = 'document_index_units' then
+        with victims as (
+          select t.id from public.document_index_units t
+          where t.document_id = p_document_id and t.index_generation_id is not null
+            and t.index_generation_id <> all(v_keep)
+            and pg_catalog.lower(coalesce(t.metadata->>'index_generation_id', '')) <> all(v_keep_text)
+          order by t.index_generation_id, t.id
+          limit v_batch
+        ), gone as (
+          delete from public.document_index_units t using victims v where t.id = v.id
+          returning t.index_generation_id
+        )
+        select count(*)::integer, coalesce(array_agg(distinct gone.index_generation_id), '{}'::uuid[])
+        into v_deleted, v_step_generations from gone;
+
+      elsif v_step = 'document_table_facts' then
+        with victims as (
+          select t.id from public.document_table_facts t
+          where t.document_id = p_document_id and t.index_generation_id is not null
+            and t.index_generation_id <> all(v_keep)
+            and pg_catalog.lower(coalesce(t.metadata->>'index_generation_id', '')) <> all(v_keep_text)
+          order by t.index_generation_id, t.id
+          limit v_batch
+        ), gone as (
+          delete from public.document_table_facts t using victims v where t.id = v.id
+          returning t.index_generation_id
+        )
+        select count(*)::integer, coalesce(array_agg(distinct gone.index_generation_id), '{}'::uuid[])
+        into v_deleted, v_step_generations from gone;
+
+      elsif v_step = 'document_memory_cards' then
+        with victims as (
+          select t.id from public.document_memory_cards t
+          where t.document_id = p_document_id and t.index_generation_id is not null
+            and t.index_generation_id <> all(v_keep)
+            and pg_catalog.lower(coalesce(t.metadata->>'index_generation_id', '')) <> all(v_keep_text)
+          order by t.index_generation_id, t.id
+          limit v_batch
+        ), gone as (
+          delete from public.document_memory_cards t using victims v where t.id = v.id
+          returning t.index_generation_id
+        )
+        select count(*)::integer, coalesce(array_agg(distinct gone.index_generation_id), '{}'::uuid[])
+        into v_deleted, v_step_generations from gone;
+
+      elsif v_step = 'document_sections' then
+        -- A memory card still pointing here is kept (or deferred by the ceiling); deleting the
+        -- section would null its section_id.
+        with victims as (
+          select t.id from public.document_sections t
+          where t.document_id = p_document_id and t.index_generation_id is not null
+            and t.index_generation_id <> all(v_keep)
+            and pg_catalog.lower(coalesce(t.metadata->>'index_generation_id', '')) <> all(v_keep_text)
+            and not exists (select 1 from public.document_memory_cards m where m.section_id = t.id)
+          order by t.index_generation_id, t.id
+          limit v_batch
+        ), gone as (
+          delete from public.document_sections t using victims v where t.id = v.id
+          returning t.index_generation_id
+        )
+        select count(*)::integer, coalesce(array_agg(distinct gone.index_generation_id), '{}'::uuid[])
+        into v_deleted, v_step_generations from gone;
+
+      elsif v_step = 'document_images' then
+        -- Keep the live cover image and any image a remaining fact or index unit still cites.
+        with victims as (
+          select t.id from public.document_images t
+          where t.document_id = p_document_id and t.index_generation_id is not null
+            and t.index_generation_id <> all(v_keep)
+            and pg_catalog.lower(coalesce(t.metadata->>'index_generation_id', '')) <> all(v_keep_text)
+            and t.id::text is distinct from v_cover
+            and not exists (select 1 from public.document_table_facts f where f.source_image_id = t.id)
+            and not exists (select 1 from public.document_index_units u where u.source_image_id = t.id)
+          order by t.index_generation_id, t.id
+          limit v_batch
+        ), gone as (
+          delete from public.document_images t using victims v where t.id = v.id
+          returning t.index_generation_id, t.storage_path
+        )
+        select count(*)::integer, coalesce(array_agg(distinct gone.index_generation_id), '{}'::uuid[]),
+          coalesce(array_agg(distinct gone.storage_path)
+            filter (where gone.storage_path is not null and pg_catalog.btrim(gone.storage_path) <> ''), '{}'::text[])
+        into v_deleted, v_step_generations, v_step_paths from gone;
+
+      elsif v_step = 'document_pages' then
+        with victims as (
+          select t.id from public.document_pages t
+          where t.document_id = p_document_id and t.index_generation_id is not null
+            and t.index_generation_id <> all(v_keep)
+            and pg_catalog.lower(coalesce(t.metadata->>'index_generation_id', '')) <> all(v_keep_text)
+          order by t.index_generation_id, t.id
+          limit v_batch
+        ), gone as (
+          delete from public.document_pages t using victims v where t.id = v.id
+          returning t.index_generation_id
+        )
+        select count(*)::integer, coalesce(array_agg(distinct gone.index_generation_id), '{}'::uuid[])
+        into v_deleted, v_step_generations from gone;
+
+      elsif v_step = 'document_chunks' then
+        -- A chunk still cited by a remaining fact, field or unit is kept: its cascade would
+        -- otherwise reach that row.
+        with victims as (
+          select t.id from public.document_chunks t
+          where t.document_id = p_document_id and t.index_generation_id is not null
+            and t.index_generation_id <> all(v_keep)
+            and pg_catalog.lower(coalesce(t.metadata->>'index_generation_id', '')) <> all(v_keep_text)
+            and not exists (select 1 from public.document_table_facts f where f.source_chunk_id = t.id)
+            and not exists (select 1 from public.document_embedding_fields e where e.source_chunk_id = t.id)
+            and not exists (select 1 from public.document_index_units u where u.source_chunk_id = t.id)
+          order by t.index_generation_id, t.id
+          limit v_batch
+        ), gone as (
+          delete from public.document_chunks t using victims v where t.id = v.id
+          returning t.index_generation_id
+        )
+        select count(*)::integer, coalesce(array_agg(distinct gone.index_generation_id), '{}'::uuid[])
+        into v_deleted, v_step_generations from gone;
+      end if;
+
+      v_budget := v_budget - v_deleted;
+      v_step_total := v_step_total + v_deleted;
+      v_generations := v_generations || v_step_generations;
+      v_paths := v_paths || v_step_paths;
+      exit when v_deleted < v_batch;
+    end loop;
+    v_counts := v_counts || jsonb_build_object(v_step, v_step_total);
+  end loop;
+
+  -- Queue only objects no remaining image row (of any document) still points at. document_id
+  -- stays null: the janitor skips rows whose document still exists, because those normally
+  -- mean an aborted delete. The source document is recorded in metadata instead.
+  select coalesce(array_agg(p.path order by p.path), '{}'::text[])
+  into v_stale_paths
+  from (select distinct unnest(v_paths) as path) p
+  where not exists (select 1 from public.document_images i where i.storage_path = p.path);
+
+  if cardinality(v_stale_paths) > 0 then
+    insert into public.storage_cleanup_jobs(
+      owner_id, document_id, document_paths, image_bucket, image_paths, status, metadata
+    ) values (
+      v_owner, null, '{}'::text[], 'clinical-images', v_stale_paths, 'pending',
+      jsonb_build_object(
+        'operation', 'superseded_index_generation_prune',
+        'source_document_id', p_document_id,
+        'pruned_generation_ids', (select coalesce(jsonb_agg(distinct g), '[]'::jsonb) from unnest(v_generations) g)
+      )
+    )
+    returning id into v_job;
+  end if;
+
+  return jsonb_build_object(
+    'ok', true,
+    'document_id', p_document_id,
+    'kept_generation_ids', to_jsonb(v_keep),
+    'pruned_generation_ids', (select coalesce(jsonb_agg(distinct g), '[]'::jsonb) from unnest(v_generations) g),
+    'counts', v_counts,
+    'rows_deleted', p_row_limit - v_budget,
+    'row_limit', p_row_limit,
+    'limit_reached', v_budget <= 0 or pg_catalog.clock_timestamp() > v_deadline,
+    'storage_paths_queued', cardinality(v_stale_paths),
+    'storage_cleanup_job_id', v_job
+  );
+end;
+$$;
+
+alter function public.prune_superseded_document_index_generations(uuid, uuid[], integer) owner to postgres;
+revoke all on function public.prune_superseded_document_index_generations(uuid, uuid[], integer)
+  from public, anon, authenticated, service_role;
+
+create function public.prune_superseded_index_generations_after_commit()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  begin
+    perform public.prune_superseded_document_index_generations(
+      new.id, array[new.index_generation_id, old.index_generation_id], 2000);
+  exception when others then
+    -- Ordinary errors (including the prune's own 100 ms lock_timeout) roll back to this
+    -- savepoint and the commit proceeds. query_canceled is not "others" and is not caught:
+    -- see the header for why a fired statement_timeout must still fail the commit.
+    raise warning 'index_generation_prune_skipped document=% sqlstate=%', new.id, sqlstate;
+  end;
+  return null;
+end;
+$$;
+
+alter function public.prune_superseded_index_generations_after_commit() owner to postgres;
+revoke all on function public.prune_superseded_index_generations_after_commit()
+  from public, anon, authenticated, service_role;
+
+create trigger documents_prune_superseded_index_generations
+after update of metadata on public.documents
+for each row
+when (new.index_generation_id is not null and old.index_generation_id is distinct from new.index_generation_id)
+execute function public.prune_superseded_index_generations_after_commit();
+
+-- Projection: 20261019170000_site_content_rpc_recent_administrator_assurance.sql
+-- DRAFT. Merge only inside the owner's approved database-change window.
+--
+-- Recent multi-factor sign-in for the three site-content administrator RPCs.
+--
+-- publish_site_content_record, retire_site_content_record and
+-- record_site_content_reconciliation_plan are executable by `authenticated` because the
+-- publications route calls them with the administrator's own session token. Each already
+-- refuses a caller whose live auth.users row is not an administrator, but none read the
+-- token's assurance level. The route now requires a fresh multi-factor sign-in (aal2 plus a
+-- qualifying amr entry no older than 900 seconds) before it calls them, yet an older
+-- administrator token could still call them straight through PostgREST and skip that.
+--
+-- This applies the same rule inside the database, after each function's existing
+-- administrator check, through one small helper. It mirrors the route
+-- (assertTrustedAdministratorAssurance) and admit_administrator_document: role
+-- authenticated, sub matching auth.uid(), app_metadata.site_role administrator, aal2, and an
+-- amr entry (password, otp, totp or webauthn) timestamped within the last 900 seconds and not
+-- in the future. Nothing else in the three bodies changes; they are copied verbatim from
+-- 20260824123000 (publish, retire) and 20260830120000 (reconciliation plan).
+--
+-- service_role is unchanged: all three already refuse any token whose role is not
+-- authenticated, before the new check is reached. Grants are restated unchanged.
+set local lock_timeout = '5s';
+set local statement_timeout = '30s';
+
+create or replace function public.require_recent_site_content_administrator_assurance()
+returns void
+language plpgsql
+stable
+security invoker
+set search_path = ''
+as $$
+declare
+  v_jwt jsonb := auth.jwt();
+  v_now timestamptz := pg_catalog.statement_timestamp();
+begin
+  if pg_catalog.jsonb_typeof(v_jwt) is distinct from 'object'
+    or v_jwt->>'role' is distinct from 'authenticated'
+    or v_jwt->>'sub' is distinct from auth.uid()::text
+    or v_jwt#>>'{app_metadata,site_role}' is distinct from 'administrator'
+    or v_jwt->>'aal' is distinct from 'aal2'
+    or pg_catalog.jsonb_typeof(v_jwt->'amr') is distinct from 'array'
+  then
+    raise exception using errcode = '42501', message = 'administrator_assurance_required';
+  end if;
+  if not exists (
+    select 1
+    from pg_catalog.jsonb_array_elements(v_jwt->'amr') as methods(amr)
+    where pg_catalog.jsonb_typeof(amr) = 'object'
+      and amr->>'method' in ('password', 'otp', 'totp', 'webauthn')
+      and case when pg_catalog.jsonb_typeof(amr->'timestamp') = 'number' then
+        pg_catalog.to_timestamp((amr->>'timestamp')::double precision) <= v_now
+          and pg_catalog.to_timestamp((amr->>'timestamp')::double precision) >= v_now - interval '900 seconds'
+      else false end
+  ) then
+    raise exception using errcode = '42501', message = 'administrator_recent_authentication_required';
+  end if;
+end;
+$$;
+
+create or replace function public.publish_site_content_record(
+  p_kind text, p_source_row_id uuid, p_expected_source_version text,
+  p_expected_change_epoch bigint, p_reconciliation_plan_digest text,
+  p_expected_record_digest text, p_expected_projection_digest text
+)
+returns table (outcome text, conflict_code text, logical_id text, publication_id uuid, event_sequence bigint, change_epoch bigint)
+language plpgsql security definer set search_path = ''
+as $$
+declare
+  v_state public.site_content_sync_state%rowtype;
+  v_source record;
+  v_existing public.site_content_public_records%rowtype;
+  v_publication_id uuid := gen_random_uuid();
+  v_event_sequence bigint;
+  v_actor uuid := auth.uid();
+  v_authorized_at timestamptz;
+begin
+  if v_actor is null or auth.jwt()->>'role' is distinct from 'authenticated' then
+    raise exception using errcode = '42501', message = 'site_content_administrator_required';
+  end if;
+  perform 1 from auth.users u
+  where u.id = v_actor and u.raw_app_meta_data->>'site_role' is not distinct from 'administrator'
+  for share;
+  if not found then
+    raise exception using errcode = '42501', message = 'site_content_administrator_required';
+  end if;
+  perform public.require_recent_site_content_administrator_assurance();
+  v_authorized_at := pg_catalog.clock_timestamp();
+  perform pg_catalog.pg_advisory_xact_lock(93206431);
+  select * into strict v_state from public.site_content_sync_state where singleton for update;
+  if v_state.change_epoch is distinct from p_expected_change_epoch then
+    outcome := 'conflict'; conflict_code := 'stale_change_epoch'; return next; return;
+  end if;
+  select * into strict v_source from public.site_content_source_projection(p_kind, p_source_row_id);
+  if v_source.source_version is distinct from p_expected_source_version then
+    outcome := 'conflict'; conflict_code := 'stale_source_version'; return next; return;
+  end if;
+  if p_expected_record_digest is null or p_expected_record_digest !~ '^[0-9a-f]{64}$'
+    or public.site_content_json_sha256(v_source.record) is distinct from p_expected_record_digest then
+    outcome := 'conflict'; conflict_code := 'record_digest_mismatch'; return next; return;
+  end if;
+  if p_expected_projection_digest is null or p_expected_projection_digest !~ '^[0-9a-f]{64}$'
+    or public.site_content_projection_digest(v_source.record, v_source.render_payload)
+      is distinct from p_expected_projection_digest then
+    outcome := 'conflict'; conflict_code := 'projection_digest_mismatch'; return next; return;
+  end if;
+  select * into v_existing from public.site_content_public_records h
+  where h.logical_id = v_source.logical_id for update;
+  if v_existing.logical_id is not null and not v_existing.retired and exists (
+    select 1 from public.site_content_publications p
+    where p.id = v_existing.current_publication_id and p.source_row_id = p_source_row_id
+      and p.source_version = v_source.source_version
+  ) then outcome := 'conflict'; conflict_code := 'already_published'; return next; return; end if;
+  if v_existing.logical_id is null and not v_state.initialized then
+    if p_reconciliation_plan_digest is null or not exists (
+      select 1 from public.site_content_reconciliation_plans p
+      where p.plan_digest = p_reconciliation_plan_digest and exists (
+        select 1 from jsonb_array_elements(p.dispositions) item
+        where item->>'logicalId' = v_source.logical_id and item->>'disposition' = 'adopt'
+          and item->>'sourceKind' = p_kind and item->>'sourceRowId' = p_source_row_id::text
+          and item->>'sourceVersion' = v_source.source_version
+          and item->>'contentHash' = v_source.record->>'contentHash'
+          and item->>'publicationVersion' = v_source.record->>'publicationVersion'
+          and item->>'trustedPublicRecordId' = v_source.logical_id
+          and item->>'trustedRoute' = v_source.record->>'route'
+          and item->>'trustedGovernanceHash' = public.site_content_record_governance_hash(v_source.record)
+      )
+    ) then raise exception using errcode = '55000', message = 'site_content_reconciliation_required'; end if;
+  end if;
+  insert into public.site_content_publications(
+    id, logical_id, kind, slug, source_table, source_row_id, source_owner_id, source_version,
+    published_by, administrator_authorized_at, administrator_authorization_version,
+    reconciliation_plan_digest, record, render_payload, retired
+  ) values (
+    v_publication_id, v_source.logical_id, p_kind, v_source.slug, v_source.source_table,
+    p_source_row_id, v_source.source_owner_id, v_source.source_version, v_actor, v_authorized_at,
+    'site-content-admin-authorization-v1', p_reconciliation_plan_digest,
+    v_source.record, v_source.render_payload, false
+  );
+  change_epoch := v_state.change_epoch + 1;
+  insert into public.site_content_public_records(logical_id, kind, slug, current_publication_id, head_change_epoch, retired)
+  values (v_source.logical_id, p_kind, v_source.slug, v_publication_id, change_epoch, false)
+  on conflict on constraint site_content_public_records_pkey do update set
+    current_publication_id = excluded.current_publication_id, kind = excluded.kind, slug = excluded.slug,
+    head_change_epoch = excluded.head_change_epoch, retired = false, updated_at = pg_catalog.clock_timestamp();
+  insert into public.site_content_sync_events(logical_id, target_publication_id, target_change_epoch)
+  values (v_source.logical_id, v_publication_id, change_epoch)
+  returning site_content_sync_events.event_sequence into v_event_sequence;
+  update public.site_content_sync_events e set state = 'superseded', worker_id = null, lease_token = null,
+    lease_expires_at = null, superseded_by_event_sequence = v_event_sequence,
+    terminal_at = pg_catalog.clock_timestamp(), updated_at = pg_catalog.clock_timestamp()
+  where e.event_sequence <> v_event_sequence and e.target_change_epoch < change_epoch
+    and e.state in ('pending', 'retry_pending', 'processing', 'ready');
+  update public.site_content_releases set state = 'abandoned'
+  where state = 'candidate' and target_change_epoch < change_epoch;
+  update public.site_content_public_records set pending_event_sequence = v_event_sequence,
+    updated_at = pg_catalog.clock_timestamp()
+  where site_content_public_records.logical_id = v_source.logical_id;
+  update public.site_content_sync_state set change_epoch = v_state.change_epoch + 1,
+    updated_at = pg_catalog.clock_timestamp() where singleton;
+  logical_id := v_source.logical_id; publication_id := v_publication_id;
+  event_sequence := v_event_sequence; outcome := 'applied'; conflict_code := null; return next;
+end;
+$$;
+
+create or replace function public.retire_site_content_record(
+  p_kind text, p_source_row_id uuid, p_expected_source_version text,
+  p_expected_change_epoch bigint, p_reconciliation_plan_digest text,
+  p_expected_record_digest text, p_expected_projection_digest text
+)
+returns table (outcome text, conflict_code text, logical_id text, publication_id uuid, event_sequence bigint, change_epoch bigint)
+language plpgsql security definer set search_path = ''
+as $$
+declare
+  v_state public.site_content_sync_state%rowtype;
+  v_source record;
+  v_head public.site_content_public_records%rowtype;
+  v_publication_id uuid := gen_random_uuid();
+  v_event_sequence bigint;
+  v_actor uuid := auth.uid();
+  v_authorized_at timestamptz;
+begin
+  if v_actor is null or auth.jwt()->>'role' is distinct from 'authenticated' then
+    raise exception using errcode = '42501', message = 'site_content_administrator_required';
+  end if;
+  perform 1 from auth.users u
+  where u.id = v_actor and u.raw_app_meta_data->>'site_role' is not distinct from 'administrator'
+  for share;
+  if not found then raise exception using errcode = '42501', message = 'site_content_administrator_required'; end if;
+  perform public.require_recent_site_content_administrator_assurance();
+  v_authorized_at := pg_catalog.clock_timestamp();
+  perform pg_catalog.pg_advisory_xact_lock(93206431);
+  select * into strict v_state from public.site_content_sync_state where singleton for update;
+  if v_state.change_epoch is distinct from p_expected_change_epoch then
+    outcome := 'conflict'; conflict_code := 'stale_change_epoch'; return next; return;
+  end if;
+  select * into strict v_source from public.site_content_source_projection(p_kind, p_source_row_id);
+  if v_source.source_version is distinct from p_expected_source_version then
+    outcome := 'conflict'; conflict_code := 'stale_source_version'; return next; return;
+  end if;
+  if p_expected_record_digest is null or p_expected_record_digest !~ '^[0-9a-f]{64}$'
+    or public.site_content_json_sha256(v_source.record) is distinct from p_expected_record_digest then
+    outcome := 'conflict'; conflict_code := 'record_digest_mismatch'; return next; return;
+  end if;
+  if p_expected_projection_digest is null or p_expected_projection_digest !~ '^[0-9a-f]{64}$'
+    or public.site_content_projection_digest(v_source.record, v_source.render_payload)
+      is distinct from p_expected_projection_digest then
+    outcome := 'conflict'; conflict_code := 'projection_digest_mismatch'; return next; return;
+  end if;
+  select * into v_head from public.site_content_public_records
+  where site_content_public_records.logical_id = v_source.logical_id for update;
+  if not found then outcome := 'conflict'; conflict_code := 'missing_publication'; return next; return; end if;
+  if v_head.retired then outcome := 'conflict'; conflict_code := 'already_retired'; return next; return; end if;
+  insert into public.site_content_publications(
+    id, logical_id, kind, slug, source_table, source_row_id, source_owner_id, source_version,
+    published_by, administrator_authorized_at, administrator_authorization_version,
+    reconciliation_plan_digest, record, render_payload, retired
+  ) values (
+    v_publication_id, v_source.logical_id, p_kind, v_source.slug, v_source.source_table,
+    p_source_row_id, v_source.source_owner_id, v_source.source_version, v_actor, v_authorized_at,
+    'site-content-admin-authorization-v1', null, v_source.record, v_source.render_payload, true
+  );
+  change_epoch := v_state.change_epoch + 1;
+  update public.site_content_public_records set current_publication_id = v_publication_id, retired = true,
+    head_change_epoch = change_epoch, updated_at = pg_catalog.clock_timestamp()
+  where site_content_public_records.logical_id = v_source.logical_id;
+  insert into public.site_content_sync_events(logical_id, target_publication_id, target_change_epoch)
+  values (v_source.logical_id, v_publication_id, change_epoch)
+  returning site_content_sync_events.event_sequence into v_event_sequence;
+  update public.site_content_sync_events e set state = 'superseded', worker_id = null, lease_token = null,
+    lease_expires_at = null, superseded_by_event_sequence = v_event_sequence,
+    terminal_at = pg_catalog.clock_timestamp(), updated_at = pg_catalog.clock_timestamp()
+  where e.event_sequence <> v_event_sequence and e.target_change_epoch < change_epoch
+    and e.state in ('pending', 'retry_pending', 'processing', 'ready');
+  update public.site_content_releases set state = 'abandoned'
+  where state = 'candidate' and target_change_epoch < change_epoch;
+  update public.site_content_public_records set pending_event_sequence = v_event_sequence
+  where site_content_public_records.logical_id = v_source.logical_id;
+  update public.site_content_sync_state set change_epoch = v_state.change_epoch + 1,
+    updated_at = pg_catalog.clock_timestamp() where singleton;
+  logical_id := v_source.logical_id; publication_id := v_publication_id;
+  event_sequence := v_event_sequence; outcome := 'applied'; conflict_code := null; return next;
+end;
+$$;
+
+create or replace function public.record_site_content_reconciliation_plan(p_plan jsonb)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_actor uuid;
+  v_site_role text;
+  v_authorized_at timestamptz;
+  v_dispositions jsonb;
+  v_trusted jsonb;
+  v_counts jsonb;
+  v_expected integer;
+  v_groups integer;
+  v_batch_size integer;
+  v_batch_count integer;
+  v_item jsonb;
+  v_snapshot jsonb;
+  source record;
+  v_live_count integer;
+begin
+  v_actor := auth.uid();
+  if v_actor is null or auth.jwt()->>'role' is distinct from 'authenticated' then
+    raise exception using errcode = '42501', message = 'site_content_administrator_authorization_required';
+  end if;
+  select u.raw_app_meta_data->>'site_role' into v_site_role
+  from auth.users u where u.id = v_actor for share;
+  if not found or v_site_role is distinct from 'administrator' then
+    raise exception using errcode = '42501', message = 'site_content_administrator_authorization_required';
+  end if;
+  perform public.require_recent_site_content_administrator_assurance();
+  v_authorized_at := pg_catalog.statement_timestamp();
+  perform pg_catalog.pg_advisory_xact_lock(93206431);
+
+  begin
+    if p_plan is null or jsonb_typeof(p_plan) is distinct from 'object' then
+      raise exception 'invalid plan';
+    end if;
+    if p_plan - array['version','planDigest','trustedSnapshotDigest','expectedRecordCount','expectedGroupCount',
+        'batchSize','batchCount','counts','trustedSnapshots','dispositions'] <> '{}'::jsonb
+      or (select count(*) from jsonb_object_keys(p_plan)) <> 10
+      or jsonb_typeof(p_plan->'version') is distinct from 'string'
+      or p_plan->>'version' is distinct from 'site-content-reconciliation-plan-v1'
+      or jsonb_typeof(p_plan->'planDigest') is distinct from 'string'
+      or p_plan->>'planDigest' !~ '^[0-9a-f]{64}$'
+      or jsonb_typeof(p_plan->'trustedSnapshotDigest') is distinct from 'string'
+      or p_plan->>'trustedSnapshotDigest' !~ '^[0-9a-f]{64}$'
+      or jsonb_typeof(p_plan->'expectedRecordCount') is distinct from 'number'
+      or jsonb_typeof(p_plan->'expectedGroupCount') is distinct from 'number'
+      or jsonb_typeof(p_plan->'batchSize') is distinct from 'number'
+      or jsonb_typeof(p_plan->'batchCount') is distinct from 'number'
+    then
+      raise exception 'invalid plan';
+    end if;
+    v_dispositions := p_plan->'dispositions';
+    v_trusted := p_plan->'trustedSnapshots';
+    v_counts := p_plan->'counts';
+    if jsonb_typeof(v_dispositions) is distinct from 'array'
+      or jsonb_typeof(v_trusted) is distinct from 'array'
+      or jsonb_typeof(v_counts) is distinct from 'object'
+      or v_counts - array['adopt','retire','identicalDuplicate','total'] <> '{}'::jsonb
+      or (select count(*) from jsonb_object_keys(v_counts)) <> 4
+      or jsonb_typeof(v_counts->'adopt') is distinct from 'number'
+      or jsonb_typeof(v_counts->'retire') is distinct from 'number'
+      or jsonb_typeof(v_counts->'identicalDuplicate') is distinct from 'number'
+      or jsonb_typeof(v_counts->'total') is distinct from 'number'
+    then
+      raise exception 'invalid plan';
+    end if;
+    if (p_plan->>'expectedRecordCount')::numeric <> trunc((p_plan->>'expectedRecordCount')::numeric)
+      or (p_plan->>'expectedGroupCount')::numeric <> trunc((p_plan->>'expectedGroupCount')::numeric)
+      or (p_plan->>'batchSize')::numeric <> trunc((p_plan->>'batchSize')::numeric)
+      or (p_plan->>'batchCount')::numeric <> trunc((p_plan->>'batchCount')::numeric)
+      or (v_counts->>'adopt')::numeric <> trunc((v_counts->>'adopt')::numeric)
+      or (v_counts->>'retire')::numeric <> trunc((v_counts->>'retire')::numeric)
+      or (v_counts->>'identicalDuplicate')::numeric <> trunc((v_counts->>'identicalDuplicate')::numeric)
+      or (v_counts->>'total')::numeric <> trunc((v_counts->>'total')::numeric)
+      or (p_plan->>'expectedRecordCount')::numeric not between 1 and 5000
+      or (p_plan->>'expectedGroupCount')::numeric not between 1 and (p_plan->>'expectedRecordCount')::numeric
+      or (p_plan->>'batchSize')::numeric not between 1 and 500
+      or (p_plan->>'batchCount')::numeric not between 1 and 5000
+    then
+      raise exception 'invalid plan';
+    end if;
+    v_expected := (p_plan->>'expectedRecordCount')::integer;
+    v_groups := (p_plan->>'expectedGroupCount')::integer;
+    v_batch_size := (p_plan->>'batchSize')::integer;
+    v_batch_count := (p_plan->>'batchCount')::integer;
+  exception when others then
+    raise exception using errcode = '22023', message = 'site_content_reconciliation_unresolved';
+  end;
+  if exists (
+    select 1 from jsonb_array_elements(v_dispositions) item
+    where jsonb_typeof(item) is distinct from 'object'
+  ) or exists (
+    select 1 from jsonb_array_elements(v_trusted) item
+    where jsonb_typeof(item) is distinct from 'object'
+  ) then
+    raise exception using errcode = '22023', message = 'site_content_reconciliation_unresolved';
+  end if;
+  if jsonb_array_length(v_dispositions) <> v_expected
+    or jsonb_array_length(v_trusted) <> v_groups
+    or v_batch_count <> ceil(v_expected::numeric / v_batch_size)::integer
+    or p_plan->>'planDigest' is distinct from public.site_content_json_sha256(p_plan - 'planDigest')
+    or p_plan->>'trustedSnapshotDigest' is distinct from public.site_content_json_sha256(jsonb_build_object(
+      'version', 'site-content-trusted-snapshot-v1', 'records', v_trusted))
+    or (v_counts->>'total')::numeric <> v_expected
+    or (v_counts->>'adopt')::numeric <> (select count(*) from jsonb_array_elements(v_dispositions) item where item->>'disposition' = 'adopt')
+    or (v_counts->>'retire')::numeric <> (select count(*) from jsonb_array_elements(v_dispositions) item where item->>'disposition' = 'retire')
+    or (v_counts->>'identicalDuplicate')::numeric <> (select count(*) from jsonb_array_elements(v_dispositions) item where item->>'disposition' = 'identical_duplicate')
+    or (select count(*) from jsonb_array_elements(v_dispositions) item where item->>'disposition' = 'adopt') <> v_groups
+    or (select count(distinct item->>'logicalId') from jsonb_array_elements(v_dispositions) item) <> v_groups
+    or (select count(distinct item->>'logicalId') from jsonb_array_elements(v_dispositions) item
+      where item->>'disposition' = 'adopt') <> v_groups
+    or (select count(distinct ((item->>'sourceKind') || ':' || (item->>'sourceRowId')))
+      from jsonb_array_elements(v_dispositions) item) <> v_expected
+    or v_dispositions is distinct from (select jsonb_agg(item order by item->>'logicalId' collate "C",
+      item->>'sourceKind' collate "C", item->>'sourceRowId' collate "C") from jsonb_array_elements(v_dispositions) item)
+    or v_trusted is distinct from (select jsonb_agg(item order by item->>'logicalId' collate "C")
+      from jsonb_array_elements(v_trusted) item)
+    or (select count(distinct item->>'logicalId') from jsonb_array_elements(v_trusted) item) <> v_groups
+    then
+    raise exception using errcode = '22023', message = 'site_content_reconciliation_unresolved';
+  end if;
+  for v_snapshot in select value from jsonb_array_elements(v_trusted) loop
+    if jsonb_typeof(v_snapshot) is distinct from 'object'
+      or v_snapshot - array['logicalId','publicRecordId','route','contentHash','publicationVersion','governanceHash'] <> '{}'::jsonb
+      or (select count(*) from jsonb_object_keys(v_snapshot)) <> 6
+      or jsonb_typeof(v_snapshot->'logicalId') is distinct from 'string'
+      or jsonb_typeof(v_snapshot->'publicRecordId') is distinct from 'string'
+      or jsonb_typeof(v_snapshot->'route') is distinct from 'string'
+      or jsonb_typeof(v_snapshot->'contentHash') is distinct from 'string'
+      or jsonb_typeof(v_snapshot->'publicationVersion') is distinct from 'string'
+      or jsonb_typeof(v_snapshot->'governanceHash') is distinct from 'string'
+      or v_snapshot->>'logicalId' !~ '^[a-z0-9][a-z0-9._-]*:[a-z0-9][a-z0-9._:-]*$'
+      or v_snapshot->>'publicRecordId' is distinct from v_snapshot->>'logicalId'
+      or v_snapshot->>'route' not like '/%'
+      or v_snapshot->>'contentHash' !~ '^[0-9a-f]{64}$'
+      or v_snapshot->>'publicationVersion' !~ '^[0-9a-f]{64}$'
+      or v_snapshot->>'governanceHash' !~ '^[0-9a-f]{64}$'
+      then raise exception using errcode = '22023', message = 'site_content_reconciliation_snapshot_invalid';
+    end if;
+  end loop;
+  for v_item in select value from jsonb_array_elements(v_dispositions) loop
+    if jsonb_typeof(v_item) is distinct from 'object'
+      or v_item - array['logicalId','disposition','sourceKind','sourceRowId','sourceVersion','contentHash',
+        'publicationVersion','trustedPublicRecordId','trustedRoute','trustedGovernanceHash'] <> '{}'::jsonb
+      or (select count(*) from jsonb_object_keys(v_item)) <> 10
+      or jsonb_typeof(v_item->'logicalId') is distinct from 'string'
+      or jsonb_typeof(v_item->'disposition') is distinct from 'string'
+      or jsonb_typeof(v_item->'sourceKind') is distinct from 'string'
+      or jsonb_typeof(v_item->'sourceRowId') is distinct from 'string'
+      or jsonb_typeof(v_item->'sourceVersion') is distinct from 'string'
+      or jsonb_typeof(v_item->'contentHash') is distinct from 'string'
+      or jsonb_typeof(v_item->'publicationVersion') is distinct from 'string'
+      or jsonb_typeof(v_item->'trustedPublicRecordId') is distinct from 'string'
+      or jsonb_typeof(v_item->'trustedRoute') is distinct from 'string'
+      or jsonb_typeof(v_item->'trustedGovernanceHash') is distinct from 'string'
+      or v_item->>'logicalId' !~ '^[a-z0-9][a-z0-9._-]*:[a-z0-9][a-z0-9._:-]*$'
+      or v_item->>'disposition' not in ('adopt','retire','identical_duplicate')
+      or v_item->>'sourceKind' not in ('service','form','medication','differential','presentation')
+      or v_item->>'sourceRowId' !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+      or v_item->>'sourceVersion' !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$'
+      or v_item->>'contentHash' !~ '^[0-9a-f]{64}$'
+      or v_item->>'publicationVersion' !~ '^[0-9a-f]{64}$'
+      or v_item->>'trustedGovernanceHash' !~ '^[0-9a-f]{64}$'
+      or v_item->>'trustedRoute' not like '/%'
+      then raise exception using errcode = '22023', message = 'site_content_reconciliation_item_invalid';
+    end if;
+    select * into strict source from public.site_content_source_projection(
+      v_item->>'sourceKind', (v_item->>'sourceRowId')::uuid);
+    select value into strict v_snapshot from jsonb_array_elements(v_trusted)
+      where value->>'logicalId' = v_item->>'logicalId';
+    if v_item->>'sourceVersion' is distinct from source.source_version
+      or v_item->>'logicalId' is distinct from source.logical_id
+      or v_item->>'contentHash' is distinct from source.record->>'contentHash'
+      or v_item->>'publicationVersion' is distinct from source.record->>'publicationVersion'
+      or v_item->>'trustedPublicRecordId' is distinct from v_snapshot->>'publicRecordId'
+      or v_item->>'trustedRoute' is distinct from v_snapshot->>'route'
+      or v_item->>'trustedGovernanceHash' is distinct from v_snapshot->>'governanceHash'
+      or (v_item->>'disposition' in ('adopt','identical_duplicate') and (
+        source.record->>'contentHash' is distinct from v_snapshot->>'contentHash'
+        or source.record->>'publicationVersion' is distinct from v_snapshot->>'publicationVersion'
+        or source.record->>'route' is distinct from v_snapshot->>'route'
+        or public.site_content_record_governance_hash(source.record) is distinct from v_snapshot->>'governanceHash'))
+      or (v_item->>'disposition' = 'retire' and
+        source.record->>'contentHash' = v_snapshot->>'contentHash'
+        and source.record->>'publicationVersion' = v_snapshot->>'publicationVersion'
+        and source.record->>'route' = v_snapshot->>'route'
+        and public.site_content_record_governance_hash(source.record) = v_snapshot->>'governanceHash')
+      then raise exception using errcode = '22023', message = 'site_content_reconciliation_source_evidence_mismatch';
+    end if;
+  end loop;
+  select count(*) into v_live_count from (
+    select 'service'::text as source_kind, id, to_char(updated_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') source_version
+      from public.clinical_registry_records where kind = 'service'
+    union all select 'form', id, to_char(updated_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
+      from public.clinical_registry_records where kind = 'form'
+    union all select 'medication', id, to_char(updated_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') from public.medication_records
+    union all select case kind when 'presentation' then 'presentation' else 'differential' end, id,
+      to_char(updated_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') from public.differential_records
+  ) live;
+  if v_live_count <> v_expected or exists (
+    select 1 from (
+      select 'service'::text source_kind, id, to_char(updated_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') source_version
+        from public.clinical_registry_records where kind = 'service'
+      union all select 'form', id, to_char(updated_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') from public.clinical_registry_records where kind = 'form'
+      union all select 'medication', id, to_char(updated_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') from public.medication_records
+      union all select case kind when 'presentation' then 'presentation' else 'differential' end, id,
+        to_char(updated_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') from public.differential_records
+    ) live left join jsonb_array_elements(v_dispositions) item
+      on item->>'sourceKind' = live.source_kind and item->>'sourceRowId' = live.id::text
+        and item->>'sourceVersion' = live.source_version
+    where item is null
+  ) then raise exception using errcode = '22023', message = 'site_content_reconciliation_population_mismatch'; end if;
+  insert into public.site_content_reconciliation_plans(
+    plan_digest, version, trusted_snapshot_digest, trusted_snapshots, dispositions, expected_record_count,
+    expected_group_count, batch_size, batch_count, counts, reviewed_by, reviewed_at,
+    administrator_authorized_at, administrator_authorization_version
+  ) values (
+    p_plan->>'planDigest', p_plan->>'version', p_plan->>'trustedSnapshotDigest', v_trusted, v_dispositions,
+    v_expected, v_groups, v_batch_size, v_batch_count, v_counts,
+    v_actor, v_authorized_at, v_authorized_at, 'site-content-admin-authorization-v1'
+  ) on conflict (plan_digest) do nothing;
+  return exists (
+    select 1 from public.site_content_reconciliation_plans rp
+    where rp.plan_digest = p_plan->>'planDigest'
+      and rp.version = p_plan->>'version'
+      and rp.trusted_snapshot_digest = p_plan->>'trustedSnapshotDigest'
+      and rp.trusted_snapshots = v_trusted
+      and rp.dispositions = v_dispositions
+      and rp.expected_record_count = v_expected
+      and rp.expected_group_count = v_groups
+      and rp.batch_size = v_batch_size
+      and rp.batch_count = v_batch_count
+      and rp.counts = v_counts
+      and rp.reviewed_by is not null
+      and rp.reviewed_at = rp.administrator_authorized_at
+      and rp.administrator_authorization_version = 'site-content-admin-authorization-v1'
+  );
+end;
+$$;
+
+alter function public.require_recent_site_content_administrator_assurance() owner to postgres;
+revoke all on function public.require_recent_site_content_administrator_assurance() from public, anon, authenticated, service_role;
+
+revoke all on function public.publish_site_content_record(text, uuid, text, bigint, text, text, text) from public, anon, authenticated, service_role;
+grant execute on function public.publish_site_content_record(text, uuid, text, bigint, text, text, text) to authenticated;
+grant execute on function public.publish_site_content_record(text, uuid, text, bigint, text, text, text) to service_role;
+revoke all on function public.retire_site_content_record(text, uuid, text, bigint, text, text, text) from public, anon, authenticated, service_role;
+grant execute on function public.retire_site_content_record(text, uuid, text, bigint, text, text, text) to authenticated;
+grant execute on function public.retire_site_content_record(text, uuid, text, bigint, text, text, text) to service_role;
+revoke all on function public.record_site_content_reconciliation_plan(jsonb) from public, anon, authenticated, service_role;
+grant execute on function public.record_site_content_reconciliation_plan(jsonb) to authenticated;
+grant execute on function public.record_site_content_reconciliation_plan(jsonb) to service_role;
+alter function public.publish_site_content_record(text, uuid, text, bigint, text, text, text) owner to postgres;
+alter function public.retire_site_content_record(text, uuid, text, bigint, text, text, text) owner to postgres;
+alter function public.record_site_content_reconciliation_plan(jsonb) owner to postgres;
+
+-- Projection: 20261019180000_prune_keeps_array_cited_images.sql
+-- Audit F-09 follow-up (Codex review on #3677; owner-approved 4th migration, 20 Oct 2026).
+--
+-- 20261019155200 kept an older-generation image only when a remaining table fact or index unit
+-- cited it by foreign key. Chunks (image_ids), memory cards (source_image_ids) and the document
+-- summary (source_image_ids) cite images through uuid arrays with no foreign key, possibly
+-- across generations, so an image a kept row still names could be deleted and its object queued
+-- for Storage deletion. The storage janitor only checks document_images rows, so it would then
+-- really remove the file.
+--
+-- This replaces the prune function (same signature, owner, grants, trigger) so that:
+--   * an image any remaining chunk, memory card or summary of the document names is kept, and
+--     its object is never queued;
+--   * images are pruned last, after chunks, memory cards and sections, so an image cited only
+--     by rows pruned in the same pass is removed (and queued) in that pass rather than lingering
+--     until the next commit.
+-- No table, data or trigger changes; only the function body. Reversible by restoring the
+-- 20261019155200 body.
+
+set local lock_timeout = '5s';
+set local statement_timeout = '30s';
+
+create or replace function public.prune_superseded_document_index_generations(
+  p_document_id uuid,
+  p_keep_generation_ids uuid[],
+  p_row_limit integer default 2000
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+set lock_timeout = '100ms'
+as $$
+declare
+  v_owner uuid;
+  v_cover text;
+  v_keep uuid[];
+  v_keep_text text[];
+  v_budget integer;
+  v_batch integer;
+  v_timeout_ms bigint;
+  v_deadline timestamptz;
+  v_step text;
+  v_step_total integer;
+  v_deleted integer;
+  v_step_generations uuid[];
+  v_step_paths text[];
+  v_counts jsonb := '{}'::jsonb;
+  v_generations uuid[] := '{}'::uuid[];
+  v_paths text[] := '{}'::text[];
+  v_stale_paths text[] := '{}'::text[];
+  v_job uuid;
+  v_cited_images uuid[];
+begin
+  if p_document_id is null or p_row_limit is null or p_row_limit not between 1 and 50000 then
+    raise exception 'invalid_index_generation_prune_request';
+  end if;
+
+  -- Time budget: 500 ms, and never past half of the caller's statement_timeout.
+  select s.setting::bigint into v_timeout_ms from pg_catalog.pg_settings s where s.name = 'statement_timeout';
+  v_deadline := pg_catalog.clock_timestamp() + interval '500 milliseconds';
+  if coalesce(v_timeout_ms, 0) > 0 then
+    v_deadline := least(v_deadline,
+      pg_catalog.statement_timestamp() + pg_catalog.make_interval(secs => v_timeout_ms / 2000.0));
+  end if;
+  if pg_catalog.clock_timestamp() >= v_deadline then
+    return jsonb_build_object('ok', true, 'document_id', p_document_id, 'skipped', 'no_time_headroom');
+  end if;
+
+  select d.owner_id, d.metadata->>'cover_image_id'
+  into v_owner, v_cover
+  from public.documents d
+  where d.id = p_document_id;
+  if not found then
+    return jsonb_build_object('ok', true, 'document_id', p_document_id, 'skipped', 'document_missing');
+  end if;
+
+  -- Never prune the caller's keep set, the live pointer, any generation an open job for this
+  -- document still expects or writes (an in-flight build or enrichment pass), or a staged
+  -- evidence candidate whose job has not completed (it may still await an admin-gated commit).
+  select coalesce(array_agg(distinct k.generation_id), '{}'::uuid[])
+  into v_keep
+  from (
+    select unnest(coalesce(p_keep_generation_ids, '{}'::uuid[])) as generation_id
+    union all
+    select d.index_generation_id from public.documents d where d.id = p_document_id
+    union all
+    select g.generation_id
+    from public.ingestion_jobs j
+    cross join lateral (values (j.lease_expected_generation_id), (j.lease_write_generation_id)) g(generation_id)
+    where j.document_id = p_document_id and j.status in ('pending', 'processing')
+    union all
+    select g.generation_id
+    from public.indexing_v3_agent_jobs j
+    cross join lateral (values (j.lease_expected_generation_id), (j.lease_write_generation_id)) g(generation_id)
+    where j.document_id = p_document_id and j.status in ('pending', 'processing')
+    union all
+    select c.generation_id
+    from ingestion_generation_evidence.candidates c
+    where c.document_id = p_document_id
+      and not exists (select 1 from public.ingestion_jobs j where j.id = c.job_id and j.status = 'completed')
+  ) k
+  where k.generation_id is not null;
+
+  if cardinality(v_keep) = 0 then
+    return jsonb_build_object('ok', true, 'document_id', p_document_id, 'skipped', 'no_live_generation');
+  end if;
+  -- A row whose metadata names a kept generation is kept even if its typed column disagrees.
+  v_keep_text := array(select pg_catalog.lower(g::text) from unnest(v_keep) g);
+
+  v_budget := p_row_limit;
+
+  -- Children first, so a parent is reached only once its prunable children are gone and the
+  -- FK cascades or set-nulls below can never reach a kept row.
+  foreach v_step in array array[
+    'document_embedding_fields', 'document_index_units', 'document_table_facts',
+    'document_memory_cards', 'document_sections', 'document_pages', 'document_chunks',
+    'document_images'
+  ] loop
+    v_step_total := 0;
+    loop
+      exit when v_budget <= 0 or pg_catalog.clock_timestamp() > v_deadline;
+      v_batch := least(v_budget, 250);
+      v_deleted := 0;
+      v_step_generations := '{}'::uuid[];
+      v_step_paths := '{}'::text[];
+
+      if v_step = 'document_embedding_fields' then
+        with victims as (
+          select t.id from public.document_embedding_fields t
+          where t.document_id = p_document_id and t.index_generation_id is not null
+            and t.index_generation_id <> all(v_keep)
+            and pg_catalog.lower(coalesce(t.metadata->>'index_generation_id', '')) <> all(v_keep_text)
+          order by t.index_generation_id, t.id
+          limit v_batch
+        ), gone as (
+          delete from public.document_embedding_fields t using victims v where t.id = v.id
+          returning t.index_generation_id
+        )
+        select count(*)::integer, coalesce(array_agg(distinct gone.index_generation_id), '{}'::uuid[])
+        into v_deleted, v_step_generations from gone;
+
+      elsif v_step = 'document_index_units' then
+        with victims as (
+          select t.id from public.document_index_units t
+          where t.document_id = p_document_id and t.index_generation_id is not null
+            and t.index_generation_id <> all(v_keep)
+            and pg_catalog.lower(coalesce(t.metadata->>'index_generation_id', '')) <> all(v_keep_text)
+          order by t.index_generation_id, t.id
+          limit v_batch
+        ), gone as (
+          delete from public.document_index_units t using victims v where t.id = v.id
+          returning t.index_generation_id
+        )
+        select count(*)::integer, coalesce(array_agg(distinct gone.index_generation_id), '{}'::uuid[])
+        into v_deleted, v_step_generations from gone;
+
+      elsif v_step = 'document_table_facts' then
+        with victims as (
+          select t.id from public.document_table_facts t
+          where t.document_id = p_document_id and t.index_generation_id is not null
+            and t.index_generation_id <> all(v_keep)
+            and pg_catalog.lower(coalesce(t.metadata->>'index_generation_id', '')) <> all(v_keep_text)
+          order by t.index_generation_id, t.id
+          limit v_batch
+        ), gone as (
+          delete from public.document_table_facts t using victims v where t.id = v.id
+          returning t.index_generation_id
+        )
+        select count(*)::integer, coalesce(array_agg(distinct gone.index_generation_id), '{}'::uuid[])
+        into v_deleted, v_step_generations from gone;
+
+      elsif v_step = 'document_memory_cards' then
+        with victims as (
+          select t.id from public.document_memory_cards t
+          where t.document_id = p_document_id and t.index_generation_id is not null
+            and t.index_generation_id <> all(v_keep)
+            and pg_catalog.lower(coalesce(t.metadata->>'index_generation_id', '')) <> all(v_keep_text)
+          order by t.index_generation_id, t.id
+          limit v_batch
+        ), gone as (
+          delete from public.document_memory_cards t using victims v where t.id = v.id
+          returning t.index_generation_id
+        )
+        select count(*)::integer, coalesce(array_agg(distinct gone.index_generation_id), '{}'::uuid[])
+        into v_deleted, v_step_generations from gone;
+
+      elsif v_step = 'document_sections' then
+        -- A memory card still pointing here is kept (or deferred by the ceiling); deleting the
+        -- section would null its section_id.
+        with victims as (
+          select t.id from public.document_sections t
+          where t.document_id = p_document_id and t.index_generation_id is not null
+            and t.index_generation_id <> all(v_keep)
+            and pg_catalog.lower(coalesce(t.metadata->>'index_generation_id', '')) <> all(v_keep_text)
+            and not exists (select 1 from public.document_memory_cards m where m.section_id = t.id)
+          order by t.index_generation_id, t.id
+          limit v_batch
+        ), gone as (
+          delete from public.document_sections t using victims v where t.id = v.id
+          returning t.index_generation_id
+        )
+        select count(*)::integer, coalesce(array_agg(distinct gone.index_generation_id), '{}'::uuid[])
+        into v_deleted, v_step_generations from gone;
+
+      elsif v_step = 'document_images' then
+        -- Keep the live cover image and any image a remaining fact or index unit still cites.
+        -- Chunks, memory cards and the summary cite images through uuid arrays with no foreign
+        -- key, possibly across generations, so any image any of them still names is kept too.
+        v_cited_images := array(
+          select distinct r.image_id from (
+            select pg_catalog.unnest(c.image_ids) as image_id
+            from public.document_chunks c where c.document_id = p_document_id
+            union all
+            select pg_catalog.unnest(m.source_image_ids)
+            from public.document_memory_cards m where m.document_id = p_document_id
+            union all
+            select pg_catalog.unnest(s.source_image_ids)
+            from public.document_summaries s where s.document_id = p_document_id
+          ) r
+          where r.image_id is not null
+        );
+        with victims as (
+          select t.id from public.document_images t
+          where t.document_id = p_document_id and t.index_generation_id is not null
+            and t.index_generation_id <> all(v_keep)
+            and pg_catalog.lower(coalesce(t.metadata->>'index_generation_id', '')) <> all(v_keep_text)
+            and t.id::text is distinct from v_cover
+            and t.id <> all(v_cited_images)
+            and not exists (select 1 from public.document_table_facts f where f.source_image_id = t.id)
+            and not exists (select 1 from public.document_index_units u where u.source_image_id = t.id)
+          order by t.index_generation_id, t.id
+          limit v_batch
+        ), gone as (
+          delete from public.document_images t using victims v where t.id = v.id
+          returning t.index_generation_id, t.storage_path
+        )
+        select count(*)::integer, coalesce(array_agg(distinct gone.index_generation_id), '{}'::uuid[]),
+          coalesce(array_agg(distinct gone.storage_path)
+            filter (where gone.storage_path is not null and pg_catalog.btrim(gone.storage_path) <> ''), '{}'::text[])
+        into v_deleted, v_step_generations, v_step_paths from gone;
+
+      elsif v_step = 'document_pages' then
+        with victims as (
+          select t.id from public.document_pages t
+          where t.document_id = p_document_id and t.index_generation_id is not null
+            and t.index_generation_id <> all(v_keep)
+            and pg_catalog.lower(coalesce(t.metadata->>'index_generation_id', '')) <> all(v_keep_text)
+          order by t.index_generation_id, t.id
+          limit v_batch
+        ), gone as (
+          delete from public.document_pages t using victims v where t.id = v.id
+          returning t.index_generation_id
+        )
+        select count(*)::integer, coalesce(array_agg(distinct gone.index_generation_id), '{}'::uuid[])
+        into v_deleted, v_step_generations from gone;
+
+      elsif v_step = 'document_chunks' then
+        -- A chunk still cited by a remaining fact, field or unit is kept: its cascade would
+        -- otherwise reach that row.
+        with victims as (
+          select t.id from public.document_chunks t
+          where t.document_id = p_document_id and t.index_generation_id is not null
+            and t.index_generation_id <> all(v_keep)
+            and pg_catalog.lower(coalesce(t.metadata->>'index_generation_id', '')) <> all(v_keep_text)
+            and not exists (select 1 from public.document_table_facts f where f.source_chunk_id = t.id)
+            and not exists (select 1 from public.document_embedding_fields e where e.source_chunk_id = t.id)
+            and not exists (select 1 from public.document_index_units u where u.source_chunk_id = t.id)
+          order by t.index_generation_id, t.id
+          limit v_batch
+        ), gone as (
+          delete from public.document_chunks t using victims v where t.id = v.id
+          returning t.index_generation_id
+        )
+        select count(*)::integer, coalesce(array_agg(distinct gone.index_generation_id), '{}'::uuid[])
+        into v_deleted, v_step_generations from gone;
+      end if;
+
+      v_budget := v_budget - v_deleted;
+      v_step_total := v_step_total + v_deleted;
+      v_generations := v_generations || v_step_generations;
+      v_paths := v_paths || v_step_paths;
+      exit when v_deleted < v_batch;
+    end loop;
+    v_counts := v_counts || jsonb_build_object(v_step, v_step_total);
+  end loop;
+
+  -- Queue only objects no remaining image row (of any document) still points at. document_id
+  -- stays null: the janitor skips rows whose document still exists, because those normally
+  -- mean an aborted delete. The source document is recorded in metadata instead.
+  select coalesce(array_agg(p.path order by p.path), '{}'::text[])
+  into v_stale_paths
+  from (select distinct unnest(v_paths) as path) p
+  where not exists (select 1 from public.document_images i where i.storage_path = p.path);
+
+  if cardinality(v_stale_paths) > 0 then
+    insert into public.storage_cleanup_jobs(
+      owner_id, document_id, document_paths, image_bucket, image_paths, status, metadata
+    ) values (
+      v_owner, null, '{}'::text[], 'clinical-images', v_stale_paths, 'pending',
+      jsonb_build_object(
+        'operation', 'superseded_index_generation_prune',
+        'source_document_id', p_document_id,
+        'pruned_generation_ids', (select coalesce(jsonb_agg(distinct g), '[]'::jsonb) from unnest(v_generations) g)
+      )
+    )
+    returning id into v_job;
+  end if;
+
+  return jsonb_build_object(
+    'ok', true,
+    'document_id', p_document_id,
+    'kept_generation_ids', to_jsonb(v_keep),
+    'pruned_generation_ids', (select coalesce(jsonb_agg(distinct g), '[]'::jsonb) from unnest(v_generations) g),
+    'counts', v_counts,
+    'rows_deleted', p_row_limit - v_budget,
+    'row_limit', p_row_limit,
+    'limit_reached', v_budget <= 0 or pg_catalog.clock_timestamp() > v_deadline,
+    'storage_paths_queued', cardinality(v_stale_paths),
+    'storage_cleanup_job_id', v_job
+  );
+end;
+$$;
+
+alter function public.prune_superseded_document_index_generations(uuid, uuid[], integer) owner to postgres;
+revoke all on function public.prune_superseded_document_index_generations(uuid, uuid[], integer)
+  from public, anon, authenticated, service_role;
+
+-- Projection: 20261019183000_prune_keeps_array_cited_chunks.sql
+-- Audit F-09 follow-up (second Codex review on #3677).
+--
+-- 20261019180000 keeps an older-generation chunk only when a remaining table fact, embedding
+-- field or index unit cites it by foreign key. The document summary (source_chunk_ids),
+-- sections (chunk_ids) and memory cards (source_chunk_ids) cite chunks through uuid arrays with
+-- no foreign key. A summary written during an earlier generation and not rewritten since can
+-- still name chunks of that generation, so two reindexes later the prune would delete them and
+-- leave the summary pointing at chunks that no longer exist.
+--
+-- This replaces the prune function again (same signature, owner, grants, trigger) so that a
+-- chunk any remaining summary, section or memory card of the document names is kept. Chunks are
+-- still pruned after memory cards and sections, so a chunk named only by rows removed in the
+-- same pass goes in that pass. No table, data or trigger changes; only the function body.
+-- Reversible by restoring the 20261019180000 body.
+
+set local lock_timeout = '5s';
+set local statement_timeout = '30s';
+
+create or replace function public.prune_superseded_document_index_generations(
+  p_document_id uuid,
+  p_keep_generation_ids uuid[],
+  p_row_limit integer default 2000
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+set lock_timeout = '100ms'
+as $$
+declare
+  v_owner uuid;
+  v_cover text;
+  v_keep uuid[];
+  v_keep_text text[];
+  v_budget integer;
+  v_batch integer;
+  v_timeout_ms bigint;
+  v_deadline timestamptz;
+  v_step text;
+  v_step_total integer;
+  v_deleted integer;
+  v_step_generations uuid[];
+  v_step_paths text[];
+  v_counts jsonb := '{}'::jsonb;
+  v_generations uuid[] := '{}'::uuid[];
+  v_paths text[] := '{}'::text[];
+  v_stale_paths text[] := '{}'::text[];
+  v_job uuid;
+  v_cited_images uuid[];
+  v_cited_chunks uuid[];
+begin
+  if p_document_id is null or p_row_limit is null or p_row_limit not between 1 and 50000 then
+    raise exception 'invalid_index_generation_prune_request';
+  end if;
+
+  -- Time budget: 500 ms, and never past half of the caller's statement_timeout.
+  select s.setting::bigint into v_timeout_ms from pg_catalog.pg_settings s where s.name = 'statement_timeout';
+  v_deadline := pg_catalog.clock_timestamp() + interval '500 milliseconds';
+  if coalesce(v_timeout_ms, 0) > 0 then
+    v_deadline := least(v_deadline,
+      pg_catalog.statement_timestamp() + pg_catalog.make_interval(secs => v_timeout_ms / 2000.0));
+  end if;
+  if pg_catalog.clock_timestamp() >= v_deadline then
+    return jsonb_build_object('ok', true, 'document_id', p_document_id, 'skipped', 'no_time_headroom');
+  end if;
+
+  select d.owner_id, d.metadata->>'cover_image_id'
+  into v_owner, v_cover
+  from public.documents d
+  where d.id = p_document_id;
+  if not found then
+    return jsonb_build_object('ok', true, 'document_id', p_document_id, 'skipped', 'document_missing');
+  end if;
+
+  -- Never prune the caller's keep set, the live pointer, any generation an open job for this
+  -- document still expects or writes (an in-flight build or enrichment pass), or a staged
+  -- evidence candidate whose job has not completed (it may still await an admin-gated commit).
+  select coalesce(array_agg(distinct k.generation_id), '{}'::uuid[])
+  into v_keep
+  from (
+    select unnest(coalesce(p_keep_generation_ids, '{}'::uuid[])) as generation_id
+    union all
+    select d.index_generation_id from public.documents d where d.id = p_document_id
+    union all
+    select g.generation_id
+    from public.ingestion_jobs j
+    cross join lateral (values (j.lease_expected_generation_id), (j.lease_write_generation_id)) g(generation_id)
+    where j.document_id = p_document_id and j.status in ('pending', 'processing')
+    union all
+    select g.generation_id
+    from public.indexing_v3_agent_jobs j
+    cross join lateral (values (j.lease_expected_generation_id), (j.lease_write_generation_id)) g(generation_id)
+    where j.document_id = p_document_id and j.status in ('pending', 'processing')
+    union all
+    select c.generation_id
+    from ingestion_generation_evidence.candidates c
+    where c.document_id = p_document_id
+      and not exists (select 1 from public.ingestion_jobs j where j.id = c.job_id and j.status = 'completed')
+  ) k
+  where k.generation_id is not null;
+
+  if cardinality(v_keep) = 0 then
+    return jsonb_build_object('ok', true, 'document_id', p_document_id, 'skipped', 'no_live_generation');
+  end if;
+  -- A row whose metadata names a kept generation is kept even if its typed column disagrees.
+  v_keep_text := array(select pg_catalog.lower(g::text) from unnest(v_keep) g);
+
+  v_budget := p_row_limit;
+
+  -- Children first, so a parent is reached only once its prunable children are gone and the
+  -- FK cascades or set-nulls below can never reach a kept row.
+  foreach v_step in array array[
+    'document_embedding_fields', 'document_index_units', 'document_table_facts',
+    'document_memory_cards', 'document_sections', 'document_pages', 'document_chunks',
+    'document_images'
+  ] loop
+    v_step_total := 0;
+    loop
+      exit when v_budget <= 0 or pg_catalog.clock_timestamp() > v_deadline;
+      v_batch := least(v_budget, 250);
+      v_deleted := 0;
+      v_step_generations := '{}'::uuid[];
+      v_step_paths := '{}'::text[];
+
+      if v_step = 'document_embedding_fields' then
+        with victims as (
+          select t.id from public.document_embedding_fields t
+          where t.document_id = p_document_id and t.index_generation_id is not null
+            and t.index_generation_id <> all(v_keep)
+            and pg_catalog.lower(coalesce(t.metadata->>'index_generation_id', '')) <> all(v_keep_text)
+          order by t.index_generation_id, t.id
+          limit v_batch
+        ), gone as (
+          delete from public.document_embedding_fields t using victims v where t.id = v.id
+          returning t.index_generation_id
+        )
+        select count(*)::integer, coalesce(array_agg(distinct gone.index_generation_id), '{}'::uuid[])
+        into v_deleted, v_step_generations from gone;
+
+      elsif v_step = 'document_index_units' then
+        with victims as (
+          select t.id from public.document_index_units t
+          where t.document_id = p_document_id and t.index_generation_id is not null
+            and t.index_generation_id <> all(v_keep)
+            and pg_catalog.lower(coalesce(t.metadata->>'index_generation_id', '')) <> all(v_keep_text)
+          order by t.index_generation_id, t.id
+          limit v_batch
+        ), gone as (
+          delete from public.document_index_units t using victims v where t.id = v.id
+          returning t.index_generation_id
+        )
+        select count(*)::integer, coalesce(array_agg(distinct gone.index_generation_id), '{}'::uuid[])
+        into v_deleted, v_step_generations from gone;
+
+      elsif v_step = 'document_table_facts' then
+        with victims as (
+          select t.id from public.document_table_facts t
+          where t.document_id = p_document_id and t.index_generation_id is not null
+            and t.index_generation_id <> all(v_keep)
+            and pg_catalog.lower(coalesce(t.metadata->>'index_generation_id', '')) <> all(v_keep_text)
+          order by t.index_generation_id, t.id
+          limit v_batch
+        ), gone as (
+          delete from public.document_table_facts t using victims v where t.id = v.id
+          returning t.index_generation_id
+        )
+        select count(*)::integer, coalesce(array_agg(distinct gone.index_generation_id), '{}'::uuid[])
+        into v_deleted, v_step_generations from gone;
+
+      elsif v_step = 'document_memory_cards' then
+        with victims as (
+          select t.id from public.document_memory_cards t
+          where t.document_id = p_document_id and t.index_generation_id is not null
+            and t.index_generation_id <> all(v_keep)
+            and pg_catalog.lower(coalesce(t.metadata->>'index_generation_id', '')) <> all(v_keep_text)
+          order by t.index_generation_id, t.id
+          limit v_batch
+        ), gone as (
+          delete from public.document_memory_cards t using victims v where t.id = v.id
+          returning t.index_generation_id
+        )
+        select count(*)::integer, coalesce(array_agg(distinct gone.index_generation_id), '{}'::uuid[])
+        into v_deleted, v_step_generations from gone;
+
+      elsif v_step = 'document_sections' then
+        -- A memory card still pointing here is kept (or deferred by the ceiling); deleting the
+        -- section would null its section_id.
+        with victims as (
+          select t.id from public.document_sections t
+          where t.document_id = p_document_id and t.index_generation_id is not null
+            and t.index_generation_id <> all(v_keep)
+            and pg_catalog.lower(coalesce(t.metadata->>'index_generation_id', '')) <> all(v_keep_text)
+            and not exists (select 1 from public.document_memory_cards m where m.section_id = t.id)
+          order by t.index_generation_id, t.id
+          limit v_batch
+        ), gone as (
+          delete from public.document_sections t using victims v where t.id = v.id
+          returning t.index_generation_id
+        )
+        select count(*)::integer, coalesce(array_agg(distinct gone.index_generation_id), '{}'::uuid[])
+        into v_deleted, v_step_generations from gone;
+
+      elsif v_step = 'document_images' then
+        -- Keep the live cover image and any image a remaining fact or index unit still cites.
+        -- Chunks, memory cards and the summary cite images through uuid arrays with no foreign
+        -- key, possibly across generations, so any image any of them still names is kept too.
+        v_cited_images := array(
+          select distinct r.image_id from (
+            select pg_catalog.unnest(c.image_ids) as image_id
+            from public.document_chunks c where c.document_id = p_document_id
+            union all
+            select pg_catalog.unnest(m.source_image_ids)
+            from public.document_memory_cards m where m.document_id = p_document_id
+            union all
+            select pg_catalog.unnest(s.source_image_ids)
+            from public.document_summaries s where s.document_id = p_document_id
+          ) r
+          where r.image_id is not null
+        );
+        with victims as (
+          select t.id from public.document_images t
+          where t.document_id = p_document_id and t.index_generation_id is not null
+            and t.index_generation_id <> all(v_keep)
+            and pg_catalog.lower(coalesce(t.metadata->>'index_generation_id', '')) <> all(v_keep_text)
+            and t.id::text is distinct from v_cover
+            and t.id <> all(v_cited_images)
+            and not exists (select 1 from public.document_table_facts f where f.source_image_id = t.id)
+            and not exists (select 1 from public.document_index_units u where u.source_image_id = t.id)
+          order by t.index_generation_id, t.id
+          limit v_batch
+        ), gone as (
+          delete from public.document_images t using victims v where t.id = v.id
+          returning t.index_generation_id, t.storage_path
+        )
+        select count(*)::integer, coalesce(array_agg(distinct gone.index_generation_id), '{}'::uuid[]),
+          coalesce(array_agg(distinct gone.storage_path)
+            filter (where gone.storage_path is not null and pg_catalog.btrim(gone.storage_path) <> ''), '{}'::text[])
+        into v_deleted, v_step_generations, v_step_paths from gone;
+
+      elsif v_step = 'document_pages' then
+        with victims as (
+          select t.id from public.document_pages t
+          where t.document_id = p_document_id and t.index_generation_id is not null
+            and t.index_generation_id <> all(v_keep)
+            and pg_catalog.lower(coalesce(t.metadata->>'index_generation_id', '')) <> all(v_keep_text)
+          order by t.index_generation_id, t.id
+          limit v_batch
+        ), gone as (
+          delete from public.document_pages t using victims v where t.id = v.id
+          returning t.index_generation_id
+        )
+        select count(*)::integer, coalesce(array_agg(distinct gone.index_generation_id), '{}'::uuid[])
+        into v_deleted, v_step_generations from gone;
+
+      elsif v_step = 'document_chunks' then
+        -- A chunk still cited by a remaining fact, field or unit is kept: its cascade would
+        -- otherwise reach that row. The summary, sections and memory cards cite chunks through
+        -- uuid arrays with no foreign key, possibly across generations, so any chunk any of
+        -- them still names is kept too.
+        v_cited_chunks := array(
+          select distinct r.chunk_id from (
+            select pg_catalog.unnest(s.source_chunk_ids) as chunk_id
+            from public.document_summaries s where s.document_id = p_document_id
+            union all
+            select pg_catalog.unnest(sec.chunk_ids)
+            from public.document_sections sec where sec.document_id = p_document_id
+            union all
+            select pg_catalog.unnest(m.source_chunk_ids)
+            from public.document_memory_cards m where m.document_id = p_document_id
+          ) r
+          where r.chunk_id is not null
+        );
+        with victims as (
+          select t.id from public.document_chunks t
+          where t.document_id = p_document_id and t.index_generation_id is not null
+            and t.index_generation_id <> all(v_keep)
+            and pg_catalog.lower(coalesce(t.metadata->>'index_generation_id', '')) <> all(v_keep_text)
+            and not exists (select 1 from public.document_table_facts f where f.source_chunk_id = t.id)
+            and not exists (select 1 from public.document_embedding_fields e where e.source_chunk_id = t.id)
+            and not exists (select 1 from public.document_index_units u where u.source_chunk_id = t.id)
+            and t.id <> all(v_cited_chunks)
+          order by t.index_generation_id, t.id
+          limit v_batch
+        ), gone as (
+          delete from public.document_chunks t using victims v where t.id = v.id
+          returning t.index_generation_id
+        )
+        select count(*)::integer, coalesce(array_agg(distinct gone.index_generation_id), '{}'::uuid[])
+        into v_deleted, v_step_generations from gone;
+      end if;
+
+      v_budget := v_budget - v_deleted;
+      v_step_total := v_step_total + v_deleted;
+      v_generations := v_generations || v_step_generations;
+      v_paths := v_paths || v_step_paths;
+      exit when v_deleted < v_batch;
+    end loop;
+    v_counts := v_counts || jsonb_build_object(v_step, v_step_total);
+  end loop;
+
+  -- Queue only objects no remaining image row (of any document) still points at. document_id
+  -- stays null: the janitor skips rows whose document still exists, because those normally
+  -- mean an aborted delete. The source document is recorded in metadata instead.
+  select coalesce(array_agg(p.path order by p.path), '{}'::text[])
+  into v_stale_paths
+  from (select distinct unnest(v_paths) as path) p
+  where not exists (select 1 from public.document_images i where i.storage_path = p.path);
+
+  if cardinality(v_stale_paths) > 0 then
+    insert into public.storage_cleanup_jobs(
+      owner_id, document_id, document_paths, image_bucket, image_paths, status, metadata
+    ) values (
+      v_owner, null, '{}'::text[], 'clinical-images', v_stale_paths, 'pending',
+      jsonb_build_object(
+        'operation', 'superseded_index_generation_prune',
+        'source_document_id', p_document_id,
+        'pruned_generation_ids', (select coalesce(jsonb_agg(distinct g), '[]'::jsonb) from unnest(v_generations) g)
+      )
+    )
+    returning id into v_job;
+  end if;
+
+  return jsonb_build_object(
+    'ok', true,
+    'document_id', p_document_id,
+    'kept_generation_ids', to_jsonb(v_keep),
+    'pruned_generation_ids', (select coalesce(jsonb_agg(distinct g), '[]'::jsonb) from unnest(v_generations) g),
+    'counts', v_counts,
+    'rows_deleted', p_row_limit - v_budget,
+    'row_limit', p_row_limit,
+    'limit_reached', v_budget <= 0 or pg_catalog.clock_timestamp() > v_deadline,
+    'storage_paths_queued', cardinality(v_stale_paths),
+    'storage_cleanup_job_id', v_job
+  );
+end;
+$$;
+
+alter function public.prune_superseded_document_index_generations(uuid, uuid[], integer) owner to postgres;
+revoke all on function public.prune_superseded_document_index_generations(uuid, uuid[], integer)
+  from public, anon, authenticated, service_role;
+
+-- Projection: 20261019234000_retire_triage_on_feedback_supersede.sql
+-- DRAFT. Merge only inside the owner's approved database-change window.
+set local lock_timeout = '5s';
+set local statement_timeout = '30s';
+
+-- Follow-up to 20261019155000 (F-02). When a problem report supersedes a 'verified' answer
+-- verdict, the guard gives the row a fresh id, so the report reaches the review queue as a new,
+-- untriaged signal. Any open triage workflow keyed by the old id was left pointing at a row that
+-- no longer exists, and the quality queue showed it as an extra high-priority
+-- 'source_signal_unavailable' item that a reviewer had to dismiss by hand.
+--
+-- This AFTER UPDATE trigger fires only when the id changed, which the guard allows only on that
+-- supersede path, and removes the old id's open (non-terminal) current-state triage rows in the
+-- same transaction. The append-only clinical_quality_feedback_triage_events history is kept, and
+-- terminal (resolved or dismissed) rows are left as they are, since the queue never shows them.
+-- The new report's triage is not carried over: it starts untriaged by design.
+--
+-- service_role can only read the triage table (its writes go through the security definer
+-- record_clinical_quality_feedback_triage), so this function is security definer with an empty
+-- search_path and fully qualified names.
+set search_path = public, pg_catalog, pg_temp;
+
+create or replace function public.retire_superseded_feedback_triage()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  delete from public.clinical_quality_feedback_triage t
+  where t.signal_id = old.id
+    and t.signal_type in ('answer_feedback', 'unsupported_claim', 'source_conflict')
+    and t.status not in ('resolved', 'dismissed');
+  return null;
+end;
+$$;
+
+revoke all on function public.retire_superseded_feedback_triage() from public, anon, authenticated;
+grant execute on function public.retire_superseded_feedback_triage() to service_role;
+
+drop trigger if exists rag_answer_feedback_retire_superseded_triage on public.rag_answer_feedback;
+create trigger rag_answer_feedback_retire_superseded_triage
+  after update on public.rag_answer_feedback
+  for each row
+  when (old.id is distinct from new.id)
+  execute function public.retire_superseded_feedback_triage();
+
+comment on function public.retire_superseded_feedback_triage() is
+  'When a problem report supersedes a verified answer verdict (new id), removes the old id''s open
+   current-state triage rows. Triage event history and terminal rows are kept.';

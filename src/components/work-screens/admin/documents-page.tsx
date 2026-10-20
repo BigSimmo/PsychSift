@@ -156,7 +156,7 @@ export function AdminDocumentsPage({ now: pinned }: { now?: Date } = {}) {
   }
 
   return (
-    <WorkBody testId="admin-documents">
+    <WorkBody testId="admin-documents" landmark>
       <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
         Documents
       </PageTitleUnderBand>

@@ -4,7 +4,8 @@ const homePageJsonLd = {
   "@context": "https://schema.org",
   "@type": "MedicalWebPage",
   name: `${BRAND_NAME} Clinical Reference`,
-  url: "https://psychsift.com.au",
+  // The live site (docs/deployment-architecture.md). psychsift.com.au was never this app's domain.
+  url: "https://psychiatry.tools",
   description: BRAND_DESCRIPTION,
   audience: {
     "@type": "MedicalAudience",

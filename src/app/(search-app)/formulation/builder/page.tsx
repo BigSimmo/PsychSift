@@ -1,4 +1,10 @@
+import type { Metadata } from "next";
 import { FormulationBuilderPage } from "@/components/formulation/formulation-builder-page";
+
+export const metadata: Metadata = {
+  title: "Builder | Formulation | PsychSift",
+  description: "Build a case formulation step by step.",
+};
 
 type BuilderRouteProps = {
   searchParams?: Promise<{

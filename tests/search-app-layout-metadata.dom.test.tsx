@@ -24,7 +24,7 @@ describe("SearchAppLayout metadata and structured data (#28ECMG)", () => {
     expect(data["@context"]).toBe("https://schema.org");
     expect(data["@type"]).toBe("MedicalWebPage");
     expect(data.name).toBe(`${BRAND_NAME} Clinical Reference`);
-    expect(data.url).toBe("https://psychsift.com.au");
+    expect(data.url).toBe("https://psychiatry.tools");
     expect(data.description).toBe(BRAND_DESCRIPTION);
     expect(data.audience).toEqual({
       "@type": "MedicalAudience",

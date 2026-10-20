@@ -99,3 +99,23 @@ describe("mode band tab counts", () => {
     expect(html).not.toContain("data-mode-band-reserve");
   });
 });
+
+describe("mode band eyebrow line (design audit D-28)", () => {
+  it("keeps the CPD home's eyebrow line from the first paint", () => {
+    const html = renderToString(
+      <ModeBand modeId="cme" eyebrowSlot={["/cme"]}>
+        <p>CPD home</p>
+      </ModeBand>,
+    );
+    expect(html).toContain("work-band__eyebrow");
+  });
+
+  it("draws no eyebrow line on a path without the slot", () => {
+    const html = renderToString(
+      <ModeBand modeId="cme">
+        <p>CPD home</p>
+      </ModeBand>,
+    );
+    expect(html).not.toContain("work-band__eyebrow");
+  });
+});

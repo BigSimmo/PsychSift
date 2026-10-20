@@ -110,7 +110,11 @@ export function AdminHospitalSickPage() {
       />
     );
 
-  return <WorkBody testId="admin-hospital-sick">{body}</WorkBody>;
+  return (
+    <WorkBody testId="admin-hospital-sick" landmark>
+      {body}
+    </WorkBody>
+  );
 }
 
 function NotForYou({ onExample }: { readonly onExample?: () => void }) {

@@ -630,7 +630,7 @@ function AssessmentsPage({ demoMode }: { demoMode: boolean }) {
   const access = useAssessmentsAccess();
   const sample = demoMode || (active && access === "signed-out");
   return (
-    <WorkBody testId="teaching-assessments">
+    <WorkBody testId="teaching-assessments" landmark>
       <h1 className="sr-only">Assessments</h1>
       {!demoMode && access === "loading" ? (
         <AssessSkeleton />
