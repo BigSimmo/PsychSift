@@ -14,6 +14,8 @@ import {
   readSealedVersions,
   resealBlockedWithoutApproval,
   seal,
+  compareAgainstBase,
+  readBaseSealedVersions,
 } from "../scripts/check-migration-immutability.mjs";
 
 /**
@@ -94,12 +96,12 @@ describe("migration sealing is append-only", () => {
     expect(resealBlockedWithoutApproval(edited, { env: env() })).toBe(true);
     expect(resealBlockedWithoutApproval(dropped, { env: env({ MIGRATION_RESEAL_OWNER_APPROVAL: "  " }) })).toBe(true);
     expect(resealBlockedWithoutApproval(appendOnly, { env: env() })).toBe(false);
-    for (const vague of ["no", "yes", "2026-10-15", "owner"]) {
+    for (const vague of ["no", "yes", "2026-10-15", "owner", "owner, in chat, 2026-10-15"]) {
       expect(resealBlockedWithoutApproval(edited, { env: env({ MIGRATION_RESEAL_OWNER_APPROVAL: vague }) })).toBe(true);
     }
     expect(
       resealBlockedWithoutApproval(edited, {
-        env: env({ MIGRATION_RESEAL_OWNER_APPROVAL: "owner, in chat, 2026-10-15" }),
+        env: env({ MIGRATION_RESEAL_OWNER_APPROVAL: "owner, 2026-10-15, docs/decisions/2026-10-15-reseal.md" }),
       }),
     ).toBe(false);
   });
@@ -186,5 +188,18 @@ describe("migration sealing is append-only", () => {
       parseSpy.mockRestore();
       errorSpy.mockRestore();
     }
+  });
+
+  it("checks the base branch's sealed hashes, so a migration resealed in the same PR still fails (CC-09)", () => {
+    const run = vi.fn(() => JSON.stringify({ versions: { "a.sql": "1", "b.sql": "2" } }));
+    const base = readBaseSealedVersions("origin/main", { run: run as never });
+    expect(run).toHaveBeenCalledWith(
+      "git",
+      ["show", "origin/main:supabase/applied-migration-hashes.json"],
+      expect.anything(),
+    );
+    expect(compareAgainstBase(base, { "a.sql": "9", "c.sql": "3" })).toEqual({ edited: ["a.sql"], missing: ["b.sql"] });
+    expect(compareAgainstBase(base, { "a.sql": "1", "b.sql": "2", "c.sql": "3" })).toEqual({ edited: [], missing: [] });
+    expect(() => readBaseSealedVersions("origin/main", { run: (() => "{}") as never })).toThrow(/no versions map/);
   });
 });

@@ -548,9 +548,13 @@ jobs:
       # replay plus the regenerated schema mirror agree with each other either way.
       # Until now this ran only transitively inside the unit suite, so it was in no
       # named gate and a scope that skipped coverage skipped it entirely (#CNSDBJ).
+      # --base-ref also checks the base branch's sealed hashes, so editing a migration and
+      # its hash together in one PR fails here too (audit CC-09, 2026-10-20).
       - name: Applied-migration immutability guard
         if: needs.changes.outputs.static_heavy_changed == 'true'
-        run: npm run check:migration-immutability
+        env:
+          BASE_REF: origin/${{ github.base_ref || 'main' }}
+        run: npm run check:migration-immutability -- --base-ref "$BASE_REF"
 
       # Fails if a SECURITY DEFINER public function is left executable by
       # PUBLIC/anon (privilege-escalation / cross-tenant read surface).

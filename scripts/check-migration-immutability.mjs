@@ -22,7 +22,7 @@
  * only. It refuses `edited` and `missing` entries so an applied-history rewrite cannot clear this
  * gate by resealing the rewritten bytes. The genuine exception — restoring a file to the bytes
  * production actually holds — requires an explicit one-time override:
- *   MIGRATION_RESEAL_OWNER_APPROVAL="<who approved, YYYY-MM-DD>" ALLOW_MIGRATION_RESEAL=true npm run migrations:reseal
+ *   MIGRATION_RESEAL_OWNER_APPROVAL="<who approved, YYYY-MM-DD, docs/decisions/<entry>.md or link>" ALLOW_MIGRATION_RESEAL=true npm run migrations:reseal
  *   (or `node scripts/check-migration-immutability.mjs --write --allow-reseal`, with the same approval variable)
  * That path prints every existing entry it changes; the manifest diff and the reason for it must
  * land in front of a reviewer. Resealing also needs the owner's explicit permission for that specific
@@ -31,9 +31,11 @@
  *
  * Usage:
  *   npm run check:migration-immutability     verify (exit 1 on any violation)
+ *   ... -- --base-ref origin/main             also verify against the base branch's sealed hashes
  *   npm run migrations:seal                  append hashes for new migrations only
  *   npm run migrations:reseal                exceptional restore (requires ALLOW_MIGRATION_RESEAL=true)
  */
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -119,14 +121,18 @@ export function resealBlockedWithoutApproval(plan, { env = process.env } = {}) {
 }
 
 /**
- * True when MIGRATION_RESEAL_OWNER_APPROVAL names who approved and on what date, such as
- * "the owner, in chat, 2026-10-15". It cannot prove a person said yes; it makes the claim
- * specific enough to check against the record in review.
+ * True when MIGRATION_RESEAL_OWNER_APPROVAL names who approved, on what date, and where the
+ * owner's own words are recorded (a `docs/decisions/` entry or a link), such as
+ * "the owner, 2026-10-15, docs/decisions/2026-10-15-reseal-x.md". It cannot prove a person said
+ * yes; it makes the claim checkable in review. A bare "relayed" approval once satisfied the
+ * date-only form (audit CC-09, 2026-10-20).
  */
 export function ownerApprovalNamed(env = process.env) {
   const value = (env.MIGRATION_RESEAL_OWNER_APPROVAL ?? "").trim();
   const date = value.match(/\b\d{4}-\d{2}-\d{2}\b/);
-  return Boolean(date) && /[a-z]{3,}/i.test(value.replace(date[0], ""));
+  const citation = /docs\/decisions\/[\w.-]+\.md|https:\/\/\S+/.exec(value);
+  if (!date || !citation) return false;
+  return /[a-z]{3,}/i.test(value.replace(citation[0], "").replace(date[0], ""));
 }
 
 /**
@@ -231,10 +237,43 @@ export function seal({ argv = process.argv, env = process.env, write = writeMani
   return 0;
 }
 
-export function runMigrationImmutabilityGuard() {
+/**
+ * The sealed hashes on a trusted base ref, read from git. A PR edits its own manifest, so a
+ * migration edited together with its hash passes against the PR's copy; checking against the
+ * base's copy catches that (audit CC-09, 2026-10-20). Throws when the base cannot be read.
+ */
+export function readBaseSealedVersions(baseRef, { run = execFileSync } = {}) {
+  const raw = run("git", ["show", `${baseRef}:${MANIFEST_RELATIVE}`], { cwd: PROJECT_ROOT, encoding: "utf8" });
+  const versions = JSON.parse(raw)?.versions;
+  if (!versions || typeof versions !== "object" || Array.isArray(versions)) {
+    throw new Error(`${MANIFEST_RELATIVE} on ${baseRef} has no versions map`);
+  }
+  return versions;
+}
+
+/** Every migration sealed on the base must still have the base's bytes. */
+export function compareAgainstBase(baseVersions, current) {
+  const { edited, missing } = compareMigrations(baseVersions, current);
+  return { edited, missing };
+}
+
+export function runMigrationImmutabilityGuard({ baseRef = null } = {}) {
   const current = hashMigrations();
   const sealed = readManifest().versions ?? {};
   const result = compareMigrations(sealed, current);
+  if (baseRef) {
+    let base;
+    try {
+      base = compareAgainstBase(readBaseSealedVersions(baseRef), current);
+    } catch (error) {
+      console.error(`Migration immutability guard failed: cannot read the sealed hashes on ${baseRef}.`);
+      console.error(error instanceof Error ? error.message : String(error));
+      return 1;
+    }
+    for (const name of base.edited) if (!result.edited.includes(name)) result.edited.push(name);
+    for (const name of base.missing) if (!result.missing.includes(name)) result.missing.push(name);
+    result.ok = result.ok && base.edited.length === 0 && base.missing.length === 0;
+  }
   if (result.ok) {
     console.log(`Migration immutability guard passed: ${Object.keys(sealed).length} shipped migrations unchanged.`);
     return 0;
@@ -261,6 +300,8 @@ if (isDirectEntrypoint(import.meta.url)) {
   if (process.argv.includes("--write")) {
     process.exitCode = seal();
   } else {
-    process.exitCode = runMigrationImmutabilityGuard();
+    const baseIndex = process.argv.indexOf("--base-ref");
+    const baseRef = baseIndex >= 0 ? process.argv[baseIndex + 1] : null;
+    process.exitCode = runMigrationImmutabilityGuard({ baseRef });
   }
 }

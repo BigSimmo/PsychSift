@@ -898,7 +898,9 @@ export function migrationHistoryEditApproval(body) {
   if (!match) return { declared: false, satisfied: false, reason: "" };
   const reason = match[1].trim();
   const placeholder = /^<[^>]*>$|^(?:n\/?a|none|todo|tbd|-)$/i.test(reason);
-  return { declared: true, satisfied: !placeholder && reason.length >= 12, reason };
+  // The reason must cite where the owner's own words are recorded (audit CC-09, 2026-10-20).
+  const cited = /docs\/decisions\/[\w.-]+\.md|https:\/\/\S+/.test(reason);
+  return { declared: true, satisfied: !placeholder && cited && reason.length >= 12, reason };
 }
 
 /**
@@ -934,7 +936,7 @@ export function migrationHistoryVerdict({
       for (const violation of violations) errors.push(violation.message);
       if (override.declared && !override.satisfied) {
         errors.push(
-          "`Migration history edit approved:` needs a specific reason (at least 12 characters, not a placeholder).",
+          "`Migration history edit approved:` needs a specific reason (at least 12 characters, not a placeholder) citing the owner's words: a docs/decisions/ entry or a link.",
         );
       }
     }
@@ -2303,7 +2305,7 @@ function migrationHistoryAndOwnerMergeSelfTest(completeBody) {
   assert.match(historyError, /Applied migrations never re-run on live/);
   assert.match(historyError, /NEW migration whose version is newer than 20260916160000/);
 
-  const editApproved = `${completeBody}\n\nMigration history edit approved: repairing a no-statements history row per the guard-migration contract`;
+  const editApproved = `${completeBody}\n\nMigration history edit approved: repairing a no-statements history row per the guard-migration contract, docs/decisions/2026-10-15-database-changes-need-owner-permission.md`;
   const guardPath = "supabase/migrations/20260917120000_validate_site_content_repair.sql";
   const guardSql = `set local statement_timeout = '30s';
 set local lock_timeout = '5s';

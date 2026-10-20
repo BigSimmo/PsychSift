@@ -318,8 +318,15 @@ the GitHub ruleset no longer requires that context.
 migration dated at or before the newest one on `main` (out-of-order or future-dated). A migration
 already on `main` is never edited; ship a new migration with the newest timestamp
 (`AGENTS.md` `# Supabase project safety`). The only override is a body line
-`Migration history edit approved: <reason>` together with an accompanying fail-fast validation
-guard migration in the same change.
+`Migration history edit approved: <reason>`, where the reason cites the owner's words (a
+`docs/decisions/` entry or a link), together with an accompanying fail-fast validation guard
+migration in the same change.
+
+**Required-check files.** `ci.yml`, `secret-scan.yml`, `.github/actions/**` and
+`scripts/ci-change-scope.mjs` decide whether the required checks pass, and a PR runs its own copy
+of them. `PR policy` fails a PR that changes one unless its body has a line
+`Required check change approved: <reason>` citing the owner's yes; Dependabot pin bumps are exempt
+(audit CC-04, 2026-10-20).
 
 Clinical-content and RAG-ranking PRs keep every other control — the clinical governance
 preflight, the `RAG impact:` body line, the canary-pair requirement, the advisory
