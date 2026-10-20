@@ -37,7 +37,7 @@
  * CLI: `node scripts/gate-receipts.mjs [--self-test|status|clear] [gate]`
  */
 import { createHash } from "node:crypto";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, lstatSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -56,7 +56,7 @@ import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
  * @typedef {{ reuse: boolean, reason: string, message: string | null, gate: string, args: string[], key: string | null, inputHash: string | null, environmentHash: string | null, fileCount: number }} GateDecision
  */
 
-export const RECEIPT_FORMAT_VERSION = 1;
+export const RECEIPT_FORMAT_VERSION = 2;
 
 /** Receipts kept per gate before the oldest is dropped (branch switching thrashes otherwise). */
 export const MAX_RECEIPTS_PER_GATE = 8;
@@ -314,8 +314,87 @@ export const OUTCOME_AFFECTING_ENV_VARS = [
   "LANG",
   "LC_ALL",
   "NODE_OPTIONS",
+  "PYTHON_BIN",
   "TZ",
 ];
+
+// Every Vitest selection can reach Python through imports or file-read contracts.
+// Until dependencies are declared per test, fingerprint it for all Vitest receipts.
+// Import probes distinguish an installed-but-broken package from a usable one;
+// the distribution inventory also covers versions of their transitive dependencies.
+const pythonIdentityProgram = `
+import hashlib, importlib, importlib.metadata, json, os, sys
+executable = os.path.realpath(sys.executable)
+with open(executable, "rb") as binary:
+    digest = hashlib.sha256()
+    for block in iter(lambda: binary.read(1024 * 1024), b""):
+        digest.update(block)
+    executable_hash = digest.hexdigest()
+prerequisites = {}
+for name, distribution in (("fitz", "PyMuPDF"), ("pymupdf", "PyMuPDF"), ("PIL", "Pillow"), ("pytesseract", "pytesseract")):
+    try:
+        module = importlib.import_module(name)
+    except ModuleNotFoundError as error:
+        prerequisites[name] = {"available": False, "error": type(error).__name__, "missing": error.name}
+    except Exception as error:
+        prerequisites[name] = {"available": False, "error": type(error).__name__}
+    else:
+        prerequisites[name] = {"available": True, "version": importlib.metadata.version(distribution), "path": os.path.realpath(module.__file__)}
+distributions = sorted((item.metadata["Name"], item.version) for item in importlib.metadata.distributions())
+print(json.dumps({"executable": executable, "executableHash": executable_hash, "version": sys.version, "prefix": sys.prefix, "path": sys.path, "prerequisites": prerequisites, "distributions": distributions}, sort_keys=True))
+`;
+
+/**
+ * An unidentifiable external runtime cannot certify a reusable test result.
+ * @param {string} projectRoot
+ * @param {GateEnvironment} [env]
+ */
+export function pythonToolchainSignature(projectRoot, env = process.env, { probe = spawnSync } = {}) {
+  const pythonBin = env.PYTHON_BIN?.trim() || (process.platform === "win32" ? "python" : "python3");
+  try {
+    const result = probe(pythonBin, ["-c", pythonIdentityProgram], {
+      cwd: projectRoot,
+      env,
+      encoding: "utf8",
+      timeout: 5000,
+      killSignal: "SIGKILL",
+      maxBuffer: 1024 * 1024,
+      stdio: ["ignore", "pipe", "pipe"],
+      shell: false,
+    });
+    if (result.error || result.status !== 0 || result.signal) return null;
+    const identity = JSON.parse(result.stdout);
+    if (
+      typeof identity.executable !== "string" ||
+      !path.isAbsolute(identity.executable) ||
+      !/^[a-f0-9]{64}$/.test(identity.executableHash) ||
+      typeof identity.version !== "string" ||
+      !identity.version.trim() ||
+      typeof identity.prefix !== "string" ||
+      !Array.isArray(identity.path) ||
+      !Array.isArray(identity.distributions) ||
+      !identity.distributions.every(
+        (entry) =>
+          Array.isArray(entry) &&
+          entry.length === 2 &&
+          entry.every((value) => typeof value === "string" && value.length > 0),
+      ) ||
+      !["fitz", "pymupdf", "PIL", "pytesseract"].every((name) => {
+        const prerequisite = identity.prerequisites?.[name];
+        return prerequisite?.available === false
+          ? typeof prerequisite.error === "string"
+          : prerequisite?.available === true &&
+              typeof prerequisite.version === "string" &&
+              prerequisite.version.length > 0 &&
+              typeof prerequisite.path === "string";
+      })
+    )
+      return null;
+    return createHash("sha256").update(JSON.stringify(identity)).digest("hex");
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Toolchain identity. `node_modules/.package-lock.json` changes on every install, so
@@ -323,9 +402,11 @@ export const OUTCOME_AFFECTING_ENV_VARS = [
  * reading a multi-megabyte file.
  * @param {string} projectRoot
  * @param {GateEnvironment} [env]
- * @returns {string}
+ * @returns {string | null}
  */
-export function environmentSignature(projectRoot, env = process.env) {
+export function environmentSignature(projectRoot, env = process.env, { gate } = {}) {
+  const externalTools = gate === "vitest" ? pythonToolchainSignature(projectRoot, env) : "not-required";
+  if (externalTools === null) return null;
   const installStampPath = path.join(projectRoot, "node_modules", ".package-lock.json");
   let installStamp = "absent";
   try {
@@ -343,6 +424,7 @@ export function environmentSignature(projectRoot, env = process.env) {
         process.platform,
         process.arch,
         installStamp,
+        externalTools,
         ...declaredEnvironment,
       ].join("\0"),
       "utf8",
@@ -431,7 +513,8 @@ export function consultGateReceipt({ projectRoot, gate, args = [], env = process
   const signature = computeInputSignature(projectRoot, GATE_INPUT_SCOPES[scopeGate]);
   if (!signature) return miss("input signature unavailable — running the gate");
 
-  const environmentHash = environmentSignature(projectRoot, env);
+  const environmentHash = environmentSignature(projectRoot, env, { gate: scopeGate });
+  if (!environmentHash) return miss("external tool identity unavailable — running without a reusable receipt");
   const key = receiptKey({ gate: scopeGate, args, inputHash: signature.hash, environmentHash });
   const base = {
     reuse: false,
@@ -490,6 +573,13 @@ export function recordGateReceipt({ projectRoot, decision, exitCode, env = proce
   const after = computeInputSignature(projectRoot, GATE_INPUT_SCOPES[scopeGate]);
   if (!after || after.hash !== decision.inputHash) {
     return { recorded: false, reason: "content changed while the gate ran — not recorded" };
+  }
+  const afterEnvironment = environmentSignature(projectRoot, env, { gate: scopeGate });
+  if (!afterEnvironment || afterEnvironment !== decision.environmentHash) {
+    return {
+      recorded: false,
+      reason: "environment changed while the gate ran or tool identity unavailable — not recorded",
+    };
   }
 
   const store = loadStore(projectRoot);

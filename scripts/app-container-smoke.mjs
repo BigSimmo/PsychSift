@@ -6,11 +6,14 @@
  *   - PID 1 is the Next production server (`next start` argv, or Next 16's
  *     rewritten `next-server (v…)` process title after boot)
  *   - container stops cleanly within a bounded timeout
+ * Pass --read-only to exercise the same startup and checks with a read-only root.
  */
 import { spawnSync } from "node:child_process";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
-const IMAGE_REF = process.argv[2] ?? "clinical-kb-app:ci";
-const CONTAINER_NAME = "clinical-kb-app-smoke";
+const READ_ONLY = process.argv.includes("--read-only");
+const IMAGE_REF = process.argv.slice(2).find((arg) => arg !== "--read-only") ?? "clinical-kb-app:ci";
+const CONTAINER_NAME = READ_ONLY ? "clinical-kb-app-smoke-readonly" : "clinical-kb-app-smoke";
 const STOP_TIMEOUT_SECONDS = 30;
 
 function run(args, opts = {}) {
@@ -26,26 +29,27 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+export function appHealthProbe(healthUrl) {
+  return `fetch(${JSON.stringify(healthUrl)}, {signal: AbortSignal.timeout(5000)}).then(async (r)=>{if(r.status!==200)throw new Error('Expected HTTP 200, got '+r.status);const j=await r.json();if(!j||typeof j!=='object'||Array.isArray(j))throw new Error('Invalid health JSON');console.log(JSON.stringify(j));}).catch((e)=>{console.error(e.message);process.exit(1);})`;
+}
+
 async function waitForHealth(port = 3000, attempts = 30) {
   const healthUrl = `http://127.0.0.1:${port}/api/health`;
+  let lastError = "No successful health response";
   for (let i = 0; i < attempts; i += 1) {
-    const result = run([
-      "docker",
-      "exec",
-      CONTAINER_NAME,
-      "node",
-      "-e",
-      `fetch("${healthUrl}").then((r)=>r.json()).then((j)=>{console.log(JSON.stringify(j));process.exit(0);}).catch((e)=>{console.error(e.message);process.exit(1);})`,
-    ]);
+    const result = run(["docker", "exec", CONTAINER_NAME, "node", "-e", appHealthProbe(healthUrl)]);
     if (result.status === 0) {
       try {
         return JSON.parse(result.stdout);
       } catch {
-        /* not ready yet */
+        lastError = "Health probe returned invalid JSON";
       }
+    } else {
+      lastError = result.stderr?.trim() || result.error?.message || `docker exec exited ${result.status}`;
     }
     await sleep(1000);
   }
+  console.error("Health readiness probe failed:", lastError);
   return null;
 }
 
@@ -59,6 +63,7 @@ async function main() {
     "--name",
     CONTAINER_NAME,
     "--network=none",
+    ...(READ_ONLY ? ["--read-only"] : []),
     "--cap-drop=ALL",
     "--security-opt",
     "no-new-privileges:true",
@@ -156,7 +161,19 @@ async function main() {
     "{{.State.Running}} {{.State.OOMKilled}} {{.State.ExitCode}}",
     CONTAINER_NAME,
   ]);
-  const [running, oom, exitCode] = inspectResult.stdout?.trim().split(" ") ?? ["true", "true", "-1"];
+  const state = /^(true|false) (true|false) (0|[1-9]\d{0,2})$/.exec(inspectResult.stdout?.trim() ?? "");
+  if (inspectResult.status !== 0 || inspectResult.signal || inspectResult.error || !state || Number(state[3]) > 255) {
+    console.error(
+      "Container stop state could not be verified:",
+      inspectResult.stderr ||
+        inspectResult.error?.message ||
+        inspectResult.stdout ||
+        `docker inspect exited ${inspectResult.status}, signal ${inspectResult.signal}`,
+    );
+    cleanContainer();
+    process.exit(1);
+  }
+  const [, running, oom, exitCode] = state;
 
   if (running === "true") {
     console.error("Container still running after docker stop");
@@ -174,14 +191,23 @@ async function main() {
     cleanContainer();
     process.exit(1);
   }
+  // A clean exit or ordinary SIGTERM termination is expected after docker stop.
+  // An application crash during shutdown must not become a successful smoke.
+  if (exitCode !== "0" && exitCode !== "143") {
+    console.error("Container shutdown failed with unexpected exit code:", exitCode);
+    cleanContainer();
+    process.exit(1);
+  }
 
   console.log(`App smoke passed. PID 1: ${pid1}. Exit code: ${exitCode}. Health:`, JSON.stringify(health, null, 2));
   cleanContainer();
   process.exit(0);
 }
 
-main().catch((error) => {
-  console.error(error);
-  cleanContainer();
-  process.exit(1);
-});
+if (isDirectEntrypoint(import.meta.url)) {
+  main().catch((error) => {
+    console.error(error);
+    cleanContainer();
+    process.exit(1);
+  });
+}

@@ -117,7 +117,9 @@ describe("complete bounded container evidence", () => {
       "node scripts/ci/archive-container-evidence.mjs --input . --output sboms --max-bytes 67108864",
     );
     expect(workflow).toContain("if: always() && steps.container-evidence.outcome == 'success'");
-    expect(workflow).toContain("name: sboms");
+    expect(workflow).toContain("name: sboms-${{ github.run_attempt }}");
+    const name = /name: (sboms-\$\{\{ github.run_attempt \}\})/.exec(workflow)?.[1];
+    expect(name?.replace("${{ github.run_attempt }}", "1")).not.toBe(name?.replace("${{ github.run_attempt }}", "2"));
     expect(workflow).toContain("path: sboms");
     expect(workflow).toContain("archive: false");
     const exportStep = workflow.slice(

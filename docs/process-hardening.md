@@ -18,6 +18,48 @@ Day-to-day selection, local Playwright keep-root, and refuted speed levers live 
 Production UI critical-path numbers remain in "CI shape and cost" below; do not raise
 Playwright workers or revive the refuted cache/shard hacks listed there.
 
+## CI/testing audit repairs (2026-10-20)
+
+The two local audits identified false-success paths and missing verification inputs. Repairs keep
+the existing coverage thresholds, required aggregates, advisory policies and release browser legs:
+
+- Main failure routing retains each unresolved check until later applicable recovery; scoped
+  green runs do not erase unrelated failures. Tree proof reads the correct Checks identifier and
+  requires complete exact coverage/UI shard membership. Its coverage estimator evaluates boolean
+  guards with explicit unknown inputs rather than treating OR as AND.
+- Browser scope follows the client import closure, including browser-facing shared libraries.
+  Required preflight reconciles quarantine tags against owned, unexpired exact ledger identities.
+  Phone navigation waits for hydration, fonts and stable chrome geometry instead of a fixed 700 ms.
+- Image scan evaluation rejects missing or malformed counts without arithmetic fallbacks. The
+  advisory read-only smoke starts the actual app command, records its outcome and requires HTTP
+  success as well as a healthy JSON body. No container-runtime success is implied by unit mocks.
+- Focused unit selection checks every input and includes filesystem/subprocess consumers. LCOV
+  inventory checks every declared source file. Edge typechecking uses `deno.lock` with `--frozen`
+  and explicit edge imports, ignoring the unrelated Next.js package workspace. The lock retains
+  its dependency versions/integrities and no longer snapshots that unrelated workspace metadata.
+- Vitest receipts include Python runtime/prerequisite identity; offline release builds scrub
+  inherited provider credentials through the shared environment policy. Broad or ambiguous
+  selectors cannot obtain a shared focused-test lease.
+- Dependency audit findings fail immediately; incomplete/tooling results get at most three
+  attempts and two waits. Browser archive keys use installed engine revisions and runner identity,
+  shared across UI/Lighthouse/release setup while preserving fresh system dependency installs.
+  Diagnostic artifacts retain run attempts; stable consumer artifacts explicitly overwrite.
+  Coverage failures retain outcome/timing diagnostics separately from successful merge blobs.
+
+Workflow changes also run `check:github-actions:semantics`: actionlint 1.7.7 from its official
+release, with archive and executable SHA-256 pins in `scripts/actionlint-release.json`. The gate
+checks known-valid and known-invalid semantic fixtures before checking the real workflows.
+Cached executables are reverified on every invocation; ambient shell/Python linters do not alter
+this schema/expression gate. Composite-action bodies retain their separate policy contracts.
+
+The pinned semantic validator passed locally. A bounded synthetic Node image also proved real
+Docker read-only enforcement, isolated networking, HTTP status rejection and graceful PID 1
+shutdown; that fixture does not establish production Next image readiness. Hosted artifact
+reruns, cache hit rates, critical-path savings, the new Checks permission, exact locked edge
+resolution and browser motion/scroll readiness still need their applicable CI evidence. Keep
+every browser leg until measurements establish equivalent coverage for a smaller installed-layout
+subset.
+
 ## Risk-routed local and CI verification (2026-08-02)
 
 - `ci-change-scope.mjs` is the shared fail-closed classifier for local PR handoff and hosted CI. Only recognised documentation and workflow/policy paths take a light route; product code, tests, executable config, dependencies, database/container/RAG surfaces, mixed scope, and unknown non-document paths retain heavy verification.

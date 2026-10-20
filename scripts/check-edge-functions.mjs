@@ -16,7 +16,7 @@ if (entrypoints.length === 0) {
   process.exit(1);
 }
 
-const args = ["check", "--node-modules-dir=false", ...entrypoints];
+const args = ["check", "--node-modules-dir=false", "--lock=deno.lock", "--frozen", ...entrypoints];
 const deno = spawnSync("deno", ["--version"], { encoding: "utf8" });
 const denoVersionLine = deno.stdout?.split("\n")[0]?.trim() ?? "";
 const denoVersionMatch = denoVersionLine.match(/^deno\s+(\d+)\./);
@@ -38,7 +38,12 @@ if (!hasDeno) {
   process.exit(0);
 }
 
-const check = spawnSync("deno", args, { stdio: "inherit" });
+// Edge imports use explicit npm:/jsr: specifiers. Ignore the unrelated Next.js
+// package workspace so dependency bumps cannot silently rewrite the edge lock.
+const check = spawnSync("deno", args, {
+  stdio: "inherit",
+  env: { ...process.env, DENO_NO_PACKAGE_JSON: "1" },
+});
 
 if (check.error) {
   console.error(`[check:edge:functions] Failed to execute Deno: ${check.error.message}`);

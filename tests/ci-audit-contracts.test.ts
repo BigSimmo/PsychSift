@@ -193,11 +193,16 @@ describe("M20: the worker's Python parsing stack has a vulnerability signal", ()
     // The scan output is kept, summarised into the job summary, and the
     // follow-up step exits non-zero on HIGH/CRITICAL outside pull-request
     // runs so the scheduled/main run fails and is visible in the Actions tab.
-    expect(afterScan).toContain("GITHUB_STEP_SUMMARY");
+    const evaluator = read("scripts/trivy-image-scan.mjs");
+    expect(evaluator).toContain("GITHUB_STEP_SUMMARY");
     expect(afterScan).toMatch(/Fail on HIGH\/CRITICAL image findings/);
-    expect(afterScan).toMatch(/github\.event_name != 'pull_request'/);
-    expect(afterScan).toMatch(/github\.event_name != 'merge_group'/);
-    expect(afterScan).toMatch(/exit 1/);
+    expect(afterScan).toContain("SCAN_EVENT_NAME: ${{ github.event_name }}");
+    expect(afterScan).toContain(
+      'node scripts/trivy-image-scan.mjs --evaluate-summary trivy-scan-summary.txt "$SCAN_EVENT_NAME"',
+    );
+    // The CLI's event, malformed-evidence and job-summary behavior is executed in
+    // trivy-image-scan.test.ts; policy now lives in that evaluator rather than shell arithmetic.
+    expect(evaluator).toContain('["pull_request", "merge_group"].includes(eventName)');
   });
 });
 

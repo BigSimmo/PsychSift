@@ -58,6 +58,128 @@ export function scopeFlagsInGuard(guard) {
 }
 
 /**
+ * Parse a deliberately small Actions expression grammar, without executing JavaScript.
+ * Unknown runtime terms remain explicit assumptions. Unknown scope and unsupported syntax
+ * cannot establish coverage; boolean short-circuiting can still prove an independent arm.
+ */
+function evaluateGuard(guard, scope) {
+  const source = String(guard)
+    .trim()
+    .replace(/^\$\{\{\s*([\s\S]*?)\s*\}\}$/, "$1");
+  const tokens = [];
+  const token = /\s*('(?:''|[^'])*'|&&|\|\||==|!=|[!(),]|[a-zA-Z_][\w.*-]*)/y;
+  let offset = 0;
+  while (offset < source.length) {
+    if (!source.slice(offset).trim()) break;
+    token.lastIndex = offset;
+    const match = token.exec(source);
+    if (!match) return { value: null, missingScope: true, assumed: [] };
+    tokens.push(match[1]);
+    offset = token.lastIndex;
+  }
+  let index = 0;
+  const known = (value) => ({ value, missingScope: false, assumed: [] });
+  const unknown = (term, missingScope = false) => ({ value: null, missingScope, assumed: [term] });
+  const truth = (result) => ({ ...result, value: result.value === null ? null : Boolean(result.value) });
+  const combine = (left, right, operator) => {
+    left = truth(left);
+    right = truth(right);
+    const decisive = operator === "&&" ? false : true;
+    if (left.value === decisive) return left;
+    if (right.value === decisive) return right;
+    return {
+      value: left.value === null || right.value === null ? null : !decisive,
+      missingScope: left.missingScope || right.missingScope,
+      assumed: [...left.assumed, ...right.assumed],
+    };
+  };
+  const primary = () => {
+    const start = index;
+    const current = tokens[index++];
+    if (current === "(") {
+      const result = expression();
+      if (tokens[index++] !== ")") throw new Error("unclosed group");
+      return result;
+    }
+    if (!current || !/^(?:'|[a-zA-Z_])/.test(current)) throw new Error("expected value");
+    if (current.startsWith("'")) return known(current.slice(1, -1).replace(/''/g, "'"));
+    if (current === "true" || current === "false") return known(current === "true");
+    // Functions are runtime-dependent atoms. Never hide a scope reference in an opaque call.
+    if (tokens[index] === "(") {
+      let depth = 0;
+      do {
+        const part = tokens[index++];
+        if (part === "(") depth += 1;
+        if (part === ")") depth -= 1;
+        if (index > tokens.length) throw new Error("unclosed call");
+      } while (depth > 0);
+      const term = tokens.slice(start, index).join(" ");
+      return unknown(term, /needs\.changes\.outputs\./.test(term));
+    }
+    const flag = current.match(/^needs\.changes\.outputs\.([a-z_0-9]+)$/)?.[1];
+    if (flag && !flag.startsWith("tree_proven_")) {
+      return scope && Object.hasOwn(scope, flag) && typeof scope[flag] === "boolean"
+        ? known(scope[flag] ? "true" : "false")
+        : unknown(current, true);
+    }
+    return unknown(current);
+  };
+  const unary = () => {
+    if (tokens[index] !== "!") return primary();
+    const start = index;
+    index += 1;
+    const result = truth(unary());
+    return result.value === null
+      ? { ...result, assumed: [tokens.slice(start, index).join(" ")] }
+      : known(!result.value);
+  };
+  const equality = () => {
+    const start = index;
+    let left = unary();
+    while (tokens[index] === "==" || tokens[index] === "!=") {
+      const operator = tokens[index++];
+      const right = unary();
+      if (left.value === null || right.value === null) {
+        left = unknown(tokens.slice(start, index).join(" "), left.missingScope || right.missingScope);
+      } else if (typeof left.value !== typeof right.value) {
+        // Actions coerces unlike types numerically; keep that outside this grammar.
+        left = unknown(tokens.slice(start, index).join(" "), true);
+      } else {
+        const equal =
+          typeof left.value === "string"
+            ? left.value.toLowerCase() === right.value.toLowerCase()
+            : left.value === right.value;
+        left = known(operator === "==" ? equal : !equal);
+      }
+    }
+    return left;
+  };
+  const conjunction = () => {
+    let left = equality();
+    while (tokens[index] === "&&") {
+      index += 1;
+      left = combine(left, equality(), "&&");
+    }
+    return left;
+  };
+  const expression = () => {
+    let left = conjunction();
+    while (tokens[index] === "||") {
+      index += 1;
+      left = combine(left, conjunction(), "||");
+    }
+    return left;
+  };
+  try {
+    const result = truth(expression());
+    if (index !== tokens.length) throw new Error("unsupported expression");
+    return result;
+  } catch {
+    return { value: null, missingScope: true, assumed: [] };
+  }
+}
+
+/**
  * The guard expressions protecting the CI step at `lineIndex`: the step's own
  * `if:` and the enclosing job's `if:` (which may be a folded `if: >` block).
  *
@@ -68,6 +190,17 @@ export function scopeFlagsInGuard(guard) {
 export function guardsForStep(lines, lineIndex) {
   const guards = [];
   let job = null;
+  const readGuard = (index, value) => {
+    if (!/^[>|][-+]?$/.test(value.trim())) return value.trim();
+    const indent = lines[index].search(/\S/);
+    const block = [];
+    for (let next = index + 1; next < lines.length; next += 1) {
+      if (!lines[next].trim()) continue;
+      if (lines[next].search(/\S/) <= indent) break;
+      block.push(lines[next].trim());
+    }
+    return block.join(" ");
+  };
 
   // The step's own `if:`, searching back to the start of this step ("- name:" or "- run:").
   for (let i = lineIndex; i >= 0; i -= 1) {
@@ -77,7 +210,7 @@ export function guardsForStep(lines, lineIndex) {
       if (!/^\s*-\s*(name|run|uses):/.test(line)) break;
     }
     const stepIf = line.match(/^\s*(?:-\s*)?if:\s*(.+?)\s*$/);
-    if (stepIf) guards.push(stepIf[1]);
+    if (stepIf) guards.push(readGuard(i, stepIf[1]));
     if (/^\s*-\s*name:/.test(line)) break; // start of this step
   }
 
@@ -89,14 +222,7 @@ export function guardsForStep(lines, lineIndex) {
       if (/^  \S/.test(lines[j])) break; // next top-level job
       const jobIf = lines[j].match(/^    if:\s*(.*)$/);
       if (!jobIf) continue;
-      if (jobIf[1].trim() === ">" || jobIf[1].trim() === "|") {
-        // Folded block: collect the more-indented continuation lines.
-        const block = [];
-        for (let k = j + 1; k < lines.length && /^\s{6,}\S/.test(lines[k]); k += 1) block.push(lines[k].trim());
-        guards.push(block.join(" "));
-      } else {
-        guards.push(jobIf[1].trim());
-      }
+      guards.push(readGuard(j, jobIf[1]));
       break;
     }
     break;
@@ -188,30 +314,21 @@ export function deriveCiCoverage(projectRoot, gate, { scope = null, readFile = r
   let lastUnsatisfied = null;
   for (const candidate of candidates) {
     const { guards, job } = guardsForStep(lines, candidate.index);
-    const flags = guards.flatMap(scopeFlagsInGuard);
-    const unmet = scope ? flags.filter((flag) => scope[flag] !== true) : flags;
-    if (unmet.length > 0) {
+    const evaluated = guards.map((guard) => evaluateGuard(guard, scope));
+    if (evaluated.some((result) => result.value === false || result.missingScope)) {
       lastUnsatisfied = scope
-        ? `CI runs ${candidate.name} in "${job}" only when ${unmet.map((f) => `${f}=true`).join(" and ")}, which this change does not satisfy`
+        ? `CI runs ${candidate.name} in "${job}" only when ${guards.join(" and ")}, which this change does not satisfy or cannot evaluate`
         : `CI runs ${candidate.name} in "${job}" under conditions that could not be evaluated`;
       continue;
     }
-    // Report the unverifiable TERMS, not only wholly-unverifiable guards, so a guard
-    // containing one satisfied scope flag alongside one unverifiable term (e.g. draft
-    // state) does not get silently dropped from `assumed`.
-    const assumed = guards.flatMap((guard) =>
-      String(guard)
-        .split("&&")
-        .map((term) => term.trim())
-        .filter((term) => term.length > 0 && scopeFlagsInGuard(term).length === 0),
-    );
+    const assumed = [...new Set(evaluated.flatMap((result) => result.assumed))];
     return {
       covered: true,
       via: candidate.name,
       assumed,
       reason:
         `ci.yml runs "${candidate.name}" in job "${job}"` +
-        (flags.length > 0 ? `, whose guard ${flags.map((f) => `${f}=true`).join(" and ")} this change satisfies` : ""),
+        (guards.length > 0 ? `, subject to ${guards.join(" and ")}` : ""),
     };
   }
 

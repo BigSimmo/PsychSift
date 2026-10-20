@@ -155,18 +155,19 @@ jobs:
           docker run --rm --network=none --entrypoint node clinical-kb-worker:ci scripts/deploy/await-migrations.mjs --self-test
 
       - name: Read-only runtime check (advisory)
-        run: |
-          docker run --rm --read-only --cap-drop=ALL --security-opt no-new-privileges:true \
-            -e NODE_ENV=production \
-            -e NEXT_PUBLIC_DEMO_MODE=false \
-            -e NEXT_PUBLIC_SUPABASE_URL=https://sjrfecxgysukkwxsowpy.supabase.co \
-            -e SUPABASE_SERVICE_ROLE_KEY=smoke-test-placeholder \
-            -e RAG_QUERY_HASH_SECRET=smoke-test-hash-secret \
-            -e RAG_PROVIDER_MODE=offline \
-            -e NEXT_TELEMETRY_DISABLED=1 \
-            clinical-kb-app:ci \
-            node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>r.json()).then(j=>{if(j.status!=='ok')throw new Error(JSON.stringify(j));console.log(j)}).catch(e=>{console.error(e);process.exit(1)})" || true
+        id: readonly-smoke
         continue-on-error: true
+        run: node scripts/app-container-smoke.mjs --read-only
+
+      - name: Record read-only runtime outcome
+        if: always()
+        env:
+          READONLY_OUTCOME: ${{ steps.readonly-smoke.outcome }}
+        run: |
+          echo "Read-only app runtime smoke (advisory): ${READONLY_OUTCOME}" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$READONLY_OUTCOME" = "failure" ]; then
+            echo "::warning::Read-only app runtime smoke failed; see its startup, health, PID 1 and graceful-stop diagnostics."
+          fi
 
       - name: Generate SBOMs
         # Advisory: docker-save of both loaded images can ENOSPC on small runners.
@@ -189,46 +190,13 @@ jobs:
           node scripts/trivy-image-scan.mjs clinical-kb-worker:ci --report trivy-worker.report.json | tee -a trivy-scan-summary.txt || echo "Trivy scan failed (clinical-kb-worker:ci): STATUS=unassessed reason=scanner_exit" | tee -a trivy-scan-summary.txt
 
       - name: Fail on HIGH/CRITICAL image findings outside pull requests
-        # Audit M20 + R13: the worker image carries the Python parsers (PyMuPDF,
-        # Pillow, pytesseract, docling) that read attacker-supplied uploads.
-        # Fail closed if trivy-scan-summary.txt is empty, contains STATUS=unassessed,
-        # or does not contain STATUS=ok lines for BOTH clinical-kb-app:ci and
-        # clinical-kb-worker:ci. Never report a broken/empty scan as clean.
+        # Require one complete STATUS=ok count record for BOTH app and worker.
+        # Missing/malformed evidence fails every event; assessed findings remain
+        # advisory for pull requests/merge groups and blocking elsewhere.
         if: always()
-        run: |
-          set -euo pipefail
-          if [ ! -s trivy-scan-summary.txt ]; then
-            echo "::error::Trivy scan unassessed: trivy-scan-summary.txt is empty; image vulnerabilities were not assessed."
-            exit 1
-          fi
-          {
-            echo "## Trivy image scan (HIGH,CRITICAL)"
-            echo
-            echo '```'
-            cat trivy-scan-summary.txt
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-          if grep -q 'STATUS=unassessed' trivy-scan-summary.txt; then
-            echo "::error::Trivy scan unassessed: one or more images reported STATUS=unassessed."
-            exit 1
-          fi
-          if ! grep -q '^Trivy scan completed (clinical-kb-app:ci): STATUS=ok\b' trivy-scan-summary.txt || ! grep -q '^Trivy scan completed (clinical-kb-worker:ci): STATUS=ok\b' trivy-scan-summary.txt; then
-            echo "::error::Trivy scan unassessed: missing STATUS=ok evidence for both clinical-kb-app:ci and clinical-kb-worker:ci."
-            exit 1
-          fi
-          high="$(grep -oE 'HIGH=[0-9]+' trivy-scan-summary.txt | cut -d= -f2 | paste -sd+ - | bc || echo 0)"
-          critical="$(grep -oE 'CRITICAL=[0-9]+' trivy-scan-summary.txt | cut -d= -f2 | paste -sd+ - | bc || echo 0)"
-          high="${high:-0}"
-          critical="${critical:-0}"
-          echo "HIGH=${high} CRITICAL=${critical}"
-          if [ "${high}" -eq 0 ] && [ "${critical}" -eq 0 ]; then
-            exit 0
-          fi
-          if [ "${{ github.event_name != 'pull_request' && github.event_name != 'merge_group' }}" = "true" ]; then
-            echo "::error::Trivy found HIGH=${high} CRITICAL=${critical} in the production images; see the job summary."
-            exit 1
-          fi
-          echo "::warning::Trivy found HIGH=${high} CRITICAL=${critical} in the production images (advisory on pull requests)."
+        env:
+          SCAN_EVENT_NAME: ${{ github.event_name }}
+        run: node scripts/trivy-image-scan.mjs --evaluate-summary trivy-scan-summary.txt "$SCAN_EVENT_NAME"
 
       - name: Admit complete bounded container evidence
         id: container-evidence
@@ -244,7 +212,7 @@ jobs:
         if: always() && steps.container-evidence.outcome == 'success'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: sboms
+          name: sboms-${{ github.run_attempt }}
           path: sboms
           archive: false
           if-no-files-found: warn

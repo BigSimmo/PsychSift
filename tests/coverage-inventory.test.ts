@@ -1,8 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 
-import { checkCoverageInventory, lcovSourceFiles, missingCoverageRoots } from "../scripts/check-coverage-inventory.mjs";
-import { COVERAGE_INCLUDE_GLOBS, COVERAGE_INVENTORY_ROOTS } from "../scripts/coverage-contract.mjs";
+import {
+  checkCoverageInventory,
+  coverageSourceFiles,
+  lcovSourceFiles,
+  missingCoverageRoots,
+} from "../scripts/check-coverage-inventory.mjs";
+import {
+  COVERAGE_EXCLUDE_GLOBS,
+  COVERAGE_INCLUDE_GLOBS,
+  COVERAGE_INVENTORY_ROOTS,
+} from "../scripts/coverage-contract.mjs";
 
 const completeLcov = [
   "TN:",
@@ -18,9 +27,29 @@ const completeLcov = [
 
 describe("coverage inventory", () => {
   it("accepts LCOV containing every declared executable root", () => {
+    const result = checkCoverageInventory(completeLcov, { expectedFiles: lcovSourceFiles(completeLcov) });
+    expect(result.missing).toEqual([]);
+    expect(result.missingFiles).toEqual([]);
+    expect(result.sourceFiles).toHaveLength(4);
+  });
+
+  it("rejects plausible root sentinels when actual executable files are missing", () => {
     const result = checkCoverageInventory(completeLcov);
     expect(result.missing).toEqual([]);
-    expect(result.sourceFiles).toHaveLength(4);
+    expect(result.missingFiles).toContain("scripts/check-coverage-inventory.mjs");
+    expect(result.missingFiles).toContain("supabase/functions/ingestion-worker/index.ts");
+  });
+
+  it("rejects loss of one executable file even when every root remains", () => {
+    const expectedFiles = [...lcovSourceFiles(completeLcov), "src/lib/uncovered.ts"];
+    expect(checkCoverageInventory(completeLcov, { expectedFiles }).missingFiles).toEqual(["src/lib/uncovered.ts"]);
+  });
+
+  it("shares only documented non-executable/generated exclusions with Vitest", () => {
+    expect(COVERAGE_EXCLUDE_GLOBS).toEqual(["**/*.d.ts", "src/lib/supabase/database.types.ts"]);
+    expect(coverageSourceFiles()).not.toContain("src/lib/supabase/database.types.ts");
+    const config = readFileSync(new URL("../vitest.config.mts", import.meta.url), "utf8");
+    expect(config).toContain("exclude: [...COVERAGE_EXCLUDE_GLOBS]");
   });
 
   it("fails closed when Supabase Edge Functions disappear", () => {

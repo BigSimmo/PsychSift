@@ -90,7 +90,7 @@ jobs:
         id: evidence
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: bundle-budget-refresh
+          name: bundle-budget-refresh-attempt${{ github.run_attempt }}
           path: |
             bundle-budget.json
             bundle-budget-refresh.json
@@ -200,7 +200,7 @@ jobs:
                 "that number. Re-datum the ruler; do not lengthen it: leave the tolerances alone.",
                 "",
                 "The refreshed `bundle-budget.json` from this run is attached to the run above as",
-                "the `bundle-budget-refresh` artifact, and is retained for 30 days.",
+                `the \`bundle-budget-refresh-attempt${process.env.GITHUB_RUN_ATTEMPT}\` artifact, and is retained for 30 days.`,
               ].join("\n");
             } else {
               body = [

@@ -23,6 +23,8 @@ const providerEnvironmentKeys = Object.freeze([
   "E2E_USER_EMAIL",
   "E2E_USER_PASSWORD",
   "SENTRY_AUTH_TOKEN",
+  "SENTRY_ORG",
+  "SENTRY_PROJECT",
   // Public client DSN is still a live monitoring destination — scrub it too so
   // Playwright/Lighthouse production builds cannot bake a real browser DSN.
   "NEXT_PUBLIC_SENTRY_DSN",
@@ -39,6 +41,8 @@ const providerEnvironmentKeys = Object.freeze([
   "HEALTH_DEEP_PROBE_SECRET",
   "INDEXING_V3_AGENT_SECRET",
   "CROSS_TENANT_SERVICE_ROLE_KEY",
+  "CROSS_TENANT_SUPABASE_URL",
+  "CROSS_TENANT_SUPABASE_SERVICE_ROLE_KEY",
   "FIGMA_CLIENT_ID",
   "FIGMA_CLIENT_SECRET",
   "FIGMA_ACCESS_TOKEN",
@@ -50,6 +54,7 @@ const providerEnvironmentKeys = Object.freeze([
 const offlineUrlValues = Object.freeze({
   NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:1",
   SUPABASE_URL: "http://127.0.0.1:1",
+  CROSS_TENANT_SUPABASE_URL: "http://127.0.0.1:1",
   SUPABASE_DB_URL: "postgresql://offline:offline@127.0.0.1:1/offline",
   DATABASE_URL: "postgresql://offline:offline@127.0.0.1:1/offline",
 });

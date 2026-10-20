@@ -4,6 +4,15 @@ _Updated 2026-10-17 — clarified undraft CI selection and cancellation; Documen
 
 See also [continuous-integration.md](continuous-integration.md) for pre-push safety controls and Guard 2 in-flight CI push guard details.
 
+## Workflow semantic validation
+
+Changes to workflows, the semantic validator or its release manifest run the pinned actionlint
+gate in `Static PR checks`. Use `npm run check:github-actions:semantics` locally on Linux x64.
+`scripts/actionlint-release.json` pins both the official archive and extracted executable;
+cache hits verify the executable hash rather than trusting `PATH`. A failed download,
+checksum mismatch, failed semantic self-test or invalid workflow blocks the gate. This checks
+workflow schema and expressions; action pins and composite-action policies have separate checks.
+
 ## Efficiency changes, October 2026
 
 These changes came out of the 6 October 2026 CI-efficiency review and its handover. They change
@@ -165,15 +174,20 @@ eight pushes from 2026-09-13 with no workflow reporting it, and across the four 
 
 - **Delivery, not detection.** `.github/workflows/ci.yml` now ends with a `main-failure-routing` job.
   On a push to `main` it opens or updates one pinned issue labelled `main-ci-failure`, names the
-  individual failing jobs (including each matrix leg), and **closes the issue on the next green
-  `main` run**. An open issue therefore means `main` is red right now, not that it once was. When
+  individual failing jobs (including each matrix leg), and keeps their unresolved identities in
+  the issue. It closes only after later applicable successful evidence covers every outstanding
+  failure on the same commit or a descendant. An unrelated scoped green run, skipped check or
+  partial recovery leaves the alert open. Unidentified failures or damaged history need explicit
+  operator review; a green aggregate cannot establish which missing checks recovered. When
   `main` goes red again it **reopens the most recent issue it closed** (matched by its own marker)
   rather than opening a new one, so the alert history stays in one place (owner decision, 2026-09-26).
 - **Report only.** It mutates no branch and re-runs nothing. `scripts/check-github-action-pins.mjs`
   forbids workflow-authored branch mutation, and a red `main` is a fact to deliver, not to repair
   automatically.
 - **Scoped privilege.** `issues: write` and `actions: read` live on that job alone, which checks out
-  no code and runs nothing from the repository. Every other job in `ci.yml` keeps `contents: read`.
+  no code and runs nothing from the repository. The change-scope proof job has `checks: read` to
+  read annotations using each job's validated same-repository `check_run_url`; other jobs retain
+  their individually declared permissions.
 - **Do not "fix" this by widening PR checks.** `release-browser-matrix` never runs on a
   `pull_request` event, so adding it to `pr-required`'s `needs` would aggregate a skipped job and
   change nothing, while making every branch wait on a ~45-minute matrix (#9Z197J).
