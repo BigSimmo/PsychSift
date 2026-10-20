@@ -765,8 +765,9 @@ enabling a scoped worker, confirm both with the post-merge `live-drift` workflow
 The follow-up for PS-008 adds a worker-owned, one-minute retry consumer for the
 service-role-only roster offer outbox. Its migration,
 `20261018073435_durable_roster_offer_device_outbox.sql`, merged to `main` on
-18 October 2026 (PR #3652) and was applied to production automatically; confirm it
-with the post-merge `live-drift` workflow. The original milestone/mutation proposals
+18 October 2026 (PR #3652), so the Supabase integration was expected to apply it to
+production automatically. Its production status is likewise **unverified in this runbook**;
+confirm it with the post-merge `live-drift` workflow before relying on the consumer. The original milestone/mutation proposals
 retain their separate merge gates.
 
 Before relying on the consumer, an operator must verify that the
