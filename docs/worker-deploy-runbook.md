@@ -755,9 +755,10 @@ A scoped worker requires the scope migrations; a missing overload fails closed
 rather than falling back to an unfiltered claim. Both are merged:
 `20261017175448_scope_ingestion_claim_atomically.sql` (PR #3628) and
 `20261018053558_recheck_ingestion_claim_scope_after_job_lock.sql` (PR #3633) reached
-`main` on 18 October 2026, so the Supabase integration applied them to production
-automatically. Confirm them with the post-merge `live-drift` workflow (both
-`check:drift` and `check:migration-history` green); this runbook does not record that result.
+`main` on 18 October 2026, so the Supabase integration was expected to apply them to
+production automatically. Their production status is **unverified in this runbook**: before
+enabling a scoped worker, confirm both with the post-merge `live-drift` workflow (both
+`check:drift` and `check:migration-history` green).
 
 ### Roster-offer retry consumer
 

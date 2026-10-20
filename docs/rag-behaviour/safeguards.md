@@ -81,8 +81,10 @@ Code and ground truth whose edits change (or re-measure) retrieval/ranking behav
   `tests/ranking-tuning.test.ts`, `tests/retrieval-selection.test.ts`,
   `tests/rag-second-stage-ranking.test.ts`, `tests/eval-retrieval.test.ts`,
   `tests/rag-imputation-contract.test.ts`
-- Retrieval RPCs in `supabase/schema.sql` / migrations. These are on pr-policy's clinical-risk list,
-  not `ragRankingPatterns`, and that preflight has been **advisory** since 2026-09-17, so it does not
+- Retrieval RPCs in `supabase/schema.sql` / migrations. No path in `ragRankingPatterns` matches them,
+  but since 2026-09-26 pr-policy reads each added migration's SQL and classifies the PR as a ranking
+  change when it creates, alters, drops or patches a retrieval function (`retrievalFunctionMigrationPaths`),
+  so a `RAG impact:` line is expected. That nudge is **advisory** like the rest of Layer 1, so it does not
   block. What does hold for an RPC change is CI migration replay, the drift checks and the live canary pair.
 
 ## Layer 1 — PR-body declaration (advisory warning)
