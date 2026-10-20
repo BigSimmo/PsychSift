@@ -129,8 +129,8 @@ function perthIsoDate(now: Date) {
  * publisher withdrew or superseded it (`change_state`), or its expiry date has passed (the
  * catalogue's own currency rule, `src/lib/sources/catalogue-core.ts`). Retrieval leaves these
  * out entirely, and the answer boundary refuses any answer that still carries one, so both read
- * this one predicate (audit CH-02 / RAG-A-04, owner decision 2026-10-20: "leave them out of
- * search altogether"). This is a filter, never a ranking signal (docs/rag-behaviour/
+ * this one predicate (audit CH-02 / RAG-A-04, recommended approach approved by the owner on
+ * 2026-10-20). This is a filter, never a ranking signal (docs/rag-behaviour/
  * refuted-approaches.md, Refutation 3, RC8). Missing or unknown metadata is not retirement.
  */
 export function isRetiredSourceMetadata(
