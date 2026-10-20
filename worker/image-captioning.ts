@@ -22,6 +22,10 @@ import {
   lightweightPerceptualHash,
   imagePlacementDedupeKey,
 } from "../src/lib/image-filtering";
+import {
+  assertIngestionProviderEgress,
+  createIngestionProviderEgressOperation,
+} from "../src/lib/ingestion-provider-egress";
 import { classifyAndCaptionImageFromBase64 } from "../src/lib/openai";
 import type { ExtractedDocument, ImageEvidenceCategory } from "../src/lib/types";
 import {
@@ -32,6 +36,11 @@ import {
   runIngestionPreparedWork,
   visionImageRejectionSkipReason,
 } from "./behavior";
+import {
+  imageCaptionCacheKey,
+  readCachedImageClassification,
+  writeCachedImageClassification,
+} from "./image-caption-cache";
 import { rethrowTerminalProviderError } from "./ingestion-errors";
 import { cleanString, hashBytes, sanitizeJsonbRecord } from "./ingestion-sanitize";
 import {
@@ -74,7 +83,7 @@ type InsertedImage = {
 
 // Keep selection, de-dupe, and budget checks sequential so the chosen images
 // are deterministic; only the expensive cache/model calls run concurrently.
-type CaptionTask = {
+export type CaptionTask = {
   candidate: ReturnType<typeof rankVisualCandidates>[number];
   index: number;
   image: ExtractedDocument["images"][number];
@@ -292,13 +301,13 @@ async function prepareCaptionTasks(
 }
 
 /** Phase 2: caption the tasks in bounded concurrent batches under the job's attempt. */
-async function resolveCaptionTasks(
+export async function resolveCaptionTasks(
   ctx: IngestionStageContext,
   job: JobRow,
   captionTasks: CaptionTask[],
   skipReasons: Map<string, number>,
 ): Promise<ResolvedCaptionTask[]> {
-  const { attemptForJob, mutation, providerContextForJob, updateJobProgress } = ctx;
+  const { attemptForJob, mutation, providerContextForJob, supabase, updateJobProgress } = ctx;
   const captionConcurrency = env.WORKER_VISION_CONCURRENCY;
   const resolvedTasks: ResolvedCaptionTask[] = [];
   for (let start = 0; start < captionTasks.length; start += captionConcurrency) {
@@ -310,10 +319,36 @@ async function resolveCaptionTasks(
     const batchResults = await Promise.all(
       batch.map(async (task) => {
         let classification: ImageClassification | null = task.presetClassification;
-        // Legacy cached classifications lack admission/source identity. Regenerate under this attempt.
-        const classificationCacheHit = false;
         if (!classification) {
           const bytes = await readFile(task.image.path);
+          // ING-B-10: reuse this admitted source's own earlier caption of the same image and
+          // context. Legacy rows carry no admission/source identity and never match.
+          const cacheKey = imageCaptionCacheKey({
+            job,
+            imageHash: task.imageHash,
+            contextHash: task.contextHash,
+            mimeType: task.image.mimeType,
+          });
+          const cached = cacheKey
+            ? await readCachedImageClassification(
+                supabase,
+                cacheKey,
+                dataPlaneAbortSignal(attemptForJob(job.id).signal),
+              )
+            : null;
+          if (cached) {
+            attemptForJob(job.id).check();
+            // A reuse passes the same current provider-egress gate as a dispatch, so a revoked,
+            // refused or unavailable source cannot complete from the cache.
+            await assertIngestionProviderEgress(
+              createIngestionProviderEgressOperation(providerContextForJob(job)),
+              "caption",
+              bytes,
+              attemptForJob(job.id).signal,
+            );
+            attemptForJob(job.id).check();
+            return { task, classification: cached, classificationCacheHit: true };
+          }
           try {
             attemptForJob(job.id).check();
             classification = await runIngestionPreparedWork(
@@ -353,9 +388,18 @@ async function resolveCaptionTasks(
               classificationCacheHit: false,
             };
           }
-          // Do not publish ingestion output into a legacy cache without admission/source identity.
+          if (cacheKey) {
+            attemptForJob(job.id).check();
+            await writeCachedImageClassification(
+              supabase,
+              cacheKey,
+              classification,
+              task.image.mimeType,
+              dataPlaneAbortSignal(attemptForJob(job.id).signal),
+            );
+          }
         }
-        return { task, classification, classificationCacheHit };
+        return { task, classification, classificationCacheHit: false };
       }),
     );
     resolvedTasks.push(...batchResults);
