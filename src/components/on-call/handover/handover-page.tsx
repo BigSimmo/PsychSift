@@ -765,6 +765,10 @@ export function OnCallHandoverPage() {
       <OnCallToolNavHeader title="Handover" testIdPrefix="on-call-handover" />
       <InformationPageShell testId="on-call-handover-main" width="narrow">
         <div className="grid min-w-0 gap-5" data-mode-identity="on-call">
+          {/* Above both headers, so the table that opens first on a computer keeps it too. */}
+          <div className="print:hidden">
+            <OnCallShiftSwitch current="handover" />
+          </div>
           {tableOpen ? (
             <div className="grid min-w-0 gap-1 print:hidden">
               <div>
@@ -792,7 +796,6 @@ export function OnCallHandoverPage() {
             </div>
           ) : (
             <div className="grid min-w-0 gap-2 print:hidden">
-              <OnCallShiftSwitch current="handover" />
               <div className="flex min-w-0 items-center justify-between gap-3">
                 {/* Under the work band its title already says Handover, so the heading stays for screen readers only. */}
                 <h1 className={underBand ? "sr-only" : "text-2xl font-semibold text-[color:var(--text-heading)]"}>
