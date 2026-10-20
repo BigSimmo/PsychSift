@@ -26,18 +26,6 @@
         ]
       }
     ],
-    "PreCompact": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node -e '(async()=>{const f=require(\"node:fs\"),p=require(\"node:path\"),u=require(\"node:url\");let s=\"\";for await(const b of process.stdin){s+=b;if(s.length>1048576)return;}let v;try{v=JSON.parse(s)}catch{return}if(!v||typeof v!==\"object\"||Array.isArray(v))return;let d=v.tool_input?.workdir??v.tool_input?.cwd??v.cwd??process.cwd();if(typeof d!==\"string\"||!p.isAbsolute(d))return;d=p.resolve(d);let t=p.resolve(process.cwd());while(!f.existsSync(p.join(t,\".git\"))){let q=p.dirname(t);if(q===t)return;t=q;}if([\"GIT_DIR\",\"GIT_COMMON_DIR\",\"GIT_WORK_TREE\",\"GIT_CEILING_DIRECTORIES\",\"GIT_DISCOVERY_ACROSS_FILESYSTEM\"].some(k=>process.env[k])){const g=require(\"node:child_process\").spawnSync(\"git\",[\"-C\",d,\"rev-parse\",\"--show-toplevel\"],{encoding:\"utf8\",windowsHide:true,timeout:5000});if(g.status!==0)return;d=p.resolve(g.stdout.trim())}else{if(f.existsSync(p.join(d,\"HEAD\"))&&f.existsSync(p.join(d,\"objects\"))&&f.existsSync(p.join(d,\"refs\")))return;while(!f.existsSync(p.join(d,\".git\"))){const q=p.dirname(d);if(q===d)return;d=q;}}if(d!==t){const x=f.statSync(d,{bigint:true}),y=f.statSync(t,{bigint:true});if(!x.isDirectory()||!y.isDirectory()||x.ino===0n||y.ino===0n||x.dev!==y.dev||x.ino!==y.ino)return;}d=t;const a=p.join(d,\".codex/hooks/dispatch.mjs\");if(!f.existsSync(a))return;const m=await import(u.pathToFileURL(a).href),r=await m.run(process.argv[1],v,d);process.stdout.write(r.stdout);process.stderr.write(r.stderr);process.exitCode=r.code;})().catch(()=>{process.stderr.write(\"Codex project hook adapter unavailable; no advisory decision was produced.\\n\")})' PreCompact",
-            "commandWindows": "& $(if (Test-Path \"C:/Program Files/nodejs/node.exe\") { \"C:/Program Files/nodejs/node.exe\" } else { \"node\" }) -e \"(async()=>{const f=require('node:fs'),p=require('node:path'),u=require('node:url');let s='';for await(const b of process.stdin){s+=b;if(s.length>1048576)return;}let v;try{v=JSON.parse(s)}catch{return}if(!v||typeof v!=='object'||Array.isArray(v))return;let d=v.tool_input?.workdir??v.tool_input?.cwd??v.cwd??process.cwd();if(typeof d!=='string'||!p.isAbsolute(d))return;d=p.resolve(d);let t=p.resolve(process.cwd());while(!f.existsSync(p.join(t,'.git'))){let q=p.dirname(t);if(q===t)return;t=q;}if(['GIT_DIR','GIT_COMMON_DIR','GIT_WORK_TREE','GIT_CEILING_DIRECTORIES','GIT_DISCOVERY_ACROSS_FILESYSTEM'].some(k=>process.env[k])){const g=require('node:child_process').spawnSync('git',['-C',d,'rev-parse','--show-toplevel'],{encoding:'utf8',windowsHide:true,timeout:5000});if(g.status!==0)return;d=p.resolve(g.stdout.trim())}else{if(f.existsSync(p.join(d,'HEAD'))&&f.existsSync(p.join(d,'objects'))&&f.existsSync(p.join(d,'refs')))return;while(!f.existsSync(p.join(d,'.git'))){const q=p.dirname(d);if(q===d)return;d=q;}}if(d!==t){const x=f.statSync(d,{bigint:true}),y=f.statSync(t,{bigint:true});if(!x.isDirectory()||!y.isDirectory()||x.ino===0n||y.ino===0n||x.dev!==y.dev||x.ino!==y.ino)return;}d=t;const a=p.join(d,'.codex/hooks/dispatch.mjs');if(!f.existsSync(a))return;const m=await import(u.pathToFileURL(a).href),r=await m.run(process.argv[1],v,d);process.stdout.write(r.stdout);process.stderr.write(r.stderr);process.exitCode=r.code;})().catch(()=>{process.stderr.write('Codex project hook adapter unavailable; no advisory decision was produced.\\n')})\" PreCompact",
-            "timeout": 45
-          }
-        ]
-      }
-    ],
     "SessionStart": [
       {
         "hooks": [
