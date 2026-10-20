@@ -83,9 +83,27 @@ COPY --from=node-base /usr/local/bin/node /usr/local/bin/node
 # `ImportError: libGL.so.1`). ca-certificates covers the build-time model fetch.
 # Keep the production locks' Python 3.11 interpreter; Trixie's distro Python is
 # 3.13. Explicitly upgrade Perl and reject a stale security repository.
-RUN apt-get update \
+# Backport only curl and its three HTTP/3 libraries; all other backports are
+# forbidden. ngtcp2 1.22.1 also avoids introducing CVE-2026-40170.
+RUN printf '%s\n' \
+    'deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] https://deb.debian.org/debian trixie-backports main' \
+    > /etc/apt/sources.list.d/worker-native-backports.list \
+  && printf '%s\n' \
+    'Package: libcurl4t64 libnghttp3-9 libngtcp2-16 libngtcp2-crypto-ossl0' \
+    'Pin: release n=trixie-backports' \
+    'Pin-Priority: 990' \
+    '' \
+    'Package: *' \
+    'Pin: release n=trixie-backports' \
+    'Pin-Priority: -1' \
+    > /etc/apt/preferences.d/worker-native-backports \
+  && apt-get update \
   && apt-get install -y --no-install-recommends perl-base tesseract-ocr ca-certificates libgl1 libglib2.0-0t64 \
+    libcurl4t64=8.21.0-2~bpo13+1 libnghttp3-9=1.15.0-1~bpo13+1 \
+    libngtcp2-16=1.22.1-1~bpo13+1 libngtcp2-crypto-ossl0=1.22.1-1~bpo13+1 \
   && dpkg --compare-versions "$(dpkg-query --show --showformat='${Version}' perl-base)" ge 5.40.1-6+deb13u1 \
+  && dpkg --compare-versions "$(dpkg-query --show --showformat='${Version}' libcurl4t64)" ge 8.21.0-2~bpo13+1 \
+  && dpkg --compare-versions "$(dpkg-query --show --showformat='${Version}' libngtcp2-16)" ge 1.22.1-1~bpo13+1 \
   && groupadd --gid 1000 node \
   && useradd --uid 1000 --gid node --shell /bin/sh --create-home node \
   && python3 -c "import sys; assert sys.version_info[:2] == (3, 11)" \

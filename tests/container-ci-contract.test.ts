@@ -103,6 +103,24 @@ describe("container delivery contract", () => {
     expect(dockerfile).toContain('model = model_dir / "Latin.traineddata"');
   });
 
+  it("limits worker backports to the repaired curl and HTTP/3 library set", () => {
+    const worker = read("Dockerfile.worker");
+    expect(worker).toContain("signed-by=/usr/share/keyrings/debian-archive-keyring.gpg");
+    expect(worker).toContain("Package: libcurl4t64 libnghttp3-9 libngtcp2-16 libngtcp2-crypto-ossl0");
+    expect(worker).toMatch(/'Package: \*'\s*\\\n\s*'Pin: release n=trixie-backports'\s*\\\n\s*'Pin-Priority: -1'/);
+    expect(worker).not.toContain("-t trixie-backports");
+    for (const pin of [
+      "libcurl4t64=8.21.0-2~bpo13+1",
+      "libnghttp3-9=1.15.0-1~bpo13+1",
+      "libngtcp2-16=1.22.1-1~bpo13+1",
+      "libngtcp2-crypto-ossl0=1.22.1-1~bpo13+1",
+    ]) {
+      expect(worker).toContain(pin);
+    }
+    expect(worker).toContain("ge 8.21.0-2~bpo13+1");
+    expect(worker).toContain("ge 1.22.1-1~bpo13+1");
+  });
+
   it.skipIf(process.platform === "win32")(
     "rejects either mount privilege bit and accepts stripped or absent helpers",
     () => {
