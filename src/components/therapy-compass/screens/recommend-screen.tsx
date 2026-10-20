@@ -8,6 +8,9 @@ import { PageHeader } from "@/components/ui/page-header";
 import { cn, pageContainer } from "@/components/ui-primitives";
 import { Button } from "@/components/ui/button";
 import { announce } from "@/components/ui/live-announcer";
+import { ClinicalSignInNotice } from "@/components/mode-kit/clinical-sign-in-notice";
+import { useClinicalToolAccess } from "@/components/mode-kit/use-clinical-tool-access";
+import { CLINICAL_SIGN_IN_COPY } from "@/lib/front-door-content";
 
 import { useTcBindings } from "../bindings";
 import { RECOMMEND_CONSTRAINTS } from "../data/select";
@@ -23,6 +26,7 @@ export function RecommendScreen() {
   const ranked = b.recommendations;
   const top = ranked[0];
   const desktopIdPrefix = useId();
+  const access = useClinicalToolAccess();
 
   const copyShortlist = () =>
     copy(
@@ -69,13 +73,28 @@ export function RecommendScreen() {
     toggleConstraint: b.toggleConstraint,
   };
 
+  const header = (
+    <PageHeader
+      className="mb-5 sm:mb-6"
+      title="Recommend"
+      description="Rank catalogue therapies against a clinical scenario — advisory only."
+    />
+  );
+
+  // Ranking therapies against a typed scenario is for signed-in health professionals
+  // (see useClinicalToolAccess); browsing and comparing stay open.
+  if (access === "sign-in-required") {
+    return (
+      <section data-screen-label="Recommend" className={pageContainer}>
+        {header}
+        <ClinicalSignInNotice copy={CLINICAL_SIGN_IN_COPY.therapyRanking} testId="therapy-ranking-sign-in" />
+      </section>
+    );
+  }
+
   return (
     <section data-screen-label="Recommend" className={pageContainer}>
-      <PageHeader
-        className="mb-5 sm:mb-6"
-        title="Recommend"
-        description="Rank catalogue therapies against a clinical scenario — advisory only."
-      />
+      {header}
 
       <RecommendScenarioControl
         {...scenarioBindings}

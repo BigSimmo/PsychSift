@@ -52,7 +52,7 @@ export const BRAND_CATCHPHRASE_BARE = "From question to source";
  * to the person reading an install sheet on their phone; the retrieval
  * architecture is described in the docs, not in the shop window.
  */
-export const BRAND_DESCRIPTION = `Private medical guideline knowledge base — ${BRAND_CATCHPHRASE_BARE.toLowerCase()}.`;
+export const BRAND_DESCRIPTION = `Psychiatry guideline reference for health professionals, ${BRAND_CATCHPHRASE_BARE.toLowerCase()}.`;
 
 /**
  * The install prompt's own line. It stays contextual rather than reusing the

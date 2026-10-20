@@ -3,8 +3,11 @@
 import { AlertTriangle, Check, CheckCheck, ClipboardCopy, RotateCcw, type LucideIcon } from "lucide-react";
 import { useId, useState } from "react";
 
+import { ClinicalSignInNotice } from "@/components/mode-kit/clinical-sign-in-notice";
+import { useClinicalToolAccess } from "@/components/mode-kit/use-clinical-tool-access";
 import { cn, controlDisabled, ignoreUnavailableActivation } from "@/components/ui-primitives";
 import { useCopyToast } from "@/components/ui/toast";
+import { CLINICAL_SIGN_IN_COPY } from "@/lib/front-door-content";
 
 import type { CalculatorFixture, CalculatorItem, CalculatorTone, ScoreBand } from "./calculator-fixtures";
 
@@ -678,6 +681,43 @@ export function CalculatorItems({
   showKey?: boolean;
 }) {
   const key = sharedOptionKey(calc);
+  // Entering answers and getting a score is for signed-in health professionals (see
+  // useClinicalToolAccess). Signed out, the questions stay readable with no way to
+  // answer them; the score panel beside them keeps the bands, scoring note and sources.
+  const signedOut = useClinicalToolAccess() === "sign-in-required";
+  if (signedOut) {
+    return (
+      <section aria-label={`${calc.abbrev} items`} className="grid min-w-0 content-start gap-2">
+        <ClinicalSignInNotice copy={CLINICAL_SIGN_IN_COPY.scoring} testId="calculator-scoring-sign-in" />
+        {calc.stem ? (
+          <p className="text-sm-minus font-bold leading-5 text-[color:var(--text-muted)]">{calc.stem}</p>
+        ) : null}
+        <ol className="grid gap-1.5" data-testid="calculator-items-read-only">
+          {calc.items.map((item, itemIndex) => (
+            <li
+              key={item.id}
+              className="rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-3 py-2"
+            >
+              <p
+                className={cn(
+                  "font-semibold leading-5 text-[color:var(--text-heading)]",
+                  dense ? "text-sm-minus" : "text-sm",
+                )}
+              >
+                <span className="mr-1.5 font-mono text-2xs font-bold tabular-nums text-[color:var(--text-muted)]">
+                  {itemIndex + 1}.
+                </span>
+                {item.text}
+              </p>
+              {item.detail ? (
+                <p className="mt-0.5 text-2xs font-medium leading-4 text-[color:var(--text-muted)]">{item.detail}</p>
+              ) : null}
+            </li>
+          ))}
+        </ol>
+      </section>
+    );
+  }
   // Offer an explicit "all remaining negative" affordance for checkbox-only
   // scales, so an all-negative CAGE/SAD PERSONS can be completed without ticking
   // each box — but only on user action, never by merely opening the scale.

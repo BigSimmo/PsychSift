@@ -30,6 +30,11 @@ export interface EmergencyClinicalProtocol {
   readonly specialistContacts: readonly string[];
   readonly caveat: string;
   readonly evidenceSource: string;
+  /**
+   * The date (YYYY-MM-DD) the clinical owner signed this card off. Unset shows the card
+   * as "Not yet reviewed" beside its source, which stays visible without expanding it.
+   */
+  readonly ownerReviewedOn?: string;
 }
 
 export const EMERGENCY_CLINICAL_PROTOCOLS: readonly EmergencyClinicalProtocol[] = [

@@ -2,8 +2,10 @@
 
 import { createContext, useCallback, useContext, useMemo, useSyncExternalStore } from "react";
 
+import { useClinicalToolAccess } from "@/components/mode-kit/use-clinical-tool-access";
 import { isProfileEmpty, type AllergyClass, type PatientProfile, type ScrUnit } from "@/lib/medication-patient-alerts";
 import {
+  EMPTY_PATIENT_PROFILE,
   convertScrValue,
   getPatientProfileClearGeneration,
   getPatientProfileSnapshot,
@@ -36,13 +38,20 @@ export type PatientProfileContextValue = {
 const PatientProfileContext = createContext<PatientProfileContextValue | null>(null);
 
 export function PatientProfileProvider({ children }: { children: React.ReactNode }) {
+  // Patient details, and every consideration and interaction flag drawn from them,
+  // need sign-in from 1 November 2026 (docs/decisions/2026-10-20-clinical-decision-
+  // tools-need-sign-in.md). Signed out, every consumer reads the empty profile, so no
+  // tailored note or flag shows. Anything already stored stays in this tab's storage
+  // and comes back on sign-in.
+  const signedOut = useClinicalToolAccess() === "sign-in-required";
   // Read from the sessionStorage-backed external store so the profile is shared
   // across the prescribing workspace and detail pages with no hydration mismatch.
-  const profile = useSyncExternalStore(
+  const storedProfile = useSyncExternalStore(
     subscribePatientProfile,
     getPatientProfileSnapshot,
     getServerPatientProfileSnapshot,
   );
+  const profile = signedOut ? EMPTY_PATIENT_PROFILE : storedProfile;
 
   // The same subscription, second reading: the clear generation travels with the
   // profile because a clear is the one change that alters both, and a consumer

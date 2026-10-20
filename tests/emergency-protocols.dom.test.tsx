@@ -234,6 +234,26 @@ describe("Poisons call action routing", () => {
   });
 });
 
+describe("source line on the collapsed card", () => {
+  const nms = EMERGENCY_CLINICAL_PROTOCOLS.find((p) => p.id === "EMERG-NMS")!;
+
+  it("shows the source, the review state and the fixed-text note without expanding", () => {
+    const html = renderToStaticMarkup(<EmergencyProtocolBanner protocol={nms} />);
+    expect(html).toContain('data-testid="emergency-protocol-source"');
+    expect(html).toContain("Based on: </span>");
+    expect(html).toContain("Not yet reviewed");
+    expect(html).toContain("Fixed text, not written by AI.");
+    // The management steps themselves still wait behind the fold.
+    expect(html).not.toContain("Immediate Management Protocol");
+  });
+
+  it("drops the review badge once the owner has signed the card off", () => {
+    const html = renderToStaticMarkup(<EmergencyProtocolBanner protocol={{ ...nms, ownerReviewedOn: "2026-10-21" }} />);
+    expect(html).not.toContain("Not yet reviewed");
+    expect(html).toContain('data-testid="emergency-protocol-source"');
+  });
+});
+
 describe("selectEmergencyProtocolsForSurface (degraded setup)", () => {
   it("shows the card for a submitted query when answer setup is not ready", () => {
     const ids = selectEmergencyProtocolsForSurface({

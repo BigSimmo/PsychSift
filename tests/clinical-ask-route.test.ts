@@ -66,6 +66,7 @@ const post = (value: unknown = body) =>
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.access.mockResolvedValue({
+    authenticated: true,
     ownerId: "owner-a",
     rateLimitSubject: { kind: "owner", ownerId: "owner-a" },
   });
@@ -153,6 +154,18 @@ describe("POST /api/clinical-ask/stream", () => {
     });
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(mocks.run).toHaveBeenCalledOnce();
+  });
+
+  it("refuses a signed-out request before rate limiting or orchestration", async () => {
+    mocks.access.mockResolvedValue({
+      authenticated: false,
+      ownerId: undefined,
+      rateLimitSubject: { kind: "anonymous", subjectKey: "anon:test" },
+    });
+    const response = await POST(post());
+    expect(response.status).toBe(401);
+    expect(mocks.rate).not.toHaveBeenCalled();
+    expect(mocks.run).not.toHaveBeenCalled();
   });
 
   it("rejects unknown input before access", async () => {
