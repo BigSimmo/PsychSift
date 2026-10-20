@@ -32,6 +32,7 @@
  * Usage:
  *   npm run check:migration-immutability     verify (exit 1 on any violation)
  *   ... -- --base-ref origin/main             also verify against the base branch's sealed hashes
+ *                                            (or set MIGRATION_IMMUTABILITY_BASE_REF, as CI does)
  *   npm run migrations:seal                  append hashes for new migrations only
  *   npm run migrations:reseal                exceptional restore (requires ALLOW_MIGRATION_RESEAL=true)
  */
@@ -301,7 +302,8 @@ if (isDirectEntrypoint(import.meta.url)) {
     process.exitCode = seal();
   } else {
     const baseIndex = process.argv.indexOf("--base-ref");
-    const baseRef = baseIndex >= 0 ? process.argv[baseIndex + 1] : null;
+    const baseRef =
+      (baseIndex >= 0 ? process.argv[baseIndex + 1] : process.env.MIGRATION_IMMUTABILITY_BASE_REF?.trim()) || null;
     process.exitCode = runMigrationImmutabilityGuard({ baseRef });
   }
 }
