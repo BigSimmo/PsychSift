@@ -1,8 +1,8 @@
 {
   "version": "clinical-kb-site-static-manifest-v1",
-  "gitSha": "3471b1f6c101128b62d8f402a1202c2bad02131d",
+  "gitSha": "149f751b8b49e0b191af1e05ba23e6f18b87fa94",
   "registryVersion": "site-content-registry-v1",
-  "generatedAt": "2026-10-18T13:16:42.502Z",
+  "generatedAt": "2026-10-20T19:03:53.256Z",
   "records": [
     {
       "logicalId": "calculators:auditc",
@@ -11822,8 +11822,8 @@
       "logicalId": "tools:calculators",
       "domain": "tools",
       "route": "/?mode=calculators",
-      "contentHash": "e54fbefca7021b3e6d041e757cd8764ea087d94ee8e300adf53c6dc109a8f3df",
-      "lineageDigest": "5768cbe83da22f64d7631278f9162e5fdf9dc8f477060c8a6188aaa724c56251",
+      "contentHash": "ca97a11bcace4b93d1bd82af84abeaa82b28937a75d137d6cb2b50d001037445",
+      "lineageDigest": "959f635ec300e6fa29193ce3c7c4836d98d275d011cbbea4ca1371dd54148090",
       "validationStatus": "locally_reviewed",
       "sourceStatus": "current",
       "eligible": true,
@@ -11896,5 +11896,5 @@
       "exclusionReason": null
     }
   ],
-  "staticManifestDigest": "603efaadc3c03b770a7b8850165e0155b647581921ae53994baf25c585724f23"
+  "staticManifestDigest": "1695ea7d3d20f0b47e54635604707c0ac26535840183d324bf964392bd43e834"
 }
