@@ -23,6 +23,7 @@ import { useCallback, useEffect, useId, useMemo, useState, useSyncExternalStore,
 import { focusRing } from "@/components/card-recipes";
 import { ClinicalNoteEditor } from "@/components/clinical-notes/note-editor";
 import { InformationPageShell } from "@/components/information-page-shell";
+import { OnCallShiftSwitch } from "@/components/on-call/shift/shift-switch";
 import { useOnCallCallLog } from "@/components/on-call/handover/call-log";
 import { FieldLabel, OnCallLegalField } from "@/components/on-call/handover/legal-picker";
 import { onCallActionLink, onCallFilledButton, onCallOutlineButton } from "@/components/on-call/kit/calm";
@@ -791,6 +792,7 @@ export function OnCallHandoverPage() {
             </div>
           ) : (
             <div className="grid min-w-0 gap-2 print:hidden">
+              <OnCallShiftSwitch current="handover" />
               <div className="flex min-w-0 items-center justify-between gap-3">
                 {/* Under the work band its title already says Handover, so the heading stays for screen readers only. */}
                 <h1 className={underBand ? "sr-only" : "text-2xl font-semibold text-[color:var(--text-heading)]"}>
