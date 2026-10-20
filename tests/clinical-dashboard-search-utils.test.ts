@@ -12,6 +12,7 @@ import {
   progressForRetry,
   searchRetrySlowFailureMs,
   shouldRetryFailedAttempt,
+  SEARCH_SESSION_EXPIRED_MESSAGE,
 } from "@/components/clinical-dashboard/search-utils";
 import type { RagAnswer } from "@/lib/types";
 
@@ -68,7 +69,7 @@ describe("clinical dashboard search utilities", () => {
 
   it("classifies retryable search errors", () => {
     expect(isRetryableError(makeSearchError("Service is currently unavailable.", 503, true))).toBe(true);
-    expect(isRetryableError(makeSearchError("Search request was not authorized by the server.", 401))).toBe(false);
+    expect(isRetryableError(makeSearchError(SEARCH_SESSION_EXPIRED_MESSAGE, 401))).toBe(false);
   });
 
   it("retries a quick retryable failure but not one that already took a long time", () => {
@@ -88,9 +89,8 @@ describe("clinical dashboard search utilities", () => {
     // The executor uses makeSearchError("No usable results were found.", 404, false) as the empty-result sentinel.
     expect(classifyAnswerError(makeSearchError("No usable results were found.", 404, false))).toBe("no-results");
     expect(classifyAnswerError(makeSearchError("Answer generation failed.", 500, true))).toBe("failure");
-    expect(classifyAnswerError(makeSearchError("Search request was not authorized by the server.", 401))).toBe(
-      "failure",
-    );
+    // A 401 means the session expired, so the panel asks the reader to sign in again instead of retrying.
+    expect(classifyAnswerError(makeSearchError(SEARCH_SESSION_EXPIRED_MESSAGE, 401))).toBe("session-expired");
     // Bare network TypeError and unknown non-error values must never masquerade as no-results.
     expect(classifyAnswerError(new TypeError("Failed to fetch"))).toBe("failure");
     expect(classifyAnswerError(new Error("Search failed"))).toBe("failure");

@@ -1,6 +1,12 @@
+import type { Metadata } from "next";
 import { FavouritesCommandLibraryPage } from "@/components/clinical-dashboard/favourites-command-library-page";
 import { resolveClientDemoMode } from "@/lib/client-env";
 import { isDemoMode, isLocalNoAuthMode } from "@/lib/env";
+
+export const metadata: Metadata = {
+  title: "Favourites | PsychSift",
+  description: "Your saved pages, searches and tools.",
+};
 
 type FavouritesPageProps = {
   searchParams?: Promise<{

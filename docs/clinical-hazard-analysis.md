@@ -277,6 +277,7 @@ If the product intends to rely on the CDSS exemption, these become **requirement
 - **PR-2 — Caveats must survive every export.** The "verify against source" signal, low-confidence table caveat, and unverified-number flags must be present in every copied/exported artifact (close H3). A caveat the HCP never sees cannot support independent review.
 - **PR-3 — Accurate provenance & authority.** No uncited source shown as "best/strong"; no false/self-declared authority; unvalidated sources labelled as such and not rendered as high-confidence (close H4c/H4d, H2a). Independent verification presupposes the HCP is pointed at the _right_ document.
 - **PR-4 — HCP-only, not patient-facing.** Enforce authentication/authorisation and keep any anonymous/public surface out of scope of clinical recommendation, or re-classify (condition 1).
+  - _Status 2026-10-19:_ not enforced for Answer. Asked whether Answer should require sign-in (repository audit F-03), the owner said no for now, so signed-out visitors keep Answer. See [the decision](decisions/2026-10-19-answer-stays-open-to-signed-out-visitors.md).
 - **PR-5 — Hold the device-data boundary.** No analysis of medical-device signals/images; document OCR only (condition 2).
 - **PR-6 — Governance of record.** Named clinical owner, source-approval/review cadence, incident review, and TGA SaMD screening as already required by [`docs/clinical-governance.md`](clinical-governance.md).
 

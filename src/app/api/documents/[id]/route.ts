@@ -7,6 +7,7 @@ import { jsonError, publicErrorResponse, PublicApiError } from "@/lib/http";
 import { buildStorageCleanupJobUpdate } from "@/lib/ingestion";
 import { invalidateRagCachesForDocumentMutation } from "@/lib/rag/rag";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requireRecentAdministratorAssurance } from "@/lib/supabase/admin-assurance";
 import { AuthenticationError, requireAuthenticatedUser, unauthorizedResponse } from "@/lib/supabase/auth";
 import { writeAuditLog } from "@/lib/audit";
 import {
@@ -43,6 +44,9 @@ const deleteDocumentResultSchema = z.discriminatedUnion("outcome", [
     image_paths: z.array(z.string()),
   }),
 ]);
+
+// Bounded optimistic-concurrency attempts for a metadata read-modify-write (F-08).
+const DOCUMENT_METADATA_WRITE_ATTEMPTS = 3;
 
 function safeMetadata(value: unknown) {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
@@ -140,38 +144,56 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     const supabase = createAdminClient();
     const user = await requireAuthenticatedUser(request, supabase, { administrator: true });
-    const { data: document, error: documentError } = await supabase
-      .from("documents")
-      .select("id,owner_id,title,file_name,storage_path,content_hash,metadata")
-      .eq("id", id)
-      .eq("owner_id", user.id)
-      .maybeSingle();
 
-    if (documentError) throw new Error(documentError.message);
-    if (!document) return publicErrorResponse("Document not found.", 404, { code: "document_not_found" });
-    if (document.title.trim() === body.title) {
-      throw new PublicApiError("Document title is unchanged.");
+    // F-08: the metadata JSON carries the committed index pointer (the generated
+    // `index_generation_id` column mirrors it), and the ingestion worker can commit a
+    // new pointer between this read and the write below. Writing the whole object back
+    // unconditionally would restore the stale pointer. The write matches the row's
+    // `updated_at` (bumped by the documents_updated_at trigger on every update), so a
+    // concurrent commit makes it match nothing; re-read and retry a bounded number of times.
+    let updated: Record<string, unknown> | null = null;
+    for (let attempt = 0; attempt < DOCUMENT_METADATA_WRITE_ATTEMPTS && !updated; attempt += 1) {
+      const { data: document, error: documentError } = await supabase
+        .from("documents")
+        .select("id,owner_id,title,file_name,storage_path,content_hash,metadata,updated_at")
+        .eq("id", id)
+        .eq("owner_id", user.id)
+        .maybeSingle();
+
+      if (documentError) throw new Error(documentError.message);
+      if (!document) return publicErrorResponse("Document not found.", 404, { code: "document_not_found" });
+      if (document.title.trim() === body.title) {
+        throw new PublicApiError("Document title is unchanged.");
+      }
+
+      const metadata = safeMetadata(document.metadata);
+      const { data: updatedRow, error: updateError } = await supabase
+        .from("documents")
+        .update({
+          title: body.title,
+          metadata: {
+            ...metadata,
+            renamed_at: new Date().toISOString(),
+            previous_title: document.title,
+            original_file_name: metadata.original_file_name ?? document.file_name,
+            // JSON-serializable; the inferred literal type is wider than Json.
+          } as unknown as Json,
+        })
+        .eq("id", id)
+        .eq("owner_id", user.id)
+        .eq("updated_at", document.updated_at)
+        .select("*")
+        .maybeSingle();
+
+      if (updateError) throw new Error(updateError.message);
+      updated = updatedRow;
     }
 
-    const metadata = safeMetadata(document.metadata);
-    const { data: updated, error: updateError } = await supabase
-      .from("documents")
-      .update({
-        title: body.title,
-        metadata: {
-          ...metadata,
-          renamed_at: new Date().toISOString(),
-          previous_title: document.title,
-          original_file_name: metadata.original_file_name ?? document.file_name,
-          // JSON-serializable; the inferred literal type is wider than Json.
-        } as unknown as Json,
-      })
-      .eq("id", id)
-      .eq("owner_id", user.id)
-      .select("*")
-      .single();
-
-    if (updateError) throw new Error(updateError.message);
+    if (!updated) {
+      return publicErrorResponse("The document changed while it was being renamed. Try again.", 409, {
+        code: "document_changed_concurrently",
+      });
+    }
     invalidateRagCachesForDocumentMutation(user.id, { affectsPublicCorpus: false });
     await writeAuditLog(supabase, {
       ownerId: user.id,
@@ -201,6 +223,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     const { id } = parseRouteParams({ id: rawId }, documentRouteParamsSchema, "Invalid document id.");
     const supabase = createAdminClient();
     const user = await requireAuthenticatedUser(request, supabase, { administrator: true });
+    await requireRecentAdministratorAssurance(request, supabase, user.id);
     const { data, error } = await supabase.rpc("delete_document_if_idle", {
       p_document_id: id,
       p_owner_id: user.id,

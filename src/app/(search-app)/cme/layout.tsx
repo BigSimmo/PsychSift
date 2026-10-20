@@ -1,12 +1,19 @@
+import type { Metadata } from "next";
 import { Suspense, type ReactNode } from "react";
 import { CmePageTabs } from "@/components/cme/cme-page-tabs";
 import { CmeOwnerBoundary } from "@/components/cme/cme-owner-boundary";
 import { isDemoMode } from "@/lib/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ModeBand } from "@/components/mode-band/mode-band";
+import { PRIVATE_APP_ROBOTS_METADATA } from "@/lib/crawler-policy";
 
 // CPD's own work-mode pieces (copper shades, hours bar, month chart, switch).
 import "@/components/cme/cme-work.css";
+
+// Personal work area: kept out of search results (repository audit F-30).
+export const metadata: Metadata = {
+  robots: PRIVATE_APP_ROBOTS_METADATA,
+};
 
 /** Bind server-rendered private records to the owner verified for this response. */
 export default async function CmeLayout({ children }: { children: ReactNode }) {
@@ -34,7 +41,13 @@ export default async function CmeLayout({ children }: { children: ReactNode }) {
     // A record, a form, the summary and Customise keep their own back-arrow headers.
     // Each page names its own band (eyebrow: when its records loaded) and puts
     // its own one action in the band (work-mode redesign, owner request 6 Oct 2026).
-    <ModeBand modeId="cme" hiddenOn={["/cme/log/", "/cme/new", "/cme/summary", "/cme/customise"]}>
+    // The CPD home names the band with when its records loaded; its line is kept from the
+    // first paint so the page does not jump down when that arrives (design audit D-28).
+    <ModeBand
+      modeId="cme"
+      hiddenOn={["/cme/log/", "/cme/new", "/cme/summary", "/cme/customise"]}
+      eyebrowSlot={["/cme"]}
+    >
       <CmeOwnerBoundary serverOwnerId={serverOwnerId} serverAuthVerified={serverAuthVerified} demoMode={demoMode}>
         <Suspense fallback={null}>
           <CmePageTabs />

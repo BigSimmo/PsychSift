@@ -1250,7 +1250,9 @@ export function UniversalSearchCommandSurface({
             universalNotice={
               universal.tooLong
                 ? `This search is longer than ${universalSearchMaxQueryLength} characters, so it can’t be matched across PsychSift. Shorten it to see matches.`
-                : (universal.error ?? null)
+                : universal.withheld
+                  ? "This looks like it holds a patient detail, so no matches were looked up. Remove names, dates of birth and record numbers."
+                  : (universal.error ?? null)
             }
             universalPending={universal.loading && Boolean(trimmedQuery)}
             placement={placement}

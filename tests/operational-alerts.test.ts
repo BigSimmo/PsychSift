@@ -40,7 +40,7 @@ describe("evaluateOperationalAlerts", () => {
     ]);
   });
 
-  it("pages only when persisted evidence names the same failing RPC across three contiguous hours", () => {
+  it("pages only when persisted evidence names the same failing RPC across three consecutive digest samples", () => {
     expect(evaluateOperationalAlerts(snapshot({ hybridRpcErrorRate: 0.01 }))[0]?.severity).toBe("warning");
     expect(
       evaluateOperationalAlerts(snapshot({ hybridRpcErrorRate: 0.001 }), {

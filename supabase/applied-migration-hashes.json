@@ -1,7 +1,7 @@
 {
   "note": "sha256 of every migration this repository has shipped, with newlines normalised. An entry whose hash changes means an applied migration was edited, which cannot reach the live database. See scripts/check-migration-immutability.mjs.",
   "generator": "scripts/check-migration-immutability.mjs",
-  "sealed_at": "2026-10-19T11:49:56.892Z",
+  "sealed_at": "2026-10-19T23:41:59.548Z",
   "versions": {
     "20260527000000_bulk_ingestion.sql": "813e8e314064a6dcbaaa55e2765a8ce901d5783b304b4a7af7bb7417a07daf7c",
     "20260527001000_documents_policy_cleanup.sql": "559c26f3172bf75e545a41adef75538b2bf648ea7d53c8eb3d3ea7c244c65a48",
@@ -328,6 +328,12 @@
     "20261018075500_atomic_training_milestone_mirror.sql": "ed1b24ba2eb486c9d3acca05908c1d28ee0b91aed15b74a32acad871a8ffcee2",
     "20261018082910_audit_durable_recovery_pairing_and_cache_fences.sql": "f0667fed9f0294c1f5ba40252d11ee66e6de07be340a1ec789e0503a1192f2ac",
     "20261018095804_rag_cache_scope_evidence_revision.sql": "0a3c6845cda4d8feb22c54dbf176c7ece61da0333c4a75edb0664b3046a37994",
-    "20261018131729_answer_feedback_note_and_record_reports.sql": "3c8cbe6b6c0584a82a38e73765f3711ee48a4843c8d4d26b9212d6ba522bab10"
+    "20261018131729_answer_feedback_note_and_record_reports.sql": "3c8cbe6b6c0584a82a38e73765f3711ee48a4843c8d4d26b9212d6ba522bab10",
+    "20261019155000_answer_feedback_problem_supersedes_verified.sql": "415d9218a113e51cbfe846788f9ea2a6d95ae2967d70a4f70aefecfc8ce72a8f",
+    "20261019155200_prune_superseded_index_generations_on_commit.sql": "d56dfd15e6763d59853c5dd110ca521d6d77a6daf93fda7f9cd7ff86e1f6230f",
+    "20261019170000_site_content_rpc_recent_administrator_assurance.sql": "251d05e140a04ba29a96c346469d819920998281298368679747f0016e2f1420",
+    "20261019180000_prune_keeps_array_cited_images.sql": "c5eba18e96621fdb4bd38936ff22d6bbb161f17af55bed9d4904fd9b90a22d48",
+    "20261019183000_prune_keeps_array_cited_chunks.sql": "a24e93902c77c4df48eb10161c447c1bf94a47cd9b06137cc507014687dc8862",
+    "20261019234000_retire_triage_on_feedback_supersede.sql": "3ce7c923055166002785e3e3f8da340ff2b7c83f777873df7164e90513b01baf"
   }
 }

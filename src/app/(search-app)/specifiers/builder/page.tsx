@@ -1,4 +1,10 @@
+import type { Metadata } from "next";
 import { SpecifierBuilderPage } from "@/components/specifiers/specifier-builder-page";
+
+export const metadata: Metadata = {
+  title: "Builder | Specifiers | PsychSift",
+  description: "Build a diagnosis with its specifiers.",
+};
 
 type BuilderRouteProps = {
   searchParams?: Promise<{ specifier?: string | string[] }>;

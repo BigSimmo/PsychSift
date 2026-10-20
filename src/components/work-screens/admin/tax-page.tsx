@@ -157,7 +157,7 @@ export function AdminTaxPage({ now: pinned }: { now?: Date } = {}) {
   }
 
   return (
-    <WorkBody testId="admin-tax">
+    <WorkBody testId="admin-tax" landmark>
       <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">Tax</PageTitleUnderBand>
       {page.signedOut ? (
         <PaperworkSampleNotice what="tax checklist" testId="admin-tax-signed-out" examples={page.examplesShown} />

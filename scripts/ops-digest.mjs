@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * ops-digest — render a one-screen operational summary from the live deep health
- * probe, for the daily ops-digest workflow.
+ * probe, for the six-hourly ops-digest workflow.
  *
  * The app already exposes rich signal at GET /api/health?deep=1 (SLO counters,
  * cache hit-rate, answer spend, degraded/truncation rates), but nothing surfaces
@@ -61,6 +61,12 @@ function argValue(name) {
 
 const hourlyWindowMs = 60 * 60 * 1000;
 const hourlyHistoryVersion = 1;
+// The paging rule counts consecutive digest samples, not consecutive UTC hours. Scheduled runs are
+// six hours apart, GitHub cron fires can arrive late or be dropped, and a manual run between them
+// shares the same history file. Any positive gap up to two schedule intervals therefore joins the
+// sequence; samples further apart than that are not treated as the same persistent failure.
+const scheduleIntervalMs = 6 * hourlyWindowMs;
+const maxConsecutiveSampleGapMs = 2 * scheduleIntervalMs;
 
 function hourStart(instant) {
   const epoch = instant instanceof Date ? instant.getTime() : Date.parse(String(instant));
@@ -108,9 +114,7 @@ export function updateHybridRpcHourlyEvidence(rawHistory, health, observedAt = n
     lastThree.every((entry, index) => {
       if (index === 0) return true;
       const gapMs = Date.parse(entry.hour) - Date.parse(lastThree[index - 1].hour);
-      // Scheduled runs are six hours apart, and a manual run between them shares the same history
-      // file, so any positive whole-hour gap up to six hours still counts as consecutive evidence.
-      return gapMs > 0 && gapMs <= 6 * hourlyWindowMs;
+      return gapMs > 0 && gapMs <= maxConsecutiveSampleGapMs;
     });
   const repeatedRpcNames = contiguous
     ? lastThree[0].rpcNames.filter((name) => lastThree.every((entry) => entry.rpcNames.includes(name)))
@@ -139,6 +143,40 @@ function pct(value) {
 
 function usd(value) {
   return typeof value === "number" ? `$${value.toFixed(2)}` : "—";
+}
+
+const storageCleanupRunbook = "docs/observability-slos.md#storage-cleanup-backlog";
+
+function backlogCount(value) {
+  return Number.isInteger(value) && value >= 0 ? value : null;
+}
+
+/**
+ * One digest line for the deep probe's `storageCleanup` block, or null when the probe did not
+ * report it (older build, query error, or readiness-only response). Counts that are not
+ * non-negative integers are treated as absent rather than rendered as zero.
+ */
+export function renderStorageCleanupBacklog(block, now = Date.now()) {
+  if (!block || typeof block !== "object") return null;
+  const pending = backlogCount(block.pending);
+  const failed = backlogCount(block.failed);
+  if (pending === null || failed === null) return null;
+  // Older builds do not report expired claims; treat that as none.
+  const expiredClaims = backlogCount(block.expiredClaims) ?? 0;
+  const outstanding = pending + failed + expiredClaims;
+  const oldestEpoch = typeof block.oldestOutstandingAt === "string" ? Date.parse(block.oldestOutstandingAt) : NaN;
+  const oldest = Number.isFinite(oldestEpoch) ? new Date(oldestEpoch).toISOString() : null;
+  // A `pending` row exists for the few seconds a delete is running, so only a failed row, or an
+  // outstanding row older than an hour, means something is waiting for the manual drain.
+  const stale = Number.isFinite(oldestEpoch) && now - oldestEpoch > 60 * 60 * 1000;
+  const attention =
+    failed > 0 || (outstanding > 0 && stale)
+      ? `  ⚠ drain with \`npm run cleanup:storage\` ([runbook](${storageCleanupRunbook}))`
+      : "";
+  const expired = expiredClaims > 0 ? `, expired claims ${expiredClaims}` : "";
+  return `**Storage cleanup backlog:** ${outstanding} outstanding (pending ${pending}, failed ${failed}${expired})${
+    oldest ? ` · oldest ${oldest}` : ""
+  }${attention}`;
 }
 
 export function renderDigest(health, meta = {}) {
@@ -237,6 +275,11 @@ export function renderDigest(health, meta = {}) {
         sp.sampleTruncated ? "- ⚠ sample truncated — figures are a lower bound" : "",
       );
     }
+
+    // Audit F-10: failed storage deletions queue in storage_cleanup_jobs and are drained only
+    // by the manual `npm run cleanup:storage`, so the backlog is shown here rather than nowhere.
+    const backlog = renderStorageCleanupBacklog(health.storageCleanup);
+    if (backlog) lines.push("", backlog);
   }
 
   const alerts = evaluateOperationalAlerts(health, meta);

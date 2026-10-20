@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   normalizeOpsStatus,
   renderDigest,
+  renderStorageCleanupBacklog,
   resolveHealthUrl,
   serializeGitHubOutputs,
   updateHybridRpcHourlyEvidence,
@@ -72,8 +73,8 @@ describe("ops digest workflow contract", () => {
   });
 });
 
-describe("hybrid RPC hourly evidence", () => {
-  it("requires three contiguous identity-complete hourly windows for the same RPC", () => {
+describe("hybrid RPC digest-sample evidence", () => {
+  it("requires three consecutive identity-complete samples for the same RPC", () => {
     let history: unknown;
     for (const observedAt of ["2026-08-23T01:20:00Z", "2026-08-23T02:20:00Z", "2026-08-23T03:20:00Z"]) {
       const result = updateHybridRpcHourlyEvidence(
@@ -106,22 +107,41 @@ describe("hybrid RPC hourly evidence", () => {
     expect(result.repeatedRpcNames).toEqual(["hybrid_search"]);
   });
 
-  it("does not join windows more than six hours apart", () => {
+  it("pages from three consecutive six-hourly scheduled samples of the same failing RPC", () => {
+    const failing = { slo: { hybridRpcIdentityEvidenceComplete: true, hybridRpcErrorCounts: { hybrid_search: 2 } } };
+    let history: unknown;
+    let repeated: string[] = [];
+    // The schedule is `15 */6 * * *`; the middle fire arrives late, as GitHub cron fires often do.
+    for (const observedAt of ["2026-08-23T00:15:00Z", "2026-08-23T07:05:00Z", "2026-08-23T12:15:00Z"]) {
+      const result = updateHybridRpcHourlyEvidence(history, failing, new Date(observedAt));
+      history = result.history;
+      repeated = result.repeatedRpcNames;
+    }
+    expect(repeated).toEqual(["hybrid_search"]);
+    expect(
+      evaluateOperationalAlerts(
+        { status: "ok", slo: { windowMinutes: 60, totalQueries: 100, hybridRpcErrorRate: 0.02, degradedRate: 0 } },
+        { repeatedHybridRpcNames: repeated },
+      ).map((item) => item.code),
+    ).toContain("OPS_HYBRID_RPC_ERROR_RATE_PAGE");
+  });
+
+  it("does not join samples more than two schedule intervals apart", () => {
     const result = updateHybridRpcHourlyEvidence(
       {
         version: 1,
         windows: [
           { hour: "2026-08-23T00:00:00.000Z", rpcNames: ["hybrid_search"] },
-          { hour: "2026-08-23T07:00:00.000Z", rpcNames: ["hybrid_search"] },
+          { hour: "2026-08-23T13:00:00.000Z", rpcNames: ["hybrid_search"] },
         ],
       },
       { slo: { hybridRpcIdentityEvidenceComplete: true, hybridRpcErrorCounts: { hybrid_search: 1 } } },
-      new Date("2026-08-23T08:20:00Z"),
+      new Date("2026-08-23T14:20:00Z"),
     );
     expect(result.repeatedRpcNames).toEqual([]);
   });
 
-  it("breaks the paging sequence when an hourly identity snapshot is incomplete", () => {
+  it("breaks the paging sequence when an identity snapshot is incomplete", () => {
     const result = updateHybridRpcHourlyEvidence(
       {
         version: 1,
@@ -313,5 +333,70 @@ describe("renderDigest", () => {
     expect(md).toContain("OVER THRESHOLD");
     expect(md).toContain("sample truncated");
     expect(md).toContain("OPS_PROJECTED_DAILY_SPEND_WARNING");
+  });
+});
+
+// Audit F-10: failed storage deletions queue in storage_cleanup_jobs and are drained only by hand.
+describe("storage cleanup backlog line", () => {
+  const now = Date.parse("2026-10-19T12:00:00.000Z");
+
+  it("shows an empty queue without a drain prompt", () => {
+    expect(renderStorageCleanupBacklog({ pending: 0, failed: 0, outstanding: 0, oldestOutstandingAt: null }, now)).toBe(
+      "**Storage cleanup backlog:** 0 outstanding (pending 0, failed 0)",
+    );
+  });
+
+  it("prompts the manual drain when a storage removal failed", () => {
+    const line = renderStorageCleanupBacklog(
+      { pending: 1, failed: 2, outstanding: 3, oldestOutstandingAt: "2026-10-19T11:59:00.000Z" },
+      now,
+    );
+    expect(line).toContain("3 outstanding (pending 1, failed 2)");
+    expect(line).toContain("oldest 2026-10-19T11:59:00.000Z");
+    expect(line).toContain("npm run cleanup:storage");
+    expect(line).toContain("docs/observability-slos.md#storage-cleanup-backlog");
+  });
+
+  it("treats a fresh pending row as an in-flight delete, and an hour-old one as stuck", () => {
+    const fresh = renderStorageCleanupBacklog(
+      { pending: 1, failed: 0, outstanding: 1, oldestOutstandingAt: "2026-10-19T11:59:30.000Z" },
+      now,
+    );
+    const stuck = renderStorageCleanupBacklog(
+      { pending: 1, failed: 0, outstanding: 1, oldestOutstandingAt: "2026-10-19T10:30:00.000Z" },
+      now,
+    );
+    expect(fresh).not.toContain("cleanup:storage");
+    expect(stuck).toContain("cleanup:storage");
+  });
+
+  it("counts expired processing claims when the probe reports them", () => {
+    const line = renderStorageCleanupBacklog(
+      { pending: 0, failed: 0, expiredClaims: 2, outstanding: 2, oldestOutstandingAt: "2026-10-19T10:00:00.000Z" },
+      now,
+    );
+    expect(line).toContain("2 outstanding (pending 0, failed 0, expired claims 2)");
+    expect(line).toContain("cleanup:storage");
+  });
+
+  it("omits the line when the probe did not report usable counts", () => {
+    expect(renderStorageCleanupBacklog(undefined, now)).toBeNull();
+    expect(renderStorageCleanupBacklog({ pending: -1, failed: 0 }, now)).toBeNull();
+    expect(renderStorageCleanupBacklog({ pending: 1.5, failed: 0 }, now)).toBeNull();
+    expect(renderStorageCleanupBacklog({ pending: "3", failed: 0 }, now)).toBeNull();
+  });
+
+  it("renders the backlog in the digest without changing the alert state", () => {
+    const health = {
+      status: "ok",
+      storageCleanup: { pending: 0, failed: 4, outstanding: 4, oldestOutstandingAt: "2026-10-18T00:00:00.000Z" },
+    };
+    expect(renderDigest(health)).toContain("**Storage cleanup backlog:** 4 outstanding (pending 0, failed 4)");
+    const withoutBacklog = evaluateOperationalAlerts({ status: "ok" }).map((item) => item.code);
+    expect(evaluateOperationalAlerts(health).map((item) => item.code)).toEqual(withoutBacklog);
+  });
+
+  it("leaves the digest unchanged when the probe has no storageCleanup block", () => {
+    expect(renderDigest({ status: "ok" })).not.toContain("Storage cleanup backlog");
   });
 });

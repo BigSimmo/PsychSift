@@ -1,4 +1,10 @@
+import type { Metadata } from "next";
 import { DifferentialStreamPage } from "@/components/differentials/differential-stream-page";
+
+export const metadata: Metadata = {
+  title: "Diagnoses | Differentials | PsychSift",
+  description: "Browse diagnoses and the presentations they are considered in.",
+};
 
 type DifferentialDiagnosesRouteProps = {
   searchParams?: Promise<{

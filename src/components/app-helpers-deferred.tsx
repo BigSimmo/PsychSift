@@ -18,6 +18,10 @@ const TermsAcceptancePrompt = dynamic(
   () => import("@/components/front-door/terms-acceptance-prompt").then((m) => m.TermsAcceptancePrompt),
   { ssr: false },
 );
+const SignInEndedNotice = dynamic(
+  () => import("@/components/front-door/sign-in-ended-notice").then((m) => m.SignInEndedNotice),
+  { ssr: false },
+);
 const MotionEnter = dynamic(() => import("@/components/motion/motion-enter").then((m) => m.MotionEnter), {
   ssr: false,
 });
@@ -30,6 +34,8 @@ export function AppHelpersDeferred() {
       <MotionEnter />
       {/* Asks a signed-in user to accept the current Terms of Use, once per version. */}
       <TermsAcceptancePrompt />
+      {/* Says when an ended sign-in cleared this device's private notes. */}
+      <SignInEndedNotice />
     </>
   );
 }

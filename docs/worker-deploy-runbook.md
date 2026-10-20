@@ -53,6 +53,13 @@ npm run reindex:health   # ok:true, and the RPC signatures accept p_worker_id
 
 If migrations are still outstanding, stop here and apply them first.
 
+The image-security gate is separate from migration readiness. `Dockerfile.worker`
+explicitly upgrades `perl-base` and rejects versions older than Debian's
+`5.36.0-7+deb12u4` security update. This addresses seven Perl advisories; it does
+not clear the remaining worker findings. Verify the rebuilt image's complete
+HIGH/CRITICAL report before release. Pull-request scans are advisory, so green
+PR checks alone do not establish security acceptance or authorise ingestion.
+
 ### 0.1 Automated pre-deploy gate
 
 Railway deploys the app and worker images, and the Supabase GitHub integration

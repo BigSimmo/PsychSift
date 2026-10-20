@@ -91,7 +91,7 @@ export function RotationRankPage({ roundId, now: pinnedNow }: { readonly roundId
   else body = <ClosedRound entry={entry} />;
 
   return (
-    <WorkBody testId="rotation-rank">
+    <WorkBody testId="rotation-rank" landmark>
       <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
         {round ? round.name : "Rotations"}
       </PageTitleUnderBand>

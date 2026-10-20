@@ -409,7 +409,16 @@ function createSupabaseMock(resolve: QueryResolver = defaultQueryResolver) {
     return ok([]);
   });
   const client = {
-    auth: { getUser, admin: { listUsers } },
+    auth: {
+      getUser,
+      // Destructive admin routes read MFA claims from the presented token (audit F-12).
+      getClaims: vi.fn(async (jwt?: string) =>
+        jwt === token
+          ? { data: { claims: administratorClaims() as Record<string, unknown> }, error: null }
+          : { data: null, error: new Error("invalid token") },
+      ),
+      admin: { listUsers },
+    },
     calls,
     from: vi.fn((table: string) => {
       const call: QueryCall = {
@@ -4011,6 +4020,102 @@ describe("private document API access", () => {
     expect(invalidateRagCachesForDocumentMutation).toHaveBeenCalledWith(userId, { affectsPublicCorpus: false });
   });
 
+  // F-08: the worker can commit a new index pointer between the rename's read and its
+  // write; the rename must not restore the stale pointer it read.
+  it("keeps an index pointer the worker commits between the rename read and write", async () => {
+    const committedGeneration = "55555555-5555-4555-8555-555555555555";
+    const replacementGeneration = "66666666-6666-4666-8666-666666666666";
+    const readVersion = "2026-10-19T01:00:00.000001+00:00";
+    const workerCommitVersion = "2026-10-19T01:00:05.000002+00:00";
+    const stored = {
+      id: documentId,
+      owner_id: userId,
+      title: "Original title",
+      file_name: "source.pdf",
+      storage_path: `${userId}/documents/${documentId}/source.pdf`,
+      content_hash: "hash-1",
+      metadata: { index_generation_id: committedGeneration } as Record<string, unknown>,
+      updated_at: readVersion,
+    };
+    let workerCommitted = false;
+    const client = createSupabaseMock((call) => {
+      if (call.table === "documents" && call.operation === "select") {
+        return ok({ ...stored, metadata: { ...stored.metadata } });
+      }
+      if (call.table === "documents" && call.operation === "update") {
+        if (!workerCommitted) {
+          workerCommitted = true;
+          stored.metadata = { ...stored.metadata, index_generation_id: replacementGeneration };
+          stored.updated_at = workerCommitVersion;
+        }
+        const versionFilter = call.filters.find((filter) => filter.column === "updated_at")?.value;
+        // A version-matched update that reaches no row returns null through maybeSingle().
+        if (versionFilter !== stored.updated_at) return ok(null);
+        Object.assign(stored, call.updatePayload as Record<string, unknown>);
+        stored.updated_at = "2026-10-19T01:00:06.000003+00:00";
+        return ok({ ...stored });
+      }
+      return ok([]);
+    });
+    mockRuntime(client, { invalidateRagCachesForDocumentMutation: vi.fn() });
+    const { PATCH } = await import("../src/app/api/documents/[id]/route");
+
+    const response = await PATCH(
+      authenticatedRequest(`/api/documents/${documentId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ title: "Better clinical title" }),
+      }),
+      { params: Promise.resolve({ id: documentId }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(stored.title).toBe("Better clinical title");
+    expect(stored.metadata).toMatchObject({
+      index_generation_id: replacementGeneration,
+      previous_title: "Original title",
+    });
+    const updates = client.calls.filter((call) => call.table === "documents" && call.operation === "update");
+    expect(updates.map((call) => call.filters.find((filter) => filter.column === "updated_at")?.value)).toEqual([
+      readVersion,
+      workerCommitVersion,
+    ]);
+  });
+
+  it("returns a conflict instead of renaming when the document keeps changing", async () => {
+    const client = createSupabaseMock((call) => {
+      if (call.table === "documents" && call.operation === "select") {
+        return ok({
+          id: documentId,
+          owner_id: userId,
+          title: "Original title",
+          file_name: "source.pdf",
+          storage_path: `${userId}/documents/${documentId}/source.pdf`,
+          content_hash: "hash-1",
+          metadata: {},
+          updated_at: "2026-10-19T01:00:00.000001+00:00",
+        });
+      }
+      if (call.table === "documents" && call.operation === "update") return ok(null);
+      return ok([]);
+    });
+    const invalidateRagCachesForDocumentMutation = vi.fn();
+    mockRuntime(client, { invalidateRagCachesForDocumentMutation });
+    const { PATCH } = await import("../src/app/api/documents/[id]/route");
+
+    const response = await PATCH(
+      authenticatedRequest(`/api/documents/${documentId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ title: "Better clinical title" }),
+      }),
+      { params: Promise.resolve({ id: documentId }) },
+    );
+
+    expect(response.status).toBe(409);
+    expect(await payload(response)).toMatchObject({ code: "document_changed_concurrently" });
+    expect(client.calls.filter((call) => call.table === "documents" && call.operation === "update")).toHaveLength(3);
+    expect(invalidateRagCachesForDocumentMutation).not.toHaveBeenCalled();
+  });
+
   it("rejects invalid document rename titles", async () => {
     const client = createSupabaseMock();
     mockRuntime(client);
@@ -4450,6 +4555,25 @@ describe("private document API access", () => {
     expect(client.storageMocks.storageFrom).toHaveBeenCalledWith("clinical-images");
     expect(client.storageMocks.remove).toHaveBeenCalledWith([sourcePath]);
     expect(client.storageMocks.remove).toHaveBeenCalledWith([imagePath]);
+  });
+
+  it("refuses permanent delete without a recent multi-factor sign-in (audit F-12)", async () => {
+    const client = createSupabaseMock(() => ok([]));
+    client.auth.getClaims.mockResolvedValue({
+      data: { claims: { ...administratorClaims(), aal: "aal1" } },
+      error: null,
+    });
+    mockRuntime(client);
+    const { DELETE } = await import("../src/app/api/documents/[id]/route");
+
+    const response = await DELETE(authenticatedRequest(`/api/documents/${documentId}`, { method: "DELETE" }), {
+      params: Promise.resolve({ id: documentId }),
+    });
+    const body = await payload(response);
+
+    expect(response.status).toBe(403);
+    expect(body).toMatchObject({ code: "administrator_assurance_required" });
+    expect(client.rpc).not.toHaveBeenCalledWith("delete_document_if_idle", expect.anything());
   });
 
   it("removes transactionally snapshotted image paths in storage batches", async () => {

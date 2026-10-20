@@ -10,6 +10,7 @@ import {
   type AnswerCoalescingMetricsSnapshot,
 } from "@/lib/observability/answer-coalescing-metrics";
 import type { SpendProbeClient, SpendSnapshot } from "@/lib/observability/spend-metrics";
+import type { CleanupBacklogProbeClient, StorageCleanupBacklogSnapshot } from "@/lib/observability/cleanup-backlog";
 import { resolveDeploymentCommitSha } from "@/lib/observability/sentry-release";
 import type { SiteContentPublicHealthProjection } from "@/lib/site-content/site-content-health";
 
@@ -47,6 +48,8 @@ type HealthResponseOptions = {
   includeCache?: boolean;
   includeCoalescing?: boolean;
   includeSpend?: boolean;
+  /** Outstanding `storage_cleanup_jobs` counts (audit F-10), operator-gated like `spend`. */
+  includeStorageCleanup?: boolean;
   includeOperatorDiagnostics?: boolean;
   /** The site-content control-plane audit. See the block guarding it below. */
   includeSiteContent?: boolean;
@@ -114,6 +117,7 @@ export async function healthResponse(request: Request, options: HealthResponseOp
   let coalescing: AnswerCoalescingMetricsSnapshot | null = null;
   let spend: SpendSnapshot | null = null;
   let siteContent: SiteContentPublicHealthProjection | null = null;
+  let storageCleanup: StorageCleanupBacklogSnapshot | null = null;
 
   if (deep) {
     if (!options.allowUnauthenticatedDeep && !tokenAuthorized) {
@@ -227,6 +231,18 @@ export async function healthResponse(request: Request, options: HealthResponseOp
               spend = null;
             }
           }
+          // Storage cleanup backlog (audit F-10): failed storage deletions are queued in
+          // `storage_cleanup_jobs` and drained only by the manual `npm run cleanup:storage`,
+          // so the count is surfaced for the ops digest. Head-only counts plus one timestamp,
+          // gated like `spend`; a query error drops the block and never flips liveness.
+          if (health.ok && operatorDiagnostics && probeEnabled(options.includeStorageCleanup)) {
+            try {
+              const { storageCleanupBacklogSnapshot } = await import("@/lib/observability/cleanup-backlog");
+              storageCleanup = await storageCleanupBacklogSnapshot(admin as unknown as CleanupBacklogProbeClient);
+            } catch {
+              storageCleanup = null;
+            }
+          }
         } catch {
           checks.supabase = "error";
         }
@@ -252,6 +268,7 @@ export async function healthResponse(request: Request, options: HealthResponseOp
       ...(cache ? { cache } : {}),
       ...(coalescing ? { coalescing } : {}),
       ...(spend ? { spend } : {}),
+      ...(storageCleanup ? { storageCleanup } : {}),
       ...(siteContent ? { siteContent } : {}),
       ...(deep && operatorDiagnostics
         ? { ragProgramme: { ...ragProgrammeHealth(), siteContentFreshness: siteContent?.state ?? "unavailable" } }

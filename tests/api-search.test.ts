@@ -319,6 +319,19 @@ describe("/api/search route defensive hardening (Task #342)", () => {
     });
   });
 
+  it("refuses search text that looks like it holds a patient detail before any retrieval (audit F-01)", async () => {
+    const runtime = mockRuntime({ demoMode: false });
+    const { POST } = await import("../src/app/api/search/route");
+
+    const response = await POST(jsonRequest("/api/search", { query: "70 year old in bed 4, haloperidol dose" }, true));
+    const body = await payload(response);
+
+    expect(response.status).toBe(400);
+    expect(body.code).toBe("patient_detail_in_question");
+    expect(JSON.stringify(body)).not.toContain("bed 4");
+    expect(runtime.searchChunksWithTelemetry).not.toHaveBeenCalled();
+  });
+
   it("rejects queries exceeding the 2000 character length limit with 400", async () => {
     mockRuntime();
     const { POST } = await import("../src/app/api/search/route");

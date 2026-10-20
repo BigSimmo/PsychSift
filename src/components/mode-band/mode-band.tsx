@@ -106,6 +106,12 @@ export type ModeBandProps = {
    * does not grow when the status arrives after hydration.
    */
   statusSlot?: boolean | readonly string[];
+  /**
+   * Paths whose page names the work band with an eyebrow after it loads (CPD's
+   * "when its records loaded"). The line is kept from the first paint, so the
+   * band does not grow and push the page down when the eyebrow arrives.
+   */
+  eyebrowSlot?: readonly string[];
   /** A fixed status line, for a mode whose status never changes on the client. */
   status?: ModeBandStatusValue;
   /**
@@ -475,6 +481,7 @@ function WorkModeBandHeader({
   customiseHref,
   counts,
   statusSlot = false,
+  eyebrowSlot,
   status,
 }: Omit<ModeBandProps, "children" | "hiddenOn" | "homePath"> & {
   area: WorkArea;
@@ -500,7 +507,15 @@ function WorkModeBandHeader({
       current={current}
       currentIsOwnPage={currentIsOwnPage}
       bandRef={setBand}
-      eyebrow={heading?.eyebrow ?? (DATE_AREAS.has(area.id) ? <TodayDateText /> : undefined)}
+      eyebrow={
+        heading?.eyebrow ??
+        (DATE_AREAS.has(area.id) ? (
+          <TodayDateText />
+        ) : eyebrowSlot?.includes(pathname) ? (
+          // Holds the eyebrow's line until the page's own eyebrow arrives.
+          <span aria-hidden="true">&nbsp;</span>
+        ) : undefined)
+      }
       title={heading?.title ?? baseTitle}
       counts={counts}
       status={

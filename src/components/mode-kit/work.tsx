@@ -693,11 +693,24 @@ export function WorkCheckRow({ tone = "ok", children, value }: WorkCheckRowProps
 /* -------------------------------------------------------------- page body */
 
 /** The work page column: 12px gutters, 9px between blocks, centred on wide screens. */
-export function WorkBody({ children, testId }: { readonly children: ReactNode; readonly testId?: string }) {
+/**
+ * The work column. A page whose root is this column passes `landmark` so it is the page's one
+ * `<main>`; a column nested inside another page frame that already draws `<main>` must not.
+ */
+export function WorkBody({
+  children,
+  testId,
+  landmark,
+}: {
+  readonly children: ReactNode;
+  readonly testId?: string;
+  readonly landmark?: boolean;
+}) {
+  const Tag = landmark ? "main" : "div";
   return (
-    <div className="work-body" data-testid={testId}>
+    <Tag className="work-body" data-testid={testId}>
       {children}
-    </div>
+    </Tag>
   );
 }
 

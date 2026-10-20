@@ -74,7 +74,7 @@ const WEEKDAY_WINDOW_MS = 3 * 24 * HOUR_MS;
 const UNDO_MS = 8_000;
 
 export const MHA_CLOCK_RETENTION_NOTE =
-  "Only on this phone, not on your other devices. Kept until you remove it or you are signed out. A clock holds the form and the time only.";
+  "Only on this phone, not on your other devices. Kept until you remove it, sign out or your sign-in ends. A clock holds the form and the time only.";
 export const MHA_CLOCK_HANDOVER_NOTE =
   "Copies each form, when it was made and its time limits as this page shows them. No names, and no running times, because those go out of date once pasted.";
 

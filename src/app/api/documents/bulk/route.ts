@@ -122,6 +122,20 @@ const bulkMetadataSchema = z
     }
   });
 
+// Bounded optimistic-concurrency attempts for a metadata read-modify-write (F-08).
+const DOCUMENT_METADATA_WRITE_ATTEMPTS = 3;
+
+type BulkEditableDocument = { id: string; title: string; metadata: Json; updated_at: string };
+type BulkWriteOutcome = "updated" | "changed" | "missing" | "reviewed";
+
+// Fixed client-facing reasons for a document the bulk edit could not safely write.
+const bulkConflictMessages: Record<Exclude<BulkWriteOutcome, "updated">, string> = {
+  changed: "This document changed while the edit was saving (for example, indexing finished). Retry the edit.",
+  missing: "This document was removed while the edit was saving.",
+  reviewed:
+    "Identity or provenance edits are unavailable for reviewed sources; record an auditable source-review disposition first.",
+};
+
 function metadataRecord(value: unknown) {
   return value && typeof value === "object" && !Array.isArray(value) ? { ...(value as Record<string, unknown>) } : {};
 }
@@ -219,7 +233,7 @@ export async function POST(request: Request) {
 
     const { data: documents, error: documentsError } = await supabase
       .from("documents")
-      .select("id,title,metadata")
+      .select("id,title,metadata,updated_at")
       .eq("owner_id", user.id)
       .in("id", ids);
     if (documentsError) throw new Error(documentsError.message);
@@ -284,40 +298,92 @@ export async function POST(request: Request) {
       if (removeError) throw new Error(removeError.message);
     }
 
+    const editsIdentityOrProvenance = requestsIdentityOrProvenanceEdit(parsed);
+    const buildUpdatePayload = (document: BulkEditableDocument) => {
+      const metadata = metadataRecord(document.metadata);
+      setMetadataValue(metadata, "extraction_quality", parsed.metadata.extractionQuality);
+      setMetadataValue(metadata, "review_date", parsed.metadata.reviewDate);
+      setMetadataValue(metadata, "publication_date", parsed.metadata.publicationDate);
+      if (resolvedAuthority) {
+        setMetadataValue(metadata, "publisher_code", resolvedAuthority.codes[0]);
+        setMetadataValue(metadata, "publisher", resolvedAuthority.publisher);
+        setMetadataValue(metadata, "jurisdiction", resolvedAuthority.jurisdictions[0] ?? null);
+      } else {
+        if (clearPublisherCode) {
+          setMetadataValue(metadata, "publisher_code", null);
+        }
+        setMetadataValue(metadata, "jurisdiction", parsed.metadata.jurisdiction);
+        setMetadataValue(metadata, "publisher", parsed.metadata.publisher);
+      }
+      setMetadataValue(metadata, "source_type", parsed.metadata.sourceType);
+      setMetadataValue(metadata, "collection", parsed.metadata.collection);
+      setMetadataValue(metadata, "category", parsed.metadata.category);
+      metadata.bulk_metadata_updated_at = now;
+      metadata.bulk_metadata_updated_by = user.id;
+
+      const nextTitle = editTitle(document.title, parsed.titleEdit);
+      const updatePayload: TablesUpdate<"documents"> = { metadata: metadata as Json };
+      if (nextTitle && nextTitle !== document.title) updatePayload.title = nextTitle;
+      return updatePayload;
+    };
+
     for (const document of documents) {
       try {
-        const metadata = metadataRecord(document.metadata);
-        setMetadataValue(metadata, "extraction_quality", parsed.metadata.extractionQuality);
-        setMetadataValue(metadata, "review_date", parsed.metadata.reviewDate);
-        setMetadataValue(metadata, "publication_date", parsed.metadata.publicationDate);
-        if (resolvedAuthority) {
-          setMetadataValue(metadata, "publisher_code", resolvedAuthority.codes[0]);
-          setMetadataValue(metadata, "publisher", resolvedAuthority.publisher);
-          setMetadataValue(metadata, "jurisdiction", resolvedAuthority.jurisdictions[0] ?? null);
-        } else {
-          if (clearPublisherCode) {
-            setMetadataValue(metadata, "publisher_code", null);
+        // F-08: metadata carries the committed index pointer (mirrored by the generated
+        // `index_generation_id` column) and the ingestion worker may commit a new one
+        // between the read above and this write. Writing the whole object back
+        // unconditionally would restore the stale pointer, so each write matches the
+        // row's `updated_at` (bumped by the documents_updated_at trigger on every
+        // update). A concurrent commit makes the write match no row; re-read the
+        // document and rebuild the edit on the fresh metadata, a bounded number of times.
+        let current: BulkEditableDocument = document;
+        let outcome: BulkWriteOutcome = "changed";
+        for (let attempt = 0; attempt < DOCUMENT_METADATA_WRITE_ATTEMPTS; attempt += 1) {
+          if (attempt > 0) {
+            const { data: fresh, error: freshError } = await supabase
+              .from("documents")
+              .select("id,title,metadata,updated_at")
+              .eq("id", document.id)
+              .eq("owner_id", user.id)
+              .maybeSingle();
+            if (freshError) throw new Error(freshError.message);
+            if (!fresh) {
+              outcome = "missing";
+              break;
+            }
+            // The fresh row may have been promoted to a reviewed source meanwhile; keep
+            // the fail-closed identity rule from the pre-check above.
+            if (editsIdentityOrProvenance && hasProtectedSourceGovernance(fresh.metadata)) {
+              outcome = "reviewed";
+              break;
+            }
+            current = fresh;
           }
-          setMetadataValue(metadata, "jurisdiction", parsed.metadata.jurisdiction);
-          setMetadataValue(metadata, "publisher", parsed.metadata.publisher);
+
+          const { data: updatedRows, error: updateError } = await supabase
+            .from("documents")
+            .update(buildUpdatePayload(current))
+            .eq("id", document.id)
+            .eq("owner_id", user.id)
+            .eq("updated_at", current.updated_at)
+            .select("id");
+          if (updateError) throw new Error(updateError.message);
+          if (updatedRows?.length) {
+            outcome = "updated";
+            break;
+          }
         }
-        setMetadataValue(metadata, "source_type", parsed.metadata.sourceType);
-        setMetadataValue(metadata, "collection", parsed.metadata.collection);
-        setMetadataValue(metadata, "category", parsed.metadata.category);
-        metadata.bulk_metadata_updated_at = now;
-        metadata.bulk_metadata_updated_by = user.id;
 
-        const nextTitle = editTitle(document.title, parsed.titleEdit);
-        const updatePayload: TablesUpdate<"documents"> = { metadata: metadata as Json };
-        if (nextTitle && nextTitle !== document.title) updatePayload.title = nextTitle;
-
-        const { error: updateError } = await supabase
-          .from("documents")
-          .update(updatePayload)
-          .eq("id", document.id)
-          .eq("owner_id", user.id);
-        if (updateError) throw new Error(updateError.message);
-        results.push({ documentId: document.id, updated: true });
+        if (outcome === "updated") {
+          results.push({ documentId: document.id, updated: true });
+        } else {
+          logger.warn("Bulk document edit skipped a document that changed concurrently", {
+            ownerId: user.id,
+            documentId: document.id,
+            outcome,
+          });
+          results.push({ documentId: document.id, updated: false, error: bulkConflictMessages[outcome] });
+        }
       } catch (error) {
         // Never surface the raw DB error text (constraint names, column details) to the client;
         // log the sanitized detail server-side and return a generic per-document failure (S10/D5).

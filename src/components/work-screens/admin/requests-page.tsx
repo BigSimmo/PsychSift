@@ -270,7 +270,7 @@ export function AdminRequestsPage({ now: pinned }: { now?: Date } = {}) {
   const list = tab === "open" ? open : done;
 
   return (
-    <WorkBody testId="admin-requests">
+    <WorkBody testId="admin-requests" landmark>
       <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
         Requests
       </PageTitleUnderBand>

@@ -47,6 +47,8 @@ export type AssessHeaderProps = {
   readonly back?: { readonly href: string; readonly label: string };
   /** The round glass action at the top right of the screen (Save and close). */
   readonly action?: { readonly icon: LucideIcon; readonly label: string; readonly onClick: () => void };
+  /** 1 on a page whose screen heading is its only heading, so it has an h1. */
+  readonly headingLevel?: 1 | 2;
 };
 
 /**
@@ -56,7 +58,7 @@ export type AssessHeaderProps = {
  * on every change of screen. With no band (a test, a hidden band), it draws
  * the same things inline.
  */
-export function AssessHeader({ eyebrow, title, back, action }: AssessHeaderProps) {
+export function AssessHeader({ eyebrow, title, back, action, headingLevel = 2 }: AssessHeaderProps) {
   const shown = useModeBandShown();
   useModeBandHeading({ eyebrow, title });
   // A screen with its own way back takes the top bar's left button from the
@@ -67,14 +69,15 @@ export function AssessHeader({ eyebrow, title, back, action }: AssessHeaderProps
     () => document.getElementById(universalHeaderLeadingSlotId),
     () => null,
   );
+  const Heading = headingLevel === 1 ? "h1" : "h2";
   const heading = (
-    <h2
+    <Heading
       tabIndex={-1}
       data-screen-heading
       className={shown ? "sr-only" : "text-lg font-bold text-[color:var(--text-heading)] outline-none"}
     >
       {title}
-    </h2>
+    </Heading>
   );
   const backLink = back ? (
     <Link
