@@ -1202,7 +1202,8 @@ export function requiredCheckChangeApproval(body) {
   if (!match) return { declared: false, satisfied: false, reason: "" };
   const reason = match[1].trim();
   const placeholder = /^<[^>]*>$|^(?:n\/?a|none|todo|tbd|-)$/i.test(reason);
-  return { declared: true, satisfied: !placeholder && reason.length >= 12, reason };
+  const cited = /docs\/decisions\/[\w.-]+\.md|https:\/\/\S+/.test(reason);
+  return { declared: true, satisfied: !placeholder && cited && reason.length >= 12, reason };
 }
 
 // commits: [{ sha, author: { login, email }, files: [path, ...] }]. Returns one message per
@@ -1303,7 +1304,7 @@ export function evaluatePullRequestPolicy({
     const approval = requiredCheckChangeApproval(body);
     if (!approval.satisfied) {
       errors.push(
-        `This PR changes files that decide whether the required checks pass (${checkProducers.slice(0, 5).join(", ")}), and it runs its own copy of them. Add a body line \`Required check change approved: <reason>\` (at least 12 characters, citing the owner's yes), or drop those files from the PR.`,
+        `This PR changes files that decide whether the required checks pass (${checkProducers.slice(0, 5).join(", ")}), and it runs its own copy of them. Add a body line \`Required check change approved: <reason>\` (at least 12 characters) citing the owner's yes as a docs/decisions/ entry or a link, or drop those files from the PR.`,
       );
     } else {
       warnings.push(`Required check change approved (${approval.reason}): ${checkProducers.join(", ")}.`);
@@ -2590,7 +2591,7 @@ function requiredCheckForgerySelfTest(completeBody) {
 
   const workflowPr = {
     title: "ci: add a helper job to the pipeline",
-    body: `${completeBody}\nRequired check change approved: owner yes in the project thread, 2026-10-20\n`,
+    body: `${completeBody}\nRequired check change approved: owner yes, docs/decisions/2026-10-20-database-prs-merge-by-hand.md\n`,
     headRef: "claude/ci-helper",
     files: [".github/workflows/ci.yml"],
     fileStatuses: [{ filename: ".github/workflows/ci.yml", status: "modified", previous_filename: null }],
@@ -2632,6 +2633,14 @@ function requiredCheckForgerySelfTest(completeBody) {
     evaluatePullRequestPolicy({ ...producerPr, body: `${completeBody}\nRequired check change approved: tbd\n` }).ok,
     false,
     "a placeholder reason is not a reason",
+  );
+  assert.equal(
+    evaluatePullRequestPolicy({
+      ...producerPr,
+      body: `${completeBody}\nRequired check change approved: tidying the CI job a little\n`,
+    }).ok,
+    false,
+    "a reason that cites no owner record is not enough",
   );
 
   // Auto-merge on a migration PR (audit CC-01, owner decision 2026-10-20): merge by hand only.

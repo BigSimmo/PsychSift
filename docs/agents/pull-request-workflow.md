@@ -325,7 +325,7 @@ migration in the same change.
 **Required-check files.** `ci.yml`, `secret-scan.yml`, `.github/actions/**` and
 `scripts/ci-change-scope.mjs` decide whether the required checks pass, and a PR runs its own copy
 of them. `PR policy` fails a PR that changes one unless its body has a line
-`Required check change approved: <reason>` citing the owner's yes; Dependabot pin bumps are exempt
+`Required check change approved: <reason>` citing the owner's yes (a `docs/decisions/` entry or a link); Dependabot pin bumps are exempt
 (audit CC-04, 2026-10-20).
 
 Clinical-content and RAG-ranking PRs keep every other control — the clinical governance
