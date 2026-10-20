@@ -263,7 +263,9 @@ jobs:
             // Bot-authored commits: read each bot commit's own files so the policy can block a bot
             // change to Supabase, backend infra SQL or clinical paths. Unreadable data fails closed.
             // AI-agent commits (author, committer or Co-Authored-By) are read too, for a warning.
-            const { isBotAuthor, botCoAuthored, aiAgentIdentity } = await import(moduleUrl);
+            const { isBotAuthor, botCoAuthored, aiAgentIdentity, isAiAgentBranch } = await import(moduleUrl);
+            // On an agent-named branch every commit is fetched: the agent may commit as the owner.
+            const agentBranch = isAiAgentBranch(latestPr.head.ref);
             let commits;
             try {
               const prCommits = await github.paginate(github.rest.pulls.listCommits, {
@@ -288,7 +290,13 @@ jobs:
                 const committer = { email: item.commit?.committer?.email ?? "", name: item.commit?.committer?.name ?? "" };
                 const message = item.commit?.message ?? "";
                 const parents = item.parents?.length ?? 1;
-                if (!isBotAuthor(author) && !botCoAuthored(message) && !aiAgentIdentity({ author, committer, message })) continue;
+                if (
+                  !agentBranch &&
+                  !isBotAuthor(author) &&
+                  !botCoAuthored(message) &&
+                  !aiAgentIdentity({ author, committer, message })
+                )
+                  continue;
                 let files;
                 try {
                   // getCommit returns at most 300 files per page; paginate (GitHub caps at 3000)

@@ -1147,6 +1147,11 @@ const aiAgentEmailPatterns = [/@anthropic\.com$/, /@openai\.com$/, /@cursor\.(?:
 const aiAgentNamePattern = /\b(?:claude|codex|cursor ?agent|grok)\b/i;
 const aiAgentBranchPattern = /^(?:claude|codex|cursor|grok)[/-]/i;
 
+/** True for a head branch named by an AI agent, whose commits may carry the owner's own identity. */
+export function isAiAgentBranch(headRef) {
+  return aiAgentBranchPattern.test(String(headRef ?? ""));
+}
+
 function coAuthors(message) {
   return [...String(message ?? "").matchAll(/^co-authored-by:\s*([^<\n]*)<([^>\n]*)>/gim)].map(([, name, email]) => ({
     name: name.trim(),
@@ -1179,8 +1184,7 @@ export function aiAgentSensitiveCommitWarnings(commits, { headRef } = {}) {
   for (const commit of commits ?? []) {
     if (isBotAuthor(commit?.author) || botCoAuthored(commit?.message)) continue;
     if (Number(commit?.parents ?? 1) > 1) continue;
-    const agent =
-      aiAgentIdentity(commit) ?? (aiAgentBranchPattern.test(String(headRef ?? "")) ? `branch ${headRef}` : null);
+    const agent = aiAgentIdentity(commit) ?? (isAiAgentBranch(headRef) ? `branch ${headRef}` : null);
     if (!agent || !Array.isArray(commit?.files)) continue;
     const sensitive = commit.files.filter((file) => isBotSensitivePath(file, { workflows: true }));
     if (sensitive.length === 0) continue;
@@ -1299,7 +1303,8 @@ export function evaluatePullRequestPolicy({
 
   // Blocking gate (audit CC-04, 2026-10-20): these files decide whether the required checks pass,
   // and a PR runs its own copy of them. A change to one needs a declared reason in the body.
-  const checkProducers = (files ?? []).filter(isRequiredCheckProducer);
+  // Renamed-from paths count too: renaming ci.yml is still a change to it.
+  const checkProducers = [...new Set([...(files ?? []), ...renamedFromPaths])].filter(isRequiredCheckProducer);
   if (checkProducers.length > 0 && !isDependabot({ login: author })) {
     const approval = requiredCheckChangeApproval(body);
     if (!approval.satisfied) {
@@ -2625,6 +2630,21 @@ function requiredCheckForgerySelfTest(completeBody) {
     assert.equal(evaluatePullRequestPolicy({ ...producerPr, files: [file] }).ok, false, `${file} is a check producer`);
   assert.equal(evaluatePullRequestPolicy({ ...producerPr, files: [".github/workflows/live-drift.yml"] }).ok, true);
   assert.equal(
+    evaluatePullRequestPolicy({
+      ...producerPr,
+      files: [".github/workflows/ci-renamed.yml"],
+      fileStatuses: [
+        {
+          filename: ".github/workflows/ci-renamed.yml",
+          status: "renamed",
+          previous_filename: ".github/workflows/ci.yml",
+        },
+      ],
+    }).ok,
+    false,
+    "renaming a check producer is a change to it",
+  );
+  assert.equal(
     evaluatePullRequestPolicy({ ...producerPr, author: "dependabot[bot]" }).ok,
     true,
     "Dependabot pin bumps pass",
@@ -2700,6 +2720,8 @@ function requiredCheckForgerySelfTest(completeBody) {
     /branch grok\/fix/,
   );
   assert.deepEqual(aiAgentSensitiveCommitWarnings([{ ...claudeCommit, parents: 2 }]), [], "merge commits are skipped");
+  assert.equal(isAiAgentBranch("grok/fix"), true);
+  assert.equal(isAiAgentBranch("feature/fix"), false);
   assert.equal(
     botCoAuthored("x\n\nCo-authored-by: qodo-merge[bot] <123+qodo-merge[bot]@users.noreply.github.com>"),
     true,
