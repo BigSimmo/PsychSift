@@ -45,7 +45,8 @@ the existing coverage thresholds, required aggregates, advisory policies and rel
 - Dependency audit findings fail immediately; incomplete/tooling results get at most three
   attempts and two waits. Browser archive keys use installed engine revisions and runner identity,
   shared across UI/Lighthouse/release setup while preserving fresh system dependency installs.
-  Diagnostic artifacts retain run attempts; stable consumer artifacts explicitly overwrite.
+  Diagnostic artifacts retain run attempts; bundle-budget apply instructions download the matching
+  attempt-specific artifact. Stable consumer artifacts explicitly overwrite.
   Coverage failures retain outcome/timing diagnostics separately from successful merge blobs.
 
 Workflow changes also run `check:github-actions:semantics`: actionlint 1.7.7 from its official

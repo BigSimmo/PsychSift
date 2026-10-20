@@ -47,15 +47,19 @@ function temporarySpec(source: string) {
 }
 
 describe("flake ledger", () => {
-  it("allows the committed ledger to be empty", () => {
-    expect(loadFlakeLedger()).toEqual([]);
+  it("allows an empty ledger", () => {
+    expect(validateFlakeLedgerEntries([])).toEqual([]);
   });
 
   it("collects the actual repository config without a server or project-identity request", () => {
     const tests = collectBrowserTests();
     expect(tests.length).toBeGreaterThan(100);
     expect(tests.some((test: { spec: string }) => test.spec === "tests/ui-smoke.spec.ts")).toBe(true);
-    expect(validateCollectedQuarantines(loadFlakeLedger(), tests)).toEqual([]);
+    const ledger = loadFlakeLedger();
+    const quarantines = validateCollectedQuarantines(ledger, tests);
+    const identities = (entries: Array<{ spec: string; title: string }>) =>
+      entries.map(({ spec, title }) => JSON.stringify([spec, title])).sort();
+    expect(identities(quarantines)).toEqual(identities(ledger));
   });
 
   it("reports nonzero collection status and JSON stdout even when stderr is empty", () => {
@@ -141,7 +145,7 @@ describe("flake ledger", () => {
     // Production PR grep-invert uses substring regexes, not token equality.
     expect(/@quarantine|@mockup/.test(tests[1].title)).toBe(true);
     expect(() => validateCollectedQuarantines([], [tests[1]])).toThrow(/unregistered @quarantine/);
-    expect(validateCollectedQuarantines(flakes, tests)).toHaveLength(4);
+    expect(validateCollectedQuarantines(flakes, tests)).toEqual(tests);
     expect(() => validateCollectedQuarantines(flakes, tests.slice(1))).toThrow(/stale ledger entry/);
     expect(() => validateCollectedQuarantines(flakes, [{ ...tests[0], tags: ["@critical", "@quarantine"] }])).toThrow(
       /both @quarantine and @critical/,

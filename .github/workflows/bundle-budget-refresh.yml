@@ -180,7 +180,7 @@ jobs:
                 "",
                 "```bash",
                 `gh run download ${context.runId} --repo ${context.repo.owner}/${context.repo.repo} \\`,
-                "  --name bundle-budget-refresh --dir .local/bundle-budget-refresh",
+                `  --name bundle-budget-refresh-attempt${process.env.GITHUB_RUN_ATTEMPT} --dir .local/bundle-budget-refresh`,
                 "cp .local/bundle-budget-refresh/bundle-budget.json bundle-budget.json",
                 "npm run check:bundle-budget",
                 "```",
