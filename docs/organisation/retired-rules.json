@@ -116,7 +116,7 @@
     {
       "id": "migration-pr-auto-merge-allowed",
       "retired": "2026-10-20",
-      "summary": "Migration pull requests no longer auto-merge. They merge only when the owner presses Merge after his own yes, and PR policy fails one while auto-merge is armed. This reverses the 18 Oct rule that let them auto-merge once all required checks passed.",
+      "summary": "Migration pull requests no longer auto-merge. They merge only when the owner presses Merge after the owner's own yes, and PR policy fails one while auto-merge is armed. This reverses the 18 Oct rule that let them auto-merge once all required checks passed.",
       "pattern": "(?:migration PRs|migration pull requests|auto-merge on one is allowed)[^.\\n]{0,40}?(?:may|is allowed to|are allowed to) auto-merge|auto-merge on one is allowed",
       "allowedContext": "no longer|retired|superseded|historical|previously|reversed|formerly|replaces",
       "decision": "docs/decisions/2026-10-20-database-prs-merge-by-hand.md"

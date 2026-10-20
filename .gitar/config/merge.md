@@ -11,7 +11,7 @@ of a database change, or an approved production database window (for example "no
 
 Never arm auto-merge on a pull request that touches `supabase/**` (migrations, edge functions or
 project config) or that the PR policy check reports as "Clinical risk: yes". Merging those changes
-the live clinical database or clinical content, so the owner presses Merge himself (owner decision
+the live clinical database or clinical content, so only the owner presses Merge (owner decision
 2026-10-20, `docs/decisions/2026-10-20-database-prs-merge-by-hand.md`). PR policy fails a migration
 PR while auto-merge is armed on it, so arming one only blocks it.
 

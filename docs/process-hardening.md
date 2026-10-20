@@ -813,7 +813,9 @@ the durable index for the tooling; `docs/operator-backlog.md` tracks the human-o
   should use an outcome-focused title, complete Summary and Verification evidence, and provide risk/rollback
   evidence for clinical or operationally sensitive paths. UI changes should carry `verify:ui` evidence (or an
   explicit reason it could not run), and clinical-risk changes should disposition the governance
-  checklist. **All of that is advisory as of 2026-09-17 (owner decision): no PR-body prose blocks a merge.**
+  checklist. **All of that is advisory as of 2026-09-17 (owner decision).** Body text blocks a merge only
+  where it makes a false or missing safety claim: deferred-deploy wording on a migration PR, and a missing
+  `Migration history edit approved:` or `Required check change approved:` line where one is needed.
   The `## Clinical Governance Preflight` completeness gate and the `RAG impact:` declaration were both hard
   blocks until then. Neither read a line of code — they verified that an author had typed the right seven
   sentences — while `clinicalRiskPatterns` matches most meaningful paths in the repository, so the block fired

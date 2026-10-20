@@ -346,11 +346,12 @@ jobs:
               .write();
 
             // Advisory metadata nudges (title/summary/verification/UI/risk) are
-            // surfaced but never fail the check. Blocking conditions: a clinical-risk PR
-            // with an incomplete Clinical Governance Preflight; a RAG-ranking-surface PR
-            // without an explicit `RAG impact:` declaration (docs/rag-behaviour/safeguards.md);
-            // a migration PR claiming a deferred deploy; an edit to applied migration history;
-            // and a changed branch workflow that names or posts a required check.
+            // surfaced but never fail the check, and so are the Clinical Governance Preflight and
+            // `RAG impact:` declarations (advisory since 2026-09-17). Blocking conditions: a
+            // migration PR claiming a deferred deploy or with auto-merge armed; an edit to applied
+            // migration history; a bot commit on a protected path; a required-check file changed
+            // without a declared reason; and a changed branch workflow that names or posts a
+            // required check.
             for (const warning of warnings) core.warning(warning);
 
             if (!result.ok) {

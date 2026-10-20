@@ -8,7 +8,7 @@ Target project: PsychSift Production (`sjrfecxgysukkwxsowpy`)
 
 - **Merging migrations to main applies them to production automatically.** Merge
   approval is production-deploy approval, and do not promise a deferred deploy.
-  A migration PR merges only when the owner presses Merge after his own yes;
+  A migration PR merges only when the owner presses Merge after the owner's own yes;
   PR policy fails it while auto-merge is armed (owner decision 2026-10-20; see
   [the decision](decisions/2026-10-20-database-prs-merge-by-hand.md)).
 - **Never edit a migration already on main.** Correct it with a new migration

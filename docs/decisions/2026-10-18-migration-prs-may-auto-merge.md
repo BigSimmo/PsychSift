@@ -1,7 +1,7 @@
 # Decision: Migration pull requests may auto-merge once all required checks pass
 
 - **Status:** decided 2026-10-18; superseded by 2026-10-20-database-prs-merge-by-hand.md
-- **Source:** `AGENTS.md`, find "Auto-merge on one is allowed (owner decision 2026-10-18"
+- **Source:** `docs/organisation/retired-rules.json`, find "Migration pull requests may auto-merge once all required checks pass"
 - **Retires:** `migration-pr-no-auto-merge`
 
 On 18 Oct 2026 (relayed 15:14 AWST) the owner decided, as a standing rule, that pull requests touching
