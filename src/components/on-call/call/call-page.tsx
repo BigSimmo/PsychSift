@@ -457,12 +457,12 @@ export function OnCallCallPage() {
       <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3">
         <div data-testid="on-call-call-search">
           <SearchField
-            label="Search people"
-            placeholder={withRefer ? "Search numbers, referrals, roles" : "Search numbers, roles"}
+            label="Search numbers"
+            placeholder={withRefer ? "Search a name, role, ward or referral" : "Search a name, role or ward"}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onClear={() => setQuery("")}
-            clearLabel="Clear the People search"
+            clearLabel="Clear the numbers search"
             autoComplete="off"
           />
         </div>

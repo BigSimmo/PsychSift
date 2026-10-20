@@ -121,7 +121,8 @@ digest reading existing `rag_queries` metadata, never from this script.
 containing at least 20 answered queries. `latencyBudgetBreachRate` counts an
 explicit `latency_budget_breached: true` or a finite latency over the row's
 route budget: fast/default 10,000 ms, strong 25,000 ms, extractive/source-only
-6,000 ms. It converts the first non-null latency field in this order:
+6,000 ms. These are the answer SLO budgets (`src/lib/observability/answer-slo.ts`); they are
+not the per-route answer budgets in `src/lib/rag/rag-route-budget.ts` (extractive 12 s, fast 25 s, strong 35 s). It converts the first non-null latency field in this order:
 `latency_ms`, `duration_ms`, `total_latency_ms`, `response_ms`; an invalid
 earlier value does not fall through to a later field. Route selection uses
 `routing_mode`, `mode`, `route_mode`, then `answer_mode`, normalised to lower
@@ -270,7 +271,14 @@ clinical text (`docs/error-tracking.md`).
 ## 3. Weekly production eval canary
 
 `.github/workflows/eval-canary.yml` — scheduled weekly on Sunday at 18:00 UTC
-(Monday 02:00 Australia/Perth) plus `workflow_dispatch` for on-demand runs.
+(Monday 02:00 Australia/Perth). It has no `workflow_dispatch` button: an on-demand
+run is a `repository_dispatch` event of type `eval-canary`, for example
+`gh api repos/BigSimmo/PsychSift/dispatches -f event_type=eval-canary` (optional
+`client_payload` keys: `answer_case_limit` 1 to 100, `rag_ranking_config`,
+`answer_quality_eval`, `dump_rag_cases`). Every dispatch is provider-backed and
+needs the owner's explicit yes and a spend cap first (see "Spending approval for
+each billable run" in `AGENTS.md`). `tests/eval-canary-workflow.test.ts` pins the
+absence of `workflow_dispatch`.
 
 What it does, in order:
 
@@ -314,7 +322,7 @@ Operational notes:
   failure can be corpus-state-dependent (see the clozapine-wcc history).
   Triage order: inspect the recorded failure class and failed step → resolve
   provider/configuration failures or inspect `hybrid_rpc_errors` and
-  `check:indexing` → only then bisect code. A `workflow_dispatch` rerun and all
+  `check:indexing` → only then bisect code. A `repository_dispatch` rerun and all
   live checks require explicit provider approval.
 - Forced-vector golden cases (`forceEmbedding`) run after many text-fast-path
   cases; the workflow sets `RAG_EVAL_CASE_DELAY_MS` and
@@ -322,7 +330,8 @@ Operational notes:
   scheduled run's OpenAI rate limit mid-run.
 - Evals write telemetry rows (`rag_queries`) but mutate no content.
 - Cost bound: 36 committed retrieval cases plus any captured cases (embedding
-  calls only on forced-vector probes) + 44 generated answers per week.
+  calls only on forced-vector probes) + 44 generated answers per week. A dispatch
+  can raise the answer cases to 100 through `answer_case_limit`.
 - To compare two or more downloaded structured answer reports without treating
   raw millisecond jitter as a content regression, run
   `npm run eval:trend -- --answer-quality <oldest-report.json> <newest-report.json>`.
@@ -330,9 +339,10 @@ Operational notes:
   signature of one case. A `same_tree_content_variability` result means the
   reports share a Git SHA but differ in content/citation outcomes; provider and
   latency-threshold variability are reported separately.
-- **The schedule only runs from `main`.** After merging, trigger one
-  `workflow_dispatch` run and confirm it goes green before trusting the
-  weekly cadence (repo gate for this workflow).
+- **The schedule only runs from `main`.** After merging a change to the
+  workflow, send one approved `repository_dispatch` (`event_type=eval-canary`)
+  and confirm it goes green before trusting the weekly cadence (repo gate for
+  this workflow).
 
 ### 3.1 Boundary-case and metric-interpretation policy (2026-07-20)
 
@@ -639,11 +649,11 @@ alert code: it does not change the digest's alert severity.
 - Exercise and record the acknowledgement/recovery drill through the configured provider channel.
 - The storage cleanup backlog is reported but drained only by hand; there is no scheduled drain and no alert code for it.
 - The 7-day quality SLOs, the unsupported-rate doubling rule and `/api/search` latency are still hand-run SQL; the digest alerts only on its 60-minute window.
-- Retain and periodically exercise the GitHub Actions cache path for the three-consecutive-hour hybrid escalation. Cache loss intentionally downgrades the condition to warning or unknown rather than inferring history.
+- Retain and periodically exercise the GitHub Actions cache path for the hybrid escalation (three consecutive persisted digest samples, see §5). Cache loss intentionally downgrades the condition to warning or unknown rather than inferring history.
 - **Host-level metrics** (CPU, memory, restart count) and log drains once the
   container host exists (`docs/deployment-architecture.md` §2).
 
-## 6. Reviewed feedback-to-evaluation triage
+## 7. Reviewed feedback-to-evaluation triage
 
 `scripts/report-answer-feedback.ts` reports content-free diagnostic counts and
 candidate interaction IDs. Run the default local mode with an explicitly supplied

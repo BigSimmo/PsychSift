@@ -1,12 +1,16 @@
 # RAG ranking safeguards
 
-_Updated 2026-10-08 — corrected documentation guidance; operational evidence retains its original dates._
+_Updated 2026-10-20 — protected list aligned with `ragRankingPatterns`; preflight marked advisory; operational evidence retains its original dates._
 
 The protection stack that keeps retrieval/ranking behaviour from being changed casually — by
 any task, session, or agent. Added 2026-07-20 after the Phase C live regression proved that
 offline-green + review-approved is not sufficient for this surface.
 
 ## Protected surfaces
+
+**The authoritative list is `ragRankingPatterns` in `scripts/pr-policy.mjs`.** This section explains
+why each group is protected; when it and `ragRankingPatterns` ever differ, `ragRankingPatterns` wins, and
+`AGENTS.md` says to flag anything named by either list. Last aligned with it on 2026-10-20.
 
 Code and ground truth whose edits change (or re-measure) retrieval/ranking behaviour:
 
@@ -44,10 +48,16 @@ Code and ground truth whose edits change (or re-measure) retrieval/ranking behav
   on PR #2832 pointed out that gating raw chunk extraction alone left the structured-evidence
   producers open. The re-index note above applies here too: index units change only when
   documents are re-ingested.
+- `src/lib/deep-memory-preparation.ts` — the worker-side copy of the memory-card builder that
+  `deep-memory.ts` boosts from, so it decides which cards exist to be boosted. Added 2026-10-16 on
+  PR #3546, with the owner's yes.
 - `src/lib/retrieval-rpc-rollout.ts`, `src/lib/clinical-evidence-haystack.ts`,
   `src/lib/cross-document-synthesis.ts`, `src/lib/corpus-grounding.ts`, `src/lib/keyword-query.ts`
-  — retrieval inputs outside `src/lib/rag/**`: which RPC version the fan-out calls, the image
-  evidence haystack `clinical-search` scores against, the synthesis read by
+  — retrieval inputs outside `src/lib/rag/**`: the missing-function test behind the versioned
+  fallbacks (`retrieval-rpc-rollout.ts` exports only `isMissingRetrievalRpcError`; it does not choose
+  versions — those are string literals at the call sites in `rag-candidate-sources.ts`, `rag.ts` and
+  `deep-memory.ts`), the
+  image evidence haystack `clinical-search` scores against, the synthesis read by
   `retrieval-selection` and the context pack, the classifier fallback's grounding verdict, and
   the lexical query and stop-word set. Added 2026-09-25 after a codebase survey found them
   unprotected.
@@ -56,6 +66,12 @@ Code and ground truth whose edits change (or re-measure) retrieval/ranking behav
   remaining producers of rows the retrieval RPCs query (enrichment, image captions, embedding
   fields, table facts, assertion tags). Added 2026-09-25. `worker/main.ts` stays out: it
   orchestrates these producers rather than deciding their content. The re-index note applies.
+- `worker/candidate-chunks.ts`, `worker/managed-local-memory-producer.ts`,
+  `worker/managed-admin-text-terminal.ts`, `worker/managed-prepared-supplier.ts`,
+  `worker/published-admin-source-layout.ts`, `worker/scoped-candidate-projection.ts`,
+  `worker/whole-original-supplier.ts` — the managed-generation producers that build the candidate
+  chunks, memory rows and section layouts a managed (October 2026) ingestion writes. Added
+  2026-10-17. The re-index note applies.
 - `scripts/eval-retrieval.ts`, `scripts/lib/clinical-aliases.ts`,
   `scripts/lib/ranking-tuning.ts`, `scripts/lib/ranking-snapshot-builder.ts`,
   `scripts/build-ranking-snapshot.ts`, `scripts/tune-search-weights.ts`
@@ -63,8 +79,13 @@ Code and ground truth whose edits change (or re-measure) retrieval/ranking behav
   `scripts/fixtures/rag-ranking-candidate-snapshot.v1.json`
 - The contract-pinning tests: `tests/rag-fast-path-ordering.test.ts`,
   `tests/ranking-tuning.test.ts`, `tests/retrieval-selection.test.ts`,
-  `tests/rag-second-stage-ranking.test.ts`, `tests/eval-retrieval.test.ts`
-- Retrieval RPCs in `supabase/schema.sql` / migrations (covered by the clinical-risk gate)
+  `tests/rag-second-stage-ranking.test.ts`, `tests/eval-retrieval.test.ts`,
+  `tests/rag-imputation-contract.test.ts`
+- Retrieval RPCs in `supabase/schema.sql` / migrations. No path in `ragRankingPatterns` matches them,
+  but since 2026-09-26 pr-policy reads each added migration's SQL and classifies the PR as a ranking
+  change when it creates, alters, drops or patches a retrieval function (`retrievalFunctionMigrationPaths`),
+  so a `RAG impact:` line is expected. That nudge is **advisory** like the rest of Layer 1, so it does not
+  block. What does hold for an RPC change is CI migration replay, the drift checks and the live canary pair.
 
 ## Layer 1 — PR-body declaration (advisory warning)
 
@@ -98,7 +119,9 @@ comparator key ORDER as source text. Any edit — including by a task that never
 - Fast-path ordering suite (production-pipeline replays of the 2026-07-19 failure shapes)
 - Snapshot gates: golden-regression quartet at production weights, full-snapshot high-risk
   hard-negative floor, fixture↔snapshot lockstep pin, 30-day freshness gate
-- Clinical Governance Preflight (blocking) for all clinical-risk paths
+- Clinical Governance Preflight for all clinical-risk paths — **advisory since 2026-09-17** (owner
+  decision; `scripts/pr-policy.mjs` warns and no longer blocks the merge). Only the source-pin test
+  (layer 2) and the live canary pair are fail-closed.
 
 ## Layer 4 — process (agent memory)
 

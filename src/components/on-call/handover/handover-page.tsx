@@ -23,6 +23,7 @@ import { useCallback, useEffect, useId, useMemo, useState, useSyncExternalStore,
 import { focusRing } from "@/components/card-recipes";
 import { ClinicalNoteEditor } from "@/components/clinical-notes/note-editor";
 import { InformationPageShell } from "@/components/information-page-shell";
+import { OnCallShiftSwitch } from "@/components/on-call/shift/shift-switch";
 import { useOnCallCallLog } from "@/components/on-call/handover/call-log";
 import { FieldLabel, OnCallLegalField } from "@/components/on-call/handover/legal-picker";
 import { onCallActionLink, onCallFilledButton, onCallOutlineButton } from "@/components/on-call/kit/calm";
@@ -764,6 +765,10 @@ export function OnCallHandoverPage() {
       <OnCallToolNavHeader title="Handover" testIdPrefix="on-call-handover" />
       <InformationPageShell testId="on-call-handover-main" width="narrow">
         <div className="grid min-w-0 gap-5" data-mode-identity="on-call">
+          {/* Above both headers, so the table that opens first on a computer keeps it too. */}
+          <div className="print:hidden">
+            <OnCallShiftSwitch current="handover" />
+          </div>
           {tableOpen ? (
             <div className="grid min-w-0 gap-1 print:hidden">
               <div>

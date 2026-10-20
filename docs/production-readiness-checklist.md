@@ -20,7 +20,9 @@ the readiness guide corrects that earlier reference. The register remains the st
 **Provider-backed boundary:** commands such as `check:supabase-project`, `eval:quality`,
 `eval:retrieval:quality`, and `verify:release` touch live Supabase and/or OpenAI. Agents must not
 run them without explicit user approval (`AGENTS.md`). Offline substitutes:
-`verify:cheap` / `verify:pr-local` / `eval:quality:release:offline` where applicable.
+`verify:cheap` / `verify:pr-local` where applicable. `eval:quality:release:offline` is not one of
+them: it turns OpenAI off but still reads the live database, so it needs the same approval
+(see [`retrieval-quality-runbook.md`](retrieval-quality-runbook.md)).
 
 This is the runbook to make the app publishable in one focused pass.
 

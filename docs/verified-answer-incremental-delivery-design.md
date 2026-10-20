@@ -204,6 +204,14 @@ Phase 2 changes answer generation and cannot begin without the provider-backed g
 
 ## Telemetry and acceptance
 
+> **Gap (recorded 2026-10-20, audit finding DOC-11).** Phase 1 shipped default-on on 2026-08-27 without
+> the timing measurement below. None of `retrieval_verified_unit_ms`, `first_verified_content_ms` or
+> `first_verified_section_ms` exists in `src/lib` or `src/app/api/answer`; only `previewReason` and the
+> `evidence_preview` unit do. So the Phase 1 latency criterion ("a lower median
+> `first_verified_content_ms` than final-answer latency") has never been measured, and nothing yet shows
+> how much sooner first content appears. The preview's safety criteria rest on the deterministic tests
+> such as `tests/answer-incremental-delivery.test.ts`. Adding the timing fields is answer-path work and follows the RAG safeguards.
+
 Record no clinical text in telemetry. Record timestamps and counts only:
 
 - `retrieval_verified_unit_ms`, `first_verified_content_ms`, `first_verified_section_ms`;
