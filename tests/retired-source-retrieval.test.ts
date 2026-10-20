@@ -26,7 +26,12 @@ function ancThresholdFact(documentId: string, chunkId: string, threshold: string
   };
 }
 
-function chunk(overrides: Partial<SearchResult> & { source_metadata?: Record<string, unknown> | null } = {}) {
+// Metadata overrides are deliberately partial raw rows, as retrieval RPCs return them.
+type ChunkOverrides = Omit<Partial<SearchResult>, "source_metadata"> & {
+  source_metadata?: Record<string, unknown> | null;
+};
+
+function chunk(overrides: ChunkOverrides = {}) {
   const { source_metadata, ...rest } = overrides;
   return {
     id: "replacement-chunk-1",
