@@ -118,6 +118,47 @@ describe("authorized deep health probe diagnostics", () => {
     });
   });
 
+  it("adds a trailing answer-quality snapshot as long as the digest interval (audit EVAL-02)", async () => {
+    mockEnv();
+    mockSupabase(true);
+    const answerSloSnapshot = vi.fn(async (_client: unknown, windowMinutes = 60) => ({
+      windowMinutes,
+      totalQueries: windowMinutes === 60 ? 0 : 12,
+    }));
+    vi.doMock("@/lib/observability/answer-slo", () => ({ answerSloSnapshot }));
+    vi.doMock("@/lib/observability/spend-metrics", () => ({ spendSnapshot: vi.fn(async () => ({})) }));
+    const { ANSWER_QUALITY_WINDOW_MINUTES } = await import("../scripts/lib/operational-alerts.mjs");
+
+    const { response, body } = await deepProbe();
+
+    expect(response.status).toBe(200);
+    // The hourly snapshot keeps feeding the hybrid-RPC identity history; the trailing one is
+    // the window every answer-rate alert reads, and it must match the alert policy exactly.
+    expect(answerSloSnapshot).toHaveBeenCalledTimes(2);
+    expect(answerSloSnapshot).toHaveBeenCalledWith({ id: "admin-client" });
+    expect(answerSloSnapshot).toHaveBeenCalledWith({ id: "admin-client" }, ANSWER_QUALITY_WINDOW_MINUTES);
+    expect(body.slo).toMatchObject({ windowMinutes: 60, totalQueries: 0 });
+    expect(body.sloTrailing).toMatchObject({ windowMinutes: ANSWER_QUALITY_WINDOW_MINUTES, totalQueries: 12 });
+  });
+
+  it("keeps the hourly snapshot when only the trailing snapshot query fails", async () => {
+    mockEnv();
+    mockSupabase(true);
+    const answerSloSnapshot = vi.fn(async (_client: unknown, windowMinutes = 60) => {
+      if (windowMinutes !== 60) throw new Error("trailing slo query failed");
+      return { windowMinutes, totalQueries: 3 };
+    });
+    vi.doMock("@/lib/observability/answer-slo", () => ({ answerSloSnapshot }));
+    vi.doMock("@/lib/observability/spend-metrics", () => ({ spendSnapshot: vi.fn(async () => ({})) }));
+
+    const { response, body } = await deepProbe();
+
+    expect(response.status).toBe(200);
+    expect(body.slo).toMatchObject({ windowMinutes: 60, totalQueries: 3 });
+    expect(body.sloTrailing).toBeUndefined();
+    expect(JSON.stringify(body)).not.toContain("query failed");
+  });
+
   it("keeps the probe healthy when a diagnostic snapshot query fails", async () => {
     mockEnv();
     mockSupabase(true);

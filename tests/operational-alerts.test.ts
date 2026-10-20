@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { evaluateOperationalAlerts, summarizeOperationalAlerts } from "../scripts/lib/operational-alerts.mjs";
+import {
+  ANSWER_QUALITY_THRESHOLDS,
+  ANSWER_QUALITY_WINDOW_MINUTES,
+  evaluateOperationalAlerts,
+  summarizeOperationalAlerts,
+} from "../scripts/lib/operational-alerts.mjs";
 
 function snapshot(overrides = {}) {
   return {
@@ -30,7 +35,7 @@ describe("evaluateOperationalAlerts", () => {
     }
     expect(runbook).not.toContain("Only two of the");
     expect(runbook).toContain("latencyBudgetBreachRate");
-    expect(runbook).toContain("at least 20");
+    expect(runbook).toContain("at least 10 answered queries");
   });
 
   it("warns only above the hybrid-RPC 0.5% boundary", () => {
@@ -123,11 +128,14 @@ describe("evaluateOperationalAlerts", () => {
     expect(alerts.every((item) => item.escalationOwner && item.runbook)).toBe(true);
   });
 
-  it("emits quality warnings only above the documented thresholds with at least 20 queries", () => {
+  // Audit EVAL-02 (2026-10-20): the old floor of 20 answers in one hour was never met at
+  // single-clinician traffic, so these rules never ran. This case pinned that defect.
+  it("emits quality warnings only above the documented thresholds with at least 10 queries", () => {
+    expect(ANSWER_QUALITY_THRESHOLDS.minimumQueries).toBe(10);
     expect(
       evaluateOperationalAlerts(
         snapshot({
-          totalQueries: 19,
+          totalQueries: 9,
           sourceGapRate: 0.5,
           unsupportedRate: 0.5,
           latencyBudgetBreachRate: 0.5,
@@ -139,7 +147,7 @@ describe("evaluateOperationalAlerts", () => {
     expect(
       evaluateOperationalAlerts(
         snapshot({
-          totalQueries: 20,
+          totalQueries: 10,
           sourceGapRate: 0.15,
           unsupportedRate: 0.15,
           latencyBudgetBreachRate: 0.15,
@@ -187,6 +195,68 @@ describe("evaluateOperationalAlerts", () => {
     expect(
       evaluateOperationalAlerts(snapshot({ totalQueries: 40, sourceGapRate: 1.5, unsupportedRate: Number.NaN })),
     ).toEqual([]);
+  });
+
+  describe("trailing answer-quality window between digests (audit EVAL-02)", () => {
+    const trailingHealth = (trailing: Record<string, unknown>, hourly: Record<string, unknown> = {}) => ({
+      status: "ok",
+      slo: { windowMinutes: 60, totalQueries: 0, hybridRpcErrorRate: 0, degradedRate: 0, ...hourly },
+      sloTrailing: {
+        windowMinutes: ANSWER_QUALITY_WINDOW_MINUTES,
+        totalQueries: 12,
+        hybridRpcErrorRate: 0,
+        degradedRate: 0,
+        ...trailing,
+      },
+    });
+
+    it("covers the whole six hours between scheduled digests", () => {
+      expect(ANSWER_QUALITY_WINDOW_MINUTES).toBe(360);
+      const workflow = readFileSync(".github/workflows/ops-digest.yml", "utf8");
+      expect(workflow).toContain('- cron: "15 */6 * * *"');
+    });
+
+    it("judges source gaps over the trailing six hours when the last hour had no answers", () => {
+      const alerts = evaluateOperationalAlerts(trailingHealth({ sourceGapRate: 6 / 12 }));
+      expect(alerts.map((item) => item.code)).toEqual(["OPS_SOURCE_GAP_RATE_PAGE"]);
+      expect(alerts[0]).toMatchObject({ windowMinutes: 360, observedValue: 0.5 });
+    });
+
+    it("judges unsupported answers and provider fallbacks over the same trailing window", () => {
+      expect(
+        evaluateOperationalAlerts(trailingHealth({ unsupportedRate: 0.2, degradedRate: 0.25 })).map(
+          (item) => item.code,
+        ),
+      ).toEqual(["OPS_DEGRADED_ANSWER_RATE_WARNING", "OPS_UNSUPPORTED_ANSWER_RATE_WARNING"]);
+    });
+
+    it("keeps the documented thresholds and leaves fewer than 10 answers unjudged", () => {
+      expect(evaluateOperationalAlerts(trailingHealth({ totalQueries: 9, sourceGapRate: 0.5 }))).toEqual([]);
+      expect(evaluateOperationalAlerts(trailingHealth({ totalQueries: 10, sourceGapRate: 0.15 }))).toEqual([]);
+      expect(
+        evaluateOperationalAlerts(trailingHealth({ totalQueries: 10, sourceGapRate: 0.2 })).map((item) => item.code),
+      ).toEqual(["OPS_SOURCE_GAP_RATE_WARNING"]);
+    });
+
+    it("reports a trailing window with no answers as unknown, never healthy", () => {
+      const alerts = evaluateOperationalAlerts(trailingHealth({ totalQueries: 0 }));
+      expect(alerts).toMatchObject([{ code: "OPS_ANSWER_SLO_UNKNOWN", severity: "unknown", windowMinutes: 360 }]);
+      expect(alerts[0]?.reason).toContain("360 minutes");
+    });
+
+    it("treats a trailing snapshot of the wrong length as unknown rather than falling back", () => {
+      expect(evaluateOperationalAlerts(trailingHealth({ windowMinutes: 300 }, { totalQueries: 50 }))).toMatchObject([
+        { code: "OPS_ANSWER_SLO_UNKNOWN", windowMinutes: 300 },
+      ]);
+    });
+
+    it("still pages on hybrid-RPC identity evidence carried from the hourly samples", () => {
+      expect(
+        evaluateOperationalAlerts(trailingHealth({ hybridRpcErrorRate: 0.01 }), {
+          repeatedHybridRpcNames: ["hybrid_search"],
+        }).map((item) => item.code),
+      ).toEqual(["OPS_HYBRID_RPC_ERROR_RATE_PAGE"]);
+    });
   });
 
   describe("answer latency p95 by routing mode", () => {

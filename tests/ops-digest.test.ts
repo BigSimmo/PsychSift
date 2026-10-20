@@ -214,6 +214,40 @@ describe("renderDigest", () => {
     expect(serializeGitHubOutputs(health.status, summary)).toContain("alerting=true\nseverity=unknown\n");
   });
 
+  it("shows the trailing six-hour answer-quality window that the alerts judge (audit EVAL-02)", () => {
+    const md = renderDigest({
+      status: "ok",
+      slo: { windowMinutes: 60, totalQueries: 0, hybridRpcErrorRate: 0, degradedRate: 0 },
+      sloTrailing: {
+        windowMinutes: 360,
+        totalQueries: 12,
+        hybridRpcErrorRate: 0,
+        degradedRate: 0,
+        sourceGapQueries: 6,
+        sourceGapRate: 0.5,
+        unsupportedQueries: 1,
+        unsupportedRate: 1 / 12,
+      },
+    });
+    expect(md).toContain("**Answer quality** (trailing 360m, the window alerts judge)");
+    expect(md).toContain("- source gaps: 6 (50.0%)");
+    expect(md).toContain("PAGE OPS_SOURCE_GAP_RATE_PAGE");
+    // The empty last hour is shown as such, not as unassessed answer quality.
+    expect(md).toContain("**Answer SLO** (trailing 60m)");
+    expect(md).toContain("No answered queries in the last 60 minutes.");
+    expect(md).not.toContain("No answered queries observed—answer quality not assessed.");
+    expect(md).not.toContain("OPS_ANSWER_SLO_UNKNOWN");
+  });
+
+  it("says when the trailing window has too few answers to judge rates", () => {
+    const md = renderDigest({
+      status: "ok",
+      sloTrailing: { windowMinutes: 360, totalQueries: 4, hybridRpcErrorRate: 0, degradedRate: 0, sourceGapRate: 0.5 },
+    });
+    expect(md).toContain("Fewer than 10 answers: source-gap, unsupported and latency-budget rates are not judged.");
+    expect(md).toContain("**Alert state:** none (0)");
+  });
+
   it.each([undefined, {}, { windowMinutes: 60 }, { windowMinutes: 30, totalQueries: 0 }])(
     "does not describe missing or invalid hourly telemetry as no answer activity: %j",
     (slo) => {
