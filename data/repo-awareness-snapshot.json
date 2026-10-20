@@ -1644,6 +1644,11 @@
         "area": "product"
       },
       {
+        "path": "/on-call/calls",
+        "file": "src/app/(search-app)/on-call/calls/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/on-call/find",
         "file": "src/app/(search-app)/on-call/find/page.tsx",
         "area": "product"
@@ -4031,6 +4036,11 @@
       {
         "path": "docs/branch-review-ledger.md",
         "section": "root",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-20-on-call-four-tabs.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
