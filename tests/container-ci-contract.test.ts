@@ -6,6 +6,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { isCleanContainerExit } from "../scripts/app-container-smoke.mjs";
 import {
   imageListingProbe,
   imagePathAbsenceProbe,
@@ -402,8 +403,24 @@ describe("container delivery contract", () => {
     expect(contract).toContain('"/app/worker/python"');
     expect(contract).not.toContain('"--entrypoint", "sh"');
     expect(contract).not.toContain('"--entrypoint", "test"');
-    expect(smoke).toContain('exitCode === "137"');
+    expect(smoke).toContain("isCleanContainerExit(inspectResult)");
     expect(smoke).toContain("State.Running");
+  });
+
+  it.each([
+    [{ status: 0, stdout: "false false 0\n" }, true],
+    [{ status: 0, stdout: "false false 143\n" }, true],
+    [{ status: 1, stdout: "false false 0\n" }, false],
+    [{ status: 0, stdout: "" }, false],
+    [{ status: 0, stdout: "false false" }, false],
+    [{ status: 0, stdout: "false false 0 extra" }, false],
+    [{ status: 0, stdout: "false false 1\n" }, false],
+    [{ status: 0, stdout: "false false 137\n" }, false],
+    [{ status: 0, stdout: "true false 0\n" }, false],
+    [{ status: 0, stdout: "false true 0\n" }, false],
+    [{ status: null, signal: "SIGTERM", stdout: "false false 0\n" }, false],
+  ])("validates complete shutdown evidence %j", (result, expected) => {
+    expect(isCleanContainerExit(result)).toBe(expected);
   });
 
   it("keeps Trivy SBOM and vulnerability steps non-blocking in CI", () => {
