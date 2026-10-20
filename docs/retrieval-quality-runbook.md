@@ -2,6 +2,13 @@
 
 Use this runbook when retrieval, ranking, RAG answer generation, source governance, or ingestion/indexing changes could affect clinical answer quality.
 
+> **Approval first.** Every command on this page reads the live `PsychSift Production` database, and
+> `eval:quality` without `--provider-mode offline` also pays for OpenAI calls. Do not run any of them
+> without the owner's explicit yes. Before a billable run, follow "Spending approval for each billable run"
+> in [`AGENTS.md`](../AGENTS.md) and [`docs/agents/shared-context-and-memory.md`](agents/shared-context-and-memory.md):
+> a named purpose, a total estimate and a hard cap, approved before the run. This includes
+> `npm run check:supabase-project` and `npm run supabase:recovery-status` below.
+
 ## Safe preflight
 
 1. Confirm the live Supabase target before env-sensitive work:
@@ -36,6 +43,13 @@ npm run eval:quality -- --query clozapine
 npm run eval:quality -- --question "What ANC or FBC threshold should withhold clozapine?"
 npm run eval:quality -- --fail-on-threshold
 ```
+
+**`eval:quality:release:offline` is not offline.** It switches only the OpenAI provider off
+(`--provider-mode offline`); it still requires `NEXT_PUBLIC_SUPABASE_URL` and
+`SUPABASE_SERVICE_ROLE_KEY` and reads the live database for its preflight and every case
+(`scripts/eval-quality.ts`, `main`). Treat it as a live database read that needs the owner's
+yes, not as an offline gate. Without those values it stops with "Missing server environment
+variables". (Audit finding EVAL-07, 20 October 2026; the script name is unchanged.)
 
 The command writes ignored local artifacts under `output/evals/`:
 
@@ -142,7 +156,18 @@ Answer quality:
 - citation failure rate is above `0`
 - numeric grounding failure rate is above `0`
 - source-governance danger failure rate is above `0`
-- RAG p95 latency is above `60000ms` (recalibrated 2026-07-13: honest post-#606 answer p95 from eval runners is ~48s — real generation, cross-region, and timeout→fallback chains; regression detection is baseline-relative via `latencyRegressionMs`)
+- RAG p95 latency is above `25000ms` by default, the strict near-region gate that local and
+  `eval:quality:release` runs are held to. Only a run with `EVAL_LATENCY_CONTEXT=cross-region-runner`
+  (set by the weekly Eval Canary workflow) uses `60000ms`. History: on 2026-07-13 the canary measured an
+  honest post-#606 answer p95 of about 48 s from cross-region runners, which is why the wider allowance exists.
+- RAG p95 latency for one answer route is above its route ceiling: `unsupported` 4000 ms, `extractive`
+  12000 ms (35000 ms cross-region), `fast` 25000 ms, `fallback` 50000 ms, `strong` 35000 ms
+  (60000 ms cross-region).
+- a source-backed review fallback appears on any case that is not named, with its reason, in
+  `ragSourceBackedReviewFallbackAllowance`. That allowance is empty today, so every such fallback fails.
+
+The values above come from `qualityThresholds` in `scripts/eval-quality.ts`; if they ever differ, the
+code wins.
 
 These thresholds are intended as a quality tripwire, not a substitute for clinical review.
 Warning-class source governance notes remain visible in reports and should be backfilled or explicitly baselined before release.

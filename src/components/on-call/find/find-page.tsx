@@ -6,9 +6,11 @@ import {
   ChevronRight,
   CircleHelp,
   Landmark,
+  ListChecks,
   MonitorOff,
   Package,
   Printer,
+  Repeat,
   Users,
 } from "lucide-react";
 import Link from "next/link";
@@ -235,6 +237,26 @@ export function OnCallFindPage() {
         </div>
       ) : null}
 
+      {/* The handbook's own front page (On Call overhaul, owner approval 20 Oct 2026): what to do and
+          where to refer sit first, because they are what a shift reaches for. */}
+      {searching ? null : (
+        <ul role="list" className="work-card min-w-0" data-testid="on-call-find-during-shift">
+          <OnCallRow
+            href="/on-call/playbook"
+            title="Playbook"
+            subtitle="Situations, and who to ring in order"
+            leading={<ListChecks aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />}
+            testId="on-call-find-playbook"
+          />
+          <OnCallRow
+            href="/on-call/refer"
+            title="How to refer"
+            subtitle="Your hospital's referral routes and your own notes"
+            leading={<Repeat aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />}
+            testId="on-call-find-refer"
+          />
+        </ul>
+      )}
       {ready ? renderGroup(downtime) : null}
       {ready && !searching ? <OnCallFirstNightPanel id={FIRST_NIGHT_ANCHOR} testId="on-call-find-first-night" /> : null}
       {/* Your first week (round 2 feature 20): the department's pack for a new job, next to First night. */}

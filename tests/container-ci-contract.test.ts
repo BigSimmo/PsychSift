@@ -2,10 +2,12 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { chmodSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
+import { appHealthProbe, isCleanContainerExit } from "../scripts/app-container-smoke.mjs";
 import {
   imageListingProbe,
   imagePathAbsenceProbe,
@@ -101,6 +103,24 @@ describe("container delivery contract", () => {
     expect(contract).toContain('assertListingClean(WORKER_IMAGE, "/opt", "^yarn-"');
     expect(dockerfile).toContain("COPY worker/python/ocr-model-LICENSE.txt /opt/psychsift-ocr-models/LICENSE");
     expect(dockerfile).toContain('model = model_dir / "Latin.traineddata"');
+  });
+
+  it("limits worker backports to the repaired curl and HTTP/3 library set", () => {
+    const worker = read("Dockerfile.worker");
+    expect(worker).toContain("signed-by=/usr/share/keyrings/debian-archive-keyring.gpg");
+    expect(worker).toContain("Package: libcurl4t64 libnghttp3-9 libngtcp2-16 libngtcp2-crypto-ossl0");
+    expect(worker).toMatch(/'Package: \*'\s*\\\n\s*'Pin: release n=trixie-backports'\s*\\\n\s*'Pin-Priority: -1'/);
+    expect(worker).not.toContain("-t trixie-backports");
+    for (const pin of [
+      "libcurl4t64=8.21.0-2~bpo13+1",
+      "libnghttp3-9=1.15.0-1~bpo13+1",
+      "libngtcp2-16=1.22.1-1~bpo13+1",
+      "libngtcp2-crypto-ossl0=1.22.1-1~bpo13+1",
+    ]) {
+      expect(worker).toContain(pin);
+    }
+    expect(worker).toContain("ge 8.21.0-2~bpo13+1");
+    expect(worker).toContain("ge 1.22.1-1~bpo13+1");
   });
 
   it.skipIf(process.platform === "win32")(
@@ -335,7 +355,132 @@ describe("container delivery contract", () => {
     const smoke = read("scripts/app-container-smoke.mjs");
     const workflow = read(".github/workflows/docker-image.yml");
     expect(smoke).toContain("RAG_QUERY_HASH_SECRET=smoke-test-hash-secret");
-    expect(workflow).toContain("RAG_QUERY_HASH_SECRET=smoke-test-hash-secret");
+    expect(workflow).toContain("run: node scripts/app-container-smoke.mjs");
+  });
+
+  it.each([
+    [200, '{"status":"ok","checks":{"openaiConfig":"skipped","supabaseConfig":"ok"},"demoMode":false}', 0],
+    [503, '{"status":"ok","checks":{"openaiConfig":"skipped","supabaseConfig":"ok"},"demoMode":false}', 1],
+    [201, '{"status":"ok"}', 1],
+    [200, "not JSON", 1],
+    [200, "", 1],
+    [200, "null", 1],
+    [200, "[]", 1],
+  ])("requires HTTP 200 and object JSON in the real health probe (HTTP %i, %s)", (status, body, exitCode) => {
+    const script = `global.fetch = async () => ({ status: ${status}, json: async () => JSON.parse(${JSON.stringify(body)}) });\n${appHealthProbe("http://127.0.0.1:3000/api/health")}`;
+    const result = spawnSync(process.execPath, ["-e", script], { encoding: "utf8" });
+    expect(result.status, result.stderr).toBe(exitCode);
+    if (exitCode === 0) expect(JSON.parse(result.stdout).status).toBe("ok");
+  });
+
+  it.skipIf(process.platform === "win32").each([false, true])(
+    "starts the actual image CMD read-only and checks health, PID 1 and graceful stop (compatibility flag=%s)",
+    (explicitReadOnlyFlag) => {
+      const dir = mkdtempSync(join(tmpdir(), "app-container-command-"));
+      try {
+        const invocations = join(dir, "docker.jsonl");
+        const docker = join(dir, "docker");
+        writeFileSync(
+          docker,
+          `#!${process.execPath}
+const fs = require('node:fs');
+const args = process.argv.slice(2);
+fs.appendFileSync(process.env.SMOKE_TEST_INVOCATIONS, JSON.stringify(args) + '\\n');
+if (args[0] === 'run' && process.env.SMOKE_TEST_START_FAILURE === '1') { console.error('synthetic startup failure'); process.exit(125); }
+if (args[0] === 'exec') console.log(args.at(-1).includes('/proc/1/cmdline') ? 'next-server (v16.0.0)' : (process.env.SMOKE_TEST_HEALTH_BODY || JSON.stringify({status:'ok', checks:{openaiConfig:'skipped',supabaseConfig:'ok'},demoMode:false})));
+if (args[0] === 'inspect') {
+  if (process.env.SMOKE_TEST_INSPECT_SIGNAL === '1') process.kill(process.pid, 'SIGTERM');
+  console.log(process.env.SMOKE_TEST_INSPECT_OUTPUT ?? 'false false 0');
+  process.exit(Number(process.env.SMOKE_TEST_INSPECT_STATUS ?? '0'));
+}
+`,
+          { mode: 0o755 },
+        );
+        const env = {
+          ...process.env,
+          PATH: `${dir}${delimiter}${process.env.PATH ?? ""}`,
+          SMOKE_TEST_INVOCATIONS: invocations,
+        };
+        const helper = fileURLToPath(new URL("../scripts/app-container-smoke.mjs", import.meta.url));
+        const args = [helper, ...(explicitReadOnlyFlag ? ["--read-only"] : [])];
+        const result = spawnSync(process.execPath, args, { encoding: "utf8", env });
+        expect(result.status, result.stderr).toBe(0);
+        const calls = readFileSync(invocations, "utf8")
+          .trim()
+          .split("\n")
+          .map((line) => JSON.parse(line) as string[]);
+        const start = calls.find((call) => call[0] === "run")!;
+        expect(start).toContain("--network=none");
+        expect(start).toContain("--cap-drop=ALL");
+        expect(start).toContain("no-new-privileges:true");
+        expect(start).toContain("--read-only");
+        expect(start.at(-1)).toBe("clinical-kb-app:ci");
+        expect(calls.some((call) => call[0] === "exec" && call.at(-1)?.includes("fetch("))).toBe(true);
+        expect(calls.some((call) => call[0] === "exec" && call.at(-1)?.includes("/proc/1/cmdline"))).toBe(true);
+        expect(calls.some((call) => call[0] === "stop" && call.includes("30"))).toBe(true);
+        expect(calls.some((call) => call[0] === "inspect")).toBe(true);
+        const failed = spawnSync(process.execPath, args, {
+          encoding: "utf8",
+          env: { ...env, SMOKE_TEST_START_FAILURE: "1" },
+        });
+        expect(failed.status).toBe(1);
+        expect(failed.stderr).toContain("synthetic startup failure");
+        const unhealthy = spawnSync(process.execPath, args, {
+          encoding: "utf8",
+          env: { ...env, SMOKE_TEST_HEALTH_BODY: "{}" },
+        });
+        expect(unhealthy.status).toBe(1);
+        expect(unhealthy.stderr).toContain("App health status not ok");
+        for (const exitCode of [143]) {
+          const stopped = spawnSync(process.execPath, args, {
+            encoding: "utf8",
+            env: { ...env, SMOKE_TEST_INSPECT_OUTPUT: `false false ${exitCode}` },
+          });
+          expect(stopped.status, stopped.stderr).toBe(0);
+          expect(stopped.stdout).toContain("App smoke passed");
+        }
+        for (const inspection of [
+          { SMOKE_TEST_INSPECT_STATUS: "1", SMOKE_TEST_INSPECT_OUTPUT: "false false 0" },
+          { SMOKE_TEST_INSPECT_SIGNAL: "1" },
+          { SMOKE_TEST_INSPECT_OUTPUT: "" },
+          { SMOKE_TEST_INSPECT_OUTPUT: "malformed" },
+          { SMOKE_TEST_INSPECT_OUTPUT: "false false -1" },
+          { SMOKE_TEST_INSPECT_OUTPUT: "false false 256" },
+          { SMOKE_TEST_INSPECT_OUTPUT: "false false 0 extra" },
+          { SMOKE_TEST_INSPECT_OUTPUT: "False false 0" },
+          { SMOKE_TEST_INSPECT_OUTPUT: "false false 137" },
+          { SMOKE_TEST_INSPECT_OUTPUT: "false false 1" },
+          { SMOKE_TEST_INSPECT_OUTPUT: "false false 139" },
+          { SMOKE_TEST_INSPECT_OUTPUT: "false false 255" },
+          { SMOKE_TEST_INSPECT_OUTPUT: "true false 0" },
+          { SMOKE_TEST_INSPECT_OUTPUT: "false true 0" },
+        ]) {
+          const rejected = spawnSync(process.execPath, args, {
+            encoding: "utf8",
+            env: { ...env, ...inspection },
+          });
+          expect(rejected.status, JSON.stringify(inspection)).toBe(1);
+          expect(rejected.stdout).not.toContain("App smoke passed");
+          expect(rejected.stderr).toContain("Container shutdown inspection failed");
+        }
+      } finally {
+        rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      }
+    },
+  );
+
+  it("requires a real read-only app startup rather than a fetch-only replacement command", () => {
+    const smoke = read("scripts/app-container-smoke.mjs");
+    const workflow = read(".github/workflows/docker-image.yml");
+    const step = workflow.match(/- name: Run app container smoke[\s\S]*?(?=\n      - name:)/)?.[0];
+    expect(step).toContain("run: node scripts/app-container-smoke.mjs");
+    expect(step).not.toMatch(/continue-on-error|\|\| true/);
+    expect(workflow).not.toContain("Read-only runtime check (advisory)");
+    for (const flag of ["--read-only", "--network=none", "--cap-drop=ALL", "no-new-privileges:true"]) {
+      expect(smoke).toContain(JSON.stringify(flag));
+    }
+    expect(smoke).toContain('"-d"');
+    expect(smoke).toContain("const health = await waitForHealth()");
   });
 
   it("accepts Next 16 next-server PID 1 in app container smoke", () => {
@@ -370,8 +515,24 @@ describe("container delivery contract", () => {
     expect(contract).toContain('"/app/worker/python"');
     expect(contract).not.toContain('"--entrypoint", "sh"');
     expect(contract).not.toContain('"--entrypoint", "test"');
-    expect(smoke).toContain('exitCode === "137"');
+    expect(smoke).toContain("isCleanContainerExit(inspectResult)");
     expect(smoke).toContain("State.Running");
+  });
+
+  it.each([
+    [{ status: 0, stdout: "false false 0\n" }, true],
+    [{ status: 0, stdout: "false false 143\n" }, true],
+    [{ status: 1, stdout: "false false 0\n" }, false],
+    [{ status: 0, stdout: "" }, false],
+    [{ status: 0, stdout: "false false" }, false],
+    [{ status: 0, stdout: "false false 0 extra" }, false],
+    [{ status: 0, stdout: "false false 1\n" }, false],
+    [{ status: 0, stdout: "false false 137\n" }, false],
+    [{ status: 0, stdout: "true false 0\n" }, false],
+    [{ status: 0, stdout: "false true 0\n" }, false],
+    [{ status: null, signal: "SIGTERM", stdout: "false false 0\n" }, false],
+  ])("validates complete shutdown evidence %j", (result, expected) => {
+    expect(isCleanContainerExit(result)).toBe(expected);
   });
 
   it("keeps Trivy SBOM and vulnerability steps non-blocking in CI", () => {

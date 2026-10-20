@@ -1,5 +1,10 @@
 # M2 Atomic Reindex Migration Note
 
+> **Status (2026-10-20): implemented; kept as history.** Atomic generation commit shipped in
+> `20260628000000_atomic_reindex_generation_commit.sql` (`commit_document_index_generation`). Read the
+> [current ingestion model](../ingestion-state-machine.md#current-model-october-2026) and the
+> [reindex runbook](../reindex-runbook.md); the library re-index itself is stopped by owner decision.
+
 ## Goal
 
 Make reindex completion atomic so search, evaluation, telemetry, and document views never observe a partially replaced index generation.

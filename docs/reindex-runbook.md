@@ -2,6 +2,16 @@
 
 Use this sequence when applying RAG indexing changes to the live `PsychSift Production` Supabase project.
 
+> **Current status: the library re-index is stopped by owner decision** (see
+> [the decision](decisions/2026-10-17-library-reindex-stopped.md)). Do not start a re-index from this runbook.
+>
+> **Every command below that touches the live database, the worker or OpenAI needs the owner's explicit yes first.**
+> `npm run reindex` (with or without `--yes`), `recover:ingestion -- --apply`, `worker:once`,
+> `supabase:recovery-status` and `reindex:health` reach the live project; the worker also spends on OpenAI
+> embeddings and captions. Before any billable run, follow "Spending approval for each billable run" in
+> [`AGENTS.md`](../AGENTS.md) and [`docs/agents/shared-context-and-memory.md`](agents/shared-context-and-memory.md):
+> a named purpose, a total estimate and a hard cap, approved before the run.
+
 ## Consolidated pipeline command
 
 The quickest way to run a full reindex cycle is the consolidated pipeline command:
@@ -71,14 +81,15 @@ The preflight response also includes active job counts and job metadata for oper
 - Do not use `--force-large-import` unless Supabase health is stable and you have intentionally chosen a larger import wave.
 - Do not re-index to fix "OCR corruption" or to add table/heading-aware chunking without new evidence. Both were measured negligible/neutral on 2026-07-08 (`noisy_unit_rate` is a saturated visual-coverage metric, not corruption; heading/table-aware chunking already exists and chunks are well-bounded). See `docs/chunking-ocr-reindex-lever-finding-2026-07-08.md`.
 
-## Recovery transaction and draft rollout
+## Recovery transaction (merged 18 October 2026)
 
 The recovery application now requires `recover_ingestion_job(uuid,text,jsonb)` from
-`20261018082910_audit_durable_recovery_pairing_and_cache_fences.sql`. This migration is a
-draft: merge only inside the owner's specifically approved database-change window.
-Merging database migrations to main applies them to production automatically.
+`20261018082910_audit_durable_recovery_pairing_and_cache_fences.sql`. That migration merged to
+`main` on 18 October 2026 (PR #3653), so the Supabase integration applied it to production
+automatically. Confirm it with the post-merge `live-drift` workflow (both `check:drift` and
+`check:migration-history` green); this runbook does not record that result.
 
-Apply the SQL before running the new recovery application. An application ahead of SQL
+The SQL had to be live before the new recovery application ran: an application ahead of SQL
 fails its RPC call before changing the document or queue. The old recovery application
 must not be used after rollout: it retains obsolete lock and destructive-reset semantics.
 Do not roll back to it as an operational workaround.
@@ -100,7 +111,7 @@ A changed snapshot is skipped. Re-read the preview after resolving the reason. A
 response can be retried: either the whole transaction rolled back or its committed pending
 job is left to the worker. No partial document reset requires compensation.
 
-The same draft adds `cme_remove_evidence_v2(uuid,uuid,text)` so an application ahead of SQL
+The same migration adds `cme_remove_evidence_v2(uuid,uuid,text)` so an application ahead of SQL
 refuses before mutation, while the corrected original RPC remains compatible with old callers.
 CME removal commits an owner/object-specific cleanup row with the
 privacy tombstone, backfills existing tombstones and preserves that row on retry, including

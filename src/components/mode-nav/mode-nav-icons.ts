@@ -104,6 +104,8 @@ export const iconByItemId: Record<RoutedModeSecondaryNavigationId, LucideIcon> =
   playbook: ON_CALL_SECTION_ICONS.playbook,
   refer: ON_CALL_HUB_PAGE_ICONS.refer,
   find: ON_CALL_HUB_PAGE_ICONS.find,
+  // Shift holds the tools used during the shift: Handover, Call log and Breaks (20 Oct 2026).
+  shift: ClipboardList,
   orientation: ON_CALL_SECTION_ICONS.orientation,
   // The registry id and the stored section id genuinely differ here, and this
   // is the only place the two vocabularies meet: the rail slot is `teaching`

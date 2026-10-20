@@ -1,19 +1,19 @@
 #!/usr/bin/env node
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, globSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { COVERAGE_INVENTORY_ROOTS } from "./coverage-contract.mjs";
+import { COVERAGE_EXCLUDE_GLOBS, COVERAGE_INCLUDE_GLOBS, COVERAGE_INVENTORY_ROOTS } from "./coverage-contract.mjs";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-export function lcovSourceFiles(source) {
+export function lcovSourceFiles(source, rootDirectory = root) {
   return source
     .split(/\r?\n/)
     .filter((line) => line.startsWith("SF:"))
     .map((line) => line.slice(3).replaceAll("\\", "/").replace(/^\.\//, ""))
     .map((file) => {
-      const rootPrefix = `${root.replaceAll("\\", "/")}/`;
+      const rootPrefix = `${path.resolve(rootDirectory).replaceAll("\\", "/")}/`;
       return file.startsWith(rootPrefix) ? file.slice(rootPrefix.length) : file;
     });
 }
@@ -22,9 +22,23 @@ export function missingCoverageRoots(sourceFiles, expectedRoots = COVERAGE_INVEN
   return expectedRoots.filter((expectedRoot) => !sourceFiles.some((file) => file.startsWith(expectedRoot)));
 }
 
-export function checkCoverageInventory(lcovSource, expectedRoots = COVERAGE_INVENTORY_ROOTS) {
-  const sourceFiles = lcovSourceFiles(lcovSource);
-  return { sourceFiles, missing: missingCoverageRoots(sourceFiles, expectedRoots) };
+export function coverageSourceFiles(rootDirectory = root) {
+  return globSync(COVERAGE_INCLUDE_GLOBS, { cwd: rootDirectory, exclude: COVERAGE_EXCLUDE_GLOBS })
+    .map((file) => file.replaceAll("\\", "/"))
+    .sort();
+}
+
+export function checkCoverageInventory(
+  lcovSource,
+  { rootDirectory = root, expectedFiles = coverageSourceFiles(rootDirectory) } = {},
+) {
+  const sourceFiles = lcovSourceFiles(lcovSource, rootDirectory);
+  const actualFiles = new Set(sourceFiles);
+  return {
+    sourceFiles,
+    missing: missingCoverageRoots(sourceFiles),
+    missingFiles: expectedFiles.filter((file) => !actualFiles.has(file)),
+  };
 }
 
 function main(argv = process.argv.slice(2)) {
@@ -46,6 +60,12 @@ function main(argv = process.argv.slice(2)) {
   if (result.missing.length > 0) {
     console.error(
       `[coverage-inventory] FAIL — declared coverage root(s) are absent from LCOV: ${result.missing.join(", ")}.`,
+    );
+    return 1;
+  }
+  if (result.missingFiles.length > 0) {
+    console.error(
+      `[coverage-inventory] FAIL — ${result.missingFiles.length} executable source file(s) are absent from LCOV: ${result.missingFiles.slice(0, 20).join(", ")}${result.missingFiles.length > 20 ? ", …" : ""}.`,
     );
     return 1;
   }

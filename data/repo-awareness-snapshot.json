@@ -1644,6 +1644,11 @@
         "area": "product"
       },
       {
+        "path": "/on-call/calls",
+        "file": "src/app/(search-app)/on-call/calls/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/on-call/find",
         "file": "src/app/(search-app)/on-call/find/page.tsx",
         "area": "product"
@@ -3079,6 +3084,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/archive/forward-codify-retrieval-rpcs-workorder-2026-10-20.md",
+        "section": "archive",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-09-17-pr-description-checks-are-advisory.md",
         "section": "decisions",
         "catalogued": true
@@ -3584,6 +3594,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-17-library-reindex-stopped.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/observability-slos.md",
         "section": "root",
         "catalogued": true
@@ -4039,6 +4054,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-20-on-call-four-tabs.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/archive/source-governance-status-2026-07-08.md",
         "section": "archive",
         "catalogued": true
@@ -4346,6 +4366,11 @@
       {
         "path": "docs/prompts/codex-data-database-safety-ultra-review.md",
         "section": "prompts",
+        "catalogued": true
+      },
+      {
+        "path": "docs/archive/ingestion-concurrency-fix-workorder-2026-10-20.md",
+        "section": "archive",
         "catalogued": true
       },
       {
@@ -16145,6 +16170,14 @@
         "scope": "theme-transition timer race in use-theme.ts causing Vitest unhandled-error failures",
         "outcome": "Fixed: guarded the 200ms theme-transitioning callback against a torn-down document and tracked/cleared the timer handle so rapid switches cannot end a later transition early",
         "checks": "verify:pr-local exit 0 (649 files/6968 tests, no Errors line); red-green proved — new spec reproduces ReferenceError: document is not defined against the unfixed file (2 failed), passes 3/3 with the fix"
+      },
+      {
+        "date": "2026-10-20",
+        "ref": "fix/worker-native-followup-20261020",
+        "head": "77ec553cfb449ec2e0d63b06e1fd5859fbf26353",
+        "scope": "worker-native-followup-and-readonly-smoke-20261020",
+        "outcome": "One fresh blind six-file review at9cb07a099 found P2 shutdown proof defect; parent reproduced and corrected in77ec553cf. No other actionable finding reported. Full-image acceptance remains pending.",
+        "checks": "Current five committed product/test/doc inputs plus stable uncommitted worker runbook match corrected source manifest. Actual narrowed APT exact4changes/no removals; curl8.21/ngtcp2 1.22.1/5loader checks/UID1000 OCR pass. Before actualCLI inspectionfail/malformed/exit1 falselypass; after6CLI+11helpercontrols pass. Shell/floor/Node/TSparse/format pass; full lock JS and imageCI pending. No rereview cycle or security-clearance claim."
       },
       {
         "date": "2026-08-17",

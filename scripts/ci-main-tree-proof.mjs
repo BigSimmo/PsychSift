@@ -42,7 +42,7 @@
  * script finds, and no dispatch-run lookup is made for it.
  *
  * Outputs (GITHUB_OUTPUT): coverage, ui, lighthouse ("true"/"false"), proof_run_url, reason.
- * Uses only the job's GITHUB_TOKEN (actions: read, pull-requests: read) — about four REST
+ * Uses only the job's GITHUB_TOKEN (actions: read, checks: read, pull-requests: read) — about four REST
  * calls per main push. Every proved job checks out the run's GITHUB_SHA (no `ref:` override,
  * pinned by tests/ci-main-tree-proof.test.ts), so the Change scope record covers every leg.
  *
@@ -64,6 +64,10 @@
 import { spawnSync } from "node:child_process";
 import { appendFileSync } from "node:fs";
 import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
+
+/**
+ * @typedef {{env?: Record<string, string | undefined>, now?: Date, request?: typeof api, runGit?: typeof git, runGitOk?: typeof gitOk}} EvaluationOptions
+ */
 
 export const CI_WORKFLOW_PATH = ".github/workflows/ci.yml";
 export const TESTED_TREE_TITLE = "CI tested tree";
@@ -94,44 +98,78 @@ export function isUnrelatedInput(path) {
 const TESTED_TREE_MESSAGE = /^event=(\S+) sha=([0-9a-f]{40}) tree=([0-9a-f]{40})$/;
 export const DEFAULT_MAX_PROOF_AGE_HOURS = 24;
 
-/**
- * Proof groups: every job a group skips on main, matched by exact job name or matrix-leg
- * pattern. Each pattern must match at least one job, and every matching job must be
- * `success`, for the group to count as proven.
- */
+/** Exact PR job membership; workflow-contract tests pin these names and shard sets. */
 export const PROOF_GROUPS = {
-  coverage: [/^Unit coverage partition \(\d+\)$/, /^Unit coverage$/],
-  // The PR run splits production Chromium into the @critical subset plus the shards that
-  // exclude it; together they are the complete project that the main run executes unsplit.
-  ui: [/^Playwright Next build$/, /^Production UI critical$/, /^Production UI \(\d+\)$/],
-  lighthouse: [/^Lighthouse budget$/],
+  coverage: ["Unit coverage partition (1)", "Unit coverage partition (2)", "Unit coverage"],
+  // Critical plus all three non-critical shards form the complete production suite.
+  ui: [
+    "Playwright Next build",
+    "Production UI critical",
+    "Production UI (1)",
+    "Production UI (2)",
+    "Production UI (3)",
+  ],
+  lighthouse: ["Lighthouse budget"],
 };
 
-/** The release matrix legs a full-suite dispatch run must have run green; see the docblock. */
-export const MATRIX_PROOF_PATTERNS = Object.freeze([/^release-browser-matrix \(.+\)$/]);
+const PROOF_JOB_FAMILIES = {
+  coverage: /^Unit coverage(?: partition(?: .*)?)?$/,
+  ui: /^(?:Playwright Next build|Production UI(?: .*)?)$/,
+  lighthouse: /^Lighthouse budget$/,
+};
 
 const NONE = Object.freeze({ coverage: false, ui: false, lighthouse: false, matrix: false });
 
-/** True only when every matrix-leg pattern matches at least one job and all of them succeeded. Pure. */
+/** Legacy name matcher only; matching a release job never establishes reusable proof. */
+export const MATRIX_PROOF_PATTERNS = Object.freeze([/^release-browser-matrix \(.+\)$/]);
+
+/** Release runs are never eligible for reuse, including partial or complete matrices. */
 export function classifyMatrixProof(jobs) {
-  const list = Array.isArray(jobs) ? jobs : [];
-  return MATRIX_PROOF_PATTERNS.every((pattern) => {
-    const legs = list.filter((job) => pattern.test(String(job?.name ?? "")));
-    return legs.length > 0 && legs.every((job) => job?.status === "completed" && job?.conclusion === "success");
-  });
+  // Retain the exported call signature without inspecting evidence we never reuse.
+  void jobs;
+  return false;
 }
 
-/** Which proof groups a PR run's job list establishes. Pure. */
+/**
+ * Every expected identity must occur exactly once; extra/duplicate legs prove nothing. Pure.
+ * @returns {{coverage: boolean, ui: boolean, lighthouse: boolean}}
+ */
 export function classifyProof(jobs) {
   const list = Array.isArray(jobs) ? jobs : [];
   const result = {};
-  for (const [group, patterns] of Object.entries(PROOF_GROUPS)) {
-    result[group] = patterns.every((pattern) => {
-      const legs = list.filter((job) => pattern.test(String(job?.name ?? "")));
-      return legs.length > 0 && legs.every((job) => job?.status === "completed" && job?.conclusion === "success");
-    });
+  for (const [group, names] of Object.entries(PROOF_GROUPS)) {
+    const legs = list.filter((job) => PROOF_JOB_FAMILIES[group].test(String(job?.name ?? "")));
+    result[group] =
+      legs.length === names.length &&
+      names.every((name) => {
+        const matches = legs.filter((job) => job?.name === name);
+        return matches.length === 1 && matches[0].status === "completed" && matches[0].conclusion === "success";
+      });
   }
   return result;
+}
+
+/** Resolve only this repository's Checks URL on the configured GitHub API origin/base path. */
+export function checkAnnotationsPath(job, repo, apiBase = "https://api.github.com") {
+  try {
+    const base = new URL(apiBase);
+    const check = new URL(job?.check_run_url);
+    const prefix = `${base.pathname.replace(/\/$/, "")}/repos/${repo}/check-runs/`;
+    const id = check.pathname.startsWith(prefix) ? check.pathname.slice(prefix.length) : "";
+    if (
+      base.protocol !== "https:" ||
+      check.origin !== base.origin ||
+      check.username ||
+      check.password ||
+      check.search ||
+      check.hash ||
+      !/^[1-9][0-9]*$/.test(id)
+    )
+      return null;
+    return `/repos/${repo}/check-runs/${id}/annotations?per_page=50`;
+  } catch {
+    return null;
+  }
 }
 
 /** The `CI tested tree` record a run's Change scope job wrote, or null unless exactly one. Pure. */
@@ -203,7 +241,10 @@ async function api(path) {
   return response.json();
 }
 
-/** Every check in the module docblock, in order. Throws (→ full run) on any failure. */
+/**
+ * Every check in the module docblock, in order. Throws (→ full run) on any failure.
+ * @param {EvaluationOptions} [options]
+ */
 export async function evaluate({
   env = process.env,
   now = new Date(),
@@ -253,7 +294,16 @@ export async function evaluate({
 
   const maxAgeHours = Number(env.MAX_PROOF_AGE_HOURS || DEFAULT_MAX_PROOF_AGE_HOURS);
   if (!Number.isFinite(maxAgeHours) || maxAgeHours <= 0) return { proof: NONE, reason: "invalid MAX_PROOF_AGE_HOURS" };
-  const prOutcome = await provenRun({ request, repo, head, mainTree, now, maxAgeHours, event: "pull_request" });
+  const prOutcome = await provenRun({
+    request,
+    repo,
+    head,
+    mainTree,
+    now,
+    maxAgeHours,
+    event: "pull_request",
+    apiBase: env.GITHUB_API_URL,
+  });
   const proof = {
     ...(prOutcome.jobs ? classifyProof(prOutcome.jobs) : { coverage: false, ui: false, lighthouse: false }),
     // ci.yml always runs the release matrix on qualifying main pushes, so it is never looked up or proved.
@@ -270,7 +320,7 @@ export async function evaluate({
  * Checks 5-6 for one event kind: the newest fresh green `event` run of ci.yml for `head` whose own
  * Change scope recorded testing exactly `mainTree`. Returns its job list, or `jobs: null` and why.
  */
-async function provenRun({ request, repo, head, mainTree, now, maxAgeHours, event }) {
+async function provenRun({ request, repo, head, mainTree, now, maxAgeHours, event, apiBase }) {
   const runs = await request(
     `/repos/${repo}/actions/workflows/ci.yml/runs?event=${event}&head_sha=${head}&status=completed&per_page=30`,
   );
@@ -281,10 +331,12 @@ async function provenRun({ request, repo, head, mainTree, now, maxAgeHours, even
     return { jobs: null, reason: `could not read run ${run.id}'s complete job list` };
   }
   const scopeJobs = jobs.jobs.filter((job) => job?.name === "Change scope");
-  if (scopeJobs.length !== 1 || scopeJobs[0].conclusion !== "success") {
+  if (scopeJobs.length !== 1 || scopeJobs[0].status !== "completed" || scopeJobs[0].conclusion !== "success") {
     return { jobs: null, reason: `run ${run.id} has no single successful Change scope job` };
   }
-  const tested = parseTestedTree(await request(`/repos/${repo}/check-runs/${scopeJobs[0].id}/annotations?per_page=50`));
+  const annotationsPath = checkAnnotationsPath(scopeJobs[0], repo, apiBase);
+  if (!annotationsPath) return { jobs: null, reason: `run ${run.id} has no trusted Change scope check URL` };
+  const tested = parseTestedTree(await request(annotationsPath));
   if (!tested || tested.event !== event) {
     return { jobs: null, reason: `run ${run.id} did not record the tree it tested` };
   }
@@ -344,7 +396,10 @@ export function reconstructTestedTree({ recordedTree, oldHead, mainTip, runGit, 
   return null;
 }
 
-/** PR branch update: reuse an earlier green run of the same PR (see the module docblock). */
+/**
+ * PR branch update: reuse an earlier green run of the same PR (see the module docblock).
+ * @param {EvaluationOptions} [options]
+ */
 export async function evaluatePullRequestUpdate({
   env = process.env,
   now = new Date(),
@@ -402,13 +457,16 @@ export async function evaluatePullRequestUpdate({
       continue;
     }
     const scopeJobs = jobs.jobs.filter((job) => job?.name === "Change scope");
-    if (scopeJobs.length !== 1 || scopeJobs[0].conclusion !== "success") {
+    if (scopeJobs.length !== 1 || scopeJobs[0].status !== "completed" || scopeJobs[0].conclusion !== "success") {
       notes.push(`run ${run.id}: no single successful Change scope job`);
       continue;
     }
-    const tested = parseTestedTree(
-      await request(`/repos/${repo}/check-runs/${scopeJobs[0].id}/annotations?per_page=50`),
-    );
+    const annotationsPath = checkAnnotationsPath(scopeJobs[0], repo, env.GITHUB_API_URL);
+    if (!annotationsPath) {
+      notes.push(`run ${run.id}: no trusted Change scope check URL`);
+      continue;
+    }
+    const tested = parseTestedTree(await request(annotationsPath));
     if (!tested || tested.event !== "pull_request") {
       notes.push(`run ${run.id}: no tested-tree record`);
       continue;
@@ -487,7 +545,7 @@ async function selfTest() {
   if (process.env.CI_TREE_PROOF_SELF_TEST_FORCE_FAIL === "1") assert(false, "forced failure (test hook)");
   const ok = (name, extra = {}) => ({ name, status: "completed", conclusion: "success", ...extra });
   const full = [
-    { ...ok("Change scope"), id: 501 },
+    { ...ok("Change scope"), id: 501, check_run_url: "https://api.github.com/repos/o/r/check-runs/1501" },
     ok("Unit coverage partition (1)"),
     ok("Unit coverage partition (2)"),
     ok("Unit coverage"),
@@ -602,7 +660,7 @@ async function selfTest() {
   const request = (runsOverride, jobsOverride, annotationsOverride) => async (path) => {
     if (path.includes("/commits/")) return [pr];
     if (path.includes("/workflows/")) return { workflow_runs: runsOverride ?? [run] };
-    if (path.includes("/check-runs/501/annotations")) return annotationsOverride ?? testedRecord;
+    if (path.includes("/check-runs/1501/annotations")) return annotationsOverride ?? testedRecord;
     if (path.includes("/jobs")) return jobsOverride ?? { total_count: full.length, jobs: full };
     throw new Error(`unexpected ${path}`);
   };
@@ -672,7 +730,7 @@ async function selfTest() {
   assert(result.proof.matrix === false, "a pull_request run never proves the release matrix");
 
   // The release matrix is never proved or reported as skipped.
-  assert(classifyMatrixProof([ok("release-browser-matrix (webkit, webkit, 1, 4)")]), "legs still classify");
+  assert(!classifyMatrixProof([ok("release-browser-matrix (webkit, webkit, 1, 4)")]), "release legs never prove reuse");
   assert(
     skippedGroups({ coverage: true, ui: false, lighthouse: true, matrix: true }).join(",") === "coverage,lighthouse",
     "the summary never lists the release matrix as skipped",

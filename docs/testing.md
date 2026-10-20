@@ -141,34 +141,44 @@ it is limited to the documented, exact GitHub connector-gap operation in
 
 ## Commands
 
-| Command                                   | Purpose                                                                                                                                                                                                                                                   |
-| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run test:focused -- --files <paths>` | Local iteration using Vitest related-file selection. It fails closed for deleted files, test infrastructure, configuration, or an empty/unsafe mapping.                                                                                                   |
-| `npm run test`                            | Complete offline unit suite.                                                                                                                                                                                                                              |
-| `npm run test:ci-workflows`               | Focused offline contracts for CI, authenticated-workflow, Codex-autofix, and eval-canary workflow changes.                                                                                                                                                |
-| `npm run test:live`                       | Explicit provider suite; requires `ALLOW_PROVIDER_TESTS=true`.                                                                                                                                                                                            |
-| `npm run test:e2e:pr`                     | Required production Chromium journeys and visual-artifact smoke, excluding mockups and quarantined tests.                                                                                                                                                 |
-| `npm run test:e2e:advisory`               | Quarantined and mockup journeys in one advisory invocation.                                                                                                                                                                                               |
-| `npm run verify:cheap`                    | Ordinary offline local gate: `check:installed-lock-parity`, the Codex hook tests, `check:diff-integrity`, lint, typecheck, and the full unit suite. Nothing else. Static hygiene (runtime, sitemap, design tokens, ledgers…) lives in `verify:full` / CI. |
-| `npm run verify:full`                     | Broad offline local gate: the static/consistency gates (`check:runtime` through `check:offline-pack`) then lint, typecheck, and unit tests. Does not invoke the cheap script. `check:gate-manifest` reads this chain.                                     |
-| `npm run verify:pr-local`                 | Risk-routed PR-like local gate. Recognised docs/workflow scopes stay focused; executable or unknown scope adds lint, typecheck, full unit, and domains.                                                                                                   |
-| `npm run verify:phone-chrome`             | Smart phone-chrome gate: lock parity, affected contracts, browser/PWA owners and exact journeys, then full UI only for shared foundations.                                                                                                                |
-| `npm run verify:ui`                       | Complete required production Chromium gate.                                                                                                                                                                                                               |
-| `npm run test:e2e:style-contract`         | Focused rendered-effect assertions for the unlayered classes in `globals.css` (also runs inside `test:e2e:pr`).                                                                                                                                           |
-| `npm run test:e2e:visual`                 | Pixel baselines. Advisory in CI; a platform with no committed baseline fails by design.                                                                                                                                                                   |
-| `npm run test:e2e:visual:update`          | Rewrite the pixel baselines for the current platform. Review every changed PNG before committing.                                                                                                                                                         |
-| `npm run verify:lighthouse`               | Build, serve, and measure the budgeted routes with Lighthouse, then grade against the committed baseline. `-- --dry-run` prints the plan.                                                                                                                 |
-| `npm run check:lighthouse-budget`         | Grade Lighthouse JSON that already exists. `-- --update` refreshes the baseline in `lighthouse-budget.json`.                                                                                                                                              |
-| `npm run check:coverage-inventory`        | Fail if a declared executable root is absent from the generated `coverage/lcov.info`.                                                                                                                                                                     |
-| `npm run check:bundle-budget`             | Enforce aggregate production, five route-local, and mockup-only client-JS gzip baselines after a clean build.                                                                                                                                             |
-| `npm run receipts`                        | Show the gate-receipt store: current input signature per memoised gate and how many stored receipts are valid right now.                                                                                                                                  |
-| `npm run receipts:clear`                  | Empty the gate-receipt store, forcing the next `lint`/`typecheck`/Vitest run to execute for real.                                                                                                                                                         |
+| Command                                   | Purpose                                                                                                                                                                                                                                                 |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run test:focused -- --files <paths>` | Local iteration using explicit import owners plus filesystem/subprocess consumers. Every input needs ownership; data/configuration, deleted, outside-repository or unmapped paths require the full suite. Use `--dry-run` to inspect the plan.          |
+| `npm run test`                            | Complete offline unit suite.                                                                                                                                                                                                                            |
+| `npm run test:ci-workflows`               | Focused offline contracts for CI, authenticated-workflow, Codex-autofix, and eval-canary workflow changes.                                                                                                                                              |
+| `npm run test:live`                       | Explicit provider suite; requires `ALLOW_PROVIDER_TESTS=true`.                                                                                                                                                                                          |
+| `npm run test:e2e:pr`                     | Required production Chromium journeys and visual-artifact smoke, excluding mockups and quarantined tests.                                                                                                                                               |
+| `npm run test:e2e:advisory`               | Quarantined and mockup journeys in one advisory invocation.                                                                                                                                                                                             |
+| `npm run verify:cheap`                    | Ordinary offline local gate: `check:installed-lock-parity`, `test:codex-hooks`, `check:diff-integrity`, lint, typecheck, and the full unit suite. Nothing else. Static hygiene (runtime, sitemap, design tokens, ledgers…) lives in `verify:full` / CI. |
+| `npm run verify:full`                     | Broad offline local gate: the static/consistency gates (`check:runtime` through `check:offline-pack`) then lint, typecheck, and unit tests. Does not invoke the cheap script. `check:gate-manifest` reads this chain.                                   |
+| `npm run verify:pr-local`                 | Risk-routed PR-like local gate. Recognised docs/workflow scopes stay focused; executable or unknown scope adds lint, typecheck, full unit, and domains.                                                                                                 |
+| `npm run verify:phone-chrome`             | Smart phone-chrome gate: lock parity, affected contracts, browser/PWA owners and exact journeys, then full UI only for shared foundations.                                                                                                              |
+| `npm run verify:ui`                       | Complete required production Chromium gate.                                                                                                                                                                                                             |
+| `npm run test:e2e:style-contract`         | Focused rendered-effect assertions for the unlayered classes in `globals.css` (also runs inside `test:e2e:pr`).                                                                                                                                         |
+| `npm run test:e2e:visual`                 | Pixel baselines. Advisory in CI; a platform with no committed baseline fails by design.                                                                                                                                                                 |
+| `npm run test:e2e:visual:update`          | Rewrite the pixel baselines for the current platform. Review every changed PNG before committing.                                                                                                                                                       |
+| `npm run verify:lighthouse`               | Build, serve, and measure the budgeted routes with Lighthouse, then grade against the committed baseline. `-- --dry-run` prints the plan.                                                                                                               |
+| `npm run check:lighthouse-budget`         | Grade Lighthouse JSON that already exists. `-- --update` refreshes the baseline in `lighthouse-budget.json`.                                                                                                                                            |
+| `npm run check:coverage-inventory`        | Require every source file selected by the shared coverage globs in `coverage/lcov.info`, excluding conventional test/spec modules, declarations and the generated database schema.                                                                      |
+| `npm run check:bundle-budget`             | Enforce aggregate production, five route-local, and mockup-only client-JS gzip baselines after a clean build.                                                                                                                                           |
+| `npm run receipts`                        | Show the gate-receipt store: current input signature per memoised gate and how many stored receipts are valid right now.                                                                                                                                |
+| `npm run receipts:clear`                  | Empty the gate-receipt store, forcing the next `lint`/`typecheck`/Vitest run to execute for real.                                                                                                                                                       |
 
 `lint`, `typecheck` and non-coverage Vitest runs are memoised against a content signature, so an identical
 re-run on unchanged content exits 0 without repeating the work. Failures are never memoised, `CI` disables
 reuse entirely, and `build`/`test:coverage` are excluded because later gates read their artefacts. Report a
 reused gate as a reused receipt, not a fresh run; `GATE_RECEIPTS=refresh` forces the real thing. Full
 contract: `docs/process-hardening.md`.
+
+Vitest receipts also fingerprint the selected `PYTHON_BIN`, its executable/version and installed
+Python prerequisites. Missing distribution metadata or module paths are recorded as explicit
+unavailable prerequisite identities, preserving a deterministic runtime fingerprint without
+claiming those modules are usable. Unidentifiable runtimes disable reuse. Lint/typecheck do not
+probe Python.
+Only commands whose selectors are all bounded files qualify for a shared test lease; adding a
+directory or ambiguous option requires the exclusive lease. Offline release verification uses the
+same provider-credential scrubber as ordinary tests, including Sentry upload credentials and
+staging credentials, with controlled inert staging overrides.
 
 Set `FAST_CHECK_SEED` to reproduce a property-test run. Local and ordinary CI runs default to `424242`; scheduled CI may derive a bounded seed from the run ID.
 
@@ -219,6 +229,11 @@ and recorded in no line here).
 | `tablet`                | Release matrix only (4 duration-balanced legs in `release-browser-matrix`) and `npm run test:e2e:tablet` |
 
 Manual dispatch defaults to `scope: browser-matrix` (static checks, Playwright build, production Chromium and this 23-leg release matrix); `scope: full` adds the rest of the suite.
+
+`mobile-pwa-standalone` is a full-height iPhone WebKit viewport backstop. Its project name does not
+enable OS installation or standalone display mode. Installed-layout tests explicitly activate and
+assert the compiled standalone CSS fixture in each relevant project. All 23 release legs remain;
+physical iOS and installed-PWA acceptance require separate evidence.
 
 **Why the non-Chromium and iPhone/tablet projects stay release-only (outside `pr-required`).** The blocking PR gate runs sharded production `chromium` (plus the focused `npm run verify:phone-chrome` selector for phone-chrome changes), keeping PR feedback fast. In `.github/workflows/ci.yml`, `release-browser-matrix` runs on UI/performance/lockfile-relevant `main` pushes, `release/*`, manual dispatch, and the weekly schedule across 23 duration-balanced legs (`chromium-mockups` 1, `firefox` 4, `webkit` 4, `mobile-webkit` 5, `mobile-pwa-standalone` 5, and `tablet` 4; see `scripts/playwright-release-shards.mjs`), capped at 45 minutes per leg and reusing the in-run production build artifact for Firefox, WebKit, Mobile WebKit, Mobile PWA Standalone, and Tablet (`chromium-mockups` builds separately with `NEXT_PUBLIC_MOCKUPS_ENABLED=true`, and full `chromium` runs only if prior in-run Chromium proof is missing).
 
@@ -427,8 +442,8 @@ lockfile arm is the backstop for a runtime dependency bump the PR arm deliberate
 `perf_changed`); the weekly `schedule`; and `workflow_dispatch`. The `lighthouse-budget` label
 forces a run and `skip-lighthouse-budget` opts out, with skip winning. Caveat:
 `on.pull_request.types` has no `labeled` (adding it would re-run all of CI on every label change),
-so the opt-in label takes effect on the next push or re-run — use `workflow_dispatch` for an
-immediate run.
+so the opt-in label takes effect on a fresh synchronize event. Rerunning an older event retains
+its original label snapshot; use the appropriate `workflow_dispatch` scope for an immediate run.
 
 This is distinct from `.github/workflows/live-web-vitals.yml`, which measures the deployed origin for
 ledger #017 and is dispatch-only — by the time it runs, `main` has already auto-deployed. Both pin
@@ -441,9 +456,27 @@ evidence-based verdict rather than disguising a public-network failure as a loca
 
 ## Flake policy
 
-`tests/flake-ledger.json` may be empty. Each entry must match the exact spec and title, and the test title must include `@quarantine` but not `@critical`. Entries require an owner, reproduction command, local tracking reference, first/last-seen dates, and an expiry no more than 30 days away. Reproduce a candidate three times on the same SHA before adding or retaining it: fix fail/pass races, treat repeatable failures as regressions, and remove entries that no longer reproduce.
+`tests/flake-ledger.json` may be empty. Each entry must match the exact spec and full JUnit title
+(`describe › leaf`). Effective collected title/explicit/inherited tags must select quarantine and
+must not select critical. `node scripts/flake-ledger.mjs --validate-collected` reconciles the real
+Playwright collection in both directions before required browser lanes: unregistered tags,
+critical overlap and stale registrations fail. Collection starts no server or browser and executes
+no test bodies. Entries require an owner, reproduction command, local tracking reference,
+first/last-seen dates, and an expiry no more than 30 days away. Reproduce a candidate three times
+on the same SHA before adding or retaining it: fix fail/pass races, treat repeatable failures as
+regressions, and remove entries that no longer reproduce.
 
 ## CI topology
+
+Workflow changes run `npm run check:github-actions:semantics` in the required static lane.
+This downloads the official Linux x64 actionlint 1.7.7 release when absent, verifies its archive
+and executable SHA-256 pins, and rechecks cached executable bytes before use. Positive and
+negative semantic probes precede validation of every workflow. Optional ambient ShellCheck and
+Pyflakes integrations are disabled so this gate has a stable schema/expression remit. Existing
+pin/policy and composite-action contract checks remain necessary. The manifest and validator
+are themselves workflow-scoped inputs. The focused workflow suite also enforces the shared
+`isDirectEntrypoint` helper across scripts, preventing new CI helpers from silently doing nothing
+when launcher paths differ.
 
 PR CI uses the same fail-closed classifier as `verify:pr-local`. `static-pr` always proves runtime/install parity, the classifier and verification-plan invariants, and changed-file formatting. Recognised documentation changes add documentation integrity checks; recognised workflow/policy-only changes add action/policy self-tests and `test:ci-workflows`. Mixed executable+workflow changes skip that focused Vitest invocation locally and in CI because the full unit or coverage invocation already contains the same workflow-reading suites. Executable, test, build/config, dependency, database/container, mixed, or unknown non-document paths set `static_heavy_changed`, retaining lint, typecheck, safety/config/RAG, and the full unit coverage job. Build, migration, Docker, and browser jobs remain separately scoped. A dependency audit blocks on lockfile/npm-config changes and the scheduled full-run sentinel, instead of making a low-value registry request on every PR. `verify:pr-local` additionally runs `npm ci --dry-run --ignore-scripts` first when `package.json` or `package-lock.json` changes, catching lockfile/install disagreement before the broad local plan or CI fan-out.
 

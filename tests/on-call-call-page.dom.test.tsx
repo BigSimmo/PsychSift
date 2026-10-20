@@ -347,7 +347,7 @@ describe("Call page", () => {
     );
     render(<OnCallCallPage />);
     expect(screen.getAllByRole("searchbox")).toHaveLength(1);
-    expect(screen.getByRole("searchbox")).toHaveAttribute("placeholder", "Search numbers, referrals, roles");
+    expect(screen.getByRole("searchbox")).toHaveAttribute("placeholder", "Search a name, role, ward or referral");
     expect(screen.queryByRole("button", { name: /voice|microphone|dictat/i })).toBeNull();
     await userEvent.type(screen.getByRole("searchbox"), "icu");
     expect(screen.queryByText("Switchboard")).toBeNull();

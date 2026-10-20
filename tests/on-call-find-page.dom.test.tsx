@@ -152,4 +152,12 @@ describe("Find page", () => {
     expect(screen.getByTestId("on-call-crisis-lines")).toBeInTheDocument();
     expect(screen.getByTestId("on-call-find-on-site")).toBeInTheDocument();
   });
+
+  it("opens with the Playbook and How to refer, the handbook's front page (On Call overhaul, 20 Oct 2026)", () => {
+    handbook.state = ready([]);
+    render(<OnCallFindPage />);
+    const front = screen.getByTestId("on-call-find-during-shift");
+    expect(within(front).getByRole("link", { name: /Playbook/ })).toHaveAttribute("href", "/on-call/playbook");
+    expect(within(front).getByRole("link", { name: /How to refer/ })).toHaveAttribute("href", "/on-call/refer");
+  });
 });
