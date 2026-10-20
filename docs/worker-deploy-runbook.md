@@ -305,6 +305,44 @@ configured budgets (at least 240 seconds). An explicit transport override remain
 cap and can shorten either operation budget. Shutdown/attempt abort signals still apply.
 These database deadlines are separate from the native extraction limits below.
 
+### Pause switches, the scanner module, and the paused production worker
+
+**Pause switches** (`isWorkerClaimLoopPaused` in `worker/health.ts`). Either one pauses the claim loop:
+
+| Variable                    | Pauses when    | Notes                                                          |
+| --------------------------- | -------------- | -------------------------------------------------------------- |
+| `WORKER_PAUSED`             | `true` or `1`  | Emergency stop; also named in the governance incident runbooks |
+| `WORKER_CLAIM_LOOP_ENABLED` | `false` or `0` | Same effect; unset or any other value leaves claiming on       |
+
+While paused the worker keeps its health endpoint up, logs "Worker claim loop is paused" once, and claims
+no new jobs (`worker/run-loop.ts`). A batch already claimed is not interrupted. To resume, both must allow
+claiming: `WORKER_PAUSED` unset or false, and `WORKER_CLAIM_LOOP_ENABLED` unset or true. Nothing alerts on a
+paused worker, so record any pause in the incident or task notes.
+
+**`WORKER_ADMIN_SOURCE_RUNTIME_MODULE`** (`loadAdminSourceRuntimeOptions` in `worker/admin-source-runtime.ts`).
+It names, by absolute local path, a server-mounted module that is deliberately kept outside this repository.
+That module supplies the approved-source record and the malware-scanner configuration
+(`loadApprovedSource` and `loadScannerConfiguration`, or a `createAdminSourceRuntimeSuppliers` factory that
+returns them). The worker refuses a relative, `http(s):`, `data:` or `node:` path, and refuses if the module's
+bytes change while it runs. Never write its value into a document, log, PR or ticket; only whether it is set.
+
+Without it there is no scanner verdict, so every ingestion provider call is refused and each job ends as
+`blocked by ingress safety checks` with `scanner_unavailable` (fail closed; pinned by
+`tests/edge-provider-egress.test.ts`). See [the current ingestion model](ingestion-state-machine.md#current-model-october-2026).
+
+**Current production state (read-only check, 20 October 2026).** The production `worker` service runs a
+placeholder start command set in Railway, not the image's `node dist/worker/index.mjs`. It is an HTTP-only
+process that answers "paused, queue dispatch disabled" and processes no jobs, so no uploaded document is
+indexed in production. The same check found `WORKER_ADMIN_SOURCE_RUNTIME_MODULE` set on that service.
+
+Before the worker is switched back on, with the owner's explicit yes:
+
+1. Confirm the module the variable names exists in the running image or mount and loads: the worker starts
+   without refusing it, and a first permitted job is not stopped as `scanner_unavailable`.
+2. Restore the real start command, then clear any pause switch.
+3. Watch the first jobs; the library re-index stays stopped
+   ([decision](decisions/2026-10-17-library-reindex-stopped.md)).
+
 ### Shadow extraction mode (packet B4 — docling, default OFF)
 
 `WORKER_DOCUMENT_EXTRACTOR_MODE`, `WORKER_SHADOW_EXTRACTION_COHORT_PERCENT` and
@@ -713,19 +751,26 @@ The worker passes active lists to the five-argument `claim_ingestion_jobs` overl
 The database filters candidates before acquiring leases, then rechecks the locked
 document's MIME type. Unrelated queued jobs neither block scoped jobs nor consume
 attempts. Existing workers with no scope keep using the three-argument contract.
-A scoped worker requires the scope migration; a missing overload fails closed
-rather than falling back to an unfiltered claim. The migration changes the live
-database when merged to `main`: merge only inside the owner's specifically
-approved database-change window. No live database change is authorized by this PR.
+A scoped worker requires the scope migrations; a missing overload fails closed
+rather than falling back to an unfiltered claim. Both are merged:
+`20261017175448_scope_ingestion_claim_atomically.sql` (PR #3628) and
+`20261018053558_recheck_ingestion_claim_scope_after_job_lock.sql` (PR #3633) reached
+`main` on 18 October 2026, so the Supabase integration was expected to apply them to
+production automatically. Their production status is **unverified in this runbook**: before
+enabling a scoped worker, confirm both with the post-merge `live-drift` workflow (both
+`check:drift` and `check:migration-history` green).
 
-### Draft roster-offer retry consumer
+### Roster-offer retry consumer
 
 The follow-up for PS-008 adds a worker-owned, one-minute retry consumer for the
-service-role-only roster offer outbox. It is a database proposal: merge only after
-specific owner approval for the outbox migration and inside the approved window.
-The original milestone/mutation proposals retain their separate merge gates.
+service-role-only roster offer outbox. Its migration,
+`20261018073435_durable_roster_offer_device_outbox.sql`, merged to `main` on
+18 October 2026 (PR #3652), so the Supabase integration was expected to apply it to
+production automatically. Its production status is likewise **unverified in this runbook**;
+confirm it with the post-merge `live-drift` workflow before relying on the consumer. The original milestone/mutation proposals
+retain their separate merge gates.
 
-After approval and verified schema application, an operator must verify that the
+Before relying on the consumer, an operator must verify that the
 worker has the intended `ROSTER_TEAM_RELEASE_ENABLED` setting and its own valid
 `WEB_PUSH_PUBLIC_KEY`, `WEB_PUSH_PRIVATE_KEY` and `WEB_PUSH_SUBJECT` bindings.
 The consumer remains inactive while the staff release is held or push is not
