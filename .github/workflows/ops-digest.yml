@@ -97,6 +97,9 @@ jobs:
       HEALTH_DEEP_PROBE_SECRET: ${{ secrets.HEALTH_DEEP_PROBE_SECRET }}
       EVAL_CANARY_STALE: ${{ needs.eval-canary-liveness.outputs.stale }}
       EVAL_CANARY_MESSAGE: ${{ needs.eval-canary-liveness.outputs.message }}
+      # "true" while the ingestion worker is deliberately paused (audit EVAL-03). Shown in the
+      # digest as paused; it raises no alert here. Unset reads as "state not recorded".
+      INGESTION_WORKER_PAUSED: ${{ vars.INGESTION_WORKER_PAUSED }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

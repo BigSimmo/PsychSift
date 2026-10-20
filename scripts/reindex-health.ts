@@ -121,7 +121,7 @@ async function main() {
 
   const { data: openJobs, error: jobsError } = await supabase
     .from("ingestion_jobs")
-    .select("id,document_id,status,stage,attempt_count,max_attempts,locked_at,next_run_at,error_message")
+    .select("id,document_id,status,stage,attempt_count,max_attempts,locked_at,next_run_at,created_at,error_message")
     .in("status", ["pending", "processing", "failed"])
     .order("created_at", { ascending: true })
     .limit(25);

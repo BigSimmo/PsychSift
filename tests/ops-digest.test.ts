@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   normalizeOpsStatus,
   renderDigest,
+  renderIngestionWorkerState,
   renderStorageCleanupBacklog,
   resolveHealthUrl,
   serializeGitHubOutputs,
@@ -367,6 +368,35 @@ describe("renderDigest", () => {
     expect(md).toContain("OVER THRESHOLD");
     expect(md).toContain("sample truncated");
     expect(md).toContain("OPS_PROJECTED_DAILY_SPEND_WARNING");
+  });
+});
+
+// Audit EVAL-03: a deliberately paused worker must read as paused in the digest, not as healthy
+// and not as an outage. It never raises an alert by itself; the ingestion autopilot alerts on
+// pending uploads that nothing has claimed.
+describe("ingestion worker state line", () => {
+  it("shows a deliberate pause without changing the alert state", () => {
+    const health = { status: "ok" };
+    const md = renderDigest(health, { ingestionWorkerPaused: "true" });
+    expect(md).toContain(
+      "**Ingestion worker:** ⏸ paused on purpose (repository variable INGESTION_WORKER_PAUSED=true). Uploaded documents are not processed until it is resumed. Not an outage: the ingestion autopilot alerts only if an upload waits more than 30 minutes.",
+    );
+    expect(evaluateOperationalAlerts(health, { ingestionWorkerPaused: "true" })).toEqual(
+      evaluateOperationalAlerts(health),
+    );
+  });
+
+  it("distinguishes an expected-running worker from an unrecorded state", () => {
+    expect(renderIngestionWorkerState("false")).toBe("**Ingestion worker:** expected to be running.");
+    expect(renderIngestionWorkerState(undefined)).toBe(
+      "**Ingestion worker:** state not recorded (set repository variable INGESTION_WORKER_PAUSED to true or false).",
+    );
+    expect(renderIngestionWorkerState("maybe")).toBe(renderIngestionWorkerState(undefined));
+  });
+
+  it("passes the repository variable to the digest step", () => {
+    const workflow = readFileSync(new URL("../.github/workflows/ops-digest.yml", import.meta.url), "utf8");
+    expect(workflow).toContain("INGESTION_WORKER_PAUSED: ${{ vars.INGESTION_WORKER_PAUSED }}");
   });
 });
 

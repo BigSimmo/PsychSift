@@ -611,6 +611,22 @@ The rolling issue is the provider-neutral queue. For every alert, the on-duty op
 
 **Acknowledgement/recovery drill:** dispatch the digest only with existing operator/provider approval; use a synthetic or staging snapshot to trigger one warning; execute that alert's exact diagnosis, acknowledgement, recovery, and escalation route above; retain the run link and timestamps outside this repository. Do not manufacture production failures or paste health-probe secrets into evidence. Until this drill is exercised, alert delivery is configured but externally unaccepted.
 
+### Ingestion worker paused
+
+The ingestion worker has no public address and the deep probe does not reach it, so a stopped or
+paused worker used to be silent: pending uploads of any age counted as healthy (audit EVAL-03).
+Two things now cover it:
+
+- **Digest line, not an alert code.** The digest's **Ingestion worker** line reads the GitHub
+  repository variable `INGESTION_WORKER_PAUSED`: `true` shows ⏸ paused on purpose, `false` shows
+  expected to be running, and unset says the state is not recorded. Set it whenever the worker is
+  paused or resumed (`docs/worker-deploy-runbook.md` §5). It never changes the digest's alert
+  severity, so a deliberate pause does not mention the owner every six hours.
+- **Autopilot alert on unclaimed uploads.** The six-hourly ingestion autopilot alerts when a
+  `pending` job has been due (its `next_run_at`, or `created_at` without one) for more than 30
+  minutes with nothing claiming it, whether or not the worker is marked paused. When it is marked
+  paused, the reason says so: resume the worker to process the upload.
+
 ### Storage cleanup backlog
 
 When a document delete cannot remove its stored files, the delete still succeeds and the leftover

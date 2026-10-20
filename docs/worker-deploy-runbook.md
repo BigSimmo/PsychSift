@@ -687,6 +687,15 @@ The second Gate B caveat is already load-bearing above: docling's eager-mode lat
   node -v # must report v24.x
   ```
 
+- **Pausing the worker on purpose (audit EVAL-03):** the worker has no public
+  address, so monitoring cannot see that it is paused. Whenever you pause it
+  (`WORKER_PAUSED=true`, or a placeholder start command), also set the GitHub
+  repository variable `INGESTION_WORKER_PAUSED=true`; set it to `false` when the
+  worker runs again. The six-hourly ops digest then shows the worker as paused
+  rather than healthy, and the ingestion autopilot names the pause as the cause
+  when it alerts. A pause alone never alerts; a pending upload that nothing claims
+  for more than 30 minutes does, paused or not.
+
 ---
 
 ## Rollback

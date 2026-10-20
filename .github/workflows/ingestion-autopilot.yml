@@ -83,6 +83,10 @@ jobs:
           # Apply only when BOTH the trusted dispatch payload and repo variable allow it.
           APPLY_REQUESTED: ${{ github.event.client_payload.apply || 'false' }}
           APPLY_ALLOWED: ${{ vars.INGESTION_AUTOPILOT_APPLY }}
+          # "true" while the worker is deliberately paused, "false" while it should run (audit
+          # EVAL-03). A pause is reported as paused, not as an outage; only a pending upload left
+          # unclaimed for more than 30 minutes alerts. The ops digest shows the same variable.
+          INGESTION_WORKER_PAUSED: ${{ vars.INGESTION_WORKER_PAUSED }}
         run: |
           if [ "$APPLY_REQUESTED" = "true" ] && [ "$APPLY_ALLOWED" = "true" ]; then
             echo "Applying recovery when stuck."
@@ -107,10 +111,13 @@ jobs:
               "",
               `Run: ${runUrl}`,
               "",
-              "Either recoverable work was detected, Supabase was unreachable, or recovery failed. Triage:",
-              "`npm run reindex:health`, then `npm run recover:ingestion -- --include-stranded-queued --apply`",
-              "if a stuck queue or aged queued-without-job document is confirmed. Do not assume corruption —",
-              "a transient outage looks the same.",
+              "Either recoverable work was detected, a pending upload has waited more than 30 minutes",
+              "without being claimed, Supabase was unreachable, or recovery failed. The run log names which.",
+              "A pending upload that nothing claims means the worker is stopped, paused or wedged: if the",
+              "worker is paused on purpose (repository variable INGESTION_WORKER_PAUSED=true), resume it to",
+              "process the upload. Otherwise triage: `npm run reindex:health`, then",
+              "`npm run recover:ingestion -- --include-stranded-queued --apply` if a stuck queue or aged",
+              "queued-without-job document is confirmed. Do not assume corruption — a transient outage looks the same.",
             ].join("\n");
             // Route the alert to a person, not only a label (#TN512M): GitHub notifies an issue's
             // assignee on their phone, for the opening and for every later comment. Best-effort, so
