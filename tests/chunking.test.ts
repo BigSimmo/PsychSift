@@ -688,6 +688,15 @@ describe("repeated-line filter keeps clinical headings (ING-B-02)", () => {
     expect(content).not.toContain("Mental Health Services");
     expect(content.match(/target 0\.6 to 1\.0 mmol\/L/g)).toHaveLength(2);
   });
+
+  it("never removes a repeated line that states a threshold without a unit", () => {
+    const chunks = buildChunks([
+      page(1, "Check FBC weekly.\nReview renal function.\nPer procedure, withhold clozapine if ANC < 1.5"),
+      page(2, "Check lipids yearly.\nReview weight.\nPer procedure, withhold clozapine if ANC < 1.5"),
+    ]);
+    const content = chunks.map((chunk) => chunk.content).join("\n");
+    expect(content.match(/withhold clozapine if ANC < 1\.5/g)).toHaveLength(2);
+  });
 });
 
 // Audit 2026-10-20 ING-B-03: the extractor joins a table title, the markdown

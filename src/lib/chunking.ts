@@ -164,9 +164,9 @@ function looksLikeRepeatingBoilerplate(line: string) {
   const normalized = normalizeRepeatedLine(line);
   if (!normalized || normalized.length < 5 || normalized.length > 90) return false;
   if (looksLikeMetadataNoise(line)) return true;
-  // Audit 2026-10-20 ING-B-02: never treat a repeated line that states a dose
-  // or measurement as a running header.
-  if (numberWithUnitPattern.test(line)) return false;
+  // Audit 2026-10-20 ING-B-02: never treat a repeated line that states a dose,
+  // measurement, threshold comparator or clinical action as a running header.
+  if (hasClinicalSignal(line)) return false;
   if (boilerplateOrgPrefixPattern.test(line)) return true;
   if (boilerplateAmbiguousOrgPrefixPattern.test(line) && boilerplateOrgNounPattern.test(line)) return true;
   if (boilerplateKeywordPattern.test(line)) {
