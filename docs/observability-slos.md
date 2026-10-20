@@ -381,11 +381,19 @@ regression triage does not relearn them:
   code with differently-relevant candidates (identical-content fixtures hide
   this failure mode), and (c) run a dedicated before/after canary pair with
   doc/content recall pinned at 1.0.
-- **Artifact-based trends.** Every canary run uploads `eval-canary-output`
-  (30-day retention). `npm run eval:trend -- <artifact.json...>` renders the
-  run-over-run metric table (and `--case <id>` a per-case rr trend) from
-  downloaded artifacts — the durable trend record without any new
-  infrastructure.
+- **Durable trend rows.** The `eval-canary-output` artifact expires after 30
+  days, so on its own it is not a durable record: by 2026-10-20 nothing after
+  4 Oct was recorded anywhere (audit EVAL-06). Every canary run, cancelled and
+  timed-out runs included, now posts one row to the rolling **Eval canary
+  trend** issue (label `eval-canary-trend`, never closed) and repeats it in the
+  job summary: date, trigger, job status, each half's step outcome, retrieval
+  recall/MRR/irrelevant@10/p90 and failing case IDs, answer rates, cost and
+  failing case IDs. Rows carry no question, answer or source text, and mention
+  nobody (`scripts/lib/eval-canary-trend.mjs`). Nothing is committed from CI.
+- **Artifact-based trends.** Within the 30-day retention,
+  `npm run eval:trend -- <artifact.json...>` renders the fuller run-over-run
+  metric table (and `--case <id>` a per-case rr trend) from downloaded
+  artifacts.
 
 ### 3.2 Canary Latency & Cost SLOs (#305)
 
@@ -604,8 +612,8 @@ The rolling issue is the provider-neutral queue. For every alert, the on-duty op
 
 ### `OPS_EVAL_CANARY_STALE_WARNING`
 
-- **Diagnose:** open the latest completed `eval-canary.yml` run and distinguish a dropped schedule, failed run, or missing timestamp.
-- **Acknowledge:** Clinical evaluation owner records the last completed run and age.
+- **Diagnose:** open the latest completed `eval-canary.yml` run and distinguish a dropped schedule, failed run, cancelled or timed-out run, or missing timestamp. Only a run that reached a pass or fail verdict keeps liveness green; cancelled and timed-out runs evaluated nothing and do not count (audit EVAL-08). The canary also opens its "did not complete" failure issue for them.
+- **Acknowledge:** Clinical evaluation owner records the last run with a verdict and its age.
 - **Recover:** with explicit provider-run approval, complete a canary successfully and attach its run reference; a workflow dispatch alone is not recovery.
 - **Escalate:** Clinical safety owner when staleness exceeds eight days; provider-backed dispatch and any failure remediation remain approval-gated.
 

@@ -371,6 +371,72 @@ describe("renderDigest", () => {
   });
 });
 
+// Audit EVAL-08: a cancelled or timed-out canary evaluated nothing, so it must not count as the
+// "last completed run" that keeps liveness green.
+describe("eval-canary liveness, executed", () => {
+  function livenessScript() {
+    const workflow = readFileSync(new URL("../.github/workflows/ops-digest.yml", import.meta.url), "utf8");
+    const step = workflow.slice(workflow.indexOf("      - name: Warn if the weekly canary is stale"));
+    const marker = "          script: |\n";
+    const body: string[] = [];
+    for (const line of step.slice(step.indexOf(marker) + marker.length).split("\n")) {
+      if (line.length === 0) {
+        body.push("");
+        continue;
+      }
+      if (!line.startsWith("            ")) break;
+      body.push(line.slice(12));
+    }
+    return body.join("\n");
+  }
+
+  async function liveness(runs: Array<{ conclusion: string; updated_at: string; html_url?: string }>) {
+    const outputs: Record<string, string> = {};
+    const github = {
+      rest: { actions: { listWorkflowRuns: async () => ({ data: { workflow_runs: runs } }) } },
+    };
+    const core = {
+      setOutput: (key: string, value: string) => {
+        outputs[key] = value;
+      },
+      warning: () => undefined,
+      info: () => undefined,
+    };
+    const AsyncFunction = Object.getPrototypeOf(async () => undefined).constructor as new (
+      ...args: string[]
+    ) => (...values: unknown[]) => Promise<void>;
+    await new AsyncFunction("github", "context", "core", livenessScript())(
+      github,
+      { repo: { owner: "BigSimmo", repo: "PsychSift" } },
+      core,
+    );
+    return outputs;
+  }
+
+  const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString();
+
+  it("is live after a recent run that reached a verdict, pass or fail", async () => {
+    expect((await liveness([{ conclusion: "failure", updated_at: daysAgo(2) }])).stale).toBe("false");
+    expect((await liveness([{ conclusion: "success", updated_at: daysAgo(2) }])).stale).toBe("false");
+  });
+
+  it("does not count a recent cancelled or timed-out run as having run", async () => {
+    const outputs = await liveness([
+      { conclusion: "cancelled", updated_at: daysAgo(1) },
+      { conclusion: "timed_out", updated_at: daysAgo(3) },
+      { conclusion: "success", updated_at: daysAgo(10) },
+    ]);
+    expect(outputs.stale).toBe("true");
+    expect(outputs.message).toContain("2 newer run(s) were cancelled or timed out and do not count");
+  });
+
+  it("is stale when no recent completed run reached a verdict at all", async () => {
+    const outputs = await liveness([{ conclusion: "cancelled", updated_at: daysAgo(1) }]);
+    expect(outputs.stale).toBe("true");
+    expect(outputs.message).toContain("no recent canary run reached a pass or fail verdict");
+  });
+});
+
 // Audit EVAL-03: a deliberately paused worker must read as paused in the digest, not as healthy
 // and not as an outage. It never raises an alert by itself; the ingestion autopilot alerts on
 // pending uploads that nothing has claimed.

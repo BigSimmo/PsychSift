@@ -52,6 +52,10 @@ describe("alert workflows mention the owner (audit EVAL-04)", () => {
       // Sentry's issue is an empty container: the alert is the mentioned comment posted into it
       // straight away, so mentioning both would push the first alert twice.
       if ((path.endsWith("ops-digest.yml") || path.endsWith("sentry-alerts.yml")) && write.kind === "create") continue;
+      // The canary's weekly trend row (audit EVAL-06) is a record, not an alert, and must not
+      // push to the phone every week.
+      if (path.endsWith("eval-canary.yml") && /trend\.TREND_|issue_number: issueNumber,\n\s+body,\n/.test(write.text))
+        continue;
       expect(write.text, `${path}: ${write.kind} must mention the owner`).toMatch(
         /\$\{alertMention\}|@\$\{alertAssignee\}/,
       );

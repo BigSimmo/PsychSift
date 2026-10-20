@@ -58,14 +58,28 @@ jobs:
                 repo: context.repo.repo,
                 workflow_id: "eval-canary.yml",
                 status: "completed",
-                per_page: 1,
+                per_page: 20,
               });
-              const latest = data.workflow_runs?.[0];
+              const runs = data.workflow_runs ?? [];
+              // Only a run that reached a pass or fail verdict counts (audit EVAL-08). A cancelled or
+              // timed-out run evaluated nothing, so it must not keep liveness green.
+              const verdictIndex = runs.findIndex((run) => run.conclusion === "success" || run.conclusion === "failure");
+              const latest = verdictIndex >= 0 ? runs[verdictIndex] : undefined;
+              const skipped = (verdictIndex >= 0 ? runs.slice(0, verdictIndex) : runs).filter(
+                (run) => run.conclusion === "cancelled" || run.conclusion === "timed_out",
+              ).length;
+              const skippedNote =
+                skipped > 0 ? ` ${skipped} newer run(s) were cancelled or timed out and do not count.` : "";
               // updated_at approximates completion time; run_started_at is the
               // fallback for older or partial REST payloads.
               const finishedAt = Date.parse(latest?.updated_at ?? latest?.run_started_at ?? "");
               if (!latest) {
-                set(true, "Eval-canary liveness: no completed canary runs found.");
+                set(
+                  true,
+                  runs.length > 0
+                    ? `Eval-canary liveness: no recent canary run reached a pass or fail verdict.${skippedNote}`
+                    : "Eval-canary liveness: no completed canary runs found.",
+                );
               } else if (!Number.isFinite(finishedAt)) {
                 set(
                   true,
@@ -76,12 +90,12 @@ jobs:
                 if (ageDays > 8) {
                   set(
                     true,
-                    `Eval-canary liveness: last completed canary run was ${ageDays.toFixed(1)} days ago (${latest.html_url}). ` +
+                    `Eval-canary liveness: last canary run with a verdict was ${ageDays.toFixed(1)} days ago (${latest.html_url}).${skippedNote} ` +
                       "The weekly Sunday 18:00 UTC schedule may have been dropped by GitHub - dispatch one manually " +
                       "(provider-backed; needs explicit approval).",
                   );
                 } else {
-                  set(false, `Eval-canary liveness: last completed run ${ageDays.toFixed(1)} days ago.`);
+                  set(false, `Eval-canary liveness: last run with a verdict ${ageDays.toFixed(1)} days ago.${skippedNote}`);
                 }
               }
             } catch (error) {
