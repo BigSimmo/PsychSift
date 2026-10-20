@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "c099ab09-d0ae-414c-8abd-d2e330bd00c6",
+  "createdOn": "2026-10-20",
+  "action": "add",
+  "payload": {
+    "pri": "P1",
+    "type": "issue",
+    "summary": "Build sign-in gate for Answer, medication patient details, therapy ranking, questionnaire scoring and original PDFs before 1 Nov 2026",
+    "detail": "Owner decision 2026-10-20 (docs/decisions/2026-10-20-clinical-decision-tools-need-sign-in.md). Mockup awaits owner 'build'. Server-side refusal on answer, clinical-ask and signed-url routes plus UI gates. Findings R-01, R-03, R-05, R-13, R-15. PR-4 stays unmet until built.",
+    "source": "Regulatory readiness audit 2026-10-20 (/mnt/project-files/reviews/2026-10-20-regulatory-launch-readiness.md)",
+    "issueUlid": "01M5D6CDFH1RVGZF44DTFHP9F7"
+  }
+}

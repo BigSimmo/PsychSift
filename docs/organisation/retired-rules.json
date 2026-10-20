@@ -120,6 +120,14 @@
       "pattern": "(?:add|set) (?:it )?as a Cloud Agent Secret|Cursor Cloud specific instructions",
       "allowedContext": "no longer|retired|superseded|historical|previously|prohibited|formerly",
       "decision": "docs/decisions/2026-10-18-cursor-cloud-agents-prohibited.md"
+    },
+    {
+      "id": "answer-open-to-signed-out-visitors",
+      "retired": "2026-10-20",
+      "summary": "Answer no longer stays open to signed-out visitors. Answer and the patient-tailored tools are to require sign-in because the amended TGA clinical decision support exemption, in force from 1 November 2026, does not cover users who are not health professionals.",
+      "pattern": "signed-out visitors keep Answer|Answer stays open to signed-out",
+      "allowedContext": "no longer|retired|superseded|historical|previously|reversed|formerly|Status 2026-10-19|for now",
+      "decision": "docs/decisions/2026-10-20-clinical-decision-tools-need-sign-in.md"
     }
   ]
 }

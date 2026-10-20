@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "3fbe2e72-835a-4e28-9a4b-168a2090315d",
+  "createdOn": "2026-10-20",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "issue",
+    "summary": "Add a rights and licence field to the source register",
+    "detail": "Record publisher licence or permission status per source so public display and AI use can be checked. Finding R-07.",
+    "source": "Regulatory readiness audit 2026-10-20 (/mnt/project-files/reviews/2026-10-20-regulatory-launch-readiness.md)",
+    "issueUlid": "01M5D6CE3PSQ2FG93C7QY68NPF"
+  }
+}

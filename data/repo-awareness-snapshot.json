@@ -3339,6 +3339,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-20-clinical-decision-tools-need-sign-in.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/archive/search-rag-phase-2-answer-plan.md",
         "section": "archive",
         "catalogued": true
@@ -16129,6 +16134,14 @@
         "checks": "verify:pr-local exit 0 (649 files/6968 tests, no Errors line); red-green proved — new spec reproduces ReferenceError: document is not defined against the unfixed file (2 failed), passes 3/3 with the fix"
       },
       {
+        "date": "2026-10-20",
+        "ref": "fix/worker-native-followup-20261020",
+        "head": "77ec553cfb449ec2e0d63b06e1fd5859fbf26353",
+        "scope": "worker-native-followup-and-readonly-smoke-20261020",
+        "outcome": "One fresh blind six-file review at9cb07a099 found P2 shutdown proof defect; parent reproduced and corrected in77ec553cf. No other actionable finding reported. Full-image acceptance remains pending.",
+        "checks": "Current five committed product/test/doc inputs plus stable uncommitted worker runbook match corrected source manifest. Actual narrowed APT exact4changes/no removals; curl8.21/ngtcp2 1.22.1/5loader checks/UID1000 OCR pass. Before actualCLI inspectionfail/malformed/exit1 falselypass; after6CLI+11helpercontrols pass. Shell/floor/Node/TSparse/format pass; full lock JS and imageCI pending. No rereview cycle or security-clearance claim."
+      },
+      {
         "date": "2026-08-17",
         "ref": "claude/pr-auto-merge-safety-tpxupu",
         "head": "786a0558bc676f7b7b175ae50b84f9db3d309b3d",
@@ -24847,6 +24860,14 @@
         "scope": "Run PR sweep",
         "outcome": "merged main (stale DIRTY); superseded unresolvable ledger HEAD per Devin; no product threads open",
         "checks": "merge-tree clean"
+      },
+      {
+        "date": "2026-10-20",
+        "ref": "fix/worker-native-security-20261020",
+        "head": "dbd3308c2c3fb1f18b8b642f4749e0e03acaf60f",
+        "scope": "worker-native-security-runtime-and-NLTK-20261020",
+        "outcome": "Fresh blind eight-file security review: no actionable P0/P1/P2 defect; full native/clinical/image-scan acceptance remains pending; no release approval",
+        "checks": "Committed six source/test/lock inputs plus stable two uncommitted maintained docs matched recorded SHA256 manifest. Reviewer static boundary/packaging/hash checks only. Separate actual3.11/3.12 NLTK97pass/11skip source attacks and exact-source hash install314filematch; runner shell/minimum version controls pass. Exact-lock full CI/image OCR/NLP/runtime/scan pending. Source commits remain durable in published history."
       },
       {
         "date": "2026-07-14",

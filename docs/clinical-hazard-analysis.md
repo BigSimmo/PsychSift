@@ -261,6 +261,32 @@ Under the Australian framework, software that meets the definition of a medical 
 
 (Sources: TGA guidance [_Understanding clinical decision support software_](https://www.tga.gov.au/resources/guidance/understanding-clinical-decision-support-software), [_Determining exemptions for Clinical Decision Support Software_](https://www.tga.gov.au/resources/guidance/determining-exemptions-clinical-decision-support-software), and [_Exemption for Certain Clinical Decision Support Software_](https://www.tga.gov.au/sites/default/files/2022-08/exemption-for-certain-clinical-decision-support-software.pdf). This is an engineering assessment, **not legal advice** — confirm classification with regulatory counsel and complete the TGA SaMD screening required by [`docs/clinical-governance.md`](clinical-governance.md).)
 
+### Amended exemption from 1 November 2026
+
+_Added 2026-10-20 from the regulatory and launch readiness audit (project files, `reviews/2026-10-20-regulatory-launch-readiness.md`). Engineering reading, not legal advice._
+
+The three conditions above are the wording in force until 31 October 2026. The Therapeutic Goods Legislation Amendment (2026 Measures No. 1) Regulations 2026 (F2026L01167) replace them from **1 November 2026** with five limbs. The software must:
+
+- **(a)** be intended "to make a recommendation to a health professional for the sole purpose of assisting the health professional in making a decision";
+- **(b)** not process, analyse, compress or decompress a medical image or signal from another medical device;
+- **(c)** not be intended to replace the clinical judgement of a health professional;
+- **(d)** not be intended "to make a clinical diagnosis or decision about the treatment of patients"; and
+- **(e)** display "details of the clinical practice guidelines, calculations or logic used by the software, in a way that enables a health professional to readily interpret and verify any recommendations".
+
+New regulation 11.90 applies the amended item to software made before 1 November that is used after it, so there is no grace period. The TGA's guidance (updated 16 October 2026) also says "If your software provides decision support directly to patients (or any non-health professional user) it also does not qualify for the exemption", and that opaque CDSS are not exempt. The exemption's conditions are unchanged: Essential Principles, adverse event reporting, advertising rules, and notifying the TGA within 20 working days of supply (TGA guidance says 30).
+
+How the product requirements below map to the new limbs:
+
+| Limb                                                  | Requirements     | State on 2026-10-20                                                                                                                                                                                    |
+| ----------------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| (a) health professionals only                         | PR-4             | Not met while signed-out visitors can use Answer and the other patient-tailored tools. The owner decided on 2026-10-20 to require sign-in for them (see PR-4).                                         |
+| (b) no device signals                                 | PR-5             | Met. Document OCR only.                                                                                                                                                                                |
+| (c) does not replace judgement                        | PR-1, PR-2, PR-3 | Partial, as in the condition table below.                                                                                                                                                              |
+| (d) does not make the diagnosis or treatment decision | new; no PR yet   | Rests on one prompt line ("Do not give patient-specific medical advice"). Patient-scenario questions are not handled deterministically, and the answer prompt asks for the clinician's decision point. |
+| (e) shows the basis so it can be verified             | PR-1, PR-2, PR-3 | Strong design (claim-level citations, passages, PDF pages). Gaps: numbers can be checked against text the clinician does not see, and exact quote cards are hidden below high trust.                   |
+
+Limb (d) and the limb (e) gaps sit in protected answer code: any fix needs the owner's named yes and a before-and-after canary.
+
 ### Condition-by-condition
 
 | Condition                                                             | Current fit                                                                                                                                                                                   | Risk to the fit                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
@@ -278,6 +304,7 @@ If the product intends to rely on the CDSS exemption, these become **requirement
 - **PR-3 — Accurate provenance & authority.** No uncited source shown as "best/strong"; no false/self-declared authority; unvalidated sources labelled as such and not rendered as high-confidence (close H4c/H4d, H2a). Independent verification presupposes the HCP is pointed at the _right_ document.
 - **PR-4 — HCP-only, not patient-facing.** Enforce authentication/authorisation and keep any anonymous/public surface out of scope of clinical recommendation, or re-classify (condition 1).
   - _Status 2026-10-19:_ not enforced for Answer. Asked whether Answer should require sign-in (repository audit F-03), the owner said no for now, so signed-out visitors keep Answer. See [the decision](decisions/2026-10-19-answer-stays-open-to-signed-out-visitors.md).
+  - _Status 2026-10-20:_ the owner reversed that because of the amended exemption in force from 1 November 2026. Answer, the medication patient details panel, therapy ranking, questionnaire scoring and original documents are to require sign-in. Still to be built; until it lands, PR-4 remains unmet. See [the decision](decisions/2026-10-20-clinical-decision-tools-need-sign-in.md).
 - **PR-5 — Hold the device-data boundary.** No analysis of medical-device signals/images; document OCR only (condition 2).
 - **PR-6 — Governance of record.** Named clinical owner, source-approval/review cadence, incident review, and TGA SaMD screening as already required by [`docs/clinical-governance.md`](clinical-governance.md).
 
