@@ -335,7 +335,21 @@ describe("container delivery contract", () => {
     const smoke = read("scripts/app-container-smoke.mjs");
     const workflow = read(".github/workflows/docker-image.yml");
     expect(smoke).toContain("RAG_QUERY_HASH_SECRET=smoke-test-hash-secret");
-    expect(workflow).toContain("RAG_QUERY_HASH_SECRET=smoke-test-hash-secret");
+    expect(workflow).toContain("run: node scripts/app-container-smoke.mjs");
+  });
+
+  it("requires a real read-only app startup rather than a fetch-only replacement command", () => {
+    const smoke = read("scripts/app-container-smoke.mjs");
+    const workflow = read(".github/workflows/docker-image.yml");
+    const step = workflow.match(/- name: Run app container smoke[\s\S]*?(?=\n      - name:)/)?.[0];
+    expect(step).toContain("run: node scripts/app-container-smoke.mjs");
+    expect(step).not.toMatch(/continue-on-error|\|\| true/);
+    expect(workflow).not.toContain("Read-only runtime check (advisory)");
+    for (const flag of ["--read-only", "--network=none", "--cap-drop=ALL", "no-new-privileges:true"]) {
+      expect(smoke).toContain(JSON.stringify(flag));
+    }
+    expect(smoke).toContain('"-d"');
+    expect(smoke).toContain("const health = await waitForHealth()");
   });
 
   it("accepts Next 16 next-server PID 1 in app container smoke", () => {

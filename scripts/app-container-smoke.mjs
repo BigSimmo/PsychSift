@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * app-container-smoke — run the built app image provider-free and verify:
+ * app-container-smoke — run the built app image read-only/provider-free and verify:
  *   - /api/health returns HTTP 200 with status: ok, openaiConfig: skipped,
  *     supabaseConfig: ok
  *   - PID 1 is the Next production server (`next start` argv, or Next 16's
@@ -59,6 +59,7 @@ async function main() {
     "--name",
     CONTAINER_NAME,
     "--network=none",
+    "--read-only",
     "--cap-drop=ALL",
     "--security-opt",
     "no-new-privileges:true",
