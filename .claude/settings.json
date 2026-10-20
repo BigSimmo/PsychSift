@@ -497,17 +497,6 @@
         ]
       }
     ],
-    "PreCompact": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/precompact-issues-capture.sh\"",
-            "timeout": 15
-          }
-        ]
-      }
-    ],
     "PostToolUse": [
       {
         "matcher": "Bash|PowerShell|.*[Cc]reate_?[Pp]ull_?[Rr]equest.*",
