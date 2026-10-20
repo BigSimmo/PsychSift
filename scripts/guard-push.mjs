@@ -285,10 +285,9 @@ export function autoMergeVerdict(branch, prPayload, isForcePush = false, carries
   if (prPayload.autoMergeRequest) {
     // Merging to `main` applies migrations to the live clinical database automatically,
     // within seconds, with no deploy step in between (AGENTS.md, "Supabase project safety").
-    // Migration PRs may auto-merge (owner decision 2026-10-18), but only on a head whose
-    // migrations were already there when auto-merge was armed: adding a migration to an
-    // armed PR would schedule a schema change nobody armed for. Push migrations first,
-    // then arm; to add one later, the user disarms first.
+    // Migration PRs merge by hand and PR policy fails one while armed (owner decision
+    // 2026-10-20). Adding a migration to an armed PR would still schedule a schema change
+    // nobody armed for, so the push stays blocked; the user disarms first.
     if (carriesMigration) {
       return { block: true, warn: false, reason: "auto-merge-armed-migration", number: prPayload.number };
     }

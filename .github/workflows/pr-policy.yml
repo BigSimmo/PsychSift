@@ -3,7 +3,9 @@ name: PR Policy
 on:
   pull_request_target:
     branches: [main, "release/**"]
-    types: [opened, edited, synchronize, reopened, ready_for_review]
+    # auto_merge_* re-run the check when auto-merge is armed or disarmed: a migration PR fails
+    # while armed (audit CC-01, owner decision 2026-10-20).
+    types: [opened, edited, synchronize, reopened, ready_for_review, auto_merge_enabled, auto_merge_disabled]
   merge_group:
 
 # Runs for one PR queue instead of cancelling each other, so a newer synchronize
@@ -260,7 +262,8 @@ jobs:
 
             // Bot-authored commits: read each bot commit's own files so the policy can block a bot
             // change to Supabase, backend infra SQL or clinical paths. Unreadable data fails closed.
-            const { isBotAuthor } = await import(moduleUrl);
+            // AI-agent commits (author, committer or Co-Authored-By) are read too, for a warning.
+            const { isBotAuthor, botCoAuthored, aiAgentIdentity } = await import(moduleUrl);
             let commits;
             try {
               const prCommits = await github.paginate(github.rest.pulls.listCommits, {
@@ -277,8 +280,15 @@ jobs:
               }
               commits = [];
               for (const item of prCommits) {
-                const author = { login: item.author?.login ?? "", email: item.commit?.author?.email ?? "" };
-                if (!isBotAuthor(author)) continue;
+                const author = {
+                  login: item.author?.login ?? "",
+                  email: item.commit?.author?.email ?? "",
+                  name: item.commit?.author?.name ?? "",
+                };
+                const committer = { email: item.commit?.committer?.email ?? "", name: item.commit?.committer?.name ?? "" };
+                const message = item.commit?.message ?? "";
+                const parents = item.parents?.length ?? 1;
+                if (!isBotAuthor(author) && !botCoAuthored(message) && !aiAgentIdentity({ author, committer, message })) continue;
                 let files;
                 try {
                   // getCommit returns at most 300 files per page; paginate (GitHub caps at 3000)
@@ -296,7 +306,7 @@ jobs:
                 } catch (error) {
                   core.warning(`Unable to read files of bot commit ${item.sha}: ${error instanceof Error ? error.message : String(error)}.`);
                 }
-                commits.push({ sha: item.sha, author, files });
+                commits.push({ sha: item.sha, author, committer, message, parents, files });
               }
             } catch (error) {
               core.setFailed(
@@ -320,6 +330,8 @@ jobs:
               addedMigrationContents,
               changedWorkflowContents,
               enforceMigrationHistory: true,
+              author: latestPr.user?.login ?? "",
+              autoMergeArmed: Boolean(latestPr.auto_merge),
             });
 
             const warnings = result.warnings || [];

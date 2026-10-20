@@ -215,6 +215,9 @@ const deployDeferralPatterns = [
   // Outright denial.
   /\b(?:do not|don'?t|must not|will not|won'?t|not for|never)\s+(?:be\s+)?deploy/i,
   /\bnot yet\s+(?:applied|deployed|live|in production)\b/i,
+  // The same denial with "yet" last, and a go-live put off to a later window (audit CC-08, 2026-10-20).
+  /\bnot\s+(?:applied|deployed|live|in production)\s+yet\b/i,
+  /\b(?:go(?:es)?|going)\s+live\b[^\n]{0,40}?\b(?:next|later)\b/i,
   new RegExp(String.raw`\bdefer(?:red|ring|s)?\b[^\n]{0,32}?\b${DEPLOY_WORD}`, "i"),
 ];
 
@@ -1098,11 +1101,106 @@ export function isBotAuthor(author) {
 
 const botSensitivePathPatterns = [/^supabase\//, /^backend\/(?:.+\/)?infra\/[^/]+\.sql$/i];
 
-export function isBotSensitivePath(filePath) {
+// Files that decide whether the required checks pass (audit CC-04, 2026-10-20). `ci.yml` and
+// `secret-scan.yml` run on `pull_request`, so a PR runs its own copy; `ci-change-scope.mjs`
+// decides which CI jobs run at all. Dependabot's action-pin bumps are the one routine editor.
+const requiredCheckProducerPatterns = [
+  /^\.github\/workflows\/(?:ci|secret-scan)\.ya?ml$/i,
+  /^\.github\/actions\//i,
+  /^scripts\/ci-change-scope\.mjs$/,
+];
+const workflowSurfacePatterns = [/^\.github\/(?:workflows|actions)\//i, ...requiredCheckProducerPatterns];
+
+export function isRequiredCheckProducer(filePath) {
+  const file = normalizePath(filePath);
+  return Boolean(file) && requiredCheckProducerPatterns.some((pattern) => pattern.test(file));
+}
+
+export function isDependabot(author) {
+  const login = String(author?.login ?? "")
+    .trim()
+    .toLowerCase();
+  const email = String(author?.email ?? "")
+    .trim()
+    .toLowerCase();
+  return login === "dependabot[bot]" || /^(?:\d+\+)?dependabot\[bot\]@users\.noreply\.github\.com$/.test(email);
+}
+
+// `workflows: true` adds CI workflows, composite actions and the change-scope script, which a bot
+// other than Dependabot has no business editing (audit CC-02, 2026-10-20).
+export function isBotSensitivePath(filePath, { workflows = false } = {}) {
   const file = normalizePath(filePath);
   if (!file) return false;
   if (botSensitivePathPatterns.some((pattern) => pattern.test(file))) return true;
+  if (workflows && workflowSurfacePatterns.some((pattern) => pattern.test(file))) return true;
   return classifyPullRequestFiles([file]).clinicalRisk;
+}
+
+// AI coding agents (audit CC-02, 2026-10-20). Claude, Codex, Cursor and Grok commit under the
+// owner's account or their own addresses, never as `[bot]`, so isBotAuthor misses them. They
+// write most database changes on the owner's instruction, so their sensitive changes are
+// WARNINGS, not blocks: the warning names the agent, so a reviewer knows no person wrote it.
+// The author, the committer and every Co-Authored-By trailer are read.
+const aiAgentEmailPatterns = [/@anthropic\.com$/, /@openai\.com$/, /@cursor\.(?:com|sh)$/, /@x\.ai$/];
+const aiAgentNamePattern = /\b(?:claude|codex|cursor ?agent|grok)\b/i;
+const aiAgentBranchPattern = /^(?:claude|codex|cursor|grok)[/-]/i;
+
+function coAuthors(message) {
+  return [...String(message ?? "").matchAll(/^co-authored-by:\s*([^<\n]*)<([^>\n]*)>/gim)].map(([, name, email]) => ({
+    name: name.trim(),
+    email: email.trim().toLowerCase(),
+  }));
+}
+
+export function aiAgentIdentity(commit) {
+  for (const person of [commit?.author, commit?.committer, ...coAuthors(commit?.message)]) {
+    if (!person) continue;
+    const email = String(person.email ?? "")
+      .trim()
+      .toLowerCase();
+    const name = String(person.name ?? "").trim();
+    if (aiAgentEmailPatterns.some((pattern) => pattern.test(email))) return name ? `${name} <${email}>` : email;
+    if (aiAgentNamePattern.test(name)) return name;
+  }
+  return null;
+}
+
+/** True when a commit names a bot as a Co-Authored-By trailer, so the bot's edit is judged like its own commit. */
+export function botCoAuthored(message) {
+  return coAuthors(message).some((person) => isBotAuthor({ login: person.name, email: person.email }));
+}
+
+// commits: as botSensitiveCommitViolations. One warning per AI-agent commit touching a
+// sensitive path. Merge commits are skipped: their file list is everything merged in.
+export function aiAgentSensitiveCommitWarnings(commits, { headRef } = {}) {
+  const warnings = [];
+  for (const commit of commits ?? []) {
+    if (isBotAuthor(commit?.author) || botCoAuthored(commit?.message)) continue;
+    if (Number(commit?.parents ?? 1) > 1) continue;
+    const agent =
+      aiAgentIdentity(commit) ?? (aiAgentBranchPattern.test(String(headRef ?? "")) ? `branch ${headRef}` : null);
+    if (!agent || !Array.isArray(commit?.files)) continue;
+    const sensitive = commit.files.filter((file) => isBotSensitivePath(file, { workflows: true }));
+    if (sensitive.length === 0) continue;
+    const sha = String(commit.sha ?? "").slice(0, 12) || "unknown";
+    warnings.push(
+      `AI-agent commit ${sha} (${agent}) touches protected paths (${sensitive.slice(0, 5).join(", ")}${sensitive.length > 5 ? ", …" : ""}). No person wrote this change: it needs the owner's own review before merge.`,
+    );
+  }
+  return warnings;
+}
+
+/**
+ * The one override for a change to a required-check producer: a body line
+ * `Required check change approved: <reason>` naming why, ideally linking the owner's words.
+ */
+export function requiredCheckChangeApproval(body) {
+  const withoutComments = String(body ?? "").replace(/<!--[^]*?-->/g, "");
+  const match = withoutComments.match(/^[\s>*-]*\*{0,2}Required check change approved\*{0,2}:\s*(\S[^\n]*)$/im);
+  if (!match) return { declared: false, satisfied: false, reason: "" };
+  const reason = match[1].trim();
+  const placeholder = /^<[^>]*>$|^(?:n\/?a|none|todo|tbd|-)$/i.test(reason);
+  return { declared: true, satisfied: !placeholder && reason.length >= 12, reason };
 }
 
 // commits: [{ sha, author: { login, email }, files: [path, ...] }]. Returns one message per
@@ -1110,14 +1208,16 @@ export function isBotSensitivePath(filePath) {
 export function botSensitiveCommitViolations(commits) {
   const violations = [];
   for (const commit of commits ?? []) {
-    if (!isBotAuthor(commit?.author)) continue;
-    const who = commit.author.login || commit.author.email || "unknown bot";
+    if (!isBotAuthor(commit?.author) && !botCoAuthored(commit?.message)) continue;
+    const who = commit.author?.login || commit.author?.email || "a bot co-author";
     const sha = String(commit.sha ?? "").slice(0, 12) || "unknown";
     if (!Array.isArray(commit.files)) {
       violations.push(`Bot-authored commit ${sha} (${who}) could not have its files verified; failing closed.`);
       continue;
     }
-    const sensitive = commit.files.filter(isBotSensitivePath);
+    const sensitive = commit.files.filter((file) =>
+      isBotSensitivePath(file, { workflows: !isDependabot(commit.author) }),
+    );
     if (sensitive.length > 0) {
       violations.push(
         `Bot-authored commit ${sha} (${who}) touches protected paths (${sensitive.slice(0, 5).join(", ")}${sensitive.length > 5 ? ", …" : ""}). Supabase, backend infra SQL and clinical paths need a human-authored commit and owner review; re-author the change by hand.`,
@@ -1143,6 +1243,10 @@ export function evaluatePullRequestPolicy({
   // true for the PR policy workflow (and other enforcing callers): fail closed when a
   // migration-touching PR cannot supply the inputs needed to verify applied-migration history.
   enforceMigrationHistory = false,
+  // The PR author's login; Dependabot's action-pin bumps may edit required-check producers.
+  author = undefined,
+  // true when auto-merge is armed on the PR; undefined when the caller cannot tell.
+  autoMergeArmed = undefined,
   now = new Date(),
 }) {
   // Hard-blocking conditions (`errors`): a lingering `PR_POLICY_BODY.md` transport file,
@@ -1176,7 +1280,33 @@ export function evaluatePullRequestPolicy({
   }
 
   // Blocking gate: bot-authored commits must not touch Supabase, backend infra SQL or clinical paths.
-  if (commits !== undefined) errors.push(...botSensitiveCommitViolations(commits));
+  if (commits !== undefined) {
+    errors.push(...botSensitiveCommitViolations(commits));
+    warnings.push(...aiAgentSensitiveCommitWarnings(commits, { headRef }));
+  }
+
+  // Blocking gate (audit CC-01, owner decision 2026-10-20): a migration applies to the live
+  // clinical database within seconds of merge, so it merges only when a person presses Merge.
+  // Auto-merge armed on it fails here until it is turned off, then the check re-runs.
+  if (classification.migration && autoMergeArmed === true) {
+    errors.push(
+      "Auto-merge is armed on a PR that changes supabase/migrations. Merging applies it to the live clinical database within seconds, so it merges only by hand after the owner's own yes (docs/decisions/2026-10-20-database-prs-merge-by-hand.md). Turn auto-merge off; this check re-runs and passes, then merge by hand.",
+    );
+  }
+
+  // Blocking gate (audit CC-04, 2026-10-20): these files decide whether the required checks pass,
+  // and a PR runs its own copy of them. A change to one needs a declared reason in the body.
+  const checkProducers = (files ?? []).filter(isRequiredCheckProducer);
+  if (checkProducers.length > 0 && !isDependabot({ login: author })) {
+    const approval = requiredCheckChangeApproval(body);
+    if (!approval.satisfied) {
+      errors.push(
+        `This PR changes files that decide whether the required checks pass (${checkProducers.slice(0, 5).join(", ")}), and it runs its own copy of them. Add a body line \`Required check change approved: <reason>\` (at least 12 characters, citing the owner's yes), or drop those files from the PR.`,
+      );
+    } else {
+      warnings.push(`Required check change approved (${approval.reason}): ${checkProducers.join(", ")}.`);
+    }
+  }
 
   const summary = section(body, "Summary");
   // The summary must be its own prose: content nested under a sub-heading
@@ -1628,7 +1758,7 @@ function selfTest() {
     body: completeBody,
     headRef: "codex/clinical-ci-policy",
     files: [
-      ".github/workflows/ci.yml",
+      ".github/workflows/live-drift.yml",
       "src/lib/answer-synthesis.ts",
       "src/components/search.tsx",
       "Dockerfile.worker",
@@ -1641,7 +1771,7 @@ function selfTest() {
       title: "ci: update deployment policy",
       body: completeBody,
       headRef: "codex/ci-policy",
-      files: [".github/workflows/ci.yml"],
+      files: [".github/workflows/live-drift.yml"],
     }).warnings.join(" "),
     /Operational-risk changes are bundled/,
   );
@@ -2458,7 +2588,7 @@ function requiredCheckForgerySelfTest(completeBody) {
 
   const workflowPr = {
     title: "ci: add a helper job to the pipeline",
-    body: completeBody,
+    body: `${completeBody}\nRequired check change approved: owner yes in the project thread, 2026-10-20\n`,
     headRef: "claude/ci-helper",
     files: [".github/workflows/ci.yml"],
     fileStatuses: [{ filename: ".github/workflows/ci.yml", status: "modified", previous_filename: null }],
@@ -2478,6 +2608,127 @@ function requiredCheckForgerySelfTest(completeBody) {
     }).ok,
     true,
     "a removed workflow cannot run and needs no content",
+  );
+
+  // Required-check producers (audit CC-04): a PR runs its own copy, so a change needs a declared reason.
+  const producerPr = { ...workflowPr, body: completeBody };
+  assert.equal(evaluatePullRequestPolicy(producerPr).ok, false, "a check-producer edit without a reason fails");
+  assert.match(evaluatePullRequestPolicy(producerPr).errors.join(" "), /Required check change approved/);
+  for (const file of [
+    ".github/workflows/secret-scan.yml",
+    ".github/actions/setup-node-cached/action.yml",
+    "scripts/ci-change-scope.mjs",
+  ])
+    assert.equal(evaluatePullRequestPolicy({ ...producerPr, files: [file] }).ok, false, `${file} is a check producer`);
+  assert.equal(evaluatePullRequestPolicy({ ...producerPr, files: [".github/workflows/live-drift.yml"] }).ok, true);
+  assert.equal(
+    evaluatePullRequestPolicy({ ...producerPr, author: "dependabot[bot]" }).ok,
+    true,
+    "Dependabot pin bumps pass",
+  );
+  assert.equal(
+    evaluatePullRequestPolicy({ ...producerPr, body: `${completeBody}\nRequired check change approved: tbd\n` }).ok,
+    false,
+    "a placeholder reason is not a reason",
+  );
+
+  // Auto-merge on a migration PR (audit CC-01, owner decision 2026-10-20): merge by hand only.
+  const armedMigration = {
+    title: "feat(db): add the reminders table for on-call notes",
+    body: completeBody,
+    headRef: "claude/reminders-table",
+    files: ["supabase/migrations/20261020000000_reminders.sql"],
+  };
+  assert.match(
+    evaluatePullRequestPolicy({ ...armedMigration, autoMergeArmed: true }).errors.join(" "),
+    /Auto-merge is armed/,
+  );
+  assert.doesNotMatch(
+    evaluatePullRequestPolicy({ ...armedMigration, autoMergeArmed: false }).errors.join(" "),
+    /Auto-merge is armed/,
+  );
+  assert.doesNotMatch(
+    evaluatePullRequestPolicy({ ...armedMigration, files: ["src/lib/format.ts"], autoMergeArmed: true }).errors.join(
+      " ",
+    ),
+    /Auto-merge is armed/,
+    "ordinary PRs may still auto-merge",
+  );
+
+  // AI agents and bot co-authors (audit CC-02).
+  const claudeCommit = {
+    sha: "a".repeat(40),
+    author: { login: "BigSimmo", email: "noreply@anthropic.com", name: "Claude" },
+    files: ["supabase/migrations/20261020000000_reminders.sql"],
+  };
+  assert.equal(aiAgentIdentity(claudeCommit), "Claude <noreply@anthropic.com>");
+  assert.equal(
+    aiAgentIdentity({
+      author: { login: "BigSimmo", email: "1+BigSimmo@users.noreply.github.com", name: "BigSimmo" },
+      message: "fix\n\nCo-Authored-By: Claude Opus (1M context) <noreply@anthropic.com>",
+    }),
+    "Claude Opus (1M context) <noreply@anthropic.com>",
+  );
+  assert.equal(
+    aiAgentIdentity({ author: { email: "cursoragent@cursor.com", name: "Cursor Agent" } }),
+    "Cursor Agent <cursoragent@cursor.com>",
+  );
+  assert.equal(aiAgentIdentity({ author: { email: "1+BigSimmo@users.noreply.github.com", name: "BigSimmo" } }), null);
+  const aiPolicy = evaluatePullRequestPolicy({ ...armedMigration, commits: [claudeCommit] });
+  assert.equal(
+    aiPolicy.errors.some((error) => /AI-agent/.test(error)),
+    false,
+    "AI-agent commits warn, never block",
+  );
+  assert.match(aiPolicy.warnings.join(" "), /AI-agent commit aaaaaaaaaaaa \(Claude <noreply@anthropic.com>\)/);
+  assert.match(
+    aiAgentSensitiveCommitWarnings(
+      [{ sha: "b".repeat(40), author: { email: "1+BigSimmo@users.noreply.github.com" }, files: ["supabase/x.sql"] }],
+      { headRef: "grok/fix" },
+    ).join(" "),
+    /branch grok\/fix/,
+  );
+  assert.deepEqual(aiAgentSensitiveCommitWarnings([{ ...claudeCommit, parents: 2 }]), [], "merge commits are skipped");
+  assert.equal(
+    botCoAuthored("x\n\nCo-authored-by: qodo-merge[bot] <123+qodo-merge[bot]@users.noreply.github.com>"),
+    true,
+  );
+  assert.equal(
+    botSensitiveCommitViolations([
+      {
+        sha: "c".repeat(40),
+        author: { login: "BigSimmo", email: "b@example.com" },
+        message: "x\n\nCo-authored-by: qodo-merge[bot] <1+qodo-merge[bot]@users.noreply.github.com>",
+        files: ["supabase/x.sql"],
+      },
+    ]).length,
+    1,
+    "a bot co-author is judged like a bot author",
+  );
+  assert.equal(
+    botSensitiveCommitViolations([
+      { sha: "d".repeat(40), author: { login: "gitar-bot[bot]" }, files: [".github/workflows/ci.yml"] },
+    ]).length,
+    1,
+    "bots other than Dependabot may not edit workflows",
+  );
+  assert.equal(
+    botSensitiveCommitViolations([
+      { sha: "e".repeat(40), author: { login: "dependabot[bot]" }, files: [".github/workflows/ci.yml"] },
+    ]).length,
+    0,
+    "Dependabot's workflow pin bumps pass",
+  );
+
+  // Deferred-deploy wording (audit CC-08).
+  for (const text of [
+    "The migration is not applied yet.",
+    "This schema change goes live in the next maintenance window.",
+  ])
+    assert.equal(deployDeferralClaim("", text).claimed, true, text);
+  assert.equal(
+    deployDeferralClaim("", "This migration goes live within seconds of merge inside the approved window.").claimed,
+    false,
   );
 
   // Merge queue: a PR checked against an older main is re-based onto whatever merged ahead of
