@@ -76,11 +76,22 @@ describe("container delivery contract", () => {
     expect(dockerfile).toContain('python -m unittest discover -s worker/python -p "test_*.py"');
   });
 
-  it("removes worker package managers and mount-helper privilege bits without changing its runtime base", () => {
+  it("keeps the worker's locked Python minor and non-root contract on its pinned runtime", () => {
     const dockerfile = read("Dockerfile.worker");
     const contract = read("scripts/check-image-content-contract.mjs");
-    expect(dockerfile).toContain("FROM node-base AS runner");
-    expect(dockerfile).toContain("chmod u-s,g-s /usr/bin/mount /usr/bin/umount");
+    expect(dockerfile).toMatch(/^FROM python:3\.11-slim-trixie@sha256:[a-f0-9]{64} AS python-runtime-base$/m);
+    expect(dockerfile).toContain("FROM python-runtime-base AS runner");
+    expect(dockerfile).toContain("COPY --from=node-base /usr/local/bin/node /usr/local/bin/node");
+    const runner = dockerfile.split("FROM python-runtime-base AS runner")[1];
+    expect(runner).not.toMatch(/apt-get install[^\n]*\bpython3(?:-venv)?\b/);
+    expect(runner).toContain("sys.version_info[:2] == (3, 11)");
+    expect(runner).toContain("groupadd --gid 1000 node");
+    expect(runner).toContain("useradd --uid 1000 --gid node");
+    expect(runner).toContain("USER node");
+    expect(runner).toContain("python3 -m pip uninstall -y setuptools");
+    expect(runner).toContain("ge 5.40.1-6+deb13u1");
+    expect(runner).toContain("for helper in /usr/bin/mount /usr/bin/umount");
+    expect(runner).toContain('if [ -e "$helper" ]; then chmod u-s,g-s "$helper"; fi');
     expect(dockerfile).toContain("/usr/local/lib/node_modules/npm /opt/yarn-*");
     for (const executable of ["npm", "npx", "yarn", "yarnpkg"]) {
       expect(dockerfile).toContain(`/usr/local/bin/${executable}`);
