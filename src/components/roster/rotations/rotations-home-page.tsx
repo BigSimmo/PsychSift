@@ -60,7 +60,7 @@ export function RotationsHomePage({ now: pinnedNow }: { readonly now?: Date } = 
   });
 
   return (
-    <WorkBody testId="rotations-home">
+    <WorkBody testId="rotations-home" landmark>
       <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
         Rotations
       </PageTitleUnderBand>

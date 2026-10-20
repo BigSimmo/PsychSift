@@ -7,6 +7,7 @@ import type { AnswerProgressUpdate, TimedAnswerProgressUpdate } from "@/componen
 import { requestAnswerStream } from "@/components/clinical-dashboard/answer-request";
 import type { AnswerTurn } from "@/components/clinical-dashboard/answer-thread-turn";
 import {
+  answerTimedOutError,
   compactScopeFilters,
   isAbortError,
   releaseOwnedAbortController,
@@ -44,6 +45,7 @@ import type { answerLifecycleReducer } from "@/lib/answer-lifecycle";
 import type { VerifiedEvidencePreviewUnit } from "@/lib/answer-stream-contract";
 import { createAnswerThreadSnapshotMetadata, maxStoredAnswerTurns } from "@/lib/answer-thread-storage";
 import { appModeHomeHref, appModeQueryMode, appModeSearchConfig, type AppModeId } from "@/lib/app-modes";
+import { identifierShapeWarning } from "@/lib/clinical-ask/context";
 import { incrementalEvidencePreviewRenderingEnabled } from "@/lib/client-env";
 import { isDeployedClinicalKb } from "@/lib/deployed-app";
 import { documentsSearchHref } from "@/lib/document-flow-routes";
@@ -72,6 +74,26 @@ function loadClinicalQuestionPatientCheck() {
 // Ask stops with this and the next Ask tries the download again.
 const PATIENT_CHECK_UNAVAILABLE =
   "Could not check your question for patient details. Check your connection and try again.";
+/** Longest Retry-After the client waits out before reporting the service's busy message instead. */
+const maxClientRetryWaitMs = 10_000;
+
+const SEARCH_IDENTIFIER_HELD_BACK =
+  "This search looks like it holds a record number, date of birth, phone number or email. Remove it and search again.";
+
+/** A refused deep link (?q=…&run=1) must not leave the patient detail sitting in the address bar,
+ *  so the refused question is dropped when the address is what holds it. An address holding a
+ *  different, earlier question belongs to the result still on screen. */
+function clearRefusedQueryFromAddress(refused: string) {
+  const url = new URL(window.location.href);
+  // The dashboard runs a deep link from `q`, or from its older alias `query`.
+  const held = (url.searchParams.get("q") ?? url.searchParams.get("query"))?.trim();
+  if (held !== refused) return;
+  url.searchParams.delete("q");
+  url.searchParams.delete("query");
+  url.searchParams.delete("run");
+  const rest = url.searchParams.toString();
+  window.history.replaceState(window.history.state, "", `${url.pathname}${rest ? `?${rest}` : ""}${url.hash}`);
+}
 
 type DashboardActionNotice = { tone: "success" | "warning"; message: string };
 
@@ -353,6 +375,9 @@ export function useDashboardSearchExecution(deps: DashboardSearchExecutionDeps) 
         const message = progressForRetry(attempt + 1);
         onProgress(message);
         const requestedDelay = (error as SearchError).retryAfterMs ?? 0;
+        // A long Retry-After would outlast the stall watchdog and end as a vague timeout.
+        // Show the service's own "too many requests" message instead.
+        if (requestedDelay > maxClientRetryWaitMs) break;
         const defaultDelay = searchRetryDelaysMs[attempt] ?? searchRetryDelaysMs[searchRetryDelaysMs.length - 1];
         await sleep(Math.max(defaultDelay, requestedDelay), signal);
       }
@@ -571,10 +596,10 @@ export function useDashboardSearchExecution(deps: DashboardSearchExecutionDeps) 
       if (!requestIsCurrent()) return;
       setAnswerEvidencePreview(incrementalEvidencePreviewRenderingEnabled() ? preview : null);
     };
-    const onRetryProgress = (message: string) => {
-      if (isAnswerRequest) onAnswerProgress({ stage: "retrying", message });
-      else onProgress(message);
-    };
+    // A client network retry is not the server's "retrying" (revising the draft) stage, which
+    // would show the wrong step and mark the answer as taking an unusual route. Keep the
+    // current stage and only change the line of text (design audit D-02).
+    const onRetryProgress = (message: string) => onProgress(message);
     // A newer search already invalidated any prior request via requestId; abort
     // its network work too so the server stops generating, then own the signal.
     const abortController = replaceOwnedAbortController(searchAbortRef);
@@ -703,7 +728,9 @@ export function useDashboardSearchExecution(deps: DashboardSearchExecutionDeps) 
           break;
         } catch (requestError) {
           lastError = requestError as SearchError;
-          if (queryPlan.length > 1 && !entry.isKeyword) {
+          // A timeout or an expired sign-in aborted the whole search; the keyword retry would
+          // only fail as an abort and hide the reason.
+          if (queryPlan.length > 1 && !entry.isKeyword && !abortController.signal.aborted) {
             continue;
           }
           throw requestError;
@@ -772,10 +799,22 @@ export function useDashboardSearchExecution(deps: DashboardSearchExecutionDeps) 
         }
       }
     } catch (requestError) {
-      if (requestIsCurrent() && !isAbortError(requestError)) {
+      // Our own stall watchdog and an expired sign-in both abort this request (and the expiry
+      // also moves the auth epoch), so requestIsCurrent() is false for them. They still own
+      // the screen while no newer search, Stop or reset has taken over: say what happened
+      // instead of silently clearing the spinner (design audit D-01).
+      const timedOut = answerTimedOutRef.current;
+      const sessionExpired = (requestError as SearchError | null)?.status === 401;
+      const stillLatest = requestId === searchRequestSeqRef.current;
+      if ((stillLatest && (timedOut || sessionExpired)) || (requestIsCurrent() && !isAbortError(requestError))) {
+        const surfacedError = timedOut
+          ? isAnswerRequest
+            ? answerTimedOutError()
+            : makeSearchError(searchTimedOutMessage("Search"), 408, false)
+          : requestError;
         if (isAnswerRequest) dispatchAnswerLifecycle({ type: "fail" });
-        setError(requestError instanceof Error ? requestError.message : "Search failed");
-        setErrorKind(classifyAnswerError(requestError));
+        setError(surfacedError instanceof Error ? surfacedError.message : "Search failed");
+        setErrorKind(classifyAnswerError(surfacedError));
         setLastFailedQuery(trimmedQuery);
       }
     } finally {
@@ -783,7 +822,9 @@ export function useDashboardSearchExecution(deps: DashboardSearchExecutionDeps) 
       authRequest.release();
       answerTimedOutRef.current = false;
       releaseOwnedAbortController(searchAbortRef, abortController);
-      if (requestIsCurrent()) {
+      // Stop, a newer search and the sign-in reset all move the sequence, so this only
+      // clears the loading state of the search that still owns the screen.
+      if (requestId === searchRequestSeqRef.current) {
         setLoading(false);
         setAnswerProgress(null);
       }
@@ -822,17 +863,35 @@ export function useDashboardSearchExecution(deps: DashboardSearchExecutionDeps) 
     // detail is not sent, saved as a recent question or written into the address bar (audit S2,
     // 2026-10-13). The composer already disables Ask for it; this covers every other way in
     // (a link with ?run=1, a recent question). The answer API refuses it again.
-    if (searchMode === "answer" && trimmedQuery) {
+    // Every other mode gets the same check before its text reaches history, recent searches,
+    // a page address or a request line (design audit D-03, 2026-10-19).
+    if (trimmedQuery) {
+      const askModeSearch = appModeSearchConfig(searchMode);
+      const sendsQueryToProvider =
+        askModeSearch.resultKind === "answer" ||
+        askModeSearch.kind === "documents" ||
+        askModeSearch.kind === "differentials";
       const submittedSeq = searchRequestSeqRef.current;
       const patientCheck = await loadClinicalQuestionPatientCheck().catch(() => null);
       if (submittedSeq !== searchRequestSeqRef.current) return;
-      if (!patientCheck) {
-        setActionNotice({ tone: "warning", message: PATIENT_CHECK_UNAVAILABLE });
-        return;
+      let refusal: string | null = null;
+      if (patientCheck) {
+        const patientDetail = patientCheck.clinicalQuestionPatientDetail(trimmedQuery);
+        if (patientDetail) {
+          refusal = sendsQueryToProvider
+            ? patientCheck.clinicalQuestionPatientDetailMessage(patientDetail)
+            : patientCheck.searchPatientDetailMessage(patientDetail);
+        }
+      } else if (sendsQueryToProvider) {
+        refusal = PATIENT_CHECK_UNAVAILABLE;
+      } else if (identifierShapeWarning(trimmedQuery)) {
+        // Searches that stay on our servers still go ahead when the full check cannot load,
+        // but never with a record number, date of birth, phone number or email in them.
+        refusal = SEARCH_IDENTIFIER_HELD_BACK;
       }
-      const patientDetail = patientCheck.clinicalQuestionPatientDetail(trimmedQuery);
-      if (patientDetail) {
-        setActionNotice({ tone: "warning", message: patientCheck.clinicalQuestionPatientDetailMessage(patientDetail) });
+      if (refusal) {
+        setActionNotice({ tone: "warning", message: refusal });
+        clearRefusedQueryFromAddress(trimmedQuery);
         return;
       }
     }

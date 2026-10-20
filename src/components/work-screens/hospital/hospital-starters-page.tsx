@@ -112,7 +112,11 @@ export function AdminHospitalStartersPage() {
       />
     );
 
-  return <WorkBody testId="admin-hospital-starters">{body}</WorkBody>;
+  return (
+    <WorkBody testId="admin-hospital-starters" landmark>
+      {body}
+    </WorkBody>
+  );
 }
 
 function NotForYou({ onExample }: { readonly onExample?: () => void }) {

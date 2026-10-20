@@ -1,4 +1,10 @@
+import type { Metadata } from "next";
 import { FormulationMapPage } from "@/components/formulation/formulation-map-page";
+
+export const metadata: Metadata = {
+  title: "Map | Formulation | PsychSift",
+  description: "See how formulation mechanisms connect.",
+};
 
 type MapRouteProps = {
   searchParams?: Promise<{ mechanism?: string | string[] }>;

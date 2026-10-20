@@ -3434,6 +3434,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-19-citations-stay-pdf-first.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/superpowers/rag-upgrade/cloud/plans/2026-08-20-rag-ingestion-reindex.md",
         "section": "superpowers",
         "catalogued": true
@@ -4064,6 +4069,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-19-offline-page-waits-for-slow-pages.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-09-03-safety-findings-below-the-prose.md",
         "section": "decisions",
         "catalogued": true
@@ -4651,6 +4661,11 @@
       {
         "path": "docs/agents/native-startup/search-chrome-behaviour.md",
         "section": "agents",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-19-say-when-an-ended-sign-in-cleared-the-device.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -28022,6 +28037,14 @@
         "scope": "Run PR sweep: CI fix + threads + drift",
         "outcome": "before: 5 unresolved threads (Devin create-from-output + 4 CodeRabbit), mergeable/BLOCKED, Actions major outage leaving CI pending; after: hardened jq-less input/output separation + session fail-open + prefix unlock + tests (9 passed) in fff524d73ebfafeef7bdc50752a6d14f253ebc2e, threads replied+resolved, branch current with main, CI re-triggered (Actions outage — not babysat)",
         "checks": "npx vitest run tests/pr-handoff-stop.test.ts (9 passed); bash -n hook OK; no provider-backed checks run"
+      },
+      {
+        "date": "2026-10-19",
+        "ref": "PR #3674 fix/audit-rag-complete-20261019",
+        "head": "fff9194c492004456abdb4e89aa7f7601c98b997",
+        "scope": "working-tree OCR fallback correction fe6a983590b5 / 9d61e5fcde85",
+        "outcome": "Independent source review clear; transient fallback corrected with 10s reserved within existing 60s page budget. Model integrity and global budget refusal preserved. Full corrected image acceptance pending.",
+        "checks": "All26 original tests unchanged;11new regressions. Original baseline RED reproduced. Owning103 local5.5:101pass2clinicaltimeouts;100nonclinical passed. Genuine signed-Debian Tesseract5.3/Leptonica1.82 probe: unchanged3clinical cases passed70.769s,0skips/errors/failures. No assertion/global-limit relaxation. Actual final-head fullworker CI still required."
       },
       {
         "date": "2026-07-26",

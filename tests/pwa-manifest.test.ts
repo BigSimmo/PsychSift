@@ -68,7 +68,8 @@ describe("PWA manifest and public bootstrap resources", () => {
     const onCallShortcut = appManifest.shortcuts?.find((shortcut) => shortcut.short_name === "On Call");
     expect(onCallShortcut?.url).toBe("/on-call?focus=1");
 
-    const cmeShortcut = appManifest.shortcuts?.find((shortcut) => shortcut.short_name === "CME");
+    // The app calls this area CPD everywhere; the shortcut says the same (design audit D-11).
+    const cmeShortcut = appManifest.shortcuts?.find((shortcut) => shortcut.short_name === "CPD");
     expect(cmeShortcut?.url).toBe("/cme?focus=1");
 
     // Long-press "Log CPD" opens straight into the activity form; nothing is

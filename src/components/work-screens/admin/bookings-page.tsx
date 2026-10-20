@@ -91,7 +91,7 @@ export function AdminBookingsPage() {
   const { page } = bookings;
 
   return (
-    <WorkBody testId="admin-bookings">
+    <WorkBody testId="admin-bookings" landmark>
       <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
         Bookings
       </PageTitleUnderBand>

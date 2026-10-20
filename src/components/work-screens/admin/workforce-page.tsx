@@ -68,7 +68,7 @@ export function AdminWorkforcePage() {
   usePaperworkHeading("Workforce", "The health service's view");
   const { active } = useExampleData("admin");
   return (
-    <WorkBody testId="admin-workforce">
+    <WorkBody testId="admin-workforce" landmark>
       <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
         Workforce
       </PageTitleUnderBand>

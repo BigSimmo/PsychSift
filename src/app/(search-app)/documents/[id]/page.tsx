@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { DocumentViewerLazy as DocumentViewer } from "@/components/document-viewer-lazy";
@@ -9,6 +10,11 @@ import {
 import type { DocumentDetailPayload } from "@/lib/document-detail-contract";
 import { PublicApiError } from "@/lib/http";
 import { RecentPageTitle } from "@/components/recent-pages/recent-page-title";
+
+export const metadata: Metadata = {
+  title: "Document | PsychSift",
+  description: "A source document in your PsychSift library.",
+};
 
 export default async function DocumentPage({
   params,
