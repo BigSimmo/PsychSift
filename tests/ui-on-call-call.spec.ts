@@ -50,7 +50,7 @@ async function open(page: Page, path: string, colorScheme: "light" | "dark") {
 
 for (const colorScheme of ["light", "dark"] as const) {
   test.describe(`On Call Call, Refer and Find (${colorScheme})`, () => {
-    test("People names the hospital, dials the pause route and keeps short codes desk-only", async ({ page }) => {
+    test("Call names the hospital, dials the pause route and keeps short codes desk-only", async ({ page }) => {
       await open(page, "/on-call/call", colorScheme);
       const main = page.getByTestId("on-call-call-main");
       await expect(main.getByTestId("on-call-hospital-line")).toContainText("Example Hospital");
@@ -74,7 +74,7 @@ for (const colorScheme of ["light", "dark"] as const) {
         /Didn't connect at \d{2}:\d{2}/,
       );
 
-      // Contacts: search, then the Hospital / Refer / Outside / Mine switch; no call log here any more.
+      // Call: search, then the Hospital / Refer / Outside / Mine switch; no call log here any more.
       await expect(main.getByRole("radio", { name: "Hospital" })).toHaveAttribute("aria-checked", "true");
       await expect(main).toContainText("Off: you're on your mobile, so full numbers are dialled");
       await expect(main.getByTestId("on-call-call-handover")).toHaveCount(0);
@@ -87,7 +87,7 @@ for (const colorScheme of ["light", "dark"] as const) {
       if (colorScheme === "dark") expect(await brightBlocksOver48(main)).toEqual([]);
     });
 
-    // Refer is a tab of Contacts (Work mode simplify plan, owner approval 12 Oct 2026); its old address lands there.
+    // Refer is a tab of Call (Work mode simplify plan, owner approval 12 Oct 2026); its old address lands there.
     test("Refer opens a referral's detail in a sheet", async ({ page }) => {
       await open(page, "/on-call/refer", colorScheme);
       await expect(page).toHaveURL(/\/on-call\/call\?show=refer$/);
