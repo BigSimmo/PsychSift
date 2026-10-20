@@ -4,6 +4,7 @@ import {
   getUncachedImageIds,
   populateBatchSignedUrlsInCache,
 } from "@/lib/batch-signed-urls";
+import { useClinicalToolAccess } from "@/components/mode-kit/use-clinical-tool-access";
 import { useAuthSession } from "@/lib/supabase/client";
 
 /**
@@ -19,10 +20,12 @@ export function useBatchSignedImageUrls(imageIds: string[], enabled = true) {
   const { authorizationHeader, session, markSessionExpired, registerAuthRequest, isAuthEpochCurrent } =
     useAuthSession();
   const authIdentity = session?.user?.id ?? null;
+  // The server refuses image links to signed-out readers, so do not ask.
+  const originalsLocked = useClinicalToolAccess() === "sign-in-required";
   const [version, setVersion] = useState(0);
 
   useEffect(() => {
-    if (!enabled || !Array.isArray(imageIds) || imageIds.length === 0) {
+    if (!enabled || originalsLocked || !Array.isArray(imageIds) || imageIds.length === 0) {
       return;
     }
 
@@ -64,6 +67,7 @@ export function useBatchSignedImageUrls(imageIds: string[], enabled = true) {
     };
   }, [
     enabled,
+    originalsLocked,
     imageIds,
     authorizationHeader,
     authIdentity,

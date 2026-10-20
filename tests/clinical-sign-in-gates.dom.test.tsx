@@ -10,6 +10,9 @@ vi.mock("@/lib/supabase/client", () => ({
   useAuthSession: () => ({ status: auth.status }),
   useOptionalAuthSession: () => ({ status: auth.status }),
 }));
+vi.mock("@/components/clinical-dashboard/signed-image", () => ({
+  SignedImage: () => <div data-testid="signed-image-stub" />,
+}));
 vi.mock("@/components/clinical-dashboard/account-setup-dialog", () => ({
   AccountSetupDialog: () => <div role="dialog" aria-label="Continue to your workspace" />,
 }));
@@ -18,6 +21,8 @@ import { PatientDetailsGate } from "@/components/clinical-dashboard/patient-deta
 import { PatientProfileProvider, usePatientProfile } from "@/components/clinical-dashboard/patient-profile-context";
 import { CalculatorItems } from "@/components/calculators/calculator-ui";
 import { calculators } from "@/components/calculators/calculator-fixtures";
+import { DocumentImage } from "@/components/document-viewer/source-panels";
+import type { ImageRow } from "@/components/document-viewer/types";
 import { clinicalToolAccessForStatus } from "@/components/mode-kit/use-clinical-tool-access";
 import { CLINICAL_SIGN_IN_COPY, CLINICAL_SIGN_IN_INVITE_NOTE } from "@/lib/front-door-content";
 import { resetPatientProfile, writePatientProfile, EMPTY_PATIENT_PROFILE } from "@/lib/patient-profile-storage";
@@ -114,5 +119,32 @@ describe("Questionnaire scoring", () => {
     render(<CalculatorItems calc={calc} answers={{}} onAnswersChange={vi.fn()} />);
     expect(screen.queryByText(CLINICAL_SIGN_IN_COPY.scoring.title)).toBeNull();
     expect(screen.queryByTestId("calculator-items-read-only")).toBeNull();
+  });
+});
+
+describe("Original figures and tables", () => {
+  // Synthetic figure; only the fields the card reads.
+  const figure = {
+    id: "img-synthetic",
+    page_number: 2,
+    caption: "Synthetic figure",
+    image_type: "figure",
+    labels: [],
+    width: 400,
+    height: 300,
+    source_kind: "figure",
+  } as unknown as ImageRow;
+
+  it("asks a signed-out reader to sign in instead of loading the image", () => {
+    render(<DocumentImage image={figure} />);
+    expect(screen.queryByTestId("signed-image-stub")).toBeNull();
+    expect(screen.getByTestId("document-image-sign-in").textContent).toBe(`${CLINICAL_SIGN_IN_COPY.original.title}.`);
+  });
+
+  it("loads the image when signed in", () => {
+    auth.status = "authenticated";
+    render(<DocumentImage image={figure} />);
+    expect(screen.getByTestId("signed-image-stub")).toBeInTheDocument();
+    expect(screen.queryByTestId("document-image-sign-in")).toBeNull();
   });
 });
