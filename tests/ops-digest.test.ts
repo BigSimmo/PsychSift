@@ -41,7 +41,7 @@ describe("ops digest workflow contract", () => {
     expect(workflow).toContain("publish_alert_comment");
     expect(workflow).toContain("publishAttentionComment");
     expect(workflow).toContain("ops-digest-rpc-history");
-    // Alerts reach the owner's phone through GitHub mobile, which pushes an assignee's issue activity.
+    // Assignment subscribes the owner; the @mention below is what GitHub mobile pushes to the phone.
     expect(workflow).toContain("github.rest.issues.addAssignees");
     // A scheduled outage (unreachable, degraded or unknown status) must reach the phone too.
     expect(workflow).toContain(

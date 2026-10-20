@@ -119,10 +119,14 @@ jobs:
               "`npm run recover:ingestion -- --include-stranded-queued --apply` if a stuck queue or aged",
               "queued-without-job document is confirmed. Do not assume corruption — a transient outage looks the same.",
             ].join("\n");
-            // Route the alert to a person, not only a label (#TN512M): GitHub notifies an issue's
-            // assignee on their phone, for the opening and for every later comment. Best-effort, so
-            // a refused assignment can never cost the alert itself.
+            // Route the alert to a person, not only a label (#TN512M). GitHub mobile pushes a direct
+            // @mention to the owner's phone, the alert channel chosen on 2026-10-19
+            // (docs/decisions/2026-10-19-production-alerts-by-phone.md). Assignment pushes only when it
+            // first happens, and a later comment on the reused issue does not push by itself, so every new
+            // alert and every repeat comment names the owner (audit EVAL-04). Assignment stays best-effort,
+            // so a refused assignment can never cost the alert itself.
             const alertAssignee = context.repo.owner;
+            const alertMention = `@${alertAssignee}`;
             async function assignAlert(issueNumber) {
               try {
                 await github.rest.issues.addAssignees({
@@ -147,7 +151,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: existing[0].number,
-                body,
+                body: `${alertMention}\n\n${body}`,
               });
               await assignAlert(existing[0].number);
             } else {
@@ -156,7 +160,7 @@ jobs:
                 repo: context.repo.repo,
                 title: "Ingestion autopilot alert",
                 labels: [label],
-                body,
+                body: `${alertMention}\n\n${body}`,
               });
               await assignAlert(created.data.number);
             }
