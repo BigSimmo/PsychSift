@@ -55,10 +55,21 @@ If migrations are still outstanding, stop here and apply them first.
 
 The image-security gate is separate from migration readiness. `Dockerfile.worker`
 explicitly upgrades `perl-base` and rejects versions older than Debian's
-`5.36.0-7+deb12u4` security update. This addresses seven Perl advisories; it does
-not clear the remaining worker findings. Verify the rebuilt image's complete
+`5.40.1-6+deb13u1` Trixie security update. The runner retains Python 3.11 from
+its pinned official Python image, the existing Node binary, separate hashed
+Python locks and unchanged model identities. Native libraries and Tesseract change, so successful clinical
+OCR fixtures and runtime checks are required before accepting this image.
+The runtime update does not clear every worker advisory. Verify the rebuilt image's complete
 HIGH/CRITICAL report before release. Pull-request scans are advisory, so green
 PR checks alone do not establish security acceptance or authorise ingestion.
+
+NLTK is pinned to complete upstream source commit
+`8658f3e7c172abf87f99db045b59a6b1a9e80c7a`, including the model-write path,
+hardlink and special-file repairs, with the archive SHA-256 enforced in both
+Python locks. Its authentic package version remains 3.10.3. A scanner may still
+match CVE-2026-81726 by version; retain that finding in the report and assess the
+source repair and runtime compatibility evidence separately. This is not a
+security exception or release approval.
 
 ### 0.1 Automated pre-deploy gate
 
@@ -173,7 +184,8 @@ docker build -f Dockerfile.worker -t clinical-kb-worker .
 
 ### What ships in the image
 
-- **Node 24** (`node:24-bookworm-slim`) + **production-only** `node_modules`
+- **Node 24** (binary copied from pinned `node:24-bookworm-slim` into the
+  pinned `python:3.11-slim-trixie` runner) + **production-only** `node_modules`
   (`npm ci --omit=dev`): the worker runs as a prebuilt esbuild bundle
   (`dist/worker/index.mjs`, built in a separate image stage by
   `scripts/build-worker.mjs`), so tsx and the rest of the dev toolchain never

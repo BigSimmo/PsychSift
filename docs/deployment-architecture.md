@@ -344,7 +344,18 @@ comparable (~200 ms) from Singapore or Sydney and does not favour either host.
 ### Image contract (`Dockerfile`)
 
 - `node:24-bookworm-slim` is pinned by multi-platform SHA-256 digest in a
-  shared `node-base` stage for dependency/build stages and the worker. The app
+  shared `node-base` stage for dependency/build stages. The worker runner pins
+  official `python:3.11-slim-trixie` and copies only the existing Node binary
+  from `node-base`. It retains Python 3.11, separate hashed Python dependency locks,
+  the non-root `node` user (UID/GID 1000), and the pinned OCR/Docling models.
+  Trixie updates native libraries and Tesseract from 5.3 to 5.5; the complete
+  image's clinical OCR tests, runtime checks and vulnerability scan remain
+  required. Unused global setuptools is removed; each isolated venv retains its
+  locked setuptools. NLTK uses the complete upstream model-artifact path repair
+  pinned to commit `8658f3e7c172abf87f99db045b59a6b1a9e80c7a` and archive
+  SHA-256 in both runtime-specific locks. Its genuine version remains 3.10.3,
+  so a version-only scanner may still report CVE-2026-81726; no advisory is
+  suppressed. The app
   runner uses the pinned official `distroless/cc-debian13:nonroot` multi-platform
   image, copying only Node 24.22 from its pinned Trixie donor rather than the
   donor's operating system. This is an app runtime version change; dependency
