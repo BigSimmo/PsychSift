@@ -22,7 +22,7 @@ const IMMEDIATE_DANGER =
 // services (000) first. Unlike IMMEDIATE_DANGER they do not also pin the mental-health crisis
 // lines; an alcohol-withdrawal seizure keeps the Alcohol and Drug Support Line after 000.
 const MEDICAL_EMERGENCY =
-  /\b(?:seizures?|seizing|convuls\w*|unconscious|unresponsive|not breathing|stopped breathing|collapsed|anaphyla\w*)\b/i;
+  /\b(?:seizures?|seizing|convuls\w*|unconscious(?:ness)?|loss of consciousness|unresponsive|not breathing|stopped breathing|collaps(?:e|ed|ing)|anaphyla\w*)\b/i;
 // Wording that says the person is under 18: CAMHS Crisis Connect alone.
 const CHILD =
   /(?:\b(?:child(?:ren)?|kids?|teen(?:ager)?s?|adolescents?|minors?|under[- ]?18|(?:[0-9]|1[0-7])\s*[- ]?\s*(?:year|yr)s?[- ]?old)\b|<\s*18\b)/i;
@@ -187,6 +187,9 @@ export function detectServiceUrgentIntents(query: string): ServiceUrgentIntent[]
   const region = isRegional ? detectWaRegionForDaytime(clean) : undefined;
   const isAfterHours = queryIndicatesAfterHours(clean);
   const isDaytime = detectClockTimeUrgency(clean) === "daytime";
+
+  // A medical emergency pins 000 ahead of every other route, regional ones included.
+  if (medicalEmergency) intents.push("emergency");
 
   // Regional routing:
   // After-hours pins Rurallink first while retaining emergency (000) below.

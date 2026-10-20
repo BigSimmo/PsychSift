@@ -284,7 +284,7 @@
     },
     {
       "path": "src/lib/service-urgent-routing.ts",
-      "reason": "Audit 3 finding R4-F-01: medical-emergency phrases (seizure, unconscious, not breathing, collapsed, anaphylaxis) now pin 000 first, ahead of the Alcohol and Drug Support Line for alcohol withdrawal seizure. Behaviour widens urgent routing only; owner hazard re-review and reseal (H8) pending.",
+      "reason": "Audit 3 finding R4-F-01: medical-emergency phrases (seizure, unconscious or unconsciousness, loss of consciousness, not breathing, collapse or collapsed, anaphylaxis) now pin 000 first, ahead of regional crisis routes and of the Alcohol and Drug Support Line for alcohol withdrawal seizure. Behaviour widens urgent routing only; owner hazard re-review and reseal (H8) pending.",
       "recordedBy": "Engineering, Claude clinical content audit thread (audit 3, 20 Oct 2026), per owner request to fix the audit recommendations. Engineering drift record only; not clinical-owner approval, hazard re-review or reseal.",
       "recordedOn": "2026-10-20",
       "expiresOn": "2026-12-04"

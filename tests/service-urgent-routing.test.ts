@@ -135,13 +135,20 @@ describe("service urgent routing — Requirement R2", () => {
 });
 
 describe("service urgent routing — medical emergencies pin 000 first", () => {
-  it.each(["patient having a seizure", "seizures", "convulsing", "unconscious", "not breathing", "collapsed"])(
-    "pins Emergency services first for %j",
-    (query) => {
-      expect(detectServiceUrgentIntents(query)).toEqual(["emergency"]);
-      expect(titles(query, 8)[0]).toBe("Emergency services");
-    },
-  );
+  it.each([
+    "patient having a seizure",
+    "seizures",
+    "convulsing",
+    "unconscious",
+    "unconsciousness",
+    "loss of consciousness",
+    "not breathing",
+    "collapsed",
+    "patient collapse",
+  ])("pins Emergency services first for %j", (query) => {
+    expect(detectServiceUrgentIntents(query)).toEqual(["emergency"]);
+    expect(titles(query, 8)[0]).toBe("Emergency services");
+  });
 
   it("pins 000 first and the Alcohol and Drug Support Line after it for an alcohol withdrawal seizure", () => {
     expect(detectServiceUrgentIntents("alcohol withdrawal seizure")).toEqual(["emergency", "aod_urgent"]);
@@ -149,6 +156,13 @@ describe("service urgent routing — medical emergencies pin 000 first", () => {
       "Emergency services",
       "Alcohol and Drug Support Line",
     ]);
+  });
+
+  it("pins 000 ahead of regional crisis routes when a medical emergency is named", () => {
+    const intents = detectServiceUrgentIntents("patient in crisis having a seizure in Bunbury");
+    expect(intents[0]).toBe("emergency");
+    expect(intents).toContain("regional_daytime");
+    expect(titles("patient in crisis having a seizure in Bunbury", 8)[0]).toBe("Emergency services");
   });
 });
 
