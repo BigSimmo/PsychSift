@@ -1,7 +1,7 @@
 "use client";
 
 import { isLocalNoAuthMode } from "@/lib/client-env";
-import { useOptionalAuthSession } from "@/lib/supabase/client";
+import { useAuthSession } from "@/lib/supabase/client";
 
 /**
  * Whether this browser may use the clinical decision tools: Answer, the medicine
@@ -16,7 +16,7 @@ import { useOptionalAuthSession } from "@/lib/supabase/client";
  */
 export type ClinicalToolAccess = "allowed" | "checking" | "sign-in-required";
 
-type SessionStatus = NonNullable<ReturnType<typeof useOptionalAuthSession>>["status"];
+type SessionStatus = ReturnType<typeof useAuthSession>["status"];
 
 export function clinicalToolAccessForStatus(status: SessionStatus | null): ClinicalToolAccess {
   // No auth provider (a bare render), no Supabase config (demo mode, synthetic content
@@ -28,6 +28,16 @@ export function clinicalToolAccessForStatus(status: SessionStatus | null): Clini
   return "sign-in-required";
 }
 
+/** The session status when an `AuthProvider` is mounted; null in a bare render (unit tests). */
+function useSessionStatusIfAvailable(): SessionStatus | null {
+  try {
+    return useAuthSession().status;
+  } catch (error) {
+    if (error instanceof Error && error.message === "useAuthSession must be used within AuthProvider.") return null;
+    throw error;
+  }
+}
+
 export function useClinicalToolAccess(): ClinicalToolAccess {
-  return clinicalToolAccessForStatus(useOptionalAuthSession()?.status ?? null);
+  return clinicalToolAccessForStatus(useSessionStatusIfAvailable());
 }
