@@ -34,7 +34,8 @@ the existing coverage thresholds, required aggregates, advisory policies and rel
   advisory read-only smoke starts the actual app command, records its outcome and requires HTTP
   success as well as a healthy JSON body. No container-runtime success is implied by unit mocks.
 - Focused unit selection checks every input and includes filesystem/subprocess consumers. LCOV
-  inventory checks every declared source file. Edge typechecking uses `deno.lock` with `--frozen`
+  inventory checks every declared source file and shares the reporter's test/spec exclusions,
+  including archived test fixtures; ordinary archived executables stay required. Edge typechecking uses `deno.lock` with `--frozen`
   and explicit edge imports, ignoring the unrelated Next.js package workspace. The lock retains
   its dependency versions/integrities and no longer snapshots that unrelated workspace metadata.
 - Vitest receipts include Python runtime/prerequisite identity. Imported modules with missing
