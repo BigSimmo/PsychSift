@@ -180,11 +180,18 @@ function save(clocks: readonly MhaClock[]): boolean {
 
 /**
  * How far from now a form's "When was it made?" time may be (owner ruling, via Grok Bot,
- * 2026-10-20 07:33 AWST). A time more than 7 days in the past is refused: the longest limit in the
- * governed timeframe data is Form 3A's 144-hour continuous detention (s 28,
- * `data/mha-timeframes.json`), so 7 days keeps every real clock while catching a mistyped day,
- * month or year. A time in the future is refused, with a few minutes' allowance for a phone clock
- * that runs slightly behind the form's. Restoring a removed clock (Undo) is not re-checked.
+ * 2026-10-20 07:33 AWST). A time more than 7 days in the past is refused: apart from recurring
+ * reviews, the longest limit in the governed timeframe data is Form 3A's 144-hour continuous
+ * detention (s 28, `data/mha-timeframes.json`), so 7 days keeps those clocks while catching a
+ * mistyped day, month or year. A time in the future is refused, with a few minutes' allowance for
+ * a phone clock that runs slightly behind the form's. Restoring a removed clock (Undo) is not
+ * re-checked.
+ *
+ * Recurring-review forms skip the 7-day cap (owner ruling, 20 Oct 2026, via Grok Bot): a form such
+ * as 12C (s 262) carries a review due in each 24-hour period while the order is in force, so its
+ * clock keeps running for as long as the order does. The caller passes `recurring` from
+ * `formHasRecurringReview` (`src/lib/on-call/mha-timers.ts`). The future-time refusal still applies
+ * to every form.
  */
 export const MHA_CLOCK_MAX_PAST_MS = 7 * 24 * 60 * 60_000;
 export const MHA_CLOCK_FUTURE_TOLERANCE_MS = 5 * 60_000;
@@ -192,9 +199,13 @@ export const MHA_CLOCK_FUTURE_TOLERANCE_MS = 5 * 60_000;
 export type MhaClockMadeAtProblem = "future" | "too-old";
 
 /** Null when `madeAtMs` is inside the allowed window around `nowMs`; the edges are allowed. */
-export function mhaClockMadeAtProblem(madeAtMs: number, nowMs: number): MhaClockMadeAtProblem | null {
+export function mhaClockMadeAtProblem(
+  madeAtMs: number,
+  nowMs: number,
+  { recurring = false }: { readonly recurring?: boolean } = {},
+): MhaClockMadeAtProblem | null {
   if (madeAtMs > nowMs + MHA_CLOCK_FUTURE_TOLERANCE_MS) return "future";
-  if (madeAtMs < nowMs - MHA_CLOCK_MAX_PAST_MS) return "too-old";
+  if (!recurring && madeAtMs < nowMs - MHA_CLOCK_MAX_PAST_MS) return "too-old";
   return null;
 }
 

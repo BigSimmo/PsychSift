@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import timeframes from "../data/mha-timeframes.json";
+import { formHasRecurringReview } from "@/lib/on-call/mha-timers";
 import {
   MHA_CLOCK_FUTURE_TOLERANCE_MS,
   MHA_CLOCK_MAX_PAST_MS,
@@ -40,7 +41,25 @@ describe("MHA clock made-at window", () => {
     const form3a = timeframes.entries.find((entry) => entry.formCodes.includes("3A") && entry.duration.value === 144);
     expect(form3a?.section).toBe("28");
     expect(mhaClockMadeAtProblem(now - 144 * HOUR, now)).toBeNull();
-    // Every limit in the data still fits inside the window, so no running clock is refused.
+    // Every single limit fits inside the window; recurring reviews are exempt (next test).
     for (const value of hours) expect(value * HOUR).toBeLessThanOrEqual(MHA_CLOCK_MAX_PAST_MS);
+  });
+
+  // Owner ruling, 20 Oct 2026, via Grok Bot: recurring-review forms skip the 7-day cap.
+  it("lets a recurring-review form such as 12C start more than 7 days back, but not in the future", () => {
+    expect(formHasRecurringReview("12C")).toBe(true);
+    expect(formHasRecurringReview("3A")).toBe(false);
+    expect(formHasRecurringReview("2")).toBe(false);
+    const recurring = { recurring: formHasRecurringReview("12C") };
+    expect(mhaClockMadeAtProblem(now - MHA_CLOCK_MAX_PAST_MS - 1, now, recurring)).toBeNull();
+    expect(mhaClockMadeAtProblem(now - 30 * 24 * HOUR, now, recurring)).toBeNull();
+    expect(mhaClockMadeAtProblem(now + MHA_CLOCK_FUTURE_TOLERANCE_MS, now, recurring)).toBeNull();
+    expect(mhaClockMadeAtProblem(now + MHA_CLOCK_FUTURE_TOLERANCE_MS + 1, now, recurring)).toBe("future");
+  });
+
+  it("still refuses a non-recurring form more than 7 days back", () => {
+    const notRecurring = { recurring: formHasRecurringReview("3A") };
+    expect(mhaClockMadeAtProblem(now - MHA_CLOCK_MAX_PAST_MS - 1, now, notRecurring)).toBe("too-old");
+    expect(mhaClockMadeAtProblem(now - 30 * 24 * HOUR, now)).toBe("too-old");
   });
 });
