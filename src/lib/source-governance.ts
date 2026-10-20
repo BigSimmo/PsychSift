@@ -111,6 +111,50 @@ function pushUnique(warnings: SourceGovernanceWarning[], warning: SourceGovernan
   warnings.push(warning);
 }
 
+const PERTH_CALENDAR_DATE = new Intl.DateTimeFormat("en-AU", {
+  timeZone: "Australia/Perth",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+function perthIsoDate(now: Date) {
+  const parts = Object.fromEntries(PERTH_CALENDAR_DATE.formatToParts(now).map((part) => [part.type, part.value]));
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+/**
+ * True when a source has been taken out of use: the owner marked it superseded, rejected or
+ * decommissioned (`record_source_review` stores each as `document_status: "outdated"`), its
+ * publisher withdrew or superseded it (`change_state`), or its expiry date has passed (the
+ * catalogue's own currency rule, `src/lib/sources/catalogue-core.ts`). Retrieval leaves these
+ * out entirely, and the answer boundary refuses any answer that still carries one, so both read
+ * this one predicate (audit CH-02 / RAG-A-04, owner decision 2026-10-20: "leave them out of
+ * search altogether"). This is a filter, never a ranking signal (docs/rag-behaviour/
+ * refuted-approaches.md, Refutation 3, RC8). Missing or unknown metadata is not retirement.
+ */
+export function isRetiredSourceMetadata(
+  source: Partial<Pick<ClinicalSourceMetadata, "document_status" | "change_state" | "expiry_date">>,
+  now: Date = new Date(),
+) {
+  if (source.document_status === "outdated") return true;
+  if (source.change_state === "withdrawn" || source.change_state === "superseded") return true;
+  // expiry_date is already a validated ISO date or date-time after normalisation.
+  const expiry = source.expiry_date?.slice(0, 10);
+  return Boolean(expiry && expiry < perthIsoDate(now));
+}
+
+/** Drop retired sources; returns the same array when nothing is removed. */
+export function excludeRetiredSources<T extends Pick<SearchResult, "source_metadata">>(
+  results: T[],
+  now: Date = new Date(),
+): T[] {
+  const kept = results.filter(
+    (result) => !isRetiredSourceMetadata(normalizeSourceMetadata(result.source_metadata), now),
+  );
+  return kept.length === results.length ? results : kept;
+}
+
 export function resolveEvidenceWarningSeverity(relevance: EvidenceRelevance): {
   severity: SourceGovernanceWarning["severity"];
   uiToken: SourceGovernanceUiToken;

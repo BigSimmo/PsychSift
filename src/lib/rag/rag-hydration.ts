@@ -18,6 +18,7 @@ import {
 import { applySecondStageRerankIfNeeded } from "@/lib/rag/rag-second-stage";
 import { measureSearchPhase, startRerankClock, type SearchTiming } from "@/lib/rag/rag-search-timing";
 import { selectRetrievalEvidence } from "@/lib/retrieval-selection";
+import { excludeRetiredSources } from "@/lib/source-governance";
 
 // Extracted from rag.ts (maturity X3 / #101): per-request hydration of retrieved
 // results — document ranking metadata, cached index quality, and page visual
@@ -108,7 +109,9 @@ export function selectRankedRetrievalResults(args: {
   const selection = selectRetrievalEvidence({
     query: args.query,
     queryClass: args.queryClass,
-    results: rankClinicalResults(args.query, args.candidates),
+    // Retired sources (superseded, withdrawn, expired) never compete for a slot, so a
+    // replacement can take it. A filter only: the order of what remains is unchanged.
+    results: rankClinicalResults(args.query, excludeRetiredSources(args.candidates)),
     topK: args.topK,
     maxResultsPerDocument: args.maxResultsPerDocument,
   });

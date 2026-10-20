@@ -28,6 +28,7 @@ import { loadDocumentSummaryContext, sanitizeUnsupportedSummaryAnswer } from "@/
 import { generationFailureDetailToken } from "@/lib/rag/rag-generation-failure-diagnostics";
 import { answerLatencyMetadata, answerScopedEvidenceMetadata } from "@/lib/rag/rag-answer-telemetry-metadata";
 import { assertRetrievalRows, buildDocumentSummaryResults } from "@/lib/rag/rag-row-contracts";
+import { excludeRetiredSources } from "@/lib/source-governance";
 import {
   answerInstructions,
   adaptiveAnswerInstructions,
@@ -1122,7 +1123,11 @@ export async function searchChunksWithTelemetry(
 ): Promise<{ results: SearchResult[]; telemetry: SearchTelemetry }> {
   const searchTiming = createSearchTiming();
   try {
-    return await searchChunksWithTiming(args, searchTiming, internal);
+    const search = await searchChunksWithTiming(args, searchTiming, internal);
+    // Selection already leaves retired sources out; this also covers the lanes that return
+    // merged candidates without selection, and cache entries written before a retirement.
+    const results = excludeRetiredSources(search.results);
+    return results === search.results ? search : { ...search, results };
   } finally {
     closeShadowSearch(searchTiming);
   }
