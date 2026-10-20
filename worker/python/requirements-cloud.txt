@@ -740,10 +740,11 @@ murmurhash==1.0.15 \
     #   preshed
     #   spacy
     #   thinc
-nltk==3.10.3 \
-    --hash=sha256:bb9327a461c3811c2fa4900e03840401f2126adfb30c0072827c433bd2444ea4 \
-    --hash=sha256:ff9598a8e20518ee0d557745890cc4435b9578489e2dcbc69c4f81fa060caf7c
-    # via medspacy-quickumls
+nltk @ https://codeload.github.com/nltk/nltk/tar.gz/8658f3e7c172abf87f99db045b59a6b1a9e80c7a#sha256=80a0217a14b75e6bd63fe1c1f0190a1a7ceadbe7de3aa4d9b842df5d0a11f7d8 \
+    --hash=sha256:80a0217a14b75e6bd63fe1c1f0190a1a7ceadbe7de3aa4d9b842df5d0a11f7d8
+    # via
+    #   -r worker/python/requirements.in
+    #   medspacy-quickumls
 numpy==2.5.1 \
     --hash=sha256:08d60c810432eb83360958dea0999ac4cfb94531ea8efcbf0b7f277c2068aeb2 \
     --hash=sha256:09e9bfd8d2cf479c7d174804fb3811c53a8e9f20a37444008606b57d6b7a826d \
@@ -1812,6 +1813,7 @@ setuptools==84.0.0 \
     --hash=sha256:51a52592b3b99e102b609654876bd65f19f999935166d1352678931132b0c670 \
     --hash=sha256:f4695c21257f0d9b537ec2692c941d02ee143b7cc1276941349a546573b2ef73
     # via
+    #   -r worker/python/requirements.in
     #   pyrush
     #   spacy
     #   thinc
