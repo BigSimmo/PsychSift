@@ -13,4 +13,9 @@ whose source was recorded only as "relayed". A ruling relayed by another tool, o
 owner's GitHub account, is not the owner's yes for a database change or clinical sign-off
 (`docs/agents/clinical-sign-off.md`, "Relayed rulings are not sign-off").
 
+The same audit added a `Required check change approved:` line for pull requests that change the files
+deciding whether the required checks pass. On 20 Oct 2026 the owner chose to keep that line a
+declaration checked by shape only, not proof of the owner's yes, because no check can tell the owner from
+another tool using the owner's GitHub account. The owner's review and Merge press remain the approval.
+
 If this summary and the source ever differ, the source wins.

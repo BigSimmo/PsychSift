@@ -326,7 +326,9 @@ migration in the same change.
 `scripts/ci-change-scope.mjs` decide whether the required checks pass, and a PR runs its own copy
 of them. `PR policy` fails a PR that changes one unless its body has a line
 `Required check change approved: <reason>` citing the owner's yes (a `docs/decisions/` entry or a link); Dependabot pin bumps are exempt
-(audit CC-04, 2026-10-20).
+(audit CC-04, 2026-10-20). The gate checks the line's shape only. It is a declaration that makes the change
+visible, not proof of the owner's yes: the owner's review and Merge press remain the approval (owner decision,
+2026-10-20, recorded in `docs/decisions/2026-10-20-database-prs-merge-by-hand.md`).
 
 Clinical-content and RAG-ranking PRs keep every other control — the clinical governance
 preflight, the `RAG impact:` body line, the canary-pair requirement, the advisory
