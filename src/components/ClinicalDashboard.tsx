@@ -945,10 +945,12 @@ function ClinicalDashboardContent({
   // unsent, until the current Terms are accepted. Not now runs the same question
   // as a Documents search instead, through the cross-mode path the results use.
   const askTermsGate = useAskTermsGate({
-    onNotNow: async (heldQuery) => {
+    onNotNow: async (heldQuery, isCurrent) => {
       // Review from the documents notice, then Not now again: those documents are already shown.
       if (searchMode === "documents" && query.trim() === heldQuery) return;
       const fallback = await notNowDocumentsSearch(heldQuery);
+      // Another Ask arrived while the check was loading: leave the dashboard to it.
+      if (!isCurrent()) return;
       if ("notice" in fallback) {
         setActionNotice({ tone: "warning", message: fallback.notice });
         return;

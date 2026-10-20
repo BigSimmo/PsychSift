@@ -51,7 +51,7 @@ function Harness({
   onSaveFailed,
 }: {
   sendAnswer: (query: string) => void;
-  searchDocuments: (query: string) => void;
+  searchDocuments: (query: string, isCurrent: () => boolean) => void;
   onSaveFailed?: (message: string) => void;
 }) {
   const gate = useAskTermsGate({ onNotNow: searchDocuments, onSaveFailed });
@@ -134,7 +134,7 @@ describe("Terms step at the first Ask", () => {
     ask();
     fireEvent.click(notNowButton());
     expect(searchDocuments).toHaveBeenCalledTimes(1);
-    expect(searchDocuments).toHaveBeenCalledWith(QUESTION);
+    expect(searchDocuments).toHaveBeenCalledWith(QUESTION, expect.any(Function));
     expect(sendAnswer).not.toHaveBeenCalled();
     expect(window.localStorage.getItem(DEVICE_TERMS_KEY)).toBeNull();
     expect(screen.getByTestId("declined").textContent).toBe(QUESTION);
@@ -148,6 +148,19 @@ describe("Terms step at the first Ask", () => {
     ask();
     expect(step()).toBeTruthy();
     expect(sendAnswer).not.toHaveBeenCalled();
+  });
+
+  it("tells a Not now fallback it is stale once another Ask arrives", async () => {
+    const { ask, searchDocuments } = setup();
+    ask();
+    fireEvent.click(notNowButton());
+    const isCurrent = searchDocuments.mock.calls[0][1] as () => boolean;
+    expect(isCurrent()).toBe(true);
+    await waitFor(() => expect(step()).toBeNull());
+    ask();
+    // A fallback still loading its patient check must not switch the dashboard now.
+    expect(isCurrent()).toBe(false);
+    expect(step()).toBeTruthy();
   });
 
   it("skips the step when this device already accepted the current version", () => {
@@ -255,7 +268,7 @@ describe("Terms step wiring", () => {
     expect(dashboard).toContain("onAsk={ask}");
     // Not now runs the same question as a Documents search, only after the patient check passes.
     expect(dashboard).toMatch(
-      /const fallback = await notNowDocumentsSearch\(heldQuery\);[\s\S]*?if \("notice" in fallback\) \{[\s\S]*?return;\s*\}\s*crossModeSearch\("documents", fallback\.query\);/,
+      /const fallback = await notNowDocumentsSearch\(heldQuery\);\s*\/\/[^\n]*\n\s*if \(!isCurrent\(\)\) return;\s*if \("notice" in fallback\) \{[\s\S]*?return;\s*\}\s*crossModeSearch\("documents", fallback\.query\);/,
     );
     // An Answer cross-search, a follow-up pick and a re-check all wait for the step too.
     expect(dashboard).toMatch(/if \(mode === "answer" && crossQuery\.trim\(\)\) \{\s*askTermsGate\.guard/);

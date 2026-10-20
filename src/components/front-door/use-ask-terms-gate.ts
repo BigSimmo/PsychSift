@@ -48,13 +48,16 @@ export type AskTermsGate = {
  * fallback. A new `TERMS_VERSION` asks again in both cases.
  *
  * Not now sends nothing to Answer: `onNotNow` receives the held question so the
- * caller can show matching documents instead, and the step returns next Ask.
+ * caller can show matching documents instead, and the step returns next Ask. Its
+ * `isCurrent` turns false as soon as another Ask arrives, so a fallback still
+ * waiting on something can stand down instead of switching the dashboard away
+ * from the newer question.
  */
 export function useAskTermsGate({
   onNotNow,
   onSaveFailed,
 }: {
-  onNotNow: (query: string) => void;
+  onNotNow: (query: string, isCurrent: () => boolean) => void;
   onSaveFailed?: (message: string) => void;
 }): AskTermsGate {
   const { client, session, status } = useAuthSession();
@@ -67,6 +70,8 @@ export function useAskTermsGate({
   // Accepted in this page's lifetime. Covers blocked storage, where the local copy
   // cannot be read back, so an accept can never loop straight back into the step.
   const acceptedRef = useRef<string | null>(null);
+  // Counts every Ask and Not now, so a Not now fallback can tell whether it is still the latest.
+  const askSeqRef = useRef(0);
 
   function isAccepted() {
     if (acceptedRef.current === `${owner}\n${TERMS_VERSION}`) return true;
@@ -77,6 +82,7 @@ export function useAskTermsGate({
   }
 
   function guard<T>(query: string, send: () => T): T | undefined {
+    askSeqRef.current += 1;
     if (isAccepted()) return send();
     // One step at a time; a second Ask while it is open changes nothing.
     if (!held) setHeld({ query: query.trim(), send });
@@ -114,7 +120,8 @@ export function useAskTermsGate({
     if (!current || saving) return;
     setHeld(null);
     setDeclinedQuery(current.query);
-    onNotNow(current.query);
+    const seq = (askSeqRef.current += 1);
+    onNotNow(current.query, () => askSeqRef.current === seq);
   }
 
   return {
