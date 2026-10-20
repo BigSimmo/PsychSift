@@ -31,7 +31,7 @@ the existing coverage thresholds, required aggregates, advisory policies and rel
   Required preflight reconciles quarantine tags against owned, unexpired exact ledger identities.
   Phone navigation waits for hydration, fonts and stable chrome geometry instead of a fixed 700 ms.
 - Image scan evaluation rejects missing or malformed counts without arithmetic fallbacks. The
-  advisory read-only smoke starts the actual app command, records its outcome and requires HTTP
+  required read-only app smoke starts the actual app command, records its outcome and requires HTTP
   success as well as a healthy JSON body. No container-runtime success is implied by unit mocks.
 - Focused unit selection checks every input and includes filesystem/subprocess consumers. LCOV
   inventory checks every declared source file and shares the reporter's test/spec exclusions,

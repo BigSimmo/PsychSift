@@ -154,21 +154,6 @@ jobs:
           docker run --rm --network=none --entrypoint node clinical-kb-app:ci scripts/deploy/await-migrations.mjs --self-test
           docker run --rm --network=none --entrypoint node clinical-kb-worker:ci scripts/deploy/await-migrations.mjs --self-test
 
-      - name: Read-only runtime check (advisory)
-        id: readonly-smoke
-        continue-on-error: true
-        run: node scripts/app-container-smoke.mjs --read-only
-
-      - name: Record read-only runtime outcome
-        if: always()
-        env:
-          READONLY_OUTCOME: ${{ steps.readonly-smoke.outcome }}
-        run: |
-          echo "Read-only app runtime smoke (advisory): ${READONLY_OUTCOME}" >> "$GITHUB_STEP_SUMMARY"
-          if [ "$READONLY_OUTCOME" = "failure" ]; then
-            echo "::warning::Read-only app runtime smoke failed; see its startup, health, PID 1 and graceful-stop diagnostics."
-          fi
-
       - name: Generate SBOMs
         # Advisory: docker-save of both loaded images can ENOSPC on small runners.
         # Free BuildKit cache first; do not fail the required gate on scanner disk pressure.

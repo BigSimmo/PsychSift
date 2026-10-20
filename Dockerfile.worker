@@ -27,6 +27,7 @@
 # run-tsx.mjs previously did at runtime) and keeps npm packages external,
 # so the bundle resolves them from the runner's production node_modules.
 FROM node:24-bookworm-slim@sha256:a5f4366e834695d5f363b920c104953a535d3a9864d1bdf74566a0ebe01daee5 AS node-base
+FROM python:3.11-slim-trixie@sha256:e88e9763f943ec1834f992a4b51e0f24500486803e8bc534e5767af9ea65f6ce AS python-runtime-base
 
 FROM node-base AS build
 WORKDIR /app
@@ -74,17 +75,42 @@ RUN for attempt in 1 2 3; do \
       sleep $((attempt * 10)); \
     done
 
-FROM node-base AS runner
-# libgl1 + libglib2.0-0 are OpenCV's runtime shared libraries: docling's rapidocr
+FROM python-runtime-base AS runner
+COPY --from=node-base /usr/local/bin/node /usr/local/bin/node
+# libgl1 + libglib2.0-0t64 are OpenCV's runtime shared libraries: docling's rapidocr
 # stage imports cv2 during `docling-tools models download` and again at run time,
 # and the slim base ships neither (Gate B run 32165911181 failed the prefetch with
 # `ImportError: libGL.so.1`). ca-certificates covers the build-time model fetch.
-# Explicitly upgrade the base image's Perl: Bookworm security revision deb12u4
-# fixes seven reported advisories. Refuse a stale mirror rather than ship u3.
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends perl-base python3 python3-venv tesseract-ocr ca-certificates libgl1 libglib2.0-0 \
-  && dpkg --compare-versions "$(dpkg-query --show --showformat='${Version}' perl-base)" ge 5.36.0-7+deb12u4 \
-  && chmod u-s,g-s /usr/bin/mount /usr/bin/umount \
+# Keep the production locks' Python 3.11 interpreter; Trixie's distro Python is
+# 3.13. Explicitly upgrade Perl and reject a stale security repository.
+# Backport only curl and its three HTTP/3 libraries; all other backports are
+# forbidden. ngtcp2 1.22.1 also avoids introducing CVE-2026-40170.
+RUN printf '%s\n' \
+    'deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] https://deb.debian.org/debian trixie-backports main' \
+    > /etc/apt/sources.list.d/worker-native-backports.list \
+  && printf '%s\n' \
+    'Package: libcurl4t64 libnghttp3-9 libngtcp2-16 libngtcp2-crypto-ossl0' \
+    'Pin: release n=trixie-backports' \
+    'Pin-Priority: 990' \
+    '' \
+    'Package: *' \
+    'Pin: release n=trixie-backports' \
+    'Pin-Priority: -1' \
+    > /etc/apt/preferences.d/worker-native-backports \
+  && apt-get update \
+  && apt-get install -y --no-install-recommends perl-base tesseract-ocr ca-certificates libgl1 libglib2.0-0t64 \
+    libcurl4t64=8.21.0-2~bpo13+1 libnghttp3-9=1.15.0-1~bpo13+1 \
+    libngtcp2-16=1.22.1-1~bpo13+1 libngtcp2-crypto-ossl0=1.22.1-1~bpo13+1 \
+  && dpkg --compare-versions "$(dpkg-query --show --showformat='${Version}' perl-base)" ge 5.40.1-6+deb13u1 \
+  && dpkg --compare-versions "$(dpkg-query --show --showformat='${Version}' libcurl4t64)" ge 8.21.0-2~bpo13+1 \
+  && dpkg --compare-versions "$(dpkg-query --show --showformat='${Version}' libngtcp2-16)" ge 1.22.1-1~bpo13+1 \
+  && groupadd --gid 1000 node \
+  && useradd --uid 1000 --gid node --shell /bin/sh --create-home node \
+  && python3 -c "import sys; assert sys.version_info[:2] == (3, 11)" \
+  && python3 -m pip uninstall -y setuptools \
+  && for helper in /usr/bin/mount /usr/bin/umount; do \
+       if [ -e "$helper" ]; then chmod u-s,g-s "$helper"; fi; \
+     done \
   && rm -rf /var/lib/apt/lists/* /usr/local/lib/node_modules/npm /opt/yarn-* \
   && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/yarn /usr/local/bin/yarnpkg
 # Optional ruled-table OCR: bake the official, hash-pinned cell model at build time.
