@@ -56,7 +56,7 @@ import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
  * @typedef {{ reuse: boolean, reason: string, message: string | null, gate: string, args: string[], key: string | null, inputHash: string | null, environmentHash: string | null, fileCount: number }} GateDecision
  */
 
-export const RECEIPT_FORMAT_VERSION = 2;
+export const RECEIPT_FORMAT_VERSION = 3;
 
 /** Receipts kept per gate before the oldest is dropped (branch switching thrashes otherwise). */
 export const MAX_RECEIPTS_PER_GATE = 8;
@@ -322,7 +322,7 @@ export const OUTCOME_AFFECTING_ENV_VARS = [
 // Until dependencies are declared per test, fingerprint it for all Vitest receipts.
 // Import probes distinguish an installed-but-broken package from a usable one;
 // the distribution inventory also covers versions of their transitive dependencies.
-const pythonIdentityProgram = `
+export const pythonIdentityProgram = `
 import hashlib, importlib, importlib.metadata, json, os, sys
 executable = os.path.realpath(sys.executable)
 with open(executable, "rb") as binary:
@@ -339,7 +339,28 @@ for name, distribution in (("fitz", "PyMuPDF"), ("pymupdf", "PyMuPDF"), ("PIL", 
     except Exception as error:
         prerequisites[name] = {"available": False, "error": type(error).__name__}
     else:
-        prerequisites[name] = {"available": True, "version": importlib.metadata.version(distribution), "path": os.path.realpath(module.__file__)}
+        module_path, path_error = None, None
+        try:
+            raw_path = getattr(module, "__file__", None)
+            if isinstance(raw_path, str) and raw_path.strip():
+                module_path = os.path.realpath(raw_path)
+            else:
+                path_error = "ModulePathUnavailable"
+        except Exception as error:
+            path_error = type(error).__name__
+        version, metadata_error = None, None
+        try:
+            version = importlib.metadata.version(distribution)
+            if not isinstance(version, str) or not version.strip():
+                version, metadata_error = None, "DistributionVersionUnavailable"
+        except Exception as error:
+            metadata_error = type(error).__name__
+        if path_error or metadata_error:
+            # Importable is not the same as an identifiable prerequisite. Keep
+            # each unknown field explicit without losing the runtime identity.
+            prerequisites[name] = {"available": False, "imported": True, "error": "PrerequisiteIdentityUnavailable", "version": version, "path": module_path, "pathError": path_error, "metadataError": metadata_error}
+        else:
+            prerequisites[name] = {"available": True, "version": version, "path": module_path}
 distributions = sorted((item.metadata["Name"], item.version) for item in importlib.metadata.distributions())
 print(json.dumps({"executable": executable, "executableHash": executable_hash, "version": sys.version, "prefix": sys.prefix, "path": sys.path, "prerequisites": prerequisites, "distributions": distributions}, sort_keys=True))
 `;

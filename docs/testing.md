@@ -171,7 +171,10 @@ reused gate as a reused receipt, not a fresh run; `GATE_RECEIPTS=refresh` forces
 contract: `docs/process-hardening.md`.
 
 Vitest receipts also fingerprint the selected `PYTHON_BIN`, its executable/version and installed
-Python prerequisites. Unidentifiable runtimes disable reuse. Lint/typecheck do not probe Python.
+Python prerequisites. Missing distribution metadata or module paths are recorded as explicit
+unavailable prerequisite identities, preserving a deterministic runtime fingerprint without
+claiming those modules are usable. Unidentifiable runtimes disable reuse. Lint/typecheck do not
+probe Python.
 Only commands whose selectors are all bounded files qualify for a shared test lease; adding a
 directory or ambiguous option requires the exclusive lease. Offline release verification uses the
 same provider-credential scrubber as ordinary tests, including Sentry upload credentials and

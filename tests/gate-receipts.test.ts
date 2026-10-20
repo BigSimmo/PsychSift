@@ -7,6 +7,7 @@ import {
   appendReceipt,
   OUTCOME_AFFECTING_ENV_VARS,
   parseRawDiff,
+  pythonIdentityProgram,
   pythonToolchainSignature,
   computeInputSignature,
   consultGateReceipt,
@@ -338,6 +339,82 @@ describe("gate receipts — external Python identity", () => {
         ),
       ).toBeNull();
     }
+  });
+
+  it("executes the Python probe with importable modules that lack metadata or file identity", ({ skip }) => {
+    const python = process.env.PYTHON_BIN?.trim() || (process.platform === "win32" ? "python" : "python3");
+    const controlledImports = `
+import importlib, importlib.metadata, types
+paths = {"fitz": "/synthetic/fitz.py", "pymupdf": None, "PIL": "/synthetic/PIL.py"}
+def controlled_import(name):
+    if name == "pytesseract":
+        return types.SimpleNamespace()
+    return types.SimpleNamespace(__file__=paths[name])
+def controlled_version(name):
+    if name == "PyMuPDF" or name == "pytesseract":
+        raise importlib.metadata.PackageNotFoundError(name)
+    return "1.0-synthetic"
+importlib.import_module = controlled_import
+importlib.metadata.version = controlled_version
+importlib.metadata.distributions = lambda: []
+`;
+    const options = {
+      cwd: process.cwd(),
+      env: process.env,
+      encoding: "utf8" as const,
+      timeout: 5000,
+      maxBuffer: 1024 * 1024,
+      shell: false,
+    };
+    const execute = (program: string) => spawnSync(python, ["-c", program], options);
+    const first = execute(controlledImports + pythonIdentityProgram);
+    if (first.error && "code" in first.error && first.error.code === "ENOENT")
+      return skip("Python is unavailable for the actual probe regression");
+    expect(first.error).toBeUndefined();
+    expect(first.status, first.stderr).toBe(0);
+    const observed = JSON.parse(first.stdout);
+    expect(observed.prerequisites.fitz).toMatchObject({
+      available: false,
+      imported: true,
+      error: "PrerequisiteIdentityUnavailable",
+      version: null,
+      pathError: null,
+      metadataError: "PackageNotFoundError",
+    });
+    expect(observed.prerequisites.fitz.path).toContain("fitz.py");
+    expect(observed.prerequisites.pymupdf).toMatchObject({
+      available: false,
+      path: null,
+      pathError: "ModulePathUnavailable",
+      metadataError: "PackageNotFoundError",
+    });
+    expect(observed.prerequisites.pytesseract).toMatchObject({
+      available: false,
+      path: null,
+      pathError: "ModulePathUnavailable",
+      metadataError: "PackageNotFoundError",
+    });
+    expect(observed.prerequisites.PIL).toMatchObject({ available: true, version: "1.0-synthetic" });
+    const firstSignature = signature(observed);
+    expect(firstSignature).toBeTruthy();
+    const repeat = execute(controlledImports + pythonIdentityProgram);
+    expect(repeat.status, repeat.stderr).toBe(0);
+    expect(signature(JSON.parse(repeat.stdout))).toBe(firstSignature);
+    const repairedMetadata = execute(
+      controlledImports + '\nimportlib.metadata.version = lambda name: "1.0-synthetic"\n' + pythonIdentityProgram,
+    );
+    expect(repairedMetadata.status, repairedMetadata.stderr).toBe(0);
+    const repaired = JSON.parse(repairedMetadata.stdout);
+    expect(repaired.prerequisites.fitz.available).toBe(true);
+    expect(repaired.prerequisites.pymupdf).toMatchObject({
+      available: false,
+      version: "1.0-synthetic",
+      pathError: "ModulePathUnavailable",
+      metadataError: null,
+    });
+    expect(signature(repaired)).not.toBe(firstSignature);
+    // A valid prerequisite state must still not rescue an invalid runtime.
+    expect(signature({ ...observed, executableHash: "" })).toBeNull();
   });
 
   it("does not depend on Python availability for lint or typecheck receipts", () => {

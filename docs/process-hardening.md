@@ -37,7 +37,9 @@ the existing coverage thresholds, required aggregates, advisory policies and rel
   inventory checks every declared source file. Edge typechecking uses `deno.lock` with `--frozen`
   and explicit edge imports, ignoring the unrelated Next.js package workspace. The lock retains
   its dependency versions/integrities and no longer snapshots that unrelated workspace metadata.
-- Vitest receipts include Python runtime/prerequisite identity; offline release builds scrub
+- Vitest receipts include Python runtime/prerequisite identity. Imported modules with missing
+  package metadata or file paths record explicit unavailable prerequisite states instead of
+  aborting the interpreter probe; unidentifiable runtimes still cannot certify reuse. Offline release builds scrub
   inherited provider credentials through the shared environment policy. Broad or ambiguous
   selectors cannot obtain a shared focused-test lease.
 - Dependency audit findings fail immediately; incomplete/tooling results get at most three
