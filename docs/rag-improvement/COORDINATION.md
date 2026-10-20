@@ -152,8 +152,8 @@ paragraph.
   creates, blocking GitHub PR reads and loop tools. The owner's explicit babysit/merge
   instruction is the unlock; the deny message names the exact marker-removal command.
 - **After merge:** verify the landing by content (the merged tree contains the expected
-  files/lines — squash merges orphan branch SHAs), clean up worktrees, and skip
-  babysit-only ledger pushes (the repo forbids tips whose sole delta is a babysit record).
+  files/lines — squash merges orphan branch SHAs), clean up worktrees, and record the
+  landed check as a `Review record` comment on the PR.
 
 ## 6. Standing approvals map
 

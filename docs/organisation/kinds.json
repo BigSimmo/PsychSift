@@ -8,6 +8,6 @@
     "docs/site-map.md",
     "package-lock.json"
   ],
-  "records": ["docs/branch-review-ledger.md", "docs/branch-review-records/**", "docs/outstanding-issues-inbox/**"],
+  "records": ["docs/branch-review-ledger.md", "docs/outstanding-issues-inbox/**"],
   "historical": ["docs/archive/**", "docs/audit/**", "scripts/archive/**"]
 }

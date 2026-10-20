@@ -8,7 +8,7 @@ Use this protocol for every Codex review, audit, bug hunt, PR review, release-re
 - Review only when the user request, `AGENTS.md` routing rules, or an explicit handoff/release workflow calls for it.
 - Review the current diff, named PR, named branch, or explicitly requested area.
 - Do not expand into stale branches or unrelated modules unless a confirmed defect crosses that boundary.
-- Before branch or PR review, check `docs/branch-review-ledger.md` with `npm run ledger:lookup -- <branch-or-ref> --scope "<scope>"`. It resolves the HEAD, matches abbreviated SHAs, and prints an explicit verdict. Skip unchanged completed reviews unless the user asks for a fresh pass. Do not scan the table by eye.
+- Before a PR review, read the PR's comments for a `Review record` comment at its current head SHA with the same scope ([Records](agents/pull-request-workflow.md#records)). Skip unchanged completed reviews unless the user asks for a fresh pass.
 - Treat GitHub automatic review as one pass per pull request. A repair commit or later head does not authorize another automatic pass; require an explicit human request before re-reviewing.
 - Route automatic repair only for high-risk paths, at least 10 changed non-test source files, at least 300 changed non-test source lines, or an explicit `codex-review` label. `skip-codex-review` always opts out, including when both labels are present. Small low-risk, docs-only, test-only, and generated-only changes should not receive the automatic repair request.
 - Ready PRs must pass the trusted `PR policy` metadata check. It reads only the base-branch policy implementation, never executes PR code, and requires concrete verification plus risk/rollback evidence for high-risk changes.
@@ -18,8 +18,8 @@ Use this protocol for every Codex review, audit, bug hunt, PR review, release-re
 PR churn and unthrottled reviews quickly exhaust review-bot spending caps and rate limits (e.g., CodeRabbit and Codex connector allowances; see Inbox `9864a5d7`). When quotas are exhausted, PRs land with zero automated review, increasing defect risk during churn spikes. To protect review-bot budget:
 
 - **Skip repeat passes on unchanged SHAs**: Never re-review a commit, branch, or PR head whose HEAD SHA and scope have already been reviewed. Automated routines, babysit sweeps, and CI jobs must check prior review records and skip repeat reviews when the tree has not changed.
-- **Resolve SHAs via `npm run ledger:lookup`**: Always verify review state using `npm run ledger:lookup -- <branch-or-ref> --scope "<scope>"`. It resolves the full 40-character commit SHA, matches against live rows, archives (`docs/archive/branch-review-ledger-*.md`), and immutable records (`docs/branch-review-records/*.record.md`), and prints an explicit `ALREADY REVIEWED` or `NOT REVIEWED at this HEAD` verdict. Never scan or eyeball ledger tables manually.
-- **Enforce a single review pass per PR head (#328)**: Automated review is strictly limited to one pass per PR HEAD. Intermediate repair commits, formatting adjustments, or routine base syncs do not authorize automatic re-reviews without explicit human approval. Prevent review row thrashing or rows outliving completion (#328) by immediately appending an immutable record with `npm run ledger:append` upon completing a review.
+- **Check review state on the PR**: Verify review state from the PR's `Review record` comments, matching the full 40-character head SHA and scope. For history before 2026-10-20, `npm run ledger:lookup -- <branch-or-ref> --scope "<scope>"` searches the frozen table, its archives (`docs/archive/branch-review-ledger-*.md`) and the archived records (`docs/archive/branch-review-records/`). Never scan or eyeball ledger tables manually.
+- **Enforce a single review pass per PR head (#328)**: Automated review is strictly limited to one pass per PR HEAD. Intermediate repair commits, formatting adjustments, or routine base syncs do not authorize automatic re-reviews without explicit human approval. Prevent repeat passes (#328) by posting the PR's `Review record` comment immediately upon completing a review.
 - **Lever 2: Prohibit bookkeeping-only pull requests (#KZJD4Q)**: Standalone PRs whose sole diff is a ledger update or documentation record must not be opened as separate PRs. Fold bookkeeping updates into functional PRs or reconcile them in batches to eliminate wasted automated review cycles on non-code artifacts.
 
 ## Review Output
@@ -47,16 +47,16 @@ disconnected. Never add a PAT to an ordinary Cloud task.
 ## Mutation Rules
 
 - For a pure review request, do not edit files, stage, commit, push, post PR comments, rerun hosted CI, or call provider-backed services.
-  - Exception: create the completed immutable review record with `npm run ledger:append` so throttling state persists.
+  - Exception: post the completed review's `Review record` comment on the PR, under the same GitHub authority as the review, so throttling state persists.
 - If the user clearly asks to fix confirmed findings, make the smallest safe change and verify with local, static, or mocked checks first.
 - During an automatic resolve task, work only existing unresolved Codex threads. Do not start a new review, add standalone findings, or request another review.
 - After fixing or fully dispositioning a thread, resolve it with the tool's direct resolution call. A local-only commit is not a fix; when publication, verification, human input, or new authorization blocks completion, leave the thread open with a concise reason instead of resolving it.
 - Ask before any OpenAI, Supabase, GitHub/GitLab, hosted CI, or provider-backed workflow.
-- After any completed branch/PR review, create an immutable record with `npm run ledger:append -- --ref <x> --head <full-sha> --scope <s> --outcome <o> --checks <c>`. Record the full 40-character SHA; `see PR head` and abbreviations make the record unmatchable and cause the review to run again. The historical table is frozen for normal PRs: never edit or delete an existing record; append a correction or superseding record (`--supersede`) instead. This record creation is allowed even during a pure review. Do not hand-write a record — hand-written rows are what produced the mojibake, wrong-width, and duplicate records the 2026-07-28 hygiene pass had to repair. Do not push a tip whose sole delta is a babysit record.
+- After any completed PR review, post one `Review record` comment on the PR as [Records](agents/pull-request-workflow.md#records) describes. Record the full 40-character SHA; `see PR head` and abbreviations make the record unmatchable and cause the review to run again. A later pass on the same PR and scope edits that comment, or posts a new one when the head SHA has changed. A branch with no PR gets no record. Never add, edit or delete the archived records or the frozen `docs/branch-review-ledger.md` table.
 
 ## Ledger Rotation
 
-The historical table is frozen now that new records are immutable files, so ordinary quarterly rotation is retired. Lookup, sweep, and integrity checks read the live table, archives, and immutable records. Do not hand-move rows or delete unique review content; any exceptional historical repair needs a dedicated, explicitly reviewed migration because write-discipline checks reject row changes.
+The table is frozen; no rotation. Review records now live in PR comments, and `npm run ledger:lookup` reads the frozen table, its archives and the archived records for history. Do not hand-move rows or delete unique review content.
 
 ## Severity Guide
 

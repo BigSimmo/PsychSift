@@ -144,6 +144,14 @@
       "pattern": "contextual-working-defaults\\.md|# Context-aware working defaults",
       "allowedContext": "no longer|retired|superseded|historical|previously|formerly|replaces",
       "decision": "docs/decisions/2026-10-20-instruction-tidy-up.md"
+    },
+    {
+      "id": "review-record-ledger-append",
+      "retired": "2026-10-20",
+      "summary": "Review and sweep records are no longer written to the repository with ledger:append. They are pull request comments, and the old record files are archived read-only.",
+      "pattern": "npm run ledger:(?:append|dedupe|rotate|migrate-legacy)",
+      "allowedContext": "no longer|retired|superseded|historical|previously|formerly|replaces|refuse",
+      "decision": "docs/decisions/2026-10-20-review-records-now-pr-comments.md"
     }
   ]
 }

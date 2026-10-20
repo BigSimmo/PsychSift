@@ -46,8 +46,8 @@ see the AI tooling and documentation ownership map in `docs/agents-guide.md` (§
 Full text and rationale in `AGENTS.md`, which now carries these boundaries in its core, ahead of
 everything else: the provider confirmation boundary, Supabase project safety (merging a migration
 reaches the live clinical database within seconds), RAG ranking protection, Railway project safety
-and local server safety. The Next.js warning is its own marked block in `AGENTS.md`. Review-ledger
-lookup before reviewing a branch or PR is in
+and local server safety. The Next.js warning is its own marked block in `AGENTS.md`. Checking for a
+prior review record before reviewing a PR is in
 [`docs/agents/codex-review-throttling.md`](docs/agents/codex-review-throttling.md), and the rule
 that evidence is never compressed is in
 [`docs/agents/external-skill-precedence.md`](docs/agents/external-skill-precedence.md).
@@ -144,7 +144,7 @@ convention has no home in the rules layer and stays here:
 Prefer these over improvising — they encode traps this repo has already hit:
 
 - **Claude skills** (`.claude/skills/`): `newtask` (fresh worktree off latest `main`),
-  `gates` (pick and prove the right gate), `handoff` (commit → verify → push → PR → ledger),
+  `gates` (pick and prove the right gate), `handoff` (commit → verify → push → PR → review record),
   `prlanded` (verify a merged PR actually landed), `issues` (`/issues` cross-session
   memory), `run-pr` (open-PR sweep), `sources` (find, capture, score and index a clinical
   source — see `docs/source-acquisition-protocol.md`), `ledger` (extract this session's outstanding work into

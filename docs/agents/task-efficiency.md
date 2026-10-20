@@ -55,7 +55,7 @@ and receipt inputs. Resume from the next action. Reopen a completed investigatio
 evidence, acceptance criteria or relevant inputs changed."
 
 Carry unresolved cross-session work through the existing [issue workflow](repository-skills-and-issues.md);
-record completed reviews through the existing review ledger rather than duplicating either.
+record completed PR reviews as [`Review record` PR comments](pull-request-workflow.md#records) rather than duplicating either.
 
 ## Private measurement
 

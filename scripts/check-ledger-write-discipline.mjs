@@ -430,7 +430,7 @@ function main() {
   const headReview = readAt(head, REVIEW_LEDGER);
   if (reviewLedgerRowsChanged(baseReview, headReview)) {
     failures.push(
-      `${REVIEW_LEDGER} dated rows changed. Write review history with npm run ledger:append so each PR adds an immutable record file instead.`,
+      `${REVIEW_LEDGER} dated rows changed. The table is frozen; record new reviews as a pull request comment (docs/agents/pull-request-workflow.md#records).`,
     );
   }
 

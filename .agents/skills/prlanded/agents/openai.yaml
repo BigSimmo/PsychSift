@@ -1,4 +1,4 @@
 interface:
   display_name: "PR Landed"
   short_description: "Verify a merged PR landed by content and record proof"
-  default_prompt: "Use $prlanded to verify that the merged pull request landed on origin/main by content and record the prlanded ledger entry."
+  default_prompt: "Use $prlanded to verify that the merged pull request landed on origin/main by content and post the prlanded Review record comment on the PR."

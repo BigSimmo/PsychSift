@@ -2,7 +2,7 @@
 /**
  * generate-branch-review-index — render docs/branch-review-index.md, a navigable
  * table of contents for the 570+ content-addressed files in
- * docs/branch-review-records/.
+ * docs/archive/branch-review-records/.
  *
  *   node scripts/generate-branch-review-index.mjs           # write the index
  *   node scripts/generate-branch-review-index.mjs --check    # advisory staleness report
@@ -60,7 +60,7 @@ const OUTPUT_PATH = "docs/branch-review-index.md";
 const RECORD_SUFFIX = ".record.md";
 
 /** Relative to docs/, so links resolve for both readers and docs:check-links. */
-const RECORD_LINK_DIR = "branch-review-records";
+const RECORD_LINK_DIR = "archive/branch-review-records";
 
 /**
  * Truncation limits, chosen so a row stays readable in a terminal. Scope and
@@ -201,7 +201,7 @@ function renderHeader(records) {
     'the authoritative answer to "has this ref been reviewed for this scope?", ask the records',
     'themselves: `npm run ledger:lookup -- <ref> --scope "<scope>"`.',
     "",
-    "Record format and write rules: [`branch-review-records/README.md`](branch-review-records/README.md).",
+    "Record format and write rules: [`archive/branch-review-records/README.md`](archive/branch-review-records/README.md).",
     "Retention and rotation: [`branch-review-archival-policy.md`](branch-review-archival-policy.md).",
     "",
     "## Summary",

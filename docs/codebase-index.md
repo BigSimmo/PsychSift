@@ -1055,7 +1055,7 @@ Public-source control-plane tables: `public_source_policy_entries`, `public_sour
 | RAG eval                        | `eval-rag.ts`, `eval-retrieval.ts`, `eval-quality.ts`, `retrieval-health.ts`                                                                                                                                    |
 | Maintenance                     | `cleanup-storage.ts`, `generate-site-map.ts`, `update-docs-inventory.mjs`, `seed-registry-records.ts`, `generate-outstanding-issues-snapshot.mjs`, `check-outstanding-issues-snapshot.mjs`                      |
 | Drift and migration gates       | `check-drift.ts`, `check-chain-mirror-parity.ts`, `check-migration-immutability.mjs`, `check-hosted-migration-role.mjs`, `check-function-grants.mjs`, `check-owner-scope-api.mjs`, `generate-drift-manifest.ts` |
-| Ledgers                         | `ledger-inbox.mjs` (`issues:*`), `branch-review-ledger.mjs` (`ledger:*`), `generate-branch-review-index.mjs`                                                                                                    |
+| Ledgers                         | `ledger-inbox.mjs` (`issues:*`), `branch-review-ledger.mjs` (`ledger:lookup`, historical), `generate-branch-review-index.mjs`                                                                                   |
 | PR tooling                      | `pr-policy.mjs`, `pr-mergeability.mjs`, `pr-batch-runner.mjs` (Clear PRs), `sync-pr-branches.mjs`, `ci-change-scope.mjs`, `guard-push.mjs`, `verify-pr-local.mjs`                                               |
 | Offline eval                    | `eval-rag-offline.mjs`, `eval-rag-adversarial-offline.mjs`, `eval-assertions.ts`, `tune-search-weights.ts`, `build-ranking-snapshot.ts`                                                                         |
 | Site content and public sources | `sync-site-content-corpus.ts`, `refresh-site-content-bootstrap.ts`, `plan-public-source-acquisition.ts`, `fetch-approved-public-source-versions.ts`                                                             |
@@ -1164,7 +1164,7 @@ freshness.ts` is the label-agnostic content-age helper both the ledger and the r
   that can merge: `review_state.records` is ordered by `head` (a uniformly distributed sha, so two
   branches appending a review record land far apart), it stores no aggregate `counts`
   (`reviewStateCounts()` derives them at render), and `REVISION_INPUTS` excludes the review corpus
-  so a `ledger:append` no longer moves `captured_revision`. Adding anything back to those keys
+  so appending a review record no longer moves `captured_revision`. Adding anything back to those keys
   means meeting the same bar: too volatile to compare is too volatile to commit in a conflicting
   shape.
 - **The gate needs git, and says so when it has none:** `check:repo-awareness-snapshot` reaches git

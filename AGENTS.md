@@ -48,7 +48,7 @@ Before any repository write or publication, read and follow [the remaining proje
 | Claude Code hook scripts | [`docs/agents/claude-hook-scripts.md`](docs/agents/claude-hook-scripts.md) |
 | Repository skills, the `/issues` outstanding-work memory | [`docs/agents/repository-skills-and-issues.md`](docs/agents/repository-skills-and-issues.md) |
 | The `upload`, dependency and `bug-hunter` shortcuts | [`docs/agents/upload-shortcut.md`](docs/agents/upload-shortcut.md), [`docs/agents/codex-dependency-shortcut.md`](docs/agents/codex-dependency-shortcut.md), [`docs/agents/bug-hunter-shortcut.md`](docs/agents/bug-hunter-shortcut.md) |
-| Codex review throttling, routing and the review ledger | [`docs/agents/codex-review-throttling.md`](docs/agents/codex-review-throttling.md), [`docs/codex-review-protocol.md`](docs/codex-review-protocol.md) |
+| Codex review throttling, routing and review records | [`docs/agents/codex-review-throttling.md`](docs/agents/codex-review-throttling.md), [`docs/codex-review-protocol.md`](docs/codex-review-protocol.md) |
 | Codex reasoning effort; Codex Desktop worktree setup | [`docs/agents/codex-reasoning-effort.md`](docs/agents/codex-reasoning-effort.md), [`docs/agents/codex-desktop-worktree-setup.md`](docs/agents/codex-desktop-worktree-setup.md) |
 | Which area owns a file (the first edit in an area also names it) | [`docs/organisation/README.md`](docs/organisation/README.md) |
 | Task receipts and Notion task status, only for receipt work | [`docs/task-receipts.md`](docs/task-receipts.md) |

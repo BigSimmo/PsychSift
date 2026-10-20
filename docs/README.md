@@ -3,8 +3,8 @@
 _Updated 2026-10-08 — catalogue Context7 and CME guides; clarify issue authority; Documentation owns._
 
 Categorised map of every tracked Markdown document under `docs/`: the load-bearing docs lead
-each category, and an "Also catalogued" list completes it (the immutable
-`branch-review-records/` and `outstanding-issues-inbox/` files are indexed by their own
+each category, and an "Also catalogued" list completes it (the archived
+`archive/branch-review-records/` and `outstanding-issues-inbox/` files are indexed by their own
 generators, not here). Categories distinguish **maintained** documents (keep these current when
 behavior changes) from **point-in-time records** (historical; do not update, supersede with a
 new dated doc instead). No check fails when a document is missing from this index, so add each
@@ -227,9 +227,9 @@ Every remaining tracked document in this category, one line each; the descriptio
 - [codex-cloud.md](codex-cloud.md) — current-host Cloud guide and explicit selection of the archived legacy setup
 - [claude-cloud.md](claude-cloud.md) — Claude Code on the web container parity: tiered provisioner and checked-in user profile
 - [branch-cleanup-guide.md](branch-cleanup-guide.md) — branch hygiene workflow
-- [branch-review-ledger.md](branch-review-ledger.md) — reviewed branch/SHA ledger; read with `npm run ledger:lookup` (historical tables + immutable records), write with `npm run ledger:append`, and convert a pre-system active-branch row with `npm run ledger:migrate-legacy`
-- [branch-review-archival-policy.md](branch-review-archival-policy.md) — what may and may not be done to the immutable records under `docs/branch-review-records/`; which operations are blocked by code, which are forbidden by policy but caught by nothing, and why foldering or deleting a record is silent history loss
-- [branch-review-index.md](branch-review-index.md) — **Generated** browsable index of every immutable review record; regenerate with `npm run ledger:index`, refresh with `npm run docs:update`, check currency with `npm run ledger:index:check`. It may lag the corpus, so `npm run ledger:lookup` stays authoritative
+- [branch-review-ledger.md](branch-review-ledger.md) — frozen reviewed branch/SHA table; review records now live in PR comments ([Records](agents/pull-request-workflow.md#records)), and `npm run ledger:lookup` searches this table and the archived records for history
+- [branch-review-archival-policy.md](branch-review-archival-policy.md) — superseded 2026-10-20, kept as history: what could be done to the records now archived read-only under `docs/archive/branch-review-records/`; which operations are blocked by code, which are forbidden by policy but caught by nothing, and why foldering or deleting a record is silent history loss
+- [branch-review-index.md](branch-review-index.md) — **Generated** browsable index of every archived review record; regenerate with `npm run ledger:index`, refresh with `npm run docs:update`, check currency with `npm run ledger:index:check`. It may lag the corpus, so `npm run ledger:lookup` stays authoritative
 - [task-receipts.md](task-receipts.md) — task lifecycle and sanitized receipt handoff protocol between agents and ledger
 
 ### Also catalogued (2026-09-02)
@@ -347,20 +347,20 @@ Every remaining tracked document in this category, one line each; the descriptio
 
 ## Subdirectory map
 
-| Directory                                        | What lives there                                                                                                                                                                                         |
-| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [decisions/](decisions/)                         | The owner's recorded decisions, one short file each, indexed by [decisions/README.md](decisions/README.md). Checked by `npm run check:decisions`                                                         |
-| [organisation/](organisation/)                   | The organisation map: one file per area (`systems/`), shared, not-yet-placed and ignored lists, last-read pins. Checked by `npm run check:organisation`                                                  |
-| [agents/](agents/)                               | Agent-rule reference files `AGENTS.md` delegates to by name — the full text of rules its always-loaded core only points at                                                                               |
-| [rag-behaviour/](rag-behaviour/)                 | Protected retrieval/ranking surface: behaviour map, refuted approaches, safeguards. **Read before touching ranking.**                                                                                    |
-| [prompts/](prompts/)                             | Current task and review prompts; follow the canonical repository and Cloud operating instructions                                                                                                        |
-| [codex/](codex/)                                 | Per-lens Codex ultra-review output folders, one per review dimension                                                                                                                                     |
-| [evidence/](evidence/)                           | Captured evidence artifacts backing ledger items (reliability reports, review manifests)                                                                                                                 |
-| [audit/](audit/)                                 | Dated repo, design, accessibility, and latency audits (point-in-time)                                                                                                                                    |
-| [redesign/](redesign/)                           | Premium redesign plans, decision log, token adoption                                                                                                                                                     |
-| [superpowers/](superpowers/)                     | Agent-authored plans and specs                                                                                                                                                                           |
-| [branch-review-records/](branch-review-records/) | Immutable one-row review records — one file per review — named for the SHA-256 of the row. **Append-only: never edit, delete, or move into subdirectories** ([policy](branch-review-archival-policy.md)) |
-| [archive/](archive/)                             | Completed phase plans, superseded designs, old progress logs — never current guidance                                                                                                                    |
+| Directory                                                        | What lives there                                                                                                                                                                          |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [decisions/](decisions/)                                         | The owner's recorded decisions, one short file each, indexed by [decisions/README.md](decisions/README.md). Checked by `npm run check:decisions`                                          |
+| [organisation/](organisation/)                                   | The organisation map: one file per area (`systems/`), shared, not-yet-placed and ignored lists, last-read pins. Checked by `npm run check:organisation`                                   |
+| [agents/](agents/)                                               | Agent-rule reference files `AGENTS.md` delegates to by name — the full text of rules its always-loaded core only points at                                                                |
+| [rag-behaviour/](rag-behaviour/)                                 | Protected retrieval/ranking surface: behaviour map, refuted approaches, safeguards. **Read before touching ranking.**                                                                     |
+| [prompts/](prompts/)                                             | Current task and review prompts; follow the canonical repository and Cloud operating instructions                                                                                         |
+| [codex/](codex/)                                                 | Per-lens Codex ultra-review output folders, one per review dimension                                                                                                                      |
+| [evidence/](evidence/)                                           | Captured evidence artifacts backing ledger items (reliability reports, review manifests)                                                                                                  |
+| [audit/](audit/)                                                 | Dated repo, design, accessibility, and latency audits (point-in-time)                                                                                                                     |
+| [redesign/](redesign/)                                           | Premium redesign plans, decision log, token adoption                                                                                                                                      |
+| [superpowers/](superpowers/)                                     | Agent-authored plans and specs                                                                                                                                                            |
+| [archive/branch-review-records/](archive/branch-review-records/) | Archived one-row review records, read-only; review records now live in PR comments. **Never add, edit, delete, or move into subdirectories** ([policy](branch-review-archival-policy.md)) |
+| [archive/](archive/)                                             | Completed phase plans, superseded designs, old progress logs — never current guidance                                                                                                     |
 
 ## Point-in-time records (historical — do not update)
 

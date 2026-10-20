@@ -296,7 +296,7 @@ export function validateRepositorySkillPolicies(
   ];
   for (const name of cursorReviewSkills) {
     requireContract(`.cursor/skills/${name}/SKILL.md`, [
-      "use `npm run ledger:append` to create an immutable review record",
+      "post one `Review record` comment on the PR",
       "never edit the frozen `docs/branch-review-ledger.md` table",
     ]);
   }

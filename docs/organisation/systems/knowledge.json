@@ -40,7 +40,6 @@
     "docs/branch-review-archival-policy.md",
     "docs/branch-review-index.md",
     "docs/branch-review-ledger.md",
-    "docs/branch-review-records/**",
     "docs/claude-cloud.md",
     "docs/cloud/codex-cloud-legacy-bootstrap.md",
     "docs/cloud/cross-repo-cloud-contracts.md",

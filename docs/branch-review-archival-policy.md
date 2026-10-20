@@ -1,7 +1,9 @@
 # Branch review records: archival policy
 
+Superseded 2026-10-20: review records now live in pull request comments and the existing records are archived read-only under `docs/archive/branch-review-records/` (see [the decision](decisions/2026-10-20-review-records-now-pr-comments.md)). The rest of this page is kept as history.
+
 What may and may not be done to the immutable one-row files under
-`docs/branch-review-records/`. This document exists so that nobody has to re-derive it from
+`docs/archive/branch-review-records/`. This document exists so that nobody has to re-derive it from
 the source a second time: every claim below is backed by the enforcing code, quoted verbatim
 with its file and line, and every claim is labelled as one of three things — **blocked by
 code**, **forbidden by policy but caught by nothing**, or **permitted**.
@@ -165,11 +167,11 @@ cover will simply be reviewed again.
 The same flatness holds for the second reader. `scripts/generate-repo-awareness-snapshot.ts:323`:
 
 ```ts
-export const REVIEW_RECORDS_PATHSPEC = ":(glob)docs/branch-review-records/*.record.md";
+export const REVIEW_RECORDS_PATHSPEC = ":(glob)docs/archive/branch-review-records/*.record.md";
 ```
 
 In git's `:(glob)` magic a single `*` does not cross a `/`, so a record at
-`docs/branch-review-records/2026/08/<hash>.record.md` is not matched. The filesystem fallback
+`docs/archive/branch-review-records/2026/08/<hash>.record.md` is not matched. The filesystem fallback
 used when git is unavailable is flat in the same way
 (`scripts/generate-repo-awareness-snapshot.ts:388-395`), filtering `entry.isFile()` and a
 `.record.md` suffix within the one directory.
@@ -221,7 +223,7 @@ ref:
   }
   ```
 
-  Neither list mentions `docs/branch-review-records`.
+  Neither list mentions `docs/archive/branch-review-records`.
 
 - The staleness backstop is deliberately blind here. `scripts/check-repo-awareness-snapshot.ts:22-41`:
 
@@ -343,7 +345,7 @@ review decision must be based on. The index is a browsing convenience, refreshed
 
 The measured facts, as of 2026-09-02:
 
-- 577 entries in `docs/branch-review-records/` — 576 records plus this directory's README —
+- 577 entries in `docs/archive/branch-review-records/` — 576 records plus this directory's README —
   totalling 2.4 MB.
 - That is more than half of the 1,144 tracked Markdown files under `docs/`.
 - `docs/` now outweighs `src/`: 26 MB against 23 MB by apparent size (`du -sh --apparent-size`),
