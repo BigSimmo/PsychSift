@@ -1,5 +1,10 @@
 # RAG Hybrid Retrieval — Findings & To-Do (2026-07-01)
 
+> **Status (2026-10-20): historical record, last reconciled 2026-07-14.** Do not treat the open items
+> below as a current queue: re-check each against the code and
+> [`docs/outstanding-issues.md`](outstanding-issues.md) before acting, and track any still-real item there.
+> Some helper names it cites (for example `shouldReturnTextFastPath`) no longer exist.
+
 Living list of issues found while fixing the live-only hybrid-RPC schema drift and optimising the
 online RAG. Grouped by priority. **Last reconciled: 2026-07-14.** `✅` is complete/closed, `🔶` is
 partially complete with an explicit remaining action, and `⏳` is genuinely open. Historical

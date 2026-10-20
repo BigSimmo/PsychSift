@@ -134,9 +134,10 @@ describe("work frame navigation", () => {
     expect(manage.length).toBeGreaterThan(0);
     for (const page of manage) expect(page.gates?.length, page.id).toBeGreaterThan(0);
     expect(searchWorkPages("locum")[0]?.page.href).toBe("/open-shifts");
-    // Refer, Who's who and the Pocket card folded into Contacts and the Handbook, and their search words with them.
+    // Refer stays a tab inside Call; the Pocket card and Shift's tools are pages of their own (20 Oct 2026).
     expect(searchWorkPages("referrals")[0]?.page.href).toBe("/on-call/refer");
-    expect(searchWorkPages("pocket card")[0]?.page.href).toBe("/on-call/find");
+    expect(searchWorkPages("pocket card")[0]?.page.href).toBe("/on-call/card");
+    expect(searchWorkPages("handover")[0]?.page.href).toBe("/on-call/handover");
   });
 
   it("puts the reader's chosen tabs first, then the area's own, then the rest by width", () => {

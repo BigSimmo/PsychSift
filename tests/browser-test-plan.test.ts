@@ -79,6 +79,11 @@ describe("browser test plan", () => {
     "src/lib/theme.ts",
     "src/lib/client-store-factory.ts",
     "src/lib/supabase/client.tsx",
+    "src/lib/scroll-behavior.ts",
+    "src/lib/navigation-guards.ts",
+    "src/lib/keyboard-shortcuts.ts",
+    "src/lib/terms-acceptance.ts",
+    "src/lib/supabase/browser-client.ts",
   ])("requires full browser proof for shared runtime input %s", (file) => {
     const scope = JSON.parse(
       execFileSync(process.execPath, ["scripts/ci-change-scope.mjs", "--json", "--files", file], {
@@ -435,6 +440,11 @@ describe("browser test plan", () => {
       "src/lib/app-modes.ts",
       "src/lib/on-call/demo-entries.ts",
       "src/lib/demo-data.ts",
+      "src/lib/scroll-behavior.ts",
+      "src/lib/navigation-guards.ts",
+      "src/lib/keyboard-shortcuts.ts",
+      "src/lib/terms-acceptance.ts",
+      "src/lib/supabase/browser-client.ts",
       "src/app/api/answer/route.ts",
       "src/lib/rag/rag.ts",
       "docs/testing.md",

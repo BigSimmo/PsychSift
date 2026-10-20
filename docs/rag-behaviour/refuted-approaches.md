@@ -112,21 +112,28 @@ Refutations 1–5 this was not re-attempted and measured — it is recorded **be
 would "fix" is real and highly visible**, so the wrong fix is the one a future task will reach for
 first.
 
-- **The real defect.** Generation is fully buffered (`src/lib/openai.ts:465`: _"Buffered
+- **Status note (2026-10-20).** Since 2026-08-27 the Phase 1 evidence preview
+  (`RAG_INCREMENTAL_EVIDENCE_PREVIEW`, default on; `docs/verified-answer-incremental-delivery-design.md`)
+  sends verified source cards before the final answer, so the panel is no longer blank for the whole
+  wait. The answer prose itself still arrives in one `final` frame, and the timing measurement that
+  would show how much earlier the first content now appears was never built. The refutation below
+  stands: the preview sends verified units, never raw tokens. Line numbers below were replaced with
+  symbol names on 2026-10-20 because they had drifted.
+- **The real defect.** Generation is fully buffered (`src/lib/openai.ts`, the comment _"Buffered
   (non-streaming) request — the baseline behaviour"_; only `responses.create`/`.parse`, never
   `.stream`), and the whole answer reaches the client in **one** `final` SSE frame
-  (`src/app/api/answer/stream/route.ts:256-260`). So **time-to-first-content equals total answer
-  latency**: a strong-route answer sitting perfectly inside its 25 s SLO still shows the clinician a
+  (`sendFinal` in `src/app/api/answer/stream/route.ts`). So, before the evidence preview,
+  **time-to-first-content equalled total answer latency**: a strong-route answer sitting perfectly inside its 25 s SLO still shows the clinician a
   blank panel for up to 25 s. `src/lib/sse-heartbeat.ts` sends a keepalive every 15 s because that
   silence routinely exceeds 15 s — it instruments the defect rather than fixing it.
-- **The obvious fix is already refused in code.** `src/lib/answer-stream-contract.ts:18-21`
-  deliberately excludes the legacy `token` and `revising` event names: _"A new client can be routed
+- **The obvious fix is already refused in code.** `src/lib/answer-stream-contract.ts` (the
+  "rolling deployment" comment) deliberately excludes the legacy `token` and `revising` event names: _"A new client can be routed
   to an older server during a rolling deployment, so accepting those events would re-expose
   unvalidated clinical prose."_ Token streaming **existed here and was removed as a clinical-safety
   control** — this is a prior decision, not an unbuilt feature.
 - **Why it cannot simply come back.** Every answer clears a post-generation pipeline over a
-  `responses.parse` structured object: `sanitizeCitations` (`rag.ts:3012`),
-  `sanitizeAnswerText`/`sanitizeStructuredText` (`:3017-3022`), `applyNumericVerification` /
+  `responses.parse` structured object: `sanitizeCitations` (`rag.ts`),
+  `sanitizeAnswerText`/`sanitizeStructuredText`, `applyNumericVerification` /
   `unboldUnverifiedNumbers`, `sanitizeQuoteCards`, `assessAndEnforceClaimSupport`. Forwarding raw
   tokens bypasses the numeric-faithfulness gate the 2026-07-01 audit filed as H1 — the gate that
   exists so a wrong dose or threshold never reaches a clinician as if verified.

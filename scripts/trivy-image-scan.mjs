@@ -104,41 +104,36 @@ export function validateTrivyReportJson(rawStdout) {
 }
 
 export function evaluateTrivySummaryText(summaryText, requiredImages = REQUIRED_TRIVY_SCAN_IMAGES) {
+  const unassessed = (reason) => ({ assessed: false, ok: false, high: 0, critical: 0, reason });
   const text = typeof summaryText === "string" ? summaryText.trim() : "";
-  if (!text) {
-    return {
-      assessed: false,
-      ok: false,
-      high: 0,
-      critical: 0,
-      reason: "empty_summary",
-    };
-  }
-  if (/\bSTATUS=unassessed\b/.test(text)) {
-    return {
-      assessed: false,
-      ok: false,
-      high: 0,
-      critical: 0,
-      reason: "contains_unassessed_status",
-    };
-  }
-  for (const imageRef of requiredImages) {
-    const escaped = imageRef.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const okLineRe = new RegExp(`^Trivy scan completed \\(${escaped}\\): STATUS=ok\\b`, "m");
-    if (!okLineRe.test(text)) {
-      return {
-        assessed: false,
-        ok: false,
-        high: 0,
-        critical: 0,
-        reason: `missing_status_ok_for_${imageRef}`,
-      };
-    }
+  if (!text) return unassessed("empty_summary");
+  if (/\bSTATUS=unassessed\b/.test(text)) return unassessed("contains_unassessed_status");
+
+  // Each image must supply exactly one complete record. Never infer a missing,
+  // malformed or overflowing count as zero, or count unrelated diagnostic text.
+  const evidence = new Map();
+  const record =
+    /^Trivy scan completed \(([^)]+)\): STATUS=ok HIGH=(0|[1-9]\d*) CRITICAL=(0|[1-9]\d*) MEDIUM=(0|[1-9]\d*) LOW=(0|[1-9]\d*) UNKNOWN=(0|[1-9]\d*)$/;
+  for (const line of text.split(/\r?\n/).filter((line) => line.trim())) {
+    const match = record.exec(line);
+    if (!match) return unassessed("malformed_scan_record");
+    const [, imageRef, ...rawCounts] = match;
+    if (!requiredImages.includes(imageRef)) return unassessed(`unexpected_image_${imageRef}`);
+    if (evidence.has(imageRef)) return unassessed(`duplicate_scan_record_for_${imageRef}`);
+    const counts = rawCounts.map(Number);
+    if (!counts.every(Number.isSafeInteger)) return unassessed(`invalid_counts_for_${imageRef}`);
+    evidence.set(imageRef, counts);
   }
 
-  const high = [...text.matchAll(/\bHIGH=(\d+)\b/g)].reduce((sum, match) => sum + Number(match[1]), 0);
-  const critical = [...text.matchAll(/\bCRITICAL=(\d+)\b/g)].reduce((sum, match) => sum + Number(match[1]), 0);
+  let high = 0;
+  let critical = 0;
+  for (const imageRef of requiredImages) {
+    const counts = evidence.get(imageRef);
+    if (!counts) return unassessed(`missing_status_ok_for_${imageRef}`);
+    high += counts[0];
+    critical += counts[1];
+    if (!Number.isSafeInteger(high) || !Number.isSafeInteger(critical)) return unassessed("count_overflow");
+  }
   return {
     assessed: true,
     ok: high === 0 && critical === 0,
@@ -146,6 +141,39 @@ export function evaluateTrivySummaryText(summaryText, requiredImages = REQUIRED_
     critical,
     reason: high === 0 && critical === 0 ? null : "high_or_critical_vulnerabilities_found",
   };
+}
+
+function evaluateSummaryFile(summaryPath, eventName) {
+  let summary;
+  try {
+    summary = readFileSync(summaryPath, "utf8");
+  } catch {
+    console.error("::error::Trivy scan unassessed: summary is missing or unreadable.");
+    return 1;
+  }
+  if (process.env.GITHUB_STEP_SUMMARY) {
+    writeFileSync(
+      process.env.GITHUB_STEP_SUMMARY,
+      `## Trivy image scan (HIGH,CRITICAL)\n\n\`\`\`\n${summary}\n\`\`\`\n`,
+      { flag: "a" },
+    );
+  }
+  const result = evaluateTrivySummaryText(summary);
+  if (!result.assessed) {
+    console.error(`::error::Trivy scan unassessed: ${result.reason}.`);
+    return 1;
+  }
+  const counts = `HIGH=${result.high} CRITICAL=${result.critical}`;
+  console.log(counts);
+  if (result.ok) return 0;
+  if (["pull_request", "merge_group"].includes(eventName)) {
+    console.log(
+      `::warning::Trivy found ${counts} in the production images (advisory on pull requests and merge groups).`,
+    );
+    return 0;
+  }
+  console.error(`::error::Trivy found ${counts} in the production images; see the job summary.`);
+  return 1;
 }
 
 /**
@@ -299,6 +327,14 @@ function runDockerTrivy(imageRef, trivyArgs, { outputHostPath = null, needsVulne
 }
 
 function main() {
+  if (process.argv[2] === "--evaluate-summary") {
+    const [, , , summaryPath, eventName] = process.argv;
+    if (!summaryPath || !eventName || process.argv.length !== 5) {
+      console.error("Usage: node scripts/trivy-image-scan.mjs --evaluate-summary <summary.txt> <event-name>");
+      process.exit(1);
+    }
+    process.exit(evaluateSummaryFile(summaryPath, eventName));
+  }
   const [imageRef, ...rest] = process.argv.slice(2);
   if (!imageRef) {
     console.error(

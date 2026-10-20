@@ -180,11 +180,13 @@ describe("release-browser-matrix engine coverage", () => {
 
   it("keeps browser archives isolated by engine and installs that engine on cache hits too", () => {
     const steps = parsedWorkflow.jobs["release-browser-matrix"].steps as WorkflowStep[];
+    const resolver = steps.find((step) => step.name === "Resolve Playwright browser cache key");
     const cache = steps.find((step) => step.name === "Restore browser cache");
-    expect(cache?.with.key).toBe(
-      "playwright-engine-${{ matrix.engine }}-${{ runner.os }}-${{ hashFiles('package-lock.json') }}",
-    );
-    expect(cache?.with["restore-keys"].trim()).toBe("playwright-engine-${{ matrix.engine }}-${{ runner.os }}-");
+    expect(resolver?.env.BROWSER_ENGINE).toBe("${{ matrix.engine }}");
+    expect(resolver?.run).toContain('node scripts/playwright-browser-cache-key.mjs --engine "$BROWSER_ENGINE"');
+    expect(resolver?.run).toContain('--os "${{ runner.os }}" --arch "${{ runner.arch }}" >> "$GITHUB_OUTPUT"');
+    expect(cache?.with.key).toBe("${{ steps.browser-cache-key.outputs.key }}");
+    expect(cache?.with["restore-keys"]).toBeUndefined();
     expect(releaseJob).toContain("BROWSER_ENGINE: ${{ matrix.engine }}");
     expect(releaseJob).toContain('npx playwright install-deps "$BROWSER_ENGINE"');
     expect(releaseJob).toContain('npx playwright install "$BROWSER_ENGINE"');

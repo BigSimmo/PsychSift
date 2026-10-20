@@ -159,14 +159,15 @@ export const modeSecondaryNavigationRegistry = {
   // route with a real URL, and a `ModeNavItem` takes an href by design so deep
   // links, back and prefetch keep working.
   "on-call": [
-    // Four tabs (owner, 5 Oct 2026, mock-up v10): Now, People, Refer,
-    // Handbook. People is the Call page and Handbook the Find page, renamed in
-    // place so every address and bookmark keeps working; Playbook and Who's on
-    // stay one tap away under Tools.
+    // Four tabs (On Call overhaul, owner approval 20 Oct 2026): Now, Call, Shift,
+    // Handbook. Call is the old People page and Handbook the Find page, renamed in
+    // place so every address and bookmark keeps working. Classic readers keep the
+    // standalone Refer page one tap away under Tools, with the Playbook and Who's on.
     { id: "now", label: "Now", href: "/on-call" },
-    { id: "call", label: "People", href: "/on-call/call" },
-    { id: "refer", label: "Refer", href: "/on-call/refer" },
+    { id: "call", label: "Call", href: "/on-call/call" },
+    { id: "shift", label: "Shift", href: "/on-call/handover" },
     { id: "find", label: "Handbook", href: "/on-call/find" },
+    { id: "refer", label: "Refer", href: "/on-call/refer", group: "tools" },
     { id: "playbook", label: "Playbook", href: "/on-call/playbook", group: "tools" },
     // Routed and built, but left out of the sheet until the owner turns it on.
     { id: "whoson", label: "Who's on", href: "/on-call/whos-on", group: "tools", hidden: !ON_CALL_WHOS_ON_ENABLED },
@@ -364,6 +365,9 @@ const ON_CALL_ACTIVE_IDS: Readonly<Record<string, string>> = {
   "/on-call/refer": "refer",
   "/on-call/referrals": "refer",
   "/on-call/find": "find",
+  "/on-call/handover": "shift",
+  "/on-call/calls": "shift",
+  "/on-call/pulse": "shift",
   "/on-call/card": "card",
   "/on-call/service": "service",
   // Bookmark paths (proxy/page redirects still serve these) plus the direct

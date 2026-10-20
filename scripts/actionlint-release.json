@@ -1,0 +1,10 @@
+{
+  "version": "1.7.7",
+  "platform": "linux",
+  "architecture": "x64",
+  "asset": "actionlint_1.7.7_linux_amd64.tar.gz",
+  "archiveSha256": "023070a287cd8cccd71515fedc843f1985bf96c436b7effaecce67290e7e0757",
+  "executableSha256": "9f7dedb4e23f89f2922073d1a6720405b7b520d4f5832ebb96f0d55a2958886c",
+  "releaseUrl": "https://github.com/rhysd/actionlint/releases/tag/v1.7.7",
+  "checksumsUrl": "https://github.com/rhysd/actionlint/releases/download/v1.7.7/actionlint_1.7.7_checksums.txt"
+}

@@ -79,6 +79,109 @@ describe("ci coverage — evaluates step and job guards", () => {
     expect(deriveCiCoverage(projectRoot, gate, { scope: sourceScope }).covered).toBe(true);
   });
 
+  it.each([docsOnly, sourceScope, { docs_changed: false, static_heavy_changed: false }])(
+    "evaluates the real docs-link OR guard for %j",
+    (scope) => {
+      expect(deriveCiCoverage(projectRoot, "docs:check-links", { scope }).covered).toBe(
+        scope.static_heavy_changed || ("docs_changed" in scope && scope.docs_changed),
+      );
+    },
+  );
+
+  const guarded = (guard: string, scope: Record<string, boolean> | null, jobGuard = "") => {
+    const ci = [
+      "jobs:",
+      "  guarded:",
+      ...(jobGuard ? [`    if: ${jobGuard}`] : []),
+      "    steps:",
+      "      - name: Guarded gate",
+      `        if: ${guard}`,
+      "        run: npm run fixture:gate",
+    ].join("\n");
+    const readFile = ((file: string) =>
+      String(file).endsWith("package.json") ? JSON.stringify({ scripts: {} }) : ci) as never;
+    return deriveCiCoverage(projectRoot, "fixture:gate", { scope, readFile });
+  };
+  const a = "needs.changes.outputs.a_changed";
+  const b = "needs.changes.outputs.b_changed";
+  const c = "needs.changes.outputs.c_changed";
+
+  it("matches boolean truth tables with precedence, grouping, negation and equality", () => {
+    for (const a_changed of [false, true]) {
+      for (const b_changed of [false, true]) {
+        for (const c_changed of [false, true]) {
+          const scope = { a_changed, b_changed, c_changed };
+          expect(guarded(`${a} == 'true' || ${b} == 'true' && ${c} == 'true'`, scope).covered).toBe(
+            a_changed || (b_changed && c_changed),
+          );
+          expect(guarded(`(${a} == 'true' || ${b} == 'true') && ${c} == 'true'`, scope).covered).toBe(
+            (a_changed || b_changed) && c_changed,
+          );
+          expect(guarded(`!(${a} == 'true' || ${b} == 'true')`, scope).covered).toBe(!(a_changed || b_changed));
+          expect(guarded(`'true' == ${a} && ${b} != 'true'`, scope).covered).toBe(a_changed && !b_changed);
+          expect(guarded(`${a} == 'false' || ${b} != 'false'`, scope).covered).toBe(!a_changed || b_changed);
+        }
+      }
+    }
+  });
+
+  it("requires both step and folded job guards, including a folded step expression", () => {
+    const step = `>\n          (${a} == 'true' ||\n           ${b} == 'true')`;
+    const job = `>\n      ${c} == 'true'`;
+    expect(guarded(step, { a_changed: true, c_changed: true }, job).covered).toBe(true);
+    expect(guarded(step, { a_changed: true, c_changed: false }, job).covered).toBe(false);
+    expect(guarded(step, { a_changed: false, b_changed: false, c_changed: true }, job).covered).toBe(false);
+    expect(guarded(`\${{ ${a} == 'true' || ${b} == 'true' }}`, { b_changed: true }).covered).toBe(true);
+  });
+
+  it("keeps runtime assumptions explicit even inside OR branches and negations", () => {
+    const conditional = guarded(
+      `(${a} == 'true' || github.event_name == 'push') && !(github.event.pull_request.draft == true)`,
+      { a_changed: false },
+    );
+    expect(conditional.covered).toBe(true);
+    expect(conditional.assumed.join("; ")).toMatch(/github.event_name/);
+    expect(conditional.assumed.join("; ")).toMatch(/!.*draft/);
+    expect(guarded(`${a} == 'true' || github.event_name == 'push'`, { a_changed: true }).assumed).toEqual([]);
+    expect(guarded(`${a} == 'true' && github.event_name == 'push'`, { a_changed: false }).covered).toBe(false);
+    const call = guarded(
+      `${a} == 'true' && !cancelled() && contains(github.event.pull_request.labels.*.name, 'browser')`,
+      { a_changed: true },
+    );
+    expect(call.covered).toBe(true);
+    expect(call.assumed.join("; ")).toMatch(/! cancelled/);
+    expect(call.assumed.join("; ")).toMatch(/contains/);
+  });
+
+  it("does not negate unknown scope into proof or claim proof for unsupported syntax", () => {
+    for (const guard of [`!(${a} == 'true')`, `${a} != 'true'`, `${a} == 'false'`]) {
+      expect(guarded(guard, null).covered, guard).toBe(false);
+    }
+    for (const guard of [`${a} == 'true' ||`, `(${a} == 'true'`, `${a} == 'true' + true`, `contains(${a}, 'true')`]) {
+      expect(guarded(guard, { a_changed: true }).covered, guard).toBe(false);
+    }
+    expect(guarded("false", {}).covered).toBe(false);
+    expect(guarded("true", null).covered).toBe(true);
+  });
+
+  it("requires an own boolean scope value before equality or negation can establish coverage", () => {
+    for (const scope of [
+      {},
+      { b_changed: true },
+      { a_changed: undefined },
+      { a_changed: "false" },
+      { a_changed: 0 },
+      Object.create({ a_changed: false }),
+    ]) {
+      for (const guard of [`${a} == 'false'`, `${a} != 'true'`, `!(${a} == 'true')`]) {
+        expect(guarded(guard, scope as Record<string, boolean>).covered, guard).toBe(false);
+      }
+    }
+    expect(guarded(`${a} == 'false'`, { a_changed: false }).covered).toBe(true);
+    expect(guarded(`${a} == 'true' || ${b} == 'false'`, { a_changed: true }).covered).toBe(true);
+    expect(guarded(`${a} == 'true' && ${b} == 'false'`, { a_changed: true }).covered).toBe(false);
+  });
+
   it("extracts the change-scope flags a guard depends on", () => {
     expect(scopeFlagsInGuard("needs.changes.outputs.coverage_changed == 'true' && x")).toEqual(["coverage_changed"]);
     expect(scopeFlagsInGuard("github.event_name == 'push'")).toEqual([]);

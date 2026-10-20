@@ -8,6 +8,8 @@ import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
 
 import {
+  checkAnnotationsPath,
+  classifyMatrixProof,
   classifyProof,
   evaluate,
   evaluatePullRequestUpdate,
@@ -24,7 +26,7 @@ import {
  * on a byte-identical tree. Everything here pins the fail-closed shape — an absent or partial proof
  * must leave the push doing the full job set it did before, and the jobs with main-only behaviour
  * (Build + deployment boot smoke) must never become skippable. The Firefox/WebKit release matrix
- * is skippable only on its own proof: a green full-suite dispatch run on the identical tree.
+ * always runs on qualifying main pushes and is never eligible for proof reuse.
  */
 const workflowText = readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8");
 const workflow = createRequire(import.meta.url)("js-yaml").load(workflowText);
@@ -99,6 +101,72 @@ describe("main tree proof script", () => {
       expect(names).toContain(name);
     }
     expect(Object.keys(PROOF_GROUPS).sort()).toEqual(["coverage", "lighthouse", "ui"]);
+    expect(jobs["coverage-shards"].strategy.matrix.shard).toEqual([1, 2]);
+    expect(jobs["ui-critical"].strategy.matrix.shard).toEqual([1, 2, 3]);
+  });
+
+  it("requires exactly one of every expected leg, including aggregate, critical and build jobs", () => {
+    const full = Object.values(PROOF_GROUPS)
+      .flat()
+      .map((name) => ({
+        name,
+        status: "completed",
+        conclusion: "success",
+      }));
+    expect(classifyProof(full)).toEqual({ coverage: true, ui: true, lighthouse: true });
+    for (const group of ["coverage", "ui", "lighthouse"] as const) {
+      const names = PROOF_GROUPS[group];
+      for (const name of names) {
+        expect(classifyProof(full.filter((job) => job.name !== name))[group], `missing ${name}`).toBe(false);
+        expect(classifyProof([...full, full.find((job) => job.name === name)])[group], `duplicate ${name}`).toBe(false);
+        for (const conclusion of ["skipped", "cancelled", "failure"]) {
+          expect(classifyProof(full.map((job) => (job.name === name ? { ...job, conclusion } : job)))[group]).toBe(
+            false,
+          );
+        }
+      }
+    }
+    expect(
+      classifyProof([...full, { name: "Unit coverage partition (3)", status: "completed", conclusion: "success" }])
+        .coverage,
+    ).toBe(false);
+    expect(classifyProof([...full, { name: "Production UI (4)", status: "completed", conclusion: "success" }]).ui).toBe(
+      false,
+    );
+    expect(
+      classifyMatrixProof([
+        { name: "release-browser-matrix (webkit, webkit, 1, 4)", status: "completed", conclusion: "success" },
+      ]),
+    ).toBe(false);
+  });
+
+  it("resolves the Checks ID only from a trusted same-repository API URL", () => {
+    const check_run_url = "https://api.github.com/repos/o/r/check-runs/1700";
+    expect(checkAnnotationsPath({ id: 700, check_run_url }, "o/r")).toBe(
+      "/repos/o/r/check-runs/1700/annotations?per_page=50",
+    );
+    expect(
+      checkAnnotationsPath(
+        { check_run_url: "https://github.example/api/v3/repos/o/r/check-runs/1700" },
+        "o/r",
+        "https://github.example/api/v3",
+      ),
+    ).toBe("/repos/o/r/check-runs/1700/annotations?per_page=50");
+    for (const url of [
+      undefined,
+      "",
+      "/repos/o/r/check-runs/1700",
+      "https://attacker.test/repos/o/r/check-runs/1700",
+      "https://api.github.com/repos/other/r/check-runs/1700",
+      "http://api.github.com/repos/o/r/check-runs/1700",
+      `${check_run_url}/annotations`,
+      `${check_run_url}?x=1`,
+      `${check_run_url}#fragment`,
+      check_run_url.replace("1700", "abc"),
+      check_run_url.replace("api.github.com", "user@api.github.com"),
+    ]) {
+      expect(checkAnnotationsPath({ id: 700, check_run_url: url }, "o/r"), String(url)).toBeNull();
+    }
   });
 
   it("treats an unexpanded (skipped) matrix job as no proof", () => {
@@ -157,7 +225,11 @@ describe("main tree proof script", () => {
       "Production UI (2)",
       "Production UI (3)",
       "Lighthouse budget",
-    ].map((name, index) => ({ ...ok(name), id: 700 + index }));
+    ].map((name, index) => ({
+      ...ok(name),
+      id: 700 + index,
+      check_run_url: `https://api.github.com/repos/o/r/check-runs/${1700 + index}`,
+    }));
     const request = async (path: string) => {
       if (path.includes("/commits/")) {
         return [
@@ -187,7 +259,7 @@ describe("main tree proof script", () => {
         };
       }
       // The proving run's own record of the merge-ref checkout it tested (not the PR head SHA).
-      if (path.includes("/check-runs/700/annotations")) {
+      if (path.includes("/check-runs/1700/annotations")) {
         return [{ title: "CI tested tree", message: `event=pull_request sha=${"f".repeat(40)} tree=${tree}` }];
       }
       if (path.includes("/jobs")) return { total_count: prJobs.length, jobs: prJobs };
@@ -197,6 +269,41 @@ describe("main tree proof script", () => {
     expect(fetched).toEqual(["+refs/pull/42/head:refs/remotes/tree-proof/42"]);
     expect(result.proof).toEqual({ coverage: true, ui: true, lighthouse: true, matrix: false });
     expect(result.runUrl).toBe("https://example.test/run/9");
+
+    for (const check_run_url of [
+      "",
+      "https://api.github.com/repos/other/r/check-runs/1700",
+      "https://attacker.test/repos/o/r/check-runs/1700",
+    ]) {
+      const invalid = await evaluate({
+        env,
+        now,
+        runGit,
+        runGitOk,
+        request: async (url: string) =>
+          url.includes("/jobs")
+            ? {
+                total_count: prJobs.length,
+                jobs: prJobs.map((job) => (job.name === "Change scope" ? { ...job, check_run_url } : job)),
+              }
+            : request(url),
+      });
+      expect(invalid.proof).toEqual({ coverage: false, ui: false, lighthouse: false, matrix: false });
+    }
+    for (const status of [403, 404]) {
+      await expect(
+        evaluate({
+          env,
+          now,
+          runGit,
+          runGitOk,
+          request: async (url: string) => {
+            if (url.includes("/annotations")) throw new Error(`HTTP ${status}`);
+            return request(url);
+          },
+        }),
+      ).rejects.toThrow(`HTTP ${status}`);
+    }
 
     // Same evidence, one byte of tree drift: nothing is proven.
     gitTable["rev-parse HEAD^{tree}"] = "e".repeat(40);
@@ -259,7 +366,12 @@ describe("main tree proof workflow wiring", () => {
     expect(proofStep?.env?.PR_HEAD_SHA).toBe("${{ github.event.pull_request.head.sha }}");
     expect(proofStep?.run).toBe("node scripts/ci-main-tree-proof.mjs");
     expect(proofStep?.env?.BEFORE_SHA).toBe("${{ github.event.before }}");
-    expect(jobs.changes.permissions).toEqual({ contents: "read", actions: "read", "pull-requests": "read" });
+    expect(jobs.changes.permissions).toEqual({
+      contents: "read",
+      actions: "read",
+      checks: "read",
+      "pull-requests": "read",
+    });
     expect(jobs.changes.outputs.tree_proven_coverage).toBe("${{ steps.tree-proof.outputs.coverage }}");
     expect(jobs.changes.outputs.tree_proven_ui).toBe("${{ steps.tree-proof.outputs.ui }}");
     expect(jobs.changes.outputs.tree_proven_lighthouse).toBe("${{ steps.tree-proof.outputs.lighthouse }}");
@@ -364,7 +476,13 @@ describe("PR branch update reuse", () => {
     PR_HEAD_REF: "feature/x",
     PR_HEAD_REPO: "o/r",
   } as unknown as NodeJS.ProcessEnv;
-  const ok = (name: string, id = 0) => ({ name, id, status: "completed", conclusion: "success" });
+  const ok = (name: string, id = 0) => ({
+    name,
+    id,
+    status: "completed",
+    conclusion: "success",
+    check_run_url: `https://api.github.com/repos/o/r/check-runs/${id + 1000}`,
+  });
   const allLegs = [
     ok("Change scope", 900),
     ok("Unit coverage partition (1)"),
@@ -412,7 +530,7 @@ describe("PR branch update reuse", () => {
     const runGitOk = (args: string[]) => (args[0] === "merge-base" ? ancestor : args[0] === "cat-file" ? false : true);
     const request = async (url: string) => {
       if (url.includes("/workflows/ci.yml/runs")) return { workflow_runs: runs };
-      if (url.includes("/check-runs/900/annotations")) {
+      if (url.includes("/check-runs/1900/annotations")) {
         return [{ title: "CI tested tree", message: `event=pull_request sha=${"9".repeat(40)} tree=${record}` }];
       }
       if (url.includes("/jobs")) return { total_count: jobs.length, jobs };
@@ -425,6 +543,47 @@ describe("PR branch update reuse", () => {
     const result = await evaluatePullRequestUpdate(setup());
     expect(result.proof).toEqual({ coverage: true, ui: true, lighthouse: true, matrix: false });
     expect(result.runUrl).toBe("https://example.test/run/5");
+  });
+
+  it("rejects untrusted annotation URLs and propagates annotation API errors for the full-run fallback", async () => {
+    for (const check_run_url of [
+      "",
+      "https://api.github.com/repos/other/r/check-runs/1900",
+      "https://attacker.test/repos/o/r/check-runs/1900",
+    ]) {
+      const result = await evaluatePullRequestUpdate(
+        setup({ jobs: allLegs.map((job) => (job.name === "Change scope" ? { ...job, check_run_url } : job)) }),
+      );
+      expect(result.proof).toEqual({ coverage: false, ui: false, lighthouse: false, matrix: false });
+    }
+    for (const status of [403, 404]) {
+      const base = setup();
+      await expect(
+        evaluatePullRequestUpdate({
+          ...base,
+          request: async (url: string) => {
+            if (url.includes("/annotations")) throw new Error(`HTTP ${status}`);
+            return base.request(url);
+          },
+        }),
+      ).rejects.toThrow(`HTTP ${status}`);
+    }
+  });
+
+  it("carries no incomplete or duplicated matrix group even with an identical tested tree", async () => {
+    for (const jobs of [
+      allLegs.filter(
+        (job) => !["Unit coverage partition (2)", "Production UI (2)", "Production UI (3)"].includes(job.name),
+      ),
+      [...allLegs, ok("Unit coverage partition (1)"), ok("Production UI (1)")],
+    ]) {
+      expect((await evaluatePullRequestUpdate(setup({ jobs }))).proof).toEqual({
+        coverage: false,
+        ui: false,
+        lighthouse: true,
+        matrix: false,
+      });
+    }
   });
 
   it("carries only browser and Lighthouse when the delta is entirely outside their inputs", async () => {

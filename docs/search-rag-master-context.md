@@ -1,5 +1,9 @@
 # Search/RAG Master Context
 
+> **Status (2026-10-20): historical brief.** Most "Contract To Introduce" sections describe contracts that
+> are now built, and some example helpers it names (`parseOffset`, `boundedInteger`) no longer exist. Check
+> the code and [`docs/rag-behaviour/`](rag-behaviour/README.md) before relying on it.
+
 ## Purpose
 
 This file preserves the working context for the Clinical KB search and answer-quality problem. It is intended to be the shared brief for future implementation work, reviews, and model handoffs.
