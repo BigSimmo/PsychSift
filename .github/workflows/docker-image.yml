@@ -154,20 +154,6 @@ jobs:
           docker run --rm --network=none --entrypoint node clinical-kb-app:ci scripts/deploy/await-migrations.mjs --self-test
           docker run --rm --network=none --entrypoint node clinical-kb-worker:ci scripts/deploy/await-migrations.mjs --self-test
 
-      - name: Read-only runtime check (advisory)
-        run: |
-          docker run --rm --read-only --cap-drop=ALL --security-opt no-new-privileges:true \
-            -e NODE_ENV=production \
-            -e NEXT_PUBLIC_DEMO_MODE=false \
-            -e NEXT_PUBLIC_SUPABASE_URL=https://sjrfecxgysukkwxsowpy.supabase.co \
-            -e SUPABASE_SERVICE_ROLE_KEY=smoke-test-placeholder \
-            -e RAG_QUERY_HASH_SECRET=smoke-test-hash-secret \
-            -e RAG_PROVIDER_MODE=offline \
-            -e NEXT_TELEMETRY_DISABLED=1 \
-            clinical-kb-app:ci \
-            node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>r.json()).then(j=>{if(j.status!=='ok')throw new Error(JSON.stringify(j));console.log(j)}).catch(e=>{console.error(e);process.exit(1)})" || true
-        continue-on-error: true
-
       - name: Generate SBOMs
         # Advisory: docker-save of both loaded images can ENOSPC on small runners.
         # Free BuildKit cache first; do not fail the required gate on scanner disk pressure.

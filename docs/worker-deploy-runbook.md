@@ -71,6 +71,16 @@ match CVE-2026-81726 by version; retain that finding in the report and assess th
 source repair and runtime compatibility evidence separately. This is not a
 security exception or release approval.
 
+The worker takes only four curl/HTTP/3 packages from signed Trixie backports:
+`libcurl4t64` 8.21.0, `libnghttp3-9` 1.15.0, and `libngtcp2-16` /
+`libngtcp2-crypto-ossl0` 1.22.1. The Dockerfile pins their Debian revisions,
+rejects every other backports package, and checks the installed curl/ngtcp2
+security floors. Do not enable a general backports target or mix unrelated
+native libraries. Keep both Python locks and all repository-pinned model
+identities unchanged; validate the complete rebuilt image, actual OCR cases
+and full scan before accepting its dependency changes. Ingestion restoration
+remains a separate operational action.
+
 ### 0.1 Automated pre-deploy gate
 
 Railway deploys the app and worker images, and the Supabase GitHub integration

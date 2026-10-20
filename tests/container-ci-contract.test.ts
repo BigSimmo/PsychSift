@@ -6,6 +6,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { isCleanContainerExit } from "../scripts/app-container-smoke.mjs";
 import {
   imageListingProbe,
   imagePathAbsenceProbe,
@@ -101,6 +102,24 @@ describe("container delivery contract", () => {
     expect(contract).toContain('assertListingClean(WORKER_IMAGE, "/opt", "^yarn-"');
     expect(dockerfile).toContain("COPY worker/python/ocr-model-LICENSE.txt /opt/psychsift-ocr-models/LICENSE");
     expect(dockerfile).toContain('model = model_dir / "Latin.traineddata"');
+  });
+
+  it("limits worker backports to the repaired curl and HTTP/3 library set", () => {
+    const worker = read("Dockerfile.worker");
+    expect(worker).toContain("signed-by=/usr/share/keyrings/debian-archive-keyring.gpg");
+    expect(worker).toContain("Package: libcurl4t64 libnghttp3-9 libngtcp2-16 libngtcp2-crypto-ossl0");
+    expect(worker).toMatch(/'Package: \*'\s*\\\n\s*'Pin: release n=trixie-backports'\s*\\\n\s*'Pin-Priority: -1'/);
+    expect(worker).not.toContain("-t trixie-backports");
+    for (const pin of [
+      "libcurl4t64=8.21.0-2~bpo13+1",
+      "libnghttp3-9=1.15.0-1~bpo13+1",
+      "libngtcp2-16=1.22.1-1~bpo13+1",
+      "libngtcp2-crypto-ossl0=1.22.1-1~bpo13+1",
+    ]) {
+      expect(worker).toContain(pin);
+    }
+    expect(worker).toContain("ge 8.21.0-2~bpo13+1");
+    expect(worker).toContain("ge 1.22.1-1~bpo13+1");
   });
 
   it.skipIf(process.platform === "win32")(
@@ -335,7 +354,21 @@ describe("container delivery contract", () => {
     const smoke = read("scripts/app-container-smoke.mjs");
     const workflow = read(".github/workflows/docker-image.yml");
     expect(smoke).toContain("RAG_QUERY_HASH_SECRET=smoke-test-hash-secret");
-    expect(workflow).toContain("RAG_QUERY_HASH_SECRET=smoke-test-hash-secret");
+    expect(workflow).toContain("run: node scripts/app-container-smoke.mjs");
+  });
+
+  it("requires a real read-only app startup rather than a fetch-only replacement command", () => {
+    const smoke = read("scripts/app-container-smoke.mjs");
+    const workflow = read(".github/workflows/docker-image.yml");
+    const step = workflow.match(/- name: Run app container smoke[\s\S]*?(?=\n      - name:)/)?.[0];
+    expect(step).toContain("run: node scripts/app-container-smoke.mjs");
+    expect(step).not.toMatch(/continue-on-error|\|\| true/);
+    expect(workflow).not.toContain("Read-only runtime check (advisory)");
+    for (const flag of ["--read-only", "--network=none", "--cap-drop=ALL", "no-new-privileges:true"]) {
+      expect(smoke).toContain(JSON.stringify(flag));
+    }
+    expect(smoke).toContain('"-d"');
+    expect(smoke).toContain("const health = await waitForHealth()");
   });
 
   it("accepts Next 16 next-server PID 1 in app container smoke", () => {
@@ -370,8 +403,24 @@ describe("container delivery contract", () => {
     expect(contract).toContain('"/app/worker/python"');
     expect(contract).not.toContain('"--entrypoint", "sh"');
     expect(contract).not.toContain('"--entrypoint", "test"');
-    expect(smoke).toContain('exitCode === "137"');
+    expect(smoke).toContain("isCleanContainerExit(inspectResult)");
     expect(smoke).toContain("State.Running");
+  });
+
+  it.each([
+    [{ status: 0, stdout: "false false 0\n" }, true],
+    [{ status: 0, stdout: "false false 143\n" }, true],
+    [{ status: 1, stdout: "false false 0\n" }, false],
+    [{ status: 0, stdout: "" }, false],
+    [{ status: 0, stdout: "false false" }, false],
+    [{ status: 0, stdout: "false false 0 extra" }, false],
+    [{ status: 0, stdout: "false false 1\n" }, false],
+    [{ status: 0, stdout: "false false 137\n" }, false],
+    [{ status: 0, stdout: "true false 0\n" }, false],
+    [{ status: 0, stdout: "false true 0\n" }, false],
+    [{ status: null, signal: "SIGTERM", stdout: "false false 0\n" }, false],
+  ])("validates complete shutdown evidence %j", (result, expected) => {
+    expect(isCleanContainerExit(result)).toBe(expected);
   });
 
   it("keeps Trivy SBOM and vulnerability steps non-blocking in CI", () => {
