@@ -37,10 +37,16 @@ import {
   issueUlidFromRequest,
   normalizeIssueDisplayId,
 } from "./issue-id.mjs";
+import {
+  APPLIED_DIR,
+  INBOX_DIR,
+  appliedRecordDirectories,
+  appliedRecordName,
+  archivedAppliedPath,
+  quarterOf,
+} from "./lib/inbox-archive.mjs";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
-const INBOX_DIR = "docs/outstanding-issues-inbox";
-const APPLIED_DIR = path.posix.join(INBOX_DIR, "applied");
 const ACTIONS = new Set(["add", "done", "update", "amend-outcome", "reopen", "queue", "cancel"]);
 // Fields a `queue` request may carry, mirroring updateQueueRow's editable map.
 const QUEUE_FIELDS = ["acuity", "capability", "when", "estimate", "outcome"];
@@ -416,7 +422,7 @@ function planCancellations(requests, byId, applied, warn) {
 function appliedRequestsById() {
   try {
     return new Map(
-      loadRequestsIn(APPLIED_DIR)
+      loadAppliedRequests()
         .map((entry) => entry.request)
         .filter((request) => request?.id)
         .map((request) => [request.id, request]),
@@ -615,8 +621,13 @@ function loadRequestsIn(directory) {
   });
 }
 
+/** Applied records in `applied/` and in every quarter archive under it. */
+function loadAppliedRequests() {
+  return appliedRecordDirectories(ROOT).flatMap((directory) => loadRequestsIn(directory));
+}
+
 function allRequestEntries() {
-  return [...loadPending(), ...loadRequestsIn(APPLIED_DIR)];
+  return [...loadPending(), ...loadAppliedRequests()];
 }
 
 function canonicalLedgerIsClean() {
@@ -873,11 +884,12 @@ function readMainAppliedPaths(originMainRef) {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
     });
+    // Matched by file name: archiving moves a record into a quarter folder without changing it.
     return new Set(
       mainTree
         .trim()
         .split("\n")
-        .map((s) => s.trim())
+        .map((s) => appliedRecordName(s.trim()))
         .filter(Boolean),
     );
   } catch {
@@ -929,7 +941,8 @@ function suspiciousAppliedCommits(originMainRef, presentShas, mainApplied) {
         .slice(1)
         .map((file) => file.trim())
         .filter(Boolean);
-      if (files.some((file) => !mainApplied.has(file))) suspicious.add(lines[0].trim());
+      if (files.some((file) => appliedRecordName(file) && !mainApplied.has(appliedRecordName(file))))
+        suspicious.add(lines[0].trim());
     }
     return suspicious;
   } catch {
@@ -956,9 +969,9 @@ function detectPresentReconciliations(presentCandidates, originMainRef, mainAppl
       })
         .trim()
         .split("\n")
-        .map((entry) => entry.trim())
+        .map((entry) => appliedRecordName(entry.trim()))
         .filter(Boolean);
-      const unmerged = branchApplied.filter((entry) => !mainApplied.has(entry));
+      const unmerged = branchApplied.filter((name) => !mainApplied.has(name));
       if (unmerged.length === 0) continue;
       detected.push({
         branch: candidate.branch,
@@ -1035,7 +1048,10 @@ function detectStrictReconciliations(candidateBranches, runner, originMainRef) {
   let mainApplied;
   try {
     mainApplied = new Set(
-      runner(["ls-tree", "-r", "--name-only", originMainRef, "--", APPLIED_DIR]).split(/\r?\n/).filter(Boolean),
+      runner(["ls-tree", "-r", "--name-only", originMainRef, "--", APPLIED_DIR])
+        .split(/\r?\n/)
+        .map((entry) => appliedRecordName(entry))
+        .filter(Boolean),
     );
   } catch {
     throw new Error("cannot inspect the current-main applied inbox; preserved-source admission is blocked");
@@ -1075,13 +1091,14 @@ function detectStrictReconciliations(candidateBranches, runner, originMainRef) {
       // not hide an earlier unmerged record still present on this branch.
       applied = runner(["ls-tree", "-r", "--name-only", candidate.sha, "--", APPLIED_DIR])
         .split(/\r?\n/)
+        .map((entry) => appliedRecordName(entry))
         .filter(Boolean);
     } catch {
       throw new Error(
         `cannot inspect the applied inbox on remote branch ${candidate.branch}; preserved-source admission is blocked`,
       );
     }
-    const unmerged = applied.filter((path) => !mainApplied.has(path));
+    const unmerged = applied.filter((name) => !mainApplied.has(name));
     if (unmerged.length) {
       detected.push({
         branch: candidate.branch,
@@ -2059,12 +2076,50 @@ function checkInbox() {
   );
 }
 
+/**
+ * Plan which applied records `archive-applied` moves: every record in `applied/` itself whose
+ * request was created in a quarter before `currentQuarter`. Records stay byte for byte the same.
+ */
+export function planAppliedArchive(entries, currentQuarter) {
+  const moves = [];
+  for (const entry of entries) {
+    if (entry.error) throw new Error(`${entry.relative}: ${entry.error}`);
+    const quarter = quarterOf(entry.request?.createdOn);
+    if (!quarter) throw new Error(`${entry.relative}: createdOn is not an ISO date`);
+    if (quarter >= currentQuarter) continue;
+    moves.push({
+      from: entry.relative,
+      to: archivedAppliedPath(path.posix.basename(entry.relative), entry.request.createdOn),
+    });
+  }
+  return moves;
+}
+
+function archiveApplied(argv) {
+  const dryRun = argv.includes("--dry-run");
+  const currentQuarter = quarterOf(new Date().toISOString());
+  const moves = planAppliedArchive(loadRequestsIn(APPLIED_DIR), currentQuarter);
+  for (const move of moves) {
+    if (existsSync(path.join(ROOT, move.to))) throw new Error(`refusing to overwrite ${move.to}`);
+  }
+  if (!dryRun) {
+    for (const move of moves) {
+      mkdirSync(path.dirname(path.join(ROOT, move.to)), { recursive: true });
+      renameSync(path.join(ROOT, move.from), path.join(ROOT, move.to));
+    }
+  }
+  console.log(
+    `${dryRun ? "Would archive" : "Archived"} ${moves.length} applied request(s) from quarters before ${currentQuarter}.`,
+  );
+}
+
 function dispatchInboxCommand(action, argv) {
   if (ACTIONS.has(action)) return createRequest(action, argv);
   if (action === "reconcile") return reconcile(argv.slice(1));
   if (action === "check") return checkInbox();
+  if (action === "archive-applied") return archiveApplied(argv.slice(1));
   throw new Error(
-    "usage: ledger-inbox.mjs <add|done|update|amend-outcome|reopen|queue|cancel|enqueue|reconcile|check> [args]",
+    "usage: ledger-inbox.mjs <add|done|update|amend-outcome|reopen|queue|cancel|enqueue|reconcile|check|archive-applied> [args]",
   );
 }
 

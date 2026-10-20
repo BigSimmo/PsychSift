@@ -22,6 +22,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { applyRequestBatch, validateRequest } from "./ledger-inbox.mjs";
+import { isAppliedRecordPath } from "./lib/inbox-archive.mjs";
 import { parseLedgerRows } from "./branch-review-ledger.mjs";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -62,9 +63,15 @@ function filesAt(ref, directory) {
   } catch {
     return new Map();
   }
+  // Applied records may also sit in a quarter archive folder. They are keyed by file name, so an
+  // archive move that keeps the content byte for byte passes the immutability rules below.
   const targets = names
     .split(/\r?\n/)
-    .filter((name) => name.endsWith(".json") && path.posix.dirname(name) === directory);
+    .filter((name) =>
+      directory === APPLIED
+        ? isAppliedRecordPath(name)
+        : name.endsWith(".json") && path.posix.dirname(name) === directory,
+    );
   if (targets.length === 0) return new Map();
 
   const entries = new Map();
@@ -90,6 +97,7 @@ function filesAt(ref, directory) {
     const content = raw.subarray(contentStart, contentEnd).toString("utf8");
     offset = contentEnd + 1;
     const name = path.posix.basename(relative);
+    if (entries.has(name)) throw new Error(`${name} appears more than once under ${directory} at ${ref}`);
     entries.set(name, content);
   }
   return entries;

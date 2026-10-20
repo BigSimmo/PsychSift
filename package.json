@@ -123,6 +123,7 @@
     "check:ledger-write-discipline": "node scripts/check-ledger-write-discipline.mjs --self-test && node scripts/check-ledger-write-discipline.mjs",
     "check:diff-integrity": "node scripts/check-diff-integrity.mjs --self-test && node scripts/check-diff-integrity.mjs",
     "issues:add": "node scripts/ledger-inbox.mjs add",
+    "issues:archive-applied": "node scripts/ledger-inbox.mjs archive-applied",
     "issues:done": "node scripts/ledger-inbox.mjs done",
     "issues:update": "node scripts/ledger-inbox.mjs update",
     "issues:queue": "node scripts/ledger-inbox.mjs queue",
