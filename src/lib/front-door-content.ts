@@ -172,6 +172,11 @@ export const TERMS_PROMPT_SAVE_ERROR =
  * to signed-out visitors once per device and to signed-in users who have not
  * accepted the current version. It reuses the prompt's lead and points above;
  * only the title, the accept label and the closing note are its own.
+ *
+ * The owner signed off the Terms step wording below on 2026-10-20: the title, the
+ * accept label, the two closing notes and the Not now notice. The reused prompt
+ * lead and points, and the rest of this file, are still draft, so the step keeps
+ * the DRAFT badge.
  */
 export const ASK_TERMS_STEP_TITLE = "Before your first answer";
 export const ASK_TERMS_STEP_ACCEPT_LABEL = "I'm a health professional and I accept the Terms";
