@@ -51,6 +51,7 @@ import {
 const forms: MhaClockForm[] = [
   { code: "2", title: "Order to detain voluntary inpatient in authorised hospital for assessment", slug: "form-2" },
   { code: "3A", title: "Detention order", slug: "detention-examination-movement" },
+  { code: "12C", title: "Restraint order", slug: "form-12c" },
 ];
 const now = new Date("2026-10-05T10:00:00Z"); // 18:00 Perth
 
@@ -559,6 +560,51 @@ describe("MhaClockPage", () => {
     fireEvent.click(screen.getByTestId("mha-clock-start"));
     expect(screen.getByTestId("mha-clock-message")).toHaveTextContent("later than now");
     expect(loadMhaClocks()).toEqual([]);
+  });
+
+  it("refuses a start time more than 7 days ago and accepts a Form 3A from 144 hours ago", () => {
+    render(<MhaClockPage forms={forms} now={now} />);
+    fireEvent.change(screen.getByTestId("mha-clock-form"), { target: { value: "3A" } });
+    // 7 days and 1 minute before 18:00 Perth on 5 October.
+    fireEvent.change(screen.getByTestId("mha-clock-time"), { target: { value: "2026-09-28T17:59" } });
+    fireEvent.click(screen.getByTestId("mha-clock-start"));
+    expect(screen.getByTestId("mha-clock-message")).toHaveTextContent("more than 7 days ago");
+    expect(screen.getByTestId("mha-clock-time")).toHaveAttribute("aria-invalid", "true");
+    expect(loadMhaClocks()).toEqual([]);
+    // 144 hours before now (the Form 3A continuous-detention limit) is inside the window.
+    fireEvent.change(screen.getByTestId("mha-clock-time"), { target: { value: "2026-09-29T18:00" } });
+    act(() => {
+      fireEvent.click(screen.getByTestId("mha-clock-start"));
+    });
+    expect(loadMhaClocks()).toHaveLength(1);
+  });
+
+  it("starts a 12C clock from more than 7 days ago, but refuses a 12C time later than now", () => {
+    render(<MhaClockPage forms={forms} now={now} />);
+    fireEvent.change(screen.getByTestId("mha-clock-form"), { target: { value: "12C" } });
+    fireEvent.change(screen.getByTestId("mha-clock-time"), { target: { value: "2026-10-05T18:06" } });
+    fireEvent.click(screen.getByTestId("mha-clock-start"));
+    expect(screen.getByTestId("mha-clock-message")).toHaveTextContent("later than now");
+    expect(loadMhaClocks()).toEqual([]);
+    fireEvent.change(screen.getByTestId("mha-clock-form"), { target: { value: "12C" } });
+    fireEvent.change(screen.getByTestId("mha-clock-time"), { target: { value: "2026-09-20T09:00" } });
+    act(() => {
+      fireEvent.click(screen.getByTestId("mha-clock-start"));
+    });
+    expect(loadMhaClocks()).toHaveLength(1);
+  });
+
+  it("allows a few minutes of clock skew but refuses a later time", () => {
+    render(<MhaClockPage forms={forms} now={now} />);
+    fireEvent.change(screen.getByTestId("mha-clock-form"), { target: { value: "2" } });
+    fireEvent.change(screen.getByTestId("mha-clock-time"), { target: { value: "2026-10-05T18:06" } });
+    fireEvent.click(screen.getByTestId("mha-clock-start"));
+    expect(screen.getByTestId("mha-clock-message")).toHaveTextContent("later than now");
+    fireEvent.change(screen.getByTestId("mha-clock-time"), { target: { value: "2026-10-05T18:05" } });
+    act(() => {
+      fireEvent.click(screen.getByTestId("mha-clock-start"));
+    });
+    expect(loadMhaClocks()).toHaveLength(1);
   });
 });
 

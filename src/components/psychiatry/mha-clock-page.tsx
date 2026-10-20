@@ -28,13 +28,14 @@ import { subscribeAccountTransition } from "@/lib/account-scoped-browser-state";
 import { toAwstParts } from "@/lib/caring-contacts/clock";
 import { mhaActMetadata, mhaActSection } from "@/lib/mha-act-sections";
 import { formatPerthDateTime, parsePerthDateTimeInput } from "@/lib/mha-timeline";
-import { mhaTimers, type MhaTimerItem } from "@/lib/on-call/mha-timers";
+import { formHasRecurringReview, mhaTimers, type MhaTimerItem } from "@/lib/on-call/mha-timers";
 import type { MhaClockForm } from "@/lib/psychiatry-hub/mha-clock-forms";
 import {
   addMhaClock,
   keepReadableMhaClocks,
   loadMhaClockState,
   MHA_CLOCK_LIMIT,
+  mhaClockMadeAtProblem,
   MHA_CLOCK_UNREADABLE,
   removeMhaClock,
   restoreMhaClock,
@@ -263,8 +264,16 @@ function AddClock({ forms, now }: { readonly forms: readonly MhaClockForm[]; rea
       fail(ADD_MESSAGE.invalid, Boolean(code));
       return;
     }
-    if (now && start.getTime() > now.getTime()) {
+    // The allowed window is the owner's ruling of 2026-10-20 (see `mhaClockMadeAtProblem`).
+    const problem = mhaClockMadeAtProblem(start.getTime(), (now ?? new Date()).getTime(), {
+      recurring: formHasRecurringReview(code),
+    });
+    if (problem === "future") {
       fail("That time is later than now. Enter when the form was made.", true);
+      return;
+    }
+    if (problem === "too-old") {
+      fail("That time is more than 7 days ago. Check the date the form was made.", true);
       return;
     }
     const result = addMhaClock(code, start);

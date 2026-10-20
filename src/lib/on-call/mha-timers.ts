@@ -175,6 +175,14 @@ export function isRecurringReviewEntry(entry: MhaTimeframeEntry): boolean {
   return entry.duration.unit === "hours" && RECURRING_PERIOD_PATTERN.test(entry.quote);
 }
 
+/** True when any shipped timeframe for this form code is a recurring review duty (such as 12C). */
+export function formHasRecurringReview(
+  formCode: string,
+  entries: readonly MhaTimeframeEntry[] = shippedEntries,
+): boolean {
+  return entries.some((entry) => entry.formCodes.includes(formCode) && isRecurringReviewEntry(entry));
+}
+
 export type MhaTimerSwitch = { readonly content: MhaTimerSwitchContent; readonly signOff: RuleSignOff };
 
 /** The content a signer reviews: today's shipped entries and their current pins. */

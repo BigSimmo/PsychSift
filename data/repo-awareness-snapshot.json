@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-19"
+    "committed_at": "2026-10-20"
   },
   "routes": {
     "modes": [
@@ -2856,6 +2856,11 @@
       {
         "path": "docs/source-review-priority-2026-07-02.md",
         "section": "root",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-20-mha-clock-made-at-window.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -11005,6 +11010,14 @@
         "scope": "Refresh all six Linux visual baselines from hosted-CI artifact visual-baseline-32189416778 (main @ 9b1e7248) plus provenance and regenerated adoption manifest",
         "outcome": "Approved — all six actual renders opened and reviewed before adopting; no source changed; provenance reviewerType:human is overstated for an automated pass and is flagged in the PR for owner confirmation",
         "checks": "adopt-visual-baselines --write (6/6 replaced, capture kind refresh); check:design-system-adoption (54 components, 82 roots); vitest tests/adopt-visual-baselines.test.ts 4 passed; prettier --check provenance.json clean. No broader gate: PNG/JSON-only diff with no changed source failure path"
+      },
+      {
+        "date": "2026-10-19",
+        "ref": "fix/worker-security-remediation-20261019",
+        "head": "3d86f6f6fa5abfb32bda7954a8a68e32ca54ce85",
+        "scope": "worker Perl security remediation current diff",
+        "outcome": "No actionable findings in independent read-only candidate review; seven supported vendor fixes targeted; remaining image advisories unresolved.",
+        "checks": "Signed Debian Release/Packages/deb SHA verification passed; u3 rejected and u4/u5 accepted; Docker RUN shell syntax passed; exact-lock Prettier3.9.10 unchanged; diff integrity passed; complete-image rebuild/runtime/scan pending CI; broad local JS gates not run with stale installed lock."
       },
       {
         "date": "2026-07-20",
