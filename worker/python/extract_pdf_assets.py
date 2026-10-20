@@ -13,6 +13,11 @@ from functools import lru_cache
 from statistics import median
 
 try:
+    import resource  # POSIX only; Windows developer machines run without the memory cap.
+except ImportError:  # pragma: no cover - exercised only on Windows
+    resource = None
+
+try:
     import pymupdf as fitz  # PyMuPDF (fitz alias deprecated in 1.28.2+)
 except Exception as exc:
     print(f"PyMuPDF is required for robust PDF extraction: {exc}", file=sys.stderr)
@@ -23,7 +28,7 @@ except Exception as exc:
 # parser defect can be traced to the documents it touched. Bump the date and label whenever a
 # change alters the text, tables or images produced for the same PDF. 2026-09-16 is PR #2810,
 # which replaced line-major table text with table_aware_page_text (#GJHKYC).
-EXTRACTOR_VERSION = "2026-10-19.ruled-edge-raster-table-ocr-v9"
+EXTRACTOR_VERSION = "2026-10-20.embedded-image-ceiling-v10"
 TABLE_STRATEGY = "table_aware_page_text"
 
 # IDX-H6: caps on serialized table size. Raised from the previous 80/120-row and 8000-char
@@ -49,6 +54,22 @@ MIN_USEFUL_RENDER_SCALE = 0.25
 # because the aggregate maxArtifactBytes budget lets one huge stream through.
 WEB_SAFE_IMAGE_EXTS = ("png", "jpg", "jpeg", "gif", "webp")
 MAX_EMBEDDED_IMAGE_BYTES = 20 * 1024 * 1024
+
+# Audit ING-B-04: PyMuPDF decodes an embedded image inside extract_image() and
+# get_image_rects(), whatever its format, so a 389 KB PDF declaring a
+# 20,000 x 20,000 image used 842 MB before any budget check could run. Every
+# embedded image's DECLARED size (from page.get_images, which decodes nothing)
+# is checked against this ceiling first; a larger image is skipped and recorded,
+# never decoded. It sits well above real clinical figures and 600 DPI A4 scans
+# (about 35 megapixels), so ordinary documents keep every image they had.
+MAX_EMBEDDED_IMAGE_PIXELS = 64_000_000
+
+# Audit ING-B-05: the command-line extractor caps its own address space so a
+# hostile PDF cannot take the whole worker container down. Normal documents,
+# including Tesseract OCR (which inherits the limit), measured well under 512 MB.
+# PDF_EXTRACTOR_MAX_MEMORY_MB overrides it; 0 turns it off.
+DEFAULT_MAX_MEMORY_MB = 2048
+MEMORY_EXHAUSTION_PATTERN = re.compile(r"\bmalloc \(\d+ bytes\) failed|\bout of memory\b", re.IGNORECASE)
 
 DEFAULT_BUDGET = {
     "version": 1,
@@ -140,6 +161,57 @@ def embedded_image_mime_type(ext):
     if normalized in WEB_SAFE_IMAGE_EXTS:
         return f"image/{normalized}"
     return "image/png"
+
+
+def declared_image_pixels(image_info):
+    """Pixels an embedded image declares in the page's image table (no decode)."""
+    try:
+        return max(0, int(image_info[2] or 0)) * max(0, int(image_info[3] or 0))
+    except (IndexError, TypeError, ValueError):
+        return 0
+
+
+def oversized_embedded_image_warning(image_info, max_pixels=MAX_EMBEDDED_IMAGE_PIXELS):
+    """Warning for an image whose declared size is over the ceiling, else None."""
+    pixels = declared_image_pixels(image_info)
+    if pixels <= max_pixels:
+        return None
+    return (
+        f"embedded_image_skipped: xref {image_info[0]} declares {image_info[2]}x{image_info[3]} "
+        f"({pixels} pixels), above the {max_pixels}-pixel embedded-image ceiling; not decoded"
+    )
+
+
+def is_memory_exhaustion(exc):
+    """True for Python or MuPDF allocation failures under the address-space limit."""
+    return isinstance(exc, MemoryError) or bool(MEMORY_EXHAUSTION_PATTERN.search(str(exc)))
+
+
+def apply_memory_limit():
+    """Cap this process's address space (ING-B-05); returns the bytes applied, or None.
+
+    Only the soft limit is lowered, never above an existing hard limit, and child
+    processes such as Tesseract inherit it. Unsupported platforms run uncapped.
+    """
+    if resource is None or not hasattr(resource, "RLIMIT_AS"):
+        return None
+    raw = os.environ.get("PDF_EXTRACTOR_MAX_MEMORY_MB", "").strip()
+    limit_mb = DEFAULT_MAX_MEMORY_MB
+    if raw.isdigit():
+        limit_mb = int(raw)
+        if limit_mb == 0:
+            return None
+    limit = limit_mb * 1024 * 1024
+    try:
+        soft, hard = resource.getrlimit(resource.RLIMIT_AS)
+        if hard != resource.RLIM_INFINITY and hard >= 0:
+            limit = min(limit, hard)
+        if soft != resource.RLIM_INFINITY and 0 <= soft <= limit:
+            limit = soft
+        resource.setrlimit(resource.RLIMIT_AS, (limit, hard))
+    except (OSError, ValueError):
+        return None
+    return limit
 
 
 def normalize_embedded_image(document, xref, extracted, budget, max_bytes=MAX_EMBEDDED_IMAGE_BYTES):
@@ -644,6 +716,10 @@ def maybe_ocr_page(page, budget, raster_observations=None, runtime_identity=None
     )
     if render_scale is None:
         return "", f"render_skipped: OCR page {page.number + 1} has unsafe geometry"
+    # Audit ING-B-06: Tesseract's OpenMP threads busy-wait on a shared CPU until
+    # every page hits the timeout. One thread per call is the documented fix and
+    # does not change what Tesseract reads; an operator value is kept.
+    os.environ.setdefault("OMP_THREAD_LIMIT", "1")
     try:
         import pytesseract
         from PIL import Image
@@ -731,7 +807,20 @@ def page_image_coverage_ratio(page):
         if xref in seen:
             continue
         seen.add(xref)
-        for rect in page.get_image_rects(xref) or []:
+        try:
+            if oversized_embedded_image_warning(image_info):
+                # ING-B-04: get_image_rects decodes the image. Use the declared
+                # placement instead, which reads the page content only.
+                bbox = page.get_image_bbox(image_info)
+                rects = [] if bbox.is_infinite or bbox.is_empty else [bbox]
+            else:
+                rects = page.get_image_rects(xref) or []
+        except MemoryError:
+            raise
+        except Exception:
+            # One unreadable image must not abort the document; it adds no coverage.
+            continue
+        for rect in rects:
             covered += abs(float(rect.width) * float(rect.height))
     return min(1.0, covered / page_area)
 
@@ -2193,7 +2282,20 @@ def _extract_document(document, output_dir, budget, identity):
         for image_index, image_info in enumerate(page.get_images(full=True)):
             xref = image_info[0]
             budget.ensure_artifact_slot()
-            extracted = document.extract_image(xref)
+            oversized_warning = oversized_embedded_image_warning(image_info)
+            if oversized_warning:
+                warnings.append(oversized_warning)
+                continue
+            try:
+                extracted = document.extract_image(xref)
+            except MemoryError:
+                raise
+            except Exception as exc:
+                # ING-B-04: one image MuPDF refuses must not abort the whole document.
+                warnings.append(
+                    f"embedded_image_skipped: xref {xref} could not be extracted: {type(exc).__name__}"
+                )
+                continue
             normalized, normalize_warning = normalize_embedded_image(document, xref, extracted, budget)
             if normalize_warning:
                 warnings.append(normalize_warning)
@@ -2203,7 +2305,15 @@ def _extract_document(document, output_dir, budget, identity):
             image_bytes = normalized["bytes"]
             width = normalized["width"]
             height = normalized["height"]
-            rects = page.get_image_rects(xref) or []
+            try:
+                rects = page.get_image_rects(xref) or []
+            except MemoryError:
+                raise
+            except Exception as exc:
+                warnings.append(
+                    f"embedded_image_placement_unavailable: xref {xref}: {type(exc).__name__}"
+                )
+                rects = []
             bbox = rect_payload(rects[0]) if rects else None
             image_path = os.path.join(
                 output_dir, f"page-{page_number}-image-{image_index + 1}.{ext}"
@@ -2444,25 +2554,26 @@ def _extract_document(document, output_dir, budget, identity):
     }
 
 
-if __name__ == "__main__":
-    if len(sys.argv) not in (3, 4, 5):
+def main(argv):
+    if len(argv) not in (3, 4, 5):
         print(
             "Usage: extract_pdf_assets.py input.pdf output_dir [output.json] [budget.json]",
             file=sys.stderr,
         )
         sys.exit(1)
 
+    apply_memory_limit()
     try:
         limits = None
-        if len(sys.argv) == 5:
-            with open(sys.argv[4], "r", encoding="utf-8") as handle:
+        if len(argv) == 5:
+            with open(argv[4], "r", encoding="utf-8") as handle:
                 limits = json.load(handle)
         extraction_budget = ExtractionBudget(limits)
-        result = extract(sys.argv[1], sys.argv[2], extraction_budget)
+        result = extract(argv[1], argv[2], extraction_budget)
         serialized = json.dumps(result)
         extraction_budget.ensure_result(serialized)
-        if len(sys.argv) >= 4:
-            with open(sys.argv[3], "w", encoding="utf-8") as handle:
+        if len(argv) >= 4:
+            with open(argv[3], "w", encoding="utf-8") as handle:
                 handle.write(serialized)
         else:
             print(serialized)
@@ -2472,3 +2583,17 @@ if __name__ == "__main__":
     except PdfUnreadable as exc:
         print(f"PDF_UNREADABLE: {exc}", file=sys.stderr)
         sys.exit(4)
+    except Exception as exc:
+        if not is_memory_exhaustion(exc):
+            raise
+        # ING-B-05: running out of the address-space limit is a resource refusal,
+        # so the worker neither retries it nor re-parses the file in-process.
+        print(
+            f"PDF_EXTRACTION_BUDGET_EXCEEDED: memory limit reached ({type(exc).__name__})",
+            file=sys.stderr,
+        )
+        sys.exit(3)
+
+
+if __name__ == "__main__":
+    main(sys.argv)
