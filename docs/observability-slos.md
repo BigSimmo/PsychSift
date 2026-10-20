@@ -121,7 +121,8 @@ digest reading existing `rag_queries` metadata, never from this script.
 containing at least 20 answered queries. `latencyBudgetBreachRate` counts an
 explicit `latency_budget_breached: true` or a finite latency over the row's
 route budget: fast/default 10,000 ms, strong 25,000 ms, extractive/source-only
-6,000 ms. It converts the first non-null latency field in this order:
+6,000 ms. These are the answer SLO budgets (`src/lib/observability/answer-slo.ts`); they are
+not the per-route answer budgets in `src/lib/rag/rag-route-budget.ts` (extractive 12 s, fast 25 s, strong 35 s). It converts the first non-null latency field in this order:
 `latency_ms`, `duration_ms`, `total_latency_ms`, `response_ms`; an invalid
 earlier value does not fall through to a later field. Route selection uses
 `routing_mode`, `mode`, `route_mode`, then `answer_mode`, normalised to lower
