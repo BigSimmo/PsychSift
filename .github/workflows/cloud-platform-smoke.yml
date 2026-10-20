@@ -10,7 +10,7 @@ on:
       - "scripts/install-git-hooks.mjs"
       - "scripts/lib/is-entrypoint.mjs"
       - "tests/cloud-platform-smoke.test.ts"
-      - "docs/agents/cloud-platform-acceptance.md"
+      - "docs/cloud/cloud-platform-acceptance.md"
       - "package.json"
       - ".node-version"
       - ".nvmrc"

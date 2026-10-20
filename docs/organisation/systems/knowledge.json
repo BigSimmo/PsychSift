@@ -42,6 +42,8 @@
     "docs/branch-review-ledger.md",
     "docs/branch-review-records/**",
     "docs/claude-cloud.md",
+    "docs/cloud/codex-cloud-legacy-bootstrap.md",
+    "docs/cloud/cross-repo-cloud-contracts.md",
     "docs/codebase-index.md",
     "docs/codex-cloud.md",
     "docs/codex-prompt-playbook.md",
