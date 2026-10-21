@@ -201,11 +201,11 @@ function EpaMagicLinkRespondBody({ token }: { readonly token: string }) {
           <div className="grid gap-2">
             <div className="flex items-center gap-2">
               <CheckCircle2 aria-hidden="true" className="size-icon-md" />
-              <strong>EPA assessment recorded for {completed.traineeName}</strong>
+              <strong>Feedback sent to {completed.traineeName}</strong>
             </div>
             <p className="m-0 text-sm">
-              {completed.epaCode} ({completed.epaTitle}) has been submitted. No CLA account is needed; the hospital
-              Medical Education Unit reviews external assessor entries.
+              Your {completed.epaCode} ({completed.epaTitle}) feedback has reached them. They copy it into the RANZCP
+              CLA themselves. This link no longer opens.
             </p>
           </div>
         </WorkCard>
@@ -224,6 +224,10 @@ function EpaMagicLinkRespondBody({ token }: { readonly token: string }) {
               </p>
             </div>
           </WorkCard>
+          <AssessNote>
+            This is feedback for the doctor to copy into the RANZCP CLA. It is not an official sign-off. Do not include
+            patient names or details.
+          </AssessNote>
 
           <AssessTextField
             id="epa-magic-link-assessor-name"
