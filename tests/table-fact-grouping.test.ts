@@ -69,4 +69,19 @@ describe("table-fact grouping keeps every matched row per chunk", () => {
       ["chunk-2", 1, Math.min(0.94, 0.62 + 0.8 * 0.3)],
     ]);
   });
+
+  it("picks the chunk's winner by textRank even when hybridScore is capped, and keeps the first on a tie", () => {
+    const capped = groupTableFactMatches([
+      { ...fact("a", "chunk-1", 1.5), match_reason: "first" },
+      { ...fact("b", "chunk-1", 2.5), match_reason: "better" },
+    ])[0];
+    expect(capped?.textRank).toBe(2.5);
+    expect(capped?.reason).toBe("better");
+    const tie = groupTableFactMatches([
+      { ...fact("a", "chunk-1", 0.5), match_reason: "first" },
+      { ...fact("b", "chunk-1", 0.5), match_reason: "second" },
+    ])[0];
+    expect(tie?.reason).toBe("first");
+    expect(tie?.tableFacts?.map((row) => row.id)).toEqual(["a", "b"]);
+  });
 });

@@ -1788,10 +1788,7 @@ export function groupTableFactMatches(data: TableFactRpcRow[]) {
       reason: fact.match_reason ?? "table_row",
       tableFacts,
     };
-    grouped.set(
-      fact.source_chunk_id,
-      !current || next.hybridScore > current.hybridScore ? next : { ...current, tableFacts },
-    );
+    grouped.set(fact.source_chunk_id, !current || next.textRank > current.textRank ? next : { ...current, tableFacts });
   }
   return Array.from(grouped.values());
 }
