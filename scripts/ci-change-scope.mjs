@@ -586,7 +586,6 @@ const containerPatterns = [
   "scripts/app-container-smoke.mjs",
   "scripts/check-image-content-contract.mjs",
   "scripts/trivy-image-scan.mjs",
-  "scripts/trivy-suppressions.json",
   "scripts/resolve-oci-image-digest.mjs",
   "scripts/generate-worker-python-lock.mjs",
   "scripts/check-worker-python-lock.mjs",
