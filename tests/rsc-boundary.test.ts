@@ -949,7 +949,7 @@ const SERVER_ENTRY_PATTERN = /^src\/app\/(?:.*\/)?(?:page|layout|loading|not-fou
 // Scope decision: mockups are IN. `src/app/mockups/**` is exempt from the
 // button-wiring and route-reachability gates because those routes 404 in
 // production - but the developer-gated subtrees do not 404. `DEVELOPER_GATED_PATH_PREFIXES`
-// (`/mockups/development`, `/mockups/care-plan`) are proxied through to a
+// (`/mockups/development`) are proxied through to a
 // signed-in-administrator gate in `src/app/mockups/layout.tsx` and render for
 // real. A boundary violation there is a live 500, not scratch. For the rest, the
 // failure mode is a hard runtime throw that breaks the page for the design

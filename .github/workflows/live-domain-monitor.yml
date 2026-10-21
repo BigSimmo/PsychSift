@@ -215,11 +215,12 @@ jobs:
         with:
           script: |
             // Route the alert to a person, not only a label (#TN512M). GitHub mobile pushes a direct
-            // @mention to the owner's phone, the alert channel chosen on 2026-10-19
-            // (docs/decisions/2026-10-19-production-alerts-by-phone.md). Assignment pushes only when it
-            // first happens, and a later comment on the reused issue does not push by itself, so every new
-            // alert and every repeat comment names the owner (audit EVAL-04). Assignment stays best-effort,
-            // so a refused assignment can never cost the alert itself.
+            // @mention to the owner's phone, the alert channel chosen on 2026-10-19. Since the owner
+            // decision of 2026-10-21 (docs/decisions/2026-10-21-one-daily-health-summary.md) this is one of
+            // only two alerts that still push straight away: the live site going down. The first failing
+            // run opens the issue with a mention; while it stays down, repeat runs update the issue
+            // silently and the 7 am daily health summary carries it. Assignment stays best-effort, so a
+            // refused assignment can never cost the alert itself.
             const alertAssignee = context.repo.owner;
             const alertMention = `@${alertAssignee}`;
             async function assignAlert(issueNumber) {
@@ -303,9 +304,8 @@ jobs:
                 owner,
                 repo,
                 issue_number: existing.number,
-                body: `${alertMention} Still failing as of ${now} — ${runUrl}`,
+                body: `Still failing as of ${now} — ${runUrl}`,
               });
-              await assignAlert(existing.number);
               core.warning(`Live domain monitor failing; updated #${existing.number}.`);
             } else {
               const created = await github.rest.issues.create({

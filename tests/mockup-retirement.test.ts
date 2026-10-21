@@ -597,7 +597,8 @@ describe("the committed repository", () => {
     const prefixes = readDeveloperGatedPrefixes(process.cwd());
     expect(prefixes).toContain("/admin/developer-hub");
     expect(prefixes).toContain("/mockups/development");
-    expect(prefixes).toContain("/mockups/care-plan");
+    // The Care Plan prototype was retired on 2026-10-21, and its prefix with it.
+    expect(prefixes.some((prefix) => prefix.endsWith("/care-plan"))).toBe(false);
   });
 
   it("keeps the developer-gated prototypes out of retirement scope", () => {

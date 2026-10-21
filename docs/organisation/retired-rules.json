@@ -160,6 +160,14 @@
       "pattern": "npm run ledger:(?:append|dedupe|rotate|migrate-legacy)",
       "allowedContext": "no longer|retired|superseded|historical|previously|formerly|replaces|refuse",
       "decision": "docs/decisions/2026-10-20-review-records-now-pr-comments.md"
+    },
+    {
+      "id": "alert-mention-every-workflow",
+      "retired": "2026-10-21",
+      "summary": "Alert workflows no longer @mention or assign the owner on every alert. One daily health summary at 7 am Perth pushes once a day; only the live domain monitor (site down) and the ops digest at page level still push straight away.",
+      "pattern": "every (other )?alert workflow .{0,80}names the owner|names the owner in each new alert issue and each repeat comment|every new alert and every repeat comment names the owner",
+      "allowedContext": "no longer|retired|replaced|superseded|formerly|previously",
+      "decision": "docs/decisions/2026-10-21-one-daily-health-summary.md"
     }
   ]
 }
