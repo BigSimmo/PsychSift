@@ -337,6 +337,46 @@ class OversizedEmbeddedImageTests(TemporaryDirectoryTestCase):
         self.assertFalse(any(warning.startswith("embedded_image_skipped") for warning in result["warnings"]))
 
 
+class MalformedSoftMaskPreflightTests(unittest.TestCase):
+    """A bad soft-mask Width/Height skips that image instead of aborting the PDF."""
+
+    def _page(self, width_value):
+        doc = types.SimpleNamespace(
+            xref_get_key=lambda xref, key: ("int", width_value) if key == "Width" else ("int", "10"))
+        bbox = types.SimpleNamespace(is_empty=True, is_infinite=False)
+        return types.SimpleNamespace(
+            parent=doc,
+            get_image_info=lambda hashes=False, xrefs=False: [],
+            get_image_bbox=lambda info: bbox,
+        )
+
+    def test_unparsable_mask_dimension_is_skipped_not_raised(self):
+        for bad in ("null", "", "1.5e3x"):
+            with self.subTest(bad=bad):
+                info = (7, 9, 10, 10, 8, "DeviceRGB", "", "Im1", "FlateDecode", 0)
+                skipped, unsafe = extractor.page_image_decode_preflight(self._page(bad), [info])
+                self.assertIn(7, skipped)
+                self.assertIn("unreadable Width/Height", skipped[7])
+                self.assertFalse(unsafe)
+
+    def test_missing_mask_key_tuple_is_skipped_not_raised(self):
+        doc = types.SimpleNamespace(xref_get_key=lambda xref, key: ())
+        page = types.SimpleNamespace(
+            parent=doc,
+            get_image_info=lambda hashes=False, xrefs=False: [],
+            get_image_bbox=lambda info: types.SimpleNamespace(is_empty=True, is_infinite=False),
+        )
+        info = (7, 9, 10, 10, 8, "DeviceRGB", "", "Im1", "FlateDecode", 0)
+        skipped, _ = extractor.page_image_decode_preflight(page, [info])
+        self.assertIn("unreadable Width/Height", skipped[7])
+
+    def test_valid_small_mask_is_not_skipped(self):
+        info = (7, 9, 10, 10, 8, "DeviceRGB", "", "Im1", "FlateDecode", 0)
+        skipped, unsafe = extractor.page_image_decode_preflight(self._page("10"), [info])
+        self.assertEqual(skipped, {})
+        self.assertFalse(unsafe)
+
+
 class ExtractorMemoryLimitTests(unittest.TestCase):
     def fake_resource(self, soft, hard):
         calls = []

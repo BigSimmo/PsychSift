@@ -194,9 +194,16 @@ def page_image_decode_preflight(page, image_infos):
         xref, smask = image_info[:2]
         warning = oversized_embedded_image_warning(image_info)
         if not warning and smask:
-            width = int(page.parent.xref_get_key(smask, "Width")[1])
-            height = int(page.parent.xref_get_key(smask, "Height")[1])
-            if width * height > MAX_EMBEDDED_IMAGE_PIXELS:
+            try:
+                width = int(page.parent.xref_get_key(smask, "Width")[1])
+                height = int(page.parent.xref_get_key(smask, "Height")[1])
+            except (IndexError, TypeError, ValueError):
+                # A malformed mask header must not abort the whole PDF: skip
+                # this image conservatively without decoding it.
+                width = height = None
+                warning = (f"embedded_image_skipped: xref {xref} soft mask {smask} has an "
+                           "unreadable Width/Height; not decoded")
+            if width is not None and width * height > MAX_EMBEDDED_IMAGE_PIXELS:
                 warning = (f"embedded_image_skipped: xref {xref} soft mask {smask} declares "
                            f"{width}x{height}, above the {MAX_EMBEDDED_IMAGE_PIXELS}-pixel "
                            "embedded-image ceiling; not decoded")
