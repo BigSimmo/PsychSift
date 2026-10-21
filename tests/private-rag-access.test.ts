@@ -339,30 +339,28 @@ describe("private RAG API access", () => {
     expect(mocks.demoSearch).toHaveBeenCalledWith("demo question", 8, undefined, undefined);
   });
 
-  it("allows unauthenticated real answer requests with anonymous scope", async () => {
+  // Answer needs sign-in from 1 November 2026
+  // (docs/decisions/2026-10-20-clinical-decision-tools-need-sign-in.md).
+  it("refuses unauthenticated real answer requests", async () => {
     const mocks = mockRuntime();
     const { POST } = await import("../src/app/api/answer/route");
 
     const response = await POST(jsonRequest("/api/answer", { query: "clozapine monitoring" }));
 
-    expect(response.status).toBe(200);
-    expect(mocks.answerQuestionWithScope).toHaveBeenCalledWith(
-      expect.objectContaining({ ownerId: undefined, allowGlobalSearch: true, query: "clozapine monitoring" }),
-    );
+    expect(response.status).toBe(401);
+    expect(await payload(response)).toMatchObject({ error: "Authentication required." });
+    expect(mocks.answerQuestionWithScope).not.toHaveBeenCalled();
   });
 
-  it("does not answer anonymous requests scoped to non-public document ids", async () => {
+  it("refuses unauthenticated answer requests scoped to a document id", async () => {
     const mocks = mockRuntime();
     const { POST } = await import("../src/app/api/answer/route");
 
     const response = await POST(
       jsonRequest("/api/answer", { query: "clozapine monitoring", documentId: otherDocumentId }),
     );
-    const body = await payload(response);
 
-    expect(response.status).toBe(200);
-    expect(body.grounded).toBe(false);
-    expect(body.confidence).toBe("unsupported");
+    expect(response.status).toBe(401);
     expect(mocks.answerQuestionWithScope).not.toHaveBeenCalled();
   });
 
@@ -370,7 +368,7 @@ describe("private RAG API access", () => {
     const mocks = mockRuntime();
     const { POST } = await import("../src/app/api/answer/route");
 
-    const response = await POST(jsonRequest("/api/answer", { query: "clozapine monitoring", skipCache: true }));
+    const response = await POST(jsonRequest("/api/answer", { query: "clozapine monitoring", skipCache: true }, true));
 
     expect(response.status).toBe(200);
     expect(mocks.answerQuestionWithScope).toHaveBeenCalledWith(
@@ -493,23 +491,14 @@ describe("private RAG API access", () => {
     expect(consumeSubjectApiRateLimit).toHaveBeenCalled();
   });
 
-  it("allows unauthenticated real answer streams with anonymous scope", async () => {
+  it("refuses unauthenticated real answer streams", async () => {
     const mocks = mockRuntime();
     const { POST } = await import("../src/app/api/answer/stream/route");
 
     const response = await POST(jsonRequest("/api/answer/stream", { query: "clozapine monitoring" }));
-    const stream = await response.text();
 
-    expect(response.status).toBe(200);
-    expect(stream).not.toContain("event: token");
-    expect(stream).not.toContain("event: revising");
-    expect(stream).toContain("event: final");
-    expect(mocks.answerQuestionWithScope).toHaveBeenCalledWith(
-      expect.objectContaining({ ownerId: undefined, allowGlobalSearch: true, query: "clozapine monitoring" }),
-    );
-    expect(mocks.answerQuestionWithScope).toHaveBeenCalledWith(
-      expect.not.objectContaining({ onToken: expect.anything(), onRevising: expect.anything() }),
-    );
+    expect(response.status).toBe(401);
+    expect(mocks.answerQuestionWithScope).not.toHaveBeenCalled();
   });
 
   it("scopes authenticated real answer streams to the authenticated owner", async () => {
@@ -529,7 +518,9 @@ describe("private RAG API access", () => {
     const mocks = mockRuntime();
     const { POST } = await import("../src/app/api/answer/stream/route");
 
-    const response = await POST(jsonRequest("/api/answer/stream", { query: "clozapine monitoring", skipCache: true }));
+    const response = await POST(
+      jsonRequest("/api/answer/stream", { query: "clozapine monitoring", skipCache: true }, true),
+    );
     await response.text();
 
     expect(response.status).toBe(200);

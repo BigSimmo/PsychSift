@@ -8,6 +8,7 @@ import { jsonError, PublicApiError, publicErrorResponse } from "@/lib/http";
 import { committedIndexGeneration, isCommittedGenerationMetadata } from "@/lib/reindex-pipeline";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, unauthorizedResponse } from "@/lib/supabase/auth";
+import { requireSignedInClinicalAccess } from "@/lib/clinical-access";
 import { enforceDocumentReadRateLimit, withOwnerReadScope } from "@/lib/public-api-access";
 
 export const runtime = "nodejs";
@@ -34,6 +35,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
     const supabase = createAdminClient();
     const { access, rateLimit } = await enforceDocumentReadRateLimit(_request, supabase);
+    requireSignedInClinicalAccess(access);
     if (rateLimit.limited) {
       return rateLimitJsonResponse("Document requests are rate limited. Try again shortly.", rateLimit);
     }

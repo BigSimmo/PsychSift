@@ -32,6 +32,12 @@ let auth: {
 
 vi.mock("@/lib/supabase/client", () => ({ useAuthSession: () => auth }));
 
+/** No accounts at all (demo mode): the Terms are kept on this device. */
+function withoutAccounts() {
+  auth = { status: "unconfigured", session: null, client: null };
+}
+
+/** Accounts exist but nobody is signed in: Answer needs sign-in. */
 function signedOut() {
   auth = { status: "signed_out", session: null, client: null };
 }
@@ -61,6 +67,7 @@ function Harness({
         Ask
       </button>
       {gate.declinedQuery ? <p data-testid="declined">{gate.declinedQuery}</p> : null}
+      {gate.signInQuery ? <p data-testid="sign-in">{gate.signInQuery}</p> : null}
       <AskTermsStep
         open={gate.heldQuery !== null}
         saving={gate.saving}
@@ -95,11 +102,45 @@ function step() {
   return screen.queryByRole("dialog", { name: ASK_TERMS_STEP_TITLE });
 }
 
-describe("Terms step at the first Ask", () => {
+describe("Answer for a signed-out visitor", () => {
   beforeEach(() => {
     window.localStorage.clear();
     updateUser.mockClear();
     signedOut();
+  });
+  afterEach(() => cleanup());
+
+  it("sends nothing, skips the Terms step and shows the question's documents with the sign-in card", () => {
+    const { ask, sendAnswer, searchDocuments } = setup();
+    ask();
+    expect(step()).toBeNull();
+    expect(sendAnswer).not.toHaveBeenCalled();
+    expect(searchDocuments).toHaveBeenCalledWith(QUESTION, expect.any(Function));
+    expect(screen.getByTestId("sign-in").textContent).toBe(QUESTION);
+  });
+
+  it("does the same even when this device accepted the Terms before", () => {
+    window.localStorage.setItem(DEVICE_TERMS_KEY, TERMS_VERSION);
+    const { ask, sendAnswer, searchDocuments } = setup();
+    ask();
+    expect(sendAnswer).not.toHaveBeenCalled();
+    expect(searchDocuments).toHaveBeenCalledTimes(1);
+  });
+
+  it("treats an expired session as signed out", () => {
+    auth = { status: "expired", session: null, client: null };
+    const { ask, sendAnswer } = setup();
+    ask();
+    expect(sendAnswer).not.toHaveBeenCalled();
+    expect(screen.getByTestId("sign-in")).toBeTruthy();
+  });
+});
+
+describe("Terms step at the first Ask", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    updateUser.mockClear();
+    withoutAccounts();
   });
   afterEach(() => cleanup());
 

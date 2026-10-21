@@ -4,7 +4,7 @@
 # - Python 3.12 Cloud: `npm run generate:worker-python-cloud-lock`
 
 PyMuPDF>=1.28.2
-pillow>=10.0.0
+pillow>=13.0.0
 pytesseract>=0.3.10
 medspacy>=1.1.0
 # Complete upstream model-artifact security fixes; upstream still reports 3.10.3.

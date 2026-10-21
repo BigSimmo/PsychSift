@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "96767a6e-d47c-41d4-b58a-16a86f350d15",
+  "createdOn": "2026-10-20",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "issue",
+    "summary": "Remove third-party publisher documents (BMJ Best Practice, WA Health, DSM) from the public corpus",
+    "detail": "Migration 20260706120000 made all indexed documents public. Narrowing public_corpus is a live database change needing the owner's named yes for that specific change; await counsel's answer on licences first. Findings R-05, R-06.",
+    "source": "Regulatory readiness audit 2026-10-20 (/mnt/project-files/reviews/2026-10-20-regulatory-launch-readiness.md)",
+    "issueUlid": "01M5D6CDX9HGEC4BJ1K39DPPY4"
+  }
+}
