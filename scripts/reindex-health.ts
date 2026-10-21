@@ -63,6 +63,14 @@ async function main() {
     return;
   }
 
+  // Exact count of pending jobs that were due more than N minutes ago. The open-jobs preview below
+  // is capped at the 25 oldest jobs, so an overdue upload behind older not-yet-due retries would
+  // otherwise go unseen by the ingestion autopilot (which passes its own threshold here).
+  const overdueIndex = process.argv.indexOf("--pending-overdue-minutes");
+  const overdueArg = overdueIndex >= 0 ? Number.parseInt(process.argv[overdueIndex + 1] ?? "", 10) : Number.NaN;
+  const pendingOverdueMinutes = Number.isFinite(overdueArg) && overdueArg > 0 ? overdueArg : 30;
+  const pendingOverdueBefore = new Date(Date.now() - pendingOverdueMinutes * 60_000).toISOString();
+
   const [
     indexed,
     queued,
@@ -71,6 +79,7 @@ async function main() {
     pendingJobs,
     processingJobs,
     failedJobs,
+    pendingOverdueJobs,
     strandedQueued,
     chunksWithSynopsis,
   ] = await Promise.all([
@@ -101,6 +110,14 @@ async function main() {
     safeCount(
       "jobs_failed",
       supabase.from("ingestion_jobs").select("id", { count: "exact", head: true }).eq("status", "failed"),
+    ),
+    safeCount(
+      "jobs_pending_overdue",
+      supabase
+        .from("ingestion_jobs")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pending")
+        .lt("next_run_at", pendingOverdueBefore),
     ),
     safeDerivedCount("documents_stranded_queued", () =>
       listStrandedQueuedDocuments({
@@ -134,6 +151,7 @@ async function main() {
     pendingJobs,
     processingJobs,
     failedJobs,
+    pendingOverdueJobs,
     strandedQueued,
     chunksWithSynopsis,
   ];

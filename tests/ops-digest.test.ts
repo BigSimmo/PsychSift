@@ -240,6 +240,18 @@ describe("renderDigest", () => {
     expect(md).not.toContain("OPS_ANSWER_SLO_UNKNOWN");
   });
 
+  it("says the trailing snapshot query failed instead of showing an older build's hourly-only view", () => {
+    const md = renderDigest({
+      status: "ok",
+      slo: { windowMinutes: 60, totalQueries: 3, hybridRpcErrorRate: 0, degradedRate: 0 },
+      sloTrailing: { windowMinutes: 360, unavailable: true },
+    });
+    expect(md).toContain("**Answer quality** (trailing 360m, the window alerts judge)");
+    expect(md).toContain("**Snapshot query failed—answer quality not assessed.**");
+    expect(md).toContain("**Answer SLO** (trailing 60m)");
+    expect(md).toContain("OPS_ANSWER_SLO_UNKNOWN");
+  });
+
   it("says when the trailing window has too few answers to judge rates", () => {
     const md = renderDigest({
       status: "ok",
@@ -390,10 +402,31 @@ describe("eval-canary liveness, executed", () => {
     return body.join("\n");
   }
 
-  async function liveness(runs: Array<{ conclusion: string; updated_at: string; html_url?: string }>) {
+  type Step = { name: string; conclusion: string | null };
+  // A failed run reached a verdict only when an evaluation step itself ran to a conclusion.
+  const evaluated: Step[] = [{ name: "Golden retrieval eval (live corpus)", conclusion: "failure" }];
+  const failedBeforeEvaluating: Step[] = [
+    { name: "Install dependencies", conclusion: "failure" },
+    { name: "Golden retrieval eval (live corpus)", conclusion: "skipped" },
+    { name: "Answer-quality subset (live generation)", conclusion: "skipped" },
+  ];
+
+  async function liveness(
+    runs: Array<{ id?: number; conclusion: string; updated_at: string; html_url?: string; steps?: Step[] }>,
+    { jobsError = false }: { jobsError?: boolean } = {},
+  ) {
     const outputs: Record<string, string> = {};
     const github = {
-      rest: { actions: { listWorkflowRuns: async () => ({ data: { workflow_runs: runs } }) } },
+      rest: {
+        actions: {
+          listWorkflowRuns: async () => ({ data: { workflow_runs: runs } }),
+          listJobsForWorkflowRun: async ({ run_id }: { run_id: number }) => {
+            if (jobsError) throw new Error("jobs API unavailable");
+            const run = runs.find((item) => item.id === run_id);
+            return { data: { jobs: [{ name: "eval-canary", steps: run?.steps ?? evaluated }] } };
+          },
+        },
+      },
     };
     const core = {
       setOutput: (key: string, value: string) => {
@@ -418,6 +451,28 @@ describe("eval-canary liveness, executed", () => {
   it("is live after a recent run that reached a verdict, pass or fail", async () => {
     expect((await liveness([{ conclusion: "failure", updated_at: daysAgo(2) }])).stale).toBe("false");
     expect((await liveness([{ conclusion: "success", updated_at: daysAgo(2) }])).stale).toBe("false");
+  });
+
+  it("does not count a failed run that stopped before any evaluation step ran", async () => {
+    const outputs = await liveness([
+      { id: 2, conclusion: "failure", updated_at: daysAgo(1), steps: failedBeforeEvaluating },
+      { id: 1, conclusion: "success", updated_at: daysAgo(10) },
+    ]);
+    expect(outputs.stale).toBe("true");
+    expect(outputs.message).toContain("1 newer run(s) failed before evaluating and do not count");
+  });
+
+  it("names evaluation steps that exist in the canary workflow", () => {
+    const canary = readFileSync(new URL("../.github/workflows/eval-canary.yml", import.meta.url), "utf8");
+    for (const name of ["Golden retrieval eval (live corpus)", "Answer-quality subset (live generation)"]) {
+      expect(livenessScript()).toContain(`"${name}"`);
+      expect(canary).toContain(`      - name: ${name}\n`);
+    }
+  });
+
+  it("treats a failed run as no verdict when its steps cannot be read", async () => {
+    const outputs = await liveness([{ id: 3, conclusion: "failure", updated_at: daysAgo(1) }], { jobsError: true });
+    expect(outputs.stale).toBe("true");
   });
 
   it("does not count a recent cancelled or timed-out run as having run", async () => {

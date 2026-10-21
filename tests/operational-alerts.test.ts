@@ -210,6 +210,19 @@ describe("evaluateOperationalAlerts", () => {
       },
     });
 
+    it("reports unknown, not the hourly fallback, when the trailing snapshot query failed", () => {
+      const alerts = evaluateOperationalAlerts({
+        status: "ok",
+        slo: { windowMinutes: 60, totalQueries: 30, hybridRpcErrorRate: 0, degradedRate: 0 },
+        sloTrailing: { windowMinutes: ANSWER_QUALITY_WINDOW_MINUTES, unavailable: true },
+      });
+      expect(alerts.map((item) => item.code)).toEqual(["OPS_ANSWER_SLO_UNKNOWN"]);
+      expect(alerts[0]).toMatchObject({
+        windowMinutes: 360,
+        reason: "The trailing answer-quality snapshot query failed; answer quality was not assessed.",
+      });
+    });
+
     it("covers the whole six hours between scheduled digests", () => {
       expect(ANSWER_QUALITY_WINDOW_MINUTES).toBe(360);
       const workflow = readFileSync(".github/workflows/ops-digest.yml", "utf8");

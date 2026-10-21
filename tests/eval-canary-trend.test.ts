@@ -5,7 +5,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   TREND_LABEL,
+  TREND_ISSUE_BODY,
   TREND_ROW_MARKER,
+  TREND_TITLE,
   buildCanaryTrendRow,
   readCanaryTrendRow,
   renderCanaryTrendComment,
@@ -208,6 +210,88 @@ describe("eval canary trend row", () => {
     expect(comments[0]!.issue_number).toBe(77);
     expect(comments[0]!.body.startsWith(TREND_ROW_MARKER)).toBe(true);
     expect(comments[0]!.body).toContain("scheduled · job cancelled · retrieval not recorded");
+  });
+
+  it("still posts a row in the module's exact shape when checkout failed (fallback step)", async () => {
+    const workflow = readFileSync(".github/workflows/eval-canary.yml", "utf8");
+    const step = workflow.slice(workflow.indexOf("      - name: Record trend row (checkout failed)"));
+    expect(step).toContain(
+      "if: always() && steps.checkout.outcome != 'success' && (github.event_name == 'schedule' || github.event_name == 'repository_dispatch')",
+    );
+    expect(step).toContain("continue-on-error: true");
+    // No repository code is available when checkout failed.
+    expect(step).not.toContain("GITHUB_WORKSPACE");
+    const marker = "          script: |\n";
+    const body: string[] = [];
+    for (const line of step.slice(step.indexOf(marker) + marker.length).split("\n")) {
+      if (line.length === 0) {
+        body.push("");
+        continue;
+      }
+      if (!line.startsWith("            ")) break;
+      body.push(line.slice(12));
+    }
+    const AsyncFunction = Object.getPrototypeOf(async () => undefined).constructor as new (
+      ...args: string[]
+    ) => (...values: unknown[]) => Promise<void>;
+    const created: Array<{ title: string; labels: string[]; body: string }> = [];
+    const comments: Array<{ issue_number: number; body: string }> = [];
+    const github = {
+      rest: {
+        issues: {
+          listForRepo: async () => ({ data: [] }),
+          create: async (request: { title: string; labels: string[]; body: string }) => {
+            created.push(request);
+            return { data: { number: 78 } };
+          },
+          createComment: async (request: { issue_number: number; body: string }) => {
+            comments.push(request);
+          },
+        },
+      },
+    };
+    const context = {
+      repo: { owner: "BigSimmo", repo: "PsychSift" },
+      runId: 124,
+      eventName: "repository_dispatch",
+      sha: "0123456789abcdef0123456789abcdef01234567",
+      serverUrl: "https://github.com",
+    };
+    const saved = { ...process.env };
+    Object.assign(process.env, {
+      JOB_STATUS: "failure",
+      GOLDEN_OUTCOME: "skipped",
+      ANSWER_OUTCOME: "skipped",
+      GITHUB_RUN_ATTEMPT: "2",
+    });
+    try {
+      await new AsyncFunction("github", "context", "core", body.join("\n"))(github, context, { info: () => undefined });
+    } finally {
+      process.env = saved;
+    }
+    expect(created).toEqual([
+      { owner: "BigSimmo", repo: "PsychSift", title: TREND_TITLE, labels: [TREND_LABEL], body: TREND_ISSUE_BODY },
+    ]);
+    expect(comments).toHaveLength(1);
+    const row = JSON.parse(comments[0]!.body.split("\n")[2]!.slice(1, -1));
+    const expected = buildCanaryTrendRow({
+      golden: null,
+      quality: null,
+      meta: {
+        date: row.date,
+        runId: "124",
+        runAttempt: "2",
+        trigger: "repository_dispatch",
+        sha: context.sha,
+        jobStatus: "failure",
+        goldenOutcome: "skipped",
+        answerOutcome: "skipped",
+      },
+    });
+    expect(row).toEqual(expected);
+    expect(comments[0]!.body).toBe(
+      renderCanaryTrendComment(expected, "https://github.com/BigSimmo/PsychSift/actions/runs/124"),
+    );
   });
 
   it("is posted by the canary on every run, cancelled ones included, without failing the job", () => {

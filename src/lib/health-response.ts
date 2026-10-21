@@ -122,7 +122,9 @@ export async function healthResponse(request: Request, options: HealthResponseOp
     siteContent: "skipped",
   };
   let slo: AnswerSloSnapshot | null = null;
-  let sloTrailing: AnswerSloSnapshot | null = null;
+  // `{ unavailable: true }` marks a trailing query that failed on this build, so the digest reports
+  // answer quality as unknown rather than treating the response as an older hourly-only build.
+  let sloTrailing: AnswerSloSnapshot | { windowMinutes: number; unavailable: true } | null = null;
   let cache: CacheMetricsSnapshot | null = null;
   let coalescing: AnswerCoalescingMetricsSnapshot | null = null;
   let spend: SpendSnapshot | null = null;
@@ -221,7 +223,10 @@ export async function healthResponse(request: Request, options: HealthResponseOp
               answerSloSnapshot(sloClient, ANSWER_SLO_TRAILING_WINDOW_MINUTES),
             ]);
             slo = hourly.status === "fulfilled" ? hourly.value : null;
-            sloTrailing = trailing.status === "fulfilled" ? trailing.value : null;
+            sloTrailing =
+              trailing.status === "fulfilled"
+                ? trailing.value
+                : { windowMinutes: ANSWER_SLO_TRAILING_WINDOW_MINUTES, unavailable: true };
           }
           // Answer-generation spend, gated like `slo` (token-authorized deep probe
           // + healthy Supabase). Derives USD from already-recorded token counts and

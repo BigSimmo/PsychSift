@@ -103,6 +103,29 @@ describe("assessIngestionHealth", () => {
     expect(a.agedPendingJobs).toBe(0);
   });
 
+  it("counts overdue pending jobs beyond the 25-job open-jobs preview", () => {
+    // reindex-health returns only the 25 oldest open jobs. Fill them with pending retries that
+    // are not yet due, so the overdue upload sits outside the preview and only the exact count
+    // can see it.
+    const notYetDue = Array.from({ length: 25 }, () => ({
+      status: "pending",
+      next_run_at: new Date(NOW + 60 * 60_000).toISOString(),
+      created_at: minutesAgo(600),
+    }));
+    const a = assessIngestionHealth(
+      { ok: true, counts: { jobs_failed: 0, jobs_pending_overdue: 1 }, openJobs: notYetDue },
+      { now: NOW, staleAfterMinutes: 30 },
+    );
+    expect(a.agedPendingJobs).toBe(1);
+    expect(a.stuck).toBe(true);
+  });
+
+  it("asks reindex-health for an exact overdue-pending count at the autopilot's threshold", () => {
+    expect(healthSource).toContain('"jobs_pending_overdue"');
+    expect(healthSource).toMatch(/\.eq\("status", "pending"\)\s*\.lt\("next_run_at", /);
+    expect(autopilotSource).toContain('"--pending-overdue-minutes"');
+  });
+
   it("falls back to created_at when a pending job has no next_run_at", () => {
     const a = assessIngestionHealth(
       { ok: true, counts: { jobs_failed: 0 }, openJobs: [{ status: "pending", created_at: minutesAgo(90) }] },

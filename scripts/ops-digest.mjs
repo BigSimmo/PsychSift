@@ -207,6 +207,14 @@ export function renderIngestionWorkerState(value) {
  * judge: the trailing six-hour `sloTrailing` block, or the hourly `slo` from an older build.
  */
 function renderAnswerWindow(s, { alertWindow }) {
+  // A current build marks a failed trailing query explicitly; it is unknown, not an empty window.
+  if (s.unavailable === true) {
+    return [
+      "",
+      `**Answer quality** (trailing ${s.windowMinutes ?? "?"}m, the window alerts judge)`,
+      "**Snapshot query failed—answer quality not assessed.**",
+    ];
+  }
   const expectedWindowMinutes = alertWindow && s.windowMinutes !== 60 ? ANSWER_QUALITY_WINDOW_MINUTES : 60;
   const noAnswerActivity = s.windowMinutes === expectedWindowMinutes && s.totalQueries === 0;
   const sloPct = (value) => (noAnswerActivity ? "N/A" : pct(value));

@@ -132,6 +132,9 @@ export function assessIngestionHealth(
       if (Number.isFinite(dueAt) && now - dueAt > staleThresholdMs) agedPendingJobs += 1;
     }
   }
+  // The preview holds only the 25 oldest open jobs; reindex-health's exact count covers the rest.
+  const overdueCount = Number(health.counts?.jobs_pending_overdue);
+  if (Number.isFinite(overdueCount) && overdueCount > agedPendingJobs) agedPendingJobs = overdueCount;
   if (staleProcessingJobs > 0) {
     reasons.push(`${staleProcessingJobs} processing job(s) locked > ${staleAfterMinutes}m (stale worker)`);
   }
@@ -181,7 +184,7 @@ function main() {
   const staleAfterMinutes = parseIntFlag("--stale-after-minutes", 30);
   const limit = parseIntFlag("--limit", 20);
 
-  const probe = runTsxScript("scripts/reindex-health.ts");
+  const probe = runTsxScript("scripts/reindex-health.ts", ["--pending-overdue-minutes", String(staleAfterMinutes)]);
   const stdout = probe.stdout ?? "";
   process.stdout.write(stdout);
 

@@ -62,14 +62,51 @@ jobs:
               });
               const runs = data.workflow_runs ?? [];
               // Only a run that reached a pass or fail verdict counts (audit EVAL-08). A cancelled or
-              // timed-out run evaluated nothing, so it must not keep liveness green.
-              const verdictIndex = runs.findIndex((run) => run.conclusion === "success" || run.conclusion === "failure");
+              // timed-out run evaluated nothing, so it must not keep liveness green. Nor does a failed
+              // run that stopped before an evaluation step ran (checkout, install or the project
+              // guard): it counts only when the golden or answer-quality step itself concluded. If
+              // its steps cannot be read, it is not counted, so liveness errs towards stale.
+              const evaluationSteps = ["Golden retrieval eval (live corpus)", "Answer-quality subset (live generation)"];
+              const reachedEvaluation = async (run) => {
+                try {
+                  const { data: jobsData } = await github.rest.actions.listJobsForWorkflowRun({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    run_id: run.id,
+                  });
+                  return (jobsData.jobs ?? []).some((job) =>
+                    (job.steps ?? []).some(
+                      (step) =>
+                        evaluationSteps.includes(step.name) &&
+                        (step.conclusion === "success" || step.conclusion === "failure"),
+                    ),
+                  );
+                } catch {
+                  return false;
+                }
+              };
+              let verdictIndex = -1;
+              let failedEarly = 0;
+              for (const [index, run] of runs.entries()) {
+                if (run.conclusion === "success") {
+                  verdictIndex = index;
+                  break;
+                }
+                if (run.conclusion === "failure") {
+                  if (await reachedEvaluation(run)) {
+                    verdictIndex = index;
+                    break;
+                  }
+                  failedEarly += 1;
+                }
+              }
               const latest = verdictIndex >= 0 ? runs[verdictIndex] : undefined;
               const skipped = (verdictIndex >= 0 ? runs.slice(0, verdictIndex) : runs).filter(
                 (run) => run.conclusion === "cancelled" || run.conclusion === "timed_out",
               ).length;
               const skippedNote =
-                skipped > 0 ? ` ${skipped} newer run(s) were cancelled or timed out and do not count.` : "";
+                (skipped > 0 ? ` ${skipped} newer run(s) were cancelled or timed out and do not count.` : "") +
+                (failedEarly > 0 ? ` ${failedEarly} newer run(s) failed before evaluating and do not count.` : "");
               // updated_at approximates completion time; run_started_at is the
               // fallback for older or partial REST payloads.
               const finishedAt = Date.parse(latest?.updated_at ?? latest?.run_started_at ?? "");

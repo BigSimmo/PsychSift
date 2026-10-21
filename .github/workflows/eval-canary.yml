@@ -470,3 +470,82 @@ jobs:
               body,
             });
             core.info(`Recorded the trend row on #${issueNumber}.`);
+
+      # The step above imports the row writer from the checked-out repository, so it cannot run
+      # when checkout itself failed. This fallback needs no repository code: it posts the same
+      # marker, readable line and JSON row shape (pinned against scripts/lib/eval-canary-trend.mjs
+      # by tests/eval-canary-trend.test.ts) with both evaluation halves "not recorded".
+      - name: Record trend row (checkout failed)
+        if: always() && steps.checkout.outcome != 'success' && (github.event_name == 'schedule' || github.event_name == 'repository_dispatch')
+        continue-on-error: true
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          JOB_STATUS: ${{ job.status }}
+          GOLDEN_OUTCOME: ${{ steps.golden_retrieval.outcome }}
+          ANSWER_OUTCOME: ${{ steps.answer_quality.outcome }}
+        with:
+          script: |
+            // Same names as the module exports, so the trend issue and rows stay one record.
+            const trend = {
+              TREND_LABEL: "eval-canary-trend",
+              TREND_TITLE: "Eval canary trend",
+              TREND_ROW_MARKER: "<!-- eval-canary-trend-row:v1 -->",
+            };
+            trend.TREND_ISSUE_BODY = [
+              "One row per eval-canary run, posted as a comment by `.github/workflows/eval-canary.yml` (audit EVAL-06).",
+              "The run's artifact expires after 30 days; these rows do not. Each row holds aggregate numbers and case",
+              "IDs only, never question, answer or source text. Keep this issue open: the canary reuses it.",
+              "",
+              "The second line of each comment is the row as JSON, for reading the trend back with a script.",
+            ].join("\n");
+            const word = (value) => (/^[a-z_]{1,32}$/.test(String(value ?? "")) ? String(value) : "unknown");
+            const attempt = String(process.env.GITHUB_RUN_ATTEMPT ?? "");
+            const sha = String(context.sha ?? "");
+            const row = {
+              v: 1,
+              date: new Date().toISOString(),
+              run: /^\d+$/.test(String(context.runId)) ? String(context.runId) : null,
+              attempt: /^\d+$/.test(attempt) ? attempt : null,
+              trigger: word(context.eventName),
+              sha: /^[0-9a-f]{7,40}$/.test(sha) ? sha.slice(0, 12) : null,
+              job: word(process.env.JOB_STATUS),
+              steps: { golden: word(process.env.GOLDEN_OUTCOME), answer: word(process.env.ANSWER_OUTCOME) },
+              retrieval: null,
+              answer: null,
+            };
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const trigger =
+              row.trigger === "schedule" ? "scheduled" : row.trigger === "repository_dispatch" ? "dispatched" : row.trigger;
+            const readable = [
+              row.date.slice(0, 10),
+              trigger,
+              `job ${row.job}`,
+              "retrieval not recorded",
+              "answers not recorded",
+              runUrl.startsWith("https://") ? `[run](${runUrl})` : "run link unavailable",
+            ].join(" · ");
+            const body = [trend.TREND_ROW_MARKER, readable, `\`${JSON.stringify(row)}\``].join("\n");
+            const { data: open } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              labels: trend.TREND_LABEL,
+            });
+            let issueNumber = open.find((issue) => issue.title === trend.TREND_TITLE)?.number;
+            if (!issueNumber) {
+              const created = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: trend.TREND_TITLE,
+                labels: [trend.TREND_LABEL],
+                body: trend.TREND_ISSUE_BODY,
+              });
+              issueNumber = created.data.number;
+            }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body,
+            });
+            core.info(`Recorded the checkout-failed trend row on #${issueNumber}.`);

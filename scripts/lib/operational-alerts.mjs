@@ -273,11 +273,13 @@ export function evaluateOperationalAlerts(health, context = {}) {
         windowMinutes: finiteNumber(slo?.windowMinutes) ? slo.windowMinutes : null,
         reason: !slo
           ? "Answer SLO data is missing."
-          : slo.windowMinutes !== expectedWindowMinutes
-            ? trailing
-              ? `Trailing answer-quality snapshot must cover exactly ${ANSWER_QUALITY_WINDOW_MINUTES} minutes.`
-              : "Answer SLO snapshot must cover exactly one 60-minute hourly window."
-            : `No answered queries were observed in the trailing ${expectedWindowMinutes} minutes; rates cannot establish health.`,
+          : trailing?.unavailable === true
+            ? "The trailing answer-quality snapshot query failed; answer quality was not assessed."
+            : slo.windowMinutes !== expectedWindowMinutes
+              ? trailing
+                ? `Trailing answer-quality snapshot must cover exactly ${ANSWER_QUALITY_WINDOW_MINUTES} minutes.`
+                : "Answer SLO snapshot must cover exactly one 60-minute hourly window."
+              : `No answered queries were observed in the trailing ${expectedWindowMinutes} minutes; rates cannot establish health.`,
       }),
     );
   } else {
