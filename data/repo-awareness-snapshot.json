@@ -4024,6 +4024,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-21-answer-safety-pass-marks.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/archive/search-rag-phase-3-synthesis-output.md",
         "section": "archive",
         "catalogued": true
