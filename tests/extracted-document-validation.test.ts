@@ -114,7 +114,7 @@ describe("Python extracted-document payload validation", () => {
 describe("extraction provenance (audit F04)", () => {
   const provenance = {
     name: "extract_pdf_assets",
-    version: "2026-10-20.embedded-image-ceiling-v10",
+    version: "2026-10-21.merged-cell-provenance-v11",
     pymupdf: "1.26.0",
     tableStrategy: "table_aware_page_text",
   };

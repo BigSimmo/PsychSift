@@ -32,6 +32,8 @@ export type TableFactImageRow = {
   accessibleTableMarkdown?: string | null;
   tableRows?: string[][] | null;
   tableColumns?: string[] | null;
+  // [rowIndex, columnIndex] of cells the extractor confirmed are covered by a merged span.
+  tableMergedCells?: [number, number][] | null;
   structuredVisualProfile?: {
     table_column_roles?: Record<string, string>;
   } | null;
@@ -182,6 +184,13 @@ export function buildTableFactRows(args: {
     // Audit 2026-10-20 ING-B-09: PyMuPDF leaves a vertically merged label cell blank on every row
     // after the first, so those rows lost their group. Carry the last label forward into
     // clinical_parameter only; row_label, cells and chunk text keep the extracted (blank) value.
+    // Only a CONFIRMED merged cell (extractor span provenance in tableMergedCells) inherits;
+    // an ordinary blank label cell, or a table without provenance, never does. An empty
+    // separator row or any row with its own label resets the inheritance chain.
+    const labelColumn = parameterIndex >= 0 ? parameterIndex : 0;
+    const confirmedMergedRows = new Set(
+      (image.tableMergedCells ?? []).filter(([, column]) => column === labelColumn).map(([row]) => row),
+    );
     let lastRowLabel: { label: string; rowIndex: number } | null = null;
     for (const [rowIndex, rawCells] of image.tableRows.slice(0, 400).entries()) {
       const cells = rawCells.map((cell) => compactSearchText(cell, 240));
@@ -195,10 +204,14 @@ export function buildTableFactRows(args: {
       )
         continue;
       const rowText = cells.filter(Boolean).join(" ");
-      if (!rowText) continue;
-      const rowLabel = tableFactValue(cells, parameterIndex >= 0 ? parameterIndex : 0);
-      const inheritedLabel = rowLabel ? null : lastRowLabel;
+      if (!rowText) {
+        lastRowLabel = null;
+        continue;
+      }
+      const rowLabel = tableFactValue(cells, labelColumn);
+      const inheritedLabel = !rowLabel && confirmedMergedRows.has(rowIndex) ? lastRowLabel : null;
       if (rowLabel) lastRowLabel = { label: rowLabel, rowIndex };
+      else if (!inheritedLabel) lastRowLabel = null;
       // Named columns constrain meaning: an unmatched concentration or interval
       // remains in metadata.cells without being relabelled a threshold or action.
       const threshold =

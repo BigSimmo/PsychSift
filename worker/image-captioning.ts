@@ -74,6 +74,7 @@ type InsertedImage = {
   accessibleTableMarkdown: string | null;
   tableRows: string[][] | null;
   tableColumns: string[] | null;
+  tableMergedCells: [number, number][] | null;
   structuredVisualProfile: StructuredVisualProfile | null;
   candidatePriorityScore: number;
   imageQualityScore: number;
@@ -545,6 +546,7 @@ async function persistCaptionedImages(
           table_confidence: tableMetadata.tableConfidence,
           table_rows: tableMetadata.tableRows,
           table_columns: tableMetadata.tableColumns,
+          table_merged_cells: tableMetadata.tableMergedCells,
           accessible_table_markdown: tableMetadata.accessibleTableMarkdown,
           clinical_use_class: policyAssessment.clinical_use_class,
           clinical_use_reason: policyAssessment.clinical_use_reason,
@@ -595,6 +597,7 @@ async function persistCaptionedImages(
         accessibleTableMarkdown: tableMetadata.accessibleTableMarkdown,
         tableRows: tableMetadata.tableRows,
         tableColumns: tableMetadata.tableColumns,
+        tableMergedCells: tableMetadata.tableMergedCells,
         structuredVisualProfile: structuredVisualProfile ?? null,
         candidatePriorityScore: candidate.candidatePriorityScore,
         imageQualityScore: candidate.imageQualityScore,
