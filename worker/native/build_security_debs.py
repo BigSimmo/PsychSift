@@ -109,12 +109,7 @@ def build(root, component, output):
     if data["extra_build_packages"]:
         run(["apt-get", "install", "-y", "--no-install-recommends", *data["extra_build_packages"]])
     environment = dict(os.environ, SOURCE_DATE_EPOCH=str(data["source_date_epoch"]),
-                       LC_ALL="C.UTF-8", QUILT_PATCHES="debian/patches",
-                       # The python:*-slim base puts its own interpreter in
-                       # /usr/local/bin first. Debian build tools such as
-                       # asciidoc (`#!/usr/bin/env python3`) must run under the
-                       # distro python3 that has their modules installed.
-                       PATH="/usr/sbin:/usr/bin:/sbin:/bin")
+                       LC_ALL="C.UTF-8", QUILT_PATCHES="debian/patches")
     # Never inherit test/doc-skipping or dependency-bypass build options.
     for key in ("DEB_BUILD_OPTIONS", "DEB_BUILD_PROFILES", "DPKG_BUILDPACKAGE_OPTIONS"):
         environment.pop(key, None)
@@ -149,7 +144,12 @@ def build(root, component, output):
                              f"  * Local security backport: {data['change_summary']}\n\n"
                              f" -- PsychSift Security Backport <noreply@psychsift.invalid>  {date}\n\n"
                              + changelog.read_text())
-        run(["dpkg-buildpackage", "-b", "-us", "-uc", "-j2"], cwd=source, env=environment)
+        # The python:*-slim base puts its own interpreter first in PATH. Debian
+        # build tools such as asciidoc (`#!/usr/bin/env python3`) must run under
+        # the distro python3 that has their modules; scope this to the package
+        # build so regression commands keep their existing environment.
+        package_environment = dict(environment, PATH="/usr/sbin:/usr/bin:/sbin:/bin")
+        run(["dpkg-buildpackage", "-b", "-us", "-uc", "-j2"], cwd=source, env=package_environment)
         for command in data["test_commands"]:
             run(command, cwd=source, env=environment)
         selected = select_packages(sorted(work.glob("*.deb")), data)
