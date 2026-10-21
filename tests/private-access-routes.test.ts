@@ -2590,7 +2590,8 @@ describe("private document API access", () => {
   function retryClient(row: unknown, recover: (args?: Record<string, unknown>) => QueryResult) {
     const client = createSupabaseMock((call) => {
       if (call.table === "ingestion_jobs" && call.operation === "select" && call.maybeSingle) {
-        if (call.selected === "*, documents!inner(owner_id)") return ok({ ...(row as object), status: "pending", stage: "queued after recovery" });
+        if (call.selected === "*, documents!inner(owner_id)")
+          return ok({ ...(row as object), status: "pending", stage: "queued after recovery" });
         return ok(row);
       }
       return defaultQueryResolver(call);
