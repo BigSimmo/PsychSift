@@ -13,7 +13,7 @@ heap/resource diagnostics need attention, and `2` for invalid arguments. The scr
 does not build, start a server, acquire the heavy-run lease, change the environment,
 resize the host, or suppress any check. A pass is resource-planning evidence; the
 existing build, typecheck and browser commands still supply their own acceptance
-evidence. Follow [verification gates](verification-gates.md) for scope and reporting.
+evidence. Follow [verification gates](../agents/verification-gates.md) for scope and reporting.
 
 ## Heap inherited by Next.js workers
 

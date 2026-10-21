@@ -241,7 +241,7 @@ if (isDirectEntrypoint(import.meta.url)) {
       );
       for (const issue of report.issues) console.log(`- ${issue}`);
       console.log(
-        "Read-only planning preflight; rerun immediately before the existing build/browser command. See docs/agents/cloud-build-resources.md.",
+        "Read-only planning preflight; rerun immediately before the existing build/browser command. See docs/cloud/cloud-build-resources.md.",
       );
     }
     process.exitCode = report.ok ? 0 : 1;

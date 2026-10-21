@@ -1,7 +1,7 @@
 # Retained Codex Cloud bootstrap
 
 These notes apply only to an explicitly selected legacy bootstrap. The
-[Cloud operating policy](codex-cloud-environment.md) remains canonical; the
+[Cloud operating policy](../agents/codex-cloud-environment.md) remains canonical; the
 [archived profile runbook](../archive/codex-cloud-legacy-profile-2026-10-16.md)
 records the older disposable-container setup. Current host-managed tasks do not
 need this bootstrap merely because they run on Linux or in Codex Cloud.

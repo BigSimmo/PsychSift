@@ -457,7 +457,7 @@ describe("branch-review-ledger row parsing", () => {
   it("uses a distinct immutable path for each distinct review record", () => {
     const first = `| 2026-08-13 | codex/a | ${"a".repeat(40)} | review | pass | test |`;
     const second = first.replace("codex/a", "codex/b");
-    expect(reviewRecordPath(first)).toMatch(/^docs\/branch-review-records\/[0-9a-f]{64}\.record\.md$/);
+    expect(reviewRecordPath(first)).toMatch(/^docs\/archive\/branch-review-records\/[0-9a-f]{64}\.record\.md$/);
     expect(reviewRecordPath(first)).toBe(reviewRecordPath(first));
     expect(reviewRecordPath(second)).not.toBe(reviewRecordPath(first));
   });
@@ -563,12 +563,12 @@ describe("branch-review-ledger guard", () => {
   const valid = {
     ledger: [
       "This file is a frozen historical table.",
-      "New review records are immutable.",
+      "New review records are pull request comments.",
       `| 2026-07-29 | codex/x | ${"a".repeat(40)} | s | o | c |`,
       "",
     ].join("\n"),
     mergeAttribute: "unspecified",
-    protocol: "completed immutable review record; historical table is frozen",
+    protocol: "post one `Review record` comment on the PR. The table is frozen",
   };
 
   it("accepts a well-formed ledger", () => {

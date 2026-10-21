@@ -25,11 +25,35 @@ Before every billable run, read **Spending approval for each billable run** in `
 
 <!-- prettier-ignore-end -->
 
-# Required project instruction continuation
+# Where the rest of the rules live
 
-At task start, read [task lifecycle and receipt handoff](docs/task-receipts.md) and [the organisation map](docs/organisation/README.md).
+Before any repository write or publication, read and follow [the remaining project instructions](PROJECT-INSTRUCTIONS-CONTINUATION.md). Every rule below keeps its full text in the linked file. Read that file before acting in its area; its rules are in force whether or not you have opened it.
 
-Before any repository write or publication, read and follow [the remaining project instructions](PROJECT-INSTRUCTIONS-CONTINUATION.md). Their full text remains binding. This split changes startup size only and grants no new authority. The retained headings below index that required continuation.
+<!-- BEGIN:rules-index -->
+
+<!-- prettier-ignore -->
+| Area | Full text |
+| --- | --- |
+| Agents, when authorised: follow before dispatch; keep the user's main-chat model; report missing hosted routing instead of paying for API workarounds | [`docs/agents/smart-agent-allocation.md`](docs/agents/smart-agent-allocation.md) |
+| Gate selection, the verification tiers, gate receipts | [`docs/agents/verification-gates.md`](docs/agents/verification-gates.md) |
+| The whole PR lifecycle: open, CI, review threads, records, merge authority, sync, sweeps | [`docs/agents/pull-request-workflow.md`](docs/agents/pull-request-workflow.md) |
+| Publication workflows, anti-conflict and CI-speed procedure, the `Run PR` and `Clear PRs` shortcuts | [`docs/agents/native-startup/publication-workflows.md`](docs/agents/native-startup/publication-workflows.md) |
+| Process hardening; bare PR publication is not readiness work | [`docs/agents/native-startup/process-hardening.md`](docs/agents/native-startup/process-hardening.md) |
+| Commit as you go: interruption, not carelessness, is what loses work here | [`docs/agents/native-startup/commit-as-you-go.md`](docs/agents/native-startup/commit-as-you-go.md) |
+| Search chrome behaviour (one composer) | [`docs/agents/native-startup/search-chrome-behaviour.md`](docs/agents/native-startup/search-chrome-behaviour.md) |
+| External skill precedence, evidence and calibration | [`docs/agents/native-startup/external-skill-precedence.md`](docs/agents/native-startup/external-skill-precedence.md) |
+| Page and button wiring, the bundle budget | [`docs/agents/wiring-and-bundle-budget.md`](docs/agents/wiring-and-bundle-budget.md) |
+| Deleting code you believe is dead | [`docs/agents/dead-code-deletion.md`](docs/agents/dead-code-deletion.md) |
+| Deleting tests, or letting a tool delete them for you | [`docs/agents/test-deletion-guard.md`](docs/agents/test-deletion-guard.md) |
+| Claude Code hook scripts | [`docs/agents/claude-hook-scripts.md`](docs/agents/claude-hook-scripts.md) |
+| Repository skills, the `/issues` outstanding-work memory | [`docs/agents/repository-skills-and-issues.md`](docs/agents/repository-skills-and-issues.md) |
+| The `upload`, dependency and `bug-hunter` shortcuts | [`docs/agents/upload-shortcut.md`](docs/agents/upload-shortcut.md), [`docs/agents/codex-dependency-shortcut.md`](docs/agents/codex-dependency-shortcut.md), [`docs/agents/bug-hunter-shortcut.md`](docs/agents/bug-hunter-shortcut.md) |
+| Codex review throttling, routing and review records | [`docs/agents/codex-review-throttling.md`](docs/agents/codex-review-throttling.md), [`docs/codex-review-protocol.md`](docs/codex-review-protocol.md) |
+| Codex reasoning effort; Codex Desktop worktree setup | [`docs/agents/codex-reasoning-effort.md`](docs/agents/codex-reasoning-effort.md), [`docs/agents/codex-desktop-worktree-setup.md`](docs/agents/codex-desktop-worktree-setup.md) |
+| Which area owns a file (the first edit in an area also names it) | [`docs/organisation/README.md`](docs/organisation/README.md) |
+| Task receipts and Notion task status, only for receipt work | [`docs/task-receipts.md`](docs/task-receipts.md) |
+
+<!-- END:rules-index -->
 
 <!-- BEGIN:nextjs-agent-rules -->
 
@@ -40,40 +64,6 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
-
-# Context-aware working defaults
-
-Read and follow [Context-aware working defaults](docs/agents/native-startup/contextual-working-defaults.md) before acting in this area. The full policy remains in force.
-
-## Smart agent allocation
-
-When agents are authorised, follow
-[`docs/agents/smart-agent-allocation.md`](docs/agents/smart-agent-allocation.md)
-before dispatch. Keep the user's main-chat model; report missing hosted routing
-honestly instead of paying for API workarounds.
-
-<!-- BEGIN:dependency-shortcut -->
-
-## Dependency shortcut
-
-For the full Codex dependency shortcut workflow, see [`docs/agents/codex-dependency-shortcut.md`](docs/agents/codex-dependency-shortcut.md).
-
-<!-- END:dependency-shortcut -->
-
-<!-- BEGIN:bug-hunter-shortcut -->
-
-## Bug-hunter shortcut
-
-For the `bug-hunter` targeted defect-discovery shortcut, its execution rules, and its scope and safety limits, see [`docs/agents/bug-hunter-shortcut.md`](docs/agents/bug-hunter-shortcut.md).
-<!-- END:bug-hunter-shortcut -->
-
-<!-- BEGIN:codex-review-throttling -->
-
-## Codex review throttling and routing
-
-For Codex review throttling, branch routing, review ledger append rules, and review thread resolution guidance, see [`docs/agents/codex-review-throttling.md`](docs/agents/codex-review-throttling.md) and [`docs/codex-review-protocol.md`](docs/codex-review-protocol.md).
-
-<!-- END:codex-review-throttling -->
 
 # When the owner makes a decision
 
@@ -91,56 +81,6 @@ Record it in the repository in the same change, because chat history and each to
 - Do not run a permanent watcher. Only start or verify the server when the current chat task needs the app or the user asks to run it.
 
 <!-- END:local-server-safety -->
-
-<!-- BEGIN:codex-desktop-worktree-setup -->
-
-# Claude Code hook scripts
-
-For the `.claude/hooks/*.sh` contract — the executable bit in the index, hook registration, line endings, failure behaviour, timeouts, and SessionStart output, see [`docs/agents/claude-hook-scripts.md`](docs/agents/claude-hook-scripts.md).
-
-# Codex Desktop worktree setup
-
-For Windows Codex Desktop worktree bootstrap and dry-run instructions, see [`docs/agents/codex-desktop-worktree-setup.md`](docs/agents/codex-desktop-worktree-setup.md).
-
-<!-- END:codex-desktop-worktree-setup -->
-
-# Reasoning effort calibration
-
-For user-controlled Codex reasoning effort, confirmation and scoped specialist requirements, see
-[`docs/agents/codex-reasoning-effort.md`](docs/agents/codex-reasoning-effort.md).
-
-# Process hardening phases
-
-## Bare PR publication is not readiness work
-
-Read and follow [Process hardening phases](docs/agents/native-startup/process-hardening.md) before acting in this area. The full policy remains in force.
-
-<!-- BEGIN:page-and-button-wiring -->
-
-# Deleting code you believe is dead
-
-For what must hold before removing an exported symbol, and the `check:dead-code-candidate` refusal list, see [`docs/agents/dead-code-deletion.md`](docs/agents/dead-code-deletion.md).
-
-# Deleting tests, or letting a tool delete them for you
-
-For the 2026-08-31 whole-file truncation incident (`#Y30AXB`), the `check:diff-integrity` test-case floor and truncation-artefact rules, and how a deliberate reduction is recorded in `diff-integrity.json`, see [`docs/agents/test-deletion-guard.md`](docs/agents/test-deletion-guard.md).
-
-# Page and button wiring
-
-For the button, navigation, new-route, and gate rules, see [`docs/agents/wiring-and-bundle-budget.md`](docs/agents/wiring-and-bundle-budget.md).
-
-# Bundle budget
-
-For the three `bundle-budget.json` safeguards, how chunks are attributed, and how to measure them, see [`docs/agents/wiring-and-bundle-budget.md`](docs/agents/wiring-and-bundle-budget.md).
-<!-- END:page-and-button-wiring -->
-
-# Search chrome behaviour
-
-Read and follow [Search chrome behaviour](docs/agents/native-startup/search-chrome-behaviour.md) before acting in this area. The full policy remains in force.
-
-# External skill precedence
-
-Read and follow [External skill precedence](docs/agents/native-startup/external-skill-precedence.md) before acting in this area. The full policy remains in force.
 
 <!-- BEGIN:supabase-project-safety -->
 
@@ -221,8 +161,8 @@ surface, read `docs/rag-behaviour/` (README → behaviour-map → refuted-approa
 - Treat indirect API usage inside scripts, tests, release checks, PR tooling, and review automation as confirmation-required too.
 - Prefer local, static, mocked, or offline checks. If a recommended verification would touch a provider, report the command and ask before running it.
 - `npm run check:supabase-project`, live PR/CI tooling, answer-generation checks, ingestion checks against live services, and release gates that call providers are not automatic.
-- Exception: the `Run PR` shortcut (see "## Run PR shortcut") is standing user confirmation for the specific GitHub actions it enumerates, for the duration of that sweep only.
-- Exception: the `Clear PRs` shortcut (see "## Clear PRs shortcut") authorizes one finite sequential merge batch, including bounded repair API usage and the resulting Railway deployments, within its documented exclusions.
+- Exception: the `Run PR` shortcut (see "Run PR shortcut" in `docs/agents/native-startup/publication-workflows.md`) is standing user confirmation for the specific GitHub actions it enumerates, for the duration of that sweep only.
+- Exception: the `Clear PRs` shortcut (see "Clear PRs shortcut" in the same file) authorizes one finite sequential merge batch, including bounded repair API usage and the resulting Railway deployments, within its documented exclusions.
 
 <!-- END:api-confirmation-boundary -->
 
@@ -234,10 +174,6 @@ Only the owner (Josh, `BigSimmo`) signs off clinical content, in the owner's own
 
 - If a PR has auto-merge armed, its auto-merge state is user-owned and automation must not disable or re-enable it. Ordinary fast-forward pushes, bundled additions, and permitted branch syncs may proceed. A force-push, history rewrite, or base/target change while armed still hard-blocks with no override; wait for the user to change that state first.
 
-## Anti-conflict and CI-speed operating procedure
-
-Read and follow [Publication workflows](docs/agents/native-startup/publication-workflows.md) for PRs, sync, and review policy. Full policy remains in force.
-
 ## Codex Cloud environment
 
 For current-host capability checks and the scope of the optional legacy Cloud setup, see [`docs/agents/codex-cloud-environment.md`](docs/agents/codex-cloud-environment.md).
@@ -245,11 +181,3 @@ For current-host capability checks and the scope of the optional legacy Cloud se
 ## Cursor cloud agents are prohibited
 
 Never use Cursor cloud agents here, for any task; work locally only ([stub](docs/agents/cursor-cloud.md)).
-
-# Commit as you go — the thing that loses work here is interruption, not carelessness
-
-Read and follow [Commit as you go — the thing that loses work here is interruption, not carelessness](docs/agents/native-startup/commit-as-you-go.md) before acting in this area. The full policy remains in force.
-
-# How these rules are organised
-
-Read and follow [How these rules are organised](PROJECT-INSTRUCTIONS-CONTINUATION.md) before acting in this area. The full policy remains in force.

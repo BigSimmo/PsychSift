@@ -8,4 +8,7 @@ problems, because email is easy to miss during clinic. The ops digest's attentio
 the repository owner, and the GitHub mobile app pushes direct mentions to the owner's phone. It also
 assigns the rolling issue to the owner. Delivery is unproven until the owner has received one push.
 
+On 20 Oct 2026 the same @mention was added to every other alert workflow's new alert issues and repeat
+comments (audit EVAL-04), because assignment alone pushes only once.
+
 If this summary and the source ever differ, the source wins.

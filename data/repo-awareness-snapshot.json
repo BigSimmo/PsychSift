@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-20"
+    "committed_at": "2026-10-21"
   },
   "routes": {
     "modes": [
@@ -2674,6 +2674,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-20-instruction-tidy-up.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/archive/design-qa-2026-07-15.md",
         "section": "archive",
         "catalogued": true
@@ -3114,11 +3119,6 @@
         "catalogued": true
       },
       {
-        "path": "docs/agents/codex-cloud-legacy-bootstrap.md",
-        "section": "agents",
-        "catalogued": true
-      },
-      {
         "path": "docs/design-system/sweep-2026-08-29-structure.md",
         "section": "design-system",
         "catalogued": true
@@ -3249,11 +3249,6 @@
         "catalogued": true
       },
       {
-        "path": "docs/agents/native-startup/contextual-working-defaults.md",
-        "section": "agents",
-        "catalogued": true
-      },
-      {
         "path": "docs/redesign/permanent-colour-direction.md",
         "section": "redesign",
         "catalogued": true
@@ -3271,6 +3266,11 @@
       {
         "path": "docs/evidence/forms-operational-guidance-review.md",
         "section": "evidence",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-20-review-records-now-pr-comments.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -4074,11 +4074,6 @@
         "catalogued": true
       },
       {
-        "path": "docs/agents/cross-repo-cloud-contracts.md",
-        "section": "agents",
-        "catalogued": true
-      },
-      {
         "path": "docs/medication-lexicon-review-worklist.md",
         "section": "root",
         "catalogued": true
@@ -4374,11 +4369,6 @@
         "catalogued": true
       },
       {
-        "path": "docs/agents/cloud-platform-acceptance.md",
-        "section": "agents",
-        "catalogued": true
-      },
-      {
         "path": "docs/archive/ingestion-concurrency-fix-workorder-2026-10-20.md",
         "section": "archive",
         "catalogued": true
@@ -4627,6 +4617,11 @@
         "path": "docs/agents/codex-cloud-environment.md",
         "section": "agents",
         "catalogued": true
+      },
+      {
+        "path": "docs/cloud/cloud-build-resources.md",
+        "section": "cloud",
+        "catalogued": false
       },
       {
         "path": "docs/samd-classification-medication-considerations.md",
@@ -5304,6 +5299,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-21-ci-failure-alerts-mention-owner.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-10-15-live-database-keep-and-fix.md",
         "section": "decisions",
         "catalogued": true
@@ -5449,8 +5449,8 @@
         "catalogued": true
       },
       {
-        "path": "docs/agents/cloud-build-resources.md",
-        "section": "agents",
+        "path": "docs/cloud/codex-cloud-legacy-bootstrap.md",
+        "section": "cloud",
         "catalogued": true
       },
       {
@@ -5622,6 +5622,11 @@
         "path": "docs/staging-tenancy-release-evidence.md",
         "section": "root",
         "catalogued": true
+      },
+      {
+        "path": "docs/cloud/cross-repo-cloud-contracts.md",
+        "section": "cloud",
+        "catalogued": false
       },
       {
         "path": "docs/worker-deploy-runbook.md",
@@ -5799,6 +5804,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/cloud/cloud-platform-acceptance.md",
+        "section": "cloud",
+        "catalogued": false
+      },
+      {
         "path": "docs/decisions/2026-08-22-developer-hub-review-state-panel.md",
         "section": "decisions",
         "catalogued": true
@@ -5857,6 +5867,9 @@
       },
       {
         "name": "care-plan"
+      },
+      {
+        "name": "cloud"
       },
       {
         "name": "cme"

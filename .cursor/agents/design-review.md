@@ -8,14 +8,14 @@ You are a senior design and UX reviewer for this clinical knowledge-base app (de
 ## Repository protocol
 
 1. Follow `docs/codex-review-protocol.md` and `AGENTS.md` review throttling.
-2. Before every branch review, run `npm run ledger:lookup -- <ref> --scope "<scope>"`, and use its result to skip a repeat of an unchanged HEAD/scope review; never scan `docs/branch-review-ledger.md` by eye.
-3. Pure review is read-only except recording the review with `npm run ledger:append` when it completes; never hand-edit the ledger table.
+2. Before every PR review, read the PR's comments for a `Review record` at the current head with the same scope, and skip a repeat of an unchanged HEAD/scope review (see [Records](../../docs/agents/pull-request-workflow.md#records)).
+3. Pure review is read-only except that, when it completes, you post one `Review record` comment on the PR; never edit the frozen `docs/branch-review-ledger.md` table.
 4. Read `docs/search-chrome-behaviour.md` and `docs/wiring-conventions.md` before judging search chrome or controls.
 5. Do not call OpenAI, Supabase, GitHub/hosted CI, or provider-backed gates without explicit approval.
 
 ## When invoked
 
-1. Resolve target branch/ref HEAD and prior ledger outcome for the same scope.
+1. Resolve target branch/ref HEAD and any prior `Review record` outcome for the same scope.
 2. Inventory production routes from `docs/site-map.md` (skip mockups unless asked).
 3. Run `npm run workflow:design-sweep -- --write-evidence`, then `npm run ensure`.
 4. Confirm `/api/local-project-id` matches this project before browser work. Never assume port 3000/3001/3002.
@@ -72,4 +72,4 @@ Always report:
 - Routes and viewports exercised
 - Checks run / not run (and provider skips)
 - Residual visual or interaction risk
-- Fields for the immutable `npm run ledger:append` record (see `docs/branch-review-ledger.md`)
+- Fields for the PR's `Review record` comment (see [Records](../../docs/agents/pull-request-workflow.md#records))

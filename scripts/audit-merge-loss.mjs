@@ -101,13 +101,21 @@ const INBOX = "docs/outstanding-issues-inbox";
  * which would have buried the genuine #1803 signal. The move is only credited
  * when the identically-named audit record exists at the target ref with the
  * same tree entry as the request at its landing. This confirms the move was
- * verbatim rather than hiding a mismatched or corrupted request.
+ * verbatim rather than hiding a mismatched or corrupted request. A record that
+ * `issues:archive-applied` later moved, unchanged, into a quarter folder under
+ * `applied/archive/` is credited the same way; `archiveQuarters` names the
+ * quarter folders present at the ref.
  */
-export function isReconciliationMove(file, landingRef, ref, entryAt) {
+export function isReconciliationMove(file, landingRef, ref, entryAt, archiveQuarters = []) {
   const match = new RegExp(`^${INBOX}/([^/]+\\.json)$`).exec(file);
   if (!match) return false;
   const requestAtLanding = entryAt(landingRef, file);
-  return requestAtLanding !== null && entryAt(ref, `${INBOX}/applied/${match[1]}`) === requestAtLanding;
+  if (requestAtLanding === null) return false;
+  const candidates = [
+    `${INBOX}/applied/${match[1]}`,
+    ...archiveQuarters.map((quarter) => `${INBOX}/applied/archive/${quarter}/${match[1]}`),
+  ];
+  return candidates.some((candidate) => entryAt(ref, candidate) === requestAtLanding);
 }
 
 /**
@@ -185,11 +193,11 @@ function mergeResolutionCount(finding) {
  * @typedef {{ mechanism: "merge-resolution" | "deliberate-commit" | "unknown",
  *   sha: string | undefined, subject: string | undefined }} Removal
  * @param {{ landings?: Landing[], entryAt: (ref: string, file: string) => string | null,
- *   ref?: string,
+ *   ref?: string, archiveQuarters?: string[],
  *   removalOf?: (context: { file: string, landingSha: string, preEntry: string | null }) => Removal | undefined
  *   }} options
  */
-export function classifyMergeLoss({ landings = [], entryAt, ref = DEFAULT_REF, removalOf }) {
+export function classifyMergeLoss({ landings = [], entryAt, ref = DEFAULT_REF, removalOf, archiveQuarters = [] }) {
   const findings = [];
   let filesCompared = 0;
   let filesExempted = 0;
@@ -206,7 +214,7 @@ export function classifyMergeLoss({ landings = [], entryAt, ref = DEFAULT_REF, r
       const before = entryAt(landing.preRef, file);
       const now = entryAt(ref, file);
       if (before !== now) continue;
-      if (now === null && isReconciliationMove(file, landing.sha, ref, entryAt)) {
+      if (now === null && isReconciliationMove(file, landing.sha, ref, entryAt, archiveQuarters)) {
         filesExempted += 1;
         continue;
       }
@@ -502,6 +510,20 @@ function selfTest() {
     throw new Error("self-test failed: the reconciliation exemption does not survive real ls-tree entries");
   }
 
+  const archived = `${INBOX}/applied/archive/2026-Q3/${path.posix.basename(request)}`;
+  const archivedRun = classifyMergeLoss({
+    ref: "head",
+    archiveQuarters: ["2026-Q3"],
+    entryAt: (reference, file) => {
+      if (reference === "s8" && file === request) return lsTree(file);
+      return reference === "head" && file === archived ? lsTree(file) : null;
+    },
+    landings: [{ sha: "s8", date: "d", subject: "a (#8)", pullNumber: 8, preRef: "pre", files: [request] }],
+  });
+  if (archivedRun.findings.length !== 0 || archivedRun.filesExempted !== 1) {
+    throw new Error("self-test failed: an archived applied request was reported as a merge loss");
+  }
+
   const history = { "s7..head:lost.ts": [{ sha: "m1", subject: "Merge remote-tracking branch 'origin/main'" }] };
   const removal = classifyRemoval({
     file: "lost.ts",
@@ -551,10 +573,15 @@ function main() {
   const entryAt = treeEntryReader();
   const historyOf = historyReader();
   const isMergeCommit = mergeCommitReader();
+  const archiveQuarters = (tryGit(["ls-tree", "--name-only", options.ref, "--", `${INBOX}/applied/archive/`]) ?? "")
+    .split(/\r?\n/)
+    .map((entry) => path.posix.basename(entry.trim()))
+    .filter((quarter) => /^\d{4}-Q[1-4]$/.test(quarter));
   const result = classifyMergeLoss({
     landings,
     entryAt,
     ref: options.ref,
+    archiveQuarters,
     removalOf: ({ file, landingSha, preEntry }) =>
       classifyRemoval({ file, landingSha, preEntry, ref: options.ref, historyOf, entryAt, isMergeCommit }),
   });

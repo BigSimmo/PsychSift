@@ -47,8 +47,8 @@ gates.
 8. Complete the current PR template, including concrete verification,
    risk/rollback, the Clinical Governance Preflight when applicable, and the
    exact RAG-impact statement.
-9. End each implementation PR with a clean diff and one immutable review-ledger
-   record created through `npm run ledger:append`. Never edit the historical
+9. End each implementation PR with a clean diff and one `Review record`
+   comment on the PR. Never edit the historical
    ledger table directly.
 
 ---

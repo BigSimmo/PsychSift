@@ -17,6 +17,7 @@ on:
       - "scripts/lib/codex-cloud*"
       - "tests/cross-repo-cloud-contracts.test.ts"
       - "docs/agents/*cloud*"
+      - "docs/cloud/**"
       - "docs/task-receipts.md"
       - ".github/workflows/cloud-contracts.yml"
   push:
@@ -35,6 +36,7 @@ on:
       - "scripts/lib/codex-cloud*"
       - "tests/cross-repo-cloud-contracts.test.ts"
       - "docs/agents/*cloud*"
+      - "docs/cloud/**"
       - "docs/task-receipts.md"
       - ".github/workflows/cloud-contracts.yml"
   workflow_dispatch:

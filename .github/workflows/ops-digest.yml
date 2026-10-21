@@ -1,7 +1,9 @@
 # Ops deep-health digest + canary liveness.
 #
-# Schedule runs every 6 hours (`15 */6 * * *`) so trailing 60-minute SLO windows
-# are sampled 4x/day and active warning/page alerts notify on the rolling issue.
+# Schedule runs every 6 hours (`15 */6 * * *`). Answer-rate alerts judge the probe's
+# trailing six-hour `sloTrailing` window, so back-to-back digests cover every answer
+# (audit EVAL-02); the hourly `slo` sample feeds the hybrid-RPC identity history.
+# Active warning/page alerts notify on the rolling issue.
 name: Ops Digest
 
 on:
@@ -13,7 +15,7 @@ on:
         default: false
         type: boolean
   schedule:
-    # Every 6 hours at minute 15 UTC (4x/day sampling of 60-minute windows).
+    # Every 6 hours at minute 15 UTC; the six-hour answer window matches this interval.
     - cron: "15 */6 * * *"
 
 concurrency:
@@ -56,14 +58,65 @@ jobs:
                 repo: context.repo.repo,
                 workflow_id: "eval-canary.yml",
                 status: "completed",
-                per_page: 1,
+                per_page: 20,
               });
-              const latest = data.workflow_runs?.[0];
+              const runs = data.workflow_runs ?? [];
+              // Only a run that reached a pass or fail verdict counts (audit EVAL-08). A cancelled or
+              // timed-out run evaluated nothing, so it must not keep liveness green. Nor does a failed
+              // run that stopped before an evaluation step ran (checkout, install or the project
+              // guard): it counts only when the golden or answer-quality step itself concluded. If
+              // its steps cannot be read, it is not counted, so liveness errs towards stale.
+              const evaluationSteps = ["Golden retrieval eval (live corpus)", "Answer-quality subset (live generation)"];
+              const reachedEvaluation = async (run) => {
+                try {
+                  const { data: jobsData } = await github.rest.actions.listJobsForWorkflowRun({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    run_id: run.id,
+                  });
+                  return (jobsData.jobs ?? []).some((job) =>
+                    (job.steps ?? []).some(
+                      (step) =>
+                        evaluationSteps.includes(step.name) &&
+                        (step.conclusion === "success" || step.conclusion === "failure"),
+                    ),
+                  );
+                } catch {
+                  return false;
+                }
+              };
+              let verdictIndex = -1;
+              let failedEarly = 0;
+              for (const [index, run] of runs.entries()) {
+                if (run.conclusion === "success") {
+                  verdictIndex = index;
+                  break;
+                }
+                if (run.conclusion === "failure") {
+                  if (await reachedEvaluation(run)) {
+                    verdictIndex = index;
+                    break;
+                  }
+                  failedEarly += 1;
+                }
+              }
+              const latest = verdictIndex >= 0 ? runs[verdictIndex] : undefined;
+              const skipped = (verdictIndex >= 0 ? runs.slice(0, verdictIndex) : runs).filter(
+                (run) => run.conclusion === "cancelled" || run.conclusion === "timed_out",
+              ).length;
+              const skippedNote =
+                (skipped > 0 ? ` ${skipped} newer run(s) were cancelled or timed out and do not count.` : "") +
+                (failedEarly > 0 ? ` ${failedEarly} newer run(s) failed before evaluating and do not count.` : "");
               // updated_at approximates completion time; run_started_at is the
               // fallback for older or partial REST payloads.
               const finishedAt = Date.parse(latest?.updated_at ?? latest?.run_started_at ?? "");
               if (!latest) {
-                set(true, "Eval-canary liveness: no completed canary runs found.");
+                set(
+                  true,
+                  runs.length > 0
+                    ? `Eval-canary liveness: no recent canary run reached a pass or fail verdict.${skippedNote}`
+                    : "Eval-canary liveness: no completed canary runs found.",
+                );
               } else if (!Number.isFinite(finishedAt)) {
                 set(
                   true,
@@ -74,12 +127,12 @@ jobs:
                 if (ageDays > 8) {
                   set(
                     true,
-                    `Eval-canary liveness: last completed canary run was ${ageDays.toFixed(1)} days ago (${latest.html_url}). ` +
+                    `Eval-canary liveness: last canary run with a verdict was ${ageDays.toFixed(1)} days ago (${latest.html_url}).${skippedNote} ` +
                       "The weekly Sunday 18:00 UTC schedule may have been dropped by GitHub - dispatch one manually " +
                       "(provider-backed; needs explicit approval).",
                   );
                 } else {
-                  set(false, `Eval-canary liveness: last completed run ${ageDays.toFixed(1)} days ago.`);
+                  set(false, `Eval-canary liveness: last run with a verdict ${ageDays.toFixed(1)} days ago.${skippedNote}`);
                 }
               }
             } catch (error) {
@@ -95,6 +148,9 @@ jobs:
       HEALTH_DEEP_PROBE_SECRET: ${{ secrets.HEALTH_DEEP_PROBE_SECRET }}
       EVAL_CANARY_STALE: ${{ needs.eval-canary-liveness.outputs.stale }}
       EVAL_CANARY_MESSAGE: ${{ needs.eval-canary-liveness.outputs.message }}
+      # "true" while the ingestion worker is deliberately paused (audit EVAL-03). Shown in the
+      # digest as paused; it raises no alert here. Unset reads as "state not recorded".
+      INGESTION_WORKER_PAUSED: ${{ vars.INGESTION_WORKER_PAUSED }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
