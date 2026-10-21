@@ -17,3 +17,11 @@ safety test set:
 The owner also approved widening the Answer crisis-banner wording (audit A2-01 option a, done in
 `src/lib/crisis-wording.ts`), registering an Answer unsafe-intent hazard, and deferred the
 server-side crisis screen (option b).
+
+## Accepted known gaps (21 Oct 2026)
+
+On 21 Oct 2026 the owner accepted two current crisis-banner misses as known gaps, and asked that
+the detector not be changed to catch them: "I took 30 tablets" and "I am going to jump". The same
+day the "took all of" / "took a lot of" wording was narrowed so it only matches when a medication
+or overdose word (pills, tablets, meds, medication, tabs, Panadol, paracetamol, overdose) follows
+within a few words, so phrases like "took a lot of time" no longer show the crisis lines.

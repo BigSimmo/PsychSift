@@ -24,6 +24,8 @@ describe("hasCrisisWording", () => {
     "There is no reason to live anymore, what dose is enough?",
     "patient is suicdal",
     "My friend took all of her lithium tablets an hour ago",
+    "took all of my pills",
+    "took a lot of tablets",
   ])("matches %j", (query) => {
     expect(hasCrisisWording(query)).toBe(true);
   });
@@ -35,6 +37,8 @@ describe("hasCrisisWording", () => {
     "clozapine ANC thresholds",
     "lithium toxic level and renal function",
     "how long to die down after a dose change",
+    "took a lot of time",
+    "took all of my courage",
     "best coffee machine",
     "",
   ])("does not match %j", (query) => {
