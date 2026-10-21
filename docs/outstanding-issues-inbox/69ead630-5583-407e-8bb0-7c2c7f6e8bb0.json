@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "69ead630-5583-407e-8bb0-7c2c7f6e8bb0",
+  "createdOn": "2026-10-21",
+  "action": "done",
+  "payload": {
+    "id": "#3CW29T",
+    "outcome": "Resolved 2026-10-21 with read-only live evidence (docs/audit/2026-10-21-database-performance-evidence.md): 128 advisor notices on 69 tables; largest child table 896 kB (843 rows, parent immutable and empty), every other one 56 kB or less. No index justified. Re-check if a child table passes about 10,000 rows.",
+    "baseRowFingerprint": "53c532533d300b8ff7929097535e0b28b6012370f35d991efcc97f5a6caa7c45",
+    "targetUlid": "01M3CHC3JF3CW29TDRXG21E1RP"
+  }
+}
