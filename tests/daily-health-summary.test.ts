@@ -66,16 +66,29 @@ describe("daily health summary: judging each check", () => {
       latestRun: run(0.2),
       issue: issue({}),
       recentMarkers: 3,
+      botActivityAt: NOW,
       now: NOW,
     });
     expect(recent).toMatchObject({ status: "amber", detail: "3 new error types in the last 24 hours" });
 
     const quiet = assessSource(source("errors"), {
       latestRun: run(0.2),
-      issue: issue({ updated_at: "2026-10-20T00:00:00Z" }),
+      issue: issue({}),
+      botActivityAt: "2026-10-20T00:00:00Z",
       now: NOW,
     });
     expect(quiet.status).toBe("green");
+  });
+
+  it("judges a reused issue by the workflow's own activity, not by anyone's comment moving updated_at", () => {
+    // A human comment bumps updated_at to now, but the bot last posted six days ago.
+    const commentedOn = assessSource(source("uploads"), {
+      latestRun: run(1),
+      issue: issue({ updated_at: NOW }),
+      botActivityAt: "2026-10-19T23:00:00Z",
+      now: NOW,
+    });
+    expect(commentedOn.status).toBe("green");
   });
 
   it("reads only allow-listed status words from the ops digest", () => {
@@ -182,7 +195,16 @@ describe("daily health summary: reading GitHub", () => {
               }),
             ],
           }),
-          listComments: async () => ({ data: [{ body: "<!-- sentry-issue:1 --> <!-- sentry-issue:2 -->" }] }),
+          listComments: async () => ({
+            data: [
+              {
+                user: { login: "github-actions[bot]" },
+                created_at: NOW,
+                body: "<!-- sentry-issue:1 --> <!-- sentry-issue:2 -->",
+              },
+              { user: { login: "someone" }, created_at: NOW, body: "<!-- sentry-issue:3 --> forged" },
+            ],
+          }),
         },
       },
     };

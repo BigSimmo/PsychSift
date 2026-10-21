@@ -25,8 +25,9 @@ const DAY = 24 * HOUR;
  *
  * `issue` says how the check's labelled issue signals trouble:
  * - `open`: the workflow closes its issue on the next green run, so an open issue is a live failure.
- * - `recent`: the issue is reused and never closed by the workflow, so an update inside
- *   `recentHours` is the signal.
+ * - `recent`: the issue is reused and never closed by the workflow, so the workflow's own
+ *   activity inside `recentHours` is the signal: the bot opening the issue or commenting on it.
+ *   Not the issue's `updated_at`, which any comment moves in this public repository.
  * - `digest`: the ops digest's rolling issue, whose body carries the service status and alert state.
  *
  * `maxAgeHours` is how long the workflow may go without a completed run before the summary calls
@@ -160,20 +161,24 @@ export function readDigestState(body) {
 
 /**
  * @typedef {{ updated_at?: string, run_started_at?: string, created_at?: string, html_url?: string }} WorkflowRun
- * @typedef {{ number?: number, html_url?: string, state?: string, updated_at?: string, body?: string | null }} LabelledIssue
+ * @typedef {{ number?: number, html_url?: string, state?: string, updated_at?: string, created_at?: string, user?: { login?: string } | null, body?: string | null }} LabelledIssue
  * @typedef {{ key: string, name: string, status: "green" | "amber" | "red", detail: string, link: string }} Assessment
  */
 
 /**
  * One line for one check. `latestRun` is the newest completed run of its workflow (or null),
  * `issue` the newest issue carrying its label (open first, or null), `recentMarkers` how many
- * report markers the issue gained inside its recent window (Sentry only).
+ * report markers the workflow's bot posted inside the recent window (Sentry only), and
+ * `botActivityAt` when the bot last opened or commented on the issue (`recent` checks only).
  *
  * @param {(typeof SUMMARY_SOURCES)[number]} source
- * @param {{ latestRun?: WorkflowRun | null, issue?: LabelledIssue | null, recentMarkers?: number | null, now: string }} inputs
+ * @param {{ latestRun?: WorkflowRun | null, issue?: LabelledIssue | null, recentMarkers?: number | null, botActivityAt?: string | null, now: string }} inputs
  * @returns {Assessment}
  */
-export function assessSource(source, { latestRun = null, issue = null, recentMarkers = null, now }) {
+export function assessSource(
+  source,
+  { latestRun = null, issue = null, recentMarkers = null, botActivityAt = null, now },
+) {
   const nowMs = time(now) ?? Date.now();
   const link = issueLink(issue);
   const runAt = time(latestRun?.updated_at ?? latestRun?.run_started_at ?? latestRun?.created_at);
@@ -190,8 +195,8 @@ export function assessSource(source, { latestRun = null, issue = null, recentMar
     status = source.onTrouble;
     detail = source.trouble;
   } else if (source.issue === "recent" && issue) {
-    const updated = time(issue.updated_at);
-    const recent = updated !== null && nowMs - updated <= source.recentHours * HOUR && issue.state === "open";
+    const active = time(botActivityAt);
+    const recent = active !== null && nowMs - active <= source.recentHours * HOUR && issue.state === "open";
     if (recent) {
       status = source.onTrouble;
       detail =
@@ -331,8 +336,17 @@ async function newestIssue(github, owner, repo, label) {
   return null;
 }
 
-async function sentryMarkersSince(github, owner, repo, issue, sinceMs) {
-  if (!issue || issue.state !== "open") return null;
+/** The account the monitor workflows post as. Only its activity counts, as in sentry-alerts.yml. */
+const WORKFLOW_BOT = "github-actions[bot]";
+
+/**
+ * The workflow's own activity on an open `recent` issue inside the window: when it last opened or
+ * commented on the issue, and how many Sentry report markers its comments carry. Anyone can
+ * comment on these issues in a public repository, so other comments neither make a quiet check
+ * amber nor add to the count.
+ */
+async function botActivitySince(github, owner, repo, issue, sinceMs) {
+  if (!issue || issue.state !== "open") return { botActivityAt: null, markers: null };
   const { data } = await github.rest.issues.listComments({
     owner,
     repo,
@@ -340,9 +354,15 @@ async function sentryMarkersSince(github, owner, repo, issue, sinceMs) {
     since: new Date(sinceMs).toISOString(),
     per_page: 100,
   });
-  let count = 0;
-  for (const comment of data) count += String(comment.body ?? "").match(/<!-- sentry-issue:\d+ -->/g)?.length ?? 0;
-  return count;
+  const ours = data.filter(
+    (comment) => comment.user?.login === WORKFLOW_BOT && (time(comment.created_at) ?? -Infinity) >= sinceMs,
+  );
+  const times = ours.map((comment) => time(comment.created_at)).filter((value) => value !== null);
+  if (issue.user?.login === WORKFLOW_BOT && time(issue.created_at) !== null) times.push(time(issue.created_at));
+  let markers = 0;
+  for (const comment of ours) markers += String(comment.body ?? "").match(/<!-- sentry-issue:\d+ -->/g)?.length ?? 0;
+  const latest = times.length > 0 ? Math.max(...times) : null;
+  return { botActivityAt: latest === null ? null : new Date(latest).toISOString(), markers };
 }
 
 /**
@@ -361,11 +381,14 @@ export async function collectAssessments({ github, owner, repo, now }) {
         newestCompletedRun(github, owner, repo, source.workflow),
         newestIssue(github, owner, repo, source.label),
       ]);
-      const recentMarkers =
-        source.key === "errors"
-          ? await sentryMarkersSince(github, owner, repo, issue, nowMs - source.recentHours * HOUR)
-          : null;
-      assessments.push(assessSource(source, { latestRun, issue, recentMarkers, now }));
+      const activity =
+        source.issue === "recent"
+          ? await botActivitySince(github, owner, repo, issue, nowMs - source.recentHours * HOUR)
+          : { botActivityAt: null, markers: null };
+      const recentMarkers = source.key === "errors" ? activity.markers : null;
+      assessments.push(
+        assessSource(source, { latestRun, issue, recentMarkers, botActivityAt: activity.botActivityAt, now }),
+      );
     } catch {
       assessments.push({ key: source.key, name: source.name, status: "red", detail: "could not be read", link: "" });
     }
