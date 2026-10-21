@@ -3354,6 +3354,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-20-clinical-decision-tools-need-sign-in.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/archive/search-rag-phase-2-answer-plan.md",
         "section": "archive",
         "catalogued": true
@@ -4241,6 +4246,11 @@
       {
         "path": "docs/care-plan/reports/task-5-report.md",
         "section": "care-plan",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-21-emergency-cards-owner-review.md",
+        "section": "decisions",
         "catalogued": true
       },
       {

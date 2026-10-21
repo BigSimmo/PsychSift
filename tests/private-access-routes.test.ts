@@ -1213,7 +1213,9 @@ describe("private document API access", () => {
     expect(client.storageMocks.createSignedUrl).not.toHaveBeenCalled();
   });
 
-  it("allows anonymous signed URLs for public documents", async () => {
+  // Original documents need sign-in from 1 November 2026
+  // (docs/decisions/2026-10-20-clinical-decision-tools-need-sign-in.md).
+  it("refuses anonymous signed URLs even for public documents", async () => {
     const client = createSupabaseMock((call) => {
       if (
         call.table === "documents" &&
@@ -1229,14 +1231,13 @@ describe("private document API access", () => {
     const response = await GET(request(`/api/documents/${documentId}/signed-url`), {
       params: Promise.resolve({ id: documentId }),
     });
-    const body = await payload(response);
 
-    expect(response.status).toBe(200);
-    expect(body.url).toContain("public/documents/guideline.pdf");
-    expect(client.auth.getUser).not.toHaveBeenCalled();
+    expect(response.status).toBe(401);
+    expect(await payload(response)).toMatchObject({ code: "authentication_required" });
+    expect(client.storageMocks.createSignedUrl).not.toHaveBeenCalled();
   });
 
-  it("rejects anonymous signed URLs for private documents", async () => {
+  it("refuses anonymous signed URLs for private documents before reading them", async () => {
     const client = createSupabaseMock((call) => {
       if (call.table === "documents" && call.filters.some((filter) => filter.column === "owner_id")) {
         return ok(null);
@@ -1250,8 +1251,8 @@ describe("private document API access", () => {
       params: Promise.resolve({ id: otherDocumentId }),
     });
 
-    expect(response.status).toBe(404);
-    expect(await payload(response)).toMatchObject({ error: "Document not found." });
+    expect(response.status).toBe(401);
+    expect(client.calls.some((call) => call.table === "documents")).toBe(false);
     expect(client.storageMocks.createSignedUrl).not.toHaveBeenCalled();
   });
 
@@ -1284,7 +1285,7 @@ describe("private document API access", () => {
     expect(client.storageMocks.createSignedUrl).toHaveBeenCalledWith(`${userId}/images/${imageId}.png`, 600);
   });
 
-  it("allows anonymous image signed URLs when the parent document is public", async () => {
+  it("refuses anonymous image signed URLs even when the parent document is public", async () => {
     const client = createSupabaseMock((call) => {
       if (call.table === "document_images") {
         return ok({
@@ -1306,12 +1307,9 @@ describe("private document API access", () => {
     const response = await GET(request(`/api/images/${imageId}/signed-url`), {
       params: Promise.resolve({ id: imageId }),
     });
-    const body = await payload(response);
 
-    expect(response.status).toBe(200);
-    expect(body.mimeType).toBe("image/png");
-    expect(client.auth.getUser).not.toHaveBeenCalled();
-    expect(client.storageMocks.createSignedUrl).toHaveBeenCalledWith(`public/images/${imageId}.png`, 600);
+    expect(response.status).toBe(401);
+    expect(client.storageMocks.createSignedUrl).not.toHaveBeenCalled();
   });
 
   /*
@@ -1608,7 +1606,7 @@ describe("private document API access", () => {
     expect(documentReads.every((call) => matchesOwnerReadScope(call, userId))).toBe(true);
   });
 
-  it("restricts an anonymous batch to public documents", async () => {
+  it("refuses an anonymous batch", async () => {
     const client = createSupabaseMock((call) => {
       if (call.table === "document_images") {
         return ok([
@@ -1631,8 +1629,7 @@ describe("private document API access", () => {
 
     const response = await POST(signedUrlsRequest([imageId], false));
 
-    expect(response.status).toBe(200);
-    expect(await payload(response)).toEqual({ urls: {} });
+    expect(response.status).toBe(401);
     expect(client.storageMocks.createSignedUrls).not.toHaveBeenCalled();
   });
 
@@ -4692,7 +4689,7 @@ describe("private document API access", () => {
     },
   );
 
-  it("allows anonymous search and answer requests with anonymous rate-limit subjects", async () => {
+  it("keeps search open to anonymous callers but refuses them an answer", async () => {
     const searchChunksWithTelemetry = vi.fn(async () => ({
       results: [],
       telemetry: {
@@ -4733,26 +4730,14 @@ describe("private document API access", () => {
     );
 
     expect(searchResponse.status).toBe(200);
-    expect(answerResponse.status).toBe(200);
-    const answerPayload = await payload(answerResponse);
-    expect(answerPayload).toMatchObject({
-      interactionId: expect.any(String),
-      feedbackToken: expect.any(String),
-    });
+    // Answer needs sign-in from 1 November 2026
+    // (docs/decisions/2026-10-20-clinical-decision-tools-need-sign-in.md).
+    expect(answerResponse.status).toBe(401);
+    expect(await payload(answerResponse)).toMatchObject({ code: "authentication_required" });
     expect(searchChunksWithTelemetry).toHaveBeenCalledWith(
       expect.objectContaining({ ownerId: undefined, allowGlobalSearch: true }),
     );
-    expect(answerQuestionWithScope).toHaveBeenCalledWith(
-      expect.objectContaining({
-        ownerId: undefined,
-        allowGlobalSearch: true,
-        observationContext: { interactionId: expect.any(String), rolloutMode: "legacy" },
-      }),
-    );
-    const [answerCall] = answerQuestionWithScope.mock.calls as unknown as [
-      [{ observationContext?: { interactionId: string } }],
-    ];
-    expect(answerCall?.[0].observationContext?.interactionId).toBe(answerPayload.interactionId);
+    expect(answerQuestionWithScope).not.toHaveBeenCalled();
     expect(client.auth.getUser).not.toHaveBeenCalled();
     expect(client.rpc).not.toHaveBeenCalledWith(
       "consume_api_rate_limit",
@@ -4781,7 +4766,7 @@ describe("private document API access", () => {
     let responseSettled = false;
     const response = answerRoute
       .POST(
-        request("/api/answer", {
+        authenticatedRequest("/api/answer", {
           method: "POST",
           body: JSON.stringify({ query: "monitoring" }),
         }),
@@ -4831,7 +4816,7 @@ describe("private document API access", () => {
     expect(searchChunksWithTelemetry).not.toHaveBeenCalled();
   });
 
-  it("rate limits anonymous answer bursts before generation", async () => {
+  it("refuses anonymous answers before rate limiting or generation", async () => {
     const answerQuestionWithScope = vi.fn(async () => ({
       answer: "Public evidence.",
       grounded: true,
@@ -4853,19 +4838,12 @@ describe("private document API access", () => {
         body: JSON.stringify({ query: "monitoring" }),
       });
 
-    for (let index = 0; index < 6; index += 1) {
+    for (let index = 0; index < 7; index += 1) {
       const response = await answerRoute.POST(anonymousAnswerRequest());
-      expect(response.status).toBe(200);
+      expect(response.status).toBe(401);
     }
 
-    const limited = await answerRoute.POST(anonymousAnswerRequest());
-    expect(limited.status).toBe(429);
-    expect(limited.headers.get("Retry-After")).toBe("60");
-    expect(await payload(limited)).toMatchObject({
-      error: "Too many answer requests. Retry shortly.",
-      details: { kind: "rate_limit", retryAfterSeconds: 60 },
-    });
-    expect(answerQuestionWithScope).toHaveBeenCalledTimes(6);
+    expect(answerQuestionWithScope).not.toHaveBeenCalled();
     expect(client.rpc).not.toHaveBeenCalledWith(
       "consume_api_rate_limit",
       expect.objectContaining({ p_bucket: "answer" }),
@@ -5173,7 +5151,7 @@ describe("private document API access", () => {
     const { POST } = await import("../src/app/api/answer/route");
 
     const response = await POST(
-      request("/api/answer", {
+      authenticatedRequest("/api/answer", {
         method: "POST",
         body: JSON.stringify({ query: "clozapine monitoring", filters: { sourceStatuses: ["current"] } }),
       }),
@@ -5208,7 +5186,7 @@ describe("private document API access", () => {
     const { POST } = await import("../src/app/api/answer/stream/route");
 
     const response = await POST(
-      request("/api/answer/stream", {
+      authenticatedRequest("/api/answer/stream", {
         method: "POST",
         body: JSON.stringify({ query: "clozapine monitoring", filters: { sourceStatuses: ["current"] } }),
       }),
@@ -5245,7 +5223,7 @@ describe("private document API access", () => {
     const { POST } = await import("../src/app/api/answer/stream/route");
 
     const response = await POST(
-      request("/api/answer/stream", {
+      authenticatedRequest("/api/answer/stream", {
         method: "POST",
         body: JSON.stringify({ query: "clozapine monitoring", filters: { sourceStatuses: ["current"] } }),
       }),
