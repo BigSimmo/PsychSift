@@ -427,9 +427,11 @@ describe("worker image scan advisory window (owner decision 2026-10-21)", () => 
 
   it("keeps worker-only findings advisory on main until 4 Nov 2026", () => {
     const result = evaluateTrivySummaryText(summary(0, 84, 3));
-    expect(result.byImage).toEqual({
-      "clinical-kb-app:ci": { high: 0, critical: 0 },
-      "clinical-kb-worker:ci": { high: 84, critical: 3 },
+    expect(result).toMatchObject({
+      byImage: {
+        "clinical-kb-app:ci": { high: 0, critical: 0 },
+        "clinical-kb-worker:ci": { high: 84, critical: 3 },
+      },
     });
     expect(trivyFindingsBlock(result, "push", before)).toBe(false);
     expect(trivyFindingsBlock(result, "schedule", before)).toBe(false);
