@@ -781,6 +781,7 @@ def maybe_raster_table_ocr(page, image, render_scale, budget, pytesseract, deadl
                 cell_interior = bitmap.crop(interior)
                 if raster_ink_line_count(cell_interior, deadline) == 1:
                     math_plan = plan_raster_math_ocr(cell_interior, deadline, budget.limits["maxRenderPixels"])
+            base_mode = mode
             if math_plan is not None:
                 mode = 7
             config = f"--psm {mode} --tessdata-dir {shlex.quote(model_directory)} " + config
@@ -790,7 +791,18 @@ def maybe_raster_table_ocr(page, image, render_scale, budget, pytesseract, deadl
         ocr_bitmap = math_plan.bitmap if math_plan is not None else bitmap
         text = pytesseract.image_to_string(ocr_bitmap, lang="Latin" if cell else "eng", config=config, timeout=remaining).strip()
         if math_plan is not None:
-            text = math_plan.restore(text)
+            try:
+                text = math_plan.restore(text)
+            except raster_math_ocr.ComparisonSuffixUnsupported:
+                # Units or text after a comparison: discard the transformed OCR
+                # and read the unchanged source bitmap on the ordinary path.
+                math_plan = None
+                config = (f"--psm {base_mode} --tessdata-dir {shlex.quote(model_directory)} "
+                          f"--dpi {round(scale * 72)}")
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise TimeoutError("raster math fallback exhausted page OCR timeout")
+                text = pytesseract.image_to_string(bitmap, lang="Latin", config=config, timeout=remaining).strip()
         if time.monotonic() >= deadline:
             raise TimeoutError("raster OCR completed after page deadline")
         if len(record["crops"]) >= 112:

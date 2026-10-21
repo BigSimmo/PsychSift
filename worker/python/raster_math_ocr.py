@@ -1,8 +1,10 @@
 """Bounded pixel plans for isolated comparisons and raised digits; OCR stays unverified.
 
 No dictionary, units, expected values or source-specific templates are consulted.
-Unsupported geometry keeps the original OCR path. A changed bitmap must always
-pass restore(), otherwise the caller must discard the complete table candidate.
+Unsupported geometry keeps the original OCR path. A comparison whose suffix is
+not a bare number (units or text) also returns to the original OCR path on the
+unchanged bitmap. Any other restore() failure means the caller must discard the
+complete table candidate.
 """
 
 from dataclasses import dataclass
@@ -77,6 +79,14 @@ def _operator(ink, glyph, deadline):
     return sign
 
 
+class ComparisonSuffixUnsupported(ValueError):
+    """The comparison suffix is not a bare number (e.g. a unit or text follows).
+
+    The caller must discard the transformed input and OCR the unchanged source
+    bitmap on the ordinary path; nothing from the transformed OCR is kept.
+    """
+
+
 @dataclass
 class MathOcrPlan:
     bitmap: object
@@ -93,6 +103,8 @@ class MathOcrPlan:
         if "\n" in text.strip() or "\r" in text.strip():
             raise ValueError("raster math text layout is ambiguous")
         characters = [char for char in text if not char.isspace()]
+        if self.kind == "comparison" and any(char not in "0123456789." for char in characters):
+            raise ComparisonSuffixUnsupported("raster math comparison suffix is not a bare number")
         if len(characters) != len(self.glyphs):
             raise ValueError("raster math source alignment is ambiguous")
         if self.kind == "comparison":

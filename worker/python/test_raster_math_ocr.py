@@ -58,6 +58,24 @@ class RasterMathPlanTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 candidate.restore("A")
 
+    def test_comparison_with_units_or_text_returns_to_original_path(self):
+        for source, recognized in (("< 0.5 mmol/L", "0.5 mmol/L"), ("> 2 weeks", "2 weeks"), ("≤ 7.25 mg", "7.25mg")):
+            with self.subTest(source=source):
+                candidate = plan(render(source))
+                self.assertIsNotNone(candidate)
+                self.assertEqual(candidate.kind, "comparison")
+                with self.assertRaises(math_ocr.ComparisonSuffixUnsupported):
+                    candidate.restore(recognized)
+
+    def test_unsupported_suffix_is_distinct_from_numeric_misalignment(self):
+        candidate = plan(render("≤ 1.5"))
+        self.assertIsNotNone(candidate)
+        with self.assertRaises(ValueError) as caught:
+            candidate.restore("15")
+        self.assertNotIsInstance(caught.exception, math_ocr.ComparisonSuffixUnsupported)
+        with self.assertRaises(math_ocr.ComparisonSuffixUnsupported):
+            candidate.restore("1.5 mg")
+
     def test_ascii_equals_and_carets_keep_original_path(self):
         for text in ("<= 0.04", ">= 12.0", "Density (x 10^6/U)", "N 10^9/Z"):
             with self.subTest(text=text):

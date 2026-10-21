@@ -68,6 +68,21 @@ class MathProducerIntegrationTests(unittest.TestCase):
         analyzed = self.planner.call_args.args[0]
         self.assertEqual(analyzed.size, (611, 611))
 
+    def test_comparison_with_unit_suffix_rereads_unchanged_source_without_transform(self):
+        self.plan.restore.side_effect = raster_math_ocr.ComparisonSuffixUnsupported("unit suffix")
+        self.engine.image_to_string.side_effect = ["0.5mmol/L", "< 0.5 mmol/L"]
+        observations = {}
+        with self.patches():
+            text = extractor.maybe_raster_table_ocr(self.page, Image.new("RGB", (100, 100)), 1,
+                extractor.ExtractionBudget(), self.engine, time.monotonic() + 30, observations)
+        self.assertEqual(text, "< 0.5 mmol/L")
+        calls = self.engine.image_to_string.call_args_list
+        self.assertEqual(len(calls), 2)
+        self.assertIs(calls[0].args[0], self.input_bitmap)
+        self.assertIsNot(calls[1].args[0], self.input_bitmap)
+        self.assertEqual(calls[1].kwargs["lang"], "Latin")
+        self.assertNotIn("ocrInputTransform", observations["crops"][0])
+
     def test_failed_restoration_discards_candidate_and_keeps_original_page_fallback(self):
         self.plan.restore.side_effect = ValueError("raster math source alignment is ambiguous")
         self.engine.image_to_string.side_effect = ["1.5", "Original full-page source."]
