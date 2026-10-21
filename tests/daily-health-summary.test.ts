@@ -83,12 +83,21 @@ describe("daily health summary: judging each check", () => {
   it("clears a failed canary once a later run passes, but not while the failing run is the latest", () => {
     const failedAt = "2026-10-19T18:30:00Z";
     const recovered = assessSource(source("canary"), {
-      latestRun: { ...run(30), conclusion: "success" },
+      latestRun: { ...run(30), conclusion: "success", event: "schedule" },
       issue: issue({}),
       botActivityAt: failedAt,
       now: NOW,
     });
     expect(recovered.status).toBe("green");
+
+    // A manual run never posts on failure, so its pass proves nothing about the alert.
+    const manual = assessSource(source("canary"), {
+      latestRun: { ...run(30), conclusion: "success", event: "workflow_dispatch" },
+      issue: issue({}),
+      botActivityAt: failedAt,
+      now: NOW,
+    });
+    expect(manual.status).toBe("red");
 
     const stillFailing = assessSource(source("canary"), {
       latestRun: { updated_at: "2026-10-19T18:35:00Z", conclusion: "failure" },
@@ -108,6 +117,15 @@ describe("daily health summary: judging each check", () => {
       now: NOW,
     });
     expect(alerted).toMatchObject({ status: "amber" });
+
+    // A dispatched dry run exits 0 even with abandoned rows, so it must not clear the alert.
+    const dryRun = assessSource(source("reindex"), {
+      latestRun: { updated_at: "2026-10-25T21:00:00Z", conclusion: "success", event: "repository_dispatch" },
+      issue: issue({}),
+      botActivityAt: "2026-10-25T19:49:00Z",
+      now: NOW,
+    });
+    expect(dryRun.status).toBe("amber");
   });
 
   it("judges a reused issue by the workflow's own activity, not by anyone's comment moving updated_at", () => {

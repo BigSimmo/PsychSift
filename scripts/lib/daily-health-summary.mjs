@@ -29,7 +29,9 @@ const DAY = 24 * HOUR;
  *   activity inside `recentHours` is the signal: the bot opening the issue or commenting on it.
  *   Not the issue's `updated_at`, which any comment moves in this public repository.
  *   With `clearedBySuccess`, the workflow only posts when its run fails, so a later successful
- *   run clears the trouble rather than leaving it standing for the whole window.
+ *   run clears the trouble rather than leaving it standing for the whole window. Only a run from
+ *   one of the `clearedBy` triggers counts: those are the runs that would have posted had they
+ *   failed, so a dry run or a manual run cannot hide a standing alert.
  * - `digest`: the ops digest's rolling issue, whose body carries the service status and alert state.
  *
  * `maxAgeHours` is how long the workflow may go without a completed run before the summary calls
@@ -115,6 +117,7 @@ export const SUMMARY_SOURCES = [
     issue: "recent",
     recentHours: 8 * 24,
     clearedBySuccess: true,
+    clearedBy: ["schedule", "repository_dispatch"],
     onTrouble: "red",
     trouble: "the last weekly canary failed",
     maxAgeHours: 8 * 24 + 2,
@@ -129,6 +132,7 @@ export const SUMMARY_SOURCES = [
     issue: "recent",
     recentHours: 8 * 24,
     clearedBySuccess: true,
+    clearedBy: ["schedule"],
     onTrouble: "amber",
     trouble: "the weekly probe found abandoned reindex rows or could not run",
     maxAgeHours: null,
@@ -177,7 +181,7 @@ export function readDigestState(body) {
 }
 
 /**
- * @typedef {{ updated_at?: string, run_started_at?: string, created_at?: string, html_url?: string, conclusion?: string | null }} WorkflowRun
+ * @typedef {{ updated_at?: string, run_started_at?: string, created_at?: string, html_url?: string, conclusion?: string | null, event?: string }} WorkflowRun
  * @typedef {{ number?: number, html_url?: string, state?: string, updated_at?: string, created_at?: string, user?: { login?: string } | null, body?: string | null }} LabelledIssue
  * @typedef {{ key: string, name: string, status: "green" | "amber" | "red", detail: string, link: string }} Assessment
  */
@@ -216,6 +220,7 @@ export function assessSource(
     const cleared =
       source.clearedBySuccess === true &&
       latestRun?.conclusion === "success" &&
+      (source.clearedBy ?? []).includes(latestRun?.event ?? "") &&
       active !== null &&
       runAt !== null &&
       runAt > active;
