@@ -413,7 +413,7 @@ cython==3.1.8 \
     --hash=sha256:fc28b2933f2c3c897e1a27d0dee909d9731fa1d19fda3f1d8908dddf31825d2f \
     --hash=sha256:fc3cbaee08d424d2852c7b134ca432501792f67021b73a029cf2f13fb6172423
     # via
-    #   -r requirements-cloud.in
+    #   -r worker/python/requirements-cloud.in
     #   pyfastner
     #   pyrush
     #   quicksectx
@@ -627,7 +627,7 @@ mdurl==0.1.2 \
     # via markdown-it-py
 medspacy==1.3.1 \
     --hash=sha256:976599d9446e98018b311951cfa926be5a59d0c140967b828fe98bc4bada40fe
-    # via -r requirements.in
+    # via -r worker/python/requirements.in
 medspacy-quickumls==3.2 \
     --hash=sha256:eeea4c94f4e46529470b9de894bac3384fe883f843d321cd578a62f880439165
     # via medspacy
@@ -743,7 +743,7 @@ murmurhash==1.0.15 \
 nltk @ https://codeload.github.com/nltk/nltk/tar.gz/8658f3e7c172abf87f99db045b59a6b1a9e80c7a#sha256=80a0217a14b75e6bd63fe1c1f0190a1a7ceadbe7de3aa4d9b842df5d0a11f7d8 \
     --hash=sha256:80a0217a14b75e6bd63fe1c1f0190a1a7ceadbe7de3aa4d9b842df5d0a11f7d8
     # via
-    #   -r requirements.in
+    #   -r worker/python/requirements.in
     #   medspacy-quickumls
 numpy==2.5.1 \
     --hash=sha256:08d60c810432eb83360958dea0999ac4cfb94531ea8efcbf0b7f277c2068aeb2 \
@@ -893,7 +893,7 @@ pillow==12.3.0 \
     --hash=sha256:fe3cca2e4e8a592be0f269a1ca4835c25199d9f3ce815c8491048f785b0a0198 \
     --hash=sha256:ffd0c5368496f41b0944be820fcb7a838aa6e623d250b01acf2643939c3f99d7
     # via
-    #   -r requirements.in
+    #   -r worker/python/requirements.in
     #   pytesseract
 pluggy==1.6.0 \
     --hash=sha256:7dcc130b76258d33b90f61b658791dede3486c3e6bfb003ee5c9bfb396dd22f3 \
@@ -1128,7 +1128,7 @@ pymupdf==1.28.2 \
     --hash=sha256:f89fb2d86d07d643a269f17a093105057e20c79c1d06c103b53600067b6d2b01 \
     --hash=sha256:fd481ed48bef56305c41fb7e05a055c03345c899c7b101dad086258b438f8168 \
     --hash=sha256:ffe91a24edc75c80da2a4b62f50fc0f54632d34fc8fe4cbc48e5c7ff07cf8fb4
-    # via -r requirements.in
+    # via -r worker/python/requirements.in
 pyrush==1.0.13 \
     --hash=sha256:03ceb9ef0f48e6e4479734b20c42c844348bcd62c9df8567e6b1ea499c527f9b \
     --hash=sha256:27fe94880b7fc1a5a86696d36bb8e72dc04c1445807f8f415d9f31291a0708e7 \
@@ -1188,7 +1188,7 @@ pysimstring==1.3.0 \
 pytesseract==0.3.13 \
     --hash=sha256:4bf5f880c99406f52a3cfc2633e42d9dc67615e69d8a509d74867d3baddb5db9 \
     --hash=sha256:7a99c6c2ac598360693d83a416e36e0b33a67638bb9d77fdcac094a3589d4b34
-    # via -r requirements.in
+    # via -r worker/python/requirements.in
 pytest==9.1.1 \
     --hash=sha256:1088fbde8f2b49d95a549a195707afa7a76a3ce9bcadc26b6d71f0ffda5fe313 \
     --hash=sha256:37a86b45efb9a47a61a36449063e8e18d0cab3161329fc099eb21783169c4f0c
@@ -1813,7 +1813,7 @@ setuptools==84.0.0 \
     --hash=sha256:51a52592b3b99e102b609654876bd65f19f999935166d1352678931132b0c670 \
     --hash=sha256:f4695c21257f0d9b537ec2692c941d02ee143b7cc1276941349a546573b2ef73
     # via
-    #   -r requirements.in
+    #   -r worker/python/requirements.in
     #   pyrush
     #   spacy
     #   thinc
