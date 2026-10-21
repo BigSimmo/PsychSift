@@ -298,6 +298,7 @@ import {
   createSearchTiming,
   finishSearch,
   measureSearchPhase,
+  mergeNestedSearchStages,
   recordSearchStage,
   startRerankClock,
   type SearchTiming,
@@ -1401,6 +1402,7 @@ async function searchChunksWithTiming(
       // result below must not be cached.
       if (correctionError) correctionFailed = true;
       if (typeof corrected === "string" && corrected && corrected.toLowerCase() !== retrievalQuery.toLowerCase()) {
+        const correctedSearchStartedAt = Date.now();
         const correctedSearch = await searchChunksWithTelemetry(
           {
             ...args,
@@ -1413,6 +1415,11 @@ async function searchChunksWithTiming(
         for (const [phase, latency] of Object.entries(correctedSearch.telemetry.retrieval_phase_latencies_ms ?? {})) {
           searchTiming.phases[phase] = (searchTiming.phases[phase] ?? 0) + latency;
         }
+        mergeNestedSearchStages(
+          searchTiming,
+          correctedSearch.telemetry.retrieval_stage_timeline_ms,
+          correctedSearchStartedAt,
+        );
         return finishSearch(searchTiming, correctedSearch);
       }
     }
@@ -1807,7 +1814,9 @@ async function searchChunksWithTiming(
   }
   const { embedding, cacheHit } = embeddingResult;
   telemetry.embedding_latency_ms = Date.now() - embeddingStartedAt;
-  recordSearchStage(searchTiming, "embedding", embeddingStartedAt);
+  // Time this request spent waiting for the embedding here; a reused prefetch may have started
+  // earlier and overlapped the lexical stages, so this is the critical-path wait, not provider time.
+  recordSearchStage(searchTiming, "embedding_wait", embeddingStartedAt);
   telemetry.embedding_cache_hit = cacheHit;
   recordRetrievalLayer(telemetry, "embedding", 1, {
     latencyMs: telemetry.embedding_latency_ms,

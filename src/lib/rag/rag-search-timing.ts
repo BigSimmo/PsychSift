@@ -58,6 +58,26 @@ export function createSearchTiming(): SearchTiming {
   return { startedAt: Date.now(), phases: {}, stages: [] };
 }
 
+/**
+ * Measurement only: fold a nested search's stage timeline (offsets relative to its own start)
+ * into this timing, shifted onto this timing's clock. Never affects control flow.
+ */
+export function mergeNestedSearchStages(
+  timing: SearchTiming,
+  nestedStages: RetrievalStageTiming[] | undefined,
+  nestedStartedAt: number,
+) {
+  if (!nestedStages?.length) return;
+  const shift = nestedStartedAt - timing.startedAt;
+  for (const stage of nestedStages) {
+    (timing.stages ??= []).push({
+      stage: `nested:${stage.stage}`,
+      started_offset_ms: stage.started_offset_ms + shift,
+      finished_offset_ms: stage.finished_offset_ms + shift,
+    });
+  }
+}
+
 /** Measurement only: record a stage's start/finish offsets; never affects control flow. */
 export function recordSearchStage(timing: SearchTiming, stage: string, startedAt: number, finishedAt = Date.now()) {
   (timing.stages ??= []).push({
@@ -122,8 +142,12 @@ export function finishSearch<T extends { results: SearchResult[]; telemetry: Sea
     );
   }
   search.telemetry.retrieval_phase_latencies_ms = { ...timing.phases };
-  if (timing.stages?.length)
+  // Authoritative per request: an absent timeline is cleared rather than carried over.
+  if (timing.stages?.length) {
     search.telemetry.retrieval_stage_timeline_ms = timing.stages.map((stage) => ({ ...stage }));
+  } else {
+    delete search.telemetry.retrieval_stage_timeline_ms;
+  }
   search.telemetry.search_total_latency_ms = Date.now() - timing.startedAt;
   return search;
 }

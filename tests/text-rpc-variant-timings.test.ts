@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { SearchTelemetry } from "../src/lib/rag/rag-contracts";
 import { searchTextChunkCandidates } from "../src/lib/rag/rag-candidate-sources";
-import { createSearchTiming, finishSearch, measureSearchPhase } from "../src/lib/rag/rag-search-timing";
+import {
+  createSearchTiming,
+  finishSearch,
+  measureSearchPhase,
+  mergeNestedSearchStages,
+} from "../src/lib/rag/rag-search-timing";
 import type { SearchResult } from "../src/lib/types";
 
 const DOC = "11111111-1111-4111-8111-111111111111";
@@ -107,5 +112,29 @@ describe("text RPC per-variant timing telemetry is measurement-only", () => {
     const out = finishSearch(timing, { results, telemetry: {} as SearchTelemetry });
     expect(out.results).toBe(results);
     expect(out.telemetry.retrieval_stage_timeline_ms?.map((s) => s.stage)).toEqual(["memory_hydration"]);
+  });
+
+  it("finishSearch never carries over a stale timeline when this request ran no stages", () => {
+    const timing = createSearchTiming();
+    const stale = {
+      retrieval_stage_timeline_ms: [{ stage: "text_candidates", started_offset_ms: 0, finished_offset_ms: 9000 }],
+    } as SearchTelemetry;
+    const out = finishSearch(timing, { results: [], telemetry: stale });
+    expect(out.telemetry.retrieval_stage_timeline_ms).toBeUndefined();
+  });
+
+  it("merges a nested (typo-corrected) search timeline onto the outer clock", () => {
+    const timing = createSearchTiming();
+    timing.startedAt = 1_000;
+    timing.stages = [{ stage: "text_candidates", started_offset_ms: 0, finished_offset_ms: 50 }];
+    mergeNestedSearchStages(
+      timing,
+      [{ stage: "text_candidates", started_offset_ms: 5, finished_offset_ms: 25 }],
+      1_100,
+    );
+    expect(timing.stages).toEqual([
+      { stage: "text_candidates", started_offset_ms: 0, finished_offset_ms: 50 },
+      { stage: "nested:text_candidates", started_offset_ms: 105, finished_offset_ms: 125 },
+    ]);
   });
 });

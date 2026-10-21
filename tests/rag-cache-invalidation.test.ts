@@ -413,12 +413,29 @@ describe("RAG cache invalidation", () => {
       shadow_retrieval_state: "completed",
       candidate_match_counts: { matched: 1, partial_match: 0, absent: 0 },
       candidate_retrieval_query_variant_count: 3,
+      // Per-request measurement from the populating run must never be replayed on a hit.
+      retrieval_stage_timeline_ms: [{ stage: "text_candidates", started_offset_ms: 0, finished_offset_ms: 9_000 }],
+      text_rpc_variant_timings: [
+        {
+          rpc: "match_document_chunks_text",
+          variant_index: 0,
+          role: "primary",
+          ran: true,
+          started_offset_ms: 0,
+          finished_offset_ms: 9_000,
+          rpc_ms: 9_000,
+          row_count: 30,
+        },
+      ],
     };
     await h.cache.setCachedSearch(shadow, h.admitted, telemetry, [], { publicCacheWriteProof: h.proof("search") });
     await vi.waitFor(() => expect(h.rows).toHaveLength(2));
-    expect((await h.cache.getCachedSearch(h.args("legacy")))?.results.map((row) => row.id)).toEqual(
-      h.admitted.map((row) => row.id),
-    );
+    const hit = await h.cache.getCachedSearch(h.args("legacy"));
+    expect(hit?.results.map((row) => row.id)).toEqual(h.admitted.map((row) => row.id));
+    expect(hit?.telemetry.text_rpc_variant_timings).toBeUndefined();
+    expect(hit?.telemetry.retrieval_stage_timeline_ms).toBeUndefined();
+    expect(JSON.stringify(h.rows)).not.toContain("text_rpc_variant_timings");
+    expect(JSON.stringify(h.rows)).not.toContain("retrieval_stage_timeline_ms");
     expect(JSON.stringify(h.rows)).not.toContain("candidate_match_counts");
     expect(JSON.stringify(h.rows)).not.toContain("shadow_retrieval_state");
     expect(JSON.stringify(h.rows)).not.toContain("candidate_retrieval_query_variant_count");
