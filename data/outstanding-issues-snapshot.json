@@ -1007,6 +1007,15 @@
       "added": "2026-10-20"
     },
     {
+      "id": "#AZXEDC",
+      "priority": "P2",
+      "type": "issue",
+      "summary": "Uncached searches are slow: index-units search took 9.2 s on first run versus 0.19 s on repeat, with the same plan",
+      "detail": "Read-only live evidence 2026-10-21 (docs/audit/2026-10-21-database-performance-evidence.md): the first run read 8,413 blocks (about 66 MB) from outside the 256 MB Postgres buffer cache at roughly 1 ms each; the repeat read none. Database 8.8 GB. The term-overlap branch pulled 6,568 units (3,389 kept) for a three-word query, then fetched each embedding and search_tsv. Over 34 days, only 22 to 55 percent of TOAST page requests on the search tables (embeddings and long text) were served from the buffer cache, versus 99.9 percent for documents. NOT YET PROVEN: how often real searches are uncached, or that more memory fixes it (effective_cache_size is only a planner estimate; two back-to-back runs are not a controlled test). NEXT: read the Supabase dashboard memory and cache-hit charts and repeat the capture after a known idle gap. THEN OWNER DECISION: (a) larger compute size, paid, dashboard only; or (b) bound the term-overlap branch before ranking, a RAG behaviour change needing a live canary pair.",
+      "source": "Database performance tuning thread, 2026-10-21",
+      "added": "2026-10-21"
+    },
+    {
       "id": "#NZ4X41",
       "priority": "P2",
       "type": "task",
@@ -1023,15 +1032,6 @@
       "detail": "Owner decision 17 Oct 2026 21:37 AWST: #WFYDV6 must stay open; PR #3609 archived it without the required sign-off. src/components/forms/wa-mha-form-print.tsx (PR #3538) was reworded on 16 Oct (Form 6B now a report to the Chief Psychiatrist; Non-Statutory Study Layout header), but section lists, the 7-day pre-expiry examination and copy recipients remain unverified and no legal or clinical sign-off is recorded. Nothing imports or renders it; it must stay unwired. Delete it once the 30-day dead-code window passes (after 13 Nov 2026) unless legal and clinical sign-off is obtained first. (Previously archived 2026-10-16: Fixed statutory discrepancies and branding in-place in src/components/forms/wa-mha-form-print.tsx: replaced Form 6B Chief Psychiatrist consent wording with statutory post-order Report to the Chief Psychiatrist wording matching form-register.ts, replaced official WA Department of Health branding with an explicit Non-Statutory Study Layout header and warning banner, and updated tests/wa-mha-form-print.dom.test.tsx (retaining the file per the 30-day dead-code policy). | Note: Reopened 17 Oct 2026 by owner decision (21:37 AWST): archived by PR #3609 without the required legal and clinical sign-off; tracked again as an open P1 row. The form stays unwired until sign-off.)",
       "source": "PR 3538 review, 15 Oct 2026; owner decision on PR #3609, 17 Oct 2026; reopened in place with the ledger reopen action (PR #3627), replacing duplicate row #Z12CBC",
       "added": "2026-10-17"
-    },
-    {
-      "id": "#AZXEDC",
-      "priority": "P2",
-      "type": "issue",
-      "summary": "Uncached searches are slow: index-units search took 9.2 s on first run versus 0.19 s on repeat, with the same plan",
-      "detail": "Read-only live evidence 2026-10-21 (docs/audit/2026-10-21-database-performance-evidence.md): the first run read 8,413 blocks (about 66 MB) from outside the 256 MB Postgres buffer cache at roughly 1 ms each; the repeat read none. Database 8.8 GB. The term-overlap branch pulled 6,568 units (3,389 kept) for a three-word query, then fetched each embedding and search_tsv. Over 34 days, only 22 to 55 percent of TOAST page requests on the search tables (embeddings and long text) were served from the buffer cache, versus 99.9 percent for documents. NOT YET PROVEN: how often real searches are uncached, or that more memory fixes it (effective_cache_size is only a planner estimate; two back-to-back runs are not a controlled test). NEXT: read the Supabase dashboard memory and cache-hit charts and repeat the capture after a known idle gap. THEN OWNER DECISION: (a) larger compute size, paid, dashboard only; or (b) bound the term-overlap branch before ranking, a RAG behaviour change needing a live canary pair.",
-      "source": "Database performance tuning thread, 2026-10-21",
-      "added": "2026-10-21"
     }
   ],
   "pending": []
