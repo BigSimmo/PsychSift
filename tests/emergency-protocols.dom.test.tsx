@@ -179,7 +179,8 @@ describe("threshold contract: doses and thresholds defer to local protocol", () 
   }
 
   it.each(EMERGENCY_CLINICAL_PROTOCOLS)("$id carries no numeric decision point", (protocol) => {
-    for (const text of strings(protocol)) {
+    // The owner's review date is not clinical content.
+    for (const text of strings({ ...protocol, ownerReviewedOn: undefined })) {
       const stripped = allowedNumerals.reduce((acc, pattern) => acc.replace(pattern, ""), text);
       expect(stripped, `numeric value on card: ${text}`).not.toMatch(/\d/);
     }
@@ -238,7 +239,7 @@ describe("source line on the collapsed card", () => {
   const nms = EMERGENCY_CLINICAL_PROTOCOLS.find((p) => p.id === "EMERG-NMS")!;
 
   it("shows the source, the review state and the fixed-text note without expanding", () => {
-    const html = renderToStaticMarkup(<EmergencyProtocolBanner protocol={nms} />);
+    const html = renderToStaticMarkup(<EmergencyProtocolBanner protocol={{ ...nms, ownerReviewedOn: undefined }} />);
     expect(html).toContain('data-testid="emergency-protocol-source"');
     expect(html).toContain("Based on: </span>");
     expect(html).toContain("Not yet reviewed");

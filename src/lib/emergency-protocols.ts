@@ -33,6 +33,8 @@ export interface EmergencyClinicalProtocol {
   /**
    * The date (YYYY-MM-DD) the clinical owner signed this card off. Unset shows the card
    * as "Not yet reviewed" beside its source, which stays visible without expanding it.
+   * All six cards: the owner wrote "approve for each card please. I approve" in the Regulatory
+   * readiness audit project thread, 21 Oct 2026 05:18 UTC.
    */
   readonly ownerReviewedOn?: string;
 }
@@ -95,6 +97,7 @@ export const EMERGENCY_CLINICAL_PROTOCOLS: readonly EmergencyClinicalProtocol[] 
       "Aide-mémoire for emergency clinical orientation only. Management must follow local hospital resuscitation and intensive care protocols.",
     evidenceSource:
       "Maudsley Prescribing Guidelines in Psychiatry (14th ed); Therapeutic Guidelines: Psychotropic (Version 8); Australian Prescriber.",
+    ownerReviewedOn: "2026-10-21",
   },
   {
     id: "EMERG-SEROTONIN-SYNDROME",
@@ -150,6 +153,7 @@ export const EMERGENCY_CLINICAL_PROTOCOLS: readonly EmergencyClinicalProtocol[] 
       "Aide-mémoire for acute management. Confirm diagnostic criteria and titrate interventions under specialist medical/toxicological direction.",
     evidenceSource:
       "Hunter Serotonin Toxicity Criteria (Dunkley et al., QJM 2003); Therapeutic Guidelines: Toxicology & Psychotropic; Australian Prescriber.",
+    ownerReviewedOn: "2026-10-21",
   },
   {
     id: "EMERG-ACUTE-DYSTONIA",
@@ -202,6 +206,7 @@ export const EMERGENCY_CLINICAL_PROTOCOLS: readonly EmergencyClinicalProtocol[] 
       "Rapidly reversible with anticholinergics. Ensure patient reassurance during distressing spasm. Review antipsychotic dose and regimen prior to next dose.",
     evidenceSource:
       "Therapeutic Guidelines: Psychotropic; Maudsley Prescribing Guidelines (14th ed); British National Formulary.",
+    ownerReviewedOn: "2026-10-21",
   },
   {
     id: "EMERG-LITHIUM-TOXICITY",
@@ -253,6 +258,7 @@ export const EMERGENCY_CLINICAL_PROTOCOLS: readonly EmergencyClinicalProtocol[] 
       "Chronic toxicity carries greater tissue saturation and neurotoxicity than acute single overdose at equivalent serum levels. Manage in high-dependency or intensive care.",
     evidenceSource:
       "Extracorporeal Treatments in Poisoning (EXTRIP) Workgroup guidelines for lithium poisoning; Therapeutic Guidelines: Toxicology; Australian Prescriber.",
+    ownerReviewedOn: "2026-10-21",
   },
   {
     id: "EMERG-CLOZAPINE-MYOCARDITIS",
@@ -306,6 +312,7 @@ export const EMERGENCY_CLINICAL_PROTOCOLS: readonly EmergencyClinicalProtocol[] 
       "Tachycardia alone is common and often benign with clozapine, but persistent tachycardia with fever, dyspnoea, or elevated biomarkers mandates immediate cessation and investigation.",
     evidenceSource:
       "WA Department of Health, Guidelines for the Safe and Quality Use of Clozapine Therapy in the WA health system (Version 2, June 2024; cardiologist advice on rechallenge after myocarditis); Ronaldson et al., Australian & New Zealand Journal of Psychiatry (Clozapine myocarditis monitoring protocol); Therapeutic Guidelines: Psychotropic; RANZCP Guidelines.",
+    ownerReviewedOn: "2026-10-21",
   },
   {
     id: "EMERG-MALIGNANT-CATATONIA",
@@ -365,6 +372,7 @@ export const EMERGENCY_CLINICAL_PROTOCOLS: readonly EmergencyClinicalProtocol[] 
       "Dopamine antagonists (antipsychotics) must be avoided in acute catatonia as they can precipitate or aggravate neuroleptic malignant syndrome.",
     evidenceSource:
       "Rogers et al., British Association for Psychopharmacology evidence-based consensus guidelines for the management of catatonia, J Psychopharmacol 2023 (investigations; no Australian equivalent found); Bush-Francis Catatonia Rating Scale guidelines; Maudsley Prescribing Guidelines (14th ed); Fink & Taylor, Catatonia: A Clinician's Guide to Diagnosis and Treatment.",
+    ownerReviewedOn: "2026-10-21",
   },
 ] as const;
 
