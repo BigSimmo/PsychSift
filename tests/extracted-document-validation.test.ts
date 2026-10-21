@@ -68,6 +68,38 @@ describe("Python extracted-document payload validation", () => {
     expect(parseExtractedDocumentPayload(packet(observations)).pages[0].metadata?.raster_table_ocr).toEqual(
       observations,
     );
+    const transform = {
+      algorithm: "raster-math-topology-v1",
+      kind: "comparison",
+      codeSha256: "sha256:" + "c".repeat(64),
+      width: 100,
+      height: 50,
+      mode: "L",
+      pixelsSha256: "sha256:" + "b".repeat(64),
+    };
+    const transformed = (value: unknown, crop = observations.crops[0]) => ({
+      ...observations,
+      crops: [{ ...crop, ocrInputTransform: value }],
+    });
+    for (const kind of ["comparison", "superscript"]) {
+      const value = transformed({ ...transform, kind });
+      expect(parseExtractedDocumentPayload(packet(value)).pages[0].metadata?.raster_table_ocr).toEqual(value);
+    }
+    for (const invalidTransform of [
+      { ...transform, algorithm: "unknown" },
+      { ...transform, kind: "inferred_clinical_value" },
+      { ...transform, width: 400_000 },
+      { ...transform, mode: "CMYK" },
+      { ...transform, pixelsSha256: "not-a-hash" },
+      { ...transform, codeSha256: undefined },
+      { ...transform, confidence: 1 },
+    ])
+      expect(() => parseExtractedDocumentPayload(packet(transformed(invalidTransform)))).toThrow();
+    expect(() =>
+      parseExtractedDocumentPayload(
+        packet(transformed(transform, { ...observations.crops[0], kind: "outside", language: "eng" })),
+      ),
+    ).toThrow();
     for (const invalid of [
       { ...observations, status: "verified" },
       { ...observations, confidence: 1 },
@@ -114,7 +146,7 @@ describe("Python extracted-document payload validation", () => {
 describe("extraction provenance (audit F04)", () => {
   const provenance = {
     name: "extract_pdf_assets",
-    version: "2026-10-20.embedded-image-ceiling-v10",
+    version: "2026-10-21.raster-math-layout-v13",
     pymupdf: "1.26.0",
     tableStrategy: "table_aware_page_text",
   };

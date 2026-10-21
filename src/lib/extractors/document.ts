@@ -69,10 +69,24 @@ const rasterCropSchema = z
     pngSha256: rasterShaSchema,
     pixelsSha256: rasterShaSchema,
     textSha256: rasterShaSchema,
+    ocrInputTransform: z
+      .object({
+        algorithm: z.literal("raster-math-topology-v1"),
+        kind: z.enum(["comparison", "superscript"]),
+        codeSha256: rasterShaSchema,
+        width: z.number().int().positive().max(400_000),
+        height: z.number().int().positive().max(400_000),
+        mode: z.enum(["L", "RGB"]),
+        pixelsSha256: rasterShaSchema,
+      })
+      .strict()
+      .refine(({ width, height }) => width * height <= 400_000, "raster_math_input_pixel_limit")
+      .optional(),
   })
   .strict()
   .refine(({ width, height }) => width * height <= 4_000_000, "raster_crop_pixel_limit")
-  .refine(({ kind, language }) => language === (kind === "cell" ? "Latin" : "eng"), "raster_crop_model_scope");
+  .refine(({ kind, language }) => language === (kind === "cell" ? "Latin" : "eng"), "raster_crop_model_scope")
+  .refine(({ kind, ocrInputTransform }) => !ocrInputTransform || kind === "cell", "raster_math_cell_scope");
 const rasterTableOcrSchema = z
   .object({
     version: z.literal("raster-table-ocr-observations-v1"),

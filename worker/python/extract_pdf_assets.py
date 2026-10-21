@@ -28,7 +28,7 @@ except Exception as exc:
 # parser defect can be traced to the documents it touched. Bump the date and label whenever a
 # change alters the text, tables or images produced for the same PDF. 2026-09-16 is PR #2810,
 # which replaced line-major table text with table_aware_page_text (#GJHKYC).
-EXTRACTOR_VERSION = "2026-10-21.form-mask-headers-v12"
+EXTRACTOR_VERSION = "2026-10-21.raster-math-layout-v13"
 TABLE_STRATEGY = "table_aware_page_text"
 
 # IDX-H6: caps on serialized table size. Raised from the previous 80/120-row and 8000-char
@@ -733,7 +733,14 @@ def maybe_raster_table_ocr(page, image, render_scale, budget, pytesseract, deadl
     except RasterLayoutAmbiguous:
         return None
     from PIL import Image
+    import raster_math_ocr
+    from raster_math_ocr import plan_raster_math_ocr
     model_directory = checked_raster_table_model(deadline)
+    if time.monotonic() >= deadline:
+        raise TimeoutError("raster helper identity exhausted page timeout")
+    math_code_sha256 = file_sha256(raster_math_ocr.__file__)
+    if time.monotonic() >= deadline:
+        raise TimeoutError("raster helper identity exhausted page timeout")
     record = {"version": "raster-table-ocr-observations-v1", "status": "unverified",
               "cellModel": {"language": "Latin", "sha256": "sha256:" + RASTER_TABLE_MODEL_SHA256,
                             "bytes": RASTER_TABLE_MODEL_BYTES},
@@ -759,13 +766,31 @@ def maybe_raster_table_ocr(page, image, render_scale, budget, pytesseract, deadl
         if remaining <= 0:
             raise TimeoutError("raster cell OCR exhausted page timeout")
         config = f"--dpi {round(scale * 72)}"
+        math_plan = None
         if cell:
             mode = 7 if raster_ink_line_count(bitmap, deadline) == 1 else 6
+            # Pixmaps round a physical clip outward. Analyze only pixels
+            # fully inside this cell, never infer that a corner mark is noise.
+            interior = (
+                math.ceil(rect.x0 * scale) - pixels.x,
+                math.ceil(rect.y0 * scale) - pixels.y,
+                math.floor(rect.x1 * scale) - pixels.x,
+                math.floor(rect.y1 * scale) - pixels.y,
+            )
+            if 0 <= interior[0] < interior[2] <= bitmap.width and 0 <= interior[1] < interior[3] <= bitmap.height:
+                cell_interior = bitmap.crop(interior)
+                if raster_ink_line_count(cell_interior, deadline) == 1:
+                    math_plan = plan_raster_math_ocr(cell_interior, deadline, budget.limits["maxRenderPixels"])
+            if math_plan is not None:
+                mode = 7
             config = f"--psm {mode} --tessdata-dir {shlex.quote(model_directory)} " + config
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise TimeoutError("cell layout exhausted page OCR timeout before launch")
-        text = pytesseract.image_to_string(bitmap, lang="Latin" if cell else "eng", config=config, timeout=remaining).strip()
+        ocr_bitmap = math_plan.bitmap if math_plan is not None else bitmap
+        text = pytesseract.image_to_string(ocr_bitmap, lang="Latin" if cell else "eng", config=config, timeout=remaining).strip()
+        if math_plan is not None:
+            text = math_plan.restore(text)
         if time.monotonic() >= deadline:
             raise TimeoutError("raster OCR completed after page deadline")
         if len(record["crops"]) >= 112:
@@ -774,7 +799,13 @@ def maybe_raster_table_ocr(page, image, render_scale, budget, pytesseract, deadl
                                 "sourceRect": list(rect), "scale": scale, "width": pixels.width, "height": pixels.height,
                                 "pngSha256": "sha256:" + hashlib.sha256(png).hexdigest(),
                                 "pixelsSha256": "sha256:" + hashlib.sha256(pixels.samples).hexdigest(),
-                                "textSha256": text_sha256(text)})
+                                "textSha256": text_sha256(text),
+                                **({"ocrInputTransform": {
+                                    "algorithm": "raster-math-topology-v1", "kind": math_plan.kind,
+                                    "codeSha256": math_code_sha256,
+                                    "width": ocr_bitmap.width, "height": ocr_bitmap.height, "mode": ocr_bitmap.mode,
+                                    "pixelsSha256": "sha256:" + hashlib.sha256(ocr_bitmap.tobytes()).hexdigest(),
+                                }} if math_plan is not None else {})})
         if time.monotonic() >= deadline:
             raise TimeoutError("raster crop observation exhausted page deadline")
         return text
