@@ -212,25 +212,33 @@ export async function expectPhoneLayoutSettled(page: Page, safeAreaBottom: numbe
   await expect
     .poll(
       async () => {
-        const geometry = await page.evaluate(async (bottom) => {
-          if (document.fonts.status !== "loaded") return null;
-          await document.fonts.ready;
-          await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
-          const rootStyle = getComputedStyle(document.documentElement);
-          if (rootStyle.getPropertyValue("--safe-area-bottom").trim() !== `${bottom}px`) return null;
-          if (document.querySelector('[data-chrome-transitioning="true"], [data-reserve-transitioning="true"]'))
-            return null;
-          return Array.from(
-            document.querySelectorAll(
-              '#main-content, .phone-viewport-frame, .phone-footer-layer-host, [data-testid="mobile-composer-reserve-pad"], header',
-            ),
-          )
-            .filter((node) => node.getClientRects().length > 0)
-            .map((node) => {
-              const rect = node.getBoundingClientRect();
-              return [node.id, node.className, rect.x, rect.y, rect.width, rect.height, node.scrollHeight];
-            });
-        }, safeAreaBottom);
+        // A late auth/canonical redirect can replace the document mid-sample. That is
+        // "not settled yet", not a failure: reset the stable count and poll again.
+        const geometry = await page
+          .evaluate(async (bottom) => {
+            if (document.fonts.status !== "loaded") return null;
+            await document.fonts.ready;
+            await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+            const rootStyle = getComputedStyle(document.documentElement);
+            if (rootStyle.getPropertyValue("--safe-area-bottom").trim() !== `${bottom}px`) return null;
+            if (document.querySelector('[data-chrome-transitioning="true"], [data-reserve-transitioning="true"]'))
+              return null;
+            return Array.from(
+              document.querySelectorAll(
+                '#main-content, .phone-viewport-frame, .phone-footer-layer-host, [data-testid="mobile-composer-reserve-pad"], header',
+              ),
+            )
+              .filter((node) => node.getClientRects().length > 0)
+              .map((node) => {
+                const rect = node.getBoundingClientRect();
+                return [node.id, node.className, rect.x, rect.y, rect.width, rect.height, node.scrollHeight];
+              });
+          }, safeAreaBottom)
+          .catch((error: unknown) => {
+            if (error instanceof Error && /Execution context was destroyed|navigation/i.test(error.message))
+              return null;
+            throw error;
+          });
         const current = geometry?.length ? JSON.stringify(geometry) : "";
         stableSamples = current && current === previous ? stableSamples + 1 : 0;
         previous = current;
