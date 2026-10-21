@@ -122,9 +122,9 @@ export const BROWSER_SPEC_PATTERN =
  * `chromium` carries `grepInvert: /@mockup/` and `chromium-mockups` carries
  * `grep: /@mockup/`, so a project is not a stylistic choice: selecting a
  * mockup-only spec under `--project=chromium` collects nothing and the run
- * "passes" having executed no test at all. `tests/ui-tools.spec.ts` matches BOTH
- * patterns — it holds production journeys and `@mockup` ones — so a mixed spec
- * needs both projects.
+ * "passes" having executed no test at all. A spec matching BOTH patterns (none
+ * does today; `tests/ui-tools.spec.ts` did until 2026-10-21) holds production
+ * journeys and `@mockup` ones, so a mixed spec needs both projects.
  *
  * Extracted at runtime, because a copy of a regex in two files is a copy that
  * drifts. If the extraction fails the caller runs both projects, which is the

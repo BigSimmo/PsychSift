@@ -15,9 +15,8 @@ import { cn, primaryControl } from "@/components/ui-primitives";
  * Because this file lives one segment further up, at `mockups/`, every route's `layout.tsx` is a
  * NESTED layout relative to it and IS wrapped ("error.js wraps... nested layout.js files"). A throw
  * from any of those now lands here instead of replacing the whole document via `src/app/error.tsx`.
- * That is what closes the gap for `mockups/care-plan/layout.tsx`, which follows the
- * gate-then-provider shape and has no nearer boundary. (It was first written for the retired Ward
- * Flow prototype, whose two nested boundaries could not cover their own layout.)
+ * That closed the gap for the gate-then-provider layouts of the retired Ward Flow and Care Plan
+ * prototypes, which had no nearer boundary, and still covers any route layout added here.
  *
  * ⚠️ **WHAT IT STILL CANNOT COVER — read this before assuming the gap is fully closed.**
  *   - A module that builds seeded data at MODULE scope can throw during module evaluation, before

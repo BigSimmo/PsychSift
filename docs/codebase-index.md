@@ -111,8 +111,8 @@ Workstreams cut across the areas:
 
 - **Design system** (`design-system`): Visual tokens, primitives, brand and the lint rules that enforce them; serves every screen.
   Canonical docs: docs/design-system/README.md
-- **Prototypes** (`prototypes`): Admin-only work that is not yet part of the product: Care Plan, the developer hub and design-scratch mock-ups.
-  Canonical docs: docs/care-plan/HANDOFF-START-HERE.md
+- **Prototypes** (`prototypes`): Admin-only work that is not yet part of the product: the developer hub and the remaining mock-ups.
+  Canonical docs: docs/mockup-retirement-policy.md
 
 <!-- organisation-areas:end -->
 
@@ -1289,43 +1289,6 @@ freshness.ts` is the label-agnostic content-age helper both the ledger and the r
   vocabularies stay unmerged), `tests/developer-sign-off-page.dom.test.tsx` (pins that one family's
   page of rows is rendered rather than the whole queue, and that every family's total stays visible
   while it is).
-
-### Care Plan (`src/app/mockups/care-plan/`, `src/components/care-plan/mockups/`)
-
-Synthetic, memory-only, provider-free prototype for finding people with recurrent psychiatric
-emergency-department presentations and making their current management plan easy to find and use.
-Twenty-one routes under one gated prefix; every record is fictional, nothing is persisted, and a
-refresh restores the fixtures. Design authority: `docs/superpowers/specs/2026-08-20-care-plan-design.md`;
-terminology: `docs/care-plan-context.md`; build history and rulings: `docs/care-plan/sdd-ledger.md`.
-
-- **Gate:** `/mockups/care-plan` and everything beneath it is behind `DeveloperAreaGate`
-  (`layout.tsx`) and the production block in `src/proxy.ts`, which matches the exact prefix so a
-  look-alike such as `/mockups/care-plan-archive` is not let through.
-- **Routes:** `route-page.tsx` renders one client suite for every address. Home, `patients`,
-  `patients/[patientId]`, and per patient `management-plan{,/edit,/review,/print}`,
-  `patient-plan{,/edit,/print}`, `safety-plan{,/edit,/print}`, `presentations{,/new,/[presentationId]}`,
-  `history`; plus `reviews`, `team`, `governance`, `system-states`. Addresses are built only by
-  `routes.ts` (`CARE_PLAN_BASE`, `CARE_PLAN_ROUTES`, `carePlanRoute`); a query string may name a
-  deterministic specimen scenario and nothing else.
-- **State:** `prototype-state.ts` (reducer, ~85 kB, single-Current invariant, capability checks and
-  `getPrototypeMutationBlockReason` re-checked on every action), `prototype-provider.tsx`,
-  `domain.ts` (pure selectors), `fixtures.ts` + `patient-plan-fixtures.ts` (all `SYN-` identifiers),
-  `types.ts`.
-- **Surfaces:** `routable-suite.tsx` (address → surface), `care-plan-shell-frame.tsx` (rail, phone
-  dock, More sheet, one search slot), `clinical-snapshot-page.tsx`, `patient-workspace.tsx`,
-  `patient-navigation.tsx`, `management-plan-{read,form,review,print,diff}.tsx`,
-  `patient-plan-{pages,form,transform}.ts{,x}`, `safety-plan-{pages,form}.tsx`,
-  `presentation-{pages,form,timeline}.tsx`, `history-page.tsx`, `operations-pages.tsx`
-  (Reviews/Team/Governance), `system-states-page.tsx`, `care-plan-error-boundary.tsx`,
-  `care-plan.module.css`.
-- **Printing:** all three print surfaces consume the shared `PrintOutput`/`PrintSection`/
-  `BrowserPrintButton` primitives in `src/components/ui/print-output.tsx`; the print cascade itself
-  lives in `src/app/globals.css`.
-- **Tests:** `tests/care-plan-domain.test.ts`, `tests/care-plan-prototype-state.test.ts`,
-  `tests/care-plan-patient-plan.test.ts`, `tests/care-plan-route-files.test.ts`,
-  `tests/care-plan-linked-routes.dom.test.tsx`, the gate cases in `tests/proxy.test.ts`, and the
-  browser suite `tests/ui-care-plan-mockup.spec.ts` (`npm run test:e2e:care-plan-mockup`, advisory
-  `chromium-mockups` project only).
 
 ### Global search composer placement rules
 

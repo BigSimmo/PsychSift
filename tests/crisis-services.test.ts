@@ -1,12 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { CRISIS_SERVICES, WA_CRISIS_CONTACTS } from "@/lib/crisis-services";
-import { publicCrisisContacts } from "@/components/care-plan/mockups/fixtures";
 
 describe("crisis-services (#RAAB0J)", () => {
   it("re-exports WA_CRISIS_CONTACTS as CRISIS_SERVICES preserving identity", () => {
     expect(CRISIS_SERVICES).toBe(WA_CRISIS_CONTACTS);
-    expect(publicCrisisContacts).toBe(CRISIS_SERVICES);
   });
 
   it("contains exactly the seven verified WA and national crisis contacts", () => {

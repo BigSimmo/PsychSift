@@ -3,7 +3,7 @@
 # Schedule runs every 6 hours (`15 */6 * * *`). Answer-rate alerts judge the probe's
 # trailing six-hour `sloTrailing` window, so back-to-back digests cover every answer
 # (audit EVAL-02); the hourly `slo` sample feeds the hybrid-RPC identity history.
-# Active warning/page alerts notify on the rolling issue.
+# Page-level alerts notify on the rolling issue; everything else waits for the daily health summary.
 name: Ops Digest
 
 on:
@@ -220,10 +220,11 @@ jobs:
             const severity = allowedSeverities.has(rawSeverity) ? rawSeverity : "unknown";
             const publishAttentionComment =
               (context.eventName === "workflow_dispatch" && process.env.OPS_DIGEST_PUBLISH_ALERT_COMMENT === "true") ||
-              // An unreachable, degraded or unparseable service is the outage the phone alert exists
-              // for, even when no SLO severity could be computed. A zero-traffic window (status ok,
-              // severity unknown) stays silent so quiet nights do not page.
-              (context.eventName === "schedule" && (severity === "warning" || severity === "page" || status !== "ok"));
+              // Owner decision 2026-10-21 (docs/decisions/2026-10-21-one-daily-health-summary.md): only a
+              // page-level breach still pushes straight away. Warnings and a degraded or unknown service
+              // wait for the 7 am daily health summary, which reads this issue; a site that is down
+              // outright pushes from the live domain monitor instead.
+              (context.eventName === "schedule" && severity === "page");
             let parsedSummary;
             try {
               parsedSummary = JSON.parse(process.env.OPS_DIGEST_ALERT_SUMMARY || "{}");
@@ -302,7 +303,7 @@ jobs:
               });
               issueNumber = created.data.number;
             }
-            // Publish attention comments on confirmed manual dispatches or scheduled warning/page breaches.
+            // Publish attention comments on confirmed manual dispatches or scheduled page-level breaches.
             if (publishAttentionComment && (status !== "ok" || alerting)) {
               await assignAlert(issueNumber);
               await github.rest.issues.createComment({
@@ -312,7 +313,7 @@ jobs:
                 body: `@${alertAssignee} ⚠ Attention (status=${status}, alerting=${alerting}, severity=${severity}${canaryStale ? ", eval-canary-stale=true" : ""}) — ${new Date().toISOString()}\n\nAlert summary: \`${alertSummary}\`\n\n${body}`,
               });
             } else if (status !== "ok" || alerting) {
-              core.info("Attention comment skipped: neither manual confirmation nor scheduled warning/page severity was met.");
+              core.info("Attention comment skipped: neither manual confirmation nor scheduled page severity was met; the daily health summary reports it.");
             }
             if (status !== "ok") core.warning(`Ops digest status: ${status}`);
             if (canaryStale) core.warning(canaryMessage || "Eval-canary liveness reported stale.");
