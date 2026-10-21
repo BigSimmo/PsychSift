@@ -775,11 +775,7 @@ describe("table context, footnotes, referrals and oversized rows (chunker 1.3.1)
     chunks.filter((chunk) => chunk.includes("| Level ") && chunk.includes("mmol/L"));
 
   it("carries a non-Table heading caption onto every split table chunk", () => {
-    const chunks = chunkTextWithOverlap(
-      ["Lithium serum level actions", ...header, ...rows].join("\n"),
-      1200,
-      200,
-    );
+    const chunks = chunkTextWithOverlap(["Lithium serum level actions", ...header, ...rows].join("\n"), 1200, 200);
     const tableChunks = tableChunksOf(chunks);
     expect(tableChunks.length).toBeGreaterThan(3);
     for (const chunk of tableChunks) expect(chunk.startsWith("Lithium serum level actions\n")).toBe(true);
@@ -814,9 +810,13 @@ describe("table context, footnotes, referrals and oversized rows (chunker 1.3.1)
   it("attaches short footnotes to the table's last chunk", () => {
     const footnotes = ["* Levels taken 12 hours post dose.", "Source: synthetic test data."];
     const chunks = chunkTextWithOverlap(
-      ["Table 3. Synthetic lithium dose adjustment", ...header, ...rows, ...footnotes, "Review the patient weekly."].join(
-        "\n",
-      ),
+      [
+        "Table 3. Synthetic lithium dose adjustment",
+        ...header,
+        ...rows,
+        ...footnotes,
+        "Review the patient weekly.",
+      ].join("\n"),
       1200,
       200,
     );
@@ -844,13 +844,22 @@ describe("table context, footnotes, referrals and oversized rows (chunker 1.3.1)
     const chunks = buildChunks([
       { documentId: "doc-1", pageNumber: 1, pageText: ["0", "1", "2", "3", "4"].join("\n"), metadata: {} },
     ]);
-    expect(chunks.map((chunk) => chunk.content).join("\n").split("\n")).toEqual(["0", "1", "2", "3", "4"]);
+    expect(
+      chunks
+        .map((chunk) => chunk.content)
+        .join("\n")
+        .split("\n"),
+    ).toEqual(["0", "1", "2", "3", "4"]);
   });
 
   it("splits an oversized single row so no chunk exceeds the cap and no text is lost", () => {
     const longCell = Array.from({ length: 200 }, (_, index) => `word${index}`).join(" ");
     const longRow = `| Level X | ${longCell} | Action X |`;
-    const chunks = chunkTextWithOverlap(["Lithium actions", ...header, ...rows.slice(0, 5), longRow].join("\n"), 1200, 200);
+    const chunks = chunkTextWithOverlap(
+      ["Lithium actions", ...header, ...rows.slice(0, 5), longRow].join("\n"),
+      1200,
+      200,
+    );
     for (const chunk of chunks) expect(chunk.length).toBeLessThanOrEqual(1200);
     const combined = chunks.join(" ");
     for (let index = 0; index < 200; index += 1) expect(combined).toContain(`word${index}`);

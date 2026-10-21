@@ -304,7 +304,11 @@ function removePageNoise(text: string, repeatedBoilerplateLines = new Set<string
     keptIndexes.filter(
       (index) =>
         !isIsolatedEdgeNumberLine(lines, index, keptIndexes) &&
-        !((index === firstContent || index === lastContent) && keptIndexes.length > 1 && looksLikeEdgeUrlNotice(lines[index])),
+        !(
+          (index === firstContent || index === lastContent) &&
+          keptIndexes.length > 1 &&
+          looksLikeEdgeUrlNotice(lines[index])
+        ),
     ),
   );
   return lines
