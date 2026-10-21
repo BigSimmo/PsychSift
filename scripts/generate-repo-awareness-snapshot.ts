@@ -46,8 +46,7 @@ export type SiteMapInput = {
  * Sorted by path, two routes added on two branches land next to each other
  * whenever their paths sort next to each other, and adjacent insertions are a
  * hard conflict in the committed snapshot. That is not hypothetical and not
- * rare: `/mockups/source-rail-desktop-scroll` and
- * `/mockups/specifier-record-directions` both sort under `/mockups/s`, and PR
+ * rare: two mockup routes (since retired) both sorted under `/mockups/s`, and PR
  * #2674 conflicted on exactly that pair. A conflict here sets
  * `mergeable_state=dirty`, which suppresses `refs/pull/<n>/merge` and leaves
  * the check list empty rather than red.

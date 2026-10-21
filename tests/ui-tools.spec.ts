@@ -3408,26 +3408,6 @@ test.describe("Responsive layout guards", () => {
     await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
   }
 
-  const mockupRoutes = [
-    { name: "tools command center", path: "/mockups/tools-command-center" },
-    { name: "tools split pane", path: "/mockups/tools-split-pane" },
-    { name: "tools workflow board", path: "/mockups/tools-workflow-board" },
-  ] as const;
-
-  for (const route of mockupRoutes) {
-    test(`${route.name} never overflows horizontally across sizes @mockup`, async ({ page }) => {
-      await page.setViewportSize({ width: 1280, height: 900 });
-      await gotoLauncher(page, route.path);
-      await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
-
-      for (const width of responsiveWidths) {
-        await page.setViewportSize({ width, height: 900 });
-        await settleLayout(page);
-        await expectNoPageHorizontalOverflow(page);
-      }
-    });
-  }
-
   const modeHomeRoutes = [
     { name: "prescribing", path: "/medications" },
     { name: "differentials", path: "/differentials" },

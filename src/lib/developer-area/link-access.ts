@@ -56,11 +56,7 @@ export {
  * Cookie paths. Each cookie is scoped to one developer-gated subtree so the
  * credential is not sent with unrelated clinical or API requests.
  */
-export const DEVELOPER_ACCESS_COOKIE_PATHS = [
-  "/admin/developer-hub",
-  "/mockups/development",
-  "/mockups/care-plan",
-] as const;
+export const DEVELOPER_ACCESS_COOKIE_PATHS = ["/admin/developer-hub", "/mockups/development"] as const;
 
 /**
  * One year. Deliberately inside the ~400-day ceiling Chrome and Safari clamp

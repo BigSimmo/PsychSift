@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "33fdcec2-d4b3-49dd-b7f5-d0c9c5e6cdad",
+  "createdOn": "2026-10-21",
+  "action": "done",
+  "payload": {
+    "id": "#TN512M",
+    "outcome": "Closed 2026-10-21. All three detectors now report to a person, and on 21 Oct the owner replaced the separate phone alerts with one daily health summary at 7 am Perth (docs/decisions/2026-10-21-one-daily-health-summary.md, .github/workflows/daily-health-summary.yml).",
+    "baseRowFingerprint": "b8fcb832b7942f797324a8a2fd113da11496c3866b15eba17413b824cf1b95ba",
+    "targetUlid": "01M2QPC3QXTN512MBBWEWHTM8E"
+  }
+}

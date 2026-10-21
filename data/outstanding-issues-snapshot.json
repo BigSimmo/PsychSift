@@ -4,13 +4,13 @@
     "committed_at": "2026-10-17"
   },
   "counts": {
-    "open": 105,
-    "p1": 16,
-    "p2": 51,
-    "p3": 38,
+    "open": 108,
+    "p1": 17,
+    "p2": 56,
+    "p3": 35,
     "queued": 5,
     "pending": 0,
-    "resolved": 809
+    "resolved": 818
   },
   "queue": [
     {
@@ -55,7 +55,7 @@
       "capability": "High — release/SRE + Operator",
       "timing": "Now that #056 is closed; schedule against the next exact candidate SHA.",
       "estimate": "2–4 hours plus soak",
-      "detail": "Combined test harness code and automated pinned failure routing merged in PR #3087 (7941a7b36f); live staging run pending. PRIOR DETAIL (restored 2026-10-09, an earlier update replaced it wholesale): UPDATE 2026-09-26 (read-only GitHub Actions read, no provider access): the nightly staging-tenancy.yml harness failed on every scheduled run checked (2026-09-21 to 2026-09-25) at its deployment-identity step: staging reported 0b858bb3a (the PR #3030 merge) while the run checked out newer main commits. Staging is not redeployed on pushes to main, so the SHA-bound harness cannot pass on a schedule until staging tracks main or is redeployed before each run. A failing main run now opens a pinned, assigned GitHub issue (label staging-tenancy-failure; branch claude/urgent-ledger-fixes-8dnh5c). The wider harness (CME and On Call writes, evidence, export, content; PR #3065) has not yet run on staging. Next action: owner decides whether staging should auto-deploy from main (Railway setting) or be redeployed before a dispatched run. PRIOR DETAIL: Staging migration parity is closed. Run SHA-bound tenancy evidence, transition the same candidate image from the offline tenancy profile to the authenticated auto-provider load profile, execute the staging soak, and rehearse rollback. Retain checkout/deployed SHA, latency, error, throttling, authentication, cleanup, and rollback evidence. Stop on unsafe data, identity mismatch, or an unowned rollback decision."
+      "detail": "UPDATE 2026-10-18: the soak, rollback rehearsal and SHA-bound tenancy dispatch are now planned with exact commands, costs, stop conditions and evidence in docs/operator-rehearsal-plan.md steps 3 and 4 (not yet run; owner approval needed). The nightly harness still fails under a green scheduled run (see #F9HZEG). PRIOR DETAIL: Combined test harness code and automated pinned failure routing merged in PR #3087 (7941a7b36f); live staging run pending. PRIOR DETAIL (restored 2026-10-09, an earlier update replaced it wholesale): UPDATE 2026-09-26 (read-only GitHub Actions read, no provider access): the nightly staging-tenancy.yml harness failed on every scheduled run checked (2026-09-21 to 2026-09-25) at its deployment-identity step: staging reported 0b858bb3a (the PR #3030 merge) while the run checked out newer main commits. Staging is not redeployed on pushes to main, so the SHA-bound harness cannot pass on a schedule until staging tracks main or is redeployed before each run. A failing main run now opens a pinned, assigned GitHub issue (label staging-tenancy-failure; branch claude/urgent-ledger-fixes-8dnh5c). The wider harness (CME and On Call writes, evidence, export, content; PR #3065) has not yet run on staging. Next action: owner decides whether staging should auto-deploy from main (Railway setting) or be redeployed before a dispatched run. PRIOR DETAIL: Staging migration parity is closed. Run SHA-bound tenancy evidence, transition the same candidate image from the offline tenancy profile to the authenticated auto-provider load profile, execute the staging soak, and rehearse rollback. Retain checkout/deployed SHA, latency, error, throttling, authentication, cleanup, and rollback evidence. Stop on unsafe data, identity mismatch, or an unowned rollback decision."
     },
     {
       "order": 5,
@@ -93,7 +93,7 @@
       "priority": "P2",
       "type": "task",
       "summary": "Complete staging soak and rollback rehearsal",
-      "detail": "Combined test harness code and automated pinned failure routing merged in PR #3087 (7941a7b36f); live staging run pending. PRIOR DETAIL (restored 2026-10-09, an earlier update replaced it wholesale): UPDATE 2026-09-26 (read-only GitHub Actions read, no provider access): the nightly staging-tenancy.yml harness failed on every scheduled run checked (2026-09-21 to 2026-09-25) at its deployment-identity step: staging reported 0b858bb3a (the PR #3030 merge) while the run checked out newer main commits. Staging is not redeployed on pushes to main, so the SHA-bound harness cannot pass on a schedule until staging tracks main or is redeployed before each run. A failing main run now opens a pinned, assigned GitHub issue (label staging-tenancy-failure; branch claude/urgent-ledger-fixes-8dnh5c). The wider harness (CME and On Call writes, evidence, export, content; PR #3065) has not yet run on staging. Next action: owner decides whether staging should auto-deploy from main (Railway setting) or be redeployed before a dispatched run. PRIOR DETAIL: Staging migration parity is closed. Run SHA-bound tenancy evidence, transition the same candidate image from the offline tenancy profile to the authenticated auto-provider load profile, execute the staging soak, and rehearse rollback. Retain checkout/deployed SHA, latency, error, throttling, authentication, cleanup, and rollback evidence. Stop on unsafe data, identity mismatch, or an unowned rollback decision.",
+      "detail": "UPDATE 2026-10-18: the soak, rollback rehearsal and SHA-bound tenancy dispatch are now planned with exact commands, costs, stop conditions and evidence in docs/operator-rehearsal-plan.md steps 3 and 4 (not yet run; owner approval needed). The nightly harness still fails under a green scheduled run (see #F9HZEG). PRIOR DETAIL: Combined test harness code and automated pinned failure routing merged in PR #3087 (7941a7b36f); live staging run pending. PRIOR DETAIL (restored 2026-10-09, an earlier update replaced it wholesale): UPDATE 2026-09-26 (read-only GitHub Actions read, no provider access): the nightly staging-tenancy.yml harness failed on every scheduled run checked (2026-09-21 to 2026-09-25) at its deployment-identity step: staging reported 0b858bb3a (the PR #3030 merge) while the run checked out newer main commits. Staging is not redeployed on pushes to main, so the SHA-bound harness cannot pass on a schedule until staging tracks main or is redeployed before each run. A failing main run now opens a pinned, assigned GitHub issue (label staging-tenancy-failure; branch claude/urgent-ledger-fixes-8dnh5c). The wider harness (CME and On Call writes, evidence, export, content; PR #3065) has not yet run on staging. Next action: owner decides whether staging should auto-deploy from main (Railway setting) or be redeployed before a dispatched run. PRIOR DETAIL: Staging migration parity is closed. Run SHA-bound tenancy evidence, transition the same candidate image from the offline tenancy profile to the authenticated auto-provider load profile, execute the staging soak, and rehearse rollback. Retain checkout/deployed SHA, latency, error, throttling, authentication, cleanup, and rollback evidence. Stop on unsafe data, identity mismatch, or an unowned rollback decision.",
       "source": "`docs/launch-operator-runbook.md`; `docs/audit/capacity-review.md`; PR #3087 review",
       "added": "2026-07-24"
     },
@@ -159,15 +159,6 @@
       "detail": "REVIEW 2026-09-25 (offline audit of current main; no provider access): No newly approved paid dispatch is needed. The weekly scheduled canary has run at least five times since 2026-08-18, and npm run eval:trend -- --case neuroleptic-side-effect-escalation reads downloaded artifacts offline (retention 30 days, so the original run is gone). Next action: one GitHub read of the retained artifacts (owner go-ahead, no spend); close if there is no repeat. PRIOR DETAIL: Run 32111839806 (canary pair 32100681177 -> 32111839806, otherwise green): strong generation took 20.2 s on neuroleptic-side-effect-escalation, flagged as a non-blocking latency advisory. Answer was still grounded via the source-backed extractive fallback. Watch on subsequent canaries; escalate only if it repeats or worsens. PARKED 2026-09-18: closing this needs a provider-backed eval-canary dispatch (roughly 1-2 US dollars) which is never automatic and needs explicit owner approval, and there is nothing to fix until a second sighting shows it is not a one-off. TO UNBLOCK: approve one canary pair and compare the neuroleptic-side-effect-escalation latency against the 20 s advisory.",
       "source": "docs/rag-improvement/HANDOVER.md packet table row S2, canary pair 32100681177 -> 32111839806",
       "added": "2026-08-18"
-    },
-    {
-      "id": "#8VAY97",
-      "priority": "P3",
-      "type": "task",
-      "summary": "The document_index_units retrieval path has no EXPLAIN baseline, and Phase 5 has no query-specific plan-flip evidence",
-      "detail": "REVIEW 2026-09-25 (offline audit of current main; no provider access): Still accurate: explain_retrieval_rpc accepts only four names and the _v2 functions are still in use. No measured regression, so P3. PRIOR DETAIL: Two Phase 5.1 deliverables are explicitly OPEN, not discharged. Re-graded P3 -> P2 versus the withdrawn request 2040d1fb, because that request understated the gap by claiming substitute coverage that does not exist. (A) NO EXPLAIN BASELINE FOR THE INDEX-UNITS PATH. public.explain_retrieval_rpc accepts exactly four names -- match_documents_for_query, match_document_chunks_text, match_document_lookup_chunks_text, match_document_table_facts_text -- and raises 22023 Unsupported retrieval RPC for anything else, proven against production for both match_document_chunks_text_v2 and match_document_index_units_hybrid_v2. For the first of those the v1 sibling match_document_chunks_text shares the owning table document_chunks and is a usable stand-in. For the second there is none: match_document_index_units_hybrid_v2 delegates to match_document_index_units_hybrid_scoped over document_index_units (supabase/schema.sql:8033-8054), and no supported RPC touches that table. document_index_units is one of the two section 1.2 outliers, so the outlier that most needed a baseline is the one that has none. (B) NO QUERY-SPECIFIC PLAN-FLIP EVIDENCE. explain_retrieval_rpc EXPLAINs `select * from public.<rpc>(...)`, so a PL/pgSQL body's inner plan is never exposed and every sample reports a single Function Scan with no index names. Plan section 5.1's 'record plan flips (seq scan -> index scan)' is therefore unanswerable through this instrument. The pg_stat_user_indexes read captured in Phase 5.1(c) is a WEAKER and DIFFERENT signal, not a substitute: idx_scan is cumulative across every workload touching the table and no before/after delta was captured around the samples, so it can prove an index is never chosen by anything but cannot prove that a given query changed plan. NEXT: one migration extending the explain_retrieval_rpc p_rpc branch list to the _v2 family (at minimum match_document_index_units_hybrid_v2 and match_document_chunks_text_v2), shipped in an approved window -- with D4 ON, merging it to main deploys it, so it needs the window and a green post-merge live-drift run. Then re-run npm run profile:retrieval --analyze to capture the missing baseline. For (B), consider whether an auto_explain-style capture is a better fit than widening the RPC. STOP: do not record the cumulative index-usage read as plan-flip evidence; that conflation is exactly what this row exists to prevent.",
-      "source": "Codex review of PR #2250 (P2, comment 3833062803 and 3833062807); docs/audit/live-drift-forensics-2026-08.md Phase 5 close-out 5.1(b); supabase/schema.sql:8033-8054",
-      "added": "2026-08-21"
     },
     {
       "id": "#J8SJQ9",
@@ -236,8 +227,8 @@
       "id": "#Z3GZ5P",
       "priority": "P2",
       "type": "task",
-      "summary": "DSM-5-TR specifier catalogue: 514 of 585 items still pending clinician review, and the 71 marked reviewed in PR #3143 name no clinician reviewer",
-      "detail": "UPDATE 2026-10-17: All 71 written disorder-specific specifier items and 18 universal specifiers are signed off by Psych Sift with SHA-256 content pins (including the updated Dissociative Identity Disorder possession-form specifier wording); 514 unwritten catalog placeholders remain. PRIOR DETAIL (restored 2026-10-09, an earlier update replaced it wholesale): UPDATE 2026-09-25 (offline traversal of data/specifiers-content.json; no provider access). Two corrections to this row's own headline, both reproducible from the committed file. FIRST: '71 source-verified' overstates the work. 57 of the 71 restate their own label, matching 'For <disorder>, <label> uses the stated threshold: <the label's own parenthesis>' — the Adjustment Disorders entry for 'Acute (less than 6 months)' resolves to 'uses the stated threshold: less than 6 months'. Only 14 carry content beyond the label, all in the ICD-11 trauma, dissociative, ARFID and personality material. Real coverage is 14 of 585, not 71. SECOND: neurodevelopmental, schizophrenia spectrum, bipolar, depressive and anxiety disorders hold 192 items and no definitions between them, so the commonest presentations are the least covered. SETTLED 2026-09-18 (owner instruction): the sign-off value is clinician-reviewed-approved, set only by a named clinician; the unit of work is one definition per specifier plus per-disorder exception notes; severity and remission for sexual dysfunctions and paraphilic disorders (41 of 164 undefined severity items) are out of scope. PR #3028 made the audit recognise clinician-reviewed-approved — under the previous exact-match test the first signed specifier would have gone unexamined. WORKLIST AND FIRST ENTRY, both on main from PR #2879: docs/specifier-definition-worklist-2026-09-18.md (A/B/C triage; Group A is 63 management-changing rows carrying only 17 distinct labels) and docs/specifier-entry-worksheet-with-catatonia.md (all nine disorders enumerated, every clinical statement blank). NEXT ACTION is clinician-only: write the four blanks in section 1 of the worksheet. No agent writes the clinical text.",
+      "summary": "DSM-5-TR specifier catalogue: 515 of 585 items await clinician review, including the reset DID possession-form item",
+      "detail": "PS-062 correction verified 2026-10-18: the owner reset the DID possession-form sign-off under docs/decisions/2026-10-17-agent-recorded-therapy-and-did-sign-offs-reset.md. The previous statement that all 71 written disorder-specific items were signed is superseded: 70 remain signed and one written DID item plus 514 unwritten placeholders await review (515 pending). The 18 universal specifiers remain separate. Preserve all earlier worklist and clinician-only acceptance requirements; no new clinical approval is supplied. PRIOR DETAIL retained as superseded historical context (its all-signed/514-pending prose is corrected above): UPDATE 2026-10-17: All 71 written disorder-specific specifier items and 18 universal specifiers are signed off by Psych Sift with SHA-256 content pins (including the updated Dissociative Identity Disorder possession-form specifier wording); 514 unwritten catalog placeholders remain. PRIOR DETAIL (restored 2026-10-09, an earlier update replaced it wholesale): UPDATE 2026-09-25 (offline traversal of data/specifiers-content.json; no provider access). Two corrections to this row's own headline, both reproducible from the committed file. FIRST: '71 source-verified' overstates the work. 57 of the 71 restate their own label, matching 'For <disorder>, <label> uses the stated threshold: <the label's own parenthesis>' — the Adjustment Disorders entry for 'Acute (less than 6 months)' resolves to 'uses the stated threshold: less than 6 months'. Only 14 carry content beyond the label, all in the ICD-11 trauma, dissociative, ARFID and personality material. Real coverage is 14 of 585, not 71. SECOND: neurodevelopmental, schizophrenia spectrum, bipolar, depressive and anxiety disorders hold 192 items and no definitions between them, so the commonest presentations are the least covered. SETTLED 2026-09-18 (owner instruction): the sign-off value is clinician-reviewed-approved, set only by a named clinician; the unit of work is one definition per specifier plus per-disorder exception notes; severity and remission for sexual dysfunctions and paraphilic disorders (41 of 164 undefined severity items) are out of scope. PR #3028 made the audit recognise clinician-reviewed-approved — under the previous exact-match test the first signed specifier would have gone unexamined. WORKLIST AND FIRST ENTRY, both on main from PR #2879: docs/specifier-definition-worklist-2026-09-18.md (A/B/C triage; Group A is 63 management-changing rows carrying only 17 distinct labels) and docs/specifier-entry-worksheet-with-catatonia.md (all nine disorders enumerated, every clinical statement blank). NEXT ACTION is clinician-only: write the four blanks in section 1 of the worksheet. No agent writes the clinical text.",
       "source": "PR #3143 review",
       "added": "2026-09-07"
     },
@@ -326,8 +317,8 @@
       "id": "#GJHKYC",
       "priority": "P1",
       "type": "task",
-      "summary": "Do NOT re-index until the worker has deployed the extraction fix, then re-index and run the canary pair around it",
-      "detail": "UPDATE 2026-09-26 (Railway connector read): the precondition is met. The production worker is running commit f7c9beeaa (deployment 0ac40fc7, SUCCESS 05:30 UTC) and then 2459df42 from 05:44 UTC; both descend from db7432a9b, the PR #2810 extraction fix, and from 103513f2d (PR #3040, unreadable-PDF refusal). Re-index and the canary pair can now start, but need a session with Supabase and OpenAI credentials; this one had neither. PRIOR DETAIL: OWNER DECISION 2026-09-25: re-index and the canary pair are APPROVED, conditional on first confirming the worker running in production includes the PR #2810 extraction fix. Not started: this session had no Supabase/OpenAI/Railway credentials and the Railway MCP was unreachable, so neither the deploy check nor the re-index could be run. PRIOR DETAIL: REVIEW 2026-09-25 (offline audit of current main; no provider access): Canonical re-index row. Absorbs closed #4WR2XZ (cause fixed by PR #2810, db7432a9b) and action 1 of closed #SCYQAE. 'Production still serving a708a95, pre-fix' is stale: db7432a9b is an ancestor of the 2026-09-22 app deploy 76bf29ffa, and later merges touching worker/** and src/lib/** (#2865, #2835, #3002) should have rebuilt the worker. Not verifiable offline, so step 1 (confirm the worker runs the fix) stays. PRIOR DETAIL: SEQUENCING GUARD, written because the obvious next action is wrong if taken today. The extraction fix merged to main as db7432a9b on 2026-09-16. Production was still serving a708a95093c7922163166b7bafc63afd6852bc69 immediately afterwards, which PREDATES the fix (verified via /api/health deploymentCommitSha, uptime 2754 s). RE-INDEXING BEFORE THE INGESTION WORKER CARRIES THE FIX RE-EXTRACTS WITH THE OLD CODE. That achieves nothing, spends provider budget on embeddings, churns the live clinical corpus and produces a false all-clear, because the re-indexed chunks would still carry interleaved table text. ORDER OF OPERATIONS: (1) confirm the worker service, not just the app service, is running a build that contains db7432a9b; the two are separate Railway services in project Database and both auto-deploy from main, so confirm the worker specifically. (2) Run Step 6 of scripts/operator-clozapine-retrieval-diagnosis.sql to get the per-document re-index worklist; it is read-only and its fingerprints were validated against real production text. (3) Capture an eval canary BASELINE before re-indexing. (4) Re-index the worklist documents. (5) Capture the canary POST run. Per AGENTS.md RAG ranking protection the before/after pair belongs around the RE-INDEX, not around the merge, because the merge cannot change any retrieval result until documents are re-ingested; PR #2810 said so explicitly and must not be treated as canary-cleared. (6) Only then expect the four clozapine eval cases to move, and note they may still not pass if the underlying RKPG document is itself wrong, which is its own P1 row. Re-indexing is provider-backed and mutates the live clinical corpus, so it needs explicit owner approval at the time, not standing approval from this session.",
+      "summary": "Library re-index is STOPPED by owner decision: do not start it (supersedes the 2026-09-25 conditional approval)",
+      "detail": "UPDATE 2026-10-20: OWNER DECISION - the library re-index is STOPPED. Do not start it and do not re-raise it; the owner treats the question as settled. This supersedes the 2026-09-25 conditional approval below (see docs/decisions/2026-10-17-library-reindex-stopped.md). Source: the owner's decision as relayed in the 17 Oct 2026 project handover, which lists the library re-index (stopped) among settled decisions; the owner's exact wording is to be confirmed in the pull request that records it. Any future re-index would need a new owner decision, a spend cap and the live canary pair. PRIOR DETAIL: UPDATE 2026-09-26 (Railway connector read): the precondition is met. The production worker is running commit f7c9beeaa (deployment 0ac40fc7, SUCCESS 05:30 UTC) and then 2459df42 from 05:44 UTC; both descend from db7432a9b, the PR #2810 extraction fix, and from 103513f2d (PR #3040, unreadable-PDF refusal). Re-index and the canary pair can now start, but need a session with Supabase and OpenAI credentials; this one had neither. PRIOR DETAIL: OWNER DECISION 2026-09-25: re-index and the canary pair are APPROVED, conditional on first confirming the worker running in production includes the PR #2810 extraction fix. Not started: this session had no Supabase/OpenAI/Railway credentials and the Railway MCP was unreachable, so neither the deploy check nor the re-index could be run. PRIOR DETAIL: REVIEW 2026-09-25 (offline audit of current main; no provider access): Canonical re-index row. Absorbs closed #4WR2XZ (cause fixed by PR #2810, db7432a9b) and action 1 of closed #SCYQAE. 'Production still serving a708a95, pre-fix' is stale: db7432a9b is an ancestor of the 2026-09-22 app deploy 76bf29ffa, and later merges touching worker/** and src/lib/** (#2865, #2835, #3002) should have rebuilt the worker. Not verifiable offline, so step 1 (confirm the worker runs the fix) stays. PRIOR DETAIL: SEQUENCING GUARD, written because the obvious next action is wrong if taken today. The extraction fix merged to main as db7432a9b on 2026-09-16. Production was still serving a708a95093c7922163166b7bafc63afd6852bc69 immediately afterwards, which PREDATES the fix (verified via /api/health deploymentCommitSha, uptime 2754 s). RE-INDEXING BEFORE THE INGESTION WORKER CARRIES THE FIX RE-EXTRACTS WITH THE OLD CODE. That achieves nothing, spends provider budget on embeddings, churns the live clinical corpus and produces a false all-clear, because the re-indexed chunks would still carry interleaved table text. ORDER OF OPERATIONS: (1) confirm the worker service, not just the app service, is running a build that contains db7432a9b; the two are separate Railway services in project Database and both auto-deploy from main, so confirm the worker specifically. (2) Run Step 6 of scripts/operator-clozapine-retrieval-diagnosis.sql to get the per-document re-index worklist; it is read-only and its fingerprints were validated against real production text. (3) Capture an eval canary BASELINE before re-indexing. (4) Re-index the worklist documents. (5) Capture the canary POST run. Per AGENTS.md RAG ranking protection the before/after pair belongs around the RE-INDEX, not around the merge, because the merge cannot change any retrieval result until documents are re-ingested; PR #2810 said so explicitly and must not be treated as canary-cleared. (6) Only then expect the four clozapine eval cases to move, and note they may still not pass if the underlying RKPG document is itself wrong, which is its own P1 row. Re-indexing is provider-backed and mutates the live clinical corpus, so it needs explicit owner approval at the time, not standing approval from this session.",
       "source": "Claude Code session 2026-09-16 (session_01Fj3ue1Dv89wSgzZWVQ6v3L), deployment state verified against production /api/health after merging db7432a9b",
       "added": "2026-09-16"
     },
@@ -390,7 +381,7 @@
       "priority": "P3",
       "type": "issue",
       "summary": "site_content_registry_baseline on live holds only the 281 frozen baselines, so a record published after 2026-08-24 has no baseline for SQL field merging",
-      "detail": "REVIEW 2026-09-25 (offline audit of current main; no provider access): No forward migration for site_content_registry_baseline exists after 20260824122000. Matters only once #HTZPQ8 and #ZPHK2F clear, so P3. Under #81A3YJ a seed change here would be invisible to check:drift after the first '--', so do #81A3YJ first. PRIOR DETAIL: site_content_registry_baseline(kind, slug) is an immutable SQL lookup whose blob was frozen into migration 20260824122000 with 281 entries. site_content_registry_source_render calls it for every registry record it renders, so a service or form published after the freeze resolves to a null baseline and loses the forced-field and null merging the frozen records get. PR #2814 tried to fix this by regenerating the applied migration, which cannot reach live and was reverted on 2026-09-16. THE CORRECT MECHANISM is a NEW forward migration carrying create or replace function public.site_content_registry_baseline with the current catalogue blob: the Supabase integration applies new versions, so it reaches live, and it changes only an immutable lookup body with no data write and no lock. It must merge inside an approved Supabase window per AGENTS.md, and it is only worth doing when the publication pipeline is actually going to publish post-freeze records, so it is coupled to the P1 row about the live catalogue still serving the 2026-08-24 freeze.",
+      "detail": "LIVE CHECK 2026-10-21 (docs/audit/2026-10-21-database-performance-evidence.md): one release (the freeze) and zero publications since 2026-08-24, so no record lacks a baseline yet. Conditions unchanged: do #81A3YJ first and ship the forward migration only when #HTZPQ8 is about to publish post-freeze records.",
       "source": "Session 2026-09-16 repairing the epoch-zero freeze regression from PR #2814",
       "added": "2026-09-16"
     },
@@ -489,7 +480,7 @@
       "priority": "P3",
       "type": "issue",
       "summary": "site_content_canonical_json is recursive plpgsql, so release activation will slow the same way the read path did once a release exceeds a couple of thousand records",
-      "detail": "REVIEW 2026-09-25 (offline audit of current main; no provider access): The row's own action is 'nothing yet', so P3. site_content_canonical_json is untouched. PRIOR DETAIL: READ FROM THE SQL ON 2026-09-16, NOT MEASURED. site_content_canonical_json (supabase/schema.sql:12746) is a recursive plpgsql function: one invocation per JSON node, and a string_agg subquery over jsonb_each or jsonb_array_elements at every container. It defines EVERY fingerprint in the site-content control plane — release digest, contentHash, publicationVersion, governance and lineage hashes, plan and receipt identities — and is reimplemented in JS and pinned by tests/site-content-p03-baseline.test.ts, so it cannot be rewritten without invalidating stored digests across the live database. Measured proxy for its cost: the 843-record epoch-zero freeze canonicalises to 9,522,923 bytes across 164,820 JSON nodes (55,103 containers), i.e. ~165k plpgsql invocations and ~55k planned aggregate subqueries per pass, and two such passes per HTTP request cost about four seconds against live — see docs/audit/2026-09-16-catalogue-read-latency.md. The read path is being fixed by removing the calls. The WRITE path cannot be: site_content_dynamic_state_digest, site_content_release_digest, stage_site_content_sync_event, activate_site_content_release and rollback_site_content_release all canonicalise the full release by design and must keep doing so. Today that is tolerable because activation is rare and operator-driven. It scales linearly in node count, so a release of 2,000+ records makes activation slow in exactly the same way, and an activation that exceeds its statement timeout fails a publication rather than a page view. WHAT TO DO: nothing yet — this is a recorded scaling limit, not a defect. BEFORE the catalogue grows materially past the freeze, time one activation against a realistic release on a local Postgres (npm run check:site-content-control-plane already replays the control plane in Docker) and record the node-count-to-seconds curve, so the ceiling is known before an operator hits it mid-publication. DO NOT rewrite site_content_canonical_json to a set-based or C-backed equivalent as a performance fix: any byte-level difference changes every stored fingerprint, and a C extension cannot be installed by migration on Supabase.",
+      "detail": "CURVE RECORDED 2026-10-21 (docs/audit/2026-10-21-database-performance-evidence.md), local PostgreSQL 16, per canonicalisation pass: 843 records 1.3 s, 1,686 5.2 s, 3,372 8.2 s, 6,744 14.7 s; live is roughly 1.5 times slower and activation runs at least two passes. service_role statement timeout is 15 min, so the caller's request timeout is the ceiling (about 20 to 25 s at 3,000 records). Re-measure before a release passes about 2,000 records. Still do not rewrite the function.",
       "source": "docs/audit/2026-09-16-catalogue-read-latency.md; Claude Code session 2026-09-16 (session_01GJHMbC4s2S2n8aChAxVF1D), catalogue read-latency investigation",
       "added": "2026-09-16"
     },
@@ -498,7 +489,7 @@
       "priority": "P2",
       "type": "issue",
       "summary": "Disaster recovery has never been rehearsed at the data layer — only the schema replay has been tested",
-      "detail": "Run one real restore-to-a-new-project drill and record the wall-clock time and what was lost. Why: docs/disaster-recovery-runbook.md states plainly that only the schema layer was rehearsed (2026-07-07, ~19s local container replay) and that the platform restore plus golden retrieval eval has never been executed — so 'we have backups' is currently an untested claim on the live clinical corpus. Distinct from #1K6T35, which is the accepted ~24h recovery-point decision, not whether a restore works at all. Owner: user + operator (provider-backed). Confidence: high — the runbook says so itself. Depends on: #1K6T35 context.",
+      "detail": "UPDATE 2026-10-18: a step-by-step, timed, owner-approved drill (restore to a new project, Storage copy, count comparison, cost and stop conditions) is drafted in docs/operator-rehearsal-plan.md step 2; it has not run. PRIOR DETAIL: Run one real restore-to-a-new-project drill and record the wall-clock time and what was lost. Why: docs/disaster-recovery-runbook.md states plainly that only the schema layer was rehearsed (2026-07-07, ~19s local container replay) and that the platform restore plus golden retrieval eval has never been executed — so 'we have backups' is currently an untested claim on the live clinical corpus. Distinct from #1K6T35, which is the accepted ~24h recovery-point decision, not whether a restore works at all. Owner: user + operator (provider-backed). Confidence: high — the runbook says so itself. Depends on: #1K6T35 context.",
       "source": "session 2026-09-20 /ledger sweep — nine-agent repo maturity review",
       "added": "2026-09-20"
     },
@@ -557,15 +548,6 @@
       "added": "2026-09-20"
     },
     {
-      "id": "#VHW8K9",
-      "priority": "P3",
-      "type": "issue",
-      "summary": "Clinical KB: FK / unused indexes only with evidence (no batch-drop)",
-      "detail": "Index hygiene deferred; evidence-gated only. See docs/supabase-remediation-closeout-notes.md §1.4 (PR #2959).",
-      "source": "PR #2959 docs closeout review 2026-09-21 — queue deferred security/DB work into canonical ledger",
-      "added": "2026-09-21"
-    },
-    {
       "id": "#MSJT12",
       "priority": "P1",
       "type": "issue",
@@ -579,7 +561,7 @@
       "priority": "P1",
       "type": "task",
       "summary": "CME and On Call have no two-user staging isolation proof; the cross-tenant harness covers documents/search/answer only (audit F17)",
-      "detail": "UPDATE 2026-10-06: Two-user CME/On Call write probe offline test suite tests/cross-tenant-write-probe.test.ts fully passing (9/9 tests). Owner authorized live staging execution via staging-tenancy.yml workflow dispatch.",
+      "detail": "UPDATE 2026-10-18 (GitHub Actions run read reported by the coordinating session; no provider access from this branch): the nightly staging-tenancy.yml workflow shows success, but its harness step actually fails, because continue-on-error applies on schedule runs. Run 39059127896 on 2026-10-17 logged 'GET /api/on-call/services returned 503'. So CME and On Call two-user isolation is still unproven on staging, and stays unproven until staging tracks main or is redeployed to the run's SHA (#057). Next action: deploy one exact candidate to staging and dispatch the workflow from that SHA (a dispatched run fails loudly), per docs/operator-rehearsal-plan.md step 3a. PRIOR DETAIL: UPDATE 2026-10-06: Two-user CME/On Call write probe offline test suite tests/cross-tenant-write-probe.test.ts fully passing (9/9 tests). Owner authorized live staging execution via staging-tenancy.yml workflow dispatch.",
       "source": "Ultimate Audit Master Report 2026-09-25 (owner-supplied .docx), reviewed offline against main 955996146 in session claude/review-assessment-4s1w86; no provider access",
       "added": "2026-09-25"
     },
@@ -589,15 +571,6 @@
       "type": "task",
       "summary": "Clinical eval battery misses high-risk scenarios: no hepatic, older-adult, interaction or false-premise cases (audit F14 + F15)",
       "detail": "OWNER DECISION 2026-09-25: approved. Engineering drafts the 20 cases (question, key facts a correct answer must contain, facts it must not state, expected source); the owner reviews and corrects them before any are added to the harness. A first draft of all 20 was delivered to the owner on 2026-09-25 as a Word document (not committed: clinical content awaiting review). Verified offline by topic count over src/lib/rag/rag-eval-cases.ts (101 cases): hepatic 0, older adult/elderly 0, drug interaction 0, unsafe/false premise 0, Mental Health Act 1, QTc 2, pregnancy 3, paediatric 2. Owner recommendation (2026-09-25): start with ~20 clinician-reviewed cases (3 pregnancy/breastfeeding, 3 renal/hepatic, 2 older adults, 2 QTc, 2 lithium/clozapine monitoring, 2 overdose, 2 interactions, 2 MHA, 2 false-premise where the right answer corrects the premise); engineering drafts expected key facts + source, owner reviews. Adding golden cases touches the eval harness (RAG-protected surface): flag before editing, and live canary dispatches need approval.",
-      "source": "Ultimate Audit Master Report 2026-09-25 (owner-supplied .docx), reviewed offline against main 955996146 in session claude/review-assessment-4s1w86; no provider access",
-      "added": "2026-09-25"
-    },
-    {
-      "id": "#3CW29T",
-      "priority": "P3",
-      "type": "rec",
-      "summary": "Triage Supabase unindexed-FK advisor notices against realistic workload before adding indexes (audit F23)",
-      "detail": "Audit saw ~48 unindexed-FK notices; some are covered by composite indexes and CME/On Call volumes are tiny. Do not fix mechanically: use realistic synthetic data and EXPLAIN ANALYZE first. Any index is a migration (merge = production deploy). Not verified offline.",
       "source": "Ultimate Audit Master Report 2026-09-25 (owner-supplied .docx), reviewed offline against main 955996146 in session claude/review-assessment-4s1w86; no provider access",
       "added": "2026-09-25"
     },
@@ -624,7 +597,7 @@
       "priority": "P2",
       "type": "rec",
       "summary": "Extractor/parser/OCR/table-strategy/chunker version is not persisted per document, so a parser defect cannot be traced to affected documents (audit F04)",
-      "detail": "Verified offline: only a coarse indexing_version ('rag-deep-memory-v1') is stored; no extractor/OCR/table-strategy/chunker provenance exists in schema or worker. The clozapine interleaving defect (#GJHKYC) had no deterministic way to list affected documents. Next action: persist per-document extraction provenance and support version-based invalidation/re-extraction. Touches text producers (extract_pdf_assets.py, chunking) and likely a migration: RAG-protected and Supabase-deploy rules apply. Not a prerequisite for the #GJHKYC re-index.",
+      "detail": "UPDATE 2026-10-21: documents.metadata.extraction_provenance now also records the chunker versions of the committed chunks and the OCR engine (Tesseract) versions and count of OCR'd pages (worker/extraction-provenance.ts), on top of the reader version, PyMuPDF version and table strategy recorded since PR #3632. npm run extraction:provenance (read-only; needs owner confirmation before a live run) lists documents by reader, chunker or OCR version, and npm run reindex:rollback -- --chunker-version already scopes a rollback. No migration needed. Remaining: documents indexed before these keys existed report 'not recorded' until their next index, and re-extraction by version is still an operator step. Close when the owner accepts that. PRIOR DETAIL: Verified offline: only a coarse indexing_version ('rag-deep-memory-v1') is stored; no extractor/OCR/table-strategy/chunker provenance exists in schema or worker.",
       "source": "Ultimate Audit Master Report 2026-09-25 (owner-supplied .docx), reviewed offline against main 955996146 in session claude/review-assessment-4s1w86; no provider access",
       "added": "2026-09-25"
     },
@@ -687,7 +660,7 @@
       "priority": "P2",
       "type": "issue",
       "summary": "Youth self-harm and suicide services queries rarely show Lifeline, Suicide Call Back Service, 13YARN or Kids Helpline near the top",
-      "detail": "Lifeline WA boosted in PR #3157; national crisis lines remain unpinned for generic youth queries.",
+      "detail": "Lifeline WA boosted in PR #3157; national crisis lines remain unpinned for generic youth queries. Owner ruling 18 Oct 2026 00:10 AWST: do NOT pin national youth crisis lines (Lifeline WA, Suicide Call Back Service, Kids Helpline, 13YARN) for CAMHS crisis searches yet. Pinning waits for owner approval of the exact list; any pinning must exclude services that are closed, planned, superseded or marked temporarily unavailable, and keep CAMHS Crisis Connect and MHERL first. PR #3617 dropped its unapproved pinning attempt and cancelled its done request.",
       "source": "PR #3157 review",
       "added": "2026-09-25"
     },
@@ -813,7 +786,7 @@
       "priority": "P2",
       "type": "issue",
       "summary": "Precompute GIN search_tsv on site_content_release_records for hybrid retrieval",
-      "detail": "In Supabase RPC match_document_chunks_hybrid_v3 (supabase/migrations/20260830122000_add_corpus_scoped_retrieval_v3.sql), full-text matching against site_content_release_records dynamically runs to_tsvector on each row during queries. Storing a generated or trigger-maintained search_tsv tsvector column with a GIN index on public.site_content_release_records accelerates hybrid retrieval without dynamic DB re-vectorization.",
+      "detail": "EVIDENCE 2026-10-21 (docs/audit/2026-10-21-database-performance-evidence.md): live active release is the 843-record freeze and 0 records pass the retrieval filter, so no per-row to_tsvector runs today and the change gains nothing yet. Locally, with all 843 eligible, per-row tsvector costs about 1.5 s per search versus about 12 ms with a stored GIN-indexed column (about 0.5 s at the 276 records planned for first publication). NEXT: ship the stored column, GIN index and RPC change before or with the first approved publication batch under #HTZPQ8. Migration yes, RAG impact line and a live eval-canary before and after pair required (protected retrieval RPC change, even though ranking values should be identical).",
       "source": "session 2026-10-14 performance audit follow-up",
       "added": "2026-10-14"
     },
@@ -890,15 +863,6 @@
       "added": "2026-10-13"
     },
     {
-      "id": "#EG02B7",
-      "priority": "P2",
-      "type": "task",
-      "summary": "Reindex reaper: enqueue storage cleanup at generation commit time (follow-up to #RP00FZ)",
-      "detail": "The reaper script builds storage cleanup jobs only on its gated apply path, so ordinary generation commits still schedule no cleanup for superseded storage objects. Needs a reviewed forward migration (never an edit to an existing one) before closing. Migration merges deploy to production and need the owner's explicit permission.",
-      "source": "PR #3570 review; scripts/cleanup-abandoned-reindex-generations.ts; supabase/migrations/20260702000000_commit_generation_preserve_legacy_artifacts.sql",
-      "added": "2026-10-16"
-    },
-    {
       "id": "#54N8ZN",
       "priority": "P2",
       "type": "task",
@@ -912,7 +876,7 @@
       "priority": "P2",
       "type": "task",
       "summary": "Hostile-document ingestion: run the upload-to-answer end-to-end matrix (follow-up to #F3SGCM)",
-      "detail": "Seven-class helper coverage exists in tests/hostile-document-ingestion-matrix.test.ts, but it uses an extraction mock and fabricated search results, so no uploaded hostile document is checked against real ingestion, retrieval and answer paths. Close only when each class runs end to end.",
+      "detail": "UPDATE 2026-10-21: tests/hostile-document-real-extractor.test.ts now runs generated hostile PDFs (password-protected, truncated, not-a-PDF, blank page, prompt-injected with forged evidence fences and hidden white text) through upload admission, the REAL Python reader, the real chunker, the evidence ranker and the fenced answer source block, offline (runs in the CI coverage job, which installs PyMuPDF). Still open: the live leg (Storage upload, worker ingestion with embeddings, vector retrieval, generated answer) is not run anywhere. Next action: run it on staging once the staging rebuild (#3113) is done and the owner lifts the re-index freeze, with the owner's spend approval for embeddings and answers. PRIOR DETAIL: Seven-class helper coverage exists in tests/hostile-document-ingestion-matrix.test.ts, but it uses an extraction mock and fabricated search results, so no uploaded hostile document is checked against real ingestion, retrieval and answer paths. Close only when each class runs end to end.",
       "source": "PR #3570 review; tests/hostile-document-ingestion-matrix.test.ts",
       "added": "2026-10-16"
     },
@@ -935,47 +899,20 @@
       "added": "2026-10-17"
     },
     {
-      "id": "#GYR7Q3",
-      "priority": "P3",
-      "type": "task",
-      "summary": "Ledger tooling: add a reopen action that moves an archived issue back to the open table with its original ID and ULID",
-      "detail": "There is no sanctioned reopen in scripts/ledger-inbox.mjs (actions: add, done, update, amend-outcome, queue, cancel). Reopening #WFYDV6 by owner decision on 17 Oct 2026 therefore created a new open P1 row and amended the archived row, splitting the issue's history across two identities. Add a reopen request kind that the reconciler applies by moving the archive row back to the open table with its original ID and ULID, then use it to fold the new P1 row back into #WFYDV6.",
-      "source": "PR #3616 review (chatgpt-codex-connector), 17 Oct 2026",
-      "added": "2026-10-17"
-    },
-    {
-      "id": "#YJXRS3",
-      "priority": "P3",
-      "type": "task",
-      "summary": "Remove remaining PR 3538 leftovers after 13 Nov 2026 (follow-up to #08216B)",
-      "detail": "After the 30-day dead-code candidate window (2026-11-13), delete or wire the remaining PR 3538 leftovers flagged in #08216B: /api/proxy route (remove or restrict to an explicit allowlist), scripts/recalculate-answer-support-labels.ts (replace regex chunk-tag stripping with shared parser or delete), src/app/mockups/development/* pages, and unwired safe-number editor / attendance roster / QR helper / note editor privacy review.",
-      "source": "PR #3609 review; follow-up to #08216B",
-      "added": "2026-10-17"
-    },
-    {
       "id": "#8Y9169",
       "priority": "P3",
       "type": "task",
       "summary": "Remove the remaining PR 3538 leftovers after 13 Nov 2026 (split from #08216B, which closed only the calculator fixes)",
-      "detail": "#08216B was archived on 17 Oct with an outcome covering only the clinical-math calculators. Still open: src/app/api/proxy/route.ts (nothing calls it), scripts/recalculate-answer-support-labels.ts (no production caller; reassess it as a deletion candidate) and its test (covered by the normal test suite; do not treat it as unused), and the developer tool pages under src/app/mockups/development (unreachable duplicates of /admin/developer-hub) - remove after the 30-day dead-code window (13 Nov 2026) via npm run check:dead-code-candidate. The safe-number editor remains to be assessed for wiring or removal. ClinicalNoteEditor is already wired into the on-call handover shift scratchpad with persistence callbacks (handover-page.tsx); any privacy review should address that existing de-identified use rather than precede it. The attendance roster and QR check-in helper are wired through organise-sheets.tsx and teaching-code-sheet.tsx. The 16 Oct clinical-math calculator changes (IBW guidance, lithium boundaries, dose rounding) need clinician verification before any clinical use.",
+      "detail": "#08216B was archived on 17 Oct with an outcome covering only the clinical-math calculators. Still open: src/app/api/proxy/route.ts (nothing calls it) and scripts/recalculate-answer-support-labels.ts (no production caller; reassess it as a deletion candidate) with its test (covered by the normal test suite; do not treat it as unused) - remove after the 30-day dead-code window (13 Nov 2026) via npm run check:dead-code-candidate. The developer tool pages under src/app/mockups/development are NOT dead code: /admin/developer-hub links to /mockups/development/clinical-answer-failures and the owner panel (owner-today-section.tsx) links to /mockups/development/clinical-sign-off, so do not delete them; review any consolidation into /admin/developer-hub separately. The safe-number editor remains to be assessed for wiring or removal. ClinicalNoteEditor is already wired into the on-call handover shift scratchpad with persistence callbacks (handover-page.tsx); any privacy review should address that existing de-identified use rather than precede it. The attendance roster and QR check-in helper are wired through organise-sheets.tsx and teaching-code-sheet.tsx. The 16 Oct clinical-math calculator changes (IBW guidance, lithium boundaries, dose rounding) need clinician verification before any clinical use; the panel is hidden from /calculators until then (#3620).",
       "source": "PR #3609 review (gitar-bot, chatgpt-codex-connector), 17 Oct 2026",
-      "added": "2026-10-17"
-    },
-    {
-      "id": "#Z12CBC",
-      "priority": "P1",
-      "type": "issue",
-      "summary": "Reopened #WFYDV6: unwired WA MHA Form 6A/6B print component carries unverified statutory text; keep unwired until legal and clinical sign-off",
-      "detail": "Owner decision 17 Oct 2026 21:37 AWST: #WFYDV6 must stay open; PR #3609 archived it without the required sign-off. src/components/forms/wa-mha-form-print.tsx (PR #3538) was reworded on 16 Oct (Form 6B now a report to the Chief Psychiatrist; Non-Statutory Study Layout header), but section lists, the 7-day pre-expiry examination and copy recipients remain unverified and no legal or clinical sign-off is recorded. Nothing imports or renders it; it must stay unwired. Delete it once the 30-day dead-code window passes (after 13 Nov 2026) unless legal and clinical sign-off is obtained first.",
-      "source": "PR 3538 review, 15 Oct 2026; owner decision on PR #3609, 17 Oct 2026",
       "added": "2026-10-17"
     },
     {
       "id": "#WWTRM5",
       "priority": "P2",
       "type": "issue",
-      "summary": "Doc/instruction drift items left open when #WMGPSG was archived: ledger arrow, cloud-profile worktree rule, Caring Contacts decision, renewals wording",
-      "detail": "#WMGPSG was archived on 17 Oct with an outcome covering items 3 and 6 and the encoding repair in item 1 only. Still open: (1) docs/outstanding-issues.md:15 corrupted arrow (canonical ledger; fix only through reconciliation). (2) .claude/cloud-profile/skills/prompt/references/coding-workflow.md:21 pre-hardening worktree rule (owner decision: owned versus vendored). (4) docs/decisions/2026-09-26-remove-ward-flow-and-caring-contacts.md says Caring Contacts was removed but src/lib/caring-contacts/clock.ts is live with MHA, First Nations and On Call importers; add a dated superseding decision, do not delete the file. (5) Admin renewals page test dropped its checked-wording assertion while admin-renewed-sheet still forbids the word; record the decision.",
+      "summary": "Doc/instruction drift items left open when #WMGPSG was archived: ledger arrow and Caring Contacts decision",
+      "detail": "#WMGPSG was archived on 17 Oct with an outcome covering items 3 and 6 and the encoding repair in item 1 only. Still open: (1) docs/outstanding-issues.md:15 corrupted arrow (canonical ledger; fix only through reconciliation). (4) docs/decisions/2026-09-26-remove-ward-flow-and-caring-contacts.md says Caring Contacts was removed but src/lib/caring-contacts/clock.ts is live with MHA, First Nations and On Call importers; add a dated superseding decision, do not delete the file. Dropped on 18 Oct after checking the code: item 2 (.claude/cloud-profile/skills/prompt/references/coding-workflow.md:21 describes continuing same-task work in the supplied checkout, not a pre-hardening worktree rule) and item 5 (tests/admin-renewals-page.dom.test.tsx and tests/admin-renewals.test.ts still assert the 'Not checked with issuers' wording; admin-renewed-sheet separately forbids 'checked').",
       "source": "PR #3609 review (gitar-bot, chatgpt-codex-connector), 17 Oct 2026",
       "added": "2026-10-17"
     },
@@ -989,30 +926,120 @@
       "added": "2026-10-17"
     },
     {
-      "id": "#BDFFYF",
-      "priority": "P1",
+      "id": "#SQ2FG9",
+      "priority": "P3",
       "type": "issue",
-      "summary": "WA MHA Form 6A/6B print component: obtain legal/clinical sign-off or remove after 13 Nov 2026 (follow-up to #WFYDV6)",
-      "detail": "PR #3573 replaced official Department of Health branding with non-statutory study headers and corrected Form 6B report wording in src/components/forms/wa-mha-form-print.tsx, but the unverified statutory section lists, 7-day pre-expiry examination timing, and copy recipients still require either verified WA MHA 2014 legal/clinical sign-off or component removal after the 30-day dead-code window on 2026-11-13.",
-      "source": "PR #3609 review; follow-up to #WFYDV6; src/components/forms/wa-mha-form-print.tsx",
-      "added": "2026-10-17"
+      "summary": "Add a rights and licence field to the source register",
+      "detail": "Record publisher licence or permission status per source so public display and AI use can be checked. Finding R-07.",
+      "source": "Regulatory readiness audit 2026-10-20 (/mnt/project-files/reviews/2026-10-20-regulatory-launch-readiness.md)",
+      "added": "2026-10-20"
     },
     {
-      "id": "#GKAEZS",
+      "id": "#TBTNGB",
+      "priority": "P2",
+      "type": "issue",
+      "summary": "Lighthouse budget grades and refreshes from a single sample per route, so slow runners fail unrelated PRs",
+      "detail": "On 21 Oct 2026 a slow-runner window (~15:00Z) failed Lighthouse on #3749 (server-only) and #3752 (CSS-only); all routes' TBT rose together and #3749 passed on rerun (desktop search 956 ms vs 964 ms baseline). The dispatch refresh (run 39625188079, artifact lighthouse-baseline-refresh-39625188079, main 8c03823) is also one sample: desktop-root 1584 ms vs ~935-955 ms typical, so it was not committed. Proposal: take the median of three graded samples per route in scripts/run-lighthouse-budget.mjs for both grading and --update refresh, keeping tolerances unchanged and the two-confirmation rule for breaches.",
+      "source": "Main CI and test reliability thread, 21 Oct 2026",
+      "added": "2026-10-21"
+    },
+    {
+      "id": "#PYWRTX",
       "priority": "P3",
       "type": "task",
-      "summary": "Audit and remove older calculator mockups after 30-day window (audit M5-2, follow-up to #1WAA0Z)",
-      "detail": "Follow-up to #1WAA0Z (audit M5-2): audit older calculator mockups alongside the 2026-10-14 dead-code candidate review window (after 2026-11-13) and remove superseded mockup files once eligible.",
-      "source": "PR #3609 review; follow-up to #1WAA0Z; docs/audit/2026-10-12-repo-audit.md (M5-2)",
-      "added": "2026-10-17"
+      "summary": "registered-public-answer-options.ts has no test; its planned tests never landed",
+      "detail": "Audit 2026-10-20 (DOC-18): src/lib/registered-public-answer-options.ts (the registered public answer, no document filter path) landed on main but no file in tests/ imports it. The 15 Oct evidence inventory listed tests/registered-public-answer-no-filter.test.ts, tests/rag-no-filter-published-original-context.test.ts, tests/rag-nhmrc-delivery.test.ts, tests/answer-section-projector.test.ts and the fixture tests/fixtures/nhmrc-response18-consumer.json, but none was ever committed (the originals depended on a private real capture). Next action: write a synthetic-fixture test for registered-public-answer-options.ts. Answer path: check the RAG protection list before editing.",
+      "source": "RAG and ingestion audit 2026-10-20, finding DOC-18; docs/audit/ingestion-rag-2026-10-15/rag-evidence-inventory.json repositoryLandingCorrection",
+      "added": "2026-10-20"
     },
     {
-      "id": "#WWV98H",
+      "id": "#8P31MT",
+      "priority": "P1",
+      "type": "task",
+      "summary": "Owner GitHub settings from the 20 Oct change control audit: delete the repository copy of SUPABASE_SERVICE_ROLE_KEY, and narrow Grok Bot's token",
+      "detail": "The CI boot smoke no longer reads any secret (audit CC-05), so the repository copy of SUPABASE_SERVICE_ROLE_KEY can be deleted once the copies in production-secrets and Database / production are confirmed. Grok Bot's personal token should lose Workflows, Administration and Actions write (CC-03). Railway wait-for-CI is #HYSWAF. Report: /mnt/project-files/reviews/2026-10-20-change-control-audit.md (project files, not in the repo).",
+      "source": "docs/decisions/2026-10-20-database-prs-merge-by-hand.md",
+      "added": "2026-10-20"
+    },
+    {
+      "id": "#XJ3N16",
+      "priority": "P2",
+      "type": "issue",
+      "summary": "Privacy page: complaints, access, automated decision statement (APP 1.7-1.9 from 10 Dec 2026) and overseas disclosure",
+      "detail": "Wording waits for the privacy adviser's answers (question list 6c in the audit report). Findings R-08, R-20.",
+      "source": "Regulatory readiness audit 2026-10-20 (/mnt/project-files/reviews/2026-10-20-regulatory-launch-readiness.md)",
+      "added": "2026-10-20"
+    },
+    {
+      "id": "#TXVBAZ",
+      "priority": "P2",
+      "type": "issue",
+      "summary": "Answer limb (d)/(e) gaps: treatment-decision pull and reasoning the clinician cannot see, in protected answer code",
+      "detail": "Amended TGA exemption limbs (d) and (e) from 1 Nov 2026. Fix sits in protected RAG/answer files: needs owner's named yes, RAG impact line and before/after eval canary (about US$1-2). Canary blocked until OpenAI quota restored (audit 9 PB-01). Findings R-04, R-14.",
+      "source": "Regulatory readiness audit 2026-10-20 (/mnt/project-files/reviews/2026-10-20-regulatory-launch-readiness.md)",
+      "added": "2026-10-20"
+    },
+    {
+      "id": "#HGEC4B",
+      "priority": "P2",
+      "type": "issue",
+      "summary": "Remove third-party publisher documents (BMJ Best Practice, WA Health, DSM) from the public corpus",
+      "detail": "Migration 20260706120000 made all indexed documents public. Narrowing public_corpus is a live database change needing the owner's named yes for that specific change; await counsel's answer on licences first. Findings R-05, R-06.",
+      "source": "Regulatory readiness audit 2026-10-20 (/mnt/project-files/reviews/2026-10-20-regulatory-launch-readiness.md)",
+      "added": "2026-10-20"
+    },
+    {
+      "id": "#1RVGZF",
+      "priority": "P1",
+      "type": "issue",
+      "summary": "Build sign-in gate for Answer, medication patient details, therapy ranking, questionnaire scoring and original PDFs before 1 Nov 2026",
+      "detail": "Owner decision 2026-10-20 (docs/decisions/2026-10-20-clinical-decision-tools-need-sign-in.md). Mockup awaits owner 'build'. Server-side refusal on answer, clinical-ask and signed-url routes plus UI gates. Findings R-01, R-03, R-05, R-13, R-15. PR-4 stays unmet until built.",
+      "source": "Regulatory readiness audit 2026-10-20 (/mnt/project-files/reviews/2026-10-20-regulatory-launch-readiness.md)",
+      "added": "2026-10-20"
+    },
+    {
+      "id": "#F8Q9KK",
+      "priority": "P3",
+      "type": "task",
+      "summary": "Move GH_TOKEN into the main-only production-secrets environment and stop putting it in a git push URL",
+      "detail": "Audit CC-12, 2026-10-20: pr-batch-runner.yml and ranking-snapshot-refresh.yml read the owner's personal GH_TOKEN as a repository secret, and ranking-snapshot-refresh.yml puts it in the git push URL. Add environment: production-secrets to both jobs and push through gh auth setup-git, then the owner moves the secret. Not done in the audit fix PR because this session's automated safety check refused the edit.",
+      "source": "docs/decisions/2026-10-20-database-prs-merge-by-hand.md",
+      "added": "2026-10-20"
+    },
+    {
+      "id": "#NM9S1V",
       "priority": "P3",
       "type": "issue",
-      "summary": "Complete remaining doc/decision drift items from #WMGPSG",
-      "detail": "Follow-up to #WMGPSG for the remaining documentation and decision-record items: (1) add a superseding decision next to docs/decisions/2026-09-26-remove-ward-flow-and-caring-contacts.md covering live src/lib/caring-contacts/clock.ts, (2) record the admin renewals wording decision, (3) document the cloud-profile worktree rule, and (4) replace the mojibake arrow on docs/outstanding-issues.md:15 during a canonical ledger header maintenance pass.",
-      "source": "PR #3609 review; follow-up to #WMGPSG",
+      "summary": "npm run build fails in the Windows shell (build:internal uses POSIX NODE_OPTIONS=${...} expansion)",
+      "detail": "Found 2026-10-21 on the owner's Windows PC: latest main builds cleanly via bash (about 15 min) but npm run build fails in the Windows shell because build:internal sets NODE_OPTIONS=\"${NODE_OPTIONS:---max-old-space-size=8192}\", which cmd and PowerShell do not expand. Workaround: build from bash. Fix: move the env default into a small Node wrapper (no new cross-env dependency). Touches the Railway Docker build and CI heavy scope, so it was kept out of the test-only #3745.",
+      "source": "Main CI and test reliability thread, 2026-10-21",
+      "added": "2026-10-21"
+    },
+    {
+      "id": "#AZXEDC",
+      "priority": "P2",
+      "type": "issue",
+      "summary": "Uncached searches are slow: index-units search took 9.2 s on first run versus 0.19 s on repeat, with the same plan",
+      "detail": "Read-only live evidence 2026-10-21 (docs/audit/2026-10-21-database-performance-evidence.md): the first run read 8,413 blocks (about 66 MB) from outside the 256 MB Postgres buffer cache at roughly 1 ms each; the repeat read none. Database 8.8 GB. The term-overlap branch pulled 6,568 units (3,389 kept) for a three-word query, then fetched each embedding and search_tsv. Over 34 days, only 22 to 55 percent of TOAST page requests on the search tables (embeddings and long text) were served from the buffer cache, versus 99.9 percent for documents. NOT YET PROVEN: how often real searches are uncached, or that more memory fixes it (effective_cache_size is only a planner estimate; two back-to-back runs are not a controlled test). NEXT: read the Supabase dashboard memory and cache-hit charts and repeat the capture after a known idle gap. THEN OWNER DECISION: (a) larger compute size, paid, dashboard only; or (b) bound the term-overlap branch before ranking, a RAG behaviour change needing a live canary pair.",
+      "source": "Database performance tuning thread, 2026-10-21",
+      "added": "2026-10-21"
+    },
+    {
+      "id": "#NZ4X41",
+      "priority": "P2",
+      "type": "task",
+      "summary": "Therapy catalogue: 22 of 47 unsourced records now carry NICE references and await sign-off, 25 still have none",
+      "detail": "PS-062 verified against the 2026-10-18 checkout: 179 therapies remain reviewed and 26 were reset to needs_review under the owner ruling recorded in docs/decisions/2026-10-17-agent-recorded-therapy-and-did-sign-offs-reset.md. The previous completion described all 205 as signed; that outcome is superseded. Governed references are present, but the 26 need genuine owner review through therapy:review. Clinical approval, corpus refresh and loaded-client revocation are not established. (Previously archived 2026-10-17: Populated governed guideline and clinical literature references for the remaining 26 Therapy Compass records and completed clinician sign-off across all 205 Therapy Compass profiles.)",
+      "source": "PS-062 supplied merged-PR review; canonical therapies-source.json and reset decision, inspected 2026-10-18",
+      "added": "2026-10-18"
+    },
+    {
+      "id": "#WFYDV6",
+      "priority": "P1",
+      "type": "issue",
+      "summary": "Unwired WA MHA Form 6A/6B print component carries unverified statutory text",
+      "detail": "Owner decision 17 Oct 2026 21:37 AWST: #WFYDV6 must stay open; PR #3609 archived it without the required sign-off. src/components/forms/wa-mha-form-print.tsx (PR #3538) was reworded on 16 Oct (Form 6B now a report to the Chief Psychiatrist; Non-Statutory Study Layout header), but section lists, the 7-day pre-expiry examination and copy recipients remain unverified and no legal or clinical sign-off is recorded. Nothing imports or renders it; it must stay unwired. Delete it once the 30-day dead-code window passes (after 13 Nov 2026) unless legal and clinical sign-off is obtained first. (Previously archived 2026-10-16: Fixed statutory discrepancies and branding in-place in src/components/forms/wa-mha-form-print.tsx: replaced Form 6B Chief Psychiatrist consent wording with statutory post-order Report to the Chief Psychiatrist wording matching form-register.ts, replaced official WA Department of Health branding with an explicit Non-Statutory Study Layout header and warning banner, and updated tests/wa-mha-form-print.dom.test.tsx (retaining the file per the 30-day dead-code policy). | Note: Reopened 17 Oct 2026 by owner decision (21:37 AWST): archived by PR #3609 without the required legal and clinical sign-off; tracked again as an open P1 row. The form stays unwired until sign-off.)",
+      "source": "PR 3538 review, 15 Oct 2026; owner decision on PR #3609, 17 Oct 2026; reopened in place with the ledger reopen action (PR #3627), replacing duplicate row #Z12CBC",
       "added": "2026-10-17"
     }
   ],

@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "7b5351a4-f139-4c45-bf18-8a13b620d834",
+  "createdOn": "2026-10-21",
+  "action": "done",
+  "payload": {
+    "id": "#SAKCD9",
+    "outcome": "Closed 2026-10-21 in the owner's project review (Current issues register thread), which found it already fixed on main.",
+    "baseRowFingerprint": "02baa142a856399126ed4b755b15d9a1a7fee664f2ef3b57c4421fe66d505106",
+    "targetUlid": "01M4TNMPACSAKCD95HA1PXS0T8"
+  }
+}

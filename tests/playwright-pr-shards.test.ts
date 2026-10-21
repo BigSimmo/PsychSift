@@ -51,7 +51,7 @@ describe("playwright PR UI shard groups", () => {
     );
     expect(productionSpecFilePattern.test("dsm-ui-smoke.spec.ts")).toBe(true);
     expect(productionSpecFilePattern.test("ui-document-canvas.spec.ts")).toBe(true);
-    expect(productionSpecFilePattern.test("ui-tools-collapse.spec.ts")).toBe(false);
+    expect(productionSpecFilePattern.test("ui-accessible-table-mockup.spec.ts")).toBe(false);
   });
 
   /**
@@ -125,7 +125,7 @@ describe("playwright PR UI shard groups", () => {
   it("lists only production basename matches under tests/", () => {
     const files = listProductionSpecFiles();
     expect(files.every((file) => file.startsWith("tests/") && file.endsWith(".spec.ts"))).toBe(true);
-    expect(files).not.toContain("tests/ui-tools-collapse.spec.ts");
+    expect(files).not.toContain("tests/ui-accessible-table-mockup.spec.ts");
   });
 
   it("keeps the measured full and post-critical groups duration-balanced", () => {

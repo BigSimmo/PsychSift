@@ -105,9 +105,8 @@ describe("buildRoutesSection", () => {
 
   it("disperses alphabetically adjacent routes, so two branches adding one do not collide", () => {
     // The property v3 exists for, on the shape that actually caused it: PR #2674
-    // conflicted because /mockups/source-rail-desktop-scroll and
-    // /mockups/specifier-record-directions both sort under /mockups/s and were
-    // therefore inserted on the same lines by two branches.
+    // conflicted because two mockup routes (since retired) both sorted under
+    // /mockups/s and were therefore inserted on the same lines by two branches.
     const adjacent = ["/mockups/sim-alpha", "/mockups/sim-alpha-two", "/mockups/sim-alpha-three"];
     const section = buildRoutesSection({
       ...SITE_MAP,
