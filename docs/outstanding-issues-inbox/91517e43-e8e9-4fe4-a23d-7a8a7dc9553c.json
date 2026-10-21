@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "91517e43-e8e9-4fe4-a23d-7a8a7dc9553c",
+  "createdOn": "2026-10-21",
+  "action": "done",
+  "payload": {
+    "id": "#ZTDZ4Z",
+    "outcome": "In-app scanner already on main (src/components/teaching-attendance/teaching-qr-checkin-sheet.tsx, BarcodeDetector with typed-code fallback). iPhone Safari has no BarcodeDetector, so the Teaching and CME PR (21 Oct 2026) tells iPhone users to use the Camera app or the 6-digit code instead of adding a decoding library.",
+    "baseRowFingerprint": "5866e928aba2f47f268b7377b698902fd4b7235d876bd048ae6d1691ea1e8951",
+    "targetUlid": "01M3YR0B81ZTDZ4Z29TMEPRGFZ"
+  }
+}
