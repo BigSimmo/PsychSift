@@ -189,5 +189,21 @@
     "tests/services-safety-routing.test.ts": "e54f0a0f0f11810848de0b178c5398e9ac158b90a814d2005986d9e0b3853f33",
     "tests/source-governance.test.ts": "17b26759d7954886f803a9e7f3c9ef857fc53edd35995f54c2b91b37131b13e0",
     "tests/ward-output.test.ts": "bb9f417d63c769b8e059f41fe2c9a5c52f772cedd13e6352408b4a7716e00222"
-  }
+  },
+  "driftExceptions": [
+    {
+      "path": "src/lib/answer-render-policy.ts",
+      "reason": "PR 3742, TGA exemption limb (e): medium-trust answers show up to 2 exact quote cards; authority-capped medium answers still show none. Owner approved building it for real-app screenshot review on 21 Oct 2026. Owner reseal due after the owner approves the screenshots and before merge.",
+      "recordedBy": "Claude (Security and compliance thread)",
+      "recordedOn": "2026-10-21",
+      "expiresOn": "2026-11-21"
+    },
+    {
+      "path": "tests/answer-render-policy.test.ts",
+      "reason": "PR 3742, TGA exemption limb (e): medium-trust answers show up to 2 exact quote cards; authority-capped medium answers still show none. Owner approved building it for real-app screenshot review on 21 Oct 2026. Owner reseal due after the owner approves the screenshots and before merge.",
+      "recordedBy": "Claude (Security and compliance thread)",
+      "recordedOn": "2026-10-21",
+      "expiresOn": "2026-11-21"
+    }
+  ]
 }
