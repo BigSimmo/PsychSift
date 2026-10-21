@@ -45,7 +45,7 @@
  *        --keep (leave reports in place), --dir <path>.
  */
 import { spawn, spawnSync } from "node:child_process";
-import { appendFileSync, copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, copyFileSync, cpSync, renameSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import http from "node:http";
 import net from "node:net";
 import path from "node:path";
@@ -320,9 +320,35 @@ function stopOwnedProcessTree(child) {
   }
 }
 
+// TEMPORARY profiling hook (grok/home-tbt-trim draft PR; removed before ready).
+const profileDir = process.env.LIGHTHOUSE_PROFILE_DIR ? path.resolve(projectRoot, process.env.LIGHTHOUSE_PROFILE_DIR) : null;
+let profileCounter = 0;
+function collectProfileAssets(output) {
+  if (!profileDir) return;
+  mkdirSync(profileDir, { recursive: true });
+  const stem = output.replace(/\.json$/, "");
+  const dir = path.dirname(output);
+  for (const name of readdirSync(dir)) {
+    const full = path.join(dir, name);
+    if (full.startsWith(`${stem}-0.`)) renameSync(full, path.join(profileDir, `${profileCounter}-${name}`));
+  }
+  if (existsSync(output)) copyFileSync(output, path.join(profileDir, `${profileCounter}-${path.basename(output)}`));
+  profileCounter += 1;
+}
+
 function cleanup() {
   if (released) return;
   released = true;
+  if (profileDir) {
+    try {
+      cpSync(absoluteRunRoot, path.join(profileDir, "build"), {
+        recursive: true,
+        filter: (src) => !src.includes(`${path.sep}cache`) && !src.includes(`${path.sep}server${path.sep}`),
+      });
+    } catch {
+      /* best effort */
+    }
+  }
   if (server?.pid) {
     try {
       process.kill(process.platform === "win32" ? server.pid : -server.pid, "SIGTERM");
@@ -541,6 +567,7 @@ try {
           "--chrome-flags=--headless=new --no-sandbox --disable-dev-shm-usage",
           "--max-wait-for-load=60000",
           "--quiet",
+          ...(profileDir && strategy === "desktop" && route === "/" ? ["--save-assets"] : []),
         ],
         {
           cwd: projectRoot,
@@ -561,7 +588,10 @@ try {
       };
 
       child.on("error", (error) => finish({ status: 1, error }));
-      child.on("close", (code, signal) => finish({ status: code, signal }));
+      child.on("close", (code, signal) => {
+        if (profileDir && strategy === "desktop" && route === "/") collectProfileAssets(output);
+        finish({ status: code, signal });
+      });
 
       const timer = setTimeout(() => {
         stopOwnedProcessTree(child);

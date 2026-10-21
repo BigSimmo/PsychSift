@@ -43,7 +43,8 @@ const nextConfig: NextConfig = {
   // Next detects a different server release and loads the requested URL afresh,
   // rather than applying its route tree to the old client and leaving loading.tsx on screen.
   ...(deploymentId ? { deploymentId } : {}),
-  productionBrowserSourceMaps: shouldEnableSentrySourceMapUpload(),
+  // TEMPORARY (draft profiling PR): TEMP_PROFILE_SOURCEMAPS=1 emits browser maps for the profile job only.
+  productionBrowserSourceMaps: process.env.TEMP_PROFILE_SOURCEMAPS === "1" || shouldEnableSentrySourceMapUpload(),
   distDir: requestedDistDir || ".next",
   ...(requestedTsConfigPath
     ? {
