@@ -1,3 +1,4 @@
+import { requireSignedInClinicalAccess } from "@/lib/clinical-access";
 import { NextResponse } from "next/server";
 
 import {
@@ -79,6 +80,8 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
     // but every caller must pass the registry limiter (M4/C1 — no anonymous bypass).
     const supabase = createAdminClient();
     const access = await publicCatalogueAccessContext(request, supabase);
+    // #3728: signed-in health professionals only from 1 Nov 2026 (the #3696 rule).
+    requireSignedInClinicalAccess(access);
 
     const rateLimit = await consumeSubjectApiRateLimit({
       supabase,
