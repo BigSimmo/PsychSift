@@ -1,4 +1,4 @@
--- Migration: 20261021170000_teaching_epa_magic_links.sql
+-- Migration: 20261021190000_teaching_epa_magic_links.sql
 -- Task: #MAAXAX (owner approved drafting 21 Oct 2026; merge only after the owner's own yes)
 -- Teaching Assessments: single-use, expiring EPA feedback links for visiting supervisors who
 -- have no account. Replaces the process-memory store that kept the feature switched off in

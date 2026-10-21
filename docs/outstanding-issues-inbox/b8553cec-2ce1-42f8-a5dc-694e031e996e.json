@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "b8553cec-2ce1-42f8-a5dc-694e031e996e",
+  "createdOn": "2026-10-21",
+  "action": "done",
+  "payload": {
+    "id": "#EG02B7",
+    "outcome": "Already fixed 2026-10-19 by PR #3677: migration 20261019155200_prune_superseded_index_generations_on_commit.sql adds a trigger on the generation pointer that prunes superseded generations at every commit and queues their orphaned image objects in storage_cleanup_jobs for the janitor. Verified on main 81ba5aefa by the Library pipeline hardening thread; no further migration needed.",
+    "baseRowFingerprint": "89a7d8c1ffc00de7c23fa1a527e63e4b943088799914ec02ce10d43dfeb2a88a",
+    "targetUlid": "01M51JV9J6EG02B7D44998GPSQ"
+  }
+}
