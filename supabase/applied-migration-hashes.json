@@ -1,7 +1,7 @@
 {
   "note": "sha256 of every migration this repository has shipped, with newlines normalised. An entry whose hash changes means an applied migration was edited, which cannot reach the live database. See scripts/check-migration-immutability.mjs.",
   "generator": "scripts/check-migration-immutability.mjs",
-  "sealed_at": "2026-10-21T04:46:23.885Z",
+  "sealed_at": "2026-10-21T07:49:58.435Z",
   "versions": {
     "20260527000000_bulk_ingestion.sql": "813e8e314064a6dcbaaa55e2765a8ce901d5783b304b4a7af7bb7417a07daf7c",
     "20260527001000_documents_policy_cleanup.sql": "559c26f3172bf75e545a41adef75538b2bf648ea7d53c8eb3d3ea7c244c65a48",
@@ -335,6 +335,7 @@
     "20261019180000_prune_keeps_array_cited_images.sql": "c5eba18e96621fdb4bd38936ff22d6bbb161f17af55bed9d4904fd9b90a22d48",
     "20261019183000_prune_keeps_array_cited_chunks.sql": "a24e93902c77c4df48eb10161c447c1bf94a47cd9b06137cc507014687dc8862",
     "20261019234000_retire_triage_on_feedback_supersede.sql": "3ce7c923055166002785e3e3f8da340ff2b7c83f777873df7164e90513b01baf",
-    "20261021043000_clear_deleted_document_titles_from_cleanup_ledger.sql": "43a0e34a2bb9d3f9b5b9fbd151d50677bf2f4ebbec7f16012df710c4eef5fbd6"
+    "20261021043000_clear_deleted_document_titles_from_cleanup_ledger.sql": "43a0e34a2bb9d3f9b5b9fbd151d50677bf2f4ebbec7f16012df710c4eef5fbd6",
+    "20261021160000_image_caption_cache_identity_unique_key.sql": "bcdf9077bec169328a17ef50b4ace9b1e49ada573f3d1171cc1e376299082994"
   }
 }

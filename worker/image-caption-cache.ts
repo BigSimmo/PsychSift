@@ -9,8 +9,11 @@
 // classifier inputs (full nearby and table text, not a truncated snippet) and every
 // output-affecting vision setting (model, image detail, reasoning effort). A row
 // is reused only when that whole identity matches; anything else is a miss. Legacy rows
-// have no identity and never match. It uses the existing image_caption_cache table
-// unchanged: the identity and the classification live in its metadata column.
+// have no identity and never match. The identity is stored in the cache_identity column and
+// is part of the table's unique key (owner_id, image_hash, model, cache_identity), so captions
+// for different identities of the same image bytes coexist instead of overwriting each other
+// (migration 20261021160000). The classification lives in the metadata column, which also
+// keeps a copy of the identity that every read re-checks.
 import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
@@ -25,6 +28,9 @@ import {
 } from "./image-classification";
 import { sanitizeJsonbRecord } from "./ingestion-sanitize";
 import type { JobRow } from "./types";
+
+/** The upsert target; it must match the table's unique key exactly. */
+export const imageCaptionCacheConflictTarget = "owner_id,image_hash,model,cache_identity";
 
 export const imageCaptionCacheIdentityVersion = "image-caption-cache-identity-v2";
 
@@ -150,6 +156,7 @@ export async function readCachedImageClassification(
       .eq("owner_id", key.ownerId)
       .eq("image_hash", key.imageHash)
       .eq("model", key.model)
+      .eq("cache_identity", key.identity)
       .abortSignal(signal)
       .maybeSingle();
     if (error || !data) return null;
@@ -177,6 +184,7 @@ export async function writeCachedImageClassification(
           owner_id: key.ownerId,
           image_hash: key.imageHash,
           model: key.model,
+          cache_identity: key.identity,
           mime_type: mimeType,
           caption: redacted.caption,
           metadata: sanitizeJsonbRecord({
@@ -186,7 +194,7 @@ export async function writeCachedImageClassification(
             classification: redacted,
           }),
         },
-        { onConflict: "owner_id,image_hash,model" },
+        { onConflict: imageCaptionCacheConflictTarget },
       )
       .abortSignal(signal);
   } catch {

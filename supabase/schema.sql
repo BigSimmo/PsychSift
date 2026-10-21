@@ -190,7 +190,11 @@ create table if not exists public.image_caption_cache (
   metadata jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique (owner_id, image_hash, model)
+  -- Null only on rows written before the worker bound an identity; NULLS NOT DISTINCT keeps
+  -- one such row per (owner_id, image_hash, model). See 20261021160000.
+  cache_identity text,
+  constraint image_caption_cache_owner_hash_model_identity_key
+    unique nulls not distinct (owner_id, image_hash, model, cache_identity)
 );
 
 create table if not exists public.document_labels (

@@ -19,6 +19,7 @@ import { IngestionProviderEgressRefusal } from "../src/lib/ingestion-provider-eg
 import * as egress from "../src/lib/ingestion-provider-egress";
 import { classifyAndCaptionImageFromBase64 } from "../src/lib/openai";
 import {
+  imageCaptionCacheConflictTarget,
   imageCaptionCacheIdentityVersion,
   imageCaptionCacheKey,
   parseCachedImageClassification,
@@ -88,7 +89,8 @@ function modelClassification(caption = "Lithium monitoring flowchart."): ImageCl
 /** In-memory stand-in for the image_caption_cache table, keyed like its unique index. */
 function fakeCacheTable() {
   const rows = new Map<string, Record<string, unknown>>();
-  const keyOf = (row: Record<string, unknown>) => `${row.owner_id}|${row.image_hash}|${row.model}`;
+  const keyOf = (row: Record<string, unknown>) =>
+    `${row.owner_id}|${row.image_hash}|${row.model}|${row.cache_identity ?? ""}`;
   const client = {
     from(table: string) {
       expect(table).toBe("image_caption_cache");
@@ -108,7 +110,7 @@ function fakeCacheTable() {
       return {
         select: () => select,
         upsert(row: Record<string, unknown>, options: { onConflict: string }) {
-          expect(options.onConflict).toBe("owner_id,image_hash,model");
+          expect(options.onConflict).toBe("owner_id,image_hash,model,cache_identity");
           rows.set(keyOf(row), structuredClone(row));
           return { abortSignal: async () => ({ error: null }) };
         },
@@ -334,6 +336,59 @@ describe("image caption cache identity", () => {
   });
 });
 
+describe("image caption cache unique key", () => {
+  it("upserts on the full unique key including cache_identity", () => {
+    expect(imageCaptionCacheConflictTarget).toBe("owner_id,image_hash,model,cache_identity");
+  });
+
+  it("keeps two cache identities for the same owner, image and model side by side", async () => {
+    const keyA = imageCaptionCacheKey({
+      job: job(),
+      imageHash: "c".repeat(64),
+      contextHash: "d".repeat(32),
+      mimeType: "image/png",
+      classifierInputs: INPUTS,
+    })!;
+    const keyB = imageCaptionCacheKey({
+      job: job({ documentId: "77777777-7777-4777-8777-777777777777" }),
+      imageHash: "c".repeat(64),
+      contextHash: "d".repeat(32),
+      mimeType: "image/png",
+      classifierInputs: INPUTS,
+    })!;
+    expect([keyA.ownerId, keyA.imageHash, keyA.model]).toEqual([keyB.ownerId, keyB.imageHash, keyB.model]);
+    expect(keyA.identity).not.toBe(keyB.identity);
+
+    const table = fakeCacheTable();
+    const signal = new AbortController().signal;
+    await writeCachedImageClassification(table.client, keyA, modelClassification("Caption A."), "image/png", signal);
+    await writeCachedImageClassification(table.client, keyB, modelClassification("Caption B."), "image/png", signal);
+
+    expect(table.rows.size).toBe(2);
+    expect([...table.rows.values()].map((row) => row.cache_identity).sort()).toEqual(
+      [keyA.identity, keyB.identity].sort(),
+    );
+    expect((await readCachedImageClassification(table.client, keyA, signal))?.caption).toBe("Caption A.");
+    expect((await readCachedImageClassification(table.client, keyB, signal))?.caption).toBe("Caption B.");
+  });
+
+  it("still overwrites a row with the same identity", async () => {
+    const key = imageCaptionCacheKey({
+      job: job(),
+      imageHash: "c".repeat(64),
+      contextHash: "d".repeat(32),
+      mimeType: "image/png",
+      classifierInputs: INPUTS,
+    })!;
+    const table = fakeCacheTable();
+    const signal = new AbortController().signal;
+    await writeCachedImageClassification(table.client, key, modelClassification("First."), "image/png", signal);
+    await writeCachedImageClassification(table.client, key, modelClassification("Second."), "image/png", signal);
+    expect(table.rows.size).toBe(1);
+    expect((await readCachedImageClassification(table.client, key, signal))?.caption).toBe("Second.");
+  });
+});
+
 describe("caption stage reuse across retries (ING-B-10)", () => {
   it("calls the vision model once for the same admitted source across two attempts", async () => {
     classify.mockResolvedValue(modelClassification());
@@ -363,6 +418,11 @@ describe("caption stage reuse across retries (ING-B-10)", () => {
     );
     expect(classify).toHaveBeenCalledTimes(2);
     expect(other[0].classificationCacheHit).toBe(false);
+    // Both documents' captions are kept, so retrying the first one still hits.
+    expect(table.rows.size).toBe(2);
+    const retry = await resolveCaptionTasks(context(table.client), job({ attempt: 2 }), [task()], new Map());
+    expect(retry[0].classificationCacheHit).toBe(true);
+    expect(classify).toHaveBeenCalledTimes(2);
   });
 
   it("refuses a cached caption when the source no longer passes the egress gate", async () => {
