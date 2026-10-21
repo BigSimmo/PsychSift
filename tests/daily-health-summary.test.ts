@@ -83,7 +83,8 @@ describe("daily health summary: judging each check", () => {
   it("clears a failed canary once a later run passes, but not while the failing run is the latest", () => {
     const failedAt = "2026-10-19T18:30:00Z";
     const recovered = assessSource(source("canary"), {
-      latestRun: { ...run(30), conclusion: "success", event: "schedule" },
+      latestRun: run(30),
+      clearingRun: { ...run(30), conclusion: "success", event: "schedule" },
       issue: issue({}),
       botActivityAt: failedAt,
       now: NOW,
@@ -92,7 +93,8 @@ describe("daily health summary: judging each check", () => {
 
     // A manual run never posts on failure, so its pass proves nothing about the alert.
     const manual = assessSource(source("canary"), {
-      latestRun: { ...run(30), conclusion: "success", event: "workflow_dispatch" },
+      latestRun: run(30),
+      clearingRun: { ...run(30), conclusion: "success", event: "workflow_dispatch" },
       issue: issue({}),
       botActivityAt: failedAt,
       now: NOW,
@@ -121,11 +123,22 @@ describe("daily health summary: judging each check", () => {
     // A dispatched dry run exits 0 even with abandoned rows, so it must not clear the alert.
     const dryRun = assessSource(source("reindex"), {
       latestRun: { updated_at: "2026-10-25T21:00:00Z", conclusion: "success", event: "repository_dispatch" },
+      clearingRun: { updated_at: "2026-10-25T19:50:00Z", conclusion: "failure", event: "schedule" },
       issue: issue({}),
       botActivityAt: "2026-10-25T19:49:00Z",
       now: NOW,
     });
     expect(dryRun.status).toBe("amber");
+
+    // Once a scheduled pass has cleared it, a later dispatched run does not bring the alert back.
+    const clearedThenDispatched = assessSource(source("reindex"), {
+      latestRun: { updated_at: "2026-10-25T21:00:00Z", conclusion: "success", event: "repository_dispatch" },
+      clearingRun: { updated_at: "2026-10-25T20:30:00Z", conclusion: "success", event: "schedule" },
+      issue: issue({}),
+      botActivityAt: "2026-10-25T19:49:00Z",
+      now: NOW,
+    });
+    expect(clearedThenDispatched.status).toBe("green");
   });
 
   it("judges a reused issue by the workflow's own activity, not by anyone's comment moving updated_at", () => {

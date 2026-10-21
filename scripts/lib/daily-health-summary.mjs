@@ -190,15 +190,17 @@ export function readDigestState(body) {
  * One line for one check. `latestRun` is the newest completed run of its workflow (or null),
  * `issue` the newest issue carrying its label (open first, or null), `recentMarkers` how many
  * report markers the workflow's bot posted inside the recent window (Sentry only), and
- * `botActivityAt` when the bot last opened or commented on the issue (`recent` checks only).
+ * `botActivityAt` when the bot last opened or commented on the issue (`recent` checks only), and
+ * `clearingRun` the newest completed run from one of the source's `clearedBy` triggers (or null).
+ * A later run from any other trigger neither clears an alert nor brings a cleared one back.
  *
  * @param {(typeof SUMMARY_SOURCES)[number]} source
- * @param {{ latestRun?: WorkflowRun | null, issue?: LabelledIssue | null, recentMarkers?: number | null, botActivityAt?: string | null, now: string }} inputs
+ * @param {{ latestRun?: WorkflowRun | null, issue?: LabelledIssue | null, recentMarkers?: number | null, botActivityAt?: string | null, clearingRun?: WorkflowRun | null, now: string }} inputs
  * @returns {Assessment}
  */
 export function assessSource(
   source,
-  { latestRun = null, issue = null, recentMarkers = null, botActivityAt = null, now },
+  { latestRun = null, issue = null, recentMarkers = null, botActivityAt = null, clearingRun = null, now },
 ) {
   const nowMs = time(now) ?? Date.now();
   const link = issueLink(issue);
@@ -217,13 +219,14 @@ export function assessSource(
     detail = source.trouble;
   } else if (source.issue === "recent" && issue) {
     const active = time(botActivityAt);
+    const clearedAt = time(clearingRun?.updated_at ?? clearingRun?.run_started_at ?? clearingRun?.created_at);
     const cleared =
       source.clearedBySuccess === true &&
-      latestRun?.conclusion === "success" &&
-      (source.clearedBy ?? []).includes(latestRun?.event ?? "") &&
+      clearingRun?.conclusion === "success" &&
+      (source.clearedBy ?? []).includes(clearingRun?.event ?? "") &&
       active !== null &&
-      runAt !== null &&
-      runAt > active;
+      clearedAt !== null &&
+      clearedAt > active;
     const recent = !cleared && active !== null && nowMs - active <= source.recentHours * HOUR && issue.state === "open";
     if (recent) {
       status = source.onTrouble;
@@ -348,6 +351,22 @@ async function newestCompletedRun(github, owner, repo, workflow) {
   }
 }
 
+/** The newest completed run from one of `events`, looking back over the last 20 runs. */
+async function newestCompletedRunFrom(github, owner, repo, workflow, events) {
+  try {
+    const { data } = await github.rest.actions.listWorkflowRuns({
+      owner,
+      repo,
+      workflow_id: workflow,
+      status: "completed",
+      per_page: 20,
+    });
+    return data.workflow_runs?.find((run) => events.includes(run.event)) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function newestIssue(github, owner, repo, label) {
   for (const state of ["open", "closed"]) {
     const { data } = await github.rest.issues.listForRepo({
@@ -414,8 +433,18 @@ export async function collectAssessments({ github, owner, repo, now }) {
           ? await botActivitySince(github, owner, repo, issue, nowMs - source.recentHours * HOUR)
           : { botActivityAt: null, markers: null };
       const recentMarkers = source.key === "errors" ? activity.markers : null;
+      const clearingRun = source.clearedBySuccess
+        ? await newestCompletedRunFrom(github, owner, repo, source.workflow, source.clearedBy ?? [])
+        : null;
       assessments.push(
-        assessSource(source, { latestRun, issue, recentMarkers, botActivityAt: activity.botActivityAt, now }),
+        assessSource(source, {
+          latestRun,
+          issue,
+          recentMarkers,
+          botActivityAt: activity.botActivityAt,
+          clearingRun,
+          now,
+        }),
       );
     } catch {
       assessments.push({ key: source.key, name: source.name, status: "red", detail: "could not be read", link: "" });
