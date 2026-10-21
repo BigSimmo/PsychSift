@@ -193,7 +193,7 @@ describe("development plan page", () => {
     );
     expect(screen.getByRole("link", { name: "Confirm, then carry" })).toHaveAttribute(
       "href",
-      `/cme/setup?year=2027&carryFrom=2026&carryGoal=${GOAL.id}`,
+      `/cme/setup?year=2027&edit=1&carryFrom=2026&carryGoal=${GOAL.id}`,
     );
   });
 
@@ -204,11 +204,11 @@ describe("development plan page", () => {
     );
     expect(screen.getByRole("link", { name: "Confirm 2027 targets first" })).toHaveAttribute(
       "href",
-      "/cme/setup?year=2027&carryFrom=2026",
+      "/cme/setup?year=2027&edit=1&carryFrom=2026",
     );
     expect(screen.getByRole("link", { name: "Confirm, then carry" })).toHaveAttribute(
       "href",
-      `/cme/setup?year=2027&carryFrom=2026&carryGoal=${GOAL.id}`,
+      `/cme/setup?year=2027&edit=1&carryFrom=2026&carryGoal=${GOAL.id}`,
     );
     const fetchMock = vi.spyOn(globalThis, "fetch");
     rerender(

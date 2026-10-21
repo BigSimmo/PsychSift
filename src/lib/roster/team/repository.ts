@@ -273,10 +273,13 @@ async function swapBreaksTeamRules(
     }
   }
 
+  // Only the two people's shifts: the rules are judged per person, and a whole team's window can
+  // pass the API's row cap, which would silently drop shifts the rules need.
   let assignQuery = fromFn("roster_assignments");
   assignQuery = chainCall(assignQuery, "select", "*");
   assignQuery = chainCall(assignQuery, "eq", "service_id", serviceId);
   assignQuery = chainCall(assignQuery, "is", "superseded_at", null);
+  assignQuery = chainCall(assignQuery, "in", "user_id", [requesterId, counterpartyId]);
 
   const anchorTimes = [resolvedGive?.startsAt, resolvedGive?.endsAt, resolvedTake?.startsAt, resolvedTake?.endsAt]
     .filter((value): value is string => Boolean(value))

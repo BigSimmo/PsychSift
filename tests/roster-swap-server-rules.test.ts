@@ -139,6 +139,26 @@ describe("rosterCommand swap.approve server-side rule validation", () => {
     expect(rpc).not.toHaveBeenCalled();
   });
 
+  it("reads only the two people's shifts, so a large team cannot pass the row cap", async () => {
+    const { client, from } = createMockRosterClient({
+      rules: { minBreakHours: 10 },
+      assignments: violatingAssignments,
+    });
+    const parsed = rosterActionSchema.parse({ action: "swap.approve", swapId: SWAP_ID });
+    await expect(rosterCommand(client, MANAGER_ID, SERVICE_ID, parsed)).rejects.toMatchObject({ status: 409 });
+
+    const windowReads = from.mock.calls
+      .map(([table], index) => ({
+        table,
+        chain: from.mock.results[index]?.value as Record<string, ReturnType<typeof vi.fn>>,
+      }))
+      .filter(({ table, chain }) => table === "roster_assignments" && chain.gte.mock.calls.length > 0);
+    expect(windowReads.length).toBeGreaterThan(0);
+    for (const { chain } of windowReads) {
+      expect(chain.in).toHaveBeenCalledWith("user_id", [REQUESTER_ID, COUNTERPARTY_ID]);
+    }
+  });
+
   it("allows a rule-violating swap when acknowledgeRuleWarnings is true", async () => {
     const { client, rpc } = createMockRosterClient({
       rules: { minBreakHours: 10 },

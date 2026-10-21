@@ -22,7 +22,8 @@ export function cmeCarryGoalId(value: unknown): string | null {
 
 /** Set up next year's targets, then come back to carry. `goalId` names the goal chosen, if one was. */
 export function cmeCarryConfirmHref(fromYear: number, goalId?: string): string {
-  const params = new URLSearchParams({ year: String(fromYear + 1), carryFrom: String(fromYear) });
+  // edit=1 opens the confirm form even when next year has a saved but incomplete set-up.
+  const params = new URLSearchParams({ year: String(fromYear + 1), edit: "1", carryFrom: String(fromYear) });
   if (goalId) params.set("carryGoal", goalId);
   return `/cme/setup?${params.toString()}`;
 }
