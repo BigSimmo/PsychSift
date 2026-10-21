@@ -161,7 +161,7 @@ describe("container delivery contract", () => {
   it("keeps the minimal app runtime and pre-deploy shell pinned and inventoried", () => {
     const dockerfile = read("Dockerfile");
     expect(dockerfile).toContain(
-      "gcr.io/distroless/cc-debian13:nonroot@sha256:e792ab3d241a468a4fd7519ddbbebe66b49b5f365771716ea688ad40b6c6f1c2",
+      "gcr.io/distroless/cc-debian13:nonroot@sha256:b7e81cb1af38d9345680e68bcf564d388f96304e25222030fc8c051faf8565b3",
     );
     expect(dockerfile).toContain(
       "node:24-trixie-slim@sha256:7f486cabe892bff8fef04c0f7da8dba84a560be3e4e2740b7a86afc57ebec315",

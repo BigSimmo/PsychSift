@@ -421,8 +421,14 @@ describe("specifier sign-off", () => {
       for (const disorder of category.disorders)
         for (const group of disorder.groups)
           for (const item of group.items) {
-            if (item.definitionStatus === "defined" && item.review.clinicianReviewStatus === "clinician-reviewed") {
-              (item.review as Json).reviewedBy = "PsychSift";
+            // No written item is signed since the 21 Oct 2026 reset of the #3562 sign-offs, so stamp
+            // the written items here rather than relying on live signatures.
+            if (item.definitionStatus === "defined") {
+              Object.assign(item.review as Json, {
+                clinicianReviewStatus: "clinician-reviewed",
+                reviewedBy: "PsychSift",
+                reviewedAt: REVIEWED_AT,
+              });
               stampedIds.add(String(item.review.rowKey));
             }
           }

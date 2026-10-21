@@ -28,7 +28,7 @@ RUN test "$(id -u node)" = 1000 && test "$(id -g node)" = 1000 \
   && mkdir -p /tmp/app-runtime-home \
   && chown 1000:1000 /tmp/app-runtime-home \
   && dpkg-query --status dash > /tmp/app-runtime-dash.status
-FROM gcr.io/distroless/cc-debian13:nonroot@sha256:e792ab3d241a468a4fd7519ddbbebe66b49b5f365771716ea688ad40b6c6f1c2 AS app-runtime-base
+FROM gcr.io/distroless/cc-debian13:nonroot@sha256:b7e81cb1af38d9345680e68bcf564d388f96304e25222030fc8c051faf8565b3 AS app-runtime-base
 
 FROM node-base AS deps
 WORKDIR /app
