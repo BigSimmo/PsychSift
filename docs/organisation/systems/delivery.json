@@ -175,6 +175,7 @@
     "scripts/test-run-lock.mjs",
     "scripts/test-run-selection.mjs",
     "scripts/trivy-image-scan.mjs",
+    "scripts/trivy-suppressions.json",
     "scripts/verify-phone-chrome.mjs",
     "scripts/verify-pr-local.mjs",
     "scripts/verify-release-offline.mjs",

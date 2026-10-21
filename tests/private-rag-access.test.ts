@@ -264,19 +264,16 @@ afterEach(() => {
 });
 
 describe("private RAG API access", () => {
-  it("allows unauthenticated real search requests with anonymous scope", async () => {
+  // #3728: library search needs sign-in from 1 November 2026.
+  it("refuses unauthenticated real search requests with 401 before retrieval", async () => {
     const mocks = mockRuntime();
     const { POST } = await import("../src/app/api/search/route");
 
     const response = await POST(jsonRequest("/api/search", { query: "clozapine monitoring" }));
 
-    expect(response.status).toBe(200);
-    expect(mocks.searchChunksWithTelemetry).toHaveBeenCalledWith(
-      expect.objectContaining({ ownerId: undefined, allowGlobalSearch: true, query: "clozapine monitoring" }),
-    );
-    expect(mocks.fetchRelatedDocuments).toHaveBeenCalledWith(
-      expect.objectContaining({ ownerId: undefined, query: "clozapine monitoring" }),
-    );
+    expect(response.status).toBe(401);
+    expect(mocks.searchChunksWithTelemetry).not.toHaveBeenCalled();
+    expect(mocks.fetchRelatedDocuments).not.toHaveBeenCalled();
   });
 
   it("scopes authenticated real search requests to the authenticated owner", async () => {

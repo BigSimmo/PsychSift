@@ -35,7 +35,13 @@ function mockRuntime() {
   }));
   vi.doMock("@/lib/supabase/admin", () => ({
     createAdminClient: () => ({
-      auth: { getUser: vi.fn(async () => ({ data: { user: null }, error: null })) },
+      // #3728: these routes need sign-in, so the request below is a signed-in one.
+      auth: {
+        getUser: vi.fn(async () => ({
+          data: { user: { id: "11111111-1111-4111-8111-111111111111", email: "reader@example.org" } },
+          error: null,
+        })),
+      },
       rpc: vi.fn(async () => ({
         data: [{ limited: false, limit_value: 120, remaining: 119, retry_after_seconds: 60 }],
         error: null,
@@ -94,7 +100,10 @@ describe("a cancelled request is answered 499, not reported as a server fault", 
         controller.abort();
         signal = controller.signal;
       }
-      return (await GET(new Request(`http://localhost${item.path}`, signal ? { signal } : undefined))) as Response;
+      const headers = { Authorization: "Bearer synthetic-signed-in-token" };
+      return (await GET(
+        new Request(`http://localhost${item.path}`, signal ? { signal, headers } : { headers }),
+      )) as Response;
     }
 
     it(`${item.name} answers 499 with an empty body when the read aborts`, async () => {

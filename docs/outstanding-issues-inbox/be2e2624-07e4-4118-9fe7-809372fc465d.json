@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "be2e2624-07e4-4118-9fe7-809372fc465d",
+  "createdOn": "2026-10-21",
+  "action": "done",
+  "payload": {
+    "id": "#VHW8K9",
+    "outcome": "Resolved 2026-10-21 with read-only live evidence (docs/audit/2026-10-21-database-performance-evidence.md): 228 never-scanned non-primary indexes over a 34-day stats window, 220 MB total; the large ones are retrieval or search-health indexes and one is unique. No drop justified; candidate list kept in the evidence doc. Revisit trigram indexes only under the RAG gate.",
+    "baseRowFingerprint": "3cdeed9d8743c60f8873a040a0b63065cd6af3566610130055c34c00aecef13e",
+    "targetUlid": "01M31F4Y1JVHW8K90VRJ2R0Z0E"
+  }
+}

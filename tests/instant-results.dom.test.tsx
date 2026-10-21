@@ -21,7 +21,7 @@ const authSession = vi.hoisted(() => ({
   authorizationHeader: undefined as Record<string, string> | undefined,
   markSessionExpired: vi.fn(),
   session: null,
-  status: "signed_out" as "signed_out" | "loading" | "authenticated",
+  status: "authenticated" as "signed_out" | "loading" | "authenticated",
 }));
 
 vi.mock("@/lib/supabase/client", () => ({
@@ -76,7 +76,7 @@ describe("medication catalogue request timing", () => {
 
 describe("medication catalogue request while sign-in resolves", () => {
   afterEach(() => {
-    authSession.status = "signed_out";
+    authSession.status = "authenticated";
   });
 
   it("waits out the pause while sign-in is loading, then sends the resolved request at once", async () => {
@@ -87,10 +87,19 @@ describe("medication catalogue request while sign-in resolves", () => {
     // No anonymous zero-delay request while the session is still resolving.
     expect(fetchMock).not.toHaveBeenCalled();
 
-    authSession.status = "signed_out";
+    authSession.status = "authenticated";
     rerender();
     await act(async () => vi.advanceTimersByTimeAsync(0));
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  // #3728: /api/medications refuses signed-out requests, so a signed-out reader sends none.
+  it("sends no catalogue request once sign-in resolves to signed out", async () => {
+    vi.useFakeTimers();
+    authSession.status = "signed_out";
+    renderHook(() => useMedicationCatalog("lithium"));
+    await act(async () => vi.advanceTimersByTimeAsync(500));
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 
