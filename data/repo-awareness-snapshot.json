@@ -3674,6 +3674,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-21-deleted-document-title-backfill.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/superpowers/specs/2026-09-01-native-smart-catalogue-search-design.md",
         "section": "superpowers",
         "catalogued": true
@@ -4025,6 +4030,11 @@
       },
       {
         "path": "docs/decisions/2026-08-21-care-plan-memory-only-with-storage-seam.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-21-answer-safety-pass-marks.md",
         "section": "decisions",
         "catalogued": true
       },
