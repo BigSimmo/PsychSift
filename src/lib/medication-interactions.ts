@@ -42,7 +42,11 @@
 
 import interactionIndex from "../../data/medication-interaction-index.json";
 import medicationSourceLinkMap from "@/data/medication-source-links.json";
-import { contentReviewSchedule, type ContentReviewSchedule } from "@/lib/content-review-schedule";
+import {
+  contentReviewSchedule,
+  type ContentReviewSchedule,
+  type ContentReviewScheduleInput,
+} from "@/lib/content-review-schedule";
 import { SEMANTIC_TONE_PRIORITY, type SemanticTone } from "@/lib/semantic-tone";
 
 export type InteractionSeverity =
@@ -276,18 +280,21 @@ function interactionFromRow(
  * it shares that record's source-check date and that record's cited sources. The
  * carrying record is the first segment of the interaction id.
  */
+export function interactionReviewInput(interaction: Pick<MedicationInteraction, "id">): ContentReviewScheduleInput {
+  const carryingSlug = interaction.id.split(":")[0] ?? "";
+  const links = medicationSourceLinkMap as Readonly<Record<string, readonly string[]>>;
+  return {
+    kind: "interaction",
+    lastReviewedAt: INDEX.reviewedOn?.[carryingSlug] ?? null,
+    citedSourceIds: Object.hasOwn(links, carryingSlug) ? links[carryingSlug] : [],
+  };
+}
+
 export function interactionReviewSchedule(
   interaction: Pick<MedicationInteraction, "id">,
   referenceDate?: Date,
 ): ContentReviewSchedule {
-  const carryingSlug = interaction.id.split(":")[0] ?? "";
-  const links = medicationSourceLinkMap as Readonly<Record<string, readonly string[]>>;
-  return contentReviewSchedule({
-    kind: "interaction",
-    lastReviewedAt: INDEX.reviewedOn?.[carryingSlug] ?? null,
-    citedSourceIds: Object.hasOwn(links, carryingSlug) ? links[carryingSlug] : [],
-    referenceDate,
-  });
+  return contentReviewSchedule({ ...interactionReviewInput(interaction), referenceDate });
 }
 
 export function evaluateMedicationInteractions(

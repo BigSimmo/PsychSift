@@ -237,6 +237,7 @@
     "tests/clinical-hazard-controls.test.ts",
     "tests/clinical-record-review-contract.test.ts",
     "tests/clinical-review-queue.test.ts",
+    "tests/content-review-notice.dom.test.tsx",
     "tests/content-review-schedule.test.ts",
     "tests/crisis-*",
     "tests/cross-mode-differentials-index.test.ts",

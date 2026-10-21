@@ -11,7 +11,6 @@ import {
   therapyNiceGuidelineMetadata,
   therapySourceMetadata,
 } from "@/lib/therapy-source-governance";
-import { contentReviewSchedule } from "@/lib/content-review-schedule";
 import { therapyCitedSourceIds } from "@/lib/therapy-source-link-ids";
 import type { TherapySourceLink } from "@/lib/therapy-source-links";
 
@@ -49,11 +48,11 @@ export function TherapySourceProvenance({
   // Only a completed review has a date to count from. An unreviewed record is already
   // labelled "Awaiting review", so it carries no due date of its own, but a confirmed
   // change to a source it cites is still news.
-  const reviewSchedule = contentReviewSchedule({
+  const reviewInput = {
     kind: "therapy",
     lastReviewedAt: reviewed ? therapy.reviewedAt : null,
     citedSourceIds: therapyCitedSourceIds(therapy.slug),
-  });
+  } as const;
   const source = therapy.sources[0] ?? null;
   const blob = source?.reference?.trim() || therapy.sourceNotes?.trim() || "";
   const { citations, notes } = splitSourceCitations(blob);
@@ -70,7 +69,7 @@ export function TherapySourceProvenance({
           Source & review status <span className={reviewStatusClass}>{reviewStatus}</span>
         </h2>
       </div>
-      <ContentReviewNotice schedule={reviewSchedule} hideStates={["unknown"]} className="mb-1.5" />
+      <ContentReviewNotice review={reviewInput} hideStates={["unknown"]} className="mb-1.5" />
       <Disclosure
         className="text-sm"
         headingLevel={2}

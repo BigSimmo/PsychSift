@@ -98,16 +98,22 @@ function utcDay(isoDate: string): number {
   return Date.parse(`${isoDate}T00:00:00.000Z`);
 }
 
-export function contentReviewSchedule(input: {
+/** What a page knows about a record's review; the schedule itself is worked out from it on the day it is read. */
+export type ContentReviewScheduleInput = {
   kind: ReviewedContentKind;
   /** ISO date or instant of the last review. Null, blank or malformed means unknown. */
   lastReviewedAt: string | null | undefined;
   /** Source-register ids the record cites. A confirmed change to any of them makes it due now. */
   citedSourceIds?: readonly string[];
-  referenceDate?: Date;
-  /** Override for tests; defaults to the committed change register. */
-  changeEvents?: readonly SourceChangeEvent[];
-}): ContentReviewSchedule {
+};
+
+export function contentReviewSchedule(
+  input: ContentReviewScheduleInput & {
+    referenceDate?: Date;
+    /** Override for tests; defaults to the committed change register. */
+    changeEvents?: readonly SourceChangeEvent[];
+  },
+): ContentReviewSchedule {
   const referenceDate = input.referenceDate ?? new Date();
   const today = referenceDate.toISOString().slice(0, 10);
   let lastReviewedOn = isoCalendarDate(input.lastReviewedAt);

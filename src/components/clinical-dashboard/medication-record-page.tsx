@@ -17,7 +17,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 
 import { BadgeCluster } from "@/components/clinical-dashboard/clinical-badge";
 import { ContentReviewNotice } from "@/components/content-review/content-review-notice";
-import type { ContentReviewSchedule } from "@/lib/content-review-schedule";
+import type { ContentReviewScheduleInput } from "@/lib/content-review-schedule";
 import { formatTallMan } from "@/lib/medications/tall-man";
 import {
   MedicationConsiderations,
@@ -283,14 +283,14 @@ function MedicationRecordDetail({
   governance,
   activeTab,
   sourceLinks = [],
-  reviewSchedule,
+  reviewInput,
 }: {
   record: MedicationRecord;
   governance?: MedicationGovernance;
   /** Owned by `MedicationRecordPage` so the shared header can drive it. */
   activeTab: MedicationTabId;
   sourceLinks?: readonly MedicationSourceLink[];
-  reviewSchedule?: ContentReviewSchedule;
+  reviewInput?: ContentReviewScheduleInput;
 }) {
   const metrics = useMemo(() => medicationHeroMetrics(record), [record]);
   const badges = useMemo(() => medicationIdentityBadges(record, governance), [record, governance]);
@@ -346,7 +346,7 @@ function MedicationRecordDetail({
             {/* An overdue or undated record already carries a "Source check due" or
                 "Source date unknown" chip, so only a changed guideline or a date
                 coming up is said here. */}
-            {reviewSchedule ? <ContentReviewNotice schedule={reviewSchedule} hideStates={["due", "unknown"]} /> : null}
+            {reviewInput ? <ContentReviewNotice review={reviewInput} hideStates={["due", "unknown"]} /> : null}
             {sourceLinks.length === 0 ? (
               <p
                 className="m-0 text-sm-minus leading-5 text-[color:var(--text-muted)]"
@@ -652,7 +652,7 @@ export function MedicationRecordPage({
   fallbackRecord,
   fallbackGovernance,
   sourceLinks = [],
-  reviewSchedule,
+  reviewInput,
 }: {
   slug: string;
   fallbackRecord?: MedicationRecord;
@@ -660,7 +660,7 @@ export function MedicationRecordPage({
   /** Owner-confirmed source links, resolved server-side (`medicationSourceLinks`). */
   sourceLinks?: readonly MedicationSourceLink[];
   /** The record's review schedule, worked out server-side from its snapshot source date. */
-  reviewSchedule?: ContentReviewSchedule;
+  reviewInput?: ContentReviewScheduleInput;
 }) {
   const { data, loading, error, notFound, retry } = useMedicationDetail(slug);
   // Content-first: render the SSR fallback immediately, then swap in the live
@@ -735,7 +735,7 @@ export function MedicationRecordPage({
               governance={governance}
               activeTab={activeTab}
               sourceLinks={sourceLinks}
-              reviewSchedule={reviewSchedule}
+              reviewInput={reviewInput}
             />
           ) : loading ? (
             <MedicationLoading />

@@ -24,7 +24,7 @@ import { usePatientProfile } from "@/components/clinical-dashboard/patient-profi
 import {
   evaluateMedicationInteractions,
   interactionNoteBody,
-  interactionReviewSchedule,
+  interactionReviewInput,
   medicationDisplayName,
   severityLabel,
   type MedicationInteraction,
@@ -553,7 +553,7 @@ function MedicationInteractionBlock({ record }: { record: MedicationRecord }) {
                     {interactionNoteBody(interaction.note)}
                   </p>
                 ) : null}
-                <ContentReviewNotice schedule={interactionReviewSchedule(interaction)} hideStates={["unknown"]} />
+                <ContentReviewNotice review={interactionReviewInput(interaction)} hideStates={["unknown"]} />
                 <CounterpartyLink interaction={interaction} />
               </div>
             </InlineNotice>

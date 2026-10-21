@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { MedicationRecordPage } from "@/components/clinical-dashboard/medication-record-page";
-import { contentReviewSchedule } from "@/lib/content-review-schedule";
+import type { ContentReviewScheduleInput } from "@/lib/content-review-schedule";
 import { deriveMedicationSourceGovernance } from "@/lib/medication-records";
 import { medicationSourceLinkIds, medicationSourceLinks } from "@/lib/medication-source-links";
 import { getMedicationRecord, loadMedicationSnapshot } from "@/lib/medication-snapshot";
@@ -57,13 +57,15 @@ export default async function MedicationPage({ params }: MedicationPageProps) {
 
   // The 12-month review date counts from the record's own source-check date, and a
   // confirmed change to any source the record cites (signed off or only proposed) makes
-  // it due now. Owner-only slugs have no snapshot record, so no schedule is stated.
-  const reviewSchedule = fallbackGovernance
-    ? contentReviewSchedule({
+  // it due now. The page is prerendered, so only the inputs are passed: the notice works
+  // the schedule out in the browser on the day it is read. Owner-only slugs have no
+  // snapshot record, so no schedule is stated.
+  const reviewInput: ContentReviewScheduleInput | undefined = fallbackGovernance
+    ? {
         kind: "medication",
         lastReviewedAt: fallbackGovernance.sourceCheckedAt,
         citedSourceIds: Object.hasOwn(medicationSourceLinkIds, slug) ? medicationSourceLinkIds[slug] : [],
-      })
+      }
     : undefined;
 
   // Only owner-confirmed source links reach the page; until a record is signed off this is empty.
@@ -73,7 +75,7 @@ export default async function MedicationPage({ params }: MedicationPageProps) {
       fallbackRecord={record}
       fallbackGovernance={fallbackGovernance}
       sourceLinks={medicationSourceLinks(slug)}
-      reviewSchedule={reviewSchedule}
+      reviewInput={reviewInput}
     />
   );
 }
