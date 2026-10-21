@@ -259,7 +259,8 @@ export function TeachingQrCheckinSheet({
           </div>
         ) : (
           <p className="text-sm text-[color:var(--text-muted)]" data-testid="teaching-camera-unsupported-note">
-            This browser cannot scan QR codes. Enter the 6-digit code instead.
+            This browser cannot scan QR codes here. Point your phone&apos;s Camera app at the QR code on the screen, or
+            enter the 6-digit code below.
           </p>
         )}
         <form className="grid gap-2" onSubmit={(e) => void handleTypedSubmit(e)}>

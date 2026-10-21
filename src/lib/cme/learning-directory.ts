@@ -76,6 +76,13 @@ const learningDirectoryItemSchema = z
     mode: z.enum(["online", "in-person", "both"]),
     location: nonEmptyText(160).nullable(),
     costNote: nonEmptyText(200).nullable(),
+    /**
+     * How a doctor may already have access, shown before the cost so nobody pays
+     * for something their workshop or employer already covers. Omitted means unknown.
+     */
+    access: z.enum(["included-in-workshop", "employer"]).optional(),
+    /** True when the organiser has cancelled it. A cancelled item stays listed, flagged, until it would have finished. */
+    cancelled: z.boolean().optional(),
     url: httpsUrlSchema,
     /** Where the details were confirmed; may equal `url`. */
     sourceUrl: httpsUrlSchema,
@@ -89,6 +96,9 @@ const learningDirectoryItemSchema = z
         path: ["startsOn"],
         message: "A course or event with confirmed dates needs a start date.",
       });
+    }
+    if (item.cancelled && item.kind === "recorded") {
+      context.addIssue({ code: "custom", path: ["cancelled"], message: "A recorded resource cannot be cancelled." });
     }
     if (item.endsOn !== null && item.startsOn === null) {
       context.addIssue({ code: "custom", path: ["endsOn"], message: "An end date needs a start date." });

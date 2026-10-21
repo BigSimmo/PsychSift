@@ -20,6 +20,7 @@ import {
   filterLearningItems,
   groupLearningByMonth,
   isDirectoryStale,
+  learningAccessLabel,
   learningCountdownLabel,
   learningItemLogHref,
   pastLearningItems,
@@ -64,11 +65,18 @@ function whereLabel(item: LearningDirectoryItem): string {
   return item.location ?? "In person";
 }
 
-/** When · Where · Cost, the one grey line under the title. */
+/** Cost, led by any access the doctor may already have so nobody pays twice. */
+function costLabel(item: LearningDirectoryItem): string | null {
+  const access = learningAccessLabel(item);
+  return [access, item.costNote].filter(Boolean).join(". ") || null;
+}
+
+/** When · Where · Cost, the one grey line under the title. A cancelled course says so first. */
 function whenWhereCost(item: LearningDirectoryItem, today: string): string {
   const when = item.startsOn === null && item.kind === "recorded" ? null : whenLabel(item, today);
   const where = item.startsOn === null && item.kind === "recorded" ? "Online · watch any time" : whereLabel(item);
-  return [when, where, item.costNote].filter(Boolean).join(" · ");
+  const line = [when, where, costLabel(item)].filter(Boolean).join(" · ");
+  return item.cancelled ? `Cancelled by the organiser · ${line}` : line;
 }
 
 function downloadCalendarEvent(item: LearningDirectoryItem): void {
@@ -315,7 +323,7 @@ function CourseSheet({
   const phase = open?.phase;
   const recordedAnyTime = item?.startsOn === null && item?.kind === "recorded";
   const canCalendar = item && phase === "upcoming" && canAddLearningToCalendar(item);
-  const canLog = item && phase !== "unconfirmed";
+  const canLog = item && phase !== "unconfirmed" && !item.cancelled;
   return (
     <Sheet
       open={Boolean(open)}
@@ -369,7 +377,8 @@ function CourseSheet({
                       : whenLabel(item, today),
               },
               { label: "Where", value: recordedAnyTime ? "Online" : whereLabel(item) },
-              { label: "Cost", value: item.costNote ?? "Not listed" },
+              ...(item.cancelled ? [{ label: "Status", value: "Cancelled by the organiser" }] : []),
+              { label: "Cost", value: costLabel(item) ?? "Not listed" },
             ]}
           />
           <a
