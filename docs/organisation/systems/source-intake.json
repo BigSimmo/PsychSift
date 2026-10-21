@@ -92,6 +92,7 @@
     "src/lib/document-organization.ts",
     "src/lib/document-tags.ts",
     "src/lib/embedding-dimensions.ts",
+    "src/lib/embedding-input-budget.ts",
     "src/lib/enrichment-repair.ts",
     "src/lib/extractors/**",
     "src/lib/image-filtering.ts",

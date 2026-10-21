@@ -1,5 +1,6 @@
 "use client";
 
+import { clinicalToolAccessForStatus } from "@/components/mode-kit/use-clinical-tool-access";
 import type { Dispatch, RefObject, SetStateAction } from "react";
 import type { useRouter } from "next/navigation";
 
@@ -99,7 +100,7 @@ type DashboardActionNotice = { tone: "success" | "warning"; message: string };
 
 type DashboardSearchExecutionDeps = {
   router: ReturnType<typeof useRouter>;
-  auth: { session: { user: { id: string } } | null };
+  auth: { session: { user: { id: string } } | null; status?: Parameters<typeof clinicalToolAccessForStatus>[0] };
   query: string;
   searchMode: AppModeId;
   queryMode: ClinicalQueryMode;
@@ -548,6 +549,18 @@ export function useDashboardSearchExecution(deps: DashboardSearchExecutionDeps) 
       setError(null);
       rememberRecentQuery(trimmedQuery);
       window.requestAnimationFrame(() => scrollSurface(mainRef.current, 0, resolveScrollBehavior()));
+      return;
+    }
+    if (
+      (modeSearch.kind === "documents" || modeSearch.kind === "differentials") &&
+      clinicalToolAccessForStatus(auth.status ?? null) !== "allowed"
+    ) {
+      // #3728: /api/search refuses signed-out requests; the screen shows the sign-in card instead,
+      // so send nothing and show no "session expired" error for a reader who never signed in.
+      setDocumentMatches([]);
+      setAnswerProgress(null);
+      setLoading(false);
+      setError(null);
       return;
     }
     setSetupBlockedQuery(null);

@@ -5,7 +5,6 @@ import {
   collectCommittedGenerations,
   planReindexRollback,
   parseRollbackArgs,
-  ROLLBACK_APPLY_ACK_FLAG,
   runReindexRollback,
   type CommittedGeneration,
   type RollbackScope,
@@ -21,6 +20,8 @@ type MemoryDocument = {
   generations: CommittedGeneration[];
   chunks: Record<string, number>;
   chunkerVersions?: Record<string, string[]>;
+  /** Generations without a complete snapshot; every other generation has one. */
+  missingSnapshots?: string[];
 };
 
 function memoryStore(documents: Record<string, MemoryDocument>) {
@@ -45,6 +46,9 @@ function memoryStore(documents: Record<string, MemoryDocument>) {
     },
     async chunkerVersions(documentId, generationId) {
       return documents[documentId]?.chunkerVersions?.[generationId] ?? [];
+    },
+    async hasGenerationSnapshot(documentId, generationId) {
+      return !(documents[documentId]?.missingSnapshots ?? []).includes(generationId);
     },
     repoint,
   };
@@ -107,6 +111,13 @@ describe("reindex rollback", () => {
     expect(repoint).not.toHaveBeenCalled();
   });
 
+  it("refuses in the dry run when the previous generation has no snapshot to restore (#3732)", async () => {
+    const { store, repoint } = memoryStore({ [DOC_A]: { ...twoGenerations(), missingSnapshots: ["gen-old"] } });
+    const [outcome] = await runReindexRollback(store, { kind: "documents", documentIds: [DOC_A] }, { apply: true });
+    expect(outcome.refusal).toBe("target_snapshot_missing");
+    expect(repoint).not.toHaveBeenCalled();
+  });
+
   it("reports an RPC refusal as a failed apply", async () => {
     const { store, repoint } = memoryStore({ [DOC_A]: twoGenerations() });
     repoint.mockResolvedValueOnce({ ok: false, reason: "ingestion_in_progress" });
@@ -158,29 +169,13 @@ describe("parseRollbackArgs", () => {
     expect(() => parseRollbackArgs(["--committed-after", "yesterday"])).toThrow(/Not a timestamp/);
   });
 
-  it("refuses --apply without the metadata-not-restored acknowledgement", () => {
-    expect(() => parseRollbackArgs(["--document-id", DOC_A, "--apply"])).toThrow(
-      /documents\.metadata and document_index_quality.*PR 3732/,
-    );
-    expect(() => parseRollbackArgs(["--document-id", DOC_A, "--apply", "--yes"])).toThrow(/Refusing --apply/);
-  });
-
-  it("allows --apply with the acknowledgement flag", () => {
-    const args = parseRollbackArgs(["--document-id", DOC_A, "--apply", ROLLBACK_APPLY_ACK_FLAG]);
-    expect(args.apply).toBe(true);
-  });
-
-  it("does not need the acknowledgement for a dry run", () => {
+  it("allows --apply without the retired metadata acknowledgement flag (#3732)", () => {
+    expect(parseRollbackArgs(["--document-id", DOC_A, "--apply"]).apply).toBe(true);
     expect(parseRollbackArgs(["--document-id", DOC_A]).apply).toBe(false);
   });
 
   it("parses committed-after and apply", () => {
-    const args = parseRollbackArgs([
-      "--committed-after=2026-10-21T00:00:00Z",
-      "--apply",
-      ROLLBACK_APPLY_ACK_FLAG,
-      "--yes",
-    ]);
+    const args = parseRollbackArgs(["--committed-after=2026-10-21T00:00:00Z", "--apply", "--yes"]);
     expect(args).toMatchObject({
       apply: true,
       yes: true,
