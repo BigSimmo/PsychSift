@@ -4674,6 +4674,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/audit/2026-10-21-database-performance-evidence.md",
+        "section": "audit",
+        "catalogued": true
+      },
+      {
         "path": "docs/design-system/sweep-2026-08-29-visual.md",
         "section": "design-system",
         "catalogued": true
