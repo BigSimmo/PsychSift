@@ -33,7 +33,7 @@ const source: WatchedSource = {
   jurisdiction: "Australia/WA",
   url: "https://www.health.wa.gov.au/example",
 };
-const html = (text: string): FetchOutcome => ({
+const html = (text: string): Extract<FetchOutcome, { kind: "ok" }> => ({
   kind: "ok",
   finalUrl: source.url,
   status: 200,
