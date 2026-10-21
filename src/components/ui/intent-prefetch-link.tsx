@@ -11,6 +11,19 @@ type IntentPrefetchLinkProps = Omit<ComponentProps<typeof Link>, "prefetch" | "h
 };
 
 /**
+ * The app router, or null where none is mounted (isolated component renders). Intent
+ * prefetch is an optimisation, so a link must never fail to render without a router.
+ * The hook is still called unconditionally on every render.
+ */
+function useOptionalRouter(): ReturnType<typeof useRouter> | null {
+  try {
+    return useRouter();
+  } catch {
+    return null;
+  }
+}
+
+/**
  * A `next/link` that prefetches on intent (pointer enter, touch, focus) instead of on
  * viewport entry. The home page renders ~10 always-visible nav links; eager viewport
  * prefetch fired ~13 RSC requests while the page was still hydrating, and processing
@@ -21,10 +34,11 @@ export const IntentPrefetchLink = forwardRef<HTMLAnchorElement, IntentPrefetchLi
   { href, prefetch, onPointerEnter, onFocus, ...rest },
   ref,
 ) {
-  const router = useRouter();
+  const router = useOptionalRouter();
   const prefetched = useRef(false);
   const warm = useCallback(() => {
     if (prefetched.current) return;
+    if (!router) return;
     prefetched.current = true;
     router.prefetch(href);
   }, [router, href]);

@@ -133,6 +133,10 @@ import {
 } from "@/components/clinical-dashboard/clinical-dashboard-payloads";
 import { type IndexingMonitorFilter, type LibraryHealthTarget } from "@/components/clinical-dashboard/document-admin";
 import { useIdlePreload } from "@/components/clinical-dashboard/idle-preload";
+import {
+  IndexingAdminDrawer,
+  loadIndexingAdminDrawer,
+} from "@/components/clinical-dashboard/indexing-admin-drawer-lazy";
 import { DashboardDocumentsDrawer } from "@/components/clinical-dashboard/dashboard-documents-drawer";
 import { useHomeModeSeed } from "@/components/clinical-dashboard/use-home-mode-seed";
 import {
@@ -140,8 +144,6 @@ import {
   DifferentialsHome,
   DocumentSearchResultsPanel,
   FavouritesHub,
-  IndexingAdminDrawer,
-  loadIndexingAdminDrawer,
   loadStagedAnswerResultSurface,
   MedicationPrescribingWorkspace,
   RelatedDocumentsPanel,
