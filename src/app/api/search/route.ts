@@ -1,3 +1,4 @@
+import { requireSignedInClinicalAccess } from "@/lib/clinical-access";
 import { NextResponse } from "next/server";
 import type { Json } from "@/lib/supabase/database.types";
 import { z } from "zod";
@@ -922,6 +923,8 @@ export async function POST(request: Request) {
     supabase = createAdminClient();
     const authStartedAt = Date.now();
     const access = await publicAccessContext(request, supabase);
+    // #3728: signed-in health professionals only from 1 Nov 2026 (the #3696 rule).
+    requireSignedInClinicalAccess(access);
     const authMs = Date.now() - authStartedAt;
     ownerId = access.ownerId ?? null;
     const publicOnly = !access.authenticated && !isLocalNoAuthMode();

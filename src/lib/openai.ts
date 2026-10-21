@@ -8,6 +8,7 @@ import { readBoundedLruEntry, writeBoundedLruEntry } from "@/lib/bounded-ttl-cac
 import { instrumentOpenAIClientForAgentMonitoring } from "@/lib/observability/agent-monitoring";
 import { assessClinicalImageUse } from "@/lib/image-filtering";
 import { PublicApiError } from "@/lib/http";
+import { batchEmbeddingInputs } from "@/lib/embedding-input-budget";
 import {
   deterministicStructuredVisualProfile,
   normalizeStructuredVisualProfile,
@@ -709,6 +710,10 @@ export async function embedTexts(texts: string[], options?: IngestionOpenAIOptio
     return nextIndex;
   });
 
+  // Plan every request before creating a client. Intact table rows can exceed
+  // the chunk target; count-only batching could put their combined byte-BPE
+  // upper bound beyond the provider's per-request token budget.
+  const batches = batchEmbeddingInputs(uniqueTexts, env.OPENAI_EMBEDDING_BATCH_SIZE, env.OPENAI_EMBEDDING_MODEL);
   try {
     const client = createOpenAIClient();
     // IDX-C3: a single embeddings request is capped at 2048 inputs / ~300k tokens, so a
@@ -717,7 +722,6 @@ export async function embedTexts(texts: string[], options?: IngestionOpenAIOptio
     // uses the GLOBAL index (batchStart + item.index) so a chunk is never stored with the
     // embedding of an unrelated text, even across batch boundaries (extends IDX-C1).
     const byIndex = new Array<number[]>(uniqueTexts.length);
-    const batches = chunkIntoBatches(uniqueTexts, env.OPENAI_EMBEDDING_BATCH_SIZE);
 
     // IDX-C3: a single embeddings request is capped at 2048 inputs / ~300k tokens, so a
     // full-corpus re-embed must be split. To maximize throughput while respecting rate

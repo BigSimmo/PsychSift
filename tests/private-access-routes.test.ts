@@ -4765,7 +4765,7 @@ describe("private document API access", () => {
     },
   );
 
-  it("keeps search open to anonymous callers but refuses them an answer", async () => {
+  it("refuses anonymous callers both search and an answer (#3728)", async () => {
     const searchChunksWithTelemetry = vi.fn(async () => ({
       results: [],
       telemetry: {
@@ -4805,14 +4805,14 @@ describe("private document API access", () => {
       }),
     );
 
-    expect(searchResponse.status).toBe(200);
+    // Search needs sign-in too from 1 November 2026 (#3728).
+    expect(searchResponse.status).toBe(401);
+    expect(await payload(searchResponse)).toMatchObject({ code: "authentication_required" });
     // Answer needs sign-in from 1 November 2026
     // (docs/decisions/2026-10-20-clinical-decision-tools-need-sign-in.md).
     expect(answerResponse.status).toBe(401);
     expect(await payload(answerResponse)).toMatchObject({ code: "authentication_required" });
-    expect(searchChunksWithTelemetry).toHaveBeenCalledWith(
-      expect.objectContaining({ ownerId: undefined, allowGlobalSearch: true }),
-    );
+    expect(searchChunksWithTelemetry).not.toHaveBeenCalled();
     expect(answerQuestionWithScope).not.toHaveBeenCalled();
     expect(client.auth.getUser).not.toHaveBeenCalled();
     expect(client.rpc).not.toHaveBeenCalledWith(
@@ -5073,7 +5073,7 @@ describe("private document API access", () => {
     expect(searchChunksWithTelemetry).not.toHaveBeenCalled();
   });
 
-  it("uses an anonymous in-memory limiter for public search when the durable anonymous limiter is unavailable", async () => {
+  it("refuses anonymous search with 401 even when the durable anonymous limiter is unavailable (#3728)", async () => {
     const searchChunksWithTelemetry = vi.fn(async () => ({
       results: [],
       telemetry: {
@@ -5102,10 +5102,8 @@ describe("private document API access", () => {
       }),
     );
 
-    expect(response.status).toBe(200);
-    expect(searchChunksWithTelemetry).toHaveBeenCalledWith(
-      expect.objectContaining({ ownerId: undefined, allowGlobalSearch: true }),
-    );
+    expect(response.status).toBe(401);
+    expect(searchChunksWithTelemetry).not.toHaveBeenCalled();
     expect(client.auth.getUser).not.toHaveBeenCalled();
   });
 
@@ -5121,7 +5119,7 @@ describe("private document API access", () => {
     const { POST } = await import("../src/app/api/search/route");
 
     const response = await POST(
-      request("/api/search", {
+      authenticatedRequest("/api/search", {
         method: "POST",
         body: JSON.stringify({
           query: "clozapine monitoring",
@@ -5157,7 +5155,7 @@ describe("private document API access", () => {
     const { POST } = await import("../src/app/api/search/route");
 
     const response = await POST(
-      request("/api/search", {
+      authenticatedRequest("/api/search", {
         method: "POST",
         body: JSON.stringify({
           query: "clozapine monitoring",

@@ -161,6 +161,28 @@ afterEach(() => {
 });
 
 describe("differentials API routes", () => {
+  // #3728: differentials need sign-in from 1 November 2026; signed-out requests are refused
+  // before any catalogue read or rate-limit spend.
+  it.each([
+    ["/api/differentials?kind=diagnosis", "../src/app/api/differentials/route", undefined],
+    ["/api/differentials/delirium?kind=diagnosis", "../src/app/api/differentials/[slug]/route", "delirium"],
+    [
+      "/api/differentials/presentations/acute-confusion-encephalopathy",
+      "../src/app/api/differentials/presentations/[slug]/route",
+      "acute-confusion-encephalopathy",
+    ],
+  ] as const)("refuses an unauthenticated request to %s with 401", async (path, modulePath, slug) => {
+    const client = createSupabaseMock();
+    mockRuntime(client);
+    const { GET } = (await import(modulePath)) as {
+      GET: (request: Request, context?: { params: Promise<{ slug: string }> }) => Promise<Response>;
+    };
+    const response = await GET(request(path), slug ? { params: Promise.resolve({ slug }) } : undefined);
+    expect(response.status).toBe(401);
+    expect(client.from).not.toHaveBeenCalled();
+    expect(client.rpc).not.toHaveBeenCalled();
+  });
+
   it("serves initialized diagnosis and presentation payloads without expecting a raw payload wrapper", async () => {
     const cases = [
       {
@@ -248,7 +270,7 @@ describe("differentials API routes", () => {
       });
       mockRuntime(client);
       const { GET } = await import("../src/app/api/differentials/route");
-      const response = await GET(request(`/api/differentials?kind=${item.kind}`));
+      const response = await GET(authenticatedRequest(`/api/differentials?kind=${item.kind}`));
       const payload = (await response.json()) as Record<string, unknown>;
       expect({ status: response.status, payload }).toMatchObject({ status: 200, payload: { publicAccess: true } });
       expect(payload[item.key]).toEqual([item.expectedPayload]);
@@ -314,7 +336,7 @@ describe("differentials API routes", () => {
       const { GET } = (await import(/* @vite-ignore */ modulePath)) as {
         GET: (request: Request, context: { params: Promise<{ slug: string }> }) => Promise<Response>;
       };
-      const response = await GET(request(path), { params: Promise.resolve({ slug }) });
+      const response = await GET(authenticatedRequest(path), { params: Promise.resolve({ slug }) });
       const body = JSON.stringify(await response.json());
       expect(response.status).toBe(200);
       expect(body).toContain("Hosted legacy presentation");
@@ -579,7 +601,7 @@ describe("differentials API routes", () => {
     mockRuntime(client);
     const { GET } = await import("../src/app/api/differentials/route");
 
-    const response = await GET(request("/api/differentials"));
+    const response = await GET(authenticatedRequest("/api/differentials"));
 
     expect(response.status).toBe(429);
     expect(response.headers.get("retry-after")).toBe("60");
@@ -619,7 +641,7 @@ describe("differentials survive an unusable catalogue", () => {
       mockRuntime(degradedClient);
       const { GET: getDegraded } = await import("../src/app/api/differentials/route");
 
-      const degradedResponse = await getDegraded(request(`/api/differentials?kind=${kind}`));
+      const degradedResponse = await getDegraded(authenticatedRequest(`/api/differentials?kind=${kind}`));
       const degradedPayload = (await degradedResponse.json()) as { degraded?: boolean };
 
       expect(degradedResponse.status).toBe(200);

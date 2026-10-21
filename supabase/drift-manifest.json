@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-21T13:55:36.017Z",
+  "generated_at": "2026-10-21T17:01:07.664Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "dcb631ecd9b425e1ac320e72a7b981bd4a41a4c8ad6c62484c8bbc5c3dbfe217",
-  "replay_seconds": 53,
+  "schema_sha256": "efb7d55f1a40a6cf1fc27e45accb66d7c8844dc598f36af11765a39f6dd063e6",
+  "replay_seconds": 33,
   "snapshot": {
     "views": [
       {
@@ -3237,6 +3237,58 @@
           "autovacuum_vacuum_scale_factor=0.05",
           "autovacuum_vacuum_threshold=1000"
         ],
+        "rls_forced": false,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=arwd/postgres"
+        ],
+        "name": "document_index_generation_snapshots",
+        "columns": [
+          {
+            "name": "captured_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "document_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "index_generation_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "metadata",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "quality",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
         "rls_forced": false,
         "rls_enabled": true
       },
@@ -15012,6 +15064,12 @@
         "def_hash": "064a542af2b97dc915fcc29e9a76e6c3"
       },
       {
+        "def": "CREATE UNIQUE INDEX document_index_generation_snapshots_pkey ON public.document_index_generation_snapshots USING btree (document_id, index_generation_id)",
+        "name": "document_index_generation_snapshots_pkey",
+        "table": "document_index_generation_snapshots",
+        "def_hash": "34b73d4a3f3a3eaad7478678043f41cb"
+      },
+      {
         "def": "CREATE INDEX document_index_quality_document_id_idx ON public.document_index_quality USING btree (document_id)",
         "name": "document_index_quality_document_id_idx",
         "table": "document_index_quality",
@@ -18440,6 +18498,11 @@
         "table": "document_images"
       },
       {
+        "def": "CREATE TRIGGER document_index_quality_capture_generation_snapshot BEFORE UPDATE ON public.document_index_quality FOR EACH ROW EXECUTE FUNCTION public.capture_document_index_quality_snapshot()",
+        "name": "document_index_quality_capture_generation_snapshot",
+        "table": "document_index_quality"
+      },
+      {
         "def": "CREATE TRIGGER document_index_units_updated_at BEFORE UPDATE ON public.document_index_units FOR EACH ROW EXECUTE FUNCTION public.set_updated_at()",
         "name": "document_index_units_updated_at",
         "table": "document_index_units"
@@ -18483,6 +18546,11 @@
         "def": "CREATE TRIGGER document_title_words_enforce_public_scope BEFORE INSERT OR UPDATE ON public.document_title_words FOR EACH ROW EXECUTE FUNCTION public.enforce_document_title_word_scope()",
         "name": "document_title_words_enforce_public_scope",
         "table": "document_title_words"
+      },
+      {
+        "def": "CREATE TRIGGER documents_capture_index_generation_snapshot BEFORE UPDATE OF metadata ON public.documents FOR EACH ROW EXECUTE FUNCTION public.capture_document_index_metadata_snapshot()",
+        "name": "documents_capture_index_generation_snapshot",
+        "table": "documents"
       },
       {
         "def": "CREATE TRIGGER documents_guard_public_source_identity BEFORE INSERT OR UPDATE ON public.documents FOR EACH ROW EXECUTE FUNCTION public.guard_public_source_document_identity()",
@@ -18939,6 +19007,20 @@
       },
       {
         "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "40e293903d367e120421780f7cf4baaf",
+        "signature": "public.capture_document_index_metadata_snapshot()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "2ee19a2012f6efe8479f0b3b02c2cd8c",
+        "signature": "public.capture_document_index_quality_snapshot()"
+      },
+      {
+        "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
@@ -19385,6 +19467,14 @@
         ],
         "def_hash": "58f5ef7258095fc953849fdb45a832d1",
         "signature": "public.document_evidence_rows_changed()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "5884e713b6874d57c20593b8deada2dc",
+        "signature": "public.document_index_generation_metadata_keys()"
       },
       {
         "acl": [
@@ -20429,7 +20519,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "e1d1c7cf71c628bf10a45f8de1a07165",
+        "def_hash": "456e0660d53a26e0d3420ab261e2f89b",
         "signature": "public.rollback_document_index_generation(uuid,uuid,uuid)"
       },
       {
@@ -22555,6 +22645,26 @@
         "def": "PRIMARY KEY (id)",
         "name": "document_images_pkey",
         "table": "document_images"
+      },
+      {
+        "def": "FOREIGN KEY (document_id) REFERENCES public.documents(id) ON DELETE CASCADE",
+        "name": "document_index_generation_snapshots_document_id_fkey",
+        "table": "document_index_generation_snapshots"
+      },
+      {
+        "def": "CHECK (((metadata IS NULL) OR (jsonb_typeof(metadata) = 'object'::text)))",
+        "name": "document_index_generation_snapshots_metadata_object",
+        "table": "document_index_generation_snapshots"
+      },
+      {
+        "def": "PRIMARY KEY (document_id, index_generation_id)",
+        "name": "document_index_generation_snapshots_pkey",
+        "table": "document_index_generation_snapshots"
+      },
+      {
+        "def": "CHECK (((quality IS NULL) OR (jsonb_typeof(quality) = 'object'::text)))",
+        "name": "document_index_generation_snapshots_quality_object",
+        "table": "document_index_generation_snapshots"
       },
       {
         "def": "FOREIGN KEY (document_id) REFERENCES public.documents(id) ON DELETE CASCADE",
