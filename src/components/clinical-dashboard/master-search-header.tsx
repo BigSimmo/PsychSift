@@ -615,8 +615,28 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
     } else {
       setScopeOpen(true);
       onScopeOpenChange?.(true);
-      window.requestAnimationFrame(() => scopeFilterInputRef.current?.focus());
+      focusScopeFilterWhenMounted();
     }
+  }
+
+  // The picker is a lazily loaded chunk: on a cold open it may still be downloading, so
+  // wait for it, then retry for a few frames until its filter input has mounted.
+  function focusScopeFilterWhenMounted() {
+    void loadScopePicker()
+      .catch(() => undefined)
+      .then(() => {
+        let frames = 0;
+        const tryFocus = () => {
+          const input = scopeFilterInputRef.current;
+          if (input) {
+            input.focus();
+            return;
+          }
+          frames += 1;
+          if (frames < 30) window.requestAnimationFrame(tryFocus);
+        };
+        window.requestAnimationFrame(tryFocus);
+      });
   }
 
   function runModeAction(actionId: ModeActionId) {

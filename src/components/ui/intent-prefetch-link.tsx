@@ -35,11 +35,12 @@ export const IntentPrefetchLink = forwardRef<HTMLAnchorElement, IntentPrefetchLi
   ref,
 ) {
   const router = useOptionalRouter();
-  const prefetched = useRef(false);
+  const prefetchedHref = useRef<string | null>(null);
   const warm = useCallback(() => {
-    if (prefetched.current) return;
+    // Track the href, not a boolean: one link instance can outlive a destination change.
+    if (prefetchedHref.current === href) return;
     if (!router) return;
-    prefetched.current = true;
+    prefetchedHref.current = href;
     router.prefetch(href);
   }, [router, href]);
   return (
