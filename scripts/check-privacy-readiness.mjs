@@ -4,6 +4,7 @@ import { execFileSync } from "node:child_process";
 import { dirname, isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { appliedRecordName, findAppliedRecord } from "./lib/inbox-archive.mjs";
 import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 import { decideReviewedCommitHistoryFromFacts } from "./lib/reviewed-commit-history-decision.mjs";
@@ -277,9 +278,20 @@ export function evaluatePrivacyReadiness(
     } else if (checkFiles) {
       for (const reference of item.evidenceReferences) {
         const resolved = repositoryPath(reference);
-        if (!resolved || !existsSync(resolved.absolute)) {
+        // An applied inbox request cited here may since have been archived, unchanged, into a
+        // quarter folder; it is still the same evidence.
+        const archived =
+          resolved && !existsSync(resolved.absolute) && appliedRecordName(resolved.file)
+            ? findAppliedRecord(root, appliedRecordName(resolved.file))
+            : null;
+        if (!resolved || (!existsSync(resolved.absolute) && !archived)) {
           errors.push(`${label}: missing evidence ${reference}`);
-        } else if (checkGit && reviewedCommitExists && !pathExistsAtCommit(reviewedCommit, resolved.file)) {
+        } else if (
+          checkGit &&
+          reviewedCommitExists &&
+          !pathExistsAtCommit(reviewedCommit, resolved.file) &&
+          !(archived && pathExistsAtCommit(reviewedCommit, archived))
+        ) {
           errors.push(`${label}: evidence is absent from reviewedCommit ${reference}`);
         }
       }

@@ -2,13 +2,11 @@
 
 Use this ledger to prevent repeated branch and PR reviews when the reviewed HEAD has not changed.
 
-This file is a frozen historical table. New review records are immutable one-row files under `docs/branch-review-records/`, so simultaneous PRs never edit a shared hunk. Never rewrite an existing review record's content; append a correction or superseding record instead. The historical table and archives are retained for lookup, but normal PRs do not rotate, deduplicate, or add rows to them. The `merge` attribute is deliberately unspecified: GitHub cannot run a workstation-local merge driver.
+This file is a frozen historical table. New review records are pull request comments ([Records](agents/pull-request-workflow.md#records)), so no PR edits a shared hunk. The record files written before 2026-10-20 are archived read-only under `docs/archive/branch-review-records/`. Never rewrite an existing review record's content. The historical table and archives are retained for lookup, but normal PRs do not rotate, deduplicate, or add rows to them. The `merge` attribute is deliberately unspecified: GitHub cannot run a workstation-local merge driver.
 
-`npm run check:ledger-write-discipline` rejects a dated-row change in this historical table. Equivalent retry records converge on the same content-addressed file; near-duplicates remain deliberate corrections and use `ledger:append --supersede`.
+`npm run check:ledger-write-discipline` rejects a dated-row change in this historical table. The record writer and the one-time legacy migration are retired and refuse without an explicit historical-repair opt-in.
 
-An already-open branch that contains a pre-system table row must run `npm run ledger:migrate-legacy -- --dry-run` and then `npm run ledger:migrate-legacy` before its next push. That preserves the row in an immutable file while removing the branch's shared-table hunk; commit both changes together. This is a one-time compatibility migration, not a normal review command.
-
-Do not hand-edit this table or a record file. Read the whole corpus with `npm run ledger:lookup` and write new entries with `npm run ledger:append`; it creates one content-addressed file under `docs/branch-review-records/`.
+Do not hand-edit this table or a record file. Read the whole corpus with `npm run ledger:lookup`.
 
 ## Lookup Procedure
 
@@ -41,7 +39,7 @@ Record the **Reviewed HEAD** as the full 40-character SHA. `see PR head`, `pendi
 
 ### Archival Policy
 
-This historical table is frozen (`npm run check:ledger-write-discipline` rejects any dated-row edit or rotation here). All new review records are written as immutable content-addressed files under `docs/branch-review-records/` via `npm run ledger:append` (and indexed in `docs/branch-review-index.md` via `npm run ledger:index`). See [`docs/branch-review-archival-policy.md`](branch-review-archival-policy.md) for what may and may not be done to review records.
+This historical table is frozen (`npm run check:ledger-write-discipline` rejects any dated-row edit or rotation here). Review records written before 2026-10-20 are archived under `docs/archive/branch-review-records/` and indexed in `docs/branch-review-index.md` (`npm run ledger:index`); newer ones are pull request comments. See [`docs/branch-review-archival-policy.md`](branch-review-archival-policy.md) for what may and may not be done to review records.
 
 ### Historical note — 2026-07-28 hygiene pass
 

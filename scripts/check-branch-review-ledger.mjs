@@ -18,9 +18,9 @@
  * STRICT_FROM. Everything before that is the historical record, repaired for encoding and
  * cell structure on 2026-07-28 but deliberately not rewritten for content.
  *
- * Write new records with `npm run ledger:append` so these rules hold by construction.
- * The legacy table is frozen for normal PRs. Write new rows through `ledger:append`;
- * it creates an immutable record file that GitHub can merge without custom drivers.
+ * The legacy table and the archived record files are frozen. Since 2026-10-20 new review
+ * records are pull request comments (docs/agents/pull-request-workflow.md#records), so this
+ * check guards history only.
  */
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
@@ -41,7 +41,7 @@ const LEDGER_PATH = "docs/branch-review-ledger.md";
 const PROTOCOL_PATH = "docs/codex-review-protocol.md";
 
 /**
- * Records dated on or after this land through `ledger:append` and must be fully
+ * Records dated on or after this landed through the retired record writer and must be fully
  * machine-readable. It is the first day after the hygiene pass, so no pre-existing
  * record is retroactively invalidated.
  */
@@ -118,7 +118,7 @@ export function validateLedger({ ledger, mergeAttribute, protocol }) {
     failures.push(
       `${mojibake.length} line(s) contain mojibake (\`???\` or U+FFFD) at line(s) ${mojibake.slice(0, 10).join(", ")}${
         mojibake.length > 10 ? ", ..." : ""
-      }. Append with \`npm run ledger:append\` so rows are written as UTF-8.`,
+      }. The table is frozen: restore these lines from the base branch instead of editing them.`,
     );
   }
 
@@ -214,12 +214,12 @@ export function validateLedger({ ledger, mergeAttribute, protocol }) {
 
   if (
     !ledger.includes("This file is a frozen historical table.") ||
-    !ledger.includes("New review records are immutable")
+    !ledger.includes("New review records are pull request comments")
   ) {
     failures.push(`${LEDGER_PATH} is missing its immutable-record editing contract.`);
   }
-  if (!protocol.includes("completed immutable review record") || !protocol.includes("historical table is frozen")) {
-    failures.push(`${PROTOCOL_PATH} is missing its immutable-record reviewer instruction.`);
+  if (!protocol.includes("post one `Review record` comment on the PR") || !protocol.includes("The table is frozen")) {
+    failures.push(`${PROTOCOL_PATH} is missing its review-record reviewer instruction.`);
   }
 
   return { failures, recordCount: rows.length, strictCount: strict.length };
@@ -256,7 +256,7 @@ function selfTest() {
       "# Ledger",
       "",
       "This file is a frozen historical table.",
-      "New review records are immutable.",
+      "New review records are pull request comments.",
       "",
       row(),
       ...extra,
@@ -266,7 +266,7 @@ function selfTest() {
   const valid = {
     ledger: ledgerWith(),
     mergeAttribute: "unspecified",
-    protocol: "completed immutable review record; historical table is frozen",
+    protocol: "post one `Review record` comment on the PR. The table is frozen",
   };
   const fails = (input, needle, label) =>
     assert(

@@ -91,7 +91,7 @@ does not replace the fetch/approval and per-branch content proof below.
    git worktree list --porcelain
    ```
 
-5. Filter candidates through the review ledger before inspecting branch diffs:
+5. Filter candidates through prior review records before inspecting branch diffs. For a branch with a PR, read the PR's comments for a `Review record` at its current head with scope `branch-cleanup` ([Records](agents/pull-request-workflow.md#records)). For history before 2026-10-20:
 
    ```bash
    npm run ledger:lookup -- BRANCH_NAME --scope branch-cleanup
@@ -115,10 +115,10 @@ credentials.
 ## Recommended Cleanup Order
 
 1. Fetch and inspect current branch state with the commands above.
-2. Resolve each candidate's HEAD and skip unchanged completed reviews recorded in `docs/branch-review-ledger.md`.
+2. Resolve each candidate's HEAD and skip unchanged completed reviews recorded in a PR `Review record` comment or the archived history.
 3. For each remaining candidate branch, confirm patch-unique commits and file diffs against `main`.
 4. Port, commit, or explicitly reject useful patch content before deleting any branch ref.
-5. Record completed cleanup reviews with `npm run ledger:append -- --ref <branch> --head <full-sha> --scope branch-cleanup --outcome <o> --checks <c>`. The scope cell must be exactly `branch-cleanup` for a later sweep to treat it as complete; `branch-cleanup-deletion-pending` deliberately does not count.
+5. Record a completed cleanup review of a branch with a PR as one `Review record` comment on that PR, with scope exactly `branch-cleanup` so a later sweep treats it as complete; `branch-cleanup-deletion-pending` deliberately does not count. A branch with no PR gets no record; report it in the task's reply.
 6. Record worktree state with the report-only commands below. A report is evidence, not removal authority.
 
 ## Report-only Worktree Fleet Inspection (`#XCAX01`, `#6GW95D`)

@@ -1,6 +1,6 @@
 ---
 name: handoff
-description: Safely commit, verify, and push completed work on a feature branch in this repo, then open a PR and record the review in the ledger. Use when work is finished and you want to hand it off — it runs the repo's verification gate, preserves unrelated work, and never touches protected branches without the required confirmation.
+description: Safely commit, verify, and push completed work on a feature branch in this repo, then open a PR and record the review as a PR comment. Use when work is finished and you want to hand it off — it runs the repo's verification gate, preserves unrelated work, and never touches protected branches without the required confirmation.
 ---
 
 # handoff — commit, verify, push, PR
@@ -87,7 +87,7 @@ force-push, or discard work.
    where true, a satisfying `RAG impact:` line. On an ordinary PR you may arm
    auto-merge at open (`gh pr merge --merge --auto`; merge commits are the only enabled method)
    ([Merge authority](../../../docs/agents/pull-request-workflow.md#merge-authority)).
-8. **Record** the review per [Records](../../../docs/agents/pull-request-workflow.md#records) with `npm run ledger:append`.
+8. **Record** the review per [Records](../../../docs/agents/pull-request-workflow.md#records) as one `Review record` comment on the PR.
 9. **Follow CI while it is useful, then stop** per [Follow CI](../../../docs/agents/pull-request-workflow.md#follow-ci):
    fix only what this change broke, slow cadence, no cron, then report the PR URL and plainly
    where CI stands. `.claude/hooks/pr-handoff-stop.sh` enforces the no-cron rule.

@@ -136,6 +136,30 @@
       "pattern": "signed-out visitors keep Answer|Answer stays open to signed-out",
       "allowedContext": "no longer|retired|superseded|historical|previously|reversed|formerly|Status 2026-10-19|for now",
       "decision": "docs/decisions/2026-10-20-clinical-decision-tools-need-sign-in.md"
+    },
+    {
+      "id": "start-of-task-required-reads",
+      "retired": "2026-10-20",
+      "summary": "Task receipts and the organisation map are no longer required reading at the start of every task. They are read only when the work needs them, through the AGENTS.md index.",
+      "pattern": "At task start, read \\[task lifecycle and receipt handoff\\]|At task start, read .{0,80}organisation map",
+      "allowedContext": "no longer|retired|superseded|historical|previously|formerly|replaces",
+      "decision": "docs/decisions/2026-10-20-instruction-tidy-up.md"
+    },
+    {
+      "id": "contextual-working-defaults-file",
+      "retired": "2026-10-20",
+      "summary": "The separate context-aware working defaults file is retired. Its content is covered by the shared working rules at the top of AGENTS.md.",
+      "pattern": "contextual-working-defaults\\.md|# Context-aware working defaults",
+      "allowedContext": "no longer|retired|superseded|historical|previously|formerly|replaces",
+      "decision": "docs/decisions/2026-10-20-instruction-tidy-up.md"
+    },
+    {
+      "id": "review-record-ledger-append",
+      "retired": "2026-10-20",
+      "summary": "Review and sweep records are no longer written to the repository with ledger:append. They are pull request comments, and the old record files are archived read-only.",
+      "pattern": "npm run ledger:(?:append|dedupe|rotate|migrate-legacy)",
+      "allowedContext": "no longer|retired|superseded|historical|previously|formerly|replaces|refuse",
+      "decision": "docs/decisions/2026-10-20-review-records-now-pr-comments.md"
     }
   ]
 }

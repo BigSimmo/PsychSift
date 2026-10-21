@@ -11,8 +11,8 @@ universal ledger the [`/issues` skill](../issues/SKILL.md) owns. `/ledger` is th
 `/issues` remains the _reader/editor_. Follow every writing rule in the issues skill.
 
 **Disambiguation:** this skill targets the outstanding-issues ledger only. It must never read or
-write `docs/branch-review-ledger.md`, and the `ledger:lookup` / `ledger:append` / `ledger:dedupe`
-npm scripts belong to that review ledger — they are not part of this skill.
+write `docs/branch-review-ledger.md`, and the `ledger:lookup` / `ledger:index` npm scripts
+belong to that review history — they are not part of this skill.
 
 ## 1. Sweep (read-only)
 

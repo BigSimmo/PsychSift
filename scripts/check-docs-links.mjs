@@ -25,7 +25,9 @@
  * queued at `docs/outstanding-issues-inbox/<uuid>.json` and, after reconcile,
  * lives at `docs/outstanding-issues-inbox/applied/<uuid>.json`. Ledger rows
  * (and the request's own source/detail) keep citing the pending path because
- * the JSON is immutable. Treat the applied sibling as the same file.
+ * the JSON is immutable. Treat the applied sibling as the same file, including
+ * after `issues:archive-applied` moves it into a quarter folder under
+ * `applied/archive/`.
  */
 
 import { existsSync, readFileSync, readdirSync } from "node:fs";
@@ -34,6 +36,7 @@ import { fileURLToPath } from "node:url";
 
 import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 import { applyRequestBatch, validateRequest } from "./ledger-inbox.mjs";
+import { findAppliedRecord } from "./lib/inbox-archive.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const scanAll = process.argv.includes("--all");
@@ -152,6 +155,10 @@ function repoPathExists(repoRelative) {
   if (existsSync(path.join(repoRoot, cleaned))) return true;
   const applied = appliedInboxFallbackPath(cleaned);
   if (applied && existsSync(path.join(repoRoot, applied))) return true;
+  const archivedName = applied ?? (cleaned.startsWith(`${OUTSTANDING_ISSUES_INBOX}/applied/`) ? cleaned : null);
+  if (archivedName && INBOX_REQUEST_NAME.test(path.posix.basename(archivedName))) {
+    if (findAppliedRecord(repoRoot, path.posix.basename(archivedName))) return true;
+  }
 
   if (!cleaned.startsWith("src/app/") || cleaned.includes("src/app/(")) return false;
   const appRelative = cleaned.slice("src/app/".length);
