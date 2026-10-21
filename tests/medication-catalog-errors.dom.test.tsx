@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useMedicationCatalog } from "@/components/clinical-dashboard/use-medication-catalog";
 
 vi.mock("@/lib/supabase/client", () => ({
-  useAuthSession: () => ({ authorizationHeader: undefined, session: null, status: "unauthenticated" }),
+  useAuthSession: () => ({ authorizationHeader: undefined, session: null, status: "authenticated" }),
 }));
 
 let fetchMock: ReturnType<typeof vi.fn<typeof fetch>>;

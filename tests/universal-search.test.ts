@@ -886,37 +886,32 @@ describe("GET /api/search/universal (live public/owner path)", () => {
     }));
   }
 
-  it("runs the REAL public pipeline (never demo fixtures) for an unauthenticated live request", async () => {
+  // #3728: universal search needs sign-in from 1 November 2026, so a signed-out live request
+  // is refused before the limiter or any search pipeline runs, and never falls back to demo.
+  it("refuses an unauthenticated live request with 401 and never runs a pipeline", async () => {
     const client = createSupabaseMock();
     const runUniversalSearch = createRunMock();
     mockRuntime(client, runUniversalSearch);
     const { GET } = await import("../src/app/api/search/universal/route");
 
     const response = await GET(new Request("http://localhost/api/search/universal?q=clozapine"));
-    const payload = (await response.json()) as { demoMode?: boolean; publicAccess?: boolean };
 
-    expect(response.status).toBe(200);
-    // The anonymous public view is flagged; demo is NOT — the synthetic corpus must not leak.
-    expect(payload.publicAccess).toBe(true);
-    expect(payload.demoMode).toBeUndefined();
-    // The live pipeline is invoked with demo:false + a supabase client and no ownerId, so the
-    // documents domain runs allowGlobalSearch against the real public corpus.
-    expect(runUniversalSearch).toHaveBeenCalledTimes(1);
-    const args = runUniversalSearch.mock.calls[0]![0];
-    expect(args.demo).toBe(false);
-    expect(args.ownerId).toBeUndefined();
-    expect(args.supabase).toBeDefined();
-    // The anonymous path is now rate limited (it previously short-circuited before any limit).
-    expect(client.rpc).toHaveBeenCalledWith("consume_api_subject_rate_limit", expect.anything());
+    expect(response.status).toBe(401);
+    expect(runUniversalSearch).not.toHaveBeenCalled();
+    expect(client.rpc).not.toHaveBeenCalled();
   });
 
-  it("rate limits the anonymous universal-search path instead of leaving it unthrottled", async () => {
+  it("rate limits the signed-in universal-search path instead of leaving it unthrottled", async () => {
     const client = createSupabaseMock({ limited: true });
     const runUniversalSearch = createRunMock();
     mockRuntime(client, runUniversalSearch);
     const { GET } = await import("../src/app/api/search/universal/route");
 
-    const response = await GET(new Request("http://localhost/api/search/universal?q=clozapine"));
+    const response = await GET(
+      new Request("http://localhost/api/search/universal?q=clozapine", {
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+    );
 
     expect(response.status).toBe(429);
     // A throttled request must never fall through to any search pipeline.
@@ -951,7 +946,11 @@ describe("GET /api/search/universal (live public/owner path)", () => {
     mockRuntime(client, runUniversalSearch);
     const { GET } = await import("../src/app/api/search/universal/route");
 
-    const response = await GET(new Request("http://localhost/api/search/universal?q=clozapine&stream=ndjson"));
+    const response = await GET(
+      new Request("http://localhost/api/search/universal?q=clozapine&stream=ndjson", {
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+    );
     const events = (await response.text())
       .trim()
       .split("\n")
