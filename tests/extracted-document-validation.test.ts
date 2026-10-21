@@ -153,6 +153,8 @@ describe("extraction provenance (audit F04)", () => {
   it("is written onto documents.metadata by the worker", async () => {
     const { readFileSync } = await import("node:fs");
     const worker = readFileSync(new URL("../worker/main.ts", import.meta.url), "utf8");
-    expect(worker).toContain("extraction_provenance: { ...extracted.extractor, recorded_at: indexedAt }");
+    expect(worker).toContain(
+      "extraction_provenance: buildExtractionProvenance({ extracted, chunks, recordedAt: indexedAt })",
+    );
   });
 });

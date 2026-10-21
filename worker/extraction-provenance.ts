@@ -1,0 +1,42 @@
+// Audit F04 (#2F8K1V): the per-document record of which reader, OCR engine and chunker produced
+// a generation, so a parser defect can be traced to the documents it touched
+// (scripts/extraction-provenance-report.ts). Metadata only: nothing here changes page text,
+// chunk text or anything retrieval reads.
+import type { buildChunks } from "../src/lib/chunking";
+import type { ExtractedDocument } from "../src/lib/types";
+
+const MAX_VERSION_LENGTH = 100;
+
+function distinctVersions(values: Iterable<unknown>) {
+  const seen = new Set<string>();
+  for (const value of values) {
+    if (typeof value === "string" && value.length > 0 && value.length <= MAX_VERSION_LENGTH) seen.add(value);
+  }
+  return [...seen].sort();
+}
+
+/**
+ * Builds documents.metadata.extraction_provenance. The PDF reader block is carried as before;
+ * the chunker versions come from the chunks this generation committed, and the OCR engine
+ * versions from the per-page source provenance of pages that were OCR'd. A document indexed
+ * before this was recorded simply lacks the key.
+ */
+export function buildExtractionProvenance(args: {
+  extracted: Pick<ExtractedDocument, "extractor" | "pages">;
+  chunks: Pick<ReturnType<typeof buildChunks>[number], "metadata">[];
+  recordedAt: string;
+}) {
+  const ocrPages = args.extracted.pages.filter((page) => page.ocrUsed === true);
+  return {
+    ...(args.extracted.extractor ?? {}),
+    chunker_versions: distinctVersions(args.chunks.map((chunk) => chunk.metadata?.chunker_version)),
+    ocr_page_count: ocrPages.length,
+    ocr_engine_versions: distinctVersions(
+      ocrPages.map((page) => {
+        const provenance = page.metadata?.source_provenance;
+        return provenance && provenance.format === "pdf" ? provenance.producer.tesseractVersion : undefined;
+      }),
+    ),
+    recorded_at: args.recordedAt,
+  };
+}
