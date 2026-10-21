@@ -4329,7 +4329,9 @@ test.describe("PsychSift UI smoke coverage", () => {
     });
     await expect(page.getByRole("button", { name: "Mode Differentials" })).toBeVisible();
     await expect(page.getByTestId("differentials-home")).toHaveCount(0);
-    await expect(page.getByRole("heading", { level: 2, name: "acute confusion" })).toBeVisible();
+    // Exact: the best-match card's "Acute confusion and delirium" heading is also
+    // a level-2 heading, and a substring match resolves to both once it loads.
+    await expect(page.getByRole("heading", { level: 2, name: "acute confusion", exact: true })).toBeVisible();
   });
 
   test("DSM diagnosis mode redirects into the local catalogue and opens a diagnosis", async ({ page }) => {
