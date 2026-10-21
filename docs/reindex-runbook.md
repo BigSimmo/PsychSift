@@ -95,6 +95,7 @@ commit of that document. The script needs the `rollback_document_index_generatio
   current generation was committed after that time) or `--chunker-version <version>` (the
   current generation's chunks carry that `chunker_version`). `--limit` caps the documents
   (default 50, max 1000).
+- `--apply` is refused (non-zero exit) unless `--i-understand-metadata-not-restored` is also given: a rollback currently leaves `documents.metadata` and `document_index_quality` describing the wrong generation until #3732 lands, which removes this guard.
 - `--apply` writes (it asks first unless `--yes` is given). It refuses a document with no
   previous committed generation, or whose previous generation has no chunks. The database
   function also refuses if the pointer moved since the dry run or an ingestion job for the
@@ -104,7 +105,7 @@ commit of that document. The script needs the `rollback_document_index_generatio
 
 ```bash
 npm run reindex:rollback -- --chunker-version 1.3.1-page            # dry run
-npm run reindex:rollback -- --document-id <uuid> --apply             # write
+npm run reindex:rollback -- --document-id <uuid> --apply --i-understand-metadata-not-restored  # write
 ```
 
 ## Recovery transaction (merged 18 October 2026)
