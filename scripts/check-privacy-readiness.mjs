@@ -286,7 +286,12 @@ export function evaluatePrivacyReadiness(
             : null;
         if (!resolved || (!existsSync(resolved.absolute) && !archived)) {
           errors.push(`${label}: missing evidence ${reference}`);
-        } else if (checkGit && reviewedCommitExists && !pathExistsAtCommit(reviewedCommit, resolved.file)) {
+        } else if (
+          checkGit &&
+          reviewedCommitExists &&
+          !pathExistsAtCommit(reviewedCommit, resolved.file) &&
+          !(archived && pathExistsAtCommit(reviewedCommit, archived))
+        ) {
           errors.push(`${label}: evidence is absent from reviewedCommit ${reference}`);
         }
       }
