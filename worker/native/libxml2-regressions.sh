@@ -30,7 +30,9 @@ timeout 30 "$test_dir/xinclude-options" \
 # Debian builds each supported Python binding against this same main library.
 # Require actual built modules; an installed baseline cannot satisfy the test.
 bindings_found=0
-for bindings_dir in "$build_dir"/python*; do
+# builddir/main/python is the copied binding source tree, not a built module;
+# only the per-interpreter python3.X build dirs contain libxml2mod.
+for bindings_dir in "$build_dir"/python3*; do
   [ -d "$bindings_dir" ] || continue
   interpreter=${bindings_dir##*/}
   command -v "$interpreter" >/dev/null
