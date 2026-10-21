@@ -877,6 +877,18 @@ describe("table context, footnotes, referrals and oversized rows (chunker 1.3.1)
     expect(chunks.join("\n")).toContain(footnote);
   });
 
+  it("keeps the fallback footnote chunk within the cap when header + footnote is too long", () => {
+    const wideHeader = [`| Level | ${"Concentration band ".repeat(22).trim()} | Action |`, `| --- | ${"-".repeat(420)} | --- |`];
+    const footnote = `* ${"Levels are taken twelve hours post dose. ".repeat(9).trim()}`;
+    const wide = Array.from({ length: 12 }, (_, index) => `| Level ${index} | ${index}.0 mmol/L | ${"x".repeat(60)} |`);
+    const header = wideHeader.join("\n");
+    expect(header.length + footnote.length + 1).toBeGreaterThan(1200);
+    const chunks = chunkTextWithOverlap(["Lithium actions", ...wideHeader, ...wide, footnote].join("\n"), 1200, 200);
+    for (const chunk of chunks) expect(chunk.length).toBeLessThanOrEqual(1200);
+    const combined = chunks.join(" ").replace(/\s+/g, " ");
+    expect(combined).toContain(footnote);
+  });
+
   it("keeps continuation pieces of a very long row within the cap", () => {
     const longRow = `| Level X | ${"abcdefghij ".repeat(400).trim()} | Action X |`;
     const chunks = chunkTextWithOverlap(["Lithium actions", ...header, longRow].join("\n"), 600, 100);
@@ -897,6 +909,17 @@ describe("table context, footnotes, referrals and oversized rows (chunker 1.3.1)
     const tableChunks = tableChunksOf(chunks);
     for (const chunk of tableChunks) expect(chunk).not.toContain(list[0]);
     expect(chunks.join("\n")).toContain(list.join("\n"));
+  });
+
+  it("drops a page whose only content is a bare web address", () => {
+    expect(chunkTextWithOverlap("www.example.org", 2000, 200)).toEqual([]);
+    const chunks = buildChunks([
+      { documentId: "doc-1", pageNumber: 1, pageText: "Check lithium level weekly.", metadata: {} },
+      { documentId: "doc-1", pageNumber: 2, pageText: "\nhttps://www.example.org/resources\n", metadata: {} },
+    ]);
+    const content = chunks.map((chunk) => chunk.content).join("\n");
+    expect(content).toContain("Check lithium level weekly.");
+    expect(content).not.toContain("example.org");
   });
 
   it("keeps a page-edge crisis footer with a phone number and web address", () => {

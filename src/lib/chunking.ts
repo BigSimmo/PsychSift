@@ -307,8 +307,8 @@ function removePageNoise(text: string, repeatedBoilerplateLines = new Set<string
       (index) =>
         !isIsolatedEdgeNumberLine(lines, index, keptIndexes) &&
         !(
+          // A URL-only page (the address is both first and last line) is edge noise too.
           (index === firstContent || index === lastContent) &&
-          keptIndexes.length > 1 &&
           looksLikeEdgeUrlNotice(lines[index])
         ),
     ),
@@ -647,9 +647,26 @@ function chunkTableBlock(block: string, chunkSize: number, caption = "", footnot
     // footnote with the repeated header as its own chunk.
     const appended = `${chunks[chunks.length - 1]}\n${footnote}`;
     if (appended.length <= chunkSize) chunks[chunks.length - 1] = appended;
-    else chunks.push(`${header}\n${footnote}`);
+    else chunks.push(...footnoteChunks(header, footnote, chunkSize));
   }
   return chunks;
+}
+
+// The fallback footnote chunk must also respect the cap: repeat the header only when
+// header + footnote fits, otherwise split the footnote at word boundaries on its own.
+function footnoteChunks(header: string, footnote: string, chunkSize: number) {
+  const withHeader = `${header}\n${footnote}`;
+  if (withHeader.length <= chunkSize) return [withHeader];
+  const pieces: string[] = [];
+  let rest = footnote.trim();
+  while (rest.length > chunkSize) {
+    const cut = rest.slice(0, chunkSize).lastIndexOf(" ");
+    const at = cut > chunkSize * 0.5 ? cut : chunkSize;
+    pieces.push(rest.slice(0, at).trim());
+    rest = rest.slice(at).trim();
+  }
+  if (rest) pieces.push(rest);
+  return pieces;
 }
 
 const rowContinuationMarker = "(row continued) ";
