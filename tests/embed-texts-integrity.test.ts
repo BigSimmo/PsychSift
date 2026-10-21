@@ -136,6 +136,53 @@ describe("embedTexts integrity (IDX-C1, IDX-C2)", () => {
 });
 
 describe("embedTexts batching (IDX-C3)", () => {
+  it("splits larger atomic inputs by request bytes and preserves reversed-response and duplicate mapping", async () => {
+    stubEmbeddingEnv(2);
+    vi.stubEnv("OPENAI_EMBEDDING_BATCH_SIZE", "256");
+    const inputs = Array.from({ length: 40 }, (_, index) => `t${String(index).padStart(2, "0")}:${"界".repeat(2729)}`);
+    const calls: string[][] = [];
+    vi.doMock("openai", () => ({
+      default: class MockOpenAI {
+        embeddings = {
+          create: vi.fn(async ({ input }: { input: string[] }) => {
+            calls.push(input);
+            return {
+              data: input.map((text, index) => ({ index, embedding: [Number(text.slice(1, 3)), 0] })).reverse(),
+            };
+          }),
+        };
+        responses = { create: vi.fn() };
+      },
+    }));
+    const { clearOpenAICaches, embedTexts } = await import("../src/lib/openai");
+    clearOpenAICaches();
+    const result = await embedTexts([...inputs, inputs[0]]);
+    expect(calls.map((batch) => batch.length)).toEqual([36, 4]);
+    for (const batch of calls) expect(Buffer.byteLength(batch.join(""), "utf8")).toBeLessThanOrEqual(300_000);
+    expect(calls.flat()).toEqual(inputs);
+    expect(result).toEqual([...inputs.map((_text, index) => [index, 0]), [0, 0]]);
+  });
+
+  it("rejects an unbatchable input before constructing a provider client", async () => {
+    stubEmbeddingEnv(2);
+    const constructed = vi.fn();
+    vi.doMock("openai", () => ({
+      default: class MockOpenAI {
+        constructor() {
+          constructed();
+        }
+        embeddings = { create: vi.fn() };
+        responses = { create: vi.fn() };
+      },
+    }));
+    const { clearOpenAICaches, embedTexts } = await import("../src/lib/openai");
+    clearOpenAICaches();
+    await expect(embedTexts(["earlier input", "a".repeat(300_001)])).rejects.toMatchObject({
+      code: "EMBEDDING_INPUT_EXCEEDS_REQUEST_BUDGET",
+    });
+    expect(constructed).not.toHaveBeenCalled();
+  });
+
   function embeddingForText(text: string): number[] {
     // Encode the input's numeric suffix so a mis-mapped embedding is detectable.
     const n = Number(text.replace(/[^0-9]/g, ""));

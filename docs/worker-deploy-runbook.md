@@ -26,6 +26,36 @@ database or Python failures still return 503 and block promotion.
 The Supabase probe reports failures as a structured result; `/health` honours
 that result as well as thrown errors and omits provider failure details.
 
+Production PDF extraction requires the Python prerequisites. If Python extraction
+fails, `NODE_ENV=production` refuses the JavaScript fallback with a permanent
+`PDF_EXTRACTION_BUDGET_EXCEEDED` error and removes partial artifacts: pdf.js has
+no isolated memory limit inside the worker. Restore the Python runtime before
+retrying the document. The developer fallback retains its deadline and pixel
+limits; those limits do not establish a process memory boundary.
+
+Offline OCR acceptance covers native merged qualifications, scanned staggered
+columns, opposing comparison signs and decimal positions, and repeated headers
+with page-local footnotes. The original scanned `≤`, `≥`, exponent and decimal
+regression is now an ordinary strict acceptance case, with additional font and
+value variants. These are synthetic source-retention checks, not clinical-corpus
+certification.
+
+The optional raster-table reader can isolate an observed comparison sign before
+numeric OCR and normalize an observed raised digit before restoring its source
+position. It never guesses a threshold from a medicine or unit. Only small,
+single-line, disjoint glyphs are supported; decimal positions and glyph counts
+must agree with the source. Ambiguous alignment refuses the candidate and keeps
+the original full-page fallback. Raised zero is unsupported because a degree
+sign was misread as zero during testing. Unknown layouts, noisy scans and
+uncovered fonts retain their existing limitations.
+
+This uses the existing OCR call, pinned model, page deadline and resource caps.
+Source crop hashes remain unchanged; `ocrInputTransform` separately records the
+algorithm, helper-code hash and exact transformed input identity. All OCR
+observations remain `unverified` / `not_compared`, without confidence or clinical
+approval. `PDF_RASTER_TABLE_OCR` remains default-off. Review source accuracy before
+clinical use or any mass reindex; increasing image-size limits is not acceptance.
+
 ---
 
 ## 0. Pre-deploy gate — do not deploy before this is live

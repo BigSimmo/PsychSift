@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "f686046e-e9f4-451d-b225-68301dc7dd86",
+  "createdOn": "2026-10-21",
+  "action": "add",
+  "payload": {
+    "pri": "P1",
+    "type": "issue",
+    "summary": "Pinned raster OCR loses inclusive comparators, exponent and decimal in scanned mathematical notation",
+    "detail": "Synthetic native source preserves Count (x 10⁹/L), ≤ 1.5 and ≥ 2.0; actual pinned Latin raster OCR yields 10?, <15 and >2.0. The 303-entry pinned Latin vocabulary lacks ≤, ≥ and ⁹. Twelve bounded crop trials across cached Latin/eng and PSM variants did not recover equivalent semantics. New strict acceptance case is explicitly expectedFailure, not passing accuracy evidence; OCR provenance remains unverified/not_compared. Resolve through a demonstrated OCR engine/model improvement and source acceptance, without clinical text substitution or relaxed assertions. No production reindex or provider inference was run.",
+    "source": "PR #3716; worker/python/test_extract_pdf_assets_coverage_acceptance.py::RealOcrCoverageAcceptanceTests.test_scanned_unicode_exponent_and_inclusive_comparators_are_preserved; worker/python/extract_pdf_assets.py; 2026-10-21 offline acceptance",
+    "issueUlid": "01M5EQWSKTMR9VJKFCS6GVZQK1"
+  }
+}
