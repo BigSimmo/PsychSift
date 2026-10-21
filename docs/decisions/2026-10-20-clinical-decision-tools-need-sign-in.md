@@ -12,4 +12,8 @@ therapy ranking, questionnaire scoring, and opening original documents. This rep
 19 October decision that Answer stays open to signed-out visitors. The screens are built only after
 the owner approves the before-and-after mockup.
 
+On 21 Oct 2026 the owner decided sign-up stays open to anyone ("keep sign in as anyone"), reversing the
+19 October invite-only decision. The safeguard for health-professional use is then the sign-in step
+plus the Terms declaration "I'm a health professional and I accept the Terms".
+
 If this summary and the source ever differ, the source wins.

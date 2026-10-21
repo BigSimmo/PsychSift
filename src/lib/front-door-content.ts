@@ -41,7 +41,7 @@ export const ABOUT_SECTIONS: FrontDoorSection[] = [
     id: "what-it-is",
     heading: "What PsychSift is",
     body: [
-      "PsychSift is a clinical reference tool for psychiatry, for invited health professionals. It searches a library of clinical guidelines and reference documents and answers questions with citations that link back to the original source.",
+      "PsychSift is a clinical reference tool for psychiatry, for health professionals. It searches a library of clinical guidelines and reference documents and answers questions with citations that link back to the original source.",
       "It is a prototype. It is still being built and tested.",
     ],
   },
@@ -204,22 +204,22 @@ export type ClinicalSignInCopy = { title: string; body: string; stillOpen?: stri
 export const CLINICAL_SIGN_IN_COPY = {
   answer: {
     title: "Sign in to get an answer",
-    body: "Answer is for invited health professionals. Sign in with your PsychSift account to ask.",
+    body: "Answer is for health professionals. Sign in with your PsychSift account to ask.",
     stillOpen: "Matching documents from the library still show below.",
   },
   patientDetails: {
     title: "Sign in to add patient details",
-    body: "Tailored considerations and interaction checks are for invited health professionals.",
+    body: "Tailored considerations and interaction checks are for health professionals.",
     stillOpen: "The full medicine record stays open to read.",
   },
   therapyRanking: {
     title: "Sign in to rank therapies",
-    body: "Matching therapies to a clinical situation is for invited health professionals.",
+    body: "Matching therapies to a clinical situation is for health professionals.",
     stillOpen: "You can still browse and compare therapies.",
   },
   scoring: {
     title: "Sign in to score",
-    body: "Entering answers and getting a score is for invited health professionals.",
+    body: "Entering answers and getting a score is for health professionals.",
     stillOpen: "The questions, scoring rules, bands and source stay open to read.",
   },
   original: {
@@ -227,7 +227,7 @@ export const CLINICAL_SIGN_IN_COPY = {
     body: "Original documents belong to their publishers and open only for signed-in users.",
   },
 } as const satisfies Record<string, ClinicalSignInCopy>;
-export const CLINICAL_SIGN_IN_INVITE_NOTE = "No account? PsychSift is invite-only while it is being tested.";
+export const CLINICAL_SIGN_IN_INVITE_NOTE = "No account? You can create one from Sign in. PsychSift is for health professionals only.";
 
 /** Shown under the sign-in and create-account forms. */
 export const TERMS_SIGN_IN_NOTE = "By signing in or creating an account, you agree to the";
