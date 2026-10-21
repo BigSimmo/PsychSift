@@ -130,7 +130,7 @@ import {
   stagedDashboardExtraction,
 } from "@/components/clinical-dashboard/clinical-dashboard-payloads";
 import { type IndexingMonitorFilter, type LibraryHealthTarget } from "@/components/clinical-dashboard/document-admin";
-import { IndexingAdminDrawer } from "@/components/clinical-dashboard/indexing-admin-drawer";
+import { useIdlePreload } from "@/components/clinical-dashboard/idle-preload";
 import { DashboardDocumentsDrawer } from "@/components/clinical-dashboard/dashboard-documents-drawer";
 import { useHomeModeSeed } from "@/components/clinical-dashboard/use-home-mode-seed";
 import {
@@ -138,6 +138,8 @@ import {
   DifferentialsHome,
   DocumentSearchResultsPanel,
   FavouritesHub,
+  IndexingAdminDrawer,
+  loadIndexingAdminDrawer,
   loadStagedAnswerResultSurface,
   MedicationPrescribingWorkspace,
   RelatedDocumentsPanel,
@@ -667,6 +669,7 @@ function ClinicalDashboardContent({
     localProjectReady && (localNoAuthMode || localDevCanAttemptPrivateApis || authStatus === "authenticated");
   const isAdministrator = isAdministratorUser(auth.session?.user);
   const canUseAdministrativeApis = localProjectReady && isAdministrator;
+  useIdlePreload(loadIndexingAdminDrawer, canUseAdministrativeApis);
   const canAttemptDeployedPublicSearch = isDeployedClinicalKb() && localProjectReady;
   const canRunSearch = canRunDashboardSearch({
     localProjectReady,

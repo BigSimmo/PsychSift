@@ -48,7 +48,7 @@ import { useLastAppMode } from "@/components/clinical-dashboard/use-last-app-mod
 import { useComposerPatientCheck } from "@/components/clinical-dashboard/use-composer-patient-check";
 import { PhoneFooterLayerPortal } from "@/components/clinical-dashboard/phone-footer-layer-portal";
 import { AnswerFollowUpSuggestions } from "@/components/clinical-dashboard/answer-follow-up-suggestions";
-import { SearchPinsMenu } from "@/components/clinical-dashboard/search-pins-menu";
+import { useIdlePreload } from "@/components/clinical-dashboard/idle-preload";
 import {
   ModeActionPopup,
   modeActionItemsFor,
@@ -170,6 +170,12 @@ import {
   NOOP_HANDLER,
 } from "./master-search-header-types";
 
+// The pins menu is the action popup's body and only mounts once the popup opens, so it
+// stays off `/`'s load/hydration path and is warmed on idle before a first open.
+const loadSearchPinsMenu = () =>
+  import("@/components/clinical-dashboard/search-pins-menu").then((m) => m.SearchPinsMenu);
+const SearchPinsMenu = dynamic(loadSearchPinsMenu, { ssr: false });
+
 export function MasterSearchHeader(props: MasterSearchHeaderProps) {
   const { searchState, headerActions, mobileControls } = props;
 
@@ -243,6 +249,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
   // Hosts pass the precomputed session decision in canAccessFavourites (auth || demo).
   // Do not OR demoMode again here — that would reopen Favourites when props diverge.
   const router = useRouter();
+  useIdlePreload(loadSearchPinsMenu);
   // Direct pushes skip link guards and beforeunload: ask any page with unsaved work first.
   const pushIfLeaveConfirmed = (href: string) => confirmShellNavigation() && router.push(href);
   const currentPathname = usePathname();

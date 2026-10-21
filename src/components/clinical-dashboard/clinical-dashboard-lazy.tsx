@@ -81,3 +81,8 @@ export const AskTermsStep = dynamic(
   () => import("@/components/front-door/ask-terms-step").then((m) => m.AskTermsStep),
   { ssr: false },
 );
+
+// Admin-only and closed by default: kept off `/`'s hydration path, warmed on idle by the dashboard.
+export const loadIndexingAdminDrawer = () =>
+  import("@/components/clinical-dashboard/indexing-admin-drawer").then((m) => m.IndexingAdminDrawer);
+export const IndexingAdminDrawer = dynamic(loadIndexingAdminDrawer, { ssr: false });
