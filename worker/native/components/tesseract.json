@@ -25,7 +25,7 @@
     },
     {
       "file": "patches/tesseract/03-CVE-2026-88053.patch",
-      "sha256": "094e5f25d7f180fa769d9f187747533779b6a16cb3b47a7bd53d31ded9bb53a0",
+      "sha256": "48e457152445f32130cf8cba9726b62e91fd69a5d32238d9e5f1a01202e25286",
       "upstream_commit": "8b0574680f3b22f246ade6a4c8e3029104255c63",
       "upstream_patch_sha256": "1b80580e4d3e33f9f4d31e3f88cddbf2a7ede75408d2ccc4159ece6acbcd4b46",
       "upstream_url": "https://github.com/tesseract-ocr/tesseract/commit/8b0574680f3b22f246ade6a4c8e3029104255c63.patch",
@@ -34,7 +34,9 @@
         "Use existing 5.5.0 classify_enable_adaptive_matcher condition; no condition behavior change.",
         "Rebase constructor hunk onto 5.5.0, which lacks newer explicit ClassPruners null loop; retain upstream value-initialized arrays fix.",
         "Retain existing 5.5.0 program_editdown(int32_t elapsed_time) context.",
-        "Omit upstream-only unittest/CMakeLists.txt registration: absent in Debian 5.5.0; preserve upstream Automake registration and test source."
+        "Omit upstream-only unittest/CMakeLists.txt registration: absent in Debian 5.5.0; preserve upstream Automake registration and test source.",
+        "Restore constructor-owned vectors and clear serialized owning pointers immediately after raw header reads, before any rejection; check partial nested reads and preserve valid accumulated ownership during cleanup.",
+        "Use Class.data() at the existing 5.5.0 AmbigClassifier pointer-array interface; preserve matching behavior."
       ]
     },
     {
@@ -73,7 +75,7 @@
   "runtime_packages": ["libtesseract5", "tesseract-ocr"],
   "extra_build_packages": ["libgtest-dev"],
   "test_commands": [["sh", "/tmp/worker-native/tesseract-regressions.sh"]],
-  "change_summary": "Backport six upstream traineddata deserialization security fixes plus local rejected-vector-count cleanup hardening onto Debian Tesseract 5.5.0-1. Keep archive support, legacy engine, model formats and installed model artifacts unchanged. Run five unchanged upstream regression suites (15 cases), two separate vector cleanup cases, and 11 local Convolve/Reconfig deserialization boundary cases.",
+  "change_summary": "Backport six upstream traineddata deserialization security fixes plus local rejected-vector-count cleanup hardening onto Debian Tesseract 5.5.0-1. Keep archive support, legacy engine, model formats and installed model artifacts unchanged. Run five unchanged upstream regression suites (15 cases), two separate vector cleanup cases, and 11 local Convolve/Reconfig deserialization boundary cases. Restore ownership before checking raw adapted-template reads and run 19 additional malformed-input and legitimate ownership controls.",
   "source_date_epoch": 1792454400,
   "upstream_version": "5.5.0",
   "upstream_to_backport_diff": "patches/tesseract/upstream-to-backport.diff",
@@ -166,6 +168,12 @@
       "cases": 2,
       "sha256": "f2ea041bb1a7cff1595ba0dcc0e2c494012a71f5df3ca41069ba2c5039e0ddc3",
       "purpose": "Reject oversized/negative counts without corrupting empty/populated vector cleanup state, with valid callback-cleanup control."
+    },
+    {
+      "file": "tesseract-adapted-templates-test.cc",
+      "cases": 19,
+      "purpose": "Actual parser malformed header/count/read cleanup with poisoned serialized pointers and valid permanent/temporary/list/template controls.",
+      "sha256": "18b535cb35e13e95545c00904adeecc821f9392004cc989ed37d680eee27e6b3"
     }
   ]
 }

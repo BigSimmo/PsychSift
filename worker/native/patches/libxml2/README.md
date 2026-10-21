@@ -25,7 +25,13 @@ CVE-2026-86139 needs no additional patch: the actual Debian source already has
 `len = xmlStrlen(str); if (!(len > 0)) return(NULL);` in `xmlURIEscapeStr`,
 equivalent to the guard in upstream commit
 `8edbbdb09f24d26a2f900141fddc2b9d014f53b0`.
-CVE-2026-6653 and CVE-2026-74860 remain unresolved.
+CVE-2026-74860 uses the exact one-line upstream Python SAX reference-count
+repair from commit `046931e64e9e081e82c341f6455d070716fb8cf2`, rebased to the
+2.9.14 function context. The built Python extension must pass the separate
+enumeration ownership controls.
+
+CVE-2026-6653 remains unresolved. Its larger vendor backport changes public
+entity/input structures; it is excluded pending compatibility evidence.
 
 Normal Debian features, build flags and tests remain in place. No public header,
 exported signature, symbol list or SONAME is changed by these patches.

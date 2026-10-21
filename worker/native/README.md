@@ -23,9 +23,12 @@ Python locks, model identities, legacy OCR and archive support remain unchanged.
   exploit reproduction requires a suitably isolated, capable test environment.
 - Tesseract: six upstream deserialization repairs, with explicit older-source
   adaptations recorded in its manifest. A local correction validates vector
-  counts before publishing them to cleanup state. The ordinary Debian OCR test,
-  15 unchanged upstream cases, two cleanup cases and 11 numeric-deserializer
-  controls remain required. The CLI and library are rebuilt together; general
+  counts before publishing them to cleanup state. Adapted-template readers restore
+  owned pointers before checking raw reads, reject incomplete nested records, and
+  clean up reconstructed lists/configurations normally. The ordinary Debian OCR test,
+  15 unchanged upstream cases, two vector cleanup cases, 19 adapted-template
+  ownership controls and 11 numeric-deserializer controls remain required.
+  The CLI and library are rebuilt together; general
   compatibility with arbitrary external C++ consumers is not asserted.
 - ncurses: the upstream infocmp `-i` bounds repair for CVE-2025-69720. The
   full-size synthetic long-capability test and ordinary control run against the
@@ -37,7 +40,11 @@ Python locks, model identities, legacy OCR and archive support remain unchanged.
   The normal Debian tests and a focused, network-free XInclude options/control
   harness run against the newly built library. Multi-gigabyte overflow-trigger
   reproduction remains separate evidence; ordinary XML smoke is not proof of
-  every overflow guard. CVE-2026-6653 and CVE-2026-74860 remain unresolved.
+  every overflow guard. The Python SAX binding also receives the exact upstream
+  CVE-2026-74860 reference-count repair, with 32 enumeration ownership controls
+  against the built extension. CVE-2026-6653 remains unresolved; its larger vendor
+  candidate changes public entity/input structures and is excluded pending
+  compatibility evidence.
 
 The final image also runs its existing Python/OCR/clinical fixtures and runtime
 validator, both venv dependency checks and a bounded offline conversion of a

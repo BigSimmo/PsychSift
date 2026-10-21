@@ -26,3 +26,17 @@ export LD_LIBRARY_PATH
 timeout 30 "$test_dir/xinclude-options" \
   "$native_dir/libxml2-tests/issue1120-1.xml" \
   "$native_dir/libxml2-tests/issue1120-2.xml" "$library"
+
+# Debian builds each supported Python binding against this same main library.
+# Require actual built modules; an installed baseline cannot satisfy the test.
+bindings_found=0
+for bindings_dir in "$build_dir"/python*; do
+  [ -d "$bindings_dir" ] || continue
+  interpreter=${bindings_dir##*/}
+  command -v "$interpreter" >/dev/null
+  test -f "$bindings_dir/.libs/libxml2mod.so"
+  bindings_found=$((bindings_found + 1))
+  PYTHONPATH="$bindings_dir/.libs" PYTHONMALLOC=malloc timeout 30 "$interpreter" \
+    "$native_dir/libxml2-tests/python-sax-enumeration.py" "$bindings_dir/.libs"
+done
+test "$bindings_found" -gt 0

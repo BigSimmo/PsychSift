@@ -111,3 +111,11 @@ done
   "$regression_evidence_dir/convolve-reconfig-boundaries.cc" libtesseract.la \
   -o "$regression_evidence_dir/convolve-reconfig-boundaries"
 "$regression_evidence_dir/convolve-reconfig-boundaries"
+
+# Exercise the raw adapted-template ownership boundary in the actual built
+# library. Assertions must remain active even when package flags define NDEBUG.
+native_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
+./libtool --mode=link "${CXX:-c++}" -std=c++17 -DHAVE_CONFIG_H -UNDEBUG "$@" \
+  "$native_dir/tesseract-adapted-templates-test.cc" libtesseract.la \
+  -o "$regression_evidence_dir/adapted-template-ownership"
+timeout 30 "$regression_evidence_dir/adapted-template-ownership"

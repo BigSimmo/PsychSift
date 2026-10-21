@@ -79,8 +79,8 @@ RUN for attempt in 1 2 3; do \
 # Debian packaging. Compilers/source trees never enter the runtime image.
 FROM python-runtime-base AS native-security-build-base
 RUN printf '%s\n' \
-    'deb-src [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] https://deb.debian.org/debian trixie main' \
-    'deb-src [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] https://deb.debian.org/debian-security trixie-security main' \
+    'deb-src [signed-by=/usr/share/keyrings/debian-archive-keyring.pgp] https://deb.debian.org/debian trixie main' \
+    'deb-src [signed-by=/usr/share/keyrings/debian-archive-keyring.pgp] https://deb.debian.org/debian-security trixie-security main' \
     > /etc/apt/sources.list.d/worker-native-security-sources.list \
   && apt-get update \
   && apt-get install -y --no-install-recommends build-essential dpkg-dev quilt
