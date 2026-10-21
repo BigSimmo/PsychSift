@@ -32,6 +32,11 @@ export type TableFactImageRow = {
   accessibleTableMarkdown?: string | null;
   tableRows?: string[][] | null;
   tableColumns?: string[] | null;
+  // [rowIndex, columnIndex] of cells the extractor confirmed are covered by a merged span.
+  tableMergedCells?: [number, number][] | null;
+  // Row indices that start a new section or page segment (grouped tables, rows recovered
+  // across a page edge). Label carry-down never crosses one.
+  tableRowBreaks?: number[] | null;
   structuredVisualProfile?: {
     table_column_roles?: Record<string, string>;
   } | null;
@@ -179,6 +184,19 @@ export function buildTableFactRows(args: {
 
     // IDX-H6: raised from 120 to 400 to match the Python extractor's MAX_TABLE_ROWS so tail
     // rows of long dose/threshold tables are not silently dropped from the facts layer.
+    // Audit 2026-10-20 ING-B-09: PyMuPDF leaves a vertically merged label cell blank on every row
+    // after the first, so those rows lost their group. Carry the last label forward into
+    // clinical_parameter only; row_label, cells and chunk text keep the extracted (blank) value.
+    // Only a CONFIRMED merged cell (extractor span provenance in tableMergedCells) inherits;
+    // an ordinary blank label cell, or a table without provenance, never does. An empty
+    // separator row or any row with its own label resets the inheritance chain.
+    const labelColumn = parameterIndex >= 0 ? parameterIndex : 0;
+    const confirmedMergedRows = new Set(
+      (image.tableMergedCells ?? []).filter(([, column]) => column === labelColumn).map(([row]) => row),
+    );
+    const rowBreaks = new Set(image.tableRowBreaks ?? []);
+    const mergedCellKeys = new Set((image.tableMergedCells ?? []).map(([row, column]) => `${row}:${column}`));
+    let lastRowLabel: { label: string; rowIndex: number } | null = null;
     for (const [rowIndex, rawCells] of image.tableRows.slice(0, 400).entries()) {
       const cells = rawCells.map((cell) => compactSearchText(cell, 240));
       // Native table extraction can include the column headings as its first row.
@@ -190,9 +208,23 @@ export function buildTableFactRows(args: {
         cells.every((cell, index) => cell === columns[index])
       )
         continue;
+      if (rowBreaks.has(rowIndex)) lastRowLabel = null;
       const rowText = cells.filter(Boolean).join(" ");
-      if (!rowText) continue;
-      const rowLabel = tableFactValue(cells, parameterIndex >= 0 ? parameterIndex : 0);
+      if (!rowText) {
+        lastRowLabel = null;
+        continue;
+      }
+      const rowLabel = tableFactValue(cells, labelColumn);
+      const inheritedLabel = !rowLabel && confirmedMergedRows.has(rowIndex) ? lastRowLabel : null;
+      // A section heading row (its label spans every other column) is a section break:
+      // it is never a carry-down source for the rows below it.
+      const sectionHeading =
+        Boolean(rowLabel) &&
+        cells.length > 1 &&
+        cells.every((cell, column) => column === labelColumn || mergedCellKeys.has(`${rowIndex}:${column}`));
+      if (sectionHeading) lastRowLabel = null;
+      else if (rowLabel) lastRowLabel = { label: rowLabel, rowIndex };
+      else if (!inheritedLabel) lastRowLabel = null;
       // Named columns constrain meaning: an unmatched concentration or interval
       // remains in metadata.cells without being relabelled a threshold or action.
       const threshold =
@@ -208,7 +240,15 @@ export function buildTableFactRows(args: {
           : columns.length === 0
             ? (cells[cells.length - 1] ?? null)
             : null;
-      const dedupeKey = [image.id, rowLabel, threshold, action, rowText, image.tableTitle, image.tableLabel]
+      const dedupeKey = [
+        image.id,
+        rowLabel ?? inheritedLabel?.label,
+        threshold,
+        action,
+        rowText,
+        image.tableTitle,
+        image.tableLabel,
+      ]
         .map((value) => String(value ?? "").toLowerCase())
         .join("\u001f");
       if (seen.has(dedupeKey)) continue;
@@ -222,12 +262,15 @@ export function buildTableFactRows(args: {
         page_number: image.pageNumber ?? sourceChunk?.page_number ?? null,
         table_title: image.tableTitle ?? image.tableLabel,
         row_label: rowLabel,
-        clinical_parameter: rowLabel ?? image.tableTitle ?? image.tableLabel,
+        clinical_parameter: rowLabel ?? inheritedLabel?.label ?? image.tableTitle ?? image.tableLabel,
         threshold_value: threshold,
         action,
         normalized_terms: normalizedTerms(`${image.tableTitle ?? ""} ${image.tableLabel ?? ""} ${rowText}`),
         metadata: {
           row_index: rowIndex,
+          ...(inheritedLabel
+            ? { row_label_inherited_from: { row_index: inheritedLabel.rowIndex, label: inheritedLabel.label } }
+            : {}),
           columns,
           cells,
           table_role: image.tableRole,

@@ -5484,6 +5484,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-21-no-malware-scan-before-upload-storage.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/README.md",
         "section": "superpowers",
         "catalogued": true
