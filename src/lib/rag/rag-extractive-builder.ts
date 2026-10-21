@@ -118,6 +118,8 @@ import {
   monitoringIntervalFigurePattern,
   monitoringLevelRangeCoveragePattern,
   monitoringScheduleEvidencePattern,
+  glossaryEntrySentencePattern,
+  policyAdministrationSentencePattern,
   numericRepeatDoseSchedulePattern,
   queryEntitySubject,
   queryEntityTokens,
@@ -242,6 +244,7 @@ export function factSupportsAnswerIntent(
       // Level ranges like "Maintenance range is 0.6-0.8 mmol/L" stay admissible
       // through their level units.
       if (kind === "dose" && !monitoringCadenceOrLevelPattern.test(text)) return false;
+      if (policyAdministrationSentencePattern.test(text) || glossaryEntrySentencePattern.test(text)) return false;
       return monitoringScheduleEvidencePattern.test(text);
     case "red_result_action":
       if (kind !== "threshold_action" && kind !== "caveat") return false;
@@ -928,6 +931,18 @@ export function completeExtractiveSentence(value: string, query: string) {
       return conditionalAsSentence;
     }
     return `The guidance is that ${lowerFirst(cleaned)}.`;
+  }
+
+  // A section heading glued to the sentence under it ("Therapeutic Drug Monitoring. Blood taken
+  // for serum lithium levels should be taken 12 hours after the last dose") is not a fragment to
+  // wrap: "The guidance is that therapeutic Drug Monitoring. Blood…" laundered the heading
+  // (Eval Canary 39614340500). Drop the heading when the sentence after it stands alone.
+  const headed = cleaned.match(/^((?:[A-Z][\w-]*)(?:\s+(?:[A-Z][\w-]*|and|of|for|the|in|to)){0,5})\.\s+([A-Z].*)$/);
+  if (headed) {
+    const afterHeading = `${headed[2]}.`;
+    if (hasCompleteOpeningSentence(afterHeading) && !isFragmentLikeClinicalAnswer(afterHeading, query)) {
+      return afterHeading;
+    }
   }
 
   const withoutLeadingFragment = cleaned.replace(/^(?:and|or|but|with|without|including|such as|then)\s+/i, "");
