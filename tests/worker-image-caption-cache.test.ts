@@ -28,6 +28,7 @@ import {
   type ImageCaptionCacheKey,
 } from "../worker/image-caption-cache";
 import { resolveCaptionTasks, type CaptionTask } from "../worker/image-captioning";
+import { sweepOrphanedImageCaptionCache } from "../src/lib/image-caption-cache-cleanup";
 import { env } from "../src/lib/env";
 import type { ImageClassification } from "../worker/image-classification";
 import type { IngestionStageContext } from "../worker/ingestion-stage-context";
@@ -523,5 +524,79 @@ describe("caption cache clean-up on reprocess (#3730)", () => {
     unbound.documents = { ...unbound.documents, content_hash: null as unknown as string };
     await resolveCaptionTasks(context(table.client), unbound, [task()], new Map());
     expect(table.rows.size).toBe(1);
+  });
+});
+
+// A delete-route clean-up that fails leaves a deleted document's captions behind; the
+// operator storage clean-up sweeps them later (#3730 review).
+describe("orphaned caption cache sweep (#3730)", () => {
+  function sweepClient(cacheRows: { id: string; document_id: string }[], liveDocuments: string[]) {
+    const rows = [...cacheRows];
+    const deletes: string[][] = [];
+    const client = {
+      from(table: string) {
+        const filters: { gt?: string; in?: string[]; limit?: number; del?: boolean } = {};
+        const builder = {
+          select: () => builder,
+          not: () => builder,
+          order: () => builder,
+          limit: (count: number) => ((filters.limit = count), builder),
+          gt: (_column: string, value: string) => ((filters.gt = value), builder),
+          in: (_column: string, values: string[]) => ((filters.in = values), builder),
+          delete: () => ((filters.del = true), builder),
+          then(resolve: (value: { data: unknown; error: null }) => void) {
+            if (table === "documents") {
+              resolve({
+                data: liveDocuments.filter((id) => filters.in?.includes(id)).map((id) => ({ id })),
+                error: null,
+              });
+            } else if (filters.del) {
+              deletes.push(filters.in ?? []);
+              for (const id of filters.in ?? [])
+                rows.splice(
+                  rows.findIndex((row) => row.id === id),
+                  1,
+                );
+              resolve({ data: null, error: null });
+            } else {
+              const page = rows
+                .filter((row) => !filters.gt || row.id > filters.gt)
+                .sort((a, b) => a.id.localeCompare(b.id))
+                .slice(0, filters.limit);
+              resolve({ data: page, error: null });
+            }
+          },
+        };
+        return builder;
+      },
+    };
+    return { client: client as unknown as Parameters<typeof sweepOrphanedImageCaptionCache>[0], rows, deletes };
+  }
+
+  const cache = [
+    { id: "a1", document_id: "doc-live" },
+    { id: "a2", document_id: "doc-gone" },
+    { id: "a3", document_id: "doc-gone" },
+  ];
+
+  it("deletes only the rows whose document no longer exists", async () => {
+    const fake = sweepClient(cache, ["doc-live"]);
+    const result = await sweepOrphanedImageCaptionCache(fake.client, { maxRows: 100, dryRun: false });
+    expect(result).toEqual({ scanned: 3, orphaned: 2, deleted: 2 });
+    expect(fake.rows.map((row) => row.id)).toEqual(["a1"]);
+  });
+
+  it("counts orphans without deleting on a dry run", async () => {
+    const fake = sweepClient(cache, ["doc-live"]);
+    const result = await sweepOrphanedImageCaptionCache(fake.client, { maxRows: 100, dryRun: true });
+    expect(result).toEqual({ scanned: 3, orphaned: 2, deleted: 0 });
+    expect(fake.deletes).toEqual([]);
+  });
+
+  it("stops at the row cap", async () => {
+    const fake = sweepClient(cache, []);
+    const result = await sweepOrphanedImageCaptionCache(fake.client, { maxRows: 2, dryRun: false });
+    expect(result.scanned).toBe(2);
+    expect(fake.rows.map((row) => row.id)).toEqual(["a3"]);
   });
 });

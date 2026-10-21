@@ -91,22 +91,13 @@ describe("schema_drift_snapshot definition parity (migration vs schema.sql)", ()
     expect(fromSchema).toBe(fromMigration);
   });
 
-  it("strips a line comment only at a line start or after whitespace (#81A3YJ)", () => {
+  it("strips a line comment only where no quoted value is open on that line (#81A3YJ)", () => {
     const sql = extract(read(`supabase/migrations/${LATEST_DEFINER_MIGRATION}`));
-    expect(sql).toContain(`'(^|[[:space:]])--[^\\n]*', '\\1', 'g'`);
+    expect(sql).toContain(`'(^|\\n)((?:[^''"\\n-]|-(?!-)|''[^''\\n]*''|"[^"\\n]*")*)--[^\\n]*', '\\1\\2', 'g'`);
     expect(sql).not.toContain(`'--[^\\n]*', '', 'g'`);
     // The latest definer keeps everything the v2 probe added.
     expect(sql).toContain("'snapshot_version', 2");
     expect(sql).toContain("'migration_history_probe', history_probe");
-
-    // The services seed is one dollar-quoted value. Every '--' in it is glued to other text, so
-    // the new pattern hashes it in full; a whitespace-preceded '--' would hide the rest again.
-    const seedMigration = read("supabase/migrations/20260824122000_add_site_content_release_and_outbox.sql");
-    const tag = "$site_content_registry_baselines$";
-    const seed = seedMigration.slice(seedMigration.indexOf(tag) + tag.length, seedMigration.lastIndexOf(tag));
-    expect(seed.length).toBeGreaterThan(1_000_000);
-    expect(seed).toContain("--");
-    expect(seed).not.toMatch(/(^|\s)--/);
   });
 
   it("v2 probe reads history via a guarded dynamic query and reports its own availability", () => {

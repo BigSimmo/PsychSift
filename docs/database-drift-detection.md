@@ -38,8 +38,9 @@ storage bucket rows + storage.objects policies.
 - **Whitespace/comments in function bodies** — `prosrc` is stored verbatim, so
   migration text vs schema.sql text differ trivially; both are stripped before
   hashing (the same trick `20260701140631` used to validate byte-equivalence).
-  Since `20261021180000` a `--` starts a line comment only at a line start or after
-  whitespace. Before that, a `--` inside a string literal deleted the rest of the line,
+  Since `20261021180000` a `--` starts a line comment only where no `'...'` or `"..."`
+  value is open earlier on that line, so a `--` inside a URL or a Markdown table row is
+  hashed as content. Before that, a `--` inside a string literal deleted the rest of the line,
   which hid about 91% of `site_content_registry_baseline()` from the check (`#81A3YJ`).
 - **Rendering search_path** — the snapshot pins `search_path = ''` so
   `pg_get_expr`/`pg_get_indexdef`/policy quals render fully qualified and

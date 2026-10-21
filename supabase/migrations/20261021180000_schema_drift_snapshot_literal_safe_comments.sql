@@ -9,13 +9,15 @@
 -- live-drift run.
 --
 -- What changed vs v2: only the line-comment pattern in 'functions'.def_hash. A '--' now
--- starts a comment only at a line start or after whitespace, which is how every comment in
--- this repository's functions is written. The seed holds six '--' sequences, all glued to
--- other text, and no whitespace-preceded '--', so it is now hashed in full. Block comments
--- and whitespace are normalised exactly as before. snapshot_version stays 2: the shape is
--- unchanged, and only some def_hash values move.
+-- starts a comment only where the text before it on the same line has no open single- or
+-- double-quoted value, so a '--' inside a literal is hashed as content: the seed's URLs
+-- (inside JSON double quotes) and the Markdown '| --- |' rows in the single-quoted JSON of
+-- create_uploaded_document_with_ingestion_job(). A quoted value that spans lines is still
+-- read line by line, which is no worse than v2. Block comments and whitespace are
+-- normalised exactly as before. snapshot_version stays 2: the shape is unchanged, and only
+-- some def_hash values move.
 --
--- Every function whose definition has a '--' glued to other text gets a new def_hash, on
+-- Every function whose definition has a '--' inside a quoted value gets a new def_hash, on
 -- live and in the replayed manifest alike, so supabase/drift-manifest.json is regenerated in
 -- the same change. Until this migration is applied, check:drift reports those functions
 -- and schema_drift_snapshot itself as def_hash mismatches.
@@ -83,9 +85,10 @@ begin
     'functions', coalesce((
       select jsonb_agg(jsonb_build_object(
         'signature', p.oid::regprocedure::text,
-        -- A line comment starts at a line start or after whitespace. A '--' glued to other
-        -- text (a URL such as Next-Step---Drug-..., a '---' separator) is literal content.
-        'def_hash', md5(regexp_replace(regexp_replace(regexp_replace(pg_get_functiondef(p.oid), '/\*.*?\*/', '', 'gs'), '(^|[[:space:]])--[^\n]*', '\1', 'g'), '\s+', '', 'g')),
+        -- A '--' starts a line comment only where the text before it on that line holds no
+        -- open quote, so a '--' inside a '...' or "..." value (a URL such as
+        -- Next-Step---Drug-..., a Markdown '| --- |' row) is hashed as content.
+        'def_hash', md5(regexp_replace(regexp_replace(regexp_replace(pg_get_functiondef(p.oid), '/\*.*?\*/', '', 'gs'), '(^|\n)((?:[^''"\n-]|-(?!-)|''[^''\n]*''|"[^"\n]*")*)--[^\n]*', '\1\2', 'g'), '\s+', '', 'g')),
         'acl', (select array_agg(a.item::text order by a.item::text) from unnest(coalesce(p.proacl, acldefault('f', p.proowner))) a(item))
       ) order by p.oid::regprocedure::text)
       from pg_proc p
