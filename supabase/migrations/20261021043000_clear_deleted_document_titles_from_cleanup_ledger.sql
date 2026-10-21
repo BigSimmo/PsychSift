@@ -10,8 +10,10 @@ set local statement_timeout = '30s';
 --
 -- Only rows whose document no longer exists are touched (document_id is nulled by the
 -- ON DELETE SET NULL foreign key). A row for a delete that aborted still points at its live
--- document and keeps its title. Data only: no schema, function, grant or policy change.
+-- document and keeps its title. Public-source rows (public_source_reservation_id set) also have a
+-- null document_id but a fixed title their guard trigger protects, so they are excluded. Data only: no schema, function, grant or policy change.
 update public.storage_cleanup_jobs
    set document_title = null
  where document_title is not null
-   and document_id is null;
+   and document_id is null
+   and public_source_reservation_id is null;
