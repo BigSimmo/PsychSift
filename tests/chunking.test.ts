@@ -890,4 +890,32 @@ describe("table context, footnotes, referrals and oversized rows (chunker 1.3.1)
     expect(chunks.join("\n")).toContain(lead.join("\n"));
     for (const chunk of tableChunksOf(chunks)) expect(chunk).not.toContain("patients with renal impairment:");
   });
+
+  it("keeps a numbered dosing list after a table as prose, not a footnote", () => {
+    const list = ["1. Start lithium 250 mg at night.", "2. Recheck the level after 5 days."];
+    const chunks = chunkTextWithOverlap(["Lithium actions", ...header, ...rows, ...list].join("\n"), 1200, 200);
+    const tableChunks = tableChunksOf(chunks);
+    for (const chunk of tableChunks) expect(chunk).not.toContain(list[0]);
+    expect(chunks.join("\n")).toContain(list.join("\n"));
+  });
+
+  it("keeps a page-edge crisis footer with a phone number and web address", () => {
+    const footer = "Lifeline 13 11 14 www.lifeline.org.au";
+    const chunks = buildChunks([
+      {
+        documentId: "doc-1",
+        pageNumber: 1,
+        pageText: `Check lithium level weekly.\nReview renal function.\n${footer}`,
+        metadata: {},
+      },
+      {
+        documentId: "doc-1",
+        pageNumber: 2,
+        pageText: `Check thyroid function.\nReview weight.\n${footer}`,
+        metadata: {},
+      },
+    ]);
+    const content = chunks.map((chunk) => chunk.content).join("\n");
+    expect(content.match(/Lifeline 13 11 14 www\.lifeline\.org\.au/g)).toHaveLength(2);
+  });
 });

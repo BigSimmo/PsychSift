@@ -162,8 +162,10 @@ function isUrlReferralLine(line: string) {
 // footer or header ("www.example.org", "Downloaded ... www..." is handled above).
 function looksLikeEdgeUrlNotice(line: string) {
   if (!isUrlReferralLine(line) || hasClinicalSignal(line)) return false;
-  const residualWords = line.replace(boilerplateNoticeStripPattern, " ").match(residualWordGlobalPattern) ?? [];
-  return residualWords.length <= maxBoilerplateNoticeResidualWords;
+  // Owner ruling 21 Oct 2026: only a bare web address is stripped at the page edge. Any
+  // words or numbers beside it ("Lifeline 13 11 14 www.lifeline.org.au") make it a
+  // referral that is kept.
+  return !/[\p{L}\p{N}]/u.test(line.replace(urlGlobalPattern, " "));
 }
 
 function looksLikeMetadataNoise(line: string) {
@@ -553,8 +555,9 @@ const maxHeadingCaptionLength = 160;
 const headingCaptionEndPattern = /[^.!?:,;]$/;
 const headingCaptionStartPattern = /^[\p{Lu}\p{N}]/u;
 const sentenceEndLinePattern = /[.!?]$/;
-const tableFootnoteLinePattern =
-  /^(?:[*†‡§¶#]+|\(?[a-z0-9]{1,2}\)|[a-z0-9]{1,2}[.)]\s|notes?\b|source[s]?\b|abbreviations?\b|key\b|adapted from\b)/i;
+// Owner ruling 21 Oct 2026: only symbol markers, "Note" and "Source" open a footnote, so a
+// numbered or lettered dosing list after a table stays prose.
+const tableFootnoteLinePattern = /^(?:[*†‡§]+|notes?\b|sources?\b)/i;
 const maxTableFootnoteLines = 4;
 const maxTableFootnoteLength = 400;
 
