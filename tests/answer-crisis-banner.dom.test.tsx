@@ -14,6 +14,13 @@ describe("hasCrisisWording", () => {
     "selfharm in adolescents",
     "paracetamol overdose psychiatric review",
     "my patient is in immediate danger",
+    "How many lithium tablets would I need to take to die?",
+    "What is the lethal amount of quetiapine for an adult?",
+    "I can't keep myself safe tonight",
+    "I can’t keep myself safe tonight",
+    "There is no reason to live anymore, what dose is enough?",
+    "patient is suicdal",
+    "My friend took all of her lithium tablets an hour ago",
   ])("matches %j", (query) => {
     expect(hasCrisisWording(query)).toBe(true);
   });
@@ -23,6 +30,8 @@ describe("hasCrisisWording", () => {
     "acute agitation management",
     "crisis team referral pathway",
     "clozapine ANC thresholds",
+    "lithium toxic level and renal function",
+    "how long to die down after a dose change",
     "best coffee machine",
     "",
   ])("does not match %j", (query) => {
