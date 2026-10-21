@@ -269,6 +269,10 @@ function RequestEpaSheet({
               </WorkChip>
             ))}
           </WorkChips>
+          <AssessNote>
+            They get an emailed link and need no CLA account. Their EPA shows as Unapproved until your MEU approves
+            them.
+          </AssessNote>
           <SupervisorLinkPanel epa={epa} guest={guest} defaultTraineeName={SAMPLE_DOCTOR.name} />
         </>
       ) : (

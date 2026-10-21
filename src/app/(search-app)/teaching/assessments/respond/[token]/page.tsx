@@ -287,7 +287,7 @@ function EpaMagicLinkRespondBody({ token }: { readonly token: string }) {
             disabled={!level || Boolean(patientProblem) || submitting}
             onClick={() => void handleSubmit()}
           >
-            {submitting ? "Submitting…" : "Submit EPA assessment"}
+            {submitting ? "Sending…" : "Send feedback"}
           </WorkButton>
         </div>
       )}

@@ -121,7 +121,14 @@ export function SupervisorLinkPanel({
   }
 
   return (
-    <div className="grid gap-3" data-testid="epa-supervisor-link-panel">
+    <section
+      aria-labelledby="epa-supervisor-link-heading"
+      className="grid gap-3 border-t border-[color:var(--work-line)] pt-3"
+      data-testid="epa-supervisor-link-panel"
+    >
+      <h3 id="epa-supervisor-link-heading" className="work-label m-0">
+        Or ask for feedback by link
+      </h3>
       <AssessTextField
         id="assess-request-trainee-name"
         label="Your name, as they will see it"
@@ -188,6 +195,6 @@ export function SupervisorLinkPanel({
           <p className="work-row__sub m-0">Only you see your links and what comes back.</p>
         </section>
       ) : null}
-    </div>
+    </section>
   );
 }

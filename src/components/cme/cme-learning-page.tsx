@@ -71,12 +71,11 @@ function costLabel(item: LearningDirectoryItem): string | null {
   return [access, item.costNote].filter(Boolean).join(". ") || null;
 }
 
-/** When · Where · Cost, the one grey line under the title. A cancelled course says so first. */
+/** When · Where · Cost, the one grey line under the title. */
 function whenWhereCost(item: LearningDirectoryItem, today: string): string {
   const when = item.startsOn === null && item.kind === "recorded" ? null : whenLabel(item, today);
   const where = item.startsOn === null && item.kind === "recorded" ? "Online · watch any time" : whereLabel(item);
-  const line = [when, where, costLabel(item)].filter(Boolean).join(" · ");
-  return item.cancelled ? `Cancelled by the organiser · ${line}` : line;
+  return [when, where, costLabel(item)].filter(Boolean).join(" · ");
 }
 
 function downloadCalendarEvent(item: LearningDirectoryItem): void {
@@ -252,6 +251,11 @@ function LearningRow({
         <DateTile item={item} />
       </span>
       <div className="work-row__text">
+        {item.cancelled ? (
+          <span data-testid="cme-learning-cancelled" className="work-tag justify-self-start" data-tone="red">
+            Cancelled by the organiser
+          </span>
+        ) : null}
         <CourseTitle item={item} phase={phase} onOpen={onOpen} className="work-row__title" />
         <p className="work-row__sub m-0 break-words">
           {KIND_LABEL[item.kind]} · {item.provider}
