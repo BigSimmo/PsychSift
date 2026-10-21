@@ -364,9 +364,6 @@ export function queryEntityTokens(query: string, intent: AnswerIntent) {
   return tokens;
 }
 
-const monitoredMedicineClassPattern =
-  /\b(?:antipsychotics?|antidepressants?|mood\s+stabili[sz]ers?|psychostimulants?|stimulants?|benzodiazepines?|psychotropics?)\b/i;
-
 export function queryEntitySubject(query: string, intent: AnswerIntent) {
   const tokens = queryEntityTokens(query, intent);
   if (tokens.includes("agitation") && tokens.includes("arousal")) return "agitation and arousal";
@@ -374,11 +371,6 @@ export function queryEntitySubject(query: string, intent: AnswerIntent) {
   // monitored. Prefer the one explicit medicine over the first residual token.
   const medicines = medicationEntitiesInText(query);
   if (intent === "monitoring_schedule" && medicines.length === 1) return medicines[0];
-  // A medicine class is not a medicine entity, so "What metabolic monitoring is required for
-  // antipsychotics?" used to print "For metabolic, …" (#J8SJQ9). The class is the subject.
-  const medicineClass =
-    intent === "monitoring_schedule" && !medicines.length && monitoredMedicineClassPattern.exec(query);
-  if (medicineClass) return medicineClass[0].toLowerCase();
   // A leading verb ("prescribe", "make") is never the subject. When the query
   // names a medicine, use it rather than printing "For prescribe, …" (#ZZ4RAP).
   if (
@@ -433,19 +425,6 @@ export const monitoringScheduleEvidencePattern = new RegExp(
 // level signal: dose-kind facts must carry one of these before they count as
 // monitoring evidence, so generic dose wording (range/therapeutic/maintenance
 // around a mg figure) cannot masquerade as a schedule.
-/**
- * A policy's own administration rather than the clinical monitoring it governs: its
- * "Compliance, monitoring and evaluation" section, audit-of-this-policy text, and glossary
- * rows ("Metabolic Screen An evidence-based process for…"). The monitoring vocabulary in them
- * passes the schedule check, so without this the governance heading led the metabolic
- * monitoring answer (#J8SJQ9, Eval Canary 39614340500).
- */
-export const policyAdministrationSentencePattern =
-  /\b(?:compliance,?\s+monitoring\s+and\s+evaluation|compliance\s+(?:against|with)\s+this\s+(?:policy|procedure|guideline|protocol)|the\s+following\s+definitions\s+are\s+relevant|term\s+definition)\b/i;
-
-export const glossaryEntrySentencePattern =
-  /^\s*(?:[A-Z][\w’'-]*\s+){1,4}An?\s+(?:evidence[-\s]based\s+)?(?:process|tool|method|framework|document)\s+(?:for|to|that|used)\b/;
-
 export const monitoringCadenceOrLevelPattern = new RegExp(
   String.raw`\b(?:monitor\w*|follow[-\s]?up|baseline|weekly|monthly|annual(?:ly)?|yearly|every|several\s+times\s+a\s+year|screen(?:ing|ed)?|review\w*|levels?|serum|trough|plasma|mmol\/l|mcg\/l|ng\/ml|\d+\s*(?:week|month|day|hour|year)s?)\b`,
   "i",

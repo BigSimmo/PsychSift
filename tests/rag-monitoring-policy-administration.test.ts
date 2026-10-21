@@ -6,7 +6,7 @@ import {
   finalizeRagAnswerQuality,
 } from "../src/lib/rag/rag-extractive-answer";
 import { factSupportsAnswerIntent } from "../src/lib/rag/rag-extractive-builder";
-import { queryEntitySubject } from "../src/lib/rag/rag-extractive-signals";
+import { medicationClassInText } from "../src/lib/medication-entities";
 import type { SearchResult } from "../src/lib/types";
 
 // Eval Canary 39614340500 (21 Oct 2026). "What metabolic monitoring is required for
@@ -56,10 +56,10 @@ const CLINICAL_SCHEDULE =
   "Atypical antipsychotic medications require careful monitoring for metabolic adverse effects. Weight should be monitored at every visit. A baseline fasting glucose should be obtained before treatment starts.";
 
 describe("metabolic monitoring answer (#J8SJQ9)", () => {
-  it("names the medicine class as the subject, not the monitoring facet", () => {
-    expect(queryEntitySubject(METABOLIC_QUERY, "monitoring_schedule")).toBe("antipsychotics");
-    // A named medicine still wins over a class.
-    expect(queryEntitySubject("What monitoring is required for clozapine?", "monitoring_schedule")).toBe("clozapine");
+  it("recognises a named medicine class", () => {
+    expect(medicationClassInText(METABOLIC_QUERY)).toBe("antipsychotics");
+    expect(medicationClassInText("Monitoring for mood stabilisers")).toBe("mood stabilisers");
+    expect(medicationClassInText("What monitoring is required for clozapine?")).toBeNull();
   });
 
   it("does not admit a policy's own governance or glossary text as monitoring evidence", () => {

@@ -47,6 +47,7 @@ import {
 } from "@/lib/evidence";
 import { hasBoundMonitoringCadence as deliveredMonitoringFrequencyPresent } from "@/lib/evidence-relevance";
 import {
+  medicationClassInText,
   medicationEntitiesInText,
   medicationEntityMatchesInText,
   medicationSafetyEntitiesInText,
@@ -118,8 +119,6 @@ import {
   monitoringIntervalFigurePattern,
   monitoringLevelRangeCoveragePattern,
   monitoringScheduleEvidencePattern,
-  glossaryEntrySentencePattern,
-  policyAdministrationSentencePattern,
   numericRepeatDoseSchedulePattern,
   queryEntitySubject,
   queryEntityTokens,
@@ -187,6 +186,18 @@ export const dischargeRequirementBindingPatterns = [
   /\b(?:clinicians?|staff|care coordinators?|case managers?|treating teams?|clinical teams?)\b[^.!?]{0,80}\b(?:must\s+|should\s+|will\s+|are\s+(?:required|expected)\s+to\s+)?(?:ensure\w*|complet\w*|notif\w*|refer\w*|document(?:ed|ing)?|include\w*|arrang\w*)\s+(?:the\s+)?(?:discharge plans?|ongoing care arrangements?)\b/i,
   /\bongoing care arrangements?\s+(?:must|should)\s+(?:be\s+documented|include|ensure|complete|document)\b/i,
 ] as const;
+
+/**
+ * A policy's own administration rather than the clinical monitoring it governs: its
+ * "Compliance, monitoring and evaluation" section, audit-of-this-policy text, and glossary
+ * rows ("Metabolic Screen An evidence-based process for…"). The monitoring vocabulary in them
+ * passes the schedule check, so without this the governance heading led the metabolic
+ * monitoring answer (#J8SJQ9, Eval Canary 39614340500).
+ */
+const policyAdministrationSentencePattern =
+  /\b(?:compliance,?\s+monitoring\s+and\s+evaluation|compliance\s+(?:against|with)\s+this\s+(?:policy|procedure|guideline|protocol)|the\s+following\s+definitions\s+are\s+relevant|term\s+definition)\b/i;
+const glossaryEntrySentencePattern =
+  /^\s*(?:[A-Z][\w’'-]*\s+){1,4}An?\s+(?:evidence[-\s]based\s+)?(?:process|tool|method|framework|document)\s+(?:for|to|that|used)\b/;
 
 export function factSupportsAnswerIntent(
   kind: ExtractedClinicalFactKind,
@@ -876,6 +887,18 @@ function extractClinicalFactsFromResults(
   return facts.sort((a, b) => b.priority - a.priority || a.text.length - b.text.length).slice(0, limit);
 }
 
+/**
+ * The subject an extractive sentence is prefixed with. A medicine class is not a medicine entity,
+ * so "What metabolic monitoring is required for antipsychotics?" printed "For metabolic, …"
+ * (#J8SJQ9). For a monitoring question that names no single medicine, the class is the subject.
+ */
+function answerSubject(query: string) {
+  const intent = classifyAnswerIntent(query, classifyRagQuery(query).queryClass);
+  const medicineClass =
+    intent === "monitoring_schedule" && medicationEntitiesInText(query).length === 0 && medicationClassInText(query);
+  return medicineClass || queryEntitySubject(query, intent);
+}
+
 /** Sentence from fact. */
 export function sentenceFromFact(
   fact: ExtractedClinicalFact,
@@ -884,7 +907,7 @@ export function sentenceFromFact(
 ) {
   const text = sanitizeAnswerText(cleanExtractivePointText(fact.text)).replace(/[.;,\s]+$/, "");
   if (!text) return "";
-  const entity = queryEntitySubject(query, classifyAnswerIntent(query, classifyRagQuery(query).queryClass));
+  const entity = answerSubject(query);
   const needsEntityPrefix =
     !options.suppressEntityPrefix &&
     entity &&
@@ -1815,10 +1838,7 @@ function buildFactSynthesizedAnswer(args: {
   // Derived exactly the way sentenceFromFact derives its prefix entity (from
   // the query's own classification, not the routed intent) so the suppression
   // gate can never disagree with the prefix it is gating.
-  const entity = queryEntitySubject(
-    args.query,
-    classifyAnswerIntent(args.query, classifyRagQuery(args.query).queryClass),
-  );
+  const entity = answerSubject(args.query);
   let accumulated = "";
   const leadSentences: string[] = [];
   for (const fact of leadFacts) {
