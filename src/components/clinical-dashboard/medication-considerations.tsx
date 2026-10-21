@@ -188,11 +188,13 @@ export function PatientVerdictSignal({ verdict, className }: { verdict: Medicati
  * alert. Rendered as a `<Link>` per the repo's internal-navigation rule.
  */
 function CounterpartyLink({ interaction }: { interaction: MedicationInteraction }) {
+  // The 48px tap box keeps its size; -my-3 lets it reach into the card's p-3 padding so
+  // the 12px label does not leave a blank band above and below it.
   return (
     <Link
       href={`/medications/${interaction.counterpartySlug}`}
       data-testid={`patient-interaction-link-${interaction.counterpartySlug}`}
-      className="inline-flex min-h-tap items-center gap-1 text-xs font-semibold text-[color:var(--clinical-accent)] underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
+      className="-my-3 inline-flex min-h-tap items-center gap-1 text-xs font-semibold text-[color:var(--clinical-accent)] underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
     >
       Open {interaction.counterpartyName}
       <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
