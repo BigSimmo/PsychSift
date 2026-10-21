@@ -123,6 +123,21 @@ describe("container delivery contract", () => {
     expect(worker).toContain("ge 1.22.1-1~bpo13+1");
   });
 
+  it("builds pinned native security repairs with normal package provenance and runtime acceptance", () => {
+    const worker = read("Dockerfile.worker");
+    for (const component of ["util-linux", "tesseract", "ncurses", "libxml2"]) {
+      expect(worker).toContain(`AS native-${component}`);
+      expect(worker).toContain(`build_security_debs.py ${component}`);
+      expect(worker).toContain(`COPY --from=native-${component} /out/ /tmp/worker-native-debs/`);
+    }
+    expect(worker).toContain("test_build_security_debs.py");
+    expect(worker).toContain("--no-remove");
+    expect(worker).toContain("/tmp/worker-native-debs/*.deb");
+    expect(worker).toContain("--verify-installed /usr/share/psychsift/native-security");
+    expect(worker).toContain("timeout 180 /opt/docling-venv/bin/python /tmp/check-native-docling.py");
+    expect(worker.indexOf("USER node")).toBeLessThan(worker.indexOf("RUN timeout 180"));
+  });
+
   it.skipIf(process.platform === "win32")(
     "rejects either mount privilege bit and accepts stripped or absent helpers",
     () => {

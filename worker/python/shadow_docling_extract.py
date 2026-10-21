@@ -52,7 +52,10 @@ def build_converter():
     artifacts_path = os.environ.get("DOCLING_ARTIFACTS_PATH")
     options = PdfPipelineOptions(artifacts_path=artifacts_path) if artifacts_path else PdfPipelineOptions()
     options.do_ocr = True
-    options.ocr_options = TesseractCliOcrOptions()
+    # The worker image installs only tesseract-ocr-eng. Docling's default
+    # language list (fra/deu/spa/eng) now raises OcrLanguageNotSupportedError
+    # for missing traineddata instead of skipping it, so pin the shipped model.
+    options.ocr_options = TesseractCliOcrOptions(lang=["eng"])
     options.do_table_structure = True
     return DocumentConverter(format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=options)})
 
