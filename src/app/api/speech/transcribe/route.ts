@@ -1,4 +1,5 @@
 import { consumeSubjectApiRateLimit, rateLimitJsonResponse } from "@/lib/api-rate-limit";
+import { requireSignedInClinicalAccess } from "@/lib/clinical-access";
 import { clinicalAskEnabled } from "@/lib/clinical-ask/authority-registry";
 import { jsonError, PublicApiError } from "@/lib/http";
 import { logger } from "@/lib/logger";
@@ -31,6 +32,7 @@ export async function POST(request: Request) {
     }
     const supabase = createAdminClient();
     const access = await publicAccessContext(request, supabase);
+    requireSignedInClinicalAccess(access);
     const rateLimit = await consumeSubjectApiRateLimit({
       supabase,
       subject: access.rateLimitSubject,

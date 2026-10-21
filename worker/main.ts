@@ -53,6 +53,7 @@ import {
   enrichmentRepairDecision,
   ingestionFailureDecision,
   runIngestionMutation,
+  startIngestionHeartbeat,
   runIngestionPreparedWork,
   resolveWorkerClaimScopeFilter,
   isPreClaimCandidateAllowed,
@@ -175,7 +176,12 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
     attempt.check();
     return attempt;
   }
-  const mutation = (attempt: IngestionAttempt, name: string, args: Record<string, unknown> = {}) =>
+  const mutation = (
+    attempt: IngestionAttempt,
+    name: string,
+    args: Record<string, unknown> = {},
+    options?: Parameters<typeof runIngestionMutation>[4],
+  ) =>
     runIngestionMutation(
       attempt,
       (rpcName, payload) =>
@@ -188,6 +194,7 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
           ),
       name,
       args,
+      options,
     );
   // The runtime services the extracted ingestion stages use. Every member is the same
   // closure-owned function or client the stages called when they lived in this closure.
@@ -461,11 +468,14 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
   async function processJob(job: JobRow) {
     const attempt = attemptForJob(job.id);
     const issuedControlSnapshot = captureIssuedAttemptControl(job);
-    const heartbeat = setInterval(
-      () => {
-        mutation(attempt, "heartbeat_ingestion_job").catch(() => attempt.cancel());
+    const heartbeat = startIngestionHeartbeat(
+      attempt,
+      () => mutation(attempt, "heartbeat_ingestion_job", {}, { revokeOnUncertainOutcome: false }),
+      {
+        intervalMs: Math.min(60_000, jobLeaseHeartbeatMs),
+        toleranceMs: jobLeaseHeartbeatMs,
+        leaseMs: env.WORKER_STALE_AFTER_MINUTES * 60_000,
       },
-      Math.min(60_000, jobLeaseHeartbeatMs),
     );
     let extracted: ExtractedDocument | null = null;
     const atomicReindex = isAtomicReindexCandidate(job.documents);

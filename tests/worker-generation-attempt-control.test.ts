@@ -187,7 +187,7 @@ describe("actual issued attempt-control prerequisite", () => {
     const worker = readFileSync(new URL("../worker/main.ts", import.meta.url), "utf8");
     const process = worker.slice(worker.indexOf("async function processJob(job: JobRow)"));
     const capture = process.indexOf("const issuedControlSnapshot = captureIssuedAttemptControl(job)");
-    const heartbeat = process.indexOf("const heartbeat = setInterval(");
+    const heartbeat = process.indexOf("const heartbeat = startIngestionHeartbeat(");
     const lifecycle = process.indexOf("try {");
     const inventory = process.indexOf('"read_ingestion_generation_inventory"');
     const savingPages = process.indexOf('stage: "saving pages"');

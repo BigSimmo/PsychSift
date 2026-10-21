@@ -107,7 +107,7 @@ describe("worker job transitions have no unfenced fallback", () => {
   const failOrRetry = sourceSegment(workerSource, "async function failOrRetryJob(", "function workerBackoffMs(", {
     label: "failOrRetryJob",
   });
-  const mutationAdapter = sourceSegment(workerSource, "const mutation = (attempt:", "async function updateJob(", {
+  const mutationAdapter = sourceSegment(workerSource, "const mutation = (", "async function updateJob(", {
     label: "worker mutation adapter",
   });
   const fencedMutation = sourceSegment(
@@ -136,9 +136,14 @@ describe("worker job transitions have no unfenced fallback", () => {
       /\.rpc\(rpcName, payload\)\s*\.abortSignal\(\s*CONTROL_PLANE_RPCS\.has\(rpcName\)\s*\?\s*controlPlaneAbortSignal\(attempt\.signal\)\s*:\s*dataPlaneAbortSignal\(attempt\.signal\),?\s*\)/,
     );
     expect(fencedMutation).toContain("p_fence: attempt.fence");
-    expect(fencedMutation).toContain("if (result.error) throw new Error(result.error.message)");
+    expect(fencedMutation).toContain("const revokeOnUncertainOutcome = options.revokeOnUncertainOutcome !== false;");
+    expect(fencedMutation).toMatch(
+      /if \(result\.error\) \{\s*if \(revokeOnUncertainOutcome\) attempt\.cancel\(\);\s*throw new Error\(result\.error\.message\);/,
+    );
     expect(fencedMutation).toContain("attempt.accept(result.data)");
-    expect(fencedMutation).toMatch(/catch \(error\) \{\s*attempt\.cancel\(\);\s*throw error;/);
+    expect(fencedMutation).toMatch(
+      /catch \(error\) \{\s*if \(revokeOnUncertainOutcome\) attempt\.cancel\(\);\s*throw error;/,
+    );
   });
 
   it("failOrRetryJob refuses to demote a document it may no longer own", () => {

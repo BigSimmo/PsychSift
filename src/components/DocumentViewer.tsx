@@ -64,6 +64,9 @@ import { isLocalNoAuthMode } from "@/lib/client-env";
 import { isAdministratorUser } from "@/lib/authorization";
 import { authorizationIdentity } from "@/lib/authorization-header";
 import { useAuthSession } from "@/lib/supabase/client";
+import { ClinicalSignInNotice } from "@/components/mode-kit/clinical-sign-in-notice";
+import { useClinicalToolAccess } from "@/components/mode-kit/use-clinical-tool-access";
+import { CLINICAL_SIGN_IN_COPY } from "@/lib/front-door-content";
 import { DocumentManagementActions } from "@/components/DocumentManagementActions";
 import { Sheet } from "@/components/ui/sheet";
 import type { ClinicalDocument, DocumentLabel } from "@/lib/types";
@@ -260,6 +263,10 @@ export function DocumentViewer({
     markSessionExpired,
   } = useAuthSession();
   const localNoAuthMode = isLocalNoAuthMode();
+  // The original file (preview, open and download) is for signed-in users: the server
+  // refuses its signed URL to anyone else, so a signed-out reader is never sent to ask
+  // for one and sees the sign-in card in its place. The indexed text stays readable.
+  const originalsLocked = useClinicalToolAccess() === "sign-in-required";
   const [serverDemoMode, setServerDemoMode] = useState(
     () => initialDetail?.demoMode ?? process.env.NEXT_PUBLIC_DEMO_MODE === "true",
   );
@@ -441,6 +448,11 @@ export function DocumentViewer({
   const downloadControllerRef = useRef<AbortController | null>(null);
   const currentDocumentFileName = document?.file_name;
   const openSourceDownload = useCallback(() => {
+    if (originalsLocked) {
+      // Take the reader to the sign-in card where the preview would be.
+      window.document.getElementById("pdf-preview-section")?.scrollIntoView({ block: "start" });
+      return Promise.resolve();
+    }
     if (downloadActionRef.current) return downloadActionRef.current;
 
     const endpoint = `/api/documents/${documentId}/signed-url?download=true`;
@@ -496,6 +508,7 @@ export function DocumentViewer({
     documentId,
     isAuthEpochCurrent,
     markSessionExpired,
+    originalsLocked,
     registerAuthRequest,
   ]);
 
@@ -645,9 +658,10 @@ export function DocumentViewer({
               )) as DocumentDetailPayload;
             });
         // Navigation keeps the current preview; a full load re-issues only the preview URL.
-        const previewRequest = isFullReload
-          ? Promise.allSettled([openSourcePreview({ signal: controller.signal, useCache: true })])
-          : Promise.resolve(null);
+        const previewRequest =
+          isFullReload && !originalsLocked
+            ? Promise.allSettled([openSourcePreview({ signal: controller.signal, useCache: true })])
+            : Promise.resolve(null);
 
         return Promise.all([Promise.allSettled([detailRequest]), previewRequest]);
       })
@@ -784,6 +798,7 @@ export function DocumentViewer({
     initialDetailIdentityStale,
     openSourcePreview,
     applyPreviewSignedUrlResult,
+    originalsLocked,
   ]);
 
   useEffect(() => {
@@ -1472,7 +1487,15 @@ export function DocumentViewer({
                 id="pdf-preview-section"
                 className={cn(panel, "scroll-mt-[var(--document-anchor-offset,6rem)] overflow-hidden")}
               >
-                <div data-testid="pdf-preview">
+                {originalsLocked ? (
+                  <ClinicalSignInNotice
+                    copy={CLINICAL_SIGN_IN_COPY.original}
+                    bare
+                    testId="original-document-sign-in"
+                    onSignedIn={retryPreview}
+                  />
+                ) : null}
+                <div data-testid="pdf-preview" hidden={originalsLocked}>
                   <DocumentFrame
                     alt={`${document ? documentDisplayTitle(document) : "Source document"} preview`}
                     src={previewFrameSource}

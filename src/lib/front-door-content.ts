@@ -41,8 +41,15 @@ export const ABOUT_SECTIONS: FrontDoorSection[] = [
     id: "what-it-is",
     heading: "What PsychSift is",
     body: [
-      "PsychSift is a private clinical reference tool for psychiatry. It searches a library of clinical guidelines and reference documents and answers questions with citations that link back to the original source.",
+      "PsychSift is a clinical reference tool for psychiatry, for health professionals. It searches a library of clinical guidelines and reference documents and answers questions with citations that link back to the original source.",
       "It is a prototype. It is still being built and tested.",
+    ],
+  },
+  {
+    id: "intended-use",
+    heading: "Intended use",
+    body: [
+      "PsychSift helps health professionals find and check what clinical guidelines say. It does not diagnose, decide treatment for a patient, or replace your clinical judgement.",
     ],
   },
   {
@@ -187,6 +194,41 @@ export const ASK_TERMS_STEP_NOTE_ACCOUNT =
 /** Shown over the matching documents after Not now. */
 export const ASK_TERMS_DECLINED_NOTICE = "No AI answer yet. To get one, accept the Terms.";
 export const ASK_TERMS_REVIEW_LABEL = "Review";
+
+/**
+ * The signed-out cards for the clinical decision tools, which need sign-in from
+ * 1 November 2026 (docs/decisions/2026-10-20-clinical-decision-tools-need-sign-in.md).
+ * Wording approved by the owner on the 20 October 2026 mockup.
+ */
+export type ClinicalSignInCopy = { title: string; body: string; stillOpen?: string };
+export const CLINICAL_SIGN_IN_COPY = {
+  answer: {
+    title: "Sign in to get an answer",
+    body: "Answer is for health professionals. Sign in with your PsychSift account to ask.",
+    stillOpen: "Matching documents from the library still show below.",
+  },
+  patientDetails: {
+    title: "Sign in to add patient details",
+    body: "Tailored considerations and interaction checks are for health professionals.",
+    stillOpen: "The full medicine record stays open to read.",
+  },
+  therapyRanking: {
+    title: "Sign in to rank therapies",
+    body: "Matching therapies to a clinical situation is for health professionals.",
+    stillOpen: "You can still browse and compare therapies.",
+  },
+  scoring: {
+    title: "Sign in to score",
+    body: "Entering answers and getting a score is for health professionals.",
+    stillOpen: "The questions, scoring rules, bands and source stay open to read.",
+  },
+  original: {
+    title: "Sign in to open the original",
+    body: "Original documents belong to their publishers and open only for signed-in users.",
+  },
+} as const satisfies Record<string, ClinicalSignInCopy>;
+export const CLINICAL_SIGN_IN_INVITE_NOTE =
+  "No account? You can create one from Sign in. PsychSift is for health professionals only.";
 
 /** Shown under the sign-in and create-account forms. */
 export const TERMS_SIGN_IN_NOTE = "By signing in or creating an account, you agree to the";
