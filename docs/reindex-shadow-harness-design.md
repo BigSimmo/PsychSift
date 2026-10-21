@@ -6,6 +6,12 @@ The offline decision core (`src/lib/reindex-eval-gate.ts` — `decideReindexGate
 unit-tested; this doc specifies the remaining live pieces so they are turnkey when the billed
 OpenAI key + Supabase service secrets are available.
 
+**Until this harness is applied, the eval gate is advisory and by hand** (audit 2026-10-20 ING-A-04).
+Nothing calls `decideReindexGate`: the worker refuses only a zero-chunk, zero-image generation, so a
+worse re-extraction can replace a good live one unchecked. Before approving any library reload, run a
+baseline eval canary first, then after the reload run `npm run reindex:health` and a second canary,
+and compare the two. Revert on any recall drop or per-case regression.
+
 ## Goal
 
 Build the new (better-chunked, re-enriched) index for a document into a **staged** generation

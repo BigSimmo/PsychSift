@@ -4717,7 +4717,8 @@ describe("private document API access", () => {
 
       expect(response.status).toBe(409);
       expect(await payload(response)).toMatchObject({
-        error: "Document has pending or processing indexing work. Stop or wait for the worker before deleting.",
+        error:
+          "Document has pending or processing indexing work. Wait for it to finish, or recover a job stuck on its last attempt, before deleting.",
       });
       expect(client.calls.some((call) => call.table === "documents" && call.operation === "delete")).toBe(false);
       expect(client.storageMocks.remove).not.toHaveBeenCalled();
