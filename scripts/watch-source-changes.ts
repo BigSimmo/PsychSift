@@ -27,7 +27,10 @@ const STATE_MARKER = "source-watch-state:v1";
 /** Hidden count the publishing job reads to decide whether to notify. */
 export const ATTENTION_MARKER = "source-watch-attention";
 const USER_AGENT = "PsychSift source watch (+https://psychiatry.tools; weekly; contact via GitHub BigSimmo/PsychSift)";
-const TIMEOUT_MS = 20_000;
+// Checked one at a time, so the worst case (every publisher stalled) is about
+// sources x (timeout + 0.5 s pause): 93 sources is about 19 minutes, inside the job's
+// 30-minute limit, so even a wide outage still gets reported.
+const TIMEOUT_MS = 12_000;
 const MAX_BYTES = 25 * 1024 * 1024;
 
 export type WatchedSource = { id: string; title: string; publisher: string; jurisdiction: string; url: string };

@@ -13,12 +13,33 @@ import {
 } from "@/lib/content-review-schedule";
 import { cn } from "@/lib/cn";
 
-const noSubscription = () => () => {};
-// The reader's local calendar date, not UTC: in Perth the UTC date is still yesterday
-// until 8 am, which would hold a due date back for a morning.
-const todayIso = () => {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+// Perth is UTC+8 all year. Clinician-facing dates are shown in Perth (`DateDisplay`), so
+// the review status is worked out on the same Perth calendar day, whatever the device's
+// own time zone, and the UTC date (still yesterday in Perth until 8 am) never holds a due
+// date back for a morning.
+const PERTH_OFFSET_MS = 8 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const todayIso = () => new Date(Date.now() + PERTH_OFFSET_MS).toISOString().slice(0, 10);
+// A page left open overnight still ages: tell React at each Perth midnight, and whenever
+// the tab comes back into view (a sleeping device can miss the timer).
+const subscribeToPerthDay = (onChange: () => void) => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const arm = () => {
+    const sinceMidnight = (Date.now() + PERTH_OFFSET_MS) % DAY_MS;
+    timer = setTimeout(
+      () => {
+        onChange();
+        arm();
+      },
+      DAY_MS - sinceMidnight + 1000,
+    );
+  };
+  arm();
+  document.addEventListener("visibilitychange", onChange);
+  return () => {
+    clearTimeout(timer);
+    document.removeEventListener("visibilitychange", onChange);
+  };
 };
 const serverToday = () => null;
 
@@ -31,7 +52,7 @@ const serverToday = () => null;
  * when review is due now, the muted dot when it is only coming up, and the date through
  * `DateDisplay` like every other clinician-facing date.
  *
- * The schedule is worked out in the browser with the reader's own date. These pages are
+ * The schedule is worked out in the browser with today's Perth date. These pages are
  * prerendered, so a schedule worked out at build time would stop ageing until the next
  * deploy; the server and the first client render therefore show nothing, and the line
  * appears once the page knows today's date.
@@ -48,7 +69,7 @@ export function ContentReviewNotice({
   hideStates?: readonly ContentReviewState[];
   className?: string;
 }) {
-  const today = useSyncExternalStore(noSubscription, todayIso, serverToday);
+  const today = useSyncExternalStore(subscribeToPerthDay, todayIso, serverToday);
   if (!today) return null;
   const schedule = contentReviewSchedule({ ...review, referenceDate: new Date(`${today}T00:00:00.000Z`) });
   if (hideStates.includes(schedule.state)) return null;

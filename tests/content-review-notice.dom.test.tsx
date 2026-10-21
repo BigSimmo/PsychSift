@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { renderToString } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -29,8 +29,8 @@ describe("ContentReviewNotice", () => {
     expect(notice.querySelector("time")?.getAttribute("dateTime")).toBe("2027-05-10");
   });
 
-  it("uses the reader's local date, so a Perth morning is not held back a day by UTC", () => {
-    vi.stubEnv("TZ", "Australia/Perth");
+  it("uses the Perth date whatever the device's zone, so a Perth morning is not held back a day by UTC", () => {
+    vi.stubEnv("TZ", "America/New_York");
     vi.useFakeTimers({ toFake: ["Date"] });
     // 07:30 on 10 May 2027 in Perth is still 9 May in UTC.
     vi.setSystemTime(new Date("2027-05-09T23:30:00.000Z"));
@@ -39,6 +39,18 @@ describe("ContentReviewNotice", () => {
     expect(notice.getAttribute("data-review-state")).toBe("due");
     expect(notice.textContent).toBe("Next review overdue. It was due on 10/05/2027.");
     vi.unstubAllEnvs();
+  });
+
+  it("keeps ageing on a page left open past Perth midnight", () => {
+    vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
+    // 23:59 on 9 May 2027 in Perth: due soon, then overdue once the day turns.
+    vi.setSystemTime(new Date("2027-05-09T15:59:00.000Z"));
+    render(<ContentReviewNotice review={{ kind: "medication", lastReviewedAt: "2026-05-10" }} />);
+    expect(screen.getByTestId("content-review-notice").getAttribute("data-review-state")).toBe("due_soon");
+    act(() => {
+      vi.advanceTimersByTime(2 * 60 * 1000);
+    });
+    expect(screen.getByTestId("content-review-notice").getAttribute("data-review-state")).toBe("due");
   });
 
   it("says nothing for a current record or a hidden state", () => {
