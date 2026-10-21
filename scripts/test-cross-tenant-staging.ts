@@ -16,7 +16,7 @@ import {
 } from "./lib/cross-tenant-write-probe";
 import { probeCmeEvidenceAndExportIsolation } from "./lib/cross-tenant-cme-evidence-probe";
 import { probeOnCallContentIsolation } from "./lib/cross-tenant-oncall-content-probe";
-import { probeRosterIsolation } from "./lib/cross-tenant-roster-probe";
+import { probeRosterIsolation, seedRosterFixtures } from "./lib/cross-tenant-roster-probe";
 
 loadEnvConfig(process.cwd());
 
@@ -898,6 +898,12 @@ async function main() {
             ? new URL(invited.path, "https://example.invalid").hash.match(/^#code=([a-f\d]{64})$/i)?.[1]
             : null;
         if (!code) throw new Error("Roster probe invitation response had no one-use code in its fragment.");
+        // Written into the disposable service only; the service's registered cleanup cascades them away.
+        const fixtures = await seedRosterFixtures(admin, {
+          serviceId: serviceWrites.serviceId,
+          userIdA: sessionA.userId,
+          userIdB: sessionB.userId,
+        });
         const roster = await probeRosterIsolation({
           request: writeRequest,
           tokenA: sessionA.token,
@@ -905,6 +911,7 @@ async function main() {
           serviceIdA: serviceWrites.serviceId,
           userIdB: sessionB.userId,
           inviteCodeForB: code,
+          fixtures,
         });
         checkpoints.push(...roster.checkpoints);
         notExercised.push(...roster.skipped);
