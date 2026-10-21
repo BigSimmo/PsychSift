@@ -26,6 +26,13 @@ database or Python failures still return 503 and block promotion.
 The Supabase probe reports failures as a structured result; `/health` honours
 that result as well as thrown errors and omits provider failure details.
 
+Production PDF extraction requires the Python prerequisites. If Python extraction
+fails, `NODE_ENV=production` refuses the JavaScript fallback with a permanent
+`PDF_EXTRACTION_BUDGET_EXCEEDED` error and removes partial artifacts: pdf.js has
+no isolated memory limit inside the worker. Restore the Python runtime before
+retrying the document. The developer fallback retains its deadline and pixel
+limits; those limits do not establish a process memory boundary.
+
 ---
 
 ## 0. Pre-deploy gate — do not deploy before this is live

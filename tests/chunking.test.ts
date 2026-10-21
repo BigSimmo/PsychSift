@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   CHUNKER_VERSION,
   DOCUMENT_CHUNKER_VERSION,
+  OversizedTableRowError,
   buildChunks,
   buildImageTag,
   chunkContentKey,
@@ -726,6 +727,69 @@ describe("table-aware chunking with a title and footnote (ING-B-03)", () => {
     expect(combined).toContain("Do not give lithium if the patient is dehydrated.");
   });
 
+  it("keeps the immediately following clinical footnote with every row group", () => {
+    const footnote = "Do not give lithium if the patient is dehydrated.";
+    const chunks = chunkTextWithOverlap(pageText, 1200, 200);
+    expect(chunks.length).toBeGreaterThan(3);
+    for (const chunk of chunks) {
+      expect(chunk).toContain("| Level | Concentration | Action |");
+      expect(chunk).toContain(footnote);
+      expect(chunk.length).toBeLessThanOrEqual(1200);
+    }
+    const emittedRows = chunks.flatMap((chunk) => chunk.split("\n").filter((line) => /^\| Level \d/.test(line)));
+    expect(emittedRows).toEqual(rows);
+  });
+
+  it("attaches a marked table note without absorbing subsequent prose", () => {
+    const note = "* Repeat the measurement before changing treatment.";
+    const after = "Next section discusses discharge planning.";
+    const chunks = chunkTextWithOverlap(
+      [
+        "Table 3. Monitoring",
+        "| Level | Concentration | Action |",
+        "| --- | --- | --- |",
+        ...rows,
+        note,
+        "",
+        after,
+      ].join("\n"),
+      1200,
+      200,
+    );
+    const tableChunks = chunks.filter((chunk) => chunk.includes("| Level |"));
+    for (const chunk of tableChunks) {
+      expect(chunk).toContain(note);
+      expect(chunk).not.toContain(after);
+      expect(chunk.length).toBeLessThanOrEqual(1200);
+    }
+    expect(chunks).toContain(after);
+    expect(chunks).not.toContain(note);
+  });
+
+  it("retains a complete wrapped conditional note on every table row group", () => {
+    const note = "Note: Do not give lithium\nunless renal function has been assessed.";
+    const chunks = chunkTextWithOverlap(
+      ["Table 3. Monitoring", "| Level | Concentration | Action |", "| --- | --- | --- |", ...rows, note].join("\n"),
+      1200,
+      200,
+    );
+    expect(chunks.length).toBeGreaterThan(3);
+    for (const chunk of chunks) {
+      expect(chunk).toContain(note);
+      expect(chunk).toContain("| Level | Concentration | Action |");
+      expect(chunk.length).toBeLessThanOrEqual(1200);
+    }
+  });
+
+  it("keeps an adjacent note block intact while reserving the next table's title", () => {
+    const first = ["Table 1. First", "| Group | Action |", "| --- | --- |", "| A | Repeat measurement. |"];
+    const note = "Note: Use the source condition\nunless a later review applies.";
+    const second = ["Table 2. Second", "| Group | Review |", "| --- | --- |", "| B | Review the result. |"];
+    const budget = [...first, note].join("\n").length;
+    const chunks = chunkTextWithOverlap([...first, note, ...second].join("\n"), budget, 0);
+    expect(chunks).toEqual([[...first, note].join("\n"), second.join("\n")]);
+  });
+
   it("keeps prose before an untitled table and splits the table with its column header", () => {
     const prose = "Lithium monitoring applies to every patient on maintenance therapy.";
     const chunks = chunkTextWithOverlap(
@@ -763,5 +827,69 @@ describe("table-aware chunking with a title and footnote (ING-B-03)", () => {
     }
     expect(chunks.join("\n")).toContain("Dose steps are summarised in the table below (Table A2.1).");
     for (const chunk of chunks) expect(chunk.length).toBeLessThanOrEqual(1200);
+  });
+});
+
+// Table cells stay atomic: a character target cannot justify splitting a
+// clinical condition from the assertion or another cell it qualifies.
+describe("oversized table row refusal", () => {
+  const header = "| Group | Action |\n| --- | --- |";
+  const row = `| GROUP-A | Do not change treatment unless ${"the original condition remains applicable ".repeat(20).trim()}. |`;
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  it("refuses an indivisible long row with a content-free typed error", () => {
+    const text = `${header}\n${row}`;
+    expect(() => chunkTextWithOverlap(text, 400, 40)).toThrow(OversizedTableRowError);
+    try {
+      chunkTextWithOverlap(text, 400, 40);
+    } catch (error) {
+      expect(error).toMatchObject({
+        name: "OversizedTableRowError",
+        code: "TABLE_ROW_EXCEEDS_CHUNK_BUDGET",
+        message: "TABLE_ROW_EXCEEDS_CHUNK_BUDGET",
+      });
+      expect(JSON.stringify(error)).not.toContain("GROUP-A");
+      expect(String(error)).not.toContain("original condition");
+    }
+  });
+
+  it("accepts a row exactly at the character limit including title and footnote", () => {
+    const title = "Table 4. Synthetic monitoring";
+    const note = "Note: Preserve the original clinical qualification.";
+    const rows = ["| GROUP-A | Repeat the measurement. |", "| GROUP-B | Review the result. |"];
+    const atomic = [title, header, rows[0], note].join("\n");
+    const text = [title, header, ...rows, note].join("\n");
+    const chunks = chunkTextWithOverlap(text, atomic.length, 0);
+    expect(chunks).toEqual(rows.map((line) => [title, header, line, note].join("\n")));
+    for (const chunk of chunks) expect(chunk.length).toBeLessThanOrEqual(atomic.length);
+    expect(() => chunkTextWithOverlap(text, atomic.length - 1, 0)).toThrow(OversizedTableRowError);
+  });
+
+  it("refuses when a header alone cannot fit the character budget", () => {
+    const text = `| Group | ${"Original column qualification ".repeat(20).trim()} |\n| --- | --- |`;
+    expect(() => chunkTextWithOverlap(text, 400, 0)).toThrow(OversizedTableRowError);
+  });
+
+  it("refuses when the attached qualification alone exhausts the budget", () => {
+    const note = `Note: ${"Preserve the original qualification. ".repeat(20).trim()}`;
+    const text = [header, "| GROUP-A | Repeat the measurement. |", note].join("\n");
+    expect(() => chunkTextWithOverlap(text, 400, 0)).toThrow(OversizedTableRowError);
+  });
+
+  it.each(["page", "document"])("propagates refusal without returning earlier chunks in %s mode", async (strategy) => {
+    vi.resetModules();
+    vi.stubEnv("CHUNK_STRATEGY", strategy);
+    vi.stubEnv("CHUNK_SIZE", "400");
+    vi.stubEnv("CHUNK_OVERLAP", "40");
+    const mod = await import("../src/lib/chunking");
+    const inputs = [
+      { documentId: "synthetic-document", pageNumber: 1, pageText: "Earlier Section\n\nEarlier complete guidance." },
+      { documentId: "synthetic-document", pageNumber: 2, pageText: `Table 4. Monitoring\n${header}\n${row}` },
+    ];
+    expect(() => mod.buildChunks(inputs)).toThrow(mod.OversizedTableRowError);
   });
 });

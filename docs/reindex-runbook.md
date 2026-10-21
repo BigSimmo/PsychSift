@@ -71,6 +71,19 @@ If the response includes `safety.safeToRun: false`, do not retry repeatedly. Use
 
 The preflight response also includes active job counts and job metadata for operator review.
 
+When the ingestion-autopilot probe supplies `jobs_stranded_final_attempt` or
+`documents_indexed_without_chunks`, any positive count requires manual review and an alert,
+even if the probe's overall `ok` is true. A supplied invalid count is also unassessed and alerts;
+older probes that omit these fields remain compatible. These signals alone never trigger queue
+recovery, including with `--apply`. If separate recoverable queue work also exists, bounded
+recovery may run, but the integrity alert remains until a subsequent probe confirms resolution.
+
+`TABLE_ROW_EXCEEDS_CHUNK_BUDGET` is a permanent ingestion refusal: the title, column
+header, one intact row and attached note cannot fit the configured character target.
+The chunker returns no partial chunk array and never splits cells or truncates the
+evidence. Review the extracted table and source structure before retrying; the refusal
+does not establish OCR accuracy. An atomic reindex preserves the existing index on failure.
+
 ## Do not do this
 
 - Do not run workers while Supabase SQL probes are timing out.

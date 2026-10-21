@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { assessIngestionHealth, describeWorkerState, workerPausedFromEnv } from "../scripts/ingestion-autopilot";
 
@@ -8,6 +9,8 @@ const workflow = readFileSync(new URL("../.github/workflows/ingestion-autopilot.
 
 const NOW = Date.parse("2026-07-13T12:00:00Z");
 const minutesAgo = (m: number) => new Date(NOW - m * 60_000).toISOString();
+
+vi.mock("node:child_process", () => ({ spawnSync: vi.fn() }));
 
 describe("assessIngestionHealth", () => {
   it("reports unavailable (and not stuck) when Supabase is down", () => {
@@ -31,7 +34,52 @@ describe("assessIngestionHealth", () => {
     const a = assessIngestionHealth({ ok: true, counts: { jobs_failed: 3 }, openJobs: [] }, { now: NOW });
     expect(a.stuck).toBe(true);
     expect(a.failedJobs).toBe(3);
+    expect(a.recoveryNeeded).toBe(true);
     expect(a.reasons[0]).toContain("3 failed job");
+  });
+
+  it.each([
+    ["jobs_stranded_final_attempt", "strandedFinalAttemptJobs", "stranded final-attempt job(s)"],
+    ["documents_indexed_without_chunks", "indexedDocumentsWithoutChunks", "indexed document(s) without chunks"],
+  ])("alerts on %s without authorizing queue recovery", (countName, assessmentName, label) => {
+    const a = assessIngestionHealth({ ok: true, counts: { [countName]: 2 } }, { now: NOW });
+    expect(a).toMatchObject({ available: true, stuck: true, recoveryNeeded: false, [assessmentName]: 2 });
+    expect(a.integrityProblems).toEqual([`2 ${label}`]);
+    expect(a.reasons).toEqual(a.integrityProblems);
+  });
+
+  it("keeps missing old-build and valid zero integrity counts compatible", () => {
+    for (const counts of [undefined, {}, { jobs_stranded_final_attempt: 0, documents_indexed_without_chunks: 0 }]) {
+      expect(assessIngestionHealth({ ok: true, counts }, { now: NOW })).toMatchObject({
+        stuck: false,
+        recoveryNeeded: false,
+        integrityProblems: [],
+      });
+    }
+  });
+
+  it.each([null, -1, 0.5, Number.NaN, Number.POSITIVE_INFINITY, Number.MAX_SAFE_INTEGER + 1])(
+    "reports present invalid integrity telemetry %s without queue recovery",
+    (value) => {
+      const a = assessIngestionHealth(
+        { ok: true, counts: { jobs_stranded_final_attempt: value, documents_indexed_without_chunks: value } },
+        { now: NOW },
+      );
+      expect(a).toMatchObject({ available: true, stuck: true, recoveryNeeded: false });
+      expect(a.integrityProblems).toEqual([
+        "stranded final-attempt job(s) count unavailable",
+        "indexed document(s) without chunks count unavailable",
+      ]);
+    },
+  );
+
+  it("preserves queue recovery eligibility alongside an independent integrity fault", () => {
+    const a = assessIngestionHealth(
+      { ok: true, counts: { jobs_failed: 1, documents_indexed_without_chunks: 1 } },
+      { now: NOW },
+    );
+    expect(a).toMatchObject({ stuck: true, recoveryNeeded: true, failedJobs: 1 });
+    expect(a.reasons).toEqual(["1 failed job(s)", "1 indexed document(s) without chunks"]);
   });
 
   it("flags a processing job whose lock is older than the stale threshold", () => {
@@ -174,5 +222,76 @@ describe("assessIngestionHealth", () => {
     expect(autopilotSource).toContain('process.argv.includes("--alert-on-stuck")');
     expect(workflow).toContain("npm run ingestion:autopilot -- --alert-on-stuck");
     expect(workflow).toContain("--include-stranded-queued");
+  });
+});
+
+describe("ingestion-autopilot CLI integrity safeguards", () => {
+  async function runCli(counts: Record<string, unknown>, args: string[]) {
+    const previousArgv = process.argv;
+    const previousExitCode = process.exitCode;
+    const summaryPath = process.env.GITHUB_STEP_SUMMARY;
+    vi.resetModules();
+    const run = vi.mocked(spawnSync);
+    run.mockReset();
+    run.mockReturnValue({
+      pid: 0,
+      output: [],
+      stdout: JSON.stringify({ ok: true, counts }),
+      stderr: "",
+      status: 0,
+      signal: null,
+    });
+    vi.spyOn(process.stdout, "write").mockReturnValue(true);
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    process.argv = [process.execPath, "/synthetic/ingestion-autopilot.ts", ...args];
+    process.exitCode = 0;
+    delete process.env.GITHUB_STEP_SUMMARY;
+    try {
+      await import("../scripts/ingestion-autopilot");
+      return { exitCode: process.exitCode, calls: run.mock.calls.map((call) => call[1]) };
+    } finally {
+      process.argv = previousArgv;
+      process.exitCode = previousExitCode;
+      if (summaryPath === undefined) delete process.env.GITHUB_STEP_SUMMARY;
+      else process.env.GITHUB_STEP_SUMMARY = summaryPath;
+      vi.restoreAllMocks();
+    }
+  }
+
+  it.each([{ args: [] }, { args: ["--alert-on-stuck"] }, { args: ["--apply"] }])(
+    "alerts on integrity-only faults without running recovery with flags $args",
+    async ({ args }) => {
+      const result = await runCli({ jobs_stranded_final_attempt: 1, documents_indexed_without_chunks: 1 }, args);
+      expect(result.exitCode).toBe(2);
+      expect(result.calls).toHaveLength(1);
+      expect(result.calls[0]).toContain("scripts/reindex-health.ts");
+    },
+  );
+
+  it.each([null, "1", { unsafe: "synthetic provider error text" }])(
+    "does not run recovery for invalid integrity telemetry %j under apply",
+    async (value) => {
+      const result = await runCli({ jobs_stranded_final_attempt: value }, ["--apply"]);
+      expect(result.exitCode).toBe(2);
+      expect(result.calls).toHaveLength(1);
+    },
+  );
+
+  it("retains the integrity alert after bounded recovery of separate queue faults", async () => {
+    const result = await runCli({ jobs_failed: 1, documents_indexed_without_chunks: 1 }, ["--apply"]);
+    expect(result.exitCode).toBe(2);
+    expect(result.calls).toHaveLength(2);
+    expect(result.calls[1]).toEqual([
+      "scripts/run-tsx.mjs",
+      "scripts/recover-ingestion-queue.ts",
+      "--apply",
+      "--yes",
+      "--include-stranded-queued",
+      "--stale-after-minutes",
+      "30",
+      "--limit",
+      "20",
+    ]);
   });
 });

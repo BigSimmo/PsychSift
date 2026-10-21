@@ -8,8 +8,8 @@ import type { ChunkInput, DocumentChunk } from "@/lib/types";
 // re-index can tell which chunker produced a row, and so bumping the strategy deliberately
 // invalidates stale chunks. Bump this when chunk boundaries change (e.g. when cross-page
 // document-mode chunking is enabled by default).
-export const CHUNKER_VERSION = "1.3.0-page";
-export const DOCUMENT_CHUNKER_VERSION = "1.3.0-document";
+export const CHUNKER_VERSION = "1.3.1-page";
+export const DOCUMENT_CHUNKER_VERSION = "1.3.1-document";
 
 const sentenceBoundary = /(?<=[.!?])\s+/;
 const sentenceBoundaryGlobal = new RegExp(sentenceBoundary.source, "g");
@@ -471,7 +471,12 @@ function chunkOversizedParagraph(paragraph: string, chunkSize: number, overlap: 
     if (!segment.table || segment.lines.length < 2) {
       const next = segments[index + 1];
       const captionStart = next?.table && next.lines.length >= 2 ? tableCaptionStart(segment.lines) : -1;
-      pushProse(captionStart >= 0 ? segment.lines.slice(0, captionStart) : segment.lines);
+      const previous = segments[index - 1];
+      const footnoteCount =
+        previous?.table && previous.lines.length >= 2
+          ? tableFootnoteLineCount(segment.lines, Boolean(next?.table && next.lines.length >= 2))
+          : 0;
+      pushProse(segment.lines.slice(footnoteCount, captionStart >= 0 ? captionStart : undefined));
       return;
     }
     const previous = segments[index - 1];
@@ -483,7 +488,18 @@ function chunkOversizedParagraph(paragraph: string, chunkSize: number, overlap: 
             .map((line) => line.trim())
             .join("\n")
         : "";
-    chunks.push(...chunkTableBlock(segment.lines.join("\n"), chunkSize, caption));
+    const next = segments[index + 1];
+    const followingTable = segments[index + 2];
+    const footnote =
+      next && !next.table
+        ? next.lines
+            .slice(
+              0,
+              tableFootnoteLineCount(next.lines, Boolean(followingTable?.table && followingTable.lines.length >= 2)),
+            )
+            .join("\n")
+        : "";
+    chunks.push(...chunkTableBlock(segment.lines.join("\n"), chunkSize, caption, footnote));
   });
   return chunks;
 }
@@ -516,35 +532,67 @@ function tableCaptionStart(lines: string[]) {
   return -1;
 }
 
+// Only an immediately adjacent, explicit note or clinical prohibition is carried
+// with a table. Keep its entire prose run: a line wrap can separate a prohibition
+// from its condition. A paragraph boundary or the next table's caption provides
+// a structural boundary; guessing from sentence/line length can change meaning.
+const tableFootnoteLinePattern = /^(?:notes?\b\s*[:.]|footnotes?\b\s*[:.]|[*†‡]\s*\S)/i;
+function tableFootnoteLineCount(lines: string[], followedByTable = false) {
+  const first = lines[0]?.trim() ?? "";
+  if (!first || !(tableFootnoteLinePattern.test(first) || clinicalProhibitionPattern.test(first))) return 0;
+  const captionStart = followedByTable ? tableCaptionStart(lines) : -1;
+  return captionStart >= 0 ? captionStart : lines.length;
+}
+
 function isTableBlock(block: string) {
   const lines = block.split(lineBreakPattern).filter((line) => line.trim().length > 0);
   if (lines.length < 2) return false;
   return lines.every((line) => tableRowPattern.test(line));
 }
 
-function chunkTableBlock(block: string, chunkSize: number, caption = "") {
+// Refuse unrepresentable table evidence rather than truncate or separate cells
+// and clinical qualifiers. Keep diagnostics content-free, including the message.
+export class OversizedTableRowError extends Error {
+  readonly code = "TABLE_ROW_EXCEEDS_CHUNK_BUDGET";
+
+  constructor() {
+    super("TABLE_ROW_EXCEEDS_CHUNK_BUDGET");
+    this.name = "OversizedTableRowError";
+  }
+}
+
+function chunkTableBlock(block: string, chunkSize: number, caption = "", footnote = "") {
   const lines = block.split(lineBreakPattern).filter((line) => line.trim().length > 0);
-  const captioned = caption ? `${caption}\n${block.trim()}` : block.trim();
+  const captioned = [caption, block.trim(), footnote].filter(Boolean).join("\n");
   if (captioned.length <= chunkSize) return [captioned];
+  // Reserve the same source qualification on every row group so retrieval cannot
+  // separate a dose/threshold from its immediately following warning.
+  const rowBudget = chunkSize - (footnote ? footnote.length + 1 : 0);
+  const withFootnote = (text: string) => (footnote ? `${text}\n${footnote}` : text);
 
   const separatorIndex = lines.findIndex((line) => tableSeparatorRowPattern.test(line) && line.includes("-"));
   const headerLines = separatorIndex > 0 ? lines.slice(0, separatorIndex + 1) : lines.slice(0, 1);
   const bodyLines = lines.slice(headerLines.length);
   const header = [caption, ...headerLines].filter(Boolean).join("\n");
+  // Cells and their qualifiers are indivisible evidence. Refuse the whole build
+  // before emitting any row group when that evidence cannot fit the character target.
+  if (header.length > rowBudget || bodyLines.some((row) => header.length + 1 + row.length > rowBudget)) {
+    throw new OversizedTableRowError();
+  }
 
   const chunks: string[] = [];
   let current = header;
   for (const row of bodyLines) {
     const candidate = `${current}\n${row}`;
-    if (candidate.length > chunkSize && current !== header) {
-      chunks.push(current.trim());
+    if (candidate.length > rowBudget && current !== header) {
+      chunks.push(withFootnote(current.trim()));
       current = `${header}\n${row}`;
     } else {
       current = candidate;
     }
   }
-  if (current.trim()) chunks.push(current.trim());
-  return chunks.length > 0 ? chunks : [block.trim()];
+  if (current.trim()) chunks.push(withFootnote(current.trim()));
+  return chunks.length > 0 ? chunks : [captioned];
 }
 
 const clinicalProhibitionPattern =

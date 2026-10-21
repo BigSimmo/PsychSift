@@ -536,6 +536,16 @@ export async function extractPdf(
       await rm(tempRoot, { recursive: true, force: true }).catch(() => undefined);
       throw error;
     }
+    // The fallback shares the worker's heap and native image allocations. Its
+    // deadline/pixel caps are not an isolated memory limit, so production must
+    // refuse this path rather than retry a failed PDF parser in-process.
+    if (process.env.NODE_ENV === "production") {
+      await rm(tempRoot, { recursive: true, force: true }).catch(() => undefined);
+      throw new PdfExtractionResourceError(
+        "PDF_EXTRACTION_BUDGET_EXCEEDED",
+        "JavaScript PDF fallback has no isolated memory limit and is disabled in production; restore Python PDF extraction prerequisites",
+      );
+    }
     // Fallback for developer machines without PyMuPDF/pytesseract. It still
     // indexes text PDFs, but scanned PDFs and image extraction need the Python
     // helper dependencies listed in worker/python/requirements.txt.

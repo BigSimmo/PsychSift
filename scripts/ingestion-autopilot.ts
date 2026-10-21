@@ -8,8 +8,9 @@ import { appendFileSync } from "node:fs";
 // (reindex-health) to a decision, and — only when a stuck-queue signal is present
 // and --apply is passed — runs the existing recovery path (recover-ingestion-queue
 // --apply). It ALERTS (non-zero exit) only when Supabase is unreachable or recovery
-// fails, or (scheduled, --alert-on-stuck) when recoverable work or a pending upload that
-// nothing has claimed is detected; a healthy, idle or deliberately paused queue exits 0.
+// fails, when integrity faults require manual review, or (scheduled, --alert-on-stuck)
+// when recoverable work or a pending upload that nothing has claimed is detected;
+// a healthy, idle or deliberately paused queue exits 0.
 //
 // Decision is based purely on reindex-health's JSON (a clean read-only probe).
 // check-indexing is intentionally NOT chained here: it additionally requires the
@@ -48,11 +49,15 @@ export type WorkerState = "running" | "paused" | "unknown";
 export type IngestionAssessment = {
   available: boolean;
   stuck: boolean;
+  recoveryNeeded: boolean;
+  integrityProblems: string[];
   reasons: string[];
   failedJobs: number;
   staleProcessingJobs: number;
   agedPendingJobs: number;
   strandedQueuedDocuments: number;
+  strandedFinalAttemptJobs: number;
+  indexedDocumentsWithoutChunks: number;
   workerState: WorkerState;
 };
 
@@ -72,7 +77,9 @@ export function describeWorkerState(assessment: IngestionAssessment, staleAfterM
       `until it is resumed; ${
         assessment.agedPendingJobs > 0
           ? `${assessment.agedPendingJobs} pending job(s) have waited > ${staleAfterMinutes}m, so this alerts`
-          : `no pending job has waited > ${staleAfterMinutes}m, so no alert`
+          : assessment.integrityProblems.length > 0
+            ? "ingestion integrity requires attention"
+            : `no pending job has waited > ${staleAfterMinutes}m, so no alert`
       }`
     );
   }
@@ -88,8 +95,9 @@ export function describeWorkerState(assessment: IngestionAssessment, staleAfterM
  * claimed (the worker is stopped, paused or wedged; audit EVAL-03). A pending job is
  * due at `next_run_at` (a retry backs off into the future), or at `created_at` when
  * it has none. A deliberate pause is reported as `workerState: "paused"`, never as
- * stuck by itself; only a pending job left waiting behind it alerts. Env-free and
- * unit-tested.
+ * stuck by itself; a pending job left waiting behind it still alerts. Env-free and
+ * unit-tested. Optional integrity counts also require attention, but do not make
+ * queue recovery safe or sufficient; `recoveryNeeded` covers only the queue signals.
  */
 export function assessIngestionHealth(
   health: IngestionHealth,
@@ -104,11 +112,15 @@ export function assessIngestionHealth(
     return {
       available: false,
       stuck: false,
+      recoveryNeeded: false,
+      integrityProblems: [],
       reasons: ["supabase unavailable"],
       failedJobs: 0,
       staleProcessingJobs: 0,
       agedPendingJobs: 0,
       strandedQueuedDocuments: 0,
+      strandedFinalAttemptJobs: 0,
+      indexedDocumentsWithoutChunks: 0,
       workerState,
     };
   }
@@ -151,15 +163,39 @@ export function assessIngestionHealth(
   if (strandedQueuedDocuments > 0) {
     reasons.push(`${strandedQueuedDocuments} stranded queued document(s)`);
   }
+  const recoveryNeeded = reasons.length > 0;
+  const integrityProblems: string[] = [];
+  function integrityCount(name: string, label: string): number {
+    // Older probes omit these fields. A supplied but invalid value is unknown,
+    // never evidence of a healthy corpus; do not copy provider error text here.
+    if (!health.counts || !Object.hasOwn(health.counts, name)) return 0;
+    const value = health.counts[name];
+    if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) {
+      integrityProblems.push(`${label} count unavailable`);
+      return 0;
+    }
+    if (value > 0) integrityProblems.push(`${value} ${label}`);
+    return value;
+  }
+  const strandedFinalAttemptJobs = integrityCount("jobs_stranded_final_attempt", "stranded final-attempt job(s)");
+  const indexedDocumentsWithoutChunks = integrityCount(
+    "documents_indexed_without_chunks",
+    "indexed document(s) without chunks",
+  );
+  reasons.push(...integrityProblems);
 
   return {
     available: true,
     stuck: reasons.length > 0,
+    recoveryNeeded,
+    integrityProblems,
     reasons,
     failedJobs,
     staleProcessingJobs,
     agedPendingJobs,
     strandedQueuedDocuments,
+    strandedFinalAttemptJobs,
+    indexedDocumentsWithoutChunks,
     workerState,
   };
 }
@@ -221,7 +257,15 @@ function main() {
     return;
   }
 
-  console.log(`[autopilot] stuck-queue signal: ${assessment.reasons.join("; ")}`);
+  console.log(`[autopilot] ingestion attention signal: ${assessment.reasons.join("; ")}`);
+  const integrityAttentionRequired = assessment.integrityProblems.length > 0;
+  if (integrityAttentionRequired) {
+    console.error("[autopilot] integrity requires manual review; automatic queue recovery does not repair it.");
+  }
+  if (!assessment.recoveryNeeded) {
+    process.exitCode = 2;
+    return;
+  }
 
   if (!apply) {
     console.log(
@@ -229,8 +273,8 @@ function main() {
         `--include-stranded-queued --stale-after-minutes ${staleAfterMinutes} --limit ${limit}\n` +
         `[autopilot] pass --apply to recover.`,
     );
-    if (alertOnStuck) {
-      console.error("[autopilot] scheduled probe detected recoverable ingestion work — alerting.");
+    if (alertOnStuck || integrityAttentionRequired) {
+      console.error("[autopilot] ingestion work requires attention — alerting.");
       process.exitCode = 2;
     }
     return;
@@ -254,6 +298,7 @@ function main() {
     return;
   }
   console.log("[autopilot] recovery applied. Re-probe with npm run reindex:health to confirm.");
+  if (integrityAttentionRequired) process.exitCode = 2;
 }
 
 // Only run as a CLI when invoked directly — importing (tests) must not execute.
