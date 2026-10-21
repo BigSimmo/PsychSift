@@ -267,3 +267,26 @@ describe("External supervisor EPA magic-link (#MAAXAX)", () => {
     }
   });
 });
+
+describe("the demo-mode supervisor link", () => {
+  it("opens a made-up request and accepts an answer without storing it", async () => {
+    const { EPA_MAGIC_LINK_DEMO_TOKEN } = await import("@/lib/teaching/assessments/magic-link");
+    const url = `https://psychiatry.tools/api/teaching/assessments/respond/${EPA_MAGIC_LINK_DEMO_TOKEN}`;
+    const params = { params: Promise.resolve({ token: EPA_MAGIC_LINK_DEMO_TOKEN }) };
+    const opened = await GET(new Request(url), params);
+    expect(opened.status).toBe(200);
+    expect(await opened.json()).toMatchObject({ request: { traineeName: "Dr Trainee Example", status: "pending" } });
+    const sent = await POST(
+      new Request(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ level: "proximal", strengths: "Clear formulation." }),
+      }),
+      { params: Promise.resolve({ token: EPA_MAGIC_LINK_DEMO_TOKEN }) },
+    );
+    expect(sent.status).toBe(200);
+    expect(await sent.json()).toMatchObject({ ok: true, request: { status: "completed" } });
+    const again = await GET(new Request(url), { params: Promise.resolve({ token: EPA_MAGIC_LINK_DEMO_TOKEN }) });
+    expect(await again.json()).toMatchObject({ request: { status: "pending" } });
+  });
+});

@@ -142,6 +142,7 @@ export function SupervisorLinkPanel({
         value={supervisorName}
         onChange={setSupervisorName}
         single
+        quietNote
       />
       <AssessNote>
         They need no account. The link works once and expires in 14 days. What they send is feedback for you to copy

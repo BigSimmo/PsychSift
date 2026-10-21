@@ -14,6 +14,23 @@ import { EPA_FEEDBACK_MAX, GUEST_KINDS, type GuestKind } from "@/lib/teaching/as
 import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
 
 export const EPA_MAGIC_LINK_TTL_DAYS = 14;
+
+/**
+ * Synthetic demo mode only: a fixed link that always opens a made-up request, so the supervisor's
+ * page can be seen and tried without an account or a database. Sending it stores nothing. The
+ * route never honours it outside demo mode.
+ */
+export const EPA_MAGIC_LINK_DEMO_TOKEN = "demo-supervisor-feedback-link-example";
+
+export function demoEpaMagicLinkRecord(now: Date = new Date()): EpaMagicLinkRecord {
+  return buildMagicLinkRecord(hashEpaMagicToken(EPA_MAGIC_LINK_DEMO_TOKEN), {
+    epaCode: 1,
+    traineeName: "Dr Trainee Example",
+    supervisorName: "Dr Visiting Example",
+    supervisorRole: "External supervisor",
+    now,
+  });
+}
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export type EpaCode = EpaNumber | "EPA 1" | "EPA 2" | "EPA 3" | "EPA 4" | "EPA1" | "EPA2" | "EPA3" | "EPA4" | string;

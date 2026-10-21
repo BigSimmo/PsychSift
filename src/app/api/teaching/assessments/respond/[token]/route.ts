@@ -7,12 +7,15 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, requireAuthenticatedUser, unauthorizedResponse } from "@/lib/supabase/auth";
 import {
   consumePublicApiRateLimit,
+  demoEpaMagicLinkRecord,
+  EPA_MAGIC_LINK_DEMO_TOKEN,
   EpaMagicLinkError,
   getEpaMagicLinkByToken,
   registerEpaMagicLinkRecord,
   submitEpaMagicLinkResponse,
   type CreateEpaMagicLinkInput,
   type EpaMagicLinkSubmission,
+  validateEpaMagicLinkSubmission,
 } from "@/lib/teaching/assessments/magic-link";
 import { DurableEpaMagicLinkRepository } from "@/lib/teaching/assessments/magic-link-repository";
 import { parseJsonBody } from "@/lib/validation/body";
@@ -92,6 +95,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
       if (!found.ok) return errorWithHeaders(found.message, found.status, found.code);
       return NextResponse.json({ request: found.request }, { headers: noStore });
     }
+    if (token === EPA_MAGIC_LINK_DEMO_TOKEN) {
+      return NextResponse.json({ request: demoEpaMagicLinkRecord() }, { headers: noStore });
+    }
     refuseEphemeralMagicLinkStore();
     const lookup = getEpaMagicLinkByToken(token);
     if (!lookup.ok) {
@@ -159,6 +165,25 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
       const stored = await durable.submit(token, body);
       if (!stored.ok) return errorWithHeaders(stored.message, stored.status, stored.code);
       return NextResponse.json({ ok: true, request: stored.request }, { headers: noStore });
+    }
+    if (token === EPA_MAGIC_LINK_DEMO_TOKEN) {
+      // Demo mode: checks the answer like the real thing, then stores nothing.
+      const demo = demoEpaMagicLinkRecord();
+      const checked = validateEpaMagicLinkSubmission(body, demo.supervisorName);
+      if (!checked.ok) return errorWithHeaders(checked.message, 400, checked.code);
+      const submittedAt = new Date().toISOString();
+      return NextResponse.json(
+        {
+          ok: true,
+          request: {
+            ...demo,
+            status: "completed",
+            completedAt: submittedAt,
+            submission: { ...checked.value, submittedAt },
+          },
+        },
+        { headers: noStore },
+      );
     }
     refuseEphemeralMagicLinkStore();
     const result = submitEpaMagicLinkResponse(token, body);

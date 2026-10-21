@@ -252,7 +252,11 @@ function LearningRow({
       </span>
       <div className="work-row__text">
         {item.cancelled ? (
-          <span data-testid="cme-learning-cancelled" className="work-tag justify-self-start" data-tone="red">
+          <span
+            data-testid="cme-learning-cancelled"
+            className="work-tag mb-1.5 mt-1 justify-self-start"
+            data-tone="red"
+          >
             Cancelled by the organiser
           </span>
         ) : null}
@@ -260,7 +264,9 @@ function LearningRow({
         <p className="work-row__sub m-0 break-words">
           {KIND_LABEL[item.kind]} · {item.provider}
         </p>
-        <p className="work-row__sub m-0 break-words">{metaLine(item, phase, today)}</p>
+        <p className={cn("work-row__sub m-0 break-words", item.cancelled && "mt-0.5")}>
+          {metaLine(item, phase, today)}
+        </p>
       </div>
       {phase === "past" ? (
         <Link
