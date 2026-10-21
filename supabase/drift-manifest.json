@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-21T10:03:15.872Z",
+  "generated_at": "2026-10-21T12:38:06.300Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "7ab1e675d8d7bb1282b7ed16756e8772e7d4cb36806d1a6290db63de29c321d6",
-  "replay_seconds": 15,
+  "schema_sha256": "1812a802bbca7a1cd60b34414e768f8be98c2633d99abb67b668cc385d3f15f5",
+  "replay_seconds": 25,
   "snapshot": {
     "views": [
       {
@@ -20644,6 +20644,14 @@
         ],
         "def_hash": "7643f3111aae5f9df4f02dab39b9ec40",
         "signature": "public.roster_set_manager(uuid,uuid,uuid,boolean)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "88e1a65f5536d4f9c7be100661805c19",
+        "signature": "public.roster_swap_accept_for_manager(uuid,uuid,uuid)"
       },
       {
         "acl": [

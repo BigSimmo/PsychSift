@@ -506,24 +506,6 @@ Reviewed by: ______________________ Date: ______________
 
 ---
 
-### s44 — Period of referral made under s. 26(2) or (3)(a)
-
-**Act text (02-b0-02, as at 2025-09-25)**
-
-> A referral made under section 26(2) or (3)(a) remains in force for 72 hours from the time when the referral was made unless the referral is extended under section 45.
-
-**Drafted summary** (status: pending)
-
-> _Not written yet._
-
-Cited by: Act and Standards page (When a referral for examination expires)
-
-Source text SHA-256: `870e9ea7be1f5d88b124081fc9c6a68efc99214985bbd8bd86e2c19901d9c397`
-
-Reviewed by: ______________________ Date: ______________
-
----
-
 ### s45 — Extending referral made outside metropolitan area
 
 **Act text (02-b0-02, as at 2025-09-25)**
