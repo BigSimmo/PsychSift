@@ -878,7 +878,10 @@ describe("table context, footnotes, referrals and oversized rows (chunker 1.3.1)
   });
 
   it("keeps the fallback footnote chunk within the cap when header + footnote is too long", () => {
-    const wideHeader = [`| Level | ${"Concentration band ".repeat(22).trim()} | Action |`, `| --- | ${"-".repeat(420)} | --- |`];
+    const wideHeader = [
+      `| Level | ${"Concentration band ".repeat(22).trim()} | Action |`,
+      `| --- | ${"-".repeat(420)} | --- |`,
+    ];
     const footnote = `* ${"Levels are taken twelve hours post dose. ".repeat(9).trim()}`;
     const wide = Array.from({ length: 12 }, (_, index) => `| Level ${index} | ${index}.0 mmol/L | ${"x".repeat(60)} |`);
     const header = wideHeader.join("\n");

@@ -308,8 +308,7 @@ function removePageNoise(text: string, repeatedBoilerplateLines = new Set<string
         !isIsolatedEdgeNumberLine(lines, index, keptIndexes) &&
         !(
           // A URL-only page (the address is both first and last line) is edge noise too.
-          (index === firstContent || index === lastContent) &&
-          looksLikeEdgeUrlNotice(lines[index])
+          (index === firstContent || index === lastContent) && looksLikeEdgeUrlNotice(lines[index])
         ),
     ),
   );
