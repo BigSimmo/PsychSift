@@ -7,6 +7,7 @@ import {
   persistIngestionImage,
   runIngestionMutation,
   runIngestionStrictCompletion,
+  startIngestionHeartbeat,
   writeIngestionTableFacts,
 } from "../worker/behavior";
 
@@ -328,5 +329,73 @@ describe("transient database rejections retry", () => {
       atomicReindex: false,
     });
     expect(decision.retry).toBe(false);
+  });
+});
+
+// Audit 2026-10-20 ING-A-03: one failed heartbeat used to cancel the whole attempt and throw
+// away its paid work, though the lease still had most of its 45 minutes left.
+describe("heartbeat tolerates brief control-plane failures", () => {
+  const heartbeatRpc = (outcomes: Array<"ok" | "throw" | "uncertain" | "lease_lost" | "rejected" | "transient">) => {
+    let call = 0;
+    return vi.fn(async () => {
+      const outcome = outcomes[Math.min(call, outcomes.length - 1)];
+      call += 1;
+      if (outcome === "throw") throw new TypeError("fetch failed");
+      if (outcome === "uncertain") return { data: null, error: { message: "gateway timeout", code: "PGRST003" } };
+      if (outcome === "rejected") return { data: null, error: { message: "permission denied", code: "42501" } };
+      if (outcome === "transient") return { data: null, error: { message: "statement timeout", code: "57014" } };
+      if (outcome === "lease_lost") return { data: { ok: false, reason: "lease_lost" }, error: null };
+      return { data: { ok: true }, error: null };
+    });
+  };
+
+  async function runBeats(
+    outcomes: Parameters<typeof heartbeatRpc>[0],
+    beats: number,
+    options: { intervalMs?: number; toleranceMs?: number } = {},
+  ) {
+    vi.useFakeTimers();
+    try {
+      const attempt = new IngestionAttempt(fence);
+      const rpc = heartbeatRpc(outcomes);
+      const handle = startIngestionHeartbeat(
+        attempt,
+        () => runIngestionMutation(attempt, rpc, "heartbeat_ingestion_job", {}, { revokeOnUncertainOutcome: false }),
+        { intervalMs: options.intervalMs ?? 60_000, toleranceMs: options.toleranceMs ?? 15 * 60_000 },
+      );
+      for (let index = 0; index < beats; index += 1) await vi.advanceTimersByTimeAsync(options.intervalMs ?? 60_000);
+      clearInterval(handle);
+      return { attempt, rpc };
+    } finally {
+      vi.useRealTimers();
+    }
+  }
+
+  it("keeps the attempt alive through a failing-then-succeeding heartbeat", async () => {
+    const { attempt, rpc } = await runBeats(["throw", "uncertain", "transient", "ok", "ok"], 5);
+    expect(rpc).toHaveBeenCalledTimes(5);
+    expect(attempt.signal.aborted).toBe(false);
+  });
+
+  it("revokes once heartbeats have failed for the whole tolerance window", async () => {
+    const { attempt } = await runBeats(["ok", "throw"], 6, { toleranceMs: 4 * 60_000 });
+    expect(attempt.signal.aborted).toBe(true);
+  });
+
+  it("still revokes at once when the database reports the lease lost", async () => {
+    const { attempt } = await runBeats(["lease_lost", "ok"], 1);
+    expect(attempt.signal.aborted).toBe(true);
+  });
+
+  it("still revokes at once on a confirmed, non-transient database rejection", async () => {
+    const { attempt } = await runBeats(["rejected", "ok"], 1);
+    expect(attempt.signal.aborted).toBe(true);
+  });
+
+  it("leaves every other mutation revoking on an uncertain outcome", async () => {
+    const attempt = new IngestionAttempt(fence);
+    const rpc = heartbeatRpc(["throw"]);
+    await expect(runIngestionMutation(attempt, rpc, "heartbeat_ingestion_job")).rejects.toThrow("fetch failed");
+    expect(attempt.signal.aborted).toBe(true);
   });
 });

@@ -485,7 +485,12 @@ describe("worker/main.ts + env + image contract (source text)", () => {
     const shadowRun = workerMain.slice(shadowCallIndex, finalMetadataIndex);
     expect(shadowRun).toMatch(/\}\s*finally\s*\{\s*attempt\.check\(\);\s*\}/);
     expect(workerMain).not.toContain("const shadowHeartbeat = setInterval(");
-    expect(workerMain).toContain('mutation(attempt, "heartbeat_ingestion_job").catch(() => attempt.cancel());');
+    // The job-wide heartbeat still revokes on a lost lease; since ING-A-03 it tolerates brief
+    // uncertain failures inside a bounded window (tests/worker-ingestion-attempt.test.ts).
+    expect(workerMain).toContain(
+      '() => mutation(attempt, "heartbeat_ingestion_job", {}, { revokeOnUncertainOutcome: false }),',
+    );
+    expect(workerMain).toContain("const heartbeat = startIngestionHeartbeat(");
     // The record travels only inside finalMetadata (deep-merged by apply_document_metadata_patch).
     expect(workerMain.match(/shadow_extraction: shadowExtraction/g)).toHaveLength(1);
     expect(workerMain).toContain("...(shadowExtraction ? { shadow_extraction: shadowExtraction } : {})");
