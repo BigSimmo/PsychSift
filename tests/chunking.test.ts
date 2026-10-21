@@ -3,6 +3,7 @@ import {
   CHUNKER_VERSION,
   DOCUMENT_CHUNKER_VERSION,
   OversizedTableRowError,
+  MAX_ATOMIC_TABLE_UTF8_BYTES,
   buildChunks,
   buildImageTag,
   chunkContentKey,
@@ -832,17 +833,24 @@ describe("table-aware chunking with a title and footnote (ING-B-03)", () => {
 
 // Table cells stay atomic: a character target cannot justify splitting a
 // clinical condition from the assertion or another cell it qualifies.
-describe("oversized table row refusal", () => {
+describe("bounded atomic table row overflow", () => {
   const header = "| Group | Action |\n| --- | --- |";
-  const row = `| GROUP-A | Do not change treatment unless ${"the original condition remains applicable ".repeat(20).trim()}. |`;
+  const row = `| GROUP-A | Do not change treatment unless ${"the original condition remains applicable ".repeat(50).trim()}. |`;
+  const hardOversizedRow = `| GROUP-A | ${"original condition ".repeat(500)} |`;
 
   afterEach(() => {
     vi.unstubAllEnvs();
     vi.resetModules();
   });
 
-  it("refuses an indivisible long row with a content-free typed error", () => {
+  it("preserves an indivisible long row above the character target", () => {
     const text = `${header}\n${row}`;
+    expect(text.length).toBeGreaterThan(400);
+    expect(chunkTextWithOverlap(text, 400, 40)).toEqual([text]);
+  });
+
+  it("refuses an indivisible row beyond the hard ceiling with a content-free typed error", () => {
+    const text = `${header}\n${hardOversizedRow}`;
     expect(() => chunkTextWithOverlap(text, 400, 40)).toThrow(OversizedTableRowError);
     try {
       chunkTextWithOverlap(text, 400, 40);
@@ -857,38 +865,142 @@ describe("oversized table row refusal", () => {
     }
   });
 
-  it("accepts a row exactly at the character limit including title and footnote", () => {
+  it("keeps target-sized groups while emitting an overflowing row alone with its complete context", () => {
+    const title = "Table 4. Synthetic monitoring";
+    const note = "Note: Do not change treatment\nunless the original condition applies.";
+    const before = "| GROUP-B | Repeat the measurement. |";
+    const after = "| GROUP-C | Review the result. |";
+    const text = [title, header, before, row, after, note].join("\n");
+    expect(chunkTextWithOverlap(text, 250, 0)).toEqual(
+      [before, row, after].map((line) => [title, header, line, note].join("\n")),
+    );
+  });
+
+  it("accepts a row exactly at the character target including title and footnote", () => {
     const title = "Table 4. Synthetic monitoring";
     const note = "Note: Preserve the original clinical qualification.";
     const rows = ["| GROUP-A | Repeat the measurement. |", "| GROUP-B | Review the result. |"];
     const atomic = [title, header, rows[0], note].join("\n");
     const text = [title, header, ...rows, note].join("\n");
-    const chunks = chunkTextWithOverlap(text, atomic.length, 0);
-    expect(chunks).toEqual(rows.map((line) => [title, header, line, note].join("\n")));
-    for (const chunk of chunks) expect(chunk.length).toBeLessThanOrEqual(atomic.length);
-    expect(() => chunkTextWithOverlap(text, atomic.length - 1, 0)).toThrow(OversizedTableRowError);
+    const expected = rows.map((line) => [title, header, line, note].join("\n"));
+    expect(chunkTextWithOverlap(text, atomic.length, 0)).toEqual(expected);
+    expect(chunkTextWithOverlap(text, atomic.length - 1, 0)).toEqual(expected);
   });
 
-  it("refuses when a header alone cannot fit the character budget", () => {
+  it("accepts exactly 8191 UTF-8 bytes including caption, header, row and wrapped note", () => {
+    const title = "Table 4. Synthetic monitoring";
+    const note = "Note: Preserve this qualification\nunless the original condition changes.";
+    const prefix = [title, header, "| GROUP-A | "].join("\n");
+    const suffix = ` |\n${note}`;
+    const text = prefix + "a".repeat(MAX_ATOMIC_TABLE_UTF8_BYTES - Buffer.byteLength(prefix + suffix)) + suffix;
+    expect(Buffer.byteLength(text)).toBe(8191);
+    expect(chunkTextWithOverlap(text, 400, 0)).toEqual([text]);
+    expect(() => chunkTextWithOverlap(text.replace("| GROUP-A | ", "| GROUP-A | a"), 400, 0)).toThrow(
+      OversizedTableRowError,
+    );
+  });
+
+  it("uses UTF-8 bytes for multibyte evidence rather than character length", () => {
+    const prefix = `${header}\n| GROUP-A | `;
+    const suffix = " |";
+    const remaining = MAX_ATOMIC_TABLE_UTF8_BYTES - Buffer.byteLength(prefix + suffix);
+    const text = prefix + "漢".repeat(Math.floor(remaining / 3)) + "a".repeat(remaining % 3) + suffix;
+    expect(text.length).toBeLessThan(MAX_ATOMIC_TABLE_UTF8_BYTES);
+    expect(Buffer.byteLength(text)).toBe(MAX_ATOMIC_TABLE_UTF8_BYTES);
+    expect(chunkTextWithOverlap(text, 400, 0)).toEqual([text]);
+    expect(() => chunkTextWithOverlap(text.replace("| GROUP-A | ", "| GROUP-A | 漢"), 400, 0)).toThrow(
+      OversizedTableRowError,
+    );
+  });
+
+  it("keeps a large header intact within the hard ceiling and refuses one beyond it", () => {
     const text = `| Group | ${"Original column qualification ".repeat(20).trim()} |\n| --- | --- |`;
-    expect(() => chunkTextWithOverlap(text, 400, 0)).toThrow(OversizedTableRowError);
+    expect(chunkTextWithOverlap(text, 400, 0)).toEqual([text]);
+    const giant = text.replace("Original column qualification", "q".repeat(MAX_ATOMIC_TABLE_UTF8_BYTES));
+    expect(() => chunkTextWithOverlap(giant, 400, 0)).toThrow(OversizedTableRowError);
   });
 
-  it("refuses when the attached qualification alone exhausts the budget", () => {
+  it("preserves a large attached qualification and refuses one beyond the hard ceiling", () => {
     const note = `Note: ${"Preserve the original qualification. ".repeat(20).trim()}`;
     const text = [header, "| GROUP-A | Repeat the measurement. |", note].join("\n");
+    expect(chunkTextWithOverlap(text, 400, 0)).toEqual([text]);
+    expect(() => chunkTextWithOverlap(`${text} ${"q".repeat(MAX_ATOMIC_TABLE_UTF8_BYTES)}`, 400, 0)).toThrow(
+      OversizedTableRowError,
+    );
+  });
+
+  it("enforces the byte ceiling even when a configured character target is larger", () => {
+    expect(() => chunkTextWithOverlap(`${header}\n${hardOversizedRow}`, 20000, 0)).toThrow(OversizedTableRowError);
+  });
+
+  it("checks all rows before returning any earlier table group", () => {
+    const text = [header, "| GROUP-B | Repeat measurement. |", hardOversizedRow].join("\n");
     expect(() => chunkTextWithOverlap(text, 400, 0)).toThrow(OversizedTableRowError);
   });
 
+  it("refuses target overflow for a model with an unknown tokenizer budget", async () => {
+    vi.stubEnv("OPENAI_EMBEDDING_MODEL", "unknown-embedding-model");
+    const mod = await import("../src/lib/chunking");
+    expect(() => mod.chunkTextWithOverlap(`${header}\n${row}`, 400, 0)).toThrow(mod.OversizedTableRowError);
+    expect(mod.chunkTextWithOverlap(`${header}\n| GROUP-A | Review. |`, 400, 0)).toEqual([
+      `${header}\n| GROUP-A | Review. |`,
+    ]);
+  });
+
+  it.each(["text-embedding-3-small", "text-embedding-3-large", "text-embedding-ada-002"])(
+    "permits bounded overflow for %s",
+    async (model) => {
+      vi.stubEnv("OPENAI_EMBEDDING_MODEL", model);
+      const mod = await import("../src/lib/chunking");
+      expect(mod.chunkTextWithOverlap(`${header}\n${row}`, 400, 0)).toEqual([`${header}\n${row}`]);
+    },
+  );
+
+  it.each(["page", "document"])(
+    "marks bounded atomic overflow and keeps image context separate in %s mode",
+    async (strategy) => {
+      vi.stubEnv("CHUNK_STRATEGY", strategy);
+      const mod = await import("../src/lib/chunking");
+      const note = "Note: Do not change treatment\nunless the original condition applies.";
+      const text = ["Table 4. Monitoring", header, row, note].join("\n");
+      const chunks = mod.buildChunks([
+        {
+          documentId: "synthetic-document",
+          pageNumber: 2,
+          pageText: text,
+          images: [
+            { id: "synthetic-image", pageNumber: 2, caption: "Synthetic chart context.", sourceKind: "embedded" },
+          ],
+        },
+      ]);
+      const atomic = chunks.find((chunk) => chunk.content.includes("GROUP-A"));
+      expect(atomic?.content).toBe(text);
+      expect(atomic?.metadata.table_row_overflow).toEqual({
+        reason: "indivisible_table_evidence",
+        utf8_bytes: Buffer.byteLength(text),
+        max_utf8_bytes: 8191,
+        token_upper_bound: "utf8_bytes",
+      });
+      expect(atomic?.content).not.toContain("IMAGE_DATA_START");
+      expect(chunks.some((chunk) => chunk.content.includes("IMAGE_DATA_START"))).toBe(true);
+      for (const chunk of chunks.filter((chunk) => chunk !== atomic)) {
+        expect(chunk.metadata.table_row_overflow).toBeUndefined();
+      }
+    },
+  );
+
   it.each(["page", "document"])("propagates refusal without returning earlier chunks in %s mode", async (strategy) => {
-    vi.resetModules();
     vi.stubEnv("CHUNK_STRATEGY", strategy);
     vi.stubEnv("CHUNK_SIZE", "400");
     vi.stubEnv("CHUNK_OVERLAP", "40");
     const mod = await import("../src/lib/chunking");
     const inputs = [
       { documentId: "synthetic-document", pageNumber: 1, pageText: "Earlier Section\n\nEarlier complete guidance." },
-      { documentId: "synthetic-document", pageNumber: 2, pageText: `Table 4. Monitoring\n${header}\n${row}` },
+      {
+        documentId: "synthetic-document",
+        pageNumber: 2,
+        pageText: `Table 4. Monitoring\n${header}\n${hardOversizedRow}`,
+      },
     ];
     expect(() => mod.buildChunks(inputs)).toThrow(mod.OversizedTableRowError);
   });

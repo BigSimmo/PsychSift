@@ -33,6 +33,7 @@ const recorded: Record<string, string> = {
   "1.2.0-page|1.2.0-document": "e0eb0b337d010f3c4f078ef2df970b3b91d0d420dd2916b0f0f98a83600957e8",
   "1.3.0-page|1.3.0-document": "e0eb0b337d010f3c4f078ef2df970b3b91d0d420dd2916b0f0f98a83600957e8",
   "1.3.1-page|1.3.1-document": "e0eb0b337d010f3c4f078ef2df970b3b91d0d420dd2916b0f0f98a83600957e8",
+  "1.4.0-page|1.4.0-document": "e0eb0b337d010f3c4f078ef2df970b3b91d0d420dd2916b0f0f98a83600957e8",
 };
 
 function fingerprint() {
@@ -48,7 +49,44 @@ function fingerprint() {
   return hash.digest("hex");
 }
 
+// Keep the original corpus/history above intact. This additional ratchet covers
+// the newly representable atomic row, repeated context, and neighboring rows.
+const overflowCorpus = [
+  [
+    "Table 4. Synthetic monitoring",
+    "| Group | Action |",
+    "| --- | --- |",
+    "| GROUP-B | Repeat the measurement. |",
+    `| GROUP-A | Do not change treatment unless ${"the original condition remains applicable ".repeat(50).trim()}. |`,
+    "| GROUP-C | Review the result. |",
+    "Note: Do not change treatment",
+    "unless the original condition applies.",
+  ].join("\n"),
+];
+const overflowRecorded: Record<string, string> = {
+  "1.4.0-page|1.4.0-document": "bc6abc0a6a25d4491200d4b82646de78b9b92dc6811ed0d9e3ed4d143291b32e",
+};
+
+function overflowFingerprint() {
+  const hash = createHash("sha256");
+  for (const text of overflowCorpus) {
+    for (const [size, overlap] of [
+      [400, 80],
+      [1200, 200],
+    ] as const) {
+      hash.update(JSON.stringify(chunkTextWithOverlap(text, size, overlap)));
+    }
+  }
+  return hash.digest("hex");
+}
+
 describe("chunker version ratchet", () => {
+  it("records the atomic table overflow fingerprint for the current chunker version", () => {
+    const key = `${CHUNKER_VERSION}|${DOCUMENT_CHUNKER_VERSION}`;
+    expect(overflowRecorded[key], `record the atomic overflow fingerprint for ${key}`).toBeDefined();
+    expect(overflowFingerprint()).toBe(overflowRecorded[key]);
+  });
+
   it("records a fingerprint for the current chunker version", () => {
     const key = `${CHUNKER_VERSION}|${DOCUMENT_CHUNKER_VERSION}`;
     expect(recorded[key], `bump the chunker version and record a fingerprint for ${key}`).toBeDefined();

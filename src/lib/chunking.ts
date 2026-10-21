@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { env } from "@/lib/env";
+import { EMBEDDING_MAX_INPUT_UTF8_BYTES, hasKnownEmbeddingBudget } from "@/lib/embedding-input-budget";
 import { sourceSpanForText } from "@/lib/source-spans";
 import { normalizeExtractedGlyphs, stripClassificationBanner } from "@/lib/source-text-sanitizer";
 import type { ChunkInput, DocumentChunk } from "@/lib/types";
@@ -8,8 +9,12 @@ import type { ChunkInput, DocumentChunk } from "@/lib/types";
 // re-index can tell which chunker produced a row, and so bumping the strategy deliberately
 // invalidates stale chunks. Bump this when chunk boundaries change (e.g. when cross-page
 // document-mode chunking is enabled by default).
-export const CHUNKER_VERSION = "1.3.1-page";
-export const DOCUMENT_CHUNKER_VERSION = "1.3.1-document";
+export const CHUNKER_VERSION = "1.4.0-page";
+export const DOCUMENT_CHUNKER_VERSION = "1.4.0-document";
+
+// Bytes are a conservative token upper bound, not an exact tokenizer count.
+export const MAX_ATOMIC_TABLE_UTF8_BYTES = EMBEDDING_MAX_INPUT_UTF8_BYTES;
+type TableOverflowObserver = (content: string) => void;
 
 const sentenceBoundary = /(?<=[.!?])\s+/;
 const sentenceBoundaryGlobal = new RegExp(sentenceBoundary.source, "g");
@@ -385,15 +390,29 @@ function adaptiveChunkProfile(text: string, sectionPath: string[]) {
 }
 
 export function chunkTextWithOverlap(text: string, chunkSize = env.CHUNK_SIZE, overlap = env.CHUNK_OVERLAP) {
+  return chunkTextWithOverlapInternal(text, chunkSize, overlap);
+}
+
+function chunkTextWithOverlapInternal(
+  text: string,
+  chunkSize: number,
+  overlap: number,
+  onTableOverflow?: TableOverflowObserver,
+) {
   const clean = removePageNoise(normalizeExtractedGlyphs(text))
     .replace(trailingHorizontalWhitespaceBeforeNewlinePattern, "\n")
     .replace(horizontalWhitespaceRunPattern, " ")
     .trim();
   if (!clean) return [];
-  if (clean.length <= chunkSize) return [clean];
+  if (
+    clean.length <= chunkSize &&
+    (Buffer.byteLength(clean, "utf8") <= MAX_ATOMIC_TABLE_UTF8_BYTES ||
+      !clean.split(lineBreakPattern).some((line) => tableRowPattern.test(line)))
+  )
+    return [clean];
 
   if (isTableBlock(clean)) {
-    return chunkTableBlock(clean, chunkSize);
+    return chunkTableBlock(clean, chunkSize, "", "", onTableOverflow);
   }
 
   const paragraphs = clean
@@ -410,16 +429,20 @@ export function chunkTextWithOverlap(text: string, chunkSize = env.CHUNK_SIZE, o
           chunks.push(current.trim());
           current = "";
         }
-        chunks.push(...chunkTableBlock(paragraph, chunkSize));
+        chunks.push(...chunkTableBlock(paragraph, chunkSize, "", "", onTableOverflow));
         continue;
       }
 
-      if (paragraph.length > chunkSize) {
+      if (
+        paragraph.length > chunkSize ||
+        (Buffer.byteLength(paragraph, "utf8") > MAX_ATOMIC_TABLE_UTF8_BYTES &&
+          paragraph.split(lineBreakPattern).some((line) => tableRowPattern.test(line)))
+      ) {
         if (current) {
           chunks.push(current.trim());
           current = "";
         }
-        chunks.push(...chunkOversizedParagraph(paragraph, chunkSize, overlap));
+        chunks.push(...chunkOversizedParagraph(paragraph, chunkSize, overlap, onTableOverflow));
         continue;
       }
 
@@ -440,7 +463,7 @@ export function chunkTextWithOverlap(text: string, chunkSize = env.CHUNK_SIZE, o
     return chunks.filter(Boolean);
   }
 
-  return chunkOversizedParagraph(clean, chunkSize, overlap);
+  return chunkOversizedParagraph(clean, chunkSize, overlap, onTableOverflow);
 }
 
 // Audit 2026-10-20 ING-B-03: the PDF extractor joins a table's title, its
@@ -448,7 +471,12 @@ export function chunkTextWithOverlap(text: string, chunkSize = env.CHUNK_SIZE, o
 // paragraph that isTableBlock rejects. Split such a paragraph into its prose
 // and table runs; each table run is chunked by rows with its header (and a
 // "Table ..." title line directly above it) repeated on every chunk.
-function chunkOversizedParagraph(paragraph: string, chunkSize: number, overlap: number) {
+function chunkOversizedParagraph(
+  paragraph: string,
+  chunkSize: number,
+  overlap: number,
+  onTableOverflow?: TableOverflowObserver,
+) {
   const lines = paragraph.split(lineBreakPattern);
   const segments: Array<{ table: boolean; lines: string[] }> = [];
   for (const line of lines) {
@@ -499,7 +527,7 @@ function chunkOversizedParagraph(paragraph: string, chunkSize: number, overlap: 
             )
             .join("\n")
         : "";
-    chunks.push(...chunkTableBlock(segment.lines.join("\n"), chunkSize, caption, footnote));
+    chunks.push(...chunkTableBlock(segment.lines.join("\n"), chunkSize, caption, footnote, onTableOverflow));
   });
   return chunks;
 }
@@ -550,7 +578,7 @@ function isTableBlock(block: string) {
   return lines.every((line) => tableRowPattern.test(line));
 }
 
-// Refuse unrepresentable table evidence rather than truncate or separate cells
+// Refuse table evidence beyond the hard byte ceiling rather than truncate or separate cells
 // and clinical qualifiers. Keep diagnostics content-free, including the message.
 export class OversizedTableRowError extends Error {
   readonly code = "TABLE_ROW_EXCEEDS_CHUNK_BUDGET";
@@ -561,38 +589,60 @@ export class OversizedTableRowError extends Error {
   }
 }
 
-function chunkTableBlock(block: string, chunkSize: number, caption = "", footnote = "") {
+function chunkTableBlock(
+  block: string,
+  chunkSize: number,
+  caption = "",
+  footnote = "",
+  onTableOverflow?: TableOverflowObserver,
+) {
   const lines = block.split(lineBreakPattern).filter((line) => line.trim().length > 0);
   const captioned = [caption, block.trim(), footnote].filter(Boolean).join("\n");
-  if (captioned.length <= chunkSize) return [captioned];
-  // Reserve the same source qualification on every row group so retrieval cannot
-  // separate a dose/threshold from its immediately following warning.
-  const rowBudget = chunkSize - (footnote ? footnote.length + 1 : 0);
+  const fitsByteCeiling = (text: string) => Buffer.byteLength(text, "utf8") <= MAX_ATOMIC_TABLE_UTF8_BYTES;
+  if (captioned.length <= chunkSize && fitsByteCeiling(captioned)) return [captioned];
   const withFootnote = (text: string) => (footnote ? `${text}\n${footnote}` : text);
-
   const separatorIndex = lines.findIndex((line) => tableSeparatorRowPattern.test(line) && line.includes("-"));
   const headerLines = separatorIndex > 0 ? lines.slice(0, separatorIndex + 1) : lines.slice(0, 1);
   const bodyLines = lines.slice(headerLines.length);
   const header = [caption, ...headerLines].filter(Boolean).join("\n");
-  // Cells and their qualifiers are indivisible evidence. Refuse the whole build
-  // before emitting any row group when that evidence cannot fit the character target.
-  if (header.length > rowBudget || bodyLines.some((row) => header.length + 1 + row.length > rowBudget)) {
+  const atomicFits = (text: string) =>
+    fitsByteCeiling(text) && (text.length <= chunkSize || hasKnownEmbeddingBudget(env.OPENAI_EMBEDDING_MODEL));
+  // Validate the entire table before emitting any group. A target overflow may
+  // preserve one indivisible row, but never an unbounded row or a guessed model.
+  if (
+    bodyLines.length
+      ? bodyLines.some((row) => !atomicFits(withFootnote(`${header}\n${row}`)))
+      : !atomicFits(withFootnote(header))
+  ) {
     throw new OversizedTableRowError();
   }
 
   const chunks: string[] = [];
-  let current = header;
+  const emit = (text: string) => {
+    chunks.push(text);
+    if (text.length > chunkSize) onTableOverflow?.(text);
+  };
+  let current = "";
   for (const row of bodyLines) {
-    const candidate = `${current}\n${row}`;
-    if (candidate.length > rowBudget && current !== header) {
-      chunks.push(withFootnote(current.trim()));
+    const atomic = withFootnote(`${header}\n${row}`);
+    if (atomic.length > chunkSize) {
+      if (current) emit(withFootnote(current));
+      current = "";
+      emit(atomic);
+      continue;
+    }
+    const candidate = current ? `${current}\n${row}` : `${header}\n${row}`;
+    const qualified = withFootnote(candidate);
+    if (current && (qualified.length > chunkSize || !fitsByteCeiling(qualified))) {
+      emit(withFootnote(current));
       current = `${header}\n${row}`;
     } else {
       current = candidate;
     }
   }
-  if (current.trim()) chunks.push(withFootnote(current.trim()));
-  return chunks.length > 0 ? chunks : [captioned];
+  if (current) emit(withFootnote(current));
+  if (chunks.length === 0) emit(withFootnote(header));
+  return chunks;
 }
 
 const clinicalProhibitionPattern =
@@ -968,6 +1018,7 @@ function emitChunk(args: {
   chunkProfile: ChunkProfile;
   pageChunkIndex: number;
   chunkerVersion: string;
+  tableOverflow: boolean;
 }) {
   const { content, sectionPath } = args;
   const contentLookup = normalizeLookupText(content);
@@ -1034,6 +1085,16 @@ function emitChunk(args: {
       chunk_profile: args.chunkProfile.profile,
       adaptive_chunk_size: args.chunkProfile.chunkSize,
       adaptive_chunk_overlap: args.chunkProfile.overlap,
+      ...(args.tableOverflow
+        ? {
+            table_row_overflow: {
+              reason: "indivisible_table_evidence",
+              utf8_bytes: Buffer.byteLength(content, "utf8"),
+              max_utf8_bytes: MAX_ATOMIC_TABLE_UTF8_BYTES,
+              token_upper_bound: "utf8_bytes",
+            },
+          }
+        : {}),
       page_start: args.pageStart,
       page_end: args.pageEnd,
       source_spans: args.spanPages.map((span) => {
@@ -1078,7 +1139,10 @@ function buildPageModeChunks(inputs: ChunkInput[]) {
     const pageText = [cleanedPageText, imageContext].filter(Boolean).join("\n\n");
     const pageLookupText = normalizeLookupText(normalizedPageText);
     const chunkProfile = adaptiveChunkProfile(cleanedPageText, sectionPath);
-    const pageChunks = chunkTextWithOverlap(pageText, chunkProfile.chunkSize, chunkProfile.overlap);
+    const tableOverflows = new Set<string>();
+    const pageChunks = chunkTextWithOverlapInternal(pageText, chunkProfile.chunkSize, chunkProfile.overlap, (content) =>
+      tableOverflows.add(content),
+    );
 
     pageChunks.forEach((content, pageChunkIndex) => {
       const fingerprint = dedupeChunkFingerprint(content);
@@ -1100,6 +1164,7 @@ function buildPageModeChunks(inputs: ChunkInput[]) {
         chunkProfile,
         pageChunkIndex,
         chunkerVersion: CHUNKER_VERSION,
+        tableOverflow: tableOverflows.has(content),
       });
     });
   }
@@ -1193,7 +1258,13 @@ function buildDocumentModeChunks(inputs: ChunkInput[]) {
       .join("\n\n");
     const chunkProfile = adaptiveChunkProfile(combinedCleanText, section.sectionPath);
     const pageLookupText = normalizeLookupText(section.pages.map((page) => page.normalizedText).join(" "));
-    const sectionChunks = chunkTextWithOverlap(combinedText, chunkProfile.chunkSize, chunkProfile.overlap);
+    const tableOverflows = new Set<string>();
+    const sectionChunks = chunkTextWithOverlapInternal(
+      combinedText,
+      chunkProfile.chunkSize,
+      chunkProfile.overlap,
+      (content) => tableOverflows.add(content),
+    );
 
     sectionChunks.forEach((content, pageChunkIndex) => {
       const contentWords = new Set(
@@ -1229,6 +1300,7 @@ function buildDocumentModeChunks(inputs: ChunkInput[]) {
         chunkProfile,
         pageChunkIndex,
         chunkerVersion: DOCUMENT_CHUNKER_VERSION,
+        tableOverflow: tableOverflows.has(content),
       });
     });
   }

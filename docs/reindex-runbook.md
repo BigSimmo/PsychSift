@@ -78,11 +78,16 @@ older probes that omit these fields remain compatible. These signals alone never
 recovery, including with `--apply`. If separate recoverable queue work also exists, bounded
 recovery may run, but the integrity alert remains until a subsequent probe confirms resolution.
 
-`TABLE_ROW_EXCEEDS_CHUNK_BUDGET` is a permanent ingestion refusal: the title, column
-header, one intact row and attached note cannot fit the configured character target.
-The chunker returns no partial chunk array and never splits cells or truncates the
-evidence. Review the extracted table and source structure before retrying; the refusal
-does not establish OCR accuracy. An atomic reindex preserves the existing index on failure.
+The configured character target controls ordinary table groups. A larger indivisible
+row is supported as a standalone chunk with its full title, header and adjacent note,
+up to 8,191 UTF-8 bytes for known OpenAI embedding models. This is a conservative
+byte-BPE token upper bound, not an exact token count. The chunk records this overflow
+in metadata, and embedding requests are batched by both input count and total bytes.
+`TABLE_ROW_EXCEEDS_CHUNK_BUDGET` remains a permanent refusal above that hard ceiling
+or for an unknown model's target overflow. The chunker returns no partial chunk array
+and never splits cells or truncates evidence. Review the source structure before
+retrying; the refusal does not establish OCR accuracy. Atomic reindex failure preserves
+the existing index.
 
 ## Do not do this
 
