@@ -50,7 +50,7 @@ const recorded: Record<string, string> = {
   "1.3.0-page|1.3.0-document": "e0eb0b337d010f3c4f078ef2df970b3b91d0d420dd2916b0f0f98a83600957e8",
   // From 1.3.1 the corpus also includes the titled-table sample above; earlier
   // entries were recorded on the first three samples only.
-  "1.3.1-page|1.3.1-document": "e018d46071b6f29c2761546fbde572b19ff4683b9b2bd6c1cc40392c51c03a7e",
+  "1.3.1-page|1.3.1-document": "c43e36dc4ebcabc19b0fac45b7d97ee3883a79dd533dc188ad759b3652f52922",
 };
 
 function fingerprint() {

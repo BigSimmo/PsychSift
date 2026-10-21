@@ -824,6 +824,7 @@ describe("table context, footnotes, referrals and oversized rows (chunker 1.3.1)
     const last = tableChunks[tableChunks.length - 1];
     expect(last).toContain(rows[rows.length - 1]);
     expect(last.endsWith(footnotes.join("\n"))).toBe(true);
+    for (const chunk of chunks) expect(chunk.length).toBeLessThanOrEqual(1200);
     expect(chunks.join("\n")).toContain("Review the patient weekly.");
   });
 
@@ -866,5 +867,27 @@ describe("table context, footnotes, referrals and oversized rows (chunker 1.3.1)
     for (const chunk of chunks.filter((chunk) => chunk.includes("word"))) {
       expect(chunk).toContain("| Level | Concentration | Action |");
     }
+  });
+
+  it("emits footnotes as their own header chunk when the last table chunk is full", () => {
+    const footnote = `* ${"Levels are taken twelve hours post dose. ".repeat(8).trim()}`;
+    const wide = Array.from({ length: 40 }, (_, index) => `| Level ${index} | ${index}.0 mmol/L | ${"x".repeat(60)} |`);
+    const chunks = chunkTextWithOverlap(["Lithium actions", ...header, ...wide, footnote].join("\n"), 1200, 200);
+    for (const chunk of chunks) expect(chunk.length).toBeLessThanOrEqual(1200);
+    expect(chunks.join("\n")).toContain(footnote);
+  });
+
+  it("keeps continuation pieces of a very long row within the cap", () => {
+    const longRow = `| Level X | ${"abcdefghij ".repeat(400).trim()} | Action X |`;
+    const chunks = chunkTextWithOverlap(["Lithium actions", ...header, longRow].join("\n"), 600, 100);
+    expect(chunks.length).toBeGreaterThan(5);
+    for (const chunk of chunks) expect(chunk.length).toBeLessThanOrEqual(600);
+  });
+
+  it("does not take a wrapped sentence tail as a table caption", () => {
+    const lead = ["Do not exceed these thresholds in", "patients with renal impairment:"];
+    const chunks = chunkTextWithOverlap([...lead, ...header, ...rows].join("\n"), 1200, 200);
+    expect(chunks.join("\n")).toContain(lead.join("\n"));
+    for (const chunk of tableChunksOf(chunks)) expect(chunk).not.toContain("patients with renal impairment:");
   });
 });

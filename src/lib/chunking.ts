@@ -548,7 +548,11 @@ const maxTableCaptionLines = 6;
 const maxTableCaptionLength = 300;
 // A non-"Table" caption is the nearest preceding short heading-like line.
 const maxHeadingCaptionLength = 160;
-const headingCaptionEndPattern = /[^.!?]$/;
+// A heading caption does not end like a sentence or a wrapped lead-in, and does not
+// start lowercase (a wrapped sentence tail).
+const headingCaptionEndPattern = /[^.!?:,;]$/;
+const headingCaptionStartPattern = /^[\p{Lu}\p{N}]/u;
+const sentenceEndLinePattern = /[.!?]$/;
 const tableFootnoteLinePattern =
   /^(?:[*†‡§¶#]+|\(?[a-z0-9]{1,2}\)|[a-z0-9]{1,2}[.)]\s|notes?\b|source[s]?\b|abbreviations?\b|key\b|adapted from\b)/i;
 const maxTableFootnoteLines = 4;
@@ -571,7 +575,18 @@ function tableCaption(lines: string[]): { start: number; caption: string } | nul
   let last = trimmed.length - 1;
   while (last >= 0 && !trimmed[last]) last -= 1;
   const candidate = last >= 0 ? trimmed[last] : "";
-  if (candidate && candidate.length <= maxHeadingCaptionLength && headingCaptionEndPattern.test(candidate)) {
+  let before = last - 1;
+  while (before >= 0 && !trimmed[before]) before -= 1;
+  // The line above must end a sentence (or not exist, or be separated by a blank line),
+  // so the candidate is not the tail of a sentence the extractor wrapped.
+  const standsAlone = before < 0 || before < last - 1 || sentenceEndLinePattern.test(trimmed[before]);
+  if (
+    candidate &&
+    candidate.length <= maxHeadingCaptionLength &&
+    headingCaptionEndPattern.test(candidate) &&
+    headingCaptionStartPattern.test(candidate) &&
+    standsAlone
+  ) {
     return { start: last, caption: candidate };
   }
   return null;
@@ -609,7 +624,7 @@ function chunkTableBlock(block: string, chunkSize: number, caption = "", footnot
   const header = [caption, ...headerLines].filter(Boolean).join("\n");
   // Chunker 1.3.1: a single row longer than the room left under the header is
   // split at word boundaries into pieces that each repeat the header.
-  const rowBudget = Math.max(200, chunkSize - header.length - 1);
+  const rowBudget = Math.max(40, chunkSize - header.length - 1);
 
   const chunks: string[] = [];
   let current = header;
@@ -624,23 +639,32 @@ function chunkTableBlock(block: string, chunkSize: number, caption = "", footnot
   }
   if (current.trim()) chunks.push(current.trim());
   if (chunks.length === 0) return [captioned];
-  if (footnote) chunks[chunks.length - 1] = `${chunks[chunks.length - 1]}\n${footnote}`;
+  if (footnote) {
+    // Keep the size cap: append to the last chunk only when it fits, otherwise emit the
+    // footnote with the repeated header as its own chunk.
+    const appended = `${chunks[chunks.length - 1]}\n${footnote}`;
+    if (appended.length <= chunkSize) chunks[chunks.length - 1] = appended;
+    else chunks.push(`${header}\n${footnote}`);
+  }
   return chunks;
 }
+
+const rowContinuationMarker = "(row continued) ";
 
 function splitOversizedRow(row: string, budget: number) {
   if (row.length <= budget) return [row];
   const pieces: string[] = [];
   let rest = row.trim();
-  while (rest.length > budget) {
-    const window = rest.slice(0, budget);
-    const cut = window.lastIndexOf(" ");
-    const at = cut > budget * 0.5 ? cut : budget;
+  // Continuation pieces carry the marker, so they get that much less room.
+  while (rest.length > (pieces.length === 0 ? budget : budget - rowContinuationMarker.length)) {
+    const room = Math.max(1, pieces.length === 0 ? budget : budget - rowContinuationMarker.length);
+    const cut = rest.slice(0, room).lastIndexOf(" ");
+    const at = cut > room * 0.5 ? cut : room;
     pieces.push(rest.slice(0, at).trim());
     rest = rest.slice(at).trim();
   }
   if (rest) pieces.push(rest);
-  return pieces.map((piece, index) => (index === 0 ? piece : `(row continued) ${piece}`));
+  return pieces.map((piece, index) => (index === 0 ? piece : `${rowContinuationMarker}${piece}`));
 }
 
 const clinicalProhibitionPattern =
