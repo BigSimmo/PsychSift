@@ -88,11 +88,14 @@ Version-ordering risk (checked with `dpkg --compare-versions`):
 - tesseract and ncurses have no `+deb13uN` yet; Debian's first security update
   (`5.5.0-1+deb13u1`, `6.5+20250216-2+deb13u1`) sorts **below** `+psychsift1`,
   so apt will **not** pull Debian's security fix while our build is installed.
-- Once Debian supersedes a pinned version, deb.debian.org drops it and
-  `apt-get source <source>=<version>` fails, breaking the worker image build.
-  Fix forward by rebasing onto the new Debian version (or deleting the component
-  if Debian's release contains the fixes); do not switch to snapshot.debian.org
-  silently.
+- Once Debian supersedes a pinned version, the live deb.debian.org indexes stop
+  listing it. `Dockerfile.worker` therefore also reads source indexes from the
+  immutable `snapshot.debian.org/archive/debian/20261021T000000Z` (which lists
+  all four pinned versions), so `apt-get build-dep`/`apt-get source
+<source>=<version>` keep resolving and the `.dsc` hash still pins the bytes.
+  The build no longer breaks when Debian moves on, so the check below is what
+  keeps Debian's own fixes from being missed. Move the snapshot timestamp
+  forward only when rebasing a component onto a newer Debian version.
 
 Check for newer Debian versions before each worker release, for example
 `curl -s https://sources.debian.org/api/src/<source>/ | jq -r '.versions[] | .version + " " + (.suites|join(","))' | head`

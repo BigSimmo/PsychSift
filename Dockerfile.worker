@@ -77,8 +77,13 @@ RUN for attempt in 1 2 3; do \
 
 # Build security backports using the same signed Trixie sources and ordinary
 # Debian packaging. Compilers/source trees never enter the runtime image.
+# The immutable snapshot deb-src keeps the exact pinned source versions in
+# worker/native/components/*.json resolvable after Debian supersedes them on
+# the live mirrors; the .dsc hash check still pins the bytes. Its Release file
+# is archive-signed but expired, hence check-valid-until=no on that line only.
 FROM python-runtime-base AS native-security-build-base
 RUN printf '%s\n' \
+    'deb-src [signed-by=/usr/share/keyrings/debian-archive-keyring.pgp check-valid-until=no] https://snapshot.debian.org/archive/debian/20261021T000000Z trixie main' \
     'deb-src [signed-by=/usr/share/keyrings/debian-archive-keyring.pgp] https://deb.debian.org/debian trixie main' \
     'deb-src [signed-by=/usr/share/keyrings/debian-archive-keyring.pgp] https://deb.debian.org/debian-security trixie-security main' \
     > /etc/apt/sources.list.d/worker-native-security-sources.list \

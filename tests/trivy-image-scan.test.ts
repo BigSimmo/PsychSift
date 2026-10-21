@@ -560,3 +560,12 @@ describe("worker native pinned-source tracking", () => {
     }
   });
 });
+
+describe("worker native source availability", () => {
+  it("resolves pinned Debian sources from an immutable snapshot as well as the live mirror", () => {
+    const dockerfile = readFileSync(fileURLToPath(new URL("../Dockerfile.worker", import.meta.url)), "utf8");
+    expect(dockerfile).toMatch(
+      /deb-src \[signed-by=\/usr\/share\/keyrings\/debian-archive-keyring\.pgp check-valid-until=no\] https:\/\/snapshot\.debian\.org\/archive\/debian\/\d{8}T\d{6}Z trixie main/,
+    );
+  });
+});
