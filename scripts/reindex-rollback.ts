@@ -170,7 +170,9 @@ async function main() {
   console.log(`\nDocuments in scope: ${preview.length}; would roll back: ${ready}; refused: ${preview.length - ready}`);
 
   if (!args.apply) {
-    console.log("\nDry run only. Re-run with --apply --i-understand-metadata-not-restored to repoint the documents above.");
+    console.log(
+      "\nDry run only. Re-run with --apply --i-understand-metadata-not-restored to repoint the documents above.",
+    );
     return;
   }
   if (ready === 0) return;

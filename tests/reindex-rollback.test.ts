@@ -175,7 +175,12 @@ describe("parseRollbackArgs", () => {
   });
 
   it("parses committed-after and apply", () => {
-    const args = parseRollbackArgs(["--committed-after=2026-10-21T00:00:00Z", "--apply", ROLLBACK_APPLY_ACK_FLAG, "--yes"]);
+    const args = parseRollbackArgs([
+      "--committed-after=2026-10-21T00:00:00Z",
+      "--apply",
+      ROLLBACK_APPLY_ACK_FLAG,
+      "--yes",
+    ]);
     expect(args).toMatchObject({
       apply: true,
       yes: true,
