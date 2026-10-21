@@ -235,6 +235,7 @@ function EpaMagicLinkRespondBody({ token }: { readonly token: string }) {
             value={assessorName}
             onChange={setAssessorName}
             single
+            quietNote
           />
 
           <OptionCard
@@ -264,6 +265,7 @@ function EpaMagicLinkRespondBody({ token }: { readonly token: string }) {
             value={strengths}
             onChange={setStrengths}
             single
+            quietNote
           />
 
           <AssessTextField
@@ -272,6 +274,7 @@ function EpaMagicLinkRespondBody({ token }: { readonly token: string }) {
             value={improvements}
             onChange={setImprovements}
             single
+            quietNote
           />
 
           {patientProblem ? (

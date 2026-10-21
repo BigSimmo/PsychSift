@@ -246,17 +246,17 @@ function LearningRow({
   onOpen: OpenCourse;
 }) {
   return (
-    <li data-testid="cme-learning-item" className="work-row relative min-w-0 list-none items-start">
+    <li
+      data-testid="cme-learning-item"
+      data-cancelled={item.cancelled ? "" : undefined}
+      className="work-row relative min-w-0 list-none items-start"
+    >
       <span className="pt-0.5">
         <DateTile item={item} />
       </span>
       <div className="work-row__text">
         {item.cancelled ? (
-          <span
-            data-testid="cme-learning-cancelled"
-            className="work-tag mb-1.5 mt-1 justify-self-start"
-            data-tone="red"
-          >
+          <span data-testid="cme-learning-cancelled" className="work-tag mb-2 justify-self-start" data-tone="red">
             Cancelled by the organiser
           </span>
         ) : null}
