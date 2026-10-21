@@ -1,16 +1,16 @@
 {
   "version": "outstanding-issues-snapshot-v2",
   "ledger_revision": {
-    "committed_at": "2026-10-21"
+    "committed_at": "2026-10-17"
   },
   "counts": {
-    "open": 107,
+    "open": 108,
     "p1": 17,
     "p2": 56,
-    "p3": 34,
+    "p3": 35,
     "queued": 5,
     "pending": 0,
-    "resolved": 817
+    "resolved": 818
   },
   "queue": [
     {
@@ -597,7 +597,7 @@
       "priority": "P2",
       "type": "rec",
       "summary": "Extractor/parser/OCR/table-strategy/chunker version is not persisted per document, so a parser defect cannot be traced to affected documents (audit F04)",
-      "detail": "Verified offline: only a coarse indexing_version ('rag-deep-memory-v1') is stored; no extractor/OCR/table-strategy/chunker provenance exists in schema or worker. The clozapine interleaving defect (#GJHKYC) had no deterministic way to list affected documents. Next action: persist per-document extraction provenance and support version-based invalidation/re-extraction. Touches text producers (extract_pdf_assets.py, chunking) and likely a migration: RAG-protected and Supabase-deploy rules apply. Not a prerequisite for the #GJHKYC re-index.",
+      "detail": "UPDATE 2026-10-21: documents.metadata.extraction_provenance now also records the chunker versions of the committed chunks and the OCR engine (Tesseract) versions and count of OCR'd pages (worker/extraction-provenance.ts), on top of the reader version, PyMuPDF version and table strategy recorded since PR #3632. npm run extraction:provenance (read-only; needs owner confirmation before a live run) lists documents by reader, chunker or OCR version, and npm run reindex:rollback -- --chunker-version already scopes a rollback. No migration needed. Remaining: documents indexed before these keys existed report 'not recorded' until their next index, and re-extraction by version is still an operator step. Close when the owner accepts that. PRIOR DETAIL: Verified offline: only a coarse indexing_version ('rag-deep-memory-v1') is stored; no extractor/OCR/table-strategy/chunker provenance exists in schema or worker.",
       "source": "Ultimate Audit Master Report 2026-09-25 (owner-supplied .docx), reviewed offline against main 955996146 in session claude/review-assessment-4s1w86; no provider access",
       "added": "2026-09-25"
     },
@@ -863,15 +863,6 @@
       "added": "2026-10-13"
     },
     {
-      "id": "#EG02B7",
-      "priority": "P2",
-      "type": "task",
-      "summary": "Reindex reaper: enqueue storage cleanup at generation commit time (follow-up to #RP00FZ)",
-      "detail": "The reaper script builds storage cleanup jobs only on its gated apply path, so ordinary generation commits still schedule no cleanup for superseded storage objects. Needs a reviewed forward migration (never an edit to an existing one) before closing. Migration merges deploy to production and need the owner's explicit permission.",
-      "source": "PR #3570 review; scripts/cleanup-abandoned-reindex-generations.ts; supabase/migrations/20260702000000_commit_generation_preserve_legacy_artifacts.sql",
-      "added": "2026-10-16"
-    },
-    {
       "id": "#54N8ZN",
       "priority": "P2",
       "type": "task",
@@ -885,7 +876,7 @@
       "priority": "P2",
       "type": "task",
       "summary": "Hostile-document ingestion: run the upload-to-answer end-to-end matrix (follow-up to #F3SGCM)",
-      "detail": "Seven-class helper coverage exists in tests/hostile-document-ingestion-matrix.test.ts, but it uses an extraction mock and fabricated search results, so no uploaded hostile document is checked against real ingestion, retrieval and answer paths. Close only when each class runs end to end.",
+      "detail": "UPDATE 2026-10-21: tests/hostile-document-real-extractor.test.ts now runs generated hostile PDFs (password-protected, truncated, not-a-PDF, blank page, prompt-injected with forged evidence fences and hidden white text) through upload admission, the REAL Python reader, the real chunker, the evidence ranker and the fenced answer source block, offline (runs in the CI coverage job, which installs PyMuPDF). Still open: the live leg (Storage upload, worker ingestion with embeddings, vector retrieval, generated answer) is not run anywhere. Next action: run it on staging once the staging rebuild (#3113) is done and the owner lifts the re-index freeze, with the owner's spend approval for embeddings and answers. PRIOR DETAIL: Seven-class helper coverage exists in tests/hostile-document-ingestion-matrix.test.ts, but it uses an extraction mock and fabricated search results, so no uploaded hostile document is checked against real ingestion, retrieval and answer paths. Close only when each class runs end to end.",
       "source": "PR #3570 review; tests/hostile-document-ingestion-matrix.test.ts",
       "added": "2026-10-16"
     },
@@ -942,6 +933,15 @@
       "detail": "Record publisher licence or permission status per source so public display and AI use can be checked. Finding R-07.",
       "source": "Regulatory readiness audit 2026-10-20 (/mnt/project-files/reviews/2026-10-20-regulatory-launch-readiness.md)",
       "added": "2026-10-20"
+    },
+    {
+      "id": "#TBTNGB",
+      "priority": "P2",
+      "type": "issue",
+      "summary": "Lighthouse budget grades and refreshes from a single sample per route, so slow runners fail unrelated PRs",
+      "detail": "On 21 Oct 2026 a slow-runner window (~15:00Z) failed Lighthouse on #3749 (server-only) and #3752 (CSS-only); all routes' TBT rose together and #3749 passed on rerun (desktop search 956 ms vs 964 ms baseline). The dispatch refresh (run 39625188079, artifact lighthouse-baseline-refresh-39625188079, main 8c03823) is also one sample: desktop-root 1584 ms vs ~935-955 ms typical, so it was not committed. Proposal: take the median of three graded samples per route in scripts/run-lighthouse-budget.mjs for both grading and --update refresh, keeping tolerances unchanged and the two-confirmation rule for breaches.",
+      "source": "Main CI and test reliability thread, 21 Oct 2026",
+      "added": "2026-10-21"
     },
     {
       "id": "#PYWRTX",
@@ -1005,6 +1005,15 @@
       "detail": "Audit CC-12, 2026-10-20: pr-batch-runner.yml and ranking-snapshot-refresh.yml read the owner's personal GH_TOKEN as a repository secret, and ranking-snapshot-refresh.yml puts it in the git push URL. Add environment: production-secrets to both jobs and push through gh auth setup-git, then the owner moves the secret. Not done in the audit fix PR because this session's automated safety check refused the edit.",
       "source": "docs/decisions/2026-10-20-database-prs-merge-by-hand.md",
       "added": "2026-10-20"
+    },
+    {
+      "id": "#NM9S1V",
+      "priority": "P3",
+      "type": "issue",
+      "summary": "npm run build fails in the Windows shell (build:internal uses POSIX NODE_OPTIONS=${...} expansion)",
+      "detail": "Found 2026-10-21 on the owner's Windows PC: latest main builds cleanly via bash (about 15 min) but npm run build fails in the Windows shell because build:internal sets NODE_OPTIONS=\"${NODE_OPTIONS:---max-old-space-size=8192}\", which cmd and PowerShell do not expand. Workaround: build from bash. Fix: move the env default into a small Node wrapper (no new cross-env dependency). Touches the Railway Docker build and CI heavy scope, so it was kept out of the test-only #3745.",
+      "source": "Main CI and test reliability thread, 2026-10-21",
+      "added": "2026-10-21"
     },
     {
       "id": "#AZXEDC",
