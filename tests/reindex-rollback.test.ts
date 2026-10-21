@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  applyRollbackPlans,
+  collectCommittedGenerations,
+  planReindexRollback,
   parseRollbackArgs,
   runReindexRollback,
   type CommittedGeneration,
@@ -27,8 +30,8 @@ function memoryStore(documents: Record<string, MemoryDocument>) {
     return { ok: true };
   });
   const store: RollbackStore = {
-    async candidateDocumentIds(scope: RollbackScope, limit: number) {
-      return (scope.kind === "documents" ? scope.documentIds : Object.keys(documents)).slice(0, limit);
+    async *candidateDocumentIds(scope: RollbackScope) {
+      yield* scope.kind === "documents" ? scope.documentIds : Object.keys(documents);
     },
     async currentGeneration(documentId) {
       return documents[documentId]?.current ?? null;
@@ -161,5 +164,52 @@ describe("parseRollbackArgs", () => {
       yes: true,
       scope: { kind: "committed-after", after: "2026-10-21T00:00:00.000Z" },
     });
+  });
+
+  it("applies the document limit after the exact scope filter", async () => {
+    const outOfScope = (): MemoryDocument => ({
+      ...twoGenerations(),
+      chunkerVersions: { "gen-new": ["1.3.0-page"], "gen-old": ["1.3.1-page"] },
+    });
+    const { store } = memoryStore({ [DOC_A]: outOfScope(), [DOC_B]: outOfScope(), [DOC_C]: twoGenerations() });
+    const plans = await planReindexRollback(store, { kind: "chunker-version", chunkerVersion: "1.3.1-page" }, 1);
+    expect(plans.map((plan) => plan.documentId)).toEqual([DOC_C]);
+  });
+
+  it("stops pulling candidates once the limit of in-scope documents is reached", async () => {
+    const { store } = memoryStore({ [DOC_A]: twoGenerations(), [DOC_B]: twoGenerations(), [DOC_C]: twoGenerations() });
+    const plans = await planReindexRollback(store, { kind: "chunker-version", chunkerVersion: "1.3.1-page" }, 2);
+    expect(plans.map((plan) => plan.documentId)).toEqual([DOC_A, DOC_B]);
+  });
+
+  it("collects committed generations across every page of rows", async () => {
+    const rows = [
+      ...Array.from({ length: 5 }, (_, i) => ({
+        index_generation_id: "gen-new",
+        created_at: `2026-10-21T06:00:0${i}.000Z`,
+      })),
+      { index_generation_id: null, created_at: "2026-10-02T00:00:00.000Z" },
+      { index_generation_id: "gen-old", created_at: "2026-10-01T00:00:00.000Z" },
+    ];
+    const loadPage = vi.fn(async (from: number, to: number) => rows.slice(from, to + 1));
+    const generations = await collectCommittedGenerations(loadPage, 2);
+    expect(loadPage).toHaveBeenCalledTimes(4);
+    expect(generations).toEqual([
+      { generationId: "gen-new", committedAt: "2026-10-21T06:00:00.000Z" },
+      { generationId: "gen-old", committedAt: "2026-10-01T00:00:00.000Z" },
+    ]);
+  });
+
+  it("applies the previewed plan and fails closed when the pointer moved after preview", async () => {
+    const { store, repoint, documents } = memoryStore({ [DOC_A]: twoGenerations() });
+    const preview = await runReindexRollback(store, { kind: "documents", documentIds: [DOC_A] });
+    // A newer generation commits while the operator reads the prompt.
+    documents[DOC_A].current = "gen-newer";
+    documents[DOC_A].generations.push({ generationId: "gen-newer", committedAt: "2026-10-21T07:00:00.000Z" });
+    documents[DOC_A].chunks["gen-newer"] = 9;
+    const [outcome] = await applyRollbackPlans(store, preview);
+    expect(repoint).toHaveBeenCalledWith(DOC_A, "gen-new", "gen-old");
+    expect(outcome).toMatchObject({ applied: false, applyError: "pointer_moved" });
+    expect(documents[DOC_A].current).toBe("gen-newer");
   });
 });

@@ -13,6 +13,8 @@
  */
 import { loadEnvConfig } from "@next/env";
 import {
+  applyRollbackPlans,
+  collectCommittedGenerations,
   formatRollbackOutcome,
   parseRollbackArgs,
   runReindexRollback,
@@ -29,47 +31,53 @@ type AdminClient = ReturnType<typeof CreateAdminClient>;
 const PAGE = 1000;
 
 function supabaseRollbackStore(supabase: AdminClient): RollbackStore {
-  const distinctDocumentIds = async (
+  // Pages through every matching row and yields each distinct document id once. No limit
+  // here: the planner applies the document limit after the exact scope filter.
+  async function* distinctDocumentIds(
     load: (
       from: number,
       to: number,
     ) => PromiseLike<{ data: { document_id: string }[] | null; error: { message: string } | null }>,
-    limit: number,
-  ) => {
+  ) {
     const ids = new Set<string>();
-    for (let from = 0; ids.size < limit; from += PAGE) {
+    for (let from = 0; ; from += PAGE) {
       const { data, error } = await load(from, from + PAGE - 1);
       if (error) throw new Error(error.message);
-      for (const row of data ?? []) if (ids.size < limit) ids.add(row.document_id);
+      for (const row of data ?? []) {
+        if (ids.has(row.document_id)) continue;
+        ids.add(row.document_id);
+        yield row.document_id;
+      }
       if (!data || data.length < PAGE) break;
     }
-    return [...ids];
-  };
+  }
   return {
-    async candidateDocumentIds(scope: RollbackScope, limit: number) {
-      if (scope.kind === "documents") return scope.documentIds.slice(0, limit);
-      if (scope.kind === "committed-after") {
-        return distinctDocumentIds(
-          (from, to) =>
-            supabase
-              .from("document_pages")
-              .select("document_id")
-              .not("index_generation_id", "is", null)
-              .gt("created_at", scope.after)
-              .order("created_at", { ascending: false })
-              .range(from, to),
-          limit,
-        );
+    async *candidateDocumentIds(scope: RollbackScope) {
+      if (scope.kind === "documents") {
+        yield* scope.documentIds;
+        return;
       }
-      return distinctDocumentIds(
-        (from, to) =>
+      if (scope.kind === "committed-after") {
+        yield* distinctDocumentIds((from, to) =>
           supabase
-            .from("document_chunks")
+            .from("document_pages")
             .select("document_id")
-            .eq("metadata->>chunker_version", scope.chunkerVersion)
-            .order("document_id")
+            .not("index_generation_id", "is", null)
+            .gt("created_at", scope.after)
+            .order("created_at", { ascending: false })
+            .order("id")
             .range(from, to),
-        limit,
+        );
+        return;
+      }
+      yield* distinctDocumentIds((from, to) =>
+        supabase
+          .from("document_chunks")
+          .select("document_id")
+          .eq("metadata->>chunker_version", scope.chunkerVersion)
+          .order("document_id")
+          .order("id")
+          .range(from, to),
       );
     },
     async currentGeneration(documentId) {
@@ -82,22 +90,20 @@ function supabaseRollbackStore(supabase: AdminClient): RollbackStore {
       return data?.index_generation_id ?? null;
     },
     async committedGenerations(documentId) {
-      const { data, error } = await supabase
-        .from("document_pages")
-        .select("index_generation_id,created_at")
-        .eq("document_id", documentId)
-        .not("index_generation_id", "is", null);
-      if (error) throw new Error(error.message);
-      const earliest = new Map<string, string>();
-      // document_pages.index_generation_id exists in supabase/schema.sql but not yet in the
-      // generated database types, so the row shape is stated here.
-      const rows = (data ?? []) as unknown as Array<{ index_generation_id: string | null; created_at: string }>;
-      for (const row of rows) {
-        if (!row.index_generation_id) continue;
-        const seen = earliest.get(row.index_generation_id);
-        if (!seen || row.created_at < seen) earliest.set(row.index_generation_id, row.created_at);
-      }
-      return [...earliest].map(([generationId, committedAt]) => ({ generationId, committedAt }));
+      return collectCommittedGenerations(async (from, to) => {
+        const { data, error } = await supabase
+          .from("document_pages")
+          .select("index_generation_id,created_at")
+          .eq("document_id", documentId)
+          .not("index_generation_id", "is", null)
+          .order("created_at", { ascending: true })
+          .order("id")
+          .range(from, to);
+        if (error) throw new Error(error.message);
+        // document_pages.index_generation_id exists in supabase/schema.sql but not yet in the
+        // generated database types, so the row shape is stated here.
+        return (data ?? []) as unknown as Array<{ index_generation_id: string | null; created_at: string }>;
+      }, PAGE);
     },
     async chunkCount(documentId, generationId) {
       const { count, error } = await supabase
@@ -168,7 +174,8 @@ async function main() {
     console.log("Aborted.");
     return;
   }
-  const applied = await runReindexRollback(store, args.scope, { apply: true, limit: args.limit });
+  // Apply exactly the plans shown above; the RPC fails closed (pointer_moved) on any drift.
+  const applied = await applyRollbackPlans(store, preview);
   for (const outcome of applied) console.log(formatRollbackOutcome(outcome, true));
   const failed = applied.filter((outcome) => !outcome.refusal && !outcome.applied).length;
   if (failed > 0) process.exitCode = 1;

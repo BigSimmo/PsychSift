@@ -17,8 +17,11 @@ export type RepointResult = { ok: boolean; reason?: string };
 
 // Narrow data-access surface so the planner is testable with an in-memory store.
 export interface RollbackStore {
-  /** Coarse candidate list for a scope; the planner applies the exact filter. */
-  candidateDocumentIds(scope: RollbackScope, limit: number): Promise<string[]>;
+  /**
+   * Coarse, lazily paged candidate stream for a scope. The planner applies the exact scope
+   * filter and only then the document limit, so it stops pulling once the limit is reached.
+   */
+  candidateDocumentIds(scope: RollbackScope): AsyncIterable<string>;
   currentGeneration(documentId: string): Promise<string | null>;
   committedGenerations(documentId: string): Promise<CommittedGeneration[]>;
   chunkCount(documentId: string, generationId: string): Promise<number>;
@@ -51,6 +54,25 @@ export const MAX_ROLLBACK_LIMIT = 1000;
 export function clampRollbackLimit(value: number) {
   if (!Number.isFinite(value) || value <= 0) return DEFAULT_ROLLBACK_LIMIT;
   return Math.min(Math.floor(value), MAX_ROLLBACK_LIMIT);
+}
+
+// Reads every typed page row across all pages (PostgREST caps each response at max_rows),
+// and reduces them to each generation's earliest page created_at.
+export async function collectCommittedGenerations(
+  loadPage: (from: number, to: number) => Promise<Array<{ index_generation_id: string | null; created_at: string }>>,
+  pageSize: number,
+): Promise<CommittedGeneration[]> {
+  const earliest = new Map<string, string>();
+  for (let from = 0; ; from += pageSize) {
+    const rows = await loadPage(from, from + pageSize - 1);
+    for (const row of rows) {
+      if (!row.index_generation_id) continue;
+      const seen = earliest.get(row.index_generation_id);
+      if (!seen || row.created_at < seen) earliest.set(row.index_generation_id, row.created_at);
+    }
+    if (rows.length < pageSize) break;
+  }
+  return [...earliest].map(([generationId, committedAt]) => ({ generationId, committedAt }));
 }
 
 function byCommittedAtDesc(left: CommittedGeneration, right: CommittedGeneration) {
@@ -94,11 +116,17 @@ async function inScope(store: RollbackStore, scope: RollbackScope, plan: Rollbac
 }
 
 export async function planReindexRollback(store: RollbackStore, scope: RollbackScope, limit = DEFAULT_ROLLBACK_LIMIT) {
-  const ids = [...new Set(await store.candidateDocumentIds(scope, clampRollbackLimit(limit)))];
+  const max = clampRollbackLimit(limit);
+  const seen = new Set<string>();
   const plans: RollbackPlan[] = [];
-  for (const documentId of ids) {
+  for await (const documentId of store.candidateDocumentIds(scope)) {
+    if (seen.has(documentId)) continue;
+    seen.add(documentId);
     const plan = await planDocument(store, documentId);
+    // The limit counts in-scope documents only, so out-of-scope candidates (for example a
+    // retained non-current generation that matches) never consume it.
     if (await inScope(store, scope, plan)) plans.push(plan);
+    if (plans.length >= max) break;
   }
   return plans;
 }
@@ -111,9 +139,21 @@ export async function runReindexRollback(
   options: { apply?: boolean; limit?: number } = {},
 ): Promise<RollbackOutcome[]> {
   const plans = await planReindexRollback(store, scope, options.limit);
+  return options.apply
+    ? applyRollbackPlans(store, plans)
+    : plans.map((plan) => ({ ...plan, applied: false, applyError: null }));
+}
+
+// Applies exactly the given (previewed) plans. The RPC's expected-generation check uses the
+// pointer captured in the preview, so any commit or rollback since the preview fails closed
+// with pointer_moved instead of silently acting on a freshly computed plan.
+export async function applyRollbackPlans(
+  store: RollbackStore,
+  plans: readonly RollbackPlan[],
+): Promise<RollbackOutcome[]> {
   const outcomes: RollbackOutcome[] = [];
   for (const plan of plans) {
-    if (!options.apply || plan.refusal || !plan.currentGeneration || !plan.previousGeneration) {
+    if (plan.refusal || !plan.currentGeneration || !plan.previousGeneration) {
       outcomes.push({ ...plan, applied: false, applyError: null });
       continue;
     }
