@@ -23,7 +23,9 @@
       "CBT",
       "Group programme"
     ],
-    "aliases": ["ACT"]
+    "aliases": [
+      "ACT"
+    ]
   },
   {
     "slug": "adherence-focused-brief-work-adherence-therapy",
@@ -86,10 +88,13 @@
     "bestUsedFor": "Best for children and young people with anorexia nervosa when FT-AN is unacceptable, contraindicated, or ineffective. NICE places AFP-AN after FT-AN, alongside individual CBT-ED, rather than as the usual first-line youth anorexia psychotherapy.",
     "targetSymptoms": "Restriction, fear of weight gain, anorexic coping behaviours, self-image disturbance, affect avoidance, interpersonal difficulties, developmental/individuation issues, low autonomy, malnutrition-related cognitive rigidity, and the young person’s personal relationship to the illness.",
     "indications": "Best for children and young people with anorexia nervosa when FT-AN is unacceptable, contraindicated, or ineffective. NICE places AFP-AN after FT-AN, alongside individual CBT-ED, rather than as the usual first-line youth anorexia psychotherapy. Restriction, fear of weight gain, anorexic coping behaviours, self-image disturbance, affect avoidance, interpersonal difficulties, developmental/individuation issues, low autonomy, malnutrition-related cognitive rigidity, and the young person’s personal relationship to the illness. Restore safe eating and weight, reduce anorexia-maintaining behaviours, improve emotional and interpersonal functioning, strengthen self-image and developmental autonomy, and reduce relapse risk.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Eating/body image", "Multi-session"],
+    "tags": [
+      "Eating/body image",
+      "Multi-session"
+    ],
     "aliases": []
   },
   {
@@ -100,10 +105,14 @@
     "bestUsedFor": "Best in community psychiatry, rehabilitation, severe mental illness, complex psychosocial presentations, and recovery-oriented care where progress depends on both treatment and access to practical supports. Australian Government psychosocial support programmes explicitly aim to help people with severe mental health challenges live independently and safely in the community and reduce reliance on more acute services. (Dept of Health, Disability & Ageing)",
     "targetSymptoms": "Distress maintained by housing instability, service exclusion, stigma, fragmented care, lack of practical support, financial or vocational barriers, and reduced ability to advocate for one’s own needs. It also targets disengagement that occurs when treatment ignores what is materially blocking recovery. This is partly drawn from recovery-oriented practice and partly an inference about how advocacy functions clinically. (RANZCP)",
     "indications": "Best in community psychiatry, rehabilitation, severe mental illness, complex psychosocial presentations, and recovery-oriented care where progress depends on both treatment and access to practical supports. Australian Government psychosocial support programmes explicitly aim to help people with severe mental health challenges live independently and safely in the community and reduce reliance on more acute services. (Dept of Health, Disability & Ageing) Distress maintained by housing instability, service exclusion, stigma, fragmented care, lack of practical support, financial or vocational barriers, and reduced ability to advocate for one’s own needs. It also targets disengagement that occurs when treatment ignores what is materially blocking recovery. This is partly drawn from recovery-oriented practice and partly an inference about how advocacy functions clinically. (RANZCP) Reduce the impact of structural barriers on mental health, improve engagement and recovery, increase agency, and help the person access the supports needed to live more independently and participate more fully in community life. (RANZCP)",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Crisis/risk", "Personality/interpersonal", "Multi-session"],
+    "tags": [
+      "Crisis/risk",
+      "Personality/interpersonal",
+      "Multi-session"
+    ],
     "aliases": []
   },
   {
@@ -141,10 +150,13 @@
     "bestUsedFor": "Strongest formal guideline support is for generalised anxiety disorder, where NICE includes applied relaxation as a high-intensity psychological treatment option alongside CBT. It can also be a useful adjunct in broader anxiety care when body tension and rapid arousal are prominent.",
     "targetSymptoms": "Physiological arousal, anticipatory anxiety, somatic tension, escalating worry, and conditioned anxiety responses, especially where the person has difficulty interrupting the body-based component of anxiety early.",
     "indications": "Strongest formal guideline support is for generalised anxiety disorder, where NICE includes applied relaxation as a high-intensity psychological treatment option alongside CBT. It can also be a useful adjunct in broader anxiety care when body tension and rapid arousal are prominent. Physiological arousal, anticipatory anxiety, somatic tension, escalating worry, and conditioned anxiety responses, especially where the person has difficulty interrupting the body-based component of anxiety early. Reduce physiological arousal, improve early anxiety control, increase confidence managing bodily anxiety responses, and support better function in situations that previously triggered escalating worry or tension.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Anxiety", "Multi-session"],
+    "tags": [
+      "Anxiety",
+      "Multi-session"
+    ],
     "aliases": []
   },
   {
@@ -158,7 +170,14 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Psychosis", "Personality/interpersonal", "Eating/body image", "Crisis/risk", "CBT", "Group programme"],
+    "tags": [
+      "Psychosis",
+      "Personality/interpersonal",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
     "aliases": []
   },
   {
@@ -195,11 +214,17 @@
     "bestUsedFor": "Strongly indicated for depression, especially when inactivity, withdrawal, reduced routine, and loss of reinforcement are prominent. It may be particularly useful for patients who struggle with more cognitively demanding therapy models or who need a simpler, action-focused treatment.",
     "targetSymptoms": "Inactivity, behavioural withdrawal, avoidance, loss of routine, loss of pleasure and mastery, reduced environmental reward, and depression-maintaining passivity.",
     "indications": "Strongly indicated for depression, especially when inactivity, withdrawal, reduced routine, and loss of reinforcement are prominent. It may be particularly useful for patients who struggle with more cognitively demanding therapy models or who need a simpler, action-focused treatment. Inactivity, behavioural withdrawal, avoidance, loss of routine, loss of pleasure and mastery, reduced environmental reward, and depression-maintaining passivity. Increase engagement with meaningful activity, reduce avoidance and depressive inertia, restore environmental reward and structure, improve function, and reduce depressive symptoms and relapse risk.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Mood", "Behavioural activation", "Multi-session"],
-    "aliases": ["BA"]
+    "tags": [
+      "Mood",
+      "Behavioural activation",
+      "Multi-session"
+    ],
+    "aliases": [
+      "BA"
+    ]
   },
   {
     "slug": "behavioural-couples-therapy-bct",
@@ -212,8 +237,17 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": true,
-    "tags": ["Mood", "Trauma", "Substance use", "Crisis/risk", "ACT", "Micro skill"],
-    "aliases": ["BCT"]
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Substance use",
+      "Crisis/risk",
+      "ACT",
+      "Micro skill"
+    ],
+    "aliases": [
+      "BCT"
+    ]
   },
   {
     "slug": "behavioural-couples-therapy-for-substance-use-disorders-bct-sud",
@@ -223,11 +257,17 @@
     "bestUsedFor": "Best used when the patient is in a committed relationship and the partner is willing to participate. Evidence is strongest in alcohol use disorder and is also supportive across other substance use disorders.",
     "targetSymptoms": "Alcohol or drug use, poor couple communication, conflict, low support for abstinence, relapse vulnerability, and relationship dissatisfaction linked to substance use.",
     "indications": "Best used when the patient is in a committed relationship and the partner is willing to participate. Evidence is strongest in alcohol use disorder and is also supportive across other substance use disorders. Alcohol or drug use, poor couple communication, conflict, low support for abstinence, relapse vulnerability, and relationship dissatisfaction linked to substance use. Reduce substance use, reduce substance-related harm, improve relationship functioning, and make the home environment more recovery-congruent.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Substance use", "Personality/interpersonal", "Multi-session"],
-    "aliases": ["BCT-SUD"]
+    "tags": [
+      "Substance use",
+      "Personality/interpersonal",
+      "Multi-session"
+    ],
+    "aliases": [
+      "BCT-SUD"
+    ]
   },
   {
     "slug": "behavioural-parent-training",
@@ -240,7 +280,16 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Mood", "Trauma", "Sleep", "Substance use", "Neurodevelopmental", "Crisis/risk", "CBT", "Group programme"],
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Sleep",
+      "Substance use",
+      "Neurodevelopmental",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
     "aliases": []
   },
   {
@@ -328,7 +377,13 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Psychosis", "Eating/body image", "Crisis/risk", "ACT", "Group programme"],
+    "tags": [
+      "Psychosis",
+      "Eating/body image",
+      "Crisis/risk",
+      "ACT",
+      "Group programme"
+    ],
     "aliases": []
   },
   {
@@ -339,10 +394,13 @@
     "bestUsedFor": "Best established in psychosis / schizophrenia, where NICE states that carers of adults with psychosis or schizophrenia should be offered carer-focused education and support programmes, and parents/carers of newly diagnosed children and young people with bipolar disorder, psychosis, or schizophrenia should be given information about carer-focused education and support.",
     "targetSymptoms": "Carer burden, psychological distress, low confidence, poor understanding of illness, weak relapse-sign recognition, helplessness, and poor coping with chronic severe mental illness.",
     "indications": "Best established in psychosis / schizophrenia, where NICE states that carers of adults with psychosis or schizophrenia should be offered carer-focused education and support programmes, and parents/carers of newly diagnosed children and young people with bipolar disorder, psychosis, or schizophrenia should be given information about carer-focused education and support. Carer burden, psychological distress, low confidence, poor understanding of illness, weak relapse-sign recognition, helplessness, and poor coping with chronic severe mental illness. Support the carer’s wellbeing, improve illness understanding, improve early identification of deterioration, reduce burden and distress, and strengthen the care environment around the patient.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Psychosis", "Multi-session"],
+    "tags": [
+      "Psychosis",
+      "Multi-session"
+    ],
     "aliases": []
   },
   {
@@ -356,7 +414,13 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Psychosis", "Personality/interpersonal", "Crisis/risk", "CBT", "Group programme"],
+    "tags": [
+      "Psychosis",
+      "Personality/interpersonal",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
     "aliases": []
   },
   {
@@ -469,7 +533,14 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Psychosis", "Neurodevelopmental", "Eating/body image", "Crisis/risk", "ACT", "Group programme"],
+    "tags": [
+      "Psychosis",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "ACT",
+      "Group programme"
+    ],
     "aliases": []
   },
   {
@@ -494,7 +565,9 @@
       "CBT",
       "Single session"
     ],
-    "aliases": ["CAT"]
+    "aliases": [
+      "CAT"
+    ]
   },
   {
     "slug": "cognitive-behavioural-therapy-cbt",
@@ -504,11 +577,18 @@
     "bestUsedFor": "Strongest broad evidence-backed uses are depression and anxiety disorders. It is also a major umbrella treatment family for disorder-specific variants such as panic-focused CBT, social-anxiety CBT, CBT for insomnia, trauma-focused CBT, CBT for psychosis, and CBT-based interventions in substance use, eating disorders, and severe mental illness.",
     "targetSymptoms": "Maladaptive appraisals, cognitive distortions, avoidance, behavioural maintenance loops, reduced activity, safety behaviours, rumination, and poor coping patterns.",
     "indications": "Strongest broad evidence-backed uses are depression and anxiety disorders. It is also a major umbrella treatment family for disorder-specific variants such as panic-focused CBT, social-anxiety CBT, CBT for insomnia, trauma-focused CBT, CBT for psychosis, and CBT-based interventions in substance use, eating disorders, and severe mental illness. Maladaptive appraisals, cognitive distortions, avoidance, behavioural maintenance loops, reduced activity, safety behaviours, rumination, and poor coping patterns. Reduce symptoms and disability, improve coping and functioning, weaken maintaining loops, and help the patient become able to use the model independently after treatment ends.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Mood", "Anxiety", "CBT", "Multi-session"],
-    "aliases": ["CBT"]
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": [
+      "CBT"
+    ]
   },
   {
     "slug": "cognitive-behavioural-therapy-for-bipolar-depression-bipolar-relapse-prevention",
@@ -518,10 +598,14 @@
     "bestUsedFor": "Best used as an adjunctive psychotherapy in bipolar disorder, especially for bipolar depression, residual symptoms, and relapse prevention in people who are not acutely manic. NICE specifically names CBT among therapies that can be offered for bipolar depression, and systematic reviews show CBT has beneficial effects, though not unequivocal superiority over other specialist psychotherapies.",
     "targetSymptoms": "Bipolar depression, residual symptoms between episodes, maladaptive beliefs about mood states, poor adherence, delayed response to warning signs, and relapse vulnerability. NICE explicitly requires bipolar-specific psychological interventions to address the impact of thoughts and behaviour on moods and relapse, include self-monitoring, address relapse risk and distress, and develop staying-well / relapse-management plans.",
     "indications": "Best used as an adjunctive psychotherapy in bipolar disorder, especially for bipolar depression, residual symptoms, and relapse prevention in people who are not acutely manic. NICE specifically names CBT among therapies that can be offered for bipolar depression, and systematic reviews show CBT has beneficial effects, though not unequivocal superiority over other specialist psychotherapies. Bipolar depression, residual symptoms between episodes, maladaptive beliefs about mood states, poor adherence, delayed response to warning signs, and relapse vulnerability. NICE explicitly requires bipolar-specific psychological interventions to address the impact of thoughts and behaviour on moods and relapse, include self-monitoring, address relapse risk and distress, and develop staying-well / relapse-management plans. Reduce bipolar depressive symptoms, improve inter-episode functioning, reduce relapse risk, and help the patient respond earlier and more effectively to mood change.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Mood", "CBT", "Multi-session"],
+    "tags": [
+      "Mood",
+      "CBT",
+      "Multi-session"
+    ],
     "aliases": []
   },
   {
@@ -532,7 +616,7 @@
     "bestUsedFor": "Best first-line psychological treatment for chronic insomnia, including insomnia with comorbid mental or physical health problems. Australian Sleep Health Foundation states CBT-I is a proven and recommended treatment, works for people with or without other health problems, and has been recommended as a best first treatment by RACGP and the American College of Physicians.",
     "targetSymptoms": "Sleep-onset insomnia, sleep-maintenance insomnia, early-morning waking, conditioned arousal in bed, excessive time in bed, irregular sleep schedule, sleep effort, catastrophic sleep beliefs, and safety behaviours such as clock-watching or excessive napping.",
     "indications": "Best first-line psychological treatment for chronic insomnia, including insomnia with comorbid mental or physical health problems. Australian Sleep Health Foundation states CBT-I is a proven and recommended treatment, works for people with or without other health problems, and has been recommended as a best first treatment by RACGP and the American College of Physicians. Sleep-onset insomnia, sleep-maintenance insomnia, early-morning waking, conditioned arousal in bed, excessive time in bed, irregular sleep schedule, sleep effort, catastrophic sleep beliefs, and safety behaviours such as clock-watching or excessive napping. Improve sleep efficiency and subjective sleep quality, reduce insomnia-related distress and daytime impairment, increase confidence in sleeping without excessive safety behaviours, and reduce long-term reliance on hypnotics where possible.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -573,7 +657,9 @@
       "CBT",
       "Group programme"
     ],
-    "aliases": ["CBT-I"]
+    "aliases": [
+      "CBT-I"
+    ]
   },
   {
     "slug": "cognitive-behavioural-therapy-for-psychosis-cbtp",
@@ -583,11 +669,17 @@
     "bestUsedFor": "Best supported for psychosis and schizophrenia, including people at increased risk of psychosis, first and subsequent acute episodes, and the recovery phase when positive or negative symptoms continue to affect distress or function. It is particularly useful when the clinical goal is to reduce distress and improve functioning rather than to “argue away” psychotic experiences.",
     "targetSymptoms": "Distress from hallucinations or delusion-like beliefs, threat interpretations, safety behaviours, hopelessness, defeat, secondary depression/anxiety, poor coping with voices, and psychosis-related functional impairment.",
     "indications": "Best supported for psychosis and schizophrenia, including people at increased risk of psychosis, first and subsequent acute episodes, and the recovery phase when positive or negative symptoms continue to affect distress or function. It is particularly useful when the clinical goal is to reduce distress and improve functioning rather than to “argue away” psychotic experiences. Distress from hallucinations or delusion-like beliefs, threat interpretations, safety behaviours, hopelessness, defeat, secondary depression/anxiety, poor coping with voices, and psychosis-related functional impairment. Reduce distress, improve coping and functioning, reduce secondary depression/anxiety and hopelessness, and help the patient live better with less psychosis-related disruption.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Psychosis", "CBT", "Multi-session"],
-    "aliases": ["CBTp"]
+    "tags": [
+      "Psychosis",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": [
+      "CBTp"
+    ]
   },
   {
     "slug": "cognitive-processing-therapy-cpt",
@@ -600,8 +692,18 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Trauma", "Psychosis", "Eating/body image", "Crisis/risk", "Emotional regulation", "CBT", "Micro skill"],
-    "aliases": ["CPT"]
+    "tags": [
+      "Trauma",
+      "Psychosis",
+      "Eating/body image",
+      "Crisis/risk",
+      "Emotional regulation",
+      "CBT",
+      "Micro skill"
+    ],
+    "aliases": [
+      "CPT"
+    ]
   },
   {
     "slug": "cognitive-remediation-therapy-crt",
@@ -625,7 +727,9 @@
       "CBT",
       "Multi-session"
     ],
-    "aliases": ["CRT"]
+    "aliases": [
+      "CRT"
+    ]
   },
   {
     "slug": "cognitive-stimulation-therapy",
@@ -638,7 +742,14 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": true,
-    "tags": ["Mood", "Psychosis", "Eating/body image", "Crisis/risk", "ACT", "5-minute intervention"],
+    "tags": [
+      "Mood",
+      "Psychosis",
+      "Eating/body image",
+      "Crisis/risk",
+      "ACT",
+      "5-minute intervention"
+    ],
     "aliases": []
   },
   {
@@ -688,7 +799,9 @@
       "CBT",
       "Multi-session"
     ],
-    "aliases": ["CT-PTSD"]
+    "aliases": [
+      "CT-PTSD"
+    ]
   },
   {
     "slug": "community-reinforcement-and-family-training-craft",
@@ -701,8 +814,16 @@
     "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Mood", "Substance use", "Crisis/risk", "ACT", "Group programme"],
-    "aliases": ["CRAFT"]
+    "tags": [
+      "Mood",
+      "Substance use",
+      "Crisis/risk",
+      "ACT",
+      "Group programme"
+    ],
+    "aliases": [
+      "CRAFT"
+    ]
   },
   {
     "slug": "community-reinforcement-approach",
@@ -741,7 +862,15 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Trauma", "Psychosis", "Substance use", "Eating/body image", "Crisis/risk", "ACT", "Group programme"],
+    "tags": [
+      "Trauma",
+      "Psychosis",
+      "Substance use",
+      "Eating/body image",
+      "Crisis/risk",
+      "ACT",
+      "Group programme"
+    ],
     "aliases": []
   },
   {
@@ -778,7 +907,7 @@
     "bestUsedFor": "Best for identity, grief, adjustment, self-meaning, and broader distress where a meaning-construction model fits better than a symptom-protocol model. The clearest formal evidence within this family is for personal construct psychotherapy, where older reviews suggest benefit over no treatment but not clear superiority over active treatments.",
     "targetSymptoms": "Rigid personal meanings, identity disturbance, grief-related meaning disruption, maladaptive self-organisation, constricted personal constructs, and difficulties where the core problem lies in how experience is interpreted and organised.",
     "indications": "Best for identity, grief, adjustment, self-meaning, and broader distress where a meaning-construction model fits better than a symptom-protocol model. The clearest formal evidence within this family is for personal construct psychotherapy, where older reviews suggest benefit over no treatment but not clear superiority over active treatments. Rigid personal meanings, identity disturbance, grief-related meaning disruption, maladaptive self-organisation, constricted personal constructs, and difficulties where the core problem lies in how experience is interpreted and organised. Broaden and reorganise the person’s meaning system, increase coherence and flexibility, reduce suffering linked to maladaptive self-organisation, and support more adaptive choices and relationships.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -804,8 +933,14 @@
     "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Substance use", "CBT", "Multi-session"],
-    "aliases": ["CM"]
+    "tags": [
+      "Substance use",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": [
+      "CM"
+    ]
   },
   {
     "slug": "coping-skills-interventions",
@@ -844,7 +979,15 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": true,
-    "tags": ["Mood", "Trauma", "Substance use", "Eating/body image", "Crisis/risk", "ACT", "Micro skill"],
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Substance use",
+      "Eating/body image",
+      "Crisis/risk",
+      "ACT",
+      "Micro skill"
+    ],
     "aliases": []
   },
   {
@@ -912,8 +1055,16 @@
     "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": true,
-    "tags": ["Substance use", "Eating/body image", "Crisis/risk", "CBT", "Micro skill"],
-    "aliases": ["CET"]
+    "tags": [
+      "Substance use",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Micro skill"
+    ],
+    "aliases": [
+      "CET"
+    ]
   },
   {
     "slug": "dbt-skills-groups",
@@ -1049,7 +1200,7 @@
     "bestUsedFor": "Best supported for borderline personality disorder / borderline personality symptoms, especially when recurrent self-harm is a major treatment priority. In current NICE guidance, for women with borderline personality disorder in whom reducing recurrent self-harm is a priority, clinicians should consider a comprehensive DBT programme. In broader contemporary practice, DBT is widely used across genders for comparable borderline-pathology and dysregulation presentations.",
     "targetSymptoms": "Recurrent self-harm, suicidal behaviour, emotion dysregulation, crisis-driven impulsivity, interpersonal chaos, chronic invalidation sensitivity, and behavioural instability.",
     "indications": "Best supported for borderline personality disorder / borderline personality symptoms, especially when recurrent self-harm is a major treatment priority. In current NICE guidance, for women with borderline personality disorder in whom reducing recurrent self-harm is a priority, clinicians should consider a comprehensive DBT programme. In broader contemporary practice, DBT is widely used across genders for comparable borderline-pathology and dysregulation presentations. Recurrent self-harm, suicidal behaviour, emotion dysregulation, crisis-driven impulsivity, interpersonal chaos, chronic invalidation sensitivity, and behavioural instability. Reduce self-harm and suicidal behaviour, improve behavioural control, increase emotion-regulation capacity, improve relationships and treatment engagement, and help the person build a life less organised around crisis.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -1060,7 +1211,9 @@
       "DBT",
       "Group programme"
     ],
-    "aliases": ["DBT"]
+    "aliases": [
+      "DBT"
+    ]
   },
   {
     "slug": "dignity-therapy",
@@ -1073,7 +1226,16 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": true,
-    "tags": ["Mood", "Trauma", "Psychosis", "Eating/body image", "Crisis/risk", "Grief/loss", "ACT", "Single session"],
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Eating/body image",
+      "Crisis/risk",
+      "Grief/loss",
+      "ACT",
+      "Single session"
+    ],
     "aliases": []
   },
   {
@@ -1087,7 +1249,14 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Mood", "Trauma", "Eating/body image", "Crisis/risk", "ACT", "Group programme"],
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Eating/body image",
+      "Crisis/risk",
+      "ACT",
+      "Group programme"
+    ],
     "aliases": []
   },
   {
@@ -1138,7 +1307,9 @@
       "CBT",
       "Group programme"
     ],
-    "aliases": ["CBT-ED / CBT-E"]
+    "aliases": [
+      "CBT-ED / CBT-E"
+    ]
   },
   {
     "slug": "eating-disorder-focused-focal-psychodynamic-therapy-fpt-for-adult-anorexia-nervosa",
@@ -1159,7 +1330,9 @@
       "CBT",
       "Multi-session"
     ],
-    "aliases": ["FPT"]
+    "aliases": [
+      "FPT"
+    ]
   },
   {
     "slug": "ect",
@@ -1172,7 +1345,14 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Mood", "Psychosis", "Crisis/risk", "Grief/loss", "ACT", "Multi-session"],
+    "tags": [
+      "Mood",
+      "Psychosis",
+      "Crisis/risk",
+      "Grief/loss",
+      "ACT",
+      "Multi-session"
+    ],
     "aliases": []
   },
   {
@@ -1212,7 +1392,15 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": true,
-    "tags": ["Mood", "Trauma", "Psychosis", "Crisis/risk", "Grief/loss", "ACT", "Micro skill"],
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Crisis/risk",
+      "Grief/loss",
+      "ACT",
+      "Micro skill"
+    ],
     "aliases": []
   },
   {
@@ -1247,7 +1435,7 @@
     "bestUsedFor": "Best when emotional processing difficulty is central, especially in mood, anxiety, personality, and somatic symptom presentations. The strongest current quantitative evidence within this family is for experiential dynamic therapies, where a recent systematic review/meta-analysis found large effects versus inactive controls and smaller mixed findings versus active controls. (PMC)",
     "targetSymptoms": "Emotional avoidance, maladaptive affect regulation, unresolved emotional pain, rigid defensive responding, and symptoms maintained by blocked or dysregulated emotional processing. (PMC)",
     "indications": "Best when emotional processing difficulty is central, especially in mood, anxiety, personality, and somatic symptom presentations. The strongest current quantitative evidence within this family is for experiential dynamic therapies, where a recent systematic review/meta-analysis found large effects versus inactive controls and smaller mixed findings versus active controls. (PMC) Emotional avoidance, maladaptive affect regulation, unresolved emotional pain, rigid defensive responding, and symptoms maintained by blocked or dysregulated emotional processing. (PMC) Improve emotional processing, reduce maladaptive defensive patterns, increase integration of affect and meaning, and support more flexible behaviour and relationships. (PMC)",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -1274,11 +1462,21 @@
     "bestUsedFor": "Obsessive-compulsive disorder (OCD) is the clearest and strongest use. NICE recommends low-intensity CBT including ERP for adults with mild functional impairment who prefer that approach, more intensive CBT including ERP or an SSRI for mild cases not engaging with low-intensity treatment and for moderate impairment, and combined SSRI plus CBT including ERP for severe impairment. NICE also recommends CBT including ERP for BDD, with severity guiding intensity. Australian Prescriber states psychological interventions and SSRIs are first-line treatments for OCD.",
     "targetSymptoms": "The obsession → distress → compulsion / reassurance / avoidance → short-term relief → ongoing OCD cycle, including overt rituals, covert neutralising, and family accommodation.",
     "indications": "Obsessive-compulsive disorder (OCD) is the clearest and strongest use. NICE recommends low-intensity CBT including ERP for adults with mild functional impairment who prefer that approach, more intensive CBT including ERP or an SSRI for mild cases not engaging with low-intensity treatment and for moderate impairment, and combined SSRI plus CBT including ERP for severe impairment. NICE also recommends CBT including ERP for BDD, with severity guiding intensity. Australian Prescriber states psychological interventions and SSRIs are first-line treatments for OCD. The obsession → distress → compulsion / reassurance / avoidance → short-term relief → ongoing OCD cycle, including overt rituals, covert neutralising, and family accommodation. Major reduction in compulsions and accommodation, improved tolerance of obsessional doubt and uncertainty, lower distress and disability, freer daily functioning, and a workable relapse-prevention plan.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Mood", "Trauma", "Psychosis", "Substance use", "Crisis/risk", "CBT", "Group programme"],
-    "aliases": ["ERP"]
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Substance use",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": [
+      "ERP"
+    ]
   },
   {
     "slug": "exposure-and-response-prevention-for-tics-erp-for-tics",
@@ -1291,8 +1489,16 @@
     "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Eating/body image", "Pain/somatic", "Crisis/risk", "CBT", "Group programme"],
-    "aliases": ["ERP for Tics"]
+    "tags": [
+      "Eating/body image",
+      "Pain/somatic",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": [
+      "ERP for Tics"
+    ]
   },
   {
     "slug": "exposure-therapy",
@@ -1362,7 +1568,9 @@
       "CBT",
       "Multi-session"
     ],
-    "aliases": ["EMDR"]
+    "aliases": [
+      "EMDR"
+    ]
   },
   {
     "slug": "family-intervention-for-psychosis",
@@ -1372,10 +1580,13 @@
     "bestUsedFor": "Best supported for adults with psychosis or schizophrenia who live with or are in close contact with family members or carers. NICE quality standards state that family members of adults with psychosis or schizophrenia should be offered family intervention because it improves coping skills and relapse rates.",
     "targetSymptoms": "Family stress, high expressed emotion, confusion about psychosis, maladaptive interaction patterns, relapse risk, crisis escalation, and carer burden.",
     "indications": "Best supported for adults with psychosis or schizophrenia who live with or are in close contact with family members or carers. NICE quality standards state that family members of adults with psychosis or schizophrenia should be offered family intervention because it improves coping skills and relapse rates. Family stress, high expressed emotion, confusion about psychosis, maladaptive interaction patterns, relapse risk, crisis escalation, and carer burden. Reduce relapse risk, improve coping and communication, reduce carer burden, strengthen collaborative treatment, and make the home or relational environment more stable and supportive.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Psychosis", "Multi-session"],
+    "tags": [
+      "Psychosis",
+      "Multi-session"
+    ],
     "aliases": []
   },
   {
@@ -1409,10 +1620,13 @@
     "bestUsedFor": "Most useful for schizophrenia-spectrum and other psychotic disorders when family members or carers are closely involved and need a clearer illness model, relapse plan, and coping framework. Compared with full family intervention, family psychoeducation is most defensible when the main need is education and coping support, not a broader family-therapy programme.",
     "targetSymptoms": "Confusion about psychosis, relapse-sign recognition failure, medication misunderstanding, high family stress, blame, unhelpful communication cycles, and carer burden.",
     "indications": "Most useful for schizophrenia-spectrum and other psychotic disorders when family members or carers are closely involved and need a clearer illness model, relapse plan, and coping framework. Compared with full family intervention, family psychoeducation is most defensible when the main need is education and coping support, not a broader family-therapy programme. Confusion about psychosis, relapse-sign recognition failure, medication misunderstanding, high family stress, blame, unhelpful communication cycles, and carer burden. Improve family/carer understanding, reduce relapse-promoting misunderstanding, support adherence and early help-seeking, and make the home/support environment more predictable and less escalating.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Psychosis", "Multi-session"],
+    "tags": [
+      "Psychosis",
+      "Multi-session"
+    ],
     "aliases": []
   },
   {
@@ -1426,7 +1640,15 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Mood", "Psychosis", "Eating/body image", "Crisis/risk", "Emotional regulation", "ACT", "Group programme"],
+    "tags": [
+      "Mood",
+      "Psychosis",
+      "Eating/body image",
+      "Crisis/risk",
+      "Emotional regulation",
+      "ACT",
+      "Group programme"
+    ],
     "aliases": []
   },
   {
@@ -1440,8 +1662,16 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Eating/body image", "Crisis/risk", "Grief/loss", "CBT", "Group programme"],
-    "aliases": ["FT-AN"]
+    "tags": [
+      "Eating/body image",
+      "Crisis/risk",
+      "Grief/loss",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": [
+      "FT-AN"
+    ]
   },
   {
     "slug": "family-based-treatment-for-bulimia-nervosa-ft-bn",
@@ -1454,8 +1684,15 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Eating/body image", "Crisis/risk", "CBT", "Group programme"],
-    "aliases": ["FT-BN"]
+    "tags": [
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": [
+      "FT-BN"
+    ]
   },
   {
     "slug": "family-focused-psychoeducation-for-bipolar-disorder",
@@ -1465,10 +1702,13 @@
     "bestUsedFor": "Best used for relapse prevention in bipolar disorder, especially when relatives/carers are closely involved in day-to-day life or episode detection. Systematic reviews report that family psychoeducation is associated with reductions in illness recurrence and hospitalisation, while NICE places family intervention and bipolar-specific structured psychological intervention in longer-term management.",
     "targetSymptoms": "Poor illness understanding, weak early-warning-sign recognition, medication non-adherence, family confusion or burden, unhelpful responses to mood change, and relapse risk in the maintenance phase.",
     "indications": "Best used for relapse prevention in bipolar disorder, especially when relatives/carers are closely involved in day-to-day life or episode detection. Systematic reviews report that family psychoeducation is associated with reductions in illness recurrence and hospitalisation, while NICE places family intervention and bipolar-specific structured psychological intervention in longer-term management. Poor illness understanding, weak early-warning-sign recognition, medication non-adherence, family confusion or burden, unhelpful responses to mood change, and relapse risk in the maintenance phase. Reduce relapse and hospitalisation risk, improve adherence and self-management, strengthen the family’s ability to detect and respond to warning signs, and make the home environment more relapse-preventive.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Mood", "Multi-session"],
+    "tags": [
+      "Mood",
+      "Multi-session"
+    ],
     "aliases": []
   },
   {
@@ -1482,8 +1722,17 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": true,
-    "tags": ["Mood", "Psychosis", "Substance use", "Crisis/risk", "CBT", "Micro skill"],
-    "aliases": ["FFT-BD"]
+    "tags": [
+      "Mood",
+      "Psychosis",
+      "Substance use",
+      "Crisis/risk",
+      "CBT",
+      "Micro skill"
+    ],
+    "aliases": [
+      "FFT-BD"
+    ]
   },
   {
     "slug": "functional-family-therapy-fft",
@@ -1496,8 +1745,17 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Mood", "Psychosis", "Substance use", "Crisis/risk", "ACT", "Multi-session"],
-    "aliases": ["FFT"]
+    "tags": [
+      "Mood",
+      "Psychosis",
+      "Substance use",
+      "Crisis/risk",
+      "ACT",
+      "Multi-session"
+    ],
+    "aliases": [
+      "FFT"
+    ]
   },
   {
     "slug": "gestalt-therapy",
@@ -1507,7 +1765,7 @@
     "bestUsedFor": "Best as an experiential psychotherapy for people with depression, anxiety, interpersonal distress, self-esteem problems, or broader psychological distress when an experiential present-focused model fits the case. The evidence base suggests potential effectiveness, but it is older, more heterogeneous, and much less guideline-prominent than CBT-family therapies. (PubMed)",
     "targetSymptoms": "Restricted awareness, emotional avoidance, disowned affect, maladaptive interpersonal contact patterns, and stuck or repetitive experiential configurations. Case-based and historical evidence exists, but the mechanism literature is much less standardised than for CBT or IPT. (PubMed)",
     "indications": "Best as an experiential psychotherapy for people with depression, anxiety, interpersonal distress, self-esteem problems, or broader psychological distress when an experiential present-focused model fits the case. The evidence base suggests potential effectiveness, but it is older, more heterogeneous, and much less guideline-prominent than CBT-family therapies. (PubMed) Restricted awareness, emotional avoidance, disowned affect, maladaptive interpersonal contact patterns, and stuck or repetitive experiential configurations. Case-based and historical evidence exists, but the mechanism literature is much less standardised than for CBT or IPT. (PubMed) Increase awareness, integration of emotion and experience, authenticity in relationships, and more flexible contact with self and others. (PubMed)",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -1562,7 +1820,15 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": true,
-    "tags": ["Anxiety", "Trauma", "Neurodevelopmental", "Eating/body image", "Crisis/risk", "CBT", "Micro skill"],
+    "tags": [
+      "Anxiety",
+      "Trauma",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Micro skill"
+    ],
     "aliases": []
   },
   {
@@ -1622,10 +1888,13 @@
     "bestUsedFor": "Best used for maintenance / relapse prevention in bipolar disorder, especially when the patient is not in an acute episode and can engage in a structured group format.",
     "targetSymptoms": "Poor illness understanding, weak early-warning-sign recognition, medication non-adherence, low self-management confidence, stigma, and relapse vulnerability between episodes.",
     "indications": "Best used for maintenance / relapse prevention in bipolar disorder, especially when the patient is not in an acute episode and can engage in a structured group format. Poor illness understanding, weak early-warning-sign recognition, medication non-adherence, low self-management confidence, stigma, and relapse vulnerability between episodes. Reduce relapse and hospitalisation risk, improve adherence and self-management, and help patients respond earlier and more effectively to prodromal mood change.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Mood", "Group programme"],
+    "tags": [
+      "Mood",
+      "Group programme"
+    ],
     "aliases": []
   },
   {
@@ -1639,7 +1908,16 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Mood", "Trauma", "Sleep", "Substance use", "Eating/body image", "Crisis/risk", "CBT", "Group programme"],
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Sleep",
+      "Substance use",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
     "aliases": []
   },
   {
@@ -1702,7 +1980,13 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Eating/body image", "Crisis/risk", "Grief/loss", "CBT", "Group programme"],
+    "tags": [
+      "Eating/body image",
+      "Crisis/risk",
+      "Grief/loss",
+      "CBT",
+      "Group programme"
+    ],
     "aliases": []
   },
   {
@@ -1716,7 +2000,13 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Substance use", "Eating/body image", "Crisis/risk", "CBT", "Multi-session"],
+    "tags": [
+      "Substance use",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Multi-session"
+    ],
     "aliases": []
   },
   {
@@ -1727,10 +2017,13 @@
     "bestUsedFor": "Best-supported use is Tourette syndrome and chronic tic disorders, where CBIT is an evidence-based behavioural treatment. HRT is also commonly used in trichotillomania, excoriation disorder, and other body-focused repetitive behaviours, although evidence strength varies by condition.",
     "targetSymptoms": "Motor/vocal tics, premonitory urges, tic-maintaining environmental factors, hair pulling, skin picking, nail biting, cheek/lip biting, stimulus-driven grooming behaviours, urge–relief cycles, shame, and impairment from repetitive behaviours.",
     "indications": "Best-supported use is Tourette syndrome and chronic tic disorders, where CBIT is an evidence-based behavioural treatment. HRT is also commonly used in trichotillomania, excoriation disorder, and other body-focused repetitive behaviours, although evidence strength varies by condition. Motor/vocal tics, premonitory urges, tic-maintaining environmental factors, hair pulling, skin picking, nail biting, cheek/lip biting, stimulus-driven grooming behaviours, urge–relief cycles, shame, and impairment from repetitive behaviours. Reduce tic or habit-related impairment, increase control over target behaviours, reduce injury and shame, improve functioning, and give the patient a practical self-management method.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Neurodevelopmental", "Multi-session"],
+    "tags": [
+      "Neurodevelopmental",
+      "Multi-session"
+    ],
     "aliases": []
   },
   {
@@ -1744,7 +2037,14 @@
     "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Mood", "Anxiety", "Eating/body image", "Crisis/risk", "CBT", "Group programme"],
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
     "aliases": []
   },
   {
@@ -1779,7 +2079,7 @@
     "bestUsedFor": "Best for persistent health anxiety where adequate medical assessment has not found an explanatory serious disease and the main maintaining mechanism is anxiety-driven misinterpretation and reassurance-seeking. A meta-analysis of 13 RCTs found CBT outperformed control conditions for hypochondriasis/health anxiety at post-treatment and follow-up. (PubMed)",
     "targetSymptoms": "Catastrophic interpretation of bodily sensations, selective attention to symptoms, reassurance-seeking, checking, internet searching, avoidance of health cues, repeated medical presentations, and intolerance of uncertainty about health.",
     "indications": "Best for persistent health anxiety where adequate medical assessment has not found an explanatory serious disease and the main maintaining mechanism is anxiety-driven misinterpretation and reassurance-seeking. A meta-analysis of 13 RCTs found CBT outperformed control conditions for hypochondriasis/health anxiety at post-treatment and follow-up. (PubMed) Catastrophic interpretation of bodily sensations, selective attention to symptoms, reassurance-seeking, checking, internet searching, avoidance of health cues, repeated medical presentations, and intolerance of uncertainty about health. Reduce illness preoccupation, reduce unnecessary reassurance and healthcare-use cycles, improve tolerance of benign bodily sensations, and restore function while maintaining appropriate medical vigilance.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -1805,10 +2105,18 @@
     "bestUsedFor": "Best for depression and broader psychological distress where an exploratory, emotionally focused, relationship-based psychotherapy is appropriate. Evidence reviews support humanistic psychotherapy as an evidence-supported treatment family for a variety of conditions, but compared with CBT and IPT the evidence is generally less robust and less guideline-prominent for depression. (PubMed)",
     "targetSymptoms": "Emotional distress, low self-worth, blocked emotional processing, relational difficulties, identity disturbance, and situations where self-experience, emotional processing, and meaning are more central than highly prescriptive technique. (PubMed)",
     "indications": "Best for depression and broader psychological distress where an exploratory, emotionally focused, relationship-based psychotherapy is appropriate. Evidence reviews support humanistic psychotherapy as an evidence-supported treatment family for a variety of conditions, but compared with CBT and IPT the evidence is generally less robust and less guideline-prominent for depression. (PubMed) Emotional distress, low self-worth, blocked emotional processing, relational difficulties, identity disturbance, and situations where self-experience, emotional processing, and meaning are more central than highly prescriptive technique. (PubMed) Improve emotional processing, self-understanding, authenticity, self-worth, and relational functioning, while reducing distress and increasing psychological flexibility in a broad humanistic sense. (PubMed)",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Mood", "Trauma", "Psychosis", "Personality/interpersonal", "Crisis/risk", "CBT", "Group programme"],
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
     "aliases": []
   },
   {
@@ -1822,8 +2130,17 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Psychosis", "Substance use", "Neurodevelopmental", "Crisis/risk", "CBT", "Group programme"],
-    "aliases": ["IMR-Style Interventions"]
+    "tags": [
+      "Psychosis",
+      "Substance use",
+      "Neurodevelopmental",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": [
+      "IMR-Style Interventions"
+    ]
   },
   {
     "slug": "imagery-rehearsal-therapy-irt-for-nightmare-disorder",
@@ -1836,8 +2153,17 @@
     "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Trauma", "Psychosis", "Sleep", "Crisis/risk", "CBT", "Group programme"],
-    "aliases": ["IRT"]
+    "tags": [
+      "Trauma",
+      "Psychosis",
+      "Sleep",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": [
+      "IRT"
+    ]
   },
   {
     "slug": "imagery-rescripting",
@@ -1876,7 +2202,7 @@
     "bestUsedFor": "Best as a selective OCD treatment when ERP is refused, poorly tolerated, or the clinical formulation is dominated by obsessional doubt, poor insight, or “imagined possibility” reasoning. It is promising, but ERP-inclusive CBT remains the guideline-central treatment in NICE.",
     "targetSymptoms": "Obsessional doubt, inferential confusion, distrust of direct perception, “what if” reasoning, overvalued ideation, compulsive reasoning loops, reassurance-seeking, and compulsions driven by doubt rather than realistic danger.",
     "indications": "Best as a selective OCD treatment when ERP is refused, poorly tolerated, or the clinical formulation is dominated by obsessional doubt, poor insight, or “imagined possibility” reasoning. It is promising, but ERP-inclusive CBT remains the guideline-central treatment in NICE. Obsessional doubt, inferential confusion, distrust of direct perception, “what if” reasoning, overvalued ideation, compulsive reasoning loops, reassurance-seeking, and compulsions driven by doubt rather than realistic danger. Reduce OCD symptoms by weakening obsessional doubt at its source, improve insight, reduce compulsions and reassurance, and restore confidence in ordinary perception and judgement.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -1903,7 +2229,14 @@
     "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Trauma", "Psychosis", "Substance use", "Crisis/risk", "CBT", "Multi-session"],
+    "tags": [
+      "Trauma",
+      "Psychosis",
+      "Substance use",
+      "Crisis/risk",
+      "CBT",
+      "Multi-session"
+    ],
     "aliases": []
   },
   {
@@ -1989,7 +2322,15 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": true,
-    "tags": ["Anxiety", "Trauma", "Substance use", "Eating/body image", "Pain/somatic", "CBT", "Micro skill"],
+    "tags": [
+      "Anxiety",
+      "Trauma",
+      "Substance use",
+      "Eating/body image",
+      "Pain/somatic",
+      "CBT",
+      "Micro skill"
+    ],
     "aliases": []
   },
   {
@@ -2016,7 +2357,9 @@
       "CBT",
       "Micro skill"
     ],
-    "aliases": ["IPSRT"]
+    "aliases": [
+      "IPSRT"
+    ]
   },
   {
     "slug": "interpersonal-psychotherapy-ipt",
@@ -2042,7 +2385,9 @@
       "CBT",
       "Micro skill"
     ],
-    "aliases": ["IPT"]
+    "aliases": [
+      "IPT"
+    ]
   },
   {
     "slug": "life-review-therapy-reminiscence-therapy",
@@ -2055,7 +2400,15 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Mood", "Trauma", "Psychosis", "Crisis/risk", "Grief/loss", "ACT", "Group programme"],
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Crisis/risk",
+      "Grief/loss",
+      "ACT",
+      "Group programme"
+    ],
     "aliases": []
   },
   {
@@ -2069,7 +2422,16 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Mood", "Psychosis", "Sleep", "Substance use", "Crisis/risk", "Grief/loss", "CBT", "Group programme"],
+    "tags": [
+      "Mood",
+      "Psychosis",
+      "Sleep",
+      "Substance use",
+      "Crisis/risk",
+      "Grief/loss",
+      "CBT",
+      "Group programme"
+    ],
     "aliases": []
   },
   {
@@ -2083,7 +2445,13 @@
     "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Psychosis", "Substance use", "Crisis/risk", "CBT", "Group programme"],
+    "tags": [
+      "Psychosis",
+      "Substance use",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
     "aliases": []
   },
   {
@@ -2097,8 +2465,17 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Personality/interpersonal", "Substance use", "Eating/body image", "Crisis/risk", "CBT", "Multi-session"],
-    "aliases": ["MANTRA"]
+    "tags": [
+      "Personality/interpersonal",
+      "Substance use",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": [
+      "MANTRA"
+    ]
   },
   {
     "slug": "meaning-centred-psychotherapy",
@@ -2108,7 +2485,7 @@
     "bestUsedFor": "Best-supported use is advanced cancer, serious illness, and palliative care, where RCTs and reviews suggest benefit for meaning, spiritual well-being, and existential distress. It is not a broadly guideline-dominant first-line psychotherapy across general psychiatric syndromes. (PubMed)",
     "targetSymptoms": "Existential distress, loss of meaning, spiritual distress, hopelessness, demoralisation, death-related distress, and identity collapse in the context of serious illness. (PubMed)",
     "indications": "Best-supported use is advanced cancer, serious illness, and palliative care, where RCTs and reviews suggest benefit for meaning, spiritual well-being, and existential distress. It is not a broadly guideline-dominant first-line psychotherapy across general psychiatric syndromes. (PubMed) Existential distress, loss of meaning, spiritual distress, hopelessness, demoralisation, death-related distress, and identity collapse in the context of serious illness. (PubMed) Strengthen meaning, spiritual well-being, dignity, connection, and capacity to live deliberately despite suffering, limitation, or approaching death. (PubMed)",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -2147,7 +2524,9 @@
       "DBT",
       "Group programme"
     ],
-    "aliases": ["MBT"]
+    "aliases": [
+      "MBT"
+    ]
   },
   {
     "slug": "metacognitive-therapy-mct",
@@ -2172,7 +2551,9 @@
       "CBT",
       "Micro skill"
     ],
-    "aliases": ["MCT"]
+    "aliases": [
+      "MCT"
+    ]
   },
   {
     "slug": "mindfulness-based-cognitive-therapy-mbct",
@@ -2196,7 +2577,9 @@
       "CBT",
       "Group programme"
     ],
-    "aliases": ["MBCT"]
+    "aliases": [
+      "MBCT"
+    ]
   },
   {
     "slug": "mindfulness-based-relapse-prevention-mbrp",
@@ -2220,7 +2603,9 @@
       "CBT",
       "Multi-session"
     ],
-    "aliases": ["MBRP"]
+    "aliases": [
+      "MBRP"
+    ]
   },
   {
     "slug": "mindfulness-based-stress-reduction",
@@ -2282,8 +2667,18 @@
     "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Mood", "Anxiety", "Sleep", "Substance use", "Crisis/risk", "CBT", "Group programme"],
-    "aliases": ["MBTI"]
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Sleep",
+      "Substance use",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": [
+      "MBTI"
+    ]
   },
   {
     "slug": "mother-infant-therapy-mother-infant-psychotherapy",
@@ -2320,8 +2715,18 @@
     "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": true,
-    "tags": ["Trauma", "Psychosis", "Substance use", "Neurodevelopmental", "Crisis/risk", "CBT", "Single session"],
-    "aliases": ["MET"]
+    "tags": [
+      "Trauma",
+      "Psychosis",
+      "Substance use",
+      "Neurodevelopmental",
+      "Crisis/risk",
+      "CBT",
+      "Single session"
+    ],
+    "aliases": [
+      "MET"
+    ]
   },
   {
     "slug": "motivational-interviewing",
@@ -2354,11 +2759,16 @@
     "bestUsedFor": "Best used at engagement, assessment, early treatment, and whenever motivation is unstable. It is especially useful for alcohol misuse, broader substance use disorders, and patients who are reluctant, unsure, or inconsistent in change efforts. NICE alcohol guidance makes motivational intervention universal at intake, and SAMHSA TIP 35 positions MI as a core SUD treatment approach for enhancing participation and retention.",
     "targetSymptoms": "Low readiness to change, ambivalence, poor engagement, defensiveness, minimisation, dropout risk, and weak commitment to treatment goals. NICE states MI-style work should help people recognise problems, resolve ambivalence, and encourage belief in their ability to change, using a persuasive and supportive rather than argumentative stance.",
     "indications": "Best used at engagement, assessment, early treatment, and whenever motivation is unstable. It is especially useful for alcohol misuse, broader substance use disorders, and patients who are reluctant, unsure, or inconsistent in change efforts. NICE alcohol guidance makes motivational intervention universal at intake, and SAMHSA TIP 35 positions MI as a core SUD treatment approach for enhancing participation and retention. Low readiness to change, ambivalence, poor engagement, defensiveness, minimisation, dropout risk, and weak commitment to treatment goals. NICE states MI-style work should help people recognise problems, resolve ambivalence, and encourage belief in their ability to change, using a persuasive and supportive rather than argumentative stance. Increase readiness for change, improve engagement and retention, support the move into active treatment, and reduce resistance to behaviour change.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": true,
-    "tags": ["Substance use", "Multi-session"],
-    "aliases": ["MI"]
+    "tags": [
+      "Substance use",
+      "Multi-session"
+    ],
+    "aliases": [
+      "MI"
+    ]
   },
   {
     "slug": "multi-family-interventions",
@@ -2368,10 +2778,13 @@
     "bestUsedFor": "Best supported in psychosis / schizophrenia, where NICE states family intervention should take account of family preference for either single-family intervention or multi-family group intervention. It is most useful when the service wants structured family work but also wants the extra benefits of peer-family learning and mutual support.",
     "targetSymptoms": "Family confusion, high burden, isolation, repeated crisis cycles, relapse-promoting family responses, poor understanding of symptoms or warning signs, and weak problem-solving around chronic severe mental illness.",
     "indications": "Best supported in psychosis / schizophrenia, where NICE states family intervention should take account of family preference for either single-family intervention or multi-family group intervention. It is most useful when the service wants structured family work but also wants the extra benefits of peer-family learning and mutual support. Family confusion, high burden, isolation, repeated crisis cycles, relapse-promoting family responses, poor understanding of symptoms or warning signs, and weak problem-solving around chronic severe mental illness. Reduce relapse-promoting family stress, improve coping and communication, support carers, and build a more treatment-congruent family environment while also reducing isolation through contact with other families.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Psychosis", "Group programme"],
+    "tags": [
+      "Psychosis",
+      "Group programme"
+    ],
     "aliases": []
   },
   {
@@ -2408,8 +2821,16 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Substance use", "Eating/body image", "Crisis/risk", "CBT", "Group programme"],
-    "aliases": ["MST"]
+    "tags": [
+      "Substance use",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": [
+      "MST"
+    ]
   },
   {
     "slug": "narrative-exposure-therapy-net",
@@ -2432,7 +2853,9 @@
       "CBT",
       "Multi-session"
     ],
-    "aliases": ["NET"]
+    "aliases": [
+      "NET"
+    ]
   },
   {
     "slug": "narrative-therapy",
@@ -2442,10 +2865,18 @@
     "bestUsedFor": "Best when identity, meaning, stigma, trauma-related self-story, family/community narratives, or chronic demoralisation are central. It is often used in community, family, youth, trauma-informed, and culturally responsive contexts. Current evidence is promising but still limited and heterogeneous, rather than strongly syndrome-specific.",
     "targetSymptoms": "Problem-saturated identity, shame, helplessness, stigma, self-defining illness narratives, and distress maintained by rigid or oppressive meanings attached to life events or symptoms.",
     "indications": "Best when identity, meaning, stigma, trauma-related self-story, family/community narratives, or chronic demoralisation are central. It is often used in community, family, youth, trauma-informed, and culturally responsive contexts. Current evidence is promising but still limited and heterogeneous, rather than strongly syndrome-specific. Problem-saturated identity, shame, helplessness, stigma, self-defining illness narratives, and distress maintained by rigid or oppressive meanings attached to life events or symptoms. Rebuild a more workable and hopeful sense of identity, reduce the dominance of the problem narrative, strengthen agency, and support more meaningful action in family and community life.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Mood", "Trauma", "Psychosis", "Personality/interpersonal", "Crisis/risk", "CBT", "Group programme"],
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
     "aliases": []
   },
   {
@@ -2459,7 +2890,14 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Trauma", "Psychosis", "Substance use", "Crisis/risk", "CBT", "Group programme"],
+    "tags": [
+      "Trauma",
+      "Psychosis",
+      "Substance use",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
     "aliases": []
   },
   {
@@ -2523,11 +2961,16 @@
     "bestUsedFor": "Best supported for children with clinical levels of disruptive behaviour, especially oppositional and conduct-type presentations in younger children. It overlaps heavily with NICE’s recommended parent training programmes because those are also built on a social learning model.",
     "targetSymptoms": "Disruptive behaviour, oppositionality, non-compliance, aggression, coercive cycles, ineffective consequences, and inconsistent parenting responses.",
     "indications": "Best supported for children with clinical levels of disruptive behaviour, especially oppositional and conduct-type presentations in younger children. It overlaps heavily with NICE’s recommended parent training programmes because those are also built on a social learning model. Disruptive behaviour, oppositionality, non-compliance, aggression, coercive cycles, ineffective consequences, and inconsistent parenting responses. Reduce disruptive behaviour, improve child compliance and self-control, improve parenting consistency, and improve parent–child interaction quality.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Neurodevelopmental", "Multi-session"],
-    "aliases": ["PMT"]
+    "tags": [
+      "Neurodevelopmental",
+      "Multi-session"
+    ],
+    "aliases": [
+      "PMT"
+    ]
   },
   {
     "slug": "parent-training",
@@ -2537,10 +2980,13 @@
     "bestUsedFor": "Best supported for children aged 3 to 11 years who are at high risk of oppositional defiant disorder or conduct disorder, who already have oppositional defiant disorder or conduct disorder, or who are in contact with the criminal justice system because of antisocial behaviour. NICE recommends group parent training programmes first for this age range.",
     "targetSymptoms": "Oppositional behaviour, conduct problems, coercive parent–child cycles, inconsistent discipline, low positive reinforcement, poor behaviour management, and parenting stress.",
     "indications": "Best supported for children aged 3 to 11 years who are at high risk of oppositional defiant disorder or conduct disorder, who already have oppositional defiant disorder or conduct disorder, or who are in contact with the criminal justice system because of antisocial behaviour. NICE recommends group parent training programmes first for this age range. Oppositional behaviour, conduct problems, coercive parent–child cycles, inconsistent discipline, low positive reinforcement, poor behaviour management, and parenting stress. Reduce disruptive behaviour, improve parenting skill and confidence, reduce coercive interaction cycles, and improve family functioning.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Neurodevelopmental", "Group programme"],
+    "tags": [
+      "Neurodevelopmental",
+      "Group programme"
+    ],
     "aliases": []
   },
   {
@@ -2554,7 +3000,12 @@
     "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Neurodevelopmental", "Crisis/risk", "ACT", "Group programme"],
+    "tags": [
+      "Neurodevelopmental",
+      "Crisis/risk",
+      "ACT",
+      "Group programme"
+    ],
     "aliases": []
   },
   {
@@ -2568,7 +3019,14 @@
     "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Trauma", "Neurodevelopmental", "Eating/body image", "Crisis/risk", "ACT", "Group programme"],
+    "tags": [
+      "Trauma",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "ACT",
+      "Group programme"
+    ],
     "aliases": []
   },
   {
@@ -2582,8 +3040,17 @@
     "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Mood", "Psychosis", "Neurodevelopmental", "Crisis/risk", "ACT", "Multi-session"],
-    "aliases": ["PCIT"]
+    "tags": [
+      "Mood",
+      "Psychosis",
+      "Neurodevelopmental",
+      "Crisis/risk",
+      "ACT",
+      "Multi-session"
+    ],
+    "aliases": [
+      "PCIT"
+    ]
   },
   {
     "slug": "peer-recovery-interventions",
@@ -2596,7 +3063,12 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Substance use", "Crisis/risk", "ACT", "Group programme"],
+    "tags": [
+      "Substance use",
+      "Crisis/risk",
+      "ACT",
+      "Group programme"
+    ],
     "aliases": []
   },
   {
@@ -2607,10 +3079,13 @@
     "bestUsedFor": "Most useful in psychosis rehabilitation, community recovery work, discharge transition, engagement support, group activities, and broader recovery-oriented service delivery. NICE recommends that rehabilitation services for complex psychosis provide opportunities for sharing experiences with peers, include peer support workers in multidisciplinary teams, and ensure community-activity programmes involve peer support.",
     "targetSymptoms": "Hopelessness, isolation, disengagement, low confidence, low recovery expectancy, difficulty identifying with recovery, and weak connection to community or services.",
     "indications": "Most useful in psychosis rehabilitation, community recovery work, discharge transition, engagement support, group activities, and broader recovery-oriented service delivery. NICE recommends that rehabilitation services for complex psychosis provide opportunities for sharing experiences with peers, include peer support workers in multidisciplinary teams, and ensure community-activity programmes involve peer support. Hopelessness, isolation, disengagement, low confidence, low recovery expectancy, difficulty identifying with recovery, and weak connection to community or services. Increase hope, agency, belonging, engagement, and recovery participation, while helping the person connect lived experience to a more meaningful future.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Psychosis", "Multi-session"],
+    "tags": [
+      "Psychosis",
+      "Multi-session"
+    ],
     "aliases": []
   },
   {
@@ -2691,7 +3166,7 @@
     "bestUsedFor": "Best as a developmentally appropriate therapy or adjunct for younger children with emotional, behavioural, relational, or adjustment difficulties, especially when verbal CBT-style work is too abstract. Evidence exists, but quality and specificity vary. A 2022 systematic review found play-based interventions are widely used in children with autism and developmental language disorder, but mental-health outcome evidence in those groups remains limited and uncertain. (PubMed)",
     "targetSymptoms": "Emotional expression, trauma or stress processing, anxiety, behavioural difficulties, grief, adjustment problems, relational insecurity, developmental communication barriers, and psychosocial distress in children who cannot easily use verbal therapy alone.",
     "indications": "Best as a developmentally appropriate therapy or adjunct for younger children with emotional, behavioural, relational, or adjustment difficulties, especially when verbal CBT-style work is too abstract. Evidence exists, but quality and specificity vary. A 2022 systematic review found play-based interventions are widely used in children with autism and developmental language disorder, but mental-health outcome evidence in those groups remains limited and uncertain. (PubMed) Emotional expression, trauma or stress processing, anxiety, behavioural difficulties, grief, adjustment problems, relational insecurity, developmental communication barriers, and psychosocial distress in children who cannot easily use verbal therapy alone. Help the child express and process distress, improve emotional regulation, strengthen relational security, reduce behavioural symptoms, and translate gains into everyday functioning.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -2742,11 +3217,16 @@
     "bestUsedFor": "Most useful for stress-linked depression, adjustment-related difficulty, executive overload, and patients whose distress is closely tied to unresolved current-life problems. It is especially high-yield when the person needs structure more than deep cognitive restructuring.",
     "targetSymptoms": "Demoralisation, practical overwhelm, helplessness, executive “stuckness,” avoidant indecision, and stress-maintained depressive symptoms.",
     "indications": "Most useful for stress-linked depression, adjustment-related difficulty, executive overload, and patients whose distress is closely tied to unresolved current-life problems. It is especially high-yield when the person needs structure more than deep cognitive restructuring. Demoralisation, practical overwhelm, helplessness, executive “stuckness,” avoidant indecision, and stress-maintained depressive symptoms. Improve coping, increase effective action, reduce avoidance and overwhelm, and improve mood and function through better real-world problem management.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Mood", "Multi-session"],
-    "aliases": ["PST"]
+    "tags": [
+      "Mood",
+      "Multi-session"
+    ],
+    "aliases": [
+      "PST"
+    ]
   },
   {
     "slug": "process-groups",
@@ -2784,8 +3264,18 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Mood", "Trauma", "Psychosis", "Substance use", "Crisis/risk", "CBT", "Micro skill"],
-    "aliases": ["PE"]
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Substance use",
+      "Crisis/risk",
+      "CBT",
+      "Micro skill"
+    ],
+    "aliases": [
+      "PE"
+    ]
   },
   {
     "slug": "psychoanalysis",
@@ -2818,7 +3308,7 @@
     "bestUsedFor": "Best supported across common mental disorders, especially depression, some anxiety and panic presentations, somatoform / functional-symptom presentations, substance-related disorders, eating disorders, and personality disorders. RANZCP states there is considerable empirical evidence supporting psychodynamic approaches in these conditions. The 2023 umbrella review concluded psychodynamic psychotherapy qualifies as an empirically supported treatment for several common mental disorders, though it is not always the most prominent first-line named therapy in mainstream guidelines.",
     "targetSymptoms": "Recurrent maladaptive relationship patterns, self-criticism, affect avoidance, internal conflict, interpersonal repetition, identity disturbance, and symptoms linked to entrenched emotional themes rather than a single narrow behavioural mechanism.",
     "indications": "Best supported across common mental disorders, especially depression, some anxiety and panic presentations, somatoform / functional-symptom presentations, substance-related disorders, eating disorders, and personality disorders. RANZCP states there is considerable empirical evidence supporting psychodynamic approaches in these conditions. The 2023 umbrella review concluded psychodynamic psychotherapy qualifies as an empirically supported treatment for several common mental disorders, though it is not always the most prominent first-line named therapy in mainstream guidelines. Recurrent maladaptive relationship patterns, self-criticism, affect avoidance, internal conflict, interpersonal repetition, identity disturbance, and symptoms linked to entrenched emotional themes rather than a single narrow behavioural mechanism. Reduce symptoms by improving self-understanding, affect tolerance, relationship functioning, and flexibility of response, with benefits that may extend beyond the acute symptom episode. RANZCP notes psychotherapy benefits can endure and may increase with time.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -2871,7 +3361,13 @@
     "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Psychosis", "Eating/body image", "Crisis/risk", "CBT", "Group programme"],
+    "tags": [
+      "Psychosis",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
     "aliases": []
   },
   {
@@ -2885,7 +3381,15 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Mood", "Trauma", "Psychosis", "Personality/interpersonal", "Crisis/risk", "ACT", "Group programme"],
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Crisis/risk",
+      "ACT",
+      "Group programme"
+    ],
     "aliases": []
   },
   {
@@ -2922,7 +3426,14 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Trauma", "Psychosis", "Substance use", "Crisis/risk", "ACT", "Group programme"],
+    "tags": [
+      "Trauma",
+      "Psychosis",
+      "Substance use",
+      "Crisis/risk",
+      "ACT",
+      "Group programme"
+    ],
     "aliases": []
   },
   {
@@ -2936,7 +3447,14 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Mood", "Substance use", "Eating/body image", "Crisis/risk", "ACT", "Group programme"],
+    "tags": [
+      "Mood",
+      "Substance use",
+      "Eating/body image",
+      "Crisis/risk",
+      "ACT",
+      "Group programme"
+    ],
     "aliases": []
   },
   {
@@ -2947,7 +3465,7 @@
     "bestUsedFor": "Best in alcohol and other drug treatment, dual-diagnosis care, inpatient discharge planning, residential rehab step-down, opioid agonist treatment support, relapse-prevention work, and recovery-oriented case management. It is especially useful after detox, admission, relapse, legal/forensic crisis, or transition between services.",
     "targetSymptoms": "Relapse risk, poor self-management, high-risk situations, craving, low recovery capital, weak social support, treatment disengagement, unstable routines, shame after lapse, and lack of a clear response plan.",
     "indications": "Best in alcohol and other drug treatment, dual-diagnosis care, inpatient discharge planning, residential rehab step-down, opioid agonist treatment support, relapse-prevention work, and recovery-oriented case management. It is especially useful after detox, admission, relapse, legal/forensic crisis, or transition between services. Relapse risk, poor self-management, high-risk situations, craving, low recovery capital, weak social support, treatment disengagement, unstable routines, shame after lapse, and lack of a clear response plan. Support sustained recovery, reduce relapse harm, improve self-efficacy, strengthen recovery capital, and make treatment gains usable outside sessions.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -2976,7 +3494,14 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Trauma", "Psychosis", "Substance use", "Crisis/risk", "ACT", "Group programme"],
+    "tags": [
+      "Trauma",
+      "Psychosis",
+      "Substance use",
+      "Crisis/risk",
+      "ACT",
+      "Group programme"
+    ],
     "aliases": []
   },
   {
@@ -2990,7 +3515,15 @@
     "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Psychosis", "Substance use", "Neurodevelopmental", "Crisis/risk", "Grief/loss", "CBT", "Group programme"],
+    "tags": [
+      "Psychosis",
+      "Substance use",
+      "Neurodevelopmental",
+      "Crisis/risk",
+      "Grief/loss",
+      "CBT",
+      "Group programme"
+    ],
     "aliases": []
   },
   {
@@ -3023,10 +3556,13 @@
     "bestUsedFor": "Strongest guideline-backed use is recurrent depression, especially after remission or partial remission in people at higher relapse risk. It is most clearly used either by continuing the same psychological therapy adapted for relapse prevention or by using group CBT or mindfulness-based cognitive therapy for relapse prevention.",
     "targetSymptoms": "Relapse vulnerability, residual symptoms, rumination, avoidance, poor early-warning recognition, weak maintenance routines, and loss of helpful strategies after acute treatment ends.",
     "indications": "Strongest guideline-backed use is recurrent depression, especially after remission or partial remission in people at higher relapse risk. It is most clearly used either by continuing the same psychological therapy adapted for relapse prevention or by using group CBT or mindfulness-based cognitive therapy for relapse prevention. Relapse vulnerability, residual symptoms, rumination, avoidance, poor early-warning recognition, weak maintenance routines, and loss of helpful strategies after acute treatment ends. Maintain remission or partial remission, reduce relapse frequency and severity, strengthen self-management, and ensure the patient can respond early and effectively if depressive symptoms re-emerge.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Mood", "Multi-session"],
+    "tags": [
+      "Mood",
+      "Multi-session"
+    ],
     "aliases": []
   },
   {
@@ -3065,7 +3601,7 @@
     "bestUsedFor": "Best when the case formulation is strongly relational, especially in trauma-informed, women’s mental health, identity, marginalisation, or chronic relational-distress presentations. The direct outcome literature is limited, with one older outcome study in a women’s mental health centre suggesting benefit, so claims should stay cautious. (PubMed)",
     "targetSymptoms": "Chronic disconnection, shame, relational trauma patterns, silencing, low relational confidence, and identity or emotional difficulties maintained by isolation or non-mutual relationships. This formulation is drawn from RCT theory and available clinical outcome literature rather than from disorder-specific guideline statements. (ScienceDirect)",
     "indications": "Best when the case formulation is strongly relational, especially in trauma-informed, women’s mental health, identity, marginalisation, or chronic relational-distress presentations. The direct outcome literature is limited, with one older outcome study in a women’s mental health centre suggesting benefit, so claims should stay cautious. (PubMed) Chronic disconnection, shame, relational trauma patterns, silencing, low relational confidence, and identity or emotional difficulties maintained by isolation or non-mutual relationships. This formulation is drawn from RCT theory and available clinical outcome literature rather than from disorder-specific guideline statements. (ScienceDirect) Reduce chronic disconnection, strengthen authentic and mutual relationships, improve relational resilience, and support a more connected, less shame-dominated sense of self. (ScienceDirect)",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -3116,7 +3652,14 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Trauma", "Psychosis", "Crisis/risk", "Grief/loss", "ACT", "Multi-session"],
+    "tags": [
+      "Trauma",
+      "Psychosis",
+      "Crisis/risk",
+      "Grief/loss",
+      "ACT",
+      "Multi-session"
+    ],
     "aliases": []
   },
   {
@@ -3130,7 +3673,13 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Mood", "Psychosis", "Crisis/risk", "ACT", "Micro skill"],
+    "tags": [
+      "Mood",
+      "Psychosis",
+      "Crisis/risk",
+      "ACT",
+      "Micro skill"
+    ],
     "aliases": []
   },
   {
@@ -3220,7 +3769,15 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Mood", "Trauma", "Psychosis", "Neurodevelopmental", "Crisis/risk", "CBT", "Group programme"],
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Neurodevelopmental",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
     "aliases": []
   },
   {
@@ -3245,7 +3802,9 @@
       "CBT",
       "Single session"
     ],
-    "aliases": ["STPP"]
+    "aliases": [
+      "STPP"
+    ]
   },
   {
     "slug": "short-term-psychodynamic-psychotherapy-for-depression-stpp",
@@ -3255,11 +3814,17 @@
     "bestUsedFor": "Best used for adult depression when relational-emotional patterns and developmental difficulties in close relationships are central. NICE includes STPP in first-line treatment options for adult depression.",
     "targetSymptoms": "Depressive symptoms linked to emotional and developmental difficulties in relationships, stressful situations, repeated relational patterns, and affective avoidance. NICE explicitly frames STPP around recognising difficult feelings in significant relationships and stressful situations, and identifying how patterns can be repeated.",
     "indications": "Best used for adult depression when relational-emotional patterns and developmental difficulties in close relationships are central. NICE includes STPP in first-line treatment options for adult depression. Depressive symptoms linked to emotional and developmental difficulties in relationships, stressful situations, repeated relational patterns, and affective avoidance. NICE explicitly frames STPP around recognising difficult feelings in significant relationships and stressful situations, and identifying how patterns can be repeated. Reduce depressive symptoms by improving emotional processing, recognising and modifying repeated relationship-linked patterns, and helping the person work through key current conflicts.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Mood", "Personality/interpersonal", "Multi-session"],
-    "aliases": ["STPP"]
+    "tags": [
+      "Mood",
+      "Personality/interpersonal",
+      "Multi-session"
+    ],
+    "aliases": [
+      "STPP"
+    ]
   },
   {
     "slug": "skills-training-groups",
@@ -3296,7 +3861,15 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Mood", "Anxiety", "Sleep", "Eating/body image", "Crisis/risk", "CBT", "Multi-session"],
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Sleep",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Multi-session"
+    ],
     "aliases": []
   },
   {
@@ -3342,7 +3915,9 @@
       "CBT",
       "Group programme"
     ],
-    "aliases": ["SST"]
+    "aliases": [
+      "SST"
+    ]
   },
   {
     "slug": "social-anxiety-focused-cbt",
@@ -3352,7 +3927,7 @@
     "bestUsedFor": "Best for social anxiety disorder in adults, and developmentally adapted CBT for children and young people. NICE recommends individual CBT specifically developed for social anxiety disorder as the first intervention for adults, using Clark and Wells or Heimberg models. (NICE)",
     "targetSymptoms": "Fear of scrutiny, shame, embarrassment, negative self-imagery, self-focused attention, social avoidance, performance avoidance, safety behaviours, anticipatory worry, post-event rumination, and core beliefs about social inadequacy. NICE specifically describes Clark and Wells and Heimberg CBT models with these active components. (NICE)",
     "indications": "Best for social anxiety disorder in adults, and developmentally adapted CBT for children and young people. NICE recommends individual CBT specifically developed for social anxiety disorder as the first intervention for adults, using Clark and Wells or Heimberg models. (NICE) Fear of scrutiny, shame, embarrassment, negative self-imagery, self-focused attention, social avoidance, performance avoidance, safety behaviours, anticipatory worry, post-event rumination, and core beliefs about social inadequacy. NICE specifically describes Clark and Wells and Heimberg CBT models with these active components. (NICE) Reduce fear of negative evaluation, restore social and occupational functioning, reduce avoidance and safety behaviours, and help the patient tolerate being seen without relying on self-protective strategies.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -3381,7 +3956,14 @@
     "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Anxiety", "Sleep", "Neurodevelopmental", "Eating/body image", "ACT", "Multi-session"],
+    "tags": [
+      "Anxiety",
+      "Sleep",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "ACT",
+      "Multi-session"
+    ],
     "aliases": []
   },
   {
@@ -3441,8 +4023,15 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Eating/body image", "Crisis/risk", "CBT", "Multi-session"],
-    "aliases": ["SSCM"]
+    "tags": [
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": [
+      "SSCM"
+    ]
   },
   {
     "slug": "stabilisation-focused-trauma-preparation",
@@ -3480,11 +4069,18 @@
     "bestUsedFor": "Best for complex trauma / complex PTSD-type presentations where the dominant problems are emotion regulation and interpersonal functioning. It is especially useful when the person is not ready for direct trauma processing or when these difficulties are blocking engagement with PE, CPT, EMDR, or other trauma-focused work. Evidence supports symptom improvement, but direct comparisons with immediate trauma-focused therapies are mixed, so it should not be automatically placed above first-line PTSD treatments.",
     "targetSymptoms": "Affect dysregulation, emotional avoidance, poor emotion identification, distress intolerance, interpersonal mistrust, boundary problems, shame, negative self-concept, relationship instability, and trauma-linked disturbances in self-organisation.",
     "indications": "Best for complex trauma / complex PTSD-type presentations where the dominant problems are emotion regulation and interpersonal functioning. It is especially useful when the person is not ready for direct trauma processing or when these difficulties are blocking engagement with PE, CPT, EMDR, or other trauma-focused work. Evidence supports symptom improvement, but direct comparisons with immediate trauma-focused therapies are mixed, so it should not be automatically placed above first-line PTSD treatments. Affect dysregulation, emotional avoidance, poor emotion identification, distress intolerance, interpersonal mistrust, boundary problems, shame, negative self-concept, relationship instability, and trauma-linked disturbances in self-organisation. Improve affect regulation and interpersonal functioning, reduce complex-trauma-related dyscontrol, strengthen treatment readiness, and help the patient safely engage with trauma processing or broader recovery work.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Trauma", "Emotional regulation", "Personality/interpersonal", "Multi-session"],
-    "aliases": ["Skills Training in Affective and Interpersonal Regulation"]
+    "tags": [
+      "Trauma",
+      "Emotional regulation",
+      "Personality/interpersonal",
+      "Multi-session"
+    ],
+    "aliases": [
+      "Skills Training in Affective and Interpersonal Regulation"
+    ]
   },
   {
     "slug": "strengths-based-case-management",
@@ -3497,7 +4093,12 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": true,
-    "tags": ["Substance use", "Crisis/risk", "ACT", "Single session"],
+    "tags": [
+      "Substance use",
+      "Crisis/risk",
+      "ACT",
+      "Single session"
+    ],
     "aliases": []
   },
   {
@@ -3511,7 +4112,14 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Mood", "Trauma", "Psychosis", "Crisis/risk", "ACT", "Multi-session"],
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Crisis/risk",
+      "ACT",
+      "Multi-session"
+    ],
     "aliases": []
   },
   {
@@ -3522,10 +4130,15 @@
     "bestUsedFor": "Best for BPD/personality disorder in public-sector or general mental health settings where a structured, consistent, manualised clinical model is needed and specialist therapies may not be available. SCM has been used as a comparator in trials against MBT, with one trial describing it as protocol-driven best current clinical practice delivered by non-specialist practitioners in a publicly funded service. (SpringerLink)",
     "targetSymptoms": "Self-harm, crisis presentations, interpersonal instability, poor engagement, problem-solving failure, functional impairment, affective distress, frequent unplanned service contact, and treatment fragmentation.",
     "indications": "Best for BPD/personality disorder in public-sector or general mental health settings where a structured, consistent, manualised clinical model is needed and specialist therapies may not be available. SCM has been used as a comparator in trials against MBT, with one trial describing it as protocol-driven best current clinical practice delivered by non-specialist practitioners in a publicly funded service. (SpringerLink) Self-harm, crisis presentations, interpersonal instability, poor engagement, problem-solving failure, functional impairment, affective distress, frequent unplanned service contact, and treatment fragmentation. Stabilise care, reduce self-harm and crisis use, improve functioning, improve problem-solving, strengthen engagement, and provide a credible structured pathway when specialist therapy is unavailable or not indicated.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Personality/interpersonal", "Crisis/risk", "Emotional regulation", "Multi-session"],
+    "tags": [
+      "Personality/interpersonal",
+      "Crisis/risk",
+      "Emotional regulation",
+      "Multi-session"
+    ],
     "aliases": []
   },
   {
@@ -3623,7 +4236,9 @@
       "CBT",
       "Multi-session"
     ],
-    "aliases": ["Supported digital trauma-focused CBT"]
+    "aliases": [
+      "Supported digital trauma-focused CBT"
+    ]
   },
   {
     "slug": "supported-education",
@@ -3661,8 +4276,17 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Psychosis", "Substance use", "Eating/body image", "Emotional regulation", "CBT", "Multi-session"],
-    "aliases": ["IPS"]
+    "tags": [
+      "Psychosis",
+      "Substance use",
+      "Eating/body image",
+      "Emotional regulation",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": [
+      "IPS"
+    ]
   },
   {
     "slug": "supportive-psychotherapy",
@@ -3696,10 +4320,14 @@
     "bestUsedFor": "Most defensible for adult depression when recurrent relationship themes and difficult affects are central. It has supportive evidence, but it is less guideline-central than the named NICE depression treatments such as BA, CBT, IPT, counselling for depression, and STPP.",
     "targetSymptoms": "Depressive symptoms tied to repetitive relationship difficulties, affect avoidance, self-criticism, and chronic interpersonal distress. It is more relational-emotional than BA and more pattern-focused than generic supportive counselling.",
     "indications": "Most defensible for adult depression when recurrent relationship themes and difficult affects are central. It has supportive evidence, but it is less guideline-central than the named NICE depression treatments such as BA, CBT, IPT, counselling for depression, and STPP. Depressive symptoms tied to repetitive relationship difficulties, affect avoidance, self-criticism, and chronic interpersonal distress. It is more relational-emotional than BA and more pattern-focused than generic supportive counselling. Reduce depressive symptoms by improving understanding of relationship-linked affective patterns, reducing maladaptive repetition, and increasing emotional flexibility and self-understanding.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Mood", "Personality/interpersonal", "Multi-session"],
+    "tags": [
+      "Mood",
+      "Personality/interpersonal",
+      "Multi-session"
+    ],
     "aliases": []
   },
   {
@@ -3713,7 +4341,13 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": true,
-    "tags": ["Mood", "Psychosis", "Eating/body image", "ACT", "Single session"],
+    "tags": [
+      "Mood",
+      "Psychosis",
+      "Eating/body image",
+      "ACT",
+      "Single session"
+    ],
     "aliases": []
   },
   {
@@ -3815,7 +4449,9 @@
       "DBT",
       "Multi-session"
     ],
-    "aliases": ["TFP"]
+    "aliases": [
+      "TFP"
+    ]
   },
   {
     "slug": "trauma-focused-cognitive-behavioural-therapy-tf-cbt",
@@ -3839,7 +4475,9 @@
       "CBT",
       "Multi-session"
     ],
-    "aliases": ["TF-CBT"]
+    "aliases": [
+      "TF-CBT"
+    ]
   },
   {
     "slug": "trauma-informed-skills-work",
@@ -3849,7 +4487,7 @@
     "bestUsedFor": "Most useful when trauma exposure has left the patient with major emotion-regulation or interpersonal difficulties, especially in complex trauma presentations. It is also useful as a bridge into more definitive trauma-focused treatment or as an adjunct alongside broader care.",
     "targetSymptoms": "Affect dysregulation, grounding failure, interpersonal instability, crisis escalation, chronic threat activation, low self-soothing capacity, and poor day-to-day coping after trauma.",
     "indications": "Most useful when trauma exposure has left the patient with major emotion-regulation or interpersonal difficulties, especially in complex trauma presentations. It is also useful as a bridge into more definitive trauma-focused treatment or as an adjunct alongside broader care. Affect dysregulation, grounding failure, interpersonal instability, crisis escalation, chronic threat activation, low self-soothing capacity, and poor day-to-day coping after trauma. Improve regulation and interpersonal capacity, reduce day-to-day trauma-driven dyscontrol, and increase readiness for more definitive trauma-focused treatment when indicated.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -3873,11 +4511,16 @@
     "bestUsedFor": "The strongest evidence is for alcohol use disorder (AUD). A 2020 Cochrane review found AA/TSF was at least as effective as other established treatments and often better for continuous abstinence and remission over follow-up, with evidence of healthcare cost savings. It is more accurate to present TSF as especially evidence-supported for AUD than as equally established across all SUDs.",
     "targetSymptoms": "Ambivalence about abstinence, low recovery-community affiliation, poor sober social support, relapse risk, and weak continuity of recovery support outside formal treatment.",
     "indications": "The strongest evidence is for alcohol use disorder (AUD). A 2020 Cochrane review found AA/TSF was at least as effective as other established treatments and often better for continuous abstinence and remission over follow-up, with evidence of healthcare cost savings. It is more accurate to present TSF as especially evidence-supported for AUD than as equally established across all SUDs. Ambivalence about abstinence, low recovery-community affiliation, poor sober social support, relapse risk, and weak continuity of recovery support outside formal treatment. Increase recovery-community connection, support abstinence, improve long-term remission, and reduce reliance on time-limited formal care alone.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Substance use", "Multi-session"],
-    "aliases": ["TSF"]
+    "tags": [
+      "Substance use",
+      "Multi-session"
+    ],
+    "aliases": [
+      "TSF"
+    ]
   },
   {
     "slug": "values-based-therapies",
@@ -3887,10 +4530,17 @@
     "bestUsedFor": "Best when a values-based mechanism is clearly central, especially in ACT-informed work for transdiagnostic distress, chronic health conditions, and problems maintained by avoidance and overcontrol. Current psychiatric positioning is strongest when values work is embedded in ACT or values-based CBT, rather than treated as a stand-alone general therapy family with its own large guideline base. (RANZCP)",
     "targetSymptoms": "Experiential avoidance, disengagement from meaningful life directions, behavioural drift away from chosen values, shame-based or fear-based constriction, and reduced psychological flexibility. In practice this is usually ACT-framed. (PubMed)",
     "indications": "Best when a values-based mechanism is clearly central, especially in ACT-informed work for transdiagnostic distress, chronic health conditions, and problems maintained by avoidance and overcontrol. Current psychiatric positioning is strongest when values work is embedded in ACT or values-based CBT, rather than treated as a stand-alone general therapy family with its own large guideline base. (RANZCP) Experiential avoidance, disengagement from meaningful life directions, behavioural drift away from chosen values, shame-based or fear-based constriction, and reduced psychological flexibility. In practice this is usually ACT-framed. (PubMed) Increase psychological flexibility, reduce avoidance-driven living, and help the person build a life that is more coherent with personally chosen values rather than dominated by distress management alone. (PubMed)",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
-    "tags": ["Mood", "Trauma", "Psychosis", "Crisis/risk", "CBT", "Group programme"],
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
     "aliases": []
   },
   {
@@ -3904,7 +4554,13 @@
     "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": true,
-    "tags": ["Psychosis", "Substance use", "Grief/loss", "CBT", "Micro skill"],
+    "tags": [
+      "Psychosis",
+      "Substance use",
+      "Grief/loss",
+      "CBT",
+      "Micro skill"
+    ],
     "aliases": []
   },
   {
@@ -4015,7 +4671,7 @@
     "bestUsedFor": "Best as a brief trauma-focused PTSD treatment option when a concise, lower-burden exposure-based therapy is needed. Current VA/DoD guidance places WET as a second-line PTSD psychotherapy, not above PE, CPT, or EMDR. It is not currently included in NICE or Phoenix Australia PTSD guideline recommendations, so in Australian practice it should be framed as promising and evidence-supported internationally, but not yet an Australian first-line guideline therapy.",
     "targetSymptoms": "Trauma memory avoidance, intrusive trauma-related distress, avoidance of trauma-linked thoughts and feelings, PTSD symptoms, shame/guilt where trauma-linked, and functional restriction maintained by not engaging with the trauma memory.",
     "indications": "Best as a brief trauma-focused PTSD treatment option when a concise, lower-burden exposure-based therapy is needed. Current VA/DoD guidance places WET as a second-line PTSD psychotherapy, not above PE, CPT, or EMDR. It is not currently included in NICE or Phoenix Australia PTSD guideline recommendations, so in Australian practice it should be framed as promising and evidence-supported internationally, but not yet an Australian first-line guideline therapy. Trauma memory avoidance, intrusive trauma-related distress, avoidance of trauma-linked thoughts and feelings, PTSD symptoms, shame/guilt where trauma-linked, and functional restriction maintained by not engaging with the trauma memory. Reduce PTSD symptoms and trauma avoidance through a brief, structured exposure-based protocol, while providing a lower-burden option for patients who may not complete longer trauma-focused therapies.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
