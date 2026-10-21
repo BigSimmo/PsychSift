@@ -17,7 +17,7 @@ import { modeNameText, modeNumberText } from "@/components/mode-kit/type";
 import { cn } from "@/components/ui-primitives";
 import type { PublicCrisisContact } from "@/lib/crisis-contacts";
 import { displayPhoneNumber } from "@/lib/admin/phone-display";
-import { formatUpdatedMonth } from "@/lib/admin/renewal-dates";
+import { formatUpdatedMonth } from "@/lib/admin/updated-month";
 
 /**
  * One crisis line, laid out to stay short at phone width: the name, the
