@@ -4,13 +4,13 @@
     "committed_at": "2026-10-17"
   },
   "counts": {
-    "open": 105,
-    "p1": 16,
-    "p2": 51,
-    "p3": 38,
+    "open": 109,
+    "p1": 17,
+    "p2": 55,
+    "p3": 37,
     "queued": 5,
     "pending": 0,
-    "resolved": 809
+    "resolved": 813
   },
   "queue": [
     {
@@ -55,7 +55,7 @@
       "capability": "High — release/SRE + Operator",
       "timing": "Now that #056 is closed; schedule against the next exact candidate SHA.",
       "estimate": "2–4 hours plus soak",
-      "detail": "Combined test harness code and automated pinned failure routing merged in PR #3087 (7941a7b36f); live staging run pending. PRIOR DETAIL (restored 2026-10-09, an earlier update replaced it wholesale): UPDATE 2026-09-26 (read-only GitHub Actions read, no provider access): the nightly staging-tenancy.yml harness failed on every scheduled run checked (2026-09-21 to 2026-09-25) at its deployment-identity step: staging reported 0b858bb3a (the PR #3030 merge) while the run checked out newer main commits. Staging is not redeployed on pushes to main, so the SHA-bound harness cannot pass on a schedule until staging tracks main or is redeployed before each run. A failing main run now opens a pinned, assigned GitHub issue (label staging-tenancy-failure; branch claude/urgent-ledger-fixes-8dnh5c). The wider harness (CME and On Call writes, evidence, export, content; PR #3065) has not yet run on staging. Next action: owner decides whether staging should auto-deploy from main (Railway setting) or be redeployed before a dispatched run. PRIOR DETAIL: Staging migration parity is closed. Run SHA-bound tenancy evidence, transition the same candidate image from the offline tenancy profile to the authenticated auto-provider load profile, execute the staging soak, and rehearse rollback. Retain checkout/deployed SHA, latency, error, throttling, authentication, cleanup, and rollback evidence. Stop on unsafe data, identity mismatch, or an unowned rollback decision."
+      "detail": "UPDATE 2026-10-18: the soak, rollback rehearsal and SHA-bound tenancy dispatch are now planned with exact commands, costs, stop conditions and evidence in docs/operator-rehearsal-plan.md steps 3 and 4 (not yet run; owner approval needed). The nightly harness still fails under a green scheduled run (see #F9HZEG). PRIOR DETAIL: Combined test harness code and automated pinned failure routing merged in PR #3087 (7941a7b36f); live staging run pending. PRIOR DETAIL (restored 2026-10-09, an earlier update replaced it wholesale): UPDATE 2026-09-26 (read-only GitHub Actions read, no provider access): the nightly staging-tenancy.yml harness failed on every scheduled run checked (2026-09-21 to 2026-09-25) at its deployment-identity step: staging reported 0b858bb3a (the PR #3030 merge) while the run checked out newer main commits. Staging is not redeployed on pushes to main, so the SHA-bound harness cannot pass on a schedule until staging tracks main or is redeployed before each run. A failing main run now opens a pinned, assigned GitHub issue (label staging-tenancy-failure; branch claude/urgent-ledger-fixes-8dnh5c). The wider harness (CME and On Call writes, evidence, export, content; PR #3065) has not yet run on staging. Next action: owner decides whether staging should auto-deploy from main (Railway setting) or be redeployed before a dispatched run. PRIOR DETAIL: Staging migration parity is closed. Run SHA-bound tenancy evidence, transition the same candidate image from the offline tenancy profile to the authenticated auto-provider load profile, execute the staging soak, and rehearse rollback. Retain checkout/deployed SHA, latency, error, throttling, authentication, cleanup, and rollback evidence. Stop on unsafe data, identity mismatch, or an unowned rollback decision."
     },
     {
       "order": 5,
@@ -93,7 +93,7 @@
       "priority": "P2",
       "type": "task",
       "summary": "Complete staging soak and rollback rehearsal",
-      "detail": "Combined test harness code and automated pinned failure routing merged in PR #3087 (7941a7b36f); live staging run pending. PRIOR DETAIL (restored 2026-10-09, an earlier update replaced it wholesale): UPDATE 2026-09-26 (read-only GitHub Actions read, no provider access): the nightly staging-tenancy.yml harness failed on every scheduled run checked (2026-09-21 to 2026-09-25) at its deployment-identity step: staging reported 0b858bb3a (the PR #3030 merge) while the run checked out newer main commits. Staging is not redeployed on pushes to main, so the SHA-bound harness cannot pass on a schedule until staging tracks main or is redeployed before each run. A failing main run now opens a pinned, assigned GitHub issue (label staging-tenancy-failure; branch claude/urgent-ledger-fixes-8dnh5c). The wider harness (CME and On Call writes, evidence, export, content; PR #3065) has not yet run on staging. Next action: owner decides whether staging should auto-deploy from main (Railway setting) or be redeployed before a dispatched run. PRIOR DETAIL: Staging migration parity is closed. Run SHA-bound tenancy evidence, transition the same candidate image from the offline tenancy profile to the authenticated auto-provider load profile, execute the staging soak, and rehearse rollback. Retain checkout/deployed SHA, latency, error, throttling, authentication, cleanup, and rollback evidence. Stop on unsafe data, identity mismatch, or an unowned rollback decision.",
+      "detail": "UPDATE 2026-10-18: the soak, rollback rehearsal and SHA-bound tenancy dispatch are now planned with exact commands, costs, stop conditions and evidence in docs/operator-rehearsal-plan.md steps 3 and 4 (not yet run; owner approval needed). The nightly harness still fails under a green scheduled run (see #F9HZEG). PRIOR DETAIL: Combined test harness code and automated pinned failure routing merged in PR #3087 (7941a7b36f); live staging run pending. PRIOR DETAIL (restored 2026-10-09, an earlier update replaced it wholesale): UPDATE 2026-09-26 (read-only GitHub Actions read, no provider access): the nightly staging-tenancy.yml harness failed on every scheduled run checked (2026-09-21 to 2026-09-25) at its deployment-identity step: staging reported 0b858bb3a (the PR #3030 merge) while the run checked out newer main commits. Staging is not redeployed on pushes to main, so the SHA-bound harness cannot pass on a schedule until staging tracks main or is redeployed before each run. A failing main run now opens a pinned, assigned GitHub issue (label staging-tenancy-failure; branch claude/urgent-ledger-fixes-8dnh5c). The wider harness (CME and On Call writes, evidence, export, content; PR #3065) has not yet run on staging. Next action: owner decides whether staging should auto-deploy from main (Railway setting) or be redeployed before a dispatched run. PRIOR DETAIL: Staging migration parity is closed. Run SHA-bound tenancy evidence, transition the same candidate image from the offline tenancy profile to the authenticated auto-provider load profile, execute the staging soak, and rehearse rollback. Retain checkout/deployed SHA, latency, error, throttling, authentication, cleanup, and rollback evidence. Stop on unsafe data, identity mismatch, or an unowned rollback decision.",
       "source": "`docs/launch-operator-runbook.md`; `docs/audit/capacity-review.md`; PR #3087 review",
       "added": "2026-07-24"
     },
@@ -236,8 +236,8 @@
       "id": "#Z3GZ5P",
       "priority": "P2",
       "type": "task",
-      "summary": "DSM-5-TR specifier catalogue: 514 of 585 items still pending clinician review, and the 71 marked reviewed in PR #3143 name no clinician reviewer",
-      "detail": "UPDATE 2026-10-17: All 71 written disorder-specific specifier items and 18 universal specifiers are signed off by Psych Sift with SHA-256 content pins (including the updated Dissociative Identity Disorder possession-form specifier wording); 514 unwritten catalog placeholders remain. PRIOR DETAIL (restored 2026-10-09, an earlier update replaced it wholesale): UPDATE 2026-09-25 (offline traversal of data/specifiers-content.json; no provider access). Two corrections to this row's own headline, both reproducible from the committed file. FIRST: '71 source-verified' overstates the work. 57 of the 71 restate their own label, matching 'For <disorder>, <label> uses the stated threshold: <the label's own parenthesis>' — the Adjustment Disorders entry for 'Acute (less than 6 months)' resolves to 'uses the stated threshold: less than 6 months'. Only 14 carry content beyond the label, all in the ICD-11 trauma, dissociative, ARFID and personality material. Real coverage is 14 of 585, not 71. SECOND: neurodevelopmental, schizophrenia spectrum, bipolar, depressive and anxiety disorders hold 192 items and no definitions between them, so the commonest presentations are the least covered. SETTLED 2026-09-18 (owner instruction): the sign-off value is clinician-reviewed-approved, set only by a named clinician; the unit of work is one definition per specifier plus per-disorder exception notes; severity and remission for sexual dysfunctions and paraphilic disorders (41 of 164 undefined severity items) are out of scope. PR #3028 made the audit recognise clinician-reviewed-approved — under the previous exact-match test the first signed specifier would have gone unexamined. WORKLIST AND FIRST ENTRY, both on main from PR #2879: docs/specifier-definition-worklist-2026-09-18.md (A/B/C triage; Group A is 63 management-changing rows carrying only 17 distinct labels) and docs/specifier-entry-worksheet-with-catatonia.md (all nine disorders enumerated, every clinical statement blank). NEXT ACTION is clinician-only: write the four blanks in section 1 of the worksheet. No agent writes the clinical text.",
+      "summary": "DSM-5-TR specifier catalogue: 515 of 585 items await clinician review, including the reset DID possession-form item",
+      "detail": "PS-062 correction verified 2026-10-18: the owner reset the DID possession-form sign-off under docs/decisions/2026-10-17-agent-recorded-therapy-and-did-sign-offs-reset.md. The previous statement that all 71 written disorder-specific items were signed is superseded: 70 remain signed and one written DID item plus 514 unwritten placeholders await review (515 pending). The 18 universal specifiers remain separate. Preserve all earlier worklist and clinician-only acceptance requirements; no new clinical approval is supplied. PRIOR DETAIL retained as superseded historical context (its all-signed/514-pending prose is corrected above): UPDATE 2026-10-17: All 71 written disorder-specific specifier items and 18 universal specifiers are signed off by Psych Sift with SHA-256 content pins (including the updated Dissociative Identity Disorder possession-form specifier wording); 514 unwritten catalog placeholders remain. PRIOR DETAIL (restored 2026-10-09, an earlier update replaced it wholesale): UPDATE 2026-09-25 (offline traversal of data/specifiers-content.json; no provider access). Two corrections to this row's own headline, both reproducible from the committed file. FIRST: '71 source-verified' overstates the work. 57 of the 71 restate their own label, matching 'For <disorder>, <label> uses the stated threshold: <the label's own parenthesis>' — the Adjustment Disorders entry for 'Acute (less than 6 months)' resolves to 'uses the stated threshold: less than 6 months'. Only 14 carry content beyond the label, all in the ICD-11 trauma, dissociative, ARFID and personality material. Real coverage is 14 of 585, not 71. SECOND: neurodevelopmental, schizophrenia spectrum, bipolar, depressive and anxiety disorders hold 192 items and no definitions between them, so the commonest presentations are the least covered. SETTLED 2026-09-18 (owner instruction): the sign-off value is clinician-reviewed-approved, set only by a named clinician; the unit of work is one definition per specifier plus per-disorder exception notes; severity and remission for sexual dysfunctions and paraphilic disorders (41 of 164 undefined severity items) are out of scope. PR #3028 made the audit recognise clinician-reviewed-approved — under the previous exact-match test the first signed specifier would have gone unexamined. WORKLIST AND FIRST ENTRY, both on main from PR #2879: docs/specifier-definition-worklist-2026-09-18.md (A/B/C triage; Group A is 63 management-changing rows carrying only 17 distinct labels) and docs/specifier-entry-worksheet-with-catatonia.md (all nine disorders enumerated, every clinical statement blank). NEXT ACTION is clinician-only: write the four blanks in section 1 of the worksheet. No agent writes the clinical text.",
       "source": "PR #3143 review",
       "added": "2026-09-07"
     },
@@ -326,8 +326,8 @@
       "id": "#GJHKYC",
       "priority": "P1",
       "type": "task",
-      "summary": "Do NOT re-index until the worker has deployed the extraction fix, then re-index and run the canary pair around it",
-      "detail": "UPDATE 2026-09-26 (Railway connector read): the precondition is met. The production worker is running commit f7c9beeaa (deployment 0ac40fc7, SUCCESS 05:30 UTC) and then 2459df42 from 05:44 UTC; both descend from db7432a9b, the PR #2810 extraction fix, and from 103513f2d (PR #3040, unreadable-PDF refusal). Re-index and the canary pair can now start, but need a session with Supabase and OpenAI credentials; this one had neither. PRIOR DETAIL: OWNER DECISION 2026-09-25: re-index and the canary pair are APPROVED, conditional on first confirming the worker running in production includes the PR #2810 extraction fix. Not started: this session had no Supabase/OpenAI/Railway credentials and the Railway MCP was unreachable, so neither the deploy check nor the re-index could be run. PRIOR DETAIL: REVIEW 2026-09-25 (offline audit of current main; no provider access): Canonical re-index row. Absorbs closed #4WR2XZ (cause fixed by PR #2810, db7432a9b) and action 1 of closed #SCYQAE. 'Production still serving a708a95, pre-fix' is stale: db7432a9b is an ancestor of the 2026-09-22 app deploy 76bf29ffa, and later merges touching worker/** and src/lib/** (#2865, #2835, #3002) should have rebuilt the worker. Not verifiable offline, so step 1 (confirm the worker runs the fix) stays. PRIOR DETAIL: SEQUENCING GUARD, written because the obvious next action is wrong if taken today. The extraction fix merged to main as db7432a9b on 2026-09-16. Production was still serving a708a95093c7922163166b7bafc63afd6852bc69 immediately afterwards, which PREDATES the fix (verified via /api/health deploymentCommitSha, uptime 2754 s). RE-INDEXING BEFORE THE INGESTION WORKER CARRIES THE FIX RE-EXTRACTS WITH THE OLD CODE. That achieves nothing, spends provider budget on embeddings, churns the live clinical corpus and produces a false all-clear, because the re-indexed chunks would still carry interleaved table text. ORDER OF OPERATIONS: (1) confirm the worker service, not just the app service, is running a build that contains db7432a9b; the two are separate Railway services in project Database and both auto-deploy from main, so confirm the worker specifically. (2) Run Step 6 of scripts/operator-clozapine-retrieval-diagnosis.sql to get the per-document re-index worklist; it is read-only and its fingerprints were validated against real production text. (3) Capture an eval canary BASELINE before re-indexing. (4) Re-index the worklist documents. (5) Capture the canary POST run. Per AGENTS.md RAG ranking protection the before/after pair belongs around the RE-INDEX, not around the merge, because the merge cannot change any retrieval result until documents are re-ingested; PR #2810 said so explicitly and must not be treated as canary-cleared. (6) Only then expect the four clozapine eval cases to move, and note they may still not pass if the underlying RKPG document is itself wrong, which is its own P1 row. Re-indexing is provider-backed and mutates the live clinical corpus, so it needs explicit owner approval at the time, not standing approval from this session.",
+      "summary": "Library re-index is STOPPED by owner decision: do not start it (supersedes the 2026-09-25 conditional approval)",
+      "detail": "UPDATE 2026-10-20: OWNER DECISION - the library re-index is STOPPED. Do not start it and do not re-raise it; the owner treats the question as settled. This supersedes the 2026-09-25 conditional approval below (see docs/decisions/2026-10-17-library-reindex-stopped.md). Source: the owner's decision as relayed in the 17 Oct 2026 project handover, which lists the library re-index (stopped) among settled decisions; the owner's exact wording is to be confirmed in the pull request that records it. Any future re-index would need a new owner decision, a spend cap and the live canary pair. PRIOR DETAIL: UPDATE 2026-09-26 (Railway connector read): the precondition is met. The production worker is running commit f7c9beeaa (deployment 0ac40fc7, SUCCESS 05:30 UTC) and then 2459df42 from 05:44 UTC; both descend from db7432a9b, the PR #2810 extraction fix, and from 103513f2d (PR #3040, unreadable-PDF refusal). Re-index and the canary pair can now start, but need a session with Supabase and OpenAI credentials; this one had neither. PRIOR DETAIL: OWNER DECISION 2026-09-25: re-index and the canary pair are APPROVED, conditional on first confirming the worker running in production includes the PR #2810 extraction fix. Not started: this session had no Supabase/OpenAI/Railway credentials and the Railway MCP was unreachable, so neither the deploy check nor the re-index could be run. PRIOR DETAIL: REVIEW 2026-09-25 (offline audit of current main; no provider access): Canonical re-index row. Absorbs closed #4WR2XZ (cause fixed by PR #2810, db7432a9b) and action 1 of closed #SCYQAE. 'Production still serving a708a95, pre-fix' is stale: db7432a9b is an ancestor of the 2026-09-22 app deploy 76bf29ffa, and later merges touching worker/** and src/lib/** (#2865, #2835, #3002) should have rebuilt the worker. Not verifiable offline, so step 1 (confirm the worker runs the fix) stays. PRIOR DETAIL: SEQUENCING GUARD, written because the obvious next action is wrong if taken today. The extraction fix merged to main as db7432a9b on 2026-09-16. Production was still serving a708a95093c7922163166b7bafc63afd6852bc69 immediately afterwards, which PREDATES the fix (verified via /api/health deploymentCommitSha, uptime 2754 s). RE-INDEXING BEFORE THE INGESTION WORKER CARRIES THE FIX RE-EXTRACTS WITH THE OLD CODE. That achieves nothing, spends provider budget on embeddings, churns the live clinical corpus and produces a false all-clear, because the re-indexed chunks would still carry interleaved table text. ORDER OF OPERATIONS: (1) confirm the worker service, not just the app service, is running a build that contains db7432a9b; the two are separate Railway services in project Database and both auto-deploy from main, so confirm the worker specifically. (2) Run Step 6 of scripts/operator-clozapine-retrieval-diagnosis.sql to get the per-document re-index worklist; it is read-only and its fingerprints were validated against real production text. (3) Capture an eval canary BASELINE before re-indexing. (4) Re-index the worklist documents. (5) Capture the canary POST run. Per AGENTS.md RAG ranking protection the before/after pair belongs around the RE-INDEX, not around the merge, because the merge cannot change any retrieval result until documents are re-ingested; PR #2810 said so explicitly and must not be treated as canary-cleared. (6) Only then expect the four clozapine eval cases to move, and note they may still not pass if the underlying RKPG document is itself wrong, which is its own P1 row. Re-indexing is provider-backed and mutates the live clinical corpus, so it needs explicit owner approval at the time, not standing approval from this session.",
       "source": "Claude Code session 2026-09-16 (session_01Fj3ue1Dv89wSgzZWVQ6v3L), deployment state verified against production /api/health after merging db7432a9b",
       "added": "2026-09-16"
     },
@@ -498,7 +498,7 @@
       "priority": "P2",
       "type": "issue",
       "summary": "Disaster recovery has never been rehearsed at the data layer — only the schema replay has been tested",
-      "detail": "Run one real restore-to-a-new-project drill and record the wall-clock time and what was lost. Why: docs/disaster-recovery-runbook.md states plainly that only the schema layer was rehearsed (2026-07-07, ~19s local container replay) and that the platform restore plus golden retrieval eval has never been executed — so 'we have backups' is currently an untested claim on the live clinical corpus. Distinct from #1K6T35, which is the accepted ~24h recovery-point decision, not whether a restore works at all. Owner: user + operator (provider-backed). Confidence: high — the runbook says so itself. Depends on: #1K6T35 context.",
+      "detail": "UPDATE 2026-10-18: a step-by-step, timed, owner-approved drill (restore to a new project, Storage copy, count comparison, cost and stop conditions) is drafted in docs/operator-rehearsal-plan.md step 2; it has not run. PRIOR DETAIL: Run one real restore-to-a-new-project drill and record the wall-clock time and what was lost. Why: docs/disaster-recovery-runbook.md states plainly that only the schema layer was rehearsed (2026-07-07, ~19s local container replay) and that the platform restore plus golden retrieval eval has never been executed — so 'we have backups' is currently an untested claim on the live clinical corpus. Distinct from #1K6T35, which is the accepted ~24h recovery-point decision, not whether a restore works at all. Owner: user + operator (provider-backed). Confidence: high — the runbook says so itself. Depends on: #1K6T35 context.",
       "source": "session 2026-09-20 /ledger sweep — nine-agent repo maturity review",
       "added": "2026-09-20"
     },
@@ -579,7 +579,7 @@
       "priority": "P1",
       "type": "task",
       "summary": "CME and On Call have no two-user staging isolation proof; the cross-tenant harness covers documents/search/answer only (audit F17)",
-      "detail": "UPDATE 2026-10-06: Two-user CME/On Call write probe offline test suite tests/cross-tenant-write-probe.test.ts fully passing (9/9 tests). Owner authorized live staging execution via staging-tenancy.yml workflow dispatch.",
+      "detail": "UPDATE 2026-10-18 (GitHub Actions run read reported by the coordinating session; no provider access from this branch): the nightly staging-tenancy.yml workflow shows success, but its harness step actually fails, because continue-on-error applies on schedule runs. Run 39059127896 on 2026-10-17 logged 'GET /api/on-call/services returned 503'. So CME and On Call two-user isolation is still unproven on staging, and stays unproven until staging tracks main or is redeployed to the run's SHA (#057). Next action: deploy one exact candidate to staging and dispatch the workflow from that SHA (a dispatched run fails loudly), per docs/operator-rehearsal-plan.md step 3a. PRIOR DETAIL: UPDATE 2026-10-06: Two-user CME/On Call write probe offline test suite tests/cross-tenant-write-probe.test.ts fully passing (9/9 tests). Owner authorized live staging execution via staging-tenancy.yml workflow dispatch.",
       "source": "Ultimate Audit Master Report 2026-09-25 (owner-supplied .docx), reviewed offline against main 955996146 in session claude/review-assessment-4s1w86; no provider access",
       "added": "2026-09-25"
     },
@@ -687,7 +687,7 @@
       "priority": "P2",
       "type": "issue",
       "summary": "Youth self-harm and suicide services queries rarely show Lifeline, Suicide Call Back Service, 13YARN or Kids Helpline near the top",
-      "detail": "Lifeline WA boosted in PR #3157; national crisis lines remain unpinned for generic youth queries.",
+      "detail": "Lifeline WA boosted in PR #3157; national crisis lines remain unpinned for generic youth queries. Owner ruling 18 Oct 2026 00:10 AWST: do NOT pin national youth crisis lines (Lifeline WA, Suicide Call Back Service, Kids Helpline, 13YARN) for CAMHS crisis searches yet. Pinning waits for owner approval of the exact list; any pinning must exclude services that are closed, planned, superseded or marked temporarily unavailable, and keep CAMHS Crisis Connect and MHERL first. PR #3617 dropped its unapproved pinning attempt and cancelled its done request.",
       "source": "PR #3157 review",
       "added": "2026-09-25"
     },
@@ -935,47 +935,20 @@
       "added": "2026-10-17"
     },
     {
-      "id": "#GYR7Q3",
-      "priority": "P3",
-      "type": "task",
-      "summary": "Ledger tooling: add a reopen action that moves an archived issue back to the open table with its original ID and ULID",
-      "detail": "There is no sanctioned reopen in scripts/ledger-inbox.mjs (actions: add, done, update, amend-outcome, queue, cancel). Reopening #WFYDV6 by owner decision on 17 Oct 2026 therefore created a new open P1 row and amended the archived row, splitting the issue's history across two identities. Add a reopen request kind that the reconciler applies by moving the archive row back to the open table with its original ID and ULID, then use it to fold the new P1 row back into #WFYDV6.",
-      "source": "PR #3616 review (chatgpt-codex-connector), 17 Oct 2026",
-      "added": "2026-10-17"
-    },
-    {
-      "id": "#YJXRS3",
-      "priority": "P3",
-      "type": "task",
-      "summary": "Remove remaining PR 3538 leftovers after 13 Nov 2026 (follow-up to #08216B)",
-      "detail": "After the 30-day dead-code candidate window (2026-11-13), delete or wire the remaining PR 3538 leftovers flagged in #08216B: /api/proxy route (remove or restrict to an explicit allowlist), scripts/recalculate-answer-support-labels.ts (replace regex chunk-tag stripping with shared parser or delete), src/app/mockups/development/* pages, and unwired safe-number editor / attendance roster / QR helper / note editor privacy review.",
-      "source": "PR #3609 review; follow-up to #08216B",
-      "added": "2026-10-17"
-    },
-    {
       "id": "#8Y9169",
       "priority": "P3",
       "type": "task",
       "summary": "Remove the remaining PR 3538 leftovers after 13 Nov 2026 (split from #08216B, which closed only the calculator fixes)",
-      "detail": "#08216B was archived on 17 Oct with an outcome covering only the clinical-math calculators. Still open: src/app/api/proxy/route.ts (nothing calls it), scripts/recalculate-answer-support-labels.ts (no production caller; reassess it as a deletion candidate) and its test (covered by the normal test suite; do not treat it as unused), and the developer tool pages under src/app/mockups/development (unreachable duplicates of /admin/developer-hub) - remove after the 30-day dead-code window (13 Nov 2026) via npm run check:dead-code-candidate. The safe-number editor remains to be assessed for wiring or removal. ClinicalNoteEditor is already wired into the on-call handover shift scratchpad with persistence callbacks (handover-page.tsx); any privacy review should address that existing de-identified use rather than precede it. The attendance roster and QR check-in helper are wired through organise-sheets.tsx and teaching-code-sheet.tsx. The 16 Oct clinical-math calculator changes (IBW guidance, lithium boundaries, dose rounding) need clinician verification before any clinical use.",
+      "detail": "#08216B was archived on 17 Oct with an outcome covering only the clinical-math calculators. Still open: src/app/api/proxy/route.ts (nothing calls it) and scripts/recalculate-answer-support-labels.ts (no production caller; reassess it as a deletion candidate) with its test (covered by the normal test suite; do not treat it as unused) - remove after the 30-day dead-code window (13 Nov 2026) via npm run check:dead-code-candidate. The developer tool pages under src/app/mockups/development are NOT dead code: /admin/developer-hub links to /mockups/development/clinical-answer-failures and the owner panel (owner-today-section.tsx) links to /mockups/development/clinical-sign-off, so do not delete them; review any consolidation into /admin/developer-hub separately. The safe-number editor remains to be assessed for wiring or removal. ClinicalNoteEditor is already wired into the on-call handover shift scratchpad with persistence callbacks (handover-page.tsx); any privacy review should address that existing de-identified use rather than precede it. The attendance roster and QR check-in helper are wired through organise-sheets.tsx and teaching-code-sheet.tsx. The 16 Oct clinical-math calculator changes (IBW guidance, lithium boundaries, dose rounding) need clinician verification before any clinical use; the panel is hidden from /calculators until then (#3620).",
       "source": "PR #3609 review (gitar-bot, chatgpt-codex-connector), 17 Oct 2026",
-      "added": "2026-10-17"
-    },
-    {
-      "id": "#Z12CBC",
-      "priority": "P1",
-      "type": "issue",
-      "summary": "Reopened #WFYDV6: unwired WA MHA Form 6A/6B print component carries unverified statutory text; keep unwired until legal and clinical sign-off",
-      "detail": "Owner decision 17 Oct 2026 21:37 AWST: #WFYDV6 must stay open; PR #3609 archived it without the required sign-off. src/components/forms/wa-mha-form-print.tsx (PR #3538) was reworded on 16 Oct (Form 6B now a report to the Chief Psychiatrist; Non-Statutory Study Layout header), but section lists, the 7-day pre-expiry examination and copy recipients remain unverified and no legal or clinical sign-off is recorded. Nothing imports or renders it; it must stay unwired. Delete it once the 30-day dead-code window passes (after 13 Nov 2026) unless legal and clinical sign-off is obtained first.",
-      "source": "PR 3538 review, 15 Oct 2026; owner decision on PR #3609, 17 Oct 2026",
       "added": "2026-10-17"
     },
     {
       "id": "#WWTRM5",
       "priority": "P2",
       "type": "issue",
-      "summary": "Doc/instruction drift items left open when #WMGPSG was archived: ledger arrow, cloud-profile worktree rule, Caring Contacts decision, renewals wording",
-      "detail": "#WMGPSG was archived on 17 Oct with an outcome covering items 3 and 6 and the encoding repair in item 1 only. Still open: (1) docs/outstanding-issues.md:15 corrupted arrow (canonical ledger; fix only through reconciliation). (2) .claude/cloud-profile/skills/prompt/references/coding-workflow.md:21 pre-hardening worktree rule (owner decision: owned versus vendored). (4) docs/decisions/2026-09-26-remove-ward-flow-and-caring-contacts.md says Caring Contacts was removed but src/lib/caring-contacts/clock.ts is live with MHA, First Nations and On Call importers; add a dated superseding decision, do not delete the file. (5) Admin renewals page test dropped its checked-wording assertion while admin-renewed-sheet still forbids the word; record the decision.",
+      "summary": "Doc/instruction drift items left open when #WMGPSG was archived: ledger arrow and Caring Contacts decision",
+      "detail": "#WMGPSG was archived on 17 Oct with an outcome covering items 3 and 6 and the encoding repair in item 1 only. Still open: (1) docs/outstanding-issues.md:15 corrupted arrow (canonical ledger; fix only through reconciliation). (4) docs/decisions/2026-09-26-remove-ward-flow-and-caring-contacts.md says Caring Contacts was removed but src/lib/caring-contacts/clock.ts is live with MHA, First Nations and On Call importers; add a dated superseding decision, do not delete the file. Dropped on 18 Oct after checking the code: item 2 (.claude/cloud-profile/skills/prompt/references/coding-workflow.md:21 describes continuing same-task work in the supplied checkout, not a pre-hardening worktree rule) and item 5 (tests/admin-renewals-page.dom.test.tsx and tests/admin-renewals.test.ts still assert the 'Not checked with issuers' wording; admin-renewed-sheet separately forbids 'checked').",
       "source": "PR #3609 review (gitar-bot, chatgpt-codex-connector), 17 Oct 2026",
       "added": "2026-10-17"
     },
@@ -989,30 +962,93 @@
       "added": "2026-10-17"
     },
     {
-      "id": "#BDFFYF",
-      "priority": "P1",
+      "id": "#SQ2FG9",
+      "priority": "P3",
       "type": "issue",
-      "summary": "WA MHA Form 6A/6B print component: obtain legal/clinical sign-off or remove after 13 Nov 2026 (follow-up to #WFYDV6)",
-      "detail": "PR #3573 replaced official Department of Health branding with non-statutory study headers and corrected Form 6B report wording in src/components/forms/wa-mha-form-print.tsx, but the unverified statutory section lists, 7-day pre-expiry examination timing, and copy recipients still require either verified WA MHA 2014 legal/clinical sign-off or component removal after the 30-day dead-code window on 2026-11-13.",
-      "source": "PR #3609 review; follow-up to #WFYDV6; src/components/forms/wa-mha-form-print.tsx",
-      "added": "2026-10-17"
+      "summary": "Add a rights and licence field to the source register",
+      "detail": "Record publisher licence or permission status per source so public display and AI use can be checked. Finding R-07.",
+      "source": "Regulatory readiness audit 2026-10-20 (/mnt/project-files/reviews/2026-10-20-regulatory-launch-readiness.md)",
+      "added": "2026-10-20"
     },
     {
-      "id": "#GKAEZS",
+      "id": "#PYWRTX",
       "priority": "P3",
       "type": "task",
-      "summary": "Audit and remove older calculator mockups after 30-day window (audit M5-2, follow-up to #1WAA0Z)",
-      "detail": "Follow-up to #1WAA0Z (audit M5-2): audit older calculator mockups alongside the 2026-10-14 dead-code candidate review window (after 2026-11-13) and remove superseded mockup files once eligible.",
-      "source": "PR #3609 review; follow-up to #1WAA0Z; docs/audit/2026-10-12-repo-audit.md (M5-2)",
-      "added": "2026-10-17"
+      "summary": "registered-public-answer-options.ts has no test; its planned tests never landed",
+      "detail": "Audit 2026-10-20 (DOC-18): src/lib/registered-public-answer-options.ts (the registered public answer, no document filter path) landed on main but no file in tests/ imports it. The 15 Oct evidence inventory listed tests/registered-public-answer-no-filter.test.ts, tests/rag-no-filter-published-original-context.test.ts, tests/rag-nhmrc-delivery.test.ts, tests/answer-section-projector.test.ts and the fixture tests/fixtures/nhmrc-response18-consumer.json, but none was ever committed (the originals depended on a private real capture). Next action: write a synthetic-fixture test for registered-public-answer-options.ts. Answer path: check the RAG protection list before editing.",
+      "source": "RAG and ingestion audit 2026-10-20, finding DOC-18; docs/audit/ingestion-rag-2026-10-15/rag-evidence-inventory.json repositoryLandingCorrection",
+      "added": "2026-10-20"
     },
     {
-      "id": "#WWV98H",
-      "priority": "P3",
+      "id": "#8P31MT",
+      "priority": "P1",
+      "type": "task",
+      "summary": "Owner GitHub settings from the 20 Oct change control audit: delete the repository copy of SUPABASE_SERVICE_ROLE_KEY, and narrow Grok Bot's token",
+      "detail": "The CI boot smoke no longer reads any secret (audit CC-05), so the repository copy of SUPABASE_SERVICE_ROLE_KEY can be deleted once the copies in production-secrets and Database / production are confirmed. Grok Bot's personal token should lose Workflows, Administration and Actions write (CC-03). Railway wait-for-CI is #HYSWAF. Report: /mnt/project-files/reviews/2026-10-20-change-control-audit.md (project files, not in the repo).",
+      "source": "docs/decisions/2026-10-20-database-prs-merge-by-hand.md",
+      "added": "2026-10-20"
+    },
+    {
+      "id": "#XJ3N16",
+      "priority": "P2",
       "type": "issue",
-      "summary": "Complete remaining doc/decision drift items from #WMGPSG",
-      "detail": "Follow-up to #WMGPSG for the remaining documentation and decision-record items: (1) add a superseding decision next to docs/decisions/2026-09-26-remove-ward-flow-and-caring-contacts.md covering live src/lib/caring-contacts/clock.ts, (2) record the admin renewals wording decision, (3) document the cloud-profile worktree rule, and (4) replace the mojibake arrow on docs/outstanding-issues.md:15 during a canonical ledger header maintenance pass.",
-      "source": "PR #3609 review; follow-up to #WMGPSG",
+      "summary": "Privacy page: complaints, access, automated decision statement (APP 1.7-1.9 from 10 Dec 2026) and overseas disclosure",
+      "detail": "Wording waits for the privacy adviser's answers (question list 6c in the audit report). Findings R-08, R-20.",
+      "source": "Regulatory readiness audit 2026-10-20 (/mnt/project-files/reviews/2026-10-20-regulatory-launch-readiness.md)",
+      "added": "2026-10-20"
+    },
+    {
+      "id": "#TXVBAZ",
+      "priority": "P2",
+      "type": "issue",
+      "summary": "Answer limb (d)/(e) gaps: treatment-decision pull and reasoning the clinician cannot see, in protected answer code",
+      "detail": "Amended TGA exemption limbs (d) and (e) from 1 Nov 2026. Fix sits in protected RAG/answer files: needs owner's named yes, RAG impact line and before/after eval canary (about US$1-2). Canary blocked until OpenAI quota restored (audit 9 PB-01). Findings R-04, R-14.",
+      "source": "Regulatory readiness audit 2026-10-20 (/mnt/project-files/reviews/2026-10-20-regulatory-launch-readiness.md)",
+      "added": "2026-10-20"
+    },
+    {
+      "id": "#HGEC4B",
+      "priority": "P2",
+      "type": "issue",
+      "summary": "Remove third-party publisher documents (BMJ Best Practice, WA Health, DSM) from the public corpus",
+      "detail": "Migration 20260706120000 made all indexed documents public. Narrowing public_corpus is a live database change needing the owner's named yes for that specific change; await counsel's answer on licences first. Findings R-05, R-06.",
+      "source": "Regulatory readiness audit 2026-10-20 (/mnt/project-files/reviews/2026-10-20-regulatory-launch-readiness.md)",
+      "added": "2026-10-20"
+    },
+    {
+      "id": "#1RVGZF",
+      "priority": "P1",
+      "type": "issue",
+      "summary": "Build sign-in gate for Answer, medication patient details, therapy ranking, questionnaire scoring and original PDFs before 1 Nov 2026",
+      "detail": "Owner decision 2026-10-20 (docs/decisions/2026-10-20-clinical-decision-tools-need-sign-in.md). Mockup awaits owner 'build'. Server-side refusal on answer, clinical-ask and signed-url routes plus UI gates. Findings R-01, R-03, R-05, R-13, R-15. PR-4 stays unmet until built.",
+      "source": "Regulatory readiness audit 2026-10-20 (/mnt/project-files/reviews/2026-10-20-regulatory-launch-readiness.md)",
+      "added": "2026-10-20"
+    },
+    {
+      "id": "#F8Q9KK",
+      "priority": "P3",
+      "type": "task",
+      "summary": "Move GH_TOKEN into the main-only production-secrets environment and stop putting it in a git push URL",
+      "detail": "Audit CC-12, 2026-10-20: pr-batch-runner.yml and ranking-snapshot-refresh.yml read the owner's personal GH_TOKEN as a repository secret, and ranking-snapshot-refresh.yml puts it in the git push URL. Add environment: production-secrets to both jobs and push through gh auth setup-git, then the owner moves the secret. Not done in the audit fix PR because this session's automated safety check refused the edit.",
+      "source": "docs/decisions/2026-10-20-database-prs-merge-by-hand.md",
+      "added": "2026-10-20"
+    },
+    {
+      "id": "#NZ4X41",
+      "priority": "P2",
+      "type": "task",
+      "summary": "Therapy catalogue: 22 of 47 unsourced records now carry NICE references and await sign-off, 25 still have none",
+      "detail": "PS-062 verified against the 2026-10-18 checkout: 179 therapies remain reviewed and 26 were reset to needs_review under the owner ruling recorded in docs/decisions/2026-10-17-agent-recorded-therapy-and-did-sign-offs-reset.md. The previous completion described all 205 as signed; that outcome is superseded. Governed references are present, but the 26 need genuine owner review through therapy:review. Clinical approval, corpus refresh and loaded-client revocation are not established. (Previously archived 2026-10-17: Populated governed guideline and clinical literature references for the remaining 26 Therapy Compass records and completed clinician sign-off across all 205 Therapy Compass profiles.)",
+      "source": "PS-062 supplied merged-PR review; canonical therapies-source.json and reset decision, inspected 2026-10-18",
+      "added": "2026-10-18"
+    },
+    {
+      "id": "#WFYDV6",
+      "priority": "P1",
+      "type": "issue",
+      "summary": "Unwired WA MHA Form 6A/6B print component carries unverified statutory text",
+      "detail": "Owner decision 17 Oct 2026 21:37 AWST: #WFYDV6 must stay open; PR #3609 archived it without the required sign-off. src/components/forms/wa-mha-form-print.tsx (PR #3538) was reworded on 16 Oct (Form 6B now a report to the Chief Psychiatrist; Non-Statutory Study Layout header), but section lists, the 7-day pre-expiry examination and copy recipients remain unverified and no legal or clinical sign-off is recorded. Nothing imports or renders it; it must stay unwired. Delete it once the 30-day dead-code window passes (after 13 Nov 2026) unless legal and clinical sign-off is obtained first. (Previously archived 2026-10-16: Fixed statutory discrepancies and branding in-place in src/components/forms/wa-mha-form-print.tsx: replaced Form 6B Chief Psychiatrist consent wording with statutory post-order Report to the Chief Psychiatrist wording matching form-register.ts, replaced official WA Department of Health branding with an explicit Non-Statutory Study Layout header and warning banner, and updated tests/wa-mha-form-print.dom.test.tsx (retaining the file per the 30-day dead-code policy). | Note: Reopened 17 Oct 2026 by owner decision (21:37 AWST): archived by PR #3609 without the required legal and clinical sign-off; tracked again as an open P1 row. The form stays unwired until sign-off.)",
+      "source": "PR 3538 review, 15 Oct 2026; owner decision on PR #3609, 17 Oct 2026; reopened in place with the ledger reopen action (PR #3627), replacing duplicate row #Z12CBC",
       "added": "2026-10-17"
     }
   ],
