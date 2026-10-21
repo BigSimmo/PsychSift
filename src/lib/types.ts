@@ -1395,6 +1395,9 @@ export type RagAnswer = {
     /** Pre-answer work (dominated by retrieval) consumed the entire route budget before
      * generation could start. Additive; optional for mixed-version telemetry compat. */
     route_budget_exhausted_by_retrieval?: boolean;
+    /** Milliseconds from request start until the verified evidence preview was handed to the
+     * stream. Absent when no preview was sent (the answer itself was the first content). */
+    first_verified_content_ms?: number;
     total_latency_ms?: number;
   };
   openAIRequestIds?: string[];

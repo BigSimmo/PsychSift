@@ -103,6 +103,12 @@ export const SITE_CONTENT_PROBE_TIMEOUT_MS = 10_000;
  */
 export const ANSWER_SLO_TRAILING_WINDOW_MINUTES = 360;
 
+/**
+ * Length of the optional `sloDaily` snapshot, computed only when the caller asks with
+ * `answer_window=daily` (the once-a-day health summary). No alert reads it.
+ */
+export const ANSWER_SLO_DAILY_WINDOW_MINUTES = 1440;
+
 export async function healthResponse(request: Request, options: HealthResponseOptions = {}) {
   const deep = options.forceDeep || new URL(request.url).searchParams.get("deep") === "1";
   const tokenAuthorized = allowDeepHealthProbe(request);
@@ -125,6 +131,8 @@ export async function healthResponse(request: Request, options: HealthResponseOp
   // `{ unavailable: true }` marks a trailing query that failed on this build, so the digest reports
   // answer quality as unknown rather than treating the response as an older hourly-only build.
   let sloTrailing: AnswerSloSnapshot | { windowMinutes: number; unavailable: true } | null = null;
+  let sloDaily: AnswerSloSnapshot | null = null;
+  const dailyRequested = new URL(request.url).searchParams.get("answer_window") === "daily";
   let cache: CacheMetricsSnapshot | null = null;
   let coalescing: AnswerCoalescingMetricsSnapshot | null = null;
   let spend: SpendSnapshot | null = null;
@@ -218,11 +226,13 @@ export async function healthResponse(request: Request, options: HealthResponseOp
             const sloClient = admin as unknown as SloProbeClient;
             // Hourly (hybrid-RPC identity history) and trailing (answer-rate alerts) snapshots
             // run side by side; either failing drops only its own block.
-            const [hourly, trailing] = await Promise.allSettled([
+            const [hourly, trailing, daily] = await Promise.allSettled([
               answerSloSnapshot(sloClient),
               answerSloSnapshot(sloClient, ANSWER_SLO_TRAILING_WINDOW_MINUTES),
+              dailyRequested ? answerSloSnapshot(sloClient, ANSWER_SLO_DAILY_WINDOW_MINUTES) : Promise.resolve(null),
             ]);
             slo = hourly.status === "fulfilled" ? hourly.value : null;
+            sloDaily = daily.status === "fulfilled" ? daily.value : null;
             sloTrailing =
               trailing.status === "fulfilled"
                 ? trailing.value
@@ -285,6 +295,7 @@ export async function healthResponse(request: Request, options: HealthResponseOp
       checks,
       ...(slo ? { slo } : {}),
       ...(sloTrailing ? { sloTrailing } : {}),
+      ...(sloDaily ? { sloDaily } : {}),
       ...(cache ? { cache } : {}),
       ...(coalescing ? { coalescing } : {}),
       ...(spend ? { spend } : {}),

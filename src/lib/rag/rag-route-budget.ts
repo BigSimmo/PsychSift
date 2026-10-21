@@ -51,6 +51,10 @@ export type AnswerRouteDeadline = {
   generationRequestTimeoutMs(maximumMs: number): number;
   race<T>(promise: Promise<T>): Promise<T>;
   dispose(): void;
+  /** Stamps the first verified unit (the evidence preview) handed to the stream; later calls are ignored. */
+  markFirstVerifiedContent(): void;
+  /** Route timing fields for `latencyTimings`, read at call time. */
+  timingFields(): { route_budget_ms: number; route_deadline_exceeded: boolean; first_verified_content_ms?: number };
 };
 
 /** True when enough budget remains for a generation retry to plausibly complete
@@ -88,6 +92,8 @@ export function createAnswerRouteDeadline(args: {
   const deadlineAt = budgetMs > 0 ? (args.startedAt ?? now()) + budgetMs : null;
   let deadlineExceeded = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
+  const timingOrigin = args.startedAt ?? now();
+  let firstVerifiedContentMs: number | null = null;
 
   const abortFromCaller = () => controller.abort(abortReason(args.callerSignal!));
   if (args.callerSignal?.aborted) abortFromCaller();
@@ -122,6 +128,16 @@ export function createAnswerRouteDeadline(args: {
       return deadlineExceeded;
     },
     remainingMs,
+    markFirstVerifiedContent() {
+      firstVerifiedContentMs ??= Math.max(0, now() - timingOrigin);
+    },
+    timingFields() {
+      return {
+        route_budget_ms: budgetMs,
+        route_deadline_exceeded: deadlineExceeded,
+        ...(firstVerifiedContentMs === null ? {} : { first_verified_content_ms: firstVerifiedContentMs }),
+      };
+    },
     requestTimeoutMs(maximumMs) {
       throwIfAborted();
       return Math.max(1, Math.min(maximumMs, remainingMs()));
