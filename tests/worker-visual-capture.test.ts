@@ -8,6 +8,16 @@ const extractorSource = readFileSync(new URL("../worker/python/extract_pdf_asset
 // Fenced leases (PR #3546) moved the lease-bound RPC seams into worker/behavior.ts.
 const behaviorSource = readFileSync(new URL("../worker/behavior.ts", import.meta.url), "utf8");
 const schemaSource = readFileSync(new URL("../supabase/schema.sql", import.meta.url), "utf8");
+// ING-B-10: the admission-bound caption cache.
+const captionCacheSource = readFileSync(new URL("../worker/image-caption-cache.ts", import.meta.url), "utf8");
+
+function sourceWindow(source: string, start: string, end: string) {
+  const from = source.indexOf(start);
+  expect(from, start).toBeGreaterThan(-1);
+  const to = source.indexOf(end, from);
+  expect(to, end).toBeGreaterThan(from);
+  return source.slice(from, to);
+}
 
 function fencedCompleteIngestionJobBody() {
   const start = schemaSource.lastIndexOf(
@@ -106,11 +116,27 @@ describe("worker visual capture hardening", () => {
   it("invalidates stale image caption cache entries by policy, prompt, and context versions", () => {
     expect(workerSource).toContain('const imageCaptionCacheVersion = "clinical-image-caption-cache-v2"');
     expect(workerSource).toContain('const visionClassificationPromptVersion = "clinical-image-classification-v1"');
-    // Fenced leases: legacy cache entries lack admission/source identity, so the worker no
-    // longer reads or writes the caption cache at all — every caption is regenerated under
-    // the current attempt, which is strictly stronger than per-version invalidation.
-    expect(workerSource).toContain("const classificationCacheHit = false;");
+    // Fenced leases: legacy cache entries lack admission/source identity and are never read.
+    // ING-B-10 re-enabled reuse only for rows bound to the same admitted source: the identity
+    // covers the document, admission event, content hash, authority digest, image hash and
+    // the versioned context hash, and a hit still passes the current provider-egress gate.
     expect(workerSource).not.toMatch(/(get|set)CachedImageClassification/);
+    for (const binding of [
+      "documentId: args.job.document_id,",
+      "admissionEventId,",
+      "contentHash,",
+      "authorityDigest,",
+      "imageHash: args.imageHash,",
+      "contextHash: args.contextHash,",
+      "tableText: args.classifierInputs.tableText,",
+      "imageDetail: env.OPENAI_VISION_IMAGE_DETAIL,",
+      "reasoningEffort: env.OPENAI_VISION_REASONING_EFFORT,",
+    ]) {
+      expect(captionCacheSource).toContain(binding);
+    }
+    expect(captionCacheSource).toContain("parsed.data.metadata.cache_identity !== key.identity");
+    const hit = sourceWindow(workerSource, "if (cached) {", "classificationCacheHit: true");
+    expect(hit).toContain("await assertIngestionProviderEgress(");
     // The versions still key the context hash and are stamped on every persisted image.
     expect(workerSource).toContain("cacheVersion: imageCaptionCacheVersion,");
     expect(workerSource).toContain("promptVersion: visionClassificationPromptVersion,");
@@ -123,9 +149,16 @@ describe("worker visual capture hardening", () => {
 
   it("redacts captions before cache writes", () => {
     expect(workerSource).toContain("function redactImageClassification");
-    // No caption cache writes remain (see above); redaction must precede the only sink,
-    // the fenced image persistence.
+    // The caption cache (ING-B-10) stores only the redacted classification.
     expect(workerSource).not.toMatch(/setCachedImageClassification/);
+    const cacheWrite = sourceWindow(
+      captionCacheSource,
+      "export async function writeCachedImageClassification(",
+      ".upsert(",
+    );
+    expect(cacheWrite).toContain("const redacted = redactImageClassification(classification);");
+    expect(captionCacheSource).toContain("caption: redacted.caption,");
+    expect(captionCacheSource).toContain("classification: redacted,");
     expect(workerSource).toContain("caption: redactCaptionIdentifiers(cleanString(classification.caption)),");
     expect(workerSource).toMatch(
       /structured_visual_profile: redactCaptionMetadataValue\(\s*\(classification as ImageClassificationWithVisualProfile\)\.structured_visual_profile,/,

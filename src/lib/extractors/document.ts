@@ -473,11 +473,41 @@ function assertDeclaredPdfImageDimensions(buffer: Buffer, limits: PdfExtractionB
   }
 }
 
+/**
+ * Audit ING-B-05: the pdf.js fallback re-parses a file the Python extractor failed on,
+ * inside the worker process, so it must not run unbounded. It gets whatever is left of
+ * the document's extraction deadline; on expiry the caller destroys the parsers, which
+ * rejects their pending work, and the document fails as a non-retryable deadline refusal.
+ */
+async function withFallbackDeadline<T>(remainingMs: number, work: () => Promise<T>): Promise<T> {
+  const expired = () =>
+    new PdfExtractionResourceError(
+      "PDF_EXTRACTION_DEADLINE_EXCEEDED",
+      "JavaScript PDF fallback exceeded the remaining extraction deadline",
+    );
+  if (remainingMs <= 0) throw expired();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const pending = work();
+  // After a timeout the abandoned work settles once its parsers are destroyed.
+  pending.catch(() => undefined);
+  try {
+    return await Promise.race([
+      pending,
+      new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => reject(expired()), remainingMs);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function extractPdf(
   buffer: Buffer,
   options: { limits?: PdfExtractionBudget; scriptPathOverride?: string } = {},
 ) {
   const limits = options.limits ?? PDF_EXTRACTION_BUDGET;
+  const startedAt = Date.now();
   const tempRoot = await mkdtemp(path.join(tmpdir(), "clinical-kb-"));
   const pdfPath = path.join(tempRoot, "document.pdf");
   const imageDir = path.join(tempRoot, "images");
@@ -522,92 +552,99 @@ export async function extractPdf(
       stopAtErrors: true,
     });
     try {
-      assertDeclaredPdfImageDimensions(buffer, limits);
-      const parsed = await textParser.getText();
-      const budget = new PdfExtractionBudgetTracker(limits);
-      const rawPages: ExtractedPage[] =
-        parsed.pages.length > 0
-          ? parsed.pages.map((page: { num: number; text?: string }) => ({
-              pageNumber: page.num,
-              text: page.text || "",
-              ocrUsed: false,
-            }))
-          : [{ pageNumber: 1, text: parsed.text || "", ocrUsed: false }];
-      for (const page of rawPages) budget.addPage(page.text);
+      return await withFallbackDeadline(limits.totalTimeoutMs - (Date.now() - startedAt), async () => {
+        assertDeclaredPdfImageDimensions(buffer, limits);
+        const parsed = await textParser.getText();
+        const budget = new PdfExtractionBudgetTracker(limits);
+        const rawPages: ExtractedPage[] =
+          parsed.pages.length > 0
+            ? parsed.pages.map((page: { num: number; text?: string }) => ({
+                pageNumber: page.num,
+                text: page.text || "",
+                ocrUsed: false,
+              }))
+            : [{ pageNumber: 1, text: parsed.text || "", ocrUsed: false }];
+        for (const page of rawPages) budget.addPage(page.text);
 
-      const images: ExtractedDocument["images"] = [];
-      const imageCountByPage = new Map<number, number>();
-      const malformedImagePages = new Set<number>();
-      // Extract one page at a time so aggregate limits can stop subsequent decoding, and
-      // request only binary data to avoid holding a duplicate base64 representation.
-      for (const rawPage of rawPages) {
-        let imageResult: Awaited<ReturnType<PdfjsFallbackParser["getImage"]>>;
-        try {
-          imageResult = await imageParser.getImage({
-            partial: [rawPage.pageNumber],
-            imageThreshold: 20,
-          });
-        } catch (imageError) {
-          if (!isRecoverableFallbackPdfImageError(imageError)) throw imageError;
-          imageCountByPage.set(rawPage.pageNumber, (imageCountByPage.get(rawPage.pageNumber) ?? 0) + 1);
-          malformedImagePages.add(rawPage.pageNumber);
-          continue;
-        }
-        for (const page of imageResult.pages) {
-          imageCountByPage.set(page.pageNumber, (imageCountByPage.get(page.pageNumber) ?? 0) + page.images.length);
-          for (const [index, image] of page.images.entries()) {
-            if (!isUsableFallbackPdfImage(image)) continue;
-            budget.assertRenderDimensions(image.width, image.height);
-            budget.assertArtifact(image.data.byteLength);
-            const mimeType = "image/png";
-            const extension = mimeType.includes("jpeg") ? "jpg" : "png";
-            const outputPath = path.join(imageDir, `fallback-page-${page.pageNumber}-image-${index + 1}.${extension}`);
-            const bytes = Buffer.from(image.data);
-            budget.addArtifact(bytes.byteLength);
-            await writeFile(outputPath, bytes);
-            images.push({
-              pageNumber: page.pageNumber,
-              path: outputPath,
-              mimeType,
-              bbox: null,
-              width: image.width,
-              height: image.height,
-              sourceKind: "fallback",
-              metadata: { source_kind: "fallback" },
+        const images: ExtractedDocument["images"] = [];
+        const imageCountByPage = new Map<number, number>();
+        const malformedImagePages = new Set<number>();
+        // Extract one page at a time so aggregate limits can stop subsequent decoding, and
+        // request only binary data to avoid holding a duplicate base64 representation.
+        for (const rawPage of rawPages) {
+          let imageResult: Awaited<ReturnType<PdfjsFallbackParser["getImage"]>>;
+          try {
+            imageResult = await imageParser.getImage({
+              partial: [rawPage.pageNumber],
+              imageThreshold: 20,
             });
+          } catch (imageError) {
+            if (!isRecoverableFallbackPdfImageError(imageError)) throw imageError;
+            imageCountByPage.set(rawPage.pageNumber, (imageCountByPage.get(rawPage.pageNumber) ?? 0) + 1);
+            malformedImagePages.add(rawPage.pageNumber);
+            continue;
+          }
+          for (const page of imageResult.pages) {
+            imageCountByPage.set(page.pageNumber, (imageCountByPage.get(page.pageNumber) ?? 0) + page.images.length);
+            for (const [index, image] of page.images.entries()) {
+              if (!isUsableFallbackPdfImage(image)) continue;
+              budget.assertRenderDimensions(image.width, image.height);
+              budget.assertArtifact(image.data.byteLength);
+              const mimeType = "image/png";
+              const extension = mimeType.includes("jpeg") ? "jpg" : "png";
+              const outputPath = path.join(
+                imageDir,
+                `fallback-page-${page.pageNumber}-image-${index + 1}.${extension}`,
+              );
+              const bytes = Buffer.from(image.data);
+              budget.addArtifact(bytes.byteLength);
+              await writeFile(outputPath, bytes);
+              images.push({
+                pageNumber: page.pageNumber,
+                path: outputPath,
+                mimeType,
+                bbox: null,
+                width: image.width,
+                height: image.height,
+                sourceKind: "fallback",
+                metadata: { source_kind: "fallback" },
+              });
+            }
           }
         }
-      }
-      await textParser.destroy();
-      await imageParser.destroy();
+        await textParser.destroy();
+        await imageParser.destroy();
 
-      // IDX-H3: the JS fallback cannot OCR. A scanned / image-only page yields little or no
-      // embedded text, so without flagging it the document would index as near-empty yet still
-      // be marked "indexed" — invisible to retrieval. Mark any page that has image content but
-      // below-threshold text as needsOcr so index_quality surfaces it (and the worker refuses
-      // to mark an image-only PDF as fully indexed).
-      const JS_FALLBACK_MIN_TEXT_CHARS = 40;
-      const pages: ExtractedPage[] = rawPages.map((page) => {
-        const textLength = page.text.trim().length;
-        const hasImages = (imageCountByPage.get(page.pageNumber) ?? 0) > 0;
-        const needsOcr = textLength < JS_FALLBACK_MIN_TEXT_CHARS && hasImages;
-        return { pageNumber: page.pageNumber, text: page.text, ocrUsed: false, needsOcr };
+        // IDX-H3: the JS fallback cannot OCR. A scanned / image-only page yields little or no
+        // embedded text, so without flagging it the document would index as near-empty yet still
+        // be marked "indexed" — invisible to retrieval. Mark any page that has image content but
+        // below-threshold text as needsOcr so index_quality surfaces it (and the worker refuses
+        // to mark an image-only PDF as fully indexed).
+        const JS_FALLBACK_MIN_TEXT_CHARS = 40;
+        const pages: ExtractedPage[] = rawPages.map((page) => {
+          const textLength = page.text.trim().length;
+          const hasImages = (imageCountByPage.get(page.pageNumber) ?? 0) > 0;
+          const needsOcr = textLength < JS_FALLBACK_MIN_TEXT_CHARS && hasImages;
+          return { pageNumber: page.pageNumber, text: page.text, ocrUsed: false, needsOcr };
+        });
+
+        const warnings = ["Used JavaScript PDF fallback; install Python PDF/OCR prerequisites for scanned PDFs."];
+        if (malformedImagePages.size > 0) {
+          warnings.push(
+            `malformed_fallback_images: skipped unusable image data on ${malformedImagePages.size} page(s); review or OCR sparse pages.`,
+          );
+        }
+        const ocrNeededPages = pages.filter((page) => page.needsOcr).length;
+        if (ocrNeededPages > 0) {
+          warnings.push(
+            `needs_ocr: ${ocrNeededPages} page(s) appear image-only and were not OCR'd by the JS fallback.`,
+          );
+        }
+
+        const result = { pages, images, warnings, temporaryPaths: [tempRoot] };
+        budget.assertResult(JSON.stringify(result));
+        return result;
       });
-
-      const warnings = ["Used JavaScript PDF fallback; install Python PDF/OCR prerequisites for scanned PDFs."];
-      if (malformedImagePages.size > 0) {
-        warnings.push(
-          `malformed_fallback_images: skipped unusable image data on ${malformedImagePages.size} page(s); review or OCR sparse pages.`,
-        );
-      }
-      const ocrNeededPages = pages.filter((page) => page.needsOcr).length;
-      if (ocrNeededPages > 0) {
-        warnings.push(`needs_ocr: ${ocrNeededPages} page(s) appear image-only and were not OCR'd by the JS fallback.`);
-      }
-
-      const result = { pages, images, warnings, temporaryPaths: [tempRoot] };
-      budget.assertResult(JSON.stringify(result));
-      return result;
     } catch (fallbackError) {
       await textParser.destroy().catch(() => undefined);
       await imageParser.destroy().catch(() => undefined);

@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "6631fa66-da93-454a-9958-1b4f0d5f49ec",
+  "createdOn": "2026-10-20",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "task",
+    "summary": "registered-public-answer-options.ts has no test; its planned tests never landed",
+    "detail": "Audit 2026-10-20 (DOC-18): src/lib/registered-public-answer-options.ts (the registered public answer, no document filter path) landed on main but no file in tests/ imports it. The 15 Oct evidence inventory listed tests/registered-public-answer-no-filter.test.ts, tests/rag-no-filter-published-original-context.test.ts, tests/rag-nhmrc-delivery.test.ts, tests/answer-section-projector.test.ts and the fixture tests/fixtures/nhmrc-response18-consumer.json, but none was ever committed (the originals depended on a private real capture). Next action: write a synthetic-fixture test for registered-public-answer-options.ts. Answer path: check the RAG protection list before editing.",
+    "source": "RAG and ingestion audit 2026-10-20, finding DOC-18; docs/audit/ingestion-rag-2026-10-15/rag-evidence-inventory.json repositoryLandingCorrection",
+    "issueUlid": "01M5D78WBAPYWRTXRAZD3HT5Y2"
+  }
+}

@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-20"
+    "committed_at": "2026-10-21"
   },
   "routes": {
     "modes": [
@@ -1644,6 +1644,11 @@
         "area": "product"
       },
       {
+        "path": "/on-call/calls",
+        "file": "src/app/(search-app)/on-call/calls/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/on-call/find",
         "file": "src/app/(search-app)/on-call/find/page.tsx",
         "area": "product"
@@ -2984,6 +2989,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-18-merge-commits-only.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-09-25-site-catalogue-first-publication.md",
         "section": "decisions",
         "catalogued": true
@@ -3066,6 +3076,11 @@
       {
         "path": "docs/decisions/2026-08-17-document-summary-rows-get-their-own-provenance.md",
         "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/archive/forward-codify-retrieval-rpcs-workorder-2026-10-20.md",
+        "section": "archive",
         "catalogued": true
       },
       {
@@ -3584,6 +3599,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-17-library-reindex-stopped.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/observability-slos.md",
         "section": "root",
         "catalogued": true
@@ -4039,6 +4059,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-20-on-call-four-tabs.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/archive/source-governance-status-2026-07-08.md",
         "section": "archive",
         "catalogued": true
@@ -4356,6 +4381,11 @@
       {
         "path": "docs/agents/cloud-platform-acceptance.md",
         "section": "agents",
+        "catalogued": true
+      },
+      {
+        "path": "docs/archive/ingestion-concurrency-fix-workorder-2026-10-20.md",
+        "section": "archive",
         "catalogued": true
       },
       {
@@ -5279,6 +5309,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-21-ci-failure-alerts-mention-owner.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-10-15-live-database-keep-and-fix.md",
         "section": "decisions",
         "catalogued": true
@@ -5706,6 +5741,11 @@
       {
         "path": "docs/database-remediation-coordination.md",
         "section": "root",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-20-database-prs-merge-by-hand.md",
+        "section": "decisions",
         "catalogued": true
       },
       {

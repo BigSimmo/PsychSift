@@ -281,6 +281,20 @@
       "recordedBy": "Engineering, combined-PR session 2026-10-06. Not a clinical review; the owner must re-review.",
       "recordedOn": "2026-10-06",
       "expiresOn": "2026-11-20"
+    },
+    {
+      "path": "src/lib/service-urgent-routing.ts",
+      "reason": "Audit 3 finding R4-F-01: medical-emergency phrases (seizure, unconscious or unconsciousness, loss of consciousness, not breathing, collapse or collapsed, anaphylaxis) now pin 000 first, ahead of regional crisis routes and of the Alcohol and Drug Support Line for alcohol withdrawal seizure. Behaviour widens urgent routing only; owner hazard re-review and reseal (H8) pending.",
+      "recordedBy": "Engineering, Claude clinical content audit thread (audit 3, 20 Oct 2026), per owner request to fix the audit recommendations. Engineering drift record only; not clinical-owner approval, hazard re-review or reseal.",
+      "recordedOn": "2026-10-20",
+      "expiresOn": "2026-12-04"
+    },
+    {
+      "path": "tests/services-catalog.test.ts",
+      "reason": "Audit 3 findings R4-F-06, R4-F-10, R4-F-11 and R6-F-10: tests added or updated for superseded legacy crisis duplicates, corrected service contacts, phone bracket normalisation and no confidence chip on unverified legacy records. Owner hazard re-review and reseal (H8) pending.",
+      "recordedBy": "Engineering, Claude clinical content audit thread (audit 3, 20 Oct 2026), per owner request to fix the audit recommendations. Engineering drift record only; not clinical-owner approval, hazard re-review or reseal.",
+      "recordedOn": "2026-10-20",
+      "expiresOn": "2026-12-04"
     }
   ]
 }

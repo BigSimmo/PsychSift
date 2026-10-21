@@ -331,10 +331,10 @@ export const toolCatalogRecords: ToolCatalogRecord[] = [
   {
     id: "care-plans",
     title: "Care plans",
-    description: "Find what guidelines say about care plans, monitoring and follow-up.",
+    description: "Generate care-plan guidance with monitoring and follow-up prompts.",
     bestFor: "Care-planning guidance and MBS 291/293 management plans",
     detail:
-      "Find guideline care-plan structure, review milestones, monitoring needs, and follow-up tasks. Covers MBS psychiatric management plans: Item 291 (GP referral required, 12-month restriction, billing condition that the referring GP provides ongoing management, not a treatment ban) and Item 293 (GP-referred review of Item 291 management plan, 12-month restriction).",
+      "Generate care-plan structure, review milestones, monitoring needs, and follow-up tasks. Covers MBS psychiatric management plans: Item 291 (GP referral required, 12-month restriction, billing condition that the referring GP provides ongoing management, not a treatment ban) and Item 293 (GP-referred review of Item 291 management plan, 12-month restriction).",
     href: "/?mode=answer&q=care%20plan&focus=1",
     area: "care",
     status: "ready",
@@ -410,7 +410,7 @@ export const toolCatalogRecords: ToolCatalogRecord[] = [
     id: "calculators",
     title: "Calculators",
     mobileTitle: "Calculators",
-    description: "Score psychiatry rating scales and clinical calculators with source-cited guidance.",
+    description: "Score psychiatry rating scales with source-cited guidance.",
     bestFor: "Bedside scoring and severity banding",
     detail:
       "Search and complete clinical calculators (PHQ-9, GAD-7, and related scales). Scores support clinical judgement and cite their source — they never replace a full assessment.",
@@ -442,9 +442,9 @@ export const toolCatalogRecords: ToolCatalogRecord[] = [
   {
     id: "monitoring",
     title: "Monitoring",
-    description: "Find guideline monitoring schedules and thresholds, with sources.",
+    description: "Generate monitoring guidance with thresholds and review prompts.",
     bestFor: "Monitoring guidance",
-    detail: "Find guideline monitoring intervals, parameters, alerts and follow-up actions, with sources.",
+    detail: "Generate monitoring intervals, parameters, alerts, and follow-up actions.",
     href: "/?mode=answer&q=monitoring%20schedule&focus=1",
     area: "care",
     status: "ready",

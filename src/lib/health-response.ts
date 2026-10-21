@@ -94,6 +94,15 @@ const READINESS_SUPABASE_PROBE_TIMEOUT_MS = 5_000;
  */
 export const SITE_CONTENT_PROBE_TIMEOUT_MS = 10_000;
 
+/**
+ * Length of the `sloTrailing` answer snapshot: one ops-digest interval (the digest runs every six
+ * hours). The hourly `slo` snapshot alone left five hours in every six unexamined, so rising
+ * source-gap, unsupported or fallback rates went unnoticed (audit EVAL-02, 2026-10-20). Must equal
+ * `ANSWER_QUALITY_WINDOW_MINUTES` in scripts/lib/operational-alerts.mjs, which judges it;
+ * tests/health-response-deep-probe.test.ts pins the two together.
+ */
+export const ANSWER_SLO_TRAILING_WINDOW_MINUTES = 360;
+
 export async function healthResponse(request: Request, options: HealthResponseOptions = {}) {
   const deep = options.forceDeep || new URL(request.url).searchParams.get("deep") === "1";
   const tokenAuthorized = allowDeepHealthProbe(request);
@@ -113,6 +122,9 @@ export async function healthResponse(request: Request, options: HealthResponseOp
     siteContent: "skipped",
   };
   let slo: AnswerSloSnapshot | null = null;
+  // `{ unavailable: true }` marks a trailing query that failed on this build, so the digest reports
+  // answer quality as unknown rather than treating the response as an older hourly-only build.
+  let sloTrailing: AnswerSloSnapshot | { windowMinutes: number; unavailable: true } | null = null;
   let cache: CacheMetricsSnapshot | null = null;
   let coalescing: AnswerCoalescingMetricsSnapshot | null = null;
   let spend: SpendSnapshot | null = null;
@@ -201,13 +213,20 @@ export async function healthResponse(request: Request, options: HealthResponseOp
           // thing holding the claim true was `/api/health/ready` opting out via
           // `includeSlo: false` — one flag at one caller, not a gate.
           if (health.ok && operatorDiagnostics && probeEnabled(options.includeSlo)) {
-            try {
-              // Avoid recursively instantiating the full generated PostgREST
-              // client type against the intentionally tiny SLO query surface.
-              slo = await answerSloSnapshot(admin as unknown as SloProbeClient);
-            } catch {
-              slo = null;
-            }
+            // Avoid recursively instantiating the full generated PostgREST
+            // client type against the intentionally tiny SLO query surface.
+            const sloClient = admin as unknown as SloProbeClient;
+            // Hourly (hybrid-RPC identity history) and trailing (answer-rate alerts) snapshots
+            // run side by side; either failing drops only its own block.
+            const [hourly, trailing] = await Promise.allSettled([
+              answerSloSnapshot(sloClient),
+              answerSloSnapshot(sloClient, ANSWER_SLO_TRAILING_WINDOW_MINUTES),
+            ]);
+            slo = hourly.status === "fulfilled" ? hourly.value : null;
+            sloTrailing =
+              trailing.status === "fulfilled"
+                ? trailing.value
+                : { windowMinutes: ANSWER_SLO_TRAILING_WINDOW_MINUTES, unavailable: true };
           }
           // Answer-generation spend, gated like `slo` (token-authorized deep probe
           // + healthy Supabase). Derives USD from already-recorded token counts and
@@ -265,6 +284,7 @@ export async function healthResponse(request: Request, options: HealthResponseOp
       deploymentCommitSha: resolveDeploymentCommitSha(),
       checks,
       ...(slo ? { slo } : {}),
+      ...(sloTrailing ? { sloTrailing } : {}),
       ...(cache ? { cache } : {}),
       ...(coalescing ? { coalescing } : {}),
       ...(spend ? { spend } : {}),

@@ -6,7 +6,7 @@ import { CALCULATOR_RECORD_PARAM, calculatorRecordById } from "@/components/calc
 
 export const metadata: Metadata = {
   title: "Search clinical calculators | PsychSift",
-  description: "Search source-cited psychiatry scores and clinical calculators by indication and name.",
+  description: "Search source-cited psychiatry rating scales by indication and name.",
 };
 
 type CalculatorsSearchParams = Promise<{ [key: string]: string | string[] | undefined }>;

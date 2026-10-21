@@ -285,10 +285,9 @@ export function autoMergeVerdict(branch, prPayload, isForcePush = false, carries
   if (prPayload.autoMergeRequest) {
     // Merging to `main` applies migrations to the live clinical database automatically,
     // within seconds, with no deploy step in between (AGENTS.md, "Supabase project safety").
-    // Migration PRs may auto-merge (owner decision 2026-10-18), but only on a head whose
-    // migrations were already there when auto-merge was armed: adding a migration to an
-    // armed PR would schedule a schema change nobody armed for. Push migrations first,
-    // then arm; to add one later, the user disarms first.
+    // Migration PRs merge by hand and PR policy fails one while armed (owner decision
+    // 2026-10-20). Adding a migration to an armed PR would still schedule a schema change
+    // nobody armed for, so the push stays blocked; the user disarms first.
     if (carriesMigration) {
       return { block: true, warn: false, reason: "auto-merge-armed-migration", number: prPayload.number };
     }
@@ -330,7 +329,8 @@ function autoMergeGuard(branches, forcePushBranches = new Set(), changedFiles = 
           ? `PR #${verdict.number} on ${branch} has auto-merge ARMED and this push carries a hosted migration.\n` +
             `  Merging to main applies migrations to the LIVE clinical database automatically, within seconds.\n` +
             `  Adding a migration to an already-armed PR schedules a schema change nobody armed for.\n` +
-            `  Push migrations before arming auto-merge, or ask the user to disable it first. No override.`
+            `  Migration PRs merge by hand (docs/decisions/2026-10-20-database-prs-merge-by-hand.md).\n` +
+            `  Ask the user to disable auto-merge first; never arm it on a migration PR. No override.`
           : `PR #${verdict.number} on ${branch} has auto-merge ARMED and this push force-updates the branch.\n` +
             `  A force-push while armed can discard the commit GitHub already validated or is mid-evaluating.\n` +
             `  Push a fast-forward commit instead, or wait for the user to change the auto-merge state. No override.`;

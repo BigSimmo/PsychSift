@@ -381,7 +381,7 @@ export const appModeDefinitions = [
   {
     id: "calculators",
     label: "Calculators",
-    description: "Source-cited psychiatry scores and clinical calculators",
+    description: "Source-cited psychiatry rating scales",
     href: "/calculators",
     search: {
       kind: "calculators",

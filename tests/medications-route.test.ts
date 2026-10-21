@@ -413,7 +413,9 @@ describe("medications API", () => {
     };
 
     expect(response.status).toBe(200);
-    expect(payload.matches?.[0]?.medication.slug).toBe("warfarin-vka");
+    // Clozapine leads since the 20 Oct 2026 content audit added its regular blood test
+    // requirements; warfarin stays a related match.
+    expect(payload.matches?.[0]?.medication.slug).toBe("clozapine");
     expect(payload.matches?.find((match) => match.medication.slug === "warfarin-vka")?.result.match).toBe(
       "Related match",
     );

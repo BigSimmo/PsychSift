@@ -1,5 +1,58 @@
 # Ingestion state machine — documents × ingestion_jobs × index generations
 
+## Current model (October 2026)
+
+_Added 2026-10-20 from the code on `main`. Read this section for how ingestion works now; everything below
+it is the July 2026 analysis, kept as history._
+
+1. **Upload is administrator-only.** `/api/upload` requires an administrator with recent multi-factor
+   sign-in (`src/app/api/upload/route.ts`). It checks the real byte signature and file structure, stores the
+   bytes in the private `clinical-documents` bucket, and records any storage it may need to undo in
+   `storage_cleanup_jobs`. Nothing drains that ledger on a schedule yet; see the storage-cleanup section of
+   [observability-slos.md](observability-slos.md#storage-cleanup-backlog).
+2. **Trusted admission.** `dispatchTrustedDocumentAdmission` (`src/lib/trusted-document-admission.ts`) calls
+   `admit_administrator_document`, or `admit_backend_document` for backend imports. Both run
+   `trusted_document_admission_core`, which inserts the `documents`, `ingestion_jobs` and
+   `document_admission_events` rows in one transaction. The older `create_uploaded_document_with_ingestion_job`
+   has no caller.
+3. **Claim with a lease.** The worker (`worker/main.ts`) claims through `claim_ingestion_jobs`. Each claimed job
+   carries a `lease_token`, a `lease_write_generation_id`, a `lease_authority_digest` and a `lease_expires_at`.
+   Scoped workers use the five-argument overload; see
+   [worker-deploy-runbook.md](worker-deploy-runbook.md#scoped-node-worker-claims).
+4. **Every write is fenced to the attempt.** The worker wraps each claim in an `IngestionAttempt`
+   (`supabase/functions/_shared/ingestion-attempt.ts`). Job and document writes go only through attempt-fenced
+   RPCs (`update_ingestion_job_progress`, `patch_ingestion_document_state`, `complete_ingestion_job`,
+   `fail_or_retry_ingestion_job`, `commit_document_index_generation` and the artifact writers). Each call
+   carries the `IngestionFence`: job, document, worker, lease token, expected generation and authority digest.
+   A worker that has lost its lease gets `lease_lost` and stops writing. The worker no longer calls
+   `reset_document_index`.
+5. **Malware scan before any provider call.** Before the worker sends document content to OpenAI it needs a
+   provider-egress permit (`worker/provider-egress.ts`, `supabase/functions/_shared/document-ingress-safety.ts`).
+   The permit needs current admission, rights and purpose, and a clean scanner verdict bound to the
+   document's SHA-256. The scan itself runs ClamAV (`worker/clamav-inspection.ts`) or Windows Defender
+   (`worker/malware-inspection.ts`) through `worker/admin-text-inspection.ts`. The scan gates provider calls,
+   not storage: the bytes and the job row exist before any scan.
+6. **The scanner module.** The approved-source record and the scanner configuration come from a
+   server-mounted module outside this repository, named by the worker setting
+   `WORKER_ADMIN_SOURCE_RUNTIME_MODULE` (`worker/admin-source-runtime.ts`). Never record its value. When it is
+   unset there is no scanner verdict, so every provider call is refused and the job ends as
+   `blocked by ingress safety checks` (`scanner_unavailable`). **Check that the module loads before the paused
+   production worker is switched back on**; the steps are in
+   [worker-deploy-runbook.md](worker-deploy-runbook.md#pause-switches-the-scanner-module-and-the-paused-production-worker).
+7. **Generation commit.** Index artifacts are written under the leased write generation and promoted atomically
+   by `commit_document_index_generation`; managed generations reach one of their fenced terminal completions
+   (`worker/managed-generation-job.ts`).
+8. **Recovery.** `recover:ingestion` and `npm run reindex` use `recover_ingestion_job` only
+   (`src/lib/ingestion-recovery.ts`). It requeues expired or never-leased work under the same locks as a claim,
+   leaves current leases alone, and keeps all generations; see
+   [reindex-runbook.md](reindex-runbook.md#recovery-transaction-merged-18-october-2026).
+
+**Production today.** The production worker is paused on purpose: it runs a placeholder that processes no jobs.
+The library re-index is stopped by owner decision
+([decision](decisions/2026-10-17-library-reindex-stopped.md)).
+
+## History: the July 2026 analysis
+
 > **Status (2026-09-02): dated snapshot as of 2026-07-07.** The lease model described below
 > (R1 "no heartbeat", R2 unfenced completion) was closed the day after this analysis: commit
 > 79501bf75 (2026-07-08) added a guarded lease heartbeat in `worker/main.ts`

@@ -114,7 +114,7 @@ async function bootSmoke() {
     throw new Error(
       `Deployment boot smoke requires production server env: ${missingEnv.join(
         ", ",
-      )}. Configure GitHub Actions secrets for release/main deployment checks or skip this smoke outside those contexts.`,
+      )}. Set them (placeholders are enough; the smoke never calls a provider) or skip this smoke.`,
     );
   }
 
@@ -126,10 +126,9 @@ async function bootSmoke() {
       ...process.env,
       PORT: String(port),
       NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://sjrfecxgysukkwxsowpy.supabase.co",
-      // instrumentation.ts register() requires these in production mode. Supabase
-      // and OpenAI keep placeholder fallbacks for local smoke runs; the query-hash
-      // secret is required upfront via requiredProductionEnv (no placeholder) so
-      // main/release CI cannot pass without the real repository secret.
+      // instrumentation.ts register() requires these in production mode. The smoke
+      // never calls a provider, so CI passes placeholders, never real secrets (audit
+      // CC-05, 2026-10-20). requiredProductionEnv still fails a run that sets none.
       SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "placeholder-ci-service-role",
       OPENAI_API_KEY: process.env.OPENAI_API_KEY ?? "placeholder-ci-openai",
     },

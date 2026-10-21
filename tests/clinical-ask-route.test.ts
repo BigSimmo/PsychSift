@@ -41,6 +41,8 @@ vi.mock("@/lib/answer-feedback-token", () => ({
 }));
 
 import { POST } from "@/app/api/clinical-ask/stream/route";
+import { identifierShapeWarning } from "@/lib/clinical-ask/context";
+import { rejectPatientDetailQuestion } from "@/lib/clinical-question-patient-check-server";
 
 const body = {
   mode: "services",
@@ -224,5 +226,68 @@ describe("POST /api/clinical-ask/stream", () => {
     expect(text).toContain("mode_unavailable");
     expect(mocks.resolveScope).not.toHaveBeenCalled();
     expect(mocks.run).not.toHaveBeenCalled();
+  });
+
+  // Audit ARCH-06 (2026-10-20): Clinical Ask used only the narrow identifier-shape test (email, Medicare,
+  // labelled record numbers, labelled date of birth, phone), so a name with a title, a bed with a name, or a
+  // bare UMRN reached OpenAI here although Answer refuses it. Every example is synthetic.
+  describe("patient-detail parity with Answer", () => {
+    const answerRefuses = [
+      "Mr Smith lithium level 1.4",
+      "Mrs Jones in bed 4, 82, on clozapine - next step?",
+      "Ms Example started olanzapine, what monitoring?",
+      "Ward 4 Ms Smith QTc question",
+      "pt John on lithium, level 1.1",
+      "D1234567 clozapine titration",
+    ];
+    const answerAllows = [
+      "lithium dose for 70 year old with CKD",
+      "QTc 480 ms ECG monitoring with ziprasidone",
+      "MS on interferon with depression: antidepressant choice?",
+      "pt with renal impairment on lithium",
+    ];
+
+    it.each(answerRefuses)("blocks %j, which Answer refuses and the old shape test let through", async (question) => {
+      // Preconditions: Answer refuses it, and the old Clinical Ask test alone would have passed it.
+      expect(() => rejectPatientDetailQuestion({ query: question })).toThrow();
+      expect(identifierShapeWarning(question)).toBe(false);
+
+      const response = await POST(post({ ...body, question }));
+      const text = await response.text();
+      expect(text).toContain("identifiable_input_blocked");
+      expect(text).toContain("Remove identifying details before using Clinical Ask.");
+      for (const word of ["Smith", "Jones", "Example", "John", "D1234567"]) expect(text).not.toContain(word);
+      expect(mocks.resolveScope).not.toHaveBeenCalled();
+      expect(mocks.run).not.toHaveBeenCalled();
+      expect(mocks.retrieveExternal).not.toHaveBeenCalled();
+      expect(mocks.openAI).not.toHaveBeenCalled();
+    });
+
+    it.each(answerAllows)("lets %j through, as Answer does", async (question) => {
+      expect(() => rejectPatientDetailQuestion({ query: question })).not.toThrow();
+      const response = await POST(post({ ...body, question }));
+      expect(await response.text()).not.toContain("identifiable_input_blocked");
+      expect(mocks.run).toHaveBeenCalledOnce();
+    });
+
+    it("blocks a patient detail in confirmed context before orchestration", async () => {
+      const response = await POST(
+        post({ ...body, confirmedContext: { ...body.confirmedContext, population: ["adult", "Mrs Jones"] } }),
+      );
+      const text = await response.text();
+      expect(text).toContain("identifiable_input_blocked");
+      expect(text).not.toContain("Jones");
+      expect(mocks.run).not.toHaveBeenCalled();
+    });
+
+    it("blocks a patient detail in a clarification answer before orchestration", async () => {
+      const response = await POST(
+        post({ ...body, clarificationAnswers: { "services:serviceLocation": "Mr Smith in bed 12" } }),
+      );
+      const text = await response.text();
+      expect(text).toContain("identifiable_input_blocked");
+      expect(text).not.toContain("Smith");
+      expect(mocks.run).not.toHaveBeenCalled();
+    });
   });
 });

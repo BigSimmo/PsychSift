@@ -123,6 +123,7 @@
     "tests/abort-error.test.ts",
     "tests/account-*",
     "tests/agent-monitoring.test.ts",
+    "tests/alert-owner-mention.test.ts",
     "tests/anonymous-generation-ceiling.test.ts",
     "tests/answer-coalescing-metrics.test.ts",
     "tests/answer-slo.test.ts",

@@ -49,15 +49,15 @@ const DESKTOP = 1280;
 /** This repository's production tap floor, in CSS pixels. */
 const TAP_FLOOR = 48;
 
-// Now carries no search (ruling F6): the one search box lives on People.
-test("People search narrows to the exact contact on a narrow phone", async ({ page }) => {
+// Now carries no search (ruling F6): the one search box lives on Call.
+test("Call search narrows to the exact contact on a narrow phone", async ({ page }) => {
   await page.setViewportSize({ width: NARROW, height: BOARD_HEIGHT });
   await page.goto("/on-call/call");
   const main = page.getByTestId("on-call-call-main");
   const status = main.getByRole("status").filter({ hasText: /result/ });
   // Text typed before hydration is dropped (mobile WebKit, release matrix 2026-09-25).
   await expect(async () => {
-    await main.getByRole("searchbox", { name: "Search people" }).fill("coordination");
+    await main.getByRole("searchbox", { name: "Search numbers" }).fill("coordination");
     await expect(status).toHaveText("1 result", { timeout: 2_000 });
   }).toPass({ timeout: 20_000 });
   await expect(main).toContainText("Example after-hours coordination extension");
@@ -242,8 +242,8 @@ test.describe("01 Home", () => {
     const modules = [
       "on-call-now-hospital",
       "on-call-now-emergency",
-      "on-call-home-recent",
       "on-call-now-right-now",
+      "on-call-home-recent",
       "on-call-now-team",
       "on-call-now-shift-tools",
     ];
@@ -253,7 +253,7 @@ test.describe("01 Home", () => {
 
     // Top to bottom in the drawn order. A module that renders in the wrong
     // place still passes a presence check, and the order is the safety order:
-    // hospital, its emergency route, Your usual (usefulness audit, 11 Oct 2026), Right now, Your team, the shift tools.
+    // hospital, its emergency route, Right now, Your usual (On Call overhaul, 20 Oct 2026), Your team, the shift tools.
     const tops = await Promise.all(
       modules.map(async (id) => (await visibleByTestId(page, id).boundingBox())?.y ?? Number.NaN),
     );

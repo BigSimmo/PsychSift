@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   normalizeOpsStatus,
   renderDigest,
+  renderIngestionWorkerState,
   renderStorageCleanupBacklog,
   resolveHealthUrl,
   serializeGitHubOutputs,
@@ -40,7 +41,7 @@ describe("ops digest workflow contract", () => {
     expect(workflow).toContain("publish_alert_comment");
     expect(workflow).toContain("publishAttentionComment");
     expect(workflow).toContain("ops-digest-rpc-history");
-    // Alerts reach the owner's phone through GitHub mobile, which pushes an assignee's issue activity.
+    // Assignment subscribes the owner; the @mention below is what GitHub mobile pushes to the phone.
     expect(workflow).toContain("github.rest.issues.addAssignees");
     // A scheduled outage (unreachable, degraded or unknown status) must reach the phone too.
     expect(workflow).toContain(
@@ -214,6 +215,52 @@ describe("renderDigest", () => {
     expect(serializeGitHubOutputs(health.status, summary)).toContain("alerting=true\nseverity=unknown\n");
   });
 
+  it("shows the trailing six-hour answer-quality window that the alerts judge (audit EVAL-02)", () => {
+    const md = renderDigest({
+      status: "ok",
+      slo: { windowMinutes: 60, totalQueries: 0, hybridRpcErrorRate: 0, degradedRate: 0 },
+      sloTrailing: {
+        windowMinutes: 360,
+        totalQueries: 12,
+        hybridRpcErrorRate: 0,
+        degradedRate: 0,
+        sourceGapQueries: 6,
+        sourceGapRate: 0.5,
+        unsupportedQueries: 1,
+        unsupportedRate: 1 / 12,
+      },
+    });
+    expect(md).toContain("**Answer quality** (trailing 360m, the window alerts judge)");
+    expect(md).toContain("- source gaps: 6 (50.0%)");
+    expect(md).toContain("PAGE OPS_SOURCE_GAP_RATE_PAGE");
+    // The empty last hour is shown as such, not as unassessed answer quality.
+    expect(md).toContain("**Answer SLO** (trailing 60m)");
+    expect(md).toContain("No answered queries in the last 60 minutes.");
+    expect(md).not.toContain("No answered queries observed—answer quality not assessed.");
+    expect(md).not.toContain("OPS_ANSWER_SLO_UNKNOWN");
+  });
+
+  it("says the trailing snapshot query failed instead of showing an older build's hourly-only view", () => {
+    const md = renderDigest({
+      status: "ok",
+      slo: { windowMinutes: 60, totalQueries: 3, hybridRpcErrorRate: 0, degradedRate: 0 },
+      sloTrailing: { windowMinutes: 360, unavailable: true },
+    });
+    expect(md).toContain("**Answer quality** (trailing 360m, the window alerts judge)");
+    expect(md).toContain("**Snapshot query failed—answer quality not assessed.**");
+    expect(md).toContain("**Answer SLO** (trailing 60m)");
+    expect(md).toContain("OPS_ANSWER_SLO_UNKNOWN");
+  });
+
+  it("says when the trailing window has too few answers to judge rates", () => {
+    const md = renderDigest({
+      status: "ok",
+      sloTrailing: { windowMinutes: 360, totalQueries: 4, hybridRpcErrorRate: 0, degradedRate: 0, sourceGapRate: 0.5 },
+    });
+    expect(md).toContain("Fewer than 10 answers: source-gap, unsupported and latency-budget rates are not judged.");
+    expect(md).toContain("**Alert state:** none (0)");
+  });
+
   it.each([undefined, {}, { windowMinutes: 60 }, { windowMinutes: 30, totalQueries: 0 }])(
     "does not describe missing or invalid hourly telemetry as no answer activity: %j",
     (slo) => {
@@ -333,6 +380,144 @@ describe("renderDigest", () => {
     expect(md).toContain("OVER THRESHOLD");
     expect(md).toContain("sample truncated");
     expect(md).toContain("OPS_PROJECTED_DAILY_SPEND_WARNING");
+  });
+});
+
+// Audit EVAL-08: a cancelled or timed-out canary evaluated nothing, so it must not count as the
+// "last completed run" that keeps liveness green.
+describe("eval-canary liveness, executed", () => {
+  function livenessScript() {
+    const workflow = readFileSync(new URL("../.github/workflows/ops-digest.yml", import.meta.url), "utf8");
+    const step = workflow.slice(workflow.indexOf("      - name: Warn if the weekly canary is stale"));
+    const marker = "          script: |\n";
+    const body: string[] = [];
+    for (const line of step.slice(step.indexOf(marker) + marker.length).split("\n")) {
+      if (line.length === 0) {
+        body.push("");
+        continue;
+      }
+      if (!line.startsWith("            ")) break;
+      body.push(line.slice(12));
+    }
+    return body.join("\n");
+  }
+
+  type Step = { name: string; conclusion: string | null };
+  // A failed run reached a verdict only when an evaluation step itself ran to a conclusion.
+  const evaluated: Step[] = [{ name: "Golden retrieval eval (live corpus)", conclusion: "failure" }];
+  const failedBeforeEvaluating: Step[] = [
+    { name: "Install dependencies", conclusion: "failure" },
+    { name: "Golden retrieval eval (live corpus)", conclusion: "skipped" },
+    { name: "Answer-quality subset (live generation)", conclusion: "skipped" },
+  ];
+
+  async function liveness(
+    runs: Array<{ id?: number; conclusion: string; updated_at: string; html_url?: string; steps?: Step[] }>,
+    { jobsError = false }: { jobsError?: boolean } = {},
+  ) {
+    const outputs: Record<string, string> = {};
+    const github = {
+      rest: {
+        actions: {
+          listWorkflowRuns: async () => ({ data: { workflow_runs: runs } }),
+          listJobsForWorkflowRun: async ({ run_id }: { run_id: number }) => {
+            if (jobsError) throw new Error("jobs API unavailable");
+            const run = runs.find((item) => item.id === run_id);
+            return { data: { jobs: [{ name: "eval-canary", steps: run?.steps ?? evaluated }] } };
+          },
+        },
+      },
+    };
+    const core = {
+      setOutput: (key: string, value: string) => {
+        outputs[key] = value;
+      },
+      warning: () => undefined,
+      info: () => undefined,
+    };
+    const AsyncFunction = Object.getPrototypeOf(async () => undefined).constructor as new (
+      ...args: string[]
+    ) => (...values: unknown[]) => Promise<void>;
+    await new AsyncFunction("github", "context", "core", livenessScript())(
+      github,
+      { repo: { owner: "BigSimmo", repo: "PsychSift" } },
+      core,
+    );
+    return outputs;
+  }
+
+  const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString();
+
+  it("is live after a recent run that reached a verdict, pass or fail", async () => {
+    expect((await liveness([{ conclusion: "failure", updated_at: daysAgo(2) }])).stale).toBe("false");
+    expect((await liveness([{ conclusion: "success", updated_at: daysAgo(2) }])).stale).toBe("false");
+  });
+
+  it("does not count a failed run that stopped before any evaluation step ran", async () => {
+    const outputs = await liveness([
+      { id: 2, conclusion: "failure", updated_at: daysAgo(1), steps: failedBeforeEvaluating },
+      { id: 1, conclusion: "success", updated_at: daysAgo(10) },
+    ]);
+    expect(outputs.stale).toBe("true");
+    expect(outputs.message).toContain("1 newer run(s) failed before evaluating and do not count");
+  });
+
+  it("names evaluation steps that exist in the canary workflow", () => {
+    const canary = readFileSync(new URL("../.github/workflows/eval-canary.yml", import.meta.url), "utf8");
+    for (const name of ["Golden retrieval eval (live corpus)", "Answer-quality subset (live generation)"]) {
+      expect(livenessScript()).toContain(`"${name}"`);
+      expect(canary).toContain(`      - name: ${name}\n`);
+    }
+  });
+
+  it("treats a failed run as no verdict when its steps cannot be read", async () => {
+    const outputs = await liveness([{ id: 3, conclusion: "failure", updated_at: daysAgo(1) }], { jobsError: true });
+    expect(outputs.stale).toBe("true");
+  });
+
+  it("does not count a recent cancelled or timed-out run as having run", async () => {
+    const outputs = await liveness([
+      { conclusion: "cancelled", updated_at: daysAgo(1) },
+      { conclusion: "timed_out", updated_at: daysAgo(3) },
+      { conclusion: "success", updated_at: daysAgo(10) },
+    ]);
+    expect(outputs.stale).toBe("true");
+    expect(outputs.message).toContain("2 newer run(s) were cancelled or timed out and do not count");
+  });
+
+  it("is stale when no recent completed run reached a verdict at all", async () => {
+    const outputs = await liveness([{ conclusion: "cancelled", updated_at: daysAgo(1) }]);
+    expect(outputs.stale).toBe("true");
+    expect(outputs.message).toContain("no recent canary run reached a pass or fail verdict");
+  });
+});
+
+// Audit EVAL-03: a deliberately paused worker must read as paused in the digest, not as healthy
+// and not as an outage. It never raises an alert by itself; the ingestion autopilot alerts on
+// pending uploads that nothing has claimed.
+describe("ingestion worker state line", () => {
+  it("shows a deliberate pause without changing the alert state", () => {
+    const health = { status: "ok" };
+    const md = renderDigest(health, { ingestionWorkerPaused: "true" });
+    expect(md).toContain(
+      "**Ingestion worker:** ⏸ paused on purpose (repository variable INGESTION_WORKER_PAUSED=true). Uploaded documents are not processed until it is resumed. Not an outage: the ingestion autopilot alerts only if an upload waits more than 30 minutes.",
+    );
+    expect(evaluateOperationalAlerts(health, { ingestionWorkerPaused: "true" })).toEqual(
+      evaluateOperationalAlerts(health),
+    );
+  });
+
+  it("distinguishes an expected-running worker from an unrecorded state", () => {
+    expect(renderIngestionWorkerState("false")).toBe("**Ingestion worker:** expected to be running.");
+    expect(renderIngestionWorkerState(undefined)).toBe(
+      "**Ingestion worker:** state not recorded (set repository variable INGESTION_WORKER_PAUSED to true or false).",
+    );
+    expect(renderIngestionWorkerState("maybe")).toBe(renderIngestionWorkerState(undefined));
+  });
+
+  it("passes the repository variable to the digest step", () => {
+    const workflow = readFileSync(new URL("../.github/workflows/ops-digest.yml", import.meta.url), "utf8");
+    expect(workflow).toContain("INGESTION_WORKER_PAUSED: ${{ vars.INGESTION_WORKER_PAUSED }}");
   });
 });
 

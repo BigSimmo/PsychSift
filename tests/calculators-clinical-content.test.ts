@@ -42,6 +42,15 @@ describe("K10 is described as one accepted measure, not the standard", () => {
       expect(band.interpretation).toMatch(/not a diagnostic category/i);
     }
   });
+
+  it("names the cut-off convention its bands follow", () => {
+    // ABS 4817.0.55.001: there is no agreed standard for K10 cut-offs, so the result says which
+    // convention (the 2001 National Health Survey bands) it uses.
+    for (const band of fixture("k10")?.bands ?? []) {
+      expect(band.interpretation).toContain("ABS 2001 National Health Survey convention");
+      expect(band.interpretation).toMatch(/other Australian conventions exist/i);
+    }
+  });
 });
 
 describe("AUDIT-C states a named threshold convention rather than a universal cut-point", () => {
