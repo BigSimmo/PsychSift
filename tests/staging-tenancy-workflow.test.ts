@@ -7,13 +7,14 @@ describe("staging tenancy workflow", () => {
   // The scheduled harness failed every night from at least 2026-09-21 to 2026-09-25 and nobody was
   // told (ledger #TN512M: a red run only sends an unread email). The routing job is the fix, so it
   // is the part worth pinning.
-  it("routes a failing main run to a pinned, assigned issue", () => {
+  it("routes a failing main run to a pinned issue the daily health summary reads", () => {
     expect(workflow).toContain("tenancy-routing:");
     expect(workflow).toContain("needs: cross-tenant");
     expect(workflow).toContain("github.ref == 'refs/heads/main'");
     expect(workflow).toContain('const title = "Staging tenancy isolation check failing"');
     expect(workflow).toContain("issues.create(");
-    expect(workflow).toContain("addAssignees(");
+    // Owner decision 2026-10-21: no assignment or mention; the daily health summary reports it.
+    expect(workflow).not.toContain("addAssignees(");
   });
 
   it("finds the existing issue by label so a retitle cannot start a second one", () => {

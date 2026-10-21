@@ -1,7 +1,7 @@
 # Decision: CI failure alerts on main @mention the owner
 
-- **Status:** decided 2026-10-21
-- **Source:** `.github/workflows/ci.yml`, find "every new alert and every repeat comment names the owner"
+- **Status:** decided 2026-10-21; superseded by 2026-10-21-one-daily-health-summary.md
+- **Source:** `.github/workflows/ci.yml`, find "workflow no longer @mentions or assigns the owner"
 
 On 21 Oct 2026 the owner approved, by decision card in the project's RAG and ingestion audit thread,
 the change to `.github/workflows/ci.yml` that makes the CI-on-main failure alert @mention the owner in
