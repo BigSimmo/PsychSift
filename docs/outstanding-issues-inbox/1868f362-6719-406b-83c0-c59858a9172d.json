@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "id": "1868f362-6719-406b-83c0-c59858a9172d",
+  "createdOn": "2026-10-21",
+  "action": "update",
+  "payload": {
+    "id": "#54XJ7D",
+    "summary": "Shift swaps that approve themselves on accept skip the team's hours and run-length rules",
+    "detail": "Manager approval was fixed in PRs #3571 and #3574: the server rechecks every team rule and requires an acknowledgement. Remaining gap (rechecked 2026-10-21 on main 81ba5ae): a same-grade swap more than 7 days out approves itself in roster_command on accept, which checks only clashes and the minimum break, not maximum hours or nights or days in a row. Fix needs a migration so such swaps wait for the manager; owner decision requested in the Work tools hardening plan.",
+    "baseRowFingerprint": "ed1341f62ffd8919be872bbc98ff600fd6aad84222a1f4c08b2c285f39ebf5eb",
+    "targetUlid": "01M4T65YT654XJ7DBRK88PK6Q2"
+  }
+}

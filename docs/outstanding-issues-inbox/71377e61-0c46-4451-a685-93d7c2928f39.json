@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "71377e61-0c46-4451-a685-93d7c2928f39",
+  "createdOn": "2026-10-21",
+  "action": "done",
+  "payload": {
+    "id": "#K66YES",
+    "outcome": "Settled 2026-10-21 by the owner's 20 Oct four-tab decision (docs/decisions/2026-10-20-on-call-four-tabs.md): Contacts and Referrals keep their own addresses as own-entry pages under Call, Refer redirects to Call, Who to call now sits under Handbook. Further Work naming is owned by the Clinical and Work structure plan.",
+    "baseRowFingerprint": "0582329c01d1a733e3fafb49d97be91adb0c844edf994ded9483a72b0330b17f",
+    "targetUlid": "01M4T65Z4ZK66YES8XZ2JVX874"
+  }
+}
