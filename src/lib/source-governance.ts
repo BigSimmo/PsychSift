@@ -306,7 +306,13 @@ export function sourceGovernanceWarnings(args: {
 
   const severityRank = { danger: 0, warning: 1, info: 2 } satisfies Record<SourceGovernanceWarning["severity"], number>;
   return warnings
-    .sort((left, right) => severityRank[left.severity] - severityRank[right.severity])
+    .sort(
+      (left, right) =>
+        severityRank[left.severity] - severityRank[right.severity] ||
+        // OCR_TEXT is a general caution; within a severity it must not crowd document-specific warnings out of the cap.
+        Number(left.code === SOURCE_GOVERNANCE_CODES.OCR_TEXT) -
+          Number(right.code === SOURCE_GOVERNANCE_CODES.OCR_TEXT),
+    )
     .slice(0, args.limit ?? 8);
 }
 

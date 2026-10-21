@@ -115,6 +115,39 @@ describe("source governance warnings", () => {
     );
   });
 
+  it("keeps a document caution inside the warning cap when many sources were read by OCR", () => {
+    const ocrMetrics = {
+      quality_score: 0.9,
+      extraction_quality: "good" as const,
+      metrics: { ocr_page_count: 3, ocr_coverage: 0.3 },
+      issues: [],
+    };
+    const base = {
+      ...result().source_metadata!,
+      document_status: "current" as const,
+      extraction_quality: "good" as const,
+    };
+    const ocrSources = Array.from({ length: 5 }, (_, index) =>
+      result({
+        document_id: `doc-${index}`,
+        source_metadata: base,
+        indexing_quality: { document_id: `doc-${index}`, ...ocrMetrics },
+        table_facts: [],
+      }),
+    );
+    const cautioned = result({
+      document_id: "doc-caution",
+      title: "Clozapine therapy RKPG",
+      file_name: "clozapine-therapy-rkpg.pdf",
+      source_metadata: base,
+      indexing_quality: { document_id: "doc-caution", ...ocrMetrics, metrics: { ocr_page_count: 0 } },
+      table_facts: [],
+    });
+    const warnings = sourceGovernanceWarnings({ results: [...ocrSources, cautioned] });
+    expect(warnings).toHaveLength(8);
+    expect(warnings.map((warning) => warning.code)).toContain("document_caution");
+  });
+
   it("adds no OCR caution for a source with no OCR pages", () => {
     const plain = result({
       indexing_quality: {

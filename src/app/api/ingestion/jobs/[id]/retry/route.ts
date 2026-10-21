@@ -18,8 +18,6 @@ export const runtime = "nodejs";
 const ingestionRetryRouteParamsSchema = z.object({
   id: z.string().uuid(),
 });
-const RETRY_JOB_COLUMNS =
-  "id,document_id,status,locked_at,lease_token,lease_expires_at,documents!inner(status,owner_id,chunk_count)";
 
 const ACTIVE_JOB_MESSAGE =
   "This job is still being processed by a worker. Wait for it to finish or go stale before retrying.";
@@ -68,7 +66,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     const { data: row, error: readError } = await supabase
       .from("ingestion_jobs")
-      .select(RETRY_JOB_COLUMNS)
+      .select(
+        "id,document_id,status,locked_at,lease_token,lease_expires_at,documents!inner(status,owner_id,chunk_count)",
+      )
       .eq("id", id)
       .eq("documents.owner_id", user.id)
       .maybeSingle();
@@ -122,11 +122,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     const { data: queued, error: queuedError } = await supabase
       .from("ingestion_jobs")
-      .select("*")
+      .select("*, documents!inner(owner_id)")
       .eq("id", job.id)
+      .eq("documents.owner_id", user.id)
       .maybeSingle();
     if (queuedError) throw new Error(queuedError.message);
-    return NextResponse.json({ job: queued ?? { id: job.id, document_id: job.document_id, status: "pending" } });
+    // The owner join is only the tenancy filter; keep the response shape the panel already reads.
+    const queuedJob = queued ? { ...(queued as Record<string, unknown>) } : null;
+    if (queuedJob) delete queuedJob.documents;
+    return NextResponse.json({
+      job: queuedJob ?? { id: job.id, document_id: job.document_id, status: "pending" },
+    });
   } catch (error) {
     if (error instanceof AuthenticationError) return unauthorizedResponse();
     return jsonError(error);
