@@ -182,6 +182,103 @@ def oversized_embedded_image_warning(image_info, max_pixels=MAX_EMBEDDED_IMAGE_P
     )
 
 
+def _displayed_masks_exceed_pixel_limit(page, displayed):
+    """Read displayed mask headers; None means native metadata is unverified.
+
+    Public get_image_info omits mask dimensions and Form get_image_bbox hashes
+    pixels. This isolated adapter follows extractIMGINFO(hashes=False)'s own
+    native header access, using its block indices rather than resource names.
+    TextPage.this is a binding detail: validate against public metadata and fail
+    closed if an unsupported binding cannot supply matching image/mask headers.
+    No pixmap, pixel samples or compressed image bytes are requested.
+    """
+    textpage = None
+    try:
+        textpage = page.get_textpage(flags=fitz.TEXT_PRESERVE_IMAGES)
+        headers = textpage.extractIMGINFO(hashes=False)
+
+        def identity(header):
+            number, width, height = (header[key] for key in ("number", "width", "height"))
+            if any(type(value) is not int for value in (number, width, height)) or number < 0 or min(width, height) <= 0:
+                raise ValueError("invalid native image header")
+            if type(header["has-mask"]) is not bool:
+                raise ValueError("invalid native mask header")
+            return number, width, height, header["has-mask"]
+
+        if [identity(header) for header in headers] != [identity(header) for header in displayed]:
+            return None
+        masked = {header["number"] for header in headers if header["has-mask"]}
+        observed = set()
+        unsafe = False
+        for number, block in enumerate(textpage.this):
+            if number not in masked:
+                continue
+            mask = block.i_image().mask()
+            width, height = mask.w(), mask.h()
+            if any(type(value) is not int or value <= 0 for value in (width, height)):
+                return None
+            observed.add(number)
+            unsafe = unsafe or width * height > MAX_EMBEDDED_IMAGE_PIXELS
+        return unsafe if observed == masked else None
+    except MemoryError:
+        raise
+    except Exception:
+        return None
+    finally:
+        del textpage
+
+
+def page_image_decode_preflight(page, image_infos):
+    """Inspect image headers, including inline images and separate soft masks.
+
+    Image hashes, dict image bytes and page renders can decode every source
+    image even when their output pixels are bounded. Metadata without hashes
+    reads the compressed image headers and displayed placements only.
+    """
+    skipped = {}
+    for image_info in image_infos:
+        xref, smask = image_info[:2]
+        warning = oversized_embedded_image_warning(image_info)
+        if not warning and smask:
+            try:
+                width = int(page.parent.xref_get_key(smask, "Width")[1])
+                height = int(page.parent.xref_get_key(smask, "Height")[1])
+            except (IndexError, TypeError, ValueError):
+                # A malformed mask header must not abort the whole PDF: skip
+                # this image conservatively without decoding it.
+                width = height = None
+                warning = (f"embedded_image_skipped: xref {xref} soft mask {smask} has an "
+                           "unreadable Width/Height; not decoded")
+            if width is not None and width * height > MAX_EMBEDDED_IMAGE_PIXELS:
+                warning = (f"embedded_image_skipped: xref {xref} soft mask {smask} declares "
+                           f"{width}x{height}, above the {MAX_EMBEDDED_IMAGE_PIXELS}-pixel "
+                           "embedded-image ceiling; not decoded")
+        if warning:
+            skipped[xref] = warning
+    displayed = page.get_image_info(hashes=False, xrefs=False)
+    unsafe = any(
+        int(image["width"]) * int(image["height"]) > MAX_EMBEDDED_IMAGE_PIXELS
+        for image in displayed
+    )
+    # get_images also lists dead resources: an unused oversized XObject must
+    # still be skipped as an artifact, but cannot make a safe page render unsafe.
+    # Displayed headers include inline and Form images. Inspect native mask
+    # headers lazily, only when a resource declares an oversized separate mask
+    # and the page actually displays a masked image. Dead Form resources and
+    # same-size but different visible masked images must not be conflated.
+    oversized_mask_xrefs = {
+        info[0] for info in image_infos
+        if info[0] in skipped and not oversized_embedded_image_warning(info)
+    }
+    if not unsafe and oversized_mask_xrefs and any(image.get("has-mask") for image in displayed):
+        masks_unsafe = _displayed_masks_exceed_pixel_limit(page, displayed)
+        if masks_unsafe is None:
+            for xref in oversized_mask_xrefs:
+                skipped[xref] += "; displayed mask placement unverified without decoding"
+        unsafe = unsafe or masks_unsafe is not False
+    return skipped, unsafe
+
+
 def is_memory_exhaustion(exc):
     """True for Python or MuPDF allocation failures under the address-space limit."""
     return isinstance(exc, MemoryError) or bool(MEMORY_EXHAUSTION_PATTERN.search(str(exc)))
@@ -636,7 +733,14 @@ def maybe_raster_table_ocr(page, image, render_scale, budget, pytesseract, deadl
     except RasterLayoutAmbiguous:
         return None
     from PIL import Image
+    import raster_math_ocr
+    from raster_math_ocr import plan_raster_math_ocr
     model_directory = checked_raster_table_model(deadline)
+    if time.monotonic() >= deadline:
+        raise TimeoutError("raster helper identity exhausted page timeout")
+    math_code_sha256 = file_sha256(raster_math_ocr.__file__)
+    if time.monotonic() >= deadline:
+        raise TimeoutError("raster helper identity exhausted page timeout")
     record = {"version": "raster-table-ocr-observations-v1", "status": "unverified",
               "cellModel": {"language": "Latin", "sha256": "sha256:" + RASTER_TABLE_MODEL_SHA256,
                             "bytes": RASTER_TABLE_MODEL_BYTES},
@@ -662,13 +766,43 @@ def maybe_raster_table_ocr(page, image, render_scale, budget, pytesseract, deadl
         if remaining <= 0:
             raise TimeoutError("raster cell OCR exhausted page timeout")
         config = f"--dpi {round(scale * 72)}"
+        math_plan = None
         if cell:
             mode = 7 if raster_ink_line_count(bitmap, deadline) == 1 else 6
+            # Pixmaps round a physical clip outward. Analyze only pixels
+            # fully inside this cell, never infer that a corner mark is noise.
+            interior = (
+                math.ceil(rect.x0 * scale) - pixels.x,
+                math.ceil(rect.y0 * scale) - pixels.y,
+                math.floor(rect.x1 * scale) - pixels.x,
+                math.floor(rect.y1 * scale) - pixels.y,
+            )
+            if 0 <= interior[0] < interior[2] <= bitmap.width and 0 <= interior[1] < interior[3] <= bitmap.height:
+                cell_interior = bitmap.crop(interior)
+                if raster_ink_line_count(cell_interior, deadline) == 1:
+                    math_plan = plan_raster_math_ocr(cell_interior, deadline, budget.limits["maxRenderPixels"])
+            base_mode = mode
+            if math_plan is not None:
+                mode = 7
             config = f"--psm {mode} --tessdata-dir {shlex.quote(model_directory)} " + config
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise TimeoutError("cell layout exhausted page OCR timeout before launch")
-        text = pytesseract.image_to_string(bitmap, lang="Latin" if cell else "eng", config=config, timeout=remaining).strip()
+        ocr_bitmap = math_plan.bitmap if math_plan is not None else bitmap
+        text = pytesseract.image_to_string(ocr_bitmap, lang="Latin" if cell else "eng", config=config, timeout=remaining).strip()
+        if math_plan is not None:
+            try:
+                text = math_plan.restore(text)
+            except raster_math_ocr.ComparisonSuffixUnsupported:
+                # Units or text after a comparison: discard the transformed OCR
+                # and read the unchanged source bitmap on the ordinary path.
+                math_plan = None
+                config = (f"--psm {base_mode} --tessdata-dir {shlex.quote(model_directory)} "
+                          f"--dpi {round(scale * 72)}")
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise TimeoutError("raster math fallback exhausted page OCR timeout")
+                text = pytesseract.image_to_string(bitmap, lang="Latin", config=config, timeout=remaining).strip()
         if time.monotonic() >= deadline:
             raise TimeoutError("raster OCR completed after page deadline")
         if len(record["crops"]) >= 112:
@@ -677,7 +811,13 @@ def maybe_raster_table_ocr(page, image, render_scale, budget, pytesseract, deadl
                                 "sourceRect": list(rect), "scale": scale, "width": pixels.width, "height": pixels.height,
                                 "pngSha256": "sha256:" + hashlib.sha256(png).hexdigest(),
                                 "pixelsSha256": "sha256:" + hashlib.sha256(pixels.samples).hexdigest(),
-                                "textSha256": text_sha256(text)})
+                                "textSha256": text_sha256(text),
+                                **({"ocrInputTransform": {
+                                    "algorithm": "raster-math-topology-v1", "kind": math_plan.kind,
+                                    "codeSha256": math_code_sha256,
+                                    "width": ocr_bitmap.width, "height": ocr_bitmap.height, "mode": ocr_bitmap.mode,
+                                    "pixelsSha256": "sha256:" + hashlib.sha256(ocr_bitmap.tobytes()).hexdigest(),
+                                }} if math_plan is not None else {})})
         if time.monotonic() >= deadline:
             raise TimeoutError("raster crop observation exhausted page deadline")
         return text
@@ -801,26 +941,11 @@ def page_image_coverage_ratio(page):
     if page_area <= 0:
         return 0.0
     covered = 0.0
-    seen = set()
-    for image_info in page.get_images(full=True):
-        xref = image_info[0]
-        if xref in seen:
-            continue
-        seen.add(xref)
-        try:
-            if oversized_embedded_image_warning(image_info):
-                # ING-B-04: get_image_rects decodes the image. Use the declared
-                # placement instead, which reads the page content only.
-                bbox = page.get_image_bbox(image_info)
-                rects = [] if bbox.is_infinite or bbox.is_empty else [bbox]
-            else:
-                rects = page.get_image_rects(xref) or []
-        except MemoryError:
-            raise
-        except Exception:
-            # One unreadable image must not abort the document; it adds no coverage.
-            continue
-        for rect in rects:
+    # get_image_rects hashes and decodes ALL images on the page, including inline
+    # images absent from get_images(). Header-only placements need neither.
+    for image in page.get_image_info(hashes=False, xrefs=False):
+        rect = fitz.Rect(image["bbox"])
+        if not rect.is_infinite and not rect.is_empty:
             covered += abs(float(rect.width) * float(rect.height))
     return min(1.0, covered / page_area)
 
@@ -1153,7 +1278,7 @@ def _extract_table_column_ranges(table, column_count=0):
 def _extract_page_line_segments(page):
     segments = []
     try:
-        text_dict = page.get_text("dict") or {}
+        text_dict = page.get_text("dict", flags=fitz.TEXTFLAGS_DICT & ~fitz.TEXT_PRESERVE_IMAGES) or {}
         for block in text_dict.get("blocks") or []:
             if block.get("type", 0) != 0:
                 continue
@@ -2233,10 +2358,17 @@ def _extract_document(document, output_dir, budget, identity):
     pages = []
     images = []
     warnings = []
+    unsafe_render_pages = set()
     budget.set_page_count(document.page_count)
 
     for page_index, page in enumerate(document):
         page_number = page_index + 1
+        image_infos = page.get_images(full=True)
+        skipped_images, unsafe_image_decode = page_image_decode_preflight(page, image_infos)
+        if unsafe_image_decode:
+            unsafe_render_pages.add(page_index)
+            warnings.append(f"page_render_skipped: page {page_number} contains an image or soft mask "
+                            f"above the {MAX_EMBEDDED_IMAGE_PIXELS}-pixel ceiling; not decoded")
         # Some reader helpers temporarily alter the page crop; retain the source
         # observations before table detection or crop rendering can touch them.
         source_geometry = {
@@ -2272,7 +2404,10 @@ def _extract_document(document, output_dir, budget, identity):
         # rendered as an image with a short caption) are OCR'd and merged with the existing
         # text layer so caption + table contents are both retained.
         if should_ocr_page(raw_page_text, page):
-            ocr_text, ocr_warning = maybe_ocr_page(page, budget, raster_observations, ocr_runtime)
+            if unsafe_image_decode:
+                ocr_text, ocr_warning = "", f"OCR skipped on page {page_number}: unsafe source image dimensions"
+            else:
+                ocr_text, ocr_warning = maybe_ocr_page(page, budget, raster_observations, ocr_runtime)
             if ocr_warning:
                 warnings.append(ocr_warning)
             if ocr_text.strip():
@@ -2299,10 +2434,10 @@ def _extract_document(document, output_dir, budget, identity):
         )
 
         page_image_count = 0
-        for image_index, image_info in enumerate(page.get_images(full=True)):
+        for image_index, image_info in enumerate(image_infos):
             xref = image_info[0]
             budget.ensure_artifact_slot()
-            oversized_warning = oversized_embedded_image_warning(image_info)
+            oversized_warning = skipped_images.get(xref)
             if oversized_warning:
                 warnings.append(oversized_warning)
                 continue
@@ -2326,6 +2461,9 @@ def _extract_document(document, output_dir, budget, identity):
             width = normalized["width"]
             height = normalized["height"]
             try:
+                if unsafe_image_decode:
+                    # Hash-based placement would decode unsafe sibling images.
+                    raise ValueError("unsafe sibling image dimensions")
                 rects = page.get_image_rects(xref) or []
             except MemoryError:
                 raise
@@ -2373,6 +2511,11 @@ def _extract_document(document, output_dir, budget, identity):
                 }
             )
             page_image_count += 1
+
+        if unsafe_image_decode:
+            # A bounded thumbnail/crop still decodes its original source images.
+            # Native text above is retained; no page render is safe here.
+            continue
 
         crop_index = 1
         table_rects = []
@@ -2568,7 +2711,7 @@ def _extract_document(document, output_dir, budget, identity):
 
     # Optional cover after searchable artifacts so a near-limit budget cannot
     # fail indexing because the decorative thumbnail consumed the last slot.
-    if document.page_count > 0:
+    if document.page_count > 0 and 0 not in unsafe_render_pages:
         try:
             cover = save_cover_page(document[0], output_dir, budget, warnings)
             if cover:

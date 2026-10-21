@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "d5159483-c5d8-404a-8191-5d4c163f97c6",
+  "createdOn": "2026-10-21",
+  "action": "done",
+  "payload": {
+    "id": "#MR9VJK",
+    "outcome": "The reported ruled-cell Unicode reproduction now passes unchanged strict assertions as an ordinary test, with two further fonts, distinct thresholds and powers. Producer v13 isolates source comparison strokes and normalizes source-positioned raised digits using the same pinned model and existing OCR call; decimal/glyph alignment, helper/input hashes, shared deadlines and fallback cleanup are tested. This closes the captured default-off raster-table regression, not general OCR accuracy or clinical-corpus acceptance. Raised zero/degree and ambiguous or uncovered layouts remain unsupported; OCR provenance remains unverified/not_compared. No production ingestion, reindex or paid inference was run.",
+    "targetUlid": "01M5EQWSKTMR9VJKFCS6GVZQK1"
+  }
+}

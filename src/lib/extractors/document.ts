@@ -69,10 +69,24 @@ const rasterCropSchema = z
     pngSha256: rasterShaSchema,
     pixelsSha256: rasterShaSchema,
     textSha256: rasterShaSchema,
+    ocrInputTransform: z
+      .object({
+        algorithm: z.literal("raster-math-topology-v1"),
+        kind: z.enum(["comparison", "superscript"]),
+        codeSha256: rasterShaSchema,
+        width: z.number().int().positive().max(400_000),
+        height: z.number().int().positive().max(400_000),
+        mode: z.enum(["L", "RGB"]),
+        pixelsSha256: rasterShaSchema,
+      })
+      .strict()
+      .refine(({ width, height }) => width * height <= 400_000, "raster_math_input_pixel_limit")
+      .optional(),
   })
   .strict()
   .refine(({ width, height }) => width * height <= 4_000_000, "raster_crop_pixel_limit")
-  .refine(({ kind, language }) => language === (kind === "cell" ? "Latin" : "eng"), "raster_crop_model_scope");
+  .refine(({ kind, language }) => language === (kind === "cell" ? "Latin" : "eng"), "raster_crop_model_scope")
+  .refine(({ kind, ocrInputTransform }) => !ocrInputTransform || kind === "cell", "raster_math_cell_scope");
 const rasterTableOcrSchema = z
   .object({
     version: z.literal("raster-table-ocr-observations-v1"),
@@ -535,6 +549,16 @@ export async function extractPdf(
     ) {
       await rm(tempRoot, { recursive: true, force: true }).catch(() => undefined);
       throw error;
+    }
+    // The fallback shares the worker's heap and native image allocations. Its
+    // deadline/pixel caps are not an isolated memory limit, so production must
+    // refuse this path rather than retry a failed PDF parser in-process.
+    if (process.env.NODE_ENV === "production") {
+      await rm(tempRoot, { recursive: true, force: true }).catch(() => undefined);
+      throw new PdfExtractionResourceError(
+        "PDF_EXTRACTION_BUDGET_EXCEEDED",
+        "JavaScript PDF fallback has no isolated memory limit and is disabled in production; restore Python PDF extraction prerequisites",
+      );
     }
     // Fallback for developer machines without PyMuPDF/pytesseract. It still
     // indexes text PDFs, but scanned PDFs and image extraction need the Python

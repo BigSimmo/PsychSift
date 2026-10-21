@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "ca05be88-08ed-4bb1-99f0-fac733f69a98",
+  "createdOn": "2026-10-21",
+  "action": "done",
+  "payload": {
+    "id": "#MR9VJK",
+    "outcome": "Resolved the captured default-off ruled-table OCR regression through bounded source-pixel comparison isolation and raised-position normalization, with source-preserving whole-line conditioning for small-font unit fidelity. The original Unicode assertions are unchanged and now ordinary passing tests. Final targeted correction: 21 tests passed, 94.194 seconds, zero skips/expected failures, including serif/Courier values and powers. Independent actual Courier controls retain both baseline 1 and L. The preceding domain run supplied 117 unchanged passing cases; its Courier failure was corrected, not waived. Strict source alignment, original/input/helper hashes, one OCR call, deadlines, caps and fallback cleanup remain. General clinical-corpus accuracy, raised zero/degree and uncovered/noisy layouts are not certified. No live ingestion/reindex or paid inference was performed.",
+    "targetUlid": "01M5EQWSKTMR9VJKFCS6GVZQK1"
+  }
+}
