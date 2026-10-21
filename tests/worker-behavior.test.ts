@@ -1,25 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { sourceSegment } from "./helpers/source-contract";
 import { enrichmentRepairDecision, ingestionFailureDecision, visionImageRejectionSkipReason } from "../worker/behavior";
-import { OversizedTableRowError } from "../src/lib/chunking";
 
 describe("ingestion worker behavior", () => {
-  it.each([false, true])("does not retry an oversized atomic table row (atomic reindex: %s)", (atomicReindex) => {
-    expect(
-      ingestionFailureDecision({
-        error: new OversizedTableRowError(),
-        attemptCount: 1,
-        maxAttempts: 4,
-        atomicReindex,
-      }),
-    ).toEqual({
-      retry: false,
-      documentStatus: atomicReindex ? "indexed" : "failed",
-      stage: "failed",
-      errorMessage: "TABLE_ROW_EXCEEDS_CHUNK_BUDGET",
-    });
-  });
-
   it("retries transient failures while preserving a previously indexed document", () => {
     const decision = ingestionFailureDecision({
       error: new Error("network connection reset"),

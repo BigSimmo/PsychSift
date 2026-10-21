@@ -298,6 +298,8 @@ import {
   createSearchTiming,
   finishSearch,
   measureSearchPhase,
+  mergeNestedSearchStages,
+  recordSearchStage,
   startRerankClock,
   type SearchTiming,
 } from "@/lib/rag/rag-search-timing";
@@ -1400,6 +1402,7 @@ async function searchChunksWithTiming(
       // result below must not be cached.
       if (correctionError) correctionFailed = true;
       if (typeof corrected === "string" && corrected && corrected.toLowerCase() !== retrievalQuery.toLowerCase()) {
+        const correctedSearchStartedAt = Date.now();
         const correctedSearch = await searchChunksWithTelemetry(
           {
             ...args,
@@ -1412,6 +1415,11 @@ async function searchChunksWithTiming(
         for (const [phase, latency] of Object.entries(correctedSearch.telemetry.retrieval_phase_latencies_ms ?? {})) {
           searchTiming.phases[phase] = (searchTiming.phases[phase] ?? 0) + latency;
         }
+        mergeNestedSearchStages(
+          searchTiming,
+          correctedSearch.telemetry.retrieval_stage_timeline_ms,
+          correctedSearchStartedAt,
+        );
         return finishSearch(searchTiming, correctedSearch);
       }
     }
@@ -1432,6 +1440,7 @@ async function searchChunksWithTiming(
   }
 
   let expandedQuery = normalizeRetrievalVariant([expandClinicalQuery(retrievalQuery), ...ragAliasExpansions].join(" "));
+  const embeddingPrefetchStartedAt = Date.now();
   const { promise: prefetchedEmbedding, query: prefetchedEmbeddingQuery } = prefetchEmbedding(
     !(sourceOnlyRetrieval || args.lexicalOnly),
     expandedQuery,
@@ -1443,6 +1452,12 @@ async function searchChunksWithTiming(
     },
   );
   if (prefetchedEmbedding) telemetry.embedding_prefetched = true;
+  // Measurement only: when the prefetch settles, so the timeline shows its real overlap.
+  let embeddingPrefetchSettledAt: number | null = null;
+  const markEmbeddingPrefetchSettled = () => {
+    embeddingPrefetchSettledAt ??= Date.now();
+  };
+  void prefetchedEmbedding?.then(markEmbeddingPrefetchSettled, markEmbeddingPrefetchSettled);
   const textSearchQuery = queryVariants[0] ?? buildClinicalTextSearchQuery(retrievalQuery);
   const candidateMultiplier = queryClassification.queryClass === "comparison" ? 7 : 5;
   const candidateFloor = queryClassification.queryClass === "comparison" ? 72 : 48;
@@ -1521,6 +1536,7 @@ async function searchChunksWithTiming(
   });
   telemetry.text_candidate_count = textData.length;
   telemetry.text_fast_path_latency_ms = Date.now() - textRpcStartedAt;
+  recordSearchStage(searchTiming, "text_candidates", textRpcStartedAt);
   telemetry.supabase_rpc_latency_ms += telemetry.text_fast_path_latency_ms;
   throwIfAborted(args.signal);
   recordRetrievalLayer(telemetry, "text_candidates", textData.length, {
@@ -1633,6 +1649,7 @@ async function searchChunksWithTiming(
     // Only the time this request actually waited is on the critical path; the lane's own duration
     // stays on its layer record.
     telemetry.supabase_rpc_latency_ms += Date.now() - tableFactWaitStartedAt;
+    recordSearchStage(searchTiming, "table_facts_wait", tableFactWaitStartedAt);
     const tableFactLatencyMs = speculativeTableFacts.durationMs();
     recordRetrievalLayer(telemetry, "table_facts", tableFactCandidates.length, {
       latencyMs: tableFactLatencyMs,
@@ -1649,6 +1666,7 @@ async function searchChunksWithTiming(
     throwIfAborted(args.signal);
     mergeSpeculativeLaneTelemetry(telemetry, speculativeDocumentLookup.telemetry);
     telemetry.supabase_rpc_latency_ms += Date.now() - documentLookupWaitStartedAt;
+    recordSearchStage(searchTiming, "document_lookup_wait", documentLookupWaitStartedAt);
     const documentLookupLatencyMs = speculativeDocumentLookup.durationMs();
     recordRetrievalLayer(telemetry, "document_lookup", documentLookupData.length, {
       latencyMs: documentLookupLatencyMs,
@@ -1778,6 +1796,7 @@ async function searchChunksWithTiming(
 
   throwIfAborted(args.signal);
   embeddingStartedAt = Date.now();
+  const embeddingReusesPrefetch = Boolean(prefetchedEmbeddingQuery === expandedQuery && prefetchedEmbedding);
   let embeddingResult: Awaited<ReturnType<typeof embedTextWithTelemetry>> | null = null;
   try {
     embeddingResult = await (prefetchedEmbeddingQuery === expandedQuery && prefetchedEmbedding
@@ -1803,6 +1822,14 @@ async function searchChunksWithTiming(
   }
   const { embedding, cacheHit } = embeddingResult;
   telemetry.embedding_latency_ms = Date.now() - embeddingStartedAt;
+  // Measurement only. A reused prefetch is timed from its own start to its settle, so its overlap
+  // with the lexical stages is visible; embedding_wait is the critical-path wait at this point.
+  if (embeddingReusesPrefetch) {
+    recordSearchStage(searchTiming, "embedding", embeddingPrefetchStartedAt, embeddingPrefetchSettledAt ?? Date.now());
+  } else {
+    recordSearchStage(searchTiming, "embedding", embeddingStartedAt);
+  }
+  recordSearchStage(searchTiming, "embedding_wait", embeddingStartedAt);
   telemetry.embedding_cache_hit = cacheHit;
   recordRetrievalLayer(telemetry, "embedding", 1, {
     latencyMs: telemetry.embedding_latency_ms,
@@ -1879,6 +1906,7 @@ async function searchChunksWithTiming(
   throwIfAborted(args.signal);
   // The three calls overlap, so charge wall-clock once rather than summing per-call latencies.
   telemetry.supabase_rpc_latency_ms += Date.now() - parallelRpcStartedAt;
+  recordSearchStage(searchTiming, "vector_parallel_rpcs", parallelRpcStartedAt);
 
   const embeddingFieldCandidates = embeddingFieldResult.candidates;
   telemetry.embedding_field_count = embeddingFieldCandidates.length;

@@ -78,17 +78,11 @@ older probes that omit these fields remain compatible. These signals alone never
 recovery, including with `--apply`. If separate recoverable queue work also exists, bounded
 recovery may run, but the integrity alert remains until a subsequent probe confirms resolution.
 
-The configured character target controls ordinary table groups. A larger indivisible
-row is supported by retaining the complete table, including every qualification
-band and adjacent note, as one chunk up to 8,191 UTF-8 bytes for known OpenAI embedding models. This is a conservative
-byte-BPE token upper bound, not an exact token count. The chunk records this overflow
-in metadata, and embedding requests are batched by both input count and total bytes.
-`TABLE_ROW_EXCEEDS_CHUNK_BUDGET` remains a permanent refusal above that hard ceiling
-or for an unknown model's target overflow. A qualification-bearing table whose
-complete scope cannot fit is also refused. The chunker returns no partial chunk array
-and never splits cells or truncates evidence. Review the source structure before
-retrying; the refusal does not establish OCR accuracy. Atomic reindex failure preserves
-the existing index.
+The configured character target controls table groups (chunker 1.3.1). Each group repeats
+the table caption and header. A single row longer than the room left under the header is
+split at word boundaries into pieces that each repeat the header, and a table footnote
+(symbol markers, "Note" or "Source" lines only) is appended to the last group when it fits,
+otherwise emitted with the repeated header as its own chunk.
 
 ## Do not do this
 
@@ -99,6 +93,33 @@ the existing index.
 - Do not run imports, reindexing, queue recovery mutations, or evals when `npm run supabase:recovery-status` reports `supabase_unavailable`.
 - Do not use `--force-large-import` unless Supabase health is stable and you have intentionally chosen a larger import wave.
 - Do not re-index to fix "OCR corruption" or to add table/heading-aware chunking without new evidence. Both were measured negligible/neutral on 2026-07-08 (`noisy_unit_rate` is a saturated visual-coverage metric, not corruption; heading/table-aware chunking already exists and chunks are well-bounded). See `docs/chunking-ocr-reindex-lever-finding-2026-07-08.md`.
+
+## Rolling back a reindex
+
+`npm run reindex:rollback` moves documents back to their previous committed index generation.
+A commit keeps the new generation and the one it replaced (the prune trigger from
+`20261019155200`), so there is exactly one generation to go back to, and only until the next
+commit of that document. The script needs the `rollback_document_index_generation` function
+(`20261021150000_rollback_document_index_generation.sql`).
+
+- Dry run is the default. For each document it prints the current and previous generation,
+  their chunk counts and commit times, and whether it would roll back.
+- Choose one scope: `--document-id <uuid>[,<uuid>]`, `--committed-after <ISO time>` (the
+  current generation was committed after that time) or `--chunker-version <version>` (the
+  current generation's chunks carry that `chunker_version`). `--limit` caps the documents
+  (default 50, max 1000).
+- `--apply` is refused (non-zero exit) unless `--i-understand-metadata-not-restored` is also given: a rollback currently leaves `documents.metadata` and `document_index_quality` describing the wrong generation until #3732 lands, which removes this guard.
+- `--apply` writes (it asks first unless `--yes` is given). It refuses a document with no
+  previous committed generation, or whose previous generation has no chunks. The database
+  function also refuses if the pointer moved since the dry run or an ingestion job for the
+  document is pending or processing.
+- The generation you roll back from is kept, so a rollback can itself be rolled back. Check
+  the result with `npm run reindex:health` and run the retrieval eval before relying on it.
+
+```bash
+npm run reindex:rollback -- --chunker-version 1.3.1-page            # dry run
+npm run reindex:rollback -- --document-id <uuid> --apply --i-understand-metadata-not-restored  # write
+```
 
 ## Recovery transaction (merged 18 October 2026)
 

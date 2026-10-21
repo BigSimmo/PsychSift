@@ -220,20 +220,9 @@ describe("repository source providers", () => {
       medicationReferences
         .filter((reference) => reference.usage.field === "sourceLinks")
         .map((reference) => [reference.usage.recordId, reference.canonicalUrl]),
-    ).toEqual([
-      [
-        "clozapine",
-        "https://www.health.wa.gov.au/~/media/Corp/Documents/Health-for/MTU/Guidelines-for-the-Safe-and-Quality-Use-of-Clozapine-Therapy-in-the-WA-health-system.pdf",
-      ],
-      [
-        "lithium-carbonate-ir-sr",
-        "https://australianprescriber.tg.org.au/articles/lithium-therapy-and-its-interactions.html",
-      ],
-      [
-        "lithium-carbonate-ir-sr",
-        "https://australianprescriber.tg.org.au/articles/lithium-therapy-and-its-interactions-correction.html",
-      ],
-    ]);
+      // 21 Oct 2026: no medicine source is adopted with the owner's sign-off since the #3562
+      // adoptions were reset (owner ruling), so no medicine page carries a source link.
+    ).toEqual([]);
 
     const serviceReferences = provider("services").references();
     const services = loadServicesSnapshot().services;

@@ -109,12 +109,11 @@ describe("medication source links", () => {
     }
   });
 
-  it("returns the confirmed source links on the live pages now that the owner has signed the adopted records", () => {
-    expect(medicationSourceLinks("clozapine").map((link) => link.id)).toEqual(["wa-health-clozapine-guideline-2024"]);
-    expect(medicationSourceLinks("lithium-carbonate-ir-sr").map((link) => link.id)).toEqual([
-      "australian-prescriber-lithium-therapy-and-its-interactions",
-      "australian-prescriber-lithium-therapy-interactions-correction",
-    ]);
+  it("shows no source links on the live pages while no linked record is adopted with the owner's sign-off", () => {
+    // 21 Oct 2026: the #3562 adoptions of the clozapine and lithium sources were not the owner's, so
+    // those records went back to candidate (owner ruling) and the live pages show no source link.
+    expect(medicationSourceLinks("clozapine")).toEqual([]);
+    expect(medicationSourceLinks("lithium-carbonate-ir-sr")).toEqual([]);
   });
 
   it("hides an unconfirmed record", () => {

@@ -90,7 +90,8 @@ describe("therapyKeyFactCards", () => {
     const cards = therapyKeyFactCards(bySlug("cognitive-behavioural-therapy-for-insomnia"));
     const byId = Object.fromEntries(cards.map((card) => [card.id, card]));
 
-    expect(byId.format.face).toBe("Group programme");
+    // #3702 replaces the contradictory "Group programme" chip with "Multi-session" (R7-F-13).
+    expect(byId.format.face).toBe("Multi-session");
     expect(byId.format.body).toContain("4–8 sessions");
     expect(byId.format.hasDetail).toBe(true);
 

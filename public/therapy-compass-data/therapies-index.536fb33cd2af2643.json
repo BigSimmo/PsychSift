@@ -76,7 +76,7 @@
     "name": "Adolescent-focused psychotherapy for anorexia nervosa",
     "category": "Eating Disorder Therapies",
     "bestUsedFor": "Best for children and young people with anorexia nervosa when FT-AN is unacceptable, contraindicated, or ineffective.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -90,7 +90,7 @@
     "name": "Advocacy-informed therapeutic work",
     "category": "Community & Casework Support",
     "bestUsedFor": "Best in community psychiatry, rehabilitation, severe mental illness, complex psychosocial presentations, and recovery-oriented care where progress depends on both treatment and access to practical supports.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -129,7 +129,7 @@
     "name": "Applied Relaxation / Relaxation-Based Therapy",
     "category": "Foundational & Engagement Therapies",
     "bestUsedFor": "Strongest formal guideline support is for generalised anxiety disorder, where NICE includes applied relaxation as a high-intensity psychological treatment option alongside CBT.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -184,7 +184,7 @@
     "name": "Behavioural Activation (BA)",
     "category": "Standard Talking Therapies",
     "bestUsedFor": "Strongly indicated for depression, especially when inactivity, withdrawal, reduced routine, and loss of reinforcement are prominent.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -221,7 +221,7 @@
     "name": "Behavioural Couples Therapy for Substance Use Disorders (BCT-SUD)",
     "category": "Substance Use Therapies",
     "bestUsedFor": "Best used when the patient is in a committed relationship and the partner is willing to participate.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -340,7 +340,7 @@
     "name": "Carer Interventions",
     "category": "Family & Couple Therapies",
     "bestUsedFor": "Best established in psychosis / schizophrenia, where NICE states that carers of adults with psychosis or schizophrenia should be offered carer-focused education and support programmes, and parents/carers of newly diagnosed children and young people with bipolar disorder, psychosis, or schizophrenia should be given information about carer-focused education and support.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -499,7 +499,7 @@
     "name": "Cognitive Behavioural Therapy (CBT)",
     "category": "Standard Talking Therapies",
     "bestUsedFor": "Strongest broad evidence-backed uses are depression and anxiety disorders.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -517,7 +517,7 @@
     "name": "Cognitive Behavioural Therapy for Bipolar Depression / Bipolar Relapse Prevention",
     "category": "Standard Talking Therapies",
     "bestUsedFor": "Best used as an adjunctive psychotherapy in bipolar disorder, especially for bipolar depression, residual symptoms, and relapse prevention in people who are not acutely manic.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -532,7 +532,7 @@
     "name": "Cognitive behavioural therapy for insomnia",
     "category": "Standard Talking Therapies",
     "bestUsedFor": "Best first-line psychological treatment for chronic insomnia, including insomnia with comorbid mental or physical health problems.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -579,7 +579,7 @@
     "name": "Cognitive Behavioural Therapy for Psychosis (CBTp)",
     "category": "Psychosis & Rehabilitation Therapies",
     "bestUsedFor": "Best supported for psychosis and schizophrenia, including people at increased risk of psychosis, first and subsequent acute episodes, and the recovery phase when positive or negative symptoms continue to affect distress or function.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -787,7 +787,7 @@
     "name": "Constructivist therapies",
     "category": "Humanistic & Meaning-Based Therapies",
     "bestUsedFor": "Best for identity, grief, adjustment, self-meaning, and broader distress where a meaning-construction model fits better than a symptom-protocol model.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -1044,7 +1044,7 @@
     "name": "Dialectical Behaviour Therapy (DBT)",
     "category": "Personality Disorder Therapies",
     "bestUsedFor": "Best supported for borderline personality disorder / borderline personality symptoms, especially when recurrent self-harm is a major treatment priority.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -1249,7 +1249,7 @@
     "name": "Experiential therapies",
     "category": "Humanistic & Meaning-Based Therapies",
     "bestUsedFor": "Best when emotional processing difficulty is central, especially in mood, anxiety, personality, and somatic symptom presentations.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -1273,7 +1273,7 @@
     "name": "Exposure and Response Prevention (ERP)",
     "category": "OCD & Exposure Therapies",
     "bestUsedFor": "Obsessive-compulsive disorder (OCD) is the clearest and strongest use.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -1376,7 +1376,7 @@
     "name": "Family Intervention for Psychosis",
     "category": "Psychosis & Rehabilitation Therapies",
     "bestUsedFor": "Best supported for adults with psychosis or schizophrenia who live with or are in close contact with family members or carers.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -1410,7 +1410,7 @@
     "name": "Family Psychoeducation for Psychosis",
     "category": "Psychosis & Rehabilitation Therapies",
     "bestUsedFor": "Most useful for schizophrenia-spectrum and other psychotic disorders when family members or carers are closely involved and need a clearer illness model, relapse plan, and coping framework.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -1480,7 +1480,7 @@
     "name": "Family-Focused Psychoeducation for Bipolar Disorder",
     "category": "Family & Couple Therapies",
     "bestUsedFor": "Best used for relapse prevention in bipolar disorder, especially when relatives/carers are closely involved in day-to-day life or episode detection.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -1534,7 +1534,7 @@
     "name": "Gestalt therapy",
     "category": "Humanistic & Meaning-Based Therapies",
     "bestUsedFor": "Best as an experiential psychotherapy for people with depression, anxiety, interpersonal distress, self-esteem problems, or broader psychological distress when an experiential present-focused model fits the case.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -1642,7 +1642,7 @@
     "name": "Group Psychoeducation for Bipolar Disorder",
     "category": "Group CBT",
     "bestUsedFor": "Best used for maintenance / relapse prevention in bipolar disorder, especially when the patient is not in an acute episode and can engage in a structured group format.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -1753,7 +1753,7 @@
     "name": "Habit reversal training / CBIT",
     "category": "OCD & Exposure Therapies",
     "bestUsedFor": "Best-supported use is Tourette syndrome and chronic tic disorders, where CBIT is an evidence-based behavioural treatment.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -1806,7 +1806,7 @@
     "name": "Health-anxiety-focused CBT",
     "category": "Standard Talking Therapies",
     "bestUsedFor": "Best for persistent health anxiety where adequate medical assessment has not found an explanatory serious disease and the main maintaining mechanism is anxiety-driven misinterpretation and reassurance-seeking.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -1829,7 +1829,7 @@
     "name": "Humanistic psychotherapy",
     "category": "Humanistic & Meaning-Based Therapies",
     "bestUsedFor": "Best for depression and broader psychological distress where an exploratory, emotionally focused, relationship-based psychotherapy is appropriate.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -1914,7 +1914,7 @@
     "name": "Inference-based CBT for OCD",
     "category": "OCD & Exposure Therapies",
     "bestUsedFor": "Best as a selective OCD treatment when ERP is refused, poorly tolerated, or the clinical formulation is dominated by obsessional doubt, poor insight, or “imagined possibility” reasoning.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -2161,7 +2161,7 @@
     "name": "Meaning-centred psychotherapy",
     "category": "Humanistic & Meaning-Based Therapies",
     "bestUsedFor": "Best-supported use is advanced cancer, serious illness, and palliative care, where RCTs and reviews suggest benefit for meaning, spiritual well-being, and existential distress.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -2402,7 +2402,7 @@
     "name": "Motivational Interviewing (MI) for Substance Use Disorders",
     "category": "Substance Use Therapies",
     "bestUsedFor": "Best used at engagement, assessment, early treatment, and whenever motivation is unstable.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": true,
     "tags": [
@@ -2418,7 +2418,7 @@
     "name": "Multi-Family Interventions",
     "category": "Family & Couple Therapies",
     "bestUsedFor": "Best supported in psychosis / schizophrenia, where NICE states family intervention should take account of family preference for either single-family intervention or multi-family group intervention.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -2493,7 +2493,7 @@
     "name": "Narrative therapy",
     "category": "Humanistic & Meaning-Based Therapies",
     "bestUsedFor": "Best when identity, meaning, stigma, trauma-related self-story, family/community narratives, or chronic demoralisation are central.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -2577,7 +2577,7 @@
     "name": "Parent Management Training (PMT)",
     "category": "Child & Adolescent Therapies",
     "bestUsedFor": "Best supported for children with clinical levels of disruptive behaviour, especially oppositional and conduct-type presentations in younger children.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -2593,7 +2593,7 @@
     "name": "Parent Training",
     "category": "Child & Adolescent Therapies",
     "bestUsedFor": "Best supported for children aged 3 to 11 years who are at high risk of oppositional defiant disorder or conduct disorder, who already have oppositional defiant disorder or conduct disorder, or who are in contact with the criminal justice system because of antisocial behaviour.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -2677,7 +2677,7 @@
     "name": "Peer Support",
     "category": "Psychosis & Rehabilitation Therapies",
     "bestUsedFor": "Most useful in psychosis rehabilitation, community recovery work, discharge transition, engagement support, group activities, and broader recovery-oriented service delivery.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -2752,7 +2752,7 @@
     "name": "Play therapy / play-based therapies",
     "category": "Child & Adolescent Therapies",
     "bestUsedFor": "Best as a developmentally appropriate therapy or adjunct for younger children with emotional, behavioural, relational, or adjustment difficulties, especially when verbal CBT-style work is too abstract.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -2797,7 +2797,7 @@
     "name": "Problem-Solving Therapy (PST)",
     "category": "Foundational & Engagement Therapies",
     "bestUsedFor": "Most useful for stress-linked depression, adjustment-related difficulty, executive overload, and patients whose distress is closely tied to unresolved current-life problems.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -2876,7 +2876,7 @@
     "name": "Psychodynamic Psychotherapy",
     "category": "Personality Disorder Therapies",
     "bestUsedFor": "Best supported across common mental disorders, especially depression, some anxiety and panic presentations, somatoform / functional-symptom presentations, substance-related disorders, eating disorders, and personality disorders.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -3012,7 +3012,7 @@
     "name": "Recovery planning for addiction",
     "category": "Substance Use Therapies",
     "bestUsedFor": "Best in alcohol and other drug treatment, dual-diagnosis care, inpatient discharge planning, residential rehab step-down, opioid agonist treatment support, relapse-prevention work, and recovery-oriented case management.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -3091,7 +3091,7 @@
     "name": "Relapse-Prevention Psychotherapy",
     "category": "Foundational & Engagement Therapies",
     "bestUsedFor": "Strongest guideline-backed use is recurrent depression, especially after remission or partial remission in people at higher relapse risk.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -3130,7 +3130,7 @@
     "name": "Relational-cultural therapy",
     "category": "Humanistic & Meaning-Based Therapies",
     "bestUsedFor": "Best when the case formulation is strongly relational, especially in trauma-informed, women’s mental health, identity, marginalisation, or chronic relational-distress presentations.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -3316,7 +3316,7 @@
     "name": "Short-Term Psychodynamic Psychotherapy for Depression (STPP)",
     "category": "Standard Talking Therapies",
     "bestUsedFor": "Best used for adult depression when relational-emotional patterns and developmental difficulties in close relationships are central.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -3414,7 +3414,7 @@
     "name": "Social-anxiety-focused CBT",
     "category": "Standard Talking Therapies",
     "bestUsedFor": "Best for social anxiety disorder in adults, and developmentally adapted CBT for children and young people.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -3538,7 +3538,7 @@
     "name": "STAIR (Skills Training in Affective and Interpersonal Regulation)",
     "category": "Trauma Therapies",
     "bestUsedFor": "Best for complex trauma / complex PTSD-type presentations where the dominant problems are emotion regulation and interpersonal functioning.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -3590,7 +3590,7 @@
     "name": "Structured clinical management",
     "category": "Personality Disorder Therapies",
     "bestUsedFor": "Best for BPD/personality disorder in public-sector or general mental health settings where a structured, consistent, manualised clinical model is needed and specialist therapies may not be available.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -3756,7 +3756,7 @@
     "name": "Supportive-Expressive / Psychodynamic Counselling Approaches for Depression",
     "category": "Standard Talking Therapies",
     "bestUsedFor": "Most defensible for adult depression when recurrent relationship themes and difficult affects are central.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -3902,7 +3902,7 @@
     "name": "Trauma-Informed Skills Work",
     "category": "Trauma Therapies",
     "bestUsedFor": "Most useful when trauma exposure has left the patient with major emotion-regulation or interpersonal difficulties, especially in complex trauma presentations.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -3923,7 +3923,7 @@
     "name": "Twelve-Step Facilitation (TSF)",
     "category": "Substance Use Therapies",
     "bestUsedFor": "The strongest evidence is for alcohol use disorder (AUD).",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -3939,7 +3939,7 @@
     "name": "Values-based therapies",
     "category": "Humanistic & Meaning-Based Therapies",
     "bestUsedFor": "Best when a values-based mechanism is clearly central, especially in ACT-informed work for transdiagnostic distress, chronic health conditions, and problems maintained by avoidance and overcontrol.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -4062,7 +4062,7 @@
     "name": "Written exposure therapy",
     "category": "Trauma Therapies",
     "bestUsedFor": "Best as a brief trauma-focused PTSD treatment option when a concise, lower-burden exposure-based therapy is needed.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [

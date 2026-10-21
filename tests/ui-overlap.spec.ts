@@ -31,6 +31,44 @@ async function mockSetupStatus(page: Page) {
   });
 }
 
+/** #3731: the Tab walk measures geometry, so it must not sample a layout that is still
+ * moving. Waits for fonts, chrome/reserve transitions and finished animations, then for
+ * the dock, the focused control and the scroll position to hold still across consecutive
+ * frames. It only waits; every assertion the walk makes is unchanged. */
+async function waitForPhoneTabWalkSettled(page: Page) {
+  await page.waitForFunction(
+    async () => {
+      if (document.fonts.status !== "loaded") return false;
+      await document.fonts.ready;
+      if (document.querySelector('[data-chrome-transitioning="true"], [data-reserve-transitioning="true"]'))
+        return false;
+      if (document.getAnimations().some((animation) => animation.playState === "running")) return false;
+      const frame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      const sample = () => {
+        const dock = document.querySelector('form[role="search"][data-footer-variant="compact"]');
+        const layer = (dock?.closest(".phone-footer-layer") ?? dock) as HTMLElement | null;
+        const active = document.activeElement as HTMLElement | null;
+        const rects = [layer, active].map((node) => {
+          const rect = node?.getBoundingClientRect();
+          return rect ? [rect.top, rect.bottom, rect.left, rect.width].join(",") : "";
+        });
+        return [window.scrollY, document.documentElement.scrollHeight, ...rects].join("|");
+      };
+      let previous = sample();
+      for (let stable = 0; stable < 3;) {
+        await frame();
+        const current = sample();
+        if (current !== previous) return false;
+        stable += 1;
+        previous = current;
+      }
+      return true;
+    },
+    undefined,
+    { polling: 50 },
+  );
+}
+
 async function mockDemoDashboard(page: Page) {
   await mockSetupStatus(page);
   await page.route(/\/api\/local-project-id$/, async (route) => {
@@ -478,12 +516,15 @@ test.describe("Header element overlap coverage", () => {
       }
       window.scrollTo(0, 0);
     });
+    await waitForPhoneTabWalkSettled(page);
 
     const covered: string[] = [];
     let resultStops = 0;
     let scrolledStops = 0;
     for (let press = 0; press < 80; press++) {
       await page.keyboard.press("Tab");
+      // Focus-driven scrollIntoView can still be moving; measure the settled frame.
+      await waitForPhoneTabWalkSettled(page);
       const stop = await page.evaluate(() => {
         const active = document.activeElement as HTMLElement | null;
         if (!active || active === document.body) return { kind: "none" as const };

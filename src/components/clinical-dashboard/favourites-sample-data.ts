@@ -30,7 +30,7 @@ export const SAMPLE_DIFFERENTIAL_SLUGS = Object.keys(SAMPLE_DIFFERENTIALS) as (k
 export const SAMPLE_THERAPIES = {
   "acceptance-and-commitment-therapy-act": "Acceptance and Commitment Therapy (ACT)",
   "cognitive-therapy-for-ptsd-ct-ptsd": "Cognitive Therapy for PTSD (CT-PTSD)",
-  "cognitive-behavioural-therapy-for-insomnia": "Cognitive behavioural therapy for insomnia",
+  "cognitive-processing-therapy-cpt": "Cognitive Processing Therapy (CPT)",
 } as const;
 export const SAMPLE_THERAPY_SLUGS = Object.keys(SAMPLE_THERAPIES) as (keyof typeof SAMPLE_THERAPIES)[];
 

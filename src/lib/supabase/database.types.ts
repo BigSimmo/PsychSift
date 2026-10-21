@@ -2120,6 +2120,7 @@ export type Database = {
       };
       image_caption_cache: {
         Row: {
+          cache_identity: string | null;
           caption: string;
           created_at: string;
           id: string;
@@ -2131,6 +2132,7 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          cache_identity?: string | null;
           caption: string;
           created_at?: string;
           id?: string;
@@ -2142,6 +2144,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          cache_identity?: string | null;
           caption?: string;
           created_at?: string;
           id?: string;
@@ -6126,6 +6129,10 @@ export type Database = {
           p_version_id: string;
         };
         Returns: Database["public"]["Tables"]["public_source_versions"]["Row"];
+      };
+      rollback_document_index_generation: {
+        Args: { p_document_id: string; p_expected_generation: string; p_target_generation: string };
+        Returns: Json;
       };
       transition_public_source_version: {
         Args: { p_activation_event_id: string; p_target_lifecycle: string; p_version_id: string };

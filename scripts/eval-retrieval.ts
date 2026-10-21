@@ -4,6 +4,7 @@ import { loadEnvConfig } from "@next/env";
 import { z } from "zod";
 import { loadCapturedRagEvalCases, type RagEvalCase, type SupabaseEvalCaseClient } from "@/lib/rag/rag-eval-cases";
 import type { SearchResult } from "@/lib/types";
+import type { SearchTelemetry } from "@/lib/rag/rag-contracts";
 import {
   loadAdminClient,
   pauseBetweenEvalCases,
@@ -78,6 +79,9 @@ export type GoldenRetrievalResult = {
   latencyMs: number;
   searchTotalLatencyMs?: number;
   retrievalPhaseLatenciesMs?: Record<string, number>;
+  retrievalStageTimelineMs?: SearchTelemetry["retrieval_stage_timeline_ms"];
+  textRpcVariantTimings?: SearchTelemetry["text_rpc_variant_timings"];
+  textFastPathLatencyMs?: number;
   retrievalStrategy: string | null;
   retrievalPlan: string | null;
   embeddingSkipped: boolean;
@@ -624,6 +628,9 @@ export function evaluateGoldenRetrievalCase(args: {
     second_stage_rerank_used?: boolean | null;
     search_total_latency_ms?: number | null;
     retrieval_phase_latencies_ms?: Record<string, number> | null;
+    retrieval_stage_timeline_ms?: SearchTelemetry["retrieval_stage_timeline_ms"] | null;
+    text_rpc_variant_timings?: SearchTelemetry["text_rpc_variant_timings"] | null;
+    text_fast_path_latency_ms?: number | null;
   };
   latencyMs: number;
   timedOut?: boolean;
@@ -704,6 +711,9 @@ export function evaluateGoldenRetrievalCase(args: {
     latencyMs: args.latencyMs,
     searchTotalLatencyMs: args.telemetry.search_total_latency_ms ?? undefined,
     retrievalPhaseLatenciesMs: args.telemetry.retrieval_phase_latencies_ms ?? undefined,
+    retrievalStageTimelineMs: args.telemetry.retrieval_stage_timeline_ms ?? undefined,
+    textRpcVariantTimings: args.telemetry.text_rpc_variant_timings ?? undefined,
+    textFastPathLatencyMs: args.telemetry.text_fast_path_latency_ms ?? undefined,
     retrievalStrategy: args.telemetry.retrieval_strategy ?? null,
     retrievalPlan: args.telemetry.retrieval_plan ?? null,
     embeddingSkipped: args.telemetry.embedding_skipped ?? false,

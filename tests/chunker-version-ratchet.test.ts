@@ -25,6 +25,22 @@ const corpus = [
   ).join("\n\n"),
   // Text with no sentence boundaries.
   "word ".repeat(900).trim(),
+  // A titled table with footnotes, a referral line and a numeric scale (table
+  // caption, footnote, referral-URL and oversized-row paths).
+  [
+    "Lithium serum level actions",
+    "| Level | Concentration | Action |",
+    "| --- | --- | --- |",
+    ...Array.from({ length: 40 }, (_, i) => `| Level ${i} | ${i}.0 mmol/L | Action ${i} |`),
+    `| Level long | ${"cell ".repeat(150).trim()} | Escalate |`,
+    "* Levels taken 12 hours post dose.",
+    "Crisis line: www.example.org/crisis",
+    "Rating scale",
+    "0",
+    "1",
+    "2",
+    "3",
+  ].join("\n"),
 ];
 
 const recorded: Record<string, string> = {
@@ -32,8 +48,9 @@ const recorded: Record<string, string> = {
   "1.1.1-page|1.1.1-document": "4af6b997fc7ead3f8678b027a396b8ee3352bec8d155a4cbc7e751da5a6f43d5",
   "1.2.0-page|1.2.0-document": "e0eb0b337d010f3c4f078ef2df970b3b91d0d420dd2916b0f0f98a83600957e8",
   "1.3.0-page|1.3.0-document": "e0eb0b337d010f3c4f078ef2df970b3b91d0d420dd2916b0f0f98a83600957e8",
-  "1.3.1-page|1.3.1-document": "e0eb0b337d010f3c4f078ef2df970b3b91d0d420dd2916b0f0f98a83600957e8",
-  "1.4.0-page|1.4.0-document": "e0eb0b337d010f3c4f078ef2df970b3b91d0d420dd2916b0f0f98a83600957e8",
+  // From 1.3.1 the corpus also includes the titled-table sample above; earlier
+  // entries were recorded on the first three samples only.
+  "1.3.1-page|1.3.1-document": "c43e36dc4ebcabc19b0fac45b7d97ee3883a79dd533dc188ad759b3652f52922",
 };
 
 function fingerprint() {
@@ -49,44 +66,7 @@ function fingerprint() {
   return hash.digest("hex");
 }
 
-// Keep the original corpus/history above intact. This additional ratchet covers
-// the newly representable atomic row, repeated context, and neighboring rows.
-const overflowCorpus = [
-  [
-    "Table 4. Synthetic monitoring",
-    "| Group | Action |",
-    "| --- | --- |",
-    "| GROUP-B | Repeat the measurement. |",
-    `| GROUP-A | Do not change treatment unless ${"the original condition remains applicable ".repeat(50).trim()}. |`,
-    "| GROUP-C | Review the result. |",
-    "Note: Do not change treatment",
-    "unless the original condition applies.",
-  ].join("\n"),
-];
-const overflowRecorded: Record<string, string> = {
-  "1.4.0-page|1.4.0-document": "7a762b08fef8f1ba762591f3e645cf2c93a3f0877b8bed953c2ca0ba783ba502",
-};
-
-function overflowFingerprint() {
-  const hash = createHash("sha256");
-  for (const text of overflowCorpus) {
-    for (const [size, overlap] of [
-      [400, 80],
-      [1200, 200],
-    ] as const) {
-      hash.update(JSON.stringify(chunkTextWithOverlap(text, size, overlap)));
-    }
-  }
-  return hash.digest("hex");
-}
-
 describe("chunker version ratchet", () => {
-  it("records the atomic table overflow fingerprint for the current chunker version", () => {
-    const key = `${CHUNKER_VERSION}|${DOCUMENT_CHUNKER_VERSION}`;
-    expect(overflowRecorded[key], `record the atomic overflow fingerprint for ${key}`).toBeDefined();
-    expect(overflowFingerprint()).toBe(overflowRecorded[key]);
-  });
-
   it("records a fingerprint for the current chunker version", () => {
     const key = `${CHUNKER_VERSION}|${DOCUMENT_CHUNKER_VERSION}`;
     expect(recorded[key], `bump the chunker version and record a fingerprint for ${key}`).toBeDefined();
