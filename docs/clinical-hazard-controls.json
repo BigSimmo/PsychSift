@@ -173,7 +173,7 @@
     "src/lib/service-ranker.ts": "bbdbe3629520a22104194fc727530c05614dfba5528d9b9d8d5743acbfa9ea44",
     "src/lib/service-urgent-routing.ts": "163245433081cc4474d6c54993f709100d9e636b001f0cd17904bc61f24dc285",
     "src/lib/source-authority-registry.ts": "938bbbb1d26bdb88acbb9cc15f43fc6d809a13de49e6a47d745c992aaba3f813",
-    "src/lib/source-governance.ts": "76a2c8ef50ce8f8abb5842e7c000e90a82a97b29945bbcf49149ac3f1664c99e",
+    "src/lib/source-governance.ts": "edec0e4bc7dc115847e0fdd2802a88cc340a8676b2e8288ee427563ce1bc1c68",
     "src/lib/source-text-sanitizer.ts": "cb6c869b520a8be03d40bae1206a87b6d53318573baeaec664b35c353fa1bd80",
     "tests/answer-render-policy.test.ts": "e7ddb86442ecdafd01bc6d1b94791e41b98c91c0d313ab03a532a1cc9fc60465",
     "tests/answer-verification.test.ts": "3c5f2d1d805067f17a2bfcc47c7a92f7362271004ebad071b5b657c9d7d34844",
@@ -187,7 +187,7 @@
     "tests/services-catalog.test.ts": "9de1e48720aa15ac4b60632fb7841579c707e14bb47c2f0e2dce407c41bad190",
     "tests/services-safety-regressions.test.ts": "0515a77320cf9abc0b26ed3320f07d4b8e05b0eaed79ba031840b000735fb9df",
     "tests/services-safety-routing.test.ts": "e54f0a0f0f11810848de0b178c5398e9ac158b90a814d2005986d9e0b3853f33",
-    "tests/source-governance.test.ts": "e8e995c1859f360719e194df9d33c068933f2f0f7d22828ddc54639370a5ce8b",
+    "tests/source-governance.test.ts": "17b26759d7954886f803a9e7f3c9ef857fc53edd35995f54c2b91b37131b13e0",
     "tests/ward-output.test.ts": "bb9f417d63c769b8e059f41fe2c9a5c52f772cedd13e6352408b4a7716e00222"
   }
 }
