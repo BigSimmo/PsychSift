@@ -2120,6 +2120,7 @@ export type Database = {
       };
       image_caption_cache: {
         Row: {
+          cache_identity: string | null;
           caption: string;
           created_at: string;
           id: string;
@@ -2131,6 +2132,7 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          cache_identity?: string | null;
           caption: string;
           created_at?: string;
           id?: string;
@@ -2142,6 +2144,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          cache_identity?: string | null;
           caption?: string;
           created_at?: string;
           id?: string;
