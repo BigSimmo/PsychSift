@@ -739,4 +739,29 @@ describe("table-aware chunking with a title and footnote (ING-B-03)", () => {
     for (const chunk of tableChunks) expect(chunk).toContain("| Level | Concentration | Action |");
     for (const chunk of chunks) expect(chunk.length).toBeLessThanOrEqual(1200);
   });
+
+  it("repeats a title the extractor wrapped over two lines on every table chunk", () => {
+    const titleLines = [
+      "Table A2.1 Number of synthetic lithium dose steps associated with alternative ",
+      "serum concentration thresholds, depending on renal function",
+    ];
+    const chunks = chunkTextWithOverlap(
+      [
+        "Dose steps are summarised in the table below (Table A2.1).",
+        ...titleLines,
+        "| Level | Concentration | Action |",
+        "| --- | --- | --- |",
+        ...rows,
+      ].join("\n"),
+      1200,
+      200,
+    );
+    const tableChunks = chunks.filter((chunk) => chunk.includes("| Level ") && chunk.includes("mmol/L"));
+    expect(tableChunks.length).toBeGreaterThan(3);
+    for (const chunk of tableChunks) {
+      expect(chunk).toContain(titleLines.map((line) => line.trim()).join("\n"));
+    }
+    expect(chunks.join("\n")).toContain("Dose steps are summarised in the table below (Table A2.1).");
+    for (const chunk of chunks) expect(chunk.length).toBeLessThanOrEqual(1200);
+  });
 });

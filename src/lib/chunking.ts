@@ -470,14 +470,19 @@ function chunkOversizedParagraph(paragraph: string, chunkSize: number, overlap: 
   segments.forEach((segment, index) => {
     if (!segment.table || segment.lines.length < 2) {
       const next = segments[index + 1];
-      const captionFollows =
-        next?.table && next.lines.length >= 2 && tableCaptionLinePattern.test(segment.lines.at(-1)?.trim() ?? "");
-      pushProse(captionFollows ? segment.lines.slice(0, -1) : segment.lines);
+      const captionStart = next?.table && next.lines.length >= 2 ? tableCaptionStart(segment.lines) : -1;
+      pushProse(captionStart >= 0 ? segment.lines.slice(0, captionStart) : segment.lines);
       return;
     }
     const previous = segments[index - 1];
-    const captionLine = previous?.lines.at(-1)?.trim() ?? "";
-    const caption = !previous?.table && tableCaptionLinePattern.test(captionLine) ? captionLine : "";
+    const captionStart = previous && !previous.table ? tableCaptionStart(previous.lines) : -1;
+    const caption =
+      previous && captionStart >= 0
+        ? previous.lines
+            .slice(captionStart)
+            .map((line) => line.trim())
+            .join("\n")
+        : "";
     chunks.push(...chunkTableBlock(segment.lines.join("\n"), chunkSize, caption));
   });
   return chunks;
@@ -492,6 +497,24 @@ function readableOverlapTail(text: string, overlap: number) {
 
 const tableRowPattern = /^\s*\|.*\|\s*$/;
 const tableCaptionLinePattern = /^table\b.{0,200}$/i;
+const maxTableCaptionLines = 3;
+const maxTableCaptionLength = 300;
+
+// The extractor can wrap a long "Table ..." title over several lines, so the
+// caption starts at the last "Table ..." line among the final few lines of the
+// prose run and takes every line after it. Returns -1 when there is no caption.
+function tableCaptionStart(lines: string[]) {
+  const earliest = Math.max(0, lines.length - maxTableCaptionLines);
+  for (let index = lines.length - 1; index >= earliest; index -= 1) {
+    if (!tableCaptionLinePattern.test(lines[index]?.trim() ?? "")) continue;
+    const caption = lines
+      .slice(index)
+      .map((line) => line.trim())
+      .join("\n");
+    return caption.length <= maxTableCaptionLength ? index : -1;
+  }
+  return -1;
+}
 
 function isTableBlock(block: string) {
   const lines = block.split(lineBreakPattern).filter((line) => line.trim().length > 0);
