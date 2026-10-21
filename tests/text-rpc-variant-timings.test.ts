@@ -5,7 +5,10 @@ import {
   createSearchTiming,
   finishSearch,
   measureSearchPhase,
+  MAX_STAGE_NAME_LENGTH,
+  MAX_STAGE_TIMELINE_ENTRIES,
   mergeNestedSearchStages,
+  recordSearchStage,
 } from "../src/lib/rag/rag-search-timing";
 import type { SearchResult } from "../src/lib/types";
 
@@ -136,5 +139,95 @@ describe("text RPC per-variant timing telemetry is measurement-only", () => {
       { stage: "text_candidates", started_offset_ms: 0, finished_offset_ms: 50 },
       { stage: "nested:text_candidates", started_offset_ms: 105, finished_offset_ms: 125 },
     ]);
+  });
+
+  it("records the timing with rpc_error when the text RPC returns an error", async () => {
+    const supabase = {
+      rpc: () => Promise.resolve({ data: null, error: { message: "boom", code: "XX000" } }),
+    } as never;
+    const telemetry = {} as SearchTelemetry;
+    const results = await searchTextChunkCandidates({ supabase, queryVariants: ["abc"], matchCount: 10, telemetry });
+    expect(results).toEqual([]);
+    const [primary] = telemetry.text_rpc_variant_timings ?? [];
+    expect(primary).toMatchObject({ role: "primary", ran: true, rpc_error: true, row_count: 0 });
+    expect(primary?.rpc_ms).toBeGreaterThanOrEqual(0);
+  });
+
+  it("keeps the variant timings, with rpc_error, when the text RPC throws", async () => {
+    const supabase = {
+      rpc: (name: string) =>
+        name.startsWith("match_document_chunks_text")
+          ? Promise.reject(new Error("socket hang up"))
+          : Promise.resolve({ data: null, error: null }),
+    } as never;
+    const telemetry = {} as SearchTelemetry;
+    await expect(
+      searchTextChunkCandidates({ supabase, queryVariants: ["abc"], matchCount: 10, telemetry }),
+    ).rejects.toThrow("socket hang up");
+    const timings = telemetry.text_rpc_variant_timings ?? [];
+    expect(timings).toHaveLength(1);
+    expect(timings[0]).toMatchObject({ role: "primary", ran: true, rpc_error: true, row_count: 0 });
+    expect(timings[0]?.finished_offset_ms).not.toBeNull();
+  });
+
+  it("times the trigram-corrected strict retry (corrected-search branch)", async () => {
+    const supabase = {
+      rpc: (name: string, args: Record<string, unknown>) => {
+        if (name === "correct_clinical_query_terms")
+          return Promise.resolve({ data: "clozapine monitoring", error: null });
+        const data = args.query_text === "clozapine monitoring" ? [row("c0", 0.9)] : [];
+        return Promise.resolve({ data, error: null });
+      },
+    } as never;
+    const telemetry = {} as SearchTelemetry;
+    const results = await searchTextChunkCandidates({
+      supabase,
+      queryVariants: ["clozapin monitoring"],
+      matchCount: 10,
+      telemetry,
+    });
+    expect(results.map((r) => r.id)).toEqual(["c0"]);
+    expect((telemetry.text_rpc_variant_timings ?? []).map((t) => [t.role, t.ran, t.row_count])).toEqual([
+      ["primary", true, 0],
+      ["corrected", true, 1],
+    ]);
+  });
+
+  it("caps the stage timeline length and stage name length", () => {
+    const timing = createSearchTiming();
+    for (let i = 0; i < MAX_STAGE_TIMELINE_ENTRIES + 20; i += 1) {
+      recordSearchStage(timing, `stage_${i}_${"x".repeat(200)}`, timing.startedAt + i, timing.startedAt + i + 1);
+    }
+    mergeNestedSearchStages(timing, [{ stage: "late", started_offset_ms: 0, finished_offset_ms: 1 }], timing.startedAt);
+    const out = finishSearch(timing, { results: [], telemetry: {} as SearchTelemetry });
+    const stages = out.telemetry.retrieval_stage_timeline_ms ?? [];
+    expect(stages).toHaveLength(MAX_STAGE_TIMELINE_ENTRIES);
+    expect(stages.every((s) => s.stage.length <= MAX_STAGE_NAME_LENGTH)).toBe(true);
+    expect(stages.some((s) => s.stage === "nested:late")).toBe(false);
+  });
+
+  it("caps nested:* stages and keeps timeline entries unique when a nested timeline is merged twice", () => {
+    const timing = createSearchTiming();
+    timing.startedAt = 1_000;
+    const nested = [
+      { stage: "text_candidates", started_offset_ms: 5, finished_offset_ms: 25 },
+      { stage: "nested:vector_candidates", started_offset_ms: 6, finished_offset_ms: 30 },
+    ];
+    mergeNestedSearchStages(timing, nested, 1_100);
+    mergeNestedSearchStages(timing, nested, 1_100);
+    const keys = (timing.stages ?? []).map((s) => `${s.stage}|${s.started_offset_ms}|${s.finished_offset_ms}`);
+    expect(new Set(keys).size).toBe(keys.length);
+    expect((timing.stages ?? []).map((s) => s.stage)).toEqual(["nested:text_candidates", "nested:vector_candidates"]);
+
+    const flood = Array.from({ length: MAX_STAGE_TIMELINE_ENTRIES * 2 }, (_, i) => ({
+      stage: `s${i}`,
+      started_offset_ms: i,
+      finished_offset_ms: i + 1,
+    }));
+    mergeNestedSearchStages(timing, flood, 1_000);
+    expect(timing.stages).toHaveLength(MAX_STAGE_TIMELINE_ENTRIES);
+    expect(timing.stages?.every((s) => s.stage.startsWith("nested:") && !s.stage.startsWith("nested:nested:"))).toBe(
+      true,
+    );
   });
 });

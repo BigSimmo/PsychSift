@@ -54,6 +54,29 @@ export function closeShadowSearch(timing: SearchTiming) {
   timing.closeShadow?.();
 }
 
+/** Measurement only: bounds on the stage timeline so telemetry rows stay small. */
+export const MAX_STAGE_TIMELINE_ENTRIES = 64;
+export const MAX_STAGE_NAME_LENGTH = 80;
+const NESTED_PREFIX = "nested:";
+
+function pushStage(timing: SearchTiming, entry: RetrievalStageTiming) {
+  const stages = (timing.stages ??= []);
+  if (stages.length >= MAX_STAGE_TIMELINE_ENTRIES) return;
+  const stage = entry.stage.slice(0, MAX_STAGE_NAME_LENGTH);
+  // Drop exact repeats (same stage, same offsets) so a re-merged nested timeline is not doubled.
+  if (
+    stages.some(
+      (existing) =>
+        existing.stage === stage &&
+        existing.started_offset_ms === entry.started_offset_ms &&
+        existing.finished_offset_ms === entry.finished_offset_ms,
+    )
+  ) {
+    return;
+  }
+  stages.push({ ...entry, stage });
+}
+
 export function createSearchTiming(): SearchTiming {
   return { startedAt: Date.now(), phases: {}, stages: [] };
 }
@@ -70,8 +93,10 @@ export function mergeNestedSearchStages(
   if (!nestedStages?.length) return;
   const shift = nestedStartedAt - timing.startedAt;
   for (const stage of nestedStages) {
-    (timing.stages ??= []).push({
-      stage: `nested:${stage.stage}`,
+    // A nested search's own nested stages keep a single prefix rather than nested:nested:...
+    const name = stage.stage.startsWith(NESTED_PREFIX) ? stage.stage : `${NESTED_PREFIX}${stage.stage}`;
+    pushStage(timing, {
+      stage: name,
       started_offset_ms: stage.started_offset_ms + shift,
       finished_offset_ms: stage.finished_offset_ms + shift,
     });
@@ -80,7 +105,7 @@ export function mergeNestedSearchStages(
 
 /** Measurement only: record a stage's start/finish offsets; never affects control flow. */
 export function recordSearchStage(timing: SearchTiming, stage: string, startedAt: number, finishedAt = Date.now()) {
-  (timing.stages ??= []).push({
+  pushStage(timing, {
     stage,
     started_offset_ms: startedAt - timing.startedAt,
     finished_offset_ms: finishedAt - timing.startedAt,
@@ -144,7 +169,9 @@ export function finishSearch<T extends { results: SearchResult[]; telemetry: Sea
   search.telemetry.retrieval_phase_latencies_ms = { ...timing.phases };
   // Authoritative per request: an absent timeline is cleared rather than carried over.
   if (timing.stages?.length) {
-    search.telemetry.retrieval_stage_timeline_ms = timing.stages.map((stage) => ({ ...stage }));
+    search.telemetry.retrieval_stage_timeline_ms = timing.stages
+      .slice(0, MAX_STAGE_TIMELINE_ENTRIES)
+      .map((stage) => ({ ...stage }));
   } else {
     delete search.telemetry.retrieval_stage_timeline_ms;
   }
