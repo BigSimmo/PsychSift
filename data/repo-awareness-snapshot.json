@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-20"
+    "committed_at": "2026-10-21"
   },
   "routes": {
     "modes": [
@@ -5460,6 +5460,11 @@
       },
       {
         "path": "docs/decisions/2026-10-16-remove-obsolete-cloud-startup-instructions.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-21-no-malware-scan-before-upload-storage.md",
         "section": "decisions",
         "catalogued": true
       },
