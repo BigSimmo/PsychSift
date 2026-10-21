@@ -191,6 +191,23 @@ async function verifySwapApproveRules(
     }
   }
 
+  if (await swapBreaksTeamRules(fromFn, serviceId, swapRow, requesterId, counterpartyId)) {
+    throw rosterError("roster_swap_rule_warning");
+  }
+}
+
+/**
+ * Whether the roster as this swap would leave it breaks one of the team's own
+ * rules (`swapRuleFlags`: minimum break, hours in 7 or 14 days, nights or days
+ * in a row). Shared by the manager's approval and the other doctor's accept.
+ */
+async function swapBreaksTeamRules(
+  fromFn: (table: string) => unknown,
+  serviceId: string,
+  swapRow: Record<string, unknown>,
+  requesterId: string,
+  counterpartyId: string,
+): Promise<boolean> {
   let settingsQuery = fromFn("roster_team_settings");
   settingsQuery = chainCall(settingsQuery, "select", "rules");
   settingsQuery = chainCall(settingsQuery, "eq", "service_id", serviceId);
@@ -200,7 +217,7 @@ async function verifySwapApproveRules(
 
   const rules = parseRules(settingsRow?.rules);
   const lookbackDays = ruleLookbackDays(rules);
-  if (lookbackDays === 0) return;
+  if (lookbackDays === 0) return false;
 
   const rawGive =
     swapRow.give && typeof swapRow.give === "object" ? (swapRow.give as Record<string, unknown>) : undefined;
@@ -210,7 +227,7 @@ async function verifySwapApproveRules(
     (rawGive && (rawGive.superseded_at != null || rawGive.supersededAt != null)) ||
     (rawTake && (rawTake.superseded_at != null || rawTake.supersededAt != null))
   ) {
-    return;
+    return false;
   }
 
   const inlineGive = toRosterAssignment(rawGive);
@@ -283,7 +300,7 @@ async function verifySwapApproveRules(
 
   const give = resolvedGive ?? (giveId ? (assignments.find((row) => row.id === giveId) ?? null) : null);
   const take = resolvedTake ?? (takeId ? (assignments.find((row) => row.id === takeId) ?? null) : null);
-  if ((giveId && !give) || (takeId && !take) || (!give && !take)) return;
+  if ((giveId && !give) || (takeId && !take) || (!give && !take)) return false;
 
   const flags = swapRuleFlags(assignments, rules, {
     requesterId,
@@ -291,9 +308,39 @@ async function verifySwapApproveRules(
     give,
     take,
   });
-  if (flags.length > 0) {
-    throw rosterError("roster_swap_rule_warning");
-  }
+  return flags.length > 0;
+}
+
+/**
+ * Whether the other doctor's accept would let a swap approve itself while
+ * breaking a team rule. The SQL's own accept check covers clashes and the
+ * minimum break only, so a swap that breaks an hours or run-length rule is sent
+ * to the manager instead (`roster_swap_accept_for_manager`). Anything this
+ * cannot judge (not the counterparty, no longer waiting, expired) is left to the
+ * SQL, which refuses or cancels it as before.
+ */
+async function swapAcceptBreaksTeamRules(
+  client: AdminClient,
+  actorId: string,
+  serviceId: string,
+  swapId: string,
+): Promise<boolean> {
+  if (typeof client.from !== "function") return false;
+  const fromFn = client.from.bind(client) as (table: string) => unknown;
+  let swapQuery = fromFn("roster_swaps");
+  swapQuery = chainCall(swapQuery, "select", "*");
+  swapQuery = chainCall(swapQuery, "eq", "service_id", serviceId);
+  swapQuery = chainCall(swapQuery, "eq", "id", swapId);
+  const swapRes = await resolveSingle(swapQuery);
+  if (swapRes?.error) throw rosterApiError(swapRes.error);
+  const swapRow = swapRes.data;
+  if (!swapRow || swapRow.status !== "requested") return false;
+  const expiresAt = typeof swapRow.expires_at === "string" ? swapRow.expires_at : null;
+  if (expiresAt && Date.parse(expiresAt) <= Date.now()) return false;
+  const requesterId = typeof swapRow.requester_id === "string" ? swapRow.requester_id : null;
+  const counterpartyId = typeof swapRow.counterparty_id === "string" ? swapRow.counterparty_id : null;
+  if (!requesterId || counterpartyId !== actorId) return false;
+  return swapBreaksTeamRules(fromFn, serviceId, swapRow, requesterId, counterpartyId);
 }
 
 export type RosterReadPayload = { from?: string; to?: string };
@@ -353,6 +400,18 @@ export async function rosterCommand(
   requireActor(actorId);
   if (action.action === "swap.approve" && !action.acknowledgeRuleWarnings) {
     await verifySwapApproveRules(client, actorId, serviceId, action.swapId);
+  }
+  // A swap that would approve itself while breaking a team rule waits for the manager instead.
+  if (action.action === "swap.accept" && (await swapAcceptBreaksTeamRules(client, actorId, serviceId, action.swapId))) {
+    const routed = await client.rpc("roster_swap_accept_for_manager", {
+      p_actor_id: actorId,
+      p_service_id: serviceId,
+      p_swap_id: action.swapId,
+    });
+    if (routed.error) throw rosterApiError(routed.error);
+    const parsedRouted = rosterCommandResultSchema.safeParse(routed.data);
+    if (!parsedRouted.success) throw rosterUnavailable();
+    return parsedRouted.data;
   }
   const { action: name, ...payload } = action;
   // The safe number goes through the stale check, which refuses it once anyone has saved since the editor's read.
