@@ -124,6 +124,23 @@ def write_indirect_decode_pdf(path, kind, side=9_000, text=PAGE_TEXT):
         document.save(path)
 
 
+def write_form_mask_pdf(path, unused=False, visible_masked_sibling=False):
+    source = path + ".source.pdf"
+    write_indirect_decode_pdf(source, "soft_mask")
+    with fitz.open(source) as original, fitz.open() as document:
+        if unused:
+            # This synthetic fixture's final stream paints the oversized mask.
+            original.update_stream(original[0].get_contents()[-1], b"")
+        if visible_masked_sibling:
+            # Same base dimensions as the unsafe resource, different safe mask.
+            pixels = fitz.Pixmap(fitz.csRGB, fitz.IRect(0, 0, 120, 90), True)
+            pixels.clear_with(100)
+            original[0].insert_image(fitz.Rect(200, 40, 320, 130), pixmap=pixels)
+        page = document.new_page(width=400, height=400)
+        page.show_pdf_page(page.rect, original, 0)
+        document.save(path)
+
+
 class TemporaryDirectoryTestCase(unittest.TestCase):
     def setUp(self):
         self._directory = tempfile.TemporaryDirectory()
@@ -196,14 +213,8 @@ class OversizedEmbeddedImageTests(TemporaryDirectoryTestCase):
         self.assertTrue(any("soft mask" in warning and "9000x9000" in warning for warning in result["warnings"]))
 
     def test_form_soft_mask_is_refused_without_hash_based_placement(self):
-        source = self.path("form-source.pdf")
         path = self.path("form-mask.pdf")
-        write_indirect_decode_pdf(source, "soft_mask")
-        with fitz.open(source) as original, fitz.open() as document:
-            page = document.new_page(width=400, height=400)
-            page.show_pdf_page(page.rect, original, 0)
-            self.assertTrue(all(info[-1] != 0 for info in page.get_images(full=True)))
-            document.save(path)
+        write_form_mask_pdf(path)
         with patch.object(fitz.Page, "get_image_bbox") as bbox, patch.object(
             fitz.Page, "get_image_rects"
         ) as rects, patch.object(fitz.Page, "get_pixmap") as render:
@@ -213,7 +224,68 @@ class OversizedEmbeddedImageTests(TemporaryDirectoryTestCase):
         render.assert_not_called()
         self.assertEqual(result["images"], [])
         self.assertIn("lithium level 0.6 to 0.8 mmol/L", result["pages"][0]["text"])
-        self.assertTrue(any("Form mask placement unverified" in warning for warning in result["warnings"]))
+        self.assertTrue(any("soft mask" in warning and "9000x9000" in warning for warning in result["warnings"]))
+
+    def test_unused_form_mask_does_not_block_same_size_visible_masked_sibling(self):
+        path = self.path("unused-form-mask.pdf")
+        write_form_mask_pdf(path, unused=True, visible_masked_sibling=True)
+        with fitz.open(path) as document:
+            page = document[0]
+            self.assertTrue(all(info[-1] != 0 for info in page.get_images(full=True)))
+            displayed = page.get_image_info(hashes=False, xrefs=False)
+            self.assertEqual([(info["width"], info["height"], info["has-mask"]) for info in displayed],
+                             [(120, 90, True)])
+            with patch.object(fitz.Page, "get_image_bbox") as bbox, patch.object(
+                fitz.Page, "get_image_rects"
+            ) as rects, patch.object(fitz.Page, "get_pixmap") as render:
+                skipped, unsafe = extractor.page_image_decode_preflight(page, page.get_images(full=True))
+            bbox.assert_not_called()
+            rects.assert_not_called()
+            render.assert_not_called()
+        self.assertEqual(len(skipped), 1)
+        self.assertFalse(unsafe)
+
+    def test_unused_form_mask_without_visible_masks_needs_no_native_adapter(self):
+        path = self.path("unused-form-no-mask.pdf")
+        write_form_mask_pdf(path, unused=True)
+        with fitz.open(path) as document:
+            page = document[0]
+            with patch.object(fitz.Page, "get_image_info", return_value=[]), patch.object(
+                fitz.Page, "get_textpage", side_effect=AssertionError("no masked image is displayed")
+            ) as native:
+                skipped, unsafe = extractor.page_image_decode_preflight(page, page.get_images(full=True))
+            native.assert_not_called()
+        self.assertEqual(len(skipped), 1)
+        self.assertFalse(unsafe)
+
+    def test_unknown_native_mask_adapter_keeps_refusal(self):
+        path = self.path("unknown-form-mask.pdf")
+        write_form_mask_pdf(path, unused=True, visible_masked_sibling=True)
+        with fitz.open(path) as document:
+            page = document[0]
+            displayed = page.get_image_info(hashes=False, xrefs=False)
+            with patch.object(fitz.Page, "get_image_info", return_value=displayed), patch.object(
+                fitz.Page, "get_textpage", return_value=object()
+            ):
+                skipped, unsafe = extractor.page_image_decode_preflight(page, page.get_images(full=True))
+        self.assertTrue(unsafe)
+        self.assertTrue(any("mask placement unverified" in warning for warning in skipped.values()))
+
+    def test_malformed_native_mask_headers_keep_refusal(self):
+        path = self.path("malformed-form-mask.pdf")
+        write_form_mask_pdf(path, unused=True, visible_masked_sibling=True)
+        with fitz.open(path) as document:
+            page = document[0]
+            displayed = page.get_image_info(hashes=False, xrefs=False)
+            from unittest.mock import Mock
+            native = Mock()
+            native.extractIMGINFO.return_value = [{**displayed[0], "number": "not-a-block-index"}]
+            with patch.object(fitz.Page, "get_image_info", return_value=displayed), patch.object(
+                fitz.Page, "get_textpage", return_value=native
+            ):
+                skipped, unsafe = extractor.page_image_decode_preflight(page, page.get_images(full=True))
+        self.assertTrue(unsafe)
+        self.assertTrue(any("mask placement unverified" in warning for warning in skipped.values()))
 
     def test_safe_embedded_sibling_survives_without_hashing_unsafe_inline_image(self):
         source = self.path("inline-source.pdf")

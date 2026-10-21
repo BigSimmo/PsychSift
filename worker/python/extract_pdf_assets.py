@@ -28,7 +28,7 @@ except Exception as exc:
 # parser defect can be traced to the documents it touched. Bump the date and label whenever a
 # change alters the text, tables or images produced for the same PDF. 2026-09-16 is PR #2810,
 # which replaced line-major table text with table_aware_page_text (#GJHKYC).
-EXTRACTOR_VERSION = "2026-10-21.image-decode-preflight-v11"
+EXTRACTOR_VERSION = "2026-10-21.form-mask-headers-v12"
 TABLE_STRATEGY = "table_aware_page_text"
 
 # IDX-H6: caps on serialized table size. Raised from the previous 80/120-row and 8000-char
@@ -182,6 +182,52 @@ def oversized_embedded_image_warning(image_info, max_pixels=MAX_EMBEDDED_IMAGE_P
     )
 
 
+def _displayed_masks_exceed_pixel_limit(page, displayed):
+    """Read displayed mask headers; None means native metadata is unverified.
+
+    Public get_image_info omits mask dimensions and Form get_image_bbox hashes
+    pixels. This isolated adapter follows extractIMGINFO(hashes=False)'s own
+    native header access, using its block indices rather than resource names.
+    TextPage.this is a binding detail: validate against public metadata and fail
+    closed if an unsupported binding cannot supply matching image/mask headers.
+    No pixmap, pixel samples or compressed image bytes are requested.
+    """
+    textpage = None
+    try:
+        textpage = page.get_textpage(flags=fitz.TEXT_PRESERVE_IMAGES)
+        headers = textpage.extractIMGINFO(hashes=False)
+
+        def identity(header):
+            number, width, height = (header[key] for key in ("number", "width", "height"))
+            if any(type(value) is not int for value in (number, width, height)) or number < 0 or min(width, height) <= 0:
+                raise ValueError("invalid native image header")
+            if type(header["has-mask"]) is not bool:
+                raise ValueError("invalid native mask header")
+            return number, width, height, header["has-mask"]
+
+        if [identity(header) for header in headers] != [identity(header) for header in displayed]:
+            return None
+        masked = {header["number"] for header in headers if header["has-mask"]}
+        observed = set()
+        unsafe = False
+        for number, block in enumerate(textpage.this):
+            if number not in masked:
+                continue
+            mask = block.i_image().mask()
+            width, height = mask.w(), mask.h()
+            if any(type(value) is not int or value <= 0 for value in (width, height)):
+                return None
+            observed.add(number)
+            unsafe = unsafe or width * height > MAX_EMBEDDED_IMAGE_PIXELS
+        return unsafe if observed == masked else None
+    except MemoryError:
+        raise
+    except Exception:
+        return None
+    finally:
+        del textpage
+
+
 def page_image_decode_preflight(page, image_infos):
     """Inspect image headers, including inline images and separate soft masks.
 
@@ -209,26 +255,20 @@ def page_image_decode_preflight(page, image_infos):
     )
     # get_images also lists dead resources: an unused oversized XObject must
     # still be skipped as an artifact, but cannot make a safe page render unsafe.
-    # Displayed image headers above cover the base pixels, including inline and
-    # Form images. Separate masks need their owning image's placement as well.
-    for image_info in image_infos:
-        if image_info[0] not in skipped or oversized_embedded_image_warning(image_info):
-            continue
-        if image_info[-1] != 0:
-            # get_image_bbox delegates Form referencers to hash-based placement.
-            # Unknown mask placement stays conservative without decoding it.
-            skipped[image_info[0]] += "; Form mask placement unverified without decoding"
-            unsafe = True
-            continue
-        try:
-            # Only top-level resources with transform=False use the metadata-only
-            # path; an unused resource returns an empty/infinite rectangle.
-            bbox = page.get_image_bbox(image_info)
-            unsafe = unsafe or not (bbox.is_empty or bbox.is_infinite)
-        except MemoryError:
-            raise
-        except Exception:
-            unsafe = True
+    # Displayed headers include inline and Form images. Inspect native mask
+    # headers lazily, only when a resource declares an oversized separate mask
+    # and the page actually displays a masked image. Dead Form resources and
+    # same-size but different visible masked images must not be conflated.
+    oversized_mask_xrefs = {
+        info[0] for info in image_infos
+        if info[0] in skipped and not oversized_embedded_image_warning(info)
+    }
+    if not unsafe and oversized_mask_xrefs and any(image.get("has-mask") for image in displayed):
+        masks_unsafe = _displayed_masks_exceed_pixel_limit(page, displayed)
+        if masks_unsafe is None:
+            for xref in oversized_mask_xrefs:
+                skipped[xref] += "; displayed mask placement unverified without decoding"
+        unsafe = unsafe or masks_unsafe is not False
     return skipped, unsafe
 
 
