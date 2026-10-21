@@ -260,6 +260,7 @@
     "check:rag:adversarial-fixtures": "node scripts/check-rag-adversarial-fixtures.mjs",
     "reindex:cleanup-staged": "node scripts/run-tsx.mjs scripts/cleanup-abandoned-reindex-generations.ts",
     "reindex:rollback": "node scripts/run-tsx.mjs scripts/reindex-rollback.ts",
+    "extraction:provenance": "node scripts/run-tsx.mjs scripts/extraction-provenance-report.ts",
     "repair:enrichment-gate": "node scripts/run-tsx.mjs scripts/repair-strict-enrichment-gate.ts",
     "check:enrichment-health": "node scripts/run-tsx.mjs scripts/check-enrichment-artifact-health.ts",
     "images:re-stamp-generation": "node scripts/run-tsx.mjs scripts/reindex-image-generation-metadata.ts",

@@ -1573,8 +1573,18 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
         .getByRole("button", { name: "Clear", exact: true })
         .click();
       await expect.poll(() => new URL(page.url()).searchParams.has("shortlist")).toBe(false);
+      // Clearing re-renders the page from the new URL, and the composer can re-sync
+      // its text from `q=crisis` as it does. Filling before that settles could let the
+      // sync overwrite "housing", so Enter resubmitted "crisis". Wait for the
+      // cleared state to paint, and for the typed text to hold, before submitting.
+      await expect(
+        page
+          .getByRole("navigation", { name: "Referral progress" })
+          .getByRole("button", { name: "Shortlist", exact: true }),
+      ).toHaveAttribute("aria-disabled", "true");
       const nextInput = visibleGlobalSearchInput(page).first();
       await nextInput.fill("housing");
+      await expect(nextInput).toHaveValue("housing");
       await nextInput.press("Enter");
       await expect.poll(() => new URL(page.url()).searchParams.get("q")).toBe("housing");
       expect(new URL(page.url()).searchParams.has("shortlist")).toBe(false);
@@ -2935,10 +2945,15 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     await expect(phoneDoNow).toBeVisible();
     await expect(phoneDoNow).toContainText("Do now");
     await expectNoPageHorizontalOverflow(page);
-    const forcedColorsMetricRows = await safetyMetricItems.evaluateAll((items) => {
-      return new Set(items.map((item) => Math.round(item.getBoundingClientRect().top))).size;
-    });
-    expect(forcedColorsMetricRows).toBeLessThanOrEqual(2);
+    // Poll for the same reason as the 320px check above: after the jump from
+    // 1280px WebKit can measure before the container query reflows the grid.
+    await expect
+      .poll(() =>
+        safetyMetricItems.evaluateAll((items) => {
+          return new Set(items.map((item) => Math.round(item.getBoundingClientRect().top))).size;
+        }),
+      )
+      .toBeLessThanOrEqual(2);
   });
 
   test("diagnosis map keeps labels contained and the selected inspector out of the canvas", async ({ page }) => {
