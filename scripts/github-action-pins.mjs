@@ -95,6 +95,12 @@ const reviewedActionPins = new Map([
       // each only "bump Claude Code to 2.1.299-2.1.302 and Agent SDK to
       // 0.3.299-0.3.302". The upstream diff itself was not read in this review.
       ["f27be6b65a4652f08a2ba3cff79114829b588967", "v1.0.252"],
+      // Reviewed 2026-10-21 for PR #3721: tag v1.0.253 (annotated tag object
+      // 7c29313a) dereferences to commit 5eb090f3. v1.0.252...v1.0.253 is one
+      // commit changing only Claude Code 2.1.302 -> 2.1.303 and Agent SDK
+      // 0.3.302 -> 0.3.303 (action.yml, run.ts, package.json, bun.lock) — no
+      // change to permissions, tokens/secrets handling, or network endpoints.
+      ["5eb090f3c3afd701a0672cd32981197ca27688f6", "v1.0.253"],
     ]),
   ],
   ["actions/cache", new Map([["55cc8345863c7cc4c66a329aec7e433d2d1c52a9", "v6"]])],
