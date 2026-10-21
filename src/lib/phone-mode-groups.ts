@@ -159,6 +159,17 @@ export function phoneModeGroupsForSide(side: ModeMenuSideId) {
   return phoneModeGroups.filter((group) => group.side === side && group.drawn);
 }
 
+/** A mode the menu does not draw, mapped to the drawn row that hosts it. */
+const modeMenuRowHosts: Partial<Record<AppModeId, AppModeId>> = { "open-shifts": "roster" };
+
+/**
+ * The menu row that stands for `modeId`. On an Open shifts page the menu
+ * highlights and focuses Roster, the area Open shifts is a tab of.
+ */
+export function modeMenuRowFor(modeId: AppModeId): AppModeId {
+  return modeMenuRowHosts[modeId] ?? modeId;
+}
+
 /** Which room a mode belongs to: the `side` its own definition declares. */
 export function modeMenuSideForMode(modeId: AppModeId): ModeMenuSideId {
   return appModeSide(modeId);

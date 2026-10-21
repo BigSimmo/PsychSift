@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { appModeIds, type AppModeId } from "@/lib/app-modes";
 import {
   clinicalBandAttribute,
+  modeMenuRowFor,
   modeMenuSideForMode,
   modeMenuSides,
   orderByPhoneModeGroups,
@@ -118,5 +119,18 @@ describe("clinicalBandAttribute", () => {
     expect(clinicalBandAttribute("dictionary", null, false)).toBeUndefined();
     expect(clinicalBandAttribute("dictionary", "/admin", true)).toBeUndefined();
     expect(clinicalBandAttribute("roster", "/roster", false)).toBeUndefined();
+  });
+});
+
+describe("modeMenuRowFor", () => {
+  it("stands Open shifts for Roster, the drawn row it is a tab of, and leaves drawn modes alone", () => {
+    expect(modeMenuRowFor("open-shifts")).toBe("roster");
+    for (const group of phoneModeGroups.filter((entry) => entry.drawn)) {
+      for (const modeId of group.modeIds) expect(modeMenuRowFor(modeId)).toBe(modeId);
+    }
+    const drawn = new Set<string>(phoneModeGroups.filter((group) => group.drawn).flatMap((group) => group.modeIds));
+    for (const group of phoneModeGroups.filter((entry) => !entry.drawn && entry.id !== "retired")) {
+      for (const modeId of group.modeIds) expect(drawn.has(modeMenuRowFor(modeId))).toBe(true);
+    }
   });
 });
