@@ -1440,6 +1440,7 @@ async function searchChunksWithTiming(
   }
 
   let expandedQuery = normalizeRetrievalVariant([expandClinicalQuery(retrievalQuery), ...ragAliasExpansions].join(" "));
+  const embeddingPrefetchStartedAt = Date.now();
   const { promise: prefetchedEmbedding, query: prefetchedEmbeddingQuery } = prefetchEmbedding(
     !(sourceOnlyRetrieval || args.lexicalOnly),
     expandedQuery,
@@ -1451,6 +1452,12 @@ async function searchChunksWithTiming(
     },
   );
   if (prefetchedEmbedding) telemetry.embedding_prefetched = true;
+  // Measurement only: when the prefetch settles, so the timeline shows its real overlap.
+  let embeddingPrefetchSettledAt: number | null = null;
+  const markEmbeddingPrefetchSettled = () => {
+    embeddingPrefetchSettledAt ??= Date.now();
+  };
+  void prefetchedEmbedding?.then(markEmbeddingPrefetchSettled, markEmbeddingPrefetchSettled);
   const textSearchQuery = queryVariants[0] ?? buildClinicalTextSearchQuery(retrievalQuery);
   const candidateMultiplier = queryClassification.queryClass === "comparison" ? 7 : 5;
   const candidateFloor = queryClassification.queryClass === "comparison" ? 72 : 48;
@@ -1789,6 +1796,7 @@ async function searchChunksWithTiming(
 
   throwIfAborted(args.signal);
   embeddingStartedAt = Date.now();
+  const embeddingReusesPrefetch = Boolean(prefetchedEmbeddingQuery === expandedQuery && prefetchedEmbedding);
   let embeddingResult: Awaited<ReturnType<typeof embedTextWithTelemetry>> | null = null;
   try {
     embeddingResult = await (prefetchedEmbeddingQuery === expandedQuery && prefetchedEmbedding
@@ -1814,8 +1822,13 @@ async function searchChunksWithTiming(
   }
   const { embedding, cacheHit } = embeddingResult;
   telemetry.embedding_latency_ms = Date.now() - embeddingStartedAt;
-  // Time this request spent waiting for the embedding here; a reused prefetch may have started
-  // earlier and overlapped the lexical stages, so this is the critical-path wait, not provider time.
+  // Measurement only. A reused prefetch is timed from its own start to its settle, so its overlap
+  // with the lexical stages is visible; embedding_wait is the critical-path wait at this point.
+  if (embeddingReusesPrefetch) {
+    recordSearchStage(searchTiming, "embedding", embeddingPrefetchStartedAt, embeddingPrefetchSettledAt ?? Date.now());
+  } else {
+    recordSearchStage(searchTiming, "embedding", embeddingStartedAt);
+  }
   recordSearchStage(searchTiming, "embedding_wait", embeddingStartedAt);
   telemetry.embedding_cache_hit = cacheHit;
   recordRetrievalLayer(telemetry, "embedding", 1, {
