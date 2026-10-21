@@ -295,6 +295,13 @@
       "recordedBy": "Engineering, Claude clinical content audit thread (audit 3, 20 Oct 2026), per owner request to fix the audit recommendations. Engineering drift record only; not clinical-owner approval, hazard re-review or reseal.",
       "recordedOn": "2026-10-20",
       "expiresOn": "2026-12-04"
+    },
+    {
+      "path": "tests/source-governance.test.ts",
+      "reason": "PR #3707 adds regression tests for the new scanned-page (OCR) source caution and for keeping document-caution warnings inside the 8-warning cap. Owner approved this temporary exception by decision card on 21 Oct 2026; the caution wording still awaits the owner's review on that PR. The prior seal stands until the owner re-reviews and reseals this file.",
+      "recordedBy": "Claude Code, RAG and ingestion audit thread, PR #3707, on the owner's card approval 2026-10-21. Engineering drift record only; not clinical-owner approval or release signoff.",
+      "recordedOn": "2026-10-21",
+      "expiresOn": "2026-12-04"
     }
   ]
 }

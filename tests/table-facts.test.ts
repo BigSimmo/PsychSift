@@ -44,6 +44,35 @@ describe("table fact generation", () => {
     });
   });
 
+  // Audit 2026-10-20 ING-B-09: a vertically merged label cell comes back blank on later rows.
+  it("carries a merged row label forward into clinical_parameter without rewriting the cells", () => {
+    const facts = buildTableFactRows({
+      job: { document_id: "doc-1", documents: { owner_id: "owner-1" } },
+      chunkRows: [],
+      insertedImages: [
+        {
+          id: "image-1",
+          pageNumber: 2,
+          tableTitle: "Synthetic monitoring table",
+          tableRows: [
+            ["Group A", "Level 1", "First instruction"],
+            ["", "Level 2", "Second instruction"],
+            ["Group B", "Level 3", "Third instruction"],
+          ],
+          tableColumns: ["Parameter", "Threshold", "Action"],
+        },
+      ],
+    });
+
+    expect(facts.map((fact) => fact.clinical_parameter)).toEqual(["Group A", "Group A", "Group B"]);
+    expect(facts[1]).toMatchObject({ row_label: null, threshold_value: "Level 2" });
+    expect(facts[1]?.metadata).toMatchObject({
+      cells: ["", "Level 2", "Second instruction"],
+      row_label_inherited_from: { row_index: 0, label: "Group A" },
+    });
+    expect(facts[0]?.metadata).not.toHaveProperty("row_label_inherited_from");
+  });
+
   it("deduplicates repeated table rows from the same image", () => {
     const facts = buildTableFactRows({
       job: {

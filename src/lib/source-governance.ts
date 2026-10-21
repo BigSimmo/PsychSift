@@ -38,6 +38,8 @@ export const GOVERNANCE_SEVERITY_MATRIX: Record<SourceGovernanceCode, SourceGove
     // "warning", not "danger": a danger warning refuses the whole answer, and one known error in
     // one document must not suppress everything else that document and its neighbours support.
     [SOURCE_GOVERNANCE_CODES.DOCUMENT_CAUTION]: "warning",
+    // A caution, never a refusal: OCR text is usable, but a value can be split from its qualifier.
+    [SOURCE_GOVERNANCE_CODES.OCR_TEXT]: "warning",
   } as const;
 
 export const GOVERNANCE_UI_TOKEN_MATRIX: Record<SourceGovernanceCode, SourceGovernanceUiToken | "dynamic"> = {
@@ -52,6 +54,7 @@ export const GOVERNANCE_UI_TOKEN_MATRIX: Record<SourceGovernanceCode, SourceGove
   [SOURCE_GOVERNANCE_CODES.REGISTRY_RECORD]: "muted",
   [SOURCE_GOVERNANCE_CODES.WEAK_EVIDENCE]: "dynamic",
   [SOURCE_GOVERNANCE_CODES.DOCUMENT_CAUTION]: "destructive",
+  [SOURCE_GOVERNANCE_CODES.OCR_TEXT]: "caution",
 } as const;
 
 export const sourceGovernanceRefusalAnswer =
@@ -64,6 +67,8 @@ export const sourceGovernanceRefusalAnswer =
 // persisted message via isDangerSourceGovernanceMessage.
 export const OUTDATED_SOURCE_WARNING_MESSAGE = "One or more supporting sources are marked outdated.";
 export const POOR_EXTRACTION_WARNING_MESSAGE = "One or more supporting sources have poor extraction quality.";
+export const OCR_TEXT_WARNING_MESSAGE =
+  "One or more supporting sources include pages read from a scan by text recognition (OCR). Check numbers against the PDF page.";
 export const WEAK_EVIDENCE_DANGER_MESSAGE = "The retrieved evidence is completely unbacked by the source.";
 export const UNVERIFIED_SOURCE_WARNING_MESSAGE = "One or more supporting sources have not been locally validated.";
 // Same code, severity and visibility as the unverified caveat above, worded for what is actually
@@ -97,6 +102,8 @@ const frontendVisibleWarningCodes = new Set<SourceGovernanceWarning["code"]>([
   SOURCE_GOVERNANCE_CODES.REVIEW_DUE,
   // A known error in the cited document itself (src/lib/document-cautions.ts).
   SOURCE_GOVERNANCE_CODES.DOCUMENT_CAUTION,
+  // Pages read from a scan by OCR (audit ING-B-07): the reader should check numbers on the page.
+  SOURCE_GOVERNANCE_CODES.OCR_TEXT,
 ]);
 
 function isLocalMetadataText(value: string) {
@@ -226,6 +233,20 @@ export function sourceGovernanceWarnings(args: {
       });
     }
 
+    // Audit 2026-10-20 ING-B-07: OCR can list a value apart from its qualifier or misread a decimal.
+    // The flag is document-level (index quality metrics), so the message says "include pages".
+    const ocrMetrics = result.indexing_quality?.metrics;
+    if (Number(ocrMetrics?.ocr_page_count ?? 0) > 0 || Number(ocrMetrics?.ocr_coverage ?? 0) > 0) {
+      pushUnique(warnings, {
+        code: SOURCE_GOVERNANCE_CODES.OCR_TEXT,
+        severity: GOVERNANCE_SEVERITY_MATRIX[SOURCE_GOVERNANCE_CODES.OCR_TEXT] as SourceGovernanceWarning["severity"],
+        uiToken: GOVERNANCE_UI_TOKEN_MATRIX[SOURCE_GOVERNANCE_CODES.OCR_TEXT] as SourceGovernanceUiToken,
+        message: OCR_TEXT_WARNING_MESSAGE,
+        document_id,
+        title,
+      });
+    }
+
     if (typeof result.indexing_quality?.quality_score === "number" && result.indexing_quality.quality_score < 0.45) {
       pushUnique(warnings, {
         code: SOURCE_GOVERNANCE_CODES.LOW_INDEX_QUALITY,
@@ -285,7 +306,13 @@ export function sourceGovernanceWarnings(args: {
 
   const severityRank = { danger: 0, warning: 1, info: 2 } satisfies Record<SourceGovernanceWarning["severity"], number>;
   return warnings
-    .sort((left, right) => severityRank[left.severity] - severityRank[right.severity])
+    .sort(
+      (left, right) =>
+        severityRank[left.severity] - severityRank[right.severity] ||
+        // OCR_TEXT is a general caution; within a severity it must not crowd document-specific warnings out of the cap.
+        Number(left.code === SOURCE_GOVERNANCE_CODES.OCR_TEXT) -
+          Number(right.code === SOURCE_GOVERNANCE_CODES.OCR_TEXT),
+    )
     .slice(0, args.limit ?? 8);
 }
 
@@ -317,6 +344,8 @@ function groupedMessage(warning: SourceGovernanceWarning, count: number) {
     return `${plural(count, "source")} ${count === 1 ? "has" : "have"} low indexing quality.`;
   if (warning.code === SOURCE_GOVERNANCE_CODES.WEAK_TABLE_EXTRACTION)
     return `${plural(count, "table evidence item")} reviewed as administrative, unrelated, or poor extraction.`;
+  if (warning.code === SOURCE_GOVERNANCE_CODES.OCR_TEXT)
+    return `${plural(count, "source")} ${count === 1 ? "includes" : "include"} pages read from a scan by text recognition (OCR). Check numbers against the PDF page.`;
   if (warning.code === SOURCE_GOVERNANCE_CODES.REGISTRY_RECORD)
     return `${plural(count, "registry summary", "registry summaries")} used as supporting evidence.`;
   return warning.message;

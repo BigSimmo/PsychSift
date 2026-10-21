@@ -88,6 +88,81 @@ describe("source governance warnings", () => {
     expect(codes).toContain("weak_table_extraction");
   });
 
+  // Audit 2026-10-20 ING-B-07: OCR can separate a value from its qualifier, and nothing told
+  // the reader a cited source had pages read from a scan.
+  it("cautions when a supporting source has pages read by OCR, without refusing the answer", () => {
+    const ocrSource = result({
+      source_metadata: { ...result().source_metadata!, document_status: "current", extraction_quality: "good" },
+      indexing_quality: {
+        document_id: "doc-1",
+        quality_score: 0.9,
+        extraction_quality: "good",
+        metrics: { ocr_page_count: 3, page_count: 10, ocr_coverage: 0.3 },
+        issues: [],
+      },
+      table_facts: [],
+    });
+    const warnings = sourceGovernanceWarnings({ results: [ocrSource] });
+    const ocr = warnings.find((warning) => warning.code === "ocr_text_source");
+    expect(ocr).toMatchObject({ severity: "warning", uiToken: "caution", document_id: "doc-1" });
+    expect(ocr?.message).toContain("from a scan");
+    expect(hasDangerSourceGovernanceWarning(warnings.filter((warning) => warning.code === "ocr_text_source"))).toBe(
+      false,
+    );
+    expect(frontendSourceGovernanceWarnings(warnings).map((warning) => warning.code)).toContain("ocr_text_source");
+    expect(groupSourceGovernanceWarnings([ocr!, { ...ocr!, document_id: "doc-2" }])[0]?.message).toBe(
+      "2 sources include pages read from a scan by text recognition (OCR). Check numbers against the PDF page.",
+    );
+  });
+
+  it("keeps a document caution inside the warning cap when many sources were read by OCR", () => {
+    const ocrMetrics = {
+      quality_score: 0.9,
+      extraction_quality: "good" as const,
+      metrics: { ocr_page_count: 3, ocr_coverage: 0.3 },
+      issues: [],
+    };
+    const base = {
+      ...result().source_metadata!,
+      document_status: "current" as const,
+      extraction_quality: "good" as const,
+    };
+    const ocrSources = Array.from({ length: 5 }, (_, index) =>
+      result({
+        document_id: `doc-${index}`,
+        source_metadata: base,
+        indexing_quality: { document_id: `doc-${index}`, ...ocrMetrics },
+        table_facts: [],
+      }),
+    );
+    const cautioned = result({
+      document_id: "doc-caution",
+      title: "Clozapine therapy RKPG",
+      file_name: "clozapine-therapy-rkpg.pdf",
+      source_metadata: base,
+      indexing_quality: { document_id: "doc-caution", ...ocrMetrics, metrics: { ocr_page_count: 0 } },
+      table_facts: [],
+    });
+    const warnings = sourceGovernanceWarnings({ results: [...ocrSources, cautioned] });
+    expect(warnings).toHaveLength(8);
+    expect(warnings.map((warning) => warning.code)).toContain("document_caution");
+  });
+
+  it("adds no OCR caution for a source with no OCR pages", () => {
+    const plain = result({
+      indexing_quality: {
+        document_id: "doc-1",
+        quality_score: 0.9,
+        extraction_quality: "good",
+        metrics: { ocr_page_count: 0 },
+        issues: [],
+      },
+    });
+    expect(sourceGovernanceWarnings({ results: [plain] }).map((warning) => warning.code)).not.toContain(
+      "ocr_text_source",
+    );
+  });
+
   it("groups repeated document-level warnings into one counted message", () => {
     const grouped = groupSourceGovernanceWarnings([
       {
