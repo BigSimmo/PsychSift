@@ -562,8 +562,11 @@ jobs:
         if: needs.changes.outputs.static_heavy_changed == 'true'
         env:
           # Pull requests only: a release push or a dispatch from an older branch would count
-          # main's newer migrations as missing. Empty skips the base check.
-          MIGRATION_IMMUTABILITY_BASE_REF: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || '' }}
+          # main's newer migrations as missing. Empty skips the base check. An owner-approved
+          # restore reseals on purpose, so a body declaring `Migration history edit approved:`
+          # skips it too; PR policy validates that line (owner citation plus a fail-fast guard
+          # migration) and fails the edit without it (owner decision 2026-10-21).
+          MIGRATION_IMMUTABILITY_BASE_REF: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.body, 'Migration history edit approved:') && format('origin/{0}', github.base_ref) || '' }}
         run: npm run check:migration-immutability
 
       # Fails if a SECURITY DEFINER public function is left executable by

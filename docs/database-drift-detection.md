@@ -245,6 +245,12 @@ Even then, a reseal needs the owner's explicit permission for that specific rese
 `MIGRATION_RESEAL_OWNER_APPROVAL` names who approved it, when, and where the owner's own words are
 recorded (a `docs/decisions/` entry or a link). A relayed approval is not enough (audit CC-09).
 
+On a pull request, CI also compares the migrations with the base branch's sealed hashes, so an edit
+resealed in the same PR still fails. An approved restore reseals on purpose, so a PR body declaring
+`Migration history edit approved:` skips that base comparison. `PR policy` still fails the edit
+unless that line cites the owner's words and the PR adds a fail-fast guard migration (owner
+decision 2026-10-21).
+
 ## Guard-migration contract
 
 **Rule (also in `AGENTS.md`, "Supabase project safety"): any mark-applied

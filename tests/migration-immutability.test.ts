@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -201,5 +201,13 @@ describe("migration sealing is append-only", () => {
     expect(compareAgainstBase(base, { "a.sql": "9", "c.sql": "3" })).toEqual({ edited: ["a.sql"], missing: ["b.sql"] });
     expect(compareAgainstBase(base, { "a.sql": "1", "b.sql": "2", "c.sql": "3" })).toEqual({ edited: [], missing: [] });
     expect(() => readBaseSealedVersions("origin/main", { run: (() => "{}") as never })).toThrow(/no versions map/);
+  });
+
+  it("skips the base check in CI only for pull requests that declare an owner-approved history edit", () => {
+    const ci = readFileSync(path.join(process.cwd(), ".github/workflows/ci.yml"), "utf8");
+    const line = ci.split("\n").find((entry) => entry.includes("MIGRATION_IMMUTABILITY_BASE_REF:")) ?? "";
+    expect(line).toContain("github.event_name == 'pull_request'");
+    expect(line).toContain("!contains(github.event.pull_request.body, 'Migration history edit approved:')");
+    expect(line).toContain("format('origin/{0}', github.base_ref)");
   });
 });

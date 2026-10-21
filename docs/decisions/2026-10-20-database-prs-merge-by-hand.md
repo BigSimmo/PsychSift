@@ -18,4 +18,9 @@ deciding whether the required checks pass. On 20 Oct 2026 the owner chose to kee
 declaration checked by shape only, not proof of the owner's yes, because no check can tell the owner from
 another tool using the owner's GitHub account. The owner's review and Merge press remain the approval.
 
+The audit also made CI compare a pull request's migrations with the base branch's sealed hashes. On
+21 Oct 2026 the owner chose, by decision card in the same thread ("Add the exception"), to let a PR
+whose body declares `Migration history edit approved:` skip that comparison, so an owner-approved
+restore can merge. `PR policy` still validates that line and its fail-fast guard migration.
+
 If this summary and the source ever differ, the source wins.
