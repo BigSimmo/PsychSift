@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError } from "@/lib/supabase/auth";
 
 const { mockRequireAuthenticatedUser } = vi.hoisted(() => ({
@@ -231,7 +232,7 @@ describe("External supervisor EPA magic-link (#MAAXAX)", () => {
     }
   });
 
-  it("requires authentication on PUT and refuses ephemeral store in production", async () => {
+  it("requires authentication on PUT and, in production, answers 503 while the durable table is unavailable", async () => {
     mockRequireAuthenticatedUser.mockRejectedValueOnce(new AuthenticationError());
     const unauthPut = await PUT(
       new Request("https://psychiatry.tools/api/teaching/assessments/respond/unauth_token_1234567890abcd", {
@@ -248,6 +249,13 @@ describe("External supervisor EPA magic-link (#MAAXAX)", () => {
     expect(unauthPut.status).toBe(401);
 
     vi.stubEnv("NODE_ENV", "production");
+    // Production reads public.teaching_epa_magic_links (#MAAXAX); before that migration is live the
+    // lookup fails, and the supervisor sees "unavailable" rather than a server fault.
+    const missingTable = { data: null, error: { code: "42P01" } };
+    const failing: Record<string, unknown> = {};
+    for (const step of ["select", "eq", "gt", "order", "limit"]) failing[step] = () => failing;
+    failing.maybeSingle = () => Promise.resolve(missingTable);
+    vi.mocked(createAdminClient).mockReturnValueOnce({ from: () => failing } as never);
     try {
       const prodGet = await GET(new Request("https://psychiatry.tools/api/teaching/assessments/respond/some_token"), {
         params: Promise.resolve({ token: "some_token_1234567890abcdef" }),

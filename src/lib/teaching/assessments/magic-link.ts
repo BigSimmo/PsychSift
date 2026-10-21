@@ -195,7 +195,7 @@ export function hashEpaMagicToken(token: string): string {
 
 const URL_SAFE_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 
-function generateRandomToken(byteLength = 32): string {
+export function generateRandomToken(byteLength = 32): string {
   const bytes = new Uint8Array(byteLength);
   globalThis.crypto.getRandomValues(bytes);
   let out = "";
@@ -310,7 +310,7 @@ function assertSafeMagicLinkRequestInput(input: CreateEpaMagicLinkInput) {
   }
 }
 
-function buildMagicLinkRecord(tokenHash: string, input: CreateEpaMagicLinkInput): EpaMagicLinkRecord {
+export function buildMagicLinkRecord(tokenHash: string, input: CreateEpaMagicLinkInput): EpaMagicLinkRecord {
   assertSafeMagicLinkRequestInput(input);
   const now = input.now ?? new Date();
   const ttlDays = input.ttlDays ?? EPA_MAGIC_LINK_TTL_DAYS;
@@ -546,21 +546,19 @@ const VALID_LEVELS = new Set<SupervisionLevel>(SUPERVISION_LEVELS.map((item) => 
 const VALID_COMPLEXITIES = new Set<CaseComplexity>(CASE_COMPLEXITIES.map((item) => item.id));
 const VALID_OBSERVED = new Set<EpaObserved>(EPA_OBSERVED.map((item) => item.id));
 
-export function submitEpaMagicLinkResponse(
-  token: string,
-  submission: EpaMagicLinkSubmission,
-  now: Date = new Date(),
-): EpaMagicLinkSubmitResult {
-  const lookup = getEpaMagicLinkByToken(token, now);
-  if (!lookup.ok) {
-    return {
-      ok: false,
-      status: lookup.status,
-      code: lookup.code,
-      message: lookup.message,
-    };
-  }
+export type EpaMagicLinkValidatedSubmission = Omit<EpaMagicLinkCompletedSubmission, "submittedAt">;
 
+/**
+ * Checks a supervisor's answer before it is stored, in memory or in the database: a supervision
+ * level is required, feedback stays under the length limit, and neither the feedback nor the
+ * supervisor's name may carry patient details.
+ */
+export function validateEpaMagicLinkSubmission(
+  submission: EpaMagicLinkSubmission,
+  supervisorName: string,
+):
+  | { readonly ok: true; readonly value: EpaMagicLinkValidatedSubmission }
+  | Extract<EpaMagicLinkSubmitResult, { ok: false }> {
   const level = submission.level ?? submission.entrustmentLevel ?? null;
   if (!level || !VALID_LEVELS.has(level)) {
     return {
@@ -593,7 +591,7 @@ export function submitEpaMagicLinkResponse(
 
   const strengths = (submission.strengths ?? submission.note ?? "").trim();
   const improvements = (submission.improvements ?? submission.better ?? "").trim();
-  const assessorName = (submission.assessorName ?? lookup.request.supervisorName).trim();
+  const assessorName = (submission.assessorName ?? supervisorName).trim();
 
   if (strengths.length > EPA_FEEDBACK_MAX || improvements.length > EPA_FEEDBACK_MAX) {
     return {
@@ -629,6 +627,31 @@ export function submitEpaMagicLinkResponse(
     }
   }
 
+  return {
+    ok: true,
+    value: { level, complexity, observed, strengths, improvements, assessorName: assessorName || supervisorName },
+  };
+}
+
+export function submitEpaMagicLinkResponse(
+  token: string,
+  submission: EpaMagicLinkSubmission,
+  now: Date = new Date(),
+): EpaMagicLinkSubmitResult {
+  const lookup = getEpaMagicLinkByToken(token, now);
+  if (!lookup.ok) {
+    return {
+      ok: false,
+      status: lookup.status,
+      code: lookup.code,
+      message: lookup.message,
+    };
+  }
+
+  const checked = validateEpaMagicLinkSubmission(submission, lookup.request.supervisorName);
+  if (!checked.ok) return checked;
+  const { level, complexity, observed, strengths, improvements, assessorName } = checked.value;
+
   const submittedAt = now.toISOString();
   const completedRecord: EpaMagicLinkRecord = {
     ...lookup.request,
@@ -640,7 +663,7 @@ export function submitEpaMagicLinkResponse(
       observed,
       strengths,
       improvements,
-      assessorName: assessorName || lookup.request.supervisorName,
+      assessorName,
       submittedAt,
     },
   };

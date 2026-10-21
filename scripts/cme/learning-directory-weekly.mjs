@@ -41,6 +41,8 @@ function line(item, detail) {
 /**
  * Builds the report markdown. `linkResults` maps a URL to `{ ok, detail }`; null means the link
  * check was skipped.
+ *
+ * @param {{ directory: { lastCheckedOn: string, items: any[] }, todayPerth: string, linkResults?: Map<string, { ok: boolean, detail: string }> | null }} input
  */
 export function buildLearningDirectoryReport({ directory, todayPerth, linkResults = null }) {
   const items = Array.isArray(directory?.items) ? directory.items : [];
