@@ -11,6 +11,9 @@ import {
   readDifferentialCatalogueRecords,
   readPresentationPageRecord,
 } from "@/lib/site-content/differential-page-records";
+import { ClinicalPageSignInNotice } from "@/components/mode-kit/clinical-page-sign-in-notice";
+import { clinicalPageSignInRequired } from "@/lib/clinical-page-access";
+import { CLINICAL_SIGN_IN_COPY } from "@/lib/front-door-content";
 
 type DifferentialPresentationRouteProps = {
   params: Promise<{ slug: string }>;
@@ -28,6 +31,8 @@ export function generateStaticParams() {
 }
 
 export async function generateMetadata({ params }: DifferentialPresentationRouteProps): Promise<Metadata> {
+  // #3738: a signed-out response names no record either.
+  if (await clinicalPageSignInRequired()) return { title: "Differential presentation - PsychSift" };
   const { slug } = await params;
   const canonicalSlug = resolvePresentationSlug(slug);
   const workflow = await readPresentationPageRecord(canonicalSlug);
@@ -42,6 +47,10 @@ export default async function DifferentialPresentationRoute({
   params,
   searchParams,
 }: DifferentialPresentationRouteProps) {
+  // #3738: no record content in a signed-out server response.
+  if (await clinicalPageSignInRequired()) {
+    return <ClinicalPageSignInNotice copy={CLINICAL_SIGN_IN_COPY.differentials} testId="differentials-sign-in" />;
+  }
   const { slug } = await params;
   const canonicalSlug = resolvePresentationSlug(slug);
 
