@@ -2062,7 +2062,7 @@ function ClinicalDashboardContent({
                 </InlineNotice>
               ) : null}
               {searchMode === "documents" && askTermsGate.signInQuery && askTermsGate.signInQuery === query.trim() ? (
-                // Answer needs sign-in; the question's documents show below this card.
+                // Answer needs sign-in; its stillOpen line covers library search too, so the library card is skipped (#3728).
                 <ClinicalSignInNotice
                   copy={CLINICAL_SIGN_IN_COPY.answer}
                   testId="answer-sign-in"
@@ -2279,7 +2279,9 @@ function ClinicalDashboardContent({
                   ) : (
                     <>
                       {searchMode === "documents" && clinicalToolAccess === "sign-in-required" ? (
-                        <ClinicalSignInNotice copy={CLINICAL_SIGN_IN_COPY.library} testId="library-sign-in" />
+                        askTermsGate.signInQuery && askTermsGate.signInQuery === query.trim() ? null : (
+                          <ClinicalSignInNotice copy={CLINICAL_SIGN_IN_COPY.library} testId="library-sign-in" />
+                        )
                       ) : (
                         <>
                           <DocumentSearchResultsPanel
