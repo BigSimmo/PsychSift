@@ -1,15 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import { POISONS_INFORMATION_CONTACT, WA_CRISIS_CONTACTS } from "@/lib/crisis-contacts";
-import { publicCrisisContacts } from "@/components/care-plan/mockups/fixtures";
 
 describe("crisis-contacts", () => {
-  it("is the one source of truth every surface re-exports, not a copy", () => {
-    // Identity, not deep-equality: fixtures.ts must re-export this exact array
-    // so a later correction here reaches every surface automatically.
-    expect(publicCrisisContacts).toBe(WA_CRISIS_CONTACTS);
-  });
-
   it("carries the seven WA/national public crisis lines in id order", () => {
     expect(WA_CRISIS_CONTACTS.map((contact) => contact.id)).toEqual([
       "SYN-CRISIS-CONTACT-001",

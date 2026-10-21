@@ -408,8 +408,8 @@ export function SearchProgressBanner({ message, onStop }: { message: string; onS
  * stream boundary before the prose and is the most useful content this surface
  * has.
  *
- * What is here instead is the pending screen from
- * `/mockups/answer-chat-perfected-v2`, in the order that mockup draws it and for
+ * What is here instead is the pending screen from the answer-chat-perfected-v2
+ * design study (retired 2026-10-21), in the order that mockup drew it and for
  * the reason it draws it that way:
  *
  *     status line
