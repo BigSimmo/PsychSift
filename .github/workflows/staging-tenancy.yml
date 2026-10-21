@@ -9,7 +9,9 @@ on:
   # separation there. Railway "Wait for CI" is ON for the live services (found 2026-10-21), so a
   # failed run here SKIPS that live deploy. That is the point, but only once staging itself is
   # healthy: the job is OFF until the repository variable STAGING_GATE_ENFORCE is "true". Until
-  # then a push starts nothing, so it can neither delay nor block a deploy. These paths mirror railway.app.json watchPatterns (pinned by tests/staging-tenancy-workflow.test.ts):
+  # then a push starts nothing, so it can neither delay nor block a deploy. Keep Railway "Wait for CI"
+  # OFF on the staging service: staging would wait for this run while this run waits for staging.
+  # These paths mirror railway.app.json watchPatterns (pinned by tests/staging-tenancy-workflow.test.ts):
   # a push outside them does not redeploy the app, so there is nothing new to prove.
   push:
     branches: [main]
