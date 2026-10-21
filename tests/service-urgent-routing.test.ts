@@ -134,6 +134,38 @@ describe("service urgent routing — Requirement R2", () => {
   });
 });
 
+describe("service urgent routing — medical emergencies pin 000 first", () => {
+  it.each([
+    "patient having a seizure",
+    "seizures",
+    "convulsing",
+    "unconscious",
+    "unconsciousness",
+    "loss of consciousness",
+    "not breathing",
+    "collapsed",
+    "patient collapse",
+  ])("pins Emergency services first for %j", (query) => {
+    expect(detectServiceUrgentIntents(query)).toEqual(["emergency"]);
+    expect(titles(query, 8)[0]).toBe("Emergency services");
+  });
+
+  it("pins 000 first and the Alcohol and Drug Support Line after it for an alcohol withdrawal seizure", () => {
+    expect(detectServiceUrgentIntents("alcohol withdrawal seizure")).toEqual(["emergency", "aod_urgent"]);
+    expect(titles("alcohol withdrawal seizure", 8).slice(0, 2)).toEqual([
+      "Emergency services",
+      "Alcohol and Drug Support Line",
+    ]);
+  });
+
+  it("pins 000 ahead of regional crisis routes when a medical emergency is named", () => {
+    const intents = detectServiceUrgentIntents("patient in crisis having a seizure in Bunbury");
+    expect(intents[0]).toBe("emergency");
+    expect(intents).toContain("regional_daytime");
+    expect(titles("patient in crisis having a seizure in Bunbury", 8)[0]).toBe("Emergency services");
+  });
+});
+
 describe("service urgent routing — explicitly named services", () => {
   it("keeps a named service first while still pinning the crisis routes after it", () => {
     const resultTitles = titles("13YARN crisis support", 8);

@@ -6405,7 +6405,7 @@
           "counterparties": ["sodium-valproate-oral-iv"],
           "termIds": ["valproate"],
           "resolved": true,
-          "note": "CRITICAL — Valproate heavily inhibits glucuronidation, doubling Lamotrigine levels and guaranteeing SJS. Must use the specialized 'Blue' titration pack."
+          "note": "CRITICAL — Valproate heavily inhibits glucuronidation, doubling Lamotrigine levels and guaranteeing SJS. Use the reduced titration schedule (see 'With Valproate' dosing row)."
         },
         {
           "rowKey": "Pharmacokinetic",
@@ -6414,7 +6414,7 @@
           "counterparties": ["carbamazepine", "phenytoin"],
           "termIds": [],
           "resolved": true,
-          "note": "HIGH — Carbamazepine/Phenytoin induce clearance, halving Lamotrigine levels. Must use the 'Green' pack."
+          "note": "HIGH — Carbamazepine/Phenytoin induce clearance, halving Lamotrigine levels. Use the higher titration schedule (see 'With Carbamazepine' dosing row)."
         },
         {
           "rowKey": "Endocrine",
@@ -6550,7 +6550,7 @@
           "counterparties": ["meropenem"],
           "termIds": ["valproate"],
           "resolved": true,
-          "note": "CRITICAL — Meropenem/Carbapenems. Within 24 hours of starting Meropenem, Valproate levels drop to ZERO. The patient will seize. Avoid combination."
+          "note": "CRITICAL — Meropenem/Carbapenems. Valproate levels fall rapidly and markedly, sometimes with convulsions (PI). Avoid the combination; if it cannot be avoided, monitor valproate levels closely."
         }
       ],
       "unresolvedRowCount": 0
@@ -6838,7 +6838,7 @@
           "counterparties": ["amiodarone", "clarithromycin"],
           "termIds": [],
           "resolved": true,
-          "note": "LOW — Impervious to CYP450 drug interactions. Safe to mix with Clarithromycin or Amiodarone."
+          "note": "LOW — Cleared by glucuronidation rather than CYP450 oxidation, so CYP450 inhibitors such as clarithromycin or amiodarone are unlikely to raise oxazepam levels; additive CNS depression still applies."
         }
       ],
       "unresolvedRowCount": 0
@@ -8178,9 +8178,9 @@
           "rowIndex": 0,
           "severity": "high",
           "counterparties": ["aripiprazole-lai", "clarithromycin", "fluoxetine", "paroxetine"],
-          "termIds": ["cyp-inhibitors"],
+          "termIds": ["antiretrovirals", "azole-antifungals", "cyp-inhibitors"],
           "resolved": false,
-          "note": "HIGH — **CYP2D6** inhibitors (Fluoxetine, Paroxetine) or **CYP3A4** inhibitors (Clarithromycin) require the Aripiprazole dose to be halved."
+          "note": "HIGH — **CYP2D6** inhibitors (Fluoxetine, Paroxetine, Quinidine): halve the Aripiprazole dose. Potent **CYP3A4** inhibitors (Clarithromycin, Ketoconazole, Itraconazole, HIV protease inhibitors): reduce the dose. Increase again when the inhibitor is stopped."
         },
         {
           "rowKey": "Pharmacokinetic",
@@ -8203,7 +8203,7 @@
           "counterparties": [],
           "termIds": ["smoking"],
           "resolved": true,
-          "note": "CRITICAL — Smoking. Cigarette smoke heavily induces CYP1A2. If a patient stops smoking (e.g., admitted to hospital), their Clozapine levels will DOUBLE, causing seizures and coma. Dose must be reduced rapidly."
+          "note": "CRITICAL — Smoking. Cigarette smoke heavily induces CYP1A2. If a patient stops smoking (e.g., admitted to hospital), their Clozapine levels can rise sharply (PI: plasma concentration may be increased), risking seizures and coma. Dose must be reduced rapidly."
         },
         {
           "rowKey": "Pharmacokinetic",
@@ -8267,11 +8267,18 @@
         {
           "rowKey": "Pharmacokinetic",
           "rowIndex": 0,
-          "severity": "critical",
-          "counterparties": ["phenytoin"],
-          "termIds": ["cyp-inducers", "cyp-inhibitors"],
+          "severity": "high",
+          "counterparties": [
+            "azithromycin",
+            "carbamazepine",
+            "clarithromycin",
+            "erythromycin",
+            "phenytoin",
+            "roxithromycin"
+          ],
+          "termIds": ["antiretrovirals", "azole-antifungals", "cyp-inducers", "cyp-inhibitors", "macrolides"],
           "resolved": false,
-          "note": "CRITICAL — **CYP3A4** inhibitors massively spike Quetiapine levels, causing profound sedation, coma, and QTc prolongation. CYP3A4 inducers (Phenytoin) render it useless."
+          "note": "HIGH — Potent **CYP3A4** inhibitors (azole antifungals, macrolides such as Clarithromycin, HIV protease inhibitors) significantly raise quetiapine levels: use lower quetiapine doses. CYP3A4 inducers (e.g. Phenytoin, Carbamazepine) substantially reduce exposure; higher doses may be needed."
         },
         {
           "rowKey": "Pharmacodynamic",
@@ -8355,7 +8362,7 @@
           "counterparties": ["clarithromycin", "fluoxetine"],
           "termIds": ["cyp-inhibitors"],
           "resolved": false,
-          "note": "HIGH — Strong **CYP3A4** inhibitors (Clarithromycin) or **CYP2D6** inhibitors (Fluoxetine) require the depot dose to be reduced to 300 mg."
+          "note": "HIGH — Strong **CYP2D6** (e.g. Fluoxetine) or strong **CYP3A4** inhibitors (e.g. Clarithromycin) for more than 14 days: reduce 400 mg to 300 mg (or 300 mg to 200 mg). Both together: reduce 400 mg to 200 mg (or 300 mg to 160 mg). Known CYP2D6 poor metabolisers: 300 mg (200 mg with a strong CYP3A4 inhibitor)."
         },
         {
           "rowKey": "Pharmacokinetic",
@@ -8667,19 +8674,22 @@
         {
           "rowKey": "Pharmacodynamic",
           "rowIndex": 1,
-          "severity": "high",
+          "severity": "critical",
           "counterparties": [
             "amiodarone",
             "citalopram",
+            "erythromycin",
             "escitalopram",
             "fluoxetine",
             "fluvoxamine",
+            "methadone",
             "paroxetine",
-            "sertraline"
+            "sertraline",
+            "sotalol"
           ],
           "termIds": ["ssris"],
           "resolved": true,
-          "note": "HIGH — QTc prolonging agents (Amiodarone, SSRIs)."
+          "note": "CRITICAL — Contraindicated with drugs that can induce torsades de pointes (e.g. Amiodarone, Sotalol, Quinidine, Disopyramide, Methadone, IV Erythromycin). HIGH — Other QTc-prolonging agents (e.g. SSRIs)."
         },
         {
           "rowKey": "Pharmacokinetic",
@@ -8755,10 +8765,18 @@
           "rowKey": "Pharmacokinetic",
           "rowIndex": 0,
           "severity": "critical",
-          "counterparties": ["carbamazepine", "clarithromycin"],
-          "termIds": ["azole-antifungals", "cyp-inducers", "cyp-inhibitors"],
+          "counterparties": [
+            "carbamazepine",
+            "clarithromycin",
+            "diltiazem",
+            "erythromycin",
+            "fluconazole",
+            "phenytoin",
+            "verapamil"
+          ],
+          "termIds": ["azole-antifungals", "cyp-inducers", "cyp-inhibitors", "grapefruit", "st-johns-wort"],
           "resolved": false,
-          "note": "CRITICAL — Strong **CYP3A4** inhibitors (Clarithromycin, Ketoconazole) require the Cariprazine dose to be halved. CYP3A4 inducers (Carbamazepine) will completely destroy blood levels; avoid combination."
+          "note": "CRITICAL — Strong **CYP3A4** inhibitors (e.g. Clarithromycin, Ketoconazole, Itraconazole, Ritonavir) and strong or moderate CYP3A4 inducers (e.g. Carbamazepine, Phenytoin, Rifampicin, St John's wort) are contraindicated. Moderate CYP3A4 inhibitors (e.g. Erythromycin, Fluconazole, Diltiazem, Verapamil): monitor response and tolerability for several weeks and reduce the dose if needed. Avoid grapefruit juice."
         }
       ],
       "unresolvedRowCount": 1
@@ -8827,10 +8845,10 @@
           "rowKey": "Pharmacokinetic",
           "rowIndex": 0,
           "severity": "critical",
-          "counterparties": ["clarithromycin", "diltiazem"],
-          "termIds": ["cyp-inhibitors"],
+          "counterparties": ["carbamazepine", "clarithromycin", "diltiazem", "phenytoin"],
+          "termIds": ["azole-antifungals", "cyp-inhibitors", "grapefruit", "st-johns-wort"],
           "resolved": false,
-          "note": "CRITICAL — **CYP3A4** inhibitors (Diltiazem, Clarithromycin) massively spike lurasidone levels. Maximum lurasidone dose is 40 mg/day if on a moderate inhibitor. Avoid strong inhibitors."
+          "note": "CRITICAL — Strong **CYP3A4** inhibitors (e.g. Ketoconazole, Clarithromycin, Ritonavir, Voriconazole) and strong inducers (e.g. Rifampicin, St John's wort, Phenytoin, Carbamazepine) are contraindicated. Moderate CYP3A4 inhibitors (e.g. Diltiazem): the PI halves the lurasidone dose (max 80 mg/day), but because the 20 mg tablet is not available in Australia, LATUDA should not be used with them. Avoid grapefruit."
         }
       ],
       "unresolvedRowCount": 1

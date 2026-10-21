@@ -1,6 +1,6 @@
 # Decision: Merge commits are the only merge method
 
-- **Status:** decided 2026-10-18 (the source gives no date; this is when it was first recorded)
+- **Status:** decided 2026-10-18 (the date the setting took effect; the owner's decision date was not found, and this record was written on 2026-10-20)
 - **Source:** `docs/agents/pull-request-workflow.md`, find "squash and rebase merging are"
 
 Since 18 Oct 2026 the repository allows only merge commits; squash and rebase merging are switched
