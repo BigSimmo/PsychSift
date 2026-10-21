@@ -56,10 +56,15 @@ util-linux branch and two unresolved libxml2 advisories. It is not evidence of
 60 independent exploitable paths, a current-image count, or 60 resolved findings.
 
 Keep the complete image scan. A Debian advisory with no published fixed version
-can continue to flag an honestly labelled local backport; source repair evidence
-does not make that scan green. Per-CVE package/version diagnostics also go to
-stderr in the CI log, while stdout retains the strict aggregate scan records.
-No suppression, forced dependency removal or release exception is added.
+can continue to flag an honestly labelled local backport, so the CVEs these
+backports patch are listed in `security/trivy-suppressions.json` by exact image,
+package, installed version and CVE. Any rebuild, version bump or Debian update
+resurfaces them, and unpatched or unresolved advisories (CVE-2026-6653,
+CVE-2026-86139, CVE-2026-78409) are deliberately not listed. Suppressed and
+remaining per-CVE diagnostics go to stderr in the CI log, the retained report
+stays unfiltered, and stdout keeps the strict aggregate scan records (with a
+`SUPPRESSED=` count). Pillow 12.3.0 in the Docling venv is also listed until
+Docling allows Pillow 13; that entry is an accepted risk, not a remediation.
 
 ## Pinned Debian sources
 
