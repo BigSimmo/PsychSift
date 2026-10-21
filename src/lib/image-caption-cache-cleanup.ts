@@ -49,25 +49,27 @@ const SWEEP_PAGE = 1000;
 const SWEEP_BATCH = 100;
 
 /**
- * Deletes caption-cache rows whose recorded document no longer exists, scanning at most
- * `maxRows` rows that carry a document id. Throws on a read or delete error so the operator
- * sees it; `dryRun` counts the orphans without deleting them.
+ * Deletes caption-cache rows whose recorded document no longer exists. It pages through every
+ * row that carries a document id, unless `maxRows` caps it (tests only: a capped run would see
+ * the same lowest ids each time). Throws on a read or delete error so the operator sees it;
+ * `dryRun` counts the orphans without deleting them.
  */
 export async function sweepOrphanedImageCaptionCache(
   client: CacheClient,
-  options: { maxRows: number; dryRun: boolean },
+  options: { dryRun: boolean; maxRows?: number },
 ): Promise<{ scanned: number; orphaned: number; deleted: number }> {
   let scanned = 0;
   let orphaned = 0;
   let deleted = 0;
+  const maxRows = options.maxRows ?? Number.POSITIVE_INFINITY;
   let afterId: string | null = null;
-  while (scanned < options.maxRows) {
+  while (scanned < maxRows) {
     let page = client
       .from("image_caption_cache")
       .select(`id,document_id:${imageCaptionCacheDocumentColumn}`)
       .not(imageCaptionCacheDocumentColumn, "is", null)
       .order("id", { ascending: true })
-      .limit(Math.min(SWEEP_PAGE, options.maxRows - scanned));
+      .limit(Math.min(SWEEP_PAGE, maxRows - scanned));
     if (afterId) page = page.gt("id", afterId);
     const { data, error } = await page;
     if (error) throw new Error(`Caption cache sweep read failed: ${error.message}`);

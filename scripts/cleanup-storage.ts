@@ -318,7 +318,7 @@ async function main() {
   failed += controlled.failed;
 
   // #3730: captions of documents that no longer exist, left by a failed delete-route clean-up.
-  const captions = await sweepOrphanedImageCaptionCache(supabase, { maxRows: 50_000, dryRun: args.dryRun });
+  const captions = await sweepOrphanedImageCaptionCache(supabase, { dryRun: args.dryRun });
   console.log(
     `Caption cache sweep: ${captions.orphaned} orphaned of ${captions.scanned} scanned, ${captions.deleted} deleted.`,
   );

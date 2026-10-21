@@ -581,14 +581,14 @@ describe("orphaned caption cache sweep (#3730)", () => {
 
   it("deletes only the rows whose document no longer exists", async () => {
     const fake = sweepClient(cache, ["doc-live"]);
-    const result = await sweepOrphanedImageCaptionCache(fake.client, { maxRows: 100, dryRun: false });
+    const result = await sweepOrphanedImageCaptionCache(fake.client, { dryRun: false });
     expect(result).toEqual({ scanned: 3, orphaned: 2, deleted: 2 });
     expect(fake.rows.map((row) => row.id)).toEqual(["a1"]);
   });
 
   it("counts orphans without deleting on a dry run", async () => {
     const fake = sweepClient(cache, ["doc-live"]);
-    const result = await sweepOrphanedImageCaptionCache(fake.client, { maxRows: 100, dryRun: true });
+    const result = await sweepOrphanedImageCaptionCache(fake.client, { dryRun: true });
     expect(result).toEqual({ scanned: 3, orphaned: 2, deleted: 0 });
     expect(fake.deletes).toEqual([]);
   });
@@ -598,5 +598,15 @@ describe("orphaned caption cache sweep (#3730)", () => {
     const result = await sweepOrphanedImageCaptionCache(fake.client, { maxRows: 2, dryRun: false });
     expect(result.scanned).toBe(2);
     expect(fake.rows.map((row) => row.id)).toEqual(["a3"]);
+  });
+
+  it("pages through the whole cache when no cap is set", async () => {
+    const many = Array.from({ length: 2_500 }, (_, index) => ({
+      id: `r${String(index).padStart(5, "0")}`,
+      document_id: index === 2_400 ? "doc-gone" : "doc-live",
+    }));
+    const fake = sweepClient(many, ["doc-live"]);
+    const result = await sweepOrphanedImageCaptionCache(fake.client, { dryRun: false });
+    expect(result).toEqual({ scanned: 2_500, orphaned: 1, deleted: 1 });
   });
 });
