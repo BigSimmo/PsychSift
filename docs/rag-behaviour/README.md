@@ -16,7 +16,8 @@ selection, release-ordering, or eval-ground-truth surface.
 
 Standing rules (mirrored in `AGENTS.md` so every agent session inherits them):
 
-1. **Flag RAG impact.** Any task touching a protected surface (list in `safeguards.md`) must say
+1. **Flag RAG impact.** Any task touching a protected surface (authoritative list: `ragRankingPatterns`
+   in `scripts/pr-policy.mjs`; explained in `safeguards.md`) must say
    so explicitly before editing, and its PR must carry a `RAG impact:` line.
    Since 2026-09-17, `scripts/pr-policy.mjs` warns, rather than blocks, when the
    line is absent. The standing declaration rule remains in force.

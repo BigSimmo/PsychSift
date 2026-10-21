@@ -300,16 +300,16 @@ Every remaining tracked document in this category (process, plus the `agents/` r
 - [maturity-backlog-workorders.md](maturity-backlog-workorders.md) — actionable work orders tracking the repository-maturity audit backlog
 - [no-unchecked-indexed-access-migration-plan.md](no-unchecked-indexed-access-migration-plan.md) — staged multi-PR rollout for the `noUncheckedIndexedAccess` TypeScript flag (ledger `#211`)
 - [pr-handoff-stop-cross-agent-gap.md](pr-handoff-stop-cross-agent-gap.md) — why the PR-babysit budget is hook-enforced for Claude Code but prose-only for Codex and Cursor, and what parity would require (ledger `#258`)
-- [search-rag-master-plan.md](search-rag-master-plan.md) / [search-rag-master-context.md](search-rag-master-context.md) — search/RAG roadmap and shared context
-- [rag-improvement/README.md](rag-improvement/README.md) — reviewed/updated RAG improvement programme: answer-quality track (intent-aware related information, length) + corrected eval/safety infra track
-- [rag-improvement/HANDOVER.md](rag-improvement/HANDOVER.md) — multi-session handover: per-session work packets, status table, checklists, and paste-ready prompts for executing the programme
-- [rag-improvement/COORDINATION.md](rag-improvement/COORDINATION.md) — coordinator handover: programme history, wave/session decisions, babysit playbook, approvals map, and the coordination-chat bootstrap prompt
+- [search-rag-master-plan.md](search-rag-master-plan.md) / [search-rag-master-context.md](search-rag-master-context.md) — historical search/RAG roadmap and shared context (phases done; open RAG work is in the issue ledger)
+- [rag-improvement/README.md](rag-improvement/README.md) — completed RAG improvement programme (design history): answer-quality track (intent-aware related information, length) + corrected eval/safety infra track
+- [rag-improvement/HANDOVER.md](rag-improvement/HANDOVER.md) — completed programme's handover (history, not the current board): per-session work packets, status table, checklists, and prompts
+- [rag-improvement/COORDINATION.md](rag-improvement/COORDINATION.md) — completed programme's coordinator handover (history): programme history, wave/session decisions, babysit playbook, approvals map, and the coordination-chat bootstrap prompt
 - [rag-improvement/231-diagnosis-2026-08-22.md](rag-improvement/231-diagnosis-2026-08-22.md) — `#231` evidence record: the row's timeout premise measured against the 60 Gate E answers, the three populations behind `source_only`, and the grounded-extractive gate gap
 - [rag-improvement/baseline-record.md](rag-improvement/baseline-record.md) — programme evaluation baseline: the six-field report key, gate results, and which gates stay pending an owner-approved provider run
 - [rag-improvement/data-flow-register.md](rag-improvement/data-flow-register.md) — Gate A register: every RAG input, process, sink, retention window, provider egress, and the known gaps
-- [rag-hybrid-findings-and-todo.md](rag-hybrid-findings-and-todo.md) — hybrid retrieval findings backlog
+- [rag-hybrid-findings-and-todo.md](rag-hybrid-findings-and-todo.md) — hybrid retrieval findings (historical, last reconciled 2026-07-14)
 - [reindex-shadow-harness-design.md](reindex-shadow-harness-design.md) — designed-only shadow reindex harness (driver not built)
-- [ingestion-concurrency-fix-workorder.md](ingestion-concurrency-fix-workorder.md) — ingestion concurrency workorder
+- [ingestion-concurrency-fix-workorder.md](ingestion-concurrency-fix-workorder.md) — retired ingestion concurrency workorder; [archived copy](archive/ingestion-concurrency-fix-workorder-2026-10-20.md)
 - [projects/design-system-remediation.md](projects/design-system-remediation.md) — PsychSift design system, screen, accessibility, responsive & interaction remediation project plan
 - [redesign/](redesign/) — premium redesign plans, decision log, token adoption
 - [superpowers/](superpowers/) — agent-authored plans and specs
@@ -395,7 +395,7 @@ as it was on that date; supersede with a new dated document rather than editing.
 - [specifier-definition-worklist-2026-09-18.md](specifier-definition-worklist-2026-09-18.md) — issue #693 clinical worklist for the 585-item specifier catalogue: why "71 defined" is really 14, that nothing carries clinician sign-off, the A/B/C triage split, the 63 management-changing items in full, and a worked example of what a completed entry must contain
 - [specifier-entry-worksheet-with-catatonia.md](specifier-entry-worksheet-with-catatonia.md) — the first specifier entry laid out for completion: one shared definition, nine per-disorder rows, the exact field changes, and the sign-off block, with every clinical statement blank
 - `release-source-metadata-debt-2026-06-30.json` — captured source-metadata debt policy, consumed by `npm run audit:source-governance:release` and `npm run eval:quality:release`
-- [forward-codify-retrieval-rpcs-workorder.md](forward-codify-retrieval-rpcs-workorder.md) — completed retrieval RPC codification workorder
+- [forward-codify-retrieval-rpcs-workorder.md](forward-codify-retrieval-rpcs-workorder.md) — retired retrieval RPC codification workorder; [archived copy](archive/forward-codify-retrieval-rpcs-workorder-2026-10-20.md)
 - [project-alignment-cleanup.md](archive/project-alignment-cleanup.md) — completed June 2026 repo-alignment record
 - [capacity-review.md](audit/capacity-review.md), [scale-readiness-review.md](audit/scale-readiness-review.md), [tenancy-defense-in-depth-review.md](audit/tenancy-defense-in-depth-review.md)
 - `*-2026-*` findings and status docs, e.g. [chunking-ocr-reindex-lever-finding-2026-07-08.md](chunking-ocr-reindex-lever-finding-2026-07-08.md), [source-governance-status-2026-07-08.md](archive/source-governance-status-2026-07-08.md), [source-governance-priorities-2026-07-02.md](archive/source-governance-priorities-2026-07-02.md), [source-review-priority-2026-07-02.md](source-review-priority-2026-07-02.md), [operator-apply-july8-batch.md](archive/operator-apply-july8-batch.md)

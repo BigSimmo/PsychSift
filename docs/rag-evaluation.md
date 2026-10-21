@@ -102,7 +102,7 @@ The Clinical RAG Improvement Programme coordinates enhancements to answer qualit
 1. **Programme Design & Architecture Guide:** `docs/rag-improvement/README.md`
    - Defines track architecture (Track A: Answer Quality, Track B: Evaluation & Safety Infrastructure), promotion criteria, Gate A–F definitions, and binding constraints from refuted approaches.
 2. **Multi-Session Handover & Packet Status Table:** `docs/rag-improvement/HANDOVER.md`
-   - Serves as the primary operational board. Tracks packet status (S0–S7+, G1), work packet specifications, branch/PR assignments, session-start/end checklists, and paste-ready worker prompts.
+   - Historical. The programme it tracked is complete (every packet merged; S8 onward gated), so it is no longer the operational board. Open RAG work lives in `docs/outstanding-issues.md`; the handover keeps the packet history, specifications and worker prompts.
 3. **Coordination & Babysit Manual:** `docs/rag-improvement/COORDINATION.md`
    - Details the coordinator role, wave scheduling, approvals map, canary execution protocols, and babysit-to-merge playbook.
 4. **Safeguards & Historical Refutations:** `docs/rag-behaviour/safeguards.md` and `docs/rag-behaviour/refuted-approaches.md`
@@ -124,20 +124,23 @@ Before implementing any changes to RAG ranking, retrieval, synthesis, or evaluat
 
 ### 1. Board & Open PR Check
 
-- Review `docs/rag-improvement/HANDOVER.md` §2 status table and the open PR list (per `#292`) to verify the active packet state, dependencies, and avoid duplicate implementations.
+- Review the open RAG rows in `docs/outstanding-issues.md` and the open PR list (per `#292`) to avoid duplicate implementations. `docs/rag-improvement/HANDOVER.md` §2 is the completed programme's history, not the current board.
 
 ### 2. Protected Surface Identification
 
 - Verify whether the changed files touch protected RAG ranking surfaces matched by
-  `ragRankingPatterns` in `scripts/pr-policy.mjs`:
+  `ragRankingPatterns` in `scripts/pr-policy.mjs`. That array is authoritative; this copy was last
+  aligned with it on 2026-10-20:
   - `src/lib/rag/**` (retrieval pipeline, candidate sources, composition, routing, synthesis)
   - `src/lib/clinical-search.ts`, `src/lib/retrieval-selection.ts`, `src/lib/released-search-order.ts`, `src/lib/ranking-config.ts`, `src/lib/evidence.ts`, `src/lib/result-sort.ts`, `src/lib/answer-ranking.ts`, `src/lib/evidence-relevance.ts`, `src/lib/semantic-rerank.ts`, `src/lib/eval-document-matching.ts`
   - `src/lib/source-authority-registry.ts`, `src/lib/australian-source-priority.ts` (source authority and Australian clinical context ordering)
   - `src/lib/chunking.ts`, `src/lib/extractors/**`, `worker/python/extract_pdf_assets.py` (ingestion and PDF extraction producers)
   - `src/lib/document-index-units.ts`, `src/lib/model-index-extraction.ts`, `src/lib/deep-memory.ts` (index-unit and memory-card producers/boosts)
+  - `src/lib/deep-memory-preparation.ts` (the worker-side memory-card builder)
   - `src/lib/retrieval-rpc-rollout.ts`, `src/lib/clinical-evidence-haystack.ts`, `src/lib/cross-document-synthesis.ts`, `src/lib/corpus-grounding.ts`, `src/lib/keyword-query.ts`
   - `src/lib/document-enrichment.ts`, `src/lib/visual-intelligence.ts`, `src/lib/image-filtering.ts`
   - `worker/embedding-fields.ts`, `worker/table-facts.ts`, `worker/assertion-tagging.ts`
+  - `worker/candidate-chunks.ts`, `worker/managed-local-memory-producer.ts`, `worker/managed-admin-text-terminal.ts`, `worker/managed-prepared-supplier.ts`, `worker/published-admin-source-layout.ts`, `worker/scoped-candidate-projection.ts`, `worker/whole-original-supplier.ts` (managed-generation producers)
   - `scripts/eval-retrieval.ts`, `scripts/build-ranking-snapshot.ts`, `scripts/tune-search-weights.ts`
   - `scripts/lib/clinical-aliases.ts`, `scripts/lib/ranking-tuning.ts`, `scripts/lib/ranking-snapshot-builder.ts`
   - `scripts/fixtures/rag-retrieval-golden.json`, `scripts/fixtures/rag-ranking-candidate-snapshot.v1.json`

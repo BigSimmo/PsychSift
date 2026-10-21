@@ -1,5 +1,11 @@
 # Search/RAG Master Plan
 
+> **Status (2026-10-20): historical; not the current plan.** Its phase records are in
+> [`docs/archive/`](archive/) (`search-rag-phase-*`). Open RAG work lives in
+> [`docs/outstanding-issues.md`](outstanding-issues.md); the rules live in
+> [`docs/rag-behaviour/`](rag-behaviour/README.md). Several plans under `docs/superpowers/` link here, so it
+> stays in place.
+
 ## Goal
 
 Create the perfected Clinical KB search and answer experience:
