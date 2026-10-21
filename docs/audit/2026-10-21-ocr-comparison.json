@@ -447,11 +447,7 @@
     "warnings": []
   },
   "reference_limitations": {
-    "known_checks": [
-      "who-acs-p10-c6",
-      "cdc-gbs-p23-c5",
-      "cdc-gbs-p23-c6"
-    ],
+    "known_checks": ["who-acs-p10-c6", "cdc-gbs-p23-c5", "cdc-gbs-p23-c6"],
     "detail": "WHO expected within rather than visible in; CDC references dehyphenate source line wraps. Primary truth and denominator preserved; these are reference/presentation limitations, not established semantic OCR failures."
   },
   "posthoc_single_reference_wording_correction": {

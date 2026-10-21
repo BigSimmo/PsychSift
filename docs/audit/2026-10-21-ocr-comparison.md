@@ -48,10 +48,10 @@ in the private evidence; aggregate results are in
 ## Results
 
 | Selected checks meeting exact-text and required association criteria | Standard | Optional setting |
-| --- | ---: | ---: |
-| Clinical full pages | 28/60 | 29/60 |
-| Benchmark table crops | 11/120 | 11/120 |
-| Combined frozen checks | 39/180 | 40/180 |
+| -------------------------------------------------------------------- | -------: | ---------------: |
+| Clinical full pages                                                  |    28/60 |            29/60 |
+| Benchmark table crops                                                |   11/120 |           11/120 |
+| Combined frozen checks                                               |   39/180 |           40/180 |
 
 There was one check improvement, zero check regressions and 179 tied checks.
 At case level there was one improvement and 29 ties. The 29 tied pairs returned
@@ -84,12 +84,12 @@ Nonengagement must not be counted as a completed successful candidate attempt.
 
 Shared fallback outputs still corrupted important source-visible information:
 
-| Source/check | Source text | Both returned outputs |
-| --- | --- | --- |
-| WHO hypertension p40 c2 | `≥20/10 mmHg` | `20/10 mmHg` |
-| IADPSG p3 c2 | `≥7.0 mmol/l (126 mg/dl)` | `=7.0 mmol/l (126 mg/dl)` |
+| Source/check                    | Source text                | Both returned outputs      |
+| ------------------------------- | -------------------------- | -------------------------- |
+| WHO hypertension p40 c2         | `≥20/10 mmHg`              | `20/10 mmHg`               |
+| IADPSG p3 c2                    | `≥7.0 mmol/l (126 mg/dl)`  | `=7.0 mmol/l (126 mg/dl)`  |
 | IADPSG p3 c6 threshold fragment | `≥11.1 mmol/l (200 mg/dl)` | `211.1 mmol/l (200 mg/dl)` |
-| CDC p16 c2 | `≥18 hours` | `218 hours` |
+| CDC p16 c2                      | `≥18 hours`                | `218 hours`                |
 
 These are extraction observations, not clinical recommendations. OCR provenance
 remained unverified. Successful process exit and readable prose do not verify
