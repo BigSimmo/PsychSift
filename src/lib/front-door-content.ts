@@ -227,7 +227,8 @@ export const CLINICAL_SIGN_IN_COPY = {
     body: "Original documents belong to their publishers and open only for signed-in users.",
   },
 } as const satisfies Record<string, ClinicalSignInCopy>;
-export const CLINICAL_SIGN_IN_INVITE_NOTE = "No account? You can create one from Sign in. PsychSift is for health professionals only.";
+export const CLINICAL_SIGN_IN_INVITE_NOTE =
+  "No account? You can create one from Sign in. PsychSift is for health professionals only.";
 
 /** Shown under the sign-in and create-account forms. */
 export const TERMS_SIGN_IN_NOTE = "By signing in or creating an account, you agree to the";
