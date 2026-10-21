@@ -45,7 +45,17 @@
  *        --keep (leave reports in place), --dir <path>.
  */
 import { spawn, spawnSync } from "node:child_process";
-import { appendFileSync, copyFileSync, cpSync, renameSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  appendFileSync,
+  copyFileSync,
+  cpSync,
+  renameSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import http from "node:http";
 import net from "node:net";
 import path from "node:path";
@@ -321,7 +331,9 @@ function stopOwnedProcessTree(child) {
 }
 
 // TEMPORARY profiling hook (grok/home-tbt-trim draft PR; removed before ready).
-const profileDir = process.env.LIGHTHOUSE_PROFILE_DIR ? path.resolve(projectRoot, process.env.LIGHTHOUSE_PROFILE_DIR) : null;
+const profileDir = process.env.LIGHTHOUSE_PROFILE_DIR
+  ? path.resolve(projectRoot, process.env.LIGHTHOUSE_PROFILE_DIR)
+  : null;
 let profileCounter = 0;
 function collectProfileAssets(output) {
   if (!profileDir) return;
