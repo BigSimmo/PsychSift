@@ -530,7 +530,8 @@ export function CmePlanPage({
                   Choose any goal you are still working on. Nothing carries forward automatically.
                 </p>
                 {nextYearConfirmed === false ? (
-                  <p>
+                  // The link keeps its 48 px tap target; the negative margin keeps the card's text rhythm.
+                  <p className="-my-2">
                     <CmeTextLink href={cmeCarryConfirmHref(set.year)}>Confirm {set.year + 1} targets first</CmeTextLink>
                   </p>
                 ) : nextYearConfirmed === null ? (
