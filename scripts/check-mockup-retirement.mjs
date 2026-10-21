@@ -10,8 +10,8 @@
  *      nothing kept it in step with the tree. It was refuted in five places by a single
  *      afternoon of evidence-gathering (the answer family, both document families, the
  *      closed issue #162, and the calculators family promoted to production by PR #1227).
- *   2. A third of the surface is not design scratch at all. `/mockups/development` and
- *      `/mockups/care-plan` (and, at the time, two since-retired prototypes) are live in
+ *   2. A third of the surface is not design scratch at all. `/mockups/development` (and, at the time, three since-retired prototypes, the last
+ *      retired 2026-10-21) are live in
  *      production behind `DeveloperAreaGate` (src/proxy.ts) and linked from Settings. Any
  *      policy keyed on the path `src/app/mockups/**` hits them too.
  *   3. Filename supersession is systematically backwards. `example-round-two` IMPORTS

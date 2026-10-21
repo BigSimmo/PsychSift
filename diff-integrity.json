@@ -2943,6 +2943,230 @@
       "after": 0,
       "reason": "Whole-file deletion: the Ward Flow / Caring Contacts feature it tested was retired and deleted. Owner-approved retirement 2026-09-26.",
       "approvedOn": "2026-09-26"
+    },
+    {
+      "path": "tests/also-matches-accent-mockups.test.ts",
+      "before": 2,
+      "after": 0,
+      "reason": "Whole-file deletion: the retired mockup design study it tested (owner decision 2026-10-21, docs/decisions/2026-10-21-retire-care-plan-and-design-studies.md).",
+      "approvedOn": "2026-10-21"
+    },
+    {
+      "path": "tests/answer-chat-perfected-mockups.dom.test.tsx",
+      "before": 3,
+      "after": 0,
+      "reason": "Whole-file deletion: the retired mockup design study it tested (owner decision 2026-10-21, docs/decisions/2026-10-21-retire-care-plan-and-design-studies.md).",
+      "approvedOn": "2026-10-21"
+    },
+    {
+      "path": "tests/calculators-show-all-mockups.dom.test.tsx",
+      "before": 3,
+      "after": 0,
+      "reason": "Whole-file deletion: the retired mockup design study it tested (owner decision 2026-10-21, docs/decisions/2026-10-21-retire-care-plan-and-design-studies.md).",
+      "approvedOn": "2026-10-21"
+    },
+    {
+      "path": "tests/care-plan-domain.test.ts",
+      "before": 63,
+      "after": 0,
+      "reason": "Whole-file deletion: the retired Care Plan prototype's test (owner decision 2026-10-21, docs/decisions/2026-10-21-retire-care-plan-and-design-studies.md).",
+      "approvedOn": "2026-10-21"
+    },
+    {
+      "path": "tests/care-plan-linked-routes.dom.test.tsx",
+      "before": 284,
+      "after": 0,
+      "reason": "Whole-file deletion: the retired Care Plan prototype's test (owner decision 2026-10-21, docs/decisions/2026-10-21-retire-care-plan-and-design-studies.md).",
+      "approvedOn": "2026-10-21"
+    },
+    {
+      "path": "tests/care-plan-patient-plan.test.ts",
+      "before": 66,
+      "after": 0,
+      "reason": "Whole-file deletion: the retired Care Plan prototype's test (owner decision 2026-10-21, docs/decisions/2026-10-21-retire-care-plan-and-design-studies.md).",
+      "approvedOn": "2026-10-21"
+    },
+    {
+      "path": "tests/care-plan-prototype-state.test.ts",
+      "before": 76,
+      "after": 0,
+      "reason": "Whole-file deletion: the retired Care Plan prototype's test (owner decision 2026-10-21, docs/decisions/2026-10-21-retire-care-plan-and-design-studies.md).",
+      "approvedOn": "2026-10-21"
+    },
+    {
+      "path": "tests/care-plan-route-files.test.ts",
+      "before": 24,
+      "after": 0,
+      "reason": "Whole-file deletion: the retired Care Plan prototype's test (owner decision 2026-10-21, docs/decisions/2026-10-21-retire-care-plan-and-design-studies.md).",
+      "approvedOn": "2026-10-21"
+    },
+    {
+      "path": "tests/crisis-contacts.test.ts",
+      "before": 8,
+      "after": 7,
+      "reason": "Dropped the check that the retired Care Plan fixtures re-export the crisis contacts by identity; the prototype was retired (owner decision 2026-10-21) and the contact values stay pinned here.",
+      "approvedOn": "2026-10-21"
+    },
+    {
+      "path": "tests/developer-hub-panels.test.ts",
+      "before": 19,
+      "after": 18,
+      "reason": "Replaced the Care Plan panel checks with one test that the retired prototype has no panel and no catalogue link (owner decision 2026-10-21).",
+      "approvedOn": "2026-10-21"
+    },
+    {
+      "path": "tests/dirty-guards-and-external-links.test.ts",
+      "before": 5,
+      "after": 4,
+      "reason": "Dropped the SafetyPlanForm case: that component belonged to the retired Care Plan prototype (owner decision 2026-10-21).",
+      "approvedOn": "2026-10-21"
+    },
+    {
+      "path": "tests/factsheets-compact-view-mockups.dom.test.tsx",
+      "before": 3,
+      "after": 0,
+      "reason": "Whole-file deletion: the retired mockup design study it tested (owner decision 2026-10-21, docs/decisions/2026-10-21-retire-care-plan-and-design-studies.md).",
+      "approvedOn": "2026-10-21"
+    },
+    {
+      "path": "tests/factsheets-topics-phone-mockups.test.ts",
+      "before": 2,
+      "after": 0,
+      "reason": "Whole-file deletion: the retired mockup design study it tested (owner decision 2026-10-21, docs/decisions/2026-10-21-retire-care-plan-and-design-studies.md).",
+      "approvedOn": "2026-10-21"
+    },
+    {
+      "path": "tests/favourites-phone-perfected-mockups.test.ts",
+      "before": 9,
+      "after": 0,
+      "reason": "Whole-file deletion: the retired mockup design study it tested (owner decision 2026-10-21, docs/decisions/2026-10-21-retire-care-plan-and-design-studies.md).",
+      "approvedOn": "2026-10-21"
+    },
+    {
+      "path": "tests/filter-sheet-restyle-mockups.test.ts",
+      "before": 2,
+      "after": 0,
+      "reason": "Whole-file deletion: the retired mockup design study it tested (owner decision 2026-10-21, docs/decisions/2026-10-21-retire-care-plan-and-design-studies.md).",
+      "approvedOn": "2026-10-21"
+    },
+    {
+      "path": "tests/pinned-plus-menu-mockups.dom.test.tsx",
+      "before": 1,
+      "after": 0,
+      "reason": "Whole-file deletion: the retired mockup design study it tested (owner decision 2026-10-21, docs/decisions/2026-10-21-retire-care-plan-and-design-studies.md).",
+      "approvedOn": "2026-10-21"
+    },
+    {
+      "path": "tests/playwright-project-isolation.test.ts",
+      "before": 15,
+      "after": 14,
+      "reason": "Dropped the Care Plan spec collection case: tests/ui-care-plan-mockup.spec.ts went with the retired prototype (owner decision 2026-10-21).",
+      "approvedOn": "2026-10-21"
+    },
+    {
+      "path": "tests/search-lens-menu-mockups.dom.test.tsx",
+      "before": 1,
+      "after": 0,
+      "reason": "Whole-file deletion: the retired mockup design study it tested (owner decision 2026-10-21, docs/decisions/2026-10-21-retire-care-plan-and-design-studies.md).",
+      "approvedOn": "2026-10-21"
+    },
+    {
+      "path": "tests/search-refine-adaptive-mockups.dom.test.tsx",
+      "before": 1,
+      "after": 0,
+      "reason": "Whole-file deletion: the retired mockup design study it tested (owner decision 2026-10-21, docs/decisions/2026-10-21-retire-care-plan-and-design-studies.md).",
+      "approvedOn": "2026-10-21"
+    },
+    {
+      "path": "tests/sidebar-live-mockup.dom.test.tsx",
+      "before": 3,
+      "after": 0,
+      "reason": "Whole-file deletion: the retired mockup design study it tested (owner decision 2026-10-21, docs/decisions/2026-10-21-retire-care-plan-and-design-studies.md).",
+      "approvedOn": "2026-10-21"
+    },
+    {
+      "path": "tests/tools-search-directions-mockups.test.ts",
+      "before": 5,
+      "after": 0,
+      "reason": "Whole-file deletion: the retired mockup design study it tested (owner decision 2026-10-21, docs/decisions/2026-10-21-retire-care-plan-and-design-studies.md).",
+      "approvedOn": "2026-10-21"
+    },
+    {
+      "path": "tests/ui-answer-chat-perfected-mockup.spec.ts",
+      "before": 1,
+      "after": 0,
+      "reason": "Whole-file deletion: the retired mockup design study it tested (owner decision 2026-10-21, docs/decisions/2026-10-21-retire-care-plan-and-design-studies.md).",
+      "approvedOn": "2026-10-21"
+    },
+    {
+      "path": "tests/ui-care-plan-mockup.spec.ts",
+      "before": 32,
+      "after": 0,
+      "reason": "Whole-file deletion: the retired Care Plan prototype's test (owner decision 2026-10-21, docs/decisions/2026-10-21-retire-care-plan-and-design-studies.md).",
+      "approvedOn": "2026-10-21"
+    },
+    {
+      "path": "tests/ui-document-image-status-mockup.spec.ts",
+      "before": 1,
+      "after": 0,
+      "reason": "Whole-file deletion: the retired mockup design study it tested (owner decision 2026-10-21, docs/decisions/2026-10-21-retire-care-plan-and-design-studies.md).",
+      "approvedOn": "2026-10-21"
+    },
+    {
+      "path": "tests/ui-document-top-navigation-mockup.spec.ts",
+      "before": 3,
+      "after": 0,
+      "reason": "Whole-file deletion: the retired mockup design study it tested (owner decision 2026-10-21, docs/decisions/2026-10-21-retire-care-plan-and-design-studies.md).",
+      "approvedOn": "2026-10-21"
+    },
+    {
+      "path": "tests/ui-sidebar-live-mockup.spec.ts",
+      "before": 2,
+      "after": 0,
+      "reason": "Whole-file deletion: the retired mockup design study it tested (owner decision 2026-10-21, docs/decisions/2026-10-21-retire-care-plan-and-design-studies.md).",
+      "approvedOn": "2026-10-21"
+    },
+    {
+      "path": "tests/ui-therapy-navigation-mockup.spec.ts",
+      "before": 1,
+      "after": 0,
+      "reason": "Whole-file deletion: the retired mockup design study it tested (owner decision 2026-10-21, docs/decisions/2026-10-21-retire-care-plan-and-design-studies.md).",
+      "approvedOn": "2026-10-21"
+    },
+    {
+      "path": "tests/ui-tools-collapse.spec.ts",
+      "before": 3,
+      "after": 0,
+      "reason": "Whole-file deletion: the retired mockup design study it tested (owner decision 2026-10-21, docs/decisions/2026-10-21-retire-care-plan-and-design-studies.md).",
+      "approvedOn": "2026-10-21"
+    },
+    {
+      "path": "tests/ui-tools-search-mode-mockup.spec.ts",
+      "before": 11,
+      "after": 0,
+      "reason": "Whole-file deletion: the retired mockup design study it tested (owner decision 2026-10-21, docs/decisions/2026-10-21-retire-care-plan-and-design-studies.md).",
+      "approvedOn": "2026-10-21"
+    },
+    {
+      "path": "tests/ui-tools-task-directory.spec.ts",
+      "before": 4,
+      "after": 0,
+      "reason": "Whole-file deletion: the retired mockup design study it tested (owner decision 2026-10-21, docs/decisions/2026-10-21-retire-care-plan-and-design-studies.md).",
+      "approvedOn": "2026-10-21"
+    },
+    {
+      "path": "tests/ui-tools.spec.ts",
+      "before": 68,
+      "after": 67,
+      "reason": "Dropped the @mockup overflow loop over the retired tools design-study routes (owner decision 2026-10-21).",
+      "approvedOn": "2026-10-21"
+    },
+    {
+      "path": "tests/weekly-untested-ui-surfaces.dom.test.tsx",
+      "before": 6,
+      "after": 5,
+      "reason": "Dropped the case for a retired phone design-study component (owner decision 2026-10-21).",
+      "approvedOn": "2026-10-21"
     }
   ]
 }

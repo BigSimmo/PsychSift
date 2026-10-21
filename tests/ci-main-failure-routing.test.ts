@@ -300,8 +300,8 @@ describe("main CI failure routing, executed", () => {
     expect(closed).toHaveLength(0);
     expect(created).toHaveLength(1);
     expect(created[0]!.body).toContain("release-browser-matrix (webkit, mobile-webkit, 5, 5)");
-    // Audit EVAL-04: the new alert names the owner, which is what GitHub mobile pushes.
-    expect(created[0]!.body.startsWith("@BigSimmo\n\n")).toBe(true);
+    // Owner decision 2026-10-21: no @mention; the 7 am daily health summary reports it.
+    expect(created[0]!.body).not.toContain("@BigSimmo");
   });
 
   it("still alerts when a continue-on-error matrix leg timed out", async () => {

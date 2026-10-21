@@ -98,6 +98,7 @@ import {
 // The ingestion stages below were extracted from this closure; each receives the runtime's
 // services through IngestionStageContext rather than closing over them.
 import { insertEmbeddedChunks } from "./chunk-indexing";
+import { buildExtractionProvenance } from "./extraction-provenance";
 import { buildIndexQualityPayload, extractionMetrics } from "./index-quality-payload";
 import { runInlineEnrichmentStage } from "./inline-enrichment";
 import { optionalIndexWriteWarning, supabaseStageError } from "./ingestion-errors";
@@ -726,9 +727,10 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
         // B4: aggregate numbers only; absent (not null) outside shadow mode / the cohort so a
         // legacy-mode run never touches an earlier shadow record on the row.
         ...(shadowExtraction ? { shadow_extraction: shadowExtraction } : {}),
-        // Audit F04: which reader produced these pages, so a parser defect can be traced to the
-        // documents it touched. A document without this key was extracted before it was recorded.
-        ...(extracted?.extractor ? { extraction_provenance: { ...extracted.extractor, recorded_at: indexedAt } } : {}),
+        // Audit F04: which reader, OCR engine and chunker produced this generation, so a parser
+        // defect can be traced to the documents it touched. A document without this key was
+        // extracted before it was recorded.
+        extraction_provenance: buildExtractionProvenance({ extracted, chunks, recordedAt: indexedAt }),
       };
 
       await updateDocument(job.document_id, job.documents.owner_id, {
