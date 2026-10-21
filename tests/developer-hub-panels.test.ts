@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { SETTINGS_SECTIONS } from "@/components/clinical-dashboard/settings-sections";
 import { HUB_PANELS, panelsInGroup } from "@/lib/developer-area/hub-panels";
 import { toolCatalogRecords } from "@/lib/tools-catalog";
-import { CARE_PLAN_ROUTES } from "@/components/care-plan/mockups/routes";
 import { loadRepoAwarenessSnapshot } from "@/lib/developer-area/repo-awareness-snapshot";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -40,21 +39,11 @@ describe("hub panels", () => {
     expect(clinicalTrust[0]).toMatchObject({ id: "clinical-trust", phase: 1, group: "clinical" });
   });
 
-  it("keeps the existing prototypes reachable as real destinations", () => {
-    for (const id of ["care-plan"]) {
-      const panel = HUB_PANELS.find((entry) => entry.id === id);
-      expect(panel?.phase, `${id} should be built`).toBe(1);
-      expect(panel?.href, `${id} needs a destination`).toBeTruthy();
-    }
-
-    // Prototypes stay out of the live Tools catalogue mockup tree; Settings still offers Developer.
+  it("keeps prototypes out of the live Tools catalogue while Settings still offers Developer", () => {
+    // The Care Plan prototype, the last prototype card, was retired on 2026-10-21.
+    expect(HUB_PANELS.some((panel) => panel.id === "care-plan")).toBe(false);
     expect(toolCatalogRecords.some((tool) => tool.href.startsWith("/mockups/"))).toBe(false);
     expect(SETTINGS_SECTIONS.some((section) => section.id === "development")).toBe(true);
-  });
-
-  it("keeps the Care Plan href in sync with its route source", () => {
-    const panel = HUB_PANELS.find((entry) => entry.id === "care-plan");
-    expect(panel?.href).toBe(CARE_PLAN_ROUTES.home);
   });
 
   it("never points a card at its own section", () => {

@@ -1,11 +1,10 @@
 name: Sentry production alerts
 
 # #TN512M: Sentry was the last of the three production-failure detectors that reported to
-# nobody. The other monitors (live-domain-monitor, CI on main, eval-canary, live-drift,
-# ingestion-autopilot) reach the owner's phone by opening a GitHub issue assigned to him,
-# a channel he confirmed end to end on 2026-09-26. This workflow puts Sentry on that same
-# channel: every 15 minutes it asks Sentry for production issues first seen recently and
-# posts any it has not reported before to one rolling GitHub issue assigned to the owner.
+# nobody. Every 15 minutes this workflow asks Sentry for production issues first seen recently
+# and posts any it has not reported before to one rolling GitHub issue. Since the owner decision
+# of 2026-10-21 (docs/decisions/2026-10-21-one-daily-health-summary.md) it no longer mentions or
+# assigns the owner: the 7 am daily health summary counts its new reports and links the issue.
 #
 # PRIVACY: this repository is PUBLIC, so the GitHub issue is public. Sentry events are
 # scrubbed before they leave the app, but error messages are still free text, so nothing
@@ -127,23 +126,10 @@ jobs:
               if (issue === latest) lastCommentIsFailure = String(comments.at(-1)?.body ?? "").includes(FAILURE_MARKER);
             }
 
-            // GitHub mobile pushes a direct @mention to the owner's phone, the alert channel chosen on
-            // 2026-10-19 (docs/decisions/2026-10-19-production-alerts-by-phone.md). Assignment pushes
-            // only when it first happens and later comments on this issue do not push by themselves, so
-            // every comment post() makes names the owner (audit EVAL-04). The issue it may open first
-            // carries no mention, so a first alert pushes once, from the comment.
-            const alertAssignee = owner;
-            const alertMention = `@${alertAssignee}`;
-            async function assignOwner(issueNumber) {
-              // Assignment also subscribes the owner to the issue. Best-effort, so a refused
-              // assignment can never cost the alert itself.
-              try {
-                await github.rest.issues.addAssignees({ owner, repo, issue_number: issueNumber, assignees: [owner] });
-              } catch (error) {
-                core.warning(`Could not assign @${owner} to #${issueNumber}: ${error.message}`);
-              }
-            }
-
+            // Owner decision 2026-10-21 (docs/decisions/2026-10-21-one-daily-health-summary.md): this
+            // workflow no longer @mentions or assigns the owner. Its result reaches the owner's phone once a
+            // day in the daily health summary (.github/workflows/daily-health-summary.yml), which reads this
+            // issue's label; the issue keeps the detail.
             async function post(commentBody) {
               let number = open?.number;
               if (!number) {
@@ -163,8 +149,7 @@ jobs:
                 });
                 number = created.data.number;
               }
-              await github.rest.issues.createComment({ owner, repo, issue_number: number, body: `${alertMention}\n\n${commentBody}` });
-              await assignOwner(number);
+              await github.rest.issues.createComment({ owner, repo, issue_number: number, body: commentBody });
               return number;
             }
 

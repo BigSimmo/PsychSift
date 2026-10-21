@@ -353,6 +353,13 @@ test.describe("PsychSift accessibility coverage", () => {
     const modeButton = page.getByRole("button", { name: "Mode Answer", exact: true });
     await modeButton.click();
     await expect(page.locator('[role="dialog"]').first()).toBeVisible();
+    // The sheet takes its opening focus on an animation frame and keeps settling
+    // it for a short window (sheet-focus.ts), so a single read straight after it
+    // paints can land before focus moves in. Wait for focus to arrive, then
+    // prove every part of the contract from one settled read.
+    await expect
+      .poll(async () => (await readState()).focusInDialog, { message: "the open sheet must take focus" })
+      .toBe(true);
 
     const open = await readState();
     expect(open.marked, "background should be deactivated behind the sheet").toBeGreaterThan(0);

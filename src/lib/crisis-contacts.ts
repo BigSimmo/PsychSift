@@ -2,12 +2,11 @@
  * WA and national public crisis contact lines — the only intentionally
  * non-fictional contact details this repository prints.
  *
- * Single source of truth: every surface that prints a real crisis number —
- * the Patient Safety Plan tool (`src/components/patient-safety-plan.tsx`) and
- * the Care Plan prototype mockups (`src/components/care-plan/mockups/fixtures.ts`,
- * which re-exports `WA_CRISIS_CONTACTS` as `publicCrisisContacts`) — reads
- * `WA_CRISIS_CONTACTS` from here, so a number can never drift between
- * surfaces. If a number or an availability window has changed since its
+ * Single source of truth: every surface that prints a real crisis number,
+ * such as the Patient Safety Plan tool (`src/components/patient-safety-plan.tsx`),
+ * reads `WA_CRISIS_CONTACTS` from here, so a number can never drift between
+ * surfaces. (The Care Plan prototype also re-exported it until it was retired
+ * on 2026-10-21.) If a number or an availability window has changed since its
  * `verifiedOn` date, correct it here and nowhere else.
  *
  * VERIFICATION RECORD (first four entries): `docs/care-plan/crisis-lines-verification.md`.

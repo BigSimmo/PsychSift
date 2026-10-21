@@ -2,7 +2,7 @@
 
 - **Status:** decided 2026-10-21
 - **Source:** the owner, in chat
-- **Background:** `docs/outstanding-issues.md`, items #315622 and #315623, and the audit report `reviews/2026-10-20-clinical-answer-safety.md` section 10 in the project files
+- **Background:** the audit report `reviews/2026-10-20-clinical-answer-safety.md` section 10 in the project files. No ledger row tracks this decision; the two ledger IDs this line used to cite never existed (corrected 2026-10-21).
 
 On 21 Oct 2026 the owner adopted the proposed pass marks for future runs of the 84-question answer
 safety test set:

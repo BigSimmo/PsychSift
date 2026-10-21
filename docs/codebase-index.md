@@ -111,8 +111,8 @@ Workstreams cut across the areas:
 
 - **Design system** (`design-system`): Visual tokens, primitives, brand and the lint rules that enforce them; serves every screen.
   Canonical docs: docs/design-system/README.md
-- **Prototypes** (`prototypes`): Admin-only work that is not yet part of the product: Care Plan, the developer hub and design-scratch mock-ups.
-  Canonical docs: docs/care-plan/HANDOFF-START-HERE.md
+- **Prototypes** (`prototypes`): Admin-only work that is not yet part of the product: the developer hub and the remaining mock-ups.
+  Canonical docs: docs/mockup-retirement-policy.md
 
 <!-- organisation-areas:end -->
 
@@ -966,7 +966,7 @@ due time, the note's id and that phone's endpoint in `alert_reminder_times`, nev
 
 Administrator source intake also records admission events in `document_admission_events`.
 
-`documents`, `document_pages`, `document_images`, `document_chunks`, `document_embedding_fields`, `document_index_units`, `document_table_facts`, `document_evidence_revisions`, `document_labels`, `document_summaries`, `document_sections`, `document_memory_cards`, `document_index_quality`, `document_title_words`, `document_publication_approvals`, `document_corpus_access_state`, `document_corpus_access_snapshots`, `ingestion_jobs`, `ingestion_job_stages`, `indexing_v3_agent_jobs`, `import_batches`, `image_caption_cache`, `rag_queries`, `rag_query_misses`, `rag_aliases`, `rag_response_cache`, `rag_retrieval_logs`, `rag_visual_eval_cases`, `rag_visual_eval_runs`, `rag_answer_feedback`, `clinical_registry_records`, `clinical_registry_record_sources`, `clinical_quality_feedback_triage`, `clinical_quality_feedback_triage_events`, `medication_records`, `differential_records`, `source_review_events`, `user_favourites`, `user_favourite_sets`, `user_preferences`, `work_admin_paperwork`, `work_backups`, `work_booking_courses`, `work_course_bookings`, `work_hospitals`, `work_hospital_teams`, `work_role_grants`, `alert_reminder_times`, `alert_brief_sent`, `api_rate_limits`, `api_rate_limit_subjects`, `audit_logs`, `storage_cleanup_jobs`, `on_call_entries`, `cme_years`, `cme_requirements`, `cme_routines`, `cme_entries`, `cme_allocations`, `cme_evidence`, `cme_year_snapshots`, `cme_year_amendments`, `cme_plan_goals`, `cme_plan_goal_carries`, `cme_entry_goals`, `cme_training_periods`, `cme_training_milestones`, `cme_missed_sessions`, `cme_entry_drafts`, `calendar_feed_tokens`, `on_call_shift_imports`, `on_call_shifts`, `on_call_services`, `on_call_service_sites`, `on_call_service_members`, `on_call_service_invitations`, `on_call_service_entries`, `on_call_service_reports`, `on_call_service_orientation`, `site_content_publications`, `site_content_reconciliation_plans`, `site_content_public_records`, `site_content_sync_state`, `site_content_sync_events`, `site_content_sync_event_plans`, `site_content_sync_worker_invocations`, `site_content_releases`, `site_content_release_records`, `site_content_release_receipts`
+`documents`, `document_pages`, `document_images`, `document_chunks`, `document_embedding_fields`, `document_index_units`, `document_table_facts`, `document_evidence_revisions`, `document_labels`, `document_summaries`, `document_sections`, `document_memory_cards`, `document_index_quality`, `document_index_generation_snapshots`, `document_title_words`, `document_publication_approvals`, `document_corpus_access_state`, `document_corpus_access_snapshots`, `ingestion_jobs`, `ingestion_job_stages`, `indexing_v3_agent_jobs`, `import_batches`, `image_caption_cache`, `rag_queries`, `rag_query_misses`, `rag_aliases`, `rag_response_cache`, `rag_retrieval_logs`, `rag_visual_eval_cases`, `rag_visual_eval_runs`, `rag_answer_feedback`, `clinical_registry_records`, `clinical_registry_record_sources`, `clinical_quality_feedback_triage`, `clinical_quality_feedback_triage_events`, `medication_records`, `differential_records`, `source_review_events`, `user_favourites`, `user_favourite_sets`, `user_preferences`, `work_admin_paperwork`, `work_backups`, `work_booking_courses`, `work_course_bookings`, `work_hospitals`, `work_hospital_teams`, `work_role_grants`, `alert_reminder_times`, `alert_brief_sent`, `api_rate_limits`, `api_rate_limit_subjects`, `audit_logs`, `storage_cleanup_jobs`, `on_call_entries`, `cme_years`, `cme_requirements`, `cme_routines`, `cme_entries`, `cme_allocations`, `cme_evidence`, `cme_year_snapshots`, `cme_year_amendments`, `cme_plan_goals`, `cme_plan_goal_carries`, `cme_entry_goals`, `cme_training_periods`, `cme_training_milestones`, `cme_missed_sessions`, `cme_entry_drafts`, `calendar_feed_tokens`, `on_call_shift_imports`, `on_call_shifts`, `on_call_services`, `on_call_service_sites`, `on_call_service_members`, `on_call_service_invitations`, `on_call_service_entries`, `on_call_service_reports`, `on_call_service_orientation`, `site_content_publications`, `site_content_reconciliation_plans`, `site_content_public_records`, `site_content_sync_state`, `site_content_sync_events`, `site_content_sync_event_plans`, `site_content_sync_worker_invocations`, `site_content_releases`, `site_content_release_records`, `site_content_release_receipts`
 
 Team modes (Roster, Admin, Teaching): `admin_leave_balances`, `admin_settings`, `extra_time_records`, `on_call_service_member_events`, `registrar_assessments`, `registrar_training_milestones`, `roster_assignments`, `roster_calendar_links`, `roster_change_agreements`, `roster_changes`, `roster_draft_assignments`, `roster_drafts`, `roster_leave`, `roster_member_roles`, `roster_offer_alert_outbox`, `roster_offer_alert_devices`, `roster_open_post_alerts`, `roster_open_post_keys`, `roster_open_shifts`, `roster_publication_protections`, `roster_publication_seen`, `roster_publications`, `roster_rotation_preferences`, `roster_rotation_rounds`, `roster_shift_codes`, `roster_staffing_needs`, `roster_swaps`, `roster_team_settings`, `roster_unavailability`, `teaching_attendance`, `teaching_audit_events`, `teaching_calendar_optins`, `teaching_checkin_claims`, `teaching_collection_sections`, `teaching_collections`, `teaching_display_links`, `teaching_feedback_answers`, `teaching_feedback_replied`, `teaching_group_members`, `teaching_groups`, `teaching_member_roles`, `teaching_notice_reads`, `teaching_notices`, `teaching_occurrences`, `teaching_readiness`, `teaching_resource_saves`, `teaching_resources`, `teaching_series`, `teaching_supervision_entries`, `teaching_supervision_notes`, `teaching_supervision_pairings`, `teaching_team_settings`, `teaching_week_adds`, `web_push_subscriptions`.
 
@@ -1289,43 +1289,6 @@ freshness.ts` is the label-agnostic content-age helper both the ledger and the r
   vocabularies stay unmerged), `tests/developer-sign-off-page.dom.test.tsx` (pins that one family's
   page of rows is rendered rather than the whole queue, and that every family's total stays visible
   while it is).
-
-### Care Plan (`src/app/mockups/care-plan/`, `src/components/care-plan/mockups/`)
-
-Synthetic, memory-only, provider-free prototype for finding people with recurrent psychiatric
-emergency-department presentations and making their current management plan easy to find and use.
-Twenty-one routes under one gated prefix; every record is fictional, nothing is persisted, and a
-refresh restores the fixtures. Design authority: `docs/superpowers/specs/2026-08-20-care-plan-design.md`;
-terminology: `docs/care-plan-context.md`; build history and rulings: `docs/care-plan/sdd-ledger.md`.
-
-- **Gate:** `/mockups/care-plan` and everything beneath it is behind `DeveloperAreaGate`
-  (`layout.tsx`) and the production block in `src/proxy.ts`, which matches the exact prefix so a
-  look-alike such as `/mockups/care-plan-archive` is not let through.
-- **Routes:** `route-page.tsx` renders one client suite for every address. Home, `patients`,
-  `patients/[patientId]`, and per patient `management-plan{,/edit,/review,/print}`,
-  `patient-plan{,/edit,/print}`, `safety-plan{,/edit,/print}`, `presentations{,/new,/[presentationId]}`,
-  `history`; plus `reviews`, `team`, `governance`, `system-states`. Addresses are built only by
-  `routes.ts` (`CARE_PLAN_BASE`, `CARE_PLAN_ROUTES`, `carePlanRoute`); a query string may name a
-  deterministic specimen scenario and nothing else.
-- **State:** `prototype-state.ts` (reducer, ~85 kB, single-Current invariant, capability checks and
-  `getPrototypeMutationBlockReason` re-checked on every action), `prototype-provider.tsx`,
-  `domain.ts` (pure selectors), `fixtures.ts` + `patient-plan-fixtures.ts` (all `SYN-` identifiers),
-  `types.ts`.
-- **Surfaces:** `routable-suite.tsx` (address → surface), `care-plan-shell-frame.tsx` (rail, phone
-  dock, More sheet, one search slot), `clinical-snapshot-page.tsx`, `patient-workspace.tsx`,
-  `patient-navigation.tsx`, `management-plan-{read,form,review,print,diff}.tsx`,
-  `patient-plan-{pages,form,transform}.ts{,x}`, `safety-plan-{pages,form}.tsx`,
-  `presentation-{pages,form,timeline}.tsx`, `history-page.tsx`, `operations-pages.tsx`
-  (Reviews/Team/Governance), `system-states-page.tsx`, `care-plan-error-boundary.tsx`,
-  `care-plan.module.css`.
-- **Printing:** all three print surfaces consume the shared `PrintOutput`/`PrintSection`/
-  `BrowserPrintButton` primitives in `src/components/ui/print-output.tsx`; the print cascade itself
-  lives in `src/app/globals.css`.
-- **Tests:** `tests/care-plan-domain.test.ts`, `tests/care-plan-prototype-state.test.ts`,
-  `tests/care-plan-patient-plan.test.ts`, `tests/care-plan-route-files.test.ts`,
-  `tests/care-plan-linked-routes.dom.test.tsx`, the gate cases in `tests/proxy.test.ts`, and the
-  browser suite `tests/ui-care-plan-mockup.spec.ts` (`npm run test:e2e:care-plan-mockup`, advisory
-  `chromium-mockups` project only).
 
 ### Global search composer placement rules
 

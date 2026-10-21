@@ -191,7 +191,7 @@ Every remaining tracked document in this category (operations, plus the `rag-beh
 - [error-tracking.md](error-tracking.md) — privacy-safe, opt-in production exception tracking envelope
 - [governance-incident-runbooks.md](governance-incident-runbooks.md) — operator response checklists for clinical, source, privacy, provider, notifiable data breach (draft), and answer-pipeline rollback incidents
 - [clinical-hazard-analysis.md](clinical-hazard-analysis.md) — clinical hazard register
-- [care-plan/crisis-lines-verification.md](care-plan/crisis-lines-verification.md) — **DRAFT, unsigned** verification record for every crisis number printed by the Care Plan prototype: source, verification date, and the six-monthly re-verification cadence
+- [care-plan/crisis-lines-verification.md](care-plan/crisis-lines-verification.md) — **DRAFT, unsigned** verification record for every crisis number the app prints (first written for the retired Care Plan prototype): source, verification date, and the six-monthly re-verification cadence
 - [rag-injection-threat-model.md](rag-injection-threat-model.md) — prompt-injection threat model
 - [privacy-impact-assessment.md](privacy-impact-assessment.md) — PIA findings and launch blockers
 - [openai-cross-border-basis.md](openai-cross-border-basis.md) — cross-border data-processing basis
@@ -313,7 +313,7 @@ Every remaining tracked document in this category (process, plus the `agents/` r
 - [projects/design-system-remediation.md](projects/design-system-remediation.md) — PsychSift design system, screen, accessibility, responsive & interaction remediation project plan
 - [redesign/](redesign/) — premium redesign plans, decision log, token adoption
 - [superpowers/](superpowers/) — agent-authored plans and specs
-- **Care Plan (prototype, developer-gated under `/mockups/care-plan`)** — [superpowers/specs/2026-08-20-care-plan-design.md](superpowers/specs/2026-08-20-care-plan-design.md) is the binding design spec, [care-plan-context.md](care-plan-context.md) the binding glossary, [superpowers/plans/2026-08-20-care-plan-implementation.md](superpowers/plans/2026-08-20-care-plan-implementation.md) the implementation plan, [care-plan/sdd-ledger.md](care-plan/sdd-ledger.md) the build ledger and [care-plan/complete-work-ledger.md](care-plan/complete-work-ledger.md) the record of what landed; the dated handoffs, transcripts and reports under [care-plan/](care-plan/) are point-in-time records
+- **Care Plan (prototype, retired 2026-10-21)** — the owner retired the developer-gated prototype; its code, tests and build records are in git history (see [mockups/README.md](../mockups/README.md) "Retired developer-gated routes"). The crisis-number record [care-plan/crisis-lines-verification.md](care-plan/crisis-lines-verification.md) stays live because `src/lib/crisis-contacts.ts` cites it
 
 ### Also catalogued (2026-09-02)
 
@@ -449,39 +449,6 @@ Every remaining tracked document in this category (dated records and the `eviden
 - [audit/repo-wide-review-sweep-2026-07-19.md](audit/repo-wide-review-sweep-2026-07-19.md) — Repository-wide review sweep — 2026-07-19 — This was a broad static repository sweep of /workspace/Database on branch work, combining the repo workflow guidance, local static commands,…
 - [audit/ux-accessibility-review-2026-07-07.md](audit/ux-accessibility-review-2026-07-07.md) — UX & Accessibility Review — Date: 2026-07-07 Reviewer role:
 - [audit/worktree-reconciliation-2026-08-23.md](audit/worktree-reconciliation-2026-08-23.md) — Worktree and branch reconciliation — 2026-08-23 — Disposition: preservation-first;
-- [care-plan/CLAUDE-START-HERE.md](care-plan/CLAUDE-START-HERE.md) — Care Plan — Claude start here — Last updated: 22 August 2026 (Australia/Perth) Implementation status:
-- [care-plan/HANDOFF-2026-08-24-SUPERSEDED.md](care-plan/HANDOFF-2026-08-24-SUPERSEDED.md) — Care Plan — complete handoff package — Assembled 24 August 2026, when the previous session hit its weekly account limit.
-- [care-plan/HANDOFF-START-HERE.md](care-plan/HANDOFF-START-HERE.md) — Care Plan — start here — Rewritten 1 September 2026.
-- [care-plan/accessibility-acceptance.md](care-plan/accessibility-acceptance.md) — Care Plan — accessibility and responsive acceptance — What was checked, how, at what size, in what mode — and, just as importantly, what was not checked and therefore remains an open acceptance…
-- [care-plan/claude-build-handover-2026-08-21.md](care-plan/claude-build-handover-2026-08-21.md) — ED Care Plans — detailed Claude build handover — ED Care Plans is fully brainstormed, clinically bounded, visually selected, specified, and decomposed into a nine-task implementation plan.
-- [care-plan/clinical-language-trace.md](care-plan/clinical-language-trace.md) — Care Plan — clinical language trace — Every consequential label the prototype shows a reader, traced to the glossary term or specification sentence it comes from, and the banned…
-- [care-plan/cloud-session.md](care-plan/cloud-session.md) — Care Plan — cloud session brief and progress log — If you are an AI session working on Care Plan in the cloud, this is the first file you read and the last file you write.
-- [care-plan/conversation-transcript-2026-08-21.md](care-plan/conversation-transcript-2026-08-21.md) — ED Care Plans — Codex conversation transcript — This is a portable transcript of the conversational text.
-- [care-plan/implementation-handoff.md](care-plan/implementation-handoff.md) — Care Plan — implementation handoff — What was built, where it lives, what it deliberately does not do, and what would have to be true before any of it went near a patient.
-- [care-plan/interaction-matrix.md](care-plan/interaction-matrix.md) — Care Plan — interaction matrix — Every control in the prototype:
-- [care-plan/patient-facing-sheets/README.md](care-plan/patient-facing-sheets/README.md) — The three printed sheets, as text — Committed 2 September 2026 so that a session without access to this machine — a cloud session above all — can read what Care Plan actually p…
-- [care-plan/reports/final-fix-report.md](care-plan/reports/final-fix-report.md) — Care Plan — final fix wave — Branch: claude/care-plan-stage-b-9-11 Worktree:
-- [care-plan/reports/task-10-report.md](care-plan/reports/task-10-report.md) — Task 10 — Reviews, Team, Governance, History, and System states — Branch claude/care-plan-stage-b-9-11, worktree D:\Worktrees\Database\care-plan-impl.
-- [care-plan/reports/task-11-report.md](care-plan/reports/task-11-report.md) — Task 11 — Browser journeys, responsive and accessibility proof, documentation, handoff — Branch claude/care-plan-stage-b-9-11, worktree D:\Worktrees\Database\care-plan-impl.
-- [care-plan/reports/task-3-brief.md](care-plan/reports/task-3-brief.md) — task-3-brief
-- [care-plan/reports/task-3-report.md](care-plan/reports/task-3-report.md) — Task 3 report — gated route family, literal navigation, responsive clinical shell — Branch claude/ed-care-plans-impl-7f44cd, worktree D:\Worktrees\Database\care-plan-impl, base d421bc2dc.
-- [care-plan/reports/task-4-brief.md](care-plan/reports/task-4-brief.md) — task-4-brief
-- [care-plan/reports/task-4-report.md](care-plan/reports/task-4-report.md) — Task 4 report — Clinical Snapshot, patient search, Current Plan hierarchy, CMHT actions — Branch claude/ed-care-plans-impl-7f44cd, worktree D:\Worktrees\Database\care-plan-impl.
-- [care-plan/reports/task-5-brief.md](care-plan/reports/task-5-brief.md) — task-5-brief
-- [care-plan/reports/task-5-report.md](care-plan/reports/task-5-report.md) — Task 5 report — Management Plan reading, pinned safety boundary, and clinician print — Branch claude/ed-care-plans-impl-7f44cd, worktree D:\Worktrees\Database\care-plan-impl.
-- [care-plan/reports/task-6-brief.md](care-plan/reports/task-6-brief.md) — task-6-brief
-- [care-plan/reports/task-6-report.md](care-plan/reports/task-6-report.md) — Task 6 report — governed Management Plan authoring — Stage B opens with the first authoring surface in the product:
-- [care-plan/reports/task-7-brief.md](care-plan/reports/task-7-brief.md) — task-7-brief
-- [care-plan/reports/task-7-report.md](care-plan/reports/task-7-report.md) — Task 7 report — ED Presentation timeline, concise recording, plan-use feedback, and visible amendments — Branch claude/ed-care-plans-impl-7f44cd, worktree D:\Worktrees\Database\care-plan-impl.
-- [care-plan/reports/task-8-brief.md](care-plan/reports/task-8-brief.md) — task-8-brief
-- [care-plan/reports/task-8-report.md](care-plan/reports/task-8-report.md) — Task 8 report — the patient's own Personal Safety Plan, its versioning, and its printed copy — Worktree D:\Worktrees\Database\care-plan-impl, branch claude/ed-care-plans-impl-7f44cd.
-- [care-plan/reports/task-9-brief.md](care-plan/reports/task-9-brief.md) — task-9-brief
-- [care-plan/reports/task-9-report.md](care-plan/reports/task-9-report.md) — Task 9 report — Patient Plan — Commit: f4de82034 — feat(care-plan):
-- [care-plan/reports/task-d1-report.md](care-plan/reports/task-d1-report.md) — Task D1 — the moment the person's part was recorded — Status: COMPLETE. Fast checks only, by user instruction (D2).
-- [care-plan/session-handoff-2026-08-21.md](care-plan/session-handoff-2026-08-21.md) — Care Plan — session handoff, 21 August 2026 — Written at the end of the controlling Claude session that designed Care Plan and built Tasks 1 and 2.
-- [care-plan/session-handoff-2026-08-23.md](care-plan/session-handoff-2026-08-23.md) — Care Plan — session handoff, 23 August 2026 — Written at the moment the session was closed, mid-task.
-- [care-plan/verification-log-2026-08-21.md](care-plan/verification-log-2026-08-21.md) — ED Care Plans — handover verification log — This log records evidence for the design/planning/handover package only.
-- [care-plan/verification-report.md](care-plan/verification-report.md) — Care Plan — verification report (Task 11) — Exact commands, exit codes, result lines, failures, and — just as important — the checks that were not run and why.
 - [superpowers/plans/2026-07-04-public-anonymous-access-rate-limits.md](superpowers/plans/2026-07-04-public-anonymous-access-rate-limits.md) — Public Anonymous Access and Rate Limiting Implementation Plan — Goal: Remove the forced sign-in/authorization barrier so anonymous users can run live searches, generate answers, browse/view source documen…
 - [superpowers/plans/2026-07-24-webkit-rsc-prefetch-disposition.md](superpowers/plans/2026-07-24-webkit-rsc-prefetch-disposition.md) — WebKit RSC Prefetch Disposition Implementation Plan — Goal: Disposition issue #024 by proving whether the WebKit _rsc access-control page error is caused by the route-coverage harness, applying…
 - [superpowers/plans/2026-08-05-editable-pin-menu-mockups.md](superpowers/plans/2026-08-05-editable-pin-menu-mockups.md) — Search + Editable Pins Menu — Implementation Record — Perfect /mockups/search-lens-menu around editable app-destination pins while preserving the original visual direction.
