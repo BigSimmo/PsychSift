@@ -70,7 +70,7 @@ export function TherapySourceProvenance({
           Source & review status <span className={reviewStatusClass}>{reviewStatus}</span>
         </h2>
       </div>
-      <ContentReviewNotice schedule={reviewSchedule} className="mb-1.5" />
+      <ContentReviewNotice schedule={reviewSchedule} hideStates={["unknown"]} className="mb-1.5" />
       <Disclosure
         className="text-sm"
         headingLevel={2}

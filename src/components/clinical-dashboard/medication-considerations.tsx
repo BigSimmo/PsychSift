@@ -553,7 +553,7 @@ function MedicationInteractionBlock({ record }: { record: MedicationRecord }) {
                     {interactionNoteBody(interaction.note)}
                   </p>
                 ) : null}
-                <ContentReviewNotice schedule={interactionReviewSchedule(interaction)} />
+                <ContentReviewNotice schedule={interactionReviewSchedule(interaction)} hideStates={["unknown"]} />
                 <CounterpartyLink interaction={interaction} />
               </div>
             </InlineNotice>
