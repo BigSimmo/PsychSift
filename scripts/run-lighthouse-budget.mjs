@@ -696,6 +696,14 @@ try {
   // initial sample plus two confirmations form a majority decision. If either
   // confirmation is unavailable or incomplete, retain the initial failing report so
   // the required gate fails closed. All samples stay in the artifact for diagnosis.
+  if (profileDir) {
+    // TEMPORARY profiling hook: CPU-sample desktop "/" while the server is still up.
+    spawnSync(process.execPath, ["scripts/tmp-cpu-profile.mjs", baseUrl, path.join(profileDir, "cpu"), "3"], {
+      cwd: projectRoot,
+      stdio: "inherit",
+      env: { ...offlineEnv, ...(chromePath ? { CHROME_PATH: chromePath } : {}) },
+    });
+  }
   const confirmations = [];
   if (!update && failures.length === 0) {
     const breachRuns = numericBreachConfirmationRuns(readReports(reportDirectory), budget);
