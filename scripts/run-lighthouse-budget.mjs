@@ -579,7 +579,7 @@ try {
           "--chrome-flags=--headless=new --no-sandbox --disable-dev-shm-usage",
           "--max-wait-for-load=60000",
           "--quiet",
-          ...(profileDir && strategy === "desktop" && route === "/" ? ["--save-assets"] : []),
+          ...(profileDir ? ["--save-assets"] : []),
         ],
         {
           cwd: projectRoot,
@@ -601,7 +601,7 @@ try {
 
       child.on("error", (error) => finish({ status: 1, error }));
       child.on("close", (code, signal) => {
-        if (profileDir && strategy === "desktop" && route === "/") collectProfileAssets(output);
+        if (profileDir) collectProfileAssets(output);
         finish({ status: code, signal });
       });
 

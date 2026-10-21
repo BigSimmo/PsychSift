@@ -4,7 +4,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { forwardRef, useCallback, useRef, type ComponentProps, type FocusEvent, type PointerEvent } from "react";
 
-type IntentPrefetchLinkProps = Omit<ComponentProps<typeof Link>, "prefetch" | "href"> & { href: string };
+type IntentPrefetchLinkProps = Omit<ComponentProps<typeof Link>, "prefetch" | "href"> & {
+  href: string;
+  /** `true` keeps Next's eager viewport prefetch for a deliberately pre-warmed destination. */
+  prefetch?: true;
+};
 
 /**
  * A `next/link` that prefetches on intent (pointer enter, touch, focus) instead of on
@@ -14,7 +18,7 @@ type IntentPrefetchLinkProps = Omit<ComponentProps<typeof Link>, "prefetch" | "h
  * Intent prefetch still warms the route before the click lands.
  */
 export const IntentPrefetchLink = forwardRef<HTMLAnchorElement, IntentPrefetchLinkProps>(function IntentPrefetchLink(
-  { href, onPointerEnter, onFocus, ...rest },
+  { href, prefetch, onPointerEnter, onFocus, ...rest },
   ref,
 ) {
   const router = useRouter();
@@ -28,7 +32,7 @@ export const IntentPrefetchLink = forwardRef<HTMLAnchorElement, IntentPrefetchLi
     <Link
       ref={ref}
       href={href}
-      prefetch={false}
+      prefetch={prefetch ? true : false}
       onPointerEnter={(event: PointerEvent<HTMLAnchorElement>) => {
         warm();
         onPointerEnter?.(event);

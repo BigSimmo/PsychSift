@@ -10,7 +10,7 @@ import {
   type RefObject,
 } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
+import { IntentPrefetchLink } from "@/components/ui/intent-prefetch-link";
 import {
   ArrowDown,
   ArrowUp,
@@ -576,7 +576,7 @@ export function SidebarModesEditorSheet({
                   key={mode.id}
                   className="flex min-w-0 items-center gap-1 rounded-lg border border-transparent p-1 transition-colors hover:border-[color:var(--border)] hover:bg-[color:var(--surface-subtle)]"
                 >
-                  <Link
+                  <IntentPrefetchLink
                     href={mode.href}
                     prefetch={mode.id === "tools" ? true : undefined}
                     onFocus={mode.id === "tools" ? onPrefetchApplications : undefined}
@@ -609,7 +609,7 @@ export function SidebarModesEditorSheet({
                         {mode.description}
                       </span>
                     </span>
-                  </Link>
+                  </IntentPrefetchLink>
                   {pinned ? (
                     <>
                       <button
@@ -1055,7 +1055,7 @@ export function ClinicalSidebarContent({
                   const Icon = item.icon;
                   const active = activeMode === item.id;
                   return (
-                    <Link
+                    <IntentPrefetchLink
                       key={item.id}
                       href={item.href}
                       prefetch={item.id === "tools" ? true : undefined}
@@ -1076,7 +1076,7 @@ export function ClinicalSidebarContent({
                         )}
                       />
                       <span className="min-w-0 flex-1 truncate text-left">{item.label}</span>
-                    </Link>
+                    </IntentPrefetchLink>
                   );
                 })}
                 {!pinnedModeItems.length && !showUrgentShortcuts ? (
@@ -1114,7 +1114,7 @@ export function ClinicalSidebarContent({
                     const Icon = item.icon;
                     const active = activeMode === item.id;
                     return (
-                      <Link
+                      <IntentPrefetchLink
                         key={item.id}
                         href={item.href}
                         onClick={onNavigate}
@@ -1129,7 +1129,7 @@ export function ClinicalSidebarContent({
                           )}
                         />
                         <span className="min-w-0 flex-1 truncate text-left">{item.label}</span>
-                      </Link>
+                      </IntentPrefetchLink>
                     );
                   })}
                 </nav>
@@ -1256,7 +1256,7 @@ function UrgentShortcuts({ rowItem, onNavigate }: { rowItem: string; onNavigate?
       {urgentShortcutLinks.map((item) => {
         const Icon = item.icon;
         return (
-          <Link
+          <IntentPrefetchLink
             key={item.id}
             href={item.href}
             onClick={() => onNavigate?.()}
@@ -1265,7 +1265,7 @@ function UrgentShortcuts({ rowItem, onNavigate }: { rowItem: string; onNavigate?
           >
             <Icon aria-hidden="true" className="h-4 w-4 shrink-0 text-[color:var(--text-muted)]" />
             <span className="min-w-0 flex-1 truncate text-left">{item.label}</span>
-          </Link>
+          </IntentPrefetchLink>
         );
       })}
     </>
@@ -1339,7 +1339,7 @@ function SidebarGroupedModes({
                 const Icon = item.icon;
                 const active = currentInGroups && activeMode === item.id;
                 return (
-                  <Link
+                  <IntentPrefetchLink
                     key={item.id}
                     href={item.href}
                     onClick={(event) => {
@@ -1358,7 +1358,7 @@ function SidebarGroupedModes({
                       )}
                     />
                     <span className="min-w-0 flex-1 truncate text-left">{item.label}</span>
-                  </Link>
+                  </IntentPrefetchLink>
                 );
               })}
             </nav>
@@ -1499,7 +1499,7 @@ function ClinicalCollapsedRail({
             const Icon = item.icon;
             const active = activeMode === item.id;
             return (
-              <Link
+              <IntentPrefetchLink
                 key={item.id}
                 href={item.href}
                 prefetch={item.id === "tools" ? true : undefined}
@@ -1512,13 +1512,13 @@ function ClinicalCollapsedRail({
                 aria-current={active ? "page" : undefined}
               >
                 <RailItemBody icon={Icon} label={railLabel(item.id, item.label)} />
-              </Link>
+              </IntentPrefetchLink>
             );
           })}
         </nav>
         {currentModeItem ? (
           <nav aria-label="Current mode" className="grid justify-items-center gap-1">
-            <Link
+            <IntentPrefetchLink
               href={currentModeItem.href}
               onClick={(event) => selectModeFromLinkClick(event, currentModeItem, onSelectMode)}
               className={railItem}
@@ -1528,7 +1528,7 @@ function ClinicalCollapsedRail({
               data-testid="collapsed-sidebar-current-mode"
             >
               <RailItemBody icon={currentModeItem.icon} label={railLabel(currentModeItem.id, currentModeItem.label)} />
-            </Link>
+            </IntentPrefetchLink>
           </nav>
         ) : null}
         <SidebarModesTrigger
