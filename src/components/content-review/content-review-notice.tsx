@@ -12,7 +12,12 @@ import {
 import { cn } from "@/lib/cn";
 
 const noSubscription = () => () => {};
-const todayIso = () => new Date().toISOString().slice(0, 10);
+// The reader's local calendar date, not UTC: in Perth the UTC date is still yesterday
+// until 8 am, which would hold a due date back for a morning.
+const todayIso = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+};
 const serverToday = () => null;
 
 /**

@@ -27,6 +27,16 @@ describe("ContentReviewNotice", () => {
     expect(notice.textContent).toBe("Review due by 10 May 2027.");
   });
 
+  it("uses the reader's local date, so a Perth morning is not held back a day by UTC", () => {
+    vi.stubEnv("TZ", "Australia/Perth");
+    vi.useFakeTimers({ toFake: ["Date"] });
+    // 07:30 on 10 May 2027 in Perth is still 9 May in UTC.
+    vi.setSystemTime(new Date("2027-05-09T23:30:00.000Z"));
+    render(<ContentReviewNotice review={{ kind: "medication", lastReviewedAt: "2026-05-10" }} />);
+    expect(screen.getByTestId("content-review-notice").getAttribute("data-review-state")).toBe("due");
+    vi.unstubAllEnvs();
+  });
+
   it("says nothing for a current record or a hidden state", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-10-21T02:00:00.000Z"));
