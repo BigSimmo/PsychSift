@@ -2989,6 +2989,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-18-merge-commits-only.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-09-25-site-catalogue-first-publication.md",
         "section": "decisions",
         "catalogued": true
@@ -5726,6 +5731,11 @@
       {
         "path": "docs/database-remediation-coordination.md",
         "section": "root",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-20-database-prs-merge-by-hand.md",
+        "section": "decisions",
         "catalogued": true
       },
       {

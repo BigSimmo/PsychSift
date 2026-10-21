@@ -203,6 +203,39 @@ describe("PDF extraction budgets", () => {
     expect(existsSync(temporaryRoot)).toBe(false);
   });
 
+  it("stops a stalled JavaScript fallback at the document deadline and cleans up (ING-B-05)", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "clinical-kb-pdf-fallback-deadline-test-"));
+    roots.push(root);
+    const fakeExtractor = path.join(root, "failing-extractor.py");
+    const rootRecord = path.join(root, "temporary-root.txt");
+    await writeFile(
+      fakeExtractor,
+      [
+        "import pathlib, sys",
+        "record = pathlib.Path(sys.argv[1]).read_text(encoding='utf-8')",
+        "pathlib.Path(record).write_text(str(pathlib.Path(sys.argv[2]).parent), encoding='utf-8')",
+        "print('synthetic ordinary extractor failure', file=sys.stderr)",
+        "raise SystemExit(1)",
+      ].join("\n"),
+      "utf8",
+    );
+    const getTextSpy = vi
+      .spyOn(PdfjsFallbackParser.prototype, "getText")
+      .mockImplementation(() => new Promise<never>(() => undefined));
+    const destroySpy = vi.spyOn(PdfjsFallbackParser.prototype, "destroy");
+
+    await expect(
+      extractPdf(Buffer.from(rootRecord, "utf8"), {
+        limits: { ...PDF_EXTRACTION_BUDGET, totalTimeoutMs: 2_000 },
+        scriptPathOverride: fakeExtractor,
+      }),
+    ).rejects.toMatchObject({ code: "PDF_EXTRACTION_DEADLINE_EXCEEDED" });
+
+    expect(getTextSpy).toHaveBeenCalledTimes(1);
+    expect(destroySpy).toHaveBeenCalled();
+    expect(existsSync(await readFile(rootRecord, "utf8"))).toBe(false);
+  }, 15_000);
+
   it("applies the same aggregate text budget in the JavaScript fallback", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "clinical-kb-pdf-fallback-test-"));
     roots.push(root);
