@@ -160,7 +160,7 @@ describe("parseRollbackArgs", () => {
 
   it("refuses --apply without the metadata-not-restored acknowledgement", () => {
     expect(() => parseRollbackArgs(["--document-id", DOC_A, "--apply"])).toThrow(
-      /documents\.metadata and document_index_quality.*#3732/,
+      /documents\.metadata and document_index_quality.*PR 3732/,
     );
     expect(() => parseRollbackArgs(["--document-id", DOC_A, "--apply", "--yes"])).toThrow(/Refusing --apply/);
   });

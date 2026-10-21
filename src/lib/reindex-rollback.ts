@@ -187,13 +187,13 @@ const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 /**
  * Temporary guard: a rollback repoints documents.metadata.index_generation_id but does not
  * restore the rest of documents.metadata or document_index_quality, which keep describing the
- * newer generation. Remove this guard once #3732 restores them.
+ * newer generation. Remove this guard once PR 3732 restores them.
  */
 export const ROLLBACK_APPLY_ACK_FLAG = "--i-understand-metadata-not-restored";
 
 export const ROLLBACK_APPLY_REFUSAL =
   `Refusing --apply: a rollback currently leaves documents.metadata and document_index_quality ` +
-  `describing the wrong (newer) generation until #3732 lands. Re-run with ${ROLLBACK_APPLY_ACK_FLAG} ` +
+  `describing the wrong (newer) generation until PR 3732 lands. Re-run with ${ROLLBACK_APPLY_ACK_FLAG} ` +
   `to apply anyway.`;
 
 export function parseRollbackArgs(argv: string[]) {

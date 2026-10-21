@@ -11,7 +11,7 @@
  *
  * --apply is refused (non-zero exit) without --i-understand-metadata-not-restored, because a
  * rollback currently leaves documents.metadata and document_index_quality describing the wrong
- * generation. #3732 removes this guard.
+ * generation. PR 3732 removes this guard.
  *
  * See docs/reindex-runbook.md, "Rolling back a reindex".
  */
