@@ -60,3 +60,37 @@ can continue to flag an honestly labelled local backport; source repair evidence
 does not make that scan green. Per-CVE package/version diagnostics also go to
 stderr in the CI log, while stdout retains the strict aggregate scan records.
 No suppression, forced dependency removal or release exception is added.
+
+## Pinned Debian sources
+
+`build_security_debs.py` runs `apt-get source <source>=<source_version>` and checks
+the `.dsc` hash, so each backport is pinned to one exact Debian source. Every
+`+psychsift1` package and its exact-match entries in
+`security/trivy-suppressions.json` must be retired when Debian ships the fix.
+
+| Source     | Pinned Debian version                | Built as                                        | CVEs patched here                                                                              | Drop when                                                                         |
+| ---------- | ------------------------------------ | ----------------------------------------------- | ---------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| util-linux | 2.41.5-0+deb13u1                     | 2.41.5-0+deb13u1+psychsift1                     | CVE-2026-76642, CVE-2026-78408, CVE-2026-78410                                                 | trixie-security ships a util-linux fixing all three                               |
+| tesseract  | 5.5.0-1                              | 5.5.0-1+psychsift1                              | CVE-2026-73066, CVE-2026-88047, CVE-2026-88048, CVE-2026-88051, CVE-2026-88052, CVE-2026-88053 | trixie(-security) ships a tesseract fixing all six                                |
+| ncurses    | 6.5+20250216-2                       | 6.5+20250216-2+psychsift1                       | CVE-2025-69720                                                                                 | trixie(-security) ships an ncurses fixing it                                      |
+| libxml2    | 2.12.7+dfsg+really2.9.14-2.1+deb13u3 | 2.12.7+dfsg+really2.9.14-2.1+deb13u3+psychsift1 | CVE-2026-74860, CVE-2026-86138, CVE-2026-86140, CVE-2026-86142, CVE-2026-86143, CVE-2026-86144 | trixie-security ships a libxml2 fixing all six (CVE-2026-6653 is still open here) |
+
+Version-ordering risk (checked with `dpkg --compare-versions`):
+
+- util-linux and libxml2 already carry `+deb13uN`; Debian's next `+deb13u(N+1)`
+  sorts **above** `+psychsift1`, so apt would replace our build (possibly
+  without our patches) if anything upgrades it.
+- tesseract and ncurses have no `+deb13uN` yet; Debian's first security update
+  (`5.5.0-1+deb13u1`, `6.5+20250216-2+deb13u1`) sorts **below** `+psychsift1`,
+  so apt will **not** pull Debian's security fix while our build is installed.
+- Once Debian supersedes a pinned version, deb.debian.org drops it and
+  `apt-get source <source>=<version>` fails, breaking the worker image build.
+  Fix forward by rebasing onto the new Debian version (or deleting the component
+  if Debian's release contains the fixes); do not switch to snapshot.debian.org
+  silently.
+
+Check for newer Debian versions before each worker release, for example
+`curl -s https://sources.debian.org/api/src/<source>/ | jq -r '.versions[] | .version + " " + (.suites|join(","))' | head`
+or `rmadison -s trixie,trixie-security <source>`. When a row is retired, delete
+the component JSON, patches, regression script, Dockerfile stage and matching
+suppressions together; the suppression tests fail if they drift apart.
