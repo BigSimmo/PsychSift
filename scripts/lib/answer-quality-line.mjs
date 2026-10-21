@@ -16,7 +16,8 @@ import { TREND_LABEL, TREND_ROW_MARKER, TREND_TITLE } from "./eval-canary-trend.
 const DEFAULT_RUNS = 8;
 const STALE_AFTER_DAYS = 8;
 const DAY_MS = 24 * 60 * 60 * 1000;
-const MAX_COMMENT_PAGES = 5;
+// 2,000 comments: the canary posts a few rows a day, so even the 365-day read fits.
+const MAX_COMMENT_PAGES = 20;
 
 /** The JSON row from one trend comment, or null when the comment is not a v1 trend row. */
 export function parseTrendRow(body) {

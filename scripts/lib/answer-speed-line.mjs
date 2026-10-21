@@ -23,7 +23,11 @@ export function summariseAnswerSpeed(health) {
   const daily = health?.sloDaily;
   const first = daily?.timeToFirstContent;
   if (!daily || !first || !Number.isFinite(first.samples)) return null;
-  if (first.samples === 0) return "Answer speed: no answers recorded in the last 24 hours.";
+  if (first.samples === 0) {
+    return daily.totalQueries > 0
+      ? "Answer speed: no timed answers in the last 24 hours."
+      : "Answer speed: no answers recorded in the last 24 hours.";
+  }
   const parts = [
     `Answer speed, last 24 hours: something on screen in ${seconds(first.p50Ms)} typically and ${seconds(first.p95Ms)} at the slow end, across ${first.samples} answers.`,
     `The source preview came first in ${first.previewSamples} of them.`,
@@ -41,10 +45,10 @@ export async function answerSpeedLine({ env = process.env, fetchImpl = fetch } =
   const base = resolveHealthUrl(env.PROD_HEALTH_URL);
   const secret = env.HEALTH_DEEP_PROBE_SECRET;
   if (!base || !secret) return null;
-  const url = new URL(base);
-  url.searchParams.set("deep", "1");
-  url.searchParams.set("answer_window", "daily");
   try {
+    const url = new URL(base);
+    url.searchParams.set("deep", "1");
+    url.searchParams.set("answer_window", "daily");
     const response = await fetchImpl(url.toString(), {
       headers: { "x-health-deep-token": secret },
       signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS),

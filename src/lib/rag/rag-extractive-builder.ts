@@ -47,7 +47,7 @@ import {
 } from "@/lib/evidence";
 import { hasBoundMonitoringCadence as deliveredMonitoringFrequencyPresent } from "@/lib/evidence-relevance";
 import {
-  medicationClassInText,
+  medicationClassesInText,
   medicationEntitiesInText,
   medicationEntityMatchesInText,
   medicationSafetyEntitiesInText,
@@ -197,7 +197,7 @@ export const dischargeRequirementBindingPatterns = [
 const policyAdministrationSentencePattern =
   /\b(?:compliance,?\s+monitoring\s+and\s+evaluation|compliance\s+(?:against|with)\s+this\s+(?:policy|procedure|guideline|protocol)|the\s+following\s+definitions\s+are\s+relevant|term\s+definition)\b/i;
 const glossaryEntrySentencePattern =
-  /^\s*(?:[A-Z][\w’'-]*\s+){1,4}An?\s+(?:evidence[-\s]based\s+)?(?:process|tool|method|framework|document)\s+(?:for|to|that|used)\b/;
+  /^\s*(?:[A-Z][\w’'-]*[\s:;,–—-]+){1,4}An?\s+(?:evidence[-\s]based\s+)?(?:process|tool|method|framework|document)\s+(?:for|to|that|used)\b/;
 
 export function factSupportsAnswerIntent(
   kind: ExtractedClinicalFactKind,
@@ -894,9 +894,13 @@ function extractClinicalFactsFromResults(
  */
 function answerSubject(query: string) {
   const intent = classifyAnswerIntent(query, classifyRagQuery(query).queryClass);
-  const medicineClass =
-    intent === "monitoring_schedule" && medicationEntitiesInText(query).length === 0 && medicationClassInText(query);
-  return medicineClass || queryEntitySubject(query, intent);
+  if (intent === "monitoring_schedule" && medicationEntitiesInText(query).length === 0) {
+    const classes = medicationClassesInText(query);
+    // "Antidepressants and antipsychotics": no single class may head every fact, so no subject.
+    if (classes.length > 1) return null;
+    if (classes.length === 1) return classes[0];
+  }
+  return queryEntitySubject(query, intent);
 }
 
 /** Sentence from fact. */
@@ -908,16 +912,18 @@ export function sentenceFromFact(
   const text = sanitizeAnswerText(cleanExtractivePointText(fact.text)).replace(/[.;,\s]+$/, "");
   if (!text) return "";
   const entity = answerSubject(query);
+  // Complete the bare fact first, then attach the entity once. Prefixing
+  // before completion let the "The guidance is that…" wrapper swallow the
+  // prefix and duplicate the entity ("For lithium, … that for lithium, …").
+  // The subject check reads the completed text, because completion can drop
+  // a heading ("Antipsychotics. Weight …") that was the only mention of it.
+  const completed = completeExtractiveSentence(text, query);
   const needsEntityPrefix =
     !options.suppressEntityPrefix &&
     entity &&
     fact.kind !== "bottom_line" &&
-    !queryTokenMatchesText(entity, text) &&
+    !queryTokenMatchesText(entity, completed) &&
     !/^(?:for|in|when|if|avoid|do not|must not|withhold|cease|stop|monitor|check|refer|arrange)\b/i.test(text);
-  // Complete the bare fact first, then attach the entity once. Prefixing
-  // before completion let the "The guidance is that…" wrapper swallow the
-  // prefix and duplicate the entity ("For lithium, … that for lithium, …").
-  const completed = completeExtractiveSentence(text, query);
   if (!completed || !needsEntityPrefix) return completed;
   if (!/^The guidance\b/.test(completed)) return `For ${entity}, ${lowerFirst(completed)}`;
   return completed.replace(/^The guidance/, `The guidance for ${entity}`);

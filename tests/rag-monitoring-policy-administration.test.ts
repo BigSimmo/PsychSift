@@ -5,8 +5,8 @@ import {
   completeExtractiveSentence,
   finalizeRagAnswerQuality,
 } from "../src/lib/rag/rag-extractive-answer";
-import { factSupportsAnswerIntent } from "../src/lib/rag/rag-extractive-builder";
-import { medicationClassInText } from "../src/lib/medication-entities";
+import { factSupportsAnswerIntent, sentenceFromFact } from "../src/lib/rag/rag-extractive-builder";
+import { medicationClassInText, medicationClassesInText } from "../src/lib/medication-entities";
 import type { SearchResult } from "../src/lib/types";
 
 // Eval Canary 39614340500 (21 Oct 2026). "What metabolic monitoring is required for
@@ -60,12 +60,41 @@ describe("metabolic monitoring answer (#J8SJQ9)", () => {
     expect(medicationClassInText(METABOLIC_QUERY)).toBe("antipsychotics");
     expect(medicationClassInText("Monitoring for mood stabilisers")).toBe("mood stabilisers");
     expect(medicationClassInText("What monitoring is required for clozapine?")).toBeNull();
+    expect(medicationClassesInText("Antidepressant and antipsychotic monitoring for antipsychotics")).toEqual([
+      "antidepressant",
+      "antipsychotic",
+    ]);
+  });
+
+  it("gives no class subject when the question names two classes", () => {
+    const fact = {
+      kind: "monitoring" as const,
+      text: "Weight should be monitored at every visit",
+      citationChunkIds: [],
+      priority: 1,
+    };
+    expect(
+      sentenceFromFact(fact, "What metabolic monitoring is required for antidepressants and antipsychotics?"),
+    ).not.toMatch(/^For anti/);
+  });
+
+  it("keeps the class subject when completion drops a heading that named it", () => {
+    const fact = {
+      kind: "monitoring" as const,
+      text: "Antipsychotics. Weight should be monitored at every visit",
+      citationChunkIds: [],
+      priority: 1,
+    };
+    expect(sentenceFromFact(fact, METABOLIC_QUERY)).toBe(
+      "For antipsychotics, weight should be monitored at every visit.",
+    );
   });
 
   it("does not admit a policy's own governance or glossary text as monitoring evidence", () => {
     for (const sentence of [
       "Compliance, monitoring and evaluation Compliance against this policy will be evaluated with audit.",
       "Metabolic Screen An evidence-based process for services to regularly review physical health status via assessment, monitoring and input.",
+      "Metabolic Screen: An evidence-based process for services to regularly review physical health status.",
     ]) {
       expect(factSupportsAnswerIntent("monitoring", sentence, METABOLIC_QUERY, "monitoring_schedule", true)).toBe(
         false,

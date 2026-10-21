@@ -78,6 +78,11 @@ describe("answer speed line", () => {
         sloDaily: { timeToFirstContent: { p50Ms: null, p95Ms: null, samples: 0, previewSamples: 0 } },
       }),
     ).toBe("Answer speed: no answers recorded in the last 24 hours.");
+    expect(
+      summariseAnswerSpeed({
+        sloDaily: { totalQueries: 4, timeToFirstContent: { p50Ms: null, p95Ms: null, samples: 0, previewSamples: 0 } },
+      }),
+    ).toBe("Answer speed: no timed answers in the last 24 hours.");
   });
 
   it("asks the deep probe for the daily window with the probe secret, and never throws", async () => {
@@ -101,5 +106,8 @@ describe("answer speed line", () => {
       }),
     ).toBeNull();
     expect(await answerSpeedLine({ env: {}, fetchImpl: refused })).toBeNull();
+    expect(
+      await answerSpeedLine({ env: { PROD_HEALTH_URL: "not a url", HEALTH_DEEP_PROBE_SECRET: "s" }, fetchImpl }),
+    ).toBeNull();
   });
 });
