@@ -99,6 +99,8 @@ describe("guidance difference note", () => {
           { ...ENTRY, id: "unsigned", signedOffBy: "agent" },
           { ...ENTRY, id: "same-document", national: { ...ENTRY.national, documentId: "doc-wa" } },
           { ...ENTRY, id: "no-chunks", waChunkIds: [] },
+          { ...ENTRY, id: "year-typo", national: { ...ENTRY.national, year: 20233 } },
+          { ...ENTRY, id: "long-title", national: { ...ENTRY.national, title: "x".repeat(301) } },
           ENTRY,
         ],
         now,

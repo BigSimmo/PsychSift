@@ -1,4 +1,5 @@
 import registry from "@/data/reviewed-guidance-differences.json";
+import { clientAnswerFieldsSchema } from "@/lib/answer-client-fields";
 import type { RagAnswer } from "@/lib/types";
 
 /**
@@ -64,6 +65,25 @@ function isReviewedDifference(value: unknown): value is ReviewedGuidanceDifferen
   );
 }
 
+function noteFor(entry: ReviewedGuidanceDifference): GuidanceDifferenceNote {
+  return {
+    differenceId: entry.id,
+    title: entry.national.title.trim(),
+    year: entry.national.year,
+    page: entry.national.page,
+    documentId: entry.national.documentId,
+    chunkId: entry.national.chunkId,
+  };
+}
+
+/**
+ * The client boundary rejects a whole answer whose `guidanceDifference` fails its schema, so an
+ * entry is only active when the note it would build already passes that same schema.
+ */
+function passesClientBoundary(entry: ReviewedGuidanceDifference) {
+  return clientAnswerFieldsSchema.safeParse({ guidanceDifference: noteFor(entry) }).success;
+}
+
 /** Entries that are well formed and not past their review-by date; malformed entries are dropped, not repaired. */
 export function activeReviewedGuidanceDifferences(
   entries: readonly unknown[] = registry.differences,
@@ -72,6 +92,7 @@ export function activeReviewedGuidanceDifferences(
   const today = now.toISOString().slice(0, 10);
   return entries
     .filter(isReviewedDifference)
+    .filter(passesClientBoundary)
     .filter((entry) => entry.reviewBy >= today)
     .sort((left, right) => left.id.localeCompare(right.id));
 }
@@ -93,13 +114,5 @@ export function guidanceDifferenceNoteForAnswer(
       .filter((chunkId) => servedChunkIds.has(chunkId)),
   );
   const match = differences.find((entry) => entry.waChunkIds.some((chunkId) => directChunkIds.has(chunkId)));
-  if (!match) return undefined;
-  return {
-    differenceId: match.id,
-    title: match.national.title.trim(),
-    year: match.national.year,
-    page: match.national.page,
-    documentId: match.national.documentId,
-    chunkId: match.national.chunkId,
-  };
+  return match ? noteFor(match) : undefined;
 }
