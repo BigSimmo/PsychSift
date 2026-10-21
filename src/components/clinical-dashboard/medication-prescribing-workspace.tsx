@@ -40,6 +40,7 @@ import {
 } from "@/components/clinical-dashboard/medication-considerations";
 import { usePatientProfile } from "@/components/clinical-dashboard/patient-profile-context";
 import { PatientDetailsDockAction } from "@/components/clinical-dashboard/patient-details-dock-action";
+import { PatientDetailsGate } from "@/components/clinical-dashboard/patient-details-gate";
 import { PatientProfilePanel } from "@/components/clinical-dashboard/patient-profile-panel";
 import {
   useMedicationCatalog,
@@ -936,7 +937,9 @@ function MedicationResults({
           is open, and the strip is exactly the list space the pill exists to
           give back. Above the phone breakpoint the pill does not render, so the
           strip is the only entry point and must stay. */}
-      <PatientProfilePanel variant="compact" className="medication-patient-strip max-sm:hidden" />
+      <PatientDetailsGate line className="max-sm:hidden">
+        <PatientProfilePanel variant="compact" className="medication-patient-strip max-sm:hidden" />
+      </PatientDetailsGate>
       {/* Renders only where the phone dock exposes its addon slot (the submitted
           prescribing view); a no-op elsewhere and above the phone breakpoint. */}
       <PatientDetailsDockAction />

@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 
+import { clinicalToolAccessForStatus } from "@/components/mode-kit/use-clinical-tool-access";
 import { TERMS_PROMPT_SAVE_ERROR, TERMS_VERSION } from "@/lib/front-door-content";
 import { useAuthSession } from "@/lib/supabase/client";
 import {
@@ -32,9 +33,16 @@ export type AskTermsGate = {
   signedIn: boolean;
   /** The question set aside by the last Not now, while its documents are on screen. */
   declinedQuery: string | null;
+  /**
+   * The question a signed-out visitor asked, while its documents are on screen. Answer
+   * needs sign-in from 1 November 2026, so the question is never sent; the caller shows
+   * the sign-in card with the documents instead.
+   */
+  signInQuery: string | null;
   accept: () => Promise<void>;
   notNow: () => void;
   clearDeclined: () => void;
+  clearSignIn: () => void;
 };
 
 /**
@@ -52,6 +60,11 @@ export type AskTermsGate = {
  * `isCurrent` turns false as soon as another Ask arrives, so a fallback still
  * waiting on something can stand down instead of switching the dashboard away
  * from the newer question.
+ *
+ * Before any of that, a signed-out visitor's question is never held for the Terms
+ * or sent: Answer needs sign-in (docs/decisions/2026-10-20-clinical-decision-tools-
+ * need-sign-in.md). It goes straight to `onNotNow`, so its documents still show, and
+ * `signInQuery` names it for the sign-in card.
  */
 export function useAskTermsGate({
   onNotNow,
@@ -66,6 +79,8 @@ export function useAskTermsGate({
   const owner = userId ?? DEVICE_OWNER;
   const [held, setHeld] = useState<HeldAsk | null>(null);
   const [declinedQuery, setDeclinedQuery] = useState<string | null>(null);
+  const [signInQuery, setSignInQuery] = useState<string | null>(null);
+  const signInRequired = clinicalToolAccessForStatus(status) === "sign-in-required";
   const [saving, setSaving] = useState(false);
   // Accepted in this page's lifetime. Covers blocked storage, where the local copy
   // cannot be read back, so an accept can never loop straight back into the step.
@@ -82,7 +97,15 @@ export function useAskTermsGate({
   }
 
   function guard<T>(query: string, send: () => T): T | undefined {
-    askSeqRef.current += 1;
+    const seq = (askSeqRef.current += 1);
+    if (signInRequired) {
+      const asked = query.trim();
+      setHeld(null);
+      setDeclinedQuery(null);
+      setSignInQuery(asked);
+      onNotNow(asked, () => askSeqRef.current === seq);
+      return undefined;
+    }
     if (isAccepted()) return send();
     // One step at a time; a second Ask while it is open changes nothing.
     if (!held) setHeld({ query: query.trim(), send });
@@ -130,8 +153,10 @@ export function useAskTermsGate({
     saving,
     signedIn,
     declinedQuery,
+    signInQuery,
     accept,
     notNow,
     clearDeclined: () => setDeclinedQuery(null),
+    clearSignIn: () => setSignInQuery(null),
   };
 }

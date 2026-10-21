@@ -28,6 +28,7 @@ import {
   medicationTabForSectionType,
   type MedicationTabId,
 } from "@/components/clinical-dashboard/medication-nav-header";
+import { PatientDetailsGate } from "@/components/clinical-dashboard/patient-details-gate";
 import { PatientProfilePanel } from "@/components/clinical-dashboard/patient-profile-panel";
 import { RecordReportProblem } from "@/components/clinical-dashboard/record-report-problem";
 import { mayRecordRecentSearches, useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
@@ -695,10 +696,12 @@ export function MedicationRecordPage({
         returnFocusRef={patientTriggerRef}
         testId="medication-patient-sheet"
       >
-        <div className="grid gap-3">
-          <PatientProfilePanel defaultOpen />
-          {record ? <MedicationConsiderations record={record} /> : null}
-        </div>
+        <PatientDetailsGate>
+          <div className="grid gap-3">
+            <PatientProfilePanel defaultOpen />
+            {record ? <MedicationConsiderations record={record} /> : null}
+          </div>
+        </PatientDetailsGate>
       </Sheet>
       <InformationPageShell testId={`medication-page-${slug}`} gap={false}>
         {/* Focus lands here after "Try again", whose button the loading state replaces. */}

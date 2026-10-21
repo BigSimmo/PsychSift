@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "934a024a-7b3c-4adb-a344-b8e21d780f4e",
+  "createdOn": "2026-10-20",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "issue",
+    "summary": "Answer limb (d)/(e) gaps: treatment-decision pull and reasoning the clinician cannot see, in protected answer code",
+    "detail": "Amended TGA exemption limbs (d) and (e) from 1 Nov 2026. Fix sits in protected RAG/answer files: needs owner's named yes, RAG impact line and before/after eval canary (about US$1-2). Canary blocked until OpenAI quota restored (audit 9 PB-01). Findings R-04, R-14.",
+    "source": "Regulatory readiness audit 2026-10-20 (/mnt/project-files/reviews/2026-10-20-regulatory-launch-readiness.md)",
+    "issueUlid": "01M5D6CDNWTXVBAZD4T3TKS75Z"
+  }
+}
