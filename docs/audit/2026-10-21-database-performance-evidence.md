@@ -45,6 +45,14 @@ Live sizes and settings on 2026-10-21: database 8,772 MB, `document_embedding_fi
 `shared_buffers` 256 MB, cumulative buffer hit rate 96.0 percent. `effective_cache_size` (768 MB) is a
 planner estimate, not allocated memory, so it says nothing about the operating-system page cache.
 
+Real-workload counters over the same 34 days (`pg_statio_user_tables`) point the same way. Share of
+page requests served from the Postgres buffer cache: `document_chunks` heap 75.5 percent and TOAST
+22.1 percent, `document_index_units` heap 75.2 percent and TOAST 54.8 percent,
+`document_embedding_fields` TOAST 34.8 percent, `document_memory_cards` heap 45.8 percent, against
+99.9 percent for `documents`. TOAST holds the embeddings and long text, so most search page requests
+go past the buffer cache. A miss here may still be served by the operating-system page cache, which
+these counters cannot see.
+
 What this proves: a search whose pages are not cached pays about 1 ms per page and can take seconds.
 What it does not prove: how often real searches hit that state, or that more memory would keep the
 pages cached. Two back-to-back runs are not a controlled cold and warm test. Before any resize, read
