@@ -134,6 +134,9 @@ describe("Roster Settings", () => {
     await screen.findByText("Example Hospital");
     const note = screen.getByTestId("roster-settings-delete-note");
     expect(note).toHaveTextContent("You get 30 seconds to change your mind.");
+    // What the team keeps and for how long, matching roster_retention_purge (#3163).
+    expect(note).toHaveTextContent("deletes it 12 months after that roster was published");
+    expect(note).toHaveTextContent("Past dates you couldn't work are deleted 30 days after the date.");
     expect(note).toHaveTextContent("Extra time you logged is not removed here, and phone alerts stop on every device.");
     expect(screen.getByTestId("roster-settings-who-sees")).toHaveTextContent("Roster does not ask for patient details");
   });

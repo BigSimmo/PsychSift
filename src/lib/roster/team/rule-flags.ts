@@ -7,11 +7,11 @@ import { assignmentStartDate } from "./team-view";
  * reason on tap. Leave and on-call never count as worked time. A flag sits on
  * the shift that first crosses a limit, not on the ones before it.
  *
- * The server does not recheck these rules when a manager approves a swap: it
- * rechecks only that nobody is double-booked and that the grades still fit.
- * For a swap waiting on the manager, these flags are the only check on the
- * team's rules, so `swapRuleFlags` also judges the roster as the swap would
- * leave it.
+ * When a manager approves a swap, the server runs `swapRuleFlags` on the
+ * roster as the swap would leave it and refuses the approval until the
+ * manager acknowledges any flag (`verifySwapApproveRules` in repository.ts).
+ * A swap that approves itself on accept is judged only by the SQL, which
+ * checks clashes and the minimum break, not these hours and run limits.
  */
 
 export type RuleFlag = {
