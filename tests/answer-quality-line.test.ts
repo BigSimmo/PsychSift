@@ -131,6 +131,16 @@ describe("fetchTrendRows and answerQualityLine", () => {
     expect(await answerQualityLine({ env: {}, fetchImpl: refused, now })).toBeNull();
   });
 
+  it("widens the read when the last month is empty, so a long silence is still reported", async () => {
+    const fetchImpl = async (url: string) => {
+      if (url.includes("/issues?")) return jsonResponse([{ number: 7, title: TREND_TITLE }]);
+      const since = decodeURIComponent(new URL(url).searchParams.get("since") ?? "");
+      return jsonResponse(since < "2026-01-01" ? [comment("2026-08-01T00:00:00Z")] : []);
+    };
+    const line = await answerQualityLine({ env: { GITHUB_TOKEN: "t", GITHUB_REPOSITORY: "o/r" }, fetchImpl, now });
+    expect(line).toContain("No test run for 82 days.");
+  });
+
   it("builds the line from the live issue shape", async () => {
     const fetchImpl = async (url: string) =>
       url.includes("/issues?")

@@ -151,7 +151,11 @@ export async function answerQualityLine({ env = process.env, fetchImpl = fetch, 
   const repository = env.GITHUB_REPOSITORY;
   if (!token || !/^[\w.-]+\/[\w.-]+$/.test(repository ?? "")) return null;
   try {
-    return summariseAnswerQuality(await fetchTrendRows({ token, repository, fetchImpl, now }), { now });
+    // An empty month is itself the finding: widen once so the line can still say how long the
+    // canary has been silent, rather than reading "Not measured yet" like a missing token.
+    let rows = await fetchTrendRows({ token, repository, fetchImpl, now });
+    if (rows.length === 0) rows = await fetchTrendRows({ token, repository, fetchImpl, now, lookbackDays: 365 });
+    return summariseAnswerQuality(rows, { now });
   } catch {
     return null;
   }
