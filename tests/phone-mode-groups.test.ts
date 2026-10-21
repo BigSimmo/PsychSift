@@ -56,7 +56,7 @@ describe("phone mode groups", () => {
     expect(groupOf("my-day")).toMatchObject({
       id: "work",
       showHeading: false,
-      modeIds: ["my-day", "on-call", "open-shifts", "roster", "teaching", "cme", "my-work"],
+      modeIds: ["my-day", "on-call", "roster", "teaching", "cme", "my-work"],
     });
     expect(groupOf("first-nations")?.id).toBe("psychiatry");
     // The Mental Health Act is its own door, led by Forms (owner decision, 21 Oct 2026).
@@ -80,7 +80,11 @@ describe("phone mode groups", () => {
       "library",
       "retired",
       "work",
+      "inside-roster",
     ]);
+    // Open shifts is a tab inside Roster (owner decision, 21 Oct 2026): still a Work mode, never drawn.
+    expect(groupOf("open-shifts")).toMatchObject({ id: "inside-roster", side: "work", drawn: false });
+    expect(phoneModeGroupsForSide("work").flatMap((group) => group.modeIds)).not.toContain("open-shifts");
     expect(modeMenuSideForMode("on-call")).toBe("work");
     expect(modeMenuSideForMode("answer")).toBe("clinical");
   });
@@ -91,7 +95,11 @@ describe("phone mode groups", () => {
       .filter((group) => group.drawn)
       .flatMap((group) => group.modeIds as readonly AppModeId[]);
     // Undrawn (retired) modes sort after everything drawn rather than vanishing.
-    expect(orderByPhoneModeGroups(registryOrder).map((mode) => mode.id)).toEqual([...drawnModeIds, "tools"]);
+    expect(orderByPhoneModeGroups(registryOrder).map((mode) => mode.id)).toEqual([
+      ...drawnModeIds,
+      "tools",
+      "open-shifts",
+    ]);
     // A session that hides some modes keeps the drawn order for the rest: Clinical, then Work.
     const someModes = (["cme", "psychiatry", "forms", "answer"] as const).map((id) => ({ id }));
     expect(orderByPhoneModeGroups(someModes).map((mode) => mode.id)).toEqual(["answer", "psychiatry", "forms", "cme"]);

@@ -119,7 +119,7 @@ export const phoneModeGroups = [
     modeIds: ["tools"],
   },
   // One list, and the switch already names it, so the menu draws no second heading.
-  // Same area order as the side menu and the rail: My Day, On Call, Open shifts, Roster, Teaching, CPD, Admin.
+  // Same area order as the side menu and the rail: My Day, On Call, Roster, Teaching, CPD, Admin.
   {
     id: "work",
     label: "Work",
@@ -127,7 +127,19 @@ export const phoneModeGroups = [
     side: "work",
     showHeading: false,
     drawn: true,
-    modeIds: ["my-day", "on-call", "open-shifts", "roster", "teaching", "cme", "my-work"],
+    modeIds: ["my-day", "on-call", "roster", "teaching", "cme", "my-work"],
+  },
+  // Open shifts is a tab inside Roster (owner decision, 21 Oct 2026), so the
+  // menu does not draw it. It stays a registered mode so every /open-shifts
+  // address keeps working.
+  {
+    id: "inside-roster",
+    label: "Inside Roster",
+    hint: "Open shifts",
+    side: "work",
+    showHeading: false,
+    drawn: false,
+    modeIds: ["open-shifts"],
   },
 ] as const satisfies ReadonlyArray<{
   id: string;
