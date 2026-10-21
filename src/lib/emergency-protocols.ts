@@ -33,8 +33,8 @@ export interface EmergencyClinicalProtocol {
   /**
    * The date (YYYY-MM-DD) the clinical owner signed this card off. Unset shows the card
    * as "Not yet reviewed" beside its source, which stays visible without expanding it.
-   * All six cards: the owner wrote "approve for each card please. I approve" in the Regulatory
-   * readiness audit project thread, 21 Oct 2026 05:18 UTC.
+   * All six cards signed off by the owner on 21 Oct 2026; see
+   * docs/decisions/2026-10-21-emergency-cards-owner-review.md.
    */
   readonly ownerReviewedOn?: string;
 }
