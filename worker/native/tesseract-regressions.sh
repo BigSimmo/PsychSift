@@ -6,7 +6,8 @@ set -eu
 gtest=unittest/third_party/googletest
 if [ ! -f "$gtest/googletest/src/gtest-all.cc" ]; then
   test -f /usr/src/googletest/googletest/src/gtest-all.cc
-  rmdir "$gtest"
+  # Debian 5.5.0 ships a non-empty stub (no sources) here; replace it.
+  rm -rf "$gtest"
   ln -s /usr/src/googletest "$gtest"
 fi
 
@@ -107,7 +108,7 @@ set -- -I. -Iinclude -Isrc -I/usr/include/leptonica
 for include_dir in src/*; do
   if [ -d "$include_dir" ]; then set -- "$@" "-I$include_dir"; fi
 done
-./libtool --mode=link "${CXX:-c++}" -std=c++17 -DHAVE_CONFIG_H "$@" \
+./libtool --tag=CXX --mode=link "${CXX:-c++}" -std=c++17 -DHAVE_CONFIG_H "$@" \
   "$regression_evidence_dir/convolve-reconfig-boundaries.cc" libtesseract.la \
   -o "$regression_evidence_dir/convolve-reconfig-boundaries"
 "$regression_evidence_dir/convolve-reconfig-boundaries"
@@ -115,7 +116,7 @@ done
 # Exercise the raw adapted-template ownership boundary in the actual built
 # library. Assertions must remain active even when package flags define NDEBUG.
 native_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
-./libtool --mode=link "${CXX:-c++}" -std=c++17 -DHAVE_CONFIG_H -UNDEBUG "$@" \
+./libtool --tag=CXX --mode=link "${CXX:-c++}" -std=c++17 -DHAVE_CONFIG_H -UNDEBUG "$@" \
   "$native_dir/tesseract-adapted-templates-test.cc" libtesseract.la \
   -o "$regression_evidence_dir/adapted-template-ownership"
 timeout 30 "$regression_evidence_dir/adapted-template-ownership"

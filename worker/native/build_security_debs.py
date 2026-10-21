@@ -109,7 +109,12 @@ def build(root, component, output):
     if data["extra_build_packages"]:
         run(["apt-get", "install", "-y", "--no-install-recommends", *data["extra_build_packages"]])
     environment = dict(os.environ, SOURCE_DATE_EPOCH=str(data["source_date_epoch"]),
-                       LC_ALL="C.UTF-8", QUILT_PATCHES="debian/patches")
+                       LC_ALL="C.UTF-8", QUILT_PATCHES="debian/patches",
+                       # The python:*-slim base puts its own interpreter in
+                       # /usr/local/bin first. Debian build tools such as
+                       # asciidoc (`#!/usr/bin/env python3`) must run under the
+                       # distro python3 that has their modules installed.
+                       PATH="/usr/sbin:/usr/bin:/sbin:/bin")
     # Never inherit test/doc-skipping or dependency-bypass build options.
     for key in ("DEB_BUILD_OPTIONS", "DEB_BUILD_PROFILES", "DPKG_BUILDPACKAGE_OPTIONS"):
         environment.pop(key, None)
