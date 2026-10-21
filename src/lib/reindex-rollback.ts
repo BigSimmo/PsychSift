@@ -26,11 +26,17 @@ export interface RollbackStore {
   committedGenerations(documentId: string): Promise<CommittedGeneration[]>;
   chunkCount(documentId: string, generationId: string): Promise<number>;
   chunkerVersions(documentId: string, generationId: string): Promise<string[]>;
+  /** True when the generation has both the metadata and the quality snapshot a rollback restores (#3732). */
+  hasGenerationSnapshot(documentId: string, generationId: string): Promise<boolean>;
   repoint(documentId: string, expectedGeneration: string, targetGeneration: string): Promise<RepointResult>;
 }
 
 export type RollbackRefusal =
-  "document_not_found_or_no_current_generation" | "no_previous_generation" | "previous_generation_has_no_chunks";
+  | "document_not_found_or_no_current_generation"
+  | "no_previous_generation"
+  | "previous_generation_has_no_chunks"
+  // The database function refuses these too; the dry run reports it so apply holds no surprise.
+  | "target_snapshot_missing";
 
 export type RollbackPlan = {
   documentId: string;
@@ -102,6 +108,9 @@ async function planDocument(store: RollbackStore, documentId: string): Promise<R
   plan.previousCommittedAt = previous.committedAt;
   plan.previousChunks = await store.chunkCount(documentId, previous.generationId);
   if (plan.previousChunks === 0) return { ...plan, refusal: "previous_generation_has_no_chunks" };
+  if (!(await store.hasGenerationSnapshot(documentId, previous.generationId))) {
+    return { ...plan, refusal: "target_snapshot_missing" };
+  }
   return plan;
 }
 
@@ -184,18 +193,6 @@ export function formatRollbackOutcome(outcome: RollbackOutcome, apply: boolean) 
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/**
- * Temporary guard: a rollback repoints documents.metadata.index_generation_id but does not
- * restore the rest of documents.metadata or document_index_quality, which keep describing the
- * newer generation. Remove this guard once PR 3732 restores them.
- */
-export const ROLLBACK_APPLY_ACK_FLAG = "--i-understand-metadata-not-restored";
-
-export const ROLLBACK_APPLY_REFUSAL =
-  `Refusing --apply: a rollback currently leaves documents.metadata and document_index_quality ` +
-  `describing the wrong (newer) generation until PR 3732 lands. Re-run with ${ROLLBACK_APPLY_ACK_FLAG} ` +
-  `to apply anyway.`;
-
 export function parseRollbackArgs(argv: string[]) {
   const valuesFor = (name: string) => {
     const values: string[] = [];
@@ -227,7 +224,6 @@ export function parseRollbackArgs(argv: string[]) {
       : { kind: "chunker-version", chunkerVersion: chunkerVersion as string };
   const [limitValue] = valuesFor("limit");
   const apply = argv.includes("--apply");
-  if (apply && !argv.includes(ROLLBACK_APPLY_ACK_FLAG)) throw new Error(ROLLBACK_APPLY_REFUSAL);
   return {
     scope,
     apply,

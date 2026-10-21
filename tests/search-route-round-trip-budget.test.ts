@@ -157,14 +157,14 @@ class RouteQuery implements PromiseLike<{ data: unknown[]; error: null }> {
 async function postSearchWithCountedClient(
   body: Record<string, unknown>,
   textSources: SearchResult[],
-  options: { limited?: boolean } = {},
+  options: { limited?: boolean; signedOut?: boolean } = {},
 ) {
   vi.resetModules();
   vi.stubEnv("RAG_PROVIDER_MODE", "offline");
   vi.stubEnv("RAG_SEARCH_CACHE_TTL_MS", "0");
 
   const rpc = vi.fn(async (name: string) => {
-    if (name === "consume_api_subject_rate_limit") {
+    if (name === "consume_api_subject_rate_limit" || name === "consume_api_rate_limit") {
       return { data: [rateLimitRow(options.limited ?? false)], error: null };
     }
     if (name === "match_document_chunks_text_v2" || name === "match_document_chunks_text") {
@@ -173,7 +173,16 @@ async function postSearchWithCountedClient(
     return { data: [], error: null };
   });
 
-  const { client, counter } = countSupabaseRoundTrips({ rpc, from: vi.fn(() => new RouteQuery()) });
+  // #3728: /api/search needs sign-in, so the representative request is a signed-in one. The
+  // session check is an Auth API call, not a database round trip, so it is not counted.
+  const auth = {
+    getUser: vi.fn(async (token?: string) =>
+      token === "synthetic-session-token"
+        ? { data: { user: { id: "11111111-1111-4111-8111-111111111111" } }, error: null }
+        : { data: { user: null }, error: { message: "Invalid token" } },
+    ),
+  };
+  const { client, counter } = countSupabaseRoundTrips({ rpc, from: vi.fn(() => new RouteQuery()), auth });
 
   vi.doMock("@/lib/env", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/env")>()),
@@ -190,7 +199,10 @@ async function postSearchWithCountedClient(
   const response = await POST(
     new Request("http://localhost/api/search", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(options.signedOut ? {} : { Authorization: "Bearer synthetic-session-token" }),
+      },
       body: JSON.stringify(body),
     }),
   );
@@ -223,7 +235,20 @@ afterEach(() => {
 });
 
 describe("Supabase round-trip budget on the /api/search route", () => {
-  it("pins the route-level round-trip count for an anonymous, filter-free clinical search", async () => {
+  // #3728: from 1 November 2026 /api/search needs sign-in. The anonymous request that the
+  // 19-trip budget below used to describe is now refused before any database traffic at all.
+  it("spends no round trip on a signed-out request, which is refused with 401", async () => {
+    const { response, counter } = await postSearchWithCountedClient(
+      { query: "What ANC threshold should withhold clozapine?" },
+      [source()],
+      { signedOut: true },
+    );
+
+    expect(response.status).toBe(401);
+    expect(counter.total(), `a signed-out request must cost nothing — ${JSON.stringify(counter.breakdown())}`).toBe(0);
+  });
+
+  it("pins the route-level round-trip count for a signed-in, filter-free clinical search", async () => {
     const { response, payload, counter } = await postSearchWithCountedClient(
       { query: "What ANC threshold should withhold clozapine?" },
       [source()],
@@ -241,38 +266,36 @@ describe("Supabase round-trip budget on the /api/search route", () => {
       counter.countOf("match_document_chunks_text_v2") + counter.countOf("match_document_table_facts_text_v2");
     expect(retrievalRpcCount, "the route must issue retrieval RPCs, or the budget proves nothing").toBeGreaterThan(0);
 
-    // PS-025 (2026-10-18): 15 -> 19 replaces two unstamped metadata RPCs
-    // with two batched sets of labels, stamped summaries and admitted parents.
-    // 19 total round trips:
-    //   1  consume_api_subject_rate_limit (route rate limiting)
-    //   1  rag_aliases (query classification)
+    // #3728 (2026-10-21): this pin used to describe the ANONYMOUS request (19 trips, PS-025).
+    // Signed-out search is now refused with no database traffic (pinned at 0 above), so the
+    // representative request is a signed-in one. That path was never pinned; its existing
+    // cost is 24, recorded here unchanged rather than tuned:
+    //   1  consume_api_rate_limit (owner rate limiting, in place of the anonymous subject limiter)
+    //   2  rag_aliases (query classification)
     //   3  match_document_chunks_text_v2 (primary probe + 2 lexical query variants)
     //   3  match_document_table_facts_text_v2 (primary probe + 2 lexical query variants)
-    //   2  document_labels (batched metadata enrichment)
-    //   2  document_summaries (generation-stamped summaries)
-    //   2  documents (indexed owner/public admission and committed generation)
-    //   1  document_index_quality (metadata enrichment index-status query)
-    //   2  document_images (visual enrichment; a later hydration of the same pages reuses the
-    //      rows an earlier read in the same search returned, 3 -> 2 on 2026-09-26)
-    //   1  rag_retrieval_logs (fire-and-forget diagnostic insertion)
-    //   1  rag_queries (fire-and-forget query logging)
+    //   3  match_documents_for_query_v2 (owner related-document matching)
+    //   2  document_labels, 2 document_summaries, 3 documents, 1 document_index_quality
+    //   2  document_images (visual enrichment)
+    //   1  rag_retrieval_logs, 1 rag_queries (fire-and-forget telemetry)
     //
     // Total pinned so a reviewer does not have to eyeball every PR: an added
     // change (in the preamble, retrieval core, enrichment, or telemetry write)
     // has to be deliberate. Update in the commit that moves it.
-    expect(counter.total(), `search route round trips changed — ${JSON.stringify(counter.breakdown())}`).toBe(19);
+    expect(counter.total(), `search route round trips changed — ${JSON.stringify(counter.breakdown())}`).toBe(24);
 
     // The shape matters as much as the total: a refactor that removed one probe
     // and added an unrelated query would keep 19 while changing the traffic.
     // See the file header for why the two text-RPC surfaces below are ×3, not ×1.
     expect(counter.breakdown(), "search route round-trip shape changed").toEqual({
-      "rpc:consume_api_subject_rate_limit": 1,
-      "from:rag_aliases": 1,
+      "rpc:consume_api_rate_limit": 1,
+      "from:rag_aliases": 2,
       "rpc:match_document_chunks_text_v2": 3,
       "rpc:match_document_table_facts_text_v2": 3,
+      "rpc:match_documents_for_query_v2": 3,
       "from:document_labels": 2,
       "from:document_summaries": 2,
-      "from:documents": 2,
+      "from:documents": 3,
       "from:document_index_quality": 1,
       "from:document_images": 2,
       "from:rag_retrieval_logs": 1,
@@ -296,6 +319,6 @@ describe("Supabase round-trip budget on the /api/search route", () => {
       counter.total(),
       `a rate-limited request must cost only the limiter check — ${JSON.stringify(counter.breakdown())}`,
     ).toBe(1);
-    expect(counter.countOf("consume_api_subject_rate_limit")).toBe(1);
+    expect(counter.countOf("consume_api_rate_limit")).toBe(1);
   });
 });

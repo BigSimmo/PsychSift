@@ -205,12 +205,12 @@ export const CLINICAL_SIGN_IN_COPY = {
   answer: {
     title: "Sign in to get an answer",
     body: "Answer is for health professionals. Sign in with your PsychSift account to ask.",
-    stillOpen: "Matching documents from the library still show below.",
+    stillOpen: "Library search needs sign-in too.",
   },
   patientDetails: {
     title: "Sign in to add patient details",
     body: "Tailored considerations and interaction checks are for health professionals.",
-    stillOpen: "The full medicine record stays open to read.",
+    stillOpen: "Medicine records need sign-in too.",
   },
   therapyRanking: {
     title: "Sign in to rank therapies",
@@ -221,6 +221,18 @@ export const CLINICAL_SIGN_IN_COPY = {
     title: "Sign in to score",
     body: "Entering answers and getting a score is for health professionals.",
     stillOpen: "The questions, scoring rules, bands and source stay open to read.",
+  },
+  medicines: {
+    title: "Sign in to read medicines",
+    body: "Medicine records are for health professionals.",
+  },
+  library: {
+    title: "Sign in to search the library",
+    body: "Library search is for health professionals.",
+  },
+  differentials: {
+    title: "Sign in to use differentials",
+    body: "Differential diagnoses are for health professionals.",
   },
   original: {
     title: "Sign in to open the original",

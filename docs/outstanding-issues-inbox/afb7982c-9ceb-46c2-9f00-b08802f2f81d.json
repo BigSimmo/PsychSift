@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "afb7982c-9ceb-46c2-9f00-b08802f2f81d",
+  "createdOn": "2026-10-21",
+  "action": "update",
+  "payload": {
+    "id": "#TNYENC",
+    "detail": "LIVE CHECK 2026-10-21 (docs/audit/2026-10-21-database-performance-evidence.md): one release (the freeze) and zero publications since 2026-08-24, so no record lacks a baseline yet. Conditions unchanged: do #81A3YJ first and ship the forward migration only when #HTZPQ8 is about to publish post-freeze records.",
+    "baseRowFingerprint": "c67feb7fb4134217273cd60b0d4edc8a1fda0f7f17c8fb16127129541486d48f",
+    "targetUlid": "01M2NAGY09TNYENCKDDYX9F268"
+  }
+}

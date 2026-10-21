@@ -1,5 +1,8 @@
 "use client";
 
+import { ClinicalSignInNotice } from "@/components/mode-kit/clinical-sign-in-notice";
+import { useClinicalToolAccess } from "@/components/mode-kit/use-clinical-tool-access";
+import { CLINICAL_SIGN_IN_COPY } from "@/lib/front-door-content";
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -645,11 +648,13 @@ export function MasterDocumentSearch() {
     [query, searchParamString],
   );
   const { authorizationHeader } = useAuthSession();
+  const clinicalAccess = useClinicalToolAccess();
   const [type, setType] = useState<"all" | EvidenceType>("all");
   const [rows, setRows] = useState<DocumentSearchRow[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
 
   useEffect(() => {
+    if (clinicalAccess !== "allowed") return undefined;
     const controller = new AbortController();
     // Defer all state writes out of the synchronous effect body (React would otherwise
     // cascade an extra render); a 0ms timer also coalesces rapid query changes.
@@ -688,12 +693,16 @@ export function MasterDocumentSearch() {
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [query, requestBody, authorizationHeader]);
+  }, [query, requestBody, authorizationHeader, clinicalAccess]);
 
   const filtered = useMemo(() => rows.filter((row) => rowMatchesEvidenceType(row, type)), [rows, type]);
   const loading = status === "loading";
   const errored = status === "error";
 
+  // #3728: /api/search refuses signed-out requests; show the sign-in card instead.
+  if (clinicalAccess === "sign-in-required") {
+    return <ClinicalSignInNotice copy={CLINICAL_SIGN_IN_COPY.library} testId="library-sign-in" />;
+  }
   return (
     <DocumentShell>
       <div className="min-h-[calc(100dvh-4rem)]">

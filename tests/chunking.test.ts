@@ -945,3 +945,35 @@ describe("table context, footnotes, referrals and oversized rows (chunker 1.3.1)
     expect(content.match(/Lifeline 13 11 14 www\.lifeline\.org\.au/g)).toHaveLength(2);
   });
 });
+
+describe("table row groups under chunker 1.3.1 (PR #3716 review follow-ups)", () => {
+  const header = ["| Drug | Monitoring |", "| --- | --- |"];
+
+  it("does not treat a row with one filled cell as a merged band that forces one chunk", () => {
+    const rows = Array.from({ length: 12 }, (_, i) => `| Agent ${i} | Check level ${i} at review |`);
+    rows.splice(4, 0, "| Lithium | |");
+    const table = [...header, ...rows].join("\n");
+    const chunks = chunkTextWithOverlap(table, 200, 0);
+    expect(chunks.length).toBeGreaterThan(1);
+    for (const chunk of chunks) {
+      expect(chunk.startsWith(header.join("\n"))).toBe(true);
+      expect(chunk.length).toBeLessThanOrEqual(200);
+    }
+    expect(chunks.some((chunk) => chunk.includes("| Lithium | |"))).toBe(true);
+  });
+
+  it("splits a single oversized row instead of refusing or keeping the whole table", () => {
+    const longRow = `| Agent L | ${"review the plasma level and renal function ".repeat(12).trim()} |`;
+    const rows = ["| Agent A | Short |", longRow, "| Agent B | Short |"];
+    const table = [...header, ...rows].join("\n");
+    const chunks = chunkTextWithOverlap(table, 240, 0);
+    expect(chunks.length).toBeGreaterThan(2);
+    for (const chunk of chunks) {
+      expect(chunk.startsWith(header.join("\n"))).toBe(true);
+      expect(chunk.length).toBeLessThanOrEqual(240);
+    }
+    const joined = chunks.join("\n");
+    expect(joined).toContain("| Agent A | Short |");
+    expect(joined).toContain("| Agent B | Short |");
+  });
+});

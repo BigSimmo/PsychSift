@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "id": "80b7674b-a3ee-42f9-9d2d-a937f65e168a",
+  "createdOn": "2026-10-21",
+  "action": "cancel",
+  "payload": {
+    "requestId": "d5159483-c5d8-404a-8191-5d4c163f97c6",
+    "reason": "Completion was queued before final independent-font acceptance settled. Courier subtest failed; preserve the strict case and diagnose before queuing any replacement completion."
+  }
+}
