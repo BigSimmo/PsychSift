@@ -27,6 +27,7 @@ import { clinicalAskRequestPatientDetail } from "@/lib/clinical-question-patient
 import { PublicApiError, jsonError } from "@/lib/http";
 import { setAgentConversationId } from "@/lib/observability/agent-monitoring";
 import { resolveRetrievalAccessScope } from "@/lib/owner-scope";
+import { requireSignedInClinicalAccess } from "@/lib/clinical-access";
 import { publicAccessContext } from "@/lib/public-api-access";
 import { buildServerTimingHeader, preambleServerTimingEntries } from "@/lib/server-timing";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -177,6 +178,7 @@ export async function POST(request: Request) {
     const supabase = createAdminClient();
     const authStarted = Date.now();
     const access = await publicAccessContext(request, supabase);
+    requireSignedInClinicalAccess(access);
     const authMs = Date.now() - authStarted;
     const rateStarted = Date.now();
     const rateLimit = await consumeSubjectApiRateLimit({

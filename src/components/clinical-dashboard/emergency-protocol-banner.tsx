@@ -110,6 +110,24 @@ export function EmergencyProtocolBanner({
         {protocol.warningNotice}
       </p>
 
+      {/* Where the card comes from, visible without expanding it (regulatory audit
+          2026-10-20, R-12): the clinician can check the basis of a firm first-line step. */}
+      <div
+        className="mt-2 border-l-[3px] border-[color:var(--border)] pl-2 text-2xs leading-relaxed text-[color:var(--text-muted)]"
+        data-testid="emergency-protocol-source"
+      >
+        <p>
+          <span className="font-semibold">Based on: </span>
+          {protocol.evidenceSource}{" "}
+          {protocol.ownerReviewedOn ? null : (
+            <span className="whitespace-nowrap rounded bg-[color:var(--warning-soft)] px-1.5 py-0.25 font-bold text-[color:var(--warning)]">
+              Not yet reviewed
+            </span>
+          )}
+        </p>
+        <p>Fixed text, not written by AI. Follow local resuscitation and ICU protocols.</p>
+      </div>
+
       {/* Accordion Toggle for Detailed Management */}
       <div className="mt-3 border-t border-[color:var(--border)] pt-2">
         <button
@@ -215,13 +233,9 @@ export function EmergencyProtocolBanner({
               </ul>
             </div>
 
-            {/* Caveat & Evidence Source Footer */}
+            {/* Caveat footer; the source sits above, outside the fold. */}
             <div className="border-t border-[color:var(--border)] pt-2 text-2xs text-[color:var(--text-muted)] space-y-0.5">
               <p className="font-medium italic">{protocol.caveat}</p>
-              <p>
-                <span className="font-semibold">Source: </span>
-                {protocol.evidenceSource}
-              </p>
             </div>
           </div>
         )}

@@ -667,7 +667,7 @@ export async function getCachedAnswer(
   const key = scopedAnswerCacheKey(args);
   const cached = answerCache.get(key);
   if (!cached) return null;
-  if (cached.expiresAt <= Date.now()) {
+  if (cached.expiresAt <= Date.now() || isUngatedUngroundedGeneratedAnswer(cached.answer)) {
     answerCache.delete(key);
     return null;
   }
@@ -1164,6 +1164,25 @@ function isGenerationFallbackAnswer(answer: Pick<RagAnswer, "routingReason" | "d
 }
 
 /**
+ * Audit RAG-B-01. A generated (fast or strong) answer stored as ungrounded but with a confidence
+ * above "unsupported" skipped claim enforcement and the final quality gate when it was built.
+ * `parseAnswerJson` no longer produces that shape, but a row written before the fix would be
+ * replayed by a cache hit, which re-runs only claim support. Treat it as a miss so the query is
+ * answered again through the current gates.
+ */
+function isUngatedUngroundedGeneratedAnswer(answer: Pick<RagAnswer, "grounded" | "confidence" | "routingMode">) {
+  return (
+    answer.grounded === false &&
+    answer.confidence !== "unsupported" &&
+    (answer.routingMode === "fast" || answer.routingMode === "strong")
+  );
+}
+
+function isUnservableCachedAnswer(answer: RagAnswer) {
+  return isGenerationFallbackAnswer(answer) || isUngatedUngroundedGeneratedAnswer(answer);
+}
+
+/**
  * A fresh, bounded response derived from every committed document in this exact
  * access/document scope. No TTL memo or latest-row shortcut can mask revocation.
  * `forceRefresh` remains accepted for existing callers; every read is authoritative.
@@ -1369,7 +1388,7 @@ export async function getSharedCachedAnswer(
       cloneAnswer(payload.answer),
       storedAnswerQueryPlanDiagnostics(payload.queryPlanDiagnostics),
     );
-    if (isGenerationFallbackAnswer(answer)) {
+    if (isUnservableCachedAnswer(answer)) {
       await deleteSharedCachedAnswerRow({ ...args, accessScope: retrievalAccessScopeForArgs(args) }, indexingVersion);
       return null;
     }
