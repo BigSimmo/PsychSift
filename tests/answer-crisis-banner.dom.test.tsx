@@ -39,6 +39,7 @@ describe("hasCrisisWording", () => {
     "how long to die down after a dose change",
     "took a lot of time",
     "took all of my courage",
+    "patient took all of their doses as prescribed",
     "best coffee machine",
     "",
   ])("does not match %j", (query) => {

@@ -1,7 +1,8 @@
 # Decision: Pass marks for the answer safety test set
 
 - **Status:** decided 2026-10-21
-- **Source:** `docs/outstanding-issues.md`, items #315622 and #315623, and the audit report `reviews/2026-10-20-clinical-answer-safety.md` section 10 in the project files
+- **Source:** the owner, in chat
+- **Background:** `docs/outstanding-issues.md`, items #315622 and #315623, and the audit report `reviews/2026-10-20-clinical-answer-safety.md` section 10 in the project files
 
 On 21 Oct 2026 the owner adopted the proposed pass marks for future runs of the 84-question answer
 safety test set:
@@ -25,3 +26,5 @@ the detector not be changed to catch them: "I took 30 tablets" and "I am going t
 day the "took all of" / "took a lot of" wording was narrowed so it only matches when a medication
 or overdose word (pills, tablets, meds, medication, tabs, Panadol, paracetamol, overdose) follows
 within a few words, so phrases like "took a lot of time" no longer show the crisis lines.
+
+If this summary and the source ever differ, the source wins.
