@@ -20,6 +20,7 @@ vi.mock("@/components/clinical-dashboard/account-setup-dialog", () => ({
 import { PatientDetailsGate } from "@/components/clinical-dashboard/patient-details-gate";
 import { PatientProfileProvider, usePatientProfile } from "@/components/clinical-dashboard/patient-profile-context";
 import { CalculatorItems } from "@/components/calculators/calculator-ui";
+import { CalculatorSheet } from "@/components/calculators/calculator-sheet";
 import { calculators } from "@/components/calculators/calculator-fixtures";
 import { DocumentImage } from "@/components/document-viewer/source-panels";
 import type { ImageRow } from "@/components/document-viewer/types";
@@ -112,6 +113,14 @@ describe("Questionnaire scoring", () => {
     expect(screen.getByText(calc.items[0]!.text)).toBeInTheDocument();
     // The only button is Sign in.
     expect(screen.getAllByRole("button").map((button) => button.textContent)).toEqual(["Sign in"]);
+  });
+
+  it("clears earlier answers once signed out, so no previous score stays on screen", () => {
+    Element.prototype.scrollTo = vi.fn();
+    const onAnswersChange = vi.fn();
+    const answers = { [calc.items[0]!.id]: 1 } as never;
+    render(<CalculatorSheet calc={calc} answers={answers} onAnswersChange={onAnswersChange} onClose={vi.fn()} />);
+    expect(onAnswersChange).toHaveBeenCalledWith({});
   });
 
   it("lets a signed-in user answer", () => {
