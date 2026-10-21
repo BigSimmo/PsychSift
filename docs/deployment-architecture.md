@@ -117,7 +117,8 @@ commit status as proof of a deploy.** Compare `deploymentCommitSha` from `/api/h
 instead. The paragraph above about `source.checkSuites: false` predates this. Separately, from
 about 07:17Z the same day, Railway created no deployment for any commit, including fully green
 ones (`9436f30d7`, `8657a081e`). That cause is on the Railway side and was not readable from
-GitHub.
+GitHub. The owner then chose to turn Wait for CI off until a narrower gate is ready
+(`docs/decisions/2026-09-25-railway-waits-for-ci-once-safe.md`, update 2026-10-21).
 
 Railway's documented behaviour (read 2026-10-09): it reads each workflow run's
 conclusion, not single jobs. A failed run skips the deploy at once, a skipped
