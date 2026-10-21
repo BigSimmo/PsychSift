@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "3a784e6b-ff5e-42be-897f-2492a3754aea",
+  "createdOn": "2026-10-21",
+  "action": "update",
+  "payload": {
+    "id": "#7D8WZ2",
+    "detail": "UPDATE 2026-10-21: tests/hostile-document-real-extractor.test.ts now runs generated hostile PDFs (password-protected, truncated, not-a-PDF, blank page, prompt-injected with forged evidence fences and hidden white text) through upload admission, the REAL Python reader, the real chunker, the evidence ranker and the fenced answer source block, offline (runs in the CI coverage job, which installs PyMuPDF). Still open: the live leg (Storage upload, worker ingestion with embeddings, vector retrieval, generated answer) is not run anywhere. Next action: run it on staging once the staging rebuild (#3113) is done and the owner lifts the re-index freeze, with the owner's spend approval for embeddings and answers. PRIOR DETAIL: Seven-class helper coverage exists in tests/hostile-document-ingestion-matrix.test.ts, but it uses an extraction mock and fabricated search results, so no uploaded hostile document is checked against real ingestion, retrieval and answer paths. Close only when each class runs end to end.",
+    "baseRowFingerprint": "349c4edbdc550bbad485d7460ac918adc67543c76f5977feaf68cc2cd38c49a7",
+    "targetUlid": "01M51JV9GC7D8WZ29KQKRSF5HP"
+  }
+}

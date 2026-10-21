@@ -248,7 +248,11 @@ describe("page-local native table linkage through buildChunks", () => {
   });
 
   it("does not associate a complete native descriptor with chunks containing only table fragments", async () => {
-    const chunks = await build([page(tableText)], "page", "120");
+    // Fit one intact header-bound row, while still requiring separate row groups.
+    const lines = tableText.split("\n");
+    const rowBudget = lines.slice(0, 2).join("\n").length + 1 + Math.max(...lines.slice(2).map((row) => row.length));
+    expect(rowBudget).toBeLessThan(tableText.length);
+    const chunks = await build([page(tableText)], "page", String(rowBudget));
     expect(chunks.length).toBeGreaterThan(1);
     for (const chunk of chunks) {
       const sourceText = chunk.content.replace(/\[\[IMAGE_DATA_START\]\][\s\S]*?\[\[IMAGE_DATA_END\]\]/g, "").trim();

@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -13,7 +13,65 @@ import {
   trivyDbNeedsRefresh,
   trivyDockerMounts,
   validateTrivyReportJson,
+  trivyFindingDetails,
+  applyTrivySuppressions,
+  parseTrivySuppressions,
 } from "../scripts/trivy-image-scan.mjs";
+
+describe("bounded actionable Trivy finding logs", () => {
+  it("retains high/critical package and fixed-version metadata without affecting the strict summary", () => {
+    const report = {
+      Results: [
+        {
+          Type: "debian",
+          Vulnerabilities: [
+            {
+              Severity: "HIGH",
+              PkgName: "library",
+              InstalledVersion: "1.0",
+              FixedVersion: "1.1",
+              VulnerabilityID: "CVE-2026-1234",
+            },
+            { Severity: "LOW", PkgName: "unrelated" },
+            { Severity: "CRITICAL", PkgName: "other", VulnerabilityID: "CVE-2026-5678" },
+          ],
+        },
+      ],
+    };
+    const details = trivyFindingDetails(report);
+    expect(details.total).toBe(2);
+    expect(details.truncated).toBe(false);
+    expect(details.rows[0]).toMatchObject({ package: "library", installed: "1.0", fixed: "1.1", cve: "CVE-2026-1234" });
+    expect(details.rows[1].severity).toBe("CRITICAL");
+    expect(validateTrivyReportJson(JSON.stringify({ SchemaVersion: 2, ...report }))).toMatchObject({
+      counts: { HIGH: 1, CRITICAL: 1, LOW: 1 },
+    });
+  });
+
+  it("bounds diagnostics, neutralizes control characters and accepts optional/malformed inventory sections", () => {
+    const details = trivyFindingDetails(
+      {
+        Results: [
+          {
+            Vulnerabilities: [
+              { Severity: "HIGH", PkgName: "\n::error::injected\u001b" },
+              { Severity: "HIGH", PkgName: "second" },
+            ],
+          },
+        ],
+      },
+      1,
+    );
+    expect(details.total).toBe(2);
+    expect(details.truncated).toBe(true);
+    expect(details.rows).toHaveLength(1);
+    expect(details.rows[0].package).not.toMatch(/[\n\r\u001b]/);
+    for (const report of [{}, { Results: {} }, { Results: [null, { Vulnerabilities: {} }] }]) {
+      expect(trivyFindingDetails(report).rows).toEqual([]);
+    }
+    expect(() => trivyFindingDetails({}, 513)).toThrow(RangeError);
+  });
+});
 
 describe("Trivy retained scanner evidence", () => {
   it.skipIf(process.platform === "win32").each(["local", "docker"])(
@@ -102,6 +160,8 @@ else { fs.writeFileSync(process.env.TRIVY_TEST_ARGS, JSON.stringify(args)); proc
         expect(result.error).toBeUndefined();
         expect(result.status, result.stderr).toBe(0);
         expect(result.stdout).toContain("STATUS=ok HIGH=1 CRITICAL=0");
+        expect(result.stdout).not.toContain("Trivy finding:");
+        expect(result.stderr).toContain('"cve":"CVE-2026-0001"');
         expect(JSON.parse(readFileSync(output, "utf8"))).toEqual(raw);
         expect(JSON.parse(readFileSync(invocation, "utf8"))).toContain("--list-all-pkgs");
         expect(evaluateTrivySummaryText(result.stdout, ["fixture:ci"])).toMatchObject({
@@ -407,6 +467,105 @@ describe("Trivy cache directory freshness", () => {
   it("reuses a complete, current cache", () => {
     expect(cachedTrivyDbNeedsRefresh(cacheWith({ dbFile: true, metadata: current }), "db", "trivy.db", now)).toBe(
       false,
+    );
+  });
+});
+
+describe("trivy suppressions", () => {
+  const suppressionsPath = fileURLToPath(new URL("../scripts/trivy-suppressions.json", import.meta.url));
+  const suppressions = parseTrivySuppressions(readFileSync(suppressionsPath, "utf8"));
+  const componentsDir = fileURLToPath(new URL("../worker/native/components/", import.meta.url));
+  const components = readdirSync(componentsDir)
+    .filter((name) => name.endsWith(".json"))
+    .map((name) => JSON.parse(readFileSync(join(componentsDir, name), "utf8")));
+
+  it("only suppresses exact image/package/version/CVE matches", () => {
+    const vuln = (PkgName: string, InstalledVersion: string, VulnerabilityID: string) => ({
+      PkgName,
+      InstalledVersion,
+      VulnerabilityID,
+      Severity: "HIGH",
+    });
+    const report = {
+      SchemaVersion: 2,
+      Results: [
+        {
+          Type: "debian",
+          Vulnerabilities: [
+            vuln("pkg", "1.0+psychsift1", "CVE-2026-1"),
+            vuln("pkg", "1.0+psychsift2", "CVE-2026-1"),
+            vuln("pkg", "1.0+psychsift1", "CVE-2026-2"),
+          ],
+        },
+      ],
+    };
+    const rows = [
+      { image: "img:ci", package: "pkg", installed: "1.0+psychsift1", cve: "CVE-2026-1" },
+      { image: "other:ci", package: "pkg", installed: "1.0+psychsift1", cve: "CVE-2026-2" },
+    ];
+    const applied = applyTrivySuppressions(report, "img:ci", rows);
+    expect(applied.suppressed.map((v) => v.VulnerabilityID)).toEqual(["CVE-2026-1"]);
+    expect(validateTrivyReportJson(JSON.stringify(applied.report)).counts?.HIGH).toBe(2);
+    expect(report.Results[0].Vulnerabilities).toHaveLength(3);
+  });
+
+  it("rejects suppressions without justification or removal condition", () => {
+    expect(() =>
+      parseTrivySuppressions(
+        JSON.stringify({
+          schema_version: 1,
+          suppressions: [{ image: "a", package: "b", installed: "c", cve: "CVE-1-1", justification: "x" }],
+        }),
+      ),
+    ).toThrow(/remove_when/);
+  });
+
+  it("ties every +psychsift1 suppression to a current backport build and a patched CVE", () => {
+    for (const row of suppressions.filter((s) => s.installed.includes("+psychsift"))) {
+      const component = components.find((c) => c.runtime_packages.includes(row.package));
+      expect(component, row.package).toBeDefined();
+      expect(row.installed.endsWith(component.backport_version), `${row.package} ${row.installed}`).toBe(true);
+      const patched = JSON.stringify(component.patches) + component.change_summary;
+      expect(patched, `${row.cve} for ${row.package}`).toContain(row.cve);
+    }
+  });
+
+  it("never suppresses CVEs the backports explicitly leave unresolved or unpatched", () => {
+    for (const cve of ["CVE-2026-6653", "CVE-2026-86139", "CVE-2026-78409"]) {
+      expect(suppressions.some((s) => s.cve === cve)).toBe(false);
+    }
+  });
+
+  it("limits Pillow suppressions to the Docling-locked version", () => {
+    const lock = readFileSync(fileURLToPath(new URL("../eval/docling/requirements.txt", import.meta.url)), "utf8");
+    const locked = /^pillow==(\S+)/m.exec(lock)?.[1];
+    for (const row of suppressions.filter((s) => s.package === "pillow")) {
+      expect(row.installed).toBe(locked);
+    }
+  });
+});
+
+describe("worker native pinned-source tracking", () => {
+  it("lists every component's pinned and built version in worker/native/README.md", () => {
+    const readme = readFileSync(fileURLToPath(new URL("../worker/native/README.md", import.meta.url)), "utf8");
+    const dir = fileURLToPath(new URL("../worker/native/components/", import.meta.url));
+    for (const name of readdirSync(dir).filter((n) => n.endsWith(".json"))) {
+      const c = JSON.parse(readFileSync(join(dir, name), "utf8"));
+      const esc = (v: string) => v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const row = new RegExp(
+        `^\\|\\s*${esc(c.source)}\\s*\\|\\s*${esc(c.source_version)}\\s*\\|\\s*${esc(c.backport_version)}\\s*\\|`,
+        "m",
+      );
+      expect(readme, c.source).toMatch(row);
+    }
+  });
+});
+
+describe("worker native source availability", () => {
+  it("resolves pinned Debian sources from an immutable snapshot as well as the live mirror", () => {
+    const dockerfile = readFileSync(fileURLToPath(new URL("../Dockerfile.worker", import.meta.url)), "utf8");
+    expect(dockerfile).toMatch(
+      /deb-src \[signed-by=\/usr\/share\/keyrings\/debian-archive-keyring\.pgp check-valid-until=no\] https:\/\/snapshot\.debian\.org\/archive\/debian\/\d{8}T\d{6}Z trixie main/,
     );
   });
 });
