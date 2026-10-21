@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "b0e14314-8066-44b1-9134-17e4bc6f0d12",
+  "createdOn": "2026-10-21",
+  "action": "done",
+  "payload": {
+    "id": "#46VNY9",
+    "outcome": "Closed 2026-10-21 on a read-only live check (owner approved read-only reads, 21 Oct 12:01Z): migration 20260926170000 is recorded applied; exactly 1,935 documents carry validation_status_repair_2026_09, all 1,935 still read unverified with basis wa_document_control_endorsement, 0 import-stamped locally_reviewed documents remain, and the 786 remaining locally_reviewed documents are the registry records the repair left alone by design. All rows were repaired in one transaction at 2026-09-27T02:35:40Z, 44 s after PR #3111 merged. Query: scripts/operator-verify-locally-reviewed-repair.sql.",
+    "baseRowFingerprint": "3b0676af37c63a62d17d919be84a7b822d44f6492950c47f3683aadc5ed4be90",
+    "targetUlid": "01M3E4CD2346VNY9RG38VWWGAG"
+  }
+}
