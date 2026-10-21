@@ -240,12 +240,14 @@ export function evaluateTrivySummaryText(summaryText, requiredImages = REQUIRED_
 
 /**
  * Whether assessed findings fail this event. Pull requests and merge groups stay advisory. Elsewhere
- * any finding fails, except worker-image findings before WORKER_SCAN_ADVISORY_UNTIL.
+ * any finding fails, except worker-image findings on main before WORKER_SCAN_ADVISORY_UNTIL. The
+ * exception covers main only, so a release branch or a dispatch from another ref still blocks.
  */
-export function trivyFindingsBlock(result, eventName, now = new Date()) {
+export function trivyFindingsBlock(result, eventName, now = new Date(), ref = process.env.GITHUB_REF ?? "") {
   if (!result?.assessed) return true;
   if (result.ok) return false;
   if (["pull_request", "merge_group"].includes(eventName)) return false;
+  if (ref !== "refs/heads/main") return true;
   if (now.getTime() >= Date.parse(WORKER_SCAN_ADVISORY_UNTIL)) return true;
   return Object.entries(result.byImage ?? {}).some(
     ([imageRef, counts]) => imageRef !== WORKER_SCAN_IMAGE && (counts.high > 0 || counts.critical > 0),

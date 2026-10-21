@@ -484,6 +484,7 @@ describe("worker image scan advisory window (owner decision 2026-10-21)", () => 
     ].join("\n");
   const before = new Date("2026-10-22T00:00:00Z");
   const after = new Date("2026-11-04T00:00:00Z");
+  const main = "refs/heads/main";
 
   it("keeps worker-only findings advisory on main until 4 Nov 2026", () => {
     const result = evaluateTrivySummaryText(summary(0, 84, 3));
@@ -493,18 +494,25 @@ describe("worker image scan advisory window (owner decision 2026-10-21)", () => 
         "clinical-kb-worker:ci": { high: 84, critical: 3 },
       },
     });
-    expect(trivyFindingsBlock(result, "push", before)).toBe(false);
-    expect(trivyFindingsBlock(result, "schedule", before)).toBe(false);
+    expect(trivyFindingsBlock(result, "push", before, main)).toBe(false);
+    expect(trivyFindingsBlock(result, "schedule", before, main)).toBe(false);
+  });
+
+  it("blocks worker findings on any ref other than main", () => {
+    const result = evaluateTrivySummaryText(summary(0, 84, 3));
+    expect(trivyFindingsBlock(result, "push", before, "refs/heads/release/2026-11")).toBe(true);
+    expect(trivyFindingsBlock(result, "workflow_dispatch", before, "refs/heads/some-branch")).toBe(true);
+    expect(trivyFindingsBlock(result, "push", before, "")).toBe(true);
   });
 
   it("blocks worker findings again from 4 Nov 2026", () => {
-    expect(trivyFindingsBlock(evaluateTrivySummaryText(summary(0, 84, 3)), "push", after)).toBe(true);
+    expect(trivyFindingsBlock(evaluateTrivySummaryText(summary(0, 84, 3)), "push", after, main)).toBe(true);
   });
 
   it("still blocks app image findings and unassessed scans inside the window", () => {
-    expect(trivyFindingsBlock(evaluateTrivySummaryText(summary(1, 0)), "push", before)).toBe(true);
-    expect(trivyFindingsBlock(evaluateTrivySummaryText(summary(1, 84)), "push", before)).toBe(true);
-    expect(trivyFindingsBlock(evaluateTrivySummaryText("STATUS=unassessed"), "push", before)).toBe(true);
+    expect(trivyFindingsBlock(evaluateTrivySummaryText(summary(1, 0)), "push", before, main)).toBe(true);
+    expect(trivyFindingsBlock(evaluateTrivySummaryText(summary(1, 84)), "push", before, main)).toBe(true);
+    expect(trivyFindingsBlock(evaluateTrivySummaryText("STATUS=unassessed"), "push", before, main)).toBe(true);
   });
 
   it("passes clean scans and stays advisory on pull requests", () => {
