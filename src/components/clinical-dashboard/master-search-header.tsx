@@ -58,7 +58,6 @@ import {
   type ModeActionSetId,
 } from "@/components/clinical-dashboard/mode-action-popup";
 import { executeMasterSearchHeaderModeAction } from "@/components/clinical-dashboard/master-search-header-actions";
-import { MasterSearchHeaderScopePicker } from "@/components/clinical-dashboard/master-search-header-scope-picker";
 import {
   cn,
   chatComposerInput,
@@ -175,6 +174,13 @@ import {
 const loadSearchPinsMenu = () =>
   import("@/components/clinical-dashboard/search-pins-menu").then((m) => m.SearchPinsMenu);
 const SearchPinsMenu = dynamic(loadSearchPinsMenu, { ssr: false });
+// The scope picker draws nothing until a scope popover/sheet opens. It mounts on first open
+// (and then stays mounted so close animations are unchanged), warmed on idle beforehand.
+const loadScopePicker = () =>
+  import("@/components/clinical-dashboard/master-search-header-scope-picker").then(
+    (m) => m.MasterSearchHeaderScopePicker,
+  );
+const MasterSearchHeaderScopePicker = dynamic(loadScopePicker, { ssr: false });
 
 export function MasterSearchHeader(props: MasterSearchHeaderProps) {
   const { searchState, headerActions, mobileControls } = props;
@@ -250,6 +256,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
   // Do not OR demoMode again here — that would reopen Favourites when props diverge.
   const router = useRouter();
   useIdlePreload(loadSearchPinsMenu);
+  useIdlePreload(loadScopePicker);
   // Direct pushes skip link guards and beforeunload: ask any page with unsaved work first.
   const pushIfLeaveConfirmed = (href: string) => confirmShellNavigation() && router.push(href);
   const currentPathname = usePathname();
@@ -297,6 +304,8 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
   const [scopeFilter, setScopeFilter] = useState("");
   const [scopeOpen, setScopeOpen] = useState(false);
   const [scopeSheetOpen, setScopeSheetOpen] = useState(false);
+  const [scopePickerMounted, setScopePickerMounted] = useState(false);
+  if (!scopePickerMounted && (scopeOpen || scopeSheetOpen)) setScopePickerMounted(true);
   const [scopeSheetFullscreen, setScopeSheetFullscreen] = useState(false);
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
   const [actionMenuPlacement, setActionMenuPlacement] = useState<ModeActionPlacement>("up");
@@ -1847,38 +1856,40 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
             {phiWarningText}
           </p>
         ) : null}
-        <MasterSearchHeaderScopePicker
-          usesScopeSheet={usesScopeSheet}
-          scopeOpen={scopeOpen}
-          scopeSheetOpen={scopeSheetOpen}
-          scopeSheetFullscreen={scopeSheetFullscreen}
-          closeScopeSheet={closeScopeSheet}
-          scopePopoverRef={scopePopoverRef}
-          scopeFilterInputRef={scopeFilterInputRef}
-          actionMenuTriggerRef={actionMenuTriggerRef}
-          hasScopeFooterChip={hasScopeFooterChip}
-          scopePreview={scopePreview}
-          scopeSummary={scopeSummary}
-          loadedScopeSummary={loadedScopeSummary}
-          selectedDocumentIds={selectedDocumentIds}
-          documents={documents}
-          matchingDocuments={matchingDocuments}
-          visibleScopeDocuments={visibleScopeDocuments}
-          requireScopeFilter={requireScopeFilter}
-          hiddenScopeMatchCount={hiddenScopeMatchCount}
-          scopeFilter={scopeFilter}
-          setScopeFilter={setScopeFilter}
-          onClearScope={onClearScope}
-          onToggleScope={onToggleScope}
-          scopeFilters={scopeFilters}
-          onScopeFiltersChange={onScopeFiltersChange}
-          queryMode={queryMode}
-          onQueryModeChange={(mode) => onQueryModeChange(mode as ClinicalQueryMode)}
-          queryModeOptions={queryModeOptions}
-          activeQuickFilterCount={activeQuickFilterCount}
-          activeLabelFilterCount={activeLabelFilterCount}
-          updateTextScopeFilter={updateTextScopeFilter}
-        />
+        {scopePickerMounted ? (
+          <MasterSearchHeaderScopePicker
+            usesScopeSheet={usesScopeSheet}
+            scopeOpen={scopeOpen}
+            scopeSheetOpen={scopeSheetOpen}
+            scopeSheetFullscreen={scopeSheetFullscreen}
+            closeScopeSheet={closeScopeSheet}
+            scopePopoverRef={scopePopoverRef}
+            scopeFilterInputRef={scopeFilterInputRef}
+            actionMenuTriggerRef={actionMenuTriggerRef}
+            hasScopeFooterChip={hasScopeFooterChip}
+            scopePreview={scopePreview}
+            scopeSummary={scopeSummary}
+            loadedScopeSummary={loadedScopeSummary}
+            selectedDocumentIds={selectedDocumentIds}
+            documents={documents}
+            matchingDocuments={matchingDocuments}
+            visibleScopeDocuments={visibleScopeDocuments}
+            requireScopeFilter={requireScopeFilter}
+            hiddenScopeMatchCount={hiddenScopeMatchCount}
+            scopeFilter={scopeFilter}
+            setScopeFilter={setScopeFilter}
+            onClearScope={onClearScope}
+            onToggleScope={onToggleScope}
+            scopeFilters={scopeFilters}
+            onScopeFiltersChange={onScopeFiltersChange}
+            queryMode={queryMode}
+            onQueryModeChange={(mode) => onQueryModeChange(mode as ClinicalQueryMode)}
+            queryModeOptions={queryModeOptions}
+            activeQuickFilterCount={activeQuickFilterCount}
+            activeLabelFilterCount={activeLabelFilterCount}
+            updateTextScopeFilter={updateTextScopeFilter}
+          />
+        ) : null}
       </form>
     );
   }
