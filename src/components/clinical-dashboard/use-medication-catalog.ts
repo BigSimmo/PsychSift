@@ -1,5 +1,6 @@
 "use client";
 
+import { clinicalToolAccessForStatus } from "@/components/mode-kit/use-clinical-tool-access";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { authSessionFingerprint, createAuthRequestLifecycle } from "@/lib/auth-request-lifecycle";
@@ -237,7 +238,10 @@ export function useMedicationCatalog(
   query?: string,
   options: { enabled?: boolean; fields?: "index"; debounceMs?: number } = {},
 ): AsyncState<MedicationCatalogResponse> {
-  const enabled = options.enabled ?? true;
+  // #3728: /api/medications refuses signed-out requests, so a signed-out reader sends none.
+  // #3728: only once access is known to be allowed; a request while sign-in is loading would be refused.
+  const signInRequired = clinicalToolAccessForStatus(useAuthSession().status ?? null) !== "allowed";
+  const enabled = (options.enabled ?? true) && !signInRequired;
   const fields = options.fields;
   const debounceMs = options.debounceMs ?? catalogDebounceMs;
   const trimmed = query?.trim() ?? "";

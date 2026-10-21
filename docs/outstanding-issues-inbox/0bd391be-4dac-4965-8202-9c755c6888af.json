@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "0bd391be-4dac-4965-8202-9c755c6888af",
+  "createdOn": "2026-10-21",
+  "action": "done",
+  "payload": {
+    "id": "#8VAY97",
+    "outcome": "Resolved 2026-10-21 without a migration (docs/audit/2026-10-21-database-performance-evidence.md): inlined the live body of match_document_index_units_hybrid_scoped under explain analyze buffers and recorded the inner plan (search_idx and terms_idx bitmap scans, pkey lookups). Cold 9.2 s versus warm 0.19 s with an identical plan, so the cost is cache misses, not a plan flip. Follow-up tracked as a new row.",
+    "baseRowFingerprint": "f5cc5b972c479ec39d97170c9268c5318238702532df2fde75d15ef37821c114",
+    "targetUlid": "01M0JWT29F8VAY97CG3PM5X2QW"
+  }
+}
