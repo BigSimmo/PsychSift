@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-21T10:03:15.872Z",
+  "generated_at": "2026-10-21T12:11:03.868Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "7ab1e675d8d7bb1282b7ed16756e8772e7d4cb36806d1a6290db63de29c321d6",
-  "replay_seconds": 15,
+  "schema_sha256": "d3f808e6004bfec19ce4568f5b04592ea7905e0dc433f78cdc5f2a5540416ab4",
+  "replay_seconds": 23,
   "snapshot": {
     "views": [
       {
@@ -12292,6 +12292,138 @@
           "postgres=arwdDxtm/postgres",
           "service_role=arwd/postgres"
         ],
+        "name": "teaching_epa_magic_links",
+        "columns": [
+          {
+            "name": "clinical_setting",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "completed_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "created_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "epa_number",
+            "type": "smallint",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "expires_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "id",
+            "type": "uuid",
+            "default": "gen_random_uuid()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "registrar_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "response",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "revoked_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "status",
+            "type": "text",
+            "default": "'pending'::text",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "supervisor_name",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "supervisor_role",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "token_hash",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "trainee_name",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "updated_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
+        "rls_forced": true,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=arwd/postgres"
+        ],
         "name": "teaching_feedback_answers",
         "columns": [
           {
@@ -16824,6 +16956,24 @@
         "def_hash": "1e70a130c0f6f5cf8f6f15baf7fc471e"
       },
       {
+        "def": "CREATE UNIQUE INDEX teaching_epa_magic_links_pkey ON public.teaching_epa_magic_links USING btree (id)",
+        "name": "teaching_epa_magic_links_pkey",
+        "table": "teaching_epa_magic_links",
+        "def_hash": "7dc1f1b8eb80633d4bb6723ddaef4062"
+      },
+      {
+        "def": "CREATE INDEX teaching_epa_magic_links_registrar_idx ON public.teaching_epa_magic_links USING btree (registrar_id, created_at DESC)",
+        "name": "teaching_epa_magic_links_registrar_idx",
+        "table": "teaching_epa_magic_links",
+        "def_hash": "7231fdf4a870688c319c278d32723f5a"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX teaching_epa_magic_links_token_hash_key ON public.teaching_epa_magic_links USING btree (token_hash)",
+        "name": "teaching_epa_magic_links_token_hash_key",
+        "table": "teaching_epa_magic_links",
+        "def_hash": "16462bf49db10ecc0f5b2588a1e8a5ed"
+      },
+      {
         "def": "CREATE INDEX teaching_feedback_answers_occurrence ON public.teaching_feedback_answers USING btree (occurrence_id)",
         "name": "teaching_feedback_answers_occurrence",
         "table": "teaching_feedback_answers",
@@ -18092,6 +18242,18 @@
         "with_check": null
       },
       {
+        "cmd": "ALL",
+        "name": "teaching_epa_magic_links_service_role_all",
+        "qual": "true",
+        "roles": [
+          "service_role"
+        ],
+        "table": "teaching_epa_magic_links",
+        "schema": "public",
+        "permissive": "PERMISSIVE",
+        "with_check": "true"
+      },
+      {
         "cmd": "DELETE",
         "name": "users delete own favourite sets",
         "qual": "(( SELECT auth.uid() AS uid) = user_id)",
@@ -18733,6 +18895,11 @@
         "def": "CREATE TRIGGER storage_cleanup_jobs_updated_at BEFORE UPDATE ON public.storage_cleanup_jobs FOR EACH ROW EXECUTE FUNCTION public.set_updated_at()",
         "name": "storage_cleanup_jobs_updated_at",
         "table": "storage_cleanup_jobs"
+      },
+      {
+        "def": "CREATE TRIGGER teaching_epa_magic_links_updated_at BEFORE UPDATE ON public.teaching_epa_magic_links FOR EACH ROW EXECUTE FUNCTION public.set_updated_at()",
+        "name": "teaching_epa_magic_links_updated_at",
+        "table": "teaching_epa_magic_links"
       },
       {
         "def": "CREATE TRIGGER teaching_supervision_entry_locked BEFORE UPDATE ON public.teaching_supervision_entries FOR EACH ROW EXECUTE FUNCTION public.teaching_guard_supervision_entry()",
@@ -25480,6 +25647,76 @@
         "def": "CHECK ((stream = ANY (ARRAY['room'::text, 'teams'::text])))",
         "name": "teaching_display_links_stream_check",
         "table": "teaching_display_links"
+      },
+      {
+        "def": "CHECK (((clinical_setting IS NULL) OR ((char_length(clinical_setting) >= 1) AND (char_length(clinical_setting) <= 200))))",
+        "name": "teaching_epa_magic_links_clinical_setting_check",
+        "table": "teaching_epa_magic_links"
+      },
+      {
+        "def": "CHECK (((status = 'completed'::text) = ((completed_at IS NOT NULL) AND (response IS NOT NULL))))",
+        "name": "teaching_epa_magic_links_completed_shape",
+        "table": "teaching_epa_magic_links"
+      },
+      {
+        "def": "CHECK (((epa_number >= 1) AND (epa_number <= 4)))",
+        "name": "teaching_epa_magic_links_epa_number_check",
+        "table": "teaching_epa_magic_links"
+      },
+      {
+        "def": "CHECK (((expires_at > created_at) AND (expires_at <= (created_at + '30 days'::interval))))",
+        "name": "teaching_epa_magic_links_expiry_window",
+        "table": "teaching_epa_magic_links"
+      },
+      {
+        "def": "PRIMARY KEY (id)",
+        "name": "teaching_epa_magic_links_pkey",
+        "table": "teaching_epa_magic_links"
+      },
+      {
+        "def": "FOREIGN KEY (registrar_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+        "name": "teaching_epa_magic_links_registrar_id_fkey",
+        "table": "teaching_epa_magic_links"
+      },
+      {
+        "def": "CHECK (((response IS NULL) OR ((jsonb_typeof(response) = 'object'::text) AND (pg_column_size(response) <= 8192))))",
+        "name": "teaching_epa_magic_links_response_check",
+        "table": "teaching_epa_magic_links"
+      },
+      {
+        "def": "CHECK (((status = 'revoked'::text) = (revoked_at IS NOT NULL)))",
+        "name": "teaching_epa_magic_links_revoked_shape",
+        "table": "teaching_epa_magic_links"
+      },
+      {
+        "def": "CHECK ((status = ANY (ARRAY['pending'::text, 'completed'::text, 'revoked'::text])))",
+        "name": "teaching_epa_magic_links_status_check",
+        "table": "teaching_epa_magic_links"
+      },
+      {
+        "def": "CHECK (((char_length(supervisor_name) >= 1) AND (char_length(supervisor_name) <= 200)))",
+        "name": "teaching_epa_magic_links_supervisor_name_check",
+        "table": "teaching_epa_magic_links"
+      },
+      {
+        "def": "CHECK (((char_length(supervisor_role) >= 1) AND (char_length(supervisor_role) <= 100)))",
+        "name": "teaching_epa_magic_links_supervisor_role_check",
+        "table": "teaching_epa_magic_links"
+      },
+      {
+        "def": "CHECK ((token_hash ~ '^[0-9a-f]{64}$'::text))",
+        "name": "teaching_epa_magic_links_token_hash_check",
+        "table": "teaching_epa_magic_links"
+      },
+      {
+        "def": "UNIQUE (token_hash)",
+        "name": "teaching_epa_magic_links_token_hash_key",
+        "table": "teaching_epa_magic_links"
+      },
+      {
+        "def": "CHECK (((char_length(trainee_name) >= 1) AND (char_length(trainee_name) <= 200)))",
+        "name": "teaching_epa_magic_links_trainee_name_check",
+        "table": "teaching_epa_magic_links"
       },
       {
         "def": "FOREIGN KEY (occurrence_id, service_id) REFERENCES public.teaching_occurrences(id, service_id) ON DELETE CASCADE",
