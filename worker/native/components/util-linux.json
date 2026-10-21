@@ -24,7 +24,7 @@
     },
     {
       "file": "patches/util-linux/06-9fcb98bf08d9119d07ba3a3c709b1a85e4a1bbcb.patch",
-      "sha256": "86dc6819c9465d829849734605cfe586404607fd7612f3f05ad5c829a33d0bb6",
+      "sha256": "10d2ccb2aabec6413edb4197ca2dabef8f15f0971f4b01fcf02c23f7b4e52b76",
       "upstream_commit": "9fcb98bf08d9119d07ba3a3c709b1a85e4a1bbcb"
     },
     {

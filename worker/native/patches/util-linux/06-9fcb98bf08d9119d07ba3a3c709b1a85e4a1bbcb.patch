@@ -25,8 +25,8 @@ Signed-off-by: Karel Zak <kzak@redhat.com>
 (cherry picked from commit 9a8d0d60c55d3a55f89f6f75a17bae31bc5ee1c6)
 ---
  libmount/src/context.c    | 4 +++-
- libmount/src/hook_idmap.c | 6 ++++--
- 2 files changed, 7 insertions(+), 3 deletions(-)
+ libmount/src/hook_idmap.c | 7 +++++--
+ 2 files changed, 8 insertions(+), 3 deletions(-)
 
 diff --git a/libmount/src/context.c b/libmount/src/context.c
 index 8418b2d64bf..158be96b875 100644
@@ -47,7 +47,15 @@ diff --git a/libmount/src/hook_idmap.c b/libmount/src/hook_idmap.c
 index adaa9c63654..97d8e0d1ec2 100644
 --- a/libmount/src/hook_idmap.c
 +++ b/libmount/src/hook_idmap.c
-@@ -328,9 +328,11 @@ static int hook_mount_post(
+@@ -24,6 +24,7 @@
+ #include "strutils.h"
+ #include "all-io.h"
+ #include "namespace.h"
++#include "fileutils.h"
+ 
+ #include "mountP.h"
+ 
+@@ -328,9 +329,11 @@ static int hook_mount_post(
  	}
  #endif
  	if (fd_tree < 0)
