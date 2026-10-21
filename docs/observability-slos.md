@@ -132,6 +132,10 @@ start to the preview being handed to the stream) beside `total_latency_ms`. The 
 taking the preview when one was sent and the finished answer otherwise, plus how many samples
 showed the preview first. `GET /api/health?deep=1&answer_window=daily` adds a 24-hour `sloDaily`
 block for the daily health summary (`scripts/lib/answer-speed-line.mjs`). No alert reads it.
+Answers served from the answer cache write no latency fields to their `rag_queries` row today, so,
+like the route p95, this figure covers freshly built answers only and reads slower than the average
+wait for a repeated question. Adding cache-hit timing would also move the alerting p95 and the
+budget breach rate, so it is a separate change.
 
 ### Latency — configured answer-budget breach rate
 
