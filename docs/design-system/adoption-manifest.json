@@ -1229,7 +1229,8 @@
         "src/components/on-call/on-call-education-section.tsx",
         "src/components/on-call/on-call-logistics-section.tsx",
         "src/components/on-call/on-call-referrals-section.tsx",
-        "src/components/on-call/on-call-teaching-strip.tsx"
+        "src/components/on-call/on-call-teaching-strip.tsx",
+        "src/components/therapy-compass/record/source-provenance.tsx"
       ],
       "productImportFiles": [
         "src/components/admin/admin-help-item-row.tsx",
@@ -1241,7 +1242,8 @@
         "src/components/on-call/on-call-education-section.tsx",
         "src/components/on-call/on-call-logistics-section.tsx",
         "src/components/on-call/on-call-referrals-section.tsx",
-        "src/components/on-call/on-call-teaching-strip.tsx"
+        "src/components/on-call/on-call-teaching-strip.tsx",
+        "src/components/therapy-compass/record/source-provenance.tsx"
       ],
       "designSync": {
         "listedInSourceMap": true,

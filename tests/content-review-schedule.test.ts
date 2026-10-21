@@ -163,3 +163,23 @@ describe("contentReviewSchedule", () => {
     expect(schedule.changedSources.map((event) => event.sourceId)).toEqual(["b", "a"]);
   });
 });
+
+describe("interaction review dates", () => {
+  it("share the carrying medication record's source-check date and 12-month interval", async () => {
+    const { interactionReviewSchedule } = await import("@/lib/medication-interactions");
+    const index = (await import("../data/medication-interaction-index.json")).default as {
+      reviewedOn: Record<string, string | null>;
+    };
+    const [slug, reviewedOn] = Object.entries(index.reviewedOn).find(([, date]) => date !== null) ?? [];
+    expect(slug).toBeDefined();
+    const schedule = interactionReviewSchedule({ id: `${slug}:0:other` }, at("2026-10-21"));
+    expect(schedule.kind).toBe("interaction");
+    expect(schedule.lastReviewedOn).toBe(reviewedOn);
+    expect(schedule.dueOn).toBe(addCalendarMonths(reviewedOn as string, 12));
+    // A reverse match is carried by the patient's drug, named first in its id.
+    expect(interactionReviewSchedule({ id: `${slug}:reverse:3:viewed` }, at("2026-10-21")).lastReviewedOn).toBe(
+      reviewedOn,
+    );
+    expect(interactionReviewSchedule({ id: "not-in-catalogue:0:x" }, at("2026-10-21")).state).toBe("unknown");
+  });
+});

@@ -22,6 +22,16 @@ export const REVIEW_INTERVAL_MONTHS: Readonly<Record<ReviewedContentKind, number
   form: 24,
 };
 
+/**
+ * The register sources every WA Mental Health Act form is drafted from: the Act itself
+ * and the Chief Psychiatrist's page for it. A confirmed change to either makes every
+ * signed-off form due for review.
+ */
+export const FORM_CITED_SOURCE_IDS: readonly string[] = [
+  "mental-health-act-2014-wa",
+  "dictionary-wa-ocp-mental-health-act-2014",
+];
+
 /** How far ahead a coming due date is flagged. */
 export const REVIEW_DUE_SOON_DAYS = 30;
 

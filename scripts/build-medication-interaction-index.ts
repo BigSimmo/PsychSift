@@ -11,10 +11,20 @@ import {
   selectCatalogueSlugs,
   type LexiconTerm,
 } from "../src/lib/medication-interaction-lexicon";
+import { deriveMedicationSourceGovernance } from "../src/lib/medication-records";
 import type { MedicationRecord } from "../src/lib/medications";
 
 const SNAPSHOT_PATH = "data/medications-snapshot.json";
 const OUTPUT_PATH = "data/medication-interaction-index.json";
+
+// The reference date only decides `sourceStatus`; the checked date itself does not
+// depend on it except to drop a date in the future. A fixed far-future clock keeps the
+// artefact byte-stable from day to day while still refusing nothing real.
+const STABLE_REFERENCE_DATE = new Date("2100-01-01T00:00:00.000Z");
+
+function sourceCheckedOn(record: MedicationRecord): string | null {
+  return deriveMedicationSourceGovernance(record.sections, STABLE_REFERENCE_DATE).sourceCheckedAt;
+}
 
 const SEVERITY_BY_TOKEN: Record<string, string> = {
   CRITICAL: "critical",
@@ -98,6 +108,15 @@ type InteractionIndex = {
     medicationsWithUnresolvedRows: number;
   };
   names: Record<string, string>;
+  /**
+   * The date each medication's sources were last checked, read from its own `src`
+   * section exactly as the medication page reads it (oldest date wins; null when it
+   * cannot be read). An interaction row lives inside a medication record and is
+   * reviewed with it, so its 12-month review date counts from here (owner decision
+   * 21 Oct 2026). Kept as a plain date with no reference clock, so the artefact does
+   * not go stale as days pass.
+   */
+  reviewedOn: Record<string, string | null>;
   bySlug: Record<string, IndexEntry>;
 };
 
@@ -386,6 +405,9 @@ function main(): void {
     },
     names: Object.fromEntries(
       records.map((record) => [record.slug, record.name] as const).sort(([a], [b]) => a.localeCompare(b)),
+    ),
+    reviewedOn: Object.fromEntries(
+      records.map((record) => [record.slug, sourceCheckedOn(record)] as const).sort(([a], [b]) => a.localeCompare(b)),
     ),
     bySlug,
   };

@@ -50,11 +50,16 @@ export function isShowableMedicationSourceRecord(record: SourceAcquisitionRecord
   return isConfirmedAcquisitionRecord(record) && isCurrentActiveSourceReference(acquisitionReference(record));
 }
 
-function showableRecords(
-  slug: string,
-  { links = medicationSourceLinkIds, records = sourceAcquisitionRecords }: ResolveOptions,
-) {
-  const ids = Object.hasOwn(links, slug) ? links[slug] : [];
+/**
+ * The register records behind `ids` that a page may show, in the order given, each
+ * with its governed URL. The same rule serves every record family that links to the
+ * register (medications here, therapy in `therapy-source-links.ts`), so a source can
+ * never be showable on one page and hidden on another.
+ */
+export function showableSourceRecords(
+  ids: readonly string[] | undefined,
+  records: readonly SourceAcquisitionRecord[] = sourceAcquisitionRecords,
+): { record: SourceAcquisitionRecord; href: string }[] {
   if (!ids?.length) return [];
   const byId = new Map(records.map((record) => [record.id, record]));
 
@@ -64,6 +69,13 @@ function showableRecords(
     const href = safeCanonicalSourceUrl(record.canonicalUrl);
     return href ? [{ record, href }] : [];
   });
+}
+
+function showableRecords(
+  slug: string,
+  { links = medicationSourceLinkIds, records = sourceAcquisitionRecords }: ResolveOptions,
+) {
+  return showableSourceRecords(Object.hasOwn(links, slug) ? links[slug] : [], records);
 }
 
 /**

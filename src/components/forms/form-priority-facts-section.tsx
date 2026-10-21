@@ -6,7 +6,9 @@ import { useId, useState } from "react";
 
 import { inPageAnchor } from "@/components/in-page-nav/in-page-nav-classes";
 import { cn, ignoreUnavailableActivation, textMuted } from "@/components/ui-primitives";
+import { ContentReviewNotice } from "@/components/content-review/content-review-notice";
 import { Sheet } from "@/components/ui/sheet";
+import { contentReviewSchedule, FORM_CITED_SOURCE_IDS } from "@/lib/content-review-schedule";
 import { ACT_SECTION_CHIP_LIMIT, mhaActMetadata, PRIORITY_FACT_CARD_LABELS } from "@/lib/form-catalog-constants";
 import {
   CULTURAL_NOTE_LABELS,
@@ -370,6 +372,15 @@ export function PriorityFactsSection({ form, cards }: { form: FormRecord; cards:
   // Defaults to true for a payload with no review state: a missing status is a gap in the
   // record, not evidence of review, and an owner-seeded row can carry anything.
   const contentAwaitingReview = details?.contentReviewStatus !== "reviewed";
+  // A signed-off form is due again 24 months after sign-off, or as soon as the Act it is
+  // drafted from has a confirmed change. An unsigned form already says it awaits review.
+  const reviewSchedule = contentAwaitingReview
+    ? null
+    : contentReviewSchedule({
+        kind: "form",
+        lastReviewedAt: details?.contentReviewedAt,
+        citedSourceIds: FORM_CITED_SOURCE_IDS,
+      });
 
   return (
     <>
@@ -386,6 +397,11 @@ export function PriorityFactsSection({ form, cards }: { form: FormRecord; cards:
           <p className={cn("m-0 mt-1 text-xs leading-5", textMuted)}>
             Drafted from the Act and the approved form, awaiting clinical review.
           </p>
+        ) : null}
+        {/* A signed form whose payload carries no sign-off date (an owner-seeded row) has
+            no date to count from; it is not "unreviewed", so that state stays unsaid. */}
+        {reviewSchedule ? (
+          <ContentReviewNotice schedule={reviewSchedule} hideStates={["unknown"]} className="mt-1" />
         ) : null}
         <dl className="m-0 mt-3.5 grid grid-cols-1 gap-x-5 gap-y-4 @[15rem]:grid-cols-2">
           {cards.map((card) => {

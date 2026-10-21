@@ -1,6 +1,8 @@
 "use client";
 
+import { ContentReviewNotice } from "@/components/content-review/content-review-notice";
 import { Disclosure } from "@/components/ui/disclosure";
+import { ExternalTextLink } from "@/components/ui/link";
 import { SourceDesignationBadge, SourceStatusBadge } from "@/components/ui-primitives";
 import {
   isLaterAddedReference,
@@ -9,6 +11,9 @@ import {
   therapyNiceGuidelineMetadata,
   therapySourceMetadata,
 } from "@/lib/therapy-source-governance";
+import { contentReviewSchedule } from "@/lib/content-review-schedule";
+import { therapyCitedSourceIds } from "@/lib/therapy-source-link-ids";
+import type { TherapySourceLink } from "@/lib/therapy-source-links";
 
 import type { Therapy } from "../data/types";
 
@@ -26,10 +31,29 @@ import type { Therapy } from "../data/types";
  *
  * What is emphatically not reduced is the disclosure: the review status is on
  * the collapsed row, so a record awaiting clinician sign-off says so without
- * anyone opening anything.
+ * anyone opening anything. The review date works the same way: a record past its
+ * 24-month date, or citing a guideline that has since changed, says so on the
+ * collapsed row too (owner decision 21 Oct 2026).
+ *
+ * `sourceLinks` are owner-confirmed links resolved on the server; until the owner
+ * signs a source off the list is empty and nothing extra renders.
  */
-export function TherapySourceProvenance({ therapy }: { therapy: Therapy }) {
+export function TherapySourceProvenance({
+  therapy,
+  sourceLinks = [],
+}: {
+  therapy: Therapy;
+  sourceLinks?: readonly TherapySourceLink[];
+}) {
   const reviewed = therapy.reviewStatus === "reviewed";
+  // Only a completed review has a date to count from. An unreviewed record is already
+  // labelled "Awaiting review", so it carries no due date of its own, but a confirmed
+  // change to a source it cites is still news.
+  const reviewSchedule = contentReviewSchedule({
+    kind: "therapy",
+    lastReviewedAt: reviewed ? therapy.reviewedAt : null,
+    citedSourceIds: therapyCitedSourceIds(therapy.slug),
+  });
   const source = therapy.sources[0] ?? null;
   const blob = source?.reference?.trim() || therapy.sourceNotes?.trim() || "";
   const { citations, notes } = splitSourceCitations(blob);
@@ -46,6 +70,7 @@ export function TherapySourceProvenance({ therapy }: { therapy: Therapy }) {
           Source & review status <span className={reviewStatusClass}>{reviewStatus}</span>
         </h2>
       </div>
+      <ContentReviewNotice schedule={reviewSchedule} className="mb-1.5" />
       <Disclosure
         className="text-sm"
         headingLevel={2}
@@ -53,6 +78,21 @@ export function TherapySourceProvenance({ therapy }: { therapy: Therapy }) {
         meta={<span className={reviewStatusClass}>{reviewStatus}</span>}
       >
         <div className="space-y-3 pb-1">
+          {sourceLinks.length ? (
+            <div data-testid="therapy-source-links">
+              <p className="m-0 text-3xs font-bold uppercase tracking-eyebrow text-[color:var(--text-muted)]">
+                Sources
+              </p>
+              <ul className="m-0 mt-1 list-none space-y-1.5 p-0">
+                {sourceLinks.map((link) => (
+                  <li key={link.id} className="text-xs leading-5">
+                    <ExternalTextLink href={link.href}>{link.title}</ExternalTextLink>
+                    <span className="ml-1.5 text-[color:var(--text-muted)]">{link.publisher}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           {citations.length ? (
             <ol className="m-0 list-none space-y-2 p-0">
               {citations.map((citation, index) => {

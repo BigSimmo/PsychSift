@@ -24,6 +24,7 @@ import { usePatientProfile } from "@/components/clinical-dashboard/patient-profi
 import {
   evaluateMedicationInteractions,
   interactionNoteBody,
+  interactionReviewSchedule,
   medicationDisplayName,
   severityLabel,
   type MedicationInteraction,
@@ -36,6 +37,7 @@ import {
 } from "@/lib/medication-patient-alerts";
 import type { MedicationRecord } from "@/lib/medications";
 import type { SemanticTone } from "@/lib/semantic-tone";
+import { ContentReviewNotice } from "@/components/content-review/content-review-notice";
 import { Disclosure } from "@/components/ui/disclosure";
 import { cn, InlineNotice } from "@/components/ui-primitives";
 
@@ -551,6 +553,7 @@ function MedicationInteractionBlock({ record }: { record: MedicationRecord }) {
                     {interactionNoteBody(interaction.note)}
                   </p>
                 ) : null}
+                <ContentReviewNotice schedule={interactionReviewSchedule(interaction)} />
                 <CounterpartyLink interaction={interaction} />
               </div>
             </InlineNotice>

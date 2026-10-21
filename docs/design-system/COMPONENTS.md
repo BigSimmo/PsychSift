@@ -1074,7 +1074,7 @@ This generated snapshot is a local source-derived inventory. It does not assert 
 | `EmptyState`             | feedback | yes   | yes                | inherited-global-root | yes            | no                 |              17 |
 | `ErrorState`             | feedback | yes   | yes                | no                    | yes            | no                 |               0 |
 | `ErrorSummary`           | feedback | yes   | yes                | no                    | yes            | no                 |               0 |
-| `ExternalTextLink`       | controls | yes   | yes                | inherited-global-root | yes            | no                 |              10 |
+| `ExternalTextLink`       | controls | yes   | yes                | inherited-global-root | yes            | no                 |              11 |
 | `FieldError`             | feedback | yes   | yes                | inherited-global-root | yes            | no                 |               2 |
 | `FieldHint`              | feedback | yes   | yes                | inherited-global-root | yes            | no                 |               2 |
 | `FormField`              | controls | yes   | yes                | inherited-global-root | yes            | no                 |              19 |

@@ -41,6 +41,8 @@
 // the results de-duplicated, preferring the copy that carries source text.
 
 import interactionIndex from "../../data/medication-interaction-index.json";
+import medicationSourceLinkMap from "@/data/medication-source-links.json";
+import { contentReviewSchedule, type ContentReviewSchedule } from "@/lib/content-review-schedule";
 import { SEMANTIC_TONE_PRIORITY, type SemanticTone } from "@/lib/semantic-tone";
 
 export type InteractionSeverity =
@@ -102,6 +104,8 @@ type InteractionIndexShape = {
   version: number;
   sourceRowCount: number;
   names: Record<string, string>;
+  /** Source-check date of each medication record, which every interaction row inside it shares. */
+  reviewedOn?: Record<string, string | null>;
   bySlug: Record<string, { rows: IndexRow[]; unresolvedRowCount: number }>;
 };
 
@@ -261,6 +265,29 @@ function interactionFromRow(
     kind: row.rowKey,
     note,
   };
+}
+
+/**
+ * The review schedule for one interaction (owner decision 21 Oct 2026: interactions
+ * every 12 months, and immediately when a cited guideline changes).
+ *
+ * An interaction is a row inside one medication record — the viewed drug's own row, or
+ * the patient drug's row for a reverse match — and it is reviewed with that record. So
+ * it shares that record's source-check date and that record's cited sources. The
+ * carrying record is the first segment of the interaction id.
+ */
+export function interactionReviewSchedule(
+  interaction: Pick<MedicationInteraction, "id">,
+  referenceDate?: Date,
+): ContentReviewSchedule {
+  const carryingSlug = interaction.id.split(":")[0] ?? "";
+  const links = medicationSourceLinkMap as Readonly<Record<string, readonly string[]>>;
+  return contentReviewSchedule({
+    kind: "interaction",
+    lastReviewedAt: INDEX.reviewedOn?.[carryingSlug] ?? null,
+    citedSourceIds: Object.hasOwn(links, carryingSlug) ? links[carryingSlug] : [],
+    referenceDate,
+  });
 }
 
 export function evaluateMedicationInteractions(
