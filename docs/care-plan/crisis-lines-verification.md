@@ -7,6 +7,12 @@
 > nothing in it approves the Care Plan prototype for use with a patient. **No number was dialled or
 > checked online while this document was written** — there was no network access in that session.
 
+> **Prototype retired 2026-10-21.** The owner retired the Care Plan prototype. Its fixtures, tests and
+> build records named below were deleted that day and survive only in git history (last present at
+> commit `8c03823aa5`). The numbers themselves still live in `src/lib/crisis-contacts.ts` and are pinned
+> by `tests/crisis-contacts.test.ts`, which is why this record stays. The file references below are left
+> as written, as a point-in-time record.
+
 **Status:** first draft, 2026-09-04. Unreviewed.
 **Subject:** every telephone number printed by the Care Plan prototype's fixtures. As of the
 2026-09-25 WA safety fixes, the array itself is defined once in

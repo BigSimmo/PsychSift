@@ -1195,11 +1195,7 @@
         "preview": ".design-sync/previews/ErrorSummary.tsx",
         "previewValid": true
       },
-      "testFiles": [
-        "tests/care-plan-linked-routes.dom.test.tsx",
-        "tests/design-sync-visual-exports.test.ts",
-        "tests/ui-v2-form-field.dom.test.tsx"
-      ],
+      "testFiles": ["tests/design-sync-visual-exports.test.ts", "tests/ui-v2-form-field.dom.test.tsx"],
       "baseline": {
         "targetLayer": "v2",
         "liveLayer": "v2",

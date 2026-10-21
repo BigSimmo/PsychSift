@@ -2403,26 +2403,10 @@ jobs:
             }
             const red = Object.entries(declared).some(([, value]) => badResult(value)) || failingJobs.length > 0;
 
-            // Route the alert to a person, not only a label (#TN512M). GitHub mobile pushes a direct
-            // @mention to the owner's phone, the alert channel chosen on 2026-10-19
-            // (docs/decisions/2026-10-19-production-alerts-by-phone.md). Assignment pushes only when it
-            // first happens, and a later comment on the reused issue does not push by itself, so every new
-            // alert and every repeat comment names the owner (audit EVAL-04). Assignment stays best-effort,
-            // so a refused assignment can never cost the alert itself.
-            const alertAssignee = context.repo.owner;
-            const alertMention = `@${alertAssignee}`;
-            async function assignAlert(issueNumber) {
-              try {
-                await github.rest.issues.addAssignees({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: issueNumber,
-                  assignees: [alertAssignee],
-                });
-              } catch (error) {
-                core.warning(`Could not assign @${alertAssignee} to #${issueNumber}: ${error.message}`);
-              }
-            }
+            // Owner decision 2026-10-21 (docs/decisions/2026-10-21-one-daily-health-summary.md): this
+            // workflow no longer @mentions or assigns the owner. Its result reaches the owner's phone once a
+            // day in the daily health summary (.github/workflows/daily-health-summary.yml), which reads this
+            // issue's label; the issue keeps the detail.
 
             // A run older than the one that last routed must not undo it. Runs finish out of order: on
             // 2026-10-13 the tip's green run closed the issue at 17:27Z and an older commit's run,
@@ -2704,9 +2688,8 @@ jobs:
                   owner,
                   repo,
                   issue_number: existing.number,
-                  body: `${alertMention} Still failing as of ${now} — ${runUrl}`,
+                  body: `Still failing as of ${now} — ${runUrl}`,
                 });
-                await assignAlert(existing.number);
               }
               core.warning(`CI on main has unresolved checks; updated #${existing.number}.`);
             } else {
@@ -2719,13 +2702,11 @@ jobs:
                   owner,
                   repo,
                   issue_number: previous.number,
-                  body: `${alertMention} Failing again as of ${now} — ${runUrl}`,
+                  body: `Failing again as of ${now} — ${runUrl}`,
                 });
-                await assignAlert(previous.number);
                 core.warning(`CI on main is failing; reopened #${previous.number}.`);
               } else {
-                const created = await github.rest.issues.create({ owner, repo, title, labels: [label], body: `${alertMention}\n\n${stampedBody}` });
-                await assignAlert(created.data.number);
+                const created = await github.rest.issues.create({ owner, repo, title, labels: [label], body: stampedBody });
                 core.warning(`CI on main is failing; opened #${created.data.number}.`);
               }
             }

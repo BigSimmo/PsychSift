@@ -77,9 +77,5 @@ describe("Mobile ergonomics, touch targets, forced-colors, and 12px floor (Task 
     const menuCss = readRepoFile("src/components/work-frame/two-pane-side-menu.css");
     expect(menuCss).not.toMatch(/font-size:\s*0\.6(25|5|875)rem/);
     expect(menuCss).toMatch(/\.two-pane-menu__bell-count\s*\{[\s\S]*?font-size:\s*0\.75rem;/);
-
-    const carePlanCss = readRepoFile("src/components/care-plan/mockups/care-plan.module.css");
-    expect(carePlanCss).not.toMatch(/font-size:\s*0\.6(25|5|875)rem/);
-    expect(carePlanCss).toMatch(/\.appRoot\s+\.definitionTerm\s*\{[\s\S]*?font-size:\s*0\.75rem;/);
   });
 });
