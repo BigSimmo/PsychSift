@@ -477,12 +477,21 @@ for (const footerCase of standalonePageOwnedFooterRoutes) {
       await expect(focusTarget).toBeFocused();
       // WebKit can drop focus for a frame straight after this (the closing
       // document-actions sheet and the composer's own focus both settle on
-      // animation frames), then hand it back. Wait until focus is stably inside
-      // the footer before taking the geometry read that asserts it.
+      // animation frames), then hand it back. A single sample can pass before
+      // that drop, so require focus to stay inside the footer for a window of
+      // consecutive frames before taking the geometry read that asserts it.
       await expect
-        .poll(async () => (await readPageOwnedFooterGeometry(footer, footerCase.reserveSelector)).focusInsideFooter, {
-          message: "focus must settle inside the page-owned footer",
-        })
+        .poll(
+          () =>
+            footer.evaluate(async (node) => {
+              for (let frame = 0; frame < 10; frame += 1) {
+                if (!node.contains(document.activeElement)) return false;
+                await new Promise((resolve) => requestAnimationFrame(resolve));
+              }
+              return node.contains(document.activeElement);
+            }),
+          { message: "focus must stay inside the page-owned footer for 10 frames" },
+        )
         .toBe(true);
     }
 
