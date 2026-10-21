@@ -954,6 +954,9 @@ function normalizeCacheStorageTelemetry(telemetry: SearchTelemetry, shadowContro
     shared_cache_miss_reason: null,
     search_total_latency_ms: undefined,
     retrieval_phase_latencies_ms: undefined,
+    // Per-request measurement: a cache hit issued no text RPCs and ran no stages.
+    retrieval_stage_timeline_ms: undefined,
+    text_rpc_variant_timings: undefined,
   };
 }
 

@@ -6933,6 +6933,60 @@ describe("RAG structured-output fallback", () => {
     expect(search.telemetry.index_unit_top_score).toBe(0);
     expect(search.telemetry.retrieval_strategy).toBe("hybrid");
   });
+
+  it("times a reused embedding prefetch from its own start, overlapping the lexical stage", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "test-key");
+    vi.stubEnv("RAG_SEARCH_CACHE_TTL_MS", "0");
+
+    const hybridSource = source({
+      id: "hybrid-prefetch-chunk",
+      title: "Monitoring Requirements",
+      content: "Monitoring requirements are documented here.",
+      similarity: 0.81,
+      hybrid_score: 0.88,
+      text_rank: 0.7,
+    });
+    const rpc = vi.fn(async (name: string) => {
+      if (retrievalRpcBaseName(name) === "match_document_chunks_text") {
+        await new Promise((resolve) => setTimeout(resolve, 80));
+        return { data: [], error: null };
+      }
+      if (retrievalRpcBaseName(name) === "match_document_chunks_hybrid") return { data: [hybridSource], error: null };
+      return { data: [], error: null };
+    });
+    const embedTextWithTelemetry = vi.fn(async () => ({ embedding: Array(1536).fill(0.01), cacheHit: false }));
+
+    vi.doMock("@/lib/supabase/admin", () => ({
+      createAdminClient: () => ({
+        rpc,
+        from: vi.fn(() => new EmptyQuery()),
+      }),
+    }));
+    vi.doMock("@/lib/openai", () => ({
+      embedTextWithTelemetry,
+      generateStructuredTextResult: vi.fn(),
+    }));
+
+    const { searchChunksWithTelemetry } = await import("../src/lib/rag/rag");
+    const search = await searchChunksWithTelemetry({
+      query: "monitoring requirements",
+      topK: 4,
+      allowGlobalSearch: true,
+    });
+
+    expect(search.telemetry.embedding_prefetched).toBe(true);
+    expect(embedTextWithTelemetry).toHaveBeenCalledOnce();
+    expect(search.results.map((result) => result.id)).toContain("hybrid-prefetch-chunk");
+    const stages = search.telemetry.retrieval_stage_timeline_ms ?? [];
+    const text = stages.find((stage) => stage.stage === "text_candidates");
+    const embedding = stages.find((stage) => stage.stage === "embedding");
+    const wait = stages.find((stage) => stage.stage === "embedding_wait");
+    expect(text && embedding && wait).toBeTruthy();
+    // The prefetch starts before and settles during the slow lexical RPC, not after it.
+    expect(embedding!.started_offset_ms).toBeLessThanOrEqual(text!.started_offset_ms);
+    expect(embedding!.finished_offset_ms).toBeLessThan(text!.finished_offset_ms);
+    expect(wait!.started_offset_ms).toBeGreaterThanOrEqual(text!.finished_offset_ms);
+  });
 });
 
 describe("candidate answers with legacy retrieved evidence", () => {
