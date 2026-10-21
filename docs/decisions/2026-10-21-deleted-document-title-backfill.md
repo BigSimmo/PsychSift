@@ -8,9 +8,12 @@ On 21 Oct 2026 the owner approved the #3706 backfill. It sets `document_title` t
 documents and public-source reservation rows are left alone. Nulling the titles was intended.
 It is irreversible: there is no down migration, and the cleared titles cannot be recovered.
 
-The owner typed their own-words yes at 14:06 AWST ("Go ahead with all recommendations. I give you
-full permission to complete and carry them out for me", in reply to the #3706 backfill ask, relayed
-by Grok Bot). The approval is quoted on #3706, and this entry was recorded at 14:42 AWST at the
-owner's request.
+The owner's specific approval of this change, typed by the owner at 15:33 AWST on 21 Oct 2026
+and posted verbatim on #3714
+(https://github.com/BigSimmo/PsychSift/pull/3714#issuecomment-6310630133): "I approve #3706's
+backfill nulling deleted titles; I know it's irreversible." The earlier 14:06 AWST blanket reply
+("Go ahead with all recommendations…") is not relied on, because a blanket yes does not count
+under `docs/decisions/2026-10-15-database-changes-need-owner-permission.md`. The approval was
+given after the migration had already reached main, so it ratifies the change after it ran.
 
 If this summary and the source ever differ, the source wins.
