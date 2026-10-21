@@ -4,8 +4,10 @@
 // The earlier cache was switched off because its rows carried no admission or source
 // identity. Rows written here bind the caption to the document, its admission event,
 // its content hash and its authority digest (which changes whenever the document's
-// owner, storage, licence, admission or authority facts change), plus the image hash
-// and the caption context hash (prompt, policy, model and nearby-text versions). A row
+// owner, storage, licence, admission or authority facts change), plus the image hash,
+// the caption context hash (prompt, policy, model and nearby-text versions), the exact
+// classifier inputs (full nearby and table text, not a truncated snippet) and every
+// output-affecting vision setting (model, image detail, reasoning effort). A row
 // is reused only when that whole identity matches; anything else is a miss. Legacy rows
 // have no identity and never match. It uses the existing image_caption_cache table
 // unchanged: the identity and the classification live in its metadata column.
@@ -24,7 +26,18 @@ import {
 import { sanitizeJsonbRecord } from "./ingestion-sanitize";
 import type { JobRow } from "./types";
 
-export const imageCaptionCacheIdentityVersion = "image-caption-cache-identity-v1";
+export const imageCaptionCacheIdentityVersion = "image-caption-cache-identity-v2";
+
+/** Exactly the text fields the vision classifier receives for one image. */
+export type CaptionClassifierInputs = Readonly<{
+  nearbyText: string | undefined;
+  sourceKind: string | null;
+  candidateType: string | null;
+  tableLabel: string | null;
+  tableTitle: string | null;
+  tableRole: string | null;
+  tableText: string | null;
+}>;
 
 export type ImageCaptionCacheKey = Readonly<{
   ownerId: string;
@@ -41,6 +54,7 @@ export function imageCaptionCacheKey(args: {
   imageHash: string;
   contextHash: string;
   mimeType: string;
+  classifierInputs: CaptionClassifierInputs;
 }): ImageCaptionCacheKey | null {
   const document = args.job.documents;
   const ownerId = document.owner_id;
@@ -65,6 +79,20 @@ export function imageCaptionCacheKey(args: {
         imageHash: args.imageHash,
         contextHash: args.contextHash,
         mimeType: args.mimeType,
+        // The context hash keeps only 900-character snippets, but the classifier reads up
+        // to 2,500 table and 3,500 nearby characters, and its post-processing reads the full
+        // table text, so the complete inputs and settings are bound here.
+        classifierInputs: {
+          nearbyText: args.classifierInputs.nearbyText ?? null,
+          sourceKind: args.classifierInputs.sourceKind,
+          candidateType: args.classifierInputs.candidateType,
+          tableLabel: args.classifierInputs.tableLabel,
+          tableTitle: args.classifierInputs.tableTitle,
+          tableRole: args.classifierInputs.tableRole,
+          tableText: args.classifierInputs.tableText,
+        },
+        imageDetail: env.OPENAI_VISION_IMAGE_DETAIL,
+        reasoningEffort: env.OPENAI_VISION_REASONING_EFFORT,
       }),
     )
     .digest("hex");

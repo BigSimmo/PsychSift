@@ -27,6 +27,7 @@ import {
   type ImageCaptionCacheKey,
 } from "../worker/image-caption-cache";
 import { resolveCaptionTasks, type CaptionTask } from "../worker/image-captioning";
+import { env } from "../src/lib/env";
 import type { ImageClassification } from "../worker/image-classification";
 import type { IngestionStageContext } from "../worker/ingestion-stage-context";
 import type { JobRow } from "../worker/types";
@@ -158,6 +159,16 @@ function context(supabase: IngestionStageContext["supabase"]) {
   } as unknown as IngestionStageContext;
 }
 
+const INPUTS = {
+  nearbyText: "Synthetic nearby text.",
+  sourceKind: "embedded",
+  candidateType: null,
+  tableLabel: null,
+  tableTitle: null,
+  tableRole: null,
+  tableText: null,
+} as const;
+
 describe("image caption cache identity", () => {
   it("binds the key to the admitted source and refuses to key an unbound document", () => {
     const key = imageCaptionCacheKey({
@@ -165,20 +176,42 @@ describe("image caption cache identity", () => {
       imageHash: "c".repeat(64),
       contextHash: "d".repeat(32),
       mimeType: "image/png",
+      classifierInputs: INPUTS,
     });
     expect(key).toMatchObject({ ownerId: OWNER_ID, imageHash: "c".repeat(64) });
     expect(key?.identity).toMatch(/^sha256:[0-9a-f]{64}$/);
 
     const unowned = job();
     unowned.documents = { ...unowned.documents, owner_id: null as unknown as string };
-    expect(imageCaptionCacheKey({ job: unowned, imageHash: "c", contextHash: "d", mimeType: "image/png" })).toBeNull();
+    expect(
+      imageCaptionCacheKey({
+        job: unowned,
+        imageHash: "c",
+        contextHash: "d",
+        mimeType: "image/png",
+        classifierInputs: INPUTS,
+      }),
+    ).toBeNull();
     const unhashed = job();
     unhashed.documents = { ...unhashed.documents, content_hash: null as unknown as string };
-    expect(imageCaptionCacheKey({ job: unhashed, imageHash: "c", contextHash: "d", mimeType: "image/png" })).toBeNull();
+    expect(
+      imageCaptionCacheKey({
+        job: unhashed,
+        imageHash: "c",
+        contextHash: "d",
+        mimeType: "image/png",
+        classifierInputs: INPUTS,
+      }),
+    ).toBeNull();
   });
 
   it("keeps the identity across retries but changes it with source, admission, authority, image or context", () => {
-    const base = { imageHash: "c".repeat(64), contextHash: "d".repeat(32), mimeType: "image/png" };
+    const base = {
+      imageHash: "c".repeat(64),
+      contextHash: "d".repeat(32),
+      mimeType: "image/png",
+      classifierInputs: INPUTS,
+    };
     const identity = imageCaptionCacheKey({ job: job(), ...base })!.identity;
     expect(imageCaptionCacheKey({ job: job({ attempt: 2 }), ...base })!.identity).toBe(identity);
     for (const changed of [
@@ -193,12 +226,46 @@ describe("image caption cache identity", () => {
     }
   });
 
+  it("changes the identity with any classifier input beyond the context snippet, or any vision setting", () => {
+    // Codex review on #3697: the context hash keeps 900-character snippets, but the
+    // classifier reads 2,500 table and 3,500 nearby characters and depends on the image
+    // detail and reasoning effort settings.
+    const shared = "Lithium level monitoring. ".repeat(40);
+    const base = { imageHash: "c".repeat(64), contextHash: "d".repeat(32), mimeType: "image/png" };
+    const identity = imageCaptionCacheKey({
+      job: job(),
+      ...base,
+      classifierInputs: { ...INPUTS, nearbyText: `${shared} Recheck in 5 days.`, tableText: `${shared} 0.6` },
+    })!.identity;
+    const changed = [
+      { ...INPUTS, nearbyText: `${shared} Recheck in 7 days.`, tableText: `${shared} 0.6` },
+      { ...INPUTS, nearbyText: `${shared} Recheck in 5 days.`, tableText: `${shared} 0.8` },
+      { ...INPUTS, nearbyText: `${shared} Recheck in 5 days.`, tableText: `${shared} 0.6`, tableRole: "dose" },
+    ].map((classifierInputs) => imageCaptionCacheKey({ job: job(), ...base, classifierInputs })!.identity);
+    for (const other of changed) expect(other).not.toBe(identity);
+
+    const plain = imageCaptionCacheKey({ job: job(), ...base, classifierInputs: INPUTS })!.identity;
+    const detail = env.OPENAI_VISION_IMAGE_DETAIL;
+    const effort = env.OPENAI_VISION_REASONING_EFFORT;
+    try {
+      env.OPENAI_VISION_IMAGE_DETAIL = detail === "high" ? "low" : "high";
+      expect(imageCaptionCacheKey({ job: job(), ...base, classifierInputs: INPUTS })!.identity).not.toBe(plain);
+      env.OPENAI_VISION_IMAGE_DETAIL = detail;
+      env.OPENAI_VISION_REASONING_EFFORT = effort === "high" ? "low" : "high";
+      expect(imageCaptionCacheKey({ job: job(), ...base, classifierInputs: INPUTS })!.identity).not.toBe(plain);
+    } finally {
+      env.OPENAI_VISION_IMAGE_DETAIL = detail;
+      env.OPENAI_VISION_REASONING_EFFORT = effort;
+    }
+  });
+
   it("never reuses legacy, foreign or malformed rows", () => {
     const key = imageCaptionCacheKey({
       job: job(),
       imageHash: "c".repeat(64),
       contextHash: "d".repeat(32),
       mimeType: "image/png",
+      classifierInputs: INPUTS,
     })!;
     const classification = modelClassification();
     const row = (metadata: Record<string, unknown>) => ({ metadata });
@@ -241,6 +308,7 @@ describe("image caption cache identity", () => {
       imageHash: "c".repeat(64),
       contextHash: "d".repeat(32),
       mimeType: "image/png",
+      classifierInputs: INPUTS,
     })!;
     const table = fakeCacheTable();
     await writeCachedImageClassification(

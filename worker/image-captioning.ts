@@ -321,6 +321,15 @@ export async function resolveCaptionTasks(
         let classification: ImageClassification | null = task.presetClassification;
         if (!classification) {
           const bytes = await readFile(task.image.path);
+          const classifierInputs = {
+            nearbyText: task.nearbyText,
+            sourceKind: task.image.sourceKind ?? null,
+            candidateType: task.tableMetadata.candidateType,
+            tableLabel: task.tableMetadata.tableLabel,
+            tableTitle: task.tableMetadata.tableTitle,
+            tableRole: task.tableMetadata.tableRole,
+            tableText: task.tableMetadata.tableText,
+          };
           // ING-B-10: reuse this admitted source's own earlier caption of the same image and
           // context. Legacy rows carry no admission/source identity and never match.
           const cacheKey = imageCaptionCacheKey({
@@ -328,6 +337,7 @@ export async function resolveCaptionTasks(
             imageHash: task.imageHash,
             contextHash: task.contextHash,
             mimeType: task.image.mimeType,
+            classifierInputs,
           });
           const cached = cacheKey
             ? await readCachedImageClassification(
@@ -360,13 +370,7 @@ export async function resolveCaptionTasks(
                   ingestionEgress: providerContextForJob(job),
                   base64: bytes.toString("base64"),
                   mimeType: task.image.mimeType,
-                  nearbyText: task.nearbyText,
-                  sourceKind: task.image.sourceKind ?? null,
-                  candidateType: task.tableMetadata.candidateType,
-                  tableLabel: task.tableMetadata.tableLabel,
-                  tableTitle: task.tableMetadata.tableTitle,
-                  tableRole: task.tableMetadata.tableRole,
-                  tableText: task.tableMetadata.tableText,
+                  ...classifierInputs,
                 }),
             );
           } catch (error) {

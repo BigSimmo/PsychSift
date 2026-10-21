@@ -128,6 +128,9 @@ describe("worker visual capture hardening", () => {
       "authorityDigest,",
       "imageHash: args.imageHash,",
       "contextHash: args.contextHash,",
+      "tableText: args.classifierInputs.tableText,",
+      "imageDetail: env.OPENAI_VISION_IMAGE_DETAIL,",
+      "reasoningEffort: env.OPENAI_VISION_REASONING_EFFORT,",
     ]) {
       expect(captionCacheSource).toContain(binding);
     }
