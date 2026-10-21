@@ -1017,6 +1017,38 @@ export type Database = {
           },
         ];
       };
+      document_index_generation_snapshots: {
+        Row: {
+          captured_at: string;
+          document_id: string;
+          index_generation_id: string;
+          metadata: Json | null;
+          quality: Json | null;
+        };
+        Insert: {
+          captured_at?: string;
+          document_id: string;
+          index_generation_id: string;
+          metadata?: Json | null;
+          quality?: Json | null;
+        };
+        Update: {
+          captured_at?: string;
+          document_id?: string;
+          index_generation_id?: string;
+          metadata?: Json | null;
+          quality?: Json | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "document_index_generation_snapshots_document_id_fkey";
+            columns: ["document_id"];
+            isOneToOne: false;
+            referencedRelation: "documents";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       document_index_quality: {
         Row: {
           anchor_coverage: number | null;
@@ -6137,6 +6169,10 @@ export type Database = {
       rollback_document_index_generation: {
         Args: { p_document_id: string; p_expected_generation: string; p_target_generation: string };
         Returns: Json;
+      };
+      document_index_generation_metadata_keys: {
+        Args: never;
+        Returns: string[];
       };
       transition_public_source_version: {
         Args: { p_activation_event_id: string; p_target_lifecycle: string; p_version_id: string };
