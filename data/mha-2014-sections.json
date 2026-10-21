@@ -5,11 +5,11 @@
     "actVersion": "02-b0-02",
     "actAsAt": "2025-09-25",
     "sourceUrl": "https://www.legislation.wa.gov.au/legislation/prod/filestore.nsf/FileURL/mrdoc_48919.htm/$FILE/Mental%20Health%20Act%202014%20-%20%5B02-b0-02%5D.html?OpenElement",
-    "generatedAt": "2026-10-20T17:47:17.606Z",
+    "generatedAt": "2026-10-21T03:54:56.023Z",
     "counts": {
       "sections": 110,
-      "reviewed": 108,
-      "drafted": 2,
+      "reviewed": 107,
+      "drafted": 3,
       "pending": 0
     }
   },
@@ -972,11 +972,8 @@
       "section": "357",
       "title": "Duty to contact identified person",
       "summary": "Sets when a mental health advocate must visit or otherwise contact an identified person; the deadline depends on which paragraph of the s 348 definition the person falls under. A person in paragraph (a), (b), (c) or (e) who is detained under one of the listed provisions (including s 28(1) or (2) and s 34(1)) must be contacted as soon as practicable and in any event “on or within 3 days after the day on which the Chief Mental Health Advocate receives a request” for contact, or is notified of one. An involuntary patient under an involuntary treatment order made on or after the section commenced must be contacted “on or within 7 days after the day on which the involuntary treatment order is made” if an adult, or “within 24 hours after the time when the involuntary treatment order is made” if a child. An involuntary patient whose order was made before the section commenced, or “has been in force for more than 7 days from the day on which the order is made”, must be contacted on or as soon as practicable after the Chief Mental Health Advocate receives, or is notified of, a request. A supervised person required under the CLMI Act to be detained at an authorised hospital must be contacted “within 7 days after the day on which the person is detained” if an adult, or “within 24 hours after the person is detained” if a child. A supervised person required to undergo treatment in the community under the CLMI Act (paragraph (g)) must be contacted “within 7 days (or 24 hours if the person is a child) after the day on which the Chief Mental Health Advocate” receives or is notified of a request. A resident of a private psychiatric hostel (paragraph (h)) or a person receiving care from a prescribed organisation (paragraph (i)) must be contacted on or as soon as practicable after a request is received or notified and, in any event, “within 7 days after that day”; a voluntary patient in a class directed by the Minister (paragraph (j)), within a reasonable time. Despite that, a child who is a hostel resident, receiving care from a prescribed organisation, or in a directed voluntary class (paragraphs (h), (i) or (j)) must be contacted “on or within 24 hours after the day on which the Chief Mental Health Advocate receives a request” or is notified of one.",
-      "status": "reviewed",
-      "sourceTextSha256": "5ccf389aef3328b52308477db07edfdc1536268af10bc65160d023ff870aaf15",
-      "reviewedBy": "Psych Sift",
-      "reviewedAt": "2026-10-15T23:43:09.721Z",
-      "reviewedContentSha256": "5343d9930e5f30abef19e66e33abd6cf51cc27253a723cbe714bbdf63554a712"
+      "status": "drafted",
+      "sourceTextSha256": "5ccf389aef3328b52308477db07edfdc1536268af10bc65160d023ff870aaf15"
     },
     {
       "section": "358",
