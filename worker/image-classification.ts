@@ -95,6 +95,9 @@ export function imageTableMetadata(image: ExtractedDocument["images"][number]) {
             Array.isArray(cell) && cell.length === 2 && cell.every((value) => Number.isInteger(value)),
         )
       : null,
+    tableRowBreaks: Array.isArray(metadata.table_row_breaks)
+      ? (metadata.table_row_breaks as unknown[]).filter((row): row is number => Number.isInteger(row))
+      : null,
   };
 }
 

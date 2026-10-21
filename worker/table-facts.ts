@@ -34,6 +34,9 @@ export type TableFactImageRow = {
   tableColumns?: string[] | null;
   // [rowIndex, columnIndex] of cells the extractor confirmed are covered by a merged span.
   tableMergedCells?: [number, number][] | null;
+  // Row indices that start a new section or page segment (grouped tables, rows recovered
+  // across a page edge). Label carry-down never crosses one.
+  tableRowBreaks?: number[] | null;
   structuredVisualProfile?: {
     table_column_roles?: Record<string, string>;
   } | null;
@@ -191,6 +194,8 @@ export function buildTableFactRows(args: {
     const confirmedMergedRows = new Set(
       (image.tableMergedCells ?? []).filter(([, column]) => column === labelColumn).map(([row]) => row),
     );
+    const rowBreaks = new Set(image.tableRowBreaks ?? []);
+    const mergedCellKeys = new Set((image.tableMergedCells ?? []).map(([row, column]) => `${row}:${column}`));
     let lastRowLabel: { label: string; rowIndex: number } | null = null;
     for (const [rowIndex, rawCells] of image.tableRows.slice(0, 400).entries()) {
       const cells = rawCells.map((cell) => compactSearchText(cell, 240));
@@ -203,6 +208,7 @@ export function buildTableFactRows(args: {
         cells.every((cell, index) => cell === columns[index])
       )
         continue;
+      if (rowBreaks.has(rowIndex)) lastRowLabel = null;
       const rowText = cells.filter(Boolean).join(" ");
       if (!rowText) {
         lastRowLabel = null;
@@ -210,7 +216,14 @@ export function buildTableFactRows(args: {
       }
       const rowLabel = tableFactValue(cells, labelColumn);
       const inheritedLabel = !rowLabel && confirmedMergedRows.has(rowIndex) ? lastRowLabel : null;
-      if (rowLabel) lastRowLabel = { label: rowLabel, rowIndex };
+      // A section heading row (its label spans every other column) is a section break:
+      // it is never a carry-down source for the rows below it.
+      const sectionHeading =
+        Boolean(rowLabel) &&
+        cells.length > 1 &&
+        cells.every((cell, column) => column === labelColumn || mergedCellKeys.has(`${rowIndex}:${column}`));
+      if (sectionHeading) lastRowLabel = null;
+      else if (rowLabel) lastRowLabel = { label: rowLabel, rowIndex };
       else if (!inheritedLabel) lastRowLabel = null;
       // Named columns constrain meaning: an unmatched concentration or interval
       // remains in metadata.cells without being relabelled a threshold or action.

@@ -139,6 +139,47 @@ describe("table fact generation", () => {
     expect(facts[1]?.metadata).not.toHaveProperty("row_label_inherited_from");
   });
 
+  it("does not carry a merged label across a page or section row break", () => {
+    const rows = [
+      ["Group A", "Level 1", "First instruction"],
+      ["", "Level 2", "Second instruction"],
+    ];
+    const facts = buildTableFactRows({
+      job: { document_id: "doc-1", documents: { owner_id: "owner-1" } },
+      chunkRows: [],
+      insertedImages: [
+        {
+          id: "image-1",
+          pageNumber: 2,
+          tableTitle: "Synthetic monitoring table",
+          tableRows: rows,
+          tableColumns: ["Parameter", "Threshold", "Action"],
+          tableMergedCells: [[1, 0]],
+          tableRowBreaks: [1],
+        },
+      ],
+    });
+    expect(facts[1]?.clinical_parameter).toBe("Synthetic monitoring table");
+    expect(facts[1]?.metadata).not.toHaveProperty("row_label_inherited_from");
+  });
+
+  it("does not carry a full-width section heading row down into merged cells below it", () => {
+    const facts = carryFacts(
+      [
+        ["Group A", "Level 1", "First instruction"],
+        ["Section 2: Renal", "", ""],
+        ["", "Level 2", "Second instruction"],
+      ],
+      [
+        [1, 1],
+        [1, 2],
+        [2, 0],
+      ],
+    );
+    expect(facts[2]?.clinical_parameter).toBe("Synthetic monitoring table");
+    expect(facts[2]?.metadata).not.toHaveProperty("row_label_inherited_from");
+  });
+
   it("deduplicates repeated table rows from the same image", () => {
     const facts = buildTableFactRows({
       job: {
