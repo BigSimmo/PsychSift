@@ -46,7 +46,7 @@ describe("staging tenancy workflow", () => {
   // report through the pinned issue without failing the run; dispatched runs stay blocking.
   it("lets a scheduled harness failure report without failing the run", () => {
     expect(workflow).toMatch(
-      /^ {8}id: harness\n {8}if: \$\{\{ steps\.resolve\.outcome == 'success' \}\}\n {8}continue-on-error: \$\{\{ github\.event_name == 'schedule' \}\}$/m,
+      /^ {8}id: harness\n {8}if: \$\{\{ steps\.resolve\.outcome == 'success' && steps\.resolve\.outputs\.relation != 'superseded' \}\}\n {8}continue-on-error: \$\{\{ github\.event_name == 'schedule' \}\}$/m,
     );
     expect(workflow).toContain("harness: ${{ steps.harness.outcome }}");
     // The routing job must read the step outcome, since a continue-on-error step leaves the job
@@ -77,7 +77,9 @@ describe("staging tenancy workflow", () => {
   it("resolves the staging deployment before the harness, strict only on dispatch", () => {
     expect(workflow).toContain("fetch-depth: 0");
     expect(workflow).toContain("id: resolve");
-    expect(workflow).toContain("if: ${{ steps.resolve.outcome == 'success' }}");
+    expect(workflow).toContain(
+      "if: ${{ steps.resolve.outcome == 'success' && steps.resolve.outputs.relation != 'superseded' }}",
+    );
     expect(workflow).toContain(
       "push) node scripts/resolve-staging-deployment.mjs --allow-equivalent --wait-seconds 1800 ;;",
     );

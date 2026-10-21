@@ -8,8 +8,10 @@ or Roster data, and add a staging step with an automatic check before anything g
 that changes the app now waits for staging to run that commit (or an earlier one with the same app files) and
 runs the two-doctor check against it. The check stays off until the owner sets the repository variable
 `STAGING_GATE_ENFORCE` to `true`, so it cannot hold up a live deploy while staging is being rebuilt or `main`
-is red. Railway's Wait for CI must be off on the staging service before the switch goes on, because staging
-would otherwise wait for this check while the check waits for staging. A dispatched release proof still needs
+is red. Two settings on the staging service must be in place before the switch goes on: staging must
+deploy each `main` push by itself (it did not on 21 Oct 2026, so the check could only report staging as
+stale), and Railway's Wait for CI must be off there, because staging would otherwise wait for this check
+while the check waits for staging. A dispatched release proof still needs
 staging on the exact candidate commit.
 
 If this summary and the source ever differ, the source wins.

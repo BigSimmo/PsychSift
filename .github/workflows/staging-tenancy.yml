@@ -64,6 +64,7 @@ jobs:
     outputs:
       harness: ${{ steps.harness.outcome }}
       resolve: ${{ steps.resolve.outcome }}
+      relation: ${{ steps.resolve.outputs.relation }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -113,7 +114,7 @@ jobs:
       # A dispatched run, a deliberate proof, stays blocking, and so does the main-push gate.
       - name: Run cross-tenant staging checks
         id: harness
-        if: ${{ steps.resolve.outcome == 'success' }}
+        if: ${{ steps.resolve.outcome == 'success' && steps.resolve.outputs.relation != 'superseded' }}
         continue-on-error: ${{ github.event_name == 'schedule' }}
         env:
           CROSS_TENANT_STAGING_APP_URL: ${{ secrets.CROSS_TENANT_STAGING_APP_URL }}
@@ -165,6 +166,8 @@ jobs:
         run: |
           if [ "$HARNESS" = "success" ]; then
             echo "## Two-user separation PROVEN on staging (${DEPLOYED:-unknown}, ${RELATION:-unknown})" >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$RELATION" = "superseded" ]; then
+            echo "## Not tested here: staging already runs a newer app commit (${DEPLOYED:-unknown}); its own run proves it" >> "$GITHUB_STEP_SUMMARY"
           else
             if [ "$RESOLVE" != "success" ]; then
               reason="staging was not running a provable version (${RELATION:-unreadable}); see the resolve step"
@@ -203,6 +206,7 @@ jobs:
           # A failed harness step reads `failure` here even when continue-on-error kept the job green.
           HARNESS_RESULT: ${{ needs.cross-tenant.result == 'success' && needs.cross-tenant.outputs.harness || needs.cross-tenant.result }}
           RESOLVE_RESULT: ${{ needs.cross-tenant.outputs.resolve }}
+          RELATION: ${{ needs.cross-tenant.outputs.relation }}
         with:
           script: |
             // Route the alert to a person, not only a label (#TN512M). GitHub mobile pushes a direct
@@ -231,6 +235,11 @@ jobs:
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+            // A newer staging commit's own run carries the verdict; this run neither opens nor closes the alert.
+            if (process.env.RELATION === "superseded") {
+              core.info("Staging already runs a newer app commit; its run reports the result.");
+              return;
+            }
             const result = process.env.HARNESS_RESULT || "unknown";
             const now = new Date().toISOString();
 

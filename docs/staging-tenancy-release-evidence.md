@@ -21,7 +21,10 @@ staging gate may also accept an **equivalent** commit: an ancestor of the checko
 between changes a file `railway.app.json` watches, because Railway does not redeploy for those files.
 The evidence file (schema version 3) records `deploymentRelation` as `exact` or `equivalent`; only an
 `exact` record is release evidence. If an app file is waiting and staging has not deployed it, the
-run reports `STAGING_STALE` and says plainly that separation was not tested.
+run reports `STAGING_STALE` and says plainly that separation was not tested. This only stays rare if the
+staging app service deploys each `main` push by itself; without that, every app change leaves staging stale.
+When staging has already moved on to a newer commit with different app files, the run reports `superseded`,
+skips the harness and leaves the alert issue alone, because the newer commit's own run proves it.
 It signs both test accounts in before creating the service-role client and refuses to
 write fixtures if both credentials resolve to the same user.
 

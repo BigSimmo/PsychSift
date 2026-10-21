@@ -61,6 +61,14 @@ describe("staging deployment resolver (#3113)", () => {
     expect(classify({ deployedIsAncestor: false }).relation).toBe("unrelated");
   });
 
+  it("does not fail a run when staging has already moved past the checkout", () => {
+    const newer = { deployedIsAncestor: false, deployedIsDescendant: true };
+    expect(classify({ ...newer, changedFiles: ["docs/a.md"] }).relation).toBe("equivalent");
+    expect(classify({ ...newer, changedFiles: ["src/app/page.tsx"] }).relation).toBe("superseded");
+    // A release proof still needs the exact commit.
+    expect(classify({ ...newer, allowEquivalent: false, changedFiles: ["docs/a.md"] }).relation).toBe("superseded");
+  });
+
   it("only reads an https staging origin, never the production host", () => {
     expect(parseStagingAppOrigin("https://app-staging.example.test/path")).toBe("https://app-staging.example.test");
     expect(() => parseStagingAppOrigin("http://app-staging.example.test")).toThrow(/https/);

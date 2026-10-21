@@ -19,14 +19,17 @@
  *                 Only allowed with `--allow-equivalent` (the nightly and the main-push gate).
  *   stale       — an app-affecting change is waiting and staging has not deployed it. Polled
  *                 until `--wait-seconds` runs out, then reported as its own clear failure.
- *   unrelated   — staging reports a commit that is not an ancestor of the checkout.
+ *   superseded  — staging already runs a NEWER commit whose app files differ from the checkout's.
+ *                 Not a failure on the nightly or the gate: the run for that newer commit proves it.
+ *                 (A newer commit with the same app files is `equivalent`.) A strict proof fails.
+ *   unrelated   — staging reports a commit on neither side of the checkout's history.
  *
  * A dispatched release proof stays strict (exact only), as docs/staging-tenancy-release-evidence.md
  * requires.
  *
  * Env: CROSS_TENANT_STAGING_APP_URL (https origin, never psychiatry.tools),
  *      CROSS_TENANT_CHECKOUT_COMMIT_SHA (full SHA). Writes `deployed_sha` and `relation` to
- *      $GITHUB_OUTPUT when set. Exit 0 on exact/equivalent, 1 otherwise.
+ *      $GITHUB_OUTPUT when set. Exit 0 on exact/equivalent (and superseded with --allow-equivalent), 1 otherwise.
  */
 import { execFileSync } from "node:child_process";
 import { appendFileSync, readFileSync } from "node:fs";
@@ -42,18 +45,26 @@ const SHA = /^[a-f0-9]{40}$/;
  *   deployedSha: string;
  *   checkoutSha: string;
  *   deployedIsAncestor: boolean;
+ *   deployedIsDescendant?: boolean;
  *   changedFiles: readonly string[];
  *   watchPatterns: readonly string[];
  *   allowEquivalent: boolean;
  * }} input
- * @returns {{ relation: "exact" | "equivalent" | "stale" | "unrelated"; waitingFiles: string[] }}
+ * @returns {{ relation: "exact" | "equivalent" | "stale" | "superseded" | "unrelated"; waitingFiles: string[] }}
  */
 export function classifyStagingDeployment(input) {
   if (input.deployedSha === input.checkoutSha) return { relation: "exact", waitingFiles: [] };
-  if (!input.deployedIsAncestor) return { relation: "unrelated", waitingFiles: [] };
-  const waitingFiles = deployTriggeringFiles(input.watchPatterns, input.changedFiles);
-  if (waitingFiles.length === 0 && input.allowEquivalent) return { relation: "equivalent", waitingFiles };
-  return { relation: "stale", waitingFiles };
+  // changedFiles is the diff between the two commits, whichever is older.
+  const appFiles = deployTriggeringFiles(input.watchPatterns, input.changedFiles);
+  if (input.deployedIsAncestor) {
+    if (appFiles.length === 0 && input.allowEquivalent) return { relation: "equivalent", waitingFiles: [] };
+    return { relation: "stale", waitingFiles: appFiles };
+  }
+  if (input.deployedIsDescendant) {
+    if (appFiles.length === 0 && input.allowEquivalent) return { relation: "equivalent", waitingFiles: [] };
+    return { relation: "superseded", waitingFiles: [] };
+  }
+  return { relation: "unrelated", waitingFiles: [] };
 }
 
 /** @param {string} value */
@@ -132,13 +143,22 @@ async function main() {
     const deployedSha = await readDeployedSha(origin);
     ensureCommit(deployedSha);
     const deployedIsAncestor = isAncestor(deployedSha, checkoutSha);
-    const changedFiles = deployedIsAncestor
-      ? git(["diff", "--name-only", `${deployedSha}..${checkoutSha}`]).split("\n")
-      : [];
+    const deployedIsDescendant = !deployedIsAncestor && isAncestor(checkoutSha, deployedSha);
+    // --no-renames lists both sides of a move, so an app file moved out of a watched path still counts.
+    const changedFiles =
+      deployedIsAncestor || deployedIsDescendant
+        ? git([
+            "diff",
+            "--name-only",
+            "--no-renames",
+            deployedIsAncestor ? `${deployedSha}..${checkoutSha}` : `${checkoutSha}..${deployedSha}`,
+          ]).split("\n")
+        : [];
     const result = classifyStagingDeployment({
       deployedSha,
       checkoutSha,
       deployedIsAncestor,
+      deployedIsDescendant,
       changedFiles,
       watchPatterns,
       allowEquivalent: options.allowEquivalent,
@@ -148,10 +168,24 @@ async function main() {
       writeOutputs({ deployed_sha: deployedSha, relation: result.relation });
       return 0;
     }
+    if (result.relation === "superseded" && options.allowEquivalent) {
+      // Waiting cannot help: staging only moves forward. The run for the newer commit proves it.
+      console.log(
+        `STAGING_SUPERSEDED: staging already runs ${deployedSha}, newer than ${checkoutSha} with different app files; ` +
+          "the run for that commit proves it. Separation was not tested in this run.",
+      );
+      writeOutputs({ deployed_sha: deployedSha, relation: result.relation });
+      return 0;
+    }
     if (Date.now() >= deadline) {
       writeOutputs({ deployed_sha: deployedSha, relation: result.relation });
       if (result.relation === "unrelated") {
-        console.error(`STAGING_UNRELATED: staging runs ${deployedSha}, which is not an ancestor of ${checkoutSha}.`);
+        console.error(`STAGING_UNRELATED: staging runs ${deployedSha}, which is not on the history of ${checkoutSha}.`);
+      } else if (result.relation === "superseded") {
+        console.error(
+          `STAGING_NOT_EXACT: staging runs ${deployedSha}, newer than the commit this run proves (${checkoutSha}). ` +
+            "Redeploy staging at that commit.",
+        );
       } else if (result.waitingFiles.length === 0) {
         console.error(
           `STAGING_NOT_EXACT: staging runs ${deployedSha}, an earlier commit with the same app inputs, ` +
