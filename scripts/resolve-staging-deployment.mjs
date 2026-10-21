@@ -177,7 +177,8 @@ async function main() {
       writeOutputs({ deployed_sha: deployedSha, relation: result.relation });
       return 0;
     }
-    if (Date.now() >= deadline) {
+    // Staging only moves forward, so waiting cannot turn a newer commit back into this one.
+    if (result.relation === "superseded" || Date.now() >= deadline) {
       writeOutputs({ deployed_sha: deployedSha, relation: result.relation });
       if (result.relation === "unrelated") {
         console.error(`STAGING_UNRELATED: staging runs ${deployedSha}, which is not on the history of ${checkoutSha}.`);

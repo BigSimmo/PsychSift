@@ -74,6 +74,14 @@ describe("staging tenancy workflow", () => {
 
   // #3113: an exact main-HEAD rule never passed on a schedule, so nothing was ever tested. The
   // resolver decides what may be proven before the harness touches staging.
+  // A dispatched release proof that meets a newer staging commit failed; only a passing resolve is benign.
+  it("treats a superseded staging commit as harmless only when the resolve step passed", () => {
+    expect(workflow).toContain('elif [ "$RESOLVE" = "success" ] && [ "$RELATION" = "superseded" ]; then');
+    expect(workflow).toContain(
+      'if (process.env.RELATION === "superseded" && process.env.RESOLVE_RESULT === "success") {',
+    );
+  });
+
   it("resolves the staging deployment before the harness, strict only on dispatch", () => {
     expect(workflow).toContain("fetch-depth: 0");
     expect(workflow).toContain("id: resolve");

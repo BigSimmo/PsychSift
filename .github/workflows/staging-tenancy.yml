@@ -166,7 +166,7 @@ jobs:
         run: |
           if [ "$HARNESS" = "success" ]; then
             echo "## Two-user separation PROVEN on staging (${DEPLOYED:-unknown}, ${RELATION:-unknown})" >> "$GITHUB_STEP_SUMMARY"
-          elif [ "$RELATION" = "superseded" ]; then
+          elif [ "$RESOLVE" = "success" ] && [ "$RELATION" = "superseded" ]; then
             echo "## Not tested here: staging already runs a newer app commit (${DEPLOYED:-unknown}); its own run proves it" >> "$GITHUB_STEP_SUMMARY"
           else
             if [ "$RESOLVE" != "success" ]; then
@@ -236,7 +236,8 @@ jobs:
             const repo = context.repo.repo;
             const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
             // A newer staging commit's own run carries the verdict; this run neither opens nor closes the alert.
-            if (process.env.RELATION === "superseded") {
+            // Only a resolve step that passed: a strict release proof that met a newer commit is a failure.
+            if (process.env.RELATION === "superseded" && process.env.RESOLVE_RESULT === "success") {
               core.info("Staging already runs a newer app commit; its run reports the result.");
               return;
             }
