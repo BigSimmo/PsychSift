@@ -43,7 +43,9 @@ export function PatientProfileProvider({ children }: { children: React.ReactNode
   // tools-need-sign-in.md). Signed out, every consumer reads the empty profile, so no
   // tailored note or flag shows. Anything already stored stays in this tab's storage
   // and comes back on sign-in.
-  const signedOut = useClinicalToolAccess() === "sign-in-required";
+  // Only an allowed session reads the stored profile; while the session is still loading
+  // ("checking") nothing patient-specific is exposed either.
+  const accessAllowed = useClinicalToolAccess() === "allowed";
   // Read from the sessionStorage-backed external store so the profile is shared
   // across the prescribing workspace and detail pages with no hydration mismatch.
   const storedProfile = useSyncExternalStore(
@@ -51,7 +53,7 @@ export function PatientProfileProvider({ children }: { children: React.ReactNode
     getPatientProfileSnapshot,
     getServerPatientProfileSnapshot,
   );
-  const profile = signedOut ? EMPTY_PATIENT_PROFILE : storedProfile;
+  const profile = accessAllowed ? storedProfile : EMPTY_PATIENT_PROFILE;
 
   // The same subscription, second reading: the clear generation travels with the
   // profile because a clear is the one change that alters both, and a consumer

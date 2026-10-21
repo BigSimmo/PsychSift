@@ -100,6 +100,22 @@ describe("Patient details", () => {
     );
     expect(screen.getByTestId("probe").textContent).toBe("age 70");
   });
+
+  it("exposes neither the stored profile nor the form while the session is still loading", () => {
+    // Synthetic value; no patient data.
+    writePatientProfile({ ...EMPTY_PATIENT_PROFILE, ageYears: 70 });
+    auth.status = "loading";
+    render(
+      <PatientProfileProvider>
+        <ProfileProbe />
+        <PatientDetailsGate>
+          <p>patient form</p>
+        </PatientDetailsGate>
+      </PatientProfileProvider>,
+    );
+    expect(screen.getByTestId("probe").textContent).toBe("empty");
+    expect(screen.queryByText("patient form")).toBeNull();
+  });
 });
 
 describe("Questionnaire scoring", () => {

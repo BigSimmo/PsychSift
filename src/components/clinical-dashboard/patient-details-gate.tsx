@@ -21,7 +21,10 @@ export function PatientDetailsGate({
   readonly line?: boolean;
   readonly className?: string;
 }) {
-  if (useClinicalToolAccess() !== "sign-in-required") return children;
+  const access = useClinicalToolAccess();
+  if (access === "allowed") return children;
+  // Still checking the session: show neither the patient details nor a sign-in prompt yet.
+  if (access === "checking") return null;
   return (
     <div className={className}>
       <ClinicalSignInNotice
