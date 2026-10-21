@@ -40,6 +40,17 @@ describe("extraction provenance report (#2F8K1V)", () => {
     expect(buildProvenanceReport(rows, { ocrEngineVersion: "4.1.1" }).matched).toEqual([]);
   });
 
+  it("lists exactly the documents a count shows as not recorded", () => {
+    expect(buildProvenanceReport(rows, { extractorVersion: NOT_RECORDED }).matched.map((row) => row.id)).toEqual([
+      "c",
+      "d",
+    ]);
+    expect(buildProvenanceReport(rows, { chunkerVersion: NOT_RECORDED }).matched.map((row) => row.id)).toEqual([
+      "c",
+      "d",
+    ]);
+  });
+
   it("reads a reader-only record written before chunker and OCR versions were added", () => {
     expect(readProvenance({ extraction_provenance: { name: "extract_pdf_assets", version: "v7" } })).toEqual({
       extractorVersion: "v7",

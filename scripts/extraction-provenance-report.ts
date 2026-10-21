@@ -10,7 +10,8 @@
  *
  * Selects only; it never writes, queues a job, chunks or re-indexes. It still reads the live
  * database, so it needs the owner's confirmation before it is run against production.
- * Documents indexed before the record existed report "not recorded".
+ * Documents indexed before the record existed report "not recorded"; list them with
+ * `--extractor-version "not recorded" --list`.
  */
 import { loadEnvConfig } from "@next/env";
 import {
@@ -38,15 +39,16 @@ async function main() {
   assertSupabaseHealthy(await probeSupabaseHealth(supabase), "Extraction provenance report");
 
   const rows: ProvenanceDocumentRow[] = [];
-  for (let from = 0; ; from += PAGE) {
-    const { data, error } = await supabase
-      .from("documents")
-      .select("id,title,metadata")
-      .order("id")
-      .range(from, from + PAGE - 1);
+  // Keyset paging, so documents added or removed during the scan cannot shift a page.
+  for (let lastId: string | null = null; ;) {
+    let query = supabase.from("documents").select("id,title,metadata").order("id").limit(PAGE);
+    if (lastId) query = query.gt("id", lastId);
+    const { data, error } = await query;
     if (error) throw new Error(error.message);
-    rows.push(...((data ?? []) as ProvenanceDocumentRow[]));
-    if (!data || data.length < PAGE) break;
+    const page = (data ?? []) as ProvenanceDocumentRow[];
+    rows.push(...page);
+    if (page.length < PAGE) break;
+    lastId = page[page.length - 1].id;
   }
 
   const report = buildProvenanceReport(rows, args);

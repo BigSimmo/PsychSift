@@ -39,9 +39,19 @@ export function readProvenance(metadata: unknown): Provenance | null {
   };
 }
 
+// The same labels the report counts by, so `--extractor-version "not recorded"` (or the chunker
+// equivalent) lists exactly the documents a count shows as not recorded.
+function extractorLabel(provenance: Provenance | null) {
+  return provenance?.extractorVersion ?? NOT_RECORDED;
+}
+
+function chunkerLabels(provenance: Provenance | null) {
+  return provenance?.chunkerVersions.length ? provenance.chunkerVersions : [NOT_RECORDED];
+}
+
 export function matchesProvenanceFilter(provenance: Provenance | null, filter: ProvenanceFilter) {
-  if (filter.extractorVersion && provenance?.extractorVersion !== filter.extractorVersion) return false;
-  if (filter.chunkerVersion && !provenance?.chunkerVersions.includes(filter.chunkerVersion)) return false;
+  if (filter.extractorVersion && extractorLabel(provenance) !== filter.extractorVersion) return false;
+  if (filter.chunkerVersion && !chunkerLabels(provenance).includes(filter.chunkerVersion)) return false;
   if (filter.ocrEngineVersion && !provenance?.ocrEngineVersions.includes(filter.ocrEngineVersion)) return false;
   return true;
 }
@@ -71,9 +81,8 @@ export function buildProvenanceReport(rows: Iterable<ProvenanceDocumentRow>, fil
     const provenance = readProvenance(row.metadata);
     if (!matchesProvenanceFilter(provenance, filter)) continue;
     report.matched.push({ id: row.id, title: row.title });
-    bump(report.byExtractorVersion, provenance?.extractorVersion ?? NOT_RECORDED);
-    const chunkers = provenance?.chunkerVersions.length ? provenance.chunkerVersions : [NOT_RECORDED];
-    for (const version of chunkers) bump(report.byChunkerVersion, version);
+    bump(report.byExtractorVersion, extractorLabel(provenance));
+    for (const version of chunkerLabels(provenance)) bump(report.byChunkerVersion, version);
     for (const version of provenance?.ocrEngineVersions ?? []) bump(report.byOcrEngineVersion, version);
   }
   return report;

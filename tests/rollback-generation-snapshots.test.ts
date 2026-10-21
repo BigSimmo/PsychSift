@@ -1,7 +1,7 @@
 // #3732: offline contract for 20261021170000_restore_generation_metadata_on_rollback.sql. The SQL
 // itself was exercised against a scratch Postgres (commit, rollback, roll forward, missing
 // snapshot, malformed pointer); CI's migration replay runs the whole chain.
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const migration = readFileSync(
@@ -39,6 +39,25 @@ describe("rollback restores generation-specific details (#3732)", () => {
     const pointerMove = migration.indexOf("set metadata = (metadata - v_keys) || v_snapshot.metadata");
     expect(qualityRestore).toBeGreaterThan(0);
     expect(pointerMove).toBeGreaterThan(qualityRestore);
+  });
+
+  it("relies on the live commit upserting quality before it moves the pointer", () => {
+    // The quality trigger keys the OLD row by the pointer at the time of the upsert, so a commit
+    // that moved the pointer first would file the outgoing quality under the incoming generation.
+    const definitions = readdirSync("supabase/migrations")
+      .filter((name) => name.endsWith(".sql"))
+      .sort()
+      .map((name) => readFileSync(`supabase/migrations/${name}`, "utf8"))
+      .filter((sql) => sql.includes("function public.commit_document_index_generation("));
+    const latest = definitions.at(-1) ?? "";
+    const body = latest.slice(latest.lastIndexOf("function public.commit_document_index_generation("));
+    const end = body.indexOf("end $$;");
+    const commit = body.slice(0, end);
+    const qualityUpsert = commit.indexOf("insert into public.document_index_quality");
+    const pointerMove = commit.indexOf("jsonb_build_object('index_generation_id',p_generation)");
+    expect(end).toBeGreaterThan(0);
+    expect(qualityUpsert).toBeGreaterThan(0);
+    expect(pointerMove).toBeGreaterThan(qualityUpsert);
   });
 
   it("keeps snapshots service-role only and parses the pointer like the generated column", () => {
