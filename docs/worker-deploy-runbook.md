@@ -358,7 +358,8 @@ bytes change while it runs. Never write its value into a document, log, PR or ti
 
 Without it there is no scanner verdict, so every ingestion provider call is refused and each job ends as
 `blocked by ingress safety checks` with `scanner_unavailable` (fail closed; pinned by
-`tests/edge-provider-egress.test.ts`). See [the current ingestion model](ingestion-state-machine.md#current-model-october-2026).
+`tests/edge-provider-egress.test.ts`). A worker started without it logs one warning saying so
+(`adminSourceRuntimeStartupWarning`). See [the current ingestion model](ingestion-state-machine.md#current-model-october-2026).
 
 **Current production state (read-only check, 20 October 2026).** The production `worker` service runs a
 placeholder start command set in Railway, not the image's `node dist/worker/index.mjs`. It is an HTTP-only
@@ -368,7 +369,8 @@ indexed in production. The same check found `WORKER_ADMIN_SOURCE_RUNTIME_MODULE`
 Before the worker is switched back on, with the owner's explicit yes:
 
 1. Confirm the module the variable names exists in the running image or mount and loads: the worker starts
-   without refusing it, and a first permitted job is not stopped as `scanner_unavailable`.
+   without refusing it, its start-up log has no `WORKER_ADMIN_SOURCE_RUNTIME_MODULE is not set` warning, and a
+   first permitted job is not stopped as `scanner_unavailable`.
 2. Restore the real start command, then clear any pause switch.
 3. Watch the first jobs; the library re-index stays stopped
    ([decision](decisions/2026-10-17-library-reindex-stopped.md)).
