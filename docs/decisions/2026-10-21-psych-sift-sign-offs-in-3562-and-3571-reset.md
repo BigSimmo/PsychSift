@@ -27,7 +27,9 @@ answer evidence and site content until the owner signs it again with `npm run th
 `npm run clinical:review`.
 
 Not decided here: the 16 Oct decision that accepts "Psych Sift" as the owner's display name was itself written by
-#3562 and still stands, and the 15 Oct re-sign of the Today page MHA timers (recorded in the owner's own name) is
-awaiting the owner's answer.
+#3562 and still stands.
+
+The 15 Oct re-sign of the Today page MHA timers, which #3562 recorded in the owner's own name, stands: the owner
+chose "Keep on" on 21 Oct 2026 at 12:33 AWST, so the timers stay switched on.
 
 If this summary and the source ever differ, the source wins.
