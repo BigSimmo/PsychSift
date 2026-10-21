@@ -328,8 +328,7 @@ bytes change while it runs. Never write its value into a document, log, PR or ti
 
 Without it there is no scanner verdict, so every ingestion provider call is refused and each job ends as
 `blocked by ingress safety checks` with `scanner_unavailable` (fail closed; pinned by
-`tests/edge-provider-egress.test.ts`). A worker started without it logs one warning saying so
-(`adminSourceRuntimeStartupWarning`). See [the current ingestion model](ingestion-state-machine.md#current-model-october-2026).
+`tests/edge-provider-egress.test.ts`). See [the current ingestion model](ingestion-state-machine.md#current-model-october-2026).
 
 **Current production state (read-only check, 20 October 2026).** The production `worker` service runs a
 placeholder start command set in Railway, not the image's `node dist/worker/index.mjs`. It is an HTTP-only
@@ -339,8 +338,7 @@ indexed in production. The same check found `WORKER_ADMIN_SOURCE_RUNTIME_MODULE`
 Before the worker is switched back on, with the owner's explicit yes:
 
 1. Confirm the module the variable names exists in the running image or mount and loads: the worker starts
-   without refusing it, its start-up log has no `WORKER_ADMIN_SOURCE_RUNTIME_MODULE is not set` warning, and a
-   first permitted job is not stopped as `scanner_unavailable`.
+   without refusing it, and a first permitted job is not stopped as `scanner_unavailable`.
 2. Restore the real start command, then clear any pause switch.
 3. Watch the first jobs; the library re-index stays stopped
    ([decision](decisions/2026-10-17-library-reindex-stopped.md)).
@@ -726,6 +724,15 @@ The second Gate B caveat is already load-bearing above: docling's eager-mode lat
   export PATH="/opt/node24/bin:$PATH"
   node -v # must report v24.x
   ```
+
+- **Pausing the worker on purpose (audit EVAL-03):** the worker has no public
+  address, so monitoring cannot see that it is paused. Whenever you pause it
+  (`WORKER_PAUSED=true`, or a placeholder start command), also set the GitHub
+  repository variable `INGESTION_WORKER_PAUSED=true`; set it to `false` when the
+  worker runs again. The six-hourly ops digest then shows the worker as paused
+  rather than healthy, and the ingestion autopilot names the pause as the cause
+  when it alerts. A pause alone never alerts; a pending upload that nothing claims
+  for more than 30 minutes does, paused or not.
 
 ---
 

@@ -361,7 +361,11 @@ describe("heartbeat tolerates brief control-plane failures", () => {
       const handle = startIngestionHeartbeat(
         attempt,
         () => runIngestionMutation(attempt, rpc, "heartbeat_ingestion_job", {}, { revokeOnUncertainOutcome: false }),
-        { intervalMs: options.intervalMs ?? 60_000, toleranceMs: options.toleranceMs ?? 15 * 60_000 },
+        {
+          intervalMs: options.intervalMs ?? 60_000,
+          toleranceMs: options.toleranceMs ?? 15 * 60_000,
+          leaseMs: 30 * 60_000,
+        },
       );
       for (let index = 0; index < beats; index += 1) await vi.advanceTimersByTimeAsync(options.intervalMs ?? 60_000);
       clearInterval(handle);
@@ -389,6 +393,27 @@ describe("heartbeat tolerates brief control-plane failures", () => {
 
   it("still revokes at once on a confirmed, non-transient database rejection", async () => {
     const { attempt } = await runBeats(["rejected", "ok"], 1);
+    expect(attempt.signal.aborted).toBe(true);
+  });
+
+  it("refuses a tolerance that is not strictly shorter than the job lease", () => {
+    const attempt = new IngestionAttempt(fence);
+    const beat = async () => undefined;
+    for (const toleranceMs of [30 * 60_000, 31 * 60_000, 0])
+      expect(() =>
+        startIngestionHeartbeat(attempt, beat, { intervalMs: 60_000, toleranceMs, leaseMs: 30 * 60_000 }),
+      ).toThrow(RangeError);
+    const handle = startIngestionHeartbeat(attempt, beat, {
+      intervalMs: 60_000,
+      toleranceMs: 30 * 60_000 - 1,
+      leaseMs: 30 * 60_000,
+    });
+    clearInterval(handle);
+  });
+
+  it("revokes before the lease ends when every heartbeat fails", async () => {
+    // Lease 30 min, tolerance 10 min: the attempt must stand down well inside the lease.
+    const { attempt } = await runBeats(["ok", "throw"], 11, { toleranceMs: 10 * 60_000 });
     expect(attempt.signal.aborted).toBe(true);
   });
 

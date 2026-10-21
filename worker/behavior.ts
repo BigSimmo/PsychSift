@@ -379,8 +379,14 @@ export async function runIngestionMutation(
 export function startIngestionHeartbeat(
   attempt: IngestionAttempt,
   beat: () => Promise<unknown>,
-  options: { intervalMs: number; toleranceMs: number; now?: () => number },
+  options: { intervalMs: number; toleranceMs: number; leaseMs: number; now?: () => number },
 ) {
+  // The tolerance must end strictly before the lease does, or an attempt could keep working after
+  // another worker has reclaimed its job. Refuse to start rather than run with a bad configuration.
+  if (!(options.toleranceMs > 0 && options.toleranceMs < options.leaseMs))
+    throw new RangeError(
+      `Heartbeat tolerance (${options.toleranceMs} ms) must be positive and shorter than the job lease (${options.leaseMs} ms).`,
+    );
   const now = options.now ?? Date.now;
   let lastConfirmedAt = now();
   return setInterval(() => {

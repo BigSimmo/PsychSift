@@ -65,8 +65,14 @@ describe("worker visual capture hardening", () => {
     // The commit RPC prunes stale/legacy generation rows and upserts index quality atomically
     // server-side; the worker must surface any RPC failure (fail closed) rather than run a
     // client-side fallback that could partially write after an error.
-    expect(behaviorSource).toContain("if (result.error) throw new Error(result.error.message);");
-    expect(behaviorSource).toMatch(/catch \(error\) \{\s*attempt\.cancel\(\);\s*throw error;\s*\}/);
+    // Every mutation revokes on an uncertain outcome unless it opts out; only the heartbeat does.
+    expect(behaviorSource).toContain("const revokeOnUncertainOutcome = options.revokeOnUncertainOutcome !== false;");
+    expect(behaviorSource).toMatch(
+      /if \(result\.error\) \{\s*if \(revokeOnUncertainOutcome\) attempt\.cancel\(\);\s*throw new Error\(result\.error\.message\);\s*\}/,
+    );
+    expect(behaviorSource).toMatch(
+      /catch \(error\) \{\s*if \(revokeOnUncertainOutcome\) attempt\.cancel\(\);\s*throw error;\s*\}/,
+    );
     expect(workerSource).not.toContain("deleteStaleIndexGenerationRows");
     // Image objects are generation-scoped under the server-prepared, lease-scoped prefix.
     expect(workerSource).toMatch(/await persistIngestionImage\(\{\s*attempt,\s*generation: indexGenerationId,/);

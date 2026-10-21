@@ -14,7 +14,6 @@ import {
   loadAdminSourceRuntimeOptions,
   type ApprovedAdminSource,
   type AdminSourceInitializationContext,
-  adminSourceRuntimeStartupWarning,
 } from "../worker/admin-source-runtime";
 import { workerProviderSourceBinding } from "../worker/provider-egress";
 import type { JobRow } from "../worker/types";
@@ -386,21 +385,5 @@ describe("approved admin source normal runtime composition", () => {
     await expect(
       loadAdminSourceRuntimeOptions(f.client, "synthetic-bucket", "https://example.invalid/source.mjs"),
     ).rejects.toThrow("current_input_required");
-  });
-});
-
-// Audit 2026-10-20 CH-04: without the scanner module every ingestion provider call is refused,
-// so a worker started without it must say so at start-up instead of failing job by job.
-describe("scanner module start-up warning (CH-04)", () => {
-  it("warns when the scanner module setting is absent or empty", () => {
-    for (const value of [undefined, ""]) {
-      const warning = adminSourceRuntimeStartupWarning(value);
-      expect(warning).toContain("WORKER_ADMIN_SOURCE_RUNTIME_MODULE is not set");
-      expect(warning).toContain("scanner_unavailable");
-    }
-  });
-
-  it("stays quiet when the setting is present and never echoes its value", () => {
-    expect(adminSourceRuntimeStartupWarning("/srv/synthetic/runtime.mjs")).toBeNull();
   });
 });

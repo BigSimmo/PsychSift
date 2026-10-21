@@ -421,19 +421,6 @@ export function createAdminSourceRuntimeOptions(
   };
 }
 
-/**
- * Audit 2026-10-20 CH-04: without the scanner module there is no malware verdict, so every
- * ingestion provider call is refused and each job ends as `scanner_unavailable`. Say so once at
- * start-up. Only whether the setting is present is reported, never its value.
- */
-export function adminSourceRuntimeStartupWarning(modulePath = process.env.WORKER_ADMIN_SOURCE_RUNTIME_MODULE) {
-  if (modulePath !== undefined && modulePath !== "") return null;
-  return (
-    "WORKER_ADMIN_SOURCE_RUNTIME_MODULE is not set: there is no malware scanner, so every ingestion " +
-    "provider call will be refused and jobs will fail as scanner_unavailable (see docs/worker-deploy-runbook.md)."
-  );
-}
-
 /** Explicit server-controlled local module/mount. No remote or request paths. */
 export async function loadAdminSourceRuntimeOptions(
   client: SupabaseClient,

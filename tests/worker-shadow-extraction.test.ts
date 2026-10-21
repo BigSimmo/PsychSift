@@ -491,6 +491,7 @@ describe("worker/main.ts + env + image contract (source text)", () => {
       '() => mutation(attempt, "heartbeat_ingestion_job", {}, { revokeOnUncertainOutcome: false }),',
     );
     expect(workerMain).toContain("const heartbeat = startIngestionHeartbeat(");
+    expect(workerMain).toContain("leaseMs: env.WORKER_STALE_AFTER_MINUTES * 60_000,");
     // The record travels only inside finalMetadata (deep-merged by apply_document_metadata_patch).
     expect(workerMain.match(/shadow_extraction: shadowExtraction/g)).toHaveLength(1);
     expect(workerMain).toContain("...(shadowExtraction ? { shadow_extraction: shadowExtraction } : {})");

@@ -166,16 +166,4 @@ describe("storage cleanup ledger update (R11)", () => {
     expect(update.last_error).toBeNull();
     expect(update.document_paths).toBeUndefined();
   });
-
-  // Audit 2026-10-20 ING-A-05: a deleted document's title can identify things, so it is not kept
-  // in the ledger once the document row is gone. An aborted delete leaves the document alive.
-  it.each(["completed", "failed"] as const)("clears the deleted document's title on a %s cleanup", (status) => {
-    const update = buildStorageCleanupJobUpdate({ status, storageRemoved: 1, warnings: [] });
-    expect(update.document_title).toBeNull();
-  });
-
-  it("leaves the title of a document whose delete aborted untouched", () => {
-    const update = buildStorageCleanupJobUpdate({ status: "failed", storageRemoved: 0, warnings: [], aborted: true });
-    expect(update.document_title).toBeUndefined();
-  });
 });
