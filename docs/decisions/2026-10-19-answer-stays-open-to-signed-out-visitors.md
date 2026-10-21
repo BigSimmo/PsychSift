@@ -1,6 +1,6 @@
 # Decision: Answer stays open to signed-out visitors for now
 
-- **Status:** decided 2026-10-19
+- **Status:** decided 2026-10-19; superseded by 2026-10-20-clinical-decision-tools-need-sign-in.md
 - **Source:** `docs/clinical-hazard-analysis.md`, find "not enforced for Answer. Asked whether Answer should require sign-in"
 
 Asked whether Answer should require sign-in before colleagues are invited (repository audit F-03),

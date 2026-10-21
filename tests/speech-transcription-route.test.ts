@@ -38,7 +38,7 @@ const file = (type = "audio/webm", bytes = 2, name = "private-name.webm") =>
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.enabled.mockReturnValue(true);
-  mocks.access.mockResolvedValue({ rateLimitSubject: { kind: "owner", ownerId: "owner-a" } });
+  mocks.access.mockResolvedValue({ authenticated: true, rateLimitSubject: { kind: "owner", ownerId: "owner-a" } });
   mocks.rate.mockResolvedValue({ limited: false });
   mocks.transcribe.mockResolvedValue({ transcript: "Synthetic transcript", model: "gpt-4o-mini-transcribe" });
 });
@@ -86,6 +86,14 @@ describe("POST /api/speech/transcribe", () => {
     [file(), "60001", 400],
   ] as const)("rejects invalid audio", async (audio, duration, status) => {
     expect((await POST(request(audio, duration))).status).toBe(status);
+    expect(mocks.transcribe).not.toHaveBeenCalled();
+  });
+
+  it("refuses a signed-out caller before the rate limiter or the provider", async () => {
+    mocks.access.mockResolvedValue({ authenticated: false, rateLimitSubject: { kind: "ip", key: "ip-a" } });
+    const response = await POST(request(file()));
+    expect(response.status).toBe(401);
+    expect(mocks.rate).not.toHaveBeenCalled();
     expect(mocks.transcribe).not.toHaveBeenCalled();
   });
 

@@ -98,7 +98,8 @@ import { useDashboardSearchExecution } from "@/components/clinical-dashboard/use
 import { notNowDocumentsSearch } from "@/components/front-door/ask-terms-not-now";
 import { useAskTermsGate } from "@/components/front-door/use-ask-terms-gate";
 import { Button } from "@/components/ui/button";
-import { ASK_TERMS_DECLINED_NOTICE, ASK_TERMS_REVIEW_LABEL } from "@/lib/front-door-content";
+import { ClinicalSignInNotice } from "@/components/mode-kit/clinical-sign-in-notice";
+import { ASK_TERMS_DECLINED_NOTICE, ASK_TERMS_REVIEW_LABEL, CLINICAL_SIGN_IN_COPY } from "@/lib/front-door-content";
 import { focusComposerInput as scheduleComposerFocus } from "@/components/clinical-dashboard/focus-composer-input";
 import {
   resolveDashboardHideOnScroll,
@@ -2055,6 +2056,18 @@ function ClinicalDashboardContent({
                     </Button>
                   </span>
                 </InlineNotice>
+              ) : null}
+              {searchMode === "documents" && askTermsGate.signInQuery && askTermsGate.signInQuery === query.trim() ? (
+                // Answer needs sign-in; the question's documents show below this card.
+                <ClinicalSignInNotice
+                  copy={CLINICAL_SIGN_IN_COPY.answer}
+                  testId="answer-sign-in"
+                  onSignedIn={() => {
+                    const asked = askTermsGate.signInQuery;
+                    askTermsGate.clearSignIn();
+                    if (asked) crossModeSearch("answer", asked);
+                  }}
+                />
               ) : null}
               {askTermsGate.heldQuery !== null ? (
                 <AskTermsStep

@@ -336,20 +336,26 @@ export async function runIngestionMutation(
   rpc: (name: string, args: Record<string, unknown>) => PromiseLike<IngestionRpcResult>,
   name: string,
   payload: Record<string, unknown> = {},
+  options: { revokeOnUncertainOutcome?: boolean } = {},
 ) {
+  // Only a call that writes nothing (the heartbeat) may opt out; its caller then owns revocation.
+  const revokeOnUncertainOutcome = options.revokeOnUncertainOutcome !== false;
   return attempt.serialize(async () => {
     attempt.check();
     let result: IngestionRpcResult;
     try {
       result = await rpc(name, { ...payload, p_fence: attempt.fence });
     } catch (error) {
-      attempt.cancel();
+      if (revokeOnUncertainOutcome) attempt.cancel();
       throw error;
     }
     const rejection = result.error ? confirmedRpcRejection(result.error) : null;
     if (rejection) throw rejection;
+    if (result.error) {
+      if (revokeOnUncertainOutcome) attempt.cancel();
+      throw new Error(result.error.message);
+    }
     try {
-      if (result.error) throw new Error(result.error.message);
       const accepted =
         name === "commit_document_index_generation"
           ? attempt.handoff(result.data, payload.p_generation)
@@ -361,6 +367,41 @@ export async function runIngestionMutation(
       throw error;
     }
   });
+}
+
+/**
+ * Audit 2026-10-20 ING-A-03: the heartbeat writes no data, so an uncertain or transiently
+ * rejected heartbeat need not throw away the attempt's paid work. It is tolerated until no
+ * heartbeat has been confirmed for `toleranceMs` (a third of the stale window by default, so
+ * the attempt stands down long before another worker can reclaim the lease). A reported lost
+ * lease, an invalid response or a confirmed non-transient rejection still revokes at once.
+ */
+export function startIngestionHeartbeat(
+  attempt: IngestionAttempt,
+  beat: () => Promise<unknown>,
+  options: { intervalMs: number; toleranceMs: number; leaseMs: number; now?: () => number },
+) {
+  // The tolerance must end strictly before the lease does, or an attempt could keep working after
+  // another worker has reclaimed its job. Refuse to start rather than run with a bad configuration.
+  if (!(options.toleranceMs > 0 && options.toleranceMs < options.leaseMs))
+    throw new RangeError(
+      `Heartbeat tolerance (${options.toleranceMs} ms) must be positive and shorter than the job lease (${options.leaseMs} ms).`,
+    );
+  const now = options.now ?? Date.now;
+  let lastConfirmedAt = now();
+  return setInterval(() => {
+    beat().then(
+      () => {
+        lastConfirmedAt = now();
+      },
+      (error: unknown) => {
+        const tolerable =
+          !(error instanceof IngestionAttemptError) &&
+          (!(error instanceof IngestionRpcRejectedError) || isTransientDatabaseRejection(error));
+        if (!tolerable || now() - lastConfirmedAt >= options.toleranceMs) attempt.cancel();
+      },
+    );
+  }, options.intervalMs);
 }
 
 export function claimedJobFence(

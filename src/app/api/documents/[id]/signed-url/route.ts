@@ -9,6 +9,7 @@ import { registryCorpusDetailHref } from "@/lib/registry-corpus-links";
 import { normalizeSourceMetadata } from "@/lib/source-metadata";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, unauthorizedResponse } from "@/lib/supabase/auth";
+import { requireSignedInClinicalAccess } from "@/lib/clinical-access";
 import { enforceDocumentReadRateLimit, withOwnerReadScope } from "@/lib/public-api-access";
 
 export const runtime = "nodejs";
@@ -36,6 +37,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
     const supabase = createAdminClient();
     const { access, rateLimit } = await enforceDocumentReadRateLimit(_request, supabase);
+    requireSignedInClinicalAccess(access);
     if (rateLimit.limited) {
       return rateLimitJsonResponse("Document requests are rate limited. Try again shortly.", rateLimit);
     }
