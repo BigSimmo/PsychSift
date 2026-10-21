@@ -147,12 +147,38 @@ function validRate(value) {
 }
 
 /**
- * docs/observability-slos.md §2 configured thresholds, applied to the digest's 60-minute snapshot.
+ * The answer-quality window: the trailing six hours the deep probe reports as `sloTrailing`
+ * (`ANSWER_SLO_TRAILING_WINDOW_MINUTES` in src/lib/health-response.ts, pinned equal by
+ * tests/health-response-deep-probe.test.ts).
+ *
+ * Audit EVAL-02 (2026-10-20): the digest runs every six hours (at minute 15) but judged
+ * only the last 60 minutes, so answers in the other five hours of each interval were never
+ * examined by any rule. Six hours is exactly one schedule interval, so consecutive scheduled
+ * digests read back-to-back windows: every answer is judged once, and one bad answer is not
+ * re-alerted by four digests in a row as a 24-hour window would be. The hourly `slo` snapshot is
+ * still read for the hybrid-RPC identity history (scripts/ops-digest.mjs), whose three-sample
+ * paging contract is unchanged. A deep probe without `sloTrailing` (an older build) is judged on
+ * its hourly `slo` exactly as before.
+ */
+export const ANSWER_QUALITY_WINDOW_MINUTES = 360;
+const HOURLY_WINDOW_MINUTES = 60;
+
+/**
+ * docs/observability-slos.md §2 configured thresholds, applied to the answer-quality window above.
  * Rates are 0..1 and strictly-greater-than; latencies are p95 milliseconds per routing mode.
  * Kept in one table so the doc and the code can be compared line by line.
+ *
+ * `minimumQueries` is 10 (it was 20 in one hour; audit EVAL-02). PsychSift is a single-clinician
+ * pilot: the 20 Oct 2026 digest saw zero answers in its hour, and 20 answers in any one hour
+ * effectively never happens, so the source-gap, unsupported and latency-budget rules never ran.
+ * Ten answers over six hours is the smallest count at which the existing lines still need more
+ * than one bad answer to fire: with 10 answers a warning (> 15%) needs 2 source gaps or
+ * unsupported answers, a source-gap page (> 30%) needs 4 and an unsupported page (> 25%) needs 3.
+ * Below 10, a single answer would cross 15% (1 of 6 is 16.7%) and mention the owner for one
+ * event. A window under the minimum is unassessed, not healthy.
  */
 export const ANSWER_QUALITY_THRESHOLDS = Object.freeze({
-  minimumQueries: 20,
+  minimumQueries: 10,
   sourceGapRate: Object.freeze({ warning: 0.15, page: 0.3 }),
   unsupportedRate: Object.freeze({ warning: 0.15, page: 0.25 }),
   latencyBudgetBreachRate: Object.freeze({ warning: 0.15 }),
@@ -233,9 +259,13 @@ function latencyP95Alerts(byMode, sampleTruncated, windowMinutes) {
  */
 export function evaluateOperationalAlerts(health, context = {}) {
   const alerts = [];
-  const slo = health?.slo;
+  // Every answer-rate rule reads the trailing six-hour window when the probe supplies it (audit
+  // EVAL-02); an older build without `sloTrailing` is judged on its hourly snapshot as before.
+  const trailing = health?.sloTrailing && typeof health.sloTrailing === "object" ? health.sloTrailing : null;
+  const slo = trailing ?? health?.slo;
+  const expectedWindowMinutes = trailing ? ANSWER_QUALITY_WINDOW_MINUTES : HOURLY_WINDOW_MINUTES;
 
-  if (!slo || !finiteNumber(slo.totalQueries) || slo.totalQueries <= 0 || slo.windowMinutes !== 60) {
+  if (!slo || !finiteNumber(slo.totalQueries) || slo.totalQueries <= 0 || slo.windowMinutes !== expectedWindowMinutes) {
     alerts.push(
       alert(policies.sloUnknown, {
         observedValue: slo?.totalQueries ?? null,
@@ -243,9 +273,13 @@ export function evaluateOperationalAlerts(health, context = {}) {
         windowMinutes: finiteNumber(slo?.windowMinutes) ? slo.windowMinutes : null,
         reason: !slo
           ? "Answer SLO data is missing."
-          : slo.windowMinutes !== 60
-            ? "Answer SLO snapshot must cover exactly one 60-minute hourly window."
-            : "No answered queries were observed; rates cannot establish health.",
+          : trailing?.unavailable === true
+            ? "The trailing answer-quality snapshot query failed; answer quality was not assessed."
+            : slo.windowMinutes !== expectedWindowMinutes
+              ? trailing
+                ? `Trailing answer-quality snapshot must cover exactly ${ANSWER_QUALITY_WINDOW_MINUTES} minutes.`
+                : "Answer SLO snapshot must cover exactly one 60-minute hourly window."
+              : `No answered queries were observed in the trailing ${expectedWindowMinutes} minutes; rates cannot establish health.`,
       }),
     );
   } else {
@@ -272,7 +306,7 @@ export function evaluateOperationalAlerts(health, context = {}) {
           alert(policies.hybridPage, {
             observedValue: repeatedHybridRpcNames,
             threshold: { operator: ">=", value: 3, unit: "consecutive digest samples for the same RPC" },
-            windowMinutes: finiteNumber(slo.windowMinutes) ? slo.windowMinutes : 60,
+            windowMinutes: finiteNumber(slo.windowMinutes) ? slo.windowMinutes : expectedWindowMinutes,
             reason: `Persisted digest evidence observed ${repeatedHybridRpcNames.join(", ")} in three consecutive samples.`,
           }),
         );
@@ -281,7 +315,7 @@ export function evaluateOperationalAlerts(health, context = {}) {
           alert(policies.hybridWarning, {
             observedValue: hybridRate,
             threshold: { operator: ">", value: 0.005, unit: "rate" },
-            windowMinutes: finiteNumber(slo.windowMinutes) ? slo.windowMinutes : 60,
+            windowMinutes: finiteNumber(slo.windowMinutes) ? slo.windowMinutes : expectedWindowMinutes,
           }),
         );
       }
@@ -302,7 +336,7 @@ export function evaluateOperationalAlerts(health, context = {}) {
         alert(policies.degradedPage, {
           observedValue: degradedRate,
           threshold: { operator: ">", value: 0.5, unit: "rate" },
-          windowMinutes: finiteNumber(slo.windowMinutes) ? slo.windowMinutes : 60,
+          windowMinutes: finiteNumber(slo.windowMinutes) ? slo.windowMinutes : expectedWindowMinutes,
         }),
       );
     } else if (degradedRate > 0.2) {
@@ -310,12 +344,12 @@ export function evaluateOperationalAlerts(health, context = {}) {
         alert(policies.degradedWarning, {
           observedValue: degradedRate,
           threshold: { operator: ">", value: 0.2, unit: "rate" },
-          windowMinutes: finiteNumber(slo.windowMinutes) ? slo.windowMinutes : 60,
+          windowMinutes: finiteNumber(slo.windowMinutes) ? slo.windowMinutes : expectedWindowMinutes,
         }),
       );
     }
 
-    const windowMinutes = finiteNumber(slo.windowMinutes) ? slo.windowMinutes : 60;
+    const windowMinutes = finiteNumber(slo.windowMinutes) ? slo.windowMinutes : expectedWindowMinutes;
     if (slo.totalQueries >= ANSWER_QUALITY_THRESHOLDS.minimumQueries) {
       for (const item of [
         rateAlert(

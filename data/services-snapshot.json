@@ -417,7 +417,7 @@
       "sections": ["Metro public community teams and urgent treatment supports"],
       "inclusion_criteria": "ATT/CTT entry point and acute follow-up; linked with CRHTT | Eligibility: Adults 18–65 | Patient group: Adults 18–65",
       "exclusions": "",
-      "referral_details": "Contact: ATT/CTT 9398 6600; CRHTT 9391 2300; Orchard Avenue Centre | Referral pathway: ATT/CTT referral | Hours: ATT 8am–4.30pm, CTT 8.30am–4.30pm | Cost/funding: Public service",
+      "referral_details": "Contact: ATT/CTT 9398 6600; Inpatient unit 9391 2300; Orchard Avenue Centre | Referral pathway: ATT/CTT referral | Hours: ATT and CTT 8.30am–4.30pm Mon–Fri | Cost/funding: Public service",
       "tags": {
         "catchments": ["Armadale/Kalamunda", "EMHS City East"],
         "age_groups": ["adult", "mixed"],
@@ -434,8 +434,8 @@
       "referral_pathway": "ATT/CTT referral",
       "eligibility_referral_criteria": "Adults 18–65",
       "exclusion_rejection_criteria": "Not publicly stated",
-      "contact_details": "ATT/CTT 9398 6600; CRHTT 9391 2300; Orchard Avenue Centre",
-      "hours": "ATT 8am–4.30pm, CTT 8.30am–4.30pm",
+      "contact_details": "ATT/CTT 9398 6600; Inpatient unit 9391 2300; Orchard Avenue Centre",
+      "hours": "ATT and CTT 8.30am–4.30pm Mon–Fri",
       "cost_funding": "Public service",
       "discharge_planning_usefulness": "High",
       "confidence": "High",
@@ -448,8 +448,8 @@
       "source_table_lines": "93",
       "deep_research_citation_tokens": "turn15search5",
       "verification_flags": ["Capacity/vacancy likely dynamic"],
-      "analyst_notes": "",
-      "search_text": "Service: Armadale Community Mental Health Service\nProvider: EMHS\nCategory: Metro public community teams and urgent treatment supports\nTags: Metro public community teams and urgent treatment supports\nRegion/catchment: Armadale/Kalamunda group\nPatient group: Adults 18–65\nBest use/indication: ATT/CTT entry point and acute follow-up; linked with CRHTT\nReferral pathway: ATT/CTT referral\nEligibility/referral criteria: Adults 18–65\nExclusion/rejection criteria: Not publicly stated\nContact details: ATT/CTT 9398 6600; CRHTT 9391 2300; Orchard Avenue Centre\nHours: ATT 8am–4.30pm, CTT 8.30am–4.30pm\nCost/funding: Public service\nDischarge-planning usefulness: High\nVerification flags: Capacity/vacancy likely dynamic\nSource documents: File_D_31May_extended\nCitation tokens: turn15search5",
+      "analyst_notes": "2026-10-20: hours and the 9391 2300 label checked against the Armadale Health Service mental health page (ahs.health.wa.gov.au/Services/Mental-Health), which lists 9391 2300 as the Adult and Older Adult Inpatient Mental Health Unit.",
+      "search_text": "Service: Armadale Community Mental Health Service\nProvider: EMHS\nCategory: Metro public community teams and urgent treatment supports\nTags: Metro public community teams and urgent treatment supports\nRegion/catchment: Armadale/Kalamunda group\nPatient group: Adults 18–65\nBest use/indication: ATT/CTT entry point and acute follow-up; linked with CRHTT\nReferral pathway: ATT/CTT referral\nEligibility/referral criteria: Adults 18–65\nExclusion/rejection criteria: Not publicly stated\nContact details: ATT/CTT 9398 6600; Inpatient unit 9391 2300; Orchard Avenue Centre\nHours: ATT and CTT 8.30am–4.30pm Mon–Fri\nCost/funding: Public service\nDischarge-planning usefulness: High\nVerification flags: Capacity/vacancy likely dynamic\nSource documents: File_D_31May_extended\nCitation tokens: turn15search5",
       "canonical_name_key": "armadale-community-mental-health-service"
     },
     {
@@ -1521,7 +1521,8 @@
       "verification_flags": [],
       "analyst_notes": "",
       "search_text": "Service: Crisis Care and Child Protection Central Intake\nProvider: Department of Communities\nCategory: Family, carer, and child-related supports\nTags: Family, carer, and child-related supports\nRegion/catchment: WA\nPatient group: Children, families, carers, clinicians\nBest use/indication: When discharge risk intersects with child safety or wellbeing concerns\nReferral pathway: Phone\nEligibility/referral criteria: Child wellbeing concerns. After-hours crisis response through Crisis Care\nExclusion/rejection criteria: Not publicly stated\nContact details: Child Protection Central Intake 1800 273 889. Crisis Care 1800 199 008 after hours\nHours: Central Intake hours not stated on page; Crisis Care after hours\nCost/funding: Publicly funded\nDischarge-planning usefulness: Very high where child protection interface is relevant\nSource documents: File_B_27May\nCitation tokens: turn41search3",
-      "canonical_name_key": "crisis-care-and-child-protection-central-intake"
+      "canonical_name_key": "crisis-care-and-child-protection-central-intake",
+      "superseded_by": "Child Protection Central Intake (SVC-CHP-001) and Crisis Care (SVC-HOU-002)"
     },
     {
       "id": "S035",
@@ -1654,7 +1655,8 @@
       "verification_flags": ["Contact not publicly stated / verify by phone"],
       "analyst_notes": "",
       "search_text": "Service: Dabakan Ngowoort Koorliny Mia Safe Haven (Royal Perth Hospital)\nProvider: EMHS with Ruah peer support | East Metropolitan Health Service / peer-led model | Ruah with clinical support at RPH\nCategory: Immediate crisis and urgent access\nTags: Immediate crisis and urgent access | Crisis, acute mental health, and emergency alternatives\nRegion/catchment: Perth CBD | Perth metro, Royal Perth precinct | Perth metro, RPH precinct | Perth metro\nPatient group: People in mental health distress not needing ED-level medical care | Adults in distress who may otherwise present to ED | Adults in mental distress\nBest use/indication: Distress support when patient may otherwise attend ED but does not need intensive medical or acute inpatient care | ED diversion, peer-led early intervention distress support | Peer-led after-hours alternative for people in mental health distress who may otherwise attend ED but do not need intensive clinical or medical support | Peer-led after-hours alternative when distress is significant but intensive medical support is not required | Mental distress needing early intervention, calm non-ED alternative for psychosocial support | Non-ED psychosocial distress support, especially when calm, peer-informed space is preferable\nReferral pathway: Walk-in, ED referral, community mental health referral | Walk-in, ED referral, community MH referral | Walk-in style access per service instructions | Attend per service directions | Walk-in / local navigation | Walk-in / local service navigation\nEligibility/referral criteria: Willing and able to act safely on site | Inferred suitability: mental health distress not requiring intensive clinical/medical support | Publicly described as early intervention distress support\nExclusion/rejection criteria: Must be willing/able to act safely on site | Unsuitable if intensive clinical/medical support required | Intended for distress not requiring intensive medical support | Not suitable for ED-level medical acuity | Not described as a substitute for ED when medically unstable | Not publicly stated. Inferred suitability: not for medical instability or high behavioural acuity\nContact details: Not publicly stated on RPH page | Victoria Square; no direct public phone on RPH page | Not publicly stated on MHC page | Victoria Square, opposite St Mary’s Cathedral. Phone not publicly stated on MHC page | Website; phone not publicly stated on reviewed page\nHours: Fri–Sun 3pm–7:45pm | Fri-Sun 3:00 pm to 7:45 pm\nCost/funding: Public/free | Publicly funded\nDischarge-planning usefulness: Moderate to high for weekend-discharge contingency or after-hours distress plan | High for crisis diversion and discharge contingency plans | High if patient does not need ED and can engage\nVerification flags: Contact not publicly stated / verify by phone\nSource documents: File_A_25May; File_B_27May; File_C_31May_general\nCitation tokens: turn29view1turn29view2 | turn28view2 | turn39search2",
-      "canonical_name_key": "dabakan-ngowoort-koorliny-mia-safe-haven-royal-perth-hospital"
+      "canonical_name_key": "dabakan-ngowoort-koorliny-mia-safe-haven-royal-perth-hospital",
+      "superseded_by": "Safe Haven services - Royal Perth and Kununurra (SVC-URG-005)"
     },
     {
       "id": "S038",
@@ -2008,7 +2010,8 @@
       "verification_flags": ["Contact not publicly stated / verify by phone", "Eligibility not fully public"],
       "analyst_notes": "",
       "search_text": "Service: Emergency services / 000 / nearest ED\nCategory: Immediate crisis and urgent access\nTags: Immediate crisis and urgent access\nRegion/catchment: Statewide\nBest use/indication: Immediate life-threatening emergency, severe violence, medical collapse, high-lethality attempt | Immediate danger, severe behavioural disturbance, overdose, medical emergency, high-risk suicidality | Life-threatening emergency, severe behavioural disturbance, immediate medical/emergency response | Immediate danger, severe behavioural disturbance, major self-harm risk, medical instability, severe intoxication/withdrawal, violent or uncontainable psychosis\nReferral pathway: Emergency call | Call emergency services or present to nearest ED | Self/family/clinician | Call 000 or present to ED\nExclusion/rejection criteria: Emergency only | None for emergency access | Emergency pathway, not a routine referral service\nContact details: 000\nHours: 24/7\nVerification flags: Contact not publicly stated / verify by phone; Eligibility not fully public\nSource documents: File_A_25May; File_B_27May; File_C_31May_general; File_D_31May_extended\nCitation tokens: turn5view6turn5view8turn27view1 | turn42search15turn41search1 | turn23search5turn12search1 | turn16view5turn16view6",
-      "canonical_name_key": "emergency-services-000-nearest-ed"
+      "canonical_name_key": "emergency-services-000-nearest-ed",
+      "superseded_by": "Emergency services (SVC-URG-001)"
     },
     {
       "id": "S046",
@@ -3917,7 +3920,8 @@
       "verification_flags": [],
       "analyst_notes": "",
       "search_text": "Service: Kununurra Safe Place / Safe Haven\nProvider: WACHS | WACHS / peer-led model\nCategory: Immediate crisis and urgent access\nTags: Immediate crisis and urgent access | Crisis, acute mental health, and emergency alternatives\nRegion/catchment: East Kimberley\nPatient group: People in distress not needing ED-level care | People in mental health distress\nBest use/indication: Distress support, ED diversion | Regional ED diversion/peer support | Peer-led / low intensity crisis alternative linked to Kununurra Hospital | Peer-led alternative to ED attendance\nReferral pathway: Phone or self-presentation | Self-presentation or phone | Phone or attend | Attend or phone\nEligibility/referral criteria: Inferred suitability: distress without need for intensive medical support | Inferred suitability: distress not requiring intensive medical support\nExclusion/rejection criteria: Limited local service, verify current intake process | Not for people needing ED-level medical care | Not for ED-level medical acuity\nContact details: 0456 030 979 | 96 Coolibah Dr, Kununurra; 0456 030 979 | 96 Coolibah Drive, Kununurra. 0456 030 979\nHours: Wed–Fri 4pm–10pm; Sat 2pm–10pm | Wed-Fri 4:00 pm to 10:00 pm, Sat 2:00 pm to 10:00 pm\nCost/funding: Public/free | Publicly funded\nDischarge-planning usefulness: Moderate. Useful for Kimberley discharge planning | High in East Kimberley discharge plans\nSource documents: File_A_25May; File_B_27May\nCitation tokens: turn29view0 | turn28view2",
-      "canonical_name_key": "kununurra-safe-place-safe-haven"
+      "canonical_name_key": "kununurra-safe-place-safe-haven",
+      "superseded_by": "Safe Haven services - Royal Perth and Kununurra (SVC-URG-005)"
     },
     {
       "id": "S090",
@@ -4314,7 +4318,7 @@
       "sections": ["Men's mental health and family support"],
       "inclusion_criteria": "Telephone and online counselling for men, relationship issues, family violence-related concerns and emotional distress. | Eligibility: Men or people seeking support around men’s wellbeing/relationships. | Patient group: Men, partners/families/supporters",
       "exclusions": "Not a psychiatric emergency service.",
-      "referral_details": "Contact: 1300 78 99 78 | Referral pathway: Self/family/clinician referral by phone/online | Hours: Not publicly extracted in reviewed source | Cost/funding: Free/phone counselling service",
+      "referral_details": "Contact: 1300 78 99 78 | Referral pathway: Self/family/clinician referral by phone/online | Hours: 24/7 telephone and online counselling | Cost/funding: Free/phone counselling service",
       "tags": {
         "catchments": ["Metro-wide"],
         "age_groups": ["mixed"],
@@ -4332,7 +4336,7 @@
       "eligibility_referral_criteria": "Men or people seeking support around men’s wellbeing/relationships.",
       "exclusion_rejection_criteria": "Not a psychiatric emergency service.",
       "contact_details": "1300 78 99 78",
-      "hours": "Not publicly extracted in reviewed source",
+      "hours": "24/7 telephone and online counselling",
       "cost_funding": "Free/phone counselling service",
       "discharge_planning_usefulness": "Moderate as adjunct where masculinity, relationship stress, parenting or FDV-adjacent issues affect risk.",
       "confidence": "Medium",
@@ -4346,7 +4350,7 @@
       "deep_research_citation_tokens": "",
       "verification_flags": [],
       "analyst_notes": "",
-      "search_text": "Service: MensLine Australia\nProvider: MensLine Australia\nCategory: Men's mental health and family support\nTags: Men's mental health and family support\nRegion/catchment: National incl WA\nPatient group: Men, partners/families/supporters\nBest use/indication: Telephone and online counselling for men, relationship issues, family violence-related concerns and emotional distress.\nReferral pathway: Self/family/clinician referral by phone/online\nEligibility/referral criteria: Men or people seeking support around men’s wellbeing/relationships.\nExclusion/rejection criteria: Not a psychiatric emergency service.\nContact details: 1300 78 99 78\nHours: Not publicly extracted in reviewed source\nCost/funding: Free/phone counselling service\nDischarge-planning usefulness: Moderate as adjunct where masculinity, relationship stress, parenting or FDV-adjacent issues affect risk.\nSource documents: Internet review 2026-05-31",
+      "search_text": "Service: MensLine Australia\nProvider: MensLine Australia\nCategory: Men's mental health and family support\nTags: Men's mental health and family support\nRegion/catchment: National incl WA\nPatient group: Men, partners/families/supporters\nBest use/indication: Telephone and online counselling for men, relationship issues, family violence-related concerns and emotional distress.\nReferral pathway: Self/family/clinician referral by phone/online\nEligibility/referral criteria: Men or people seeking support around men’s wellbeing/relationships.\nExclusion/rejection criteria: Not a psychiatric emergency service.\nContact details: 1300 78 99 78\nHours: 24/7 telephone and online counselling\nCost/funding: Free/phone counselling service\nDischarge-planning usefulness: Moderate as adjunct where masculinity, relationship stress, parenting or FDV-adjacent issues affect risk.\nSource documents: Internet review 2026-05-31",
       "canonical_name_key": "mensline-australia"
     },
     {
@@ -4539,7 +4543,7 @@
       "sections": ["Legal, rights and involuntary patient advocacy"],
       "inclusion_criteria": "Independent decision-making body safeguarding rights of involuntary patients; reviews treatment orders, decides ECT/psychosurgery and other Mental Health Act matters. | Eligibility: Involuntary treatment or other Mental Health Act matter within Tribunal jurisdiction. | Patient group: Involuntary patients, treating teams, supporters",
       "exclusions": "Not a clinical treatment or community support service.",
-      "referral_details": "Contact: Website; contact details via official contact page | Referral pathway: Tribunal hearings/applications/document lodgement; treating teams use medical reports and applications where relevant. | Cost/funding: Public statutory tribunal",
+      "referral_details": "Contact: (08) 6553 0060; registry@mht.wa.gov.au | Referral pathway: Tribunal hearings/applications/document lodgement; treating teams use medical reports and applications where relevant. | Cost/funding: Public statutory tribunal",
       "tags": {
         "catchments": ["Metro-wide"],
         "age_groups": ["adult", "mixed"],
@@ -4556,13 +4560,13 @@
       "referral_pathway": "Tribunal hearings/applications/document lodgement; treating teams use medical reports and applications where relevant.",
       "eligibility_referral_criteria": "Involuntary treatment or other Mental Health Act matter within Tribunal jurisdiction.",
       "exclusion_rejection_criteria": "Not a clinical treatment or community support service.",
-      "contact_details": "Website; contact details via official contact page",
+      "contact_details": "(08) 6553 0060; registry@mht.wa.gov.au",
       "hours": "Not publicly stated on reviewed homepage",
       "cost_funding": "Public statutory tribunal",
       "discharge_planning_usefulness": "High for discharge planning under treatment orders, CTOs, leave, ECT approval or patient-requested review.",
       "confidence": "High",
       "confidence_rank": 3,
-      "public_source_urls": ["https://www.mht.wa.gov.au/"],
+      "public_source_urls": ["https://www.mht.wa.gov.au/", "https://www.mht.wa.gov.au/contact-us"],
       "web_review_status": "Added/checked via internet review",
       "source_documents": ["Internet review 2026-05-31"],
       "source_row_count": 1,
@@ -4571,7 +4575,7 @@
       "deep_research_citation_tokens": "",
       "verification_flags": ["Hours not fully public"],
       "analyst_notes": "",
-      "search_text": "Service: Mental Health Tribunal WA\nProvider: Mental Health Tribunal Western Australia\nCategory: Legal, rights and involuntary patient advocacy\nTags: Legal, rights and involuntary patient advocacy\nRegion/catchment: Statewide WA\nPatient group: Involuntary patients, treating teams, supporters\nBest use/indication: Independent decision-making body safeguarding rights of involuntary patients; reviews treatment orders, decides ECT/psychosurgery and other Mental Health Act matters.\nReferral pathway: Tribunal hearings/applications/document lodgement; treating teams use medical reports and applications where relevant.\nEligibility/referral criteria: Involuntary treatment or other Mental Health Act matter within Tribunal jurisdiction.\nExclusion/rejection criteria: Not a clinical treatment or community support service.\nContact details: Website; contact details via official contact page\nHours: Not publicly stated on reviewed homepage\nCost/funding: Public statutory tribunal\nDischarge-planning usefulness: High for discharge planning under treatment orders, CTOs, leave, ECT approval or patient-requested review.\nVerification flags: Hours not fully public\nSource documents: Internet review 2026-05-31",
+      "search_text": "Service: Mental Health Tribunal WA\nProvider: Mental Health Tribunal Western Australia\nCategory: Legal, rights and involuntary patient advocacy\nTags: Legal, rights and involuntary patient advocacy\nRegion/catchment: Statewide WA\nPatient group: Involuntary patients, treating teams, supporters\nBest use/indication: Independent decision-making body safeguarding rights of involuntary patients; reviews treatment orders, decides ECT/psychosurgery and other Mental Health Act matters.\nReferral pathway: Tribunal hearings/applications/document lodgement; treating teams use medical reports and applications where relevant.\nEligibility/referral criteria: Involuntary treatment or other Mental Health Act matter within Tribunal jurisdiction.\nExclusion/rejection criteria: Not a clinical treatment or community support service.\nContact details: (08) 6553 0060; registry@mht.wa.gov.au\nHours: Not publicly stated on reviewed homepage\nCost/funding: Public statutory tribunal\nDischarge-planning usefulness: High for discharge planning under treatment orders, CTOs, leave, ECT approval or patient-requested review.\nVerification flags: Hours not fully public\nSource documents: Internet review 2026-05-31",
       "canonical_name_key": "mental-health-tribunal-wa"
     },
     {
@@ -5406,7 +5410,7 @@
       "sections": ["Psychosocial, recovery, and community supports"],
       "inclusion_criteria": "Group and individual psychosocial recovery support | Eligibility: 18-65 and not eligible for psychosocial support through NDIS | Patient group: Adults 18-65, not eligible for psychosocial support through NDIS",
       "exclusions": "NDIS psychosocial eligibility is an exclusion on page",
-      "referral_details": "Contact: Contact Neami Joondalup | Referral pathway: Self, carers, families, mental health professionals and health providers | Cost/funding: Free",
+      "referral_details": "Contact: 08 9301 1227; Unit 1 / 20 Mercer Lane, Joondalup WA 6027 | Referral pathway: Self, carers, families, mental health professionals and health providers | Hours: Monday to Friday 9am–5pm; closed weekends and public holidays | Cost/funding: Free",
       "tags": {
         "catchments": ["NMHS/North Metro", "Metro-wide"],
         "age_groups": ["adult", "mixed"],
@@ -5423,8 +5427,8 @@
       "referral_pathway": "Self, carers, families, mental health professionals and health providers",
       "eligibility_referral_criteria": "18-65 and not eligible for psychosocial support through NDIS",
       "exclusion_rejection_criteria": "NDIS psychosocial eligibility is an exclusion on page",
-      "contact_details": "Contact Neami Joondalup",
-      "hours": "Not publicly stated in extracted lines",
+      "contact_details": "08 9301 1227; Unit 1 / 20 Mercer Lane, Joondalup WA 6027",
+      "hours": "Monday to Friday 9am–5pm; closed weekends and public holidays",
       "cost_funding": "Free",
       "discharge_planning_usefulness": "High",
       "confidence": "Medium",
@@ -5436,9 +5440,9 @@
       "merged_aliases": ["Neami Joondalup"],
       "source_table_lines": "131",
       "deep_research_citation_tokens": "turn32view1",
-      "verification_flags": ["Hours not fully public"],
-      "analyst_notes": "",
-      "search_text": "Service: Neami Joondalup\nProvider: Neami National\nCategory: Psychosocial, recovery, and community supports\nTags: Psychosocial, recovery, and community supports\nRegion/catchment: Joondalup / north metro\nPatient group: Adults 18-65, not eligible for psychosocial support through NDIS\nBest use/indication: Group and individual psychosocial recovery support\nReferral pathway: Self, carers, families, mental health professionals and health providers\nEligibility/referral criteria: 18-65 and not eligible for psychosocial support through NDIS\nExclusion/rejection criteria: NDIS psychosocial eligibility is an exclusion on page\nContact details: Contact Neami Joondalup\nHours: Not publicly stated in extracted lines\nCost/funding: Free\nDischarge-planning usefulness: High\nVerification flags: Hours not fully public\nSource documents: File_B_27May\nCitation tokens: turn32view1",
+      "verification_flags": [],
+      "analyst_notes": "2026-10-20: phone, address and hours checked against the Neami National Joondalup page (neaminational.org.au/services/neami-joondalup).",
+      "search_text": "Service: Neami Joondalup\nProvider: Neami National\nCategory: Psychosocial, recovery, and community supports\nTags: Psychosocial, recovery, and community supports\nRegion/catchment: Joondalup / north metro\nPatient group: Adults 18-65, not eligible for psychosocial support through NDIS\nBest use/indication: Group and individual psychosocial recovery support\nReferral pathway: Self, carers, families, mental health professionals and health providers\nEligibility/referral criteria: 18-65 and not eligible for psychosocial support through NDIS\nExclusion/rejection criteria: NDIS psychosocial eligibility is an exclusion on page\nContact details: 08 9301 1227; Unit 1 / 20 Mercer Lane, Joondalup WA 6027\nHours: Monday to Friday 9am–5pm; closed weekends and public holidays\nCost/funding: Free\nDischarge-planning usefulness: High\nSource documents: File_B_27May\nCitation tokens: turn32view1",
       "canonical_name_key": "neami-joondalup"
     },
     {
@@ -7401,7 +7405,7 @@
       "sections": ["Alcohol and other drug services"],
       "inclusion_criteria": "Counselling, case management, outpatient withdrawal, pharmacotherapy, family work | Eligibility: As per CADS | Patient group: Age 12+ and families",
       "exclusions": "",
-      "referral_details": "Contact: Fremantle 9430 5966, Rockingham 9550 9200, Mandurah 9581 4010 | Referral pathway: Self or clinician referral | Hours: 9:00 am to 4:00 pm Mon-Fri | Cost/funding: Free/confidential",
+      "referral_details": "Contact: Fremantle 9430 5966, Rockingham 9550 9200, Mandurah 9581 4010 | Referral pathway: Self or clinician referral | Hours: Fremantle Mon, Tue, Thu, Fri 9am–4.30pm, Wed 9am–12pm and 3.30pm–8pm, Sat 10am–3pm; Rockingham Mon 9am–8pm, Tue, Thu, Fri 9am–4.30pm, Wed 9am–12pm, Sat 10am–3pm; Mandurah Mon, Thu, Fri 9am–4pm, Tue 9am–7.30pm, Wed 9am–12pm, Sat 10am–2.30pm | Cost/funding: Free/confidential",
       "tags": {
         "catchments": ["SMHS/Fremantle", "Peel"],
         "age_groups": ["mixed"],
@@ -7419,7 +7423,7 @@
       "eligibility_referral_criteria": "As per CADS",
       "exclusion_rejection_criteria": "Not publicly stated",
       "contact_details": "Fremantle 9430 5966, Rockingham 9550 9200, Mandurah 9581 4010",
-      "hours": "9:00 am to 4:00 pm Mon-Fri",
+      "hours": "Fremantle Mon, Tue, Thu, Fri 9am–4.30pm, Wed 9am–12pm and 3.30pm–8pm, Sat 10am–3pm; Rockingham Mon 9am–8pm, Tue, Thu, Fri 9am–4.30pm, Wed 9am–12pm, Sat 10am–3pm; Mandurah Mon, Thu, Fri 9am–4pm, Tue 9am–7.30pm, Wed 9am–12pm, Sat 10am–2.30pm",
       "cost_funding": "Free/confidential",
       "discharge_planning_usefulness": "High",
       "confidence": "High",
@@ -7435,7 +7439,7 @@
       "deep_research_citation_tokens": "turn39view0",
       "verification_flags": [],
       "analyst_notes": "",
-      "search_text": "Service: South Metro CADS\nProvider: Palmerston + Next Step\nCategory: Alcohol and other drug services\nTags: Alcohol and other drug services\nRegion/catchment: Fremantle, Rockingham, Mandurah\nPatient group: Age 12+ and families\nBest use/indication: Counselling, case management, outpatient withdrawal, pharmacotherapy, family work\nReferral pathway: Self or clinician referral\nEligibility/referral criteria: As per CADS\nExclusion/rejection criteria: Not publicly stated\nContact details: Fremantle 9430 5966, Rockingham 9550 9200, Mandurah 9581 4010\nHours: 9:00 am to 4:00 pm Mon-Fri\nCost/funding: Free/confidential\nDischarge-planning usefulness: High\nSource documents: File_B_27May\nCitation tokens: turn39view0",
+      "search_text": "Service: South Metro CADS\nProvider: Palmerston + Next Step\nCategory: Alcohol and other drug services\nTags: Alcohol and other drug services\nRegion/catchment: Fremantle, Rockingham, Mandurah\nPatient group: Age 12+ and families\nBest use/indication: Counselling, case management, outpatient withdrawal, pharmacotherapy, family work\nReferral pathway: Self or clinician referral\nEligibility/referral criteria: As per CADS\nExclusion/rejection criteria: Not publicly stated\nContact details: Fremantle 9430 5966, Rockingham 9550 9200, Mandurah 9581 4010\nHours: Fremantle Mon, Tue, Thu, Fri 9am–4.30pm, Wed 9am–12pm and 3.30pm–8pm, Sat 10am–3pm; Rockingham Mon 9am–8pm, Tue, Thu, Fri 9am–4.30pm, Wed 9am–12pm, Sat 10am–3pm; Mandurah Mon, Thu, Fri 9am–4pm, Tue 9am–7.30pm, Wed 9am–12pm, Sat 10am–2.30pm\nCost/funding: Free/confidential\nDischarge-planning usefulness: High\nSource documents: File_B_27May\nCitation tokens: turn39view0",
       "canonical_name_key": "south-metro-cads"
     },
     {
@@ -9473,7 +9477,7 @@
       "sections": ["Public mental health pathways"],
       "inclusion_criteria": "Youth mental health centre/service interface in Broome; useful as adjunct to public youth/community pathways.",
       "exclusions": "",
-      "referral_details": "Cost/funding: Publicly funded or not publicly stated",
+      "referral_details": "Contact: (08) 9194 4500; Shop A 38 Frederick Street, Broome | Hours: Monday to Friday 8:00am–4:30pm | Cost/funding: Publicly funded or not publicly stated",
       "tags": {
         "catchments": ["Regional WA"],
         "age_groups": ["young_adult", "youth", "mixed"],
@@ -9490,27 +9494,22 @@
       "referral_pathway": "Not publicly stated; inferred as public mental health/internal pathway unless otherwise specified.",
       "eligibility_referral_criteria": "Not publicly stated",
       "exclusion_rejection_criteria": "Not publicly stated",
-      "contact_details": "Not publicly stated",
-      "hours": "Not publicly stated",
+      "contact_details": "(08) 9194 4500; Shop A 38 Frederick Street, Broome",
+      "hours": "Monday to Friday 8:00am–4:30pm",
       "cost_funding": "Publicly funded or not publicly stated",
       "discharge_planning_usefulness": "Moderate to high if the local public team confirms pathway.",
       "confidence": "Medium",
       "confidence_rank": 2,
-      "public_source_urls": [],
+      "public_source_urls": ["https://headspace.org.au/headspace-centres/broome/"],
       "web_review_status": "Extracted from uploaded deep research only",
       "source_documents": ["File_D_31May_extended"],
       "source_row_count": 1,
       "merged_aliases": ["headspace Broome"],
       "source_table_lines": "77",
       "deep_research_citation_tokens": "",
-      "verification_flags": [
-        "Contact not publicly stated / verify by phone",
-        "Eligibility not fully public",
-        "Referral pathway unclear",
-        "Hours not fully public"
-      ],
+      "verification_flags": ["Eligibility not fully public", "Referral pathway unclear"],
       "analyst_notes": "",
-      "search_text": "Service: headspace Broome\nProvider: KAMS auspice / headspace\nCategory: Public mental health pathways\nTags: Public mental health pathways\nRegion/catchment: Broome / Kimberley\nPatient group: Not publicly stated\nBest use/indication: Youth mental health centre/service interface in Broome; useful as adjunct to public youth/community pathways.\nReferral pathway: Not publicly stated; inferred as public mental health/internal pathway unless otherwise specified.\nEligibility/referral criteria: Not publicly stated\nExclusion/rejection criteria: Not publicly stated\nContact details: Not publicly stated\nHours: Not publicly stated\nCost/funding: Publicly funded or not publicly stated\nDischarge-planning usefulness: Moderate to high if the local public team confirms pathway.\nVerification flags: Contact not publicly stated / verify by phone; Eligibility not fully public; Referral pathway unclear; Hours not fully public\nSource documents: File_D_31May_extended",
+      "search_text": "Service: headspace Broome\nProvider: KAMS auspice / headspace\nCategory: Public mental health pathways\nTags: Public mental health pathways\nRegion/catchment: Broome / Kimberley\nPatient group: Not publicly stated\nBest use/indication: Youth mental health centre/service interface in Broome; useful as adjunct to public youth/community pathways.\nReferral pathway: Not publicly stated; inferred as public mental health/internal pathway unless otherwise specified.\nEligibility/referral criteria: Not publicly stated\nExclusion/rejection criteria: Not publicly stated\nContact details: (08) 9194 4500; Shop A 38 Frederick Street, Broome\nHours: Monday to Friday 8:00am–4:30pm\nCost/funding: Publicly funded or not publicly stated\nDischarge-planning usefulness: Moderate to high if the local public team confirms pathway.\nVerification flags: Eligibility not fully public; Referral pathway unclear\nSource documents: File_D_31May_extended",
       "canonical_name_key": "headspace-broome"
     }
   ]

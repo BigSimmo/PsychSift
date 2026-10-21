@@ -556,8 +556,17 @@ jobs:
       # replay plus the regenerated schema mirror agree with each other either way.
       # Until now this ran only transitively inside the unit suite, so it was in no
       # named gate and a scope that skipped coverage skipped it entirely (#CNSDBJ).
+      # MIGRATION_IMMUTABILITY_BASE_REF also checks the base branch's sealed hashes, so editing
+      # a migration and its hash together in one PR fails here too (audit CC-09, 2026-10-20).
       - name: Applied-migration immutability guard
         if: needs.changes.outputs.static_heavy_changed == 'true'
+        env:
+          # Pull requests only: a release push or a dispatch from an older branch would count
+          # main's newer migrations as missing. Empty skips the base check. An owner-approved
+          # restore reseals on purpose, so a body declaring `Migration history edit approved:`
+          # skips it too; PR policy validates that line (owner citation plus a fail-fast guard
+          # migration) and fails the edit without it (owner decision 2026-10-21).
+          MIGRATION_IMMUTABILITY_BASE_REF: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.body, 'Migration history edit approved:') && format('origin/{0}', github.base_ref) || '' }}
         run: npm run check:migration-immutability
 
       # Fails if a SECURITY DEFINER public function is left executable by
@@ -964,12 +973,15 @@ jobs:
         timeout-minutes: 8
         run: node scripts/check-bundle-budget.mjs
 
+      # Placeholders, never secrets: the smoke only proves the production build boots and
+      # answers /api/local-project-id. This step runs branch code (manual runs from any
+      # branch), so a real key here reached that branch's code (audit CC-05, 2026-10-20).
       - name: Deployment boot smoke
         if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/')
         env:
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          RAG_QUERY_HASH_SECRET: ${{ secrets.RAG_QUERY_HASH_SECRET }}
+          SUPABASE_SERVICE_ROLE_KEY: placeholder-ci-service-role
+          OPENAI_API_KEY: placeholder-ci-openai
+          RAG_QUERY_HASH_SECRET: placeholder-ci-query-hash-secret
         run: npm run check:deployment-readiness
 
   container-images:
@@ -2391,10 +2403,14 @@ jobs:
             }
             const red = Object.entries(declared).some(([, value]) => badResult(value)) || failingJobs.length > 0;
 
-            // Route the alert to a person, not only a label (#TN512M): GitHub notifies an issue's
-            // assignee on their phone, for the opening and for every later comment. Best-effort, so
-            // a refused assignment can never cost the alert itself.
+            // Route the alert to a person, not only a label (#TN512M). GitHub mobile pushes a direct
+            // @mention to the owner's phone, the alert channel chosen on 2026-10-19
+            // (docs/decisions/2026-10-19-production-alerts-by-phone.md). Assignment pushes only when it
+            // first happens, and a later comment on the reused issue does not push by itself, so every new
+            // alert and every repeat comment names the owner (audit EVAL-04). Assignment stays best-effort,
+            // so a refused assignment can never cost the alert itself.
             const alertAssignee = context.repo.owner;
+            const alertMention = `@${alertAssignee}`;
             async function assignAlert(issueNumber) {
               try {
                 await github.rest.issues.addAssignees({
@@ -2688,7 +2704,7 @@ jobs:
                   owner,
                   repo,
                   issue_number: existing.number,
-                  body: `Still failing as of ${now} — ${runUrl}`,
+                  body: `${alertMention} Still failing as of ${now} — ${runUrl}`,
                 });
                 await assignAlert(existing.number);
               }
@@ -2703,12 +2719,12 @@ jobs:
                   owner,
                   repo,
                   issue_number: previous.number,
-                  body: `Failing again as of ${now} — ${runUrl}`,
+                  body: `${alertMention} Failing again as of ${now} — ${runUrl}`,
                 });
                 await assignAlert(previous.number);
                 core.warning(`CI on main is failing; reopened #${previous.number}.`);
               } else {
-                const created = await github.rest.issues.create({ owner, repo, title, labels: [label], body: stampedBody });
+                const created = await github.rest.issues.create({ owner, repo, title, labels: [label], body: `${alertMention}\n\n${stampedBody}` });
                 await assignAlert(created.data.number);
                 core.warning(`CI on main is failing; opened #${created.data.number}.`);
               }

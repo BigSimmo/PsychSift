@@ -240,8 +240,12 @@ jobs:
       # two classes get separate threads. The word "regression" is deliberately still absent from
       # every title: PR #629 removed it precisely because provider/quota failures were being filed
       # as retrieval regressions, and `tests/eval-canary-workflow.test.ts` pins that.
+      #
+      # CANCELLED AND TIMED OUT TOO (audit EVAL-08, 2026-10-20). `failure()` is false for a job that
+      # hit `timeout-minutes` or was cancelled, so such a run opened no issue at all. `cancelled()`
+      # covers it, and such a run is always filed as "did not complete", never as a verdict.
       - name: Open or update canary failure issue
-        if: failure() && (github.event_name == 'schedule' || github.event_name == 'repository_dispatch')
+        if: (failure() || cancelled()) && (github.event_name == 'schedule' || github.event_name == 'repository_dispatch')
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
@@ -291,7 +295,10 @@ jobs:
             // reported failing cases or blocking threshold failures" — it is only reached after
             // the environment and provider/quota/auth branches have been ruled out, which is what
             // makes it safe to assert completion in the title.
-            const completed = diagnosis.category === "probable-regression";
+            // A cancelled or timed-out run stopped part-way, so even a partial log that reads like a
+            // threshold failure is not a completed verdict (audit EVAL-08).
+            const runCancelled = "${{ job.status }}" === "cancelled";
+            const completed = diagnosis.category === "probable-regression" && !runCancelled;
             const title = completed
               ? "Eval canary failure: a completed evaluation missed its blocking threshold"
               : "Eval canary failure: evaluation did not complete";
@@ -319,6 +326,9 @@ jobs:
               "",
               `Run: ${runUrl}`,
               "",
+              runCancelled
+                ? "**The run was cancelled or timed out before it finished**, so it evaluated nothing it can be judged on."
+                : "",
               `Failure class: ${diagnosis.category} (${diagnosis.confidence})`,
               `Reason: ${diagnosis.reason}`,
               `Failing half: ${half}`,
@@ -348,10 +358,14 @@ jobs:
                   ].join("\n"),
             ].join("\n");
 
-            // Route the alert to a person, not only a label (#TN512M): GitHub notifies an issue's
-            // assignee on their phone, for the opening and for every later comment. Best-effort, so
-            // a refused assignment can never cost the alert itself.
+            // Route the alert to a person, not only a label (#TN512M). GitHub mobile pushes a direct
+            // @mention to the owner's phone, the alert channel chosen on 2026-10-19
+            // (docs/decisions/2026-10-19-production-alerts-by-phone.md). Assignment pushes only when it
+            // first happens, and a later comment on the reused issue does not push by itself, so every new
+            // alert and every repeat comment names the owner (audit EVAL-04). Assignment stays best-effort,
+            // so a refused assignment can never cost the alert itself.
             const alertAssignee = context.repo.owner;
+            const alertMention = `@${alertAssignee}`;
             async function assignAlert(issueNumber) {
               try {
                 await github.rest.issues.addAssignees({
@@ -380,7 +394,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: thread.number,
-                body,
+                body: `${alertMention}\n\n${body}`,
               });
               await assignAlert(thread.number);
             } else {
@@ -389,7 +403,149 @@ jobs:
                 repo: context.repo.repo,
                 title,
                 labels: [label],
-                body,
+                body: `${alertMention}\n\n${body}`,
               });
               await assignAlert(created.data.number);
             }
+
+      # DURABLE TREND (audit EVAL-06, 2026-10-20). The artifact above expires after 30 days and
+      # nothing kept the run-over-run trend: the newest result recorded anywhere was 4 Oct. Every
+      # run, cancelled and timed-out ones included, now posts one small row (aggregate numbers and
+      # case IDs only; no question, answer or source text) to a rolling "Eval canary trend" issue
+      # that is never closed, and repeats it in the job summary. Nothing is committed from CI. It is
+      # not an alert, so it mentions nobody, and continue-on-error keeps a trend-posting problem from
+      # turning the run red or opening a failure issue.
+      - name: Record trend row
+        if: always() && steps.checkout.outcome == 'success' && (github.event_name == 'schedule' || github.event_name == 'repository_dispatch')
+        continue-on-error: true
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          JOB_STATUS: ${{ job.status }}
+          GOLDEN_OUTCOME: ${{ steps.golden_retrieval.outcome }}
+          ANSWER_OUTCOME: ${{ steps.answer_quality.outcome }}
+        with:
+          script: |
+            const fs = require("node:fs");
+            const path = require("node:path");
+            const { pathToFileURL } = require("node:url");
+            const trend = await import(
+              pathToFileURL(`${process.env.GITHUB_WORKSPACE}/scripts/lib/eval-canary-trend.mjs`).href
+            );
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const row = trend.readCanaryTrendRow(path.join(process.env.GITHUB_WORKSPACE, ".local/eval-canary"), {
+              date: new Date().toISOString(),
+              runId: String(context.runId),
+              runAttempt: process.env.GITHUB_RUN_ATTEMPT,
+              trigger: context.eventName,
+              sha: process.env.EVAL_GIT_SHA || context.sha,
+              jobStatus: process.env.JOB_STATUS,
+              goldenOutcome: process.env.GOLDEN_OUTCOME,
+              answerOutcome: process.env.ANSWER_OUTCOME,
+            });
+            const body = trend.renderCanaryTrendComment(row, runUrl);
+            if (process.env.GITHUB_STEP_SUMMARY) {
+              fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `\n## Eval canary trend row\n\n${body}\n`);
+            }
+            const { data: open } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              labels: trend.TREND_LABEL,
+            });
+            let issueNumber = open.find((issue) => issue.title === trend.TREND_TITLE)?.number;
+            if (!issueNumber) {
+              const created = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: trend.TREND_TITLE,
+                labels: [trend.TREND_LABEL],
+                body: trend.TREND_ISSUE_BODY,
+              });
+              issueNumber = created.data.number;
+            }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body,
+            });
+            core.info(`Recorded the trend row on #${issueNumber}.`);
+
+      # The step above imports the row writer from the checked-out repository, so it cannot run
+      # when checkout itself failed. This fallback needs no repository code: it posts the same
+      # marker, readable line and JSON row shape (pinned against scripts/lib/eval-canary-trend.mjs
+      # by tests/eval-canary-trend.test.ts) with both evaluation halves "not recorded".
+      - name: Record trend row (checkout failed)
+        if: always() && steps.checkout.outcome != 'success' && (github.event_name == 'schedule' || github.event_name == 'repository_dispatch')
+        continue-on-error: true
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          JOB_STATUS: ${{ job.status }}
+          GOLDEN_OUTCOME: ${{ steps.golden_retrieval.outcome }}
+          ANSWER_OUTCOME: ${{ steps.answer_quality.outcome }}
+        with:
+          script: |
+            // Same names as the module exports, so the trend issue and rows stay one record.
+            const trend = {
+              TREND_LABEL: "eval-canary-trend",
+              TREND_TITLE: "Eval canary trend",
+              TREND_ROW_MARKER: "<!-- eval-canary-trend-row:v1 -->",
+            };
+            trend.TREND_ISSUE_BODY = [
+              "One row per eval-canary run, posted as a comment by `.github/workflows/eval-canary.yml` (audit EVAL-06).",
+              "The run's artifact expires after 30 days; these rows do not. Each row holds aggregate numbers and case",
+              "IDs only, never question, answer or source text. Keep this issue open: the canary reuses it.",
+              "",
+              "The second line of each comment is the row as JSON, for reading the trend back with a script.",
+            ].join("\n");
+            const word = (value) => (/^[a-z_]{1,32}$/.test(String(value ?? "")) ? String(value) : "unknown");
+            const attempt = String(process.env.GITHUB_RUN_ATTEMPT ?? "");
+            const sha = String(context.sha ?? "");
+            const row = {
+              v: 1,
+              date: new Date().toISOString(),
+              run: /^\d+$/.test(String(context.runId)) ? String(context.runId) : null,
+              attempt: /^\d+$/.test(attempt) ? attempt : null,
+              trigger: word(context.eventName),
+              sha: /^[0-9a-f]{7,40}$/.test(sha) ? sha.slice(0, 12) : null,
+              job: word(process.env.JOB_STATUS),
+              steps: { golden: word(process.env.GOLDEN_OUTCOME), answer: word(process.env.ANSWER_OUTCOME) },
+              retrieval: null,
+              answer: null,
+            };
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const trigger =
+              row.trigger === "schedule" ? "scheduled" : row.trigger === "repository_dispatch" ? "dispatched" : row.trigger;
+            const readable = [
+              row.date.slice(0, 10),
+              trigger,
+              `job ${row.job}`,
+              "retrieval not recorded",
+              "answers not recorded",
+              runUrl.startsWith("https://") ? `[run](${runUrl})` : "run link unavailable",
+            ].join(" · ");
+            const body = [trend.TREND_ROW_MARKER, readable, `\`${JSON.stringify(row)}\``].join("\n");
+            const { data: open } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              labels: trend.TREND_LABEL,
+            });
+            let issueNumber = open.find((issue) => issue.title === trend.TREND_TITLE)?.number;
+            if (!issueNumber) {
+              const created = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: trend.TREND_TITLE,
+                labels: [trend.TREND_LABEL],
+                body: trend.TREND_ISSUE_BODY,
+              });
+              issueNumber = created.data.number;
+            }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body,
+            });
+            core.info(`Recorded the checkout-failed trend row on #${issueNumber}.`);

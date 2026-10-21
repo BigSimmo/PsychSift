@@ -9,9 +9,11 @@ of a database change, or an approved production database window (for example "no
 "merge only after explicit owner approval", "merge only inside the owner's approved window", or
 "draft, unsealed" migration). PRs #3638 and #3640 are held this way: never arm auto-merge on them.
 
-Pull requests that touch `supabase/migrations/**` may be armed once required checks pass (the
-standing rule for migration PRs), but only when no owner-seal hold note is present. If the PR
-touches `supabase/migrations/**` and you are unsure whether a hold applies, do not arm.
+Never arm auto-merge on a pull request that touches `supabase/**` (migrations, edge functions or
+project config) or that the PR policy check reports as "Clinical risk: yes". Merging those changes
+the live clinical database or clinical content, so only the owner presses Merge (owner decision
+2026-10-20, `docs/decisions/2026-10-20-database-prs-merge-by-hand.md`). PR policy fails a migration
+PR while auto-merge is armed on it, so arming one only blocks it.
 
 Once a pull request exists, its auto-merge state belongs to the owner: do not disable or re-enable
 it. In particular, if auto-merge was turned off on a PR, do not turn it back on after a new push

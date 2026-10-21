@@ -114,12 +114,52 @@
       "decision": "docs/decisions/2026-10-18-migration-prs-may-auto-merge.md"
     },
     {
+      "id": "migration-pr-auto-merge-allowed",
+      "retired": "2026-10-20",
+      "summary": "Migration pull requests no longer auto-merge. They merge only when the owner presses Merge after the owner's own yes, and PR policy fails one while auto-merge is armed. This reverses the 18 Oct rule that let them auto-merge once all required checks passed.",
+      "pattern": "(?:migration PRs|migration pull requests|auto-merge on one is allowed)[^.\\n]{0,40}?(?:may|is allowed to|are allowed to) auto-merge|auto-merge on one is allowed",
+      "allowedContext": "no longer|retired|superseded|historical|previously|reversed|formerly|replaces",
+      "decision": "docs/decisions/2026-10-20-database-prs-merge-by-hand.md"
+    },
+    {
       "id": "cursor-cloud-agent-setup",
       "retired": "2026-10-18",
       "summary": "Cursor cloud agents are prohibited; the Cursor Cloud setup guidance (Cloud Agent Secrets, live-vs-demo setup) is retired.",
       "pattern": "(?:add|set) (?:it )?as a Cloud Agent Secret|Cursor Cloud specific instructions",
       "allowedContext": "no longer|retired|superseded|historical|previously|prohibited|formerly",
       "decision": "docs/decisions/2026-10-18-cursor-cloud-agents-prohibited.md"
+    },
+    {
+      "id": "answer-open-to-signed-out-visitors",
+      "retired": "2026-10-20",
+      "summary": "Answer no longer stays open to signed-out visitors. Answer and the patient-tailored tools are to require sign-in because the amended TGA clinical decision support exemption, in force from 1 November 2026, does not cover users who are not health professionals.",
+      "pattern": "signed-out visitors keep Answer|Answer stays open to signed-out",
+      "allowedContext": "no longer|retired|superseded|historical|previously|reversed|formerly|Status 2026-10-19|for now",
+      "decision": "docs/decisions/2026-10-20-clinical-decision-tools-need-sign-in.md"
+    },
+    {
+      "id": "start-of-task-required-reads",
+      "retired": "2026-10-20",
+      "summary": "Task receipts and the organisation map are no longer required reading at the start of every task. They are read only when the work needs them, through the AGENTS.md index.",
+      "pattern": "At task start, read \\[task lifecycle and receipt handoff\\]|At task start, read .{0,80}organisation map",
+      "allowedContext": "no longer|retired|superseded|historical|previously|formerly|replaces",
+      "decision": "docs/decisions/2026-10-20-instruction-tidy-up.md"
+    },
+    {
+      "id": "contextual-working-defaults-file",
+      "retired": "2026-10-20",
+      "summary": "The separate context-aware working defaults file is retired. Its content is covered by the shared working rules at the top of AGENTS.md.",
+      "pattern": "contextual-working-defaults\\.md|# Context-aware working defaults",
+      "allowedContext": "no longer|retired|superseded|historical|previously|formerly|replaces",
+      "decision": "docs/decisions/2026-10-20-instruction-tidy-up.md"
+    },
+    {
+      "id": "review-record-ledger-append",
+      "retired": "2026-10-20",
+      "summary": "Review and sweep records are no longer written to the repository with ledger:append. They are pull request comments, and the old record files are archived read-only.",
+      "pattern": "npm run ledger:(?:append|dedupe|rotate|migrate-legacy)",
+      "allowedContext": "no longer|retired|superseded|historical|previously|formerly|replaces|refuse",
+      "decision": "docs/decisions/2026-10-20-review-records-now-pr-comments.md"
     }
   ]
 }

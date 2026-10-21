@@ -125,7 +125,7 @@ test("only relevant canonical actions are planned", () => {
   assert.deepEqual(plan("PostToolUse", payload("exec_command", { cmd: "gh pr list --repo BigSimmo/PsychSift" })), []);
   assert.deepEqual(plan("PostToolUse", payload("exec_command", { cmd: "ghx pr create" })), []);
   assert.deepEqual(plan("PostToolUse", payload("mcp__github__create_pull_request_review")), []);
-  assert.equal(plan("PreCompact", {})[0].file, ".claude/hooks/precompact-issues-capture.sh");
+  assert.deepEqual(plan("PreCompact", {}), []);
 });
 test("malformed and unsupported wrappers make no advisory decision", async () => {
   let called = 0;

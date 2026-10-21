@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "69b0b52a-92e0-492a-a2bc-33aa7c7c5d2f",
+  "createdOn": "2026-10-20",
+  "action": "add",
+  "payload": {
+    "pri": "P1",
+    "type": "task",
+    "summary": "Owner GitHub settings from the 20 Oct change control audit: delete the repository copy of SUPABASE_SERVICE_ROLE_KEY, and narrow Grok Bot's token",
+    "detail": "The CI boot smoke no longer reads any secret (audit CC-05), so the repository copy of SUPABASE_SERVICE_ROLE_KEY can be deleted once the copies in production-secrets and Database / production are confirmed. Grok Bot's personal token should lose Workflows, Administration and Actions write (CC-03). Railway wait-for-CI is #HYSWAF. Report: /mnt/project-files/reviews/2026-10-20-change-control-audit.md (project files, not in the repo).",
+    "source": "docs/decisions/2026-10-20-database-prs-merge-by-hand.md",
+    "issueUlid": "01M5CVYD9Z8P31MTDZTWGD455N"
+  }
+}

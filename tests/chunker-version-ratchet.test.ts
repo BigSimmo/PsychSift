@@ -25,12 +25,32 @@ const corpus = [
   ).join("\n\n"),
   // Text with no sentence boundaries.
   "word ".repeat(900).trim(),
+  // A titled table with footnotes, a referral line and a numeric scale (table
+  // caption, footnote, referral-URL and oversized-row paths).
+  [
+    "Lithium serum level actions",
+    "| Level | Concentration | Action |",
+    "| --- | --- | --- |",
+    ...Array.from({ length: 40 }, (_, i) => `| Level ${i} | ${i}.0 mmol/L | Action ${i} |`),
+    `| Level long | ${"cell ".repeat(150).trim()} | Escalate |`,
+    "* Levels taken 12 hours post dose.",
+    "Crisis line: www.example.org/crisis",
+    "Rating scale",
+    "0",
+    "1",
+    "2",
+    "3",
+  ].join("\n"),
 ];
 
 const recorded: Record<string, string> = {
   "1.1.0-page|1.1.0-document": "4af6b997fc7ead3f8678b027a396b8ee3352bec8d155a4cbc7e751da5a6f43d5",
   "1.1.1-page|1.1.1-document": "4af6b997fc7ead3f8678b027a396b8ee3352bec8d155a4cbc7e751da5a6f43d5",
   "1.2.0-page|1.2.0-document": "e0eb0b337d010f3c4f078ef2df970b3b91d0d420dd2916b0f0f98a83600957e8",
+  "1.3.0-page|1.3.0-document": "e0eb0b337d010f3c4f078ef2df970b3b91d0d420dd2916b0f0f98a83600957e8",
+  // From 1.3.1 the corpus also includes the titled-table sample above; earlier
+  // entries were recorded on the first three samples only.
+  "1.3.1-page|1.3.1-document": "c43e36dc4ebcabc19b0fac45b7d97ee3883a79dd533dc188ad759b3652f52922",
 };
 
 function fingerprint() {

@@ -5,9 +5,12 @@ This is containment of audit finding F07, not clinical validation or a finding t
 medically incorrect. The ordinary psychometric catalogue keeps its separate evidence, rights and
 quarantine rules. Its page disclaimer remains in place.
 
-The panel shows an unavailability notice on desktop and phone, including when an open panel or a
-particular tab was requested. It exposes no physiological inputs, numerical results, classifications,
-dose suggestions or management advice. The original calculation helpers and draft display code are
+The panel first showed an unavailability notice on desktop and phone. Containment has since been
+strengthened: the panel is now not rendered at all, so neither the panel nor the notice appears,
+even when an open panel or a particular tab is requested (see
+[the decision](../decisions/2026-10-17-clinical-math-panel-hidden-until-clinician-verification.md)).
+It exposes no physiological inputs, numerical results, classifications, dose suggestions or
+management advice. The original calculation helpers and draft display code are
 retained. Engineering arithmetic tests continue to exercise those helpers; passing them cannot
 approve a clinical dose tool.
 

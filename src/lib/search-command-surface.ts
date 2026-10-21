@@ -139,8 +139,8 @@ const searchCommandSurfaceByMode: Partial<Record<AppModeId, SearchCommandSurface
   tools: {
     examples: [...sharedHomePresentation.tools.suggestions],
     suggestions: [
-      { text: "renal function calculator", meta: "Calculator" },
-      { text: "dose converter", meta: "Medication tool" },
+      { text: "PHQ-9", meta: "Rating scale" },
+      { text: "AUDIT-C", meta: "Rating scale" },
       { text: "clinical forms", meta: "Directory" },
     ],
     crossModes: ["documents", "prescribing", "forms", "favourites"],

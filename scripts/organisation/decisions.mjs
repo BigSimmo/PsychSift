@@ -26,6 +26,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { findAppliedRecord } from "../lib/inbox-archive.mjs";
+
 export const DECISIONS_DIR = "docs/decisions";
 export const SOURCE_WINS = "If this summary and the source ever differ, the source wins.";
 export const ENTRY_NAME = /^(\d{4}-\d{2}-\d{2})-([a-z0-9]+(?:-[a-z0-9]+)*)\.md$/;
@@ -152,14 +154,15 @@ export function sourceContainsPhrase(sourceText, phrase) {
 /**
  * Where a cited source lives now. A pending outstanding-issues inbox request moves to `applied/`
  * when it is reconciled, and is the same immutable file there (the rule docs:check-links uses).
+ * Once its quarter ends it may move again, unchanged, into `applied/archive/<YYYY-Qn>/`.
  */
 export function resolveSourcePath(repoRoot, sourcePath) {
   const direct = path.join(repoRoot, sourcePath);
   if (fs.existsSync(direct) && fs.statSync(direct).isFile()) return sourcePath;
   const pending = PENDING_INBOX.exec(sourcePath);
   if (pending) {
-    const applied = `docs/outstanding-issues-inbox/applied/${pending[1]}`;
-    if (fs.existsSync(path.join(repoRoot, applied))) return applied;
+    const applied = findAppliedRecord(repoRoot, pending[1]);
+    if (applied) return applied;
   }
   return null;
 }

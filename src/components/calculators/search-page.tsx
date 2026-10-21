@@ -47,6 +47,7 @@ import {
 } from "./calculator-fixtures";
 import { CalculatorSheet } from "./calculator-sheet";
 import { calculatorRecordById } from "./calculator-routes";
+import { useSignedOutSessionReset } from "./use-signed-out-session-reset";
 import {
   MetaPill,
   SeverityPill,
@@ -337,7 +338,8 @@ export function CalculatorsSearchPage({
   const [progress, setProgress] = useState<CalculatorProgressFilter>("all");
   const [time, setTime] = useState<CalculatorTimeFilter>("all");
   const [density, setDensity] = useState<Density>("comfortable");
-  const [session, setSession] = useState<SessionAnswers>({});
+  const [storedSession, setSession] = useState<SessionAnswers>({});
+  const session = useSignedOutSessionReset(storedSession, setSession);
   const [openId, setOpenId] = useState<string | null>(() => calculatorRecordById(initialCalculatorId)?.id ?? null);
   const [previousInitialCalculatorId, setPreviousInitialCalculatorId] = useState(initialCalculatorId);
 

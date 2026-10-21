@@ -38,6 +38,7 @@
     "scripts/fixtures/**",
     "scripts/lib/clinical-aliases.ts",
     "scripts/lib/eval-canary-disposition.mjs",
+    "scripts/lib/eval-canary-trend.mjs",
     "scripts/lib/eval-quality-retry.ts",
     "scripts/lib/ranking-snapshot-builder.ts",
     "scripts/lib/ranking-tuning.ts",

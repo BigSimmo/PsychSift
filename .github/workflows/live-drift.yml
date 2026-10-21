@@ -15,6 +15,9 @@ on:
     paths:
       - "supabase/migrations/**"
       - "supabase/schema.sql"
+      # Edge functions and project config reach live on merge too (audit CC-10, 2026-10-20).
+      - "supabase/functions/**"
+      - "supabase/config.toml"
 
 concurrency:
   group: live-drift-check
@@ -268,10 +271,14 @@ jobs:
               return;
             }
 
-            // Route the alert to a person, not only a label (#TN512M): GitHub notifies an issue's
-            // assignee on their phone, for the opening and for every later comment. Best-effort, so
-            // a refused assignment can never cost the alert itself.
+            // Route the alert to a person, not only a label (#TN512M). GitHub mobile pushes a direct
+            // @mention to the owner's phone, the alert channel chosen on 2026-10-19
+            // (docs/decisions/2026-10-19-production-alerts-by-phone.md). Assignment pushes only when it
+            // first happens, and a later comment on the reused issue does not push by itself, so every new
+            // alert and every repeat comment names the owner (audit EVAL-04). Assignment stays best-effort,
+            // so a refused assignment can never cost the alert itself.
             const alertAssignee = context.repo.owner;
+            const alertMention = `@${alertAssignee}`;
             async function assignAlert(issueNumber) {
               try {
                 await github.rest.issues.addAssignees({
@@ -314,7 +321,7 @@ jobs:
                 owner,
                 repo,
                 issue_number: existing.number,
-                body: `Still failing as of ${now} — ${runUrl}`,
+                body: `Still failing as of ${now}, ${alertMention}: ${runUrl}`,
               });
               await assignAlert(existing.number);
               core.warning(`Live drift check failing; updated #${existing.number}.`);
@@ -324,7 +331,7 @@ jobs:
                 repo,
                 title,
                 labels: [label],
-                body,
+                body: `${alertMention}\n\n${body}`,
               });
               await assignAlert(created.data.number);
               core.warning(`Live drift check failing; opened #${created.data.number}.`);

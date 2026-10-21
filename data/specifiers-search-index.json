@@ -15,7 +15,7 @@
       "specifierItems": 585,
       "universalSpecifiers": 18,
       "itemsWithDefinitions": 71,
-      "itemsPendingClinicianReview": 515
+      "itemsPendingClinicianReview": 585
     },
     "sourceVerified": 71
   },
@@ -3260,7 +3260,7 @@
       "disorder": "Avoidant/Restrictive Food Intake Disorder (ARFID)",
       "categoryId": "eat",
       "category": "10. Feeding & Eating",
-      "group": "Features (ICD-11)",
+      "group": "DSM-5-TR manifestations",
       "src": "source-verified",
       "def": "defined",
       "meaning": ""
@@ -3271,7 +3271,7 @@
       "disorder": "Avoidant/Restrictive Food Intake Disorder (ARFID)",
       "categoryId": "eat",
       "category": "10. Feeding & Eating",
-      "group": "Features (ICD-11)",
+      "group": "DSM-5-TR manifestations",
       "src": "source-verified",
       "def": "defined",
       "meaning": ""
@@ -3282,7 +3282,7 @@
       "disorder": "Avoidant/Restrictive Food Intake Disorder (ARFID)",
       "categoryId": "eat",
       "category": "10. Feeding & Eating",
-      "group": "Features (ICD-11)",
+      "group": "DSM-5-TR manifestations",
       "src": "source-verified",
       "def": "defined",
       "meaning": ""

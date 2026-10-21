@@ -17,7 +17,7 @@ mode it serves; review a page only for the records and routes it calls.
 
 ## Repository Review Protocol
 
-Follow `AGENTS.md` review throttling and `docs/codex-review-protocol.md` before starting. Do not review opportunistically, do not mutate files during pure review, and record completed branch/PR reviews with `npm run ledger:append` (check `npm run ledger:lookup` first; never hand-edit the ledger).
+Follow `AGENTS.md` review throttling and `docs/codex-review-protocol.md` before starting. Do not review opportunistically, do not mutate files during pure review, and record completed PR reviews as one `Review record` comment on the PR (check the PR's comments for one at the same head first); see [Records](../../docs/agents/pull-request-workflow.md#records).
 
 ## Scope
 

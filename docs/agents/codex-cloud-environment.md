@@ -62,7 +62,7 @@ the owner or selected environment explicitly adopts it, or a task tests/repairs 
 Linux, a `connected` host label, `CODEX_CLOUD=1` or an earlier probe does not select it.
 Do not install its shims, force profile variables or rerun maintenance for an unrelated host.
 For the retained bootstrap's checkout containment, config-home selection, cache identity and
-read-only retirement inventory, use [the current legacy bootstrap notes](codex-cloud-legacy-bootstrap.md).
+read-only retirement inventory, use [the current legacy bootstrap notes](../cloud/codex-cloud-legacy-bootstrap.md).
 
 An explicit legacy environment/runtime check retains its fail-closed credential, profile, base,
 toolchain and browser contracts. A configured legacy profile selects that validation; an invalid

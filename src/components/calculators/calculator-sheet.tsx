@@ -6,6 +6,7 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboard
 import { cn } from "@/components/ui-primitives";
 import { canRestoreFocusTo, isTopmostSheet, popSheet, pushSheet, updateSheetRoot } from "@/components/ui/sheet-focus";
 import { MissingValue } from "@/components/ui/missing-value";
+import { useClinicalToolAccess } from "@/components/mode-kit/use-clinical-tool-access";
 
 import { calculators, domainLabels, type CalculatorFixture } from "./calculator-fixtures";
 import {
@@ -42,7 +43,14 @@ export function CalculatorSheet({
   sheetId,
   isOpen = true,
 }: CalculatorSheetProps) {
-  const derived = deriveCalculator(calc, answers);
+  // Signed out (or a session that just expired), no score from earlier answers may show, and the
+  // answers are cleared so the next person at a shared workstation cannot see them.
+  const scoringLocked = useClinicalToolAccess() === "sign-in-required";
+  const hasAnswers = Object.keys(answers).length > 0;
+  useEffect(() => {
+    if (scoringLocked && hasAnswers) onAnswersChange({});
+  }, [scoringLocked, hasAnswers, onAnswersChange]);
+  const derived = deriveCalculator(calc, scoringLocked ? {} : answers);
   const internalSheetId = useId();
   const effectiveSheetId = sheetId ?? internalSheetId;
   const onCloseRef = useRef(onClose);

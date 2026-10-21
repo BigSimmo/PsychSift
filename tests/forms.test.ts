@@ -73,7 +73,7 @@ describe("psychiatry form records", () => {
     const form = getFormRecord("form-1a");
     expect(form).toBeTruthy();
     const details = formCatalogDetails(form!);
-    expect(details?.priorityFacts?.clock?.title).toBe("Usually 72 hours from referral");
+    expect(details?.priorityFacts?.clock?.title).toBe("72 hours from referral unless extended once (non-metro)");
     expect(details?.priorityFacts?.authority?.detail).toBe("Psychiatrist examination only");
     expect(details?.priorityFacts?.criteria?.detail).toMatch(/illness · risk · capacity · least restrictive/i);
     expect(details?.actSections?.map((entry) => entry.section)).toEqual(["26", "31", "36", "37", "41", "42"]);

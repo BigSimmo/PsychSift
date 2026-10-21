@@ -394,7 +394,7 @@ Read from the Actions API for PR runs `36110977826`, `36113010077`, `36107996148
 ## Phase 1 - Active now
 
 - `npm run verify:cheap` is the ordinary pre-PR local gate: `check:installed-lock-parity`, then `check:diff-integrity`, lint, typecheck, and the full offline unit suite. Run it freely — it is meant to be cheap enough not to think about. The parity step stays because it is sub-second and, without it, the other three would happily report green against a stale `node_modules`.
-- `npm run verify:full` is the broad offline local gate for cross-module risk: the 43 static/consistency gates (`check:runtime` through `check:offline-pack`; `npm run check:gate-manifest` lists them and pins the count), then lint, typecheck, and unit tests. It is selected, not automatic for every source/config/test edit.
+- `npm run verify:full` is the broad offline local gate for cross-module risk: the static/consistency gates (`check:runtime` through `check:offline-pack`; `npm run check:gate-manifest` lists them and prints the current count), then lint, typecheck, and unit tests. It is selected, not automatic for every source/config/test edit.
   - **Split on 2026-09-17 (owner decision).** `verify:cheap` had grown to 41 chained commands — including `check:pr-mergeability` (an offline self-test and workflow contract; an earlier version of this note wrongly said it calls GitHub) — so the gate advertised as the fast iteration loop was in practice the slowest thing in it, and agents ran it reflexively. The static gates did not stop running: they moved to `verify:full` (38 at the split; live count is whatever `check:gate-manifest` reports against `verify:full:internal`, 43 through `check:offline-pack`), and every one of them still runs in CI, which `check:gate-manifest` continues to enforce one-way (CI may run more than the local chain, never less — it now reads `verify:full:internal`, and pointing it back at the cheap chain would silently drop those gates from that invariant while still passing).
 - `npm run verify:pr-local` is the risk-routed local mirror of the normal PR gate: runtime, installed-lock parity, changed-file format, conditional `npm ci --dry-run --ignore-scripts` for package/lockfile edits, then focused docs/workflow contracts or the fail-closed executable plan with lint, typecheck, one full unit run, conditional build, and RAG fixture/manifest validation. Local scope resolves against the repository default base rather than a feature-branch upstream; set `PR_BASE_REF` explicitly for release-targeted PRs.
 - `npm run verify:ui` is the complete required production Chromium gate: `check:runtime` plus all non-quarantined production journeys (`test:e2e:pr`).
@@ -860,13 +860,16 @@ the durable index for the tooling; `docs/operator-backlog.md` tracks the human-o
   should use an outcome-focused title, complete Summary and Verification evidence, and provide risk/rollback
   evidence for clinical or operationally sensitive paths. UI changes should carry `verify:ui` evidence (or an
   explicit reason it could not run), and clinical-risk changes should disposition the governance
-  checklist. **All of that is advisory as of 2026-09-17 (owner decision): no PR-body prose blocks a merge.**
+  checklist. **All of that is advisory as of 2026-09-17 (owner decision).** Body text blocks a merge only
+  where it makes a false or missing safety claim: deferred-deploy wording on a migration PR, and a missing
+  `Migration history edit approved:` or `Required check change approved:` line where one is needed.
   The `## Clinical Governance Preflight` completeness gate and the `RAG impact:` declaration were both hard
   blocks until then. Neither read a line of code — they verified that an author had typed the right seven
   sentences — while `clinicalRiskPatterns` matches most meaningful paths in the repository, so the block fired
   on nearly all real work and cost a round trip every time. They now emit warnings. The gates that still fail
-  closed here are unchanged: migration-history immutability, required-check forgery, and the
-  `PR_POLICY_BODY.md` transport check. The clinical safeguards that actually
+  closed here are migration-history immutability, required-check forgery, the
+  `PR_POLICY_BODY.md` transport check and, since 2026-10-20, auto-merge armed on a migration PR, a
+  required-check file change without its approval line, and a bot commit on a protected path. The clinical safeguards that actually
   inspect behaviour — owner-scope, query-privacy, the live eval-canary, `tests/rag-imputation-contract.test.ts`
   — were never part of this file and are untouched.
   `scripts/pr-policy.mjs` also flags operational risk bundled with clinical or UI risk (#178),

@@ -58,8 +58,11 @@ export function buildGovernedAnswerClientResponse(answer: RagAnswer) {
     results: answer.sources ?? [],
     relevance: answer.relevance ?? answer.smartPanel?.relevance ?? null,
   });
+  // Audit RAG-B-01: the self-reported `grounded` flag does not exempt an answer from the danger
+  // refusal. An ungrounded answer that still carries a confidence above "unsupported" is
+  // presenting content with a support level, so it is refused like any other. Answers already
+  // marked unsupported or evidence-gap pass through unchanged, as before.
   const shouldRefuse =
-    answer.grounded !== false &&
     answer.confidence !== "unsupported" &&
     answer.responseMode !== "evidence_gap" &&
     hasDangerSourceGovernanceWarning(warnings);

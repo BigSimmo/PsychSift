@@ -551,8 +551,8 @@ describe("in-flight CI push guard (#HSSHRG)", () => {
   });
 
   it("blocks an armed auto-merge when the push carries a hosted migration", () => {
-    // Migration PRs may auto-merge (owner decision 2026-10-18), but a migration added after
-    // arming would merge a schema change nobody armed for.
+    // Migration PRs merge by hand (owner decision 2026-10-20); a migration added to an armed
+    // PR would still schedule a schema change nobody armed for.
     const armed = { autoMergeRequest: { enabledAt: "t" }, state: "OPEN", number: 88 };
     const v = autoMergeVerdict("claude/x", armed, false, true);
     expect(v.block).toBe(true);

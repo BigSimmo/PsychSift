@@ -25,7 +25,7 @@ export const repositoryMatrix = Object.freeze([
       "PROJECT-INSTRUCTIONS-CONTINUATION.md",
       "docs/task-receipts.md",
       "docs/agents/codex-cloud-environment.md",
-      "docs/agents/codex-cloud-legacy-bootstrap.md",
+      "docs/cloud/codex-cloud-legacy-bootstrap.md",
     ],
     aliases: { "cloud:setup": ["scripts/setup-codex-cloud.sh"], "cloud:maintain": ["scripts/maintain-codex-cloud.sh"] },
   },

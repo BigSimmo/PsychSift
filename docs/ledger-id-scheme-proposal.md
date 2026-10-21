@@ -46,7 +46,7 @@ Any scheme has to satisfy four things at once, which is why the obvious answers 
 1. **Collision-free without coordination.** Two sessions that never see each other must not
    produce the same id.
 2. **Stable once written.** Ids are cited by other rows, by review records under
-   `docs/branch-review-records/`, by `AGENTS.md`, by `.claude/skills/issues/SKILL.md`, and by
+   `docs/archive/branch-review-records/`, by `AGENTS.md`, by `.claude/skills/issues/SKILL.md`, and by
    commit messages and PR bodies across the repo's history. An id that can be renumbered is the
    defect, not the format.
 3. **Readable enough to say aloud.** `/issues` output, the `SessionStart` hook, and every

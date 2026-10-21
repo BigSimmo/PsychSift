@@ -57,7 +57,6 @@ export const GOVERNED_SOURCE_HOSTS = [
   "www.who.int",
   "www.vinnies.org.au",
   "www.wungening.com.au",
-  "www1.health.gov.au",
   "www1.health.nsw.gov.au",
   "youthfocus.com.au",
 ] as const;

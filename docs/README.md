@@ -3,8 +3,8 @@
 _Updated 2026-10-08 — catalogue Context7 and CME guides; clarify issue authority; Documentation owns._
 
 Categorised map of every tracked Markdown document under `docs/`: the load-bearing docs lead
-each category, and an "Also catalogued" list completes it (the immutable
-`branch-review-records/` and `outstanding-issues-inbox/` files are indexed by their own
+each category, and an "Also catalogued" list completes it (the archived
+`archive/branch-review-records/` and `outstanding-issues-inbox/` files are indexed by their own
 generators, not here). Categories distinguish **maintained** documents (keep these current when
 behavior changes) from **point-in-time records** (historical; do not update, supersede with a
 new dated doc instead). No check fails when a document is missing from this index, so add each
@@ -227,9 +227,9 @@ Every remaining tracked document in this category, one line each; the descriptio
 - [codex-cloud.md](codex-cloud.md) — current-host Cloud guide and explicit selection of the archived legacy setup
 - [claude-cloud.md](claude-cloud.md) — Claude Code on the web container parity: tiered provisioner and checked-in user profile
 - [branch-cleanup-guide.md](branch-cleanup-guide.md) — branch hygiene workflow
-- [branch-review-ledger.md](branch-review-ledger.md) — reviewed branch/SHA ledger; read with `npm run ledger:lookup` (historical tables + immutable records), write with `npm run ledger:append`, and convert a pre-system active-branch row with `npm run ledger:migrate-legacy`
-- [branch-review-archival-policy.md](branch-review-archival-policy.md) — what may and may not be done to the immutable records under `docs/branch-review-records/`; which operations are blocked by code, which are forbidden by policy but caught by nothing, and why foldering or deleting a record is silent history loss
-- [branch-review-index.md](branch-review-index.md) — **Generated** browsable index of every immutable review record; regenerate with `npm run ledger:index`, refresh with `npm run docs:update`, check currency with `npm run ledger:index:check`. It may lag the corpus, so `npm run ledger:lookup` stays authoritative
+- [branch-review-ledger.md](branch-review-ledger.md) — frozen reviewed branch/SHA table; review records now live in PR comments ([Records](agents/pull-request-workflow.md#records)), and `npm run ledger:lookup` searches this table and the archived records for history
+- [branch-review-archival-policy.md](branch-review-archival-policy.md) — superseded 2026-10-20, kept as history: what could be done to the records now archived read-only under `docs/archive/branch-review-records/`; which operations are blocked by code, which are forbidden by policy but caught by nothing, and why foldering or deleting a record is silent history loss
+- [branch-review-index.md](branch-review-index.md) — **Generated** browsable index of every archived review record; regenerate with `npm run ledger:index`, refresh with `npm run docs:update`, check currency with `npm run ledger:index:check`. It may lag the corpus, so `npm run ledger:lookup` stays authoritative
 - [task-receipts.md](task-receipts.md) — task lifecycle and sanitized receipt handoff protocol between agents and ledger
 
 ### Also catalogued (2026-09-02)
@@ -241,7 +241,7 @@ Every remaining tracked document in this category (process, plus the `agents/` r
 - [agents/claude-hook-scripts.md](agents/claude-hook-scripts.md) — Claude Code Hook Scripts — .claude/hooks/*.sh runs on Linux web containers as well as on the Windows workstation, and the workstation cannot see the thing that breaks…
 - [agents/codex-cloud-environment.md](agents/codex-cloud-environment.md) — Canonical Cloud operating policy: current-host evidence, task continuation, tools, credentials and explicitly selected legacy setup.
 - [agents/cloud-instruction-activation.md](agents/cloud-instruction-activation.md) — Verify repository, installed-host and fresh-session instruction states separately.
-- [agents/codex-cloud-legacy-bootstrap.md](agents/codex-cloud-legacy-bootstrap.md) — Explicit legacy bootstrap containment, scoped cache and read-only artifact inspection.
+- [cloud/codex-cloud-legacy-bootstrap.md](cloud/codex-cloud-legacy-bootstrap.md) — Explicit legacy bootstrap containment, scoped cache and read-only artifact inspection.
 - [agents/codex-dependency-shortcut.md](agents/codex-dependency-shortcut.md) — Codex Dependency Shortcut — When the user types exactly dependency as the entire task message, after trimming surrounding whitespace, treat it as a shortcut for safe de…
 - [agents/codex-desktop-worktree-setup.md](agents/codex-desktop-worktree-setup.md) — Codex Desktop Worktree Setup — It must work before node_modules exists, validate Node 24/npm 11, reuse only a complete byte-identical local installation, and otherwise run…
 - [agents/codex-productivity-defaults.md](agents/codex-productivity-defaults.md) — Codex Productivity Defaults
@@ -261,7 +261,6 @@ Every remaining tracked document in this category (process, plus the `agents/` r
 - [agents/verification-gates.md](agents/verification-gates.md) — Verification Gates — the verification pyramid, gate receipts, and the browser-gate planner
 - [agents/wiring-and-bundle-budget.md](agents/wiring-and-bundle-budget.md) — Page Wiring and Bundle Budget — Interactive controls and routes follow conventions the codebase already holds to.
 - [agents/native-startup/commit-as-you-go.md](agents/native-startup/commit-as-you-go.md) — Commit as you go: committing coherent units before switching context
-- [agents/native-startup/contextual-working-defaults.md](agents/native-startup/contextual-working-defaults.md) — Context-aware working defaults for workflows and boundaries
 - [agents/native-startup/external-skill-precedence.md](agents/native-startup/external-skill-precedence.md) — External skill precedence and evidence calibration rules
 - [agents/native-startup/process-hardening.md](agents/native-startup/process-hardening.md) — Process hardening phases and verification gates
 - [agents/native-startup/publication-workflows.md](agents/native-startup/publication-workflows.md) — Safe Git publication workflows, PR shortcuts, and anti-churn sync
@@ -300,16 +299,16 @@ Every remaining tracked document in this category (process, plus the `agents/` r
 - [maturity-backlog-workorders.md](maturity-backlog-workorders.md) — actionable work orders tracking the repository-maturity audit backlog
 - [no-unchecked-indexed-access-migration-plan.md](no-unchecked-indexed-access-migration-plan.md) — staged multi-PR rollout for the `noUncheckedIndexedAccess` TypeScript flag (ledger `#211`)
 - [pr-handoff-stop-cross-agent-gap.md](pr-handoff-stop-cross-agent-gap.md) — why the PR-babysit budget is hook-enforced for Claude Code but prose-only for Codex and Cursor, and what parity would require (ledger `#258`)
-- [search-rag-master-plan.md](search-rag-master-plan.md) / [search-rag-master-context.md](search-rag-master-context.md) — search/RAG roadmap and shared context
-- [rag-improvement/README.md](rag-improvement/README.md) — reviewed/updated RAG improvement programme: answer-quality track (intent-aware related information, length) + corrected eval/safety infra track
-- [rag-improvement/HANDOVER.md](rag-improvement/HANDOVER.md) — multi-session handover: per-session work packets, status table, checklists, and paste-ready prompts for executing the programme
-- [rag-improvement/COORDINATION.md](rag-improvement/COORDINATION.md) — coordinator handover: programme history, wave/session decisions, babysit playbook, approvals map, and the coordination-chat bootstrap prompt
+- [search-rag-master-plan.md](search-rag-master-plan.md) / [search-rag-master-context.md](search-rag-master-context.md) — historical search/RAG roadmap and shared context (phases done; open RAG work is in the issue ledger)
+- [rag-improvement/README.md](rag-improvement/README.md) — completed RAG improvement programme (design history): answer-quality track (intent-aware related information, length) + corrected eval/safety infra track
+- [rag-improvement/HANDOVER.md](rag-improvement/HANDOVER.md) — completed programme's handover (history, not the current board): per-session work packets, status table, checklists, and prompts
+- [rag-improvement/COORDINATION.md](rag-improvement/COORDINATION.md) — completed programme's coordinator handover (history): programme history, wave/session decisions, babysit playbook, approvals map, and the coordination-chat bootstrap prompt
 - [rag-improvement/231-diagnosis-2026-08-22.md](rag-improvement/231-diagnosis-2026-08-22.md) — `#231` evidence record: the row's timeout premise measured against the 60 Gate E answers, the three populations behind `source_only`, and the grounded-extractive gate gap
 - [rag-improvement/baseline-record.md](rag-improvement/baseline-record.md) — programme evaluation baseline: the six-field report key, gate results, and which gates stay pending an owner-approved provider run
 - [rag-improvement/data-flow-register.md](rag-improvement/data-flow-register.md) — Gate A register: every RAG input, process, sink, retention window, provider egress, and the known gaps
-- [rag-hybrid-findings-and-todo.md](rag-hybrid-findings-and-todo.md) — hybrid retrieval findings backlog
+- [rag-hybrid-findings-and-todo.md](rag-hybrid-findings-and-todo.md) — hybrid retrieval findings (historical, last reconciled 2026-07-14)
 - [reindex-shadow-harness-design.md](reindex-shadow-harness-design.md) — designed-only shadow reindex harness (driver not built)
-- [ingestion-concurrency-fix-workorder.md](ingestion-concurrency-fix-workorder.md) — ingestion concurrency workorder
+- [ingestion-concurrency-fix-workorder.md](ingestion-concurrency-fix-workorder.md) — retired ingestion concurrency workorder; [archived copy](archive/ingestion-concurrency-fix-workorder-2026-10-20.md)
 - [projects/design-system-remediation.md](projects/design-system-remediation.md) — PsychSift design system, screen, accessibility, responsive & interaction remediation project plan
 - [redesign/](redesign/) — premium redesign plans, decision log, token adoption
 - [superpowers/](superpowers/) — agent-authored plans and specs
@@ -348,20 +347,20 @@ Every remaining tracked document in this category, one line each; the descriptio
 
 ## Subdirectory map
 
-| Directory                                        | What lives there                                                                                                                                                                                         |
-| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [decisions/](decisions/)                         | The owner's recorded decisions, one short file each, indexed by [decisions/README.md](decisions/README.md). Checked by `npm run check:decisions`                                                         |
-| [organisation/](organisation/)                   | The organisation map: one file per area (`systems/`), shared, not-yet-placed and ignored lists, last-read pins. Checked by `npm run check:organisation`                                                  |
-| [agents/](agents/)                               | Agent-rule reference files `AGENTS.md` delegates to by name — the full text of rules its always-loaded core only points at                                                                               |
-| [rag-behaviour/](rag-behaviour/)                 | Protected retrieval/ranking surface: behaviour map, refuted approaches, safeguards. **Read before touching ranking.**                                                                                    |
-| [prompts/](prompts/)                             | Current task and review prompts; follow the canonical repository and Cloud operating instructions                                                                                                        |
-| [codex/](codex/)                                 | Per-lens Codex ultra-review output folders, one per review dimension                                                                                                                                     |
-| [evidence/](evidence/)                           | Captured evidence artifacts backing ledger items (reliability reports, review manifests)                                                                                                                 |
-| [audit/](audit/)                                 | Dated repo, design, accessibility, and latency audits (point-in-time)                                                                                                                                    |
-| [redesign/](redesign/)                           | Premium redesign plans, decision log, token adoption                                                                                                                                                     |
-| [superpowers/](superpowers/)                     | Agent-authored plans and specs                                                                                                                                                                           |
-| [branch-review-records/](branch-review-records/) | Immutable one-row review records — one file per review — named for the SHA-256 of the row. **Append-only: never edit, delete, or move into subdirectories** ([policy](branch-review-archival-policy.md)) |
-| [archive/](archive/)                             | Completed phase plans, superseded designs, old progress logs — never current guidance                                                                                                                    |
+| Directory                                                        | What lives there                                                                                                                                                                          |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [decisions/](decisions/)                                         | The owner's recorded decisions, one short file each, indexed by [decisions/README.md](decisions/README.md). Checked by `npm run check:decisions`                                          |
+| [organisation/](organisation/)                                   | The organisation map: one file per area (`systems/`), shared, not-yet-placed and ignored lists, last-read pins. Checked by `npm run check:organisation`                                   |
+| [agents/](agents/)                                               | Agent-rule reference files `AGENTS.md` delegates to by name — the full text of rules its always-loaded core only points at                                                                |
+| [rag-behaviour/](rag-behaviour/)                                 | Protected retrieval/ranking surface: behaviour map, refuted approaches, safeguards. **Read before touching ranking.**                                                                     |
+| [prompts/](prompts/)                                             | Current task and review prompts; follow the canonical repository and Cloud operating instructions                                                                                         |
+| [codex/](codex/)                                                 | Per-lens Codex ultra-review output folders, one per review dimension                                                                                                                      |
+| [evidence/](evidence/)                                           | Captured evidence artifacts backing ledger items (reliability reports, review manifests)                                                                                                  |
+| [audit/](audit/)                                                 | Dated repo, design, accessibility, and latency audits (point-in-time)                                                                                                                     |
+| [redesign/](redesign/)                                           | Premium redesign plans, decision log, token adoption                                                                                                                                      |
+| [superpowers/](superpowers/)                                     | Agent-authored plans and specs                                                                                                                                                            |
+| [archive/branch-review-records/](archive/branch-review-records/) | Archived one-row review records, read-only; review records now live in PR comments. **Never add, edit, delete, or move into subdirectories** ([policy](branch-review-archival-policy.md)) |
+| [archive/](archive/)                                             | Completed phase plans, superseded designs, old progress logs — never current guidance                                                                                                     |
 
 ## Point-in-time records (historical — do not update)
 
@@ -395,7 +394,7 @@ as it was on that date; supersede with a new dated document rather than editing.
 - [specifier-definition-worklist-2026-09-18.md](specifier-definition-worklist-2026-09-18.md) — issue #693 clinical worklist for the 585-item specifier catalogue: why "71 defined" is really 14, that nothing carries clinician sign-off, the A/B/C triage split, the 63 management-changing items in full, and a worked example of what a completed entry must contain
 - [specifier-entry-worksheet-with-catatonia.md](specifier-entry-worksheet-with-catatonia.md) — the first specifier entry laid out for completion: one shared definition, nine per-disorder rows, the exact field changes, and the sign-off block, with every clinical statement blank
 - `release-source-metadata-debt-2026-06-30.json` — captured source-metadata debt policy, consumed by `npm run audit:source-governance:release` and `npm run eval:quality:release`
-- [forward-codify-retrieval-rpcs-workorder.md](forward-codify-retrieval-rpcs-workorder.md) — completed retrieval RPC codification workorder
+- [forward-codify-retrieval-rpcs-workorder.md](forward-codify-retrieval-rpcs-workorder.md) — retired retrieval RPC codification workorder; [archived copy](archive/forward-codify-retrieval-rpcs-workorder-2026-10-20.md)
 - [project-alignment-cleanup.md](archive/project-alignment-cleanup.md) — completed June 2026 repo-alignment record
 - [capacity-review.md](audit/capacity-review.md), [scale-readiness-review.md](audit/scale-readiness-review.md), [tenancy-defense-in-depth-review.md](audit/tenancy-defense-in-depth-review.md)
 - `*-2026-*` findings and status docs, e.g. [chunking-ocr-reindex-lever-finding-2026-07-08.md](chunking-ocr-reindex-lever-finding-2026-07-08.md), [source-governance-status-2026-07-08.md](archive/source-governance-status-2026-07-08.md), [source-governance-priorities-2026-07-02.md](archive/source-governance-priorities-2026-07-02.md), [source-review-priority-2026-07-02.md](source-review-priority-2026-07-02.md), [operator-apply-july8-batch.md](archive/operator-apply-july8-batch.md)

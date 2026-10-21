@@ -1,5 +1,13 @@
 # Complete ingestion and RAG record
 
+> **Status (2026-10-20): historical record.** The draft PR this record was prepared for, #3546, merged to
+> `main` on 2026-10-16 (`bce636963`), so the "Current boundary" and "Do not merge" wording below describes
+> the 15 October state, not today's. Four tests and one fixture listed in
+> [rag-evidence-inventory.json](rag-evidence-inventory.json) never landed in the repository; see its
+> `repositoryLandingCorrection`. For how ingestion works now, read the
+> [current model](../../ingestion-state-machine.md#current-model-october-2026); the production worker is
+> paused and the library re-index is stopped ([decision](../../decisions/2026-10-17-library-reindex-stopped.md)).
+
 Prepared for local commit and a draft PR on 15 October 2026. This is an implementation and evidence handover, not a new readiness verdict. The original objective is `rag-source-ingestion-continuation-v1`.
 
 The publication tree uses the preserved assembly base `4a6acb7e22e1bac3924cd83450ea76eae1e8cc81` and exact selected source blobs. Both original dirty worktrees and branches remain preserved. No new format, tests, lint, typecheck, build, provider eval or browser journey was run for publication. GitHub CI is unobserved.

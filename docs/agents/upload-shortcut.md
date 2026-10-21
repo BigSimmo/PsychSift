@@ -84,7 +84,7 @@ If changes appear unrelated, incomplete, experimental, or WIP, do not commit eve
 
 During `upload`, branch cleanup is limited to the current branch and its upstream unless the user explicitly asks for `branch-cleanup`, branch hygiene, deletion candidates, or stale branch review.
 
-Do not enumerate, diff, or re-review unrelated stale branches during a normal upload/handoff. If the user explicitly asks for branch cleanup, first apply `docs/branch-review-ledger.md` to skip unchanged reviewed branches, then follow `docs/branch-cleanup-guide.md`.
+Do not enumerate, diff, or re-review unrelated stale branches during a normal upload/handoff. If the user explicitly asks for branch cleanup, first apply prior review records ([Records](pull-request-workflow.md#records)) to skip unchanged reviewed branches, then follow `docs/branch-cleanup-guide.md`.
 
 If stale, inappropriate, merged, or unnecessary current-branch references are detected, list cleanup candidates but do not delete or rename branches automatically.
 

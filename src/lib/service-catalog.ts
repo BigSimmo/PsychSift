@@ -203,10 +203,28 @@ export function extractEmails(text: string): string[] {
   return unique((text.match(EMAIL_PATTERN) ?? []).map((value) => value.trim()));
 }
 
+// PHONE_PATTERN starts at a digit, so a bracketed area code ("(08) 9442 5000") came out with
+// its opening bracket lost ("08) 9442 5000"). Restore that bracket when the text has it, and
+// drop any bracket still unpaired. Display only: the digits, and so every tel: link, are unchanged.
+function balancePhoneBrackets(value: string, text: string, index: number): string {
+  const restored = /^\d+\)/.test(value) && text[index - 1] === "(" ? `(${value}` : value;
+  const opens = (restored.match(/\(/g) ?? []).length;
+  const closes = (restored.match(/\)/g) ?? []).length;
+  if (opens === closes) return restored;
+  return restored
+    .replace(/[()]/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+// A number the record labels as a fax ("fax 6372 1599", "Fax: (08) 6458 1111") is not a phone.
+const FAX_LABEL_BEFORE = /\bfax[:.]?\s*\(?$/i;
+
 export function extractPhones(text: string): string[] {
   return unique(
-    (text.match(PHONE_PATTERN) ?? [])
-      .map((value) => value.replace(/\s+/g, " ").trim())
+    [...text.matchAll(PHONE_PATTERN)]
+      .filter((match) => !FAX_LABEL_BEFORE.test(text.slice(Math.max(0, (match.index ?? 0) - 8), match.index ?? 0)))
+      .map((match) => balancePhoneBrackets(match[0].replace(/\s+/g, " ").trim(), text, match.index ?? 0))
       .filter((value) => value.length >= 8),
   );
 }

@@ -228,7 +228,7 @@
     },
     {
       "path": "docs/clinical-hazard-analysis.md",
-      "reason": "Changed by PR #3019 (1a3d89350) after the 2026-08-23 review: adds proposed hazard H7, the Mental Health Act timeline misstating a statutory deadline (H7a-c, all Critical). Needs owner review and a register entry, then a re-seal. PR #3146 (owner approval 2026-09-28): H8 services crisis routing rewritten to the routing and tests that exist and registered as H8 in this register. Not resealed because the H7 change above still awaits review.",
+      "reason": "Changed by PR #3019 (1a3d89350) after the 2026-08-23 review: adds proposed hazard H7, the Mental Health Act timeline misstating a statutory deadline (H7a-c, all Critical). Needs owner review and a register entry, then a re-seal. PR #3146 (owner approval 2026-09-28): H8 services crisis routing rewritten to the routing and tests that exist and registered as H8 in this register. Not resealed because the H7 change above still awaits review. 2026-10-20 (regulatory audit R-01/R-02): adds the amended TGA exemption section in force from 1 November 2026 and the PR-4 status reversal; regulatory text only, no hazard, control or severity changed.",
       "recordedBy": "Engineering, Claude session 2026-09-25. Not a clinical review; the owner must re-review.",
       "recordedOn": "2026-09-25",
       "expiresOn": "2026-10-25"
@@ -281,6 +281,20 @@
       "recordedBy": "Engineering, combined-PR session 2026-10-06. Not a clinical review; the owner must re-review.",
       "recordedOn": "2026-10-06",
       "expiresOn": "2026-11-20"
+    },
+    {
+      "path": "src/lib/service-urgent-routing.ts",
+      "reason": "Audit 3 finding R4-F-01: medical-emergency phrases (seizure, unconscious or unconsciousness, loss of consciousness, not breathing, collapse or collapsed, anaphylaxis) now pin 000 first, ahead of regional crisis routes and of the Alcohol and Drug Support Line for alcohol withdrawal seizure. Behaviour widens urgent routing only; owner hazard re-review and reseal (H8) pending.",
+      "recordedBy": "Engineering, Claude clinical content audit thread (audit 3, 20 Oct 2026), per owner request to fix the audit recommendations. Engineering drift record only; not clinical-owner approval, hazard re-review or reseal.",
+      "recordedOn": "2026-10-20",
+      "expiresOn": "2026-12-04"
+    },
+    {
+      "path": "tests/services-catalog.test.ts",
+      "reason": "Audit 3 findings R4-F-06, R4-F-10, R4-F-11 and R6-F-10: tests added or updated for superseded legacy crisis duplicates, corrected service contacts, phone bracket normalisation and no confidence chip on unverified legacy records. Owner hazard re-review and reseal (H8) pending.",
+      "recordedBy": "Engineering, Claude clinical content audit thread (audit 3, 20 Oct 2026), per owner request to fix the audit recommendations. Engineering drift record only; not clinical-owner approval, hazard re-review or reseal.",
+      "recordedOn": "2026-10-20",
+      "expiresOn": "2026-12-04"
     }
   ]
 }

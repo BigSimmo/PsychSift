@@ -91,9 +91,9 @@ retired installed files; preserve modified/unowned content for explicit review.
 
 ## Related operational checks
 
-Use [Cloud build resources](cloud-build-resources.md) to distinguish source checks from a
-resource-backed build, [Cloud platform acceptance](cloud-platform-acceptance.md) for the next
-useful task on each supported platform, and [cross-repository Cloud contracts](cross-repo-cloud-contracts.md)
+Use [Cloud build resources](../cloud/cloud-build-resources.md) to distinguish source checks from a
+resource-backed build, [Cloud platform acceptance](../cloud/cloud-platform-acceptance.md) for the next
+useful task on each supported platform, and [cross-repository Cloud contracts](../cloud/cross-repo-cloud-contracts.md)
 when comparing shared guidance. Those checks retain their own authority and evidence boundaries.
 
 ## Completion evidence

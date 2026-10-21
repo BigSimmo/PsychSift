@@ -47,10 +47,18 @@ describe("eval canary workflow input", () => {
   it("opens the failure issue for scheduled AND dispatched runs", () => {
     // A red dispatch is usually half of a canary pair gating a behaviour change — it must
     // not fail silently while only weekly runs get an issue.
+    // Audit EVAL-08 (2026-10-20): `failure()` alone skipped a run that timed out or was
+    // cancelled, so it opened no issue. The old line pinned that gap.
     expect(workflow).toContain(
-      "if: failure() && (github.event_name == 'schedule' || github.event_name == 'repository_dispatch')",
+      "if: (failure() || cancelled()) && (github.event_name == 'schedule' || github.event_name == 'repository_dispatch')",
     );
     expect(workflow).toContain('context.eventName === "schedule" ? "Weekly (scheduled)" : "Dispatched"');
+  });
+
+  it("never titles a cancelled or timed-out run as a completed evaluation", () => {
+    expect(workflow).toContain('const runCancelled = "${{ job.status }}" === "cancelled";');
+    expect(workflow).toContain('const completed = diagnosis.category === "probable-regression" && !runCancelled;');
+    expect(workflow).toContain("The run was cancelled or timed out before it finished");
   });
 
   it("feeds every eval log and live step outcome into the failure issue", () => {

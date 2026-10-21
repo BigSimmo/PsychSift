@@ -28,7 +28,9 @@ import {
 import { AccessibleTable, hasRenderableAccessibleTable } from "@/components/AccessibleTable";
 import { SignedImage } from "@/components/clinical-dashboard/signed-image";
 import { useBatchSignedImageUrls } from "@/components/clinical-dashboard/use-batch-signed-urls";
+import { useClinicalToolAccess } from "@/components/mode-kit/use-clinical-tool-access";
 import { SafeBoldText } from "@/components/SafeBoldText";
+import { CLINICAL_SIGN_IN_COPY } from "@/lib/front-door-content";
 import {
   clinicalDivider,
   cn,
@@ -244,6 +246,8 @@ export function DocumentImage({
   onSelectPage?: (page: number) => void;
 }) {
   const endpoint = `/api/images/${image.id}/signed-url`;
+  // The server refuses image links to signed-out readers; show why instead of a failed load.
+  const originalsLocked = useClinicalToolAccess() === "sign-in-required";
   const pageNumber = typeof image.page_number === "number" && image.page_number >= 1 ? image.page_number : null;
   const isActivePage = pageNumber !== null && pageNumber === activePage;
 
@@ -292,7 +296,11 @@ export function DocumentImage({
   const ratio = imageAspectRatio(image);
   const isWideCrop = typeof ratio === "number" && ratio >= 2.1;
 
-  const imageBlock = (
+  const imageBlock = originalsLocked ? (
+    <div className="rounded-lg bg-[color:var(--surface-inset)] p-3" data-testid="document-image-sign-in">
+      <p className={cn("text-sm leading-6", textMuted)}>{CLINICAL_SIGN_IN_COPY.original.title}.</p>
+    </div>
+  ) : (
     <div className="rounded-lg bg-[color:var(--surface-inset)] p-3">
       <SignedImage
         endpoint={endpoint}

@@ -118,7 +118,6 @@ export function plan(event, payload) {
     ((shell && GH_PR_CREATE.test(command)) || /create_?pull_?request$/i.test(p.tool_name ?? ""))
   )
     return [{ file: ".claude/hooks/pr-handoff-stop.sh", args: ["post"] }];
-  if (event === "PreCompact") return [{ file: ".claude/hooks/precompact-issues-capture.sh", args: [] }];
   if (event === "SessionStart")
     return [
       { file: ".claude/hooks/issues-surface.sh", args: [], kind: "context" },
@@ -215,7 +214,6 @@ export function registration() {
     hooks: {
       PreToolUse: [{ matcher: `^(?:${shells}|CronCreate)$`, hooks: [hook("PreToolUse")] }],
       PostToolUse: [{ matcher: `^(?:${shells}|.*[Cc]reate_?[Pp]ull_?[Rr]equest)$`, hooks: [hook("PostToolUse")] }],
-      PreCompact: [{ hooks: [hook("PreCompact")] }],
       SessionStart: [{ hooks: [hook("SessionStart")] }],
     },
   };

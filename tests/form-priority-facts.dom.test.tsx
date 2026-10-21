@@ -27,8 +27,10 @@ describe("Form 1A priority facts", () => {
     render(<FormDetailPage form={form} />);
 
     const priorityFacts = screen.getByLabelText("Priority facts");
-    expect(within(priorityFacts).getByText("Usually 72 hours from referral")).toBeInTheDocument();
-    expect(within(priorityFacts).getByText(/Within assessment window/i)).toBeInTheDocument();
+    expect(
+      within(priorityFacts).getByText("72 hours from referral unless extended once (non-metro)"),
+    ).toBeInTheDocument();
+    expect(within(priorityFacts).getByText(/Within 48h of assessment/i)).toBeInTheDocument();
     expect(within(priorityFacts).getByText(/Psychiatrist examination only/i)).toBeInTheDocument();
     expect(within(priorityFacts).queryByText("Source status")).not.toBeInTheDocument();
     expect(within(priorityFacts).getByText("Act sections")).toBeInTheDocument();

@@ -20,13 +20,8 @@ const FULL_BLOCKS: Readonly<Record<string, readonly string[]>> = {
   ],
 };
 
-const POINTER_BLOCKS = [
-  "dependency-shortcut",
-  "bug-hunter-shortcut",
-  "codex-review-throttling",
-  "codex-desktop-worktree-setup",
-  "page-and-button-wiring",
-];
+// One index replaced the separate pointer headings (change control audit S5, 2026-10-20).
+const POINTER_BLOCKS = ["rules-index"];
 
 type MarkerBlock = { id: string; body: string };
 
@@ -78,7 +73,7 @@ describe("AGENTS.md marker contract", () => {
     for (const id of POINTER_BLOCKS) {
       const body = byId.get(id) ?? "";
       const lines = body.split("\n").filter((line) => line.trim().length > 0);
-      expect(lines.length, id).toBeLessThanOrEqual(25);
+      expect(lines.length, id).toBeLessThanOrEqual(30);
       const paths = [...body.matchAll(/docs\/agents\/[a-z0-9./-]+\.md/g)].map((match) => match[0]);
       expect(paths.length, id).toBeGreaterThan(0);
       for (const path of paths) expect(existsSync(path), path).toBe(true);

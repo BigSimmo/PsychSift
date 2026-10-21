@@ -100,7 +100,7 @@ const routeDescriptions: Record<string, string> = {
   "/about":
     "About and intended use: what PsychSift is, who it is for, and how to use it safely (draft wording, owner sign-off pending).",
   "/applications": "Legacy application launcher redirect to Tools.",
-  "/calculators": "Psychiatry rating scale scoring and clinical decision calculators.",
+  "/calculators": "Psychiatry rating scale scoring and clinical calculators.",
   "/calculators/search":
     "Browsable calculator catalogue and scored results. An empty query lists every calculator; a submitted query narrows the same list.",
   "/dictionary": "Clinical dictionary home with term search and category navigation.",

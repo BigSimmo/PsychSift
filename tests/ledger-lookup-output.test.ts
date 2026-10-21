@@ -24,8 +24,8 @@ describe("ledger:lookup output size", () => {
     const sources = [
       "docs/branch-review-ledger.md",
       "docs/archive/branch-review-ledger-2026-q3.md",
-      "docs/branch-review-records/aaaa.record.md",
-      "docs/branch-review-records/bbbb.record.md",
+      "docs/archive/branch-review-records/aaaa.record.md",
+      "docs/archive/branch-review-records/bbbb.record.md",
     ];
     expect(lookupFilesLine(sources)).toBe(
       "files: 2 ledger table(s) + 2 immutable record(s) (pass --verbose to list them)",
