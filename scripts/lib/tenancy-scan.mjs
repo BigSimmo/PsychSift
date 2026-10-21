@@ -1538,6 +1538,15 @@ export const DERIVED_QUERY_INVENTORY = [
       'The page query, the active-count query and the failed-count query each join `documents!inner` and filter `.eq("documents.owner_id", user.id)`, so ownership rides on every one of the three query chains itself. 2 -> 3 on 2026-09-04 when #L15 added the pre-pagination failed-job head count, built as a copy of the active-count chain precisely so it would carry the same on-chain filter rather than need a weaker proof.',
   },
   {
+    file: "src/app/api/ingestion/jobs/[id]/retry/route.ts",
+    table: "ingestion_jobs",
+    fn: "POST",
+    queries: 2,
+    proof: PROOF_KINDS.DOCUMENTS_INNER_JOIN,
+    reason:
+      'Admin Retry (audit 2026-10-20 DB-01): the pre-recovery state read and the post-recovery re-read both join `documents!inner` and filter `.eq("documents.owner_id", user.id)` on the chain itself.',
+  },
+  {
     file: "src/app/api/ingestion/quality/route.ts",
     table: "ingestion_jobs",
     fn: "GET",

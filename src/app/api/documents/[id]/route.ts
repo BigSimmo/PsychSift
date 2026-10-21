@@ -240,7 +240,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     }
     if (result.outcome === "active_job") {
       throw new PublicApiError(
-        "Document has pending or processing indexing work. Stop or wait for the worker before deleting.",
+        "Document has pending or processing indexing work. Wait for it to finish, or recover a job stuck on its last attempt, before deleting.",
         409,
         { code: "document_indexing_active" },
       );

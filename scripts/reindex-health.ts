@@ -143,6 +143,35 @@ async function main() {
     .order("created_at", { ascending: true })
     .limit(25);
 
+  // Audit 2026-10-20 ING-A-02 / EVAL-09: the open-jobs preview above is the 25 oldest jobs, so a job
+  // stranded on its final attempt can sit behind old failed jobs unseen. Count it directly, along
+  // with indexed documents that have no searchable chunks. (Embeddings are NOT NULL, so no missing-embedding count.)
+  const nowIso = new Date().toISOString();
+  const integrityCounts = await Promise.all([
+    safeDerivedCount("jobs_stranded_final_attempt", async () => {
+      const { data, error } = await supabase
+        .from("ingestion_jobs")
+        .select("id,attempt_count,max_attempts")
+        .eq("status", "processing")
+        .lt("lease_expires_at", nowIso)
+        .limit(500);
+      if (error) throw new Error(error.message);
+      return (data ?? []).filter((job) => Number(job.attempt_count ?? 0) >= Number(job.max_attempts ?? 0));
+    }),
+    safeCount(
+      "documents_indexed_without_chunks",
+      supabase
+        .from("documents")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "indexed")
+        .eq("chunk_count", 0),
+    ),
+    // document_chunks.embedding is NOT NULL, so a missing-embedding count would always be 0; not checked.
+  ]);
+  const integrityProblems = integrityCounts
+    .filter((item) => Number(item.count ?? 0) > 0)
+    .map((item) => `${item.label}: ${item.count}`);
+
   const counts = [
     indexed,
     queued,
@@ -155,7 +184,7 @@ async function main() {
     strandedQueued,
     chunksWithSynopsis,
   ];
-  const countErrors = counts.filter((item) => item.error);
+  const countErrors = [...counts, ...integrityCounts].filter((item) => item.error);
   const errors = [
     ...countErrors.map((item) => ({ label: item.label, error: unavailableMessage(item.error) ?? item.error })),
     ...(jobsError ? [{ label: "open_jobs", error: unavailableMessage(jobsError.message) ?? jobsError.message }] : []),
@@ -166,7 +195,8 @@ async function main() {
       {
         ok: countErrors.length === 0 && !jobsError,
         generatedAt: new Date().toISOString(),
-        counts: Object.fromEntries(counts.map((item) => [item.label, item.count])),
+        counts: Object.fromEntries([...counts, ...integrityCounts].map((item) => [item.label, item.count])),
+        integrityProblems,
         errors,
         openJobs: openJobs ?? [],
         recommendation:
