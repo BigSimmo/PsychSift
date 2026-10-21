@@ -34,7 +34,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import { PatientDetailAlert, PrivacyInputNotice } from "@/components/privacy-input-notice";
+import { PrivacyInputNotice } from "@/components/privacy-input-notice";
 import {
   splitFilterText,
   labelScopeFilterFields,
@@ -1831,13 +1831,14 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
           </div>
         ) : null}
         {hasPhiWarning ? (
-          <PatientDetailAlert
+          <p
             id={composerPhiWarningId}
-            testId={composerPhiWarningId}
-            className="mt-1.5 px-3 text-center"
+            role="alert"
+            data-testid={composerPhiWarningId}
+            className="mt-1.5 px-3 text-center text-2xs font-medium text-[color:var(--danger)]"
           >
             {phiWarningText}
-          </PatientDetailAlert>
+          </p>
         ) : null}
         <MasterSearchHeaderScopePicker
           usesScopeSheet={usesScopeSheet}
