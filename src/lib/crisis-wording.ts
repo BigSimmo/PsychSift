@@ -14,7 +14,7 @@
  * It changes nothing about retrieval or refusal.
  */
 const crisisWordingPattern =
-  /\b(?:suicid\w*|self[\s-]?harm\w*|kill(?:ing)?\s+my\s?self|end(?:ing)?\s+my\s+(?:own\s+)?life|take\s+my\s+(?:own\s+)?life|want(?:ed)?\s+to\s+die|wish\s+i\s+(?:was|were)\s+dead|hurt(?:ing)?\s+my\s?self|overdos\w*|immediate\s+danger|life[\s-]?threatening|(?:cannot|can\s?not|can['’]?t|unable\s+to)\s+keep\s+(?:myself|them|him|her|the\s+patient)\s+safe|suic\w*|(?:take|need|enough)\s+to\s+die|(?:lethal|fatal|deadly)\s+(?:dose|amount|quantity|number)|no\s+reason\s+to\s+live|took\s+(?:all|a\s+lot)\s+of)\b/i;
+  /\b(?:suicid\w*|self[\s-]?harm\w*|kill(?:ing)?\s+my\s?self|end(?:ing)?\s+my\s+(?:own\s+)?life|take\s+my\s+(?:own\s+)?life|want(?:ed)?\s+to\s+die|wish\s+i\s+(?:was|were)\s+dead|hurt(?:ing)?\s+my\s?self|overdos\w*|immediate\s+danger|life[\s-]?threatening|(?:cannot|can\s?not|can['’]?t|unable\s+to)\s+keep\s+(?:myself|them|him|her|the\s+patient)\s+safe|suic\w*|(?:take|need|enough)\s+(?:\w+\s+){0,2}?to\s+die|(?:lethal|fatal|deadly)\s+(?:doses?|amounts?|quantit(?:y|ies)|numbers?)|no\s+reason\s+to\s+live|took\s+(?:all|a\s+lot)\s+of)\b/i;
 
 export function hasCrisisWording(text: string | null | undefined): boolean {
   if (!text) return false;
