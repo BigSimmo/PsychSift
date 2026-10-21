@@ -587,6 +587,12 @@ export function demoSearch(query: string, topK = 8, documentId?: string, documen
     .slice(0, topK);
 }
 
+// Local demo only: DEMO_ANSWER_CONFIDENCE=medium shows how a medium-trust answer renders
+// (for example, medium-trust quote cards) without any provider call. Anything else keeps "high".
+function demoSupportedConfidence(): "high" | "medium" {
+  return process.env.DEMO_ANSWER_CONFIDENCE === "medium" ? "medium" : "high";
+}
+
 export function demoAnswer(query: string, documentId?: string, documentIds?: string[]): RagAnswer {
   const lowered = query.toLowerCase();
   const mentionsLithium = lowered.includes("lithium") || lowered.includes("toxicity");
@@ -682,7 +688,7 @@ export function demoAnswer(query: string, documentId?: string, documentIds?: str
     answer: `${answer}\n\nSynthetic demo only: this is not clinical guidance.`,
     supportedClaims,
     grounded: supportedQuestion && sources.length > 0,
-    confidence: supportedQuestion && sources.length > 0 ? "high" : "unsupported",
+    confidence: supportedQuestion && sources.length > 0 ? demoSupportedConfidence() : "unsupported",
     citations: sources.slice(0, 4).map((source) => citationFromResult(source, "deterministic_support")),
     sources,
     strongSupportLabelCapped: false,
