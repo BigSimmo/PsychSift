@@ -3,7 +3,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { ClinicalContent, PhoneHeader, sections } from "@/app/mockups/phone-inpage-navigation/phone-inpage-nav-widgets";
 import { AdminWorkAndLeaveGroup } from "@/components/admin/junior/work-and-leave-group";
 import { CpdFeatureLoading } from "@/components/cme/cpd-feature-loading";
 import { LearningCatalogueSpecialtyFilter } from "@/components/cme/learning-catalogue";
@@ -60,17 +59,5 @@ describe("weekly untested UI surfaces & re-export boundaries", () => {
     render(<WorkRolesPage />);
     expect(screen.getByTestId("work-roles")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "View work mode as" })).toBeInTheDocument();
-  });
-
-  it("renders phone in-page navigation mockup widgets across sections", () => {
-    render(
-      <div>
-        <PhoneHeader />
-        <ClinicalContent active={sections[0].label} />
-      </div>,
-    );
-
-    expect(screen.getByRole("button", { name: "Open menu" })).toBeInTheDocument();
-    expect(screen.getByText("Safety first")).toBeInTheDocument();
   });
 });

@@ -47,10 +47,12 @@ test.describe("CME on a phone", () => {
   test("the dashboard leads with position, pace and one action", async ({ page }) => {
     await page.goto("/cme");
     await expect(page.locator("#main-content")).toBeVisible();
-    await expect(page.getByTestId("cme-total-hours")).toContainText("32.5");
-    await expect(page.getByTestId("cme-pace-sentence")).toContainText("17.5 h to go · about 1.2 h a week.");
-    await expect(page.getByTestId("cme-year-label").filter({ visible: true })).toHaveText("2026 · about 15 weeks left");
-    await expect(page.getByTestId("cme-next-action")).toBeVisible();
+    // Visible owner only: Next streaming can briefly leave a hidden twin of the
+    // page root, which made a bare getByTestId fail strict mode (#093).
+    await expect(visibleByTestId(page, "cme-total-hours")).toContainText("32.5");
+    await expect(visibleByTestId(page, "cme-pace-sentence")).toContainText("17.5 h to go · about 1.2 h a week.");
+    await expect(visibleByTestId(page, "cme-year-label")).toHaveText("2026 · about 15 weeks left");
+    await expect(visibleByTestId(page, "cme-next-action")).toBeVisible();
   });
 
   test("every baseline route renders its main region at 390px with no sideways scroll", async ({ page }) => {

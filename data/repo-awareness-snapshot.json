@@ -164,11 +164,6 @@
     ],
     "pages": [
       {
-        "path": "/mockups/care-plan/patients/[patientId]/management-plan",
-        "file": "src/app/mockups/care-plan/patients/[patientId]/management-plan/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/specifiers/builder",
         "file": "src/app/(search-app)/specifiers/builder/page.tsx",
         "area": "product"
@@ -179,24 +174,9 @@
         "area": "product"
       },
       {
-        "path": "/mockups/answer-chat-redesign",
-        "file": "src/app/mockups/answer-chat-redesign/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/tools-task-directory",
-        "file": "src/app/mockups/tools-task-directory/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/on-call/orientation",
         "file": "src/app/(search-app)/on-call/orientation/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/care-plan/system-states",
-        "file": "src/app/mockups/care-plan/system-states/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/open-shifts/alerts",
@@ -234,21 +214,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/calculators-show-all",
-        "file": "src/app/mockups/calculators-show-all/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/tools-search-directions",
-        "file": "src/app/mockups/tools-search-directions/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/calculators-search-page",
-        "file": "src/app/mockups/calculators-search-page/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/cme/programme",
         "file": "src/app/(search-app)/cme/programme/page.tsx",
         "area": "product"
@@ -264,18 +229,8 @@
         "area": "product"
       },
       {
-        "path": "/mockups/services-filter-options",
-        "file": "src/app/mockups/services-filter-options/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/mockups/work-roles",
         "file": "src/app/mockups/work-roles/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/on-call-shift-cover",
-        "file": "src/app/mockups/on-call-shift-cover/page.tsx",
         "area": "mockup"
       },
       {
@@ -284,34 +239,9 @@
         "area": "product"
       },
       {
-        "path": "/mockups/dictionary-browse-header-compact",
-        "file": "src/app/mockups/dictionary-browse-header-compact/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/answer-loading-redesign",
-        "file": "src/app/mockups/answer-loading-redesign/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/factsheets/topics",
         "file": "src/app/(search-app)/factsheets/topics/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/coverage-gaps",
-        "file": "src/app/mockups/coverage-gaps/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/document-phone-zero-chrome",
-        "file": "src/app/mockups/document-phone-zero-chrome/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/doctor-compliance",
-        "file": "src/app/mockups/doctor-compliance/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/on-call/service",
@@ -327,11 +257,6 @@
         "path": "/on-call/pulse",
         "file": "src/app/(search-app)/on-call/pulse/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/calculators-clinical-console",
-        "file": "src/app/mockups/calculators-clinical-console/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/admin/developer-hub/clinical-trust",
@@ -359,11 +284,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/privacy-page-directions",
-        "file": "src/app/mockups/privacy-page-directions/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/cme/cpd-home",
         "file": "src/app/(search-app)/cme/cpd-home/page.tsx",
         "area": "product"
@@ -379,11 +299,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/universal-search-command",
-        "file": "src/app/mockups/universal-search-command/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/documents/search",
         "file": "src/app/(search-app)/documents/search/page.tsx",
         "area": "product"
@@ -397,11 +312,6 @@
         "path": "/specifiers/compare",
         "file": "src/app/(search-app)/specifiers/compare/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/care-plan/governance",
-        "file": "src/app/mockups/care-plan/governance/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/admin/sharing",
@@ -429,11 +339,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/settings-search-privacy",
-        "file": "src/app/mockups/settings-search-privacy/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/on-call/who-is-who",
         "file": "src/app/(search-app)/on-call/who-is-who/page.tsx",
         "area": "product"
@@ -459,29 +364,14 @@
         "area": "product"
       },
       {
-        "path": "/mockups/care-plan",
-        "file": "src/app/mockups/care-plan/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/admin/new-job/ready",
         "file": "src/app/(search-app)/admin/new-job/ready/page.tsx",
         "area": "product"
       },
       {
-        "path": "/mockups/care-plan/reviews",
-        "file": "src/app/mockups/care-plan/reviews/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/teaching/term/folder",
         "file": "src/app/(search-app)/teaching/term/folder/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/universal-search-redesign",
-        "file": "src/app/mockups/universal-search-redesign/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/teaching/logbook",
@@ -491,16 +381,6 @@
       {
         "path": "/mockups/document-search/source-overlays",
         "file": "src/app/mockups/document-search/source-overlays/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/factsheets-compact-view",
-        "file": "src/app/mockups/factsheets-compact-view/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/document-navigation-final",
-        "file": "src/app/mockups/document-navigation-final/page.tsx",
         "area": "mockup"
       },
       {
@@ -514,34 +394,14 @@
         "area": "mockup"
       },
       {
-        "path": "/mockups/search-lens-menu",
-        "file": "src/app/mockups/search-lens-menu/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/calculators-guided-flow",
-        "file": "src/app/mockups/calculators-guided-flow/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/admin/applications",
         "file": "src/app/(search-app)/admin/applications/page.tsx",
         "area": "product"
       },
       {
-        "path": "/mockups/therapy-recommend-popup-dossier",
-        "file": "src/app/mockups/therapy-recommend-popup-dossier/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/cme/log/[id]",
         "file": "src/app/(search-app)/cme/log/[id]/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/care-plan/patients/[patientId]/safety-plan",
-        "file": "src/app/mockups/care-plan/patients/[patientId]/safety-plan/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/differentials/presentations/[slug]",
@@ -554,11 +414,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/care-plan/patients/[patientId]/management-plan/edit",
-        "file": "src/app/mockups/care-plan/patients/[patientId]/management-plan/edit/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/first-nations/mental-health",
         "file": "src/app/(search-app)/first-nations/mental-health/page.tsx",
         "area": "product"
@@ -569,11 +424,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/therapy-scenario-popup-live",
-        "file": "src/app/mockups/therapy-scenario-popup-live/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/roster/settings",
         "file": "src/app/(search-app)/roster/settings/page.tsx",
         "area": "product"
@@ -582,11 +432,6 @@
         "path": "/admin/applications/cv",
         "file": "src/app/(search-app)/admin/applications/cv/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/tools-workflow-board",
-        "file": "src/app/mockups/tools-workflow-board/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/roster/staffing",
@@ -624,19 +469,9 @@
         "area": "product"
       },
       {
-        "path": "/mockups/also-matches-closed",
-        "file": "src/app/mockups/also-matches-closed/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/admin",
         "file": "src/app/(search-app)/admin/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/specifier-record-directions",
-        "file": "src/app/mockups/specifier-record-directions/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/admin/contract",
@@ -664,11 +499,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/warning-line",
-        "file": "src/app/mockups/warning-line/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/teaching/assessments/respond/[token]",
         "file": "src/app/(search-app)/teaching/assessments/respond/[token]/page.tsx",
         "area": "product"
@@ -682,11 +512,6 @@
         "path": "/teaching/resources",
         "file": "src/app/(search-app)/teaching/resources/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/answer-chat-perfected",
-        "file": "src/app/mockups/answer-chat-perfected/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/admin/help",
@@ -709,44 +534,14 @@
         "area": "product"
       },
       {
-        "path": "/mockups/care-plan/team",
-        "file": "src/app/mockups/care-plan/team/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/sources/currency",
         "file": "src/app/(search-app)/sources/currency/page.tsx",
         "area": "product"
       },
       {
-        "path": "/mockups/document-navigation-contract",
-        "file": "src/app/mockups/document-navigation-contract/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/recent-searches-bottom",
-        "file": "src/app/mockups/recent-searches-bottom/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/filter-sheet-restyle",
-        "file": "src/app/mockups/filter-sheet-restyle/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/therapy-navigation-context",
-        "file": "src/app/mockups/therapy-navigation-context/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/admin/requests",
         "file": "src/app/(search-app)/admin/requests/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/care-plan/patients/[patientId]/presentations/new",
-        "file": "src/app/mockups/care-plan/patients/[patientId]/presentations/new/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/first-nations/end-of-life",
@@ -779,16 +574,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/therapy-scenario-popup-guided",
-        "file": "src/app/mockups/therapy-scenario-popup-guided/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/dictionary-browse-header",
-        "file": "src/app/mockups/dictionary-browse-header/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/on-call/first-week",
         "file": "src/app/(search-app)/on-call/first-week/page.tsx",
         "area": "product"
@@ -814,19 +599,9 @@
         "area": "mockup"
       },
       {
-        "path": "/mockups/mode-dropdown",
-        "file": "src/app/mockups/mode-dropdown/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/medicines",
         "file": "src/app/(search-app)/medicines/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/search-heading",
-        "file": "src/app/mockups/search-heading/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/admin/compliance",
@@ -879,11 +654,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/verification-notice-subtle",
-        "file": "src/app/mockups/verification-notice-subtle/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/teaching/organise",
         "file": "src/app/(search-app)/teaching/organise/page.tsx",
         "area": "product"
@@ -897,11 +667,6 @@
         "path": "/admin/workforce",
         "file": "src/app/(search-app)/admin/workforce/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/settings-search-general",
-        "file": "src/app/mockups/settings-search-general/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/on-call/playbook",
@@ -979,16 +744,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/calculators-popup-sheet",
-        "file": "src/app/mockups/calculators-popup-sheet/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/source-rail-desktop-scroll",
-        "file": "src/app/mockups/source-rail-desktop-scroll/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/first-nations/card",
         "file": "src/app/(search-app)/first-nations/card/page.tsx",
         "area": "product"
@@ -1006,11 +761,6 @@
       {
         "path": "/mockups/development",
         "file": "src/app/mockups/development/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/document-search-evidence-lens",
-        "file": "src/app/mockups/document-search-evidence-lens/page.tsx",
         "area": "mockup"
       },
       {
@@ -1039,19 +789,9 @@
         "area": "product"
       },
       {
-        "path": "/mockups/privacy-live-signal-perfected",
-        "file": "src/app/mockups/privacy-live-signal-perfected/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/teaching/import",
         "file": "src/app/(search-app)/teaching/import/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/sidebar-live",
-        "file": "src/app/mockups/sidebar-live/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/roster/manage/rotations",
@@ -1074,11 +814,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/document-image-status",
-        "file": "src/app/mockups/document-image-status/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/admin/courses",
         "file": "src/app/(search-app)/admin/courses/page.tsx",
         "area": "product"
@@ -1087,11 +822,6 @@
         "path": "/forms/act",
         "file": "src/app/(search-app)/forms/act/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/care-plan/patients/[patientId]/safety-plan/print",
-        "file": "src/app/mockups/care-plan/patients/[patientId]/safety-plan/print/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/roster/rotations/[roundId]",
@@ -1134,11 +864,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/therapy-navigation-dock",
-        "file": "src/app/mockups/therapy-navigation-dock/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/teaching/assessments/trainee/[id]",
         "file": "src/app/(search-app)/teaching/assessments/trainee/[id]/page.tsx",
         "area": "product"
@@ -1147,11 +872,6 @@
         "path": "/teaching/week",
         "file": "src/app/(search-app)/teaching/week/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/clinical-sign-off-actions",
-        "file": "src/app/mockups/clinical-sign-off-actions/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/on-call/contacts",
@@ -1179,11 +899,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/favourites-phone-perfected",
-        "file": "src/app/mockups/favourites-phone-perfected/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/services/search",
         "file": "src/app/(search-app)/services/search/page.tsx",
         "area": "product"
@@ -1199,11 +914,6 @@
         "area": "mockup"
       },
       {
-        "path": "/mockups/settings-search-clinical",
-        "file": "src/app/mockups/settings-search-clinical/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/sources/search",
         "file": "src/app/(search-app)/sources/search/page.tsx",
         "area": "product"
@@ -1212,11 +922,6 @@
         "path": "/cme/routines",
         "file": "src/app/(search-app)/cme/routines/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/care-plan/patients/[patientId]/management-plan/print",
-        "file": "src/app/mockups/care-plan/patients/[patientId]/management-plan/print/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/dsm/compare",
@@ -1239,11 +944,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/therapy-recommend-popup-workbench",
-        "file": "src/app/mockups/therapy-recommend-popup-workbench/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/cme/log",
         "file": "src/app/(search-app)/cme/log/page.tsx",
         "area": "product"
@@ -1254,19 +954,9 @@
         "area": "product"
       },
       {
-        "path": "/mockups/care-plan/patients/[patientId]/patient-plan",
-        "file": "src/app/mockups/care-plan/patients/[patientId]/patient-plan/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/my-day/calendar",
         "file": "src/app/(search-app)/my-day/calendar/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/calculators-directory-grid",
-        "file": "src/app/mockups/calculators-directory-grid/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/admin/developer-hub/clinical-sign-off",
@@ -1279,19 +969,9 @@
         "area": "product"
       },
       {
-        "path": "/mockups/care-plan/patients/[patientId]/patient-plan/print",
-        "file": "src/app/mockups/care-plan/patients/[patientId]/patient-plan/print/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/open-shifts/mine",
         "file": "src/app/(search-app)/open-shifts/mine/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/pinned-plus-menu",
-        "file": "src/app/mockups/pinned-plus-menu/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/formulation/search",
@@ -1329,29 +1009,14 @@
         "area": "product"
       },
       {
-        "path": "/mockups/tools-split-pane",
-        "file": "src/app/mockups/tools-split-pane/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/mockups/document-search",
         "file": "src/app/mockups/document-search/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/dsm-favourites",
-        "file": "src/app/mockups/dsm-favourites/page.tsx",
         "area": "mockup"
       },
       {
         "path": "/admin/pay",
         "file": "src/app/(search-app)/admin/pay/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/therapy-navigation-rail",
-        "file": "src/app/mockups/therapy-navigation-rail/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/admin/hospital",
@@ -1362,11 +1027,6 @@
         "path": "/cme/plan",
         "file": "src/app/(search-app)/cme/plan/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/care-plan/patients/[patientId]",
-        "file": "src/app/mockups/care-plan/patients/[patientId]/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/favourites",
@@ -1389,33 +1049,13 @@
         "area": "product"
       },
       {
-        "path": "/mockups/calculators-search",
-        "file": "src/app/mockups/calculators-search/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/care-plan/patients",
-        "file": "src/app/mockups/care-plan/patients/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/admin/hospital/sick",
         "file": "src/app/(search-app)/admin/hospital/sick/page.tsx",
         "area": "product"
       },
       {
-        "path": "/mockups/care-plan/patients/[patientId]/presentations/[presentationId]",
-        "file": "src/app/mockups/care-plan/patients/[patientId]/presentations/[presentationId]/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/mockups/development/roster-teams",
         "file": "src/app/mockups/development/roster-teams/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/care-plan/patients/[patientId]/history",
-        "file": "src/app/mockups/care-plan/patients/[patientId]/history/page.tsx",
         "area": "mockup"
       },
       {
@@ -1434,11 +1074,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/tools-command-center",
-        "file": "src/app/mockups/tools-command-center/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/teaching/session/[id]/check-in",
         "file": "src/app/(search-app)/teaching/session/[id]/check-in/page.tsx",
         "area": "product"
@@ -1447,11 +1082,6 @@
         "path": "/therapy-compass/search",
         "file": "src/app/(search-app)/therapy-compass/search/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/search-band-directions",
-        "file": "src/app/mockups/search-band-directions/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/psychiatry",
@@ -1504,16 +1134,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/dictionary-control-row",
-        "file": "src/app/mockups/dictionary-control-row/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/care-plan/patients/[patientId]/management-plan/review",
-        "file": "src/app/mockups/care-plan/patients/[patientId]/management-plan/review/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/teaching/assessments",
         "file": "src/app/(search-app)/teaching/assessments/page.tsx",
         "area": "product"
@@ -1524,19 +1144,9 @@
         "area": "product"
       },
       {
-        "path": "/mockups/care-plan/patients/[patientId]/presentations",
-        "file": "src/app/mockups/care-plan/patients/[patientId]/presentations/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/teaching/session/[id]",
         "file": "src/app/(search-app)/teaching/session/[id]/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/therapy-recommend-popup-triage",
-        "file": "src/app/mockups/therapy-recommend-popup-triage/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/specifiers/map",
@@ -1569,11 +1179,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/document-navigation-perfected",
-        "file": "src/app/mockups/document-navigation-perfected/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/on-call/whos-on",
         "file": "src/app/(search-app)/on-call/whos-on/page.tsx",
         "area": "product"
@@ -1589,44 +1194,14 @@
         "area": "product"
       },
       {
-        "path": "/mockups/calculators-bedside-sheet",
-        "file": "src/app/mockups/calculators-bedside-sheet/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/admin/developer-hub/hazards",
         "file": "src/app/(admin)/admin/developer-hub/hazards/page.tsx",
         "area": "product"
       },
       {
-        "path": "/mockups/tools-search-mode",
-        "file": "src/app/mockups/tools-search-mode/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/care-plan/patients/[patientId]/safety-plan/edit",
-        "file": "src/app/mockups/care-plan/patients/[patientId]/safety-plan/edit/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/document-search-triage-board",
-        "file": "src/app/mockups/document-search-triage-board/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/document-top-navigation",
-        "file": "src/app/mockups/document-top-navigation/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/cme/export",
         "file": "src/app/(search-app)/cme/export/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/phone-mode-sheet-yes",
-        "file": "src/app/mockups/phone-mode-sheet-yes/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/on-call/handover",
@@ -1679,29 +1254,9 @@
         "area": "mockup"
       },
       {
-        "path": "/mockups/on-call-calendars",
-        "file": "src/app/mockups/on-call-calendars/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/teaching/c/[token]",
         "file": "src/app/(search-app)/teaching/c/[token]/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/search-refine-adaptive",
-        "file": "src/app/mockups/search-refine-adaptive/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/services-filter-refined",
-        "file": "src/app/mockups/services-filter-refined/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/care-plan/patients/[patientId]/patient-plan/edit",
-        "file": "src/app/mockups/care-plan/patients/[patientId]/patient-plan/edit/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/sources/method",
@@ -1719,16 +1274,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/factsheets-topics-phone",
-        "file": "src/app/mockups/factsheets-topics-phone/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/warning-consolidation",
-        "file": "src/app/mockups/warning-consolidation/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/first-nations/contacts",
         "file": "src/app/(search-app)/first-nations/contacts/page.tsx",
         "area": "product"
@@ -1737,11 +1282,6 @@
         "path": "/my-day/week",
         "file": "src/app/(search-app)/my-day/week/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/therapy-scenario-popup-intake",
-        "file": "src/app/mockups/therapy-scenario-popup-intake/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/open-shifts/board",
@@ -1759,24 +1299,9 @@
         "area": "product"
       },
       {
-        "path": "/mockups/answer-chat-perfected-v2",
-        "file": "src/app/mockups/answer-chat-perfected-v2/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/phone-inpage-navigation",
-        "file": "src/app/mockups/phone-inpage-navigation/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/teaching/review",
         "file": "src/app/(search-app)/teaching/review/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/also-matches-accents",
-        "file": "src/app/mockups/also-matches-accents/page.tsx",
-        "area": "mockup"
       }
     ],
     "redirects": [
@@ -2519,11 +2044,6 @@
         "catalogued": true
       },
       {
-        "path": "docs/care-plan/interaction-matrix.md",
-        "section": "care-plan",
-        "catalogued": true
-      },
-      {
         "path": "docs/decisions/2026-09-04-on-call-readable-by-every-visitor.md",
         "section": "decisions",
         "catalogued": true
@@ -2586,11 +2106,6 @@
       {
         "path": "docs/pr-handoff-stop-cross-agent-gap.md",
         "section": "root",
-        "catalogued": true
-      },
-      {
-        "path": "docs/care-plan/reports/task-9-report.md",
-        "section": "care-plan",
         "catalogued": true
       },
       {
@@ -2704,6 +2219,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-21-retire-care-plan-and-design-studies.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/superpowers/rag-upgrade/local/START-HERE.md",
         "section": "superpowers",
         "catalogued": true
@@ -2774,11 +2294,6 @@
         "catalogued": true
       },
       {
-        "path": "docs/care-plan/reports/task-7-report.md",
-        "section": "care-plan",
-        "catalogued": true
-      },
-      {
         "path": "docs/decisions/ccz4hb-review-coverage.md",
         "section": "decisions",
         "catalogued": true
@@ -2806,11 +2321,6 @@
       {
         "path": "docs/superpowers/plans/2026-08-21-developer-hub-phase-1-HANDOFF.md",
         "section": "superpowers",
-        "catalogued": true
-      },
-      {
-        "path": "docs/care-plan/reports/task-9-brief.md",
-        "section": "care-plan",
         "catalogued": true
       },
       {
@@ -2944,11 +2454,6 @@
         "catalogued": true
       },
       {
-        "path": "docs/care-plan/verification-report.md",
-        "section": "care-plan",
-        "catalogued": true
-      },
-      {
         "path": "docs/product/2026-09-19-doctor-compliance-and-feature-brainstorm.md",
         "section": "product",
         "catalogued": true
@@ -3076,11 +2581,6 @@
       {
         "path": "docs/comparison-behaviour.md",
         "section": "root",
-        "catalogued": true
-      },
-      {
-        "path": "docs/care-plan/reports/task-8-brief.md",
-        "section": "care-plan",
         "catalogued": true
       },
       {
@@ -3484,11 +2984,6 @@
         "catalogued": true
       },
       {
-        "path": "docs/care-plan/conversation-transcript-2026-08-21.md",
-        "section": "care-plan",
-        "catalogued": true
-      },
-      {
         "path": "docs/superpowers/plans/2026-08-21-trusted-admin-document-ingestion.md",
         "section": "superpowers",
         "catalogued": true
@@ -3549,11 +3044,6 @@
         "catalogued": true
       },
       {
-        "path": "docs/care-plan/reports/task-6-brief.md",
-        "section": "care-plan",
-        "catalogued": true
-      },
-      {
         "path": "docs/superpowers/plans/2026-10-12-phase-1-critical-hotfixes.md",
         "section": "superpowers",
         "catalogued": true
@@ -3581,11 +3071,6 @@
       {
         "path": "docs/decisions/2026-09-26-last-updated-date-model.md",
         "section": "decisions",
-        "catalogued": true
-      },
-      {
-        "path": "docs/care-plan/reports/task-5-brief.md",
-        "section": "care-plan",
         "catalogued": true
       },
       {
@@ -3619,11 +3104,6 @@
         "catalogued": true
       },
       {
-        "path": "docs/care-plan/clinical-language-trace.md",
-        "section": "care-plan",
-        "catalogued": true
-      },
-      {
         "path": "docs/decisions/2026-10-18-bot-authored-sensitive-commits-blocked.md",
         "section": "decisions",
         "catalogued": true
@@ -3651,11 +3131,6 @@
       {
         "path": "docs/decisions/2026-08-19-docling-shadow-cohort-starts-at-2-percent.md",
         "section": "decisions",
-        "catalogued": true
-      },
-      {
-        "path": "docs/care-plan/reports/task-11-report.md",
-        "section": "care-plan",
         "catalogued": true
       },
       {
@@ -3779,11 +3254,6 @@
         "catalogued": true
       },
       {
-        "path": "docs/care-plan/reports/task-6-report.md",
-        "section": "care-plan",
-        "catalogued": true
-      },
-      {
         "path": "docs/search-rag-master-plan.md",
         "section": "root",
         "catalogued": true
@@ -3816,11 +3286,6 @@
       {
         "path": "docs/audit/repo-wide-review-remediation-plan-2026-07-23.md",
         "section": "audit",
-        "catalogued": true
-      },
-      {
-        "path": "docs/care-plan/HANDOFF-2026-08-24-SUPERSEDED.md",
-        "section": "care-plan",
         "catalogued": true
       },
       {
@@ -3874,11 +3339,6 @@
         "catalogued": true
       },
       {
-        "path": "docs/care-plan/reports/task-8-report.md",
-        "section": "care-plan",
-        "catalogued": true
-      },
-      {
         "path": "docs/superpowers/rag-upgrade/cloud/specs/2026-08-20-rag-answer-and-australian-sources-design.md",
         "section": "superpowers",
         "catalogued": true
@@ -3894,18 +3354,8 @@
         "catalogued": true
       },
       {
-        "path": "docs/care-plan/patient-facing-sheets/README.md",
-        "section": "care-plan",
-        "catalogued": true
-      },
-      {
         "path": "docs/decisions/2026-10-20-terms-step-wording-signed-off.md",
         "section": "decisions",
-        "catalogued": true
-      },
-      {
-        "path": "docs/care-plan/CLAUDE-START-HERE.md",
-        "section": "care-plan",
         "catalogued": true
       },
       {
@@ -3921,11 +3371,6 @@
       {
         "path": "docs/decisions/2026-08-26-prototypes-are-standalone-sandboxes.md",
         "section": "decisions",
-        "catalogued": true
-      },
-      {
-        "path": "docs/care-plan/accessibility-acceptance.md",
-        "section": "care-plan",
         "catalogued": true
       },
       {
@@ -3986,16 +3431,6 @@
       {
         "path": "docs/decisions/2026-08-26-hazard-register-in-developer-hub.md",
         "section": "decisions",
-        "catalogued": true
-      },
-      {
-        "path": "docs/care-plan/reports/task-3-brief.md",
-        "section": "care-plan",
-        "catalogued": true
-      },
-      {
-        "path": "docs/care-plan/complete-work-ledger.md",
-        "section": "care-plan",
         "catalogued": true
       },
       {
@@ -4254,16 +3689,6 @@
         "catalogued": true
       },
       {
-        "path": "docs/care-plan/reports/task-4-report.md",
-        "section": "care-plan",
-        "catalogued": true
-      },
-      {
-        "path": "docs/care-plan/reports/task-5-report.md",
-        "section": "care-plan",
-        "catalogued": true
-      },
-      {
         "path": "docs/decisions/2026-10-21-emergency-cards-owner-review.md",
         "section": "decisions",
         "catalogued": true
@@ -4351,11 +3776,6 @@
       {
         "path": "docs/agents-guide.md",
         "section": "root",
-        "catalogued": true
-      },
-      {
-        "path": "docs/care-plan/reports/task-3-report.md",
-        "section": "care-plan",
         "catalogued": true
       },
       {
@@ -4456,11 +3876,6 @@
       {
         "path": "docs/codebase-index.md",
         "section": "root",
-        "catalogued": true
-      },
-      {
-        "path": "docs/care-plan/reports/task-7-brief.md",
-        "section": "care-plan",
         "catalogued": true
       },
       {
@@ -4569,11 +3984,6 @@
         "catalogued": true
       },
       {
-        "path": "docs/care-plan/cloud-session.md",
-        "section": "care-plan",
-        "catalogued": true
-      },
-      {
         "path": "docs/decisions/2026-09-19-escalation-and-monitoring-chip-words.md",
         "section": "decisions",
         "catalogued": true
@@ -4661,11 +4071,6 @@
       {
         "path": "docs/decisions/2026-10-16-cloud-policy-repair-boundary.md",
         "section": "decisions",
-        "catalogued": true
-      },
-      {
-        "path": "docs/care-plan/HANDOFF-START-HERE.md",
-        "section": "care-plan",
         "catalogued": true
       },
       {
@@ -4864,11 +4269,6 @@
         "catalogued": true
       },
       {
-        "path": "docs/care-plan/reports/task-d1-report.md",
-        "section": "care-plan",
-        "catalogued": true
-      },
-      {
         "path": "docs/productivity-workflows.md",
         "section": "root",
         "catalogued": true
@@ -4919,11 +4319,6 @@
         "catalogued": true
       },
       {
-        "path": "docs/care-plan/claude-build-handover-2026-08-21.md",
-        "section": "care-plan",
-        "catalogued": true
-      },
-      {
         "path": "docs/superpowers/specs/2026-08-23-clinical-operations-programme-design.md",
         "section": "superpowers",
         "catalogued": true
@@ -4946,11 +4341,6 @@
       {
         "path": "docs/redesign/09-page-polish-plan.md",
         "section": "redesign",
-        "catalogued": true
-      },
-      {
-        "path": "docs/care-plan/verification-log-2026-08-21.md",
-        "section": "care-plan",
         "catalogued": true
       },
       {
@@ -5016,6 +4406,11 @@
       {
         "path": "docs/archive/cloud-session-state-2026-10-16/lighthouse-mobile-root-cls-flake.md",
         "section": "archive",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-21-one-daily-health-summary.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -5219,11 +4614,6 @@
         "catalogued": true
       },
       {
-        "path": "docs/care-plan/reports/task-10-report.md",
-        "section": "care-plan",
-        "catalogued": true
-      },
-      {
         "path": "docs/superpowers/rag-upgrade/local/plans/2026-08-21-trusted-admin-document-ingestion.md",
         "section": "superpowers",
         "catalogued": true
@@ -5231,11 +4621,6 @@
       {
         "path": "docs/superpowers/plans/2026-07-04-public-anonymous-access-rate-limits.md",
         "section": "superpowers",
-        "catalogued": true
-      },
-      {
-        "path": "docs/care-plan/reports/final-fix-report.md",
-        "section": "care-plan",
         "catalogued": true
       },
       {
@@ -5276,11 +4661,6 @@
       {
         "path": "docs/decisions/2026-10-16-user-controlled-reasoning-effort.md",
         "section": "decisions",
-        "catalogued": true
-      },
-      {
-        "path": "docs/care-plan/session-handoff-2026-08-21.md",
-        "section": "care-plan",
         "catalogued": true
       },
       {
@@ -5619,11 +4999,6 @@
         "catalogued": true
       },
       {
-        "path": "docs/care-plan/reports/task-4-brief.md",
-        "section": "care-plan",
-        "catalogued": true
-      },
-      {
         "path": "docs/superpowers/plans/2026-08-23-clinical-trust-cockpit.md",
         "section": "superpowers",
         "catalogued": true
@@ -5684,11 +5059,6 @@
         "catalogued": true
       },
       {
-        "path": "docs/care-plan/session-handoff-2026-08-23.md",
-        "section": "care-plan",
-        "catalogued": true
-      },
-      {
         "path": "docs/staging-shutdown-and-repo-review-handover-2026-09-06.md",
         "section": "root",
         "catalogued": true
@@ -5724,11 +5094,6 @@
         "catalogued": true
       },
       {
-        "path": "docs/care-plan-context.md",
-        "section": "root",
-        "catalogued": true
-      },
-      {
         "path": "docs/decisions/2026-09-03-evidence-preview-excludes-per-document.md",
         "section": "decisions",
         "catalogued": true
@@ -5741,11 +5106,6 @@
       {
         "path": "docs/decisions/2026-09-25-differential-badges-name-what-they-count.md",
         "section": "decisions",
-        "catalogued": true
-      },
-      {
-        "path": "docs/care-plan/sdd-ledger.md",
-        "section": "care-plan",
         "catalogued": true
       },
       {
@@ -5811,11 +5171,6 @@
       {
         "path": "docs/superpowers/plans/2026-08-23-lighthouse-local-build-reliability.md",
         "section": "superpowers",
-        "catalogued": true
-      },
-      {
-        "path": "docs/care-plan/implementation-handoff.md",
-        "section": "care-plan",
         "catalogued": true
       },
       {

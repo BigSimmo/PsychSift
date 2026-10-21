@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "f95c4ac6-996c-42d8-a7e3-db4cd5940c1f",
+  "createdOn": "2026-10-21",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "issue",
+    "summary": "npm run build fails in the Windows shell (build:internal uses POSIX NODE_OPTIONS=${...} expansion)",
+    "detail": "Found 2026-10-21 on the owner's Windows PC: latest main builds cleanly via bash (about 15 min) but npm run build fails in the Windows shell because build:internal sets NODE_OPTIONS=\"${NODE_OPTIONS:---max-old-space-size=8192}\", which cmd and PowerShell do not expand. Workaround: build from bash. Fix: move the env default into a small Node wrapper (no new cross-env dependency). Touches the Railway Docker build and CI heavy scope, so it was kept out of the test-only #3745.",
+    "source": "Main CI and test reliability thread, 2026-10-21",
+    "issueUlid": "01M5F8P0FNNM9S1V3H9AR6DFVC"
+  }
+}
