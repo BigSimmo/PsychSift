@@ -4,7 +4,11 @@ import { consumeApiRateLimit, rateLimitJsonResponse } from "@/lib/api-rate-limit
 import { env, isDemoMode } from "@/lib/env";
 import { jsonError, publicErrorResponse } from "@/lib/http";
 import { ingestionJobRetryRejectionReason } from "@/lib/ingestion";
-import { ingestionRollbackFenceStamp } from "@/lib/ingestion-mutation-safety";
+import {
+  applyIngestionRecoveryActions,
+  isFreshProcessingJob,
+  type IngestionRecoveryJob,
+} from "@/lib/ingestion-recovery";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, requireAuthenticatedUser, unauthorizedResponse } from "@/lib/supabase/auth";
 import { parseRouteParams } from "@/lib/validation/params";
@@ -14,12 +18,30 @@ export const runtime = "nodejs";
 const ingestionRetryRouteParamsSchema = z.object({
   id: z.string().uuid(),
 });
-const ingestionRetryResultSchema = z.discriminatedUnion("outcome", [
-  z.object({ outcome: z.literal("not_found") }),
-  z.object({ outcome: z.literal("completed") }),
-  z.object({ outcome: z.literal("active_worker") }),
-  z.object({ outcome: z.literal("queued"), job: z.object({}).passthrough() }),
-]);
+const RETRY_JOB_COLUMNS =
+  "id,document_id,status,locked_at,lease_token,lease_expires_at,documents!inner(status,owner_id,chunk_count)";
+
+const ACTIVE_JOB_MESSAGE =
+  "This job is still being processed by a worker. Wait for it to finish or go stale before retrying.";
+
+// Audit 2026-10-20 DB-01: Retry goes through recover_ingestion_job, the same hardened path the
+// operator recovery scripts use (document authority lock, managed-evidence hold, sibling-job and
+// live-lease checks), guarded on the row state read here. Each refusal is a 409 the panel shows.
+const RECOVERY_REFUSALS: Record<string, { message: string; code: string }> = {
+  active_lease: { message: ACTIVE_JOB_MESSAGE, code: "ingestion_job_active" },
+  state_changed: {
+    message: "This job or its document has changed since the list was loaded. Refresh and try again.",
+    code: "ingestion_job_state_changed",
+  },
+  managed_recovery_required: {
+    message: "This document has managed index evidence, so it needs operator recovery rather than Retry.",
+    code: "ingestion_job_managed_recovery_required",
+  },
+  authority_unavailable: {
+    message: "Another change to this document is in progress. Try again shortly.",
+    code: "ingestion_job_authority_unavailable",
+  },
+};
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -44,39 +66,67 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       return rateLimitJsonResponse("Too many ingestion administration requests. Retry shortly.", rateLimit);
     }
 
-    const staleThreshold = new Date(Date.now() - env.WORKER_STALE_AFTER_MINUTES * 60_000).toISOString();
-    const resetNextRunAt = ingestionRollbackFenceStamp();
-    const { data, error } = await supabase.rpc("retry_ingestion_job_if_idle", {
-      p_job_id: id,
-      p_owner_id: user.id,
-      p_stale_before: staleThreshold,
-      p_max_attempts: env.WORKER_MAX_ATTEMPTS,
-      p_next_run_at: resetNextRunAt,
-      p_document_updated_at: ingestionRollbackFenceStamp(),
-    });
-    if (error) throw new Error(error.message);
-
-    const parsed = ingestionRetryResultSchema.safeParse(data);
-    if (!parsed.success) throw new Error("retry_ingestion_job_if_idle returned an invalid result.");
-    if (parsed.data.outcome === "not_found") {
+    const { data: row, error: readError } = await supabase
+      .from("ingestion_jobs")
+      .select(RETRY_JOB_COLUMNS)
+      .eq("id", id)
+      .eq("documents.owner_id", user.id)
+      .maybeSingle();
+    if (readError) throw new Error(readError.message);
+    const job = row as unknown as (IngestionRecoveryJob & { status: string | null }) | null;
+    if (!job || job.documents?.owner_id !== user.id) {
       return publicErrorResponse("Ingestion job not found.", 404, { code: "ingestion_job_not_found" });
     }
-    if (parsed.data.outcome === "completed") {
+    if (job.status === "completed") {
       return publicErrorResponse(
         ingestionJobRetryRejectionReason("completed") ?? "Completed ingestion jobs cannot be retried.",
         409,
         { code: "ingestion_job_completed" },
       );
     }
-    if (parsed.data.outcome === "active_worker") {
+    if (job.status === "pending") {
+      return publicErrorResponse("This job is already queued.", 409, { code: "ingestion_job_queued" });
+    }
+    if (isFreshProcessingJob(job, new Date(), env.WORKER_STALE_AFTER_MINUTES)) {
+      return publicErrorResponse(ACTIVE_JOB_MESSAGE, 409, { code: "ingestion_job_active" });
+    }
+    if (job.documents?.status === "indexed" && Number(job.documents.chunk_count ?? 0) > 0) {
       return publicErrorResponse(
-        "This job is still being processed by a worker. Wait for it to finish or go stale before retrying.",
+        "This document is already indexed, so its old job cannot be retried. Use Re-index to rebuild it.",
         409,
-        { code: "ingestion_job_active" },
+        { code: "ingestion_document_indexed" },
       );
     }
 
-    return NextResponse.json({ job: parsed.data.job });
+    const [result] = await applyIngestionRecoveryActions(supabase, [
+      {
+        action: { action: "retry", jobId: job.id, documentId: job.document_id, resetDocument: false },
+        expected: {
+          jobStatus: job.status ?? null,
+          jobLockedAt: job.locked_at ?? null,
+          jobLeaseToken: job.lease_token ?? null,
+          jobLeaseExpiresAt: job.lease_expires_at ?? null,
+          documentStatus: job.documents?.status ?? null,
+          documentOwnerId: job.documents?.owner_id ?? null,
+        },
+      },
+    ]);
+    if (!result?.applied) {
+      if (result?.reason === "job_closed") {
+        return publicErrorResponse("Ingestion job not found.", 404, { code: "ingestion_job_not_found" });
+      }
+      const refusal = RECOVERY_REFUSALS[result?.reason ?? ""];
+      if (refusal) return publicErrorResponse(refusal.message, 409, { code: refusal.code });
+      throw new Error(`recover_ingestion_job refused the retry: ${result?.reason ?? "no result"}.`);
+    }
+
+    const { data: queued, error: queuedError } = await supabase
+      .from("ingestion_jobs")
+      .select("*")
+      .eq("id", job.id)
+      .maybeSingle();
+    if (queuedError) throw new Error(queuedError.message);
+    return NextResponse.json({ job: queued ?? { id: job.id, document_id: job.document_id, status: "pending" } });
   } catch (error) {
     if (error instanceof AuthenticationError) return unauthorizedResponse();
     return jsonError(error);
