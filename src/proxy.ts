@@ -497,7 +497,7 @@ export function shouldBlockProductionMockups(
   // named once, in `src/lib/developer-area/headers.ts`, and not re-listed here:
   // this comment kept naming a smaller set for months after a fourth prefix was
   // added (2026-09-02 audit, L76). The match is exact-or-slash, so a look-alike path
-  // such as `/mockups/care-plan-archive` is NOT let through. Every other
+  // such as `/mockups/development-archive` is NOT let through. Every other
   // /mockups/** path is unaffected.
   if (isDeveloperGatedPath(pathname)) return false;
 

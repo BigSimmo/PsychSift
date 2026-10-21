@@ -234,8 +234,8 @@ function isUiChangedPath(filePath) {
 const mockupPatterns = [
   "src/app/mockups",
   "tests/ui-mockups.spec.ts",
-  // Component filenames are both singular and plural (`task-directory-mockup.tsx`
-  // next to `split-pane-refined-mockups.tsx`), and several live in `*-mockups/`
+  // Component filenames are both singular and plural (`tools-page-mockup-page.tsx`
+  // next to `master-document-flow-mockups.tsx`), and several live in `*-mockups/`
   // directories. Matching the directory as well as the filename keeps a mockup
   // component edited on its own — without its `src/app/mockups` route wrapper —
   // from losing the only lane that runs its `@mockup` journey.
@@ -247,11 +247,10 @@ const mockupPatterns = [
   // file at any depth; a plain `mockups/` segment one level down fell between them
   // and left those journeys unrun (found 2026-08-21).
   /^src\/components\/(?:[^/]+\/)+mockups?\//,
-  // Three of the advisory specs carry `@mockup` without "mockup" in the
-  // filename, so a name-based rule alone misses them. `assertMockupSpecParity`
-  // below holds this list to `mockupSpecPattern` in playwright.config.ts.
+  // Advisory specs carry "mockup" in the filename. `assertMockupSpecParity` below
+  // holds this list to `mockupSpecPattern` in playwright.config.ts, so a future
+  // advisory spec without "mockup" in its name fails that check until it is added.
   /^tests\/.*mockup.*\.spec\.ts$/,
-  /^tests\/ui-tools(?:-collapse|-task-directory)?\.spec\.ts$/,
 ];
 
 function quarantineLedgerHasEntries(readLedger) {
@@ -1047,19 +1046,18 @@ function assertBrowserAndAdvisoryScopes() {
   // A mockup component in a NESTED `mockups/` directory whose own filename gives
   // no hint — the case the suffix-based rules miss. Both directions are pinned so
   // the added pattern cannot quietly widen to ordinary component directories.
-  assertScope("advisory-on-for-nested-mockup-dir", ["src/components/care-plan/mockups/product-pages.tsx"], {
+  assertScope("advisory-on-for-nested-mockup-dir", ["src/components/example-area/mockups/product-pages.tsx"], {
     advisory_ui_changed: true,
   });
-  assertScope("advisory-off-for-ordinary-nested-component", ["src/components/care-plan/care-plan-shell-frame.tsx"], {
+  assertScope("advisory-off-for-ordinary-nested-component", ["src/components/example-area/example-shell-frame.tsx"], {
     advisory_ui_changed: false,
   });
-  // A mockup component edited without its `src/app/mockups` route wrapper. The
-  // filename is singular, and `ui-tools-task-directory.spec.ts` is its only
-  // browser coverage — excluded from every production project by its `@mockup`
-  // tag, so a missed match here means the journey runs nowhere.
+  // A mockup component edited without its `src/app/mockups` route wrapper, with a
+  // singular filename. A missed match here would leave its `@mockup` journey
+  // running nowhere.
   assertScope(
     "advisory-on-for-singular-mockup-component",
-    ["src/components/tools-page-mockups/task-directory-mockup.tsx"],
+    ["src/components/tools-page-mockups/tools-page-mockup-page.tsx"],
     {
       ui_changed: true,
       advisory_ui_changed: true,
@@ -1072,13 +1070,6 @@ function assertBrowserAndAdvisoryScopes() {
       advisory_ui_changed: true,
     },
   );
-  // Advisory specs whose filenames carry no "mockup" at all.
-  assertScope("advisory-on-for-untagged-mockup-spec-names", ["tests/ui-tools-collapse.spec.ts"], {
-    advisory_ui_changed: true,
-  });
-  assertScope("advisory-on-for-tools-task-directory-spec", ["tests/ui-tools-task-directory.spec.ts"], {
-    advisory_ui_changed: true,
-  });
   // The directory rule must not swallow ordinary component paths.
   assertScope("advisory-off-for-non-mockup-component-directory", ["src/components/clinical-dashboard/mode-nav.tsx"], {
     ui_changed: true,

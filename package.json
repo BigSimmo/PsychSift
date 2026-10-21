@@ -73,7 +73,6 @@
     "check:npm-ci-dry-run": "npm ci --dry-run --ignore-scripts",
     "test:e2e:quarantine": "node scripts/run-playwright.mjs --project=chromium --grep @quarantine --pass-with-no-tests",
     "test:e2e:mockups": "node scripts/run-playwright.mjs --project=chromium-mockups",
-    "test:e2e:care-plan-mockup": "node scripts/run-playwright.mjs --project=chromium-mockups tests/ui-care-plan-mockup.spec.ts",
     "test:e2e:advisory": "node scripts/run-playwright.mjs --project=chromium --project=chromium-mockups --grep \"@quarantine|@mockup\" --pass-with-no-tests",
     "test:e2e:chromium": "node scripts/run-playwright.mjs --project=chromium --project=chromium-mockups",
     "test:e2e:tablet": "node scripts/run-playwright.mjs --project=tablet",
