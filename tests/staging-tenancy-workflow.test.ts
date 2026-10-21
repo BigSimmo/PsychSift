@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { describe, expect, it } from "vitest";
 
 const workflow = readFileSync(new URL("../.github/workflows/staging-tenancy.yml", import.meta.url), "utf8");
@@ -44,24 +45,71 @@ describe("staging tenancy workflow", () => {
   // scheduled run is red every night until staging tracks main (#057). Scheduled failures must
   // report through the pinned issue without failing the run; dispatched runs stay blocking.
   it("lets a scheduled harness failure report without failing the run", () => {
-    expect(workflow).toMatch(/^ {8}id: harness\n {8}continue-on-error: \$\{\{ github\.event_name == 'schedule' \}\}$/m);
+    expect(workflow).toMatch(
+      /^ {8}id: harness\n {8}if: \$\{\{ steps\.resolve\.outcome == 'success' \}\}\n {8}continue-on-error: \$\{\{ github\.event_name == 'schedule' \}\}$/m,
+    );
     expect(workflow).toContain("harness: ${{ steps.harness.outcome }}");
     // The routing job must read the step outcome, since a continue-on-error step leaves the job
     // result at success and would otherwise close the issue on a failed night.
     expect(workflow).toContain(
       "HARNESS_RESULT: ${{ needs.cross-tenant.result == 'success' && needs.cross-tenant.outputs.harness || needs.cross-tenant.result }}",
     );
-    expect(workflow.match(/continue-on-error:/g)).toHaveLength(1);
+    // Two soft steps on the schedule only: the version check and the harness itself.
+    expect(workflow.match(/^ {8}continue-on-error:/gm)).toHaveLength(2);
+    expect(workflow.match(/continue-on-error: \$\{\{ github\.event_name == 'schedule' \}\}/g)).toHaveLength(2);
   });
 
   // A hung scheduled harness must die as a failed step (continue-on-error), not a job cancel.
   it("caps a scheduled harness below the job timeout so a hang stays a soft step failure", () => {
-    expect(workflow).toMatch(/timeout-minutes:\s*45/);
+    expect(workflow).toMatch(/timeout-minutes:\s*60/);
     expect(workflow).toContain("timeout 15m npm run test:cross-tenant:staging");
   });
 
   // timeout 15m can SIGTERM before writeEvidence; missing evidence must not re-fail the schedule.
-  it("warns on missing evidence for schedule only, and stays strict on dispatch", () => {
-    expect(workflow).toContain("if-no-files-found: ${{ github.event_name == 'schedule' && 'warn' || 'error' }}");
+  it("warns on missing evidence when nothing ran, and stays strict on dispatch", () => {
+    expect(workflow).toContain(
+      "if-no-files-found: ${{ github.event_name == 'workflow_dispatch' && 'error' || 'warn' }}",
+    );
+  });
+
+  // #3113: an exact main-HEAD rule never passed on a schedule, so nothing was ever tested. The
+  // resolver decides what may be proven before the harness touches staging.
+  it("resolves the staging deployment before the harness, strict only on dispatch", () => {
+    expect(workflow).toContain("fetch-depth: 0");
+    expect(workflow).toContain("id: resolve");
+    expect(workflow).toContain("if: ${{ steps.resolve.outcome == 'success' }}");
+    expect(workflow).toContain(
+      "push) node scripts/resolve-staging-deployment.mjs --allow-equivalent --wait-seconds 1800 ;;",
+    );
+    expect(workflow).toContain(
+      "schedule) node scripts/resolve-staging-deployment.mjs --allow-equivalent --wait-seconds 900 ;;",
+    );
+    expect(workflow).toContain("*) node scripts/resolve-staging-deployment.mjs ;;");
+    expect(workflow).toContain("CROSS_TENANT_EXPECTED_DEPLOYED_SHA: ${{ steps.resolve.outputs.deployed_sha }}");
+    expect(workflow).toContain("CROSS_TENANT_DEPLOYMENT_RELATION: ${{ steps.resolve.outputs.relation }}");
+  });
+
+  it("says plainly on every run whether separation was proven", () => {
+    expect(workflow).toContain("Two-user separation PROVEN on staging");
+    expect(workflow).toContain("Two-user separation NOT proven");
+    expect(workflow).toContain("::warning title=Separation NOT proven::");
+  });
+
+  // The staging gate runs on exactly the pushes that redeploy the app, so the two lists must agree.
+  it("gates every main push that would redeploy the app, and no other", () => {
+    const parsed = createRequire(import.meta.url)("js-yaml").load(workflow) as {
+      on: { push: { branches: string[]; paths: string[] } };
+    };
+    const railway = JSON.parse(readFileSync(new URL("../railway.app.json", import.meta.url), "utf8")) as {
+      build: { watchPatterns: string[] };
+    };
+    expect(parsed.on.push.branches).toEqual(["main"]);
+    expect(parsed.on.push.paths).toEqual(
+      railway.build.watchPatterns.map((pattern) => pattern.replace(/^(!?)\//, "$1")),
+    );
+  });
+
+  it("does not re-mention the owner for every failing merge while staging is down", () => {
+    expect(workflow).toMatch(/if \(context\.eventName === "push"\) \{[\s\S]*?return;/);
   });
 });
