@@ -17,8 +17,10 @@ cannot time out every OCR page.
 from __future__ import annotations
 
 import gc
+import importlib.util
 import io
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -95,6 +97,33 @@ def write_small_image_pdf(path, text=PAGE_TEXT):
         document.save(path)
 
 
+def write_indirect_decode_pdf(path, kind, side=9_000, text=PAGE_TEXT):
+    """Tiny synthetic streams declaring unsafe inline or soft-mask dimensions."""
+    with fitz.open() as document:
+        page = document.new_page(width=400, height=400)
+        if text:
+            page.insert_text((40, 300), text, fontsize=9)
+        if kind == "inline":
+            compressed = zlib.compress(b"\x00" * (120 * 90 if side == 120 else 1))
+            inline = (b"q 100 0 0 100 10 10 cm BI /W %d /H %d /CS /G /BPC 8 /F /Fl ID "
+                      % (side, 90 if side == 120 else side)) + compressed + b" EI Q"
+            contents = b"\n".join(document.xref_stream(xref) for xref in page.get_contents())
+            xref = document.get_new_xref()
+            document.update_object(xref, "<<>>")
+            document.update_stream(xref, contents + b"\n" + inline)
+            page.set_contents(xref)
+        elif kind == "soft_mask":
+            pixmap = fitz.Pixmap(fitz.csRGB, fitz.IRect(0, 0, 120, 90), True)
+            pixmap.clear_with(200)
+            xref = page.insert_image(fitz.Rect(40, 40, 160, 130), pixmap=pixmap)
+            mask = int(document.xref_get_key(xref, "SMask")[1].split()[0])
+            document.xref_set_key(mask, "Width", str(side))
+            document.xref_set_key(mask, "Height", str(side))
+        else:
+            raise ValueError(kind)
+        document.save(path)
+
+
 class TemporaryDirectoryTestCase(unittest.TestCase):
     def setUp(self):
         self._directory = tempfile.TemporaryDirectory()
@@ -121,6 +150,8 @@ class OversizedEmbeddedImageTests(TemporaryDirectoryTestCase):
 
         with patch.object(fitz.Document, "extract_image", side_effect=refuse_decode), patch.object(
             fitz.Page, "get_image_rects", side_effect=refuse_decode
+        ), patch.object(
+            fitz.Page, "get_pixmap", side_effect=refuse_decode
         ):
             result = extractor.extract(path, self.out)
 
@@ -132,6 +163,146 @@ class OversizedEmbeddedImageTests(TemporaryDirectoryTestCase):
         self.assertIn(str(extractor.MAX_EMBEDDED_IMAGE_PIXELS), skipped[0])
         # Coverage still counts the oversized image from its declared placement.
         self.assertGreater(result["pages"][0]["metadata"]["image_coverage_ratio"], 0)
+
+    def test_oversized_inline_image_is_refused_before_hashing_or_rendering(self):
+        path = self.path("inline.pdf")
+        write_indirect_decode_pdf(path, "inline", text="")
+        original = fitz.Page.get_image_info
+
+        def headers_only(page, hashes=False, xrefs=False):
+            self.assertFalse(hashes)
+            self.assertFalse(xrefs)
+            return original(page, hashes=hashes, xrefs=xrefs)
+
+        with patch.object(fitz.Page, "get_image_info", headers_only), patch.object(
+            fitz.Page, "get_image_rects", side_effect=AssertionError("must not hash images")
+        ), patch.object(fitz.Page, "get_pixmap", side_effect=AssertionError("must not render images")):
+            result = extractor.extract(path, self.out)
+        self.assertEqual(result["images"], [])
+        self.assertTrue(result["pages"][0]["needsOcr"])
+        self.assertFalse(result["pages"][0]["ocrUsed"])
+        self.assertGreater(result["pages"][0]["metadata"]["image_coverage_ratio"], 0)
+        self.assertTrue(any(warning.startswith("page_render_skipped") for warning in result["warnings"]))
+
+    def test_small_image_with_oversized_soft_mask_is_skipped_before_any_decode(self):
+        path = self.path("soft-mask.pdf")
+        write_indirect_decode_pdf(path, "soft_mask")
+        with patch.object(fitz.Document, "extract_image", side_effect=AssertionError("must not extract image")), patch.object(
+            fitz.Page, "get_image_rects", side_effect=AssertionError("must not hash images")
+        ), patch.object(fitz.Page, "get_pixmap", side_effect=AssertionError("must not render images")):
+            result = extractor.extract(path, self.out)
+        self.assertIn("lithium level 0.6 to 0.8 mmol/L", result["pages"][0]["text"])
+        self.assertEqual(result["images"], [])
+        self.assertTrue(any("soft mask" in warning and "9000x9000" in warning for warning in result["warnings"]))
+
+    def test_form_soft_mask_is_refused_without_hash_based_placement(self):
+        source = self.path("form-source.pdf")
+        path = self.path("form-mask.pdf")
+        write_indirect_decode_pdf(source, "soft_mask")
+        with fitz.open(source) as original, fitz.open() as document:
+            page = document.new_page(width=400, height=400)
+            page.show_pdf_page(page.rect, original, 0)
+            self.assertTrue(all(info[-1] != 0 for info in page.get_images(full=True)))
+            document.save(path)
+        with patch.object(fitz.Page, "get_image_bbox") as bbox, patch.object(
+            fitz.Page, "get_image_rects"
+        ) as rects, patch.object(fitz.Page, "get_pixmap") as render:
+            result = extractor.extract(path, self.out)
+        bbox.assert_not_called()
+        rects.assert_not_called()
+        render.assert_not_called()
+        self.assertEqual(result["images"], [])
+        self.assertIn("lithium level 0.6 to 0.8 mmol/L", result["pages"][0]["text"])
+        self.assertTrue(any("Form mask placement unverified" in warning for warning in result["warnings"]))
+
+    def test_safe_embedded_sibling_survives_without_hashing_unsafe_inline_image(self):
+        source = self.path("inline-source.pdf")
+        path = self.path("inline-sibling.pdf")
+        write_indirect_decode_pdf(source, "inline")
+        with fitz.open(source) as document:
+            pixels = fitz.Pixmap(fitz.csRGB, fitz.IRect(0, 0, 120, 90), False)
+            pixels.clear_with(200)
+            document[0].insert_image(fitz.Rect(150, 40, 270, 130), pixmap=pixels)
+            document.save(path)
+        with patch.object(fitz.Page, "get_image_rects", side_effect=AssertionError("must not hash sibling")), patch.object(
+            fitz.Page, "get_pixmap", side_effect=AssertionError("must not render images")
+        ):
+            result = extractor.extract(path, self.out)
+        embedded = [image for image in result["images"] if image["sourceKind"] == "embedded"]
+        self.assertEqual(len(embedded), 1)
+        self.assertEqual((embedded[0]["width"], embedded[0]["height"]), (120, 90))
+        self.assertIsNone(embedded[0]["bbox"])
+        self.assertTrue(any(warning.startswith("embedded_image_placement_unavailable") for warning in result["warnings"]))
+        self.assertIn("lithium level 0.6 to 0.8 mmol/L", result["pages"][0]["text"])
+
+    @unittest.skipUnless(shutil.which("tesseract") and importlib.util.find_spec("pytesseract"),
+                         "Actual Tesseract and pytesseract are required")
+    def test_unused_oversized_resources_keep_safe_scanned_page_ocr_and_renders(self):
+        for kind in ("embedded", "soft_mask"):
+            with self.subTest(kind=kind):
+                source = self.path(f"dead-{kind}.pdf")
+                path = self.path(f"safe-scan-{kind}.pdf")
+                if kind == "embedded":
+                    write_declared_image_pdf(source, 9_000, text="")
+                else:
+                    write_indirect_decode_pdf(source, "soft_mask", text="")
+                with fitz.open() as native:
+                    page = native.new_page(width=400, height=400)
+                    page.insert_text((40, 100), "SYNTHETIC OFFLINE SCAN", fontsize=16)
+                    page.insert_text((40, 140), "Keep source text visible.", fontsize=16)
+                    scan = page.get_pixmap(dpi=150).tobytes("png")
+                with fitz.open(source) as document:
+                    page = document[0]
+                    dead_xrefs = {image[0] for image in page.get_images(full=True)}
+                    for xref in page.get_contents():
+                        document.update_stream(xref, b"")
+                    page.insert_image(page.rect, stream=scan)
+                    document.save(path)
+                original_extract = fitz.Document.extract_image
+                original_rects = fitz.Page.get_image_rects
+
+                def safe_extract(document, xref):
+                    self.assertNotIn(xref, dead_xrefs)
+                    return original_extract(document, xref)
+
+                def safe_rects(page, xref, *args, **kwargs):
+                    self.assertNotIn(xref, dead_xrefs)
+                    return original_rects(page, xref, *args, **kwargs)
+
+                with patch.object(fitz.Document, "extract_image", safe_extract), patch.object(
+                    fitz.Page, "get_image_rects", safe_rects
+                ):
+                    result = extractor.extract(path, self.path(f"out-{kind}"))
+                self.assertTrue(result["pages"][0]["ocrUsed"])
+                self.assertFalse(result["pages"][0]["needsOcr"])
+                self.assertIn("Keep source text visible.", result["pages"][0]["text"])
+                self.assertTrue(any(image["sourceKind"] == "cover_page" for image in result["images"]))
+                self.assertTrue(any(image["sourceKind"] == "page_region" for image in result["images"]))
+                self.assertFalse(any(warning.startswith("page_render_skipped") for warning in result["warnings"]))
+                self.assertTrue(any(warning.startswith("embedded_image_skipped") for warning in result["warnings"]))
+
+    def test_normal_inline_image_coverage_is_read_without_decoding_image_bytes(self):
+        path = self.path("normal-inline.pdf")
+        write_indirect_decode_pdf(path, "inline", side=120)
+        with fitz.open(path) as document:
+            page = document[0]
+            self.assertEqual(page.get_images(full=True), [])
+            with patch.object(fitz.Page, "get_image_rects", side_effect=AssertionError("must not hash images")):
+                self.assertAlmostEqual(extractor.page_image_coverage_ratio(page), 100 * 100 / (400 * 400))
+
+    def test_native_line_segments_request_no_image_bytes_from_dict(self):
+        path = self.path("dict.pdf")
+        write_small_image_pdf(path)
+        original = fitz.Page.get_text
+
+        def text_only(page, option="text", *args, **kwargs):
+            if option == "dict":
+                self.assertFalse(kwargs.get("flags", fitz.TEXTFLAGS_DICT) & fitz.TEXT_PRESERVE_IMAGES)
+            return original(page, option, *args, **kwargs)
+
+        with fitz.open(path) as document, patch.object(fitz.Page, "get_text", text_only):
+            segments = extractor._extract_page_line_segments(document[0])
+        self.assertTrue(any("lithium level" in segment[4] for segment in segments))
 
     def test_an_image_mupdf_refuses_to_load_does_not_abort_the_document(self):
         path = self.path("refused.pdf")

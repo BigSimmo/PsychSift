@@ -555,7 +555,7 @@ class RasterGridRealOcrTests(unittest.TestCase):
         for cells, row_text in ((MERGED_ROWS[0], text[wbc:neutrophils]), (MERGED_ROWS[1], text[neutrophils:])):
             for lines in cells:
                 self.assertIn(" ".join(lines), row_text)
-        self.assertEqual(result["extractor"]["version"], "2026-10-20.embedded-image-ceiling-v10")
+        self.assertEqual(result["extractor"]["version"], "2026-10-21.image-decode-preflight-v11")
         provenance = result["pages"][0]["metadata"]["source_provenance"]
         self.assertEqual(provenance["ocr"]["status"], "unverified")
         self.assertIsNone(provenance["ocr"]["confidence"])
