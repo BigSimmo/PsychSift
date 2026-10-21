@@ -98,6 +98,8 @@ export function summariseAnswerQuality(rows, { now = new Date(), runs = DEFAULT_
   return `${parts.join(" ")}${staleNote}`;
 }
 
+const TREND_ROW_AUTHOR = "github-actions[bot]";
+
 async function getJson(fetchImpl, url, token) {
   const response = await fetchImpl(url, {
     headers: {
@@ -134,7 +136,14 @@ export async function fetchTrendRows({ token, repository, fetchImpl = fetch, now
       token,
     );
     if (!Array.isArray(comments)) break;
-    rows.push(...comments.map((comment) => parseTrendRow(comment.body)).filter(Boolean));
+    // The issue is public, so anyone can post a marked comment. Only the canary workflow's own
+    // identity writes real rows.
+    rows.push(
+      ...comments
+        .filter((comment) => comment?.user?.login === TREND_ROW_AUTHOR)
+        .map((comment) => parseTrendRow(comment.body))
+        .filter(Boolean),
+    );
     if (comments.length < 100) break;
   }
   return rows;

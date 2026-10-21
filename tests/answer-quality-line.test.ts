@@ -105,8 +105,19 @@ function jsonResponse(body: unknown, status = 200) {
 }
 
 describe("fetchTrendRows and answerQualityLine", () => {
-  const comment = (date: string) => ({
+  const comment = (date: string, login = "github-actions[bot]") => ({
+    user: { login },
     body: renderCanaryTrendComment(row(date, []), "https://github.com/x/y/actions/runs/1"),
+  });
+
+  it("ignores marked rows that the canary workflow did not post", async () => {
+    const fetchImpl = async (url: string) => {
+      if (url.includes("/issues?")) return jsonResponse([{ number: 7, title: TREND_TITLE }]);
+      return jsonResponse([comment("2026-10-20T00:00:00Z"), comment("2099-01-01T00:00:00Z", "someone")]);
+    };
+    const rows = await fetchTrendRows({ token: "t", repository: "o/r", fetchImpl, now });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.date).toBe("2026-10-20T00:00:00Z");
   });
 
   it("reads every page of the trend issue, not just the oldest", async () => {
