@@ -472,7 +472,7 @@ describe("Trivy cache directory freshness", () => {
 });
 
 describe("trivy suppressions", () => {
-  const suppressionsPath = fileURLToPath(new URL("../security/trivy-suppressions.json", import.meta.url));
+  const suppressionsPath = fileURLToPath(new URL("../scripts/trivy-suppressions.json", import.meta.url));
   const suppressions = parseTrivySuppressions(readFileSync(suppressionsPath, "utf8"));
   const componentsDir = fileURLToPath(new URL("../worker/native/components/", import.meta.url));
   const components = readdirSync(componentsDir)

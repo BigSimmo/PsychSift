@@ -104,7 +104,7 @@ export function validateTrivyReportJson(rawStdout) {
 }
 
 export const DEFAULT_TRIVY_SUPPRESSIONS_PATH = fileURLToPath(
-  new URL("../security/trivy-suppressions.json", import.meta.url),
+  new URL("../scripts/trivy-suppressions.json", import.meta.url),
 );
 const SUPPRESSION_KEYS = ["image", "package", "installed", "cve", "justification", "remove_when"];
 
@@ -113,7 +113,7 @@ const SUPPRESSION_KEYS = ["image", "package", "installed", "cve", "justification
  */
 
 /**
- * Load and validate the exact-match suppression list (security/trivy-suppressions.json).
+ * Load and validate the exact-match suppression list (scripts/trivy-suppressions.json).
  * @param {string} text
  * @returns {TrivySuppression[]}
  */
@@ -501,7 +501,7 @@ function main() {
     Results: [{ Type: "suppressed", Vulnerabilities: applied.suppressed }],
   });
   for (const row of suppressedDetails.rows)
-    console.error(`Trivy suppressed (security/trivy-suppressions.json): ${JSON.stringify(row)}`);
+    console.error(`Trivy suppressed (scripts/trivy-suppressions.json): ${JSON.stringify(row)}`);
   const details = trivyFindingDetails(applied.report);
   for (const row of details.rows) console.error(`Trivy finding: ${JSON.stringify(row)}`);
   if (details.truncated)

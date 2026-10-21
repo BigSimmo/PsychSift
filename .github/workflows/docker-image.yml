@@ -69,7 +69,7 @@ on:
       - "scripts/run-heavy.*"
       - "scripts/run-tsx.*"
       - "scripts/trivy-image-scan.*"
-      - "security/trivy-suppressions.json"
+      - "scripts/trivy-suppressions.json"
   workflow_dispatch:
   schedule:
     - cron: "0 18 * * *"

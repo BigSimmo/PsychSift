@@ -57,7 +57,7 @@ util-linux branch and two unresolved libxml2 advisories. It is not evidence of
 
 Keep the complete image scan. A Debian advisory with no published fixed version
 can continue to flag an honestly labelled local backport, so the CVEs these
-backports patch are listed in `security/trivy-suppressions.json` by exact image,
+backports patch are listed in `scripts/trivy-suppressions.json` by exact image,
 package, installed version and CVE. Any rebuild, version bump or Debian update
 resurfaces them, and unpatched or unresolved advisories (CVE-2026-6653,
 CVE-2026-86139, CVE-2026-78409) are deliberately not listed. Suppressed and
@@ -71,7 +71,7 @@ Docling allows Pillow 13; that entry is an accepted risk, not a remediation.
 `build_security_debs.py` runs `apt-get source <source>=<source_version>` and checks
 the `.dsc` hash, so each backport is pinned to one exact Debian source. Every
 `+psychsift1` package and its exact-match entries in
-`security/trivy-suppressions.json` must be retired when Debian ships the fix.
+`scripts/trivy-suppressions.json` must be retired when Debian ships the fix.
 
 | Source     | Pinned Debian version                | Built as                                        | CVEs patched here                                                                              | Drop when                                                                         |
 | ---------- | ------------------------------------ | ----------------------------------------------- | ---------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
