@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { assessIngestionHealth, describeWorkerState, workerPausedFromEnv } from "../scripts/ingestion-autopilot";
+import {
+  assessIngestionHealth,
+  describeWorkerState,
+  workerPausedFromEnv,
+  type IngestionHealth,
+} from "../scripts/ingestion-autopilot";
 
 const autopilotSource = readFileSync(new URL("../scripts/ingestion-autopilot.ts", import.meta.url), "utf8");
 const healthSource = readFileSync(new URL("../scripts/reindex-health.ts", import.meta.url), "utf8");
@@ -49,7 +54,12 @@ describe("assessIngestionHealth", () => {
   });
 
   it("keeps missing old-build and valid zero integrity counts compatible", () => {
-    for (const counts of [undefined, {}, { jobs_stranded_final_attempt: 0, documents_indexed_without_chunks: 0 }]) {
+    const cases: IngestionHealth["counts"][] = [
+      undefined,
+      {},
+      { jobs_stranded_final_attempt: 0, documents_indexed_without_chunks: 0 },
+    ];
+    for (const counts of cases) {
       expect(assessIngestionHealth({ ok: true, counts }, { now: NOW })).toMatchObject({
         stuck: false,
         recoveryNeeded: false,
