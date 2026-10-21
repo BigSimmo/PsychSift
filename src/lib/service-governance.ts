@@ -372,6 +372,10 @@ function legacyEvidence(service: CatalogService): CatalogServiceEvidenceSource[]
 
 function quarantineLegacyService(service: CatalogService): CatalogService {
   const sectionGroups = service.sections.map(slug).filter(Boolean);
+  // A legacy record that duplicates a canonical record names it in `superseded_by` and reads as
+  // superseded, so it can never be pinned or read as a second, unverified copy of that service.
+  const supersededBy = service.superseded_by?.trim();
+  const availability = supersededBy ? "superseded" : "unknown";
   return {
     ...service,
     stable_id: service.stable_id || service.id,
@@ -379,10 +383,12 @@ function quarantineLegacyService(service: CatalogService): CatalogService {
     tags: {
       ...service.tags,
       specialist_groups: unique([...(service.tags.specialist_groups ?? []), ...sectionGroups]),
-      availability_flags: unique([...(service.tags.availability_flags ?? []), "unknown"]),
+      availability_flags: unique([...(service.tags.availability_flags ?? []), availability]),
     },
-    availability_status: "unknown",
-    availability_note: "Legacy catalogue record; active status not re-verified",
+    availability_status: availability,
+    availability_note: supersededBy
+      ? `Legacy catalogue record superseded by ${supersededBy}`
+      : "Legacy catalogue record; active status not re-verified",
     verification_status: "legacy_unverified",
     not_for: service.not_for ?? [],
     evidence_sources: service.evidence_sources?.length ? service.evidence_sources : legacyEvidence(service),

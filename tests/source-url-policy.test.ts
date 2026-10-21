@@ -48,6 +48,6 @@ describe("governed source URL query policy", () => {
       "https://meteor.aihw.gov.au/content/807042",
     );
     expect(GOVERNED_SOURCE_HOSTS).toContain("meteor.aihw.gov.au");
-    expect(GOVERNED_SOURCE_HOSTS.length).toBe(61);
+    expect(GOVERNED_SOURCE_HOSTS.length).toBe(60);
   });
 });

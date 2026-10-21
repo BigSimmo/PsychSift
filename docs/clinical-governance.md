@@ -56,9 +56,9 @@ weaker than not publishing it, and these pages are world-readable with no login 
 Set `generatedBodyUnreliable` on the record's curated entry in `src/lib/differential-curated.ts`,
 alongside a `contentNote` saying what was wrong and what still stands. `withholdGeneratedBody`
 strips the affected fields at the page boundary and the page states the absence rather than
-rendering an empty panel. Withholding is a holding action, not a fix: the record still needs review,
-and the ten locally authored differential records still carry no clinician sign-off (`/issues`
-`#87GR24`).
+rendering an empty panel. Withholding is a holding action, not a fix: the record still needs review. (The locally authored
+differential overlays, once unsigned under `/issues` `#87GR24`, were signed off by the owner on
+2026-10-06.)
 
 ## Pull Request Preflight
 

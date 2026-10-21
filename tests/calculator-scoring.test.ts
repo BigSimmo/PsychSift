@@ -351,10 +351,27 @@ describe("result summary text", () => {
     // Guards the defect this replaced: a pasted "PHQ-9 18/27 — Moderately severe"
     // reads as an assessment result the software stands behind.
     for (const score of [0, 6, 12, 27]) {
-      const summary = formatResultSummary(phq9, deriveCalculator(phq9, answersForScore(phq9, score)));
-      expect(summary.split("\n")).toHaveLength(2);
+      const state = deriveCalculator(phq9, answersForScore(phq9, score));
+      const summary = formatResultSummary(phq9, state);
+      // One line per active safety flag sits between the score and the caveat.
+      expect(summary.split("\n")).toHaveLength(2 + state.flags.length);
       expect(summary.endsWith(SCOPE_LINE)).toBe(true);
     }
+  });
+
+  it("carries an endorsed PHQ-9 item 9 into the copied text", () => {
+    const answers: AnswerMap = { p1: 1, p2: 1, p3: 1, p4: 1, p5: 1, p6: 0, p7: 0, p8: 0, p9: 1 };
+    const state = deriveCalculator(phq9, answers);
+    expect(state.score).toBe(6);
+    const summary = formatResultSummary(phq9, state);
+    expect(summary.split("\n")[0]).toBe("PHQ-9 6/27 — Mild");
+    expect(summary).toContain("Flag: Item 9 endorsed");
+    expect(summary.endsWith(SCOPE_LINE)).toBe(true);
+  });
+
+  it("labels a flag provisional while the scale is incomplete", () => {
+    const summary = formatResultSummary(phq9, deriveCalculator(phq9, { p9: 2 }));
+    expect(summary).toContain("Flag (provisional): Item 9 endorsed");
   });
 
   it("counts endorsements rather than answers for checkbox-only scales", () => {

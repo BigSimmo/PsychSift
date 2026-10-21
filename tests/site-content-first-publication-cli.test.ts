@@ -69,9 +69,18 @@ function signedFormReviews(): ClinicalSignOffEntry[] {
 }
 
 describe("publish-site-content-first-catalogue CLI (#HTZPQ8 / #ZPHK2F)", () => {
-  it("accepts the 54 signed repository forms and refuses service sidecars while Indigenous or legacy records lack named sign-off", () => {
-    const formPlan = buildFirstPublicationCataloguePlan({ kind: "form" });
-    expect(formPlan.counts.forms).toBe(54);
+  it("accepts the 46 signed repository forms and refuses service sidecars while Indigenous or legacy records lack named sign-off", () => {
+    // The 20 Oct 2026 clinical content audit edited eight signed forms, which went back to
+    // drafted until the owner signs each one again. The whole catalogue is refused until then,
+    // naming exactly those eight; the 46 still signed are accepted on their own.
+    expect(() => buildFirstPublicationCataloguePlan({ kind: "form" })).toThrow(
+      /First-publication plan refused: 8 record\(s\) lack a current clinical sign-off by a named person/,
+    );
+    const signedForms = formRecords.filter(
+      (form) => repositoryFormReview(formCodeForRecord(form)).status === "reviewed",
+    );
+    const formPlan = buildFirstPublicationCataloguePlan({ kind: "form", forms: signedForms });
+    expect(formPlan.counts.forms).toBe(46);
     expect(() => buildFirstPublicationCataloguePlan({ kind: "service" })).toThrow(
       /First-publication plan refused: \d+ record\(s\) lack a current clinical sign-off by a named person/,
     );
@@ -134,8 +143,9 @@ describe("publish-site-content-first-catalogue CLI (#HTZPQ8 / #ZPHK2F)", () => {
   });
 
   it("refuses a form whose content changed after its sign-off, and accepts it while the pin is current", () => {
-    const sampleForm = formRecords.find((form) => formCodeForRecord(form) === "1A")!;
-    const signed = repositoryFormReview("1A");
+    // Form 3C, because Form 1A went back to drafted after the 20 Oct 2026 clinical content audit.
+    const sampleForm = formRecords.find((form) => formCodeForRecord(form) === "3C")!;
+    const signed = repositoryFormReview("3C");
     expect(signed.status).toBe("reviewed");
 
     const current = buildFirstPublicationCataloguePlan({ kind: "form", forms: [sampleForm], formReviews: [signed] });
@@ -153,15 +163,16 @@ describe("publish-site-content-first-catalogue CLI (#HTZPQ8 / #ZPHK2F)", () => {
   });
 
   it("refuses a current sign-off that reaches a different form only through a slug alias", () => {
-    const otherForm = formRecords.find((form) => formCodeForRecord(form) !== "1A")!;
-    const signed = repositoryFormReview("1A");
+    // Form 3C, because Form 1A went back to drafted after the 20 Oct 2026 clinical content audit.
+    const otherForm = formRecords.find((form) => formCodeForRecord(form) !== "3C")!;
+    const signed = repositoryFormReview("3C");
     expect(() =>
       buildFirstPublicationCataloguePlan({
         kind: "form",
         forms: [otherForm],
         formReviews: [{ ...signed, slug: otherForm.slug }],
       }),
-    ).toThrow(/its review names "1A", not this record/);
+    ).toThrow(/its review names "3C", not this record/);
   });
 
   it("refuses a service sign-off when the curated records it pins were not loaded", () => {
