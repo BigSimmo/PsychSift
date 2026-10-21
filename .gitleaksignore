@@ -177,3 +177,7 @@ dd709e6fcc6bf8940272537e8afada52396af1a4:supabase/schema.sql:generic-api-key:134
 # Migration seal entry: the filename contains "keys" and the value is a sha256,
 # which the generic-api-key rule reads as a key. Not a secret.
 e270353c3f8a154971a11b9eabd2b0acef4476ec:supabase/applied-migration-hashes.json:generic-api-key:317
+
+# Migration seal entry from PR #3726 before its rename: the filename contained "key" and the
+# value is a sha256, which the generic-api-key rule reads as a key. Not a secret.
+d5257a8733b1e099e6208690786bb3b89b0b1139:supabase/applied-migration-hashes.json:generic-api-key:339
