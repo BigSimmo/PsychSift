@@ -97,6 +97,7 @@ FROM native-security-build-base AS native-tesseract
 COPY worker/native/components/tesseract.json /tmp/worker-native/components/tesseract.json
 COPY worker/native/patches/tesseract/ /tmp/worker-native/patches/tesseract/
 COPY worker/native/tesseract-regressions.sh /tmp/worker-native/tesseract-regressions.sh
+COPY worker/native/tesseract-adapted-templates-test.cc /tmp/worker-native/tesseract-adapted-templates-test.cc
 RUN python3 /tmp/worker-native/build_security_debs.py tesseract
 
 FROM native-security-build-base AS native-ncurses
