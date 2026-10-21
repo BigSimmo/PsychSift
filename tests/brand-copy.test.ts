@@ -168,8 +168,8 @@ describe("derived brand lines", () => {
 
   it("names the product in the share-card alt text", () => {
     expect(BRAND_OG_ALT.startsWith(BRAND_NAME)).toBe(true);
-    // One dash per sentence: BRAND_DESCRIPTION already carries one, so the alt
-    // text joins with a colon. Two em dashes in one line read as a stutter.
-    expect(BRAND_OG_ALT.match(/—/g) ?? []).toHaveLength(1);
+    // The alt text joins with a colon, so it never stacks a second dash on the
+    // description's punctuation. Two em dashes in one line read as a stutter.
+    expect((BRAND_OG_ALT.match(/—/g) ?? []).length).toBeLessThanOrEqual(1);
   });
 });

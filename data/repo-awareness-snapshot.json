@@ -3354,6 +3354,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-20-clinical-decision-tools-need-sign-in.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/archive/search-rag-phase-2-answer-plan.md",
         "section": "archive",
         "catalogued": true
@@ -3666,6 +3671,11 @@
       {
         "path": "docs/app-modes-decision-brief.md",
         "section": "root",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-21-deleted-document-title-backfill.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -4024,6 +4034,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-21-answer-safety-pass-marks.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/archive/search-rag-phase-3-synthesis-output.md",
         "section": "archive",
         "catalogued": true
@@ -4241,6 +4256,11 @@
       {
         "path": "docs/care-plan/reports/task-5-report.md",
         "section": "care-plan",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-21-emergency-cards-owner-review.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -5740,6 +5760,11 @@
       },
       {
         "path": "docs/decisions/2026-10-20-database-prs-merge-by-hand.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-21-psych-sift-sign-offs-in-3562-and-3571-reset.md",
         "section": "decisions",
         "catalogued": true
       },

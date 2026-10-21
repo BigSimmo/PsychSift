@@ -376,6 +376,39 @@ function asReviewOnlyCitations(citations: readonly Citation[]): Citation[] {
   return citations.map((citation) => ({ ...citation, provenance: "review_only" as const }));
 }
 
+/**
+ * Audit RAG-B-07. The one builder for the source-backed review fallback answer, used by the
+ * extractive route, the generation fallback and the post-generation claim gate (each used to
+ * build it inline, and the #ZK460W fix had to be applied to every copy). Every caller reaches it
+ * because a candidate failed its gate, so the verdict is fixed here and cannot be overridden:
+ * ungrounded, unsupported, review-only citations, no sections. `carried` only refreshes
+ * request context that the caller holds outside `base`.
+ */
+export function buildSourceBackedReviewFallbackAnswer(
+  base: RagAnswer,
+  review: {
+    reviewCitations: readonly Citation[];
+    routingReason: string;
+    plan: SmartRagApiPlan;
+    carried?: Partial<Pick<RagAnswer, "modelUsed" | "queryAnalysis" | "relevance" | "scoreExplanations">>;
+  },
+): RagAnswer {
+  return {
+    ...base,
+    answer: sourceBackedGenerationTimeoutAnswer(),
+    grounded: false,
+    confidence: "unsupported",
+    citations: asReviewOnlyCitations(review.reviewCitations),
+    routingMode: "extractive",
+    routingReason: review.routingReason,
+    responseMode: review.plan.displayMode,
+    smartApiPlan: review.plan,
+    answerSections: [],
+    sourceBackedReviewFallback: true,
+    ...review.carried,
+  };
+}
+
 // Search deadline for the admin client. See searchChunksWithTiming for why it exceeds the shared 30 s default.
 const SEARCH_SUPABASE_TIMEOUT_MS = 90_000;
 
@@ -2061,7 +2094,7 @@ export function parseAnswerJson(
     const parsed = (contract.adaptive ? adaptiveAnswerJsonSchema : answerJsonSchema).parse(JSON.parse(raw));
     const { citations, modelCited, proposedCount, invalidCount } = sanitizeCitations(parsed.citations, results);
     const derivedConfidence = modelCited ? deriveConfidence(results, citations) : "unsupported";
-    const confidence = modelCited ? clampConfidence(parsed.confidence, derivedConfidence) : "unsupported";
+    const citedConfidence = modelCited ? clampConfidence(parsed.confidence, derivedConfidence) : "unsupported";
     const parsedAnswer = parsed.answer ?? "";
     const nonArtifactParsedAnswer = parsedAnswer.trim() && !looksLikeJsonArtifact(parsedAnswer) ? parsedAnswer : "";
     const sanitizedAnswer =
@@ -2070,7 +2103,15 @@ export function parseAnswerJson(
       nonArtifactParsedAnswer ||
       machineReadableFallbackAnswer;
     const answerSections = sanitizeAnswerSections(parsed.answerSections, results, query);
-    const grounded = parsed.grounded !== false && modelCited && citations.length > 0 && confidence !== "unsupported";
+    const grounded =
+      parsed.grounded !== false && modelCited && citations.length > 0 && citedConfidence !== "unsupported";
+    // Audit RAG-B-01. A parsed model answer is either grounded or unsupported, never an
+    // ungrounded answer that keeps a citation-derived confidence. Claim-support enforcement and
+    // the browser-boundary governance refusal both skip ungrounded answers, so an answer the
+    // model itself marked `grounded: false` but still cited used to bypass both and reach the
+    // clinician as figure-free unverified prose. Marking it unsupported sends it through the
+    // final quality gate's ungrounded/unsupported path (and the fast route's recovery) instead.
+    const confidence = grounded ? citedConfidence : "unsupported";
     const answer: RagAnswer = {
       answer: boldHighYieldClinicalText(sanitizedAnswer, query),
       grounded,
@@ -2957,28 +2998,22 @@ async function answerQuestionWithScopeUncoalesced(
       // sourceBackedGenerationTimeoutAnswer() and overwrites `finalizedAnswer`. Debug-only; see
       // RagAnswer.rejectedCandidateText.
       const priorRejectedCandidateText = finalizedAnswer.rejectedCandidateText ?? finalizedAnswer.answer;
-      finalizedAnswer = finalizeAnswer({
-        ...answer,
-        answer: sourceBackedGenerationTimeoutAnswer(),
-        // Ledger #ZK460W. This branch is entered BECAUSE `!finalizedAnswer.grounded` — the
-        // answer failed its own quality gate. Re-flagging it grounded, with a confidence
-        // re-derived from retrieval similarity alone, told every downstream consumer the
-        // opposite of what the gate had just decided: `deriveTrust` resolved to high, which
-        // unlocked quote cards and suppressed the source-gap warning, and
-        // `assessAndEnforceClaimSupport` ran its high-risk enforcement over claims this route
-        // force-classifies as routine, so it passed vacuously. Staying ungrounded and
-        // unsupported keeps the gate's verdict intact all the way to the clinician.
-        grounded: false,
-        confidence: "unsupported",
-        citations: asReviewOnlyCitations(extractiveReviewCitations),
-        modelUsed: null,
-        routingMode: "extractive",
-        routingReason: reviewRouteReason,
-        responseMode: reviewPlan.displayMode,
-        smartApiPlan: reviewPlan,
-        answerSections: [],
-        sourceBackedReviewFallback: true,
-      });
+      // Ledger #ZK460W. This branch is entered BECAUSE `!finalizedAnswer.grounded` — the
+      // answer failed its own quality gate. Re-flagging it grounded, with a confidence
+      // re-derived from retrieval similarity alone, told every downstream consumer the
+      // opposite of what the gate had just decided: `deriveTrust` resolved to high, which
+      // unlocked quote cards and suppressed the source-gap warning, and
+      // `assessAndEnforceClaimSupport` ran its high-risk enforcement over claims this route
+      // force-classifies as routine, so it passed vacuously. The shared builder keeps it
+      // ungrounded and unsupported, so the gate's verdict survives to the clinician.
+      finalizedAnswer = finalizeAnswer(
+        buildSourceBackedReviewFallbackAnswer(answer, {
+          reviewCitations: extractiveReviewCitations,
+          routingReason: reviewRouteReason,
+          plan: reviewPlan,
+          carried: { modelUsed: null },
+        }),
+      );
       finalizedAnswer.rejectedCandidateText ??= priorRejectedCandidateText;
     }
     if (args.logQuery !== false)
@@ -4075,25 +4110,19 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
               `extractive_quality_gate:${sourceBackedReviewReason}`,
             ].join("; ");
             const reviewPlan = buildCurrentSmartApiPlan("unsupported", reviewRouteReason, generationFallbackResults);
-            return {
-              ...baseFallbackAnswer,
-              answer: sourceBackedGenerationTimeoutAnswer(),
-              // Ledger #ZK460W, same defect as the extractive review fallback above. Reached
-              // only when `sourceBackedReviewReason` is set, which includes the extractive
-              // candidate being ungrounded or unsupported — so this route must not upgrade it.
-              grounded: false,
-              confidence: "unsupported",
-              citations: asReviewOnlyCitations(baseFallbackAnswer.citations),
-              routingMode: "extractive",
+            // Ledger #ZK460W, same defect as the extractive review fallback above. Reached
+            // only when `sourceBackedReviewReason` is set, which includes the extractive
+            // candidate being ungrounded or unsupported — so this route must not upgrade it.
+            return buildSourceBackedReviewFallbackAnswer(baseFallbackAnswer, {
+              reviewCitations: baseFallbackAnswer.citations,
               routingReason: reviewRouteReason,
-              queryAnalysis,
-              responseMode: reviewPlan.displayMode,
-              smartApiPlan: reviewPlan,
-              answerSections: [],
-              sourceBackedReviewFallback: true,
-              relevance: generationFallbackArtifacts.relevance,
-              scoreExplanations: generationFallbackArtifacts.scoreExplanations,
-            } satisfies RagAnswer;
+              plan: reviewPlan,
+              carried: {
+                queryAnalysis,
+                relevance: generationFallbackArtifacts.relevance,
+                scoreExplanations: generationFallbackArtifacts.scoreExplanations,
+              },
+            });
           })()
         : (extractiveFallbackAnswer ?? baseFallbackAnswer);
     let fallbackAnswer = finalizeAnswer(
@@ -4113,28 +4142,22 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
         "post_generation_claim_quality_gate",
       ].join("; ");
       const reviewPlan = buildCurrentSmartApiPlan("extractive", reviewRouteReason, generationFallbackResults);
+      // Ledger #ZK460W, same defect again. Reached only on a claim-support high-risk gap
+      // or a material source-governance gap, which are exactly the findings that must
+      // survive to the clinician rather than be overwritten with a grounded verdict.
       fallbackAnswer = finalizeAnswer(
         annotateAnswerWithDiagnostics(
-          {
-            ...baseFallbackAnswer,
-            answer: sourceBackedGenerationTimeoutAnswer(),
-            // Ledger #ZK460W, same defect again. Reached only on a claim-support high-risk gap
-            // or a material source-governance gap, which are exactly the findings that must
-            // survive to the clinician rather than be overwritten with a grounded verdict.
-            grounded: false,
-            confidence: "unsupported",
-            citations: asReviewOnlyCitations(baseFallbackAnswer.citations),
-            modelUsed: null,
-            routingMode: "extractive",
+          buildSourceBackedReviewFallbackAnswer(baseFallbackAnswer, {
+            reviewCitations: baseFallbackAnswer.citations,
             routingReason: reviewRouteReason,
-            responseMode: reviewPlan.displayMode,
-            smartApiPlan: reviewPlan,
-            answerSections: [],
-            sourceBackedReviewFallback: true,
-            queryAnalysis,
-            relevance: generationFallbackArtifacts.relevance,
-            scoreExplanations: generationFallbackArtifacts.scoreExplanations,
-          },
+            plan: reviewPlan,
+            carried: {
+              modelUsed: null,
+              queryAnalysis,
+              relevance: generationFallbackArtifacts.relevance,
+              scoreExplanations: generationFallbackArtifacts.scoreExplanations,
+            },
+          }),
           retrievalDiagnostics,
         ),
       );

@@ -33,6 +33,7 @@ import {
   Target,
 } from "lucide-react";
 
+import { useClinicalToolAccess } from "@/components/mode-kit/use-clinical-tool-access";
 import { stretchedRowLinkClass } from "@/components/card-recipes";
 import { DocumentTagCloud } from "@/components/DocumentTagCloud";
 import {
@@ -234,7 +235,10 @@ const resultMenuItemClass =
 function DocumentPagePreview({ document, href }: { document: ClientDocumentMatch; href: string }) {
   const pageNumber = document.bestPages[0] ?? 1;
   const lineWidths = [74, 88, 63, 79, 56];
-  const coverEndpoint = document.coverImageId ? `/api/images/${document.coverImageId}/signed-url` : "";
+  // Page images are part of the original and need sign-in; signed out, the drawn page stands in.
+  const originalsLocked = useClinicalToolAccess() === "sign-in-required";
+  const coverEndpoint =
+    document.coverImageId && !originalsLocked ? `/api/images/${document.coverImageId}/signed-url` : "";
   const { url: coverUrl, failed: coverFailed, markFailed } = useSignedImageUrl(coverEndpoint, Boolean(coverEndpoint));
   const [loadedCoverUrl, setLoadedCoverUrl] = useState<string | null>(null);
   const hasCoverUrl = Boolean(coverEndpoint && coverUrl && !coverFailed);

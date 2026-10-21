@@ -10,6 +10,7 @@ import {
   rateLimitJsonResponse,
   type ApiRateLimitResult,
 } from "@/lib/api-rate-limit";
+import { requireSignedInClinicalAccess } from "@/lib/clinical-access";
 import { publicAccessContext } from "@/lib/public-api-access";
 import { setAgentConversationId } from "@/lib/observability/agent-monitoring";
 import {
@@ -341,6 +342,7 @@ export async function POST(request: Request) {
     const supabase = createAdminClient();
     const authStartedAt = Date.now();
     const access = await publicAccessContext(request, supabase);
+    requireSignedInClinicalAccess(access);
     const authMs = Date.now() - authStartedAt;
 
     const rateLimitStartedAt = Date.now();
