@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-21T07:33:14.694Z",
+  "generated_at": "2026-10-21T10:03:15.872Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "6bbea65002324146217cdbeef6450fa59a61d0466784a04ef37b57c82aa85df1",
-  "replay_seconds": 16,
+  "schema_sha256": "7ab1e675d8d7bb1282b7ed16756e8772e7d4cb36806d1a6290db63de29c321d6",
+  "replay_seconds": 15,
   "snapshot": {
     "views": [
       {
@@ -4766,6 +4766,14 @@
         ],
         "name": "image_caption_cache",
         "columns": [
+          {
+            "name": "cache_identity",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
           {
             "name": "caption",
             "type": "text",
@@ -15520,16 +15528,16 @@
         "def_hash": "2f2c90dfac660eb2a30bd869f686e665"
       },
       {
+        "def": "CREATE UNIQUE INDEX image_caption_cache_owner_hash_model_identity_key ON public.image_caption_cache USING btree (owner_id, image_hash, model, cache_identity) NULLS NOT DISTINCT",
+        "name": "image_caption_cache_owner_hash_model_identity_key",
+        "table": "image_caption_cache",
+        "def_hash": "1260dc412f06974f0b7b882abece8e22"
+      },
+      {
         "def": "CREATE INDEX image_caption_cache_owner_id_idx ON public.image_caption_cache USING btree (owner_id)",
         "name": "image_caption_cache_owner_id_idx",
         "table": "image_caption_cache",
         "def_hash": "6a7095d2f46b71c43f539d39cd85006b"
-      },
-      {
-        "def": "CREATE UNIQUE INDEX image_caption_cache_owner_id_image_hash_model_key ON public.image_caption_cache USING btree (owner_id, image_hash, model)",
-        "name": "image_caption_cache_owner_id_image_hash_model_key",
-        "table": "image_caption_cache",
-        "def_hash": "5cac039926e94b8e4891b3085e7f8f6e"
       },
       {
         "def": "CREATE UNIQUE INDEX image_caption_cache_pkey ON public.image_caption_cache USING btree (id)",
@@ -22929,13 +22937,13 @@
         "table": "extra_time_records"
       },
       {
-        "def": "FOREIGN KEY (owner_id) REFERENCES auth.users(id) ON DELETE CASCADE",
-        "name": "image_caption_cache_owner_id_fkey",
+        "def": "UNIQUE NULLS NOT DISTINCT (owner_id, image_hash, model, cache_identity)",
+        "name": "image_caption_cache_owner_hash_model_identity_key",
         "table": "image_caption_cache"
       },
       {
-        "def": "UNIQUE (owner_id, image_hash, model)",
-        "name": "image_caption_cache_owner_id_image_hash_model_key",
+        "def": "FOREIGN KEY (owner_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+        "name": "image_caption_cache_owner_id_fkey",
         "table": "image_caption_cache"
       },
       {
