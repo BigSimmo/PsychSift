@@ -28,11 +28,13 @@ const DAY = 24 * HOUR;
  * - `recent`: the issue is reused and never closed by the workflow, so the workflow's own
  *   activity inside `recentHours` is the signal: the bot opening the issue or commenting on it.
  *   Not the issue's `updated_at`, which any comment moves in this public repository.
+ *   With `clearedBySuccess`, the workflow only posts when its run fails, so a later successful
+ *   run clears the trouble rather than leaving it standing for the whole window.
  * - `digest`: the ops digest's rolling issue, whose body carries the service status and alert state.
  *
  * `maxAgeHours` is how long the workflow may go without a completed run before the summary calls
  * it stale. A monitor that has stopped running must never read as healthy. `null` means the
- * workflow runs on events rather than a schedule, so silence is normal.
+ * workflow runs on events rather than a schedule, or ships switched off, so silence is normal.
  */
 export const SUMMARY_SOURCES = [
   {
@@ -112,9 +114,24 @@ export const SUMMARY_SOURCES = [
     label: "eval-canary",
     issue: "recent",
     recentHours: 8 * 24,
+    clearedBySuccess: true,
     onTrouble: "red",
     trouble: "the last weekly canary failed",
     maxAgeHours: 8 * 24 + 2,
+  },
+  {
+    // Ships inert behind REINDEX_REAPER_ENABLED, so a missing run is not stale. Once armed, its
+    // weekly scheduled probe posts here when it finds abandoned rows or cannot run.
+    key: "reindex",
+    name: "Reindex clean-up probe",
+    workflow: "reindex-reaper.yml",
+    label: "reindex-reaper",
+    issue: "recent",
+    recentHours: 8 * 24,
+    clearedBySuccess: true,
+    onTrouble: "amber",
+    trouble: "the weekly probe found abandoned reindex rows or could not run",
+    maxAgeHours: null,
   },
 ];
 
@@ -160,7 +177,7 @@ export function readDigestState(body) {
 }
 
 /**
- * @typedef {{ updated_at?: string, run_started_at?: string, created_at?: string, html_url?: string }} WorkflowRun
+ * @typedef {{ updated_at?: string, run_started_at?: string, created_at?: string, html_url?: string, conclusion?: string | null }} WorkflowRun
  * @typedef {{ number?: number, html_url?: string, state?: string, updated_at?: string, created_at?: string, user?: { login?: string } | null, body?: string | null }} LabelledIssue
  * @typedef {{ key: string, name: string, status: "green" | "amber" | "red", detail: string, link: string }} Assessment
  */
@@ -196,7 +213,13 @@ export function assessSource(
     detail = source.trouble;
   } else if (source.issue === "recent" && issue) {
     const active = time(botActivityAt);
-    const recent = active !== null && nowMs - active <= source.recentHours * HOUR && issue.state === "open";
+    const cleared =
+      source.clearedBySuccess === true &&
+      latestRun?.conclusion === "success" &&
+      active !== null &&
+      runAt !== null &&
+      runAt > active;
+    const recent = !cleared && active !== null && nowMs - active <= source.recentHours * HOUR && issue.state === "open";
     if (recent) {
       status = source.onTrouble;
       detail =

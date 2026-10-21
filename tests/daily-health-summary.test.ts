@@ -80,6 +80,36 @@ describe("daily health summary: judging each check", () => {
     expect(quiet.status).toBe("green");
   });
 
+  it("clears a failed canary once a later run passes, but not while the failing run is the latest", () => {
+    const failedAt = "2026-10-19T18:30:00Z";
+    const recovered = assessSource(source("canary"), {
+      latestRun: { ...run(30), conclusion: "success" },
+      issue: issue({}),
+      botActivityAt: failedAt,
+      now: NOW,
+    });
+    expect(recovered.status).toBe("green");
+
+    const stillFailing = assessSource(source("canary"), {
+      latestRun: { updated_at: "2026-10-19T18:35:00Z", conclusion: "failure" },
+      issue: issue({}),
+      botActivityAt: failedAt,
+      now: NOW,
+    });
+    expect(stillFailing).toMatchObject({ status: "red", detail: "the last weekly canary failed" });
+  });
+
+  it("reports the switched-off reindex probe as green, and its alert as amber once armed", () => {
+    expect(assessSource(source("reindex"), { latestRun: null, issue: null, now: NOW }).status).toBe("green");
+    const alerted = assessSource(source("reindex"), {
+      latestRun: { updated_at: "2026-10-25T19:50:00Z", conclusion: "failure" },
+      issue: issue({}),
+      botActivityAt: "2026-10-25T19:49:00Z",
+      now: NOW,
+    });
+    expect(alerted).toMatchObject({ status: "amber" });
+  });
+
   it("judges a reused issue by the workflow's own activity, not by anyone's comment moving updated_at", () => {
     // A human comment bumps updated_at to now, but the bot last posted six days ago.
     const commentedOn = assessSource(source("uploads"), {
