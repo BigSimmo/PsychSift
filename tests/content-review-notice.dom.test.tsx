@@ -24,7 +24,9 @@ describe("ContentReviewNotice", () => {
     render(<ContentReviewNotice review={{ kind: "medication", lastReviewedAt: "2026-05-10" }} />);
     const notice = screen.getByTestId("content-review-notice");
     expect(notice.getAttribute("data-review-state")).toBe("due_soon");
-    expect(notice.textContent).toBe("Review due by 10 May 2027.");
+    expect(notice.textContent).toBe("Review due soon. Due by 10/05/2027.");
+    // The date goes through DateDisplay, like every other clinician-facing date.
+    expect(notice.querySelector("time")?.getAttribute("dateTime")).toBe("2027-05-10");
   });
 
   it("uses the reader's local date, so a Perth morning is not held back a day by UTC", () => {
@@ -33,7 +35,9 @@ describe("ContentReviewNotice", () => {
     // 07:30 on 10 May 2027 in Perth is still 9 May in UTC.
     vi.setSystemTime(new Date("2027-05-09T23:30:00.000Z"));
     render(<ContentReviewNotice review={{ kind: "medication", lastReviewedAt: "2026-05-10" }} />);
-    expect(screen.getByTestId("content-review-notice").getAttribute("data-review-state")).toBe("due");
+    const notice = screen.getByTestId("content-review-notice");
+    expect(notice.getAttribute("data-review-state")).toBe("due");
+    expect(notice.textContent).toBe("Review overdue. It was due on 10/05/2027.");
     vi.unstubAllEnvs();
   });
 

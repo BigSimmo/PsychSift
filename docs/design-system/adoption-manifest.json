@@ -906,11 +906,13 @@
       "entryExported": true,
       "directImportFiles": [
         "src/components/answer/AnswerFooter.tsx",
+        "src/components/content-review/content-review-notice.tsx",
         "src/components/ui/retrieval-state-banner.tsx",
         "src/components/ui/verification-notice.tsx"
       ],
       "productImportFiles": [
         "src/components/answer/AnswerFooter.tsx",
+        "src/components/content-review/content-review-notice.tsx",
         "src/components/ui/retrieval-state-banner.tsx",
         "src/components/ui/verification-notice.tsx"
       ],
@@ -921,6 +923,7 @@
         "previewValid": true
       },
       "testFiles": [
+        "tests/content-review-notice.dom.test.tsx",
         "tests/design-sync-visual-exports.test.ts",
         "tests/design-system-adoption.test.ts",
         "tests/ui-v2-answer-safety.dom.test.tsx"

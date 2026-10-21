@@ -2,9 +2,11 @@
 
 import { useSyncExternalStore } from "react";
 
+import { statusDotMuted, statusDotReview } from "@/components/ui-primitives";
+import { DateDisplay } from "@/components/ui/date-display";
 import {
+  contentReviewNoticeCopy,
   contentReviewSchedule,
-  contentReviewSentence,
   isReviewDueNow,
   type ContentReviewScheduleInput,
   type ContentReviewState,
@@ -24,6 +26,10 @@ const serverToday = () => null;
  * One line saying a record is due, or soon due, for clinical review, or that a
  * guideline it cites has changed. Renders nothing for a record inside its interval,
  * because a healthy date is not news.
+ *
+ * It wears the app's existing review vocabulary: the amber diamond (`statusDotReview`)
+ * when review is due now, the muted dot when it is only coming up, and the date through
+ * `DateDisplay` like every other clinician-facing date.
  *
  * The schedule is worked out in the browser with the reader's own date. These pages are
  * prerendered, so a schedule worked out at build time would stop ageing until the next
@@ -46,20 +52,36 @@ export function ContentReviewNotice({
   if (!today) return null;
   const schedule = contentReviewSchedule({ ...review, referenceDate: new Date(`${today}T00:00:00.000Z`) });
   if (hideStates.includes(schedule.state)) return null;
-  const sentence = contentReviewSentence(schedule);
-  if (!sentence) return null;
+  const copy = contentReviewNoticeCopy(schedule);
+  if (!copy) return null;
   const urgent = isReviewDueNow(schedule);
   return (
     <p
-      className={cn(
-        "m-0 text-xs leading-5",
-        urgent ? "font-semibold text-[color:var(--warning-text)]" : "text-[color:var(--text-muted)]",
-        className,
-      )}
+      className={cn("m-0 flex items-start gap-2 text-xs leading-5 text-[color:var(--text-muted)]", className)}
       data-testid="content-review-notice"
       data-review-state={schedule.state}
     >
-      {sentence}
+      {/* mt-1.5 centres the 8px marker on the first 20px line, so it stays put when the line wraps. */}
+      <span className={cn(urgent ? statusDotReview : statusDotMuted, "mt-1.5")} aria-hidden="true" />
+      <span className="min-w-0 text-pretty">
+        <span
+          className={cn("font-semibold", urgent ? "text-[color:var(--warning)]" : "text-[color:var(--text-heading)]")}
+        >
+          {copy.lead}.
+        </span>
+        {copy.detail ? (
+          <>
+            {" "}
+            {copy.detail}
+            {copy.dateIso ? (
+              <>
+                {" "}
+                <DateDisplay value={copy.dateIso} kind="review" />.
+              </>
+            ) : null}
+          </>
+        ) : null}
+      </span>
     </p>
   );
 }

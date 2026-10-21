@@ -345,8 +345,10 @@ function MedicationRecordDetail({
           >
             {/* An overdue or undated record already carries a "Source check due" or
                 "Source date unknown" chip, so only a changed guideline or a date
-                coming up is said here. */}
-            {reviewInput ? <ContentReviewNotice review={reviewInput} hideStates={["due", "unknown"]} /> : null}
+                coming up is said here, at the size of the source line beneath it. */}
+            {reviewInput ? (
+              <ContentReviewNotice review={reviewInput} hideStates={["due", "unknown"]} className="text-sm-minus" />
+            ) : null}
             {sourceLinks.length === 0 ? (
               <p
                 className="m-0 text-sm-minus leading-5 text-[color:var(--text-muted)]"

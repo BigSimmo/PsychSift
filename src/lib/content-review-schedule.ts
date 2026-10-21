@@ -139,49 +139,35 @@ export function isReviewDueNow(schedule: Pick<ContentReviewSchedule, "state">): 
   return schedule.state === "due" || schedule.state === "guideline_changed";
 }
 
-const MONTHS = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-] as const;
-
 /**
- * "3 December 2026", built from the ISO parts by hand so a server render and the
- * browser's hydration produce identical text in any locale or timezone.
+ * What a review notice says: a short lead ("Review due now") and, where there is one, a
+ * detail that ends on a date. The date is left as ISO so the page renders it through
+ * `DateDisplay`, the one place clinician-facing dates are formatted. Null when there is
+ * nothing to flag.
  */
-export function formatReviewDate(isoDate: string | null): string | null {
-  const date = isoCalendarDate(isoDate);
-  if (!date) return null;
-  const [year, month, day] = date.split("-").map(Number);
-  return `${day} ${MONTHS[month - 1]} ${year}`;
-}
+export type ContentReviewNoticeCopy = {
+  lead: string;
+  detail: string | null;
+  /** ISO date the detail ends on, or null when the detail needs none. */
+  dateIso: string | null;
+};
 
-/** One plain sentence for a record's review state, or null when there is nothing to flag. */
-export function contentReviewSentence(schedule: ContentReviewSchedule): string | null {
-  const due = formatReviewDate(schedule.dueOn);
+export function contentReviewNoticeCopy(schedule: ContentReviewSchedule): ContentReviewNoticeCopy | null {
   switch (schedule.state) {
     case "guideline_changed": {
-      const latest = schedule.changedSources[0];
-      const changedOn = formatReviewDate(latest?.changedOn ?? null);
+      const changedOn = isoCalendarDate(schedule.changedSources[0]?.changedOn ?? null);
       return changedOn
-        ? `Review due now: a guideline this record cites changed on ${changedOn}.`
-        : "Review due now: a guideline this record cites has changed.";
+        ? { lead: "Review due now", detail: "A guideline this record cites changed on", dateIso: changedOn }
+        : { lead: "Review due now", detail: "A guideline this record cites has changed.", dateIso: null };
     }
     case "due":
-      return due ? `Review overdue: this record was due for review on ${due}.` : "Review overdue.";
+      return schedule.dueOn
+        ? { lead: "Review overdue", detail: "It was due on", dateIso: schedule.dueOn }
+        : { lead: "Review overdue", detail: null, dateIso: null };
     case "due_soon":
-      return due ? `Review due by ${due}.` : null;
+      return schedule.dueOn ? { lead: "Review due soon", detail: "Due by", dateIso: schedule.dueOn } : null;
     case "unknown":
-      return "Review date unknown: no review has been recorded for this record.";
+      return { lead: "Review date not recorded", detail: null, dateIso: null };
     case "current":
       return null;
   }

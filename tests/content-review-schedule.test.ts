@@ -3,8 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   addCalendarMonths,
   contentReviewSchedule,
-  contentReviewSentence,
-  formatReviewDate,
+  contentReviewNoticeCopy,
   isReviewDueNow,
   isoCalendarDate,
   REVIEW_INTERVAL_MONTHS,
@@ -48,11 +47,6 @@ describe("calendar arithmetic", () => {
     expect(isoCalendarDate("")).toBeNull();
     expect(isoCalendarDate(null)).toBeNull();
   });
-
-  it("formats a date without locale or timezone", () => {
-    expect(formatReviewDate("2027-12-03")).toBe("3 December 2027");
-    expect(formatReviewDate(null)).toBeNull();
-  });
 });
 
 describe("contentReviewSchedule", () => {
@@ -64,7 +58,7 @@ describe("contentReviewSchedule", () => {
       changeEvents: [],
     });
     expect(schedule).toMatchObject({ state: "current", lastReviewedOn: "2026-05-14", dueOn: "2027-05-14" });
-    expect(contentReviewSentence(schedule)).toBeNull();
+    expect(contentReviewNoticeCopy(schedule)).toBeNull();
   });
 
   it("uses 24 months for therapy and forms", () => {
@@ -85,9 +79,16 @@ describe("contentReviewSchedule", () => {
     expect(contentReviewSchedule({ ...base, referenceDate: at("2027-04-14") }).state).toBe("due_soon");
     expect(contentReviewSchedule({ ...base, referenceDate: at("2027-05-14") }).state).toBe("due");
     expect(contentReviewSchedule({ ...base, referenceDate: at("2028-01-01") }).state).toBe("due");
-    expect(contentReviewSentence(contentReviewSchedule({ ...base, referenceDate: at("2027-05-20") }))).toBe(
-      "Review overdue: this record was due for review on 14 May 2027.",
-    );
+    expect(contentReviewNoticeCopy(contentReviewSchedule({ ...base, referenceDate: at("2027-05-20") }))).toEqual({
+      lead: "Review overdue",
+      detail: "It was due on",
+      dateIso: "2027-05-14",
+    });
+    expect(contentReviewNoticeCopy(contentReviewSchedule({ ...base, referenceDate: at("2027-04-20") }))).toEqual({
+      lead: "Review due soon",
+      detail: "Due by",
+      dateIso: "2027-05-14",
+    });
   });
 
   it("is unknown without a usable review date, including one in the future", () => {
@@ -114,9 +115,11 @@ describe("contentReviewSchedule", () => {
     expect(schedule.state).toBe("guideline_changed");
     expect(schedule.dueOn).toBe("2027-05-14");
     expect(isReviewDueNow(schedule)).toBe(true);
-    expect(contentReviewSentence(schedule)).toBe(
-      "Review due now: a guideline this record cites changed on 14 November 2026.",
-    );
+    expect(contentReviewNoticeCopy(schedule)).toEqual({
+      lead: "Review due now",
+      detail: "A guideline this record cites changed on",
+      dateIso: "2026-11-14",
+    });
   });
 
   it("ignores a change made before the last review, and a change to a source the record does not cite", () => {

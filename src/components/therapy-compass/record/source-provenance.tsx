@@ -69,7 +69,8 @@ export function TherapySourceProvenance({
           Source & review status <span className={reviewStatusClass}>{reviewStatus}</span>
         </h2>
       </div>
-      <ContentReviewNotice review={reviewInput} hideStates={["unknown"]} className="mb-1.5" />
+      {/* Inset to the card's own padding, so the line reads as a caption to the row below it. */}
+      <ContentReviewNotice review={reviewInput} hideStates={["unknown"]} className="mb-1.5 px-3 sm:px-4" />
       <Disclosure
         className="text-sm"
         headingLevel={2}
