@@ -3538,7 +3538,9 @@ begin
     'functions', coalesce((
       select jsonb_agg(jsonb_build_object(
         'signature', p.oid::regprocedure::text,
-        'def_hash', md5(regexp_replace(regexp_replace(regexp_replace(pg_get_functiondef(p.oid), '/\*.*?\*/', '', 'gs'), '--[^\n]*', '', 'g'), '\s+', '', 'g')),
+        -- A line comment starts at a line start or after whitespace. A '--' glued to other
+        -- text (a URL such as Next-Step---Drug-..., a '---' separator) is literal content.
+        'def_hash', md5(regexp_replace(regexp_replace(regexp_replace(pg_get_functiondef(p.oid), '/\*.*?\*/', '', 'gs'), '(^|[[:space:]])--[^\n]*', '\1', 'g'), '\s+', '', 'g')),
         'acl', (select array_agg(a.item::text order by a.item::text) from unnest(coalesce(p.proacl, acldefault('f', p.proowner))) a(item))
       ) order by p.oid::regprocedure::text)
       from pg_proc p
