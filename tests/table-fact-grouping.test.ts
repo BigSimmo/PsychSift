@@ -40,6 +40,20 @@ describe("table-fact grouping keeps every matched row per chunk", () => {
     expect(match?.tableFacts?.map((row) => row.id)).toEqual(["a", "b", "c", "d", "e"]);
   });
 
+  it("keeps the higher-ranked copy of a fact returned by two variants", () => {
+    const rows = ["b", "c", "d", "e"].map((id) => fact(id, "chunk-1", 0.3));
+    rows.unshift(fact("a", "chunk-1", 0.1));
+    rows.push(fact("a", "chunk-1", 0.9));
+    const [match] = groupTableFactMatches(rows);
+    expect(match?.tableFacts?.map((row) => [row.id, row.text_rank])).toEqual([
+      ["a", 0.9],
+      ["b", 0.3],
+      ["c", 0.3],
+      ["d", 0.3],
+      ["e", 0.3],
+    ]);
+  });
+
   it("keeps a higher-ranked late fact when the cap is already full", () => {
     const rows = ["a", "b", "c", "d", "e"].map((id) => fact(id, "chunk-1", 0.2));
     rows.push(fact("z", "chunk-1", 0.9));

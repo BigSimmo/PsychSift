@@ -1772,9 +1772,10 @@ export function groupTableFactMatches(data: TableFactRpcRow[]) {
     const tableFact = { ...fact, text_rank: textRank, match_reason: fact.match_reason ?? "table_row" };
     const existingFacts = current?.tableFacts ?? [];
     const tableFacts =
-      fact.id && existingFacts.some((existing) => existing.id === fact.id)
+      fact.id &&
+      existingFacts.some((existing) => existing.id === fact.id && Number(existing.text_rank ?? 0) >= textRank)
         ? existingFacts
-        : [...existingFacts, tableFact]
+        : [...existingFacts.filter((existing) => !fact.id || existing.id !== fact.id), tableFact]
             // Keep the highest-ranked facts (stable sort keeps arrival order for ties), so a better
             // row from a sibling variant is never cut while still setting the chunk's score.
             .sort((a, b) => Number(b.text_rank ?? 0) - Number(a.text_rank ?? 0))
