@@ -2919,6 +2919,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/audit/2026-10-21-ocr-comparison.md",
+        "section": "audit",
+        "catalogued": true
+      },
+      {
         "path": "docs/superpowers/rag-upgrade/canonical/START-HERE.cloud.md",
         "section": "superpowers",
         "catalogued": true
@@ -4674,6 +4679,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/audit/2026-10-21-database-performance-evidence.md",
+        "section": "audit",
+        "catalogued": true
+      },
+      {
         "path": "docs/design-system/sweep-2026-08-29-visual.md",
         "section": "design-system",
         "catalogued": true
@@ -5480,6 +5490,11 @@
       },
       {
         "path": "docs/decisions/2026-10-16-remove-obsolete-cloud-startup-instructions.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-21-no-malware-scan-before-upload-storage.md",
         "section": "decisions",
         "catalogued": true
       },

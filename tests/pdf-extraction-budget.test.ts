@@ -51,6 +51,7 @@ async function createRecoverableMalformedTextPdf() {
 
 afterEach(async () => {
   vi.restoreAllMocks();
+  vi.unstubAllEnvs();
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
 
@@ -201,6 +202,40 @@ describe("PDF extraction budgets", () => {
     ).rejects.toMatchObject({ code: "PDF_EXTRACTION_BUDGET_EXCEEDED" });
     const temporaryRoot = await readFile(rootRecord, "utf8");
     expect(existsSync(temporaryRoot)).toBe(false);
+  });
+
+  it("refuses unisolated JavaScript fallback in production and cleans up without retrying", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "clinical-kb-pdf-production-fallback-test-"));
+    roots.push(root);
+    const fakeExtractor = path.join(root, "failing-extractor.py");
+    const rootRecord = path.join(root, "temporary-root.txt");
+    await writeFile(
+      fakeExtractor,
+      [
+        "import pathlib, sys",
+        "record = pathlib.Path(sys.argv[1]).read_text(encoding='utf-8')",
+        "temporary_root = pathlib.Path(sys.argv[2]).parent",
+        "pathlib.Path(record).write_text(str(temporary_root), encoding='utf-8')",
+        "(temporary_root / 'partial-artifact.bin').write_bytes(b'partial')",
+        "raise SystemExit(2)",
+      ].join("\n"),
+      "utf8",
+    );
+    const getText = vi.spyOn(PdfjsFallbackParser.prototype, "getText");
+    const getImage = vi.spyOn(PdfjsFallbackParser.prototype, "getImage");
+    vi.stubEnv("NODE_ENV", "production");
+
+    const error = await extractPdf(Buffer.from(rootRecord, "utf8"), {
+      scriptPathOverride: fakeExtractor,
+    }).catch((failure: unknown) => failure);
+
+    expect(error).toMatchObject({ code: "PDF_EXTRACTION_BUDGET_EXCEEDED" });
+    expect(error).toBeInstanceOf(PdfExtractionResourceError);
+    expect((error as Error).message).toContain("isolated memory limit");
+    expect(isRetryableIngestionError((error as Error).message)).toBe(false);
+    expect(getText).not.toHaveBeenCalled();
+    expect(getImage).not.toHaveBeenCalled();
+    expect(existsSync(await readFile(rootRecord, "utf8"))).toBe(false);
   });
 
   it("stops a stalled JavaScript fallback at the document deadline and cleans up (ING-B-05)", async () => {

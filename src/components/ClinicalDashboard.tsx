@@ -99,6 +99,8 @@ import { notNowDocumentsSearch } from "@/components/front-door/ask-terms-not-now
 import { useAskTermsGate } from "@/components/front-door/use-ask-terms-gate";
 import { Button } from "@/components/ui/button";
 import { ClinicalSignInNotice } from "@/components/mode-kit/clinical-sign-in-notice";
+import { ClinicalCatalogueGate } from "@/components/mode-kit/clinical-catalogue-gate";
+import { useClinicalToolAccess } from "@/components/mode-kit/use-clinical-tool-access";
 import { ASK_TERMS_DECLINED_NOTICE, ASK_TERMS_REVIEW_LABEL, CLINICAL_SIGN_IN_COPY } from "@/lib/front-door-content";
 import { focusComposerInput as scheduleComposerFocus } from "@/components/clinical-dashboard/focus-composer-input";
 import {
@@ -482,6 +484,8 @@ function ClinicalDashboardContent({
   );
   const [indexingActionId, setIndexingActionId] = useState<string | null>(null);
   const auth = useAuthSession();
+  // #3728: library search, medicines and differentials need sign-in (server-enforced).
+  const clinicalToolAccess = useClinicalToolAccess();
   const { clinicalAskSession, clinicalAskMode, runModeClinicalAsk } = useClinicalAskDashboardChrome({
     accountId: auth.session?.user.id,
     searchMode,
@@ -2061,7 +2065,7 @@ function ClinicalDashboardContent({
                 </InlineNotice>
               ) : null}
               {searchMode === "documents" && askTermsGate.signInQuery && askTermsGate.signInQuery === query.trim() ? (
-                // Answer needs sign-in; the question's documents show below this card.
+                // Answer needs sign-in; its stillOpen line covers library search too, so the library card is skipped (#3728).
                 <ClinicalSignInNotice
                   copy={CLINICAL_SIGN_IN_COPY.answer}
                   testId="answer-sign-in"
@@ -2209,38 +2213,40 @@ function ClinicalDashboardContent({
                     ) : null}
                   </div>
                 ) : activeModeResultKind === "differentials" ? (
-                  <DifferentialsHome
-                    query={deferredQuery}
-                    loading={loading}
-                    searchSubmitted={modeSearchSubmitted}
-                    evidenceQuery={differentialEvidenceQuery}
-                    documentMatches={documentMatches}
-                    realDataReady={canRunSearch}
-                    authUnavailable={false}
-                    apiUnavailable={apiUnavailable}
-                    setupWarning={setupWarning}
-                    onQueryChange={setQuery}
-                    desktopComposerSlotId={desktopHomeComposerSlotId}
-                    onSuggestedSearch={(nextQuery) => {
-                      setQuery(nextQuery);
-                      focusComposerInput();
-                    }}
-                    onRunSearch={(nextQuery) => {
-                      void executeSearch(nextQuery, "differentials", scopeFilters);
-                    }}
-                    onOpenPresentations={(nextQuery) => {
-                      const queryParams = new URLSearchParams();
-                      const normalizedQuery = nextQuery.trim();
-                      if (normalizedQuery) queryParams.set("q", normalizedQuery);
-                      router.push(`/differentials/presentations${queryParams.toString() ? `?${queryParams}` : ""}`);
-                    }}
-                    onOpenDiagnoses={(nextQuery) => {
-                      const queryParams = new URLSearchParams();
-                      const normalizedQuery = nextQuery.trim();
-                      if (normalizedQuery) queryParams.set("q", normalizedQuery);
-                      router.push(`/differentials/diagnoses${queryParams.toString() ? `?${queryParams}` : ""}`);
-                    }}
-                  />
+                  <ClinicalCatalogueGate copy={CLINICAL_SIGN_IN_COPY.differentials} testId="differentials-sign-in">
+                    <DifferentialsHome
+                      query={deferredQuery}
+                      loading={loading}
+                      searchSubmitted={modeSearchSubmitted}
+                      evidenceQuery={differentialEvidenceQuery}
+                      documentMatches={documentMatches}
+                      realDataReady={canRunSearch}
+                      authUnavailable={false}
+                      apiUnavailable={apiUnavailable}
+                      setupWarning={setupWarning}
+                      onQueryChange={setQuery}
+                      desktopComposerSlotId={desktopHomeComposerSlotId}
+                      onSuggestedSearch={(nextQuery) => {
+                        setQuery(nextQuery);
+                        focusComposerInput();
+                      }}
+                      onRunSearch={(nextQuery) => {
+                        void executeSearch(nextQuery, "differentials", scopeFilters);
+                      }}
+                      onOpenPresentations={(nextQuery) => {
+                        const queryParams = new URLSearchParams();
+                        const normalizedQuery = nextQuery.trim();
+                        if (normalizedQuery) queryParams.set("q", normalizedQuery);
+                        router.push(`/differentials/presentations${queryParams.toString() ? `?${queryParams}` : ""}`);
+                      }}
+                      onOpenDiagnoses={(nextQuery) => {
+                        const queryParams = new URLSearchParams();
+                        const normalizedQuery = nextQuery.trim();
+                        if (normalizedQuery) queryParams.set("q", normalizedQuery);
+                        router.push(`/differentials/diagnoses${queryParams.toString() ? `?${queryParams}` : ""}`);
+                      }}
+                    />
+                  </ClinicalCatalogueGate>
                 ) : searchMode === "tools" ? (
                   <ToolsHub query={deferredQuery} desktopComposerSlotId={desktopHomeComposerSlotId} />
                 ) : activeModeResultKind === "favourites" && favouritesAccessible ? (
@@ -2260,59 +2266,69 @@ function ClinicalDashboardContent({
                   activeModeResultKind === "services" ||
                   activeModeResultKind === "forms" ? (
                   searchMode === "prescribing" ? (
-                    <MedicationPrescribingWorkspace
-                      query={deferredQuery}
-                      loading={false}
-                      realDataReady
-                      authUnavailable={false}
-                      apiUnavailable={false}
-                      setupWarning={null}
-                      onSuggestedSearch={setMedicationSearchQuery}
-                      showHome={!modeSearchSubmitted}
-                      desktopComposerSlotId={desktopHomeComposerSlotId}
-                    />
+                    <ClinicalCatalogueGate copy={CLINICAL_SIGN_IN_COPY.medicines} testId="medications-sign-in">
+                      <MedicationPrescribingWorkspace
+                        query={deferredQuery}
+                        loading={false}
+                        realDataReady
+                        authUnavailable={false}
+                        apiUnavailable={false}
+                        setupWarning={null}
+                        onSuggestedSearch={setMedicationSearchQuery}
+                        showHome={!modeSearchSubmitted}
+                        desktopComposerSlotId={desktopHomeComposerSlotId}
+                      />
+                    </ClinicalCatalogueGate>
                   ) : (
                     <>
-                      <DocumentSearchResultsPanel
-                        matches={documentMatches}
-                        recordMatches={recordSearchMatches}
-                        recordMode={recordSearchMode}
-                        recordStatus={recordStatus}
-                        recordDegraded={recordsDegraded}
-                        showRecordMatches={searchMode === "services" || searchMode === "forms"}
-                        query={deferredQuery}
-                        loading={loading}
-                        documentCount={indexedDocumentTotal}
-                        recentDocuments={documents}
-                        realDataReady={searchMode === "services" || searchMode === "forms" ? true : canRunSearch}
-                        authUnavailable={false}
-                        apiUnavailable={apiUnavailable}
-                        setupWarning={setupWarning}
-                        facets={searchFacets}
-                        searchScope={searchMode === "documents" ? searchScope : null}
-                        onScopeDocument={handleScopeDocument}
-                        onAnswerFromDocument={handleAnswerFromDocument}
-                        onOpenRecentDocuments={handleOpenRecentDocuments}
-                        onOpenLibrary={handleOpenSourceLibrary}
-                        onOpenSourcePdf={handleOpenSourcePdfBrowser}
-                        onTagSearch={handleDocumentTagSearch}
-                        scopeFilters={searchMode === "documents" ? scopeFilters : null}
-                        onScopeFiltersChange={searchMode === "documents" ? handleScopeFiltersChange : undefined}
-                        selectedDocumentIds={searchMode === "documents" ? selectedDocumentIds : []}
-                        onDocumentFiltersApply={searchMode === "documents" ? handleDocumentFiltersApply : undefined}
-                        showHome={searchMode === "documents" && !modeSearchSubmitted}
-                        desktopComposerSlotId={desktopHomeComposerSlotId}
-                        searchFailed={documentsSearchFailed}
-                        searchFailureReason={documentsSearchFailed ? error : null}
-                        onRetrySearch={
-                          searchMode === "documents" && query.trim()
-                            ? () => {
-                                setError(null);
-                                void ask(documentsSearchFailed ? (lastFailedQuery ?? query) : query);
-                              }
-                            : undefined
-                        }
-                      />
+                      {searchMode === "documents" && clinicalToolAccess === "sign-in-required" ? (
+                        askTermsGate.signInQuery && askTermsGate.signInQuery === query.trim() ? null : (
+                          <ClinicalSignInNotice copy={CLINICAL_SIGN_IN_COPY.library} testId="library-sign-in" />
+                        )
+                      ) : (
+                        <>
+                          <DocumentSearchResultsPanel
+                            matches={documentMatches}
+                            recordMatches={recordSearchMatches}
+                            recordMode={recordSearchMode}
+                            recordStatus={recordStatus}
+                            recordDegraded={recordsDegraded}
+                            showRecordMatches={searchMode === "services" || searchMode === "forms"}
+                            query={deferredQuery}
+                            loading={loading}
+                            documentCount={indexedDocumentTotal}
+                            recentDocuments={documents}
+                            realDataReady={searchMode === "services" || searchMode === "forms" ? true : canRunSearch}
+                            authUnavailable={false}
+                            apiUnavailable={apiUnavailable}
+                            setupWarning={setupWarning}
+                            facets={searchFacets}
+                            searchScope={searchMode === "documents" ? searchScope : null}
+                            onScopeDocument={handleScopeDocument}
+                            onAnswerFromDocument={handleAnswerFromDocument}
+                            onOpenRecentDocuments={handleOpenRecentDocuments}
+                            onOpenLibrary={handleOpenSourceLibrary}
+                            onOpenSourcePdf={handleOpenSourcePdfBrowser}
+                            onTagSearch={handleDocumentTagSearch}
+                            scopeFilters={searchMode === "documents" ? scopeFilters : null}
+                            onScopeFiltersChange={searchMode === "documents" ? handleScopeFiltersChange : undefined}
+                            selectedDocumentIds={searchMode === "documents" ? selectedDocumentIds : []}
+                            onDocumentFiltersApply={searchMode === "documents" ? handleDocumentFiltersApply : undefined}
+                            showHome={searchMode === "documents" && !modeSearchSubmitted}
+                            desktopComposerSlotId={desktopHomeComposerSlotId}
+                            searchFailed={documentsSearchFailed}
+                            searchFailureReason={documentsSearchFailed ? error : null}
+                            onRetrySearch={
+                              searchMode === "documents" && query.trim()
+                                ? () => {
+                                    setError(null);
+                                    void ask(documentsSearchFailed ? (lastFailedQuery ?? query) : query);
+                                  }
+                                : undefined
+                            }
+                          />
+                        </>
+                      )}
                     </>
                   )
                 ) : showAnswerPending ? (

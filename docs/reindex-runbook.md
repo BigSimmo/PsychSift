@@ -71,6 +71,19 @@ If the response includes `safety.safeToRun: false`, do not retry repeatedly. Use
 
 The preflight response also includes active job counts and job metadata for operator review.
 
+When the ingestion-autopilot probe supplies `jobs_stranded_final_attempt` or
+`documents_indexed_without_chunks`, any positive count requires manual review and an alert,
+even if the probe's overall `ok` is true. A supplied invalid count is also unassessed and alerts;
+older probes that omit these fields remain compatible. These signals alone never trigger queue
+recovery, including with `--apply`. If separate recoverable queue work also exists, bounded
+recovery may run, but the integrity alert remains until a subsequent probe confirms resolution.
+
+The configured character target controls table groups (chunker 1.3.1). Each group repeats
+the table caption and header. A single row longer than the room left under the header is
+split at word boundaries into pieces that each repeat the header, and a table footnote
+(symbol markers, "Note" or "Source" lines only) is appended to the last group when it fits,
+otherwise emitted with the repeated header as its own chunk.
+
 ## Do not do this
 
 - Do not run workers while Supabase SQL probes are timing out.
@@ -87,7 +100,8 @@ The preflight response also includes active job counts and job metadata for oper
 A commit keeps the new generation and the one it replaced (the prune trigger from
 `20261019155200`), so there is exactly one generation to go back to, and only until the next
 commit of that document. The script needs the `rollback_document_index_generation` function
-(`20261021150000_rollback_document_index_generation.sql`).
+(`20261021150000_rollback_document_index_generation.sql`, restoring generation details since
+`20261021170000_restore_generation_metadata_on_rollback.sql`).
 
 - Dry run is the default. For each document it prints the current and previous generation,
   their chunk counts and commit times, and whether it would roll back.
@@ -95,7 +109,13 @@ commit of that document. The script needs the `rollback_document_index_generatio
   current generation was committed after that time) or `--chunker-version <version>` (the
   current generation's chunks carry that `chunker_version`). `--limit` caps the documents
   (default 50, max 1000).
-- `--apply` is refused (non-zero exit) unless `--i-understand-metadata-not-restored` is also given: a rollback currently leaves `documents.metadata` and `document_index_quality` describing the wrong generation until #3732 lands, which removes this guard.
+- A rollback restores the target generation's details with the pointer (#3732): the
+  worker-owned `documents.metadata` keys (extraction quality, cover image, embedding model,
+  enrichment state, extraction provenance and metrics) and the `document_index_quality` row,
+  from snapshots taken as each generation is replaced. Owner-edited metadata such as the title
+  is left alone. A generation committed before those snapshots existed is refused with
+  `target_snapshot_missing` rather than rolled back with mismatched details. The dry run
+  reports that refusal too, so a document it lists as ready will not be refused for it at apply.
 - `--apply` writes (it asks first unless `--yes` is given). It refuses a document with no
   previous committed generation, or whose previous generation has no chunks. The database
   function also refuses if the pointer moved since the dry run or an ingestion job for the
@@ -105,7 +125,7 @@ commit of that document. The script needs the `rollback_document_index_generatio
 
 ```bash
 npm run reindex:rollback -- --chunker-version 1.3.1-page            # dry run
-npm run reindex:rollback -- --document-id <uuid> --apply --i-understand-metadata-not-restored  # write
+npm run reindex:rollback -- --document-id <uuid> --apply            # write
 ```
 
 ## Recovery transaction (merged 18 October 2026)

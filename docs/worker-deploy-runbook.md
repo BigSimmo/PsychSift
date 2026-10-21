@@ -26,6 +26,36 @@ database or Python failures still return 503 and block promotion.
 The Supabase probe reports failures as a structured result; `/health` honours
 that result as well as thrown errors and omits provider failure details.
 
+Production PDF extraction requires the Python prerequisites. If Python extraction
+fails, `NODE_ENV=production` refuses the JavaScript fallback with a permanent
+`PDF_EXTRACTION_BUDGET_EXCEEDED` error and removes partial artifacts: pdf.js has
+no isolated memory limit inside the worker. Restore the Python runtime before
+retrying the document. The developer fallback retains its deadline and pixel
+limits; those limits do not establish a process memory boundary.
+
+Offline OCR acceptance covers native merged qualifications, scanned staggered
+columns, opposing comparison signs and decimal positions, and repeated headers
+with page-local footnotes. The original scanned `≤`, `≥`, exponent and decimal
+regression is now an ordinary strict acceptance case, with additional font and
+value variants. These are synthetic source-retention checks, not clinical-corpus
+certification.
+
+The optional raster-table reader can isolate an observed comparison sign before
+numeric OCR and normalize an observed raised digit before restoring its source
+position. It never guesses a threshold from a medicine or unit. Only small,
+single-line, disjoint glyphs are supported; decimal positions and glyph counts
+must agree with the source. Ambiguous alignment refuses the candidate and keeps
+the original full-page fallback. Raised zero is unsupported because a degree
+sign was misread as zero during testing. Unknown layouts, noisy scans and
+uncovered fonts retain their existing limitations.
+
+This uses the existing OCR call, pinned model, page deadline and resource caps.
+Source crop hashes remain unchanged; `ocrInputTransform` separately records the
+algorithm, helper-code hash and exact transformed input identity. All OCR
+observations remain `unverified` / `not_compared`, without confidence or clinical
+approval. `PDF_RASTER_TABLE_OCR` remains default-off. Review source accuracy before
+clinical use or any mass reindex; increasing image-size limits is not acceptance.
+
 ---
 
 ## 0. Pre-deploy gate — do not deploy before this is live
@@ -80,6 +110,21 @@ native libraries. Keep both Python locks and all repository-pinned model
 identities unchanged; validate the complete rebuilt image, actual OCR cases
 and full scan before accepting its dependency changes. Ingestion restoration
 remains a separate operational action.
+
+Native util-linux, Tesseract, ncurses and libxml2 security repairs are built separately
+from signed, exact-version Debian sources. `worker/native/components/` pins the
+source descriptors and upstream patch hashes. The packages retain their real
+upstream versions with a `+psychsift1` Debian revision, normal package metadata,
+ABI/dependency declarations and enabled Debian tests. Only selected runtime
+packages enter the image; compilers and sources remain in builder stages.
+The final image verifies installed binary/source versions against retained
+`/usr/share/psychsift/native-security/` receipts. Mount helper privilege bits are
+stripped after the package upgrades. Tesseract's extra deserialization tests,
+ncurses's long-capability control and a non-root, model-backed Docling raster-PDF
+control must pass. See [the native backport contract](../worker/native/README.md).
+These are source repairs, not scanner exceptions: Debian advisories without a
+fixed-version entry may still match the local package revision. Preserve the
+complete scan and distinguish source verification from scanner-count reduction.
 
 ### 0.1 Automated pre-deploy gate
 
@@ -328,7 +373,8 @@ bytes change while it runs. Never write its value into a document, log, PR or ti
 
 Without it there is no scanner verdict, so every ingestion provider call is refused and each job ends as
 `blocked by ingress safety checks` with `scanner_unavailable` (fail closed; pinned by
-`tests/edge-provider-egress.test.ts`). See [the current ingestion model](ingestion-state-machine.md#current-model-october-2026).
+`tests/edge-provider-egress.test.ts`). A worker started without it logs one warning saying so
+(`adminSourceRuntimeStartupWarning`). See [the current ingestion model](ingestion-state-machine.md#current-model-october-2026).
 
 **Current production state (read-only check, 20 October 2026).** The production `worker` service runs a
 placeholder start command set in Railway, not the image's `node dist/worker/index.mjs`. It is an HTTP-only
@@ -338,7 +384,8 @@ indexed in production. The same check found `WORKER_ADMIN_SOURCE_RUNTIME_MODULE`
 Before the worker is switched back on, with the owner's explicit yes:
 
 1. Confirm the module the variable names exists in the running image or mount and loads: the worker starts
-   without refusing it, and a first permitted job is not stopped as `scanner_unavailable`.
+   without refusing it, its start-up log has no `WORKER_ADMIN_SOURCE_RUNTIME_MODULE is not set` warning, and a
+   first permitted job is not stopped as `scanner_unavailable`.
 2. Restore the real start command, then clear any pause switch.
 3. Watch the first jobs; the library re-index stays stopped
    ([decision](decisions/2026-10-17-library-reindex-stopped.md)).

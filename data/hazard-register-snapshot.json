@@ -19,7 +19,7 @@
       "authority": "Static evidence register only. It does not establish clinical adequacy, regulatory classification, or risk acceptance.",
       "signedOff": false,
       "gate": "check:clinical-hazard-controls",
-      "reviewedAt": "2026-08-23",
+      "reviewedAt": "2026-10-21",
       "reviewExpiresAt": "2026-11-23",
       "reviewExpired": false,
       "hazards": [

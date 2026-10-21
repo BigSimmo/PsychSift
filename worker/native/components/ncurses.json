@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "source": "ncurses",
+  "source_version": "6.5+20250216-2",
+  "dsc_sha256": "00539cc2bc6bb84be1b8a8a5decf606682e14b6f39b76b9aa090e65d2c2d4580",
+  "backport_version": "6.5+20250216-2+psychsift1",
+  "patches": [
+    {
+      "file": "patches/ncurses/CVE-2025-69720-infocmp-bounds.patch",
+      "sha256": "404fb708a631d7bc2c778f8c04a9210506e715dbce8ea6bd35e3b1bde1a47d16",
+      "upstream_commit": "6f6db0e8fd14e40096a0ee6f8bdf32dedbd3fc9e"
+    }
+  ],
+  "runtime_packages": ["libncursesw6", "libtinfo6", "ncurses-base", "ncurses-bin"],
+  "extra_build_packages": ["python3"],
+  "test_commands": [["sh", "/tmp/worker-native/ncurses-regressions.sh"]],
+  "change_summary": "Backport CVE-2025-69720 infocmp -i buffer-size and copy-length bounds from ncurses snapshot 6.5-20251213. Keep Debian source version provenance, package layout, library ABI and normal build flags.",
+  "source_date_epoch": 1792454400
+}

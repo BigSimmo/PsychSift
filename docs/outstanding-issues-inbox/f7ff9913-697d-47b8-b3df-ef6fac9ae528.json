@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "f7ff9913-697d-47b8-b3df-ef6fac9ae528",
+  "createdOn": "2026-10-21",
+  "action": "update",
+  "payload": {
+    "id": "#2F8K1V",
+    "detail": "UPDATE 2026-10-21: documents.metadata.extraction_provenance now also records the chunker versions of the committed chunks and the OCR engine (Tesseract) versions and count of OCR'd pages (worker/extraction-provenance.ts), on top of the reader version, PyMuPDF version and table strategy recorded since PR #3632. npm run extraction:provenance (read-only; needs owner confirmation before a live run) lists documents by reader, chunker or OCR version, and npm run reindex:rollback -- --chunker-version already scopes a rollback. No migration needed. Remaining: documents indexed before these keys existed report 'not recorded' until their next index, and re-extraction by version is still an operator step. Close when the owner accepts that. PRIOR DETAIL: Verified offline: only a coarse indexing_version ('rag-deep-memory-v1') is stored; no extractor/OCR/table-strategy/chunker provenance exists in schema or worker.",
+    "baseRowFingerprint": "e95fa094042f40eebb3ec86a2355667d537b124f4e88aee1d638f6ad06e2b3ea",
+    "targetUlid": "01M3CHC29Y2F8K1VF3T2SYJQCG"
+  }
+}

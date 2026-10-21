@@ -1,5 +1,6 @@
 "use client";
 
+import { clinicalToolAccessForStatus } from "@/components/mode-kit/use-clinical-tool-access";
 import { useEffect, useRef, useState } from "react";
 
 import type {
@@ -176,13 +177,16 @@ export function useUniversalSearch(args: {
   excludeDomains?: readonly UniversalSearchDomain[];
   limitPerDomain?: number;
 }): UniversalSearchState {
-  const { authorizationHeader } = useAuthSession();
+  const { authorizationHeader, status: authStatus } = useAuthSession();
+  // #3728: /api/search/universal refuses signed-out requests, so a signed-out reader sends none.
+  // #3728: only once access is known to be allowed; a request while sign-in is loading would be refused.
+  const signInRequired = clinicalToolAccessForStatus(authStatus ?? null) !== "allowed";
   const [result, setResult] = useState<UniversalSearchResult>({ groups: [], query: "", complete: true });
   const requestSeqRef = useRef(0);
   const prevAuthRef = useRef(authorizationHeader);
   const trimmedQuery = args.query.trim();
   const tooLong = args.enabled && trimmedQuery.length > universalSearchMaxQueryLength;
-  const active = args.enabled && !tooLong && trimmedQuery.length >= minQueryLength;
+  const active = args.enabled && !signInRequired && !tooLong && trimmedQuery.length >= minQueryLength;
   const limitPerDomain = args.limitPerDomain ?? 3;
   const excludedDomainsKey = universalSearchDomains.filter((domain) => args.excludeDomains?.includes(domain)).join(",");
   const authSignature = JSON.stringify(authorizationHeader ?? {});
