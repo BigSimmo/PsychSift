@@ -27579,7 +27579,7 @@ create policy "registrar_training_milestones_service_role_all"
   using (true)
   with check (true);
 
--- Teaching Assessments: visiting-supervisor EPA feedback links (20261021170000, #MAAXAX).
+-- Teaching Assessments: visiting-supervisor EPA feedback links (20261021190000, #MAAXAX).
 create table public.teaching_epa_magic_links (
   id uuid primary key default gen_random_uuid(),
   registrar_id uuid not null references auth.users(id) on delete cascade,

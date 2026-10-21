@@ -5,7 +5,7 @@
   "action": "update",
   "payload": {
     "id": "#MAAXAX",
-    "detail": "21 Oct 2026, Teaching and CME PR: durable store public.teaching_epa_magic_links (migration 20261021170000, drafted with owner approval; merge only after the owner's own yes), server routes /api/teaching/assessments/magic-links and the respond route on the durable store, doctor and supervisor screens labelled as feedback to copy into CLA, not an official RANZCP sign-off. Next: owner merges; then confirm live-drift passes, and keep /teaching/assessments/respond/* and its API open to signed-out visitors when the 1 Nov sign-in gate lands. Follow-ups: retire the old PUT registration route and the process-memory store once nothing uses them; consider a retention purge for completed or expired links.",
+    "detail": "21 Oct 2026, Teaching and CME PR: durable store public.teaching_epa_magic_links (migration 20261021190000, drafted with owner approval; merge only after the owner's own yes), server routes /api/teaching/assessments/magic-links and the respond route on the durable store, doctor and supervisor screens labelled as feedback to copy into CLA, not an official RANZCP sign-off. Next: owner merges; then confirm live-drift passes, and keep /teaching/assessments/respond/* and its API open to signed-out visitors when the 1 Nov sign-in gate lands. Follow-ups: retire the old PUT registration route and the process-memory store once nothing uses them; consider a retention purge for completed or expired links.",
     "baseRowFingerprint": "980c737d5bfb4e6259ac21968f6c42f805097ed2e33e098b1da3933500705a88",
     "targetUlid": "01M484CAW5MAAXAX35108YZ443"
   }
