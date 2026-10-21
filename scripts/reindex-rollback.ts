@@ -132,6 +132,17 @@ function supabaseRollbackStore(supabase: AdminClient): RollbackStore {
       });
       return [...new Set(versions.filter((value): value is string => Boolean(value)))];
     },
+    async hasGenerationSnapshot(documentId, generationId) {
+      const { count, error } = await supabase
+        .from("document_index_generation_snapshots")
+        .select("document_id", { count: "exact", head: true })
+        .eq("document_id", documentId)
+        .eq("index_generation_id", generationId)
+        .not("metadata", "is", null)
+        .not("quality", "is", null);
+      if (error) throw new Error(error.message);
+      return (count ?? 0) > 0;
+    },
     async repoint(documentId, expectedGeneration, targetGeneration) {
       const { data, error } = await supabase.rpc("rollback_document_index_generation", {
         p_document_id: documentId,

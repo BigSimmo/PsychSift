@@ -101,7 +101,8 @@ commit of that document. The script needs the `rollback_document_index_generatio
   enrichment state, extraction provenance and metrics) and the `document_index_quality` row,
   from snapshots taken as each generation is replaced. Owner-edited metadata such as the title
   is left alone. A generation committed before those snapshots existed is refused with
-  `target_snapshot_missing` rather than rolled back with mismatched details.
+  `target_snapshot_missing` rather than rolled back with mismatched details. The dry run
+  reports that refusal too, so a document it lists as ready will not be refused for it at apply.
 - `--apply` writes (it asks first unless `--yes` is given). It refuses a document with no
   previous committed generation, or whose previous generation has no chunks. The database
   function also refuses if the pointer moved since the dry run or an ingestion job for the

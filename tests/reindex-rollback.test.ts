@@ -20,6 +20,8 @@ type MemoryDocument = {
   generations: CommittedGeneration[];
   chunks: Record<string, number>;
   chunkerVersions?: Record<string, string[]>;
+  /** Generations without a complete snapshot; every other generation has one. */
+  missingSnapshots?: string[];
 };
 
 function memoryStore(documents: Record<string, MemoryDocument>) {
@@ -44,6 +46,9 @@ function memoryStore(documents: Record<string, MemoryDocument>) {
     },
     async chunkerVersions(documentId, generationId) {
       return documents[documentId]?.chunkerVersions?.[generationId] ?? [];
+    },
+    async hasGenerationSnapshot(documentId, generationId) {
+      return !(documents[documentId]?.missingSnapshots ?? []).includes(generationId);
     },
     repoint,
   };
@@ -103,6 +108,13 @@ describe("reindex rollback", () => {
     const { store, repoint } = memoryStore({ [DOC_A]: document });
     const [outcome] = await runReindexRollback(store, { kind: "documents", documentIds: [DOC_A] }, { apply: true });
     expect(outcome.refusal).toBe("previous_generation_has_no_chunks");
+    expect(repoint).not.toHaveBeenCalled();
+  });
+
+  it("refuses in the dry run when the previous generation has no snapshot to restore (#3732)", async () => {
+    const { store, repoint } = memoryStore({ [DOC_A]: { ...twoGenerations(), missingSnapshots: ["gen-old"] } });
+    const [outcome] = await runReindexRollback(store, { kind: "documents", documentIds: [DOC_A] }, { apply: true });
+    expect(outcome.refusal).toBe("target_snapshot_missing");
     expect(repoint).not.toHaveBeenCalled();
   });
 
