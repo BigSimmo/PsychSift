@@ -75,6 +75,7 @@ export type StorageCleanupJobUpdate = {
   metadata: { operation: string; storage_warnings: string[] };
   document_paths?: string[];
   image_paths?: string[];
+  document_title?: null;
 };
 
 // Audit R11: the DELETE route creates the storage_cleanup_jobs ledger row (with
@@ -108,6 +109,9 @@ export function buildStorageCleanupJobUpdate(args: {
   if (args.aborted) {
     update.document_paths = [];
     update.image_paths = [];
+  } else {
+    // Audit 2026-10-20 ING-A-05: the document row is gone, and its title can identify things.
+    update.document_title = null;
   }
   return update;
 }
