@@ -92,7 +92,7 @@ free real estate for ordering keys (see §2's critical property).
 ## 7. Generation-quality failure diagnostics (#231, metadata-only)
 
 - "Generation quality" is not one gate: `generatedAnswerQualityFailureReason`
-  (`src/lib/rag/rag-answer-quality-gate.ts`) is a 14-branch first-match-wins classifier, plus
+  (`src/lib/rag/rag-answer-quality-gate.ts`) is a first-match-wins classifier (16 failure reasons when counted on 2026-10-20), plus
   the post-finalize source-safe gates in `rag.ts` (`claim_support_high_risk_gap`,
   `material_source_governance_gap`, `numeric_band_coherence_gap`, `numeric_faithfulness_gap`)
   and the `finalizeRagAnswerQualityCore` gates.

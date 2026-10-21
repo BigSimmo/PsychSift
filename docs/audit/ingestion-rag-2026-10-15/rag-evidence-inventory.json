@@ -4,6 +4,19 @@
   "objective": "rag-source-ingestion-continuation-v1",
   "preparedAtUtc": "2026-10-14T15:57:43.4832618Z",
   "publicationState": "EXTERNAL_SANITISED_HANDOVER_ONLY_NO_GIT_OR_PR_ACTION",
+  "repositoryLandingCorrection": {
+    "recordedOn": "2026-10-20",
+    "source": "RAG and ingestion audit 2026-10-20, finding DOC-18",
+    "notLanded": [
+      "tests/answer-section-projector.test.ts",
+      "tests/fixtures/nhmrc-response18-consumer.json",
+      "tests/rag-nhmrc-delivery.test.ts",
+      "tests/rag-no-filter-published-original-context.test.ts",
+      "tests/registered-public-answer-no-filter.test.ts"
+    ],
+    "untestedLandedModule": "src/lib/registered-public-answer-options.ts",
+    "note": "These tests and the fixture were listed as evidence but never landed in the repository. Their source modules did land. registered-public-answer-options.ts has no test importer; a synthetic-fixture test is tracked in the outstanding-issues inbox. Read the files list with this correction."
+  },
   "sourceIdentity": {
     "originalCapturedCommit": "8237f6b81fabfb59e1842f6bb2e1d006cd79ee79",
     "reviewedCompositionBase": "4382217c3c61f2407d717e665cf9388c41ea2f5b",
@@ -157,7 +170,8 @@
         "availability": "ABSENT_FROM_HOSTED_DEPLOYMENT_SNAPSHOT_NOT_A_DELETION_INSTRUCTION"
       },
       "publicationDisposition": "PRIVATE_RECORDED_FIXTURE_DEPENDENCY_DO_NOT_PUBLISH_AS_IS",
-      "retainedLocation": "RAG_PACKET/after/tests/rag-nhmrc-delivery.test.ts"
+      "retainedLocation": "RAG_PACKET/after/tests/rag-nhmrc-delivery.test.ts",
+      "repositoryLandingStatus": "NOT LANDED (correction 2026-10-20): this file was never added to the repository; no commit on main adds it. The entry records the private evidence packet only."
     },
     {
       "path": "tests/fixtures/nhmrc-response18-consumer.json",
@@ -180,7 +194,8 @@
         "availability": "ABSENT_FROM_HOSTED_DEPLOYMENT_SNAPSHOT_NOT_A_DELETION_INSTRUCTION"
       },
       "publicationDisposition": "PRIVATE_RECORDED_FIXTURE_DEPENDENCY_DO_NOT_PUBLISH_AS_IS",
-      "retainedLocation": "RAG_PACKET/after/tests/fixtures/nhmrc-response18-consumer.json"
+      "retainedLocation": "RAG_PACKET/after/tests/fixtures/nhmrc-response18-consumer.json",
+      "repositoryLandingStatus": "NOT LANDED (correction 2026-10-20): this file was never added to the repository; no commit on main adds it. The entry records the private evidence packet only."
     },
     {
       "path": "src/components/clinical-dashboard/answer-section-projector.ts",
@@ -274,7 +289,8 @@
       "currentHostedSnapshot": {
         "availability": "ABSENT_FROM_HOSTED_DEPLOYMENT_SNAPSHOT_NOT_A_DELETION_INSTRUCTION"
       },
-      "publicationDisposition": "ROOT_LOCATES_RETAINED_TEST_AND_PUBLIC_SAFE_DEPENDENCIES"
+      "publicationDisposition": "ROOT_LOCATES_RETAINED_TEST_AND_PUBLIC_SAFE_DEPENDENCIES",
+      "repositoryLandingStatus": "NOT LANDED (correction 2026-10-20): this file was never added to the repository; no commit on main adds it. The entry records the private evidence packet only."
     },
     {
       "path": "src/app/api/answer/route.ts",
@@ -460,7 +476,8 @@
         "bytes": 7581,
         "availability": "PRESENT_IN_HOSTED_SOURCE_SNAPSHOT"
       },
-      "publicationDisposition": "SOURCE_CANDIDATE_ROOT_RECONCILES_WITH_PR_BASE"
+      "publicationDisposition": "SOURCE_CANDIDATE_ROOT_RECONCILES_WITH_PR_BASE",
+      "repositoryLandingStatus": "Landed, but no test in tests/ imports it (checked 2026-10-20); its planned tests did not land."
     },
     {
       "path": "tests/rag-no-filter-published-original-context.test.ts",
@@ -476,7 +493,8 @@
       "currentHostedSnapshot": {
         "availability": "ABSENT_FROM_HOSTED_DEPLOYMENT_SNAPSHOT_NOT_A_DELETION_INSTRUCTION"
       },
-      "publicationDisposition": "ROOT_LOCATES_RETAINED_TEST_AND_PUBLIC_SAFE_DEPENDENCIES"
+      "publicationDisposition": "ROOT_LOCATES_RETAINED_TEST_AND_PUBLIC_SAFE_DEPENDENCIES",
+      "repositoryLandingStatus": "NOT LANDED (correction 2026-10-20): this file was never added to the repository; no commit on main adds it. The entry records the private evidence packet only."
     },
     {
       "path": "tests/registered-public-answer-no-filter.test.ts",
@@ -492,7 +510,8 @@
       "currentHostedSnapshot": {
         "availability": "ABSENT_FROM_HOSTED_DEPLOYMENT_SNAPSHOT_NOT_A_DELETION_INSTRUCTION"
       },
-      "publicationDisposition": "ROOT_LOCATES_RETAINED_TEST_AND_PUBLIC_SAFE_DEPENDENCIES"
+      "publicationDisposition": "ROOT_LOCATES_RETAINED_TEST_AND_PUBLIC_SAFE_DEPENDENCIES",
+      "repositoryLandingStatus": "NOT LANDED (correction 2026-10-20): this file was never added to the repository; no commit on main adds it. The entry records the private evidence packet only."
     },
     {
       "path": "src/lib/answer-pilot-diagnostic.js",

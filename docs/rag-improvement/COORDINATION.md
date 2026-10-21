@@ -1,5 +1,12 @@
 # RAG improvement programme — coordination handover
 
+> **Status (2026-10-20): programme complete; kept as history.** Every packet in the
+> [HANDOVER status table](HANDOVER.md) has merged or been closed, and S8 onward stays gated on an owner
+> decision. This is no longer the operational board: open RAG work lives in
+> [`docs/outstanding-issues.md`](../outstanding-issues.md), and the rules live in
+> [`docs/rag-behaviour/`](../rag-behaviour/README.md). Code comments still cite its sections, so it stays in
+> place rather than moving to `docs/archive/`.
+
 **Status:** maintained coordinator context (2026-08-13). This file hands the **coordinator
 role** to a future chat: the session that dispatches worker sessions, drives their PRs to
 green, merges them, approves canaries, and keeps the programme moving. Worker sessions read
