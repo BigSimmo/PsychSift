@@ -150,6 +150,8 @@ export type SearchTelemetry = {
   search_cache_hit: boolean;
   search_total_latency_ms?: number;
   retrieval_phase_latencies_ms?: Record<string, number>;
+  /** Measurement only: start/finish offsets (ms from search start) of each sequential retrieval stage. */
+  retrieval_stage_timeline_ms?: RetrievalStageTiming[];
   shared_cache_hit?: boolean;
   shared_cache_status?: "hit" | "miss";
   shared_cache_miss_reason?: string | null;
@@ -177,6 +179,8 @@ export type SearchTelemetry = {
   text_variant_rpc_calls?: Record<string, number>;
   /** True when at least one lexical surface skipped its sibling variants. */
   text_variant_early_exit?: boolean;
+  /** Measurement only: one entry per lexical text-RPC variant (ran or skipped), in issue order. */
+  text_rpc_variant_timings?: TextRpcVariantTiming[];
   corpus_grounding?: CorpusGroundingVerdict;
   synthetic_similarity_count?: number;
   embedding_skipped: boolean;
@@ -260,3 +264,20 @@ export function retrievalPlanForQueryClass(queryClass?: RagQueryClass) {
       return "balanced_hybrid:chunks_fields_units_memory";
   }
 }
+
+/** Measurement-only record of one lexical text-RPC variant. Offsets are ms from the text stage start. */
+export type TextRpcVariantTiming = {
+  rpc: string;
+  variant_index: number;
+  role: "primary" | "follow_up" | "weak_or" | "corrected" | "relaxed";
+  ran: boolean;
+  skipped_reason?: string;
+  started_offset_ms: number | null;
+  finished_offset_ms: number | null;
+  rpc_ms: number | null;
+  row_count: number | null;
+  rpc_error?: boolean;
+};
+
+/** Measurement-only record of one sequential retrieval stage. Offsets are ms from search start. */
+export type RetrievalStageTiming = { stage: string; started_offset_ms: number; finished_offset_ms: number };
