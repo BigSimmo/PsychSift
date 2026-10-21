@@ -1,0 +1,465 @@
+{
+  "kind": "offline_paired_ocr_comparison",
+  "date": "2026-10-21",
+  "tested_product_head": "56b69dca2487c6f7e6123f7d39e0a520d7946fe6",
+  "recommendation": "Keep PDF_RASTER_TABLE_OCR default-off; limited real engagement and no demonstrated clinical-number superiority",
+  "cohort": {
+    "clinical_full_pages": 10,
+    "clinical_publication_families": 6,
+    "mixed_domain_benchmark_table_crops": 20,
+    "total_cases": 30,
+    "source_families": 26,
+    "authentic_field_scans": 0
+  },
+  "bounds": {
+    "ocr_page_seconds": 60,
+    "max_render_pixels": 4000000,
+    "outer_extraction_seconds": 100,
+    "max_producer_concurrency": 2
+  },
+  "actual_run": {
+    "unique_paired_cli_runs": 60,
+    "completed": 60,
+    "wall_seconds": 527.479,
+    "byte_identical_pairs": 29,
+    "accepted_enhanced_cases": 1,
+    "explicit_candidate_runtime_error_fallbacks": 3
+  },
+  "frozen_input_hashes": {
+    "manifest_sha256": "010ef92a7efb5098241a5ccc57a44c0f504b40a308846067f0b105fd0da9e015",
+    "truth_sha256": "9eb9fb53a7f35dba03fbf43b9d0c7effbf2dabf8dcd8757d27b53ef0045f25c6"
+  },
+  "primary_score": {
+    "actual_engagement_pages": 1,
+    "all_checks_correct_pages": {
+      "baseline": 0,
+      "enhanced": 1
+    },
+    "all_roster_checks": {
+      "baseline_passed": 39,
+      "both_fail": 140,
+      "both_pass": 39,
+      "checks": 180,
+      "enhanced_losses": 0,
+      "enhanced_passed": 40,
+      "enhanced_wins": 1
+    },
+    "by_engagement": {
+      "False": {
+        "baseline_passed": 34,
+        "both_fail": 140,
+        "both_pass": 34,
+        "checks": 174,
+        "enhanced_losses": 0,
+        "enhanced_passed": 34,
+        "enhanced_wins": 0
+      },
+      "True": {
+        "baseline_passed": 5,
+        "both_fail": 0,
+        "both_pass": 5,
+        "checks": 6,
+        "enhanced_losses": 0,
+        "enhanced_passed": 6,
+        "enhanced_wins": 1
+      }
+    },
+    "by_stratum": {
+      "benchmark_crop": {
+        "baseline_passed": 11,
+        "both_fail": 109,
+        "both_pass": 11,
+        "checks": 120,
+        "enhanced_losses": 0,
+        "enhanced_passed": 11,
+        "enhanced_wins": 0
+      },
+      "clinical_fullpage": {
+        "baseline_passed": 28,
+        "both_fail": 31,
+        "both_pass": 28,
+        "checks": 60,
+        "enhanced_losses": 0,
+        "enhanced_passed": 29,
+        "enhanced_wins": 1
+      }
+    },
+    "by_type": {
+      "numeric": {
+        "baseline_passed": 8,
+        "both_fail": 2,
+        "both_pass": 8,
+        "checks": 10,
+        "enhanced_losses": 0,
+        "enhanced_passed": 8,
+        "enhanced_wins": 0
+      },
+      "qualifier": {
+        "baseline_passed": 10,
+        "both_fail": 10,
+        "both_pass": 10,
+        "checks": 20,
+        "enhanced_losses": 0,
+        "enhanced_passed": 10,
+        "enhanced_wins": 0
+      },
+      "row_relation": {
+        "baseline_passed": 16,
+        "both_fail": 123,
+        "both_pass": 16,
+        "checks": 140,
+        "enhanced_losses": 0,
+        "enhanced_passed": 17,
+        "enhanced_wins": 1
+      },
+      "symbol_unit": {
+        "baseline_passed": 5,
+        "both_fail": 5,
+        "both_pass": 5,
+        "checks": 10,
+        "enhanced_losses": 0,
+        "enhanced_passed": 5,
+        "enhanced_wins": 0
+      }
+    },
+    "freeze_verified": true,
+    "interpretation": "Bounded offline sample; inspect exact regressions and source/layout/engagement evidence; no clinical sign-off",
+    "manifest_sha256": "010ef92a7efb5098241a5ccc57a44c0f504b40a308846067f0b105fd0da9e015",
+    "observations_sha256": "75d600ea7f9dbeb1bdcd663c707bf717360a8a9bf9691626fa733a33140f971e",
+    "pages": [
+      {
+        "baseline": 4,
+        "engaged": false,
+        "enhanced": 4,
+        "page_id": "who-htn-p40",
+        "paired": "tie",
+        "source_family": "57f6376d5c9bc4ea6c44873625547c8a5443d5a6ad8c8c422733681563db05fb",
+        "stratum": "clinical_fullpage",
+        "total": 6
+      },
+      {
+        "baseline": 3,
+        "engaged": false,
+        "enhanced": 3,
+        "page_id": "iadpsg-p3",
+        "paired": "tie",
+        "source_family": "53ab7af43f9e9f5c90f064f9cca7777a1cdd13bde8a1186f51e1929a0408764b",
+        "stratum": "clinical_fullpage",
+        "total": 6
+      },
+      {
+        "baseline": 2,
+        "engaged": false,
+        "enhanced": 2,
+        "page_id": "iadpsg-p5",
+        "paired": "tie",
+        "source_family": "53ab7af43f9e9f5c90f064f9cca7777a1cdd13bde8a1186f51e1929a0408764b",
+        "stratum": "clinical_fullpage",
+        "total": 6
+      },
+      {
+        "baseline": 2,
+        "engaged": false,
+        "enhanced": 2,
+        "page_id": "nice-ng133-p16",
+        "paired": "tie",
+        "source_family": "e943ba2bdc31c772bb3b1332dfbcd36887e2f4308ac0f4163745f2c2fe6b78ec",
+        "stratum": "clinical_fullpage",
+        "total": 6
+      },
+      {
+        "baseline": 2,
+        "engaged": false,
+        "enhanced": 2,
+        "page_id": "nice-ng133-p21",
+        "paired": "tie",
+        "source_family": "e943ba2bdc31c772bb3b1332dfbcd36887e2f4308ac0f4163745f2c2fe6b78ec",
+        "stratum": "clinical_fullpage",
+        "total": 6
+      },
+      {
+        "baseline": 5,
+        "engaged": true,
+        "enhanced": 6,
+        "page_id": "nice-ng133-p24",
+        "paired": "win",
+        "source_family": "e943ba2bdc31c772bb3b1332dfbcd36887e2f4308ac0f4163745f2c2fe6b78ec",
+        "stratum": "clinical_fullpage",
+        "total": 6
+      },
+      {
+        "baseline": 1,
+        "engaged": false,
+        "enhanced": 1,
+        "page_id": "cdc-gbs-p16",
+        "paired": "tie",
+        "source_family": "8819eb6a23b4bffb949b27199cc26518cf7a2f4cf68a9f7642a2ec0d62d7f067",
+        "stratum": "clinical_fullpage",
+        "total": 6
+      },
+      {
+        "baseline": 1,
+        "engaged": false,
+        "enhanced": 1,
+        "page_id": "cdc-gbs-p23",
+        "paired": "tie",
+        "source_family": "8819eb6a23b4bffb949b27199cc26518cf7a2f4cf68a9f7642a2ec0d62d7f067",
+        "stratum": "clinical_fullpage",
+        "total": 6
+      },
+      {
+        "baseline": 3,
+        "engaged": false,
+        "enhanced": 3,
+        "page_id": "uspstf-p2",
+        "paired": "tie",
+        "source_family": "57b0d389fc692ecbee12edf341aae361c0875eda14fce997401faa4f58a2336d",
+        "stratum": "clinical_fullpage",
+        "total": 6
+      },
+      {
+        "baseline": 5,
+        "engaged": false,
+        "enhanced": 5,
+        "page_id": "who-acs-p10",
+        "paired": "tie",
+        "source_family": "5005890cdc3ec2531d62aefaada7e5f2a9ac8adf5d75ec94ffe35fe133fe7f20",
+        "stratum": "clinical_fullpage",
+        "total": 6
+      },
+      {
+        "baseline": 1,
+        "engaged": false,
+        "enhanced": 1,
+        "page_id": "PMC1626454",
+        "paired": "tie",
+        "source_family": "PMC1626454",
+        "stratum": "benchmark_crop",
+        "total": 6
+      },
+      {
+        "baseline": 1,
+        "engaged": false,
+        "enhanced": 1,
+        "page_id": "PMC2753619",
+        "paired": "tie",
+        "source_family": "PMC2753619",
+        "stratum": "benchmark_crop",
+        "total": 6
+      },
+      {
+        "baseline": 1,
+        "engaged": false,
+        "enhanced": 1,
+        "page_id": "PMC2759935",
+        "paired": "tie",
+        "source_family": "PMC2759935",
+        "stratum": "benchmark_crop",
+        "total": 6
+      },
+      {
+        "baseline": 1,
+        "engaged": false,
+        "enhanced": 1,
+        "page_id": "PMC2838834",
+        "paired": "tie",
+        "source_family": "PMC2838834",
+        "stratum": "benchmark_crop",
+        "total": 6
+      },
+      {
+        "baseline": 0,
+        "engaged": false,
+        "enhanced": 0,
+        "page_id": "PMC3519711",
+        "paired": "tie",
+        "source_family": "PMC3519711",
+        "stratum": "benchmark_crop",
+        "total": 6
+      },
+      {
+        "baseline": 0,
+        "engaged": false,
+        "enhanced": 0,
+        "page_id": "PMC3826085",
+        "paired": "tie",
+        "source_family": "PMC3826085",
+        "stratum": "benchmark_crop",
+        "total": 6
+      },
+      {
+        "baseline": 1,
+        "engaged": false,
+        "enhanced": 1,
+        "page_id": "PMC3907710",
+        "paired": "tie",
+        "source_family": "PMC3907710",
+        "stratum": "benchmark_crop",
+        "total": 6
+      },
+      {
+        "baseline": 3,
+        "engaged": false,
+        "enhanced": 3,
+        "page_id": "PMC4003957",
+        "paired": "tie",
+        "source_family": "PMC4003957",
+        "stratum": "benchmark_crop",
+        "total": 6
+      },
+      {
+        "baseline": 0,
+        "engaged": false,
+        "enhanced": 0,
+        "page_id": "PMC4172848",
+        "paired": "tie",
+        "source_family": "PMC4172848",
+        "stratum": "benchmark_crop",
+        "total": 6
+      },
+      {
+        "baseline": 0,
+        "engaged": false,
+        "enhanced": 0,
+        "page_id": "PMC4517499",
+        "paired": "tie",
+        "source_family": "PMC4517499",
+        "stratum": "benchmark_crop",
+        "total": 6
+      },
+      {
+        "baseline": 0,
+        "engaged": false,
+        "enhanced": 0,
+        "page_id": "PMC4682394",
+        "paired": "tie",
+        "source_family": "PMC4682394",
+        "stratum": "benchmark_crop",
+        "total": 6
+      },
+      {
+        "baseline": 1,
+        "engaged": false,
+        "enhanced": 1,
+        "page_id": "PMC4776821",
+        "paired": "tie",
+        "source_family": "PMC4776821",
+        "stratum": "benchmark_crop",
+        "total": 6
+      },
+      {
+        "baseline": 0,
+        "engaged": false,
+        "enhanced": 0,
+        "page_id": "PMC4840965",
+        "paired": "tie",
+        "source_family": "PMC4840965",
+        "stratum": "benchmark_crop",
+        "total": 6
+      },
+      {
+        "baseline": 1,
+        "engaged": false,
+        "enhanced": 1,
+        "page_id": "PMC5134617",
+        "paired": "tie",
+        "source_family": "PMC5134617",
+        "stratum": "benchmark_crop",
+        "total": 6
+      },
+      {
+        "baseline": 0,
+        "engaged": false,
+        "enhanced": 0,
+        "page_id": "PMC5198506",
+        "paired": "tie",
+        "source_family": "PMC5198506",
+        "stratum": "benchmark_crop",
+        "total": 6
+      },
+      {
+        "baseline": 0,
+        "engaged": false,
+        "enhanced": 0,
+        "page_id": "PMC5332562",
+        "paired": "tie",
+        "source_family": "PMC5332562",
+        "stratum": "benchmark_crop",
+        "total": 6
+      },
+      {
+        "baseline": 0,
+        "engaged": false,
+        "enhanced": 0,
+        "page_id": "PMC5402779",
+        "paired": "tie",
+        "source_family": "PMC5402779",
+        "stratum": "benchmark_crop",
+        "total": 6
+      },
+      {
+        "baseline": 0,
+        "engaged": false,
+        "enhanced": 0,
+        "page_id": "PMC5577841",
+        "paired": "tie",
+        "source_family": "PMC5577841",
+        "stratum": "benchmark_crop",
+        "total": 6
+      },
+      {
+        "baseline": 1,
+        "engaged": false,
+        "enhanced": 1,
+        "page_id": "PMC5679144",
+        "paired": "tie",
+        "source_family": "PMC5679144",
+        "stratum": "benchmark_crop",
+        "total": 6
+      },
+      {
+        "baseline": 0,
+        "engaged": false,
+        "enhanced": 0,
+        "page_id": "PMC5897438",
+        "paired": "tie",
+        "source_family": "PMC5897438",
+        "stratum": "benchmark_crop",
+        "total": 6
+      }
+    ],
+    "paired_pages": {
+      "tie": 29,
+      "win": 1
+    },
+    "regressions": [],
+    "roster_pages": 30,
+    "source_families": 26,
+    "status_counts": {
+      "baseline": {
+        "completed": 30
+      },
+      "enhanced": {
+        "completed": 30
+      }
+    },
+    "truth_sha256": "9eb9fb53a7f35dba03fbf43b9d0c7effbf2dabf8dcd8757d27b53ef0045f25c6",
+    "warnings": []
+  },
+  "reference_limitations": {
+    "known_checks": [
+      "who-acs-p10-c6",
+      "cdc-gbs-p23-c5",
+      "cdc-gbs-p23-c6"
+    ],
+    "detail": "WHO expected within rather than visible in; CDC references dehyphenate source line wraps. Primary truth and denominator preserved; these are reference/presentation limitations, not established semantic OCR failures."
+  },
+  "posthoc_single_reference_wording_correction": {
+    "baseline_passed": 40,
+    "enhanced_passed": 41,
+    "checks": 180,
+    "note": "WHO wording correction only; exploratory sensitivity, not primary score"
+  },
+  "evidence_scope": "Selected exact text and adjudicated relationships; not whole-document accuracy or clinical signoff",
+  "publication_scope": "Report and aggregate counts only; originals, scans, full text, per-check adjudications and scratch tools retained privately"
+}
