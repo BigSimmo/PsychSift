@@ -128,7 +128,7 @@ async function main() {
 
   // Audit 2026-10-20 ING-A-02 / EVAL-09: the open-jobs preview above is the 25 oldest jobs, so a job
   // stranded on its final attempt can sit behind old failed jobs unseen. Count it directly, along
-  // with indexed documents that have no searchable chunks and chunks missing their embedding.
+  // with indexed documents that have no searchable chunks. (Embeddings are NOT NULL, so no missing-embedding count.)
   const nowIso = new Date().toISOString();
   const integrityCounts = await Promise.all([
     safeDerivedCount("jobs_stranded_final_attempt", async () => {
@@ -149,10 +149,7 @@ async function main() {
         .eq("status", "indexed")
         .eq("chunk_count", 0),
     ),
-    safeCount(
-      "chunks_missing_embedding",
-      supabase.from("document_chunks").select("id", { count: "exact", head: true }).is("embedding", null),
-    ),
+    // document_chunks.embedding is NOT NULL, so a missing-embedding count would always be 0; not checked.
   ]);
   const integrityProblems = integrityCounts
     .filter((item) => Number(item.count ?? 0) > 0)
