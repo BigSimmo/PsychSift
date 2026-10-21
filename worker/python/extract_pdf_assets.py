@@ -28,7 +28,7 @@ except Exception as exc:
 # parser defect can be traced to the documents it touched. Bump the date and label whenever a
 # change alters the text, tables or images produced for the same PDF. 2026-09-16 is PR #2810,
 # which replaced line-major table text with table_aware_page_text (#GJHKYC).
-EXTRACTOR_VERSION = "2026-10-20.embedded-image-ceiling-v10"
+EXTRACTOR_VERSION = "2026-10-21.merged-cell-provenance-v11"
 TABLE_STRATEGY = "table_aware_page_text"
 
 # IDX-H6: caps on serialized table size. Raised from the previous 80/120-row and 8000-char
@@ -1443,12 +1443,21 @@ def text_grid_rows(text):
 def extract_table_payload(table):
     try:
         rows = table.extract()
-        cleaned = [[clean_cell(cell) for cell in row] for row in rows if any(clean_cell(cell) for cell in row)]
+        cleaned = []
+        merged_cells = []
+        for row in rows:
+            if not any(clean_cell(cell) for cell in row):
+                continue
+            # PyMuPDF returns None (not "") for a cell covered by a merged span, so
+            # these coordinates are confirmed merge provenance, not merely blank cells.
+            merged_cells.extend([len(cleaned), column] for column, cell in enumerate(row) if cell is None)
+            cleaned.append([clean_cell(cell) for cell in row])
         column_count = max((len(row) for row in cleaned), default=0)
         column_ranges = _extract_table_column_ranges(table, column_count)
         return {
             "text": table_rows_to_markdown(rows),
             "rows": cleaned[:MAX_TABLE_ROWS],
+            "merged_cells": [cell for cell in merged_cells if cell[0] < MAX_TABLE_ROWS],
             "columns": table_columns_from_rows(rows)[:24],
             "accessible_markdown": table_rows_to_markdown(rows),
             "row_count": len(cleaned),
@@ -1461,6 +1470,7 @@ def extract_table_payload(table):
         return {
             "text": "",
             "rows": [],
+            "merged_cells": [],
             "columns": [],
             "accessible_markdown": "",
             "row_count": 0,
@@ -1740,6 +1750,7 @@ def likely_table_candidates(page, rejected_rects=None):
                     "table_role": role,
                     "table_confidence": table_candidate_confidence(label, title, table_text, row_count, column_count),
                     "table_rows": payload.get("rows", []),
+                    "table_merged_cells": payload.get("merged_cells", []),
                     "table_columns": payload.get("columns", []),
                     "accessible_table_markdown": payload.get("accessible_markdown") or table_text,
                     "row_count": row_count,
@@ -1875,7 +1886,14 @@ def merge_related_table_candidates(candidates, page_rect):
             rect = merge_rects([item["rect"] for item in group], page_rect)
             merged_text = "\n\n".join(item.get("table_text") or "" for item in group).strip()
             merged_rows = []
+            merged_cells = []
+            row_breaks = []
             for item in group:
+                offset = len(merged_rows)
+                if offset:
+                    # Each grouped table starts a new section: label carry-down must not cross it.
+                    row_breaks.append(offset)
+                merged_cells.extend([row + offset, column] for row, column in item.get("table_merged_cells") or [])
                 merged_rows.extend(item.get("table_rows") or [])
             candidate = {
                 **candidate,
@@ -1888,6 +1906,8 @@ def merge_related_table_candidates(candidates, page_rect):
                 ),
                 "table_confidence": max(item.get("table_confidence") or 0 for item in group),
                 "table_rows": merged_rows[:MAX_TABLE_ROWS],
+                "table_merged_cells": [cell for cell in merged_cells if cell[0] < MAX_TABLE_ROWS],
+                "table_row_breaks": [row for row in row_breaks if row < MAX_TABLE_ROWS],
                 "table_columns": (merged_rows[0] if merged_rows else candidate.get("table_columns") or [])[:24],
                 "accessible_table_markdown": table_rows_to_markdown(merged_rows) if merged_rows else merged_text,
                 "row_count": sum(item.get("row_count") or 0 for item in group),
@@ -2365,6 +2385,8 @@ def _extract_document(document, output_dir, budget, identity):
             detected_rect = table_candidate["rect"]
             edge_rect, edge_info = extend_table_rect_for_edge_content(page, detected_rect)
             table_rows = list(table_candidate.get("table_rows") or [])
+            table_merged_cells = [list(cell) for cell in table_candidate.get("table_merged_cells") or []]
+            table_row_breaks = list(table_candidate.get("table_row_breaks") or [])
             column_count = int(table_candidate.get("column_count") or (len(table_rows[0]) if table_rows else 0) or 0)
             recovered_rows = []
             unassigned_edge_text = []
@@ -2382,6 +2404,18 @@ def _extract_document(document, output_dir, budget, identity):
                 recovered_rows = top_rows + bottom_rows
                 if recovered_rows:
                     combined_rows = top_rows + table_rows + bottom_rows
+                    table_merged_cells = [
+                        [row + len(top_rows), column]
+                        for row, column in table_merged_cells
+                        if row + len(top_rows) < MAX_TABLE_ROWS
+                    ]
+                    # Rows recovered past the detected edge (e.g. across a page break) start new segments.
+                    table_row_breaks = sorted(
+                        {row + len(top_rows) for row in table_row_breaks}
+                        | ({len(top_rows)} if top_rows else set())
+                        | ({len(top_rows) + len(table_rows)} if bottom_rows else set())
+                    )
+                    table_row_breaks = [row for row in table_row_breaks if row < MAX_TABLE_ROWS]
                     recovered_truncated = len(combined_rows) > MAX_TABLE_ROWS
                     table_rows = combined_rows[:MAX_TABLE_ROWS]
             rows_truncated = (
@@ -2412,6 +2446,8 @@ def _extract_document(document, output_dir, budget, identity):
                 "table_role": table_candidate.get("table_role"),
                 "table_confidence": table_candidate.get("table_confidence"),
                 "table_rows": table_rows,
+                "table_merged_cells": table_merged_cells,
+                "table_row_breaks": table_row_breaks,
                 "table_columns": table_candidate.get("table_columns") or [],
                 "accessible_table_markdown": accessible,
                 "row_count": len(table_rows) if table_rows else table_candidate.get("row_count"),

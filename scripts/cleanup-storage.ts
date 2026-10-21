@@ -270,6 +270,8 @@ async function main() {
         storage_removed: documentCleanup.removed + imageCleanup.removed,
         last_error: warnings.length ? warnings.join("; ") : null,
         completed_at: nextStatus === "completed" ? new Date().toISOString() : null,
+        // Only rows whose document is gone reach here (R11 guard above); drop the title (ING-A-05).
+        document_title: null,
         metadata: cleanupJobMetadata(job.metadata, "storage_cleanup_retry", { storage_warnings: warnings }),
       })
       .eq("id", job.id);
