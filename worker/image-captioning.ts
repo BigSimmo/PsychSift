@@ -420,12 +420,13 @@ export async function resolveCaptionTasks(
   const ownerId = job.documents.owner_id;
   if (ownerId && cacheIdentities.size > 0) {
     attemptForJob(job.id).check();
-    await deleteImageCaptionCacheForDocument(supabase, {
+    const pruneError = await deleteImageCaptionCacheForDocument(supabase, {
       ownerId,
       documentId: job.document_id,
       keepIdentities: Array.from(cacheIdentities),
       signal: dataPlaneAbortSignal(attemptForJob(job.id).signal),
     });
+    if (pruneError) console.warn(`Caption cache prune failed for document ${job.document_id}: ${pruneError}`);
   }
   return resolvedTasks;
 }
