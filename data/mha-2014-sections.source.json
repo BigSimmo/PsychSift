@@ -9,7 +9,7 @@
     "documentSha256": "921a5174712405a8298ec350e1be275e0664c62092519d87ae3886a135dd2d0c",
     "extractorVersion": 1,
     "counts": {
-      "sections": 110
+      "sections": 111
     }
   },
   "sections": [
@@ -84,6 +84,12 @@
       "heading": "Providing information contained in referral to person referred",
       "text": "(1)The practitioner must provide the person who is referred with the information referred to in section 41(a) and (b) and, unless subsection (2) applies, the information referred to in section 41(c).\n(2)The practitioner cannot provide the person who is referred any information referred to in section 41(c) that was provided to the practitioner by someone other than the person on condition that the information not be provided to the person.\n(3)The information provided under subsection (1) must be in the approved form.",
       "textSha256": "af1d6a0901d1f0e075a7323ae530a4ad8910d9a9e78bdce5fcfd2bfec087714e"
+    },
+    {
+      "section": "44",
+      "heading": "Period of referral made under s. 26(2) or (3)(a)",
+      "text": "A referral made under section 26(2) or (3)(a) remains in force for 72 hours from the time when the referral was made unless the referral is extended under section 45.",
+      "textSha256": "870e9ea7be1f5d88b124081fc9c6a68efc99214985bbd8bd86e2c19901d9c397"
     },
     {
       "section": "45",

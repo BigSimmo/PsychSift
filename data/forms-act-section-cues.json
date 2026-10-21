@@ -85,6 +85,12 @@
       "title": "Electroconvulsive therapy (ECT) approval",
       "sections": ["194", "195", "196", "197", "198", "199", "410", "412", "415"],
       "basis": "Part 14 Division 1 ('Electroconvulsive therapy') sets when ECT can be performed for each patient group (ss 194 to 199), and Part 21 Division 6 ('Electroconvulsive therapy approvals') governs the Tribunal's approval: the application (s 410), what the Tribunal must be satisfied of (s 412) and its decision (s 415)."
+    },
+    {
+      "id": "referral-expiry",
+      "title": "When a referral for examination expires",
+      "sections": ["44"],
+      "basis": "Pinned for the MHA clock's Form 1A limit (ledger #MT3PZ9, owner decision 21 Oct 2026): s 44 sets when a referral made under s 26(2) or (3)(a) expires, which s 45 then allows to be extended outside a metropolitan area."
     }
   ]
 }
