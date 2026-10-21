@@ -426,6 +426,16 @@ html[data-mode-band] [data-testid="chrome-safe-area-top"] {
   background: var(--mode-band-surface, var(--background));
 }
 
+/* A tinted top bar is opaque, so it needs no frost. The glass scrim would
+   otherwise wash its top with the page colour and blur the band's first rows
+   below it, which read as a white haze over the band at desktop widths (owner
+   report, 21 Oct 2026). Work bands drop it the same way (work-mode.css);
+   phones already drop it everywhere. */
+html[data-mode-band] .edge-glass-header-backdrop,
+.universal-header[data-clinical-band] .edge-glass-header-backdrop {
+  display: none;
+}
+
 /* Under a band a page's own title is kept for screen readers only. A wrapper
    left holding nothing but that heading must not still take a gap in its
    grid, or the page starts a row lower than the band's tabs suggest. The
