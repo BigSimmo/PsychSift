@@ -584,6 +584,15 @@ describe("Now: the footer group", () => {
     expect(screen.queryByTestId("on-call-now-footer")).toBeNull();
     expect(screen.queryByRole("heading", { name: "More for this shift" })).toBeNull();
   });
+
+  it("links the shift tools to the MHA clock on the Clinical side", () => {
+    // Cross-links between Clinical and Work (owner decision, 21 Oct 2026).
+    render(<OnCallHome now={IN_HOURS} />);
+    const tools = screen.getByTestId("on-call-now-shift-tools");
+    const clock = within(tools).getByTestId("on-call-now-mha-clock");
+    expect(clock).toHaveAttribute("href", "/forms/clock");
+    expect(clock).toHaveTextContent("MHA clock");
+  });
 });
 
 describe("Now: what is not on it", () => {
