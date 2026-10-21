@@ -305,15 +305,18 @@ export function sourceGovernanceWarnings(args: {
   }
 
   const severityRank = { danger: 0, warning: 1, info: 2 } satisfies Record<SourceGovernanceWarning["severity"], number>;
-  return warnings
-    .sort(
-      (left, right) =>
-        severityRank[left.severity] - severityRank[right.severity] ||
-        // OCR_TEXT is a general caution; within a severity it must not crowd document-specific warnings out of the cap.
-        Number(left.code === SOURCE_GOVERNANCE_CODES.OCR_TEXT) -
-          Number(right.code === SOURCE_GOVERNANCE_CODES.OCR_TEXT),
-    )
-    .slice(0, args.limit ?? 8);
+  // OCR_TEXT is a general caution: it is grouped into ONE warning (approved wording, first OCR
+  // source) that holds a reserved slot, so the cap can never drop it and it never crowds
+  // document-specific warnings out.
+  const ocrWarning = warnings.find((warning) => warning.code === SOURCE_GOVERNANCE_CODES.OCR_TEXT);
+  const limit = args.limit ?? 8;
+  const others = warnings
+    .filter((warning) => warning.code !== SOURCE_GOVERNANCE_CODES.OCR_TEXT)
+    .sort((left, right) => severityRank[left.severity] - severityRank[right.severity]);
+  if (!ocrWarning || limit <= 0) return others.slice(0, limit);
+  return [...others.slice(0, limit - 1), ocrWarning].sort(
+    (left, right) => severityRank[left.severity] - severityRank[right.severity],
+  );
 }
 
 function plural(count: number, singular: string, pluralValue = `${singular}s`) {

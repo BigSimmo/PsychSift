@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  OCR_TEXT_WARNING_MESSAGE,
   frontendSourceGovernanceWarnings,
   groupSourceGovernanceWarnings,
   hasDangerSourceGovernanceWarning,
@@ -144,8 +145,51 @@ describe("source governance warnings", () => {
       table_facts: [],
     });
     const warnings = sourceGovernanceWarnings({ results: [...ocrSources, cautioned] });
-    expect(warnings).toHaveLength(8);
+    expect(warnings.length).toBeLessThanOrEqual(8);
     expect(warnings.map((warning) => warning.code)).toContain("document_caution");
+    expect(warnings.filter((warning) => warning.code === "ocr_text_source")).toHaveLength(1);
+  });
+
+  it("never lets the warning cap drop the grouped OCR caution", () => {
+    const base = {
+      ...result().source_metadata!,
+      document_status: "current" as const,
+      extraction_quality: "good" as const,
+    };
+    const crowded = Array.from({ length: 10 }, (_, index) =>
+      result({
+        document_id: `doc-crowd-${index}`,
+        title: `Crowded source ${index}`,
+        source_metadata: { ...base, jurisdiction: "New York", publisher: `Overseas publisher ${index}` },
+        indexing_quality: {
+          document_id: `doc-crowd-${index}`,
+          quality_score: 0.2,
+          extraction_quality: "good",
+          metrics: { ocr_page_count: 0 },
+          issues: [],
+        },
+        table_facts: [],
+      }),
+    );
+    const ocrSource = result({
+      document_id: "doc-ocr",
+      source_metadata: base,
+      indexing_quality: {
+        document_id: "doc-ocr",
+        quality_score: 0.9,
+        extraction_quality: "good",
+        metrics: { ocr_page_count: 2, ocr_coverage: 0.2 },
+        issues: [],
+      },
+      table_facts: [],
+    });
+    for (const limit of [8, 3, 1]) {
+      const warnings = sourceGovernanceWarnings({ results: [...crowded, ocrSource], limit });
+      expect(warnings).toHaveLength(limit);
+      const ocr = warnings.filter((warning) => warning.code === "ocr_text_source");
+      expect(ocr).toHaveLength(1);
+      expect(ocr[0]?.message).toBe(OCR_TEXT_WARNING_MESSAGE);
+    }
   });
 
   it("adds no OCR caution for a source with no OCR pages", () => {
