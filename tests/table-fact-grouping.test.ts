@@ -28,7 +28,7 @@ describe("table-fact grouping keeps every matched row per chunk", () => {
       fact("b", "chunk-1", 0.4),
       fact("c", "chunk-1", 0.6),
     ]);
-    expect(match?.tableFacts?.map((row) => row.id)).toEqual(["a", "b", "c"]);
+    expect(match?.tableFacts?.map((row) => row.id)).toEqual(["a", "c", "b"]);
     expect(match?.textRank).toBe(0.9);
     expect(match?.hybridScore).toBeCloseTo(0.66 + 0.9 * 0.3);
   });
@@ -38,6 +38,14 @@ describe("table-fact grouping keeps every matched row per chunk", () => {
     for (const id of ["b", "c", "d", "e", "f", "g"]) rows.push(fact(id, "chunk-1", 0.3));
     const [match] = groupTableFactMatches(rows);
     expect(match?.tableFacts?.map((row) => row.id)).toEqual(["a", "b", "c", "d", "e"]);
+  });
+
+  it("keeps a higher-ranked late fact when the cap is already full", () => {
+    const rows = ["a", "b", "c", "d", "e"].map((id) => fact(id, "chunk-1", 0.2));
+    rows.push(fact("z", "chunk-1", 0.9));
+    const [match] = groupTableFactMatches(rows);
+    expect(match?.tableFacts?.map((row) => row.id)).toEqual(["z", "a", "b", "c", "d"]);
+    expect(match?.textRank).toBe(0.9);
   });
 
   it("keeps chunks apart and leaves scores unchanged for a single fact", () => {

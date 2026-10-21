@@ -1755,18 +1755,12 @@ export async function loadChunksForSignalMatches(args: {
     })
     .filter(Boolean) as SearchResult[];
 }
-/**
- * Retrieves document chunks containing table facts relevant to a query.
- *
- * @param args - Retrieval options, including query variants, scope filters, result limit, and optional telemetry.
- * @returns Search results containing the highest-ranked table facts grouped by source chunk.
- */
 const maxTableFactsPerChunk = 5;
 
 /**
  * One signal match per source chunk. Audit 2026-10-20 RAG-A-02: a lower-ranked fact for a chunk
  * was dropped with the lower score, so only about one structured row survived per chunk. Every
- * fact is now kept (deduplicated by id, up to five, in arrival order) while the chunk keeps the
+ * fact is now kept (deduplicated by id, the five highest-ranked, ties in arrival order) while the chunk keeps the
  * score of its best fact, so scores and ordering are unchanged.
  */
 export function groupTableFactMatches(data: TableFactRpcRow[]) {
@@ -1780,7 +1774,11 @@ export function groupTableFactMatches(data: TableFactRpcRow[]) {
     const tableFacts =
       fact.id && existingFacts.some((existing) => existing.id === fact.id)
         ? existingFacts
-        : [...existingFacts, tableFact].slice(0, maxTableFactsPerChunk);
+        : [...existingFacts, tableFact]
+            // Keep the highest-ranked facts (stable sort keeps arrival order for ties), so a better
+            // row from a sibling variant is never cut while still setting the chunk's score.
+            .sort((a, b) => Number(b.text_rank ?? 0) - Number(a.text_rank ?? 0))
+            .slice(0, maxTableFactsPerChunk);
     const next: ChunkSignalMatch = {
       chunkId: fact.source_chunk_id,
       similarity: Math.min(0.94, 0.62 + Math.min(textRank, 1) * 0.3),
@@ -1797,6 +1795,12 @@ export function groupTableFactMatches(data: TableFactRpcRow[]) {
   return Array.from(grouped.values());
 }
 
+/**
+ * Retrieves document chunks containing table facts relevant to a query.
+ *
+ * @param args - Retrieval options, including query variants, scope filters, result limit, and optional telemetry.
+ * @returns Search results containing the highest-ranked table facts grouped by source chunk.
+ */
 export async function searchTableFactCandidates(args: {
   supabase: ReturnType<typeof createAdminClient>;
   query: string;
