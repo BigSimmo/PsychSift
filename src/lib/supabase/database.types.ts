@@ -6127,6 +6127,10 @@ export type Database = {
         };
         Returns: Database["public"]["Tables"]["public_source_versions"]["Row"];
       };
+      rollback_document_index_generation: {
+        Args: { p_document_id: string; p_expected_generation: string; p_target_generation: string };
+        Returns: Json;
+      };
       transition_public_source_version: {
         Args: { p_activation_event_id: string; p_target_lifecycle: string; p_version_id: string };
         Returns: Database["public"]["Tables"]["public_source_versions"]["Row"];
