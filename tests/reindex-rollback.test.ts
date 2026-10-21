@@ -5,7 +5,6 @@ import {
   collectCommittedGenerations,
   planReindexRollback,
   parseRollbackArgs,
-  ROLLBACK_APPLY_ACK_FLAG,
   runReindexRollback,
   type CommittedGeneration,
   type RollbackScope,
@@ -158,29 +157,13 @@ describe("parseRollbackArgs", () => {
     expect(() => parseRollbackArgs(["--committed-after", "yesterday"])).toThrow(/Not a timestamp/);
   });
 
-  it("refuses --apply without the metadata-not-restored acknowledgement", () => {
-    expect(() => parseRollbackArgs(["--document-id", DOC_A, "--apply"])).toThrow(
-      /documents\.metadata and document_index_quality.*PR 3732/,
-    );
-    expect(() => parseRollbackArgs(["--document-id", DOC_A, "--apply", "--yes"])).toThrow(/Refusing --apply/);
-  });
-
-  it("allows --apply with the acknowledgement flag", () => {
-    const args = parseRollbackArgs(["--document-id", DOC_A, "--apply", ROLLBACK_APPLY_ACK_FLAG]);
-    expect(args.apply).toBe(true);
-  });
-
-  it("does not need the acknowledgement for a dry run", () => {
+  it("allows --apply without the retired metadata acknowledgement flag (#3732)", () => {
+    expect(parseRollbackArgs(["--document-id", DOC_A, "--apply"]).apply).toBe(true);
     expect(parseRollbackArgs(["--document-id", DOC_A]).apply).toBe(false);
   });
 
   it("parses committed-after and apply", () => {
-    const args = parseRollbackArgs([
-      "--committed-after=2026-10-21T00:00:00Z",
-      "--apply",
-      ROLLBACK_APPLY_ACK_FLAG,
-      "--yes",
-    ]);
+    const args = parseRollbackArgs(["--committed-after=2026-10-21T00:00:00Z", "--apply", "--yes"]);
     expect(args).toMatchObject({
       apply: true,
       yes: true,

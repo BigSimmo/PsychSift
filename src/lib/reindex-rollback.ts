@@ -184,18 +184,6 @@ export function formatRollbackOutcome(outcome: RollbackOutcome, apply: boolean) 
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/**
- * Temporary guard: a rollback repoints documents.metadata.index_generation_id but does not
- * restore the rest of documents.metadata or document_index_quality, which keep describing the
- * newer generation. Remove this guard once PR 3732 restores them.
- */
-export const ROLLBACK_APPLY_ACK_FLAG = "--i-understand-metadata-not-restored";
-
-export const ROLLBACK_APPLY_REFUSAL =
-  `Refusing --apply: a rollback currently leaves documents.metadata and document_index_quality ` +
-  `describing the wrong (newer) generation until PR 3732 lands. Re-run with ${ROLLBACK_APPLY_ACK_FLAG} ` +
-  `to apply anyway.`;
-
 export function parseRollbackArgs(argv: string[]) {
   const valuesFor = (name: string) => {
     const values: string[] = [];
@@ -227,7 +215,6 @@ export function parseRollbackArgs(argv: string[]) {
       : { kind: "chunker-version", chunkerVersion: chunkerVersion as string };
   const [limitValue] = valuesFor("limit");
   const apply = argv.includes("--apply");
-  if (apply && !argv.includes(ROLLBACK_APPLY_ACK_FLAG)) throw new Error(ROLLBACK_APPLY_REFUSAL);
   return {
     scope,
     apply,
