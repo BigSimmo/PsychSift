@@ -13,7 +13,7 @@ import {
   type FocusEvent as ReactFocusEvent,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
-import { createPortal } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -1364,6 +1364,9 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
     // Ready-gate: page-owned slots mark `data-composer-slot-ready` only after
     // their React segment hydrates. Adopting the slot before that injects a
     // display:contents host into still-unhydrated RSC HTML (React #418).
+    // True only for the synchronous call from this effect body, where React is
+    // already committing and `flushSync` is not allowed.
+    let syncingFromEffect = false;
     const syncTarget = () => {
       if (!searchComposerVisible || !host || !mediaQuery) {
         syncReserve(false);
@@ -1380,12 +1383,22 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
           retryTimeout = null;
         }
         portalFailureStartedAt = null;
-        if (host.parentNode !== slot) slot.appendChild(host);
+        const adopting = host.parentNode !== slot;
+        if (adopting) slot.appendChild(host);
         // Portal host keeps height via `:not(:empty)`; drop the pending marker.
         setModeHomeComposerReservePending(slot, false);
-        setDesktopComposerPortalHost(host);
-        setDesktopComposerPortalActive(true);
-        setDesktopComposerPortalFallback(false);
+        const activatePortal = () => {
+          setDesktopComposerPortalHost(host);
+          setDesktopComposerPortalActive(true);
+          setDesktopComposerPortalFallback(false);
+        };
+        // Observer/timer/media callbacks run outside React. Adopting a slot there
+        // inserts the still-empty host; commit the portal's composer in the same
+        // task so no frame paints the slot without it. An empty host keeps the
+        // slot's reserved height but not its width, so the shrink-to-fit phone
+        // home column painted narrower for a frame and then widened (a CLS shift).
+        if (adopting && !syncingFromEffect) flushSync(activatePortal);
+        else activatePortal();
       } else {
         host.parentNode?.removeChild(host);
         setDesktopComposerPortalActive(false);
@@ -1434,7 +1447,12 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
     if (!searchComposerVisible) {
       queueMicrotask(() => !cancelled && resetPortal());
     } else {
-      syncTarget();
+      syncingFromEffect = true;
+      try {
+        syncTarget();
+      } finally {
+        syncingFromEffect = false;
+      }
       mediaQuery?.addEventListener("change", syncTarget);
     }
     return () => {
