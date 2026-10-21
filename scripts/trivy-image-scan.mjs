@@ -108,7 +108,15 @@ export const DEFAULT_TRIVY_SUPPRESSIONS_PATH = fileURLToPath(
 );
 const SUPPRESSION_KEYS = ["image", "package", "installed", "cve", "justification", "remove_when"];
 
-/** Load and validate the exact-match suppression list (security/trivy-suppressions.json). */
+/**
+ * @typedef {{ image: string; package: string; installed: string; cve: string; justification: string; remove_when: string; [key: string]: unknown }} TrivySuppression
+ */
+
+/**
+ * Load and validate the exact-match suppression list (security/trivy-suppressions.json).
+ * @param {string} text
+ * @returns {TrivySuppression[]}
+ */
 export function parseTrivySuppressions(text) {
   const doc = JSON.parse(text);
   if (!doc || doc.schema_version !== 1 || !Array.isArray(doc.suppressions)) {
@@ -128,6 +136,10 @@ export function parseTrivySuppressions(text) {
 /**
  * Remove findings that exactly match (image, package, installed version, CVE). Anything else,
  * including the same CVE at a different installed version, stays counted.
+ * @param {any} report
+ * @param {string} imageRef
+ * @param {Array<{ image: string; package: string; installed: string; cve: string }>} suppressions
+ * @returns {{ report: any; suppressed: any[] }}
  */
 export function applyTrivySuppressions(report, imageRef, suppressions) {
   const keys = new Set(
