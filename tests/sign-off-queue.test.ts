@@ -38,10 +38,11 @@ import { conceptReviewState } from "@/lib/formulation-review-status";
  * rows is the bug. Forms are empty only because every review row is signed.
  */
 const EXPECTED: Record<SignOffFamilyId, number> = {
-  // Measured 2026-10-06. Form 2, the last drafted form, now has a complete
-  // sign-off, so this family is empty. The empty-family test below still fails
-  // if the review file has an unsigned form and the reader reports none.
-  "wa-mha-forms": 0,
+  // Every form was signed by 2026-10-06 (Form 2 last). The 20 Oct 2026 clinical
+  // content audit edited eight signed forms (1A, 3D, 4B, 5A, 5B, 5C, 11D, 12C),
+  // which went back to drafted until the owner signs each one again, so 8 wait.
+  // The empty-family test below still fails if the reader and review file disagree.
+  "wa-mha-forms": 8,
   // The twelve mechanisms and the non-Indigenous concepts were signed off.
   // Six Indigenous concepts and guides remain, held for Aboriginal governance review.
   formulation: 6,
@@ -54,8 +55,9 @@ const EXPECTED: Record<SignOffFamilyId, number> = {
   // 514 placeholders remain; the 71 written items and 18 universals (including the 22
   // corrected on 15 Oct) were signed off by "Psych Sift" (owner decision, 16 Oct 2026). The
   // reworded DID possession-form item went back to clinician-review-pending (owner ruling,
-  // 17 Oct 2026 22:12 AWST), so 515 wait.
-  specifiers: 515,
+  // 17 Oct 2026 22:12 AWST), and the 20 Oct 2026 clinical content audit reset three edited
+  // ARFID rows to clinician-review-pending, so 518 wait.
+  specifiers: 518,
   // The 27 signable records with references (including the 5 edited on #3510 and the 15 Oct
   // corrections) have now been signed off by "Psych Sift". The 26 records stamped on 17 Oct
   // without the interactive review tool went back to needs_review (owner ruling, 17 Oct 2026
@@ -198,10 +200,12 @@ describe("clinical sign-off queue", () => {
     // should be argued with first.
     const nativeStatusFor = (id: SignOffFamilyId) =>
       queue.families.find((family) => family.id === id)!.rows[0]!.nativeStatus;
-    // Forms have no waiting row. Their vocabulary is still the review file's own word.
+    // Forms have waiting rows again since the 20 Oct 2026 audit reset eight edited forms.
+    // Their vocabulary is still the review file's own word.
     expect(
       (formsContentReview as { forms: { status: string }[] }).forms.every((entry) => entry.status === "reviewed"),
-    ).toBe(true);
+    ).toBe(false);
+    expect(nativeStatusFor("wa-mha-forms")).toBe("drafted");
     expect(nativeStatusFor("formulation")).toBe("clinical_review_required");
     expect(nativeStatusFor("differentials")).toContain("validation_status: unverified");
     expect(nativeStatusFor("dictionary")).toContain("clinicalApproval.status: pending");
@@ -262,8 +266,8 @@ describe("clinical sign-off queue", () => {
     expect(forms, "wa-mha-forms family is missing").toBeDefined();
     expect(
       forms!.rows.map((row) => row.id),
-      "every form, including the revised Form 2, now has a complete sign-off",
-    ).toEqual([]);
+      "the eight forms the 20 Oct 2026 clinical content audit edited await sign-off again",
+    ).toEqual(["form-1a", "form-3d", "form-4b", "form-5a", "form-5b", "form-5c", "form-11d", "form-12c"]);
 
     const dead = forms!.rows
       .filter((row) => row.href !== null)
@@ -312,14 +316,17 @@ describe("clinical sign-off queue", () => {
 
 const EXPECTED_SIGNED_BY_DOMAIN: Record<SignOffDomainId, { signed: number; waiting: number }> = {
   "today-rules": { signed: 3, waiting: 0 },
-  "wa-mha-forms": { signed: 54, waiting: 0 },
-  "mha-sections": { signed: 110, waiting: 0 },
+  // The 20 Oct 2026 clinical content audit edited eight signed forms and sections 14 and 76,
+  // which went back to drafted until the owner signs each one again.
+  "wa-mha-forms": { signed: 46, waiting: 8 },
+  "mha-sections": { signed: 108, waiting: 2 },
   "mha-timeframes": { signed: 9, waiting: 0 },
   "cp-standards": { signed: 7, waiting: 1 },
   "cultural-notes": { signed: 14, waiting: 9 },
   differentials: { signed: 11, waiting: 232 },
   formulation: { signed: 58, waiting: 6 },
-  specifiers: { signed: 88, waiting: 515 },
+  // Three edited ARFID rows went back to clinician-review-pending on 20 Oct 2026.
+  specifiers: { signed: 85, waiting: 518 },
   therapy: { signed: 179, waiting: 26 },
   dictionary: { signed: 28, waiting: 401 },
   // 93 sources carry a structured, current attestation. Two OCP standards are marked
@@ -369,16 +376,16 @@ describe("clinical & rule sign-off ledger", () => {
   });
 
   it("derives the overall totals, signer breakdown, and categorized waiting counts from the domain rows", () => {
-    expect(ledger.totalSigned).toBe(674);
-    expect(ledger.totalWaiting).toBe(1203);
+    expect(ledger.totalSigned).toBe(661);
+    expect(ledger.totalWaiting).toBe(1216);
     expect(ledger.totalGoverned).toBe(1877);
     expect(ledger.signedByTotals).toEqual({
       "Josh Simpson": 3,
-      "Psych Sift": 195,
-      PsychSift: 476,
+      "Psych Sift": 183,
+      PsychSift: 475,
     });
     expect(ledger.waitingByCategory).toEqual({
-      signableNow: 30,
+      signableNow: 43,
       indigenousHold: 26,
       awaitingPrerequisites: 582,
       awaitingTool: 565,

@@ -88,7 +88,7 @@ export const sharedHomePresentation = {
   tools: {
     title: "Clinical Tools",
     subtitle: "Clinical tools and applications.",
-    suggestions: ["renal calculator", "dose converter", "clinical forms"],
+    suggestions: ["PHQ-9", "AUDIT-C", "clinical forms"],
   },
   calculators: {
     title: "Clinical Calculators",

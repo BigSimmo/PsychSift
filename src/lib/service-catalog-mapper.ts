@@ -51,6 +51,10 @@ function displayField(value: string | undefined | null, maxLength = CARD_MAX): s
   return compacted || undefined;
 }
 
+function isLegacyUnverified(service: CatalogService): boolean {
+  return service.verification_status === "legacy_unverified";
+}
+
 function confidenceTone(confidence: string): ServiceChipTone {
   if (confidence === "High") return "success";
   if (confidence === "Medium") return "warning";
@@ -234,7 +238,9 @@ function buildStatusChips(service: CatalogService): ServiceStatusChip[] {
     chips.push({ label: acuityLabel(flag), tone: acuityChipTone(flag) });
   }
 
-  if (service.confidence) {
+  // A legacy record's confidence is the old import's own field, not a verification result, so it
+  // carries no confidence chip; "Verify before use" below covers it.
+  if (service.confidence && !isLegacyUnverified(service)) {
     chips.push({ label: `${service.confidence} confidence`, tone: confidenceTone(service.confidence) });
   }
 
@@ -480,7 +486,9 @@ export function catalogToServiceRecord(service: CatalogService): ServiceRecord {
     criteria: buildCriteria(service),
     verification: {
       locallyVerified: service.verification_status === "locally_confirmed",
-      confidence: (service.confidence as "High" | "Medium" | "Low" | undefined) ?? "Unknown",
+      confidence: isLegacyUnverified(service)
+        ? "Unknown"
+        : ((service.confidence as "High" | "Medium" | "Low" | undefined) ?? "Unknown"),
       notes: verificationNotes.length > 0 ? verificationNotes : ["Verify locally before use"],
       availabilityStatus: service.availability_status ?? null,
       lastVerifiedAt: service.last_verified ?? null,

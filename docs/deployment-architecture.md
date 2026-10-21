@@ -162,17 +162,14 @@ Two places read the key without naming this environment:
 - `authenticated-live-tests.yml` already uses `Database / production` (the
   owner as required reviewer). A job takes one environment, so it stays there,
   and the owner adds the key to `Database / production` as well.
-- The `Deployment boot smoke` step of the `Build` job in `ci.yml`. That job
-  also runs on pull requests, so it cannot name a `main`-only environment. The
-  step boots the production build made earlier in the same job, so it cannot
-  move into a small separate job without passing the build output between jobs
-  or building twice, and it also runs on `release/**` branches and on manual
-  runs from any branch. `scripts/deployment-boot-smoke.mjs` refuses to start
-  without the key. **Deleting the repository secret therefore turns the `Build`
-  job red on every push to `main`.** Until a follow-up change stops this step
-  needing the real key, the repository secret has to stay, and F-21 is only
-  partly closed: the scheduled jobs read the environment copy, but a
-  pull-request branch can still reach the repository copy.
+- The `Deployment boot smoke` step of the `Build` job in `ci.yml`. Since
+  2026-10-20 it no longer reads any secret: it passes placeholder values,
+  because it only boots the production build and asks it for its project
+  identity, and it runs branch code on manual runs (audit CC-05, where a manual
+  run on a Grok branch on 2026-10-18 received the real key). **The owner can now
+  delete the repository copy of `SUPABASE_SERVICE_ROLE_KEY`**, after checking
+  the copies in `production-secrets` and `Database / production` exist. That
+  closes F-21.
 
 When a secret exists at both levels, GitHub gives the environment copy
 precedence, so the jobs above use the environment copy as soon as this change

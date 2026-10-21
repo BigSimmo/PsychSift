@@ -97,6 +97,7 @@ type TopicSeed = {
 
 const ACCESSED_ON = "2026-08-18";
 const REPLACEMENT_ACCESSED_ON = "2026-09-26";
+const AUDIT_ACCESSED_ON = "2026-10-20";
 const REVIEW = {
   status: "source-linked",
   checkedOn: ACCESSED_ON,
@@ -235,13 +236,17 @@ export const dictionarySources = [
     region: "Australia",
     accessedOn: ACCESSED_ON,
   },
+  // Replaced the Commonwealth "Rights and responsibilities in mental health care" page, which no
+  // longer exists (clinical content audit R7-F-11, 2026-10-20). Capacity is s 15, informed consent
+  // s 16, involuntary treatment orders ss 21-22, and least restrictive care and involvement in
+  // decision-making are Charter Principles 4, 5 and 12 in Schedule 1.
   {
-    id: "health-mental-rights",
-    title: "Rights and responsibilities in mental health care",
-    organisation: "Australian Government Department of Health, Disability and Ageing",
-    url: "https://www1.health.gov.au/internet/publications/publishing.nsf/Content/pub-sqps-rights-toc~pub-sqps-rights-4",
+    id: "wa-mental-health-act-2014",
+    title: "Mental Health Act 2014 (WA), including Schedule 1: Charter of Mental Health Care Principles",
+    organisation: "Parliamentary Counsel's Office, Western Australia",
+    url: "https://www.legislation.wa.gov.au/legislation/prod/filestore.nsf/FileURL/mrdoc_48919.htm/$FILE/Mental%20Health%20Act%202014%20-%20%5B02-b0-02%5D.html?OpenElement",
     region: "Australia",
-    accessedOn: ACCESSED_ON,
+    accessedOn: AUDIT_ACCESSED_ON,
   },
   {
     id: "who-safety-planning",
@@ -258,6 +263,56 @@ export const dictionarySources = [
     url: "https://www.nice.org.uk/guidance/CG103/chapter/context",
     region: "International",
     accessedOn: ACCESSED_ON,
+  },
+  // Per-entry sources that define the term itself, replacing topic pages that did not
+  // (clinical content audit R7-F-11, read 2026-10-20).
+  {
+    id: "healthdirect-ocd",
+    title: "Obsessive-compulsive disorder (OCD)",
+    organisation: "Healthdirect Australia",
+    url: "https://www.healthdirect.gov.au/obsessive-compulsive-disorder-ocd",
+    region: "Australia",
+    accessedOn: AUDIT_ACCESSED_ON,
+  },
+  {
+    id: "mesh-anti-anxiety-agents",
+    title: "Anti-Anxiety Agents (entry term: Anxiolytics) — Medical Subject Headings",
+    organisation: "U.S. National Library of Medicine",
+    url: "https://www.ncbi.nlm.nih.gov/mesh/68014151",
+    region: "International",
+    accessedOn: AUDIT_ACCESSED_ON,
+  },
+  {
+    id: "mesh-attention",
+    title: "Attention (entry term: Mental Concentration) — Medical Subject Headings",
+    organisation: "U.S. National Library of Medicine",
+    url: "https://www.ncbi.nlm.nih.gov/mesh/68001288",
+    region: "International",
+    accessedOn: AUDIT_ACCESSED_ON,
+  },
+  {
+    id: "mesh-irritable-mood",
+    title: "Irritable Mood — Medical Subject Headings",
+    organisation: "U.S. National Library of Medicine",
+    url: "https://www.ncbi.nlm.nih.gov/mesh/68007508",
+    region: "International",
+    accessedOn: AUDIT_ACCESSED_ON,
+  },
+  {
+    id: "mesh-anhedonia",
+    title: "Anhedonia — Medical Subject Headings",
+    organisation: "U.S. National Library of Medicine",
+    url: "https://www.ncbi.nlm.nih.gov/mesh/68059445",
+    region: "International",
+    accessedOn: AUDIT_ACCESSED_ON,
+  },
+  {
+    id: "nice-depression-adults",
+    title: "Depression in adults: treatment and management (NG222), recommendations",
+    organisation: "National Institute for Health and Care Excellence",
+    url: "https://www.nice.org.uk/guidance/ng222/chapter/Recommendations",
+    region: "International",
+    accessedOn: AUDIT_ACCESSED_ON,
   },
 ] as const satisfies readonly DictionarySource[];
 
@@ -801,7 +856,7 @@ const topicSeeds = [
     slug: "documentation-law-and-ethics",
     title: "Documentation, law and ethics",
     description: "Terms used in decision-making, lawful care, formulation and clinical documentation.",
-    sourceId: "health-mental-rights",
+    sourceId: "wa-mental-health-act-2014",
     related: ["community-and-models-of-care", "assessment-and-measurement"],
     comparisons: [["clinical-formulation", "risk-assessment"]],
     entries: [
@@ -917,6 +972,15 @@ const entrySourceIds: Readonly<Record<string, readonly string[]>> = {
   "structured-clinical-interview": ["columbia-scid"],
   "screening-instrument": ["aci-cognitive-screening", "healthdirect-mmse"],
   "rating-scale": ["amhocn-nocc-measures", "nsw-health-mh-documentation"],
+  // Matched to each page's own definition on 2026-10-20 (clinical content audit R7-F-11).
+  anxiolytic: ["mesh-anti-anxiety-agents"],
+  compulsion: ["healthdirect-ocd"],
+  concentration: ["mesh-attention"],
+  irritability: ["mesh-irritable-mood"],
+  anhedonia: ["mesh-anhedonia"],
+  "behavioural-activation": ["nice-depression-adults"],
+  "clinical-formulation": ["nsw-health-mh-documentation"],
+  "risk-assessment": ["nsw-health-mh-documentation"],
 };
 
 const topicEntrySlugs = new Map(

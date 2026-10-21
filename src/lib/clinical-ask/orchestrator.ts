@@ -1,9 +1,4 @@
-import {
-  applyClarificationAnswers,
-  clarificationsFor,
-  identifierShapeWarning,
-  projectConfirmedContext,
-} from "@/lib/clinical-ask/context";
+import { applyClarificationAnswers, clarificationsFor, projectConfirmedContext } from "@/lib/clinical-ask/context";
 import type {
   ClinicalAskDependencies,
   ClinicalAskEvidence,
@@ -15,6 +10,7 @@ import type {
 import { annotateEvidenceCoverage, assessEvidenceSufficiency } from "@/lib/clinical-ask/evidence-sufficiency";
 import { clinicalAskModeProfile } from "@/lib/clinical-ask/mode-profiles";
 import { governClinicalAskDraft, publicClinicalAskEvidence } from "@/lib/clinical-ask/response-governance";
+import { clinicalAskRequestPatientDetail } from "@/lib/clinical-question-patient-check-server";
 import type { RetrievalAccessScope } from "@/lib/owner-scope";
 import { clinicalAskRequestSchema } from "@/lib/validation/clinical-ask-request";
 
@@ -57,15 +53,6 @@ async function withAbort<T>(operation: Promise<T>, signal: AbortSignal): Promise
   } finally {
     signal.removeEventListener("abort", onAbort);
   }
-}
-
-function identifierInput(request: ClinicalAskRequest) {
-  const contextValues = Object.values(request.confirmedContext).flatMap((value) =>
-    Array.isArray(value) ? value : value ? [value] : [],
-  );
-  return [request.question, ...contextValues, ...Object.values(request.clarificationAnswers)]
-    .filter((value): value is string => typeof value === "string")
-    .some(identifierShapeWarning);
 }
 
 export async function runClinicalAsk(
@@ -112,7 +99,8 @@ export async function runClinicalAsk(
         validated.data.clarificationAnswers,
       ),
     };
-    if (identifierInput(projectedRequest)) {
+    // Answer's patient-detail check, before any provider call (audit ARCH-06).
+    if (clinicalAskRequestPatientDetail(projectedRequest)) {
       return finish(
         failed(projectedRequest, "identifiable_input_blocked", "Remove identifying details before using Clinical Ask."),
       );

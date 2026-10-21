@@ -7,13 +7,10 @@
   "forms": [
     {
       "code": "1A",
-      "status": "reviewed",
+      "status": "drafted",
       "sections": ["26", "36", "40", "41", "42", "43", "44"],
       "contextualSections": ["25", "31", "37", "39", "45", "46", "547"],
-      "basis": "Drafted from Mental Health Act 2014 (WA) s 26, s 36, s 40, s 41, s 42, s 43, s 44 with s 25, s 31, s 37, s 39, s 45, s 46, s 547 as context, and from the approved Form 1A as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Psych Sift",
-      "reviewedAt": "2026-09-26T17:20:51.637Z",
-      "reviewedContentSha256": "eb950d3c48dba095ef61d7b0645709d90316ed475b5eb6602b670e62e6e07ad1"
+      "basis": "Drafted from Mental Health Act 2014 (WA) s 26, s 36, s 40, s 41, s 42, s 43, s 44 with s 25, s 31, s 37, s 39, s 45, s 46, s 547 as context, and from the approved Form 1A as listed on the Office of the Chief Psychiatrist register."
     },
     {
       "code": "1A attachment",
@@ -77,13 +74,10 @@
     },
     {
       "code": "3D",
-      "status": "reviewed",
+      "status": "drafted",
       "sections": ["61"],
       "contextualSections": ["62", "63", "69"],
-      "basis": "Drafted from Mental Health Act 2014 (WA) s 61 with s 62, s 63, s 69 as context, and from the approved Form 3D as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Psych Sift",
-      "reviewedAt": "2026-09-26T17:20:51.637Z",
-      "reviewedContentSha256": "302c105b548a4248246905d2bb839cec01295b0edbea5c09ee2d4688f27ffb58"
+      "basis": "Drafted from Mental Health Act 2014 (WA) s 61 with s 62, s 63, s 69 as context, and from the approved Form 3D as listed on the Office of the Chief Psychiatrist register."
     },
     {
       "code": "3E",
@@ -107,13 +101,10 @@
     },
     {
       "code": "4B",
-      "status": "reviewed",
+      "status": "drafted",
       "sections": ["152"],
       "contextualSections": ["148", "150"],
-      "basis": "Drafted from Mental Health Act 2014 (WA) s 152 with s 148, s 150 as context, and from the approved Form 4B as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Psych Sift",
-      "reviewedAt": "2026-09-26T17:20:51.637Z",
-      "reviewedContentSha256": "8db3f7db90766bb5f8faf1774501c19f985b4f97c9342f95528ac0c19e7545dc"
+      "basis": "Drafted from Mental Health Act 2014 (WA) s 152 with s 148, s 150 as context, and from the approved Form 4B as listed on the Office of the Chief Psychiatrist register."
     },
     {
       "code": "4C",
@@ -147,33 +138,24 @@
     },
     {
       "code": "5A",
-      "status": "reviewed",
+      "status": "drafted",
       "sections": ["55", "56", "61", "72", "75", "76"],
       "contextualSections": ["25", "114", "115", "116", "117", "120", "123", "131"],
-      "basis": "Drafted from Mental Health Act 2014 (WA) s 55, s 56, s 61, s 72, s 75, s 76 with s 25, s 114, s 115, s 116, s 117, s 120, s 123, s 131 as context, and from the approved Form 5A as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Psych Sift",
-      "reviewedAt": "2026-09-26T17:20:51.637Z",
-      "reviewedContentSha256": "97a7ed35ee582dd764fee035ce0238afec82e3ffeb8046f69c45c279351b2e07"
+      "basis": "Drafted from Mental Health Act 2014 (WA) s 55, s 56, s 61, s 72, s 75, s 76 with s 25, s 114, s 115, s 116, s 117, s 120, s 123, s 131 as context, and from the approved Form 5A as listed on the Office of the Chief Psychiatrist register."
     },
     {
       "code": "5B",
-      "status": "reviewed",
+      "status": "drafted",
       "sections": ["121"],
       "contextualSections": ["118", "120"],
-      "basis": "Drafted from Mental Health Act 2014 (WA) s 121 with s 118, s 120 as context, and from the approved Form 5B as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Psych Sift",
-      "reviewedAt": "2026-09-26T17:20:51.637Z",
-      "reviewedContentSha256": "97cd3fb2701fc2817ccc9a9811e95909a424c4adafd111c83f777f1b13bf989e"
+      "basis": "Drafted from Mental Health Act 2014 (WA) s 121 with s 118, s 120 as context, and from the approved Form 5B as listed on the Office of the Chief Psychiatrist register."
     },
     {
       "code": "5C",
-      "status": "reviewed",
+      "status": "drafted",
       "sections": ["122"],
       "contextualSections": ["115", "135", "137"],
-      "basis": "Drafted from Mental Health Act 2014 (WA) s 122 with s 115, s 135, s 137 as context, and from the approved Form 5C as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Psych Sift",
-      "reviewedAt": "2026-09-26T17:20:51.637Z",
-      "reviewedContentSha256": "151a61fe17b7e05a6e5fb1556ce2500cdf5d461195222440372a097643d4960a"
+      "basis": "Drafted from Mental Health Act 2014 (WA) s 122 with s 115, s 135, s 137 as context, and from the approved Form 5C as listed on the Office of the Chief Psychiatrist register."
     },
     {
       "code": "5D",
@@ -457,13 +439,10 @@
     },
     {
       "code": "11D",
-      "status": "reviewed",
+      "status": "drafted",
       "sections": ["222"],
       "contextualSections": [],
-      "basis": "Drafted from Mental Health Act 2014 (WA) s 222, and from the approved Form 11D as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Psych Sift",
-      "reviewedAt": "2026-09-26T17:20:51.637Z",
-      "reviewedContentSha256": "147ea97578a2ecca6093a6b129979c9f05641470cceeb987f38f81b0da91569a"
+      "basis": "Drafted from Mental Health Act 2014 (WA) s 222, and from the approved Form 11D as listed on the Office of the Chief Psychiatrist register."
     },
     {
       "code": "11E",
@@ -517,13 +496,10 @@
     },
     {
       "code": "12C",
-      "status": "reviewed",
+      "status": "drafted",
       "sections": ["262"],
       "contextualSections": ["261"],
-      "basis": "Drafted from Mental Health Act 2014 (WA) s 262 with s 261 as context, and from the approved Form 12C as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Psych Sift",
-      "reviewedAt": "2026-09-26T17:20:51.637Z",
-      "reviewedContentSha256": "3b202a3de5fb63fbc4139e35b72a1d694fbcd96ab825fc9dc6e5b179049c02f7"
+      "basis": "Drafted from Mental Health Act 2014 (WA) s 262 with s 261 as context, and from the approved Form 12C as listed on the Office of the Chief Psychiatrist register."
     },
     {
       "code": "12C attachment",

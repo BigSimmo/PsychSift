@@ -5,11 +5,11 @@
     "actVersion": "02-b0-02",
     "actAsAt": "2025-09-25",
     "sourceUrl": "https://www.legislation.wa.gov.au/legislation/prod/filestore.nsf/FileURL/mrdoc_48919.htm/$FILE/Mental%20Health%20Act%202014%20-%20%5B02-b0-02%5D.html?OpenElement",
-    "generatedAt": "2026-09-27T09:40:53.447Z",
+    "generatedAt": "2026-10-20T17:47:17.606Z",
     "counts": {
       "sections": 110,
-      "reviewed": 110,
-      "drafted": 0,
+      "reviewed": 108,
+      "drafted": 2,
       "pending": 0
     }
   },
@@ -17,12 +17,9 @@
     {
       "section": "14",
       "title": "Capacity of child to make decisions",
-      "summary": "A child (a person under 18 years of age) is presumed to not have capacity to make a treatment decision unless the child has sufficient maturity and understanding to make the decision having regard to the criteria in s 15.",
-      "status": "reviewed",
-      "sourceTextSha256": "a8faee7535560b29ff6d4a67e23114d7b2354c4ff5aa3bcebafe4d8f58b0f49f",
-      "reviewedBy": "Psych Sift",
-      "reviewedAt": "2026-10-15T23:43:09.721Z",
-      "reviewedContentSha256": "c0723d10714ea3517654ea585fb15101e61bbda6f352fa6afa47f8c5da67c443"
+      "summary": "For the purposes of the Act, a child (a person under 18 years of age) is presumed not to have the capacity to make a decision about a matter relating to himself or herself unless the child is shown to have that capacity. If the child does not have that capacity, the child's parent or guardian may make the decision on the child's behalf.",
+      "status": "drafted",
+      "sourceTextSha256": "04db223bf0f2c06db2f5d7c612456d6bf9067d41e83146c73d599afdd5358408"
     },
     {
       "section": "25",
@@ -277,12 +274,9 @@
     {
       "section": "76",
       "title": "Confirmation of community treatment order",
-      "summary": "A community treatment order must be confirmed within 72 hours of being made — by another psychiatrist, or if none is reasonably available by another medical practitioner or an authorised mental health practitioner. The confirmation is in the approved form with the time, the reasons and the confirming practitioner's details. The supervising psychiatrist must tell the person whether it was confirmed and, if it was, file it and give them a copy. The order ceases to be in force if it is not confirmed in time.",
-      "status": "reviewed",
-      "sourceTextSha256": "1cb53d9cee55cfac44e41cf4a10cd5b8edd80cf323edbfcd1e6cc4701658faf5",
-      "reviewedBy": "PsychSift",
-      "reviewedAt": "2026-09-26T17:21:22.283Z",
-      "reviewedContentSha256": "014ebfa9839439edd4f417fe618896621fcb5352469ffd51f095eb19f0896aef"
+      "summary": "A community treatment order made under s 75 must be confirmed within 72 hours of being made — by another psychiatrist, or if none is reasonably available by another medical practitioner or an authorised mental health practitioner. The confirmation is in the approved form with the time, the reasons and the confirming practitioner's details. The supervising psychiatrist must tell the person whether it was confirmed and, if it was, file it and give them a copy. The order ceases to be in force if it is not confirmed in time.",
+      "status": "drafted",
+      "sourceTextSha256": "1cb53d9cee55cfac44e41cf4a10cd5b8edd80cf323edbfcd1e6cc4701658faf5"
     },
     {
       "section": "89",
