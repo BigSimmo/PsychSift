@@ -80,12 +80,12 @@ describe("contentReviewSchedule", () => {
     expect(contentReviewSchedule({ ...base, referenceDate: at("2027-05-14") }).state).toBe("due");
     expect(contentReviewSchedule({ ...base, referenceDate: at("2028-01-01") }).state).toBe("due");
     expect(contentReviewNoticeCopy(contentReviewSchedule({ ...base, referenceDate: at("2027-05-20") }))).toEqual({
-      lead: "Review overdue",
+      lead: "Next review overdue",
       detail: "It was due on",
       dateIso: "2027-05-14",
     });
     expect(contentReviewNoticeCopy(contentReviewSchedule({ ...base, referenceDate: at("2027-04-20") }))).toEqual({
-      lead: "Review due soon",
+      lead: "Next review due soon",
       detail: "Due by",
       dateIso: "2027-05-14",
     });
@@ -116,7 +116,7 @@ describe("contentReviewSchedule", () => {
     expect(schedule.dueOn).toBe("2027-05-14");
     expect(isReviewDueNow(schedule)).toBe(true);
     expect(contentReviewNoticeCopy(schedule)).toEqual({
-      lead: "Review due now",
+      lead: "Re-review needed",
       detail: "A guideline this record cites changed on",
       dateIso: "2026-11-14",
     });

@@ -24,7 +24,7 @@ describe("ContentReviewNotice", () => {
     render(<ContentReviewNotice review={{ kind: "medication", lastReviewedAt: "2026-05-10" }} />);
     const notice = screen.getByTestId("content-review-notice");
     expect(notice.getAttribute("data-review-state")).toBe("due_soon");
-    expect(notice.textContent).toBe("Review due soon. Due by 10/05/2027.");
+    expect(notice.textContent).toBe("Next review due soon. Due by 10/05/2027.");
     // The date goes through DateDisplay, like every other clinician-facing date.
     expect(notice.querySelector("time")?.getAttribute("dateTime")).toBe("2027-05-10");
   });
@@ -37,7 +37,7 @@ describe("ContentReviewNotice", () => {
     render(<ContentReviewNotice review={{ kind: "medication", lastReviewedAt: "2026-05-10" }} />);
     const notice = screen.getByTestId("content-review-notice");
     expect(notice.getAttribute("data-review-state")).toBe("due");
-    expect(notice.textContent).toBe("Review overdue. It was due on 10/05/2027.");
+    expect(notice.textContent).toBe("Next review overdue. It was due on 10/05/2027.");
     vi.unstubAllEnvs();
   });
 

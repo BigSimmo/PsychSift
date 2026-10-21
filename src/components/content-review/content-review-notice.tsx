@@ -62,7 +62,11 @@ export function ContentReviewNotice({
       data-review-state={schedule.state}
     >
       {/* mt-1.5 centres the 8px marker on the first 20px line, so it stays put when the line wraps. */}
-      <span className={cn(urgent ? statusDotReview : statusDotMuted, "mt-1.5")} aria-hidden="true" />
+      {/* The review recipe's 6px radius rounds an 8px square into a dot; square corners keep it a diamond. */}
+      <span
+        className={cn(urgent ? cn(statusDotReview, "rounded-none") : statusDotMuted, "mt-1.5")}
+        aria-hidden="true"
+      />
       <span className="min-w-0 text-pretty">
         <span
           className={cn("font-semibold", urgent ? "text-[color:var(--warning)]" : "text-[color:var(--text-heading)]")}

@@ -140,7 +140,10 @@ export function isReviewDueNow(schedule: Pick<ContentReviewSchedule, "state">): 
 }
 
 /**
- * What a review notice says: a short lead ("Review due now") and, where there is one, a
+ * Worded as the NEXT review, or a re-review, so it never reads against a "Reviewed" label
+ * beside it: the record was reviewed, and that review has now run its course.
+ *
+ * What a review notice says: a short lead ("Next review overdue") and, where there is one, a
  * detail that ends on a date. The date is left as ISO so the page renders it through
  * `DateDisplay`, the one place clinician-facing dates are formatted. Null when there is
  * nothing to flag.
@@ -157,15 +160,15 @@ export function contentReviewNoticeCopy(schedule: ContentReviewSchedule): Conten
     case "guideline_changed": {
       const changedOn = isoCalendarDate(schedule.changedSources[0]?.changedOn ?? null);
       return changedOn
-        ? { lead: "Review due now", detail: "A guideline this record cites changed on", dateIso: changedOn }
-        : { lead: "Review due now", detail: "A guideline this record cites has changed.", dateIso: null };
+        ? { lead: "Re-review needed", detail: "A guideline this record cites changed on", dateIso: changedOn }
+        : { lead: "Re-review needed", detail: "A guideline this record cites has changed.", dateIso: null };
     }
     case "due":
       return schedule.dueOn
-        ? { lead: "Review overdue", detail: "It was due on", dateIso: schedule.dueOn }
-        : { lead: "Review overdue", detail: null, dateIso: null };
+        ? { lead: "Next review overdue", detail: "It was due on", dateIso: schedule.dueOn }
+        : { lead: "Next review overdue", detail: null, dateIso: null };
     case "due_soon":
-      return schedule.dueOn ? { lead: "Review due soon", detail: "Due by", dateIso: schedule.dueOn } : null;
+      return schedule.dueOn ? { lead: "Next review due soon", detail: "Due by", dateIso: schedule.dueOn } : null;
     case "unknown":
       return { lead: "Review date not recorded", detail: null, dateIso: null };
     case "current":
