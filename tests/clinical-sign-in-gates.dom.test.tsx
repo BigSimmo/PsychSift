@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, renderHook, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Answer, Patient details, therapy ranking, scoring and the originals need sign-in from
@@ -22,6 +22,7 @@ import { PatientProfileProvider, usePatientProfile } from "@/components/clinical
 import { CalculatorItems } from "@/components/calculators/calculator-ui";
 import { CalculatorSheet } from "@/components/calculators/calculator-sheet";
 import { calculators } from "@/components/calculators/calculator-fixtures";
+import { useSignedOutSessionReset } from "@/components/calculators/use-signed-out-session-reset";
 import { DocumentImage } from "@/components/document-viewer/source-panels";
 import type { ImageRow } from "@/components/document-viewer/types";
 import { clinicalToolAccessForStatus } from "@/components/mode-kit/use-clinical-tool-access";
@@ -121,6 +122,20 @@ describe("Questionnaire scoring", () => {
     const answers = { [calc.items[0]!.id]: 1 } as never;
     render(<CalculatorSheet calc={calc} answers={answers} onAnswersChange={onAnswersChange} onClose={vi.fn()} />);
     expect(onAnswersChange).toHaveBeenCalledWith({});
+  });
+
+  it("clears the page's whole answer session on sign-out, with no calculator open", () => {
+    auth.status = "authenticated";
+    const stored = { [calc.id]: { [calc.items[0]!.id]: 1 } } as Record<string, unknown>;
+    const setSession = vi.fn();
+    const { result, rerender } = renderHook(() => useSignedOutSessionReset(stored, setSession));
+    expect(result.current).toBe(stored);
+    expect(setSession).not.toHaveBeenCalled();
+
+    auth.status = "signed_out";
+    rerender();
+    expect(result.current).toEqual({});
+    expect(setSession).toHaveBeenCalledWith({});
   });
 
   it("lets a signed-in user answer", () => {
