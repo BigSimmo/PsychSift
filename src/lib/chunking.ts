@@ -433,11 +433,11 @@ function chunkTextWithOverlapInternal(
         continue;
       }
 
-      if (
-        paragraph.length > chunkSize ||
-        (Buffer.byteLength(paragraph, "utf8") > MAX_ATOMIC_TABLE_UTF8_BYTES &&
-          paragraph.split(lineBreakPattern).some((line) => tableRowPattern.test(line)))
-      ) {
+      const paragraphLines = paragraph.split(lineBreakPattern);
+      const containsTableRun = paragraphLines.some(
+        (line, index) => tableRowPattern.test(line) && tableRowPattern.test(paragraphLines[index + 1] ?? ""),
+      );
+      if (paragraph.length > chunkSize || containsTableRun) {
         if (current) {
           chunks.push(current.trim());
           current = "";
@@ -617,6 +617,19 @@ function chunkTableBlock(
     throw new OversizedTableRowError();
   }
 
+  const overflowingRow = bodyLines.some((row) => withFootnote(`${header}\n${row}`).length > chunkSize);
+  const qualificationBand = bodyLines.some((row) => row.split("|").filter((cell) => cell.trim()).length === 1);
+  if (overflowingRow || qualificationBand || (!bodyLines.length && withFootnote(header).length > chunkSize)) {
+    // Flat markdown does not prove which earlier rows qualify a later action.
+    // Preserve the complete table when admitting a preferred-target overflow,
+    // including all merged bands; never invent row-to-condition relationships.
+    if (!fitsByteCeiling(captioned) || !hasKnownEmbeddingBudget(env.OPENAI_EMBEDDING_MODEL)) {
+      throw new OversizedTableRowError();
+    }
+    if (captioned.length > chunkSize) onTableOverflow?.(captioned);
+    return [captioned];
+  }
+
   const chunks: string[] = [];
   const emit = (text: string) => {
     chunks.push(text);
@@ -624,13 +637,6 @@ function chunkTableBlock(
   };
   let current = "";
   for (const row of bodyLines) {
-    const atomic = withFootnote(`${header}\n${row}`);
-    if (atomic.length > chunkSize) {
-      if (current) emit(withFootnote(current));
-      current = "";
-      emit(atomic);
-      continue;
-    }
     const candidate = current ? `${current}\n${row}` : `${header}\n${row}`;
     const qualified = withFootnote(candidate);
     if (current && (qualified.length > chunkSize || !fitsByteCeiling(qualified))) {

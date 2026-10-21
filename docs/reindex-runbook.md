@@ -79,12 +79,13 @@ recovery, including with `--apply`. If separate recoverable queue work also exis
 recovery may run, but the integrity alert remains until a subsequent probe confirms resolution.
 
 The configured character target controls ordinary table groups. A larger indivisible
-row is supported as a standalone chunk with its full title, header and adjacent note,
-up to 8,191 UTF-8 bytes for known OpenAI embedding models. This is a conservative
+row is supported by retaining the complete table, including every qualification
+band and adjacent note, as one chunk up to 8,191 UTF-8 bytes for known OpenAI embedding models. This is a conservative
 byte-BPE token upper bound, not an exact token count. The chunk records this overflow
 in metadata, and embedding requests are batched by both input count and total bytes.
 `TABLE_ROW_EXCEEDS_CHUNK_BUDGET` remains a permanent refusal above that hard ceiling
-or for an unknown model's target overflow. The chunker returns no partial chunk array
+or for an unknown model's target overflow. A qualification-bearing table whose
+complete scope cannot fit is also refused. The chunker returns no partial chunk array
 and never splits cells or truncates evidence. Review the source structure before
 retrying; the refusal does not establish OCR accuracy. Atomic reindex failure preserves
 the existing index.

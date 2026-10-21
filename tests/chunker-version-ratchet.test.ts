@@ -64,7 +64,7 @@ const overflowCorpus = [
   ].join("\n"),
 ];
 const overflowRecorded: Record<string, string> = {
-  "1.4.0-page|1.4.0-document": "bc6abc0a6a25d4491200d4b82646de78b9b92dc6811ed0d9e3ed4d143291b32e",
+  "1.4.0-page|1.4.0-document": "7a762b08fef8f1ba762591f3e645cf2c93a3f0877b8bed953c2ca0ba783ba502",
 };
 
 function overflowFingerprint() {

@@ -865,15 +865,40 @@ describe("bounded atomic table row overflow", () => {
     }
   });
 
-  it("keeps target-sized groups while emitting an overflowing row alone with its complete context", () => {
+  it("keeps the complete bounded table when a row exceeds the preferred target", () => {
     const title = "Table 4. Synthetic monitoring";
     const note = "Note: Do not change treatment\nunless the original condition applies.";
     const before = "| GROUP-B | Repeat the measurement. |";
     const after = "| GROUP-C | Review the result. |";
     const text = [title, header, before, row, after, note].join("\n");
-    expect(chunkTextWithOverlap(text, 250, 0)).toEqual(
-      [before, row, after].map((line) => [title, header, line, note].join("\n")),
+    expect(chunkTextWithOverlap(text, 250, 0)).toEqual([text]);
+  });
+
+  it("retains merged qualification bands with every newly admitted oversized action row", () => {
+    const initial = "| INITIAL PHASE ONLY: applies to both following rows | |";
+    const maintenance = "| MAINTENANCE ONLY: applies to the following row | |";
+    const text = [header, initial, row, "| GROUP-B | Review the result. |", maintenance, "| GROUP-C | Repeat. |"].join(
+      "\n",
     );
+    expect(chunkTextWithOverlap(text, 400, 0)).toEqual([text]);
+  });
+
+  it("refuses a qualification-bearing table when its complete scope exceeds the hard ceiling", () => {
+    const band = "| INITIAL PHASE ONLY: applies to following rows | |";
+    const rows = Array.from({ length: 3 }, (_, index) => `| GROUP-${index} | ${"Original condition. ".repeat(150)} |`);
+    const text = [header, band, ...rows].join("\n");
+    expect(Buffer.byteLength(text)).toBeGreaterThan(MAX_ATOMIC_TABLE_UTF8_BYTES);
+    expect(() => chunkTextWithOverlap(text, 400, 0)).toThrow(OversizedTableRowError);
+  });
+
+  it("does not co-pack a captioned table with prose past the hard table ceiling", () => {
+    const table = ["Table 4. Monitoring", header, `| GROUP-A | ${"a".repeat(5900)} |`].join("\n");
+    const prose = "Separate narrative. " + "b".repeat(4000);
+    const chunks = chunkTextWithOverlap(`${table}\n\n${prose}`, 20000, 0);
+    expect(chunks.join("\n")).toContain(prose);
+    const tables = chunks.filter((chunk) => chunk.includes("| GROUP-A |"));
+    expect(tables).toEqual([table]);
+    for (const chunk of tables) expect(Buffer.byteLength(chunk)).toBeLessThanOrEqual(MAX_ATOMIC_TABLE_UTF8_BYTES);
   });
 
   it("accepts a row exactly at the character target including title and footnote", () => {
@@ -884,7 +909,7 @@ describe("bounded atomic table row overflow", () => {
     const text = [title, header, ...rows, note].join("\n");
     const expected = rows.map((line) => [title, header, line, note].join("\n"));
     expect(chunkTextWithOverlap(text, atomic.length, 0)).toEqual(expected);
-    expect(chunkTextWithOverlap(text, atomic.length - 1, 0)).toEqual(expected);
+    expect(chunkTextWithOverlap(text, atomic.length - 1, 0)).toEqual([text]);
   });
 
   it("accepts exactly 8191 UTF-8 bytes including caption, header, row and wrapped note", () => {

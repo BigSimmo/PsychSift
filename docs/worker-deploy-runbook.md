@@ -33,6 +33,16 @@ no isolated memory limit inside the worker. Restore the Python runtime before
 retrying the document. The developer fallback retains its deadline and pixel
 limits; those limits do not establish a process memory boundary.
 
+Offline OCR acceptance currently covers native merged qualifications and Unicode
+symbols, scanned staggered columns, and the existing ruled-table cases. It does
+not establish reliable scanned mathematical notation: the pinned Latin model's
+vocabulary lacks `≤`, `≥` and `⁹`, and focused recognition trials lost equality
+strokes, an exponent and a decimal. The strict scanned-symbol acceptance case is
+recorded as an expected failure, separately from passing coverage. Keep these
+OCR observations unverified; require source review or a demonstrated OCR-engine
+improvement before relying on such numeric evidence. Changing image-size limits
+does not address this model limitation.
+
 ---
 
 ## 0. Pre-deploy gate — do not deploy before this is live
