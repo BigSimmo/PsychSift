@@ -1,4 +1,4 @@
-import type { AppModeId } from "@/lib/app-modes";
+import { appModeSide, type AppModeId } from "@/lib/app-modes";
 
 /**
  * The mode pill's two rooms.
@@ -135,9 +135,9 @@ export function phoneModeGroupsForSide(side: ModeMenuSideId) {
   return phoneModeGroups.filter((group) => group.side === side && group.drawn);
 }
 
-/** Which room a mode belongs to. A mode in no group, which the exhaustiveness test forbids, reads as Clinical. */
+/** Which room a mode belongs to: the `side` its own definition declares. */
 export function modeMenuSideForMode(modeId: AppModeId): ModeMenuSideId {
-  return phoneModeGroups.find((group) => (group.modeIds as readonly AppModeId[]).includes(modeId))?.side ?? "clinical";
+  return appModeSide(modeId);
 }
 
 /**

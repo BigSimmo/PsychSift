@@ -72,7 +72,7 @@ describe("AI Search header icon", () => {
     const glyph = readFileSync("src/components/work-search/work-search-glyph.tsx", "utf8");
     expect(glyph).not.toMatch(/work-search\/(?!work-search-glyph)/);
     const model = readFileSync("src/lib/work-search/model.ts", "utf8");
-    expect(model.match(/^import .+$/gm)).toEqual(['import type { AppModeId } from "@/lib/app-modes";']);
+    expect(model.match(/^import .+$/gm)).toEqual(['import type { WorkModeId } from "@/lib/app-modes";']);
 
     const lazy = readFileSync("src/components/work-search/lazy-work-search-sheet.tsx", "utf8");
     expect(lazy).toMatch(/import\("@\/components\/work-search\/work-search-sheet"\)/);
