@@ -103,6 +103,91 @@ export function validateTrivyReportJson(rawStdout) {
   };
 }
 
+export const DEFAULT_TRIVY_SUPPRESSIONS_PATH = fileURLToPath(
+  new URL("../scripts/trivy-suppressions.json", import.meta.url),
+);
+const SUPPRESSION_KEYS = ["image", "package", "installed", "cve", "justification", "remove_when"];
+
+/**
+ * @typedef {{ image: string; package: string; installed: string; cve: string; justification: string; remove_when: string; [key: string]: unknown }} TrivySuppression
+ */
+
+/**
+ * Load and validate the exact-match suppression list (scripts/trivy-suppressions.json).
+ * @param {string} text
+ * @returns {TrivySuppression[]}
+ */
+export function parseTrivySuppressions(text) {
+  const doc = JSON.parse(text);
+  if (!doc || doc.schema_version !== 1 || !Array.isArray(doc.suppressions)) {
+    throw new Error("Invalid Trivy suppressions file: expected schema_version 1 with suppressions[]");
+  }
+  for (const [i, row] of doc.suppressions.entries()) {
+    for (const key of SUPPRESSION_KEYS) {
+      if (typeof row?.[key] !== "string" || !row[key].trim()) {
+        throw new Error(`Invalid Trivy suppression #${i}: missing ${key}`);
+      }
+    }
+    if (!/^(CVE|GHSA)-[0-9A-Za-z-]+$/.test(row.cve)) throw new Error(`Invalid Trivy suppression #${i}: bad cve`);
+  }
+  return doc.suppressions;
+}
+
+/**
+ * Remove findings that exactly match (image, package, installed version, CVE). Anything else,
+ * including the same CVE at a different installed version, stays counted.
+ * @param {any} report
+ * @param {string} imageRef
+ * @param {Array<{ image: string; package: string; installed: string; cve: string }>} suppressions
+ * @returns {{ report: any; suppressed: any[] }}
+ */
+export function applyTrivySuppressions(report, imageRef, suppressions) {
+  const keys = new Set(
+    suppressions.filter((s) => s.image === imageRef).map((s) => `${s.package}\u0000${s.installed}\u0000${s.cve}`),
+  );
+  const suppressed = [];
+  const results = Array.isArray(report?.Results)
+    ? report.Results.map((result) => {
+        if (!result || typeof result !== "object" || !Array.isArray(result.Vulnerabilities)) return result;
+        const kept = [];
+        for (const v of result.Vulnerabilities) {
+          const key = `${v?.PkgName}\u0000${v?.InstalledVersion}\u0000${v?.VulnerabilityID}`;
+          if (keys.has(key)) suppressed.push(v);
+          else kept.push(v);
+        }
+        return { ...result, Vulnerabilities: kept };
+      })
+    : report?.Results;
+  return { report: { ...report, Results: results }, suppressed };
+}
+
+// Put actionable public package/CVE metadata in job logs as well as the full
+// retained report. Keep stderr separate from the strictly parsed summary.
+export function trivyFindingDetails(report, limit = 512) {
+  if (!Number.isSafeInteger(limit) || limit < 0 || limit > 512) throw new RangeError("Invalid finding log limit");
+  const rows = [];
+  let total = 0;
+  const field = (value) => (typeof value === "string" ? value.replace(/[^\x20-\x7e]/g, "?").slice(0, 256) : "");
+  for (const result of Array.isArray(report.Results) ? report.Results : []) {
+    for (const vulnerability of Array.isArray(result?.Vulnerabilities) ? result.Vulnerabilities : []) {
+      if (!["HIGH", "CRITICAL"].includes(vulnerability?.Severity)) continue;
+      total += 1;
+      if (rows.length < limit) {
+        rows.push({
+          type: field(result.Type),
+          package: field(vulnerability.PkgName),
+          source: field(vulnerability.SrcName),
+          installed: field(vulnerability.InstalledVersion),
+          fixed: field(vulnerability.FixedVersion),
+          cve: field(vulnerability.VulnerabilityID),
+          severity: vulnerability.Severity,
+        });
+      }
+    }
+  }
+  return { rows, total, truncated: total > rows.length };
+}
+
 export function evaluateTrivySummaryText(summaryText, requiredImages = REQUIRED_TRIVY_SCAN_IMAGES) {
   const unassessed = (reason) => ({ assessed: false, ok: false, high: 0, critical: 0, reason });
   const text = typeof summaryText === "string" ? summaryText.trim() : "";
@@ -113,7 +198,7 @@ export function evaluateTrivySummaryText(summaryText, requiredImages = REQUIRED_
   // malformed or overflowing count as zero, or count unrelated diagnostic text.
   const evidence = new Map();
   const record =
-    /^Trivy scan completed \(([^)]+)\): STATUS=ok HIGH=(0|[1-9]\d*) CRITICAL=(0|[1-9]\d*) MEDIUM=(0|[1-9]\d*) LOW=(0|[1-9]\d*) UNKNOWN=(0|[1-9]\d*)$/;
+    /^Trivy scan completed \(([^)]+)\): STATUS=ok HIGH=(0|[1-9]\d*) CRITICAL=(0|[1-9]\d*) MEDIUM=(0|[1-9]\d*) LOW=(0|[1-9]\d*) UNKNOWN=(0|[1-9]\d*)(?: SUPPRESSED=(?:0|[1-9]\d*))?$/;
   for (const line of text.split(/\r?\n/).filter((line) => line.trim())) {
     const match = record.exec(line);
     if (!match) return unassessed("malformed_scan_record");
@@ -397,10 +482,32 @@ function main() {
     process.exit(2);
   }
 
-  const { counts } = validated;
+  const suppressionsPath = optionValue("--suppressions") ?? DEFAULT_TRIVY_SUPPRESSIONS_PATH;
+  let suppressions = [];
+  if (!rest.includes("--no-suppressions") && existsSync(suppressionsPath)) {
+    try {
+      suppressions = parseTrivySuppressions(readFileSync(suppressionsPath, "utf8"));
+    } catch (error) {
+      console.log(`Trivy scan failed (${imageRef}): STATUS=unassessed reason=invalid_suppressions`);
+      console.error(String(error?.message ?? error));
+      process.exit(2);
+    }
+  }
+  const applied = applyTrivySuppressions(validated.report, imageRef, suppressions);
+  const { counts } = validateTrivyReportJson(JSON.stringify(applied.report));
+  // The retained report stays the unfiltered scanner output; suppressions only change the gate counts.
   if (reportPath) writeFileSync(resolve(reportPath), `${JSON.stringify(validated.report, null, 2)}\n`);
+  const suppressedDetails = trivyFindingDetails({
+    Results: [{ Type: "suppressed", Vulnerabilities: applied.suppressed }],
+  });
+  for (const row of suppressedDetails.rows)
+    console.error(`Trivy suppressed (scripts/trivy-suppressions.json): ${JSON.stringify(row)}`);
+  const details = trivyFindingDetails(applied.report);
+  for (const row of details.rows) console.error(`Trivy finding: ${JSON.stringify(row)}`);
+  if (details.truncated)
+    console.error(`Trivy finding details truncated: ${details.rows.length}/${details.total}; see retained report.`);
   console.log(
-    `Trivy scan completed (${imageRef}): STATUS=ok HIGH=${counts.HIGH} CRITICAL=${counts.CRITICAL} MEDIUM=${counts.MEDIUM} LOW=${counts.LOW} UNKNOWN=${counts.UNKNOWN}`,
+    `Trivy scan completed (${imageRef}): STATUS=ok HIGH=${counts.HIGH} CRITICAL=${counts.CRITICAL} MEDIUM=${counts.MEDIUM} LOW=${counts.LOW} UNKNOWN=${counts.UNKNOWN} SUPPRESSED=${applied.suppressed.length}`,
   );
 }
 
