@@ -7,7 +7,11 @@
  *   npm run reindex:rollback -- --document-id <uuid>[,<uuid>]
  *   npm run reindex:rollback -- --committed-after 2026-10-21T00:00:00Z
  *   npm run reindex:rollback -- --chunker-version 1.3.1-page
- *   npm run reindex:rollback -- --document-id <uuid> --apply [--yes] [--limit 50]
+ *   npm run reindex:rollback -- --document-id <uuid> --apply --i-understand-metadata-not-restored [--yes] [--limit 50]
+ *
+ * --apply is refused (non-zero exit) without --i-understand-metadata-not-restored, because a
+ * rollback currently leaves documents.metadata and document_index_quality describing the wrong
+ * generation. #3732 removes this guard.
  *
  * See docs/reindex-runbook.md, "Rolling back a reindex".
  */
@@ -166,7 +170,7 @@ async function main() {
   console.log(`\nDocuments in scope: ${preview.length}; would roll back: ${ready}; refused: ${preview.length - ready}`);
 
   if (!args.apply) {
-    console.log("\nDry run only. Re-run with --apply to repoint the documents above.");
+    console.log("\nDry run only. Re-run with --apply --i-understand-metadata-not-restored to repoint the documents above.");
     return;
   }
   if (ready === 0) return;
