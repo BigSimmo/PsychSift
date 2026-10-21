@@ -89,6 +89,15 @@ export function imageTableMetadata(image: ExtractedDocument["images"][number]) {
     accessibleTableMarkdown: metadataString(metadata, "accessible_table_markdown") ?? tableText,
     tableRows: Array.isArray(metadata.table_rows) ? metadata.table_rows : null,
     tableColumns: Array.isArray(metadata.table_columns) ? metadata.table_columns : null,
+    tableMergedCells: Array.isArray(metadata.table_merged_cells)
+      ? (metadata.table_merged_cells as unknown[]).filter(
+          (cell): cell is [number, number] =>
+            Array.isArray(cell) && cell.length === 2 && cell.every((value) => Number.isInteger(value)),
+        )
+      : null,
+    tableRowBreaks: Array.isArray(metadata.table_row_breaks)
+      ? (metadata.table_row_breaks as unknown[]).filter((row): row is number => Number.isInteger(row))
+      : null,
   };
 }
 
