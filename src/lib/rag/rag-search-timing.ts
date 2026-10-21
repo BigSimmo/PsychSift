@@ -1,10 +1,12 @@
 import { evaluateShadowCandidateMatchCounts } from "@/lib/rag/rag-coverage";
-import type { SearchTelemetry } from "@/lib/rag/rag-contracts";
+import type { RetrievalStageTiming, SearchTelemetry } from "@/lib/rag/rag-contracts";
 import type { RagQueryPlan, SearchResult } from "@/lib/types";
 
 export type SearchTiming = {
   startedAt: number;
   phases: Record<string, number>;
+  /** Measurement only: sequential stage offsets, surfaced as retrieval_stage_timeline_ms. */
+  stages?: RetrievalStageTiming[];
   shadowPlan?: RagQueryPlan;
   shadowCandidateResults?: SearchResult[];
   shadowState?: "pending" | "completed" | "failed" | "cancelled";
@@ -53,7 +55,16 @@ export function closeShadowSearch(timing: SearchTiming) {
 }
 
 export function createSearchTiming(): SearchTiming {
-  return { startedAt: Date.now(), phases: {} };
+  return { startedAt: Date.now(), phases: {}, stages: [] };
+}
+
+/** Measurement only: record a stage's start/finish offsets; never affects control flow. */
+export function recordSearchStage(timing: SearchTiming, stage: string, startedAt: number, finishedAt = Date.now()) {
+  (timing.stages ??= []).push({
+    stage,
+    started_offset_ms: startedAt - timing.startedAt,
+    finished_offset_ms: finishedAt - timing.startedAt,
+  });
 }
 
 export async function measureSearchPhase<T>(
@@ -65,7 +76,9 @@ export async function measureSearchPhase<T>(
   try {
     return await operation();
   } finally {
-    timing.phases[phase] = (timing.phases[phase] ?? 0) + (Date.now() - startedAt);
+    const finishedAt = Date.now();
+    timing.phases[phase] = (timing.phases[phase] ?? 0) + (finishedAt - startedAt);
+    recordSearchStage(timing, phase, startedAt, finishedAt);
   }
 }
 
@@ -109,6 +122,8 @@ export function finishSearch<T extends { results: SearchResult[]; telemetry: Sea
     );
   }
   search.telemetry.retrieval_phase_latencies_ms = { ...timing.phases };
+  if (timing.stages?.length)
+    search.telemetry.retrieval_stage_timeline_ms = timing.stages.map((stage) => ({ ...stage }));
   search.telemetry.search_total_latency_ms = Date.now() - timing.startedAt;
   return search;
 }

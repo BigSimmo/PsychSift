@@ -53,6 +53,7 @@ import type {
   GovernedCorpusRetrievalPhase,
   RetrievalCorpusScopePolicy,
   SearchTelemetry,
+  TextRpcVariantTiming,
 } from "@/lib/rag/rag-contracts";
 import type { RagContextSnapshot } from "@/lib/site-content/site-content-contracts";
 import { uncoveredRagSubquestions } from "@/lib/rag/rag-coverage";
@@ -827,7 +828,32 @@ export async function searchTextChunkCandidates(args: {
   observeRawPublishedRow?: RawPublishedOriginalRowObserver;
 }) {
   throwIfAborted(args.signal);
-  const runChunkText = async (queryText: string, matchCount: number) => {
+  // Measurement only: per-variant timings for the canary report. Never read by control flow.
+  const textStageStartedAt = Date.now();
+  const variantTimings: TextRpcVariantTiming[] = [];
+  const recordVariantTimings = () => {
+    if (!args.telemetry) return;
+    args.telemetry.text_rpc_variant_timings = [...(args.telemetry.text_rpc_variant_timings ?? []), ...variantTimings];
+  };
+  const runChunkText = async (
+    queryText: string,
+    matchCount: number,
+    timingLabel: { role: TextRpcVariantTiming["role"]; variantIndex: number },
+  ) => {
+    const timingEntry: TextRpcVariantTiming = {
+      rpc: "match_document_chunks_text",
+      variant_index: timingLabel.variantIndex,
+      role: timingLabel.role,
+      ran: true,
+      started_offset_ms: Date.now() - textStageStartedAt,
+      finished_offset_ms: null,
+      rpc_ms: null,
+      row_count: null,
+    };
+    variantTimings.push(timingEntry);
+    return runChunkTextUntimed(queryText, matchCount, timingEntry);
+  };
+  const runChunkTextUntimed = async (queryText: string, matchCount: number, timingEntry: TextRpcVariantTiming) => {
     throwIfAborted(args.signal);
     const accessScope = retrievalAccessScopeForArgs(args);
     const { data, error } = await callVersionedRetrievalRpc<SearchResult[]>(
@@ -842,6 +868,11 @@ export async function searchTextChunkCandidates(args: {
       },
       args.signal,
     );
+    const rpcFinishedAt = Date.now();
+    timingEntry.finished_offset_ms = rpcFinishedAt - textStageStartedAt;
+    timingEntry.rpc_ms = timingEntry.finished_offset_ms - (timingEntry.started_offset_ms ?? 0);
+    timingEntry.row_count = Array.isArray(data) ? data.length : 0;
+    if (error) timingEntry.rpc_error = true;
     throwIfAborted(args.signal);
     // Report the error before returning empty so a schema drift on this
     // most-terminal lexical layer surfaces in hybrid_rpc_errors telemetry
@@ -863,7 +894,10 @@ export async function searchTextChunkCandidates(args: {
 
   const variants = args.queryVariants.slice(0, maxTextRpcQueryVariants);
   const [primaryVariant, ...siblingVariants] = variants;
-  const primaryResults = primaryVariant === undefined ? [] : await runChunkText(primaryVariant, args.matchCount);
+  const primaryResults =
+    primaryVariant === undefined
+      ? []
+      : await runChunkText(primaryVariant, args.matchCount, { role: "primary", variantIndex: 0 });
   // PT-02: skip the near-duplicate sibling variants when the primary pool is
   // already deep and anchored by a precise hit; weak/empty pools keep the full
   // fan-out (one extra sequential hop) so recall is unchanged where it matters.
@@ -872,8 +906,27 @@ export async function searchTextChunkCandidates(args: {
     ? [primaryResults]
     : [
         primaryResults,
-        ...(await Promise.all(siblingVariants.map((variant) => runChunkText(variant, Math.min(args.matchCount, 32))))),
+        ...(await Promise.all(
+          siblingVariants.map((variant, index) =>
+            runChunkText(variant, Math.min(args.matchCount, 32), { role: "follow_up", variantIndex: index + 1 }),
+          ),
+        )),
       ];
+  if (skipSiblings) {
+    siblingVariants.forEach((_variant, index) =>
+      variantTimings.push({
+        rpc: "match_document_chunks_text",
+        variant_index: index + 1,
+        role: "follow_up",
+        ran: false,
+        skipped_reason: "primary_pool_strong",
+        started_offset_ms: null,
+        finished_offset_ms: null,
+        rpc_ms: null,
+        row_count: null,
+      }),
+    );
+  }
   recordTextVariantFanout(args.telemetry, "match_document_chunks_text", resultSets.length, skipSiblings);
   const merged = resultSets.reduce(
     (accumulated, resultSet) => mergeSearchResults(resultSet, accumulated),
@@ -889,13 +942,18 @@ export async function searchTextChunkCandidates(args: {
     if (env.RAG_TEXT_WEAK_OR_RELAXATION && shouldRelaxWeakTextMatches(merged)) {
       const weakRelaxed = relaxVariantToOrQuery(variants[0] ?? "");
       if (weakRelaxed) {
-        const orResults = await runChunkText(weakRelaxed, Math.min(args.matchCount, 24));
+        const orResults = await runChunkText(weakRelaxed, Math.min(args.matchCount, 24), {
+          role: "weak_or",
+          variantIndex: 0,
+        });
         if (orResults.length > 0) {
           if (args.telemetry) args.telemetry.text_or_relaxation_used = "weak_augment";
+          recordVariantTimings();
           return mergeSearchResults(merged, orResults);
         }
       }
     }
+    recordVariantTimings();
     return merged;
   }
 
@@ -919,20 +977,25 @@ export async function searchTextChunkCandidates(args: {
     );
     throwIfAborted(args.signal);
     if (typeof corrected === "string" && corrected && corrected !== primary) {
-      const correctedResults = await runChunkText(corrected, args.matchCount);
-      if (correctedResults.length > 0) return correctedResults;
+      const correctedResults = await runChunkText(corrected, args.matchCount, { role: "corrected", variantIndex: 0 });
+      if (correctedResults.length > 0) {
+        recordVariantTimings();
+        return correctedResults;
+      }
       effectivePrimary = corrected;
     }
   }
 
   const relaxed = relaxVariantToOrQuery(effectivePrimary);
   if (relaxed) {
-    const relaxedResults = await runChunkText(relaxed, args.matchCount);
+    const relaxedResults = await runChunkText(relaxed, args.matchCount, { role: "relaxed", variantIndex: 0 });
     if (relaxedResults.length > 0) {
       if (args.telemetry) args.telemetry.text_or_relaxation_used = "empty_fallback";
+      recordVariantTimings();
       return relaxedResults;
     }
   }
+  recordVariantTimings();
   return merged;
 }
 
