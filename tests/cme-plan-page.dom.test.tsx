@@ -180,6 +180,23 @@ describe("development plan page", () => {
     expect(screen.getByRole("button", { name: "Carry into 2027" })).toBeDisabled();
   });
 
+  it("shows the same confirm-first link in demo mode, which only opens read-only set-up", () => {
+    render(
+      <CmePlanPage
+        set={SET}
+        goals={[GOAL]}
+        entries={[]}
+        now={new Date("2026-12-20T10:00:00+08:00")}
+        nextYearConfirmed={false}
+        demoMode
+      />,
+    );
+    expect(screen.getByRole("link", { name: "Confirm, then carry" })).toHaveAttribute(
+      "href",
+      `/cme/setup?year=2027&carryFrom=2026&carryGoal=${GOAL.id}`,
+    );
+  });
+
   it("sends a goal through next year's set-up and back, ready to carry but not carried", () => {
     const now = new Date("2026-12-18T12:00:00+08:00");
     const { rerender } = render(

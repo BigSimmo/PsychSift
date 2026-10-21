@@ -75,7 +75,23 @@ export type CmeRecordsOptions = {
   readonly allYears?: boolean;
   readonly trainingPosition?: boolean;
   readonly nextYear?: boolean;
+  /**
+   * Local demo only (`isDemoMode()`, never example data or a signed-in account): show the plan's
+   * carry section as it looks in December, so it can be checked on screen without a database.
+   * "confirm" is next year not yet confirmed; "resume" is back from confirming it.
+   */
+  readonly demoCarryPreview?: CmeDemoCarryPreview | null;
 };
+
+export type CmeDemoCarryPreview = "confirm" | "resume";
+
+/** A `demoCarry` value from the address bar, or null. */
+export function cmeDemoCarryPreview(value: unknown): CmeDemoCarryPreview | null {
+  return value === "confirm" || value === "resume" ? value : null;
+}
+
+/** Inside the demo year's carry window (17 Dec to 31 Jan, Perth). */
+const DEMO_CARRY_INSTANT = new Date(`${DEMO_CME_YEAR.year}-12-20T02:00:00Z`);
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
@@ -141,6 +157,7 @@ async function load(
   options: CmeRecordsOptions = {},
 ): Promise<CmePageData & { entry: CmeEntry | null }> {
   if (isDemoMode() || (await exampleDataOn("cpd"))) {
+    const carryPreview = isDemoMode() ? (options.demoCarryPreview ?? null) : null;
     const entry = entryId ? (DEMO_CME_ENTRIES.find((e) => e.id === entryId) ?? null) : null;
     const targetYear = entry ? Number(entry.date.slice(0, 4)) : (year ?? DEMO_CME_YEAR.year);
     return {
@@ -158,15 +175,15 @@ async function load(
           }
         : {}),
       routines: DEMO_CME_ROUTINES,
-      now: DEMO_CME_INSTANT,
+      now: carryPreview ? DEMO_CARRY_INSTANT : DEMO_CME_INSTANT,
       // The demo year is never closed; closing is refused in demo mode.
       close: null,
       goals: targetYear === DEMO_CME_YEAR.year ? DEMO_CME_PLAN_GOALS : [],
       // Demo mode is read-only and has no drafts or missed sessions.
       ...NO_RECORDS,
       trainingPosition: null,
-      nextYearConfirmed: null,
-      nextYearGoals: undefined,
+      nextYearConfirmed: carryPreview ? carryPreview === "resume" : null,
+      nextYearGoals: carryPreview === "resume" ? [] : undefined,
       ownerId: null,
       entry,
     };

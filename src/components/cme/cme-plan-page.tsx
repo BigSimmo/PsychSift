@@ -550,7 +550,7 @@ export function CmePlanPage({
                         key={goal.id}
                         title={goal.goal}
                         end={
-                          nextYearConfirmed === false && !demoMode ? (
+                          nextYearConfirmed === false ? (
                             // Confirming comes first; set-up sends the doctor back here with this goal ready.
                             <Link
                               href={cmeCarryConfirmHref(set.year, goal.id)}
