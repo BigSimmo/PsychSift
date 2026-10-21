@@ -40,13 +40,14 @@ describe("phone mode groups", () => {
     expect(new Set(groupIds).size).toBe(groupIds.length);
   });
 
-  it("draws Clinical as Search, Psychiatry, Medicines and the library, and Work as one list with On Call in it", () => {
+  it("draws Clinical as Search, Psychiatry, the Mental Health Act, Medicines and the library, and Work as one list with On Call in it", () => {
     const groupOf = (modeId: AppModeId) =>
       phoneModeGroups.find((group) => (group.modeIds as readonly AppModeId[]).includes(modeId));
     expect(modeMenuSides.map((side) => side.id)).toEqual(["clinical", "work"]);
     expect(phoneModeGroupsForSide("clinical").map((group) => group.id)).toEqual([
       "find",
       "psychiatry",
+      "mha",
       "care",
       "library",
     ]);
@@ -58,6 +59,8 @@ describe("phone mode groups", () => {
       modeIds: ["my-day", "on-call", "open-shifts", "roster", "teaching", "cme", "my-work"],
     });
     expect(groupOf("first-nations")?.id).toBe("psychiatry");
+    // The Mental Health Act is its own door, led by Forms (owner decision, 21 Oct 2026).
+    expect(groupOf("forms")).toMatchObject({ id: "mha", label: "Mental Health Act", modeIds: ["forms"] });
     expect(groupOf("prescribing")).toMatchObject({ id: "care", label: "Medicines" });
     expect(groupOf("answer")?.modeIds).toEqual(["answer", "documents", "services"]);
     expect(groupOf("favourites")?.modeIds).toEqual(["favourites", "sources"]);
@@ -72,6 +75,7 @@ describe("phone mode groups", () => {
     expect(phoneModeGroups.map((group) => group.id)).toEqual([
       "find",
       "psychiatry",
+      "mha",
       "care",
       "library",
       "retired",

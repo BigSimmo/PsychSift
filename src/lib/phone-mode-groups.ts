@@ -57,7 +57,7 @@ export const phoneModeGroups = [
   {
     id: "psychiatry",
     label: "Psychiatry",
-    hint: "Diagnosis, formulation, therapy, forms, scales",
+    hint: "Diagnosis, formulation, therapy, scales",
     side: "clinical",
     showHeading: true,
     drawn: true,
@@ -68,11 +68,23 @@ export const phoneModeGroups = [
       "specifiers",
       "formulation",
       "therapy-compass",
-      "forms",
       "calculators",
       "dictionary",
       "first-nations",
     ],
+  },
+  // The WA Mental Health Act is its own door (owner decision, 21 Oct 2026), not
+  // one section among ten under Psychiatry. Forms leads it: its three tabs are
+  // the forms register, the Act and Chief Psychiatrist standards, and the MHA
+  // clock, and every one of those addresses is unchanged.
+  {
+    id: "mha",
+    label: "Mental Health Act",
+    hint: "Forms, the Act and the MHA clock",
+    side: "clinical",
+    showHeading: true,
+    drawn: true,
+    modeIds: ["forms"],
   },
   // Medicines, like Psychiatry, is a dashboard (`/medicines`) that gathers
   // these sections and leads its group (modes review, phase 3).
