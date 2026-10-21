@@ -8,8 +8,8 @@ import type { ChunkInput, DocumentChunk } from "@/lib/types";
 // re-index can tell which chunker produced a row, and so bumping the strategy deliberately
 // invalidates stale chunks. Bump this when chunk boundaries change (e.g. when cross-page
 // document-mode chunking is enabled by default).
-export const CHUNKER_VERSION = "1.3.0-page";
-export const DOCUMENT_CHUNKER_VERSION = "1.3.0-document";
+export const CHUNKER_VERSION = "1.3.1-page";
+export const DOCUMENT_CHUNKER_VERSION = "1.3.1-document";
 
 const sentenceBoundary = /(?<=[.!?])\s+/;
 const sentenceBoundaryGlobal = new RegExp(sentenceBoundary.source, "g");
@@ -73,6 +73,8 @@ const boilerplateNoticeLeadPattern =
   /^\W*(?:©|\(c\)|copyright\b|all rights reserved\b|document revision\b|do not distribute\b|downloaded from\b)/i;
 const boilerplateNoticeStripPattern =
   /https?:\/\/\S+|www\.\S+|©|\(c\)|\b(?:copyright|all rights reserved|document revision|do not distribute|downloaded from)\b/gi;
+const urlPattern = /https?:\/\/\S+|www\.\S+/i;
+const urlGlobalPattern = /https?:\/\/\S+|www\.\S+/gi;
 const residualWordGlobalPattern = /\p{L}{2,}/gu;
 const maxBoilerplateNoticeResidualWords = 6;
 const clinicalComparatorPattern = /[<>≤≥]/;
@@ -142,8 +144,28 @@ function looksLikeBoilerplateNotice(line: string) {
   if (!boilerplateNoticeMarkerPattern.test(line)) return false;
   if (hasClinicalSignal(line)) return false;
   if (boilerplateNoticeLeadPattern.test(line)) return true;
+  // Chunker 1.3.1: a line whose only marker is a web address is a referral
+  // ("Crisis line: www.example.org"), not a notice. removePageNoise strips it
+  // only at the top or bottom edge of the page (see isUrlReferralLine).
+  if (isUrlReferralLine(line)) return false;
   const residualWords = line.replace(boilerplateNoticeStripPattern, " ").match(residualWordGlobalPattern) ?? [];
   return residualWords.length <= maxBoilerplateNoticeResidualWords;
+}
+
+// A short line whose only notice marker is a web address.
+function isUrlReferralLine(line: string) {
+  if (!urlPattern.test(line)) return false;
+  return !boilerplateNoticeMarkerPattern.test(line.replace(urlGlobalPattern, " "));
+}
+
+// An edge-of-page web address with little else on the line reads as a running
+// footer or header ("www.example.org", "Downloaded ... www..." is handled above).
+function looksLikeEdgeUrlNotice(line: string) {
+  if (!isUrlReferralLine(line) || hasClinicalSignal(line)) return false;
+  // Owner ruling 21 Oct 2026: only a bare web address is stripped at the page edge. Any
+  // words or numbers beside it ("Lifeline 13 11 14 www.lifeline.org.au") make it a
+  // referral that is kept.
+  return !/[\p{L}\p{N}]/u.test(line.replace(urlGlobalPattern, " "));
 }
 
 function looksLikeMetadataNoise(line: string) {
@@ -278,7 +300,18 @@ function removePageNoise(text: string, repeatedBoilerplateLines = new Set<string
     if (edgeIndexes.has(index) && repeatedBoilerplateLines.has(normalizeRepeatedLine(line))) return [];
     return [index];
   });
-  const kept = new Set(keptIndexes.filter((index) => !isIsolatedEdgeNumberLine(lines, index, keptIndexes)));
+  const firstContent = keptIndexes[0];
+  const lastContent = keptIndexes[keptIndexes.length - 1];
+  const kept = new Set(
+    keptIndexes.filter(
+      (index) =>
+        !isIsolatedEdgeNumberLine(lines, index, keptIndexes) &&
+        !(
+          // A URL-only page (the address is both first and last line) is edge noise too.
+          (index === firstContent || index === lastContent) && looksLikeEdgeUrlNotice(lines[index])
+        ),
+    ),
+  );
   return lines
     .filter((line, index) => line === "" || kept.has(index))
     .join("\n")
@@ -467,23 +500,35 @@ function chunkOversizedParagraph(paragraph: string, chunkSize: number, overlap: 
     if (!prose) return;
     chunks.push(...(prose.length > chunkSize ? chunkTextBySentence(prose, chunkSize, overlap) : [prose]));
   };
+  const isTableSegment = (segment: (typeof segments)[number] | undefined) =>
+    Boolean(segment?.table && segment.lines.length >= 2);
+  // Footnote lines at the start of a prose run belong to the table before it.
+  const footnoteCounts = segments.map((segment, index) =>
+    !isTableSegment(segment) && isTableSegment(segments[index - 1]) ? tableFootnoteLineCount(segment.lines) : 0,
+  );
+  // A caption (or heading) at the end of a prose run belongs to the table after it.
+  const captions = segments.map((segment, index) =>
+    !isTableSegment(segment) && isTableSegment(segments[index + 1])
+      ? tableCaption(segment.lines.slice(footnoteCounts[index]))
+      : null,
+  );
   segments.forEach((segment, index) => {
-    if (!segment.table || segment.lines.length < 2) {
-      const next = segments[index + 1];
-      const captionStart = next?.table && next.lines.length >= 2 ? tableCaptionStart(segment.lines) : -1;
-      pushProse(captionStart >= 0 ? segment.lines.slice(0, captionStart) : segment.lines);
+    if (!isTableSegment(segment)) {
+      const body = segment.lines.slice(footnoteCounts[index]);
+      const caption = captions[index];
+      pushProse(caption ? body.slice(0, caption.start) : body);
       return;
     }
-    const previous = segments[index - 1];
-    const captionStart = previous && !previous.table ? tableCaptionStart(previous.lines) : -1;
-    const caption =
-      previous && captionStart >= 0
-        ? previous.lines
-            .slice(captionStart)
+    const caption = captions[index - 1]?.caption ?? "";
+    const next = segments[index + 1];
+    const footnote =
+      next && footnoteCounts[index + 1] > 0
+        ? next.lines
+            .slice(0, footnoteCounts[index + 1])
             .map((line) => line.trim())
             .join("\n")
         : "";
-    chunks.push(...chunkTableBlock(segment.lines.join("\n"), chunkSize, caption));
+    chunks.push(...chunkTableBlock(segment.lines.join("\n"), chunkSize, caption, footnote));
   });
   return chunks;
 }
@@ -496,24 +541,72 @@ function readableOverlapTail(text: string, overlap: number) {
 }
 
 const tableRowPattern = /^\s*\|.*\|\s*$/;
-const tableCaptionLinePattern = /^table\b.{0,200}$/i;
-const maxTableCaptionLines = 3;
+const tableCaptionLinePattern = /^table\b/i;
+// Chunker 1.3.1: the caption search looks a little further back for a wrapped
+// "Table ..." title, and a long title is truncated at a word boundary rather
+// than dropped. When truncated, the full title also stays in the prose.
+const maxTableCaptionLines = 6;
 const maxTableCaptionLength = 300;
+// A non-"Table" caption is the nearest preceding short heading-like line.
+const maxHeadingCaptionLength = 160;
+// A heading caption does not end like a sentence or a wrapped lead-in, and does not
+// start lowercase (a wrapped sentence tail).
+const headingCaptionEndPattern = /[^.!?:,;]$/;
+const headingCaptionStartPattern = /^[\p{Lu}\p{N}]/u;
+const sentenceEndLinePattern = /[.!?]$/;
+// Owner ruling 21 Oct 2026: only symbol markers, "Note" and "Source" open a footnote, so a
+// numbered or lettered dosing list after a table stays prose.
+const tableFootnoteLinePattern = /^(?:[*†‡§]+|notes?\b|sources?\b)/i;
+const maxTableFootnoteLines = 4;
+const maxTableFootnoteLength = 400;
 
-// The extractor can wrap a long "Table ..." title over several lines, so the
-// caption starts at the last "Table ..." line among the final few lines of the
-// prose run and takes every line after it. Returns -1 when there is no caption.
-function tableCaptionStart(lines: string[]) {
-  const earliest = Math.max(0, lines.length - maxTableCaptionLines);
-  for (let index = lines.length - 1; index >= earliest; index -= 1) {
-    if (!tableCaptionLinePattern.test(lines[index]?.trim() ?? "")) continue;
-    const caption = lines
-      .slice(index)
-      .map((line) => line.trim())
-      .join("\n");
-    return caption.length <= maxTableCaptionLength ? index : -1;
+// Returns the caption carried onto every chunk of the following table and the
+// index where it starts in `lines` (lines from `start` are moved out of prose).
+function tableCaption(lines: string[]): { start: number; caption: string } | null {
+  const trimmed = lines.map((line) => line.trim());
+  const earliest = Math.max(0, trimmed.length - maxTableCaptionLines);
+  for (let index = trimmed.length - 1; index >= earliest; index -= 1) {
+    if (!tableCaptionLinePattern.test(trimmed[index] ?? "")) continue;
+    const full = trimmed.slice(index).filter(Boolean).join("\n");
+    if (full.length <= maxTableCaptionLength) return { start: index, caption: full };
+    return {
+      start: trimmed.length,
+      caption: truncateAtWordBoundary(full.replace(whitespaceRunPattern, " "), maxTableCaptionLength),
+    };
   }
-  return -1;
+  let last = trimmed.length - 1;
+  while (last >= 0 && !trimmed[last]) last -= 1;
+  const candidate = last >= 0 ? trimmed[last] : "";
+  let before = last - 1;
+  while (before >= 0 && !trimmed[before]) before -= 1;
+  // The line above must end a sentence (or not exist, or be separated by a blank line),
+  // so the candidate is not the tail of a sentence the extractor wrapped.
+  const standsAlone = before < 0 || before < last - 1 || sentenceEndLinePattern.test(trimmed[before]);
+  if (
+    candidate &&
+    candidate.length <= maxHeadingCaptionLength &&
+    headingCaptionEndPattern.test(candidate) &&
+    headingCaptionStartPattern.test(candidate) &&
+    standsAlone
+  ) {
+    return { start: last, caption: candidate };
+  }
+  return null;
+}
+
+// How many lines at the start of a prose run read as the preceding table's
+// footnotes ("* ...", "a) ...", "Note: ...", "Source: ...").
+function tableFootnoteLineCount(lines: string[]) {
+  let count = 0;
+  let length = 0;
+  for (const line of lines.slice(0, maxTableFootnoteLines)) {
+    const text = line.trim();
+    if (!text || !tableFootnoteLinePattern.test(text)) break;
+    length += text.length + 1;
+    if (length > maxTableFootnoteLength) return 0;
+    count += 1;
+  }
+  return count;
 }
 
 function isTableBlock(block: string) {
@@ -522,19 +615,22 @@ function isTableBlock(block: string) {
   return lines.every((line) => tableRowPattern.test(line));
 }
 
-function chunkTableBlock(block: string, chunkSize: number, caption = "") {
+function chunkTableBlock(block: string, chunkSize: number, caption = "", footnote = "") {
   const lines = block.split(lineBreakPattern).filter((line) => line.trim().length > 0);
-  const captioned = caption ? `${caption}\n${block.trim()}` : block.trim();
+  const captioned = [caption, block.trim(), footnote].filter(Boolean).join("\n");
   if (captioned.length <= chunkSize) return [captioned];
 
   const separatorIndex = lines.findIndex((line) => tableSeparatorRowPattern.test(line) && line.includes("-"));
   const headerLines = separatorIndex > 0 ? lines.slice(0, separatorIndex + 1) : lines.slice(0, 1);
   const bodyLines = lines.slice(headerLines.length);
   const header = [caption, ...headerLines].filter(Boolean).join("\n");
+  // Chunker 1.3.1: a single row longer than the room left under the header is
+  // split at word boundaries into pieces that each repeat the header.
+  const rowBudget = Math.max(40, chunkSize - header.length - 1);
 
   const chunks: string[] = [];
   let current = header;
-  for (const row of bodyLines) {
+  for (const row of bodyLines.flatMap((line) => splitOversizedRow(line, rowBudget))) {
     const candidate = `${current}\n${row}`;
     if (candidate.length > chunkSize && current !== header) {
       chunks.push(current.trim());
@@ -544,7 +640,50 @@ function chunkTableBlock(block: string, chunkSize: number, caption = "") {
     }
   }
   if (current.trim()) chunks.push(current.trim());
-  return chunks.length > 0 ? chunks : [block.trim()];
+  if (chunks.length === 0) return [captioned];
+  if (footnote) {
+    // Keep the size cap: append to the last chunk only when it fits, otherwise emit the
+    // footnote with the repeated header as its own chunk.
+    const appended = `${chunks[chunks.length - 1]}\n${footnote}`;
+    if (appended.length <= chunkSize) chunks[chunks.length - 1] = appended;
+    else chunks.push(...footnoteChunks(header, footnote, chunkSize));
+  }
+  return chunks;
+}
+
+// The fallback footnote chunk must also respect the cap: repeat the header only when
+// header + footnote fits, otherwise split the footnote at word boundaries on its own.
+function footnoteChunks(header: string, footnote: string, chunkSize: number) {
+  const withHeader = `${header}\n${footnote}`;
+  if (withHeader.length <= chunkSize) return [withHeader];
+  const pieces: string[] = [];
+  let rest = footnote.trim();
+  while (rest.length > chunkSize) {
+    const cut = rest.slice(0, chunkSize).lastIndexOf(" ");
+    const at = cut > chunkSize * 0.5 ? cut : chunkSize;
+    pieces.push(rest.slice(0, at).trim());
+    rest = rest.slice(at).trim();
+  }
+  if (rest) pieces.push(rest);
+  return pieces;
+}
+
+const rowContinuationMarker = "(row continued) ";
+
+function splitOversizedRow(row: string, budget: number) {
+  if (row.length <= budget) return [row];
+  const pieces: string[] = [];
+  let rest = row.trim();
+  // Continuation pieces carry the marker, so they get that much less room.
+  while (rest.length > (pieces.length === 0 ? budget : budget - rowContinuationMarker.length)) {
+    const room = Math.max(1, pieces.length === 0 ? budget : budget - rowContinuationMarker.length);
+    const cut = rest.slice(0, room).lastIndexOf(" ");
+    const at = cut > room * 0.5 ? cut : room;
+    pieces.push(rest.slice(0, at).trim());
+    rest = rest.slice(at).trim();
+  }
+  if (rest) pieces.push(rest);
+  return pieces.map((piece, index) => (index === 0 ? piece : `${rowContinuationMarker}${piece}`));
 }
 
 const clinicalProhibitionPattern =

@@ -1755,6 +1755,44 @@ export async function loadChunksForSignalMatches(args: {
     })
     .filter(Boolean) as SearchResult[];
 }
+const maxTableFactsPerChunk = 5;
+
+/**
+ * One signal match per source chunk. Audit 2026-10-20 RAG-A-02: a lower-ranked fact for a chunk
+ * was dropped with the lower score, so only about one structured row survived per chunk. Every
+ * fact is now kept (deduplicated by id, the five highest-ranked, ties in arrival order) while the chunk keeps the
+ * score of its best fact, so scores and ordering are unchanged.
+ */
+export function groupTableFactMatches(data: TableFactRpcRow[]) {
+  const grouped = new Map<string, ChunkSignalMatch>();
+  for (const fact of data) {
+    if (!fact.source_chunk_id) continue;
+    const textRank = Number(fact.text_rank ?? 0);
+    const current = grouped.get(fact.source_chunk_id);
+    const tableFact = { ...fact, text_rank: textRank, match_reason: fact.match_reason ?? "table_row" };
+    const existingFacts = current?.tableFacts ?? [];
+    const tableFacts =
+      fact.id &&
+      existingFacts.some((existing) => existing.id === fact.id && Number(existing.text_rank ?? 0) >= textRank)
+        ? existingFacts
+        : [...existingFacts.filter((existing) => !fact.id || existing.id !== fact.id), tableFact]
+            // Keep the highest-ranked facts (stable sort keeps arrival order for ties), so a better
+            // row from a sibling variant is never cut while still setting the chunk's score.
+            .sort((a, b) => Number(b.text_rank ?? 0) - Number(a.text_rank ?? 0))
+            .slice(0, maxTableFactsPerChunk);
+    const next: ChunkSignalMatch = {
+      chunkId: fact.source_chunk_id,
+      similarity: Math.min(0.94, 0.62 + Math.min(textRank, 1) * 0.3),
+      textRank,
+      hybridScore: Math.min(0.97, 0.66 + Math.min(textRank, 1) * 0.3),
+      reason: fact.match_reason ?? "table_row",
+      tableFacts,
+    };
+    grouped.set(fact.source_chunk_id, !current || next.textRank > current.textRank ? next : { ...current, tableFacts });
+  }
+  return Array.from(grouped.values());
+}
+
 /**
  * Retrieves document chunks containing table facts relevant to a query.
  *
@@ -1808,26 +1846,9 @@ export async function searchTableFactCandidates(args: {
   const data = factSets.flat();
   if (!data.length) return [] as SearchResult[];
 
-  const grouped = new Map<string, ChunkSignalMatch>();
-  for (const fact of data) {
-    if (!fact.source_chunk_id) continue;
-    const textRank = Number(fact.text_rank ?? 0);
-    const current = grouped.get(fact.source_chunk_id);
-    const tableFact = { ...fact, text_rank: textRank, match_reason: fact.match_reason ?? "table_row" };
-    const next: ChunkSignalMatch = {
-      chunkId: fact.source_chunk_id,
-      similarity: Math.min(0.94, 0.62 + Math.min(textRank, 1) * 0.3),
-      textRank,
-      hybridScore: Math.min(0.97, 0.66 + Math.min(textRank, 1) * 0.3),
-      reason: fact.match_reason ?? "table_row",
-      tableFacts: [...(current?.tableFacts ?? []), tableFact].slice(0, 5),
-    };
-    if (!current || next.hybridScore > current.hybridScore) grouped.set(fact.source_chunk_id, next);
-  }
-
   return loadChunksForSignalMatches({
     supabase: args.supabase,
-    matches: Array.from(grouped.values()),
+    matches: groupTableFactMatches(data),
     ownerId: args.ownerId,
     accessScope: args.accessScope,
     cache: args.cache,
