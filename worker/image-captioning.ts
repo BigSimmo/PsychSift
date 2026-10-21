@@ -26,6 +26,7 @@ import {
   assertIngestionProviderEgress,
   createIngestionProviderEgressOperation,
 } from "../src/lib/ingestion-provider-egress";
+import { deleteImageCaptionCacheForDocument } from "../src/lib/image-caption-cache-cleanup";
 import { classifyAndCaptionImageFromBase64 } from "../src/lib/openai";
 import type { ExtractedDocument, ImageEvidenceCategory } from "../src/lib/types";
 import {
@@ -312,6 +313,7 @@ export async function resolveCaptionTasks(
   const { attemptForJob, mutation, providerContextForJob, supabase, updateJobProgress } = ctx;
   const captionConcurrency = env.WORKER_VISION_CONCURRENCY;
   const resolvedTasks: ResolvedCaptionTask[] = [];
+  const cacheIdentities = new Set<string>();
   for (let start = 0; start < captionTasks.length; start += captionConcurrency) {
     const batch = captionTasks.slice(start, start + captionConcurrency);
     await updateJobProgress(job.id, {
@@ -341,6 +343,7 @@ export async function resolveCaptionTasks(
             mimeType: task.image.mimeType,
             classifierInputs,
           });
+          if (cacheKey) cacheIdentities.add(cacheKey.identity);
           const cached = cacheKey
             ? await readCachedImageClassification(
                 supabase,
@@ -409,6 +412,20 @@ export async function resolveCaptionTasks(
       }),
     );
     resolvedTasks.push(...batchResults);
+  }
+  // #3730: a reprocess leaves this document's rows for identities it no longer produces (new
+  // content, admission or authority facts), and nothing would ever read them again. Prune them
+  // once every caption resolved, keeping the ones this run can reuse. A run that bound no
+  // identity at all (captioning off, or a source it cannot bind) prunes nothing.
+  const ownerId = job.documents.owner_id;
+  if (ownerId && cacheIdentities.size > 0) {
+    attemptForJob(job.id).check();
+    await deleteImageCaptionCacheForDocument(supabase, {
+      ownerId,
+      documentId: job.document_id,
+      keepIdentities: Array.from(cacheIdentities),
+      signal: dataPlaneAbortSignal(attemptForJob(job.id).signal),
+    });
   }
   return resolvedTasks;
 }

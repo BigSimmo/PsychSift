@@ -107,8 +107,41 @@ function fakeCacheTable() {
           return { data: rows.get(keyOf(filters)) ?? null, error: null };
         },
       };
+      // #3730: the clean-up deletes one owner's rows for one document, minus the kept identities.
+      let keep: string[] = [];
+      const remove = {
+        eq(column: string, value: unknown) {
+          filters[column] = value;
+          return remove;
+        },
+        not(column: string, operator: string, value: string) {
+          expect([column, operator]).toEqual(["cache_identity", "in"]);
+          keep = value
+            .slice(1, -1)
+            .split(",")
+            .map((identity) => identity.replace(/^"|"$/g, ""));
+          return remove;
+        },
+        abortSignal() {
+          return remove;
+        },
+        then(resolve: (value: { error: null }) => void) {
+          for (const [rowKey, row] of rows) {
+            const metadata = row.metadata as Record<string, unknown>;
+            if (
+              row.owner_id === filters.owner_id &&
+              metadata.document_id === filters["metadata->>document_id"] &&
+              !keep.includes(String(row.cache_identity))
+            ) {
+              rows.delete(rowKey);
+            }
+          }
+          resolve({ error: null });
+        },
+      };
       return {
         select: () => select,
+        delete: () => remove,
         upsert(row: Record<string, unknown>, options: { onConflict: string }) {
           expect(options.onConflict).toBe("owner_id,image_hash,model,cache_identity");
           rows.set(keyOf(row), structuredClone(row));
@@ -323,6 +356,8 @@ describe("image caption cache identity", () => {
     const stored = [...table.rows.values()][0];
     expect(String(stored.caption)).not.toContain("jane.citizen@example.org");
     expect(stored).toMatchObject({ owner_id: OWNER_ID, image_hash: "c".repeat(64), mime_type: "image/png" });
+    // #3730: the row records its document so it can be deleted with it.
+    expect(stored.metadata).toMatchObject({ document_id: DOCUMENT_ID });
 
     const failing = {
       from: () => {
@@ -434,5 +469,59 @@ describe("caption stage reuse across retries (ING-B-10)", () => {
       resolveCaptionTasks(context(table.client), job({ attempt: 2 }), [task()], new Map()),
     ).rejects.toBeInstanceOf(IngestionProviderEgressRefusal);
     expect(classify).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("caption cache clean-up on reprocess (#3730)", () => {
+  const OTHER_DOCUMENT_ID = "77777777-7777-4777-8777-777777777777";
+
+  function reprocessed(content: string) {
+    const next = job({ attempt: 2 });
+    next.documents = { ...next.documents, content_hash: content.repeat(64) };
+    return next;
+  }
+
+  it("drops the document's rows for identities the new content no longer produces", async () => {
+    classify.mockResolvedValue(modelClassification());
+    const table = fakeCacheTable();
+    await resolveCaptionTasks(context(table.client), job(), [task()], new Map());
+    await resolveCaptionTasks(context(table.client), job({ documentId: OTHER_DOCUMENT_ID }), [task()], new Map());
+    expect(table.rows.size).toBe(2);
+
+    await resolveCaptionTasks(context(table.client), reprocessed("e"), [task()], new Map());
+
+    const remaining = [...table.rows.values()].map((row) => row.metadata as Record<string, unknown>);
+    expect(remaining).toHaveLength(2);
+    // The other document's caption of the same bytes is untouched.
+    expect(remaining.filter((metadata) => metadata.document_id === OTHER_DOCUMENT_ID)).toHaveLength(1);
+    const current = imageCaptionCacheKey({
+      job: reprocessed("e"),
+      imageHash: task().imageHash,
+      contextHash: task().contextHash,
+      mimeType: "image/png",
+      classifierInputs: INPUTS,
+    })!;
+    expect(
+      remaining.filter((metadata) => metadata.document_id === DOCUMENT_ID).map((metadata) => metadata.cache_identity),
+    ).toEqual([current.identity]);
+  });
+
+  it("keeps the rows a retry of unchanged content can still reuse", async () => {
+    classify.mockResolvedValue(modelClassification());
+    const table = fakeCacheTable();
+    await resolveCaptionTasks(context(table.client), job(), [task()], new Map());
+    const retry = await resolveCaptionTasks(context(table.client), job({ attempt: 2 }), [task()], new Map());
+    expect(retry[0].classificationCacheHit).toBe(true);
+    expect(table.rows.size).toBe(1);
+  });
+
+  it("prunes nothing when the run bound no cache identity", async () => {
+    classify.mockResolvedValue(modelClassification());
+    const table = fakeCacheTable();
+    await resolveCaptionTasks(context(table.client), job(), [task()], new Map());
+    const unbound = job({ attempt: 2 });
+    unbound.documents = { ...unbound.documents, content_hash: null as unknown as string };
+    await resolveCaptionTasks(context(table.client), unbound, [task()], new Map());
+    expect(table.rows.size).toBe(1);
   });
 });
