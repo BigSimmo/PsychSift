@@ -99,6 +99,7 @@ import {
 } from "@/lib/answer-preview";
 export { applyNumericVerification, unboldUnverifiedNumbers } from "@/lib/answer-verification";
 import { selectModelContextEvidencePair, summarizeAustralianSourceSelection } from "@/lib/rag/rag-context-selection";
+import { excludeSupersededEvidence } from "@/lib/rag/superseded-evidence";
 import { relatedInformationMenuLine } from "@/lib/rag/answer-composition";
 export {
   capPerDocumentCrowding,
@@ -2352,7 +2353,7 @@ async function answerQuestionWithScopeUncoalesced(
   const queryAnalysis = analyzeClinicalQuery(answerFocusQuery);
   if (queryClassForClinicalMode(args.queryMode ?? "auto")) queryAnalysis.queryClass = queryClass;
   const answerRanking = rankAnswerEvidence(answerFocusQuery, normalizeSearchResults(search.results), queryClass);
-  const results = annotateSearchResults(answerFocusQuery, answerRanking.rankedResults);
+  const results = excludeSupersededEvidence(annotateSearchResults(answerFocusQuery, answerRanking.rankedResults));
   const {
     crossDocumentPlan,
     eligibleResults: eligibleAnswerResults,
