@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "62c5cf9f-95c6-4a40-9112-6f63ac631d9b",
+  "createdOn": "2026-10-21",
+  "action": "done",
+  "payload": {
+    "id": "#F3B2XC",
+    "outcome": "Done on main (verified 21 Oct 2026, answer safety hardening thread). src/lib/medications/tall-man.ts was rebuilt from the ACSQHC National Mixed-Case Lettering List (April 2024) in PR #3562 (5319dab78, 16 Oct), pinned by tests/tall-man-lettering.test.ts. All 26 lettered names were re-checked against the Commission PDF (safetyandquality.gov.au national_mixed-case_lettering_list.pdf, Tables 1 and 3) on 21 Oct and every one matches. The doubtful forms in this row (citaloPRAM, fluPENtixol, VALproate, midazolAM, temazePAM) are gone. One local exception remains, cloZAPine (not on the ACSQHC list), and is with the owner to confirm. Brand names on the list (Largactil, Lamictal, Pristiq and others) are not lettered because only generic record names are formatted.",
+    "baseRowFingerprint": "ceae0146e0b33521b704f0c9830ae582d28aa18ecf652e60b4f337f204126c7f",
+    "targetUlid": "01M4ZM794RF3B2XCAJ2YDRJ8FG"
+  }
+}
