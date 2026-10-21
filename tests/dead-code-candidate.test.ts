@@ -115,7 +115,7 @@ describe("dead-code candidate safety classifications", () => {
     const root = createFixture();
     const mentions = [
       ["docs/archive/old.md", "candidate"],
-      ["docs/branch-review-records/record.md", "candidate"],
+      ["docs/archive/branch-review-records/record.md", "candidate"],
       ["docs/outstanding-issues-inbox/request.json", '"candidate"'],
       ["docs/adoption-manifest.json", '"candidate"'],
       ["docs/guides/live.md", "candidate"],

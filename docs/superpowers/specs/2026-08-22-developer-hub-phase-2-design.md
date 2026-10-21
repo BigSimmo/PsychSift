@@ -82,7 +82,7 @@ call, and a new approval boundary this repo deliberately gates.
 What _is_ on disk is substantial, and for the hub's stated purpose — decide what to do next — arguably
 more useful:
 
-- `docs/branch-review-records/` — **409 immutable review records**, each carrying date, ref, the full
+- `docs/archive/branch-review-records/` — **409 immutable review records**, each carrying date, ref, the full
   40-character head SHA, scope, outcome, and the checks that were run.
 - `docs/branch-review-ledger.md` and its archives — the frozen historical table.
 - Branch ancestry and merge state, resolvable at generation time while git is available.

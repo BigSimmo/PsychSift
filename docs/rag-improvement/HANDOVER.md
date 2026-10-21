@@ -424,8 +424,8 @@ offline fixtures and validation only`.
 2. PR body from `.github/pull_request_template.md` in full prose: correct `RAG impact:`
    line, Clinical Governance Preflight when the packet touches clinical/RAG surfaces,
    verification evidence, risk/rollback.
-3. `npm run ledger:append -- --ref <branch> --head <full-sha> --scope "<scope>" --outcome
-<o> --checks "<checks>"`, commit the record file, push.
+3. Post one `Review record` comment on the PR per
+   [Records](../agents/pull-request-workflow.md#records).
 4. Update this file's status table row in the same PR.
 5. Offer `/issues capture` for anything unresolved, then **stop at the open PR** — the owner
    merges; do not watch CI unless explicitly asked.

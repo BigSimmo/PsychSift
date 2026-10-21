@@ -25,7 +25,7 @@ Reference these guidelines when:
 - Optimizing for Postgres-specific features
 - Working with Row-Level Security (RLS)
 
-For review-only use, follow `AGENTS.md` review throttling and `docs/codex-review-protocol.md` first. Do not review opportunistically or mutate files during pure review. After a completed branch/PR review, use `npm run ledger:append` to create an immutable review record; never edit the frozen `docs/branch-review-ledger.md` table.
+For review-only use, follow `AGENTS.md` review throttling and `docs/codex-review-protocol.md` first. Do not review opportunistically or mutate files during pure review. After a completed PR review, post one `Review record` comment on the PR (see [Records](../../../docs/agents/pull-request-workflow.md#records)); never edit the frozen `docs/branch-review-ledger.md` table.
 
 ## Rule Categories by Priority
 

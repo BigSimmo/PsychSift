@@ -45,7 +45,7 @@ function record(overrides: Partial<RecordFixture> = {}) {
     hash: hash("f"),
     ...overrides,
   };
-  return { ...merged, path: `docs/branch-review-records/${merged.hash}.record.md` };
+  return { ...merged, path: `docs/archive/branch-review-records/${merged.hash}.record.md` };
 }
 
 const LINK_RE = /branch-review-records\/[0-9a-f]{64}\.record\.md/;
@@ -71,7 +71,7 @@ describe("branch review index rendering", () => {
   it("keeps an escaped pipe escaped, so a re-emitted cell cannot open a phantom column", () => {
     const raw = "| 2026-08-20 | codex/x | " + hash("a") + " | Tests 7274 passed \\| 4 skipped (7278) | ok | fine |";
     const [parsed] = collectRecords({
-      paths: ["docs/branch-review-records/" + hash("b") + ".record.md"],
+      paths: ["docs/archive/branch-review-records/" + hash("b") + ".record.md"],
       read: () => raw,
     });
 
@@ -171,7 +171,7 @@ describe("branch review index rendering", () => {
     );
     const table = renderBranchReviewIndex(records).split("## All records, newest first")[1].split("## Refs")[0];
     for (const entry of records) {
-      const link = `(branch-review-records/${entry.hash}.record.md)`;
+      const link = `(archive/branch-review-records/${entry.hash}.record.md)`;
       expect(table.split(link)).toHaveLength(2);
       expect(link).toMatch(LINK_RE);
     }
@@ -179,7 +179,7 @@ describe("branch review index rendering", () => {
 
   it("fails closed on a record file that does not hold exactly one review row", () => {
     expect(() =>
-      collectRecords({ paths: ["docs/branch-review-records/x.record.md"], read: () => "# not a table\n" }),
+      collectRecords({ paths: ["docs/archive/branch-review-records/x.record.md"], read: () => "# not a table\n" }),
     ).toThrow(/expected exactly one review row/);
   });
 });

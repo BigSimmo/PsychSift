@@ -37,6 +37,12 @@ const ALLOWLIST = new Set([
   "<script>",
   "<name>",
   "your-script",
+  // Review record writers retired 2026-10-20 (docs/decisions/2026-10-20-review-records-now-pr-comments.md);
+  // history and frozen ledger prose still name them.
+  "ledger:append",
+  "ledger:migrate-legacy",
+  "ledger:dedupe",
+  "ledger:rotate",
   "test:e2e:advisory", // both test:e2e:advisory (@quarantine|@mockup) and test:e2e:regression exist in package.json; kept in allowlist for historical ledger references
 ]);
 

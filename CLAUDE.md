@@ -19,8 +19,8 @@ it is laid out, how work flows through it. It deliberately does not restate AGEN
 where the two ever disagree, **AGENTS.md wins**.
 
 `AGENTS.md` is a small always-loaded core — the boundaries that prevent irreversible harm, plus
-the sections a gate parses by exact text — and an index. Every other rule keeps its heading there
-and its full text in a named file under `docs/agents/`. Read that file before acting in its area;
+the sections a gate parses by exact text — and one index, `# Where the rest of the rules live`.
+Every other rule has a row there and its full text in the named file. Read that file before acting in its area;
 its rules are in force whether or not you have opened it.
 
 | Need                                        | Read                                                                                                         |
@@ -29,7 +29,7 @@ its rules are in force whether or not you have opened it.
 | Architecture, modules, schema, domain flows | `docs/codebase-index.md` — the deep map; start there for any real task                                       |
 | Design-system rules before any UI building  | `docs/design-system/README.md` — the system of record: tokens, component contracts, gates, adoption playbook |
 | Routes and modes                            | `docs/site-map.md` (generated — `npm run sitemap:update`)                                                    |
-| Which gate to run for a change              | `docs/process-hardening.md`, or the `gates` skill                                                            |
+| Which gate to run for a change              | `docs/agents/verification-gates.md`, or the `gates` skill                                                    |
 | Test execution, focused/live, flake policy  | `docs/testing.md`                                                                                            |
 | Every maintained doc, categorised           | `docs/README.md`                                                                                             |
 | Outstanding work across sessions            | `docs/outstanding-issues.md` (`/issues`)                                                                     |
@@ -37,8 +37,8 @@ its rules are in force whether or not you have opened it.
 | Which area owns a file, and its key docs    | `docs/organisation/README.md` — the organisation map; `npm run check:organisation -- --files <path>`         |
 
 When adding to this file, add **orientation**. Policy belongs in `AGENTS.md`; deep structure
-belongs in `docs/codebase-index.md`. Keeping those three non-overlapping is what stops five
-AI systems (Claude Code, Codex, Cursor, CodeRabbit, `.agents/`) from drifting apart —
+belongs in `docs/codebase-index.md`. Keeping those three non-overlapping is what stops the
+AI tools that read this repository (Claude Code, Codex, Cursor, Gemini, Antigravity via `.agents/`, and the review bots) from drifting apart —
 see the AI tooling and documentation ownership map in `docs/agents-guide.md` (§ Tooling and documentation ownership).
 
 ## Highest-consequence rules
@@ -46,8 +46,8 @@ see the AI tooling and documentation ownership map in `docs/agents-guide.md` (§
 Full text and rationale in `AGENTS.md`, which now carries these boundaries in its core, ahead of
 everything else: the provider confirmation boundary, Supabase project safety (merging a migration
 reaches the live clinical database within seconds), RAG ranking protection, Railway project safety
-and local server safety. The Next.js warning is the block at the top of `AGENTS.md`. Review-ledger
-lookup before reviewing a branch or PR is in
+and local server safety. The Next.js warning is its own marked block in `AGENTS.md`. Checking for a
+prior review record before reviewing a PR is in
 [`docs/agents/codex-review-throttling.md`](docs/agents/codex-review-throttling.md), and the rule
 that evidence is never compressed is in
 [`docs/agents/external-skill-precedence.md`](docs/agents/external-skill-precedence.md).
@@ -97,15 +97,15 @@ for the triggering event, draft state and classified change scope. The ordinary 
 `docs/agents/verification-gates.md` distinguishes expected CI checks, authorised local deferrals and
 completed passing evidence; skipped or pending checks are not passes.
 
-| Gate                                      | What it is                                                                                                                                                                                                                                                                                                                                 |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `npm run test:focused -- --files <paths>` | Source-only iteration. Fails closed for deleted files and test infrastructure — then run `npm run test`.                                                                                                                                                                                                                                   |
-| `npm run verify:cheap`                    | **Ordinary offline gate:** `check:installed-lock-parity` then `check:diff-integrity` + `lint` + `typecheck` + full offline unit suite. Nothing else. Prefer `test:focused` while iterating; run cheap before an ordinary PR push when the diff needs those five checks. CI selects the heavy static set when classified scope requires it. |
-| `npm run verify:full`                     | **Broad offline gate:** the 43 static/consistency gates (docs index, ledgers, knip, design tokens, owner-scope…; `npm run check:gate-manifest` lists them), then `lint` + `typecheck` + `test`. Does not invoke the `verify:cheap` script. For cross-module risk or before a release — not routinely.                                      |
-| `npm run verify:pr-local`                 | Risk-routed PR mirror: focused docs/workflow contracts for recognised light scope, fail-closed heavy checks for executable or unknown scope. `-- --dry-run --files <paths>` shows selection.                                                                                                                                               |
-| `npm run verify:ui`                       | Chromium production journeys. Run `npm run ensure` first.                                                                                                                                                                                                                                                                                  |
-| `npm run verify:phone-chrome`             | Phone-chrome changes; selects affected owners/journeys before escalating to `verify:ui`                                                                                                                                                                                                                                                    |
-| `npm run verify:release`                  | Full build + all browsers + readiness. **Provider-backed — needs approval.**                                                                                                                                                                                                                                                               |
+| Gate                                      | What it is                                                                                                                                                                                                                                                                                                                                           |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run test:focused -- --files <paths>` | Source-only iteration. Fails closed for deleted files and test infrastructure — then run `npm run test`.                                                                                                                                                                                                                                             |
+| `npm run verify:cheap`                    | **Ordinary offline gate:** `check:installed-lock-parity`, the Codex hook tests, `check:diff-integrity`, `lint`, `typecheck`, full offline unit suite. Nothing else. Prefer `test:focused` while iterating; run cheap before an ordinary PR push when the diff needs those checks. CI selects the heavy static set when classified scope requires it. |
+| `npm run verify:full`                     | **Broad offline gate:** the static/consistency gates (docs index, ledgers, knip, design tokens, owner-scope…; `npm run check:gate-manifest` lists them), then `lint` + `typecheck` + `test`. Does not invoke the `verify:cheap` script. For cross-module risk or before a release — not routinely.                                                   |
+| `npm run verify:pr-local`                 | Risk-routed PR mirror: focused docs/workflow contracts for recognised light scope, fail-closed heavy checks for executable or unknown scope. `-- --dry-run --files <paths>` shows selection.                                                                                                                                                         |
+| `npm run verify:ui`                       | Chromium production journeys. Run `npm run ensure` first.                                                                                                                                                                                                                                                                                            |
+| `npm run verify:phone-chrome`             | Phone-chrome changes; selects affected owners/journeys before escalating to `verify:ui`                                                                                                                                                                                                                                                              |
+| `npm run verify:release`                  | Full build + all browsers + readiness. **Provider-backed — needs approval.**                                                                                                                                                                                                                                                                         |
 
 Neither `verify:cheap` nor `verify:full` runs formatting, which is why changed-file CI and the
 installed pre-push hook (`.githooks/pre-push` → `scripts/guard-push.mjs`) block on unformatted files.
@@ -129,7 +129,8 @@ applies; unknown non-document paths fail closed to heavy scope.
 These fail builds, so they are worth knowing before you write code. Button wiring, orphan routes,
 internal navigation and the mockup exemptions are in
 [`docs/agents/wiring-and-bundle-budget.md`](docs/agents/wiring-and-bundle-budget.md); the
-one-composer rule is in `AGENTS.md` "Search chrome behaviour"; PR bodies as parsed input are in
+one-composer rule is in
+[`docs/agents/native-startup/search-chrome-behaviour.md`](docs/agents/native-startup/search-chrome-behaviour.md); PR bodies as parsed input are in
 [`docs/agents/external-skill-precedence.md`](docs/agents/external-skill-precedence.md). One
 convention has no home in the rules layer and stays here:
 
@@ -143,7 +144,7 @@ convention has no home in the rules layer and stays here:
 Prefer these over improvising — they encode traps this repo has already hit:
 
 - **Claude skills** (`.claude/skills/`): `newtask` (fresh worktree off latest `main`),
-  `gates` (pick and prove the right gate), `handoff` (commit → verify → push → PR → ledger),
+  `gates` (pick and prove the right gate), `handoff` (commit → verify → push → PR → review record),
   `prlanded` (verify a merged PR actually landed), `issues` (`/issues` cross-session
   memory), `run-pr` (open-PR sweep), `sources` (find, capture, score and index a clinical
   source — see `docs/source-acquisition-protocol.md`), `ledger` (extract this session's outstanding work into

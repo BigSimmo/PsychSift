@@ -42,7 +42,6 @@ import { afterEach, describe, expect, it } from "vitest";
  */
 
 const sourceHook = join(process.cwd(), ".claude/hooks/session-start.sh");
-const sourcePrecompactHook = join(process.cwd(), ".claude/hooks/precompact-issues-capture.sh");
 const NODE_VERSION = "24.19.0";
 const scratchRoots: string[] = [];
 const bashCommand =
@@ -225,48 +224,6 @@ describe("session-start hook", () => {
   });
 });
 
-describe("precompact observability hook", () => {
-  it("stays silent while recording only a bounded trigger", () => {
-    const repository = mkdtempSync(join(tmpdir(), "precompact-hook-"));
-    scratchRoots.push(repository);
-    const initialized = spawnSync("git", ["init", "--quiet"], { cwd: repository, encoding: "utf8" });
-    expect(initialized.status, `git init exited ${initialized.status}: ${initialized.stderr}`).toBe(0);
-
-    for (const [trigger, expected] of [
-      ["manual", "manual"],
-      ["unexpected", "unknown"],
-    ]) {
-      const result = spawnSync(bashCommand, [sourcePrecompactHook.replace(/\\/g, "/")], {
-        cwd: repository,
-        encoding: "utf8",
-        input: JSON.stringify({ hook_event_name: "PreCompact", trigger }),
-      });
-      expect(result.status, `hook exited ${result.status}: ${result.stderr}`).toBe(0);
-      expect(result.stdout).toBe("");
-      expect(result.stderr).toBe("");
-
-      const log = readFileSync(join(repository, ".git", "claude-precompact.log"), "utf8");
-      expect(log.trimEnd().split(/\r?\n/).at(-1)).toMatch(
-        new RegExp(`^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z precompact trigger=${expected}$`),
-      );
-    }
-  });
-
-  it("survives malformed payloads and missing git directory without error", () => {
-    const emptyDir = mkdtempSync(join(tmpdir(), "precompact-empty-"));
-    scratchRoots.push(emptyDir);
-
-    const result = spawnSync(bashCommand, [sourcePrecompactHook.replace(/\\/g, "/")], {
-      cwd: emptyDir,
-      encoding: "utf8",
-      input: "not json at all { malformed [",
-    });
-    expect(result.status, `hook exited ${result.status}: ${result.stderr}`).toBe(0);
-    expect(result.stdout).toBe("");
-    expect(result.stderr).toBe("");
-  });
-});
-
 /**
  * Checked-in file mode for the hook scripts.
  *
@@ -311,12 +268,12 @@ describe("claude hook scripts are checked in runnable", () => {
     })
     .filter((entry) => entry.path?.endsWith(".sh"));
 
-  it("finds all expected hook scripts including session-start.sh, precompact-issues-capture.sh, and issues-surface.sh", () => {
+  it("finds all expected hook scripts including session-start.sh and issues-surface.sh", () => {
     expect(listed.status).toBe(0);
     expect(entries.length).toBeGreaterThanOrEqual(3);
     const scriptPaths = entries.map((entry) => entry.path);
     expect(scriptPaths).toContain(".claude/hooks/session-start.sh");
-    expect(scriptPaths).toContain(".claude/hooks/precompact-issues-capture.sh");
+    expect(scriptPaths).not.toContain(".claude/hooks/precompact-issues-capture.sh");
     expect(scriptPaths).toContain(".claude/hooks/issues-surface.sh");
   });
 

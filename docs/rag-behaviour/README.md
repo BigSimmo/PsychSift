@@ -18,9 +18,9 @@ Standing rules (mirrored in `AGENTS.md` so every agent session inherits them):
 
 1. **Flag RAG impact.** Any task touching a protected surface (authoritative list: `ragRankingPatterns`
    in `scripts/pr-policy.mjs`; explained in `safeguards.md`) must say
-   so explicitly before editing, and its PR must carry a `RAG impact:` line.
+   so explicitly before editing, and its PR should always carry a `RAG impact:` line.
    Since 2026-09-17, `scripts/pr-policy.mjs` warns, rather than blocks, when the
-   line is absent. The standing declaration rule remains in force.
+   line is absent. Write it anyway: it is how a reviewer sees the change touches ranking.
 2. **Canary for behaviour changes.** Any retrieval/ranking/ordering behaviour change requires a
    live eval-canary pair — baseline + post — with doc/content recall pinned at 1.0 and zero
    per-case regressions, before the change is trusted. Runs fire via an `eval-canary`

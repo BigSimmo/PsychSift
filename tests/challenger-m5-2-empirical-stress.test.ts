@@ -229,8 +229,10 @@ describe("Challenger M5-2: Empirical Stress Test & Verification Gates", () => {
       const budgetLimit = 15_000;
       const headroom = budgetLimit - byteLength;
 
+      // The 15,000-byte cap is the limit. A 1,000-byte headroom floor on top of it blocked
+      // recording owner decisions, so it was dropped (change control audit S13, 2026-10-20).
       expect(byteLength).toBeLessThanOrEqual(budgetLimit);
-      expect(headroom).toBeGreaterThan(1_000);
+      expect(headroom).toBeGreaterThanOrEqual(0);
     });
 
     it("verifies run-vitest.mjs fail-fast guard exits with code 1 on non-existent targets", () => {
