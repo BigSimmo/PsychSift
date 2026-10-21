@@ -1,0 +1,182 @@
+name: WA learning directory weekly report
+
+# #R2FNTJ, owner decision 21 Oct 2026: the WA learning directory (src/data/cme/wa-learning-directory.json)
+# gets a weekly report-only check. It lists entries not checked recently, organiser links that did not
+# answer, cancelled events, unconfirmed dates and long-finished events, as ONE issue found by a hidden
+# marker and updated in place each week.
+#
+# Report only. It never edits the directory, never commits, never opens a pull request and blocks
+# nothing. It calls no provider: the only network calls are plain GET requests to the organisers' own
+# public pages. A person still checks each page and updates the file in a pull request.
+#
+# Same two-job shape as organisation-weekly.yml: the job that runs repository code keeps
+# `contents: read` only, and `issues: write` sits on a job that checks out and runs nothing from the
+# repository. The report crosses between them as an artifact.
+
+on:
+  schedule:
+    # Sunday 22:17 UTC, which is Monday 06:17 in Perth.
+    - cron: "17 22 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: learning-directory-weekly
+  cancel-in-progress: false
+
+jobs:
+  report:
+    name: Build the learning directory weekly report
+    # main only: a manual run from another branch would report that branch's directory as main's.
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node and dependencies
+        uses: ./.github/actions/setup-node-cached
+
+      - name: Build the report
+        run: node scripts/cme/learning-directory-weekly.mjs --out output/cme/learning-directory-weekly.md
+
+      - name: Upload the report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: learning-directory-weekly-report
+          path: output/cme/learning-directory-weekly.md
+          if-no-files-found: error
+          retention-days: 30
+          overwrite: true
+
+  publish:
+    name: Update the learning directory weekly issue
+    needs: report
+    # Runs even when the report job failed, so a broken report is said in the issue rather than
+    # only in an email nobody reads. Skipped with the report job on any branch other than main.
+    if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Download the report
+        # A failed report job leaves no artifact; the next step then says so in the issue.
+        continue-on-error: true
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: learning-directory-weekly-report
+          path: weekly-report
+
+      - name: Update or create the weekly issue
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        # Results travel through env, never inline template expansion inside `script:`.
+        env:
+          REPORT_RESULT: ${{ needs.report.result }}
+          REPORT_FILE: weekly-report/learning-directory-weekly.md
+        with:
+          retries: 3
+          script: |
+            const fs = require("node:fs");
+            const title = "WA learning directory weekly report";
+            const label = "learning-directory-weekly";
+            // Stable ownership marker written into every body this job authors. Only an issue that
+            // carries it AND was opened by this workflow's bot is ever updated, so a human quoting the
+            // report elsewhere can never have their issue overwritten. Closed issues are searched too
+            // and reopened, so closing the issue never makes the next run open a second one.
+            const MARKER = "<!-- learning-directory-weekly-report:v1 -->";
+            const BOT = "github-actions[bot]";
+            // GitHub rejects an issue body over 65,536 characters; the report caps itself at 60,000.
+            const BODY_MAX = 65000;
+            // The report's own first line; anything else in the artifact is not a report.
+            const HEADING = "# WA learning directory weekly report";
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+            const result = process.env.REPORT_RESULT || "unknown";
+
+            let report = null;
+            let problem = null;
+            try {
+              report = fs.readFileSync(process.env.REPORT_FILE, "utf8");
+            } catch (error) {
+              problem = `could not be built (report job: \`${result}\`)`;
+              core.warning(`No report to publish: ${error.message}`);
+            }
+            if (report !== null && report.split("\n", 1)[0] !== HEADING) {
+              problem = `was not a weekly report (report job: \`${result}\`)`;
+              core.warning("The downloaded file does not start with the report heading; publishing a notice instead.");
+              report = null;
+            }
+            // Defuse any @mention the report escaper missed. Idempotent: an escaped @ is followed by
+            // a zero-width space, which this pattern never matches.
+            if (report !== null) report = report.replace(/@(?=[A-Za-z0-9])/g, "@\u200b");
+            if (report !== null && report.length > BODY_MAX) {
+              problem = `was too long to publish (${report.length} characters)`;
+              core.warning(`The report is ${report.length} characters; publishing a notice instead.`);
+              report = null;
+            }
+            const body = [
+              MARKER,
+              report ??
+                [
+                  HEADING,
+                  "",
+                  `This week's report ${problem}. That is **not** evidence the directory is up to date. Read the run log: ${runUrl}`,
+                ].join("\n"),
+              "",
+              `_Updated in place each week by \`.github/workflows/learning-directory-weekly.yml\`. Run: ${runUrl}_`,
+            ].join("\n");
+
+            const healthy = result === "success" && report !== null;
+            let issueNumber;
+            try {
+              const ours = await github.paginate(github.rest.issues.listForRepo, {
+                owner,
+                repo,
+                state: "all",
+                creator: BOT,
+                per_page: 100,
+              });
+              const existing =
+                ours
+                  .filter((issue) => !issue.pull_request && issue.user?.login === BOT)
+                  .filter((issue) => String(issue.body ?? "").includes(MARKER))
+                  .sort((a, b) => a.number - b.number)[0] ?? null;
+              if (existing) {
+                issueNumber = existing.number;
+                await github.rest.issues.update({ owner, repo, issue_number: issueNumber, body, state: "open" });
+                core.info(`Updated #${issueNumber}.`);
+              } else {
+                const created = await github.rest.issues.create({ owner, repo, title, labels: [label], body });
+                issueNumber = created.data.number;
+                core.info(`Opened #${issueNumber}.`);
+              }
+              // Editing a body notifies nobody; a comment reaches everyone watching the issue.
+              if (!healthy) {
+                await github.rest.issues.createComment({
+                  owner,
+                  repo,
+                  issue_number: issueNumber,
+                  body: [
+                    MARKER,
+                    `This week's learning directory report did not finish cleanly (report job: \`${result}\`${report === null ? ", no usable report" : ", the report step failed"}). Read the run log: ${runUrl}`,
+                  ].join("\n"),
+                });
+              }
+            } catch (error) {
+              core.setFailed(`Could not update the learning directory weekly issue: ${error.message}`);
+              return;
+            }
+            if (!healthy) {
+              core.setFailed(`The weekly report did not finish cleanly (report job: ${result}); the issue says so.`);
+            }
