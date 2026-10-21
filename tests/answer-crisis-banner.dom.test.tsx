@@ -26,6 +26,14 @@ describe("hasCrisisWording", () => {
     "My friend took all of her lithium tablets an hour ago",
     "took all of my pills",
     "took a lot of tablets",
+    "I just want to end it all",
+    "thinking about ending it all",
+    "everyone would be better off dead without me",
+    "I'm better off dead",
+    "I don't want to be alive anymore",
+    "I don’t want to be here anymore",
+    "I do not want to be alive",
+    "dont want to be here",
   ])("matches %j", (query) => {
     expect(hasCrisisWording(query)).toBe(true);
   });
@@ -40,6 +48,10 @@ describe("hasCrisisWording", () => {
     "took a lot of time",
     "took all of my courage",
     "patient took all of their doses as prescribed",
+    "better off with a lower dose",
+    "the endpoint was reached in all patients",
+    "I don't want to be heretical about dosing",
+    "don't want to be alone with the question",
     "best coffee machine",
     "",
   ])("does not match %j", (query) => {
