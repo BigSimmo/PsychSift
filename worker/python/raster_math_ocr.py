@@ -136,7 +136,7 @@ def plan_raster_math_ocr(bitmap, deadline, max_pixels):
     """
     _check(deadline)
     cap = min(MAX_MATH_PIXELS, max_pixels)
-    if bitmap.width * bitmap.height > cap:
+    if bitmap.mode not in ("L", "RGB") or bitmap.width * bitmap.height > cap:
         return None
     ink = bitmap.convert("L").point(lambda value: 255 if value < 128 else 0)
     _check(deadline)
@@ -195,7 +195,7 @@ def plan_raster_math_ocr(bitmap, deadline, max_pixels):
     extra = sum(widths[i] - (glyphs[i][0][2] - glyphs[i][0][0]) + 3 for i in raised)
     if (bitmap.width + extra) * bitmap.height > cap or baseline < body:
         return None
-    from PIL import Image
+    from PIL import Image, ImageChops, ImageOps
     _check(deadline)
     normalized = Image.new(bitmap.mode, (bitmap.width + extra, bitmap.height), "white")
     source, shift = 0, 0
@@ -209,5 +209,17 @@ def plan_raster_math_ocr(bitmap, deadline, max_pixels):
         source = x1
     normalized.paste(bitmap.crop((source, 0, bitmap.width, bitmap.height)), (source + shift, 0))
     _check(deadline)
-    return MathOcrPlan(normalized, "superscript", glyphs, deadline, raised=tuple(raised),
+    # Small source fonts can confuse ordinary body glyphs after the raised
+    # component is enlarged. Condition the entire line equally: remove only
+    # exactly white margins, double resolution, then add a 40-pixel white border
+    # (20 source pixels). No letter or digit is classified or substituted here.
+    bounds = ImageChops.difference(normalized, Image.new(bitmap.mode, normalized.size, "white")).getbbox()
+    ink_width, ink_height = bounds[2] - bounds[0], bounds[3] - bounds[1]
+    if (ink_width + 40) * (ink_height + 40) * 4 > cap:
+        return None
+    _check(deadline)
+    conditioned = ImageOps.expand(normalized.crop(bounds).resize(
+        (ink_width * 2, ink_height * 2), Image.Resampling.LANCZOS), border=40, fill="white")
+    _check(deadline)
+    return MathOcrPlan(conditioned, "superscript", glyphs, deadline, raised=tuple(raised),
                        body_height=height, baseline=baseline)

@@ -33,15 +33,28 @@ no isolated memory limit inside the worker. Restore the Python runtime before
 retrying the document. The developer fallback retains its deadline and pixel
 limits; those limits do not establish a process memory boundary.
 
-Offline OCR acceptance currently covers native merged qualifications and Unicode
-symbols, scanned staggered columns, and the existing ruled-table cases. It does
-not establish reliable scanned mathematical notation: the pinned Latin model's
-vocabulary lacks `≤`, `≥` and `⁹`, and focused recognition trials lost equality
-strokes, an exponent and a decimal. The strict scanned-symbol acceptance case is
-recorded as an expected failure, separately from passing coverage. Keep these
-OCR observations unverified; require source review or a demonstrated OCR-engine
-improvement before relying on such numeric evidence. Changing image-size limits
-does not address this model limitation.
+Offline OCR acceptance covers native merged qualifications, scanned staggered
+columns, opposing comparison signs and decimal positions, and repeated headers
+with page-local footnotes. The original scanned `≤`, `≥`, exponent and decimal
+regression is now an ordinary strict acceptance case, with additional font and
+value variants. These are synthetic source-retention checks, not clinical-corpus
+certification.
+
+The optional raster-table reader can isolate an observed comparison sign before
+numeric OCR and normalize an observed raised digit before restoring its source
+position. It never guesses a threshold from a medicine or unit. Only small,
+single-line, disjoint glyphs are supported; decimal positions and glyph counts
+must agree with the source. Ambiguous alignment refuses the candidate and keeps
+the original full-page fallback. Raised zero is unsupported because a degree
+sign was misread as zero during testing. Unknown layouts, noisy scans and
+uncovered fonts retain their existing limitations.
+
+This uses the existing OCR call, pinned model, page deadline and resource caps.
+Source crop hashes remain unchanged; `ocrInputTransform` separately records the
+algorithm, helper-code hash and exact transformed input identity. All OCR
+observations remain `unverified` / `not_compared`, without confidence or clinical
+approval. `PDF_RASTER_TABLE_OCR` remains default-off. Review source accuracy before
+clinical use or any mass reindex; increasing image-size limits is not acceptance.
 
 ---
 

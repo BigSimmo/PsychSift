@@ -153,6 +153,39 @@ class RasterMathPlanTests(unittest.TestCase):
             with self.assertRaises(TimeoutError):
                 candidate.restore("N 109/Z")
 
+    def test_superscript_conditioning_enlarges_full_line_and_preserves_source(self):
+        source = render("Count (x 10³/L)", "cour", 10)
+        before = source.tobytes()
+        candidate = plan(source)
+        self.assertIsNotNone(candidate)
+        bounds = ImageOps.invert(candidate.bitmap).getbbox()
+        self.assertGreaterEqual(bounds[0], 40)
+        self.assertGreaterEqual(bounds[1], 40)
+        self.assertLessEqual(bounds[2], candidate.bitmap.width - 40)
+        self.assertLessEqual(bounds[3], candidate.bitmap.height - 40)
+        self.assertGreaterEqual(bounds[3] - bounds[1], 2 * candidate.body_height)
+        self.assertLessEqual(candidate.bitmap.width * candidate.bitmap.height, 400_000)
+        self.assertEqual(source.tobytes(), before)
+        # Conditioning changes pixels submitted to OCR, never letter/value text.
+        self.assertEqual(candidate.restore("Count (x 103/L)"), "Count (x 10³/L)")
+        self.assertEqual(candidate.restore("Count (x 103/1)"), "Count (x 10³/1)")
+
+    def test_conditioning_cap_is_checked_before_full_line_resizing(self):
+        source = render("Count (x 10³/L)", "cour", 10)
+        cap = source.width * source.height + 5000
+        actual_resize, calls = Image.Image.resize, []
+
+        def bounded_resize(image, size, *args, **kwargs):
+            calls.append(size)
+            self.assertLessEqual(size[0] * size[1], cap)
+            return actual_resize(image, size, *args, **kwargs)
+
+        with patch.object(Image.Image, "resize", bounded_resize):
+            self.assertIsNone(plan(source, cap=cap))
+        # The raised component fits; the subsequent full-line doubling must
+        # abstain before making a resize allocation larger than the caller cap.
+        self.assertTrue(calls)
+
 
 if __name__ == "__main__":
     unittest.main()
