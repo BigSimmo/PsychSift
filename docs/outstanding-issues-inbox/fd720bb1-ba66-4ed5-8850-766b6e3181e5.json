@@ -6,8 +6,8 @@
   "payload": {
     "pri": "P2",
     "type": "issue",
-    "summary": "Cold searches are disk-bound: index-units search took 9.2 s cold versus 0.19 s warm because the search tables are about nine times the database cache",
-    "detail": "Read-only live evidence 2026-10-21 (docs/audit/2026-10-21-database-performance-evidence.md): database 8.8 GB, search tables about 6.8 GB, shared_buffers 256 MB, effective_cache_size 768 MB. The term-overlap branch pulled 6,568 units (3,389 kept) for a three-word query, then fetched each embedding and search_tsv. OWNER DECISION: (a) larger Supabase compute size, paid, dashboard only, no code change; or (b) bound the term-overlap branch before ranking, a RAG behaviour change needing a live canary pair. Recommended (a) first, then re-capture the baseline twice (cold and warm).",
+    "summary": "Uncached searches are slow: index-units search took 9.2 s on first run versus 0.19 s on repeat, with the same plan",
+    "detail": "Read-only live evidence 2026-10-21 (docs/audit/2026-10-21-database-performance-evidence.md): the first run read 8,413 blocks (about 66 MB) from outside the 256 MB Postgres buffer cache at roughly 1 ms each; the repeat read none. Database 8.8 GB. The term-overlap branch pulled 6,568 units (3,389 kept) for a three-word query, then fetched each embedding and search_tsv. NOT YET PROVEN: how often real searches are uncached, or that more memory fixes it (effective_cache_size is only a planner estimate; two back-to-back runs are not a controlled test). NEXT: read the Supabase dashboard memory and cache-hit charts and repeat the capture after a known idle gap. THEN OWNER DECISION: (a) larger compute size, paid, dashboard only; or (b) bound the term-overlap branch before ranking, a RAG behaviour change needing a live canary pair.",
     "source": "Database performance tuning thread, 2026-10-21",
     "issueUlid": "01M5F5T12TAZXEDC60K56JRJ1N"
   }

@@ -38,15 +38,23 @@ Where the time goes (cold run):
 - Ranking then fetched the stored embedding and `search_tsv` for 3,401 candidates (both are TOASTed),
   about 5.4 s.
 
-The plan did not flip between runs. The 48x difference is disk reads. Live settings and sizes on
-2026-10-21: database 8,772 MB, `document_embedding_fields` 3,924 MB, `document_chunks` 1,641 MB,
-`document_index_units` 1,224 MB, `document_memory_cards` 1,023 MB, `shared_buffers` 256 MB,
-`effective_cache_size` 768 MB, cumulative buffer hit rate 96.0 percent. The retrieval working set is
-roughly nine times the configured cache, so a search after an idle spell reads from disk.
+The plan did not flip between runs. The difference is disk reads: the first run read 8,413 blocks
+(about 66 MB) from outside the Postgres buffer cache, roughly 1 ms each, and the second read none.
+Live sizes and settings on 2026-10-21: database 8,772 MB, `document_embedding_fields` 3,924 MB,
+`document_chunks` 1,641 MB, `document_index_units` 1,224 MB, `document_memory_cards` 1,023 MB,
+`shared_buffers` 256 MB, cumulative buffer hit rate 96.0 percent. `effective_cache_size` (768 MB) is a
+planner estimate, not allocated memory, so it says nothing about the operating-system page cache.
+
+What this proves: a search whose pages are not cached pays about 1 ms per page and can take seconds.
+What it does not prove: how often real searches hit that state, or that more memory would keep the
+pages cached. Two back-to-back runs are not a controlled cold and warm test. Before any resize, read
+the instance memory and cache-hit charts for the same period in the Supabase dashboard, and repeat the
+capture after a known idle gap.
 
 Two levers exist, and both are owner decisions:
 
-1. A larger Supabase compute size (more memory). No code or ranking change. Paid, dashboard only.
+1. A larger Supabase compute size (more memory), only if the dashboard memory and cache-hit evidence
+   supports it. No code or ranking change. Paid, dashboard only.
 2. Bounding the term-overlap branch before ranking. This changes the candidate set, so it is a RAG
    behaviour change that needs a live canary pair and notice under `docs/rag-behaviour/`.
 
@@ -81,8 +89,9 @@ planned for first publication). It is worth nothing today.
 Recommendation: ship the stored column, its GIN index and the RPC change together, before or with the
 first approved publication batch under `#HTZPQ8`. The change touches an immutable, digest-governed
 table and a protected retrieval RPC, so it needs the owner's migration yes and a `RAG impact:` line.
-Ranking values are identical (same expression, precomputed), so no canary should be needed, but the
-reviewer should confirm that against `docs/rag-behaviour/safeguards.md`.
+Ranking values should be identical (same expression, precomputed), but it is still a protected
+retrieval RPC change, so `docs/rag-behaviour/safeguards.md` requires the live eval-canary
+before and after pair, with its own spending approval.
 
 ## `#GQR7DE` release canonicalisation curve
 

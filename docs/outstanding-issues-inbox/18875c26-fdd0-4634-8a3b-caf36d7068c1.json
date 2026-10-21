@@ -5,7 +5,7 @@
   "action": "update",
   "payload": {
     "id": "#JVQ1HA",
-    "detail": "EVIDENCE 2026-10-21 (docs/audit/2026-10-21-database-performance-evidence.md): live active release is the 843-record freeze and 0 records pass the retrieval filter, so no per-row to_tsvector runs today and the change gains nothing yet. Locally, with all 843 eligible, per-row tsvector costs about 1.5 s per search versus about 12 ms with a stored GIN-indexed column (about 0.5 s at the 276 records planned for first publication). NEXT: ship the stored column, GIN index and RPC change before or with the first approved publication batch under #HTZPQ8. Migration yes and RAG impact line required; ranking values identical.",
+    "detail": "EVIDENCE 2026-10-21 (docs/audit/2026-10-21-database-performance-evidence.md): live active release is the 843-record freeze and 0 records pass the retrieval filter, so no per-row to_tsvector runs today and the change gains nothing yet. Locally, with all 843 eligible, per-row tsvector costs about 1.5 s per search versus about 12 ms with a stored GIN-indexed column (about 0.5 s at the 276 records planned for first publication). NEXT: ship the stored column, GIN index and RPC change before or with the first approved publication batch under #HTZPQ8. Migration yes, RAG impact line and a live eval-canary before and after pair required (protected retrieval RPC change, even though ranking values should be identical).",
     "baseRowFingerprint": "f6bf0aa2bdd93ffc18d1e66da625d3f9c6e061e3fee0b59415291a5406c2c284",
     "targetUlid": "01M4WDK96WJVQ1HAM0NR12F759"
   }
