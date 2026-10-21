@@ -289,4 +289,27 @@ describe("the demo-mode supervisor link", () => {
     const again = await GET(new Request(url), { params: Promise.resolve({ token: EPA_MAGIC_LINK_DEMO_TOKEN }) });
     expect(await again.json()).toMatchObject({ request: { status: "pending" } });
   });
+
+  it("works in production too, without touching the stored links", async () => {
+    const { EPA_MAGIC_LINK_DEMO_TOKEN } = await import("@/lib/teaching/assessments/magic-link");
+    vi.stubEnv("NODE_ENV", "production");
+    vi.mocked(createAdminClient).mockClear();
+    try {
+      const url = `https://psychiatry.tools/api/teaching/assessments/respond/${EPA_MAGIC_LINK_DEMO_TOKEN}`;
+      const opened = await GET(new Request(url), { params: Promise.resolve({ token: EPA_MAGIC_LINK_DEMO_TOKEN }) });
+      expect(opened.status).toBe(200);
+      const sent = await POST(
+        new Request(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ level: "proximal" }),
+        }),
+        { params: Promise.resolve({ token: EPA_MAGIC_LINK_DEMO_TOKEN }) },
+      );
+      expect(sent.status).toBe(200);
+      expect(createAdminClient).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
 });

@@ -9,7 +9,7 @@ import { ApiClientError } from "@/lib/api-client-error";
 import { useExampleData } from "@/lib/example-data/store";
 import { teachingErrorMessage, teachingGet, teachingPost } from "@/lib/teaching/client";
 import type { EpaNumber } from "@/lib/teaching/assessments/content";
-import { checkEpaClinicianName } from "@/lib/teaching/assessments/magic-link";
+import { checkEpaClinicianName, EPA_MAGIC_LINK_DEMO_TOKEN } from "@/lib/teaching/assessments/magic-link";
 import type { EpaMagicLinkSummary } from "@/lib/teaching/assessments/magic-link-repository";
 import { GUEST_KINDS, type GuestKind } from "@/lib/teaching/assessments/model";
 
@@ -80,6 +80,18 @@ export function SupervisorLinkPanel({
     if (!guest || busy) return;
     setBusy(true);
     setStatus(null);
+    // Example data never makes a real link: it copies the fixed demo link, and nothing is saved.
+    if (example) {
+      const demoUrl = `${window.location.origin}/teaching/assessments/respond/${EPA_MAGIC_LINK_DEMO_TOKEN}`;
+      try {
+        await navigator.clipboard.writeText(demoUrl);
+        setStatus("Example link copied. It opens the example supervisor page and saves nothing.");
+      } catch {
+        setStatus(`Example link, which saves nothing: ${demoUrl}`);
+      }
+      setBusy(false);
+      return;
+    }
     try {
       const made = await teachingPost<{ urlPath: string; link: EpaMagicLinkSummary }>(API, {
         epaCode: epa,

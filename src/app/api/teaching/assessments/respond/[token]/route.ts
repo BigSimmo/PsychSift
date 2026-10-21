@@ -89,14 +89,15 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
       });
     }
     const { token } = await params;
+    // The fixed example link works everywhere (example data, demo mode) and never touches the store.
+    if (token === EPA_MAGIC_LINK_DEMO_TOKEN) {
+      return NextResponse.json({ request: demoEpaMagicLinkRecord() }, { headers: noStore });
+    }
     const durable = durableMagicLinks();
     if (durable) {
       const found = await durable.lookup(token);
       if (!found.ok) return errorWithHeaders(found.message, found.status, found.code);
       return NextResponse.json({ request: found.request }, { headers: noStore });
-    }
-    if (token === EPA_MAGIC_LINK_DEMO_TOKEN) {
-      return NextResponse.json({ request: demoEpaMagicLinkRecord() }, { headers: noStore });
     }
     refuseEphemeralMagicLinkStore();
     const lookup = getEpaMagicLinkByToken(token);
@@ -160,14 +161,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
       submissionSchema,
       "Check the EPA response and try again.",
     )) as EpaMagicLinkSubmission;
-    const durable = durableMagicLinks();
-    if (durable) {
-      const stored = await durable.submit(token, body);
-      if (!stored.ok) return errorWithHeaders(stored.message, stored.status, stored.code);
-      return NextResponse.json({ ok: true, request: stored.request }, { headers: noStore });
-    }
     if (token === EPA_MAGIC_LINK_DEMO_TOKEN) {
-      // Demo mode: checks the answer like the real thing, then stores nothing.
+      // The example link checks the answer like the real thing, then stores nothing.
       const demo = demoEpaMagicLinkRecord();
       const checked = validateEpaMagicLinkSubmission(body, demo.supervisorName);
       if (!checked.ok) return errorWithHeaders(checked.message, 400, checked.code);
@@ -184,6 +179,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
         },
         { headers: noStore },
       );
+    }
+    const durable = durableMagicLinks();
+    if (durable) {
+      const stored = await durable.submit(token, body);
+      if (!stored.ok) return errorWithHeaders(stored.message, stored.status, stored.code);
+      return NextResponse.json({ ok: true, request: stored.request }, { headers: noStore });
     }
     refuseEphemeralMagicLinkStore();
     const result = submitEpaMagicLinkResponse(token, body);

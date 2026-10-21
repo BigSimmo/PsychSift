@@ -399,15 +399,19 @@ function CourseSheet({
           >
             <span className="work-row__text">
               <span className="work-row__title">Organiser page</span>
-              <span className="work-row__sub">Book and check details there</span>
+              <span className="work-row__sub">
+                {item.cancelled ? "Check there for a new date or a refund" : "Book and check details there"}
+              </span>
             </span>
             <ExternalLink aria-hidden="true" className="work-row__chev" />
             <span className="sr-only">(opens in a new tab)</span>
           </a>
           <CmeHint>
-            {phase === "unconfirmed"
-              ? "No date yet. Check the organiser's page before you plan."
-              : "Opening a course logs nothing. Log it once you attend, and it opens prefilled."}
+            {item.cancelled
+              ? "The organiser has cancelled this, so there is nothing to log."
+              : phase === "unconfirmed"
+                ? "No date yet. Check the organiser's page before you plan."
+                : "Opening a course logs nothing. Log it once you attend, and it opens prefilled."}
           </CmeHint>
         </div>
       ) : null}
