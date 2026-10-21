@@ -4249,6 +4249,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-21-emergency-cards-owner-review.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/design-system/sweep-fix-tap-floors.md",
         "section": "design-system",
         "catalogued": true
