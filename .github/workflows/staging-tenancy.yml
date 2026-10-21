@@ -6,9 +6,10 @@ on:
     - cron: "30 18 * * *"
   # THE STAGING GATE (owner decision 2026-10-21, docs/decisions/2026-10-21-staging-gate-before-live.md).
   # Every main push that changes an app input waits for staging to run it, then proves two-user
-  # separation there. Railway skips a live deploy when a run on its commit fails, but only once the
-  # owner turns on "Wait for CI" for the live app and worker; until then this reports, it cannot block.
-  # These paths mirror railway.app.json watchPatterns (pinned by tests/staging-tenancy-workflow.test.ts):
+  # separation there. Railway "Wait for CI" is ON for the live services (found 2026-10-21), so a
+  # failed run here SKIPS that live deploy. That is the point, but only once staging itself is
+  # healthy: the job is OFF until the repository variable STAGING_GATE_ENFORCE is "true". Until
+  # then a push starts nothing, so it can neither delay nor block a deploy. These paths mirror railway.app.json watchPatterns (pinned by tests/staging-tenancy-workflow.test.ts):
   # a push outside them does not redeploy the app, so there is nothing new to prove.
   push:
     branches: [main]
@@ -48,6 +49,8 @@ permissions:
 jobs:
   cross-tenant:
     name: Cross-tenant staging harness
+    # The push gate runs only when switched on (see the trigger comment above).
+    if: ${{ github.event_name != 'push' || vars.STAGING_GATE_ENFORCE == 'true' }}
     runs-on: ubuntu-24.04
     # Job ceiling stays above the resolver's longest wait (30 minutes on a push) plus the scheduled
     # step's 15-minute `timeout`, so a hung harness exits as a failed step (absorbable by
@@ -183,7 +186,8 @@ jobs:
   tenancy-routing:
     name: Route tenancy status to the pinned issue
     needs: cross-tenant
-    if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
+    # A push while the gate is off skips the harness job; that is not a tenancy result.
+    if: ${{ !cancelled() && github.ref == 'refs/heads/main' && needs.cross-tenant.result != 'skipped' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:

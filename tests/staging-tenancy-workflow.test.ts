@@ -109,6 +109,15 @@ describe("staging tenancy workflow", () => {
     );
   });
 
+  // Railway Wait for CI is ON for the live services, so a failing gate skips a live deploy. The gate
+  // must stay inert until the owner switches it on, and an inert push must not touch the issue.
+  it("starts nothing on a push until STAGING_GATE_ENFORCE is switched on", () => {
+    expect(workflow).toContain("if: ${{ github.event_name != 'push' || vars.STAGING_GATE_ENFORCE == 'true' }}");
+    expect(workflow).toContain(
+      "if: ${{ !cancelled() && github.ref == 'refs/heads/main' && needs.cross-tenant.result != 'skipped' }}",
+    );
+  });
+
   it("does not re-mention the owner for every failing merge while staging is down", () => {
     expect(workflow).toMatch(/if \(context\.eventName === "push"\) \{[\s\S]*?return;/);
   });
