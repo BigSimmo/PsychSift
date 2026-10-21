@@ -5559,6 +5559,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-21-content-review-intervals.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/audit/2026-09-20-visual-ux-audit.md",
         "section": "audit",
         "catalogued": true
