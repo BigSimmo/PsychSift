@@ -188,6 +188,47 @@ describe("runClinicalAsk", () => {
     for (const dependency of Object.values(dependencies)) expect(dependency).not.toHaveBeenCalled();
   });
 
+  // Audit ARCH-06 (2026-10-20): the orchestrator is the second check before provider calls, so it uses
+  // Answer's patient-detail check too. Synthetic examples only.
+  it.each([
+    ["question", request({ question: "Mrs Jones in bed 4, 82, on clozapine - next step?" })],
+    [
+      "confirmed context",
+      request({ confirmedContext: { ...completeContext, referralPurpose: "review for Mr Smith" } }),
+    ],
+    [
+      "clarification answer",
+      request({
+        confirmedContext: {},
+        clarificationAnswers: {
+          "services:serviceLocation": "Ward 4 Ms Smith",
+          "services:population": "adult",
+          "services:pathwayStage": "assessment",
+          "services:referralPurpose": "review",
+        },
+      }),
+    ],
+  ] as const)("blocks a name-plus-title patient detail in the %s before every dependency", async (_where, input) => {
+    const dependencies = fakes();
+    const response = await runClinicalAsk(input, scope, dependencies, new AbortController().signal, vi.fn());
+    expect(response).toMatchObject({ state: "failed", code: "identifiable_input_blocked" });
+    expect(JSON.stringify(response)).not.toMatch(/Jones|Smith/);
+    for (const dependency of Object.values(dependencies)) expect(dependency).not.toHaveBeenCalled();
+  });
+
+  it("still answers an ordinary clinical question that holds an age", async () => {
+    const dependencies = fakes();
+    const response = await runClinicalAsk(
+      request({ question: `${question} For a 70 year old with CKD?` }),
+      scope,
+      dependencies,
+      new AbortController().signal,
+      vi.fn(),
+    );
+    expect(response.state).not.toBe("failed");
+    expect(dependencies.suggestContext).toHaveBeenCalled();
+  });
+
   it("stops later tiers after abort", async () => {
     const controller = new AbortController();
     const dependencies = fakes();

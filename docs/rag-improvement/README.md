@@ -1,5 +1,12 @@
 # Clinical RAG Improvement Programme — reviewed and updated implementation guide
 
+> **Status (2026-10-20): programme complete; kept as history.** Every packet in the
+> [HANDOVER status table](HANDOVER.md) has merged or been closed, and S8 onward stays gated on an owner
+> decision. This is no longer the operational board: open RAG work lives in
+> [`docs/outstanding-issues.md`](../outstanding-issues.md), and the rules live in
+> [`docs/rag-behaviour/`](../rag-behaviour/README.md). Code comments still cite its sections, so it stays in
+> place rather than moving to `docs/archive/`.
+
 **Status:** maintained plan (2026-08-13). Supersedes the uploaded "Clinical RAG Improvement
 Programme" PDF, which was pinned to main `130c7746` (main is now past `67db5a1`) and predates
 several repo changes. This guide is grounded in the current codebase and is the working

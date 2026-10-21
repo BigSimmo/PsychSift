@@ -951,7 +951,9 @@ function metadataFor(id: string): Omit<CalculatorFixture, keyof RawCalculatorFix
       id === "k10" || id === "auditc" ? "Australia" : "International instrument with Australian use context",
     lastReviewed: "2026-09-01",
     nextReview: "2027-09-01",
-    reviewer: "Clinical safety governance",
+    // A role, not a person: no named clinician has signed these records off. "verified" in
+    // evidenceStatus below is the release gate's engineering check, not clinical sign-off.
+    reviewer: "engineering-checked",
     confidence: active ? "moderate" : "low",
     riskLevel: active ? "moderate" : "high",
     instrumentStatus: active ? "active" : "quarantined",
@@ -973,7 +975,8 @@ function metadataFor(id: string): Omit<CalculatorFixture, keyof RawCalculatorFix
  * wording only, never the cut-point — see `claim:auditc:units`.
  */
 function interpretationFor(id: string, label: string) {
-  if (id === "k10") return `${label} psychological-distress range; it is not a diagnostic category.`;
+  if (id === "k10")
+    return `${label} psychological-distress range; it is not a diagnostic category. Bands follow the ABS 2001 National Health Survey convention; other Australian conventions exist.`;
   if (id === "auditc")
     return `${label} on the registered AUDIT-C convention (4 or more for men, 3 or more for women). A completed score screens reported consumption and does not establish a diagnosis. Interpret with Australian standard-drink context, drinking history and the convention your service uses.`;
   return `${label} completed-score range; interpret with the instrument source, clinical context and limitations.`;

@@ -15,6 +15,9 @@ on:
     paths:
       - "supabase/migrations/**"
       - "supabase/schema.sql"
+      # Edge functions and project config reach live on merge too (audit CC-10, 2026-10-20).
+      - "supabase/functions/**"
+      - "supabase/config.toml"
 
 concurrency:
   group: live-drift-check
@@ -285,8 +288,11 @@ jobs:
               }
             }
 
+            // An @mention is what the GitHub mobile app pushes to the owner's phone, the alert
+            // channel the owner chose on 2026-10-19 (audit CC-10, 2026-10-20).
+            const mention = `@${alertAssignee}`;
             const body = [
-              "The live Supabase drift check is failing. This issue is updated in place by",
+              `${mention}: the live Supabase drift check is failing. This issue is updated in place by`,
               "`.github/workflows/live-drift.yml`; it is closed automatically on the next green run.",
               "",
               `- Latest failing run: ${runUrl}`,
@@ -314,7 +320,7 @@ jobs:
                 owner,
                 repo,
                 issue_number: existing.number,
-                body: `Still failing as of ${now} — ${runUrl}`,
+                body: `Still failing as of ${now}, ${mention}: ${runUrl}`,
               });
               await assignAlert(existing.number);
               core.warning(`Live drift check failing; updated #${existing.number}.`);

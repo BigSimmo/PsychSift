@@ -111,7 +111,10 @@ describe("medication catalog query understanding", () => {
       "monitoring",
     ]);
 
-    expect(matches[0]?.medication.slug).toBe("warfarin-vka");
+    // Clozapine leads since the 20 Oct 2026 content audit added its regular blood test
+    // requirements; warfarin's INR blood tests keep it in the results.
+    expect(matches[0]?.medication.slug).toBe("clozapine");
+    expect(matches.some((match) => match.medication.slug === "warfarin-vka")).toBe(true);
     expect(analysis.corrections).toEqual([]);
     expect(analysis.expansions).toEqual([]);
   });

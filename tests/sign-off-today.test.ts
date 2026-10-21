@@ -124,13 +124,24 @@ describe("the real queue", () => {
     // so the two OCP WA standards are signable by the owner.
     // 17 Oct 2026 22:12 AWST: the 26 Therapy records stamped without therapy:review went back to
     // needs_review (owner ruling); they list references, so the owner can sign each one.
+    // 20 Oct 2026: the clinical content audit edited eight signed WA MHA forms (1A, 3D, 4B, 5A,
+    // 5B, 5C, 11D, 12C), which went back to drafted and are signable again with clinical:review.
     expect(signable.map((item) => item.family)).toEqual([
+      ...Array<string>(8).fill("wa-mha-forms"),
       ...Array<string>(26).fill("therapy"),
       "sources",
       "sources",
       "sources",
     ]);
     expect(signable.map((item) => item.id)).toEqual([
+      "form-1a",
+      "form-3d",
+      "form-4b",
+      "form-5a",
+      "form-5b",
+      "form-5c",
+      "form-11d",
+      "form-12c",
       "behaviour-therapy",
       "cognitive-behavioural-therapy-for-insomnia-cbt-i",
       "cognitive-therapy",

@@ -46,13 +46,20 @@ revision is a freshness mechanism, with no governance ranking penalty or boost.
 
 ## Application and database compatibility
 
-The draft SQL can precede the application safely. Application code deployed before the
+**Status (2026-10-20):** the scope-revision SQL is no longer a draft.
+`20261018095804_rag_cache_scope_evidence_revision.sql` merged to `main` on 18 October 2026
+(PR #3653), so the Supabase integration applied it to production automatically. Confirm it
+with the post-merge `live-drift` workflow (both `check:drift` and `check:migration-history`
+green); this page does not record that result. The rollout notes below are kept as the
+compatibility reasoning and for any rollback.
+
+The SQL could precede the application safely. Application code deployed before the
 RPC remains cold until the compatible SQL exists. In a mixed deployment old application
 replicas still use the old unsafe stamp. An approved rollout must disable the legacy
 answer/search cache TTLs and drain old replicas and their in-flight work before claiming
 the revocation fence is active; replace every old replica before re-enabling caches.
-Rolling back to old code also requires disabled caches. Neither the local fix nor the
-draft migration grants deployment or live database authority.
+Rolling back to old code also requires disabled caches. This page grants no deployment or
+live database authority.
 
 Each revision has O(number of scoped documents) database read/hash work and a bounded
 response. Local hits add an authoritative read; shared hits add before/after reads.

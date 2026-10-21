@@ -31,8 +31,8 @@ credentials in dispatch inputs or the state branch.
 Required protection includes `Gitleaks`, `PR policy`, `PR required`, PR reviews,
 resolved conversations, and current-base validation (strict checks or native
 merge queue). The runner refuses unreadable or insufficient protection. It uses
-the existing merge method: squash when the repository allows it (owner decision
-2026-09-16), otherwise merge commits. It does not create a merge queue, change
+the existing merge method: merge commits, the only method enabled since 2026-10-18
+(squash would be used if it were re-enabled). It does not create a merge queue, change
 rules, approve reviews, or bypass protection.
 
 When the ruleset for `main` has a merge queue, the runner never syncs a PR branch

@@ -1,5 +1,10 @@
 # Edge Ingestion Overhaul — 3-PR Execution Plan
 
+> **Status (2026-10-20): superseded; kept as history.** Its baseline (a live `ingestion-worker` Edge
+> Function) no longer holds: that function is a retired 410 stub, and ingestion now runs in the container
+> worker under the October 2026 lease-fenced attempt model. Read the
+> [current model](../ingestion-state-machine.md#current-model-october-2026) instead.
+
 **Status:** Planning only. Revalidated against `main`
 `570740c84bc77b1c5d36493fd1011625c354f6d2` on 2026-08-16.
 

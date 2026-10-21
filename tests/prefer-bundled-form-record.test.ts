@@ -82,8 +82,8 @@ describe("preferBundledFormRecord", () => {
    * awaiting-review caveat exists to prevent.
    */
   it("narrows a release sign-off to unverified when the bundled form still awaits review", async () => {
-    // Every shipped form is signed off, so the drafted branch cannot be reached from the
-    // catalogue. The helper re-reads the bundled record, so stand one in.
+    // Stand in a drafted record rather than depend on which shipped forms are drafted
+    // today. The helper re-reads the bundled record, so mock it.
     const base = formRecords[0]!;
     const drafted = {
       ...base,
@@ -150,9 +150,10 @@ describe("preferBundledFormRecord", () => {
 
   it("keeps every drafted form's awaiting-review caveat in the bundled population the API prefers", () => {
     const drafted = loadFormCatalogDetails().filter((row) => row.contentReviewStatus === "drafted");
-    // Measured 2026-10-06: every form is signed off. A later drafted form still has to
-    // carry the caveat, which is what the loop below checks.
-    expect(drafted).toEqual([]);
+    // Measured 2026-10-20: the clinical content audit edited eight signed forms, which went
+    // back to drafted until the owner signs each one again. Each must still carry the
+    // caveat, which is what the loop below checks.
+    expect(drafted.map((row) => row.form)).toEqual(["1A", "3D", "4B", "5A", "5B", "5C", "11D", "12C"]);
     for (const details of drafted) {
       const resolved =
         formRecords.find((row) => (row.catalogPayload as { form?: string } | undefined)?.form === details.form) ?? null;

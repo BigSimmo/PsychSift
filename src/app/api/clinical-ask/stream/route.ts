@@ -14,7 +14,6 @@ import {
   clinicalAskExternalSearchEnabled,
   clinicalAskModeEnabled,
 } from "@/lib/clinical-ask/authority-registry";
-import { identifierShapeWarning } from "@/lib/clinical-ask/context";
 import type {
   ClinicalAskDependencies,
   ClinicalAskFinalPayload,
@@ -24,6 +23,7 @@ import { retrieveIndexedEvidence } from "@/lib/clinical-ask/indexed-evidence";
 import { retrieveExternalEvidence } from "@/lib/clinical-ask/external-evidence";
 import { runClinicalAsk } from "@/lib/clinical-ask/orchestrator";
 import { suggestClinicalAskContext, synthesizeClinicalAskDraft } from "@/lib/clinical-ask/synthesis";
+import { clinicalAskRequestPatientDetail } from "@/lib/clinical-question-patient-check-server";
 import { PublicApiError, jsonError } from "@/lib/http";
 import { setAgentConversationId } from "@/lib/observability/agent-monitoring";
 import { resolveRetrievalAccessScope } from "@/lib/owner-scope";
@@ -38,15 +38,6 @@ export const runtime = "nodejs";
 
 function mergeAbortSignals(signals: AbortSignal[]) {
   return AbortSignal.any(signals);
-}
-
-function containsIdentifier(request: ClinicalAskRequest) {
-  const context = Object.values(request.confirmedContext).flatMap((value) =>
-    Array.isArray(value) ? value : value ? [value] : [],
-  );
-  return [request.question, ...context, ...Object.values(request.clarificationAnswers)]
-    .filter((value): value is string => typeof value === "string")
-    .some(identifierShapeWarning);
 }
 
 function visibleAnswerText(response: Extract<ClinicalAskFinalPayload["response"], { state: "answered" }>) {
@@ -204,7 +195,8 @@ export async function POST(request: Request) {
     if (!clinicalAskModeEnabled(body.mode)) {
       return errorStream("mode_unavailable", "Smart answers are not available for this mode.", serverTiming);
     }
-    if (containsIdentifier(body)) {
+    // Answer's patient-detail check, on every text the request can send on (audit ARCH-06).
+    if (clinicalAskRequestPatientDetail(body)) {
       return errorStream(
         "identifiable_input_blocked",
         "Remove identifying details before using Clinical Ask.",

@@ -25,7 +25,7 @@
       "maker": "Medical practitioner or authorised mental health practitioner where the Act permits.",
       "involved": "Receiving service, transport team if separately authorised, personal support contacts where required.",
       "threshold": "Reasonable suspicion that involuntary treatment order criteria may be met, with illness features, risk, capacity and least restrictive reasoning documented.",
-      "clock": "Usually 72 hours from referral. The referral is made within the required assessment window.",
+      "clock": "72 hours from when the referral is made, unless extended once under s45 (referral made outside a metropolitan area). The referral cannot be made more than 48 hours after the assessment is completed (s40).",
       "destination": "Examination place must be clear and align with any detention or transport authority.",
       "authorises": "Referral for examination by a psychiatrist.",
       "doesNotAuthorise": "Treatment, detention, transport, restraint, seclusion or force by itself.",
@@ -81,9 +81,9 @@
       },
       "priorityFacts": {
         "clock": {
-          "title": "Usually 72 hours from referral",
-          "detail": "Within assessment window · 48h cue",
-          "body": "Usually 72 hours from referral. The referral is made within the required assessment window. Clock cues on the form pathway include within 48 hours and 72 hours — record the start time, expiry or review point, and next owner."
+          "title": "72 hours from referral unless extended once (non-metro)",
+          "detail": "Within 48h of assessment · s45 extension non-metro only",
+          "body": "A referral under s26(2) or (3)(a) remains in force for 72 hours from when it is made, unless extended once under s45 (referral made outside a metropolitan area). The referral cannot be made more than 48 hours after the assessment is completed (s40). Clock cues on the form pathway include within 48 hours and 72 hours — record the start time, expiry or review point, and next owner."
         },
         "authority": {
           "title": "MP or AMHP (where Act permits)",
@@ -531,7 +531,7 @@
       "maker": "Psychiatrist making the s61(1)(c) order.",
       "involved": "Confirm patient, maker, receiving service, support contacts and required notifications from the form.",
       "threshold": "Use only following the applicable s61 examination outcome.",
-      "clock": "Movement detention: up to 24-hour blocks, cumulative maximum 72 hours, measured from applicable s62 order. Immediate reassessment before each continuation. Post-reception examination: apply the separate statutory examination detention clock; do not merge it with movement time, measured from reception at authorised hospital.",
+      "clock": "Movement detention: up to 24-hour blocks, cumulative maximum 72 hours, measured from when this Form 3D (s61(1)(c) order) was made. Immediate reassessment before each continuation. Post-reception examination: apply the separate statutory examination detention clock; do not merge it with movement time, measured from reception at authorised hospital.",
       "destination": "Confirm destination/place fields on the approved form.",
       "authorises": "Authority is limited to what the approved form and Act section state.",
       "doesNotAuthorise": "Does not replace linked forms, consent, notification or reporting duties unless the source says so.",
@@ -589,8 +589,8 @@
       "priorityFacts": {
         "clock": {
           "title": "Movement detention: up to 24-hour blocks, cumulative maximum 72 hours",
-          "detail": "from applicable s62 order · 1 further clock",
-          "body": "Movement detention: up to 24-hour blocks, cumulative maximum 72 hours, measured from applicable s62 order. Immediate reassessment before each continuation. Post-reception examination: apply the separate statutory examination detention clock; do not merge it with movement time, measured from reception at authorised hospital."
+          "detail": "from when this Form 3D (s61(1)(c) order) was made · 1 further clock",
+          "body": "Movement detention: up to 24-hour blocks, cumulative maximum 72 hours, measured from when this Form 3D (s61(1)(c) order) was made. Immediate reassessment before each continuation. Post-reception examination: apply the separate statutory examination detention clock; do not merge it with movement time, measured from reception at authorised hospital."
         }
       }
     },
@@ -732,7 +732,7 @@
       "maker": "MP or mental health practitioner responding to the transporting officer’s request under s152.",
       "involved": "Confirm patient, maker, receiving service, support contacts and required notifications from the form.",
       "threshold": "Use only for transport orders under ss63, 67, 92, 112, 129 or 133 being carried out from outside the metropolitan area.",
-      "clock": "S152 extension: a further period up to 72 hours, measured from expiry of the eligible transport order. May be extended once only. Cannot revive an already expired or ineligible order.",
+      "clock": "S152 extension (transport from outside a metropolitan area only): a further period up to 72 hours, measured from expiry of the eligible transport order. May be extended once only. Cannot revive an already expired or ineligible order.",
       "destination": "Confirm destination/place fields on the approved form.",
       "authorises": "Authority is limited to what the approved form and Act section state.",
       "doesNotAuthorise": "Does not replace linked forms, consent, notification or reporting duties unless the source says so.",
@@ -784,8 +784,8 @@
       "priorityFacts": {
         "clock": {
           "title": "S152 extension: a further period up to 72 hours",
-          "detail": "from expiry of the eligible transport order",
-          "body": "S152 extension: a further period up to 72 hours, measured from expiry of the eligible transport order. May be extended once only. Cannot revive an already expired or ineligible order."
+          "detail": "from expiry of the eligible transport order · outside a metropolitan area only",
+          "body": "S152 extension (transport from outside a metropolitan area only): a further period up to 72 hours, measured from expiry of the eligible transport order. May be extended once only. Cannot revive an already expired or ineligible order."
         }
       }
     },
@@ -931,7 +931,7 @@
       "maker": "Psychiatrist or authorised pathway decision-maker.",
       "involved": "Community mental health team, treating psychiatrist, support persons where required.",
       "threshold": "Treatment order criteria met and community treatment is the least restrictive suitable pathway.",
-      "clock": "Initial treatment period: up to 3 months, measured from date/order period specified. No-referral CTO confirmation: must be confirmed within 72 hours, measured from time a s75 CTO is made. By another psychiatrist, or permitted alternative if none reasonably available. Ceases if not confirmed in time. Monthly examination: on or within 14 days before that day, measured from end of each monthly review period. Continuation window: on or within 7 days before expiry; further period up to 3 months, measured from end of current CTO treatment period.",
+      "clock": "Initial treatment period: up to 3 months, measured from the day the order is made. No-referral CTO confirmation: must be confirmed within 72 hours, measured from time a s75 CTO is made. By another psychiatrist, or permitted alternative if none reasonably available. Ceases if not confirmed in time. Monthly examination: on or within 14 days before that day, measured from end of each monthly review period. Continuation window: on or within 7 days before expiry; further period up to 3 months, measured from end of current CTO treatment period.",
       "destination": "Community treatment setting and responsible service must be clear.",
       "authorises": "Compulsory treatment in the community according to CTO conditions.",
       "doesNotAuthorise": "Inpatient detention unless a separate pathway applies.",
@@ -999,8 +999,8 @@
       "priorityFacts": {
         "clock": {
           "title": "Initial treatment period: up to 3 months",
-          "detail": "from date/order period specified · 3 further clocks",
-          "body": "Initial treatment period: up to 3 months, measured from date/order period specified. No-referral CTO confirmation: must be confirmed within 72 hours, measured from time a s75 CTO is made. By another psychiatrist, or permitted alternative if none reasonably available. Ceases if not confirmed in time. Monthly examination: on or within 14 days before that day, measured from end of each monthly review period. Continuation window: on or within 7 days before expiry; further period up to 3 months, measured from end of current CTO treatment period."
+          "detail": "from the day the order is made · 3 further clocks",
+          "body": "Initial treatment period: up to 3 months, measured from the day the order is made. No-referral CTO confirmation: must be confirmed within 72 hours, measured from time a s75 CTO is made. By another psychiatrist, or permitted alternative if none reasonably available. Ceases if not confirmed in time. Monthly examination: on or within 14 days before that day, measured from end of each monthly review period. Continuation window: on or within 7 days before expiry; further period up to 3 months, measured from end of current CTO treatment period."
         }
       }
     },
@@ -1013,7 +1013,7 @@
       "maker": "Supervising psychiatrist.",
       "involved": "Confirm patient, maker, receiving service, support contacts and required notifications from the form.",
       "threshold": "Use only within the statutory pre-expiry window and after examining the patient.",
-      "clock": "Continuation order: made on or within 7 days before expiry; further period up to 3 months, measured from end of current treatment period. Requested further opinion: opinion generally must be obtained within 14 days, measured from patient’s written request. Continuation may not come into force or may cease if the statutory confirmation is not obtained.",
+      "clock": "Continuation order: made on or within 7 days before expiry; further period up to 3 months, measured from end of current treatment period. Requested further opinion: opinion generally must be obtained within 14 days, measured from the day the supervising psychiatrist receives the patient’s written request. Continuation may not come into force or may cease if the statutory confirmation is not obtained.",
       "destination": "Confirm destination/place fields on the approved form.",
       "authorises": "Authority is limited to what the approved form and Act section state.",
       "doesNotAuthorise": "Does not replace linked forms, consent, notification or reporting duties unless the source says so.",
@@ -1070,7 +1070,7 @@
         "clock": {
           "title": "Continuation order: made on or within 7 days before expiry; further period up to 3 months",
           "detail": "from end of current treatment period · 1 further clock",
-          "body": "Continuation order: made on or within 7 days before expiry; further period up to 3 months, measured from end of current treatment period. Requested further opinion: opinion generally must be obtained within 14 days, measured from patient’s written request. Continuation may not come into force or may cease if the statutory confirmation is not obtained."
+          "body": "Continuation order: made on or within 7 days before expiry; further period up to 3 months, measured from end of current treatment period. Requested further opinion: opinion generally must be obtained within 14 days, measured from the day the supervising psychiatrist receives the patient’s written request. Continuation may not come into force or may cease if the statutory confirmation is not obtained."
         }
       }
     },
@@ -1083,7 +1083,7 @@
       "maker": "Supervising psychiatrist under s122.",
       "involved": "Confirm patient, maker, receiving service, support contacts and required notifications from the form.",
       "threshold": "Use when terms need lawful alteration consistent with s115.",
-      "clock": "within 7 days, 3 months, 7 days",
+      "clock": "No statutory time limit: the supervising psychiatrist may vary the terms at any time while the CTO is in force (s122). The varied terms must be consistent with s115.",
       "destination": "Confirm destination/place fields on the approved form.",
       "authorises": "Authority is limited to what the approved form and Act section state.",
       "doesNotAuthorise": "Does not replace linked forms, consent, notification or reporting duties unless the source says so.",
@@ -1114,7 +1114,7 @@
       "legalNote": "Community treatment order forms should make conditions, responsible service, review timing and breach/off-ramp steps explicit. Use only the current approved form or PSOLIS pathway where available; only appropriately authorised people should complete MHA 2014 forms. Authority is limited to the Act sections, signature block, time limits and wording on the approved form.",
       "practicePearls": [
         "Community treatment logic depends on least restrictive reasoning and clear conditions, not just order status.",
-        "Clock cue: within 7 days, 3 months, 7 days. Record the start time, expiry or review point, and next owner.",
+        "Clock cue: no time limit under s122 — a variation can be made at any time while the CTO is in force. Record the date and time it is made, and next owner.",
         "Source cue: sections 122, 135, 137."
       ],
       "preUseChecks": [
@@ -1889,7 +1889,7 @@
       "id": "form-8a",
       "form": "8A",
       "name": "Record Of Search And Seizure",
-      "category": "Treatment, ECT and psychosurgery",
+      "category": "Search and seizure",
       "purpose": "Records a lawful search and any seizure undertaken under the Act.",
       "maker": "Person who conducted the search.",
       "involved": "Confirm patient, maker, receiving service, support contacts and required notifications from the form.",
@@ -1945,7 +1945,7 @@
       "id": "form-8b",
       "form": "8B",
       "name": "Record Of Dealing With Seized Article",
-      "category": "Treatment, ECT and psychosurgery",
+      "category": "Search and seizure",
       "purpose": "Records how an article seized by or given to a mental health service is returned, handed over, stored, destroyed or disposed of.",
       "maker": "Person dealing with the article under s167.",
       "involved": "Confirm patient, maker, receiving service, support contacts and required notifications from the form.",
@@ -2213,7 +2213,7 @@
       "id": "form-10b",
       "form": "10B",
       "name": "Written Bodily Restraint Order",
-      "category": "Search and seizure",
+      "category": "Restraint",
       "purpose": "Makes the written bodily restraint order.",
       "maker": "Medical practitioner at the authorised hospital. A mental health practitioner or person in charge of the ward may act only if the additional urgency and medical-practitioner-unavailability conditions in s232 are met.",
       "involved": "Confirm patient, maker, receiving service, support contacts and required notifications from the form.",
@@ -2283,7 +2283,7 @@
       "id": "form-10c",
       "form": "10C",
       "name": "Record Of Informing Medical Practitioner And Treating Psychiatrist Of Bodily Restraint",
-      "category": "Search and seizure",
+      "category": "Restraint",
       "purpose": "Records notification of the medical practitioner and treating psychiatrist about bodily restraint.",
       "maker": "Person who gave the oral authorisation or made the restraint order, where the statutory notification duties apply.",
       "involved": "Confirm patient, maker, receiving service, support contacts and required notifications from the form.",
@@ -2356,7 +2356,7 @@
       "id": "form-10d",
       "form": "10D",
       "name": "Record Of Observations Made Of Restrained Person",
-      "category": "Search and seizure",
+      "category": "Restraint",
       "purpose": "Records observations made while a person is under bodily restraint.",
       "maker": "Mental health practitioner or nurse physically attending the person.",
       "involved": "Confirm patient, maker, receiving service, support contacts and required notifications from the form.",
@@ -2415,7 +2415,7 @@
       "id": "form-10e",
       "form": "10E",
       "name": "Record Of Examination Of Restrained Person",
-      "category": "Search and seizure",
+      "category": "Restraint",
       "purpose": "Records medical examination during restraint and any lawful extension of the restraint order.",
       "maker": "Medical practitioner.",
       "involved": "Confirm patient, maker, receiving service, support contacts and required notifications from the form.",
@@ -2487,7 +2487,7 @@
       "id": "form-10f",
       "form": "10F",
       "name": "Variation Of Bodily Restraint Order",
-      "category": "Search and seizure",
+      "category": "Restraint",
       "purpose": "Varies a bodily restraint order by extending, shortening or changing the authorised device/application.",
       "maker": "Medical practitioner for extension; MP or mental health practitioner for permitted non-extension variations.",
       "involved": "Confirm patient, maker, receiving service, support contacts and required notifications from the form.",
@@ -2547,7 +2547,7 @@
       "id": "form-10g",
       "form": "10G",
       "name": "Revocation Or Expiry Of Bodily Restraint Order",
-      "category": "Search and seizure",
+      "category": "Restraint",
       "purpose": "Records revocation of a bodily restraint order or the fact that it expired.",
       "maker": "Authorised revoking practitioner/person in charge, or MP/mental health practitioner recording expiry.",
       "involved": "Confirm patient, maker, receiving service, support contacts and required notifications from the form.",
@@ -2643,7 +2643,7 @@
       "id": "form-10i",
       "form": "10I",
       "name": "Record Of Post-Bodily Restraint Examination",
-      "category": "Search and seizure",
+      "category": "Restraint",
       "purpose": "Records the medical examination after release from bodily restraint.",
       "maker": "Medical practitioner.",
       "involved": "Confirm patient, maker, receiving service, support contacts and required notifications from the form.",
@@ -2924,7 +2924,7 @@
       "maker": "Mental health practitioner or nurse.",
       "involved": "Confirm patient, maker, receiving service, support contacts and required notifications from the form.",
       "threshold": "Use throughout the seclusion episode.",
-      "clock": "Observation: at least every 15 minutes, measured from time of last observation. Medical examination: at least every 2 hours, measured from time seclusion began/last examination.",
+      "clock": "Observation: every 15 minutes, measured from time of last observation. Medical examination: at least every 2 hours, measured from time seclusion began/last examination.",
       "destination": "Confirm destination/place fields on the approved form.",
       "authorises": "Authority is limited to what the approved form and Act section state.",
       "doesNotAuthorise": "Does not replace linked forms, consent, notification or reporting duties unless the source says so.",
@@ -2975,9 +2975,9 @@
       ],
       "priorityFacts": {
         "clock": {
-          "title": "Observation: at least every 15 minutes",
+          "title": "Observation: every 15 minutes",
           "detail": "from time of last observation · 1 further clock",
-          "body": "Observation: at least every 15 minutes, measured from time of last observation. Medical examination: at least every 2 hours, measured from time seclusion began/last examination."
+          "body": "Observation: every 15 minutes, measured from time of last observation. Medical examination: at least every 2 hours, measured from time seclusion began/last examination."
         }
       }
     },
@@ -3318,7 +3318,7 @@
       "maker": "Authorised decision-maker specified by the rights restriction pathway.",
       "involved": "Patient, treating team, relevant support persons where required.",
       "threshold": "Restriction basis and reasons are documented for the specific communication right.",
-      "clock": "Review cycle: review before the end of each 24-hour period, measured from time the restriction order is made/last reviewed. Confirm, amend or revoke. Order ceases if not reviewed in time. Chief Mental Health Advocate notification: within 24 hours, measured from time order is made.",
+      "clock": "Review cycle: review before the end of each 24-hour period the order is in force, measured from time the restriction order is made. Confirm, amend or revoke. Order ceases if not reviewed in time. Chief Mental Health Advocate notification: within 24 hours, measured from time order is made.",
       "destination": "Current care setting.",
       "authorises": "Specified communication restriction for the relevant period.",
       "doesNotAuthorise": "Blanket or indefinite restriction without review.",
@@ -3379,8 +3379,8 @@
       "priorityFacts": {
         "clock": {
           "title": "Review cycle: review before the end of each 24-hour period",
-          "detail": "from time the restriction order is made/last reviewed · 1 further clock",
-          "body": "Review cycle: review before the end of each 24-hour period, measured from time the restriction order is made/last reviewed. Confirm, amend or revoke. Order ceases if not reviewed in time. Chief Mental Health Advocate notification: within 24 hours, measured from time order is made."
+          "detail": "from time the restriction order is made · 1 further clock",
+          "body": "Review cycle: review before the end of each 24-hour period the order is in force, measured from time the restriction order is made. Confirm, amend or revoke. Order ceases if not reviewed in time. Chief Mental Health Advocate notification: within 24 hours, measured from time order is made."
         }
       }
     },
