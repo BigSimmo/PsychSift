@@ -12,6 +12,7 @@ import {
   renderDailyHealthSummary,
 } from "../scripts/lib/daily-health-summary.mjs";
 import { answerQualityLine, answerSpeedLine } from "../scripts/lib/daily-health-summary-answer-lines.mjs";
+import { TREND_TITLE } from "../scripts/lib/eval-canary-trend.mjs";
 
 const NOW = "2026-10-25T23:00:00Z"; // Monday 26 October 2026, 7 am in Perth
 const source = (key: string) => SUMMARY_SOURCES.find((item) => item.key === key)!;
@@ -234,9 +235,21 @@ describe("daily health summary: the issue it writes", () => {
     );
   });
 
-  it("starts with empty answer lines until the answer quality work fills them in", async () => {
-    expect(await answerQualityLine()).toBeNull();
-    expect(await answerSpeedLine()).toBeNull();
+  it("prints no answer lines when nothing is configured", async () => {
+    expect(await answerQualityLine({ owner: "o", repo: "r", env: {}, now: NOW })).toBeNull();
+    expect(await answerSpeedLine({ env: {} })).toBeNull();
+  });
+
+  it("hands the workflow's repository and ISO time to the quality line", async () => {
+    const urls: string[] = [];
+    const fetchImpl = async (url: string) => {
+      urls.push(url);
+      const body = url.includes("/issues?") ? [{ number: 7, title: TREND_TITLE }] : [];
+      return new Response(JSON.stringify(body), { status: 200 });
+    };
+    await answerQualityLine({ owner: "o", repo: "r", env: { GITHUB_TOKEN: "t" }, now: NOW, fetchImpl });
+    expect(urls[0]).toContain("/repos/o/r/issues?");
+    expect(decodeURIComponent(urls[1] ?? "")).toContain("since=2026-09-25T23:00:00.000Z");
   });
 });
 
