@@ -589,7 +589,7 @@ describe("Now: the footer group", () => {
     // Cross-links between Clinical and Work (owner decision, 21 Oct 2026).
     render(<OnCallHome now={IN_HOURS} />);
     const tools = screen.getByTestId("on-call-now-shift-tools");
-    const clock = within(tools).getByTestId("on-call-now-mha-clock");
+    const clock = within(tools).getByRole("link", { name: /MHA clock/i });
     expect(clock).toHaveAttribute("href", "/forms/clock");
     expect(clock).toHaveTextContent("MHA clock");
   });
