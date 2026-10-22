@@ -185,7 +185,6 @@ describe("production mockup boundary", () => {
       expect(shouldBlockProductionMockups(path, { NODE_ENV: "production" }), path).toBe(true);
     }
   });
-
 });
 
 describe("developer-area header (x-developer-area)", () => {
