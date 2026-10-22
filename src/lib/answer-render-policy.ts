@@ -129,7 +129,7 @@ const trustCaps: Record<
 > = {
   unsupported: { sources: 3, rows: 0, quotes: 0, visual: 0, related: 0 },
   low: { sources: 4, rows: 4, quotes: 0, visual: 1, related: 0 },
-  medium: { sources: 5, rows: 6, quotes: 0, visual: 1, related: 0 },
+  medium: { sources: 5, rows: 6, quotes: 2, visual: 1, related: 0 },
   high: { sources: 6, rows: 8, quotes: 3, visual: 3, related: 4 },
 };
 
@@ -632,9 +632,10 @@ function blockDecisions(args: {
       atLeastMedium ? "Medium/high trust can show mapped evidence rows." : "Hidden below medium trust.",
       "answerSections",
     ),
+    // TGA exemption limb (e): medium trust also shows the exact sentence relied on, capped at 2.
     quoteCards: decision(
-      high && hasQuotes,
-      high ? "High trust can show capped exact quote cards." : "Hidden unless trust is high.",
+      atLeastMedium && hasQuotes,
+      atLeastMedium ? "Medium/high trust can show capped exact quote cards." : "Hidden below medium trust.",
       "quoteCards",
     ),
     visualEvidence: decision(
@@ -759,7 +760,10 @@ export function buildAnswerRenderModel(
   const rawRelatedDocuments = answer.relatedDocuments ?? [];
   const visualLimit =
     isAnswerSourceBacked(answer) && (hasDirectVisualNeed(answer) || trust === "high") ? caps.visual : 0;
-  const quoteCards = dedupeQuotes(rawQuotes, primarySources, caps.quotes);
+  // An authority-capped medium answer keeps quote cards hidden: the cap exists to stop an
+  // unverified-authority source getting exact-quote presentation.
+  const quoteLimit = answer.authorityTrustCapRequired === true ? 0 : caps.quotes;
+  const quoteCards = dedupeQuotes(rawQuotes, primarySources, quoteLimit);
   const visualEvidence = dedupeVisualEvidence(rawVisualEvidence, primarySources, visualLimit);
   const tables = buildCanonicalTables(visualEvidence);
   const relatedDocuments = dedupeRelatedDocuments(rawRelatedDocuments, primarySources, caps.related);
