@@ -1,4 +1,4 @@
-import type { AppModeId } from "@/lib/app-modes";
+import type { AppModeId, WorkModeId } from "@/lib/app-modes";
 
 /**
  * The work-mode frame's own navigation table (work-mode redesign, owner
@@ -171,7 +171,7 @@ export type WorkArea = {
    */
   readonly pillName?: string;
   /** The `data-mode-identity` palette the frame paints with. */
-  readonly identity: AppModeId;
+  readonly identity: WorkModeId;
   /** The three pinned tabs, in order. */
   readonly tabs: readonly [WorkFrameItem, WorkFrameItem, WorkFrameItem];
   /** The rest of the area, grouped, in the More sheet after the tabs. */

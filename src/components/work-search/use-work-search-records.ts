@@ -30,6 +30,7 @@ import {
 import { featureSearchPages, withFeaturePages } from "@/lib/work-search/feature-pages";
 import {
   TEACHING_LOOKAHEAD_DAYS,
+  workSearchAreas,
   type WorkAreaRead,
   type WorkAreaStatus,
   type WorkItem,
@@ -314,7 +315,7 @@ export function useWorkSearchRecords(now: number): WorkSearchRecords {
       return {
         items: sample?.items ?? [],
         entries: sampleEntries,
-        areas: (["roster", "teaching", "cme", "my-work", "on-call"] as const).map((area) => ({
+        areas: workSearchAreas.map((area) => ({
           area,
           status: ready,
           sample: true,
@@ -331,7 +332,7 @@ export function useWorkSearchRecords(now: number): WorkSearchRecords {
       return {
         items: [],
         entries: [],
-        areas: (["roster", "teaching", "cme", "my-work", "on-call"] as const).map((area) => ({
+        areas: workSearchAreas.map((area) => ({
           area,
           status: "signed-out" as const,
           sample: false,

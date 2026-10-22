@@ -3104,6 +3104,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-21-mental-health-act-door.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-10-18-bot-authored-sensitive-commits-blocked.md",
         "section": "decisions",
         "catalogued": true
@@ -3271,6 +3276,11 @@
       {
         "path": "docs/governance/privacy-closeout-2026-09-01.md",
         "section": "governance",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-21-mode-sides-and-one-work-list.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -3514,6 +3524,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-21-open-shifts-inside-roster.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/archive/source-governance-status-2026-07-08.md",
         "section": "archive",
         "catalogued": true
@@ -3646,6 +3661,11 @@
       {
         "path": "docs/superpowers/rag-upgrade/cloud/approval-matrix.md",
         "section": "superpowers",
+        "catalogued": true
+      },
+      {
+        "path": "docs/product/clinical-and-work-direction.md",
+        "section": "product",
         "catalogued": true
       },
       {
@@ -4685,6 +4705,11 @@
       },
       {
         "path": "docs/decisions/2026-09-26-organisation-check-warns-on-moves.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-21-all-in-one-clinical-and-work.md",
         "section": "decisions",
         "catalogued": true
       },
