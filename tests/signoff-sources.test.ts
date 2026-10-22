@@ -336,6 +336,13 @@ describe("signing a source reviewed only in prose", () => {
   });
 
   const native = (id: string) => clone(ledger.find((record) => record.id === id)!);
+  // The owner signed both OCP standards on 22 Oct 2026, so the ledger no longer holds a
+  // prose-only review. These tests rebuild one from the real record by taking its attestation off.
+  const proseOnly = (id: string) => {
+    const record = native(id);
+    for (const field of ["attestedBy", "attestedAt", "attestedAgainstSha256"]) delete record[field];
+    return record;
+  };
   const attestedNative = () =>
     clone(
       ledger.find(
@@ -379,24 +386,24 @@ describe("signing a source reviewed only in prose", () => {
     return { exit, text: text.join("") };
   }
 
-  it("finds exactly the two OCP WA standards in the ledger today, and offers them for sign-off", () => {
-    const proseOnly = ledger.filter((record) => isUnattestedLocalReview(record)).map((record) => record.id);
-    expect([...proseOnly].sort()).toEqual(PROSE_ONLY);
+  it("finds no prose-only review left in the ledger, and offers one for sign-off", () => {
+    expect(ledger.filter((record) => isUnattestedLocalReview(record)).map((record) => record.id)).toEqual([]);
     for (const id of PROSE_ONLY) {
-      const view = views().find((record) => record.id === id)!;
+      expect(isUnattestedLocalReview(proseOnly(id))).toBe(true);
+      const view = viewOf(proseOnly(id));
       expect(view).toMatchObject({ status: "drafted", validationStatus: "locally_reviewed", reviewedBy: null });
       // The screen must not promise a rating change: validationStatus is already locally_reviewed.
       const text = rowsText(display.source(view, context));
       expect(text).toContain("already locally_reviewed and stays so, so its rating does not change");
       expect(text).not.toContain("Sets validationStatus to locally_reviewed");
       expect(signOffEligibilityProblem(view, "source")).toBeNull();
-      expect(signOffQueue("source", views())).toContain(id);
+      expect(signOffQueue("source", [view])).toContain(id);
     }
   });
 
   it("accepts a reviewed-but-unsigned source for --write and records only the attestation", async () => {
     const id = "ocp-wa-standards-for-clinical-care";
-    const before = [native(id), attestedNative()];
+    const before = [proseOnly(id), attestedNative()];
     const root = fixtureRoot(before);
     const { exit, text } = await runWrite(root, id, ["yes", "yes", "yes", id]);
     expect(exit).toBe(0);
@@ -435,7 +442,7 @@ describe("signing a source reviewed only in prose", () => {
     ["a null attestation field", { attestedBy: null }],
     ["an empty attestation field", { attestedAt: "" }],
   ])("refuses a locally_reviewed source with a partial attestation (%s)", (_label, fields) => {
-    const record = { ...native("ocp-wa-standards-for-clinical-care"), ...fields };
+    const record = { ...proseOnly("ocp-wa-standards-for-clinical-care"), ...fields };
     expect(isUnattestedLocalReview(record)).toBe(false);
     expect(signOffEligibilityProblem(viewOf(record), "source")).not.toBeNull();
   });
@@ -451,7 +458,7 @@ describe("signing a source reviewed only in prose", () => {
     ["approved", { validationStatus: "approved" }],
     ["rejected", { disposition: "rejected" }],
   ])("does not offer a prose-only review that is %s", (_label, fields) => {
-    const record = { ...native("ocp-wa-standards-for-clinical-care"), ...fields };
+    const record = { ...proseOnly("ocp-wa-standards-for-clinical-care"), ...fields };
     expect(isUnattestedLocalReview(record)).toBe(false);
     expect(signOffEligibilityProblem(viewOf(record), "source")).toMatch(/Only a drafted source/);
   });
@@ -482,7 +489,7 @@ describe("signing a source reviewed only in prose", () => {
 
   it("still refuses a product name as the signer for a reviewed-but-unsigned source", async () => {
     const id = "ocp-wa-standards-for-clinical-care";
-    const root = fixtureRoot([native(id)]);
+    const root = fixtureRoot([proseOnly(id)]);
     const raw = readFileSync(join(root, LEDGER), "utf8");
     const input = Object.assign(new PassThrough(), { isTTY: true });
     const output = Object.assign(new PassThrough(), { isTTY: true, columns: 80 });
