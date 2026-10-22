@@ -201,7 +201,7 @@ const glossaryEntrySentencePattern =
   /^\s*(?:[A-Z][\w’'-]*[\s:;,–—-]+){1,4}An?\s+(?:evidence[-\s]based\s+)?(?:process|tool|method|framework|document)\s+(?:for|to|that|used|is|are)\b/;
 /** A section heading split out as its own sentence ("2.8. Therapeutic Drug Monitoring") led the lithium timing answer (Eval Canary 39711681854). */
 const bareSectionHeadingPattern =
-  /^(?:\d+(?:\.\d+)*\.?\s+)?(?!(?:Monitor|Check|Stop|Cease|Withhold|Avoid|Refer|Review|Repeat|Arrange|Continue|Start|Consider|Measure|Record)\b)[A-Z][a-z][\w’'-]*(?:\s+(?:[A-Z][a-z][\w’'-]*|and|of|for|the|in|to)){1,5}[.:]?$/;
+  /^(?:\d+(?:\.\d+)*\.?\s+)?(?!(?:Monitor|Check|Stop|Cease|Withhold|Avoid|Refer|Review|Repeat|Arrange|Continue|Start|Consider|Measure|Record)\b)(?!.*\b(?:Is|Are|Was|Were|Be|Should|Must|May|Can|Will|Needs?|Requires?)\b)[A-Z][a-z][\w’'-]*(?:\s+(?:[A-Z][a-z][\w’'-]*|and|of|for|the|in|to)){1,5}[.:]?$/;
 /** A link tail left at a sentence start by a split inside "(… .pdf)" ("pdf) Ongoing suicide risk …"). */
 const linkTailDebrisPattern = /^(?:[\w./:-]*\.)?(?:pdf|docx?|html?|aspx?)\)/i;
 

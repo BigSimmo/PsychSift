@@ -179,6 +179,9 @@ describe("run 39711681854 answer shapes", () => {
       expect(monitoringFact(heading, LITHIUM_QUERY)).toBe(false);
     }
     expect(monitoringFact("Monitor Weight Monthly", LITHIUM_QUERY)).toBe(true);
+    // A title-cased sentence keeps its verb, so it is still a fact (Codex review on #3762).
+    expect(monitoringFact("Lithium Levels Are Checked Weekly.", LITHIUM_QUERY)).toBe(true);
+    expect(monitoringFact("Weight Is Monitored Every Month.")).toBe(true);
   });
 
   it("leads the lithium timing answer with the sentence, not its heading", () => {
