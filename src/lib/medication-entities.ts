@@ -447,6 +447,25 @@ export function medicationEntitiesInText(text: string) {
   return entities;
 }
 
+const psychotropicClassPattern =
+  /\b(?:antipsychotics?|antidepressants?|mood\s+stabili[sz]ers?|psychostimulants?|stimulants?|benzodiazepines?|psychotropics?)\b/gi;
+
+/** Each distinct psychotropic medicine class named in text, lower-cased, in order of mention. */
+export function medicationClassesInText(text: string) {
+  const classes = new Map<string, string>();
+  for (const match of text.matchAll(psychotropicClassPattern)) {
+    const name = match[0].toLowerCase().replace(/\s+/g, " ");
+    const key = name.replace(/stabilizer/, "stabiliser").replace(/s$/, "");
+    if (!classes.has(key)) classes.set(key, name);
+  }
+  return [...classes.values()];
+}
+
+/** The first psychotropic medicine class named in text ("antipsychotics"), lower-cased, or null. */
+export function medicationClassInText(text: string) {
+  return medicationClassesInText(text)[0] ?? null;
+}
+
 /** Unambiguous medication identities suitable for answer-subject safety gates. */
 export function medicationSafetyEntitiesInText(text: string) {
   return medicationEntitiesInText(text).filter((entity) => !contextAmbiguousEntities.has(entity));
