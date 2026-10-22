@@ -51,6 +51,7 @@ import {
   medicationEntitiesInText,
   medicationEntityMatchesInText,
   medicationSafetyEntitiesInText,
+  namesOnlyMedicinesOutsideQueriedClass,
 } from "@/lib/medication-entities";
 import {
   buildAnswerScoreExplanations,
@@ -197,7 +198,12 @@ export const dischargeRequirementBindingPatterns = [
 const policyAdministrationSentencePattern =
   /\b(?:compliance,?\s+monitoring\s+and\s+evaluation|compliance\s+(?:against|with)\s+this\s+(?:policy|procedure|guideline|protocol)|the\s+following\s+definitions\s+are\s+relevant|term\s+definition)\b/i;
 const glossaryEntrySentencePattern =
-  /^\s*(?:[A-Z][\w’'-]*[\s:;,–—-]+){1,4}An?\s+(?:evidence[-\s]based\s+)?(?:process|tool|method|framework|document)\s+(?:for|to|that|used)\b/;
+  /^\s*(?:[A-Z][\w’'-]*[\s:;,–—-]+){1,4}An?\s+(?:evidence[-\s]based\s+)?(?:process|tool|method|framework|document)\s+(?:for|to|that|used|is|are)\b/;
+/** A section heading split out as its own sentence ("2.8. Therapeutic Drug Monitoring") led the lithium timing answer (Eval Canary 39711681854). A predicate verb or a cadence word marks a title-cased sentence, not a heading. */
+const bareSectionHeadingPattern =
+  /^(?:\d+(?:\.\d+)*\.?\s+)?(?!(?:Monitor|Check|Stop|Cease|Withhold|Avoid|Refer|Review|Repeat|Arrange|Continue|Start|Consider|Measure|Record)\b)(?!.*\b(?:Is|Are|Was|Were|Be|Should|Must|May|Can|Will|Needs?|Requires?|Every|Daily|Weekly|Fortnightly|Monthly|Quarterly|Yearly|Annually|After|Before|Within|Until|Per)\b)[A-Z][a-z][\w’'-]*(?:\s+(?:[A-Z][a-z][\w’'-]*|and|of|for|the|in|to)){1,5}[.:]?$/;
+/** A link tail left at a sentence start by a split inside "(… .pdf)" ("pdf) Ongoing suicide risk …"). */
+const linkTailDebrisPattern = /^(?:[\w./:-]*\.)?(?:pdf|docx?|html?|aspx?)\)/i;
 
 export function factSupportsAnswerIntent(
   kind: ExtractedClinicalFactKind,
@@ -208,7 +214,13 @@ export function factSupportsAnswerIntent(
 ) {
   const text = normalizeSectionText(sentence);
   const normalizedQuery = normalizeSectionText(query).toLowerCase();
-  if (!text || hasBadExtractiveQuality(text)) return false;
+  if (
+    !text ||
+    hasBadExtractiveQuality(text) ||
+    bareSectionHeadingPattern.test(text) ||
+    linkTailDebrisPattern.test(text)
+  )
+    return false;
 
   switch (intent) {
     case "dose":
@@ -256,6 +268,7 @@ export function factSupportsAnswerIntent(
       // through their level units.
       if (kind === "dose" && !monitoringCadenceOrLevelPattern.test(text)) return false;
       if (policyAdministrationSentencePattern.test(text) || glossaryEntrySentencePattern.test(text)) return false;
+      if (namesOnlyMedicinesOutsideQueriedClass(text, query)) return false;
       return monitoringScheduleEvidencePattern.test(text);
     case "red_result_action":
       if (kind !== "threshold_action" && kind !== "caveat") return false;

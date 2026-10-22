@@ -160,3 +160,73 @@ describe("a section heading glued to its sentence", () => {
     );
   });
 });
+
+// Eval Canary 39711681854 (22 Oct 2026), after the fixes above merged. Synthetic text keeps the
+// captured shapes: the lithium heading arrived as its own sentence, and the metabolic answer led
+// with a glossary row whose verb was "is", labelled a lithium sentence "For antipsychotics", and
+// kept a "pdf)" link tail.
+describe("run 39711681854 answer shapes", () => {
+  const LITHIUM_QUERY = "When should I take a lithium level after the last dose, and after a dose change?";
+  const monitoringFact = (sentence: string, query = METABOLIC_QUERY) =>
+    factSupportsAnswerIntent("monitoring", sentence, query, "monitoring_schedule", true);
+
+  it("does not admit a bare section heading as a fact", () => {
+    for (const heading of [
+      "Therapeutic Drug Monitoring",
+      "2.8. Therapeutic Drug Monitoring",
+      "Metabolic Monitoring.",
+    ]) {
+      expect(monitoringFact(heading, LITHIUM_QUERY)).toBe(false);
+    }
+    expect(monitoringFact("Monitor Weight Monthly", LITHIUM_QUERY)).toBe(true);
+    // A title-cased sentence keeps its verb, so it is still a fact (Codex review on #3762).
+    expect(monitoringFact("Lithium Levels Are Checked Weekly.", LITHIUM_QUERY)).toBe(true);
+    expect(monitoringFact("Weight Is Monitored Every Month.")).toBe(true);
+    expect(monitoringFact("Weight Monitoring Continues Every Month.")).toBe(true);
+  });
+
+  it("leads the lithium timing answer with the sentence, not its heading", () => {
+    const answer = buildExtractiveAnswer({
+      query: LITHIUM_QUERY,
+      queryClass: METABOLIC_CLASS,
+      results: [
+        result(
+          "lithium",
+          "Lithium therapy guideline.pdf",
+          "2.8. Therapeutic Drug Monitoring\n• Blood for serum lithium levels should be taken 12 hours after the last dose.\n• Steady state is reached after 5 to 7 days.",
+          0.9,
+        ),
+      ],
+      quoteCards: [],
+      documentBreakdown: [],
+      evidenceSummary: undefined,
+      sourceCoverage: undefined,
+      conflictsOrGaps: [],
+      visualEvidence: [],
+      bestSource: null,
+      smartPanel: undefined,
+      relatedDocuments: [],
+      routeReason: "high_confidence_extractive_retrieval",
+      timings: undefined,
+      allowSourceProseRecovery: true,
+    });
+    expect(answer.answer).toMatch(
+      /^Blood for serum lithium levels should be taken \**12 hours\** after the last dose\./,
+    );
+    expect(answer.answer).not.toMatch(/guidance|Therapeutic Drug Monitoring/i);
+  });
+
+  it("rejects a glossary row, another medicine's sentence and a link tail for an antipsychotic question", () => {
+    for (const sentence of [
+      "Assessment Tool An evidence-based tool is utilised to aid clinicians in the screening and monitoring of metabolic syndrome.",
+      "Monitoring of lithium is particularly complex, given its narrow therapeutic index.",
+      "pdf) Ongoing suicide risk monitoring and mitigation is essential.",
+    ]) {
+      expect(monitoringFact(sentence)).toBe(false);
+    }
+    expect(monitoringFact("Clozapine requires weekly full blood count monitoring for 18 weeks.")).toBe(true);
+    expect(monitoringFact("Monitoring of lithium is particularly complex.", "What monitoring does lithium need?")).toBe(
+      true,
+    );
+  });
+});

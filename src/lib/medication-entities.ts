@@ -500,6 +500,19 @@ export function isAntipsychoticMedicationEntity(entity: string) {
   return antipsychoticMedicationEntities.has(entity);
 }
 
+/**
+ * Whether text names specific medicines but none of the one class a query asks about, such as a
+ * lithium sentence under "metabolic monitoring for antipsychotics" (Eval Canary 39711681854). Only
+ * the antipsychotic class has a membership list, so no other class excludes anything.
+ */
+export function namesOnlyMedicinesOutsideQueriedClass(text: string, query: string) {
+  const classes = medicationClassesInText(query);
+  if (classes.length !== 1 || !/^antipsychotic/.test(classes[0]) || medicationEntitiesInText(query).length)
+    return false;
+  const named = medicationSafetyEntitiesInText(text);
+  return named.length > 0 && !named.some(isAntipsychoticMedicationEntity);
+}
+
 /** All recognized aliases for a canonical medication identity. */
 export function medicationAliasesForEntity(entity: string) {
   const canonical =
