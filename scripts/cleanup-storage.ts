@@ -1,4 +1,5 @@
 import { loadEnvConfig } from "@next/env";
+import { sweepOrphanedImageCaptionCache } from "@/lib/image-caption-cache-cleanup";
 import {
   cleanupJobMetadata,
   nonNullDocumentIds,
@@ -184,6 +185,14 @@ async function referencedImagePaths(supabase: Awaited<ReturnType<typeof loadAdmi
   return referenced;
 }
 
+// #3730: captions of documents that no longer exist, left by a failed delete-route clean-up.
+async function sweepCaptionCache(supabase: Awaited<ReturnType<typeof loadAdminClient>>, dryRun: boolean) {
+  const captions = await sweepOrphanedImageCaptionCache(supabase, { dryRun });
+  console.log(
+    `Caption cache sweep${dryRun ? " (dry run)" : ""}: ${captions.orphaned} orphaned of ${captions.scanned} scanned, ${captions.deleted} deleted.`,
+  );
+}
+
 async function main() {
   loadEnvConfig(process.cwd());
   const args = parseArgs(process.argv.slice(2));
@@ -226,6 +235,7 @@ async function main() {
   }
   if (args.dryRun) {
     console.log("Controlled public-source cleanup remains unclaimed in dry-run mode.");
+    await sweepCaptionCache(supabase, true);
     return;
   }
 
@@ -315,6 +325,8 @@ async function main() {
   });
   completed += controlled.completed;
   failed += controlled.failed;
+
+  await sweepCaptionCache(supabase, false);
 
   console.log(`Storage cleanup complete: ${completed} completed, ${failed} failed.`);
 }

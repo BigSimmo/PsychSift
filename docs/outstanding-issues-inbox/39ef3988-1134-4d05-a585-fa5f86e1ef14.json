@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "39ef3988-1134-4d05-a585-fa5f86e1ef14",
+  "createdOn": "2026-10-21",
+  "action": "done",
+  "payload": {
+    "id": "#JYH1FH",
+    "outcome": "Answered and repaired: the owner confirmed 2026-09-26 the 1,935 labels came from the bulk import, and the repair (#46VNY9, migration 20260926170000) is verified on live 2026-10-21: 1,935 relabelled to unverified with the WA endorsement basis, 0 import-stamped labels left.",
+    "baseRowFingerprint": "2e05948420602f8a97d4522dad22ce71894d7bf634c266ce89570872a1ddf780",
+    "targetUlid": "01M3D03AE8JYH1FHEZKZNGGVDR"
+  }
+}

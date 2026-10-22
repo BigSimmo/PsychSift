@@ -4,6 +4,7 @@ import { z } from "zod";
 import { rateLimitJsonResponse } from "@/lib/api-rate-limit";
 import { env, isDemoMode } from "@/lib/env";
 import { jsonError, publicErrorResponse, PublicApiError } from "@/lib/http";
+import { deleteImageCaptionCacheForDocument } from "@/lib/image-caption-cache-cleanup";
 import { buildStorageCleanupJobUpdate } from "@/lib/ingestion";
 import { invalidateRagCachesForDocumentMutation } from "@/lib/rag/rag";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -259,6 +260,10 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       warnings: cleanup.storageWarnings,
     });
     if (ledgerWarning) cleanup.storageWarnings.push(ledgerWarning);
+    // #3730: the document's cached image captions go with it. After the ledger update, so a
+    // failed cache delete never marks the storage clean-up failed and requeues it.
+    const captionCacheError = await deleteImageCaptionCacheForDocument(supabase, { ownerId: user.id, documentId: id });
+    if (captionCacheError) cleanup.storageWarnings.push(`Cached image captions: ${captionCacheError}`);
 
     invalidateRagCachesForDocumentMutation(user.id, { affectsPublicCorpus: false });
     await writeAuditLog(supabase, {
