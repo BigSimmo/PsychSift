@@ -11,11 +11,12 @@
 -- waiting for the manager with reason team_rule. Any other answer (cancelled, expired, already
 -- waiting for the manager, or an error) is returned exactly as roster_command gives it.
 --
--- One new function. roster_command is unchanged. No table or data changes.
+-- One new function. roster_command is unchanged. No table or data changes. "or replace" only so a
+-- preview branch that already holds the function from an earlier version number can re-run it.
 set local lock_timeout = '5s';
 set local statement_timeout = '30s';
 
-create function public.roster_swap_accept_for_manager(p_actor_id uuid, p_service_id uuid, p_swap_id uuid)
+create or replace function public.roster_swap_accept_for_manager(p_actor_id uuid, p_service_id uuid, p_swap_id uuid)
 returns jsonb language plpgsql security invoker set search_path = public, pg_catalog, pg_temp as $$
 declare
   v_service public.on_call_services;
