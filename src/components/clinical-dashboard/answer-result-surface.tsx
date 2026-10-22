@@ -599,6 +599,7 @@ function StagedAnswerResultSurfaceImpl({
         openSourceIndex={openSourceIndex}
         showCopyAction={false}
         isRefusal={refusalAnswer}
+        guidanceDifference={answer.guidanceDifference}
         copied={copiedAnswer}
         onCopy={onCopyAnswer}
       />

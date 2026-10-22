@@ -13,7 +13,7 @@ import {
   type FocusEvent as ReactFocusEvent,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
-import { createPortal } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -34,7 +34,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import { PrivacyInputNotice } from "@/components/privacy-input-notice";
+import { PatientDetailAlert, PrivacyInputNotice } from "@/components/privacy-input-notice";
 import {
   splitFilterText,
   labelScopeFilterFields,
@@ -48,7 +48,7 @@ import { useLastAppMode } from "@/components/clinical-dashboard/use-last-app-mod
 import { useComposerPatientCheck } from "@/components/clinical-dashboard/use-composer-patient-check";
 import { PhoneFooterLayerPortal } from "@/components/clinical-dashboard/phone-footer-layer-portal";
 import { AnswerFollowUpSuggestions } from "@/components/clinical-dashboard/answer-follow-up-suggestions";
-import { SearchPinsMenu } from "@/components/clinical-dashboard/search-pins-menu";
+import { useIdlePreload } from "@/components/clinical-dashboard/idle-preload";
 import {
   ModeActionPopup,
   modeActionItemsFor,
@@ -58,7 +58,6 @@ import {
   type ModeActionSetId,
 } from "@/components/clinical-dashboard/mode-action-popup";
 import { executeMasterSearchHeaderModeAction } from "@/components/clinical-dashboard/master-search-header-actions";
-import { MasterSearchHeaderScopePicker } from "@/components/clinical-dashboard/master-search-header-scope-picker";
 import {
   cn,
   chatComposerInput,
@@ -171,6 +170,19 @@ import {
   NOOP_HANDLER,
 } from "./master-search-header-types";
 
+// The pins menu is the action popup's body and only mounts once the popup opens, so it
+// stays off `/`'s load/hydration path and is warmed on idle before a first open.
+const loadSearchPinsMenu = () =>
+  import("@/components/clinical-dashboard/search-pins-menu").then((m) => m.SearchPinsMenu);
+const SearchPinsMenu = dynamic(loadSearchPinsMenu, { ssr: false });
+// The scope picker draws nothing until a scope popover/sheet opens. It mounts on first open
+// (and then stays mounted so close animations are unchanged), warmed on idle beforehand.
+const loadScopePicker = () =>
+  import("@/components/clinical-dashboard/master-search-header-scope-picker").then(
+    (m) => m.MasterSearchHeaderScopePicker,
+  );
+const MasterSearchHeaderScopePicker = dynamic(loadScopePicker, { ssr: false });
+
 export function MasterSearchHeader(props: MasterSearchHeaderProps) {
   const { searchState, headerActions, mobileControls } = props;
 
@@ -244,6 +256,8 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
   // Hosts pass the precomputed session decision in canAccessFavourites (auth || demo).
   // Do not OR demoMode again here — that would reopen Favourites when props diverge.
   const router = useRouter();
+  useIdlePreload(loadSearchPinsMenu);
+  useIdlePreload(loadScopePicker);
   // Direct pushes skip link guards and beforeunload: ask any page with unsaved work first.
   const pushIfLeaveConfirmed = (href: string) => confirmShellNavigation() && router.push(href);
   const currentPathname = usePathname();
@@ -291,6 +305,8 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
   const [scopeFilter, setScopeFilter] = useState("");
   const [scopeOpen, setScopeOpen] = useState(false);
   const [scopeSheetOpen, setScopeSheetOpen] = useState(false);
+  const [scopePickerMounted, setScopePickerMounted] = useState(false);
+  if (!scopePickerMounted && (scopeOpen || scopeSheetOpen)) setScopePickerMounted(true);
   const [scopeSheetFullscreen, setScopeSheetFullscreen] = useState(false);
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
   const [actionMenuPlacement, setActionMenuPlacement] = useState<ModeActionPlacement>("up");
@@ -600,8 +616,28 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
     } else {
       setScopeOpen(true);
       onScopeOpenChange?.(true);
-      window.requestAnimationFrame(() => scopeFilterInputRef.current?.focus());
+      focusScopeFilterWhenMounted();
     }
+  }
+
+  // The picker is a lazily loaded chunk: on a cold open it may still be downloading, so
+  // wait for it, then retry for a few frames until its filter input has mounted.
+  function focusScopeFilterWhenMounted() {
+    void loadScopePicker()
+      .catch(() => undefined)
+      .then(() => {
+        let frames = 0;
+        const tryFocus = () => {
+          const input = scopeFilterInputRef.current;
+          if (input) {
+            input.focus();
+            return;
+          }
+          frames += 1;
+          if (frames < 30) window.requestAnimationFrame(tryFocus);
+        };
+        window.requestAnimationFrame(tryFocus);
+      });
   }
 
   function runModeAction(actionId: ModeActionId) {
@@ -1329,6 +1365,9 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
     // Ready-gate: page-owned slots mark `data-composer-slot-ready` only after
     // their React segment hydrates. Adopting the slot before that injects a
     // display:contents host into still-unhydrated RSC HTML (React #418).
+    // True only for the synchronous call from this effect body, where React is
+    // already committing and `flushSync` is not allowed.
+    let syncingFromEffect = false;
     const syncTarget = () => {
       if (!searchComposerVisible || !host || !mediaQuery) {
         syncReserve(false);
@@ -1345,12 +1384,22 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
           retryTimeout = null;
         }
         portalFailureStartedAt = null;
-        if (host.parentNode !== slot) slot.appendChild(host);
+        const adopting = host.parentNode !== slot;
+        if (adopting) slot.appendChild(host);
         // Portal host keeps height via `:not(:empty)`; drop the pending marker.
         setModeHomeComposerReservePending(slot, false);
-        setDesktopComposerPortalHost(host);
-        setDesktopComposerPortalActive(true);
-        setDesktopComposerPortalFallback(false);
+        const activatePortal = () => {
+          setDesktopComposerPortalHost(host);
+          setDesktopComposerPortalActive(true);
+          setDesktopComposerPortalFallback(false);
+        };
+        // Observer/timer/media callbacks run outside React. Adopting a slot there
+        // inserts the still-empty host; commit the portal's composer in the same
+        // task so no frame paints the slot without it. An empty host keeps the
+        // slot's reserved height but not its width, so the shrink-to-fit phone
+        // home column painted narrower for a frame and then widened (a CLS shift).
+        if (adopting && !syncingFromEffect) flushSync(activatePortal);
+        else activatePortal();
       } else {
         host.parentNode?.removeChild(host);
         setDesktopComposerPortalActive(false);
@@ -1399,7 +1448,12 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
     if (!searchComposerVisible) {
       queueMicrotask(() => !cancelled && resetPortal());
     } else {
-      syncTarget();
+      syncingFromEffect = true;
+      try {
+        syncTarget();
+      } finally {
+        syncingFromEffect = false;
+      }
       mediaQuery?.addEventListener("change", syncTarget);
     }
     return () => {
@@ -1832,47 +1886,48 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
           </div>
         ) : null}
         {hasPhiWarning ? (
-          <p
+          <PatientDetailAlert
             id={composerPhiWarningId}
-            role="alert"
-            data-testid={composerPhiWarningId}
-            className="mt-1.5 px-3 text-center text-2xs font-medium text-[color:var(--danger)]"
+            testId={composerPhiWarningId}
+            className="mt-1.5 px-3 text-center"
           >
             {phiWarningText}
-          </p>
+          </PatientDetailAlert>
         ) : null}
-        <MasterSearchHeaderScopePicker
-          usesScopeSheet={usesScopeSheet}
-          scopeOpen={scopeOpen}
-          scopeSheetOpen={scopeSheetOpen}
-          scopeSheetFullscreen={scopeSheetFullscreen}
-          closeScopeSheet={closeScopeSheet}
-          scopePopoverRef={scopePopoverRef}
-          scopeFilterInputRef={scopeFilterInputRef}
-          actionMenuTriggerRef={actionMenuTriggerRef}
-          hasScopeFooterChip={hasScopeFooterChip}
-          scopePreview={scopePreview}
-          scopeSummary={scopeSummary}
-          loadedScopeSummary={loadedScopeSummary}
-          selectedDocumentIds={selectedDocumentIds}
-          documents={documents}
-          matchingDocuments={matchingDocuments}
-          visibleScopeDocuments={visibleScopeDocuments}
-          requireScopeFilter={requireScopeFilter}
-          hiddenScopeMatchCount={hiddenScopeMatchCount}
-          scopeFilter={scopeFilter}
-          setScopeFilter={setScopeFilter}
-          onClearScope={onClearScope}
-          onToggleScope={onToggleScope}
-          scopeFilters={scopeFilters}
-          onScopeFiltersChange={onScopeFiltersChange}
-          queryMode={queryMode}
-          onQueryModeChange={(mode) => onQueryModeChange(mode as ClinicalQueryMode)}
-          queryModeOptions={queryModeOptions}
-          activeQuickFilterCount={activeQuickFilterCount}
-          activeLabelFilterCount={activeLabelFilterCount}
-          updateTextScopeFilter={updateTextScopeFilter}
-        />
+        {scopePickerMounted ? (
+          <MasterSearchHeaderScopePicker
+            usesScopeSheet={usesScopeSheet}
+            scopeOpen={scopeOpen}
+            scopeSheetOpen={scopeSheetOpen}
+            scopeSheetFullscreen={scopeSheetFullscreen}
+            closeScopeSheet={closeScopeSheet}
+            scopePopoverRef={scopePopoverRef}
+            scopeFilterInputRef={scopeFilterInputRef}
+            actionMenuTriggerRef={actionMenuTriggerRef}
+            hasScopeFooterChip={hasScopeFooterChip}
+            scopePreview={scopePreview}
+            scopeSummary={scopeSummary}
+            loadedScopeSummary={loadedScopeSummary}
+            selectedDocumentIds={selectedDocumentIds}
+            documents={documents}
+            matchingDocuments={matchingDocuments}
+            visibleScopeDocuments={visibleScopeDocuments}
+            requireScopeFilter={requireScopeFilter}
+            hiddenScopeMatchCount={hiddenScopeMatchCount}
+            scopeFilter={scopeFilter}
+            setScopeFilter={setScopeFilter}
+            onClearScope={onClearScope}
+            onToggleScope={onToggleScope}
+            scopeFilters={scopeFilters}
+            onScopeFiltersChange={onScopeFiltersChange}
+            queryMode={queryMode}
+            onQueryModeChange={(mode) => onQueryModeChange(mode as ClinicalQueryMode)}
+            queryModeOptions={queryModeOptions}
+            activeQuickFilterCount={activeQuickFilterCount}
+            activeLabelFilterCount={activeLabelFilterCount}
+            updateTextScopeFilter={updateTextScopeFilter}
+          />
+        ) : null}
       </form>
     );
   }

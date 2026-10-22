@@ -1,16 +1,16 @@
 {
   "version": "outstanding-issues-snapshot-v2",
   "ledger_revision": {
-    "committed_at": "2026-10-17"
+    "committed_at": "2026-10-21"
   },
   "counts": {
-    "open": 108,
-    "p1": 17,
-    "p2": 56,
-    "p3": 35,
+    "open": 94,
+    "p1": 14,
+    "p2": 49,
+    "p3": 31,
     "queued": 5,
     "pending": 0,
-    "resolved": 818
+    "resolved": 834
   },
   "queue": [
     {
@@ -130,15 +130,6 @@
       "type": "issue",
       "summary": "Adversarial divergence (S5 harness pin): scope-other-owner-document — abstains in substance but the review fallback still cites in-scope evidence",
       "detail": "OWNER DECISION 2026-09-26 (Josh, decision card 'Keep as is'): keep current behaviour; the pinned divergence stays by design. Reason, found offline 2026-09-26: this case runs through the extractiveNeedsReviewFallback branch in src/lib/rag/rag.ts, the same branch that produces the deliberate source-backed review stub (#J8SJQ9). In the adversarial harness 14 of 24 cases share the identical shape (grounded false, confidence unsupported, one review_only citation), and the pipeline cannot tell an irrelevant pointer from a relevant-but-ungenerated one, so stripping citations on unsupported abstentions would also strip the useful pointer from real stubs such as antipsychotic metabolic monitoring. The citation is already labelled review_only, and owner scope is enforced at retrieval, so other-owner content is never read. Only revisit with a relevance test at the fallback (new heuristic on a protected surface; needs a canary pair once the canary is green again). Do not delete the harness pin.",
-      "source": "RAG programme coordinator, packet S5 (PR #2056) follow-ups, 2026-08-17",
-      "added": "2026-08-17"
-    },
-    {
-      "id": "#VXB8XA",
-      "priority": "P2",
-      "type": "issue",
-      "summary": "Adversarial divergence (S5 harness pin): cite-mismatched-attribution — offline document-match listing cites every retrieved document, not only the claim-bearing one",
-      "detail": "Pinned in tests/rag-adversarial-harness.test.ts KNOWN_DIVERGENCES (self-expiring: the harness asserts the normative B0 fixture contract still FAILS; when behaviour reaches the fixture expectation the pin goes red and must be deleted). Observed shape: cited chunk ids [syn-cite-attrib-a, syn-cite-attrib-b], grounded true, answerQualityTier source_only — the document-match listing attributes both retrieved documents although only one carries the claim. Fixture: scripts/fixtures/rag-adversarial-cases.v1.json case cite-mismatched-attribution (category citation_fabrication). Safety invariants (network, budget, canary absence, forbidden substrings, tenancy) hold; only citation attribution precision diverges. Next: decide whether the document-match listing should cite only claim-bearing documents (RAG-surface change; own PR; RAG impact line; offline harness proves the pin flips; canary pair). Stop: do not delete the pin without the behaviour change; do not weaken the fixture.",
       "source": "RAG programme coordinator, packet S5 (PR #2056) follow-ups, 2026-08-17",
       "added": "2026-08-17"
     },
@@ -404,15 +395,6 @@
       "added": "2026-09-16"
     },
     {
-      "id": "#TN512M",
-      "priority": "P1",
-      "type": "issue",
-      "summary": "Three systems correctly detect production failures and report to nobody: the live monitor, Sentry, and CI on main",
-      "detail": "UPDATE 2026-09-26: CI ON MAIN CONFIRMED END TO END. The owner confirmed at 10:56Z that main-failure issue #3092 (a real red main, opened 09:45Z) reached his GitHub app Inbox through the owner assignment from PR #3017; #T82ND3 closed on that evidence. The live monitor, eval-canary, live-drift and ingestion-autopilot use the same assign-the-owner path, so the channel is proven, but none of those has yet been seen to fire since #3017. Sentry alert routing is still unaddressed. Close once Sentry routes to the owner (or the owner decides it need not). PRIOR DETAIL: UPDATE 2026-09-25: OWNER DECISION on the channel: phone notifications through the GitHub mobile app. Shipped in PR #3017: live-domain-monitor, CI on main, eval-canary, live-drift and ingestion-autopilot now assign the repository owner (best-effort, the alert still opens if assignment is refused) on open and on update, so every opening and later comment notifies the owner. Close condition unchanged: one real or deliberately triggered failure must be seen to reach the owner's phone. Sentry alert routing is still unaddressed (Sentry MCP was unreachable). PRIOR DETAIL: REVIEW 2026-09-25 (offline audit of current main; no provider access): The close condition now has a negative answer: during the 27-hour production deploy stall on 2026-09-21/22, monitor issue #2973 was opened and updated and nobody acted on it. GitHub-issue routing is proven to fire but not to reach a person. Next action: choose a channel that reaches the owner (phone push, Slack or page). Fact fix: live-monitor routing shipped in #2877 (28dabe0c3), not #2884 (which covered CI on main and eval). The stall's own root cause is tracked separately (inbox add of 2026-09-22); CI on main is #T82ND3. PRIOR DETAIL: TWO OF THE THREE SYSTEMS NOW REPORT, as of 2026-09-18. (1) LIVE MONITOR: live-domain-monitor.yml had no failure handling at all — a grep for issue, notify or any conditional step returned nothing, which is why a real catalogue outage went unreported for about eighteen hours. PR #2884 (merged) gave it the eval-canary failure-issue step. (2) SENTRY: PR #2890 (merged) fixed log delivery across Next's bundle split, so application logs actually reach Sentry rather than being dropped at the boundary. (3) CI ON MAIN is tracked as #T82ND3 and also shipped in #2884. WHAT REMAINS: none of the three has been confirmed against a real production failure — all were verified by workflow tests, not by watching one fire. Dedupe was reviewed (label-based find-or-create, so a flake cannot spawn an issue per run) but likewise not observed under load. Close once a genuine outage has produced a notification someone acted on.",
-      "source": "Direct reads of live-domain-monitor run history, Sentry issue list, and ledger #T82ND3; session 01XGpedMgoXWK3U3fn2TWTzR, 2026-09-17.",
-      "added": "2026-09-17"
-    },
-    {
       "id": "#CD63JW",
       "priority": "P3",
       "type": "task",
@@ -446,15 +428,6 @@
       "summary": "First request after an idle period costs seconds; production runs a single replica",
       "detail": "REVIEW 2026-09-25 (offline audit of current main; no provider access): The catalogue part of cold start is now pre-warmed (closed #WFSMMT), so the /api/search/universal cold figure is stale; /api/documents (5.47 s) and page cold starts are unaffected. The row cites a live healthcheckTimeout of 60, but railway.app.json has declared 300 since c55be8414 (2026-09-14): either the live service ignores the file or the reads disagree. PRIOR DETAIL: MEASURED 2026-09-17 on live psychiatry.tools, read-only. First call to a route was consistently far slower than the warm call that followed: /api/documents?limit=10 took 5.47 s then settled at 1.29-1.52 s; /api/search/universal?q=lithium took 2.35 s then 0.75 s; /sources/search 1.77 s then 1.40 s. So a clinician opening the app between patients, after it has been quiet, can wait several seconds on the first action. CONFIG, read via the Railway MCP on 2026-09-17: production service Database in project Database (5deaad0b-675a-4c13-978e-5ca2b5b877f9) runs multiRegionConfig asia-southeast1-eqsg3a with numReplicas 1, healthcheckPath /api/health/ready, healthcheckTimeout 60. CAUSE NOT ESTABLISHED: a single replica means no warm instance to absorb the first hit, but this could equally be per-route module initialisation in a Node production build (src/data alone is 4.9 MB of JSON, and src/lib/sources/repository-providers.ts imports therapies-source.json at 2.6 MB plus dsm-clinical-content.json at 448 KB), or container sleep. Further production reads in that session were blocked, so nothing below the service config was checked. NEXT ACTION: read the deploy/runtime settings for sleep behaviour and the boot timeline in Railway logs, and separately time a cold Node start of the production build locally to split module init from container start. Only then decide between a second replica, a warmer, or deferring the heavy JSON imports. GATE: any replica or runtime change is a production mutation and needs explicit owner authorisation per AGENTS.md Railway project safety. PARKED 2026-09-18: the cause is still not established, and both halves of the next action are gated - reading Railway deploy settings and boot logs is provider-backed, and any replica or warmer change is a production mutation needing explicit owner authorisation. TO UNBLOCK: approve the Railway runtime read, and separately time a cold Node start of the production build to split module initialisation from container start before choosing between a second replica, a warmer, or deferring the heavy JSON imports.",
       "source": "Live latency review session 2026-09-17",
-      "added": "2026-09-17"
-    },
-    {
-      "id": "#E6142T",
-      "priority": "P2",
-      "type": "issue",
-      "summary": "The PWA update notice may overlap page content on non-answer pages, and the services search mode has no mode-noun stop list",
-      "detail": "UPDATE 2026-09-25 (PR C, rebuilt on main after PR #3019): Part 1 (PWA update notice overlap) is CLOSED by owner ruling 2026-09-25: leave the notice where it is. Part 2 (services mode nouns in modeSearchWords) REMAINS OPEN and was deliberately not shipped, because on main it has no observable effect: modeSearchWords in src/lib/smart-search-intent.ts is read only by smartSearchContentTerms, which is called only for calculators, factsheets and dictionary (calculator-filters.ts, factsheets-data.ts, dictionary.ts). The services ranker (src/lib/service-ranker.ts) and universal search call smartSearchExpansions, which returns curated rule terms only and never reads modeSearchWords, so adding service/services/pathway(s)/program/referral there changes no services result. It becomes meaningful only if services search starts consuming smartSearchContentTerms (e.g. a required-term filter, which owner decision 18 excluded from PR C). NEXT: close as won't-fix, or keep it parked until such a consumer exists.",
-      "source": "PR #2860 working notes; code read of src/app/globals.css:3698-3712 and src/lib/smart-search-intent.ts at origin/main 6f0a3d444; session 01B5auxdz8JsfzSnDezMWz1n, 2026-09-17.",
       "added": "2026-09-17"
     },
     {
@@ -503,15 +476,6 @@
       "added": "2026-09-20"
     },
     {
-      "id": "#QKW3KN",
-      "priority": "P2",
-      "type": "task",
-      "summary": "rag-extractive-answer.ts is now the largest file in the repo at 5268 lines and is not on the monoliths backlog",
-      "detail": "Add it to docs/maturity-backlog-workorders.md section X3 as a fourth tracked monolith and extract the isSourceBound* predicate cluster first. Why: it grew ~30% in under three weeks (4042 lines at the 2026-09-02 audit) while all three tracked monoliths shrank, so the one file getting worse is the one nothing is watching. It also carries 10 narrowly-scoped isSourceBound* query predicates, a pattern that adds a bespoke function per answer-quality bug rather than generalising. Owner: assistant. Confidence: high - line counts verified 2026-09-20. Depends on: nothing. NOTE CORRECTED 2026-09-20 after a Codex review on PR #2930 caught the original wording overstating the contract. RAG-ranking surface, and the two requirements are NOT the same trigger: the flag-it-first rule applies to EVERY edit here, including a rename or a comment (AGENTS.md 'RAG ranking protection' -> 'Flag it'), but the live eval-canary before/after pair is required only when retrieval, ranking or ordering BEHAVIOUR changes ('Canary for behaviour'). The extraction proposed above is behaviour-preserving, so on its own it needs the flag and not the canary. This distinction is load-bearing rather than pedantic: canary dispatches are provider-backed (~USD 1-2) and need the owner's explicit approval each time, so stating the canary as unconditional would either stall this work behind an approval it does not need or spend money to prove nothing moved. If an extraction does turn out to alter ordering, the canary requirement applies in full and the clamped-score and comparator-key contracts still hold.",
-      "source": "session 2026-09-20 /ledger sweep — nine-agent repo maturity review; note corrected after Codex review on PR #2930",
-      "added": "2026-09-20"
-    },
-    {
       "id": "#PM71Z1",
       "priority": "P2",
       "type": "task",
@@ -525,7 +489,7 @@
       "priority": "P1",
       "type": "issue",
       "summary": "Medication and therapy records carry zero source links while their footers tell the clinician to check the linked source",
-      "detail": "UPDATE 2026-10-10: PR #3398 proposed WA-first sources in src/data/medication-source-links.json: wa-health-clozapine-guideline-2024 for clozapine, and the Australian Prescriber lithium article plus its correction for lithium-carbonate-ir-sr. They render nothing until the owner adopts and signs off those register records. Valproate, other anticonvulsants and QTc-risk drugs still have no proposal. UPDATE 2026-09-25: step 1 shipped in PR #3017. The medication footer no longer promises a linked source (it points to current Australian product information or the local guideline); the therapy footer points to the sources named under Source & review status. OWNER DECISION: default source per medication is the TGA Product Information, plus WA guidelines where they exist; engineering proposes, owner confirms, high-risk medicines first (clozapine, lithium, valproate and other anticonvulsants, QTc/overdose-risk drugs). Real links still need the data-model change described below. PRIOR DETAIL: /medications/[slug] has 0 anchors in <main> on all four tabs; /therapy-compass/[slug] the same. Footer on every tab: 'verify every dose and interaction against the linked source'. acamprosate states Max 1998 mg/day, a serum creatinine >120 micromol/L contraindication, Half-life 13-28.4 h and an unattributed EFFICACY: MODERATE tile; the only provenance is one prose sentence on tab 4 below the fold. Root cause: medication-records.ts:118-126 derives governance from a free-text src section with no URL or document id. /dictionary and /factsheets do this correctly. Fixing properly is a database migration plus clinical governance.",
+      "detail": "UPDATE 2026-10-22: second high-risk batch proposed (PR from thread 'Medication source links'). src/data/medication-source-links.json now maps 74 of 330 medicines (was 26): other anticonvulsants, gabapentinoids, oral antipsychotics, QTc-prolonging antiemetics, TCAs and other overdose-risk antidepressants, benzodiazepines and Z-drugs, buprenorphine, S8 stimulants, ketamine, propranolol and clonidine, each to its TGA PI search link, plus the WA Monitored Medicines Prescribing Code and ScriptCheckWA for stimulants, alprazolam, buprenorphine, ketamine and gabapentinoids. Also captured WA High Risk Medication Management Policy MP 0131/20 v2.0 (candidate, unmapped). Nothing renders until the owner signs. OWNER DECISION 2026-10-22: the live TGA PI search is the PI source, signed once per medicine with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md), because www.ebs.tga.gov.au robots.txt disallows all automated retrieval. All 71 TGA PI records are now candidates under dateModel live_product_information. Next action: owner signs the records and the mappings (sign-off batch in the project files), then a separate adoption decision. UPDATE 2026-10-10: PR #3398 proposed WA-first sources in src/data/medication-source-links.json: wa-health-clozapine-guideline-2024 for clozapine, and the Australian Prescriber lithium article plus its correction for lithium-carbonate-ir-sr. They render nothing until the owner adopts and signs off those register records. Valproate, other anticonvulsants and QTc-risk drugs still have no proposal. UPDATE 2026-09-25: step 1 shipped in PR #3017. The medication footer no longer promises a linked source (it points to current Australian product information or the local guideline); the therapy footer points to the sources named under Source & review status. OWNER DECISION: default source per medication is the TGA Product Information, plus WA guidelines where they exist; engineering proposes, owner confirms, high-risk medicines first (clozapine, lithium, valproate and other anticonvulsants, QTc/overdose-risk drugs). Real links still need the data-model change described below. PRIOR DETAIL: /medications/[slug] has 0 anchors in <main> on all four tabs; /therapy-compass/[slug] the same. Footer on every tab: 'verify every dose and interaction against the linked source'. acamprosate states Max 1998 mg/day, a serum creatinine >120 micromol/L contraindication, Half-life 13-28.4 h and an unattributed EFFICACY: MODERATE tile; the only provenance is one prose sentence on tab 4 below the fold. Root cause: medication-records.ts:118-126 derives governance from a free-text src section with no URL or document id. /dictionary and /factsheets do this correctly. Fixing properly is a database migration plus clinical governance.",
       "source": "session 2026-10-10 /ledger sweep, PR #3398 (merged 2026-10-09 as 6f9203d55)",
       "added": "2026-09-20"
     },
@@ -551,8 +515,8 @@
       "id": "#MSJT12",
       "priority": "P1",
       "type": "issue",
-      "summary": "Production deploys stopped landing for 27 hours on 2026-09-21; root cause unknown and GitHub-issue monitor routing still did not drive action",
-      "detail": "Second occurrence of the Railway deploy-rollback failure mode first seen 2026-09-11..09-14 (24 consecutive rollbacks, documented in scripts/check-live-deployment-freshness.mjs and docs/deployment-architecture.md 'Readiness: what /api/health/ready may and may not ask'). Measured 2026-09-22 from GitHub deployment statuses: the Database service in the production environment last landed a deploy at 2026-09-21T05:59Z (3a43f808d) and did not land another until 2026-09-22T09:15Z (76bf29ffa, PR #2978). In between, four production deployments were created for ef257fa5c, f44ae5397, 56b123509 and 373046b76 and every one went in_progress -> inactive without ever reaching success. All four built cleanly in the Docker image build workflow, live-drift was green on the 2026-09-21 migrations, and Railway built PR preview environments normally throughout, so the integration, the image and the database are all ruled out. That leaves Railway-side deploy/start/healthcheck rejection, which is the documented mechanism: each healthcheck attempt gets ~10s against /api/health/ready and a container that cannot answer inside the window is discarded and rolled back, leaving the previous deploy serving. Confirming which of the four failed and why needs the Railway deployment logs for the production environment, which no agent session has had access to. Production recovered on its own and no fix was applied, so the trigger is unknown and can recur. Separately confirmed NOT a fault: nine main commits in the same window got a staging deploy but no production deploy at all - all nine touched no path matched by watchPatterns in railway.app.json, which is correct filtering. Alerting clarification (rewrites a false claim in the original draft of this request): live-domain-monitor.yml already has monitor-routing (issues: write + actions/github-script) as of #2884 / ledger #TN512M, and it DID fire during this stall — pinned issue #2973 ('Live domain monitor failing', label live-monitor-failure) was opened 2026-09-21T12:40Z, updated on later red runs including the deployment-freshness failure at 2026-09-22T06:47Z, and closed on the next green run at 2026-09-22T12:41Z. So 'nothing routes a red monitor run' is false. What remains unverified for human delivery: despite #2973 being open and repeatedly commented for ~24 hours of the stall, the gap was still found only because a human inspected GitHub deployment statuses, not because anyone acted on the pinned issue. That matches the #TN512M residual ('Close once a genuine outage has produced a notification someone acted on') and the workflow comment that owner failure emails arrive unread. Durable next actions: (1) pull Railway production deployment logs for the four inactive deploys and record the reject reason; (2) treat this stall as the missing #TN512M real-outage evidence that GitHub-issue routing alone is insufficient delivery, and decide a human-reachable path (page/Slack/owner push) before adding more probes. Pairs with #HYSWAF (Railway deploys every main push without waiting for required checks) and #TN512M.",
+      "summary": "Production deploys stopped landing for 27 hours on 2026-09-21; likely cause Railway Wait for CI skipping deploys while main CI was red",
+      "detail": "UPDATE 2026-10-21 (read-only GitHub deployment statuses and Actions run times; no Railway access): LIKELY CAUSE FOUND, and it is not a healthcheck rollback. Each of the four stuck production deploys went from in_progress to inactive within 5 to 6 seconds of that commit's CI workflow run on main concluding failure: ef257fa5c CI failed 10:12:32Z, deploy inactive 10:12:37Z; f44ae5397 10:31:12Z / 10:31:18Z; 56b123509 16:48:48Z / 16:48:54Z; 373046b76 17:36:52Z / 17:36:58Z. That is Railway's documented Wait for CI behaviour (a failed workflow run skips the deploy at once; docs/deployment-architecture.md). 3a43f808d, which triggered no CI run, deployed normally. 76bf29ffa began deploying at 09:08Z on 2026-09-22, three minutes before its own CI run failed at 09:11Z, which fits a manual deploy or Wait for CI being switched off then. So the stall was most likely Wait for CI enabled on the production service while CI on main was red (release-browser-matrix Firefox/WebKit, Lighthouse and PR required failures). This is inferred from timing only and stays provisional until Railway deployment logs or the setting history confirm it. By 2026-09-27 the setting read source.checkSuites false. The same signature recurs on 2026-10-21: 3b4518fdb went inactive at 07:10:45Z, seven seconds after its Docker image build run failed at 07:10:38Z, so Wait for CI appears to be on again and any red workflow run on a main commit skips the production deploy (handed to the Alert root causes work, #3685). Next action, owner: read the Wait for CI setting on the Railway app and worker services and confirm; then decide per #HYSWAF whether it stays on, which requires main CI to stay green. PRIOR DETAIL (its healthcheck-rollback explanation is superseded by the timing evidence above): Second occurrence of the Railway deploy-rollback failure mode first seen 2026-09-11..09-14 (24 consecutive rollbacks, documented in scripts/check-live-deployment-freshness.mjs and docs/deployment-architecture.md 'Readiness: what /api/health/ready may and may not ask'). Measured 2026-09-22 from GitHub deployment statuses: the Database service in the production environment last landed a deploy at 2026-09-21T05:59Z (3a43f808d) and did not land another until 2026-09-22T09:15Z (76bf29ffa, PR #2978). In between, four production deployments were created for ef257fa5c, f44ae5397, 56b123509 and 373046b76 and every one went in_progress -> inactive without ever reaching success. All four built cleanly in the Docker image build workflow, live-drift was green on the 2026-09-21 migrations, and Railway built PR preview environments normally throughout, so the integration, the image and the database are all ruled out. That leaves Railway-side deploy/start/healthcheck rejection, which is the documented mechanism: each healthcheck attempt gets ~10s against /api/health/ready and a container that cannot answer inside the window is discarded and rolled back, leaving the previous deploy serving. Confirming which of the four failed and why needs the Railway deployment logs for the production environment, which no agent session has had access to. Production recovered on its own and no fix was applied, so the trigger is unknown and can recur. Separately confirmed NOT a fault: nine main commits in the same window got a staging deploy but no production deploy at all - all nine touched no path matched by watchPatterns in railway.app.json, which is correct filtering. Alerting clarification (rewrites a false claim in the original draft of this request): live-domain-monitor.yml already has monitor-routing (issues: write + actions/github-script) as of #2884 / ledger #TN512M, and it DID fire during this stall — pinned issue #2973 ('Live domain monitor failing', label live-monitor-failure) was opened 2026-09-21T12:40Z, updated on later red runs including the deployment-freshness failure at 2026-09-22T06:47Z, and closed on the next green run at 2026-09-22T12:41Z. So 'nothing routes a red monitor run' is false. What remains unverified for human delivery: despite #2973 being open and repeatedly commented for ~24 hours of the stall, the gap was still found only because a human inspected GitHub deployment statuses, not because anyone acted on the pinned issue. That matches the #TN512M residual ('Close once a genuine outage has produced a notification someone acted on') and the workflow comment that owner failure emails arrive unread. Durable next actions: (1) pull Railway production deployment logs for the four inactive deploys and record the reject reason; (2) treat this stall as the missing #TN512M real-outage evidence that GitHub-issue routing alone is insufficient delivery, and decide a human-reachable path (page/Slack/owner push) before adding more probes. Pairs with #HYSWAF (Railway deploys every main push without waiting for required checks) and #TN512M.",
       "source": "Claude session 2026-09-22; GitHub deployment statuses for Database/production; live-domain-monitor runs 35639421619/35696377977/35728663173 and issue #2973 routing evidence; Codex review on PR #2982",
       "added": "2026-09-22"
     },
@@ -570,7 +534,7 @@
       "priority": "P1",
       "type": "task",
       "summary": "Clinical eval battery misses high-risk scenarios: no hepatic, older-adult, interaction or false-premise cases (audit F14 + F15)",
-      "detail": "OWNER DECISION 2026-09-25: approved. Engineering drafts the 20 cases (question, key facts a correct answer must contain, facts it must not state, expected source); the owner reviews and corrects them before any are added to the harness. A first draft of all 20 was delivered to the owner on 2026-09-25 as a Word document (not committed: clinical content awaiting review). Verified offline by topic count over src/lib/rag/rag-eval-cases.ts (101 cases): hepatic 0, older adult/elderly 0, drug interaction 0, unsafe/false premise 0, Mental Health Act 1, QTc 2, pregnancy 3, paediatric 2. Owner recommendation (2026-09-25): start with ~20 clinician-reviewed cases (3 pregnancy/breastfeeding, 3 renal/hepatic, 2 older adults, 2 QTc, 2 lithium/clozapine monitoring, 2 overdose, 2 interactions, 2 MHA, 2 false-premise where the right answer corrects the premise); engineering drafts expected key facts + source, owner reviews. Adding golden cases touches the eval harness (RAG-protected surface): flag before editing, and live canary dispatches need approval.",
+      "detail": "UPDATE 2026-10-21 (answer safety hardening thread, verified offline on main 81ba5aefa): 18 of the 20 cases are wired into answerQualityEvalCases as high-risk-<id> on the owner go-ahead of 2026-10-10, with verbatim evidence pinned by tests/high-risk-eval-cases-draft.test.ts. Two stay out as source_needed: breastfeeding-lithium and hepatic-valproate, because no WA passage for either is held in the repository. Draft expected facts for both were sent to the owner for correction on 2026-10-21 (not approved). Next: owner corrects the drafts and approves a free read-only fetch of the KEMH lithium breastfeeding and CG.MHSP.Valproate passages into a fixture, then the two cases are wired in. PRIOR DETAIL: OWNER DECISION 2026-09-25: approved. Engineering drafts the 20 cases (question, key facts a correct answer must contain, facts it must not state, expected source); the owner reviews and corrects them before any are added to the harness. A first draft of all 20 was delivered to the owner on 2026-09-25 as a Word document (not committed: clinical content awaiting review). Verified offline by topic count over src/lib/rag/rag-eval-cases.ts (101 cases): hepatic 0, older adult/elderly 0, drug interaction 0, unsafe/false premise 0, Mental Health Act 1, QTc 2, pregnancy 3, paediatric 2. Owner recommendation (2026-09-25): start with ~20 clinician-reviewed cases (3 pregnancy/breastfeeding, 3 renal/hepatic, 2 older adults, 2 QTc, 2 lithium/clozapine monitoring, 2 overdose, 2 interactions, 2 MHA, 2 false-premise where the right answer corrects the premise); engineering drafts expected key facts + source, owner reviews. Adding golden cases touches the eval harness (RAG-protected surface): flag before editing, and live canary dispatches need approval.",
       "source": "Ultimate Audit Master Report 2026-09-25 (owner-supplied .docx), reviewed offline against main 955996146 in session claude/review-assessment-4s1w86; no provider access",
       "added": "2026-09-25"
     },
@@ -579,7 +543,7 @@
       "priority": "P2",
       "type": "task",
       "summary": "Source-conflict and jurisdiction behaviour has no deliberate tests; owner to confirm the tier rule (audit F16)",
-      "detail": "OWNER DECISION 2026-09-25: confirmed the existing tier order (WA validated > Australian national > other Australian state > supplementary, within a relevance band) and asked for two additions: a superseded source is never used as evidence, and a clinically material WA-vs-national disagreement is disclosed with both sources shown. Found 2026-09-25: outdated sources are currently KEPT and shown with a danger-severity OUTDATED warning (src/lib/source-governance.ts), and authority conflict in source-authority-registry.ts means publisher-metadata mismatch, not clinical disagreement. Both additions change retrieval/answer behaviour: flag before editing and run a live canary pair (owner approval, about USD 1-2) around the change. A rule already exists: src/lib/australian-source-priority.ts ranks wa_validated < australian_national < australian_state < supplementary WITHIN a relevance band, and tracks authorityConflictCount. Only 3 eval cases touch conflict/superseded sources. Owner recommendation (2026-09-25): confirm that order, add (a) superseded versions never used as evidence and (b) disclose both sources when WA and national disagree on something clinically material. Next action: owner confirms the rule, then add conflict/currentness/attribution cases. Ranking is RAG-protected: flag before editing and require a canary pair for any ordering change.",
+      "detail": "UPDATE 2026-10-21 (answer safety hardening thread, offline): tier-rule tests added to tests/australian-source-priority.test.ts (WA ahead of national ahead of other states ahead of supplementary at equal relevance, relevance always wins across bands, supplementary padding dropped once two Australian documents suffice). Both owner additions remain unbuilt: (a) outdated sources are only penalised in rag-second-stage.ts and warned about in the sealed src/lib/source-governance.ts, so they can still carry a claim; (b) buildSourceConflictSection (src/lib/rag/source-conflict-section.ts) only compares uploaded_local with australian_public, and uploaded_local retrieval is fail-closed (#9V1TJ5), so a WA versus national public disagreement is never disclosed. Both are answer-behaviour changes: RAG notice, canary pair and hazard reseal needed; plan sent to the owner 2026-10-21. PRIOR DETAIL: OWNER DECISION 2026-09-25: confirmed the existing tier order (WA validated > Australian national > other Australian state > supplementary, within a relevance band) and asked for two additions: a superseded source is never used as evidence, and a clinically material WA-vs-national disagreement is disclosed with both sources shown. Found 2026-09-25: outdated sources are currently KEPT and shown with a danger-severity OUTDATED warning (src/lib/source-governance.ts), and authority conflict in source-authority-registry.ts means publisher-metadata mismatch, not clinical disagreement. Both additions change retrieval/answer behaviour: flag before editing and run a live canary pair (owner approval, about USD 1-2) around the change. A rule already exists: src/lib/australian-source-priority.ts ranks wa_validated < australian_national < australian_state < supplementary WITHIN a relevance band, and tracks authorityConflictCount. Only 3 eval cases touch conflict/superseded sources. Owner recommendation (2026-09-25): confirm that order, add (a) superseded versions never used as evidence and (b) disclose both sources when WA and national disagree on something clinically material. Next action: owner confirms the rule, then add conflict/currentness/attribution cases. Ranking is RAG-protected: flag before editing and require a canary pair for any ordering change.",
       "source": "Ultimate Audit Master Report 2026-09-25 (owner-supplied .docx), reviewed offline against main 955996146 in session claude/review-assessment-4s1w86; no provider access",
       "added": "2026-09-25"
     },
@@ -620,39 +584,12 @@
       "added": "2026-09-25"
     },
     {
-      "id": "#R2FNTJ",
-      "priority": "P3",
-      "type": "rec",
-      "summary": "CME: curated WA learning-opportunity directory with event freshness and bundle/employer-access checks",
-      "detail": "Review items F23, F38, D21. Separate provider, programme, event and recorded resource; expire past events, flag cancellations, keep historical pages apart; show 'included in your workshop' or 'available through your employer' before suggesting a purchase. Needs ongoing content upkeep and source-register ownership, so decide who maintains it before building.",
-      "source": "Master product review 2026-09-26 (thread: Review master review ideas); cross-checked against main 004ab6301",
-      "added": "2026-09-26"
-    },
-    {
-      "id": "#JYH1FH",
-      "priority": "P1",
-      "type": "issue",
-      "summary": "1,935 documents display Locally reviewed with no recorded reviewer, and nobody knows if a person marked them",
-      "detail": "MEASURED 2026-09-25 from the live audit-source-governance --json run (operator-run; this session had no credentials). The report carries clinical_validation_status_counts locally_reviewed 1935, unverified 130 across 2065 clinical governance documents. src/lib/document-filter-model.ts renders locally_reviewed to clinicians as 'Locally reviewed' and src/lib/answer-client-payload.ts treats it as an authority level beside approved, so this is a review claim shown to the people using the system. The same report said reviewer_attribution reviewed_record_count 0 over 3907 records with passed true, because isRecordMarkedReviewed read review_status only and required the exact string 'reviewed'. PR #3028 fixed the detector, so the next live run will examine those 1935 documents for the first time. WHAT THIS ROW IS FOR, and it is not the code fix: nobody has established whether those 1935 were marked locally_reviewed by a person or in bulk by an import. If by import, the badge overstates what happened and the honest repair is to the records rather than to any gate; fixing the detector only makes the question visible. NEXT ACTION, owner: run npm run audit:source-governance -- --json on a machine with credentials and read unattributed_reviewed_record_count; then decide person-vs-import, which is a governance judgement and not an agent decision. Offline code path verified; live consequence unmeasured.",
-      "source": "Nine-issue packet follow-through session, 2026-09-25; live audit output pasted by the owner",
-      "added": "2026-09-25"
-    },
-    {
       "id": "#T9PRB9",
       "priority": "P2",
       "type": "issue",
       "summary": "Measured 2026-09-26: answer time is dominated by search (database lookups plus re-ranking), not generation, and generation recorded 0.0 s",
       "detail": "This is the measurement #GCB0DV asked for, and it lands outside both branches of that row's decision tree (neither generation, i.e. #231/#100, nor page delivery, i.e. #016). One run of scripts/probe-answer-timing.mjs from the owner's PC in Perth (owner-approved, #GCB0DV), query 'What FBC threshold should stop clozapine?', HTTP 200: client total 13.4 s, server total 11.9 s, network/queue 1.5 s. search 9.2 s (77%) = rpc 4.2 s + rerank 4.1 s + embedding <0.1 s; ratelimit 1.4 s; auth and scope <0.1 s each; generation 0.0 s. So #231/#100 (generation) are NOT the first lever for this query; the search RPCs and the rerank step are, plus an unexpectedly slow rate-limit check. UNRESOLVED: generation 0.0 s means either the answer came from a cache/reuse path or the generation Server-Timing metric is not recorded on that path; check src/app/api/answer/route.ts and src/lib/server-timing.ts wiring before trusting the split. One sample only; repeat with 3-5 queries before tuning. Search/rerank is a RAG-protected surface: flag before editing and canary any ordering change. LEDGER NOTE: #GCB0DV already has an unreconciled update queued (PR #3039), so a second update to it would go stale; after that one is reconciled, update #GCB0DV and #231 to point here.",
       "source": "Owner-approved timing probe 2026-09-26 (thread: Clean up task list)",
-      "added": "2026-09-26"
-    },
-    {
-      "id": "#46VNY9",
-      "priority": "P1",
-      "type": "task",
-      "summary": "Repair the 1,935 'Locally reviewed' labels: owner confirmed 2026-09-26 they came from a bulk import, not a reviewer",
-      "detail": "UPDATE 2026-10-09: the repair migration supabase/migrations/20260926170000_repair_import_stamped_locally_reviewed.sql merged to main in PR #3111 (2026-09-27). Merging to main applies migrations to the live database, so it should already have run, but live application is NOT verified. Next action, provider-backed so it needs owner approval: confirm the post-merge live-drift run for that commit passed both check:drift and check:migration-history, then read the 1,935 documents' validation basis to confirm the relabel landed. Close this and #JYH1FH only after both checks. PRIOR DETAIL: UPDATE 2026-10-06: SQL migration supabase/migrations/20260926170000_repair_import_stamped_locally_reviewed.sql is written, dry-run verified, and tested offline. Awaits live Supabase execution to update the 1,935 rows. Close this and #JYH1FH once applied.",
-      "source": "Owner answer in Claude Code session 2026-09-26 (session_018CR3YcCWjJk2fyzTNYmMi4)",
       "added": "2026-09-26"
     },
     {
@@ -683,15 +620,6 @@
       "added": "2026-09-26"
     },
     {
-      "id": "#4JTTQ7",
-      "priority": "P2",
-      "type": "task",
-      "summary": "Post-merge eval-canary compare for the dead-stem RAG commit (661ccbb64)",
-      "detail": "34 retrieval/chunking/extraction regexes now match real word forms. Baseline: canary run #105 on 67d961107 (already failing on main, see #J8SJQ9), so compare retrieval metrics (doc/content recall 1.0, per-case rr) rather than pass/fail. Regression: revert 661ccbb64 alone. Also glance at answer grouping and document categories in the app (commit d6dd6f0f9).",
-      "source": "Claude session 2026-09-27, branch claude/repository-review-bugs-52tq9q",
-      "added": "2026-09-27"
-    },
-    {
       "id": "#H69FNZ",
       "priority": "P2",
       "type": "issue",
@@ -701,58 +629,13 @@
       "added": "2026-09-27"
     },
     {
-      "id": "#K55VBV",
-      "priority": "P3",
-      "type": "issue",
-      "summary": "nltk GHSA-8mgp-746c-j5xp (high) has no patched release; transitive via medspacy-quickumls",
-      "detail": "This one advisory is the 2 high Dependabot alerts (requirements.txt and requirements-cloud.txt). Affected APIs (TransitionParser, AveragedPerceptron, PerceptronTagger save/load) are not called by the worker. Next: bump when nltk ships a fix.",
-      "source": "Claude session 2026-09-27, branch claude/repository-review-bugs-52tq9q",
-      "added": "2026-09-27"
-    },
-    {
-      "id": "#HD1C6W",
-      "priority": "P2",
-      "type": "task",
-      "summary": "Owner clinical re-review: word-form fix withheld from three sealed hazard-control files",
-      "detail": "Dead stems inside \\b...\\b never match: answer-verification.ts:1480 escalat; rag-claim-support.ts:267 escalat, :1108 escalat/initiat/recommend; source-text-sanitizer.ts:48 escalat/contraindicat/prescrib, :61 escalat/prescrib. Edits reverted because these paths are sealed in docs/clinical-hazard-controls.json. Next: owner reviews the one-line changes, then re-apply and run npm run governance:seal-hazard-controls.",
-      "source": "Claude session 2026-09-27, branch claude/repository-review-bugs-52tq9q",
-      "added": "2026-09-27"
-    },
-    {
       "id": "#MAAXAX",
       "priority": "P3",
       "type": "rec",
       "summary": "Teaching Assessments: tokenized magic-link or external supervisor access flow",
-      "detail": "Visiting hospital supervisors frequently lack hospital clinical accounts. Build a tokenized magic-link / secure invite flow so supervisors can complete and sign EPA forms without full accounts.",
+      "detail": "21 Oct 2026, Teaching and CME PR: durable store public.teaching_epa_magic_links (migration 20261021190000, drafted with owner approval; merge only after the owner's own yes), server routes /api/teaching/assessments/magic-links and the respond route on the durable store, doctor and supervisor screens labelled as feedback to copy into CLA, not an official RANZCP sign-off. Next: owner merges; then confirm live-drift passes, and keep /teaching/assessments/respond/* and its API open to signed-out visitors when the 1 Nov sign-in gate lands. Follow-ups: retire the old PUT registration route and the process-memory store once nothing uses them; consider a retention purge for completed or expired links.",
       "source": "PR #3302 post-merge audit",
       "added": "2026-10-06"
-    },
-    {
-      "id": "#WVS32F",
-      "priority": "P3",
-      "type": "rec",
-      "summary": "Teaching: organisers have no view of who did not attend (attendance-gap views)",
-      "detail": "Owner product decision needed (raised in the Teaching Mode polish, PR #3200). Organise shows the register and an attendance download, but nothing lists members with no check-in across sessions. Privacy-sensitive: decide who may see it (organiser only?), over what period, and the honest wording ('no check-in recorded', never 'missed'). Next action: owner decides scope and audience; then design on Organise using existing attendance reads, with personal-practice review before build.",
-      "source": "Session 2026-10-02, PR #3200",
-      "added": "2026-10-02"
-    },
-    {
-      "id": "#ZTDZ4Z",
-      "priority": "P3",
-      "type": "rec",
-      "summary": "Teaching: no in-app QR scanner; check-in relies on the phone's own camera app",
-      "detail": "Owner product decision needed (raised in the Teaching Mode polish, PR #3200). Today attendees scan the projector QR with the phone camera or type the 6-digit code; the Today button was renamed 'Check in with code' so it does not promise a scanner. Next action: owner decides whether an in-app scanner (camera permission, BarcodeDetector or a library, fallback to typed code) is worth building; if yes, design it inside the Today hero action, keep typed-code fallback, add no new route without wiring.",
-      "source": "Session 2026-10-02, PR #3200 / #3204",
-      "added": "2026-10-02"
-    },
-    {
-      "id": "#F3B2XC",
-      "priority": "P2",
-      "type": "task",
-      "summary": "Check the live Tall Man drug lettering list against the ACSQHC National Tall Man list",
-      "detail": "src/lib/medications/tall-man.ts is live on medication search and record pages but was never checked against the official list. Doubtful: citaloPRAM/escitaloPRAM and fluPENtixol/zucloPENthixol capitalise the shared stem so they do not separate the pair, CLONazepam differs from ISMP clonazePAM, and VALproate, midazolAM, temazePAM, oxazePAM need checking. Matching is exact-name only. Needs owner verification.",
-      "source": "PR 3538 review, 15 Oct 2026",
-      "added": "2026-10-15"
     },
     {
       "id": "#H38M3Y",
@@ -770,15 +653,6 @@
       "summary": "PDF extractor can turn prose beneath a table into a table row and rebuild the table markdown from it",
       "detail": "Rechecked 17 Oct 2026 against main 99507ebca. The original fault is fixed: PR #3571 made worker/python/extract_pdf_assets.py _recover_table_rows_split admit a recovered line only when each piece fits one column, keep top and bottom strips in order, and tests/pdf-table-extraction.test.ts pins full-width prose being rejected. A leftover was fixed on 17 Oct: a short note under a recovered row (for example 'See note') was glued into that row's first cell; a lone line now joins the row above only when that cell actually wrapped (_continues_wrapped_cell), with tests both ways. Still open, low risk: text laid out in the table's own columns directly under a table (an abbreviation key, or a two-column page) becomes an extra row, and only when a drawing below the table extends the crop over it. Geometry alone cannot tell such a key from a real row. Changes reach search only after a re-index.",
       "source": "PsychSift audit review (16 audit reports) checked against main 4382217, 2026-10-13",
-      "added": "2026-10-13"
-    },
-    {
-      "id": "#SAKCD9",
-      "priority": "P2",
-      "type": "task",
-      "summary": "Ranking-snapshot date gate will fail around 3 Nov 2026 if the automated snapshot-refresh PR is not merged (audit H5-1)",
-      "detail": "The snapshot was refreshed to 4 Oct, so the automatic checks pass today. .github/workflows/ranking-snapshot-refresh.yml runs after each weekly Eval Canary on main and opens a refresh PR once the snapshot is 14 days old, reusing the canary artifact with no provider calls. Next: watch for that PR (expected from about 18 Oct) and get it reviewed and merged before the 30-day expiry; it touches a RAG ranking fixture, so follow docs/rag-behaviour/ and the canary rules. Only if no refresh PR appears (canary failing or not running) does a new paid eval, with the owner's explicit approval, become necessary.",
-      "source": "Audit 2026-10-08, rechecked against main 2026-10-13",
       "added": "2026-10-13"
     },
     {
@@ -854,15 +728,6 @@
       "added": "2026-10-13"
     },
     {
-      "id": "#54XJ7D",
-      "priority": "P2",
-      "type": "task",
-      "summary": "Shift-swap approval checks the team rules only in the browser, not on the server (audit L4E-F2)",
-      "detail": "Needs a database migration and an owner decision between blocking the swap and asking the manager to acknowledge. A migration merged to main reaches the live database within seconds, so schedule the merge inside an approved window.",
-      "source": "Audit 2026-10-08, rechecked against main 2026-10-13",
-      "added": "2026-10-13"
-    },
-    {
       "id": "#54N8ZN",
       "priority": "P2",
       "type": "task",
@@ -933,15 +798,6 @@
       "detail": "Record publisher licence or permission status per source so public display and AI use can be checked. Finding R-07.",
       "source": "Regulatory readiness audit 2026-10-20 (/mnt/project-files/reviews/2026-10-20-regulatory-launch-readiness.md)",
       "added": "2026-10-20"
-    },
-    {
-      "id": "#TBTNGB",
-      "priority": "P2",
-      "type": "issue",
-      "summary": "Lighthouse budget grades and refreshes from a single sample per route, so slow runners fail unrelated PRs",
-      "detail": "On 21 Oct 2026 a slow-runner window (~15:00Z) failed Lighthouse on #3749 (server-only) and #3752 (CSS-only); all routes' TBT rose together and #3749 passed on rerun (desktop search 956 ms vs 964 ms baseline). The dispatch refresh (run 39625188079, artifact lighthouse-baseline-refresh-39625188079, main 8c03823) is also one sample: desktop-root 1584 ms vs ~935-955 ms typical, so it was not committed. Proposal: take the median of three graded samples per route in scripts/run-lighthouse-budget.mjs for both grading and --update refresh, keeping tolerances unchanged and the two-confirmation rule for breaches.",
-      "source": "Main CI and test reliability thread, 21 Oct 2026",
-      "added": "2026-10-21"
     },
     {
       "id": "#PYWRTX",
@@ -1041,6 +897,24 @@
       "detail": "Owner decision 17 Oct 2026 21:37 AWST: #WFYDV6 must stay open; PR #3609 archived it without the required sign-off. src/components/forms/wa-mha-form-print.tsx (PR #3538) was reworded on 16 Oct (Form 6B now a report to the Chief Psychiatrist; Non-Statutory Study Layout header), but section lists, the 7-day pre-expiry examination and copy recipients remain unverified and no legal or clinical sign-off is recorded. Nothing imports or renders it; it must stay unwired. Delete it once the 30-day dead-code window passes (after 13 Nov 2026) unless legal and clinical sign-off is obtained first. (Previously archived 2026-10-16: Fixed statutory discrepancies and branding in-place in src/components/forms/wa-mha-form-print.tsx: replaced Form 6B Chief Psychiatrist consent wording with statutory post-order Report to the Chief Psychiatrist wording matching form-register.ts, replaced official WA Department of Health branding with an explicit Non-Statutory Study Layout header and warning banner, and updated tests/wa-mha-form-print.dom.test.tsx (retaining the file per the 30-day dead-code policy). | Note: Reopened 17 Oct 2026 by owner decision (21:37 AWST): archived by PR #3609 without the required legal and clinical sign-off; tracked again as an open P1 row. The form stays unwired until sign-off.)",
       "source": "PR 3538 review, 15 Oct 2026; owner decision on PR #3609, 17 Oct 2026; reopened in place with the ledger reopen action (PR #3627), replacing duplicate row #Z12CBC",
       "added": "2026-10-17"
+    },
+    {
+      "id": "#J0AY9D",
+      "priority": "P2",
+      "type": "issue",
+      "summary": "Guideline-change re-review covers only the 34 medications in the source link map",
+      "detail": "PR #3746 makes a medication page and its interactions due for review now when a register source they cite has a confirmed change. It reads src/data/medication-source-links.json, which maps 34 of 330 medications. The other records cite their sources (TGA PI, PBS, DACAS) only as free text, and those sources are not in the register, so no change event can reach them. They still get the 12-month date. Next action: register each medicine's sources, then map them with owner confirmation, high-risk medicines first, alongside #05WXHX.",
+      "source": "PR #3746 Codex review 2026-10-22",
+      "added": "2026-10-22"
+    },
+    {
+      "id": "#7B6MMM",
+      "priority": "P2",
+      "type": "issue",
+      "summary": "The WA valproate guideline (CG.MHSP.Valproate.pdf) is not in the live corpus, although an answer-quality eval case expects it",
+      "detail": "Read-only live query 2026-10-21 (owner-approved free read, answer safety hardening thread): no document in public.documents has a title or file name containing 'valpro' other than the registry JSON records. quality-valproate-pregnancy-contraindication in src/lib/rag/rag-eval-cases.ts lists CG.MHSP.Valproate.pdf as an expected file, and the high-risk case hepatic-valproate (#ZZ4RAP) cannot be sourced without it. The only hepatic valproate passage found was BMJ Best Practice 'Bipolar disorder in adults' p130, whose licence is unconfirmed. Next: owner supplies the WA guideline PDF for ingestion (same path as the CAMHS ADHD guideline, #018); no re-index of existing documents is needed.",
+      "source": "Answer safety hardening thread, 2026-10-21, read-only Supabase query",
+      "added": "2026-10-21"
     }
   ],
   "pending": []

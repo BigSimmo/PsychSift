@@ -202,7 +202,7 @@ describe("MasterSearchHeader DOM", () => {
     render(<MasterSearchHeader {...defaultHeaderProps()} searchMode="factsheets" />);
 
     await user.click(screen.getByRole("button", { name: "Open factsheets options" }));
-    await user.click(screen.getByRole("button", { name: "Browse all sheets" }));
+    await user.click(await screen.findByRole("button", { name: "Browse all sheets" }));
 
     expect(router.push).toHaveBeenCalledWith(factsheetsTopicsHref);
   });
@@ -216,7 +216,7 @@ describe("MasterSearchHeader DOM", () => {
       render(<MasterSearchHeader {...defaultHeaderProps()} searchMode="factsheets" />);
 
       await user.click(screen.getByRole("button", { name: "Open factsheets options" }));
-      await user.click(screen.getByRole("button", { name: "Browse all sheets" }));
+      await user.click(await screen.findByRole("button", { name: "Browse all sheets" }));
 
       expect(guard).toHaveBeenCalledTimes(1);
       expect(router.push).not.toHaveBeenCalled();

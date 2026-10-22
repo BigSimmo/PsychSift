@@ -2,7 +2,6 @@ import { addDays } from "@/lib/calendar/calendar-event";
 import { dateKeyToUtcMillis } from "@/lib/calendar/date-keys";
 import { complianceExpiresOn } from "@/lib/on-call/compliance";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
-import { perthCalendarDate } from "@/lib/cme/cpd-year";
 import { onCallTeachingDateParts } from "@/lib/on-call/teaching-schedule";
 import { formatZonedDay } from "@/lib/work-time/format";
 
@@ -38,18 +37,7 @@ export function formatRecordedDate(date: string): string {
   return day && month ? `${day} ${month} ${year}` : date;
 }
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
-
-/** "Aug 2026" for the neutral "Updated <month year>" line (spec review 7). Instants use the Perth day, not UTC. */
-export function formatUpdatedMonth(value: string): string {
-  const key = /^\d{4}-\d{2}-\d{2}$/.test(value)
-    ? value
-    : Number.isNaN(Date.parse(value))
-      ? ""
-      : perthCalendarDate(new Date(value));
-  const match = /^(\d{4})-(\d{2})/.exec(key);
-  return match ? `${MONTHS[Number(match[2]) - 1]} ${match[1]}` : "";
-}
+export { formatUpdatedMonth } from "@/lib/admin/updated-month";
 
 const DAY_MS = 86_400_000;
 /** A `YYYY-MM-DD` calendar date as a whole day count, for subtracting two dates. Exported so every

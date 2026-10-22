@@ -90,10 +90,59 @@ const HIGH_RISK_MEDICATION_SLUGS = [
   "nortriptyline",
   "phenelzine",
   "tranylcypromine",
+  // Second high-risk batch (22 Oct 2026): other anticonvulsants, QTc-prolonging and overdose-risk medicines.
+  "oxcarbazepine",
+  "topiramate",
+  "phenytoin",
+  "levetiracetam",
+  "gabapentin",
+  "pregabalin",
+  "quetiapine",
+  "risperidone",
+  "aripiprazole",
+  "olanzapine-wafer-odt",
+  "paliperidone-er",
+  "lurasidone",
+  "asenapine",
+  "brexpiprazole",
+  "cariprazine",
+  "levomepromazine",
+  "periciazine",
+  "trifluoperazine",
+  "zuclopenthixol",
+  "ondansetron",
+  "domperidone",
+  "dosulepin",
+  "doxepin",
+  "imipramine",
+  "venlafaxine-xr",
+  "desvenlafaxine",
+  "moclobemide",
+  "mirtazapine",
+  "bupropion-sr",
+  "agomelatine",
+  "alprazolam",
+  "clonazepam",
+  "diazepam",
+  "lorazepam",
+  "midazolam",
+  "nitrazepam",
+  "oxazepam",
+  "temazepam",
+  "zolpidem",
+  "zopiclone",
+  "buprenorphine-naloxone",
+  "buprenorphine-sl-depot",
+  "dexamfetamine",
+  "lisdexamfetamine",
+  "methylphenidate",
+  "ketamine",
+  "propranolol",
+  "clonidine",
 ] as const;
 
 describe("medication source links", () => {
-  it("maps only real medication slugs (including all 26 high-risk slugs) to real register records", () => {
+  it("maps only real medication slugs (including every high-risk slug) to real register records", () => {
     const slugs = new Set(loadMedicationSnapshot().map((record) => record.slug));
     const ids = new Set(sourceAcquisitionRecords.map((record) => record.id));
     for (const [slug, recordIds] of Object.entries(medicationSourceLinkIds)) {
@@ -131,6 +180,7 @@ describe("medication source links", () => {
     // those records went back to candidate (owner ruling) and the live pages show no source link.
     expect(medicationSourceLinks("clozapine")).toEqual([]);
     expect(medicationSourceLinks("lithium-carbonate-ir-sr")).toEqual([]);
+    for (const slug of HIGH_RISK_MEDICATION_SLUGS) expect(medicationSourceLinks(slug), slug).toEqual([]);
   });
 
   it("hides an unconfirmed record", () => {

@@ -27460,6 +27460,46 @@ end $$;
 revoke all on function public.roster_open_withdraw(uuid, uuid, uuid) from public, anon, authenticated;
 grant execute on function public.roster_open_withdraw(uuid, uuid, uuid) to service_role;
 
+-- A swap that would approve itself but breaks a team rule waits for the manager
+-- (20261022010000_roster_swap_accept_for_manager.sql). roster_command is unchanged.
+create function public.roster_swap_accept_for_manager(p_actor_id uuid, p_service_id uuid, p_swap_id uuid)
+returns jsonb language plpgsql security invoker set search_path = public, pg_catalog, pg_temp as $$
+declare
+  v_service public.on_call_services;
+  v_result jsonb;
+begin
+  if p_actor_id is null then raise exception 'roster_auth_required'; end if;
+  if p_service_id is null or p_swap_id is null then raise exception 'roster_invalid_request'; end if;
+  -- The same lock order as every team write: the service row FOR SHARE, then the per-service
+  -- advisory lock. roster_command takes both again, which this transaction already holds, so
+  -- nothing can change the swap between the undone accept and the update below.
+  select * into v_service from public.on_call_services where id = p_service_id for share;
+  if not found or not public.service_member_active(p_service_id, p_actor_id) then
+    raise exception 'roster_access_denied';
+  end if;
+  if v_service.verified_at is null and not v_service.is_demo then raise exception 'roster_team_not_verified'; end if;
+  perform pg_advisory_xact_lock(hashtextextended(p_service_id::text, 74817));
+
+  begin
+    v_result := public.roster_command(p_actor_id, p_service_id, 'swap.accept', jsonb_build_object('swapId', p_swap_id));
+    -- Approved means the shifts already changed hands inside this block. Raising here rolls
+    -- the block back to before the accept, as if it never ran.
+    if v_result ->> 'status' = 'approved' then raise exception 'roster_swap_needs_manager'; end if;
+    return v_result;
+  exception when raise_exception then
+    if sqlerrm <> 'roster_swap_needs_manager' then raise; end if;
+  end;
+
+  update public.roster_swaps
+     set status = 'accepted', accepted_at = now(), needs_manager_because = 'team_rule'
+   where id = p_swap_id and service_id = p_service_id and counterparty_id = p_actor_id and status = 'requested';
+  if not found then raise exception 'roster_not_found'; end if;
+  return jsonb_build_object('swapId', p_swap_id, 'status', 'accepted', 'needsManagerBecause', 'team_rule');
+end $$;
+
+revoke all on function public.roster_swap_accept_for_manager(uuid, uuid, uuid) from public, anon, authenticated;
+grant execute on function public.roster_swap_accept_for_manager(uuid, uuid, uuid) to service_role;
+
 -- FORCE ROW LEVEL SECURITY on six control-plane tables (20261013170000_force_rls_control_plane.sql).
 -- The release-records immutability trigger's ENABLE ALWAYS state
 -- (20261013140000_enable_always_release_records_immutability.sql) sits beside its create trigger above.
@@ -27578,6 +27618,52 @@ create policy "registrar_assessments_service_role_all"
 
 create policy "registrar_training_milestones_service_role_all"
   on public.registrar_training_milestones
+  for all to service_role
+  using (true)
+  with check (true);
+
+-- Teaching Assessments: visiting-supervisor EPA feedback links (20261021190000, #MAAXAX).
+create table public.teaching_epa_magic_links (
+  id uuid primary key default gen_random_uuid(),
+  registrar_id uuid not null references auth.users(id) on delete cascade,
+  token_hash text not null unique check (token_hash ~ '^[0-9a-f]{64}$'),
+  epa_number smallint not null check (epa_number between 1 and 4),
+  trainee_name text not null check (char_length(trainee_name) between 1 and 200),
+  supervisor_name text not null check (char_length(supervisor_name) between 1 and 200),
+  supervisor_role text not null check (char_length(supervisor_role) between 1 and 100),
+  clinical_setting text check (clinical_setting is null or char_length(clinical_setting) between 1 and 200),
+  status text not null default 'pending' check (status in ('pending', 'completed', 'revoked')),
+  response jsonb check (response is null or (jsonb_typeof(response) = 'object' and pg_column_size(response) <= 8192)),
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null,
+  completed_at timestamptz,
+  revoked_at timestamptz,
+  updated_at timestamptz not null default now(),
+  constraint teaching_epa_magic_links_expiry_window
+    check (expires_at > created_at and expires_at <= created_at + interval '30 days'),
+  constraint teaching_epa_magic_links_completed_shape
+    check ((status = 'completed') = (completed_at is not null and response is not null)),
+  constraint teaching_epa_magic_links_revoked_shape
+    check ((status = 'revoked') = (revoked_at is not null))
+);
+
+create index if not exists teaching_epa_magic_links_registrar_idx
+  on public.teaching_epa_magic_links (registrar_id, created_at desc);
+
+drop trigger if exists teaching_epa_magic_links_updated_at on public.teaching_epa_magic_links;
+create trigger teaching_epa_magic_links_updated_at
+  before update on public.teaching_epa_magic_links
+  for each row execute function public.set_updated_at();
+
+alter table public.teaching_epa_magic_links enable row level security;
+alter table public.teaching_epa_magic_links force row level security;
+
+-- Service role only: the browser Data API stays closed (tests/supabase-schema.test.ts).
+revoke all on table public.teaching_epa_magic_links from public, anon, authenticated;
+grant select, insert, update, delete on table public.teaching_epa_magic_links to service_role;
+
+create policy "teaching_epa_magic_links_service_role_all"
+  on public.teaching_epa_magic_links
   for all to service_role
   using (true)
   with check (true);

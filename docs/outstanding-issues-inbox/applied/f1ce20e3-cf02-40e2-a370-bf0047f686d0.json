@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "f1ce20e3-cf02-40e2-a370-bf0047f686d0",
+  "createdOn": "2026-10-22",
+  "action": "done",
+  "payload": {
+    "id": "#TBTNGB",
+    "outcome": "Resolved 2026-10-22 differently from the row's proposal. The flake was not single-sample noise: desktop / streams behind the (search-app) loading skeleton, and whether the skeleton paints first is a race that splits identical code into a fast group (~930-1060 ms LCP) and a slow group (~1190-1590 ms). The gate already grades a breach on a majority of three samples, so a median of three would not have helped. Removing the skeleton was measured and refuted (simulated LCP 1092-1144 ms vs 811-891 ms with it). The owner chose on 22 Oct 2026 to give desktop-root alone a 700 ms LCP floor (STREAMED_HOME_LCP_FLOOR_MS in scripts/check-lighthouse-budget.mjs); see docs/decisions/2026-10-22-desktop-home-lighthouse-floor.md.",
+    "baseRowFingerprint": "5b2b1b6bc2516fdaa8e1e053706723703182a14579c669736f7eef3edbfc04bb",
+    "targetUlid": "01M5FP629ATBTNGBM9RGQG22XN"
+  }
+}

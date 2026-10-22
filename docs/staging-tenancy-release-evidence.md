@@ -12,8 +12,21 @@ The harness exits before creating clients or writing data when any required valu
 missing or placeholder-like, the project ref is the production ref
 `sjrfecxgysukkwxsowpy`, or the Supabase URL does not match the declared project ref.
 It also refuses the production app host and subdomains, refuses HTTP redirects,
-requires a full checkout SHA, and requires `GET /api/health` to report that exact
+requires a full checkout SHA, and requires `GET /api/health` to report the expected
 deployed SHA before it creates a Supabase client or writes a fixture.
+
+`scripts/resolve-staging-deployment.mjs` chooses that expected SHA first (read-only). A dispatched
+release proof stays **exact**: staging must run the checkout commit. The nightly run and the main-push
+staging gate may also accept an **equivalent** commit: an ancestor of the checkout where nothing in
+between changes a file `railway.app.json` watches, because Railway does not redeploy for those files.
+The evidence file (schema version 3) records `deploymentRelation` as `exact` or `equivalent`; only an
+`exact` record is release evidence. If an app file is waiting and staging has not deployed it, the
+run reports `STAGING_STALE` and says plainly that separation was not tested. This only stays rare if the
+staging app service deploys each `main` push by itself; without that, every app change leaves staging stale.
+When staging has already moved on to a newer commit with different app files, the run reports `superseded`,
+skips the harness and leaves the alert issue alone, because the newer commit's own run proves it. The
+nightly passes such a run; the main-push gate fails it, which holds that commit's live deploy until the newer
+commit's own gate run passes, so nothing goes live untested.
 It signs both test accounts in before creating the service-role client and refuses to
 write fixtures if both credentials resolve to the same user.
 
@@ -65,6 +78,13 @@ each user under a unique run ID. It then proves:
 | Source-only answer | A gets cited source-only evidence    | B gets unsupported with no sources/citations |
 | Reindex            | Not queued in the workerless profile | B receives 404                               |
 
+The same run then proves On Call and Roster separation on a disposable demo team that A manages
+(`scripts/lib/cross-tenant-roster-probe.ts`). It seeds a publication, two of A's shifts, a requested and an
+accepted swap from A to B, and an open shift A posted, all inside that team, and checks that: an outsider is
+refused every read and write, including publishing; a member who is not the manager cannot publish, cancel
+A's swap, approve a swap, or cancel A's open shift; a manager cannot approve a swap they are part of; and a
+removed member loses access at once. Deleting the disposable service removes every seeded row.
+
 Cleanup runs in `finally` semantics in reverse dependency order, including run-time
 query telemetry for the two dedicated test users, reindex jobs/stages, labels,
 chunks, pages, documents, and storage objects. Cleanup failure makes the run fail.
@@ -72,7 +92,9 @@ The test never skips a scenario when explicitly invoked.
 
 ## Release evidence
 
-The standalone workflow runs nightly and on manual dispatch. It is not included in
+The standalone workflow runs nightly, on manual dispatch, and (once the owner sets the repository
+variable `STAGING_GATE_ENFORCE` to `true`) on each `main` push that changes an app file, as the staging
+gate before live (`docs/decisions/2026-10-21-staging-gate-before-live.md`). It is not included in
 `verify:cheap`, `verify:pr-local`, PR-required checks, or local release gates.
 
 Before a release, record a successful workflow run that:

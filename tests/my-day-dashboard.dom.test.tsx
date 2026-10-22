@@ -40,7 +40,10 @@ beforeAll(async () => {
 
 // The On Call call log is a patient-label store; the dashboard reads only its counts.
 const callLog = vi.hoisted(() => ({
-  current: null as null | { entries: { done: boolean }[]; expiresAt: number | null },
+  current: null as null | {
+    entries: { done: boolean; label?: string; caller?: string; note?: string; followUp?: string }[];
+    expiresAt: number | null;
+  },
 }));
 vi.mock("@/components/on-call/handover/call-log", () => ({ useOnCallCallLog: () => callLog.current }));
 // The Favourites shelf (after Needs you on Today) has its own tests and reads the account store.
@@ -331,6 +334,38 @@ describe("MyDayDashboard cards", () => {
     );
     expect(screen.getByTestId("my-day-hero-log-call").getAttribute("href")).toBe("/on-call?from=my-day#log-a-call");
     expect(screen.getByTestId("my-day-card-up-next").textContent).toContain("Until 16:00 handover");
+  });
+
+  it("shows only call counts from the On Call log, never a bed, initials or note", () => {
+    // Synthetic values only. The log stays on the device; My Day may show how many, never what.
+    const onCall = shift({ id: "oc", startsAt: "2026-10-02T21:00:00Z", endsAt: "2026-10-03T08:00:00Z" });
+    callLog.current = {
+      expiresAt: null,
+      entries: [
+        { done: false, label: "9Q-77", caller: "Probe caller", note: "Probe note text", followUp: "Probe follow up" },
+        { done: true, label: "QXZ", caller: "Second caller", note: "Second note", followUp: "" },
+      ],
+    };
+    render(
+      <MyDayDashboard
+        {...props({ sources: { ...EMPTY_SOURCES, roster: { status: "ready", shifts: [onCall], sample: false } } })}
+      />,
+    );
+    const shown = document.body.textContent ?? "";
+    for (const detail of [
+      "9Q-77",
+      "QXZ",
+      "Probe caller",
+      "Probe note",
+      "Probe follow up",
+      "Second caller",
+      "Second note",
+    ])
+      expect(shown).not.toContain(detail);
+    for (const element of document.querySelectorAll("[aria-label], [title], [href]"))
+      expect(
+        `${element.getAttribute("aria-label")} ${element.getAttribute("title")} ${element.getAttribute("href")}`,
+      ).not.toMatch(/9Q-77|QXZ|Probe/);
   });
 
   it("says plainly when the day's shift is over, with the next one", () => {

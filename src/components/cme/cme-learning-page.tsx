@@ -20,6 +20,7 @@ import {
   filterLearningItems,
   groupLearningByMonth,
   isDirectoryStale,
+  learningAccessLabel,
   learningCountdownLabel,
   learningItemLogHref,
   pastLearningItems,
@@ -64,11 +65,17 @@ function whereLabel(item: LearningDirectoryItem): string {
   return item.location ?? "In person";
 }
 
+/** Cost, led by any access the doctor may already have so nobody pays twice. */
+function costLabel(item: LearningDirectoryItem): string | null {
+  const access = learningAccessLabel(item);
+  return [access, item.costNote].filter(Boolean).join(". ") || null;
+}
+
 /** When · Where · Cost, the one grey line under the title. */
 function whenWhereCost(item: LearningDirectoryItem, today: string): string {
   const when = item.startsOn === null && item.kind === "recorded" ? null : whenLabel(item, today);
   const where = item.startsOn === null && item.kind === "recorded" ? "Online · watch any time" : whereLabel(item);
-  return [when, where, item.costNote].filter(Boolean).join(" · ");
+  return [when, where, costLabel(item)].filter(Boolean).join(" · ");
 }
 
 function downloadCalendarEvent(item: LearningDirectoryItem): void {
@@ -239,16 +246,27 @@ function LearningRow({
   onOpen: OpenCourse;
 }) {
   return (
-    <li data-testid="cme-learning-item" className="work-row relative min-w-0 list-none items-start">
+    <li
+      data-testid="cme-learning-item"
+      data-cancelled={item.cancelled ? "" : undefined}
+      className="work-row relative min-w-0 list-none items-start"
+    >
       <span className="pt-0.5">
         <DateTile item={item} />
       </span>
       <div className="work-row__text">
+        {item.cancelled ? (
+          <span data-testid="cme-learning-cancelled" className="work-tag mb-2 justify-self-start" data-tone="red">
+            Cancelled by the organiser
+          </span>
+        ) : null}
         <CourseTitle item={item} phase={phase} onOpen={onOpen} className="work-row__title" />
         <p className="work-row__sub m-0 break-words">
           {KIND_LABEL[item.kind]} · {item.provider}
         </p>
-        <p className="work-row__sub m-0 break-words">{metaLine(item, phase, today)}</p>
+        <p className={cn("work-row__sub m-0 break-words", item.cancelled && "mt-0.5")}>
+          {metaLine(item, phase, today)}
+        </p>
       </div>
       {phase === "past" ? (
         <Link
@@ -315,7 +333,7 @@ function CourseSheet({
   const phase = open?.phase;
   const recordedAnyTime = item?.startsOn === null && item?.kind === "recorded";
   const canCalendar = item && phase === "upcoming" && canAddLearningToCalendar(item);
-  const canLog = item && phase !== "unconfirmed";
+  const canLog = item && phase !== "unconfirmed" && !item.cancelled;
   return (
     <Sheet
       open={Boolean(open)}
@@ -369,7 +387,8 @@ function CourseSheet({
                       : whenLabel(item, today),
               },
               { label: "Where", value: recordedAnyTime ? "Online" : whereLabel(item) },
-              { label: "Cost", value: item.costNote ?? "Not listed" },
+              ...(item.cancelled ? [{ label: "Status", value: "Cancelled by the organiser" }] : []),
+              { label: "Cost", value: costLabel(item) ?? "Not listed" },
             ]}
           />
           <a
@@ -380,15 +399,19 @@ function CourseSheet({
           >
             <span className="work-row__text">
               <span className="work-row__title">Organiser page</span>
-              <span className="work-row__sub">Book and check details there</span>
+              <span className="work-row__sub">
+                {item.cancelled ? "Check there for a new date or a refund" : "Book and check details there"}
+              </span>
             </span>
             <ExternalLink aria-hidden="true" className="work-row__chev" />
             <span className="sr-only">(opens in a new tab)</span>
           </a>
           <CmeHint>
-            {phase === "unconfirmed"
-              ? "No date yet. Check the organiser's page before you plan."
-              : "Opening a course logs nothing. Log it once you attend, and it opens prefilled."}
+            {item.cancelled
+              ? "The organiser has cancelled this, so there is nothing to log."
+              : phase === "unconfirmed"
+                ? "No date yet. Check the organiser's page before you plan."
+                : "Opening a course logs nothing. Log it once you attend, and it opens prefilled."}
           </CmeHint>
         </div>
       ) : null}

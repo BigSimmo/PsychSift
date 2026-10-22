@@ -1,13 +1,23 @@
 import { describe, expect, it } from "vitest";
 
-import { probeRosterIsolation } from "../scripts/lib/cross-tenant-roster-probe";
+import { probeRosterIsolation, type RosterFixtureIds } from "../scripts/lib/cross-tenant-roster-probe";
 import type { WriteProbeRequest } from "../scripts/lib/cross-tenant-write-probe";
 
 const SERVICE = "00000000-0000-4000-8000-000000000001";
 const USER_B = "00000000-0000-4000-8000-00000000000b";
 const CODE = "a".repeat(64);
+const FIXTURES: RosterFixtureIds = {
+  assignmentId: "00000000-0000-4000-8000-0000000000a1",
+  requestedSwapId: "00000000-0000-4000-8000-0000000000a2",
+  acceptedSwapId: "00000000-0000-4000-8000-0000000000a3",
+  openShiftId: "00000000-0000-4000-8000-0000000000a4",
+};
+/** A member who is not the requester, poster or a manager may do none of these to A's rows. */
+const NOT_FOR_B = ["swap.cancel", "open.cancel", "open.decline", "open.release"];
 
-function fakeRequest(leak: "none" | "nonmember-read" | "member-manage" | "revocation" = "none"): WriteProbeRequest {
+type Leak = "none" | "nonmember-read" | "member-manage" | "revocation" | "self-approval" | "other-cancel";
+
+function fakeRequest(leak: Leak = "none"): WriteProbeRequest {
   let joined = false;
   let removed = false;
   return async (token, path, init, expected) => {
@@ -33,12 +43,16 @@ function fakeRequest(leak: "none" | "nonmember-read" | "member-manage" | "revoca
         path.includes("/export") ||
         path.includes("/remind") ||
         path.includes("/invite") ||
+        path.includes("/publish") ||
         (method === "POST" &&
           ["role.set", "member.remove", "settings.set", "needs.set", "swap.approve", "open.approve"].includes(
             String((init.body as { action?: string } | undefined)?.action),
           ));
+      const action = method === "POST" ? String((init.body as { action?: string } | undefined)?.action) : "";
       if (!member && leak !== "nonmember-read") status = 403;
       else if (who === "B" && managerOnly && leak !== "member-manage") status = 403;
+      else if (who === "B" && NOT_FOR_B.includes(action) && leak !== "other-cancel") status = 403;
+      else if (who === "A" && action === "swap.approve" && leak !== "self-approval") status = 403;
       else if (
         method === "POST" &&
         (init.body as { action?: string } | undefined)?.action === "member.remove" &&
@@ -53,8 +67,9 @@ function fakeRequest(leak: "none" | "nonmember-read" | "member-manage" | "revoca
   };
 }
 
-const run = (request: WriteProbeRequest) =>
+const run = (request: WriteProbeRequest, fixtures?: RosterFixtureIds) =>
   probeRosterIsolation({
+    fixtures,
     request,
     tokenA: "a",
     tokenB: "b",
@@ -69,9 +84,26 @@ describe("cross-tenant Roster probe", () => {
     expect(result.checkpoints).toEqual([
       "roster-nonmember-read-and-write-isolation",
       "roster-member-manager-denial",
+      "roster-member-publish-denial",
       "roster-member-removal-revokes-reads",
     ]);
     expect(result.skipped.join(" ")).toMatch(/self-approval.*not exercised/i);
+  });
+  it("proves swap, publish and open-shift refusals against A's real rows when fixtures are seeded", async () => {
+    const result = await run(fakeRequest(), FIXTURES);
+    expect(result.checkpoints).toEqual([
+      "roster-nonmember-read-and-write-isolation",
+      "roster-member-manager-denial",
+      "roster-member-publish-denial",
+      "roster-pending-swap-cancel-by-other-denied",
+      "roster-swap-self-approval-denied",
+      "roster-open-shift-other-poster-denied",
+      "roster-member-removal-revokes-reads",
+    ]);
+    expect(result.skipped).toEqual([]);
+  });
+  it.each(["self-approval", "other-cancel"] as const)("fails when %s is allowed", async (leak) => {
+    await expect(run(fakeRequest(leak), FIXTURES)).rejects.toThrow(/status 200, expected 403/);
   });
   it.each(["nonmember-read", "member-manage", "revocation"] as const)("fails on %s leakage", async (leak) => {
     await expect(run(fakeRequest(leak))).rejects.toThrow(

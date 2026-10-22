@@ -114,3 +114,25 @@ export function safeCanonicalSourceUrl(value: string | null) {
     return null;
   }
 }
+
+/**
+ * True for the TGA eBS Product Information search for one non-empty term, and
+ * nothing else: the one source the register may carry with no date at all
+ * (owner decision 2026-10-22, docs/decisions/2026-10-22-tga-pi-live-search-source.md).
+ */
+export function isTgaProductInformationSearchUrl(value: string | null): boolean {
+  if (!value) return false;
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return false;
+  }
+  return (
+    url.protocol === "https:" &&
+    url.hostname === "www.ebs.tga.gov.au" &&
+    url.pathname === "/ebs/picmi/picmirepository.nsf/PICMI" &&
+    url.searchParams.get("t") === "pi" &&
+    Boolean(url.searchParams.get("q")?.trim())
+  );
+}

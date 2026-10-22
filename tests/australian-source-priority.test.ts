@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { selectAustralianClinicalContext } from "../src/lib/australian-source-priority";
+import {
+  australianSourceTier,
+  selectAustralianClinicalContext,
+  summarizeAustralianSourceSelection,
+} from "../src/lib/australian-source-priority";
 import type { ClinicalSourceMetadata, SearchResult } from "../src/lib/types";
 
 function relevance(verdict: "direct" | "partial") {
@@ -179,5 +183,94 @@ describe("selectAustralianClinicalContext role eligibility", () => {
         omitSupplementaryPadding: false,
       }).map((item) => item.id),
     ).toEqual(["wa-direct-first", "wa-direct-second", "state-direct", "wa-partial"]);
+  });
+});
+
+// Owner tier rule (Josh, 2026-09-25, ledger #BFCTST): WA validated, then Australian national, then
+// other Australian states, then supplementary, applied only inside a relevance band. These tests pin
+// the rule itself so a change to the registry or the comparator cannot reorder tiers unnoticed.
+describe("owner source tier rule (#BFCTST)", () => {
+  const wa = (id: string, verdict: "direct" | "partial" = "direct") =>
+    australianResult({ id, verdict, publisher: "WA Health", publisherCode: "WAHEALTH", jurisdiction: "Australia/WA" });
+  const national = (id: string, verdict: "direct" | "partial" = "direct") =>
+    australianResult({
+      id,
+      verdict,
+      publisher: "Australian Commission on Safety and Quality in Health Care",
+      publisherCode: "ACSQHC",
+      jurisdiction: "Australia",
+    });
+  const state = (id: string, verdict: "direct" | "partial" = "direct") =>
+    australianResult({
+      id,
+      verdict,
+      publisher: "NSW Health",
+      publisherCode: "NSWHEALTH",
+      jurisdiction: "Australia/NSW",
+    });
+  const supplementary = (id: string, verdict: "direct" | "partial" = "direct") =>
+    australianResult({
+      id,
+      verdict,
+      publisher: "Substance Abuse and Mental Health Services Administration",
+      publisherCode: "SAMHSA",
+      jurisdiction: "United States",
+    });
+  const order = (results: SearchResult[]) =>
+    selectAustralianClinicalContext(results, { omitSupplementaryPadding: false, limit: 10 }).map((item) => item.id);
+
+  it("classifies each sample publisher into the tier the rule names", () => {
+    expect(australianSourceTier(wa("wa"))).toBe("wa_validated");
+    expect(australianSourceTier(national("national"))).toBe("australian_national");
+    expect(australianSourceTier(state("state"))).toBe("australian_state");
+    expect(australianSourceTier(supplementary("supplementary"))).toBe("supplementary");
+  });
+
+  it("puts WA ahead of national, national ahead of other states, and supplementary last at equal relevance", () => {
+    expect(order([supplementary("supplementary"), state("state"), national("national"), wa("wa")])).toEqual([
+      "wa",
+      "national",
+      "state",
+      "supplementary",
+    ]);
+  });
+
+  it("never lets a tier outrank a more relevant source", () => {
+    expect(order([wa("wa-partial", "partial"), national("national-direct")])).toEqual([
+      "national-direct",
+      "wa-partial",
+    ]);
+    expect(order([national("national-partial", "partial"), state("state-direct")])).toEqual([
+      "state-direct",
+      "national-partial",
+    ]);
+  });
+
+  it("drops supplementary padding once two Australian documents carry enough equally relevant evidence", () => {
+    const selected = selectAustralianClinicalContext(
+      [supplementary("supplementary"), wa("wa-1"), wa("wa-2"), national("national-1"), national("national-2")],
+      { limit: 10 },
+    ).map((item) => item.id);
+    expect(selected).toEqual(["wa-1", "wa-2", "national-1", "national-2"]);
+  });
+
+  it("keeps supplementary evidence when Australian evidence is not sufficient on its own", () => {
+    const selected = selectAustralianClinicalContext([supplementary("supplementary"), wa("wa-1")], { limit: 10 }).map(
+      (item) => item.id,
+    );
+    expect(selected).toEqual(["wa-1", "supplementary"]);
+  });
+
+  it("counts WA and supplementary documents in the selection summary", () => {
+    const candidates = [wa("wa-1"), national("national-1"), supplementary("supplementary")];
+    const summary = summarizeAustralianSourceSelection(candidates, candidates.slice(0, 2));
+    expect(summary).toMatchObject({
+      candidateCount: 3,
+      selectedCount: 2,
+      australianCandidateCount: 2,
+      waCandidateCount: 1,
+      waSelectedCount: 1,
+      usedSupplementaryFallback: false,
+    });
   });
 });

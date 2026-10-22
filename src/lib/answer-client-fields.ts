@@ -159,6 +159,17 @@ export const clientAnswerFieldsSchema = z.object({
       .check(z.maxLength(100)),
   ),
   sourceCurrencyWarning: z.optional(z.enum(["supporting", "retrieved"])),
+  // Owner-signed WA versus national difference (src/lib/rag/guidance-difference-note.ts).
+  guidanceDifference: z.optional(
+    z.object({
+      differenceId: id,
+      title: z.string().check(z.minLength(1), z.maxLength(300)),
+      year: z.int().check(z.minimum(1900), z.maximum(2100)),
+      page: z.nullable(z.int().check(z.minimum(1), z.maximum(10_000))),
+      documentId: id,
+      chunkId: id,
+    }),
+  ),
   answerContractVersion: z.optional(z.literal(ragAdaptiveAnswerPromptVersion)),
   renderAdaptiveAnswer: z.optional(z.boolean()),
   // Disclosure persists with the answer; feedback credentials deliberately do not.

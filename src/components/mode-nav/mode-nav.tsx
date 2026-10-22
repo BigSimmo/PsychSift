@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown, type LucideIcon } from "lucide-react";
-import Link from "next/link";
+import { IntentPrefetchLink } from "@/components/ui/intent-prefetch-link";
 import { usePathname } from "next/navigation";
 import { useMemo, useRef, useState, type MouseEvent } from "react";
 
@@ -253,7 +253,7 @@ export function ModeNav({
                 data-band={band ?? "none"}
                 className={cn(slotBase, focusRing, band ? undefined : "hidden")}
               >
-                <Link
+                <IntentPrefetchLink
                   href={item.href}
                   aria-current={isActive ? "page" : undefined}
                   className={cn(
@@ -275,7 +275,7 @@ export function ModeNav({
                     count={item.count}
                     state={isActive ? "on" : isOrigin ? "trail" : "off"}
                   />
-                </Link>
+                </IntentPrefetchLink>
               </li>
             );
           })}
@@ -332,7 +332,7 @@ export function ModeNav({
             const Icon = item.icon;
             return (
               <li key={item.id}>
-                <Link
+                <IntentPrefetchLink
                   href={item.href}
                   onClick={() => setOpen(false)}
                   aria-current={isActive ? "page" : undefined}
@@ -354,7 +354,7 @@ export function ModeNav({
                       {item.count}
                     </span>
                   ) : null}
-                </Link>
+                </IntentPrefetchLink>
               </li>
             );
           })}

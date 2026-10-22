@@ -70,6 +70,13 @@ export type ClinicalSourceReferenceInput = {
    * records carry it.
    */
   lastUpdatedDate?: string | null;
+  /**
+   * Set only by the acquisition ledger's `live_product_information` records: the
+   * TGA Product Information search, which has no date by design. The catalogue
+   * then does not count the absent date as missing metadata, and only for a URL
+   * that really is that search.
+   */
+  liveProductInformation?: boolean;
   expiryDate: string | null;
   jurisdiction: string | null;
   evidenceType: ClinicalSourceType;
