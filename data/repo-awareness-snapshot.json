@@ -5109,6 +5109,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-22-desktop-home-lighthouse-floor.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-10-16-cloud-operating-policy-overhaul.md",
         "section": "decisions",
         "catalogued": true

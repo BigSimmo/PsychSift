@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "4f15ebaf-d311-4971-a52f-46e26a2a963d",
+  "createdOn": "2026-10-21",
+  "action": "done",
+  "payload": {
+    "id": "#VXB8XA",
+    "outcome": "Fixed on main (verified offline 21 Oct 2026, answer safety hardening thread). cite-mismatched-attribution no longer has a KNOWN_DIVERGENCES entry in tests/rag-adversarial-harness.test.ts, and npm run eval:rag:adversarial:offline passes 25 of 25 on main 81ba5aefa, via PR #3628 (62558e5c7, 18 Oct, document attribution fix), so the case now meets its normative fixture expectation (cites only the claim-bearing chunk). The pin was self-expiring by design, so its removal records the behaviour change.",
+    "baseRowFingerprint": "1f48f81cb2e3a3db5cd3994a709d63e2ff2e3d2967790a017a6c6d99e4a3ceee",
+    "targetUlid": "01M08C19FYVXB8XATJE3TYZJMS"
+  }
+}

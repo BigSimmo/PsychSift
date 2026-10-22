@@ -2866,9 +2866,9 @@ describe("RAG structured-output fallback", () => {
         uploaded_at: null,
         indexed_at: null,
         uploaded_by: null,
-        document_status: "outdated",
+        document_status: "current",
         clinical_validation_status: "approved",
-        extraction_quality: "good",
+        extraction_quality: "poor",
       },
       table_facts: [
         {
@@ -5591,9 +5591,9 @@ describe("RAG structured-output fallback", () => {
         uploaded_at: null,
         indexed_at: null,
         uploaded_by: null,
-        document_status: "outdated",
+        document_status: "current",
         clinical_validation_status: "approved",
-        extraction_quality: "good",
+        extraction_quality: "poor",
       },
     });
     const packedButNotServed = source({
@@ -5691,8 +5691,8 @@ describe("RAG structured-output fallback", () => {
       cross_document_fusion_source_chunk_ids: [],
       memory_card_count: 0,
       memory_top_score: 0,
-      indexing_extraction_quality: "good",
-      indexing_stale: true,
+      indexing_extraction_quality: "poor",
+      indexing_stale: false,
     });
     expect(JSON.stringify(routeWideLogs[0])).not.toMatch(/POST_GENERATION_(?:MEMORY|INDEX)_SENTINEL/);
   });

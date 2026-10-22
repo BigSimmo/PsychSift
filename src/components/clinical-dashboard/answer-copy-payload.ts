@@ -25,6 +25,7 @@ import { isPreformattedGroundedAnswer, primaryAnswerDisplayText } from "@/compon
 import { projectAnswerForMainSurface } from "@/components/clinical-dashboard/answer-section-projector";
 import { composeAnswerClipboardText } from "@/lib/answer-clipboard";
 import { publicFallbackReason } from "@/lib/rag/rag-fallback-reason";
+import { guidanceDifferenceSentence } from "@/lib/rag/guidance-difference-note";
 import type { AnswerPayload } from "@/components/clinical-dashboard/search-utils";
 import type { ClientRagAnswerPayload, ClientSearchResult } from "@/lib/answer-client-payload";
 import { ragAdaptiveAnswerPromptVersion } from "@/lib/rag/rag-versioning";
@@ -179,6 +180,20 @@ export function singleDocumentClipboardMetadata(
 }
 
 /**
+ * The national guidance line travels with a copied answer, directly after the answer text, so a
+ * pasted WA recommendation never loses its "national guidance differs" caveat.
+ */
+function withGuidanceDifferenceLine(text: string, answer: ClientRagAnswerPayload): string {
+  if (!answer.guidanceDifference) return text;
+  const line = guidanceDifferenceSentence(answer.guidanceDifference);
+  const lead = answerTextForClipboard(answer);
+  const at = lead ? text.indexOf(lead) : -1;
+  if (at < 0) return `${text}\n\n${line}`;
+  const end = at + lead.length;
+  return `${text.slice(0, end)}\n\n${line}${text.slice(end)}`;
+}
+
+/**
  * The clipboard payload for an answer. `renderCopyText` remains the primary
  * product string, except its finalized answer lead is replaced with the same
  * sanitized projection shown on screen. The composer then adds what leaves the
@@ -208,7 +223,7 @@ export function buildAnswerClipboardText({
     routingMode: answer.routingMode,
   });
   const copied = composeAnswerClipboardText({
-    renderCopyText: renderCopyTextWithCanonicalAnswer(renderCopyText, answer),
+    renderCopyText: withGuidanceDifferenceLine(renderCopyTextWithCanonicalAnswer(renderCopyText, answer), answer),
     sourceOnly,
     state,
     degradedReason: degraded

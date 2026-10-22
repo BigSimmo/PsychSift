@@ -163,6 +163,7 @@ export const PriorAnswerTurnSurface = memo(function PriorAnswerTurnSurface({
               sourceLinks={leadSourceLinks}
               railRows={railSources}
               isRefusal={refusalAnswer}
+              guidanceDifference={turn.answer.guidanceDifference}
               copied={copied}
               onCopy={() =>
                 onCopy(

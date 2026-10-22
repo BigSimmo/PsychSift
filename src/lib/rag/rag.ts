@@ -24,7 +24,11 @@ import { withRagProgrammeRollout, answerContractForRollout, adaptiveAnswerRender
 import { loadReviewedPolicyRequest } from "@/lib/rag/rag-reviewed-policy-input";
 import { createGenerationDegradationRecorder } from "@/lib/rag/rag-generation-degradation";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { loadDocumentSummaryContext, sanitizeUnsupportedSummaryAnswer } from "@/lib/rag/rag-document-summary-context";
+import {
+  documentSummaryUnavailableAnswer,
+  loadDocumentSummaryContext,
+  sanitizeUnsupportedSummaryAnswer,
+} from "@/lib/rag/rag-document-summary-context";
 import { generationFailureDetailToken } from "@/lib/rag/rag-generation-failure-diagnostics";
 import { answerLatencyMetadata, answerScopedEvidenceMetadata } from "@/lib/rag/rag-answer-telemetry-metadata";
 import { assertRetrievalRows, buildDocumentSummaryResults } from "@/lib/rag/rag-row-contracts";
@@ -99,6 +103,7 @@ import {
 } from "@/lib/answer-preview";
 export { applyNumericVerification, unboldUnverifiedNumbers } from "@/lib/answer-verification";
 import { selectModelContextEvidencePair, summarizeAustralianSourceSelection } from "@/lib/rag/rag-context-selection";
+import { excludeSupersededEvidence } from "@/lib/rag/superseded-evidence";
 import { relatedInformationMenuLine } from "@/lib/rag/answer-composition";
 export {
   capPerDocumentCrowding,
@@ -1546,13 +1551,17 @@ async function searchChunksWithTiming(
 
   if (textData.length) {
     const rerankElapsedMs = startRerankClock(searchTiming);
-    const textCandidates = await measureSearchPhase(searchTiming, "metadata_hydration", () =>
-      attachDocumentRankingMetadata(
-        supabase,
-        textData as SearchResult[],
-        args.ownerId,
-        documentRankingMetadataCache,
-        args.signal,
+    // Superseded rows leave before any fast-path decision, so an outdated lexical match cannot
+    // short-circuit the lanes that would find the current guidance (#BFCTST).
+    const textCandidates = excludeSupersededEvidence(
+      await measureSearchPhase(searchTiming, "metadata_hydration", () =>
+        attachDocumentRankingMetadata(
+          supabase,
+          textData as SearchResult[],
+          args.ownerId,
+          documentRankingMetadataCache,
+          args.signal,
+        ),
       ),
     );
     expandedQuery = expandClinicalQueryWithCandidateMetadata(args.query, expandedQuery, textCandidates);
@@ -1611,7 +1620,7 @@ async function searchChunksWithTiming(
     textFastResults = selectRankedRetrievalResults({
       query: retrievalQuery,
       queryClass: queryClassification.queryClass,
-      candidates: memoryBoost.results,
+      candidates: excludeSupersededEvidence(memoryBoost.results),
       topK: args.topK ?? 8,
       maxResultsPerDocument,
       telemetry,
@@ -1710,7 +1719,7 @@ async function searchChunksWithTiming(
           selectRankedRetrievalResults({
             query: retrievalQuery,
             queryClass: queryClassification.queryClass,
-            candidates: memoryBoost.results,
+            candidates: excludeSupersededEvidence(memoryBoost.results),
             topK: args.topK ?? 8,
             maxResultsPerDocument,
             telemetry,
@@ -1977,7 +1986,7 @@ async function searchChunksWithTiming(
         selectRankedRetrievalResults({
           query: retrievalQuery,
           queryClass: queryClassification.queryClass,
-          candidates: memoryBoost.results,
+          candidates: excludeSupersededEvidence(memoryBoost.results),
           topK: args.topK ?? 8,
           maxResultsPerDocument,
           telemetry,
@@ -2071,7 +2080,7 @@ async function searchChunksWithTiming(
       selectRankedRetrievalResults({
         query: retrievalQuery,
         queryClass: queryClassification.queryClass,
-        candidates: memoryBoost.results,
+        candidates: excludeSupersededEvidence(memoryBoost.results),
         topK: args.topK ?? 8,
         maxResultsPerDocument,
         telemetry,
@@ -2352,7 +2361,7 @@ async function answerQuestionWithScopeUncoalesced(
   const queryAnalysis = analyzeClinicalQuery(answerFocusQuery);
   if (queryClassForClinicalMode(args.queryMode ?? "auto")) queryAnalysis.queryClass = queryClass;
   const answerRanking = rankAnswerEvidence(answerFocusQuery, normalizeSearchResults(search.results), queryClass);
-  const results = annotateSearchResults(answerFocusQuery, answerRanking.rankedResults);
+  const results = excludeSupersededEvidence(annotateSearchResults(answerFocusQuery, answerRanking.rankedResults));
   const {
     crossDocumentPlan,
     eligibleResults: eligibleAnswerResults,
@@ -4279,20 +4288,9 @@ export async function summarizeDocument(
   options?: { signal?: AbortSignal; observationContext?: import("@/lib/rag/rag-contracts").RagObservationContext },
 ) {
   const { document, chunks } = await loadDocumentSummaryContext(documentId, ownerId, options?.signal);
-  if (!chunks.length) {
-    return observeRagAnswer(
-      {
-        answer: "This document has not been indexed yet, so no summary can be generated.",
-        grounded: false,
-        confidence: "unsupported",
-        citations: [],
-        sources: [],
-      } satisfies RagAnswer,
-      options?.observationContext,
-    );
-  }
-
   const results = buildDocumentSummaryResults(chunks, document);
+  const unavailableAnswer = documentSummaryUnavailableAnswer(results);
+  if (unavailableAnswer) return observeRagAnswer(unavailableAnswer, options?.observationContext);
 
   const summaryInstructions = `Summarize a clinical document for practical psychiatric use in Perth, Australia.
 Use only the excerpts provided. Use a layered response: make the answer field a plain high-yield clinical paragraph,
