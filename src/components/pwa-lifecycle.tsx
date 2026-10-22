@@ -452,8 +452,13 @@ export function PwaLifecycle() {
     };
 
     const earlyPrompt = takeEarlyInstallPrompt();
-    if (earlyPrompt && !isStandaloneDisplay() && !wasInstallRecentlyDismissed()) {
-      setInstallPrompt(earlyPrompt as BeforeInstallPromptEvent);
+    // Replay a prompt that fired before this lazy chunk loaded (already preventDefault-ed).
+    if (earlyPrompt) {
+      queueMicrotask(() => {
+        if (!isStandaloneDisplay() && !wasInstallRecentlyDismissed()) {
+          setInstallPrompt(earlyPrompt as BeforeInstallPromptEvent);
+        }
+      });
     }
     window.addEventListener("beforeinstallprompt", handleInstallPrompt);
     window.addEventListener("appinstalled", handleInstalled);
