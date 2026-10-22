@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "2c562fa5-3d5b-4668-93f8-c9b80908b962",
+  "createdOn": "2026-10-22",
+  "action": "update",
+  "payload": {
+    "id": "#05WXHX",
+    "detail": "UPDATE 2026-10-22 (later): the owner signed 75 sources (#3766), then chose to adopt the 73 sources the medication pages link to (71 TGA PI search records, WA Monitored Medicines Prescribing Code, ScriptCheckWA; docs/decisions/2026-10-22-adopt-medication-page-sources.md). Adoption voids those signatures. Next action: owner re-signs the adopted batch with clinical:review --pack then --write --batch, after which the links render. The older lithium, clozapine, mood-disorder and dictionary sources still need their own adoption decision.",
+    "baseRowFingerprint": "4ac559c18d0a0fff7612fdc6e36b3a9f11bc4c63de1f69f3c8bb6aff51ca0d50",
+    "targetUlid": "01M2ZSQKSX05WXHXF414N0ZZ8V"
+  }
+}

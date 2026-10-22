@@ -74,8 +74,10 @@ const EXPECTED: Record<SignOffFamilyId, number> = {
   // TGA Product Information search records became candidates (owner decision: the live TGA search
   // is the PI source), with WA policy MP 0131/20, so 81 wait. Later on 22 Oct the owner signed
   // 75 of them with clinical:review (the 72, the AADPA guideline and the two OCP standards), so
-  // only the six held Indigenous sources wait.
-  sources: 6,
+  // only the six held Indigenous sources wait. Then the owner adopted the 73 sources the medication
+  // pages link to (the 71 TGA PI records, the WA Monitored Medicines Prescribing Code and
+  // ScriptCheckWA), which voided those signatures, so 79 wait for the owner to sign them again.
+  sources: 79,
 };
 
 describe("clinical sign-off queue", () => {
@@ -165,9 +167,19 @@ describe("clinical sign-off queue", () => {
         .sort((left, right) => left.rung - right.rung || collator.compare(left.title, right.title))
         .map((record) => record.id),
     );
+    // The 73 sources adopted on 22 Oct 2026 are reviewed but their signatures were voided by the
+    // adoption, so they wait for the owner to sign them again.
     expect(
-      sources.rows.filter((row) => row.statusLabel === "Reviewed in prose only, not yet signed").map((row) => row.id),
-    ).toEqual([]);
+      sources.rows
+        .filter((row) => row.statusLabel === "Reviewed in prose only, not yet signed")
+        .map((row) => row.id)
+        .sort(),
+    ).toEqual(
+      sourceAcquisitionRecords
+        .filter((record) => record.disposition === "adopted")
+        .map((record) => record.id)
+        .sort(),
+    );
   });
 
   it("carries the whole dictionary editorial layer, which nothing else in the app renders", () => {
@@ -347,8 +359,9 @@ const EXPECTED_SIGNED_BY_DOMAIN: Record<SignOffDomainId, { signed: number; waiti
   // added unsigned on 21 Oct 2026 (owner's choice), so it waits for the owner too.
   // 72 more joined on 22 Oct 2026: the 71 TGA PI search records and WA policy MP 0131/20.
   // Later on 22 Oct the owner signed 75 with clinical:review (those 72, the AADPA guideline and
-  // the two OCP standards), so only the six held Indigenous sources wait.
-  sources: { signed: 168, waiting: 6 },
+  // the two OCP standards), so only the six held Indigenous sources wait. Adopting the 73 sources
+  // the medication pages link to voided their signatures, so 79 wait.
+  sources: { signed: 95, waiting: 79 },
   services: { signed: 21, waiting: 4 },
 };
 
@@ -392,16 +405,16 @@ describe("clinical & rule sign-off ledger", () => {
   });
 
   it("derives the overall totals, signer breakdown, and categorized waiting counts from the domain rows", () => {
-    expect(ledger.totalSigned).toBe(606);
-    expect(ledger.totalWaiting).toBe(1344);
+    expect(ledger.totalSigned).toBe(533);
+    expect(ledger.totalWaiting).toBe(1417);
     expect(ledger.totalGoverned).toBe(1950);
     expect(ledger.signedByTotals).toEqual({
-      "Josh Simpson": 78,
+      "Josh Simpson": 7,
       "Psych Sift": 67,
-      PsychSift: 461,
+      PsychSift: 459,
     });
     expect(ledger.waitingByCategory).toEqual({
-      signableNow: 171,
+      signableNow: 244,
       indigenousHold: 26,
       awaitingPrerequisites: 582,
       awaitingTool: 565,

@@ -336,8 +336,8 @@ describe("signing a source reviewed only in prose", () => {
   });
 
   const native = (id: string) => clone(ledger.find((record) => record.id === id)!);
-  // The owner signed both OCP standards on 22 Oct 2026, so the ledger no longer holds a
-  // prose-only review. These tests rebuild one from the real record by taking its attestation off.
+  // The owner signed both OCP standards on 22 Oct 2026. These tests rebuild a prose-only review
+  // from the real record by taking its attestation off.
   const proseOnly = (id: string) => {
     const record = native(id);
     for (const field of ["attestedBy", "attestedAt", "attestedAgainstSha256"]) delete record[field];
@@ -386,8 +386,20 @@ describe("signing a source reviewed only in prose", () => {
     return { exit, text: text.join("") };
   }
 
-  it("finds no prose-only review left in the ledger, and offers one for sign-off", () => {
-    expect(ledger.filter((record) => isUnattestedLocalReview(record)).map((record) => record.id)).toEqual([]);
+  it("finds only the re-adopted sources reviewed without a signature, and offers one for sign-off", () => {
+    // Adopting the 73 sources the medication pages link to (22 Oct 2026) voided their signatures,
+    // so they are the only reviewed-but-unsigned records until the owner signs them again.
+    expect(
+      ledger
+        .filter((record) => isUnattestedLocalReview(record))
+        .map((record) => record.id)
+        .sort(),
+    ).toEqual(
+      ledger
+        .filter((record) => record.disposition === "adopted")
+        .map((record) => record.id)
+        .sort(),
+    );
     for (const id of PROSE_ONLY) {
       expect(isUnattestedLocalReview(proseOnly(id))).toBe(true);
       const view = viewOf(proseOnly(id));

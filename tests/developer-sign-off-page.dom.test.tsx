@@ -90,7 +90,7 @@ describe("clinical sign-off queue page", () => {
     render(<SignOffQueuePageContent />);
 
     expect(screen.getByTestId("developer-sign-off-count-signed-value")).toHaveTextContent(String(ledger.totalSigned));
-    expect(screen.getByTestId("developer-sign-off-count-signable-now-value")).toHaveTextContent("171");
+    expect(screen.getByTestId("developer-sign-off-count-signable-now-value")).toHaveTextContent("244");
     expect(screen.getByTestId("developer-sign-off-count-indigenous-hold-value")).toHaveTextContent("26");
     expect(screen.getByTestId("developer-sign-off-count-prerequisites-value")).toHaveTextContent("582");
 
