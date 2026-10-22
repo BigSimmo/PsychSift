@@ -25,6 +25,7 @@ import {
   type RagEvalCase,
   type SupabaseEvalCaseClient,
 } from "@/lib/rag/rag-eval-cases";
+import { WA_DOCUMENT_CONTROL_ENDORSEMENT_BASIS } from "@/lib/clinical-validation-basis";
 import { sourceGovernanceWarnings } from "@/lib/source-governance";
 import { answerRouteBudgetMs } from "@/lib/rag/rag-route-budget";
 import type { AnswerRouteMode } from "@/lib/rag/rag-routing";
@@ -170,6 +171,7 @@ export type SourceMetadataDebtAcceptance = {
   reason: string;
   max_stale_rate: number;
   max_review_required_rate: number;
+  max_wa_endorsed_unreviewed_rate: number;
   max_outdated_top_results: number;
   max_poor_extraction_top_results: number;
   max_source_governance_danger_failure_rate: number;
@@ -293,6 +295,10 @@ export const qualityThresholds = {
   numericGroundingFailureRate: 0,
   staleTopResultRate: 0.25,
   reviewRequiredTopResultRate: 0.25,
+  // The WA-endorsed, not-reviewed-here cohort is held to the same target on its own line
+  // (owner decision 2026-10-22). It stays review debt: a run above this fails unless the
+  // owner's dated debt acceptance covers it.
+  waEndorsedUnreviewedTopResultRate: 0.25,
   // Latency gates default to the strict near-region ceilings that release and
   // local runs are held to. The Eval Canary measures from cross-region GitHub
   // runners → Sydney Supabase + OpenAI, where a real grounded answer pays full
@@ -526,7 +532,11 @@ function failureCategoryCounts(results: Array<{ failures: string[] }>) {
 }
 
 function isSourceMetadataDebtThresholdFailure(failure: string) {
-  return failure.startsWith("top-result stale_rate") || failure.startsWith("top-result review_required_rate");
+  return (
+    failure.startsWith("top-result stale_rate") ||
+    failure.startsWith("top-result review_required_rate") ||
+    failure.startsWith("top-result wa_endorsed_unreviewed_rate")
+  );
 }
 
 function isIsoDateString(value: string) {
@@ -571,6 +581,11 @@ function evaluateSourceMetadataDebtAcceptance(args: {
       `review-required rate ${args.governance.review_required_rate} exceeds accepted ceiling ${acceptance.max_review_required_rate}`,
     );
   }
+  if (args.governance.wa_endorsed_unreviewed_rate > acceptance.max_wa_endorsed_unreviewed_rate) {
+    rejectionReasons.push(
+      `WA-endorsed unreviewed rate ${args.governance.wa_endorsed_unreviewed_rate} exceeds accepted ceiling ${acceptance.max_wa_endorsed_unreviewed_rate}`,
+    );
+  }
   if (args.governance.stale_top_results > acceptance.max_outdated_top_results) {
     rejectionReasons.push(
       `outdated top results ${args.governance.stale_top_results} exceeds accepted ceiling ${acceptance.max_outdated_top_results}`,
@@ -603,6 +618,7 @@ function topResultGovernanceCounts(results: GoldenRetrievalResult[]) {
   let unknownExtraction = 0;
   let poorExtraction = 0;
   let reviewRequired = 0;
+  let waEndorsedUnreviewed = 0;
 
   for (const result of results) {
     for (const topResult of result.topResults) {
@@ -616,11 +632,18 @@ function topResultGovernanceCounts(results: GoldenRetrievalResult[]) {
       if (validation === "unverified") unverified += 1;
       if (extraction === "unknown") unknownExtraction += 1;
       if (extraction === "poor") poorExtraction += 1;
+      // Endorsed by the issuing WA service but not reviewed here (owner decision 2026-10-22):
+      // counted on its own line with its own ceiling, never as reviewed. Only this one basis
+      // is split out; any other unverified basis stays review-required.
+      const waEndorsed =
+        validation === "unverified" &&
+        topResult.clinical_validation_evidence_basis === WA_DOCUMENT_CONTROL_ENDORSEMENT_BASIS;
+      if (waEndorsed) waEndorsedUnreviewed += 1;
       if (
         status === "outdated" ||
         status === "review_due" ||
         status === "unknown" ||
-        validation === "unverified" ||
+        (validation === "unverified" && !waEndorsed) ||
         extraction === "unknown" ||
         extraction === "poor"
       ) {
@@ -641,8 +664,10 @@ function topResultGovernanceCounts(results: GoldenRetrievalResult[]) {
     stale_review_unknown_rate: rate(stale + reviewDue + unknown, total),
     review_required_top_results: reviewRequired,
     review_required_rate: rate(reviewRequired, total),
+    wa_endorsed_unreviewed_top_results: waEndorsedUnreviewed,
+    wa_endorsed_unreviewed_rate: rate(waEndorsedUnreviewed, total),
     metadata_policy:
-      "unknown, unverified, review_due, outdated, unknown extraction, and poor extraction metadata are treated as review-required; do not silently default them to current or approved.",
+      "unknown, unverified, review_due, outdated, unknown extraction, and poor extraction metadata are treated as review-required; do not silently default them to current or approved. Unverified sources endorsed by the issuing WA service (wa_document_control_endorsement) are not reviewed here and are gated on their own line instead.",
   };
 }
 
@@ -870,6 +895,11 @@ export function buildEvalQualityReport(args: {
     if (governance.review_required_rate > qualityThresholds.reviewRequiredTopResultRate) {
       thresholdFailures.push(
         `top-result review_required_rate ${governance.review_required_rate} above ${qualityThresholds.reviewRequiredTopResultRate}`,
+      );
+    }
+    if (governance.wa_endorsed_unreviewed_rate > qualityThresholds.waEndorsedUnreviewedTopResultRate) {
+      thresholdFailures.push(
+        `top-result wa_endorsed_unreviewed_rate ${governance.wa_endorsed_unreviewed_rate} above ${qualityThresholds.waEndorsedUnreviewedTopResultRate}`,
       );
     }
   }
@@ -1206,6 +1236,8 @@ ${markdownTable([
   ["Stale/review/unknown rate", governance.stale_review_unknown_rate],
   ["Review-required top results", governance.review_required_top_results],
   ["Review-required rate", governance.review_required_rate],
+  ["WA-endorsed, not reviewed here top results", governance.wa_endorsed_unreviewed_top_results],
+  ["WA-endorsed, not reviewed here rate", governance.wa_endorsed_unreviewed_rate],
 ])}
 
 Policy: ${governance.metadata_policy}
@@ -1556,6 +1588,7 @@ async function loadSourceMetadataDebtAcceptance(path: string): Promise<SourceMet
     reason: requiredString(record, "reason"),
     max_stale_rate: requiredNumber(ceilings, "max_stale_rate"),
     max_review_required_rate: requiredNumber(ceilings, "max_review_required_rate"),
+    max_wa_endorsed_unreviewed_rate: requiredNumber(ceilings, "max_wa_endorsed_unreviewed_rate"),
     max_outdated_top_results: requiredNumber(ceilings, "max_outdated_top_results"),
     max_poor_extraction_top_results: requiredNumber(ceilings, "max_poor_extraction_top_results"),
     max_source_governance_danger_failure_rate: requiredNumber(ceilings, "max_source_governance_danger_failure_rate"),
