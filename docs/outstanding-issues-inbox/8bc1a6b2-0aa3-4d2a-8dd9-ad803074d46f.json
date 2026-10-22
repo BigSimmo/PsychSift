@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "8bc1a6b2-0aa3-4d2a-8dd9-ad803074d46f",
+  "createdOn": "2026-10-22",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "task",
+    "summary": "Rebuild the staging database (deferred by owner)",
+    "detail": "Owner deferred on 2026-10-22. Staging is half-built after a db reset stopped at migration 20260528009000, because the CLI temporary login role lacks the extensions schema on its search_path, so the hnsw vector_cosine_ops opclass is not found. Fix: from a clean checkout of current main, run npx supabase@latest db reset --db-url with the staging session-pooler string (project ikoiolksxqxfxgiyqpnu only, never the production ref), then migration list to confirm the latest version. Until done, the nightly staging tenancy test is expected to fail, Main CI's staging deploy and rollback test and the two-doctor staging check wait, STAGING_GATE_ENFORCE stays off, and no colleague invites. After it: Main CI deploy and rollback test, the dispatched two-doctor run, then switch STAGING_GATE_ENFORCE on after a healthy run. Related: #057.",
+    "source": "Safety foundations thread, 2026-10-22; PR #3748; docs/staging-tenancy-release-evidence.md",
+    "issueUlid": "01M5HBG9G9VX8BXDTSPYV13MBE"
+  }
+}
