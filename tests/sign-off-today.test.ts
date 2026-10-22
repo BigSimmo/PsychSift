@@ -129,13 +129,14 @@ describe("the real queue", () => {
     // 21 Oct 2026: the 27 Therapy records signed in #3562 and the 18 signed records with a
     // contradictory format label went back to needs_review (owner ruling), so 71 Therapy records
     // are signable; the owner's lithium attestation was restored, so that source is signed.
+    // 21 Oct 2026: the owner chose the AADPA 2022 ADHD guideline for the shared library; it was
+    // added unsigned, so it joins the signable sources.
     // 22 Oct 2026: the 71 TGA Product Information search records became signable candidates
-    // (owner decision: the live TGA search is the PI source), with WA policy MP 0131/20, so
-    // 74 sources are signable.
+    // (owner decision: the live TGA search is the PI source), with WA policy MP 0131/20.
     expect(signable.map((item) => item.family)).toEqual([
       ...Array<string>(8).fill("wa-mha-forms"),
       ...Array<string>(71).fill("therapy"),
-      ...Array<string>(74).fill("sources"),
+      ...Array<string>(75).fill("sources"),
     ]);
     expect(signable.map((item) => item.id)).toEqual([
       "form-1a",
@@ -220,6 +221,7 @@ describe("the real queue", () => {
       "ocp-wa-standard-authorisation-of-hospitals",
       "ocp-wa-standards-for-clinical-care",
       "wa-health-high-risk-medication-management-policy-mp0131-20",
+      "aadpa-australian-adhd-guideline-2022",
       "tga-product-information-agomelatine",
       "tga-product-information-alprazolam",
       "tga-product-information-amisulpride",

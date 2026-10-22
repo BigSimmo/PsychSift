@@ -10,7 +10,8 @@ live TGA search as the source. Each medication's PI record is the TGA eBS Produc
 for its generic name, filed under `dateModel: "live_product_information"` with no date and the fixed
 version text "Current TGA-approved Product Information (live search)". The owner signs each one once.
 The search always opens the PI the TGA currently holds, so the link cannot go stale. The accepted
-cost is that a later PI amendment does not trigger a re-review. The model is confined to TGA records
+cost is that a later PI amendment is not detected automatically: the weekly source watch never
+fetches that host, so it triggers a re-review only when someone records a confirmed source change. The model is confined to TGA records
 whose URL is that search. Every other source still needs the date its publisher prints. This builds
 on [the default-source decision](2026-09-25-medication-default-sources.md).
 

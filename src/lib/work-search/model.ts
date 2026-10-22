@@ -1,4 +1,4 @@
-import type { AppModeId } from "@/lib/app-modes";
+import type { WorkModeId } from "@/lib/app-modes";
 
 /**
  * "Search my work": one search across the staff work areas (Roster, Teaching,
@@ -18,7 +18,7 @@ export const workSearchAreas = [
   "cme",
   "my-work",
   "on-call",
-] as const satisfies readonly AppModeId[];
+] as const satisfies readonly WorkModeId[];
 export type WorkSearchArea = (typeof workSearchAreas)[number];
 
 export const workSearchAreaLabels: Readonly<Record<WorkSearchArea, string>> = {

@@ -740,3 +740,29 @@ describe("evidence preview emission (#100 — why a wait shows no sources)", () 
     expect(event?.previewReason).toBe("all_sources_danger");
   });
 });
+
+// Master plan section 4: time to first visible content. The builder reports the moment it
+// hands a verified unit over, and stays silent when it withholds one.
+describe("evidence preview first-content hook", () => {
+  it("fires once when a verified unit is built", () => {
+    let calls = 0;
+    const fields = buildEvidencePreviewProgress({
+      normalResults: [makeSource()],
+      fallbackResults: [makeSource()],
+      onVerifiedUnit: () => (calls += 1),
+    });
+    expect(fields.verifiedUnit).toBeDefined();
+    expect(calls).toBe(1);
+  });
+
+  it("does not fire when the preview is withheld", () => {
+    let calls = 0;
+    const broken = makeSource({ similarity: Number.NaN });
+    buildEvidencePreviewProgress({
+      normalResults: [broken],
+      fallbackResults: [broken],
+      onVerifiedUnit: () => (calls += 1),
+    });
+    expect(calls).toBe(0);
+  });
+});

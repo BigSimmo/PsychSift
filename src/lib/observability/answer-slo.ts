@@ -25,6 +25,19 @@ export type AnswerLatencyP95 = {
   samples: number;
 };
 
+/**
+ * Time from pressing Ask to the first useful content: the verified evidence preview when one
+ * was sent, otherwise the finished answer. Nearest-rank, over the same bounded sample as the
+ * latency p95. Display only; no alert reads it (master plan section 4).
+ */
+export type AnswerTimeToFirstContent = {
+  p50Ms: number | null;
+  p95Ms: number | null;
+  samples: number;
+  /** Samples whose first content was the evidence preview rather than the finished answer. */
+  previewSamples: number;
+};
+
 export type AnswerSloSnapshot = {
   windowMinutes: number;
   totalQueries: number;
@@ -60,6 +73,7 @@ export type AnswerSloSnapshot = {
   latencyP95MsByRouteMode: Record<AnswerLatencyRouteMode, AnswerLatencyP95>;
   /** True when the metadata sample hit its row cap while the window held more answers. */
   latencySampleTruncated: boolean;
+  timeToFirstContent: AnswerTimeToFirstContent;
 };
 
 type CountResult = { count: number | null; error: unknown };
@@ -115,11 +129,16 @@ function knownRouteMode(metadata: Record<string, unknown>): AnswerLatencyRouteMo
   return null;
 }
 
-/** Nearest-rank p95: the smallest sample at or above 95% of the ordered values. */
-export function nearestRankP95(values: number[]): number | null {
+/** Nearest-rank percentile: the smallest sample at or above `fraction` of the ordered values. */
+function nearestRank(values: number[], fraction: number): number | null {
   if (values.length === 0) return null;
   const sorted = [...values].sort((left, right) => left - right);
-  return sorted[Math.max(0, Math.ceil(0.95 * sorted.length) - 1)] ?? null;
+  return sorted[Math.max(0, Math.ceil(fraction * sorted.length) - 1)] ?? null;
+}
+
+/** Nearest-rank p95: the smallest sample at or above 95% of the ordered values. */
+export function nearestRankP95(values: number[]): number | null {
+  return nearestRank(values, 0.95);
 }
 
 function resolveRouteLatencyBudgetMs(metadata: Record<string, unknown>): number {
@@ -162,6 +181,8 @@ const UNSUPPORTED_FILTER = [
 export function computeLatencyBudgetSloMetrics(rows: Array<{ metadata: unknown }>, totalQueries: number) {
   let latencyBudgetBreachQueries = 0;
   const latenciesByMode: Record<AnswerLatencyRouteMode, number[]> = { fast: [], strong: [], extractive: [] };
+  const firstContentMs: number[] = [];
+  let previewSamples = 0;
 
   for (const row of rows) {
     if (!row.metadata || typeof row.metadata !== "object" || Array.isArray(row.metadata)) {
@@ -180,6 +201,14 @@ export function computeLatencyBudgetSloMetrics(rows: Array<{ metadata: unknown }
     if (mode && Number.isFinite(rawLatency) && rawLatency >= 0) {
       latenciesByMode[mode].push(rawLatency);
     }
+    const preview = typeof meta.first_verified_content_ms === "number" ? meta.first_verified_content_ms : Number.NaN;
+    const answered = Number.isFinite(rawLatency) && rawLatency >= 0 ? rawLatency : Number.NaN;
+    const previewSent = Number.isFinite(preview) && preview >= 0;
+    const firstContent = previewSent ? (Number.isFinite(answered) ? Math.min(preview, answered) : preview) : answered;
+    if (Number.isFinite(firstContent)) {
+      firstContentMs.push(firstContent);
+      if (previewSent && firstContent === preview) previewSamples += 1;
+    }
   }
 
   const effectiveDenominator =
@@ -195,6 +224,12 @@ export function computeLatencyBudgetSloMetrics(rows: Array<{ metadata: unknown }
     latencyBudgetBreachRate: rate(latencyBudgetBreachQueries, effectiveDenominator),
     latencyP95MsByRouteMode: { fast: p95("fast"), strong: p95("strong"), extractive: p95("extractive") },
     latencySampleTruncated: rows.length >= maxHybridRpcIdentityRows && totalQueries > rows.length,
+    timeToFirstContent: {
+      p50Ms: nearestRank(firstContentMs, 0.5),
+      p95Ms: nearestRank(firstContentMs, 0.95),
+      samples: firstContentMs.length,
+      previewSamples,
+    },
   };
 }
 
@@ -340,5 +375,6 @@ export async function answerSloSnapshot(client: SloProbeClient, windowMinutes = 
     latencyBudgetBreachRate: latencyMetrics.latencyBudgetBreachRate,
     latencyP95MsByRouteMode: latencyMetrics.latencyP95MsByRouteMode,
     latencySampleTruncated: latencyMetrics.latencySampleTruncated,
+    timeToFirstContent: latencyMetrics.timeToFirstContent,
   };
 }

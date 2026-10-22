@@ -55,20 +55,50 @@
   "nortriptyline": ["tga-product-information-nortriptyline", "ranzcp-mood-disorders-clinical-practice-guideline"],
   "phenelzine": ["tga-product-information-phenelzine", "ranzcp-mood-disorders-clinical-practice-guideline"],
   "tranylcypromine": ["tga-product-information-tranylcypromine", "ranzcp-mood-disorders-clinical-practice-guideline"],
+  "dexamfetamine": [
+    "wa-monitored-medicines-prescribing-code",
+    "wa-health-scriptcheckwa",
+    "tga-product-information-dexamfetamine"
+  ],
+  "lisdexamfetamine": [
+    "wa-monitored-medicines-prescribing-code",
+    "wa-health-scriptcheckwa",
+    "tga-product-information-lisdexamfetamine"
+  ],
+  "methylphenidate": [
+    "wa-monitored-medicines-prescribing-code",
+    "wa-health-scriptcheckwa",
+    "tga-product-information-methylphenidate"
+  ],
+  "alprazolam": [
+    "wa-monitored-medicines-prescribing-code",
+    "wa-health-scriptcheckwa",
+    "tga-product-information-alprazolam"
+  ],
+  "buprenorphine-sl-depot": [
+    "wa-monitored-medicines-prescribing-code",
+    "wa-health-scriptcheckwa",
+    "tga-product-information-buprenorphine"
+  ],
+  "buprenorphine-naloxone": [
+    "wa-monitored-medicines-prescribing-code",
+    "wa-health-scriptcheckwa",
+    "tga-product-information-buprenorphine"
+  ],
+  "gabapentin": [
+    "wa-monitored-medicines-prescribing-code",
+    "wa-health-scriptcheckwa",
+    "tga-product-information-gabapentin"
+  ],
+  "pregabalin": [
+    "wa-monitored-medicines-prescribing-code",
+    "wa-health-scriptcheckwa",
+    "tga-product-information-pregabalin"
+  ],
   "oxcarbazepine": ["tga-product-information-oxcarbazepine"],
   "topiramate": ["tga-product-information-topiramate"],
   "phenytoin": ["tga-product-information-phenytoin"],
   "levetiracetam": ["tga-product-information-levetiracetam"],
-  "gabapentin": [
-    "tga-product-information-gabapentin",
-    "wa-monitored-medicines-prescribing-code",
-    "wa-health-scriptcheckwa"
-  ],
-  "pregabalin": [
-    "tga-product-information-pregabalin",
-    "wa-monitored-medicines-prescribing-code",
-    "wa-health-scriptcheckwa"
-  ],
   "quetiapine": ["tga-product-information-quetiapine"],
   "risperidone": ["tga-product-information-risperidone"],
   "aripiprazole": ["tga-product-information-aripiprazole"],
@@ -93,11 +123,6 @@
   "mirtazapine": ["tga-product-information-mirtazapine"],
   "bupropion-sr": ["tga-product-information-bupropion"],
   "agomelatine": ["tga-product-information-agomelatine"],
-  "alprazolam": [
-    "tga-product-information-alprazolam",
-    "wa-monitored-medicines-prescribing-code",
-    "wa-health-scriptcheckwa"
-  ],
   "clonazepam": ["tga-product-information-clonazepam"],
   "diazepam": ["tga-product-information-diazepam"],
   "lorazepam": ["tga-product-information-lorazepam"],
@@ -107,32 +132,7 @@
   "temazepam": ["tga-product-information-temazepam"],
   "zolpidem": ["tga-product-information-zolpidem"],
   "zopiclone": ["tga-product-information-zopiclone"],
-  "buprenorphine-naloxone": [
-    "tga-product-information-buprenorphine",
-    "wa-monitored-medicines-prescribing-code",
-    "wa-health-scriptcheckwa"
-  ],
-  "buprenorphine-sl-depot": [
-    "tga-product-information-buprenorphine",
-    "wa-monitored-medicines-prescribing-code",
-    "wa-health-scriptcheckwa"
-  ],
-  "dexamfetamine": [
-    "tga-product-information-dexamfetamine",
-    "wa-monitored-medicines-prescribing-code",
-    "wa-health-scriptcheckwa"
-  ],
-  "lisdexamfetamine": [
-    "tga-product-information-lisdexamfetamine",
-    "wa-monitored-medicines-prescribing-code",
-    "wa-health-scriptcheckwa"
-  ],
-  "methylphenidate": [
-    "tga-product-information-methylphenidate",
-    "wa-monitored-medicines-prescribing-code",
-    "wa-health-scriptcheckwa"
-  ],
-  "ketamine": ["tga-product-information-ketamine", "wa-monitored-medicines-prescribing-code"],
+  "ketamine": ["wa-monitored-medicines-prescribing-code", "tga-product-information-ketamine"],
   "propranolol": ["tga-product-information-propranolol"],
   "clonidine": ["tga-product-information-clonidine"]
 }

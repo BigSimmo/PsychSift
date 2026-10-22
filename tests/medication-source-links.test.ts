@@ -158,6 +158,23 @@ describe("medication source links", () => {
     }
   });
 
+  it("proposes the WA Monitored Medicines Prescribing Code first for stimulants, S8 benzodiazepines, opioid pharmacotherapy and gabapentinoids", () => {
+    for (const slug of [
+      "dexamfetamine",
+      "lisdexamfetamine",
+      "methylphenidate",
+      "alprazolam",
+      "buprenorphine-sl-depot",
+      "buprenorphine-naloxone",
+      "gabapentin",
+      "pregabalin",
+    ]) {
+      expect((medicationSourceLinkIds as Record<string, readonly string[]>)[slug]?.[0], slug).toBe(
+        "wa-monitored-medicines-prescribing-code",
+      );
+    }
+  });
+
   it("shows no source links on the live pages while no linked record is adopted with the owner's sign-off", () => {
     // 21 Oct 2026: the #3562 adoptions of the clozapine and lithium sources were not the owner's, so
     // those records went back to candidate (owner ruling) and the live pages show no source link.
