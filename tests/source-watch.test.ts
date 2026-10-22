@@ -63,6 +63,14 @@ describe("source watch: which sources", () => {
     }
     expect(new Set(watched.map((item) => item.id)).size).toBe(watched.length);
   });
+
+  it("never fetches the TGA PI search, whose host disallows automated retrieval", () => {
+    const live = register.filter((record) => record.dateModel === "live_product_information");
+    expect(live.length).toBeGreaterThan(0);
+    const watchedIds = new Set(watchedSources(register).map((item) => item.id));
+    for (const record of live) expect(watchedIds.has(record.id), record.id).toBe(false);
+    expect(watchedSources(register).some((item) => item.url.includes("www.ebs.tga.gov.au"))).toBe(false);
+  });
 });
 
 describe("source watch: what counts as a change", () => {

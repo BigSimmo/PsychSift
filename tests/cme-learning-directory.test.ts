@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
+import { canAddLearningToCalendar } from "@/lib/cme/calendar-event";
 import {
   daysUntilLearningStart,
+  learningAccessLabel,
   learningCountdownLabel,
   splitUpcomingLearning,
 } from "@/lib/cme/learning-directory-view";
@@ -260,5 +262,42 @@ describe("learning countdown and upcoming split", () => {
   it("skips undated items when choosing the next two", () => {
     const split = splitUpcomingLearning([item({ id: "x", startsOn: null }), item({ id: "y" })], TODAY_PERTH);
     expect(split.next.map((i) => i.id)).toEqual(["y"]);
+  });
+});
+
+describe("cancelled courses and existing access (#R2FNTJ)", () => {
+  it("accepts the optional access and cancelled fields, refusing a cancelled recorded resource", () => {
+    const parsed = parseLearningDirectory({
+      lastCheckedOn: TODAY_PERTH,
+      items: [item({ access: "employer", cancelled: true })],
+    });
+    expect(parsed.items[0]).toMatchObject({ access: "employer", cancelled: true });
+    expect(() =>
+      parseLearningDirectory({
+        lastCheckedOn: TODAY_PERTH,
+        items: [item({ kind: "recorded", startsOn: null, cancelled: true })],
+      }),
+    ).toThrow(/cannot be cancelled/);
+    expect(() =>
+      parseLearningDirectory({ lastCheckedOn: TODAY_PERTH, items: [{ ...item(), access: "free" }] }),
+    ).toThrow();
+  });
+
+  it("names existing access in plain words, and says nothing when the list does not know", () => {
+    expect(learningAccessLabel(item({ access: "included-in-workshop" }))).toBe("Included in your workshop");
+    expect(learningAccessLabel(item({ access: "employer" }))).toBe("Available through your employer");
+    expect(learningAccessLabel(item())).toBeNull();
+  });
+
+  it("keeps a cancelled course listed but never counts down to it, adds it to a calendar or files it as Past", () => {
+    const cancelled = item({ id: "cancelled", startsOn: "2026-10-01", cancelled: true });
+    const running = item({ id: "running", startsOn: "2026-10-05" });
+    const upcoming = upcomingLearningItems([cancelled, running], TODAY_PERTH);
+    expect(upcoming.map((i) => i.id)).toEqual(["cancelled", "running"]);
+    expect(splitUpcomingLearning(upcoming, TODAY_PERTH).next.map((i) => i.id)).toEqual(["running"]);
+    expect(canAddLearningToCalendar(cancelled)).toBe(false);
+    expect(canAddLearningToCalendar(running)).toBe(true);
+    const finished = item({ id: "finished", startsOn: "2026-09-01", cancelled: true });
+    expect(pastLearningItems([finished], TODAY_PERTH)).toEqual([]);
   });
 });

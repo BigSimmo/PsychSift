@@ -1,23 +1,36 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { isDemoMode } from "@/lib/env";
 import { jsonError, publicErrorResponse } from "@/lib/http";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, requireAuthenticatedUser, unauthorizedResponse } from "@/lib/supabase/auth";
 import {
   consumePublicApiRateLimit,
+  demoEpaMagicLinkRecord,
+  EPA_MAGIC_LINK_DEMO_TOKEN,
   EpaMagicLinkError,
   getEpaMagicLinkByToken,
   registerEpaMagicLinkRecord,
   submitEpaMagicLinkResponse,
   type CreateEpaMagicLinkInput,
   type EpaMagicLinkSubmission,
+  validateEpaMagicLinkSubmission,
 } from "@/lib/teaching/assessments/magic-link";
+import { DurableEpaMagicLinkRepository } from "@/lib/teaching/assessments/magic-link-repository";
 import { parseJsonBody } from "@/lib/validation/body";
 
 export const runtime = "nodejs";
 
 const noStore = { "Cache-Control": "private, no-store, max-age=0" };
+
+/**
+ * Outside synthetic demo mode a supervisor's link lives in public.teaching_epa_magic_links
+ * (#MAAXAX). Demo mode keeps the process-memory story store, which is never used in production.
+ */
+function durableMagicLinks(): DurableEpaMagicLinkRepository | null {
+  return isDemoMode() ? null : new DurableEpaMagicLinkRepository(createAdminClient());
+}
 
 function refuseEphemeralMagicLinkStore(): void {
   if (process.env.NODE_ENV === "production") {
@@ -68,7 +81,6 @@ const registrationSchema = z
 
 export async function GET(request: Request, { params }: { params: Promise<{ token: string }> }) {
   try {
-    refuseEphemeralMagicLinkStore();
     const rate = consumePublicApiRateLimit(request, "teaching-epa-magic-link-read");
     if (rate.limited) {
       return errorWithHeaders("Too many requests. Wait a minute and try again.", 429, "rate_limited", {
@@ -77,6 +89,17 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
       });
     }
     const { token } = await params;
+    // The fixed example link works everywhere (example data, demo mode) and never touches the store.
+    if (token === EPA_MAGIC_LINK_DEMO_TOKEN) {
+      return NextResponse.json({ request: demoEpaMagicLinkRecord() }, { headers: noStore });
+    }
+    const durable = durableMagicLinks();
+    if (durable) {
+      const found = await durable.lookup(token);
+      if (!found.ok) return errorWithHeaders(found.message, found.status, found.code);
+      return NextResponse.json({ request: found.request }, { headers: noStore });
+    }
+    refuseEphemeralMagicLinkStore();
     const lookup = getEpaMagicLinkByToken(token);
     if (!lookup.ok) {
       const status = lookup.status === "not_found" ? 404 : 410;
@@ -125,7 +148,6 @@ export async function PUT(request: Request, { params }: { params: Promise<{ toke
 
 export async function POST(request: Request, { params }: { params: Promise<{ token: string }> }) {
   try {
-    refuseEphemeralMagicLinkStore();
     const rate = consumePublicApiRateLimit(request, "teaching-epa-magic-link-write");
     if (rate.limited) {
       return errorWithHeaders("Too many requests. Wait a minute and try again.", 429, "rate_limited", {
@@ -139,6 +161,32 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
       submissionSchema,
       "Check the EPA response and try again.",
     )) as EpaMagicLinkSubmission;
+    if (token === EPA_MAGIC_LINK_DEMO_TOKEN) {
+      // The example link checks the answer like the real thing, then stores nothing.
+      const demo = demoEpaMagicLinkRecord();
+      const checked = validateEpaMagicLinkSubmission(body, demo.supervisorName);
+      if (!checked.ok) return errorWithHeaders(checked.message, 400, checked.code);
+      const submittedAt = new Date().toISOString();
+      return NextResponse.json(
+        {
+          ok: true,
+          request: {
+            ...demo,
+            status: "completed",
+            completedAt: submittedAt,
+            submission: { ...checked.value, submittedAt },
+          },
+        },
+        { headers: noStore },
+      );
+    }
+    const durable = durableMagicLinks();
+    if (durable) {
+      const stored = await durable.submit(token, body);
+      if (!stored.ok) return errorWithHeaders(stored.message, stored.status, stored.code);
+      return NextResponse.json({ ok: true, request: stored.request }, { headers: noStore });
+    }
+    refuseEphemeralMagicLinkStore();
     const result = submitEpaMagicLinkResponse(token, body);
     if (!result.ok) {
       const status =

@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "e9b59bb8-6de5-4041-a086-c6d01bae8593",
+  "createdOn": "2026-10-21",
+  "action": "done",
+  "payload": {
+    "id": "#HD1C6W",
+    "outcome": "Done on main (verified 21 Oct 2026, answer safety hardening thread). The word-form fix for all three sealed hazard-control files landed in PR #3571 (e526f8a4d, 16 Oct) with tests in answer-verification, rag-claim-support and source-text-sanitizer; docs/clinical-hazard-controls.json was then resealed with owner approval on 21 Oct (5714539c5, comment 6313455205), and npm run check:clinical-hazard-controls passes on main 81ba5aefa. A fresh grep finds no bare escalat/contraindicat/prescrib/initiat stems left inside word boundaries in those files.",
+    "baseRowFingerprint": "b35fbe964bb903a420fef3a4ea99e440f64bc026c7e60818d7e569314cc0cc65",
+    "targetUlid": "01M3H9CJH5HD1C6WEV9E9KKASJ"
+  }
+}

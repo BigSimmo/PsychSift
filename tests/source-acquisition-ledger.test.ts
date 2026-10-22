@@ -7,9 +7,12 @@ import {
   acquisitionAttestedContentSha256,
   acquisitionLedgerIssues,
   acquisitionRecordGeography,
+  acquisitionRecordMetadataDefects,
   acquisitionRecordWarnings,
   acquisitionReviewQueue,
   acquisitionSourceReferences,
+  isTgaProductInformationSearchUrl,
+  LIVE_PRODUCT_INFORMATION_VERSION,
   SOURCE_ACQUISITION_RUNGS,
   sourceAcquisitionRecords,
   type SourceAcquisitionRecord,
@@ -126,14 +129,10 @@ describe("source acquisition ledger", () => {
   // a source was rejected, so holding a rejection to the floor would make the
   // register unable to record the searches that found nothing citable.
   it("captures every committed source still in play with complete metadata, so none carries a metadata defect", () => {
-    const defects = new Set<string>(ACQUISITION_METADATA_DEFECTS);
     const inPlay = sourceAcquisitionRecords.filter((entry) => entry.disposition !== "rejected");
     expect(inPlay.length).toBeGreaterThan(0);
     for (const entry of inPlay) {
-      expect(
-        acquisitionRecordWarnings(entry).filter((warning) => defects.has(warning)),
-        `${entry.id} carries a metadata defect`,
-      ).toEqual([]);
+      expect(acquisitionRecordMetadataDefects(entry), `${entry.id} carries a metadata defect`).toEqual([]);
     }
   });
 
@@ -517,5 +516,77 @@ describe("source acquisition attestation", () => {
     expect(issuesFor({ attestedBy: "Owner", attestedAt: "September 2026", attestedAgainstSha256: null })).toContain(
       'ocp-wa-test-guideline: attestedAt must be an exact YYYY-MM-DD date, got "September 2026"',
     );
+  });
+});
+
+// Owner decision, 2026-10-22: the TGA Product Information search is signed once per
+// medicine with no fixed version. The model is confined to that one URL shape and
+// carries no date at all, so it never records a date nobody read.
+describe("source acquisition live_product_information date model", () => {
+  const PI_SEARCH = "https://www.ebs.tga.gov.au/ebs/picmi/picmirepository.nsf/PICMI?OpenForm&q=sodium%20valproate&t=pi";
+  const live: Partial<SourceAcquisitionRecord> = {
+    id: "tga-product-information-test",
+    title: "Australian Product Information: sodium valproate",
+    publisher: "Therapeutic Goods Administration",
+    publisherCode: "TGA",
+    canonicalUrl: PI_SEARCH,
+    jurisdiction: "Australia",
+    dateModel: "live_product_information",
+    version: LIVE_PRODUCT_INFORMATION_VERSION,
+    publicationDate: null,
+    evidenceType: "regulatory",
+    rung: 3,
+  };
+  const liveIssues = (overrides: Partial<SourceAcquisitionRecord> = {}) =>
+    issuesFor({ ...live, ...overrides }).join(" ");
+
+  it("accepts a TGA PI search with no date as a candidate", () => {
+    expect(issuesFor(live)).toEqual([]);
+  });
+
+  it("refuses the model on any other publisher or URL", () => {
+    expect(liveIssues({ publisherCode: "WAHEALTH" })).toMatch(/only for the TGA Product Information search/);
+    expect(
+      liveIssues({ canonicalUrl: "https://www.ebs.tga.gov.au/ebs/picmi/picmirepository.nsf/PICMI?OpenForm&q=&t=pi" }),
+    ).toMatch(/only for the TGA Product Information search/);
+    expect(
+      liveIssues({ canonicalUrl: "https://www.ebs.tga.gov.au/ebs/picmi/picmirepository.nsf/PICMI?OpenForm&q=x&t=cmi" }),
+    ).toMatch(/only for the TGA Product Information search/);
+  });
+
+  it("refuses any recorded date and any other version text", () => {
+    expect(liveIssues({ publicationDate: "2026-01-01" })).toMatch(/has no publication, review, update or expiry date/);
+    expect(liveIssues({ reviewDate: "2026-01-01" })).toMatch(/has no publication, review, update or expiry date/);
+    expect(liveIssues({ expiryDate: "2027-01-01" })).toMatch(/has no publication, review, update or expiry date/);
+    expect(liveIssues({ version: "unknown" })).toMatch(/records version/);
+  });
+
+  it("still requires a publication date of an ordinary TGA record", () => {
+    expect(issuesFor({ ...live, dateModel: undefined })).toContain(
+      "tga-product-information-test: publicationDate is required",
+    );
+  });
+
+  it("does not count the absent date as missing metadata in the catalogue, so a reviewed live PI is not forced to D", () => {
+    const reviewed = record({ ...live, validationStatus: "locally_reviewed" });
+    expect(acquisitionRecordWarnings(reviewed)).not.toContain("missing_dates");
+    const [entry] = canonicalizeSourceReferences([...acquisitionSourceReferences([reviewed])]);
+    expect(entry.rating.band).not.toBe("D");
+  });
+
+  it("still warns about missing dates when the live flag rides on any other URL", () => {
+    const [entry] = canonicalizeSourceReferences([
+      { ...acquisitionSourceReferences([record(live)])[0], canonicalUrl: "https://www.tga.gov.au/x" },
+    ]);
+    expect(entry.warnings).toContain("missing_dates");
+  });
+
+  it("recognises only the PI search URL", () => {
+    expect(isTgaProductInformationSearchUrl(PI_SEARCH)).toBe(true);
+    expect(
+      isTgaProductInformationSearchUrl("http://www.ebs.tga.gov.au/ebs/picmi/picmirepository.nsf/PICMI?q=x&t=pi"),
+    ).toBe(false);
+    expect(isTgaProductInformationSearchUrl("https://www.tga.gov.au/?q=x&t=pi")).toBe(false);
+    expect(isTgaProductInformationSearchUrl(null)).toBe(false);
   });
 });

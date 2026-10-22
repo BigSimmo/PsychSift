@@ -108,7 +108,16 @@ export const SCANNED_LIB_MODULES = [
   "src/lib/roster/alerts/night.ts",
   // Cleanup's dates query also carries the team id, and never deletes team assignments.
   "src/lib/roster/team/delete-my-data.ts",
-  // owner/teams is platform-owner guarded; alerts/recipients reads ids scoped to row id and team id.
+  // Added 2026-10-21 (safety foundations, section 1): every remaining Roster and On Call module that
+  // reads tables directly. They were left out before because their scope looked indirect (platform-owner
+  // guarded or team-id scoped). Scanning them makes that scope a checked fact or a declared
+  // exemption with its proof, instead of an unexamined belief. src/lib/roster/team/repository.ts and
+  // src/lib/on-call/service-repository.ts are not listed because they only call RPCs; those check team
+  // membership in SQL and are proven by tests/sql/roster-behaviour.sql and the staging harness.
+  "src/lib/roster/owner/teams.ts",
+  "src/lib/roster/rotations/repository.ts",
+  "src/lib/roster/alerts/outbox.ts",
+  "src/lib/roster/alerts/recipients.ts",
 ];
 
 export const API_DIR_SEGMENTS = ["src", "app", "api"];
@@ -1147,6 +1156,14 @@ const ON_CALL_DEMO_CONTENT_COLLISION_REASON =
   "Deliberately cross-owner existence probe, and it has to be: the example corpus it guards is published to every reader. `fetchSharedOnCallEntries` returns `is_personal = false` rows across ALL owners, and the loader's upsert key is (owner_id, section, slug), so a second account loading the corpus would not collide with the first — it would put a second, undeduplicated copy of the shared rows on the page of every signed-in reader, and repeated loads would walk toward ON_CALL_MAX_ENTRIES on the shared read where they would crowd out real entries. An owner-scoped query cannot detect that, because the thing being detected is by definition another owner's rows. Narrowness is the control: it selects `slug` only — never `owner_id`, never content — filters to `is_personal = false` and to the fixed demo slug list, takes `.limit(1)`, and the handler reads nothing but whether a row came back. So the only fact it can disclose, to an authenticated caller, is that example content exists somewhere on a site that already shows that content to every signed-in reader. It gates a write and never returns anyone's data. Added 2026-09-21 with the loader, after a Codex review found the duplicate-publication path.";
 const ROSTER_MANUAL_SHIFT_INSERT_REASON =
   "An insert, not a read: every row is built in the same function with `owner_id: ownerId`, and the payload is a flatMap over the doctor's own shifts and their weekly repeats, so the scanner cannot see the key at the payload's top level. requireOwner(ownerId) runs first, ownerId comes from the signed-in session in /api/roster/shifts/manual, and the table's own RLS keeps it service-role only. Added 2026-09-27 with Roster's hand-added shifts; pinned by tests/roster-shifts.test.ts.";
+const ROSTER_SITE_OWNER_REASON =
+  "Site-administrator view across every team by design: the only callers are /api/roster/owner/teams and /api/roster/owner/teams/[serviceId], both wrapped in withRosterOwnerApi, which calls requireAuthenticatedUser with { administrator: true } before the operation runs and refuses everyone else. The projection is team ids, names, member counts and the roster names and grades a site administrator manages; no shift, leave or note content. Declared 2026-10-21 when this module joined the scanned set (safety foundations, section 1).";
+const ROSTER_ROTATION_TEAM_PEOPLE_REASON =
+  "Team-scoped by service_id on the chain. Every caller decides the team first: readRotations passes only teams from readManageableTeams (canManageRotations for the session user), createRotationRound checks canManageRotations(body.serviceId) before withTeamNames, and runRoundCommand reaches withTeamNames only after canManageRotations on the round's own service_id. The projection is member ids, roster names and grades for a colleague the caller runs rotations for. Declared 2026-10-21 (safety foundations, section 1).";
+const ROSTER_ALERT_PARTY_REASON =
+  "Notification routing, never a response: dispatchRosterAlerts runs after the route's own roster_read/roster_write RPC has checked the session actor's team access, and offerRecipients runs from the outbox for an event the RPC recorded. Each query filters both the team (service_id) and the row id, so it cannot name someone from another team, and its result only chooses which active members (activeRecipientIds) get a push; nothing it reads is returned to the caller. Declared 2026-10-21 (safety foundations, section 1).";
+const ON_CALL_SERVICE_NAME_REASON =
+  "Team names only (id, name, verified_at, is_demo), looked up for ids the caller already holds: readMyTeams takes ids from the session user's own on_call_service_members rows; serviceNames is called with team ids from the caller's own memberships, their manager or workforce role grants (canManageRotations), or round rows already filtered to those teams. Declared 2026-10-21 (safety foundations, section 1).";
 const SETUP_STATUS_REASON =
   "Local-origin-gated setup/health existence probe. It returns status booleans and counts only, never owner rows, so a fresh deployment can diagnose missing setup before any corpus exists (tenancy review §3 / TEN-N1).";
 
@@ -1155,6 +1172,46 @@ const SETUP_STATUS_REASON =
  * query chain. Every entry names its proof; the mechanical kinds are re-checked in the AST.
  */
 export const SCOPE_EXEMPTIONS = [
+  {
+    file: "src/lib/roster/owner/teams.ts",
+    table: "on_call_service_members",
+    fn: "listOwnerTeams",
+    queries: 1,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason: ROSTER_SITE_OWNER_REASON,
+  },
+  {
+    file: "src/lib/roster/owner/teams.ts",
+    table: "roster_member_roles",
+    fn: "listOwnerTeams",
+    queries: 1,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason: ROSTER_SITE_OWNER_REASON,
+  },
+  {
+    file: "src/lib/roster/owner/teams.ts",
+    table: "on_call_service_members",
+    fn: "listOwnerMembers",
+    queries: 1,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason: ROSTER_SITE_OWNER_REASON,
+  },
+  {
+    file: "src/lib/roster/rotations/repository.ts",
+    table: "on_call_service_members",
+    fn: "readTeamPeople",
+    queries: 1,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason: ROSTER_ROTATION_TEAM_PEOPLE_REASON,
+  },
+  {
+    file: "src/lib/roster/rotations/repository.ts",
+    table: "roster_member_roles",
+    fn: "readTeamPeople",
+    queries: 1,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason: ROSTER_ROTATION_TEAM_PEOPLE_REASON,
+  },
   {
     file: "src/lib/roster/alerts/subscriptions.ts",
     table: "web_push_subscriptions",
@@ -1657,6 +1714,62 @@ export const DERIVED_QUERY_INVENTORY = [
  * until it is declared here with a reason.
  */
 export const UNTIERED_TABLE_DECLARATIONS = [
+  {
+    file: "src/lib/roster/alerts/recipients.ts",
+    table: "roster_swaps",
+    fn: "swapParties",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: ROSTER_ALERT_PARTY_REASON,
+  },
+  {
+    file: "src/lib/roster/alerts/recipients.ts",
+    table: "roster_open_shifts",
+    fn: "openParties",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: ROSTER_ALERT_PARTY_REASON,
+  },
+  {
+    file: "src/lib/roster/alerts/recipients.ts",
+    table: "roster_changes",
+    fn: "previousOpenHolder",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: ROSTER_ALERT_PARTY_REASON,
+  },
+  {
+    file: "src/lib/roster/owner/teams.ts",
+    table: "on_call_services",
+    fn: "listOwnerTeams",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: ROSTER_SITE_OWNER_REASON,
+  },
+  {
+    file: "src/lib/roster/owner/teams.ts",
+    table: "on_call_services",
+    fn: "listOwnerMembers",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: ROSTER_SITE_OWNER_REASON,
+  },
+  {
+    file: "src/lib/roster/rotations/repository.ts",
+    table: "on_call_services",
+    fn: "readMyTeams",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: ON_CALL_SERVICE_NAME_REASON,
+  },
+  {
+    file: "src/lib/roster/rotations/repository.ts",
+    table: "on_call_services",
+    fn: "serviceNames",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: ON_CALL_SERVICE_NAME_REASON,
+  },
   {
     file: "src/app/api/clinical-quality/route.ts",
     table: "clinical_quality_feedback_triage",

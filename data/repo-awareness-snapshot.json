@@ -1641,6 +1641,10 @@
         "file": "src/app/api/search/universal/route.ts"
       },
       {
+        "path": "/api/teaching/assessments/magic-links",
+        "file": "src/app/api/teaching/assessments/magic-links/route.ts"
+      },
+      {
         "path": "/api/work/courses",
         "file": "src/app/api/work/courses/route.ts"
       },
@@ -1671,6 +1675,10 @@
       {
         "path": "/api/roster/workplaces",
         "file": "src/app/api/roster/workplaces/route.ts"
+      },
+      {
+        "path": "/api/teaching/assessments/magic-links/[id]",
+        "file": "src/app/api/teaching/assessments/magic-links/[id]/route.ts"
       },
       {
         "path": "/api/roster/read-file",
@@ -3669,6 +3677,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-21-staging-gate-before-live.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/agents/codex-review-throttling.md",
         "section": "agents",
         "catalogued": true
@@ -3781,6 +3794,11 @@
       {
         "path": "docs/superpowers/rag-upgrade/cloud/plans/2026-08-21-trusted-admin-document-ingestion.md",
         "section": "superpowers",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-22-tga-pi-live-search-source.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -5105,6 +5123,11 @@
       },
       {
         "path": "docs/decisions/2026-08-18-gate-b-table-target-is-parity.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-22-desktop-home-lighthouse-floor.md",
         "section": "decisions",
         "catalogued": true
       },

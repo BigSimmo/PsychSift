@@ -62,13 +62,20 @@ export function filterLearningItems(
   );
 }
 
-/** Confirmed events that have finished before today, newest first. */
+/** The access note shown before the cost, or null when the list does not say. */
+export function learningAccessLabel(item: LearningDirectoryItem): string | null {
+  if (item.access === "included-in-workshop") return "Included in your workshop";
+  if (item.access === "employer") return "Available through your employer";
+  return null;
+}
+
+/** Confirmed events that have finished before today, newest first. A cancelled event never ran, so it is left out. */
 export function pastLearningItems(
   items: readonly LearningDirectoryItem[],
   todayPerth: string,
 ): LearningDirectoryItem[] {
   return items
-    .filter((item) => item.datesConfirmed && (item.endsOn ?? item.startsOn) !== null)
+    .filter((item) => item.datesConfirmed && !item.cancelled && (item.endsOn ?? item.startsOn) !== null)
     .filter((item) => (item.endsOn ?? item.startsOn)! < todayPerth)
     .sort((a, b) => byStartThenTitle(b, a));
 }
@@ -115,7 +122,7 @@ export function learningCountdownLabel(startsOn: string, todayPerth: string): st
 }
 
 export type LearningUpcomingSections = {
-  /** The next two with a confirmed date; these carry the countdown chip. */
+  /** The next two with a confirmed date that are not cancelled; these carry the countdown chip. */
   readonly next: readonly LearningDirectoryItem[];
   /** After the next two, starting in the same calendar year as today. */
   readonly laterThisYear: readonly LearningDirectoryItem[];
@@ -128,7 +135,7 @@ export function splitUpcomingLearning(
   upcoming: readonly LearningDirectoryItem[],
   todayPerth: string,
 ): LearningUpcomingSections {
-  const next = upcoming.filter((item) => item.startsOn !== null).slice(0, 2);
+  const next = upcoming.filter((item) => item.startsOn !== null && !item.cancelled).slice(0, 2);
   const rest = upcoming.filter((item) => !next.includes(item));
   const thisYear = todayPerth.slice(0, 4);
   // Something already running (it started before today, perhaps last year) belongs with this year.
