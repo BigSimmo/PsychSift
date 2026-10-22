@@ -339,6 +339,7 @@
     "20261021150000_rollback_document_index_generation.sql": "49dad54b0e64c59d1a11d1ee959ab39a14bd45dd91abce27981472b2460afd9d",
     "20261021160000_image_caption_cache_identity_unique.sql": "bcdf9077bec169328a17ef50b4ace9b1e49ada573f3d1171cc1e376299082994",
     "20261021170000_restore_generation_metadata_on_rollback.sql": "12810fe1aa0c885f98db65a99cc2503f425bc7fadbb4bd92aa155f4a41dee848",
+    "20261021180000_schema_drift_snapshot_literal_safe_comments.sql": "3fed30c02217c89f4ae90931bc0179387adf3b7d957e80418e9f0bc481fb0e84",
     "20261021190000_teaching_epa_magic_links.sql": "e211838e949ffbe8283ee82f6c79e96777e2254006c192df1688796712c6e139"
   }
 }
