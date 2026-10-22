@@ -451,7 +451,7 @@ function GuidanceDifferenceLine({
           document_id: difference.documentId,
           page_number: difference.page,
         })}
-        className="font-medium text-[color:var(--text-heading)] underline decoration-[color:var(--border-strong)] decoration-1 underline-offset-2 hover:decoration-current focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
+        className="font-medium text-[color:var(--text-heading)] underline decoration-[color:var(--border-strong)] decoration-1 underline-offset-[3px] hover:decoration-current focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
       >
         {label}
       </Link>
