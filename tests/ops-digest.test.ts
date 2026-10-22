@@ -43,10 +43,10 @@ describe("ops digest workflow contract", () => {
     expect(workflow).toContain("ops-digest-rpc-history");
     // Assignment subscribes the owner; the @mention below is what GitHub mobile pushes to the phone.
     expect(workflow).toContain("github.rest.issues.addAssignees");
-    // A scheduled outage (unreachable, degraded or unknown status) must reach the phone too.
-    expect(workflow).toContain(
-      '(context.eventName === "schedule" && (severity === "warning" || severity === "page" || status !== "ok"))',
-    );
+    // Owner decision 2026-10-21: only a page-level breach pushes straight away. Warnings and a
+    // degraded or unknown service wait for the daily health summary.
+    expect(workflow).toContain('(context.eventName === "schedule" && severity === "page")');
+    expect(workflow).not.toContain('severity === "warning" || severity === "page"');
     // The rolling issue is reused, so the mention, not the assignment, pushes every later alert.
     expect(workflow).toContain("body: `@${alertAssignee} ⚠ Attention");
     expect(workflow.indexOf("await assignAlert(issueNumber);")).toBeGreaterThan(

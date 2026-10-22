@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "3d3374d8-c284-4d8e-995e-abc4df0210ed",
+  "createdOn": "2026-10-21",
+  "action": "done",
+  "payload": {
+    "id": "#JYH1FH",
+    "outcome": "Closed 2026-10-21 as a duplicate of #46VNY9, which tracks the repair of the same 1,935 Locally reviewed labels after the owner confirmed on 2026-09-26 they came from a bulk import (owner asked to close duplicates, 21 Oct 2026).",
+    "baseRowFingerprint": "2e05948420602f8a97d4522dad22ce71894d7bf634c266ce89570872a1ddf780",
+    "targetUlid": "01M3D03AE8JYH1FHEZKZNGGVDR"
+  }
+}

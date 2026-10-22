@@ -1,0 +1,124 @@
+# Daily health summary (owner decision 2026-10-21,
+# docs/decisions/2026-10-21-one-daily-health-summary.md).
+#
+# One rolling issue, refreshed at 7 am Perth time every day, with one @mention, so the owner's
+# phone gets one push a day instead of a push from every monitor. The monitors keep running and
+# keep their own labelled issues for detail; this workflow only reads their latest runs and
+# issues (scripts/lib/daily-health-summary.mjs). Only two alerts still push straight away: the
+# live domain monitor opening a failure issue, and the ops digest reaching page level.
+#
+# Reads only. No provider calls, no reruns and no database access. The repository is public, so
+# the summary carries statuses, counts and links, never error or query text.
+
+name: Daily health summary
+
+on:
+  schedule:
+    # 23:00 UTC is 7:00 in Perth (AWST, no daylight saving).
+    - cron: "0 23 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: daily-health-summary
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  summary:
+    name: Publish the daily health summary
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build and publish the summary
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          # For the answer quality and answer speed lines
+          # (scripts/lib/daily-health-summary-answer-lines.mjs).
+          GITHUB_TOKEN: ${{ github.token }}
+          PROD_HEALTH_URL: ${{ vars.PROD_HEALTH_URL }}
+          HEALTH_DEEP_PROBE_SECRET: ${{ secrets.HEALTH_DEEP_PROBE_SECRET }}
+        with:
+          script: |
+            const { pathToFileURL } = require("node:url");
+            const workspace = process.env.GITHUB_WORKSPACE;
+            const summary = await import(pathToFileURL(`${workspace}/scripts/lib/daily-health-summary.mjs`).href);
+            const answerLineModule = await import(
+              pathToFileURL(`${workspace}/scripts/lib/daily-health-summary-answer-lines.mjs`).href
+            );
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const now = new Date().toISOString();
+            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+
+            const assessments = await summary.collectAssessments({ github, owner, repo, now });
+            // An answer line that throws must not cost the rest of the summary.
+            async function answerLine(name) {
+              try {
+                return await answerLineModule[name]({ github, owner, repo, env: process.env, now });
+              } catch (error) {
+                core.warning(`${name} failed: ${error.message}`);
+                return null;
+              }
+            }
+            const answerLines = {
+              quality: await answerLine("answerQualityLine"),
+              speed: await answerLine("answerSpeedLine"),
+            };
+            const { weekday } = summary.perthDate(now);
+            const mondayReports = weekday === "Monday" ? await summary.collectMondayReports({ github, owner, repo }) : [];
+            const { overall, body } = summary.renderDailyHealthSummary({
+              now,
+              assessments,
+              answerLines,
+              mondayReports,
+              runUrl,
+            });
+
+            // The one push a day. The issue is reused, so the @mention in the comment is what reaches
+            // the phone; assignment pushes only once, when the issue is first opened.
+            const alertAssignee = owner;
+            const { data: open } = await github.rest.issues.listForRepo({
+              owner,
+              repo,
+              state: "open",
+              labels: summary.SUMMARY_LABEL,
+            });
+            const existing = open.find((issue) => String(issue.body ?? "").includes(summary.SUMMARY_MARKER));
+            let issueNumber;
+            if (existing) {
+              issueNumber = existing.number;
+              await github.rest.issues.update({ owner, repo, issue_number: issueNumber, body });
+            } else {
+              const created = await github.rest.issues.create({
+                owner,
+                repo,
+                title: summary.SUMMARY_TITLE,
+                labels: [summary.SUMMARY_LABEL],
+                body,
+              });
+              issueNumber = created.data.number;
+              try {
+                await github.rest.issues.addAssignees({ owner, repo, issue_number: issueNumber, assignees: [alertAssignee] });
+              } catch (error) {
+                core.warning(`Could not assign @${alertAssignee} to #${issueNumber}: ${error.message}`);
+              }
+            }
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: issueNumber,
+              body: `@${alertAssignee}\n\n${body}`,
+            });
+            await core.summary.addRaw(body).write();
+            core.info(`Daily health summary is ${overall}; posted to #${issueNumber}.`);

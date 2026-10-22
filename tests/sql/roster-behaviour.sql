@@ -575,7 +575,7 @@ begin
 end $open_post_once$;
 
 -- A swap that would approve itself but breaks a team rule waits for the manager instead
--- (20261021175500_roster_swap_accept_for_manager.sql). The app judges the rule; this checks the routing.
+-- (20261022010000_roster_swap_accept_for_manager.sql). The app judges the rule; this checks the routing.
 do $swap_to_manager$
 declare
   d date := (now() at time zone 'Australia/Perth')::date + 300;

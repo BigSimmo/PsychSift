@@ -3538,7 +3538,10 @@ begin
     'functions', coalesce((
       select jsonb_agg(jsonb_build_object(
         'signature', p.oid::regprocedure::text,
-        'def_hash', md5(regexp_replace(regexp_replace(regexp_replace(pg_get_functiondef(p.oid), '/\*.*?\*/', '', 'gs'), '--[^\n]*', '', 'g'), '\s+', '', 'g')),
+        -- A '--' starts a line comment only where the text before it on that line holds no
+        -- open quote, so a '--' inside a '...' or "..." value (a URL such as
+        -- Next-Step---Drug-..., a Markdown '| --- |' row) is hashed as content.
+        'def_hash', md5(regexp_replace(regexp_replace(regexp_replace(pg_get_functiondef(p.oid), '/\*.*?\*/', '', 'gs'), '(^|\n)((?:[^''"\n-]|-(?!-)|''[^''\n]*''|"[^"\n]*")*)--[^\n]*', '\1\2', 'g'), '\s+', '', 'g')),
         'acl', (select array_agg(a.item::text order by a.item::text) from unnest(coalesce(p.proacl, acldefault('f', p.proowner))) a(item))
       ) order by p.oid::regprocedure::text)
       from pg_proc p
@@ -27458,7 +27461,7 @@ revoke all on function public.roster_open_withdraw(uuid, uuid, uuid) from public
 grant execute on function public.roster_open_withdraw(uuid, uuid, uuid) to service_role;
 
 -- A swap that would approve itself but breaks a team rule waits for the manager
--- (20261021175500_roster_swap_accept_for_manager.sql). roster_command is unchanged.
+-- (20261022010000_roster_swap_accept_for_manager.sql). roster_command is unchanged.
 create function public.roster_swap_accept_for_manager(p_actor_id uuid, p_service_id uuid, p_swap_id uuid)
 returns jsonb language plpgsql security invoker set search_path = public, pg_catalog, pg_temp as $$
 declare

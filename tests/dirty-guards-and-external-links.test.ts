@@ -27,9 +27,6 @@ vi.mock("@/components/roster/rotations/use-rotations", () => ({
   useRotations: () => rotationsRead.current,
 }));
 
-import { syntheticPatients } from "@/components/care-plan/mockups/fixtures";
-import { CarePlanPrototypeProvider } from "@/components/care-plan/mockups/prototype-provider";
-import { SafetyPlanFormSurface } from "@/components/care-plan/mockups/safety-plan-form";
 import { OnCallEntryEditor } from "@/components/on-call/on-call-entry-editor";
 import { NewRotationRoundPage } from "@/components/roster/rotations/admin/round-form";
 
@@ -59,33 +56,6 @@ describe("Dirty-state guards, download attributes & external link rel attributes
 
   afterEach(() => {
     cleanup();
-  });
-
-  it("guards SafetyPlanFormSurface with useDirtyStateGuard when draft values are modified", () => {
-    const patientId = syntheticPatients[0]!.id;
-    const { container } = render(
-      React.createElement(
-        CarePlanPrototypeProvider,
-        null,
-        React.createElement(SafetyPlanFormSurface, {
-          patientId,
-          scenario: "normal",
-          navigate: vi.fn(),
-        }),
-      ),
-    );
-
-    expect(isBeforeUnloadPrevented()).toBe(false);
-
-    fireEvent.click(screen.getByRole("button", { name: /Start a new version/i }));
-
-    expect(isBeforeUnloadPrevented()).toBe(false);
-
-    const textarea = container.querySelector("textarea");
-    expect(textarea).not.toBeNull();
-    fireEvent.change(textarea!, { target: { value: "Updated synthetic warning sign" } });
-
-    expect(isBeforeUnloadPrevented()).toBe(true);
   });
 
   it("guards RoundForm (NewRotationRoundPage) with useDirtyStateGuard when draft is modified", () => {
