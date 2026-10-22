@@ -75,6 +75,10 @@ describe("source watch: what counts as a change", () => {
     );
     expect(reskinned).toBe(before);
     expect(normaliseHtml("<p>Give 10 mg.</p>")).not.toBe(normaliseHtml("<p>Give 5 mg.</p>"));
+    // An encoded comparator is clinical meaning, not markup.
+    expect(normaliseHtml("<p>Stop if eGFR &lt;30.</p>")).not.toBe(normaliseHtml("<p>Stop if eGFR &gt;30.</p>"));
+    expect(normaliseHtml("<p>Level &#8805;0.8</p>")).not.toBe(normaliseHtml("<p>Level &#8804;0.8</p>"));
+    expect(normaliseHtml("<p>Give&nbsp;5&#160;mg &amp; review</p>")).toBe("Give 5 mg & review");
     expect(normaliseHtml("<p>Reviewed 2026-03-03 at 10:15 am</p>")).toBe(
       normaliseHtml("<p>Reviewed 2026-10-21 at 9:00 pm</p>"),
     );

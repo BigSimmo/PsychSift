@@ -103,6 +103,37 @@ export function watchedSources(records: readonly RegisterRecord[]): WatchedSourc
     });
 }
 
+// Clinical wording carries meaning in its symbols (`&lt;5 mg` against `&gt;5 mg`), so an
+// entity is decoded to its character rather than blanked. An unknown name stays as written,
+// so a change to it is still a change.
+const NAMED_ENTITIES: Readonly<Record<string, string>> = {
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  le: "≤",
+  ge: "≥",
+  quot: '"',
+  apos: "'",
+  nbsp: " ",
+  plusmn: "±",
+  micro: "µ",
+  deg: "°",
+  times: "×",
+  ndash: "–",
+  mdash: "—",
+};
+
+function decodeEntity(entity: string, body: string): string {
+  if (body.startsWith("#")) {
+    const codePoint = /^#x/i.test(body) ? Number.parseInt(body.slice(2), 16) : Number.parseInt(body.slice(1), 10);
+    if (codePoint === 0xa0) return " ";
+    return Number.isInteger(codePoint) && codePoint > 0 && codePoint <= 0x10ffff
+      ? String.fromCodePoint(codePoint)
+      : entity;
+  }
+  return Object.hasOwn(NAMED_ENTITIES, body.toLowerCase()) ? NAMED_ENTITIES[body.toLowerCase()] : entity;
+}
+
 /**
  * The readable text of an HTML page, so a rotated script bundle, a tracking token or
  * a re-indented template is not reported as a change. Dates and times are blanked
@@ -114,8 +145,7 @@ export function normaliseHtml(html: string): string {
     .replace(/<(script|style|noscript|svg|iframe|template)\b[\s\S]*?<\/\1\s*>/gi, " ")
     .replace(/<(head|header|footer|nav)\b[\s\S]*?<\/\1\s*>/gi, " ")
     .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;|&#160;/gi, " ")
-    .replace(/&[a-z0-9#]+;/gi, " ")
+    .replace(/&(#x[0-9a-f]+|#\d+|[a-z][a-z0-9]*);/gi, decodeEntity)
     .replace(
       /\b\d{1,2}(?:st|nd|rd|th)?\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?,?\s+\d{4}\b/gi,
       "<date>",

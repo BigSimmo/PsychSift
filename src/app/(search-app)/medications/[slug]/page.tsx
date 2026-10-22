@@ -59,13 +59,10 @@ export default async function MedicationPage({ params }: MedicationPageProps) {
   // confirmed change to any source the record cites (signed off or only proposed) makes
   // it due now. The page is prerendered, so only the inputs are passed: the notice works
   // the schedule out in the browser on the day it is read. Owner-only slugs have no
-  // snapshot record, so no schedule is stated.
+  // snapshot record, so their schedule waits for the live record's own date.
+  const citedSourceIds = Object.hasOwn(medicationSourceLinkIds, slug) ? medicationSourceLinkIds[slug] : [];
   const reviewInput: ContentReviewScheduleInput | undefined = fallbackGovernance
-    ? {
-        kind: "medication",
-        lastReviewedAt: fallbackGovernance.sourceCheckedAt,
-        citedSourceIds: Object.hasOwn(medicationSourceLinkIds, slug) ? medicationSourceLinkIds[slug] : [],
-      }
+    ? { kind: "medication", lastReviewedAt: fallbackGovernance.sourceCheckedAt, citedSourceIds }
     : undefined;
 
   // Only owner-confirmed source links reach the page; until a record is signed off this is empty.
@@ -76,6 +73,7 @@ export default async function MedicationPage({ params }: MedicationPageProps) {
       fallbackGovernance={fallbackGovernance}
       sourceLinks={medicationSourceLinks(slug)}
       reviewInput={reviewInput}
+      citedSourceIds={citedSourceIds}
     />
   );
 }

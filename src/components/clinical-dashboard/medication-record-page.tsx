@@ -654,15 +654,18 @@ export function MedicationRecordPage({
   fallbackRecord,
   fallbackGovernance,
   sourceLinks = [],
-  reviewInput,
+  reviewInput: fallbackReviewInput,
+  citedSourceIds = [],
 }: {
   slug: string;
   fallbackRecord?: MedicationRecord;
   fallbackGovernance?: MedicationGovernance;
   /** Owner-confirmed source links, resolved server-side (`medicationSourceLinks`). */
   sourceLinks?: readonly MedicationSourceLink[];
-  /** The record's review schedule, worked out server-side from its snapshot source date. */
+  /** The review schedule inputs from the snapshot record, used until the live record arrives. */
   reviewInput?: ContentReviewScheduleInput;
+  /** Register ids of the sources this record cites, so a confirmed change makes it due now. */
+  citedSourceIds?: readonly string[];
 }) {
   const { data, loading, error, notFound, retry } = useMedicationDetail(slug);
   // Content-first: render the SSR fallback immediately, then swap in the live
@@ -674,6 +677,12 @@ export function MedicationRecordPage({
   // flight. A failed request means the authoritative status is unknown, so
   // don't keep presenting the fixture-derived guess as if it were confirmed.
   const governance = data?.governance ?? (error ? undefined : fallbackGovernance);
+  // The review date follows the record on screen: once the live record arrives its own
+  // source-check date counts (the same date the "Source check due" chip reads), and
+  // owner-only records, which have no snapshot, get a schedule too.
+  const reviewInput: ContentReviewScheduleInput | undefined = data?.governance
+    ? { kind: "medication", lastReviewedAt: data.governance.sourceCheckedAt ?? null, citedSourceIds }
+    : fallbackReviewInput;
   // Owned here rather than in `MedicationRecordDetail` so the shared header —
   // which sits above the shell — can drive it. The record can swap underneath
   // (SSR fallback → live), and every record offers the same four tabs, so the
