@@ -4584,6 +4584,49 @@ describe("private document API access", () => {
     expect(client.storageMocks.storageFrom).toHaveBeenCalledWith("clinical-images");
     expect(client.storageMocks.remove).toHaveBeenCalledWith([sourcePath]);
     expect(client.storageMocks.remove).toHaveBeenCalledWith([imagePath]);
+    // #3730: the document's cached image captions are deleted with it, scoped to the owner.
+    const captionCacheDelete = client.calls.find(
+      (call) => call.table === "image_caption_cache" && call.operation === "delete",
+    );
+    expect(captionCacheDelete?.filters).toEqual([
+      { column: "owner_id", value: userId },
+      { column: "metadata->>document_id", value: documentId },
+    ]);
+  });
+
+  it("reports a failed caption-cache delete without failing the storage clean-up (#3730)", async () => {
+    const client = createSupabaseMock((call) => {
+      if (call.table === "storage_cleanup_jobs" && call.operation === "update") return ok([]);
+      if (call.table === "image_caption_cache" && call.operation === "delete") return fail("cache delete refused");
+      return ok([]);
+    });
+    client.rpc.mockImplementation(async (name: string) =>
+      name === "delete_document_if_idle"
+        ? ok({
+            outcome: "deleted",
+            cleanup_job_id: "55555555-5555-4555-8555-555555555555",
+            document_title: "Owned",
+            source_path: null,
+            image_paths: [],
+          })
+        : ok([]),
+    );
+    mockRuntime(client);
+    const { DELETE } = await import("../src/app/api/documents/[id]/route");
+
+    const response = await DELETE(authenticatedRequest(`/api/documents/${documentId}`, { method: "DELETE" }), {
+      params: Promise.resolve({ id: documentId }),
+    });
+    const cleanupUpdate = client.calls.find(
+      (call) => call.table === "storage_cleanup_jobs" && call.operation === "update",
+    );
+
+    expect(response.status).toBe(200);
+    expect(await payload(response)).toMatchObject({
+      deleted: true,
+      storageWarnings: ["Cached image captions: cache delete refused"],
+    });
+    expect(cleanupUpdate?.updatePayload).toMatchObject({ status: "completed" });
   });
 
   it("refuses permanent delete without a recent multi-factor sign-in (audit F-12)", async () => {
