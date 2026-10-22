@@ -1,10 +1,25 @@
+import { excludeSupersededEvidence } from "@/lib/rag/superseded-evidence";
 import { committedIndexGeneration } from "@/lib/reindex-pipeline";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { RagAnswer, SearchResult } from "@/lib/types";
 
 function throwIfAborted(signal?: AbortSignal) {
   if (signal?.aborted) {
     throw signal.reason ?? new DOMException("The operation was aborted.", "AbortError");
   }
+}
+
+/**
+ * The refusal for a document that cannot be summarised, or null when it can. A superseded document
+ * is never used as evidence, including when it is summarised directly (#BFCTST).
+ */
+export function documentSummaryUnavailableAnswer(results: SearchResult[]): RagAnswer | null {
+  const answer = !results.length
+    ? "This document has not been indexed yet, so no summary can be generated."
+    : excludeSupersededEvidence(results).length === 0
+      ? "This document is marked as superseded, so it is not summarised as clinical guidance. Use its current replacement instead."
+      : null;
+  return answer ? { answer, grounded: false, confidence: "unsupported", citations: [], sources: [] } : null;
 }
 
 export async function loadDocumentSummaryContext(documentId: string, ownerId?: string, signal?: AbortSignal) {

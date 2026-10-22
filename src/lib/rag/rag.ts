@@ -24,7 +24,11 @@ import { withRagProgrammeRollout, answerContractForRollout, adaptiveAnswerRender
 import { loadReviewedPolicyRequest } from "@/lib/rag/rag-reviewed-policy-input";
 import { createGenerationDegradationRecorder } from "@/lib/rag/rag-generation-degradation";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { loadDocumentSummaryContext, sanitizeUnsupportedSummaryAnswer } from "@/lib/rag/rag-document-summary-context";
+import {
+  documentSummaryUnavailableAnswer,
+  loadDocumentSummaryContext,
+  sanitizeUnsupportedSummaryAnswer,
+} from "@/lib/rag/rag-document-summary-context";
 import { generationFailureDetailToken } from "@/lib/rag/rag-generation-failure-diagnostics";
 import { answerLatencyMetadata, answerScopedEvidenceMetadata } from "@/lib/rag/rag-answer-telemetry-metadata";
 import { assertRetrievalRows, buildDocumentSummaryResults } from "@/lib/rag/rag-row-contracts";
@@ -4284,34 +4288,9 @@ export async function summarizeDocument(
   options?: { signal?: AbortSignal; observationContext?: import("@/lib/rag/rag-contracts").RagObservationContext },
 ) {
   const { document, chunks } = await loadDocumentSummaryContext(documentId, ownerId, options?.signal);
-  if (!chunks.length) {
-    return observeRagAnswer(
-      {
-        answer: "This document has not been indexed yet, so no summary can be generated.",
-        grounded: false,
-        confidence: "unsupported",
-        citations: [],
-        sources: [],
-      } satisfies RagAnswer,
-      options?.observationContext,
-    );
-  }
-
   const results = buildDocumentSummaryResults(chunks, document);
-  // A superseded document is never used as evidence, including when it is summarised directly (#BFCTST).
-  if (excludeSupersededEvidence(results).length === 0) {
-    return observeRagAnswer(
-      {
-        answer:
-          "This document is marked as superseded, so it is not summarised as clinical guidance. Use its current replacement instead.",
-        grounded: false,
-        confidence: "unsupported",
-        citations: [],
-        sources: [],
-      } satisfies RagAnswer,
-      options?.observationContext,
-    );
-  }
+  const unavailableAnswer = documentSummaryUnavailableAnswer(results);
+  if (unavailableAnswer) return observeRagAnswer(unavailableAnswer, options?.observationContext);
 
   const summaryInstructions = `Summarize a clinical document for practical psychiatric use in Perth, Australia.
 Use only the excerpts provided. Use a layered response: make the answer field a plain high-yield clinical paragraph,
