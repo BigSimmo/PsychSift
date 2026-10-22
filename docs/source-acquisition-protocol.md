@@ -56,7 +56,9 @@ One record per source, whether or not you end up using it.
 Record dates exactly as the publisher prints them. Where only a year or month is published,
 record the first of January or the first of the month and set `datePrecision` accordingly, so
 `2020-01-01` is never mistaken for a real publication day. **Never infer a date.** A source
-whose date cannot be established is a rejection with a reason, not a guess.
+whose date cannot be established is a rejection with a reason, not a guess. The one exception is the
+TGA Product Information search, which carries no date by design under
+`dateModel: "live_product_information"` ([owner decision, 2026-10-22](decisions/2026-10-22-tga-pi-live-search-source.md)).
 
 ### Dispositions
 

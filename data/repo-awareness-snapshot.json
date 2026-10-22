@@ -3789,6 +3789,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-22-tga-pi-live-search-source.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/error-tracking.md",
         "section": "root",
         "catalogued": true

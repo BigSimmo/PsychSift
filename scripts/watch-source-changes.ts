@@ -64,6 +64,7 @@ type RegisterRecord = {
   jurisdiction: string;
   canonicalUrl: string | null;
   disposition: string;
+  dateModel?: string;
 };
 
 /**
@@ -77,13 +78,17 @@ export function jurisdictionRank(jurisdiction: string): 0 | 1 | 2 | null {
   return null;
 }
 
-/** Every unrejected register source with a public https address, Western Australian first, UK last. */
+/** Every unrejected register source with a public https address, Western Australian first, UK last, except the TGA PI search. */
 export function watchedSources(records: readonly RegisterRecord[]): WatchedSource[] {
   const seen = new Set<string>();
   return records
     .flatMap((record) => {
       const rank = jurisdictionRank(record.jurisdiction);
       if (rank === null || record.disposition === "rejected" || !record.canonicalUrl) return [];
+      // The TGA PI search lives on www.ebs.tga.gov.au, whose robots.txt disallows all
+      // automated retrieval, so the watch never fetches it (owner decision 2026-10-22,
+      // docs/decisions/2026-10-22-tga-pi-live-search-source.md).
+      if (record.dateModel === "live_product_information") return [];
       if (!/^https:\/\//i.test(record.canonicalUrl)) return [];
       return [{ rank, source: { ...record, url: record.canonicalUrl } }];
     })
