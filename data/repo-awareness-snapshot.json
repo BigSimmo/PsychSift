@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-21"
+    "committed_at": "2026-10-22"
   },
   "routes": {
     "modes": [
@@ -3761,6 +3761,11 @@
       {
         "path": "docs/superpowers/rag-upgrade/cloud/plans/2026-08-21-trusted-admin-document-ingestion.md",
         "section": "superpowers",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-22-tga-pi-live-search-source.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
