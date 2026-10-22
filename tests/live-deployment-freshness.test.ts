@@ -155,6 +155,56 @@ describe("live deployment freshness", () => {
     expect(assess(docsOnly, LIVE, 12, []).code, "no patterns means no filtering").toBe("stranded");
   });
 
+  /**
+   * Review of #3761: production legitimately sits behind old docs-only merges. When an app change
+   * then lands minutes before the probe, its age must not be taken from the docs merge underneath.
+   */
+  it("dates the lag from the first landed change that touches a watched file", () => {
+    const docsMerge = linked("b".repeat(40), "2026-09-12T10:00:00Z", [LIVE]);
+    const appMerge = linked("c".repeat(40), "2026-09-14T09:55:00Z", [docsMerge.sha]);
+    const compare = {
+      status: "ahead",
+      ahead_by: 2,
+      commits: [docsMerge, appMerge],
+      files: [{ filename: "docs/a.md" }, { filename: "src/app/page.tsx" }],
+    };
+    const commitFiles = new Map([
+      [docsMerge.sha, ["docs/a.md"]],
+      [appMerge.sha, ["src/app/page.tsx"]],
+    ]);
+    const result = assessDeploymentFreshness({
+      liveSha: LIVE,
+      compare,
+      nowMs: NOW,
+      maxLagHours: 12,
+      watchPatterns: APP_WATCH_PATTERNS,
+      commitFiles,
+    } as never);
+
+    expect(result.ok).toBe(true);
+    expect(result.code).toBe("shipping");
+    expect(result.lagHours).toBeCloseTo(1 / 12, 5);
+  });
+
+  it("counts a landed commit with unknown or cut-short files as watched, so it can only over-report", () => {
+    const docsMerge = linked("b".repeat(40), "2026-09-12T10:00:00Z", [LIVE]);
+    const appMerge = linked("c".repeat(40), "2026-09-14T09:55:00Z", [docsMerge.sha]);
+    const compare = { status: "ahead", ahead_by: 2, commits: [docsMerge, appMerge], files: [{ filename: "src/x.ts" }] };
+    const run = (commitFiles: Map<string, string[]>) =>
+      assessDeploymentFreshness({
+        liveSha: LIVE,
+        compare,
+        nowMs: NOW,
+        maxLagHours: 12,
+        watchPatterns: APP_WATCH_PATTERNS,
+        commitFiles,
+      } as never);
+
+    expect(run(new Map()).code, "lookup failed on the first commit").toBe("stranded");
+    const capped = Array.from({ length: 300 }, (_, i) => `docs/${i}.md`);
+    expect(run(new Map([[docsMerge.sha, capped]])).code, "file list may be cut short").toBe("stranded");
+  });
+
   it("matches Railway watch patterns, including root anchors, globstars and exclusions", () => {
     expect(matchesWatchPatterns("src/app/page.tsx", APP_WATCH_PATTERNS)).toBe(true);
     expect(matchesWatchPatterns("Dockerfile", APP_WATCH_PATTERNS)).toBe(true);

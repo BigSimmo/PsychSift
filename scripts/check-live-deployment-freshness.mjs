@@ -35,7 +35,10 @@
  *      rebuilt from the comparison.
  *   2. A comparison that touches nothing the app service watches (`railway.app.json`
  *      `build.watchPatterns`) has nothing to ship. Railway answers those pushes "No deployment
- *      needed", so the live commit legitimately stays behind `main`.
+ *      needed", so the live commit legitimately stays behind `main`. For the same reason the age
+ *      runs from the first landed change that touches a watched file: docs-only merges sitting
+ *      unshipped before it are not an outage, and dating from them raised a false alarm the moment
+ *      an app change landed on top of them.
  *
  * Needs no secret. `/api/health` reports `deploymentCommitSha` to any anonymous caller, in keeping
  * with the calling workflow's no-secrets contract, and the compare API read is a public repository
@@ -50,6 +53,9 @@ import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 const MS_PER_HOUR = 3_600_000;
 // GitHub's compare API lists at most 300 changed files; a list that long may be cut short.
 const COMPARE_FILE_LIMIT = 300;
+// Per-commit file lookups the CLI makes while looking for the first watched change. Past this,
+// the age falls back to the first landed change, which can only over-report.
+const COMMIT_FILE_LOOKUPS = 40;
 
 function patternToRegExp(pattern) {
   const body = pattern
@@ -78,7 +84,7 @@ export function matchesWatchPatterns(file, patterns) {
  * first parents back from the branch head. Returns null when the comparison cannot support the
  * walk (truncated list, or no parent data), so the caller falls back to the listed order.
  */
-function firstParentChain(compare) {
+export function firstParentChain(compare) {
   const commits = Array.isArray(compare.commits) ? compare.commits : [];
   if (commits.length === 0) return null;
   if (typeof compare.ahead_by === "number" && compare.ahead_by > commits.length) return null;
@@ -97,6 +103,12 @@ function firstParentChain(compare) {
 
 const commitDate = (entry) => entry?.commit?.committer?.date ?? entry?.commit?.author?.date;
 
+/** A commit whose file list is unknown or may be cut short counts as watched, so the check fails closed. */
+export function touchesWatchedFile(files, patterns) {
+  if (!Array.isArray(files) || files.length >= COMPARE_FILE_LIMIT) return true;
+  return files.some((file) => matchesWatchPatterns(file, patterns));
+}
+
 /**
  * @param {object} input
  * @param {string|null|undefined} input.liveSha    `deploymentCommitSha` from /api/health
@@ -104,8 +116,9 @@ const commitDate = (entry) => entry?.commit?.committer?.date ?? entry?.commit?.a
  * @param {number} input.nowMs
  * @param {number} input.maxLagHours
  * @param {string[]} [input.watchPatterns]   the app service's Railway watch patterns, if known
+ * @param {Map<string, string[]>} [input.commitFiles]  files each landed commit changed, by sha
  */
-export function assessDeploymentFreshness({ liveSha, compare, nowMs, maxLagHours, watchPatterns }) {
+export function assessDeploymentFreshness({ liveSha, compare, nowMs, maxLagHours, watchPatterns, commitFiles }) {
   if (!liveSha) {
     return {
       ok: false,
@@ -151,10 +164,15 @@ export function assessDeploymentFreshness({ liveSha, compare, nowMs, maxLagHours
 
   // The first change to land on the branch after the live commit, dated by when it landed. Its age
   // is how long deploys have been failing to land — the number that does not reset when more work
-  // lands on top. Without a usable first-parent chain, fall back to the oldest listed commit
-  // (`compare` lists the branch-only commits oldest first).
+  // lands on top. When the files each landed commit changed are known, start from the first one
+  // that touches a watched file. Without a usable first-parent chain, fall back to the oldest
+  // listed commit (`compare` lists the branch-only commits oldest first).
   const chain = firstParentChain(compare);
-  const oldest = chain ? chain[0] : compare.commits?.[0];
+  const firstWatched =
+    chain && commitFiles instanceof Map && Array.isArray(watchPatterns) && watchPatterns.length > 0
+      ? chain.find((entry) => touchesWatchedFile(commitFiles.get(entry.sha), watchPatterns))
+      : undefined;
+  const oldest = firstWatched ?? (chain ? chain[0] : compare.commits?.[0]);
   const oldestAt = commitDate(oldest);
   if (!oldestAt) {
     return {
@@ -207,7 +225,26 @@ async function main() {
     compare = response.ok ? await response.json() : { status: "unknown" };
   }
 
-  const result = assessDeploymentFreshness({ liveSha, compare, nowMs: Date.now(), maxLagHours, watchPatterns });
+  // The files each landed commit changed, oldest first, until the first one the app service
+  // watches. A failed lookup stops the walk, and the assessment then treats that commit as watched.
+  const commitFiles = new Map();
+  const chain = compare?.status === "ahead" && watchPatterns.length > 0 ? firstParentChain(compare) : null;
+  for (const entry of (chain ?? []).slice(0, COMMIT_FILE_LOOKUPS)) {
+    const response = await fetch(`https://api.github.com/repos/${repo}/commits/${entry.sha}`, { headers });
+    if (!response.ok) break;
+    const files = ((await response.json())?.files ?? []).map((file) => file.filename);
+    commitFiles.set(entry.sha, files);
+    if (touchesWatchedFile(files, watchPatterns)) break;
+  }
+
+  const result = assessDeploymentFreshness({
+    liveSha,
+    compare,
+    nowMs: Date.now(),
+    maxLagHours,
+    watchPatterns,
+    commitFiles,
+  });
   if (result.ok) {
     console.log(result.message);
     return;
