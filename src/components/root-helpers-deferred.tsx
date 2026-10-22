@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { startEarlyInstallPromptCapture } from "@/lib/pwa-early-install-prompt";
+import { startEarlyInstallPromptCapture, watchForAppShell } from "@/lib/pwa-early-install-prompt";
 
 /*
  * Root-layout helpers that draw nothing at rest: the PWA lifecycle notices (offline /
@@ -11,6 +11,7 @@ import { startEarlyInstallPromptCapture } from "@/lib/pwa-early-install-prompt";
  * so it is not lost while the lifecycle chunk downloads.
  */
 startEarlyInstallPromptCapture();
+watchForAppShell("#main-content");
 export const PwaLifecycleDeferred = dynamic(() => import("@/components/pwa-lifecycle").then((m) => m.PwaLifecycle), {
   ssr: false,
 });

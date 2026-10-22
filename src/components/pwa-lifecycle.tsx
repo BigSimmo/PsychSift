@@ -18,7 +18,12 @@ import { Suspense, useEffect, useRef, useState, useSyncExternalStore } from "rea
 import "@/components/pwa-offline-line.css";
 
 import { BrandMark } from "@/components/clinical-dashboard/brand";
-import { takeEarlyInstallPrompt } from "@/lib/pwa-early-install-prompt";
+import {
+  hasAppShellBeenSeen,
+  restoreEarlyInstallPrompt,
+  scheduleIdleTask,
+  takeEarlyInstallPrompt,
+} from "@/lib/pwa-early-install-prompt";
 import { BRAND_INSTALL_TAGLINE, BRAND_NAME } from "@/lib/brand";
 import { createBrowserStore } from "@/lib/client-store-factory";
 import type { savedLine as SavedLine } from "@/lib/offline-line";
@@ -257,6 +262,8 @@ function appShellReadySnapshot(): boolean {
     appShellHasEverMounted = true;
     return true;
   }
+  // This module loads lazily, so the eager watcher may have seen the shell first.
+  if (hasAppShellBeenSeen()) appShellHasEverMounted = true;
   // A surface that renders no `#main-content` at all must still get notices, so
   // `load` releases the gate — but ONLY while the shell has never been seen. It
   // deliberately does not release a shell that exists and is momentarily absent:
@@ -453,16 +460,20 @@ export function PwaLifecycle() {
 
     const earlyPrompt = takeEarlyInstallPrompt();
     // Replay a prompt that fired before this lazy chunk loaded (already preventDefault-ed).
-    if (earlyPrompt) {
-      queueMicrotask(() => {
-        if (!isStandaloneDisplay() && !wasInstallRecentlyDismissed()) {
-          setInstallPrompt(earlyPrompt as BeforeInstallPromptEvent);
-        }
-      });
-    }
+    // The card is not urgent: render it in its own idle task rather than inside the
+    // mount task that is still finishing the page's hydration work (mobile TBT).
+    const cancelReplay = earlyPrompt
+      ? scheduleIdleTask(() => {
+          if (!isStandaloneDisplay() && !wasInstallRecentlyDismissed()) {
+            setInstallPrompt(earlyPrompt as BeforeInstallPromptEvent);
+          }
+        })
+      : null;
     window.addEventListener("beforeinstallprompt", handleInstallPrompt);
     window.addEventListener("appinstalled", handleInstalled);
     return () => {
+      // Unmounted before the replay ran: hand the one-shot event back for the next mount.
+      if (cancelReplay?.() && earlyPrompt) restoreEarlyInstallPrompt(earlyPrompt);
       window.removeEventListener("beforeinstallprompt", handleInstallPrompt);
       window.removeEventListener("appinstalled", handleInstalled);
     };

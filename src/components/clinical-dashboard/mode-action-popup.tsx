@@ -635,9 +635,10 @@ export function ModeActionPopup({
     // retrying for a bounded number of frames while focus is still on the trigger.
     let framesLeft = 120;
     const attempt = () => {
-      if (focusActionItem(index)) return;
+      // Never override a focus move the user made while the body was loading.
       const active = document.activeElement;
       if (active && active !== document.body && active !== buttonRef.current) return;
+      if (focusActionItem(index)) return;
       if (--framesLeft > 0) window.requestAnimationFrame(attempt);
     };
     window.requestAnimationFrame(attempt);
