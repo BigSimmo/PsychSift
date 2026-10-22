@@ -16,7 +16,7 @@ vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: mocks.createAdminCli
 vi.mock("@/lib/registered-published-admin-source-plan", () => ({
   createRegisteredPublishedAdminSourcePlanResolver: () => mocks.resolvePlan,
 }));
-vi.mock("../worker/published-admin-source-layout", () => ({
+vi.mock("@/lib/publication/published-admin-layout", () => ({
   createPublishedAdminTextSectionLayoutLoader: () => mocks.readLayout,
 }));
 vi.mock("@/lib/rag/rag-source-block", () => ({
