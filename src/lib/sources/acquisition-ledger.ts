@@ -75,7 +75,39 @@ export type SourceAcquisitionDatePrecision = "day" | "month" | "year";
  * must leave both `publicationDate` and `reviewDate` null; filing the stamp in
  * either would assert an event the publisher never stated, and is rejected.
  */
-export type SourceDateModel = "published" | "continuously_updated" | "last_updated";
+export type SourceDateModel = "published" | "continuously_updated" | "last_updated" | "live_product_information";
+
+/**
+ * `live_product_information` is the TGA's own Product Information search for one
+ * generic name. The search always returns the PI the TGA currently holds, so the
+ * link has no version or date of its own, and the TGA eBS site disallows automated
+ * retrieval, so no agent can read the PI's amendment date either. The owner decided
+ * on 2026-10-22 that this live search is the medication pages' PI source and is
+ * signed once per medicine with no fixed version
+ * (docs/decisions/2026-10-22-tga-pi-live-search-source.md).
+ *
+ * It is narrow on purpose: only a TGA record whose URL is that search may use it,
+ * and it must carry no date at all, so it never asserts an event nobody read.
+ */
+export const LIVE_PRODUCT_INFORMATION_VERSION = "Current TGA-approved Product Information (live search)";
+
+/** True for the TGA eBS Product Information search for one non-empty term, and nothing else. */
+export function isTgaProductInformationSearchUrl(value: string | null): boolean {
+  if (!value) return false;
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return false;
+  }
+  return (
+    url.protocol === "https:" &&
+    url.hostname === "www.ebs.tga.gov.au" &&
+    url.pathname === "/ebs/picmi/picmirepository.nsf/PICMI" &&
+    url.searchParams.get("t") === "pi" &&
+    Boolean(url.searchParams.get("q")?.trim())
+  );
+}
 
 export type SourceAcquisitionRecord = {
   id: string;
@@ -251,6 +283,18 @@ export function acquisitionRecordWarnings(record: SourceAcquisitionRecord): Sour
   return entry ? entry.warnings : [];
 }
 
+/**
+ * The catalogue warnings that count as capture defects for this record. A live
+ * Product Information search carries no date by design (`acquisitionLedgerIssues`
+ * holds it to exactly that shape), so `missing_dates` is expected there.
+ */
+export function acquisitionRecordMetadataDefects(record: SourceAcquisitionRecord): SourceCatalogueWarning[] {
+  const live = record.dateModel === "live_product_information";
+  return acquisitionRecordWarnings(record).filter(
+    (warning) => metadataDefects.has(warning) && !(live && warning === "missing_dates"),
+  );
+}
+
 export function acquisitionRecordGeography(record: SourceAcquisitionRecord): SourceGeographyScope {
   const [entry] = canonicalizeSourceReferences([acquisitionReference(record)]);
   return entry ? entry.geography.scope : "unknown";
@@ -321,6 +365,25 @@ export function acquisitionLedgerIssues(
       );
     }
 
+    const live = record.dateModel === "live_product_information";
+    if (live) {
+      if (record.publisherCode !== "TGA" || !isTgaProductInformationSearchUrl(record.canonicalUrl)) {
+        issues.push(
+          `${id}: dateModel "live_product_information" is only for the TGA Product Information search ` +
+            `(publisherCode TGA, www.ebs.tga.gov.au PICMI search with t=pi and a search term).`,
+        );
+      }
+      if (record.version !== LIVE_PRODUCT_INFORMATION_VERSION) {
+        issues.push(`${id}: a live Product Information search records version "${LIVE_PRODUCT_INFORMATION_VERSION}"`);
+      }
+      if (record.publicationDate || record.reviewDate || record.lastUpdatedDate || record.expiryDate) {
+        issues.push(
+          `${id}: a live Product Information search has no publication, review, update or expiry date; ` +
+            `leave them all null rather than record a date nobody read.`,
+        );
+      }
+    }
+
     // Completeness is required only of sources still in play. Metadata that could
     // not be established is frequently the reason a source was rejected, and a
     // rejection must stay recordable so the ground is not searched again.
@@ -339,7 +402,7 @@ export function acquisitionLedgerIssues(
           ? record.reviewDate
           : record.publicationDate;
 
-      if (!dated) issues.push(`${id}: ${datedField} is required`);
+      if (!dated && !live) issues.push(`${id}: ${datedField} is required`);
       if (continuous && record.publicationDate) {
         issues.push(
           `${id}: a continuously updated source has no publication event. Record the publisher's review ` +
@@ -440,7 +503,7 @@ export function acquisitionLedgerIssues(
     }
 
     if (record.disposition !== "rejected") {
-      const defects = acquisitionRecordWarnings(record).filter((warning) => metadataDefects.has(warning));
+      const defects = acquisitionRecordMetadataDefects(record);
       if (defects.length > 0) {
         issues.push(`${id}: incomplete source metadata (${defects.join(", ")})`);
       }
