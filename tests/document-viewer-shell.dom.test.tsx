@@ -219,6 +219,28 @@ describe("DocumentViewer — shell states", () => {
     expect(fetchMock.mock.calls.some(([input]) => String(input).includes("/search?"))).toBe(false);
   });
 
+  it("honours the demo signed-out preview only for the demo corpus", async () => {
+    authState.status = "authenticated";
+    authState.session = { user: { id: "user-a" } };
+    const { unmount } = render(
+      <DocumentViewer documentId="doc-1" initialPage={1} initialDetail={detailPayload()} demoSignedOutPreview />,
+    );
+    expect(await screen.findByTestId("original-document-sign-in")).toBeVisible();
+    expect(document.getElementById("source-text")).toBeNull();
+    unmount();
+
+    render(
+      <DocumentViewer
+        documentId="doc-1"
+        initialPage={1}
+        initialDetail={{ ...detailPayload(), demoMode: false }}
+        demoSignedOutPreview
+      />,
+    );
+    await screen.findByRole("heading", { level: 1, name: "Clozapine Titration Guideline" });
+    expect(screen.queryByTestId("original-document-sign-in")).toBeNull();
+  });
+
   // Search/answer opens always attach ?chunk=…. Citation landing used to
   // scrollIntoView(#pdf-preview-section) whenever a chunk was present, which
   // skipped the phone overview at the top. Open at the top; the PDF still

@@ -122,12 +122,15 @@ export function DocumentViewer({
   chunkId,
   initialDetail,
   initialError,
+  demoSignedOutPreview = false,
 }: {
   documentId: string;
   initialPage: number;
   chunkId?: string;
   initialDetail?: DocumentDetailPayload;
   initialError?: string;
+  /** `?demoSignedOut=1`: shows the signed-out page for screenshots, demo corpus only. */
+  demoSignedOutPreview?: boolean;
 }) {
   const router = useRouter();
   const { activePage, activeChunkId, navigateToPage } = useDocumentViewerRoute({
@@ -266,8 +269,11 @@ export function DocumentViewer({
   // The original file, its indexed text and in-document search are for signed-in users:
   // the server refuses the signed URL and the search, and returns the title only, to
   // anyone else. A signed-out reader is never sent to ask for them and sees one
-  // sign-in card in their place.
-  const originalsLocked = useClinicalToolAccess() === "sign-in-required";
+  // sign-in card in their place. The demo preview switch is honoured only when the server
+  // served the synthetic demo corpus, so it can never lock or unlock a real document.
+  const clinicalToolAccess = useClinicalToolAccess();
+  const originalsLocked =
+    clinicalToolAccess === "sign-in-required" || (demoSignedOutPreview && initialDetail?.demoMode === true);
   const [serverDemoMode, setServerDemoMode] = useState(
     () => initialDetail?.demoMode ?? process.env.NEXT_PUBLIC_DEMO_MODE === "true",
   );

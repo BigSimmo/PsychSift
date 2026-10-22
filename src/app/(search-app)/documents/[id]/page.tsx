@@ -21,7 +21,7 @@ export default async function DocumentPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ page?: string; chunk?: string }>;
+  searchParams: Promise<{ page?: string; chunk?: string; demoSignedOut?: string }>;
 }) {
   const [{ id }, query] = await Promise.all([params, searchParams]);
   const parsedPage = Number.parseInt(query.page ?? "", 10);
@@ -61,6 +61,7 @@ export default async function DocumentPage({
         chunkId={query.chunk}
         initialDetail={initialDetail}
         initialError={initialError}
+        demoSignedOutPreview={query.demoSignedOut === "1"}
       />
     </>
   );
