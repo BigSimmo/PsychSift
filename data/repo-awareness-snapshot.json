@@ -2337,6 +2337,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-18-normal-merges-and-push-safety.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/archive/2026-10-agent-code-reviews/README_CODE_REVIEW.md",
         "section": "archive",
         "catalogued": true
@@ -2797,6 +2802,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-22-development-governance-scope.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/redesign/m2-atomic-reindex-migration-note.md",
         "section": "redesign",
         "catalogued": true
@@ -2839,6 +2849,11 @@
       {
         "path": "docs/launch-operator-runbook.md",
         "section": "root",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-21-normal-merge-documentation-alignment.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -3319,6 +3334,11 @@
       {
         "path": "docs/decisions/2026-10-20-terms-step-wording-signed-off.md",
         "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/audit/2026-10-21-organisation-remediation.md",
+        "section": "audit",
         "catalogued": true
       },
       {
@@ -4984,6 +5004,11 @@
       {
         "path": "docs/archive/search-rag-pre-phase-2-diff-classification.md",
         "section": "archive",
+        "catalogued": true
+      },
+      {
+        "path": "docs/governance/development-governance-scope.md",
+        "section": "governance",
         "catalogued": true
       },
       {
