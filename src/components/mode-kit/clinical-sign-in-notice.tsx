@@ -34,7 +34,7 @@ export function ClinicalSignInNotice({
         <>
           {copy.body}
           {copy.stillOpen ? <span className="mt-1 block">{copy.stillOpen}</span> : null}
-          <span className="mt-1 block text-xs">{CLINICAL_SIGN_IN_INVITE_NOTE}</span>
+          <span className="mt-1 block">{CLINICAL_SIGN_IN_INVITE_NOTE}</span>
         </>
       }
       onSignedIn={onSignedIn}

@@ -2085,12 +2085,15 @@ a.work-hero:focus-visible {
   height: 0.875rem;
 }
 
+/* Outside a work frame (a clinical sign-in card on a document or library page) the
+   work tokens are not set, so the primary face falls back to the mode colour
+   instead of drawing as bare text. */
 .work-button[data-variant="primary"] {
-  color: var(--work-primary-text);
+  color: var(--work-primary-text, var(--mode-identity-contrast));
 }
 
 .work-button[data-variant="primary"]::before {
-  background: var(--work-primary);
+  background: var(--work-primary, var(--mode-identity));
 }
 
 .work-button[data-variant="secondary"] {

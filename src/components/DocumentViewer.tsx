@@ -1001,6 +1001,7 @@ export function DocumentViewer({
     hasIndexHealth: Boolean(indexHealth),
     pinnedPage: selectedChunk?.page_number ?? null,
     loading: effectiveLoadingDocument,
+    textLocked: originalsLocked,
   });
   const {
     activeId: activeSectionId,
@@ -1300,102 +1301,104 @@ export function DocumentViewer({
                 {!isOnline ? <span className={cn("text-xs font-semibold", textMuted)}>Offline</span> : null}
               </div>
             </section>
-            <div className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-2">
-              <button
-                type="button"
-                onClick={() => openDocumentSearch(documentActionsTriggerRef.current)}
-                aria-expanded={documentSearchOpen}
-                aria-controls={documentSearchOpen ? "document-viewer-search" : undefined}
-                className={cn(secondaryButton, "min-h-14 justify-start gap-3 px-3 text-left text-sm")}
-              >
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]">
-                  <Search aria-hidden="true" className="h-4 w-4" />
-                </span>
-                Search document
-              </button>
-              {loadingSummary ? (
+            {originalsLocked ? null : (
+              <div className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-2">
                 <button
                   type="button"
-                  disabled
-                  title={summarizeTitle}
+                  onClick={() => openDocumentSearch(documentActionsTriggerRef.current)}
+                  aria-expanded={documentSearchOpen}
+                  aria-controls={documentSearchOpen ? "document-viewer-search" : undefined}
                   className={cn(secondaryButton, "min-h-14 justify-start gap-3 px-3 text-left text-sm")}
                 >
                   <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]">
-                    <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
+                    <Search aria-hidden="true" className="h-4 w-4" />
                   </span>
-                  Answering…
+                  Search document
                 </button>
-              ) : (
+                {loadingSummary ? (
+                  <button
+                    type="button"
+                    disabled
+                    title={summarizeTitle}
+                    className={cn(secondaryButton, "min-h-14 justify-start gap-3 px-3 text-left text-sm")}
+                  >
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]">
+                      <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
+                    </span>
+                    Answering…
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={
+                      !canSummarizeDocument
+                        ? ignoreUnavailableActivation
+                        : () => {
+                            setMobileActionsOpen(false);
+                            void summarize();
+                          }
+                    }
+                    aria-disabled={!canSummarizeDocument ? "true" : undefined}
+                    aria-describedby={!canSummarizeDocument ? "document-actions-summarize-reason" : undefined}
+                    title={summarizeTitle}
+                    className={cn(secondaryButton, "min-h-14 justify-start gap-3 px-3 text-left text-sm")}
+                  >
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]">
+                      <Sparkles aria-hidden="true" className="h-4 w-4" />
+                    </span>
+                    {canSummarizeDocument ? "Answer from this" : "Sign in to answer"}
+                  </button>
+                )}
+                {!canSummarizeDocument && !loadingSummary ? (
+                  <span id="document-actions-summarize-reason" className="sr-only">
+                    {summarizeTitle}
+                  </span>
+                ) : null}
+                {signedUrl ? (
+                  <a
+                    href={signedUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={() => setMobileActionsOpen(false)}
+                    className={cn(secondaryButton, "min-h-14 justify-start gap-3 px-3 text-left text-sm")}
+                  >
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--surface-subtle)] text-[color:var(--text-muted)]">
+                      <ExternalLink aria-hidden="true" className="h-4 w-4" />
+                    </span>
+                    {`Open original ${viewerFileKind}`}
+                  </a>
+                ) : (
+                  <a
+                    href="#pdf-preview-section"
+                    onClick={() => setMobileActionsOpen(false)}
+                    className={cn(secondaryButton, "min-h-14 justify-start gap-3 px-3 text-left text-sm")}
+                  >
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--surface-subtle)] text-[color:var(--text-muted)]">
+                      <ExternalLink aria-hidden="true" className="h-4 w-4" />
+                    </span>
+                    {`Open original ${viewerFileKind}`}
+                  </a>
+                )}
                 <button
                   type="button"
-                  onClick={
-                    !canSummarizeDocument
-                      ? ignoreUnavailableActivation
-                      : () => {
-                          setMobileActionsOpen(false);
-                          void summarize();
-                        }
-                  }
-                  aria-disabled={!canSummarizeDocument ? "true" : undefined}
-                  aria-describedby={!canSummarizeDocument ? "document-actions-summarize-reason" : undefined}
-                  title={summarizeTitle}
+                  onClick={() => {
+                    setMobileActionsOpen(false);
+                    void openSourceDownload();
+                  }}
+                  disabled={downloadingSource}
                   className={cn(secondaryButton, "min-h-14 justify-start gap-3 px-3 text-left text-sm")}
                 >
-                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]">
-                    <Sparkles aria-hidden="true" className="h-4 w-4" />
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--surface-subtle)] text-[color:var(--text-muted)]">
+                    {downloadingSource ? (
+                      <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Download aria-hidden="true" className="h-4 w-4" />
+                    )}
                   </span>
-                  {canSummarizeDocument ? "Answer from this" : "Sign in to answer"}
+                  {downloadingSource ? `Preparing ${viewerFileKind}` : `Download ${viewerFileKind}`}
                 </button>
-              )}
-              {!canSummarizeDocument && !loadingSummary ? (
-                <span id="document-actions-summarize-reason" className="sr-only">
-                  {summarizeTitle}
-                </span>
-              ) : null}
-              {signedUrl ? (
-                <a
-                  href={signedUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={() => setMobileActionsOpen(false)}
-                  className={cn(secondaryButton, "min-h-14 justify-start gap-3 px-3 text-left text-sm")}
-                >
-                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--surface-subtle)] text-[color:var(--text-muted)]">
-                    <ExternalLink aria-hidden="true" className="h-4 w-4" />
-                  </span>
-                  {`Open original ${viewerFileKind}`}
-                </a>
-              ) : (
-                <a
-                  href="#pdf-preview-section"
-                  onClick={() => setMobileActionsOpen(false)}
-                  className={cn(secondaryButton, "min-h-14 justify-start gap-3 px-3 text-left text-sm")}
-                >
-                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--surface-subtle)] text-[color:var(--text-muted)]">
-                    <ExternalLink aria-hidden="true" className="h-4 w-4" />
-                  </span>
-                  {`Open original ${viewerFileKind}`}
-                </a>
-              )}
-              <button
-                type="button"
-                onClick={() => {
-                  setMobileActionsOpen(false);
-                  void openSourceDownload();
-                }}
-                disabled={downloadingSource}
-                className={cn(secondaryButton, "min-h-14 justify-start gap-3 px-3 text-left text-sm")}
-              >
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--surface-subtle)] text-[color:var(--text-muted)]">
-                  {downloadingSource ? (
-                    <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Download aria-hidden="true" className="h-4 w-4" />
-                  )}
-                </span>
-                {downloadingSource ? `Preparing ${viewerFileKind}` : `Download ${viewerFileKind}`}
-              </button>
-            </div>
+              </div>
+            )}
             {canUseAdministrativeApis ? (
               <details className="rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-subtle)] p-3">
                 <summary className="cursor-pointer text-xs font-bold uppercase tracking-eyebrow text-[color:var(--text-muted)]">
@@ -1492,6 +1495,7 @@ export function DocumentViewer({
                   downloading={downloadingSource}
                   canSummarizeDocument={canSummarizeDocument}
                   summarizing={loadingSummary}
+                  actionsLocked={originalsLocked}
                 />
               </div>
             ) : null}
@@ -1649,6 +1653,7 @@ export function DocumentViewer({
               onUnauthorized={markSessionExpired}
               onSearchByTag={searchByTag}
               indexHealth={indexHealth}
+              textLocked={originalsLocked}
             />
           </section>
           <DocumentViewerSearchComposer

@@ -40,6 +40,8 @@ export type DocumentSectionIndexInput = {
   /** Page of the currently pinned evidence chunk, when one is selected. */
   pinnedPage: number | null;
   loading: boolean;
+  /** Signed out: only the overview and the sign-in card (in the preview slot) are on the page. */
+  textLocked?: boolean;
 };
 
 function plural(count: number, singular: string, pluralForm = `${singular}s`) {
@@ -105,6 +107,12 @@ export function buildDocumentSectionIndex(input: DocumentSectionIndexInput): Doc
     },
   ];
 
+  if (input.textLocked) {
+    // The cited excerpt and every later section are document content.
+    present.pop();
+    return normaliseWeights(present, input);
+  }
+
   if (input.hasStoredSummary) {
     present.push({
       id: "source-summary",
@@ -149,6 +157,13 @@ export function buildDocumentSectionIndex(input: DocumentSectionIndexInput): Doc
     });
   }
 
+  return normaliseWeights(present, input);
+}
+
+function normaliseWeights(
+  present: Array<Omit<DocumentSection, "weight">>,
+  input: DocumentSectionIndexInput,
+): DocumentSection[] {
   const weights = present.map((section) => rawWeight(section.id, input));
   const total = weights.reduce((sum, weight) => sum + weight, 0) || 1;
 

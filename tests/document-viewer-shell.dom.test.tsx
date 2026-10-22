@@ -213,9 +213,12 @@ describe("DocumentViewer — shell states", () => {
     expect(document.getElementById("source-text")).toBeNull();
     expect(document.getElementById("source-summary-card")).toBeNull();
 
-    const searchTriggers = await screen.findAllByRole("button", { name: "Search document" });
-    fireEvent.click(searchTriggers[searchTriggers.length - 1]!);
-    expect(screen.queryByRole("textbox", { name: "Search within this document" })).toBeNull();
+    // Search, answer, preview and download all need sign-in, so none is offered.
+    for (const name of ["Search document", "Answer from this", "Sign in to answer", "Open preview", "Download"]) {
+      expect(screen.queryByRole("button", { name })).toBeNull();
+    }
+    expect(screen.queryByTestId("document-overview-more-actions")).toBeNull();
+    expect(screen.queryByTestId("high-yield-summary")).toBeNull();
     expect(fetchMock.mock.calls.some(([input]) => String(input).includes("/search?"))).toBe(false);
   });
 
