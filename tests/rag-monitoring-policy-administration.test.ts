@@ -182,6 +182,7 @@ describe("run 39711681854 answer shapes", () => {
     // A title-cased sentence keeps its verb, so it is still a fact (Codex review on #3762).
     expect(monitoringFact("Lithium Levels Are Checked Weekly.", LITHIUM_QUERY)).toBe(true);
     expect(monitoringFact("Weight Is Monitored Every Month.")).toBe(true);
+    expect(monitoringFact("Weight Monitoring Continues Every Month.")).toBe(true);
   });
 
   it("leads the lithium timing answer with the sentence, not its heading", () => {
