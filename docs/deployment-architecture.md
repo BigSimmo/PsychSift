@@ -106,6 +106,20 @@ failed unit coverage and Firefox/WebKit lanes (issue #3099). Follow the owner de
 it. Even when enabled, Wait for CI is a quality gate, not a second person's
 approval and not a gate on manual Railway deploys.
 
+**Observed 2026-10-21 (#3685): Wait for CI is on for the production app service and is
+freezing deploys.** Read from GitHub deployment and commit statuses only. Every production app
+deploy that day whose commit had a failed workflow run was dropped: `99178efb2` and `9ed4dc821`
+(CI failed), `d951557da` and `30850f3dd` (Docker image build failed on the worker image's
+Trivy findings). Each got a "Success - psychiatry.tools" commit status within seconds of the
+failing run, and its GitHub deployment went `inactive`. Live `/api/health` stayed on
+`d4efdc48f`, the only commit that day with every run green. **Do not read a Railway "Success"
+commit status as proof of a deploy.** Compare `deploymentCommitSha` from `/api/health`
+instead. The paragraph above about `source.checkSuites: false` predates this. Separately, from
+about 07:17Z the same day, Railway created no deployment for any commit, including fully green
+ones (`9436f30d7`, `8657a081e`). That cause is on the Railway side and was not readable from
+GitHub. The owner then chose to turn Wait for CI off until a narrower gate is ready
+(`docs/decisions/2026-09-25-railway-waits-for-ci-once-safe.md`, update 2026-10-21).
+
 Railway's documented behaviour (read 2026-10-09): it reads each workflow run's
 conclusion, not single jobs. A failed run skips the deploy at once, a skipped
 or neutral run never blocks, a cancelled run blocks only when no other run on

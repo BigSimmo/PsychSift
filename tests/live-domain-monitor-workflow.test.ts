@@ -17,6 +17,12 @@ describe("live domain monitor workflow", () => {
     expect(workflow).toMatch(/sparse-checkout: \|\n(?:\s+scripts\/\S+\n)*\s+scripts\/check-live-search-results\.mjs\n/);
   });
 
+  // The freshness check reads the app service's watch patterns so a gap of docs-only merges, which
+  // Railway rightly never deploys, is not reported as a stranded deploy (#3685).
+  it("puts the app service's Railway config on disk for the deployment freshness check", () => {
+    expect(workflow).toMatch(/sparse-checkout: \|\n(?:\s+\S+\n)*\s+railway\.app\.json\n/);
+  });
+
   /**
    * DELIVERY, NOT DETECTION. This workflow's header used to say "a red run is the alert", and that
    * was true only if a red run reached somebody. Measured 2026-09-18: it failed on every one of
