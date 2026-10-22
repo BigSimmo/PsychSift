@@ -25,15 +25,89 @@
  * landing and ages from there, no matter how much lands on main afterwards, and it resets to
  * nothing the moment a deploy succeeds.
  *
+ * TWO REFINEMENTS, BOTH FROM 2026-10-21 (#3685).
+ *
+ *   1. "Oldest" means the first change to LAND ON MAIN after the live commit, dated by when it
+ *      landed. A merged pull request carries its branch commits with their own authored dates, so
+ *      a branch started yesterday and merged a minute ago used to read as a day-old outage. The
+ *      age now comes from the first-parent chain of `main` (merge and squash commits, which are
+ *      dated when they landed), falling back to the oldest listed commit when the chain cannot be
+ *      rebuilt from the comparison.
+ *   2. A comparison that touches nothing the app service watches (`railway.app.json`
+ *      `build.watchPatterns`) has nothing to ship. Railway answers those pushes "No deployment
+ *      needed", so the live commit legitimately stays behind `main`. For the same reason the age
+ *      runs from the first landed change that touches a watched file: docs-only merges sitting
+ *      unshipped before it are not an outage, and dating from them raised a false alarm the moment
+ *      an app change landed on top of them.
+ *
  * Needs no secret. `/api/health` reports `deploymentCommitSha` to any anonymous caller, in keeping
  * with the calling workflow's no-secrets contract, and the compare API read is a public repository
  * read. It shares nothing with the Railway deploy webhook on purpose: that path has its own failure
  * modes, and a detector depending on the thing it watches is not a detector.
  */
 
+import { readFileSync } from "node:fs";
+
 import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 const MS_PER_HOUR = 3_600_000;
+// GitHub's compare API lists at most 300 changed files; a list that long may be cut short.
+const COMPARE_FILE_LIMIT = 300;
+// Per-commit file lookups the CLI makes while looking for the first watched change. Past this,
+// the age falls back to the first landed change, which can only over-report.
+const COMMIT_FILE_LOOKUPS = 40;
+
+function patternToRegExp(pattern) {
+  const body = pattern
+    .replace(/^\//, "")
+    .split("**")
+    .map((part) => part.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, "[^/]*"))
+    .join(".*");
+  return new RegExp(`^${body}$`);
+}
+
+/**
+ * Railway-style watch patterns: a leading `/` anchors at the repository root, `**` crosses
+ * directories, `*` does not, and a `!` pattern excludes. The last matching pattern wins.
+ */
+export function matchesWatchPatterns(file, patterns) {
+  let watched = false;
+  for (const pattern of patterns) {
+    const negated = pattern.startsWith("!");
+    if (patternToRegExp(negated ? pattern.slice(1) : pattern).test(file)) watched = !negated;
+  }
+  return watched;
+}
+
+/**
+ * The commits that landed on the branch after the live commit, oldest first, rebuilt by walking
+ * first parents back from the branch head. Returns null when the comparison cannot support the
+ * walk (truncated list, or no parent data), so the caller falls back to the listed order.
+ */
+export function firstParentChain(compare) {
+  const commits = Array.isArray(compare.commits) ? compare.commits : [];
+  if (commits.length === 0) return null;
+  if (typeof compare.ahead_by === "number" && compare.ahead_by > commits.length) return null;
+  const bySha = new Map(commits.map((entry) => [entry.sha, entry]));
+  const referenced = new Set();
+  for (const entry of commits) {
+    if (!Array.isArray(entry.parents)) return null;
+    for (const parent of entry.parents) referenced.add(parent.sha);
+  }
+  const heads = commits.filter((entry) => !referenced.has(entry.sha));
+  if (heads.length !== 1) return null;
+  const chain = [];
+  for (let entry = heads[0]; entry; entry = bySha.get(entry.parents[0]?.sha)) chain.push(entry);
+  return chain.reverse();
+}
+
+const commitDate = (entry) => entry?.commit?.committer?.date ?? entry?.commit?.author?.date;
+
+/** A commit whose file list is unknown or may be cut short counts as watched, so the check fails closed. */
+export function touchesWatchedFile(files, patterns) {
+  if (!Array.isArray(files) || files.length >= COMPARE_FILE_LIMIT) return true;
+  return files.some((file) => matchesWatchPatterns(file, patterns));
+}
 
 /**
  * @param {object} input
@@ -41,8 +115,10 @@ const MS_PER_HOUR = 3_600_000;
  * @param {object|null} input.compare              GitHub `compare/{liveSha}...{branch}` payload
  * @param {number} input.nowMs
  * @param {number} input.maxLagHours
+ * @param {string[]} [input.watchPatterns]   the app service's Railway watch patterns, if known
+ * @param {Map<string, string[]>} [input.commitFiles]  files each landed commit changed, by sha
  */
-export function assessDeploymentFreshness({ liveSha, compare, nowMs, maxLagHours }) {
+export function assessDeploymentFreshness({ liveSha, compare, nowMs, maxLagHours, watchPatterns, commitFiles }) {
   if (!liveSha) {
     return {
       ok: false,
@@ -69,11 +145,35 @@ export function assessDeploymentFreshness({ liveSha, compare, nowMs, maxLagHours
     };
   }
 
-  // `compare` returns the commits present on the branch and absent from the live commit, oldest
-  // first, so [0] is the first commit that failed to ship. Its age is how long deploys have been
-  // failing to land — which is the number that does not reset when more work lands on top.
-  const oldest = compare.commits?.[0];
-  const oldestAt = oldest?.commit?.committer?.date ?? oldest?.commit?.author?.date;
+  // Only changes the app service watches are ever deployed. When the comparison's complete file
+  // list touches none of them, every unshipped commit is one Railway rightly declined to deploy.
+  if (
+    Array.isArray(watchPatterns) &&
+    watchPatterns.length > 0 &&
+    Array.isArray(compare.files) &&
+    compare.files.length > 0 &&
+    compare.files.length < COMPARE_FILE_LIMIT &&
+    !compare.files.some((file) => matchesWatchPatterns(file.filename, watchPatterns))
+  ) {
+    return {
+      ok: true,
+      code: "nothing_to_ship",
+      message: `Live deployment ${liveSha} is behind the branch only by changes the app service does not deploy.`,
+    };
+  }
+
+  // The first change to land on the branch after the live commit, dated by when it landed. Its age
+  // is how long deploys have been failing to land — the number that does not reset when more work
+  // lands on top. When the files each landed commit changed are known, start from the first one
+  // that touches a watched file. Without a usable first-parent chain, fall back to the oldest
+  // listed commit (`compare` lists the branch-only commits oldest first).
+  const chain = firstParentChain(compare);
+  const firstWatched =
+    chain && commitFiles instanceof Map && Array.isArray(watchPatterns) && watchPatterns.length > 0
+      ? chain.find((entry) => touchesWatchedFile(commitFiles.get(entry.sha), watchPatterns))
+      : undefined;
+  const oldest = firstWatched ?? (chain ? chain[0] : compare.commits?.[0]);
+  const oldestAt = commitDate(oldest);
   if (!oldestAt) {
     return {
       ok: false,
@@ -84,12 +184,22 @@ export function assessDeploymentFreshness({ liveSha, compare, nowMs, maxLagHours
 
   const lagHours = (nowMs - Date.parse(oldestAt)) / MS_PER_HOUR;
   const behindBy = compare.ahead_by ?? compare.commits.length;
-  const detail = `Oldest unshipped commit ${oldest.sha?.slice(0, 9)} (${oldestAt}) is ${lagHours.toFixed(1)}h old; ${behindBy} commit(s) have not reached production.`;
+  const detail = `Oldest unshipped change ${oldest.sha?.slice(0, 9)} (landed ${oldestAt}) is ${lagHours.toFixed(1)}h old; ${behindBy} commit(s) have not reached production.`;
 
   if (lagHours > maxLagHours) {
     return { ok: false, code: "stranded", lagHours, behindBy, message: detail };
   }
   return { ok: true, code: "shipping", lagHours, behindBy, message: detail };
+}
+
+/** Missing or unreadable config means no watch-path filtering, never a crash: the check fails closed. */
+function readWatchPatterns(path) {
+  try {
+    const patterns = JSON.parse(readFileSync(path, "utf8"))?.build?.watchPatterns;
+    return Array.isArray(patterns) ? patterns.filter((pattern) => typeof pattern === "string") : [];
+  } catch {
+    return [];
+  }
 }
 
 async function main() {
@@ -98,6 +208,7 @@ async function main() {
   const branch = process.env.BRANCH || "main";
   const maxLagHours = Number(process.env.MAX_LAG_HOURS || 12);
   if (!domain || !repo) throw new Error("LIVE_DOMAIN_URL and REPO are required.");
+  const watchPatterns = readWatchPatterns(process.env.RAILWAY_APP_CONFIG || "railway.app.json");
 
   const headers = { accept: "application/vnd.github+json" };
   if (process.env.GH_TOKEN) headers.authorization = `Bearer ${process.env.GH_TOKEN}`;
@@ -114,7 +225,26 @@ async function main() {
     compare = response.ok ? await response.json() : { status: "unknown" };
   }
 
-  const result = assessDeploymentFreshness({ liveSha, compare, nowMs: Date.now(), maxLagHours });
+  // The files each landed commit changed, oldest first, until the first one the app service
+  // watches. A failed lookup stops the walk, and the assessment then treats that commit as watched.
+  const commitFiles = new Map();
+  const chain = compare?.status === "ahead" && watchPatterns.length > 0 ? firstParentChain(compare) : null;
+  for (const entry of (chain ?? []).slice(0, COMMIT_FILE_LOOKUPS)) {
+    const response = await fetch(`https://api.github.com/repos/${repo}/commits/${entry.sha}`, { headers });
+    if (!response.ok) break;
+    const files = ((await response.json())?.files ?? []).map((file) => file.filename);
+    commitFiles.set(entry.sha, files);
+    if (touchesWatchedFile(files, watchPatterns)) break;
+  }
+
+  const result = assessDeploymentFreshness({
+    liveSha,
+    compare,
+    nowMs: Date.now(),
+    maxLagHours,
+    watchPatterns,
+    commitFiles,
+  });
   if (result.ok) {
     console.log(result.message);
     return;
@@ -122,7 +252,7 @@ async function main() {
   console.log(`::error::${result.message}`);
   if (result.code === "stranded") {
     console.log(
-      "::error::Deploys are not landing. A deployment that builds and starts but fails its healthcheck is discarded and rolled back, leaving the site up on older code.",
+      "::error::Deploys are not landing. Two known causes: Railway's Wait for CI skips the deploy of any commit with a failed workflow run (scheduled runs on that commit count, and Railway still labels the skip 'Success'), and a deployment that fails its healthcheck is discarded and rolled back. Either way the site stays up on older code.",
     );
   }
   process.exitCode = 1;
