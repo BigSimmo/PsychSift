@@ -767,6 +767,7 @@ describe("eval quality reporting", () => {
         reason: "Temporary corpus metadata debt while source records are reviewed.",
         max_stale_rate: 1,
         max_review_required_rate: 1,
+        max_wa_endorsed_unreviewed_rate: 1,
         max_outdated_top_results: 0,
         max_poor_extraction_top_results: 0,
         max_source_governance_danger_failure_rate: 0,
@@ -781,6 +782,77 @@ describe("eval quality reporting", () => {
     );
     expect(report.blocking_threshold_failures).toEqual(
       expect.arrayContaining([expect.stringContaining("RAG source_governance_danger_failure_rate")]),
+    );
+  });
+
+  it("gates WA-endorsed, not-reviewed-here sources on their own line (owner decision 2026-10-22)", () => {
+    const base = retrievalResult().topResults[0];
+    const endorsed = {
+      ...base,
+      document_status: "current",
+      clinical_validation_status: "unverified",
+      clinical_validation_evidence_basis: "wa_document_control_endorsement",
+      extraction_quality: "good",
+    };
+    const report = buildEvalQualityReport({
+      generatedAt: "2026-10-22T00:00:00.000Z",
+      retrievalResults: [
+        retrievalResult({
+          topResults: [
+            endorsed,
+            // Endorsed and overdue: on both lines, so overdue material is never hidden.
+            { ...endorsed, rank: 2, document_status: "review_due" },
+            // Any other unverified basis stays review-required.
+            { ...endorsed, rank: 3, clinical_validation_evidence_basis: "publisher_attestation" },
+            { ...base, rank: 4, document_status: "current", clinical_validation_status: "locally_reviewed" },
+          ],
+        }),
+      ],
+      ragResults: [],
+    });
+
+    const governance = report.retrieval.source_governance;
+    expect(governance.wa_endorsed_unreviewed_top_results).toBe(2);
+    expect(governance.wa_endorsed_unreviewed_rate).toBe(0.5);
+    expect(governance.review_required_top_results).toBe(2);
+    expect(governance.unverified_top_results).toBe(3);
+    // Still review debt: above the strict ceiling it fails like the review-required line.
+    expect(report.threshold_failures).toEqual(
+      expect.arrayContaining([expect.stringContaining("top-result wa_endorsed_unreviewed_rate 0.5 above 0.25")]),
+    );
+  });
+
+  it("rejects a debt acceptance whose WA-endorsed ceiling the run exceeds", () => {
+    const endorsed = {
+      ...retrievalResult().topResults[0],
+      document_status: "current",
+      clinical_validation_status: "unverified",
+      clinical_validation_evidence_basis: "wa_document_control_endorsement",
+      extraction_quality: "good",
+    };
+    const report = buildEvalQualityReport({
+      generatedAt: "2026-10-22T00:00:00.000Z",
+      retrievalResults: [retrievalResult({ topResults: [endorsed] })],
+      ragResults: [],
+      sourceMetadataDebtAcceptance: {
+        accepted_by: "release owner",
+        accepted_at: "2026-10-22T00:00:00.000Z",
+        expires_at: "2099-01-01T00:00:00.000Z",
+        reason: "WA-endorsed cohort accepted while the owner reviews the most-surfaced documents.",
+        max_stale_rate: 0,
+        max_review_required_rate: 0.6,
+        max_wa_endorsed_unreviewed_rate: 0.5,
+        max_outdated_top_results: 0,
+        max_poor_extraction_top_results: 0,
+        max_source_governance_danger_failure_rate: 0,
+      },
+    });
+
+    expect(report.source_metadata_debt_acceptance.rejection_reasons).toEqual(
+      expect.arrayContaining([expect.stringContaining("WA-endorsed unreviewed rate 1 exceeds accepted ceiling 0.5")]),
+    );
+    expect(report.blocking_threshold_failures).toEqual(
+      expect.arrayContaining([expect.stringContaining("top-result wa_endorsed_unreviewed_rate")]),
     );
   });
 
@@ -865,6 +937,7 @@ describe("eval quality reporting", () => {
         reason: "Broad metadata debt acceptance for the test.",
         max_stale_rate: 1,
         max_review_required_rate: 1,
+        max_wa_endorsed_unreviewed_rate: 1,
         max_outdated_top_results: 0,
         max_poor_extraction_top_results: 0,
         max_source_governance_danger_failure_rate: 0,
@@ -938,6 +1011,7 @@ describe("eval quality reporting", () => {
         reason: "Temporary corpus metadata debt while source records are reviewed.",
         max_stale_rate: 1,
         max_review_required_rate: 1,
+        max_wa_endorsed_unreviewed_rate: 1,
         max_outdated_top_results: 0,
         max_poor_extraction_top_results: 0,
         max_source_governance_danger_failure_rate: 0,
@@ -961,6 +1035,7 @@ describe("eval quality reporting", () => {
         reason: "Temporary corpus metadata debt while source records are reviewed.",
         max_stale_rate: 0,
         max_review_required_rate: 0,
+        max_wa_endorsed_unreviewed_rate: 0,
         max_outdated_top_results: 0,
         max_poor_extraction_top_results: 0,
         max_source_governance_danger_failure_rate: 0,

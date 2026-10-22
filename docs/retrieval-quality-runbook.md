@@ -119,6 +119,7 @@ Source governance:
 Metadata policy:
 
 - `unknown`, `unverified`, `review_due`, `outdated`, unknown extraction, and poor extraction are treated as review-required.
+- Exception: an `unverified` source whose evidence basis is `wa_document_control_endorsement` (endorsed by the issuing WA service, not reviewed here) is counted on its own line, `wa_endorsed_unreviewed_rate`, with its own ceiling. It is still review debt, not reviewed authority ([decision](decisions/2026-10-22-wa-endorsed-review-gate.md)).
 - `stale_rate` is reserved for truly outdated primary top results. Review-due and unknown-status primary top results remain review-required debt, but they are not counted as stale.
 - Explicit non-local unverified sources, such as BMJ documents with a `not a local WA source` evidence basis, remain labelled as unverified but are not treated as missing local-validation debt for release gating.
 - Supporting top-5 review-required counts are reported to prioritize corpus review; they do not suppress ranking by themselves and are not the release gate.
@@ -151,6 +152,7 @@ Answer quality:
 - content recall@5 is below `0.8`
 - primary top-result stale rate is above `0.25`
 - primary top-result review-required rate is above `0.25`
+- top-result WA-endorsed, not-reviewed-here rate is above `0.25` and the debt acceptance does not cover it
 - grounded supported answer rate is below `0.9`
 - unsupported-answer correctness is below `1.0`
 - citation failure rate is above `0`
@@ -197,4 +199,4 @@ Run full quality evals after:
 
 `npm run governance:release` is the read-only governance routine. It runs generated label coverage, document label governance, and `audit:source-governance:release`. The source-governance audit compares the live corpus against `docs/release-source-metadata-debt-2026-06-30.json` and fails if required metadata returns, poor extraction appears, smart-v2 labels go missing, or the accepted eval baseline exceeds the file ceilings.
 
-`npm run verify:release` includes `npm run governance:release` before `npm run eval:quality:release`. `eval:quality:release` passes `docs/release-source-metadata-debt-2026-06-30.json` while that temporary release debt is active. The current release debt accepts primary review-required top-result rate only up to `0.2`; stale rate, outdated top results, poor-extraction top results, and danger-class source governance failures remain blocked. Use focused variants such as `--retrieval-only`, `--rag-only`, `--limit`, `--query`, or `--question` during development to avoid unnecessary provider-backed cost.
+`npm run verify:release` includes `npm run governance:release` before `npm run eval:quality:release`. `eval:quality:release` passes `docs/release-source-metadata-debt-2026-06-30.json` while that temporary release debt is active. The current release debt accepts the review-required and WA-endorsed rates only up to the ceilings in that file; stale rate, outdated top results, poor-extraction top results, and danger-class source governance failures remain blocked. Use focused variants such as `--retrieval-only`, `--rag-only`, `--limit`, `--query`, or `--question` during development to avoid unnecessary provider-backed cost.
