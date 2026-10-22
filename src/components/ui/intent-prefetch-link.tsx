@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import type { PrefetchOptions } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import { forwardRef, useCallback, useRef, type ComponentProps, type FocusEvent, type PointerEvent } from "react";
 
 type IntentPrefetchLinkProps = Omit<ComponentProps<typeof Link>, "prefetch" | "href"> & {
@@ -42,6 +43,8 @@ export const IntentPrefetchLink = forwardRef<HTMLAnchorElement, IntentPrefetchLi
     if (!router) return;
     prefetchedHref.current = href;
     router.prefetch(href, {
+      // "auto" is what a bare router.prefetch(href) uses.
+      kind: "auto" as PrefetchOptions["kind"],
       // Once the prefetched data goes stale, let the next intent warm it again.
       onInvalidate: () => {
         if (prefetchedHref.current === href) prefetchedHref.current = null;
