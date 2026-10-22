@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { CLINICAL_SIGN_IN_COPY } from "@/lib/front-door-content";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // DocumentViewer resolves a five-way shell state (loading / ready / auth-required
@@ -156,6 +157,8 @@ describe("DocumentViewer — shell states", () => {
   });
 
   it("shows the ready shell with the document identity when a detail payload is supplied", async () => {
+    authState.status = "authenticated";
+    authState.session = { user: { id: "user-a" } };
     render(<DocumentViewer documentId="doc-1" initialPage={1} initialDetail={detailPayload()} />);
 
     // The display title is smart-cased from "Clozapine titration guideline" and
@@ -194,6 +197,26 @@ describe("DocumentViewer — shell states", () => {
     expect(preview!.compareDocumentPosition(sourceSummary!)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     expect(sourceSummary!.compareDocumentPosition(indexedText!)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     expect(document.getElementById("document-viewer-main")).not.toHaveAttribute("data-route-recovery");
+  });
+
+  it("shows signed-out readers one sign-in card, not the document text, and never searches", async () => {
+    const fetchMock = vi.fn<(input: RequestInfo | URL) => Promise<Response>>(async () =>
+      Response.json({ error: "Unexpected request" }, { status: 404 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<DocumentViewer documentId="doc-1" initialPage={1} initialDetail={detailPayload()} />);
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Clozapine Titration Guideline" })).toBeVisible();
+    expect(await screen.findByTestId("original-document-sign-in")).toBeVisible();
+    expect(screen.getByText(CLINICAL_SIGN_IN_COPY.document.title)).toBeVisible();
+    expect(document.getElementById("source-text")).toBeNull();
+    expect(document.getElementById("source-summary-card")).toBeNull();
+
+    const searchTriggers = await screen.findAllByRole("button", { name: "Search document" });
+    fireEvent.click(searchTriggers[searchTriggers.length - 1]!);
+    expect(screen.queryByRole("textbox", { name: "Search within this document" })).toBeNull();
+    expect(fetchMock.mock.calls.some(([input]) => String(input).includes("/search?"))).toBe(false);
   });
 
   // Search/answer opens always attach ?chunk=…. Citation landing used to
@@ -236,6 +259,8 @@ describe("DocumentViewer — shell states", () => {
   });
 
   it("opens document search on demand, ignores stale responses, and clears it on close", async () => {
+    authState.status = "authenticated";
+    authState.session = { user: { id: "user-a" } };
     const pendingSearches: Array<{
       url: string;
       resolve: (response: Response) => void;
@@ -359,6 +384,8 @@ describe("DocumentViewer — shell states", () => {
   });
 
   it("fails closed when document search returns a malformed success payload", async () => {
+    authState.status = "authenticated";
+    authState.session = { user: { id: "user-a" } };
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: RequestInfo | URL) => {

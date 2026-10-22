@@ -8,6 +8,7 @@ import { matchesTermInWords, wordBoundaryWords } from "@/lib/keyword-query";
 import { committedIndexGeneration, isCommittedGenerationMetadata } from "@/lib/reindex-pipeline";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, unauthorizedResponse } from "@/lib/supabase/auth";
+import { requireSignedInClinicalAccess } from "@/lib/clinical-access";
 import { enforceDocumentReadRateLimit, withOwnerReadScope } from "@/lib/public-api-access";
 import { parseRouteParams } from "@/lib/validation/params";
 import { parseRequestQuery, queryInteger } from "@/lib/validation/query";
@@ -183,6 +184,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const { id } = parseRouteParams({ id: rawId }, documentSearchParamsSchema, "Invalid document id.");
     const supabase = createAdminClient();
     const { access, rateLimit } = await enforceDocumentReadRateLimit(request, supabase);
+    requireSignedInClinicalAccess(access);
     if (rateLimit.limited) {
       return rateLimitJsonResponse("Document requests are rate limited. Try again shortly.", rateLimit);
     }

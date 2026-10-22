@@ -1032,7 +1032,7 @@ describe("private document API access", () => {
     expect(body).toHaveProperty("indexHealth");
   });
 
-  it("allows anonymous users to read public document detail", async () => {
+  it("gives anonymous users a public document's title but none of its text", async () => {
     const client = createSupabaseMock((call) => {
       if (call.table === "documents" && matchesOwnerReadScope(call)) {
         return ok(
@@ -1060,8 +1060,21 @@ describe("private document API access", () => {
     expect(response.status).toBe(200);
     expect(body.document).toMatchObject({ id: documentId, title: "Public guideline" });
     expect(body.document).not.toHaveProperty("owner_id");
+    expect(body.document).toMatchObject({ labels: [], summary: null });
+    expect(body).toMatchObject({ pages: [], chunks: [], images: [], tableFacts: [] });
     expect(client.auth.getUser).not.toHaveBeenCalled();
     expect(client.calls[0].filters).toContainEqual({ column: "owner_id", value: null });
+    // Library text is for signed-in accounts, so no child table is read at all.
+    for (const table of [
+      "document_pages",
+      "document_chunks",
+      "document_images",
+      "document_table_facts",
+      "document_labels",
+      "document_summaries",
+    ]) {
+      expect(client.from).not.toHaveBeenCalledWith(table);
+    }
   });
 
   it("allows authenticated users to open public document signed URLs", async () => {
@@ -3814,11 +3827,32 @@ describe("private document API access", () => {
     expect(body.tableFacts.map((fact: { id: string }) => fact.id)).toEqual(["fact-old"]);
   });
 
-  it("lets anonymous users search a public document and filters fallback rows to the committed generation", async () => {
+  it("refuses anonymous in-document search before reading the document or its text", async () => {
+    const client = createSupabaseMock((call) => {
+      if (call.table === "documents" && matchesOwnerReadScope(call)) {
+        return ok({ id: documentId, status: "indexed", metadata: {} });
+      }
+      return ok([]);
+    });
+    mockRuntime(client);
+    const { GET } = await import("../src/app/api/documents/[id]/search/route");
+
+    const response = await GET(request(`/api/documents/${documentId}/search?q=lithium`), {
+      params: Promise.resolve({ id: documentId }),
+    });
+
+    expect(response.status).toBe(401);
+    expect(await payload(response)).toMatchObject({ code: "authentication_required" });
+    expect(client.from).not.toHaveBeenCalledWith("documents");
+    expect(client.from).not.toHaveBeenCalledWith("document_chunks");
+    expect(client.rpc).not.toHaveBeenCalledWith("search_document_chunks", expect.anything());
+  });
+
+  it("lets signed-in users search a public document and filters fallback rows to the committed generation", async () => {
     const committedGeneration = "11111111-1111-4111-8111-111111111111";
     const replacementGeneration = "22222222-2222-4222-8222-222222222222";
     const client = createSupabaseMock((call) => {
-      if (call.table === "documents" && call.operation === "select" && matchesOwnerReadScope(call)) {
+      if (call.table === "documents" && call.operation === "select" && matchesOwnerReadScope(call, userId)) {
         return ok({
           id: documentId,
           status: "indexed",
@@ -3861,7 +3895,7 @@ describe("private document API access", () => {
     mockRuntime(client);
     const { GET } = await import("../src/app/api/documents/[id]/search/route");
 
-    const response = await GET(request(`/api/documents/${documentId}/search?q=lithium`), {
+    const response = await GET(authenticatedRequest(`/api/documents/${documentId}/search?q=lithium`), {
       params: Promise.resolve({ id: documentId }),
     });
     const body = (await payload(response)) as { strategy: string; results: Array<{ id: string }> };
@@ -3869,13 +3903,11 @@ describe("private document API access", () => {
     expect(response.status).toBe(200);
     expect(body.strategy).toBe("portable_ilike_fallback");
     expect(body.results.map((result: { id: string }) => result.id)).toEqual(["chunk-old"]);
-    expect(client.auth.getUser).not.toHaveBeenCalled();
-    expect(client.calls[0].filters).toContainEqual({ column: "owner_id", value: null });
   });
 
   it("does not treat a query term embedded inside another word as a document-search hit", async () => {
     const client = createSupabaseMock((call) => {
-      if (call.table === "documents" && call.operation === "select" && matchesOwnerReadScope(call)) {
+      if (call.table === "documents" && call.operation === "select" && matchesOwnerReadScope(call, userId)) {
         return ok({ id: documentId, status: "indexed", metadata: {} });
       }
       return ok([]);
@@ -3911,7 +3943,7 @@ describe("private document API access", () => {
     mockRuntime(client);
     const { GET } = await import("../src/app/api/documents/[id]/search/route");
 
-    const response = await GET(request(`/api/documents/${documentId}/search?q=renal`), {
+    const response = await GET(authenticatedRequest(`/api/documents/${documentId}/search?q=renal`), {
       params: Promise.resolve({ id: documentId }),
     });
     const body = (await payload(response)) as { results: Array<{ id: string; matched_terms: string[] }> };
@@ -3922,7 +3954,7 @@ describe("private document API access", () => {
 
   it("returns no hits for non-indexed documents even when the search RPC is unavailable", async () => {
     const client = createSupabaseMock((call) => {
-      if (call.table === "documents" && call.operation === "select" && matchesOwnerReadScope(call)) {
+      if (call.table === "documents" && call.operation === "select" && matchesOwnerReadScope(call, userId)) {
         return ok({ id: documentId, status: "processing", metadata: {} });
       }
       if (call.table === "document_chunks") {
@@ -3950,7 +3982,7 @@ describe("private document API access", () => {
     mockRuntime(client);
     const { GET } = await import("../src/app/api/documents/[id]/search/route");
 
-    const response = await GET(request(`/api/documents/${documentId}/search?q=lithium`), {
+    const response = await GET(authenticatedRequest(`/api/documents/${documentId}/search?q=lithium`), {
       params: Promise.resolve({ id: documentId }),
     });
     const body = (await payload(response)) as { strategy: string; results: unknown[]; hitCount: number };

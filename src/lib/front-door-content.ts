@@ -238,6 +238,10 @@ export const CLINICAL_SIGN_IN_COPY = {
     title: "Sign in to open the original",
     body: "Original documents belong to their publishers and open only for signed-in users.",
   },
+  document: {
+    title: "Sign in to read this document",
+    body: "Library documents are for health professionals. Sign in to read the text, search it and open the original.",
+  },
 } as const satisfies Record<string, ClinicalSignInCopy>;
 export const CLINICAL_SIGN_IN_INVITE_NOTE =
   "No account? You can create one from Sign in. PsychSift is for health professionals only.";

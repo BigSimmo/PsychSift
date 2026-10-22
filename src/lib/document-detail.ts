@@ -3,7 +3,7 @@ import "server-only";
 import { z } from "zod";
 import { getDemoDocumentPayload } from "@/lib/demo-data";
 import { parseDocumentDetailPayload } from "@/lib/document-client-contracts";
-import { isDemoMode } from "@/lib/env";
+import { isDemoMode, isLocalNoAuthMode } from "@/lib/env";
 import { PublicApiError } from "@/lib/http";
 import {
   callerOwnsDocumentRow,
@@ -416,6 +416,51 @@ export async function loadAuthorizedDocumentDetail(args: {
   args.request.signal.throwIfAborted();
 
   const isOwner = callerOwnsDocumentRow(document, access.ownerId);
+  const responseDocument = isOwner
+    ? document
+    : redactNonOwnedDocumentFields(document as unknown as Record<string, unknown>, access.ownerId);
+  const documentMetadata = safeMetadata(document.metadata);
+  // The authorisation scope has already restricted non-owned rows to the public
+  // corpus. Project this single clinical date without disclosing raw metadata.
+  const recordedReviewDate = documentMetadata.review_date ?? documentMetadata.reviewDate;
+  const publicReviewDate =
+    !isOwner &&
+    documentMetadata.public_corpus === true &&
+    typeof recordedReviewDate === "string" &&
+    /^\d{4}-\d{2}-\d{2}$/.test(recordedReviewDate)
+      ? recordedReviewDate
+      : null;
+
+  // Signed-out visitors get the document's title and source details only, not
+  // its indexed text, figures, tables or summary. The library text sits behind
+  // sign-in with Answer and the originals, so no child table is read here.
+  // See docs/decisions/2026-10-22-library-document-text-needs-sign-in.md.
+  if (!access.authenticated && !isLocalNoAuthMode()) {
+    const requestedPage = Math.min(query.page, Math.max(1, document.page_count ?? 1));
+    return parseDocumentDetailPayload({
+      document: { ...responseDocument, labels: [], summary: null } as unknown as ClinicalDocument,
+      ...(!isOwner ? { publicReviewDate } : {}),
+      pages: [],
+      images: [],
+      tableFacts: [],
+      chunks: [],
+      demoMode: false,
+      assetScope: query.assetScope,
+      ...windowMetadata({
+        requestedPage,
+        effectivePage: requestedPage,
+        selectedChunk: null,
+        pageWindow: pageWindowAround(requestedPage, query.pageLimit, document.page_count),
+        pageLimit: query.pageLimit,
+        pageTotal: document.page_count ?? null,
+        chunkRangeStart: query.chunkOffset,
+        chunkRangeEnd: query.chunkOffset + query.chunkLimit - 1,
+        chunkLimit: query.chunkLimit,
+        chunkTotal: document.chunk_count ?? null,
+      }),
+    });
+  }
+
   let selectedChunk: DocumentDetailChunk | null = null;
   if (query.chunk) {
     const { data, error } = await supabase
@@ -524,20 +569,6 @@ export async function loadAuthorizedDocumentDetail(args: {
   const labels = (labelsResult.data ?? [])
     .filter((label) => !isHiddenDocumentLabel(label))
     .map(withDocumentLabelReviewMetadata);
-  const responseDocument = isOwner
-    ? document
-    : redactNonOwnedDocumentFields(document as unknown as Record<string, unknown>, access.ownerId);
-  const documentMetadata = safeMetadata(document.metadata);
-  // The authorisation scope has already restricted non-owned rows to the public
-  // corpus. Project this single clinical date without disclosing raw metadata.
-  const recordedReviewDate = documentMetadata.review_date ?? documentMetadata.reviewDate;
-  const publicReviewDate =
-    !isOwner &&
-    documentMetadata.public_corpus === true &&
-    typeof recordedReviewDate === "string" &&
-    /^\d{4}-\d{2}-\d{2}$/.test(recordedReviewDate)
-      ? recordedReviewDate
-      : null;
   const metadata = windowMetadata({
     requestedPage,
     effectivePage,

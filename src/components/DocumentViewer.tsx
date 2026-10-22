@@ -263,9 +263,10 @@ export function DocumentViewer({
     markSessionExpired,
   } = useAuthSession();
   const localNoAuthMode = isLocalNoAuthMode();
-  // The original file (preview, open and download) is for signed-in users: the server
-  // refuses its signed URL to anyone else, so a signed-out reader is never sent to ask
-  // for one and sees the sign-in card in its place. The indexed text stays readable.
+  // The original file, its indexed text and in-document search are for signed-in users:
+  // the server refuses the signed URL and the search, and returns the title only, to
+  // anyone else. A signed-out reader is never sent to ask for them and sees one
+  // sign-in card in their place.
   const originalsLocked = useClinicalToolAccess() === "sign-in-required";
   const [serverDemoMode, setServerDemoMode] = useState(
     () => initialDetail?.demoMode ?? process.env.NEXT_PUBLIC_DEMO_MODE === "true",
@@ -803,7 +804,7 @@ export function DocumentViewer({
 
   useEffect(() => {
     const query = sourceSearch.replace(/\s+/g, " ").trim();
-    if (!canViewSourceDocuments || query.length < 2) {
+    if (!canViewSourceDocuments || originalsLocked || query.length < 2) {
       const reset = window.setTimeout(() => {
         setDocumentSearchState({ query: "", results: [] });
         setSearchingDocument(false);
@@ -864,6 +865,7 @@ export function DocumentViewer({
     documentId,
     isAuthEpochCurrent,
     markSessionExpired,
+    originalsLocked,
     registerAuthRequest,
     sourceSearch,
   ]);
@@ -1113,6 +1115,12 @@ export function DocumentViewer({
     });
   };
   const openDocumentSearch = (returnFocusTarget?: HTMLElement | null) => {
+    if (originalsLocked) {
+      // In-document search needs sign-in: take the reader to the sign-in card.
+      setMobileActionsOpen(false);
+      window.document.getElementById("pdf-preview-section")?.scrollIntoView({ block: "start" });
+      return;
+    }
     documentSearchReturnFocusRef.current = returnFocusTarget ?? documentActionsTriggerRef.current;
     setMobileActionsOpen(false);
     setDocumentSearchOpen(true);
@@ -1489,7 +1497,7 @@ export function DocumentViewer({
               >
                 {originalsLocked ? (
                   <ClinicalSignInNotice
-                    copy={CLINICAL_SIGN_IN_COPY.original}
+                    copy={CLINICAL_SIGN_IN_COPY.document}
                     bare
                     testId="original-document-sign-in"
                     onSignedIn={retryPreview}
@@ -1585,33 +1593,35 @@ export function DocumentViewer({
               {/* Explicit base track for the same reason as the rail and body grids:
                   an implicit `auto` column is sized by its items' min-content, and this
                   column now carries the wide table crops. */}
-              <DocumentViewerContentPanels
-                effectiveLoadingDocument={effectiveLoadingDocument}
-                selectedChunk={selectedChunk}
-                inspectIndexedTextSection={inspectIndexedTextSection}
-                readyDocument={readyDocument}
-                usefulPageHref={usefulPageHref}
-                navigateToPage={navigateToPage}
-                compactView={compactView}
-                selectedPage={selectedPage}
-                chunks={chunks}
-                sourceSearch={sourceSearch}
-                currentDocumentSearchResults={currentDocumentSearchResults}
-                documentSearchPending={documentSearchPending}
-                currentDocumentSearchError={currentDocumentSearchError}
-                activeChunkId={activeChunkId}
-                setSourceSearch={setSourceSearch}
-                inspectIndexedText={inspectIndexedText}
-                normalizedSourceSearch={normalizedSourceSearch}
-                document={document}
-                canUseAdministrativeApis={canUseAdministrativeApis}
-                clinicalImages={clinicalImages}
-                auditImages={auditImages}
-                tableFacts={tableFacts}
-                reviewingTableFactId={reviewingTableFactId}
-                reviewTableFact={reviewTableFact}
-                activePage={activePage}
-              />
+              {originalsLocked ? null : (
+                <DocumentViewerContentPanels
+                  effectiveLoadingDocument={effectiveLoadingDocument}
+                  selectedChunk={selectedChunk}
+                  inspectIndexedTextSection={inspectIndexedTextSection}
+                  readyDocument={readyDocument}
+                  usefulPageHref={usefulPageHref}
+                  navigateToPage={navigateToPage}
+                  compactView={compactView}
+                  selectedPage={selectedPage}
+                  chunks={chunks}
+                  sourceSearch={sourceSearch}
+                  currentDocumentSearchResults={currentDocumentSearchResults}
+                  documentSearchPending={documentSearchPending}
+                  currentDocumentSearchError={currentDocumentSearchError}
+                  activeChunkId={activeChunkId}
+                  setSourceSearch={setSourceSearch}
+                  inspectIndexedText={inspectIndexedText}
+                  normalizedSourceSearch={normalizedSourceSearch}
+                  document={document}
+                  canUseAdministrativeApis={canUseAdministrativeApis}
+                  clinicalImages={clinicalImages}
+                  auditImages={auditImages}
+                  tableFacts={tableFacts}
+                  reviewingTableFactId={reviewingTableFactId}
+                  reviewTableFact={reviewTableFact}
+                  activePage={activePage}
+                />
+              )}
             </div>
 
             <DocumentViewerRail
