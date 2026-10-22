@@ -88,7 +88,7 @@ describe("generic phone alerts", () => {
     expect(mocks.subscriptions).toHaveBeenCalledWith(client, [SAM]);
     expect(mocks.send).toHaveBeenCalledTimes(1);
     expect(mocks.send.mock.calls[0]?.[1]).toBe(JSON.stringify({ t: "request" }));
-    expect(mocks.send.mock.calls[0]?.[2]).toEqual({ TTL: 21600 });
+    expect(mocks.send.mock.calls[0]?.[2]).toEqual({ TTL: 21600, timeout: 10_000 });
   });
 
   it("holds a request during the recipient's night but lets a roster change through", async () => {

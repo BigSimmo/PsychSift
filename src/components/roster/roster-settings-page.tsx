@@ -453,13 +453,18 @@ export function RosterSettingsPage() {
                   />
                 )}
               </RosterList>
-              <RosterFootnote testId="roster-settings-delete-note">
-                Your open swap and open-shift requests are withdrawn, and upcoming dates you can&apos;t work are cleared
-                (if a team&apos;s requests cannot be withdrawn, you are told to check Requests). Shifts on a team roster
-                stay with that team, which keeps its roster records for 12 months. Uploaded files are never kept. Extra
-                time you logged is not removed here, and phone alerts stop on every device. You get 30 seconds to change
-                your mind. After that it cannot be undone.
-              </RosterFootnote>
+              {/* What deleting does, then what each team keeps (roster_retention_purge, #3163). */}
+              <div className="grid gap-1.5" data-testid="roster-settings-delete-note">
+                <RosterFootnote>
+                  Your open requests are withdrawn and upcoming dates you can&apos;t work are cleared. Extra time you
+                  logged stays. Phone alerts stop on every device. You get 30 seconds to change your mind, then it
+                  cannot be undone.
+                </RosterFootnote>
+                <RosterFootnote>
+                  Teams delete the shifts you worked, and when you opened their rosters, 12 months after each roster was
+                  published. Past dates you couldn&apos;t work go after 30 days. Uploaded files are never kept.
+                </RosterFootnote>
+              </div>
             </section>
           </>
         )}

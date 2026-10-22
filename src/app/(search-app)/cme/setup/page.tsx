@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { CmeSetupRoute } from "@/components/cme/cme-setup-route";
 import { CmeStateNotice } from "@/components/cme/cme-state-notice";
+import { cmeCarryReturnHref } from "@/lib/cme/carry-return";
 import { loadCmePageData } from "@/lib/cme/load-cme-page-data";
 
 export const metadata: Metadata = {
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
 export default async function CmeSetupPageRoute({
   searchParams,
 }: {
-  searchParams: Promise<{ year?: string; edit?: string }>;
+  searchParams: Promise<{ year?: string; edit?: string; carryFrom?: string; carryGoal?: string }>;
 }) {
   const query = await searchParams;
   const requestedYear = query.year ? Number(query.year) : undefined;
@@ -33,6 +34,7 @@ export default async function CmeSetupPageRoute({
       set={data.set}
       demoMode={data.demoMode}
       editInitially={query.edit === "1"}
+      returnHref={cmeCarryReturnHref(data.year, query.carryFrom, query.carryGoal)}
     />
   );
 }

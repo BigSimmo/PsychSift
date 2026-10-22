@@ -139,6 +139,26 @@ describe("rosterCommand swap.approve server-side rule validation", () => {
     expect(rpc).not.toHaveBeenCalled();
   });
 
+  it("reads only the two people's shifts, so a large team cannot pass the row cap", async () => {
+    const { client, from } = createMockRosterClient({
+      rules: { minBreakHours: 10 },
+      assignments: violatingAssignments,
+    });
+    const parsed = rosterActionSchema.parse({ action: "swap.approve", swapId: SWAP_ID });
+    await expect(rosterCommand(client, MANAGER_ID, SERVICE_ID, parsed)).rejects.toMatchObject({ status: 409 });
+
+    const windowReads = from.mock.calls
+      .map(([table], index) => ({
+        table,
+        chain: from.mock.results[index]?.value as Record<string, ReturnType<typeof vi.fn>>,
+      }))
+      .filter(({ table, chain }) => table === "roster_assignments" && chain.gte.mock.calls.length > 0);
+    expect(windowReads.length).toBeGreaterThan(0);
+    for (const { chain } of windowReads) {
+      expect(chain.in).toHaveBeenCalledWith("user_id", [REQUESTER_ID, COUNTERPARTY_ID]);
+    }
+  });
+
   it("allows a rule-violating swap when acknowledgeRuleWarnings is true", async () => {
     const { client, rpc } = createMockRosterClient({
       rules: { minBreakHours: 10 },
@@ -229,5 +249,79 @@ describe("rosterCommand swap.approve server-side rule validation", () => {
       swapId: SWAP_ID,
     });
     expect(rpc).toHaveBeenCalledOnce();
+  });
+});
+
+describe("rosterCommand swap.accept routes a rule-breaking swap to the manager", () => {
+  const assignments = [
+    {
+      id: PRIOR_ID,
+      user_id: COUNTERPARTY_ID,
+      roster_name: "Dr Counterparty",
+      grade: "registrar",
+      starts_at: "2026-10-15T14:00:00+08:00",
+      ends_at: "2026-10-15T22:30:00+08:00",
+      shift_code: "E",
+      kind: "evening",
+    },
+    {
+      id: GIVE_ID,
+      user_id: REQUESTER_ID,
+      roster_name: "Dr Requester",
+      grade: "registrar",
+      starts_at: "2026-10-16T06:00:00+08:00",
+      ends_at: "2026-10-16T14:30:00+08:00",
+      shift_code: "D",
+      kind: "day",
+    },
+  ];
+  const accept = rosterActionSchema.parse({ action: "swap.accept", swapId: SWAP_ID });
+
+  it("sends a swap that breaks a team rule to the manager instead of letting it approve itself", async () => {
+    const { client, rpc } = createMockRosterClient({
+      rules: { minBreakHours: 10 },
+      assignments,
+      swapOverrides: { status: "requested" },
+    });
+    rpc.mockResolvedValue({
+      data: { swapId: SWAP_ID, status: "accepted", needsManagerBecause: "team_rule" },
+      error: null,
+    });
+
+    await expect(rosterCommand(client, COUNTERPARTY_ID, SERVICE_ID, accept)).resolves.toMatchObject({
+      status: "accepted",
+      needsManagerBecause: "team_rule",
+    });
+    expect(rpc).toHaveBeenCalledWith("roster_swap_accept_for_manager", {
+      p_actor_id: COUNTERPARTY_ID,
+      p_service_id: SERVICE_ID,
+      p_swap_id: SWAP_ID,
+    });
+  });
+
+  it("leaves a swap that breaks no rule to roster_command", async () => {
+    const { client, rpc } = createMockRosterClient({
+      rules: { minBreakHours: 6 },
+      assignments,
+      swapOverrides: { status: "requested" },
+    });
+    await rosterCommand(client, COUNTERPARTY_ID, SERVICE_ID, accept);
+    expect(rpc).toHaveBeenCalledWith("roster_command", expect.objectContaining({ p_action: "swap.accept" }));
+  });
+
+  it("leaves anyone but the other doctor, and a swap no longer waiting, to roster_command's own refusal", async () => {
+    for (const [actor, overrides] of [
+      [REQUESTER_ID, { status: "requested" }],
+      [COUNTERPARTY_ID, { status: "accepted" }],
+      [COUNTERPARTY_ID, { status: "requested", expires_at: "2020-01-01T00:00:00Z" }],
+    ] as const) {
+      const { client, rpc } = createMockRosterClient({
+        rules: { minBreakHours: 10 },
+        assignments,
+        swapOverrides: overrides,
+      });
+      await rosterCommand(client, actor, SERVICE_ID, accept);
+      expect(rpc).toHaveBeenCalledWith("roster_command", expect.objectContaining({ p_action: "swap.accept" }));
+    }
   });
 });

@@ -574,6 +574,47 @@ begin
   end if;
 end $open_post_once$;
 
+-- A swap that would approve itself but breaks a team rule waits for the manager instead
+-- (20261022010000_roster_swap_accept_for_manager.sql). The app judges the rule; this checks the routing.
+do $swap_to_manager$
+declare
+  d date := (now() at time zone 'Australia/Perth')::date + 300;
+  preview jsonb; payload jsonb; result jsonb; give_id uuid; take_id uuid; swap_id uuid;
+begin
+  perform pg_temp.cmd('mgr', 'settings.set', '{"swapApproval":"auto_same_grade","rules":{},"rulesSource":null,"payFortnightAnchor":null}');
+  preview := public.roster_publish_preview(pg_temp.id('mgr'), pg_temp.id('svc'), d, d + 7);
+  payload := jsonb_build_object('roles', '[]'::jsonb, 'codes', '[]'::jsonb, 'publication', jsonb_build_object(
+    'kind', 'full', 'periodStart', d, 'periodEnd', d + 7, 'assignments', jsonb_build_array(
+      jsonb_build_object('userId', pg_temp.id('lee'), 'startsAt', d::timestamptz, 'endsAt', d::timestamptz + interval '8 hours', 'shiftCode', 'C', 'kind', 'on_call'),
+      jsonb_build_object('userId', pg_temp.id('mei'), 'startsAt', (d + 7)::timestamptz, 'endsAt', (d + 7)::timestamptz + interval '8 hours', 'shiftCode', 'C', 'kind', 'on_call'))));
+  result := public.roster_publish(pg_temp.id('mgr'), pg_temp.id('svc'), preview ->> 'freshnessToken', payload);
+  select id into give_id from public.roster_assignments where publication_id = (result ->> 'publicationId')::uuid and user_id = pg_temp.id('lee');
+  select id into take_id from public.roster_assignments where publication_id = (result ->> 'publicationId')::uuid and user_id = pg_temp.id('mei');
+  result := pg_temp.cmd('lee', 'swap.create', jsonb_build_object('giveAssignmentId', give_id, 'takeAssignmentId', take_id, 'counterpartyId', pg_temp.id('mei')));
+  swap_id := (result ->> 'swapId')::uuid;
+
+  -- Only the other doctor can accept: anyone else reads it as missing, and nothing changes.
+  perform pg_temp.expect_error(format('select public.roster_swap_accept_for_manager(%L,%L,%L)',
+    pg_temp.id('alex'), pg_temp.id('svc'), swap_id), 'roster_not_found');
+  result := public.roster_swap_accept_for_manager(pg_temp.id('mei'), pg_temp.id('svc'), swap_id);
+  if result ->> 'status' <> 'accepted' or result ->> 'needsManagerBecause' <> 'team_rule' then
+    raise exception 'swap to manager: wrong answer %', result; end if;
+  if (select user_id from public.roster_assignments where id = give_id) <> pg_temp.id('lee')
+    or (select user_id from public.roster_assignments where id = take_id) <> pg_temp.id('mei') then
+    raise exception 'swap to manager: shifts changed hands before the manager approved'; end if;
+  if (select status from public.roster_swaps where id = swap_id) <> 'accepted'
+    or (select needs_manager_because from public.roster_swaps where id = swap_id) <> 'team_rule'
+    or (select auto_approved from public.roster_swaps where id = swap_id) then
+    raise exception 'swap to manager: swap row not left waiting for the manager'; end if;
+  -- A second accept finds nothing waiting on the doctor.
+  perform pg_temp.expect_error(format('select public.roster_swap_accept_for_manager(%L,%L,%L)',
+    pg_temp.id('mei'), pg_temp.id('svc'), swap_id), 'roster_not_found');
+  result := pg_temp.cmd('mgr', 'swap.approve', jsonb_build_object('swapId', swap_id));
+  if result ->> 'status' <> 'approved' or (select user_id from public.roster_assignments where id = give_id) <> pg_temp.id('mei') then
+    raise exception 'swap to manager: manager approval did not apply the swap'; end if;
+end
+$swap_to_manager$;
+
 -- 14. Deleting a doctor's account is never blocked by a Roster table.
 reset role;
 do $delete_account$

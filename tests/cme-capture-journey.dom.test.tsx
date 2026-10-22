@@ -214,6 +214,16 @@ describe("CME capture routes", () => {
     });
   });
 
+  it("returns to the plan a carry started from once the year is confirmed", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse({ year: 2025, requirementSet }));
+    const back = "/cme/plan?year=2024&carry=33333333-3333-4333-8333-333333333333#cme-carry-goals";
+    render(<CmeSetupRoute year={2025} set={requirementSet} demoMode={false} editInitially returnHref={back} />);
+    await user.type(screen.getByLabelText(/cpd home name/i), "Owner programme");
+    await user.click(screen.getByRole("button", { name: /re-confirm requirements/i }));
+    await waitFor(() => expect(navigation.push).toHaveBeenCalledWith(back));
+  });
+
   it("retains an edited setup after failure and refreshes only after the full set is confirmed", async () => {
     const user = userEvent.setup();
     const fetchMock = vi

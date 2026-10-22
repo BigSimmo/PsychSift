@@ -11,11 +11,14 @@ export function CmeSetupRoute({
   set,
   demoMode,
   editInitially = false,
+  returnHref = null,
 }: {
   readonly year: number;
   readonly set: CmeRequirementSet | null;
   readonly demoMode: boolean;
   readonly editInitially?: boolean;
+  /** Where to go once confirmed, already checked on the server: back to the plan a carry started from. */
+  readonly returnHref?: string | null;
 }) {
   const router = useRouter();
   if (set && !editInitially) {
@@ -44,7 +47,7 @@ export function CmeSetupRoute({
                 : `Could not confirm requirements (${response.status}).`;
           throw new Error(message);
         }
-        router.push(`/cme/setup?year=${year}`);
+        router.push(returnHref ?? `/cme/setup?year=${year}`);
         router.refresh();
       }}
     />
