@@ -3312,6 +3312,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-22-library-document-text-needs-sign-in.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/agents/external-skill-precedence.md",
         "section": "agents",
         "catalogued": true
