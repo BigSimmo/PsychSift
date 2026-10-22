@@ -4827,6 +4827,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-22-publication-ci-routing-approved.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-08-27-favourites-phone-keeps-both-cards.md",
         "section": "decisions",
         "catalogued": true
