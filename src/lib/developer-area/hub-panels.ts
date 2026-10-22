@@ -167,22 +167,8 @@ export const HUB_PANELS: readonly HubPanel[] = [
     href: "/brand/preview.html",
     external: true,
   },
-  // Real prototype cards, not one generic self-linking "Prototypes" card.
-  // This is also what preserves the Care Plan entry the spec requires to
-  // survive the hub rewrite.
-  {
-    id: "care-plan",
-    name: "Care Plan",
-    // #L76: this described the August (pre-Task 10-11) state, before
-    // Reviews/Team/Governance (operations-pages.tsx: ReviewsSurface,
-    // TeamSurface, GovernanceSurface) and the Patient Plan route became
-    // functional. Kept accurate to what the prototype actually covers now.
-    summary:
-      "Synthetic, memory-only prototype: Management Plan, ED Presentations, Personal Safety Plan, Patient Plan, Reviews/Team/Governance",
-    group: "reference",
-    phase: 1,
-    href: "/mockups/care-plan",
-  },
+  // The Care Plan prototype card was removed on 2026-10-21, when the owner
+  // retired the prototype (mockups/README.md, "Retired developer-gated routes").
 ];
 
 export function panelsInGroup(group: HubPanelGroup): HubPanel[] {

@@ -78,7 +78,7 @@ export function answerProgressStepIndex(stage: PublicAnswerProgressStage) {
 /** UI copy is derived from the public stage and never from an incoming message.
  *
  * One rule holds this whole set together, taken from the pending screens in
- * `/mockups/answer-chat-perfected-v2`:
+ * the answer-chat-perfected-v2 design study (retired 2026-10-21; see git history):
  *
  *   **The wait shows no number the reader cannot reconcile with something on
  *   screen.**

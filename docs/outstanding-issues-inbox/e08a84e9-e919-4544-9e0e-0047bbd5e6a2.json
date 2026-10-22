@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "e08a84e9-e919-4544-9e0e-0047bbd5e6a2",
+  "createdOn": "2026-10-21",
+  "action": "done",
+  "payload": {
+    "id": "#QKW3KN",
+    "outcome": "Closed 2026-10-21 in the owner's project review (Current issues register thread), which found it already fixed on main.",
+    "baseRowFingerprint": "b7113468c8ad7e3612eb00beeee6e461482b56f43391ea7ff47cea28e6c9d32c",
+    "targetUlid": "01M2ZHJ7RQQKW3KNEYCT602EXN"
+  }
+}
