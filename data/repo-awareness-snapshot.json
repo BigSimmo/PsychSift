@@ -4237,6 +4237,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-21-worker-scan-advisory-until-4-nov.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/design-system/drift-measurement-2026-09-02.md",
         "section": "design-system",
         "catalogued": true
@@ -4424,6 +4429,11 @@
       {
         "path": "docs/archive/search-rag-phase-0-baseline.md",
         "section": "archive",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-21-answers-leave-diagnosis-to-clinician.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -4979,6 +4989,11 @@
       {
         "path": "docs/audit/worktree-reconciliation-2026-08-23.md",
         "section": "audit",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-21-content-review-intervals.md",
+        "section": "decisions",
         "catalogued": true
       },
       {

@@ -154,10 +154,21 @@ const pdfAssetByCode = new Map(formsPdfManifest.assets.map((asset) => [normalize
  * A form absent from the register is treated as drafted too. The default has to be the
  * cautious one: a missing row is a gap in the record, not evidence of review.
  */
+const contentReviewEntries = (
+  formsContentReview as { forms: { code: string; status: string; reviewedBy?: unknown; reviewedAt?: unknown }[] }
+).forms;
+
 const contentReviewStatusByCode = new Map(
-  (
-    formsContentReview as { forms: { code: string; status: string; reviewedBy?: unknown; reviewedAt?: unknown }[] }
-  ).forms.map((entry) => [normalizeCode(entry.code), formContentReviewStatus(entry)] as const),
+  contentReviewEntries.map((entry) => [normalizeCode(entry.code), formContentReviewStatus(entry)] as const),
+);
+
+/** Sign-off instant per form, kept only where the full attestation stands (`reviewed`). */
+const contentReviewedAtByCode = new Map(
+  contentReviewEntries.flatMap((entry) =>
+    formContentReviewStatus(entry) === "reviewed" && typeof entry.reviewedAt === "string"
+      ? [[normalizeCode(entry.code), entry.reviewedAt] as const]
+      : [],
+  ),
 );
 
 /**
@@ -273,6 +284,9 @@ function detailsFor(form: OfficialForm): FormCatalogDetails {
     officialTitleCheckedAt: officialFormsReviewedDate,
     archiveGeneratedAt: archiveGeneratedAt || undefined,
     contentReviewStatus: contentReviewStatusByCode.get(normalizeCode(form.code)) ?? "drafted",
+    ...(contentReviewedAtByCode.has(normalizeCode(form.code))
+      ? { contentReviewedAt: contentReviewedAtByCode.get(normalizeCode(form.code)) }
+      : {}),
   };
   return details;
 }

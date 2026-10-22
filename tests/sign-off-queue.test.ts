@@ -69,8 +69,9 @@ const EXPECTED: Record<SignOffFamilyId, number> = {
   // All 93 signable candidates and the 3 adopted medicine sources were reviewed; six Indigenous
   // sources remain held, and two OCP WA standards reviewed only in prose wait for the owner to
   // sign them with clinical:review (owner decision, 17 Oct 2026). On 21 Oct 2026 the owner's 2 Oct
-  // lithium attestation was restored, so 8 wait.
-  sources: 8,
+  // lithium attestation was restored, so 8 wait. Later on 21 Oct the owner chose the AADPA 2022
+  // ADHD guideline for the shared library; it was added unsigned, so 9 wait.
+  sources: 9,
 };
 
 describe("clinical sign-off queue", () => {
@@ -338,8 +339,9 @@ const EXPECTED_SIGNED_BY_DOMAIN: Record<SignOffDomainId, { signed: number; waiti
   // 93 sources carry a structured, current attestation. Two OCP standards are marked
   // locally_reviewed in prose only and are ready for the owner to sign with clinical:review;
   // six Indigenous sources are held. The 18 Oct PS-009 withdrawal of the owner's lithium
-  // attestation was reversed on 21 Oct 2026 (owner ruling).
-  sources: { signed: 93, waiting: 8 },
+  // attestation was reversed on 21 Oct 2026 (owner ruling). The AADPA 2022 ADHD guideline was
+  // added unsigned on 21 Oct 2026 (owner's choice), so it waits for the owner too.
+  sources: { signed: 93, waiting: 9 },
   services: { signed: 21, waiting: 4 },
 };
 
@@ -384,15 +386,15 @@ describe("clinical & rule sign-off ledger", () => {
 
   it("derives the overall totals, signer breakdown, and categorized waiting counts from the domain rows", () => {
     expect(ledger.totalSigned).toBe(531);
-    expect(ledger.totalWaiting).toBe(1346);
-    expect(ledger.totalGoverned).toBe(1877);
+    expect(ledger.totalWaiting).toBe(1347);
+    expect(ledger.totalGoverned).toBe(1878);
     expect(ledger.signedByTotals).toEqual({
       "Josh Simpson": 3,
       "Psych Sift": 67,
       PsychSift: 461,
     });
     expect(ledger.waitingByCategory).toEqual({
-      signableNow: 173,
+      signableNow: 174,
       indigenousHold: 26,
       awaitingPrerequisites: 582,
       awaitingTool: 565,

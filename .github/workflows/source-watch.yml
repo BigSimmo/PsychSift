@@ -1,0 +1,203 @@
+name: Weekly source watch
+
+# Content currency (owner decision 21 Oct 2026, docs/decisions/2026-10-21-content-review-intervals.md):
+# once a week, check whether the public page or file behind each registered Western Australian,
+# Australian and UK (NICE) source has changed, and say so in ONE issue, found by a hidden marker and updated in
+# place each week.
+#
+# Report only. It reads public web pages and nothing else: no database, no storage, no ingestion,
+# no OpenAI, no commits and no pull requests. A difference is not a guideline change; the owner
+# confirms a real change by adding it to src/data/source-change-events.json, which is what makes
+# the citing records due for review.
+#
+# Last week's fingerprints travel in the issue body, so the watch needs no repository writes.
+#
+# Two jobs, the same shape as organisation-weekly.yml: the job that runs repository code can only
+# read, and `issues: write` sits on a job that checks out and runs nothing from the repository.
+# The report crosses between them as an artifact.
+
+on:
+  schedule:
+    # Sunday 23:17 UTC, which is Monday 07:17 in Perth.
+    - cron: "17 23 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: source-watch
+  cancel-in-progress: false
+
+jobs:
+  report:
+    name: Check registered sources for changes
+    # main only: a manual run from another branch would compare that branch's register.
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      issues: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node and dependencies
+        uses: ./.github/actions/setup-node-cached
+
+      - name: Read last week's fingerprints
+        # A missing issue only means this is the first run; every source is then recorded fresh.
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          retries: 3
+          script: |
+            const fs = require("node:fs");
+            const MARKER = "<!-- source-watch-report:v1 -->";
+            const BOT = "github-actions[bot]";
+            const ours = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "all",
+              creator: BOT,
+              per_page: 100,
+            });
+            const existing =
+              ours
+                .filter((issue) => !issue.pull_request && issue.user?.login === BOT)
+                .filter((issue) => String(issue.body ?? "").includes(MARKER))
+                .sort((a, b) => a.number - b.number)[0] ?? null;
+            fs.mkdirSync("output/source-watch", { recursive: true });
+            fs.writeFileSync("output/source-watch/previous.md", existing?.body ?? "");
+            core.info(existing ? `Read last week's state from #${existing.number}.` : "No earlier report; first run.");
+
+      - name: Check the sources
+        run: >-
+          node scripts/run-tsx.mjs scripts/watch-source-changes.ts
+          --state-in output/source-watch/previous.md
+          --out output/source-watch/report.md
+
+      - name: Upload the report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: source-watch-report
+          path: output/source-watch/report.md
+          if-no-files-found: error
+          retention-days: 30
+          overwrite: true
+
+  publish:
+    name: Update the source watch issue
+    needs: report
+    # Runs even when the report job failed, so a broken watch is said in the issue.
+    if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Download the report
+        # A failed report job leaves no artifact; the next step then says so in the issue.
+        continue-on-error: true
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: source-watch-report
+          path: source-watch
+
+      - name: Update or create the source watch issue
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        # Results travel through env, never inline template expansion inside `script:`.
+        env:
+          REPORT_RESULT: ${{ needs.report.result }}
+          REPORT_FILE: source-watch/report.md
+        with:
+          retries: 3
+          script: |
+            const fs = require("node:fs");
+            const title = "Weekly source watch";
+            const label = "source-watch";
+            // Only an issue that carries this marker AND was opened by this workflow's bot is ever
+            // updated. Closed issues are searched too and reopened, so closing never forks the state.
+            const MARKER = "<!-- source-watch-report:v1 -->";
+            const BOT = "github-actions[bot]";
+            const BODY_MAX = 65000;
+            const HEADING = "# Weekly source watch";
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+            const result = process.env.REPORT_RESULT || "unknown";
+
+            let report = null;
+            let problem = null;
+            try {
+              report = fs.readFileSync(process.env.REPORT_FILE, "utf8");
+            } catch (error) {
+              problem = `could not be built (report job: \`${result}\`)`;
+              core.warning(`No report to publish: ${error.message}`);
+            }
+            if (report !== null && report.split("\n", 1)[0] !== HEADING) {
+              problem = `was not a source watch report (report job: \`${result}\`)`;
+              report = null;
+            }
+            if (report !== null) report = report.replace(/@(?=[A-Za-z0-9])/g, "@​");
+            if (report !== null && report.length > BODY_MAX) {
+              problem = `was too long to publish (${report.length} characters)`;
+              report = null;
+            }
+            const attention = Number(/<!-- source-watch-attention:(\d+) -->/.exec(report ?? "")?.[1] ?? 0);
+            const body = [
+              MARKER,
+              report ??
+                [
+                  HEADING,
+                  "",
+                  `This week's watch ${problem}. That is **not** evidence that nothing changed. Read the run log: ${runUrl}`,
+                ].join("\n"),
+              "",
+              `_Updated in place each week by \`.github/workflows/source-watch.yml\`. Run: ${runUrl}_`,
+            ].join("\n");
+
+            const healthy = result === "success" && report !== null;
+            let issueNumber;
+            let existing = null;
+            try {
+              const ours = await github.paginate(github.rest.issues.listForRepo, {
+                owner,
+                repo,
+                state: "all",
+                creator: BOT,
+                per_page: 100,
+              });
+              existing =
+                ours
+                  .filter((issue) => !issue.pull_request && issue.user?.login === BOT)
+                  .filter((issue) => String(issue.body ?? "").includes(MARKER))
+                  .sort((a, b) => a.number - b.number)[0] ?? null;
+              // A failed run keeps last week's body, so last week's fingerprints are not lost.
+              if (existing && healthy) {
+                issueNumber = existing.number;
+                await github.rest.issues.update({ owner, repo, issue_number: issueNumber, body, state: "open" });
+              } else if (existing) {
+                issueNumber = existing.number;
+              } else {
+                const created = await github.rest.issues.create({ owner, repo, title, labels: [label], body });
+                issueNumber = created.data.number;
+              }
+              // Editing a body notifies nobody; a comment reaches everyone watching the issue.
+              const note = !healthy
+                ? `This week's source watch did not finish (report job: \`${result}\`). Last week's report is left in place. Run: ${runUrl}`
+                : attention > 0
+                  ? `${attention} source${attention === 1 ? "" : "s"} changed, moved or disappeared this week. The issue body lists them.`
+                  : null;
+              if (note) {
+                await github.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body: `${MARKER}\n${note}` });
+              }
+            } catch (error) {
+              core.setFailed(`Could not update the source watch issue: ${error.message}`);
+              return;
+            }
+            if (!healthy) core.setFailed(`The source watch did not finish (report job: ${result}); the issue says so.`);

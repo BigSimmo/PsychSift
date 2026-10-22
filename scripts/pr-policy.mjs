@@ -1254,6 +1254,10 @@ export function evaluatePullRequestPolicy({
   author = undefined,
   // true when auto-merge is armed on the PR; undefined when the caller cannot tell.
   autoMergeArmed = undefined,
+  // The login that armed auto-merge (`pull_request.auto_merge.enabled_by.login`), and the
+  // repository owner's login. Only the owner may arm auto-merge on a clinical-risk PR.
+  autoMergeEnabledBy = undefined,
+  ownerLogin = undefined,
   now = new Date(),
 }) {
   // Hard-blocking conditions (`errors`): a lingering `PR_POLICY_BODY.md` transport file,
@@ -1299,6 +1303,20 @@ export function evaluatePullRequestPolicy({
     errors.push(
       "Auto-merge is armed on a PR that changes supabase/migrations. Merging applies it to the live clinical database within seconds, so it merges only by hand after the owner's own yes (docs/decisions/2026-10-20-database-prs-merge-by-hand.md). Turn auto-merge off; this check re-runs and passes, then merge by hand.",
     );
+  }
+
+  // Blocking gate (#YF0XSQ, enforcing owner decision 2026-10-20): Gitar never arms auto-merge on a
+  // clinical-risk PR. On 13 Oct gitar-bot armed it on PR 3507 (a patient-safety component), which
+  // then merged on bot approvals alone. The owner may still arm it; anyone else, or an arming
+  // account this check cannot identify, fails here until auto-merge is turned off.
+  if (classification.clinicalRisk && autoMergeArmed === true) {
+    const armedBy = String(autoMergeEnabledBy ?? "").trim();
+    const owner = String(ownerLogin ?? "").trim();
+    if (!armedBy || !owner || armedBy.toLowerCase() !== owner.toLowerCase()) {
+      errors.push(
+        `Auto-merge was armed on a clinical-risk PR by ${armedBy || "an account this check cannot identify"}, not the owner. A clinical-risk change must not merge on bot approval alone (docs/decisions/2026-10-20-database-prs-merge-by-hand.md, ledger #YF0XSQ). Turn auto-merge off; this check re-runs and passes. The owner may review and merge by hand, or arm it themselves.`,
+      );
+    }
   }
 
   // Blocking gate (audit CC-04, 2026-10-20): these files decide whether the required checks pass,
@@ -2684,6 +2702,48 @@ function requiredCheckForgerySelfTest(completeBody) {
     ),
     /Auto-merge is armed/,
     "ordinary PRs may still auto-merge",
+  );
+
+  // Auto-merge on a clinical-risk PR (#YF0XSQ): only the owner may arm it.
+  const armedClinical = {
+    title: "fix(safety-plan): keep the crisis line visible",
+    body: completeBody,
+    headRef: "claude/safety-plan-crisis-line",
+    files: ["src/components/patient-safety-plan.tsx"],
+    ownerLogin: "BigSimmo",
+  };
+  assert.equal(classifyPullRequestFiles(armedClinical.files).clinicalRisk, true, "fixture must be clinical-risk");
+  assert.match(
+    evaluatePullRequestPolicy({ ...armedClinical, autoMergeArmed: true, autoMergeEnabledBy: "gitar-bot" }).errors.join(
+      " ",
+    ),
+    /armed on a clinical-risk PR by gitar-bot/,
+  );
+  assert.match(
+    evaluatePullRequestPolicy({ ...armedClinical, autoMergeArmed: true }).errors.join(" "),
+    /cannot identify/,
+    "an unidentified arming account fails closed",
+  );
+  assert.doesNotMatch(
+    evaluatePullRequestPolicy({ ...armedClinical, autoMergeArmed: true, autoMergeEnabledBy: "bigsimmo" }).errors.join(
+      " ",
+    ),
+    /clinical-risk PR by/,
+    "the owner may arm auto-merge",
+  );
+  assert.doesNotMatch(
+    evaluatePullRequestPolicy({ ...armedClinical, autoMergeArmed: false }).errors.join(" "),
+    /clinical-risk PR by/,
+  );
+  assert.doesNotMatch(
+    evaluatePullRequestPolicy({
+      ...armedClinical,
+      files: ["src/lib/format.ts"],
+      autoMergeArmed: true,
+      autoMergeEnabledBy: "gitar-bot",
+    }).errors.join(" "),
+    /clinical-risk PR by/,
+    "ordinary PRs may still be armed by a bot",
   );
 
   // AI agents and bot co-authors (audit CC-02).

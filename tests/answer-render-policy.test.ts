@@ -724,7 +724,7 @@ describe("answer render policy", () => {
     expect(model.copyText).toContain("Sources for review");
   });
 
-  it("keeps medium-confidence rendering focused on source status, sources, and evidence map", () => {
+  it("keeps medium-confidence rendering focused on source status, sources, evidence map and capped quotes", () => {
     const model = buildAnswerRenderModel(
       answer({
         confidence: "medium",
@@ -736,9 +736,10 @@ describe("answer render policy", () => {
 
     expect(model.trust).toBe("medium");
     expect(model.allowedBlocks).toEqual(expect.arrayContaining(["sourceStatus", "reviewSources", "evidenceMap"]));
-    expect(model.allowedBlocks).not.toContain("quoteCards");
+    // TGA exemption limb (e): medium trust shows the exact sentences relied on, capped at 2.
+    expect(model.allowedBlocks).toContain("quoteCards");
     expect(model.allowedBlocks).not.toContain("relatedDocuments");
-    expect(model.quoteCards).toHaveLength(0);
+    expect(model.quoteCards).toHaveLength(2);
     expect(model.relatedDocuments).toHaveLength(0);
     expect(model.evidenceRows).toHaveLength(1);
     expect(model.copyText).toContain("Verify against linked source documents");
