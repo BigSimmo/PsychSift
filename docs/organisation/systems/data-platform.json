@@ -62,6 +62,7 @@
     "scripts/operator-explain-documents-indexes.sql",
     "scripts/operator-explain-site-content-health.sql",
     "scripts/operator-explain-site-content-public-records.sql",
+    "scripts/operator-verify-locally-reviewed-repair.sql",
     "scripts/ops-digest.mjs",
     "scripts/purge-query-logs.ts",
     "scripts/set-site-administrator.ts",

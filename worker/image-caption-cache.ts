@@ -13,7 +13,8 @@
 // is part of the table's unique key (owner_id, image_hash, model, cache_identity), so captions
 // for different identities of the same image bytes coexist instead of overwriting each other
 // (migration 20261021160000). The classification lives in the metadata column, which also
-// keeps a copy of the identity that every read re-checks.
+// keeps a copy of the identity that every read re-checks, and the document id, so a deleted or
+// reprocessed document's rows can be removed with it (#3730, src/lib/image-caption-cache-cleanup.ts).
 import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
@@ -47,6 +48,7 @@ export type CaptionClassifierInputs = Readonly<{
 
 export type ImageCaptionCacheKey = Readonly<{
   ownerId: string;
+  documentId: string;
   imageHash: string;
   model: string;
   identity: string;
@@ -102,7 +104,13 @@ export function imageCaptionCacheKey(args: {
       }),
     )
     .digest("hex");
-  return { ownerId, imageHash: args.imageHash, model, identity: `sha256:${identity}` };
+  return {
+    ownerId,
+    documentId: args.job.document_id,
+    imageHash: args.imageHash,
+    model,
+    identity: `sha256:${identity}`,
+  };
 }
 
 const cachedClassificationSchema = z
@@ -191,6 +199,7 @@ export async function writeCachedImageClassification(
             extractor: "local-worker",
             cache_identity_version: imageCaptionCacheIdentityVersion,
             cache_identity: key.identity,
+            document_id: key.documentId,
             classification: redacted,
           }),
         },
