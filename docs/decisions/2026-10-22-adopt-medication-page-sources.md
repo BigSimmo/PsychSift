@@ -1,7 +1,7 @@
 # Decision: Adopt the sources the medication pages link to, then sign them again
 
 - **Status:** decided 2026-10-22
-- **Source:** `src/data/source-acquisitions.json`, the records whose `dispositionReason` starts "Adopted on 2026-10-22"
+- **Source:** `src/data/source-acquisitions.json`, find "Adopted on 2026-10-22 under the owner's decision"
 
 A medication page shows a source link only when the source is adopted and carries a current owner
 signature. On 22 Oct 2026 the owner signed 75 candidate sources, then chose on a decision card in the

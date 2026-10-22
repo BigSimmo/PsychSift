@@ -3217,6 +3217,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-22-adopt-medication-page-sources.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/archive/source-governance-priorities-2026-07-02.md",
         "section": "archive",
         "catalogued": true
