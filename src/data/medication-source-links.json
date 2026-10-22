@@ -54,5 +54,13 @@
   "clomipramine": ["tga-product-information-clomipramine", "ranzcp-mood-disorders-clinical-practice-guideline"],
   "nortriptyline": ["tga-product-information-nortriptyline", "ranzcp-mood-disorders-clinical-practice-guideline"],
   "phenelzine": ["tga-product-information-phenelzine", "ranzcp-mood-disorders-clinical-practice-guideline"],
-  "tranylcypromine": ["tga-product-information-tranylcypromine", "ranzcp-mood-disorders-clinical-practice-guideline"]
+  "tranylcypromine": ["tga-product-information-tranylcypromine", "ranzcp-mood-disorders-clinical-practice-guideline"],
+  "dexamfetamine": ["wa-monitored-medicines-prescribing-code", "wa-health-scriptcheckwa"],
+  "lisdexamfetamine": ["wa-monitored-medicines-prescribing-code", "wa-health-scriptcheckwa"],
+  "methylphenidate": ["wa-monitored-medicines-prescribing-code", "wa-health-scriptcheckwa"],
+  "alprazolam": ["wa-monitored-medicines-prescribing-code", "wa-health-scriptcheckwa"],
+  "buprenorphine-sl-depot": ["wa-monitored-medicines-prescribing-code", "wa-health-scriptcheckwa"],
+  "buprenorphine-naloxone": ["wa-monitored-medicines-prescribing-code", "wa-health-scriptcheckwa"],
+  "gabapentin": ["wa-monitored-medicines-prescribing-code", "wa-health-scriptcheckwa"],
+  "pregabalin": ["wa-monitored-medicines-prescribing-code", "wa-health-scriptcheckwa"]
 }

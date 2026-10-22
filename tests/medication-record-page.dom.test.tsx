@@ -1,6 +1,6 @@
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { MedicationRecordPage } from "@/components/clinical-dashboard/medication-record-page";
 import { appModeHomeHref } from "@/lib/app-modes";
@@ -357,5 +357,45 @@ describe("MedicationRecordPage mock-up v6 states", () => {
     const failed = screen.getByTestId("medication-load-failed");
     expect(failed).toHaveTextContent("Try again in a moment.");
     expect(failed).not.toHaveTextContent("reason is below");
+  });
+});
+
+describe("MedicationRecordPage review date", () => {
+  // 20 May 2027 in Perth: a June 2026 source check falls due in June 2027.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2027-05-20T04:00:00.000Z"));
+  });
+  afterEach(() => vi.useRealTimers());
+
+  const snapshotReview = { kind: "medication" as const, lastReviewedAt: "2026-06-10", citedSourceIds: [] };
+  const reviewState = () => screen.getByTestId("content-review-notice").getAttribute("data-review-state");
+
+  it("counts from the snapshot date while the live record is loading", () => {
+    mockDetail({ data: null, loading: true, error: null });
+    render(<MedicationRecordPage slug="test-med" fallbackRecord={fallbackDrug} reviewInput={snapshotReview} />);
+    expect(reviewState()).toBe("due_soon");
+  });
+
+  it("counts from the live record's own source-check date once it arrives", () => {
+    // Checked again since the snapshot: no longer due soon, so nothing is said.
+    mockDetail({
+      data: { record: liveDrug, governance: { validationStatus: "unverified", sourceCheckedAt: "2026-06-30" } },
+      loading: false,
+      error: null,
+    });
+    render(<MedicationRecordPage slug="test-med" fallbackRecord={fallbackDrug} reviewInput={snapshotReview} />);
+    expect(screen.getByRole("heading", { name: "Live Drug" })).toBeInTheDocument();
+    expect(screen.queryByTestId("content-review-notice")).not.toBeInTheDocument();
+  });
+
+  it("gives an owner-only record, which has no snapshot, a review date from its live record", () => {
+    mockDetail({
+      data: { record: liveDrug, governance: { validationStatus: "unverified", sourceCheckedAt: "2026-06-10" } },
+      loading: false,
+      error: null,
+    });
+    render(<MedicationRecordPage slug="test-med" />);
+    expect(reviewState()).toBe("due_soon");
   });
 });

@@ -1,0 +1,5 @@
+{
+  "version": 1,
+  "note": "Confirmed changes to sources in src/data/source-acquisitions.json. The weekly source watch only reports a possible change; an entry is added here only after the owner has looked at the change and confirmed it. Every page that cites the source then shows its review as due now until it is reviewed again. See docs/decisions/2026-10-21-content-review-intervals.md.",
+  "events": []
+}

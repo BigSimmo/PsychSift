@@ -823,6 +823,9 @@ export const answerQualityEvalCases: AnswerQualityEvalCase[] = [
     expectedQueryClass: "medication_dose_risk",
     expectedFiles: ["MHSP.MetabolicScreening.pdf"],
     mustContainAny: ["metabolic", "monitor"],
+    // A glossary definition of "metabolic screen" passed the cue above and the schedule check
+    // (Eval Canary 39614340500), so the answer must name at least one measure being monitored.
+    requiredConceptGroups: [["weight", "bmi", "waist", "glucose", "hba1c", "lipid", "blood pressure"]],
   },
   {
     ...commonQualityCase,

@@ -128,6 +128,7 @@ Every remaining tracked document in this category (architecture and design, plus
 - [redesign/premium-colour-system-plan.md](redesign/premium-colour-system-plan.md) — Premium colour system plan — Create a light mode that feels modern, premium, calm, and clinically trustworthy without becoming sterile, washed out, or over-teal.
 - [adr/0001-use-a-shared-local-first-clinical-ask-orchestrator.md](adr/0001-use-a-shared-local-first-clinical-ask-orchestrator.md) — Use a shared local-first orchestrator for Mode-aware Clinical Ask — Mode-aware Clinical Ask will extend the repository's one shared composer and governed answer surfaces through one local-first orchestration…
 - [decisions/ccz4hb-review-coverage.md](decisions/ccz4hb-review-coverage.md) — Decision: restoring automated review coverage (#CCZ4HB) — the row closed — but see the 2026-09-02 correction below, which removes the premise that decision rested on.
+- [product/clinical-and-work-direction.md](product/clinical-and-work-direction.md) — Clinical and Work product direction — Decision date: 2026-10-21 Decision:
 - [product/clinical-trust-direction.md](product/clinical-trust-direction.md) — Clinical trust product direction — Decision date: 2026-08-23 Decision:
 
 - [cme-adoption-contract.md](cme-adoption-contract.md) — CME adoption contract and evidence requirements

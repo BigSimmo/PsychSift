@@ -129,9 +129,12 @@ describe("the real queue", () => {
     // 21 Oct 2026: the 27 Therapy records signed in #3562 and the 18 signed records with a
     // contradictory format label went back to needs_review (owner ruling), so 71 Therapy records
     // are signable; the owner's lithium attestation was restored, so that source is signed.
+    // 21 Oct 2026: the owner chose the AADPA 2022 ADHD guideline for the shared library; it was
+    // added unsigned, so it joins the signable sources.
     expect(signable.map((item) => item.family)).toEqual([
       ...Array<string>(8).fill("wa-mha-forms"),
       ...Array<string>(71).fill("therapy"),
+      "sources",
       "sources",
       "sources",
     ]);
@@ -217,6 +220,7 @@ describe("the real queue", () => {
       "written-exposure-therapy",
       "ocp-wa-standard-authorisation-of-hospitals",
       "ocp-wa-standards-for-clinical-care",
+      "aadpa-australian-adhd-guideline-2022",
     ]);
     expect(today.signable).toBe(signable.length);
     expect(today.rows.length).toBe(Math.min(SIGN_OFF_TODAY_SIZE, signable.length));

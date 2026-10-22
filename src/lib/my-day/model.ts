@@ -17,9 +17,16 @@ import type { RenewalRow } from "@/lib/my-day/figures";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
 import type { TodayItem } from "@/lib/today/today-item";
 import { todaySeverities, type TodaySeverity } from "@/lib/today/today-item";
+import type { WorkModeId } from "@/lib/app-modes";
 
 /** The modes My Day gathers from, in the order they are named on the page. */
-export const myDaySourceModes = ["on-call", "roster", "cme", "teaching", "my-work"] as const;
+export const myDaySourceModes = [
+  "on-call",
+  "roster",
+  "cme",
+  "teaching",
+  "my-work",
+] as const satisfies readonly WorkModeId[];
 export type MyDaySourceMode = (typeof myDaySourceModes)[number];
 
 /** Overdue first, then due soon, then the rest: the shared Today order. */

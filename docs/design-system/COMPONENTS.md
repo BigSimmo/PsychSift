@@ -1066,7 +1066,7 @@ This generated snapshot is a local source-derived inventory. It does not assert 
 | `Citation`               | source   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
 | `CitationList`           | source   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
 | `ConfirmDialog`          | layout   | yes   | yes                | inherited-global-root | yes            | no                 |              15 |
-| `DateDisplay`            | source   | yes   | yes                | inherited-global-root | yes            | no                 |               3 |
+| `DateDisplay`            | source   | yes   | yes                | inherited-global-root | yes            | no                 |               4 |
 | `Disclosure`             | layout   | yes   | yes                | inherited-global-root | yes            | no                 |               3 |
 | `DisclosureGroup`        | layout   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
 | `DoseLine`               | answer   | yes   | yes                | no                    | yes            | no                 |               0 |
@@ -1074,7 +1074,7 @@ This generated snapshot is a local source-derived inventory. It does not assert 
 | `EmptyState`             | feedback | yes   | yes                | inherited-global-root | yes            | no                 |              17 |
 | `ErrorState`             | feedback | yes   | yes                | no                    | yes            | no                 |               0 |
 | `ErrorSummary`           | feedback | yes   | yes                | no                    | yes            | no                 |               0 |
-| `ExternalTextLink`       | controls | yes   | yes                | inherited-global-root | yes            | no                 |              10 |
+| `ExternalTextLink`       | controls | yes   | yes                | inherited-global-root | yes            | no                 |              11 |
 | `FieldError`             | feedback | yes   | yes                | inherited-global-root | yes            | no                 |               2 |
 | `FieldHint`              | feedback | yes   | yes                | inherited-global-root | yes            | no                 |               2 |
 | `FormField`              | controls | yes   | yes                | inherited-global-root | yes            | no                 |              19 |

@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "bc284aef-c833-44ee-8b87-c054b4b41559",
+  "createdOn": "2026-10-22",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "issue",
+    "summary": "Guideline-change re-review covers only the 34 medications in the source link map",
+    "detail": "PR #3746 makes a medication page and its interactions due for review now when a register source they cite has a confirmed change. It reads src/data/medication-source-links.json, which maps 34 of 330 medications. The other records cite their sources (TGA PI, PBS, DACAS) only as free text, and those sources are not in the register, so no change event can reach them. They still get the 12-month date. Next action: register each medicine's sources, then map them with owner confirmation, high-risk medicines first, alongside #05WXHX.",
+    "source": "PR #3746 Codex review 2026-10-22",
+    "issueUlid": "01M5GJWYCWJ0AY9D8CTN94SEXK"
+  }
+}

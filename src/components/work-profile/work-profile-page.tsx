@@ -145,7 +145,7 @@ const EXAMPLE_AREAS = [
   { id: "cpd", mode: "cme", title: "CPD", subtitle: "2026 plan and 3 routines", label: "Ready" },
   {
     id: "admin",
-    mode: "admin",
+    mode: "my-work",
     title: "Admin",
     subtitle: "Dates you entered. Not checked with Ahpra",
     label: "1 not recorded",

@@ -1,4 +1,4 @@
-import type { AppModeId } from "@/lib/app-modes";
+import { appModeSide, type AppModeId } from "@/lib/app-modes";
 
 /**
  * The mode pill's two rooms.
@@ -57,7 +57,7 @@ export const phoneModeGroups = [
   {
     id: "psychiatry",
     label: "Psychiatry",
-    hint: "Diagnosis, formulation, therapy, forms, scales",
+    hint: "Diagnosis, formulation, therapy, scales",
     side: "clinical",
     showHeading: true,
     drawn: true,
@@ -68,11 +68,23 @@ export const phoneModeGroups = [
       "specifiers",
       "formulation",
       "therapy-compass",
-      "forms",
       "calculators",
       "dictionary",
       "first-nations",
     ],
+  },
+  // The WA Mental Health Act is its own door (owner decision, 21 Oct 2026), not
+  // one section among ten under Psychiatry. Forms leads it: its three tabs are
+  // the forms register, the Act and Chief Psychiatrist standards, and the MHA
+  // clock, and every one of those addresses is unchanged.
+  {
+    id: "mha",
+    label: "Mental Health Act",
+    hint: "Forms, the Act and the MHA clock",
+    side: "clinical",
+    showHeading: true,
+    drawn: true,
+    modeIds: ["forms"],
   },
   // Medicines, like Psychiatry, is a dashboard (`/medicines`) that gathers
   // these sections and leads its group (modes review, phase 3).
@@ -107,7 +119,7 @@ export const phoneModeGroups = [
     modeIds: ["tools"],
   },
   // One list, and the switch already names it, so the menu draws no second heading.
-  // Same area order as the side menu and the rail: My Day, On Call, Open shifts, Roster, Teaching, CPD, Admin.
+  // Same area order as the side menu and the rail: My Day, On Call, Roster, Teaching, CPD, Admin.
   {
     id: "work",
     label: "Work",
@@ -115,7 +127,19 @@ export const phoneModeGroups = [
     side: "work",
     showHeading: false,
     drawn: true,
-    modeIds: ["my-day", "on-call", "open-shifts", "roster", "teaching", "cme", "my-work"],
+    modeIds: ["my-day", "on-call", "roster", "teaching", "cme", "my-work"],
+  },
+  // Open shifts is a tab inside Roster (owner decision, 21 Oct 2026), so the
+  // menu does not draw it. It stays a registered mode so every /open-shifts
+  // address keeps working.
+  {
+    id: "inside-roster",
+    label: "Inside Roster",
+    hint: "Open shifts",
+    side: "work",
+    showHeading: false,
+    drawn: false,
+    modeIds: ["open-shifts"],
   },
 ] as const satisfies ReadonlyArray<{
   id: string;
@@ -135,9 +159,20 @@ export function phoneModeGroupsForSide(side: ModeMenuSideId) {
   return phoneModeGroups.filter((group) => group.side === side && group.drawn);
 }
 
-/** Which room a mode belongs to. A mode in no group, which the exhaustiveness test forbids, reads as Clinical. */
+/** A mode the menu does not draw, mapped to the drawn row that hosts it. */
+const modeMenuRowHosts: Partial<Record<AppModeId, AppModeId>> = { "open-shifts": "roster" };
+
+/**
+ * The menu row that stands for `modeId`. On an Open shifts page the menu
+ * highlights and focuses Roster, the area Open shifts is a tab of.
+ */
+export function modeMenuRowFor(modeId: AppModeId): AppModeId {
+  return modeMenuRowHosts[modeId] ?? modeId;
+}
+
+/** Which room a mode belongs to: the `side` its own definition declares. */
 export function modeMenuSideForMode(modeId: AppModeId): ModeMenuSideId {
-  return phoneModeGroups.find((group) => (group.modeIds as readonly AppModeId[]).includes(modeId))?.side ?? "clinical";
+  return appModeSide(modeId);
 }
 
 /**

@@ -79,10 +79,10 @@ function mockSupabase(healthy: boolean, options: { fails?: boolean; timesOut?: b
   return { readSiteContentHealthEvidence };
 }
 
-async function deepProbe() {
+async function deepProbe(query = "deep=1") {
   const { healthResponse } = await import("../src/lib/health-response");
   const response = await healthResponse(
-    new Request("http://localhost/api/health?deep=1", { headers: { "x-health-deep-token": DEEP_TOKEN } }),
+    new Request(`http://localhost/api/health?${query}`, { headers: { "x-health-deep-token": DEEP_TOKEN } }),
   );
   return { response, body: (await response.json()) as Record<string, unknown> };
 }
@@ -139,6 +139,22 @@ describe("authorized deep health probe diagnostics", () => {
     expect(answerSloSnapshot).toHaveBeenCalledWith({ id: "admin-client" }, ANSWER_QUALITY_WINDOW_MINUTES);
     expect(body.slo).toMatchObject({ windowMinutes: 60, totalQueries: 0 });
     expect(body.sloTrailing).toMatchObject({ windowMinutes: ANSWER_QUALITY_WINDOW_MINUTES, totalQueries: 12 });
+  });
+
+  it("adds the 24-hour snapshot only when the daily health summary asks for it", async () => {
+    mockEnv();
+    mockSupabase(true);
+    const answerSloSnapshot = vi.fn(async (_client: unknown, windowMinutes = 60) => ({ windowMinutes }));
+    vi.doMock("@/lib/observability/answer-slo", () => ({ answerSloSnapshot }));
+    vi.doMock("@/lib/observability/spend-metrics", () => ({ spendSnapshot: vi.fn(async () => ({})) }));
+
+    const plain = await deepProbe();
+    expect(plain.body).not.toHaveProperty("sloDaily");
+    expect(answerSloSnapshot).toHaveBeenCalledTimes(2);
+
+    const daily = await deepProbe("deep=1&answer_window=daily");
+    expect(daily.body.sloDaily).toEqual({ windowMinutes: 1440 });
+    expect(answerSloSnapshot).toHaveBeenCalledWith({ id: "admin-client" }, 1440);
   });
 
   it("keeps the hourly snapshot when only the trailing snapshot query fails", async () => {

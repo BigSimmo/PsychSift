@@ -85,10 +85,15 @@ describe("Open shifts mode registration", () => {
     expect(globalsCss).toContain("--mode-identity: #b0a0d8;");
   });
 
-  it("sits in the Work list immediately before Roster", () => {
-    const group = phoneModeGroups.find((entry) => entry.id === "work");
-    const ids: readonly string[] = group?.modeIds ?? [];
-    expect(ids.indexOf("roster")).toBe(ids.indexOf("open-shifts") + 1);
+  it("is a tab inside Roster, so the Work list does not draw it (owner decision, 21 Oct 2026)", () => {
+    const work: readonly string[] = phoneModeGroups.find((entry) => entry.id === "work")?.modeIds ?? [];
+    expect(work).not.toContain("open-shifts");
+    expect(work).toContain("roster");
+    expect(phoneModeGroups.find((entry) => entry.id === "inside-roster")).toMatchObject({
+      side: "work",
+      drawn: false,
+      modeIds: ["open-shifts"],
+    });
   });
 
   it("routes a dedicated Open shifts home, not the shared home", () => {

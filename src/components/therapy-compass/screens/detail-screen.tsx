@@ -17,6 +17,7 @@ import { TherapyCompareAction } from "../record/compare-action";
 import { TherapySaveNotice } from "../record/save-notice";
 import { TherapyRecordSections, TherapySafetySection } from "../record/record-sections";
 import { TherapySourceProvenance } from "../record/source-provenance";
+import type { TherapySourceLink } from "@/lib/therapy-source-links";
 import { TherapyRecordNavHeader } from "../therapy-record-nav-header";
 import { LoadingState, StatusBadge, TagRow } from "../ui";
 import { useTherapyFavourite } from "../use-therapy-favourite";
@@ -34,7 +35,14 @@ import { useTherapyFavourite } from "../use-therapy-favourite";
  * From 1024px the list of therapies sits in a column beside that reading
  * column (`ClinicalSplit`); below 1024px it is not drawn at all.
  */
-export function DetailScreen() {
+/**
+ * `serverSourceLinks` are the owner-confirmed source links the route resolved on the
+ * server for the slug in the address. They apply only while that therapy is the one on
+ * screen, so moving to another record never shows the first record's links.
+ */
+export function DetailScreen({
+  serverSourceLinks,
+}: { serverSourceLinks?: { slug: string; links: readonly TherapySourceLink[] } } = {}) {
   const b = useTcBindings();
   const t = b.selectedTherapy;
   const favourite = useTherapyFavourite(t?.slug ?? null);
@@ -123,7 +131,10 @@ export function DetailScreen() {
                   <TherapySafetySection therapy={t} />
                   <TherapyRecordSections therapy={t} />
                   <RelatedTherapies related={b.relatedForSelected} onOpen={(slug) => b.open(slug)} />
-                  <TherapySourceProvenance therapy={t} />
+                  <TherapySourceProvenance
+                    therapy={t}
+                    sourceLinks={serverSourceLinks?.slug === t.slug ? serverSourceLinks.links : []}
+                  />
                 </RecordBody>
               </section>
               <RecordReportProblem recordType="therapy" recordId={t.slug} className="mt-4" />

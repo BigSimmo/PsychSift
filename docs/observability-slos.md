@@ -124,6 +124,19 @@ or schedule monitoring. The configured p95 alerts above come from the ops
 digest reading existing `rag_queries` metadata, never from this script.
 `#TN512M` records why the timing probe was left unscheduled.
 
+### Latency — time to first visible content (display only)
+
+Each answer that sends the verified evidence preview records `first_verified_content_ms` (request
+start to the preview being handed to the stream) beside `total_latency_ms`. The SLO snapshot's
+`timeToFirstContent` gives nearest-rank p50 and p95 over the same bounded sample as the route p95,
+taking the preview when one was sent and the finished answer otherwise, plus how many samples
+showed the preview first. `GET /api/health?deep=1&answer_window=daily` adds a 24-hour `sloDaily`
+block for the daily health summary (`scripts/lib/answer-speed-line.mjs`). No alert reads it.
+Answers served from the answer cache write no latency fields to their `rag_queries` row today, so,
+like the route p95, this figure covers freshly built answers only and reads slower than the average
+wait for a repeated question. Adding cache-hit timing would also move the alerting p95 and the
+budget breach rate, so it is a separate change.
+
 ### Latency — configured answer-budget breach rate
 
 `OPS_ANSWER_LATENCY_BUDGET_WARNING` warns above 15% in the trailing six-hour
