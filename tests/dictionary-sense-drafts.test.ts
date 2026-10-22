@@ -389,7 +389,8 @@ describe("publisher re-reads", () => {
     for (const record of continuous) {
       expect(record.publicationDate).toBeNull();
       expect(record.reviewDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-      expect(record.disposition).toBe("candidate");
+      // The owner adopted ScriptCheckWA, which the medication pages link to, on 22 Oct 2026.
+      expect(["candidate", "adopted"]).toContain(record.disposition);
     }
     // Month precision still means the first of the month, on whichever date the
     // record actually carries.

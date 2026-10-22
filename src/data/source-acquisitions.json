@@ -27,13 +27,10 @@
     "rung": 2,
     "capturedAt": "2026-09-25",
     "capturedFor": "WA prescribing rules for the Medications catalogue 'wa' sections — task t6a (psychostimulant authorisation under Part 3, S8 benzodiazepine authorisation under Part 6, opioid substitution therapy/CPOP under Part 7, and gabapentinoid Schedule 4 monitoring under Part 8); also used to replace the unsourced alprazolam discharge-permit pearl and to confirm the pregabalin Schedule 8 claim was never accurate for WA.",
-    "disposition": "candidate",
-    "dispositionReason": "Captured from the publisher's own page and linked PDF. No clinical owner sign-off, activation or full-text ingestion authorised.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Captured from the publisher's own page and linked PDF. No activation or full-text ingestion authorised.",
     "supersededBy": [],
-    "notes": "Full text (51 pages) fetched from the official health.wa.gov.au PDF on 2026-09-25 and read in full via PyMuPDF extraction before drafting any clinical claim (the direct WebFetch summarisation tool could not parse this PDF's binary stream, so the file was extracted and read as plain text instead). The cover page and table of contents date the document December 2024. Every WA-prescribing row cites a section of this Code that was read directly: Part 3 (S8 stimulant medicines, Sections 3.4–3.5.4), Part 6 (S8 benzodiazepines, Sections 6.2 and 6.5–6.5.2.1), Part 7 (opioid pharmacotherapy/CPOP, Sections 7.4–7.4.3.1), Part 8 (S4 Monitored Medicines, Sections 8.5), and Section 1.2.1 (ScriptCheckWA registration is mandatory under Regulation 22A of the Medicines and Poisons Regulations 2016).",
-    "attestedBy": "PsychSift",
-    "attestedAt": "2026-09-26T17:29:43.184Z",
-    "attestedAgainstSha256": "b09e5759fc3e0eb19d1ddbb6bc85ec950bc8a39b0775e76620fee1dbcecd24e3"
+    "notes": "Full text (51 pages) fetched from the official health.wa.gov.au PDF on 2026-09-25 and read in full via PyMuPDF extraction before drafting any clinical claim (the direct WebFetch summarisation tool could not parse this PDF's binary stream, so the file was extracted and read as plain text instead). The cover page and table of contents date the document December 2024. Every WA-prescribing row cites a section of this Code that was read directly: Part 3 (S8 stimulant medicines, Sections 3.4–3.5.4), Part 6 (S8 benzodiazepines, Sections 6.2 and 6.5–6.5.2.1), Part 7 (opioid pharmacotherapy/CPOP, Sections 7.4–7.4.3.1), Part 8 (S4 Monitored Medicines, Sections 8.5), and Section 1.2.1 (ScriptCheckWA registration is mandatory under Regulation 22A of the Medicines and Poisons Regulations 2016)."
   },
   {
     "id": "ocp-wa-guideline-examination-locations",
@@ -84,13 +81,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the buprenorphine-naloxone medication page (Opioid agonist therapy (overdose risk)), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"buprenorphine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "f9733a63e2ab72ec0da15757dd0c9c401f8bb56c9cd8aa48298dea80a6c0194d"
+    "notes": "Links to the TGA eBS Product Information search for \"buprenorphine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "tga-product-information-sodium-valproate",
@@ -113,13 +107,10 @@
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for sodium-valproate-oral-iv (Anticonvulsants / teratogens), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"sodium valproate\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "43c8b8c74504e810fec495dd957764ad92bb1f99f1a33cdc3165a4d4ceb4e74f"
+    "notes": "Links to the TGA eBS Product Information search for \"sodium valproate\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "tga-product-information-ketamine",
@@ -142,13 +133,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the ketamine medication page (Schedule 8 ketamine), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"ketamine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "e55928cf70d82334433cbab7773f1698a0cc4b90d866047ba21d6af61ce9428b"
+    "notes": "Links to the TGA eBS Product Information search for \"ketamine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "dictionary-wa-mental-health-advocacy-service",
@@ -206,13 +194,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the alprazolam medication page (Benzodiazepines and Z-drugs (overdose and dependence risk)), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"alprazolam\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "5cdeb8b747695d483d024ceabee2993a89c4e3fb40337417b12aca31d046e008"
+    "notes": "Links to the TGA eBS Product Information search for \"alprazolam\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "apa-dsm5tr-supplement-2025-09",
@@ -319,13 +304,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the zuclopenthixol medication page (QTc-prolonging antipsychotics), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"zuclopenthixol\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "75aa990b19fb914d0e241e54193b73ec9184198be621b4eacc88a51f82f2c355"
+    "notes": "Links to the TGA eBS Product Information search for \"zuclopenthixol\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "tga-product-information-clomipramine",
@@ -348,13 +330,10 @@
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for clomipramine (Tricyclic antidepressants (overdose lethality)), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"clomipramine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "7a4a9e284b4b41bf3aaee353e7172441eb120039aeac4d2d53c81786d076993a"
+    "notes": "Links to the TGA eBS Product Information search for \"clomipramine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "mhc-wa-my-services-directory-page",
@@ -493,13 +472,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the oxazepam medication page (Benzodiazepines and Z-drugs (overdose and dependence risk)), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"oxazepam\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "bafb616faf767bde3b26868f4cd920a2cc10bc9b72f6dcfca3312bd531e209c0"
+    "notes": "Links to the TGA eBS Product Information search for \"oxazepam\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "tga-product-information-propranolol",
@@ -522,13 +498,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the propranolol medication page (High overdose-risk medicines), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"propranolol\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "827a26b6dd28b2c75b74c70b0e1e235bc3bf91aa1f5a2081bdc892e0ea72d0ee"
+    "notes": "Links to the TGA eBS Product Information search for \"propranolol\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "tga-product-information-oxcarbazepine",
@@ -551,13 +524,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the oxcarbazepine medication page (Anticonvulsants / mood stabilisers), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"oxcarbazepine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "47441a665c5cbb71f3e1149ccd40682d659303410d8513b01618ee53d66ed222"
+    "notes": "Links to the TGA eBS Product Information search for \"oxcarbazepine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "tga-product-information-tranylcypromine",
@@ -580,13 +550,10 @@
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for tranylcypromine (Irreversible MAOIs), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"tranylcypromine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "ece917ec4bd1a6967a159fbdc4d59a1af999f9e27918256e0e3acc6a129d1325"
+    "notes": "Links to the TGA eBS Product Information search for \"tranylcypromine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "dictionary-ranzcp-ect-ps74",
@@ -696,13 +663,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the domperidone medication page (QTc-prolonging antiemetics), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"domperidone\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "a6334da2cffa057b7655d71c0929e3afe10383f45d936696ace11011fe5e6e21"
+    "notes": "Links to the TGA eBS Product Information search for \"domperidone\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "nice-ng222-depression-in-adults",
@@ -786,13 +750,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the zolpidem medication page (Benzodiazepines and Z-drugs (overdose and dependence risk)), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"zolpidem\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "673c2ae41a93af7858eb30a8886a5ed86a4e1af30b57b4228df2e7e9233ac829"
+    "notes": "Links to the TGA eBS Product Information search for \"zolpidem\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "australian-prescriber-lithium-therapy-and-its-interactions",
@@ -949,13 +910,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the lisdexamfetamine medication page (Schedule 8 stimulants), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"lisdexamfetamine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "bec03418761162e7ff935c4d9c65febc8338722a0f043498c3cdf7372fc535ca"
+    "notes": "Links to the TGA eBS Product Information search for \"lisdexamfetamine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "dictionary-who-audit-2001",
@@ -1145,13 +1103,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the clonazepam medication page (Benzodiazepines and Z-drugs (overdose and dependence risk)), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"clonazepam\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "fa23729a85d65fb6dd98dee1990b21a7e12aedb18a077ec63322bfc93403cc1a"
+    "notes": "Links to the TGA eBS Product Information search for \"clonazepam\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "cahs-child-development-service-page",
@@ -1202,13 +1157,10 @@
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for citalopram (High QTc-prolongation antidepressants), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"citalopram\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "2a35ba5a55057bd11b06d2f1c63641a8d6b7b8020d24cf7e76bdc17cb9217bef"
+    "notes": "Links to the TGA eBS Product Information search for \"citalopram\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "tga-product-information-nortriptyline",
@@ -1231,13 +1183,10 @@
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for nortriptyline (Tricyclic antidepressants (overdose lethality)), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"nortriptyline\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "bdfc71488c8af1707534d26693455a60eae12653da59770b85ce7463297953a8"
+    "notes": "Links to the TGA eBS Product Information search for \"nortriptyline\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "tga-product-information-flupentixol-decanoate",
@@ -1260,13 +1209,10 @@
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for flupentixol-decanoate (Long-acting injectable antipsychotics), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"flupentixol decanoate\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "0784426ff6e50cd19b901d170a96a677883e00400e89f48530884e114ef3aa55"
+    "notes": "Links to the TGA eBS Product Information search for \"flupentixol decanoate\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "tga-product-information-pregabalin",
@@ -1289,13 +1235,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the pregabalin medication page (Gabapentinoids (misuse and overdose risk)), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"pregabalin\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "aafed86c90c76e78d482a58961ef60324f25a87128f80f998b64d16ccc67bf71"
+    "notes": "Links to the TGA eBS Product Information search for \"pregabalin\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "cahs-pch-medication-monograph-lithium",
@@ -1343,13 +1286,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the desvenlafaxine medication page (Antidepressants with overdose or QTc risk), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"desvenlafaxine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "a2ab09cae690287be5961db2d40fdd9f283cfd952e535abbf001f13c8dafd9b6"
+    "notes": "Links to the TGA eBS Product Information search for \"desvenlafaxine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "dictionary-aihw-suicide-self-harm-monitoring-glossary",
@@ -1402,13 +1342,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the brexpiprazole medication page (QTc-prolonging antipsychotics), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"brexpiprazole\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "9d17443c9cf65ddbb9a4a43a59704cf7430594664f0869a3d4bd07dc7fb5bb3c"
+    "notes": "Links to the TGA eBS Product Information search for \"brexpiprazole\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "therapy-ranzcp-previous-cpg-status",
@@ -1456,13 +1393,10 @@
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for ziprasidone (High QTc-prolongation antipsychotics), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"ziprasidone\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "6113c54ab96ae096b3f2d80896fd700a9df884211e69aeec97fa88fb6366a443"
+    "notes": "Links to the TGA eBS Product Information search for \"ziprasidone\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "healthdirect-1800respect-partner-page",
@@ -1570,13 +1504,10 @@
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for escitalopram (High QTc-prolongation antidepressants), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"escitalopram\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "89121ade2718df32669f798db2ad6702dda63596c3f62e747d8cd544e3b288a3"
+    "notes": "Links to the TGA eBS Product Information search for \"escitalopram\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "mental-health-act-2014-wa",
@@ -1635,13 +1566,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the cariprazine medication page (QTc-prolonging antipsychotics), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"cariprazine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "1f502ace73c2df1e59a93000f1459b15d2c8724d8ef66fc43d4d98105071e8c5"
+    "notes": "Links to the TGA eBS Product Information search for \"cariprazine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "dictionary-healthdirect-post-traumatic-stress-disorder-ptsd",
@@ -1808,13 +1736,10 @@
     "rung": 3,
     "capturedAt": "2026-10-03",
     "capturedFor": "Outstanding issue #05WXHX step 2: a real source link on the lithium carbonate (immediate and slow release) medication page, pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"lithium\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "e3d92c2b885769aeae0f6af23b8f9cb8dd623e6cb06f65324bbe96df243d7b86"
+    "notes": "Links to the TGA eBS Product Information search for \"lithium\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "therapy-nice-ng134",
@@ -2034,13 +1959,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the topiramate medication page (Anticonvulsants / mood stabilisers), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"topiramate\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "9be5621606d653e851c9e77276b75fe5e0ffea175b0512d48b524a85f1ff5233"
+    "notes": "Links to the TGA eBS Product Information search for \"topiramate\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "dictionary-healthdirect-borderline-personality-disorder-bpd",
@@ -2125,13 +2047,10 @@
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for zuclopenthixol-acetate (Acute parenteral / depot antipsychotics), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"zuclopenthixol acetate\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "161d3e83644c8d59d0b54d6c0cfed4dccfe689dd8fb564e3912f5834ed6e773b"
+    "notes": "Links to the TGA eBS Product Information search for \"zuclopenthixol acetate\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "tga-product-information-temazepam",
@@ -2159,13 +2078,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the temazepam medication page (Benzodiazepines and Z-drugs (overdose and dependence risk)), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"temazepam\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "e231e9177b091fa223a9cbbb0c3bc1a989453f50ce3a248b522df2007bd121d4"
+    "notes": "Links to the TGA eBS Product Information search for \"temazepam\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "apa-dsm5tr-manual",
@@ -2272,13 +2188,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the clonidine medication page (High overdose-risk medicines), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"clonidine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "2a8574b7a5f61e7bbd307c9b934d5f3723030a5cb3af0e528efe117854262fd5"
+    "notes": "Links to the TGA eBS Product Information search for \"clonidine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "ps-diff-src-who-icd11-cddr-2024",
@@ -2357,13 +2270,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the trifluoperazine medication page (QTc-prolonging antipsychotics), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"trifluoperazine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "e7f96997af164b7177689894eb9d357a9432b9710238f3f3bfcebeea440b50f0"
+    "notes": "Links to the TGA eBS Product Information search for \"trifluoperazine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "tga-product-information-bupropion",
@@ -2386,13 +2296,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the bupropion-sr medication page (Antidepressants with overdose or QTc risk), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"bupropion\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "0e8a8bafb46370b016f4eebf6809bd81492ffdf195cda6f3d956b90a85fc463a"
+    "notes": "Links to the TGA eBS Product Information search for \"bupropion\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "ocp-wa-guideline-treatment-support-and-discharge-plans",
@@ -2471,13 +2378,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the quetiapine medication page (QTc-prolonging antipsychotics), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"quetiapine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "6511ceb3054d62716d8f1261aa9dc5816c519e5587ab91c7839e226eae5739e5"
+    "notes": "Links to the TGA eBS Product Information search for \"quetiapine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "wachs-kimberley-adult-mental-health-page",
@@ -2634,13 +2538,10 @@
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for paliperidone-lai (Long-acting injectable antipsychotics), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"paliperidone palmitate\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "92087fcc4f4cd2837c17ea56fa485d5db1a0aa05dcc1de520da68fbbd532cc2d"
+    "notes": "Links to the TGA eBS Product Information search for \"paliperidone palmitate\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "therapy-nice-cg78",
@@ -2691,13 +2592,10 @@
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for risperidone-lai (Long-acting injectable antipsychotics), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"risperidone\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "8b69acf1db1264d0fe9cd85b8d4ded1ccf369dcef76215919a84e57d77c901c0"
+    "notes": "Links to the TGA eBS Product Information search for \"risperidone\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "wachs-bunbury-mhoa-completion-news",
@@ -2748,13 +2646,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the methylphenidate medication page (Schedule 8 stimulants), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"methylphenidate\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "694772e5deaf7a7cc426dc61a2f5eda51e3106e565abafc3e6c55a2474ee4414"
+    "notes": "Links to the TGA eBS Product Information search for \"methylphenidate\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "mental-health-act-2014-wa-all-versions",
@@ -2830,13 +2725,10 @@
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for droperidol (High QTc-prolongation antipsychotics), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"droperidol\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "a48639a2a1f506a09c9f18ad0c54ab593c337127c71aa5384bcf1acc3d1c8ab9"
+    "notes": "Links to the TGA eBS Product Information search for \"droperidol\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "tga-product-information-mirtazapine",
@@ -2859,13 +2751,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the mirtazapine medication page (Antidepressants with overdose or QTc risk), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"mirtazapine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "0bada126cd33f5cf48599a0d9ce394b0a444f8248e622ead67cfe36c6ad49e6d"
+    "notes": "Links to the TGA eBS Product Information search for \"mirtazapine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "tga-product-information-moclobemide",
@@ -2888,13 +2777,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the moclobemide medication page (Antidepressants with overdose or QTc risk), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"moclobemide\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "98379b01bdc8db39ea39187db41c314067494c9a0b1255ecb476a4de7cca420f"
+    "notes": "Links to the TGA eBS Product Information search for \"moclobemide\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "dictionary-healthdirect-psychosis",
@@ -3004,13 +2890,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the dexamfetamine medication page (Schedule 8 stimulants), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"dexamfetamine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "a4faca456557d9e73b15bbf075ef8b1652f88b6f528514db90c6c2318a2338ec"
+    "notes": "Links to the TGA eBS Product Information search for \"dexamfetamine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "dictionary-who-assist-2010",
@@ -3147,13 +3030,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the agomelatine medication page (Antidepressants needing liver monitoring), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"agomelatine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "02a07b8d4f906f4f47a9be62d0b6491684969cf4491c90c2661f489d079ca645"
+    "notes": "Links to the TGA eBS Product Information search for \"agomelatine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "cp-clinical-care-standard-aboriginal-practice",
@@ -3263,13 +3143,10 @@
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for carbamazepine-ir-cr (Anticonvulsants / teratogens), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"carbamazepine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "6cbf970dd5fb99ab0d29bbf90c2913b114d22be99ab9380513b041dcac900632"
+    "notes": "Links to the TGA eBS Product Information search for \"carbamazepine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "ocp-wa-standard-consumer-carer-involvement",
@@ -3320,13 +3197,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the periciazine medication page (QTc-prolonging antipsychotics), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"periciazine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "457efba653cbd95c130317c163e7bcd1e8c7b443077773fe8de2aec47aa53ecf"
+    "notes": "Links to the TGA eBS Product Information search for \"periciazine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "tga-product-information-amisulpride",
@@ -3349,13 +3223,10 @@
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for amisulpride (High QTc-prolongation antipsychotics), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"amisulpride\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "7948e2117b44d333b915f9c12149d7ba228de3575c7596b14e2f875ebb004b80"
+    "notes": "Links to the TGA eBS Product Information search for \"amisulpride\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "tga-product-information-dosulepin",
@@ -3378,13 +3249,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the dosulepin medication page (Tricyclic antidepressants (overdose lethality)), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"dosulepin\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "ffe0fe6ebec82a360522bbc74e6f663e94f92f680f963b7d4095e943561f2bbf"
+    "notes": "Links to the TGA eBS Product Information search for \"dosulepin\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "tga-product-information-phenelzine",
@@ -3407,13 +3275,10 @@
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for phenelzine (Irreversible MAOIs), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"phenelzine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "425ed4239fe9979c4d5802a487c55c1d3d8adb5c654facd3d3098e1708d235d6"
+    "notes": "Links to the TGA eBS Product Information search for \"phenelzine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "wachs-great-southern-adult-mental-health-page",
@@ -3464,13 +3329,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the doxepin medication page (Tricyclic antidepressants (overdose lethality)), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"doxepin\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "0430486fd283c6def7ae6249fe345170d1682daba7bf9f472830d03f847a429f"
+    "notes": "Links to the TGA eBS Product Information search for \"doxepin\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "tga-product-information-aripiprazole",
@@ -3493,13 +3355,10 @@
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for aripiprazole-lai (Long-acting injectable antipsychotics), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"aripiprazole\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "88d5eec4f29deab59fb8f49b082185cb793968a41540a4a060b3e26e205f0466"
+    "notes": "Links to the TGA eBS Product Information search for \"aripiprazole\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "therapy-au-nhmrc-mdma",
@@ -3603,13 +3462,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the asenapine medication page (QTc-prolonging antipsychotics), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"asenapine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "1422f2f12164aa6355307af8945bd50467cc32815b4cf840f2d7fc2c2bab9422"
+    "notes": "Links to the TGA eBS Product Information search for \"asenapine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "therapy-ranzcp-ltpp-2026",
@@ -3714,13 +3570,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the imipramine medication page (Tricyclic antidepressants (overdose lethality)), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"imipramine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "3cac2f1baabb16c2edec1a6fd0801cf324a55aa358f1356a96a2e9c0ff39ecde"
+    "notes": "Links to the TGA eBS Product Information search for \"imipramine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "ocp-wa-guideline-mha-compliance",
@@ -3771,13 +3624,10 @@
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for methadone (Opioid agonist therapy / QTc and overdose risk), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"methadone\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "a0b669237c20897359ce42fbad8286c686526d02004f5653840396d7fd161c36"
+    "notes": "Links to the TGA eBS Product Information search for \"methadone\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "tga-product-information-ondansetron",
@@ -3800,13 +3650,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the ondansetron medication page (QTc-prolonging antiemetics), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"ondansetron\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "5b7ee15588d1b2b2b91b91ef725d295bebac0b9adde73fd89a8e6ddbe8d208a7"
+    "notes": "Links to the TGA eBS Product Information search for \"ondansetron\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "therapy-au-ranzcp-ltpp-clarification-2026",
@@ -3865,13 +3712,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the nitrazepam medication page (Benzodiazepines and Z-drugs (overdose and dependence risk)), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"nitrazepam\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "1e574003c21947a0316987234ea758ba273a9678c5f02393118ddf9437a4a827"
+    "notes": "Links to the TGA eBS Product Information search for \"nitrazepam\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "tga-product-information-amitriptyline",
@@ -3894,13 +3738,10 @@
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for amitriptyline (Tricyclic antidepressants (overdose lethality)), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"amitriptyline\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "eb617df33339ddcfa3582a4358a9110a70a68ca64be572bd79cf1c5ccff91733"
+    "notes": "Links to the TGA eBS Product Information search for \"amitriptyline\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "wa-health-scriptcheckwa",
@@ -3928,13 +3769,10 @@
     "rung": 2,
     "capturedAt": "2026-09-25",
     "capturedFor": "WA prescribing rules for the Medications catalogue 'wa' sections — task t6a; this is the source for the WA-authorised statement that gabapentin and pregabalin are among the Schedule 4 Monitored Medicines tracked on ScriptCheckWA (the Monitored Medicines Prescribing Code itself only points to Schedule 6 of the Regulations by number, without naming the individual drugs), and for plain-language framing of what ScriptCheckWA covers for S8 medicines (opioids, stimulants, benzodiazepines including alprazolam, opioid substitution treatments).",
-    "disposition": "candidate",
-    "dispositionReason": "Captured from the publisher's own page. No clinical owner sign-off, activation or full-text ingestion authorised.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Captured from the publisher's own page. No activation or full-text ingestion authorised.",
     "supersededBy": [],
-    "notes": "Fetched directly from health.wa.gov.au on 2026-09-25. The page carries a 'Last reviewed' stamp of 06-09-2023 (DD-MM-YYYY, i.e. 6 September 2023), recorded here as a review date rather than a publication date because this is a continuously maintained WA Health article, not a discrete publication.",
-    "attestedBy": "PsychSift",
-    "attestedAt": "2026-09-26T17:29:43.184Z",
-    "attestedAgainstSha256": "48264f984617b668f0745efa915331e9abbd064281f1edecf2d58ac395639f71"
+    "notes": "Fetched directly from health.wa.gov.au on 2026-09-25. The page carries a 'Last reviewed' stamp of 06-09-2023 (DD-MM-YYYY, i.e. 6 September 2023), recorded here as a review date rather than a publication date because this is a continuously maintained WA Health article, not a discrete publication."
   },
   {
     "id": "tga-product-information-olanzapine",
@@ -3957,13 +3795,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the olanzapine-wafer-odt medication page (QTc-prolonging antipsychotics), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"olanzapine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "e9c32e0d11cf2a7db94aaefb01663ec65a0714e886069e7fde2030c484d74c33"
+    "notes": "Links to the TGA eBS Product Information search for \"olanzapine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "cahs-pch-medication-monograph-clozapine",
@@ -4039,13 +3874,10 @@
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for lamotrigine (Anticonvulsants / SJS-TEN risk), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"lamotrigine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "0864d646c01b16ac3af53c4a59939fc097b2f7299a98a5a10de3035f23080436"
+    "notes": "Links to the TGA eBS Product Information search for \"lamotrigine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "therapy-nice-ng193",
@@ -4096,13 +3928,10 @@
     "rung": 3,
     "capturedAt": "2026-10-03",
     "capturedFor": "Outstanding issue #05WXHX step 2: a real source link on the clozapine medication page, pointing at the TGA-approved Product Information (brands requested: Clozaril, Clopine).",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"clozapine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "4eaa1eff2bbc383f6eeab3b715ebec77accf5604fddb302616b7eb1f1fcb054e"
+    "notes": "Links to the TGA eBS Product Information search for \"clozapine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "tga-product-information-levetiracetam",
@@ -4125,13 +3954,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the levetiracetam medication page (Anticonvulsants / mood stabilisers), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"levetiracetam\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "8a4277aec17687921a735026c3e689e402ff9a3cbd3f56b3176ef63dd7cbb2c8"
+    "notes": "Links to the TGA eBS Product Information search for \"levetiracetam\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "rkpg-clozapine-policy-rejected-anc-wbc-mislabel",
@@ -4212,13 +4038,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the lorazepam medication page (Benzodiazepines and Z-drugs (overdose and dependence risk)), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"lorazepam\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "3a2aea73e0410a8416fca34b8f0e3f748b398ef83762c98ed0d7e4c6f473f56e"
+    "notes": "Links to the TGA eBS Product Information search for \"lorazepam\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "dictionary-healthdirect-antipsychotic-medicines",
@@ -4270,13 +4093,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the phenytoin medication page (Anticonvulsants / mood stabilisers), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"phenytoin\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "1f52269b4f4099923209bb26c664c76991f9881531affec102f4880660b5cec7"
+    "notes": "Links to the TGA eBS Product Information search for \"phenytoin\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "ocp-wa-standard-aboriginal-practice",
@@ -4324,13 +4144,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the venlafaxine-xr medication page (Antidepressants with overdose or QTc risk), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"venlafaxine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "ffa3af2f00482c876daf668a9e5140de2d94334f54d82882c8f0ba0edaf5d578"
+    "notes": "Links to the TGA eBS Product Information search for \"venlafaxine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "formulation-ranzcp-suicide",
@@ -4406,13 +4223,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the lurasidone medication page (QTc-prolonging antipsychotics), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"lurasidone\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "36986dc8058fcaf0fb5bda0367df47aa56bcb721b06f48acbbbd60da886cd4f4"
+    "notes": "Links to the TGA eBS Product Information search for \"lurasidone\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "aadpa-australian-adhd-guideline-2022",
@@ -4575,13 +4389,10 @@
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for haloperidol-decanoate (Long-acting injectable antipsychotics), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"haloperidol decanoate\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "30686700ad514a2ab89f4a9929b5f76025d73c917f68107d1ee1bbd83780e417"
+    "notes": "Links to the TGA eBS Product Information search for \"haloperidol decanoate\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "tga-product-information-olanzapine-pamoate",
@@ -4604,13 +4415,10 @@
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for olanzapine-pamoate-lai (Long-acting injectable antipsychotics), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"olanzapine pamoate\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "6bd8a472b7bdedb58defa2459b655a136951e6c218fe5c45758768cc4a2487cb"
+    "notes": "Links to the TGA eBS Product Information search for \"olanzapine pamoate\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "therapy-nice-cg113",
@@ -4722,13 +4530,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the zopiclone medication page (Benzodiazepines and Z-drugs (overdose and dependence risk)), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"zopiclone\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "97f61bbc4bd55d33013e494c8a774e024ef00c3d262e3306f58861359cc3f883"
+    "notes": "Links to the TGA eBS Product Information search for \"zopiclone\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "dictionary-nsw-aci-ecat-mental-health-assessment-2023",
@@ -4779,13 +4584,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the gabapentin medication page (Gabapentinoids (misuse and overdose risk)), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"gabapentin\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "68da85a48476a7caf96894be4e0b6caa8654524dd0aaf27a03005f69af56bdbd"
+    "notes": "Links to the TGA eBS Product Information search for \"gabapentin\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "tga-product-information-haloperidol",
@@ -4808,13 +4610,10 @@
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for haloperidol-oral-im-iv (High QTc-prolongation antipsychotics), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"haloperidol\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "056216a2619c22f8c5f4a00443bbd1c1a3274d3620f99686cfce5228dbf31c00"
+    "notes": "Links to the TGA eBS Product Information search for \"haloperidol\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "dictionary-apa-what-are-bipolar-disorders",
@@ -4922,13 +4721,10 @@
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for chlorpromazine (High QTc-prolongation antipsychotics), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"chlorpromazine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "9f9ac036ecd517c2b6d3012ca174ec9f620395d976123843838d3cf6df4331b6"
+    "notes": "Links to the TGA eBS Product Information search for \"chlorpromazine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "wa-health-language-services-policy-mp0051-17",
@@ -4984,13 +4780,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the midazolam medication page (Benzodiazepines and Z-drugs (overdose and dependence risk)), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"midazolam\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "8493be974d2b3d662387f4b5755135fe614daa850bf6ab3c3f7ca1f0451dcc97"
+    "notes": "Links to the TGA eBS Product Information search for \"midazolam\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "mhc-wa-soar-program-page",
@@ -5125,13 +4918,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the levomepromazine medication page (QTc-prolonging antipsychotics), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"levomepromazine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "405705ae4633b7846fe790b618eeee5efe52208af3c2c5b305f04d75ceecd2ec"
+    "notes": "Links to the TGA eBS Product Information search for \"levomepromazine\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "wachs-pilbara-adult-mental-health-page",
@@ -5184,13 +4974,10 @@
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for zuclopenthixol-decanoate (Long-acting injectable antipsychotics), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"zuclopenthixol decanoate\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "bb68836630e9fd8f2fd8964390979e20b9d19faf4a095956bbf3612dd0f25fd3"
+    "notes": "Links to the TGA eBS Product Information search for \"zuclopenthixol decanoate\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "therapy-nice-cg115",
@@ -5275,13 +5062,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the diazepam medication page (Benzodiazepines and Z-drugs (overdose and dependence risk)), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"diazepam\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "5467df43e155e30ac8965286659ae662b388d1f6b53471650b6c40d9b3aba725"
+    "notes": "Links to the TGA eBS Product Information search for \"diazepam\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "mhc-wa-soar-plus-program-page",
@@ -5332,13 +5116,10 @@
     "rung": 3,
     "capturedAt": "2026-10-22",
     "capturedFor": "Outstanding issue #05WXHX, second high-risk batch: source link for the paliperidone-er medication page (QTc-prolonging antipsychotics), pointing at the TGA-approved Product Information.",
-    "disposition": "candidate",
-    "dispositionReason": "Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds. Awaits the owner's sign-off that this is the right Product Information for the medicine, then a separate adoption decision.",
+    "disposition": "adopted",
+    "dispositionReason": "Adopted on 2026-10-22 under the owner's decision to show the medication pages' source links. Filed under the owner's 2026-10-22 decision that the TGA Product Information search is the medication pages' PI source with no fixed version (docs/decisions/2026-10-22-tga-pi-live-search-source.md). The search always opens the PI the TGA currently holds.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information search for \"paliperidone\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing.",
-    "attestedBy": "Josh Simpson",
-    "attestedAt": "2026-10-22T08:34:18.864Z",
-    "attestedAgainstSha256": "401e9c7b3c67d82bec2bf31dba0e35182e8157c9c166e1f9261b0118d0f72931"
+    "notes": "Links to the TGA eBS Product Information search for \"paliperidone\". No PI version or date is recorded: www.ebs.tga.gov.au disallows all automated retrieval in its robots.txt, and under the live-search model none is pinned, so a later PI amendment is caught only by a confirmed source change event. Brand names were not checked against the TGA listing."
   },
   {
     "id": "ocp-wa-standard-physical-healthcare",
