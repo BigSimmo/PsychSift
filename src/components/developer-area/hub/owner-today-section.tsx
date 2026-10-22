@@ -126,7 +126,7 @@ function DomainLedgerCard({ domain }: { domain: SignOffDomainSummary }) {
     >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <Link
-          href={`/mockups/development/clinical-sign-off?domain=${domain.id}`}
+          href={`/admin/developer-hub/clinical-sign-off?domain=${domain.id}`}
           className="font-semibold text-[color:var(--text-heading)] underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
         >
           {domain.name}
@@ -170,7 +170,7 @@ function SignOffLedgerOverview() {
           Clinical &amp; rule sign-off register (signed off vs needs signing off)
         </h3>
         <Link
-          href="/mockups/development/clinical-sign-off"
+          href="/admin/developer-hub/clinical-sign-off"
           className="text-xs font-semibold text-[color:var(--text-heading)] underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
         >
           Inspect every signed &amp; waiting record ›
@@ -286,7 +286,7 @@ export function OwnerTodaySection({ today }: { today: OwnerToday }) {
             {decisions.map((item) => (
               <li key={item.id}>
                 <Link
-                  href="/mockups/development/ledger"
+                  href="/admin/developer-hub/ledger"
                   className={LINK_CLASS}
                   data-testid={`owner-panel-decision-${item.id}`}
                 >
@@ -333,12 +333,12 @@ export function OwnerTodaySection({ today }: { today: OwnerToday }) {
       </section>
 
       <div className="grid gap-2 sm:grid-cols-2">
-        <Link href="/mockups/development/hazards" className={LINK_CLASS} data-testid="owner-panel-hazards-link">
+        <Link href="/admin/developer-hub/hazards" className={LINK_CLASS} data-testid="owner-panel-hazards-link">
           <span className="text-[color:var(--text)]">Clinical risks with no control</span>
           <span className="nums text-[color:var(--text-muted)]">{uncontrolledHazards}</span>
         </Link>
         <Link
-          href="/mockups/development/clinical-sign-off"
+          href="/admin/developer-hub/clinical-sign-off"
           className={LINK_CLASS}
           data-testid="owner-panel-sign-off-link"
         >
@@ -347,13 +347,13 @@ export function OwnerTodaySection({ today }: { today: OwnerToday }) {
             ›
           </span>
         </Link>
-        <Link href="/mockups/development/ingestion" className={LINK_CLASS} data-testid="owner-panel-uploads-link">
+        <Link href="/admin/developer-hub/ingestion" className={LINK_CLASS} data-testid="owner-panel-uploads-link">
           <span className="text-[color:var(--text)]">Uploads and indexing</span>
           <span aria-hidden="true" className="text-[color:var(--text-muted)]">
             ›
           </span>
         </Link>
-        <Link href="/mockups/development/settings" className={LINK_CLASS} data-testid="owner-panel-settings-link">
+        <Link href="/admin/developer-hub/settings" className={LINK_CLASS} data-testid="owner-panel-settings-link">
           <span className="text-[color:var(--text)]">Settings check</span>
           <span aria-hidden="true" className="text-[color:var(--text-muted)]">
             ›

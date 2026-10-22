@@ -274,11 +274,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/development/ledger",
-        "file": "src/app/mockups/development/ledger/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/terms",
         "file": "src/app/terms/page.tsx",
         "area": "product"
@@ -344,11 +339,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/development/settings",
-        "file": "src/app/mockups/development/settings/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/on-call/now",
         "file": "src/app/(search-app)/on-call/now/page.tsx",
         "area": "product"
@@ -387,11 +377,6 @@
         "path": "/therapy-compass/recommend",
         "file": "src/app/(search-app)/therapy-compass/recommend/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/development/ingestion",
-        "file": "src/app/mockups/development/ingestion/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/admin/applications",
@@ -442,11 +427,6 @@
         "path": "/",
         "file": "src/app/(search-app)/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/development/clinical-answer-failures",
-        "file": "src/app/mockups/development/clinical-answer-failures/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/on-call/check",
@@ -634,11 +614,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/development/on-call-freshness",
-        "file": "src/app/mockups/development/on-call-freshness/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/therapy-compass/[slug]/sheet",
         "file": "src/app/(search-app)/therapy-compass/[slug]/sheet/page.tsx",
         "area": "product"
@@ -757,11 +732,6 @@
         "path": "/therapy-compass/pathways",
         "file": "src/app/(search-app)/therapy-compass/pathways/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/development",
-        "file": "src/app/mockups/development/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/teaching/display/[token]",
@@ -884,11 +854,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/development/corpus-health",
-        "file": "src/app/mockups/development/corpus-health/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/formulation/map",
         "file": "src/app/(search-app)/formulation/map/page.tsx",
         "area": "product"
@@ -907,11 +872,6 @@
         "path": "/admin/developer-hub/corpus-health",
         "file": "src/app/(admin)/admin/developer-hub/corpus-health/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/development/hazards",
-        "file": "src/app/mockups/development/hazards/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/sources/search",
@@ -1054,11 +1014,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/development/roster-teams",
-        "file": "src/app/mockups/development/roster-teams/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/cme/evidence",
         "file": "src/app/(search-app)/cme/evidence/page.tsx",
         "area": "product"
@@ -1159,11 +1114,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/development/clinical-trust",
-        "file": "src/app/mockups/development/clinical-trust/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/dictionary/topics",
         "file": "src/app/(search-app)/dictionary/topics/page.tsx",
         "area": "product"
@@ -1247,11 +1197,6 @@
         "path": "/cme/setup",
         "file": "src/app/(search-app)/cme/setup/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/development/clinical-sign-off",
-        "file": "src/app/mockups/development/clinical-sign-off/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/teaching/c/[token]",

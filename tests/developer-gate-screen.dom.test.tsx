@@ -58,7 +58,7 @@ type ScreenProps = ComponentProps<typeof DeveloperGateScreen>;
 
 function renderScreen(props: Partial<ScreenProps> = {}) {
   return render(
-    <DeveloperGateScreen state="unauthenticated" next="/mockups/development" email={null} keyEntryEnabled {...props} />,
+    <DeveloperGateScreen state="unauthenticated" next="/admin/developer-hub" email={null} keyEntryEnabled {...props} />,
   );
 }
 

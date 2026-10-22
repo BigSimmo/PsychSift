@@ -94,7 +94,7 @@ describe("signOffTodayItem", () => {
     expect(item).toMatchObject({ id: "my-work:sign-off:today", mode: "my-work", severity: "info", due: null });
     expect(item?.title).toBe("1 clinical record to sign off today");
     expect(item?.title).not.toContain("Title 3C");
-    expect(item?.href.startsWith("/mockups/development")).toBe(true);
+    expect(item?.href.startsWith("/admin/developer-hub")).toBe(true);
   });
 
   it("is absent when nothing can be signed", () => {

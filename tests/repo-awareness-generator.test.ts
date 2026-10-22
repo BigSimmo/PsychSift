@@ -31,7 +31,7 @@ import {
 const SITE_MAP: SiteMapInput = {
   pageRoutes: [
     { route: "/dsm", file: "src/app/(search-app)/dsm/page.tsx" },
-    { route: "/mockups/development", file: "src/app/mockups/development/page.tsx" },
+    { route: "/mockups/work-roles", file: "src/app/mockups/work-roles/page.tsx" },
     { route: "/tools", file: "src/app/tools/page.tsx" },
   ],
   apiRoutes: [{ route: "/api/answer", file: "src/app/api/answer/route.ts" }],
@@ -46,7 +46,7 @@ describe("buildRoutesSection", () => {
     // is about is the area classification, not the ordering.
     expect([...section.pages].sort((left, right) => left.path.localeCompare(right.path))).toEqual([
       { path: "/dsm", file: "src/app/(search-app)/dsm/page.tsx", area: "product" },
-      { path: "/mockups/development", file: "src/app/mockups/development/page.tsx", area: "mockup" },
+      { path: "/mockups/work-roles", file: "src/app/mockups/work-roles/page.tsx", area: "mockup" },
     ]);
   });
 
@@ -99,7 +99,7 @@ describe("buildRoutesSection", () => {
     expect(fromShuffled.pages).toEqual(fromUnshuffled.pages);
     expect(fromShuffled.api).toEqual(fromUnshuffled.api);
     // And the content is all there, whatever the order.
-    expect(fromShuffled.pages.map((page) => page.path).sort()).toEqual(["/dsm", "/mockups/development"]);
+    expect(fromShuffled.pages.map((page) => page.path).sort()).toEqual(["/dsm", "/mockups/work-roles"]);
     expect(fromShuffled.api.map((route) => route.path).sort()).toEqual(["/api/answer", "/api/zeta"]);
   });
 

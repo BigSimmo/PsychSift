@@ -17,7 +17,7 @@ import { isDeveloperGatedPath } from "@/lib/developer-area/headers";
  * pulls a Node built-in in.
  */
 
-/** Query parameter carrying the secret, e.g. `/mockups/development?devkey=…`. */
+/** Query parameter carrying the secret, e.g. `/admin/developer-hub?devkey=…`. */
 export const DEVELOPER_ACCESS_QUERY_PARAM = "devkey";
 
 /**
@@ -36,7 +36,7 @@ export const DEVELOPER_ACCESS_ERROR_PARAM = "devkeyerror";
 /** Where the gate sends a visitor who asked for nothing in particular. Module-local:
  *  the one place that needs it is the fallback below, and exporting it would invite
  *  a second copy of the area root to drift from `DEVELOPER_GATED_PATH_PREFIXES`. */
-const DEVELOPER_AREA_DEFAULT_PATH = "/mockups/development";
+const DEVELOPER_AREA_DEFAULT_PATH = "/admin/developer-hub";
 
 /**
  * Splits the gate's `next` into the path it should return the visitor to and

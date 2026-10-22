@@ -1,7 +1,7 @@
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import DeveloperLedgerPage from "@/app/mockups/development/ledger/page";
+import DeveloperLedgerPage from "@/app/(admin)/admin/developer-hub/ledger/page";
 import { loadLedgerSnapshot, openItemsByPriority } from "@/lib/developer-area/ledger-snapshot";
 
 // PanelPageShell's back control is a ContextualBackLink, which calls
@@ -9,7 +9,7 @@ import { loadLedgerSnapshot, openItemsByPriority } from "@/lib/developer-area/le
 // app-router tree that throws "invariant expected app router to be mounted",
 // so every render here needs the router mocked, same as the hub page test.
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/mockups/development/ledger",
+  usePathname: () => "/admin/developer-hub/ledger",
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), prefetch: vi.fn() }),
 }));
 
@@ -226,7 +226,7 @@ describe("developer ledger page", () => {
 
   it("links back to the developer hub", () => {
     render(<DeveloperLedgerPage />);
-    expect(screen.getByTestId("developer-ledger-back")).toHaveAttribute("href", "/mockups/development");
+    expect(screen.getByTestId("developer-ledger-back")).toHaveAttribute("href", "/admin/developer-hub");
   });
 
   it("shows no markdown pipe escape to the reader", () => {

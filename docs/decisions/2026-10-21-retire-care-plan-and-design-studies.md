@@ -8,7 +8,8 @@ sites and replied "Approve all". That retired the developer-gated Care Plan prot
 `/mockups/care-plan` and 74 older design-study pages under `/mockups`, with their components, tests
 and the Care Plan build records. The files stay recoverable from git history. Six mockup routes are
 kept, listed in the index. The crisis-number record `docs/care-plan/crisis-lines-verification.md`
-stays, because the live crisis contacts cite it. The `/mockups/development` pages were not part of
-this decision and remain.
+stays, because the live crisis contacts cite it. The `/mockups/development` copy of the Owner panel (item B
+on the same list) was held back from this change and retired separately on 2026-10-22, after the
+owner answered "Yes, remove the copies"; that record is in `mockups/README.md`.
 
 If this summary and the source ever differ, the source wins.

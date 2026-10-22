@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import DeveloperHubPage from "@/app/mockups/development/page";
+import DeveloperHubPage from "@/app/(admin)/admin/developer-hub/page";
 import { developerHubNavSections } from "@/components/developer-area/developer-hub-nav-header";
 import { loadLedgerSnapshot } from "@/lib/developer-area/ledger-snapshot";
 
@@ -17,7 +17,7 @@ import { loadLedgerSnapshot } from "@/lib/developer-area/ledger-snapshot";
  */
 
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/mockups/development",
+  usePathname: () => "/admin/developer-hub",
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), prefetch: vi.fn() }),
 }));
 
@@ -386,7 +386,7 @@ describe("developer hub page — clinical answer failure band", () => {
 
     const band = screen.getByTestId("developer-hub-clinical-answer-failures-band");
     expect(band).toHaveTextContent("2 recorded problems against a named clinical question.");
-    expect(band).toHaveAttribute("href", "/mockups/development/clinical-answer-failures");
+    expect(band).toHaveAttribute("href", "/admin/developer-hub/clinical-answer-failures");
   });
 
   it("says problem, not problems, for a single one", async () => {
@@ -412,7 +412,7 @@ describe("owner panel page — today section", () => {
     render(await DeveloperHubPage());
     expect(screen.getByRole("heading", { level: 1, name: "Owner panel" })).toBeInTheDocument();
     expect(screen.getByTestId("owner-panel-today-summary")).toHaveTextContent(/waiting on you/);
-    expect(screen.getByTestId("owner-panel-settings-link")).toHaveAttribute("href", "/mockups/development/settings");
-    expect(screen.getByTestId("owner-panel-uploads-link")).toHaveAttribute("href", "/mockups/development/ingestion");
+    expect(screen.getByTestId("owner-panel-settings-link")).toHaveAttribute("href", "/admin/developer-hub/settings");
+    expect(screen.getByTestId("owner-panel-uploads-link")).toHaveAttribute("href", "/admin/developer-hub/ingestion");
   });
 });

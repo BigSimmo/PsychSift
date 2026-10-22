@@ -395,7 +395,7 @@ describe("On Call home layout", () => {
     // Removed on the owner's instruction 2026-09-16: a reader opening this page
     // is mid-shift and looking for a number, and overdue entries are a
     // maintenance fact. They are reported at
-    // /mockups/development/on-call-freshness instead. This test exists so a
+    // /admin/developer-hub/on-call-freshness instead. This test exists so a
     // later "helpful" restoration goes red rather than shipping.
     storeState.entries = [staleContact("ward-4b", "Ward 4B")];
 

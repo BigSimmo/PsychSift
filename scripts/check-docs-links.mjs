@@ -139,6 +139,19 @@ const SCOPED_ALLOWLIST = mergeScopedAllowlist([
   ["docs/care-plan/crisis-lines-verification.md", new Set(["docs/care-plan/claude-build-handover-2026-08-21.md"])],
   ["docs/care-plan/crisis-lines-verification.md", new Set(["docs/care-plan/cloud-session.md"])],
   ["docs/care-plan/crisis-lines-verification.md", new Set(["tests/care-plan-domain.test.ts"])],
+  // ── The /mockups copy of the Owner panel, retired 2026-10-22 (owner-approved, mockups/README.md
+  // "Retired mockups"). The real panel lives at src/app/(admin)/admin/developer-hub/. These are
+  // dated handovers, specs and the audit that proposed the retirement; their paths are historical.
+  ["docs/corpus-health-panel-handover.md", new Set(["src/app/mockups/development/corpus-health/page.tsx"])],
+  ["docs/mockup-audit-and-issues-report.md", new Set(["src/app/mockups/development/**"])],
+  [
+    "docs/superpowers/specs/2026-08-21-developer-hub-phase-1-design.md",
+    new Set(["src/app/mockups/development/page.tsx"]),
+  ],
+  [
+    "docs/superpowers/specs/2026-08-21-developer-hub-phase-1-design.md",
+    new Set(["src/app/mockups/development/ledger/page.tsx"]),
+  ],
   ["docs/mockup-audit-and-issues-report.md", new Set(["src/app/mockups/tools-task-directory/page.tsx"])],
   ["docs/mockup-audit-and-issues-report.md", new Set(["src/app/mockups/tools-workflow-board/page.tsx"])],
   ["docs/mockup-audit-and-issues-report.md", new Set(["src/app/mockups/tools-command-center/page.tsx"])],

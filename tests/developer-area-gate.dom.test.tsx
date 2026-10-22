@@ -23,7 +23,7 @@ const mocks = vi.hoisted(() => ({
     email: null as string | null,
   },
   linkAccessGranted: false,
-  pathname: "/mockups/development",
+  pathname: "/admin/developer-hub",
   developerAreaPath: null as string | null,
   routerRefresh: vi.fn(),
 }));
@@ -72,7 +72,7 @@ afterEach(() => {
   mocks.bypassAllowed = false;
   mocks.linkAccessGranted = false;
   mocks.accessResult = { state: "authorized", email: null };
-  mocks.pathname = "/mockups/development";
+  mocks.pathname = "/admin/developer-hub";
   mocks.developerAreaPath = null;
   delete process.env.DEVELOPER_AREA_ACCESS_KEY;
   mocks.routerRefresh.mockClear();
@@ -109,7 +109,7 @@ describe("DeveloperAreaGate", () => {
     const { rerender } = render(await DeveloperAreaGate({ children: <p data-testid="protected">secret</p> }));
     expect(mocks.routerRefresh).not.toHaveBeenCalled();
 
-    mocks.pathname = "/mockups/development/ledger";
+    mocks.pathname = "/admin/developer-hub/ledger";
     rerender(await DeveloperAreaGate({ children: <p data-testid="protected">secret</p> }));
 
     expect(mocks.routerRefresh).toHaveBeenCalledTimes(1);

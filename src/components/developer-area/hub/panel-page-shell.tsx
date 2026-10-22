@@ -38,7 +38,7 @@ export function PanelPageShell({
     <main data-testid={testId} className="mx-auto grid w-full max-w-[64rem] gap-6 px-4 py-8 sm:px-6">
       <ContextualBackLink
         data-testid={`${testId}-back`}
-        fallbackHref="/mockups/development"
+        fallbackHref="/admin/developer-hub"
         className="inline-flex min-h-12 w-fit items-center gap-2 text-sm font-medium text-[color:var(--text-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
       >
         <ArrowLeft aria-hidden="true" className="size-icon-sm" />
