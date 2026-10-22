@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { IntentPrefetchLink } from "@/components/ui/intent-prefetch-link";
 import { ShieldAlert } from "lucide-react";
 
 import { cn, textMuted } from "@/components/ui-primitives";
@@ -33,7 +33,7 @@ export function PrivacyInputNotice({
     >
       <ShieldAlert className="size-icon-xs shrink-0 text-[color:var(--warning)]" aria-hidden />
       <span>Do not enter patient-identifiable information.</span>
-      <Link
+      <IntentPrefetchLink
         href={returnMode ? `/privacy?from=${returnMode}` : "/privacy"}
         // min-h-tap stays: ui-accessibility.spec.ts measures this link's own
         // border box and requires >=44x44, so the 48px target is load-bearing
@@ -55,7 +55,7 @@ export function PrivacyInputNotice({
         className="-mb-4 inline-flex min-h-tap items-center rounded-sm font-medium underline decoration-[color:var(--border-strong)] underline-offset-2 transition-colors hover:text-[color:var(--clinical-accent)] hover:decoration-current focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] sm:mb-0 sm:min-h-0"
       >
         Privacy and data processing
-      </Link>
+      </IntentPrefetchLink>
     </p>
   );
 }

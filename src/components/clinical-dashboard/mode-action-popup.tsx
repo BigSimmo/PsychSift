@@ -537,18 +537,20 @@ export function ModeActionPopup({
     },
   });
 
-  function focusActionItem(index: number) {
+  function focusActionItem(index: number): boolean {
     if (customBody) {
       const body = document.getElementById(customBodyFocusScopeId);
       const focusable = body?.querySelectorAll<HTMLElement>(
         'button:not([disabled]), a[href], input:not([disabled]), [tabindex]:not([tabindex="-1"])',
       );
-      if (!focusable?.length) return;
+      if (!focusable?.length) return false;
       focusable[index < 0 ? focusable.length - 1 : Math.min(index, focusable.length - 1)]?.focus();
-      return;
+      return true;
     }
     const nextIndex = (index + items.length) % items.length;
-    itemRefs.current[nextIndex]?.focus();
+    const item = itemRefs.current[nextIndex];
+    item?.focus();
+    return Boolean(item);
   }
 
   const updatePlacement = useCallback(() => {
@@ -629,7 +631,17 @@ export function ModeActionPopup({
     setModeSelectorOpen(false);
     updatePlacement();
     onOpenChange(true);
-    window.requestAnimationFrame(() => focusActionItem(index));
+    // A lazily loaded custom body renders nothing until its chunk arrives, so keep
+    // retrying for a bounded number of frames while focus is still on the trigger.
+    let framesLeft = 120;
+    const attempt = () => {
+      // Never override a focus move the user made while the body was loading.
+      const active = document.activeElement;
+      if (active && active !== document.body && active !== buttonRef.current) return;
+      if (focusActionItem(index)) return;
+      if (--framesLeft > 0) window.requestAnimationFrame(attempt);
+    };
+    window.requestAnimationFrame(attempt);
   }
 
   function handleTriggerKeyDown(event: ReactKeyboardEvent<HTMLButtonElement>) {

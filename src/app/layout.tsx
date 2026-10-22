@@ -3,9 +3,8 @@ import localFont from "next/font/local";
 import { cookies, headers } from "next/headers";
 import { AuthProvider } from "@/lib/supabase/client";
 import { AccountDataProvider } from "@/components/account-data-provider";
-import { WorkAccountSync } from "@/components/work-sync/work-account-sync";
 import { PhoneFocusClearance } from "@/components/phone-focus-clearance";
-import { PwaLifecycle } from "@/components/pwa-lifecycle";
+import { PwaLifecycleDeferred, WorkAccountSyncDeferred } from "@/components/root-helpers-deferred";
 import { WebVitalsReporter } from "@/components/web-vitals-reporter";
 import { resolveMetadataBase } from "@/lib/metadata-base";
 import { GLASS_FALLBACK_SCRIPT } from "@/lib/glass-fallback";
@@ -169,13 +168,13 @@ export default async function RootLayout({
           Skip to main content
         </a>
         <WebVitalsReporter />
-        <PwaLifecycle />
+        <PwaLifecycleDeferred />
         <PhoneFocusClearance />
         <AppAnnouncements />
         <OverlayRoot />
         <AuthProvider>
           <AccountDataProvider>
-            <WorkAccountSync />
+            <WorkAccountSyncDeferred />
             <MobileKeyboardProvider>
               <ToastProvider>{children}</ToastProvider>
             </MobileKeyboardProvider>

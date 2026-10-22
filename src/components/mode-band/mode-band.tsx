@@ -2,6 +2,7 @@
 
 import { Check, ChevronLeft, CircleAlert, CloudOff, Info, Settings2, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
+import { IntentPrefetchLink } from "@/components/ui/intent-prefetch-link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
   createContext,
@@ -619,10 +620,10 @@ function ModeBandHeader({
       <div className="mode-band__inner">
         <div className="mode-band__utility">
           {lead.kind === "back" ? (
-            <Link href={lead.href} className="mode-band__back" aria-label={`Back to ${lead.label}`}>
+            <IntentPrefetchLink href={lead.href} className="mode-band__back" aria-label={`Back to ${lead.label}`}>
               <ChevronLeft aria-hidden="true" className="size-icon-lg shrink-0" strokeWidth={2.25} />
               {lead.label}
-            </Link>
+            </IntentPrefetchLink>
           ) : null}
           {customiseHref ? (
             <Link href={customiseHref} className="mode-band__customise" aria-label="Customise">
