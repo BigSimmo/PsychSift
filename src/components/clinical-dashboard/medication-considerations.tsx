@@ -24,6 +24,7 @@ import { usePatientProfile } from "@/components/clinical-dashboard/patient-profi
 import {
   evaluateMedicationInteractions,
   interactionNoteBody,
+  interactionReviewInput,
   medicationDisplayName,
   severityLabel,
   type MedicationInteraction,
@@ -36,6 +37,7 @@ import {
 } from "@/lib/medication-patient-alerts";
 import type { MedicationRecord } from "@/lib/medications";
 import type { SemanticTone } from "@/lib/semantic-tone";
+import { ContentReviewNotice } from "@/components/content-review/content-review-notice";
 import { Disclosure } from "@/components/ui/disclosure";
 import { cn, InlineNotice } from "@/components/ui-primitives";
 
@@ -186,11 +188,13 @@ export function PatientVerdictSignal({ verdict, className }: { verdict: Medicati
  * alert. Rendered as a `<Link>` per the repo's internal-navigation rule.
  */
 function CounterpartyLink({ interaction }: { interaction: MedicationInteraction }) {
+  // The 48px tap box keeps its size; -my-3 lets it reach into the card's p-3 padding so
+  // the 12px label does not leave a blank band above and below it.
   return (
     <Link
       href={`/medications/${interaction.counterpartySlug}`}
       data-testid={`patient-interaction-link-${interaction.counterpartySlug}`}
-      className="inline-flex min-h-tap items-center gap-1 text-xs font-semibold text-[color:var(--clinical-accent)] underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
+      className="-my-3 inline-flex min-h-tap items-center gap-1 text-xs font-semibold text-[color:var(--clinical-accent)] underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
     >
       Open {interaction.counterpartyName}
       <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -551,6 +555,7 @@ function MedicationInteractionBlock({ record }: { record: MedicationRecord }) {
                     {interactionNoteBody(interaction.note)}
                   </p>
                 ) : null}
+                <ContentReviewNotice review={interactionReviewInput(interaction)} hideStates={["unknown"]} />
                 <CounterpartyLink interaction={interaction} />
               </div>
             </InlineNotice>
