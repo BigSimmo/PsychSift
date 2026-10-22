@@ -9,9 +9,10 @@
  * staling it. This checks that each top-level directory the index organizes around
  * is referenced somewhere in it.
  *
- * Granularity is deliberately top-level directories (route groups + src/lib module
- * dirs), not every file — the index maps modules by theme, so per-file coverage
- * would be pure noise.
+ * Coverage granularity is deliberately top-level directories (route groups + src/lib
+ * module dirs), not every file. Separately, definite implemented API endpoints named
+ * in the API table must have a matching local route.ts; examples and other prose do
+ * not claim implementation.
  *
  * Run: `npm run docs:check-index`. Blocking — runs in `verify:full` and in
  * CI (`.github/workflows/ci.yml`, the "Codebase index coverage" step). Exit 1 on gaps.
@@ -123,6 +124,37 @@ export function schemaTableGaps(indexText, schemaText) {
   };
 }
 
+/** Pure: validate definite endpoint code spans in the implemented API table only. */
+export function implementedApiRouteGaps(indexText, routeFiles) {
+  const implemented = new Set(
+    routeFiles
+      .map((file) => file.replaceAll("\\", "/").replace(/^\.\//, ""))
+      .filter((file) => file.startsWith("src/app/api/") && file.endsWith("/route.ts"))
+      .map((file) => file.slice("src/app".length, -"/route.ts".length)),
+  );
+  const table = sectionText(indexText, "api")
+    .split(/\r?\n/)
+    .filter((line) => /^\s*\|/.test(line))
+    .join("\n");
+  const documented = new Set(
+    [...table.matchAll(/`([^`\r\n]+)`/g)]
+      .map((match) => match[1].trim())
+      // Angle/brace placeholders, wildcards, query/hash examples and prose are not
+      // definite route claims. Keep [id] and [...path] route segments case-sensitive.
+      .filter((span) => /^\/api\/[A-Za-z0-9_.\/[\]-]+$/.test(span))
+      .map((span) => span.replace(/\/$/, "")),
+  );
+  return [...documented].filter((endpoint) => !implemented.has(endpoint)).sort();
+}
+
+function discoverApiRouteFiles(relativeDir = "src/app/api") {
+  return readdirSync(path.join(repoRoot, relativeDir), { withFileTypes: true }).flatMap((entry) => {
+    const relativePath = `${relativeDir}/${entry.name}`;
+    if (entry.isDirectory()) return discoverApiRouteFiles(relativePath);
+    return entry.isFile() && entry.name === "route.ts" ? [relativePath] : [];
+  });
+}
+
 function discoverGroups() {
   const groups = [];
   const trackedPaths = execFileSync("git", ["ls-files", "--cached", "-z"], {
@@ -149,17 +181,21 @@ function main() {
   const groups = discoverGroups();
   const gaps = coverageGaps(indexText, groups);
   const tables = schemaTableGaps(indexText, schemaText);
+  const apiRoutes = implementedApiRouteGaps(indexText, discoverApiRouteFiles());
 
-  if (gaps.length > 0 || tables.missing.length > 0 || tables.stale.length > 0) {
+  if (gaps.length > 0 || tables.missing.length > 0 || tables.stale.length > 0 || apiRoutes.length > 0) {
     console.error(`\n${INDEX_PATH} is missing ${gaps.length} top-level module(s)/route(s):`);
     for (const g of gaps) console.error(`  UNINDEXED ${g.full} (${g.kind}) — add it or allowlist it`);
     for (const table of tables.missing) console.error(`  UNINDEXED public.${table} (schema table)`);
     for (const table of tables.stale) console.error(`  STALE ${table} (not present in ${SCHEMA_PATH})`);
+    for (const endpoint of apiRoutes) {
+      console.error(`  STALE ${endpoint} (no matching src/app${endpoint}/route.ts)`);
+    }
     console.error(`\nUpdate ${INDEX_PATH} so the agent-orientation map stays current.`);
     process.exit(1);
   }
   console.log(
-    `${INDEX_PATH} coverage OK: all ${groups.length} repository roots/modules/routes and ${tables.missing.length + tables.stale.length === 0 ? "all" : "checked"} schema tables are indexed.`,
+    `${INDEX_PATH} coverage OK: all ${groups.length} repository roots/modules/routes and ${tables.missing.length + tables.stale.length === 0 ? "all" : "checked"} schema tables are indexed; implemented API table endpoints resolve.`,
   );
 }
 

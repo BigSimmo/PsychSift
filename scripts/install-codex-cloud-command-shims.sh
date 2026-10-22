@@ -173,7 +173,10 @@ for path_entry in "\${path_entries[@]}"; do
   path_entry_seen=true
 done
 unset path_entries path_entry path_entry_seen
-if [[ "\$(git rev-parse --show-toplevel 2>/dev/null || true)" != $quoted_checkout ]]; then
+# Compare physical shell paths, including Git for Windows' native drive spelling.
+if [[ "\$(cloud_shim_root=\$(git rev-parse --show-toplevel 2>/dev/null) &&
+  [[ -n "\$cloud_shim_root" ]] &&
+  cd "\$cloud_shim_root" 2>/dev/null && pwd -P)" != $quoted_checkout ]]; then
   # Preserve an unrelated checkout's environment and its own PATH runtime.
   export PATH="\$clean_path"
   fallback_command="\$(command -v $command_name || true)"

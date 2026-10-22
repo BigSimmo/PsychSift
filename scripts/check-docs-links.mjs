@@ -124,6 +124,8 @@ function isAllowedPath(repoRelative, target) {
   return SCOPED_ALLOWLIST.get(target)?.has(repoRelative) === true;
 }
 
+import { isMaintainedDatedDocument } from "./lib/document-lifecycle.mjs";
+
 const DATED_DOC = /\b20\d{2}-\d{2}(-\d{2})?\b/;
 // Historical directories: only scanned with --all.
 const HISTORICAL_DIRS = new Set(["archive", "audit"]);
@@ -205,7 +207,13 @@ function collectDocs(dirRelative, targets) {
     }
     if (!entry.isFile() || !entry.name.endsWith(".md")) continue;
     const isSpecDoc = dirRelative === "docs/superpowers/specs" || dirRelative.startsWith("docs/superpowers/specs/");
-    if (!scanAll && DATED_DOC.test(entry.name) && !isSpecDoc) continue;
+    if (
+      !scanAll &&
+      DATED_DOC.test(entry.name) &&
+      !isSpecDoc &&
+      !isMaintainedDatedDocument(readFileSync(path.join(repoRoot, entryRelative), "utf8"))
+    )
+      continue;
     targets.push(entryRelative);
   }
 }

@@ -1,6 +1,6 @@
 # Organisation map
 
-_Updated 2026-09-26 — stages 1 to 3; Knowledge owns._
+_Updated 2026-10-21 — retained main-line pins without the retired squash-merge premise; Knowledge owns._
 
 This folder is the map of which **area** of PsychSift every tracked file belongs to. The map is
 logical: nothing is moved or renamed to fit it. `npm run check:organisation` keeps it honest. The
@@ -54,7 +54,7 @@ npm run check:organisation -- --fix     # tidy the map after moving or renaming 
 
 In CI (`static-pr`), only problems the change itself introduced fail the step, so a PR is never blamed for something already on main and the result never depends on the date. Files that are not placed yet, and entries left behind by a move, are warnings shown on the PR, never failures (owner decisions, 2026-09-26).
 
-Each local run writes a JSON and a Markdown report to the git-ignored `output/organisation/`, selected by `latest.json`. The report also lists key documents whose area changed since they were last read, from the commit pins in `pins.json` (re-read the document against the files that changed in its area, then set its pin to the commit on main you read it against, which the weekly report prints; never a commit only on a PR branch, because PRs are squash-merged), the most-edited files of the last 30 days, and what moved since the last report. `npm run ensure` runs the check once, advisory only, when it starts a new dev server.
+Each local run writes a JSON and a Markdown report to the git-ignored `output/organisation/`, selected by `latest.json`. The report also lists key documents whose area changed since they were last read, from the commit pins in `pins.json` (re-read the document against the files that changed in its area, then set its pin to the commit on main you read it against, which the weekly report prints; use a verified main-line revision so the shared baseline does not depend on an unmerged PR), the most-edited files of the last 30 days, and what moved since the last report. Merge method and authority follow [the publication policy](../agents/pull-request-workflow.md#merge-authority). `npm run ensure` runs the check once, advisory only, when it starts a new dev server.
 
 ## The checks built on the map
 

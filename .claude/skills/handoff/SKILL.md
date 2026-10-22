@@ -84,9 +84,10 @@ force-push, or discard work.
 7. **Open a PR** with `gh pr create --base main`, body ending with the Claude Code
    attribution line. Write the body from `.github/pull_request_template.md` exactly as
    [Open](../../../docs/agents/pull-request-workflow.md#open) requires — full prose, verbatim Preflight lines checked only
-   where true, a satisfying `RAG impact:` line. On an ordinary PR you may arm squash
-   auto-merge at open (`gh pr merge --squash --auto`)
-   ([Merge authority](../../../docs/agents/pull-request-workflow.md#merge-authority)).
+   where true, a satisfying `RAG impact:` line. Follow the ordinary-PR auto-merge-at-open exception,
+   existing auto-merge ownership and protected-merge requirements in
+   [Merge authority](../../../docs/agents/pull-request-workflow.md#merge-authority)
+   and use normal merges; never push to `main` or force-push.
 8. **Record** the review per [Records](../../../docs/agents/pull-request-workflow.md#records) with `npm run ledger:append`.
 9. **Follow CI while it is useful, then stop** per [Follow CI](../../../docs/agents/pull-request-workflow.md#follow-ci):
    fix only what this change broke, slow cadence, no cron, then report the PR URL and plainly
@@ -94,6 +95,9 @@ force-push, or discard work.
 
 ## Requires explicit confirmation (do not do automatically)
 
-Merging into a protected branch, arming auto-merge on anything other than an ordinary PR you
-are opening, force-push, rebasing a shared branch, deleting/renaming branches, `git reset --hard`,
+Use [Merge authority](../../../docs/agents/pull-request-workflow.md#merge-authority) for protected
+merges, the ordinary-PR auto-merge-at-open exception and existing auto-merge state.
+Rebasing a shared branch, deleting/renaming branches, `git reset --hard`,
 `git clean -fd`, or any provider-touching verification.
+
+Force-push and direct pushes to `main` remain prohibited by the owner's Git rules.

@@ -52,7 +52,15 @@ const steps = [
 ];
 for (const [label, command, args, timeout] of steps) {
   if (label === "cloud setup" && !bootstrapReady) continue;
-  const result = spawnSync(command, args, { cwd: repoRoot, input: payload, encoding: "utf8", timeout });
+  const result = spawnSync(command, args, {
+    cwd: repoRoot,
+    input: payload,
+    encoding: "utf8",
+    timeout,
+    // Automatic startup is local-only even if an inherited setting permits fetch.
+    // A separately authorised task may refresh the remote through the normal CLI.
+    ...(label === "base freshness" ? { env: { ...process.env, BASE_FRESHNESS_NO_FETCH: "1" } } : {}),
+  });
   collect(result.stdout || "", label === "cloud setup");
   if (result.stderr) process.stderr.write(result.stderr);
   if (result.status !== 0 || result.error)

@@ -64,13 +64,18 @@ const fixtureEnvironment: NodeJS.ProcessEnv = {
   ComSpec: process.env.ComSpec,
   NODE_ENV: "test",
   GIT_CONFIG_NOSYSTEM: "1",
-  GIT_CONFIG_GLOBAL: os.devNull,
+  // Git rejects Node's Windows device path (\\.\nul); its native null name works.
+  GIT_CONFIG_GLOBAL: process.platform === "win32" ? "NUL" : os.devNull,
 };
+// Bypass the Git launcher, which prepends system tools ahead of fixture shims.
 const bashCommand =
   process.platform === "win32"
-    ? path.join(process.env.ProgramFiles || "C:\\Program Files", "Git/bin/bash.exe")
+    ? path.join(process.env.ProgramFiles || "C:\\Program Files", "Git/usr/bin/bash.exe")
     : "bash";
 const shellToolsPath = process.platform === "win32" ? "/mingw64/bin:/usr/bin:/bin" : "/usr/bin:/bin";
+// Windows' inherited PATH can select WSL bash and Windows timeout for POSIX
+// fixture scripts. These shim fixtures supply their own Node/npm/npx executables.
+const shimFixturePath = process.platform === "win32" ? shellToolsPath : process.env.PATH || "";
 const requiredPolicyExcludes = [
   "OPENAI_API_KEY",
   "OPENAI_ORG_ID",
@@ -139,7 +144,10 @@ function bashPathEntry(entry: string) {
 
 function bashPathList(value: string) {
   if (process.platform !== "win32") return value;
-  return value.split(path.delimiter).filter(Boolean).map(bashPathEntry).join(":");
+  const entries = value.split(path.delimiter).filter(Boolean).map(bashPathEntry);
+  // The direct shell does not inject Git's utilities. Add them after requested
+  // entries so fixture shims retain precedence over real git/node/npm commands.
+  return [...entries, shellToolsPath].filter(Boolean).join(":");
 }
 
 function writeFakePython(directory: string, name: string, version: string) {
@@ -1185,7 +1193,7 @@ describe("Codex Cloud environment contract", () => {
     const install = spawnSync(bashCommand, ["scripts/install-codex-cloud-command-shims.sh"], {
       cwd: repoRoot,
       encoding: "utf8",
-      env: { ...fixtureEnvironment, HOME: bashHome, PATH: bashPathList(process.env.PATH || "") },
+      env: { ...fixtureEnvironment, HOME: bashHome, PATH: bashPathList(shimFixturePath) },
     });
     expect(install.status, install.stderr || install.stdout).toBe(0);
 
@@ -1228,7 +1236,7 @@ describe("Codex Cloud environment contract", () => {
     const install = spawnSync(bashCommand, ["scripts/install-codex-cloud-command-shims.sh"], {
       cwd: repoRoot,
       encoding: "utf8",
-      env: { ...fixtureEnvironment, HOME: bashHome, PATH: bashPathList(process.env.PATH || "") },
+      env: { ...fixtureEnvironment, HOME: bashHome, PATH: bashPathList(shimFixturePath) },
     });
     expect(install.status, install.stderr || install.stdout).toBe(0);
   }, 120_000);
@@ -1391,7 +1399,7 @@ describe("Codex Cloud environment contract", () => {
           env: {
             ...fixtureEnvironment,
             HOME: bashHome,
-            PATH: `${bashPathEntry(fallbackBin)}:${bashPathList(process.env.PATH || "")}`,
+            PATH: `${bashPathEntry(fallbackBin)}:${bashPathList(shimFixturePath)}`,
           },
         });
       };

@@ -90,13 +90,13 @@ describe("no file under tests/ is invisible to every runner", () => {
 
   const vitestSource = readConfigSource("vitest.config.mts");
 
-  const nodeIncludeMatch = vitestSource.match(/include: liveProviderTests \? \["([^"]+)"\] : \["([^"]+)"\],/);
+  const nodeIncludeMatch = vitestSource.match(/include:\s*liveProviderTests\s*\?\s*(\[[^\]]+\])\s*:\s*(\[[^\]]+\])/);
   if (!nodeIncludeMatch) {
     throw new Error("vitest.config.mts: could not read the node project's include globs — update this extraction.");
   }
   // The ternary's TRUE branch (ALLOW_PROVIDER_TESTS=true) and FALSE/default branch, in source order.
-  const NODE_LIVE_INCLUDE_GLOB = nodeIncludeMatch[1]!; // "tests/**/*.live.test.ts"
-  const NODE_DEFAULT_INCLUDE_GLOB = nodeIncludeMatch[2]!; // "tests/**/*.test.ts"
+  const NODE_LIVE_INCLUDE_GLOBS: string[] = JSON.parse(nodeIncludeMatch[1]!);
+  const NODE_DEFAULT_INCLUDE_GLOBS: string[] = JSON.parse(nodeIncludeMatch[2]!);
 
   const jsdomIncludeMatch = vitestSource.match(/name: "jsdom",[\s\S]*?include: \["([^"]+)"\],/);
   if (!jsdomIncludeMatch) {
@@ -104,8 +104,8 @@ describe("no file under tests/ is invisible to every runner", () => {
   }
   const JSDOM_INCLUDE_GLOB = jsdomIncludeMatch[1]!; // "tests/**/*.dom.test.tsx"
 
-  const nodeDefaultIncludeRe = globToRegExp(NODE_DEFAULT_INCLUDE_GLOB);
-  const nodeLiveIncludeRe = globToRegExp(NODE_LIVE_INCLUDE_GLOB);
+  const nodeDefaultIncludePatterns = NODE_DEFAULT_INCLUDE_GLOBS.map(globToRegExp);
+  const nodeLiveIncludePatterns = NODE_LIVE_INCLUDE_GLOBS.map(globToRegExp);
   const jsdomIncludeRe = globToRegExp(JSDOM_INCLUDE_GLOB);
 
   // ---- 2. Playwright: discover which projects exist and which named pattern each one uses ----
@@ -147,19 +147,23 @@ describe("no file under tests/ is invisible to every runner", () => {
   const playwrightVisualPattern = new RegExp(visualTopLevelMatch[1]!.slice(1, -1));
 
   function isVisible(relPath: string): boolean {
-    const nodeDefaultVisible = nodeDefaultIncludeRe.test(relPath) && !nodeLiveIncludeRe.test(relPath);
+    const nodeLiveVisible = nodeLiveIncludePatterns.some((pattern) => pattern.test(relPath));
+    const nodeDefaultVisible = nodeDefaultIncludePatterns.some((pattern) => pattern.test(relPath)) && !nodeLiveVisible;
     return (
       nodeDefaultVisible ||
       jsdomIncludeRe.test(relPath) ||
-      nodeLiveIncludeRe.test(relPath) || // visible under ALLOW_PROVIDER_TESTS=true
+      nodeLiveVisible || // visible under ALLOW_PROVIDER_TESTS=true
       playwrightMainPatterns.some((re) => re.test(relPath)) ||
       playwrightVisualPattern.test(relPath)
     );
   }
 
   it("reads the real patterns from every runner's config, not a remembered copy of two globs", () => {
-    expect(NODE_DEFAULT_INCLUDE_GLOB).toBe("tests/**/*.test.ts");
-    expect(NODE_LIVE_INCLUDE_GLOB).toBe("tests/**/*.live.test.ts");
+    expect(NODE_DEFAULT_INCLUDE_GLOBS).toEqual([
+      "tests/**/*.test.ts",
+      "scripts/archive/check-july8-live-batch.test.ts",
+    ]);
+    expect(NODE_LIVE_INCLUDE_GLOBS).toEqual(["tests/**/*.live.test.ts"]);
     expect(JSDOM_INCLUDE_GLOB).toBe("tests/**/*.dom.test.tsx");
     // Playwright: two distinct named patterns across six projects (five production browsers and
     // one advisory mockup project), plus the visual config's own top-level pattern which no

@@ -9,11 +9,19 @@ infrastructure, corrected.
 
 **Scope discipline:** every Track A item touches protected RAG surfaces
 (`docs/rag-behaviour/safeguards.md`). Each PR must flag RAG impact before editing, carry a
-`RAG impact:` line in its body (`scripts/pr-policy.mjs` blocks the merge otherwise), and any
+`RAG impact:` line in its body (missing or placeholder text produces an advisory warning in
+`scripts/pr-policy.mjs` since 17 September 2026; see [PR policy](../agents/pull-request-workflow.md)), and any
 behaviour change needs a live eval-canary pair (provider-backed, ~$1–2, explicit approval per
 run). Nothing here authorises reindexing, migrations, or provider calls by itself.
 
-**Canonical task queue:** per `AGENTS.md`, canonical cross-session task tracking and deduplication live in [`docs/outstanding-issues.md`](../outstanding-issues.md). Always consult the canonical ledger first. Check open PRs only when explicit owner approval for provider access exists; otherwise continue with local/offline evidence and note the duplicate-risk caveat.
+_Updated 2026-10-21 — corrected task authority and advisory metadata enforcement; Documentation owns._
+
+**Task authority:** follow [task lifecycle and receipt handoff](../task-receipts.md) for ownership,
+lifecycle, blockers and next actions. [Issue history](../outstanding-issues.md) and programme
+packets are evidence, not another live task board; issue changes use the
+[immutable inbox](../outstanding-issues-inbox/README.md). Check open PRs only with explicit
+owner approval for provider access; otherwise use local/offline evidence and record the
+duplicate-risk caveat.
 
 ---
 
@@ -377,9 +385,9 @@ default-off flags.
 
 ## 5. Sequencing summary
 
-Execution across cloud sessions is coordinated by [HANDOVER.md](HANDOVER.md): per-session
-work packets, the live status table, checklists, and paste-ready prompts. Canonical task
-ownership and cross-session tracking remain registered in [`docs/outstanding-issues.md`](../outstanding-issues.md).
+[HANDOVER.md](HANDOVER.md) retains programme packets, dated outcomes, checklists and prompts.
+Use [task-receipts.md](../task-receipts.md) for current ownership and lifecycle; do not
+reconstruct a live task queue from the historical packet table.
 
 | Order | Item                                            | Depends on                      | Behaviour change?                         |
 | ----- | ----------------------------------------------- | ------------------------------- | ----------------------------------------- |

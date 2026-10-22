@@ -62,7 +62,7 @@ and the ten locally authored differential records still carry no clinician sign-
 
 ## Pull Request Preflight
 
-Use the `.github/pull_request_template.md` clinical governance section for any change that touches ingestion, answer generation, search/ranking, source rendering, document access, privacy, production environment behavior, or clinical output.
+Use the [PR template's Clinical Governance Preflight](../.github/pull_request_template.md#clinical-governance-preflight) for any change that touches ingestion, answer generation, search/ranking, source rendering, document access, privacy, production environment behavior, or clinical output. Its metadata warnings are advisory in `pr-policy`; incomplete or missing checkboxes do not themselves block merge. Record evidence or an explicit unresolved/not-applicable explanation rather than checking an unverified item. Clinical-owner sign-off, live-canary approval and other applicable safety gates remain separate requirements.
 
 - Confirm the Supabase target remains `PsychSift Production` (`sjrfecxgysukkwxsowpy`).
 - Confirm service-role credentials and private document access remain server-only.

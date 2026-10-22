@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
 import {
   bytesDigest,
   generationEvidenceBytes,
@@ -12,8 +13,26 @@ import { candidateChunkId } from "../worker/candidate-chunks";
 import {
   createPublishedAdminTextSectionLayoutLoader,
   type PublishedAdminSectionRequest,
-} from "../worker/published-admin-source-layout";
+} from "../src/lib/publication/published-admin-layout";
+import { createPublishedAdminTextSectionLayoutLoader as legacyLayoutLoader } from "../worker/published-admin-source-layout";
 import { buildGenerationRetentionPacket } from "../worker/generation-evidence";
+
+it("retains the worker entry point as the identical shared publication reader", () => {
+  expect(legacyLayoutLoader).toBe(createPublishedAdminTextSectionLayoutLoader);
+});
+
+it("keeps the app publication reader and contract independent of worker-owned modules", () => {
+  for (const path of [
+    "src/lib/registered-public-answer-options.ts",
+    "src/lib/rag/rag-source-block.ts",
+    "src/lib/publication/published-admin-layout.ts",
+    "src/lib/publication/published-admin-layout-contract.ts",
+    "src/lib/publication/original-witness-readback.ts",
+  ]) {
+    const source = readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+    expect(source, path).not.toMatch(/from\s+["'][^"']*worker\//);
+  }
+});
 
 const ownerId = "00000000-0000-4000-8000-000000000001";
 const documentId = "00000000-0000-4000-8000-000000000002";

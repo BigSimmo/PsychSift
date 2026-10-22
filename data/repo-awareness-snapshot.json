@@ -2825,6 +2825,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-18-normal-merges-and-push-safety.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/archive/2026-10-agent-code-reviews/README_CODE_REVIEW.md",
         "section": "archive",
         "catalogued": true
@@ -3297,6 +3302,11 @@
       {
         "path": "docs/launch-operator-runbook.md",
         "section": "root",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-21-normal-merge-documentation-alignment.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -3777,6 +3787,11 @@
       {
         "path": "docs/care-plan/CLAUDE-START-HERE.md",
         "section": "care-plan",
+        "catalogued": true
+      },
+      {
+        "path": "docs/audit/2026-10-21-organisation-remediation.md",
+        "section": "audit",
         "catalogued": true
       },
       {
@@ -16350,7 +16365,7 @@
         "date": "2026-10-17",
         "ref": "claude/add-prlanded-skill",
         "head": "7e6fd2d557d53e22dfa6ea37b8921007fe4b0dfa",
-        "scope": "prlanded",
+        "scope": "Canonical prlanded skill and landed ledger records",
         "outcome": "PASS (0 blocking findings; added .agents/skills/prlanded canonical skill, registered cross-surface twin in list-database-skills.mjs, updated skill inventory tests, and recorded prlanded proofs for PRs #3581/#3587 and #3596)",
         "checks": "npm run check:skills, vitest run tests/database-skills.test.ts tests/repository-skill-inventory.test.ts (15/15), npm run docs:maintain:check, check-format-changed"
       },
@@ -25473,6 +25488,78 @@
         "scope": "branch-cleanup",
         "outcome": "Deleted after exact source HEAD was proven squash-merged by PR #581.",
         "checks": "GitHub merged-PR source HEAD matched exactly; no worktree or open PR referenced the ref at deletion."
+      },
+      {
+        "date": "2026-10-21",
+        "ref": "codex/chat-psychsift-audit-fixes-psychsift-audit-fixes",
+        "head": "ea8eac2cd9141b787391aab275eed879e7b37deb",
+        "scope": "F17-F18 shared publication extraction uncommitted diff",
+        "outcome": "Independent RAG source review: no blocker; module body parity and CI/container safety closure confirmed",
+        "checks": "Independent normalized full-body comparisons and static dependency/selector review; no reviewer tests/providers; source parity does not establish deployed acceptance"
+      },
+      {
+        "date": "2026-10-21",
+        "ref": "codex/chat-psychsift-audit-fixes-psychsift-audit-fixes",
+        "head": "ea8eac2cd9141b787391aab275eed879e7b37deb",
+        "scope": "F22-recovery-executor uncommitted five-file diff",
+        "outcome": "Independent ingestion review: no introduced blocker; inherited unfenced reset and affected-row reporting limits remain",
+        "checks": "Read-only five-file source/SQL tracing against base; reviewed file hashes retained in private task checkpoint; no reviewer tests/providers; parent 31/31 tests reported separately"
+      },
+      {
+        "date": "2026-10-21",
+        "ref": "codex/chat-psychsift-audit-fixes-psychsift-audit-fixes",
+        "head": "ea8eac2cd9141b787391aab275eed879e7b37deb",
+        "scope": "full organisation patch review pinned bdd52861 and F13-F20 corrections",
+        "outcome": "Independent fixed-tree review: no non-recovery runtime blocker; two P2 documentation findings corrected and independently rechecked",
+        "checks": "Original83filecandidate bdd52861; read actual callers; F13 batching and F20 authority corrections verified; recovery reviewed separately; parent will run full offline union plus actual LCOV; no live or release acceptance inferred"
+      },
+      {
+        "date": "2026-10-21",
+        "ref": "codex/chat-psychsift-audit-fixes-psychsift-audit-fixes",
+        "head": "ea8eac2cd9141b787391aab275eed879e7b37deb",
+        "scope": "operator-recovery-current-fenced-rpc-followup",
+        "outcome": "Independent source contract review found immediate expired-lease reclaim risk; comments and runbook corrected; atomic recovery remains open",
+        "checks": "Inspected claim_ingestion_jobs and fenced staging reset/patch/retry SQL signatures; no safe drop-in operator transition; no SQL edits, deployed proof, provider calls or tests in this review"
+      },
+      {
+        "date": "2026-10-21",
+        "ref": "codex/chat-psychsift-audit-fixes-psychsift-audit-fixes",
+        "head": "ea8eac2cd9141b787391aab275eed879e7b37deb",
+        "scope": "organisation remediation parent-owned tooling dirty-diff review",
+        "outcome": "Independent repo-auditor static review: no high-confidence introduced defect or weakened check found",
+        "checks": "Read-only production and regression-source inspection; coverage measurement, API method/access and full startup offline acceptance remain separate; no reviewer tests/providers; source identities retained in private task checkpoint"
+      },
+      {
+        "date": "2026-10-21",
+        "ref": "codex/chat-psychsift-audit-fixes-psychsift-audit-fixes",
+        "head": "ea8eac2cd9141b787391aab275eed879e7b37deb",
+        "scope": "post-coverage-integration-and-fixture-repairs",
+        "outcome": "Independent seven-file source review found no blocker; parent reviewed scanner fixture and later Windows corrections; complete gate rerun pending",
+        "checks": "First focused batch206pass8fail8skip; Cloud batch153pass4fail8skip; final four corrected cases4pass93filtered; no assertions/timeouts/coverage floors relaxed; no provider or native Cloud acceptance; full logs retained in private task evidence"
+      },
+      {
+        "date": "2026-10-21",
+        "ref": "codex/chat-psychsift-audit-fixes-psychsift-audit-fixes",
+        "head": "ea8eac2cd9141b787391aab275eed879e7b37deb",
+        "scope": "psychsift-audit-fixes-ops-governance eight-file uncommitted diff",
+        "outcome": "Independent clinical-governance source review: no introduced high-confidence blocker; owner clinical review and live acceptance pending",
+        "checks": "Eight-file static source tracing and diff check; hazard seals unchanged; no reviewer tests/providers; see docs/audit/2026-10-21-organisation-remediation.md"
+      },
+      {
+        "date": "2026-10-21",
+        "ref": "codex/chat-psychsift-audit-fixes-psychsift-audit-fixes",
+        "head": "ea8eac2cd9141b787391aab275eed879e7b37deb",
+        "scope": "recovery-release-reporting-delta from candidate bdd52861",
+        "outcome": "Independent ingestion source review: no concrete blocker; lost-claim reporting fixed, atomic reset still pending",
+        "checks": "Reviewed executor blob8b8f58fc testsab940740 runbook60181f4b; parent focused41 tests pass; synthetic proof excludeslivePostgREST, SQL andleaseexpiry safety"
+      },
+      {
+        "date": "2026-10-21",
+        "ref": "codex/chat-psychsift-audit-fixes-psychsift-audit-fixes",
+        "head": "ea8eac2cd9141b787391aab275eed879e7b37deb",
+        "scope": "repo-awareness snapshot UI classification final dirty diff",
+        "outcome": "Independent verification review: exact-file no-browser classification justified by no runtime consumers and source import guard",
+        "checks": "Read-only whole-diff planner level none; source/static-heavy/build/coverage retained; parent four suites169 passed20existing skips separately; prior Chromium run stopped after80 passes, no full-suite claim"
       },
       {
         "date": "2026-08-04",

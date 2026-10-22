@@ -273,6 +273,7 @@ const ragRankingPatterns = [
   /^src\/lib\/(?:retrieval-rpc-rollout|clinical-evidence-haystack|cross-document-synthesis|corpus-grounding|keyword-query)\.ts$/,
   /^src\/lib\/(?:document-enrichment|visual-intelligence|image-filtering)\.ts$/,
   /^worker\/(?:embedding-fields|table-facts|assertion-tagging)\.ts$/,
+  /^src\/lib\/publication\/published-admin-layout\.ts$/,
   /^worker\/(?:candidate-chunks|managed-local-memory-producer|managed-admin-text-terminal|managed-prepared-supplier|published-admin-source-layout|scoped-candidate-projection|whole-original-supplier)\.ts$/,
   /^scripts\/(?:eval-retrieval|build-ranking-snapshot|tune-search-weights)\.ts$/,
   /^scripts\/lib\/(?:clinical-aliases|ranking-tuning|ranking-snapshot-builder)\.ts$/,
@@ -291,6 +292,7 @@ export const protectedPathSample = Object.freeze([
   "worker/managed-admin-text-terminal.ts",
   "worker/managed-prepared-supplier.ts",
   "worker/published-admin-source-layout.ts",
+  "src/lib/publication/published-admin-layout.ts",
   "worker/scoped-candidate-projection.ts",
   "worker/whole-original-supplier.ts",
 ]);

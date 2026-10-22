@@ -11,7 +11,12 @@ import {
 } from "@/lib/ingestion-generation-evidence";
 import { buildDocumentPageRowsForPersistence, serializeDocumentPageRowsForCommit } from "../worker/behavior";
 import { buildGenerationRetentionPacket, resumeGenerationRetentionPacket } from "../worker/generation-evidence";
-import { decodeRetainedOriginalWitness } from "../worker/original-witness-readback";
+import { decodeRetainedOriginalWitness } from "../src/lib/publication/original-witness-readback";
+import { decodeRetainedOriginalWitness as legacyWitnessDecoder } from "../worker/original-witness-readback";
+
+it("retains the worker entry point as the identical shared witness decoder", () => {
+  expect(legacyWitnessDecoder).toBe(decodeRetainedOriginalWitness);
+});
 
 const documentId = "00000000-0000-4000-8000-000000000001";
 const generationId = "00000000-0000-4000-8000-000000000002";

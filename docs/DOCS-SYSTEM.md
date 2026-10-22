@@ -20,7 +20,12 @@ All documentation edits and new files in `BigSimmo/PsychSift` are governed by th
 4. **Status in one board** — one deferred/status owner per topic; other docs link, don’t fork.
 5. **Improve the map while you’re here** — one small discoverability/archive/link fix per pass when cheap.
 6. **Recheck triggers** — every live doc class has an event that invalidates it (below). Weekday sweep is backup, not the only freshness mechanism.
-7. **Registry claims must be tip-true** — script names, entry filenames, and “generated” claims must match the tip you are editing (`package.json` + tree). Prefer under-claiming over inventing tip-only paths.
+
+Dated filenames normally identify historical evidence. A dated document that remains a living
+reference must declare `**Status:** maintained`, `**Status:** active`, or `**Status:** current`
+in its opening header. Both normal link and script-reference checks include those documents.
+The existing specification link coverage remains in force; `docs/archive/` and `docs/audit/`
+remain historical directories, checked with `--all`. 7. **Registry claims must be tip-true** — script names, entry filenames, and “generated” claims must match the tip you are editing (`package.json` + tree). Prefer under-claiming over inventing tip-only paths.
 
 ## Pipeline (every docs change)
 

@@ -5,9 +5,12 @@ only in the token files.** Source-of-truth ranking: `AGENTS.md` → `ckb-v2-toke
 committed tests → `.design-sync/conventions.md` → this set. Where this set contradicts a
 higher source, the higher source wins and the contradiction is a defect here.
 
-**Picking the work up cold?** Start at
-[`docs/outstanding-issues.md`](../outstanding-issues.md) — the ledger rows are the current
-source of truth for what is open, in what order, and what has already been measured.
+**Picking the work up cold?** Follow [task lifecycle and receipt handoff](../task-receipts.md)
+for current ownership, lifecycle and next action. [Issue history](../outstanding-issues.md)
+retains recorded problems and measurements; use its [inbox](../outstanding-issues-inbox/README.md)
+for changes. It is not a competing live task board.
+
+_Updated 2026-10-21 — corrected task-lifecycle authority routing; Documentation owns._
 
 [HANDOVER-2026-08-07.md](HANDOVER-2026-08-07.md) is **superseded and must not be used to
 scope work** (`#277`). Nine open rows cite it as their Source, but four of its figures have

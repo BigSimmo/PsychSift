@@ -1,5 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { extractScriptRefs, findStaleRefs, parsePackageScripts } from "../scripts/check-docs-script-refs.mjs";
+import {
+  defaultTargets,
+  extractScriptRefs,
+  findStaleRefs,
+  parsePackageScripts,
+} from "../scripts/check-docs-script-refs.mjs";
+import { isMaintainedDatedDocument } from "../scripts/lib/document-lifecycle.mjs";
+
+it("checks commands in dated plans that remain maintained references", () => {
+  expect(defaultTargets()).toContain("docs/superpowers/plans/2026-09-20-cme-mode-phase-1.md");
+});
+
+it("requires an explicit live lifecycle header rather than incidental prose", () => {
+  expect(isMaintainedDatedDocument("**Status:** maintained implementation reference")).toBe(true);
+  expect(isMaintainedDatedDocument("**Status:** completed\nPreviously active reference")).toBe(false);
+  expect(isMaintainedDatedDocument("This was maintained during the project.")).toBe(false);
+});
 
 describe("parsePackageScripts", () => {
   it("returns the set of script names", () => {

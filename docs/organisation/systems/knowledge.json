@@ -97,6 +97,7 @@
     "scripts/issues-report.mjs",
     "scripts/ledger-inbox.mjs",
     "scripts/lib/codex-cloud-paths.sh",
+    "scripts/lib/document-lifecycle.mjs",
     "scripts/lib/json-schema-contract-validator.mjs",
     "scripts/lib/rag-continuation-artifact.mjs",
     "scripts/lib/rag-local-agent-policy.mjs",

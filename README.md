@@ -210,9 +210,13 @@ Defaults in `.cursor/mcp.json`:
   only
 - `read_only=true` — safer default for exploration and reviews
 
-Remove `read_only=true` from the MCP URL only when you intentionally need write
-access (for example `execute_sql` schema experiments). Prefer the Supabase CLI
-and committed migrations for durable schema changes.
+Keep this production MCP URL read-only. Run schema experiments only on an explicitly
+identified local or scratch database with synthetic data and separate configuration.
+Production write capability is not a setup step: any live database or settings change
+requires Josh's explicit permission for that specific change under the
+[database-change approval rule](docs/decisions/2026-10-15-database-changes-need-owner-permission.md).
+Use reviewed committed migrations for durable schema changes; merging a migration
+to `main` applies it to production and requires the applicable approved window.
 
 Cloud agents do not inherit desktop OAuth automatically. After merging this
 config, authenticate MCP in the environment where the cloud agent runs and start

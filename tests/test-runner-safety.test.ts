@@ -973,7 +973,7 @@ describe("provider-safe test environment", () => {
     }
 
     const offline = await nodeProject(undefined);
-    expect(offline.include).toEqual(["tests/**/*.test.ts"]);
+    expect(offline.include).toEqual(["tests/**/*.test.ts", "scripts/archive/check-july8-live-batch.test.ts"]);
     expect(offline.exclude).toContain("tests/**/*.live.test.ts");
 
     // With permission granted the live glob becomes the only thing collected, so the offline
@@ -989,7 +989,7 @@ describe("provider-safe test environment", () => {
     expect(config).toContain('import { COVERAGE_INCLUDE_GLOBS } from "./scripts/coverage-contract.mjs"');
     expect(config).toContain("include: [...COVERAGE_INCLUDE_GLOBS]");
     for (const pattern of [
-      '"src/**/*.{ts,tsx}"',
+      '"src/**/*.{ts,tsx,js}"',
       '"scripts/**/*.{ts,mjs,cjs}"',
       '"worker/**/*.ts"',
       '"supabase/functions/**/*.ts"',

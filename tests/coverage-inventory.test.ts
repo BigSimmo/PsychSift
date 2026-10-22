@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
+import { matchesGlob } from "node:path";
 
 import { checkCoverageInventory, lcovSourceFiles, missingCoverageRoots } from "../scripts/check-coverage-inventory.mjs";
 import { COVERAGE_INCLUDE_GLOBS, COVERAGE_INVENTORY_ROOTS } from "../scripts/coverage-contract.mjs";
@@ -38,6 +39,32 @@ describe("coverage inventory", () => {
     for (const root of COVERAGE_INVENTORY_ROOTS) {
       expect(COVERAGE_INCLUDE_GLOBS.some((glob) => glob.startsWith(root))).toBe(true);
     }
+  });
+
+  it.each([
+    "src/lib/answer-pilot-budget.js",
+    "src/lib/answer-pilot-diagnostic.js",
+    "src/lib/answer-pilot-ticket.js",
+    "src/lib/answer-wire-budget-guard.js",
+  ])("includes the production budget-control module %s in measured coverage", (file) => {
+    expect(COVERAGE_INCLUDE_GLOBS.some((glob) => matchesGlob(file, glob))).toBe(true);
+  });
+
+  it("rejects an LCOV report that has every root but omits production budget controls", () => {
+    const result = checkCoverageInventory(completeLcov);
+    expect(result.missingFiles).toContain("src/lib/answer-pilot-budget.js");
+  });
+
+  it("accepts an LCOV report containing every required production budget control", () => {
+    const controls = [
+      "answer-pilot-budget",
+      "answer-pilot-diagnostic",
+      "answer-pilot-ticket",
+      "answer-wire-budget-guard",
+    ]
+      .map((name) => `SF:src/lib/${name}.js\nend_of_record`)
+      .join("\n");
+    expect(checkCoverageInventory(`${completeLcov}\n${controls}`).missingFiles).toEqual([]);
   });
 
   it("keeps conservative whole-repository floors alongside scoped ratchets", () => {

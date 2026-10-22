@@ -1,6 +1,12 @@
 # Permanent colour direction
 
-> **Entry point:** day-to-day UI rules live in [`docs/design-system.md`](../design-system.md); this document remains the colour contract of record it links to.
+> **Historical colour-direction record.** Start at the [current design-system front door](../design-system/README.md).
+> Current authority is `AGENTS.md` → `src/app/ckb-v2-tokens.css` → committed tests →
+> `.design-sync/conventions.md` → the v2 document set; `globals.css` is the compatibility layer.
+> This record preserves the original direction and palette rationale. It does not override
+> current token values or prescribe editing this file before changing the governing source.
+
+_Updated 2026-10-21 — corrected authority routing only; Documentation owns._
 
 ## Decision
 
@@ -217,7 +223,10 @@ Rejected because it loses the clinical/source-backed identity and feels less dis
 
 Rejected because the app still needs a visible evidence/source signal.
 
-## Implementation order
+## Original implementation order (historical)
+
+This sequence describes the original compatibility-layer rollout. Use the current
+design-system hierarchy linked above for any new token or component change.
 
 1. Add command and clinical accent tokens to `src/app/globals.css`.
 2. Replace the light root palette with the final crisp white values.
@@ -226,6 +235,6 @@ Rejected because the app still needs a visible evidence/source signal.
 5. Update sidebar/header/composer/empty-state hooks.
 6. Verify light desktop, light mobile, dark desktop, and generated-answer states.
 
-## Final rule
+## Original palette summary
 
 The app should read as **white, graphite, and precise blue-teal**. Green should only appear when the system is saying something has succeeded.

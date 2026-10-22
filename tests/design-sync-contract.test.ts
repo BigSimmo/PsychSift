@@ -3,9 +3,11 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { describe, expect, it } from "vitest";
+import ts from "@typescript/typescript6";
+import { describe, expect, it, vi } from "vitest";
 
 import { previewTypeFailures } from "../scripts/check-design-sync-contract.mjs";
+import { deriveDesignSyncProps } from "../scripts/generate-design-sync-contract.mjs";
 
 const root = path.resolve(__dirname, "..");
 
@@ -22,6 +24,49 @@ function withPreviewCompilerFixture(tsconfig: object, run: (fixtureRoot: string)
 }
 
 describe("design-sync public contract", () => {
+  it("resolves inherited options and imported props without enumerating unrelated project roots", () => {
+    withPreviewCompilerFixture({ extends: "./compiler-base.json", include: ["**/*.ts", "**/*.tsx"] }, (fixtureRoot) => {
+      fs.writeFileSync(
+        path.join(fixtureRoot, "compiler-base.json"),
+        JSON.stringify({
+          compilerOptions: {
+            strict: true,
+            noLib: true,
+            types: [],
+            module: "esnext",
+            moduleResolution: "bundler",
+            paths: { "@fixture/*": ["./contracts/*"] },
+          },
+        }),
+      );
+      fs.mkdirSync(path.join(fixtureRoot, "contracts"));
+      fs.writeFileSync(
+        path.join(fixtureRoot, "contracts", "props.ts"),
+        "export interface SharedProps { label: string; disabled?: boolean }\n",
+      );
+      fs.writeFileSync(
+        path.join(fixtureRoot, ".design-sync", "previews", "Fixture.tsx"),
+        'import type { SharedProps } from "@fixture/props";\n' +
+          'export type FixtureProps = SharedProps & { variant: "plain" | "compact" };\n' +
+          "export function Fixture(props: FixtureProps) { return null; }\n",
+      );
+      fs.mkdirSync(path.join(fixtureRoot, "unrelated"));
+      fs.writeFileSync(path.join(fixtureRoot, "unrelated", "generated.ts"), "export const unrelated = 1;\n");
+      const directoryScan = vi.spyOn(ts.sys, "readDirectory");
+      try {
+        expect(
+          deriveDesignSyncProps({
+            root: fixtureRoot,
+            config: { componentSrcMap: { Fixture: ".design-sync/previews/Fixture.tsx" } },
+          }),
+        ).toEqual({ Fixture: 'disabled?: boolean; label: string; variant: "plain" | "compact";' });
+        expect(directoryScan).not.toHaveBeenCalled();
+      } finally {
+        directoryScan.mockRestore();
+      }
+    });
+  });
+
   /**
    * An explicit timeout, because the global 30 s one is a whole-suite hazard for
    * this test rather than a generous ceiling for it.

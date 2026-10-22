@@ -50,7 +50,7 @@ selects a host profile nor changes the user's main-chat model or effort.
 - For localized source/config/test changes, start with the smallest focused check. Use `npm run verify:cheap` once only when cross-module or unknown risk warrants a broad offline gate.
 - For UI, frontend, browser, routing, styling, reduced-motion, or forced-colors changes, run `npm run ensure` first, prove the affected journey, and use `npm run verify:ui` only when shared UI risk or handoff policy warrants the broad Chromium gate.
 - For ordinary handoff confidence, use `npm run verify:pr-local`. Run `npm run verify:release` only when the user explicitly requests release confidence and approves its provider-backed checks.
-- For clinical ingestion, answer generation, source governance, privacy, production-readiness, or environment changes, run the smallest relevant domain check plus `npm run check:production-readiness`.
+- Follow the [canonical gate selector](../../../../docs/agents/verification-gates.md#gate-selection). For routine offline clinical ingestion, answer generation, source-governance, privacy or environment changes, run the smallest relevant offline domain check; use `npm run check:production-readiness:ci` when readiness/configuration structure is in scope. Before production release or activation, retain the strict approvals and release-mode `npm run check:production-readiness`; routine development does not establish release readiness.
 - After Supabase env/config changes, prepare `npm run check:supabase-project` as an approval gate; do not run it without explicit user approval.
 - Start from the smallest failing check and widen only after the focused failure is resolved.
 

@@ -79,7 +79,7 @@ ranking-protected file changed, a `RAG impact:` placeholder to replace; include 
   `Verification not run: <reason>`; an unchecked box is never the only evidence.
 
 **Arming auto-merge at open (owner ruling 2026-09-16).** An agent that opens an **ordinary** PR
-may arm squash auto-merge as part of opening it (`gh pr merge --squash --auto`), with no further
+may arm ordinary merge auto-merge as part of opening it (`gh pr merge --merge --auto`), with no further
 confirmation. Once a PR exists, its auto-merge state is user-owned — see
 [Merge authority](#merge-authority) for what that forbids. Merging a `supabase/` change is a live
 clinical-database deploy; treat that merge as production.
@@ -336,7 +336,7 @@ tripwire, not a boundary — an expression-built name or a later re-post gets pa
 boundary needs live settings: post required checks from a dedicated GitHub App whose key lives
 in an environment secret limited to `main`, and pin the ruleset to that app.
 
-**Ordinary PRs.** An agent may arm squash auto-merge when it opens the PR (see [Open](#open)).
+**Ordinary PRs.** An agent may arm ordinary merge auto-merge when it opens the PR (see [Open](#open)).
 Merging a PR directly into `main` or any protected branch still needs the user's explicit
 request; the only standing batch authority is [`Clear PRs`](#clear-prs). [`Run PR`](#run-pr)
 never merges and never arms.

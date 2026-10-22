@@ -12,6 +12,16 @@ const WORKER_RANKING_PRODUCERS = [
 ] as const;
 
 describe("PR policy worker ranking producer coverage (R23)", () => {
+  it.each([
+    ["worker/published-admin-source-layout.ts", "src/lib/publication/published-admin-layout.ts"],
+    ["worker/published-admin-source-layout-contract.ts", "src/lib/publication/published-admin-layout-contract.ts"],
+    ["worker/original-witness-readback.ts", "src/lib/publication/original-witness-readback.ts"],
+  ])("retains every PR safety classification from %s at %s", (oldPath, sharedPath) => {
+    const before = classifyPullRequestFiles([oldPath]);
+    const after = classifyPullRequestFiles([sharedPath]);
+    expect(after).toEqual({ ...before, files: [sharedPath] });
+  });
+
   it.each(WORKER_RANKING_PRODUCERS)("classifies %s as a protected ragRanking surface", (filePath) => {
     const classification = classifyPullRequestFiles([filePath]);
     expect(classification.ragRanking).toBe(true);

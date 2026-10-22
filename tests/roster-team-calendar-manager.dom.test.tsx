@@ -192,7 +192,9 @@ afterEach(() => {
 describe("Team calendar, manager layer", () => {
   it("shows a member no strip, no counts and makes no manager reads", async () => {
     const { reads } = mockFetch({ role: "member", needs: [need(1, 4, "night", 2)] });
-    render(<RosterTeamPage now={NOW} />);
+    await act(async () => {
+      render(<RosterTeamPage now={NOW} />);
+    });
     await screen.findByRole("table", { name: "Week roster" });
     expect(screen.queryByRole("region", { name: "Needs you" })).toBeNull();
     expect(screen.queryByText(/Nights 1 of 2/)).toBeNull();

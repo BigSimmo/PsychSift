@@ -1,5 +1,7 @@
 # Adaptive RAG reindex runbook
 
+_Updated 2026-10-21 — guarded recovery release reporting and lease limits; Documentation owns._
+
 Use this sequence when applying RAG indexing changes to the live `PsychSift Production` Supabase project.
 
 ## Consolidated pipeline command
@@ -10,7 +12,27 @@ The quickest way to run a full reindex cycle is the consolidated pipeline comman
 npm run reindex
 ```
 
-This single command encapsulates the full safe sequence below: it confirms the target project, checks Supabase health, snapshots reindex health, applies ingestion queue recovery (with an interactive confirmation prompt), runs the worker, and repeats until the queue is clear or the round limit is reached.
+This single command encapsulates the sequence below: it confirms the target project, checks Supabase health, snapshots reindex health, applies ingestion queue recovery (with an interactive confirmation prompt), runs the worker, and repeats until the queue is clear or the round limit is reached.
+
+Both `reindex` and `recover:ingestion` use the same guarded recovery executor. After
+confirmation it re-reads the queue, discards actions that are no longer applicable,
+and claims each retry using the observed job status and lock timestamp. Document
+status and owner must still match before its index is reset; requeue and failure
+cleanup are restricted to the recovery claim. A job that completed, or whose
+refreshed `locked_at` makes it active under the recovery planner's stale threshold,
+is left alone. Releases check the affected
+rows: if the recovery claim has changed, the job stays with its current owner and
+is reported as skipped rather than counted as requeued. Failure cleanup also
+distinguishes a lost claim from a database error.
+
+These are sequential guarded requests, not a database transaction. Recovery updates
+`locked_by` and `locked_at`, but does not create or renew the fenced worker lease.
+The worker claims processing jobs using `lease_expires_at`; an eligible row whose
+previous lease has expired can therefore be reclaimed even immediately after
+recovery's claim. The destructive reset is not atomically fenced against that
+replacement worker. The ownership check prevents a later release from overwriting
+the replacement claim, but does not protect the reset itself. The command remains
+a live operation requiring the applicable operator and spending approvals.
 
 Options:
 
@@ -35,7 +57,7 @@ npm run reindex -- --yes --max-rounds 5
 > must clear the passage-rank gate (`content_mrr_at_10` above baseline, per
 > `src/lib/reindex-eval-gate.ts`) through that harness before any promotion — never via this command.
 
-## Manual safe sequence
+## Manual sequence
 
 If you prefer to run each step by hand (or need to reconcile a migration in between):
 

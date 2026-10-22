@@ -1,11 +1,11 @@
 # Cross-border disclosure basis — OpenAI (PIA-1)
 
-**Status:** OpenAI external references, Railway contract, and whole-of-flow APP 8 approval pending · **Date reviewed:** 2026-09-01
+**Status:** OpenAI standard-agreement acceptance and Railway DPA execution recorded verified for the restricted first-release scope; ZDR, whole-of-flow APP 8 and notice/clinical decisions remain unresolved. **Narrative reconciled:** 2026-10-21 against the register; original provider observations retain their dates below.
 **Owner of the open step:** OpenAI account owner + authorised legal signatory + privacy adviser
 **Tracks:** the OpenAI contractual portion of **PIA-1** in [docs/privacy-impact-assessment.md](privacy-impact-assessment.md) §10; Railway's companion contract is tracked below.
 **Companion:** the `/privacy` collection notice ([src/app/privacy/page.tsx](../src/app/privacy/page.tsx)) and composer reminder ([src/lib/ui-copy.ts](../src/lib/ui-copy.ts)) ship as draft APP 5 / APP 1 controls pending governance approval under **PIA-5**.
 
-**Status authority:** [`docs/governance/privacy-readiness.v1.json`](governance/privacy-readiness.v1.json). This decision record supplies context and operator steps. Ledger items `#053` and `#HVTYAT` claim OpenAI DPA/ZDR completion, but repository assertions cannot satisfy an external evidence class. The register therefore remains pending for secure OpenAI references, Railway's DPA, the whole-of-flow APP 8 decision, and final notice approval.
+**Status authority:** [`docs/governance/privacy-readiness.v1.json`](governance/privacy-readiness.v1.json). The OpenAI and Railway agreement items were recorded `verified` on 2026-10-05, with review expiry 2026-12-01: [OpenAI standard-agreement evidence](governance/openai-standard-agreement-evidence-2026-10-05.md) and [Railway execution evidence](governance/railway-dpa-completion-evidence-2026-10-05.md). Their scope is public clinical references and wholly invented examples, excluding real-patient cases and voice. This does not establish ZDR, wider sensitive-data suitability, whole-flow legal approval, deployed restrictions or release acceptance. Earlier ledger claims and September observations below are historical; the register and its dated evidence govern current recorded status.
 
 > **Not legal advice.** This records the current, verifiable facts about OpenAI's data-handling
 > terms and maps them to APP 8 so a qualified privacy adviser can sign off the cross-border basis.
@@ -37,8 +37,9 @@ Two obligations attach to that flow:
   remains open under **PIA-5** (see §7).
 
 The code-side controls cannot _by themselves_ discharge APP 8 — the "reasonable steps" are largely
-**contractual**. The OpenAI ledger claims still need secure external references; Railway's contract
-and the privacy adviser's whole-of-flow determination are also open.
+**contractual**. The agreement evidence now covers the restricted first-release scope above;
+the privacy adviser's whole-of-flow determination remains open. Agreement verification does not
+authorise real-patient or voice processing.
 
 ## 2. What actually crosses the border
 
@@ -47,11 +48,22 @@ and the privacy adviser's whole-of-flow determination are also open.
 | Embedding | Raw query text (normalized)                                      | `POST /v1/embeddings` (`text-embedding-3-small`)              | [openai.ts embedTextWithTelemetry](../src/lib/openai.ts)                                    |
 | Answer    | Raw query verbatim + retrieved chunk text + static system prompt | `POST /v1/responses` (Terra fast / Sol strong, `store:false`) | [rag.ts](../src/lib/rag/rag.ts) · [rag-source-block.ts](../src/lib/rag/rag-source-block.ts) |
 
-The app **adds no raw patient or owner identifiers** and stores queries only as a keyed hash locally.
+The app does **not scrub** PHI a clinician types. Default server-side query logging stores a
+hash placeholder through `queryTextForStorage()` (keyed HMAC when `RAG_QUERY_HASH_SECRET` is
+configured); `RAG_PERSIST_RAW_QUERY_TEXT=true` opts into raw server-side query persistence.
+Generated-answer persistence in `rag_queries` is separately controlled by
+`RAG_PERSIST_ANSWER_TEXT`; cached answer payloads are a separate retention surface. The browser
+retains raw query/answer thread text in `window.sessionStorage` for tab restoration with a
+12-hour restoration TTL (validated on read/write, not an assured background deletion deadline)
+and sign-out/owner checks; server hashing does not remove that shared-workstation
+risk. See the authoritative [PIA data flow, mitigations and PIA-8](privacy-impact-assessment.md)
+and [thread storage implementation](../src/lib/answer-thread-storage.ts).
+
 When configured, authenticated Responses requests include a stable HMAC-SHA256
-`safety_identifier`; anonymous and background requests omit it. The app does **not scrub** PHI a
-clinician types. Everything else (documents, embeddings, logs, auth) stays at rest in
-**Sydney — AWS `ap-southeast-2`** (PIA §7).
+`safety_identifier`; anonymous and background requests omit it. Supabase database/storage data
+is recorded at rest in **Sydney — AWS `ap-southeast-2`** (PIA §7). Browser storage, Railway
+processing and OpenAI retention are separate surfaces; `store:false` and local hashing do not
+establish provider deletion or whole-flow onshore processing.
 
 ## 3. OpenAI's current terms (verified 2026-07-13)
 
@@ -89,10 +101,12 @@ is fragile as a sole basis for sensitive health information. The "reasonable ste
    crosses; PHI-minimisation reduces what inference sees). **Optional but high-value** for a WA
    clinical posture; weigh against the ~10% cost uplift.
 4. **No-training default** (already OpenAI's API default) — confirm in the executed contract.
-5. **The app's own minimisation** as documented "reasonable steps" under APP 11: query hashing at
-   rest, `store:false`, Sydney residency, and the shipped PHI reminder (do-not-enter-identifiers).
+5. **The app's own minimisation** as documented "reasonable steps" under APP 11: default server-side
+   query hashing, `store:false`, Supabase Sydney residency, and the shipped PHI reminder
+   (do-not-enter-identifiers), with the browser/cache and optional persistence limits in §2.
 
-Items 1–2 (plus documenting 4–5) are what turn PIA-1 from open to closed. Item 3 strengthens it.
+These are the proposed engineering inputs to the authorised APP 8 decision. They do not close
+PIA-1 automatically; the register's evidence/decision requirements govern release acceptance.
 
 ## 6. Open question to pin with OpenAI
 
@@ -129,19 +143,19 @@ explicit approval, changed API call logging and the optional hosted-tool classes
 No visible ZDR entitlement or configured retention type was present. On 2026-09-01, OpenAI
 acknowledged receipt of an `API for Enterprise` sales request for ZDR covering Responses, Embeddings,
 prompt caching, the applicable DPA, and Australia data-residency options. Submission is not approval.
-No secure ZDR or applicable-contract acceptance reference is attached to the status authority, so those
-OpenAI items remain pending rather than being promoted from repository prose.
+At that September observation, secure ZDR and applicable-contract acceptance references were still
+missing. The 5 October evidence subsequently verified the narrow OpenAI standard-agreement and
+Railway execution items; ZDR and broader legal/clinical decisions remain unresolved in the register.
 
-- [ ] **1. Attach applicable OpenAI DPA and acceptance evidence** for the org behind the production `OPENAI_API_KEY`
+- [x] **1. Record applicable OpenAI standard-agreement/DPA acceptance evidence** for the production account
       → [openai.com/policies/data-processing-addendum](https://openai.com/policies/data-processing-addendum/).
-      The repository records version `v.010126` and execution date 2026-08-18, but that claim remains
-      unverified. The public DPA forms part of the Services Agreement; confirm the actual acceptance
-      route and account scope rather than requiring a separately countersigned copy in every case.
-      Keep confidential acceptance records outside Git and add a sanitized secure reference.
-- [ ] **2. Execute Railway's DPA** with the legal entity and authorised signer. Retain the executed
-      copy and record the Singapore processor/sub-processor basis. Railway's public Exhibit A says
-      sensitive/special-category data is `None`; obtain written terms that cover the actual incidental
-      health-information flow before treating the standard DPA as sufficient.
+      Recorded verified 2026-10-05 through owner-attested standard terms and existing use, not
+      a newly executed countersigned agreement. See `OPENAI-STD-20261005` and the linked evidence.
+      The older 2026-08-18 assertion remains historical. Keep confidential records outside Git.
+- [x] **2. Record Railway DPA execution evidence.** Recorded verified 2026-10-05 through owner
+      confirmation and observed completed DocuSign envelope (`RAILWAY-DPA-20261005`). This closes
+      execution evidence only for the restricted first-release scope; it does not certify broader
+      sensitive-health-data coverage or whole-flow APP 8 compliance.
 - [ ] **3. Attach current ZDR evidence** for the production project. The repository records coverage
       for `/v1/responses` + `/v1/embeddings` on 2026-08-18; the OpenAI account owner must provide a
       sanitized provider-account or written approval reference.
@@ -158,31 +172,31 @@ OpenAI items remain pending rather than being promoted from repository prose.
 > Final governance approval remains open under **PIA-5**; this checklist also tracks the remaining
 > **APP 8** contractual basis for both overseas providers.
 
-### Status record — fill in as steps complete
+### Status record — dated evidence, subordinate to the register
 
-| Field                               | Value                                                                  | Date       | Evidence                                                                    |
-| ----------------------------------- | ---------------------------------------------------------------------- | ---------- | --------------------------------------------------------------------------- |
-| OpenAI org / production project id  | Personal org / Default project inspected; production-key match pending | 2026-09-01 | Authenticated Platform review; no secret values compared                    |
-| DPA accepted (version)              | _repository claim: v.010126_                                           | 2026-08-18 | Ledger #053; applicable-contract and acceptance reference still required    |
-| Railway DPA executed (version)      | _no_                                                                   |            | Public DPA requires customer DocuSign + Railway execution                   |
-| Railway Singapore processor basis   | _pending_                                                              |            | Standard Exhibit A currently says sensitive/special-category data is `None` |
-| ZDR approved (project)              | _requested; approval pending_                                          | 2026-09-01 | OpenAI acknowledged the API for Enterprise sales request                    |
-| ZDR covers /responses + /embeddings | _pending_                                                              |            | No current ZDR entitlement or endpoint-coverage evidence                    |
-| ZDR zeroes prompt cache? (§6)       | _pending external confirmation_                                        |            | Provider/account evidence required                                          |
-| Australia data residency            | _not enabled_                                                          |            | Transits Singapore (Railway) / US (OpenAI API)                              |
-| API data sharing disabled           | _yes in current Platform account_                                      | 2026-09-01 | Feedback, eval/fine-tuning, and API input/output sharing all disabled       |
-| API call logging disabled           | _yes in current Platform account_                                      | 2026-09-01 | Changed from per-call control to Disabled with account-owner approval       |
-| Optional OpenAI hosted tools        | _disabled in current Platform account_                                 | 2026-09-01 | MCP, web/file search, image generation, code interpreter, container network |
-| No-training confirmed in contract   | _repository claim; external reference pending_                         | 2026-08-18 | Secure DPA reference still required                                         |
-| APP 5/1 notice governance approval  | _pending (PIA-5)_                                                      |            | `/privacy` page live with configured behaviour copy                         |
-| Counsel sign-off (APP 8)            | _repository claim; external reference pending_                         | 2026-08-18 | Privacy-adviser reference required                                          |
+| Field                               | Value                                                                                                         | Date       | Evidence                                                                    |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------- | ---------- | --------------------------------------------------------------------------- |
+| OpenAI org / production project id  | Default project serves production, owner-attested; exact identities retained privately                        | 2026-10-05 | OPENAI-STD-20261005-ACCOUNT; no secret values compared                      |
+| DPA accepted (version)              | Standard Services Agreement and incorporated DPA effective 2026-01-01; recorded verified for restricted scope | 2026-10-05 | OPENAI-STD-20261005; owner attestation of existing standard-contract use    |
+| Railway DPA executed (version)      | Completed envelope observed; recorded verified for restricted scope                                           | 2026-10-05 | RAILWAY-DPA-20261005; signed terms were not exported or re-reviewed         |
+| Railway Singapore processor basis   | Execution item verified; broader sensitive-data suitability / APP 8 decision unresolved                       | 2026-10-05 | Railway evidence limits and canonical register                              |
+| ZDR approved (project)              | _requested; approval pending_                                                                                 | 2026-09-01 | OpenAI acknowledged the API for Enterprise sales request                    |
+| ZDR covers /responses + /embeddings | _pending_                                                                                                     |            | No current ZDR entitlement or endpoint-coverage evidence                    |
+| ZDR zeroes prompt cache? (§6)       | _pending external confirmation_                                                                               |            | Provider/account evidence required                                          |
+| Australia data residency            | _not enabled_                                                                                                 |            | Transits Singapore (Railway) / US (OpenAI API)                              |
+| API data sharing disabled           | _yes in current Platform account_                                                                             | 2026-09-01 | Feedback, eval/fine-tuning, and API input/output sharing all disabled       |
+| API call logging disabled           | _yes in current Platform account_                                                                             | 2026-09-01 | Changed from per-call control to Disabled with account-owner approval       |
+| Optional OpenAI hosted tools        | _disabled in current Platform account_                                                                        | 2026-09-01 | MCP, web/file search, image generation, code interpreter, container network |
+| No-training confirmed in contract   | Historical 2026-08-18 claim; acceptance evidence is now linked, with no new bespoke term determination        | 2026-10-05 | OpenAI standard-agreement evidence; no ZDR inference                        |
+| APP 5/1 notice governance approval  | _pending (PIA-5)_                                                                                             |            | `/privacy` page live with configured behaviour copy                         |
+| Counsel sign-off (APP 8)            | _repository claim; external reference pending_                                                                | 2026-08-18 | Privacy-adviser reference required                                          |
 
-Railway's companion contract step is pending: complete a Railway DPA or negotiated enterprise
-schedule with the legal entity and authorised signer, ensure the schedule expressly covers the
-actual sensitive-health-data flow, retain the executed copy, and record the Singapore
-processor/sub-processor basis in the PIA. The public DPA says it becomes binding only after Railway
-executes the submitted DocuSign and its standard Exhibit A currently lists no sensitive or
-special-category data. No automated action in this review accepted either provider's terms.
+Railway's execution-evidence step is recorded complete for the restricted scope. The signed copy
+and certificate remain in secure owner records; do not repeat signing to reconcile this narrative.
+Before broadening to real-patient or voice processing, obtain the separate suitability and
+whole-flow decisions identified by the register. September public-term observations above remain
+dated history, not a new review of the signed terms. This documentation reconciliation accepted
+no agreement, changed no provider setting and supplies no fresh live verification.
 
 ## 9. Code follow-ups triggered by the outcome
 

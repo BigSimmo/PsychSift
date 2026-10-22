@@ -1,6 +1,19 @@
 # Phase 2 — Unified viewing chrome (PDF + photo)
 
-**Status:** plan only (no product behaviour change in this doc PR)  
+**Status:** historical Phase 2 plan; the [programme record](document-viewer-redesign-plan.md) records it landed in PR #1741.
+_Updated 2026-10-21 — added lifecycle and residual-scope routing; Documentation owns._
+
+> Do not execute this pre-implementation baseline as a fresh work queue. The original plan
+> below is retained for rationale. The programme records Phases 0–3 landed; follow-on scope
+> historically included crop → page overlay, signed-URL batching (`#283`), and optional Phase 4
+> polish including demo PNG/WebP (`#215`) and hosted visual baselines. Signed-URL batching is now
+> wired from visible source images through `useBatchSignedImageUrls` to `/api/images/signed-urls`;
+> the old deferred label is superseded. Live acceptance remains separately unverified. Check current
+> [viewer source](../../src/components/document-viewer/), the
+> [canvas journey](../../tests/ui-document-canvas.spec.ts) and
+> [task lifecycle](../task-receipts.md) before scoping that work. Recorded landing is not
+> fresh browser, device or deployment acceptance.
+
 **Programme:** [`document-viewer-redesign-plan.md`](./document-viewer-redesign-plan.md)  
 **Prerequisites (merged):** Phase 0 [#1660](https://github.com/BigSimmo/Database/pull/1660), Phase 1 [#1665](https://github.com/BigSimmo/Database/pull/1665), programme plan [#1659](https://github.com/BigSimmo/Database/pull/1659)  
 **Flightplan evidence:** `.local/workflow-evidence/2026-08-07T10-39-21-530Z-flightplan.json` (implementation path set → `ui`; this docs PR is `docsOnly`)  
@@ -33,7 +46,7 @@ One source-faithful reading system:
 
 Independent slices keep each failure class attributable and revertible.
 
-### Current state (post Phase 0/1)
+### Original baseline (post Phase 0/1)
 
 | Area            | Today                                                                           | Gap                                                      |
 | --------------- | ------------------------------------------------------------------------------- | -------------------------------------------------------- |

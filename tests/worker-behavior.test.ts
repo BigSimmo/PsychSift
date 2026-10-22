@@ -3,6 +3,14 @@ import { sourceSegment } from "./helpers/source-contract";
 import { enrichmentRepairDecision, ingestionFailureDecision, visionImageRejectionSkipReason } from "../worker/behavior";
 
 describe("ingestion worker behavior", () => {
+  it("invalidates through the shared cache interface without importing the answer orchestrator", async () => {
+    const source = await import("node:fs/promises").then((fs) =>
+      fs.readFile(new URL("../worker/main.ts", import.meta.url), "utf8"),
+    );
+    expect(source).toContain('import { invalidateRagCachesForDocumentMutation } from "../src/lib/rag/rag-cache"');
+    expect(source).not.toMatch(/from ["'][^"']*\/rag\/rag["']/);
+  });
+
   it("retries transient failures while preserving a previously indexed document", () => {
     const decision = ingestionFailureDecision({
       error: new Error("network connection reset"),

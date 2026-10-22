@@ -15,13 +15,14 @@ Retention and rotation: [`branch-review-archival-policy.md`](branch-review-archi
 
 ## Summary
 
-- Records: 708
-- Distinct ref cells: 454
-- Distinct reviewed heads: 690
-- Date range: `2026-08-12` to `2026-10-17`
+- Records: 717
+- Distinct ref cells: 455
+- Distinct reviewed heads: 691
+- Date range: `2026-08-12` to `2026-10-21`
 
 Records per date, newest first:
 
+- `2026-10-21` — 9 records
 - `2026-10-17` — 5 records
 - `2026-10-16` — 4 records
 - `2026-10-15` — 3 records
@@ -79,6 +80,15 @@ Scope and outcome are truncated; follow the record link for the full six-cell ro
 
 | Date | Ref | Scope | Outcome | Record |
 | --- | --- | --- | --- | --- |
+| 2026-10-21 | codex/chat-psychsift-audit-fixes-psychsift-audit-fixes | full organisation patch review pinned bdd52861 and F13-F20 corrections | Independent fixed-tree review: no non-recovery runtime blocker; two P2… | [0384cf1f](branch-review-records/0384cf1f9d40ad5a1618ea67bbf86ca3bf974081040ed11b1c8b9388f870412f.record.md) |
+| 2026-10-21 | codex/chat-psychsift-audit-fixes-psychsift-audit-fixes | recovery-release-reporting-delta from candidate bdd52861 | Independent ingestion source review: no concrete blocker; lost-claim r… | [06a187b7](branch-review-records/06a187b76478a897bd00d074aa3701c2f4657cac194ddc8f98535cfd8050b3bc.record.md) |
+| 2026-10-21 | codex/chat-psychsift-audit-fixes-psychsift-audit-fixes | post-coverage-integration-and-fixture-repairs | Independent seven-file source review found no blocker; parent reviewed… | [081f40a4](branch-review-records/081f40a46629721587c0f3680608234d5671a3e72b6b5ae8f0d8d18e5e4781e8.record.md) |
+| 2026-10-21 | codex/chat-psychsift-audit-fixes-psychsift-audit-fixes | operator-recovery-current-fenced-rpc-followup | Independent source contract review found immediate expired-lease recla… | [0c89fbbd](branch-review-records/0c89fbbd6a689792f832aa260facaba536ae2f5fd13896b36e5cb0c589e5830a.record.md) |
+| 2026-10-21 | codex/chat-psychsift-audit-fixes-psychsift-audit-fixes | psychsift-audit-fixes-ops-governance eight-file uncommitted diff | Independent clinical-governance source review: no introduced high-conf… | [25db7574](branch-review-records/25db7574eac46096a1fe70ee8db3e31fbc522efa3b681eb356ffed2b13362a28.record.md) |
+| 2026-10-21 | codex/chat-psychsift-audit-fixes-psychsift-audit-fixes | repo-awareness snapshot UI classification final dirty diff | Independent verification review: exact-file no-browser classification… | [5ef22ef6](branch-review-records/5ef22ef604010a5b618cf7bca64f5213c1af44334eb29a959b4af99d9a90fa72.record.md) |
+| 2026-10-21 | codex/chat-psychsift-audit-fixes-psychsift-audit-fixes | organisation remediation parent-owned tooling dirty-diff review | Independent repo-auditor static review: no high-confidence introduced… | [706720a9](branch-review-records/706720a9183d19026a8eeb1594a4d9b504113841ddfd7e7f8838c56324f37410.record.md) |
+| 2026-10-21 | codex/chat-psychsift-audit-fixes-psychsift-audit-fixes | F22-recovery-executor uncommitted five-file diff | Independent ingestion review: no introduced blocker; inherited unfence… | [8bc036d8](branch-review-records/8bc036d82880d532ea2b8328b5ee72f0fce2dfb2d0b967272d07fef14dc0e261.record.md) |
+| 2026-10-21 | codex/chat-psychsift-audit-fixes-psychsift-audit-fixes | F17-F18 shared publication extraction uncommitted diff | Independent RAG source review: no blocker; module body parity and CI/c… | [8ce50eb0](branch-review-records/8ce50eb09f37724dcb75c63456aa17924b303b6767522dcdc9080abc4ef3b965.record.md) |
 | 2026-10-17 | codex/cloud-policy-clarity | prlanded | PR #3581 (a5b118f952) and PR #3587 (7c719b2bc4) squash-merged cleanly… | [16df9092](branch-review-records/16df90928a34e2941ef9c2892b7f48d92e09e12f470af635ef15e4ee3677b0b9.record.md) |
 | 2026-10-17 | claude/rag-ingestion-hardening | prlanded | PR #3596 squash-merged cleanly into main at 45fc04c42f0867bc9802ffc93f… | [1ae2c7f8](branch-review-records/1ae2c7f8f7762d8e1d81898ed83a701be7cbd007c80be5a3d83e39470ced9461.record.md) |
 | 2026-10-17 | claude/rag-ingestion-hardening | RAG retrieval/summary/cache generation isolation and ingestion worker/edge hardening | resolved | [5349150e](branch-review-records/5349150e82f255e42866975fa7aa5e9fe76601433ebc427c75226677c5bef854.record.md) |
@@ -796,6 +806,7 @@ this section stays short. Grouping is best-effort: ref cells are free text.
 
 | Ref | Head | Records |
 | --- | --- | --- |
+| codex/chat-psychsift-audit-fixes-psychsift-audit-fixes | `ea8eac2c` | 2026-10-21 [8ce50eb0](branch-review-records/8ce50eb09f37724dcb75c63456aa17924b303b6767522dcdc9080abc4ef3b965.record.md), 2026-10-21 [8bc036d8](branch-review-records/8bc036d82880d532ea2b8328b5ee72f0fce2dfb2d0b967272d07fef14dc0e261.record.md), 2026-10-21 [706720a9](branch-review-records/706720a9183d19026a8eeb1594a4d9b504113841ddfd7e7f8838c56324f37410.record.md), 2026-10-21 [5ef22ef6](branch-review-records/5ef22ef604010a5b618cf7bca64f5213c1af44334eb29a959b4af99d9a90fa72.record.md), 2026-10-21 [25db7574](branch-review-records/25db7574eac46096a1fe70ee8db3e31fbc522efa3b681eb356ffed2b13362a28.record.md), 2026-10-21 [0c89fbbd](branch-review-records/0c89fbbd6a689792f832aa260facaba536ae2f5fd13896b36e5cb0c589e5830a.record.md), 2026-10-21 [081f40a4](branch-review-records/081f40a46629721587c0f3680608234d5671a3e72b6b5ae8f0d8d18e5e4781e8.record.md), 2026-10-21 [06a187b7](branch-review-records/06a187b76478a897bd00d074aa3701c2f4657cac194ddc8f98535cfd8050b3bc.record.md), 2026-10-21 [0384cf1f](branch-review-records/0384cf1f9d40ad5a1618ea67bbf86ca3bf974081040ed11b1c8b9388f870412f.record.md) |
 | codex/chat-selective-railway-previews-b95c | `aa2cd554` | 2026-09-22 [383a4235](branch-review-records/383a4235f5ed25e18d6e9a1f50dc6cadfb08ec6283831517962201f77b0fb1ec.record.md), 2026-09-22 [285ec2e4](branch-review-records/285ec2e41ed6da36d001e71db724f91c1b65a9bfae987b5deff765154760122d.record.md) |
 | claude/phase-5-closeout | `c3ca68fa` | 2026-08-21 [da9eaddd](branch-review-records/da9eadddac4befebc995b1000caa73f1fa0ced0d25d52b5789223410bac06c08.record.md), 2026-08-21 [4dd785f6](branch-review-records/4dd785f6a227e847467c76e68e4c08df2fc9394343295e0985c70bd306ab2861.record.md) |
 | claude/services-navigation-removal-7bnknn (PR #2040) | `e0c3f640` | 2026-08-17 [db385c81](branch-review-records/db385c8181a9620272ece6df071f3b5afabd6085d21755f30dddf9e6e0ffaf10.record.md), 2026-08-17 [02471c51](branch-review-records/02471c51928a64ed4d9010f91d3c62ef5391134683ddd67a7652b9e8d45621ac.record.md) |

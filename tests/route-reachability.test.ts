@@ -520,7 +520,10 @@ function addModeHomeActionTargets(value: unknown, targets: Set<string>) {
 function collectNavigationTargets(source: string, filename = "fixture.tsx") {
   let ast: ReturnType<typeof parse>;
   try {
-    ast = parse(source, { sourceType: "unambiguous", plugins: ["jsx", "typescript"] });
+    ast = parse(source, {
+      sourceType: "unambiguous",
+      plugins: filename.endsWith(".ts") ? ["typescript"] : ["jsx", "typescript"],
+    });
   } catch (error) {
     throw new Error(`route-reachability: could not parse ${filename}`, { cause: error });
   }
@@ -679,6 +682,14 @@ const staticPageRoutes = collectSiteMapData()
   );
 
 describe("route reachability", () => {
+  it("parses TypeScript assertions without treating them as JSX", () => {
+    const targets = collectNavigationTargets(
+      'import { redirect } from "next/navigation"; const value = <string>"ready"; redirect("/typed-target");',
+      "fixture.ts",
+    );
+    expect([...targets]).toEqual(["/typed-target"]);
+  });
+
   it("counts only navigation APIs resolved to their framework imports", () => {
     const targets = collectNavigationTargets(`
       import AppLink from "next/link";

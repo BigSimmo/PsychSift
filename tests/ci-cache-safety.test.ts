@@ -299,6 +299,10 @@ describe("CI cache safety", () => {
     expect(workflow).toContain("needs.changes.outputs.ingestion_sast_changed == 'true'");
     expect(workflow).toContain('if [ "$status" -ne 2 ] || [ "$attempt" -eq 3 ]');
     expect(workflow).toContain('exit "$status"');
+    const scan = /if semgrep scan([\s\S]*?); then/.exec(workflow)?.[1] ?? "";
+    const targets = scan.split("\n").map((line) => line.trim().replace(/\s*\\$/, ""));
+    expect(targets).toContain("worker");
+    expect(targets).toContain("src/lib/publication");
     const requiredNeeds = /\n  pr-required:\n[\s\S]*?needs:\s*\n?\s*\[([\s\S]*?)\]/.exec(workflow)?.[1] ?? "";
     expect(requiredNeeds).toContain("ingestion-sast");
   });

@@ -6,6 +6,7 @@
 // through the one component and the one body builder.
 
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AdminRenewedSheet } from "@/components/admin/admin-renewed-sheet";
@@ -120,6 +121,7 @@ describe("AdminRenewedSheet — renewing an already-recorded entry", () => {
   });
 
   it("clears the form once a save has actually completed", async () => {
+    const user = userEvent.setup();
     const onClose = vi.fn();
     const { rerender } = render(
       <AdminRenewedSheet open entry={ENTRY} onClose={onClose} onSaved={vi.fn()} onRemoved={vi.fn()} />,
@@ -129,7 +131,7 @@ describe("AdminRenewedSheet — renewing an already-recorded entry", () => {
     fireEvent.click(sheet.getByTestId("admin-renewed-save"));
     await sheet.findByText("Marked renewed.");
 
-    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    await user.click(screen.getByRole("button", { name: "Close" }));
     expect(onClose).toHaveBeenCalled();
 
     rerender(<AdminRenewedSheet open={false} entry={ENTRY} onClose={onClose} onSaved={vi.fn()} onRemoved={vi.fn()} />);

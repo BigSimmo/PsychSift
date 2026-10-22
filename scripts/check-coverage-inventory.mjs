@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { COVERAGE_INVENTORY_ROOTS } from "./coverage-contract.mjs";
+import { COVERAGE_INVENTORY_ROOTS, COVERAGE_REQUIRED_SOURCE_FILES } from "./coverage-contract.mjs";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -22,9 +22,17 @@ export function missingCoverageRoots(sourceFiles, expectedRoots = COVERAGE_INVEN
   return expectedRoots.filter((expectedRoot) => !sourceFiles.some((file) => file.startsWith(expectedRoot)));
 }
 
-export function checkCoverageInventory(lcovSource, expectedRoots = COVERAGE_INVENTORY_ROOTS) {
+export function checkCoverageInventory(
+  lcovSource,
+  expectedRoots = COVERAGE_INVENTORY_ROOTS,
+  requiredFiles = COVERAGE_REQUIRED_SOURCE_FILES,
+) {
   const sourceFiles = lcovSourceFiles(lcovSource);
-  return { sourceFiles, missing: missingCoverageRoots(sourceFiles, expectedRoots) };
+  return {
+    sourceFiles,
+    missing: missingCoverageRoots(sourceFiles, expectedRoots),
+    missingFiles: requiredFiles.filter((file) => !sourceFiles.includes(file)),
+  };
 }
 
 function main(argv = process.argv.slice(2)) {
@@ -46,6 +54,12 @@ function main(argv = process.argv.slice(2)) {
   if (result.missing.length > 0) {
     console.error(
       `[coverage-inventory] FAIL — declared coverage root(s) are absent from LCOV: ${result.missing.join(", ")}.`,
+    );
+    return 1;
+  }
+  if (result.missingFiles.length > 0) {
+    console.error(
+      `[coverage-inventory] FAIL — required production controls are absent from LCOV: ${result.missingFiles.join(", ")}.`,
     );
     return 1;
   }

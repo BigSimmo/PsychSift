@@ -9,7 +9,7 @@ import {
   validateCheckedPublishedOriginalSectionLayout,
   type RegisteredPublishedOriginalSectionLayoutLookup,
 } from "@/lib/rag/rag-source-block";
-import { createPublishedAdminTextSectionLayoutLoader } from "../../worker/published-admin-source-layout";
+import { createPublishedAdminTextSectionLayoutLoader } from "@/lib/publication/published-admin-layout";
 
 type RegisteredPublicSourceRpc = Parameters<typeof createRegisteredPublishedAdminSourcePlanResolver>[0]["rpc"] &
   Parameters<typeof createPublishedAdminTextSectionLayoutLoader>[0]["rpc"];

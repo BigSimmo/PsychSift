@@ -1,13 +1,16 @@
 # RAG improvement programme — multi-session handover
 
-**Status:** maintained handover ledger (2026-08-17). This is the context file every cloud
-session implementing the programme reads first. The design authority is
-[README.md](README.md) in this directory; the protected-surface rules live in
-`docs/rag-behaviour/`. This file adds what the guide deliberately does not carry: current
-programme state, the per-session work packets, the paste-ready prompts, and the status table
-each session must update. The coordinator-side layer — who dispatches sessions, merges their
+**Status:** programme evidence and packet reference (original preparation 2026-08-17;
+dated outcomes retained below). The programme design reference is
+[README.md](README.md); protected-surface rules live in `docs/rag-behaviour/`.
+This file retains dated programme outcomes, work packets and prompts. Current task ownership,
+lifecycle, blockers and next action follow [task-receipts.md](../task-receipts.md).
+Do not use the historical packet table as a competing live task board. The coordinator-side
+layer — who dispatches sessions, merges their
 PRs, and approves canaries, plus the babysit playbook — lives in
 [COORDINATION.md](COORDINATION.md).
+
+_Updated 2026-10-21 — routed lifecycle to the canonical task process; Documentation owns._
 
 **How to use this file (for the agent reading it at session start):**
 
@@ -17,8 +20,9 @@ PRs, and approves canaries, plus the babysit playbook — lives in
 2. Run the session-start checklist (§4).
 3. Do only your packet. If you finish early, stop — do not start the next packet in the same
    session; context quality drops and the PR-per-session discipline breaks.
-4. Before ending: run the session-end checklist (§5) and update the status table (§2) in your
-   PR.
+4. Before ending: run the session-end checklist (§5), update the existing task checkpoint
+   and prepare its receipt under [task-receipts.md](../task-receipts.md). Add programme
+   evidence here only when a new measured outcome belongs to the packet record.
 
 ---
 
@@ -86,7 +90,7 @@ generation-quality verdict on fallback`), merged 2026-08-13 — structured
   Full evidence and the re-scope of the row itself:
   [`231-diagnosis-2026-08-22.md`](231-diagnosis-2026-08-22.md).
 
-## 2. Status table — update in every programme PR
+## 2. Historical packet outcomes — evidence, not current task status
 
 | Packet     | Scope                                                                                                                                                 | Branch                                           | PR                    | State                                                                                                                                                                                                                                                                                                                                         | Canary / evidence refs                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -111,9 +115,9 @@ generation-quality verdict on fallback`), merged 2026-08-13 — structured
 | #212 T1–T3 | Runtime row contracts (rag.ts, rag-candidate-sources.ts, src/app/api) — sibling stream sharing `src/lib/rag/**`                                       | —                                                | #1946 / #1981 / #2023 | Merged (T3 squash `440a34f71` 2026-08-17)                                                                                                                                                                                                                                                                                                     | see the #212 ledger row; RAG surface complete for the cast class                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | #212 T4    | Runtime row contracts: `worker/main.ts` (11 casts) — sibling stream                                                                                   | `claude/ledger-212-tranche-4-worker-q3y6i4`      | #2037                 | Merged 2026-08-17 (squash `1726537b7`); #212 closed by reconcile PR #2045                                                                                                                                                                                                                                                                     | Governance Preflight complete; audit: 1 inbound cast (claim rows, per-row fail-soft) + 2 read-back param casts contracted, 9 outbound/interop left; closes #212 (inbox `done` queued in the PR)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 
-Update rule: the session that opens a packet's PR edits its row (branch, PR number,
-state) in the same PR. A later session updating another packet may also correct stale rows
-it can verify from GitHub/git state. Keep rows one line.
+Record dated packet outcomes with their source and verification limits; retain historical
+evidence. Current lifecycle updates belong to [task-receipts.md](../task-receipts.md),
+not this table. Provider-backed verification still needs explicit approval.
 
 ## 2a. Gate E blinded read — owner procedure (HISTORICAL — this run is complete)
 
@@ -162,7 +166,7 @@ never a measured cost. Everything else is offline.
 ## 3. Session packets
 
 Every packet inherits the standing rules in §6. "Done" for a packet always ends at an open
-PR with the correct body, a ledger append, and an updated status row — never at a merge (the
+PR with the correct body, a ledger append, and a task receipt — never at a merge (the
 owner merges) and never at watching CI.
 
 ### S1 — A1 phase 2: choose and implement the mitigation from evidence (`#231`)
@@ -394,8 +398,9 @@ offline fixtures and validation only`.
    against an existing branch: it can discard unpushed packet commits. Never build on a stale head.
 2. Read: your packet here → the matching README section → `docs/rag-behaviour/README.md`
    (+ `safeguards.md` before touching any protected surface).
-3. Check the canonical queue in [`docs/outstanding-issues.md`](../outstanding-issues.md)
-   and this file's status table (§2). Check the open PR list for duplicate implementation
+3. Establish the task identity and ownership through [task-receipts.md](../task-receipts.md).
+   Consult [repository issue history](../outstanding-issues.md) and dated packet outcomes (§2)
+   as evidence. Check the open PR list for duplicate implementation
    only when explicit owner approval for provider access exists; otherwise proceed with
    local/offline evidence and note the duplicate-risk caveat (`#292`: an open ledger row is
    not proof nobody is building it — PR #1899 already covers A1 phase 1).
@@ -408,15 +413,19 @@ offline fixtures and validation only`.
 ## 5. Session-end checklist
 
 1. Smallest correct gate run with the decisive output line pasted (exit 0 alone is not
-   proof). For any answer-route or generation-prompt change, also run
-   `npm run check:production-readiness`. `npm run format` and **commit the formatted result**
+   proof), following [verification gates](../agents/verification-gates.md).
+   Routine answer-route or generation-prompt work uses focused offline evidence; add
+   `npm run check:production-readiness:ci` when readiness/configuration structure is in scope.
+   Release-mode readiness and provider calls retain their separate approval boundary.
+   `npm run format` and **commit the formatted result**
    before push.
 2. PR body from `.github/pull_request_template.md` in full prose: correct `RAG impact:`
    line, Clinical Governance Preflight when the packet touches clinical/RAG surfaces,
    verification evidence, risk/rollback.
 3. `npm run ledger:append -- --ref <branch> --head <full-sha> --scope "<scope>" --outcome
 <o> --checks "<checks>"`, commit the record file, push.
-4. Update this file's status table row in the same PR.
+4. Update the same task checkpoint and receipt under [task-receipts.md](../task-receipts.md).
+   Add a dated programme outcome here only when supported by new evidence.
 5. Offer `/issues capture` for anything unresolved, then **stop at the open PR** — the owner
    merges; do not watch CI unless explicitly asked.
 
@@ -449,7 +458,7 @@ inside the session.
 > This touches protected RAG surfaces — flag RAG impact first. Follow the mitigation ladder
 > in order; do not change route budgets without evidence rebutting #231's recorded stop
 > condition. No provider-backed commands or live canary dispatches without asking me first.
-> Finish at an open PR with ledger append and an updated HANDOVER status row, then stop.
+> Finish at an open PR with ledger append and a prepared task receipt, then stop.
 
 **S1b (A1 rung 3 — R1 routing):**
 
@@ -510,7 +519,7 @@ canary pair …`, Clinical Governance Preflight. Ledger append, HANDOVER S1d row
 > untouched. Run the relevant offline fixture/contract gates, bump `ragAnswerPromptVersion`,
 > run `check:production-readiness`, and prepare (but do not dispatch) the provider-backed
 > 30-case evaluation and live canary-pair requests for my approval. Finish at
-> an open PR with ledger append and an updated HANDOVER status row, then stop.
+> an open PR with ledger append and a prepared task receipt, then stop.
 
 **S3 (A4):**
 
@@ -519,7 +528,7 @@ canary pair …`, Clinical Governance Preflight. Ledger append, HANDOVER S1d row
 > `docs/rag-improvement/README.md` §A4 — composition-menu aware, evidence-gated,
 > deterministic, no new module/field/render block, generation prompt untouched. Read the S3
 > packet and README §A4 first. Finish at an open PR with focused unit/DOM proof for both
-> chip surfaces, ledger append, and an updated HANDOVER status row, then stop.
+> chip surfaces, ledger append, and a prepared task receipt, then stop.
 
 **S4 (B0):**
 
@@ -529,7 +538,7 @@ canary pair …`, Clinical Governance Preflight. Ledger append, HANDOVER S1d row
 > synthetic only with PHI-like canary strings; the validator is deterministic and
 > network-free. Remove the corresponding planned-path allowlist entries from
 > `scripts/check-docs-links.mjs` and `scripts/check-docs-script-refs.mjs` in the same PR.
-> Finish at an open PR with ledger append and an updated HANDOVER status row, then stop.
+> Finish at an open PR with ledger append and a prepared task receipt, then stop.
 
 **S5 (B1 + B2):**
 
@@ -539,7 +548,7 @@ canary pair …`, Clinical Governance Preflight. Ledger append, HANDOVER S1d row
 > what PR #1899 already instruments before proposing new telemetry fields; any new fields
 > are allow-listed metadata with canary-absence unit tests, behind `RAG_TELEMETRY_EXTENDED`
 > defaulting false. The harness is network-free and routed to RAG-surface PRs only. Finish
-> at an open PR with ledger append and an updated HANDOVER status row, then stop.
+> at an open PR with ledger append and a prepared task receipt, then stop.
 
 **S6 (B3):**
 
@@ -549,7 +558,7 @@ canary pair …`, Clinical Governance Preflight. Ledger append, HANDOVER S1d row
 > requirements, Dockerfile.worker, the extractors, or the database — this is a sandboxed,
 > egress-blocked, dispatch-only lab with public/synthetic fixtures and a hostile corpus,
 > reporting aggregates only. Finish at an open PR containing the harness and a Gate B
-> decision-record template, with ledger append and an updated HANDOVER status row, then
+> decision-record template, with ledger append and a prepared task receipt, then
 > stop.
 
 ---
