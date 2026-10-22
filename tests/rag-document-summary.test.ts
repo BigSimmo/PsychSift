@@ -225,6 +225,75 @@ describe("document summary context", () => {
     expect(answer.evidenceAssessments).toBeUndefined();
   });
 
+  it("never summarises a superseded document as clinical guidance (#BFCTST)", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "test-key");
+    const documentId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const documentQuery = {
+      select: vi.fn().mockReturnThis(),
+      or: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      abortSignal: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn(async () => ({
+        data: {
+          id: documentId,
+          title: "Superseded guideline",
+          file_name: "superseded.pdf",
+          metadata: {
+            index_generation_id: "generation-current",
+            document_status: "outdated",
+            clinical_validation_status: "approved",
+            extraction_quality: "good",
+          },
+        },
+        error: null,
+      })),
+    };
+    const chunkQuery = {
+      or: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockReturnThis(),
+      abortSignal: vi.fn(async () => ({
+        data: [
+          {
+            id: "superseded-chunk-1",
+            document_id: documentId,
+            page_number: 1,
+            chunk_index: 0,
+            section_heading: "Dosing",
+            content: "Superseded dosing text.",
+            retrieval_synopsis: null,
+            image_ids: [],
+            index_generation_id: "generation-current",
+          },
+        ],
+        error: null,
+      })),
+    };
+    const from = vi.fn((table: string) => (table === "documents" ? documentQuery : chunkQuery));
+    const generateStructuredTextResult = vi.fn();
+    vi.doMock("@/lib/supabase/admin", () => ({
+      createAdminClient: () => ({ from, rpc: vi.fn() }),
+    }));
+    vi.doMock("@/lib/openai", () => ({
+      embedTextWithTelemetry: vi.fn(),
+      generateStructuredTextResult,
+    }));
+
+    const { summarizeDocument } = await import("../src/lib/rag/rag");
+    const answer = await summarizeDocument(documentId, "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", {
+      signal: new AbortController().signal,
+    });
+
+    expect(chunkQuery.abortSignal).toHaveBeenCalled();
+    expect(generateStructuredTextResult).not.toHaveBeenCalled();
+    expect(answer.grounded).toBe(false);
+    expect(answer.confidence).toBe("unsupported");
+    expect(answer.sources).toEqual([]);
+    expect(answer.answer).toMatch(/superseded/i);
+  });
+
   it("refuses to summarize non-indexed documents without querying chunks or OpenAI", async () => {
     vi.stubEnv("OPENAI_API_KEY", "test-key");
     const documentId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
