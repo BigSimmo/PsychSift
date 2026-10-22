@@ -159,7 +159,7 @@ interface FetchDispatchResult {
   response?: Response;
 }
 
-function createWorkerHarness(origin = PRODUCTION_ORIGIN) {
+function createWorkerHarness(origin = PRODUCTION_ORIGIN, browser: { onLine?: boolean } = {}) {
   const listeners = new Map<string, WorkerListener[]>();
   let networkHandler: NetworkHandler = async (request) => {
     const pathname = new URL(request.url).pathname;
@@ -235,6 +235,7 @@ function createWorkerHarness(origin = PRODUCTION_ORIGIN) {
       clearTimeout,
       console,
       fetch: networkFetch,
+      ...(browser.onLine === undefined ? {} : { navigator: { onLine: browser.onLine } }),
       self: workerGlobal,
       setTimeout,
     }),
@@ -528,10 +529,47 @@ describe("PWA service worker cache and lifecycle policy", () => {
         new worker.Request(`${PRODUCTION_ORIGIN}/stalled`, { destination: "document", mode: "navigate" }),
         new Promise<Response | undefined>(() => undefined),
       );
-      await vi.advanceTimersByTimeAsync(3500);
+      await vi.advanceTimersByTimeAsync(20_000);
       const result = await pending;
       expect(result.handled).toBe(true);
       expect(await result.response?.text()).toBe(OFFLINE_DOCUMENT);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("serves the offline shell after the short deadline when the browser reports itself offline", async () => {
+    vi.useFakeTimers();
+    try {
+      const worker = createWorkerHarness(PRODUCTION_ORIGIN, { onLine: false });
+      await worker.install();
+      const pending = worker.dispatchFetch(
+        new worker.Request(`${PRODUCTION_ORIGIN}/stalled`, { destination: "document", mode: "navigate" }),
+        new Promise<Response | undefined>(() => undefined),
+      );
+      await vi.advanceTimersByTimeAsync(3500);
+      const result = await pending;
+      expect(await result.response?.text()).toBe(OFFLINE_DOCUMENT);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("waits past the short deadline for a slow page while the browser is online (design audit D-20)", async () => {
+    vi.useFakeTimers();
+    try {
+      const worker = createWorkerHarness(PRODUCTION_ORIGIN, { onLine: true });
+      await worker.install();
+      const slowPage = new Promise<Response | undefined>((resolve) => {
+        setTimeout(() => resolve(basicResponse("<html><body>slow page</body></html>")), 8000);
+      });
+      const pending = worker.dispatchFetch(
+        new worker.Request(`${PRODUCTION_ORIGIN}/slow`, { destination: "document", mode: "navigate" }),
+        slowPage,
+      );
+      await vi.advanceTimersByTimeAsync(8000);
+      const result = await pending;
+      expect(await result.response?.text()).toContain("slow page");
     } finally {
       vi.useRealTimers();
     }

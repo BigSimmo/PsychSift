@@ -162,8 +162,14 @@ describe("reindex reaper workflow", () => {
     expect(header).toMatch(/only ONE of them is per-run/);
     expect(header).toMatch(/REQUIRED\n#\s+REVIEWERS/);
     expect(header).toMatch(/auto-create it UNPROTECTED/);
-    // Naming an environment that does not exist yet would create it unprotected.
-    expect(readFileSync(workflowPath, "utf8")).not.toMatch(/^\s+environment:/m);
+    // Naming an environment that does not exist yet would create it unprotected. The only
+    // environment the reaper may name is the owner-created, main-only secret scope
+    // (`production-secrets`, audit F-21); it is not the apply-approval gate, and the header
+    // must say so rather than let it read as one.
+    const environments = readFileSync(workflowPath, "utf8").match(/^\s+environment:.*$/gm) ?? [];
+    expect(environments.map((line) => line.trim())).toEqual(["environment: production-secrets"]);
+    expect(header).toMatch(/`production-secrets`, and it is not that approval\n#\s+gate/);
+    expect(header).toMatch(/no required\n#\s+reviewers, so it approves nothing/);
 
     // The probe's known permanent-red risk, the missing row ceiling, and the
     // reindex-overlap window are recorded rather than coded around.
@@ -190,7 +196,9 @@ describe("reindex reaper workflow", () => {
       "          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}",
       "          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}",
     ]);
-    expect(workflow).toContain("::error::Reindex reaper cannot run — missing repo secret SUPABASE_SERVICE_ROLE_KEY");
+    expect(workflow).toContain(
+      "::error::Reindex reaper cannot run — missing secret SUPABASE_SERVICE_ROLE_KEY (production-secrets environment)",
+    );
   });
 
   it("serialises runs and can raise an alert issue", () => {

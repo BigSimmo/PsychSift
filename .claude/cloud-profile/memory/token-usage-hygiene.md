@@ -14,8 +14,8 @@ topic/API first, then read only the matched file, never the whole docs folder. V
 repository and its applicable instructions instead of assuming the older `Database` repository name.
 
 Use targeted searches and bounded reads. Delegate only when authorized and useful under
-current agent allocation (`docs/agents/smart-agent-allocation.md`) and the
-context-aware working defaults (`docs/agents/native-startup/contextual-working-defaults.md`).
+current agent allocation (`docs/agents/smart-agent-allocation.md`) and the shared working rules
+in `AGENTS.md`.
 An old search-count threshold does not authorize agents, select their model or establish that a named
 agent exists on the current host.
 

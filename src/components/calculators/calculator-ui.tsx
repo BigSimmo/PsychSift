@@ -3,8 +3,11 @@
 import { AlertTriangle, Check, CheckCheck, ClipboardCopy, RotateCcw, type LucideIcon } from "lucide-react";
 import { useId, useState } from "react";
 
-import { cn, ignoreUnavailableActivation } from "@/components/ui-primitives";
+import { ClinicalSignInNotice } from "@/components/mode-kit/clinical-sign-in-notice";
+import { useClinicalToolAccess } from "@/components/mode-kit/use-clinical-tool-access";
+import { cn, controlDisabled, ignoreUnavailableActivation } from "@/components/ui-primitives";
 import { useCopyToast } from "@/components/ui/toast";
+import { CLINICAL_SIGN_IN_COPY } from "@/lib/front-door-content";
 
 import type { CalculatorFixture, CalculatorItem, CalculatorTone, ScoreBand } from "./calculator-fixtures";
 
@@ -515,7 +518,8 @@ export function ResetButton({ onReset, disabled }: { onReset: () => void; disabl
       onClick={onReset}
       disabled={disabled}
       className={cn(
-        "inline-flex min-h-tap items-center gap-2 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-3 text-sm-minus font-bold text-[color:var(--text-muted)] transition hover:border-[color:var(--border-strong)] hover:text-[color:var(--text)] disabled:pointer-events-none disabled:opacity-40",
+        "inline-flex min-h-tap items-center gap-2 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-3 text-sm-minus font-bold text-[color:var(--text-muted)] transition hover:border-[color:var(--border-strong)] hover:text-[color:var(--text)]",
+        controlDisabled,
         focusRing,
       )}
     >
@@ -586,7 +590,8 @@ export function CopyResultButton({
         aria-describedby={!isComplete ? copyUnavailableId : undefined}
         title={!isComplete ? unavailableReason : undefined}
         className={cn(
-          "inline-flex min-h-tap items-center gap-1.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-2.5 text-2xs font-bold text-[color:var(--text-muted)] transition hover:border-[color:var(--border-strong)] hover:text-[color:var(--text)] aria-disabled:cursor-not-allowed aria-disabled:opacity-40",
+          "inline-flex min-h-tap items-center gap-1.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-2.5 text-2xs font-bold text-[color:var(--text-muted)] transition hover:border-[color:var(--border-strong)] hover:text-[color:var(--text)]",
+          controlDisabled,
           focusRing,
           className,
         )}
@@ -624,7 +629,14 @@ export function formatResultSummary(calc: CalculatorFixture, state: DerivedCalcu
     : `${calc.abbrev} ${state.score}/${calc.maxScore} — ${state.result.label}${
         state.complete ? "" : ` (${progressLabel(state)})`
       }`;
-  return `${score}\nClinical reference — not validated decision support. Confirm scoring and interpretation against the source instrument.`;
+  // An active safety flag (PHQ-9 item 9 endorsed) travels with the copied score, so a pasted
+  // "PHQ-9 6/27 — Mild" can never drop the self-harm item. Provisional until the scale is complete.
+  const flagLines = state.flags.map((flag) => `Flag${state.complete ? "" : " (provisional)"}: ${flag}`);
+  return [
+    score,
+    ...flagLines,
+    "Clinical reference — not validated decision support. Confirm scoring and interpretation against the source instrument.",
+  ].join("\n");
 }
 
 /**
@@ -676,6 +688,43 @@ export function CalculatorItems({
   showKey?: boolean;
 }) {
   const key = sharedOptionKey(calc);
+  // Entering answers and getting a score is for signed-in health professionals (see
+  // useClinicalToolAccess). Signed out, the questions stay readable with no way to
+  // answer them; the score panel beside them keeps the bands, scoring note and sources.
+  const signedOut = useClinicalToolAccess() === "sign-in-required";
+  if (signedOut) {
+    return (
+      <section aria-label={`${calc.abbrev} items`} className="grid min-w-0 content-start gap-2">
+        <ClinicalSignInNotice copy={CLINICAL_SIGN_IN_COPY.scoring} testId="calculator-scoring-sign-in" />
+        {calc.stem ? (
+          <p className="text-sm-minus font-bold leading-5 text-[color:var(--text-muted)]">{calc.stem}</p>
+        ) : null}
+        <ol className="grid gap-1.5" data-testid="calculator-items-read-only">
+          {calc.items.map((item, itemIndex) => (
+            <li
+              key={item.id}
+              className="rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-3 py-2"
+            >
+              <p
+                className={cn(
+                  "font-semibold leading-5 text-[color:var(--text-heading)]",
+                  dense ? "text-sm-minus" : "text-sm",
+                )}
+              >
+                <span className="mr-1.5 font-mono text-2xs font-bold tabular-nums text-[color:var(--text-muted)]">
+                  {itemIndex + 1}.
+                </span>
+                {item.text}
+              </p>
+              {item.detail ? (
+                <p className="mt-0.5 text-2xs font-medium leading-4 text-[color:var(--text-muted)]">{item.detail}</p>
+              ) : null}
+            </li>
+          ))}
+        </ol>
+      </section>
+    );
+  }
   // Offer an explicit "all remaining negative" affordance for checkbox-only
   // scales, so an all-negative CAGE/SAD PERSONS can be completed without ticking
   // each box — but only on user action, never by merely opening the scale.

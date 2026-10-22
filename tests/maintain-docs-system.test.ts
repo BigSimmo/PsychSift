@@ -203,6 +203,66 @@ describe("maintain-docs-system pipeline", () => {
       expect(result.system).toBe("search-and-answers");
       expect(result.systemFile).toBe("docs/organisation/systems/search-and-answers.json");
     });
+
+    it("routes new domain-specific tests/* paths to their owning system area instead of falling through to delivery", () => {
+      const testCases = [
+        { path: "tests/query-classification-new.test.ts", expectedResolved: "answer-engine" },
+        { path: "tests/xlsx-sheet-dictionary-projection-new.test.ts", expectedResolved: "source-intake" },
+        { path: "tests/cme-accreditation-summary-new.test.ts", expectedResolved: "personal-practice" },
+        { path: "tests/calculators-lithium-toxicity-new.test.ts", expectedResolved: "clinical-content" },
+        { path: "tests/branch-review-ledger-new.test.ts", expectedResolved: "knowledge" },
+        { path: "tests/design-system-token-new.test.ts", expectedResolved: "design-system" },
+        { path: "tests/phone-chrome-scroll-new.test.ts", expectedResolved: "app-experience" },
+      ];
+
+      for (const tc of testCases) {
+        const result = classifyRepositoryPath(tc.path);
+        expect(result.resolvedSystem).toBe(tc.expectedResolved);
+        expect(result.resolvedSystemFile).toBe(`docs/organisation/systems/${tc.expectedResolved}.json`);
+      }
+    });
+  });
+
+  it("leaves an unmatched work-* test with the generic delivery owner rather than auto-claiming it for personal practice", () => {
+    // Work tests span several systems, so the bare prefix cannot identify the owner.
+    expect(classifyRepositoryPath("tests/work-side-nav-scroll.test.ts").resolvedSystem).toBe("delivery");
+    // Exact manifest rules still decide existing Work tests.
+    expect(classifyRepositoryPath("tests/work-side-nav.test.ts").resolvedSystem).toBe("app-experience");
+    expect(classifyRepositoryPath("tests/work-calendar-entries.test.ts").resolvedSystem).toBe("personal-practice");
+  });
+
+  it("keeps the recorded Roster and Open shifts page exceptions in Personal practice", () => {
+    // docs/organisation/README.md records these two page folders as Personal practice exceptions.
+    expect(classifyRepositoryPath("src/app/(search-app)/roster/page.tsx").resolvedSystem).toBe("personal-practice");
+    expect(classifyRepositoryPath("src/app/(search-app)/open-shifts/page.tsx").resolvedSystem).toBe(
+      "personal-practice",
+    );
+    // Every other page stays with App experience.
+    expect(classifyRepositoryPath("src/app/(search-app)/my-day/page.tsx").resolvedSystem).toBe("app-experience");
+  });
+
+  it("lets explicit manifest globs win over the domain test prefixes for new tests", () => {
+    // app-experience owns tests/search-* and tests/document-* by glob; source-intake owns
+    // tests/document-enrichment-*. The classifier prefixes deliberately do not compete with them.
+    expect(classifyRepositoryPath("tests/search-new-widget.test.ts").resolvedSystem).toBe("app-experience");
+    expect(classifyRepositoryPath("tests/document-new-viewer.test.ts").resolvedSystem).toBe("app-experience");
+    expect(classifyRepositoryPath("tests/document-enrichment-new.test.ts").resolvedSystem).toBe("source-intake");
+    expect(classifyRepositoryPath("tests/calculators-new-score.test.ts").resolvedSystem).toBe("clinical-content");
+  });
+
+  it("owns ingestion tests under source-intake even where app-experience's document-* glob would claim them", () => {
+    // The code under test is source-intake's (src/lib/extractors/**, worker/**, src/lib/document-detail.ts),
+    // so explicit source-intake entries beat app-experience's broad tests/document-* glob.
+    for (const testPath of [
+      "tests/document-extraction-source-fidelity.test.ts",
+      "tests/document-detail-demo-window.test.ts",
+    ]) {
+      expect(classifyRepositoryPath(testPath).resolvedSystem).toBe("source-intake");
+    }
+    // Document viewer and search UI tests stay with app-experience.
+    for (const testPath of ["tests/document-viewer-shell.dom.test.tsx", "tests/search-pins.test.ts"]) {
+      expect(classifyRepositoryPath(testPath).resolvedSystem).toBe("app-experience");
+    }
   });
 
   describe("placeUnplacedFiles", () => {

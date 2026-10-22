@@ -31,7 +31,7 @@ Privacy constraints for agent monitoring:
 
 - `recordInputs` / `recordOutputs` are **false** on the wrap and `dataCollection.genAI` is `{ inputs: false, outputs: false }` in both runtime configs — prompts, clinical queries, source evidence, generated answers, and embedding inputs are never recorded.
 - `privacySafeTransactionEvent` allowlists only gen_ai metadata attributes (system, operation name, request/response model, response id, finish reasons, token usage, conversation id) and rebuilds gen_ai span descriptions as `<operation> <model>` from those attributes. Message, prompt, tool-payload, and embedding-input attributes are stripped on export even if a future SDK version records them.
-- Each answer / stream / document-summarize request calls `Sentry.setConversationId(<interactionId>)` **before** OpenAI work — the request's synthetic UUID — so the embedding/generation calls of one request group into one conversation without carrying any query text.
+- Each answer / stream / document-summarize request calls `Sentry.getIsolationScope().setConversationId(<interactionId>)` **before** OpenAI work — the request's synthetic UUID — so the embedding/generation calls of one request group into one conversation without carrying any query text. The public scope method exists in both the installed Node and Edge entries; UUID syntax is checked, while callers remain responsible for supplying the generated request ID.
 - User identification (`Sentry.setUser`) is deliberately **not** wired: the committed privacy boundary strips `user` from every outgoing event (see the tests), and linking clinical-query telemetry to an identity would need its own governance review first.
 - `responses.parse` (schema-parsed generation) is not in the SDK's instrumentation registry and emits no gen_ai span; `responses.create` and `embeddings.create` are covered.
 
@@ -110,3 +110,9 @@ When enabling logs, inspect a sample in **Explore → Logs** and confirm bodies 
 ## Disable and rollback
 
 Remove `SENTRY_DSN` and restart the service. The tracker then makes no provider calls. To disable only performance tracing while keeping error capture, set `SENTRY_TRACES_SAMPLE_RATE=0` and restart. To disable only structured logs while keeping errors/traces, set `SENTRY_ENABLE_LOGS=false` and restart. Provider-side deletion and retention remain operator responsibilities under the approved Sentry project policy.
+
+## Content-free upload and fatal diagnostics
+
+Upload cleanup logs contain an opaque SHA-256 object reference and fixed operational error classes/codes, rather than storage paths, filenames, owner IDs or provider prose. The digest is an aid for comparing a separately authorised scoped storage inventory; it is not a replacement for durable cleanup records. Exact paths remain in the owner-scoped cleanup queue when that write succeeds. Unknown error names/codes are withheld. The logger also redacts filename and storage/document-path context keys as defense in depth.
+
+Fatal worker console and notification payloads omit raw exception text. Notifications retain the fixed failure state; the existing privacy-filtered error-tracking path retains its stage and scrubbed stack information. No notification was sent during local tests. These measures minimise known diagnostic egress; they do not constitute clinical PHI-minimisation approval or a complete deidentification guarantee.

@@ -1,5 +1,6 @@
 "use client";
 
+import { clinicalToolAccessForStatus } from "@/components/mode-kit/use-clinical-tool-access";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { authSessionFingerprint, createAuthRequestLifecycle } from "@/lib/auth-request-lifecycle";
@@ -187,6 +188,23 @@ class MedicationRequestError extends Error {
   }
 }
 
+/**
+ * A catalogue search that has not answered by now is reported, not left loading: the registry
+ * search is a local lookup, so this only trips when the service is in trouble (design audit D-14).
+ */
+const MEDICATION_SEARCH_DEADLINE_MS = 20_000;
+
+/** Plain words for a failed catalogue search. The raw status stays on the record page's detail line. */
+function medicationCatalogErrorMessage(error: unknown, timedOut: boolean): string {
+  if (timedOut) return "Medication search is taking too long. Try again in a moment.";
+  if (error instanceof MedicationRequestError) {
+    if (error.status === 401) return "Your sign-in has ended. Sign in again to search medications.";
+    if (error.status === 429) return "Too many searches in a short time. Wait a moment, then try again.";
+    return "Medication search isn’t available right now. Try again in a moment.";
+  }
+  return "Could not load medications. Try again in a moment.";
+}
+
 async function responseErrorCode(response: Response): Promise<string | null> {
   try {
     const body = jsonObject(await response.json());
@@ -220,7 +238,10 @@ export function useMedicationCatalog(
   query?: string,
   options: { enabled?: boolean; fields?: "index"; debounceMs?: number } = {},
 ): AsyncState<MedicationCatalogResponse> {
-  const enabled = options.enabled ?? true;
+  // #3728: /api/medications refuses signed-out requests, so a signed-out reader sends none.
+  // #3728: only once access is known to be allowed; a request while sign-in is loading would be refused.
+  const signInRequired = clinicalToolAccessForStatus(useAuthSession().status ?? null) !== "allowed";
+  const enabled = (options.enabled ?? true) && !signInRequired;
   const fields = options.fields;
   const debounceMs = options.debounceMs ?? catalogDebounceMs;
   const trimmed = query?.trim() ?? "";
@@ -279,14 +300,24 @@ export function useMedicationCatalog(
     // that follows still goes at once rather than waiting a debounce.
     const authResolving = authStatus === "loading";
 
+    let timedOut = false;
+    let deadline: number | undefined;
     const timer = window.setTimeout(
       () => {
         if (!authResolving) requestSentRef.current = true;
+        deadline = window.setTimeout(() => {
+          timedOut = true;
+          controller.abort();
+        }, MEDICATION_SEARCH_DEADLINE_MS);
         fetchJson(url, authorizationHeader, controller.signal, parseMedicationCatalogResponse)
           .then((data) => {
             if (!controller.signal.aborted && isCurrentRequest()) setState({ data, loading: false, error: null });
           })
           .catch((error) => {
+            if (timedOut && isCurrentRequest()) {
+              setState({ data: null, loading: false, error: medicationCatalogErrorMessage(error, true) });
+              return;
+            }
             if (
               controller.signal.aborted ||
               !isCurrentRequest() ||
@@ -301,17 +332,17 @@ export function useMedicationCatalog(
               loading: false,
               error: isOffline
                 ? "You are offline. Connect to search the live medication registry."
-                : error instanceof Error
-                  ? error.message
-                  : "Could not load medications.",
+                : medicationCatalogErrorMessage(error, false),
             });
-          });
+          })
+          .finally(() => window.clearTimeout(deadline));
       },
       requestSentRef.current || authResolving ? debounceMs : 0,
     );
 
     return () => {
       window.clearTimeout(timer);
+      window.clearTimeout(deadline);
       controller.abort();
       registration.release();
     };

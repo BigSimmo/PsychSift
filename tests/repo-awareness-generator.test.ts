@@ -31,7 +31,7 @@ import {
 const SITE_MAP: SiteMapInput = {
   pageRoutes: [
     { route: "/dsm", file: "src/app/(search-app)/dsm/page.tsx" },
-    { route: "/mockups/development", file: "src/app/mockups/development/page.tsx" },
+    { route: "/mockups/work-roles", file: "src/app/mockups/work-roles/page.tsx" },
     { route: "/tools", file: "src/app/tools/page.tsx" },
   ],
   apiRoutes: [{ route: "/api/answer", file: "src/app/api/answer/route.ts" }],
@@ -46,7 +46,7 @@ describe("buildRoutesSection", () => {
     // is about is the area classification, not the ordering.
     expect([...section.pages].sort((left, right) => left.path.localeCompare(right.path))).toEqual([
       { path: "/dsm", file: "src/app/(search-app)/dsm/page.tsx", area: "product" },
-      { path: "/mockups/development", file: "src/app/mockups/development/page.tsx", area: "mockup" },
+      { path: "/mockups/work-roles", file: "src/app/mockups/work-roles/page.tsx", area: "mockup" },
     ]);
   });
 
@@ -99,15 +99,14 @@ describe("buildRoutesSection", () => {
     expect(fromShuffled.pages).toEqual(fromUnshuffled.pages);
     expect(fromShuffled.api).toEqual(fromUnshuffled.api);
     // And the content is all there, whatever the order.
-    expect(fromShuffled.pages.map((page) => page.path).sort()).toEqual(["/dsm", "/mockups/development"]);
+    expect(fromShuffled.pages.map((page) => page.path).sort()).toEqual(["/dsm", "/mockups/work-roles"]);
     expect(fromShuffled.api.map((route) => route.path).sort()).toEqual(["/api/answer", "/api/zeta"]);
   });
 
   it("disperses alphabetically adjacent routes, so two branches adding one do not collide", () => {
     // The property v3 exists for, on the shape that actually caused it: PR #2674
-    // conflicted because /mockups/source-rail-desktop-scroll and
-    // /mockups/specifier-record-directions both sort under /mockups/s and were
-    // therefore inserted on the same lines by two branches.
+    // conflicted because two mockup routes (since retired) both sorted under
+    // /mockups/s and were therefore inserted on the same lines by two branches.
     const adjacent = ["/mockups/sim-alpha", "/mockups/sim-alpha-two", "/mockups/sim-alpha-three"];
     const section = buildRoutesSection({
       ...SITE_MAP,
@@ -159,8 +158,8 @@ describe("listDocumentPaths", () => {
       mkdirSync(path.join(dir, "docs", "sub"), { recursive: true });
       writeFileSync(path.join(dir, "docs", "doc1.md"), "# Doc 1\n");
       writeFileSync(path.join(dir, "docs", "sub", "doc2.md"), "# Doc 2\n");
-      mkdirSync(path.join(dir, "docs", "branch-review-records"), { recursive: true });
-      writeFileSync(path.join(dir, "docs", "branch-review-records", "rec.record.md"), "# Rec\n");
+      mkdirSync(path.join(dir, "docs", "archive", "branch-review-records"), { recursive: true });
+      writeFileSync(path.join(dir, "docs", "archive", "branch-review-records", "rec.record.md"), "# Rec\n");
       mkdirSync(path.join(dir, "docs", "outstanding-issues-inbox"), { recursive: true });
       writeFileSync(path.join(dir, "docs", "outstanding-issues-inbox", "req.json"), "{}\n");
 
@@ -362,11 +361,11 @@ describe("buildTestHealthSection", () => {
 });
 
 const ROW_A = {
-  file: "docs/branch-review-records/aaa.record.md",
+  file: "docs/archive/branch-review-records/aaa.record.md",
   line: "| 2026-08-15 | claude/one | 02d2e7fc839cf370b512f66b255d5f9e9b42f377 | ledger triage | Approved | ledger guards passed |",
 };
 const ROW_B = {
-  file: "docs/branch-review-records/bbb.record.md",
+  file: "docs/archive/branch-review-records/bbb.record.md",
   line: "| 2026-08-20 | claude/two | 639108f07aa1bcd2ee3344556677889900aabbcc | hub | Approved | 2 failed \\| 14 passed |",
 };
 
@@ -407,14 +406,14 @@ describe("buildReviewStateSection", () => {
   });
 
   it("stores no aggregate count, because one cannot merge across concurrent appends", () => {
-    const again = { file: "docs/branch-review-records/ccc.record.md", line: ROW_A.line };
+    const again = { file: "docs/archive/branch-review-records/ccc.record.md", line: ROW_A.line };
     const section = buildReviewStateSection([ROW_A, ROW_B, again]);
     expect(section.records).toHaveLength(3);
     expect(section).not.toHaveProperty("counts");
   });
 
   it("fails loudly and names the file when a row has the wrong number of columns", () => {
-    const short = { file: "docs/branch-review-records/ddd.record.md", line: "| 2026-08-15 | claude/one |" };
+    const short = { file: "docs/archive/branch-review-records/ddd.record.md", line: "| 2026-08-15 | claude/one |" };
     expect(() => buildReviewStateSection([short])).toThrow(/ddd\.record\.md/);
   });
 
@@ -423,7 +422,7 @@ describe("buildReviewStateSection", () => {
     // drop real reviews from the panel, which is the failure mode the
     // no-silent-drop rule exists to prevent — loudly or otherwise.
     const abbreviated = {
-      file: "docs/branch-review-records/eee.record.md",
+      file: "docs/archive/branch-review-records/eee.record.md",
       line: "| 2026-01-02 | r | 1a2b3c4 | s | o | c |",
     };
     expect(buildReviewStateSection([abbreviated]).records[0].head).toBe("1a2b3c4");
@@ -473,7 +472,7 @@ describe("the real review record corpus", () => {
     const section = build(rows);
     expect(rows.some((row) => row.file === "docs/branch-review-ledger.md")).toBe(true);
     expect(rows.some((row) => row.file.startsWith("docs/archive/branch-review-ledger-"))).toBe(true);
-    expect(rows.some((row) => row.file.startsWith("docs/branch-review-records/"))).toBe(true);
+    expect(rows.some((row) => row.file.startsWith("docs/archive/branch-review-records/"))).toBe(true);
     expect(section.records.length).toBeGreaterThan(2_500);
     expect(section.records.some((record) => record.ref === "claude/latency-findings-impl-s8g01v")).toBe(true);
     for (const record of section.records) {

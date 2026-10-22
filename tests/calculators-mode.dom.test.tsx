@@ -1,7 +1,8 @@
 /** @vitest-environment jsdom */
 
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 const navigation = vi.hoisted(() => ({
@@ -362,22 +363,20 @@ describe("calculator filter predicates", () => {
 });
 
 describe("calculator results surface", () => {
-  it("lists the catalogue and Show all chip when the query is empty", () => {
+  it("names the page and omits Show all when the unfiltered catalogue is already shown", () => {
     render(<CalculatorsSearchPage />);
 
-    expect(screen.getByRole("heading", { level: 1, name: "All" })).toBeVisible();
+    expect(screen.getByRole("heading", { level: 1, name: "Calculators" })).toBeVisible();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(screen.getByRole("status")).toHaveTextContent(`${calculators.length} calculators`);
-    const showAll = screen.getByTestId("calculators-show-all");
-    expect(showAll).toHaveAttribute("href", "/calculators/search");
-    expect(showAll).toHaveAttribute("aria-label", "Show all calculators");
-    expect(showAll).toHaveClass("min-h-tap");
+    expect(screen.queryByTestId("calculators-show-all")).toBeNull();
   });
 
   it("uses the shared results band and filter sheet without a page-owned composer", async () => {
     const user = userEvent.setup();
     const { container } = render(<CalculatorsSearchPage initialQuery="depression" />);
 
-    expect(screen.getByRole("heading", { level: 1, name: "depression" })).toBeVisible();
+    expect(screen.getByRole("heading", { level: 2, name: "depression" })).toBeVisible();
     expect(screen.getByRole("status")).toHaveTextContent("1 calculator");
     expect(container.querySelector('[data-testid="calculators-phone-dock"]')).toBeNull();
     const showAll = screen.getByTestId("calculators-show-all");
@@ -399,7 +398,7 @@ describe("calculator results surface", () => {
     const sheet = screen.getByTestId("calculators-filter-sheet");
     await user.click(within(sheet).getByRole("button", { name: /Mood/ }));
     expect(screen.getByRole("button", { name: "Remove Clinical domain: Mood filter" })).toBeVisible();
-    expect(screen.getByRole("heading", { level: 1, name: "depression" })).toBeVisible();
+    expect(screen.getByRole("heading", { level: 2, name: "depression" })).toBeVisible();
 
     await user.click(screen.getByRole("button", { name: "Remove Clinical domain: Mood filter" }));
     expect(screen.queryByRole("button", { name: "Remove Clinical domain: Mood filter" })).toBeNull();
@@ -407,7 +406,74 @@ describe("calculator results surface", () => {
     await user.click(within(sheet).getByRole("button", { name: /Mood/ }));
     await user.click(screen.getByTestId("calculators-filter-sheet-clear"));
     expect(screen.queryByRole("button", { name: "Remove Clinical domain: Mood filter" })).toBeNull();
-    expect(screen.getByRole("heading", { level: 1, name: "depression" })).toBeVisible();
+    expect(screen.getByRole("heading", { level: 2, name: "depression" })).toBeVisible();
+  });
+
+  it("uses Show all to clear local filters without resetting them on a modified link activation", async () => {
+    const user = userEvent.setup();
+    render(<CalculatorsSearchPage />);
+
+    await user.click(screen.getByTestId("calculators-filter-trigger-phone"));
+    const sheet = screen.getByTestId("calculators-filter-sheet");
+    await user.click(within(sheet).getByRole("button", { name: /Mood/ }));
+    expect(within(screen.getByTestId("calculator-result-list")).getAllByRole("listitem")).toHaveLength(1);
+    const showAll = screen.getByTestId("calculators-show-all");
+    expect(showAll).toHaveAttribute("href", "/calculators/search");
+    fireEvent.click(showAll, { ctrlKey: true });
+    expect(screen.getByRole("button", { name: "Remove Clinical domain: Mood filter" })).toBeVisible();
+    fireEvent.click(showAll);
+    expect(screen.queryByRole("button", { name: "Remove Clinical domain: Mood filter" })).toBeNull();
+    expect(screen.queryByTestId("calculators-show-all")).toBeNull();
+    expect(within(screen.getByTestId("calculator-result-list")).getAllByRole("listitem")).toHaveLength(
+      calculators.length,
+    );
+  });
+
+  it("clears the page's shared-query provider on same-URL Show all, preserving modified clicks", async () => {
+    const user = userEvent.setup();
+    const previousUrl = window.location.href;
+    window.history.replaceState(null, "", "/calculators/search");
+
+    // Keep the provider state live: a callback spy alone would not prove that
+    // clearing the shared composer also restores the visible catalogue.
+    function CalculatorPageProviderHarness() {
+      const [query, setQuery] = useState("");
+      return (
+        <SearchCommandProvider value={{ query, modeId: "calculators", clearQuery: () => setQuery("") }}>
+          <input
+            aria-label="Shared calculator query"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+          <CalculatorsSearchPage />
+        </SearchCommandProvider>
+      );
+    }
+
+    try {
+      render(<CalculatorPageProviderHarness />);
+      const input = screen.getByRole("textbox", { name: "Shared calculator query" });
+      await user.type(input, "PHQ-9");
+      const results = screen.getByTestId("calculator-result-list");
+      expect(within(results).getAllByRole("listitem")).toHaveLength(1);
+      expect(within(results).getByRole("button", { name: /^Open PHQ-9/ })).toBeVisible();
+      const showAll = screen.getByRole("link", { name: "Show all calculators" });
+      expect(showAll).toHaveAttribute("href", window.location.pathname);
+
+      for (const modifier of [{ ctrlKey: true }, { metaKey: true }, { shiftKey: true }, { altKey: true }]) {
+        fireEvent.click(showAll, modifier);
+        expect(input).toHaveValue("PHQ-9");
+        expect(within(results).getAllByRole("listitem")).toHaveLength(1);
+      }
+
+      await user.click(showAll);
+      expect(input).toHaveValue("");
+      expect(within(results).getAllByRole("listitem")).toHaveLength(calculators.length);
+      expect(screen.queryByTestId("calculators-show-all")).toBeNull();
+      expect(window.location.pathname + window.location.search).toBe("/calculators/search");
+    } finally {
+      window.history.replaceState(null, "", previousUrl);
+    }
   });
 
   it("distinguishes filtered and query-only empty recovery", async () => {

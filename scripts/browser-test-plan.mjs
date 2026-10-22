@@ -72,6 +72,9 @@ import { fileURLToPath } from "node:url";
 
 import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 import { deriveCiCoverage } from "./ci-coverage.mjs";
+import { browserInputClosure } from "./browser-inputs.mjs";
+
+let browserInputs;
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -119,9 +122,9 @@ export const BROWSER_SPEC_PATTERN =
  * `chromium` carries `grepInvert: /@mockup/` and `chromium-mockups` carries
  * `grep: /@mockup/`, so a project is not a stylistic choice: selecting a
  * mockup-only spec under `--project=chromium` collects nothing and the run
- * "passes" having executed no test at all. `tests/ui-tools.spec.ts` matches BOTH
- * patterns — it holds production journeys and `@mockup` ones — so a mixed spec
- * needs both projects.
+ * "passes" having executed no test at all. A spec matching BOTH patterns (none
+ * does today; `tests/ui-tools.spec.ts` did until 2026-10-21) holds production
+ * journeys and `@mockup` ones, so a mixed spec needs both projects.
  *
  * Extracted at runtime, because a copy of a regex in two files is a copy that
  * drifts. If the extraction fails the caller runs both projects, which is the
@@ -184,6 +187,12 @@ export function projectsForSpecs(specs, patterns) {
 }
 
 export function isSharedFoundation(file) {
+  // Browser libraries have no reliable rendered-identifier attribution. Share
+  // the actual client dependency graph with CI instead of another name list.
+  if (file.startsWith("src/lib/")) {
+    browserInputs ??= browserInputClosure(projectRoot);
+    if (browserInputs.has(file)) return true;
+  }
   return SHARED_FOUNDATION_PATTERNS.some((pattern) => pattern.test(file));
 }
 
@@ -225,7 +234,7 @@ export const BROWSER_LANE_PATTERNS = [
 
 export function isBrowserLanePath(file) {
   if (file === "src/app/api" || file.startsWith("src/app/api/")) return false;
-  return BROWSER_LANE_PATTERNS.some((pattern) => pattern.test(file));
+  return isSharedFoundation(file) || BROWSER_LANE_PATTERNS.some((pattern) => pattern.test(file));
 }
 
 /**

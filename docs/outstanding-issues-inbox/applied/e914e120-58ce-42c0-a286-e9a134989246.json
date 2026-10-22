@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "e914e120-58ce-42c0-a286-e9a134989246",
+  "createdOn": "2026-10-21",
+  "action": "done",
+  "payload": {
+    "id": "#WVS32F",
+    "outcome": "Already built on main 81ba5ae: the Attendance gaps sheet on Teaching Organise (src/components/teaching/organise-sheets.tsx) lists enrolled doctors with 'no check-ins recorded this term', visible to organisers and admins only (export.attendance, migration 20261016134500). Verified 21 Oct 2026 in the Teaching and CME thread.",
+    "baseRowFingerprint": "98c2998f2a2f6935baa785ac50a8ce8e7fcb10bbf1cb89ff9a052645d73a36c5",
+    "targetUlid": "01M3YR0BH6WVS32FQ4JDQB83V2"
+  }
+}

@@ -2,6 +2,7 @@
 
 import { Check, ChevronLeft, CircleAlert, CloudOff, Info, Settings2, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
+import { IntentPrefetchLink } from "@/components/ui/intent-prefetch-link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
   createContext,
@@ -106,6 +107,12 @@ export type ModeBandProps = {
    * does not grow when the status arrives after hydration.
    */
   statusSlot?: boolean | readonly string[];
+  /**
+   * Paths whose page names the work band with an eyebrow after it loads (CPD's
+   * "when its records loaded"). The line is kept from the first paint, so the
+   * band does not grow and push the page down when the eyebrow arrives.
+   */
+  eyebrowSlot?: readonly string[];
   /** A fixed status line, for a mode whose status never changes on the client. */
   status?: ModeBandStatusValue;
   /**
@@ -475,6 +482,7 @@ function WorkModeBandHeader({
   customiseHref,
   counts,
   statusSlot = false,
+  eyebrowSlot,
   status,
 }: Omit<ModeBandProps, "children" | "hiddenOn" | "homePath"> & {
   area: WorkArea;
@@ -500,7 +508,15 @@ function WorkModeBandHeader({
       current={current}
       currentIsOwnPage={currentIsOwnPage}
       bandRef={setBand}
-      eyebrow={heading?.eyebrow ?? (DATE_AREAS.has(area.id) ? <TodayDateText /> : undefined)}
+      eyebrow={
+        heading?.eyebrow ??
+        (DATE_AREAS.has(area.id) ? (
+          <TodayDateText />
+        ) : eyebrowSlot?.includes(pathname) ? (
+          // Holds the eyebrow's line until the page's own eyebrow arrives.
+          <span aria-hidden="true">&nbsp;</span>
+        ) : undefined)
+      }
       title={heading?.title ?? baseTitle}
       counts={counts}
       status={
@@ -604,10 +620,10 @@ function ModeBandHeader({
       <div className="mode-band__inner">
         <div className="mode-band__utility">
           {lead.kind === "back" ? (
-            <Link href={lead.href} className="mode-band__back" aria-label={`Back to ${lead.label}`}>
+            <IntentPrefetchLink href={lead.href} className="mode-band__back" aria-label={`Back to ${lead.label}`}>
               <ChevronLeft aria-hidden="true" className="size-icon-lg shrink-0" strokeWidth={2.25} />
               {lead.label}
-            </Link>
+            </IntentPrefetchLink>
           ) : null}
           {customiseHref ? (
             <Link href={customiseHref} className="mode-band__customise" aria-label="Customise">

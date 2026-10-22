@@ -8,6 +8,7 @@ import { focusRing } from "@/components/card-recipes";
 import { modeDot, modePressable, modeRowHeight } from "@/components/mode-kit/recipes";
 import { modeNameText, modeSecondaryText } from "@/components/mode-kit/type";
 import { cn, eyebrowText } from "@/components/ui-primitives";
+import type { WorkModeId } from "@/lib/app-modes";
 
 /**
  * Work profile's list in the flat work-mode look (work-mode redesign, owner
@@ -44,7 +45,7 @@ export function WorkProfileSection({
 const hairline = "border-t border-[color:var(--work-line)] first:border-t-0 forced-colors:border-[color:CanvasText]";
 
 /** A small dot in an area's colour, beside its name. Decorative: the name always says the area. */
-function AreaDot({ mode }: { readonly mode: string }) {
+function AreaDot({ mode }: { readonly mode: WorkModeId }) {
   return (
     <span
       aria-hidden="true"
@@ -73,7 +74,7 @@ export function WorkProfileRow({
   readonly subtitle?: ReactNode;
   readonly icon?: LucideIcon;
   /** Area identity for a leading colour dot, e.g. `roster`. */
-  readonly dot?: string;
+  readonly dot?: WorkModeId;
   readonly trailing?: ReactNode;
   readonly href?: string;
   /** Opens an outside page in a new tab. */

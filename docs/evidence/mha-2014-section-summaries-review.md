@@ -16,17 +16,17 @@ sign-off via `npm run clinical:review`.
 
 **Act text (02-b0-02, as at 2025-09-25)**
 
-> (1)A child is presumed to not have the capacity to make a treatment decision.
+> (1)For the purposes of this Act, a child is presumed not to have the capacity to make a decision about a matter relating to himself or herself unless the child is shown to have that capacity.
 >
-> (2)A child has the capacity to make a treatment decision if the child has sufficient maturity and understanding to make the decision having regard to the criteria set out in section 15.
+> (2)For the purposes of this Act, if a child does not have the capacity to make a decision about a matter relating to himself or herself, the child’s parent or guardian may make the decision on the child’s behalf.
 
-**Drafted summary** (status: reviewed)
+**Drafted summary** (status: drafted)
 
-> A child (a person under 18 years of age) is presumed to not have capacity to make a treatment decision unless the child has sufficient maturity and understanding to make the decision having regard to the criteria in s 15.
+> For the purposes of the Act, a child (a person under 18 years of age) is presumed not to have the capacity to make a decision about a matter relating to himself or herself unless the child is shown to have that capacity. If the child does not have that capacity, the child's parent or guardian may make the decision on the child's behalf.
 
 Cited by: _none_
 
-Source text SHA-256: `a8faee7535560b29ff6d4a67e23114d7b2354c4ff5aa3bcebafe4d8f58b0f49f`
+Source text SHA-256: `04db223bf0f2c06db2f5d7c612456d6bf9067d41e83146c73d599afdd5358408`
 
 Reviewed by: ______________________ Date: ______________
 
@@ -1130,9 +1130,9 @@ Reviewed by: ______________________ Date: ______________
 >
 > Subdivision 6 — Conduct of examination
 
-**Drafted summary** (status: reviewed)
+**Drafted summary** (status: drafted)
 
-> A community treatment order must be confirmed within 72 hours of being made — by another psychiatrist, or if none is reasonably available by another medical practitioner or an authorised mental health practitioner. The confirmation is in the approved form with the time, the reasons and the confirming practitioner's details. The supervising psychiatrist must tell the person whether it was confirmed and, if it was, file it and give them a copy. The order ceases to be in force if it is not confirmed in time.
+> A community treatment order made under s 75 must be confirmed within 72 hours of being made — by another psychiatrist, or if none is reasonably available by another medical practitioner or an authorised mental health practitioner. The confirmation is in the approved form with the time, the reasons and the confirming practitioner's details. The supervising psychiatrist must tell the person whether it was confirmed and, if it was, file it and give them a copy. The order ceases to be in force if it is not confirmed in time.
 
 Cited by: Form 5A
 
@@ -4204,7 +4204,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > [Section 357 amended: No. 10 of 2023 s. 380.]
 
-**Drafted summary** (status: reviewed)
+**Drafted summary** (status: drafted)
 
 > Sets when a mental health advocate must visit or otherwise contact an identified person; the deadline depends on which paragraph of the s 348 definition the person falls under. A person in paragraph (a), (b), (c) or (e) who is detained under one of the listed provisions (including s 28(1) or (2) and s 34(1)) must be contacted as soon as practicable and in any event “on or within 3 days after the day on which the Chief Mental Health Advocate receives a request” for contact, or is notified of one. An involuntary patient under an involuntary treatment order made on or after the section commenced must be contacted “on or within 7 days after the day on which the involuntary treatment order is made” if an adult, or “within 24 hours after the time when the involuntary treatment order is made” if a child. An involuntary patient whose order was made before the section commenced, or “has been in force for more than 7 days from the day on which the order is made”, must be contacted on or as soon as practicable after the Chief Mental Health Advocate receives, or is notified of, a request. A supervised person required under the CLMI Act to be detained at an authorised hospital must be contacted “within 7 days after the day on which the person is detained” if an adult, or “within 24 hours after the person is detained” if a child. A supervised person required to undergo treatment in the community under the CLMI Act (paragraph (g)) must be contacted “within 7 days (or 24 hours if the person is a child) after the day on which the Chief Mental Health Advocate” receives or is notified of a request. A resident of a private psychiatric hostel (paragraph (h)) or a person receiving care from a prescribed organisation (paragraph (i)) must be contacted on or as soon as practicable after a request is received or notified and, in any event, “within 7 days after that day”; a voluntary patient in a class directed by the Minister (paragraph (j)), within a reasonable time. Despite that, a child who is a hostel resident, receiving care from a prescribed organisation, or in a directed voluntary class (paragraphs (h), (i) or (j)) must be contacted “on or within 24 hours after the day on which the Chief Mental Health Advocate receives a request” or is notified of one.
 

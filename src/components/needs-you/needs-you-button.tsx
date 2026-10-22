@@ -3,7 +3,7 @@
 import "@/components/needs-you/notification-centre.css";
 
 import { Bell } from "lucide-react";
-import Link from "next/link";
+import { IntentPrefetchLink } from "@/components/ui/intent-prefetch-link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
@@ -171,7 +171,7 @@ export function NeedsYouButton({
   return (
     <span className="relative inline-flex shrink-0">
       {newWorkMode ? (
-        <Link
+        <IntentPrefetchLink
           href="/my-day/notifications"
           onPointerEnter={arm}
           onFocus={arm}
@@ -181,7 +181,7 @@ export function NeedsYouButton({
           className={cn(BELL_CIRCLE, BELL_INTERACTIVE, className)}
         >
           {contents}
-        </Link>
+        </IntentPrefetchLink>
       ) : (
         <button
           ref={buttonRef}

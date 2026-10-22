@@ -991,7 +991,7 @@ describe("measureServerHtmlPayloads", () => {
       existsSync: () => false,
       readFileSync: () => Buffer.alloc(0),
     });
-    expect(results["/mockups/development/clinical-sign-off"]).toMatchObject({
+    expect(results["/admin/developer-hub/clinical-sign-off"]).toMatchObject({
       found: false,
       status: "missing",
     });
@@ -1001,7 +1001,7 @@ describe("measureServerHtmlPayloads", () => {
     const results = measureServerHtmlPayloads(
       "app",
       {
-        "/mockups/development/clinical-sign-off": {
+        "/admin/developer-hub/clinical-sign-off": {
           rawBytesCeiling: 1000,
           gzipBytesCeiling: 200,
         },
@@ -1011,7 +1011,7 @@ describe("measureServerHtmlPayloads", () => {
         readFileSync: () => Buffer.from("<html><body>Sign-off queue content</body></html>"),
       },
     );
-    const measurement = results["/mockups/development/clinical-sign-off"];
+    const measurement = results["/admin/developer-hub/clinical-sign-off"];
     expect(measurement.found).toBe(true);
     expect(measurement.status).toBe("ok");
     expect(measurement.rawBytes).toBeGreaterThan(0);
@@ -1022,7 +1022,7 @@ describe("measureServerHtmlPayloads", () => {
     const results = measureServerHtmlPayloads(
       "app",
       {
-        "/mockups/development/clinical-sign-off": {
+        "/admin/developer-hub/clinical-sign-off": {
           rawBytesCeiling: 10,
           gzipBytesCeiling: 5,
         },
@@ -1032,7 +1032,7 @@ describe("measureServerHtmlPayloads", () => {
         readFileSync: () => Buffer.from("<html><body>Very long repetitive HTML payload content here</body></html>"),
       },
     );
-    const measurement = results["/mockups/development/clinical-sign-off"];
+    const measurement = results["/admin/developer-hub/clinical-sign-off"];
     expect(measurement.found).toBe(true);
     expect(measurement.status).toBe("fail");
     expect(measurement.reason).toContain("exceeds");
@@ -1062,7 +1062,7 @@ describe("measureServerHtmlPayloads", () => {
     const results = measureServerHtmlPayloads(
       "app",
       {
-        "/mockups/development/clinical-sign-off": {
+        "/admin/developer-hub/clinical-sign-off": {
           rawBytesCeiling: 5000,
           gzipBytesCeiling: 1000,
         },
@@ -1072,7 +1072,7 @@ describe("measureServerHtmlPayloads", () => {
         readFileSync: () => Buffer.from("export default function Page() { return null; }"),
       },
     );
-    const measurement = results["/mockups/development/clinical-sign-off"];
+    const measurement = results["/admin/developer-hub/clinical-sign-off"];
     expect(measurement.found).toBe(true);
     expect(measurement.status).toBe("ok");
   });

@@ -47,9 +47,6 @@ describe("public content and account authorization model", () => {
       source("src/components/clinical-dashboard/global-search-shell.tsx"),
       source("src/components/clinical-dashboard/master-search-header.tsx"),
       source("src/components/clinical-dashboard/mode-action-popup.tsx"),
-      source("src/components/privacy-live-signal-perfected-mockups.tsx"),
-      source("src/components/privacy-page-directions-mockups.tsx"),
-      source("src/components/search-lens-menu-mockups.tsx"),
     ].join("\n");
 
     expect(browserSurfaces).not.toContain("documents-upload");

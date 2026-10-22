@@ -4,7 +4,7 @@ import { isPdfDocument } from "@/lib/pdf-documents";
 import { useSubmittedModeSearch } from "@/components/clinical-dashboard/use-submitted-mode-search";
 import { useSettingsState } from "./clinical-dashboard/SettingsStateProvider";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { CircleAlert, Clock3, ExternalLink, FileText, FolderOpen, RefreshCw, Search, Activity } from "lucide-react";
+import { Clock3, ExternalLink, FolderOpen, Activity } from "lucide-react";
 import {
   type CSSProperties,
   useCallback,
@@ -27,10 +27,10 @@ import { useIndexingAdminDesktopLayout } from "@/components/clinical-dashboard/u
 import { extractSafetyFindings } from "@/lib/clinical-safety";
 import { resolveScrollBehavior } from "@/lib/scroll-behavior";
 import { scrollSurface } from "@/components/clinical-dashboard/scroll-surface";
-import { incrementalEvidencePreviewRenderingEnabled, isLocalNoAuthMode, resolveClientDemoMode } from "@/lib/client-env";
+import { isLocalNoAuthMode, resolveClientDemoMode } from "@/lib/client-env";
 import { isAdministratorUser } from "@/lib/authorization";
 import { isDeployedClinicalKb } from "@/lib/deployed-app";
-import { appBackdrop, cn, EmptyState, floatingControl, InlineNotice, primaryControl } from "@/components/ui-primitives";
+import { appBackdrop, cn, InlineNotice } from "@/components/ui-primitives";
 import { useAuthSession } from "@/lib/supabase/client";
 import {
   clinicalAskWorkspaceVisible,
@@ -82,19 +82,26 @@ import {
   SearchProgressBanner,
   SharedHomeEmptyState,
 } from "@/components/clinical-dashboard/answer-status";
-import {
-  type AnswerProgressUpdate,
-  type TimedAnswerProgressUpdate,
-} from "@/components/clinical-dashboard/answer-progress";
+import { type TimedAnswerProgressUpdate } from "@/components/clinical-dashboard/answer-progress";
 import { AnswerCrisisBanner } from "@/components/clinical-dashboard/answer-crisis-banner";
 import { EmergencyProtocolBanner } from "@/components/clinical-dashboard/emergency-protocol-banner";
 import { selectEmergencyProtocolsForSurface } from "@/lib/emergency-protocols";
-import { requestAnswerStream } from "@/components/clinical-dashboard/answer-request";
+import { RegistryModeNav } from "@/components/mode-nav/registry-mode-nav";
 import { MasterSearchHeader } from "@/components/clinical-dashboard/master-search-header";
 import { PhoneFooterLayerFrame } from "@/components/clinical-dashboard/phone-footer-layer-portal";
 import { UniversalSearchAlsoMatches } from "@/components/clinical-dashboard/universal-search-also-matches";
 import { FavouritesGuestGate } from "@/components/clinical-dashboard/favourites-guest-gate";
+import { PrivateScopeUnavailableAlert } from "@/components/clinical-dashboard/private-scope-unavailable-alert";
+import { DashboardSearchErrorState } from "@/components/clinical-dashboard/dashboard-search-error-state";
 import { useDashboardShellActions } from "@/components/clinical-dashboard/use-dashboard-shell-actions";
+import { useDashboardSearchExecution } from "@/components/clinical-dashboard/use-dashboard-search-execution";
+import { notNowDocumentsSearch } from "@/components/front-door/ask-terms-not-now";
+import { useAskTermsGate } from "@/components/front-door/use-ask-terms-gate";
+import { Button } from "@/components/ui/button";
+import { ClinicalSignInNotice } from "@/components/mode-kit/clinical-sign-in-notice";
+import { ClinicalCatalogueGate } from "@/components/mode-kit/clinical-catalogue-gate";
+import { useClinicalToolAccess } from "@/components/mode-kit/use-clinical-tool-access";
+import { ASK_TERMS_DECLINED_NOTICE, ASK_TERMS_REVIEW_LABEL, CLINICAL_SIGN_IN_COPY } from "@/lib/front-door-content";
 import { focusComposerInput as scheduleComposerFocus } from "@/components/clinical-dashboard/focus-composer-input";
 import {
   resolveDashboardHideOnScroll,
@@ -102,15 +109,13 @@ import {
 } from "@/components/clinical-dashboard/use-dashboard-chrome-coordinator";
 import { SearchCommandProvider } from "@/components/clinical-dashboard/search-command-context";
 import {
-  resultUsable,
-  compactScopeFilters,
   hasNonProductionSupabaseApiKeyFallback,
   isAbortError,
   releaseOwnedAbortController,
   replaceOwnedAbortController,
   normalizeNavigationHash,
 } from "@/components/clinical-dashboard/clinical-dashboard-helpers";
-import { answerRecovery, errorCopy } from "@/lib/ui-copy";
+import { errorCopy } from "@/lib/ui-copy";
 import { useDashboardAnswerFeedback } from "@/components/clinical-dashboard/dashboard-answer-feedback";
 import { buildTagSearchScopeFilters } from "@/components/clinical-dashboard/dashboard-tag-search";
 import {
@@ -125,14 +130,17 @@ import { type DocumentDrawerStatusFilter } from "@/components/clinical-dashboard
 import {
   clinicalQueryModeOptions,
   stagedDashboardExtraction,
-  type SearchResultModePayload,
-  type SourceLibrarySearchMode,
 } from "@/components/clinical-dashboard/clinical-dashboard-payloads";
 import { type IndexingMonitorFilter, type LibraryHealthTarget } from "@/components/clinical-dashboard/document-admin";
-import { IndexingAdminDrawer } from "@/components/clinical-dashboard/indexing-admin-drawer";
+import { useIdlePreload } from "@/components/clinical-dashboard/idle-preload";
+import {
+  IndexingAdminDrawer,
+  loadIndexingAdminDrawer,
+} from "@/components/clinical-dashboard/indexing-admin-drawer-lazy";
 import { DashboardDocumentsDrawer } from "@/components/clinical-dashboard/dashboard-documents-drawer";
 import { useHomeModeSeed } from "@/components/clinical-dashboard/use-home-mode-seed";
 import {
+  AskTermsStep,
   DifferentialsHome,
   DocumentSearchResultsPanel,
   FavouritesHub,
@@ -146,24 +154,9 @@ import { clearLegacyRecentQueries } from "@/lib/recent-query-storage";
 import { useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
 import type { SearchFacets } from "@/components/clinical-dashboard/document-search-results";
 import { isWeakRelevance } from "@/components/clinical-dashboard/relevance";
+import { type AnswerPayload, type AnswerErrorKind } from "@/components/clinical-dashboard/search-utils";
 import {
-  classifyAnswerError,
-  createAnswerRequestWatchdog,
-  generateQuerySuggestions,
-  shouldRetryFailedAttempt,
-  keywordQueryFromNaturalLanguage,
-  makeSearchError,
-  createSearchRequestDeadline,
-  searchTimedOutMessage,
-  progressForRetry,
-  searchRetryCount,
-  searchRetryDelaysMs,
-  sleep,
-  type AnswerPayload,
-  type AnswerErrorKind,
-  type SearchError,
-} from "@/components/clinical-dashboard/search-utils";
-import {
+  appModeDefinition,
   appModeQueryMode,
   appModeHomeHref,
   appModeResultKind,
@@ -185,23 +178,13 @@ import {
   searchNavigationContextSignature,
   searchSubmissionSignature,
   type PrivateScopeRestorationStatus,
-  type SearchNavigationContext,
 } from "@/lib/search-navigation-context";
-import {
-  persistPrivateSearchScope,
-  removePrivateScopeRefFromUrl,
-  restorePrivateSearchScope,
-} from "@/lib/private-search-scope";
-import { parseApiErrorResponse } from "@/lib/api-client-error";
+import { removePrivateScopeRefFromUrl, restorePrivateSearchScope } from "@/lib/private-search-scope";
 import { answerLifecycleReducer, initialAnswerLifecycle } from "@/lib/answer-lifecycle";
 import { hasCrisisWording, hasOverdoseWording } from "@/lib/crisis-wording";
 import { useDeferredRegistrySearch } from "@/components/clinical-dashboard/use-deferred-registry-search";
-import { buildAnswerFollowUpQuery, buildAnswerFollowUpSuggestions } from "@/lib/answer-follow-up";
-import {
-  clearPersistedAnswerThread,
-  createAnswerThreadSnapshotMetadata,
-  maxStoredAnswerTurns,
-} from "@/lib/answer-thread-storage";
+import { buildAnswerFollowUpSuggestions } from "@/lib/answer-follow-up";
+import { clearPersistedAnswerThread } from "@/lib/answer-thread-storage";
 import { useAnswerThreadBootstrap } from "@/components/clinical-dashboard/use-answer-thread-bootstrap";
 import {
   resolveDashboardAnswerThreadOwnerId,
@@ -219,13 +202,7 @@ import {
 } from "@/lib/source-governance";
 
 import { type SmartDocumentTag, type SmartDocumentTagFacet } from "@/lib/document-tags";
-import type {
-  DocumentMatch,
-  EvidenceRelevance,
-  SearchResult,
-  SearchScopeSummary,
-  ClinicalQueryMode,
-} from "@/lib/types";
+import type { EvidenceRelevance, SearchScopeSummary, ClinicalQueryMode } from "@/lib/types";
 import type { SearchScopeFilters } from "@/lib/search-scope";
 import { DashboardDesktopResultComposerSlot } from "@/components/clinical-dashboard/dashboard-desktop-result-composer-slot";
 import { useDifferentialsCompareHasSelection } from "@/components/differentials/compare-presence";
@@ -237,16 +214,6 @@ import {
   maxVisiblePriorTurns,
   PriorAnswerTurnSurface,
 } from "@/components/clinical-dashboard/answer-thread-turn";
-// Loaded on the first Answer question rather than with the page (bundle budget, 2026-10-13).
-function loadClinicalQuestionPatientCheck() {
-  return import("@/lib/clinical-question-patient-check");
-}
-
-// A question is never sent unchecked: when the check cannot load (a dropped connection),
-// Ask stops with this and the next Ask tries the download again.
-const PATIENT_CHECK_UNAVAILABLE =
-  "Could not check your question for patient details. Check your connection and try again.";
-
 export type { AnswerFeedbackType } from "@/lib/answer-feedback";
 export function ClinicalDashboard(props: ClinicalDashboardProps = {}) {
   return (
@@ -398,6 +365,10 @@ function ClinicalDashboardContent({
     });
   }, [answer, mainRef]);
   const [restoredAnswerSavedAt, setRestoredAnswerSavedAt] = useState<number | null>(null);
+  // React Compiler lint only reached this component once the search execution functions, which
+  // the compiler skipped, moved to useDashboardSearchExecution. It now reports the setter
+  // omitted from these dependency lists; setters are stable, so the lists stay as they were.
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization -- see above
   const resetAnswerThread = useCallback(() => {
     setPriorAnswerTurns([]);
     setLatestAnswerQuery(null);
@@ -436,6 +407,7 @@ function ClinicalDashboardContent({
   const [answerEvidencePreview, setAnswerEvidencePreview] = useState<VerifiedEvidencePreviewUnit | null>(null);
   const [answerLifecycle, dispatchAnswerLifecycle] = useReducer(answerLifecycleReducer, initialAnswerLifecycle);
   const [error, setError] = useState<string | null>(null);
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization -- see resetAnswerThread
   const clearModeResultState = useCallback(() => {
     resetAnswerThread();
     setAnswer(null);
@@ -514,6 +486,8 @@ function ClinicalDashboardContent({
   );
   const [indexingActionId, setIndexingActionId] = useState<string | null>(null);
   const auth = useAuthSession();
+  // #3728: library search, medicines and differentials need sign-in (server-enforced).
+  const clinicalToolAccess = useClinicalToolAccess();
   const { clinicalAskSession, clinicalAskMode, runModeClinicalAsk } = useClinicalAskDashboardChrome({
     accountId: auth.session?.user.id,
     searchMode,
@@ -701,6 +675,7 @@ function ClinicalDashboardContent({
     localProjectReady && (localNoAuthMode || localDevCanAttemptPrivateApis || authStatus === "authenticated");
   const isAdministrator = isAdministratorUser(auth.session?.user);
   const canUseAdministrativeApis = localProjectReady && isAdministrator;
+  useIdlePreload(loadIndexingAdminDrawer, canUseAdministrativeApis);
   const canAttemptDeployedPublicSearch = isDeployedClinicalKb() && localProjectReady;
   const canRunSearch = canRunDashboardSearch({
     localProjectReady,
@@ -909,6 +884,105 @@ function ClinicalDashboardContent({
     };
   }, []);
 
+  const {
+    stopSearch,
+    applySearchResult,
+    executeSearch,
+    requestSourceLibrarySearch,
+    runWithRetries,
+    setMedicationSearchQuery,
+    ask: sendAsk,
+  } = useDashboardSearchExecution({
+    router,
+    auth,
+    query,
+    searchMode,
+    queryMode,
+    requestQueryMode,
+    scopeFilters,
+    selectedDocumentIds,
+    clientDemoMode,
+    authorizationHeader,
+    canRunSearch,
+    mainRef,
+    searchRequestSeqRef,
+    searchAbortRef,
+    answerTimedOutRef,
+    answerProgressEventsRef,
+    latestAnswerTurnRef,
+    latestAnswerSnapshotMetadataRef,
+    answerTurnSeqRef,
+    autoRunSearchSignatureRef,
+    modeChangeFromUiRef,
+    markSessionExpired,
+    registerAuthRequest,
+    isAuthEpochCurrent,
+    rememberRecentQuery,
+    resetAnswerThread,
+    clearModeResultState,
+    setModeSearchSubmitted,
+    dispatchAnswerLifecycle,
+    setSearchMode,
+    setQuery,
+    setAnswer,
+    setSources,
+    setDocumentMatches,
+    setPriorAnswerTurns,
+    setLatestAnswerQuery,
+    setSetupBlockedQuery,
+    setCollapsedTurnIds,
+    setSearchRelevance,
+    setSearchFacets,
+    setSearchScope,
+    setSourceGovernanceWarnings,
+    setDifferentialEvidenceQuery,
+    setAnswerViewMode,
+    setLoading,
+    setAnswerProgress,
+    setAnswerProgressEvents,
+    setAnswerBuildEvents,
+    setAnswerProgressStartedAt,
+    setAnswerEvidencePreview,
+    setRestoredAnswerSavedAt,
+    setError,
+    setErrorKind,
+    setLastFailedQuery,
+    setDemoMode,
+    setActionNotice,
+  });
+
+  // The Terms step at the first Ask (audit F-13). An Answer question waits here,
+  // unsent, until the current Terms are accepted. Not now runs the same question
+  // as a Documents search instead, through the cross-mode path the results use.
+  const askTermsGate = useAskTermsGate({
+    onNotNow: async (heldQuery, isCurrent) => {
+      // Review from the documents notice, then Not now again: those documents are already shown.
+      if (searchMode === "documents" && query.trim() === heldQuery) return;
+      const fallback = await notNowDocumentsSearch(heldQuery);
+      // Another Ask arrived while the check was loading: leave the dashboard to it.
+      if (!isCurrent()) return;
+      if ("notice" in fallback) {
+        setActionNotice({ tone: "warning", message: fallback.notice });
+        return;
+      }
+      crossModeSearch("documents", fallback.query);
+    },
+    onSaveFailed: (message) => setActionNotice({ tone: "warning", message }),
+  });
+  // Every way into an Answer request in this dashboard goes through `ask`: the
+  // composer, a ?run=1 link, a recent question, retry and the filter relaxers.
+  // A held question is sent later by the latest render's `sendAsk`, unchanged.
+  const sendAskRef = useRef(sendAsk);
+  useLayoutEffect(() => {
+    sendAskRef.current = sendAsk;
+  });
+  const ask: typeof sendAsk = async (searchText = query, contextOverride, replaceExistingAnswer = false) => {
+    if (searchMode !== "answer" || !searchText.trim()) {
+      return sendAsk(searchText, contextOverride, replaceExistingAnswer);
+    }
+    return askTermsGate.guard(searchText, () => sendAskRef.current(searchText, contextOverride, replaceExistingAnswer));
+  };
+
   // The URL sync reads the current mode to tell a stale UI-change flag from a
   // genuine one, without the mode becoming one of its dependencies.
   // Refreshed in a layout effect, which runs before any effect that reads it.
@@ -1016,702 +1090,6 @@ function ClinicalDashboardContent({
     return () => window.removeEventListener("hashchange", updateHash);
   }, [navigateMobileSection]);
 
-  function searchNetworkFailure(label: string) {
-    const offline = typeof navigator !== "undefined" && !navigator.onLine;
-    const origin = typeof window !== "undefined" ? window.location.origin : "PsychSift";
-    return makeSearchError(
-      offline
-        ? `${label} could not run because the browser is offline.`
-        : isDeployedClinicalKb()
-          ? `${label} could not reach PsychSift at ${origin}. Check your connection and try again shortly.`
-          : `${label} could not reach PsychSift at ${origin}. The local server may still be starting or restarting; retry shortly or run npm run ensure.`,
-      undefined,
-      true,
-    );
-  }
-
-  async function requestSourceLibrarySearch(
-    queryText: string,
-    mode: SourceLibrarySearchMode = "documents",
-    filtersOverride?: SearchScopeFilters,
-    queryModeOverride: ClinicalQueryMode = requestQueryMode,
-    signal?: AbortSignal,
-  ) {
-    const searchLabel = mode === "differentials" ? "Differentials search" : "Document search";
-    // Without this deadline a slow /api/search holds the "Searching…" band forever, with no
-    // notice and no error, so the reader cannot tell a slow search from a broken one (#X42YJ1).
-    // It stays armed through the body read, because a response that never finishes streaming
-    // hangs exactly as visibly as one that never arrives.
-    const slowNotice = "Still searching. This is taking longer than usual.";
-    let noticed = false;
-    const deadline = createSearchRequestDeadline({
-      signal,
-      onSlow: () => {
-        noticed = true;
-        setAnswerProgress(slowNotice);
-      },
-    });
-    try {
-      let response: Response;
-      try {
-        response = await fetch("/api/search", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(clientDemoMode ? {} : authorizationHeader),
-          },
-          body: JSON.stringify({
-            query: queryText,
-            mode,
-            documentIds: selectedDocumentIds.length > 0 ? selectedDocumentIds : undefined,
-            filters: compactScopeFilters(filtersOverride ?? scopeFilters),
-            queryMode: queryModeOverride,
-            documentLimit: 30,
-            topK: 20,
-          }),
-          signal: deadline.signal,
-        });
-      } catch (error) {
-        // A timeout is OUR abort, so it must surface. A caller abort is the user stopping or a
-        // newer query superseding this one, which stays silent. Not retryable: three more 45 s
-        // attempts against a busy service is a worse experience than one honest failure.
-        if (deadline.timedOut) throw makeSearchError(searchTimedOutMessage(searchLabel), undefined, false);
-        if (isAbortError(error)) throw error;
-        throw searchNetworkFailure(searchLabel);
-      }
-
-      if (response.status === 401) {
-        markSessionExpired();
-        throw makeSearchError("Search request was not authorized by the server.", 401, false);
-      }
-      if (!response.ok) {
-        throw await parseApiErrorResponse(response);
-      }
-      let payload: {
-        results?: SearchResult[];
-        documentMatches?: DocumentMatch[];
-        relevance?: EvidenceRelevance;
-        facets?: SearchFacets;
-        scope?: SearchScopeSummary;
-        sourceGovernanceWarnings?: SourceGovernanceWarning[];
-        demoMode?: boolean;
-      };
-      try {
-        payload = await response.json();
-      } catch (error) {
-        if (deadline.timedOut) throw makeSearchError(searchTimedOutMessage(searchLabel), undefined, false);
-        if (isAbortError(error)) throw error;
-        throw searchNetworkFailure(searchLabel);
-      }
-      if (payload.demoMode) setDemoMode(true);
-
-      return {
-        kind: "documents" as const,
-        query: queryText,
-        sources: payload.results ?? [],
-        documentMatches: payload.documentMatches ?? [],
-        relevance: payload.relevance,
-        facets: payload.facets,
-        scope: payload.scope,
-        sourceGovernanceWarnings: payload.sourceGovernanceWarnings,
-        demoMode: payload.demoMode,
-      };
-    } finally {
-      deadline.cancel();
-      // Clear only this request's own notice, by value. A superseded search settles its abort
-      // AFTER the replacing search has installed its progress message, so an unconditional
-      // clear here would blank the banner of a request that is still running. Comparing the
-      // message means a newer owner of the banner keeps it.
-      if (noticed) setAnswerProgress((current) => (current === slowNotice ? null : current));
-    }
-  }
-
-  function requestAnswer(
-    queryText: string,
-    filtersOverride: SearchScopeFilters = scopeFilters,
-    queryModeOverride: ClinicalQueryMode = requestQueryMode,
-    onProgress: (progress: AnswerProgressUpdate) => void,
-    onEvidencePreview: (preview: VerifiedEvidencePreviewUnit | null) => void,
-    signal?: AbortSignal,
-    onStreamActivity?: () => void,
-  ) {
-    return requestAnswerStream({
-      queryText,
-      filters: filtersOverride,
-      queryMode: queryModeOverride,
-      selectedDocumentIds,
-      clientDemoMode,
-      authorizationHeader,
-      onProgress,
-      onEvidencePreview,
-      signal,
-      onStreamActivity,
-      timedOut: () => answerTimedOutRef.current,
-      onSessionExpired: markSessionExpired,
-      networkFailure: () => searchNetworkFailure("Answer search"),
-    });
-  }
-
-  async function runWithRetries<T>(
-    operation: () => Promise<T>,
-    onProgress: (message: string) => void = setAnswerProgress,
-    signal?: AbortSignal,
-  ) {
-    let lastError: unknown;
-    for (let attempt = 0; attempt <= searchRetryCount; attempt += 1) {
-      const attemptStartedAt = Date.now();
-      try {
-        return await operation();
-      } catch (error) {
-        lastError = error;
-        if (!shouldRetryFailedAttempt(error, Date.now() - attemptStartedAt) || attempt >= searchRetryCount) break;
-
-        const message = progressForRetry(attempt + 1);
-        onProgress(message);
-        const requestedDelay = (error as SearchError).retryAfterMs ?? 0;
-        const defaultDelay = searchRetryDelaysMs[attempt] ?? searchRetryDelaysMs[searchRetryDelaysMs.length - 1];
-        await sleep(Math.max(defaultDelay, requestedDelay), signal);
-      }
-    }
-    throw lastError;
-  }
-
-  function stopSearch() {
-    searchRequestSeqRef.current += 1;
-    searchAbortRef.current?.abort();
-    searchAbortRef.current = null;
-    setLoading(false);
-    setAnswerProgress(null);
-    setAnswerProgressEvents([]);
-    answerProgressEventsRef.current = [];
-    setAnswerProgressStartedAt(null);
-    setAnswerEvidencePreview(null);
-    dispatchAnswerLifecycle({ type: "cancel" });
-  }
-
-  function applySearchResult(payload: SearchResultModePayload, displayQuery?: string, archivePreviousAnswer = true) {
-    if (payload.kind === "documents") {
-      setDocumentMatches(payload.documentMatches);
-      setSources(payload.sources);
-      setSearchRelevance(payload.relevance ?? null);
-      setSearchFacets(payload.facets ?? null);
-      setSearchScope(payload.scope ?? null);
-      setSourceGovernanceWarnings((payload.sourceGovernanceWarnings ?? []) as SourceGovernanceWarning[]);
-      return;
-    }
-
-    const answerData = payload.payload;
-    // Archive the previous exchange before the new answer replaces it, so the
-    // thread keeps every turn visible in the same window.
-    const priorTurn = archivePreviousAnswer ? latestAnswerTurnRef.current : null;
-    if (priorTurn) {
-      const turnId = `answer-turn-${++answerTurnSeqRef.current}`;
-      setPriorAnswerTurns((turns) => [...turns, { id: turnId, ...priorTurn }].slice(-(maxStoredAnswerTurns - 1)));
-      setCollapsedTurnIds((current) => new Set(current).add(turnId));
-    }
-    const committedQuery = displayQuery ?? payload.query;
-    latestAnswerTurnRef.current = {
-      query: committedQuery,
-      resolvedQuery: payload.query,
-      answer: answerData,
-      sources: answerData.sources ?? [],
-    };
-    setLatestAnswerQuery(committedQuery);
-    setAnswer(answerData);
-    setSources(answerData.sources ?? []);
-    setSearchRelevance(answerData.relevance ?? null);
-    setSearchScope(answerData.scope ?? null);
-    setSourceGovernanceWarnings((answerData.sourceGovernanceWarnings ?? []) as SourceGovernanceWarning[]);
-    setSearchFacets(null);
-    setDocumentMatches(
-      answerData.relatedDocuments?.map((document) => ({
-        document_id: document.document_id,
-        title: document.title,
-        file_name: document.file_name,
-        labels: document.labels,
-        summarySnippet: document.summary,
-        bestPages: document.best_pages,
-        bestChunkIds: document.best_chunk_ids,
-        imageCount: document.image_count,
-        tableCount: document.table_count ?? 0,
-        matchReason: document.match_reason,
-        score: document.score,
-      })) ?? [],
-    );
-    if (answerData.demoMode) setDemoMode(true);
-  }
-
-  async function executeSearch(
-    searchText: string,
-    targetMode: AppModeId = searchMode,
-    filtersOverride = scopeFilters,
-    queryModeOverride = queryMode,
-    replaceExistingAnswer = false,
-    scopeRefOverride?: string,
-  ) {
-    const trimmedQuery = searchText.trim();
-    if (!trimmedQuery) return;
-    const modeSearch = appModeSearchConfig(targetMode);
-    const isDifferentialsMode = modeSearch.resultKind === "differentials";
-    const isAnswerRequest = modeSearch.resultKind === "answer";
-    if (isAnswerRequest) {
-      // A mode switch, Stop or newer search while the check loads makes this submission stale.
-      const submittedSeq = searchRequestSeqRef.current;
-      const patientCheck = await loadClinicalQuestionPatientCheck().catch(() => null);
-      if (submittedSeq !== searchRequestSeqRef.current) return;
-      if (!patientCheck) {
-        setActionNotice({ tone: "warning", message: PATIENT_CHECK_UNAVAILABLE });
-        return;
-      }
-      const patientDetail = patientCheck.clinicalQuestionPatientDetail(trimmedQuery);
-      if (patientDetail) {
-        setActionNotice({ tone: "warning", message: patientCheck.clinicalQuestionPatientDetailMessage(patientDetail) });
-        return;
-      }
-    }
-    const targetQueryMode = appModeQueryMode(targetMode, queryModeOverride);
-    const privateScopeRef =
-      scopeRefOverride ??
-      (selectedDocumentIds.length > 0 && auth.session?.user.id
-        ? (persistPrivateSearchScope(window.sessionStorage, auth.session.user.id, selectedDocumentIds) ?? undefined)
-        : undefined);
-    // Note: no automatic mode-default label scope for Services/Forms. Applying
-    // one on every search routed resolveSearchScope's label path over the whole
-    // library, whose single `document_labels.in(<all ids>)` request produces an
-    // over-long PostgREST URL that fails on large corpora. Corpus search runs
-    // unscoped (like Documents); users opt into label filters explicitly.
-    const requestId = ++searchRequestSeqRef.current;
-
-    setSearchMode(targetMode);
-    // Answer mode keeps the composer as the draft source until a successful
-    // response clears it. Syncing query here on follow-ups used to fire the
-    // URL-backed autoRunSearch effect before loading flipped true, which
-    // duplicated the in-flight answer request and produced extra thread turns.
-    if (modeSearch.resultKind !== "answer") {
-      setQuery(trimmedQuery);
-    }
-    if (targetMode !== "tools") setModeSearchSubmitted(true, trimmedQuery);
-    if (isDifferentialsMode) clearModeResultState();
-
-    if (targetMode === "tools") {
-      setLoading(false);
-      setAnswerProgress(null);
-      setError(null);
-      rememberRecentQuery(trimmedQuery);
-      setActionNotice({ tone: "success", message: "Tools filtered from the composer." });
-      return;
-    }
-    if (modeSearch.kind === "tools") {
-      const destination = appModeHomeHref(targetMode, { query: trimmedQuery, run: true });
-      if (!isDashboardModeHref(destination)) {
-        setLoading(false);
-        setAnswerProgress(null);
-        setError(null);
-        rememberRecentQuery(trimmedQuery);
-        router.push(destination);
-        return;
-      }
-    }
-    if (modeSearch.kind === "favourites") {
-      setLoading(false);
-      setAnswerProgress(null);
-      setError(null);
-      rememberRecentQuery(trimmedQuery);
-      setActionNotice({ tone: "success", message: "Favourites filtered from the composer." });
-      return;
-    }
-    if (modeSearch.kind === "services" || modeSearch.kind === "forms") {
-      resetAnswerThread();
-      setAnswer(null);
-      setSources([]);
-      setDocumentMatches([]);
-      setSearchRelevance(null);
-      setSearchFacets(null);
-      setSearchScope(null);
-      setSourceGovernanceWarnings([]);
-      setAnswerProgress(null);
-      setLoading(false);
-      setError(null);
-      rememberRecentQuery(trimmedQuery);
-      window.requestAnimationFrame(() => scrollSurface(mainRef.current, 0, resolveScrollBehavior()));
-      return;
-    }
-    setSetupBlockedQuery(null);
-    if (!canRunSearch) {
-      if (isAnswerRequest) setSetupBlockedQuery(trimmedQuery);
-      // requestId was already bumped above, so a superseded in-flight request's
-      // finally block can no longer reset loading — reset it here or the answer
-      // skeleton can stay on screen indefinitely.
-      setLoading(false);
-      setAnswerProgress(null);
-      setError(errorCopy.searchSetupNotReady);
-      setErrorKind(null);
-      setLastFailedQuery(null);
-      return;
-    }
-    // M10 (diff-review hardening): progress updates emitted by this request's
-    // in-flight machinery (retry messages, keyword fallback, stream progress)
-    // must also be discarded once a newer search takes over, or a slow stale
-    // request repaints the progress banner under the newer query.
-    let requestIsCurrent = () => requestId === searchRequestSeqRef.current;
-    const onProgress = (message: string | null) => {
-      if (requestIsCurrent()) setAnswerProgress(message);
-    };
-    const onAnswerProgress = (progress: AnswerProgressUpdate) => {
-      if (!requestIsCurrent()) return;
-      setAnswerProgress(progress.message);
-      // Work from the ref, not a lazy updater: the stream sends "complete" just before it returns
-      // the final payload, and the accepted answer copies this ref before React renders again.
-      const current = answerProgressEventsRef.current;
-      const latest = current.at(-1);
-      if (
-        latest?.stage === progress.stage &&
-        latest.message === progress.message &&
-        latest.resultCount === progress.resultCount &&
-        latest.selectedContextCount === progress.selectedContextCount &&
-        latest.australianSourceCount === progress.australianSourceCount &&
-        latest.waSourceCount === progress.waSourceCount
-      ) {
-        return;
-      }
-      const next = [...current, { ...progress, receivedAt: Date.now() }].slice(-16);
-      answerProgressEventsRef.current = next;
-      setAnswerProgressEvents(next);
-    };
-    const onAnswerEvidencePreview = (preview: VerifiedEvidencePreviewUnit | null) => {
-      if (!requestIsCurrent()) return;
-      setAnswerEvidencePreview(incrementalEvidencePreviewRenderingEnabled() ? preview : null);
-    };
-    const onRetryProgress = (message: string) => {
-      if (isAnswerRequest) onAnswerProgress({ stage: "retrying", message });
-      else onProgress(message);
-    };
-    // A newer search already invalidated any prior request via requestId; abort
-    // its network work too so the server stops generating, then own the signal.
-    const abortController = replaceOwnedAbortController(searchAbortRef);
-    const authRequest = registerAuthRequest(abortController);
-    requestIsCurrent = () =>
-      requestId === searchRequestSeqRef.current &&
-      isAuthEpochCurrent(authRequest.epoch) &&
-      !abortController.signal.aborted;
-    setLoading(true);
-    setError(null);
-    setSearchRelevance(null);
-    setSearchFacets(null);
-    setSearchScope(null);
-    setSourceGovernanceWarnings([]);
-    setAnswerEvidencePreview(null);
-    setAnswerViewMode("high_yield");
-    if (isAnswerRequest) {
-      const startedAt = Date.now();
-      setAnswerProgressStartedAt(startedAt);
-      const initialProgressEvents = [
-        {
-          stage: "scoping" as const,
-          message: "Preparing the clinical search scope.",
-          receivedAt: startedAt,
-        },
-      ];
-      answerProgressEventsRef.current = initialProgressEvents;
-      setAnswerProgressEvents(initialProgressEvents);
-      setAnswerProgress("Preparing the clinical search scope.");
-    } else {
-      setAnswerProgressStartedAt(null);
-      answerProgressEventsRef.current = [];
-      setAnswerProgressEvents([]);
-      onProgress(modeSearch.progressLabel);
-    }
-    rememberRecentQuery(trimmedQuery);
-
-    // Answer-mode follow-ups: the API takes a single query string, so a short
-    // ambiguous follow-up ("what about renal impairment?") is wrapped with the
-    // previous turn's question before retrieval. The raw text the user typed
-    // is what the thread displays (via displayQuery below).
-    if (isAnswerRequest) dispatchAnswerLifecycle({ type: "start", query: trimmedQuery });
-    // Bound this search with a stall watchdog on the shared abort controller so
-    // a hung stream recovers instead of spinning forever. Answer streams reset
-    // the inactivity window on every received chunk, so a slow-but-live
-    // generation (fast -> strong escalation) is not aborted mid-stream; plain
-    // document searches never touch the watchdog and keep the flat window.
-    answerTimedOutRef.current = false;
-    const answerWatchdog = createAnswerRequestWatchdog(() => {
-      answerTimedOutRef.current = true;
-      abortController.abort();
-    });
-
-    try {
-      const priorTurnQuery =
-        isAnswerRequest && !replaceExistingAnswer
-          ? (latestAnswerTurnRef.current?.resolvedQuery ?? latestAnswerTurnRef.current?.query)
-          : undefined;
-      const isAnswerFollowUp = isAnswerRequest && Boolean(priorTurnQuery);
-      const requestQuery = isAnswerRequest ? buildAnswerFollowUpQuery(priorTurnQuery, trimmedQuery) : trimmedQuery;
-
-      const fallbackQuery = isAnswerRequest ? "" : keywordQueryFromNaturalLanguage(requestQuery);
-      const queryPlan =
-        fallbackQuery && fallbackQuery !== requestQuery
-          ? [
-              { query: requestQuery, isKeyword: false },
-              { query: fallbackQuery, isKeyword: true },
-            ]
-          : [{ query: requestQuery, isKeyword: false }];
-
-      let successfulPayload: SearchResultModePayload | null = null;
-      let lastError: SearchError | null = null;
-      // An empty source-library search is a RESULT, not a failure: the payload
-      // carries the `scope`/`sourceGovernanceWarnings` explaining WHY it is
-      // empty, and the 404 sentinel discarded them. See `scopeFilterChips`.
-      let emptySourceLibraryPayload: SearchResultModePayload | null = null;
-
-      for (const entry of queryPlan) {
-        if (entry.isKeyword) {
-          if (isAnswerRequest) onAnswerProgress({ stage: "retrieving", message: "Trying keyword-based search…" });
-          else onProgress("Trying keyword-based search…");
-        }
-
-        try {
-          const payload =
-            modeSearch.kind === "documents" || modeSearch.kind === "differentials"
-              ? await runWithRetries(
-                  () =>
-                    requestSourceLibrarySearch(
-                      entry.query,
-                      modeSearch.kind,
-                      filtersOverride,
-                      targetQueryMode,
-                      abortController.signal,
-                    ),
-                  onProgress,
-                  abortController.signal,
-                )
-              : await runWithRetries(
-                  () => {
-                    onAnswerEvidencePreview(null);
-                    return requestAnswer(
-                      entry.query,
-                      filtersOverride,
-                      targetQueryMode,
-                      onAnswerProgress,
-                      onAnswerEvidencePreview,
-                      abortController.signal,
-                      answerWatchdog.touch,
-                    );
-                  },
-                  onRetryProgress,
-                  abortController.signal,
-                );
-
-          if (!resultUsable(payload)) {
-            if (payload.kind === "documents") emptySourceLibraryPayload = payload;
-            lastError = makeSearchError("No usable results were found.", 404, false);
-            if (!entry.isKeyword) {
-              continue;
-            }
-            break;
-          }
-
-          successfulPayload = payload;
-          break;
-        } catch (requestError) {
-          lastError = requestError as SearchError;
-          if (queryPlan.length > 1 && !entry.isKeyword) {
-            continue;
-          }
-          throw requestError;
-        }
-      }
-
-      if (!successfulPayload && emptySourceLibraryPayload) {
-        successfulPayload = emptySourceLibraryPayload;
-      }
-
-      if (!successfulPayload) {
-        if (lastError) throw lastError;
-        throw new Error("Search did not return usable results.");
-      }
-
-      // M10: discard a stale response — a newer search owns the UI state.
-      if (requestIsCurrent()) {
-        if (successfulPayload.kind === "answer") {
-          setRestoredAnswerSavedAt(null);
-          latestAnswerSnapshotMetadataRef.current = createAnswerThreadSnapshotMetadata(
-            searchSubmissionSignature(targetMode, trimmedQuery, {
-              queryMode: targetQueryMode,
-              scopeFilters: filtersOverride,
-              scopeRef: privateScopeRef,
-            }),
-          );
-        }
-        if (successfulPayload.kind === "answer") {
-          // Keep the history that produced the accepted answer. A later failed
-          // request may replace the active progress events without replacing
-          // the answer shown on screen.
-          setAnswerBuildEvents(answerProgressEventsRef.current);
-        }
-        applySearchResult(successfulPayload, trimmedQuery, !replaceExistingAnswer);
-        if (isDifferentialsMode) setDifferentialEvidenceQuery(trimmedQuery);
-        if (successfulPayload.kind === "answer") {
-          dispatchAnswerLifecycle({ type: "complete" });
-          // Explicit composer submissions do not pass through the URL auto-run
-          // effect. Seed their completed context so a later in-place route to
-          // the same query with different intent/scope is recognized as a
-          // replacement search instead of leaving the old answer on screen.
-          autoRunSearchSignatureRef.current =
-            latestAnswerSnapshotMetadataRef.current?.latestSubmissionSignature ?? null;
-          // The composer is a draft box in a conversation: clear it so the
-          // user can type the next follow-up immediately.
-          setQuery("");
-          // Keep only the latest question in the URL; the full thread lives in
-          // React state until refresh or New chat.
-          modeChangeFromUiRef.current = true;
-          window.history.replaceState(
-            null,
-            "",
-            appModeHomeHref(targetMode, {
-              query: trimmedQuery,
-              run: true,
-              queryMode: queryModeOverride,
-              scopeFilters: filtersOverride,
-              scopeRef: privateScopeRef,
-            }),
-          );
-          if (isAnswerFollowUp) {
-            window.requestAnimationFrame(() => {
-              scrollSurface(mainRef.current, "end", resolveScrollBehavior());
-            });
-          }
-        }
-      }
-    } catch (requestError) {
-      if (requestIsCurrent() && !isAbortError(requestError)) {
-        if (isAnswerRequest) dispatchAnswerLifecycle({ type: "fail" });
-        setError(requestError instanceof Error ? requestError.message : "Search failed");
-        setErrorKind(classifyAnswerError(requestError));
-        setLastFailedQuery(trimmedQuery);
-      }
-    } finally {
-      answerWatchdog.cancel();
-      authRequest.release();
-      answerTimedOutRef.current = false;
-      releaseOwnedAbortController(searchAbortRef, abortController);
-      if (requestIsCurrent()) {
-        setLoading(false);
-        setAnswerProgress(null);
-      }
-    }
-  }
-
-  function setMedicationSearchQuery(searchText: string, updateUrl = true) {
-    modeChangeFromUiRef.current = true;
-    const trimmedSearchText = searchText.trim();
-    if (!trimmedSearchText) return;
-    setSearchMode("prescribing");
-    setQuery(trimmedSearchText);
-    setModeSearchSubmitted(true, trimmedSearchText);
-    setLoading(false);
-    setError(null);
-    setAnswerProgress(null);
-    rememberRecentQuery(trimmedSearchText);
-    window.requestAnimationFrame(() => scrollSurface(mainRef.current, 0, resolveScrollBehavior()));
-    if (updateUrl) {
-      // Include run=1 so a refresh keeps the submitted results surface instead of
-      // falling back to the shared home with Medication merely preselected.
-      router.replace(
-        appModeHomeHref("prescribing", {
-          query: trimmedSearchText,
-          run: true,
-          queryMode,
-          scopeFilters,
-        }),
-      );
-    }
-  }
-
-  async function ask(searchText = query, contextOverride?: SearchNavigationContext, replaceExistingAnswer = false) {
-    const trimmedQuery = searchText.trim();
-    // A Clinical question goes to an overseas AI service. One that looks like it holds a patient
-    // detail is not sent, saved as a recent question or written into the address bar (audit S2,
-    // 2026-10-13). The composer already disables Ask for it; this covers every other way in
-    // (a link with ?run=1, a recent question). The answer API refuses it again.
-    if (searchMode === "answer" && trimmedQuery) {
-      const submittedSeq = searchRequestSeqRef.current;
-      const patientCheck = await loadClinicalQuestionPatientCheck().catch(() => null);
-      if (submittedSeq !== searchRequestSeqRef.current) return;
-      if (!patientCheck) {
-        setActionNotice({ tone: "warning", message: PATIENT_CHECK_UNAVAILABLE });
-        return;
-      }
-      const patientDetail = patientCheck.clinicalQuestionPatientDetail(trimmedQuery);
-      if (patientDetail) {
-        setActionNotice({ tone: "warning", message: patientCheck.clinicalQuestionPatientDetailMessage(patientDetail) });
-        return;
-      }
-    }
-    const effectiveQueryMode = contextOverride?.queryMode ?? queryMode;
-    const effectiveScopeFilters = contextOverride?.scopeFilters ?? scopeFilters;
-    const privateScopeRef =
-      contextOverride?.scopeRef ??
-      (selectedDocumentIds.length > 0 && auth.session?.user.id
-        ? (persistPrivateSearchScope(window.sessionStorage, auth.session.user.id, selectedDocumentIds) ?? undefined)
-        : undefined);
-    const navigationContext = {
-      queryMode: effectiveQueryMode,
-      scopeFilters: effectiveScopeFilters,
-      scopeRef: privateScopeRef,
-    };
-
-    // Submitting from the shared home routes to the selected mode's own search
-    // page. Only answer/prescribing (`/?mode=…`) and documents (`/documents/search`)
-    // are dashboard-owned and stay here; every namespaced mode navigates out.
-    // Without this, modes like DSM would silently run an in-dashboard search,
-    // because `/` + a namespaced mode was unreachable before the pill stopped
-    // navigating.
-    const modeDestination = appModeHomeHref(searchMode, {
-      query: trimmedQuery,
-      run: true,
-      ...navigationContext,
-    });
-    if (trimmedQuery && !isDashboardModeHref(modeDestination)) {
-      rememberRecentQuery(trimmedQuery);
-      router.push(modeDestination);
-      return;
-    }
-
-    if (searchMode === "documents" && trimmedQuery) {
-      rememberRecentQuery(trimmedQuery);
-      autoRunSearchSignatureRef.current = searchSubmissionSignature(searchMode, trimmedQuery, navigationContext);
-      window.history[replaceExistingAnswer ? "replaceState" : "pushState"](
-        null,
-        "",
-        documentsSearchHref({
-          query: trimmedQuery,
-          run: true,
-          ...navigationContext,
-        }),
-      );
-      await executeSearch(
-        trimmedQuery,
-        searchMode,
-        effectiveScopeFilters,
-        effectiveQueryMode,
-        replaceExistingAnswer,
-        privateScopeRef,
-      );
-      return;
-    }
-    if (searchMode === "prescribing") {
-      setMedicationSearchQuery(searchText);
-      return;
-    }
-    await executeSearch(
-      searchText,
-      searchMode,
-      effectiveScopeFilters,
-      effectiveQueryMode,
-      replaceExistingAnswer,
-      privateScopeRef,
-    );
-  }
   const askRef = useRef(ask);
   useLayoutEffect(() => {
     askRef.current = ask;
@@ -1793,7 +1171,16 @@ function ClinicalDashboardContent({
   }
 
   function crossModeSearch(mode: AppModeId, crossQuery: string) {
-    // An Answer cross-search reaches executeSearch, which holds back patient details.
+    // An Answer cross-search reaches executeSearch, which holds back patient details,
+    // after the Terms step has had its say.
+    if (mode === "answer" && crossQuery.trim()) {
+      askTermsGate.guard(crossQuery, () => latestCrossModeSearchAfterTerms(mode, crossQuery));
+      return;
+    }
+    crossModeSearchAfterTerms(mode, crossQuery);
+  }
+
+  function crossModeSearchAfterTerms(mode: AppModeId, crossQuery: string) {
     if (mode === "favourites" && !favouritesAccessible) {
       openAccountSetup("favourites");
       return;
@@ -2044,7 +1431,7 @@ function ClinicalDashboardContent({
   }
 
   function handlePickFollowUpSuggestion(suggestion: string) {
-    void executeSearch(suggestion);
+    askTermsGate.guard(suggestion, () => void executeSearchRef.current(suggestion));
   }
 
   function startNewChat() {
@@ -2210,6 +1597,9 @@ function ClinicalDashboardContent({
     differentialsCompareAddonActive,
     patientDetailsAddonActive,
     mobileComposerReserve,
+    // focusComposerInput and startNewChat read refs only when called, never during render. Lint
+    // reports this only since the compiler stopped bailing on executeSearch; see resetAnswerThread.
+    // eslint-disable-next-line react-hooks/refs -- callbacks, not ref reads
   } = resolveDashboardModeSurface({
     activeModeResultKind,
     answer,
@@ -2296,9 +1686,13 @@ function ClinicalDashboardContent({
   const handleRecheckRestoredAnswer = useEventCallback(() => {
     const queryToRerun = (latestAnswerQuery ?? deferredQuery).trim();
     if (!queryToRerun) return;
-    void executeSearch(queryToRerun, "answer", scopeFilters, queryMode, true);
+    askTermsGate.guard(
+      queryToRerun,
+      () => void executeSearchRef.current(queryToRerun, "answer", scopeFilters, queryMode, true),
+    );
   });
   const handleCrossModeSearch = useEventCallback(crossModeSearch);
+  const latestCrossModeSearchAfterTerms = useEventCallback(crossModeSearchAfterTerms);
   const handleDocumentTagSearch = useEventCallback(handleTagSearch);
   const handleScopeFiltersChange = useScopeFilterRelax(query, queryMode, setScopeFilters, ask);
   const handleDocumentFiltersApply = useApplyFilters(query, queryMode, setScopeFilters, setSelectedDocumentIds, askRef);
@@ -2356,7 +1750,11 @@ function ClinicalDashboardContent({
     setSelectedDocumentIds([]);
     setPrivateScopeStatus("none");
     autoRunSearchSignatureRef.current = null;
-    void executeSearch(submittedUrlQuery || query, searchMode, scopeFilters, queryMode, false, undefined);
+    const rerunQuery = submittedUrlQuery || query;
+    const rerun = () =>
+      void executeSearchRef.current(rerunQuery, searchMode, scopeFilters, queryMode, false, undefined);
+    if (searchMode === "answer") askTermsGate.guard(rerunQuery, rerun);
+    else rerun();
   }
 
   // The card is local and provider-independent, so it also shows for a submitted answer
@@ -2587,38 +1985,13 @@ function ClinicalDashboardContent({
                 : "mb-0",
           )}
         >
-          <h1 className="sr-only">PsychSift</h1>
+          <h1 className="sr-only">{appModeDefinition(searchMode).label}</h1>
           {privateScopeStatus === "unavailable" ? (
-            // Lives inside <main> (not as a header sibling): in the answer view
-            // the header is absolute, so a sibling alert would reflow to the
-            // column top and hide behind the glass bar. Sticky so the recovery
-            // actions stay reachable while the user scrolls — pinned below the
-            // overlaid glass bar in answer mode, just under the in-flow header
-            // otherwise. Sticky resolves against the document in a phone browser
-            // and against <main> on the bounded app/tablet surfaces.
-            <div
-              role="alert"
-              data-testid="private-scope-unavailable"
-              className={cn(
-                "sticky z-20 mx-3 mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[color:var(--warning-border)] bg-[color:var(--warning-soft)] px-3 py-2 text-sm text-[color:var(--text)] sm:mx-4 lg:mx-8",
-                searchMode === "answer"
-                  ? "top-[calc(4.5rem+max(0.5rem,env(safe-area-inset-top)))]"
-                  : "top-2 max-sm:top-[calc(var(--phone-overlay-chrome-h)+0.5rem)]",
-              )}
-            >
-              <p>
-                The original private document scope is unavailable. Choose the documents again or confirm a broader
-                search.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <button type="button" className={floatingControl} onClick={reselectUnavailablePrivateScope}>
-                  Reselect documents
-                </button>
-                <button type="button" className={floatingControl} onClick={runWithoutUnavailablePrivateScope}>
-                  Run without private scope
-                </button>
-              </div>
-            </div>
+            <PrivateScopeUnavailableAlert
+              answerMode={searchMode === "answer"}
+              onReselect={reselectUnavailablePrivateScope}
+              onRunWithout={runWithoutUnavailablePrivateScope}
+            />
           ) : null}
           <SearchCommandProvider value={searchCommandContextValue}>
             <div
@@ -2674,6 +2047,46 @@ function ClinicalDashboardContent({
                   {actionNotice.message}
                 </InlineNotice>
               )}
+              {searchMode === "documents" &&
+              askTermsGate.declinedQuery &&
+              askTermsGate.declinedQuery === query.trim() ? (
+                <InlineNotice tone="info" onDismiss={askTermsGate.clearDeclined} animated>
+                  <span className="flex flex-wrap items-center gap-x-3 gap-y-2" data-testid="ask-terms-declined">
+                    <span>{ASK_TERMS_DECLINED_NOTICE}</span>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        const declined = askTermsGate.declinedQuery;
+                        if (declined) crossModeSearch("answer", declined);
+                      }}
+                    >
+                      {ASK_TERMS_REVIEW_LABEL}
+                    </Button>
+                  </span>
+                </InlineNotice>
+              ) : null}
+              {searchMode === "documents" && askTermsGate.signInQuery && askTermsGate.signInQuery === query.trim() ? (
+                // Answer needs sign-in; its stillOpen line covers library search too, so the library card is skipped (#3728).
+                <ClinicalSignInNotice
+                  copy={CLINICAL_SIGN_IN_COPY.answer}
+                  testId="answer-sign-in"
+                  onSignedIn={() => {
+                    const asked = askTermsGate.signInQuery;
+                    askTermsGate.clearSignIn();
+                    if (asked) crossModeSearch("answer", asked);
+                  }}
+                />
+              ) : null}
+              {askTermsGate.heldQuery !== null ? (
+                <AskTermsStep
+                  open
+                  saving={askTermsGate.saving}
+                  signedIn={askTermsGate.signedIn}
+                  onAccept={() => void askTermsGate.accept()}
+                  onNotNow={askTermsGate.notNow}
+                />
+              ) : null}
               <DegradedNoticeFrame visible={showDegradedNotice} isOnline={isOnline} reserveSpace={centeredModeHome} />
               {showSystemNotice && answer ? (
                 <SystemNotice demoMode={demoMode} setupWarning={setupWarning} className="hidden sm:block" />
@@ -2700,76 +2113,23 @@ function ClinicalDashboardContent({
                     chain below still short-circuits exactly as it did: a stopped
                     generation must not fall through into the no-results or error
                     empty states. */}
-                {showAnswerCancelledNotice ? null : error &&
-                  errorKind === "no-results" &&
-                  activeModeResultKind === "answer" ? (
-                  <EmptyState
-                    icon={Search}
-                    title={answerRecovery.noResults.heading}
-                    body={`${answerRecovery.noResults.body} Suggestions: ${generateQuerySuggestions((lastFailedQuery ?? query).trim()).join("; ")}.`}
-                    live="polite"
-                    tone="info"
-                    testId="answer-no-results"
-                    actions={
-                      <>
-                        <button
-                          type="button"
-                          data-testid="answer-no-results-rephrase"
-                          onClick={() => focusComposerInput()}
-                          className={cn(primaryControl, "text-xs")}
-                        >
-                          {answerRecovery.rephrase}
-                        </button>
-                        <button
-                          type="button"
-                          data-testid="answer-no-results-search-documents"
-                          onClick={() => crossModeSearch("documents", (lastFailedQuery ?? query).trim())}
-                          className={cn(floatingControl, "text-xs")}
-                        >
-                          <FileText aria-hidden="true" className="h-4 w-4" />
-                          {answerRecovery.searchDocuments}
-                        </button>
-                      </>
-                    }
+                {showAnswerCancelledNotice ? null : (
+                  <DashboardSearchErrorState
+                    error={error}
+                    errorKind={errorKind}
+                    activeModeResultKind={activeModeResultKind}
+                    documentsResultsOwnError={documentsResultsOwnError}
+                    lastFailedQuery={lastFailedQuery}
+                    query={query}
+                    onRephrase={() => focusComposerInput()}
+                    onRetry={() => {
+                      const retryQuery = lastFailedQuery ?? query;
+                      setError(null);
+                      void ask(retryQuery);
+                    }}
+                    onSearchDocuments={() => crossModeSearch("documents", (lastFailedQuery ?? query).trim())}
                   />
-                ) : error && !documentsResultsOwnError ? (
-                  <EmptyState
-                    icon={CircleAlert}
-                    title={activeModeResultKind === "answer" ? "Answer unavailable" : "Search unavailable"}
-                    body={error}
-                    live="assertive"
-                    tone="danger"
-                    testId="answer-error"
-                    actions={
-                      activeModeResultKind === "answer" && lastFailedQuery ? (
-                        <>
-                          <button
-                            type="button"
-                            data-testid="answer-error-retry"
-                            onClick={() => {
-                              const retryQuery = lastFailedQuery ?? query;
-                              setError(null);
-                              void ask(retryQuery);
-                            }}
-                            className={cn(floatingControl, "text-xs")}
-                          >
-                            <RefreshCw aria-hidden="true" className="h-4 w-4" />
-                            {answerRecovery.retry}
-                          </button>
-                          <button
-                            type="button"
-                            data-testid="answer-error-search-documents"
-                            onClick={() => crossModeSearch("documents", (lastFailedQuery ?? query).trim())}
-                            className={cn(floatingControl, "text-xs")}
-                          >
-                            <FileText aria-hidden="true" className="h-4 w-4" />
-                            {answerRecovery.searchDocuments}
-                          </button>
-                        </>
-                      ) : undefined
-                    }
-                  />
-                ) : null}
+                )}
 
                 {activeModeResultKind === "answer" &&
                 (loading || answer) &&
@@ -2830,6 +2190,13 @@ function ClinicalDashboardContent({
                   // its own route (/tools, /favourites, /dsm, …).
                   // One grid item, so a tall canvas cannot split the home and its line into two rows.
                   <div className="relative w-full">
+                    {searchMode === "therapy-compass" ? (
+                      <RegistryModeNav
+                        modeId="therapy-compass"
+                        activeId="search"
+                        searchParamString={searchParams.toString()}
+                      />
+                    ) : null}
                     <SharedHomeEmptyState
                       modeId={searchMode}
                       desktopComposerSlotId={desktopHomeComposerSlotId}
@@ -2848,38 +2215,40 @@ function ClinicalDashboardContent({
                     ) : null}
                   </div>
                 ) : activeModeResultKind === "differentials" ? (
-                  <DifferentialsHome
-                    query={deferredQuery}
-                    loading={loading}
-                    searchSubmitted={modeSearchSubmitted}
-                    evidenceQuery={differentialEvidenceQuery}
-                    documentMatches={documentMatches}
-                    realDataReady={canRunSearch}
-                    authUnavailable={false}
-                    apiUnavailable={apiUnavailable}
-                    setupWarning={setupWarning}
-                    onQueryChange={setQuery}
-                    desktopComposerSlotId={desktopHomeComposerSlotId}
-                    onSuggestedSearch={(nextQuery) => {
-                      setQuery(nextQuery);
-                      focusComposerInput();
-                    }}
-                    onRunSearch={(nextQuery) => {
-                      void executeSearch(nextQuery, "differentials", scopeFilters);
-                    }}
-                    onOpenPresentations={(nextQuery) => {
-                      const queryParams = new URLSearchParams();
-                      const normalizedQuery = nextQuery.trim();
-                      if (normalizedQuery) queryParams.set("q", normalizedQuery);
-                      router.push(`/differentials/presentations${queryParams.toString() ? `?${queryParams}` : ""}`);
-                    }}
-                    onOpenDiagnoses={(nextQuery) => {
-                      const queryParams = new URLSearchParams();
-                      const normalizedQuery = nextQuery.trim();
-                      if (normalizedQuery) queryParams.set("q", normalizedQuery);
-                      router.push(`/differentials/diagnoses${queryParams.toString() ? `?${queryParams}` : ""}`);
-                    }}
-                  />
+                  <ClinicalCatalogueGate copy={CLINICAL_SIGN_IN_COPY.differentials} testId="differentials-sign-in">
+                    <DifferentialsHome
+                      query={deferredQuery}
+                      loading={loading}
+                      searchSubmitted={modeSearchSubmitted}
+                      evidenceQuery={differentialEvidenceQuery}
+                      documentMatches={documentMatches}
+                      realDataReady={canRunSearch}
+                      authUnavailable={false}
+                      apiUnavailable={apiUnavailable}
+                      setupWarning={setupWarning}
+                      onQueryChange={setQuery}
+                      desktopComposerSlotId={desktopHomeComposerSlotId}
+                      onSuggestedSearch={(nextQuery) => {
+                        setQuery(nextQuery);
+                        focusComposerInput();
+                      }}
+                      onRunSearch={(nextQuery) => {
+                        void executeSearch(nextQuery, "differentials", scopeFilters);
+                      }}
+                      onOpenPresentations={(nextQuery) => {
+                        const queryParams = new URLSearchParams();
+                        const normalizedQuery = nextQuery.trim();
+                        if (normalizedQuery) queryParams.set("q", normalizedQuery);
+                        router.push(`/differentials/presentations${queryParams.toString() ? `?${queryParams}` : ""}`);
+                      }}
+                      onOpenDiagnoses={(nextQuery) => {
+                        const queryParams = new URLSearchParams();
+                        const normalizedQuery = nextQuery.trim();
+                        if (normalizedQuery) queryParams.set("q", normalizedQuery);
+                        router.push(`/differentials/diagnoses${queryParams.toString() ? `?${queryParams}` : ""}`);
+                      }}
+                    />
+                  </ClinicalCatalogueGate>
                 ) : searchMode === "tools" ? (
                   <ToolsHub query={deferredQuery} desktopComposerSlotId={desktopHomeComposerSlotId} />
                 ) : activeModeResultKind === "favourites" && favouritesAccessible ? (
@@ -2899,59 +2268,69 @@ function ClinicalDashboardContent({
                   activeModeResultKind === "services" ||
                   activeModeResultKind === "forms" ? (
                   searchMode === "prescribing" ? (
-                    <MedicationPrescribingWorkspace
-                      query={deferredQuery}
-                      loading={false}
-                      realDataReady
-                      authUnavailable={false}
-                      apiUnavailable={false}
-                      setupWarning={null}
-                      onSuggestedSearch={setMedicationSearchQuery}
-                      showHome={!modeSearchSubmitted}
-                      desktopComposerSlotId={desktopHomeComposerSlotId}
-                    />
+                    <ClinicalCatalogueGate copy={CLINICAL_SIGN_IN_COPY.medicines} testId="medications-sign-in">
+                      <MedicationPrescribingWorkspace
+                        query={deferredQuery}
+                        loading={false}
+                        realDataReady
+                        authUnavailable={false}
+                        apiUnavailable={false}
+                        setupWarning={null}
+                        onSuggestedSearch={setMedicationSearchQuery}
+                        showHome={!modeSearchSubmitted}
+                        desktopComposerSlotId={desktopHomeComposerSlotId}
+                      />
+                    </ClinicalCatalogueGate>
                   ) : (
                     <>
-                      <DocumentSearchResultsPanel
-                        matches={documentMatches}
-                        recordMatches={recordSearchMatches}
-                        recordMode={recordSearchMode}
-                        recordStatus={recordStatus}
-                        recordDegraded={recordsDegraded}
-                        showRecordMatches={searchMode === "services" || searchMode === "forms"}
-                        query={deferredQuery}
-                        loading={loading}
-                        documentCount={indexedDocumentTotal}
-                        recentDocuments={documents}
-                        realDataReady={searchMode === "services" || searchMode === "forms" ? true : canRunSearch}
-                        authUnavailable={false}
-                        apiUnavailable={apiUnavailable}
-                        setupWarning={setupWarning}
-                        facets={searchFacets}
-                        searchScope={searchMode === "documents" ? searchScope : null}
-                        onScopeDocument={handleScopeDocument}
-                        onAnswerFromDocument={handleAnswerFromDocument}
-                        onOpenRecentDocuments={handleOpenRecentDocuments}
-                        onOpenLibrary={handleOpenSourceLibrary}
-                        onOpenSourcePdf={handleOpenSourcePdfBrowser}
-                        onTagSearch={handleDocumentTagSearch}
-                        scopeFilters={searchMode === "documents" ? scopeFilters : null}
-                        onScopeFiltersChange={searchMode === "documents" ? handleScopeFiltersChange : undefined}
-                        selectedDocumentIds={searchMode === "documents" ? selectedDocumentIds : []}
-                        onDocumentFiltersApply={searchMode === "documents" ? handleDocumentFiltersApply : undefined}
-                        showHome={searchMode === "documents" && !modeSearchSubmitted}
-                        desktopComposerSlotId={desktopHomeComposerSlotId}
-                        searchFailed={documentsSearchFailed}
-                        searchFailureReason={documentsSearchFailed ? error : null}
-                        onRetrySearch={
-                          searchMode === "documents" && query.trim()
-                            ? () => {
-                                setError(null);
-                                void ask(documentsSearchFailed ? (lastFailedQuery ?? query) : query);
-                              }
-                            : undefined
-                        }
-                      />
+                      {searchMode === "documents" && clinicalToolAccess === "sign-in-required" ? (
+                        askTermsGate.signInQuery && askTermsGate.signInQuery === query.trim() ? null : (
+                          <ClinicalSignInNotice copy={CLINICAL_SIGN_IN_COPY.library} testId="library-sign-in" />
+                        )
+                      ) : (
+                        <>
+                          <DocumentSearchResultsPanel
+                            matches={documentMatches}
+                            recordMatches={recordSearchMatches}
+                            recordMode={recordSearchMode}
+                            recordStatus={recordStatus}
+                            recordDegraded={recordsDegraded}
+                            showRecordMatches={searchMode === "services" || searchMode === "forms"}
+                            query={deferredQuery}
+                            loading={loading}
+                            documentCount={indexedDocumentTotal}
+                            recentDocuments={documents}
+                            realDataReady={searchMode === "services" || searchMode === "forms" ? true : canRunSearch}
+                            authUnavailable={false}
+                            apiUnavailable={apiUnavailable}
+                            setupWarning={setupWarning}
+                            facets={searchFacets}
+                            searchScope={searchMode === "documents" ? searchScope : null}
+                            onScopeDocument={handleScopeDocument}
+                            onAnswerFromDocument={handleAnswerFromDocument}
+                            onOpenRecentDocuments={handleOpenRecentDocuments}
+                            onOpenLibrary={handleOpenSourceLibrary}
+                            onOpenSourcePdf={handleOpenSourcePdfBrowser}
+                            onTagSearch={handleDocumentTagSearch}
+                            scopeFilters={searchMode === "documents" ? scopeFilters : null}
+                            onScopeFiltersChange={searchMode === "documents" ? handleScopeFiltersChange : undefined}
+                            selectedDocumentIds={searchMode === "documents" ? selectedDocumentIds : []}
+                            onDocumentFiltersApply={searchMode === "documents" ? handleDocumentFiltersApply : undefined}
+                            showHome={searchMode === "documents" && !modeSearchSubmitted}
+                            desktopComposerSlotId={desktopHomeComposerSlotId}
+                            searchFailed={documentsSearchFailed}
+                            searchFailureReason={documentsSearchFailed ? error : null}
+                            onRetrySearch={
+                              searchMode === "documents" && query.trim()
+                                ? () => {
+                                    setError(null);
+                                    void ask(documentsSearchFailed ? (lastFailedQuery ?? query) : query);
+                                  }
+                                : undefined
+                            }
+                          />
+                        </>
+                      )}
                     </>
                   )
                 ) : showAnswerPending ? (

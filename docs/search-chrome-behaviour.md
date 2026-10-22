@@ -2,7 +2,16 @@
 
 This repo uses one shared search experience across the global shell, dashboard result pages, and document-detail/source routes. Keep the behaviour page-aware but predictable.
 
-Work-area tabs remain in page flow and follow their universal header's hide/reveal state. Their sticky hook batches scroll and geometry notifications into animation frames and rechecks compositor motion on completion rather than polling layout throughout the animation. Focus changes also recheck the sticky position. Work action docks keep their sticky page-flow placement; their focus clearance applies to both the document and `#main-content`, so installed phones receive the same clearance as browser tabs. Assessment browser and installed-layout regression coverage lives in `tests/ui-phone-scroll-assessments.spec.ts`; emulation does not establish physical iPhone acceptance.
+Work-area tabs remain in page flow and follow their universal header's hide/reveal state. Their sticky hook batches scroll and geometry notifications into animation frames and rechecks compositor motion on completion rather than polling layout throughout the animation. Focus changes also recheck the sticky position. Work action docks keep their sticky page-flow placement; their focus clearance applies to both the document and `#main-content`, so installed phones receive the same clearance as browser tabs. Assessment browser and installed-layout regression coverage lives in `tests/ui-phone-scroll-assessments.spec.ts`; emulation does not establish physical iPhone acceptance. Clinical split-record regression coverage checks the same twelve route/viewport combinations in separate 60-second viewport cases.
+
+On phones, collapse hosts overlay a stack with a separate OS safe-area row. Their
+cold CSS clearance is the inset **plus** the bar's 0.5rem top padding and inner
+height. Direct overlay headers instead own the inset in their own top padding.
+Keep those seeds distinct: treating the collapse stack as a direct overlay left
+its clearance 8px short on notched phones until the measured reserve arrived,
+moving the document during the reader's first scroll. The Assessment browser
+regression checks the cold seed against the actual revealed stack as well as the
+existing gesture-drift limit.
 
 ## Page ownership model
 
@@ -712,8 +721,8 @@ active. Three properties are load-bearing.
 
 It is **measured, not tokenised**, because the collapse row grows with portaled
 page navigation (`header-collapse-addon`) and a fixed `4rem` would clip those
-routes. It **never varies with hide state** — `offsetHeight` ignores the hide
-transform, so the same value is correct in both states; a reserve that animated
+routes. It **never varies with hide state** — translating the stack preserves its
+`getBoundingClientRect().height`, so the same value is correct in both states; a reserve that animated
 or zeroed on hide would reintroduce exactly the shift overlay removes. And it
 must be **correct before the first paint**, which is a separate requirement from
 both of those: the property is seeded in `globals.css` as
@@ -724,6 +733,14 @@ content underneath the out-of-flow header and then pushed it down at hydration �
 a cold-load jump, which is the same defect class as the scroll jump this design
 exists to remove (Codex P1, 2026-07-30). SSR cannot measure, so the seed is exact
 only for routes without an addon row; addon routes refine by that row's height.
+
+Keep these measurements in fractional border-box CSS pixels through addon claim,
+quiet-window settlement, immediate publication and release. Integer `offsetHeight`
+rounded a 79.875px navigation row to 80px after the 17 October type-role migration;
+replacing that in-flow row with the rounded reserve moved the cold-load target.
+The matching reader and portal-wiring tests cover fractional growth, shrinkage and
+release. Sticky Work-tab clipping also retains the relative fractional rectangle
+offset, so a focused 48px tab remains fully visible.
 
 The clearance is only visible near scroll top, where the header is always
 revealed, so it costs no usable height.
@@ -817,7 +834,7 @@ await expect
       return page.evaluate(() => {
         const stack = document.querySelector<HTMLElement>(".phone-sticky-header-stack");
         const reserve = getComputedStyle(document.documentElement).getPropertyValue("--phone-overlay-chrome-h");
-        const stackHeight = stack ? Math.round(stack.getBoundingClientRect().height) : 0;
+        const stackHeight = stack?.getBoundingClientRect().height ?? 0;
         const reservePx = parseFloat(reserve) || 0;
         return stackHeight > 0 && Math.abs(stackHeight - reservePx) <= 1;
       });

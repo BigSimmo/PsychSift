@@ -4,6 +4,7 @@ import { z } from "zod";
 import { jsonError, publicErrorResponse } from "@/lib/http";
 import { parseJsonBody } from "@/lib/validation/body";
 import {
+  asPublicationRpcClient,
   publishSiteContentCommand,
   recordSiteContentReconciliationPlan,
 } from "@/lib/site-content/site-content-publication";
@@ -12,6 +13,7 @@ import {
   type SiteContentReconciliationInput,
 } from "@/lib/site-content/site-content-reconciliation";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requireRecentAdministratorAssurance } from "@/lib/supabase/admin-assurance";
 import { AuthenticationError, requireAuthenticatedUserContext, unauthorizedResponse } from "@/lib/supabase/auth";
 
 export const runtime = "nodejs";
@@ -52,9 +54,10 @@ const commandSchema = z.discriminatedUnion("action", [publicationCommandSchema, 
 export async function POST(request: Request) {
   try {
     const sourceSupabase = createAdminClient();
-    const { publicationClient } = await requireAuthenticatedUserContext(request, sourceSupabase, {
+    const { user, publicationClient } = await requireAuthenticatedUserContext(request, sourceSupabase, {
       administrator: true,
     });
+    await requireRecentAdministratorAssurance(request, sourceSupabase, user.id);
     let parsed: z.infer<typeof commandSchema>;
     try {
       parsed = await parseJsonBody(request, commandSchema);
@@ -64,12 +67,12 @@ export async function POST(request: Request) {
     const result =
       parsed.action === "record_reconciliation"
         ? await recordSiteContentReconciliationPlan({
-            publicationSupabase: publicationClient as never,
+            publicationSupabase: asPublicationRpcClient(publicationClient),
             plan: parsed.plan,
           })
         : await publishSiteContentCommand({
-            sourceSupabase: sourceSupabase as never,
-            publicationSupabase: publicationClient as never,
+            sourceSupabase: asPublicationRpcClient(sourceSupabase),
+            publicationSupabase: asPublicationRpcClient(publicationClient),
             command: parsed,
           });
     if (result.outcome === "conflict") {

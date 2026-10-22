@@ -1,11 +1,43 @@
-import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { chmodSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
+import { delimiter, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
+
+import { appHealthProbe, isCleanContainerExit } from "../scripts/app-container-smoke.mjs";
+import {
+  imageListingProbe,
+  imagePathAbsenceProbe,
+  imagePrivilegeBitsProbe,
+  isExpectedAppCommand,
+} from "../scripts/check-image-content-contract.mjs";
 
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
 describe("container delivery contract", () => {
+  it("parses Compose without duplicate keys and keeps the worker health port aligned", () => {
+    // Reuse the existing transitive parser as other CI contracts do. json:false
+    // rejects duplicate mapping keys instead of silently accepting the last port.
+    const compose = createRequire(import.meta.url)("js-yaml").load(read("docker-compose.yml"), { json: false }) as {
+      services: {
+        worker: {
+          environment: Record<string, string>;
+          healthcheck: { test: string[] };
+        };
+      };
+    };
+    const worker = compose.services.worker;
+    expect(worker.environment.WORKER_HEALTH_PORT).toBe("3901");
+    expect(worker.healthcheck.test.slice(0, 3)).toEqual(["CMD", "node", "-e"]);
+    const healthUrl = new URL(worker.healthcheck.test[3].match(/fetch\(['"]([^'"]+)['"]\)/)?.[1] ?? "");
+    expect(healthUrl.hostname).toBe("127.0.0.1");
+    expect(healthUrl.port).toBe(worker.environment.WORKER_HEALTH_PORT);
+    expect(healthUrl.pathname).toBe("/health");
+  });
+
   it.each([
     "eval/docling/requirements.txt",
     "eval/docling/verify-model-artifacts.mjs",
@@ -46,14 +78,200 @@ describe("container delivery contract", () => {
     expect(dockerfile).toContain('python -m unittest discover -s worker/python -p "test_*.py"');
   });
 
+  it("keeps the worker's locked Python minor and non-root contract on its pinned runtime", () => {
+    const dockerfile = read("Dockerfile.worker");
+    const contract = read("scripts/check-image-content-contract.mjs");
+    expect(dockerfile).toMatch(/^FROM python:3\.11-slim-trixie@sha256:[a-f0-9]{64} AS python-runtime-base$/m);
+    expect(dockerfile).toContain("FROM python-runtime-base AS runner");
+    expect(dockerfile).toContain("COPY --from=node-base /usr/local/bin/node /usr/local/bin/node");
+    const runner = dockerfile.split("FROM python-runtime-base AS runner")[1];
+    expect(runner).not.toMatch(/apt-get install[^\n]*\bpython3(?:-venv)?\b/);
+    expect(runner).toContain("sys.version_info[:2] == (3, 11)");
+    expect(runner).toContain("groupadd --gid 1000 node");
+    expect(runner).toContain("useradd --uid 1000 --gid node");
+    expect(runner).toContain("USER node");
+    expect(runner).toContain("python3 -m pip uninstall -y setuptools");
+    expect(runner).toContain("ge 5.40.1-6+deb13u1");
+    expect(runner).toContain("for helper in /usr/bin/mount /usr/bin/umount");
+    expect(runner).toContain('if [ -e "$helper" ]; then chmod u-s,g-s "$helper"; fi');
+    expect(dockerfile).toContain("/usr/local/lib/node_modules/npm /opt/yarn-*");
+    for (const executable of ["npm", "npx", "yarn", "yarnpkg"]) {
+      expect(dockerfile).toContain(`/usr/local/bin/${executable}`);
+      expect(contract).toContain(`"/usr/local/bin/${executable}"`);
+    }
+    expect(contract).toContain("assertPathUnprivileged(WORKER_IMAGE, path)");
+    expect(contract).toContain('assertListingClean(WORKER_IMAGE, "/opt", "^yarn-"');
+    expect(dockerfile).toContain("COPY worker/python/ocr-model-LICENSE.txt /opt/psychsift-ocr-models/LICENSE");
+    expect(dockerfile).toContain('model = model_dir / "Latin.traineddata"');
+  });
+
+  it("limits worker backports to the repaired curl and HTTP/3 library set", () => {
+    const worker = read("Dockerfile.worker");
+    expect(worker).toContain("signed-by=/usr/share/keyrings/debian-archive-keyring.gpg");
+    expect(worker).toContain("Package: libcurl4t64 libnghttp3-9 libngtcp2-16 libngtcp2-crypto-ossl0");
+    expect(worker).toMatch(/'Package: \*'\s*\\\n\s*'Pin: release n=trixie-backports'\s*\\\n\s*'Pin-Priority: -1'/);
+    expect(worker).not.toContain("-t trixie-backports");
+    for (const pin of [
+      "libcurl4t64=8.21.0-2~bpo13+1",
+      "libnghttp3-9=1.15.0-1~bpo13+1",
+      "libngtcp2-16=1.22.1-1~bpo13+1",
+      "libngtcp2-crypto-ossl0=1.22.1-1~bpo13+1",
+    ]) {
+      expect(worker).toContain(pin);
+    }
+    expect(worker).toContain("ge 8.21.0-2~bpo13+1");
+    expect(worker).toContain("ge 1.22.1-1~bpo13+1");
+  });
+
+  it("builds pinned native security repairs with normal package provenance and runtime acceptance", () => {
+    const worker = read("Dockerfile.worker");
+    for (const component of ["util-linux", "tesseract", "ncurses", "libxml2"]) {
+      expect(worker).toContain(`AS native-${component}`);
+      expect(worker).toContain(`build_security_debs.py ${component}`);
+      expect(worker).toContain(`COPY --from=native-${component} /out/ /tmp/worker-native-debs/`);
+    }
+    expect(worker).toContain("test_build_security_debs.py");
+    expect(worker).toContain("--no-remove");
+    expect(worker).toContain("/tmp/worker-native-debs/*.deb");
+    expect(worker).toContain("--verify-installed /usr/share/psychsift/native-security");
+    expect(worker).toContain("timeout 180 /opt/docling-venv/bin/python /tmp/check-native-docling.py");
+    expect(worker.indexOf("USER node")).toBeLessThan(worker.indexOf("RUN timeout 180"));
+  });
+
+  it.skipIf(process.platform === "win32")(
+    "rejects either mount privilege bit and accepts stripped or absent helpers",
+    () => {
+      const directory = mkdtempSync(join(tmpdir(), "image-privilege-contract-"));
+      try {
+        const helper = join(directory, "mount");
+        writeFileSync(helper, "synthetic");
+        for (const mode of [0o4755, 0o2755, 0o6755, 0o755]) {
+          chmodSync(helper, mode);
+          const result = spawnSync(process.execPath, ["-e", imagePrivilegeBitsProbe(helper)], {
+            encoding: "utf8",
+            timeout: 2000,
+          });
+          expect(result.error).toBeUndefined();
+          expect(result.signal).toBeNull();
+          expect(result.status).toBe(mode & 0o6000 ? 1 : 0);
+        }
+        const missing = spawnSync(process.execPath, ["-e", imagePrivilegeBitsProbe(join(directory, "absent"))]);
+        expect(missing.status).toBe(0);
+        const unreadable = spawnSync(process.execPath, ["-e", imagePrivilegeBitsProbe(join(helper, "invalid"))]);
+        expect(unreadable.status).not.toBe(0);
+        expect(unreadable.stderr.toString()).toContain("ENOTDIR");
+      } finally {
+        rmSync(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      }
+    },
+  );
+
   it("forwards termination signals to the app process", () => {
-    expect(read("Dockerfile")).toContain("exec node node_modules/next/dist/bin/next start");
+    const command = JSON.parse(/^CMD (\[.+\])$/m.exec(read("Dockerfile"))?.[1] ?? "null");
+    expect(isExpectedAppCommand(command)).toBe(true);
+    expect(isExpectedAppCommand(["sh", "-c", "echo next start"])).toBe(false);
+    expect(isExpectedAppCommand(["node", "node_modules/next/dist/bin/next", "dev"])).toBe(false);
+  });
+
+  it("keeps the minimal app runtime and pre-deploy shell pinned and inventoried", () => {
+    const dockerfile = read("Dockerfile");
+    expect(dockerfile).toContain(
+      "gcr.io/distroless/cc-debian13:nonroot@sha256:b7e81cb1af38d9345680e68bcf564d388f96304e25222030fc8c051faf8565b3",
+    );
+    expect(dockerfile).toContain(
+      "node:24-trixie-slim@sha256:7f486cabe892bff8fef04c0f7da8dba84a560be3e4e2740b7a86afc57ebec315",
+    );
+    expect(dockerfile).toContain("COPY --from=app-node-runtime-base /usr/local/bin/node /usr/local/bin/node");
+    expect(dockerfile).toContain("COPY --from=app-node-runtime-base /usr/bin/dash /bin/sh");
+    expect(dockerfile).toContain("dpkg-query --status dash > /tmp/app-runtime-dash.status");
+    expect(dockerfile).toContain("/var/lib/dpkg/status.d/dash");
+    expect(dockerfile).toContain("--chown=1000:1000 /tmp/app-runtime-home/ /home/node/");
+    expect(dockerfile).toContain("ENV HOME=/home/node");
+    const health = JSON.parse(/HEALTHCHECK[^\n]*\\\n\s+CMD (\[.+\])/.exec(dockerfile)?.[1] ?? "null");
+    expect(health?.slice(0, 2)).toEqual(["node", "-e"]);
+    expect(health?.[2]).toContain("process.env.PORT||3000");
+  });
+
+  it("runs absence probes without shell tools and rejects present paths", () => {
+    const directory = mkdtempSync(join(tmpdir(), "image-content-contract-"));
+    try {
+      const present = join(directory, "secret.pem");
+      writeFileSync(present, "synthetic");
+      for (const [path, expected] of [
+        [present, 1],
+        [join(directory, "absent"), 0],
+      ] as const) {
+        const result = spawnSync(process.execPath, ["-e", imagePathAbsenceProbe(path)], {
+          encoding: "utf8",
+          timeout: 2000,
+        });
+        expect(result.error).toBeUndefined();
+        expect(result.signal).toBeNull();
+        expect(result.status).toBe(expected);
+      }
+    } finally {
+      rmSync(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    }
+  });
+
+  it.skipIf(process.platform === "win32")("rejects a dangling symlink as a present path", () => {
+    const directory = mkdtempSync(join(tmpdir(), "image-content-symlink-"));
+    try {
+      const link = join(directory, "secret.pem");
+      symlinkSync(join(directory, "missing-target"), link);
+      const result = spawnSync(process.execPath, ["-e", imagePathAbsenceProbe(link)], {
+        encoding: "utf8",
+        timeout: 2000,
+      });
+      expect(result.error).toBeUndefined();
+      expect(result.signal).toBeNull();
+      expect(result.status).toBe(1);
+    } finally {
+      rmSync(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    }
+  });
+
+  it("reports secret filenames and fails closed on an unreadable listing", () => {
+    const directory = mkdtempSync(join(tmpdir(), "image-content-listing-"));
+    try {
+      const file = join(directory, ".private.pem");
+      writeFileSync(file, "synthetic");
+      writeFileSync(join(directory, "safe.txt"), "synthetic");
+      const listed = spawnSync(process.execPath, ["-e", imageListingProbe(directory, "\\.pem$")], {
+        encoding: "utf8",
+        timeout: 2000,
+      });
+      expect(listed.error).toBeUndefined();
+      expect(listed.status).toBe(0);
+      expect(listed.stdout.trim()).toBe(".private.pem");
+      const invalid = spawnSync(process.execPath, ["-e", imageListingProbe(file, "\\.pem$")], {
+        encoding: "utf8",
+        timeout: 2000,
+      });
+      expect(invalid.error).toBeUndefined();
+      expect(invalid.signal).toBeNull();
+      expect(invalid.status).toBe(1);
+      expect(invalid.stderr).toContain("ENOTDIR");
+    } finally {
+      rmSync(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    }
   });
 
   it("lets CI Docker app builds opt out of the local low-RAM hard-fail", () => {
     // Hosted buildx runners often report ~7–8 GiB; local Docker Desktop keeps the hard-fail.
     expect(read("Dockerfile")).toMatch(/ARG ALLOW_LOW_RAM_BUILD=0/);
     expect(read(".github/workflows/docker-image.yml")).toMatch(/ALLOW_LOW_RAM_BUILD=1/);
+  });
+
+  it("requires NEXT_PUBLIC_SUPABASE_URL as an explicit app build arg instead of defaulting to production", () => {
+    const dockerfile = read("Dockerfile");
+    expect(dockerfile).toMatch(/^ARG NEXT_PUBLIC_SUPABASE_URL\s*$/m);
+    expect(dockerfile).not.toMatch(/^ARG NEXT_PUBLIC_SUPABASE_URL=/m);
+    expect(dockerfile).toMatch(/if \[ -z "\$\{NEXT_PUBLIC_SUPABASE_URL\}" \]; then[\s\S]*?exit 1/);
+    expect(read(".github/workflows/docker-image.yml")).toMatch(
+      /^\s*NEXT_PUBLIC_SUPABASE_URL=https:\/\/\S+\.supabase\.co\s*$/m,
+    );
+    expect(read("scripts/build-multiplatform.sh")).toContain('--build-arg "NEXT_PUBLIC_SUPABASE_URL=');
   });
 
   it("keeps sensitive and machine-local files out of Docker build contexts", () => {
@@ -152,7 +370,132 @@ describe("container delivery contract", () => {
     const smoke = read("scripts/app-container-smoke.mjs");
     const workflow = read(".github/workflows/docker-image.yml");
     expect(smoke).toContain("RAG_QUERY_HASH_SECRET=smoke-test-hash-secret");
-    expect(workflow).toContain("RAG_QUERY_HASH_SECRET=smoke-test-hash-secret");
+    expect(workflow).toContain("run: node scripts/app-container-smoke.mjs");
+  });
+
+  it.each([
+    [200, '{"status":"ok","checks":{"openaiConfig":"skipped","supabaseConfig":"ok"},"demoMode":false}', 0],
+    [503, '{"status":"ok","checks":{"openaiConfig":"skipped","supabaseConfig":"ok"},"demoMode":false}', 1],
+    [201, '{"status":"ok"}', 1],
+    [200, "not JSON", 1],
+    [200, "", 1],
+    [200, "null", 1],
+    [200, "[]", 1],
+  ])("requires HTTP 200 and object JSON in the real health probe (HTTP %i, %s)", (status, body, exitCode) => {
+    const script = `global.fetch = async () => ({ status: ${status}, json: async () => JSON.parse(${JSON.stringify(body)}) });\n${appHealthProbe("http://127.0.0.1:3000/api/health")}`;
+    const result = spawnSync(process.execPath, ["-e", script], { encoding: "utf8" });
+    expect(result.status, result.stderr).toBe(exitCode);
+    if (exitCode === 0) expect(JSON.parse(result.stdout).status).toBe("ok");
+  });
+
+  it.skipIf(process.platform === "win32").each([false, true])(
+    "starts the actual image CMD read-only and checks health, PID 1 and graceful stop (compatibility flag=%s)",
+    (explicitReadOnlyFlag) => {
+      const dir = mkdtempSync(join(tmpdir(), "app-container-command-"));
+      try {
+        const invocations = join(dir, "docker.jsonl");
+        const docker = join(dir, "docker");
+        writeFileSync(
+          docker,
+          `#!${process.execPath}
+const fs = require('node:fs');
+const args = process.argv.slice(2);
+fs.appendFileSync(process.env.SMOKE_TEST_INVOCATIONS, JSON.stringify(args) + '\\n');
+if (args[0] === 'run' && process.env.SMOKE_TEST_START_FAILURE === '1') { console.error('synthetic startup failure'); process.exit(125); }
+if (args[0] === 'exec') console.log(args.at(-1).includes('/proc/1/cmdline') ? 'next-server (v16.0.0)' : (process.env.SMOKE_TEST_HEALTH_BODY || JSON.stringify({status:'ok', checks:{openaiConfig:'skipped',supabaseConfig:'ok'},demoMode:false})));
+if (args[0] === 'inspect') {
+  if (process.env.SMOKE_TEST_INSPECT_SIGNAL === '1') process.kill(process.pid, 'SIGTERM');
+  console.log(process.env.SMOKE_TEST_INSPECT_OUTPUT ?? 'false false 0');
+  process.exit(Number(process.env.SMOKE_TEST_INSPECT_STATUS ?? '0'));
+}
+`,
+          { mode: 0o755 },
+        );
+        const env = {
+          ...process.env,
+          PATH: `${dir}${delimiter}${process.env.PATH ?? ""}`,
+          SMOKE_TEST_INVOCATIONS: invocations,
+        };
+        const helper = fileURLToPath(new URL("../scripts/app-container-smoke.mjs", import.meta.url));
+        const args = [helper, ...(explicitReadOnlyFlag ? ["--read-only"] : [])];
+        const result = spawnSync(process.execPath, args, { encoding: "utf8", env });
+        expect(result.status, result.stderr).toBe(0);
+        const calls = readFileSync(invocations, "utf8")
+          .trim()
+          .split("\n")
+          .map((line) => JSON.parse(line) as string[]);
+        const start = calls.find((call) => call[0] === "run")!;
+        expect(start).toContain("--network=none");
+        expect(start).toContain("--cap-drop=ALL");
+        expect(start).toContain("no-new-privileges:true");
+        expect(start).toContain("--read-only");
+        expect(start.at(-1)).toBe("clinical-kb-app:ci");
+        expect(calls.some((call) => call[0] === "exec" && call.at(-1)?.includes("fetch("))).toBe(true);
+        expect(calls.some((call) => call[0] === "exec" && call.at(-1)?.includes("/proc/1/cmdline"))).toBe(true);
+        expect(calls.some((call) => call[0] === "stop" && call.includes("30"))).toBe(true);
+        expect(calls.some((call) => call[0] === "inspect")).toBe(true);
+        const failed = spawnSync(process.execPath, args, {
+          encoding: "utf8",
+          env: { ...env, SMOKE_TEST_START_FAILURE: "1" },
+        });
+        expect(failed.status).toBe(1);
+        expect(failed.stderr).toContain("synthetic startup failure");
+        const unhealthy = spawnSync(process.execPath, args, {
+          encoding: "utf8",
+          env: { ...env, SMOKE_TEST_HEALTH_BODY: "{}" },
+        });
+        expect(unhealthy.status).toBe(1);
+        expect(unhealthy.stderr).toContain("App health status not ok");
+        for (const exitCode of [143]) {
+          const stopped = spawnSync(process.execPath, args, {
+            encoding: "utf8",
+            env: { ...env, SMOKE_TEST_INSPECT_OUTPUT: `false false ${exitCode}` },
+          });
+          expect(stopped.status, stopped.stderr).toBe(0);
+          expect(stopped.stdout).toContain("App smoke passed");
+        }
+        for (const inspection of [
+          { SMOKE_TEST_INSPECT_STATUS: "1", SMOKE_TEST_INSPECT_OUTPUT: "false false 0" },
+          { SMOKE_TEST_INSPECT_SIGNAL: "1" },
+          { SMOKE_TEST_INSPECT_OUTPUT: "" },
+          { SMOKE_TEST_INSPECT_OUTPUT: "malformed" },
+          { SMOKE_TEST_INSPECT_OUTPUT: "false false -1" },
+          { SMOKE_TEST_INSPECT_OUTPUT: "false false 256" },
+          { SMOKE_TEST_INSPECT_OUTPUT: "false false 0 extra" },
+          { SMOKE_TEST_INSPECT_OUTPUT: "False false 0" },
+          { SMOKE_TEST_INSPECT_OUTPUT: "false false 137" },
+          { SMOKE_TEST_INSPECT_OUTPUT: "false false 1" },
+          { SMOKE_TEST_INSPECT_OUTPUT: "false false 139" },
+          { SMOKE_TEST_INSPECT_OUTPUT: "false false 255" },
+          { SMOKE_TEST_INSPECT_OUTPUT: "true false 0" },
+          { SMOKE_TEST_INSPECT_OUTPUT: "false true 0" },
+        ]) {
+          const rejected = spawnSync(process.execPath, args, {
+            encoding: "utf8",
+            env: { ...env, ...inspection },
+          });
+          expect(rejected.status, JSON.stringify(inspection)).toBe(1);
+          expect(rejected.stdout).not.toContain("App smoke passed");
+          expect(rejected.stderr).toContain("Container shutdown inspection failed");
+        }
+      } finally {
+        rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      }
+    },
+  );
+
+  it("requires a real read-only app startup rather than a fetch-only replacement command", () => {
+    const smoke = read("scripts/app-container-smoke.mjs");
+    const workflow = read(".github/workflows/docker-image.yml");
+    const step = workflow.match(/- name: Run app container smoke[\s\S]*?(?=\n      - name:)/)?.[0];
+    expect(step).toContain("run: node scripts/app-container-smoke.mjs");
+    expect(step).not.toMatch(/continue-on-error|\|\| true/);
+    expect(workflow).not.toContain("Read-only runtime check (advisory)");
+    for (const flag of ["--read-only", "--network=none", "--cap-drop=ALL", "no-new-privileges:true"]) {
+      expect(smoke).toContain(JSON.stringify(flag));
+    }
+    expect(smoke).toContain('"-d"');
+    expect(smoke).toContain("const health = await waitForHealth()");
   });
 
   it("accepts Next 16 next-server PID 1 in app container smoke", () => {
@@ -179,14 +522,32 @@ describe("container delivery contract", () => {
     expect(sleep).not.toMatch(/Promise\.race\(\[\s*new Promise/);
   });
 
-  it("fails closed on missing Cmd, shell listing errors, and SIGKILL smoke exits", () => {
+  it("fails closed on missing Cmd, filesystem probe errors, and SIGKILL smoke exits", () => {
     const contract = read("scripts/check-image-content-contract.mjs");
     const smoke = read("scripts/app-container-smoke.mjs");
     expect(contract).toContain('cmd === "null"');
-    expect(contract).toContain("assertShellListingClean");
-    expect(contract).toContain("/app/worker/python/test_*.py");
-    expect(smoke).toContain('exitCode === "137"');
+    expect(contract).toContain("assertListingClean");
+    expect(contract).toContain('"/app/worker/python"');
+    expect(contract).not.toContain('"--entrypoint", "sh"');
+    expect(contract).not.toContain('"--entrypoint", "test"');
+    expect(smoke).toContain("isCleanContainerExit(inspectResult)");
     expect(smoke).toContain("State.Running");
+  });
+
+  it.each([
+    [{ status: 0, stdout: "false false 0\n" }, true],
+    [{ status: 0, stdout: "false false 143\n" }, true],
+    [{ status: 1, stdout: "false false 0\n" }, false],
+    [{ status: 0, stdout: "" }, false],
+    [{ status: 0, stdout: "false false" }, false],
+    [{ status: 0, stdout: "false false 0 extra" }, false],
+    [{ status: 0, stdout: "false false 1\n" }, false],
+    [{ status: 0, stdout: "false false 137\n" }, false],
+    [{ status: 0, stdout: "true false 0\n" }, false],
+    [{ status: 0, stdout: "false true 0\n" }, false],
+    [{ status: null, signal: "SIGTERM", stdout: "false false 0\n" }, false],
+  ])("validates complete shutdown evidence %j", (result, expected) => {
+    expect(isCleanContainerExit(result)).toBe(expected);
   });
 
   it("keeps Trivy SBOM and vulnerability steps non-blocking in CI", () => {

@@ -150,21 +150,21 @@ describe("proxy auth session refresh", () => {
 
 describe("production mockup boundary", () => {
   it("blocks ordinary production traffic and permits only the explicit isolated Playwright advisory profile", () => {
-    expect(shouldBlockProductionMockups("/mockups/tools-workflow-board", { NODE_ENV: "production" })).toBe(true);
+    expect(shouldBlockProductionMockups("/mockups/work-roles", { NODE_ENV: "production" })).toBe(true);
     expect(
-      shouldBlockProductionMockups("/mockups/tools-workflow-board", {
+      shouldBlockProductionMockups("/mockups/work-roles", {
         NODE_ENV: "production",
         PLAYWRIGHT_OFFLINE_MODE: "true",
       }),
     ).toBe(true);
     expect(
-      shouldBlockProductionMockups("/mockups/tools-workflow-board", {
+      shouldBlockProductionMockups("/mockups/work-roles", {
         NODE_ENV: "production",
         NEXT_PUBLIC_MOCKUPS_ENABLED: "true",
       }),
     ).toBe(true);
     expect(
-      shouldBlockProductionMockups("/mockups/tools-workflow-board", {
+      shouldBlockProductionMockups("/mockups/work-roles", {
         NODE_ENV: "production",
         PLAYWRIGHT_OFFLINE_MODE: "true",
         NEXT_PUBLIC_MOCKUPS_ENABLED: "true",
@@ -173,18 +173,9 @@ describe("production mockup boundary", () => {
     expect(shouldBlockProductionMockups("/applications", { NODE_ENV: "production" })).toBe(false);
   });
 
-  it("lets the Care Plan subtree reach its own developer gate, and keeps look-alike prefixes blocked", () => {
-    // The gated prefix is exactly `/mockups/care-plan`. Its base, a patient deep
-    // route and an episode deep route must reach DeveloperAreaGate rather than a
-    // bare 404; every neighbouring path that merely begins with the same
-    // characters stays behind the blanket production block.
-    for (const path of [
-      "/mockups/care-plan",
-      "/mockups/care-plan/patients/SYN-PATIENT-001/management-plan",
-      "/mockups/care-plan/patients/SYN-PATIENT-001/presentations/SYN-PRESENTATION-001",
-    ]) {
-      expect(shouldBlockProductionMockups(path, { NODE_ENV: "production" }), path).toBe(false);
-    }
+  it("blocks the retired Care Plan prototype's paths like any other mockup", () => {
+    // The Care Plan prototype and its developer-gated prefix were retired on
+    // 2026-10-21, so its old addresses get the blanket production 404.
     for (const path of [
       "/mockups/care-plan-archive",
       "/mockups/care-plan-archive/patients/SYN-PATIENT-001",
@@ -194,33 +185,10 @@ describe("production mockup boundary", () => {
       expect(shouldBlockProductionMockups(path, { NODE_ENV: "production" }), path).toBe(true);
     }
   });
-
-  it("lets the developer-gated hub through the blanket block, without opting in the flag", () => {
-    // This subtree carries its own signed-in-administrator gate
-    // (DeveloperAreaGate) instead of the flat 404 — no NEXT_PUBLIC_MOCKUPS_ENABLED
-    // opt-in should be required, and no OTHER /mockups/** path should be affected.
-    for (const path of ["/mockups/development", "/mockups/development/ledger"]) {
-      expect(shouldBlockProductionMockups(path, { NODE_ENV: "production" })).toBe(false);
-    }
-    // A path that merely starts with the same characters is not a prefix match.
-    expect(shouldBlockProductionMockups("/mockups/development-notes", { NODE_ENV: "production" })).toBe(true);
-  });
 });
 
 describe("developer-area header (x-developer-area)", () => {
-  it("sets the header only for the two developer-gated paths, and strips a client-supplied copy elsewhere", async () => {
-    const developmentRequest = requestFor("/mockups/development");
-    const developmentResponse = await proxy(developmentRequest);
-    expect(developmentResponse.headers.get("x-middleware-request-x-developer-area")).toBe("1");
-    expect(developmentResponse.headers.get("x-middleware-request-x-developer-area-path")).toBe("/mockups/development");
-
-    const carePlanRequest = requestFor("/mockups/care-plan/patients/SYN-PATIENT-001/presentations");
-    const carePlanResponse = await proxy(carePlanRequest);
-    expect(carePlanResponse.headers.get("x-middleware-request-x-developer-area")).toBe("1");
-    expect(carePlanResponse.headers.get("x-middleware-request-x-developer-area-path")).toBe(
-      "/mockups/care-plan/patients/SYN-PATIENT-001/presentations",
-    );
-
+  it("sets the header only for the developer-gated paths, and strips a client-supplied copy elsewhere", async () => {
     const adminDevRequest = requestFor("/admin/developer-hub");
     const adminDevResponse = await proxy(adminDevRequest);
     expect(adminDevResponse.headers.get("x-middleware-request-x-developer-area")).toBe("1");
@@ -229,9 +197,9 @@ describe("developer-area header (x-developer-area)", () => {
     const carePlanLookAlikeResponse = await proxy(requestFor("/mockups/care-plan-archive"));
     expect(carePlanLookAlikeResponse.headers.get("x-middleware-request-x-developer-area")).toBeNull();
 
-    const otherMockupRequest = requestFor("/mockups/tools-workflow-board");
+    const otherMockupRequest = requestFor("/mockups/work-roles");
     otherMockupRequest.headers.set("x-developer-area", "1");
-    otherMockupRequest.headers.set("x-developer-area-path", "/mockups/development");
+    otherMockupRequest.headers.set("x-developer-area-path", "/admin/developer-hub");
     const otherMockupResponse = await proxy(otherMockupRequest);
     // Spoofed header must not survive into the forwarded request.
     expect(otherMockupResponse.headers.get("x-middleware-request-x-developer-area")).toBeNull();
@@ -425,11 +393,11 @@ describe("passwordless developer-area access (?devkey)", () => {
   }
 
   it.each(["http:", "https:"])(
-    "exchanges a correct key for three scoped cookies over %s and strips the key",
+    "exchanges a correct key for a scoped cookie over %s and strips the key",
     async (protocol) => {
       await withKey(async () => {
         const response = await proxy(
-          new NextRequest(`${protocol}//localhost/mockups/development?${DEVELOPER_ACCESS_QUERY_PARAM}=${KEY}`),
+          new NextRequest(`${protocol}//localhost/admin/developer-hub?${DEVELOPER_ACCESS_QUERY_PARAM}=${KEY}`),
         );
 
         const location = response.headers.get("location");
@@ -445,12 +413,8 @@ describe("passwordless developer-area access (?devkey)", () => {
         const cookies = response.headers
           .getSetCookie()
           .filter((cookie) => cookie.startsWith(`${DEVELOPER_ACCESS_COOKIE}=`));
-        expect(cookies).toHaveLength(3);
-        expect(cookies.map((cookie) => cookie.match(/(?:^|;\s*)Path=([^;]+)/)?.[1])).toEqual([
-          "/admin/developer-hub",
-          "/mockups/development",
-          "/mockups/care-plan",
-        ]);
+        expect(cookies).toHaveLength(1);
+        expect(cookies.map((cookie) => cookie.match(/(?:^|;\s*)Path=([^;]+)/)?.[1])).toEqual(["/admin/developer-hub"]);
         for (const cookie of cookies) {
           expect(cookie).toContain("HttpOnly");
           expect(cookie).toContain("SameSite=lax");
@@ -465,25 +429,25 @@ describe("passwordless developer-area access (?devkey)", () => {
     },
   );
 
-  it("issues exactly three cookies when a key exchange also renews an existing valid cookie", async () => {
+  it("issues exactly one cookie when a key exchange also renews an existing valid cookie", async () => {
     await withKey(async () => {
       const token = issueDeveloperAccessToken({ DEVELOPER_AREA_ACCESS_KEY: KEY }) as string;
       const response = await proxy(
         requestWithCookie(
-          `/mockups/development?${DEVELOPER_ACCESS_QUERY_PARAM}=${KEY}`,
+          `/admin/developer-hub?${DEVELOPER_ACCESS_QUERY_PARAM}=${KEY}`,
           DEVELOPER_ACCESS_COOKIE,
           token,
         ),
       );
       expect(
         response.headers.getSetCookie().filter((cookie) => cookie.startsWith(`${DEVELOPER_ACCESS_COOKIE}=`)),
-      ).toHaveLength(3);
+      ).toHaveLength(1);
     });
   });
 
   it("issues no cookie for a wrong key, but still strips it from the URL", async () => {
     await withKey(async () => {
-      const response = await proxy(requestFor(`/mockups/development?${DEVELOPER_ACCESS_QUERY_PARAM}=wrong-guess`));
+      const response = await proxy(requestFor(`/admin/developer-hub?${DEVELOPER_ACCESS_QUERY_PARAM}=wrong-guess`));
 
       expect(accessCookie(response)).toBeUndefined();
       // Stripped anyway, so a failed guess cannot ride the DEVELOPER_AREA_PATH
@@ -500,7 +464,7 @@ describe("passwordless developer-area access (?devkey)", () => {
     const previous = process.env.DEVELOPER_AREA_ACCESS_KEY;
     delete process.env.DEVELOPER_AREA_ACCESS_KEY;
     try {
-      const response = await proxy(requestFor(`/mockups/development?${DEVELOPER_ACCESS_QUERY_PARAM}=${KEY}`));
+      const response = await proxy(requestFor(`/admin/developer-hub?${DEVELOPER_ACCESS_QUERY_PARAM}=${KEY}`));
       expect(accessCookie(response)).toBeUndefined();
       expect(response.headers.get("location")).toContain(`${DEVELOPER_ACCESS_ERROR_PARAM}=1`);
     } finally {
@@ -523,14 +487,14 @@ describe("passwordless developer-area access (?devkey)", () => {
     await withKey(async () => {
       const token = issueDeveloperAccessToken({ DEVELOPER_AREA_ACCESS_KEY: KEY }) as string;
 
-      const renewed = await proxy(requestWithCookie("/mockups/development", DEVELOPER_ACCESS_COOKIE, token));
+      const renewed = await proxy(requestWithCookie("/admin/developer-hub", DEVELOPER_ACCESS_COOKIE, token));
       expect(
         renewed.headers.getSetCookie().filter((cookie) => cookie.startsWith(`${DEVELOPER_ACCESS_COOKIE}=`)),
-      ).toHaveLength(3);
+      ).toHaveLength(1);
 
       // Rolling renewal must extend only what already verifies; a forged value
       // is left to be refused by DeveloperAreaGate, never re-stamped as valid.
-      const forged = await proxy(requestWithCookie("/mockups/development", DEVELOPER_ACCESS_COOKIE, "v1.1.forged"));
+      const forged = await proxy(requestWithCookie("/admin/developer-hub", DEVELOPER_ACCESS_COOKIE, "v1.1.forged"));
       expect(accessCookie(forged)).toBeUndefined();
     });
   });

@@ -7,7 +7,7 @@ import { usePatientProfile } from "@/components/clinical-dashboard/patient-profi
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { ChoiceChip } from "@/components/ui/chip";
 import { TextField } from "@/components/ui/text-field";
-import { cn, fieldLabel, ToggleSwitch } from "@/components/ui-primitives";
+import { controlDisabled, cn, fieldLabel, ToggleSwitch } from "@/components/ui-primitives";
 import { catalogueMedicationOptions, medicationDisplayName } from "@/lib/medication-interactions";
 import { SCR_UMOL_PER_MGDL } from "@/lib/medication-patient-alerts";
 import type { AllergyClass, HepaticSeverity, ScrUnit } from "@/lib/medication-patient-alerts";
@@ -444,7 +444,10 @@ export function PatientProfilePanel({
             type="button"
             onClick={clear}
             disabled={isEmpty}
-            className="col-span-2 inline-flex min-h-tap items-center justify-self-end gap-1.5 rounded-lg border border-[color:var(--border)] px-2.5 text-2xs font-semibold text-[color:var(--text-muted)] transition hover:border-[color:var(--border-strong)] hover:text-[color:var(--text-heading)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] disabled:cursor-not-allowed disabled:opacity-50 sm:ml-auto"
+            className={cn(
+              controlDisabled,
+              "col-span-2 inline-flex min-h-tap items-center justify-self-end gap-1.5 rounded-lg border border-[color:var(--border)] px-2.5 text-2xs font-semibold text-[color:var(--text-muted)] transition hover:border-[color:var(--border-strong)] hover:text-[color:var(--text-heading)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] disabled:cursor-not-allowed sm:ml-auto",
+            )}
           >
             <Eraser className="h-3.5 w-3.5" aria-hidden="true" />
             Clear

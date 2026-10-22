@@ -9,11 +9,11 @@ import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 import { parseIssues } from "./check-outstanding-issues.mjs";
 import { issueIdCitations } from "./issue-id.mjs";
 import { applyRequest, planRequestBatch } from "./ledger-inbox.mjs";
+import { appliedRecordDirectories } from "./lib/inbox-archive.mjs";
 import { splitCells } from "./outstanding-issues.mjs";
 
 const LEDGER_PATH = "docs/outstanding-issues.md";
 const INBOX_DIR = "docs/outstanding-issues-inbox";
-const APPLIED_DIR = `${INBOX_DIR}/applied`;
 
 function git(args, cwd) {
   return execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
@@ -240,7 +240,8 @@ function pendingInboxRequests(cwd, ref) {
 
 function appliedRequestsInWorktree(cwd) {
   return new Map(
-    inboxRequestsInWorktree(cwd, APPLIED_DIR)
+    appliedRecordDirectories(cwd)
+      .flatMap((directory) => inboxRequestsInWorktree(cwd, directory))
       .filter((request) => request?.id)
       .map((request) => [request.id, request]),
   );

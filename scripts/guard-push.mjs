@@ -285,9 +285,9 @@ export function autoMergeVerdict(branch, prPayload, isForcePush = false, carries
   if (prPayload.autoMergeRequest) {
     // Merging to `main` applies migrations to the live clinical database automatically,
     // within seconds, with no deploy step in between (AGENTS.md, "Supabase project safety").
-    // Auto-merge on such a PR therefore schedules an unattended production schema change,
-    // which is why AGENTS.md forbids it outright. That rule was documentation-only until
-    // this branch: nothing in the push path knew what a migration was.
+    // Migration PRs merge by hand and PR policy fails one while armed (owner decision
+    // 2026-10-20). Adding a migration to an armed PR would still schedule a schema change
+    // nobody armed for, so the push stays blocked; the user disarms first.
     if (carriesMigration) {
       return { block: true, warn: false, reason: "auto-merge-armed-migration", number: prPayload.number };
     }
@@ -328,8 +328,9 @@ function autoMergeGuard(branches, forcePushBranches = new Set(), changedFiles = 
         verdict.reason === "auto-merge-armed-migration"
           ? `PR #${verdict.number} on ${branch} has auto-merge ARMED and this push carries a hosted migration.\n` +
             `  Merging to main applies migrations to the LIVE clinical database automatically, within seconds.\n` +
-            `  Auto-merge on a migration PR therefore schedules an unattended production schema change.\n` +
-            `  Ask the user to disable auto-merge and merge it inside an approved window. No override.`
+            `  Adding a migration to an already-armed PR schedules a schema change nobody armed for.\n` +
+            `  Migration PRs merge by hand (docs/decisions/2026-10-20-database-prs-merge-by-hand.md).\n` +
+            `  Ask the user to disable auto-merge first; never arm it on a migration PR. No override.`
           : `PR #${verdict.number} on ${branch} has auto-merge ARMED and this push force-updates the branch.\n` +
             `  A force-push while armed can discard the commit GitHub already validated or is mid-evaluating.\n` +
             `  Push a fast-forward commit instead, or wait for the user to change the auto-merge state. No override.`;

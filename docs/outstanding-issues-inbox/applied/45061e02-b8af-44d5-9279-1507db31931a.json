@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "45061e02-b8af-44d5-9279-1507db31931a",
+  "createdOn": "2026-10-17",
+  "action": "done",
+  "payload": {
+    "id": "#XNAHY2",
+    "outcome": "Implemented owner-scoped registrar_training_milestones CRUD and sync in src/lib/cme/training-repository.ts and wired buildOwnerTrainingAssessments into src/lib/cme/training-page-data.ts, src/app/(search-app)/cme/training/page.tsx, and src/components/cme/cme-training-page.tsx; verified with tests/cme-training-registrar-milestones.test.ts (7/7) and check:owner-scope.",
+    "baseRowFingerprint": "78de0994ea5eb4dc277fed4bf99e3830088b8c7b37956f9b3bd0e3e3d9afb78f",
+    "targetUlid": "01M51JV9EEXNAHY22XVMGMAD14"
+  }
+}

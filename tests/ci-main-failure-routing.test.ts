@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 
 import { describe, expect, it } from "vitest";
 
@@ -43,10 +44,10 @@ describe("main CI failure routing", () => {
 
   /**
    * An alert that never clears becomes wallpaper, which is the failure mode #9Z197J records for the
-   * browser matrix. A green run must close the issue, so an open issue always means main is red now.
+   * browser matrix. Successful evidence must clear each outstanding failure before closure.
    */
-  it("closes the issue on the next green main run", () => {
-    expect(routing).toMatch(/if \(!red\)/);
+  it("closes the issue only when every outstanding check has recovered", () => {
+    expect(routing).toContain("if (!red && pending.size === 0)");
     expect(routing).toContain('state: "closed"');
   });
 
@@ -191,6 +192,9 @@ const ROUTED_SHA = "fedcba9876543210fedcba9876543210fedcba98";
 
 async function runRouting(options: {
   results: { prRequired: string; matrix: string; visual: string };
+  headSha?: string;
+  runId?: number;
+  runAttempt?: number;
   jobs?: ListedJob[];
   listingFails?: boolean;
   openIssues?: Issue[];
@@ -252,13 +256,18 @@ async function runRouting(options: {
       },
     },
   };
-  const context = { repo: { owner: "BigSimmo", repo: "PsychSift" }, runId: 1, serverUrl: "https://github.com" };
+  const context = {
+    repo: { owner: "BigSimmo", repo: "PsychSift" },
+    runId: options.runId ?? 1,
+    serverUrl: "https://github.com",
+  };
   const core = { info: () => undefined, warning: () => undefined };
   const env = {
     PR_REQUIRED_RESULT: options.results.prRequired,
     BROWSER_MATRIX_RESULT: options.results.matrix,
     VISUAL_BASELINE_RESULT: options.results.visual,
-    HEAD_SHA: RUN_SHA,
+    HEAD_SHA: options.headSha ?? RUN_SHA,
+    RUN_ATTEMPT: String(options.runAttempt ?? 1),
     HEAD_MESSAGE: "Example merge",
   };
   const previous = Object.fromEntries(Object.keys(env).map((key) => [key, process.env[key]]));
@@ -291,6 +300,8 @@ describe("main CI failure routing, executed", () => {
     expect(closed).toHaveLength(0);
     expect(created).toHaveLength(1);
     expect(created[0]!.body).toContain("release-browser-matrix (webkit, mobile-webkit, 5, 5)");
+    // Owner decision 2026-10-21: no @mention; the 7 am daily health summary reports it.
+    expect(created[0]!.body).not.toContain("@BigSimmo");
   });
 
   it("still alerts when a continue-on-error matrix leg timed out", async () => {
@@ -533,3 +544,356 @@ describe("main CI failure routing ignores superseded runs", () => {
 function ownIssueWithoutStamp(): Issue {
   return { number: 42, title: "CI on main is failing", body: "<!-- main-ci-routing:v1 -->" };
 }
+
+function pendingChecks(body: string) {
+  const encoded = /<!-- main-ci-pending:v1:([^\n]*?) -->/.exec(body)?.[1];
+  if (!encoded) throw new Error("routing did not persist pending checks");
+  return JSON.parse(decodeURIComponent(encoded)) as Array<{ name: string; sha: string; runId: string }>;
+}
+
+function updatedIssue(result: Awaited<ReturnType<typeof runRouting>>): Issue {
+  const body = result.updates.at(-1)?.body ?? result.created.at(-1)?.body;
+  if (!body) throw new Error("routing did not author an issue body");
+  return { number: 42, title: "CI on main is failing", body };
+}
+
+describe("main CI preserves unresolved check history", () => {
+  const green = { prRequired: "success", matrix: "success", visual: "skipped" };
+  const scoped = { prRequired: "success", matrix: "skipped", visual: "skipped" };
+  const webkit = "release-browser-matrix (webkit, mobile-webkit, 1, 5)";
+  const firefox = "release-browser-matrix (firefox, firefox, 1, 4)";
+  const failed = async (names = [webkit]) =>
+    runRouting({
+      results: green,
+      headSha: ROUTED_SHA,
+      jobs: names.map((name) => ({ name, conclusion: "failure" })),
+    });
+
+  it("keeps failure -> unrelated scoped success open -> closes after applicable success", async () => {
+    const failure = await failed();
+    const docs = await runRouting({
+      results: scoped,
+      openIssues: [updatedIssue(failure)],
+      jobs: [{ name: "Static PR checks", conclusion: "success" }],
+    });
+    expect(docs.closed).toEqual([]);
+    expect(docs.comments).toEqual([]);
+    expect(pendingChecks(updatedIssue(docs).body!)).toEqual([
+      expect.objectContaining({ name: webkit, sha: ROUTED_SHA, runId: "1" }),
+    ]);
+    const recovery = await runRouting({
+      results: green,
+      runId: 3,
+      openIssues: [updatedIssue(docs)],
+      jobs: [{ name: webkit, conclusion: "success" }],
+    });
+    expect(recovery.closed).toEqual([42]);
+    expect(pendingChecks(updatedIssue(recovery).body!)).toEqual([]);
+  });
+
+  it("retains the remaining failure after partial recovery and combines later new failures", async () => {
+    const failure = await failed([webkit, firefox]);
+    const partial = await runRouting({
+      results: green,
+      openIssues: [updatedIssue(failure)],
+      jobs: [
+        { name: webkit, conclusion: "success" },
+        { name: "Build", conclusion: "failure" },
+      ],
+    });
+    expect(partial.closed).toEqual([]);
+    expect(pendingChecks(updatedIssue(partial).body!).map((item) => item.name)).toEqual([firefox, "Build"]);
+  });
+
+  it.each(["cancelled", "skipped", null])("does not accept an applicable %s rerun as recovery", async (conclusion) => {
+    const failure = await failed();
+    const retry = await runRouting({
+      results: green,
+      openIssues: [updatedIssue(failure)],
+      jobs: [{ name: webkit, conclusion }],
+    });
+    expect(retry.closed).toEqual([]);
+    expect(pendingChecks(updatedIssue(retry).body!).map((item) => item.name)).toContain(webkit);
+  });
+
+  it("can recover on a later attempt of the same run and commit", async () => {
+    const failure = await failed();
+    const recovery = await runRouting({
+      results: green,
+      headSha: ROUTED_SHA,
+      runAttempt: 2,
+      openIssues: [updatedIssue(failure)],
+      jobs: [{ name: webkit, conclusion: "success" }],
+    });
+    expect(recovery.closed).toEqual([42]);
+  });
+
+  it("does not clear a same-commit failure with an older run's success", async () => {
+    const failure = await runRouting({ results: green, runId: 10, jobs: [{ name: webkit, conclusion: "failure" }] });
+    const stale = await runRouting({
+      results: green,
+      runId: 9,
+      openIssues: [updatedIssue(failure)],
+      jobs: [{ name: webkit, conclusion: "success" }],
+    });
+    expect(stale.closed).toEqual([]);
+  });
+
+  it("does not replace newer same-commit failure evidence with an older red run", async () => {
+    const failure = await runRouting({ results: green, runId: 10, jobs: [{ name: webkit, conclusion: "failure" }] });
+    const olderRed = await runRouting({
+      results: green,
+      runId: 8,
+      openIssues: [updatedIssue(failure)],
+      jobs: [{ name: webkit, conclusion: "failure" }],
+    });
+    expect(olderRed.updates).toEqual([]);
+    const staleGreen = await runRouting({
+      results: green,
+      runId: 9,
+      openIssues: [updatedIssue(failure)],
+      jobs: [{ name: webkit, conclusion: "success" }],
+    });
+    expect(staleGreen.closed).toEqual([]);
+  });
+
+  it.each([
+    { failureRun: 8, failureAttempt: 1, recoveryRun: 10, recoveryAttempt: 1, lateRun: 9, lateAttempt: 1 },
+    { failureRun: 10, failureAttempt: 1, recoveryRun: 10, recoveryAttempt: 3, lateRun: 10, lateAttempt: 2 },
+  ])("does not reopen after a newer same-commit recovery: %j", async (ordering) => {
+    const failure = await runRouting({
+      results: green,
+      runId: ordering.failureRun,
+      runAttempt: ordering.failureAttempt,
+      jobs: [{ name: webkit, conclusion: "failure" }],
+    });
+    const recovery = await runRouting({
+      results: green,
+      runId: ordering.recoveryRun,
+      runAttempt: ordering.recoveryAttempt,
+      openIssues: [updatedIssue(failure)],
+      jobs: [{ name: webkit, conclusion: "success" }],
+    });
+    expect(recovery.closed).toEqual([42]);
+    const closedIssue = updatedIssue(recovery);
+    expect(closedIssue.body).toContain(`<!-- routed-run:${ordering.recoveryRun}:${ordering.recoveryAttempt} -->`);
+    const lateFailure = await runRouting({
+      results: green,
+      runId: ordering.lateRun,
+      runAttempt: ordering.lateAttempt,
+      closedIssues: [closedIssue],
+      jobs: [{ name: webkit, conclusion: "failure" }],
+    });
+    expect(lateFailure.updates).toEqual([]);
+    expect(lateFailure.created).toEqual([]);
+    expect(lateFailure.comments).toEqual([]);
+    expect(lateFailure.compared).toEqual([]);
+  });
+
+  it("preserves descendant commit ordering even when its run ID is lower", async () => {
+    const failure = await runRouting({
+      results: green,
+      headSha: ROUTED_SHA,
+      runId: 10,
+      jobs: [{ name: webkit, conclusion: "failure" }],
+    });
+    const recovery = await runRouting({
+      results: green,
+      runId: 9,
+      compare: "ahead",
+      openIssues: [updatedIssue(failure)],
+      jobs: [{ name: webkit, conclusion: "success" }],
+    });
+    expect(recovery.closed).toEqual([42]);
+  });
+
+  it("stamps the latest same-commit green observation on an already closed issue", async () => {
+    const closedIssue: Issue = {
+      number: 42,
+      title: "CI on main is failing",
+      body: `<!-- main-ci-routing:v1 -->\n<!-- routed-sha:${RUN_SHA} -->\n<!-- routed-run:8:1 -->`,
+    };
+    const observation = await runRouting({ results: green, runId: 10, closedIssues: [closedIssue], jobs: [] });
+    expect(observation.updates).toHaveLength(1);
+    expect(observation.updates[0]!.body).toContain("<!-- routed-run:10:1 -->");
+    expect(observation.updates[0]!.body).not.toContain("<!-- routed-run:8:1 -->");
+  });
+
+  it.each(["diverged", new Error("comparison unavailable")] as const)(
+    "does not infer recovery from unproved ordering: %s",
+    async (compare) => {
+      const failure = await failed();
+      const retry = await runRouting({
+        results: green,
+        compare,
+        openIssues: [updatedIssue(failure)],
+        jobs: [{ name: webkit, conclusion: "success" }],
+      });
+      expect(retry.closed).toEqual([]);
+    },
+  );
+
+  it("migrates an existing issue's named failures without clearing them on a docs push", async () => {
+    const legacy: Issue = {
+      number: 42,
+      title: "CI on main is failing",
+      body: `<!-- main-ci-routing:v1 -->\n<!-- routed-sha:${ROUTED_SHA} -->\n### Failing jobs\n\n- \`${webkit}\`: failure\n\n### Terminal job results\n- \`PR required\`: success`,
+    };
+    const docs = await runRouting({
+      results: scoped,
+      openIssues: [legacy],
+      jobs: [{ name: "PR required", conclusion: "success" }],
+    });
+    expect(docs.closed).toEqual([]);
+    expect(pendingChecks(updatedIssue(docs).body!)).toEqual([
+      expect.objectContaining({ name: webkit, sha: ROUTED_SHA }),
+    ]);
+  });
+
+  it("retains an alert when persisted check evidence is corrupt", async () => {
+    const corrupt = {
+      number: 42,
+      title: "CI on main is failing",
+      body: "<!-- main-ci-routing:v1 -->\n<!-- main-ci-pending:v1:not-json -->",
+    };
+    const retry = await runRouting({
+      results: green,
+      openIssues: [corrupt],
+      jobs: [{ name: webkit, conclusion: "success" }],
+    });
+    expect(retry.closed).toEqual([]);
+    expect(updatedIssue(retry).body).toContain("manual review required");
+  });
+
+  it("does not clear unidentified checks from a failed listing with an unrelated aggregate pass", async () => {
+    const unknown = await runRouting({
+      results: { prRequired: "failure", matrix: "skipped", visual: "skipped" },
+      listingFails: true,
+    });
+    const retry = await runRouting({
+      results: scoped,
+      openIssues: [updatedIssue(unknown)],
+      jobs: [{ name: "PR required", conclusion: "success" }],
+    });
+    expect(retry.closed).toEqual([]);
+    expect(updatedIssue(retry).body).toContain("unidentified checks; manual review required");
+  });
+
+  it("retains outstanding checks if the applicable job listing is unavailable", async () => {
+    const failure = await failed();
+    const retry = await runRouting({ results: scoped, listingFails: true, openIssues: [updatedIssue(failure)] });
+    expect(retry.closed).toEqual([]);
+    expect(pendingChecks(updatedIssue(retry).body!).map((item) => item.name)).toContain(webkit);
+  });
+});
+
+const matrixRows = createRequire(import.meta.url)("js-yaml").load(workflow).jobs["release-browser-matrix"].strategy
+  .matrix.include as Array<{
+  engine: string;
+  project: string;
+  shard: number;
+  total: number;
+}>;
+const completeMatrixJobs = (): ListedJob[] =>
+  matrixRows.map(({ engine, project, shard, total }) => ({
+    name: `release-browser-matrix (${engine}, ${project}, ${shard}, ${total})`,
+    conclusion: "success",
+  }));
+
+describe("main CI whole-matrix cancellation recovery", () => {
+  const green = { prRequired: "success", matrix: "success", visual: "skipped" };
+  const cancelled = { ...green, matrix: "cancelled" };
+  const matrixName = "release-browser-matrix";
+  const cancelBeforeExpansion = () => runRouting({ results: cancelled, headSha: ROUTED_SHA, jobs: [] });
+
+  it("pins the trusted recovery inventory to every configured matrix leg", () => {
+    const groups = /const MATRIX_RECOVERY_GROUPS = (\[[\s\S]*?\n\]);/.exec(routingScriptSource())?.[1];
+    if (!groups) throw new Error("missing trusted matrix recovery inventory");
+    // JSON syntax does not allow the JavaScript array's final trailing comma.
+    const parsed = JSON.parse(groups.replace(/,\s*]/g, "]")) as Array<[string, string, number]>;
+    const names = parsed.flatMap(([engine, project, total]) =>
+      Array.from(
+        { length: total },
+        (_, index) => `release-browser-matrix (${engine}, ${project}, ${index + 1}, ${total})`,
+      ),
+    );
+    expect(names).toHaveLength(23);
+    expect(names.sort()).toEqual(
+      completeMatrixJobs()
+        .map((job) => job.name)
+        .sort(),
+    );
+  });
+
+  it("retains unexpanded cancellation through partial success and closes after the full successful matrix", async () => {
+    const failure = await cancelBeforeExpansion();
+    expect(pendingChecks(updatedIssue(failure).body!).map((item) => item.name)).toEqual([matrixName]);
+    const partial = await runRouting({
+      results: green,
+      runId: 2,
+      openIssues: [updatedIssue(failure)],
+      jobs: completeMatrixJobs().slice(0, 1),
+    });
+    expect(partial.closed).toEqual([]);
+    expect(pendingChecks(updatedIssue(partial).body!).map((item) => item.name)).toEqual([matrixName]);
+    const recovery = await runRouting({
+      results: green,
+      runId: 3,
+      openIssues: [updatedIssue(partial)],
+      jobs: completeMatrixJobs(),
+    });
+    expect(recovery.closed).toEqual([42]);
+    expect(pendingChecks(updatedIssue(recovery).body!)).toEqual([]);
+  });
+
+  it("records expanded cancelled legs without an unrecoverable extra aggregate", async () => {
+    const jobs = completeMatrixJobs();
+    jobs[0]!.conclusion = "cancelled";
+    const failure = await runRouting({ results: cancelled, headSha: ROUTED_SHA, jobs });
+    expect(pendingChecks(updatedIssue(failure).body!).map((item) => item.name)).toEqual([jobs[0]!.name]);
+    const recovery = await runRouting({
+      results: green,
+      openIssues: [updatedIssue(failure)],
+      jobs: [{ ...jobs[0]!, conclusion: "success" }],
+    });
+    expect(recovery.closed).toEqual([42]);
+  });
+
+  it.each(["missing", "duplicate", "unknown", "skipped", "cancelled", "bare-success"])(
+    "rejects %s matrix evidence for aggregate recovery",
+    async (variant) => {
+      const failure = await cancelBeforeExpansion();
+      const jobs = completeMatrixJobs();
+      if (variant === "missing") jobs.pop();
+      if (variant === "duplicate") jobs.push({ ...jobs[0]! });
+      if (variant === "unknown") jobs.push({ name: "release-browser-matrix (unknown)", conclusion: "success" });
+      if (variant === "skipped" || variant === "cancelled") jobs[0]!.conclusion = variant;
+      if (variant === "bare-success") jobs.splice(0, jobs.length, { name: matrixName, conclusion: "success" });
+      const recovery = await runRouting({ results: green, openIssues: [updatedIssue(failure)], jobs });
+      expect(recovery.closed).toEqual([]);
+      expect(pendingChecks(updatedIssue(recovery).body!).map((item) => item.name)).toContain(matrixName);
+    },
+  );
+
+  it.each(["success", "failure", "cancelled"])(
+    "requires any separate fallback Chromium leg to succeed: %s",
+    async (conclusion) => {
+      const failure = await cancelBeforeExpansion();
+      const jobs = [...completeMatrixJobs(), { name: "release-browser-matrix (chromium, chromium, 1, 1)", conclusion }];
+      const recovery = await runRouting({ results: green, openIssues: [updatedIssue(failure)], jobs });
+      expect(recovery.closed).toEqual(conclusion === "success" ? [42] : []);
+    },
+  );
+
+  it("does not recover a cancelled matrix with a complete superseded run", async () => {
+    const failure = await cancelBeforeExpansion();
+    const recovery = await runRouting({
+      results: green,
+      compare: "behind",
+      openIssues: [updatedIssue(failure)],
+      jobs: completeMatrixJobs(),
+    });
+    expect(recovery.closed).toEqual([]);
+    expect(recovery.updates).toEqual([]);
+  });
+});

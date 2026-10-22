@@ -105,7 +105,8 @@ not edit `docs/outstanding-issues.md`. Requests are immutable and merge independ
 dedicated fresh-base ledger branch may run `npm run issues:reconcile`, which allocates ULID-backed
 Crockford Base32 `#XXXXXX` IDs (six characters by default, growing when needed to avoid
 collisions) via `scripts/outstanding-issues.mjs`, applies
-requests serially, and moves them to `docs/outstanding-issues-inbox/applied/`. Never reconcile as
+requests serially, and moves them to `docs/outstanding-issues-inbox/applied/` (ended quarters later move
+unchanged to `applied/archive/<YYYY-Qn>/` via `npm run issues:archive-applied`). Never reconcile as
 part of an ordinary product PR.
 
 - Preserve the request file exactly after creation; correct mistakes with a new request rather than

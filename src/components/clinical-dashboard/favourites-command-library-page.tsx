@@ -37,7 +37,7 @@ import {
 import { SignedOutSampleNotice } from "@/components/mode-kit/signed-out-sample";
 import { WorkButton, WorkEmpty, WorkIconCircle, WorkSectionLabel } from "@/components/mode-kit/work";
 import { SidebarAccountSetupDialog as AccountSetupDialog } from "@/components/clinical-dashboard/lazy-sidebar-dialogs";
-import { cn, EmptyState } from "@/components/ui-primitives";
+import { controlDisabled, cn, EmptyState } from "@/components/ui-primitives";
 import { Chip, type ChipAppearance } from "@/components/ui/chip";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { announce } from "@/components/ui/live-announcer";
@@ -635,7 +635,8 @@ function ItemWorkspace({
                           }
                         }}
                         className={cn(
-                          "inline-flex min-h-tap items-center justify-center gap-2 rounded-lg border border-[color:var(--border)] px-3 text-sm font-bold text-[color:var(--text)] disabled:opacity-60",
+                          controlDisabled,
+                          "inline-flex min-h-tap items-center justify-center gap-2 rounded-lg border border-[color:var(--border)] px-3 text-sm font-bold text-[color:var(--text)]",
                           focusRing,
                         )}
                       >
@@ -661,7 +662,8 @@ function ItemWorkspace({
                     }
                   }}
                   className={cn(
-                    "inline-flex min-h-tap items-center justify-start gap-2 rounded-lg border border-[color:var(--danger-border)] bg-transparent px-3 text-sm font-bold text-[color:var(--danger)] disabled:opacity-60",
+                    controlDisabled,
+                    "inline-flex min-h-tap items-center justify-start gap-2 rounded-lg border border-[color:var(--danger-border)] bg-transparent px-3 text-sm font-bold text-[color:var(--danger)]",
                     focusRing,
                   )}
                 >

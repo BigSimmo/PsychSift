@@ -7,6 +7,7 @@ import { useState } from "react";
 
 import { cardSurface } from "@/components/card-recipes";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FormField } from "@/components/ui/form-field";
 import { InlineNotice, cn, fieldControlPlain, textMuted } from "@/components/ui-primitives";
 import type { ServiceAction, ServiceDetail, ServiceEntry, ServiceReport } from "@/lib/on-call/service-model";
@@ -32,6 +33,7 @@ function ReviewRow({
   const [comment, setComment] = useState("");
   const [busy, setBusy] = useState<"approve" | "return" | "withdraw" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [confirmWithdrawOpen, setConfirmWithdrawOpen] = useState(false);
 
   async function review(decision: "approve" | "return") {
     if (busy || (decision === "return" && !comment.trim())) return;
@@ -54,7 +56,6 @@ function ReviewRow({
 
   async function withdraw() {
     if (busy) return;
-    if (!window.confirm("Withdraw this entry from the service handbook?")) return;
     setBusy("withdraw");
     setError(null);
     try {
@@ -63,6 +64,7 @@ function ReviewRow({
       setError(cause instanceof Error ? cause.message : "This revision could not be withdrawn.");
     } finally {
       setBusy(null);
+      setConfirmWithdrawOpen(false);
     }
   }
 
@@ -142,10 +144,25 @@ function ReviewRow({
         </>
       ) : null}
       {(entry.status === "draft" || entry.status === "pending_review") && canEdit ? (
-        <Button variant="ghost" busy={busy === "withdraw"} disabled={busy !== null} onClick={() => void withdraw()}>
+        <Button
+          variant="ghost"
+          busy={busy === "withdraw"}
+          disabled={busy !== null}
+          onClick={() => setConfirmWithdrawOpen(true)}
+        >
           Withdraw entry from handbook
         </Button>
       ) : null}
+      <ConfirmDialog
+        open={confirmWithdrawOpen}
+        onCancel={() => setConfirmWithdrawOpen(false)}
+        onConfirm={() => void withdraw()}
+        title="Withdraw entry"
+        description={`Members will stop seeing "${entry.content.title}" in the service handbook, including any revision approved earlier.`}
+        confirmLabel="Withdraw entry"
+        busy={busy === "withdraw"}
+        busyLabel="Withdrawing…"
+      />
       {canEdit ? (
         <Button variant="secondary" icon={Pencil} onClick={onEdit} disabled={busy !== null}>
           Edit entry

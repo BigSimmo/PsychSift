@@ -409,7 +409,16 @@ function createSupabaseMock(resolve: QueryResolver = defaultQueryResolver) {
     return ok([]);
   });
   const client = {
-    auth: { getUser, admin: { listUsers } },
+    auth: {
+      getUser,
+      // Destructive admin routes read MFA claims from the presented token (audit F-12).
+      getClaims: vi.fn(async (jwt?: string) =>
+        jwt === token
+          ? { data: { claims: administratorClaims() as Record<string, unknown> }, error: null }
+          : { data: null, error: new Error("invalid token") },
+      ),
+      admin: { listUsers },
+    },
     calls,
     from: vi.fn((table: string) => {
       const call: QueryCall = {
@@ -1204,7 +1213,9 @@ describe("private document API access", () => {
     expect(client.storageMocks.createSignedUrl).not.toHaveBeenCalled();
   });
 
-  it("allows anonymous signed URLs for public documents", async () => {
+  // Original documents need sign-in from 1 November 2026
+  // (docs/decisions/2026-10-20-clinical-decision-tools-need-sign-in.md).
+  it("refuses anonymous signed URLs even for public documents", async () => {
     const client = createSupabaseMock((call) => {
       if (
         call.table === "documents" &&
@@ -1220,14 +1231,13 @@ describe("private document API access", () => {
     const response = await GET(request(`/api/documents/${documentId}/signed-url`), {
       params: Promise.resolve({ id: documentId }),
     });
-    const body = await payload(response);
 
-    expect(response.status).toBe(200);
-    expect(body.url).toContain("public/documents/guideline.pdf");
-    expect(client.auth.getUser).not.toHaveBeenCalled();
+    expect(response.status).toBe(401);
+    expect(await payload(response)).toMatchObject({ code: "authentication_required" });
+    expect(client.storageMocks.createSignedUrl).not.toHaveBeenCalled();
   });
 
-  it("rejects anonymous signed URLs for private documents", async () => {
+  it("refuses anonymous signed URLs for private documents before reading them", async () => {
     const client = createSupabaseMock((call) => {
       if (call.table === "documents" && call.filters.some((filter) => filter.column === "owner_id")) {
         return ok(null);
@@ -1241,8 +1251,8 @@ describe("private document API access", () => {
       params: Promise.resolve({ id: otherDocumentId }),
     });
 
-    expect(response.status).toBe(404);
-    expect(await payload(response)).toMatchObject({ error: "Document not found." });
+    expect(response.status).toBe(401);
+    expect(client.calls.some((call) => call.table === "documents")).toBe(false);
     expect(client.storageMocks.createSignedUrl).not.toHaveBeenCalled();
   });
 
@@ -1275,7 +1285,7 @@ describe("private document API access", () => {
     expect(client.storageMocks.createSignedUrl).toHaveBeenCalledWith(`${userId}/images/${imageId}.png`, 600);
   });
 
-  it("allows anonymous image signed URLs when the parent document is public", async () => {
+  it("refuses anonymous image signed URLs even when the parent document is public", async () => {
     const client = createSupabaseMock((call) => {
       if (call.table === "document_images") {
         return ok({
@@ -1297,12 +1307,9 @@ describe("private document API access", () => {
     const response = await GET(request(`/api/images/${imageId}/signed-url`), {
       params: Promise.resolve({ id: imageId }),
     });
-    const body = await payload(response);
 
-    expect(response.status).toBe(200);
-    expect(body.mimeType).toBe("image/png");
-    expect(client.auth.getUser).not.toHaveBeenCalled();
-    expect(client.storageMocks.createSignedUrl).toHaveBeenCalledWith(`public/images/${imageId}.png`, 600);
+    expect(response.status).toBe(401);
+    expect(client.storageMocks.createSignedUrl).not.toHaveBeenCalled();
   });
 
   /*
@@ -1599,7 +1606,7 @@ describe("private document API access", () => {
     expect(documentReads.every((call) => matchesOwnerReadScope(call, userId))).toBe(true);
   });
 
-  it("restricts an anonymous batch to public documents", async () => {
+  it("refuses an anonymous batch", async () => {
     const client = createSupabaseMock((call) => {
       if (call.table === "document_images") {
         return ok([
@@ -1622,8 +1629,7 @@ describe("private document API access", () => {
 
     const response = await POST(signedUrlsRequest([imageId], false));
 
-    expect(response.status).toBe(200);
-    expect(await payload(response)).toEqual({ urls: {} });
+    expect(response.status).toBe(401);
     expect(client.storageMocks.createSignedUrls).not.toHaveBeenCalled();
   });
 
@@ -1925,6 +1931,109 @@ describe("private document API access", () => {
     expect(client.storageMocks.remove).toHaveBeenCalledTimes(1);
   });
 
+  it.each([
+    ["initial", "cancellation"],
+    ["recovery", "cancellation"],
+    ["initial", "timeout"],
+    ["recovery", "timeout"],
+  ] as const)(
+    "retains only opaque reconciliation references after %s upload %s and releases capacity",
+    async (stage, failure) => {
+      const client = createSupabaseMock((call) => {
+        if (call.table === "documents" && call.operation === "select" && call.maybeSingle) return ok(null);
+        if (call.table === "documents" && call.operation === "insert") return ok({ id: documentId });
+        if (call.table === "ingestion_jobs" && call.operation === "insert") return ok({ id: "job-1" });
+        return ok([]);
+      });
+      mockRuntime(client, undefined, { maxConcurrentUploads: 1 });
+      const controller = new AbortController();
+      const correlationId = "66666666-6666-4666-8666-666666666666";
+      const fileName = "Synthetic Private Name.pdf";
+      const bytes = "%PDF-1.7\n%%EOF";
+      let attemptedPath = "";
+      let rejectTransfer!: (reason: unknown) => void;
+      let started!: () => void;
+      const ready = new Promise<void>((resolve) => {
+        started = resolve;
+      });
+      let stall = true;
+      let collided = false;
+      let storageClientCount = 0;
+      vi.doMock("@/lib/supabase/admin", () => ({
+        createAdminClient: (options?: { signal?: AbortSignal; timeoutMs?: number }) => {
+          if (!options?.signal) return client;
+          expect(options.timeoutMs).toBe(120_000);
+          if (storageClientCount++ === 0) expect(options.signal).toBe(firstRequest.signal);
+          return {
+            ...client,
+            storage: {
+              from: () => ({
+                upload: async (path: string) => {
+                  if (!stall) return { data: { path: "uploaded" }, error: null };
+                  if (stage === "recovery" && !collided) {
+                    collided = true;
+                    return { data: null, error: { code: "ResourceAlreadyExists" } };
+                  }
+                  stall = false;
+                  attemptedPath = path;
+                  return new Promise((_resolve, reject) => {
+                    rejectTransfer = reject;
+                    options.signal!.addEventListener("abort", () => reject(options.signal!.reason), { once: true });
+                    started();
+                  });
+                },
+                download: async () => ({ data: new Blob([bytes]), error: null }),
+              }),
+            },
+          };
+        },
+      }));
+      const { POST } = await import("../src/app/api/upload/route");
+      const { logger, redactLogContext } = await import("../src/lib/logger");
+      const errorLog = vi.spyOn(logger, "error");
+      const uploadRequest = () => {
+        const form = new FormData();
+        form.set("file", new File([bytes], fileName, { type: "application/pdf" }));
+        form.set("authority", uploadAuthorityJson);
+        return authenticatedRequest("/api/upload", {
+          method: "POST",
+          headers: { "idempotency-key": correlationId },
+          body: form,
+          signal: controller.signal.aborted ? undefined : controller.signal,
+        });
+      };
+      const firstRequest = uploadRequest();
+      const response = POST(firstRequest);
+      await ready;
+      if (failure === "cancellation") controller.abort();
+      else rejectTransfer(new DOMException(`${fileName} Storage deadline expired`, "TimeoutError"));
+      expect((await response).status).toBe(failure === "cancellation" ? 499 : 500);
+      const reconciliation = errorLog.mock.calls.find(
+        ([message]) => message === "Document Storage upload outcome unknown; manual reconciliation required",
+      );
+      expect(reconciliation).toBeDefined();
+      const safeContext = redactLogContext(reconciliation![1]!);
+      expect(safeContext).toEqual({
+        code: "upload_storage_outcome_unknown",
+        correlationId,
+        storageObjectRef: createHash("sha256").update(attemptedPath).digest("hex"),
+      });
+      expect(attemptedPath.includes("/recovery-")).toBe(stage === "recovery");
+      expect(JSON.stringify(safeContext)).not.toContain(userId);
+      expect(JSON.stringify(safeContext)).not.toContain(attemptedPath.split("/")[2]);
+      expect(JSON.stringify(safeContext)).not.toContain(fileName);
+      expect(JSON.stringify(safeContext)).not.toContain(attemptedPath);
+      const rawLogs = JSON.stringify(errorLog.mock.calls);
+      expect(rawLogs).not.toContain(userId);
+      expect(rawLogs).not.toContain(attemptedPath.split("/")[2]);
+      expect(rawLogs).not.toContain(fileName);
+      expect(rawLogs).not.toContain(attemptedPath);
+      expect(client.storageMocks.remove).not.toHaveBeenCalled();
+      expect(client.calls.some((call) => call.table === "storage_cleanup_jobs")).toBe(false);
+      expect((await POST(uploadRequest())).status).toBe(201);
+    },
+  );
+
   it("rejects concurrent upload capacity and releases it after the first request", async () => {
     const client = createSupabaseMock((call) => {
       if (call.table === "documents" && call.operation === "select" && call.maybeSingle) return ok(null);
@@ -2195,6 +2304,9 @@ describe("private document API access", () => {
 
   it("returns first-class document matches for document-focused search", async () => {
     const client = createSupabaseMock((call) => {
+      if (call.table === "documents" && call.selected === "id,metadata") {
+        return ok([{ id: documentId, owner_id: userId, status: "indexed", metadata: {} }]);
+      }
       if (call.table === "document_labels") {
         return ok([
           {
@@ -2327,6 +2439,9 @@ describe("private document API access", () => {
 
   it("accepts differentials as a standalone source-library search mode", async () => {
     const client = createSupabaseMock((call) => {
+      if (call.table === "documents" && call.selected === "id,metadata") {
+        return ok([{ id: documentId, owner_id: userId, status: "indexed", metadata: {} }]);
+      }
       if (call.table === "document_labels") {
         return ok([
           {
@@ -2453,95 +2568,127 @@ describe("private document API access", () => {
     expect(client.from).not.toHaveBeenCalled();
   });
 
-  it("refuses to retry a job a live worker still holds (IDX-C3, B6)", async () => {
-    const client = createSupabaseMock();
-    // The route now consumes the ingestion_admin rate-limit bucket (its own
-    // consume_api_rate_limit RPC call) before retry_ingestion_job_if_idle
-    // (#L43), so a plain mockResolvedValueOnce would intercept that earlier
-    // call instead. Target the retry RPC by name and fall through to the
-    // mock's normal per-name behaviour (including the rate-limit check) for
-    // everything else.
+  // Audit 2026-10-20 DB-01: the admin Retry button now goes through recover_ingestion_job, the
+  // hardened recovery path (authority lock, managed-evidence hold, sibling-job check), instead of
+  // the older retry_ingestion_job_if_idle, which skipped those checks.
+  const retryJobId = "99999999-9999-4999-8999-999999999999";
+  function retryJobRow(overrides: Record<string, unknown> = {}, document: Record<string, unknown> = {}) {
+    return {
+      id: retryJobId,
+      document_id: documentId,
+      status: "failed",
+      locked_at: null,
+      lease_token: null,
+      lease_expires_at: null,
+      documents: { status: "failed", owner_id: userId, chunk_count: 0, ...document },
+      ...overrides,
+    };
+  }
+  function retryClient(row: unknown, recover: (args?: Record<string, unknown>) => QueryResult) {
+    const client = createSupabaseMock((call) => {
+      if (call.table === "ingestion_jobs" && call.operation === "select" && call.maybeSingle) {
+        if (call.selected === "*, documents!inner(owner_id)")
+          return ok({ ...(row as object), status: "pending", stage: "queued after recovery" });
+        return ok(row);
+      }
+      return defaultQueryResolver(call);
+    });
     const baseRpc = client.rpc.getMockImplementation()!;
     client.rpc.mockImplementation(async (name: string, args?: Record<string, unknown>) => {
-      if (name === "retry_ingestion_job_if_idle") return ok({ outcome: "active_worker" });
+      if (name === "recover_ingestion_job") return recover(args);
       return baseRpc(name, args);
     });
-    mockRuntime(client);
+    return client;
+  }
+  async function postRetry() {
     const { POST } = await import("../src/app/api/ingestion/jobs/[id]/retry/route");
+    return POST(authenticatedRequest(`/api/ingestion/jobs/${retryJobId}/retry`, { method: "POST" }), {
+      params: Promise.resolve({ id: retryJobId }),
+    });
+  }
 
-    const response = await POST(
-      authenticatedRequest("/api/ingestion/jobs/99999999-9999-4999-8999-999999999999/retry", { method: "POST" }),
-      {
-        params: Promise.resolve({ id: "99999999-9999-4999-8999-999999999999" }),
+  it("re-queues a failed job through the hardened recovery RPC with the observed row state (DB-01)", async () => {
+    const client = retryClient(retryJobRow(), () => ok({ ok: true, action: "retry", artifacts_preserved: true }));
+    mockRuntime(client);
+
+    const response = await postRetry();
+
+    expect(response.status).toBe(200);
+    expect(await payload(response)).toMatchObject({ job: { id: retryJobId, status: "pending" } });
+    expect(client.rpc).toHaveBeenCalledWith("recover_ingestion_job", {
+      p_job_id: retryJobId,
+      p_action: "retry",
+      p_expected: {
+        jobStatus: "failed",
+        jobLockedAt: null,
+        jobLeaseToken: null,
+        jobLeaseExpiresAt: null,
+        documentStatus: "failed",
+        documentOwnerId: userId,
       },
+    });
+    expect(client.rpc).not.toHaveBeenCalledWith("retry_ingestion_job_if_idle", expect.anything());
+  });
+
+  it("refuses to retry a job a live worker still holds (IDX-C3, B6)", async () => {
+    const lease = new Date(Date.now() + 10 * 60_000).toISOString();
+    const client = retryClient(
+      retryJobRow({ status: "processing", locked_at: new Date().toISOString(), lease_expires_at: lease }),
+      () => ok({ ok: true }),
     );
+    mockRuntime(client);
+
+    const response = await postRetry();
 
     expect(response.status).toBe(409);
     expect(String((await payload(response)).error)).toContain("still being processed");
-    expect(client.rpc).toHaveBeenCalledWith(
-      "retry_ingestion_job_if_idle",
-      expect.objectContaining({
-        p_job_id: "99999999-9999-4999-8999-999999999999",
-        p_owner_id: userId,
-        p_stale_before: expect.any(String),
-      }),
-    );
-    expect(client.calls).toHaveLength(0);
+    expect(client.rpc).not.toHaveBeenCalledWith("recover_ingestion_job", expect.anything());
   });
 
-  it("re-queues a stale/non-processing job without resetting the live index (IDX-C3, IDX-H1, B6)", async () => {
-    const client = createSupabaseMock();
-    // Same reason as the previous test: target the retry RPC by name so the
-    // earlier rate-limit consume call keeps its own normal behaviour (#L43).
-    const baseRpc = client.rpc.getMockImplementation()!;
-    client.rpc.mockImplementation(async (name: string, args?: Record<string, unknown>) => {
-      if (name === "retry_ingestion_job_if_idle") {
-        return ok({
-          outcome: "queued",
-          job: { id: "99999999-9999-4999-8999-999999999999", document_id: documentId, status: "pending" },
-        });
-      }
-      return baseRpc(name, args);
-    });
+  it.each([
+    ["active_lease", "still being processed"],
+    ["state_changed", "changed since"],
+    ["managed_recovery_required", "operator recovery"],
+    ["authority_unavailable", "Try again"],
+  ])("explains a %s refusal from the recovery RPC as a conflict", async (reason, message) => {
+    const client = retryClient(retryJobRow(), () => ok({ ok: false, reason }));
     mockRuntime(client);
-    const { POST } = await import("../src/app/api/ingestion/jobs/[id]/retry/route");
 
-    const response = await POST(
-      authenticatedRequest("/api/ingestion/jobs/99999999-9999-4999-8999-999999999999/retry", { method: "POST" }),
-      {
-        params: Promise.resolve({ id: "99999999-9999-4999-8999-999999999999" }),
-      },
-    );
-    expect(response.status).toBe(200);
-    expect(await payload(response)).toMatchObject({ job: { status: "pending", document_id: documentId } });
-    expect(client.rpc).toHaveBeenCalledWith(
-      "retry_ingestion_job_if_idle",
-      expect.objectContaining({
-        p_job_id: "99999999-9999-4999-8999-999999999999",
-        p_owner_id: userId,
-        p_max_attempts: expect.any(Number),
-        p_next_run_at: expect.any(String),
-        p_document_updated_at: expect.any(String),
-      }),
-    );
-    expect(client.calls).toHaveLength(0);
+    const response = await postRetry();
+
+    expect(response.status).toBe(409);
+    expect(String((await payload(response)).error)).toContain(message);
   });
 
-  it("returns failure when the transactional retry RPC rolls back", async () => {
-    const retryJobId = "99999999-9999-4999-8999-999999999999";
-    const client = createSupabaseMock();
-    client.rpc.mockResolvedValueOnce(fail("transaction rolled back"));
+  it("does not re-queue an indexed document's job, which recovery would refuse", async () => {
+    const client = retryClient(retryJobRow({}, { status: "indexed", chunk_count: 12 }), () => ok({ ok: true }));
     mockRuntime(client);
-    const { POST } = await import("../src/app/api/ingestion/jobs/[id]/retry/route");
 
-    const response = await POST(authenticatedRequest(`/api/ingestion/jobs/${retryJobId}/retry`, { method: "POST" }), {
-      params: Promise.resolve({ id: retryJobId }),
-    });
+    const response = await postRetry();
+
+    expect(response.status).toBe(409);
+    expect(String((await payload(response)).error)).toContain("already indexed");
+    expect(client.rpc).not.toHaveBeenCalledWith("recover_ingestion_job", expect.anything());
+  });
+
+  it("returns 404 for a job outside the administrator's documents", async () => {
+    const client = retryClient(null, () => ok({ ok: true }));
+    mockRuntime(client);
+
+    const response = await postRetry();
+
+    expect(response.status).toBe(404);
+    expect(client.rpc).not.toHaveBeenCalledWith("recover_ingestion_job", expect.anything());
+  });
+
+  it("returns failure when the recovery RPC errors", async () => {
+    const client = retryClient(retryJobRow(), () => fail("transaction rolled back"));
+    mockRuntime(client);
+
+    const response = await postRetry();
 
     expect(response.status).toBe(500);
     expect(String((await payload(response)).error)).toBe("Request failed.");
-    expect(client.rpc).toHaveBeenCalledWith("retry_ingestion_job_if_idle", expect.any(Object));
-    expect(client.calls).toHaveLength(0);
   });
 
   it("runs enrichment-only reindex for owned indexed documents using generic metadata", async () => {
@@ -3902,6 +4049,102 @@ describe("private document API access", () => {
     expect(invalidateRagCachesForDocumentMutation).toHaveBeenCalledWith(userId, { affectsPublicCorpus: false });
   });
 
+  // F-08: the worker can commit a new index pointer between the rename's read and its
+  // write; the rename must not restore the stale pointer it read.
+  it("keeps an index pointer the worker commits between the rename read and write", async () => {
+    const committedGeneration = "55555555-5555-4555-8555-555555555555";
+    const replacementGeneration = "66666666-6666-4666-8666-666666666666";
+    const readVersion = "2026-10-19T01:00:00.000001+00:00";
+    const workerCommitVersion = "2026-10-19T01:00:05.000002+00:00";
+    const stored = {
+      id: documentId,
+      owner_id: userId,
+      title: "Original title",
+      file_name: "source.pdf",
+      storage_path: `${userId}/documents/${documentId}/source.pdf`,
+      content_hash: "hash-1",
+      metadata: { index_generation_id: committedGeneration } as Record<string, unknown>,
+      updated_at: readVersion,
+    };
+    let workerCommitted = false;
+    const client = createSupabaseMock((call) => {
+      if (call.table === "documents" && call.operation === "select") {
+        return ok({ ...stored, metadata: { ...stored.metadata } });
+      }
+      if (call.table === "documents" && call.operation === "update") {
+        if (!workerCommitted) {
+          workerCommitted = true;
+          stored.metadata = { ...stored.metadata, index_generation_id: replacementGeneration };
+          stored.updated_at = workerCommitVersion;
+        }
+        const versionFilter = call.filters.find((filter) => filter.column === "updated_at")?.value;
+        // A version-matched update that reaches no row returns null through maybeSingle().
+        if (versionFilter !== stored.updated_at) return ok(null);
+        Object.assign(stored, call.updatePayload as Record<string, unknown>);
+        stored.updated_at = "2026-10-19T01:00:06.000003+00:00";
+        return ok({ ...stored });
+      }
+      return ok([]);
+    });
+    mockRuntime(client, { invalidateRagCachesForDocumentMutation: vi.fn() });
+    const { PATCH } = await import("../src/app/api/documents/[id]/route");
+
+    const response = await PATCH(
+      authenticatedRequest(`/api/documents/${documentId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ title: "Better clinical title" }),
+      }),
+      { params: Promise.resolve({ id: documentId }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(stored.title).toBe("Better clinical title");
+    expect(stored.metadata).toMatchObject({
+      index_generation_id: replacementGeneration,
+      previous_title: "Original title",
+    });
+    const updates = client.calls.filter((call) => call.table === "documents" && call.operation === "update");
+    expect(updates.map((call) => call.filters.find((filter) => filter.column === "updated_at")?.value)).toEqual([
+      readVersion,
+      workerCommitVersion,
+    ]);
+  });
+
+  it("returns a conflict instead of renaming when the document keeps changing", async () => {
+    const client = createSupabaseMock((call) => {
+      if (call.table === "documents" && call.operation === "select") {
+        return ok({
+          id: documentId,
+          owner_id: userId,
+          title: "Original title",
+          file_name: "source.pdf",
+          storage_path: `${userId}/documents/${documentId}/source.pdf`,
+          content_hash: "hash-1",
+          metadata: {},
+          updated_at: "2026-10-19T01:00:00.000001+00:00",
+        });
+      }
+      if (call.table === "documents" && call.operation === "update") return ok(null);
+      return ok([]);
+    });
+    const invalidateRagCachesForDocumentMutation = vi.fn();
+    mockRuntime(client, { invalidateRagCachesForDocumentMutation });
+    const { PATCH } = await import("../src/app/api/documents/[id]/route");
+
+    const response = await PATCH(
+      authenticatedRequest(`/api/documents/${documentId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ title: "Better clinical title" }),
+      }),
+      { params: Promise.resolve({ id: documentId }) },
+    );
+
+    expect(response.status).toBe(409);
+    expect(await payload(response)).toMatchObject({ code: "document_changed_concurrently" });
+    expect(client.calls.filter((call) => call.table === "documents" && call.operation === "update")).toHaveLength(3);
+    expect(invalidateRagCachesForDocumentMutation).not.toHaveBeenCalled();
+  });
+
   it("rejects invalid document rename titles", async () => {
     const client = createSupabaseMock();
     mockRuntime(client);
@@ -4341,6 +4584,68 @@ describe("private document API access", () => {
     expect(client.storageMocks.storageFrom).toHaveBeenCalledWith("clinical-images");
     expect(client.storageMocks.remove).toHaveBeenCalledWith([sourcePath]);
     expect(client.storageMocks.remove).toHaveBeenCalledWith([imagePath]);
+    // #3730: the document's cached image captions are deleted with it, scoped to the owner.
+    const captionCacheDelete = client.calls.find(
+      (call) => call.table === "image_caption_cache" && call.operation === "delete",
+    );
+    expect(captionCacheDelete?.filters).toEqual([
+      { column: "owner_id", value: userId },
+      { column: "metadata->>document_id", value: documentId },
+    ]);
+  });
+
+  it("reports a failed caption-cache delete without failing the storage clean-up (#3730)", async () => {
+    const client = createSupabaseMock((call) => {
+      if (call.table === "storage_cleanup_jobs" && call.operation === "update") return ok([]);
+      if (call.table === "image_caption_cache" && call.operation === "delete") return fail("cache delete refused");
+      return ok([]);
+    });
+    client.rpc.mockImplementation(async (name: string) =>
+      name === "delete_document_if_idle"
+        ? ok({
+            outcome: "deleted",
+            cleanup_job_id: "55555555-5555-4555-8555-555555555555",
+            document_title: "Owned",
+            source_path: null,
+            image_paths: [],
+          })
+        : ok([]),
+    );
+    mockRuntime(client);
+    const { DELETE } = await import("../src/app/api/documents/[id]/route");
+
+    const response = await DELETE(authenticatedRequest(`/api/documents/${documentId}`, { method: "DELETE" }), {
+      params: Promise.resolve({ id: documentId }),
+    });
+    const cleanupUpdate = client.calls.find(
+      (call) => call.table === "storage_cleanup_jobs" && call.operation === "update",
+    );
+
+    expect(response.status).toBe(200);
+    expect(await payload(response)).toMatchObject({
+      deleted: true,
+      storageWarnings: ["Cached image captions: cache delete refused"],
+    });
+    expect(cleanupUpdate?.updatePayload).toMatchObject({ status: "completed" });
+  });
+
+  it("refuses permanent delete without a recent multi-factor sign-in (audit F-12)", async () => {
+    const client = createSupabaseMock(() => ok([]));
+    client.auth.getClaims.mockResolvedValue({
+      data: { claims: { ...administratorClaims(), aal: "aal1" } },
+      error: null,
+    });
+    mockRuntime(client);
+    const { DELETE } = await import("../src/app/api/documents/[id]/route");
+
+    const response = await DELETE(authenticatedRequest(`/api/documents/${documentId}`, { method: "DELETE" }), {
+      params: Promise.resolve({ id: documentId }),
+    });
+    const body = await payload(response);
+
+    expect(response.status).toBe(403);
+    expect(body).toMatchObject({ code: "administrator_assurance_required" });
+    expect(client.rpc).not.toHaveBeenCalledWith("delete_document_if_idle", expect.anything());
   });
 
   it("removes transactionally snapshotted image paths in storage batches", async () => {
@@ -4452,14 +4757,15 @@ describe("private document API access", () => {
 
       expect(response.status).toBe(409);
       expect(await payload(response)).toMatchObject({
-        error: "Document has pending or processing indexing work. Stop or wait for the worker before deleting.",
+        error:
+          "Document has pending or processing indexing work. Wait for it to finish, or recover a job stuck on its last attempt, before deleting.",
       });
       expect(client.calls.some((call) => call.table === "documents" && call.operation === "delete")).toBe(false);
       expect(client.storageMocks.remove).not.toHaveBeenCalled();
     },
   );
 
-  it("allows anonymous search and answer requests with anonymous rate-limit subjects", async () => {
+  it("refuses anonymous callers both search and an answer (#3728)", async () => {
     const searchChunksWithTelemetry = vi.fn(async () => ({
       results: [],
       telemetry: {
@@ -4499,27 +4805,15 @@ describe("private document API access", () => {
       }),
     );
 
-    expect(searchResponse.status).toBe(200);
-    expect(answerResponse.status).toBe(200);
-    const answerPayload = await payload(answerResponse);
-    expect(answerPayload).toMatchObject({
-      interactionId: expect.any(String),
-      feedbackToken: expect.any(String),
-    });
-    expect(searchChunksWithTelemetry).toHaveBeenCalledWith(
-      expect.objectContaining({ ownerId: undefined, allowGlobalSearch: true }),
-    );
-    expect(answerQuestionWithScope).toHaveBeenCalledWith(
-      expect.objectContaining({
-        ownerId: undefined,
-        allowGlobalSearch: true,
-        observationContext: { interactionId: expect.any(String), rolloutMode: "legacy" },
-      }),
-    );
-    const [answerCall] = answerQuestionWithScope.mock.calls as unknown as [
-      [{ observationContext?: { interactionId: string } }],
-    ];
-    expect(answerCall?.[0].observationContext?.interactionId).toBe(answerPayload.interactionId);
+    // Search needs sign-in too from 1 November 2026 (#3728).
+    expect(searchResponse.status).toBe(401);
+    expect(await payload(searchResponse)).toMatchObject({ code: "authentication_required" });
+    // Answer needs sign-in from 1 November 2026
+    // (docs/decisions/2026-10-20-clinical-decision-tools-need-sign-in.md).
+    expect(answerResponse.status).toBe(401);
+    expect(await payload(answerResponse)).toMatchObject({ code: "authentication_required" });
+    expect(searchChunksWithTelemetry).not.toHaveBeenCalled();
+    expect(answerQuestionWithScope).not.toHaveBeenCalled();
     expect(client.auth.getUser).not.toHaveBeenCalled();
     expect(client.rpc).not.toHaveBeenCalledWith(
       "consume_api_rate_limit",
@@ -4548,7 +4842,7 @@ describe("private document API access", () => {
     let responseSettled = false;
     const response = answerRoute
       .POST(
-        request("/api/answer", {
+        authenticatedRequest("/api/answer", {
           method: "POST",
           body: JSON.stringify({ query: "monitoring" }),
         }),
@@ -4598,7 +4892,7 @@ describe("private document API access", () => {
     expect(searchChunksWithTelemetry).not.toHaveBeenCalled();
   });
 
-  it("rate limits anonymous answer bursts before generation", async () => {
+  it("refuses anonymous answers before rate limiting or generation", async () => {
     const answerQuestionWithScope = vi.fn(async () => ({
       answer: "Public evidence.",
       grounded: true,
@@ -4620,19 +4914,12 @@ describe("private document API access", () => {
         body: JSON.stringify({ query: "monitoring" }),
       });
 
-    for (let index = 0; index < 6; index += 1) {
+    for (let index = 0; index < 7; index += 1) {
       const response = await answerRoute.POST(anonymousAnswerRequest());
-      expect(response.status).toBe(200);
+      expect(response.status).toBe(401);
     }
 
-    const limited = await answerRoute.POST(anonymousAnswerRequest());
-    expect(limited.status).toBe(429);
-    expect(limited.headers.get("Retry-After")).toBe("60");
-    expect(await payload(limited)).toMatchObject({
-      error: "Too many answer requests. Retry shortly.",
-      details: { kind: "rate_limit", retryAfterSeconds: 60 },
-    });
-    expect(answerQuestionWithScope).toHaveBeenCalledTimes(6);
+    expect(answerQuestionWithScope).not.toHaveBeenCalled();
     expect(client.rpc).not.toHaveBeenCalledWith(
       "consume_api_rate_limit",
       expect.objectContaining({ p_bucket: "answer" }),
@@ -4786,7 +5073,7 @@ describe("private document API access", () => {
     expect(searchChunksWithTelemetry).not.toHaveBeenCalled();
   });
 
-  it("uses an anonymous in-memory limiter for public search when the durable anonymous limiter is unavailable", async () => {
+  it("refuses anonymous search with 401 even when the durable anonymous limiter is unavailable (#3728)", async () => {
     const searchChunksWithTelemetry = vi.fn(async () => ({
       results: [],
       telemetry: {
@@ -4815,10 +5102,8 @@ describe("private document API access", () => {
       }),
     );
 
-    expect(response.status).toBe(200);
-    expect(searchChunksWithTelemetry).toHaveBeenCalledWith(
-      expect.objectContaining({ ownerId: undefined, allowGlobalSearch: true }),
-    );
+    expect(response.status).toBe(401);
+    expect(searchChunksWithTelemetry).not.toHaveBeenCalled();
     expect(client.auth.getUser).not.toHaveBeenCalled();
   });
 
@@ -4834,7 +5119,7 @@ describe("private document API access", () => {
     const { POST } = await import("../src/app/api/search/route");
 
     const response = await POST(
-      request("/api/search", {
+      authenticatedRequest("/api/search", {
         method: "POST",
         body: JSON.stringify({
           query: "clozapine monitoring",
@@ -4870,7 +5155,7 @@ describe("private document API access", () => {
     const { POST } = await import("../src/app/api/search/route");
 
     const response = await POST(
-      request("/api/search", {
+      authenticatedRequest("/api/search", {
         method: "POST",
         body: JSON.stringify({
           query: "clozapine monitoring",
@@ -4940,7 +5225,7 @@ describe("private document API access", () => {
     const { POST } = await import("../src/app/api/answer/route");
 
     const response = await POST(
-      request("/api/answer", {
+      authenticatedRequest("/api/answer", {
         method: "POST",
         body: JSON.stringify({ query: "clozapine monitoring", filters: { sourceStatuses: ["current"] } }),
       }),
@@ -4975,7 +5260,7 @@ describe("private document API access", () => {
     const { POST } = await import("../src/app/api/answer/stream/route");
 
     const response = await POST(
-      request("/api/answer/stream", {
+      authenticatedRequest("/api/answer/stream", {
         method: "POST",
         body: JSON.stringify({ query: "clozapine monitoring", filters: { sourceStatuses: ["current"] } }),
       }),
@@ -5012,7 +5297,7 @@ describe("private document API access", () => {
     const { POST } = await import("../src/app/api/answer/stream/route");
 
     const response = await POST(
-      request("/api/answer/stream", {
+      authenticatedRequest("/api/answer/stream", {
         method: "POST",
         body: JSON.stringify({ query: "clozapine monitoring", filters: { sourceStatuses: ["current"] } }),
       }),

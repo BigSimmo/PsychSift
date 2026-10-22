@@ -74,6 +74,10 @@ export function expectAtLeastCssPx(actual: number, minimum: number, label: strin
  * a run green: that reintroduces the known `ui-smoke` flake AGENTS.md calls out.
  */
 export async function expectMinTouchTarget(locator: Locator, minSize = 44): Promise<void> {
+  // `boundingBox()` does not wait: it returns null for a target that is attached
+  // but mid re-render, which WebKit hit on the diagnosis detail page. Wait for
+  // the target to paint first; a target that never paints still fails here.
+  await expect(locator).toBeVisible();
   const box = await locator.boundingBox();
   expect(box).not.toBeNull();
   const measurementTolerance = 2;

@@ -164,11 +164,6 @@
     ],
     "pages": [
       {
-        "path": "/mockups/care-plan/patients/[patientId]/management-plan",
-        "file": "src/app/mockups/care-plan/patients/[patientId]/management-plan/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/specifiers/builder",
         "file": "src/app/(search-app)/specifiers/builder/page.tsx",
         "area": "product"
@@ -179,24 +174,9 @@
         "area": "product"
       },
       {
-        "path": "/mockups/answer-chat-redesign",
-        "file": "src/app/mockups/answer-chat-redesign/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/tools-task-directory",
-        "file": "src/app/mockups/tools-task-directory/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/on-call/orientation",
         "file": "src/app/(search-app)/on-call/orientation/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/care-plan/system-states",
-        "file": "src/app/mockups/care-plan/system-states/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/open-shifts/alerts",
@@ -234,21 +214,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/calculators-show-all",
-        "file": "src/app/mockups/calculators-show-all/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/tools-search-directions",
-        "file": "src/app/mockups/tools-search-directions/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/calculators-search-page",
-        "file": "src/app/mockups/calculators-search-page/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/cme/programme",
         "file": "src/app/(search-app)/cme/programme/page.tsx",
         "area": "product"
@@ -264,18 +229,8 @@
         "area": "product"
       },
       {
-        "path": "/mockups/services-filter-options",
-        "file": "src/app/mockups/services-filter-options/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/mockups/work-roles",
         "file": "src/app/mockups/work-roles/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/on-call-shift-cover",
-        "file": "src/app/mockups/on-call-shift-cover/page.tsx",
         "area": "mockup"
       },
       {
@@ -284,34 +239,9 @@
         "area": "product"
       },
       {
-        "path": "/mockups/dictionary-browse-header-compact",
-        "file": "src/app/mockups/dictionary-browse-header-compact/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/answer-loading-redesign",
-        "file": "src/app/mockups/answer-loading-redesign/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/factsheets/topics",
         "file": "src/app/(search-app)/factsheets/topics/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/coverage-gaps",
-        "file": "src/app/mockups/coverage-gaps/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/document-phone-zero-chrome",
-        "file": "src/app/mockups/document-phone-zero-chrome/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/doctor-compliance",
-        "file": "src/app/mockups/doctor-compliance/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/on-call/service",
@@ -329,11 +259,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/calculators-clinical-console",
-        "file": "src/app/mockups/calculators-clinical-console/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/admin/developer-hub/clinical-trust",
         "file": "src/app/(admin)/admin/developer-hub/clinical-trust/page.tsx",
         "area": "product"
@@ -349,14 +274,9 @@
         "area": "product"
       },
       {
-        "path": "/mockups/development/ledger",
-        "file": "src/app/mockups/development/ledger/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/privacy-page-directions",
-        "file": "src/app/mockups/privacy-page-directions/page.tsx",
-        "area": "mockup"
+        "path": "/terms",
+        "file": "src/app/terms/page.tsx",
+        "area": "product"
       },
       {
         "path": "/cme/cpd-home",
@@ -374,11 +294,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/universal-search-command",
-        "file": "src/app/mockups/universal-search-command/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/documents/search",
         "file": "src/app/(search-app)/documents/search/page.tsx",
         "area": "product"
@@ -392,11 +307,6 @@
         "path": "/specifiers/compare",
         "file": "src/app/(search-app)/specifiers/compare/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/care-plan/governance",
-        "file": "src/app/mockups/care-plan/governance/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/admin/sharing",
@@ -424,19 +334,9 @@
         "area": "product"
       },
       {
-        "path": "/mockups/settings-search-privacy",
-        "file": "src/app/mockups/settings-search-privacy/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/on-call/who-is-who",
         "file": "src/app/(search-app)/on-call/who-is-who/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/development/settings",
-        "file": "src/app/mockups/development/settings/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/on-call/now",
@@ -454,29 +354,14 @@
         "area": "product"
       },
       {
-        "path": "/mockups/care-plan",
-        "file": "src/app/mockups/care-plan/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/admin/new-job/ready",
         "file": "src/app/(search-app)/admin/new-job/ready/page.tsx",
         "area": "product"
       },
       {
-        "path": "/mockups/care-plan/reviews",
-        "file": "src/app/mockups/care-plan/reviews/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/teaching/term/folder",
         "file": "src/app/(search-app)/teaching/term/folder/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/universal-search-redesign",
-        "file": "src/app/mockups/universal-search-redesign/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/teaching/logbook",
@@ -489,34 +374,9 @@
         "area": "mockup"
       },
       {
-        "path": "/mockups/factsheets-compact-view",
-        "file": "src/app/mockups/factsheets-compact-view/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/document-navigation-final",
-        "file": "src/app/mockups/document-navigation-final/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/therapy-compass/recommend",
         "file": "src/app/(search-app)/therapy-compass/recommend/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/development/ingestion",
-        "file": "src/app/mockups/development/ingestion/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/search-lens-menu",
-        "file": "src/app/mockups/search-lens-menu/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/calculators-guided-flow",
-        "file": "src/app/mockups/calculators-guided-flow/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/admin/applications",
@@ -524,19 +384,9 @@
         "area": "product"
       },
       {
-        "path": "/mockups/therapy-recommend-popup-dossier",
-        "file": "src/app/mockups/therapy-recommend-popup-dossier/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/cme/log/[id]",
         "file": "src/app/(search-app)/cme/log/[id]/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/care-plan/patients/[patientId]/safety-plan",
-        "file": "src/app/mockups/care-plan/patients/[patientId]/safety-plan/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/differentials/presentations/[slug]",
@@ -549,11 +399,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/care-plan/patients/[patientId]/management-plan/edit",
-        "file": "src/app/mockups/care-plan/patients/[patientId]/management-plan/edit/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/first-nations/mental-health",
         "file": "src/app/(search-app)/first-nations/mental-health/page.tsx",
         "area": "product"
@@ -562,11 +407,6 @@
         "path": "/open-shifts/post/[serviceId]/[openShiftId]",
         "file": "src/app/(search-app)/open-shifts/post/[serviceId]/[openShiftId]/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/therapy-scenario-popup-live",
-        "file": "src/app/mockups/therapy-scenario-popup-live/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/roster/settings",
@@ -579,11 +419,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/tools-workflow-board",
-        "file": "src/app/mockups/tools-workflow-board/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/roster/staffing",
         "file": "src/app/(search-app)/roster/staffing/page.tsx",
         "area": "product"
@@ -592,11 +427,6 @@
         "path": "/",
         "file": "src/app/(search-app)/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/development/clinical-answer-failures",
-        "file": "src/app/mockups/development/clinical-answer-failures/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/on-call/check",
@@ -619,19 +449,9 @@
         "area": "product"
       },
       {
-        "path": "/mockups/also-matches-closed",
-        "file": "src/app/mockups/also-matches-closed/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/admin",
         "file": "src/app/(search-app)/admin/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/specifier-record-directions",
-        "file": "src/app/mockups/specifier-record-directions/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/admin/contract",
@@ -659,11 +479,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/warning-line",
-        "file": "src/app/mockups/warning-line/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/teaching/assessments/respond/[token]",
         "file": "src/app/(search-app)/teaching/assessments/respond/[token]/page.tsx",
         "area": "product"
@@ -677,11 +492,6 @@
         "path": "/teaching/resources",
         "file": "src/app/(search-app)/teaching/resources/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/answer-chat-perfected",
-        "file": "src/app/mockups/answer-chat-perfected/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/admin/help",
@@ -704,44 +514,14 @@
         "area": "product"
       },
       {
-        "path": "/mockups/care-plan/team",
-        "file": "src/app/mockups/care-plan/team/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/sources/currency",
         "file": "src/app/(search-app)/sources/currency/page.tsx",
         "area": "product"
       },
       {
-        "path": "/mockups/document-navigation-contract",
-        "file": "src/app/mockups/document-navigation-contract/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/recent-searches-bottom",
-        "file": "src/app/mockups/recent-searches-bottom/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/filter-sheet-restyle",
-        "file": "src/app/mockups/filter-sheet-restyle/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/therapy-navigation-context",
-        "file": "src/app/mockups/therapy-navigation-context/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/admin/requests",
         "file": "src/app/(search-app)/admin/requests/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/care-plan/patients/[patientId]/presentations/new",
-        "file": "src/app/mockups/care-plan/patients/[patientId]/presentations/new/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/first-nations/end-of-life",
@@ -774,16 +554,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/therapy-scenario-popup-guided",
-        "file": "src/app/mockups/therapy-scenario-popup-guided/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/dictionary-browse-header",
-        "file": "src/app/mockups/dictionary-browse-header/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/on-call/first-week",
         "file": "src/app/(search-app)/on-call/first-week/page.tsx",
         "area": "product"
@@ -809,19 +579,9 @@
         "area": "mockup"
       },
       {
-        "path": "/mockups/mode-dropdown",
-        "file": "src/app/mockups/mode-dropdown/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/medicines",
         "file": "src/app/(search-app)/medicines/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/search-heading",
-        "file": "src/app/mockups/search-heading/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/admin/compliance",
@@ -844,14 +604,14 @@
         "area": "mockup"
       },
       {
-        "path": "/roster/requests",
-        "file": "src/app/(search-app)/roster/requests/page.tsx",
+        "path": "/about",
+        "file": "src/app/about/page.tsx",
         "area": "product"
       },
       {
-        "path": "/mockups/development/on-call-freshness",
-        "file": "src/app/mockups/development/on-call-freshness/page.tsx",
-        "area": "mockup"
+        "path": "/roster/requests",
+        "file": "src/app/(search-app)/roster/requests/page.tsx",
+        "area": "product"
       },
       {
         "path": "/therapy-compass/[slug]/sheet",
@@ -869,11 +629,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/verification-notice-subtle",
-        "file": "src/app/mockups/verification-notice-subtle/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/teaching/organise",
         "file": "src/app/(search-app)/teaching/organise/page.tsx",
         "area": "product"
@@ -887,11 +642,6 @@
         "path": "/admin/workforce",
         "file": "src/app/(search-app)/admin/workforce/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/settings-search-general",
-        "file": "src/app/mockups/settings-search-general/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/on-call/playbook",
@@ -969,16 +719,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/calculators-popup-sheet",
-        "file": "src/app/mockups/calculators-popup-sheet/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/source-rail-desktop-scroll",
-        "file": "src/app/mockups/source-rail-desktop-scroll/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/first-nations/card",
         "file": "src/app/(search-app)/first-nations/card/page.tsx",
         "area": "product"
@@ -992,16 +732,6 @@
         "path": "/therapy-compass/pathways",
         "file": "src/app/(search-app)/therapy-compass/pathways/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/development",
-        "file": "src/app/mockups/development/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/document-search-evidence-lens",
-        "file": "src/app/mockups/document-search-evidence-lens/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/teaching/display/[token]",
@@ -1029,19 +759,9 @@
         "area": "product"
       },
       {
-        "path": "/mockups/privacy-live-signal-perfected",
-        "file": "src/app/mockups/privacy-live-signal-perfected/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/teaching/import",
         "file": "src/app/(search-app)/teaching/import/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/sidebar-live",
-        "file": "src/app/mockups/sidebar-live/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/roster/manage/rotations",
@@ -1064,11 +784,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/document-image-status",
-        "file": "src/app/mockups/document-image-status/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/admin/courses",
         "file": "src/app/(search-app)/admin/courses/page.tsx",
         "area": "product"
@@ -1077,11 +792,6 @@
         "path": "/forms/act",
         "file": "src/app/(search-app)/forms/act/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/care-plan/patients/[patientId]/safety-plan/print",
-        "file": "src/app/mockups/care-plan/patients/[patientId]/safety-plan/print/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/roster/rotations/[roundId]",
@@ -1124,11 +834,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/therapy-navigation-dock",
-        "file": "src/app/mockups/therapy-navigation-dock/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/teaching/assessments/trainee/[id]",
         "file": "src/app/(search-app)/teaching/assessments/trainee/[id]/page.tsx",
         "area": "product"
@@ -1137,11 +842,6 @@
         "path": "/teaching/week",
         "file": "src/app/(search-app)/teaching/week/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/clinical-sign-off-actions",
-        "file": "src/app/mockups/clinical-sign-off-actions/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/on-call/contacts",
@@ -1154,11 +854,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/development/corpus-health",
-        "file": "src/app/mockups/development/corpus-health/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/formulation/map",
         "file": "src/app/(search-app)/formulation/map/page.tsx",
         "area": "product"
@@ -1167,11 +862,6 @@
         "path": "/admin/developer-hub/settings",
         "file": "src/app/(admin)/admin/developer-hub/settings/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/favourites-phone-perfected",
-        "file": "src/app/mockups/favourites-phone-perfected/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/services/search",
@@ -1184,16 +874,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/development/hazards",
-        "file": "src/app/mockups/development/hazards/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/settings-search-clinical",
-        "file": "src/app/mockups/settings-search-clinical/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/sources/search",
         "file": "src/app/(search-app)/sources/search/page.tsx",
         "area": "product"
@@ -1202,11 +882,6 @@
         "path": "/cme/routines",
         "file": "src/app/(search-app)/cme/routines/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/care-plan/patients/[patientId]/management-plan/print",
-        "file": "src/app/mockups/care-plan/patients/[patientId]/management-plan/print/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/dsm/compare",
@@ -1229,11 +904,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/therapy-recommend-popup-workbench",
-        "file": "src/app/mockups/therapy-recommend-popup-workbench/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/cme/log",
         "file": "src/app/(search-app)/cme/log/page.tsx",
         "area": "product"
@@ -1244,19 +914,9 @@
         "area": "product"
       },
       {
-        "path": "/mockups/care-plan/patients/[patientId]/patient-plan",
-        "file": "src/app/mockups/care-plan/patients/[patientId]/patient-plan/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/my-day/calendar",
         "file": "src/app/(search-app)/my-day/calendar/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/calculators-directory-grid",
-        "file": "src/app/mockups/calculators-directory-grid/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/admin/developer-hub/clinical-sign-off",
@@ -1269,19 +929,9 @@
         "area": "product"
       },
       {
-        "path": "/mockups/care-plan/patients/[patientId]/patient-plan/print",
-        "file": "src/app/mockups/care-plan/patients/[patientId]/patient-plan/print/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/open-shifts/mine",
         "file": "src/app/(search-app)/open-shifts/mine/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/pinned-plus-menu",
-        "file": "src/app/mockups/pinned-plus-menu/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/formulation/search",
@@ -1319,29 +969,14 @@
         "area": "product"
       },
       {
-        "path": "/mockups/tools-split-pane",
-        "file": "src/app/mockups/tools-split-pane/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/mockups/document-search",
         "file": "src/app/mockups/document-search/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/dsm-favourites",
-        "file": "src/app/mockups/dsm-favourites/page.tsx",
         "area": "mockup"
       },
       {
         "path": "/admin/pay",
         "file": "src/app/(search-app)/admin/pay/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/therapy-navigation-rail",
-        "file": "src/app/mockups/therapy-navigation-rail/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/admin/hospital",
@@ -1352,11 +987,6 @@
         "path": "/cme/plan",
         "file": "src/app/(search-app)/cme/plan/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/care-plan/patients/[patientId]",
-        "file": "src/app/mockups/care-plan/patients/[patientId]/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/favourites",
@@ -1379,34 +1009,9 @@
         "area": "product"
       },
       {
-        "path": "/mockups/calculators-search",
-        "file": "src/app/mockups/calculators-search/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/care-plan/patients",
-        "file": "src/app/mockups/care-plan/patients/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/admin/hospital/sick",
         "file": "src/app/(search-app)/admin/hospital/sick/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/care-plan/patients/[patientId]/presentations/[presentationId]",
-        "file": "src/app/mockups/care-plan/patients/[patientId]/presentations/[presentationId]/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/development/roster-teams",
-        "file": "src/app/mockups/development/roster-teams/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/care-plan/patients/[patientId]/history",
-        "file": "src/app/mockups/care-plan/patients/[patientId]/history/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/cme/evidence",
@@ -1424,11 +1029,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/tools-command-center",
-        "file": "src/app/mockups/tools-command-center/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/teaching/session/[id]/check-in",
         "file": "src/app/(search-app)/teaching/session/[id]/check-in/page.tsx",
         "area": "product"
@@ -1437,11 +1037,6 @@
         "path": "/therapy-compass/search",
         "file": "src/app/(search-app)/therapy-compass/search/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/search-band-directions",
-        "file": "src/app/mockups/search-band-directions/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/psychiatry",
@@ -1494,16 +1089,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/dictionary-control-row",
-        "file": "src/app/mockups/dictionary-control-row/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/care-plan/patients/[patientId]/management-plan/review",
-        "file": "src/app/mockups/care-plan/patients/[patientId]/management-plan/review/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/teaching/assessments",
         "file": "src/app/(search-app)/teaching/assessments/page.tsx",
         "area": "product"
@@ -1514,19 +1099,9 @@
         "area": "product"
       },
       {
-        "path": "/mockups/care-plan/patients/[patientId]/presentations",
-        "file": "src/app/mockups/care-plan/patients/[patientId]/presentations/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/teaching/session/[id]",
         "file": "src/app/(search-app)/teaching/session/[id]/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/therapy-recommend-popup-triage",
-        "file": "src/app/mockups/therapy-recommend-popup-triage/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/specifiers/map",
@@ -1537,11 +1112,6 @@
         "path": "/roster/manage/rotations/[roundId]",
         "file": "src/app/(search-app)/roster/manage/rotations/[roundId]/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/development/clinical-trust",
-        "file": "src/app/mockups/development/clinical-trust/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/dictionary/topics",
@@ -1559,11 +1129,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/document-navigation-perfected",
-        "file": "src/app/mockups/document-navigation-perfected/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/on-call/whos-on",
         "file": "src/app/(search-app)/on-call/whos-on/page.tsx",
         "area": "product"
@@ -1579,44 +1144,14 @@
         "area": "product"
       },
       {
-        "path": "/mockups/calculators-bedside-sheet",
-        "file": "src/app/mockups/calculators-bedside-sheet/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/admin/developer-hub/hazards",
         "file": "src/app/(admin)/admin/developer-hub/hazards/page.tsx",
         "area": "product"
       },
       {
-        "path": "/mockups/tools-search-mode",
-        "file": "src/app/mockups/tools-search-mode/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/care-plan/patients/[patientId]/safety-plan/edit",
-        "file": "src/app/mockups/care-plan/patients/[patientId]/safety-plan/edit/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/document-search-triage-board",
-        "file": "src/app/mockups/document-search-triage-board/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/document-top-navigation",
-        "file": "src/app/mockups/document-top-navigation/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/cme/export",
         "file": "src/app/(search-app)/cme/export/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/phone-mode-sheet-yes",
-        "file": "src/app/mockups/phone-mode-sheet-yes/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/on-call/handover",
@@ -1631,6 +1166,11 @@
       {
         "path": "/roster/calendar",
         "file": "src/app/(search-app)/roster/calendar/page.tsx",
+        "area": "product"
+      },
+      {
+        "path": "/on-call/calls",
+        "file": "src/app/(search-app)/on-call/calls/page.tsx",
         "area": "product"
       },
       {
@@ -1659,34 +1199,9 @@
         "area": "product"
       },
       {
-        "path": "/mockups/development/clinical-sign-off",
-        "file": "src/app/mockups/development/clinical-sign-off/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/on-call-calendars",
-        "file": "src/app/mockups/on-call-calendars/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/teaching/c/[token]",
         "file": "src/app/(search-app)/teaching/c/[token]/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/search-refine-adaptive",
-        "file": "src/app/mockups/search-refine-adaptive/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/services-filter-refined",
-        "file": "src/app/mockups/services-filter-refined/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/care-plan/patients/[patientId]/patient-plan/edit",
-        "file": "src/app/mockups/care-plan/patients/[patientId]/patient-plan/edit/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/sources/method",
@@ -1704,16 +1219,6 @@
         "area": "product"
       },
       {
-        "path": "/mockups/factsheets-topics-phone",
-        "file": "src/app/mockups/factsheets-topics-phone/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/warning-consolidation",
-        "file": "src/app/mockups/warning-consolidation/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/first-nations/contacts",
         "file": "src/app/(search-app)/first-nations/contacts/page.tsx",
         "area": "product"
@@ -1722,11 +1227,6 @@
         "path": "/my-day/week",
         "file": "src/app/(search-app)/my-day/week/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/therapy-scenario-popup-intake",
-        "file": "src/app/mockups/therapy-scenario-popup-intake/page.tsx",
-        "area": "mockup"
       },
       {
         "path": "/open-shifts/board",
@@ -1744,24 +1244,9 @@
         "area": "product"
       },
       {
-        "path": "/mockups/answer-chat-perfected-v2",
-        "file": "src/app/mockups/answer-chat-perfected-v2/page.tsx",
-        "area": "mockup"
-      },
-      {
-        "path": "/mockups/phone-inpage-navigation",
-        "file": "src/app/mockups/phone-inpage-navigation/page.tsx",
-        "area": "mockup"
-      },
-      {
         "path": "/teaching/review",
         "file": "src/app/(search-app)/teaching/review/page.tsx",
         "area": "product"
-      },
-      {
-        "path": "/mockups/also-matches-accents",
-        "file": "src/app/mockups/also-matches-accents/page.tsx",
-        "area": "mockup"
       }
     ],
     "redirects": [
@@ -2101,6 +1586,10 @@
         "file": "src/app/api/search/universal/route.ts"
       },
       {
+        "path": "/api/teaching/assessments/magic-links",
+        "file": "src/app/api/teaching/assessments/magic-links/route.ts"
+      },
+      {
         "path": "/api/work/courses",
         "file": "src/app/api/work/courses/route.ts"
       },
@@ -2133,6 +1622,10 @@
         "file": "src/app/api/roster/workplaces/route.ts"
       },
       {
+        "path": "/api/teaching/assessments/magic-links/[id]",
+        "file": "src/app/api/teaching/assessments/magic-links/[id]/route.ts"
+      },
+      {
         "path": "/api/roster/read-file",
         "file": "src/app/api/roster/read-file/route.ts"
       },
@@ -2159,6 +1652,10 @@
       {
         "path": "/api/roster/settings",
         "file": "src/app/api/roster/settings/route.ts"
+      },
+      {
+        "path": "/api/teaching/assessments/bookings",
+        "file": "src/app/api/teaching/assessments/bookings/route.ts"
       },
       {
         "path": "/api/account/preferences",
@@ -2455,6 +1952,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-17-remaining-therapy-compass-sign-offs.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-10-17-overseas-line-centred-on-answer-home.md",
         "section": "decisions",
         "catalogued": true
@@ -2490,8 +1992,8 @@
         "catalogued": true
       },
       {
-        "path": "docs/care-plan/interaction-matrix.md",
-        "section": "care-plan",
+        "path": "docs/decisions/2026-10-19-invite-only-sign-up-until-launch.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -2557,11 +2059,6 @@
       {
         "path": "docs/pr-handoff-stop-cross-agent-gap.md",
         "section": "root",
-        "catalogued": true
-      },
-      {
-        "path": "docs/care-plan/reports/task-9-report.md",
-        "section": "care-plan",
         "catalogued": true
       },
       {
@@ -2640,6 +2137,16 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-18-migration-prs-may-auto-merge.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-20-instruction-tidy-up.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/archive/design-qa-2026-07-15.md",
         "section": "archive",
         "catalogued": true
@@ -2662,6 +2169,11 @@
       {
         "path": "docs/audit/repo-audit-2026-07-01.md",
         "section": "audit",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-21-retire-care-plan-and-design-studies.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -2715,6 +2227,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-19-on-call-example-rows-stay-shared.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-09-19-brand-sheet-self-hosts-fonts.md",
         "section": "decisions",
         "catalogued": true
@@ -2727,11 +2244,6 @@
       {
         "path": "docs/decisions/2026-09-25-medication-default-sources.md",
         "section": "decisions",
-        "catalogued": true
-      },
-      {
-        "path": "docs/care-plan/reports/task-7-report.md",
-        "section": "care-plan",
         "catalogued": true
       },
       {
@@ -2762,11 +2274,6 @@
       {
         "path": "docs/superpowers/plans/2026-08-21-developer-hub-phase-1-HANDOFF.md",
         "section": "superpowers",
-        "catalogued": true
-      },
-      {
-        "path": "docs/care-plan/reports/task-9-brief.md",
-        "section": "care-plan",
         "catalogued": true
       },
       {
@@ -2825,7 +2332,7 @@
         "catalogued": true
       },
       {
-        "path": "docs/decisions/2026-10-18-normal-merges-and-push-safety.md",
+        "path": "docs/decisions/2026-10-20-mha-clock-made-at-window.md",
         "section": "decisions",
         "catalogued": true
       },
@@ -2875,6 +2382,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/audit/2026-10-21-ocr-comparison.md",
+        "section": "audit",
+        "catalogued": true
+      },
+      {
         "path": "docs/superpowers/rag-upgrade/canonical/START-HERE.cloud.md",
         "section": "superpowers",
         "catalogued": true
@@ -2892,11 +2404,6 @@
       {
         "path": "docs/decisions/2026-08-28-logo-single-colour.md",
         "section": "decisions",
-        "catalogued": true
-      },
-      {
-        "path": "docs/care-plan/verification-report.md",
-        "section": "care-plan",
         "catalogued": true
       },
       {
@@ -2947,6 +2454,11 @@
       {
         "path": "docs/superpowers/plans/2026-09-01-sources-mode.md",
         "section": "superpowers",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-18-merge-commits-only.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -3025,13 +2537,13 @@
         "catalogued": true
       },
       {
-        "path": "docs/care-plan/reports/task-8-brief.md",
-        "section": "care-plan",
+        "path": "docs/decisions/2026-08-17-document-summary-rows-get-their-own-provenance.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
-        "path": "docs/decisions/2026-08-17-document-summary-rows-get-their-own-provenance.md",
-        "section": "decisions",
+        "path": "docs/archive/forward-codify-retrieval-rpcs-workorder-2026-10-20.md",
+        "section": "archive",
         "catalogued": true
       },
       {
@@ -3060,8 +2572,8 @@
         "catalogued": true
       },
       {
-        "path": "docs/agents/codex-cloud-legacy-bootstrap.md",
-        "section": "agents",
+        "path": "docs/decisions/2026-10-18-clinical-sign-off-owner-only.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -3140,6 +2652,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/audit/2026-10-17-full-deep-remediation-results.md",
+        "section": "audit",
+        "catalogued": true
+      },
+      {
         "path": "docs/superpowers/plans/2026-09-01-calculators-clinical-safety.md",
         "section": "superpowers",
         "catalogued": true
@@ -3170,6 +2687,16 @@
         "catalogued": true
       },
       {
+        "path": "docs/operator-rehearsal-plan.md",
+        "section": "root",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-19-answer-stays-open-to-signed-out-visitors.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/archive/2026-10-agent-code-reviews/MASTER_ISSUE_TRACKER.md",
         "section": "archive",
         "catalogued": true
@@ -3177,11 +2704,6 @@
       {
         "path": "docs/reconciliation-playbook.md",
         "section": "root",
-        "catalogued": true
-      },
-      {
-        "path": "docs/agents/native-startup/contextual-working-defaults.md",
-        "section": "agents",
         "catalogued": true
       },
       {
@@ -3202,6 +2724,11 @@
       {
         "path": "docs/evidence/forms-operational-guidance-review.md",
         "section": "evidence",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-20-review-records-now-pr-comments.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -3270,17 +2797,22 @@
         "catalogued": true
       },
       {
-        "path": "docs/decisions/2026-10-22-development-governance-scope.md",
-        "section": "decisions",
-        "catalogued": true
-      },
-      {
         "path": "docs/redesign/m2-atomic-reindex-migration-note.md",
         "section": "redesign",
         "catalogued": true
       },
       {
+        "path": "docs/audit/2026-10-19-chat-remediation-handoff.md",
+        "section": "audit",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-09-18-specifier-sign-off-rules.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-20-clinical-decision-tools-need-sign-in.md",
         "section": "decisions",
         "catalogued": true
       },
@@ -3310,13 +2842,13 @@
         "catalogued": true
       },
       {
-        "path": "docs/decisions/2026-10-21-normal-merge-documentation-alignment.md",
-        "section": "decisions",
+        "path": "docs/organisation/README.md",
+        "section": "organisation",
         "catalogued": true
       },
       {
-        "path": "docs/organisation/README.md",
-        "section": "organisation",
+        "path": "docs/decisions/2026-10-19-rag-ts-split-deferred-until-after-launch.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -3327,6 +2859,11 @@
       {
         "path": "docs/archive/cloud-session-state-2026-10-16/ingestion-review-remediation-state.md",
         "section": "archive",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-17-design-audit-resolution.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -3380,6 +2917,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-19-citations-stay-pdf-first.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/superpowers/rag-upgrade/cloud/plans/2026-08-20-rag-ingestion-reindex.md",
         "section": "superpowers",
         "catalogued": true
@@ -3392,11 +2934,6 @@
       {
         "path": "docs/privacy-impact-assessment.md",
         "section": "root",
-        "catalogued": true
-      },
-      {
-        "path": "docs/care-plan/conversation-transcript-2026-08-21.md",
-        "section": "care-plan",
         "catalogued": true
       },
       {
@@ -3440,6 +2977,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/governance/clinical-release-remediation-handoff-2026-10-17.md",
+        "section": "governance",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-09-04-on-call-design-choices.md",
         "section": "decisions",
         "catalogued": true
@@ -3452,11 +2994,6 @@
       {
         "path": "docs/decisions/2026-08-18-keep-live-search-memory-settings.md",
         "section": "decisions",
-        "catalogued": true
-      },
-      {
-        "path": "docs/care-plan/reports/task-6-brief.md",
-        "section": "care-plan",
         "catalogued": true
       },
       {
@@ -3490,11 +3027,6 @@
         "catalogued": true
       },
       {
-        "path": "docs/care-plan/reports/task-5-brief.md",
-        "section": "care-plan",
-        "catalogued": true
-      },
-      {
         "path": "docs/audit/2026-09-16-catalogue-read-latency.md",
         "section": "audit",
         "catalogued": true
@@ -3510,6 +3042,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-17-library-reindex-stopped.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/observability-slos.md",
         "section": "root",
         "catalogued": true
@@ -3520,8 +3057,13 @@
         "catalogued": true
       },
       {
-        "path": "docs/care-plan/clinical-language-trace.md",
-        "section": "care-plan",
+        "path": "docs/decisions/2026-10-21-mental-health-act-door.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-18-bot-authored-sensitive-commits-blocked.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -3550,11 +3092,6 @@
         "catalogued": true
       },
       {
-        "path": "docs/care-plan/reports/task-11-report.md",
-        "section": "care-plan",
-        "catalogued": true
-      },
-      {
         "path": "docs/decisions/2026-10-16-psych-sift-display-name-sign-off.md",
         "section": "decisions",
         "catalogued": true
@@ -3572,6 +3109,11 @@
       {
         "path": "docs/app-modes-decision-brief.md",
         "section": "root",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-21-deleted-document-title-backfill.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -3670,11 +3212,6 @@
         "catalogued": true
       },
       {
-        "path": "docs/care-plan/reports/task-6-report.md",
-        "section": "care-plan",
-        "catalogued": true
-      },
-      {
         "path": "docs/search-rag-master-plan.md",
         "section": "root",
         "catalogued": true
@@ -3695,6 +3232,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-21-mode-sides-and-one-work-list.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/cme/design/cme-design-decisions.md",
         "section": "cme",
         "catalogued": true
@@ -3707,11 +3249,6 @@
       {
         "path": "docs/audit/repo-wide-review-remediation-plan-2026-07-23.md",
         "section": "audit",
-        "catalogued": true
-      },
-      {
-        "path": "docs/care-plan/HANDOFF-2026-08-24-SUPERSEDED.md",
-        "section": "care-plan",
         "catalogued": true
       },
       {
@@ -3765,11 +3302,6 @@
         "catalogued": true
       },
       {
-        "path": "docs/care-plan/reports/task-8-report.md",
-        "section": "care-plan",
-        "catalogued": true
-      },
-      {
         "path": "docs/superpowers/rag-upgrade/cloud/specs/2026-08-20-rag-answer-and-australian-sources-design.md",
         "section": "superpowers",
         "catalogued": true
@@ -3785,18 +3317,8 @@
         "catalogued": true
       },
       {
-        "path": "docs/care-plan/patient-facing-sheets/README.md",
-        "section": "care-plan",
-        "catalogued": true
-      },
-      {
-        "path": "docs/care-plan/CLAUDE-START-HERE.md",
-        "section": "care-plan",
-        "catalogued": true
-      },
-      {
-        "path": "docs/audit/2026-10-21-organisation-remediation.md",
-        "section": "audit",
+        "path": "docs/decisions/2026-10-20-terms-step-wording-signed-off.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -3815,8 +3337,13 @@
         "catalogued": true
       },
       {
-        "path": "docs/care-plan/accessibility-acceptance.md",
-        "section": "care-plan",
+        "path": "docs/decisions/2026-10-17-agent-recorded-therapy-and-did-sign-offs-reset.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-18-cursor-cloud-agents-prohibited.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -3870,16 +3397,6 @@
         "catalogued": true
       },
       {
-        "path": "docs/care-plan/reports/task-3-brief.md",
-        "section": "care-plan",
-        "catalogued": true
-      },
-      {
-        "path": "docs/care-plan/complete-work-ledger.md",
-        "section": "care-plan",
-        "catalogued": true
-      },
-      {
         "path": "docs/superpowers/specs/2026-08-23-outstanding-p2-p3-remediation-design.md",
         "section": "superpowers",
         "catalogued": true
@@ -3900,6 +3417,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-17-clinical-math-panel-hidden-until-clinician-verification.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/superpowers/plans/2026-08-23-favourites-and-reconciliation.md",
         "section": "superpowers",
         "catalogued": true
@@ -3911,6 +3433,11 @@
       },
       {
         "path": "docs/decisions/2026-08-21-care-plan-memory-only-with-storage-seam.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-21-answer-safety-pass-marks.md",
         "section": "decisions",
         "catalogued": true
       },
@@ -3942,6 +3469,16 @@
       {
         "path": "docs/branch-review-ledger.md",
         "section": "root",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-20-on-call-four-tabs.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-21-open-shifts-inside-roster.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -3985,13 +3522,28 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-19-offline-page-waits-for-slow-pages.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-09-03-safety-findings-below-the-prose.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-17-wfydv6-stays-open-until-sign-off.md",
         "section": "decisions",
         "catalogued": true
       },
       {
         "path": "docs/agents/native-startup/external-skill-precedence.md",
         "section": "agents",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-18-unsigned-clinical-text-withheld-from-site-content.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -4040,6 +3592,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-19-no-patient-details-rollout-rule.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-08-27-sidebar-documents-points-at-shared-home.md",
         "section": "decisions",
         "catalogued": true
@@ -4057,6 +3614,16 @@
       {
         "path": "docs/superpowers/rag-upgrade/cloud/approval-matrix.md",
         "section": "superpowers",
+        "catalogued": true
+      },
+      {
+        "path": "docs/product/clinical-and-work-direction.md",
+        "section": "product",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-21-staging-gate-before-live.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -4085,6 +3652,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/audit/2026-10-17-full-deep-remediation-spec.md",
+        "section": "audit",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-08-07-weak-evidence-banner-only-when-it-adds.md",
         "section": "decisions",
         "catalogued": true
@@ -4095,13 +3667,8 @@
         "catalogued": true
       },
       {
-        "path": "docs/care-plan/reports/task-4-report.md",
-        "section": "care-plan",
-        "catalogued": true
-      },
-      {
-        "path": "docs/care-plan/reports/task-5-report.md",
-        "section": "care-plan",
+        "path": "docs/decisions/2026-10-21-emergency-cards-owner-review.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -4175,6 +3742,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-22-tga-pi-live-search-source.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/error-tracking.md",
         "section": "root",
         "catalogued": true
@@ -4190,8 +3762,8 @@
         "catalogued": true
       },
       {
-        "path": "docs/care-plan/reports/task-3-report.md",
-        "section": "care-plan",
+        "path": "docs/agents/clinical-sign-off.md",
+        "section": "agents",
         "catalogued": true
       },
       {
@@ -4225,9 +3797,19 @@
         "catalogued": true
       },
       {
+        "path": "docs/archive/ingestion-concurrency-fix-workorder-2026-10-20.md",
+        "section": "archive",
+        "catalogued": true
+      },
+      {
         "path": "docs/agents/claude-hook-scripts.md",
         "section": "agents",
         "catalogued": true
+      },
+      {
+        "path": "docs/design-system/audit-resolution-2026-10-17.md",
+        "section": "design-system",
+        "catalogued": false
       },
       {
         "path": "docs/archive/rag-scalability-wip-review-handover-2026-07-15.md",
@@ -4277,11 +3859,6 @@
       {
         "path": "docs/codebase-index.md",
         "section": "root",
-        "catalogued": true
-      },
-      {
-        "path": "docs/care-plan/reports/task-7-brief.md",
-        "section": "care-plan",
         "catalogued": true
       },
       {
@@ -4390,11 +3967,6 @@
         "catalogued": true
       },
       {
-        "path": "docs/care-plan/cloud-session.md",
-        "section": "care-plan",
-        "catalogued": true
-      },
-      {
         "path": "docs/decisions/2026-09-19-escalation-and-monitoring-chip-words.md",
         "section": "decisions",
         "catalogued": true
@@ -4417,6 +3989,11 @@
       {
         "path": "docs/archive/2026-10-agent-code-reviews/VERIFICATION_REQUIRED.md",
         "section": "archive",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-17-sign-prose-only-source-reviews.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -4445,6 +4022,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/process-cleanup-proposal-2026-10.md",
+        "section": "root",
+        "catalogued": true
+      },
+      {
         "path": "docs/agents/task-efficiency.md",
         "section": "agents",
         "catalogued": true
@@ -4453,6 +4035,11 @@
         "path": "docs/agents/codex-cloud-environment.md",
         "section": "agents",
         "catalogued": true
+      },
+      {
+        "path": "docs/cloud/cloud-build-resources.md",
+        "section": "cloud",
+        "catalogued": false
       },
       {
         "path": "docs/samd-classification-medication-considerations.md",
@@ -4470,13 +4057,18 @@
         "catalogued": true
       },
       {
-        "path": "docs/care-plan/HANDOFF-START-HERE.md",
-        "section": "care-plan",
+        "path": "docs/audit/2026-10-18-remaining-review-closeout.md",
+        "section": "audit",
         "catalogued": true
       },
       {
         "path": "docs/decisions/2026-10-16-admitted-upload-survives-client-cancel.md",
         "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/audit/2026-10-21-database-performance-evidence.md",
+        "section": "audit",
         "catalogued": true
       },
       {
@@ -4522,6 +4114,11 @@
       {
         "path": "docs/agents/native-startup/search-chrome-behaviour.md",
         "section": "agents",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-19-say-when-an-ended-sign-in-cleared-the-device.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -4585,8 +4182,18 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-18-no-national-youth-crisis-line-pinning-yet.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/superpowers/rag-upgrade/canonical/approval-matrix.md",
         "section": "superpowers",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-21-worker-scan-advisory-until-4-nov.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -4650,11 +4257,6 @@
         "catalogued": true
       },
       {
-        "path": "docs/care-plan/reports/task-d1-report.md",
-        "section": "care-plan",
-        "catalogued": true
-      },
-      {
         "path": "docs/productivity-workflows.md",
         "section": "root",
         "catalogued": true
@@ -4705,11 +4307,6 @@
         "catalogued": true
       },
       {
-        "path": "docs/care-plan/claude-build-handover-2026-08-21.md",
-        "section": "care-plan",
-        "catalogued": true
-      },
-      {
         "path": "docs/superpowers/specs/2026-08-23-clinical-operations-programme-design.md",
         "section": "superpowers",
         "catalogued": true
@@ -4732,11 +4329,6 @@
       {
         "path": "docs/redesign/09-page-polish-plan.md",
         "section": "redesign",
-        "catalogued": true
-      },
-      {
-        "path": "docs/care-plan/verification-log-2026-08-21.md",
-        "section": "care-plan",
         "catalogued": true
       },
       {
@@ -4795,6 +4387,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-21-answers-leave-diagnosis-to-clinician.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-08-25-answer-provenance-line.md",
         "section": "decisions",
         "catalogued": true
@@ -4802,6 +4399,11 @@
       {
         "path": "docs/archive/cloud-session-state-2026-10-16/lighthouse-mobile-root-cls-flake.md",
         "section": "archive",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-21-one-daily-health-summary.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -4930,6 +4532,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/audit/2026-10-18-merged-pr-resolution.md",
+        "section": "audit",
+        "catalogued": true
+      },
+      {
         "path": "docs/archive/codex-cloud-legacy-profile-2026-10-16.md",
         "section": "archive",
         "catalogued": true
@@ -5000,11 +4607,6 @@
         "catalogued": true
       },
       {
-        "path": "docs/care-plan/reports/task-10-report.md",
-        "section": "care-plan",
-        "catalogued": true
-      },
-      {
         "path": "docs/superpowers/rag-upgrade/local/plans/2026-08-21-trusted-admin-document-ingestion.md",
         "section": "superpowers",
         "catalogued": true
@@ -5012,11 +4614,6 @@
       {
         "path": "docs/superpowers/plans/2026-07-04-public-anonymous-access-rate-limits.md",
         "section": "superpowers",
-        "catalogued": true
-      },
-      {
-        "path": "docs/care-plan/reports/final-fix-report.md",
-        "section": "care-plan",
         "catalogued": true
       },
       {
@@ -5060,11 +4657,6 @@
         "catalogued": true
       },
       {
-        "path": "docs/care-plan/session-handoff-2026-08-21.md",
-        "section": "care-plan",
-        "catalogued": true
-      },
-      {
         "path": "docs/design-system.md",
         "section": "root",
         "catalogued": true
@@ -5081,6 +4673,11 @@
       },
       {
         "path": "docs/decisions/2026-09-26-organisation-check-warns-on-moves.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-21-all-in-one-clinical-and-work.md",
         "section": "decisions",
         "catalogued": true
       },
@@ -5106,6 +4703,11 @@
       },
       {
         "path": "docs/decisions/2026-08-24-answer-citation-marks-one-colour.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-21-ci-failure-alerts-mention-owner.md",
         "section": "decisions",
         "catalogued": true
       },
@@ -5220,6 +4822,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/governance/physiological-calculator-hold-2026-10-17.md",
+        "section": "governance",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-10-15-no-default-ai-coding-tool.md",
         "section": "decisions",
         "catalogued": true
@@ -5235,6 +4842,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/rag-behaviour/cache-freshness.md",
+        "section": "rag-behaviour",
+        "catalogued": true
+      },
+      {
         "path": "docs/audit/codex-cloud-reliability-20260907.md",
         "section": "audit",
         "catalogued": true
@@ -5245,12 +4857,22 @@
         "catalogued": true
       },
       {
+        "path": "docs/cloud/codex-cloud-legacy-bootstrap.md",
+        "section": "cloud",
+        "catalogued": true
+      },
+      {
         "path": "docs/superpowers/rag-upgrade/cloud/plans/2026-08-20-rag-adaptive-answer.md",
         "section": "superpowers",
         "catalogued": true
       },
       {
         "path": "docs/decisions/2026-10-16-remove-obsolete-cloud-startup-instructions.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-21-no-malware-scan-before-upload-storage.md",
         "section": "decisions",
         "catalogued": true
       },
@@ -5310,8 +4932,23 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-19-production-alerts-by-phone.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/superpowers/plans/2026-10-17-full-deep-remediation.md",
+        "section": "superpowers",
+        "catalogued": true
+      },
+      {
         "path": "docs/audit/worktree-reconciliation-2026-08-23.md",
         "section": "audit",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-21-content-review-intervals.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -5365,11 +5002,6 @@
         "catalogued": true
       },
       {
-        "path": "docs/care-plan/reports/task-4-brief.md",
-        "section": "care-plan",
-        "catalogued": true
-      },
-      {
         "path": "docs/superpowers/plans/2026-08-23-clinical-trust-cockpit.md",
         "section": "superpowers",
         "catalogued": true
@@ -5382,6 +5014,11 @@
       {
         "path": "docs/superpowers/plans/2026-10-11-parallel-repository-audit.md",
         "section": "superpowers",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-19-service-role-key-in-production-secrets-environment.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -5398,6 +5035,11 @@
         "path": "docs/staging-tenancy-release-evidence.md",
         "section": "root",
         "catalogued": true
+      },
+      {
+        "path": "docs/cloud/cross-repo-cloud-contracts.md",
+        "section": "cloud",
+        "catalogued": false
       },
       {
         "path": "docs/worker-deploy-runbook.md",
@@ -5420,17 +5062,17 @@
         "catalogued": true
       },
       {
-        "path": "docs/care-plan/session-handoff-2026-08-23.md",
-        "section": "care-plan",
-        "catalogued": true
-      },
-      {
         "path": "docs/staging-shutdown-and-repo-review-handover-2026-09-06.md",
         "section": "root",
         "catalogued": true
       },
       {
         "path": "docs/decisions/2026-08-18-gate-b-table-target-is-parity.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-22-desktop-home-lighthouse-floor.md",
         "section": "decisions",
         "catalogued": true
       },
@@ -5460,11 +5102,6 @@
         "catalogued": true
       },
       {
-        "path": "docs/care-plan-context.md",
-        "section": "root",
-        "catalogued": true
-      },
-      {
         "path": "docs/decisions/2026-09-03-evidence-preview-excludes-per-document.md",
         "section": "decisions",
         "catalogued": true
@@ -5477,11 +5114,6 @@
       {
         "path": "docs/decisions/2026-09-25-differential-badges-name-what-they-count.md",
         "section": "decisions",
-        "catalogued": true
-      },
-      {
-        "path": "docs/care-plan/sdd-ledger.md",
-        "section": "care-plan",
         "catalogued": true
       },
       {
@@ -5507,6 +5139,16 @@
       {
         "path": "docs/database-remediation-coordination.md",
         "section": "root",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-20-database-prs-merge-by-hand.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-21-psych-sift-sign-offs-in-3562-and-3571-reset.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -5540,11 +5182,6 @@
         "catalogued": true
       },
       {
-        "path": "docs/care-plan/implementation-handoff.md",
-        "section": "care-plan",
-        "catalogued": true
-      },
-      {
         "path": "docs/archive/branch-cleanup-2026-06-28.md",
         "section": "archive",
         "catalogued": true
@@ -5568,6 +5205,11 @@
         "path": "docs/evidence/forms-pdf-publisher-comparison-2026-09-16.md",
         "section": "evidence",
         "catalogued": true
+      },
+      {
+        "path": "docs/cloud/cloud-platform-acceptance.md",
+        "section": "cloud",
+        "catalogued": false
       },
       {
         "path": "docs/decisions/2026-08-22-developer-hub-review-state-panel.md",
@@ -5628,6 +5270,9 @@
       },
       {
         "name": "care-plan"
+      },
+      {
+        "name": "cloud"
       },
       {
         "name": "cme"
@@ -5725,6 +5370,14 @@
         "scope": "services detail redesign responsive UX and referral actions",
         "outcome": "Three P2 findings fixed; no remaining high-confidence defects",
         "checks": "DOM 40/40; typecheck; lint; design-system contract; production Chromium 11/11"
+      },
+      {
+        "date": "2026-10-17",
+        "ref": "codex/design-audit-resolution",
+        "head": "0022c8121463669f222de38f642089a87e2ea932",
+        "scope": "adversarial review of settled design audit changes",
+        "outcome": "Two introduced P2 interaction defects reproduced and repaired before publication; independent corrective review found no additional issue; manual acceptance remains open",
+        "checks": "Standards and Spec source reviews: zero findings. Interaction review: stale Services shortlist capacity and Therapy zero-result announcement behind inert Sheet. RED 4 failed/19 passed; GREEN 23 passed; affected 6 suites/35 passed. Correction-specific browser verification pending."
       },
       {
         "date": "2026-08-27",
@@ -6231,6 +5884,14 @@
         "checks": "outstanding-issues guard; Prettier; diff review; zero unresolved threads"
       },
       {
+        "date": "2026-10-17",
+        "ref": "HEAD",
+        "head": "0537cc935b86824db40ca0c117894b67638e2d95",
+        "scope": "PR 3628 review and fixes",
+        "outcome": "Found atomic worker-scope, comparator-unit, telemetry-budget, and document-source retention defects; fixes prepared with regression coverage.",
+        "checks": "Independent standards and specification inspection of the pinned PR diff; follow-up working-tree targeted proof 295/295 tests and 10 local SQL scenarios; hosted CI pending."
+      },
+      {
         "date": "2026-08-06",
         "ref": "claude/pr-handoff-stop-hook (PR #1649)",
         "head": "057a5579e538fcacc15feb8a0ac7fa580b3decb4",
@@ -6533,6 +6194,14 @@
         "scope": "branch-cleanup",
         "outcome": "exact merged PR #1501 head; un-checked-out local branch archived in verified batch3 bundle",
         "checks": "GitHub merged exact head, branch not checked out, no open PR claim, batch3 bundle verify ok SHA256 48AF30DD07A04703D02F4A2FFBDE65F1E573D081E4660D4C7E240D8DB1079B8C"
+      },
+      {
+        "date": "2026-10-18",
+        "ref": "fix/remaining-review-reliability-20261018",
+        "head": "08f9eefc3de72036704d85cddc5b9c59e64e98a7",
+        "scope": "Independent append-only migration seals and drift recovery failure-path review",
+        "outcome": "Accepted: all321priorhashes preserved, exactly3owner-approved additions match migration bytes; generated scratch-schema recovery logging preserves stale-check failure and excludes application rows/credentials. No live SQL, historical reseal or merge.",
+        "checks": "Independent read-only diff and hashing; supplied90scope tests plus765workflow contracts and actual shell fresh/stale recovery harness passed. Manifest recovery and hosted parity still pending; requested model not independently verified telemetry."
       },
       {
         "date": "2026-08-24",
@@ -7391,6 +7060,14 @@
         "checks": "merge origin/main and/or conflict re-check only; no provider-backed checks run"
       },
       {
+        "date": "2026-10-18",
+        "ref": "fix/remaining-review-reliability-20261018",
+        "head": "11a29e1d3183fe6a129297cefd196736bc69b324",
+        "scope": "Independent recheck of concurrent bot corrections in PDF and durable alerts",
+        "outcome": "Accepted: restore complete crossing PDF instructions and per-device eligibility while retaining paged draining. No new material defect in bounded read-only PDF and alert correction reviews. Queue draft single ADD preserves fresh-schema UUID/default/trigger result without UPDATE side effects.",
+        "checks": "Existing tests reproduced two PDF and two roster regressions before correction. Corrected Python60passed; focused TS35passed4files including26-device page regression; fresh full lint and typecheck passed. Reviews read-only; no clinical acceptance or providers."
+      },
+      {
         "date": "2026-07-28",
         "ref": "claude/branch-review-ledger-fixes-42575f",
         "head": "11a4ed746be7a83b144876f7a16948cad280df25",
@@ -7471,6 +7148,14 @@
         "checks": "Hosted PR required SUCCESS; Migration replay/Unit/Static/PR policy SUCCESS; Semgrep fail was Docker Hub pull timeout (infra). `npm run check:branch-review-ledger` pass. No provider-backed checks."
       },
       {
+        "date": "2026-10-18",
+        "ref": "fix/remaining-review-reliability-20261018",
+        "head": "12d2c9dc30b4c77d58f85d290c433301bc2313e9",
+        "scope": "Independent trigger-helper ACL parity correction review",
+        "outcome": "Accepted: terminal helper-specific mirror revoke matches reported owner-only chain ACL, retains owner privileges and trigger behavior. Migration tree, seals and existing manifest unchanged. New schema hash5118a8dc. Genuine regeneration and hosted parity still required.",
+        "checks": "Independent immutable SQL diff, schema hash and unchanged protected bytes; inspected actual-migration PGlite ACL/UUID proof and passing log. Parent45contract tests and CI mismatch observation reused; no reviewer writes/providers or broad reruns."
+      },
+      {
         "date": "2026-07-30",
         "ref": "PR-1507",
         "head": "12e5c8c977a873a7b900596fdc310a1a78d863f0",
@@ -7541,6 +7226,14 @@
         "scope": "PR #2292 developer-hub review and P2 fixes",
         "outcome": "Merged current main; confirmed the external Markdown URL guard and added a fail-closed staging requirement for non-ignored untracked Markdown docs. Both actionable review findings are covered by focused regressions; ignored scratch notes remain excluded.",
         "checks": "Vitest repo-awareness-generator 31/31; tsc -p tsconfig.typecheck.json --noEmit; Prettier --check; git diff --check; coordinated typecheck wrapper interrupted by environment but underlying tsc passed"
+      },
+      {
+        "date": "2026-10-18",
+        "ref": "fix/remaining-review-reliability-20261018",
+        "head": "1401eaa8b18471a1ded492626f1730805f9ac1d5",
+        "scope": "Independent recovered Supabase manifest integrity and semantic inventory review",
+        "outcome": "Accepted: recovered file, working file and immutable Git blob are857833bytes with SHA470f2adf6f51487d27d8833d73169386c02491d8c2aef5ebfe77a32a98adfa18. Schema/image/generator/probe match; source schema and all seals unchanged. No unexpected removals or permission relaxation; additions match source SQL. Hosted parity still pending.",
+        "checks": "Independent byte/schema hashes and semantic diff; parent observed trusted GitHub recovery log39112988994/job117632966128 and66focusedtests pass. No providers/writes by reviewer; requested route is not verified execution telemetry."
       },
       {
         "date": "2026-07-30",
@@ -8005,6 +7698,14 @@
         "scope": "branch-cleanup",
         "outcome": "Redundant: exact source HEAD was squash-merged by PR #483; eligible for deletion when unreferenced.",
         "checks": "GitHub merged-PR source HEAD matched exactly."
+      },
+      {
+        "date": "2026-10-18",
+        "ref": "codex/agent-policy-delivery-20261017",
+        "head": "190c660135c6a9c6061b1589a74aa9c44bf0b11a",
+        "scope": "current-head residual hook and managed-guidance repair",
+        "outcome": "Independent review: no confirmed blocking finding in six-file residual diff; project suffix and newer bot fixes preserved. Local synthetic proof only; native loading and hosted acceptance separate.",
+        "checks": "Windows Node hooks16/16;7bootstrap edge probes;focused verifier/receipt Vitest46/46;source typecheck exit0;exact-lock724locations;docs maintenance and inner checks pass;format/rule-consistency/diff checks pass. Reviewed six source hashes independently matched by parent; base fd4831e44b."
       },
       {
         "date": "2026-07-27",
@@ -8743,6 +8444,14 @@
         "checks": "git diff --check; CI scope self-test; ledger and issue guards"
       },
       {
+        "date": "2026-10-18",
+        "ref": "fix/remaining-review-reliability-20261018",
+        "head": "23350178ad15740755dccb81c281ea06cd63276a",
+        "scope": "Independent corrected genuine drift-manifest integrity review",
+        "outcome": "Accepted: recovered, working and Git blob identical857796bytes SHA3555daf0; schema5118/image/probe match. Only timestamp/schema hash/helper service-role EXECUTE removal changed. All other catalog values, migrations and seals unchanged; hosted freshness/parity still pending.",
+        "checks": "Independent immutable byte/hash/schema/full recursive comparisons; inspected verification and66tests4files logs without rerun. GitHub-log provenance and test execution reused from controller, not independently observed. Read-only bounded review."
+      },
+      {
         "date": "2026-07-30",
         "ref": "codex/ledger-next-20260730",
         "head": "23572a4ad4a6f1520d86715c647ad9d40ff6bb01",
@@ -8821,6 +8530,14 @@
         "scope": "scripts/check-playwright-browser-revision.mjs, tests/check-playwright-browser-revision.test.ts — ledger #312 fix",
         "outcome": "authored — verified real Chromium binary presence check on disk; reproduced original false-OK bug live against this session's /opt/pw-browsers container (chromium-1194 present, pinned revision 1234 missing)",
         "checks": "verify:pr-local (runtime, lock-parity, format, lint, typecheck, test 602 files/6518 passed/4 skipped, rag:fixtures, medication-interactions PASS; medication-lexicon-report pre-existing unrelated FAIL); focused vitest check-playwright-browser-revision.test.ts 10/10, playwright-browser-preflight.test.ts 12/12"
+      },
+      {
+        "date": "2026-10-16",
+        "ref": "claude/swarm-12-remaining-20261016",
+        "head": "24eeea365e782c651047eebf0ecbe9db87e4fd07",
+        "scope": "prlanded",
+        "outcome": "PR #3573 squash-merged as 24eeea365e; two-dot diff and stable patch-id ba25a7b05c match branch tip 03a9d35d79 byte-for-byte with zero orphaned commits",
+        "checks": "gh pr view 3573 MERGED; 1-parent squash; git diff --stat 24eeea365e 03a9d35d79 empty; git patch-id --stable match"
       },
       {
         "date": "2026-07-11",
@@ -9085,6 +8802,22 @@
         "scope": "branch-cleanup-deletion-pending",
         "outcome": "Pending deletion: content already on origin/main or superseded old-lineage snapshot / throwaway CI-retry branch; branch-only-file sweep found no novel work. Remote deletion DENIED (HTTP 403, session lacks ref-delete permission); branch still exists at this HEAD — operator must complete deletion. Scope is deletion-pending so future cleanup passes re-evaluate rather than skip.",
         "checks": "Provider-backed GitHub PR inventory via MCP (400 PRs #264-#674, all merged=false); local read-only git: rewritten-main-aware cherry-pick + two-dot tree + branch-only-file novelty sweep vs origin/main e75fad90; adversarial re-check. Remote `git push --delete` attempted (provider-backed write) and DENIED with HTTP 403. No OpenAI/Supabase/live-eval checks."
+      },
+      {
+        "date": "2026-10-18",
+        "ref": "codex/design-audit-acceptance",
+        "head": "2900a6363462efb6eaab614280c7a40b89eb28d8",
+        "scope": "Design audit acceptance follow-up",
+        "outcome": "Independent scoped adversarial review found no confirmed defect in the stateful calculator regression or acceptance handoff. Dedicated same-URL recovery coverage is added; production source is unchanged. Railway health verified, direct HTTP blocked by network proxy, six device/clinical acceptance checks remain explicit.",
+        "checks": "Owning calculator suite26passed3.62s; negative-control removal of clearQuery yields1failed25passed with PHQ-9 retained, then restored26pass. Independent static review verifies modified-click preservation and URL cleanup. Merged545treeequalsreviewed58e302. No browser/fullsuite/release/clinicaleval claimed for newtest-onlydiff."
+      },
+      {
+        "date": "2026-10-18",
+        "ref": "codex/design-audit-acceptance",
+        "head": "2900a6363462efb6eaab614280c7a40b89eb28d8",
+        "scope": "Design audit acceptance follow-up (supersedes 2026-10-18)",
+        "outcome": "Wording correction only (CodeRabbit). Railway deployment status was verified; public HTTP health remains unverified because direct HTTP was blocked by the network proxy. Otherwise unchanged: independent scoped adversarial review found no confirmed defect in the stateful calculator regression or acceptance handoff; dedicated same-URL recovery coverage is added; production source is unchanged; six device/clinical acceptance checks remain explicit.",
+        "checks": "No new checks: restates the superseded record's evidence (owning calculator suite 26 passed; negative-control removal of clearQuery 1 failed 25 passed, restored 26 passed; static review of modified-click preservation and URL cleanup). No public HTTP health, browser, full-suite, release or clinical eval claimed."
       },
       {
         "date": "2026-07-28",
@@ -10647,6 +10380,14 @@
         "checks": "git diff --check; static ledger guards; focused tests blocked without node_modules"
       },
       {
+        "date": "2026-10-18",
+        "ref": "fix/remaining-review-reliability-20261018",
+        "head": "3bf7aa7eead5e4c0e663353a50e939ba44f1bc2c",
+        "scope": "Independent generated-catalogue correction integrity review",
+        "outcome": "Accepted: regenerated full/index filenames match canonical bytes, actual main grace asset is preserved, unmerged intermediate removed, ownership pointer resolves, and CET remains unverified/excluded. No clinical approval or frozen SQL change.",
+        "checks": "Bounded read-only review of28cc93dc generated bytes and c632f2899 ownership pointer, unchanged in this head;1081 IDs preserved,205lineage digests only, content hashes/governance/eligibility unchanged. Therapy/static-manifest checks passed; owning domain1805passed1skipped131files."
+      },
+      {
         "date": "2026-08-29",
         "ref": "codex/rag-answer-quality-programme-local-20260823",
         "head": "3c2bd23a68e18200dbeace2e9839b585c1ae1802",
@@ -10725,6 +10466,14 @@
         "scope": "Refresh all six Linux visual baselines from hosted-CI artifact visual-baseline-32189416778 (main @ 9b1e7248) plus provenance and regenerated adoption manifest",
         "outcome": "Approved — all six actual renders opened and reviewed before adopting; no source changed; provenance reviewerType:human is overstated for an automated pass and is flagged in the PR for owner confirmation",
         "checks": "adopt-visual-baselines --write (6/6 replaced, capture kind refresh); check:design-system-adoption (54 components, 82 roots); vitest tests/adopt-visual-baselines.test.ts 4 passed; prettier --check provenance.json clean. No broader gate: PNG/JSON-only diff with no changed source failure path"
+      },
+      {
+        "date": "2026-10-19",
+        "ref": "fix/worker-security-remediation-20261019",
+        "head": "3d86f6f6fa5abfb32bda7954a8a68e32ca54ce85",
+        "scope": "worker Perl security remediation current diff",
+        "outcome": "No actionable findings in independent read-only candidate review; seven supported vendor fixes targeted; remaining image advisories unresolved.",
+        "checks": "Signed Debian Release/Packages/deb SHA verification passed; u3 rejected and u4/u5 accepted; Docker RUN shell syntax passed; exact-lock Prettier3.9.10 unchanged; diff integrity passed; complete-image rebuild/runtime/scan pending CI; broad local JS gates not run with stale installed lock."
       },
       {
         "date": "2026-07-20",
@@ -12583,6 +12332,14 @@
         "checks": "pwa DOM 10/10; PWA Chromium 5/5; format; exact-head merge-tree"
       },
       {
+        "date": "2026-10-18",
+        "ref": "main",
+        "head": "54559adabe5b51396c2d1c0eb395f2cf79b43fbf",
+        "scope": "PR 3632 landed-content verification",
+        "outcome": "PR was externally squash-merged during the review at 2026-10-18T05:13:46Z. Landed commit tree exactly equals reviewed head58e30257a45c0e19107b734f5ce2416eb9e6c8ad. No missing work detected. This agent did not merge, arm auto-merge, push or deploy. Manual acceptance and deployment health remain unverified.",
+        "checks": "Fresh origin/main54559adabe5b51396c2d1c0eb395f2cf79b43fbf has one parent; git diff --stat against reviewed head is empty; both tree hashes9e7fab3150b0448392438152c96e459d81a06c9d. Reviewed head required CI39098909136 and PR required117593597228 succeeded. No production-health or provider clinical eval invoked."
+      },
+      {
         "date": "2026-07-26",
         "ref": "PR #1246 / `codex/standardize-header-and-footer-behavior`",
         "head": "547d3a100c73333895554cf66eb0efd8d8dde8da",
@@ -13007,6 +12764,14 @@
         "checks": "current auth source/test inspection; origin/main pickaxe history; redundant cherry-pick proof; bundle verify"
       },
       {
+        "date": "2026-10-18",
+        "ref": "codex/design-audit-resolution",
+        "head": "58e30257a45c0e19107b734f5ce2416eb9e6c8ad",
+        "scope": "CI failure and merge-safety review",
+        "outcome": "No confirmed code/CI blocker. Historical failures repaired in published commits; independent scoped review found no defect. All five review threads resolved. Technically ready for owner merge; manual Safari/PWA/keyboard/AT and populated clinical-state acceptance remains unverified. No merge or push performed.",
+        "checks": "Hosted CI 39098909136 at exact head: PR required 117593597228 success; both coverage partitions and aggregate, all production UI shards and critical, builds, static, safety and Lighthouse success; Secret Scan and SAST success. Local audit:final-merge dry-run and git diff --check passed. No new local test suite or provider-backed clinical eval run; reused prior versioned regression evidence."
+      },
+      {
         "date": "2026-07-22",
         "ref": "PR #1075 / `codex/reconcile-route-reachability-ast`",
         "head": "58e57a79b4e7766aebd3d0404a6c431f3a286bbe (merged as 46f143d135afcd2f449ae6bedd05332a7af35f4d)",
@@ -13157,6 +12922,14 @@
         "scope": "branch-cleanup-deletion-pending",
         "outcome": "Pending deletion: content already on origin/main or superseded old-lineage snapshot / throwaway CI-retry branch; branch-only-file sweep found no novel work. Remote deletion DENIED (HTTP 403, session lacks ref-delete permission); branch still exists at this HEAD — operator must complete deletion. Scope is deletion-pending so future cleanup passes re-evaluate rather than skip.",
         "checks": "Provider-backed GitHub PR inventory via MCP (400 PRs #264-#674, all merged=false); local read-only git: rewritten-main-aware cherry-pick + two-dot tree + branch-only-file novelty sweep vs origin/main e75fad90; adversarial re-check. Remote `git push --delete` attempted (provider-backed write) and DENIED with HTTP 403. No OpenAI/Supabase/live-eval checks."
+      },
+      {
+        "date": "2026-10-18",
+        "ref": "fix/merged-pr-review-20261018",
+        "head": "5acc2553e1df16c57bf7b47dd2ccc0a29575284c",
+        "scope": "Bounded correction review of full-suite fixture and metadata-budget findings",
+        "outcome": "Two independent reviewers accepted the corrections; no remaining actionable source finding. Three draft database assertions remain blocked; no clinical or production acceptance.",
+        "checks": "Fresh lint/typecheck and production build passed; Teaching/current-manifest scope 2169 passed in77files; corrected budget scope10passed. Prior full run32330passed24failed2skipped;21nonDBfailures addressed by focused evidence, no green full rerun claimed."
       },
       {
         "date": "2026-08-19",
@@ -13397,6 +13170,14 @@
         "scope": "PR #1785 unblock/fix",
         "outcome": "before: Production UI (3) failed on service-detail scroll endpoint (remaining 67px) at 38b3bd0c; GitHub DIRTY behind-but-clean vs #1791. after: merged origin/main + re-scroll toPass fix in ui-tools service-detail test; threads untouched; do not merge",
         "checks": "CI Production UI (3) logs; git merge-tree clean; prettier ui-tools; product fix in same tip commit as this row"
+      },
+      {
+        "date": "2026-10-16",
+        "ref": "claude/swarm-16-issues-20261016",
+        "head": "5cbe4ec63a32f841c9445380232875c9106cb170",
+        "scope": "prlanded",
+        "outcome": "PR #3567 squash-merged as 5cbe4ec63a; all 68 source/test/doc files match branch tip 10d53b7624 byte-for-byte with zero orphaned commits",
+        "checks": "gh pr view 3567 MERGED; 1-parent squash; per-file diff empty across all non-snapshot PR files"
       },
       {
         "date": "2026-07-30",
@@ -13943,6 +13724,14 @@
         "checks": "typecheck:internal pass; vitest clinical-dashboard-merge-artifacts + visual-evidence-tabs pass (9); no provider-backed checks run"
       },
       {
+        "date": "2026-10-18",
+        "ref": "codex/design-audit-acceptance",
+        "head": "633a8b7a509b6c0863059f09f849a2ec1a58e8ba",
+        "scope": "Automated acceptance follow-up review",
+        "outcome": "Two confirmed automated-edit issues: a missing usePathname mock prevents the new header fixture from rendering, and an already published immutable review was rewritten. Restore the scoped page/provider harness and original record bytes. The test name explicitly limits its contract; no production shell or physical-device coverage is claimed. Corrections verified locally; publication pending.",
+        "checks": "Independent source review and local reproduction: 1 failed, 25 passed at bot head, missing next/navigation usePathname export. Corrected owning suite: 26 passed. Original regression negative control: removing clearQuery left PHQ-9 in the input. Original immutable record restored byte-for-byte against ed3dc82abd26be523d0d643dc7bfd1545587162e. Production source unchanged."
+      },
+      {
         "date": "2026-07-13",
         "ref": "claude/scroll-icon-design-8b7675",
         "head": "636630a035df2da70353e4b7601d97744cdf0819",
@@ -14359,6 +14148,14 @@
         "checks": "UI 3 passed; unit 8 passed; lint, typecheck, build, design-system and offline RAG passed; full suite 6022 passed with 16 unchanged baseline failures"
       },
       {
+        "date": "2026-10-17",
+        "ref": "PR #3609 (claude/reconcile-inbox-20261017)",
+        "head": "679d2bfeb8fb2082a09ae75009bc07d454731276",
+        "scope": "Reconcile 21 pending inbox requests and bundle prlanded review records for PRs #3567, #3570, and #3573",
+        "outcome": "landed (squash-merged into main as 679d2bfeb8fb2082a09ae75009bc07d454731276; 4 follow-up inbox items queued from review)",
+        "checks": "PR required, Static PR checks, Safety and config checks, Build, Production UI (1-3), Unit coverage (1-2), Semgrep, Gitleaks, Gitar, CodeAnt all green"
+      },
+      {
         "date": "2026-08-18",
         "ref": "claude/dictionary-mode-ui-updates-uwoicy",
         "head": "67a290f393702f36021a470e6b00b0d1aa335227",
@@ -14733,6 +14530,14 @@
         "scope": "branch-cleanup",
         "outcome": "safe remote delete: experimental task-ledger variant superseded by merged PR #1106 canonical outstanding-issues ledger; archived batch16",
         "checks": "PR #1106 contract/history; current task-ledger architecture; bundle verify"
+      },
+      {
+        "date": "2026-10-17",
+        "ref": "codex/design-audit-resolution",
+        "head": "6c91636b26fc7f2f5849a97f30b4a292a73057ad",
+        "scope": "concurrent automated review integration",
+        "outcome": "Two Therapy P2 regressions in automated follow-up reproduced and repaired; valid Services history replacement retained; independent corrective review found no additional issue",
+        "checks": "RED3failed22passed; affected6suites37passed6.66s; original initial-zero/inert-sheet and realBackForward assertions preserved; pending/delivered loading-cycle regressions added; fresh combined-source browser proof pending."
       },
       {
         "date": "2026-08-02",
@@ -15439,6 +15244,14 @@
         "checks": "outstanding-issues snapshot; outstanding-issues integrity; staged diff check"
       },
       {
+        "date": "2026-10-18",
+        "ref": "fix/remaining-review-reliability-20261018",
+        "head": "72b9a22e77039350e248bf43a3c539be95ce9c0b",
+        "scope": "Independent remaining-review PDF association and durable alert delivery review with correction rechecks",
+        "outcome": "No remaining actionable findings in bounded source/correction reviews. Filled or invisible paths, overflow text loss, transient lookup loss and post-lock expiry were found, corrected and rechecked. No clinical or production acceptance inferred.",
+        "checks": "60 Python extractor tests;50 TypeScript cases7files;fresh complete typecheck;native PostgreSQL17.6 rollback,device retry,RLS,actual2session claims/reclaim/stale ack and wait-across-expiry passed. Full pinned Supabase replay blocked by ENOSPC; browser proof pending."
+      },
+      {
         "date": "2026-08-22",
         "ref": "PR #2292 / claude/dev-hub-phase-2-plan",
         "head": "73477b2a9b3aa92c351f6e3a9a15cced0f2f3859",
@@ -15765,6 +15578,14 @@
         "scope": "theme-transition timer race in use-theme.ts causing Vitest unhandled-error failures",
         "outcome": "Fixed: guarded the 200ms theme-transitioning callback against a torn-down document and tracked/cleared the timer handle so rapid switches cannot end a later transition early",
         "checks": "verify:pr-local exit 0 (649 files/6968 tests, no Errors line); red-green proved — new spec reproduces ReferenceError: document is not defined against the unfixed file (2 failed), passes 3/3 with the fix"
+      },
+      {
+        "date": "2026-10-20",
+        "ref": "fix/worker-native-followup-20261020",
+        "head": "77ec553cfb449ec2e0d63b06e1fd5859fbf26353",
+        "scope": "worker-native-followup-and-readonly-smoke-20261020",
+        "outcome": "One fresh blind six-file review at9cb07a099 found P2 shutdown proof defect; parent reproduced and corrected in77ec553cf. No other actionable finding reported. Full-image acceptance remains pending.",
+        "checks": "Current five committed product/test/doc inputs plus stable uncommitted worker runbook match corrected source manifest. Actual narrowed APT exact4changes/no removals; curl8.21/ngtcp2 1.22.1/5loader checks/UID1000 OCR pass. Before actualCLI inspectionfail/malformed/exit1 falselypass; after6CLI+11helpercontrols pass. Shell/floor/Node/TSparse/format pass; full lock JS and imageCI pending. No rereview cycle or security-clearance claim."
       },
       {
         "date": "2026-08-17",
@@ -17711,6 +17532,14 @@
         "checks": "vitest preamble+rag-cache-invalidation 7/7; check:rag:fixtures 36/21; prior tip PR-required green before #1376 land"
       },
       {
+        "date": "2026-10-17",
+        "ref": "fix/final-non-design-recommendations-20261017",
+        "head": "8babcd56ad73a08ee314fda8f7d02f3e279bf72d",
+        "scope": "Telemetry switch & wire for generation degradation (#231), CAMHS crisis support lines (#8CKX6F), hostile PDF ingestion-to-answer pipeline tests (#7D8WZ2), and issue-inbox closures (#231, #FZP7VW, #ES3KTG; the #7D8WZ2 and #8CKX6F done requests were later cancelled in f7b67e374 and both issues stay open)",
+        "outcome": "Adversarial review completed; all 3 findings remediated; zero UI/design or DB migration changes",
+        "checks": "vitest (145/145 across 5 suites), typecheck:internal, lint:internal, check-clinical-hazard-controls"
+      },
+      {
         "date": "2026-08-15",
         "ref": "1976",
         "head": "8bb76ce085f212d47a0918b9242cb412e8a9a3f7",
@@ -17845,6 +17674,14 @@
         "scope": "open PR changed-scope review",
         "outcome": "APPROVE: completed items 095, 096, 104, 109, and 115 move to archive with no deletion, duplicate ID, or stale next-id.",
         "checks": "check:outstanding-issues PASS; check:branch-review-ledger PASS; diff review; no unresolved threads"
+      },
+      {
+        "date": "2026-10-18",
+        "ref": "codex/agent-policy-delivery-20261017",
+        "head": "8d4316ea45ed8d870e8f85db8be65628e0496594",
+        "scope": "container evidence helper trigger correction",
+        "outcome": "Independent scoped acceptance: no confirmed blocker. Helper-only changes select container validation in actual classifier and standalone main/release workflow; accepted raw-cap and verification jobs unchanged.",
+        "checks": "Routing regression red before two-line fix; focused artifact/container/CI-scope47/47pass; classifier self-test and action pins pass; scoped lint and final source typecheck pass; independent actual CLI/workflow/hash comparison and diff-check pass. Hosted dispatch remains unrun; no paid authorization."
       },
       {
         "date": "2026-07-14",
@@ -18367,6 +18204,14 @@
         "checks": "LOCAL OFFLINE GATES, run in this container: typecheck exit 0; full offline unit suite 949 files / 12293 passed | 1 skipped; lint --max-warnings 0 exit 0; prettier --check clean; caring-contacts db suite 218 passed against a disposable local Postgres 16 (not the live Supabase project; assertNotClinicalKbProject refuses that ref by construction); cc-guards 1069 passed. HOSTED CI: green on the main-based head — PR required, Unit coverage, Build, Static PR checks, Safety and config, Caring Contacts database, Lighthouse budget, Semgrep, Gitleaks, GitGuardian, PR policy, PR mergeability. Hosted CI results named here were OBSERVED, not inherited: this Claude Code session read them directly from the GitHub check runs via the GitHub MCP tools, under Josh's standing instruction to babysit these PRs, which is the explicit confirmation the provider boundary requires for that read. Provider-backed gates NOT run: no eval:* retrieval canary, no verify:release, no check:supabase-project, no live Supabase or OpenAI test:live path, and no live-drift dispatch."
       },
       {
+        "date": "2026-10-18",
+        "ref": "codex/agent-policy-final-followup-20261018",
+        "head": "94b9b8ed9e38230f55c9b6d6b250a44b03c20fb1",
+        "scope": "main-preserving integration of accepted agent-policy residual repairs",
+        "outcome": "Independent bounded integration accepted: retained newer main migration decision and guards, external gh matcher changes and accepted Windows/bootstrap/guidance/container/routing fixes. Generated snapshot adds only three retained review objects. No full-tree replacement or hosted acceptance.",
+        "checks": "Source/hash and JSON-union comparison; diff-check; docs-maintain pass; source typecheck and scoped lint pass. Fresh Node15pass1timeout then exact isolated case1pass; Vitest92pass1timeout31platformskips then exact isolated case1pass. All assertions/timeouts unchanged. Earlier focused acceptance retained by matching inputs; native lifecycle/Ubuntu Docker/raw-upload unrun."
+      },
+      {
         "date": "2026-07-29",
         "ref": "codex/document-results-responsive-polish",
         "head": "94bef3d193f449e6396b1bf4688180281d260ca7",
@@ -18725,6 +18570,14 @@
         "scope": "pr-ci-fix",
         "outcome": "merge-ready",
         "checks": "pr-required:pass,static:pass,build:pass,production-ui:pass,policy:pass,mergeability:pass,coderabbit-thread:resolved"
+      },
+      {
+        "date": "2026-10-19",
+        "ref": "fix/audit-rag-complete-20261019",
+        "head": "97f000dc8b5595c51910d304665b75d4a91da29f",
+        "scope": "full chat remediation adversarial review",
+        "outcome": "Independent full42 review and correction review complete; paired-row OCR P2 corrected. Runtime acceptance remains pending.",
+        "checks": "Source review all42paths; independent correction review; exact-source geometry4refusals; diff/owned-format. Actual app/worker/browser/quality preflight run39271748995 pending; first quality runner rejected conservative dbscope beforegates, repairquality-only pending."
       },
       {
         "date": "2026-08-17",
@@ -21167,6 +21020,14 @@
         "checks": "Local: align Vitest 5/5; ui-overlap 12/12; differentials fold Playwright 1/1. Hosted: Production UI, Advisory UI, Static, Unit, Build, PR policy, PR required, Sync PR policy body all pass."
       },
       {
+        "date": "2026-10-18",
+        "ref": "fix/merged-pr-review-20261018",
+        "head": "b6419f98f826170993a4f2f7dc0b2efec8747179",
+        "scope": "Independent adversarial review of merged-PR remediation; bounded correction verification",
+        "outcome": "Confirmed Teaching stale GET and metadata pagination defects corrected; obsolete scope suites and CET claims repaired. No remaining actionable source finding; draft only, migration/browser/live acceptance blocked.",
+        "checks": "Read-only source review by two independent reviewers; focused correction suite 61 passed in eight files; newer main worker and schema integration checked. Full handoff gate in progress; no production acceptance."
+      },
+      {
         "date": "2026-08-18",
         "ref": "claude/development-index-page (PR #2135)",
         "head": "b6451a1f90cd8488e67b8807fa1740902f2c77f5",
@@ -22421,6 +22282,14 @@
         "scope": "CI babysit + Bugbot + conflict closeout",
         "outcome": "READY. Merged origin/main; resolved real Dockerfile/guard-next-build conflicts by adopting main's evaluateNextBuildRamGuard + ALLOW_LOW_RAM_BUILD. Motion fixes retained: ISSUE-02/05, IMP-01 spring token, IMP-04 shimmer ::after wiring, IMP-02 AnswerSkeleton stagger. Bugbot re-review: no remaining P0/P1/P2. 0 review threads. Hosted PR required SUCCESS.",
         "checks": "focused vitest earlier; guard-next-build Vitest 3/3; hosted Build/Static/Unit/Production UI/PR required SUCCESS; no provider checks."
+      },
+      {
+        "date": "2026-10-18",
+        "ref": "fix/remaining-review-reliability-20261018",
+        "head": "c5d26c3bdbe9f352bb06b1a71c272efb6d3a154b",
+        "scope": "Controller review of real main-conflict fixture resolution",
+        "outcome": "Resolved two fixture conflicts using main isolated shell/tool-path and temporary Git config, retaining branch bounded-probe regressions. Genuine3555manifest/schema5118/migration tree/seals unchanged. No fresh independent review claimed for fixture resolution; prior reviews reused only for unchanged SQL/artifact scope.",
+        "checks": "Manual two-parent conflict review;171tests2files, fulltypecheck, scopedESLint/Prettier passed. Unfiltered Actions+mergeability job diagnose missing CI as conflict, not pass; final hosted parity required."
       },
       {
         "date": "2026-07-28",
@@ -24175,6 +24044,14 @@
         "checks": "Resolved as main / origin/main; deletion prohibited."
       },
       {
+        "date": "2026-10-18",
+        "ref": "fix/remaining-review-reliability-20261018",
+        "head": "d8a2e5daee19ca99f50ab2af65ddd87c170009a0",
+        "scope": "Independent concurrent paging and consumer shutdown merge review",
+        "outcome": "Accepted: exact-cap probe retains abort/error/access fences; owned stop signal prevents subsequent devices and waits acknowledgment/release. Four merged files match concurrent commit, genuine manifest3555/schema5118/sealed SQL unchanged. Hosted final parity pending.",
+        "checks": "Independent four-file diff and relevant callers, immutable merged bytes and protected-file comparisons. Inspected26tests2files log; controller execution reused, no broad rerun/providers/writes."
+      },
+      {
         "date": "2026-07-30",
         "ref": "PR #1441",
         "head": "d8bd22192ce974d4d2340ff26959ee41480218e9",
@@ -24429,6 +24306,14 @@
         "scope": "Run PR sweep",
         "outcome": "merged main (stale DIRTY); superseded unresolvable ledger HEAD per Devin; no product threads open",
         "checks": "merge-tree clean"
+      },
+      {
+        "date": "2026-10-20",
+        "ref": "fix/worker-native-security-20261020",
+        "head": "dbd3308c2c3fb1f18b8b642f4749e0e03acaf60f",
+        "scope": "worker-native-security-runtime-and-NLTK-20261020",
+        "outcome": "Fresh blind eight-file security review: no actionable P0/P1/P2 defect; full native/clinical/image-scan acceptance remains pending; no release approval",
+        "checks": "Committed six source/test/lock inputs plus stable two uncommitted maintained docs matched recorded SHA256 manifest. Reviewer static boundary/packaging/hash checks only. Separate actual3.11/3.12 NLTK97pass/11skip source attacks and exact-source hash install314filematch; runner shell/minimum version controls pass. Exact-lock full CI/image OCR/NLP/runtime/scan pending. Source commits remain durable in published history."
       },
       {
         "date": "2026-07-14",
@@ -24783,6 +24668,14 @@
         "checks": "hosted-pr-required,static,unit,build,circleci"
       },
       {
+        "date": "2026-10-17",
+        "ref": "docs/audit-remediation-20261014",
+        "head": "def6fabcc8235e8592fea2613d07170e23dd9836",
+        "scope": "prlanded",
+        "outcome": "Verified PR #3544 squash-merged at def6fabcc8235e8592fea2613d07170e23dd9836 with zero content diff against final PR head f519ae94fafab3e2ce7b221a054faa7d66939eea and zero orphaned commits",
+        "checks": "gh pr view 3544, git rev-list --parents -n 1 def6fabcc8235e8592fea2613d07170e23dd9836, git diff --stat def6fabcc8235e8592fea2613d07170e23dd9836 f519ae94fafab3e2ce7b221a054faa7d66939eea"
+      },
+      {
         "date": "2026-07-14",
         "ref": "worktrees (6244, 8ba3, b6ff, e6b5, repo-improvement-review-09945c)",
         "head": "detached HEADs",
@@ -25111,6 +25004,14 @@
         "checks": "same gates as prior row; no provider-backed checks run"
       },
       {
+        "date": "2026-10-18",
+        "ref": "fix/merged-pr-review-20261018",
+        "head": "e3b3f15774dbef5ecaeedcb38d8d6880128faccb",
+        "scope": "Bounded independent review of hosted catalogue-manifest correction",
+        "outcome": "Accepted: 1081 IDs preserved; 205 therapy lineage digests alone changed. Eligibility, governance and content hashes unchanged; frozen database seeds untouched.",
+        "checks": "216 site-content and ownership cases passed in 17 files, including epoch-zero freeze checks; exact hosted static and synthetic freshness commands passed. Synthetic evidence is not live acceptance."
+      },
+      {
         "date": "2026-07-24",
         "ref": "codex/apply-phone-layout-to-all-home-pages (PR #1124)",
         "head": "e3dc87000",
@@ -25125,6 +25026,14 @@
         "scope": "prlanded",
         "outcome": "PR #2901 merged by owner 2026-09-19T16:59:56Z as merge commit 4960c6f7fa3b. Landed verified by content: two parents (63e44c9d9683, e3f954ea1a25), branch tip is an ancestor of origin/main, and git show --remerge-diff is empty, so the merge introduced nothing beyond its parents. Both corrected assurance decisions confirmed present on main and still state=open.",
         "checks": "All PR check runs on e3f954ea1a25 succeeded, PR required green at 16:59:34 (22s before merge): Static PR checks, Build, Safety and config checks, Unit coverage, Production UI critical + shards 1-3, Ward Flow browser journeys, Lighthouse budget, Caring Contacts database, PR policy, PR mergeability. No automated code review ran (CodeRabbit under-10-stars skip; Codex and Cursor Bugbot both out of quota)."
+      },
+      {
+        "date": "2026-10-18",
+        "ref": "codex/agent-policy-delivery-20261017",
+        "head": "e3ffb0eca376014b2916c362e6305b69894b4e29",
+        "scope": "complete container evidence bound and verification preservation",
+        "outcome": "Independent corrected-diff acceptance: no confirmed blocker. Complete raw64MiB artifact retains all available SBOMs and required finalized build records; seven-day retention; artifact failure cannot suppress image or vulnerability checks. No hosted acceptance claimed.",
+        "checks": "New regressions observed red; focused container suites30/30pass; byte-exact native archive replay and oversize refusal; independent unsafe/mutation/stale-output and outcome gate probes; pinned raw-upload source and package SRI verified; lint/typecheck/docs/format pass. Windows Node inside Git Bash tar replay failed; Ubuntu/Docker/hosted dispatch unrun. Earlier zero-artifact cost claim retracted."
       },
       {
         "date": "2026-08-16",
@@ -25493,78 +25402,6 @@
         "scope": "branch-cleanup",
         "outcome": "Deleted after exact source HEAD was proven squash-merged by PR #581.",
         "checks": "GitHub merged-PR source HEAD matched exactly; no worktree or open PR referenced the ref at deletion."
-      },
-      {
-        "date": "2026-10-21",
-        "ref": "codex/chat-psychsift-audit-fixes-psychsift-audit-fixes",
-        "head": "ea8eac2cd9141b787391aab275eed879e7b37deb",
-        "scope": "F17-F18 shared publication extraction uncommitted diff",
-        "outcome": "Independent RAG source review: no blocker; module body parity and CI/container safety closure confirmed",
-        "checks": "Independent normalized full-body comparisons and static dependency/selector review; no reviewer tests/providers; source parity does not establish deployed acceptance"
-      },
-      {
-        "date": "2026-10-21",
-        "ref": "codex/chat-psychsift-audit-fixes-psychsift-audit-fixes",
-        "head": "ea8eac2cd9141b787391aab275eed879e7b37deb",
-        "scope": "F22-recovery-executor uncommitted five-file diff",
-        "outcome": "Independent ingestion review: no introduced blocker; inherited unfenced reset and affected-row reporting limits remain",
-        "checks": "Read-only five-file source/SQL tracing against base; reviewed file hashes retained in private task checkpoint; no reviewer tests/providers; parent 31/31 tests reported separately"
-      },
-      {
-        "date": "2026-10-21",
-        "ref": "codex/chat-psychsift-audit-fixes-psychsift-audit-fixes",
-        "head": "ea8eac2cd9141b787391aab275eed879e7b37deb",
-        "scope": "full organisation patch review pinned bdd52861 and F13-F20 corrections",
-        "outcome": "Independent fixed-tree review: no non-recovery runtime blocker; two P2 documentation findings corrected and independently rechecked",
-        "checks": "Original83filecandidate bdd52861; read actual callers; F13 batching and F20 authority corrections verified; recovery reviewed separately; parent will run full offline union plus actual LCOV; no live or release acceptance inferred"
-      },
-      {
-        "date": "2026-10-21",
-        "ref": "codex/chat-psychsift-audit-fixes-psychsift-audit-fixes",
-        "head": "ea8eac2cd9141b787391aab275eed879e7b37deb",
-        "scope": "operator-recovery-current-fenced-rpc-followup",
-        "outcome": "Independent source contract review found immediate expired-lease reclaim risk; comments and runbook corrected; atomic recovery remains open",
-        "checks": "Inspected claim_ingestion_jobs and fenced staging reset/patch/retry SQL signatures; no safe drop-in operator transition; no SQL edits, deployed proof, provider calls or tests in this review"
-      },
-      {
-        "date": "2026-10-21",
-        "ref": "codex/chat-psychsift-audit-fixes-psychsift-audit-fixes",
-        "head": "ea8eac2cd9141b787391aab275eed879e7b37deb",
-        "scope": "organisation remediation parent-owned tooling dirty-diff review",
-        "outcome": "Independent repo-auditor static review: no high-confidence introduced defect or weakened check found",
-        "checks": "Read-only production and regression-source inspection; coverage measurement, API method/access and full startup offline acceptance remain separate; no reviewer tests/providers; source identities retained in private task checkpoint"
-      },
-      {
-        "date": "2026-10-21",
-        "ref": "codex/chat-psychsift-audit-fixes-psychsift-audit-fixes",
-        "head": "ea8eac2cd9141b787391aab275eed879e7b37deb",
-        "scope": "post-coverage-integration-and-fixture-repairs",
-        "outcome": "Independent seven-file source review found no blocker; parent reviewed scanner fixture and later Windows corrections; complete gate rerun pending",
-        "checks": "First focused batch206pass8fail8skip; Cloud batch153pass4fail8skip; final four corrected cases4pass93filtered; no assertions/timeouts/coverage floors relaxed; no provider or native Cloud acceptance; full logs retained in private task evidence"
-      },
-      {
-        "date": "2026-10-21",
-        "ref": "codex/chat-psychsift-audit-fixes-psychsift-audit-fixes",
-        "head": "ea8eac2cd9141b787391aab275eed879e7b37deb",
-        "scope": "psychsift-audit-fixes-ops-governance eight-file uncommitted diff",
-        "outcome": "Independent clinical-governance source review: no introduced high-confidence blocker; owner clinical review and live acceptance pending",
-        "checks": "Eight-file static source tracing and diff check; hazard seals unchanged; no reviewer tests/providers; see docs/audit/2026-10-21-organisation-remediation.md"
-      },
-      {
-        "date": "2026-10-21",
-        "ref": "codex/chat-psychsift-audit-fixes-psychsift-audit-fixes",
-        "head": "ea8eac2cd9141b787391aab275eed879e7b37deb",
-        "scope": "recovery-release-reporting-delta from candidate bdd52861",
-        "outcome": "Independent ingestion source review: no concrete blocker; lost-claim reporting fixed, atomic reset still pending",
-        "checks": "Reviewed executor blob8b8f58fc testsab940740 runbook60181f4b; parent focused41 tests pass; synthetic proof excludeslivePostgREST, SQL andleaseexpiry safety"
-      },
-      {
-        "date": "2026-10-21",
-        "ref": "codex/chat-psychsift-audit-fixes-psychsift-audit-fixes",
-        "head": "ea8eac2cd9141b787391aab275eed879e7b37deb",
-        "scope": "repo-awareness snapshot UI classification final dirty diff",
-        "outcome": "Independent verification review: exact-file no-browser classification justified by no runtime consumers and source import guard",
-        "checks": "Read-only whole-diff planner level none; source/static-heavy/build/coverage retained; parent four suites169 passed20existing skips separately; prior Chromium run stopped after80 passes, no full-suite claim"
       },
       {
         "date": "2026-08-04",
@@ -27111,6 +26948,14 @@
         "checks": "verify:pr-local (all stages pass except pre-existing check:medication-lexicon-report, reproduced on pristine origin/main); vitest 601 files/6510 passed; design-token-contract + tailwind-merge 69 passed; check:design-system-contract zero slack, mutation-verified; tailwind emission probe for the new utilities"
       },
       {
+        "date": "2026-10-17",
+        "ref": "codex/design-audit-resolution",
+        "head": "f98ed9f2c6a79fc6ba46e8270726248d17857097",
+        "scope": "adversarial correction review",
+        "outcome": "Both introduced P2 defects repaired; independent corrective review found zero additional confirmed findings; manual device and clinical-state acceptance remains open",
+        "checks": "Regression-first 4 failed/19 passed then23passed; affected6suites35passed6.52s; freshproductionbuild and completeTypeScript passed; completeui-tools andui-mode-nav-density172passed4.3m; scopedlint anddesigncontractpassed; diffintegrity47files741to795selftest27; whole-repoformatpassed."
+      },
+      {
         "date": "2026-07-30",
         "ref": "codex/repair-pr1462",
         "head": "f99bb06030780efab7c98806cbb0b2171d1a4284",
@@ -27189,6 +27034,22 @@
         "scope": "tests/search-route-round-trip-budget.test.ts (PR #1950, ledger #098 residual + #189)",
         "outcome": "Author handoff: offline test-only diff adding a pinned Supabase round-trip budget for POST /api/search, no production/RAG code changed",
         "checks": "verify:pr-local full run (lint/typecheck clean; test 602 files, 6511 passed, 4 skipped; check:rag:fixtures + check:medication-interactions passed; check:medication-lexicon-report pre-existing unrelated staleness)"
+      },
+      {
+        "date": "2026-10-16",
+        "ref": "claude/reconcile-inbox-20261016",
+        "head": "fa526775c6ca0751f9609e4fc5133190efa19c16",
+        "scope": "prlanded",
+        "outcome": "PR #3570 squash-merged as fa526775c6; stable patch-id 87375f76eaf matches branch tip d8eefbb91e with zero orphaned commits",
+        "checks": "gh pr view 3570 MERGED; 1-parent squash; git patch-id --stable match"
+      },
+      {
+        "date": "2026-10-18",
+        "ref": "claude/reconcile-ledger-20261016",
+        "head": "fa526775c6ca0751f9609e4fc5133190efa19c16",
+        "scope": "PS-044 provenance correction for PR #3570",
+        "outcome": "Corrects the branch label in a7be2760026da4bc040fa90bf847382bdcded2a8a7510ceaf7be4ac49c042211.record.md: the supplied review identifies claude/reconcile-ledger-20261016, final head d8eefbb91e9e623fcdb9029fade9f3eda661091e and merge fa526775c6ca0751f9609e4fc5133190efa19c16. Original immutable record retained. This correction does not re-run or extend its landed proof.",
+        "checks": "Compared supplied PS-044 correction with the local immutable receipt; no new GitHub request, patch-id execution, CI or deployment verification."
       },
       {
         "date": "2026-08-05",
@@ -27661,6 +27522,14 @@
         "scope": "Run PR sweep: CI fix + threads + drift",
         "outcome": "before: 5 unresolved threads (Devin create-from-output + 4 CodeRabbit), mergeable/BLOCKED, Actions major outage leaving CI pending; after: hardened jq-less input/output separation + session fail-open + prefix unlock + tests (9 passed) in fff524d73ebfafeef7bdc50752a6d14f253ebc2e, threads replied+resolved, branch current with main, CI re-triggered (Actions outage — not babysat)",
         "checks": "npx vitest run tests/pr-handoff-stop.test.ts (9 passed); bash -n hook OK; no provider-backed checks run"
+      },
+      {
+        "date": "2026-10-19",
+        "ref": "PR #3674 fix/audit-rag-complete-20261019",
+        "head": "fff9194c492004456abdb4e89aa7f7601c98b997",
+        "scope": "working-tree OCR fallback correction fe6a983590b5 / 9d61e5fcde85",
+        "outcome": "Independent source review clear; transient fallback corrected with 10s reserved within existing 60s page budget. Model integrity and global budget refusal preserved. Full corrected image acceptance pending.",
+        "checks": "All26 original tests unchanged;11new regressions. Original baseline RED reproduced. Owning103 local5.5:101pass2clinicaltimeouts;100nonclinical passed. Genuine signed-Debian Tesseract5.3/Leptonica1.82 probe: unchanged3clinical cases passed70.769s,0skips/errors/failures. No assertion/global-limit relaxation. Actual final-head fullworker CI still required."
       },
       {
         "date": "2026-07-26",

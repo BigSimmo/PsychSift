@@ -1,0 +1,612 @@
+// Audit ING-B-10: a retried or re-run ingestion of the same admitted source reuses its
+// own earlier caption instead of paying for the vision call again. Synthetic data only.
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock(import("../src/lib/openai"), async (importOriginal) => ({
+  ...(await importOriginal()),
+  classifyAndCaptionImageFromBase64: vi.fn(),
+}));
+vi.mock(import("../src/lib/ingestion-provider-egress"), async (importOriginal) => ({
+  ...(await importOriginal()),
+  assertIngestionProviderEgress: vi.fn(async () => undefined),
+  createIngestionProviderEgressOperation: vi.fn((context) => context),
+}));
+
+import { IngestionProviderEgressRefusal } from "../src/lib/ingestion-provider-egress";
+import * as egress from "../src/lib/ingestion-provider-egress";
+import { classifyAndCaptionImageFromBase64 } from "../src/lib/openai";
+import {
+  imageCaptionCacheConflictTarget,
+  imageCaptionCacheIdentityVersion,
+  imageCaptionCacheKey,
+  parseCachedImageClassification,
+  readCachedImageClassification,
+  writeCachedImageClassification,
+  type ImageCaptionCacheKey,
+} from "../worker/image-caption-cache";
+import { resolveCaptionTasks, type CaptionTask } from "../worker/image-captioning";
+import { sweepOrphanedImageCaptionCache } from "../src/lib/image-caption-cache-cleanup";
+import { env } from "../src/lib/env";
+import type { ImageClassification } from "../worker/image-classification";
+import type { IngestionStageContext } from "../worker/ingestion-stage-context";
+import type { JobRow } from "../worker/types";
+
+const classify = vi.mocked(classifyAndCaptionImageFromBase64);
+const assertEgress = vi.mocked(egress.assertIngestionProviderEgress);
+
+const DOCUMENT_ID = "11111111-1111-4111-8111-111111111111";
+const OWNER_ID = "22222222-2222-4222-8222-222222222222";
+const ADMISSION_ID = "33333333-3333-4333-8333-333333333333";
+const AUTHORITY = `sha256:${"a".repeat(64)}`;
+
+function job(overrides: { attempt?: number; documentId?: string; authority?: string; admission?: string } = {}) {
+  const attempt = overrides.attempt ?? 1;
+  return {
+    locked_by: "synthetic-worker",
+    lease_token: `44444444-4444-4444-8444-44444444444${attempt}`,
+    lease_expected_generation_id: null,
+    lease_write_generation_id: `55555555-5555-4555-8555-55555555555${attempt}`,
+    lease_authority_digest: overrides.authority ?? AUTHORITY,
+    lease_expires_at: "2026-10-20T00:00:00.000Z",
+    lease_duration_seconds: 600,
+    id: "66666666-6666-4666-8666-666666666666",
+    document_id: overrides.documentId ?? DOCUMENT_ID,
+    batch_id: null,
+    attempt_count: attempt,
+    max_attempts: 3,
+    documents: {
+      id: overrides.documentId ?? DOCUMENT_ID,
+      owner_id: OWNER_ID,
+      title: "Synthetic lithium monitoring",
+      file_name: "synthetic.pdf",
+      file_type: "application/pdf",
+      storage_path: "synthetic/synthetic.pdf",
+      content_hash: "b".repeat(64),
+      metadata: { admission_event_id: overrides.admission ?? ADMISSION_ID },
+    },
+  } satisfies JobRow;
+}
+
+function modelClassification(caption = "Lithium monitoring flowchart."): ImageClassification {
+  return {
+    image_type: "flowchart_algorithm",
+    searchable: true,
+    clinical_relevance_score: 0.8,
+    labels: ["lithium", "monitoring"],
+    caption,
+    skip_reason: null,
+    clinical_use_class: "clinical_evidence",
+    clinical_use_reason: "Synthetic monitoring workflow.",
+    clinical_signal_score: 3,
+    admin_signal_score: 0,
+    structured_visual_profile: { version: 1, visual_type: "flowchart_algorithm" },
+    structured_extraction_confidence: 0.7,
+  } as unknown as ImageClassification;
+}
+
+/** In-memory stand-in for the image_caption_cache table, keyed like its unique index. */
+function fakeCacheTable() {
+  const rows = new Map<string, Record<string, unknown>>();
+  const keyOf = (row: Record<string, unknown>) =>
+    `${row.owner_id}|${row.image_hash}|${row.model}|${row.cache_identity ?? ""}`;
+  const client = {
+    from(table: string) {
+      expect(table).toBe("image_caption_cache");
+      const filters: Record<string, unknown> = {};
+      const select = {
+        eq(column: string, value: unknown) {
+          filters[column] = value;
+          return select;
+        },
+        abortSignal() {
+          return select;
+        },
+        async maybeSingle() {
+          return { data: rows.get(keyOf(filters)) ?? null, error: null };
+        },
+      };
+      // #3730: the clean-up deletes one owner's rows for one document, minus the kept identities.
+      let keep: string[] = [];
+      const remove = {
+        eq(column: string, value: unknown) {
+          filters[column] = value;
+          return remove;
+        },
+        not(column: string, operator: string, value: string) {
+          expect([column, operator]).toEqual(["cache_identity", "in"]);
+          keep = value
+            .slice(1, -1)
+            .split(",")
+            .map((identity) => identity.replace(/^"|"$/g, ""));
+          return remove;
+        },
+        abortSignal() {
+          return remove;
+        },
+        then(resolve: (value: { error: null }) => void) {
+          for (const [rowKey, row] of rows) {
+            const metadata = row.metadata as Record<string, unknown>;
+            if (
+              row.owner_id === filters.owner_id &&
+              metadata.document_id === filters["metadata->>document_id"] &&
+              !keep.includes(String(row.cache_identity))
+            ) {
+              rows.delete(rowKey);
+            }
+          }
+          resolve({ error: null });
+        },
+      };
+      return {
+        select: () => select,
+        delete: () => remove,
+        upsert(row: Record<string, unknown>, options: { onConflict: string }) {
+          expect(options.onConflict).toBe("owner_id,image_hash,model,cache_identity");
+          rows.set(keyOf(row), structuredClone(row));
+          return { abortSignal: async () => ({ error: null }) };
+        },
+      };
+    },
+  };
+  return { rows, client: client as unknown as IngestionStageContext["supabase"] };
+}
+
+let root = "";
+let imagePath = "";
+
+beforeEach(async () => {
+  root = await mkdtemp(path.join(tmpdir(), "caption-cache-test-"));
+  imagePath = path.join(root, "page-1-image-1.png");
+  await writeFile(imagePath, Buffer.from("synthetic image bytes"));
+  classify.mockReset();
+  assertEgress.mockReset();
+  assertEgress.mockResolvedValue(undefined);
+});
+
+afterEach(async () => {
+  await rm(root, { recursive: true, force: true });
+});
+
+function task(): CaptionTask {
+  return {
+    candidate: {},
+    index: 0,
+    image: { pageNumber: 1, path: imagePath, mimeType: "image/png", sourceKind: "embedded", metadata: {} },
+    perceptualHash: "p".repeat(16),
+    imageHash: "c".repeat(64),
+    nearbyText: "Synthetic nearby text.",
+    tableMetadata: { candidateType: null, tableLabel: null, tableTitle: null, tableRole: null, tableText: null },
+    contextHash: "d".repeat(32),
+    presetClassification: null,
+  } as unknown as CaptionTask;
+}
+
+function context(supabase: IngestionStageContext["supabase"]) {
+  const attempt = { check: () => undefined, cancel: () => undefined, signal: new AbortController().signal };
+  return {
+    supabase,
+    attemptForJob: () => attempt,
+    mutation: vi.fn(async () => ({})),
+    providerContextForJob: () => ({}),
+    updateJobProgress: vi.fn(async () => undefined),
+  } as unknown as IngestionStageContext;
+}
+
+const INPUTS = {
+  nearbyText: "Synthetic nearby text.",
+  sourceKind: "embedded",
+  candidateType: null,
+  tableLabel: null,
+  tableTitle: null,
+  tableRole: null,
+  tableText: null,
+} as const;
+
+describe("image caption cache identity", () => {
+  it("binds the key to the admitted source and refuses to key an unbound document", () => {
+    const key = imageCaptionCacheKey({
+      job: job(),
+      imageHash: "c".repeat(64),
+      contextHash: "d".repeat(32),
+      mimeType: "image/png",
+      classifierInputs: INPUTS,
+    });
+    expect(key).toMatchObject({ ownerId: OWNER_ID, imageHash: "c".repeat(64) });
+    expect(key?.identity).toMatch(/^sha256:[0-9a-f]{64}$/);
+
+    const unowned = job();
+    unowned.documents = { ...unowned.documents, owner_id: null as unknown as string };
+    expect(
+      imageCaptionCacheKey({
+        job: unowned,
+        imageHash: "c",
+        contextHash: "d",
+        mimeType: "image/png",
+        classifierInputs: INPUTS,
+      }),
+    ).toBeNull();
+    const unhashed = job();
+    unhashed.documents = { ...unhashed.documents, content_hash: null as unknown as string };
+    expect(
+      imageCaptionCacheKey({
+        job: unhashed,
+        imageHash: "c",
+        contextHash: "d",
+        mimeType: "image/png",
+        classifierInputs: INPUTS,
+      }),
+    ).toBeNull();
+  });
+
+  it("keeps the identity across retries but changes it with source, admission, authority, image or context", () => {
+    const base = {
+      imageHash: "c".repeat(64),
+      contextHash: "d".repeat(32),
+      mimeType: "image/png",
+      classifierInputs: INPUTS,
+    };
+    const identity = imageCaptionCacheKey({ job: job(), ...base })!.identity;
+    expect(imageCaptionCacheKey({ job: job({ attempt: 2 }), ...base })!.identity).toBe(identity);
+    for (const changed of [
+      imageCaptionCacheKey({ job: job({ documentId: "77777777-7777-4777-8777-777777777777" }), ...base }),
+      imageCaptionCacheKey({ job: job({ admission: "88888888-8888-4888-8888-888888888888" }), ...base }),
+      imageCaptionCacheKey({ job: job({ authority: `sha256:${"e".repeat(64)}` }), ...base }),
+      imageCaptionCacheKey({ job: job(), ...base, imageHash: "f".repeat(64) }),
+      imageCaptionCacheKey({ job: job(), ...base, contextHash: "0".repeat(32) }),
+      imageCaptionCacheKey({ job: job(), ...base, mimeType: "image/jpeg" }),
+    ]) {
+      expect(changed!.identity).not.toBe(identity);
+    }
+  });
+
+  it("changes the identity with any classifier input beyond the context snippet, or any vision setting", () => {
+    // Codex review on #3697: the context hash keeps 900-character snippets, but the
+    // classifier reads 2,500 table and 3,500 nearby characters and depends on the image
+    // detail and reasoning effort settings.
+    const shared = "Lithium level monitoring. ".repeat(40);
+    const base = { imageHash: "c".repeat(64), contextHash: "d".repeat(32), mimeType: "image/png" };
+    const identity = imageCaptionCacheKey({
+      job: job(),
+      ...base,
+      classifierInputs: { ...INPUTS, nearbyText: `${shared} Recheck in 5 days.`, tableText: `${shared} 0.6` },
+    })!.identity;
+    const changed = [
+      { ...INPUTS, nearbyText: `${shared} Recheck in 7 days.`, tableText: `${shared} 0.6` },
+      { ...INPUTS, nearbyText: `${shared} Recheck in 5 days.`, tableText: `${shared} 0.8` },
+      { ...INPUTS, nearbyText: `${shared} Recheck in 5 days.`, tableText: `${shared} 0.6`, tableRole: "dose" },
+    ].map((classifierInputs) => imageCaptionCacheKey({ job: job(), ...base, classifierInputs })!.identity);
+    for (const other of changed) expect(other).not.toBe(identity);
+
+    const plain = imageCaptionCacheKey({ job: job(), ...base, classifierInputs: INPUTS })!.identity;
+    const detail = env.OPENAI_VISION_IMAGE_DETAIL;
+    const effort = env.OPENAI_VISION_REASONING_EFFORT;
+    try {
+      env.OPENAI_VISION_IMAGE_DETAIL = detail === "high" ? "low" : "high";
+      expect(imageCaptionCacheKey({ job: job(), ...base, classifierInputs: INPUTS })!.identity).not.toBe(plain);
+      env.OPENAI_VISION_IMAGE_DETAIL = detail;
+      env.OPENAI_VISION_REASONING_EFFORT = effort === "high" ? "low" : "high";
+      expect(imageCaptionCacheKey({ job: job(), ...base, classifierInputs: INPUTS })!.identity).not.toBe(plain);
+    } finally {
+      env.OPENAI_VISION_IMAGE_DETAIL = detail;
+      env.OPENAI_VISION_REASONING_EFFORT = effort;
+    }
+  });
+
+  it("never reuses legacy, foreign or malformed rows", () => {
+    const key = imageCaptionCacheKey({
+      job: job(),
+      imageHash: "c".repeat(64),
+      contextHash: "d".repeat(32),
+      mimeType: "image/png",
+      classifierInputs: INPUTS,
+    })!;
+    const classification = modelClassification();
+    const row = (metadata: Record<string, unknown>) => ({ metadata });
+    expect(
+      parseCachedImageClassification(
+        row({ cache_identity_version: imageCaptionCacheIdentityVersion, cache_identity: key.identity, classification }),
+        key,
+      ),
+    ).toEqual(classification);
+    // Legacy rows: a flat classification with no identity.
+    expect(
+      parseCachedImageClassification(row({ extractor: "local-worker", image_type: "flowchart_algorithm" }), key),
+    ).toBeNull();
+    // Another source's caption for identical image bytes.
+    expect(
+      parseCachedImageClassification(
+        row({
+          cache_identity_version: imageCaptionCacheIdentityVersion,
+          cache_identity: `sha256:${"9".repeat(64)}`,
+          classification,
+        }),
+        key,
+      ),
+    ).toBeNull();
+    expect(
+      parseCachedImageClassification(
+        row({
+          cache_identity_version: imageCaptionCacheIdentityVersion,
+          cache_identity: key.identity,
+          classification: { ...classification, image_type: "invented_type" },
+        }),
+        key,
+      ),
+    ).toBeNull();
+  });
+
+  it("stores a redacted caption and treats store failures as a miss", async () => {
+    const key: ImageCaptionCacheKey = imageCaptionCacheKey({
+      job: job(),
+      imageHash: "c".repeat(64),
+      contextHash: "d".repeat(32),
+      mimeType: "image/png",
+      classifierInputs: INPUTS,
+    })!;
+    const table = fakeCacheTable();
+    await writeCachedImageClassification(
+      table.client,
+      key,
+      modelClassification("Flowchart. Contact jane.citizen@example.org for review."),
+      "image/png",
+      new AbortController().signal,
+    );
+    const stored = [...table.rows.values()][0];
+    expect(String(stored.caption)).not.toContain("jane.citizen@example.org");
+    expect(stored).toMatchObject({ owner_id: OWNER_ID, image_hash: "c".repeat(64), mime_type: "image/png" });
+    // #3730: the row records its document so it can be deleted with it.
+    expect(stored.metadata).toMatchObject({ document_id: DOCUMENT_ID });
+
+    const failing = {
+      from: () => {
+        throw new Error("synthetic outage");
+      },
+    } as unknown as IngestionStageContext["supabase"];
+    await expect(readCachedImageClassification(failing, key, new AbortController().signal)).resolves.toBeNull();
+    await expect(
+      writeCachedImageClassification(failing, key, modelClassification(), "image/png", new AbortController().signal),
+    ).resolves.toBeUndefined();
+  });
+});
+
+describe("image caption cache unique key", () => {
+  it("upserts on the full unique key including cache_identity", () => {
+    expect(imageCaptionCacheConflictTarget).toBe("owner_id,image_hash,model,cache_identity");
+  });
+
+  it("keeps two cache identities for the same owner, image and model side by side", async () => {
+    const keyA = imageCaptionCacheKey({
+      job: job(),
+      imageHash: "c".repeat(64),
+      contextHash: "d".repeat(32),
+      mimeType: "image/png",
+      classifierInputs: INPUTS,
+    })!;
+    const keyB = imageCaptionCacheKey({
+      job: job({ documentId: "77777777-7777-4777-8777-777777777777" }),
+      imageHash: "c".repeat(64),
+      contextHash: "d".repeat(32),
+      mimeType: "image/png",
+      classifierInputs: INPUTS,
+    })!;
+    expect([keyA.ownerId, keyA.imageHash, keyA.model]).toEqual([keyB.ownerId, keyB.imageHash, keyB.model]);
+    expect(keyA.identity).not.toBe(keyB.identity);
+
+    const table = fakeCacheTable();
+    const signal = new AbortController().signal;
+    await writeCachedImageClassification(table.client, keyA, modelClassification("Caption A."), "image/png", signal);
+    await writeCachedImageClassification(table.client, keyB, modelClassification("Caption B."), "image/png", signal);
+
+    expect(table.rows.size).toBe(2);
+    expect([...table.rows.values()].map((row) => row.cache_identity).sort()).toEqual(
+      [keyA.identity, keyB.identity].sort(),
+    );
+    expect((await readCachedImageClassification(table.client, keyA, signal))?.caption).toBe("Caption A.");
+    expect((await readCachedImageClassification(table.client, keyB, signal))?.caption).toBe("Caption B.");
+  });
+
+  it("still overwrites a row with the same identity", async () => {
+    const key = imageCaptionCacheKey({
+      job: job(),
+      imageHash: "c".repeat(64),
+      contextHash: "d".repeat(32),
+      mimeType: "image/png",
+      classifierInputs: INPUTS,
+    })!;
+    const table = fakeCacheTable();
+    const signal = new AbortController().signal;
+    await writeCachedImageClassification(table.client, key, modelClassification("First."), "image/png", signal);
+    await writeCachedImageClassification(table.client, key, modelClassification("Second."), "image/png", signal);
+    expect(table.rows.size).toBe(1);
+    expect((await readCachedImageClassification(table.client, key, signal))?.caption).toBe("Second.");
+  });
+});
+
+describe("caption stage reuse across retries (ING-B-10)", () => {
+  it("calls the vision model once for the same admitted source across two attempts", async () => {
+    classify.mockResolvedValue(modelClassification());
+    const table = fakeCacheTable();
+
+    const first = await resolveCaptionTasks(context(table.client), job({ attempt: 1 }), [task()], new Map());
+    const second = await resolveCaptionTasks(context(table.client), job({ attempt: 2 }), [task()], new Map());
+
+    expect(classify).toHaveBeenCalledTimes(1);
+    expect(first[0].classificationCacheHit).toBe(false);
+    expect(second[0].classificationCacheHit).toBe(true);
+    expect(second[0].classification.caption).toBe(first[0].classification.caption);
+    // The reuse passed the same current egress gate a dispatch would.
+    expect(assertEgress).toHaveBeenCalledTimes(1);
+    expect(assertEgress.mock.calls[0][1]).toBe("caption");
+  });
+
+  it("does not reuse another document's caption of identical image bytes", async () => {
+    classify.mockResolvedValue(modelClassification());
+    const table = fakeCacheTable();
+    await resolveCaptionTasks(context(table.client), job(), [task()], new Map());
+    const other = await resolveCaptionTasks(
+      context(table.client),
+      job({ documentId: "77777777-7777-4777-8777-777777777777" }),
+      [task()],
+      new Map(),
+    );
+    expect(classify).toHaveBeenCalledTimes(2);
+    expect(other[0].classificationCacheHit).toBe(false);
+    // Both documents' captions are kept, so retrying the first one still hits.
+    expect(table.rows.size).toBe(2);
+    const retry = await resolveCaptionTasks(context(table.client), job({ attempt: 2 }), [task()], new Map());
+    expect(retry[0].classificationCacheHit).toBe(true);
+    expect(classify).toHaveBeenCalledTimes(2);
+  });
+
+  it("refuses a cached caption when the source no longer passes the egress gate", async () => {
+    classify.mockResolvedValue(modelClassification());
+    const table = fakeCacheTable();
+    await resolveCaptionTasks(context(table.client), job({ attempt: 1 }), [task()], new Map());
+    assertEgress.mockRejectedValueOnce(new IngestionProviderEgressRefusal("provider_egress_denied"));
+    await expect(
+      resolveCaptionTasks(context(table.client), job({ attempt: 2 }), [task()], new Map()),
+    ).rejects.toBeInstanceOf(IngestionProviderEgressRefusal);
+    expect(classify).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("caption cache clean-up on reprocess (#3730)", () => {
+  const OTHER_DOCUMENT_ID = "77777777-7777-4777-8777-777777777777";
+
+  function reprocessed(content: string) {
+    const next = job({ attempt: 2 });
+    next.documents = { ...next.documents, content_hash: content.repeat(64) };
+    return next;
+  }
+
+  it("drops the document's rows for identities the new content no longer produces", async () => {
+    classify.mockResolvedValue(modelClassification());
+    const table = fakeCacheTable();
+    await resolveCaptionTasks(context(table.client), job(), [task()], new Map());
+    await resolveCaptionTasks(context(table.client), job({ documentId: OTHER_DOCUMENT_ID }), [task()], new Map());
+    expect(table.rows.size).toBe(2);
+
+    await resolveCaptionTasks(context(table.client), reprocessed("e"), [task()], new Map());
+
+    const remaining = [...table.rows.values()].map((row) => row.metadata as Record<string, unknown>);
+    expect(remaining).toHaveLength(2);
+    // The other document's caption of the same bytes is untouched.
+    expect(remaining.filter((metadata) => metadata.document_id === OTHER_DOCUMENT_ID)).toHaveLength(1);
+    const current = imageCaptionCacheKey({
+      job: reprocessed("e"),
+      imageHash: task().imageHash,
+      contextHash: task().contextHash,
+      mimeType: "image/png",
+      classifierInputs: INPUTS,
+    })!;
+    expect(
+      remaining.filter((metadata) => metadata.document_id === DOCUMENT_ID).map((metadata) => metadata.cache_identity),
+    ).toEqual([current.identity]);
+  });
+
+  it("keeps the rows a retry of unchanged content can still reuse", async () => {
+    classify.mockResolvedValue(modelClassification());
+    const table = fakeCacheTable();
+    await resolveCaptionTasks(context(table.client), job(), [task()], new Map());
+    const retry = await resolveCaptionTasks(context(table.client), job({ attempt: 2 }), [task()], new Map());
+    expect(retry[0].classificationCacheHit).toBe(true);
+    expect(table.rows.size).toBe(1);
+  });
+
+  it("prunes nothing when the run bound no cache identity", async () => {
+    classify.mockResolvedValue(modelClassification());
+    const table = fakeCacheTable();
+    await resolveCaptionTasks(context(table.client), job(), [task()], new Map());
+    const unbound = job({ attempt: 2 });
+    unbound.documents = { ...unbound.documents, content_hash: null as unknown as string };
+    await resolveCaptionTasks(context(table.client), unbound, [task()], new Map());
+    expect(table.rows.size).toBe(1);
+  });
+});
+
+// A delete-route clean-up that fails leaves a deleted document's captions behind; the
+// operator storage clean-up sweeps them later (#3730 review).
+describe("orphaned caption cache sweep (#3730)", () => {
+  function sweepClient(cacheRows: { id: string; document_id: string }[], liveDocuments: string[]) {
+    const rows = [...cacheRows];
+    const deletes: string[][] = [];
+    const client = {
+      from(table: string) {
+        const filters: { gt?: string; in?: string[]; limit?: number; del?: boolean } = {};
+        const builder = {
+          select: () => builder,
+          not: () => builder,
+          order: () => builder,
+          limit: (count: number) => ((filters.limit = count), builder),
+          gt: (_column: string, value: string) => ((filters.gt = value), builder),
+          in: (_column: string, values: string[]) => ((filters.in = values), builder),
+          delete: () => ((filters.del = true), builder),
+          then(resolve: (value: { data: unknown; error: null }) => void) {
+            if (table === "documents") {
+              resolve({
+                data: liveDocuments.filter((id) => filters.in?.includes(id)).map((id) => ({ id })),
+                error: null,
+              });
+            } else if (filters.del) {
+              deletes.push(filters.in ?? []);
+              for (const id of filters.in ?? [])
+                rows.splice(
+                  rows.findIndex((row) => row.id === id),
+                  1,
+                );
+              resolve({ data: null, error: null });
+            } else {
+              const page = rows
+                .filter((row) => !filters.gt || row.id > filters.gt)
+                .sort((a, b) => a.id.localeCompare(b.id))
+                .slice(0, filters.limit);
+              resolve({ data: page, error: null });
+            }
+          },
+        };
+        return builder;
+      },
+    };
+    return { client: client as unknown as Parameters<typeof sweepOrphanedImageCaptionCache>[0], rows, deletes };
+  }
+
+  const cache = [
+    { id: "a1", document_id: "doc-live" },
+    { id: "a2", document_id: "doc-gone" },
+    { id: "a3", document_id: "doc-gone" },
+  ];
+
+  it("deletes only the rows whose document no longer exists", async () => {
+    const fake = sweepClient(cache, ["doc-live"]);
+    const result = await sweepOrphanedImageCaptionCache(fake.client, { dryRun: false });
+    expect(result).toEqual({ scanned: 3, orphaned: 2, deleted: 2 });
+    expect(fake.rows.map((row) => row.id)).toEqual(["a1"]);
+  });
+
+  it("counts orphans without deleting on a dry run", async () => {
+    const fake = sweepClient(cache, ["doc-live"]);
+    const result = await sweepOrphanedImageCaptionCache(fake.client, { dryRun: true });
+    expect(result).toEqual({ scanned: 3, orphaned: 2, deleted: 0 });
+    expect(fake.deletes).toEqual([]);
+  });
+
+  it("stops at the row cap", async () => {
+    const fake = sweepClient(cache, []);
+    const result = await sweepOrphanedImageCaptionCache(fake.client, { maxRows: 2, dryRun: false });
+    expect(result.scanned).toBe(2);
+    expect(fake.rows.map((row) => row.id)).toEqual(["a3"]);
+  });
+
+  it("pages through the whole cache when no cap is set", async () => {
+    const many = Array.from({ length: 2_500 }, (_, index) => ({
+      id: `r${String(index).padStart(5, "0")}`,
+      document_id: index === 2_400 ? "doc-gone" : "doc-live",
+    }));
+    const fake = sweepClient(many, ["doc-live"]);
+    const result = await sweepOrphanedImageCaptionCache(fake.client, { dryRun: false });
+    expect(result).toEqual({ scanned: 2_500, orphaned: 1, deleted: 1 });
+  });
+});

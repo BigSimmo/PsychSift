@@ -1669,7 +1669,9 @@ describe("design-system adoption manifest", () => {
     // 224 -> 225: External supervisor EPA magic-link response page (`/teaching/assessments/respond/[token]`).
     // 225 -> 226: the administrator-only NHMRC source pilot (`/admin/pilot`), reached from the
     // developer area's ingestion panel.
-    expect(manifest.routeCoverage.discovered).toHaveLength(226);
+    // 226 -> 228: the About and intended use page (`/about`) and the Terms of Use (`/terms`).
+    // 228 -> 229: On Call's Call log page (`/on-call/calls`), under the Shift tab.
+    expect(manifest.routeCoverage.discovered).toHaveLength(229);
     expect(manifest.routeCoverage.declared).toEqual(manifest.routeCoverage.discovered);
     expect(manifest.routeCoverage.undeclared).toEqual([]);
     expect(manifest.routeCoverage.missing).toEqual([]);

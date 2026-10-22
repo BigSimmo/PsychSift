@@ -476,7 +476,9 @@ function OverviewHome({ s, role, params, dct }: ScreenProps) {
                       <BellButton
                         state={state}
                         label={bellLabel(state, row, forms)}
-                        onClick={() => r.remindDoctor(row)}
+                        onClick={() => {
+                          if (state === "pending") r.remindDoctor(row);
+                        }}
                       />
                     </li>
                   );
@@ -725,9 +727,11 @@ function BulkRemind({
       <Button
         variant="primary"
         block
-        disabled={chosen.length === 0}
+        aria-disabled={chosen.length === 0 ? "true" : undefined}
         aria-describedby={chosen.length === 0 ? whyId : undefined}
-        onClick={() => onSend(items)}
+        onClick={() => {
+          if (chosen.length > 0) onSend(items);
+        }}
         testId="assessments-overview-bulk-send"
       >
         {chosen.length === 0
@@ -939,9 +943,11 @@ function DoctorDetail({ s, doctorId, role, dct }: ScreenProps & { doctorId: stri
             variant="primary"
             block
             icon={state === "reminded" ? Check : Bell}
-            disabled={state !== "pending"}
+            aria-disabled={state !== "pending" ? "true" : undefined}
             aria-describedby={reason ? whyId : undefined}
-            onClick={() => r.remindDoctor(row)}
+            onClick={() => {
+              if (state === "pending") r.remindDoctor(row);
+            }}
             testId="assessments-overview-doctor-remind"
           >
             {state === "reminded" ? "Reminded today" : `Remind ${row.supervisor}`}

@@ -213,6 +213,26 @@ describe.skipIf(process.platform === "win32")("pr-handoff-stop hook — CronCrea
       expect(out.stdout).toContain("PostToolUse");
     });
 
+    it.each([
+      "gh --repo BigSimmo/PsychSift pr create --fill",
+      "gh pr --repo BigSimmo/PsychSift create",
+      "gh pr create -R BigSimmo/PsychSift",
+    ])("detects gh pr create with an inherited repository flag: %s", (command) => {
+      const { root } = freshRepo();
+      const out = runHook(
+        "post",
+        {
+          tool_name: "Bash",
+          session_id: "sess-create-repo-flag",
+          tool_input: { command },
+          tool_response: "https://github.com/BigSimmo/PsychSift/pull/1649",
+        },
+        root,
+      );
+      expect(out.status).toBe(0);
+      expect(out.markerExists("sess-create-repo-flag")).toBe(true);
+    });
+
     it("does not lock from a printed gh pr create token in tool_response when jq is unavailable", () => {
       const { root } = freshRepo();
       const out = runHook(

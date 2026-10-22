@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
+import { readFileSync } from "node:fs";
 const mocks = vi.hoisted(() => ({
   createServer: vi.fn(),
   probe: vi.fn(),
@@ -149,5 +150,34 @@ describe("worker health HTTP status mapping", () => {
     const { code, body } = await requestHealth();
     expect(code).toBe(503);
     expect(body.checks.python_venv.status).toBe("error");
+  });
+});
+
+// processJob in worker/main.ts cannot be driven end to end without mocking the whole ingestion
+// pipeline, so this pins the source shape instead: every successful terminal of a claim records
+// it for /healthz, including the two paths that return before the ordinary completion.
+describe("worker claim processing records every successful terminal", () => {
+  const source = readFileSync(new URL("../worker/main.ts", import.meta.url), "utf8");
+
+  function successBlockBeforeReturn(anchor: string) {
+    const start = source.indexOf(anchor);
+    expect(start, `missing anchor: ${anchor}`).toBeGreaterThan(-1);
+    const end = source.indexOf("return;", start);
+    expect(end).toBeGreaterThan(start);
+    return source.slice(start, end);
+  }
+
+  it("records the claim after a managed-generation terminal", () => {
+    expect(successBlockBeforeReturn("await runManagedGenerationJob(")).toContain("recordClaimProcessed();");
+  });
+
+  it("records the claim after strict enrichment completes the job", () => {
+    expect(successBlockBeforeReturn("if (strictCompletion.completed) {")).toContain("recordClaimProcessed();");
+  });
+
+  it("still records the claim on the ordinary completion path", () => {
+    const completion = source.indexOf("await completeJob(job, completionStage);");
+    expect(completion).toBeGreaterThan(-1);
+    expect(source.indexOf("recordClaimProcessed();", completion)).toBeGreaterThan(completion);
   });
 });

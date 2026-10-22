@@ -4,6 +4,42 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "30 18 * * *"
+  # THE STAGING GATE (owner decision 2026-10-21, docs/decisions/2026-10-21-staging-gate-before-live.md).
+  # Every main push that changes an app input waits for staging to run it, then proves two-user
+  # separation there. Railway "Wait for CI" is ON for the live services (found 2026-10-21), so a
+  # failed run here SKIPS that live deploy. That is the point, but only once staging itself is
+  # healthy: the job is OFF until the repository variable STAGING_GATE_ENFORCE is "true". Until
+  # then a push starts nothing, so it can neither delay nor block a deploy. Keep Railway "Wait for CI"
+  # OFF on the staging service: staging would wait for this run while this run waits for staging.
+  # These paths mirror railway.app.json watchPatterns (pinned by tests/staging-tenancy-workflow.test.ts):
+  # a push outside them does not redeploy the app, so there is nothing new to prove.
+  push:
+    branches: [main]
+    paths:
+      - "Dockerfile"
+      - ".dockerignore"
+      - ".npmrc"
+      - ".nvmrc"
+      - "package.json"
+      - "package-lock.json"
+      - "next.config.ts"
+      - "postcss.config.mjs"
+      - "tsconfig.json"
+      - "railway.app.json"
+      - "data/**"
+      - "!data/repo-awareness-snapshot.json"
+      - "!data/outstanding-issues-snapshot.json"
+      - "public/**"
+      - "src/**"
+      - "scripts/check-client-bundle-secrets.mjs"
+      - "scripts/check-installed-lock-parity.mjs"
+      - "scripts/check-node-engine.cjs"
+      - "scripts/check-upload-limit-parity.mjs"
+      - "scripts/guard-next-build.mjs"
+      - "scripts/install-git-hooks.mjs"
+      - "scripts/run-heavy.mjs"
+      - "scripts/stamp-service-worker.mjs"
+      - "scripts/deploy/**"
 
 concurrency:
   group: staging-tenancy-isolation
@@ -15,20 +51,28 @@ permissions:
 jobs:
   cross-tenant:
     name: Cross-tenant staging harness
+    # The push gate runs only when switched on (see the trigger comment above).
+    if: ${{ github.event_name != 'push' || vars.STAGING_GATE_ENFORCE == 'true' }}
     runs-on: ubuntu-24.04
-    # Job ceiling stays above the scheduled step's 15-minute `timeout` so a hung harness
-    # exits as a failed step (absorbable by continue-on-error) instead of GitHub killing the
-    # whole job — which continue-on-error cannot soften and which would still fail the run.
-    timeout-minutes: 45
+    # Job ceiling stays above the resolver's longest wait (30 minutes on a push) plus the scheduled
+    # step's 15-minute `timeout`, so a hung harness exits as a failed step (absorbable by
+    # continue-on-error) instead of GitHub killing the whole job — which continue-on-error cannot
+    # soften and which would still fail the run.
+    timeout-minutes: 60
     # The routing job reads the harness step's own outcome, because a continue-on-error step
     # leaves the job reporting `success` through `needs`.
     outputs:
       harness: ${{ steps.harness.outcome }}
+      resolve: ${{ steps.resolve.outcome }}
+      relation: ${{ steps.resolve.outputs.relation }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # Full history: the resolver proves the deployed commit is an ancestor of this one and
+          # lists the files changed between them.
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -44,14 +88,33 @@ jobs:
       - name: Install dependencies
         run: npm ci --include=dev
 
+      # Which commit may this run prove? Read-only: GET /api/health plus local git. Exact on a
+      # dispatched release proof; on the nightly and the gate, an earlier deployed commit counts
+      # only when no app-watched file changed since it (#3113: an exact-HEAD rule never passed on a
+      # schedule). A stale staging app is reported as its own failure, never as a mystery.
+      - name: Resolve the staging deployment
+        id: resolve
+        continue-on-error: ${{ github.event_name == 'schedule' }}
+        env:
+          CROSS_TENANT_STAGING_APP_URL: ${{ secrets.CROSS_TENANT_STAGING_APP_URL }}
+          CROSS_TENANT_CHECKOUT_COMMIT_SHA: ${{ github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          case "$EVENT_NAME" in
+            push) node scripts/resolve-staging-deployment.mjs --allow-equivalent --wait-seconds 1800 ;;
+            schedule) node scripts/resolve-staging-deployment.mjs --allow-equivalent --superseded-ok --wait-seconds 900 ;;
+            *) node scripts/resolve-staging-deployment.mjs ;;
+          esac
+
       # REPORTS, NEVER BLOCKS, ON THE NIGHTLY SCHEDULE (ledger #HYSWAF, owner decision 2026-10-09).
       # Railway "Wait for CI" skips a production deploy when any Actions run on the waiting commit
       # concludes failure, and this scheduled run checks out main HEAD. It is red every night until
       # staging tracks main (#057), so without this a merge landing near 18:30Z would not deploy.
       # A failure still shows as a failed step and still opens the pinned, assigned issue below.
-      # A dispatched run, a deliberate proof, stays blocking.
+      # A dispatched run, a deliberate proof, stays blocking, and so does the main-push gate.
       - name: Run cross-tenant staging checks
         id: harness
+        if: ${{ steps.resolve.outcome == 'success' && steps.resolve.outputs.relation != 'superseded' }}
         continue-on-error: ${{ github.event_name == 'schedule' }}
         env:
           CROSS_TENANT_STAGING_APP_URL: ${{ secrets.CROSS_TENANT_STAGING_APP_URL }}
@@ -66,6 +129,8 @@ jobs:
           CROSS_TENANT_DOCUMENT_BUCKET: ${{ vars.CROSS_TENANT_DOCUMENT_BUCKET }}
           CROSS_TENANT_EVIDENCE_PATH: artifacts/staging-tenancy-evidence.json
           CROSS_TENANT_CHECKOUT_COMMIT_SHA: ${{ github.sha }}
+          CROSS_TENANT_EXPECTED_DEPLOYED_SHA: ${{ steps.resolve.outputs.deployed_sha }}
+          CROSS_TENANT_DEPLOYMENT_RELATION: ${{ steps.resolve.outputs.relation }}
           CROSS_TENANT_WORKFLOW_RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
         # On schedule, cap the step below the job timeout so a hang becomes a failed step
         # (continue-on-error) rather than a job-level cancel that still fails the workflow.
@@ -84,10 +149,38 @@ jobs:
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: staging-tenancy-evidence-${{ github.run_id }}
+          name: staging-tenancy-evidence-${{ github.run_id }}-attempt${{ github.run_attempt }}
           path: artifacts/staging-tenancy-evidence.json
-          if-no-files-found: ${{ github.event_name == 'schedule' && 'warn' || 'error' }}
+          if-no-files-found: ${{ github.event_name == 'workflow_dispatch' && 'error' || 'warn' }}
           retention-days: 14
+
+      # A scheduled failure is continue-on-error, so the run itself shows a green tick. This banner
+      # and annotation make the one thing that matters impossible to miss: was separation proven?
+      - name: Report whether separation was proven
+        if: always()
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          RESOLVE: ${{ steps.resolve.outcome }}
+          HARNESS: ${{ steps.harness.outcome }}
+          RELATION: ${{ steps.resolve.outputs.relation }}
+          DEPLOYED: ${{ steps.resolve.outputs.deployed_sha }}
+        run: |
+          if [ "$HARNESS" = "success" ]; then
+            echo "## Two-user separation PROVEN on staging (${DEPLOYED:-unknown}, ${RELATION:-unknown})" >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$RESOLVE" = "success" ] && [ "$RELATION" = "superseded" ]; then
+            echo "## Not tested here: staging already runs a newer app commit (${DEPLOYED:-unknown}); its own run proves it" >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$EVENT_NAME" = "push" ] && [ "$RELATION" = "superseded" ]; then
+            echo "## Held, not released: staging already runs a newer app commit (${DEPLOYED:-unknown}); its own run decides" >> "$GITHUB_STEP_SUMMARY"
+            echo "::notice title=Live deploy held::Staging runs a newer commit, so this one was not tested. The newer commit's run decides."
+          else
+            if [ "$RESOLVE" != "success" ]; then
+              reason="staging was not running a provable version (${RELATION:-unreadable}); see the resolve step"
+            else
+              reason="the harness failed; see the run log and evidence artifact"
+            fi
+            echo "## Two-user separation NOT proven: ${reason}" >> "$GITHUB_STEP_SUMMARY"
+            echo "::warning title=Separation NOT proven::${reason}"
+          fi
 
   # The harness failed on every scheduled run from at least 2026-09-21 to 2026-09-25, each time on
   # its deployment-identity check (staging was not running the checked-out commit), and nobody was
@@ -102,7 +195,8 @@ jobs:
   tenancy-routing:
     name: Route tenancy status to the pinned issue
     needs: cross-tenant
-    if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
+    # A push while the gate is off skips the harness job; that is not a tenancy result.
+    if: ${{ !cancelled() && github.ref == 'refs/heads/main' && needs.cross-tenant.result != 'skipped' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -115,29 +209,29 @@ jobs:
         env:
           # A failed harness step reads `failure` here even when continue-on-error kept the job green.
           HARNESS_RESULT: ${{ needs.cross-tenant.result == 'success' && needs.cross-tenant.outputs.harness || needs.cross-tenant.result }}
+          RESOLVE_RESULT: ${{ needs.cross-tenant.outputs.resolve }}
+          RELATION: ${{ needs.cross-tenant.outputs.relation }}
+          EVENT_NAME: ${{ github.event_name }}
         with:
           script: |
-            // Route the alert to a person, not only a label (#TN512M): GitHub notifies an issue's
-            // assignee on their phone. Best-effort, so a refused assignment never costs the alert.
-            const alertAssignee = context.repo.owner;
-            async function assignAlert(issueNumber) {
-              try {
-                await github.rest.issues.addAssignees({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: issueNumber,
-                  assignees: [alertAssignee],
-                });
-              } catch (error) {
-                core.warning(`Could not assign @${alertAssignee} to #${issueNumber}: ${error.message}`);
-              }
-            }
+            // Owner decision 2026-10-21 (docs/decisions/2026-10-21-one-daily-health-summary.md): this
+            // workflow no longer @mentions or assigns the owner. Its result reaches the owner's phone once a
+            // day in the daily health summary (.github/workflows/daily-health-summary.yml), which reads this
+            // issue's label; the issue keeps the detail.
 
             const title = "Staging tenancy isolation check failing";
             const label = "staging-tenancy-failure";
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+            // A newer staging commit's own run carries the verdict; this run neither opens nor closes the alert.
+            // Only a passed resolve (the nightly) or the gate's deliberate hold: a strict release proof that
+            // met a newer commit is a failure and still alerts.
+            const supersededHold = process.env.RESOLVE_RESULT === "success" || process.env.EVENT_NAME === "push";
+            if (process.env.RELATION === "superseded" && supersededHold) {
+              core.info("Staging already runs a newer app commit; its run reports the result.");
+              return;
+            }
             const result = process.env.HARNESS_RESULT || "unknown";
             const now = new Date().toISOString();
 
@@ -179,6 +273,7 @@ jobs:
               "",
               `- Latest failing run: ${runUrl}`,
               `- Job result: \`${result}\``,
+              `- Staging version check: \`${process.env.RESOLVE_RESULT || "unknown"}\` (failure means staging was stale or unreadable, so nothing was tested)`,
               `- Trigger: \`${context.eventName}\``,
               `- Last updated: ${now}`,
               "",
@@ -190,13 +285,19 @@ jobs:
 
             if (existing) {
               await github.rest.issues.update({ owner, repo, issue_number: existing.number, body });
+              // A main push can fail the gate several times a day while staging is down. The body
+              // above carries the latest run; only the nightly and a dispatched proof re-mention the
+              // owner, so one outage pushes one phone alert a day, not one per merge.
+              if (context.eventName === "push") {
+                core.warning(`Staging gate failing; updated #${existing.number} without a new mention.`);
+                return;
+              }
               await github.rest.issues.createComment({
                 owner,
                 repo,
                 issue_number: existing.number,
                 body: `Still failing as of ${now} — ${runUrl}`,
               });
-              await assignAlert(existing.number);
               core.warning(`Staging tenancy check failing; updated #${existing.number}.`);
             } else {
               const created = await github.rest.issues.create({
@@ -206,6 +307,5 @@ jobs:
                 labels: [label],
                 body,
               });
-              await assignAlert(created.data.number);
               core.warning(`Staging tenancy check failing; opened #${created.data.number}.`);
             }

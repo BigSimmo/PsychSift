@@ -1,10 +1,14 @@
 import { defineConfig, devices } from "playwright/test";
 import { stableProjectPort } from "./src/lib/local-server-utils.mjs";
 import { getPlaywrightBaseUrl } from "./scripts/playwright-base-url";
+import { TERMS_VERSION } from "./src/lib/front-door-content";
 
 process.env.PORT = process.env.PORT || String(stableProjectPort(process.cwd()));
 
-const baseURL = getPlaywrightBaseUrl({ allowEnsure: false });
+// Collection loads config but never opens the app. Only Playwright's actual
+// --list switch selects this inert origin; browser runs retain identity checks.
+const collectionOnly = process.argv.includes("--list");
+const baseURL = collectionOnly ? "http://127.0.0.1:9" : getPlaywrightBaseUrl({ allowEnsure: false });
 
 // Sandboxed CI/cloud containers often ship a preinstalled Chromium and block
 // browser downloads; point this at that binary instead of the managed one.
@@ -24,8 +28,7 @@ const chromiumExecutablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
 // matched here.
 const productionSpecPattern =
   /.*(?:adaptive-answer-ui|api-csrf-proxy|answer-progress-ui-smoke|dsm-ui-smoke|ui-(admin|smoke|stress|accessibility|clinical-ask|cme-phone|dictionary|document-canvas|tools|tools-show-all|overlap|universal-search|specifiers|sources|formulation(?:-result-cards)?|forms-section-nav|chrome-scroll|therapy-nav-scroll|therapy-pathways|mode-nav-density|my-day-calendar|on-call-(?:boards|call|now|service)|teaching|patient-number-field|phone-motion|phone-scroll(?:-[a-z0-9-]+)?|pwa|roster-team|open-shifts-withdraw|route-coverage|style-contract|token-layer-resolution|visual-artifacts|hydration|user-journeys))\.spec\.ts/;
-const mockupSpecPattern =
-  /.*ui-(accessible-table-mockup|answer-chat-perfected-mockup|care-plan-mockup|document-image-status-mockup|document-top-navigation-mockup|sidebar-live-mockup|therapy-navigation-mockup|tools|tools-collapse|tools-search-mode-mockup|tools-task-directory)\.spec\.ts/;
+const mockupSpecPattern = /.*ui-(accessible-table-mockup)\.spec\.ts/;
 const mockupTag = /@mockup/;
 
 // iOS never fires `beforeinstallprompt`, so `pwa-lifecycle.tsx` shows a one-time "Add to Home
@@ -38,20 +41,34 @@ const mockupTag = /@mockup/;
 // same sheet; once WebKit could launch it covered tablet clicks across shards, matrix run
 // 38236585559). `ui-pwa.spec.ts` resets it to prove the sheet itself.
 const IOS_INSTALL_DISMISSAL_KEY = "clinical-kb-pwa-ios-install-dismissed-at";
+// The first Ask for an AI answer opens a Terms step and holds the question until the
+// visitor accepts (audit F-13, `use-ask-terms-gate.ts`). Every journey that asks a
+// question is about a visitor who has already accepted on this device, so every
+// project starts from that state, the same way the iOS projects start with the
+// install hint dismissed. The step itself is proved by
+// `tests/ask-terms-gate.dom.test.tsx`. Must equal `DEVICE_TERMS_KEY` in
+// `src/lib/terms-acceptance.ts`; that test pins the match.
+const TERMS_ACCEPTED_ON_DEVICE = { name: "psychsift:terms-accepted-on-device", value: TERMS_VERSION };
+const returningVisitor = {
+  cookies: [],
+  origins: [{ origin: new URL(baseURL).origin, localStorage: [TERMS_ACCEPTED_ON_DEVICE] }],
+};
 const iosInstallHintDismissed = {
   cookies: [],
   origins: [
     {
       origin: new URL(baseURL).origin,
-      localStorage: [{ name: IOS_INSTALL_DISMISSAL_KEY, value: String(Date.now()) }],
+      localStorage: [TERMS_ACCEPTED_ON_DEVICE, { name: IOS_INSTALL_DISMISSAL_KEY, value: String(Date.now()) }],
     },
   ],
 };
 
-export default defineConfig({
+const config = defineConfig({
   testDir: "./tests",
+  // Top-level testMatch is parsed directly as a single-line regex literal by
+  // tests/playwright-project-isolation.test.ts and tests/playwright-pr-shards.test.ts.
   testMatch:
-    /.*(?:adaptive-answer-ui|api-csrf-proxy|answer-progress-ui-smoke|dsm-ui-smoke|ui-(admin|accessible-table-mockup|smoke|stress|accessibility|answer-chat-perfected-mockup|care-plan-mockup|clinical-ask|cme-phone|dictionary|document-canvas|document-image-status-mockup|document-top-navigation-mockup|sidebar-live-mockup|therapy-navigation-mockup|tools|tools-collapse|tools-show-all|tools-search-mode-mockup|tools-task-directory|overlap|universal-search|specifiers|sources|formulation(?:-result-cards)?|forms-section-nav|chrome-scroll|therapy-nav-scroll|therapy-pathways|mode-nav-density|my-day-calendar|on-call-(?:boards|call|now|service)|teaching|patient-number-field|phone-motion|phone-scroll(?:-[a-z0-9-]+)?|pwa|roster-team|open-shifts-withdraw|route-coverage|style-contract|token-layer-resolution|visual-artifacts|hydration|user-journeys))\.spec\.ts/,
+    /.*(?:adaptive-answer-ui|api-csrf-proxy|answer-progress-ui-smoke|dsm-ui-smoke|ui-(admin|accessible-table-mockup|smoke|stress|accessibility|clinical-ask|cme-phone|dictionary|document-canvas|tools|tools-show-all|overlap|universal-search|specifiers|sources|formulation(?:-result-cards)?|forms-section-nav|chrome-scroll|therapy-nav-scroll|therapy-pathways|mode-nav-density|my-day-calendar|on-call-(?:boards|call|now|service)|teaching|patient-number-field|phone-motion|phone-scroll(?:-[a-z0-9-]+)?|pwa|roster-team|open-shifts-withdraw|route-coverage|style-contract|token-layer-resolution|visual-artifacts|hydration|user-journeys))\.spec\.ts/,
   timeout: 60_000,
   retries: 0,
   // Fail the run if a stray `test.only` is committed: otherwise it silently
@@ -70,14 +87,15 @@ export default defineConfig({
         ["json", { outputFile: "test-results/playwright-results.json" }],
       ]
     : "list",
-  webServer: process.env.PLAYWRIGHT_BASE_URL
-    ? undefined
-    : {
-        command: "npm run ensure",
-        url: `${baseURL}/api/local-project-id`,
-        reuseExistingServer: false,
-        timeout: 120_000,
-      },
+  webServer:
+    collectionOnly || process.env.PLAYWRIGHT_BASE_URL
+      ? undefined
+      : {
+          command: "npm run ensure",
+          url: `${baseURL}/api/local-project-id`,
+          reuseExistingServer: false,
+          timeout: 120_000,
+        },
   use: {
     baseURL,
     headless: process.env.CI ? true : process.env.HEADED === "true" ? false : undefined,
@@ -96,6 +114,8 @@ export default defineConfig({
     //    neither default active transitions nor reduced-motion accessibility fallbacks freeze
     //    or blank out UI elements.
     contextOptions: { reducedMotion: "reduce" },
+    // Terms already accepted on this device; see `returningVisitor` above.
+    storageState: returningVisitor,
     // Phone PWA standalone mode emulation strategy (#71NT23):
     // Validates the phone PWA bounded scroll shell (globals.css:3755-3793) by
     // allowing phone scroll journeys to emulate `display-mode: standalone` either
@@ -150,6 +170,10 @@ export default defineConfig({
       name: "mobile-pwa-standalone",
       testMatch: productionSpecPattern,
       grepInvert: mockupTag,
+      // This is the full-height iPhone geometry backstop, not an OS install.
+      // Installed CSS is enabled and asserted by the explicit phone-scroll
+      // fixtures in every project; physical iOS acceptance remains separate.
+      metadata: { phoneViewportContract: "full-height", installedLayoutContract: "explicit-compiled-css-fixture" },
       use: {
         ...devices["iPhone 14"],
         storageState: iosInstallHintDismissed,
@@ -171,3 +195,15 @@ export default defineConfig({
     },
   ],
 });
+
+// In Playwright 1.63 CLI grep filters are additive: they cannot undo project
+// exclusions. Collection must see every identity before quarantine validation.
+// This branch never changes the filters used by an executing browser run.
+if (collectionOnly) {
+  for (const project of config.projects ?? []) {
+    delete project.grep;
+    delete project.grepInvert;
+  }
+}
+
+export default config;

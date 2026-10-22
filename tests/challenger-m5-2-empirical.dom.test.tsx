@@ -157,24 +157,58 @@ describe("Challenger M5-2: Empirical Verification & Hardening Harness", () => {
       readFileSync(join(process.cwd(), "scripts/design-system-contract-baseline.json"), "utf8"),
     );
 
-    it("verifies sub-floor interactive min-heights ceiling is 4 (tightened from 5)", () => {
-      expect(baseline.metrics.interactiveTapFloorDeclarations).toBe(4);
+    it("pins the two remaining sub-floor declarations after the tag-cloud repair", () => {
+      expect(baseline.metrics.interactiveTapFloorDeclarations).toBe(2);
       // Ensure dictionary-term-page was removed from debtByPath
       expect(
         baseline.debtByPath.interactiveTapFloorDeclarations["src/components/dictionary/dictionary-term-page.tsx"],
       ).toBeUndefined();
+      expect(
+        baseline.debtByPath.interactiveTapFloorDeclarations["src/components/DocumentTagCloud.tsx"],
+      ).toBeUndefined();
+      expect(
+        Object.values(baseline.debtByPath.interactiveTapFloorDeclarations as Record<string, number>).reduce(
+          (sum, count) => sum + count,
+          0,
+        ),
+      ).toBe(baseline.metrics.interactiveTapFloorDeclarations);
     });
 
-    it("verifies disabledOpacityUses ceiling is tightened to 30", () => {
-      expect(baseline.metrics.disabledOpacityUses).toBe(30);
+    it("pins zero disabled-opacity debt with an empty per-path map", () => {
+      expect(baseline.metrics.disabledOpacityUses).toBe(0);
+      expect(baseline.debtByPath.disabledOpacityUses).toEqual({});
     });
 
-    it("verifies visibleLiveRegions ceiling is tightened to 17", () => {
-      expect(baseline.metrics.visibleLiveRegions).toBe(17);
+    it("pins 13 retained visible live regions and excludes the migrated Therapy announcements", () => {
+      expect(baseline.metrics.visibleLiveRegions).toBe(13);
+      for (const path of [
+        "src/components/therapy-compass/therapy-card.tsx",
+        "src/components/therapy-compass/screens/recommend-screen.tsx",
+        "src/components/therapy-compass/recommend-scenario-control.tsx",
+        "src/components/therapy-compass/workspace.tsx",
+      ])
+        expect(baseline.debtByPath.visibleLiveRegions[path], path).toBeUndefined();
+      expect(
+        Object.values(baseline.debtByPath.visibleLiveRegions as Record<string, number>).reduce(
+          (sum, count) => sum + count,
+          0,
+        ),
+      ).toBe(baseline.metrics.visibleLiveRegions);
     });
 
-    it("verifies patient-safety-plan shadow alias exception has been removed from baseline", () => {
+    it("pins 12 remaining shadow aliases and preserves repaired path absence", () => {
+      expect(baseline.metrics.legacyShadowAliases).toBe(12);
       expect(baseline.debtByPath.legacyShadowAliases["src/components/patient-safety-plan.tsx"]).toBeUndefined();
+      expect(baseline.debtByPath.legacyShadowAliases["src/components/calculators/search-detail.tsx"]).toBeUndefined();
+      expect(
+        baseline.debtByPath.legacyShadowAliases["src/components/therapy-compass/screens/sheets-screen.tsx"],
+      ).toBeUndefined();
+      expect(
+        Object.values(baseline.debtByPath.legacyShadowAliases as Record<string, number>).reduce(
+          (sum, count) => sum + count,
+          0,
+        ),
+      ).toBe(baseline.metrics.legacyShadowAliases);
     });
   });
 });

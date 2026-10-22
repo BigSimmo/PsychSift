@@ -3,8 +3,8 @@
 _Updated 2026-10-21 — task-first navigation, authority routing and plan lifecycle corrections; Documentation owns._
 
 Categorised map of every tracked Markdown document under `docs/`: the load-bearing docs lead
-each category, and an "Also catalogued" list completes it (the immutable
-`branch-review-records/` and `outstanding-issues-inbox/` files are indexed by their own
+each category, and an "Also catalogued" list completes it (the archived
+`archive/branch-review-records/` and `outstanding-issues-inbox/` files are indexed by their own
 generators, not here). Categories distinguish **maintained** documents (keep these current when
 behavior changes) from **point-in-time records** (historical; do not update, supersede with a
 new dated doc instead). No check fails when a document is missing from this index, so add each
@@ -134,6 +134,7 @@ Every remaining tracked document in this category (architecture and design, plus
 - [redesign/premium-colour-system-plan.md](redesign/premium-colour-system-plan.md) — Premium colour system plan — Create a light mode that feels modern, premium, calm, and clinically trustworthy without becoming sterile, washed out, or over-teal.
 - [adr/0001-use-a-shared-local-first-clinical-ask-orchestrator.md](adr/0001-use-a-shared-local-first-clinical-ask-orchestrator.md) — Use a shared local-first orchestrator for Mode-aware Clinical Ask — Mode-aware Clinical Ask will extend the repository's one shared composer and governed answer surfaces through one local-first orchestration…
 - [decisions/ccz4hb-review-coverage.md](decisions/ccz4hb-review-coverage.md) — Decision: restoring automated review coverage (#CCZ4HB) — the row closed — but see the 2026-09-02 correction below, which removes the premise that decision rested on.
+- [product/clinical-and-work-direction.md](product/clinical-and-work-direction.md) — Clinical and Work product direction — Decision date: 2026-10-21 Decision:
 - [product/clinical-trust-direction.md](product/clinical-trust-direction.md) — Clinical trust product direction — Decision date: 2026-08-23 Decision:
 
 - [cme-adoption-contract.md](cme-adoption-contract.md) — CME adoption contract and evidence requirements
@@ -145,6 +146,8 @@ Every remaining tracked document in this category (architecture and design, plus
 - [retrieval-quality-runbook.md](retrieval-quality-runbook.md) — RAG/retrieval eval gates and tuning
 - [worker-deploy-runbook.md](worker-deploy-runbook.md) — worker build contract, run recipe, secrets, docling shadow extraction (B4)
 - [disaster-recovery-runbook.md](disaster-recovery-runbook.md) — backup/restore and recovery drills
+- [operator-rehearsal-plan.md](operator-rehearsal-plan.md): one-day owner-approved rehearsal: data restore, Railway rollback, 30-user staging soak, stray staging worker removal
+- [process-cleanup-proposal-2026-10.md](process-cleanup-proposal-2026-10.md): proposal only: check-script overlap, ledger trimming and stale companion docs
 - [auth-connection-cap-runbook.md](auth-connection-cap-runbook.md) — Supabase auth connection cap (operator)
 - [staging-setup.md](staging-setup.md) — staging environment bootstrap
 - [database-drift-detection.md](database-drift-detection.md) — schema drift detection (`npm run check:drift`)
@@ -192,9 +195,9 @@ Every remaining tracked document in this category (operations, plus the `rag-beh
 - [clinical-sign-off-how-to.md](clinical-sign-off-how-to.md) — plain-English guide for the clinical owner: signing off forms and Act-section summaries one at a time with `npm run clinical:review`, and sending the sign-offs
 - [source-acquisition-protocol.md](source-acquisition-protocol.md) — how a clinical source is found, captured, scored and indexed: the WA-first locality ladder, the capture register, the metadata floor, and clinical sign-off
 - [error-tracking.md](error-tracking.md) — privacy-safe, opt-in production exception tracking envelope
-- [governance-incident-runbooks.md](governance-incident-runbooks.md) — operator response checklists for clinical, source, privacy, provider, and answer-pipeline rollback incidents
+- [governance-incident-runbooks.md](governance-incident-runbooks.md) — operator response checklists for clinical, source, privacy, provider, notifiable data breach (draft), and answer-pipeline rollback incidents
 - [clinical-hazard-analysis.md](clinical-hazard-analysis.md) — clinical hazard register
-- [care-plan/crisis-lines-verification.md](care-plan/crisis-lines-verification.md) — **DRAFT, unsigned** verification record for every crisis number printed by the Care Plan prototype: source, verification date, and the six-monthly re-verification cadence
+- [care-plan/crisis-lines-verification.md](care-plan/crisis-lines-verification.md) — **DRAFT, unsigned** verification record for every crisis number the app prints (first written for the retired Care Plan prototype): source, verification date, and the six-monthly re-verification cadence
 - [rag-injection-threat-model.md](rag-injection-threat-model.md) — prompt-injection threat model
 - [privacy-impact-assessment.md](privacy-impact-assessment.md) — PIA findings and launch blockers
 - [openai-cross-border-basis.md](openai-cross-border-basis.md) — cross-border data-processing basis
@@ -231,9 +234,9 @@ Every remaining tracked document in this category, one line each; the descriptio
 - [codex-cloud.md](codex-cloud.md) — current-host Cloud guide and explicit selection of the archived legacy setup
 - [claude-cloud.md](claude-cloud.md) — Claude Code on the web container parity: tiered provisioner and checked-in user profile
 - [branch-cleanup-guide.md](branch-cleanup-guide.md) — branch hygiene workflow
-- [branch-review-ledger.md](branch-review-ledger.md) — reviewed branch/SHA ledger; read with `npm run ledger:lookup` (historical tables + immutable records), write with `npm run ledger:append`, and convert a pre-system active-branch row with `npm run ledger:migrate-legacy`
-- [branch-review-archival-policy.md](branch-review-archival-policy.md) — what may and may not be done to the immutable records under `docs/branch-review-records/`; which operations are blocked by code, which are forbidden by policy but caught by nothing, and why foldering or deleting a record is silent history loss
-- [branch-review-index.md](branch-review-index.md) — **Generated** browsable index of every immutable review record; regenerate with `npm run ledger:index`, refresh with `npm run docs:update`, check currency with `npm run ledger:index:check`. It may lag the corpus, so `npm run ledger:lookup` stays authoritative
+- [branch-review-ledger.md](branch-review-ledger.md) — frozen reviewed branch/SHA table; review records now live in PR comments ([Records](agents/pull-request-workflow.md#records)), and `npm run ledger:lookup` searches this table and the archived records for history
+- [branch-review-archival-policy.md](branch-review-archival-policy.md) — superseded 2026-10-20, kept as history: what could be done to the records now archived read-only under `docs/archive/branch-review-records/`; which operations are blocked by code, which are forbidden by policy but caught by nothing, and why foldering or deleting a record is silent history loss
+- [branch-review-index.md](branch-review-index.md) — **Generated** browsable index of every archived review record; regenerate with `npm run ledger:index`, refresh with `npm run docs:update`, check currency with `npm run ledger:index:check`. It may lag the corpus, so `npm run ledger:lookup` stays authoritative
 - [task-receipts.md](task-receipts.md) — task lifecycle and sanitized receipt handoff protocol between agents and ledger
 
 ### Also catalogued (2026-09-02)
@@ -245,14 +248,14 @@ Every remaining tracked document in this category (process, plus the `agents/` r
 - [agents/claude-hook-scripts.md](agents/claude-hook-scripts.md) — Claude Code Hook Scripts — .claude/hooks/*.sh runs on Linux web containers as well as on the Windows workstation, and the workstation cannot see the thing that breaks…
 - [agents/codex-cloud-environment.md](agents/codex-cloud-environment.md) — Canonical Cloud operating policy: current-host evidence, task continuation, tools, credentials and explicitly selected legacy setup.
 - [agents/cloud-instruction-activation.md](agents/cloud-instruction-activation.md) — Verify repository, installed-host and fresh-session instruction states separately.
-- [agents/codex-cloud-legacy-bootstrap.md](agents/codex-cloud-legacy-bootstrap.md) — Explicit legacy bootstrap containment, scoped cache and read-only artifact inspection.
+- [cloud/codex-cloud-legacy-bootstrap.md](cloud/codex-cloud-legacy-bootstrap.md) — Explicit legacy bootstrap containment, scoped cache and read-only artifact inspection.
 - [agents/codex-dependency-shortcut.md](agents/codex-dependency-shortcut.md) — Codex Dependency Shortcut — When the user types exactly dependency as the entire task message, after trimming surrounding whitespace, treat it as a shortcut for safe de…
 - [agents/codex-desktop-worktree-setup.md](agents/codex-desktop-worktree-setup.md) — Codex Desktop Worktree Setup — It must work before node_modules exists, validate Node 24/npm 11, reuse only a complete byte-identical local installation, and otherwise run…
 - [agents/codex-productivity-defaults.md](agents/codex-productivity-defaults.md) — Codex Productivity Defaults
 - [agents/codex-reasoning-effort.md](agents/codex-reasoning-effort.md) — User-selected model/effort, ordinary-language confirmation and scoped specialist contracts
 - [agents/codex-review-throttling.md](agents/codex-review-throttling.md) — Codex Review Throttling & Thread Resolution — Do not review branches opportunistically.
 - [agents/context7.md](agents/context7.md) — shared library-docs workflow, version matching, authentication and query privacy
-- [agents/cursor-cloud.md](agents/cursor-cloud.md) — Cursor Cloud Specific Instructions — Durable notes for Cloud Agents.
+- [agents/cursor-cloud.md](agents/cursor-cloud.md) — Cursor Cloud Agents Are Prohibited — stub recording that Cursor cloud agents are prohibited.
 - [agents/dead-code-deletion.md](agents/dead-code-deletion.md) — Deleting Code You Believe Is Dead — "Nothing imports it" is necessary and nowhere near sufficient.
 - [agents/external-skill-precedence.md](agents/external-skill-precedence.md) — External Skill Precedence and Evidence — User-global skills and output-style plugins are installed outside this repo and know nothing about its contracts.
 - [agents/pull-request-workflow.md](agents/pull-request-workflow.md) — Pull Request Workflow — The one canonical pull-request rulebook for every AI tool: open, follow CI, review threads, records, merge authority, landed, branch sync, Run PR, Clear PRs, bundling.
@@ -265,7 +268,6 @@ Every remaining tracked document in this category (process, plus the `agents/` r
 - [agents/verification-gates.md](agents/verification-gates.md) — Verification Gates — the verification pyramid, gate receipts, and the browser-gate planner
 - [agents/wiring-and-bundle-budget.md](agents/wiring-and-bundle-budget.md) — Page Wiring and Bundle Budget — Interactive controls and routes follow conventions the codebase already holds to.
 - [agents/native-startup/commit-as-you-go.md](agents/native-startup/commit-as-you-go.md) — Commit as you go: committing coherent units before switching context
-- [agents/native-startup/contextual-working-defaults.md](agents/native-startup/contextual-working-defaults.md) — Context-aware working defaults for workflows and boundaries
 - [agents/native-startup/external-skill-precedence.md](agents/native-startup/external-skill-precedence.md) — External skill precedence and evidence calibration rules
 - [agents/native-startup/process-hardening.md](agents/native-startup/process-hardening.md) — Process hardening phases and verification gates
 - [agents/native-startup/publication-workflows.md](agents/native-startup/publication-workflows.md) — Safe Git publication workflows, PR shortcuts, and anti-churn sync
@@ -290,25 +292,35 @@ Every remaining tracked document in this category (process, plus the `agents/` r
 - [plans/edge-ingestion-overhaul-3pr-plan.md](plans/edge-ingestion-overhaul-3pr-plan.md) — Edge Ingestion Overhaul — 3-PR Execution Plan — Status: Planning only.
 - [plans/tooling-activation-implementation-plan.md](plans/tooling-activation-implementation-plan.md) — Tooling activation — implementation plan — Status: local workstreams (WS-B, WS-C) implemented 2026-08-01;
 
+## Full Deep audit remediation (2026-10-17)
+
+- [Remediation spec](audit/2026-10-17-full-deep-remediation-spec.md) — observed defects and acceptance expectations.
+- [Parallel implementation plan](superpowers/plans/2026-10-17-full-deep-remediation.md) — six implementation lanes, dependencies and review gates.
+- [Local implementation results](audit/2026-10-17-full-deep-remediation-results.md) — issue disposition, verification limits and operator handoff.
+- [Clinical release handoff](governance/clinical-release-remediation-handoff-2026-10-17.md) — genuine outstanding privacy and clinical evidence.
+- [Physiological calculator hold](governance/physiological-calculator-hold-2026-10-17.md) — containment pending sourced clinical review.
+- [Development governance scope](governance/development-governance-scope.md) — local development and draft-review profile for the governance checks; release checks unchanged.
+- [Cache freshness](rag-behaviour/cache-freshness.md) — durable revision fences and mixed-deployment limits.
+
 ## Plans and workstreams (living)
 
 - [maturity-backlog-workorders.md](maturity-backlog-workorders.md) — actionable work orders tracking the repository-maturity audit backlog
 - [no-unchecked-indexed-access-migration-plan.md](no-unchecked-indexed-access-migration-plan.md) — staged multi-PR rollout for the `noUncheckedIndexedAccess` TypeScript flag (ledger `#211`)
 - [pr-handoff-stop-cross-agent-gap.md](pr-handoff-stop-cross-agent-gap.md) — why the PR-babysit budget is hook-enforced for Claude Code but prose-only for Codex and Cursor, and what parity would require (ledger `#258`)
-- [search-rag-master-plan.md](search-rag-master-plan.md) / [search-rag-master-context.md](search-rag-master-context.md) — search/RAG roadmap and shared context
-- [rag-improvement/README.md](rag-improvement/README.md) — reviewed/updated RAG improvement programme: answer-quality track (intent-aware related information, length) + corrected eval/safety infra track
-- [rag-improvement/HANDOVER.md](rag-improvement/HANDOVER.md) — multi-session handover: per-session work packets, status table, checklists, and paste-ready prompts for executing the programme
-- [rag-improvement/COORDINATION.md](rag-improvement/COORDINATION.md) — coordinator handover: programme history, wave/session decisions, babysit playbook, approvals map, and the coordination-chat bootstrap prompt
+- [search-rag-master-plan.md](search-rag-master-plan.md) / [search-rag-master-context.md](search-rag-master-context.md) — historical search/RAG roadmap and shared context (phases done; open RAG work is in the issue ledger)
+- [rag-improvement/README.md](rag-improvement/README.md) — completed RAG improvement programme (design history): answer-quality track (intent-aware related information, length) + corrected eval/safety infra track
+- [rag-improvement/HANDOVER.md](rag-improvement/HANDOVER.md) — completed programme's handover (history, not the current board): per-session work packets, status table, checklists, and prompts
+- [rag-improvement/COORDINATION.md](rag-improvement/COORDINATION.md) — completed programme's coordinator handover (history): programme history, wave/session decisions, babysit playbook, approvals map, and the coordination-chat bootstrap prompt
 - [rag-improvement/231-diagnosis-2026-08-22.md](rag-improvement/231-diagnosis-2026-08-22.md) — `#231` evidence record: the row's timeout premise measured against the 60 Gate E answers, the three populations behind `source_only`, and the grounded-extractive gate gap
 - [rag-improvement/baseline-record.md](rag-improvement/baseline-record.md) — programme evaluation baseline: the six-field report key, gate results, and which gates stay pending an owner-approved provider run
 - [rag-improvement/data-flow-register.md](rag-improvement/data-flow-register.md) — Gate A register: every RAG input, process, sink, retention window, provider egress, and the known gaps
-- [rag-hybrid-findings-and-todo.md](rag-hybrid-findings-and-todo.md) — hybrid retrieval findings backlog
+- [rag-hybrid-findings-and-todo.md](rag-hybrid-findings-and-todo.md) — hybrid retrieval findings (historical, last reconciled 2026-07-14)
 - [reindex-shadow-harness-design.md](reindex-shadow-harness-design.md) — designed-only shadow reindex harness (driver not built)
-- [ingestion-concurrency-fix-workorder.md](ingestion-concurrency-fix-workorder.md) — ingestion concurrency workorder
+- [ingestion-concurrency-fix-workorder.md](ingestion-concurrency-fix-workorder.md) — retired ingestion concurrency workorder; [archived copy](archive/ingestion-concurrency-fix-workorder-2026-10-20.md)
 - [projects/design-system-remediation.md](projects/design-system-remediation.md) — PsychSift design system, screen, accessibility, responsive & interaction remediation project plan
 - [redesign/](redesign/) — premium redesign plans, decision log, token adoption
 - [superpowers/](superpowers/) — agent-authored plans and specs
-- **Care Plan (prototype, developer-gated under `/mockups/care-plan`)** — [superpowers/specs/2026-08-20-care-plan-design.md](superpowers/specs/2026-08-20-care-plan-design.md) is the binding design spec, [care-plan-context.md](care-plan-context.md) the binding glossary, [superpowers/plans/2026-08-20-care-plan-implementation.md](superpowers/plans/2026-08-20-care-plan-implementation.md) the implementation plan, [care-plan/sdd-ledger.md](care-plan/sdd-ledger.md) the build ledger and [care-plan/complete-work-ledger.md](care-plan/complete-work-ledger.md) the record of what landed; the dated handoffs, transcripts and reports under [care-plan/](care-plan/) are point-in-time records
+- **Care Plan (prototype, retired 2026-10-21)** — the owner retired the developer-gated prototype; its code, tests and build records are in git history (see [mockups/README.md](../mockups/README.md) "Retired developer-gated routes"). The crisis-number record [care-plan/crisis-lines-verification.md](care-plan/crisis-lines-verification.md) stays live because `src/lib/crisis-contacts.ts` cites it
 
 ### Also catalogued (2026-09-02)
 
@@ -343,20 +355,20 @@ Every remaining tracked document in this category, one line each; the descriptio
 
 ## Subdirectory map
 
-| Directory                                        | What lives there                                                                                                                                                                                         |
-| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [decisions/](decisions/)                         | The owner's recorded decisions, one short file each, indexed by [decisions/README.md](decisions/README.md). Checked by `npm run check:decisions`                                                         |
-| [organisation/](organisation/)                   | The organisation map: one file per area (`systems/`), shared, not-yet-placed and ignored lists, last-read pins. Checked by `npm run check:organisation`                                                  |
-| [agents/](agents/)                               | Agent-rule reference files `AGENTS.md` delegates to by name — the full text of rules its always-loaded core only points at                                                                               |
-| [rag-behaviour/](rag-behaviour/)                 | Protected retrieval/ranking surface: behaviour map, refuted approaches, safeguards. **Read before touching ranking.**                                                                                    |
-| [prompts/](prompts/)                             | Current task and review prompts; follow the canonical repository and Cloud operating instructions                                                                                                        |
-| [codex/](codex/)                                 | Per-lens Codex ultra-review output folders, one per review dimension                                                                                                                                     |
-| [evidence/](evidence/)                           | Captured evidence artifacts backing ledger items (reliability reports, review manifests)                                                                                                                 |
-| [audit/](audit/)                                 | Dated repo, design, accessibility, and latency audits (point-in-time)                                                                                                                                    |
-| [redesign/](redesign/)                           | Premium redesign plans, decision log, token adoption                                                                                                                                                     |
-| [superpowers/](superpowers/)                     | Agent-authored plans and specs                                                                                                                                                                           |
-| [branch-review-records/](branch-review-records/) | Immutable one-row review records — one file per review — named for the SHA-256 of the row. **Append-only: never edit, delete, or move into subdirectories** ([policy](branch-review-archival-policy.md)) |
-| [archive/](archive/)                             | Completed phase plans, superseded designs, old progress logs — never current guidance                                                                                                                    |
+| Directory                                                        | What lives there                                                                                                                                                                          |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [decisions/](decisions/)                                         | The owner's recorded decisions, one short file each, indexed by [decisions/README.md](decisions/README.md). Checked by `npm run check:decisions`                                          |
+| [organisation/](organisation/)                                   | The organisation map: one file per area (`systems/`), shared, not-yet-placed and ignored lists, last-read pins. Checked by `npm run check:organisation`                                   |
+| [agents/](agents/)                                               | Agent-rule reference files `AGENTS.md` delegates to by name — the full text of rules its always-loaded core only points at                                                                |
+| [rag-behaviour/](rag-behaviour/)                                 | Protected retrieval/ranking surface: behaviour map, refuted approaches, safeguards. **Read before touching ranking.**                                                                     |
+| [prompts/](prompts/)                                             | Current task and review prompts; follow the canonical repository and Cloud operating instructions                                                                                         |
+| [codex/](codex/)                                                 | Per-lens Codex ultra-review output folders, one per review dimension                                                                                                                      |
+| [evidence/](evidence/)                                           | Captured evidence artifacts backing ledger items (reliability reports, review manifests)                                                                                                  |
+| [audit/](audit/)                                                 | Dated repo, design, accessibility, and latency audits (point-in-time)                                                                                                                     |
+| [redesign/](redesign/)                                           | Premium redesign plans, decision log, token adoption                                                                                                                                      |
+| [superpowers/](superpowers/)                                     | Agent-authored plans and specs                                                                                                                                                            |
+| [archive/branch-review-records/](archive/branch-review-records/) | Archived one-row review records, read-only; review records now live in PR comments. **Never add, edit, delete, or move into subdirectories** ([policy](branch-review-archival-policy.md)) |
+| [archive/](archive/)                                             | Completed phase plans, superseded designs, old progress logs — never current guidance                                                                                                     |
 
 ## Point-in-time records (historical — do not update)
 
@@ -376,6 +388,7 @@ as it was on that date; supersede with a new dated document rather than editing.
 - [audit/claude-code-cloud-connection-acceptance-2026-08-17.md](audit/claude-code-cloud-connection-acceptance-2026-08-17.md) — Claude Code desktop-vs-cloud connector parity check (Railway/Figma/Sentry/Supabase/GitHub live-verified), dependency-currency hook, open Supabase-scope and GitHub-portability items
 - [audit/2026-09-17-external-audit-refutations.md](audit/2026-09-17-external-audit-refutations.md) — what the 2026-09-17 external audit got wrong and why: it read a commit 31 behind `main`, eight findings refuted with evidence (four re-verified 2026-09-18), which findings were real but already decided, and the two questions still worth a person
 - [audit/2026-09-16-catalogue-read-latency.md](audit/2026-09-16-catalogue-read-latency.md) — every public catalogue read re-hashed the whole 9.5 MB frozen corpus (live mean 8,656 ms, max 17,263 ms); mitigated in the application, root cause still needs a migration and an approved window
+- [audit/2026-10-21-database-performance-evidence.md](audit/2026-10-21-database-performance-evidence.md) — read-only live evidence for six database performance rows: index-units search 9.2 s on first run versus 0.19 s on repeat, same plan, cost is uncached page reads; no index, drop or precompute justified today
 - [audit/2026-09-16-registry-search-outage.md](audit/2026-09-16-registry-search-outage.md) — why registry search returned nothing for seven days; same read path as the catalogue-latency record, different defect
 - [audit/psychsift-differentials-handover-reconciliation-2026-09-16.md](audit/psychsift-differentials-handover-reconciliation-2026-09-16.md) — the Differentials handover reconciled against repository records: why the evidence adapter is blocked, and the claim-to-record mapping the package cannot supply
 - [audit/codex-cloud-reliability-20260907.md](audit/codex-cloud-reliability-20260907.md) — Codex Cloud reliability record, 2026-09-07
@@ -390,7 +403,7 @@ as it was on that date; supersede with a new dated document rather than editing.
 - [specifier-definition-worklist-2026-09-18.md](specifier-definition-worklist-2026-09-18.md) — issue #693 clinical worklist for the 585-item specifier catalogue: why "71 defined" is really 14, that nothing carries clinician sign-off, the A/B/C triage split, the 63 management-changing items in full, and a worked example of what a completed entry must contain
 - [specifier-entry-worksheet-with-catatonia.md](specifier-entry-worksheet-with-catatonia.md) — the first specifier entry laid out for completion: one shared definition, nine per-disorder rows, the exact field changes, and the sign-off block, with every clinical statement blank
 - `release-source-metadata-debt-2026-06-30.json` — captured source-metadata debt policy, consumed by `npm run audit:source-governance:release` and `npm run eval:quality:release`
-- [forward-codify-retrieval-rpcs-workorder.md](forward-codify-retrieval-rpcs-workorder.md) — completed retrieval RPC codification workorder
+- [forward-codify-retrieval-rpcs-workorder.md](forward-codify-retrieval-rpcs-workorder.md) — retired retrieval RPC codification workorder; [archived copy](archive/forward-codify-retrieval-rpcs-workorder-2026-10-20.md)
 - [project-alignment-cleanup.md](archive/project-alignment-cleanup.md) — completed June 2026 repo-alignment record
 - [capacity-review.md](audit/capacity-review.md), [scale-readiness-review.md](audit/scale-readiness-review.md), [tenancy-defense-in-depth-review.md](audit/tenancy-defense-in-depth-review.md)
 - `*-2026-*` findings and status docs, e.g. [chunking-ocr-reindex-lever-finding-2026-07-08.md](chunking-ocr-reindex-lever-finding-2026-07-08.md), [source-governance-status-2026-07-08.md](archive/source-governance-status-2026-07-08.md), [source-governance-priorities-2026-07-02.md](archive/source-governance-priorities-2026-07-02.md), [source-review-priority-2026-07-02.md](source-review-priority-2026-07-02.md), [operator-apply-july8-batch.md](archive/operator-apply-july8-batch.md)
@@ -443,39 +456,6 @@ Every remaining tracked document in this category (dated records and the `eviden
 - [audit/repo-wide-review-sweep-2026-07-19.md](audit/repo-wide-review-sweep-2026-07-19.md) — Repository-wide review sweep — 2026-07-19 — This was a broad static repository sweep of /workspace/Database on branch work, combining the repo workflow guidance, local static commands,…
 - [audit/ux-accessibility-review-2026-07-07.md](audit/ux-accessibility-review-2026-07-07.md) — UX & Accessibility Review — Date: 2026-07-07 Reviewer role:
 - [audit/worktree-reconciliation-2026-08-23.md](audit/worktree-reconciliation-2026-08-23.md) — Worktree and branch reconciliation — 2026-08-23 — Disposition: preservation-first;
-- [care-plan/CLAUDE-START-HERE.md](care-plan/CLAUDE-START-HERE.md) — Care Plan — Claude start here — Last updated: 22 August 2026 (Australia/Perth) Implementation status:
-- [care-plan/HANDOFF-2026-08-24-SUPERSEDED.md](care-plan/HANDOFF-2026-08-24-SUPERSEDED.md) — Care Plan — complete handoff package — Assembled 24 August 2026, when the previous session hit its weekly account limit.
-- [care-plan/HANDOFF-START-HERE.md](care-plan/HANDOFF-START-HERE.md) — Care Plan — start here — Rewritten 1 September 2026.
-- [care-plan/accessibility-acceptance.md](care-plan/accessibility-acceptance.md) — Care Plan — accessibility and responsive acceptance — What was checked, how, at what size, in what mode — and, just as importantly, what was not checked and therefore remains an open acceptance…
-- [care-plan/claude-build-handover-2026-08-21.md](care-plan/claude-build-handover-2026-08-21.md) — ED Care Plans — detailed Claude build handover — ED Care Plans is fully brainstormed, clinically bounded, visually selected, specified, and decomposed into a nine-task implementation plan.
-- [care-plan/clinical-language-trace.md](care-plan/clinical-language-trace.md) — Care Plan — clinical language trace — Every consequential label the prototype shows a reader, traced to the glossary term or specification sentence it comes from, and the banned…
-- [care-plan/cloud-session.md](care-plan/cloud-session.md) — Care Plan — cloud session brief and progress log — If you are an AI session working on Care Plan in the cloud, this is the first file you read and the last file you write.
-- [care-plan/conversation-transcript-2026-08-21.md](care-plan/conversation-transcript-2026-08-21.md) — ED Care Plans — Codex conversation transcript — This is a portable transcript of the conversational text.
-- [care-plan/implementation-handoff.md](care-plan/implementation-handoff.md) — Care Plan — implementation handoff — What was built, where it lives, what it deliberately does not do, and what would have to be true before any of it went near a patient.
-- [care-plan/interaction-matrix.md](care-plan/interaction-matrix.md) — Care Plan — interaction matrix — Every control in the prototype:
-- [care-plan/patient-facing-sheets/README.md](care-plan/patient-facing-sheets/README.md) — The three printed sheets, as text — Committed 2 September 2026 so that a session without access to this machine — a cloud session above all — can read what Care Plan actually p…
-- [care-plan/reports/final-fix-report.md](care-plan/reports/final-fix-report.md) — Care Plan — final fix wave — Branch: claude/care-plan-stage-b-9-11 Worktree:
-- [care-plan/reports/task-10-report.md](care-plan/reports/task-10-report.md) — Task 10 — Reviews, Team, Governance, History, and System states — Branch claude/care-plan-stage-b-9-11, worktree D:\Worktrees\Database\care-plan-impl.
-- [care-plan/reports/task-11-report.md](care-plan/reports/task-11-report.md) — Task 11 — Browser journeys, responsive and accessibility proof, documentation, handoff — Branch claude/care-plan-stage-b-9-11, worktree D:\Worktrees\Database\care-plan-impl.
-- [care-plan/reports/task-3-brief.md](care-plan/reports/task-3-brief.md) — task-3-brief
-- [care-plan/reports/task-3-report.md](care-plan/reports/task-3-report.md) — Task 3 report — gated route family, literal navigation, responsive clinical shell — Branch claude/ed-care-plans-impl-7f44cd, worktree D:\Worktrees\Database\care-plan-impl, base d421bc2dc.
-- [care-plan/reports/task-4-brief.md](care-plan/reports/task-4-brief.md) — task-4-brief
-- [care-plan/reports/task-4-report.md](care-plan/reports/task-4-report.md) — Task 4 report — Clinical Snapshot, patient search, Current Plan hierarchy, CMHT actions — Branch claude/ed-care-plans-impl-7f44cd, worktree D:\Worktrees\Database\care-plan-impl.
-- [care-plan/reports/task-5-brief.md](care-plan/reports/task-5-brief.md) — task-5-brief
-- [care-plan/reports/task-5-report.md](care-plan/reports/task-5-report.md) — Task 5 report — Management Plan reading, pinned safety boundary, and clinician print — Branch claude/ed-care-plans-impl-7f44cd, worktree D:\Worktrees\Database\care-plan-impl.
-- [care-plan/reports/task-6-brief.md](care-plan/reports/task-6-brief.md) — task-6-brief
-- [care-plan/reports/task-6-report.md](care-plan/reports/task-6-report.md) — Task 6 report — governed Management Plan authoring — Stage B opens with the first authoring surface in the product:
-- [care-plan/reports/task-7-brief.md](care-plan/reports/task-7-brief.md) — task-7-brief
-- [care-plan/reports/task-7-report.md](care-plan/reports/task-7-report.md) — Task 7 report — ED Presentation timeline, concise recording, plan-use feedback, and visible amendments — Branch claude/ed-care-plans-impl-7f44cd, worktree D:\Worktrees\Database\care-plan-impl.
-- [care-plan/reports/task-8-brief.md](care-plan/reports/task-8-brief.md) — task-8-brief
-- [care-plan/reports/task-8-report.md](care-plan/reports/task-8-report.md) — Task 8 report — the patient's own Personal Safety Plan, its versioning, and its printed copy — Worktree D:\Worktrees\Database\care-plan-impl, branch claude/ed-care-plans-impl-7f44cd.
-- [care-plan/reports/task-9-brief.md](care-plan/reports/task-9-brief.md) — task-9-brief
-- [care-plan/reports/task-9-report.md](care-plan/reports/task-9-report.md) — Task 9 report — Patient Plan — Commit: f4de82034 — feat(care-plan):
-- [care-plan/reports/task-d1-report.md](care-plan/reports/task-d1-report.md) — Task D1 — the moment the person's part was recorded — Status: COMPLETE. Fast checks only, by user instruction (D2).
-- [care-plan/session-handoff-2026-08-21.md](care-plan/session-handoff-2026-08-21.md) — Care Plan — session handoff, 21 August 2026 — Written at the end of the controlling Claude session that designed Care Plan and built Tasks 1 and 2.
-- [care-plan/session-handoff-2026-08-23.md](care-plan/session-handoff-2026-08-23.md) — Care Plan — session handoff, 23 August 2026 — Written at the moment the session was closed, mid-task.
-- [care-plan/verification-log-2026-08-21.md](care-plan/verification-log-2026-08-21.md) — ED Care Plans — handover verification log — This log records evidence for the design/planning/handover package only.
-- [care-plan/verification-report.md](care-plan/verification-report.md) — Care Plan — verification report (Task 11) — Exact commands, exit codes, result lines, failures, and — just as important — the checks that were not run and why.
 - [superpowers/plans/2026-07-04-public-anonymous-access-rate-limits.md](superpowers/plans/2026-07-04-public-anonymous-access-rate-limits.md) — Public Anonymous Access and Rate Limiting Implementation Plan — Goal: Remove the forced sign-in/authorization barrier so anonymous users can run live searches, generate answers, browse/view source documen…
 - [superpowers/plans/2026-07-24-webkit-rsc-prefetch-disposition.md](superpowers/plans/2026-07-24-webkit-rsc-prefetch-disposition.md) — WebKit RSC Prefetch Disposition Implementation Plan — Goal: Disposition issue #024 by proving whether the WebKit _rsc access-control page error is caused by the route-coverage harness, applying…
 - [superpowers/plans/2026-08-05-editable-pin-menu-mockups.md](superpowers/plans/2026-08-05-editable-pin-menu-mockups.md) — Search + Editable Pins Menu — Implementation Record — Perfect /mockups/search-lens-menu around editable app-destination pins while preserving the original visual direction.

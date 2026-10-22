@@ -12,7 +12,14 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, s
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { addIssue, resolveIssue, updateArchivedIssue, updateIssue, updateQueueRow } from "./outstanding-issues.mjs";
+import {
+  addIssue,
+  reopenIssue,
+  resolveIssue,
+  updateArchivedIssue,
+  updateIssue,
+  updateQueueRow,
+} from "./outstanding-issues.mjs";
 import {
   ISSUES_PATH,
   archiveRowFingerprint,
@@ -30,11 +37,17 @@ import {
   issueUlidFromRequest,
   normalizeIssueDisplayId,
 } from "./issue-id.mjs";
+import {
+  APPLIED_DIR,
+  INBOX_DIR,
+  appliedRecordDirectories,
+  appliedRecordName,
+  archivedAppliedPath,
+  quarterOf,
+} from "./lib/inbox-archive.mjs";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
-const INBOX_DIR = "docs/outstanding-issues-inbox";
-const APPLIED_DIR = path.posix.join(INBOX_DIR, "applied");
-const ACTIONS = new Set(["add", "done", "update", "amend-outcome", "queue", "cancel"]);
+const ACTIONS = new Set(["add", "done", "update", "amend-outcome", "reopen", "queue", "cancel"]);
 // Fields a `queue` request may carry, mirroring updateQueueRow's editable map.
 const QUEUE_FIELDS = ["acuity", "capability", "when", "estimate", "outcome"];
 const REQUEST_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -61,7 +74,12 @@ function readOutstandingIssues() {
 }
 
 function validateFingerprint(payload, action, problems) {
-  if (payload?.baseRowFingerprint !== undefined && !isValidIssueRowFingerprint(payload.baseRowFingerprint)) {
+  if (
+    (action === "reopen" && !isValidIssueRowFingerprint(payload?.baseRowFingerprint)) ||
+    (action !== "reopen" &&
+      payload?.baseRowFingerprint !== undefined &&
+      !isValidIssueRowFingerprint(payload.baseRowFingerprint))
+  ) {
     problems.push(`${action} requires a valid baseRowFingerprint`);
   }
 }
@@ -90,6 +108,20 @@ function validateDoneRequest(payload, problems) {
   validateFingerprint(payload, "done", problems);
   if (payload?.targetUlid !== undefined && !isIssueUlid(payload.targetUlid)) {
     problems.push("done targetUlid must be a valid ULID");
+  }
+}
+
+function validateReopenRequest(payload, problems) {
+  if (!isIssueDisplayId(payload?.id)) problems.push("reopen requires a canonical issue display id");
+  for (const field of ["pri", "detail", "source"]) {
+    if (!payload?.[field]) problems.push(`reopen requires ${field}`);
+  }
+  if (payload?.pri && !["P1", "P2", "P3"].includes(String(payload.pri))) {
+    problems.push("reopen pri must be P1, P2, or P3");
+  }
+  validateFingerprint(payload, "reopen", problems);
+  if (payload?.targetUlid !== undefined && !isIssueUlid(payload.targetUlid)) {
+    problems.push("reopen targetUlid must be a valid ULID");
   }
 }
 
@@ -144,10 +176,13 @@ export function validateRequest(request) {
   if (![1, 2].includes(request.version)) problems.push("version must be 1 or 2");
   if (!REQUEST_ID.test(request.id ?? "")) problems.push("id must be a UUID");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(request.createdOn ?? "")) problems.push("createdOn must be YYYY-MM-DD");
-  if (!ACTIONS.has(request.action)) problems.push("action must be add, done, update, queue, or cancel");
+  if (!ACTIONS.has(request.action)) {
+    problems.push("action must be add, done, update, amend-outcome, reopen, queue, or cancel");
+  }
   if (!request.payload || typeof request.payload !== "object") problems.push("payload must be an object");
   if (request.action === "add") validateAddRequest(request, problems);
   if (request.action === "done") validateDoneRequest(request.payload, problems);
+  if (request.action === "reopen") validateReopenRequest(request.payload, problems);
   if (request.action === "update" || request.action === "amend-outcome") {
     validateUpdateRequest(request.action, request.payload, problems);
   }
@@ -211,7 +246,7 @@ function shouldKeepArchivedMarkdown(markdown, request, options, allowArchived) {
 }
 
 function verifyIssueFingerprint(markdown, request, allowArchived) {
-  if (!["done", "update", "amend-outcome"].includes(request.action) || !request.payload?.baseRowFingerprint) {
+  if (!["done", "update", "amend-outcome", "reopen"].includes(request.action) || !request.payload?.baseRowFingerprint) {
     return allowArchived;
   }
   const id = request.payload.id;
@@ -238,6 +273,9 @@ function applyValidatedRequest(markdown, request, options, dateOptions, allowArc
   if (request.action === "add") {
     const durableId = request.payload.issueUlid ?? issueUlidFromRequest(request.createdOn, request.id);
     return addIssue(markdown, request.payload, { ...dateOptions, issueUlid: durableId });
+  }
+  if (request.action === "reopen") {
+    return reopenIssue(markdown, request.payload.id, request.payload, dateOptions);
   }
   if (request.action === "done") {
     return resolveIssue(markdown, request.payload.id, request.payload.outcome, {
@@ -384,7 +422,7 @@ function planCancellations(requests, byId, applied, warn) {
 function appliedRequestsById() {
   try {
     return new Map(
-      loadRequestsIn(APPLIED_DIR)
+      loadAppliedRequests()
         .map((entry) => entry.request)
         .filter((request) => request?.id)
         .map((request) => [request.id, request]),
@@ -483,6 +521,34 @@ export function planRequestBatch(requests, options = {}) {
   return { active, cancellations, cancelledIds: [...cancelledIds], ineffectiveCancellations: ineffective };
 }
 
+// A reopen names its target twice: by display id and by targetUlid. They must agree.
+// The id may be the ULID's own display prefix (the CLI derives "#XXXXXX" from a full
+// ULID), which still identifies a collision-extended archived row such as "#XXXXXXY".
+function reopenIdNamesUlid(id, targetUlid, rowId) {
+  const normalized = normalizeIssueDisplayId(id);
+  if (rowId && normalized === normalizeIssueDisplayId(rowId)) return true;
+  const length = normalized.length - 1;
+  return length >= 6 && length <= 16 && normalized === displayIdForUlid(targetUlid, length);
+}
+
+function assertReopenIdentity(markdown, request) {
+  const { id, targetUlid } = request.payload ?? {};
+  if (request.action !== "reopen" || !targetUlid || !id) return;
+  const rows = parseIssues(markdown).rows;
+  // Every row carrying this display id must belong to targetUlid; a duplicate
+  // display id owned by another issue makes the reopen ambiguous.
+  const idOwners = rows.filter((entry) => normalizeIssueDisplayId(entry.id) === normalizeIssueDisplayId(id));
+  if (idOwners.some((entry) => entry.ulid !== targetUlid)) {
+    throw new Error(`ledger request rejected: reopen id ${id} and targetUlid ${targetUlid} name different issues`);
+  }
+  const row = rows.find((entry) => entry.ulid === targetUlid);
+  if (!reopenIdNamesUlid(id, targetUlid, row?.id)) {
+    throw new Error(
+      `ledger request rejected: reopen id ${id} and targetUlid ${targetUlid}${row ? ` (${row.id})` : ""} name different issues`,
+    );
+  }
+}
+
 export function applyRequestBatch(markdown, requests, options = {}) {
   const plan = planRequestBatch(requests, options);
   let next = markdown;
@@ -512,6 +578,8 @@ export function applyRequestBatch(markdown, requests, options = {}) {
         }
       }
     } else {
+      // Check a reopen's two identities before the targetUlid rewrite below replaces its id.
+      assertReopenIdentity(next, request);
       if (request.payload?.targetUlid && ulidToDisplayId.has(request.payload.targetUlid)) {
         request.payload.id = ulidToDisplayId.get(request.payload.targetUlid);
       }
@@ -553,8 +621,13 @@ function loadRequestsIn(directory) {
   });
 }
 
+/** Applied records in `applied/` and in every quarter archive under it. */
+function loadAppliedRequests() {
+  return appliedRecordDirectories(ROOT).flatMap((directory) => loadRequestsIn(directory));
+}
+
 function allRequestEntries() {
-  return [...loadPending(), ...loadRequestsIn(APPLIED_DIR)];
+  return [...loadPending(), ...loadAppliedRequests()];
 }
 
 function canonicalLedgerIsClean() {
@@ -811,11 +884,12 @@ function readMainAppliedPaths(originMainRef) {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
     });
+    // Matched by file name: archiving moves a record into a quarter folder without changing it.
     return new Set(
       mainTree
         .trim()
         .split("\n")
-        .map((s) => s.trim())
+        .map((s) => appliedRecordName(s.trim()))
         .filter(Boolean),
     );
   } catch {
@@ -867,7 +941,8 @@ function suspiciousAppliedCommits(originMainRef, presentShas, mainApplied) {
         .slice(1)
         .map((file) => file.trim())
         .filter(Boolean);
-      if (files.some((file) => !mainApplied.has(file))) suspicious.add(lines[0].trim());
+      if (files.some((file) => appliedRecordName(file) && !mainApplied.has(appliedRecordName(file))))
+        suspicious.add(lines[0].trim());
     }
     return suspicious;
   } catch {
@@ -894,9 +969,9 @@ function detectPresentReconciliations(presentCandidates, originMainRef, mainAppl
       })
         .trim()
         .split("\n")
-        .map((entry) => entry.trim())
+        .map((entry) => appliedRecordName(entry.trim()))
         .filter(Boolean);
-      const unmerged = branchApplied.filter((entry) => !mainApplied.has(entry));
+      const unmerged = branchApplied.filter((name) => !mainApplied.has(name));
       if (unmerged.length === 0) continue;
       detected.push({
         branch: candidate.branch,
@@ -973,7 +1048,10 @@ function detectStrictReconciliations(candidateBranches, runner, originMainRef) {
   let mainApplied;
   try {
     mainApplied = new Set(
-      runner(["ls-tree", "-r", "--name-only", originMainRef, "--", APPLIED_DIR]).split(/\r?\n/).filter(Boolean),
+      runner(["ls-tree", "-r", "--name-only", originMainRef, "--", APPLIED_DIR])
+        .split(/\r?\n/)
+        .map((entry) => appliedRecordName(entry))
+        .filter(Boolean),
     );
   } catch {
     throw new Error("cannot inspect the current-main applied inbox; preserved-source admission is blocked");
@@ -1013,13 +1091,14 @@ function detectStrictReconciliations(candidateBranches, runner, originMainRef) {
       // not hide an earlier unmerged record still present on this branch.
       applied = runner(["ls-tree", "-r", "--name-only", candidate.sha, "--", APPLIED_DIR])
         .split(/\r?\n/)
+        .map((entry) => appliedRecordName(entry))
         .filter(Boolean);
     } catch {
       throw new Error(
         `cannot inspect the applied inbox on remote branch ${candidate.branch}; preserved-source admission is blocked`,
       );
     }
-    const unmerged = applied.filter((path) => !mainApplied.has(path));
+    const unmerged = applied.filter((name) => !mainApplied.has(name));
     if (unmerged.length) {
       detected.push({
         branch: candidate.branch,
@@ -1230,7 +1309,9 @@ function requestTargetId(argv) {
   const rawTargetId = argValue(argv, "id") ?? positionalId;
   if (!rawTargetId) return undefined;
   const stripped = rawTargetId.startsWith("#") ? rawTargetId.slice(1) : rawTargetId;
-  if (isIssueUlid(stripped)) return displayIdForUlid(stripped);
+  if (isIssueUlid(stripped)) {
+    return findIssueRowByUlid(readOutstandingIssues(), stripped, ["open", "archive"])?.id ?? displayIdForUlid(stripped);
+  }
   return rawTargetId.startsWith("#") || rawTargetId.includes("-") ? rawTargetId : `#${rawTargetId}`;
 }
 
@@ -1246,6 +1327,16 @@ function createRequestPayload(action, argv) {
       source: argValue(argv, "source"),
       issueUlid: issueUlid(),
     };
+  }
+  if (action === "reopen") {
+    const payload = {
+      id: targetId,
+      pri: argValue(argv, "pri"),
+      detail: argValue(argv, "detail"),
+      source: argValue(argv, "source"),
+    };
+    if (targetUlid) payload.targetUlid = targetUlid;
+    return payload;
   }
   if (action === "done" || action === "amend-outcome") {
     const payload = { id: targetId, outcome: argValue(argv, "outcome") ?? argValue(argv, "reason") };
@@ -1287,7 +1378,7 @@ function createRequestPayload(action, argv) {
 }
 
 function attachIssueFingerprint(action, payload) {
-  if (!["done", "update", "amend-outcome"].includes(action) || typeof payload.id !== "string") return;
+  if (!["done", "update", "amend-outcome", "reopen"].includes(action) || typeof payload.id !== "string") return;
   const pending = loadPending();
 
   // If explicit targetUlid identifies a pending add, retain it without borrowing
@@ -1302,12 +1393,17 @@ function attachIssueFingerprint(action, payload) {
   }
 
   const current = readOutstandingIssues();
+  const rowTables = action === "reopen" ? ["archive"] : ["open", "archive"];
   const row = payload.targetUlid
-    ? findIssueRowByUlid(current, payload.targetUlid, ["open", "archive"])
-    : findIssueRow(current, payload.id, ["open", "archive"]);
+    ? findIssueRowByUlid(current, payload.targetUlid, rowTables)
+    : findIssueRow(current, payload.id, rowTables);
 
   if (row) {
     const isArchived = row.table === "archive";
+    if (action === "reopen") assertReopenIdentity(current, { action, payload });
+    if (action === "reopen" && !isArchived) {
+      throw new Error(`ledger request rejected: ${row.id} is still open; reopen requires an archived durable issue`);
+    }
     if (!isArchived) {
       if (action === "amend-outcome" || (action === "update" && payload.outcome !== undefined)) {
         throw new Error(
@@ -1321,6 +1417,9 @@ function attachIssueFingerprint(action, payload) {
       return;
     }
 
+    if (action === "reopen" && !row.ulid) {
+      throw new Error(`ledger request rejected: ${row.id} is not an archived durable issue`);
+    }
     if (action === "done") {
       payload.allowArchived = true;
       payload.targetTable = "archive";
@@ -1337,6 +1436,10 @@ function attachIssueFingerprint(action, payload) {
       payload.id = row.id;
       return;
     }
+  }
+
+  if (action === "reopen") {
+    throw new Error(`ledger request rejected: ${payload.id} is not an archived durable issue`);
   }
 
   const targetDisplayId = normalizeIssueDisplayId(payload.id);
@@ -1973,12 +2076,50 @@ function checkInbox() {
   );
 }
 
+/**
+ * Plan which applied records `archive-applied` moves: every record in `applied/` itself whose
+ * request was created in a quarter before `currentQuarter`. Records stay byte for byte the same.
+ */
+export function planAppliedArchive(entries, currentQuarter) {
+  const moves = [];
+  for (const entry of entries) {
+    if (entry.error) throw new Error(`${entry.relative}: ${entry.error}`);
+    const quarter = quarterOf(entry.request?.createdOn);
+    if (!quarter) throw new Error(`${entry.relative}: createdOn is not an ISO date`);
+    if (quarter >= currentQuarter) continue;
+    moves.push({
+      from: entry.relative,
+      to: archivedAppliedPath(path.posix.basename(entry.relative), entry.request.createdOn),
+    });
+  }
+  return moves;
+}
+
+function archiveApplied(argv) {
+  const dryRun = argv.includes("--dry-run");
+  const currentQuarter = quarterOf(new Date().toISOString());
+  const moves = planAppliedArchive(loadRequestsIn(APPLIED_DIR), currentQuarter);
+  for (const move of moves) {
+    if (existsSync(path.join(ROOT, move.to))) throw new Error(`refusing to overwrite ${move.to}`);
+  }
+  if (!dryRun) {
+    for (const move of moves) {
+      mkdirSync(path.dirname(path.join(ROOT, move.to)), { recursive: true });
+      renameSync(path.join(ROOT, move.from), path.join(ROOT, move.to));
+    }
+  }
+  console.log(
+    `${dryRun ? "Would archive" : "Archived"} ${moves.length} applied request(s) from quarters before ${currentQuarter}.`,
+  );
+}
+
 function dispatchInboxCommand(action, argv) {
   if (ACTIONS.has(action)) return createRequest(action, argv);
   if (action === "reconcile") return reconcile(argv.slice(1));
   if (action === "check") return checkInbox();
+  if (action === "archive-applied") return archiveApplied(argv.slice(1));
   throw new Error(
-    "usage: ledger-inbox.mjs <add|done|update|amend-outcome|queue|cancel|enqueue|reconcile|check> [args]",
+    "usage: ledger-inbox.mjs <add|done|update|amend-outcome|reopen|queue|cancel|enqueue|reconcile|check|archive-applied> [args]",
   );
 }
 

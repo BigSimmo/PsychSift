@@ -25,7 +25,9 @@
  * queued at `docs/outstanding-issues-inbox/<uuid>.json` and, after reconcile,
  * lives at `docs/outstanding-issues-inbox/applied/<uuid>.json`. Ledger rows
  * (and the request's own source/detail) keep citing the pending path because
- * the JSON is immutable. Treat the applied sibling as the same file.
+ * the JSON is immutable. Treat the applied sibling as the same file, including
+ * after `issues:archive-applied` moves it into a quarter folder under
+ * `applied/archive/`.
  */
 
 import { existsSync, readFileSync, readdirSync } from "node:fs";
@@ -34,6 +36,7 @@ import { fileURLToPath } from "node:url";
 
 import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 import { applyRequestBatch, validateRequest } from "./ledger-inbox.mjs";
+import { findAppliedRecord } from "./lib/inbox-archive.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const scanAll = process.argv.includes("--all");
@@ -69,7 +72,12 @@ const ALLOWLIST = new Set([
 // entry keeps passing if the file is later created and then deleted again, in a document
 // that never meant to reference it. Scope new suppressions here unless the path is
 // genuinely repo-wide.
-const SCOPED_ALLOWLIST = new Map([
+//
+// A document may appear more than once; its sets are merged. That lets a deleted path be listed
+// as its own one-member entry, the only shape `npm run check:mockups` reads as the record of a
+// deletion rather than a surviving reference to it (stripRegistryEntries in
+// scripts/check-mockup-retirement.mjs).
+const SCOPED_ALLOWLIST = mergeScopedAllowlist([
   [
     "docs/plans/edge-ingestion-overhaul-3pr-plan.md",
     // A dated plan whose baseline and first step name the retired ingestion-worker Edge
@@ -113,10 +121,63 @@ const SCOPED_ALLOWLIST = new Map([
     // which was cleared when unreferenced historical PNGs were removed; the parent README remains.
     new Set([".github/workflows/notify-ci-failure.yml", "public/mockups/mode-page-redesign-2026-07/current/"]),
   ],
-  ["docs/care-plan/reports/task-3-brief.md", new Set(["src/components/care-plan/mockups/index.ts"])],
-  ["docs/care-plan/reports/task-3-report.md", new Set(["src/components/care-plan/mockups/index.ts"])],
-  ["docs/care-plan/sdd-ledger.md", new Set(["src/components/care-plan/mockups/index.ts"])],
+
+  // ── Mockups retired 2026-10-21 (owner-approved, mockups/README.md "Retired mockups"). Each
+  // document below is a point-in-time record that names a retired mockup, its test or its build
+  // record. The files are recoverable from git history; rewriting the records would falsify them.
+  // docs/care-plan/crisis-lines-verification.md stays because src/lib/crisis-contacts.ts cites it,
+  // and its top note marks these references as historical. docs/mockup-audit-and-issues-report.md
+  // is the 2026-10-09 audit that proposed this retirement. Row #008 of the outstanding-issues
+  // ledger, which its write-discipline guard forbids editing, names a retired design study.
+  ["docs/care-plan/crisis-lines-verification.md", new Set(["src/components/care-plan/mockups/fixtures.ts"])],
+  [
+    "docs/care-plan/crisis-lines-verification.md",
+    new Set(["src/components/care-plan/mockups/patient-plan-fixtures.ts"]),
+  ],
+  ["docs/care-plan/crisis-lines-verification.md", new Set(["src/components/care-plan/mockups/types.ts"])],
+  ["docs/care-plan/crisis-lines-verification.md", new Set(["docs/care-plan/sdd-ledger.md"])],
+  ["docs/care-plan/crisis-lines-verification.md", new Set(["docs/care-plan/claude-build-handover-2026-08-21.md"])],
+  ["docs/care-plan/crisis-lines-verification.md", new Set(["docs/care-plan/cloud-session.md"])],
+  ["docs/care-plan/crisis-lines-verification.md", new Set(["tests/care-plan-domain.test.ts"])],
+  // ── The /mockups copy of the Owner panel, retired 2026-10-22 (owner-approved, mockups/README.md
+  // "Retired mockups"). The real panel lives at src/app/(admin)/admin/developer-hub/. These are
+  // dated handovers, specs and the audit that proposed the retirement; their paths are historical.
+  ["docs/corpus-health-panel-handover.md", new Set(["src/app/mockups/development/corpus-health/page.tsx"])],
+  ["docs/mockup-audit-and-issues-report.md", new Set(["src/app/mockups/development/**"])],
+  [
+    "docs/superpowers/specs/2026-08-21-developer-hub-phase-1-design.md",
+    new Set(["src/app/mockups/development/page.tsx"]),
+  ],
+  [
+    "docs/superpowers/specs/2026-08-21-developer-hub-phase-1-design.md",
+    new Set(["src/app/mockups/development/ledger/page.tsx"]),
+  ],
+  ["docs/mockup-audit-and-issues-report.md", new Set(["src/app/mockups/tools-task-directory/page.tsx"])],
+  ["docs/mockup-audit-and-issues-report.md", new Set(["src/app/mockups/tools-workflow-board/page.tsx"])],
+  ["docs/mockup-audit-and-issues-report.md", new Set(["src/app/mockups/tools-command-center/page.tsx"])],
+  ["docs/mockup-audit-and-issues-report.md", new Set(["src/app/mockups/tools-split-pane/page.tsx"])],
+  ["docs/mockup-audit-and-issues-report.md", new Set(["tests/ui-tools-task-directory.spec.ts"])],
+  ["docs/mockup-audit-and-issues-report.md", new Set(["tests/ui-tools-collapse.spec.ts"])],
+  ["docs/mockup-audit-and-issues-report.md", new Set(["tests/ui-therapy-navigation-mockup.spec.ts"])],
+  ["docs/mockup-audit-and-issues-report.md", new Set(["src/components/answer-chat-perfected-mockups.tsx"])],
+  ["docs/mockup-audit-and-issues-report.md", new Set(["src/components/services-filter-refined-mockups.tsx"])],
+  ["docs/mockup-audit-and-issues-report.md", new Set(["src/components/dictionary-browse-header-mockups.tsx"])],
+  ["docs/mockup-audit-and-issues-report.md", new Set(["src/components/privacy-live-signal-perfected-mockups.tsx"])],
+  ["docs/mockup-audit-and-issues-report.md", new Set(["src/components/on-call-shift-cover-mockups.tsx"])],
+  ["docs/mockup-audit-and-issues-report.md", new Set(["src/app/mockups/care-plan/**"])],
+  ["docs/answer-page-redesign-handover.md", new Set(["src/components/answer-chat-perfected-mockups.tsx"])],
+  ["docs/superpowers/specs/2026-08-20-care-plan-design.md", new Set(["docs/care-plan-context.md"])],
+  ["docs/outstanding-issues.md", new Set(["src/components/document-search-mockups.tsx"])],
 ]);
+
+/** Build the scoped allowlist, merging the sets of a document listed more than once. */
+function mergeScopedAllowlist(entries) {
+  const merged = new Map();
+  for (const [document, paths] of entries) {
+    merged.set(document, new Set([...(merged.get(document) ?? []), ...paths]));
+  }
+  return merged;
+}
 
 /** True when `repoRelative` is allowed outright, or allowed for the document being scanned. */
 function isAllowedPath(repoRelative, target) {
@@ -154,6 +215,10 @@ function repoPathExists(repoRelative) {
   if (existsSync(path.join(repoRoot, cleaned))) return true;
   const applied = appliedInboxFallbackPath(cleaned);
   if (applied && existsSync(path.join(repoRoot, applied))) return true;
+  const archivedName = applied ?? (cleaned.startsWith(`${OUTSTANDING_ISSUES_INBOX}/applied/`) ? cleaned : null);
+  if (archivedName && INBOX_REQUEST_NAME.test(path.posix.basename(archivedName))) {
+    if (findAppliedRecord(repoRoot, path.posix.basename(archivedName))) return true;
+  }
 
   if (!cleaned.startsWith("src/app/") || cleaned.includes("src/app/(")) return false;
   const appRelative = cleaned.slice("src/app/".length);

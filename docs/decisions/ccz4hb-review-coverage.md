@@ -207,15 +207,15 @@ Classified against `docPatterns` in `scripts/ci-change-scope.mjs` — the repo's
 unit-tested** `docs_only` definition (`docs/`, `mockups/`, `*.md`, `*.mdx`, `README*`),
 so this is not a new judgement call:
 
-| Category                                                                                                                                                             | PRs     | Share of 1,190 |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------------- |
-| **Documentation-only** (repo's own `docs_only` classifier)                                                                                                           | **285** | **23.9%**      |
-| **Bookkeeping-only** — touched nothing but `docs/outstanding-issues*`, `docs/branch-review-ledger*`, `docs/branch-review-records/`, `docs/outstanding-issues-inbox/` | **190** | **16.0%**      |
-| Prose-only, widened to include `.claude/`, `.agents/`, `.cursor/`, `.codex/`                                                                                         | 290     | 24.3%          |
-| Touch a high-risk path (approximating `pr-policy.mjs` clinical/operational/RAG patterns)                                                                             | 448     | 37.6%          |
-| Low-risk **and** small (≤10 files, ≤300 changed lines)                                                                                                               | 550     | 46.2%          |
-| Low-risk **and** tiny (≤3 files, ≤80 changed lines)                                                                                                                  | 296     | 24.9%          |
-| Bundling candidates (prose-only **or** low-risk-and-tiny)                                                                                                            | 387     | 32.5%          |
+| Category                                                                                                                                                                     | PRs     | Share of 1,190 |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------------- |
+| **Documentation-only** (repo's own `docs_only` classifier)                                                                                                                   | **285** | **23.9%**      |
+| **Bookkeeping-only** — touched nothing but `docs/outstanding-issues*`, `docs/branch-review-ledger*`, `docs/archive/branch-review-records/`, `docs/outstanding-issues-inbox/` | **190** | **16.0%**      |
+| Prose-only, widened to include `.claude/`, `.agents/`, `.cursor/`, `.codex/`                                                                                                 | 290     | 24.3%          |
+| Touch a high-risk path (approximating `pr-policy.mjs` clinical/operational/RAG patterns)                                                                                     | 448     | 37.6%          |
+| Low-risk **and** small (≤10 files, ≤300 changed lines)                                                                                                                       | 550     | 46.2%          |
+| Low-risk **and** tiny (≤3 files, ≤80 changed lines)                                                                                                                          | 296     | 24.9%          |
+| Bundling candidates (prose-only **or** low-risk-and-tiny)                                                                                                                    | 387     | 32.5%          |
 
 Sample of the bookkeeping-only class, all merged in W34 alone:
 
@@ -500,7 +500,7 @@ Model it directly on `.claude/hooks/pr-handoff-stop.sh`, which is already regist
 - **Test:** compute `git diff --name-only origin/main...HEAD`; deny only if the result is
   non-empty **and** every path is under `docs/outstanding-issues.md`,
   `docs/outstanding-issues-inbox/`, `docs/branch-review-ledger.md`,
-  `docs/branch-review-records/`, or `docs/archive/branch-review-ledger-*`.
+  `docs/archive/branch-review-records/`, or `docs/archive/branch-review-ledger-*`.
 - **Deny message:** name the `AGENTS.md` "PR bundling" rule, say the record should travel
   with its owning product PR, and name the escape hatch.
 - **Escape hatch:** `CLAUDE_ALLOW_LEDGER_PR=1`. This is **required**, not optional — the

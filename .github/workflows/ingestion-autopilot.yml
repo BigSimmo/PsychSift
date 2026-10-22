@@ -38,6 +38,10 @@ env:
 
 jobs:
   ingestion-autopilot:
+    # Holds SUPABASE_SERVICE_ROLE_KEY; restricted to main, no required reviewers, so the
+    # 6-hourly schedule keeps running unattended. This is NOT an approval gate for --apply.
+    # See docs/deployment-architecture.md, "The production-secrets environment" (audit F-21).
+    environment: production-secrets
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -51,7 +55,7 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
-            echo "::error::Ingestion autopilot cannot run — missing repo secret SUPABASE_SERVICE_ROLE_KEY"
+            echo "::error::Ingestion autopilot cannot run — missing secret SUPABASE_SERVICE_ROLE_KEY (production-secrets environment)"
             exit 1
           fi
 
@@ -79,6 +83,10 @@ jobs:
           # Apply only when BOTH the trusted dispatch payload and repo variable allow it.
           APPLY_REQUESTED: ${{ github.event.client_payload.apply || 'false' }}
           APPLY_ALLOWED: ${{ vars.INGESTION_AUTOPILOT_APPLY }}
+          # "true" while the worker is deliberately paused, "false" while it should run (audit
+          # EVAL-03). A pause is reported as paused, not as an outage; only a pending upload left
+          # unclaimed for more than 30 minutes alerts. The ops digest shows the same variable.
+          INGESTION_WORKER_PAUSED: ${{ vars.INGESTION_WORKER_PAUSED }}
         run: |
           if [ "$APPLY_REQUESTED" = "true" ] && [ "$APPLY_ALLOWED" = "true" ]; then
             echo "Applying recovery when stuck."
@@ -103,27 +111,18 @@ jobs:
               "",
               `Run: ${runUrl}`,
               "",
-              "Either recoverable work was detected, Supabase was unreachable, or recovery failed. Triage:",
-              "`npm run reindex:health`, then `npm run recover:ingestion -- --include-stranded-queued --apply`",
-              "if a stuck queue or aged queued-without-job document is confirmed. Do not assume corruption —",
-              "a transient outage looks the same.",
+              "Either recoverable work was detected, a pending upload has waited more than 30 minutes",
+              "without being claimed, Supabase was unreachable, or recovery failed. The run log names which.",
+              "A pending upload that nothing claims means the worker is stopped, paused or wedged: if the",
+              "worker is paused on purpose (repository variable INGESTION_WORKER_PAUSED=true), resume it to",
+              "process the upload. Otherwise triage: `npm run reindex:health`, then",
+              "`npm run recover:ingestion -- --include-stranded-queued --apply` if a stuck queue or aged",
+              "queued-without-job document is confirmed. Do not assume corruption — a transient outage looks the same.",
             ].join("\n");
-            // Route the alert to a person, not only a label (#TN512M): GitHub notifies an issue's
-            // assignee on their phone, for the opening and for every later comment. Best-effort, so
-            // a refused assignment can never cost the alert itself.
-            const alertAssignee = context.repo.owner;
-            async function assignAlert(issueNumber) {
-              try {
-                await github.rest.issues.addAssignees({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: issueNumber,
-                  assignees: [alertAssignee],
-                });
-              } catch (error) {
-                core.warning(`Could not assign @${alertAssignee} to #${issueNumber}: ${error.message}`);
-              }
-            }
+            // Owner decision 2026-10-21 (docs/decisions/2026-10-21-one-daily-health-summary.md): this
+            // workflow no longer @mentions or assigns the owner. Its result reaches the owner's phone once a
+            // day in the daily health summary (.github/workflows/daily-health-summary.yml), which reads this
+            // issue's label; the issue keeps the detail.
 
             const { data: existing } = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
@@ -138,7 +137,6 @@ jobs:
                 issue_number: existing[0].number,
                 body,
               });
-              await assignAlert(existing[0].number);
             } else {
               const created = await github.rest.issues.create({
                 owner: context.repo.owner,
@@ -147,5 +145,4 @@ jobs:
                 labels: [label],
                 body,
               });
-              await assignAlert(created.data.number);
             }

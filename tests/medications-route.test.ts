@@ -236,7 +236,7 @@ describe("medications API", () => {
       });
       mockRuntime(client);
       const { GET } = await import("../src/app/api/medications/route");
-      const response = await GET(request("/api/medications"));
+      const response = await GET(authedRequest("/api/medications"));
       const payload = (await response.json()) as { records: unknown[]; governance: Record<string, unknown> };
       expect(payload.records).toEqual([renderPayload]);
       expect(payload.governance[renderPayload.slug]).toEqual({
@@ -413,7 +413,9 @@ describe("medications API", () => {
     };
 
     expect(response.status).toBe(200);
-    expect(payload.matches?.[0]?.medication.slug).toBe("warfarin-vka");
+    // Clozapine leads since the 20 Oct 2026 content audit added its regular blood test
+    // requirements; warfarin stays a related match.
+    expect(payload.matches?.[0]?.medication.slug).toBe("clozapine");
     expect(payload.matches?.find((match) => match.medication.slug === "warfarin-vka")?.result.match).toBe(
       "Related match",
     );
@@ -481,42 +483,29 @@ describe("medications API", () => {
     expect(payload.matches?.[0]?.medication.slug).toBe("acamprosate");
   });
 
-  it("serves curated public records for unauthenticated list requests outside demo mode", async () => {
+  // #3728: medicines need sign-in from 1 November 2026, so a signed-out list request is refused
+  // before any catalogue read or rate-limit spend.
+  it("refuses unauthenticated list requests outside demo mode with 401", async () => {
     const client = createSupabaseMock();
     mockRuntime(client);
     const { GET } = await import("../src/app/api/medications/route");
 
     const response = await GET(request("/api/medications?q=acamprosate"));
-    const payload = (await response.json()) as {
-      records: Array<{ slug: string }>;
-      matches?: Array<{ medication: { slug: string } }>;
-      publicAccess?: boolean;
-      governance?: Record<string, { validationStatus?: string }>;
-    };
 
-    expect(response.status).toBe(200);
-    expectPublicFixtureCache(response);
-    expect(payload.publicAccess).toBe(true);
-    expect(payload.records.some((record) => record.slug === "acamprosate")).toBe(true);
-    expect(payload.matches?.[0]?.medication.slug).toBe("acamprosate");
-    expect(payload.governance?.acamprosate?.validationStatus).toBe("unverified");
-    // The catalog is served from seed data (no table read) and no auth round-trip is needed,
-    // but anonymous list requests must still pass the registry limiter (M4/C1).
+    expect(response.status).toBe(401);
     expect(client.from).not.toHaveBeenCalled();
-    expect(client.rpc).toHaveBeenCalled();
-    expect(client.auth.getUser).not.toHaveBeenCalled();
+    expect(client.rpc).not.toHaveBeenCalled();
   });
 
-  it("rate-limits anonymous list requests (429) without falling back to unlimited access", async () => {
+  it("rate-limits signed-in list requests (429) without falling back to unlimited access", async () => {
     const client = createSupabaseMock(() => ok([]), { limited: true });
     mockRuntime(client);
     const { GET } = await import("../src/app/api/medications/route");
 
-    const response = await GET(request("/api/medications"));
+    const response = await GET(authedRequest("/api/medications"));
 
     expect(response.status).toBe(429);
     expect(client.from).not.toHaveBeenCalled();
-    expect(client.auth.getUser).not.toHaveBeenCalled();
   });
 
   it("serves the canonical uninitialized population without reading authenticated owner drafts", async () => {
@@ -537,7 +526,7 @@ describe("medications API", () => {
     expect(client.calls).toEqual([]);
   });
 
-  it("serves curated public detail for unauthenticated slug requests", async () => {
+  it("refuses unauthenticated detail requests outside demo mode with 401", async () => {
     const client = createSupabaseMock();
     mockRuntime(client);
     const { GET } = await import("../src/app/api/medications/[slug]/route");
@@ -545,28 +534,18 @@ describe("medications API", () => {
     const response = await GET(request("/api/medications/acamprosate"), {
       params: Promise.resolve({ slug: "acamprosate" }),
     });
-    const payload = (await response.json()) as {
-      record: { slug: string; name: string };
-      publicAccess?: boolean;
-    };
 
-    expect(response.status).toBe(200);
-    expectPublicFixtureCache(response);
-    expect(payload.publicAccess).toBe(true);
-    expect(payload.record.slug).toBe("acamprosate");
-    expect(payload.record.name).toBe("Acamprosate");
-    // The seed detail is served without a table read, but anonymous detail requests must still
-    // pass the registry limiter (finding C — no anonymous bypass).
+    expect(response.status).toBe(401);
     expect(client.from).not.toHaveBeenCalled();
-    expect(client.rpc).toHaveBeenCalled();
+    expect(client.rpc).not.toHaveBeenCalled();
   });
 
-  it("rate-limits anonymous detail requests (429) instead of skipping the limiter", async () => {
+  it("rate-limits signed-in detail requests (429) instead of skipping the limiter", async () => {
     const client = createSupabaseMock(() => ok([]), { limited: true });
     mockRuntime(client);
     const { GET } = await import("../src/app/api/medications/[slug]/route");
 
-    const response = await GET(request("/api/medications/acamprosate"), {
+    const response = await GET(authedRequest("/api/medications/acamprosate"), {
       params: Promise.resolve({ slug: "acamprosate" }),
     });
 
@@ -656,7 +635,7 @@ describe("medications survive an unusable catalogue", () => {
       mockRuntime(client);
       const { GET } = await import("../src/app/api/medications/route");
 
-      const response = await GET(request("/api/medications"));
+      const response = await GET(authedRequest("/api/medications"));
       const payload = (await response.json()) as { records: unknown[] };
 
       expect(response.status).toBe(200);
@@ -683,7 +662,7 @@ describe("medications survive an unusable catalogue", () => {
     mockRuntime(client);
     const { GET } = await import("../src/app/api/medications/route");
 
-    const response = await GET(request("/api/medications"));
+    const response = await GET(authedRequest("/api/medications"));
     const payload = (await response.json()) as { retainedSnapshot?: boolean };
 
     expect(payload.retainedSnapshot).toBe(true);
@@ -707,7 +686,7 @@ describe("medications survive an unusable catalogue", () => {
     });
     mockRuntime(degradedClient);
     const { GET: getDegraded } = await import("../src/app/api/medications/route");
-    const degradedResponse = await getDegraded(request("/api/medications"));
+    const degradedResponse = await getDegraded(authedRequest("/api/medications"));
     expect(degradedResponse.status).toBe(200);
     expectPrivateCache(degradedResponse);
   });
@@ -719,7 +698,7 @@ describe("medications survive an unusable catalogue", () => {
     mockRuntime(client);
     const { GET } = await import("../src/app/api/medications/route");
 
-    const payload = (await (await GET(request("/api/medications"))).json()) as { retainedSnapshot?: boolean };
+    const payload = (await (await GET(authedRequest("/api/medications"))).json()) as { retainedSnapshot?: boolean };
 
     expect(payload.retainedSnapshot).toBeUndefined();
   });

@@ -5,7 +5,17 @@ import math
 import os
 import re
 import sys
+import shlex
+import shutil
+import subprocess
+import time
+from functools import lru_cache
 from statistics import median
+
+try:
+    import resource  # POSIX only; Windows developer machines run without the memory cap.
+except ImportError:  # pragma: no cover - exercised only on Windows
+    resource = None
 
 try:
     import pymupdf as fitz  # PyMuPDF (fitz alias deprecated in 1.28.2+)
@@ -18,7 +28,7 @@ except Exception as exc:
 # parser defect can be traced to the documents it touched. Bump the date and label whenever a
 # change alters the text, tables or images produced for the same PDF. 2026-09-16 is PR #2810,
 # which replaced line-major table text with table_aware_page_text (#GJHKYC).
-EXTRACTOR_VERSION = "2026-10-16.bounded-ocr-detail-v6"
+EXTRACTOR_VERSION = "2026-10-21.merged-cell-provenance-v11"
 TABLE_STRATEGY = "table_aware_page_text"
 
 # IDX-H6: caps on serialized table size. Raised from the previous 80/120-row and 8000-char
@@ -44,6 +54,22 @@ MIN_USEFUL_RENDER_SCALE = 0.25
 # because the aggregate maxArtifactBytes budget lets one huge stream through.
 WEB_SAFE_IMAGE_EXTS = ("png", "jpg", "jpeg", "gif", "webp")
 MAX_EMBEDDED_IMAGE_BYTES = 20 * 1024 * 1024
+
+# Audit ING-B-04: PyMuPDF decodes an embedded image inside extract_image() and
+# get_image_rects(), whatever its format, so a 389 KB PDF declaring a
+# 20,000 x 20,000 image used 842 MB before any budget check could run. Every
+# embedded image's DECLARED size (from page.get_images, which decodes nothing)
+# is checked against this ceiling first; a larger image is skipped and recorded,
+# never decoded. It sits well above real clinical figures and 600 DPI A4 scans
+# (about 35 megapixels), so ordinary documents keep every image they had.
+MAX_EMBEDDED_IMAGE_PIXELS = 64_000_000
+
+# Audit ING-B-05: the command-line extractor caps its own address space so a
+# hostile PDF cannot take the whole worker container down. Normal documents,
+# including Tesseract OCR (which inherits the limit), measured well under 512 MB.
+# PDF_EXTRACTOR_MAX_MEMORY_MB overrides it; 0 turns it off.
+DEFAULT_MAX_MEMORY_MB = 2048
+MEMORY_EXHAUSTION_PATTERN = re.compile(r"\bmalloc \(\d+ bytes\) failed|\bout of memory\b", re.IGNORECASE)
 
 DEFAULT_BUDGET = {
     "version": 1,
@@ -137,6 +163,154 @@ def embedded_image_mime_type(ext):
     return "image/png"
 
 
+def declared_image_pixels(image_info):
+    """Pixels an embedded image declares in the page's image table (no decode)."""
+    try:
+        return max(0, int(image_info[2] or 0)) * max(0, int(image_info[3] or 0))
+    except (IndexError, TypeError, ValueError):
+        return 0
+
+
+def oversized_embedded_image_warning(image_info, max_pixels=MAX_EMBEDDED_IMAGE_PIXELS):
+    """Warning for an image whose declared size is over the ceiling, else None."""
+    pixels = declared_image_pixels(image_info)
+    if pixels <= max_pixels:
+        return None
+    return (
+        f"embedded_image_skipped: xref {image_info[0]} declares {image_info[2]}x{image_info[3]} "
+        f"({pixels} pixels), above the {max_pixels}-pixel embedded-image ceiling; not decoded"
+    )
+
+
+def _displayed_masks_exceed_pixel_limit(page, displayed):
+    """Read displayed mask headers; None means native metadata is unverified.
+
+    Public get_image_info omits mask dimensions and Form get_image_bbox hashes
+    pixels. This isolated adapter follows extractIMGINFO(hashes=False)'s own
+    native header access, using its block indices rather than resource names.
+    TextPage.this is a binding detail: validate against public metadata and fail
+    closed if an unsupported binding cannot supply matching image/mask headers.
+    No pixmap, pixel samples or compressed image bytes are requested.
+    """
+    textpage = None
+    try:
+        textpage = page.get_textpage(flags=fitz.TEXT_PRESERVE_IMAGES)
+        headers = textpage.extractIMGINFO(hashes=False)
+
+        def identity(header):
+            number, width, height = (header[key] for key in ("number", "width", "height"))
+            if any(type(value) is not int for value in (number, width, height)) or number < 0 or min(width, height) <= 0:
+                raise ValueError("invalid native image header")
+            if type(header["has-mask"]) is not bool:
+                raise ValueError("invalid native mask header")
+            return number, width, height, header["has-mask"]
+
+        if [identity(header) for header in headers] != [identity(header) for header in displayed]:
+            return None
+        masked = {header["number"] for header in headers if header["has-mask"]}
+        observed = set()
+        unsafe = False
+        for number, block in enumerate(textpage.this):
+            if number not in masked:
+                continue
+            mask = block.i_image().mask()
+            width, height = mask.w(), mask.h()
+            if any(type(value) is not int or value <= 0 for value in (width, height)):
+                return None
+            observed.add(number)
+            unsafe = unsafe or width * height > MAX_EMBEDDED_IMAGE_PIXELS
+        return unsafe if observed == masked else None
+    except MemoryError:
+        raise
+    except Exception:
+        return None
+    finally:
+        del textpage
+
+
+def page_image_decode_preflight(page, image_infos):
+    """Inspect image headers, including inline images and separate soft masks.
+
+    Image hashes, dict image bytes and page renders can decode every source
+    image even when their output pixels are bounded. Metadata without hashes
+    reads the compressed image headers and displayed placements only.
+    """
+    skipped = {}
+    for image_info in image_infos:
+        xref, smask = image_info[:2]
+        warning = oversized_embedded_image_warning(image_info)
+        if not warning and smask:
+            try:
+                width = int(page.parent.xref_get_key(smask, "Width")[1])
+                height = int(page.parent.xref_get_key(smask, "Height")[1])
+            except (IndexError, TypeError, ValueError):
+                # A malformed mask header must not abort the whole PDF: skip
+                # this image conservatively without decoding it.
+                width = height = None
+                warning = (f"embedded_image_skipped: xref {xref} soft mask {smask} has an "
+                           "unreadable Width/Height; not decoded")
+            if width is not None and width * height > MAX_EMBEDDED_IMAGE_PIXELS:
+                warning = (f"embedded_image_skipped: xref {xref} soft mask {smask} declares "
+                           f"{width}x{height}, above the {MAX_EMBEDDED_IMAGE_PIXELS}-pixel "
+                           "embedded-image ceiling; not decoded")
+        if warning:
+            skipped[xref] = warning
+    displayed = page.get_image_info(hashes=False, xrefs=False)
+    unsafe = any(
+        int(image["width"]) * int(image["height"]) > MAX_EMBEDDED_IMAGE_PIXELS
+        for image in displayed
+    )
+    # get_images also lists dead resources: an unused oversized XObject must
+    # still be skipped as an artifact, but cannot make a safe page render unsafe.
+    # Displayed headers include inline and Form images. Inspect native mask
+    # headers lazily, only when a resource declares an oversized separate mask
+    # and the page actually displays a masked image. Dead Form resources and
+    # same-size but different visible masked images must not be conflated.
+    oversized_mask_xrefs = {
+        info[0] for info in image_infos
+        if info[0] in skipped and not oversized_embedded_image_warning(info)
+    }
+    if not unsafe and oversized_mask_xrefs and any(image.get("has-mask") for image in displayed):
+        masks_unsafe = _displayed_masks_exceed_pixel_limit(page, displayed)
+        if masks_unsafe is None:
+            for xref in oversized_mask_xrefs:
+                skipped[xref] += "; displayed mask placement unverified without decoding"
+        unsafe = unsafe or masks_unsafe is not False
+    return skipped, unsafe
+
+
+def is_memory_exhaustion(exc):
+    """True for Python or MuPDF allocation failures under the address-space limit."""
+    return isinstance(exc, MemoryError) or bool(MEMORY_EXHAUSTION_PATTERN.search(str(exc)))
+
+
+def apply_memory_limit():
+    """Cap this process's address space (ING-B-05); returns the bytes applied, or None.
+
+    Only the soft limit is lowered, never above an existing hard limit, and child
+    processes such as Tesseract inherit it. Unsupported platforms run uncapped.
+    """
+    if resource is None or not hasattr(resource, "RLIMIT_AS"):
+        return None
+    raw = os.environ.get("PDF_EXTRACTOR_MAX_MEMORY_MB", "").strip()
+    limit_mb = DEFAULT_MAX_MEMORY_MB
+    if raw.isdigit():
+        limit_mb = int(raw)
+        if limit_mb == 0:
+            return None
+    limit = limit_mb * 1024 * 1024
+    try:
+        soft, hard = resource.getrlimit(resource.RLIMIT_AS)
+        if hard != resource.RLIM_INFINITY and hard >= 0:
+            limit = min(limit, hard)
+        if soft != resource.RLIM_INFINITY and 0 <= soft <= limit:
+            limit = soft
+        resource.setrlimit(resource.RLIMIT_AS, (limit, hard))
+    except (OSError, ValueError):
+        return None
+    return limit
+
+
 def normalize_embedded_image(document, xref, extracted, budget, max_bytes=MAX_EMBEDDED_IMAGE_BYTES):
     """Return ``(payload, warning)`` for one embedded image stream.
 
@@ -211,7 +385,468 @@ def bounded_render_scale(rect, desired_scale, max_pixels, max_scale=MAX_RENDER_S
     return scale
 
 
-def maybe_ocr_page(page, budget):
+RASTER_TABLE_MODEL_SHA256 = "6dbdaf8ecc6c40f025c2648bf3b3f3fbffe073e1fd2df2047fde2e2b2f020d53"
+RASTER_TABLE_MODEL_BYTES = 89_384_811
+RASTER_TABLE_MODEL_PATH = "/opt/psychsift-ocr-models/Latin.traineddata"
+# Optional cell OCR must leave time for the existing whole-page reader. Small
+# custom page budgets use that reader directly; no extraction budget is reset.
+RASTER_TABLE_FALLBACK_RESERVE_SECONDS = 10
+
+
+class RasterTableModelError(ValueError):
+    pass
+
+
+def checked_raster_table_model(deadline):
+    """Verify the provisioned cell model; never download or repair source glyphs."""
+    path = os.environ.get("PDF_RASTER_TABLE_MODEL_PATH", RASTER_TABLE_MODEL_PATH)
+    if time.monotonic() >= deadline:
+        raise TimeoutError("model check exhausted page OCR timeout")
+    try:
+        if os.path.basename(path) != "Latin.traineddata" or os.path.getsize(path) != RASTER_TABLE_MODEL_BYTES:
+            raise RasterTableModelError("raster cell model size or basename mismatch")
+        digest = hashlib.sha256()
+        with open(path, "rb") as model:
+            while True:
+                if time.monotonic() >= deadline:
+                    raise TimeoutError("model hash exhausted page OCR timeout")
+                chunk = model.read(1024 * 1024)
+                if not chunk:
+                    break
+                digest.update(chunk)
+        if digest.hexdigest() != RASTER_TABLE_MODEL_SHA256:
+            raise RasterTableModelError("raster cell model sha256 mismatch")
+        return os.path.dirname(os.path.abspath(path))
+    except TimeoutError:
+        raise
+    except OSError:
+        raise RasterTableModelError("provisioned raster cell model unavailable") from None
+
+
+@lru_cache(maxsize=8)
+def observed_tesseract_version(command, timeout=2):
+    """Observe the executable, not a configured version; bound and cache the probe."""
+    try:
+        result = subprocess.run([command, "--version"], capture_output=True, text=True,
+                                encoding="utf-8", errors="replace", timeout=timeout, check=False)
+        line = (result.stdout or "").splitlines()[0] if result.stdout else ""
+        match = re.fullmatch(r"tesseract\s+([0-9][A-Za-z0-9.+_-]{0,127})", line.strip())
+        return match.group(1) if result.returncode == 0 and match else None
+    except Exception:
+        return None
+
+
+def observed_raster_runtime(pytesseract, deadline):
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise TimeoutError("runtime observation exhausted page OCR timeout")
+    command = pytesseract.pytesseract.tesseract_cmd
+    version = observed_tesseract_version(shutil.which(command) or command, min(2, remaining))
+    if not version:
+        raise ValueError("raster OCR engine identity unavailable")
+    return {"pythonVersion": sys.version.split()[0], "pymupdfVersion": str(fitz.VersionBind),
+            "mupdfVersion": str(fitz.VersionFitz), "tesseractVersion": version}
+
+
+def raster_ruled_cells(image, deadline=None, grid_bounds=None):
+    """Conservative physical cells for one complete ruled raster grid.
+
+    No text, numeric vocabulary, OCR confidence or clinical values select cells.
+    Merged bands use their observed vertical rules; ambiguous side content and
+    incomplete/multiple grids return None rather than being silently reordered.
+    """
+    def check_deadline():
+        if deadline is not None and time.monotonic() >= deadline:
+            raise TimeoutError("raster geometry exhausted page OCR timeout")
+
+    check_deadline()
+    ink = image.convert("L").point(lambda value: 255 if value < 96 else 0)
+    check_deadline()
+    width, height = ink.size
+    rules = []
+    for y in range(height):
+        if y % 32 == 0:
+            check_deadline()
+        strip = ink.crop((0, y, width, y + 1))
+        box = strip.getbbox()
+        if not box or box[2] - box[0] < width * 0.3:
+            continue
+        if strip.histogram()[255] < (box[2] - box[0]) * 0.96:
+            continue
+        left, right = box[0], box[2]
+        if rules and y <= rules[-1][1] + 2:
+            rules[-1][1] = y
+        else:
+            rules.append([y, y, left, right])
+        if len(rules) > 24:
+            return None
+    if len(rules) < 4:
+        return None
+    left, right = rules[0][2:]
+    if any(abs(rule[2] - left) > 3 or abs(rule[3] - right) > 3 for rule in rules):
+        return None
+    grid_top, grid_bottom = rules[0][0], rules[-1][1] + 1
+    # Rule detection may ignore faint ink; source preservation must not.
+    side_ink = image.convert("L").point(lambda value: 255 if value < 255 else 0)
+    check_deadline()
+    # Do not move or silently omit even light-gray side qualifications.
+    if (left > 3 and side_ink.crop((0, grid_top, left - 3, grid_bottom)).getbbox()) or (
+        right + 3 < width and side_ink.crop((right + 3, grid_top, width, grid_bottom)).getbbox()
+    ):
+        return None
+    rows = []
+    for upper, lower in zip(rules, rules[1:]):
+        check_deadline()
+        top, bottom = upper[1] + 2, lower[0] - 1
+        if bottom - top < 6:
+            return None
+        columns = []
+        for x in range(max(0, left - 2), min(width, right + 2)):
+            if x % 32 == 0:
+                check_deadline()
+            count = ink.crop((x, top, x + 1, bottom)).histogram()[255]
+            if count < (bottom - top) * 0.96:
+                continue
+            if columns and x <= columns[-1][1] + 2:
+                columns[-1][1] = x
+            else:
+                columns.append([x, x])
+        if len(columns) < 2 or abs(columns[0][0] - left) > 3 or abs(columns[-1][1] - right) > 3:
+            return None
+        row = [(a[1] + 2, top, b[0] - 1, bottom) for a, b in zip(columns, columns[1:])]
+        if any(x1 - x0 < 4 for x0, _, x1, _ in row):
+            return None
+        rows.append(row)
+    if sum(len(row) > 1 for row in rows) < 2 or sum(map(len, rows)) > 80:
+        return None
+    if grid_bounds is not None:
+        # Cell interiors are not outside-region bounds. Preserve the observed
+        # outer rule, including its adjacent antialiased raster fringe.
+        fringe = image.convert("L").point(lambda value: 255 if value < 255 else 0)
+        outer_top, outer_bottom = grid_top, grid_bottom
+        for y in range(grid_top - 1, max(-1, grid_top - 4), -1):
+            check_deadline()
+            if fringe.crop((left, y, right, y + 1)).histogram()[255] < (right - left) * 0.96:
+                break
+            outer_top = y
+        for y in range(grid_bottom, min(height, grid_bottom + 3)):
+            check_deadline()
+            if fringe.crop((left, y, right, y + 1)).histogram()[255] < (right - left) * 0.96:
+                break
+            outer_bottom = y + 1
+        grid_bounds.update(top=outer_top, bottom=outer_bottom)
+    return rows
+
+
+def bounded_clip_render_scale(rect, desired_scale, max_pixels):
+    """Bound independently rounded clip edges, not just width/height products."""
+    scale = bounded_render_scale(rect, desired_scale, max_pixels, max_scale=MAX_OCR_RENDER_SCALE)
+    if scale is None:
+        return None
+    for _ in range(4):
+        width = math.ceil(rect.x1 * scale) - math.floor(rect.x0 * scale)
+        height = math.ceil(rect.y1 * scale) - math.floor(rect.y0 * scale)
+        pixels = width * height
+        if pixels <= max_pixels:
+            return scale
+        scale *= math.sqrt(max_pixels / pixels) * (1 - 1e-9)
+    return None
+
+
+class RasterLayoutAmbiguous(ValueError):
+    pass
+
+
+def raster_prose_regions(image, bounds, deadline):
+    """Bounded physical whitespace cuts; never infer columns from source words."""
+    def check():
+        if time.monotonic() >= deadline:
+            raise TimeoutError("outside raster layout exhausted page OCR timeout")
+
+    def runs(values, populated):
+        groups = []
+        for index, value in enumerate(values):
+            if index % 32 == 0:
+                check()
+            if bool(value) != populated:
+                continue
+            if groups and index == groups[-1][1]:
+                groups[-1][1] = index + 1
+            else:
+                groups.append([index, index + 1])
+        return groups
+
+    def physical_lines(projection):
+        bands = runs(projection, True)
+        if not bands:
+            return []
+        # Join dots/accents before measuring interline whitespace, as in cells.
+        small_gap = max(2, median(end - start for start, end in bands) * 0.35)
+        merged = [bands[0][:]]
+        for start, end in bands[1:]:
+            check()
+            if start - merged[-1][1] <= small_gap:
+                merged[-1][1] = end
+            else:
+                merged.append([start, end])
+        return merged
+
+    def aligned_multiline_rows(left, right):
+        left, right = physical_lines(left), physical_lines(right)
+        i = j = 0
+        aligned = 0
+        while i < len(left) and j < len(right):
+            check()
+            a0, a1 = left[i]
+            b0, b1 = right[j]
+            if min(a1, b1) > max(a0, b0):
+                aligned += 1
+                if aligned >= 2:
+                    return True
+                i += 1
+                j += 1
+                continue
+            if a1 <= b1:
+                i += 1
+            else:
+                j += 1
+        return False
+
+    check()
+    # Geometry must not silently discard light source glyphs. Non-white noise
+    # may conservatively prevent a cut, leaving that full region for real OCR.
+    ink = image.convert("L").point(lambda value: 255 if value < 255 else 0)
+    check()
+    regions = []
+
+    def partition(box, depth=0):
+        check()
+        crop = ink.crop(box)
+        content = crop.getbbox()
+        if not content:
+            return
+        x0, y0 = box[0] + content[0], box[1] + content[1]
+        x1, y1 = box[0] + content[2], box[1] + content[3]
+        crop = ink.crop((x0, y0, x1, y1))
+        xs, ys = crop.getprojection()
+        check()
+        def column_cut(region):
+            check()
+            region_image = ink.crop(region)
+            content = region_image.getbbox()
+            if not content:
+                return None
+            rx0, ry0 = region[0] + content[0], region[1] + content[1]
+            rx1, ry1 = region[0] + content[2], region[1] + content[3]
+            projection = ink.crop((rx0, ry0, rx1, ry1)).getprojection()[0]
+            gaps = runs(projection, False)
+            if not gaps:
+                return None
+            gap = max(gaps, key=lambda span: span[1] - span[0])
+            cut = rx0 + (gap[0] + gap[1]) // 2
+            if gap[1] - gap[0] < max(12, (rx1 - rx0) * 0.04):
+                return None
+            if min(cut - rx0, rx1 - cut) < (rx1 - rx0) * 0.2:
+                return None
+            left = ink.crop((rx0, ry0, cut, ry1)).getprojection()[1]
+            right = ink.crop((cut, ry0, rx1, ry1)).getprojection()[1]
+            # Aligned lines may be paired rows at any spacing. Independent
+            # paragraphs can share this geometry too; retain the full-page
+            # unverified fallback rather than guessing their associations.
+            if aligned_multiline_rows(left, right):
+                raise RasterLayoutAmbiguous("outside raster notes have ambiguous row/column ownership")
+            return cut if len(runs(left, True)) >= 2 and len(runs(right, True)) >= 2 else None
+
+        if depth < 4:
+            # Keep each physical column's paragraphs together before considering
+            # their internal horizontal whitespace.
+            cut = column_cut((x0, y0, x1, y1))
+            if cut is not None:
+                partition((x0, y0, cut, y1), depth + 1)
+                partition((cut, y0, x1, y1), depth + 1)
+                return
+            gaps = runs(ys, False)
+            for gap in gaps:
+                # Only a short leading spanning heading may precede columns.
+                # Never split two multi-paragraph columns into cross-page rows.
+                if len(runs(ys[:gap[0]], True)) > 2:
+                    break
+                if gap[1] - gap[0] <= max(6, median(span[1] - span[0] for span in gaps) * 1.8):
+                    continue
+                if column_cut((x0, y0 + gap[1], x1, y1)) is not None:
+                    cut = y0 + (gap[0] + gap[1]) // 2
+                    partition((x0, y0, x1, cut), depth + 1)
+                    partition((x0, cut, x1, y1), depth + 1)
+                    return
+        # Restore a small source margin around antialiased glyph fringes.
+        regions.append((max(bounds[0], x0 - 3), max(bounds[1], y0 - 3),
+                        min(bounds[2], x1 + 3), min(bounds[3], y1 + 3)))
+
+    partition(tuple(map(int, bounds)))
+    check()
+    return regions
+
+
+def raster_ink_line_count(image, deadline):
+    if time.monotonic() >= deadline:
+        raise TimeoutError("cell line analysis exhausted page OCR timeout")
+    rows = image.convert("L").point(lambda value: 255 if value < 96 else 0).getprojection()[1]
+    bands = []
+    for index, value in enumerate(rows):
+        if index % 32 == 0 and time.monotonic() >= deadline:
+            raise TimeoutError("cell line analysis exhausted page OCR timeout")
+        if value:
+            if bands and index == bands[-1][1]:
+                bands[-1][1] = index + 1
+            else:
+                bands.append([index, index + 1])
+    if not bands:
+        return 0
+    # Dots, accents and raised punctuation can be disconnected within one line.
+    small_gap = max(2, median(end - start for start, end in bands) * 0.35)
+    return 1 + sum(right[0] - left[1] > small_gap for left, right in zip(bands, bands[1:]))
+
+
+def maybe_raster_table_ocr(page, image, render_scale, budget, pytesseract, deadline, observations=None):
+    """Default-off candidate; preserve full-page fallback on uncertain geometry.
+
+    OCR each physical cell at the existing target and per-render pixel bound.
+    All calls share the candidate deadline inside the page OCR budget. No source glyph is rewritten.
+    """
+    if os.environ.get("PDF_RASTER_TABLE_OCR") != "1" or page.rotation or page.get_text("text").strip():
+        return None
+    grid_bounds = {}
+    rows = raster_ruled_cells(image, deadline=deadline, grid_bounds=grid_bounds)
+    if not rows:
+        return None
+    # Plan both outside areas before launching any cell OCR. Ambiguous note
+    # rows retain the existing full-page fallback, never a partial replacement.
+    top = min(cell[1] for row in rows for cell in row) / render_scale
+    bottom = max(cell[3] for row in rows for cell in row) / render_scale
+    try:
+        before = raster_prose_regions(
+            image, (0, 0, image.width, max(0, grid_bounds["top"])), deadline,
+        ) if top > 2 else []
+        after = raster_prose_regions(
+            image, (0, min(image.height, grid_bounds["bottom"]), image.width, image.height), deadline,
+        ) if bottom < page.rect.height - 2 else []
+    except RasterLayoutAmbiguous:
+        return None
+    from PIL import Image
+    import raster_math_ocr
+    from raster_math_ocr import plan_raster_math_ocr
+    model_directory = checked_raster_table_model(deadline)
+    if time.monotonic() >= deadline:
+        raise TimeoutError("raster helper identity exhausted page timeout")
+    math_code_sha256 = file_sha256(raster_math_ocr.__file__)
+    if time.monotonic() >= deadline:
+        raise TimeoutError("raster helper identity exhausted page timeout")
+    record = {"version": "raster-table-ocr-observations-v1", "status": "unverified",
+              "cellModel": {"language": "Latin", "sha256": "sha256:" + RASTER_TABLE_MODEL_SHA256,
+                            "bytes": RASTER_TABLE_MODEL_BYTES},
+              "outsideModel": {"language": "eng", "sha256": None, "status": "not_observed"},
+              "runtime": observed_raster_runtime(pytesseract, deadline),
+              "detector": {"width": image.width, "height": image.height, "scale": render_scale}, "crops": []}
+
+    def read_region(rect, cell=False):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError("raster cell OCR exhausted page timeout")
+        scale = bounded_clip_render_scale(rect, MAX_OCR_RENDER_SCALE, budget.limits["maxRenderPixels"])
+        if scale is None:
+            raise ValueError("unsafe raster cell geometry")
+        if time.monotonic() >= deadline:
+            raise TimeoutError("raster cell render exhausted page timeout")
+        pixels = page.get_pixmap(matrix=fitz.Matrix(scale, scale), clip=rect, alpha=False)
+        if pixels.width * pixels.height > budget.limits["maxRenderPixels"]:
+            raise ValueError("raster cell render exceeded pixel limit")
+        png = pixels.tobytes("png")
+        bitmap = Image.open(io.BytesIO(png))
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError("raster cell OCR exhausted page timeout")
+        config = f"--dpi {round(scale * 72)}"
+        math_plan = None
+        if cell:
+            mode = 7 if raster_ink_line_count(bitmap, deadline) == 1 else 6
+            # Pixmaps round a physical clip outward. Analyze only pixels
+            # fully inside this cell, never infer that a corner mark is noise.
+            interior = (
+                math.ceil(rect.x0 * scale) - pixels.x,
+                math.ceil(rect.y0 * scale) - pixels.y,
+                math.floor(rect.x1 * scale) - pixels.x,
+                math.floor(rect.y1 * scale) - pixels.y,
+            )
+            if 0 <= interior[0] < interior[2] <= bitmap.width and 0 <= interior[1] < interior[3] <= bitmap.height:
+                cell_interior = bitmap.crop(interior)
+                if raster_ink_line_count(cell_interior, deadline) == 1:
+                    math_plan = plan_raster_math_ocr(cell_interior, deadline, budget.limits["maxRenderPixels"])
+            base_mode = mode
+            if math_plan is not None:
+                mode = 7
+            config = f"--psm {mode} --tessdata-dir {shlex.quote(model_directory)} " + config
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError("cell layout exhausted page OCR timeout before launch")
+        ocr_bitmap = math_plan.bitmap if math_plan is not None else bitmap
+        text = pytesseract.image_to_string(ocr_bitmap, lang="Latin" if cell else "eng", config=config, timeout=remaining).strip()
+        if math_plan is not None:
+            try:
+                text = math_plan.restore(text)
+            except raster_math_ocr.ComparisonSuffixUnsupported:
+                # Units or text after a comparison: discard the transformed OCR
+                # and read the unchanged source bitmap on the ordinary path.
+                math_plan = None
+                config = (f"--psm {base_mode} --tessdata-dir {shlex.quote(model_directory)} "
+                          f"--dpi {round(scale * 72)}")
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise TimeoutError("raster math fallback exhausted page OCR timeout")
+                text = pytesseract.image_to_string(bitmap, lang="Latin", config=config, timeout=remaining).strip()
+        if time.monotonic() >= deadline:
+            raise TimeoutError("raster OCR completed after page deadline")
+        if len(record["crops"]) >= 112:
+            raise ValueError("raster OCR observation limit")
+        record["crops"].append({"kind": "cell" if cell else "outside", "language": "Latin" if cell else "eng",
+                                "sourceRect": list(rect), "scale": scale, "width": pixels.width, "height": pixels.height,
+                                "pngSha256": "sha256:" + hashlib.sha256(png).hexdigest(),
+                                "pixelsSha256": "sha256:" + hashlib.sha256(pixels.samples).hexdigest(),
+                                "textSha256": text_sha256(text),
+                                **({"ocrInputTransform": {
+                                    "algorithm": "raster-math-topology-v1", "kind": math_plan.kind,
+                                    "codeSha256": math_code_sha256,
+                                    "width": ocr_bitmap.width, "height": ocr_bitmap.height, "mode": ocr_bitmap.mode,
+                                    "pixelsSha256": "sha256:" + hashlib.sha256(ocr_bitmap.tobytes()).hexdigest(),
+                                }} if math_plan is not None else {})})
+        if time.monotonic() >= deadline:
+            raise TimeoutError("raster crop observation exhausted page deadline")
+        return text
+
+    pieces = []
+    # Outside prose is retained from non-overlapping source regions; side prose
+    # within the grid band was rejected above rather than assigned to a cell.
+    for box in before:
+        pieces.append(read_region(fitz.Rect(*(coordinate / render_scale for coordinate in box))))
+    for row in rows:
+        cells = []
+        for box in row:
+            rect = fitz.Rect(*(coordinate / render_scale for coordinate in box))
+            cells.append(" ".join(read_region(rect, cell=True).split()))
+        pieces.append(" | ".join(cells))
+    for box in after:
+        pieces.append(read_region(fitz.Rect(*(coordinate / render_scale for coordinate in box))))
+    if observations is not None:
+        observations.update(record)
+    return "\n".join(piece for piece in pieces if piece)
+
+
+def maybe_ocr_page(page, budget, raster_observations=None, runtime_identity=None):
+    deadline = time.monotonic() + budget.limits["ocrPageTimeoutSeconds"]
+    raster_enabled = os.environ.get("PDF_RASTER_TABLE_OCR") == "1"
+    if raster_enabled and raster_observations is not None:
+        raster_observations.clear()
+    if runtime_identity is not None:
+        runtime_identity["tesseractVersion"] = None
     # OCR needs the source glyph detail that thumbnail/crop rendering can omit.
     # Keep its larger target separate from other renders and bounded by the
     # caller's existing pixel limit; a 4M budget does not promise 450 DPI.
@@ -221,6 +856,10 @@ def maybe_ocr_page(page, budget):
     )
     if render_scale is None:
         return "", f"render_skipped: OCR page {page.number + 1} has unsafe geometry"
+    # Audit ING-B-06: Tesseract's OpenMP threads busy-wait on a shared CPU until
+    # every page hits the timeout. One thread per call is the documented fix and
+    # does not change what Tesseract reads; an operator value is kept.
+    os.environ.setdefault("OMP_THREAD_LIMIT", "1")
     try:
         import pytesseract
         from PIL import Image
@@ -237,16 +876,56 @@ def maybe_ocr_page(page, budget):
                     pytesseract.pytesseract.tesseract_cmd = candidate
                     break
 
+        if runtime_identity is not None:
+            command = pytesseract.pytesseract.tesseract_cmd
+            remaining = deadline - time.monotonic()
+            if remaining > 0:
+                runtime_identity["tesseractVersion"] = observed_tesseract_version(
+                    shutil.which(command) or command, min(2, remaining)
+                )
+        if os.environ.get("PDF_RASTER_TABLE_OCR") == "1" and time.monotonic() >= deadline:
+            raise TimeoutError("raster OCR exhausted page timeout before rendering")
         pix = page.get_pixmap(
             matrix=fitz.Matrix(render_scale, render_scale), alpha=False
         )
         if pix.width * pix.height > budget.limits["maxRenderPixels"]:
             return "", f"render_skipped: OCR page {page.number + 1} exceeded the rounded pixel limit"
         image = Image.open(io.BytesIO(pix.tobytes("png")))
-        return pytesseract.image_to_string(
-            image, config=f"--dpi {round(render_scale * 72)}",
-            timeout=budget.limits["ocrPageTimeoutSeconds"]
-        ), None
+        candidate_warning = None
+        if raster_enabled:
+            reserve = min(RASTER_TABLE_FALLBACK_RESERVE_SECONDS, budget.limits["ocrPageTimeoutSeconds"])
+            candidate_deadline = deadline - reserve
+            if time.monotonic() < candidate_deadline:
+                candidate_observations = {}
+                try:
+                    candidate = maybe_raster_table_ocr(
+                        page, image, render_scale, budget, pytesseract, candidate_deadline, candidate_observations,
+                    )
+                    if time.monotonic() >= candidate_deadline:
+                        raise TimeoutError("optional raster OCR completed after its deadline")
+                    if candidate is not None:
+                        if raster_observations is not None:
+                            raster_observations.update(candidate_observations)
+                        return candidate, None
+                except (RasterTableModelError, ExtractionBudgetExceeded):
+                    raise  # Model identity and document-wide limits remain fail-closed.
+                except Exception as exc:
+                    # Discard every candidate crop/text observation; only the
+                    # original full-page render can reach the legacy reader.
+                    candidate_warning = f"raster_table_ocr_refused: page {page.number + 1}: {type(exc).__name__}"
+        timeout = budget.limits["ocrPageTimeoutSeconds"]
+        if os.environ.get("PDF_RASTER_TABLE_OCR") == "1":
+            timeout = deadline - time.monotonic()
+            if timeout <= 0:
+                raise TimeoutError("raster OCR exhausted page timeout before fallback")
+        text = pytesseract.image_to_string(
+            image, config=f"--dpi {round(render_scale * 72)}", timeout=timeout
+        )
+        if raster_enabled and time.monotonic() >= deadline:
+            raise TimeoutError("full-page OCR completed after page deadline")
+        return text, candidate_warning
+    except ExtractionBudgetExceeded:
+        raise
     except Exception as exc:
         return "", f"OCR failed on page {page.number + 1}: {type(exc).__name__}: {exc}"
 
@@ -262,13 +941,11 @@ def page_image_coverage_ratio(page):
     if page_area <= 0:
         return 0.0
     covered = 0.0
-    seen = set()
-    for image_info in page.get_images(full=True):
-        xref = image_info[0]
-        if xref in seen:
-            continue
-        seen.add(xref)
-        for rect in page.get_image_rects(xref) or []:
+    # get_image_rects hashes and decodes ALL images on the page, including inline
+    # images absent from get_images(). Header-only placements need neither.
+    for image in page.get_image_info(hashes=False, xrefs=False):
+        rect = fitz.Rect(image["bbox"])
+        if not rect.is_infinite and not rect.is_empty:
             covered += abs(float(rect.width) * float(rect.height))
     return min(1.0, covered / page_area)
 
@@ -601,7 +1278,7 @@ def _extract_table_column_ranges(table, column_count=0):
 def _extract_page_line_segments(page):
     segments = []
     try:
-        text_dict = page.get_text("dict") or {}
+        text_dict = page.get_text("dict", flags=fitz.TEXTFLAGS_DICT & ~fitz.TEXT_PRESERVE_IMAGES) or {}
         for block in text_dict.get("blocks") or []:
             if block.get("type", 0) != 0:
                 continue
@@ -738,143 +1415,75 @@ def _match_segment_to_column(sx0, sx1, effective_ranges):
     return col_idx
 
 
-def _continues_wrapped_cell(prev_line, segment, column_range, slack=12.0):
-    """True when a lone line under a row reads as the rest of that row's cell.
+def _edge_grid_cells(page, original_rect, extended_rect, column_ranges):
+    """Require actual PDF ruling on all four sides; proximity is not row authority."""
+    horizontals, verticals = [], []
+    rotation = getattr(page, "rotation_matrix", fitz.Identity)
+    for drawing in page.get_drawings():
+        if drawing.get("type") not in ("s", "fs") or drawing.get("color") is None or drawing.get("stroke_opacity", 1) <= 0:
+            continue
+        for item in drawing.get("items", []):
+            pairs = []
+            if item[0] == "l":
+                pairs = [(item[1], item[2])]
+            elif item[0] == "re":
+                r = fitz.Rect(item[1])
+                pairs = [(r.tl, r.tr), (r.tr, r.br), (r.br, r.bl), (r.bl, r.tl)]
+            for a, b in pairs:
+                a, b = a * rotation, b * rotation
+                if abs(a.y - b.y) <= 1:
+                    horizontals.append((min(a.x,b.x), max(a.x,b.x), (a.y+b.y)/2))
+                elif abs(a.x - b.x) <= 1:
+                    verticals.append(((a.x+b.x)/2, min(a.y,b.y), max(a.y,b.y)))
+    cells = []
+    for col, (left, right) in enumerate(column_ranges):
+        ys = sorted(set(round(y, 2) for x0, x1, y in horizontals
+            if x0 <= left + 1 and x1 >= right - 1
+            and extended_rect.y0 - 1 <= y <= extended_rect.y1 + 1))
+        for top, bottom in zip(ys, ys[1:]):
+            if bottom <= top + 2:
+                continue
+            if all(any(abs(x-edge) <= 1 and y0 <= top+1 and y1 >= bottom-1
+                       for x,y0,y1 in verticals) for edge in (left,right)):
+                cells.append((col, left, top, right, bottom))
+    return cells
 
-    Text wraps because its next word did not fit, so the free space left in
-    the column beside the line above (on either side, which covers right-aligned
-    and centred cells) must be narrower than this line's first word.
-    A deliberate break also counts: a line starting at the cell's own left edge
-    with a bullet, a lower-case word or a number (a dose under a drug name).
-    Footnotes look alike, so '*' never counts and a number counts only when
-    the word after it is not capitalised ('1 Not PBS listed' stays out).
-    """
-    if prev_line is None:
-        return False
-    prev_line_start, prev_line_end = prev_line
-    sx0, sx1, text = segment
-    cleaned = clean_cell(text)
-    words = cleaned.split(" ")
-    if not words or not words[0]:
-        return False
-    numbered_footnote = cleaned[0].isdigit() and len(words) > 1 and words[1][:1].isupper()
-    if abs(sx0 - prev_line_start) <= 3.0 and (
-        cleaned[0] in "•·-–" or cleaned[0].islower() or (cleaned[0].isdigit() and not numbered_footnote)
-    ):
-        return True
-    first_word_width = (sx1 - sx0) * (len(words[0]) / max(1, len(cleaned)))
-    free_space = (column_range[1] - prev_line_end) + max(0.0, prev_line_start - column_range[0])
-    return free_space <= first_word_width + slack
 
-
-def _recover_table_rows_split(page, original_rect, extended_rect, existing_rows, column_count=0, column_ranges=None):
-    existing_keys = {
-        tuple(clean_cell(cell) for cell in row)
-        for row in existing_rows or []
-        if any(clean_cell(cell) for cell in row)
-    }
-    inferred_col_count = int(
-        column_count
-        or (len(column_ranges) if column_ranges else 0)
-        or max((len(row) for row in (existing_rows or [])), default=0)
-        or 0
-    )
+def _recover_table_rows_split(page, original_rect, extended_rect, existing_rows, column_count=0,
+                              column_ranges=None, unassigned_segments=None):
+    """Recover ruled edge cells; retain ambiguous edge text separately, never infer a clinical row."""
     all_segments = _extract_page_line_segments(page)
-    effective_ranges = _resolve_effective_column_ranges(
-        original_rect,
-        inferred_col_count,
-        column_ranges,
-        all_segments,
-    )
-    if len(effective_ranges) < 2 or not all_segments:
+    ranges = _resolve_effective_column_ranges(original_rect, column_count, column_ranges, all_segments)
+    if len(ranges) < 2:
         return [], []
-
-    num_cols = len(effective_ranges)
-    top_segments = []
-    bottom_segments = []
-    for sx0, sy0, sx1, sy1, text in all_segments:
-        seg_rect = fitz.Rect(sx0, sy0, sx1, sy1)
-        if (extended_rect & seg_rect).is_empty:
+    cells = _edge_grid_cells(page, original_rect, extended_rect, ranges)
+    grouped = {}
+    for x0,y0,x1,y1,text in sorted(all_segments, key=lambda seg: (seg[1],seg[0])):
+        rect = fitz.Rect(x0,y0,x1,y1)
+        if (extended_rect & rect).is_empty or x0 < original_rect.x0-8 or x1 > original_rect.x1+8:
             continue
-        if sx0 < original_rect.x0 - 8.0 or sx1 > original_rect.x1 + 8.0:
+        side = "bottom" if y1 > original_rect.y1+0.5 and y0 >= original_rect.y1-2 else (
+            "top" if y0 < original_rect.y0-0.5 and y1 <= original_rect.y0+2 else None)
+        if side is None:
             continue
-        outside_bottom = sy1 > original_rect.y1 + 0.5 and sy0 >= original_rect.y1 - 2.0
-        outside_top = sy0 < original_rect.y0 - 0.5 and sy1 <= original_rect.y0 + 2.0
-        if outside_top:
-            top_segments.append((sx0, sy0, sx1, sy1, text))
-        elif outside_bottom:
-            bottom_segments.append((sx0, sy0, sx1, sy1, text))
-
-    def collect_rows(strip_segments):
-        if not strip_segments:
-            return []
-        strip_segments.sort(key=lambda s: (s[1], s[0]))
-        bands = []
-        for seg in strip_segments:
-            if not bands or abs(seg[1] - bands[-1][0][1]) > 3.0:
-                bands.append([seg])
-            else:
-                bands[-1].append(seg)
-
-        rows_out = []
-        prev_band_y1 = None
-        # Left and right edges of the last line of text in each column of the latest row,
-        # used to tell a wrapped cell from a note that merely sits below it.
-        prev_row_line_ends = {}
-        for band in bands:
-            band.sort(key=lambda s: s[0])
-            band_y0 = min(s[1] for s in band)
-            band_y1 = max(s[3] for s in band)
-            row_cells = [""] * num_cols
-            line_ends = {}
-            first_segment = {}
-            valid_band = True
-            for sx0, _sy0, sx1, _sy1, text in band:
-                col_idx = _match_segment_to_column(sx0, sx1, effective_ranges)
-                if col_idx is None:
-                    valid_band = False
-                    break
-                row_cells[col_idx] = clean_cell(f"{row_cells[col_idx]} {text}") if row_cells[col_idx] else clean_cell(text)
-                start, end = line_ends.get(col_idx, (sx0, sx1))
-                line_ends[col_idx] = (min(start, sx0), max(end, sx1))
-                first_segment.setdefault(col_idx, (sx0, sx1, text))
-            if not valid_band:
-                prev_band_y1 = None
-                continue
-            populated_cols = sum(1 for cell in row_cells if clean_cell(cell))
-            if populated_cols == 1 and rows_out and prev_band_y1 is not None and (band_y0 - prev_band_y1) <= 16.0:
-                col_idx = next(iter(first_segment))
-                # A cell that starts lower than its neighbours (staggered or vertically
-                # centred text) fills a still-empty cell of the row above.
-                fills_empty_cell = col_idx not in prev_row_line_ends and not rows_out[-1][col_idx]
-                if not fills_empty_cell and not _continues_wrapped_cell(
-                    prev_row_line_ends.get(col_idx), first_segment[col_idx], effective_ranges[col_idx]
-                ):
-                    # A short note or caption under the table, not the rest of a wrapped cell.
-                    prev_band_y1 = None
-                    continue
-                prev_row_line_ends[col_idx] = line_ends[col_idx]
-                prev_row = rows_out[-1]
-                existing_keys.discard(tuple(prev_row))
-                for idx, val in enumerate(row_cells):
-                    if val:
-                        prev_row[idx] = clean_cell(f"{prev_row[idx]} {val}") if prev_row[idx] else val
-                existing_keys.add(tuple(prev_row))
-                prev_band_y1 = band_y1
-                continue
-            if populated_cols < 2:
-                continue
-            key = tuple(row_cells)
-            if key in existing_keys:
-                prev_band_y1 = band_y1
-                continue
-            existing_keys.add(key)
-            rows_out.append(row_cells)
-            prev_row_line_ends = line_ends
-            prev_band_y1 = band_y1
-        return rows_out
-
-    return collect_rows(top_segments), collect_rows(bottom_segments)
+        matches = [(col,top,bottom) for col,left,top,right,bottom in cells
+                   if x0 >= left-0.5 and x1 <= right+0.5 and y0 >= top-0.5 and y1 <= bottom+0.5]
+        if len(matches) != 1:
+            if unassigned_segments is not None:
+                unassigned_segments.append({"text": clean_cell(text), "bbox": rect_payload(rect), "edge": side})
+            continue
+        col,top,bottom = matches[0]
+        key = (side,top,bottom)
+        row = grouped.setdefault(key, [""] * len(ranges))
+        row[col] = clean_cell(f"{row[col]} {text}")
+    existing = {tuple(clean_cell(c) for c in row) for row in existing_rows or []}
+    top_rows, bottom_rows = [], []
+    for (side,top,bottom), row in sorted(grouped.items(), key=lambda item: item[0][1]):
+        if tuple(row) in existing:
+            continue
+        # A genuine ruled row may contain an empty or staggered cell.
+        (top_rows if side == "top" else bottom_rows).append(row)
+    return top_rows, bottom_rows
 
 
 def recover_table_rows_from_edge_strip(
@@ -959,12 +1568,21 @@ def text_grid_rows(text):
 def extract_table_payload(table):
     try:
         rows = table.extract()
-        cleaned = [[clean_cell(cell) for cell in row] for row in rows if any(clean_cell(cell) for cell in row)]
+        cleaned = []
+        merged_cells = []
+        for row in rows:
+            if not any(clean_cell(cell) for cell in row):
+                continue
+            # PyMuPDF returns None (not "") for a cell covered by a merged span, so
+            # these coordinates are confirmed merge provenance, not merely blank cells.
+            merged_cells.extend([len(cleaned), column] for column, cell in enumerate(row) if cell is None)
+            cleaned.append([clean_cell(cell) for cell in row])
         column_count = max((len(row) for row in cleaned), default=0)
         column_ranges = _extract_table_column_ranges(table, column_count)
         return {
             "text": table_rows_to_markdown(rows),
             "rows": cleaned[:MAX_TABLE_ROWS],
+            "merged_cells": [cell for cell in merged_cells if cell[0] < MAX_TABLE_ROWS],
             "columns": table_columns_from_rows(rows)[:24],
             "accessible_markdown": table_rows_to_markdown(rows),
             "row_count": len(cleaned),
@@ -977,6 +1595,7 @@ def extract_table_payload(table):
         return {
             "text": "",
             "rows": [],
+            "merged_cells": [],
             "columns": [],
             "accessible_markdown": "",
             "row_count": 0,
@@ -1256,6 +1875,7 @@ def likely_table_candidates(page, rejected_rects=None):
                     "table_role": role,
                     "table_confidence": table_candidate_confidence(label, title, table_text, row_count, column_count),
                     "table_rows": payload.get("rows", []),
+                    "table_merged_cells": payload.get("merged_cells", []),
                     "table_columns": payload.get("columns", []),
                     "accessible_table_markdown": payload.get("accessible_markdown") or table_text,
                     "row_count": row_count,
@@ -1391,7 +2011,14 @@ def merge_related_table_candidates(candidates, page_rect):
             rect = merge_rects([item["rect"] for item in group], page_rect)
             merged_text = "\n\n".join(item.get("table_text") or "" for item in group).strip()
             merged_rows = []
+            merged_cells = []
+            row_breaks = []
             for item in group:
+                offset = len(merged_rows)
+                if offset:
+                    # Each grouped table starts a new section: label carry-down must not cross it.
+                    row_breaks.append(offset)
+                merged_cells.extend([row + offset, column] for row, column in item.get("table_merged_cells") or [])
                 merged_rows.extend(item.get("table_rows") or [])
             candidate = {
                 **candidate,
@@ -1404,6 +2031,8 @@ def merge_related_table_candidates(candidates, page_rect):
                 ),
                 "table_confidence": max(item.get("table_confidence") or 0 for item in group),
                 "table_rows": merged_rows[:MAX_TABLE_ROWS],
+                "table_merged_cells": [cell for cell in merged_cells if cell[0] < MAX_TABLE_ROWS],
+                "table_row_breaks": [row for row in row_breaks if row < MAX_TABLE_ROWS],
                 "table_columns": (merged_rows[0] if merged_rows else candidate.get("table_columns") or [])[:24],
                 "accessible_table_markdown": table_rows_to_markdown(merged_rows) if merged_rows else merged_text,
                 "row_count": sum(item.get("row_count") or 0 for item in group),
@@ -1496,9 +2125,6 @@ def fallback_visual_region(page, image_coverage=0.0, ocr_used=False):
     )
 
 
-# Fraction of a text block's area that must fall inside a detected table grid
-# before the block is treated as table content rather than surrounding prose.
-TABLE_BLOCK_CONTAINMENT_RATIO = 0.6
 # If table-aware assembly drops more than this share of the page's characters,
 # detection is assumed to have misfired and the raw reading-order text is kept.
 TABLE_TEXT_MIN_RETENTION_RATIO = 0.6
@@ -1512,7 +2138,7 @@ def _dense_length(value):
     return len(re.sub(r"\s+", "", value or ""))
 
 
-def _intact_display_text_pieces(page):
+def _intact_display_text_pieces(page, exclude_rects=None):
     """Keep native lines intact, using displayed geometry only for text assembly.
 
     Native text boxes are unrotated, whereas find_tables() boxes describe the
@@ -1530,6 +2156,10 @@ def _intact_display_text_pieces(page):
             if not text:
                 continue
             rect = fitz.Rect(line["bbox"]) * page.rotation_matrix
+            # Only completely contained lines are represented by table markdown.
+            # A crossing instruction may extend beyond the structured cell text.
+            if any(table_rect.contains(rect) for table_rect in exclude_rects or []):
+                continue
             lines.append((rect, text))
             direction = line.get("dir", (1, 0))
             needs_layout = needs_layout or abs(direction[0] - 1) > 0.001 or abs(direction[1]) > 0.001
@@ -1586,19 +2216,11 @@ def table_aware_page_text(page, grid_candidates, raw_text=None):
         return raw
 
     try:
-        text_pieces, needs_layout = _intact_display_text_pieces(page)
+        table_rects = [fitz.Rect(candidate["rect"]) for candidate in usable]
+        text_pieces, needs_layout = _intact_display_text_pieces(page, exclude_rects=table_rects)
         if not usable and not needs_layout:
             return raw
-        table_rects = [fitz.Rect(candidate["rect"]) for candidate in usable]
-        pieces = []
-        for rect, body in text_pieces:
-            area = _rect_area(rect)
-            if area > 0 and any(
-                _rect_area(rect & table_rect) / area >= TABLE_BLOCK_CONTAINMENT_RATIO
-                for table_rect in table_rects
-            ):
-                continue
-            pieces.append((rect.y0, rect.x0, body))
+        pieces = [(rect.y0,rect.x0,body) for rect,body in text_pieces]
         for candidate, table_rect in zip(usable, table_rects):
             markdown = (candidate.get("accessible_table_markdown") or "").strip()
             if markdown:
@@ -1654,6 +2276,7 @@ def extract(pdf_path, output_dir, budget=None):
                 "scriptSha256": file_sha256(__file__),
                 "pythonVersion": sys.version.split()[0] or None,
                 "pymupdfVersion": str(getattr(fitz, "VersionBind", "") or getattr(fitz, "__version__", "")) or None,
+                "mupdfVersion": str(getattr(fitz, "VersionFitz", "") or "") or None,
             },
         }
         return _extract_document(document, output_dir, budget, identity)
@@ -1685,7 +2308,7 @@ def text_sha256(text):
     return "sha256:" + hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-def page_source_provenance(geometry, page_number, native_text, text, ocr_used, needs_ocr, identity):
+def page_source_provenance(geometry, page_number, native_text, text, ocr_used, needs_ocr, identity, ocr_runtime=None):
     """Per-page source observations checked by src/lib/extractors/pdf-source-provenance.ts.
 
     Metadata only: it records hashes of the final page text and never alters that text.
@@ -1696,7 +2319,10 @@ def page_source_provenance(geometry, page_number, native_text, text, ocr_used, n
         reasons.append("pdf_geometry_transform_unverified")
     if ocr_unverified:
         reasons.append("pdf_ocr_unverified")
-    if identity["producer"]["pythonVersion"] is None or identity["producer"]["pymupdfVersion"] is None:
+    producer = {**identity["producer"], **(ocr_runtime or {})}
+    if any(producer.get(key) is None for key in ("pythonVersion", "pymupdfVersion", "mupdfVersion")) or (
+        "tesseractVersion" in producer and producer["tesseractVersion"] is None
+    ):
         reasons.append("pdf_runtime_identity_unknown")
     text_hash = text_sha256(text)
     return {
@@ -1705,6 +2331,7 @@ def page_source_provenance(geometry, page_number, native_text, text, ocr_used, n
         "coordinateSpace": "pymupdf_observed_page_points",
         "physicalPageNumber": page_number,
         **identity,
+        "producer": producer,
         "pageGeometry": geometry,
         "nativeTextSha256": text_sha256(native_text),
         "structuralDisposition": "unverified" if reasons else "retained",
@@ -1731,10 +2358,17 @@ def _extract_document(document, output_dir, budget, identity):
     pages = []
     images = []
     warnings = []
+    unsafe_render_pages = set()
     budget.set_page_count(document.page_count)
 
     for page_index, page in enumerate(document):
         page_number = page_index + 1
+        image_infos = page.get_images(full=True)
+        skipped_images, unsafe_image_decode = page_image_decode_preflight(page, image_infos)
+        if unsafe_image_decode:
+            unsafe_render_pages.add(page_index)
+            warnings.append(f"page_render_skipped: page {page_number} contains an image or soft mask "
+                            f"above the {MAX_EMBEDDED_IMAGE_PIXELS}-pixel ceiling; not decoded")
         # Some reader helpers temporarily alter the page crop; retain the source
         # observations before table detection or crop rendering can touch them.
         source_geometry = {
@@ -1761,6 +2395,8 @@ def _extract_document(document, output_dir, budget, identity):
         text = table_aware_page_text(page, grid_table_candidates, raw_text=raw_page_text)
         ocr_used = False
         needs_ocr = False
+        raster_observations = {}
+        ocr_runtime = {}
         image_coverage = page_image_coverage_ratio(page)
 
         # IDX-H4: trigger OCR by text-density relative to image coverage, not only a flat
@@ -1768,7 +2404,10 @@ def _extract_document(document, output_dir, budget, identity):
         # rendered as an image with a short caption) are OCR'd and merged with the existing
         # text layer so caption + table contents are both retained.
         if should_ocr_page(raw_page_text, page):
-            ocr_text, ocr_warning = maybe_ocr_page(page, budget)
+            if unsafe_image_decode:
+                ocr_text, ocr_warning = "", f"OCR skipped on page {page_number}: unsafe source image dimensions"
+            else:
+                ocr_text, ocr_warning = maybe_ocr_page(page, budget, raster_observations, ocr_runtime)
             if ocr_warning:
                 warnings.append(ocr_warning)
             if ocr_text.strip():
@@ -1785,19 +2424,33 @@ def _extract_document(document, output_dir, budget, identity):
                 "ocrUsed": ocr_used,
                 "needsOcr": needs_ocr,
                 "metadata": {
+                    **({"raster_table_ocr": raster_observations} if raster_observations else {}),
                     "image_coverage_ratio": round(image_coverage, 4),
                     "source_provenance": page_source_provenance(
-                        source_geometry, page_number, raw_page_text, text, ocr_used, needs_ocr, identity
+                        source_geometry, page_number, raw_page_text, text, ocr_used, needs_ocr, identity, ocr_runtime
                     ),
                 },
             }
         )
 
         page_image_count = 0
-        for image_index, image_info in enumerate(page.get_images(full=True)):
+        for image_index, image_info in enumerate(image_infos):
             xref = image_info[0]
             budget.ensure_artifact_slot()
-            extracted = document.extract_image(xref)
+            oversized_warning = skipped_images.get(xref)
+            if oversized_warning:
+                warnings.append(oversized_warning)
+                continue
+            try:
+                extracted = document.extract_image(xref)
+            except MemoryError:
+                raise
+            except Exception as exc:
+                # ING-B-04: one image MuPDF refuses must not abort the whole document.
+                warnings.append(
+                    f"embedded_image_skipped: xref {xref} could not be extracted: {type(exc).__name__}"
+                )
+                continue
             normalized, normalize_warning = normalize_embedded_image(document, xref, extracted, budget)
             if normalize_warning:
                 warnings.append(normalize_warning)
@@ -1807,7 +2460,18 @@ def _extract_document(document, output_dir, budget, identity):
             image_bytes = normalized["bytes"]
             width = normalized["width"]
             height = normalized["height"]
-            rects = page.get_image_rects(xref) or []
+            try:
+                if unsafe_image_decode:
+                    # Hash-based placement would decode unsafe sibling images.
+                    raise ValueError("unsafe sibling image dimensions")
+                rects = page.get_image_rects(xref) or []
+            except MemoryError:
+                raise
+            except Exception as exc:
+                warnings.append(
+                    f"embedded_image_placement_unavailable: xref {xref}: {type(exc).__name__}"
+                )
+                rects = []
             bbox = rect_payload(rects[0]) if rects else None
             image_path = os.path.join(
                 output_dir, f"page-{page_number}-image-{image_index + 1}.{ext}"
@@ -1848,6 +2512,11 @@ def _extract_document(document, output_dir, budget, identity):
             )
             page_image_count += 1
 
+        if unsafe_image_decode:
+            # A bounded thumbnail/crop still decodes its original source images.
+            # Native text above is retained; no page render is safe here.
+            continue
+
         crop_index = 1
         table_rects = []
         table_candidates = list(grid_table_candidates)
@@ -1859,8 +2528,11 @@ def _extract_document(document, output_dir, budget, identity):
             detected_rect = table_candidate["rect"]
             edge_rect, edge_info = extend_table_rect_for_edge_content(page, detected_rect)
             table_rows = list(table_candidate.get("table_rows") or [])
+            table_merged_cells = [list(cell) for cell in table_candidate.get("table_merged_cells") or []]
+            table_row_breaks = list(table_candidate.get("table_row_breaks") or [])
             column_count = int(table_candidate.get("column_count") or (len(table_rows[0]) if table_rows else 0) or 0)
             recovered_rows = []
+            unassigned_edge_text = []
             recovered_truncated = False
             if edge_info["extended"]:
                 top_rows, bottom_rows = _recover_table_rows_split(
@@ -1870,10 +2542,23 @@ def _extract_document(document, output_dir, budget, identity):
                     table_rows,
                     column_count,
                     table_candidate.get("column_ranges"),
+                    unassigned_segments=unassigned_edge_text,
                 )
                 recovered_rows = top_rows + bottom_rows
                 if recovered_rows:
                     combined_rows = top_rows + table_rows + bottom_rows
+                    table_merged_cells = [
+                        [row + len(top_rows), column]
+                        for row, column in table_merged_cells
+                        if row + len(top_rows) < MAX_TABLE_ROWS
+                    ]
+                    # Rows recovered past the detected edge (e.g. across a page break) start new segments.
+                    table_row_breaks = sorted(
+                        {row + len(top_rows) for row in table_row_breaks}
+                        | ({len(top_rows)} if top_rows else set())
+                        | ({len(top_rows) + len(table_rows)} if bottom_rows else set())
+                    )
+                    table_row_breaks = [row for row in table_row_breaks if row < MAX_TABLE_ROWS]
                     recovered_truncated = len(combined_rows) > MAX_TABLE_ROWS
                     table_rows = combined_rows[:MAX_TABLE_ROWS]
             rows_truncated = (
@@ -1904,6 +2589,8 @@ def _extract_document(document, output_dir, budget, identity):
                 "table_role": table_candidate.get("table_role"),
                 "table_confidence": table_candidate.get("table_confidence"),
                 "table_rows": table_rows,
+                "table_merged_cells": table_merged_cells,
+                "table_row_breaks": table_row_breaks,
                 "table_columns": table_candidate.get("table_columns") or [],
                 "accessible_table_markdown": accessible,
                 "row_count": len(table_rows) if table_rows else table_candidate.get("row_count"),
@@ -1914,6 +2601,11 @@ def _extract_document(document, output_dir, budget, identity):
                 "extraction_method": table_candidate.get("extraction_method"),
                 "table_index": table_candidate.get("table_index"),
             }
+            if unassigned_edge_text:
+                crop_metadata["unassigned_edge_text"] = unassigned_edge_text
+                crop_metadata["edge_recovery_needs_review"] = True
+                warnings.append(f"table_edge_association_unverified: page {page_number}; "
+                                "retained edge text without assigning it to clinical cells")
             if edge_info["extended"]:
                 crop_metadata["edge_content_extended"] = True
                 crop_metadata["edge_content_edges"] = edge_info["edges"]
@@ -2019,7 +2711,7 @@ def _extract_document(document, output_dir, budget, identity):
 
     # Optional cover after searchable artifacts so a near-limit budget cannot
     # fail indexing because the decorative thumbnail consumed the last slot.
-    if document.page_count > 0:
+    if document.page_count > 0 and 0 not in unsafe_render_pages:
         try:
             cover = save_cover_page(document[0], output_dir, budget, warnings)
             if cover:
@@ -2041,25 +2733,26 @@ def _extract_document(document, output_dir, budget, identity):
     }
 
 
-if __name__ == "__main__":
-    if len(sys.argv) not in (3, 4, 5):
+def main(argv):
+    if len(argv) not in (3, 4, 5):
         print(
             "Usage: extract_pdf_assets.py input.pdf output_dir [output.json] [budget.json]",
             file=sys.stderr,
         )
         sys.exit(1)
 
+    apply_memory_limit()
     try:
         limits = None
-        if len(sys.argv) == 5:
-            with open(sys.argv[4], "r", encoding="utf-8") as handle:
+        if len(argv) == 5:
+            with open(argv[4], "r", encoding="utf-8") as handle:
                 limits = json.load(handle)
         extraction_budget = ExtractionBudget(limits)
-        result = extract(sys.argv[1], sys.argv[2], extraction_budget)
+        result = extract(argv[1], argv[2], extraction_budget)
         serialized = json.dumps(result)
         extraction_budget.ensure_result(serialized)
-        if len(sys.argv) >= 4:
-            with open(sys.argv[3], "w", encoding="utf-8") as handle:
+        if len(argv) >= 4:
+            with open(argv[3], "w", encoding="utf-8") as handle:
                 handle.write(serialized)
         else:
             print(serialized)
@@ -2069,3 +2762,17 @@ if __name__ == "__main__":
     except PdfUnreadable as exc:
         print(f"PDF_UNREADABLE: {exc}", file=sys.stderr)
         sys.exit(4)
+    except Exception as exc:
+        if not is_memory_exhaustion(exc):
+            raise
+        # ING-B-05: running out of the address-space limit is a resource refusal,
+        # so the worker neither retries it nor re-parses the file in-process.
+        print(
+            f"PDF_EXTRACTION_BUDGET_EXCEEDED: memory limit reached ({type(exc).__name__})",
+            file=sys.stderr,
+        )
+        sys.exit(3)
+
+
+if __name__ == "__main__":
+    main(sys.argv)

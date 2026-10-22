@@ -1,3 +1,4 @@
+import { withMockRagScopeRevision, mockRagScopeRevision } from "./rag-cache-test-revision";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { SearchChunksArgs, SearchTelemetry } from "../src/lib/rag/rag-contracts";
 import type { RagAnswer, SearchResult } from "../src/lib/types";
@@ -149,7 +150,7 @@ function installAnswerCacheEntrypointHarness(
     data: name.endsWith("_v3") && options.admittedSource ? [options.admittedSource] : [],
     error: null,
   }));
-  vi.doMock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({ from, rpc }) }));
+  vi.doMock("@/lib/supabase/admin", () => ({ createAdminClient: () => withMockRagScopeRevision({ from, rpc }) }));
   return { from, rpc, insertedRows, state };
 }
 
@@ -337,8 +338,8 @@ describe("RAG cache invalidation", () => {
     const { ragCacheDependencyVersion } = await import("../src/lib/rag/rag-cache");
     // Main still writes the unsafe grounded/non-review_only shape under v24; extractive
     // review fallback lacks generation_fallback:, so getSharedCachedAnswer will not evict.
-    // v25 is the intentional invalidation — staying on v24 would reintroduce the blocker.
-    expect(ragCacheDependencyVersion).toBe("rag-cache-v25");
+    // v26 retains v25's intentional invalidation and adds governance freshness. Staying on v24 would reintroduce the blocker.
+    expect(ragCacheDependencyVersion).toBe("rag-cache-v26");
     expect(ragCacheDependencyVersion).not.toBe("rag-cache-v24");
   });
 
@@ -412,12 +413,29 @@ describe("RAG cache invalidation", () => {
       shadow_retrieval_state: "completed",
       candidate_match_counts: { matched: 1, partial_match: 0, absent: 0 },
       candidate_retrieval_query_variant_count: 3,
+      // Per-request measurement from the populating run must never be replayed on a hit.
+      retrieval_stage_timeline_ms: [{ stage: "text_candidates", started_offset_ms: 0, finished_offset_ms: 9_000 }],
+      text_rpc_variant_timings: [
+        {
+          rpc: "match_document_chunks_text",
+          variant_index: 0,
+          role: "primary",
+          ran: true,
+          started_offset_ms: 0,
+          finished_offset_ms: 9_000,
+          rpc_ms: 9_000,
+          row_count: 30,
+        },
+      ],
     };
     await h.cache.setCachedSearch(shadow, h.admitted, telemetry, [], { publicCacheWriteProof: h.proof("search") });
     await vi.waitFor(() => expect(h.rows).toHaveLength(2));
-    expect((await h.cache.getCachedSearch(h.args("legacy")))?.results.map((row) => row.id)).toEqual(
-      h.admitted.map((row) => row.id),
-    );
+    const hit = await h.cache.getCachedSearch(h.args("legacy"));
+    expect(hit?.results.map((row) => row.id)).toEqual(h.admitted.map((row) => row.id));
+    expect(hit?.telemetry.text_rpc_variant_timings).toBeUndefined();
+    expect(hit?.telemetry.retrieval_stage_timeline_ms).toBeUndefined();
+    expect(JSON.stringify(h.rows)).not.toContain("text_rpc_variant_timings");
+    expect(JSON.stringify(h.rows)).not.toContain("retrieval_stage_timeline_ms");
     expect(JSON.stringify(h.rows)).not.toContain("candidate_match_counts");
     expect(JSON.stringify(h.rows)).not.toContain("shadow_retrieval_state");
     expect(JSON.stringify(h.rows)).not.toContain("candidate_retrieval_query_variant_count");
@@ -540,7 +558,7 @@ describe("RAG cache invalidation", () => {
         },
         publicSiteChangeEpoch: "1",
         pendingPublicSiteChangeCount: 0,
-        documentIndexGeneration: "index-v1",
+        documentIndexGeneration: "test-rag-version:rag-cache-scope-v1:" + "0".repeat(32),
         sourcePolicyVersion: "policy-v1",
         rolloutVersion: "rollout-v1",
       },
@@ -552,7 +570,7 @@ describe("RAG cache invalidation", () => {
       canaryBasisPoints: 10000,
       queryPlanVersion: "v1",
       sourcePolicyVersion: "policy-v1",
-      indexGeneration: "index-v1",
+      indexGeneration: "test-rag-version:rag-cache-scope-v1:" + "0".repeat(32),
       publicSiteContentReleaseId: args.ragRequestContext.snapshot.publicSiteContent.releaseId,
       publicSiteContentStaticManifestDigest: "a".repeat(64),
       publicSiteContentReleaseDigest: "c".repeat(64),
@@ -680,7 +698,7 @@ describe("RAG cache invalidation", () => {
       expect((await cache.getCachedAnswer(args, Date.now()))?.answer).toBe("variant-" + index);
       expect((await cache.getSharedCachedAnswer(args, Date.now()))?.answer).toBe("variant-" + index);
     }
-    expect(rows.every((row) => row.dependency_version === "rag-cache-v25")).toBe(true);
+    expect(rows.every((row) => row.dependency_version === "rag-cache-v26")).toBe(true);
   });
 
   it("P08C distinguishes full request suffixes in every answer identity without retaining request text", async () => {
@@ -782,7 +800,7 @@ describe("RAG cache invalidation", () => {
     const from = vi.fn(() => {
       throw new Error("shadow cache writes must not touch storage");
     });
-    vi.doMock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({ from }) }));
+    vi.doMock("@/lib/supabase/admin", () => ({ createAdminClient: () => withMockRagScopeRevision({ from }) }));
 
     const { getCachedAnswer, setCachedAnswer, setCachedSearch } = await import("../src/lib/rag/rag-cache");
     const args = {
@@ -836,9 +854,9 @@ describe("RAG cache invalidation", () => {
 
     // Ledger #ZK460W: must stay ahead of main's v24 while that namespace still holds
     // unsafe grounded/non-review_only review-fallback rows that lack generation_fallback:.
-    expect(ragCacheDependencyVersion).toBe("rag-cache-v25");
+    expect(ragCacheDependencyVersion).toBe("rag-cache-v26");
     expect(ragCacheDependencyVersion).not.toBe("rag-cache-v24");
-    expect(scopedAnswerCacheKey(legacyV1)).toMatch(/^rag-cache-v25\|/);
+    expect(scopedAnswerCacheKey(legacyV1)).toMatch(/^rag-cache-v26\|/);
     expect(scopedAnswerCacheKey(legacyV1)).not.toBe(scopedAnswerCacheKey(shadowV1));
     expect(scopedAnswerCacheKey(shadowV1)).not.toBe(scopedAnswerCacheKey(shadowV2));
     const searchKeys = [legacyV1, shadowV1, shadowV2].map((args) =>
@@ -851,11 +869,12 @@ describe("RAG cache invalidation", () => {
   it("removes only the matching hashed site-aware answer and in-flight identities", async () => {
     vi.resetModules();
     vi.doMock("@/lib/supabase/admin", () => ({
-      createAdminClient: () => ({
-        from: () => ({
-          delete: () => new DeleteQuery([]),
+      createAdminClient: () =>
+        withMockRagScopeRevision({
+          from: () => ({
+            delete: () => new DeleteQuery([]),
+          }),
         }),
-      }),
     }));
 
     const { withRagRequestContext } = await import("../src/lib/rag/rag-context-snapshot");
@@ -905,16 +924,17 @@ describe("RAG cache invalidation", () => {
     const calls: FilterCall[][] = [];
 
     vi.doMock("@/lib/supabase/admin", () => ({
-      createAdminClient: () => ({
-        from: vi.fn((table: string) => ({
-          delete: vi.fn(() => {
-            expect(table).toBe("rag_response_cache");
-            const queryCalls: FilterCall[] = [];
-            calls.push(queryCalls);
-            return new DeleteQuery(queryCalls);
-          }),
-        })),
-      }),
+      createAdminClient: () =>
+        withMockRagScopeRevision({
+          from: vi.fn((table: string) => ({
+            delete: vi.fn(() => {
+              expect(table).toBe("rag_response_cache");
+              const queryCalls: FilterCall[] = [];
+              calls.push(queryCalls);
+              return new DeleteQuery(queryCalls);
+            }),
+          })),
+        }),
     }));
 
     const { invalidateRagCachesForDocumentMutation } = await import("../src/lib/rag/rag");
@@ -946,41 +966,42 @@ describe("RAG cache invalidation", () => {
     const indexingVersionGate = new Promise<void>((resolve) => {
       releaseIndexingVersion = resolve;
     });
-    const indexingStamp = "rag-deep-memory-v2:doc-1:2026-07-01T00:00:00.000Z:";
+    const indexingStamp = `rag-deep-memory-v2:${mockRagScopeRevision([{ id: "doc-1", updated_at: "2026-07-01T00:00:00.000Z", metadata: {} }])}`;
 
     vi.doMock("@/lib/supabase/admin", () => ({
-      createAdminClient: () => ({
-        from: vi.fn((table: string) => {
-          if (table === "documents") {
-            const builder = {
-              select: vi.fn(() => builder),
-              eq: vi.fn(() => builder),
-              is: vi.fn(() => builder),
-              or: vi.fn(() => builder),
-              in: vi.fn(() => builder),
-              order: vi.fn(() => builder),
-              limit: vi.fn(() => builder),
-              abortSignal: vi.fn(() => builder),
-              then: (onfulfilled?: (value: { data: unknown; error: null }) => unknown) =>
-                indexingVersionGate
-                  .then(() =>
-                    Promise.resolve({
-                      data: [{ id: "doc-1", updated_at: "2026-07-01T00:00:00.000Z", metadata: {} }],
-                      error: null,
-                    }),
-                  )
-                  .then(onfulfilled),
-            };
-            return builder;
-          }
+      createAdminClient: () =>
+        withMockRagScopeRevision({
+          from: vi.fn((table: string) => {
+            if (table === "documents") {
+              const builder = {
+                select: vi.fn(() => builder),
+                eq: vi.fn(() => builder),
+                is: vi.fn(() => builder),
+                or: vi.fn(() => builder),
+                in: vi.fn(() => builder),
+                order: vi.fn(() => builder),
+                limit: vi.fn(() => builder),
+                abortSignal: vi.fn(() => builder),
+                then: (onfulfilled?: (value: { data: unknown; error: null }) => unknown) =>
+                  indexingVersionGate
+                    .then(() =>
+                      Promise.resolve({
+                        data: [{ id: "doc-1", updated_at: "2026-07-01T00:00:00.000Z", metadata: {} }],
+                        error: null,
+                      }),
+                    )
+                    .then(onfulfilled),
+              };
+              return builder;
+            }
 
-          const deleteCalls: FilterCall[] = [];
-          return {
-            delete: vi.fn(() => new DeleteQuery(deleteCalls)),
-            insert: vi.fn(async () => ({ data: null, error: null })),
-          };
+            const deleteCalls: FilterCall[] = [];
+            return {
+              delete: vi.fn(() => new DeleteQuery(deleteCalls)),
+              insert: vi.fn(async () => ({ data: null, error: null })),
+            };
+          }),
         }),
-      }),
     }));
 
     const { getCachedAnswer, invalidateRagCachesForOwner, setCachedAnswer } = await import("../src/lib/rag/rag-cache");
@@ -995,7 +1016,7 @@ describe("RAG cache invalidation", () => {
     });
 
     // Simulate a table-fact / review mutation while the deferred promotion awaits
-    // its forced indexing-version read. Review metadata does not change that stamp.
+    // its forced document-revision read. A table-fact mutation is outside that revision.
     invalidateRagCachesForOwner(ownerId);
     releaseIndexingVersion?.();
     await promotion;
@@ -1015,41 +1036,42 @@ describe("RAG cache invalidation", () => {
     const indexingVersionGate = new Promise<void>((resolve) => {
       releaseIndexingVersion = resolve;
     });
-    const indexingStamp = "rag-deep-memory-v2:doc-1:2026-07-01T00:00:00.000Z:";
+    const indexingStamp = `rag-deep-memory-v2:${mockRagScopeRevision([{ id: "doc-1", updated_at: "2026-07-01T00:00:00.000Z", metadata: {} }])}`;
 
     vi.doMock("@/lib/supabase/admin", () => ({
-      createAdminClient: () => ({
-        from: vi.fn((table: string) => {
-          if (table === "documents") {
-            const builder = {
-              select: vi.fn(() => builder),
-              eq: vi.fn(() => builder),
-              is: vi.fn(() => builder),
-              or: vi.fn(() => builder),
-              in: vi.fn(() => builder),
-              order: vi.fn(() => builder),
-              limit: vi.fn(() => builder),
-              abortSignal: vi.fn(() => builder),
-              then: (onfulfilled?: (value: { data: unknown; error: null }) => unknown) =>
-                indexingVersionGate
-                  .then(() =>
-                    Promise.resolve({
-                      data: [{ id: "doc-1", updated_at: "2026-07-01T00:00:00.000Z", metadata: {} }],
-                      error: null,
-                    }),
-                  )
-                  .then(onfulfilled),
-            };
-            return builder;
-          }
+      createAdminClient: () =>
+        withMockRagScopeRevision({
+          from: vi.fn((table: string) => {
+            if (table === "documents") {
+              const builder = {
+                select: vi.fn(() => builder),
+                eq: vi.fn(() => builder),
+                is: vi.fn(() => builder),
+                or: vi.fn(() => builder),
+                in: vi.fn(() => builder),
+                order: vi.fn(() => builder),
+                limit: vi.fn(() => builder),
+                abortSignal: vi.fn(() => builder),
+                then: (onfulfilled?: (value: { data: unknown; error: null }) => unknown) =>
+                  indexingVersionGate
+                    .then(() =>
+                      Promise.resolve({
+                        data: [{ id: "doc-1", updated_at: "2026-07-01T00:00:00.000Z", metadata: {} }],
+                        error: null,
+                      }),
+                    )
+                    .then(onfulfilled),
+              };
+              return builder;
+            }
 
-          const deleteCalls: FilterCall[] = [];
-          return {
-            delete: vi.fn(() => new DeleteQuery(deleteCalls)),
-            insert: vi.fn(async () => ({ data: null, error: null })),
-          };
+            const deleteCalls: FilterCall[] = [];
+            return {
+              delete: vi.fn(() => new DeleteQuery(deleteCalls)),
+              insert: vi.fn(async () => ({ data: null, error: null })),
+            };
+          }),
         }),
-      }),
     }));
 
     const { getCachedAnswer, invalidateRagCachesForOwner, setCachedAnswer } = await import("../src/lib/rag/rag-cache");

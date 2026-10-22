@@ -33,7 +33,7 @@ import { factsheetGlyph } from "@/components/factsheets/factsheets-icons";
 import { FactsheetNavHeader, factsheetBodySectionId } from "@/components/factsheets/factsheet-nav-header";
 import { inPageAnchor } from "@/components/in-page-nav/in-page-nav-classes";
 import { InformationPageHeader, InformationPageShell } from "@/components/information-page-shell";
-import { cn, toneDanger, toneWarning } from "@/components/ui-primitives";
+import { cn, primaryControl, toneDanger, toneWarning } from "@/components/ui-primitives";
 import {
   readSavedRegistrySlugs,
   savedFactsheetsStorageKey,
@@ -389,11 +389,7 @@ export function FactsheetDetailPage({ factsheet }: { factsheet: Factsheet }) {
                 labels derived from what this sheet actually renders, so a second
                 inert copy would be the same decoration twice. */}
             <div className="grid gap-2 border-t border-[color:var(--border)] p-4">
-              <button
-                type="button"
-                onClick={copyLink}
-                className="inline-flex min-h-tap items-center justify-center gap-2 rounded-lg bg-[color:var(--command)] px-3 text-sm font-semibold text-[color:var(--command-contrast)] transition hover:bg-[color:var(--command-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
-              >
+              <button type="button" onClick={copyLink} className={cn(primaryControl, "px-3 shadow-[var(--e0)]")}>
                 {copied ? (
                   <Check className="h-4 w-4" aria-hidden="true" />
                 ) : (

@@ -1,5 +1,6 @@
 import { expect, type Locator, type Page } from "playwright/test";
 import { phoneHeaderCollapseAddonSlotId } from "../../src/lib/mode-home-composer";
+import { expectHydrated, expectSingleSettledOwner } from "../playwright-settlement";
 
 /**
  * Shared fixtures for the phone scroll-geometry guardrails (the #964 regression class).
@@ -194,12 +195,58 @@ export async function gotoPhoneSurface(page: Page, path: string, safeAreaBottom 
     else applySafeArea();
   }, safeAreaBottom);
   await page.goto(path, { waitUntil: "domcontentloaded" });
-  await expect(page.locator("#main-content").first()).toBeVisible({ timeout: 15_000 });
+  const main = await expectSingleSettledOwner(page.locator("#main-content"));
+  await expectHydrated(main);
   // Simulate installed-PWA safe-area insets (the repo routes env() through
   // these vars precisely so Chromium tests can exercise them). The init script
   // reapplies them to any document created by an auth or canonical redirect.
-  // Let hydration, fonts, and the composer/portal layout settle.
-  await page.waitForTimeout(700);
+  await expectPhoneLayoutSettled(page, safeAreaBottom);
+}
+
+/** Font completion and converged chrome geometry replace elapsed-time guesses.
+ * Each journey still asserts its own scroll-owner/portal state after setup.
+ */
+export async function expectPhoneLayoutSettled(page: Page, safeAreaBottom: number) {
+  let previous = "";
+  let stableSamples = 0;
+  await expect
+    .poll(
+      async () => {
+        // A late auth/canonical redirect can replace the document mid-sample. That is
+        // "not settled yet", not a failure: reset the stable count and poll again.
+        const geometry = await page
+          .evaluate(async (bottom) => {
+            if (document.fonts.status !== "loaded") return null;
+            await document.fonts.ready;
+            await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+            const rootStyle = getComputedStyle(document.documentElement);
+            if (rootStyle.getPropertyValue("--safe-area-bottom").trim() !== `${bottom}px`) return null;
+            if (document.querySelector('[data-chrome-transitioning="true"], [data-reserve-transitioning="true"]'))
+              return null;
+            return Array.from(
+              document.querySelectorAll(
+                '#main-content, .phone-viewport-frame, .phone-footer-layer-host, [data-testid="mobile-composer-reserve-pad"], header',
+              ),
+            )
+              .filter((node) => node.getClientRects().length > 0)
+              .map((node) => {
+                const rect = node.getBoundingClientRect();
+                return [node.id, node.className, rect.x, rect.y, rect.width, rect.height, node.scrollHeight];
+              });
+          }, safeAreaBottom)
+          .catch((error: unknown) => {
+            if (error instanceof Error && /Execution context was destroyed|navigation/i.test(error.message))
+              return null;
+            throw error;
+          });
+        const current = geometry?.length ? JSON.stringify(geometry) : "";
+        stableSamples = current && current === previous ? stableSamples + 1 : 0;
+        previous = current;
+        return stableSamples >= 2;
+      },
+      { timeout: 15_000, message: "hydrated phone fonts, safe areas and chrome layout must settle" },
+    )
+    .toBe(true);
 }
 
 /**

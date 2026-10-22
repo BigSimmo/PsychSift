@@ -10,6 +10,7 @@ import {
   type AnswerCoalescingMetricsSnapshot,
 } from "@/lib/observability/answer-coalescing-metrics";
 import type { SpendProbeClient, SpendSnapshot } from "@/lib/observability/spend-metrics";
+import type { CleanupBacklogProbeClient, StorageCleanupBacklogSnapshot } from "@/lib/observability/cleanup-backlog";
 import { resolveDeploymentCommitSha } from "@/lib/observability/sentry-release";
 import type { SiteContentPublicHealthProjection } from "@/lib/site-content/site-content-health";
 
@@ -47,6 +48,8 @@ type HealthResponseOptions = {
   includeCache?: boolean;
   includeCoalescing?: boolean;
   includeSpend?: boolean;
+  /** Outstanding `storage_cleanup_jobs` counts (audit F-10), operator-gated like `spend`. */
+  includeStorageCleanup?: boolean;
   includeOperatorDiagnostics?: boolean;
   /** The site-content control-plane audit. See the block guarding it below. */
   includeSiteContent?: boolean;
@@ -91,6 +94,21 @@ const READINESS_SUPABASE_PROBE_TIMEOUT_MS = 5_000;
  */
 export const SITE_CONTENT_PROBE_TIMEOUT_MS = 10_000;
 
+/**
+ * Length of the `sloTrailing` answer snapshot: one ops-digest interval (the digest runs every six
+ * hours). The hourly `slo` snapshot alone left five hours in every six unexamined, so rising
+ * source-gap, unsupported or fallback rates went unnoticed (audit EVAL-02, 2026-10-20). Must equal
+ * `ANSWER_QUALITY_WINDOW_MINUTES` in scripts/lib/operational-alerts.mjs, which judges it;
+ * tests/health-response-deep-probe.test.ts pins the two together.
+ */
+export const ANSWER_SLO_TRAILING_WINDOW_MINUTES = 360;
+
+/**
+ * Length of the optional `sloDaily` snapshot, computed only when the caller asks with
+ * `answer_window=daily` (the once-a-day health summary). No alert reads it.
+ */
+export const ANSWER_SLO_DAILY_WINDOW_MINUTES = 1440;
+
 export async function healthResponse(request: Request, options: HealthResponseOptions = {}) {
   const deep = options.forceDeep || new URL(request.url).searchParams.get("deep") === "1";
   const tokenAuthorized = allowDeepHealthProbe(request);
@@ -110,10 +128,16 @@ export async function healthResponse(request: Request, options: HealthResponseOp
     siteContent: "skipped",
   };
   let slo: AnswerSloSnapshot | null = null;
+  // `{ unavailable: true }` marks a trailing query that failed on this build, so the digest reports
+  // answer quality as unknown rather than treating the response as an older hourly-only build.
+  let sloTrailing: AnswerSloSnapshot | { windowMinutes: number; unavailable: true } | null = null;
+  let sloDaily: AnswerSloSnapshot | null = null;
+  const dailyRequested = new URL(request.url).searchParams.get("answer_window") === "daily";
   let cache: CacheMetricsSnapshot | null = null;
   let coalescing: AnswerCoalescingMetricsSnapshot | null = null;
   let spend: SpendSnapshot | null = null;
   let siteContent: SiteContentPublicHealthProjection | null = null;
+  let storageCleanup: StorageCleanupBacklogSnapshot | null = null;
 
   if (deep) {
     if (!options.allowUnauthenticatedDeep && !tokenAuthorized) {
@@ -197,13 +221,22 @@ export async function healthResponse(request: Request, options: HealthResponseOp
           // thing holding the claim true was `/api/health/ready` opting out via
           // `includeSlo: false` — one flag at one caller, not a gate.
           if (health.ok && operatorDiagnostics && probeEnabled(options.includeSlo)) {
-            try {
-              // Avoid recursively instantiating the full generated PostgREST
-              // client type against the intentionally tiny SLO query surface.
-              slo = await answerSloSnapshot(admin as unknown as SloProbeClient);
-            } catch {
-              slo = null;
-            }
+            // Avoid recursively instantiating the full generated PostgREST
+            // client type against the intentionally tiny SLO query surface.
+            const sloClient = admin as unknown as SloProbeClient;
+            // Hourly (hybrid-RPC identity history) and trailing (answer-rate alerts) snapshots
+            // run side by side; either failing drops only its own block.
+            const [hourly, trailing, daily] = await Promise.allSettled([
+              answerSloSnapshot(sloClient),
+              answerSloSnapshot(sloClient, ANSWER_SLO_TRAILING_WINDOW_MINUTES),
+              dailyRequested ? answerSloSnapshot(sloClient, ANSWER_SLO_DAILY_WINDOW_MINUTES) : Promise.resolve(null),
+            ]);
+            slo = hourly.status === "fulfilled" ? hourly.value : null;
+            sloDaily = daily.status === "fulfilled" ? daily.value : null;
+            sloTrailing =
+              trailing.status === "fulfilled"
+                ? trailing.value
+                : { windowMinutes: ANSWER_SLO_TRAILING_WINDOW_MINUTES, unavailable: true };
           }
           // Answer-generation spend, gated like `slo` (token-authorized deep probe
           // + healthy Supabase). Derives USD from already-recorded token counts and
@@ -225,6 +258,18 @@ export async function healthResponse(request: Request, options: HealthResponseOp
               });
             } catch {
               spend = null;
+            }
+          }
+          // Storage cleanup backlog (audit F-10): failed storage deletions are queued in
+          // `storage_cleanup_jobs` and drained only by the manual `npm run cleanup:storage`,
+          // so the count is surfaced for the ops digest. Head-only counts plus one timestamp,
+          // gated like `spend`; a query error drops the block and never flips liveness.
+          if (health.ok && operatorDiagnostics && probeEnabled(options.includeStorageCleanup)) {
+            try {
+              const { storageCleanupBacklogSnapshot } = await import("@/lib/observability/cleanup-backlog");
+              storageCleanup = await storageCleanupBacklogSnapshot(admin as unknown as CleanupBacklogProbeClient);
+            } catch {
+              storageCleanup = null;
             }
           }
         } catch {
@@ -249,9 +294,12 @@ export async function healthResponse(request: Request, options: HealthResponseOp
       deploymentCommitSha: resolveDeploymentCommitSha(),
       checks,
       ...(slo ? { slo } : {}),
+      ...(sloTrailing ? { sloTrailing } : {}),
+      ...(sloDaily ? { sloDaily } : {}),
       ...(cache ? { cache } : {}),
       ...(coalescing ? { coalescing } : {}),
       ...(spend ? { spend } : {}),
+      ...(storageCleanup ? { storageCleanup } : {}),
       ...(siteContent ? { siteContent } : {}),
       ...(deep && operatorDiagnostics
         ? { ragProgramme: { ...ragProgrammeHealth(), siteContentFreshness: siteContent?.state ?? "unavailable" } }

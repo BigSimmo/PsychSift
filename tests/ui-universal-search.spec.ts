@@ -529,7 +529,7 @@ test.describe("universal search smart affordances", () => {
     );
     await ask.click();
     expect((await answerRequest).postDataJSON()).toMatchObject({ query: "acamprosat" });
-    await expect(page.getByRole("main").getByRole("heading", { name: "Answer", exact: true })).toBeVisible();
+    await expect(page.getByRole("main").getByRole("heading", { name: "Answer", level: 1, exact: true })).toBeVisible();
     await expect(page).toHaveURL(/mode=answer/);
   });
 

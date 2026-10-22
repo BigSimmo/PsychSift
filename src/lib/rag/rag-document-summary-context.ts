@@ -1,10 +1,25 @@
+import { excludeSupersededEvidence } from "@/lib/rag/superseded-evidence";
 import { committedIndexGeneration } from "@/lib/reindex-pipeline";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { RagAnswer, SearchResult } from "@/lib/types";
 
 function throwIfAborted(signal?: AbortSignal) {
   if (signal?.aborted) {
     throw signal.reason ?? new DOMException("The operation was aborted.", "AbortError");
   }
+}
+
+/**
+ * The refusal for a document that cannot be summarised, or null when it can. A superseded document
+ * is never used as evidence, including when it is summarised directly (#BFCTST).
+ */
+export function documentSummaryUnavailableAnswer(results: SearchResult[]): RagAnswer | null {
+  const answer = !results.length
+    ? "This document has not been indexed yet, so no summary can be generated."
+    : excludeSupersededEvidence(results).length === 0
+      ? "This document is marked as superseded, so it is not summarised as clinical guidance. Use its current replacement instead."
+      : null;
+  return answer ? { answer, grounded: false, confidence: "unsupported", citations: [], sources: [] } : null;
 }
 
 export async function loadDocumentSummaryContext(documentId: string, ownerId?: string, signal?: AbortSignal) {
@@ -39,22 +54,33 @@ export async function loadDocumentSummaryContext(documentId: string, ownerId?: s
     )
     .eq("document_id", documentId);
   if (committedGeneration) {
-    chunksQuery = chunksQuery.eq("index_generation_id", committedGeneration);
+    chunksQuery = chunksQuery.or(`index_generation_id.is.null,index_generation_id.eq.${committedGeneration}`);
   } else if (typeof (chunksQuery as { is?: unknown }).is === "function") {
     chunksQuery = (chunksQuery as typeof chunksQuery & { is: (column: string, value: null) => typeof chunksQuery }).is(
       "index_generation_id",
       null,
     );
   }
-  chunksQuery = chunksQuery.order("chunk_index", { ascending: true }).limit(40);
+  // Committed-generation rows sort ahead of legacy NULL-generation rows so the
+  // 40-row cap cannot be filled by legacy chunks alone.
+  chunksQuery = chunksQuery
+    .order("index_generation_id", { ascending: true, nullsFirst: false })
+    .order("chunk_index", { ascending: true })
+    .limit(40);
   if (signal) chunksQuery = chunksQuery.abortSignal(signal);
   const { data: chunks, error } = await chunksQuery;
 
   throwIfAborted(signal);
   if (error) throw new Error(error.message);
-  const committedChunks = (chunks ?? []).filter(
-    (chunk) =>
-      !chunk.index_generation_id || (Boolean(committedGeneration) && chunk.index_generation_id === committedGeneration),
+  const rows = chunks ?? [];
+  // Legacy NULL-generation rows only stand in while the committed generation
+  // has written no replacements, matching the commit RPC's preserve rule.
+  const hasCommittedRows =
+    Boolean(committedGeneration) && rows.some((chunk) => chunk.index_generation_id === committedGeneration);
+  const committedChunks = rows.filter((chunk) =>
+    chunk.index_generation_id
+      ? Boolean(committedGeneration) && chunk.index_generation_id === committedGeneration
+      : !hasCommittedRows,
   );
   return { document, chunks: committedChunks };
 }

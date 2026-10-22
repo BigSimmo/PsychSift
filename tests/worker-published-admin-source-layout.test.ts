@@ -24,7 +24,6 @@ it("retains the worker entry point as the identical shared publication reader", 
 it("keeps the app publication reader and contract independent of worker-owned modules", () => {
   for (const path of [
     "src/lib/registered-public-answer-options.ts",
-    "src/lib/rag/rag-source-block.ts",
     "src/lib/publication/published-admin-layout.ts",
     "src/lib/publication/published-admin-layout-contract.ts",
     "src/lib/publication/original-witness-readback.ts",
@@ -32,6 +31,14 @@ it("keeps the app publication reader and contract independent of worker-owned mo
     const source = readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
     expect(source, path).not.toMatch(/from\s+["'][^"']*worker\//);
   }
+  // rag-source-block.ts is a sealed clinical-hazard path. Until the owner next reseals the
+  // register, it keeps a type-only import through the worker compatibility re-export.
+  const ragSourceBlock = readFileSync(new URL("../src/lib/rag/rag-source-block.ts", import.meta.url), "utf8");
+  const workerImports =
+    ragSourceBlock.match(/import\s+(type\s+)?\{[^}]*\}\s+from\s+["'][^"']*worker\/[^"']*["']/g) ?? [];
+  expect(workerImports).toHaveLength(1);
+  expect(workerImports[0]).toMatch(/^import\s+type\s/);
+  expect(workerImports[0]).toContain("worker/published-admin-source-layout-contract");
 });
 
 const ownerId = "00000000-0000-4000-8000-000000000001";

@@ -1,9 +1,8 @@
 import { loadEnvConfig } from "@next/env";
 import type { IngestionRecoveryJob } from "@/lib/ingestion-recovery";
 import { confirm } from "./cli-utils";
-import { applyIngestionRecoveryPlan, supabaseStageError } from "./lib/ingestion-recovery-executor";
 
-import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
+loadEnvConfig(process.cwd());
 
 type RecoveryDocument = {
   status?: string | null;
@@ -17,8 +16,27 @@ type RawJobRow = {
   document_id: string;
   status: string | null;
   locked_at: string | null;
+  lease_token: string | null;
+  lease_expires_at: string | null;
   documents: RecoveryDocument | RecoveryDocument[] | null;
 };
+
+function supabaseStageError(stage: string, error: unknown) {
+  const record = error && typeof error === "object" ? (error as Record<string, unknown>) : {};
+  const message =
+    typeof record.message === "string" && record.message.trim().length > 0
+      ? record.message
+      : `Supabase operation failed during ${stage}`;
+  const wrapped = new Error(message);
+  wrapped.name = "SupabaseRecoveryError";
+  Object.assign(wrapped, {
+    stage,
+    code: record.code,
+    details: record.details,
+    hint: record.hint,
+  });
+  return wrapped;
+}
 
 const booleanFlags = new Set(["--apply", "--yes", "--include-stranded-queued"]);
 const valueFlags = new Set(["--stale-after-minutes", "--limit", "--stranded-min-age-minutes", "--owner-id"]);
@@ -71,11 +89,15 @@ function parseArgs(argv: string[]) {
   };
 }
 
-export async function runIngestionRecovery(argv = process.argv.slice(2)) {
-  loadEnvConfig(process.cwd());
+async function main() {
   const [
     { env, requireServerEnv },
-    { buildIngestionRecoveryPlan, INGESTION_RECOVERY_JOB_STATUSES },
+    {
+      buildIngestionRecoveryPlan,
+      reconcileIngestionRecoveryPlan,
+      applyIngestionRecoveryActions,
+      INGESTION_RECOVERY_JOB_STATUSES,
+    },
     { createAdminClient },
     { assertSupabaseHealthy, probeSupabaseHealth },
   ] = await Promise.all([
@@ -85,7 +107,7 @@ export async function runIngestionRecovery(argv = process.argv.slice(2)) {
     import("@/lib/supabase/health"),
   ]);
   requireServerEnv();
-  const args = parseArgs(argv);
+  const args = parseArgs(process.argv.slice(2));
   const staleAfterMinutes = args.staleAfterMinutes ?? env.WORKER_STALE_AFTER_MINUTES;
   const limit = args.limit ?? 20;
   const supabase = createAdminClient();
@@ -100,7 +122,9 @@ export async function runIngestionRecovery(argv = process.argv.slice(2)) {
   const openJobsQuery = () => {
     const query = supabase
       .from("ingestion_jobs")
-      .select("id,document_id,status,locked_at,documents!inner(status,page_count,chunk_count,owner_id)")
+      .select(
+        "id,document_id,status,locked_at,lease_token,lease_expires_at,documents!inner(status,page_count,chunk_count,owner_id)",
+      )
       .in("status", [...INGESTION_RECOVERY_JOB_STATUSES])
       .order("created_at", { ascending: true });
     return args.ownerId ? query.eq("documents.owner_id", args.ownerId) : query;
@@ -118,17 +142,15 @@ export async function runIngestionRecovery(argv = process.argv.slice(2)) {
   const jobs = normaliseJobRows(data as RawJobRow[] | null);
   const plan = buildIngestionRecoveryPlan({ jobs, staleAfterMinutes });
   const actions = plan.actions.slice(0, limit);
-  const resetDocumentIds = Array.from(
-    new Set(actions.filter((action) => action.action === "retry").map((action) => action.documentId)),
-  );
+  const resetDocumentIds = plan.resetDocumentIds;
   const supersedeCount = actions.filter((action) => action.action === "supersede").length;
   const retryCount = actions.filter((action) => action.action === "retry").length;
   const remainingCount = Math.max(0, plan.actions.length - actions.length);
 
-  console.log(`Stale-after threshold : ${staleAfterMinutes} min`);
+  console.log(`Stale-after threshold : ${staleAfterMinutes} min (legacy rows only)`);
   console.log(`Action limit          : ${limit}`);
   console.log(`Scanned jobs          : ${jobs.length}`);
-  console.log(`Documents to reset    : ${resetDocumentIds.length}`);
+  console.log(`Documents to reset    : ${resetDocumentIds.length} (all artifacts preserved)`);
   console.log(`Jobs to supersede     : ${supersedeCount}`);
   console.log(`Jobs to retry         : ${retryCount}`);
   if (remainingCount > 0) {
@@ -178,16 +200,49 @@ export async function runIngestionRecovery(argv = process.argv.slice(2)) {
   }
 
   if (actions.length > 0) {
-    await applyIngestionRecoveryPlan({
-      supabase,
-      actions,
+    // The plan above is a point-in-time snapshot and the operator may have spent minutes reading it
+    // at the confirmation prompt. In that window a job can complete, a worker can re-claim it, or a
+    // document can reach `indexed`. Re-derive the plan, then let the atomic RPC validate
+    // current authority and lease identity before changing scheduling. (Audit R20/R21, F03)
+    console.log("\nRe-reading the queue before applying...");
+    const { data: freshData, error: freshError } = await openJobsQuery();
+    if (freshError) throw supabaseStageError("re-read open ingestion jobs", freshError);
+
+    const { applicable, skipped } = reconcileIngestionRecoveryPlan({
+      planned: actions,
+      jobs: normaliseJobRows(freshData as RawJobRow[] | null),
       staleAfterMinutes,
-      readJobs: async () => {
-        const { data, error } = await openJobsQuery();
-        if (error) throw supabaseStageError("re-read open ingestion jobs", error);
-        return normaliseJobRows(data as RawJobRow[] | null);
-      },
     });
+
+    for (const entry of skipped) {
+      const because = entry.reason === "job_closed" ? "job closed before apply" : "queue state changed before apply";
+      console.log(
+        `  skipped ${entry.action.action} job ${entry.action.jobId} (document ${entry.action.documentId}): ${because}`,
+      );
+    }
+
+    if (applicable.length === 0) {
+      console.log("\nNothing left to apply. The queue moved on while the plan awaited confirmation.");
+    } else {
+      console.log(`\nApplying job recovery (${applicable.length} of ${actions.length} planned action(s))...`);
+
+      // One server transaction holds current document authority and both job-family locks.
+      // It rechecks the snapshot, preserves every index generation and requeues atomically.
+      // No client-side processing lease, destructive reset or compensating write is needed.
+      let supersededCount = 0;
+      let retriedCount = 0;
+      const results = await applyIngestionRecoveryActions(supabase, applicable);
+      for (const { action, applied, reason } of results) {
+        if (!applied) {
+          console.log(`  skipped ${action.action} job ${action.jobId}: ${reason}`);
+          continue;
+        }
+        if (action.action === "supersede") supersededCount += 1;
+        else retriedCount += 1;
+      }
+
+      console.log(`Ingestion queue recovery applied (superseded ${supersededCount}, requeued ${retriedCount}).`);
+    }
 
     if (remainingCount > 0) {
       console.log(`\n${remainingCount} action(s) remain over the limit. Re-run to process the next batch.`);
@@ -212,16 +267,14 @@ export async function runIngestionRecovery(argv = process.argv.slice(2)) {
   }
 }
 
-if (isDirectEntrypoint(import.meta.url)) {
-  runIngestionRecovery().catch((error) => {
-    import("@/lib/privacy")
-      .then(({ safeErrorLogDetails }) => {
-        console.error("Ingestion queue recovery failed", safeErrorLogDetails(error));
-        process.exitCode = 1;
-      })
-      .catch(() => {
-        console.error(error instanceof Error ? error.message : error);
-        process.exitCode = 1;
-      });
-  });
-}
+main().catch((error) => {
+  import("@/lib/privacy")
+    .then(({ safeErrorLogDetails }) => {
+      console.error("Ingestion queue recovery failed", safeErrorLogDetails(error));
+      process.exitCode = 1;
+    })
+    .catch(() => {
+      console.error(error instanceof Error ? error.message : error);
+      process.exitCode = 1;
+    });
+});

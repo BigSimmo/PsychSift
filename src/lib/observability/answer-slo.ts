@@ -16,6 +16,28 @@ export const ANSWER_LATENCY_BUDGET_MS = {
   extractive: 6_000,
 } as const;
 
+export type AnswerLatencyRouteMode = keyof typeof ANSWER_LATENCY_BUDGET_MS;
+
+/** p95 answer latency for one routing mode (same latency field as the budget-breach rate), over the bounded metadata sample. */
+export type AnswerLatencyP95 = {
+  /** Null when the sample held no row of this mode with a finite latency. */
+  p95Ms: number | null;
+  samples: number;
+};
+
+/**
+ * Time from pressing Ask to the first useful content: the verified evidence preview when one
+ * was sent, otherwise the finished answer. Nearest-rank, over the same bounded sample as the
+ * latency p95. Display only; no alert reads it (master plan section 4).
+ */
+export type AnswerTimeToFirstContent = {
+  p50Ms: number | null;
+  p95Ms: number | null;
+  samples: number;
+  /** Samples whose first content was the evidence preview rather than the finished answer. */
+  previewSamples: number;
+};
+
 export type AnswerSloSnapshot = {
   windowMinutes: number;
   totalQueries: number;
@@ -43,6 +65,15 @@ export type AnswerSloSnapshot = {
   sourceGapRate: number;
   unsupportedRate: number;
   latencyBudgetBreachRate: number;
+  /**
+   * Per-route p95 answer latency from the same bounded metadata sample as the budget-breach
+   * rate. Rows whose routing mode is not fast, strong or extractive/source-only are left out
+   * rather than guessed, so an unsupported short-circuit cannot flatter the fast route.
+   */
+  latencyP95MsByRouteMode: Record<AnswerLatencyRouteMode, AnswerLatencyP95>;
+  /** True when the metadata sample hit its row cap while the window held more answers. */
+  latencySampleTruncated: boolean;
+  timeToFirstContent: AnswerTimeToFirstContent;
 };
 
 type CountResult = { count: number | null; error: unknown };
@@ -64,6 +95,7 @@ type HybridRpcIdentityBuilder = PromiseLike<HybridRpcIdentityResult> & {
   gt(column: string, value: string): HybridRpcIdentityBuilder;
   is(column: string, value: null): HybridRpcIdentityBuilder;
   not(column: string, operator: string, value: null): HybridRpcIdentityBuilder;
+  order(column: string, options: { ascending: boolean }): HybridRpcIdentityBuilder;
   limit(count: number): HybridRpcIdentityBuilder;
 };
 
@@ -81,12 +113,36 @@ function rate(numerator: number, denominator: number) {
 const maxHybridRpcIdentityRows = 1000;
 const safeRpcIdentifier = /^[a-zA-Z][a-zA-Z0-9_]{0,127}$/;
 
-function resolveRouteLatencyBudgetMs(metadata: Record<string, unknown>): number {
-  const rawMode = String(
-    metadata.routing_mode ?? metadata.mode ?? metadata.route_mode ?? metadata.answer_mode ?? "fast",
-  )
+function rawRouteMode(metadata: Record<string, unknown>): string {
+  return String(metadata.routing_mode ?? metadata.mode ?? metadata.route_mode ?? metadata.answer_mode ?? "fast")
     .trim()
     .toLowerCase();
+}
+
+// The p95 path never guesses: a row with no declared mode is left out rather than counted as fast.
+function knownRouteMode(metadata: Record<string, unknown>): AnswerLatencyRouteMode | null {
+  const declared = metadata.routing_mode ?? metadata.mode ?? metadata.route_mode ?? metadata.answer_mode;
+  if (declared === null || declared === undefined) return null;
+  const rawMode = String(declared).trim().toLowerCase();
+  if (rawMode === "fast" || rawMode === "strong") return rawMode;
+  if (rawMode === "extractive" || rawMode === "source_only" || rawMode === "source-only") return "extractive";
+  return null;
+}
+
+/** Nearest-rank percentile: the smallest sample at or above `fraction` of the ordered values. */
+function nearestRank(values: number[], fraction: number): number | null {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((left, right) => left - right);
+  return sorted[Math.max(0, Math.ceil(fraction * sorted.length) - 1)] ?? null;
+}
+
+/** Nearest-rank p95: the smallest sample at or above 95% of the ordered values. */
+export function nearestRankP95(values: number[]): number | null {
+  return nearestRank(values, 0.95);
+}
+
+function resolveRouteLatencyBudgetMs(metadata: Record<string, unknown>): number {
+  const rawMode = rawRouteMode(metadata);
   if (rawMode === "strong") return ANSWER_LATENCY_BUDGET_MS.strong;
   if (rawMode === "extractive" || rawMode === "source_only" || rawMode === "source-only") {
     return ANSWER_LATENCY_BUDGET_MS.extractive;
@@ -124,25 +180,56 @@ const UNSUPPORTED_FILTER = [
  */
 export function computeLatencyBudgetSloMetrics(rows: Array<{ metadata: unknown }>, totalQueries: number) {
   let latencyBudgetBreachQueries = 0;
+  const latenciesByMode: Record<AnswerLatencyRouteMode, number[]> = { fast: [], strong: [], extractive: [] };
+  const firstContentMs: number[] = [];
+  let previewSamples = 0;
 
   for (const row of rows) {
     if (!row.metadata || typeof row.metadata !== "object" || Array.isArray(row.metadata)) {
       continue;
     }
     const meta = row.metadata as Record<string, unknown>;
-    const rawLatency = Number(meta.latency_ms ?? meta.duration_ms ?? meta.total_latency_ms ?? meta.response_ms);
+    const selectedLatency = meta.latency_ms ?? meta.duration_ms ?? meta.total_latency_ms ?? meta.response_ms;
+    // Number(null) and Number("") are 0, so a missing timing must not count as a zero-latency sample.
+    const rawLatency = selectedLatency === null || selectedLatency === "" ? Number.NaN : Number(selectedLatency);
     const budgetMs = resolveRouteLatencyBudgetMs(meta);
     if (meta.latency_budget_breached === true || (Number.isFinite(rawLatency) && rawLatency > budgetMs)) {
       latencyBudgetBreachQueries += 1;
+    }
+    // The p95 reuses the budget-breach latency field so both signals judge the same number.
+    const mode = knownRouteMode(meta);
+    if (mode && Number.isFinite(rawLatency) && rawLatency >= 0) {
+      latenciesByMode[mode].push(rawLatency);
+    }
+    const preview = typeof meta.first_verified_content_ms === "number" ? meta.first_verified_content_ms : Number.NaN;
+    const answered = Number.isFinite(rawLatency) && rawLatency >= 0 ? rawLatency : Number.NaN;
+    const previewSent = Number.isFinite(preview) && preview >= 0;
+    const firstContent = previewSent ? (Number.isFinite(answered) ? Math.min(preview, answered) : preview) : answered;
+    if (Number.isFinite(firstContent)) {
+      firstContentMs.push(firstContent);
+      if (previewSent && firstContent === preview) previewSamples += 1;
     }
   }
 
   const effectiveDenominator =
     rows.length >= maxHybridRpcIdentityRows && totalQueries > rows.length ? rows.length : totalQueries;
 
+  const p95 = (mode: AnswerLatencyRouteMode): AnswerLatencyP95 => ({
+    p95Ms: nearestRankP95(latenciesByMode[mode]),
+    samples: latenciesByMode[mode].length,
+  });
+
   return {
     latencyBudgetBreachQueries,
     latencyBudgetBreachRate: rate(latencyBudgetBreachQueries, effectiveDenominator),
+    latencyP95MsByRouteMode: { fast: p95("fast"), strong: p95("strong"), extractive: p95("extractive") },
+    latencySampleTruncated: rows.length >= maxHybridRpcIdentityRows && totalQueries > rows.length,
+    timeToFirstContent: {
+      p50Ms: nearestRank(firstContentMs, 0.5),
+      p95Ms: nearestRank(firstContentMs, 0.95),
+      samples: firstContentMs.length,
+      previewSamples,
+    },
   };
 }
 
@@ -192,11 +279,14 @@ export async function answerSloSnapshot(client: SloProbeClient, windowMinutes = 
       // discriminator without hiding normal production answers from the SLO.
       .is("metadata->>event_type", null);
 
+  // Newest first, so a busy window's capped sample is the most recent answers, not an
+  // arbitrary slice that changes between identical probes.
   const windowMetadataRows = client
     .from("rag_queries")
     .select("metadata")
     .gt("created_at", sinceIso)
     .is("metadata->>event_type", null)
+    .order("created_at", { ascending: false })
     .limit(maxHybridRpcIdentityRows);
   const [total, hybrid, degraded, truncation, timeout, sourceGap, unsupported, hybridIdentity] = await Promise.all([
     base(),
@@ -255,6 +345,7 @@ export async function answerSloSnapshot(client: SloProbeClient, windowMinutes = 
       .gt("created_at", sinceIso)
       .is("metadata->>event_type", null)
       .not("metadata->hybrid_rpc_errors", "is", null)
+      .order("created_at", { ascending: false })
       .limit(maxHybridRpcIdentityRows);
     if (!dedicatedHybrid.error && Array.isArray(dedicatedHybrid.data)) {
       hybridErrorRows = dedicatedHybrid.data;
@@ -282,5 +373,8 @@ export async function answerSloSnapshot(client: SloProbeClient, windowMinutes = 
     sourceGapRate: rate(sourceGapQueries, totalQueries),
     unsupportedRate: rate(unsupportedQueries, totalQueries),
     latencyBudgetBreachRate: latencyMetrics.latencyBudgetBreachRate,
+    latencyP95MsByRouteMode: latencyMetrics.latencyP95MsByRouteMode,
+    latencySampleTruncated: latencyMetrics.latencySampleTruncated,
+    timeToFirstContent: latencyMetrics.timeToFirstContent,
   };
 }

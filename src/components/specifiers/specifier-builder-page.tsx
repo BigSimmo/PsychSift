@@ -193,7 +193,9 @@ function StepProgress({
               type="button"
               onClick={() => onChange(step.id)}
               aria-current={isActive ? "step" : undefined}
-              aria-label={`Step ${index + 1} of ${steps.length}: ${step.fullLabel}${isComplete ? ", reviewed" : ""}`}
+              // Opens with the tile's own words (number, short label, detail) so a
+              // speech-input user can say what they see; the full step name follows.
+              aria-label={`${isComplete ? "" : `${index + 1} `}${step.shortLabel} ${step.detail}. Step ${index + 1} of ${steps.length}: ${step.fullLabel}${isComplete ? ", reviewed" : ""}`}
               className={cn(
                 "grid min-h-[3.25rem] w-full min-w-0 place-items-center rounded-lg border px-1 py-1.5 text-center transition motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] sm:grid-cols-[1.75rem_auto] sm:justify-center sm:gap-2",
                 isActive
@@ -210,9 +212,9 @@ function StepProgress({
                 )}
               >
                 {isComplete ? <Check className="h-3.5 w-3.5" aria-hidden /> : index + 1}
-              </span>
+              </span>{" "}
               <span className="min-w-0">
-                <span className="block text-2xs font-extrabold break-words sm:text-xs">{step.shortLabel}</span>
+                <span className="block text-2xs font-extrabold break-words sm:text-xs">{step.shortLabel}</span>{" "}
                 <span className="hidden text-2xs font-semibold break-words lg:block">{step.detail}</span>
               </span>
             </button>

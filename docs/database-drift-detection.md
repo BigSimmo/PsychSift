@@ -13,12 +13,12 @@ application-owned object against `supabase/schema.sql`.
 
 Three committed artifacts:
 
-| Artifact                                                                     | Role                                                                                                                                                                                                                                                             |
-| ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `supabase/migrations/20260818090000_schema_drift_snapshot_history_probe.sql` | `public.schema_drift_snapshot()` v2 — service-role-only RPC returning the normalized live inventory plus the migration-history probe (supersedes `20260706200000`; also declared in `supabase/schema.sql`; a test enforces byte parity with the latest definer). |
-| `supabase/drift-manifest.json`                                               | The expected state: the same snapshot captured from a **from-scratch replay of `supabase/schema.sql`** into a disposable `supabase/postgres` Docker container (`npm run drift:manifest`). Embeds the sha256 of the schema.sql it came from.                      |
-| `supabase/drift-allowlist.json`                                              | Known, documented divergence (each entry has a `reason`; `migration_history` entries also need a `guard`). Reported as warnings; anything not listed fails the check.                                                                                            |
-| `supabase/search-health-unmonitored-indexes.json`                            | The runtime index-monitoring ratchet: every repo-defined index on a retrieval-critical table that `search_schema_health()` does not monitor, with a reason and disposition (see below).                                                                          |
+| Artifact                                                                             | Role                                                                                                                                                                                                                                                                                                  |
+| ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `supabase/migrations/20261021180000_schema_drift_snapshot_literal_safe_comments.sql` | `public.schema_drift_snapshot()` v2, latest definer — service-role-only RPC returning the normalized live inventory plus the migration-history probe (supersedes `20260818090000` and `20260706200000`; also declared in `supabase/schema.sql`; a test enforces byte parity with the latest definer). |
+| `supabase/drift-manifest.json`                                                       | The expected state: the same snapshot captured from a **from-scratch replay of `supabase/schema.sql`** into a disposable `supabase/postgres` Docker container (`npm run drift:manifest`). Embeds the sha256 of the schema.sql it came from.                                                           |
+| `supabase/drift-allowlist.json`                                                      | Known, documented divergence (each entry has a `reason`; `migration_history` entries also need a `guard`). Reported as warnings; anything not listed fails the check.                                                                                                                                 |
+| `supabase/search-health-unmonitored-indexes.json`                                    | The runtime index-monitoring ratchet: every repo-defined index on a retrieval-critical table that `search_schema_health()` does not monitor, with a reason and disposition (see below).                                                                                                               |
 
 `npm run check:drift` (needs live service-role env) verifies the project ref,
 fails fast if the manifest is stale, calls the RPC, diffs, applies the
@@ -38,6 +38,10 @@ storage bucket rows + storage.objects policies.
 - **Whitespace/comments in function bodies** — `prosrc` is stored verbatim, so
   migration text vs schema.sql text differ trivially; both are stripped before
   hashing (the same trick `20260701140631` used to validate byte-equivalence).
+  Since `20261021180000` a `--` starts a line comment only where no `'...'` or `"..."`
+  value is open earlier on that line, so a `--` inside a URL or a Markdown table row is
+  hashed as content. Before that, a `--` inside a string literal deleted the rest of the line,
+  which hid about 91% of `site_content_registry_baseline()` from the check (`#81A3YJ`).
 - **Rendering search_path** — the snapshot pins `search_path = ''` so
   `pg_get_expr`/`pg_get_indexdef`/policy quals render fully qualified and
   identically on live and replay.
@@ -242,7 +246,14 @@ legitimate use is restoring a file to the bytes production actually holds, which
 this guard.
 Even then, a reseal needs the owner's explicit permission for that specific reseal (`AGENTS.md`,
 "Supabase project safety"). The script refuses before writing anything unless
-`MIGRATION_RESEAL_OWNER_APPROVAL` names who approved it and when.
+`MIGRATION_RESEAL_OWNER_APPROVAL` names who approved it, when, and where the owner's own words are
+recorded (a `docs/decisions/` entry or a link). A relayed approval is not enough (audit CC-09).
+
+On a pull request, CI also compares the migrations with the base branch's sealed hashes, so an edit
+resealed in the same PR still fails. An approved restore reseals on purpose, so a PR body declaring
+`Migration history edit approved:` skips that base comparison. `PR policy` still fails the edit
+unless that line cites the owner's words and the PR adds a fail-fast guard migration (owner
+decision 2026-10-21).
 
 ## Guard-migration contract
 
@@ -429,6 +440,46 @@ before the list existed.
 - New known-divergence → allowlist entry with a reason and a backlog line here.
 - After the pending-migration backlog lands, delete the matching allowlist
   entries; check:drift reports stale entries so they cannot silently linger.
+
+### Optional offline rootless replay
+
+Docker remains the default backend and CI continues to use the cached pinned image. On a
+non-root Linux amd64 host with usable bwrap user namespaces, an explicit rootless route can
+consume a separately acquired local OCI image and trusted umoci executable:
+
+```bash
+npm run drift:manifest -- --backend rootless --oci-layout /absolute/private/oci --scratch-root /absolute/private/scratch --umoci /absolute/private/tools/umoci --umoci-sha256 <verified-binary-sha256> --evidence /absolute/private/evidence/replay.json
+```
+
+The scratch and evidence parent directories must already exist, belong to the calling user and
+have private permissions (0700); the evidence filename must be new. OCI and scratch directories
+must be separate. The generator never downloads images/tools, installs packages or falls back
+between backends. Obtain the executable from verified package/publisher provenance separately;
+a caller-supplied hash checks matching bytes and does not itself establish publisher authenticity.
+Rootless rejects Docker-specific `--keep`, `--port` and `--container` options.
+
+This route verifies the original pinned index, selected linux/amd64 manifest, config, compressed
+layers and ordered uncompressed diff IDs, then freshly unpacks through the hash-checked OCI-aware
+extractor. It checks the actual image's postgres UID/GID (100/101) and supported native startup
+settings. The original image root stays read-only; only private data/socket/tmp and copied
+PostgreSQL/config-key directories are writable. It clears inherited host environment, isolates
+network/PID/user/mount namespaces and publishes no TCP port. The ephemeral password travels on
+stdin; native private-key material and raw logs are not exported to evidence.
+
+One guest supervisor runs the original entrypoint, waits for its initialization-complete marker
+and five consecutive readiness successes, then serves the native generator's shared role
+bootstrap, dynamically owned Storage scaffold, complete postgres schema replay and actual catalog
+capture. The same PID namespace also performs shutdown. A forced stop or nonzero pg_ctl/server
+exit fails acceptance. Only after successful replay and confirmed graceful cleanup does the
+native generator atomically replace the manifest; SQL/capture/cleanup failure preserves the
+previous manifest. Cleanup removes only its newly created owned run directory.
+
+The committed manifest retains the original requested image reference, the same native generator
+identity and existing fields; runtime/provenance details and the produced manifest hash live in
+the separate private evidence JSON. Freshness still deep-compares everything except generated_at
+and replay_seconds. This local schema-mirror replay does not establish migration-chain replay,
+hosted deployment, real Storage behavior or live acceptance. Retain those distinct gates and
+production approval boundaries.
 
 ## 2026-07-07 baseline audit (three-way: live vs schema.sql vs migration chain)
 

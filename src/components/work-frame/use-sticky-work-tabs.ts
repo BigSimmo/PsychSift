@@ -116,9 +116,13 @@ export function useStickyWorkTabs(band: HTMLElement | null, navRef: RefObject<HT
     };
 
     const measure = () => {
-      const tabsTop = nav.offsetTop;
+      // Keep fractional layout pixels: offsetTop rounds up across some title
+      // line heights, making the pinned clip cut into the tab's focus target.
+      // Both rects include the band's slide, so their difference cancels it.
+      const bandRect = band.getBoundingClientRect();
+      const tabsTop = nav.getBoundingClientRect().top - bandRect.top;
       const barHeight = header?.offsetHeight ?? 0;
-      const tabsHeight = band.offsetHeight - tabsTop;
+      const tabsHeight = bandRect.height - tabsTop;
       const nextScroller = stickyScroller(band);
       // Read dimensions before publishing CSS; unchanged resize notifications
       // must not create root-style mutations and redundant position checks.

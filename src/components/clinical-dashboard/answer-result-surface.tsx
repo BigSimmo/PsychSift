@@ -6,7 +6,7 @@ import { CircleAlert, ShieldAlert, TriangleAlert } from "lucide-react";
 
 import { RetrievalStateBanner } from "@/components/ui/retrieval-state-banner";
 
-import { type AnswerFeedbackType } from "@/lib/answer-feedback";
+import { type AnswerFeedbackType, type SubmitAnswerFeedback } from "@/lib/answer-feedback";
 import { AnswerFollowUpSuggestions } from "@/components/clinical-dashboard/answer-follow-up-suggestions";
 import { CrossModeLinksSection } from "@/components/clinical-dashboard/cross-mode-links";
 import {
@@ -151,7 +151,7 @@ function StagedAnswerResultSurfaceImpl({
   copiedAnswer: boolean;
   pendingFeedback: AnswerFeedbackType | null;
   onCopyAnswer: () => void;
-  onSubmitFeedback: (feedbackType: AnswerFeedbackType) => void;
+  onSubmitFeedback: SubmitAnswerFeedback;
   onFollowUpQuote?: (quote: ClientQuoteCard) => void;
   crossModeQueries?: Array<string | null | undefined>;
   onCrossModeSearch?: (mode: AppModeId, query: string) => void;
@@ -599,6 +599,7 @@ function StagedAnswerResultSurfaceImpl({
         openSourceIndex={openSourceIndex}
         showCopyAction={false}
         isRefusal={refusalAnswer}
+        guidanceDifference={answer.guidanceDifference}
         copied={copiedAnswer}
         onCopy={onCopyAnswer}
       />

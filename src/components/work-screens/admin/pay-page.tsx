@@ -54,7 +54,7 @@ import {
 import { formatRecordedDate } from "@/lib/admin/renewal-dates";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 import { FATIGUE_RULE_SET } from "@/lib/roster/fatigue-rules-source";
-import { perthDateOf } from "@/lib/roster/shifts/perth-time";
+import { addDaysToDate, perthDateOf } from "@/lib/roster/shifts/perth-time";
 import { ADMIN_WORK_SCREEN_HREFS } from "@/lib/work-screens/admin/hrefs";
 import { guardExampleAction, isExampleRecord } from "@/lib/example-data/guards";
 import {
@@ -106,13 +106,19 @@ export function AdminPayPage({ now: pinned }: { now?: Date } = {}) {
   const [checking, setChecking] = useState(false);
   const [failed, setFailed] = useState(false);
 
-  const shifts = useRosterShifts();
   const teams = useRosterTeams();
   const enabledTeams = (Array.isArray(teams.data?.teams) ? teams.data.teams : []).filter((team) => team.enabled);
   const oneTeamId = enabledTeams.length === 1 ? enabledTeams[0]!.serviceId : null;
   const overview = useRosterRead(oneTeamId, "overview");
   const anchor = overview.status === "ready" ? (overview.data?.settings?.payFortnightAnchor ?? null) : null;
   const windows = payWindows(today, anchor);
+  // The previous fortnight can precede the 21-day list. The dated own-history API
+  // reads UTC days, so include the day before its local start for early Australian
+  // shifts. Pay windows remain exact; summaries clip and the hook deduplicates IDs.
+  const shifts = useRosterShifts(
+    { from: addDaysToDate(windows[1].start, -1), to: windows[0].end },
+    { ownHistory: true },
+  );
   const own = shifts.status === "ready" && !shifts.sample && !page.signedOut;
   const extraNow = useRosterExtraTime(shifts.shifts, now, windows[0], own);
   const extraBefore = useRosterExtraTime(shifts.shifts, now, windows[1], own);
@@ -124,9 +130,13 @@ export function AdminPayPage({ now: pinned }: { now?: Date } = {}) {
 
   const roster: RosterRead = page.signedOut
     ? { kind: "none", why: "Signed in, your rostered hours fill in here from Roster." }
-    : shifts.status === "loading" || shifts.teamLoading || (oneTeamId !== null && overview.status === "loading")
+    : shifts.status === "loading" ||
+        shifts.teamLoading ||
+        shifts.teamRefreshing ||
+        shifts.historyLoading ||
+        (oneTeamId !== null && overview.status === "loading")
       ? { kind: "loading" }
-      : shifts.status === "error" || shifts.status === "signed-out"
+      : shifts.status === "error" || shifts.status === "signed-out" || shifts.historyFailed
         ? { kind: "failed", retry: () => void shifts.reload() }
         : shifts.sample && !shifts.demoMode
           ? { kind: "none", why: "Roster is showing example shifts. Add your own roster and your hours fill in here." }
@@ -199,7 +209,7 @@ export function AdminPayPage({ now: pinned }: { now?: Date } = {}) {
   const current = roster.kind === "ready" ? roster.windows[0]! : null;
 
   return (
-    <WorkBody testId="admin-pay">
+    <WorkBody testId="admin-pay" landmark>
       <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">Pay</PageTitleUnderBand>
       {page.signedOut ? (
         <PaperworkSampleNotice what="payslip checks" testId="admin-pay-signed-out" examples={page.examplesShown} />

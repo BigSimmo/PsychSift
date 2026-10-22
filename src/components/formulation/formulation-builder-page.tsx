@@ -28,7 +28,7 @@ import {
 } from "@/components/formulation/formulation-ui";
 import { CatalogueToolbar } from "@/components/ui/catalogue-toolbar";
 import { InformationPageHeader } from "@/components/information-page-shell";
-import { cn, eyebrowText, fieldControlPlain } from "@/components/ui-primitives";
+import { cn, controlDisabled, eyebrowText, fieldControlPlain, primaryControl } from "@/components/ui-primitives";
 
 import {
   findFormulationMechanismSummary,
@@ -73,7 +73,7 @@ function StepProgress({ active, onChange }: { active: BuilderStepId; onChange: (
               className={cn(
                 "grid min-h-[3.25rem] w-full place-items-center rounded-lg px-1 py-1.5 text-center transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] sm:grid-cols-[1.75rem_auto] sm:justify-center sm:gap-2",
                 isActive
-                  ? "border border-[color:var(--clinical-accent)] bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)] shadow-[var(--e1)]"
+                  ? "border border-[color:var(--clinical-accent)] bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)] shadow-[var(--e0)]"
                   : "border border-transparent bg-[color:var(--surface)] text-[color:var(--text-muted)] hover:border-[color:var(--border)]",
               )}
             >
@@ -720,7 +720,7 @@ export function FormulationBuilderPage({
                     <button
                       type="button"
                       onClick={copyDraft}
-                      className="inline-flex min-h-tap items-center gap-1.5 rounded-md bg-[color:var(--command)] px-3 text-xs font-semibold text-[color:var(--command-contrast)]"
+                      className={cn(primaryControl, "gap-1.5 rounded-md px-3 text-xs")}
                     >
                       <Clipboard className="h-3.5 w-3.5" aria-hidden />
                       {copied ? "Copied" : "Copy draft"}
@@ -754,7 +754,12 @@ export function FormulationBuilderPage({
               type="button"
               onClick={() => move(-1)}
               disabled={activeIndex === 0}
-              className="inline-flex min-h-tap items-center gap-2 rounded-lg border border-[color:var(--border-strong)] bg-[color:var(--surface)] px-4 text-sm font-semibold text-[color:var(--text-muted)] disabled:cursor-not-allowed disabled:border-[color:var(--border)] disabled:bg-[color:var(--surface-inset)]"
+              className={cn(
+                "inline-flex min-h-tap items-center gap-2 rounded-lg border border-[color:var(--border-strong)] bg-[color:var(--surface)] px-4 text-sm font-semibold text-[color:var(--text-muted)]",
+                // Remove the disabled recipe when the pager becomes available:
+                // WebKit can retain its pseudo-state paint after re-enabling.
+                activeIndex === 0 && controlDisabled,
+              )}
             >
               <ArrowLeft className="h-4 w-4" aria-hidden />
               Previous
@@ -764,7 +769,7 @@ export function FormulationBuilderPage({
                 type="button"
                 onClick={() => move(1)}
                 disabled={activeStep === "select" && selectedMechanisms.length === 0}
-                className="inline-flex min-h-tap items-center gap-2 rounded-lg border border-transparent bg-[color:var(--command)] px-4 text-sm font-semibold text-[color:var(--command-contrast)] shadow-[var(--e1)] disabled:cursor-not-allowed disabled:border-[color:var(--border)] disabled:bg-[color:var(--surface-inset)] disabled:text-[color:var(--text-muted)] disabled:shadow-none"
+                className={cn(primaryControl, "px-4 shadow-[var(--e0)]")}
               >
                 {activeStep === "select"
                   ? "Continue to framework"

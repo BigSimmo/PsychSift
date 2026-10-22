@@ -16,8 +16,9 @@
  * WHAT IT IS NOT. It is not a monitor. Nothing schedules it, no workflow calls it, and it joins no
  * verification chain. That is deliberate: `#TN512M` records that this repository already has more
  * working detection than it has attention, and says "do not add further monitoring checks" until a
- * red check reaches a human. An operator tool you run on purpose is a different class of thing, and
- * the manual-SQL section it is documented beside keeps its "not alerted" label.
+ * red check reaches a human. An operator tool you run on purpose is a different class of thing. The
+ * answer-latency alerts in that doc come from the ops digest reading existing `rag_queries` data,
+ * never from this script.
  *
  * IT REFUSES TO RUN WITHOUT PERMISSION. Asking the live site a question spends OpenAI credit and
  * writes a telemetry row, so it is provider-backed under the API and provider confirmation boundary
@@ -216,13 +217,19 @@ async function main() {
   const domainUrl = process.env.LIVE_DOMAIN_URL || "https://psychiatry.tools";
   const query = process.env.ANSWER_PROBE_QUERY || "What FBC threshold should stop clozapine?";
   const timeoutMs = Number(process.env.ANSWER_PROBE_TIMEOUT_MS || 120_000);
+  // Answer needs sign-in from 1 November 2026, so the probe sends a signed-in user's
+  // access token when one is given. Never commit or log it.
+  const accessToken = process.env.ANSWER_PROBE_ACCESS_TOKEN?.trim();
 
   const url = new URL("/api/answer", domainUrl);
   const startedAt = Date.now();
   const response = await fetch(url, {
     method: "POST",
     cache: "no-store",
-    headers: { "content-type": "application/json" },
+    headers: {
+      "content-type": "application/json",
+      ...(accessToken ? { authorization: `Bearer ${accessToken}` } : {}),
+    },
     body: JSON.stringify({ query }),
     signal: AbortSignal.timeout(timeoutMs),
   });
@@ -232,6 +239,11 @@ async function main() {
   const clientTotalMs = Date.now() - startedAt;
 
   console.log(`${url.href} — HTTP ${response.status}`);
+  if (response.status === 401) {
+    console.log(
+      "Answer needs sign-in. Set ANSWER_PROBE_ACCESS_TOKEN to a signed-in user's access token and run it again.",
+    );
+  }
   if (response.status !== 200) {
     console.log(`The request did not succeed, so any timing below describes a failed request.`);
     process.exitCode = 1;

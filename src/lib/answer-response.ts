@@ -6,6 +6,7 @@ import {
   sourceGovernanceWarnings,
 } from "@/lib/source-governance";
 import type { RagAnswer } from "@/lib/types";
+import { guidanceDifferenceNoteForAnswer } from "@/lib/rag/guidance-difference-note";
 import { carryRagProgrammeTelemetry } from "@/lib/rag/rag-programme-telemetry";
 import {
   classifyRagFallbackReason,
@@ -13,6 +14,12 @@ import {
   normalizeRagFallbackReasonCode,
   publicFallbackReason,
 } from "@/lib/rag/rag-fallback-reason";
+
+/** Owner-signed WA versus national note; absent unless a signed-off WA chunk directly supports the answer. */
+function withGuidanceDifference(answer: RagAnswer) {
+  const guidanceDifference = guidanceDifferenceNoteForAnswer(answer);
+  return guidanceDifference ? { guidanceDifference } : {};
+}
 
 function answerFallbackReasonCode(
   answer?: Pick<
@@ -58,8 +65,11 @@ export function buildGovernedAnswerClientResponse(answer: RagAnswer) {
     results: answer.sources ?? [],
     relevance: answer.relevance ?? answer.smartPanel?.relevance ?? null,
   });
+  // Audit RAG-B-01: the self-reported `grounded` flag does not exempt an answer from the danger
+  // refusal. An ungrounded answer that still carries a confidence above "unsupported" is
+  // presenting content with a support level, so it is refused like any other. Answers already
+  // marked unsupported or evidence-gap pass through unchanged, as before.
   const shouldRefuse =
-    answer.grounded !== false &&
     answer.confidence !== "unsupported" &&
     answer.responseMode !== "evidence_gap" &&
     hasDangerSourceGovernanceWarning(warnings);
@@ -110,6 +120,7 @@ export function buildGovernedAnswerClientResponse(answer: RagAnswer) {
     telemetryAnswer: answer,
     payload: {
       ...toClientAnswerPayload({ ...answer, fallbackReasonCode }),
+      ...withGuidanceDifference(answer),
       fallbackReasonCode,
       degradedMode: answerDegradedModeSignal({ ...answer, fallbackReasonCode }),
       sourceGovernanceWarnings: warnings,

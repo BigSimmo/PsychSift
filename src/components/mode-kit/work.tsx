@@ -442,6 +442,8 @@ export type WorkButtonProps = {
   readonly icon?: LucideIcon;
   readonly testId?: string;
   readonly "aria-label"?: string;
+  readonly "aria-disabled"?: boolean | "true" | "false";
+  readonly "aria-describedby"?: string;
 } & (
   | { readonly href: string; readonly onClick?: never; readonly type?: never; readonly disabled?: never }
   | { readonly onClick: () => void; readonly href?: never; readonly type?: "button"; readonly disabled?: boolean }
@@ -455,6 +457,7 @@ export type WorkButtonProps = {
  */
 export function WorkButton(props: WorkButtonProps) {
   const { children, variant = "primary", size = "md", icon: Icon, testId } = props;
+  const ariaDisabled = props["aria-disabled"] === true || props["aria-disabled"] === "true";
   const inner = (
     <>
       {Icon ? <Icon aria-hidden="true" strokeWidth={2} /> : null}
@@ -467,16 +470,39 @@ export function WorkButton(props: WorkButtonProps) {
     "data-size": size === "md" ? undefined : size,
     "data-testid": testId,
     "aria-label": props["aria-label"],
+    "aria-disabled": props["aria-disabled"],
+    "aria-describedby": props["aria-describedby"],
   };
   if (props.href !== undefined) {
     return (
-      <Link href={props.href} {...shared}>
+      <Link
+        href={props.href}
+        onClick={
+          ariaDisabled
+            ? (event) => {
+                event.preventDefault();
+              }
+            : undefined
+        }
+        {...shared}
+      >
         {inner}
       </Link>
     );
   }
   return (
-    <button type={props.type ?? "button"} onClick={props.onClick} disabled={props.disabled} {...shared}>
+    <button
+      type={props.type ?? "button"}
+      onClick={
+        ariaDisabled
+          ? (event) => {
+              event.preventDefault();
+            }
+          : props.onClick
+      }
+      disabled={props.disabled}
+      {...shared}
+    >
       {inner}
     </button>
   );
@@ -667,11 +693,24 @@ export function WorkCheckRow({ tone = "ok", children, value }: WorkCheckRowProps
 /* -------------------------------------------------------------- page body */
 
 /** The work page column: 12px gutters, 9px between blocks, centred on wide screens. */
-export function WorkBody({ children, testId }: { readonly children: ReactNode; readonly testId?: string }) {
+/**
+ * The work column. A page whose root is this column passes `landmark` so it is the page's one
+ * `<main>`; a column nested inside another page frame that already draws `<main>` must not.
+ */
+export function WorkBody({
+  children,
+  testId,
+  landmark,
+}: {
+  readonly children: ReactNode;
+  readonly testId?: string;
+  readonly landmark?: boolean;
+}) {
+  const Tag = landmark ? "main" : "div";
   return (
-    <div className="work-body" data-testid={testId}>
+    <Tag className="work-body" data-testid={testId}>
       {children}
-    </div>
+    </Tag>
   );
 }
 

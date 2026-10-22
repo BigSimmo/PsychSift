@@ -579,3 +579,401 @@ describe("document-mode chunking (CI-1)", () => {
     expect(chunks.map((chunk) => chunk.metadata.page_start)).toEqual([4, 7]);
   });
 });
+
+// Audit 2026-10-20 ING-B-01: the line-noise filter must drop only lines that are
+// boilerplate as a whole. Synthetic probe strings from the audit (A3b, A7).
+describe("line-noise filter keeps clinical content lines (ING-B-01)", () => {
+  const joinedChunks = (text: string) => chunkTextWithOverlap(text, 2000, 200).join("\n");
+
+  it("keeps a clinical line that also mentions copyright", () => {
+    const joined = joinedChunks(
+      "Neutrophil thresholds\nThis table is copyright of the issuing service; withhold clozapine if ANC < 1.5.\nRepeat the full blood count daily.",
+    );
+    expect(joined).toContain("withhold clozapine if ANC < 1.5");
+  });
+
+  it("keeps dose lines and wrapped prose lines that contain a web address", () => {
+    const joined = joinedChunks(
+      [
+        "Max dose 400 mg daily, see www.example.org/dosing",
+        "Maximum 400 mg daily for elderly patients; see",
+        "www.example.org/lithium for the full protocol and the renal adjustment table.",
+        "Avoid use in pregnancy.",
+      ].join("\n"),
+    );
+    expect(joined).toContain("Max dose 400 mg daily, see www.example.org/dosing");
+    expect(joined).toContain("for the full protocol and the renal adjustment table.");
+  });
+
+  it("still drops lines that are only a copyright notice, download stamp or bare web address", () => {
+    const joined = joinedChunks(
+      [
+        "Check renal function before starting lithium.",
+        "Copyright © 2026 Example Health Service, Example Region, Example Directorate. All rights reserved.",
+        "Downloaded from www.example.org on 1 March 2026 by guest",
+        "Review lithium levels after dose changes.",
+        // Chunker 1.3.1: a bare web address is dropped only at the page edge.
+        "www.example.org",
+      ].join("\n"),
+    );
+    expect(joined).not.toMatch(/copyright|all rights reserved|downloaded from|www\.example\.org/i);
+    expect(joined).toContain("Check renal function before starting lithium.");
+    expect(joined).toContain("Review lithium levels after dose changes.");
+  });
+
+  it("keeps short answer words and numeric scale values", () => {
+    const joined = joinedChunks(
+      [
+        "Is the patient pregnant?",
+        "No",
+        "Rating scale",
+        "0",
+        "1",
+        "2",
+        "3",
+        "A score of 3 requires same-day review.",
+      ].join("\n"),
+    );
+    expect(joined.split("\n")).toEqual(
+      expect.arrayContaining(["No", "0", "1", "2", "3", "A score of 3 requires same-day review."]),
+    );
+  });
+
+  it("still drops an isolated page number and stray punctuation debris", () => {
+    const joined = joinedChunks(["4", "Monitor lithium levels.", "-", "Review renal function.", "12"].join("\n"));
+    expect(joined).toBe("Monitor lithium levels.\nReview renal function.");
+  });
+});
+
+// Audit 2026-10-20 ING-B-02: the repeated-line filter must remove running
+// headers and footers, not repeated clinical headings or instructions.
+describe("repeated-line filter keeps clinical headings (ING-B-02)", () => {
+  const page = (pageNumber: number, pageText: string) => ({ documentId: "doc-1", pageNumber, pageText, metadata: {} });
+
+  it("keeps a clinical heading that repeats at the top of each page", () => {
+    const chunks = buildChunks([
+      page(1, "Clinical monitoring\nCheck lithium level 5 to 7 days after dose change."),
+      page(2, "Clinical monitoring\nCheck renal function every 6 months."),
+      page(3, "Clinical monitoring\nCheck thyroid function every 6 months."),
+    ]);
+    const withHeading = chunks.filter((chunk) => chunk.content.includes("Clinical monitoring"));
+    expect(withHeading).toHaveLength(3);
+  });
+
+  it("keeps a repeated instruction that sits in the body of the page", () => {
+    const body = (detail: string) =>
+      [
+        "Mental Health Guideline",
+        `Assess ${detail} at every review.`,
+        `Record ${detail} observations on the chart.`,
+        `Escalate a change in ${detail} to the treating team.`,
+        "Follow the local procedure for escalation.",
+        "Document the outcome in the clinical record.",
+        `Discuss ${detail} with the patient and carer.`,
+        `Repeat the ${detail} assessment weekly.`,
+        "Printed uncontrolled document",
+      ].join("\n");
+    const chunks = buildChunks([page(1, body("sedation")), page(2, body("hydration"))]);
+    const content = chunks.map((chunk) => chunk.content).join("\n");
+    expect(content.match(/Follow the local procedure for escalation\./g)).toHaveLength(2);
+    expect(content).not.toContain("Mental Health Guideline");
+    expect(content).not.toContain("Printed uncontrolled document");
+  });
+
+  it("still removes an organisation running header, but never a repeated line with a dose", () => {
+    const chunks = buildChunks([
+      page(1, "Mental Health Services\nCheck renal function.\nLithium guideline target 0.6 to 1.0 mmol/L"),
+      page(2, "Mental Health Services\nReview lithium levels.\nLithium guideline target 0.6 to 1.0 mmol/L"),
+    ]);
+    const content = chunks.map((chunk) => chunk.content).join("\n");
+    expect(content).not.toContain("Mental Health Services");
+    expect(content.match(/target 0\.6 to 1\.0 mmol\/L/g)).toHaveLength(2);
+  });
+
+  it("never removes a repeated line that states a threshold without a unit", () => {
+    const chunks = buildChunks([
+      page(1, "Check FBC weekly.\nReview renal function.\nPer procedure, withhold clozapine if ANC < 1.5"),
+      page(2, "Check lipids yearly.\nReview weight.\nPer procedure, withhold clozapine if ANC < 1.5"),
+    ]);
+    const content = chunks.map((chunk) => chunk.content).join("\n");
+    expect(content.match(/withhold clozapine if ANC < 1\.5/g)).toHaveLength(2);
+  });
+});
+
+// Audit 2026-10-20 ING-B-03: the extractor joins a table title, the markdown
+// table and its footnote with single newlines. A long table on such a page must
+// still split into row groups that repeat the header, not one oversized chunk.
+describe("table-aware chunking with a title and footnote (ING-B-03)", () => {
+  const rows = Array.from({ length: 120 }, (_, index) => `| Level ${index} | ${index}.0 mmol/L | Action ${index} |`);
+  const pageText = [
+    "Table 3. Synthetic lithium dose adjustment",
+    "| Level | Concentration | Action |",
+    "| --- | --- | --- |",
+    ...rows,
+    "Do not give lithium if the patient is dehydrated.",
+  ].join("\n");
+
+  it("splits the table into row groups that each repeat the title and header", () => {
+    const chunks = chunkTextWithOverlap(pageText, 1200, 200);
+    const tableChunks = chunks.filter((chunk) => chunk.includes("| Level ") && chunk.includes("mmol/L"));
+    expect(tableChunks.length).toBeGreaterThan(3);
+    for (const chunk of chunks) expect(chunk.length).toBeLessThanOrEqual(1200);
+    for (const chunk of tableChunks) {
+      expect(chunk).toContain("Table 3. Synthetic lithium dose adjustment");
+      expect(chunk).toContain("| Level | Concentration | Action |\n| --- | --- | --- |");
+    }
+    const combined = chunks.join("\n");
+    for (const row of rows) expect(combined).toContain(row);
+    expect(combined).toContain("Do not give lithium if the patient is dehydrated.");
+  });
+
+  it("keeps prose before an untitled table and splits the table with its column header", () => {
+    const prose = "Lithium monitoring applies to every patient on maintenance therapy.";
+    const chunks = chunkTextWithOverlap(
+      [prose, "| Level | Concentration | Action |", "| --- | --- | --- |", ...rows].join("\n"),
+      1200,
+      200,
+    );
+    expect(chunks.join("\n")).toContain(prose);
+    const tableChunks = chunks.filter((chunk) => chunk.includes("| Level "));
+    expect(tableChunks.length).toBeGreaterThan(3);
+    for (const chunk of tableChunks) expect(chunk).toContain("| Level | Concentration | Action |");
+    for (const chunk of chunks) expect(chunk.length).toBeLessThanOrEqual(1200);
+  });
+
+  it("repeats a title the extractor wrapped over two lines on every table chunk", () => {
+    const titleLines = [
+      "Table A2.1 Number of synthetic lithium dose steps associated with alternative ",
+      "serum concentration thresholds, depending on renal function",
+    ];
+    const chunks = chunkTextWithOverlap(
+      [
+        "Dose steps are summarised in the table below (Table A2.1).",
+        ...titleLines,
+        "| Level | Concentration | Action |",
+        "| --- | --- | --- |",
+        ...rows,
+      ].join("\n"),
+      1200,
+      200,
+    );
+    const tableChunks = chunks.filter((chunk) => chunk.includes("| Level ") && chunk.includes("mmol/L"));
+    expect(tableChunks.length).toBeGreaterThan(3);
+    for (const chunk of tableChunks) {
+      expect(chunk).toContain(titleLines.map((line) => line.trim()).join("\n"));
+    }
+    expect(chunks.join("\n")).toContain("Dose steps are summarised in the table below (Table A2.1).");
+    for (const chunk of chunks) expect(chunk.length).toBeLessThanOrEqual(1200);
+  });
+});
+
+// Chunker 1.3.1 follow-up to #3699.
+describe("table context, footnotes, referrals and oversized rows (chunker 1.3.1)", () => {
+  const rows = Array.from({ length: 120 }, (_, index) => `| Level ${index} | ${index}.0 mmol/L | Action ${index} |`);
+  const header = ["| Level | Concentration | Action |", "| --- | --- | --- |"];
+  const tableChunksOf = (chunks: string[]) =>
+    chunks.filter((chunk) => chunk.includes("| Level ") && chunk.includes("mmol/L"));
+
+  it("carries a non-Table heading caption onto every split table chunk", () => {
+    const chunks = chunkTextWithOverlap(["Lithium serum level actions", ...header, ...rows].join("\n"), 1200, 200);
+    const tableChunks = tableChunksOf(chunks);
+    expect(tableChunks.length).toBeGreaterThan(3);
+    for (const chunk of tableChunks) expect(chunk.startsWith("Lithium serum level actions\n")).toBe(true);
+    for (const chunk of chunks) expect(chunk.length).toBeLessThanOrEqual(1200);
+  });
+
+  it("does not treat a preceding full sentence as a caption", () => {
+    const prose = "Lithium monitoring applies to every patient on maintenance therapy.";
+    const chunks = chunkTextWithOverlap([prose, ...header, ...rows].join("\n"), 1200, 200);
+    expect(tableChunksOf(chunks).filter((chunk) => chunk.includes(prose))).toHaveLength(0);
+    expect(chunks.join("\n")).toContain(prose);
+  });
+
+  it("truncates a long title (over 3 lines and 300 characters) instead of dropping it, keeping the full title in prose", () => {
+    const titleLines = [
+      "Table 7 Synthetic lithium dose steps associated with alternative serum concentration",
+      "thresholds, depending on renal function, age, concurrent diuretic or ACE inhibitor",
+      "use, recent intercurrent illness with dehydration, and the interval since the last",
+      "dose change, adapted for the purposes of this synthetic regression test only",
+    ];
+    const chunks = chunkTextWithOverlap([...titleLines, ...header, ...rows].join("\n"), 1200, 200);
+    const tableChunks = tableChunksOf(chunks);
+    expect(tableChunks.length).toBeGreaterThan(3);
+    for (const chunk of tableChunks) {
+      expect(chunk.startsWith("Table 7 Synthetic lithium dose steps")).toBe(true);
+      expect(chunk.split("\n")[0].length).toBeLessThanOrEqual(300);
+    }
+    const combined = chunks.join("\n");
+    for (const line of titleLines) expect(combined).toContain(line);
+  });
+
+  it("attaches short footnotes to the table's last chunk", () => {
+    const footnotes = ["* Levels taken 12 hours post dose.", "Source: synthetic test data."];
+    const chunks = chunkTextWithOverlap(
+      [
+        "Table 3. Synthetic lithium dose adjustment",
+        ...header,
+        ...rows,
+        ...footnotes,
+        "Review the patient weekly.",
+      ].join("\n"),
+      1200,
+      200,
+    );
+    const tableChunks = tableChunksOf(chunks);
+    const last = tableChunks[tableChunks.length - 1];
+    expect(last).toContain(rows[rows.length - 1]);
+    expect(last.endsWith(footnotes.join("\n"))).toBe(true);
+    for (const chunk of chunks) expect(chunk.length).toBeLessThanOrEqual(1200);
+    expect(chunks.join("\n")).toContain("Review the patient weekly.");
+  });
+
+  it("keeps a short referral URL line in the page body", () => {
+    const joined = chunkTextWithOverlap(
+      [
+        "After-hours support",
+        "Mental health emergency line: www.example.org/crisis",
+        "Call the team if the patient deteriorates.",
+      ].join("\n"),
+      2000,
+      200,
+    ).join("\n");
+    expect(joined).toContain("Mental health emergency line: www.example.org/crisis");
+  });
+
+  it("keeps every value on a numbers-only rating-scale page", () => {
+    const chunks = buildChunks([
+      { documentId: "doc-1", pageNumber: 1, pageText: ["0", "1", "2", "3", "4"].join("\n"), metadata: {} },
+    ]);
+    expect(
+      chunks
+        .map((chunk) => chunk.content)
+        .join("\n")
+        .split("\n"),
+    ).toEqual(["0", "1", "2", "3", "4"]);
+  });
+
+  it("splits an oversized single row so no chunk exceeds the cap and no text is lost", () => {
+    const longCell = Array.from({ length: 200 }, (_, index) => `word${index}`).join(" ");
+    const longRow = `| Level X | ${longCell} | Action X |`;
+    const chunks = chunkTextWithOverlap(
+      ["Lithium actions", ...header, ...rows.slice(0, 5), longRow].join("\n"),
+      1200,
+      200,
+    );
+    for (const chunk of chunks) expect(chunk.length).toBeLessThanOrEqual(1200);
+    const combined = chunks.join(" ");
+    for (let index = 0; index < 200; index += 1) expect(combined).toContain(`word${index}`);
+    for (const chunk of chunks.filter((chunk) => chunk.includes("word"))) {
+      expect(chunk).toContain("| Level | Concentration | Action |");
+    }
+  });
+
+  it("emits footnotes as their own header chunk when the last table chunk is full", () => {
+    const footnote = `* ${"Levels are taken twelve hours post dose. ".repeat(8).trim()}`;
+    const wide = Array.from({ length: 40 }, (_, index) => `| Level ${index} | ${index}.0 mmol/L | ${"x".repeat(60)} |`);
+    const chunks = chunkTextWithOverlap(["Lithium actions", ...header, ...wide, footnote].join("\n"), 1200, 200);
+    for (const chunk of chunks) expect(chunk.length).toBeLessThanOrEqual(1200);
+    expect(chunks.join("\n")).toContain(footnote);
+  });
+
+  it("keeps the fallback footnote chunk within the cap when header + footnote is too long", () => {
+    const wideHeader = [
+      `| Level | ${"Concentration band ".repeat(22).trim()} | Action |`,
+      `| --- | ${"-".repeat(420)} | --- |`,
+    ];
+    const footnote = `* ${"Levels are taken twelve hours post dose. ".repeat(9).trim()}`;
+    const wide = Array.from({ length: 12 }, (_, index) => `| Level ${index} | ${index}.0 mmol/L | ${"x".repeat(60)} |`);
+    const header = wideHeader.join("\n");
+    expect(header.length + footnote.length + 1).toBeGreaterThan(1200);
+    const chunks = chunkTextWithOverlap(["Lithium actions", ...wideHeader, ...wide, footnote].join("\n"), 1200, 200);
+    for (const chunk of chunks) expect(chunk.length).toBeLessThanOrEqual(1200);
+    const combined = chunks.join(" ").replace(/\s+/g, " ");
+    expect(combined).toContain(footnote);
+  });
+
+  it("keeps continuation pieces of a very long row within the cap", () => {
+    const longRow = `| Level X | ${"abcdefghij ".repeat(400).trim()} | Action X |`;
+    const chunks = chunkTextWithOverlap(["Lithium actions", ...header, longRow].join("\n"), 600, 100);
+    expect(chunks.length).toBeGreaterThan(5);
+    for (const chunk of chunks) expect(chunk.length).toBeLessThanOrEqual(600);
+  });
+
+  it("does not take a wrapped sentence tail as a table caption", () => {
+    const lead = ["Do not exceed these thresholds in", "patients with renal impairment:"];
+    const chunks = chunkTextWithOverlap([...lead, ...header, ...rows].join("\n"), 1200, 200);
+    expect(chunks.join("\n")).toContain(lead.join("\n"));
+    for (const chunk of tableChunksOf(chunks)) expect(chunk).not.toContain("patients with renal impairment:");
+  });
+
+  it("keeps a numbered dosing list after a table as prose, not a footnote", () => {
+    const list = ["1. Start lithium 250 mg at night.", "2. Recheck the level after 5 days."];
+    const chunks = chunkTextWithOverlap(["Lithium actions", ...header, ...rows, ...list].join("\n"), 1200, 200);
+    const tableChunks = tableChunksOf(chunks);
+    for (const chunk of tableChunks) expect(chunk).not.toContain(list[0]);
+    expect(chunks.join("\n")).toContain(list.join("\n"));
+  });
+
+  it("drops a page whose only content is a bare web address", () => {
+    expect(chunkTextWithOverlap("www.example.org", 2000, 200)).toEqual([]);
+    const chunks = buildChunks([
+      { documentId: "doc-1", pageNumber: 1, pageText: "Check lithium level weekly.", metadata: {} },
+      { documentId: "doc-1", pageNumber: 2, pageText: "\nhttps://www.example.org/resources\n", metadata: {} },
+    ]);
+    const content = chunks.map((chunk) => chunk.content).join("\n");
+    expect(content).toContain("Check lithium level weekly.");
+    expect(content).not.toContain("example.org");
+  });
+
+  it("keeps a page-edge crisis footer with a phone number and web address", () => {
+    const footer = "Lifeline 13 11 14 www.lifeline.org.au";
+    const chunks = buildChunks([
+      {
+        documentId: "doc-1",
+        pageNumber: 1,
+        pageText: `Check lithium level weekly.\nReview renal function.\n${footer}`,
+        metadata: {},
+      },
+      {
+        documentId: "doc-1",
+        pageNumber: 2,
+        pageText: `Check thyroid function.\nReview weight.\n${footer}`,
+        metadata: {},
+      },
+    ]);
+    const content = chunks.map((chunk) => chunk.content).join("\n");
+    expect(content.match(/Lifeline 13 11 14 www\.lifeline\.org\.au/g)).toHaveLength(2);
+  });
+});
+
+describe("table row groups under chunker 1.3.1 (PR #3716 review follow-ups)", () => {
+  const header = ["| Drug | Monitoring |", "| --- | --- |"];
+
+  it("does not treat a row with one filled cell as a merged band that forces one chunk", () => {
+    const rows = Array.from({ length: 12 }, (_, i) => `| Agent ${i} | Check level ${i} at review |`);
+    rows.splice(4, 0, "| Lithium | |");
+    const table = [...header, ...rows].join("\n");
+    const chunks = chunkTextWithOverlap(table, 200, 0);
+    expect(chunks.length).toBeGreaterThan(1);
+    for (const chunk of chunks) {
+      expect(chunk.startsWith(header.join("\n"))).toBe(true);
+      expect(chunk.length).toBeLessThanOrEqual(200);
+    }
+    expect(chunks.some((chunk) => chunk.includes("| Lithium | |"))).toBe(true);
+  });
+
+  it("splits a single oversized row instead of refusing or keeping the whole table", () => {
+    const longRow = `| Agent L | ${"review the plasma level and renal function ".repeat(12).trim()} |`;
+    const rows = ["| Agent A | Short |", longRow, "| Agent B | Short |"];
+    const table = [...header, ...rows].join("\n");
+    const chunks = chunkTextWithOverlap(table, 240, 0);
+    expect(chunks.length).toBeGreaterThan(2);
+    for (const chunk of chunks) {
+      expect(chunk.startsWith(header.join("\n"))).toBe(true);
+      expect(chunk.length).toBeLessThanOrEqual(240);
+    }
+    const joined = chunks.join("\n");
+    expect(joined).toContain("| Agent A | Short |");
+    expect(joined).toContain("| Agent B | Short |");
+  });
+});

@@ -90,10 +90,59 @@ const HIGH_RISK_MEDICATION_SLUGS = [
   "nortriptyline",
   "phenelzine",
   "tranylcypromine",
+  // Second high-risk batch (22 Oct 2026): other anticonvulsants, QTc-prolonging and overdose-risk medicines.
+  "oxcarbazepine",
+  "topiramate",
+  "phenytoin",
+  "levetiracetam",
+  "gabapentin",
+  "pregabalin",
+  "quetiapine",
+  "risperidone",
+  "aripiprazole",
+  "olanzapine-wafer-odt",
+  "paliperidone-er",
+  "lurasidone",
+  "asenapine",
+  "brexpiprazole",
+  "cariprazine",
+  "levomepromazine",
+  "periciazine",
+  "trifluoperazine",
+  "zuclopenthixol",
+  "ondansetron",
+  "domperidone",
+  "dosulepin",
+  "doxepin",
+  "imipramine",
+  "venlafaxine-xr",
+  "desvenlafaxine",
+  "moclobemide",
+  "mirtazapine",
+  "bupropion-sr",
+  "agomelatine",
+  "alprazolam",
+  "clonazepam",
+  "diazepam",
+  "lorazepam",
+  "midazolam",
+  "nitrazepam",
+  "oxazepam",
+  "temazepam",
+  "zolpidem",
+  "zopiclone",
+  "buprenorphine-naloxone",
+  "buprenorphine-sl-depot",
+  "dexamfetamine",
+  "lisdexamfetamine",
+  "methylphenidate",
+  "ketamine",
+  "propranolol",
+  "clonidine",
 ] as const;
 
 describe("medication source links", () => {
-  it("maps only real medication slugs (including all 26 high-risk slugs) to real register records", () => {
+  it("maps only real medication slugs (including every high-risk slug) to real register records", () => {
     const slugs = new Set(loadMedicationSnapshot().map((record) => record.slug));
     const ids = new Set(sourceAcquisitionRecords.map((record) => record.id));
     for (const [slug, recordIds] of Object.entries(medicationSourceLinkIds)) {
@@ -109,12 +158,29 @@ describe("medication source links", () => {
     }
   });
 
-  it("returns the confirmed source links on the live pages now that the owner has signed the adopted records", () => {
-    expect(medicationSourceLinks("clozapine").map((link) => link.id)).toEqual(["wa-health-clozapine-guideline-2024"]);
-    expect(medicationSourceLinks("lithium-carbonate-ir-sr").map((link) => link.id)).toEqual([
-      "australian-prescriber-lithium-therapy-and-its-interactions",
-      "australian-prescriber-lithium-therapy-interactions-correction",
-    ]);
+  it("proposes the WA Monitored Medicines Prescribing Code first for stimulants, S8 benzodiazepines, opioid pharmacotherapy and gabapentinoids", () => {
+    for (const slug of [
+      "dexamfetamine",
+      "lisdexamfetamine",
+      "methylphenidate",
+      "alprazolam",
+      "buprenorphine-sl-depot",
+      "buprenorphine-naloxone",
+      "gabapentin",
+      "pregabalin",
+    ]) {
+      expect((medicationSourceLinkIds as Record<string, readonly string[]>)[slug]?.[0], slug).toBe(
+        "wa-monitored-medicines-prescribing-code",
+      );
+    }
+  });
+
+  it("shows no source links on the live pages while no linked record is adopted with the owner's sign-off", () => {
+    // 21 Oct 2026: the #3562 adoptions of the clozapine and lithium sources were not the owner's, so
+    // those records went back to candidate (owner ruling) and the live pages show no source link.
+    expect(medicationSourceLinks("clozapine")).toEqual([]);
+    expect(medicationSourceLinks("lithium-carbonate-ir-sr")).toEqual([]);
+    for (const slug of HIGH_RISK_MEDICATION_SLUGS) expect(medicationSourceLinks(slug), slug).toEqual([]);
   });
 
   it("hides an unconfirmed record", () => {

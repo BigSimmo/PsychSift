@@ -85,7 +85,10 @@ controls, not an independent production deployment approval.
 The GitHub `Database / production` environment names BigSimmo as its only
 required reviewer, but permits self-review and administrator bypass and has no
 environment secrets. Only `authenticated-live-tests.yml` currently attaches a
-job to it; the recovery jobs use repository secrets. Neither the Railway app
+job to it; the scheduled recovery and monitoring jobs read the service-role key
+through the separate `production-secrets` environment described below (from
+the change that adds it), and other credentials from repository secrets.
+Neither the Railway app
 nor the worker deploy passes through this GitHub environment. Its
 `Protected branches only` selector also reports that no repository branch
 protection rules are set, so it permits all branches; do not infer that the
@@ -102,6 +105,20 @@ failed unit coverage and Firefox/WebKit lanes (issue #3099). Follow the owner de
 `docs/decisions/2026-09-25-railway-waits-for-ci-once-safe.md` before enabling
 it. Even when enabled, Wait for CI is a quality gate, not a second person's
 approval and not a gate on manual Railway deploys.
+
+**Observed 2026-10-21 (#3685): Wait for CI is on for the production app service and is
+freezing deploys.** Read from GitHub deployment and commit statuses only. Every production app
+deploy that day whose commit had a failed workflow run was dropped: `99178efb2` and `9ed4dc821`
+(CI failed), `d951557da` and `30850f3dd` (Docker image build failed on the worker image's
+Trivy findings). Each got a "Success - psychiatry.tools" commit status within seconds of the
+failing run, and its GitHub deployment went `inactive`. Live `/api/health` stayed on
+`d4efdc48f`, the only commit that day with every run green. **Do not read a Railway "Success"
+commit status as proof of a deploy.** Compare `deploymentCommitSha` from `/api/health`
+instead. The paragraph above about `source.checkSuites: false` predates this. Separately, from
+about 07:17Z the same day, Railway created no deployment for any commit, including fully green
+ones (`9436f30d7`, `8657a081e`). That cause is on the Railway side and was not readable from
+GitHub. The owner then chose to turn Wait for CI off until a narrower gate is ready
+(`docs/decisions/2026-09-25-railway-waits-for-ci-once-safe.md`, update 2026-10-21).
 
 Railway's documented behaviour (read 2026-10-09): it reads each workflow run's
 conclusion, not single jobs. A failed run skips the deploy at once, a skipped
@@ -122,11 +139,87 @@ that deploy_ from repository scope to the environment, then put the deploy job
 behind `environment: Database / production`; verify a waiting approval and a
 rejected run before relying on it. Railway's own autodeploy and manual deploy
 permissions must be changed and tested separately. Do not attach the whole
-scheduled read-only reaper or autopilot job to the environment: their apply
+scheduled read-only reaper or autopilot job to `Database / production`: their apply
 paths require separate gated jobs, after the existing disabled switches and
 destructive-path defects have been addressed. Merging migrations still applies
 them via the separate Supabase integration; the merge itself is their release
 decision (see `AGENTS.md` `# Supabase project safety`).
+
+### The production-secrets environment (audit F-21)
+
+The production Supabase service-role key, `SUPABASE_SERVICE_ROLE_KEY`, was a
+repository secret, so every workflow could read it, including a workflow edited
+on a pull-request branch. The owner approved moving it into a GitHub
+environment named `production-secrets` that only `main` may use. The
+environment has **no required reviewers**: it scopes the secret and approves
+nothing, so scheduled jobs keep running unattended. It is not the
+human-approval environment the reindex reaper header asks for before any apply
+path is armed, and it is separate from `Database / production`.
+
+These jobs name it. Each runs only from the default branch:
+
+- `answer-feedback-weekly.yml`, job `summary` (schedule; manual runs are
+  already limited to `main`).
+- `ingestion-autopilot.yml`, job `ingestion-autopilot` (schedule and
+  repository dispatch).
+- `live-drift.yml`, job `live-drift` (schedule, push to `main`, manual run). A
+  manual run from any other branch is now refused by the environment and shows
+  as a failed run. The `drift-routing` job is skipped off `main`, so a refused
+  run opens no drift issue and raises no production alarm.
+- `eval-canary.yml`, job `eval-canary` (schedule and repository dispatch).
+  `OPENAI_API_KEY` stays a repository secret; an environment job still gets it.
+- `reindex-reaper.yml`, job `reindex-reaper` (schedule and repository
+  dispatch; still inert until the owner arms it).
+
+Two places read the key without naming this environment:
+
+- `authenticated-live-tests.yml` already uses `Database / production` (the
+  owner as required reviewer). A job takes one environment, so it stays there,
+  and the owner adds the key to `Database / production` as well.
+- The `Deployment boot smoke` step of the `Build` job in `ci.yml`. Since
+  2026-10-20 it no longer reads any secret: it passes placeholder values,
+  because it only boots the production build and asks it for its project
+  identity, and it runs branch code on manual runs (audit CC-05, where a manual
+  run on a Grok branch on 2026-10-18 received the real key). **The owner can now
+  delete the repository copy of `SUPABASE_SERVICE_ROLE_KEY`**, after checking
+  the copies in `production-secrets` and `Database / production` exist. That
+  closes F-21.
+
+When a secret exists at both levels, GitHub gives the environment copy
+precedence, so the jobs above use the environment copy as soon as this change
+merges. GitHub also records each run of these jobs as a deployment to
+`production-secrets` in the repository's Deployments list; that is expected.
+
+**This change stays a draft until the environment exists.** Naming an
+environment that does not exist makes GitHub create it with no branch rule and
+no secret. The jobs would still run on the repository copy, but the environment
+would look protected while it protects nothing.
+
+Owner setup, in order:
+
+1. In the repository's Settings, Environments, create `production-secrets`.
+   Leave required reviewers off and wait timer at zero.
+2. Under Deployment branches and tags choose **Selected branches and tags** and
+   add the rule `main`. Do not choose `Protected branches only`: as noted above,
+   that selector permits every branch here, because the repository uses a
+   ruleset rather than branch protection rules.
+3. Add `SUPABASE_SERVICE_ROLE_KEY` as an environment secret, with the same
+   value as the repository secret.
+4. Add the same secret to `Database / production`, for
+   `authenticated-live-tests.yml`.
+5. Mark the pull request ready and merge it.
+6. Run `Live drift check` manually on `main` (read-only, no provider spend)
+   and confirm it shows the `production-secrets` environment and passes. Then
+   confirm the next scheduled run of `Ingestion Autopilot` (every six hours)
+   passes too.
+7. Delete the repository secret `SUPABASE_SERVICE_ROLE_KEY` only after the
+   follow-up for the `ci.yml` boot smoke has merged and a `main` CI run is
+   green without it. Then rerun step 6.
+
+Rollback: before step 7, revert this change; the repository secret is still in
+place and every job reads it again. After step 7, add the repository secret
+back first, then revert. A run refused by the branch rule means it started from
+a branch other than `main`; start it from `main` rather than widening the rule.
 
 ## 2. App tier
 
@@ -262,7 +355,33 @@ comparable (~200 ms) from Singapore or Sydney and does not favour either host.
 ### Image contract (`Dockerfile`)
 
 - `node:24-bookworm-slim` is pinned by multi-platform SHA-256 digest in a
-  shared `node-base` stage and used by every stage. Dependency installs use
+  shared `node-base` stage for dependency/build stages. The worker runner pins
+  official `python:3.11-slim-trixie` and copies only the existing Node binary
+  from `node-base`. It retains Python 3.11, separate hashed Python dependency locks,
+  the non-root `node` user (UID/GID 1000), and the pinned OCR/Docling models.
+  Trixie updates native libraries and Tesseract from 5.3 to 5.5; the complete
+  image's clinical OCR tests, runtime checks and vulnerability scan remain
+  required. Unused global setuptools is removed; each isolated venv retains its
+  locked setuptools. NLTK uses the complete upstream model-artifact path repair
+  pinned to commit `8658f3e7c172abf87f99db045b59a6b1a9e80c7a` and archive
+  SHA-256 in both runtime-specific locks. Its genuine version remains 3.10.3,
+  so a version-only scanner may still report CVE-2026-81726; no advisory is
+  suppressed. The app
+  runner uses the pinned official `distroless/cc-debian13:nonroot` multi-platform
+  image, copying only Node 24.22 from its pinned Trixie donor rather than the
+  donor's operating system. This is an app runtime version change; dependency
+  and build stages retain their existing Node pin. The runner retains user
+  `node` with UID/GID 1000 and a writable `/home/node`.
+  Railway's pre-deploy command is a command string, so the app also retains
+  `/bin/sh` by copying only the donor's dash binary, copyright and package-status
+  record. No shellless Railway execution is assumed. Both startup and health
+  check use explicit Node argv; Next reads `PORT` itself, defaulting to 3000.
+  The image-content gate uses Node filesystem probes and fails on probe errors,
+  present secret/test paths and forbidden app operating-system tools. A minimal
+  base is not proof of advisory closure: actual package inventory, native binding
+  compatibility, runtime health and the unchanged vulnerability gate remain
+  required. Worker/NLTK and development-only braces findings remain separate.
+  Dependency installs use
   ordinary Docker layer caching. The shared Dockerfiles deliberately avoid
   BuildKit cache mounts because Railway requires hard-coded, service-specific
   cache IDs, which would couple each image to one Railway service.
@@ -670,16 +789,16 @@ Operational rules that follow:
 
 ## 4. Secrets management
 
-| Variable                                         | Sensitivity      | Build-time or runtime     | Where it lives                                                    |
-| ------------------------------------------------ | ---------------- | ------------------------- | ----------------------------------------------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`                       | public           | build (inlined) + runtime | Railway service variable (also the Dockerfile ARG default)        |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`           | public-by-design | build (inlined)           | Railway service variable (exposed to the build via `ARG`)         |
-| `SUPABASE_SERVICE_ROLE_KEY`                      | **critical**     | runtime                   | Railway variable store; GitHub repo secret (CI boot smoke + eval) |
-| `OPENAI_API_KEY`                                 | **critical**     | runtime                   | Railway variable store; GitHub repo secret                        |
-| `SUPABASE_PROJECT_REF` / `SUPABASE_PROJECT_NAME` | low              | runtime                   | plain Railway variable (pins the `check:supabase-project` guard)  |
-| `INDEXING_V3_AGENT_SECRET`                       | high             | runtime                   | Supabase Edge Function secrets                                    |
-| `RAG_QUERY_HASH_SECRET`                          | high             | runtime                   | Railway variable store; GitHub repo secret (CI boot smoke)        |
-| `E2E_USER_EMAIL` / `E2E_USER_PASSWORD`           | medium           | CI only                   | GitHub repo secrets                                               |
+| Variable                                         | Sensitivity      | Build-time or runtime     | Where it lives                                                                                                   |
+| ------------------------------------------------ | ---------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`                       | public           | build (inlined) + runtime | Railway service variable (also the Dockerfile ARG default)                                                       |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`           | public-by-design | build (inlined)           | Railway service variable (exposed to the build via `ARG`)                                                        |
+| `SUPABASE_SERVICE_ROLE_KEY`                      | **critical**     | runtime                   | Railway variable store; GitHub `production-secrets` environment (scheduled jobs) and repo secret (CI boot smoke) |
+| `OPENAI_API_KEY`                                 | **critical**     | runtime                   | Railway variable store; GitHub repo secret                                                                       |
+| `SUPABASE_PROJECT_REF` / `SUPABASE_PROJECT_NAME` | low              | runtime                   | plain Railway variable (pins the `check:supabase-project` guard)                                                 |
+| `INDEXING_V3_AGENT_SECRET`                       | high             | runtime                   | Supabase Edge Function secrets                                                                                   |
+| `RAG_QUERY_HASH_SECRET`                          | high             | runtime                   | Railway variable store; GitHub repo secret (CI boot smoke)                                                       |
+| `E2E_USER_EMAIL` / `E2E_USER_PASSWORD`           | medium           | CI only                   | GitHub repo secrets                                                                                              |
 
 Rules:
 

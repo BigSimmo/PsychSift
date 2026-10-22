@@ -210,7 +210,9 @@ async function loadClinicalQualitySnapshot(supabase: ReturnType<typeof createAdm
   const recentFeedback = await readRows(
     supabase
       .from("rag_answer_feedback")
-      .select("id,interaction_id,answer_hash,feedback_category,source_ids,cited_source_ids,created_at")
+      .select(
+        "id,interaction_id,answer_hash,feedback_category,source_ids,cited_source_ids,created_at,record_type,record_id,note",
+      )
       .gte("created_at", reachSince)
       .order("created_at", { ascending: false })
       .limit(101),
@@ -273,7 +275,9 @@ async function loadClinicalQualitySnapshot(supabase: ReturnType<typeof createAdm
       (ids) =>
         supabase
           .from("rag_answer_feedback")
-          .select("id,interaction_id,answer_hash,feedback_category,source_ids,cited_source_ids,created_at")
+          .select(
+            "id,interaction_id,answer_hash,feedback_category,source_ids,cited_source_ids,created_at,record_type,record_id,note",
+          )
           .in("id", ids),
       ragAnswerFeedbackRowSchema,
     ),

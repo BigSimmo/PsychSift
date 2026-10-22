@@ -9,7 +9,7 @@
  * daemon socket, which would be equivalent to root on the host.
  */
 import { basename, dirname, join, resolve } from "node:path";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -21,8 +21,17 @@ export const TRIVY_IMAGE =
   "aquasec/trivy:0.59.1@sha256:029e990b328d149bf0a9ffe355919041e1f86192db2df47e217f8a36dd42ceac";
 export const REQUIRED_TRIVY_SCAN_IMAGES = Object.freeze(["clinical-kb-app:ci", "clinical-kb-worker:ci"]);
 
+// Owner decision 2026-10-21 (docs/decisions/2026-10-21-worker-scan-advisory-until-4-nov.md): until
+// this date, HIGH/CRITICAL findings in the worker image are advisory everywhere, because a red
+// main-branch scan held up production deploys while the worker fixes (#3701) are finished. App
+// image findings and any unassessed scan still fail. The exemption ends by itself on this date.
+export const WORKER_SCAN_ADVISORY_UNTIL = "2026-11-04T00:00:00Z";
+export const WORKER_SCAN_IMAGE = "clinical-kb-worker:ci";
+
 function run(cmd, args, opts = {}) {
-  const result = spawnSync(cmd, args, { encoding: "utf8", stdio: "pipe", ...opts });
+  // Full worker inventories exceed spawnSync's default 1MiB buffer.
+  // Bound both local and Docker scanner evidence at 32MiB.
+  const result = spawnSync(cmd, args, { encoding: "utf8", stdio: "pipe", maxBuffer: 32 * 1024 * 1024, ...opts });
   if (result.error) throw result.error;
   return result;
 }
@@ -101,49 +110,187 @@ export function validateTrivyReportJson(rawStdout) {
   };
 }
 
-export function evaluateTrivySummaryText(summaryText, requiredImages = REQUIRED_TRIVY_SCAN_IMAGES) {
-  const text = typeof summaryText === "string" ? summaryText.trim() : "";
-  if (!text) {
-    return {
-      assessed: false,
-      ok: false,
-      high: 0,
-      critical: 0,
-      reason: "empty_summary",
-    };
+export const DEFAULT_TRIVY_SUPPRESSIONS_PATH = fileURLToPath(
+  new URL("../scripts/trivy-suppressions.json", import.meta.url),
+);
+const SUPPRESSION_KEYS = ["image", "package", "installed", "cve", "justification", "remove_when"];
+
+/**
+ * @typedef {{ image: string; package: string; installed: string; cve: string; justification: string; remove_when: string; [key: string]: unknown }} TrivySuppression
+ */
+
+/**
+ * Load and validate the exact-match suppression list (scripts/trivy-suppressions.json).
+ * @param {string} text
+ * @returns {TrivySuppression[]}
+ */
+export function parseTrivySuppressions(text) {
+  const doc = JSON.parse(text);
+  if (!doc || doc.schema_version !== 1 || !Array.isArray(doc.suppressions)) {
+    throw new Error("Invalid Trivy suppressions file: expected schema_version 1 with suppressions[]");
   }
-  if (/\bSTATUS=unassessed\b/.test(text)) {
-    return {
-      assessed: false,
-      ok: false,
-      high: 0,
-      critical: 0,
-      reason: "contains_unassessed_status",
-    };
+  for (const [i, row] of doc.suppressions.entries()) {
+    for (const key of SUPPRESSION_KEYS) {
+      if (typeof row?.[key] !== "string" || !row[key].trim()) {
+        throw new Error(`Invalid Trivy suppression #${i}: missing ${key}`);
+      }
+    }
+    if (!/^(CVE|GHSA)-[0-9A-Za-z-]+$/.test(row.cve)) throw new Error(`Invalid Trivy suppression #${i}: bad cve`);
   }
-  for (const imageRef of requiredImages) {
-    const escaped = imageRef.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const okLineRe = new RegExp(`^Trivy scan completed \\(${escaped}\\): STATUS=ok\\b`, "m");
-    if (!okLineRe.test(text)) {
-      return {
-        assessed: false,
-        ok: false,
-        high: 0,
-        critical: 0,
-        reason: `missing_status_ok_for_${imageRef}`,
-      };
+  return doc.suppressions;
+}
+
+/**
+ * Remove findings that exactly match (image, package, installed version, CVE). Anything else,
+ * including the same CVE at a different installed version, stays counted.
+ * @param {any} report
+ * @param {string} imageRef
+ * @param {Array<{ image: string; package: string; installed: string; cve: string }>} suppressions
+ * @returns {{ report: any; suppressed: any[] }}
+ */
+export function applyTrivySuppressions(report, imageRef, suppressions) {
+  const keys = new Set(
+    suppressions.filter((s) => s.image === imageRef).map((s) => `${s.package}\u0000${s.installed}\u0000${s.cve}`),
+  );
+  const suppressed = [];
+  const results = Array.isArray(report?.Results)
+    ? report.Results.map((result) => {
+        if (!result || typeof result !== "object" || !Array.isArray(result.Vulnerabilities)) return result;
+        const kept = [];
+        for (const v of result.Vulnerabilities) {
+          const key = `${v?.PkgName}\u0000${v?.InstalledVersion}\u0000${v?.VulnerabilityID}`;
+          if (keys.has(key)) suppressed.push(v);
+          else kept.push(v);
+        }
+        return { ...result, Vulnerabilities: kept };
+      })
+    : report?.Results;
+  return { report: { ...report, Results: results }, suppressed };
+}
+
+// Put actionable public package/CVE metadata in job logs as well as the full
+// retained report. Keep stderr separate from the strictly parsed summary.
+export function trivyFindingDetails(report, limit = 512) {
+  if (!Number.isSafeInteger(limit) || limit < 0 || limit > 512) throw new RangeError("Invalid finding log limit");
+  const rows = [];
+  let total = 0;
+  const field = (value) => (typeof value === "string" ? value.replace(/[^\x20-\x7e]/g, "?").slice(0, 256) : "");
+  for (const result of Array.isArray(report.Results) ? report.Results : []) {
+    for (const vulnerability of Array.isArray(result?.Vulnerabilities) ? result.Vulnerabilities : []) {
+      if (!["HIGH", "CRITICAL"].includes(vulnerability?.Severity)) continue;
+      total += 1;
+      if (rows.length < limit) {
+        rows.push({
+          type: field(result.Type),
+          package: field(vulnerability.PkgName),
+          source: field(vulnerability.SrcName),
+          installed: field(vulnerability.InstalledVersion),
+          fixed: field(vulnerability.FixedVersion),
+          cve: field(vulnerability.VulnerabilityID),
+          severity: vulnerability.Severity,
+        });
+      }
     }
   }
+  return { rows, total, truncated: total > rows.length };
+}
 
-  const high = [...text.matchAll(/\bHIGH=(\d+)\b/g)].reduce((sum, match) => sum + Number(match[1]), 0);
-  const critical = [...text.matchAll(/\bCRITICAL=(\d+)\b/g)].reduce((sum, match) => sum + Number(match[1]), 0);
+export function evaluateTrivySummaryText(summaryText, requiredImages = REQUIRED_TRIVY_SCAN_IMAGES) {
+  const unassessed = (reason) => ({ assessed: false, ok: false, high: 0, critical: 0, reason });
+  const text = typeof summaryText === "string" ? summaryText.trim() : "";
+  if (!text) return unassessed("empty_summary");
+  if (/\bSTATUS=unassessed\b/.test(text)) return unassessed("contains_unassessed_status");
+
+  // Each image must supply exactly one complete record. Never infer a missing,
+  // malformed or overflowing count as zero, or count unrelated diagnostic text.
+  const evidence = new Map();
+  const record =
+    /^Trivy scan completed \(([^)]+)\): STATUS=ok HIGH=(0|[1-9]\d*) CRITICAL=(0|[1-9]\d*) MEDIUM=(0|[1-9]\d*) LOW=(0|[1-9]\d*) UNKNOWN=(0|[1-9]\d*)(?: SUPPRESSED=(?:0|[1-9]\d*))?$/;
+  for (const line of text.split(/\r?\n/).filter((line) => line.trim())) {
+    const match = record.exec(line);
+    if (!match) return unassessed("malformed_scan_record");
+    const [, imageRef, ...rawCounts] = match;
+    if (!requiredImages.includes(imageRef)) return unassessed(`unexpected_image_${imageRef}`);
+    if (evidence.has(imageRef)) return unassessed(`duplicate_scan_record_for_${imageRef}`);
+    const counts = rawCounts.map(Number);
+    if (!counts.every(Number.isSafeInteger)) return unassessed(`invalid_counts_for_${imageRef}`);
+    evidence.set(imageRef, counts);
+  }
+
+  let high = 0;
+  let critical = 0;
+  const byImage = {};
+  for (const imageRef of requiredImages) {
+    const counts = evidence.get(imageRef);
+    if (!counts) return unassessed(`missing_status_ok_for_${imageRef}`);
+    high += counts[0];
+    critical += counts[1];
+    byImage[imageRef] = { high: counts[0], critical: counts[1] };
+    if (!Number.isSafeInteger(high) || !Number.isSafeInteger(critical)) return unassessed("count_overflow");
+  }
   return {
     assessed: true,
     ok: high === 0 && critical === 0,
     high,
     critical,
+    byImage,
     reason: high === 0 && critical === 0 ? null : "high_or_critical_vulnerabilities_found",
   };
+}
+
+/**
+ * Whether assessed findings fail this event. Pull requests and merge groups stay advisory. Elsewhere
+ * any finding fails, except worker-image findings on main before WORKER_SCAN_ADVISORY_UNTIL. The
+ * exception covers main only, so a release branch or a dispatch from another ref still blocks.
+ */
+export function trivyFindingsBlock(result, eventName, now = new Date(), ref = process.env.GITHUB_REF ?? "") {
+  if (!result?.assessed) return true;
+  if (result.ok) return false;
+  if (["pull_request", "merge_group"].includes(eventName)) return false;
+  if (ref !== "refs/heads/main") return true;
+  if (now.getTime() >= Date.parse(WORKER_SCAN_ADVISORY_UNTIL)) return true;
+  return Object.entries(result.byImage ?? {}).some(
+    ([imageRef, counts]) => imageRef !== WORKER_SCAN_IMAGE && (counts.high > 0 || counts.critical > 0),
+  );
+}
+
+function evaluateSummaryFile(summaryPath, eventName) {
+  let summary;
+  try {
+    summary = readFileSync(summaryPath, "utf8");
+  } catch {
+    console.error("::error::Trivy scan unassessed: summary is missing or unreadable.");
+    return 1;
+  }
+  if (process.env.GITHUB_STEP_SUMMARY) {
+    writeFileSync(
+      process.env.GITHUB_STEP_SUMMARY,
+      `## Trivy image scan (HIGH,CRITICAL)\n\n\`\`\`\n${summary}\n\`\`\`\n`,
+      { flag: "a" },
+    );
+  }
+  const result = evaluateTrivySummaryText(summary);
+  if (!result.assessed) {
+    console.error(`::error::Trivy scan unassessed: ${result.reason}.`);
+    return 1;
+  }
+  const counts = `HIGH=${result.high} CRITICAL=${result.critical}`;
+  console.log(counts);
+  if (result.ok) return 0;
+  if (["pull_request", "merge_group"].includes(eventName)) {
+    console.log(
+      `::warning::Trivy found ${counts} in the production images (advisory on pull requests and merge groups).`,
+    );
+    return 0;
+  }
+  if (!trivyFindingsBlock(result, eventName)) {
+    console.log(
+      `::warning::Trivy found ${counts}, all in the worker image, which is advisory until ${WORKER_SCAN_ADVISORY_UNTIL.slice(0, 10)} (owner decision 2026-10-21).`,
+    );
+    return 0;
+  }
+  console.error(`::error::Trivy found ${counts} in the production images; see the job summary.`);
+  return 1;
 }
 
 /**
@@ -297,9 +444,19 @@ function runDockerTrivy(imageRef, trivyArgs, { outputHostPath = null, needsVulne
 }
 
 function main() {
+  if (process.argv[2] === "--evaluate-summary") {
+    const [, , , summaryPath, eventName] = process.argv;
+    if (!summaryPath || !eventName || process.argv.length !== 5) {
+      console.error("Usage: node scripts/trivy-image-scan.mjs --evaluate-summary <summary.txt> <event-name>");
+      process.exit(1);
+    }
+    process.exit(evaluateSummaryFile(summaryPath, eventName));
+  }
   const [imageRef, ...rest] = process.argv.slice(2);
   if (!imageRef) {
-    console.error("Usage: node scripts/trivy-image-scan.mjs <image:tag> [--severity SEV] [--sbom <output.json>]");
+    console.error(
+      "Usage: node scripts/trivy-image-scan.mjs <image:tag> [--severity SEV] [--sbom <output.json>] [--report <output.json>]",
+    );
     process.exit(1);
   }
 
@@ -315,6 +472,7 @@ function main() {
   }
 
   const sbomPath = optionValue("--sbom");
+  const reportPath = optionValue("--report");
   const severity = optionValue("--severity") ?? "HIGH,CRITICAL";
 
   const trivy = localTrivy();
@@ -334,10 +492,14 @@ function main() {
   }
 
   const result = trivy
-    ? run(trivy, ["image", "--format", "json", "--exit-code", "0", "--severity", severity, imageRef])
-    : runDockerTrivy(imageRef, ["image", "--format", "json", "--exit-code", "0", "--severity", severity, "__IMAGE__"], {
-        needsVulnerabilityDb: true,
-      });
+    ? run(trivy, ["image", "--format", "json", "--list-all-pkgs", "--exit-code", "0", "--severity", severity, imageRef])
+    : runDockerTrivy(
+        imageRef,
+        ["image", "--format", "json", "--list-all-pkgs", "--exit-code", "0", "--severity", severity, "__IMAGE__"],
+        {
+          needsVulnerabilityDb: true,
+        },
+      );
 
   if (result.status !== 0) {
     console.error(result.stderr || result.stdout || `Trivy failed to scan ${imageRef}`);
@@ -352,9 +514,32 @@ function main() {
     process.exit(2);
   }
 
-  const { counts } = validated;
+  const suppressionsPath = optionValue("--suppressions") ?? DEFAULT_TRIVY_SUPPRESSIONS_PATH;
+  let suppressions = [];
+  if (!rest.includes("--no-suppressions") && existsSync(suppressionsPath)) {
+    try {
+      suppressions = parseTrivySuppressions(readFileSync(suppressionsPath, "utf8"));
+    } catch (error) {
+      console.log(`Trivy scan failed (${imageRef}): STATUS=unassessed reason=invalid_suppressions`);
+      console.error(String(error?.message ?? error));
+      process.exit(2);
+    }
+  }
+  const applied = applyTrivySuppressions(validated.report, imageRef, suppressions);
+  const { counts } = validateTrivyReportJson(JSON.stringify(applied.report));
+  // The retained report stays the unfiltered scanner output; suppressions only change the gate counts.
+  if (reportPath) writeFileSync(resolve(reportPath), `${JSON.stringify(validated.report, null, 2)}\n`);
+  const suppressedDetails = trivyFindingDetails({
+    Results: [{ Type: "suppressed", Vulnerabilities: applied.suppressed }],
+  });
+  for (const row of suppressedDetails.rows)
+    console.error(`Trivy suppressed (scripts/trivy-suppressions.json): ${JSON.stringify(row)}`);
+  const details = trivyFindingDetails(applied.report);
+  for (const row of details.rows) console.error(`Trivy finding: ${JSON.stringify(row)}`);
+  if (details.truncated)
+    console.error(`Trivy finding details truncated: ${details.rows.length}/${details.total}; see retained report.`);
   console.log(
-    `Trivy scan completed (${imageRef}): STATUS=ok HIGH=${counts.HIGH} CRITICAL=${counts.CRITICAL} MEDIUM=${counts.MEDIUM} LOW=${counts.LOW} UNKNOWN=${counts.UNKNOWN}`,
+    `Trivy scan completed (${imageRef}): STATUS=ok HIGH=${counts.HIGH} CRITICAL=${counts.CRITICAL} MEDIUM=${counts.MEDIUM} LOW=${counts.LOW} UNKNOWN=${counts.UNKNOWN} SUPPRESSED=${applied.suppressed.length}`,
   );
 }
 

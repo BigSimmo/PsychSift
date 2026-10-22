@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { ClipboardList, Copy, FileText } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 
+import { useAccountRequestScope } from "@/components/use-account-request-scope";
 import { useAccountData } from "@/components/account-data-provider";
 import {
   AdminCallButton,
@@ -201,6 +202,8 @@ function PaperworkSignpost({ overview }: { readonly overview: ComplianceOverview
  * decision) — there is no week strip.
  */
 export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
+  const { scope, isCurrent } = useAccountRequestScope();
+  const [owner, setOwner] = useState(scope);
   const { isAuthenticated } = useAccountData();
   const state = useOnCallEntries();
   const { entries, retry } = state;
@@ -217,6 +220,15 @@ export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
   const nextUndoId = useRef(0);
   const [toggleError, setToggleError] = useState<string | null>(null);
   const [signInOpen, setSignInOpen] = useState(false);
+
+  if (owner !== scope) {
+    setOwner(scope);
+    setEditorState({ open: false, entry: null, section: "logistics" });
+    setEditorMounted(false);
+    setUndo(null);
+    setToggleError(null);
+    setSignInOpen(false);
+  }
 
   const own = useMemo(() => selectAdminOwnEntries(state), [state]);
   const shared = useMemo(() => selectAdminSharedEntries(state), [state]);
@@ -248,6 +260,7 @@ export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
         : null;
 
   function upsertCachedEntry(entry: OnCallEntry) {
+    if (!isCurrent()) return;
     if (isOnCallExampleEntry(entry)) return;
     const next = entries.some((existing) => existing.id === entry.id)
       ? entries.map((existing) => (existing.id === entry.id ? entry : existing))
@@ -256,57 +269,67 @@ export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
   }
 
   function removeCachedEntry(id: string) {
+    if (!isCurrent()) return;
     cacheOnCallEntries(entries.filter((existing) => existing.id !== id));
   }
 
   async function handleToggle(entry: OnCallEntry, done: boolean) {
+    if (!isCurrent()) return;
     setToggleError(null);
     const update = setNewJobStepDone(entry, done);
     try {
       const saved = await patchEntry(entry.id, update.body);
+      if (!isCurrent()) return;
       upsertCachedEntry(saved);
       setUndo({ id: ++nextUndoId.current, entryId: entry.id, restore: update.undo, label: "Saved" });
     } catch (error) {
+      if (!isCurrent()) return;
       setToggleError(error instanceof Error ? error.message : "Could not save this change.");
     }
   }
 
   async function handleUndo() {
-    if (!undo) return;
+    if (!isCurrent() || !undo) return;
     const { entryId, restore } = undo;
     setUndo(null);
     try {
       const saved = await patchEntry(entryId, restore);
+      if (!isCurrent()) return;
       upsertCachedEntry(saved);
     } catch (error) {
+      if (!isCurrent()) return;
       setToggleError(error instanceof Error ? error.message : "Could not undo that change.");
     }
   }
 
   async function handleSetStart(date: string): Promise<boolean> {
-    if (!startEntry) return false;
+    if (!isCurrent() || !startEntry) return false;
     const result = setNewJobStart(startEntry, date);
     if (!result.ok) return false;
     try {
       const saved = await patchEntry(startEntry.id, result.body);
+      if (!isCurrent()) return false;
       upsertCachedEntry(saved);
       setUndo({ id: ++nextUndoId.current, entryId: startEntry.id, restore: result.undo, label: "Saved" });
       return true;
     } catch (error) {
+      if (!isCurrent()) return false;
       setToggleError(error instanceof Error ? error.message : "Could not save the start date.");
       return false;
     }
   }
 
   async function handleClearStart() {
-    if (!startEntry) return;
+    if (!isCurrent() || !startEntry) return;
     const result = setNewJobStart(startEntry, null);
     if (!result.ok) return;
     try {
       const saved = await patchEntry(startEntry.id, result.body);
+      if (!isCurrent()) return;
       upsertCachedEntry(saved);
       setUndo({ id: ++nextUndoId.current, entryId: startEntry.id, restore: result.undo, label: "Saved" });
     } catch (error) {
+      if (!isCurrent()) return;
       setToggleError(error instanceof Error ? error.message : "Could not clear the start date.");
     }
   }

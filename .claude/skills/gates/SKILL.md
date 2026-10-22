@@ -27,7 +27,7 @@ Check these before believing any result.
   for exactly this reason — if installed packages do not match `package-lock.json`, treat any test,
   lint, or typecheck result as void until `npm ci` has run. Its own failure message says as much.
 - **`verify:full` stops at the first failing check.** Everything after that point never ran. Do not
-  describe the change as broadly verified when the gate died at check 2 of 46.
+  describe the change as broadly verified when the gate died at its second check.
 - **Changed-file formatting is required in CI but is part of neither gate.** A locally green
   `verify:cheap` can still fail CI on formatting. During iteration, format only task-owned files.
   Before a push, follow `AGENTS.md`: from an isolated or otherwise fully owned worktree run
@@ -89,7 +89,7 @@ A bot or agent saying it fixed something is a claim, not a result.
 - Verify against the actual ref content before repeating it as fact. Prefer refs already available
   locally (`git log`, `git show`); fetching from the remote is a network action subject to the
   provider boundary above.
-- A squash merge breaks ancestry. `git merge-base --is-ancestor` returning false does **not** mean
+- A squash merge (older history; new PRs land as merge commits) breaks ancestry. `git merge-base --is-ancestor` returning false does **not** mean
   the work is missing — compare file content on `origin/main` instead.
 - Absence of evidence in one place is not proof. Grepping `.github/workflows` for `auto-merge`
   returns nothing even though GitHub's per-PR auto-merge is in active use here, because that setting

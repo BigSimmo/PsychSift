@@ -23,6 +23,33 @@ function configPattern(source: string, name: string): RegExp {
 }
 
 describe("Playwright production-project isolation", () => {
+  it("states the full-height phone project and proves installed layout through explicit CSS fixtures", () => {
+    const config = readFileSync(resolve(process.cwd(), "playwright.config.ts"), "utf8");
+    const phone = readFileSync(resolve(process.cwd(), "tests/helpers/phone-scroll.ts"), "utf8");
+    const installed = readFileSync(resolve(process.cwd(), "tests/ui-phone-scroll.spec.ts"), "utf8");
+    const project = config.slice(config.indexOf('name: "mobile-pwa-standalone"'), config.indexOf('name: "tablet"'));
+    expect(project).toContain('phoneViewportContract: "full-height"');
+    expect(project).toContain('installedLayoutContract: "explicit-compiled-css-fixture"');
+    expect(project).toContain('...devices["iPhone 14"]');
+    expect(project).toContain("viewport: { width: 390, height: 844 }");
+    expect(phone).toContain('rule.conditionText.includes("display-mode: standalone")');
+    expect(phone).toContain("const rulesCount = await forceCompiledStandalonePhoneCss(page)");
+    expect(installed).toContain('"standalone PWA delegates scrolling to #main-content"');
+    expect(installed).toContain('"document remains un-scrolled"');
+  });
+
+  it("settles phone hydration, fonts, safe areas and layout before geometry instead of sleeping", () => {
+    const phone = readFileSync(resolve(process.cwd(), "tests/helpers/phone-scroll.ts"), "utf8");
+    const setup = phone.slice(
+      phone.indexOf("export async function gotoPhoneSurface"),
+      phone.indexOf("export function forceCompiledStandalonePhoneCss"),
+    );
+    expect(setup).toContain("await expectHydrated(main)");
+    expect(setup).toContain("await document.fonts.ready");
+    expect(setup).toContain("stableSamples >= 2");
+    expect(setup).toContain('getPropertyValue("--safe-area-bottom")');
+    expect(setup).not.toContain("waitForTimeout");
+  });
   it("excludes advisory mockup cases from every required browser project", () => {
     const source = readFileSync(resolve(process.cwd(), "playwright.config.ts"), "utf8");
 
@@ -33,39 +60,6 @@ describe("Playwright production-project isolation", () => {
     }
 
     expect(source).toMatch(/name: ["']chromium-mockups["'],\s+testMatch: mockupSpecPattern,\s+grep: mockupTag,/m);
-  });
-
-  /**
-   * The Care Plan prototype's only browser proof. Ten tasks of structural
-   * checking ran under `css: false` in jsdom, so this spec is the first and
-   * only thing that can see the prototype paint: the pinned safety boundary,
-   * the three print surfaces, and whether a link looks like a link. A regex
-   * edit that dropped it would not fail — it would silently leave the whole
-   * route family with no rendered evidence at all, on a green pull request.
-   */
-  it("collects the Care Plan prototype only in the advisory mockup project", () => {
-    const source = readFileSync(resolve(process.cwd(), "playwright.config.ts"), "utf8");
-    const productionSpecPattern = configPattern(source, "productionSpecPattern");
-    const mockupSpecPattern = configPattern(source, "mockupSpecPattern");
-    const testMatch = source.match(/testMatch:\s*(\/.*\/),/);
-    expect(testMatch, "playwright.config.ts: could not read the top-level testMatch regex").not.toBeNull();
-    const testMatchPattern = new RegExp(testMatch![1].slice(1, -1));
-    const spec = "tests/ui-care-plan-mockup.spec.ts";
-
-    expect(existsSync(resolve(process.cwd(), spec)), `${spec} is missing`).toBe(true);
-    expect(testMatchPattern.test(spec), `${spec} is not collected by top-level testMatch`).toBe(true);
-    expect(mockupSpecPattern.test(spec), `${spec} is not collected by chromium-mockups`).toBe(true);
-    expect(
-      productionSpecPattern.test(spec),
-      `${spec} leaked into the required production projects, where a red prototype would block a release`,
-    ).toBe(false);
-
-    const packageJson = JSON.parse(readFileSync(resolve(process.cwd(), "package.json"), "utf8")) as {
-      scripts?: Record<string, string>;
-    };
-    expect(packageJson.scripts?.["test:e2e:care-plan-mockup"]).toBe(
-      "node scripts/run-playwright.mjs --project=chromium-mockups tests/ui-care-plan-mockup.spec.ts",
-    );
   });
 
   /**
@@ -260,13 +254,13 @@ describe("every ui-*.spec.ts lands in the RIGHT project, not merely in some proj
   const collects = (pattern: RegExp, spec: string) => pattern.test(`tests/${spec}`);
 
   /**
-   * The one spec deliberately claimed by BOTH patterns. `ui-tools.spec.ts` holds production and
-   * prototype journeys in one file and separates them per-test with `@mockup`, which the config's
-   * own comment describes as the intended arrangement. Pinned as a hand-written literal: a second
-   * file joining the overlap is a decision somebody must make on purpose, and the point of this
-   * guard is that it cannot happen by accident.
+   * Specs deliberately claimed by BOTH patterns, separated per-test with `@mockup`. Empty since
+   * 2026-10-21: `ui-tools.spec.ts` was the one such file, and its prototype journeys went when the
+   * owner retired those mockups. Pinned as a hand-written literal: a file joining the overlap is a
+   * decision somebody must make on purpose, and the point of this guard is that it cannot happen by
+   * accident.
    */
-  const DOCUMENTED_OVERLAP = ["ui-tools.spec.ts"];
+  const DOCUMENTED_OVERLAP: string[] = [];
 
   it("parses the config's projects, or every assertion below silently covers fewer than exist", () => {
     expect(projects.map((project) => project.name)).toEqual([

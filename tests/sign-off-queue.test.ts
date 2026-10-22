@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+import { TODAY_RULE_SIGN_OFFS } from "@/lib/admin/rule-sign-off";
 
 import formsContentReview from "../data/forms-content-review.json";
 import {
@@ -15,7 +17,7 @@ import {
   dictionaryDefinitionReviews,
   isDefinitionReviewClinicallyApproved,
 } from "@/lib/dictionary-editorial/definition-reviews";
-import { acquisitionReviewQueue } from "@/lib/sources/acquisition-ledger";
+import { acquisitionReviewQueue, sourceAcquisitionRecords } from "@/lib/sources/acquisition-ledger";
 import { isSpecifierClinicianReviewed, loadSpecifiersContent, specifierCatalogItems } from "@/lib/specifiers-content";
 import { formulationConcepts, formulationGuides } from "@/lib/formulation-concepts";
 import { conceptReviewState } from "@/lib/formulation-review-status";
@@ -36,10 +38,11 @@ import { conceptReviewState } from "@/lib/formulation-review-status";
  * rows is the bug. Forms are empty only because every review row is signed.
  */
 const EXPECTED: Record<SignOffFamilyId, number> = {
-  // Measured 2026-10-06. Form 2, the last drafted form, now has a complete
-  // sign-off, so this family is empty. The empty-family test below still fails
-  // if the review file has an unsigned form and the reader reports none.
-  "wa-mha-forms": 0,
+  // Every form was signed by 2026-10-06 (Form 2 last). The 20 Oct 2026 clinical
+  // content audit edited eight signed forms (1A, 3D, 4B, 5A, 5B, 5C, 11D, 12C),
+  // which went back to drafted until the owner signs each one again, so 8 wait.
+  // The empty-family test below still fails if the reader and review file disagree.
+  "wa-mha-forms": 8,
   // The twelve mechanisms and the non-Indigenous concepts were signed off.
   // Six Indigenous concepts and guides remain, held for Aboriginal governance review.
   formulation: 6,
@@ -50,14 +53,28 @@ const EXPECTED: Record<SignOffFamilyId, number> = {
   // 333 unpublished sense drafts + 68 reviews without approved rewrite text.
   dictionary: 401,
   // 514 placeholders remain; the 71 written items and 18 universals (including the 22
-  // corrected on 15 Oct) have now been signed off by "Psych Sift" (owner decision, 16 Oct 2026).
-  specifiers: 514,
+  // corrected on 15 Oct) were signed off by "Psych Sift" (owner decision, 16 Oct 2026). The
+  // reworded DID possession-form item went back to clinician-review-pending (owner ruling,
+  // 17 Oct 2026 22:12 AWST), and the 20 Oct 2026 clinical content audit reset three edited
+  // ARFID rows to clinician-review-pending. 21 Oct 2026: the #3562 and #3571 sign-offs went back to waiting
+  // (owner ruling), so the other 85 "Psych Sift" reviews are pending too and all 603 wait.
+  specifiers: 603,
   // The 27 signable records with references (including the 5 edited on #3510 and the 15 Oct
-  // corrections) have now been signed off by "Psych Sift", leaving the 26 records that list
-  // no references yet (47 originally unsigned - 22 that gained references + 1 wake-therapy).
-  therapy: 26,
+  // corrections) have now been signed off by "Psych Sift". The 26 records stamped on 17 Oct
+  // without the interactive review tool went back to needs_review (owner ruling, 17 Oct 2026
+  // 22:12 AWST) until the owner signs each one with therapy:review. On 21 Oct 2026 the 27 records
+  // signed in #3562 went back too (owner ruling), with the 18 signed records whose format label
+  // contradicted their text (audit R7-F-13), so 71 wait.
+  therapy: 71,
   // All 93 signable candidates and the 3 adopted medicine sources were reviewed; six Indigenous
-  // sources remain held.
+  // sources remain held, and two OCP WA standards reviewed only in prose wait for the owner to
+  // sign them with clinical:review (owner decision, 17 Oct 2026). On 21 Oct 2026 the owner's 2 Oct
+  // lithium attestation was restored, so 8 wait. Later on 21 Oct the owner chose the AADPA 2022
+  // ADHD guideline for the shared library; it was added unsigned, so 9 wait. On 22 Oct 2026 the 71
+  // TGA Product Information search records became candidates (owner decision: the live TGA search
+  // is the PI source), with WA policy MP 0131/20, so 81 wait. Later on 22 Oct the owner signed
+  // 75 of them with clinical:review (the 72, the AADPA guideline and the two OCP standards), so
+  // only the six held Indigenous sources wait.
   sources: 6,
 };
 
@@ -134,7 +151,23 @@ describe("clinical sign-off queue", () => {
 
   it("reuses the source acquisition ledger's own queue rather than re-deriving the filter", () => {
     const sources = queue.families.find((family) => family.id === "sources")!;
-    expect(sources.rows.map((row) => row.id)).toEqual(acquisitionReviewQueue().map((record) => record.id));
+    const proseOnly = sourceAcquisitionRecords.filter(
+      (record) =>
+        record.disposition !== "rejected" &&
+        record.validationStatus === "locally_reviewed" &&
+        !["attestedBy", "attestedAt", "attestedAgainstSha256"].some((field) => Object.hasOwn(record, field)),
+    );
+    // The ledger's queue plus the reviews recorded only in prose (which clinical:review also
+    // offers), in the queue's own order: most local rung first, then title.
+    const collator = new Intl.Collator("en-AU");
+    expect(sources.rows.map((row) => row.id)).toEqual(
+      [...acquisitionReviewQueue(), ...proseOnly]
+        .sort((left, right) => left.rung - right.rung || collator.compare(left.title, right.title))
+        .map((record) => record.id),
+    );
+    expect(
+      sources.rows.filter((row) => row.statusLabel === "Reviewed in prose only, not yet signed").map((row) => row.id),
+    ).toEqual([]);
   });
 
   it("carries the whole dictionary editorial layer, which nothing else in the app renders", () => {
@@ -176,10 +209,12 @@ describe("clinical sign-off queue", () => {
     // should be argued with first.
     const nativeStatusFor = (id: SignOffFamilyId) =>
       queue.families.find((family) => family.id === id)!.rows[0]!.nativeStatus;
-    // Forms have no waiting row. Their vocabulary is still the review file's own word.
+    // Forms have waiting rows again since the 20 Oct 2026 audit reset eight edited forms.
+    // Their vocabulary is still the review file's own word.
     expect(
       (formsContentReview as { forms: { status: string }[] }).forms.every((entry) => entry.status === "reviewed"),
-    ).toBe(true);
+    ).toBe(false);
+    expect(nativeStatusFor("wa-mha-forms")).toBe("drafted");
     expect(nativeStatusFor("formulation")).toBe("clinical_review_required");
     expect(nativeStatusFor("differentials")).toContain("validation_status: unverified");
     expect(nativeStatusFor("dictionary")).toContain("clinicalApproval.status: pending");
@@ -240,8 +275,8 @@ describe("clinical sign-off queue", () => {
     expect(forms, "wa-mha-forms family is missing").toBeDefined();
     expect(
       forms!.rows.map((row) => row.id),
-      "every form, including the revised Form 2, now has a complete sign-off",
-    ).toEqual([]);
+      "the eight forms the 20 Oct 2026 clinical content audit edited await sign-off again",
+    ).toEqual(["form-1a", "form-3d", "form-4b", "form-5a", "form-5b", "form-5c", "form-11d", "form-12c"]);
 
     const dead = forms!.rows
       .filter((row) => row.href !== null)
@@ -290,19 +325,30 @@ describe("clinical sign-off queue", () => {
 
 const EXPECTED_SIGNED_BY_DOMAIN: Record<SignOffDomainId, { signed: number; waiting: number }> = {
   "today-rules": { signed: 3, waiting: 0 },
-  "wa-mha-forms": { signed: 54, waiting: 0 },
-  "mha-sections": { signed: 110, waiting: 0 },
+  // The 20 Oct 2026 clinical content audit edited eight signed forms and sections 14 and 76,
+  // which went back to drafted until the owner signs each one again.
+  "wa-mha-forms": { signed: 46, waiting: 8 },
+  // 21 Oct 2026: section 357, signed in #3562, went back to drafted (owner ruling).
+  "mha-sections": { signed: 107, waiting: 3 },
   "mha-timeframes": { signed: 9, waiting: 0 },
   "cp-standards": { signed: 7, waiting: 1 },
   "cultural-notes": { signed: 14, waiting: 9 },
   differentials: { signed: 11, waiting: 232 },
   formulation: { signed: 58, waiting: 6 },
-  specifiers: { signed: 89, waiting: 514 },
-  therapy: { signed: 179, waiting: 26 },
+  // Three edited ARFID rows went back to clinician-review-pending on 20 Oct 2026, and the other
+  // 85 "Psych Sift" reviews from #3562 on 21 Oct 2026 (owner ruling).
+  specifiers: { signed: 0, waiting: 603 },
+  therapy: { signed: 134, waiting: 71 },
   dictionary: { signed: 28, waiting: 401 },
   // 93 sources carry a structured, current attestation. Two OCP standards are marked
-  // locally_reviewed in prose only and wait for one; six Indigenous sources are held.
-  sources: { signed: 93, waiting: 8 },
+  // locally_reviewed in prose only and are ready for the owner to sign with clinical:review;
+  // six Indigenous sources are held. The 18 Oct PS-009 withdrawal of the owner's lithium
+  // attestation was reversed on 21 Oct 2026 (owner ruling). The AADPA 2022 ADHD guideline was
+  // added unsigned on 21 Oct 2026 (owner's choice), so it waits for the owner too.
+  // 72 more joined on 22 Oct 2026: the 71 TGA PI search records and WA policy MP 0131/20.
+  // Later on 22 Oct the owner signed 75 with clinical:review (those 72, the AADPA guideline and
+  // the two OCP standards), so only the six held Indigenous sources wait.
+  sources: { signed: 168, waiting: 6 },
   services: { signed: 21, waiting: 4 },
 };
 
@@ -325,19 +371,39 @@ describe("clinical & rule sign-off ledger", () => {
     },
   );
 
+  it("uses the runtime gate for stale hashes, unapproved signers, and future timestamps", () => {
+    const signOff = TODAY_RULE_SIGN_OFFS.fatigue as { signedContentSha256: string; signedBy: string; signedAt: string };
+    const original = { ...signOff };
+    try {
+      for (const mutation of [
+        { signedContentSha256: "0".repeat(64) },
+        { signedBy: "Unapproved person" },
+        { signedAt: "2099-01-01T00:00:00.000Z" },
+      ]) {
+        Object.assign(signOff, original, mutation);
+        const domain = loadSignOffLedger().domains.find((item) => item.id === "today-rules")!;
+        expect(domain.signedRows.map((row) => row.id)).not.toContain("fatigue");
+        expect(domain.needsSigning.signableNow).toBe(1);
+      }
+    } finally {
+      Object.assign(signOff, original);
+      vi.restoreAllMocks();
+    }
+  });
+
   it("derives the overall totals, signer breakdown, and categorized waiting counts from the domain rows", () => {
-    expect(ledger.totalSigned).toBe(676);
-    expect(ledger.totalWaiting).toBe(1201);
-    expect(ledger.totalGoverned).toBe(1877);
+    expect(ledger.totalSigned).toBe(606);
+    expect(ledger.totalWaiting).toBe(1344);
+    expect(ledger.totalGoverned).toBe(1950);
     expect(ledger.signedByTotals).toEqual({
-      "Josh Simpson": 3,
-      "Psych Sift": 196,
-      PsychSift: 477,
+      "Josh Simpson": 78,
+      "Psych Sift": 67,
+      PsychSift: 461,
     });
     expect(ledger.waitingByCategory).toEqual({
-      signableNow: 0,
+      signableNow: 171,
       indigenousHold: 26,
-      awaitingPrerequisites: 610,
+      awaitingPrerequisites: 582,
       awaitingTool: 565,
     });
   });

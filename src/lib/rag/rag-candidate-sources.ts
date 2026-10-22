@@ -33,6 +33,7 @@ import {
 import { applyMemoryCardBoosts, fetchMemoryCardsForQuery } from "@/lib/deep-memory";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
+import { toPgVectorRpcParam } from "@/lib/rag/pgvector-literal";
 import {
   RetrievalRowShapeError,
   assertEmbeddingFieldRows,
@@ -52,6 +53,7 @@ import type {
   GovernedCorpusRetrievalPhase,
   RetrievalCorpusScopePolicy,
   SearchTelemetry,
+  TextRpcVariantTiming,
 } from "@/lib/rag/rag-contracts";
 import type { RagContextSnapshot } from "@/lib/site-content/site-content-contracts";
 import { uncoveredRagSubquestions } from "@/lib/rag/rag-coverage";
@@ -454,7 +456,7 @@ export async function searchGovernedCorpora(args: {
           "match_document_chunks_v3",
           {
             ...sharedArgs(phase.corpusScopes),
-            query_embedding: queryEmbedding as unknown as string,
+            query_embedding: toPgVectorRpcParam(queryEmbedding),
             min_similarity: args.minSimilarity ?? 0.15,
             document_filter: documentFilter,
           },
@@ -467,7 +469,7 @@ export async function searchGovernedCorpora(args: {
       "match_document_chunks_hybrid_v3",
       {
         ...sharedArgs(phase.corpusScopes),
-        query_embedding: queryEmbedding as unknown as string,
+        query_embedding: toPgVectorRpcParam(queryEmbedding),
         query_text: queryText,
         min_similarity: args.minSimilarity ?? 0.15,
         document_filters: args.documentFilters ?? null,
@@ -482,7 +484,7 @@ export async function searchGovernedCorpora(args: {
           "match_document_chunks_v3",
           {
             ...sharedArgs(phase.corpusScopes),
-            query_embedding: queryEmbedding as unknown as string,
+            query_embedding: toPgVectorRpcParam(queryEmbedding),
             min_similarity: args.minSimilarity ?? 0.15,
             document_filter: documentFilter,
           },
@@ -826,21 +828,61 @@ export async function searchTextChunkCandidates(args: {
   observeRawPublishedRow?: RawPublishedOriginalRowObserver;
 }) {
   throwIfAborted(args.signal);
-  const runChunkText = async (queryText: string, matchCount: number) => {
+  // Measurement only: per-variant timings for the canary report. Never read by control flow.
+  const textStageStartedAt = Date.now();
+  const variantTimings: TextRpcVariantTiming[] = [];
+  let variantTimingsRecorded = false;
+  // Idempotent: the success paths call it, and the finally in searchTextChunkCandidates calls it
+  // again so timings survive an RPC that throws.
+  const recordVariantTimings = () => {
+    if (!args.telemetry || variantTimingsRecorded) return;
+    variantTimingsRecorded = true;
+    args.telemetry.text_rpc_variant_timings = [...(args.telemetry.text_rpc_variant_timings ?? []), ...variantTimings];
+  };
+  const runChunkText = async (
+    queryText: string,
+    matchCount: number,
+    timingLabel: { role: TextRpcVariantTiming["role"]; variantIndex: number },
+  ) => {
+    const timingEntry: TextRpcVariantTiming = {
+      rpc: "match_document_chunks_text",
+      variant_index: timingLabel.variantIndex,
+      role: timingLabel.role,
+      ran: true,
+      started_offset_ms: Date.now() - textStageStartedAt,
+      finished_offset_ms: null,
+      rpc_ms: null,
+      row_count: null,
+    };
+    variantTimings.push(timingEntry);
+    return runChunkTextUntimed(queryText, matchCount, timingEntry);
+  };
+  const runChunkTextUntimed = async (queryText: string, matchCount: number, timingEntry: TextRpcVariantTiming) => {
     throwIfAborted(args.signal);
     const accessScope = retrievalAccessScopeForArgs(args);
-    const { data, error } = await callVersionedRetrievalRpc<SearchResult[]>(
-      args.supabase,
-      "match_document_chunks_text_v2",
-      "match_document_chunks_text",
-      {
-        query_text: queryText,
-        match_count: matchCount,
-        document_filters: args.documentIds ?? undefined,
-        ...retrievalRpcScopeArgs(accessScope),
-      },
-      args.signal,
-    );
+    let rpcResult: { data: SearchResult[] | null; error: SupabaseRpcError } | undefined;
+    try {
+      rpcResult = await callVersionedRetrievalRpc<SearchResult[]>(
+        args.supabase,
+        "match_document_chunks_text_v2",
+        "match_document_chunks_text",
+        {
+          query_text: queryText,
+          match_count: matchCount,
+          document_filters: args.documentIds ?? undefined,
+          ...retrievalRpcScopeArgs(accessScope),
+        },
+        args.signal,
+      );
+    } finally {
+      // Measurement only: stamp the entry even when the RPC throws, and flag the failure.
+      const rpcFinishedAt = Date.now();
+      timingEntry.finished_offset_ms = rpcFinishedAt - textStageStartedAt;
+      timingEntry.rpc_ms = timingEntry.finished_offset_ms - (timingEntry.started_offset_ms ?? 0);
+      timingEntry.row_count = Array.isArray(rpcResult?.data) ? rpcResult.data.length : 0;
+      if (!rpcResult || rpcResult.error) timingEntry.rpc_error = true;
+    }
+    const { data, error } = rpcResult;
     throwIfAborted(args.signal);
     // Report the error before returning empty so a schema drift on this
     // most-terminal lexical layer surfaces in hybrid_rpc_errors telemetry
@@ -860,79 +902,116 @@ export async function searchTextChunkCandidates(args: {
     return data;
   };
 
-  const variants = args.queryVariants.slice(0, maxTextRpcQueryVariants);
-  const [primaryVariant, ...siblingVariants] = variants;
-  const primaryResults = primaryVariant === undefined ? [] : await runChunkText(primaryVariant, args.matchCount);
-  // PT-02: skip the near-duplicate sibling variants when the primary pool is
-  // already deep and anchored by a precise hit; weak/empty pools keep the full
-  // fan-out (one extra sequential hop) so recall is unchanged where it matters.
-  const skipSiblings = siblingVariants.length > 0 && firstVariantPoolIsStrong(primaryResults, args.matchCount);
-  const resultSets = skipSiblings
-    ? [primaryResults]
-    : [
-        primaryResults,
-        ...(await Promise.all(siblingVariants.map((variant) => runChunkText(variant, Math.min(args.matchCount, 32))))),
-      ];
-  recordTextVariantFanout(args.telemetry, "match_document_chunks_text", resultSets.length, skipSiblings);
-  const merged = resultSets.reduce(
-    (accumulated, resultSet) => mergeSearchResults(resultSet, accumulated),
-    [] as SearchResult[],
-  );
-  if (args.telemetry) args.telemetry.text_or_relaxation_used = "none";
-  if (merged.length > 0) {
-    // P8b extension: strict-AND matched, but weakly. Append OR-relaxed recall behind the
-    // strict matches so a buried chunk can enter the candidate pool without displacing any
-    // precise match (mergeSearchResults keeps primary/strict precedence). Trigram correction
-    // is not run here — it exists to rescue *empty* strict retrieval (RC6), and correcting a
-    // query that already matched would second-guess a working query.
-    if (env.RAG_TEXT_WEAK_OR_RELAXATION && shouldRelaxWeakTextMatches(merged)) {
-      const weakRelaxed = relaxVariantToOrQuery(variants[0] ?? "");
-      if (weakRelaxed) {
-        const orResults = await runChunkText(weakRelaxed, Math.min(args.matchCount, 24));
-        if (orResults.length > 0) {
-          if (args.telemetry) args.telemetry.text_or_relaxation_used = "weak_augment";
-          return mergeSearchResults(merged, orResults);
+  try {
+    const variants = args.queryVariants.slice(0, maxTextRpcQueryVariants);
+    const [primaryVariant, ...siblingVariants] = variants;
+    const primaryResults =
+      primaryVariant === undefined
+        ? []
+        : await runChunkText(primaryVariant, args.matchCount, { role: "primary", variantIndex: 0 });
+    // PT-02: skip the near-duplicate sibling variants when the primary pool is
+    // already deep and anchored by a precise hit; weak/empty pools keep the full
+    // fan-out (one extra sequential hop) so recall is unchanged where it matters.
+    const skipSiblings = siblingVariants.length > 0 && firstVariantPoolIsStrong(primaryResults, args.matchCount);
+    const resultSets = skipSiblings
+      ? [primaryResults]
+      : [
+          primaryResults,
+          ...(await Promise.all(
+            siblingVariants.map((variant, index) =>
+              runChunkText(variant, Math.min(args.matchCount, 32), { role: "follow_up", variantIndex: index + 1 }),
+            ),
+          )),
+        ];
+    if (skipSiblings) {
+      siblingVariants.forEach((_variant, index) =>
+        variantTimings.push({
+          rpc: "match_document_chunks_text",
+          variant_index: index + 1,
+          role: "follow_up",
+          ran: false,
+          skipped_reason: "primary_pool_strong",
+          started_offset_ms: null,
+          finished_offset_ms: null,
+          rpc_ms: null,
+          row_count: null,
+        }),
+      );
+    }
+    recordTextVariantFanout(args.telemetry, "match_document_chunks_text", resultSets.length, skipSiblings);
+    const merged = resultSets.reduce(
+      (accumulated, resultSet) => mergeSearchResults(resultSet, accumulated),
+      [] as SearchResult[],
+    );
+    if (args.telemetry) args.telemetry.text_or_relaxation_used = "none";
+    if (merged.length > 0) {
+      // P8b extension: strict-AND matched, but weakly. Append OR-relaxed recall behind the
+      // strict matches so a buried chunk can enter the candidate pool without displacing any
+      // precise match (mergeSearchResults keeps primary/strict precedence). Trigram correction
+      // is not run here — it exists to rescue *empty* strict retrieval (RC6), and correcting a
+      // query that already matched would second-guess a working query.
+      if (env.RAG_TEXT_WEAK_OR_RELAXATION && shouldRelaxWeakTextMatches(merged)) {
+        const weakRelaxed = relaxVariantToOrQuery(variants[0] ?? "");
+        if (weakRelaxed) {
+          const orResults = await runChunkText(weakRelaxed, Math.min(args.matchCount, 24), {
+            role: "weak_or",
+            variantIndex: 0,
+          });
+          if (orResults.length > 0) {
+            if (args.telemetry) args.telemetry.text_or_relaxation_used = "weak_augment";
+            recordVariantTimings();
+            return mergeSearchResults(merged, orResults);
+          }
         }
       }
+      recordVariantTimings();
+      return merged;
     }
+
+    // Strict AND variants matched nothing. Two fallbacks, in order:
+    //   (item 10, RC6) a typo the hard-coded map misses can block an otherwise-precise query — so first
+    //     trigram-correct against the known clinical-term vocabulary and retry the corrected query
+    //     STRICTLY. This must run before OR-relaxation: otherwise a query like "clozapin monitoring"
+    //     would OR-match generic "monitoring" docs and never surface the intended clozapine result.
+    //   (8b) then OR-relax the best query we have to recover recall for long multi-term queries.
+    // Both are reached only when every prior attempt was empty, so neither overrides a precise match.
+    const primary = variants[0] ?? "";
+    let effectivePrimary = primary;
+    if (primary) {
+      throwIfAborted(args.signal);
+      const { data: corrected } = await withAbortSignal(
+        args.supabase.rpc("correct_clinical_query_terms", {
+          input_query: primary,
+          min_sim: 0.45,
+        }),
+        args.signal,
+      );
+      throwIfAborted(args.signal);
+      if (typeof corrected === "string" && corrected && corrected !== primary) {
+        const correctedResults = await runChunkText(corrected, args.matchCount, { role: "corrected", variantIndex: 0 });
+        if (correctedResults.length > 0) {
+          recordVariantTimings();
+          return correctedResults;
+        }
+        effectivePrimary = corrected;
+      }
+    }
+
+    const relaxed = relaxVariantToOrQuery(effectivePrimary);
+    if (relaxed) {
+      const relaxedResults = await runChunkText(relaxed, args.matchCount, { role: "relaxed", variantIndex: 0 });
+      if (relaxedResults.length > 0) {
+        if (args.telemetry) args.telemetry.text_or_relaxation_used = "empty_fallback";
+        recordVariantTimings();
+        return relaxedResults;
+      }
+    }
+    recordVariantTimings();
     return merged;
+  } finally {
+    // Measurement only: keep the per-variant timings even when an RPC throws.
+    recordVariantTimings();
   }
-
-  // Strict AND variants matched nothing. Two fallbacks, in order:
-  //   (item 10, RC6) a typo the hard-coded map misses can block an otherwise-precise query — so first
-  //     trigram-correct against the known clinical-term vocabulary and retry the corrected query
-  //     STRICTLY. This must run before OR-relaxation: otherwise a query like "clozapin monitoring"
-  //     would OR-match generic "monitoring" docs and never surface the intended clozapine result.
-  //   (8b) then OR-relax the best query we have to recover recall for long multi-term queries.
-  // Both are reached only when every prior attempt was empty, so neither overrides a precise match.
-  const primary = variants[0] ?? "";
-  let effectivePrimary = primary;
-  if (primary) {
-    throwIfAborted(args.signal);
-    const { data: corrected } = await withAbortSignal(
-      args.supabase.rpc("correct_clinical_query_terms", {
-        input_query: primary,
-        min_sim: 0.45,
-      }),
-      args.signal,
-    );
-    throwIfAborted(args.signal);
-    if (typeof corrected === "string" && corrected && corrected !== primary) {
-      const correctedResults = await runChunkText(corrected, args.matchCount);
-      if (correctedResults.length > 0) return correctedResults;
-      effectivePrimary = corrected;
-    }
-  }
-
-  const relaxed = relaxVariantToOrQuery(effectivePrimary);
-  if (relaxed) {
-    const relaxedResults = await runChunkText(relaxed, args.matchCount);
-    if (relaxedResults.length > 0) {
-      if (args.telemetry) args.telemetry.text_or_relaxation_used = "empty_fallback";
-      return relaxedResults;
-    }
-  }
-  return merged;
 }
 
 type DocumentLookupRow = {
@@ -1754,6 +1833,44 @@ export async function loadChunksForSignalMatches(args: {
     })
     .filter(Boolean) as SearchResult[];
 }
+const maxTableFactsPerChunk = 5;
+
+/**
+ * One signal match per source chunk. Audit 2026-10-20 RAG-A-02: a lower-ranked fact for a chunk
+ * was dropped with the lower score, so only about one structured row survived per chunk. Every
+ * fact is now kept (deduplicated by id, the five highest-ranked, ties in arrival order) while the chunk keeps the
+ * score of its best fact, so scores and ordering are unchanged.
+ */
+export function groupTableFactMatches(data: TableFactRpcRow[]) {
+  const grouped = new Map<string, ChunkSignalMatch>();
+  for (const fact of data) {
+    if (!fact.source_chunk_id) continue;
+    const textRank = Number(fact.text_rank ?? 0);
+    const current = grouped.get(fact.source_chunk_id);
+    const tableFact = { ...fact, text_rank: textRank, match_reason: fact.match_reason ?? "table_row" };
+    const existingFacts = current?.tableFacts ?? [];
+    const tableFacts =
+      fact.id &&
+      existingFacts.some((existing) => existing.id === fact.id && Number(existing.text_rank ?? 0) >= textRank)
+        ? existingFacts
+        : [...existingFacts.filter((existing) => !fact.id || existing.id !== fact.id), tableFact]
+            // Keep the highest-ranked facts (stable sort keeps arrival order for ties), so a better
+            // row from a sibling variant is never cut while still setting the chunk's score.
+            .sort((a, b) => Number(b.text_rank ?? 0) - Number(a.text_rank ?? 0))
+            .slice(0, maxTableFactsPerChunk);
+    const next: ChunkSignalMatch = {
+      chunkId: fact.source_chunk_id,
+      similarity: Math.min(0.94, 0.62 + Math.min(textRank, 1) * 0.3),
+      textRank,
+      hybridScore: Math.min(0.97, 0.66 + Math.min(textRank, 1) * 0.3),
+      reason: fact.match_reason ?? "table_row",
+      tableFacts,
+    };
+    grouped.set(fact.source_chunk_id, !current || next.textRank > current.textRank ? next : { ...current, tableFacts });
+  }
+  return Array.from(grouped.values());
+}
+
 /**
  * Retrieves document chunks containing table facts relevant to a query.
  *
@@ -1807,26 +1924,9 @@ export async function searchTableFactCandidates(args: {
   const data = factSets.flat();
   if (!data.length) return [] as SearchResult[];
 
-  const grouped = new Map<string, ChunkSignalMatch>();
-  for (const fact of data) {
-    if (!fact.source_chunk_id) continue;
-    const textRank = Number(fact.text_rank ?? 0);
-    const current = grouped.get(fact.source_chunk_id);
-    const tableFact = { ...fact, text_rank: textRank, match_reason: fact.match_reason ?? "table_row" };
-    const next: ChunkSignalMatch = {
-      chunkId: fact.source_chunk_id,
-      similarity: Math.min(0.94, 0.62 + Math.min(textRank, 1) * 0.3),
-      textRank,
-      hybridScore: Math.min(0.97, 0.66 + Math.min(textRank, 1) * 0.3),
-      reason: fact.match_reason ?? "table_row",
-      tableFacts: [...(current?.tableFacts ?? []), tableFact].slice(0, 5),
-    };
-    if (!current || next.hybridScore > current.hybridScore) grouped.set(fact.source_chunk_id, next);
-  }
-
   return loadChunksForSignalMatches({
     supabase: args.supabase,
-    matches: Array.from(grouped.values()),
+    matches: groupTableFactMatches(data),
     ownerId: args.ownerId,
     accessScope: args.accessScope,
     cache: args.cache,
@@ -1858,7 +1958,7 @@ export async function searchEmbeddingFieldCandidates(args: {
     "match_document_embedding_fields_hybrid_v2",
     "match_document_embedding_fields_hybrid",
     {
-      query_embedding: args.queryEmbedding as unknown as string,
+      query_embedding: toPgVectorRpcParam(args.queryEmbedding),
       query_text: buildClinicalTextSearchQuery(args.query),
       match_count: args.matchCount,
       min_similarity: 0.12,
@@ -1919,7 +2019,7 @@ export async function searchIndexUnitCandidates(args: {
     "match_document_index_units_hybrid_v2",
     "match_document_index_units_hybrid",
     {
-      query_embedding: args.queryEmbedding as unknown as string,
+      query_embedding: toPgVectorRpcParam(args.queryEmbedding),
       query_text: buildClinicalTextSearchQuery(args.query),
       match_count: args.matchCount,
       min_similarity: 0.1,

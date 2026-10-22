@@ -1,12 +1,21 @@
 # RAG improvement programme — multi-session handover
 
-**Status:** programme evidence and packet reference (original preparation 2026-08-17;
-dated outcomes retained below). The programme design reference is
-[README.md](README.md); protected-surface rules live in `docs/rag-behaviour/`.
-This file retains dated programme outcomes, work packets and prompts. Current task ownership,
-lifecycle, blockers and next action follow [task-receipts.md](../task-receipts.md).
-Do not use the historical packet table as a competing live task board. The coordinator-side
-layer — who dispatches sessions, merges their
+> **Status (2026-10-20): programme complete; kept as history.** Every packet in the
+> status table below has merged or been closed, and S8 onward stays gated on an owner
+> decision. This is no longer the operational board: open RAG work lives in
+> [`docs/outstanding-issues.md`](../outstanding-issues.md), and the rules live in
+> [`docs/rag-behaviour/`](../rag-behaviour/README.md). Code comments still cite its sections, so it stays in
+> place rather than moving to `docs/archive/`.
+>
+> The 4,362-line `rag.ts` budget mentioned below is historical: `src/lib/rag/rag.ts` was 4,310 lines on
+> 2026-10-20.
+
+**Status:** maintained handover ledger (2026-08-17). This is the context file every cloud
+session implementing the programme reads first. The design authority is
+[README.md](README.md) in this directory; the protected-surface rules live in
+`docs/rag-behaviour/`. This file adds what the guide deliberately does not carry: current
+programme state, the per-session work packets, the paste-ready prompts, and the status table
+each session must update. The coordinator-side layer — who dispatches sessions, merges their
 PRs, and approves canaries, plus the babysit playbook — lives in
 [COORDINATION.md](COORDINATION.md).
 
@@ -422,8 +431,8 @@ offline fixtures and validation only`.
 2. PR body from `.github/pull_request_template.md` in full prose: correct `RAG impact:`
    line, Clinical Governance Preflight when the packet touches clinical/RAG surfaces,
    verification evidence, risk/rollback.
-3. `npm run ledger:append -- --ref <branch> --head <full-sha> --scope "<scope>" --outcome
-<o> --checks "<checks>"`, commit the record file, push.
+3. Post one `Review record` comment on the PR per
+   [Records](../agents/pull-request-workflow.md#records).
 4. Update the same task checkpoint and receipt under [task-receipts.md](../task-receipts.md).
    Add a dated programme outcome here only when supported by new evidence.
 5. Offer `/issues capture` for anything unresolved, then **stop at the open PR** — the owner

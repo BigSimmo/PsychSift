@@ -447,6 +447,25 @@ export function medicationEntitiesInText(text: string) {
   return entities;
 }
 
+const psychotropicClassPattern =
+  /\b(?:antipsychotics?|antidepressants?|mood\s+stabili[sz]ers?|psychostimulants?|stimulants?|benzodiazepines?|psychotropics?)\b/gi;
+
+/** Each distinct psychotropic medicine class named in text, lower-cased, in order of mention. */
+export function medicationClassesInText(text: string) {
+  const classes = new Map<string, string>();
+  for (const match of text.matchAll(psychotropicClassPattern)) {
+    const name = match[0].toLowerCase().replace(/\s+/g, " ");
+    const key = name.replace(/stabilizer/, "stabiliser").replace(/s$/, "");
+    if (!classes.has(key)) classes.set(key, name);
+  }
+  return [...classes.values()];
+}
+
+/** The first psychotropic medicine class named in text ("antipsychotics"), lower-cased, or null. */
+export function medicationClassInText(text: string) {
+  return medicationClassesInText(text)[0] ?? null;
+}
+
 /** Unambiguous medication identities suitable for answer-subject safety gates. */
 export function medicationSafetyEntitiesInText(text: string) {
   return medicationEntitiesInText(text).filter((entity) => !contextAmbiguousEntities.has(entity));
@@ -479,6 +498,19 @@ const antipsychoticMedicationEntities = new Set([
 /** Whether a canonical medication identity belongs to the antipsychotic/neuroleptic class. */
 export function isAntipsychoticMedicationEntity(entity: string) {
   return antipsychoticMedicationEntities.has(entity);
+}
+
+/**
+ * Whether text names specific medicines but none of the one class a query asks about, such as a
+ * lithium sentence under "metabolic monitoring for antipsychotics" (Eval Canary 39711681854). Only
+ * the antipsychotic class has a membership list, so no other class excludes anything.
+ */
+export function namesOnlyMedicinesOutsideQueriedClass(text: string, query: string) {
+  const classes = medicationClassesInText(query);
+  if (classes.length !== 1 || !/^antipsychotic/.test(classes[0]) || medicationEntitiesInText(query).length)
+    return false;
+  const named = medicationSafetyEntitiesInText(text);
+  return named.length > 0 && !named.some(isAntipsychoticMedicationEntity);
 }
 
 /** All recognized aliases for a canonical medication identity. */

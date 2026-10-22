@@ -199,7 +199,7 @@ describe("no file under tests/ is invisible to every runner", () => {
       expect(isVisible("tests/gate-receipts.test.ts")).toBe(true); // node project
       expect(isVisible("tests/accessible-table.dom.test.tsx")).toBe(true); // jsdom project
       expect(isVisible("tests/ui-smoke.spec.ts")).toBe(true); // Playwright production project
-      expect(isVisible("tests/ui-care-plan-mockup.spec.ts")).toBe(true); // Playwright mockup project
+      expect(isVisible("tests/ui-accessible-table-mockup.spec.ts")).toBe(true); // Playwright mockup project
       expect(isVisible("tests/ui-visual-baseline.spec.ts")).toBe(true); // visual config
       expect(isVisible("tests/universal-search-owner.live.test.ts")).toBe(true); // live project gate
     });

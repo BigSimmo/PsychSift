@@ -1,7 +1,7 @@
 {
   "note": "sha256 of every migration this repository has shipped, with newlines normalised. An entry whose hash changes means an applied migration was edited, which cannot reach the live database. See scripts/check-migration-immutability.mjs.",
   "generator": "scripts/check-migration-immutability.mjs",
-  "sealed_at": "2026-10-17T02:50:31.598Z",
+  "sealed_at": "2026-10-22T07:30:45.944Z",
   "versions": {
     "20260527000000_bulk_ingestion.sql": "813e8e314064a6dcbaaa55e2765a8ce901d5783b304b4a7af7bb7417a07daf7c",
     "20260527001000_documents_policy_cleanup.sql": "559c26f3172bf75e545a41adef75538b2bf648ea7d53c8eb3d3ea7c244c65a48",
@@ -319,6 +319,28 @@
     "20261015185000_fenced_ingestion_reset_and_deep_memory.sql": "8802ed4429f139fb5abbb689a1c8817d845f2116defc0365c2329d15e399539b",
     "20261015200000_fenced_ingestion_followups.sql": "21bee7afaf86007b24890ff7abd553ea9cea24d9889cfa12589cccf1dc59357a",
     "20261016134500_teaching_admin_attendance_export.sql": "a9fc28336706aee579e18ec782213627e26eb6ca1cd60ab46f4625cf5efee94e",
-    "20261016210000_adversarial_review_rpc_and_ttl_hardening.sql": "8d58d892eec74bc19561065beb01ec46c98c767519295337a61d7b32e0adda41"
+    "20261016210000_adversarial_review_rpc_and_ttl_hardening.sql": "8d58d892eec74bc19561065beb01ec46c98c767519295337a61d7b32e0adda41",
+    "20261017120000_teaching_display_revoke_null_creator_guard.sql": "3b92e22983206cbaa8950c07a6b3e6910b3701fa9c49a9f9e5504c232b4397e4",
+    "20261017175448_scope_ingestion_claim_atomically.sql": "af192755dd24aa8a6e6146013e1b7abd1b2954a53410c301dedfcb7576c88eba",
+    "20261018053558_recheck_ingestion_claim_scope_after_job_lock.sql": "a427b8aacce70579ad26bd701adb65912a345ab78d54e5b34386bbd05d261b6c",
+    "20261018062736_recheck_legacy_ingestion_claim_document_after_job_lock.sql": "39f08a91ed4c15a8aff0dff80341242604101886de873c5cadafa65e9b92e3c8",
+    "20261018073435_durable_roster_offer_device_outbox.sql": "5ece69d4b218a16ddb67727ff1454e5cb694f56d3014b4956b2b91bf50e5c74e",
+    "20261018075500_atomic_training_milestone_mirror.sql": "ed1b24ba2eb486c9d3acca05908c1d28ee0b91aed15b74a32acad871a8ffcee2",
+    "20261018082910_audit_durable_recovery_pairing_and_cache_fences.sql": "f0667fed9f0294c1f5ba40252d11ee66e6de07be340a1ec789e0503a1192f2ac",
+    "20261018095804_rag_cache_scope_evidence_revision.sql": "0a3c6845cda4d8feb22c54dbf176c7ece61da0333c4a75edb0664b3046a37994",
+    "20261018131729_answer_feedback_note_and_record_reports.sql": "3c8cbe6b6c0584a82a38e73765f3711ee48a4843c8d4d26b9212d6ba522bab10",
+    "20261019155000_answer_feedback_problem_supersedes_verified.sql": "415d9218a113e51cbfe846788f9ea2a6d95ae2967d70a4f70aefecfc8ce72a8f",
+    "20261019155200_prune_superseded_index_generations_on_commit.sql": "d56dfd15e6763d59853c5dd110ca521d6d77a6daf93fda7f9cd7ff86e1f6230f",
+    "20261019170000_site_content_rpc_recent_administrator_assurance.sql": "251d05e140a04ba29a96c346469d819920998281298368679747f0016e2f1420",
+    "20261019180000_prune_keeps_array_cited_images.sql": "c5eba18e96621fdb4bd38936ff22d6bbb161f17af55bed9d4904fd9b90a22d48",
+    "20261019183000_prune_keeps_array_cited_chunks.sql": "a24e93902c77c4df48eb10161c447c1bf94a47cd9b06137cc507014687dc8862",
+    "20261019234000_retire_triage_on_feedback_supersede.sql": "3ce7c923055166002785e3e3f8da340ff2b7c83f777873df7164e90513b01baf",
+    "20261021043000_clear_deleted_document_titles_from_cleanup_ledger.sql": "43a0e34a2bb9d3f9b5b9fbd151d50677bf2f4ebbec7f16012df710c4eef5fbd6",
+    "20261021150000_rollback_document_index_generation.sql": "49dad54b0e64c59d1a11d1ee959ab39a14bd45dd91abce27981472b2460afd9d",
+    "20261021160000_image_caption_cache_identity_unique.sql": "bcdf9077bec169328a17ef50b4ace9b1e49ada573f3d1171cc1e376299082994",
+    "20261021170000_restore_generation_metadata_on_rollback.sql": "12810fe1aa0c885f98db65a99cc2503f425bc7fadbb4bd92aa155f4a41dee848",
+    "20261021180000_schema_drift_snapshot_literal_safe_comments.sql": "3fed30c02217c89f4ae90931bc0179387adf3b7d957e80418e9f0bc481fb0e84",
+    "20261021190000_teaching_epa_magic_links.sql": "e211838e949ffbe8283ee82f6c79e96777e2254006c192df1688796712c6e139",
+    "20261022010000_roster_swap_accept_for_manager.sql": "1c71fd4e14310af53df4748123384149058d8553bf82829c5d7948fa29370a88"
   }
 }

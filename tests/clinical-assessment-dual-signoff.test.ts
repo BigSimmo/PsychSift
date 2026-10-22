@@ -21,6 +21,11 @@ vi.mock("@/lib/supabase/auth", () => {
       }),
   };
 });
+vi.mock("@/lib/api-rate-limit", () => ({
+  consumeSubjectApiRateLimit: vi.fn(async () => ({ limited: false })),
+  rateLimitJsonResponse: () => Response.json({}, { status: 429 }),
+  allowRateLimitInMemoryFallbackOnUnavailable: () => false,
+}));
 vi.mock("@/lib/logger", () => ({
   logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
 }));

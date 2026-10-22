@@ -45,8 +45,82 @@ import {
   PdfUnreadableError,
   type PdfExtractionBudget,
 } from "@/lib/extractors/pdf-extraction-budget";
+import { assertOoxmlArchiveLimits } from "@/lib/ooxml-workbook";
 import { resolvePythonBin } from "@/lib/python-bin";
 import { PdfjsFallbackParser } from "@/lib/extractors/pdfjs-fallback";
+
+const rasterScaleSchema = z.number().finite().min(0.25).max(6.25);
+const rasterShaSchema = z.string().regex(/^sha256:[a-f0-9]{64}$/);
+const rasterCropSchema = z
+  .object({
+    kind: z.enum(["cell", "outside"]),
+    language: z.enum(["Latin", "eng"]),
+    sourceRect: z
+      .tuple([
+        z.number().finite().nonnegative(),
+        z.number().finite().nonnegative(),
+        z.number().finite().positive(),
+        z.number().finite().positive(),
+      ])
+      .refine(([x0, y0, x1, y1]) => x0 < x1 && y0 < y1, "raster_crop_geometry"),
+    scale: rasterScaleSchema,
+    width: z.number().int().positive().max(4_000_000),
+    height: z.number().int().positive().max(4_000_000),
+    pngSha256: rasterShaSchema,
+    pixelsSha256: rasterShaSchema,
+    textSha256: rasterShaSchema,
+    ocrInputTransform: z
+      .object({
+        algorithm: z.literal("raster-math-topology-v1"),
+        kind: z.enum(["comparison", "superscript"]),
+        codeSha256: rasterShaSchema,
+        width: z.number().int().positive().max(400_000),
+        height: z.number().int().positive().max(400_000),
+        mode: z.enum(["L", "RGB"]),
+        pixelsSha256: rasterShaSchema,
+      })
+      .strict()
+      .refine(({ width, height }) => width * height <= 400_000, "raster_math_input_pixel_limit")
+      .optional(),
+  })
+  .strict()
+  .refine(({ width, height }) => width * height <= 4_000_000, "raster_crop_pixel_limit")
+  .refine(({ kind, language }) => language === (kind === "cell" ? "Latin" : "eng"), "raster_crop_model_scope")
+  .refine(({ kind, ocrInputTransform }) => !ocrInputTransform || kind === "cell", "raster_math_cell_scope");
+const rasterTableOcrSchema = z
+  .object({
+    version: z.literal("raster-table-ocr-observations-v1"),
+    status: z.literal("unverified"),
+    cellModel: z
+      .object({
+        language: z.literal("Latin"),
+        sha256: z.literal("sha256:6dbdaf8ecc6c40f025c2648bf3b3f3fbffe073e1fd2df2047fde2e2b2f020d53"),
+        bytes: z.literal(89_384_811),
+      })
+      .strict(),
+    // The existing outside English model is not claimed to have the cell model's identity.
+    outsideModel: z
+      .object({ language: z.literal("eng"), sha256: z.null(), status: z.literal("not_observed") })
+      .strict(),
+    runtime: z
+      .object({
+        pythonVersion: z.string().min(1).max(128),
+        pymupdfVersion: z.string().min(1).max(128),
+        mupdfVersion: z.string().min(1).max(128),
+        tesseractVersion: z.string().min(1).max(128),
+      })
+      .strict(),
+    detector: z
+      .object({
+        width: z.number().int().positive().max(4_000_000),
+        height: z.number().int().positive().max(4_000_000),
+        scale: rasterScaleSchema,
+      })
+      .strict()
+      .refine(({ width, height }) => width * height <= 4_000_000, "raster_detector_pixel_limit"),
+    crops: z.array(rasterCropSchema).min(1).max(112),
+  })
+  .strict();
 
 const extractedPageSchema = z.object({
   pageNumber: z.number().int().positive(),
@@ -65,6 +139,7 @@ const extractedPageSchema = z.object({
         .optional(),
       // Existing Python PDF diagnostic; validate explicitly without accepting arbitrary metadata.
       image_coverage_ratio: z.number().finite().min(0).max(1).optional(),
+      raster_table_ocr: rasterTableOcrSchema.optional(),
     })
     .strict()
     .optional(),
@@ -412,11 +487,41 @@ function assertDeclaredPdfImageDimensions(buffer: Buffer, limits: PdfExtractionB
   }
 }
 
+/**
+ * Audit ING-B-05: the pdf.js fallback re-parses a file the Python extractor failed on,
+ * inside the worker process, so it must not run unbounded. It gets whatever is left of
+ * the document's extraction deadline; on expiry the caller destroys the parsers, which
+ * rejects their pending work, and the document fails as a non-retryable deadline refusal.
+ */
+async function withFallbackDeadline<T>(remainingMs: number, work: () => Promise<T>): Promise<T> {
+  const expired = () =>
+    new PdfExtractionResourceError(
+      "PDF_EXTRACTION_DEADLINE_EXCEEDED",
+      "JavaScript PDF fallback exceeded the remaining extraction deadline",
+    );
+  if (remainingMs <= 0) throw expired();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const pending = work();
+  // After a timeout the abandoned work settles once its parsers are destroyed.
+  pending.catch(() => undefined);
+  try {
+    return await Promise.race([
+      pending,
+      new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => reject(expired()), remainingMs);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function extractPdf(
   buffer: Buffer,
   options: { limits?: PdfExtractionBudget; scriptPathOverride?: string } = {},
 ) {
   const limits = options.limits ?? PDF_EXTRACTION_BUDGET;
+  const startedAt = Date.now();
   const tempRoot = await mkdtemp(path.join(tmpdir(), "clinical-kb-"));
   const pdfPath = path.join(tempRoot, "document.pdf");
   const imageDir = path.join(tempRoot, "images");
@@ -445,6 +550,16 @@ export async function extractPdf(
       await rm(tempRoot, { recursive: true, force: true }).catch(() => undefined);
       throw error;
     }
+    // The fallback shares the worker's heap and native image allocations. Its
+    // deadline/pixel caps are not an isolated memory limit, so production must
+    // refuse this path rather than retry a failed PDF parser in-process.
+    if (process.env.NODE_ENV === "production") {
+      await rm(tempRoot, { recursive: true, force: true }).catch(() => undefined);
+      throw new PdfExtractionResourceError(
+        "PDF_EXTRACTION_BUDGET_EXCEEDED",
+        "JavaScript PDF fallback has no isolated memory limit and is disabled in production; restore Python PDF extraction prerequisites",
+      );
+    }
     // Fallback for developer machines without PyMuPDF/pytesseract. It still
     // indexes text PDFs, but scanned PDFs and image extraction need the Python
     // helper dependencies listed in worker/python/requirements.txt.
@@ -461,92 +576,99 @@ export async function extractPdf(
       stopAtErrors: true,
     });
     try {
-      assertDeclaredPdfImageDimensions(buffer, limits);
-      const parsed = await textParser.getText();
-      const budget = new PdfExtractionBudgetTracker(limits);
-      const rawPages: ExtractedPage[] =
-        parsed.pages.length > 0
-          ? parsed.pages.map((page: { num: number; text?: string }) => ({
-              pageNumber: page.num,
-              text: page.text || "",
-              ocrUsed: false,
-            }))
-          : [{ pageNumber: 1, text: parsed.text || "", ocrUsed: false }];
-      for (const page of rawPages) budget.addPage(page.text);
+      return await withFallbackDeadline(limits.totalTimeoutMs - (Date.now() - startedAt), async () => {
+        assertDeclaredPdfImageDimensions(buffer, limits);
+        const parsed = await textParser.getText();
+        const budget = new PdfExtractionBudgetTracker(limits);
+        const rawPages: ExtractedPage[] =
+          parsed.pages.length > 0
+            ? parsed.pages.map((page: { num: number; text?: string }) => ({
+                pageNumber: page.num,
+                text: page.text || "",
+                ocrUsed: false,
+              }))
+            : [{ pageNumber: 1, text: parsed.text || "", ocrUsed: false }];
+        for (const page of rawPages) budget.addPage(page.text);
 
-      const images: ExtractedDocument["images"] = [];
-      const imageCountByPage = new Map<number, number>();
-      const malformedImagePages = new Set<number>();
-      // Extract one page at a time so aggregate limits can stop subsequent decoding, and
-      // request only binary data to avoid holding a duplicate base64 representation.
-      for (const rawPage of rawPages) {
-        let imageResult: Awaited<ReturnType<PdfjsFallbackParser["getImage"]>>;
-        try {
-          imageResult = await imageParser.getImage({
-            partial: [rawPage.pageNumber],
-            imageThreshold: 20,
-          });
-        } catch (imageError) {
-          if (!isRecoverableFallbackPdfImageError(imageError)) throw imageError;
-          imageCountByPage.set(rawPage.pageNumber, (imageCountByPage.get(rawPage.pageNumber) ?? 0) + 1);
-          malformedImagePages.add(rawPage.pageNumber);
-          continue;
-        }
-        for (const page of imageResult.pages) {
-          imageCountByPage.set(page.pageNumber, (imageCountByPage.get(page.pageNumber) ?? 0) + page.images.length);
-          for (const [index, image] of page.images.entries()) {
-            if (!isUsableFallbackPdfImage(image)) continue;
-            budget.assertRenderDimensions(image.width, image.height);
-            budget.assertArtifact(image.data.byteLength);
-            const mimeType = "image/png";
-            const extension = mimeType.includes("jpeg") ? "jpg" : "png";
-            const outputPath = path.join(imageDir, `fallback-page-${page.pageNumber}-image-${index + 1}.${extension}`);
-            const bytes = Buffer.from(image.data);
-            budget.addArtifact(bytes.byteLength);
-            await writeFile(outputPath, bytes);
-            images.push({
-              pageNumber: page.pageNumber,
-              path: outputPath,
-              mimeType,
-              bbox: null,
-              width: image.width,
-              height: image.height,
-              sourceKind: "fallback",
-              metadata: { source_kind: "fallback" },
+        const images: ExtractedDocument["images"] = [];
+        const imageCountByPage = new Map<number, number>();
+        const malformedImagePages = new Set<number>();
+        // Extract one page at a time so aggregate limits can stop subsequent decoding, and
+        // request only binary data to avoid holding a duplicate base64 representation.
+        for (const rawPage of rawPages) {
+          let imageResult: Awaited<ReturnType<PdfjsFallbackParser["getImage"]>>;
+          try {
+            imageResult = await imageParser.getImage({
+              partial: [rawPage.pageNumber],
+              imageThreshold: 20,
             });
+          } catch (imageError) {
+            if (!isRecoverableFallbackPdfImageError(imageError)) throw imageError;
+            imageCountByPage.set(rawPage.pageNumber, (imageCountByPage.get(rawPage.pageNumber) ?? 0) + 1);
+            malformedImagePages.add(rawPage.pageNumber);
+            continue;
+          }
+          for (const page of imageResult.pages) {
+            imageCountByPage.set(page.pageNumber, (imageCountByPage.get(page.pageNumber) ?? 0) + page.images.length);
+            for (const [index, image] of page.images.entries()) {
+              if (!isUsableFallbackPdfImage(image)) continue;
+              budget.assertRenderDimensions(image.width, image.height);
+              budget.assertArtifact(image.data.byteLength);
+              const mimeType = "image/png";
+              const extension = mimeType.includes("jpeg") ? "jpg" : "png";
+              const outputPath = path.join(
+                imageDir,
+                `fallback-page-${page.pageNumber}-image-${index + 1}.${extension}`,
+              );
+              const bytes = Buffer.from(image.data);
+              budget.addArtifact(bytes.byteLength);
+              await writeFile(outputPath, bytes);
+              images.push({
+                pageNumber: page.pageNumber,
+                path: outputPath,
+                mimeType,
+                bbox: null,
+                width: image.width,
+                height: image.height,
+                sourceKind: "fallback",
+                metadata: { source_kind: "fallback" },
+              });
+            }
           }
         }
-      }
-      await textParser.destroy();
-      await imageParser.destroy();
+        await textParser.destroy();
+        await imageParser.destroy();
 
-      // IDX-H3: the JS fallback cannot OCR. A scanned / image-only page yields little or no
-      // embedded text, so without flagging it the document would index as near-empty yet still
-      // be marked "indexed" — invisible to retrieval. Mark any page that has image content but
-      // below-threshold text as needsOcr so index_quality surfaces it (and the worker refuses
-      // to mark an image-only PDF as fully indexed).
-      const JS_FALLBACK_MIN_TEXT_CHARS = 40;
-      const pages: ExtractedPage[] = rawPages.map((page) => {
-        const textLength = page.text.trim().length;
-        const hasImages = (imageCountByPage.get(page.pageNumber) ?? 0) > 0;
-        const needsOcr = textLength < JS_FALLBACK_MIN_TEXT_CHARS && hasImages;
-        return { pageNumber: page.pageNumber, text: page.text, ocrUsed: false, needsOcr };
+        // IDX-H3: the JS fallback cannot OCR. A scanned / image-only page yields little or no
+        // embedded text, so without flagging it the document would index as near-empty yet still
+        // be marked "indexed" — invisible to retrieval. Mark any page that has image content but
+        // below-threshold text as needsOcr so index_quality surfaces it (and the worker refuses
+        // to mark an image-only PDF as fully indexed).
+        const JS_FALLBACK_MIN_TEXT_CHARS = 40;
+        const pages: ExtractedPage[] = rawPages.map((page) => {
+          const textLength = page.text.trim().length;
+          const hasImages = (imageCountByPage.get(page.pageNumber) ?? 0) > 0;
+          const needsOcr = textLength < JS_FALLBACK_MIN_TEXT_CHARS && hasImages;
+          return { pageNumber: page.pageNumber, text: page.text, ocrUsed: false, needsOcr };
+        });
+
+        const warnings = ["Used JavaScript PDF fallback; install Python PDF/OCR prerequisites for scanned PDFs."];
+        if (malformedImagePages.size > 0) {
+          warnings.push(
+            `malformed_fallback_images: skipped unusable image data on ${malformedImagePages.size} page(s); review or OCR sparse pages.`,
+          );
+        }
+        const ocrNeededPages = pages.filter((page) => page.needsOcr).length;
+        if (ocrNeededPages > 0) {
+          warnings.push(
+            `needs_ocr: ${ocrNeededPages} page(s) appear image-only and were not OCR'd by the JS fallback.`,
+          );
+        }
+
+        const result = { pages, images, warnings, temporaryPaths: [tempRoot] };
+        budget.assertResult(JSON.stringify(result));
+        return result;
       });
-
-      const warnings = ["Used JavaScript PDF fallback; install Python PDF/OCR prerequisites for scanned PDFs."];
-      if (malformedImagePages.size > 0) {
-        warnings.push(
-          `malformed_fallback_images: skipped unusable image data on ${malformedImagePages.size} page(s); review or OCR sparse pages.`,
-        );
-      }
-      const ocrNeededPages = pages.filter((page) => page.needsOcr).length;
-      if (ocrNeededPages > 0) {
-        warnings.push(`needs_ocr: ${ocrNeededPages} page(s) appear image-only and were not OCR'd by the JS fallback.`);
-      }
-
-      const result = { pages, images, warnings, temporaryPaths: [tempRoot] };
-      budget.assertResult(JSON.stringify(result));
-      return result;
     } catch (fallbackError) {
       await textParser.destroy().catch(() => undefined);
       await imageParser.destroy().catch(() => undefined);
@@ -562,9 +684,9 @@ export async function extractPdf(
   }
 }
 
-async function extractDocx(buffer: Buffer) {
+async function extractDocx(buffer: Buffer, prevalidatedZip?: JSZip) {
   const budget = new DocxExtractionBudgetTracker();
-  const zip = await JSZip.loadAsync(buffer);
+  const zip = prevalidatedZip ?? (await JSZip.loadAsync(buffer));
   const wordXml = Object.keys(zip.files)
     .filter((name) => name.startsWith("word/") && name.endsWith(".xml"))
     .map((name) => zip.files[name])
@@ -636,18 +758,11 @@ async function extractDocx(buffer: Buffer) {
 }
 
 export async function assertOoxmlArchiveBudget(buffer: Buffer) {
-  const zip = await JSZip.loadAsync(buffer);
-  const entries = Object.values(zip.files);
-  if (entries.length > 10_000) throw new Error("OOXML archive contains too many entries.");
-  const expandedBytes = entries.reduce((total, file) => {
-    const data = (file as unknown as { _data?: { uncompressedSize?: number } })._data;
-    return total + Math.max(0, Number(data?.uncompressedSize ?? 0));
-  }, 0);
-  const maxExpandedBytes = 512 * 1024 * 1024;
-  const maxRatioBytes = Math.max(buffer.byteLength * 100, 16 * 1024 * 1024);
-  if (expandedBytes > maxExpandedBytes || expandedBytes > maxRatioBytes) {
-    throw new Error("OOXML archive exceeds the safe expanded-size budget.");
-  }
+  return assertOoxmlArchiveLimits(buffer, {
+    maxEntries: 10_000,
+    maxExpandedBytes: 512 * 1024 * 1024,
+    maxRatioBytes: Math.max(buffer.byteLength * 100, 16 * 1024 * 1024),
+  });
 }
 
 function extractTxt(buffer: Buffer, knownText = false) {
@@ -672,8 +787,8 @@ export async function extractDocument(args: {
     args.mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
     args.fileName.toLowerCase().endsWith(".docx")
   ) {
-    await assertOoxmlArchiveBudget(args.buffer);
-    return extractDocx(args.buffer);
+    const zip = await assertOoxmlArchiveBudget(args.buffer);
+    return extractDocx(args.buffer, zip);
   }
 
   if (

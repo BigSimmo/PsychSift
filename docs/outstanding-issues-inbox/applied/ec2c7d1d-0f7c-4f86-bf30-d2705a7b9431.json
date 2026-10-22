@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "ec2c7d1d-0f7c-4f86-bf30-d2705a7b9431",
+  "createdOn": "2026-10-17",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "task",
+    "summary": "Audit and remove older calculator mockups after 30-day window (audit M5-2, follow-up to #1WAA0Z)",
+    "detail": "Follow-up to #1WAA0Z (audit M5-2): audit older calculator mockups alongside the 2026-10-14 dead-code candidate review window (after 2026-11-13) and remove superseded mockup files once eligible.",
+    "source": "PR #3609 review; follow-up to #1WAA0Z; docs/audit/2026-10-12-repo-audit.md (M5-2)",
+    "issueUlid": "01M54ZYAG4GKAEZS7MF96WFDWS"
+  }
+}

@@ -15,6 +15,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { documentDisplayTitle } from "@/components/DocumentOrganizationBadges";
 import { ContextualBackLink } from "@/components/contextual-back-link";
+import { documentFileKindFromType } from "@/components/clinical-dashboard/document-ui";
 import { useActiveScrollOwner } from "@/components/clinical-dashboard/use-active-scroll-owner";
 import { PhoneHeaderCollapsePortal } from "@/components/clinical-dashboard/phone-header-collapse-portal";
 import { useDocumentViewerChromeScroll } from "@/components/clinical-dashboard/use-document-viewer-chrome-scroll";
@@ -63,6 +64,9 @@ import { isLocalNoAuthMode } from "@/lib/client-env";
 import { isAdministratorUser } from "@/lib/authorization";
 import { authorizationIdentity } from "@/lib/authorization-header";
 import { useAuthSession } from "@/lib/supabase/client";
+import { ClinicalSignInNotice } from "@/components/mode-kit/clinical-sign-in-notice";
+import { useClinicalToolAccess } from "@/components/mode-kit/use-clinical-tool-access";
+import { CLINICAL_SIGN_IN_COPY } from "@/lib/front-door-content";
 import { DocumentManagementActions } from "@/components/DocumentManagementActions";
 import { Sheet } from "@/components/ui/sheet";
 import type { ClinicalDocument, DocumentLabel } from "@/lib/types";
@@ -259,6 +263,10 @@ export function DocumentViewer({
     markSessionExpired,
   } = useAuthSession();
   const localNoAuthMode = isLocalNoAuthMode();
+  // The original file (preview, open and download) is for signed-in users: the server
+  // refuses its signed URL to anyone else, so a signed-out reader is never sent to ask
+  // for one and sees the sign-in card in its place. The indexed text stays readable.
+  const originalsLocked = useClinicalToolAccess() === "sign-in-required";
   const [serverDemoMode, setServerDemoMode] = useState(
     () => initialDetail?.demoMode ?? process.env.NEXT_PUBLIC_DEMO_MODE === "true",
   );
@@ -440,6 +448,11 @@ export function DocumentViewer({
   const downloadControllerRef = useRef<AbortController | null>(null);
   const currentDocumentFileName = document?.file_name;
   const openSourceDownload = useCallback(() => {
+    if (originalsLocked) {
+      // Take the reader to the sign-in card where the preview would be.
+      window.document.getElementById("pdf-preview-section")?.scrollIntoView({ block: "start" });
+      return Promise.resolve();
+    }
     if (downloadActionRef.current) return downloadActionRef.current;
 
     const endpoint = `/api/documents/${documentId}/signed-url?download=true`;
@@ -495,6 +508,7 @@ export function DocumentViewer({
     documentId,
     isAuthEpochCurrent,
     markSessionExpired,
+    originalsLocked,
     registerAuthRequest,
   ]);
 
@@ -644,9 +658,10 @@ export function DocumentViewer({
               )) as DocumentDetailPayload;
             });
         // Navigation keeps the current preview; a full load re-issues only the preview URL.
-        const previewRequest = isFullReload
-          ? Promise.allSettled([openSourcePreview({ signal: controller.signal, useCache: true })])
-          : Promise.resolve(null);
+        const previewRequest =
+          isFullReload && !originalsLocked
+            ? Promise.allSettled([openSourcePreview({ signal: controller.signal, useCache: true })])
+            : Promise.resolve(null);
 
         return Promise.all([Promise.allSettled([detailRequest]), previewRequest]);
       })
@@ -783,6 +798,7 @@ export function DocumentViewer({
     initialDetailIdentityStale,
     openSourcePreview,
     applyPreviewSignedUrlResult,
+    originalsLocked,
   ]);
 
   useEffect(() => {
@@ -1010,6 +1026,7 @@ export function DocumentViewer({
   const generatedAnswerIsSummary = summaryQuery === documentSummaryQuestion;
   const storedSummaryText = document?.summary?.summary ?? null;
   const documentLabels = document?.labels;
+  const viewerFileKind = documentFileKindFromType(document?.file_type, document?.file_name, "PDF");
   const formattedStoredSummary = useMemo(() => formatDocumentSummary(storedSummaryText), [storedSummaryText]);
   const summaryBadges = useMemo(
     () => buildDocumentSummaryBadges({ labels: documentLabels, summaryText: storedSummaryText }),
@@ -1027,6 +1044,9 @@ export function DocumentViewer({
     });
   }, [activeChunkId, documentId]);
   const retryPreview = () => {
+    const signedUrlEndpoint = `/api/documents/${documentId}/signed-url`;
+    clearCachedSignedUrl(signedUrlEndpoint);
+    clearCachedSignedUrl(`${signedUrlEndpoint}?download=true`);
     setViewerError(null);
     setPreviewError(null);
     setDownloadError(null);
@@ -1329,7 +1349,7 @@ export function DocumentViewer({
                   <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--surface-subtle)] text-[color:var(--text-muted)]">
                     <ExternalLink aria-hidden="true" className="h-4 w-4" />
                   </span>
-                  Open original PDF
+                  {`Open original ${viewerFileKind}`}
                 </a>
               ) : (
                 <a
@@ -1340,7 +1360,7 @@ export function DocumentViewer({
                   <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--surface-subtle)] text-[color:var(--text-muted)]">
                     <ExternalLink aria-hidden="true" className="h-4 w-4" />
                   </span>
-                  Open original PDF
+                  {`Open original ${viewerFileKind}`}
                 </a>
               )}
               <button
@@ -1359,7 +1379,7 @@ export function DocumentViewer({
                     <Download aria-hidden="true" className="h-4 w-4" />
                   )}
                 </span>
-                {downloadingSource ? "Preparing PDF" : "Download PDF"}
+                {downloadingSource ? `Preparing ${viewerFileKind}` : `Download ${viewerFileKind}`}
               </button>
             </div>
             {canUseAdministrativeApis ? (
@@ -1467,13 +1487,21 @@ export function DocumentViewer({
                 id="pdf-preview-section"
                 className={cn(panel, "scroll-mt-[var(--document-anchor-offset,6rem)] overflow-hidden")}
               >
-                <div data-testid="pdf-preview">
+                {originalsLocked ? (
+                  <ClinicalSignInNotice
+                    copy={CLINICAL_SIGN_IN_COPY.original}
+                    bare
+                    testId="original-document-sign-in"
+                    onSignedIn={retryPreview}
+                  />
+                ) : null}
+                <div data-testid="pdf-preview" hidden={originalsLocked}>
                   <DocumentFrame
                     alt={`${document ? documentDisplayTitle(document) : "Source document"} preview`}
                     src={previewFrameSource}
                     controls={pdfFrameControls}
                     {...(effectiveLoadingDocument
-                      ? { state: "loading" as const, loadingLabel: "Preparing PDF preview" }
+                      ? { state: "loading" as const, loadingLabel: `Preparing ${viewerFileKind} preview` }
                       : effectiveViewerError || previewError
                         ? {
                             state: "error" as const,
@@ -1485,7 +1513,7 @@ export function DocumentViewer({
                       effectiveLoadingDocument ? (
                         <ul className="mt-3 space-y-1 text-left text-xs font-medium text-[color:var(--text-muted)]">
                           <li>Loading source metadata</li>
-                          <li>Preparing PDF preview</li>
+                          <li>{`Preparing ${viewerFileKind} preview`}</li>
                           <li>Loading extracted tables</li>
                         </ul>
                       ) : undefined
@@ -1495,7 +1523,7 @@ export function DocumentViewer({
                         {signedUrl ? (
                           <a href={signedUrl} target="_blank" rel="noreferrer" className={secondaryButton}>
                             <ExternalLink aria-hidden="true" className="h-4 w-4" />
-                            Source PDF
+                            {`Source ${viewerFileKind}`}
                           </a>
                         ) : null}
                         {downloadSignedUrl ? (
@@ -1510,7 +1538,7 @@ export function DocumentViewer({
                             ) : (
                               <Download aria-hidden="true" className="h-4 w-4" />
                             )}
-                            {downloadingSource ? "Preparing PDF" : "Download PDF"}
+                            {downloadingSource ? `Preparing ${viewerFileKind}` : `Download ${viewerFileKind}`}
                           </button>
                         ) : null}
                       </>
@@ -1547,6 +1575,7 @@ export function DocumentViewer({
                         title={document ? documentDisplayTitle(document) : "Source document"}
                         signedUrl={signedUrl}
                         downloadSignedUrl={downloadSignedUrl}
+                        onRetry={retryPreview}
                       />
                     )}
                   </DocumentFrame>

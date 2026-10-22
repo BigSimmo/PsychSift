@@ -82,6 +82,45 @@ describe("native PDF source-only provenance", () => {
     expect(parsed).toEqual(payload());
     expect(parseExtractedDocumentPayload(JSON.stringify(parsed))).toEqual(parsed);
   });
+  it("retains observed native/OCR versions without promoting OCR to verified fidelity", () => {
+    const source = packet();
+    const observed = {
+      ...source,
+      producer: { ...source.producer, mupdfVersion: "1.28.0", tesseractVersion: "5.5.0" },
+      structuralDisposition: "unverified",
+      reasonCodes: ["pdf_ocr_unverified"],
+      ocr: { ...source.ocr, status: "unverified", comparison: "not_compared" },
+    };
+    expect(parseExtractedDocumentPayload(JSON.stringify(payload(observed)))).toEqual(payload(observed));
+    // Existing producer records lack these optional observations and remain readable.
+    expect(parseExtractedDocumentPayload(JSON.stringify(payload()))).toEqual(payload());
+  });
+  it.each(["mupdfVersion", "tesseractVersion"])("marks an observed unknown %s explicitly unverified", (field) => {
+    const source = packet();
+    const ocrAttempted = field === "tesseractVersion";
+    const unknown = {
+      ...source,
+      producer: { ...source.producer, [field]: null },
+      ...(ocrAttempted ? { ocr: { ...source.ocr, status: "unverified", comparison: "not_compared" } } : {}),
+    };
+    expect(pdfPageSourceProvenanceSchema.safeParse(unknown).success).toBe(false);
+    expect(
+      pdfPageSourceProvenanceSchema.parse({
+        ...unknown,
+        structuralDisposition: "unverified",
+        reasonCodes: [...(ocrAttempted ? ["pdf_ocr_unverified"] : []), "pdf_runtime_identity_unknown"],
+      }),
+    ).toMatchObject({ producer: { [field]: null }, structuralDisposition: "unverified" });
+  });
+  it("does not claim an observed OCR engine on a page where OCR was not requested", () => {
+    const source = packet();
+    expect(
+      pdfPageSourceProvenanceSchema.safeParse({
+        ...source,
+        producer: { ...source.producer, tesseractVersion: "5.5.0" },
+      }).success,
+    ).toBe(false);
+  });
   it.each([
     null,
     { ...packet(), version: "unknown" },

@@ -45,8 +45,8 @@
   --work-leading-hero-sub: 1.35;
   --work-leading-body: 1.45;
   --work-leading-meta: 1rem;
-  --work-radius-tab: 2px;
-  --work-radius-focus: 0.5rem;
+  --work-radius-tab: var(--radius-xs);
+  --work-radius-focus: var(--radius-sm);
 }
 
 :root[data-work-frame],
@@ -68,10 +68,11 @@
      shadows (`--work-shadow-card`, `--work-shadow-float`) live with the other
      work colours in globals.css, the token layer. */
   --work-glass-blur: blur(18px) saturate(180%);
-  --work-radius-card: 14px;
-  --work-radius-hero: 18px;
-  --work-radius-field: 13px;
-  --work-radius-sheet: 32px;
+  /* Work keeps its colour and flat surfaces; shared geometry follows the canonical ladder. */
+  --work-radius-card: var(--radius-lg);
+  --work-radius-hero: var(--radius-xl);
+  --work-radius-field: var(--radius-md);
+  --work-radius-sheet: var(--radius-2xl);
   --work-gutter: 1rem;
   /* The band's side gutters, widened past a landscape notch or rounded
      corner (the app is drawn under them: viewport-fit=cover). */
@@ -389,17 +390,17 @@ body {
   }
 }
 
-/* The faint line drawing, cropped by its own box at the band's corner. */
+/* Decorative only: inset the complete drawing without clipping the band or its controls. */
 .work-band__mark {
   position: absolute;
-  right: 0;
-  bottom: 0;
+  right: var(--work-gutter-right);
+  bottom: calc(var(--spacing) * 2);
   z-index: var(--work-z-under);
   width: 10.5rem;
-  height: 10.375rem;
+  height: 10.5rem;
   background: var(--mode-identity);
-  mask: var(--work-band-mark, none) left top / 12.25rem 12.25rem no-repeat;
-  -webkit-mask: var(--work-band-mark, none) left top / 12.25rem 12.25rem no-repeat;
+  mask: var(--work-band-mark, none) center / contain no-repeat;
+  -webkit-mask: var(--work-band-mark, none) center / contain no-repeat;
   /* Fainter since the 11 Oct design review: colour says where you are, the drawing only adds a hint. */
   opacity: 0.08;
   pointer-events: none;
@@ -407,6 +408,12 @@ body {
 
 .dark .work-band__mark {
   opacity: 0.11;
+}
+
+@media (max-width: 767px) {
+  .work-band__mark {
+    display: none;
+  }
 }
 
 /* Pinned tabs (owner request 8 Oct 2026). Once the title has scrolled under
@@ -523,7 +530,7 @@ html[data-motion="reduced"] .work-band__mark {
 .work-band__title {
   margin: 0;
   /* Scales with the band only when large text would cut it off (see .mode-band__title). */
-  font-size: min(1.5625rem, 10cqi);
+  font-size: min(var(--text-xl), 10cqi);
   font-weight: 700;
   letter-spacing: -0.025em;
   line-height: var(--work-leading-title);
@@ -648,7 +655,7 @@ html[data-motion="reduced"] .work-band__mark {
   border: 0;
   background: transparent;
   font: inherit;
-  font-size: 0.84375rem;
+  font-size: var(--text-sm);
   font-weight: 600;
   color: var(--work-ink-muted);
   text-decoration: none;
@@ -984,7 +991,7 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
 }
 
 .universal-header[data-work-frame] .universal-header-mode-button .text-sm {
-  font-size: 0.84375rem;
+  font-size: var(--text-sm);
   font-weight: 700;
   letter-spacing: -0.01em;
   line-height: var(--work-leading-title);
@@ -1094,7 +1101,7 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
   }
 
   .universal-header[data-work-frame] [data-testid="universal-header-mode-area-only"] {
-    font-size: 0.8125rem;
+    font-size: var(--text-sm);
     letter-spacing: -0.01em;
   }
 }
@@ -1129,7 +1136,7 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
 }
 
 .work-more-sheet__title.work-more-sheet__title {
-  font-size: 1.125rem;
+  font-size: var(--text-md);
   font-weight: 700;
   letter-spacing: -0.02em;
 }
@@ -1262,7 +1269,7 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
 
 .work-more-tile__name {
   overflow: hidden;
-  font-size: 0.78125rem;
+  font-size: var(--text-sm);
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1323,9 +1330,9 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
   flex: 1;
   border: 0;
   background: transparent;
-  /* 16px stops phones zooming the page when the field takes focus. */
+  /* The 17px medium step prevents phone focus zoom while using the shared scale. */
   font: inherit;
-  font-size: 1rem;
+  font-size: var(--text-md);
   color: var(--work-ink);
   outline: none;
 }
@@ -1333,7 +1340,7 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
 .work-more-sheet__none {
   margin: 0;
   padding: calc(var(--spacing) * 2) calc(var(--spacing) * 1);
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   text-align: center;
   color: var(--work-ink-muted);
 }
@@ -1656,7 +1663,7 @@ button.work-row:focus-visible {
 }
 
 .work-date__day {
-  font-size: 1rem;
+  font-size: var(--text-md);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
@@ -1703,7 +1710,7 @@ a.work-hero:focus-visible {
 }
 
 .work-hero__title {
-  font-size: 1.0625rem;
+  font-size: var(--text-md);
   font-weight: 700;
   letter-spacing: -0.015em;
   line-height: var(--work-leading-heading);
@@ -1812,7 +1819,7 @@ a.work-hero:focus-visible {
 .work-ring__figure {
   position: relative;
   display: block;
-  font-size: 1.0625rem;
+  font-size: var(--text-md);
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: var(--work-leading-none);
@@ -1984,7 +1991,7 @@ a.work-hero:focus-visible {
   border: 0;
   background: transparent;
   font: inherit;
-  font-size: 0.78125rem;
+  font-size: var(--text-sm);
   font-weight: 600;
   color: var(--work-ink-muted);
   text-decoration: none;
@@ -2057,7 +2064,7 @@ a.work-hero:focus-visible {
   border: 0;
   background: transparent;
   font: inherit;
-  font-size: 0.78125rem;
+  font-size: var(--text-sm);
   font-weight: 700;
   white-space: nowrap;
   text-decoration: none;
@@ -2131,7 +2138,7 @@ a.work-hero:focus-visible {
 .work-button[data-size="wide"] {
   width: 100%;
   min-height: 3rem;
-  font-size: 0.90625rem;
+  font-size: var(--text-body);
 }
 
 .work-button[data-size="wide"]::before {
@@ -2242,7 +2249,7 @@ a.work-hero:focus-visible {
    opening on a field) scrolls clear of the dock rather than under it. */
 html:has(.work-dock),
 html:has(.work-dock) #main-content {
-  scroll-padding-bottom: calc(5.75rem + var(--safe-area-bottom, 0px));
+  scroll-padding-bottom: calc(5.75rem + var(--safe-area-bottom, 0px) + var(--keyboard-height, 0px));
 }
 
 .work-dock__capsule {
@@ -2326,14 +2333,14 @@ html:has(.work-dock) #main-content {
 
 .work-empty__title {
   margin: 0;
-  font-size: 0.9375rem;
+  font-size: var(--text-body);
   font-weight: 700;
 }
 
 .work-empty__body {
   max-width: 16.25rem;
   margin: 0 0 calc(var(--spacing) * 1.5);
-  font-size: 0.78125rem;
+  font-size: var(--text-sm);
   line-height: var(--work-leading-body);
   color: var(--work-ink-muted);
 }
@@ -2373,7 +2380,7 @@ button.work-week__day {
 }
 
 .work-week__num {
-  font-size: 0.9375rem;
+  font-size: var(--text-body);
   font-weight: 700;
   letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
@@ -2434,7 +2441,7 @@ button.work-week__day {
   align-items: center;
   gap: calc(var(--spacing) * 2.25);
   padding: calc(var(--spacing) * 1.75) 0;
-  font-size: 0.78125rem;
+  font-size: var(--text-sm);
   font-weight: 600;
 }
 
@@ -2595,7 +2602,7 @@ html[data-work-frame] .app-toast-region {
   border-radius: var(--work-radius-field);
   background: transparent;
   font: inherit;
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   font-weight: 700;
   color: var(--mode-identity);
   cursor: pointer;
@@ -2624,7 +2631,7 @@ html[data-work-frame] .app-toast-region {
 
 .work-more-sheet__hint {
   margin: 0;
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   color: var(--work-ink-muted);
 }
 
@@ -2692,7 +2699,7 @@ html[data-work-frame] .app-toast-region {
 }
 
 .work-side-menu__brand {
-  font-size: 1.125rem;
+  font-size: var(--text-md);
   font-weight: 750;
   letter-spacing: -0.02em;
   color: var(--text-heading);
@@ -2719,7 +2726,7 @@ html[data-work-frame] .app-toast-region {
   gap: calc(var(--spacing) * 3);
   min-height: 3.5rem;
   padding: calc(var(--spacing) * 2) calc(var(--spacing) * 2.5);
-  border-radius: calc(var(--spacing) * 3.5);
+  border-radius: var(--radius-lg);
   background: var(--surface-subtle);
   color: var(--text-muted);
 }
@@ -2734,7 +2741,7 @@ html[data-work-frame] .app-toast-region {
   border-radius: var(--radius-pill);
   background: var(--text-heading);
   color: var(--surface);
-  font-size: 0.9375rem;
+  font-size: var(--text-body);
   font-weight: 750;
 }
 
@@ -2746,14 +2753,14 @@ html[data-work-frame] .app-toast-region {
 
 .work-side-menu__account-text b {
   overflow: hidden;
-  font-size: 0.875rem;
+  font-size: var(--text-body);
   color: var(--text-heading);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .work-side-menu__account-text small {
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   color: var(--text-muted);
 }
 
@@ -2797,7 +2804,7 @@ html[data-work-frame] .app-toast-region {
   place-items: center;
   width: 1.875rem;
   height: 1.875rem;
-  border-radius: calc(var(--spacing) * 2.25);
+  border-radius: var(--radius-md);
   background: var(--mode-identity-soft);
   color: var(--mode-identity);
 }
@@ -2809,7 +2816,7 @@ html[data-work-frame] .app-toast-region {
 .work-side-menu__name {
   flex: 1;
   min-width: 0;
-  font-size: 0.875rem;
+  font-size: var(--text-body);
   font-weight: 600;
 }
 
@@ -2831,7 +2838,7 @@ html[data-work-frame] .app-toast-region {
   border-radius: var(--radius-pill);
   background: var(--surface-subtle);
   color: var(--text-heading);
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   font-weight: 750;
   line-height: calc(var(--spacing) * 5.5);
   text-align: center;
@@ -2866,7 +2873,7 @@ html[data-work-frame] .app-toast-region {
   padding: calc(var(--spacing) * 1) 0;
   border-radius: var(--radius-lg);
   color: var(--text-muted);
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   font-weight: 650;
 }
 
@@ -2881,7 +2888,7 @@ html[data-work-frame] .app-toast-region {
   margin-top: auto;
   padding-top: calc(var(--spacing) * 2.5);
   border-top: 1px solid var(--border);
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   color: var(--text-heading);
 }
 
@@ -2895,7 +2902,7 @@ html[data-work-frame] .app-toast-region {
 .work-side-menu__sign-out {
   min-height: 3rem;
   border-radius: var(--radius-lg);
-  font-size: 0.875rem;
+  font-size: var(--text-body);
   font-weight: 650;
 }
 
@@ -2940,7 +2947,7 @@ html[data-work-frame] .app-toast-region {
 .work-rail__avatar {
   width: 2.25rem;
   height: 2.25rem;
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   font-weight: 700;
   /* The same soft initial disc as the Clinical rail, signed in or not, so
      the account spot looks the same in every mode. */
@@ -3000,7 +3007,7 @@ html[data-work-frame] .app-toast-region {
   place-items: center;
   width: 2.5rem;
   height: 2.5rem;
-  border-radius: calc(var(--spacing) * 2.5);
+  border-radius: var(--radius-md);
   transition:
     background-color var(--duration-fast) ease,
     color var(--duration-fast) ease;
@@ -3072,11 +3079,11 @@ html[data-work-frame] .app-toast-region {
   height: 1.0625rem;
   padding: 0 calc(var(--spacing) * 1);
   border-radius: var(--radius-pill);
-  background: var(--text-heading);
-  color: var(--surface);
+  background: var(--surface-subtle);
+  color: var(--text-muted);
   font-size: var(--text-xs, 0.75rem);
   font-style: normal;
-  font-weight: 800;
+  font-weight: 600;
   line-height: calc(var(--spacing) * 4.25);
   text-align: center;
   font-variant-numeric: tabular-nums;

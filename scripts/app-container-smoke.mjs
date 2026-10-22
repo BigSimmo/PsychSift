@@ -1,17 +1,27 @@
 #!/usr/bin/env node
 /**
- * app-container-smoke — run the built app image provider-free and verify:
+ * app-container-smoke — run the built app image read-only/provider-free and verify:
  *   - /api/health returns HTTP 200 with status: ok, openaiConfig: skipped,
  *     supabaseConfig: ok
  *   - PID 1 is the Next production server (`next start` argv, or Next 16's
  *     rewritten `next-server (v…)` process title after boot)
  *   - container stops cleanly within a bounded timeout
+ * The legacy --read-only flag remains accepted; startup always uses a read-only root.
  */
 import { spawnSync } from "node:child_process";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
-const IMAGE_REF = process.argv[2] ?? "clinical-kb-app:ci";
+const IMAGE_REF = process.argv.slice(2).find((arg) => arg !== "--read-only") ?? "clinical-kb-app:ci";
 const CONTAINER_NAME = "clinical-kb-app-smoke";
 const STOP_TIMEOUT_SECONDS = 30;
+
+export function isCleanContainerExit(result) {
+  if (result.status !== 0 || result.error || result.signal || typeof result.stdout !== "string") return false;
+  const fields = result.stdout.trim().split(/\s+/);
+  // Docker stop sends SIGTERM; Node/Next can report 128 + SIGTERM (143).
+  // A SIGKILL (137), crash, or incomplete inspection is not clean shutdown.
+  return fields.length === 3 && fields[0] === "false" && fields[1] === "false" && ["0", "143"].includes(fields[2]);
+}
 
 function run(args, opts = {}) {
   const result = spawnSync(args[0], args.slice(1), { encoding: "utf8", stdio: "pipe", ...opts });
@@ -26,26 +36,27 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+export function appHealthProbe(healthUrl) {
+  return `fetch(${JSON.stringify(healthUrl)}, {signal: AbortSignal.timeout(5000)}).then(async (r)=>{if(r.status!==200)throw new Error('Expected HTTP 200, got '+r.status);const j=await r.json();if(!j||typeof j!=='object'||Array.isArray(j))throw new Error('Invalid health JSON');console.log(JSON.stringify(j));}).catch((e)=>{console.error(e.message);process.exit(1);})`;
+}
+
 async function waitForHealth(port = 3000, attempts = 30) {
   const healthUrl = `http://127.0.0.1:${port}/api/health`;
+  let lastError = "No successful health response";
   for (let i = 0; i < attempts; i += 1) {
-    const result = run([
-      "docker",
-      "exec",
-      CONTAINER_NAME,
-      "node",
-      "-e",
-      `fetch("${healthUrl}").then((r)=>r.json()).then((j)=>{console.log(JSON.stringify(j));process.exit(0);}).catch((e)=>{console.error(e.message);process.exit(1);})`,
-    ]);
+    const result = run(["docker", "exec", CONTAINER_NAME, "node", "-e", appHealthProbe(healthUrl)]);
     if (result.status === 0) {
       try {
         return JSON.parse(result.stdout);
       } catch {
-        /* not ready yet */
+        lastError = "Health probe returned invalid JSON";
       }
+    } else {
+      lastError = result.stderr?.trim() || result.error?.message || `docker exec exited ${result.status}`;
     }
     await sleep(1000);
   }
+  console.error("Health readiness probe failed:", lastError);
   return null;
 }
 
@@ -59,6 +70,7 @@ async function main() {
     "--name",
     CONTAINER_NAME,
     "--network=none",
+    "--read-only",
     "--cap-drop=ALL",
     "--security-opt",
     "no-new-privileges:true",
@@ -133,7 +145,7 @@ async function main() {
   // Next 16 rewrites the process title to `next-server (vX.Y.Z)` after
   // `next start` boots; accept either form so smoke tracks the live server.
   const pid1LooksLikeNextServer = pid1.includes("next start") || /\bnext-server\b/.test(pid1);
-  if (!pid1LooksLikeNextServer) {
+  if (psResult.status !== 0 || psResult.signal || psResult.error || !pid1LooksLikeNextServer) {
     console.error("PID 1 is not the expected Next production server:", pid1);
     const logs = run(["docker", "logs", "--tail", "80", CONTAINER_NAME]);
     if (logs.stdout) console.error(logs.stdout);
@@ -156,32 +168,28 @@ async function main() {
     "{{.State.Running}} {{.State.OOMKilled}} {{.State.ExitCode}}",
     CONTAINER_NAME,
   ]);
-  const [running, oom, exitCode] = inspectResult.stdout?.trim().split(" ") ?? ["true", "true", "-1"];
-
-  if (running === "true") {
-    console.error("Container still running after docker stop");
+  if (!isCleanContainerExit(inspectResult)) {
+    console.error(
+      "Container shutdown inspection failed or reported an abnormal exit:",
+      inspectResult.stderr ||
+        inspectResult.error?.message ||
+        inspectResult.stdout ||
+        `docker inspect exited ${inspectResult.status}, signal ${inspectResult.signal}`,
+    );
     cleanContainer();
     process.exit(1);
   }
-  if (oom === "true") {
-    console.error("Container was OOMKilled");
-    cleanContainer();
-    process.exit(1);
-  }
-  // 137 = SIGKILL (128+9). Graceful STOPSIGNAL SIGTERM must not escalate.
-  if (exitCode === "137") {
-    console.error("Container exited 137 (SIGKILL) — graceful stop timed out");
-    cleanContainer();
-    process.exit(1);
-  }
+  const exitCode = inspectResult.stdout.trim().split(/\s+/)[2];
 
   console.log(`App smoke passed. PID 1: ${pid1}. Exit code: ${exitCode}. Health:`, JSON.stringify(health, null, 2));
   cleanContainer();
   process.exit(0);
 }
 
-main().catch((error) => {
-  console.error(error);
-  cleanContainer();
-  process.exit(1);
-});
+if (isDirectEntrypoint(import.meta.url)) {
+  main().catch((error) => {
+    console.error(error);
+    cleanContainer();
+    process.exit(1);
+  });
+}

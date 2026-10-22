@@ -32,7 +32,7 @@ unrelated changes were preserved. This is an audit evidence record, not another 
 | F19     | Dated living documents opt into normal link and command checks through explicit lifecycle headers; historical records remain historical. Dead CME example replaced with the actual focused fixture.                       |
 | F20     | Maintained handoff, organisation rationale and canonical PR workflow aligned with the owner's normal-merge instruction; retired-rule guard added. Historical squash-recovery evidence retained.                           |
 | F21     | Staging instructions require complete application identity before probes and optional seeds, independent of CLI linkage.                                                                                                  |
-| F22     | Consolidated reindex uses the standalone guarded recovery executor, fresh post-confirmation state and conditional claims. Both actual CLI entrypoints have race/compensation tests.                                       |
+| F22     | Superseded on merge with main: both recovery CLIs now use the atomic server-side recovery (`applyIngestionRecoveryActions`, commit `4973037a9`), so this patch's client-side executor and its tests were dropped.         |
 | F23     | Queue health separated from current fenced-RPC signature and grant compatibility.                                                                                                                                         |
 | F24     | Universal rollback/recovery guarantees withdrawn; final-attempt exhaustion and bounded diagnostics documented.                                                                                                            |
 | F25     | Disaster-recovery rehearsal identity separated from an explicitly approved production replacement transition.                                                                                                             |
@@ -67,20 +67,16 @@ confirmed selector/container closure. Independent clinical-governance review fou
 high-confidence defect in the eight operational/governance documents. These are engineering source
 reviews of uncommitted changes, not clinical-owner sign-off or deployed acceptance.
 
-The existing hazard-control drift exceptions for `docs/clinical-governance.md` and
-`src/lib/rag/rag-source-block.ts` remain historical, unresealed and pending owner review. This patch
-adds a preflight clarification and changes a type import respectively; it does not reset those
-exceptions or their expiry dates.
+On merge with main (22 October 2026) the hazard register had been resealed and its drift
+exceptions removed. To avoid new drift on sealed paths, this patch no longer edits
+`docs/clinical-governance.md` or `src/lib/rag/rag-source-block.ts`: the development-profile guide
+moved to `docs/governance/development-governance-scope.md`, and the RAG source block keeps its
+original import through the worker compatibility re-export. No exception or seal was changed.
 
-Recovery retains a sequential API/RPC limitation: the operator claim refreshes `locked_at`, while
-worker eligibility uses `lease_expires_at`. An otherwise eligible job whose old lease has already
-expired can be reclaimed immediately during the unfenced reset. Guarded releases verify affected IDs, preserve replacement ownership and
-report a lost claim without counting it as a successful requeue. Both actual CLI entrypoints have
-regressions for successful releases, lost claims, genuine database errors and failure cleanup.
-This patch closes the consolidated command's missing guards and reporting gap, not atomic database recovery.
-Existing fenced reset/patch signatures require a full worker fence and reserved staging generation;
-they are not safe drop-in replacements for this operator transition. Addressing the race needs a
-new reviewed transactional recovery/requeue contract and explicit live-change authority.
+Recovery update on merge with main (22 October 2026): main replaced client-side recovery writes with
+one atomic server-side recovery call that rechecks authority and lease identity, so the guarded
+client-side executor this patch originally added (F22) was removed rather than merged. The lease
+race described in the original review is now handled by that server-side check (per main's code; not re-verified live).
 Final-attempt recovery and source exclusion still need separately approved operational
 decisions and live evidence.
 

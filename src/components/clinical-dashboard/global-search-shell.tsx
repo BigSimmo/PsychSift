@@ -6,6 +6,7 @@ import {
   type CSSProperties,
   type ReactNode,
   type UIEvent,
+  useDeferredValue,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -128,7 +129,11 @@ import {
   modeHomeComposerReservePendingValue,
   modeHomeDesktopComposerSlotId,
 } from "@/lib/mode-home-composer";
-import { readSearchNavigationContext, type SearchNavigationOptions } from "@/lib/search-navigation-context";
+import {
+  preserveServicesShortlist,
+  readSearchNavigationContext,
+  type SearchNavigationOptions,
+} from "@/lib/search-navigation-context";
 import { isTherapyPhoneDockRoute, readTherapyCompareSlugCount } from "@/lib/therapy-compass-navigation";
 import { useDifferentialsCompareHasSelection } from "@/components/differentials/compare-presence";
 import {
@@ -456,6 +461,7 @@ function GlobalStandaloneSearchShellBody({
       ? requestedMode
       : initialSearchMode;
   const [query, setQuery] = useState(requestedQuery);
+  const deferredQuery = useDeferredValue(query);
   const [, setLastAppMode] = useLastAppMode();
   // Previous URL snapshot for during-render sync (React "adjusting state when a
   // prop changes"). Pathname must be tracked separately: with the shared
@@ -480,10 +486,11 @@ function GlobalStandaloneSearchShellBody({
   const [recentQueries, setRecentQueries] = useState<string[]>([]);
   const searchCommandContextValue = useMemo(
     () => ({
-      query,
+      query: deferredQuery,
       modeId: searchMode,
+      clearQuery: () => setQuery(""),
     }),
-    [query, searchMode],
+    [deferredQuery, searchMode],
   );
   const auth = useAuthSession();
   const sidebarIdentity = useMemo(() => deriveSidebarIdentity(auth.session?.user.email), [auth.session?.user.email]);
@@ -634,11 +641,25 @@ function GlobalStandaloneSearchShellBody({
   // prop changes"). Typing never changes the URL, so a URL-gated sync cannot
   // clobber in-progress input; the initial mount is a no-op because synced*
   // state is seeded from the current URL.
+  //
+  // Typing does not change the URL, but a page's own client-only history update
+  // can land while the reader types: the Services shortlist Clear turns
+  // `?q=crisis&shortlist=...` into `?q=crisis`, and Next adopts that a beat later.
+  // Re-seeding the composer then overwrote the next query already typed (WebKit
+  // tablet, main run 39120425367: "housing" was submitted as "crisis"). Re-seed the
+  // composer only when the URL's own query, mode or pathname moved; a change to
+  // other params leaves a draft alone.
   if (searchParamString !== syncedSearchParamString || pathname !== syncedPathname) {
+    const syncedSearchParams = new URLSearchParams(syncedSearchParamString);
+    const urlQueryMoved =
+      pathname !== syncedPathname ||
+      syncedSearchParams.get("mode") !== requestedMode ||
+      (syncedSearchParams.has("q") || syncedSearchParams.has("query")) !== currentUrlHasQuery ||
+      (syncedSearchParams.get("q") ?? syncedSearchParams.get("query") ?? "").trim() !== requestedQuery;
     setSyncedSearchParamString(searchParamString);
     setSyncedPathname(pathname);
     setSearchMode(resolvedSearchMode);
-    setQuery(currentUrlHasQuery ? requestedQuery : "");
+    if (urlQueryMoved) setQuery(currentUrlHasQuery ? requestedQuery : "");
     const nextSearchContext = readSearchNavigationContext(new URLSearchParams(searchParamString));
     setQueryMode(nextSearchContext.queryMode);
     setScopeFilters(nextSearchContext.scopeFilters);
@@ -798,7 +819,14 @@ function GlobalStandaloneSearchShellBody({
       router.push(documentsSearchHref(nextOptions));
       return;
     }
-    router.push(appModeHomeHref(mode, nextOptions));
+    const href = appModeHomeHref(mode, nextOptions);
+    router.push(
+      mode === "services" && searchMode === "services"
+        ? // Workflow selection writes native history synchronously; a React params
+          // snapshot can lag behind a rapid selection followed by a new search.
+          preserveServicesShortlist(href, new URLSearchParams(window.location.search))
+        : href,
+    );
   }
 
   function submitSearch(queryOverride?: string) {

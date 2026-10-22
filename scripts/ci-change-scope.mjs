@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 import { execFileSync } from "node:child_process";
-import { appendFileSync, existsSync, lstatSync, readFileSync, realpathSync } from "node:fs";
+import { appendFileSync, existsSync, lstatSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import { isAbsolute, posix as posixPath, relative, sep } from "node:path";
+import { browserInputClosure } from "./browser-inputs.mjs";
+
+let browserInputs;
 
 const zeroSha = /^0{40}$/;
 
@@ -216,7 +219,9 @@ function isUiChangedPath(filePath) {
   // src consumers; repo-awareness-snapshot.test.ts scans every source file on disk
   // so restoring a runtime import requires revisiting this exact exclusion.
   if (filePath === "data/repo-awareness-snapshot.json") return false;
-  return pathMatches(filePath, uiPatterns);
+  if (pathMatches(filePath, uiPatterns)) return true;
+  browserInputs ??= browserInputClosure();
+  return browserInputs.has(filePath);
 }
 
 /**
@@ -225,16 +230,16 @@ function isUiChangedPath(filePath) {
  * tests — measured at ~3m14 on every UI pull request (#137).
  *
  * So it runs when there is something for it to cover: a mockup surface changed,
- * or the flake ledger is non-empty. Reading the ledger rather than hard-coding
- * "no quarantines exist" makes the gate self-correcting — the moment a test is
- * quarantined, the lane comes back on every UI PR without anyone remembering to
- * re-enable it.
+ * or a quarantine appears in source/ledger state. This dependency-free early
+ * scheduler is conservative; required collected-test validation after npm ci
+ * rejects unknown tags, stale entries, expired owners and critical overlap.
+ * The source check also keeps title-only tags visible with an empty ledger.
  */
 const mockupPatterns = [
   "src/app/mockups",
   "tests/ui-mockups.spec.ts",
-  // Component filenames are both singular and plural (`task-directory-mockup.tsx`
-  // next to `split-pane-refined-mockups.tsx`), and several live in `*-mockups/`
+  // Component filenames are both singular and plural (`tools-page-mockup-page.tsx`
+  // next to `master-document-flow-mockups.tsx`), and several live in `*-mockups/`
   // directories. Matching the directory as well as the filename keeps a mockup
   // component edited on its own — without its `src/app/mockups` route wrapper —
   // from losing the only lane that runs its `@mockup` journey.
@@ -246,11 +251,10 @@ const mockupPatterns = [
   // file at any depth; a plain `mockups/` segment one level down fell between them
   // and left those journeys unrun (found 2026-08-21).
   /^src\/components\/(?:[^/]+\/)+mockups?\//,
-  // Three of the advisory specs carry `@mockup` without "mockup" in the
-  // filename, so a name-based rule alone misses them. `assertMockupSpecParity`
-  // below holds this list to `mockupSpecPattern` in playwright.config.ts.
+  // Advisory specs carry "mockup" in the filename. `assertMockupSpecParity` below
+  // holds this list to `mockupSpecPattern` in playwright.config.ts, so a future
+  // advisory spec without "mockup" in its name fails that check until it is added.
   /^tests\/.*mockup.*\.spec\.ts$/,
-  /^tests\/ui-tools(?:-collapse|-task-directory)?\.spec\.ts$/,
 ];
 
 function quarantineLedgerHasEntries(readLedger) {
@@ -260,6 +264,20 @@ function quarantineLedgerHasEntries(readLedger) {
   } catch {
     // Fail OPEN: an unreadable or malformed ledger must not silently drop the
     // advisory lane. `npm run flake:ledger` is what validates its shape.
+    return true;
+  }
+}
+
+// Scheduling is conservative; required collected-test validation below the
+// dependency install proves exact registration, inherited tags and ownership.
+// A title-only or unregistered tag must never disappear from both browser lanes.
+function quarantineSourceHasTags() {
+  try {
+    return readdirSync("tests")
+      .filter((file) => /\.spec\.[cm]?[jt]sx?$/.test(file))
+      .some((file) => readFileSync(`tests/${file}`, "utf8").includes("@quarantine"));
+  } catch {
+    // Missing/unreadable collection inputs cannot prove the advisory lane empty.
     return true;
   }
 }
@@ -297,7 +315,8 @@ const workflowPatterns = [
   "docs/agents",
   "docs/codex-review-protocol.md",
   "docs/process-hardening.md",
-  /^scripts\/(?:ci-change-scope|pr-policy|verify-pr-local|eval-rag-offline|run-gitleaks-pinned|check-github-action-pins|list-database-skills|sync-skills|productivity-core|productivity-workflow|external-workflow)\.mjs$/,
+  "scripts/actionlint-release.json",
+  /^scripts\/(?:ci-change-scope|pr-policy|verify-pr-local|eval-rag-offline|run-gitleaks-pinned|check-github-action-pins|check-github-actions-semantics|list-database-skills|sync-skills|productivity-core|productivity-workflow|external-workflow)\.mjs$/,
 ];
 
 const uiPatterns = [
@@ -544,6 +563,7 @@ const ingestionSastPatterns = [
 ];
 
 const containerPatterns = [
+  "scripts/ci/archive-container-evidence.mjs",
   "Dockerfile",
   "Dockerfile.worker",
   ".dockerignore",
@@ -635,13 +655,15 @@ function isRecognisedLightPath(filePath) {
 // drive both the empty and non-empty cases without touching the real file.
 const readFlakeLedger = () => readFileSync("tests/flake-ledger.json", "utf8");
 
-function directChangeScopes(normalized, readLedger) {
+function directChangeScopes(normalized, readLedger, hasQuarantineTags) {
   const docsChanged = normalized.some((file) => pathMatches(file, docPatterns));
   const sourceChanged = normalized.some((file) => pathMatches(file, [...sourcePatterns, ...staticConfigPatterns]));
   const uiChanged = normalized.some((file) => isUiChangedPath(file));
   const perfChanged = normalized.some((file) => isPerfChangedPath(file));
   const advisoryUiChanged =
-    normalized.some((file) => pathMatches(file, mockupPatterns)) || quarantineLedgerHasEntries(readLedger);
+    normalized.some((file) => pathMatches(file, mockupPatterns)) ||
+    hasQuarantineTags ||
+    quarantineLedgerHasEntries(readLedger);
   const dbChanged = normalized.some((file) => pathMatches(file, dbPatterns));
   const containerChanged = normalized.some((file) => pathMatches(file, containerPatterns));
   const ragEvalChanged = normalized.some((file) => pathMatches(file, ragEvalPatterns));
@@ -710,9 +732,9 @@ function derivedChangeScopes(normalized, direct) {
   return { coverageChanged, docsOnly, staticHeavyChanged, workflowOnly };
 }
 
-function classify(files, { readLedger = readFlakeLedger } = {}) {
+function classify(files, { readLedger = readFlakeLedger, hasQuarantineTags = quarantineSourceHasTags() } = {}) {
   const normalized = [...new Set(files.map(normalizePath).filter(Boolean))].sort();
-  const direct = directChangeScopes(normalized, readLedger);
+  const direct = directChangeScopes(normalized, readLedger, hasQuarantineTags);
   const derived = derivedChangeScopes(normalized, direct);
 
   return {
@@ -892,7 +914,12 @@ function writeOutputs(result) {
 const emptyLedger = () => '{"flakes":[]}';
 
 function assertScope(name, files, expected, options = {}) {
-  const result = classify(files, { readLedger: emptyLedger, prPolicyBodyPresent: false, ...options });
+  const result = classify(files, {
+    readLedger: emptyLedger,
+    hasQuarantineTags: false,
+    prPolicyBodyPresent: false,
+    ...options,
+  });
   for (const [key, value] of Object.entries(expected)) {
     if (result[key] !== value) {
       throw new Error(`${name}: expected ${key}=${value}, received ${result[key]} for ${files.join(", ")}`);
@@ -1003,6 +1030,11 @@ function assertBrowserAndAdvisoryScopes() {
     "src/lib/theme.ts",
     "src/lib/client-store-factory.ts",
     "src/lib/supabase/client.tsx",
+    "src/lib/scroll-behavior.ts",
+    "src/lib/navigation-guards.ts",
+    "src/lib/keyboard-shortcuts.ts",
+    "src/lib/terms-acceptance.ts",
+    "src/lib/supabase/browser-client.ts",
   ]) {
     assertScope(`browser-runtime-input:${file}`, [file], { ui_changed: true });
   }
@@ -1019,19 +1051,18 @@ function assertBrowserAndAdvisoryScopes() {
   // A mockup component in a NESTED `mockups/` directory whose own filename gives
   // no hint — the case the suffix-based rules miss. Both directions are pinned so
   // the added pattern cannot quietly widen to ordinary component directories.
-  assertScope("advisory-on-for-nested-mockup-dir", ["src/components/care-plan/mockups/product-pages.tsx"], {
+  assertScope("advisory-on-for-nested-mockup-dir", ["src/components/example-area/mockups/product-pages.tsx"], {
     advisory_ui_changed: true,
   });
-  assertScope("advisory-off-for-ordinary-nested-component", ["src/components/care-plan/care-plan-shell-frame.tsx"], {
+  assertScope("advisory-off-for-ordinary-nested-component", ["src/components/example-area/example-shell-frame.tsx"], {
     advisory_ui_changed: false,
   });
-  // A mockup component edited without its `src/app/mockups` route wrapper. The
-  // filename is singular, and `ui-tools-task-directory.spec.ts` is its only
-  // browser coverage — excluded from every production project by its `@mockup`
-  // tag, so a missed match here means the journey runs nowhere.
+  // A mockup component edited without its `src/app/mockups` route wrapper, with a
+  // singular filename. A missed match here would leave its `@mockup` journey
+  // running nowhere.
   assertScope(
     "advisory-on-for-singular-mockup-component",
-    ["src/components/tools-page-mockups/task-directory-mockup.tsx"],
+    ["src/components/tools-page-mockups/tools-page-mockup-page.tsx"],
     {
       ui_changed: true,
       advisory_ui_changed: true,
@@ -1044,13 +1075,6 @@ function assertBrowserAndAdvisoryScopes() {
       advisory_ui_changed: true,
     },
   );
-  // Advisory specs whose filenames carry no "mockup" at all.
-  assertScope("advisory-on-for-untagged-mockup-spec-names", ["tests/ui-tools-collapse.spec.ts"], {
-    advisory_ui_changed: true,
-  });
-  assertScope("advisory-on-for-tools-task-directory-spec", ["tests/ui-tools-task-directory.spec.ts"], {
-    advisory_ui_changed: true,
-  });
   // The directory rule must not swallow ordinary component paths.
   assertScope("advisory-off-for-non-mockup-component-directory", ["src/components/clinical-dashboard/mode-nav.tsx"], {
     ui_changed: true,
@@ -1061,6 +1085,12 @@ function assertBrowserAndAdvisoryScopes() {
     ["src/components/clinical-dashboard/dashboard-nav.tsx"],
     { advisory_ui_changed: true },
     { readLedger: () => '{"flakes":[{"id":"F-1"}]}' },
+  );
+  assertScope(
+    "advisory-on-for-title-tag-with-empty-ledger",
+    ["tests/ui-smoke.spec.ts"],
+    { ui_changed: true, advisory_ui_changed: true },
+    { hasQuarantineTags: true },
   );
   // Fail OPEN: an unreadable ledger must not quietly drop the lane.
   assertScope(
@@ -1131,8 +1161,19 @@ function assertCoreStaticAndUiScopes() {
     ["worker/original-witness-readback.ts", "src/lib/publication/original-witness-readback.ts"],
   ]) {
     const previous = classify([oldPath], { readLedger: emptyLedger });
-    const expected = Object.fromEntries(outputs.map((output) => [output, previous[output]]));
+    // Browser lanes follow the actual browser import closure, which reaches the shared
+    // src/lib copy but not the worker path. Those lanes may only widen, never narrow.
+    const browserLanes = new Set(["ui_changed", "perf_changed", "advisory_ui_changed"]);
+    const expected = Object.fromEntries(
+      outputs.filter((output) => !browserLanes.has(output)).map((output) => [output, previous[output]]),
+    );
     assertScope(`shared-publication-parity:${sharedPath}`, [sharedPath], expected);
+    const current = classify([sharedPath], { readLedger: emptyLedger });
+    for (const lane of browserLanes) {
+      if (previous[lane] && !current[lane]) {
+        throw new Error(`shared-publication-parity:${sharedPath}: ${lane} narrowed from ${oldPath}`);
+      }
+    }
   }
   assertScope("worker-keeps-coverage", ["worker/index.ts"], {
     source_changed: true,

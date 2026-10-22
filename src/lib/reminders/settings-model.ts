@@ -1,4 +1,5 @@
 import { dateKeyToUtcMillis, isValidTime } from "@/lib/calendar/date-keys";
+import type { WorkModeId } from "@/lib/app-modes";
 
 /**
  * The owner's reminder controls: whether each kind of reminder shows in the
@@ -122,7 +123,13 @@ export type MorningBriefSettings = {
  * order. Your reminders (Remind me notes) are not one: they already buzz at
  * the time set, so a second alert would be noise.
  */
-export const BELL_PHONE_AREAS = ["on-call", "roster", "cme", "teaching", "my-work"] as const;
+export const BELL_PHONE_AREAS = [
+  "on-call",
+  "roster",
+  "cme",
+  "teaching",
+  "my-work",
+] as const satisfies readonly WorkModeId[];
 export type BellPhoneArea = (typeof BELL_PHONE_AREAS)[number];
 
 /**

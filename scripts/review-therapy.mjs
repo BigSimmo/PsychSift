@@ -60,7 +60,9 @@ import { parseExcludeList, renderSignOffPack, signOffPackCode } from "./lib/sign
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SOURCE_PATH = join(ROOT, THERAPY_GENERATED_PATHS.source);
 const PUBLIC_DATA_PATH = join(ROOT, THERAPY_GENERATED_PATHS.publicDirectory);
+const SIGNABLE_PROJECTION_PATH = join(ROOT, "src", "data", "therapy-signable-slugs.json");
 const FIXED_GENERATED_PATHS = Object.freeze([
+  SIGNABLE_PROJECTION_PATH,
   join(ROOT, THERAPY_GENERATED_PATHS.serverIndex),
   join(ROOT, THERAPY_GENERATED_PATHS.manifest),
   join(PUBLIC_DATA_PATH, THERAPY_GENERATED_PATHS.retiredHomeAlias),
@@ -606,7 +608,35 @@ export function persistTherapyReviewTransaction({
   }
 }
 
+/**
+ * The owner dashboard's small projection of the source (`therapy-signable-slugs.json`):
+ * the slugs this tool's walk queue would sign, and reviewer attribution for every
+ * reviewed record whose content pin still matches. Written as part of each sign-off
+ * transaction (and rolled back with it) so signing a record moves it off the
+ * dashboard's to-do list in the same change.
+ */
+export function therapySignableProjection(records) {
+  /** @type {Record<string, { reviewedBy: string; reviewedAt: string }>} */
+  const signedBySlug = {};
+  for (const record of records) {
+    if (record.reviewStatus !== "reviewed") continue;
+    const pinCurrent =
+      typeof record.reviewedBy === "string" &&
+      record.reviewedBy.trim().length > 0 &&
+      typeof record.reviewedAt === "string" &&
+      record.reviewedContentSha256 === therapyReviewedContentSha256(record);
+    if (pinCurrent) signedBySlug[record.slug] = { reviewedBy: record.reviewedBy, reviewedAt: record.reviewedAt };
+  }
+  return { slugs: therapyWalkQueue(records), signedBySlug };
+}
+
+function writeSignableProjection() {
+  const records = JSON.parse(readFileSync(SOURCE_PATH, "utf8"));
+  writeFileSync(SIGNABLE_PROJECTION_PATH, `${JSON.stringify(therapySignableProjection(records), null, 2)}\n`, "utf8");
+}
+
 function regenerateAndValidate() {
+  writeSignableProjection();
   execFileSync(process.execPath, [GENERATOR_PATH], { cwd: ROOT, stdio: "inherit" });
   execFileSync(process.execPath, [GENERATOR_PATH, "--check"], { cwd: ROOT, stdio: "inherit" });
 }

@@ -1,3 +1,4 @@
+import { toPgVectorRpcParam } from "@/lib/rag/pgvector-literal";
 import { createSearchTelemetry } from "@/lib/rag/rag-search-telemetry";
 import {
   buildAdaptiveAnswerPlan,
@@ -23,7 +24,11 @@ import { withRagProgrammeRollout, answerContractForRollout, adaptiveAnswerRender
 import { loadReviewedPolicyRequest } from "@/lib/rag/rag-reviewed-policy-input";
 import { createGenerationDegradationRecorder } from "@/lib/rag/rag-generation-degradation";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { loadDocumentSummaryContext, sanitizeUnsupportedSummaryAnswer } from "@/lib/rag/rag-document-summary-context";
+import {
+  documentSummaryUnavailableAnswer,
+  loadDocumentSummaryContext,
+  sanitizeUnsupportedSummaryAnswer,
+} from "@/lib/rag/rag-document-summary-context";
 import { generationFailureDetailToken } from "@/lib/rag/rag-generation-failure-diagnostics";
 import { answerLatencyMetadata, answerScopedEvidenceMetadata } from "@/lib/rag/rag-answer-telemetry-metadata";
 import { assertRetrievalRows, buildDocumentSummaryResults } from "@/lib/rag/rag-row-contracts";
@@ -98,6 +103,7 @@ import {
 } from "@/lib/answer-preview";
 export { applyNumericVerification, unboldUnverifiedNumbers } from "@/lib/answer-verification";
 import { selectModelContextEvidencePair, summarizeAustralianSourceSelection } from "@/lib/rag/rag-context-selection";
+import { excludeSupersededEvidence } from "@/lib/rag/superseded-evidence";
 import { relatedInformationMenuLine } from "@/lib/rag/answer-composition";
 export {
   capPerDocumentCrowding,
@@ -166,20 +172,16 @@ import {
   answerCacheAllowedForSourcePolicyConflicts,
   answerCacheLookupAllowedForRequest,
   answerCoalescingAllowedForRequest,
-  answerInflight,
   cacheIndexingVersion,
-  cloneAnswer,
   getCachedAnswer,
   getCachedSearch,
   getSharedCachedAnswer,
   getSharedCachedSearch,
   isSearchCacheEnabled,
   isSearchCacheLookupEnabled,
-  scopedAnswerCacheKey,
   setCachedAnswer,
   setCachedSearch,
   restoreRagAnswerQueryPlanArgs,
-  withRagAnswerQueryPlanDiagnostics,
 } from "@/lib/rag/rag-cache";
 export {
   invalidateRagCachesForDocumentMutation,
@@ -197,11 +199,6 @@ import {
 } from "@/lib/rag/rag-context-pack";
 export { packedContextCacheKey } from "@/lib/rag/rag-context-pack";
 import { classifySearchCacheOutcome, recordCacheLookup } from "@/lib/observability/cache-metrics";
-import {
-  recordAnswerOrigination,
-  recordAnswerOriginationFinished,
-  recordCoalescedAnswerWaiter,
-} from "@/lib/observability/answer-coalescing-metrics";
 import {
   buildRagSourceBlock,
   neutralizeIdentityField,
@@ -283,7 +280,7 @@ export {
   analyzeQueryWithClassifierFallback,
   resetClassifierVerdictMemoForTests,
 } from "@/lib/rag/rag-classifier-fallback";
-import { awaitWithCallerSignal } from "@/lib/rag/rag-abort-signal";
+import { answerWithCoalescing } from "@/lib/rag/rag-answer-coalescing";
 import {
   hasAdmissionCommunityLookupIntent,
   hasAdmissionCommunityTitleSupport,
@@ -306,6 +303,8 @@ import {
   createSearchTiming,
   finishSearch,
   measureSearchPhase,
+  mergeNestedSearchStages,
+  recordSearchStage,
   startRerankClock,
   type SearchTiming,
 } from "@/lib/rag/rag-search-timing";
@@ -382,6 +381,39 @@ import type {
  */
 function asReviewOnlyCitations(citations: readonly Citation[]): Citation[] {
   return citations.map((citation) => ({ ...citation, provenance: "review_only" as const }));
+}
+
+/**
+ * Audit RAG-B-07. The one builder for the source-backed review fallback answer, used by the
+ * extractive route, the generation fallback and the post-generation claim gate (each used to
+ * build it inline, and the #ZK460W fix had to be applied to every copy). Every caller reaches it
+ * because a candidate failed its gate, so the verdict is fixed here and cannot be overridden:
+ * ungrounded, unsupported, review-only citations, no sections. `carried` only refreshes
+ * request context that the caller holds outside `base`.
+ */
+export function buildSourceBackedReviewFallbackAnswer(
+  base: RagAnswer,
+  review: {
+    reviewCitations: readonly Citation[];
+    routingReason: string;
+    plan: SmartRagApiPlan;
+    carried?: Partial<Pick<RagAnswer, "modelUsed" | "queryAnalysis" | "relevance" | "scoreExplanations">>;
+  },
+): RagAnswer {
+  return {
+    ...base,
+    answer: sourceBackedGenerationTimeoutAnswer(),
+    grounded: false,
+    confidence: "unsupported",
+    citations: asReviewOnlyCitations(review.reviewCitations),
+    routingMode: "extractive",
+    routingReason: review.routingReason,
+    responseMode: review.plan.displayMode,
+    smartApiPlan: review.plan,
+    answerSections: [],
+    sourceBackedReviewFallback: true,
+    ...review.carried,
+  };
 }
 
 // Search deadline for the admin client. See searchChunksWithTiming for why it exceeds the shared 30 s default.
@@ -1375,6 +1407,7 @@ async function searchChunksWithTiming(
       // result below must not be cached.
       if (correctionError) correctionFailed = true;
       if (typeof corrected === "string" && corrected && corrected.toLowerCase() !== retrievalQuery.toLowerCase()) {
+        const correctedSearchStartedAt = Date.now();
         const correctedSearch = await searchChunksWithTelemetry(
           {
             ...args,
@@ -1387,6 +1420,11 @@ async function searchChunksWithTiming(
         for (const [phase, latency] of Object.entries(correctedSearch.telemetry.retrieval_phase_latencies_ms ?? {})) {
           searchTiming.phases[phase] = (searchTiming.phases[phase] ?? 0) + latency;
         }
+        mergeNestedSearchStages(
+          searchTiming,
+          correctedSearch.telemetry.retrieval_stage_timeline_ms,
+          correctedSearchStartedAt,
+        );
         return finishSearch(searchTiming, correctedSearch);
       }
     }
@@ -1407,6 +1445,7 @@ async function searchChunksWithTiming(
   }
 
   let expandedQuery = normalizeRetrievalVariant([expandClinicalQuery(retrievalQuery), ...ragAliasExpansions].join(" "));
+  const embeddingPrefetchStartedAt = Date.now();
   const { promise: prefetchedEmbedding, query: prefetchedEmbeddingQuery } = prefetchEmbedding(
     !(sourceOnlyRetrieval || args.lexicalOnly),
     expandedQuery,
@@ -1418,6 +1457,12 @@ async function searchChunksWithTiming(
     },
   );
   if (prefetchedEmbedding) telemetry.embedding_prefetched = true;
+  // Measurement only: when the prefetch settles, so the timeline shows its real overlap.
+  let embeddingPrefetchSettledAt: number | null = null;
+  const markEmbeddingPrefetchSettled = () => {
+    embeddingPrefetchSettledAt ??= Date.now();
+  };
+  void prefetchedEmbedding?.then(markEmbeddingPrefetchSettled, markEmbeddingPrefetchSettled);
   const textSearchQuery = queryVariants[0] ?? buildClinicalTextSearchQuery(retrievalQuery);
   const candidateMultiplier = queryClassification.queryClass === "comparison" ? 7 : 5;
   const candidateFloor = queryClassification.queryClass === "comparison" ? 72 : 48;
@@ -1496,6 +1541,7 @@ async function searchChunksWithTiming(
   });
   telemetry.text_candidate_count = textData.length;
   telemetry.text_fast_path_latency_ms = Date.now() - textRpcStartedAt;
+  recordSearchStage(searchTiming, "text_candidates", textRpcStartedAt);
   telemetry.supabase_rpc_latency_ms += telemetry.text_fast_path_latency_ms;
   throwIfAborted(args.signal);
   recordRetrievalLayer(telemetry, "text_candidates", textData.length, {
@@ -1505,13 +1551,17 @@ async function searchChunksWithTiming(
 
   if (textData.length) {
     const rerankElapsedMs = startRerankClock(searchTiming);
-    const textCandidates = await measureSearchPhase(searchTiming, "metadata_hydration", () =>
-      attachDocumentRankingMetadata(
-        supabase,
-        textData as SearchResult[],
-        args.ownerId,
-        documentRankingMetadataCache,
-        args.signal,
+    // Superseded rows leave before any fast-path decision, so an outdated lexical match cannot
+    // short-circuit the lanes that would find the current guidance (#BFCTST).
+    const textCandidates = excludeSupersededEvidence(
+      await measureSearchPhase(searchTiming, "metadata_hydration", () =>
+        attachDocumentRankingMetadata(
+          supabase,
+          textData as SearchResult[],
+          args.ownerId,
+          documentRankingMetadataCache,
+          args.signal,
+        ),
       ),
     );
     expandedQuery = expandClinicalQueryWithCandidateMetadata(args.query, expandedQuery, textCandidates);
@@ -1570,7 +1620,7 @@ async function searchChunksWithTiming(
     textFastResults = selectRankedRetrievalResults({
       query: retrievalQuery,
       queryClass: queryClassification.queryClass,
-      candidates: memoryBoost.results,
+      candidates: excludeSupersededEvidence(memoryBoost.results),
       topK: args.topK ?? 8,
       maxResultsPerDocument,
       telemetry,
@@ -1608,6 +1658,7 @@ async function searchChunksWithTiming(
     // Only the time this request actually waited is on the critical path; the lane's own duration
     // stays on its layer record.
     telemetry.supabase_rpc_latency_ms += Date.now() - tableFactWaitStartedAt;
+    recordSearchStage(searchTiming, "table_facts_wait", tableFactWaitStartedAt);
     const tableFactLatencyMs = speculativeTableFacts.durationMs();
     recordRetrievalLayer(telemetry, "table_facts", tableFactCandidates.length, {
       latencyMs: tableFactLatencyMs,
@@ -1624,6 +1675,7 @@ async function searchChunksWithTiming(
     throwIfAborted(args.signal);
     mergeSpeculativeLaneTelemetry(telemetry, speculativeDocumentLookup.telemetry);
     telemetry.supabase_rpc_latency_ms += Date.now() - documentLookupWaitStartedAt;
+    recordSearchStage(searchTiming, "document_lookup_wait", documentLookupWaitStartedAt);
     const documentLookupLatencyMs = speculativeDocumentLookup.durationMs();
     recordRetrievalLayer(telemetry, "document_lookup", documentLookupData.length, {
       latencyMs: documentLookupLatencyMs,
@@ -1667,7 +1719,7 @@ async function searchChunksWithTiming(
           selectRankedRetrievalResults({
             query: retrievalQuery,
             queryClass: queryClassification.queryClass,
-            candidates: memoryBoost.results,
+            candidates: excludeSupersededEvidence(memoryBoost.results),
             topK: args.topK ?? 8,
             maxResultsPerDocument,
             telemetry,
@@ -1753,6 +1805,7 @@ async function searchChunksWithTiming(
 
   throwIfAborted(args.signal);
   embeddingStartedAt = Date.now();
+  const embeddingReusesPrefetch = Boolean(prefetchedEmbeddingQuery === expandedQuery && prefetchedEmbedding);
   let embeddingResult: Awaited<ReturnType<typeof embedTextWithTelemetry>> | null = null;
   try {
     embeddingResult = await (prefetchedEmbeddingQuery === expandedQuery && prefetchedEmbedding
@@ -1778,6 +1831,14 @@ async function searchChunksWithTiming(
   }
   const { embedding, cacheHit } = embeddingResult;
   telemetry.embedding_latency_ms = Date.now() - embeddingStartedAt;
+  // Measurement only. A reused prefetch is timed from its own start to its settle, so its overlap
+  // with the lexical stages is visible; embedding_wait is the critical-path wait at this point.
+  if (embeddingReusesPrefetch) {
+    recordSearchStage(searchTiming, "embedding", embeddingPrefetchStartedAt, embeddingPrefetchSettledAt ?? Date.now());
+  } else {
+    recordSearchStage(searchTiming, "embedding", embeddingStartedAt);
+  }
+  recordSearchStage(searchTiming, "embedding_wait", embeddingStartedAt);
   telemetry.embedding_cache_hit = cacheHit;
   recordRetrievalLayer(telemetry, "embedding", 1, {
     latencyMs: telemetry.embedding_latency_ms,
@@ -1839,7 +1900,7 @@ async function searchChunksWithTiming(
         "match_document_chunks_hybrid_v2",
         "match_document_chunks_hybrid",
         {
-          query_embedding: embedding as unknown as string,
+          query_embedding: toPgVectorRpcParam(embedding),
           query_text: args.forceEmbedding ? "" : textSearchQuery,
           match_count: candidateCount,
           min_similarity: minSimilarity,
@@ -1854,6 +1915,7 @@ async function searchChunksWithTiming(
   throwIfAborted(args.signal);
   // The three calls overlap, so charge wall-clock once rather than summing per-call latencies.
   telemetry.supabase_rpc_latency_ms += Date.now() - parallelRpcStartedAt;
+  recordSearchStage(searchTiming, "vector_parallel_rpcs", parallelRpcStartedAt);
 
   const embeddingFieldCandidates = embeddingFieldResult.candidates;
   telemetry.embedding_field_count = embeddingFieldCandidates.length;
@@ -1924,7 +1986,7 @@ async function searchChunksWithTiming(
         selectRankedRetrievalResults({
           query: retrievalQuery,
           queryClass: queryClassification.queryClass,
-          candidates: memoryBoost.results,
+          candidates: excludeSupersededEvidence(memoryBoost.results),
           topK: args.topK ?? 8,
           maxResultsPerDocument,
           telemetry,
@@ -1957,7 +2019,7 @@ async function searchChunksWithTiming(
         "match_document_chunks_v2",
         "match_document_chunks",
         {
-          query_embedding: embedding as unknown as string,
+          query_embedding: toPgVectorRpcParam(embedding),
           match_count: candidateCount,
           min_similarity: minSimilarity,
           document_filter: documentFilter ?? undefined,
@@ -2018,7 +2080,7 @@ async function searchChunksWithTiming(
       selectRankedRetrievalResults({
         query: retrievalQuery,
         queryClass: queryClassification.queryClass,
-        candidates: memoryBoost.results,
+        candidates: excludeSupersededEvidence(memoryBoost.results),
         topK: args.topK ?? 8,
         maxResultsPerDocument,
         telemetry,
@@ -2069,7 +2131,7 @@ export function parseAnswerJson(
     const parsed = (contract.adaptive ? adaptiveAnswerJsonSchema : answerJsonSchema).parse(JSON.parse(raw));
     const { citations, modelCited, proposedCount, invalidCount } = sanitizeCitations(parsed.citations, results);
     const derivedConfidence = modelCited ? deriveConfidence(results, citations) : "unsupported";
-    const confidence = modelCited ? clampConfidence(parsed.confidence, derivedConfidence) : "unsupported";
+    const citedConfidence = modelCited ? clampConfidence(parsed.confidence, derivedConfidence) : "unsupported";
     const parsedAnswer = parsed.answer ?? "";
     const nonArtifactParsedAnswer = parsedAnswer.trim() && !looksLikeJsonArtifact(parsedAnswer) ? parsedAnswer : "";
     const sanitizedAnswer =
@@ -2078,7 +2140,15 @@ export function parseAnswerJson(
       nonArtifactParsedAnswer ||
       machineReadableFallbackAnswer;
     const answerSections = sanitizeAnswerSections(parsed.answerSections, results, query);
-    const grounded = parsed.grounded !== false && modelCited && citations.length > 0 && confidence !== "unsupported";
+    const grounded =
+      parsed.grounded !== false && modelCited && citations.length > 0 && citedConfidence !== "unsupported";
+    // Audit RAG-B-01. A parsed model answer is either grounded or unsupported, never an
+    // ungrounded answer that keeps a citation-derived confidence. Claim-support enforcement and
+    // the browser-boundary governance refusal both skip ungrounded answers, so an answer the
+    // model itself marked `grounded: false` but still cited used to bypass both and reach the
+    // clinician as figure-free unverified prose. Marking it unsupported sends it through the
+    // final quality gate's ungrounded/unsupported path (and the fast route's recovery) instead.
+    const confidence = grounded ? citedConfidence : "unsupported";
     const answer: RagAnswer = {
       answer: boldHighYieldClinicalText(sanitizedAnswer, query),
       grounded,
@@ -2129,51 +2199,9 @@ export async function answerQuestionWithScope(args: AnswerQuestionWithScopeArgs)
     !isAnswerPilotBudgetActive() &&
     !args.loadRegisteredPublishedOriginalSectionLayout &&
     answerCoalescingAllowedForRequest(args);
-  const inflightKey = coalescingEnabled ? scopedAnswerCacheKey(args) : null;
-  let existing = inflightKey ? answerInflight.get(inflightKey) : undefined;
-
-  while (existing) {
-    recordCoalescedAnswerWaiter();
-    await args.onProgress?.({
-      stage: "cached",
-      message: "Waiting for an identical cited answer request already in progress.",
-      reason: "answer_inflight_coalesced",
-    });
-    try {
-      const answer = cloneAnswer(await awaitWithCallerSignal(existing, args.signal));
-      answer.routingReason = answer.routingReason
-        ? `${answer.routingReason}; answer_inflight_coalesced`
-        : "answer_inflight_coalesced";
-      answer.latencyTimings = {
-        ...answer.latencyTimings,
-        total_latency_ms: Date.now() - startedAt,
-      };
-      return observeRagAnswer(answer, args.observationContext);
-    } catch {
-      throwIfAborted(args.signal);
-      // An originating caller's abort/failure must not fail this connected waiter.
-      // Recheck first: another waiter may have installed a replacement while the
-      // rejected promise's microtasks drained.
-      const replacement = inflightKey ? answerInflight.get(inflightKey) : undefined;
-      if (replacement && replacement !== existing) {
-        existing = replacement;
-        continue;
-      }
-      break;
-    }
-  }
-
-  if (inflightKey) recordAnswerOrigination();
-  const pending = answerQuestionWithScopeUncoalesced(args, startedAt)
-    .then((answer) => withRagAnswerQueryPlanDiagnostics(answer, args))
-    .finally(() => {
-      if (inflightKey) {
-        answerInflight.delete(inflightKey);
-        recordAnswerOriginationFinished();
-      }
-    });
-  if (inflightKey) answerInflight.set(inflightKey, pending);
-  return observeRagAnswer(await pending, args.observationContext);
+  return answerWithCoalescing(args, startedAt, coalescingEnabled, () =>
+    answerQuestionWithScopeUncoalesced(args, startedAt),
+  );
 }
 async function answerQuestionWithScopeUncoalesced(
   args: AnswerQuestionWithScopeArgs,
@@ -2333,7 +2361,7 @@ async function answerQuestionWithScopeUncoalesced(
   const queryAnalysis = analyzeClinicalQuery(answerFocusQuery);
   if (queryClassForClinicalMode(args.queryMode ?? "auto")) queryAnalysis.queryClass = queryClass;
   const answerRanking = rankAnswerEvidence(answerFocusQuery, normalizeSearchResults(search.results), queryClass);
-  const results = annotateSearchResults(answerFocusQuery, answerRanking.rankedResults);
+  const results = excludeSupersededEvidence(annotateSearchResults(answerFocusQuery, answerRanking.rankedResults));
   const {
     crossDocumentPlan,
     eligibleResults: eligibleAnswerResults,
@@ -2598,8 +2626,7 @@ async function answerQuestionWithScopeUncoalesced(
     pre_retrieval_latency_ms: preRetrievalLatencyMs,
     retrieval_latency_ms: searchLatencyMs,
     routing_latency_ms: routingLatencyMs,
-    route_budget_ms: routeDeadline.budgetMs,
-    route_deadline_exceeded: routeDeadline.deadlineExceeded,
+    ...routeDeadline.timingFields(),
     route_budget_exhausted_by_retrieval: routeBudgetExhaustedByRetrieval,
   });
   const coverageFor = (selectedEvidence: SearchResult[], citedChunkIds?: string[]) =>
@@ -3007,28 +3034,22 @@ async function answerQuestionWithScopeUncoalesced(
       // sourceBackedGenerationTimeoutAnswer() and overwrites `finalizedAnswer`. Debug-only; see
       // RagAnswer.rejectedCandidateText.
       const priorRejectedCandidateText = finalizedAnswer.rejectedCandidateText ?? finalizedAnswer.answer;
-      finalizedAnswer = finalizeAnswer({
-        ...answer,
-        answer: sourceBackedGenerationTimeoutAnswer(),
-        // Ledger #ZK460W. This branch is entered BECAUSE `!finalizedAnswer.grounded` — the
-        // answer failed its own quality gate. Re-flagging it grounded, with a confidence
-        // re-derived from retrieval similarity alone, told every downstream consumer the
-        // opposite of what the gate had just decided: `deriveTrust` resolved to high, which
-        // unlocked quote cards and suppressed the source-gap warning, and
-        // `assessAndEnforceClaimSupport` ran its high-risk enforcement over claims this route
-        // force-classifies as routine, so it passed vacuously. Staying ungrounded and
-        // unsupported keeps the gate's verdict intact all the way to the clinician.
-        grounded: false,
-        confidence: "unsupported",
-        citations: asReviewOnlyCitations(extractiveReviewCitations),
-        modelUsed: null,
-        routingMode: "extractive",
-        routingReason: reviewRouteReason,
-        responseMode: reviewPlan.displayMode,
-        smartApiPlan: reviewPlan,
-        answerSections: [],
-        sourceBackedReviewFallback: true,
-      });
+      // Ledger #ZK460W. This branch is entered BECAUSE `!finalizedAnswer.grounded` — the
+      // answer failed its own quality gate. Re-flagging it grounded, with a confidence
+      // re-derived from retrieval similarity alone, told every downstream consumer the
+      // opposite of what the gate had just decided: `deriveTrust` resolved to high, which
+      // unlocked quote cards and suppressed the source-gap warning, and
+      // `assessAndEnforceClaimSupport` ran its high-risk enforcement over claims this route
+      // force-classifies as routine, so it passed vacuously. The shared builder keeps it
+      // ungrounded and unsupported, so the gate's verdict survives to the clinician.
+      finalizedAnswer = finalizeAnswer(
+        buildSourceBackedReviewFallbackAnswer(answer, {
+          reviewCitations: extractiveReviewCitations,
+          routingReason: reviewRouteReason,
+          plan: reviewPlan,
+          carried: { modelUsed: null },
+        }),
+      );
       finalizedAnswer.rejectedCandidateText ??= priorRejectedCandidateText;
     }
     if (args.logQuery !== false)
@@ -3192,11 +3213,9 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
       });
 
   const generationDegradation = createGenerationDegradationRecorder({
-    enabled:
-      args.ragProgrammeRollout?.servedMode === "candidate" ||
-      args.ragQueryPlanMode === "shadow" ||
-      args.ragQueryPlanMode === "canary",
+    args,
     routeBudgetMs: routeDeadline.budgetMs,
+    remainingRouteBudgetMs: routeDeadline.remainingMs,
     contract: answerContract,
   });
   function parseCheckedContextAnswerWithoutPilotDiagnostic(raw: string, contextResults: SearchResult[]) {
@@ -3461,6 +3480,7 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
         normalResults: modelContextResults,
         fallbackResults: generationFallbackResults,
         relevance,
+        onVerifiedUnit: routeDeadline.markFirstVerifiedContent,
       }),
     });
     await args.onProgress?.({
@@ -3871,6 +3891,7 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
           weighted_top_score: search.telemetry.weighted_top_score,
           rrf_top_score: search.telemetry.rrf_top_score,
           ...answerLatencyMetadata(searchLatencyMs, generationLatencyMs, answer.latencyTimings, startedAt),
+          ...generationDegradation.metadata(),
           openai_request_ids: openAIRequestIds,
           openai_usage: answer.openAIUsage ?? null,
           evidence_summary: answer.evidenceSummary,
@@ -4126,25 +4147,19 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
               `extractive_quality_gate:${sourceBackedReviewReason}`,
             ].join("; ");
             const reviewPlan = buildCurrentSmartApiPlan("unsupported", reviewRouteReason, generationFallbackResults);
-            return {
-              ...baseFallbackAnswer,
-              answer: sourceBackedGenerationTimeoutAnswer(),
-              // Ledger #ZK460W, same defect as the extractive review fallback above. Reached
-              // only when `sourceBackedReviewReason` is set, which includes the extractive
-              // candidate being ungrounded or unsupported — so this route must not upgrade it.
-              grounded: false,
-              confidence: "unsupported",
-              citations: asReviewOnlyCitations(baseFallbackAnswer.citations),
-              routingMode: "extractive",
+            // Ledger #ZK460W, same defect as the extractive review fallback above. Reached
+            // only when `sourceBackedReviewReason` is set, which includes the extractive
+            // candidate being ungrounded or unsupported — so this route must not upgrade it.
+            return buildSourceBackedReviewFallbackAnswer(baseFallbackAnswer, {
+              reviewCitations: baseFallbackAnswer.citations,
               routingReason: reviewRouteReason,
-              queryAnalysis,
-              responseMode: reviewPlan.displayMode,
-              smartApiPlan: reviewPlan,
-              answerSections: [],
-              sourceBackedReviewFallback: true,
-              relevance: generationFallbackArtifacts.relevance,
-              scoreExplanations: generationFallbackArtifacts.scoreExplanations,
-            } satisfies RagAnswer;
+              plan: reviewPlan,
+              carried: {
+                queryAnalysis,
+                relevance: generationFallbackArtifacts.relevance,
+                scoreExplanations: generationFallbackArtifacts.scoreExplanations,
+              },
+            });
           })()
         : (extractiveFallbackAnswer ?? baseFallbackAnswer);
     let fallbackAnswer = finalizeAnswer(
@@ -4164,28 +4179,22 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
         "post_generation_claim_quality_gate",
       ].join("; ");
       const reviewPlan = buildCurrentSmartApiPlan("extractive", reviewRouteReason, generationFallbackResults);
+      // Ledger #ZK460W, same defect again. Reached only on a claim-support high-risk gap
+      // or a material source-governance gap, which are exactly the findings that must
+      // survive to the clinician rather than be overwritten with a grounded verdict.
       fallbackAnswer = finalizeAnswer(
         annotateAnswerWithDiagnostics(
-          {
-            ...baseFallbackAnswer,
-            answer: sourceBackedGenerationTimeoutAnswer(),
-            // Ledger #ZK460W, same defect again. Reached only on a claim-support high-risk gap
-            // or a material source-governance gap, which are exactly the findings that must
-            // survive to the clinician rather than be overwritten with a grounded verdict.
-            grounded: false,
-            confidence: "unsupported",
-            citations: asReviewOnlyCitations(baseFallbackAnswer.citations),
-            modelUsed: null,
-            routingMode: "extractive",
+          buildSourceBackedReviewFallbackAnswer(baseFallbackAnswer, {
+            reviewCitations: baseFallbackAnswer.citations,
             routingReason: reviewRouteReason,
-            responseMode: reviewPlan.displayMode,
-            smartApiPlan: reviewPlan,
-            answerSections: [],
-            sourceBackedReviewFallback: true,
-            queryAnalysis,
-            relevance: generationFallbackArtifacts.relevance,
-            scoreExplanations: generationFallbackArtifacts.scoreExplanations,
-          },
+            plan: reviewPlan,
+            carried: {
+              modelUsed: null,
+              queryAnalysis,
+              relevance: generationFallbackArtifacts.relevance,
+              scoreExplanations: generationFallbackArtifacts.scoreExplanations,
+            },
+          }),
           retrievalDiagnostics,
         ),
       );
@@ -4256,6 +4265,7 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
           weighted_top_score: search.telemetry.weighted_top_score,
           rrf_top_score: search.telemetry.rrf_top_score,
           ...answerLatencyMetadata(searchLatencyMs, generationLatencyMs, fallbackAnswer.latencyTimings, startedAt),
+          ...generationDegradation.metadata(),
           openai_request_ids: fallbackAnswer.openAIRequestIds,
           openai_usage: fallbackAnswer.openAIUsage,
           evidence_summary: fallbackAnswer.evidenceSummary,
@@ -4278,20 +4288,9 @@ export async function summarizeDocument(
   options?: { signal?: AbortSignal; observationContext?: import("@/lib/rag/rag-contracts").RagObservationContext },
 ) {
   const { document, chunks } = await loadDocumentSummaryContext(documentId, ownerId, options?.signal);
-  if (!chunks.length) {
-    return observeRagAnswer(
-      {
-        answer: "This document has not been indexed yet, so no summary can be generated.",
-        grounded: false,
-        confidence: "unsupported",
-        citations: [],
-        sources: [],
-      } satisfies RagAnswer,
-      options?.observationContext,
-    );
-  }
-
   const results = buildDocumentSummaryResults(chunks, document);
+  const unavailableAnswer = documentSummaryUnavailableAnswer(results);
+  if (unavailableAnswer) return observeRagAnswer(unavailableAnswer, options?.observationContext);
 
   const summaryInstructions = `Summarize a clinical document for practical psychiatric use in Perth, Australia.
 Use only the excerpts provided. Use a layered response: make the answer field a plain high-yield clinical paragraph,

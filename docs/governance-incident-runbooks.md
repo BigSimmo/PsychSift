@@ -49,7 +49,20 @@ Preserve interaction IDs, source IDs, timestamps, hashes and provider request ID
 2. On the verified app service, use `RAG_PROVIDER_MODE=offline` to stop the answer path's OpenAI generation/embedding calls; on the worker, `WORKER_PAUSED=true` stops new ingestion claims. Identify and separately contain already-running work and other enabled provider paths (including voice/background processing). Verify effective egress cessation for the incident's scope; these two flags alone are not whole-system proof.
 3. If enabled, turn off `RAG_PERSIST_RAW_QUERY_TEXT`, `RAG_PERSIST_ANSWER_TEXT` and `OPENAI_STORE_RESPONSES` on the affected app deployment through its supported configuration process. Verify effective values without exposing secrets. These controls do not delete existing server records, browser sessionStorage or provider-held copies. Follow the [PIA](privacy-impact-assessment.md) for each retention surface.
 4. Identify affected `rag_response_cache` owner/public scopes and incident window. Arrange any approved purge through the existing cache/retention procedure, then verify bounded counts and expiry results; do not treat a purge request as proof. Preserve only the incident evidence required by the authorised process.
-5. Escalate notification, retention and breach decisions to the privacy owner. If unavailable, page the secondary governance contact, report completed versus blocked containment, and preserve the minimized audit evidence. This runbook makes no legal determination.
+5. Escalate notification, retention and breach decisions to the privacy owner (see [Notifiable data breach (Australia)](#notifiable-data-breach-australia)). If unavailable, page the secondary governance contact, report completed versus blocked containment, and preserve the minimized audit evidence. This runbook makes no legal determination.
+
+## Notifiable data breach (Australia)
+
+> **Draft for the owner to confirm.** This section summarises the Office of the Australian Information Commissioner (OAIC) Notifiable Data Breaches scheme under Part IIIC of the _Privacy Act 1988_. It is not legal advice, and the owner has not yet confirmed it.
+
+1. Treat any unauthorised access to, disclosure of, or loss of personal or health information as a suspected data breach, and assess whether it is an eligible data breach (one where serious harm is likely). Contain it first with the [privacy or provider incident](#privacy-or-provider-incident) steps.
+2. Start a written assessment straight away. Record the date the suspicion arose, what information was involved, whose information it was, and what containment was done. Take all reasonable steps to complete the assessment within **30 days** of becoming aware of the suspected breach.
+3. Decide whether serious harm is likely for any affected person. Health information is high risk. If remedial action prevents serious harm from becoming likely, the breach is not notifiable, but keep the record.
+4. If serious harm is likely, notify **as soon as practicable**:
+   - the OAIC, using the Notifiable Data Breach form on the OAIC website, with the organisation's contact details, a description of the breach, the kinds of information involved, and recommended steps for affected people; and
+   - each affected person (or, if that is not practicable, publish the statement and take reasonable steps to bring it to their attention).
+5. Keep the assessment, decision, notifications, and evidence with the incident record. Do not put patient-identifying prose in tickets or chat.
+6. The owner makes the notification decision. This runbook does not make that legal determination.
 
 ## Answer-pipeline rollback and restoration evidence
 

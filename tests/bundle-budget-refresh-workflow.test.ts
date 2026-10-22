@@ -1,6 +1,8 @@
 import { existsSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { runInNewContext } from "node:vm";
 
 import { describe, expect, it } from "vitest";
 
@@ -213,7 +215,9 @@ describe("bundle-budget refresh report provenance", () => {
   it("tells a human exactly how to apply the refreshed baseline", () => {
     expect(publishStep).toContain("### How to apply this measurement");
     expect(publishStep).toContain("gh run download ${context.runId}");
-    expect(publishStep).toContain("--name bundle-budget-refresh --dir .local/bundle-budget-refresh");
+    expect(publishStep).toContain(
+      "--name bundle-budget-refresh-attempt${process.env.GITHUB_RUN_ATTEMPT} --dir .local/bundle-budget-refresh",
+    );
     expect(publishStep).toContain("cp .local/bundle-budget-refresh/bundle-budget.json bundle-budget.json");
     // Take the artifact, do not re-measure locally: --refresh-baseline stamps the measured commit
     // as baselineSource, and a baseline measured off-runner pins a SHA nobody can reproduce, which
@@ -221,6 +225,41 @@ describe("bundle-budget refresh report provenance", () => {
     expect(publishStep).toContain("Take the artifact's file rather than re-measuring locally");
     // Re-datum the ruler; do not lengthen it.
     expect(publishStep).toContain("leave the tolerances alone");
+  });
+
+  it.each([1, 2])("documents the exact uploaded artifact name on attempt %s", async (attempt) => {
+    const parsed = createRequire(import.meta.url)("js-yaml").load(workflow);
+    const steps = parsed.jobs["bundle-budget-refresh"].steps as {
+      name: string;
+      uses?: string;
+      with?: { name?: string; script?: string };
+    }[];
+    const upload = steps.find((step) => step.uses?.startsWith("actions/upload-artifact@"))!;
+    const publish = steps.find((step) => step.name === "Publish to rolling issue")!;
+    const expectedArtifact = upload.with!.name!.replaceAll("${{ github.run_attempt }}", String(attempt));
+    let body = "";
+    await runInNewContext(`(async () => { ${publish.with!.script} })()`, {
+      require: () => ({
+        readFileSync: () => JSON.stringify({ updatedAt: "2026-10-20T00:00:00Z", totalGzipBytes: 0, files: 0 }),
+      }),
+      process: {
+        env: { REFRESH_OUTCOME: "success", ARTIFACT_OUTCOME: "success", GITHUB_RUN_ATTEMPT: String(attempt) },
+      },
+      context: { serverUrl: "https://github.com", repo: { owner: "BigSimmo", repo: "PsychSift" }, runId: 123 },
+      core: { info: () => undefined },
+      github: {
+        rest: {
+          issues: {
+            listForRepo: async () => ({ data: [{ number: 1 }] }),
+            update: async (input: { body: string }) => {
+              body = input.body;
+            },
+          },
+        },
+      },
+    });
+    expect(body.match(/--name (\S+) --dir/)?.[1]).toBe(expectedArtifact);
+    expect(body).toContain(`the \`${expectedArtifact}\` artifact`);
   });
 
   it("still refuses to commit, push or open a PR for the refreshed baseline", () => {

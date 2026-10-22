@@ -352,6 +352,32 @@ describe("specifier sign-off", () => {
     expect(next.stats.itemsPendingClinicianReview).toBe(pendingBefore - 1);
   });
 
+  it("clears changedSinceReview when a reset item is signed, so the signed definition is published again", () => {
+    // The 17 Oct 2026 reset left the DID possession-form item pending with changedSinceReview: true.
+    const rowKey = "specifier:dis:dissociative-identity-disorder:features:with-without-possession-form";
+    const document = clone(specifiersContent);
+    type NativeItem = { review: { rowKey: string } & Json };
+    const nativeItem = (doc: typeof specifiersContent): NativeItem | undefined =>
+      (doc.categories as unknown as { disorders: { groups: { items: NativeItem[] }[] }[] }[])
+        .flatMap((category) => category.disorders)
+        .flatMap((disorder) => disorder.groups)
+        .flatMap((group) => group.items)
+        .find((item) => item.review.rowKey === rowKey);
+    expect(nativeItem(document)?.review.changedSinceReview).toBe(true);
+    const view = collectionOf("specifier", document).find((record: Json) => record.id === rowKey);
+    const signed = finalizeClinicalReview(view, "specifier", {
+      reviewedBy: SPECIFIER_REVIEWER,
+      reviewedAt: REVIEWED_AT,
+      now: NOW,
+    });
+    const next = applyClinicalReview(document, "specifier", signed) as typeof specifiersContent;
+    expect(nativeItem(next)?.review).toMatchObject({
+      clinicianReviewStatus: "clinician-reviewed",
+      changedSinceReview: false,
+      reviewedBy: SPECIFIER_REVIEWER,
+    });
+  });
+
   it("sends a signed definition back for review when its text is edited", () => {
     const view = {
       ...records().find((record: Json) => record.kind === "item" && record.definitionStatus === "defined"),
@@ -395,8 +421,14 @@ describe("specifier sign-off", () => {
       for (const disorder of category.disorders)
         for (const group of disorder.groups)
           for (const item of group.items) {
+            // No written item is signed since the 21 Oct 2026 reset of the #3562 sign-offs, so stamp
+            // the written items here rather than relying on live signatures.
             if (item.definitionStatus === "defined") {
-              (item.review as Json).reviewedBy = "PsychSift";
+              Object.assign(item.review as Json, {
+                clinicianReviewStatus: "clinician-reviewed",
+                reviewedBy: "PsychSift",
+                reviewedAt: REVIEWED_AT,
+              });
               stampedIds.add(String(item.review.rowKey));
             }
           }

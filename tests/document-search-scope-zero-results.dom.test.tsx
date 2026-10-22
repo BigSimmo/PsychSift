@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -222,14 +222,74 @@ describe("documents zero-result state when retrieval degraded", () => {
     expect(screen.getByRole("button", { name: /remove .*topic: agitation/i })).toBeInTheDocument();
   });
 
-  it("stops the headline asserting a trustworthy count above the failure notice", () => {
+  it("leaves the query toolbar while the recovery card owns the zero-result failure", () => {
     render(<DocumentSearchResultsPanel {...baseProps} searchScope={degradedScope} scopeFilters={{}} />);
 
-    // The band renders `matchCount` inside the only role="status" region here,
-    // and the empty state suppresses its own live region once filters apply —
-    // so a bare "0 documents" was the single thing announced, directly above
-    // text saying the search could not complete.
-    expect(screen.getByRole("status")).toHaveTextContent(/some sources unavailable/i);
+    const ribbon = screen.getByTestId("search-query-ribbon");
+    expect(within(ribbon).getByRole("heading", { name: "Agitation" })).toBeInTheDocument();
+    expect(within(ribbon).queryByRole("status")).toBeNull();
+    expect(ribbon).not.toHaveTextContent(/0 documents|some sources unavailable|couldn.t search/i);
+    expect(screen.getByRole("heading", { name: "Search could not complete" })).toBeInTheDocument();
+  });
+
+  it.each([false, true])("announces a failed zero only once, scoped: %s", async (scoped) => {
+    render(
+      <DocumentSearchResultsPanel
+        {...baseProps}
+        searchScope={{ ...degradedScope, activeFilterCount: scoped ? 1 : 0 }}
+        scopeFilters={scoped ? { topics: ["agitation"] } : {}}
+        onScopeFiltersChange={vi.fn()}
+      />,
+    );
+    const workspace = screen.getByTestId("document-search-workspace");
+    await waitFor(() => {
+      const announcements = [...workspace.querySelectorAll('[aria-live="polite"]')].filter((node) =>
+        /Search could not complete/.test(node.textContent ?? ""),
+      );
+      expect(announcements).toHaveLength(1);
+    });
+    expect(screen.queryByText(/some sources unavailable/i)).toBeNull();
+    if (scoped) {
+      expect(screen.getByTestId("document-filter-trigger-phone")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /remove .*topic: agitation/i })).toBeInTheDocument();
+    }
+  });
+
+  it("keeps a distinct setup reason and Retry inside the sole failure card", () => {
+    const onRetrySearch = vi.fn();
+    render(
+      <DocumentSearchResultsPanel
+        {...baseProps}
+        searchFailed
+        searchFailureReason="The request timed out."
+        setupWarning="Search setup not ready."
+        realDataReady={false}
+        onRetrySearch={onRetrySearch}
+      />,
+    );
+    expect(screen.queryByTestId("search-query-ribbon-fault")).toBeNull();
+    expect(screen.getByRole("heading", { name: "Search could not complete" })).toBeInTheDocument();
+    expect(screen.getByText(/Reason: The request timed out\./)).toHaveTextContent("Search setup not ready.");
+    expect(screen.queryByText(/0 documents|no matches for/i)).toBeNull();
+    expect(screen.getAllByRole("button", { name: "Retry" })).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(onRetrySearch).toHaveBeenCalledTimes(1);
+  });
+
+  it("repopulates the failure announcement after the same search recovers and fails again", async () => {
+    const view = render(<DocumentSearchResultsPanel {...baseProps} searchFailed />);
+    const announcedFailure = () =>
+      [...screen.getByTestId("document-search-workspace").querySelectorAll('[aria-live="polite"]')].filter((node) =>
+        /Search could not complete/.test(node.textContent ?? ""),
+      );
+    await waitFor(() => expect(announcedFailure()).toHaveLength(1));
+    view.rerender(<DocumentSearchResultsPanel {...baseProps} />);
+    expect(announcedFailure()).toHaveLength(0);
+    view.rerender(<DocumentSearchResultsPanel {...baseProps} searchFailed />);
+    // The returning live region starts empty, then receives the text in a
+    // frame; mounting already populated would make this repeat failure silent.
+    expect(announcedFailure()).toHaveLength(0);
+    await waitFor(() => expect(announcedFailure()).toHaveLength(1));
   });
 
   it("marks a degraded search that DID return documents, which showed nothing before", () => {
@@ -247,7 +307,7 @@ describe("documents zero-result state when retrieval degraded", () => {
     // Result cards carry their own sr-only copy-status region, so scope the
     // assertion to the band rather than assuming a single status role.
     const announced = screen.getAllByRole("status").map((node) => node.textContent ?? "");
-    expect(announced.some((text) => /some sources unavailable/i.test(text))).toBe(true);
+    expect(announced.some((text) => /1 document · some sources unavailable/i.test(text))).toBe(true);
     expect(screen.queryByText(/search could not complete/i)).not.toBeInTheDocument();
   });
 
@@ -262,6 +322,10 @@ describe("documents zero-result state when retrieval degraded", () => {
 
     expect(screen.queryByText(/search could not complete/i)).not.toBeInTheDocument();
     expect(screen.getByText(/no matches for/i)).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("0 documents");
+    // The zero count owns the healthy announcement; the visible recovery copy
+    // does not mount a second polite region for the same result.
+    expect(screen.getByTestId("document-search-workspace").querySelectorAll('[aria-live="polite"]')).toHaveLength(1);
   });
 });
 

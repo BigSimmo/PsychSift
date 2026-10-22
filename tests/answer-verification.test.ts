@@ -1655,4 +1655,104 @@ describe("dead stem regex fixes (#HD1C6W)", () => {
     expect(verified.confidence).toBe("unsupported");
     expect(verified.responseMode).toBe("evidence_gap");
   });
+
+  it("maps 'no more than' and 'at most' to the same at_most comparator across numeric verification, claim support, and alcohol summary delivery", async () => {
+    const { sourceDirectlySupportsAnswerText } = await import("../src/lib/rag/rag-claim-support");
+    const { renderSourceBoundAlcoholSummary } = await import("../src/lib/rag/rag-source-bound-alcohol-summary");
+    const { hasCompleteOpeningSentence } = await import("../src/lib/rag/rag-answer-shape-checks");
+
+    const singleSentenceAdultSource = source({
+      id: "nhmrc-adult-single",
+      content:
+        "To reduce the risk of harm from alcohol-related disease or injury, healthy men and women aged 18 years and over should drink no more than 10 standard drinks a week and no more than 4 standard drinks on any one day.",
+    });
+    const candidateClause =
+      "For healthy adults aged 18 years and over, the NHMRC advises limiting alcohol intake to at most 10 standard drinks per week and at most 4 standard drinks on any single day.";
+    expect(sourceDirectlySupportsAnswerText(candidateClause, singleSentenceAdultSource)).toBe(true);
+    const verified = verifyAnswerNumbers(
+      candidateClause,
+      [{ chunk_id: "nhmrc-adult-single" }],
+      [singleSentenceAdultSource],
+    );
+    expect(verified.hasUnverifiedNumbers).toBe(false);
+    expect(verified.unverifiedTokens).toEqual([]);
+    expect(
+      hasCompleteOpeningSentence(
+        "For healthy adults aged 18 years and over, drink at most 10 standard drinks a week and at most 4 standard drinks on any one day.",
+      ),
+    ).toBe(true);
+
+    const nhmrcMeta = {
+      publisher_code: "NHMRC",
+      publisher: "National Health and Medical Research Council",
+    } as unknown as NonNullable<SearchResult["source_metadata"]>;
+    const nhmrcResults = [
+      source({
+        id: "nhmrc-1",
+        document_id: "doc-nhmrc",
+        source_metadata: nhmrcMeta,
+        content:
+          "Guideline 1: Adults To reduce the risk of harm from alcohol-related disease or injury, healthy men and women should drink no more than 10 standard drinks a week and no more than 4 standard drinks on any one day. The less you drink, the lower your risk of harm from alcohol. This guideline applies to healthy men and women aged 18 years and over. The guideline does not represent a 'safe' or 'no-risk' drinking level, nor does it set an absolute upper limit of intake. This guideline provides recommendations to reduce the risk of harm from alcohol, but these recommendations do not completely eliminate all risk from drinking alcohol. Not drinking at all is the best way to reduce the risk of harm from alcohol.",
+      }),
+      source({
+        id: "nhmrc-2",
+        document_id: "doc-nhmrc",
+        source_metadata: nhmrcMeta,
+        content:
+          "Guideline 2: Children and people under 18 years of age To reduce the risk of injury and other harms to health, children and people under 18 years of age should not drink alcohol. There is no clear 'safe' level of alcohol consumption for children and people under 18 years of age.",
+      }),
+      source({
+        id: "nhmrc-3",
+        document_id: "doc-nhmrc",
+        source_metadata: nhmrcMeta,
+        content:
+          "Guideline 3: Women who are pregnant or breastfeeding A. To prevent harm from alcohol to their unborn child, women who are pregnant or planning a pregnancy should not drink alcohol. B. For women who are breastfeeding, not drinking alcohol is safest for their baby. The evidence does not indicate a safe amount of alcohol that pregnant women and breastfeeding mothers can drink.",
+      }),
+    ];
+    const summaryText =
+      "For healthy adults aged 18 years and over, drink at most 10 standard drinks a week and at most 4 standard drinks on any one day; less drinking further lowers risk. People under 18 years should not drink alcohol. Women who are pregnant or planning pregnancy should not drink alcohol, and for women who are breastfeeding, not drinking alcohol is safest for the baby. These recommendations do not imply a safe or no-risk level of alcohol use.";
+    const rendered = renderSourceBoundAlcoholSummary(
+      {
+        answer: summaryText,
+        grounded: true,
+        confidence: "high",
+        citations: nhmrcResults.map((r) => citationFromResult(r, "model_selected")),
+        sources: nhmrcResults,
+        answerSections: [
+          {
+            heading: "Important qualification",
+            kind: "contraindications_cautions",
+            supportLevel: "direct",
+            body: "For healthy adults, the recommended limits reduce risk but do not eliminate it; not drinking is the best way to reduce alcohol-related harm. No safe level has been identified during pregnancy, and the evidence does not indicate a safe amount for pregnant or breastfeeding mothers.",
+            citation_chunk_ids: ["nhmrc-1", "nhmrc-3"],
+          },
+        ],
+      },
+      nhmrcResults,
+      "Summarise the NHMRC alcohol guidelines.",
+      "broad_summary",
+    );
+    expect(rendered).not.toBeNull();
+    expect(rendered?.answer.grounded).toBe(true);
+  });
+});
+
+describe("upper-limit comparator with clinical units", () => {
+  it.each(["5 mg", "1.5 × 10^9/L"])("keeps no more than and its unit together: %s", (quantity) => {
+    for (const [answerComparator, sourceComparator] of [
+      ["no more than", "at most"],
+      ["at most", "no more than"],
+    ]) {
+      const evidence = source({ content: `Use ${sourceComparator} ${quantity}.` });
+      const verified = verifyAnswerNumbers(
+        `Use ${answerComparator} ${quantity}.`,
+        [{ chunk_id: evidence.id }],
+        [evidence],
+      );
+      expect(verified.unverifiedTokens).toEqual([]);
+      expect(
+        verifyAnswerNumbers(`Use at least ${quantity}.`, [{ chunk_id: evidence.id }], [evidence]).hasUnverifiedNumbers,
+      ).toBe(true);
+    }
+  });
 });

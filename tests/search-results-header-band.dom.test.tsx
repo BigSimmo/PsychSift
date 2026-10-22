@@ -17,6 +17,24 @@ import {
 } from "@/components/clinical-dashboard/result-filter-control";
 
 describe("SearchResultsHeaderBand", () => {
+  it("keeps query and filter controls when a body recovery panel owns the summary", () => {
+    render(
+      <SearchResultsHeaderBand
+        modeId="documents"
+        query="lithium monitoring"
+        matchCount={0}
+        status="partial"
+        summaryPlacement="body"
+        filterControls={<button type="button">Filter documents</button>}
+      />,
+    );
+    expect(screen.getByRole("heading", { name: "lithium monitoring" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Filter documents" })).toBeInTheDocument();
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(screen.queryByText(/0 documents|some sources unavailable/)).toBeNull();
+    expect(screen.queryByTestId("search-query-ribbon-fault")).toBeNull();
+  });
+
   it("presents the query and completed count as one labelled results ribbon", () => {
     const query = "a deliberately long clinical search query";
 

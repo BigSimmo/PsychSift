@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "8f7e4297-79cb-4a57-bc0f-e4b9e52f9f02",
+  "createdOn": "2026-10-17",
+  "action": "done",
+  "payload": {
+    "id": "#Z12CBC",
+    "outcome": "Duplicate identity for #WFYDV6, added before the ledger had a reopen action. Folded back: #WFYDV6 is reopened in place as P1 with its original ID and ULID (ledger reopen action, PR #3627) and carries this row's detail. Tracking continues on #WFYDV6. Nothing is signed off; the Form 6A/6B wording still needs owner, legal and clinical sign-off.",
+    "baseRowFingerprint": "6c1fd8a0d427be6db5b172f3d9bf8a666d470e534d56b18c1dace5bccc4ef4a5",
+    "targetUlid": "01M551BSHWZ12CBC9F0K21CPEN"
+  }
+}

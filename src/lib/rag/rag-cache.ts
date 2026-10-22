@@ -5,7 +5,6 @@ import { sanitizeRagEvalDiagnostics } from "@/lib/rag/rag-eval-diagnostics";
 import { createHash } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { buildClinicalTextSearchQuery } from "@/lib/clinical-search";
-import { readExpiringCacheEntry, writeBoundedExpiringCacheEntry } from "@/lib/bounded-ttl-cache";
 import { ragDeepMemoryVersion } from "@/lib/deep-memory";
 import { env } from "@/lib/env";
 import { hashQueryText, queryCacheKeyForStorage } from "@/lib/query-privacy";
@@ -15,7 +14,6 @@ import { retrievalAccessScopeForArgs, retrievalAccessScopeKey, type RetrievalAcc
 import { assertRagRequestContextIntegrity } from "@/lib/rag/rag-context-snapshot";
 import { governedCorpusComponentState, sanitizeRagCandidateMatchCounts } from "@/lib/rag/rag-contracts";
 import { sanitizeRagQueryPlanDiagnostics } from "@/lib/rag/rag-retrieval-variants";
-import { normalizeSourceMetadata } from "@/lib/source-metadata";
 import {
   retrievalPlanForQueryClass,
   type RagRequestContext,
@@ -52,32 +50,20 @@ const searchCache = new Map<
 // still writes unsafe review-fallback answers under v24. v25 re-issues the intentional
 // #ZK460W invalidation: rows written under v24 (and earlier) become unreachable. The bump
 // costs one cold cache and is the mechanism this constant exists for.
-export const ragCacheDependencyVersion = "rag-cache-v25";
-const cacheIndexingVersionTtlMs = 5000;
-const cacheIndexingVersionMaxEntries = 512;
-const cacheIndexingVersionCache = new Map<string, { expiresAt: number; value: string }>();
-/**
- * The two corpus-staleness stamps that carry no information about the corpus.
- *
- * Audit L21: a PostgREST `error` on the `documents` stamp query used to be
- * folded into INDEXING_STAMP_EMPTY_CORPUS, making a failed read indistinguishable
- * from "nothing is indexed". Both constants are stable across requests, so two
- * stamp failures bracketing a worker-side reindex (which cannot call this
- * process's in-process invalidation) let a pre-reindex answer be served with
- * `answer_cache_hit` — the exact staleness this stamp exists to prevent. An
- * error now produces the distinct UNAVAILABLE stamp, and neither read nor write
- * trusts it.
- */
+// v26: governance-sensitive, complete-scope revisions replace the latest-indexed
+// document stamp. Old rows cannot establish freshness in the new namespace.
+export const ragCacheDependencyVersion = "rag-cache-v26";
+/** Failed revision reads never establish an empty corpus or permit cache reuse (L21). */
 const INDEXING_STAMP_UNAVAILABLE = "index-stamp-unavailable";
-const INDEXING_STAMP_EMPTY_CORPUS = "no-indexed-documents";
+const SCOPE_REVISION_PATTERN = /^rag-cache-scope-v1:[0-9a-f]{32}$/;
 
 function isUnavailableIndexingStamp(indexingVersion: string) {
   return indexingVersion.endsWith(`:${INDEXING_STAMP_UNAVAILABLE}`);
 }
 /**
- * Invalidation generations for deferred `setCachedAnswer` promotions. Review /
- * table-fact mutations do not change the documents indexing stamp, so the
- * mid-request staleness guard alone cannot catch them. Epochs are owner-scoped
+ * Invalidation generations additionally fence process-local reads/promotions
+ * against same-process mutations, including mutations outside documents. The
+ * database scope revision fences source reviews across replicas. Epochs are owner-scoped
  * so one tenant's invalidation cannot suppress another tenant's valid write;
  * a null/undefined ownerId bump (full clear) advances the global epoch.
  */
@@ -165,12 +151,6 @@ function scopeKey(args: Pick<SearchChunksArgs, "documentId" | "documentIds" | "o
 
 function normalizedCacheQuery(query: string) {
   return buildClinicalTextSearchQuery(query).toLowerCase().replace(/\s+/g, " ").trim();
-}
-
-function cacheIndexingVersionCacheKey(
-  args: Pick<SearchChunksArgs, "documentId" | "documentIds" | "ownerId" | "accessScope">,
-) {
-  return scopeKey(args);
 }
 
 function modeKey(args: Pick<SearchChunksArgs, "queryMode">) {
@@ -417,6 +397,15 @@ export function answerCacheLookupAllowedForRequest(args: AnswerCachePolicyArgs, 
     !args.skipCache &&
     env.RAG_ANSWER_CACHE_TTL_MS > 0
   );
+}
+
+/** In-flight reuse needs the same durable source revision as persisted reuse. */
+export async function answerInflightCacheKey(args: SearchChunksArgs): Promise<string | null> {
+  if (!answerCoalescingAllowedForRequest(args)) return null;
+  const epoch = captureInvalidationEpoch(args.ownerId);
+  const revision = await cacheIndexingVersion(args, { forceRefresh: true });
+  if (isUnavailableIndexingStamp(revision) || invalidationEpochChanged(args.ownerId, epoch)) return null;
+  return `${scopedAnswerCacheKey(args)}|revision:${revision}|epoch:${epoch.global}:${epoch.owner}`;
 }
 
 type RagPublicCacheKind = "search" | "answer";
@@ -678,17 +667,22 @@ export async function getCachedAnswer(
   const key = scopedAnswerCacheKey(args);
   const cached = answerCache.get(key);
   if (!cached) return null;
-  if (cached.expiresAt <= Date.now()) {
+  if (cached.expiresAt <= Date.now() || isUngatedUngroundedGeneratedAnswer(cached.answer)) {
     answerCache.delete(key);
     return null;
   }
-  const indexingVersion = options?.indexingVersionAtRequestStart ?? (await cacheIndexingVersion(args));
+  const invalidationEpochAtStart = captureInvalidationEpoch(args.ownerId);
+  const indexingVersion = await cacheIndexingVersion(args, { forceRefresh: true });
+  if (invalidationEpochChanged(args.ownerId, invalidationEpochAtStart)) return null;
   if (isUnavailableIndexingStamp(cached.indexingVersion)) {
     answerCache.delete(key);
     return null;
   }
   if (isUnavailableIndexingStamp(indexingVersion)) return null;
-  if (cached.indexingVersion !== indexingVersion) {
+  if (
+    cached.indexingVersion !== indexingVersion ||
+    (options?.indexingVersionAtRequestStart && options.indexingVersionAtRequestStart !== indexingVersion)
+  ) {
     answerCache.delete(key);
     return null;
   }
@@ -714,7 +708,7 @@ export async function getCachedAnswer(
  * Callers may deliberately NOT await this — it is a cache write, never part of the
  * response contract. `answerQuestionWithScopeUncoalesced` defers it on a shared-cache
  * hit precisely so the fastest path in the system does not pay this function's
- * `documents` round trip before responding (latency audit 2026-07-28, L1-1). Deferring
+ * scope-revision round trip before responding (latency audit 2026-07-28, L1-1). Deferring
  * is safe only while nothing mutates `answer` after the call: the clone below happens
  * after an `await`, so a caller that mutates it in the meantime would cache the mutation.
  *
@@ -725,7 +719,7 @@ export async function getCachedAnswer(
  *
  * Deferred callers must also survive `invalidateRagCachesForOwner` during the await:
  * the owner-scoped invalidation epoch checks below discard a post-invalidation write
- * even when the documents indexing stamp is unchanged (table-fact / review mutations),
+ * even for mutations outside the document revision (for example table facts),
  * including after the shared-cache row commit so a late invalidation cannot leave a
  * stale shared answer behind.
  *
@@ -960,6 +954,9 @@ function normalizeCacheStorageTelemetry(telemetry: SearchTelemetry, shadowContro
     shared_cache_miss_reason: null,
     search_total_latency_ms: undefined,
     retrieval_phase_latencies_ms: undefined,
+    // Per-request measurement: a cache hit issued no text RPCs and ran no stages.
+    retrieval_stage_timeline_ms: undefined,
+    text_rpc_variant_timings: undefined,
   };
 }
 
@@ -992,14 +989,19 @@ export async function getCachedSearch(
     searchCache.delete(key);
     return null;
   }
-  const indexingVersion = options?.indexingVersionAtRequestStart ?? (await cacheIndexingVersion(args));
+  const invalidationEpochAtStart = captureInvalidationEpoch(args.ownerId);
+  const indexingVersion = await cacheIndexingVersion(args, { forceRefresh: true });
   throwIfAborted(args.signal);
+  if (invalidationEpochChanged(args.ownerId, invalidationEpochAtStart)) return null;
   if (isUnavailableIndexingStamp(cached.indexingVersion)) {
     searchCache.delete(key);
     return null;
   }
   if (isUnavailableIndexingStamp(indexingVersion)) return null;
-  if (cached.indexingVersion !== indexingVersion) {
+  if (
+    cached.indexingVersion !== indexingVersion ||
+    (options?.indexingVersionAtRequestStart && options.indexingVersionAtRequestStart !== indexingVersion)
+  ) {
     searchCache.delete(key);
     return null;
   }
@@ -1164,69 +1166,58 @@ function isGenerationFallbackAnswer(answer: Pick<RagAnswer, "routingReason" | "d
   );
 }
 
+/**
+ * Audit RAG-B-01. A generated (fast or strong) answer stored as ungrounded but with a confidence
+ * above "unsupported" skipped claim enforcement and the final quality gate when it was built.
+ * `parseAnswerJson` no longer produces that shape, but a row written before the fix would be
+ * replayed by a cache hit, which re-runs only claim support. Treat it as a miss so the query is
+ * answered again through the current gates.
+ */
+function isUngatedUngroundedGeneratedAnswer(answer: Pick<RagAnswer, "grounded" | "confidence" | "routingMode">) {
+  return (
+    answer.grounded === false &&
+    answer.confidence !== "unsupported" &&
+    (answer.routingMode === "fast" || answer.routingMode === "strong")
+  );
+}
+
+function isUnservableCachedAnswer(answer: RagAnswer) {
+  return isGenerationFallbackAnswer(answer) || isUngatedUngroundedGeneratedAnswer(answer);
+}
+
+/**
+ * A fresh, bounded response derived from every committed document in this exact
+ * access/document scope. No TTL memo or latest-row shortcut can mask revocation.
+ * `forceRefresh` remains accepted for existing callers; every read is authoritative.
+ * An absent migration / returned error / malformed response fails cold, never back
+ * to the legacy stamp. The RPC reads metadata in the DB and returns only a digest.
+ */
 export async function cacheIndexingVersion(
   args: Pick<SearchChunksArgs, "documentId" | "documentIds" | "ownerId" | "accessScope" | "signal">,
   options?: { forceRefresh?: boolean },
 ) {
+  // Legacy callers may request a refresh; all reads now use the same fresh RPC.
+  void options;
   throwIfAborted(args.signal);
-  const cacheKey = cacheIndexingVersionCacheKey(args);
-  if (options?.forceRefresh) cacheIndexingVersionCache.delete(cacheKey);
-  const cached = readExpiringCacheEntry(cacheIndexingVersionCache, cacheKey);
-  if (cached) return cached.value;
-
-  let value = `${ragDeepMemoryVersion}:${INDEXING_STAMP_UNAVAILABLE}`;
+  const unavailable = `${ragDeepMemoryVersion}:${INDEXING_STAMP_UNAVAILABLE}`;
   try {
-    const supabase = createAdminClient();
-    const documentFilters = args.documentIds?.length ? args.documentIds : args.documentId ? [args.documentId] : null;
-    let query = supabase
-      .from("documents")
-      .select("id,updated_at,metadata")
-      .eq("status", "indexed")
-      .order("updated_at", { ascending: false })
-      .limit(1);
     const accessScope = retrievalAccessScopeForArgs(args);
-    if (accessScope.ownerId && accessScope.includePublic) {
-      query = query.or(`owner_id.eq.${accessScope.ownerId},owner_id.is.null`);
-    } else if (accessScope.ownerId) {
-      query = query.eq("owner_id", accessScope.ownerId);
-    } else {
-      query = query.is("owner_id", null);
-    }
-    if (documentFilters?.length) query = query.in("id", documentFilters);
+    const documentIds = args.documentIds?.length ? args.documentIds : args.documentId ? [args.documentId] : null;
+    let query = createAdminClient().rpc("rag_cache_scope_revision_v1", {
+      p_owner_id: accessScope.ownerId ?? null,
+      p_include_public: accessScope.includePublic,
+      p_document_ids: documentIds ? [...new Set(documentIds)].sort() : null,
+    });
     if (args.signal) query = query.abortSignal(args.signal);
     const { data, error } = await query;
     throwIfAborted(args.signal);
-    if (error) {
-      // A failed read is NOT an empty corpus (audit L21).
-      value = `${ragDeepMemoryVersion}:${INDEXING_STAMP_UNAVAILABLE}`;
-    } else if (!data?.length) {
-      value = `${ragDeepMemoryVersion}:${INDEXING_STAMP_EMPTY_CORPUS}`;
-    } else {
-      const latest = data[0] as { id?: string; updated_at?: string | null; metadata?: unknown };
-      const metadata = normalizeSourceMetadata(latest.metadata);
-      const indexedAt = metadata.indexed_at ?? latest.updated_at ?? "unknown";
-      const generationId =
-        latest.metadata && typeof latest.metadata === "object" && "index_generation_id" in latest.metadata
-          ? String((latest.metadata as { index_generation_id?: unknown }).index_generation_id ?? "")
-          : "";
-      value = `${ragDeepMemoryVersion}:${latest.id ?? "all"}:${indexedAt}:${generationId}`;
-    }
+    return !error && typeof data === "string" && data.length === 51 && SCOPE_REVISION_PATTERN.test(data)
+      ? `${ragDeepMemoryVersion}:${data}`
+      : unavailable;
   } catch {
     if (args.signal?.aborted) throw abortReason(args.signal);
-    value = `${ragDeepMemoryVersion}:${INDEXING_STAMP_UNAVAILABLE}`;
+    return unavailable;
   }
-  throwIfAborted(args.signal);
-  if (isUnavailableIndexingStamp(value)) {
-    cacheIndexingVersionCache.delete(cacheKey);
-    return value;
-  }
-  writeBoundedExpiringCacheEntry(
-    cacheIndexingVersionCache,
-    cacheKey,
-    { value, expiresAt: Date.now() + cacheIndexingVersionTtlMs },
-    cacheIndexingVersionMaxEntries,
-  );
-  return value;
 }
 
 export async function getSharedCachedSearch(
@@ -1243,8 +1234,14 @@ export async function getSharedCachedSearch(
   if (args.ragQueryPlanMode === "shadow" && !isIssuedRagShadowControl(args)) return null;
   if (args.skipCache || env.RAG_SEARCH_CACHE_TTL_MS <= 0 || !isRagCacheAccessAllowed(args)) return null;
   const normalizedQuery = retrievalPlanCacheQuery(args, queryClass, queryVariants);
-  const indexingVersion = options?.indexingVersionAtRequestStart ?? (await cacheIndexingVersion(args));
+  const invalidationEpochAtStart = captureInvalidationEpoch(args.ownerId);
+  const indexingVersion = await cacheIndexingVersion(args, { forceRefresh: true });
   if (isUnavailableIndexingStamp(indexingVersion)) return { kind: "miss", reason: "cache_lookup_error" };
+  if (
+    invalidationEpochChanged(args.ownerId, invalidationEpochAtStart) ||
+    (options?.indexingVersionAtRequestStart && options.indexingVersionAtRequestStart !== indexingVersion)
+  )
+    return { kind: "miss", reason: "unknown_filter_miss" };
   try {
     let query = sharedCacheSelector(createAdminClient(), "search", args, indexingVersion, normalizedQuery);
     if (args.signal) query = query.abortSignal(args.signal);
@@ -1258,6 +1255,14 @@ export async function getSharedCachedSearch(
     const payload = data.payload as { results?: SearchResult[]; telemetry?: Partial<SearchTelemetry> };
     if (!Array.isArray(payload.results)) {
       return { kind: "miss", reason: "cache_payload_invalid" };
+    }
+    // A review may commit while the shared row is being read. A late old write
+    // or failed deletion is harmless only when the row's revision is still current.
+    const revisionAfterRead = await cacheIndexingVersion(args, { forceRefresh: true });
+    throwIfAborted(args.signal);
+    if (isUnavailableIndexingStamp(revisionAfterRead)) return { kind: "miss", reason: "cache_lookup_error" };
+    if (indexingVersion !== revisionAfterRead || invalidationEpochChanged(args.ownerId, invalidationEpochAtStart)) {
+      return { kind: "miss", reason: "unknown_filter_miss" };
     }
     return {
       kind: "hit",
@@ -1359,8 +1364,14 @@ export async function getSharedCachedAnswer(
   )
     return null;
   try {
-    const indexingVersion = options?.indexingVersionAtRequestStart ?? (await cacheIndexingVersion(args));
+    const invalidationEpochAtStart = captureInvalidationEpoch(args.ownerId);
+    const indexingVersion = await cacheIndexingVersion(args, { forceRefresh: true });
     if (isUnavailableIndexingStamp(indexingVersion)) return null;
+    if (
+      invalidationEpochChanged(args.ownerId, invalidationEpochAtStart) ||
+      (options?.indexingVersionAtRequestStart && options.indexingVersionAtRequestStart !== indexingVersion)
+    )
+      return null;
     const { data, error } = await sharedCacheSelector(
       createAdminClient(),
       "answer",
@@ -1370,12 +1381,17 @@ export async function getSharedCachedAnswer(
     ).maybeSingle();
     if (error || !data?.payload) return null;
     throwIfAborted(args.signal);
+    const revisionAfterRead = await cacheIndexingVersion(args, { forceRefresh: true });
+    throwIfAborted(args.signal);
+    if (indexingVersion !== revisionAfterRead || invalidationEpochChanged(args.ownerId, invalidationEpochAtStart)) {
+      return null;
+    }
     const payload = data.payload as { answer: RagAnswer; queryPlanDiagnostics?: unknown };
     const answer = markAnswerQueryPlanDiagnostics(
       cloneAnswer(payload.answer),
       storedAnswerQueryPlanDiagnostics(payload.queryPlanDiagnostics),
     );
-    if (isGenerationFallbackAnswer(answer)) {
+    if (isUnservableCachedAnswer(answer)) {
       await deleteSharedCachedAnswerRow({ ...args, accessScope: retrievalAccessScopeForArgs(args) }, indexingVersion);
       return null;
     }
@@ -1433,7 +1449,8 @@ async function replaceLegacySharedCacheRow(
       .eq("dependency_version", ragCacheDependencyVersion);
     deleteQuery = ownerId ? deleteQuery.eq("owner_id", ownerId) : deleteQuery.is("owner_id", null);
     if (args.signal) deleteQuery = deleteQuery.abortSignal(args.signal);
-    await deleteQuery;
+    const { error: deleteError } = await deleteQuery;
+    if (deleteError) return;
     if (args.signal?.aborted) return;
     let insertQuery = supabase.from("rag_response_cache").insert({
       owner_id: ownerId ?? null,
@@ -1473,7 +1490,8 @@ async function replaceSharedCacheRow(
       .eq("dependency_version", identity.dependencyVersion);
     deleteQuery = identity.ownerId ? deleteQuery.eq("owner_id", identity.ownerId) : deleteQuery.is("owner_id", null);
     if (signal) deleteQuery = deleteQuery.abortSignal(signal);
-    await deleteQuery;
+    const { error: deleteError } = await deleteQuery;
+    if (deleteError) return;
     if (signal?.aborted) return;
     let insertQuery = supabase.from("rag_response_cache").insert({
       owner_id: identity.ownerId,
@@ -1615,9 +1633,10 @@ async function deleteSharedCacheRowByIdentity(identity: SharedCacheRowIdentity) 
       .eq("indexing_version", identity.indexingVersion)
       .eq("dependency_version", identity.dependencyVersion);
     deleteQuery = identity.ownerId ? deleteQuery.eq("owner_id", identity.ownerId) : deleteQuery.is("owner_id", null);
-    await deleteQuery;
-  } catch (error) {
-    console.warn("Shared answer cache post-invalidation cleanup failed:", error);
+    const { error } = await deleteQuery;
+    if (error) console.warn("Shared answer cache post-invalidation cleanup failed.");
+  } catch {
+    console.warn("Shared answer cache post-invalidation cleanup failed.");
   }
 }
 
@@ -1651,10 +1670,11 @@ async function deleteSharedCachedAnswerRow(
       .eq("indexing_version", indexingVersion)
       .eq("dependency_version", ragCacheDependencyVersion);
     deleteQuery = args.ownerId ? deleteQuery.eq("owner_id", args.ownerId) : deleteQuery.is("owner_id", null);
-    await deleteQuery;
-  } catch (error) {
+    const { error } = await deleteQuery;
+    if (error) console.warn("Shared answer cache post-invalidation cleanup failed.");
+  } catch {
     // Shared cache cleanup after a raced invalidation is best effort.
-    console.warn("Shared answer cache post-invalidation cleanup failed:", error);
+    console.warn("Shared answer cache post-invalidation cleanup failed.");
   }
 }
 
@@ -1666,13 +1686,16 @@ export function invalidateRagCachesForOwner(ownerId?: string | null) {
     answerCache.clear();
     answerInflight.clear();
     searchCache.clear();
-    cacheIndexingVersionCache.clear();
     void (async () => {
       try {
-        await createAdminClient().from("rag_response_cache").delete().in("cache_kind", ["search", "answer"]);
-      } catch (error) {
+        const { error } = await createAdminClient()
+          .from("rag_response_cache")
+          .delete()
+          .in("cache_kind", ["search", "answer"]);
+        if (error) console.warn("Shared cache invalidation failed (all kinds).");
+      } catch {
         // Shared cache invalidation is best effort.
-        console.warn("Shared cache invalidation failed (all kinds):", error);
+        console.warn("Shared cache invalidation failed (all kinds).");
       }
     })();
     return;
@@ -1693,19 +1716,17 @@ export function invalidateRagCachesForOwner(ownerId?: string | null) {
     if (ragCacheKeyMatchesOwner(key, ownerId) || key.includes(siteAwareAnswerOwnerToken(ownerId)))
       searchCache.delete(key);
   }
-  for (const key of cacheIndexingVersionCache.keys()) {
-    if (ragCacheKeyMatchesOwner(key, ownerId)) cacheIndexingVersionCache.delete(key);
-  }
   void (async () => {
     try {
       const deleteQuery = createAdminClient().from("rag_response_cache").delete();
       const scopedQuery = sharedCacheOwnerId
         ? deleteQuery.eq("owner_id", sharedCacheOwnerId)
         : deleteQuery.is("owner_id", null);
-      await scopedQuery.in("cache_kind", ["search", "answer"]);
-    } catch (error) {
+      const { error } = await scopedQuery.in("cache_kind", ["search", "answer"]);
+      if (error) console.warn("Shared cache invalidation failed for owner.");
+    } catch {
       // Shared cache invalidation is best effort.
-      console.warn("Shared cache invalidation failed for owner:", error);
+      console.warn("Shared cache invalidation failed for owner.");
     }
   })();
 }
@@ -1713,14 +1734,15 @@ export function invalidateRagCachesForOwner(ownerId?: string | null) {
 function invalidateAnonymousSharedRagCaches() {
   void (async () => {
     try {
-      await createAdminClient()
+      const { error } = await createAdminClient()
         .from("rag_response_cache")
         .delete()
         .is("owner_id", null)
         .in("cache_kind", ["search", "answer"]);
-    } catch (error) {
+      if (error) console.warn("Shared cache invalidation failed for anonymous.");
+    } catch {
       // Shared cache invalidation is best effort.
-      console.warn("Shared cache invalidation failed for anonymous:", error);
+      console.warn("Shared cache invalidation failed for anonymous.");
     }
   })();
 }

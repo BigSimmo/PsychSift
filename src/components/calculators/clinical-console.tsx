@@ -3,7 +3,7 @@
 import { AlertTriangle, Info, Stethoscope } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import { cn } from "@/components/ui-primitives";
+import { cn, controlDisabled } from "@/components/ui-primitives";
 import { MissingValue } from "@/components/ui/missing-value";
 
 import { calculators, domainIcons, domainLabels, domainOrder, type CalculatorFixture } from "./calculator-fixtures";
@@ -97,7 +97,7 @@ export function CalculatorsClinicalConsoleMockup() {
   const setAnswers = (next: AnswerMap) => setSession((prev) => ({ ...prev, [calc.id]: next }));
 
   return (
-    <div className="min-h-screen bg-[color:var(--background)]">
+    <div className="min-h-dvh bg-[color:var(--background)]">
       <header className="border-b border-[color:var(--border)] bg-[color:var(--surface)]">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
@@ -245,7 +245,8 @@ export function CalculatorsClinicalConsoleMockup() {
               onClick={() => setAnswers({})}
               disabled={!derived.started}
               className={cn(
-                "inline-flex min-h-tap items-center rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] px-2.5 text-2xs font-bold text-[color:var(--text-muted)] hover:text-[color:var(--text)] disabled:pointer-events-none disabled:opacity-40",
+                "inline-flex min-h-tap items-center rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] px-2.5 text-2xs font-bold text-[color:var(--text-muted)] hover:text-[color:var(--text)] disabled:pointer-events-none",
+                controlDisabled,
                 focusRing,
               )}
             >

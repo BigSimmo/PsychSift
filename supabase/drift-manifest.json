@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-17T05:28:26.483Z",
+  "generated_at": "2026-10-22T07:31:45.884Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "878481b5d479c2749749de00f8266a1eb0473473c023f13105fd22a525fba9f4",
-  "replay_seconds": 157,
+  "schema_sha256": "24ee4d0b0d4faf75b681352bc5a5d25cedc2059f2e80acfd1436ceb28d999693",
+  "replay_seconds": 33,
   "snapshot": {
     "views": [
       {
@@ -2982,6 +2982,34 @@
       {
         "acl": [
           "postgres=arwdDxtm/postgres",
+          "service_role=arwdDxtm/postgres"
+        ],
+        "name": "document_evidence_revisions",
+        "columns": [
+          {
+            "name": "document_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "revision",
+            "type": "bigint",
+            "default": "0",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
+        "rls_forced": false,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
           "service_role=arwd/postgres"
         ],
         "name": "document_images",
@@ -3209,6 +3237,58 @@
           "autovacuum_vacuum_scale_factor=0.05",
           "autovacuum_vacuum_threshold=1000"
         ],
+        "rls_forced": false,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=arwd/postgres"
+        ],
+        "name": "document_index_generation_snapshots",
+        "columns": [
+          {
+            "name": "captured_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "document_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "index_generation_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "metadata",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "quality",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
         "rls_forced": false,
         "rls_enabled": true
       },
@@ -4738,6 +4818,14 @@
         ],
         "name": "image_caption_cache",
         "columns": [
+          {
+            "name": "cache_identity",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
           {
             "name": "caption",
             "type": "text",
@@ -7497,6 +7585,14 @@
             "generated": ""
           },
           {
+            "name": "note",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
             "name": "owner_id",
             "type": "uuid",
             "default": null,
@@ -7508,6 +7604,22 @@
             "name": "provider_request_ids",
             "type": "text[]",
             "default": "'{}'::text[]",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "record_id",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "record_type",
+            "type": "text",
+            "default": "'answer'::text",
             "identity": "",
             "not_null": true,
             "generated": ""
@@ -9194,6 +9306,158 @@
           },
           {
             "name": "user_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
+        "rls_forced": false,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=arwdDxtm/postgres"
+        ],
+        "name": "roster_offer_alert_devices",
+        "columns": [
+          {
+            "name": "attempts",
+            "type": "integer",
+            "default": "0",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "available_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "open_shift_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "outcome",
+            "type": "text",
+            "default": "'pending'::text",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "owner_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "subscription_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
+        "rls_forced": false,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=arwdDxtm/postgres"
+        ],
+        "name": "roster_offer_alert_outbox",
+        "columns": [
+          {
+            "name": "actor_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "available_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "completed_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "created_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "expires_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "initialized",
+            "type": "boolean",
+            "default": "false",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "lease_token",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "lease_until",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "open_shift_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "service_id",
             "type": "uuid",
             "default": null,
             "identity": "",
@@ -11459,6 +11723,14 @@
             "generated": ""
           },
           {
+            "name": "cme_evidence_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
             "name": "completed_at",
             "type": "timestamp with time zone",
             "default": null,
@@ -12065,6 +12337,138 @@
         ],
         "reloptions": null,
         "rls_forced": false,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=arwd/postgres"
+        ],
+        "name": "teaching_epa_magic_links",
+        "columns": [
+          {
+            "name": "clinical_setting",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "completed_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "created_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "epa_number",
+            "type": "smallint",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "expires_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "id",
+            "type": "uuid",
+            "default": "gen_random_uuid()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "registrar_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "response",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "revoked_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "status",
+            "type": "text",
+            "default": "'pending'::text",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "supervisor_name",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "supervisor_role",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "token_hash",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "trainee_name",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "updated_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
+        "rls_forced": true,
         "rls_enabled": true
       },
       {
@@ -14702,6 +15106,12 @@
         "def_hash": "7224a35b50c37a7394210ca930e4e99f"
       },
       {
+        "def": "CREATE UNIQUE INDEX document_evidence_revisions_pkey ON public.document_evidence_revisions USING btree (document_id)",
+        "name": "document_evidence_revisions_pkey",
+        "table": "document_evidence_revisions",
+        "def_hash": "2615588a76c4e5926413aec57fd7d419"
+      },
+      {
         "def": "CREATE INDEX document_images_created_at_idx ON public.document_images USING btree (created_at)",
         "name": "document_images_created_at_idx",
         "table": "document_images",
@@ -14784,6 +15194,12 @@
         "name": "document_images_visual_intelligence_version_idx",
         "table": "document_images",
         "def_hash": "064a542af2b97dc915fcc29e9a76e6c3"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX document_index_generation_snapshots_pkey ON public.document_index_generation_snapshots USING btree (document_id, index_generation_id)",
+        "name": "document_index_generation_snapshots_pkey",
+        "table": "document_index_generation_snapshots",
+        "def_hash": "34b73d4a3f3a3eaad7478678043f41cb"
       },
       {
         "def": "CREATE INDEX document_index_quality_document_id_idx ON public.document_index_quality USING btree (document_id)",
@@ -15302,16 +15718,16 @@
         "def_hash": "2f2c90dfac660eb2a30bd869f686e665"
       },
       {
+        "def": "CREATE UNIQUE INDEX image_caption_cache_owner_hash_model_identity_key ON public.image_caption_cache USING btree (owner_id, image_hash, model, cache_identity) NULLS NOT DISTINCT",
+        "name": "image_caption_cache_owner_hash_model_identity_key",
+        "table": "image_caption_cache",
+        "def_hash": "1260dc412f06974f0b7b882abece8e22"
+      },
+      {
         "def": "CREATE INDEX image_caption_cache_owner_id_idx ON public.image_caption_cache USING btree (owner_id)",
         "name": "image_caption_cache_owner_id_idx",
         "table": "image_caption_cache",
         "def_hash": "6a7095d2f46b71c43f539d39cd85006b"
-      },
-      {
-        "def": "CREATE UNIQUE INDEX image_caption_cache_owner_id_image_hash_model_key ON public.image_caption_cache USING btree (owner_id, image_hash, model)",
-        "name": "image_caption_cache_owner_id_image_hash_model_key",
-        "table": "image_caption_cache",
-        "def_hash": "5cac039926e94b8e4891b3085e7f8f6e"
       },
       {
         "def": "CREATE UNIQUE INDEX image_caption_cache_pkey ON public.image_caption_cache USING btree (id)",
@@ -16106,6 +16522,24 @@
         "def_hash": "590bcff136e7af842298b48ee261e3f2"
       },
       {
+        "def": "CREATE UNIQUE INDEX roster_offer_alert_devices_pkey ON public.roster_offer_alert_devices USING btree (open_shift_id, subscription_id)",
+        "name": "roster_offer_alert_devices_pkey",
+        "table": "roster_offer_alert_devices",
+        "def_hash": "d08f116cc6279363d5cf78ff56696d25"
+      },
+      {
+        "def": "CREATE INDEX roster_offer_alert_due ON public.roster_offer_alert_outbox USING btree (available_at, created_at) WHERE (completed_at IS NULL)",
+        "name": "roster_offer_alert_due",
+        "table": "roster_offer_alert_outbox",
+        "def_hash": "239cd5bd0090ba73e64d3fe2e3ab52d3"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX roster_offer_alert_outbox_pkey ON public.roster_offer_alert_outbox USING btree (open_shift_id)",
+        "name": "roster_offer_alert_outbox_pkey",
+        "table": "roster_offer_alert_outbox",
+        "def_hash": "b15bdbc810b12682660735d65c80b307"
+      },
+      {
         "def": "CREATE UNIQUE INDEX roster_open_post_alerts_pkey ON public.roster_open_post_alerts USING btree (service_id, open_shift_id)",
         "name": "roster_open_post_alerts_pkey",
         "table": "roster_open_post_alerts",
@@ -16442,6 +16876,12 @@
         "def_hash": "616d06e4b7bca60c216c7c1a86d5e02f"
       },
       {
+        "def": "CREATE UNIQUE INDEX storage_cleanup_jobs_cme_evidence_key ON public.storage_cleanup_jobs USING btree (cme_evidence_id) WHERE (cme_evidence_id IS NOT NULL)",
+        "name": "storage_cleanup_jobs_cme_evidence_key",
+        "table": "storage_cleanup_jobs",
+        "def_hash": "285fe5104ce348207613e4bd62f0803d"
+      },
+      {
         "def": "CREATE INDEX storage_cleanup_jobs_document_idx ON public.storage_cleanup_jobs USING btree (document_id)",
         "name": "storage_cleanup_jobs_document_idx",
         "table": "storage_cleanup_jobs",
@@ -16572,6 +17012,24 @@
         "name": "teaching_display_links_pkey",
         "table": "teaching_display_links",
         "def_hash": "1e70a130c0f6f5cf8f6f15baf7fc471e"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX teaching_epa_magic_links_pkey ON public.teaching_epa_magic_links USING btree (id)",
+        "name": "teaching_epa_magic_links_pkey",
+        "table": "teaching_epa_magic_links",
+        "def_hash": "7dc1f1b8eb80633d4bb6723ddaef4062"
+      },
+      {
+        "def": "CREATE INDEX teaching_epa_magic_links_registrar_idx ON public.teaching_epa_magic_links USING btree (registrar_id, created_at DESC)",
+        "name": "teaching_epa_magic_links_registrar_idx",
+        "table": "teaching_epa_magic_links",
+        "def_hash": "7231fdf4a870688c319c278d32723f5a"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX teaching_epa_magic_links_token_hash_key ON public.teaching_epa_magic_links USING btree (token_hash)",
+        "name": "teaching_epa_magic_links_token_hash_key",
+        "table": "teaching_epa_magic_links",
+        "def_hash": "16462bf49db10ecc0f5b2588a1e8a5ed"
       },
       {
         "def": "CREATE INDEX teaching_feedback_answers_occurrence ON public.teaching_feedback_answers USING btree (occurrence_id)",
@@ -17842,6 +18300,18 @@
         "with_check": null
       },
       {
+        "cmd": "ALL",
+        "name": "teaching_epa_magic_links_service_role_all",
+        "qual": "true",
+        "roles": [
+          "service_role"
+        ],
+        "table": "teaching_epa_magic_links",
+        "schema": "public",
+        "permissive": "PERMISSIVE",
+        "with_check": "true"
+      },
+      {
         "cmd": "DELETE",
         "name": "users delete own favourite sets",
         "qual": "(( SELECT auth.uid() AS uid) = user_id)",
@@ -18175,6 +18645,26 @@
         "table": "document_embedding_fields"
       },
       {
+        "def": "CREATE TRIGGER document_images_evidence_delete AFTER DELETE ON public.document_images REFERENCING OLD TABLE AS old_rows FOR EACH STATEMENT EXECUTE FUNCTION public.document_evidence_rows_changed()",
+        "name": "document_images_evidence_delete",
+        "table": "document_images"
+      },
+      {
+        "def": "CREATE TRIGGER document_images_evidence_insert AFTER INSERT ON public.document_images REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION public.document_evidence_rows_changed()",
+        "name": "document_images_evidence_insert",
+        "table": "document_images"
+      },
+      {
+        "def": "CREATE TRIGGER document_images_evidence_update AFTER UPDATE ON public.document_images REFERENCING OLD TABLE AS old_rows NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION public.document_evidence_rows_changed()",
+        "name": "document_images_evidence_update",
+        "table": "document_images"
+      },
+      {
+        "def": "CREATE TRIGGER document_index_quality_capture_generation_snapshot BEFORE UPDATE ON public.document_index_quality FOR EACH ROW EXECUTE FUNCTION public.capture_document_index_quality_snapshot()",
+        "name": "document_index_quality_capture_generation_snapshot",
+        "table": "document_index_quality"
+      },
+      {
         "def": "CREATE TRIGGER document_index_units_updated_at BEFORE UPDATE ON public.document_index_units FOR EACH ROW EXECUTE FUNCTION public.set_updated_at()",
         "name": "document_index_units_updated_at",
         "table": "document_index_units"
@@ -18200,9 +18690,29 @@
         "table": "document_sections"
       },
       {
+        "def": "CREATE TRIGGER document_table_facts_evidence_delete AFTER DELETE ON public.document_table_facts REFERENCING OLD TABLE AS old_rows FOR EACH STATEMENT EXECUTE FUNCTION public.document_evidence_rows_changed()",
+        "name": "document_table_facts_evidence_delete",
+        "table": "document_table_facts"
+      },
+      {
+        "def": "CREATE TRIGGER document_table_facts_evidence_insert AFTER INSERT ON public.document_table_facts REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION public.document_evidence_rows_changed()",
+        "name": "document_table_facts_evidence_insert",
+        "table": "document_table_facts"
+      },
+      {
+        "def": "CREATE TRIGGER document_table_facts_evidence_update AFTER UPDATE ON public.document_table_facts REFERENCING OLD TABLE AS old_rows NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION public.document_evidence_rows_changed()",
+        "name": "document_table_facts_evidence_update",
+        "table": "document_table_facts"
+      },
+      {
         "def": "CREATE TRIGGER document_title_words_enforce_public_scope BEFORE INSERT OR UPDATE ON public.document_title_words FOR EACH ROW EXECUTE FUNCTION public.enforce_document_title_word_scope()",
         "name": "document_title_words_enforce_public_scope",
         "table": "document_title_words"
+      },
+      {
+        "def": "CREATE TRIGGER documents_capture_index_generation_snapshot BEFORE UPDATE OF metadata ON public.documents FOR EACH ROW EXECUTE FUNCTION public.capture_document_index_metadata_snapshot()",
+        "name": "documents_capture_index_generation_snapshot",
+        "table": "documents"
       },
       {
         "def": "CREATE TRIGGER documents_guard_public_source_identity BEFORE INSERT OR UPDATE ON public.documents FOR EACH ROW EXECUTE FUNCTION public.guard_public_source_document_identity()",
@@ -18217,6 +18727,11 @@
       {
         "def": "CREATE TRIGGER documents_page_storage_mode_owner BEFORE INSERT OR UPDATE ON public.documents FOR EACH ROW EXECUTE FUNCTION ingestion_generation_evidence.guard_page_mode()",
         "name": "documents_page_storage_mode_owner",
+        "table": "documents"
+      },
+      {
+        "def": "CREATE TRIGGER documents_prune_superseded_index_generations AFTER UPDATE OF metadata ON public.documents FOR EACH ROW WHEN (((new.index_generation_id IS NOT NULL) AND (old.index_generation_id IS DISTINCT FROM new.index_generation_id))) EXECUTE FUNCTION public.prune_superseded_index_generations_after_commit()",
+        "name": "documents_prune_superseded_index_generations",
         "table": "documents"
       },
       {
@@ -18310,6 +18825,16 @@
         "table": "rag_aliases"
       },
       {
+        "def": "CREATE TRIGGER rag_answer_feedback_retire_superseded_triage AFTER UPDATE ON public.rag_answer_feedback FOR EACH ROW WHEN ((old.id IS DISTINCT FROM new.id)) EXECUTE FUNCTION public.retire_superseded_feedback_triage()",
+        "name": "rag_answer_feedback_retire_superseded_triage",
+        "table": "rag_answer_feedback"
+      },
+      {
+        "def": "CREATE TRIGGER rag_answer_feedback_update_guard BEFORE UPDATE ON public.rag_answer_feedback FOR EACH ROW EXECUTE FUNCTION public.guard_rag_answer_feedback_update()",
+        "name": "rag_answer_feedback_update_guard",
+        "table": "rag_answer_feedback"
+      },
+      {
         "def": "CREATE TRIGGER trg_set_owner_id_rag_queries BEFORE INSERT ON public.rag_queries FOR EACH ROW EXECUTE FUNCTION public.set_owner_id_from_auth_uid()",
         "name": "trg_set_owner_id_rag_queries",
         "table": "rag_queries"
@@ -18353,6 +18878,11 @@
         "def": "CREATE TRIGGER roster_leave_updated_at BEFORE UPDATE ON public.roster_leave FOR EACH ROW EXECUTE FUNCTION public.set_updated_at()",
         "name": "roster_leave_updated_at",
         "table": "roster_leave"
+      },
+      {
+        "def": "CREATE TRIGGER enqueue_roster_offer_alert AFTER INSERT ON public.roster_open_post_keys FOR EACH ROW EXECUTE FUNCTION public.enqueue_roster_offer_alert()",
+        "name": "enqueue_roster_offer_alert",
+        "table": "roster_open_post_keys"
       },
       {
         "def": "CREATE TRIGGER roster_open_shifts_mark_reported BEFORE INSERT ON public.roster_open_shifts FOR EACH ROW EXECUTE FUNCTION public.roster_open_shifts_mark_reported()",
@@ -18435,6 +18965,11 @@
         "table": "storage_cleanup_jobs"
       },
       {
+        "def": "CREATE TRIGGER teaching_epa_magic_links_updated_at BEFORE UPDATE ON public.teaching_epa_magic_links FOR EACH ROW EXECUTE FUNCTION public.set_updated_at()",
+        "name": "teaching_epa_magic_links_updated_at",
+        "table": "teaching_epa_magic_links"
+      },
+      {
         "def": "CREATE TRIGGER teaching_supervision_entry_locked BEFORE UPDATE ON public.teaching_supervision_entries FOR EACH ROW EXECUTE FUNCTION public.teaching_guard_supervision_entry()",
         "name": "teaching_supervision_entry_locked",
         "table": "teaching_supervision_entries"
@@ -18453,6 +18988,16 @@
         "def": "CREATE TRIGGER work_course_bookings_updated_at BEFORE UPDATE ON public.work_course_bookings FOR EACH ROW EXECUTE FUNCTION public.set_updated_at()",
         "name": "work_course_bookings_updated_at",
         "table": "work_course_bookings"
+      },
+      {
+        "def": "CREATE TRIGGER work_team_move_revokes_supervisors AFTER UPDATE OF hospital_id ON public.work_hospital_teams FOR EACH ROW EXECUTE FUNCTION public.work_revoke_supervisors_on_team_move()",
+        "name": "work_team_move_revokes_supervisors",
+        "table": "work_hospital_teams"
+      },
+      {
+        "def": "CREATE TRIGGER work_whole_team_supervisor_scope BEFORE INSERT OR UPDATE ON public.work_role_grants FOR EACH ROW EXECUTE FUNCTION public.work_guard_whole_team_supervisor()",
+        "name": "work_whole_team_supervisor_scope",
+        "table": "work_role_grants"
       }
     ],
     "functions": [
@@ -18598,6 +19143,13 @@
       },
       {
         "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "e91b4cce6223c04f8e34780d31eb6aa9",
+        "signature": "public.bump_document_evidence_revisions(uuid[])"
+      },
+      {
+        "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
@@ -18622,6 +19174,20 @@
       },
       {
         "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "40e293903d367e120421780f7cf4baaf",
+        "signature": "public.capture_document_index_metadata_snapshot()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "2ee19a2012f6efe8479f0b3b02c2cd8c",
+        "signature": "public.capture_document_index_quality_snapshot()"
+      },
+      {
+        "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
@@ -18641,7 +19207,15 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "64a776fa765a7d8cdc164e55d99bfa9a",
+        "def_hash": "c1ef5a420ef6a43ea937c6aa80482575",
+        "signature": "public.claim_ingestion_jobs(text,integer,integer,uuid[],text[])"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "80066ae9391d629393d44dc61b0fc181",
         "signature": "public.claim_ingestion_jobs(text,integer,integer)"
       },
       {
@@ -18816,7 +19390,15 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "eefeb8717ae64afc070c1c312a5daf12",
+        "def_hash": "bc89ab638134abac5c12dd51fbce0284",
+        "signature": "public.cme_remove_evidence_v2(uuid,uuid,text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "d49e3fb5c0812ebc682ae49dce4ff426",
         "signature": "public.cme_remove_evidence(uuid,uuid,text)"
       },
       {
@@ -19048,6 +19630,21 @@
       },
       {
         "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "58f5ef7258095fc953849fdb45a832d1",
+        "signature": "public.document_evidence_rows_changed()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "5884e713b6874d57c20593b8deada2dc",
+        "signature": "public.document_index_generation_metadata_keys()"
+      },
+      {
+        "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
@@ -19076,6 +19673,14 @@
         ],
         "def_hash": "2314085d7e21c5d54f3997e00fd8cdd9",
         "signature": "public.enforce_document_title_word_scope()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "f4c06824b3702b8b959d6772fe4b2ce7",
+        "signature": "public.enqueue_roster_offer_alert()"
       },
       {
         "acl": [
@@ -19186,6 +19791,14 @@
         ],
         "def_hash": "04ac38dd377b2b8ac8b1d5f8e533c4dc",
         "signature": "public.guard_public_source_version_mutation()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "92c30d79f1cfd29c37ab7214534a5c14",
+        "signature": "public.guard_rag_answer_feedback_update()"
       },
       {
         "acl": [
@@ -19523,6 +20136,14 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
+        "def_hash": "290eb2b8447860400f8fab5d06cd9899",
+        "signature": "public.mutate_owner_training_milestone(uuid,uuid,text,jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
         "def_hash": "2cea59a50141b1479ad8a3d493f80189",
         "signature": "public.notify_document_change_ingestion_webhook()"
       },
@@ -19632,6 +20253,20 @@
       },
       {
         "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "8198bddc05274a160b24b175ce0c34f6",
+        "signature": "public.prune_superseded_document_index_generations(uuid,uuid[],integer)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "f2ef44d2b6bb1e15d3326eae8e01974f",
+        "signature": "public.prune_superseded_index_generations_after_commit()"
+      },
+      {
+        "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
@@ -19644,7 +20279,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "3c021e0243c1052b4928112c9dcc96c7",
+        "def_hash": "9a282154d54a006597e81610303a4057",
         "signature": "public.publish_site_content_record(text,uuid,text,bigint,text,text,text)"
       },
       {
@@ -19654,6 +20289,14 @@
         ],
         "def_hash": "151405b481b44c5ec2078c35e7396076",
         "signature": "public.purge_expired_api_rate_limit_subjects(integer)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "71606ee281d95a9682b27c5da9d49bd6",
+        "signature": "public.purge_expired_rag_answer_feedback_notes(integer)"
       },
       {
         "acl": [
@@ -19678,6 +20321,14 @@
         ],
         "def_hash": "4511c6bd98f3219a61f5ddd44f644e76",
         "signature": "public.purge_expired_rag_response_cache(integer)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "6e2e9461e611d13573b2e1aea26f0d5e",
+        "signature": "public.rag_cache_scope_revision_v1(uuid,boolean,uuid[])"
       },
       {
         "acl": [
@@ -19781,7 +20432,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "b9a4ce368d6d3b48382c1ea5f888fe6b",
+        "def_hash": "234aeb307ef66bbfa674360ecb191820",
         "signature": "public.record_site_content_reconciliation_plan(jsonb)"
       },
       {
@@ -19815,6 +20466,14 @@
         ],
         "def_hash": "874163cf5aa0b818f3e88ca1ac6f90b2",
         "signature": "public.record_source_review(uuid,uuid,text,text,text[],date,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "6855830fb99d24b7e0d3d47f477ffbbb",
+        "signature": "public.recover_ingestion_job(uuid,text,jsonb)"
       },
       {
         "acl": [
@@ -19929,6 +20588,13 @@
       },
       {
         "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "ed665023f2990f6a70dcf149dede94e4",
+        "signature": "public.require_recent_site_content_administrator_assurance()"
+      },
+      {
+        "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
@@ -19980,8 +20646,16 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "8cca178909ebadcd9fd6da7a05395dda",
+        "def_hash": "46b92bde9ce13ffa9579baae719576dc",
         "signature": "public.retire_site_content_record(text,uuid,text,bigint,text,text,text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "fe486935175f0957eb725c1e5af9e8ac",
+        "signature": "public.retire_superseded_feedback_triage()"
       },
       {
         "acl": [
@@ -20006,6 +20680,14 @@
         ],
         "def_hash": "39b1d8de34c4ac584dee044282e7481b",
         "signature": "public.retry_ingestion_job_if_idle(uuid,uuid,timestamp with time zone,integer,timestamp with time zone,timestamp with time zone)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "456e0660d53a26e0d3420ab261e2f89b",
+        "signature": "public.rollback_document_index_generation(uuid,uuid,uuid)"
       },
       {
         "acl": [
@@ -20069,6 +20751,14 @@
         ],
         "def_hash": "c9251a5932317b94efc0fbe02273849a",
         "signature": "public.roster_needs_replace(uuid,uuid,jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "dbc1a581ba252a08d74da026c4c3955f",
+        "signature": "public.roster_offer_alert_work(text,uuid,uuid,uuid[],uuid,text)"
       },
       {
         "acl": [
@@ -20217,6 +20907,14 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
+        "def_hash": "88e1a65f5536d4f9c7be100661805c19",
+        "signature": "public.roster_swap_accept_for_manager(uuid,uuid,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
         "def_hash": "adeb89807a5f2a4357ab0659012e1d78",
         "signature": "public.roster_team_members(uuid,uuid)"
       },
@@ -20248,7 +20946,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "462be6fc6532cc3bda833484ebd72384",
+        "def_hash": "d4604873b639ee7f2592c1013f9c5563",
         "signature": "public.schema_drift_snapshot()"
       },
       {
@@ -20458,7 +21156,7 @@
         "acl": [
           "postgres=X/postgres"
         ],
-        "def_hash": "c2dc2183657bab3c994af7f18ddfcb9b",
+        "def_hash": "a5941da0e4a996364e68fd0940e8c651",
         "signature": "public.site_content_registry_baseline(text,text)"
       },
       {
@@ -20616,7 +21314,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "fe758f431ff7da8b87c30aef15c02bca",
+        "def_hash": "4bd6d85449263f34f9d0f17eead73308",
         "signature": "public.teaching_command(uuid,uuid,text,jsonb)"
       },
       {
@@ -20648,7 +21346,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "a614e81532918d22c3a44d3d4008c54e",
+        "def_hash": "e0f61bafe44727727e8d3c8ff1c8164e",
         "signature": "public.teaching_depth_command(uuid,uuid,text,jsonb)"
       },
       {
@@ -21007,6 +21705,30 @@
         ],
         "def_hash": "648b41850477258c0d015136b043bb98",
         "signature": "public.work_cancel_course(uuid,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "f7b8cb8cfd954642c48c0358ddd8f619",
+        "signature": "public.work_guard_whole_team_supervisor()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "fdf89b88112ab0575fe3e595348dc200",
+        "signature": "public.work_move_team_v1(uuid,uuid,uuid,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "53214a1cf5949106be9192b3460ef059",
+        "signature": "public.work_revoke_supervisors_on_team_move()"
       },
       {
         "acl": [
@@ -22076,6 +22798,16 @@
       },
       {
         "def": "FOREIGN KEY (document_id) REFERENCES public.documents(id) ON DELETE CASCADE",
+        "name": "document_evidence_revisions_document_id_fkey",
+        "table": "document_evidence_revisions"
+      },
+      {
+        "def": "PRIMARY KEY (document_id)",
+        "name": "document_evidence_revisions_pkey",
+        "table": "document_evidence_revisions"
+      },
+      {
+        "def": "FOREIGN KEY (document_id) REFERENCES public.documents(id) ON DELETE CASCADE",
         "name": "document_images_document_id_fkey",
         "table": "document_images"
       },
@@ -22088,6 +22820,26 @@
         "def": "PRIMARY KEY (id)",
         "name": "document_images_pkey",
         "table": "document_images"
+      },
+      {
+        "def": "FOREIGN KEY (document_id) REFERENCES public.documents(id) ON DELETE CASCADE",
+        "name": "document_index_generation_snapshots_document_id_fkey",
+        "table": "document_index_generation_snapshots"
+      },
+      {
+        "def": "CHECK (((metadata IS NULL) OR (jsonb_typeof(metadata) = 'object'::text)))",
+        "name": "document_index_generation_snapshots_metadata_object",
+        "table": "document_index_generation_snapshots"
+      },
+      {
+        "def": "PRIMARY KEY (document_id, index_generation_id)",
+        "name": "document_index_generation_snapshots_pkey",
+        "table": "document_index_generation_snapshots"
+      },
+      {
+        "def": "CHECK (((quality IS NULL) OR (jsonb_typeof(quality) = 'object'::text)))",
+        "name": "document_index_generation_snapshots_quality_object",
+        "table": "document_index_generation_snapshots"
       },
       {
         "def": "FOREIGN KEY (document_id) REFERENCES public.documents(id) ON DELETE CASCADE",
@@ -22470,13 +23222,13 @@
         "table": "extra_time_records"
       },
       {
-        "def": "FOREIGN KEY (owner_id) REFERENCES auth.users(id) ON DELETE CASCADE",
-        "name": "image_caption_cache_owner_id_fkey",
+        "def": "UNIQUE NULLS NOT DISTINCT (owner_id, image_hash, model, cache_identity)",
+        "name": "image_caption_cache_owner_hash_model_identity_key",
         "table": "image_caption_cache"
       },
       {
-        "def": "UNIQUE (owner_id, image_hash, model)",
-        "name": "image_caption_cache_owner_id_image_hash_model_key",
+        "def": "FOREIGN KEY (owner_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+        "name": "image_caption_cache_owner_id_fkey",
         "table": "image_caption_cache"
       },
       {
@@ -23385,6 +24137,11 @@
         "table": "rag_answer_feedback"
       },
       {
+        "def": "CHECK (((note IS NULL) OR ((char_length(note) >= 1) AND (char_length(note) <= 500))))",
+        "name": "rag_answer_feedback_note_length_check",
+        "table": "rag_answer_feedback"
+      },
+      {
         "def": "FOREIGN KEY (owner_id) REFERENCES auth.users(id) ON DELETE SET NULL",
         "name": "rag_answer_feedback_owner_id_fkey",
         "table": "rag_answer_feedback"
@@ -23392,6 +24149,16 @@
       {
         "def": "PRIMARY KEY (id)",
         "name": "rag_answer_feedback_pkey",
+        "table": "rag_answer_feedback"
+      },
+      {
+        "def": "CHECK ((((record_type = 'answer'::text) AND (record_id IS NULL)) OR ((record_type <> 'answer'::text) AND (record_id IS NOT NULL) AND (record_id ~ '^[a-z0-9][a-z0-9-]{0,119}$'::text))))",
+        "name": "rag_answer_feedback_record_id_check",
+        "table": "rag_answer_feedback"
+      },
+      {
+        "def": "CHECK ((record_type = ANY (ARRAY['answer'::text, 'medication'::text, 'therapy'::text])))",
+        "name": "rag_answer_feedback_record_type_check",
         "table": "rag_answer_feedback"
       },
       {
@@ -23808,6 +24575,51 @@
         "def": "FOREIGN KEY (service_id, user_id) REFERENCES public.on_call_service_members(service_id, user_id) ON DELETE CASCADE",
         "name": "roster_member_roles_service_id_user_id_fkey",
         "table": "roster_member_roles"
+      },
+      {
+        "def": "FOREIGN KEY (open_shift_id) REFERENCES public.roster_offer_alert_outbox(open_shift_id) ON DELETE CASCADE",
+        "name": "roster_offer_alert_devices_open_shift_id_fkey",
+        "table": "roster_offer_alert_devices"
+      },
+      {
+        "def": "CHECK ((outcome = ANY (ARRAY['pending'::text, 'sent'::text, 'skipped'::text])))",
+        "name": "roster_offer_alert_devices_outcome_check",
+        "table": "roster_offer_alert_devices"
+      },
+      {
+        "def": "FOREIGN KEY (owner_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+        "name": "roster_offer_alert_devices_owner_id_fkey",
+        "table": "roster_offer_alert_devices"
+      },
+      {
+        "def": "PRIMARY KEY (open_shift_id, subscription_id)",
+        "name": "roster_offer_alert_devices_pkey",
+        "table": "roster_offer_alert_devices"
+      },
+      {
+        "def": "FOREIGN KEY (subscription_id) REFERENCES public.web_push_subscriptions(id) ON DELETE CASCADE",
+        "name": "roster_offer_alert_devices_subscription_id_fkey",
+        "table": "roster_offer_alert_devices"
+      },
+      {
+        "def": "FOREIGN KEY (actor_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+        "name": "roster_offer_alert_outbox_actor_id_fkey",
+        "table": "roster_offer_alert_outbox"
+      },
+      {
+        "def": "FOREIGN KEY (open_shift_id) REFERENCES public.roster_open_shifts(id) ON DELETE CASCADE",
+        "name": "roster_offer_alert_outbox_open_shift_id_fkey",
+        "table": "roster_offer_alert_outbox"
+      },
+      {
+        "def": "PRIMARY KEY (open_shift_id)",
+        "name": "roster_offer_alert_outbox_pkey",
+        "table": "roster_offer_alert_outbox"
+      },
+      {
+        "def": "FOREIGN KEY (service_id) REFERENCES public.on_call_services(id) ON DELETE CASCADE",
+        "name": "roster_offer_alert_outbox_service_id_fkey",
+        "table": "roster_offer_alert_outbox"
       },
       {
         "def": "PRIMARY KEY (service_id, open_shift_id)",
@@ -24715,6 +25527,11 @@
         "table": "source_review_events"
       },
       {
+        "def": "FOREIGN KEY (cme_evidence_id) REFERENCES public.cme_evidence(id) ON DELETE SET NULL",
+        "name": "storage_cleanup_jobs_cme_evidence_id_fkey",
+        "table": "storage_cleanup_jobs"
+      },
+      {
         "def": "FOREIGN KEY (document_id) REFERENCES public.documents(id) ON DELETE SET NULL",
         "name": "storage_cleanup_jobs_document_id_fkey",
         "table": "storage_cleanup_jobs"
@@ -24948,6 +25765,76 @@
         "def": "CHECK ((stream = ANY (ARRAY['room'::text, 'teams'::text])))",
         "name": "teaching_display_links_stream_check",
         "table": "teaching_display_links"
+      },
+      {
+        "def": "CHECK (((clinical_setting IS NULL) OR ((char_length(clinical_setting) >= 1) AND (char_length(clinical_setting) <= 200))))",
+        "name": "teaching_epa_magic_links_clinical_setting_check",
+        "table": "teaching_epa_magic_links"
+      },
+      {
+        "def": "CHECK (((status = 'completed'::text) = ((completed_at IS NOT NULL) AND (response IS NOT NULL))))",
+        "name": "teaching_epa_magic_links_completed_shape",
+        "table": "teaching_epa_magic_links"
+      },
+      {
+        "def": "CHECK (((epa_number >= 1) AND (epa_number <= 4)))",
+        "name": "teaching_epa_magic_links_epa_number_check",
+        "table": "teaching_epa_magic_links"
+      },
+      {
+        "def": "CHECK (((expires_at > created_at) AND (expires_at <= (created_at + '30 days'::interval))))",
+        "name": "teaching_epa_magic_links_expiry_window",
+        "table": "teaching_epa_magic_links"
+      },
+      {
+        "def": "PRIMARY KEY (id)",
+        "name": "teaching_epa_magic_links_pkey",
+        "table": "teaching_epa_magic_links"
+      },
+      {
+        "def": "FOREIGN KEY (registrar_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+        "name": "teaching_epa_magic_links_registrar_id_fkey",
+        "table": "teaching_epa_magic_links"
+      },
+      {
+        "def": "CHECK (((response IS NULL) OR ((jsonb_typeof(response) = 'object'::text) AND (pg_column_size(response) <= 8192))))",
+        "name": "teaching_epa_magic_links_response_check",
+        "table": "teaching_epa_magic_links"
+      },
+      {
+        "def": "CHECK (((status = 'revoked'::text) = (revoked_at IS NOT NULL)))",
+        "name": "teaching_epa_magic_links_revoked_shape",
+        "table": "teaching_epa_magic_links"
+      },
+      {
+        "def": "CHECK ((status = ANY (ARRAY['pending'::text, 'completed'::text, 'revoked'::text])))",
+        "name": "teaching_epa_magic_links_status_check",
+        "table": "teaching_epa_magic_links"
+      },
+      {
+        "def": "CHECK (((char_length(supervisor_name) >= 1) AND (char_length(supervisor_name) <= 200)))",
+        "name": "teaching_epa_magic_links_supervisor_name_check",
+        "table": "teaching_epa_magic_links"
+      },
+      {
+        "def": "CHECK (((char_length(supervisor_role) >= 1) AND (char_length(supervisor_role) <= 100)))",
+        "name": "teaching_epa_magic_links_supervisor_role_check",
+        "table": "teaching_epa_magic_links"
+      },
+      {
+        "def": "CHECK ((token_hash ~ '^[0-9a-f]{64}$'::text))",
+        "name": "teaching_epa_magic_links_token_hash_check",
+        "table": "teaching_epa_magic_links"
+      },
+      {
+        "def": "UNIQUE (token_hash)",
+        "name": "teaching_epa_magic_links_token_hash_key",
+        "table": "teaching_epa_magic_links"
+      },
+      {
+        "def": "CHECK (((char_length(trainee_name) >= 1) AND (char_length(trainee_name) <= 200)))",
+        "name": "teaching_epa_magic_links_trainee_name_check",
+        "table": "teaching_epa_magic_links"
       },
       {
         "def": "FOREIGN KEY (occurrence_id, service_id) REFERENCES public.teaching_occurrences(id, service_id) ON DELETE CASCADE",

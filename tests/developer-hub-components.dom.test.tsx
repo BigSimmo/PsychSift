@@ -207,11 +207,11 @@ describe("PanelCard", () => {
           summary: "s",
           group: "work",
           phase: 1,
-          href: "/mockups/development/ledger",
+          href: "/admin/developer-hub/ledger",
         }}
       />,
     );
-    expect(screen.getByRole("link", { name: /task ledger/i })).toHaveAttribute("href", "/mockups/development/ledger");
+    expect(screen.getByRole("link", { name: /task ledger/i })).toHaveAttribute("href", "/admin/developer-hub/ledger");
   });
 
   it("marks a planned panel unavailable with a reachable reason, never native disabled", () => {

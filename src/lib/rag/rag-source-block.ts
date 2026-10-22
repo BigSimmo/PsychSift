@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import type {
   PublishedAdminSectionRequest,
   PublishedAdminSectionProjection,
-} from "@/lib/publication/published-admin-layout-contract";
+} from "../../../worker/published-admin-source-layout-contract";
 import { committedIndexGeneration } from "@/lib/reindex-pipeline";
 import { isClinicalImageEvidence } from "@/lib/image-filtering";
 import { estimateTokens } from "@/lib/chunking";

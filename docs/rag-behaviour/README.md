@@ -12,13 +12,15 @@ selection, release-ordering, or eval-ground-truth surface.
 | `behaviour-map.md`      | The verified mechanics: score imputation sites, the release comparator chains, the gate/threshold ladder, second-stage engagement rules, and which live cases exercise which path.   |
 | `refuted-approaches.md` | Live-refuted improvement attempts (feature-weight tuning, saturation-tail spread, governance ranking penalties/boosts) with numbers, post-mortems, and binding constraints.          |
 | `safeguards.md`         | The protection stack: protected-surface list, the advisory pr-policy `RAG impact:` warning, the source-pin contract test, the canary-pair protocol, and the regeneration procedures. |
+| `cache-freshness.md`    | Document-governance cache revisions, read/write fences, safe application/database compatibility and local proof limits.                                                              |
 
 Standing rules (mirrored in `AGENTS.md` so every agent session inherits them):
 
-1. **Flag RAG impact.** Any task touching a protected surface (list in `safeguards.md`) must say
-   so explicitly before editing, and its PR must carry a `RAG impact:` line.
+1. **Flag RAG impact.** Any task touching a protected surface (authoritative list: `ragRankingPatterns`
+   in `scripts/pr-policy.mjs`; explained in `safeguards.md`) must say
+   so explicitly before editing, and its PR should always carry a `RAG impact:` line.
    Since 2026-09-17, `scripts/pr-policy.mjs` warns, rather than blocks, when the
-   line is absent. The standing declaration rule remains in force.
+   line is absent. Write it anyway: it is how a reviewer sees the change touches ranking.
 2. **Canary for behaviour changes.** Any retrieval/ranking/ordering behaviour change requires a
    live eval-canary pair — baseline + post — with doc/content recall pinned at 1.0 and zero
    per-case regressions, before the change is trusted. Runs fire via an `eval-canary`

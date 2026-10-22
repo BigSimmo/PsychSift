@@ -33,6 +33,7 @@ import {
   Target,
 } from "lucide-react";
 
+import { useClinicalToolAccess } from "@/components/mode-kit/use-clinical-tool-access";
 import { stretchedRowLinkClass } from "@/components/card-recipes";
 import { DocumentTagCloud } from "@/components/DocumentTagCloud";
 import {
@@ -234,7 +235,10 @@ const resultMenuItemClass =
 function DocumentPagePreview({ document, href }: { document: ClientDocumentMatch; href: string }) {
   const pageNumber = document.bestPages[0] ?? 1;
   const lineWidths = [74, 88, 63, 79, 56];
-  const coverEndpoint = document.coverImageId ? `/api/images/${document.coverImageId}/signed-url` : "";
+  // Page images are part of the original and need sign-in; signed out, the drawn page stands in.
+  const originalsLocked = useClinicalToolAccess() === "sign-in-required";
+  const coverEndpoint =
+    document.coverImageId && !originalsLocked ? `/api/images/${document.coverImageId}/signed-url` : "";
   const { url: coverUrl, failed: coverFailed, markFailed } = useSignedImageUrl(coverEndpoint, Boolean(coverEndpoint));
   const [loadedCoverUrl, setLoadedCoverUrl] = useState<string | null>(null);
   const hasCoverUrl = Boolean(coverEndpoint && coverUrl && !coverFailed);
@@ -247,7 +251,7 @@ function DocumentPagePreview({ document, href }: { document: ClientDocumentMatch
       href={href}
       aria-label={`Preview page ${pageNumber} of ${document.title}`}
       data-testid="document-page-preview"
-      className="group relative z-10 flex h-28 w-20 shrink-0 flex-col overflow-hidden rounded-lg border border-[color:var(--border-lux)] bg-[color:var(--surface)] shadow-[var(--e2)] transition hover:-translate-y-0.5 hover:border-[color:var(--clinical-accent-border)] hover:shadow-[var(--shadow-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] motion-reduce:transform-none motion-reduce:transition-none sm:h-32 sm:w-24"
+      className="group relative z-10 flex h-28 w-20 shrink-0 flex-col overflow-hidden rounded-lg border border-[color:var(--border-lux)] bg-[color:var(--surface)] shadow-[var(--e2)] transition hover:-translate-y-0.5 hover:border-[color:var(--clinical-accent-border)] hover:shadow-[var(--e3)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] motion-reduce:transform-none motion-reduce:transition-none sm:h-32 sm:w-24"
     >
       {hasCoverUrl ? (
         // Private signed covers stay unoptimized so bearer URLs never enter `/_next/image`.
@@ -1374,18 +1378,21 @@ function DocumentSearchResultsPanelImpl({
       documentRetrievalFilterValueCount(activeDraft.scopeFilters, activeDraft.selectedDocumentIds.length)
     : 0;
 
-  /* A retrieval layer errored, so no count from this search is trustworthy —
-     including a non-zero one. The band owns that claim: it renders `matchCount`
-     inside the only `role="status"` region on the page, and the zero-result
-     state suppresses its own live region while filters are applied, so a
-     degraded+scoped search announced a bare confident "0 documents" and nothing
-     else. `partial` is the band's own word for it ("available sources returned
-     an honest count, but at least one source failed") and is right for BOTH
-     cases: at zero it stops the headline contradicting the panel below it, and
-     above zero it is the only thing that says the list is a floor rather than
-     the answer. (Raised by Devin review on PR #1640.) */
-  // A failed request is the strongest form of the same fault: nothing was searched at all.
+  // Nonempty partial results keep their count and source-availability qualifier.
+  // With no documents, one recovery card owns the failure rather than repeating
+  // it above as "0 documents · some sources unavailable".
   const retrievalDegraded = Boolean(searchScope?.retrieval?.degraded) || searchFailed;
+  const emptyStateOwnsFailure = Boolean(
+    !showRecordMatches &&
+    !loading &&
+    matches.length === 0 &&
+    trimmedQuery &&
+    !shouldShowHome &&
+    (retrievalDegraded || unavailable),
+  );
+  const emptyFailureReason = [searchFailed ? searchFailureReason?.trim() : null, unavailableMessage?.trim()]
+    .filter((reason, index, reasons) => reason && reasons.indexOf(reason) === index)
+    .join(" ");
   // Mounted whenever the control is, not only while open (#M3XZV0): `Sheet`
   // skips its focus restore when it unmounts, so a sheet rendered only while
   // open closed with focus on <body>. Closed, it renders nothing — no DOM, no
@@ -1448,6 +1455,7 @@ function DocumentSearchResultsPanelImpl({
         <SearchResultsHeaderBand
           modeId={showRecordMatches ? recordMode : "documents"}
           query={trimmedQuery}
+          summaryPlacement={emptyStateOwnsFailure ? "body" : "ribbon"}
           matchCount={recordMatchCount + sortedMatches.length}
           // Derive the fault from whichever source this ribbon is actually
           // counting. On the services/forms path the registry has its own status
@@ -1505,13 +1513,12 @@ function DocumentSearchResultsPanelImpl({
 
       {documentFilterSheet}
 
-      {/* When the ribbon is shown it owns this message in its fault panel. This
-          standalone alert remains for the routes that render no ribbon, so the
-          message is never lost. */}
+      {/* A zero-document failure keeps this reason in the body recovery card.
+          Otherwise the ribbon fault panel or this standalone alert owns it. */}
       {/* The ribbon only carries this message on the documents path; in record
           mode its fault comes from the registry, so the notice must still
           render or an auth/API/setup warning is reported nowhere. */}
-      {unavailableMessage && (showRecordMatches || !showIdentityHeader) ? (
+      {unavailableMessage && !emptyStateOwnsFailure && (showRecordMatches || !showIdentityHeader) ? (
         <div
           role="alert"
           className="rounded-lg border border-[color:var(--warning)]/30 bg-[color:var(--warning-soft)]/45 p-4 text-sm font-semibold leading-6 text-[color:var(--warning)]"
@@ -1544,6 +1551,7 @@ function DocumentSearchResultsPanelImpl({
           browseLibraryControl
         ) : recordSearchStillRunning ? null : trimmedQuery && !shouldShowHome ? (
           <SearchResultsEmptyState
+            key={emptyStateOwnsFailure ? "failure" : "empty"}
             modeId="documents"
             query={trimmedQuery}
             // The band above owns `h2` for this region, so the zero-result
@@ -1560,9 +1568,12 @@ function DocumentSearchResultsPanelImpl({
             appliedFilters={appliedFilters}
             onClearFilters={activeFilterCount > 0 ? clearAllFilters : undefined}
             // A retrieval layer errored, so this zero is not evidence of absence.
-            degraded={retrievalDegraded}
-            degradedReason={searchFailed ? searchFailureReason : null}
-            onRetry={retrievalDegraded ? onRetrySearch : undefined}
+            degraded={emptyStateOwnsFailure || retrievalDegraded}
+            degradedReason={emptyFailureReason || null}
+            onRetry={emptyStateOwnsFailure || retrievalDegraded ? onRetrySearch : undefined}
+            // A healthy zero is announced by the ribbon. A failed zero uses
+            // only this detailed recovery announcement, including when scoped.
+            announce={emptyStateOwnsFailure}
             onBrowseAll={onOpenLibrary}
             browseAllLabel={
               documentCount > 0 ? `Browse all ${documentCount.toLocaleString()} sources` : "Browse all sources"
@@ -1639,7 +1650,7 @@ function DocumentSearchResultsPanelImpl({
                       className={cn(
                         sourceCard,
                         "content-auto",
-                        "relative overflow-visible p-0 shadow-[var(--e1)] transition hover:border-[color:var(--clinical-accent-border)] hover:shadow-[var(--shadow-hover)] motion-reduce:transition-none",
+                        "relative overflow-visible p-0 shadow-[var(--e1)] transition hover:border-[color:var(--clinical-accent-border)] hover:shadow-[var(--e3)] motion-reduce:transition-none",
                       )}
                     >
                       <div className="grid grid-cols-[5rem_minmax(0,1fr)] items-start gap-3 p-3 sm:grid-cols-[6rem_minmax(0,1fr)] sm:gap-4 sm:p-4">

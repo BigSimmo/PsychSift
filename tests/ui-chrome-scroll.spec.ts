@@ -163,7 +163,7 @@ async function scrollBy(page: Page, totalPx: number, stepPx: number) {
       await page.mouse.wheel(0, delta);
     }
     remaining -= Math.min(stepPxAbs, remaining);
-    await page.waitForTimeout(16);
+    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
   }
 }
 
@@ -430,11 +430,41 @@ test.describe("pages that fit the window have no scroll range", () => {
       // and is exactly what a static estimate would miss, so settle before
       // reading — then read a second time. A single early read could catch the
       // page before the nav row lands and pass on a range that is about to grow.
-      await page.waitForTimeout(800);
+      await page.evaluate(
+        () =>
+          new Promise<void>((resolve) => {
+            const start = performance.now();
+            let frames = 0;
+            const step = () => {
+              frames += 1;
+              if (frames >= 18 && performance.now() - start >= 300) {
+                resolve();
+                return;
+              }
+              requestAnimationFrame(step);
+            };
+            requestAnimationFrame(step);
+          }),
+      );
       const settled = await readPrimaryScrollGeometry(page);
       expect(settled.maxScrollTop, `${route} reserves ${settled.maxScrollTop}px of scroll past its content`).toBe(0);
 
-      await page.waitForTimeout(400);
+      await page.evaluate(
+        () =>
+          new Promise<void>((resolve) => {
+            const start = performance.now();
+            let frames = 0;
+            const step = () => {
+              frames += 1;
+              if (frames >= 18 && performance.now() - start >= 300) {
+                resolve();
+                return;
+              }
+              requestAnimationFrame(step);
+            };
+            requestAnimationFrame(step);
+          }),
+      );
       const stable = await readPrimaryScrollGeometry(page);
       expect(stable.maxScrollTop, `${route} grew a scroll range after late chrome mounted`).toBe(0);
     });

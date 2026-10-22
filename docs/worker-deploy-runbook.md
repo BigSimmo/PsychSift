@@ -26,6 +26,36 @@ database or Python failures still return 503 and block promotion.
 The Supabase probe reports failures as a structured result; `/health` honours
 that result as well as thrown errors and omits provider failure details.
 
+Production PDF extraction requires the Python prerequisites. If Python extraction
+fails, `NODE_ENV=production` refuses the JavaScript fallback with a permanent
+`PDF_EXTRACTION_BUDGET_EXCEEDED` error and removes partial artifacts: pdf.js has
+no isolated memory limit inside the worker. Restore the Python runtime before
+retrying the document. The developer fallback retains its deadline and pixel
+limits; those limits do not establish a process memory boundary.
+
+Offline OCR acceptance covers native merged qualifications, scanned staggered
+columns, opposing comparison signs and decimal positions, and repeated headers
+with page-local footnotes. The original scanned `≤`, `≥`, exponent and decimal
+regression is now an ordinary strict acceptance case, with additional font and
+value variants. These are synthetic source-retention checks, not clinical-corpus
+certification.
+
+The optional raster-table reader can isolate an observed comparison sign before
+numeric OCR and normalize an observed raised digit before restoring its source
+position. It never guesses a threshold from a medicine or unit. Only small,
+single-line, disjoint glyphs are supported; decimal positions and glyph counts
+must agree with the source. Ambiguous alignment refuses the candidate and keeps
+the original full-page fallback. Raised zero is unsupported because a degree
+sign was misread as zero during testing. Unknown layouts, noisy scans and
+uncovered fonts retain their existing limitations.
+
+This uses the existing OCR call, pinned model, page deadline and resource caps.
+Source crop hashes remain unchanged; `ocrInputTransform` separately records the
+algorithm, helper-code hash and exact transformed input identity. All OCR
+observations remain `unverified` / `not_compared`, without confidence or clinical
+approval. `PDF_RASTER_TABLE_OCR` remains default-off. Review source accuracy before
+clinical use or any mass reindex; increasing image-size limits is not acceptance.
+
 ---
 
 ## 0. Pre-deploy gate — do not deploy before this is live
@@ -82,6 +112,49 @@ Keep catalog compatibility, migration history, drift and actual worker acceptanc
 as separate evidence. A catalog read cannot prove runtime lease-fence behavior.
 If required migrations or contracts are missing, stop and use the separately
 approved migration/reconciliation procedure; this runbook grants no apply authority.
+
+The image-security gate is separate from migration readiness. `Dockerfile.worker`
+explicitly upgrades `perl-base` and rejects versions older than Debian's
+`5.40.1-6+deb13u1` Trixie security update. The runner retains Python 3.11 from
+its pinned official Python image, the existing Node binary, separate hashed
+Python locks and unchanged model identities. Native libraries and Tesseract change, so successful clinical
+OCR fixtures and runtime checks are required before accepting this image.
+The runtime update does not clear every worker advisory. Verify the rebuilt image's complete
+HIGH/CRITICAL report before release. Pull-request scans are advisory, so green
+PR checks alone do not establish security acceptance or authorise ingestion.
+
+NLTK is pinned to complete upstream source commit
+`8658f3e7c172abf87f99db045b59a6b1a9e80c7a`, including the model-write path,
+hardlink and special-file repairs, with the archive SHA-256 enforced in both
+Python locks. Its authentic package version remains 3.10.3. A scanner may still
+match CVE-2026-81726 by version; retain that finding in the report and assess the
+source repair and runtime compatibility evidence separately. This is not a
+security exception or release approval.
+
+The worker takes only four curl/HTTP/3 packages from signed Trixie backports:
+`libcurl4t64` 8.21.0, `libnghttp3-9` 1.15.0, and `libngtcp2-16` /
+`libngtcp2-crypto-ossl0` 1.22.1. The Dockerfile pins their Debian revisions,
+rejects every other backports package, and checks the installed curl/ngtcp2
+security floors. Do not enable a general backports target or mix unrelated
+native libraries. Keep both Python locks and all repository-pinned model
+identities unchanged; validate the complete rebuilt image, actual OCR cases
+and full scan before accepting its dependency changes. Ingestion restoration
+remains a separate operational action.
+
+Native util-linux, Tesseract, ncurses and libxml2 security repairs are built separately
+from signed, exact-version Debian sources. `worker/native/components/` pins the
+source descriptors and upstream patch hashes. The packages retain their real
+upstream versions with a `+psychsift1` Debian revision, normal package metadata,
+ABI/dependency declarations and enabled Debian tests. Only selected runtime
+packages enter the image; compilers and sources remain in builder stages.
+The final image verifies installed binary/source versions against retained
+`/usr/share/psychsift/native-security/` receipts. Mount helper privilege bits are
+stripped after the package upgrades. Tesseract's extra deserialization tests,
+ncurses's long-capability control and a non-root, model-backed Docling raster-PDF
+control must pass. See [the native backport contract](../worker/native/README.md).
+These are source repairs, not scanner exceptions: Debian advisories without a
+fixed-version entry may still match the local package revision. Preserve the
+complete scan and distinguish source verification from scanner-count reduction.
 
 ### 0.1 Automated pre-deploy gate
 
@@ -196,7 +269,8 @@ docker build -f Dockerfile.worker -t clinical-kb-worker .
 
 ### What ships in the image
 
-- **Node 24** (`node:24-bookworm-slim`) + **production-only** `node_modules`
+- **Node 24** (binary copied from pinned `node:24-bookworm-slim` into the
+  pinned `python:3.11-slim-trixie` runner) + **production-only** `node_modules`
   (`npm ci --omit=dev`): the worker runs as a prebuilt esbuild bundle
   (`dist/worker/index.mjs`, built in a separate image stage by
   `scripts/build-worker.mjs`), so tsx and the rest of the dev toolchain never
@@ -297,6 +371,54 @@ the client publishable key (build-time, app bundle only) or
 - `PYTHON_BIN=python` — do not set a Windows `TESSERACT_CMD` path; the container
   resolves both from the venv/PATH.
 - Automated pre-deploy migration gate (see §0.1): `DEPLOY_MIGRATION_GATE=enforce` (blocks deploy if migrations are pending; default `report` logs status without blocking; emergency bypass `off`; poll settings: `DEPLOY_MIGRATION_GATE_POLL_S=20`, `DEPLOY_MIGRATION_GATE_MAX_WAIT_S=600`).
+
+Database-operation deadlines are resolved in `worker/behavior.ts`. Control RPCs default to
+30 seconds (`WORKER_CONTROL_PLANE_TIMEOUT_MS`); data writes, including image persistence
+and managed terminal completion, default to 240 seconds (`WORKER_DATA_PLANE_TIMEOUT_MS`).
+Without an explicit `WORKER_SUPABASE_TIMEOUT_MS`, the shared transport cap covers both
+configured budgets (at least 240 seconds). An explicit transport override remains a hard
+cap and can shorten either operation budget. Shutdown/attempt abort signals still apply.
+These database deadlines are separate from the native extraction limits below.
+
+### Pause switches, the scanner module, and the paused production worker
+
+**Pause switches** (`isWorkerClaimLoopPaused` in `worker/health.ts`). Either one pauses the claim loop:
+
+| Variable                    | Pauses when    | Notes                                                          |
+| --------------------------- | -------------- | -------------------------------------------------------------- |
+| `WORKER_PAUSED`             | `true` or `1`  | Emergency stop; also named in the governance incident runbooks |
+| `WORKER_CLAIM_LOOP_ENABLED` | `false` or `0` | Same effect; unset or any other value leaves claiming on       |
+
+While paused the worker keeps its health endpoint up, logs "Worker claim loop is paused" once, and claims
+no new jobs (`worker/run-loop.ts`). A batch already claimed is not interrupted. To resume, both must allow
+claiming: `WORKER_PAUSED` unset or false, and `WORKER_CLAIM_LOOP_ENABLED` unset or true. Nothing alerts on a
+paused worker, so record any pause in the incident or task notes.
+
+**`WORKER_ADMIN_SOURCE_RUNTIME_MODULE`** (`loadAdminSourceRuntimeOptions` in `worker/admin-source-runtime.ts`).
+It names, by absolute local path, a server-mounted module that is deliberately kept outside this repository.
+That module supplies the approved-source record and the malware-scanner configuration
+(`loadApprovedSource` and `loadScannerConfiguration`, or a `createAdminSourceRuntimeSuppliers` factory that
+returns them). The worker refuses a relative, `http(s):`, `data:` or `node:` path, and refuses if the module's
+bytes change while it runs. Never write its value into a document, log, PR or ticket; only whether it is set.
+
+Without it there is no scanner verdict, so every ingestion provider call is refused and each job ends as
+`blocked by ingress safety checks` with `scanner_unavailable` (fail closed; pinned by
+`tests/edge-provider-egress.test.ts`). A worker started without it logs one warning saying so
+(`adminSourceRuntimeStartupWarning`). See [the current ingestion model](ingestion-state-machine.md#current-model-october-2026).
+
+**Current production state (read-only check, 20 October 2026).** The production `worker` service runs a
+placeholder start command set in Railway, not the image's `node dist/worker/index.mjs`. It is an HTTP-only
+process that answers "paused, queue dispatch disabled" and processes no jobs, so no uploaded document is
+indexed in production. The same check found `WORKER_ADMIN_SOURCE_RUNTIME_MODULE` set on that service.
+
+Before the worker is switched back on, with the owner's explicit yes:
+
+1. Confirm the module the variable names exists in the running image or mount and loads: the worker starts
+   without refusing it, its start-up log has no `WORKER_ADMIN_SOURCE_RUNTIME_MODULE is not set` warning, and a
+   first permitted job is not stopped as `scanner_unavailable`.
+2. Restore the real start command, then clear any pause switch.
+3. Watch the first jobs; the library re-index stays stopped
+   ([decision](decisions/2026-10-17-library-reindex-stopped.md)).
 
 ### Shadow extraction mode (packet B4 — docling, default OFF)
 
@@ -680,6 +802,15 @@ The second Gate B caveat is already load-bearing above: docling's eager-mode lat
   node -v # must report v24.x
   ```
 
+- **Pausing the worker on purpose (audit EVAL-03):** the worker has no public
+  address, so monitoring cannot see that it is paused. Whenever you pause it
+  (`WORKER_PAUSED=true`, or a placeholder start command), also set the GitHub
+  repository variable `INGESTION_WORKER_PAUSED=true`; set it to `false` when the
+  worker runs again. The six-hourly ops digest then shows the worker as paused
+  rather than healthy, and the ingestion autopilot names the pause as the cause
+  when it alerts. A pause alone never alerts; a pending upload that nothing claims
+  for more than 30 minutes does, paused or not.
+
 ---
 
 ## Rollback
@@ -704,3 +835,87 @@ at most 20 fixes per run by default. Do not substitute consolidated `reindex` re
 or add an automatic database fix. Recovery writes and any subsequent worker/provider
 work retain their specific approval and spending boundaries. Record unresolved jobs
 and verify their final state; image rollback alone is not data-loss or queue-recovery proof.
+
+### Scoped Node worker claims
+
+`WORKER_ALLOWED_DOCUMENT_IDS` is a comma-separated UUID allowlist;
+`WORKER_ALLOWED_FILE_TYPES` is a comma-separated MIME-type allowlist (for example,
+`text/plain,application/pdf`). Blank lists leave that dimension unrestricted; a
+non-blank list with no valid entries (for example `,`), or any document ID that is not
+a UUID, claims no jobs at all and logs the configuration error once;
+when both lists are set, a job must satisfy both. MIME types are case-insensitive
+and ignore parameters such as `charset`. UUIDs are normalized to lowercase.
+
+The worker passes active lists to the five-argument `claim_ingestion_jobs` overload.
+The database filters candidates before acquiring leases, then rechecks the locked
+document's MIME type. Unrelated queued jobs neither block scoped jobs nor consume
+attempts. Existing workers with no scope keep using the three-argument contract.
+A scoped worker requires the scope migrations; a missing overload fails closed
+rather than falling back to an unfiltered claim. Both are merged:
+`20261017175448_scope_ingestion_claim_atomically.sql` (PR #3628) and
+`20261018053558_recheck_ingestion_claim_scope_after_job_lock.sql` (PR #3633) reached
+`main` on 18 October 2026, so the Supabase integration was expected to apply them to
+production automatically. Their production status is **unverified in this runbook**: before
+enabling a scoped worker, confirm both with the post-merge `live-drift` workflow (both
+`check:drift` and `check:migration-history` green).
+
+### Roster-offer retry consumer
+
+The follow-up for PS-008 adds a worker-owned, one-minute retry consumer for the
+service-role-only roster offer outbox. Its migration,
+`20261018073435_durable_roster_offer_device_outbox.sql`, merged to `main` on
+18 October 2026 (PR #3652), so the Supabase integration was expected to apply it to
+production automatically. Its production status is likewise **unverified in this runbook**;
+confirm it with the post-merge `live-drift` workflow before relying on the consumer. The original milestone/mutation proposals
+retain their separate merge gates.
+
+Before relying on the consumer, an operator must verify that the
+worker has the intended `ROSTER_TEAM_RELEASE_ENABLED` setting and its own valid
+`WEB_PUSH_PUBLIC_KEY`, `WEB_PUSH_PRIVATE_KEY` and `WEB_PUSH_SUBJECT` bindings.
+The consumer remains inactive while the staff release is held or push is not
+configured. Do not copy credentials into a PR preview or enable staff release just
+to test the consumer. No bindings or release flags were changed by this repair.
+
+Use the synthetic PostgreSQL fixtures under `tests/fixtures/roster-offer-outbox/`
+for transaction checks; they are minimal disposable-cluster scaffolding, never a
+hosted database script. Provider acceptance is at least once: after an accepted
+push and lost acknowledgement, that device can receive a duplicate. Device IDs,
+owner IDs, endpoints and payloads must not enter worker logs. The outbox retains
+no endpoints; eligible device receipts are terminal independently, and pending
+ones retry until the event expires. Expired rows are removed in bounded batches
+when the configured consumer next claims work.
+
+### Administrator upload transfer deadline
+
+Administrator uploads use a request-scoped Storage client with a finite 120-second
+deadline per network operation, including collision downloads and recovery uploads.
+Disconnects abort that client; signal-bound clients are never cached. Database/auth/RPC
+clients retain their normal 30-second default, and worker batch deadlines are unchanged.
+A caller disconnect does not remove an already committed admission.
+
+Unknown Storage outcomes retain the existing durable reconciliation/replay path and
+are logged before cancellation becomes a 499 response. The additional
+`upload_storage_outcome_unknown` record contains only `correlationId` and the opaque
+`storageObjectRef`; it does not add owner/document IDs, filenames, content or Storage
+paths. An unknown outcome is not permission to delete an object. Use the existing
+privileged reconciliation workflow after checking admission and live references.
+
+### Legacy smart-index backfill
+
+`node scripts/run-tsx.mjs scripts/backfill-smart-index.ts --write --confirm`
+refuses before loading provider/database clients or changing index rows. This legacy
+path lacks a scanner-bound ingestion permit and may mutate a committed generation
+before requesting embeddings. `--metadata-only` also requests embeddings and has the
+same refusal. Read-only preview retains its existing credential/confirmation
+requirements. Use admitted, scanner-bound worker ingestion for writes; command-line
+confirmation and a service-role key do not supply source/scanner authority.
+
+### Managed extraction cleanup ownership
+
+The worker adopts native prepared extraction paths immediately after extraction,
+before cancellation checks, capture, packet construction or registration. Its existing
+outer cleanup then owns those paths through later inventory/download failures.
+Preparations not transferred to that owner are cleaned locally, with duplicate paths
+removed only once. Successful native extraction remains available until its owner
+finishes; the callback does not enable a claim, resume queues or change generation
+commit rules.

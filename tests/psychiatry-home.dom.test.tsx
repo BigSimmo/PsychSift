@@ -63,7 +63,6 @@ describe("PsychiatryHome", () => {
       "specifiers",
       "formulation",
       "therapy-compass",
-      "forms",
       "calculators",
       "dictionary",
       "first-nations",

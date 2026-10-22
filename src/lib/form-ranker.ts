@@ -102,6 +102,12 @@ export type FormCatalogDetails = {
    * from the content being present.
    */
   contentReviewStatus?: "drafted" | "reviewed";
+  /**
+   * When the operational guidance was signed off (`reviewedAt` in
+   * `data/forms-content-review.json`), set only for a `reviewed` form. Its 24-month
+   * review date counts from here (owner decision 21 Oct 2026).
+   */
+  contentReviewedAt?: string;
 };
 
 export function formCatalogDetails(record: FormRecord): FormCatalogDetails | null {

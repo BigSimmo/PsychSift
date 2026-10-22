@@ -4,12 +4,23 @@ import therapies from "../src/data/therapies-source.json";
 import {
   extractNiceGuidelineDetails,
   isLaterAddedNiceReference,
+  isLaterAddedReference,
   splitSourceCitations,
   therapyNiceGuidelineMetadata,
   therapySourceMetadata,
 } from "@/lib/therapy-source-governance";
 
 describe("therapy source governance", () => {
+  it("withdraws CET claims attributed to the unidentified 2025 review", () => {
+    const cet = therapies.find((therapy) => therapy.slug === "cue-exposure-therapy-cet-for-substance-use-disorders")!;
+    expect(cet.reviewStatus).toBe("needs_review");
+    expect(cet.sourceNotes).toContain("excluded pending verification");
+    for (const [key, value] of Object.entries(cet)) {
+      if (key !== "sourceNotes" && typeof value === "string")
+        expect(value, key).not.toMatch(/2025|44 controlled trials/);
+    }
+  });
+
   const source = { title: "Example guideline", sourceType: "Guideline", reference: "Ref 12" };
 
   it("keeps imported source currency, designation and extraction quality unknown", () => {
@@ -27,17 +38,24 @@ describe("therapy source governance", () => {
     expect(therapySourceMetadata(source, "reviewed").clinical_validation_status).toBe("locally_reviewed");
   });
 
-  it("identifies later-added NICE guideline citations from the 2026-10-09 sweep", () => {
+  it("identifies later-added NICE guideline citations from the 2026-10-09 sweep and 2026-10-17 sweep", () => {
     const laterAddedSample =
       'Psychosis and schizophrenia in adults, recommendation 1.1.5.1: "Consider peer support for people with psychosis or schizophrenia to help improve service user experience and quality of life." https://www.nice.org.uk/guidance/cg178/chapter/Recommendations. (NICE CG178) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher\'s own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.';
 
     expect(isLaterAddedNiceReference(laterAddedSample)).toBe(true);
+    expect(isLaterAddedReference(laterAddedSample)).toBe(true);
     expect(isLaterAddedNiceReference("Imported reference. (PubMed)")).toBe(false);
+    expect(isLaterAddedReference("Imported reference. (PubMed)")).toBe(false);
     expect(isLaterAddedNiceReference(null)).toBe(false);
-    expect(isLaterAddedNiceReference(undefined)).toBe(false);
+    expect(isLaterAddedReference(undefined)).toBe(false);
 
-    const laterAddedRecords = therapies.filter((t) => t.sources.some((s) => isLaterAddedNiceReference(s.reference)));
-    expect(laterAddedRecords).toHaveLength(22);
+    const laterAddedNiceRecords = therapies.filter((t) =>
+      t.sources.some((s) => isLaterAddedNiceReference(s.reference)),
+    );
+    expect(laterAddedNiceRecords).toHaveLength(22);
+
+    const allLaterAddedRecords = therapies.filter((t) => t.sources.some((s) => isLaterAddedReference(s.reference)));
+    expect(allLaterAddedRecords).toHaveLength(48);
   });
 
   it("extracts structured guideline details from a NICE recommendation citation", () => {
@@ -71,13 +89,38 @@ describe("therapy source governance", () => {
     });
   });
 
-  it("splits citations and extracts trailing non-clinical notes", () => {
+  it("accepts the single-authority 'NICE guideline NG222' form and normalises its code", () => {
+    const metadata = therapyNiceGuidelineMetadata(
+      { authority: "NICE guideline NG222", text: "Depression in adults: treatment and management." },
+      "needs_review",
+    );
+    expect(metadata).toMatchObject({ source_kind: "guideline", version: "NG222", publisher_code: "NICE" });
+  });
+
+  it("does not label PubMed or RANZCP citations NICE when their prose mentions a NICE guideline", () => {
+    for (const authority of ["PubMed", "RANZCP", "NICE NG222 / PubMed", "NICE / APA"]) {
+      expect(
+        therapyNiceGuidelineMetadata(
+          { authority, text: "Review comparing NICE NG222 https://www.nice.org.uk/guidance/ng222/." },
+          "needs_review",
+        ),
+      ).toMatchObject({
+        source_kind: "document",
+        publisher: null,
+        publisher_code: null,
+        jurisdiction: null,
+        version: null,
+      });
+    }
+  });
+
+  it("splits citations and extracts trailing non-clinical notes without splitting on 4-digit year parentheses", () => {
     const text =
-      "Recommendation 1. (NICE NG222) Recommendation 2. (NICE NG225) These references were added on 9 October 2026.";
+      "Recommendation 1 from Frank et al. (2005) trial. (NICE NG222) Recommendation 2. (NICE NG225) These references were added on 9 October 2026.";
     const { citations, notes } = splitSourceCitations(text);
 
     expect(citations).toHaveLength(2);
-    expect(citations[0]).toEqual({ text: "Recommendation 1.", authority: "NICE NG222" });
+    expect(citations[0]).toEqual({ text: "Recommendation 1 from Frank et al. (2005) trial.", authority: "NICE NG222" });
     expect(citations[1]).toEqual({ text: "Recommendation 2.", authority: "NICE NG225" });
     expect(notes).toEqual(["These references were added on 9 October 2026."]);
   });

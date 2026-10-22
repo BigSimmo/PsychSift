@@ -1,12 +1,16 @@
 "use client";
 
-import { useId } from "react";
+import { useEffect, useId, useRef } from "react";
 import { Check, Copy, Search, Shield, Sparkles } from "lucide-react";
 
 import { cardPadding, cardSurface } from "@/components/card-recipes";
 import { PageHeader } from "@/components/ui/page-header";
 import { cn, pageContainer } from "@/components/ui-primitives";
 import { Button } from "@/components/ui/button";
+import { announce } from "@/components/ui/live-announcer";
+import { ClinicalSignInNotice } from "@/components/mode-kit/clinical-sign-in-notice";
+import { useClinicalToolAccess } from "@/components/mode-kit/use-clinical-tool-access";
+import { CLINICAL_SIGN_IN_COPY } from "@/lib/front-door-content";
 
 import { useTcBindings } from "../bindings";
 import { RECOMMEND_CONSTRAINTS } from "../data/select";
@@ -22,6 +26,7 @@ export function RecommendScreen() {
   const ranked = b.recommendations;
   const top = ranked[0];
   const desktopIdPrefix = useId();
+  const access = useClinicalToolAccess();
 
   const copyShortlist = () =>
     copy(
@@ -44,6 +49,21 @@ export function RecommendScreen() {
   const matchLabel = b.loading
     ? "Ranking clinical matches…"
     : `${ranked.length} ranked ${ranked.length === 1 ? "match" : "matches"}`;
+  // The scenario sheet and the result heading show the same count. One
+  // bounded announcement prevents both speaking while the phone editor is open.
+  const lastAnnouncedLabel = useRef<string | null>(null);
+  useEffect(() => {
+    // The singleton remains accessible while the scenario sheet makes the
+    // results page inert, including when the scenario yields zero matches.
+    if (b.loading || lastAnnouncedLabel.current === matchLabel) return;
+    // Deduplicate only delivered outcomes. The first result still announces;
+    // a loading transition may cancel this timer and must not consume it.
+    const timer = window.setTimeout(() => {
+      lastAnnouncedLabel.current = matchLabel;
+      announce(matchLabel, { eventId: "therapy-recommend-count" });
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [b.loading, matchLabel]);
 
   const scenarioBindings = {
     recQuery: b.recQuery,
@@ -53,13 +73,28 @@ export function RecommendScreen() {
     toggleConstraint: b.toggleConstraint,
   };
 
+  const header = (
+    <PageHeader
+      className="mb-5 sm:mb-6"
+      title="Recommend"
+      description="Rank catalogue therapies against a clinical scenario — advisory only."
+    />
+  );
+
+  // Ranking therapies against a typed scenario is for signed-in health professionals
+  // (see useClinicalToolAccess); browsing and comparing stay open.
+  if (access === "sign-in-required") {
+    return (
+      <section data-screen-label="Recommend" className={pageContainer}>
+        {header}
+        <ClinicalSignInNotice copy={CLINICAL_SIGN_IN_COPY.therapyRanking} testId="therapy-ranking-sign-in" />
+      </section>
+    );
+  }
+
   return (
     <section data-screen-label="Recommend" className={pageContainer}>
-      <PageHeader
-        className="mb-5 sm:mb-6"
-        title="Recommend"
-        description="Rank catalogue therapies against a clinical scenario — advisory only."
-      />
+      {header}
 
       <RecommendScenarioControl
         {...scenarioBindings}
@@ -83,6 +118,7 @@ export function RecommendScreen() {
           icon={Sparkles}
           title="No ranked matches"
           body="Add a presentation, setting or caution, or widen the constraints. Ranking stays inside the therapy catalogue."
+          announce={false}
         />
       ) : (
         <>
@@ -91,9 +127,7 @@ export function RecommendScreen() {
               <div className="text-base-minus font-semibold text-[color:var(--text-heading)]">
                 Ranked clinical matches
               </div>
-              <p className="mt-0.5 text-xs font-semibold text-[color:var(--text-muted)]" aria-live="polite">
-                {matchLabel}
-              </p>
+              <p className="mt-0.5 text-xs font-semibold text-[color:var(--text-muted)]">{matchLabel}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Button

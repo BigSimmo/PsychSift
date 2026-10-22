@@ -120,8 +120,9 @@ function pathExistsAtCommit(commit, file) {
  * WHY A CONTENT DIGEST SITS BESIDE THE REVIEWED COMMIT.
  *
  * 🔴 **THE FAILURE THIS EXISTS FOR, MEASURED 2026-09-18 (#D7K71C).** An author updating this
- * register cannot know the SHA their work will land as: this repository squash-merges, so that
- * commit does not exist until after the merge. PR #2882 therefore recorded its own pre-squash
+ * register cannot know the SHA their work will land as: this repository squash-merged PRs until
+ * 2026-10-18 (merge commits only since then), so that commit did not exist until after the
+ * merge. PR #2882 therefore recorded its own pre-squash
  * branch head in all twelve entries. The squash orphaned that object, and from the moment it
  * landed the ancestry check failed on `main` and on every branch that merged `main` — taking the
  * aggregate required check red and blocking five unrelated pull requests. It cost most of a
@@ -130,7 +131,8 @@ function pathExistsAtCommit(commit, file) {
  *
  * Reachability was only ever a proxy. What the register claims is that a human reviewed *this
  * content*, so the content is what we pin. While the reviewed commit is reachable nothing
- * changes and the snapshot checks run exactly as before. When it is not — the squash case — the
+ * changes and the snapshot checks run exactly as before. When it is not — the squash case,
+ * which still applies to entries reviewed on PRs squash-merged before 2026-10-18 — the
  * digests answer the same question directly, and a mismatch is still RED.
  *
  * ⚠️ **THIS IS NOT A WEAKENING.** The commit check asks only whether a cited path *existed* at
@@ -422,7 +424,7 @@ export function evaluateClinicalHazardControls(
   if (!commitReachable && contentProof.proven) {
     console.warn(
       `CLINICAL_HAZARD_CONTROLS_COMMIT_UNREACHABLE: reviewedCommit ${manifest?.reviewedCommit} is not ` +
-        "reachable from HEAD (expected after a squash merge). Every cited path is recorded and present, " +
+        "reachable from HEAD (expected when it came from a squash-merged PR). Every cited path is recorded and present, " +
         "so the register's claims were checked against the recorded digests instead.",
     );
   }
@@ -579,8 +581,9 @@ export function evaluateClinicalHazardControls(
 }
 
 /**
- * Record the digest of every cited path, so the register survives the squash merge that orphans
- * its reviewedCommit. Append-and-update only: this never edits a review date, a state or a
+ * Record the digest of every cited path, so the register survives a squash merge (the method used
+ * before 2026-10-18) or any other history change that orphans its reviewedCommit.
+ * Append-and-update only: this never edits a review date, a state or a
  * residual risk, because those are a human's words and not this script's to touch.
  */
 export function sealReviewedPathDigests(manifest) {

@@ -12,7 +12,7 @@ compact checklist; that agent owns the journey protocol.
 
 ## Repository Review Protocol
 
-Follow `AGENTS.md` review throttling and `docs/codex-review-protocol.md` before starting. Do not review opportunistically or mutate files during pure review. After a completed branch/PR review, use `npm run ledger:append` to create an immutable review record; never edit the frozen `docs/branch-review-ledger.md` table.
+Follow `AGENTS.md` review throttling and `docs/codex-review-protocol.md` before starting. Do not review opportunistically or mutate files during pure review. After a completed PR review, post one `Review record` comment on the PR (see [Records](../../../docs/agents/pull-request-workflow.md#records)); never edit the frozen `docs/branch-review-ledger.md` table.
 
 Read `docs/search-chrome-behaviour.md` and `docs/wiring-conventions.md` before judging search chrome or controls. Run `npm run ensure` before browser work; confirm `/api/local-project-id` matches this project. Do not call OpenAI, Supabase, GitHub/hosted CI, or provider-backed gates without explicit approval.
 

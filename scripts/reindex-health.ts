@@ -63,6 +63,14 @@ async function main() {
     return;
   }
 
+  // Exact count of pending jobs that were due more than N minutes ago. The open-jobs preview below
+  // is capped at the 25 oldest jobs, so an overdue upload behind older not-yet-due retries would
+  // otherwise go unseen by the ingestion autopilot (which passes its own threshold here).
+  const overdueIndex = process.argv.indexOf("--pending-overdue-minutes");
+  const overdueArg = overdueIndex >= 0 ? Number.parseInt(process.argv[overdueIndex + 1] ?? "", 10) : Number.NaN;
+  const pendingOverdueMinutes = Number.isFinite(overdueArg) && overdueArg > 0 ? overdueArg : 30;
+  const pendingOverdueBefore = new Date(Date.now() - pendingOverdueMinutes * 60_000).toISOString();
+
   const [
     indexed,
     queued,
@@ -71,6 +79,7 @@ async function main() {
     pendingJobs,
     processingJobs,
     failedJobs,
+    pendingOverdueJobs,
     strandedQueued,
     chunksWithSynopsis,
   ] = await Promise.all([
@@ -102,6 +111,14 @@ async function main() {
       "jobs_failed",
       supabase.from("ingestion_jobs").select("id", { count: "exact", head: true }).eq("status", "failed"),
     ),
+    safeCount(
+      "jobs_pending_overdue",
+      supabase
+        .from("ingestion_jobs")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pending")
+        .lt("next_run_at", pendingOverdueBefore),
+    ),
     safeDerivedCount("documents_stranded_queued", () =>
       listStrandedQueuedDocuments({
         supabase,
@@ -121,10 +138,39 @@ async function main() {
 
   const { data: openJobs, error: jobsError } = await supabase
     .from("ingestion_jobs")
-    .select("id,document_id,status,stage,attempt_count,max_attempts,locked_at,next_run_at,error_message")
+    .select("id,document_id,status,stage,attempt_count,max_attempts,locked_at,next_run_at,created_at,error_message")
     .in("status", ["pending", "processing", "failed"])
     .order("created_at", { ascending: true })
     .limit(25);
+
+  // Audit 2026-10-20 ING-A-02 / EVAL-09: the open-jobs preview above is the 25 oldest jobs, so a job
+  // stranded on its final attempt can sit behind old failed jobs unseen. Count it directly, along
+  // with indexed documents that have no searchable chunks. (Embeddings are NOT NULL, so no missing-embedding count.)
+  const nowIso = new Date().toISOString();
+  const integrityCounts = await Promise.all([
+    safeDerivedCount("jobs_stranded_final_attempt", async () => {
+      const { data, error } = await supabase
+        .from("ingestion_jobs")
+        .select("id,attempt_count,max_attempts")
+        .eq("status", "processing")
+        .lt("lease_expires_at", nowIso)
+        .limit(500);
+      if (error) throw new Error(error.message);
+      return (data ?? []).filter((job) => Number(job.attempt_count ?? 0) >= Number(job.max_attempts ?? 0));
+    }),
+    safeCount(
+      "documents_indexed_without_chunks",
+      supabase
+        .from("documents")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "indexed")
+        .eq("chunk_count", 0),
+    ),
+    // document_chunks.embedding is NOT NULL, so a missing-embedding count would always be 0; not checked.
+  ]);
+  const integrityProblems = integrityCounts
+    .filter((item) => Number(item.count ?? 0) > 0)
+    .map((item) => `${item.label}: ${item.count}`);
 
   const counts = [
     indexed,
@@ -134,10 +180,11 @@ async function main() {
     pendingJobs,
     processingJobs,
     failedJobs,
+    pendingOverdueJobs,
     strandedQueued,
     chunksWithSynopsis,
   ];
-  const countErrors = counts.filter((item) => item.error);
+  const countErrors = [...counts, ...integrityCounts].filter((item) => item.error);
   const errors = [
     ...countErrors.map((item) => ({ label: item.label, error: unavailableMessage(item.error) ?? item.error })),
     ...(jobsError ? [{ label: "open_jobs", error: unavailableMessage(jobsError.message) ?? jobsError.message }] : []),
@@ -148,7 +195,8 @@ async function main() {
       {
         ok: countErrors.length === 0 && !jobsError,
         generatedAt: new Date().toISOString(),
-        counts: Object.fromEntries(counts.map((item) => [item.label, item.count])),
+        counts: Object.fromEntries([...counts, ...integrityCounts].map((item) => [item.label, item.count])),
+        integrityProblems,
         errors,
         openJobs: openJobs ?? [],
         recommendation:

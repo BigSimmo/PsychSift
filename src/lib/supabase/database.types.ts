@@ -1017,6 +1017,38 @@ export type Database = {
           },
         ];
       };
+      document_index_generation_snapshots: {
+        Row: {
+          captured_at: string;
+          document_id: string;
+          index_generation_id: string;
+          metadata: Json | null;
+          quality: Json | null;
+        };
+        Insert: {
+          captured_at?: string;
+          document_id: string;
+          index_generation_id: string;
+          metadata?: Json | null;
+          quality?: Json | null;
+        };
+        Update: {
+          captured_at?: string;
+          document_id?: string;
+          index_generation_id?: string;
+          metadata?: Json | null;
+          quality?: Json | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "document_index_generation_snapshots_document_id_fkey";
+            columns: ["document_id"];
+            isOneToOne: false;
+            referencedRelation: "documents";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       document_index_quality: {
         Row: {
           anchor_coverage: number | null;
@@ -2120,6 +2152,7 @@ export type Database = {
       };
       image_caption_cache: {
         Row: {
+          cache_identity: string | null;
           caption: string;
           created_at: string;
           id: string;
@@ -2131,6 +2164,7 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          cache_identity?: string | null;
           caption: string;
           created_at?: string;
           id?: string;
@@ -2142,6 +2176,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          cache_identity?: string | null;
           caption?: string;
           created_at?: string;
           id?: string;
@@ -2216,6 +2251,12 @@ export type Database = {
           enrichment_status: string;
           id: string;
           last_error: string | null;
+          lease_authority_digest: string | null;
+          lease_duration_seconds: number | null;
+          lease_expected_generation_id: string | null;
+          lease_expires_at: string | null;
+          lease_token: string | null;
+          lease_write_generation_id: string | null;
           locked_at: string | null;
           locked_by: string | null;
           max_attempts: number;
@@ -2232,6 +2273,12 @@ export type Database = {
           enrichment_status?: string;
           id?: string;
           last_error?: string | null;
+          lease_authority_digest?: string | null;
+          lease_duration_seconds?: number | null;
+          lease_expected_generation_id?: string | null;
+          lease_expires_at?: string | null;
+          lease_token?: string | null;
+          lease_write_generation_id?: string | null;
           locked_at?: string | null;
           locked_by?: string | null;
           max_attempts?: number;
@@ -2248,6 +2295,12 @@ export type Database = {
           enrichment_status?: string;
           id?: string;
           last_error?: string | null;
+          lease_authority_digest?: string | null;
+          lease_duration_seconds?: number | null;
+          lease_expected_generation_id?: string | null;
+          lease_expires_at?: string | null;
+          lease_token?: string | null;
+          lease_write_generation_id?: string | null;
           locked_at?: string | null;
           locked_by?: string | null;
           max_attempts?: number;
@@ -2346,10 +2399,16 @@ export type Database = {
           document_id: string;
           error_message: string | null;
           id: string;
+          lease_authority_digest: string | null;
+          lease_duration_seconds: number | null;
+          lease_expected_generation_id: string | null;
+          lease_expires_at: string | null;
+          lease_token: string | null;
+          lease_write_generation_id: string | null;
           locked_at: string | null;
           locked_by: string | null;
           max_attempts: number;
-          next_run_at: string;
+          next_run_at: string | null;
           progress: number;
           stage: string;
           started_at: string | null;
@@ -2364,10 +2423,16 @@ export type Database = {
           document_id: string;
           error_message?: string | null;
           id?: string;
+          lease_authority_digest?: string | null;
+          lease_duration_seconds?: number | null;
+          lease_expected_generation_id?: string | null;
+          lease_expires_at?: string | null;
+          lease_token?: string | null;
+          lease_write_generation_id?: string | null;
           locked_at?: string | null;
           locked_by?: string | null;
           max_attempts?: number;
-          next_run_at?: string;
+          next_run_at?: string | null;
           progress?: number;
           stage?: string;
           started_at?: string | null;
@@ -2382,10 +2447,16 @@ export type Database = {
           document_id?: string;
           error_message?: string | null;
           id?: string;
+          lease_authority_digest?: string | null;
+          lease_duration_seconds?: number | null;
+          lease_expected_generation_id?: string | null;
+          lease_expires_at?: string | null;
+          lease_token?: string | null;
+          lease_write_generation_id?: string | null;
           locked_at?: string | null;
           locked_by?: string | null;
           max_attempts?: number;
-          next_run_at?: string;
+          next_run_at?: string | null;
           progress?: number;
           stage?: string;
           started_at?: string | null;
@@ -3220,8 +3291,11 @@ export type Database = {
           id: string;
           interaction_id: string;
           model: string | null;
+          note: string | null;
           owner_id: string | null;
           provider_request_ids: string[];
+          record_id: string | null;
+          record_type: string;
           route: string | null;
           source_ids: string[];
         };
@@ -3233,8 +3307,11 @@ export type Database = {
           id?: string;
           interaction_id: string;
           model?: string | null;
+          note?: string | null;
           owner_id?: string | null;
           provider_request_ids?: string[];
+          record_id?: string | null;
+          record_type?: string;
           route?: string | null;
           source_ids?: string[];
         };
@@ -3246,8 +3323,11 @@ export type Database = {
           id?: string;
           interaction_id?: string;
           model?: string | null;
+          note?: string | null;
           owner_id?: string | null;
           provider_request_ids?: string[];
+          record_id?: string | null;
+          record_type?: string;
           route?: string | null;
           source_ids?: string[];
         };
@@ -3708,6 +3788,7 @@ export type Database = {
       storage_cleanup_jobs: {
         Row: {
           attempts: number;
+          cme_evidence_id: string | null;
           completed_at: string | null;
           created_at: string;
           document_bucket: string;
@@ -3733,6 +3814,7 @@ export type Database = {
         };
         Insert: {
           attempts?: number;
+          cme_evidence_id?: string | null;
           completed_at?: string | null;
           created_at?: string;
           document_bucket?: string;
@@ -3758,6 +3840,7 @@ export type Database = {
         };
         Update: {
           attempts?: number;
+          cme_evidence_id?: string | null;
           completed_at?: string | null;
           created_at?: string;
           document_bucket?: string;
@@ -3782,6 +3865,13 @@ export type Database = {
           updated_at?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: "storage_cleanup_jobs_cme_evidence_id_fkey";
+            columns: ["cme_evidence_id"];
+            isOneToOne: true;
+            referencedRelation: "cme_evidence";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "storage_cleanup_jobs_public_source_reservation_id_fkey";
             columns: ["public_source_reservation_id"];
@@ -4866,6 +4956,21 @@ export type Database = {
       };
     };
     Functions: {
+      roster_offer_alert_work: {
+        Args: {
+          p_operation: string;
+          p_open_shift_id?: string;
+          p_token?: string;
+          p_owner_ids?: string[];
+          p_subscription_id?: string;
+          p_outcome?: string;
+        };
+        Returns: Json;
+      };
+      mutate_owner_training_milestone: {
+        Args: { p_owner_id: string; p_id: string; p_operation: string; p_milestone: Json; p_registrar: Json };
+        Returns: Json;
+      };
       calendar_feed_rotate: { Args: { p_owner_id: string; p_token_hash: string }; Returns: undefined };
       calendar_feed_revoke: { Args: { p_owner_id: string }; Returns: undefined };
       calendar_feed_owner: { Args: { p_token_hash: string }; Returns: string | null };
@@ -4969,6 +5074,10 @@ export type Database = {
         Args: { p_actor_id: string; p_service_id: string; p_open_shift_id: string };
         Returns: Json;
       };
+      roster_swap_accept_for_manager: {
+        Args: { p_actor_id: string; p_service_id: string; p_swap_id: string };
+        Returns: Json;
+      };
       roster_open_post_once: {
         Args: { p_actor_id: string; p_service_id: string; p_post_key: string; p_payload: Json };
         Returns: Json;
@@ -5033,6 +5142,22 @@ export type Database = {
       cme_set_entry_goal: { Args: { p_owner_id: string; p_entry_id: string; p_goal_id: string | null }; Returns: Json };
       cme_set_entry_archived: { Args: { p_owner_id: string; p_entry_id: string; p_archived: boolean }; Returns: Json };
       cme_evidence_counts: { Args: { p_owner_id: string; p_year: number }; Returns: Json };
+      work_move_team_v1: {
+        Args: { p_actor_id: string; p_service_id: string; p_expected_hospital_id: string; p_to_hospital_id: string };
+        Returns: string;
+      };
+      recover_ingestion_job: {
+        Args: { p_job_id: string; p_action: string; p_expected: Json };
+        Returns: Json;
+      };
+      rag_cache_scope_revision_v1: {
+        Args: { p_owner_id: string | null; p_include_public: boolean; p_document_ids?: string[] | null };
+        Returns: string;
+      };
+      cme_remove_evidence_v2: {
+        Args: { p_owner_id: string; p_evidence_id: string; p_reason: string };
+        Returns: Database["public"]["Tables"]["cme_evidence"]["Row"];
+      };
       cme_remove_evidence: {
         Args: { p_owner_id: string; p_evidence_id: string; p_reason: string };
         Returns: Database["public"]["Tables"]["cme_evidence"]["Row"];
@@ -5178,6 +5303,8 @@ export type Database = {
       };
       claim_ingestion_jobs: {
         Args: {
+          p_allowed_document_ids?: string[] | null;
+          p_allowed_file_types?: string[] | null;
           p_claim_limit?: number;
           p_stale_after_minutes?: number;
           p_worker_id: string;
@@ -6039,6 +6166,14 @@ export type Database = {
         };
         Returns: Database["public"]["Tables"]["public_source_versions"]["Row"];
       };
+      rollback_document_index_generation: {
+        Args: { p_document_id: string; p_expected_generation: string; p_target_generation: string };
+        Returns: Json;
+      };
+      document_index_generation_metadata_keys: {
+        Args: never;
+        Returns: string[];
+      };
       transition_public_source_version: {
         Args: { p_activation_event_id: string; p_target_lifecycle: string; p_version_id: string };
         Returns: Database["public"]["Tables"]["public_source_versions"]["Row"];
@@ -6104,6 +6239,10 @@ export type Database = {
       rollback_site_content_release: {
         Args: { p_expected_active_release_id: string; p_target_release_id: string; p_recovery_digest: string; p_rollback_receipt: Json };
         Returns: boolean;
+      };
+      purge_expired_rag_answer_feedback_notes: {
+        Args: { p_retention_days?: number };
+        Returns: number;
       };
       purge_expired_rag_queries: {
         Args: { p_retention_days?: number };

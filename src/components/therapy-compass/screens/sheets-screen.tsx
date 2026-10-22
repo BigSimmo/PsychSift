@@ -357,7 +357,7 @@ function TherapyPicker() {
         />
       </button>
       {open ? (
-        <div className="absolute z-[30] top-full mt-1 left-0 right-0 bg-[color:var(--surface)] border border-[color:var(--border)] rounded-lg shadow-[var(--shadow-hover)] overflow-hidden">
+        <div className="absolute z-[30] top-full mt-1 left-0 right-0 bg-[color:var(--surface)] border border-[color:var(--border)] rounded-lg shadow-[var(--e3)] overflow-hidden">
           <label className="relative flex items-center p-2 border-b border-[color:var(--border)]">
             <Search
               aria-hidden="true"

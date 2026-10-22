@@ -37,7 +37,7 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 // Directories that are deliberately append-only or archival — staleness there is the point,
 // not a problem. Keep this list in sync with AGENTS.md's "immutable ledger" conventions.
 const EXCLUDED_PREFIXES = [
-  "docs/branch-review-records/",
+  "docs/archive/branch-review-records/",
   "docs/outstanding-issues-inbox/",
   "docs/archive/",
   "docs/adr/", // architecture decision records are intentionally frozen once accepted

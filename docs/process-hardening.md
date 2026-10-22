@@ -18,6 +18,53 @@ Day-to-day selection, local Playwright keep-root, and refuted speed levers live 
 Production UI critical-path numbers remain in "CI shape and cost" below; do not raise
 Playwright workers or revive the refuted cache/shard hacks listed there.
 
+## CI/testing audit repairs (2026-10-20)
+
+The two local audits identified false-success paths and missing verification inputs. Repairs keep
+the existing coverage thresholds, required aggregates, advisory policies and release browser legs:
+
+- Main failure routing retains each unresolved check until later applicable recovery; scoped
+  green runs do not erase unrelated failures. Tree proof reads the correct Checks identifier and
+  requires complete exact coverage/UI shard membership. Its coverage estimator evaluates boolean
+  guards with explicit unknown inputs rather than treating OR as AND.
+- Browser scope follows the client import closure, including browser-facing shared libraries.
+  Required preflight reconciles quarantine tags against owned, unexpired exact ledger identities.
+  Phone navigation waits for hydration, fonts and stable chrome geometry instead of a fixed 700 ms.
+- Image scan evaluation rejects missing or malformed counts without arithmetic fallbacks. The
+  required read-only app smoke starts the actual app command, records its outcome and requires HTTP
+  success as well as a healthy JSON body. No container-runtime success is implied by unit mocks.
+- Focused unit selection checks every input and includes filesystem/subprocess consumers. LCOV
+  inventory checks every declared source file and shares the reporter's test/spec exclusions,
+  including archived test fixtures; ordinary archived executables stay required. Edge typechecking uses `deno.lock` with `--frozen`
+  and explicit edge imports, ignoring the unrelated Next.js package workspace. The lock retains
+  its dependency versions/integrities and no longer snapshots that unrelated workspace metadata.
+- Vitest receipts include Python runtime/prerequisite identity. Imported modules with missing
+  package metadata or file paths record explicit unavailable prerequisite states instead of
+  aborting the interpreter probe. Damaged distribution metadata retains explicit error states and
+  path provenance in a deterministic inventory; unidentifiable runtimes still cannot certify reuse. Offline release builds scrub
+  inherited provider credentials through the shared environment policy. Broad or ambiguous
+  selectors cannot obtain a shared focused-test lease.
+- Dependency audit findings fail immediately; incomplete/tooling results get at most three
+  attempts and two waits. Browser archive keys use installed engine revisions and runner identity,
+  shared across UI/Lighthouse/release setup while preserving fresh system dependency installs.
+  Diagnostic artifacts retain run attempts; bundle-budget apply instructions download the matching
+  attempt-specific artifact. Stable consumer artifacts explicitly overwrite.
+  Coverage failures retain outcome/timing diagnostics separately from successful merge blobs.
+
+Workflow changes also run `check:github-actions:semantics`: actionlint 1.7.7 from its official
+release, with archive and executable SHA-256 pins in `scripts/actionlint-release.json`. The gate
+checks known-valid and known-invalid semantic fixtures before checking the real workflows.
+Cached executables are reverified on every invocation; ambient shell/Python linters do not alter
+this schema/expression gate. Composite-action bodies retain their separate policy contracts.
+
+The pinned semantic validator passed locally. A bounded synthetic Node image also proved real
+Docker read-only enforcement, isolated networking, HTTP status rejection and graceful PID 1
+shutdown; that fixture does not establish production Next image readiness. Hosted artifact
+reruns, cache hit rates, critical-path savings, the new Checks permission, exact locked edge
+resolution and browser motion/scroll readiness still need their applicable CI evidence. Keep
+every browser leg until measurements establish equivalent coverage for a smaller installed-layout
+subset.
+
 ## Risk-routed local and CI verification (2026-08-02)
 
 - `ci-change-scope.mjs` is the shared fail-closed classifier for local PR handoff and hosted CI. Only recognised documentation and workflow/policy paths take a light route; product code, tests, executable config, dependencies, database/container/RAG surfaces, mixed scope, and unknown non-document paths retain heavy verification.
@@ -347,7 +394,7 @@ Read from the Actions API for PR runs `36110977826`, `36113010077`, `36107996148
 ## Phase 1 - Active now
 
 - `npm run verify:cheap` is the ordinary pre-PR local gate: `check:installed-lock-parity`, then `check:diff-integrity`, lint, typecheck, and the full offline unit suite. Run it freely — it is meant to be cheap enough not to think about. The parity step stays because it is sub-second and, without it, the other three would happily report green against a stale `node_modules`.
-- `npm run verify:full` is the broad offline local gate for cross-module risk: the 43 static/consistency gates (`check:runtime` through `check:offline-pack`; `npm run check:gate-manifest` lists them and pins the count), then lint, typecheck, and unit tests. It is selected, not automatic for every source/config/test edit.
+- `npm run verify:full` is the broad offline local gate for cross-module risk: the static/consistency gates (`check:runtime` through `check:offline-pack`; `npm run check:gate-manifest` lists them and prints the current count), then lint, typecheck, and unit tests. It is selected, not automatic for every source/config/test edit.
   - **Split on 2026-09-17 (owner decision).** `verify:cheap` had grown to 41 chained commands — including `check:pr-mergeability` (an offline self-test and workflow contract; an earlier version of this note wrongly said it calls GitHub) — so the gate advertised as the fast iteration loop was in practice the slowest thing in it, and agents ran it reflexively. The static gates did not stop running: they moved to `verify:full` (38 at the split; live count is whatever `check:gate-manifest` reports against `verify:full:internal`, 43 through `check:offline-pack`), and every one of them still runs in CI, which `check:gate-manifest` continues to enforce one-way (CI may run more than the local chain, never less — it now reads `verify:full:internal`, and pointing it back at the cheap chain would silently drop those gates from that invariant while still passing).
 - `npm run verify:pr-local` is the risk-routed local mirror of the normal PR gate: runtime, installed-lock parity, changed-file format, conditional `npm ci --dry-run --ignore-scripts` for package/lockfile edits, then focused docs/workflow contracts or the fail-closed executable plan with lint, typecheck, one full unit run, conditional build, and RAG fixture/manifest validation. Local scope resolves against the repository default base rather than a feature-branch upstream; set `PR_BASE_REF` explicitly for release-targeted PRs.
 - `npm run verify:ui` is the complete required production Chromium gate: `check:runtime` plus all non-quarantined production journeys (`test:e2e:pr`).
@@ -813,13 +860,16 @@ the durable index for the tooling; `docs/operator-backlog.md` tracks the human-o
   should use an outcome-focused title, complete Summary and Verification evidence, and provide risk/rollback
   evidence for clinical or operationally sensitive paths. UI changes should carry `verify:ui` evidence (or an
   explicit reason it could not run), and clinical-risk changes should disposition the governance
-  checklist. **All of that is advisory as of 2026-09-17 (owner decision): no PR-body prose blocks a merge.**
+  checklist. **All of that is advisory as of 2026-09-17 (owner decision).** Body text blocks a merge only
+  where it makes a false or missing safety claim: deferred-deploy wording on a migration PR, and a missing
+  `Migration history edit approved:` or `Required check change approved:` line where one is needed.
   The `## Clinical Governance Preflight` completeness gate and the `RAG impact:` declaration were both hard
   blocks until then. Neither read a line of code — they verified that an author had typed the right seven
   sentences — while `clinicalRiskPatterns` matches most meaningful paths in the repository, so the block fired
   on nearly all real work and cost a round trip every time. They now emit warnings. The gates that still fail
-  closed here are unchanged: migration-history immutability, required-check forgery, and the
-  `PR_POLICY_BODY.md` transport check. The clinical safeguards that actually
+  closed here are migration-history immutability, required-check forgery, the
+  `PR_POLICY_BODY.md` transport check and, since 2026-10-20, auto-merge armed on a migration PR, a
+  required-check file change without its approval line, and a bot commit on a protected path. The clinical safeguards that actually
   inspect behaviour — owner-scope, query-privacy, the live eval-canary, `tests/rag-imputation-contract.test.ts`
   — were never part of this file and are untouched.
   `scripts/pr-policy.mjs` also flags operational risk bundled with clinical or UI risk (#178),

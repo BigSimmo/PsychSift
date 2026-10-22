@@ -143,15 +143,6 @@ const EXEMPTIONS: Exemption[] = [
     count: 2,
     reason: "overlay primitive sizing on phone, cancelled at sm by sm:min-h-0",
   },
-  {
-    // Collapsed sidebar rail in `sidebar-live-mockup.tsx` (design scratch, but the stylesheet
-    // itself lives outside a mockups path). It also subtracts its OWN margins, a quantity it
-    // knows exactly, rather than an estimate of someone else's chrome.
-    file: "src/components/sidebar-live-shell.module.css",
-    match: "height: calc(100dvh - var(--space-2))",
-    count: 1,
-    reason: "mockup-only rail subtracting its own known margins, not a chrome estimate",
-  },
 ];
 
 function walk(dir: string): string[] {

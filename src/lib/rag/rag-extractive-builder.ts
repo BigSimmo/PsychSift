@@ -17,6 +17,7 @@ import {
   isAtomicNmhsClozapineRedRangeSource,
   buildClozapineBloodActionThresholdAnswer,
 } from "@/lib/rag/rag-source-bound-policy-procedures";
+import { buildDocumentSupportListAnswer } from "@/lib/rag/rag-document-support-list";
 import { boldHighYieldClinicalText } from "@/lib/answer-ranking";
 import {
   adjacentLabelledNumericBandConflicts,
@@ -46,9 +47,11 @@ import {
 } from "@/lib/evidence";
 import { hasBoundMonitoringCadence as deliveredMonitoringFrequencyPresent } from "@/lib/evidence-relevance";
 import {
+  medicationClassesInText,
   medicationEntitiesInText,
   medicationEntityMatchesInText,
   medicationSafetyEntitiesInText,
+  namesOnlyMedicinesOutsideQueriedClass,
 } from "@/lib/medication-entities";
 import {
   buildAnswerScoreExplanations,
@@ -185,6 +188,23 @@ export const dischargeRequirementBindingPatterns = [
   /\bongoing care arrangements?\s+(?:must|should)\s+(?:be\s+documented|include|ensure|complete|document)\b/i,
 ] as const;
 
+/**
+ * A policy's own administration rather than the clinical monitoring it governs: its
+ * "Compliance, monitoring and evaluation" section, audit-of-this-policy text, and glossary
+ * rows ("Metabolic Screen An evidence-based process for…"). The monitoring vocabulary in them
+ * passes the schedule check, so without this the governance heading led the metabolic
+ * monitoring answer (#J8SJQ9, Eval Canary 39614340500).
+ */
+const policyAdministrationSentencePattern =
+  /\b(?:compliance,?\s+monitoring\s+and\s+evaluation|compliance\s+(?:against|with)\s+this\s+(?:policy|procedure|guideline|protocol)|the\s+following\s+definitions\s+are\s+relevant|term\s+definition)\b/i;
+const glossaryEntrySentencePattern =
+  /^\s*(?:[A-Z][\w’'-]*[\s:;,–—-]+){1,4}An?\s+(?:evidence[-\s]based\s+)?(?:process|tool|method|framework|document)\s+(?:for|to|that|used|is|are)\b/;
+/** A section heading split out as its own sentence ("2.8. Therapeutic Drug Monitoring") led the lithium timing answer (Eval Canary 39711681854). A predicate verb or a cadence word marks a title-cased sentence, not a heading. */
+const bareSectionHeadingPattern =
+  /^(?:\d+(?:\.\d+)*\.?\s+)?(?!(?:Monitor|Check|Stop|Cease|Withhold|Avoid|Refer|Review|Repeat|Arrange|Continue|Start|Consider|Measure|Record)\b)(?!.*\b(?:Is|Are|Was|Were|Be|Should|Must|May|Can|Will|Needs?|Requires?|Every|Daily|Weekly|Fortnightly|Monthly|Quarterly|Yearly|Annually|After|Before|Within|Until|Per)\b)[A-Z][a-z][\w’'-]*(?:\s+(?:[A-Z][a-z][\w’'-]*|and|of|for|the|in|to)){1,5}[.:]?$/;
+/** A link tail left at a sentence start by a split inside "(… .pdf)" ("pdf) Ongoing suicide risk …"). */
+const linkTailDebrisPattern = /^(?:[\w./:-]*\.)?(?:pdf|docx?|html?|aspx?)\)/i;
+
 export function factSupportsAnswerIntent(
   kind: ExtractedClinicalFactKind,
   sentence: string,
@@ -194,7 +214,13 @@ export function factSupportsAnswerIntent(
 ) {
   const text = normalizeSectionText(sentence);
   const normalizedQuery = normalizeSectionText(query).toLowerCase();
-  if (!text || hasBadExtractiveQuality(text)) return false;
+  if (
+    !text ||
+    hasBadExtractiveQuality(text) ||
+    bareSectionHeadingPattern.test(text) ||
+    linkTailDebrisPattern.test(text)
+  )
+    return false;
 
   switch (intent) {
     case "dose":
@@ -241,6 +267,8 @@ export function factSupportsAnswerIntent(
       // Level ranges like "Maintenance range is 0.6-0.8 mmol/L" stay admissible
       // through their level units.
       if (kind === "dose" && !monitoringCadenceOrLevelPattern.test(text)) return false;
+      if (policyAdministrationSentencePattern.test(text) || glossaryEntrySentencePattern.test(text)) return false;
+      if (namesOnlyMedicinesOutsideQueriedClass(text, query)) return false;
       return monitoringScheduleEvidencePattern.test(text);
     case "red_result_action":
       if (kind !== "threshold_action" && kind !== "caveat") return false;
@@ -872,6 +900,22 @@ function extractClinicalFactsFromResults(
   return facts.sort((a, b) => b.priority - a.priority || a.text.length - b.text.length).slice(0, limit);
 }
 
+/**
+ * The subject an extractive sentence is prefixed with. A medicine class is not a medicine entity,
+ * so "What metabolic monitoring is required for antipsychotics?" printed "For metabolic, …"
+ * (#J8SJQ9). For a monitoring question that names no single medicine, the class is the subject.
+ */
+function answerSubject(query: string) {
+  const intent = classifyAnswerIntent(query, classifyRagQuery(query).queryClass);
+  if (intent === "monitoring_schedule" && medicationEntitiesInText(query).length === 0) {
+    const classes = medicationClassesInText(query);
+    // "Antidepressants and antipsychotics": no single class may head every fact, so no subject.
+    if (classes.length > 1) return null;
+    if (classes.length === 1) return classes[0];
+  }
+  return queryEntitySubject(query, intent);
+}
+
 /** Sentence from fact. */
 export function sentenceFromFact(
   fact: ExtractedClinicalFact,
@@ -880,17 +924,19 @@ export function sentenceFromFact(
 ) {
   const text = sanitizeAnswerText(cleanExtractivePointText(fact.text)).replace(/[.;,\s]+$/, "");
   if (!text) return "";
-  const entity = queryEntitySubject(query, classifyAnswerIntent(query, classifyRagQuery(query).queryClass));
+  const entity = answerSubject(query);
+  // Complete the bare fact first, then attach the entity once. Prefixing
+  // before completion let the "The guidance is that…" wrapper swallow the
+  // prefix and duplicate the entity ("For lithium, … that for lithium, …").
+  // The subject check reads the completed text, because completion can drop
+  // a heading ("Antipsychotics. Weight …") that was the only mention of it.
+  const completed = completeExtractiveSentence(text, query);
   const needsEntityPrefix =
     !options.suppressEntityPrefix &&
     entity &&
     fact.kind !== "bottom_line" &&
-    !queryTokenMatchesText(entity, text) &&
+    !queryTokenMatchesText(entity, completed) &&
     !/^(?:for|in|when|if|avoid|do not|must not|withhold|cease|stop|monitor|check|refer|arrange)\b/i.test(text);
-  // Complete the bare fact first, then attach the entity once. Prefixing
-  // before completion let the "The guidance is that…" wrapper swallow the
-  // prefix and duplicate the entity ("For lithium, … that for lithium, …").
-  const completed = completeExtractiveSentence(text, query);
   if (!completed || !needsEntityPrefix) return completed;
   if (!/^The guidance\b/.test(completed)) return `For ${entity}, ${lowerFirst(completed)}`;
   return completed.replace(/^The guidance/, `The guidance for ${entity}`);
@@ -927,6 +973,18 @@ export function completeExtractiveSentence(value: string, query: string) {
       return conditionalAsSentence;
     }
     return `The guidance is that ${lowerFirst(cleaned)}.`;
+  }
+
+  // A section heading glued to the sentence under it ("Therapeutic Drug Monitoring. Blood taken
+  // for serum lithium levels should be taken 12 hours after the last dose") is not a fragment to
+  // wrap: "The guidance is that therapeutic Drug Monitoring. Blood…" laundered the heading
+  // (Eval Canary 39614340500). Drop the heading when the sentence after it stands alone.
+  const headed = cleaned.match(/^((?:[A-Z][\w-]*)(?:\s+(?:[A-Z][\w-]*|and|of|for|the|in|to)){0,5})\.\s+([A-Z].*)$/);
+  if (headed) {
+    const afterHeading = `${headed[2]}.`;
+    if (hasCompleteOpeningSentence(afterHeading) && !isFragmentLikeClinicalAnswer(afterHeading, query)) {
+      return afterHeading;
+    }
   }
 
   const withoutLeadingFragment = cleaned.replace(/^(?:and|or|but|with|without|including|such as|then)\s+/i, "");
@@ -1770,9 +1828,11 @@ function buildFactSynthesizedAnswer(args: {
       sourceBackedDocumentFallbackIntent(args.query, args.queryClass, args.intent, fallbackResults) ||
       sourceBackedManagementReviewIntent(args.query, args.queryClass, args.intent, fallbackResults)
     ) {
+      const supportListAnswer = buildDocumentSupportListAnswer({ query: args.query, results: fallbackResults });
       return {
-        ...buildDocumentSupportListAnswer({ query: args.query, results: fallbackResults }),
-        supportListCitationResultIds: fallbackResults.map((result) => result.id),
+        ...supportListAnswer,
+        supportListCitationResultIds:
+          supportListAnswer.supportListCitationResultIds ?? fallbackResults.map((result) => result.id),
       };
     }
     const gapAnswer = finalQualityGapAnswer(args.query, args.queryClass, args.intent);
@@ -1797,10 +1857,7 @@ function buildFactSynthesizedAnswer(args: {
   // Derived exactly the way sentenceFromFact derives its prefix entity (from
   // the query's own classification, not the routed intent) so the suppression
   // gate can never disagree with the prefix it is gating.
-  const entity = queryEntitySubject(
-    args.query,
-    classifyAnswerIntent(args.query, classifyRagQuery(args.query).queryClass),
-  );
+  const entity = answerSubject(args.query);
   let accumulated = "";
   const leadSentences: string[] = [];
   for (const fact of leadFacts) {
@@ -1966,59 +2023,6 @@ function buildTableOrVisualSourceLookupAnswer(args: { query: string; results: Se
   };
 }
 
-/** Build document support list answer. */
-function buildDocumentSupportListAnswer(args: { query: string; results: SearchResult[] }) {
-  const documents = buildDocumentBreakdown(args.results, extractQuoteCards(args.results, args.query)).slice(0, 5);
-  if (!documents.length) {
-    const gapAnswer = finalQualityGapAnswer(args.query, "document_lookup", "document_lookup");
-    return { answer: gapAnswer, citationChunkIds: [] as string[], answerSections: [] as AnswerSection[] };
-  }
-  const names = documents
-    .map((document) =>
-      normalizeSectionText(document.title || document.file_name)
-        .replace(/([a-zA-Z])\(/g, "$1 (")
-        .replace(/\s{2,}/g, " ")
-        .trim(),
-    )
-    .filter(Boolean);
-  const answer =
-    names.length === 1
-      ? `I found one indexed document that supports this query: ${names[0]}.`
-      : `I found ${names.length} indexed documents that support this query: ${names.slice(0, -1).join("; ")}; and ${names.at(-1)}.`;
-  return {
-    answer,
-    preformatted: true,
-    citationChunkIds: Array.from(
-      new Set(
-        documents.flatMap((document) =>
-          args.results
-            .filter((result) => result.document_id === document.document_id)
-            .slice(0, 1)
-            .map((result) => result.id),
-        ),
-      ),
-    ),
-    answerSections: [
-      {
-        heading: "Document matches",
-        kind: "documentation",
-        supportLevel: "direct",
-        body: names.join("; "),
-        citation_chunk_ids: Array.from(
-          new Set(
-            documents.flatMap((document) =>
-              args.results
-                .filter((result) => result.document_id === document.document_id)
-                .slice(0, 1)
-                .map((result) => result.id),
-            ),
-          ),
-        ),
-      },
-    ] satisfies AnswerSection[],
-  };
-}
-
 /**
  * Keep the citations that support delivered extractive answer text ahead of
  * already-ranked supporting citations, without admitting unknown sources.
@@ -2083,7 +2087,7 @@ export function buildExtractiveAnswer(args: {
 }) {
   const results = args.results.filter((result) => !resultContainsProceduralFlowEdgeArtifact(result));
   const removedProceduralArtifact = results.length !== args.results.length;
-  const rebuildDerivedArtifacts =
+  let rebuildDerivedArtifacts =
     removedProceduralArtifact ||
     derivedArtifactsContainProceduralFlowEdge({
       quoteCards: args.quoteCards,
@@ -2135,7 +2139,7 @@ export function buildExtractiveAnswer(args: {
 
   const answerIntent = classifyAnswerIntent(args.query, args.queryClass);
   const naturalAnswer = documentSupportListIntent(args.query, args.queryClass)
-    ? buildDocumentSupportListAnswer({ query: args.query, results })
+    ? buildDocumentSupportListAnswer({ query: args.query, results, filterToClaimBearingDocuments: true })
     : tableOrVisualSourceLookupIntent(args.query, args.queryClass, answerIntent)
       ? buildTableOrVisualSourceLookupAnswer({ query: args.query, results })
       : buildFactSynthesizedAnswer({
@@ -2213,6 +2217,7 @@ export function buildExtractiveAnswer(args: {
         (card.source_chunk_ids ?? []).some((chunkId) => supportListCitationIdSet.has(chunkId)),
       )
     : memoryCards;
+  rebuildDerivedArtifacts ||= answerSources.length !== results.length;
   const rebuiltDocumentBreakdown = rebuildDerivedArtifacts
     ? buildDocumentBreakdown(answerSources, finalQuoteCards)
     : args.documentBreakdown;

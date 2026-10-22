@@ -449,9 +449,8 @@ function recordAnswerPersistenceProductionCheck() {
 /**
  * #L30: a single public build-time flag (`NEXT_PUBLIC_MOCKUPS_ENABLED=true`),
  * set alone, used to disable the developer-area administrator gate
- * (`DeveloperAreaGate`) in production for `/mockups/development` and
- * `/mockups/care-plan/**` (and, before their retirement, two further developer-area
- * prototypes). The gate now bypasses in production only under the
+ * (`DeveloperAreaGate`) in production for the Owner panel (then also served
+ * under /mockups, a copy retired 2026-10-22, with three developer-area prototypes). The gate now bypasses in production only under the
  * exact same double-flag pairing `src/proxy.ts`'s `shouldBlockProductionMockups`
  * reserves for the isolated Playwright production build
  * (`developerGateBypassAllowed()` in `src/lib/developer-area/access.ts`). This

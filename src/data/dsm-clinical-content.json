@@ -1053,11 +1053,11 @@
       "specifiers": [
         {
           "name": "With good prognostic features",
-          "description": "Acute onset within 4 weeks; confusion/perplexity; good premorbid functioning; absence of flat affect."
+          "description": "At least two of the four features: acute onset within 4 weeks; confusion/perplexity; good premorbid functioning; absence of flat affect."
         },
         {
           "name": "Without good prognostic features",
-          "description": "One or more good prognostic features absent."
+          "description": "Fewer than two of the four good prognostic features present."
         },
         {
           "name": "With catatonia",
@@ -6544,7 +6544,7 @@
         "key": "slp",
         "label": "Sleep-Wake"
       },
-      "icd_code": "G47.51",
+      "icd_code": "F51.3/F51.4",
       "title": "NREM sleep arousal disorder",
       "key_features": [
         {

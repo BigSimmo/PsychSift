@@ -270,7 +270,14 @@ describe("live-drift workflow triggers and privileges", () => {
 
   it("keeps the secret preflight so a missing key fails loudly rather than silently passing", () => {
     expect(workflow).toContain("Preflight required secrets");
-    expect(workflow).toContain("Live drift check cannot run - missing repo secrets:");
+    expect(workflow).toContain("Live drift check cannot run - missing secrets (production-secrets environment):");
+  });
+
+  it("reads the service-role key only through the main-only production-secrets environment (audit F-21)", () => {
+    const environments = workflow.match(/^\s+environment:.*$/gm) ?? [];
+    expect(environments.map((line) => line.trim())).toEqual(["environment: production-secrets"]);
+    const liveDriftJob = workflow.slice(workflow.indexOf("  live-drift:\n"), workflow.indexOf("  drift-routing:\n"));
+    expect(liveDriftJob).toContain("    environment: production-secrets\n");
   });
 
   it("grants issues: write only to the routing job", () => {
@@ -300,6 +307,11 @@ describe("live-drift workflow triggers and privileges", () => {
 
   it("still routes when the drift job fails", () => {
     expect(workflow).toContain("if: ${{ !cancelled() }}");
+  });
+
+  it("routes only runs on main, so a refused branch run raises no production alarm", () => {
+    const routing = workflow.slice(workflow.indexOf("  drift-routing:"));
+    expect(routing).toContain("if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}");
   });
 });
 
@@ -356,23 +368,21 @@ describe("live-drift failure routing", () => {
     expect(calls.listed).toEqual([{ ...repositoryCoordinates, labels: "live-drift-failure", state: "open" }]);
   });
 
-  it("assigns the repository owner so the alert reaches a person, on open and on repeat", async () => {
+  it("no longer assigns or mentions the owner, because the daily health summary reports it (owner decision 2026-10-21)", async () => {
     const opened = await runRoutingScript({ findings: sampleFindings, result: "failure" });
-    expect(opened.assigned).toEqual([{ ...repositoryCoordinates, assignees: ["BigSimmo"], issue_number: 4242 }]);
+    expect(opened.assigned).toHaveLength(0);
+    expect(opened.created[0].body).not.toContain("@BigSimmo");
 
     const repeated = await runRoutingScript({ findings: sampleFindings, openIssues: [pinnedIssue], result: "failure" });
-    expect(repeated.assigned).toEqual([{ ...repositoryCoordinates, assignees: ["BigSimmo"], issue_number: 1234 }]);
-
-    const green = await runRoutingScript({ openIssues: [pinnedIssue], result: "success" });
-    expect(green.assigned).toHaveLength(0);
+    expect(repeated.assigned).toHaveLength(0);
   });
 
-  it("still opens the alert when GitHub refuses the assignment", async () => {
+  it("still opens the issue the daily health summary reads, even when GitHub would refuse an assignment", async () => {
     const calls = await runRoutingScript({ findings: sampleFindings, refuseAssignment: true, result: "failure" });
 
     expect(calls.created).toHaveLength(1);
-    expect(calls.assigned).toHaveLength(0);
-    expect(calls.warnings.join(" ")).toContain("Could not assign @BigSimmo to #4242");
+    expect(calls.created[0].labels).toEqual(["live-drift-failure"]);
+    expect(calls.warnings.join(" ")).not.toContain("Could not assign");
   });
 
   it("writes nothing when the check is green and no issue is open", async () => {
@@ -492,21 +502,25 @@ describe("live-drift diagnostics artifact", () => {
 });
 
 describe("production alert workflows route to a person (#TN512M)", () => {
-  // The live monitor, CI on main, the eval canary, live drift and ingestion autopilot all
-  // detected real failures and reported them only to a label. Each must assign the owner
-  // both when it opens its issue and when it updates an existing one. ci.yml has a third path:
-  // it reopens its most recent closed issue rather than opening a new one (owner, 2026-09-26).
-  it.each([
-    ["live-domain-monitor.yml", 2],
-    ["ci.yml", 3],
-    ["eval-canary.yml", 2],
-    ["live-drift.yml", 2],
-    ["ingestion-autopilot.yml", 2],
-  ] as const)("%s assigns its failure issue", (file, assignPaths) => {
-    const source = readFileSync(path.join(repoRoot, ".github", "workflows", file), "utf8");
+  // Since the owner decision of 2026-10-21 (docs/decisions/2026-10-21-one-daily-health-summary.md)
+  // only the live domain monitor still assigns the owner, and only when it opens a new failure
+  // issue: the live site going down is one of the two alerts that push straight away. The others
+  // keep their labelled issue for detail and reach the owner in the 7 am daily health summary.
+  it("live-domain-monitor.yml assigns only the issue it opens", () => {
+    const source = readFileSync(path.join(repoRoot, ".github", "workflows", "live-domain-monitor.yml"), "utf8");
     expect(source).toContain("github.rest.issues.addAssignees(");
     expect(source).toContain("const alertAssignee = context.repo.owner;");
     expect(source).toContain("await assignAlert(created.data.number);");
-    expect(source.match(/await assignAlert\(/g)?.length).toBe(assignPaths);
+    expect(source.match(/await assignAlert\(/g)?.length).toBe(1);
   });
+
+  it.each(["ci.yml", "eval-canary.yml", "live-drift.yml", "ingestion-autopilot.yml"] as const)(
+    "%s leaves its failure issue unassigned for the daily health summary",
+    (file) => {
+      const source = readFileSync(path.join(repoRoot, ".github", "workflows", file), "utf8");
+      expect(source).not.toContain("github.rest.issues.addAssignees(");
+      expect(source).not.toContain("assignAlert(");
+      expect(source).toContain("docs/decisions/2026-10-21-one-daily-health-summary.md");
+    },
+  );
 });

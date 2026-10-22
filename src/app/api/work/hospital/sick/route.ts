@@ -7,6 +7,7 @@ import {
 } from "@/lib/api-rate-limit";
 import { isDemoMode } from "@/lib/env";
 import { jsonError, publicErrorResponse } from "@/lib/http";
+import { rosterTeamReleaseEnabled } from "@/lib/roster/team/release";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, requireAuthenticatedUser, unauthorizedResponse } from "@/lib/supabase/auth";
 import { readHospitalSickCalls } from "@/lib/work-roles/hospital-sick";
@@ -23,8 +24,14 @@ export async function GET(request: Request) {
     if (isDemoMode()) {
       return publicErrorResponse("Roles can't be kept in PsychSift yet.", 503, { code: "work_roles_not_ready" });
     }
+    // This named projection comes from team roster reports and shares the real-staff hold.
+    if (!rosterTeamReleaseEnabled()) {
+      return publicErrorResponse("Sick calls aren't available for real staff yet.", 503, {
+        code: "work_roles_not_ready",
+      });
+    }
     const hospitalId = new URL(request.url).searchParams.get("hospitalId") ?? "";
-    if (!/^[0-9a-f-]{36}$/i.test(hospitalId)) {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(hospitalId)) {
       return publicErrorResponse("Choose a hospital.", 400, { code: "work_people_invalid" });
     }
     const supabase = createAdminClient();

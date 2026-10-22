@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "source": "libxml2",
+  "source_version": "2.12.7+dfsg+really2.9.14-2.1+deb13u3",
+  "dsc_sha256": "04b1da890535b11e3db231f39114ee09e643badceff79441d749d0ca78efaaa5",
+  "backport_version": "2.12.7+dfsg+really2.9.14-2.1+deb13u3+psychsift1",
+  "patches": [
+    {
+      "file": "patches/libxml2/CVE-2026-86138.patch",
+      "sha256": "f207c148a8defa5fcf564a05396748b1cf23e9788ae174a750556efdf9261f29",
+      "upstream_commit": "a4cba4b5b5a8c42e155ed42d2d2a44955465a2e4"
+    },
+    {
+      "file": "patches/libxml2/CVE-2026-86140.patch",
+      "sha256": "5e51f8dcadfe3294a15d9e8644d61e8d92bd5b9e72c10cf13ef010eccfbfa4df",
+      "upstream_commit": "d1686f91dbda141a752200419d35639fd6b38340"
+    },
+    {
+      "file": "patches/libxml2/CVE-2026-86142.patch",
+      "sha256": "93c6d32b6f32ee093570d0ecd85b50c5bc1004b77d04f4eccf84e87b6ab91f39",
+      "upstream_commit": "6b3a736c0edc74ceec3d82f5252499d7911b3a58"
+    },
+    {
+      "file": "patches/libxml2/CVE-2026-86143.patch",
+      "sha256": "cc823848140f24b1878075741b87fad27f5e85dec7cee4d56f6de829748cad8f",
+      "upstream_commit": "90f293ba74d28b1d570920382e707586f68ebf35"
+    },
+    {
+      "file": "patches/libxml2/CVE-2026-86144.patch",
+      "sha256": "536be188f4425e160e61b69c6c735784e105777e117c51c31c413adebfc11061",
+      "upstream_commit": "b63cd517afecb76582dd9488c55e54ceaf50de61"
+    },
+    {
+      "file": "patches/libxml2/CVE-2026-74860.patch",
+      "sha256": "55e05b4af0d76008d30630117d5c5d0ea38991b008146dcfea64139ee42f3845",
+      "upstream_commit": "046931e64e9e081e82c341f6455d070716fb8cf2",
+      "upstream_url": "https://github.com/GNOME/libxml2/commit/046931e64e9e081e82c341f6455d070716fb8cf2.patch",
+      "upstream_patch_sha256": "c9b84532c80a5d316bf8c40fb62a43c950b78a560c8920a3c371ea19afde50aa",
+      "adaptations": ["Rebase the exact upstream reference-count deletion to the 2.9.14 function context."]
+    }
+  ],
+  "runtime_packages": ["libxml2"],
+  "extra_build_packages": [],
+  "test_commands": [["sh", "/tmp/worker-native/libxml2-regressions.sh"]],
+  "change_summary": "Backport CVE-2026-86138, CVE-2026-86140, CVE-2026-86142, CVE-2026-86143 and CVE-2026-86144 to the actual Debian 2.9.14 implementation while preserving libxml2.so.2 and normal package features/tests. CVE-2026-86139 already has its equivalent guard; Also backport CVE-2026-74860 Python SAX list reference ownership. CVE-2026-6653 remains unresolved; its larger vendor candidate is excluded from this PR pending compatibility evidence.",
+  "source_date_epoch": 1792454400
+}

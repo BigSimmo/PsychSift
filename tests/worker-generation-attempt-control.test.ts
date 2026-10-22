@@ -187,22 +187,30 @@ describe("actual issued attempt-control prerequisite", () => {
     const worker = readFileSync(new URL("../worker/main.ts", import.meta.url), "utf8");
     const process = worker.slice(worker.indexOf("async function processJob(job: JobRow)"));
     const capture = process.indexOf("const issuedControlSnapshot = captureIssuedAttemptControl(job)");
-    const heartbeat = process.indexOf("const heartbeat = setInterval(");
+    const heartbeat = process.indexOf("const heartbeat = startIngestionHeartbeat(");
     const lifecycle = process.indexOf("try {");
     const inventory = process.indexOf('"read_ingestion_generation_inventory"');
     const savingPages = process.indexOf('stage: "saving pages"');
     const managed = process.indexOf("if (evidenceInventory.managed === true)", savingPages);
-    const attachment = process.indexOf("attachAttemptControlEvidence({", managed);
+    // The managed branch body moved into worker/managed-generation-job.ts; processJob hands
+    // it straight to runManagedGenerationJob, which must reach the attachment unbranched.
+    const delegation = process.indexOf("await runManagedGenerationJob(", managed);
+    const managedJob = readFileSync(new URL("../worker/managed-generation-job.ts", import.meta.url), "utf8");
+    const branchStart = managedJob.indexOf("export async function runManagedGenerationJob(");
+    const attachment = managedJob.indexOf("attachAttemptControlEvidence({", branchStart);
     expect(capture).toBeGreaterThanOrEqual(0);
     expect(lifecycle).toBeGreaterThanOrEqual(0);
     expect(savingPages).toBeGreaterThan(inventory);
     expect(managed).toBeGreaterThan(savingPages);
+    expect(branchStart).toBeGreaterThanOrEqual(0);
     expect(attachment).toBeGreaterThanOrEqual(0);
     expect(capture).toBeLessThan(heartbeat);
     expect(lifecycle).toBeLessThan(inventory);
     expect(inventory).toBeLessThan(managed);
-    expect(managed).toBeLessThan(attachment);
-    expect(process.slice(managed, attachment)).not.toContain("} else");
+    expect(managed).toBeLessThan(delegation);
+    expect(branchStart).toBeLessThan(attachment);
+    expect(process.slice(managed, delegation)).not.toContain("} else");
+    expect(managedJob.slice(branchStart, attachment)).not.toContain("} else");
   });
   it("captures selected issued fields without visiting unrelated optional job data", () => {
     const f = fixture();

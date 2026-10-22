@@ -115,6 +115,8 @@ describe("handover page (mock-up v10, screens 6 to 10)", () => {
     addPatient("JS", "", "no");
     fireEvent.click(screen.getByTestId("on-call-handover-make-table"));
     expect(screen.getByRole("heading", { name: "Handover table" })).toBeInTheDocument();
+    // The Shift switch stays above the table too (On Call overhaul, 20 Oct 2026).
+    expect(screen.getByTestId("on-call-shift-switch-handover")).toHaveAttribute("aria-current", "page");
     // The table is loaded on demand; it appears as soon as its code has arrived.
     expect(await screen.findAllByTestId("on-call-handover-table-row")).toHaveLength(2);
     expect(screen.getByTestId("on-call-handover-review-bar")).toHaveTextContent("1 of 2 need review");

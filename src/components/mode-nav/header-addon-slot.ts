@@ -24,6 +24,8 @@ import { isSlugDetail } from "@/lib/information-pages";
  * `PhoneHeaderCollapsePortal`, `InPageNavHeader`, or `RegistryModeNav`.
  */
 export function isHeaderAddonSlotOwnedRoute(pathname: string): boolean {
+  // Catalogue-owned clinical title/workflow bands share the same measured slot.
+  if (pathname === "/calculators/search" || pathname === "/services/search") return true;
   // DocumentViewer.tsx
   if (isDocumentViewerOwnedRoute(pathname)) return true;
   // Differentials detail and presentation workflows both provide their own
@@ -52,11 +54,6 @@ export function isHeaderAddonSlotOwnedRoute(pathname: string): boolean {
   // — the record and its `/differentials` child, but not /dsm/search or
   // /dsm/compare.
   if (pathname.startsWith("/dsm/diagnoses/")) return true;
-  // developer-area/developer-hub-nav-header.tsx, mounted by the hub index page
-  // only. Its `/ledger` child route owns no header of its own — a plain
-  // back-link `<Link>` — so an exact match is correct here, not a prefix: a
-  // `startsWith` would wrongly claim the slot for that child route too.
-  if (pathname === "/mockups/development") return true;
   // On Call's section pages, which mount `RegistryModeNav` themselves rather
   // than letting the shell draw it — every route in this mode is an information
   // page, so `PageSecondaryNavigation` returns null before the mode branch and
@@ -107,6 +104,10 @@ export function isHeaderAddonSlotOwnedRoute(pathname: string): boolean {
   // landing mounts no header. Every Teaching route is `isInformationPage`.
   if (/^\/teaching\/session\/[^/]+(?:\/check-in)?$/.test(pathname)) return true;
   // Admin subpages mount AdminNavHeader; Admin Today has no page-owned header.
+  // The Owner panel index (`/admin/developer-hub`) mounts
+  // `developer-area/developer-hub-nav-header.tsx` and is covered here too; its
+  // /mockups copy, which needed an exact match of its own, was retired on
+  // 2026-10-22.
   if (pathname.startsWith("/admin/")) return true;
   return false;
 }

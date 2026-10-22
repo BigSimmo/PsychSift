@@ -14,24 +14,19 @@
 export const DEVELOPER_AREA_HEADER = "x-developer-area";
 
 /** The exact requested path+query, so a sign-in redirect can return the visitor
- *  to the specific page they asked for (e.g. a deep Care Plan route), not
+ *  to the specific page they asked for (e.g. a deep Owner panel route), not
  *  just the area root. */
 export const DEVELOPER_AREA_PATH_HEADER = "x-developer-area-path";
 
 /** Exact prefixes only. A path that merely begins with the same characters —
- *  `/mockups/care-plan-archive`, say — is not a match and stays behind the
- *  blanket production block, because `isDeveloperGatedPath` requires either an
- *  exact hit or a following `/`. Add a prefix here one subtree at a time; never
- *  widen this to `/mockups`. */
-export const DEVELOPER_GATED_PATH_PREFIXES = [
-  "/admin/developer-hub",
-  "/mockups/development",
-  "/mockups/care-plan",
-] as const;
+ *  `/admin/developer-hub-archive`, say — is not a match and is not gated,
+ *  because `isDeveloperGatedPath` requires either an exact hit or a following
+ *  `/`. Add a prefix here one subtree at a time; never widen this to `/mockups`. */
+export const DEVELOPER_GATED_PATH_PREFIXES = ["/admin/developer-hub"] as const;
 
 /**
  * Whether a pathname is inside one of the gated subtrees. Exact-or-slash, so a
- * look-alike such as `/mockups/care-plan-archive` is NOT a match.
+ * look-alike such as `/admin/developer-hub-archive` is NOT a match.
  *
  * Lives here, beside the prefixes, because two callers need it and they cannot
  * share code any other way: `src/proxy.ts` runs on the server, and

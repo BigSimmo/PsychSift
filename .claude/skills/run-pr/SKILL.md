@@ -7,7 +7,7 @@ description: Run the automated open-PR maintenance sweep on bigsimmo/psychsift �
 
 One-shot sweep over every open pull request on `bigsimmo/psychsift` (drafts included): fix failing
 required CI checks, address unresolved review threads, merge `origin/main` into branches with a
-real conflict (being merely behind is not a reason to sync), push the results, record the ledger,
+real conflict (being merely behind is not a reason to sync), push the results, post a review record,
 and report per-PR before/after state.
 The policy source is [Run PR](../../../docs/agents/pull-request-workflow.md#run-pr) in the shared PR rulebook; this skill is the
 canonical Claude Code procedure and does not restate that policy.
@@ -48,9 +48,9 @@ armed; force-push or history rewrite may not.
 - Draft with `WIP` or "do not merge" in the title, or a `hold` label → skip. Plain drafts are
   processed the same as ready PRs.
 - Fork-hosted head → no pushes; run diagnosis and thread replies only.
-- Ledger throttle: `npm run ledger:lookup -- <branch> --head <sha> --scope "Run PR sweep"`. On
-  `ALREADY REVIEWED`, and current checks are green, and there are no unresolved threads, and the
-  branch is not behind `main` → skip, citing the prior row in one line.
+- Review record throttle: read the PR's comments for a `Review record` at the current head SHA
+  with scope `Run PR sweep`. If there is one, and current checks are green, and there are no
+  unresolved threads, and the branch is not behind `main` → skip, citing that comment in one line.
 
 ### Step 1 — snapshot and repair the first head
 
@@ -106,7 +106,7 @@ not use the `codex-thread-disposition` marker.
 
 ### Step 5 — bookkeeping
 
-Append the ledger row (format below). Do not wait on the retriggered CI run — record
+Post or edit the PR's review record comment (format below). Do not wait on the retriggered CI run — record
 "fixes pushed, CI re-running at <run URL>" per [Follow CI](../../../docs/agents/pull-request-workflow.md#follow-ci). Optionally offer (do not perform)
 `subscribe_pr_activity` as a follow-up.
 
@@ -131,20 +131,24 @@ branch/ref recorded during setup.
 | Migration replay                        | needs the local Supabase emulator/Docker; if unavailable, diagnose statically from logs and let CI verify | never touch live Supabase                                                   |
 | `changes` / `pr-required` itself        | inspect which upstream needed job failed                                                                  | aggregate only                                                              |
 
-## Ledger recording
+## Review record
 
-Append one record per PR touched. Never hand-write the markdown row — use the helper, which
-stamps the date, resolves the HEAD, escapes prose pipes, and writes UTF-8:
+Post one comment per PR touched (`mcp__github__add_issue_comment`), or edit this sweep's earlier
+comment on the same head (`mcp__github__update_issue_comment`):
 
-```bash
-npm run ledger:append -- --ref "<branch> (PR #<n>)" --head <post-sweep full 40-char HEAD SHA> \
-  --scope "Run PR sweep: CI fix + threads + drift" \
-  --outcome "<before → after: failing checks fixed, N threads resolved / M left open (reasons), merged origin/main (conflicts resolved: files / none / skipped: files), or skip reason>" \
-  --checks "<exact gates run with results; explicit 'no provider-backed checks run'>"
+```text
+Review record
+Branch: <branch> (PR #<n>)
+Head: <post-sweep full 40-char HEAD SHA>
+Scope: Run PR sweep
+Outcome: <before → after: failing checks fixed, N threads resolved / M left open (reasons), merged origin/main (conflicts resolved: files / none / skipped: files), or skip reason>
+Checks: <exact gates run with results; explicit 'no provider-backed checks run'>
+
+<attribution footer>
 ```
 
-Record rules (full SHA, `--supersede` on later sweeps, frozen historical table, never push a
-record-only tip) are in [Records](../../../docs/agents/pull-request-workflow.md#records).
+Record rules (full SHA, edit or new comment on a later sweep, archived history) are in
+[Records](../../../docs/agents/pull-request-workflow.md#records).
 
 ## Final report format
 

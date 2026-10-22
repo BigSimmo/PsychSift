@@ -73,6 +73,36 @@ describe("clinical quality dashboard projections", () => {
     expect(() => ragAnswerFeedbackRowSchema.parse({ ...feedback, query: "sensitive text" })).toThrow();
   });
 
+  it("shows administrators a record report's page, slug and note, and defaults older rows to answers", () => {
+    const recordReport = ragAnswerFeedbackRowSchema.parse({
+      ...feedback,
+      id: "00000000-0000-4000-8000-000000000003",
+      feedback_category: "outdated_guidance",
+      record_type: "medication",
+      record_id: "lithium",
+      note: "Synthetic note: monitoring interval differs.",
+    });
+    const queue = projectQualityQueue({
+      feedbackRows: [feedback, recordReport],
+      retrievalRows: [],
+      evaluationRows: [],
+      triageRows: [],
+      triageState: "complete",
+    });
+    expect(queue.find((item) => item.signalId === recordReport.id)).toMatchObject({
+      recordType: "medication",
+      recordId: "lithium",
+      note: "Synthetic note: monitoring interval differs.",
+    });
+    expect(queue.find((item) => item.signalId === feedback.id)).toMatchObject({
+      recordType: "answer",
+      recordId: null,
+      note: null,
+    });
+    expect(() => ragAnswerFeedbackRowSchema.parse({ ...recordReport, note: "a".repeat(501) })).toThrow();
+    expect(() => ragAnswerFeedbackRowSchema.parse({ ...recordReport, record_type: "pharmacy" })).toThrow();
+  });
+
   it("includes retrieval and persisted evaluation failures without query or result text", () => {
     const queue = projectQualityQueue({
       feedbackRows: [],

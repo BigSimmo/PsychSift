@@ -42,6 +42,12 @@ type AuthContextValue = {
   signInWithOAuth: (provider: OAuthProvider, next?: string) => Promise<void>;
   signOut: () => Promise<void>;
   markSessionExpired: () => void;
+  /**
+   * When an ended sign-in last cleared this device's private notes (MHA clocks, drafts, recent
+   * searches). Null until it happens and again after the next sign-in. `SignInEndedNotice` says so,
+   * because the clearing itself is silent (design audit D-04, owner yes 19 Oct 2026).
+   */
+  deviceDataClearedAt?: number | null;
 };
 
 export const AUTH_EMAIL_STORAGE_KEY = "clinical.dashboard.lastAuthEmail";
@@ -233,10 +239,26 @@ export function shouldFailInitialAuthVerification(error: unknown) {
 /** `next` must be a same-origin relative path; /auth/callback re-validates it
  *  regardless (open-redirect defense-in-depth), so a bad value here just falls
  *  back to "/" rather than being a security boundary in itself. */
-function authCallbackRedirect(next?: string) {
+function authCallbackRedirect(next: string | undefined = currentPageForReturn()) {
   if (typeof window === "undefined") return undefined;
   const base = `${window.location.origin}${AUTH_CALLBACK_PATH}`;
   return next ? `${base}?next=${encodeURIComponent(next)}` : base;
+}
+
+/** Paths whose segments are bearer credentials (a teaching check-in, an assessment
+ *  response link, a display screen), and any long unbroken token-like segment. */
+const SECRET_PATH = /^\/teaching\/(?:c|display|assessments\/respond)\/|\/[A-Za-z0-9_]{32,}(?:\/|$)/;
+
+/** The page to come back to after sign-in, so signing in does not lose your place.
+ *  Only the path travels: a query string can hold clinical search text, which
+ *  must never ride through the sign-in email or the provider. Home, auth pages
+ *  and pages whose address is itself a secret link fall back to the callback's
+ *  default, so a link token never reaches the sign-in flow. */
+function currentPageForReturn(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  const { pathname } = window.location;
+  if (pathname === "/" || pathname.startsWith("/auth") || SECRET_PATH.test(pathname)) return undefined;
+  return pathname;
 }
 
 /** Consume route errors and Supabase's direct provider-error fragments without exposing diagnostics. */
@@ -264,6 +286,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>(config ? "loading" : "unconfigured");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [deviceDataClearedAt, setDeviceDataClearedAt] = useState<number | null>(null);
   const callbackErrorRef = useRef<string | null | undefined>(undefined);
   const authRequestsRef = useRef(createAuthRequestLifecycle());
   const authFingerprintRef = useRef<string | null>(null);
@@ -275,6 +298,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // SIGNED_IN replay would read as null -> user, i.e. an account switch. See the
   // guard in onAuthStateChange below.
   const initialSessionPublishedRef = useRef(false);
+  // True while this tab's own signOut() runs, so its SIGNED_OUT event is not
+  // mistaken for a session that ended by itself (which says so, below).
+  const userSignOutRef = useRef(false);
   const [authEpoch, setAuthEpoch] = useState(0);
 
   const invalidateAuthRequests = useCallback(() => {
@@ -384,6 +410,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             clearAccountScopedBrowserState();
             // MHA clocks (form codes and times) also drop their in-memory copy.
             clearMhaClocks();
+            setDeviceDataClearedAt(Date.now());
           }
           if (callbackError) {
             setError(callbackError);
@@ -431,6 +458,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // as a different user still clears.
       if (initialSessionPublishedRef.current && publishedUserIdRef.current !== nextUserId) {
         clearAccountScopedBrowserState();
+        // A session that ended without this tab's Sign out (a refresh the auth
+        // server refused) cleared this device too, so the notice says so.
+        if (!nextUserId && !userSignOutRef.current) setDeviceDataClearedAt(Date.now());
       }
       publishedUserIdRef.current = nextUserId;
       setSession(nextSession);
@@ -438,6 +468,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (nextSession) {
         setError(null);
         setNotice(null);
+        setDeviceDataClearedAt(null);
       }
     });
 
@@ -565,6 +596,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     if (!client) return;
+    userSignOutRef.current = true;
     invalidateAuthRequests();
     // Phone alerts belong to the account, not the device: stop them here while
     // the session can still tell the server which subscription to drop.
@@ -578,6 +610,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     // A failed global sign-out can leave the persisted session in place; drop it locally so a reload is signed out.
     if (remoteSignOutFailed) await client.auth.signOut({ scope: "local" }).catch(() => undefined);
+    userSignOutRef.current = false;
     clearAccountScopedBrowserState();
     publishedUserIdRef.current = null;
     setSession(null);
@@ -604,6 +637,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // failure is reported as expiry — accepted: a stale profile surviving to the
     // next sign-in is the worse failure on a shared workstation.
     clearAccountScopedBrowserState();
+    setDeviceDataClearedAt(Date.now());
     publishedUserIdRef.current = null;
     setSession(null);
     setStatus("expired");
@@ -648,6 +682,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signInWithOAuth,
       signOut,
       markSessionExpired,
+      deviceDataClearedAt,
     }),
     [
       client,
@@ -666,10 +701,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signInWithOAuth,
       signOut,
       markSessionExpired,
+      deviceDataClearedAt,
     ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+/**
+ * The session when an AuthProvider is mounted, else null. For small optional controls (such as a
+ * record's "Report a problem") that must not take the page down when rendered outside the provider.
+ */
+export function useOptionalAuthSession() {
+  return useContext(AuthContext);
 }
 
 export function useAuthSession() {

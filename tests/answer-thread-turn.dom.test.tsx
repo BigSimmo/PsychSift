@@ -161,10 +161,12 @@ describe("prior adaptive answer turn", () => {
     expect(leadSourceRows[1]).toHaveAccessibleName(/Also found: Prior source/i);
     expect(
       screen.getByText("Prior source difference").closest('[data-testid="adaptive-answer-section"]'),
-    ).toContainElement(screen.getByRole("button", { name: /Section-only source, p\. 9/i }));
+    ).toContainElement(screen.getByRole("button", { name: /Source \d+, Section-only source, p\. 9/i }));
     expect(screen.queryByText("No source covers this gap.")).not.toBeInTheDocument();
     expect(screen.queryByText("No source supports this statement.")).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Copy answer with source status" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /^Cop(?:y|ied) with sources: answer and source status$/ }),
+    );
     const copied = onCopy.mock.calls[0]?.[0] as string;
     expect(copied).toContain("Review the prior plan.\n\nPrior monitoring\n\nReview observations every three months.");
     expect(copied.indexOf("Prior monitoring")).toBeLessThan(copied.indexOf("Prior source difference"));
@@ -185,7 +187,9 @@ describe("prior adaptive answer turn", () => {
     expect(screen.queryByText("Review observations every three months.")).not.toBeInTheDocument();
     expect(screen.queryByText("No source covers this gap.")).not.toBeInTheDocument();
     expect(screen.queryByText("No source supports this statement.")).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Copy answer with source status" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /^Cop(?:y|ied) with sources: answer and source status$/ }),
+    );
     expect(onCopy.mock.calls[0]?.[0]).toContain("Review observations every three months.");
   });
 
@@ -259,6 +263,6 @@ describe("prior adaptive answer turn", () => {
     });
     expect(
       screen.getByText("Prior section-only difference").closest('[data-testid="adaptive-answer-section"]'),
-    ).toContainElement(screen.getByRole("button", { name: /Section-only source, p\. 9/i }));
+    ).toContainElement(screen.getByRole("button", { name: /Source \d+, Section-only source, p\. 9/i }));
   });
 });

@@ -33,7 +33,7 @@ vi.mock("@/lib/cme/repository", () => ({
   fetchOwnerCmeEntry: mocks.entry,
   fetchOwnerCmeRoutines: mocks.routines,
 }));
-import { loadCmePageData, loadCmeEntryPageData } from "@/lib/cme/load-cme-page-data";
+import { cmeDemoCarryPreview, loadCmePageData, loadCmeEntryPageData } from "@/lib/cme/load-cme-page-data";
 import { createAustralianRanzcpPreset } from "@/lib/cme/presets";
 
 beforeEach(() => {
@@ -230,5 +230,34 @@ describe("CME page state is honest and owner-scoped", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe("local demo carry preview", () => {
+  it("shows the demo plan in its December carry window, only when asked", async () => {
+    mocks.demo.mockReturnValue(true);
+    const plain = await loadCmePageData(undefined, { nextYear: true });
+    expect(plain.nextYearConfirmed).toBeNull();
+    const confirm = await loadCmePageData(undefined, { nextYear: true, demoCarryPreview: "confirm" });
+    expect(confirm.now.toISOString()).toBe(`${confirm.year}-12-20T02:00:00.000Z`);
+    expect(confirm.nextYearConfirmed).toBe(false);
+    expect(confirm.nextYearGoals).toBeUndefined();
+    const resume = await loadCmePageData(undefined, { nextYear: true, demoCarryPreview: "resume" });
+    expect(resume.nextYearConfirmed).toBe(true);
+    expect(resume.nextYearGoals).toEqual([]);
+    expect(mocks.year).not.toHaveBeenCalled();
+  });
+
+  it("is ignored for a signed-in account", async () => {
+    const data = await loadCmePageData(undefined, { nextYear: true, demoCarryPreview: "confirm" });
+    expect(data.demoMode).toBe(false);
+    expect(data.nextYearConfirmed).toBeNull();
+  });
+
+  it("reads only the two known values from the address bar", () => {
+    expect(cmeDemoCarryPreview("confirm")).toBe("confirm");
+    expect(cmeDemoCarryPreview("resume")).toBe("resume");
+    expect(cmeDemoCarryPreview("approve")).toBeNull();
+    expect(cmeDemoCarryPreview(["confirm"])).toBeNull();
   });
 });

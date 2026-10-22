@@ -56,7 +56,9 @@ One record per source, whether or not you end up using it.
 Record dates exactly as the publisher prints them. Where only a year or month is published,
 record the first of January or the first of the month and set `datePrecision` accordingly, so
 `2020-01-01` is never mistaken for a real publication day. **Never infer a date.** A source
-whose date cannot be established is a rejection with a reason, not a guess.
+whose date cannot be established is a rejection with a reason, not a guess. The one exception is the
+TGA Product Information search, which carries no date by design under
+`dateModel: "live_product_information"` ([owner decision, 2026-10-22](decisions/2026-10-22-tga-pi-live-search-source.md)).
 
 ### Dispositions
 
@@ -119,7 +121,11 @@ A record may also carry `attestedBy`, `attestedAt` and `attestedAgainstSha256`. 
 optional, and all three are the owner's to write; an agent never records a sign-off on the owner's
 behalf. The owner writes them with `npm run clinical:review -- --kind source` (one at a time with
 `--walk`, or a whole review pack with `--pack` then `--write --batch`), which sets
-`validationStatus` to `locally_reviewed` and computes the digest. Signing a source does not adopt
+`validationStatus` to `locally_reviewed` and computes the digest. The tool also offers a source
+already marked `locally_reviewed` whose review lives only in prose, meaning it has no
+attestation field at all; signing it records the three fields and leaves `validationStatus` as
+it is ([owner decision, 2026-10-17](decisions/2026-10-17-sign-prose-only-source-reviews.md)). A record with any attestation field, complete or partial,
+is not offered this way. Signing a source does not adopt
 it: `disposition` stays as it is until a separate adoption decision. Sources with Aboriginal,
 Torres Strait Islander or other Indigenous content are never offered (owner rule 2026-09-26).
 

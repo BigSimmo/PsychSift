@@ -28,6 +28,100 @@ describe("Python extracted-document payload validation", () => {
     });
   });
 
+  it("retains bounded unverified raster observations without accepting arbitrary metadata", () => {
+    const hash = "sha256:" + "a".repeat(64);
+    const observations = {
+      version: "raster-table-ocr-observations-v1",
+      status: "unverified",
+      cellModel: {
+        language: "Latin",
+        sha256: "sha256:6dbdaf8ecc6c40f025c2648bf3b3f3fbffe073e1fd2df2047fde2e2b2f020d53",
+        bytes: 89_384_811,
+      },
+      outsideModel: { language: "eng", sha256: null, status: "not_observed" },
+      runtime: {
+        pythonVersion: "3.12.14",
+        pymupdfVersion: "1.26.6",
+        mupdfVersion: "1.26.11",
+        tesseractVersion: "5.5.0",
+      },
+      detector: { width: 100, height: 200, scale: 2 },
+      crops: [
+        {
+          kind: "cell",
+          language: "Latin",
+          sourceRect: [0, 0, 20, 10],
+          scale: 6.25,
+          width: 125,
+          height: 63,
+          pngSha256: hash,
+          pixelsSha256: hash,
+          textSha256: hash,
+        },
+      ],
+    };
+    const packet = (value: unknown) =>
+      JSON.stringify({
+        pages: [{ pageNumber: 1, text: "synthetic source", ocrUsed: true, metadata: { raster_table_ocr: value } }],
+        images: [],
+      });
+    expect(parseExtractedDocumentPayload(packet(observations)).pages[0].metadata?.raster_table_ocr).toEqual(
+      observations,
+    );
+    const transform = {
+      algorithm: "raster-math-topology-v1",
+      kind: "comparison",
+      codeSha256: "sha256:" + "c".repeat(64),
+      width: 100,
+      height: 50,
+      mode: "L",
+      pixelsSha256: "sha256:" + "b".repeat(64),
+    };
+    const transformed = (value: unknown, crop = observations.crops[0]) => ({
+      ...observations,
+      crops: [{ ...crop, ocrInputTransform: value }],
+    });
+    for (const kind of ["comparison", "superscript"]) {
+      const value = transformed({ ...transform, kind });
+      expect(parseExtractedDocumentPayload(packet(value)).pages[0].metadata?.raster_table_ocr).toEqual(value);
+    }
+    for (const invalidTransform of [
+      { ...transform, algorithm: "unknown" },
+      { ...transform, kind: "inferred_clinical_value" },
+      { ...transform, width: 400_000 },
+      { ...transform, mode: "CMYK" },
+      { ...transform, pixelsSha256: "not-a-hash" },
+      { ...transform, codeSha256: undefined },
+      { ...transform, confidence: 1 },
+    ])
+      expect(() => parseExtractedDocumentPayload(packet(transformed(invalidTransform)))).toThrow();
+    expect(() =>
+      parseExtractedDocumentPayload(
+        packet(transformed(transform, { ...observations.crops[0], kind: "outside", language: "eng" })),
+      ),
+    ).toThrow();
+    for (const invalid of [
+      { ...observations, status: "verified" },
+      { ...observations, confidence: 1 },
+      { ...observations, cellModel: { ...observations.cellModel, sha256: hash } },
+      { ...observations, cellModel: { ...observations.cellModel, bytes: 1 } },
+      { ...observations, detector: { ...observations.detector, width: 4_000_000 } },
+      { ...observations, crops: Array.from({ length: 113 }, () => observations.crops[0]) },
+      { ...observations, crops: [{ ...observations.crops[0], language: "eng" }] },
+      { ...observations, crops: [{ ...observations.crops[0], sourceRect: [20, 0, 0, 10] }] },
+      { ...observations, crops: [{ ...observations.crops[0], privateText: "unapproved metadata" }] },
+    ])
+      expect(() => parseExtractedDocumentPayload(packet(invalid))).toThrow();
+    expect(() =>
+      parseExtractedDocumentPayload(
+        JSON.stringify({
+          pages: [{ pageNumber: 1, text: "synthetic", metadata: { arbitrary: "still rejected" } }],
+          images: [],
+        }),
+      ),
+    ).toThrow();
+  });
+
   it.each([
     {
       name: "non-string page text",
@@ -52,10 +146,18 @@ describe("Python extracted-document payload validation", () => {
 describe("extraction provenance (audit F04)", () => {
   const provenance = {
     name: "extract_pdf_assets",
-    version: "2026-10-16.bounded-ocr-detail-v6",
+    version: "2026-10-21.merged-cell-provenance-v11",
     pymupdf: "1.26.0",
     tableStrategy: "table_aware_page_text",
   };
+
+  it("preserves the previous reader's provenance on existing artifacts", () => {
+    const previousProvenance = { ...provenance, version: "2026-10-18.ruled-edge-provenance-v7" };
+    const parsed = parseExtractedDocumentPayload(
+      JSON.stringify({ pages: [], images: [], extractor: previousProvenance }),
+    );
+    expect(parsed.extractor).toEqual(previousProvenance);
+  });
 
   it("keeps the reader's provenance so the worker can record it on the document", () => {
     const parsed = parseExtractedDocumentPayload(JSON.stringify({ pages: [], images: [], extractor: provenance }));
@@ -83,6 +185,8 @@ describe("extraction provenance (audit F04)", () => {
   it("is written onto documents.metadata by the worker", async () => {
     const { readFileSync } = await import("node:fs");
     const worker = readFileSync(new URL("../worker/main.ts", import.meta.url), "utf8");
-    expect(worker).toContain("extraction_provenance: { ...extracted.extractor, recorded_at: indexedAt }");
+    expect(worker).toContain(
+      "extraction_provenance: buildExtractionProvenance({ extracted, chunks, recordedAt: indexedAt })",
+    );
   });
 });

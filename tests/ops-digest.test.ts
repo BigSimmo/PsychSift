@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   normalizeOpsStatus,
   renderDigest,
+  renderIngestionWorkerState,
+  renderStorageCleanupBacklog,
   resolveHealthUrl,
   serializeGitHubOutputs,
   updateHybridRpcHourlyEvidence,
@@ -39,6 +41,20 @@ describe("ops digest workflow contract", () => {
     expect(workflow).toContain("publish_alert_comment");
     expect(workflow).toContain("publishAttentionComment");
     expect(workflow).toContain("ops-digest-rpc-history");
+    // Assignment subscribes the owner; the @mention below is what GitHub mobile pushes to the phone.
+    expect(workflow).toContain("github.rest.issues.addAssignees");
+    // Owner decision 2026-10-21: only a page-level breach pushes straight away. Warnings and a
+    // degraded or unknown service wait for the daily health summary.
+    expect(workflow).toContain('(context.eventName === "schedule" && severity === "page")');
+    expect(workflow).not.toContain('severity === "warning" || severity === "page"');
+    // The rolling issue is reused, so the mention, not the assignment, pushes every later alert.
+    expect(workflow).toContain("body: `@${alertAssignee} ⚠ Attention");
+    expect(workflow.indexOf("await assignAlert(issueNumber);")).toBeGreaterThan(
+      workflow.indexOf('if (publishAttentionComment && (status !== "ok" || alerting))'),
+    );
+    expect(workflow.indexOf("await assignAlert(issueNumber);")).toBeLessThan(
+      workflow.indexOf("github.rest.issues.createComment"),
+    );
     expect(workflow).not.toContain('const status = "${{ steps.digest.outputs.status }}"');
     expect(workflow).not.toContain("const alertSummary = '${{ steps.digest.outputs.alert_summary }}'");
   });
@@ -58,8 +74,8 @@ describe("ops digest workflow contract", () => {
   });
 });
 
-describe("hybrid RPC hourly evidence", () => {
-  it("requires three contiguous identity-complete hourly windows for the same RPC", () => {
+describe("hybrid RPC digest-sample evidence", () => {
+  it("requires three consecutive identity-complete samples for the same RPC", () => {
     let history: unknown;
     for (const observedAt of ["2026-08-23T01:20:00Z", "2026-08-23T02:20:00Z", "2026-08-23T03:20:00Z"]) {
       const result = updateHybridRpcHourlyEvidence(
@@ -92,22 +108,41 @@ describe("hybrid RPC hourly evidence", () => {
     expect(result.repeatedRpcNames).toEqual(["hybrid_search"]);
   });
 
-  it("does not join windows more than six hours apart", () => {
+  it("pages from three consecutive six-hourly scheduled samples of the same failing RPC", () => {
+    const failing = { slo: { hybridRpcIdentityEvidenceComplete: true, hybridRpcErrorCounts: { hybrid_search: 2 } } };
+    let history: unknown;
+    let repeated: string[] = [];
+    // The schedule is `15 */6 * * *`; the middle fire arrives late, as GitHub cron fires often do.
+    for (const observedAt of ["2026-08-23T00:15:00Z", "2026-08-23T07:05:00Z", "2026-08-23T12:15:00Z"]) {
+      const result = updateHybridRpcHourlyEvidence(history, failing, new Date(observedAt));
+      history = result.history;
+      repeated = result.repeatedRpcNames;
+    }
+    expect(repeated).toEqual(["hybrid_search"]);
+    expect(
+      evaluateOperationalAlerts(
+        { status: "ok", slo: { windowMinutes: 60, totalQueries: 100, hybridRpcErrorRate: 0.02, degradedRate: 0 } },
+        { repeatedHybridRpcNames: repeated },
+      ).map((item) => item.code),
+    ).toContain("OPS_HYBRID_RPC_ERROR_RATE_PAGE");
+  });
+
+  it("does not join samples more than two schedule intervals apart", () => {
     const result = updateHybridRpcHourlyEvidence(
       {
         version: 1,
         windows: [
           { hour: "2026-08-23T00:00:00.000Z", rpcNames: ["hybrid_search"] },
-          { hour: "2026-08-23T07:00:00.000Z", rpcNames: ["hybrid_search"] },
+          { hour: "2026-08-23T13:00:00.000Z", rpcNames: ["hybrid_search"] },
         ],
       },
       { slo: { hybridRpcIdentityEvidenceComplete: true, hybridRpcErrorCounts: { hybrid_search: 1 } } },
-      new Date("2026-08-23T08:20:00Z"),
+      new Date("2026-08-23T14:20:00Z"),
     );
     expect(result.repeatedRpcNames).toEqual([]);
   });
 
-  it("breaks the paging sequence when an hourly identity snapshot is incomplete", () => {
+  it("breaks the paging sequence when an identity snapshot is incomplete", () => {
     const result = updateHybridRpcHourlyEvidence(
       {
         version: 1,
@@ -124,6 +159,32 @@ describe("hybrid RPC hourly evidence", () => {
 });
 
 describe("renderDigest", () => {
+  it("renders source-gap, unsupported and per-route p95 latency lines", () => {
+    const md = renderDigest({
+      status: "ok",
+      slo: {
+        windowMinutes: 60,
+        totalQueries: 40,
+        hybridRpcErrorRate: 0,
+        degradedRate: 0,
+        sourceGapQueries: 4,
+        sourceGapRate: 0.1,
+        unsupportedQueries: 2,
+        unsupportedRate: 0.05,
+        latencyP95MsByRouteMode: {
+          fast: { p95Ms: 21_000, samples: 30 },
+          strong: { p95Ms: null, samples: 0 },
+          extractive: { p95Ms: 3_000, samples: 10 },
+        },
+        latencySampleTruncated: true,
+      },
+    });
+    expect(md).toContain("- source gaps: 4 (10.0%)");
+    expect(md).toContain("- unsupported: 2 (5.0%)");
+    expect(md).toContain("- p95 latency: fast 21.0s (n=30), strong — (n=0), extractive 3.0s (n=10) ⚠ sample capped");
+    expect(md).toContain("PAGE OPS_ANSWER_LATENCY_P95_PAGE");
+  });
+
   it("distinguishes an empty hourly window without clearing its unknown-quality alert", () => {
     const health = {
       status: "ok",
@@ -152,6 +213,52 @@ describe("renderDigest", () => {
       codes: ["OPS_ANSWER_SLO_UNKNOWN"],
     });
     expect(serializeGitHubOutputs(health.status, summary)).toContain("alerting=true\nseverity=unknown\n");
+  });
+
+  it("shows the trailing six-hour answer-quality window that the alerts judge (audit EVAL-02)", () => {
+    const md = renderDigest({
+      status: "ok",
+      slo: { windowMinutes: 60, totalQueries: 0, hybridRpcErrorRate: 0, degradedRate: 0 },
+      sloTrailing: {
+        windowMinutes: 360,
+        totalQueries: 12,
+        hybridRpcErrorRate: 0,
+        degradedRate: 0,
+        sourceGapQueries: 6,
+        sourceGapRate: 0.5,
+        unsupportedQueries: 1,
+        unsupportedRate: 1 / 12,
+      },
+    });
+    expect(md).toContain("**Answer quality** (trailing 360m, the window alerts judge)");
+    expect(md).toContain("- source gaps: 6 (50.0%)");
+    expect(md).toContain("PAGE OPS_SOURCE_GAP_RATE_PAGE");
+    // The empty last hour is shown as such, not as unassessed answer quality.
+    expect(md).toContain("**Answer SLO** (trailing 60m)");
+    expect(md).toContain("No answered queries in the last 60 minutes.");
+    expect(md).not.toContain("No answered queries observed—answer quality not assessed.");
+    expect(md).not.toContain("OPS_ANSWER_SLO_UNKNOWN");
+  });
+
+  it("says the trailing snapshot query failed instead of showing an older build's hourly-only view", () => {
+    const md = renderDigest({
+      status: "ok",
+      slo: { windowMinutes: 60, totalQueries: 3, hybridRpcErrorRate: 0, degradedRate: 0 },
+      sloTrailing: { windowMinutes: 360, unavailable: true },
+    });
+    expect(md).toContain("**Answer quality** (trailing 360m, the window alerts judge)");
+    expect(md).toContain("**Snapshot query failed—answer quality not assessed.**");
+    expect(md).toContain("**Answer SLO** (trailing 60m)");
+    expect(md).toContain("OPS_ANSWER_SLO_UNKNOWN");
+  });
+
+  it("says when the trailing window has too few answers to judge rates", () => {
+    const md = renderDigest({
+      status: "ok",
+      sloTrailing: { windowMinutes: 360, totalQueries: 4, hybridRpcErrorRate: 0, degradedRate: 0, sourceGapRate: 0.5 },
+    });
+    expect(md).toContain("Fewer than 10 answers: source-gap, unsupported and latency-budget rates are not judged.");
+    expect(md).toContain("**Alert state:** none (0)");
   });
 
   it.each([undefined, {}, { windowMinutes: 60 }, { windowMinutes: 30, totalQueries: 0 }])(
@@ -273,5 +380,208 @@ describe("renderDigest", () => {
     expect(md).toContain("OVER THRESHOLD");
     expect(md).toContain("sample truncated");
     expect(md).toContain("OPS_PROJECTED_DAILY_SPEND_WARNING");
+  });
+});
+
+// Audit EVAL-08: a cancelled or timed-out canary evaluated nothing, so it must not count as the
+// "last completed run" that keeps liveness green.
+describe("eval-canary liveness, executed", () => {
+  function livenessScript() {
+    const workflow = readFileSync(new URL("../.github/workflows/ops-digest.yml", import.meta.url), "utf8");
+    const step = workflow.slice(workflow.indexOf("      - name: Warn if the weekly canary is stale"));
+    const marker = "          script: |\n";
+    const body: string[] = [];
+    for (const line of step.slice(step.indexOf(marker) + marker.length).split("\n")) {
+      if (line.length === 0) {
+        body.push("");
+        continue;
+      }
+      if (!line.startsWith("            ")) break;
+      body.push(line.slice(12));
+    }
+    return body.join("\n");
+  }
+
+  type Step = { name: string; conclusion: string | null };
+  // A failed run reached a verdict only when an evaluation step itself ran to a conclusion.
+  const evaluated: Step[] = [{ name: "Golden retrieval eval (live corpus)", conclusion: "failure" }];
+  const failedBeforeEvaluating: Step[] = [
+    { name: "Install dependencies", conclusion: "failure" },
+    { name: "Golden retrieval eval (live corpus)", conclusion: "skipped" },
+    { name: "Answer-quality subset (live generation)", conclusion: "skipped" },
+  ];
+
+  async function liveness(
+    runs: Array<{ id?: number; conclusion: string; updated_at: string; html_url?: string; steps?: Step[] }>,
+    { jobsError = false }: { jobsError?: boolean } = {},
+  ) {
+    const outputs: Record<string, string> = {};
+    const github = {
+      rest: {
+        actions: {
+          listWorkflowRuns: async () => ({ data: { workflow_runs: runs } }),
+          listJobsForWorkflowRun: async ({ run_id }: { run_id: number }) => {
+            if (jobsError) throw new Error("jobs API unavailable");
+            const run = runs.find((item) => item.id === run_id);
+            return { data: { jobs: [{ name: "eval-canary", steps: run?.steps ?? evaluated }] } };
+          },
+        },
+      },
+    };
+    const core = {
+      setOutput: (key: string, value: string) => {
+        outputs[key] = value;
+      },
+      warning: () => undefined,
+      info: () => undefined,
+    };
+    const AsyncFunction = Object.getPrototypeOf(async () => undefined).constructor as new (
+      ...args: string[]
+    ) => (...values: unknown[]) => Promise<void>;
+    await new AsyncFunction("github", "context", "core", livenessScript())(
+      github,
+      { repo: { owner: "BigSimmo", repo: "PsychSift" } },
+      core,
+    );
+    return outputs;
+  }
+
+  const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString();
+
+  it("is live after a recent run that reached a verdict, pass or fail", async () => {
+    expect((await liveness([{ conclusion: "failure", updated_at: daysAgo(2) }])).stale).toBe("false");
+    expect((await liveness([{ conclusion: "success", updated_at: daysAgo(2) }])).stale).toBe("false");
+  });
+
+  it("does not count a failed run that stopped before any evaluation step ran", async () => {
+    const outputs = await liveness([
+      { id: 2, conclusion: "failure", updated_at: daysAgo(1), steps: failedBeforeEvaluating },
+      { id: 1, conclusion: "success", updated_at: daysAgo(10) },
+    ]);
+    expect(outputs.stale).toBe("true");
+    expect(outputs.message).toContain("1 newer run(s) failed before evaluating and do not count");
+  });
+
+  it("names evaluation steps that exist in the canary workflow", () => {
+    const canary = readFileSync(new URL("../.github/workflows/eval-canary.yml", import.meta.url), "utf8");
+    for (const name of ["Golden retrieval eval (live corpus)", "Answer-quality subset (live generation)"]) {
+      expect(livenessScript()).toContain(`"${name}"`);
+      expect(canary).toContain(`      - name: ${name}\n`);
+    }
+  });
+
+  it("treats a failed run as no verdict when its steps cannot be read", async () => {
+    const outputs = await liveness([{ id: 3, conclusion: "failure", updated_at: daysAgo(1) }], { jobsError: true });
+    expect(outputs.stale).toBe("true");
+  });
+
+  it("does not count a recent cancelled or timed-out run as having run", async () => {
+    const outputs = await liveness([
+      { conclusion: "cancelled", updated_at: daysAgo(1) },
+      { conclusion: "timed_out", updated_at: daysAgo(3) },
+      { conclusion: "success", updated_at: daysAgo(10) },
+    ]);
+    expect(outputs.stale).toBe("true");
+    expect(outputs.message).toContain("2 newer run(s) were cancelled or timed out and do not count");
+  });
+
+  it("is stale when no recent completed run reached a verdict at all", async () => {
+    const outputs = await liveness([{ conclusion: "cancelled", updated_at: daysAgo(1) }]);
+    expect(outputs.stale).toBe("true");
+    expect(outputs.message).toContain("no recent canary run reached a pass or fail verdict");
+  });
+});
+
+// Audit EVAL-03: a deliberately paused worker must read as paused in the digest, not as healthy
+// and not as an outage. It never raises an alert by itself; the ingestion autopilot alerts on
+// pending uploads that nothing has claimed.
+describe("ingestion worker state line", () => {
+  it("shows a deliberate pause without changing the alert state", () => {
+    const health = { status: "ok" };
+    const md = renderDigest(health, { ingestionWorkerPaused: "true" });
+    expect(md).toContain(
+      "**Ingestion worker:** ⏸ paused on purpose (repository variable INGESTION_WORKER_PAUSED=true). Uploaded documents are not processed until it is resumed. Not an outage: the ingestion autopilot alerts only if an upload waits more than 30 minutes.",
+    );
+    expect(evaluateOperationalAlerts(health, { ingestionWorkerPaused: "true" })).toEqual(
+      evaluateOperationalAlerts(health),
+    );
+  });
+
+  it("distinguishes an expected-running worker from an unrecorded state", () => {
+    expect(renderIngestionWorkerState("false")).toBe("**Ingestion worker:** expected to be running.");
+    expect(renderIngestionWorkerState(undefined)).toBe(
+      "**Ingestion worker:** state not recorded (set repository variable INGESTION_WORKER_PAUSED to true or false).",
+    );
+    expect(renderIngestionWorkerState("maybe")).toBe(renderIngestionWorkerState(undefined));
+  });
+
+  it("passes the repository variable to the digest step", () => {
+    const workflow = readFileSync(new URL("../.github/workflows/ops-digest.yml", import.meta.url), "utf8");
+    expect(workflow).toContain("INGESTION_WORKER_PAUSED: ${{ vars.INGESTION_WORKER_PAUSED }}");
+  });
+});
+
+// Audit F-10: failed storage deletions queue in storage_cleanup_jobs and are drained only by hand.
+describe("storage cleanup backlog line", () => {
+  const now = Date.parse("2026-10-19T12:00:00.000Z");
+
+  it("shows an empty queue without a drain prompt", () => {
+    expect(renderStorageCleanupBacklog({ pending: 0, failed: 0, outstanding: 0, oldestOutstandingAt: null }, now)).toBe(
+      "**Storage cleanup backlog:** 0 outstanding (pending 0, failed 0)",
+    );
+  });
+
+  it("prompts the manual drain when a storage removal failed", () => {
+    const line = renderStorageCleanupBacklog(
+      { pending: 1, failed: 2, outstanding: 3, oldestOutstandingAt: "2026-10-19T11:59:00.000Z" },
+      now,
+    );
+    expect(line).toContain("3 outstanding (pending 1, failed 2)");
+    expect(line).toContain("oldest 2026-10-19T11:59:00.000Z");
+    expect(line).toContain("npm run cleanup:storage");
+    expect(line).toContain("docs/observability-slos.md#storage-cleanup-backlog");
+  });
+
+  it("treats a fresh pending row as an in-flight delete, and an hour-old one as stuck", () => {
+    const fresh = renderStorageCleanupBacklog(
+      { pending: 1, failed: 0, outstanding: 1, oldestOutstandingAt: "2026-10-19T11:59:30.000Z" },
+      now,
+    );
+    const stuck = renderStorageCleanupBacklog(
+      { pending: 1, failed: 0, outstanding: 1, oldestOutstandingAt: "2026-10-19T10:30:00.000Z" },
+      now,
+    );
+    expect(fresh).not.toContain("cleanup:storage");
+    expect(stuck).toContain("cleanup:storage");
+  });
+
+  it("counts expired processing claims when the probe reports them", () => {
+    const line = renderStorageCleanupBacklog(
+      { pending: 0, failed: 0, expiredClaims: 2, outstanding: 2, oldestOutstandingAt: "2026-10-19T10:00:00.000Z" },
+      now,
+    );
+    expect(line).toContain("2 outstanding (pending 0, failed 0, expired claims 2)");
+    expect(line).toContain("cleanup:storage");
+  });
+
+  it("omits the line when the probe did not report usable counts", () => {
+    expect(renderStorageCleanupBacklog(undefined, now)).toBeNull();
+    expect(renderStorageCleanupBacklog({ pending: -1, failed: 0 }, now)).toBeNull();
+    expect(renderStorageCleanupBacklog({ pending: 1.5, failed: 0 }, now)).toBeNull();
+    expect(renderStorageCleanupBacklog({ pending: "3", failed: 0 }, now)).toBeNull();
+  });
+
+  it("renders the backlog in the digest without changing the alert state", () => {
+    const health = {
+      status: "ok",
+      storageCleanup: { pending: 0, failed: 4, outstanding: 4, oldestOutstandingAt: "2026-10-18T00:00:00.000Z" },
+    };
+    expect(renderDigest(health)).toContain("**Storage cleanup backlog:** 4 outstanding (pending 0, failed 4)");
+    const withoutBacklog = evaluateOperationalAlerts({ status: "ok" }).map((item) => item.code);
+    expect(evaluateOperationalAlerts(health).map((item) => item.code)).toEqual(withoutBacklog);
+  });
+
+  it("leaves the digest unchanged when the probe has no storageCleanup block", () => {
+    expect(renderDigest({ status: "ok" })).not.toContain("Storage cleanup backlog");
   });
 });

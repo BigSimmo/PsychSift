@@ -8,7 +8,8 @@ import { useId, useState, useSyncExternalStore, type FormEvent, type ReactNode }
 import { focusRing } from "@/components/card-recipes";
 import { dashLink, dashMuted, dashSurface } from "@/components/dashboard-kit/recipes";
 import { InformationPageShell } from "@/components/information-page-shell";
-import { cn } from "@/components/ui-primitives";
+import { buttonFaceClass } from "@/components/ui/button-face";
+import { cn, searchShell, searchShellInput } from "@/components/ui-primitives";
 import { appModeIcons } from "@/lib/app-mode-icons";
 import { appModeDefinition, appModeHomeHref, type AppModeId } from "@/lib/app-modes";
 import {
@@ -191,8 +192,8 @@ function FindArea() {
             Which medicine are you checking?
           </h2>
         </div>
-        <div className="flex min-h-14 items-center gap-2 rounded-xl border border-[color:var(--dash-line-strong)] bg-[color:var(--dash-raised)] py-1 pr-1 pl-4 text-[color:var(--dash-ink)] focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[color:var(--focus)] forced-colors:border">
-          <Search aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--dash-muted)]" />
+        <div className={cn(searchShell, "bg-[color:var(--surface-lux)] py-1.5 shadow-[var(--e2)]")}>
+          <Search aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
           <label htmlFor="medicines-find-input" className="sr-only">
             Medicine or question
           </label>
@@ -204,16 +205,16 @@ function FindArea() {
             placeholder="Dosing, safety or monitoring"
             autoComplete="off"
             data-testid="medicines-find-input"
-            className="min-h-12 w-0 min-w-0 flex-1 bg-transparent text-base text-[color:var(--dash-ink)] outline-none placeholder:text-[color:var(--dash-muted)]"
+            className={cn(
+              searchShellInput,
+              "min-h-12 w-0 text-base text-[color:var(--text)] placeholder:text-[color:var(--text-placeholder)]",
+            )}
           />
           <button
             type="submit"
             aria-label="Search"
             data-testid="medicines-find-submit"
-            className={cn(
-              focusRing,
-              "grid size-12 shrink-0 place-items-center rounded-lg bg-[color:var(--dash-blue)] text-[color:var(--dash-raised)] forced-colors:border",
-            )}
+            className={cn(buttonFaceClass({ variant: "primary", size: "sm" }), "size-12 shrink-0 px-0")}
           >
             <ArrowRight aria-hidden="true" className="size-icon-md" />
           </button>

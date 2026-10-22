@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "c7323952-84fd-4a4b-b57b-99bdb81f394b",
+  "createdOn": "2026-10-17",
+  "action": "done",
+  "payload": {
+    "id": "#AD9JC6",
+    "outcome": "Wired DurableClinicalAssessmentRepository backed by public.registrar_assessments into src/lib/teaching/assessments/dual-sign-off.ts and src/app/api/teaching/assessments/dual-sign-off/route.ts, plus supervisor availability slots and booking endpoints in src/lib/teaching/assessments/supervisor-bookings.ts and src/app/api/teaching/assessments/bookings/route.ts; verified with tests/teaching-dual-sign-off-durable.test.ts (8/8) and check:owner-scope.",
+    "baseRowFingerprint": "d69b7b7556637a0cc2c08d3f04aa3b8ccfd49b5786e29243d664ad6a902734ac",
+    "targetUlid": "01M51JV9CNAD9JC6FPMWA8RZZ0"
+  }
+}

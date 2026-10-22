@@ -47,6 +47,8 @@ export type AssessHeaderProps = {
   readonly back?: { readonly href: string; readonly label: string };
   /** The round glass action at the top right of the screen (Save and close). */
   readonly action?: { readonly icon: LucideIcon; readonly label: string; readonly onClick: () => void };
+  /** 1 on a page whose screen heading is its only heading, so it has an h1. */
+  readonly headingLevel?: 1 | 2;
 };
 
 /**
@@ -56,7 +58,7 @@ export type AssessHeaderProps = {
  * on every change of screen. With no band (a test, a hidden band), it draws
  * the same things inline.
  */
-export function AssessHeader({ eyebrow, title, back, action }: AssessHeaderProps) {
+export function AssessHeader({ eyebrow, title, back, action, headingLevel = 2 }: AssessHeaderProps) {
   const shown = useModeBandShown();
   useModeBandHeading({ eyebrow, title });
   // A screen with its own way back takes the top bar's left button from the
@@ -67,14 +69,15 @@ export function AssessHeader({ eyebrow, title, back, action }: AssessHeaderProps
     () => document.getElementById(universalHeaderLeadingSlotId),
     () => null,
   );
+  const Heading = headingLevel === 1 ? "h1" : "h2";
   const heading = (
-    <h2
+    <Heading
       tabIndex={-1}
       data-screen-heading
       className={shown ? "sr-only" : "text-lg font-bold text-[color:var(--text-heading)] outline-none"}
     >
       {title}
-    </h2>
+    </Heading>
   );
   const backLink = back ? (
     <Link
@@ -548,6 +551,7 @@ export function AssessTextField({
   required,
   readOnly,
   single,
+  quietNote,
 }: {
   readonly id: string;
   readonly label: string;
@@ -557,16 +561,19 @@ export function AssessTextField({
   readonly required?: boolean;
   readonly readOnly?: boolean;
   readonly single?: boolean;
+  /** Leaves out the standing patient-details reminder when a field beside it already shows it. A warning still shows. */
+  readonly quietNote?: boolean;
 }) {
   const hit = looksLikePatientDetails(value);
   const noteId = `${id}-privacy`;
+  const showNote = hit || !quietNote;
   const missing = required && !value.trim();
   const shared = {
     id,
     value,
     readOnly,
     placeholder,
-    "aria-describedby": noteId,
+    "aria-describedby": showNote ? noteId : undefined,
     "aria-required": required || undefined,
     "data-err": missing ? "" : undefined,
     className: "assess-txt",
@@ -582,11 +589,13 @@ export function AssessTextField({
       ) : (
         <textarea rows={3} {...shared} onChange={(event) => onChange(event.target.value)} />
       )}
-      <AssessNote id={noteId} tone={hit ? "amber" : undefined}>
-        {hit
-          ? "This may be patient details (it looks like a URN, a date, a title and name, or a bed number). Please check and remove it."
-          : "Leave out anything that could identify a patient. This check only catches some."}
-      </AssessNote>
+      {showNote ? (
+        <AssessNote id={noteId} tone={hit ? "amber" : undefined}>
+          {hit
+            ? "This may be patient details (it looks like a URN, a date, a title and name, or a bed number). Please check and remove it."
+            : "Leave out anything that could identify a patient. This check only catches some."}
+        </AssessNote>
+      ) : null}
       <span className="sr-only" aria-live="polite">
         {hit ? "This may be patient details. Please check and remove it." : ""}
       </span>

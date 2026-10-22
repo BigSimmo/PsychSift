@@ -24,10 +24,18 @@ test("DSM mode nav Search returns to search results, not the shared home", async
   await page.goto("/dsm/search?q=major+depressive&run=1", { waitUntil: "domcontentloaded" });
   await expect(visibleByTestId(page, "dsm-search-page")).toBeVisible({ timeout: 15_000 });
 
-  await page.getByTestId("mode-nav").getByRole("link", { name: "Compare" }).click();
-  await expect(page).toHaveURL(/\/dsm\/compare/, { timeout: 15_000 });
+  // The mode-nav hrefs carry the query from the URL search params, which the shell only
+  // reads once it hydrates (SSR renders bare hrefs). Firefox clicked Compare before that
+  // and landed on a bare /dsm/compare (main run 39120425367), so wait for each link to
+  // carry the query before following it.
+  const compareLink = page.getByTestId("mode-nav").getByRole("link", { name: "Compare" });
+  await expect(compareLink).toHaveAttribute("href", /[?&]q=major\+depressive(?:&|$)/, { timeout: 15_000 });
+  await compareLink.click();
+  await expect(page).toHaveURL(/\/dsm\/compare\?q=major\+depressive/, { timeout: 15_000 });
 
-  await page.getByTestId("mode-nav").getByRole("link", { name: "Search" }).click();
+  const searchLink = page.getByTestId("mode-nav").getByRole("link", { name: "Search" });
+  await expect(searchLink).toHaveAttribute("href", /[?&]q=major\+depressive&run=1(?:&|$)/);
+  await searchLink.click();
   await expect(page).toHaveURL(/\/dsm\/search\?q=major\+depressive&run=1/, { timeout: 15_000 });
   await expect(visibleByTestId(page, "dsm-search-page")).toBeVisible();
   await expect(page).not.toHaveURL(/\/?mode=dsm/);

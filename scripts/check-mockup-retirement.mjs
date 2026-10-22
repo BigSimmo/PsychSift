@@ -10,10 +10,10 @@
  *      nothing kept it in step with the tree. It was refuted in five places by a single
  *      afternoon of evidence-gathering (the answer family, both document families, the
  *      closed issue #162, and the calculators family promoted to production by PR #1227).
- *   2. A third of the surface is not design scratch at all. `/mockups/development` and
- *      `/mockups/care-plan` (and, at the time, two since-retired prototypes) are live in
- *      production behind `DeveloperAreaGate` (src/proxy.ts) and linked from Settings. Any
- *      policy keyed on the path `src/app/mockups/**` hits them too.
+ *   2. A third of the surface was not design scratch at all. A copy of the Owner panel and three
+ *      prototypes were live in production behind `DeveloperAreaGate` (src/proxy.ts); all of them
+ *      were retired by 2026-10-22 and the Owner panel lives at `/admin/developer-hub`. Any policy
+ *      keyed on the path `src/app/mockups/**` would have hit them too.
  *   3. Filename supersession is systematically backwards. `example-round-two` IMPORTS
  *      `example-round-one`; dictionary rounds 2 and 3 both import round 1; the privacy
  *      study imports the privacy winner. Deleting "the older generation" breaks the newer one

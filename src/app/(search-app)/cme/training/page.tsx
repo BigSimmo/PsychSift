@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { CmeStateNotice } from "@/components/cme/cme-state-notice";
 import { CmeTrainingPage } from "@/components/cme/cme-training-page";
 import { cpdYearOf } from "@/lib/cme/cpd-year";
-import { trainingExampleView } from "@/lib/cme/training-assessments";
+import { buildOwnerTrainingAssessments, trainingExampleView } from "@/lib/cme/training-assessments";
 import { sampleTrainingAssessments } from "@/lib/cme/training-assessments-sample";
 import { loadCmeTrainingPageData } from "@/lib/cme/training-page-data";
 
@@ -28,6 +28,9 @@ export default async function CmeTrainingRoute({ searchParams }: CmeTrainingRout
     );
   }
   const view = trainingExampleView(query.example);
+  const assessments = data.demoMode
+    ? sampleTrainingAssessments(view)
+    : (data.assessments ?? buildOwnerTrainingAssessments(data.periods, data.registrarMilestones ?? []));
   return (
     <CmeTrainingPage
       key={data.demoMode ? view : "owner"}
@@ -35,7 +38,7 @@ export default async function CmeTrainingRoute({ searchParams }: CmeTrainingRout
       initialPeriods={data.periods}
       initialMilestones={data.milestones}
       demoMode={data.demoMode}
-      assessments={data.demoMode ? sampleTrainingAssessments(view) : { status: "not-recorded" }}
+      assessments={assessments}
     />
   );
 }

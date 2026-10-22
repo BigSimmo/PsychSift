@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "052e35a9-6aad-4357-91c9-b30994079c47",
+  "createdOn": "2026-10-21",
+  "action": "done",
+  "payload": {
+    "id": "#54XJ7D",
+    "outcome": "Resolved 2026-10-21 in the Work tools hardening PR: manager approval rechecks every team rule (PRs #3571, #3574), and a swap that would approve itself while breaking a team rule now waits for the manager (roster_swap_accept_for_manager, owner yes 21 Oct 2026). Applies once the owner merges the migration.",
+    "baseRowFingerprint": "ed1341f62ffd8919be872bbc98ff600fd6aad84222a1f4c08b2c285f39ebf5eb",
+    "targetUlid": "01M4T65YT654XJ7DBRK88PK6Q2"
+  }
+}

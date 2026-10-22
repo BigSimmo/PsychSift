@@ -1,14 +1,14 @@
 import { render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import DeveloperCorpusHealthPage from "@/app/mockups/development/corpus-health/page";
+import DeveloperCorpusHealthPage from "@/app/(admin)/admin/developer-hub/corpus-health/page";
 import type { CorpusHealth } from "@/lib/developer-area/corpus-health";
 
 // PanelPageShell's back control is a ContextualBackLink, which calls
 // next/navigation's useRouter for its history-aware click handler. Outside an
 // app-router tree that throws, so every render here needs the router mocked.
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/mockups/development/corpus-health",
+  usePathname: () => "/admin/developer-hub/corpus-health",
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), prefetch: vi.fn() }),
 }));
 
@@ -56,7 +56,7 @@ describe("developer corpus health page", () => {
     render(await DeveloperCorpusHealthPage());
 
     expect(screen.getByTestId("developer-corpus-health")).toBeInTheDocument();
-    expect(screen.getByTestId("developer-corpus-health-back")).toHaveAttribute("href", "/mockups/development");
+    expect(screen.getByTestId("developer-corpus-health-back")).toHaveAttribute("href", "/admin/developer-hub");
     expect(screen.getByTestId("developer-hub-freshness")).toHaveTextContent(/Your library/);
   });
 

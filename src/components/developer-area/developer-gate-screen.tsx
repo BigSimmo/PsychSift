@@ -3,7 +3,7 @@
 import { type FormEvent, useState } from "react";
 import { KeyRound, Loader2, LockKeyhole, Mail, ShieldAlert } from "lucide-react";
 
-import { cn, floatingControl, InlineNotice, primaryControl } from "@/components/ui-primitives";
+import { controlDisabled, cn, floatingControl, InlineNotice, commandControl } from "@/components/ui-primitives";
 import { ProviderBrandMark, type SsoProvider } from "@/components/clinical-dashboard/provider-brand-icons";
 import { TextField } from "@/components/ui/text-field";
 import { type OAuthProvider, useAuthSession } from "@/lib/supabase/client";
@@ -164,7 +164,7 @@ export function DeveloperGateScreen({
             type="submit"
             disabled={keyBusy || !developerKey.trim()}
             data-testid="developer-gate-key-submit"
-            className={cn(primaryControl, "w-full")}
+            className={cn(commandControl, "w-full")}
           >
             {unlocking ? (
               <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin motion-reduce:animate-none" />
@@ -207,7 +207,7 @@ export function DeveloperGateScreen({
               type="submit"
               disabled={busy || !formEmail.trim() || !auth.isConfigured}
               data-testid="developer-gate-email-submit"
-              className={cn(primaryControl, "w-full")}
+              className={cn(commandControl, "w-full")}
             >
               {auth.status === "loading" ? (
                 <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
@@ -232,7 +232,10 @@ export function DeveloperGateScreen({
                 onClick={() => void chooseProvider(provider)}
                 disabled={busy}
                 aria-label={`Continue with ${provider}`}
-                className="flex min-h-12 w-full items-center gap-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-3 text-left text-sm font-semibold text-[color:var(--text-heading)] shadow-[var(--shadow-inset)] transition hover:border-[color:var(--border-strong)] hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] disabled:cursor-wait disabled:opacity-65"
+                className={cn(
+                  controlDisabled,
+                  "flex min-h-12 w-full items-center gap-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-3 text-left text-sm font-semibold text-[color:var(--text-heading)] shadow-[var(--shadow-inset)] transition hover:border-[color:var(--border-strong)] hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] disabled:cursor-wait",
+                )}
               >
                 {pendingProvider === provider ? (
                   <span className="grid h-7 w-7 shrink-0 place-items-center">

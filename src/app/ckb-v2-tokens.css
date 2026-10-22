@@ -70,7 +70,12 @@
    * `ckb-v2` is mounted on <html>, every step below overrides both Tailwind's
    * default of the same name and the `@theme` block in globals.css. Note in
    * particular that `--text-sm` here is 13px, not Tailwind's 14px, so the plain
-   * `text-sm` utility renders 13px app-wide.
+   * `text-sm` utility renders 13px app-wide. It is the metadata/dense-label role;
+   * 14px supporting body copy uses additive `--text-secondary` in @theme.
+   * Do not globally enlarge --text-sm without reviewing its consumers for fit.
+   * Raw component CSS uses these same roles for exact scale matches. Density
+   * root font sizes, the 16px iOS input floor, print points, and measured inline
+   * annotation geometry remain explicit exceptions, not new type-scale steps.
    *
    * The `@theme` block carries the same pixel values under a second set of
    * names. Neither file referenced the other, which is how the overlap went

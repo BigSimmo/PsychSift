@@ -271,7 +271,7 @@ function ExampleTicker({
               the trailing "Tap to search" squeezed the example to a few letters
               on a 320-390px phone. The whole line is the button, and its name
               still says what a tap does. */}
-          <span className="smart-search-phone-ticker-kicker">Try this</span>
+          <span className="smart-search-phone-ticker-kicker">Try this</span>{" "}
           <span className="smart-search-phone-ticker-query">{resolvedTickerExample}</span>
         </button>
       ) : null}
@@ -364,7 +364,7 @@ function CommandDropdown({
       className={cn(
         // text-left: the hero composer slot sits inside the centred mode-home
         // template, so without it the section headings inherit text-center.
-        "universal-command-dropdown absolute left-0 right-0 z-30 overflow-hidden rounded-2xl border border-[color:var(--border-strong)] bg-[color:var(--surface)] text-left shadow-[var(--shadow-elevated)]",
+        "universal-command-dropdown absolute left-0 right-0 z-30 overflow-hidden rounded-2xl border border-[color:var(--border-strong)] bg-[color:var(--surface)] text-left shadow-[var(--e4)]",
         opensUpward ? "bottom-[calc(100%+0.5rem)] top-auto" : "top-[calc(100%+0.5rem)]",
         placement === "bottom-dock" ? "hidden sm:block" : "hidden lg:block",
       )}
@@ -1201,18 +1201,6 @@ export function UniversalSearchCommandSurface({
       )}
     >
       <SmartIntentCue active={smartNaturalSearch} modeLabel={mode.label} />
-      {smartNaturalSearch ? null : (
-        // The phone ticker demonstrates an ordinary example search. It does
-        // not depend on Clinical Ask or a provider flag, and it is home-only.
-        <ExampleTicker
-          examples={config.examples}
-          showPhoneTicker={showPhoneSuggestionTicker}
-          onPickExample={(example) => {
-            onQueryChange(example);
-            onFocusSearchInput?.();
-          }}
-        />
-      )}
       <div
         className="relative w-full"
         onKeyDownCapture={(event) => {
@@ -1262,7 +1250,9 @@ export function UniversalSearchCommandSurface({
             universalNotice={
               universal.tooLong
                 ? `This search is longer than ${universalSearchMaxQueryLength} characters, so it can’t be matched across PsychSift. Shorten it to see matches.`
-                : (universal.error ?? null)
+                : universal.withheld
+                  ? "This looks like it holds a patient detail, so no matches were looked up. Remove names, dates of birth and record numbers."
+                  : (universal.error ?? null)
             }
             universalPending={universal.loading && Boolean(trimmedQuery)}
             placement={placement}
@@ -1273,6 +1263,18 @@ export function UniversalSearchCommandSurface({
           />
         ) : null}
       </div>
+      {smartNaturalSearch ? null : (
+        // The phone ticker demonstrates an ordinary example search. It does
+        // not depend on Clinical Ask or a provider flag, and it is home-only.
+        <ExampleTicker
+          examples={config.examples}
+          showPhoneTicker={showPhoneSuggestionTicker}
+          onPickExample={(example) => {
+            onQueryChange(example);
+            onFocusSearchInput?.();
+          }}
+        />
+      )}
       {showHomeSuggestions ? (
         <SmartPromptRow
           modeId={modeId}

@@ -215,6 +215,9 @@ const deployDeferralPatterns = [
   // Outright denial.
   /\b(?:do not|don'?t|must not|will not|won'?t|not for|never)\s+(?:be\s+)?deploy/i,
   /\bnot yet\s+(?:applied|deployed|live|in production)\b/i,
+  // The same denial with "yet" last, and a go-live put off to a later window (audit CC-08, 2026-10-20).
+  /\bnot\s+(?:applied|deployed|live|in production)\s+yet\b/i,
+  /\b(?:go(?:es)?|going)\s+live\b[^\n]{0,40}?\b(?:next|later)\b/i,
   new RegExp(String.raw`\bdefer(?:red|ring|s)?\b[^\n]{0,32}?\b${DEPLOY_WORD}`, "i"),
 ];
 
@@ -897,7 +900,9 @@ export function migrationHistoryEditApproval(body) {
   if (!match) return { declared: false, satisfied: false, reason: "" };
   const reason = match[1].trim();
   const placeholder = /^<[^>]*>$|^(?:n\/?a|none|todo|tbd|-)$/i.test(reason);
-  return { declared: true, satisfied: !placeholder && reason.length >= 12, reason };
+  // The reason must cite where the owner's own words are recorded (audit CC-09, 2026-10-20).
+  const cited = /docs\/decisions\/[\w.-]+\.md|https:\/\/\S+/.test(reason);
+  return { declared: true, satisfied: !placeholder && cited && reason.length >= 12, reason };
 }
 
 /**
@@ -933,7 +938,7 @@ export function migrationHistoryVerdict({
       for (const violation of violations) errors.push(violation.message);
       if (override.declared && !override.satisfied) {
         errors.push(
-          "`Migration history edit approved:` needs a specific reason (at least 12 characters, not a placeholder).",
+          "`Migration history edit approved:` needs a specific reason (at least 12 characters, not a placeholder) citing the owner's words: a docs/decisions/ entry or a link.",
         );
       }
     }
@@ -1062,6 +1067,175 @@ export function requiredCheckForgeryFindings({ files, workflowContents }) {
   return findings;
 }
 
+// Bot-authored sensitive changes (owner rule, 2026-10-18). A PR whose commits were AUTHORED by
+// a bot account (any `[bot]` login or noreply address, or a known review/coding bot such as
+// qodo) must not touch `supabase/**`, `backend/**/infra/*.sql` or a clinical-risk path: those
+// PRs would otherwise satisfy every check and auto-merge with no human review. Dependabot only
+// edits dependency manifests, lockfiles, Dockerfiles and workflow pins, none of which match,
+// so its PRs are unaffected. Only each bot commit's own files are judged, so a human commit
+// touching a sensitive path next to a bot formatting commit elsewhere still passes.
+export const knownBotLogins = new Set([
+  "qodo-merge",
+  "qodo-merge-pro",
+  "qodo-ai",
+  "qodo-code-review",
+  "codiumai-pr-agent",
+  "coderabbitai",
+  "copilot",
+  "copilot-swe-agent",
+  "devin-ai-integration",
+  "sweep-ai",
+  "github-actions",
+  "renovate",
+]);
+
+export function isBotAuthor(author) {
+  if (!author) return false;
+  const login = String(author.login ?? "")
+    .trim()
+    .toLowerCase();
+  const email = String(author.email ?? "")
+    .trim()
+    .toLowerCase();
+  if (login.endsWith("[bot]") || knownBotLogins.has(login)) return true;
+  if (/\[bot\]@users\.noreply\.github\.com$/.test(email)) return true;
+  const emailLogin = email.match(/^(?:\d+\+)?([^@]+)@users\.noreply\.github\.com$/)?.[1];
+  return Boolean(emailLogin && knownBotLogins.has(emailLogin));
+}
+
+const botSensitivePathPatterns = [/^supabase\//, /^backend\/(?:.+\/)?infra\/[^/]+\.sql$/i];
+
+// Files that decide whether the required checks pass (audit CC-04, 2026-10-20). `ci.yml` and
+// `secret-scan.yml` run on `pull_request`, so a PR runs its own copy; `ci-change-scope.mjs`
+// decides which CI jobs run at all. Dependabot's action-pin bumps are the one routine editor.
+const requiredCheckProducerPatterns = [
+  /^\.github\/workflows\/(?:ci|secret-scan)\.ya?ml$/i,
+  /^\.github\/actions\//i,
+  /^scripts\/ci-change-scope\.mjs$/,
+];
+const workflowSurfacePatterns = [/^\.github\/(?:workflows|actions)\//i, ...requiredCheckProducerPatterns];
+
+export function isRequiredCheckProducer(filePath) {
+  const file = normalizePath(filePath);
+  return Boolean(file) && requiredCheckProducerPatterns.some((pattern) => pattern.test(file));
+}
+
+export function isDependabot(author) {
+  const login = String(author?.login ?? "")
+    .trim()
+    .toLowerCase();
+  const email = String(author?.email ?? "")
+    .trim()
+    .toLowerCase();
+  return login === "dependabot[bot]" || /^(?:\d+\+)?dependabot\[bot\]@users\.noreply\.github\.com$/.test(email);
+}
+
+// `workflows: true` adds CI workflows, composite actions and the change-scope script, which a bot
+// other than Dependabot has no business editing (audit CC-02, 2026-10-20).
+export function isBotSensitivePath(filePath, { workflows = false } = {}) {
+  const file = normalizePath(filePath);
+  if (!file) return false;
+  if (botSensitivePathPatterns.some((pattern) => pattern.test(file))) return true;
+  if (workflows && workflowSurfacePatterns.some((pattern) => pattern.test(file))) return true;
+  return classifyPullRequestFiles([file]).clinicalRisk;
+}
+
+// AI coding agents (audit CC-02, 2026-10-20). Claude, Codex, Cursor and Grok commit under the
+// owner's account or their own addresses, never as `[bot]`, so isBotAuthor misses them. They
+// write most database changes on the owner's instruction, so their sensitive changes are
+// WARNINGS, not blocks: the warning names the agent, so a reviewer knows no person wrote it.
+// The author, the committer and every Co-Authored-By trailer are read.
+const aiAgentEmailPatterns = [/@anthropic\.com$/, /@openai\.com$/, /@cursor\.(?:com|sh)$/, /@x\.ai$/];
+const aiAgentNamePattern = /\b(?:claude|codex|cursor ?agent|grok)\b/i;
+const aiAgentBranchPattern = /^(?:claude|codex|cursor|grok)[/-]/i;
+
+/** True for a head branch named by an AI agent, whose commits may carry the owner's own identity. */
+export function isAiAgentBranch(headRef) {
+  return aiAgentBranchPattern.test(String(headRef ?? ""));
+}
+
+function coAuthors(message) {
+  return [...String(message ?? "").matchAll(/^co-authored-by:\s*([^<\n]*)<([^>\n]*)>/gim)].map(([, name, email]) => ({
+    name: name.trim(),
+    email: email.trim().toLowerCase(),
+  }));
+}
+
+export function aiAgentIdentity(commit) {
+  for (const person of [commit?.author, commit?.committer, ...coAuthors(commit?.message)]) {
+    if (!person) continue;
+    const email = String(person.email ?? "")
+      .trim()
+      .toLowerCase();
+    const name = String(person.name ?? "").trim();
+    if (aiAgentEmailPatterns.some((pattern) => pattern.test(email))) return name ? `${name} <${email}>` : email;
+    if (aiAgentNamePattern.test(name)) return name;
+  }
+  return null;
+}
+
+/** True when a commit names a bot as a Co-Authored-By trailer, so the bot's edit is judged like its own commit. */
+export function botCoAuthored(message) {
+  return coAuthors(message).some((person) => isBotAuthor({ login: person.name, email: person.email }));
+}
+
+// commits: as botSensitiveCommitViolations. One warning per AI-agent commit touching a
+// sensitive path. Merge commits are skipped: their file list is everything merged in.
+export function aiAgentSensitiveCommitWarnings(commits, { headRef } = {}) {
+  const warnings = [];
+  for (const commit of commits ?? []) {
+    if (isBotAuthor(commit?.author) || botCoAuthored(commit?.message)) continue;
+    if (Number(commit?.parents ?? 1) > 1) continue;
+    const agent = aiAgentIdentity(commit) ?? (isAiAgentBranch(headRef) ? `branch ${headRef}` : null);
+    if (!agent || !Array.isArray(commit?.files)) continue;
+    const sensitive = commit.files.filter((file) => isBotSensitivePath(file, { workflows: true }));
+    if (sensitive.length === 0) continue;
+    const sha = String(commit.sha ?? "").slice(0, 12) || "unknown";
+    warnings.push(
+      `AI-agent commit ${sha} (${agent}) touches protected paths (${sensitive.slice(0, 5).join(", ")}${sensitive.length > 5 ? ", …" : ""}). No person wrote this change: it needs the owner's own review before merge.`,
+    );
+  }
+  return warnings;
+}
+
+/**
+ * The one override for a change to a required-check producer: a body line
+ * `Required check change approved: <reason>` naming why, ideally linking the owner's words.
+ */
+export function requiredCheckChangeApproval(body) {
+  const withoutComments = String(body ?? "").replace(/<!--[^]*?-->/g, "");
+  const match = withoutComments.match(/^[\s>*-]*\*{0,2}Required check change approved\*{0,2}:\s*(\S[^\n]*)$/im);
+  if (!match) return { declared: false, satisfied: false, reason: "" };
+  const reason = match[1].trim();
+  const placeholder = /^<[^>]*>$|^(?:n\/?a|none|todo|tbd|-)$/i.test(reason);
+  const cited = /docs\/decisions\/[\w.-]+\.md|https:\/\/\S+/.test(reason);
+  return { declared: true, satisfied: !placeholder && cited && reason.length >= 12, reason };
+}
+
+// commits: [{ sha, author: { login, email }, files: [path, ...] }]. Returns one message per
+// offending commit. A bot commit whose file list could not be read fails closed.
+export function botSensitiveCommitViolations(commits) {
+  const violations = [];
+  for (const commit of commits ?? []) {
+    if (!isBotAuthor(commit?.author) && !botCoAuthored(commit?.message)) continue;
+    const who = commit.author?.login || commit.author?.email || "a bot co-author";
+    const sha = String(commit.sha ?? "").slice(0, 12) || "unknown";
+    if (!Array.isArray(commit.files)) {
+      violations.push(`Bot-authored commit ${sha} (${who}) could not have its files verified; failing closed.`);
+      continue;
+    }
+    const sensitive = commit.files.filter((file) =>
+      isBotSensitivePath(file, { workflows: !isDependabot(commit.author) }),
+    );
+    if (sensitive.length > 0) {
+      violations.push(
+        `Bot-authored commit ${sha} (${who}) touches protected paths (${sensitive.slice(0, 5).join(", ")}${sensitive.length > 5 ? ", …" : ""}). Supabase, backend infra SQL and clinical paths need a human-authored commit and owner review; re-author the change by hand.`,
+      );
+    }
+  }
+  return violations;
+}
+
 export function evaluatePullRequestPolicy({
   title,
   body,
@@ -1071,9 +1245,21 @@ export function evaluatePullRequestPolicy({
   baseMigrationVersions,
   addedMigrationContents,
   changedWorkflowContents,
+  // [{ sha, author: { login, email }, files }] from the PR's commits; omitted → check not run.
+  commits = /** @type {Array<{ sha?: string; author?: { login?: string; email?: string }; files?: string[] }> | undefined} */ (
+    undefined
+  ),
   // true for the PR policy workflow (and other enforcing callers): fail closed when a
   // migration-touching PR cannot supply the inputs needed to verify applied-migration history.
   enforceMigrationHistory = false,
+  // The PR author's login; Dependabot's action-pin bumps may edit required-check producers.
+  author = undefined,
+  // true when auto-merge is armed on the PR; undefined when the caller cannot tell.
+  autoMergeArmed = undefined,
+  // The login that armed auto-merge (`pull_request.auto_merge.enabled_by.login`), and the
+  // repository owner's login. Only the owner may arm auto-merge on a clinical-risk PR.
+  autoMergeEnabledBy = undefined,
+  ownerLogin = undefined,
   now = new Date(),
 }) {
   // Hard-blocking conditions (`errors`): a lingering `PR_POLICY_BODY.md` transport file,
@@ -1104,6 +1290,50 @@ export function evaluatePullRequestPolicy({
     errors.push(
       "PR_POLICY_BODY.md is a transport file: CI has synced it into this PR's description; delete it from the branch before merge so it never lands on main.",
     );
+  }
+
+  // Blocking gate: bot-authored commits must not touch Supabase, backend infra SQL or clinical paths.
+  if (commits !== undefined) {
+    errors.push(...botSensitiveCommitViolations(commits));
+    warnings.push(...aiAgentSensitiveCommitWarnings(commits, { headRef }));
+  }
+
+  // Blocking gate (audit CC-01, owner decision 2026-10-20): a migration applies to the live
+  // clinical database within seconds of merge, so it merges only when a person presses Merge.
+  // Auto-merge armed on it fails here until it is turned off, then the check re-runs.
+  if (classification.migration && autoMergeArmed === true) {
+    errors.push(
+      "Auto-merge is armed on a PR that changes supabase/migrations. Merging applies it to the live clinical database within seconds, so it merges only by hand after the owner's own yes (docs/decisions/2026-10-20-database-prs-merge-by-hand.md). Turn auto-merge off; this check re-runs and passes, then merge by hand.",
+    );
+  }
+
+  // Blocking gate (#YF0XSQ, enforcing owner decision 2026-10-20): Gitar never arms auto-merge on a
+  // clinical-risk PR. On 13 Oct gitar-bot armed it on PR 3507 (a patient-safety component), which
+  // then merged on bot approvals alone. The owner may still arm it; anyone else, or an arming
+  // account this check cannot identify, fails here until auto-merge is turned off.
+  if (classification.clinicalRisk && autoMergeArmed === true) {
+    const armedBy = String(autoMergeEnabledBy ?? "").trim();
+    const owner = String(ownerLogin ?? "").trim();
+    if (!armedBy || !owner || armedBy.toLowerCase() !== owner.toLowerCase()) {
+      errors.push(
+        `Auto-merge was armed on a clinical-risk PR by ${armedBy || "an account this check cannot identify"}, not the owner. A clinical-risk change must not merge on bot approval alone (docs/decisions/2026-10-20-database-prs-merge-by-hand.md, ledger #YF0XSQ). Turn auto-merge off; this check re-runs and passes. The owner may review and merge by hand, or arm it themselves.`,
+      );
+    }
+  }
+
+  // Blocking gate (audit CC-04, 2026-10-20): these files decide whether the required checks pass,
+  // and a PR runs its own copy of them. A change to one needs a declared reason in the body.
+  // Renamed-from paths count too: renaming ci.yml is still a change to it.
+  const checkProducers = [...new Set([...(files ?? []), ...renamedFromPaths])].filter(isRequiredCheckProducer);
+  if (checkProducers.length > 0 && !isDependabot({ login: author })) {
+    const approval = requiredCheckChangeApproval(body);
+    if (!approval.satisfied) {
+      errors.push(
+        `This PR changes files that decide whether the required checks pass (${checkProducers.slice(0, 5).join(", ")}), and it runs its own copy of them. Add a body line \`Required check change approved: <reason>\` (at least 12 characters) citing the owner's yes as a docs/decisions/ entry or a link, or drop those files from the PR.`,
+      );
+    } else {
+      warnings.push(`Required check change approved (${approval.reason}): ${checkProducers.join(", ")}.`);
+    }
   }
 
   const summary = section(body, "Summary");
@@ -1556,7 +1786,7 @@ function selfTest() {
     body: completeBody,
     headRef: "codex/clinical-ci-policy",
     files: [
-      ".github/workflows/ci.yml",
+      ".github/workflows/live-drift.yml",
       "src/lib/answer-synthesis.ts",
       "src/components/search.tsx",
       "Dockerfile.worker",
@@ -1569,7 +1799,7 @@ function selfTest() {
       title: "ci: update deployment policy",
       body: completeBody,
       headRef: "codex/ci-policy",
-      files: [".github/workflows/ci.yml"],
+      files: [".github/workflows/live-drift.yml"],
     }).warnings.join(" "),
     /Operational-risk changes are bundled/,
   );
@@ -2101,7 +2331,7 @@ function migrationHistoryAndOwnerMergeSelfTest(completeBody) {
   assert.match(historyError, /Applied migrations never re-run on live/);
   assert.match(historyError, /NEW migration whose version is newer than 20260916160000/);
 
-  const editApproved = `${completeBody}\n\nMigration history edit approved: repairing a no-statements history row per the guard-migration contract`;
+  const editApproved = `${completeBody}\n\nMigration history edit approved: repairing a no-statements history row per the guard-migration contract, docs/decisions/2026-10-15-database-changes-need-owner-permission.md`;
   const guardPath = "supabase/migrations/20260917120000_validate_site_content_repair.sql";
   const guardSql = `set local statement_timeout = '30s';
 set local lock_timeout = '5s';
@@ -2386,7 +2616,7 @@ function requiredCheckForgerySelfTest(completeBody) {
 
   const workflowPr = {
     title: "ci: add a helper job to the pipeline",
-    body: completeBody,
+    body: `${completeBody}\nRequired check change approved: owner yes, docs/decisions/2026-10-20-database-prs-merge-by-hand.md\n`,
     headRef: "claude/ci-helper",
     files: [".github/workflows/ci.yml"],
     fileStatuses: [{ filename: ".github/workflows/ci.yml", status: "modified", previous_filename: null }],
@@ -2406,6 +2636,194 @@ function requiredCheckForgerySelfTest(completeBody) {
     }).ok,
     true,
     "a removed workflow cannot run and needs no content",
+  );
+
+  // Required-check producers (audit CC-04): a PR runs its own copy, so a change needs a declared reason.
+  const producerPr = { ...workflowPr, body: completeBody };
+  assert.equal(evaluatePullRequestPolicy(producerPr).ok, false, "a check-producer edit without a reason fails");
+  assert.match(evaluatePullRequestPolicy(producerPr).errors.join(" "), /Required check change approved/);
+  for (const file of [
+    ".github/workflows/secret-scan.yml",
+    ".github/actions/setup-node-cached/action.yml",
+    "scripts/ci-change-scope.mjs",
+  ])
+    assert.equal(evaluatePullRequestPolicy({ ...producerPr, files: [file] }).ok, false, `${file} is a check producer`);
+  assert.equal(evaluatePullRequestPolicy({ ...producerPr, files: [".github/workflows/live-drift.yml"] }).ok, true);
+  assert.equal(
+    evaluatePullRequestPolicy({
+      ...producerPr,
+      files: [".github/workflows/ci-renamed.yml"],
+      fileStatuses: [
+        {
+          filename: ".github/workflows/ci-renamed.yml",
+          status: "renamed",
+          previous_filename: ".github/workflows/ci.yml",
+        },
+      ],
+    }).ok,
+    false,
+    "renaming a check producer is a change to it",
+  );
+  assert.equal(
+    evaluatePullRequestPolicy({ ...producerPr, author: "dependabot[bot]" }).ok,
+    true,
+    "Dependabot pin bumps pass",
+  );
+  assert.equal(
+    evaluatePullRequestPolicy({ ...producerPr, body: `${completeBody}\nRequired check change approved: tbd\n` }).ok,
+    false,
+    "a placeholder reason is not a reason",
+  );
+  assert.equal(
+    evaluatePullRequestPolicy({
+      ...producerPr,
+      body: `${completeBody}\nRequired check change approved: tidying the CI job a little\n`,
+    }).ok,
+    false,
+    "a reason that cites no owner record is not enough",
+  );
+
+  // Auto-merge on a migration PR (audit CC-01, owner decision 2026-10-20): merge by hand only.
+  const armedMigration = {
+    title: "feat(db): add the reminders table for on-call notes",
+    body: completeBody,
+    headRef: "claude/reminders-table",
+    files: ["supabase/migrations/20261020000000_reminders.sql"],
+  };
+  assert.match(
+    evaluatePullRequestPolicy({ ...armedMigration, autoMergeArmed: true }).errors.join(" "),
+    /Auto-merge is armed/,
+  );
+  assert.doesNotMatch(
+    evaluatePullRequestPolicy({ ...armedMigration, autoMergeArmed: false }).errors.join(" "),
+    /Auto-merge is armed/,
+  );
+  assert.doesNotMatch(
+    evaluatePullRequestPolicy({ ...armedMigration, files: ["src/lib/format.ts"], autoMergeArmed: true }).errors.join(
+      " ",
+    ),
+    /Auto-merge is armed/,
+    "ordinary PRs may still auto-merge",
+  );
+
+  // Auto-merge on a clinical-risk PR (#YF0XSQ): only the owner may arm it.
+  const armedClinical = {
+    title: "fix(safety-plan): keep the crisis line visible",
+    body: completeBody,
+    headRef: "claude/safety-plan-crisis-line",
+    files: ["src/components/patient-safety-plan.tsx"],
+    ownerLogin: "BigSimmo",
+  };
+  assert.equal(classifyPullRequestFiles(armedClinical.files).clinicalRisk, true, "fixture must be clinical-risk");
+  assert.match(
+    evaluatePullRequestPolicy({ ...armedClinical, autoMergeArmed: true, autoMergeEnabledBy: "gitar-bot" }).errors.join(
+      " ",
+    ),
+    /armed on a clinical-risk PR by gitar-bot/,
+  );
+  assert.match(
+    evaluatePullRequestPolicy({ ...armedClinical, autoMergeArmed: true }).errors.join(" "),
+    /cannot identify/,
+    "an unidentified arming account fails closed",
+  );
+  assert.doesNotMatch(
+    evaluatePullRequestPolicy({ ...armedClinical, autoMergeArmed: true, autoMergeEnabledBy: "bigsimmo" }).errors.join(
+      " ",
+    ),
+    /clinical-risk PR by/,
+    "the owner may arm auto-merge",
+  );
+  assert.doesNotMatch(
+    evaluatePullRequestPolicy({ ...armedClinical, autoMergeArmed: false }).errors.join(" "),
+    /clinical-risk PR by/,
+  );
+  assert.doesNotMatch(
+    evaluatePullRequestPolicy({
+      ...armedClinical,
+      files: ["src/lib/format.ts"],
+      autoMergeArmed: true,
+      autoMergeEnabledBy: "gitar-bot",
+    }).errors.join(" "),
+    /clinical-risk PR by/,
+    "ordinary PRs may still be armed by a bot",
+  );
+
+  // AI agents and bot co-authors (audit CC-02).
+  const claudeCommit = {
+    sha: "a".repeat(40),
+    author: { login: "BigSimmo", email: "noreply@anthropic.com", name: "Claude" },
+    files: ["supabase/migrations/20261020000000_reminders.sql"],
+  };
+  assert.equal(aiAgentIdentity(claudeCommit), "Claude <noreply@anthropic.com>");
+  assert.equal(
+    aiAgentIdentity({
+      author: { login: "BigSimmo", email: "1+BigSimmo@users.noreply.github.com", name: "BigSimmo" },
+      message: "fix\n\nCo-Authored-By: Claude Opus (1M context) <noreply@anthropic.com>",
+    }),
+    "Claude Opus (1M context) <noreply@anthropic.com>",
+  );
+  assert.equal(
+    aiAgentIdentity({ author: { email: "cursoragent@cursor.com", name: "Cursor Agent" } }),
+    "Cursor Agent <cursoragent@cursor.com>",
+  );
+  assert.equal(aiAgentIdentity({ author: { email: "1+BigSimmo@users.noreply.github.com", name: "BigSimmo" } }), null);
+  const aiPolicy = evaluatePullRequestPolicy({ ...armedMigration, commits: [claudeCommit] });
+  assert.equal(
+    aiPolicy.errors.some((error) => /AI-agent/.test(error)),
+    false,
+    "AI-agent commits warn, never block",
+  );
+  assert.match(aiPolicy.warnings.join(" "), /AI-agent commit aaaaaaaaaaaa \(Claude <noreply@anthropic.com>\)/);
+  assert.match(
+    aiAgentSensitiveCommitWarnings(
+      [{ sha: "b".repeat(40), author: { email: "1+BigSimmo@users.noreply.github.com" }, files: ["supabase/x.sql"] }],
+      { headRef: "grok/fix" },
+    ).join(" "),
+    /branch grok\/fix/,
+  );
+  assert.deepEqual(aiAgentSensitiveCommitWarnings([{ ...claudeCommit, parents: 2 }]), [], "merge commits are skipped");
+  assert.equal(isAiAgentBranch("grok/fix"), true);
+  assert.equal(isAiAgentBranch("feature/fix"), false);
+  assert.equal(
+    botCoAuthored("x\n\nCo-authored-by: qodo-merge[bot] <123+qodo-merge[bot]@users.noreply.github.com>"),
+    true,
+  );
+  assert.equal(
+    botSensitiveCommitViolations([
+      {
+        sha: "c".repeat(40),
+        author: { login: "BigSimmo", email: "b@example.com" },
+        message: "x\n\nCo-authored-by: qodo-merge[bot] <1+qodo-merge[bot]@users.noreply.github.com>",
+        files: ["supabase/x.sql"],
+      },
+    ]).length,
+    1,
+    "a bot co-author is judged like a bot author",
+  );
+  assert.equal(
+    botSensitiveCommitViolations([
+      { sha: "d".repeat(40), author: { login: "gitar-bot[bot]" }, files: [".github/workflows/ci.yml"] },
+    ]).length,
+    1,
+    "bots other than Dependabot may not edit workflows",
+  );
+  assert.equal(
+    botSensitiveCommitViolations([
+      { sha: "e".repeat(40), author: { login: "dependabot[bot]" }, files: [".github/workflows/ci.yml"] },
+    ]).length,
+    0,
+    "Dependabot's workflow pin bumps pass",
+  );
+
+  // Deferred-deploy wording (audit CC-08).
+  for (const text of [
+    "The migration is not applied yet.",
+    "This schema change goes live in the next maintenance window.",
+  ])
+    assert.equal(deployDeferralClaim("", text).claimed, true, text);
+  assert.equal(
+    deployDeferralClaim("", "This migration goes live within seconds of merge inside the approved window.").claimed,
+    false,
   );
 
   // Merge queue: a PR checked against an older main is re-based onto whatever merged ahead of

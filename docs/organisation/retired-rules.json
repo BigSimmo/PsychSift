@@ -80,6 +80,102 @@
       "pattern": "does not run in this VM",
       "allowedContext": "no longer|retired|historical|removed|replaced",
       "decision": "docs/decisions/2026-10-17-cloud-installed-guidance-ownership.md"
+    },
+    {
+      "id": "clinical-review-signs-only-unverified-sources",
+      "retired": "2026-10-17",
+      "summary": "clinical:review --kind source no longer signs only unverified sources: a locally_reviewed source with no attestation field at all is offered too, so the owner can record the structured attestation it lacks.",
+      "pattern": "clinical:review (only signs|signs only) (unverified|drafted) sources|clinical:review only signs unverified",
+      "allowedContext": "no longer|retir(ed|ement)|removed|formerly|previously|superseded|dropped|replaced|historical",
+      "decision": "docs/decisions/2026-10-17-sign-prose-only-source-reviews.md"
+    },
+    {
+      "id": "wake-therapy-needs-review-hold",
+      "retired": "2026-10-17",
+      "summary": "Wake therapy (sleep deprivation / chronotherapy) now carries governed clinical references in src/data/therapies-source.json, so the hold until it had references no longer applies. Its 17 Oct sign-off was reset by owner ruling (17 Oct 2026 22:12 AWST; docs/decisions/2026-10-17-agent-recorded-therapy-and-did-sign-offs-reset.md), so it is needs_review only until the owner signs it with therapy:review.",
+      "pattern": "wake-therapy-sleep-deprivation-chronotherapy[^.\\n]{0,80}(must remain|stays|held in) `?needs_review`?[^.\\n]{0,120}(missing references|no references|lacks references|until (it has (governed |clinical )?references|references (are|have)))",
+      "allowedContext": "no longer|retir(ed|ement)|removed|formerly|previously|superseded|dropped|replaced|historical|rather than",
+      "decision": "docs/decisions/2026-10-17-remaining-therapy-compass-sign-offs.md"
+    },
+    {
+      "id": "first-nations-automatic-primer",
+      "retired": "2026-10-17",
+      "summary": "First Nations no longer automatically opens a per-device first-visit Primer. Its reference/cultural-governance notice persists inline; full About opens on request.",
+      "pattern": "\\*\\*Primer\\*\\* shown once|First Nations.{0,60}(?:must|should|always) (?:automatically )?(?:open|show).{0,40}(?:first.visit|once.per.device) [Pp]rimer",
+      "allowedContext": "no longer|retired|historical|superseded|removed|replaced",
+      "decision": "docs/decisions/2026-10-17-design-audit-resolution.md"
+    },
+    {
+      "id": "work-search-automatic-coachmark",
+      "retired": "2026-10-17",
+      "summary": "Work search no longer automatically displays a timed New coachmark or promotional halo. Its focus outline, labelled control and requested help remain.",
+      "pattern": "(?:Work|AI) Search.{0,60}(?:must|should|always) (?:automatically )?(?:show|display).{0,40}(?:coachmark|New note|promotional halo)",
+      "allowedContext": "no longer|retired|historical|superseded|removed|replaced",
+      "decision": "docs/decisions/2026-10-17-design-audit-resolution.md"
+    },
+    {
+      "id": "migration-pr-no-auto-merge",
+      "retired": "2026-10-18",
+      "summary": "Migration pull requests may auto-merge once all required checks pass, including Migration replay and the drift checks. Never merging outside an approved window and never promising a deferred deploy remain.",
+      "pattern": "never (?:enable|arm) auto-merge (?:on one|on a migration|for migration PRs)",
+      "allowedContext": "no longer|retired|superseded|historical|previously|reversed|formerly",
+      "decision": "docs/decisions/2026-10-18-migration-prs-may-auto-merge.md"
+    },
+    {
+      "id": "migration-pr-auto-merge-allowed",
+      "retired": "2026-10-20",
+      "summary": "Migration pull requests no longer auto-merge. They merge only when the owner presses Merge after the owner's own yes, and PR policy fails one while auto-merge is armed. This reverses the 18 Oct rule that let them auto-merge once all required checks passed.",
+      "pattern": "(?:migration PRs|migration pull requests|auto-merge on one is allowed)[^.\\n]{0,40}?(?:may|is allowed to|are allowed to) auto-merge|auto-merge on one is allowed",
+      "allowedContext": "no longer|retired|superseded|historical|previously|reversed|formerly|replaces",
+      "decision": "docs/decisions/2026-10-20-database-prs-merge-by-hand.md"
+    },
+    {
+      "id": "cursor-cloud-agent-setup",
+      "retired": "2026-10-18",
+      "summary": "Cursor cloud agents are prohibited; the Cursor Cloud setup guidance (Cloud Agent Secrets, live-vs-demo setup) is retired.",
+      "pattern": "(?:add|set) (?:it )?as a Cloud Agent Secret|Cursor Cloud specific instructions",
+      "allowedContext": "no longer|retired|superseded|historical|previously|prohibited|formerly",
+      "decision": "docs/decisions/2026-10-18-cursor-cloud-agents-prohibited.md"
+    },
+    {
+      "id": "answer-open-to-signed-out-visitors",
+      "retired": "2026-10-20",
+      "summary": "Answer no longer stays open to signed-out visitors. Answer and the patient-tailored tools are to require sign-in because the amended TGA clinical decision support exemption, in force from 1 November 2026, does not cover users who are not health professionals.",
+      "pattern": "signed-out visitors keep Answer|Answer stays open to signed-out",
+      "allowedContext": "no longer|retired|superseded|historical|previously|reversed|formerly|Status 2026-10-19|for now",
+      "decision": "docs/decisions/2026-10-20-clinical-decision-tools-need-sign-in.md"
+    },
+    {
+      "id": "start-of-task-required-reads",
+      "retired": "2026-10-20",
+      "summary": "Task receipts and the organisation map are no longer required reading at the start of every task. They are read only when the work needs them, through the AGENTS.md index.",
+      "pattern": "At task start, read \\[task lifecycle and receipt handoff\\]|At task start, read .{0,80}organisation map",
+      "allowedContext": "no longer|retired|superseded|historical|previously|formerly|replaces",
+      "decision": "docs/decisions/2026-10-20-instruction-tidy-up.md"
+    },
+    {
+      "id": "contextual-working-defaults-file",
+      "retired": "2026-10-20",
+      "summary": "The separate context-aware working defaults file is retired. Its content is covered by the shared working rules at the top of AGENTS.md.",
+      "pattern": "contextual-working-defaults\\.md|# Context-aware working defaults",
+      "allowedContext": "no longer|retired|superseded|historical|previously|formerly|replaces",
+      "decision": "docs/decisions/2026-10-20-instruction-tidy-up.md"
+    },
+    {
+      "id": "review-record-ledger-append",
+      "retired": "2026-10-20",
+      "summary": "Review and sweep records are no longer written to the repository with ledger:append. They are pull request comments, and the old record files are archived read-only.",
+      "pattern": "npm run ledger:(?:append|dedupe|rotate|migrate-legacy)",
+      "allowedContext": "no longer|retired|superseded|historical|previously|formerly|replaces|refuse",
+      "decision": "docs/decisions/2026-10-20-review-records-now-pr-comments.md"
+    },
+    {
+      "id": "alert-mention-every-workflow",
+      "retired": "2026-10-21",
+      "summary": "Alert workflows no longer @mention or assign the owner on every alert. One daily health summary at 7 am Perth pushes once a day; only the live domain monitor (site down) and the ops digest at page level still push straight away.",
+      "pattern": "every (other )?alert workflow .{0,80}names the owner|names the owner in each new alert issue and each repeat comment|every new alert and every repeat comment names the owner",
+      "allowedContext": "no longer|retired|replaced|superseded|formerly|previously",
+      "decision": "docs/decisions/2026-10-21-one-daily-health-summary.md"
     }
   ]
 }

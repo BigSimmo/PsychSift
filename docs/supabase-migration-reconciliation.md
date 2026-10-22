@@ -7,8 +7,10 @@ Target project: PsychSift Production (`sjrfecxgysukkwxsowpy`)
 ## Policy
 
 - **Merging migrations to main applies them to production automatically.** Merge
-  approval is production-deploy approval: merge only inside the approved window,
-  never arm auto-merge for migration PRs, and do not promise a deferred deploy.
+  approval is production-deploy approval, and do not promise a deferred deploy.
+  A migration PR merges only when the owner presses Merge after the owner's own yes;
+  PR policy fails it while auto-merge is armed (owner decision 2026-10-20; see
+  [the decision](decisions/2026-10-20-database-prs-merge-by-hand.md)).
 - **Never edit a migration already on main.** Correct it with a new migration
   carrying the newest timestamp, including duplicate stems or absent effects.
   Do not convert an applied migration into a no-op.
@@ -83,7 +85,8 @@ eval:retrieval:quality` per the standing merge gate.
 
 **Verify phase (between expand and contract):**
 
-- Merge only inside the explicitly approved production window. The integration
+- Merge only after the owner's own yes, with the owner pressing Merge
+  ([the decision](decisions/2026-10-20-database-prs-merge-by-hand.md)). The integration
   applies migrations automatically; require the post-merge `live-drift` workflow
   to pass both `npm run check:drift` and `npm run check:migration-history`.
 - Run `search_schema_health()` / `npm run check:indexing` and the golden
@@ -157,7 +160,7 @@ Note that merging `supabase/migrations/*.sql` to `main` triggers the Supabase Gi
 
 1. Run `npx supabase migration list --linked` and confirm local vs remote alignment.
 2. Run `npm run supabase:recovery-status` and confirm Supabase is healthy.
-3. For normal changes, merge the reviewed migration PR inside the approved window so the GitHub integration auto-deploys it; use manual linked apply only for recovery/reconciliation when auto-deploy fails, and update `supabase/schema.sql` when the migration changes canonical schema shape.
+3. For normal changes, the owner merges the reviewed migration PR by hand after the owner's own yes, and the GitHub integration auto-deploys it; use manual linked apply only for recovery/reconciliation when auto-deploy fails, and update `supabase/schema.sql` when the migration changes canonical schema shape.
 
 ## Supabase Preview / fresh replay rules
 

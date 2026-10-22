@@ -179,7 +179,8 @@ describe("threshold contract: doses and thresholds defer to local protocol", () 
   }
 
   it.each(EMERGENCY_CLINICAL_PROTOCOLS)("$id carries no numeric decision point", (protocol) => {
-    for (const text of strings(protocol)) {
+    // The owner's review date is not clinical content.
+    for (const text of strings({ ...protocol, ownerReviewedOn: undefined })) {
       const stripped = allowedNumerals.reduce((acc, pattern) => acc.replace(pattern, ""), text);
       expect(stripped, `numeric value on card: ${text}`).not.toMatch(/\d/);
     }
@@ -234,6 +235,26 @@ describe("Poisons call action routing", () => {
   });
 });
 
+describe("source line on the collapsed card", () => {
+  const nms = EMERGENCY_CLINICAL_PROTOCOLS.find((p) => p.id === "EMERG-NMS")!;
+
+  it("shows the source, the review state and the fixed-text note without expanding", () => {
+    const html = renderToStaticMarkup(<EmergencyProtocolBanner protocol={{ ...nms, ownerReviewedOn: undefined }} />);
+    expect(html).toContain('data-testid="emergency-protocol-source"');
+    expect(html).toContain("Based on: </span>");
+    expect(html).toContain("Not yet reviewed");
+    expect(html).toContain("Fixed text, not written by AI.");
+    // The management steps themselves still wait behind the fold.
+    expect(html).not.toContain("Immediate Management Protocol");
+  });
+
+  it("drops the review badge once the owner has signed the card off", () => {
+    const html = renderToStaticMarkup(<EmergencyProtocolBanner protocol={{ ...nms, ownerReviewedOn: "2026-10-21" }} />);
+    expect(html).not.toContain("Not yet reviewed");
+    expect(html).toContain('data-testid="emergency-protocol-source"');
+  });
+});
+
 describe("selectEmergencyProtocolsForSurface (degraded setup)", () => {
   it("shows the card for a submitted query when answer setup is not ready", () => {
     const ids = selectEmergencyProtocolsForSurface({
@@ -277,7 +298,13 @@ describe("selectEmergencyProtocolsForSurface (degraded setup)", () => {
   it("is wired into the dashboard", () => {
     const source = readFileSync(resolve(process.cwd(), "src/components/ClinicalDashboard.tsx"), "utf8");
     expect(source).toContain("selectEmergencyProtocolsForSurface({");
-    expect(source).toContain("setSetupBlockedQuery(trimmedQuery)");
+    // The setup-blocked query is recorded where the dashboard's search runs.
+    const searchExecution = readFileSync(
+      resolve(process.cwd(), "src/components/clinical-dashboard/use-dashboard-search-execution.ts"),
+      "utf8",
+    );
+    expect(searchExecution).toContain("setSetupBlockedQuery(trimmedQuery)");
+    expect(source).toContain("setSetupBlockedQuery,");
   });
 });
 

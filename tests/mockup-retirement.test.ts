@@ -46,7 +46,7 @@ function fakeRepo(files: Record<string, string>, directories: Record<string, str
 }
 
 const GATE_SOURCE = `export const DEVELOPER_GATED_PATH_PREFIXES = [
-  "/mockups/development",
+  "/mockups/example-owner",
   "/mockups/example-gated",
 ] as const;`;
 
@@ -372,30 +372,30 @@ describe("deletion audit", () => {
 
   it("clears a gated route the owner has recorded", () => {
     const result = runAudit(
-      [`${MOCKUP_ROUTE_ROOT}/development/foo/page.tsx`],
+      [`${MOCKUP_ROUTE_ROOT}/example-owner/foo/page.tsx`],
       [],
       {},
-      ownerRegister("/mockups/development/foo"),
+      ownerRegister("/mockups/example-owner/foo"),
     );
     expect(result.violations.join()).not.toContain("developer-gated prefix");
   });
 
   it("does not clear a non-route file on a sibling route’s record", () => {
     const result = runAudit(
-      [`${MOCKUP_ROUTE_ROOT}/development/foo/widget.tsx`],
+      [`${MOCKUP_ROUTE_ROOT}/example-owner/foo/widget.tsx`],
       [],
       {},
-      ownerRegister("/mockups/development/foo"),
+      ownerRegister("/mockups/example-owner/foo"),
     );
     expect(result.violations.join()).toContain("developer-gated prefix");
   });
 
   it("⚠️ refuses a FILE path in the Route column, which used to grant an unwatchable pass", () => {
     const result = runAudit(
-      [`${MOCKUP_ROUTE_ROOT}/development/foo/widget.tsx`],
+      [`${MOCKUP_ROUTE_ROOT}/example-owner/foo/widget.tsx`],
       [],
       {},
-      ownerRegister("/mockups/development/foo/widget.tsx"),
+      ownerRegister("/mockups/example-owner/foo/widget.tsx"),
     );
     expect(result.violations.join()).toContain("is not a route path");
   });
@@ -555,7 +555,7 @@ describe("deletion audit", () => {
 describe("developer gate source", () => {
   it("reads the prefixes from their own source of truth", () => {
     const fs = fakeRepo({ "src/lib/developer-area/headers.ts": GATE_SOURCE }, {});
-    expect(readDeveloperGatedPrefixes("/repo", fs)).toEqual(["/mockups/development", "/mockups/example-gated"]);
+    expect(readDeveloperGatedPrefixes("/repo", fs)).toEqual(["/mockups/example-owner", "/mockups/example-gated"]);
   });
 
   it("throws rather than guessing when the declaration is gone", () => {
@@ -596,8 +596,11 @@ describe("the committed repository", () => {
   it("still declares the developer-gated prefixes the policy depends on", () => {
     const prefixes = readDeveloperGatedPrefixes(process.cwd());
     expect(prefixes).toContain("/admin/developer-hub");
-    expect(prefixes).toContain("/mockups/development");
-    expect(prefixes).toContain("/mockups/care-plan");
+    // The /mockups copy of the Owner panel was retired on 2026-10-22, so no gated
+    // prefix sits under /mockups any more.
+    expect(prefixes.some((prefix) => prefix.startsWith("/mockups/"))).toBe(false);
+    // The Care Plan prototype was retired on 2026-10-21, and its prefix with it.
+    expect(prefixes.some((prefix) => prefix.endsWith("/care-plan"))).toBe(false);
   });
 
   it("keeps the developer-gated prototypes out of retirement scope", () => {

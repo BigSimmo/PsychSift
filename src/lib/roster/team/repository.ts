@@ -1,4 +1,5 @@
 import "server-only";
+import { randomUUID } from "node:crypto";
 
 import type { createAdminClient } from "@/lib/supabase/admin";
 import { PublicApiError } from "@/lib/http";
@@ -190,6 +191,23 @@ async function verifySwapApproveRules(
     }
   }
 
+  if (await swapBreaksTeamRules(fromFn, serviceId, swapRow, requesterId, counterpartyId)) {
+    throw rosterError("roster_swap_rule_warning");
+  }
+}
+
+/**
+ * Whether the roster as this swap would leave it breaks one of the team's own
+ * rules (`swapRuleFlags`: minimum break, hours in 7 or 14 days, nights or days
+ * in a row). Shared by the manager's approval and the other doctor's accept.
+ */
+async function swapBreaksTeamRules(
+  fromFn: (table: string) => unknown,
+  serviceId: string,
+  swapRow: Record<string, unknown>,
+  requesterId: string,
+  counterpartyId: string,
+): Promise<boolean> {
   let settingsQuery = fromFn("roster_team_settings");
   settingsQuery = chainCall(settingsQuery, "select", "rules");
   settingsQuery = chainCall(settingsQuery, "eq", "service_id", serviceId);
@@ -199,7 +217,7 @@ async function verifySwapApproveRules(
 
   const rules = parseRules(settingsRow?.rules);
   const lookbackDays = ruleLookbackDays(rules);
-  if (lookbackDays === 0) return;
+  if (lookbackDays === 0) return false;
 
   const rawGive =
     swapRow.give && typeof swapRow.give === "object" ? (swapRow.give as Record<string, unknown>) : undefined;
@@ -209,7 +227,7 @@ async function verifySwapApproveRules(
     (rawGive && (rawGive.superseded_at != null || rawGive.supersededAt != null)) ||
     (rawTake && (rawTake.superseded_at != null || rawTake.supersededAt != null))
   ) {
-    return;
+    return false;
   }
 
   const inlineGive = toRosterAssignment(rawGive);
@@ -255,10 +273,13 @@ async function verifySwapApproveRules(
     }
   }
 
+  // Only the two people's shifts: the rules are judged per person, and a whole team's window can
+  // pass the API's row cap, which would silently drop shifts the rules need.
   let assignQuery = fromFn("roster_assignments");
   assignQuery = chainCall(assignQuery, "select", "*");
   assignQuery = chainCall(assignQuery, "eq", "service_id", serviceId);
   assignQuery = chainCall(assignQuery, "is", "superseded_at", null);
+  assignQuery = chainCall(assignQuery, "in", "user_id", [requesterId, counterpartyId]);
 
   const anchorTimes = [resolvedGive?.startsAt, resolvedGive?.endsAt, resolvedTake?.startsAt, resolvedTake?.endsAt]
     .filter((value): value is string => Boolean(value))
@@ -282,7 +303,7 @@ async function verifySwapApproveRules(
 
   const give = resolvedGive ?? (giveId ? (assignments.find((row) => row.id === giveId) ?? null) : null);
   const take = resolvedTake ?? (takeId ? (assignments.find((row) => row.id === takeId) ?? null) : null);
-  if ((giveId && !give) || (takeId && !take) || (!give && !take)) return;
+  if ((giveId && !give) || (takeId && !take) || (!give && !take)) return false;
 
   const flags = swapRuleFlags(assignments, rules, {
     requesterId,
@@ -290,9 +311,39 @@ async function verifySwapApproveRules(
     give,
     take,
   });
-  if (flags.length > 0) {
-    throw rosterError("roster_swap_rule_warning");
-  }
+  return flags.length > 0;
+}
+
+/**
+ * Whether the other doctor's accept would let a swap approve itself while
+ * breaking a team rule. The SQL's own accept check covers clashes and the
+ * minimum break only, so a swap that breaks an hours or run-length rule is sent
+ * to the manager instead (`roster_swap_accept_for_manager`). Anything this
+ * cannot judge (not the counterparty, no longer waiting, expired) is left to the
+ * SQL, which refuses or cancels it as before.
+ */
+async function swapAcceptBreaksTeamRules(
+  client: AdminClient,
+  actorId: string,
+  serviceId: string,
+  swapId: string,
+): Promise<boolean> {
+  if (typeof client.from !== "function") return false;
+  const fromFn = client.from.bind(client) as (table: string) => unknown;
+  let swapQuery = fromFn("roster_swaps");
+  swapQuery = chainCall(swapQuery, "select", "*");
+  swapQuery = chainCall(swapQuery, "eq", "service_id", serviceId);
+  swapQuery = chainCall(swapQuery, "eq", "id", swapId);
+  const swapRes = await resolveSingle(swapQuery);
+  if (swapRes?.error) throw rosterApiError(swapRes.error);
+  const swapRow = swapRes.data;
+  if (!swapRow || swapRow.status !== "requested") return false;
+  const expiresAt = typeof swapRow.expires_at === "string" ? swapRow.expires_at : null;
+  if (expiresAt && Date.parse(expiresAt) <= Date.now()) return false;
+  const requesterId = typeof swapRow.requester_id === "string" ? swapRow.requester_id : null;
+  const counterpartyId = typeof swapRow.counterparty_id === "string" ? swapRow.counterparty_id : null;
+  if (!requesterId || counterpartyId !== actorId) return false;
+  return swapBreaksTeamRules(fromFn, serviceId, swapRow, requesterId, counterpartyId);
 }
 
 export type RosterReadPayload = { from?: string; to?: string };
@@ -353,6 +404,18 @@ export async function rosterCommand(
   if (action.action === "swap.approve" && !action.acknowledgeRuleWarnings) {
     await verifySwapApproveRules(client, actorId, serviceId, action.swapId);
   }
+  // A swap that would approve itself while breaking a team rule waits for the manager instead.
+  if (action.action === "swap.accept" && (await swapAcceptBreaksTeamRules(client, actorId, serviceId, action.swapId))) {
+    const routed = await client.rpc("roster_swap_accept_for_manager", {
+      p_actor_id: actorId,
+      p_service_id: serviceId,
+      p_swap_id: action.swapId,
+    });
+    if (routed.error) throw rosterApiError(routed.error);
+    const parsedRouted = rosterCommandResultSchema.safeParse(routed.data);
+    if (!parsedRouted.success) throw rosterUnavailable();
+    return parsedRouted.data;
+  }
   const { action: name, ...payload } = action;
   // The safe number goes through the stale check, which refuses it once anyone has saved since the editor's read.
   // Taking back an open-shift request has its own function, which only the doctor who asked can call.
@@ -372,11 +435,13 @@ export async function rosterCommand(
             p_expected_ids: action.expectedIds as never,
             p_needs: action.needs as never,
           })
-        : action.action === "open.post" && action.postKey
+        : action.action === "open.post"
           ? await client.rpc("roster_open_post_once", {
               p_actor_id: actorId,
               p_service_id: serviceId,
-              p_post_key: action.postKey,
+              // A keyless post gets a one-use server key so it still records a post key, which is what
+              // enqueues its durable offer alert; without one the post saved but no one was alerted.
+              p_post_key: action.postKey ?? randomUUID(),
               p_payload: withoutPostKey(payload) as never,
             })
           : await client.rpc("roster_command", {

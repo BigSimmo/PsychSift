@@ -8,11 +8,13 @@ export const COVERAGE_INCLUDE_GLOBS = Object.freeze([
 
 export const COVERAGE_INVENTORY_ROOTS = Object.freeze(["src/", "scripts/", "worker/", "supabase/functions/"]);
 
-// Budget enforcement is production code even when implemented in JavaScript.
-// A root-only LCOV check must not silently omit these monetary control paths.
-export const COVERAGE_REQUIRED_SOURCE_FILES = Object.freeze([
-  "src/lib/answer-pilot-budget.js",
-  "src/lib/answer-pilot-diagnostic.js",
-  "src/lib/answer-pilot-ticket.js",
-  "src/lib/answer-wire-budget-guard.js",
+// Test/spec modules are verification inputs, including archived fixtures inside
+// source roots. Match Vitest's standard test naming explicitly in both the
+// reporter and inventory. Declaration files have no executable output; the
+// database schema is the sole generated-source exception. Ordinary archived
+// executable source remains required in LCOV.
+export const COVERAGE_EXCLUDE_GLOBS = Object.freeze([
+  "**/*.{test,spec}.?(c|m)[jt]s?(x)",
+  "**/*.d.ts",
+  "src/lib/supabase/database.types.ts",
 ]);

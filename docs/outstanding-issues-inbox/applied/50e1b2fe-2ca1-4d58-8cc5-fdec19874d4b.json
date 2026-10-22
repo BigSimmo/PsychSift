@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "50e1b2fe-2ca1-4d58-8cc5-fdec19874d4b",
+  "createdOn": "2026-10-21",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "issue",
+    "summary": "Lighthouse budget grades and refreshes from a single sample per route, so slow runners fail unrelated PRs",
+    "detail": "On 21 Oct 2026 a slow-runner window (~15:00Z) failed Lighthouse on #3749 (server-only) and #3752 (CSS-only); all routes' TBT rose together and #3749 passed on rerun (desktop search 956 ms vs 964 ms baseline). The dispatch refresh (run 39625188079, artifact lighthouse-baseline-refresh-39625188079, main 8c03823) is also one sample: desktop-root 1584 ms vs ~935-955 ms typical, so it was not committed. Proposal: take the median of three graded samples per route in scripts/run-lighthouse-budget.mjs for both grading and --update refresh, keeping tolerances unchanged and the two-confirmation rule for breaches.",
+    "source": "Main CI and test reliability thread, 21 Oct 2026",
+    "issueUlid": "01M5FP629ATBTNGBM9RGQG22XN"
+  }
+}

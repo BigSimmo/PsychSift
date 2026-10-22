@@ -1,4 +1,5 @@
 export const GOVERNED_SOURCE_HOSTS = [
+  "aadpa.com.au",
   "aci.health.nsw.gov.au",
   "alcoholtreatmentguidelines.com.au",
   "admhss.mhc.wa.gov.au",
@@ -57,7 +58,6 @@ export const GOVERNED_SOURCE_HOSTS = [
   "www.who.int",
   "www.vinnies.org.au",
   "www.wungening.com.au",
-  "www1.health.gov.au",
   "www1.health.nsw.gov.au",
   "youthfocus.com.au",
 ] as const;
@@ -113,4 +113,26 @@ export function safeCanonicalSourceUrl(value: string | null) {
   } catch {
     return null;
   }
+}
+
+/**
+ * True for the TGA eBS Product Information search for one non-empty term, and
+ * nothing else: the one source the register may carry with no date at all
+ * (owner decision 2026-10-22, docs/decisions/2026-10-22-tga-pi-live-search-source.md).
+ */
+export function isTgaProductInformationSearchUrl(value: string | null): boolean {
+  if (!value) return false;
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return false;
+  }
+  return (
+    url.protocol === "https:" &&
+    url.hostname === "www.ebs.tga.gov.au" &&
+    url.pathname === "/ebs/picmi/picmirepository.nsf/PICMI" &&
+    url.searchParams.get("t") === "pi" &&
+    Boolean(url.searchParams.get("q")?.trim())
+  );
 }

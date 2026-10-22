@@ -3,7 +3,7 @@ import { expect, test, type Page, type TestInfo } from "playwright/test";
 import { THERAPY_CATALOGUE_SUMMARY } from "@/components/therapy-compass/data/generated-assets";
 import { stubZeroTouchPoints } from "./helpers/zero-touch";
 import { expectNoPageHorizontalOverflow, gotoApp } from "./helpers/spec-navigation";
-import { clickWhenHydrated, visibleByTestId } from "./playwright-settlement";
+import { clickWhenHydrated, expectHydrated, expectSingleSettledOwner, visibleByTestId } from "./playwright-settlement";
 
 const readySetupChecks = [
   { id: "env", label: ".env.local configured", status: "ready", detail: "Test environment ready." },
@@ -122,7 +122,10 @@ async function mockDifferentialSearch(page: Page) {
 }
 
 async function expectDashboardUsable(page: Page) {
-  await expect(page.getByRole("heading", { level: 1, name: "PsychSift" })).toHaveCount(1);
+  // Every caller enters the shared Answer home. Its route heading names the
+  // current mode; the visible hero remains the separate Clinical Answers H2.
+  await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+  await expect(page.getByRole("heading", { level: 1, name: "Answer", exact: true })).toHaveCount(1);
   await expect(page.getByRole("heading", { name: "Clinical Answers", exact: true })).toBeVisible();
   await expect(page.locator('[aria-label^="Search indexed guidelines by question or keyword"]:visible')).toBeVisible();
   await expect(page.getByRole("button", { name: "Open answer options" })).toBeVisible();
@@ -166,6 +169,31 @@ async function expectNoBlockingAxeViolations(page: Page, testInfo: TestInfo, opt
       `${violation.id} (${violation.impact}): ${violation.help} — ${violation.nodes.length} node(s), see ${violation.helpUrl}`,
   );
   expect(summary, "axe found critical/serious WCAG A/AA violations").toEqual([]);
+}
+
+const workAreaHomes = [
+  { name: "Roster", path: "/roster" },
+  { name: "My Day", path: "/my-day" },
+  { name: "On Call", path: "/on-call" },
+  { name: "CPD", path: "/cme" },
+  { name: "Teaching", path: "/teaching" },
+  { name: "Open shifts", path: "/open-shifts" },
+] as const;
+
+/**
+ * Open a work-area home and wait until it is safe to scan. Like the dashboard scans, a scan
+ * taken mid-hydration reports the streaming twin's duplicated landmarks, so wait for exactly one
+ * visible, hydrated `#main-content` and one level-1 heading inside it first.
+ */
+async function gotoWorkAreaHome(page: Page, path: string) {
+  await gotoApp(page, path);
+  const main = await expectSingleSettledOwner(page.locator("#main-content"), {
+    message: `${path} should settle to one visible #main-content`,
+  });
+  await expectHydrated(main);
+  await expect(page.getByRole("heading", { level: 1 }).filter({ visible: true })).toHaveCount(1, {
+    timeout: 15_000,
+  });
 }
 
 test.beforeEach(stubZeroTouchPoints);
@@ -325,6 +353,13 @@ test.describe("PsychSift accessibility coverage", () => {
     const modeButton = page.getByRole("button", { name: "Mode Answer", exact: true });
     await modeButton.click();
     await expect(page.locator('[role="dialog"]').first()).toBeVisible();
+    // The sheet takes its opening focus on an animation frame and keeps settling
+    // it for a short window (sheet-focus.ts), so a single read straight after it
+    // paints can land before focus moves in. Wait for focus to arrive, then
+    // prove every part of the contract from one settled read.
+    await expect
+      .poll(async () => (await readState()).focusInDialog, { message: "the open sheet must take focus" })
+      .toBe(true);
 
     const open = await readState();
     expect(open.marked, "background should be deactivated behind the sheet").toBeGreaterThan(0);
@@ -368,8 +403,8 @@ test.describe("PsychSift accessibility coverage", () => {
     );
 
     for (const targetSize of targetSizes) {
-      expect(targetSize.width).toBeGreaterThanOrEqual(44);
-      expect(targetSize.height).toBeGreaterThanOrEqual(44);
+      expect(targetSize.width).toBeGreaterThanOrEqual(48);
+      expect(targetSize.height).toBeGreaterThanOrEqual(48);
     }
     expect(privateIngestionRequests).toEqual([]);
   });
@@ -469,6 +504,37 @@ test.describe("PsychSift accessibility coverage", () => {
     // author colors); contrast is asserted by the default-colors scan instead.
     await expectNoBlockingAxeViolations(page, testInfo, { disableRules: ["color-contrast"] });
   });
+
+  // Audit F-16: dark tokens are a separate palette, so contrast in dark mode is its own claim.
+  test("dashboard passes axe WCAG A/AA scan in dark mode", async ({ page }, testInfo) => {
+    await page.emulateMedia({ colorScheme: "dark" });
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await mockMinimalDashboardApi(page);
+    await gotoApp(page);
+
+    await expectDashboardUsable(page);
+    await expectNoBlockingAxeViolations(page, testInfo);
+  });
+
+  // Audit F-16: the work-area homes carry their own page bodies (none of them is the shared
+  // search home), so the dashboard scans above say nothing about them. Each runs on the local
+  // demo build at phone width, the size these areas are mostly used at, with external requests
+  // blocked so no provider is reached.
+  for (const home of workAreaHomes) {
+    test(`${home.name} home passes axe WCAG A/AA scan`, async ({ page }, testInfo) => {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await blockExternalRequests(page);
+      await gotoWorkAreaHome(page, home.path);
+
+      // label-content-name-mismatch is excluded here only. The first scan of these homes found
+      // existing controls whose visible text is not part of their accessible name: roster day
+      // cells ("2 N" vs "Fri 2 Oct: Night"), on-call dial rows (the coverage note), the CPD
+      // catch-up and snooze buttons, and the header mode button on Open shifts ("Roster" vs
+      // "Mode Open shifts"). Fixing those changes screen-reader wording across several areas,
+      // so it is tracked separately rather than folded into this scan.
+      await expectNoBlockingAxeViolations(page, testInfo, { disableRules: ["label-content-name-mismatch"] });
+    });
+  }
 
   // The wide presentation is a different container from the phone sheet — a
   // non-modal panel anchored under the trigger rather than a modal full-height
@@ -630,7 +696,10 @@ test.describe("PsychSift accessibility coverage", () => {
     // there directly keeps this on the surface it is asserting about.
     await page.goto("/?mode=therapy-compass", { waitUntil: "domcontentloaded" });
 
-    await expect(page.getByRole("heading", { name: "Therapy", exact: true })).toBeVisible({
+    await expect(page.getByRole("heading", { name: "Therapy", level: 1, exact: true })).toHaveCount(1);
+    await expect(
+      page.getByTestId("shared-home-empty-state").getByRole("heading", { name: "Therapy", level: 2, exact: true }),
+    ).toBeVisible({
       timeout: 60_000,
     });
 
@@ -678,15 +747,9 @@ test.describe("PsychSift accessibility coverage", () => {
       const bounds = element.getBoundingClientRect();
       return { width: bounds.width, height: bounds.height };
     });
-    // 44, not 48. This trigger sits in the ribbon's utility row, which is
-    // `min-h-tap` (44px) throughout — raising only this control would leave the
-    // row visibly ragged. (`ResultSortControl` set that rhythm before it became
-    // `sm`-and-up; the row still holds it.) The repo's `min-h-12` rule
-    // exists to stop generic a11y advice pulling production down to `min-h-11`
-    // (a known `ui-smoke` flake), not to override a page's own row rhythm; the
-    // sheet's own toggles, which have the room, are `min-h-12`.
-    expect(triggerSize.width).toBeGreaterThanOrEqual(44);
-    expect(triggerSize.height).toBeGreaterThanOrEqual(44);
+    // The visual utility row must retain the shared 48px interactive floor.
+    expect(triggerSize.width).toBeGreaterThanOrEqual(48);
+    expect(triggerSize.height).toBeGreaterThanOrEqual(48);
 
     await therapyFilterTrigger.click();
     const therapyFilterPanel = page.getByTestId("therapy-filter-panel");
@@ -778,8 +841,8 @@ test.describe("PsychSift accessibility coverage", () => {
       const bounds = element.getBoundingClientRect();
       return { width: bounds.width, height: bounds.height };
     });
-    expect(clinicianSwitchSize.width).toBeGreaterThanOrEqual(44);
-    expect(clinicianSwitchSize.height).toBeGreaterThanOrEqual(44);
+    expect(clinicianSwitchSize.width).toBeGreaterThanOrEqual(48);
+    expect(clinicianSwitchSize.height).toBeGreaterThanOrEqual(48);
 
     // Sheet builder therapy picker. The page header's own menu buttons also
     // sit inside the page on phones, so name the picker directly.

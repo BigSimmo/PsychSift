@@ -17,15 +17,17 @@ answer prose is sent only in the validated `final` event. The browser deliberate
 
 ## Workload models
 
-| Workload                         | Environment variable            | Documented rollout value                    |
-| -------------------------------- | ------------------------------- | ------------------------------------------- |
-| Fast clinical synthesis          | `OPENAI_FAST_ANSWER_MODEL`      | `gpt-5.6-terra`                             |
-| Strong clinical synthesis        | `OPENAI_STRONG_ANSWER_MODEL`    | `gpt-5.6-sol`                               |
-| Query classifier                 | `OPENAI_QUERY_CLASSIFIER_MODEL` | `gpt-5.6-luna`                              |
-| Document summaries               | `OPENAI_SUMMARY_MODEL`          | `gpt-5.6-terra`                             |
-| Enrichment/index profiles        | `OPENAI_INDEXING_MODEL`         | `gpt-5.6-terra`                             |
-| Vision classification/captioning | `OPENAI_VISION_MODEL`           | `gpt-5.6-terra`                             |
-| Embeddings                       | `OPENAI_EMBEDDING_MODEL`        | `text-embedding-3-small` at 1536 dimensions |
+| Workload                                                                 | Environment variable            | Documented rollout value                    |
+| ------------------------------------------------------------------------ | ------------------------------- | ------------------------------------------- |
+| Fast clinical synthesis                                                  | `OPENAI_FAST_ANSWER_MODEL`      | `gpt-5.6-terra`                             |
+| Strong clinical synthesis                                                | `OPENAI_STRONG_ANSWER_MODEL`    | `gpt-5.6-sol`                               |
+| Query classifier                                                         | `OPENAI_QUERY_CLASSIFIER_MODEL` | `gpt-5.6-luna`                              |
+| Document summaries                                                       | `OPENAI_SUMMARY_MODEL`          | `gpt-5.6-terra`                             |
+| Enrichment/index profiles                                                | `OPENAI_INDEXING_MODEL`         | `gpt-5.6-terra`                             |
+| Vision classification/captioning                                         | `OPENAI_VISION_MODEL`           | `gpt-5.6-terra`                             |
+| Embeddings                                                               | `OPENAI_EMBEDDING_MODEL`        | `text-embedding-3-small` at 1536 dimensions |
+| Optional semantic rerank (off unless `RAG_SEMANTIC_RERANK_ENABLED=true`) | `OPENAI_RERANK_MODEL`           | `gpt-5.6-luna` (code default)               |
+| Clinical Ask voice transcription                                         | `OPENAI_TRANSCRIPTION_MODEL`    | `gpt-4o-mini-transcribe` (code default)     |
 
 If a workload-specific variable is omitted, the query classifier follows the fast-answer model,
 summaries follow the answer model, and indexing follows the strong-answer model. Existing

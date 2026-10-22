@@ -46,6 +46,7 @@ describe("document summary context", () => {
       })),
     };
     const chunkQuery = {
+      or: vi.fn().mockReturnThis(),
       select: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
       order: vi.fn().mockReturnThis(),
@@ -97,7 +98,8 @@ describe("document summary context", () => {
 
     expect(documentQuery.eq).toHaveBeenCalledWith("owner_id", ownerId);
     expect(documentQuery.abortSignal).toHaveBeenCalledWith(controller.signal);
-    expect(chunkQuery.eq).toHaveBeenCalledWith("index_generation_id", "generation-current");
+    expect(chunkQuery.or).toHaveBeenCalledWith("index_generation_id.is.null,index_generation_id.eq.generation-current");
+    expect(chunkQuery.order).toHaveBeenCalledWith("index_generation_id", { ascending: true, nullsFirst: false });
     expect(chunkQuery.order).toHaveBeenCalledWith("chunk_index", { ascending: true });
     expect(chunkQuery.limit).toHaveBeenCalledWith(40);
     expect(chunkQuery.abortSignal).toHaveBeenCalledWith(controller.signal);
@@ -171,6 +173,7 @@ describe("document summary context", () => {
       },
     ];
     const chunkQuery = {
+      or: vi.fn().mockReturnThis(),
       select: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
       order: vi.fn().mockReturnThis(),
@@ -220,6 +223,75 @@ describe("document summary context", () => {
     expect(answer.smartPanel?.bestSource).toBeNull();
     expect(answer.supportedClaims).toBeUndefined();
     expect(answer.evidenceAssessments).toBeUndefined();
+  });
+
+  it("never summarises a superseded document as clinical guidance (#BFCTST)", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "test-key");
+    const documentId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const documentQuery = {
+      select: vi.fn().mockReturnThis(),
+      or: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      abortSignal: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn(async () => ({
+        data: {
+          id: documentId,
+          title: "Superseded guideline",
+          file_name: "superseded.pdf",
+          metadata: {
+            index_generation_id: "generation-current",
+            document_status: "outdated",
+            clinical_validation_status: "approved",
+            extraction_quality: "good",
+          },
+        },
+        error: null,
+      })),
+    };
+    const chunkQuery = {
+      or: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockReturnThis(),
+      abortSignal: vi.fn(async () => ({
+        data: [
+          {
+            id: "superseded-chunk-1",
+            document_id: documentId,
+            page_number: 1,
+            chunk_index: 0,
+            section_heading: "Dosing",
+            content: "Superseded dosing text.",
+            retrieval_synopsis: null,
+            image_ids: [],
+            index_generation_id: "generation-current",
+          },
+        ],
+        error: null,
+      })),
+    };
+    const from = vi.fn((table: string) => (table === "documents" ? documentQuery : chunkQuery));
+    const generateStructuredTextResult = vi.fn();
+    vi.doMock("@/lib/supabase/admin", () => ({
+      createAdminClient: () => ({ from, rpc: vi.fn() }),
+    }));
+    vi.doMock("@/lib/openai", () => ({
+      embedTextWithTelemetry: vi.fn(),
+      generateStructuredTextResult,
+    }));
+
+    const { summarizeDocument } = await import("../src/lib/rag/rag");
+    const answer = await summarizeDocument(documentId, "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", {
+      signal: new AbortController().signal,
+    });
+
+    expect(chunkQuery.abortSignal).toHaveBeenCalled();
+    expect(generateStructuredTextResult).not.toHaveBeenCalled();
+    expect(answer.grounded).toBe(false);
+    expect(answer.confidence).toBe("unsupported");
+    expect(answer.sources).toEqual([]);
+    expect(answer.answer).toMatch(/superseded/i);
   });
 
   it("refuses to summarize non-indexed documents without querying chunks or OpenAI", async () => {
@@ -282,5 +354,67 @@ describe("document summary context", () => {
       }),
     ).rejects.toMatchObject({ name: "AbortError" });
     expect(from).not.toHaveBeenCalled();
+  });
+});
+
+describe("document summary legacy-chunk handling", () => {
+  function mockSummaryClient(rows: Array<{ id: string; index_generation_id: string | null }>) {
+    const documentQuery = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      is: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn(async () => ({
+        data: {
+          id: "doc-1",
+          title: "Guideline",
+          file_name: "guideline.pdf",
+          status: "indexed",
+          metadata: { index_generation_id: "generation-current" },
+        },
+        error: null,
+      })),
+    };
+    const chunkRows = rows.map((row, index) => ({
+      document_id: "doc-1",
+      page_number: 1,
+      chunk_index: index,
+      section_heading: null,
+      content: `Chunk ${row.id}.`,
+      retrieval_synopsis: null,
+      image_ids: [],
+      ...row,
+    }));
+    const chunkQuery = {
+      or: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      limit: vi.fn(async () => ({ data: chunkRows, error: null })),
+    };
+    vi.doMock("@/lib/supabase/admin", () => ({
+      createAdminClient: () => ({
+        from: (table: string) => (table === "documents" ? documentQuery : chunkQuery),
+      }),
+    }));
+  }
+
+  it("drops stale NULL-generation chunks once the committed generation has rows", async () => {
+    mockSummaryClient([
+      { id: "current-1", index_generation_id: "generation-current" },
+      { id: "legacy-1", index_generation_id: null },
+    ]);
+    const { loadDocumentSummaryContext } = await import("../src/lib/rag/rag-document-summary-context");
+    const { chunks } = await loadDocumentSummaryContext("doc-1", undefined);
+    expect(chunks.map((chunk) => chunk.id)).toEqual(["current-1"]);
+  });
+
+  it("keeps NULL-generation chunks while the committed generation has written none", async () => {
+    mockSummaryClient([
+      { id: "legacy-1", index_generation_id: null },
+      { id: "legacy-2", index_generation_id: null },
+    ]);
+    const { loadDocumentSummaryContext } = await import("../src/lib/rag/rag-document-summary-context");
+    const { chunks } = await loadDocumentSummaryContext("doc-1", undefined);
+    expect(chunks.map((chunk) => chunk.id)).toEqual(["legacy-1", "legacy-2"]);
   });
 });

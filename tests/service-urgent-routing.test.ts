@@ -65,6 +65,22 @@ describe("service urgent routing — Requirement R2", () => {
         expect(titles(query, 8)[0]).toBe("CAMHS Crisis Connect");
       }
     });
+
+    it("does not promote non-approved national lines as crisis pins for youth queries", () => {
+      // Owner ruling 18 Oct 2026 00:10 AWST: national youth lines are not pinned until the
+      // owner approves the list (#8CKX6F). Only the detected intents' urgent routes are pinned:
+      // camhs_crisis (CAMHS Crisis Connect) and adult_metro_crisis (MHERL, Lifeline WA). The
+      // first unpinned slot must not be taken by a promoted national line.
+      const topTitles = titles("youth self harm", 8);
+      expect(topTitles.slice(0, 3)).toEqual([
+        "CAMHS Crisis Connect",
+        "Mental Health Emergency Response Line (MHERL)",
+        "Lifeline WA",
+      ]);
+      for (const line of ["Suicide Call Back Service", "Kids Helpline", "13YARN"]) {
+        expect(topTitles.slice(0, 4), line).not.toContain(line);
+      }
+    });
   });
 
   describe("distinguishes non-acute suicidal intent", () => {
@@ -115,6 +131,38 @@ describe("service urgent routing — Requirement R2", () => {
         expect(intents).toContain("adult_metro_crisis");
       },
     );
+  });
+});
+
+describe("service urgent routing — medical emergencies pin 000 first", () => {
+  it.each([
+    "patient having a seizure",
+    "seizures",
+    "convulsing",
+    "unconscious",
+    "unconsciousness",
+    "loss of consciousness",
+    "not breathing",
+    "collapsed",
+    "patient collapse",
+  ])("pins Emergency services first for %j", (query) => {
+    expect(detectServiceUrgentIntents(query)).toEqual(["emergency"]);
+    expect(titles(query, 8)[0]).toBe("Emergency services");
+  });
+
+  it("pins 000 first and the Alcohol and Drug Support Line after it for an alcohol withdrawal seizure", () => {
+    expect(detectServiceUrgentIntents("alcohol withdrawal seizure")).toEqual(["emergency", "aod_urgent"]);
+    expect(titles("alcohol withdrawal seizure", 8).slice(0, 2)).toEqual([
+      "Emergency services",
+      "Alcohol and Drug Support Line",
+    ]);
+  });
+
+  it("pins 000 ahead of regional crisis routes when a medical emergency is named", () => {
+    const intents = detectServiceUrgentIntents("patient in crisis having a seizure in Bunbury");
+    expect(intents[0]).toBe("emergency");
+    expect(intents).toContain("regional_daytime");
+    expect(titles("patient in crisis having a seizure in Bunbury", 8)[0]).toBe("Emergency services");
   });
 });
 

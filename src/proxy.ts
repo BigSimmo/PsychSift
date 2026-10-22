@@ -492,13 +492,12 @@ export function shouldBlockProductionMockups(
 
   // Every subtree listed in DEVELOPER_GATED_PATH_PREFIXES carries its own
   // signed-in-administrator gate (`DeveloperAreaGate`, applied in each subtree's
-  // layout via the x-developer-area header set above), so let them through this
-  // blanket block and let that gate run instead of a bare 404. The prefixes are
-  // named once, in `src/lib/developer-area/headers.ts`, and not re-listed here:
-  // this comment kept naming a smaller set for months after a fourth prefix was
-  // added (2026-09-02 audit, L76). The match is exact-or-slash, so a look-alike path
-  // such as `/mockups/care-plan-archive` is NOT let through. Every other
-  // /mockups/** path is unaffected.
+  // layout via the x-developer-area header set above), so a gated subtree under
+  // /mockups would be let through this blanket block for that gate to run. The
+  // prefixes are named once, in `src/lib/developer-area/headers.ts`, and not
+  // re-listed here (2026-09-02 audit, L76). Since the /mockups copy of the Owner
+  // panel was retired on 2026-10-22 no gated prefix sits under /mockups, so
+  // every /mockups/** path is blocked here.
   if (isDeveloperGatedPath(pathname)) return false;
 
   // Mockups remain unavailable in every normal production process. The one

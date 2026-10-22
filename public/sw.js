@@ -243,16 +243,31 @@ function emergencyOfflineResponse() {
   );
 }
 
-const NAVIGATION_TIMEOUT_MS = 3500;
+// A browser that reports itself offline gets the offline page after the short deadline. One that
+// reports itself online keeps waiting for a slow page (a cold start, a busy server) up to the hard
+// deadline, which still catches a dead or captive connection (design audit D-20, owner yes 19 Oct
+// 2026: a slow page used to be replaced by "PsychSift is offline" after 3.5 seconds).
+const NAVIGATION_OFFLINE_TIMEOUT_MS = 3500;
+const NAVIGATION_HARD_TIMEOUT_MS = 20000;
+
+function browserReportsOffline() {
+  return typeof navigator !== "undefined" && navigator.onLine === false;
+}
 
 function withNavigationTimeout(promise) {
   if (typeof setTimeout === "undefined") return promise;
-  let timer;
+  const timers = [];
   const deadline = new Promise((_, reject) => {
-    timer = setTimeout(() => reject(new Error("Navigation network timeout")), NAVIGATION_TIMEOUT_MS);
+    const fail = () => reject(new Error("Navigation network timeout"));
+    timers.push(
+      setTimeout(() => {
+        if (browserReportsOffline()) fail();
+      }, NAVIGATION_OFFLINE_TIMEOUT_MS),
+    );
+    timers.push(setTimeout(fail, NAVIGATION_HARD_TIMEOUT_MS));
   });
   return Promise.race([promise, deadline]).finally(() => {
-    if (typeof clearTimeout !== "undefined") clearTimeout(timer);
+    if (typeof clearTimeout !== "undefined") for (const timer of timers) clearTimeout(timer);
   });
 }
 

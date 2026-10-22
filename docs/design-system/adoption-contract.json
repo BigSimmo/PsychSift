@@ -193,6 +193,7 @@
         "src/app/(search-app)/my-day/week/page.tsx",
         "src/app/(search-app)/my-work/page.tsx",
         "src/app/(search-app)/on-call/call/page.tsx",
+        "src/app/(search-app)/on-call/calls/page.tsx",
         "src/app/(search-app)/on-call/card/page.tsx",
         "src/app/(search-app)/on-call/check/page.tsx",
         "src/app/(search-app)/on-call/compliance/page.tsx",
@@ -666,8 +667,10 @@
       "id": "privacy-safety-and-reference",
       "disposition": "owned",
       "routes": [
+        "src/app/about/page.tsx",
         "src/app/auth/reset-password/page.tsx",
         "src/app/privacy/page.tsx",
+        "src/app/terms/page.tsx",
         "src/app/reference/colour-coding/page.tsx",
         "src/app/(search-app)/safety-plan/page.tsx"
       ],

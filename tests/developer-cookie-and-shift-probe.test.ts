@@ -30,11 +30,7 @@ describe("Developer access cookie path & ShiftNowProbe guest guard", () => {
   });
 
   it("scopes the developer access cookie to each gated subtree", () => {
-    expect(DEVELOPER_ACCESS_COOKIE_PATHS).toEqual([
-      "/admin/developer-hub",
-      "/mockups/development",
-      "/mockups/care-plan",
-    ]);
+    expect(DEVELOPER_ACCESS_COOKIE_PATHS).toEqual(["/admin/developer-hub"]);
   });
 
   it("skips /api/roster/shifts network requests for unauthenticated guests and immediately reports false", async () => {

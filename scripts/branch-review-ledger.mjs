@@ -17,6 +17,11 @@
  *   node scripts/branch-review-ledger.mjs rotate [--before YYYY-MM-DD] [--dry-run]
  *   node scripts/branch-review-ledger.mjs --self-test
  *
+ * Since 2026-10-20 new review records are pull request comments
+ * (docs/agents/pull-request-workflow.md#records). The record files are archived read-only under
+ * docs/archive/branch-review-records/, and every write command below needs
+ * ALLOW_LEGACY_REVIEW_LEDGER_MAINTENANCE=true for an explicitly approved historical repair.
+ *
  * `lookup` answers the only question the ledger is for: has this exact ref at this exact
  * HEAD already been reviewed for this scope? It reads the live ledger plus any
  * `docs/archive/branch-review-ledger-*.md` files and immutable review records. `append`
@@ -37,7 +42,7 @@ const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const LEDGER_PATH = "docs/branch-review-ledger.md";
 const ARCHIVE_DIR = "docs/archive";
 const ARCHIVE_PREFIX = "branch-review-ledger-";
-const RECORDS_DIR = "docs/branch-review-records";
+const RECORDS_DIR = "docs/archive/branch-review-records";
 const RECORD_SUFFIX = ".record.md";
 
 /** Cell separator: a literal `|` that was not escaped as `\|` inside prose. */
@@ -240,7 +245,7 @@ function archivePreamble(label) {
     "",
     "Historical review records rotated out of `docs/branch-review-ledger.md` so the live",
     "table stays navigable. Do not hand-edit. `npm run ledger:lookup` reads this file",
-    "together with the legacy table and immutable review records. New reviews use `ledger:append`.",
+    "together with the legacy table and archived review records. New reviews are recorded as PR comments.",
     "",
     "| Date | Branch or ref | Reviewed HEAD | Scope | Outcome | Checks |",
     "| --- | --- | --- | --- | --- | --- |",
@@ -517,7 +522,7 @@ function runLookup(_liveMarkdown, argv) {
     console.log(`ALREADY REVIEWED - ${atHead.length} record(s) at this HEAD${scope ? " and scope" : ""}:`);
     for (const row of atHead) console.log(summarize(row));
     console.log(
-      "\nSummarize the prior outcome and skip the repeat review unless a fresh pass was explicitly requested.",
+      "\nCommitted HEAD/scope record found; this lookup does not compare the base, working tree, environment or artifacts. Reuse only within that evidence scope; verify additional inputs for current-diff/readiness claims. Skip an unchanged committed-content review unless a fresh pass was explicitly requested.",
     );
     return;
   }
@@ -533,6 +538,7 @@ function runLookup(_liveMarkdown, argv) {
 
 function runAppend(markdown, argv) {
   const { flags } = parseFlags(argv);
+  if (!requireRetiredRecordWrite("append", false)) return;
   const required = ["ref", "head", "scope", "outcome", "checks"];
   const missing = required.filter((name) => !flags[name] || flags[name] === true);
   if (missing.length > 0) {
@@ -666,6 +672,7 @@ function resolveMigrationBase(flags) {
 function runMigrateLegacy(markdown, argv) {
   const { flags } = parseFlags(argv);
   const dryRun = Boolean(flags["dry-run"]);
+  if (!requireRetiredRecordWrite("migrate-legacy", dryRun)) return;
   let base;
   let result;
   try {
@@ -721,6 +728,21 @@ export function legacyMaintenanceAllowed({
   allow = process.env.ALLOW_LEGACY_REVIEW_LEDGER_MAINTENANCE,
 } = {}) {
   return dryRun || allow === "true";
+}
+
+/**
+ * Review records moved to pull request comments on 2026-10-20 and the record files are archived
+ * read-only, so writing one needs the same explicit opt-in as historical repair.
+ */
+function requireRetiredRecordWrite(command, dryRun) {
+  if (legacyMaintenanceAllowed({ dryRun })) return true;
+  console.error(
+    `refusing ${command}: review records now live in pull request comments ` +
+      "(docs/agents/pull-request-workflow.md#records) and the archived record files are read-only. " +
+      "Set ALLOW_LEGACY_REVIEW_LEDGER_MAINTENANCE=true only for an explicitly approved historical repair.",
+  );
+  process.exitCode = 1;
+  return false;
 }
 
 function requireLegacyMaintenance(command, dryRun) {

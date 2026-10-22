@@ -1,12 +1,14 @@
-import { execFileSync } from "node:child_process";
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   appendReceipt,
   OUTCOME_AFFECTING_ENV_VARS,
   parseRawDiff,
+  pythonIdentityProgram,
+  pythonToolchainSignature,
   computeInputSignature,
   consultGateReceipt,
   environmentSignature,
@@ -22,6 +24,38 @@ import {
 
 const temporaryRoots: string[] = [];
 
+const syntheticPython = vi.hoisted(() => ({
+  command: "gate-receipts-synthetic-python",
+  identity: {
+    executable: process.execPath,
+    executableHash: "a".repeat(64),
+    version: "3.12.0 synthetic",
+    prefix: process.cwd(),
+    path: ["synthetic-site-packages"],
+    prerequisites: Object.fromEntries(
+      ["fitz", "pymupdf", "PIL", "pytesseract"].map((name) => [
+        name,
+        { available: false, error: "ModuleNotFoundError", missing: name },
+      ]),
+    ),
+    distributions: [],
+  },
+}));
+
+// General receipt semantics must not depend on the host's Python installation,
+// PATH or site-packages. Only this explicit synthetic command is intercepted;
+// missing-runtime and executable-fixture regressions still use real subprocesses.
+vi.mock("node:child_process", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:child_process")>();
+  return {
+    ...actual,
+    spawnSync: (...args: unknown[]) =>
+      args[0] === syntheticPython.command
+        ? { status: 0, signal: null, stdout: JSON.stringify(syntheticPython.identity), stderr: "" }
+        : Reflect.apply(actual.spawnSync, actual, args),
+  };
+});
+
 /**
  * Explicit environment for every test that exercises record/reuse behaviour.
  *
@@ -31,7 +65,7 @@ const temporaryRoots: string[] = [];
  * became unreachable. CI caught it on PR #2216. Pass this wherever reuse is the subject;
  * the CI-refusal itself is asserted separately in "reuse boundaries".
  */
-const RECEIPTS_ENABLED: Record<string, string | undefined> = {};
+const RECEIPTS_ENABLED: Record<string, string | undefined> = { PYTHON_BIN: syntheticPython.command };
 
 /** A throwaway git worktree, so signature behaviour is proven against real git plumbing. */
 function gitFixture(files: Record<string, string>) {
@@ -199,7 +233,7 @@ describe("gate receipts — outcome-affecting environment (Codex review, PR #221
   });
 
   it("declares the seed and the locale/runtime variables that move verdicts", () => {
-    for (const name of ["FAST_CHECK_SEED", "TZ", "LANG", "NODE_OPTIONS", "ALLOW_PROVIDER_TESTS"]) {
+    for (const name of ["FAST_CHECK_SEED", "TZ", "LANG", "NODE_OPTIONS", "ALLOW_PROVIDER_TESTS", "PYTHON_BIN"]) {
       expect(OUTCOME_AFFECTING_ENV_VARS).toContain(name);
     }
     // Performance-only knobs must stay out: they would churn receipts for no verdict change.
@@ -208,45 +242,344 @@ describe("gate receipts — outcome-affecting environment (Codex review, PR #221
 
   it("does not reuse a receipt recorded under a different seed", () => {
     const { root } = gitFixture({ "a.ts": "1\n" });
-    const first = consultGateReceipt({ projectRoot: root, gate: "vitest", args: ["run"], env: {} });
-    recordGateReceipt({ projectRoot: root, decision: first, exitCode: 0, env: {} });
+    const first = consultGateReceipt({ projectRoot: root, gate: "vitest", args: ["run"], env: RECEIPTS_ENABLED });
+    expect(recordGateReceipt({ projectRoot: root, decision: first, exitCode: 0, env: RECEIPTS_ENABLED }).recorded).toBe(
+      true,
+    );
     const seeded = consultGateReceipt({
       projectRoot: root,
       gate: "vitest",
       args: ["run"],
-      env: { FAST_CHECK_SEED: "123" },
+      env: { ...RECEIPTS_ENABLED, FAST_CHECK_SEED: "123" },
     });
     expect(seeded.reuse).toBe(false);
   });
 });
 
+describe("gate receipts — external Python identity", () => {
+  const identity = () => ({
+    executable: path.resolve("synthetic-python"),
+    executableHash: "a".repeat(64),
+    version: "3.12.0 synthetic",
+    prefix: path.resolve("synthetic-prefix"),
+    path: ["synthetic-site-packages"],
+    prerequisites: Object.fromEntries(
+      ["fitz", "pymupdf", "PIL", "pytesseract"].map((name) => [
+        name,
+        {
+          available: true,
+          version: "1.0",
+          path: path.resolve("synthetic-site-packages", name),
+        },
+      ]),
+    ),
+    distributions: [["PyMuPDF", "1.0"]],
+  });
+  const signature = (payload: unknown) =>
+    pythonToolchainSignature(
+      process.cwd(),
+      {},
+      {
+        probe: (() => ({ status: 0, signal: null, stdout: JSON.stringify(payload) })) as unknown as typeof spawnSync,
+      },
+    );
+
+  it("fingerprints executable, interpreter and prerequisite availability/version independently", () => {
+    const base = identity();
+    const signatures = [
+      signature(base),
+      signature({ ...base, executable: path.resolve("other-python") }),
+      signature({ ...base, executableHash: "b".repeat(64) }),
+      signature({ ...base, version: "3.13.0 synthetic" }),
+      signature({
+        ...base,
+        prerequisites: { ...base.prerequisites, fitz: { available: false, error: "ModuleNotFoundError" } },
+      }),
+      signature({
+        ...base,
+        prerequisites: { ...base.prerequisites, fitz: { ...base.prerequisites.fitz, version: "2.0" } },
+      }),
+      signature({ ...base, distributions: [["PyMuPDF", "2.0"]] }),
+    ];
+    expect(signatures.every(Boolean)).toBe(true);
+    expect(new Set(signatures).size).toBe(signatures.length);
+  });
+
+  it("uses a bounded shell-free probe and refuses failed, malformed or unidentifiable output", () => {
+    const probe = vi.fn(() => ({ status: 0, signal: null, stdout: JSON.stringify(identity()) }));
+    expect(
+      pythonToolchainSignature(
+        process.cwd(),
+        { PYTHON_BIN: " synthetic-python " },
+        {
+          probe: probe as unknown as typeof spawnSync,
+        },
+      ),
+    ).toBeTruthy();
+    expect(probe.mock.calls[0]).toEqual([
+      "synthetic-python",
+      ["-c", expect.any(String)],
+      expect.objectContaining({ timeout: 5000, maxBuffer: 1024 * 1024, shell: false, killSignal: "SIGKILL" }),
+    ]);
+    expect(signature({ ...identity(), prerequisites: {} })).toBeNull();
+    expect(signature({ ...identity(), version: "" })).toBeNull();
+    for (const result of [
+      { status: 1, stdout: JSON.stringify(identity()) },
+      { status: null, signal: "SIGKILL", stdout: JSON.stringify(identity()) },
+      { status: 0, error: new Error("probe failed"), stdout: JSON.stringify(identity()) },
+      { status: 0, stdout: "not JSON" },
+    ]) {
+      expect(
+        pythonToolchainSignature(
+          process.cwd(),
+          {},
+          {
+            probe: (() => result) as unknown as typeof spawnSync,
+          },
+        ),
+      ).toBeNull();
+    }
+  });
+
+  it("executes the Python probe with importable modules that lack metadata or file identity", ({ skip }) => {
+    const python = process.env.PYTHON_BIN?.trim() || (process.platform === "win32" ? "python" : "python3");
+    const controlledImports = `
+import importlib, importlib.metadata, types
+paths = {"fitz": "/synthetic/fitz.py", "pymupdf": None, "PIL": "/synthetic/PIL.py"}
+def controlled_import(name):
+    if name == "pytesseract":
+        return types.SimpleNamespace()
+    return types.SimpleNamespace(__file__=paths[name])
+def controlled_version(name):
+    if name == "PyMuPDF" or name == "pytesseract":
+        raise importlib.metadata.PackageNotFoundError(name)
+    return "1.0-synthetic"
+importlib.import_module = controlled_import
+importlib.metadata.version = controlled_version
+importlib.metadata.distributions = lambda: []
+`;
+    const options = {
+      cwd: process.cwd(),
+      env: process.env,
+      encoding: "utf8" as const,
+      timeout: 5000,
+      maxBuffer: 1024 * 1024,
+      shell: false,
+    };
+    const execute = (program: string) => spawnSync(python, ["-c", program], options);
+    const first = execute(controlledImports + pythonIdentityProgram);
+    if (first.error && "code" in first.error && first.error.code === "ENOENT")
+      return skip("Python is unavailable for the actual probe regression");
+    expect(first.error).toBeUndefined();
+    expect(first.status, first.stderr).toBe(0);
+    const observed = JSON.parse(first.stdout);
+    expect(observed.prerequisites.fitz).toMatchObject({
+      available: false,
+      imported: true,
+      error: "PrerequisiteIdentityUnavailable",
+      version: null,
+      pathError: null,
+      metadataError: "PackageNotFoundError",
+    });
+    expect(observed.prerequisites.fitz.path).toContain("fitz.py");
+    expect(observed.prerequisites.pymupdf).toMatchObject({
+      available: false,
+      path: null,
+      pathError: "ModulePathUnavailable",
+      metadataError: "PackageNotFoundError",
+    });
+    expect(observed.prerequisites.pytesseract).toMatchObject({
+      available: false,
+      path: null,
+      pathError: "ModulePathUnavailable",
+      metadataError: "PackageNotFoundError",
+    });
+    expect(observed.prerequisites.PIL).toMatchObject({ available: true, version: "1.0-synthetic" });
+    const firstSignature = signature(observed);
+    expect(firstSignature).toBeTruthy();
+    const repeat = execute(controlledImports + pythonIdentityProgram);
+    expect(repeat.status, repeat.stderr).toBe(0);
+    expect(signature(JSON.parse(repeat.stdout))).toBe(firstSignature);
+    const repairedMetadata = execute(
+      controlledImports + '\nimportlib.metadata.version = lambda name: "1.0-synthetic"\n' + pythonIdentityProgram,
+    );
+    expect(repairedMetadata.status, repairedMetadata.stderr).toBe(0);
+    const repaired = JSON.parse(repairedMetadata.stdout);
+    expect(repaired.prerequisites.fitz.available).toBe(true);
+    expect(repaired.prerequisites.pymupdf).toMatchObject({
+      available: false,
+      version: "1.0-synthetic",
+      pathError: "ModulePathUnavailable",
+      metadataError: null,
+    });
+    expect(signature(repaired)).not.toBe(firstSignature);
+    // A valid prerequisite state must still not rescue an invalid runtime.
+    expect(signature({ ...observed, executableHash: "" })).toBeNull();
+  });
+
+  it("executes the Python probe with damaged distribution metadata without losing other identities", ({ skip }) => {
+    const python = process.env.PYTHON_BIN?.trim() || (process.platform === "win32" ? "python" : "python3");
+    const controlledDistributions = `
+import importlib, importlib.metadata, types
+importlib.import_module = lambda name: types.SimpleNamespace(__file__="/synthetic/" + name + ".py")
+importlib.metadata.version = lambda name: "1.0-synthetic"
+class RaisingDistribution:
+    _path = "/synthetic/raising.dist-info"
+    @property
+    def metadata(self):
+        raise OSError("synthetic metadata failure")
+    @property
+    def version(self):
+        raise ValueError("synthetic version failure")
+inventory = [
+    types.SimpleNamespace(metadata={"Name": "healthy-package"}, version="1.0", _path="/synthetic/healthy.dist-info"),
+    types.SimpleNamespace(metadata={}, version=None, _path="/synthetic/missing.dist-info"),
+    RaisingDistribution(),
+    types.SimpleNamespace(metadata={"Name": " "}, version="", _path="/synthetic/blank.dist-info"),
+    types.SimpleNamespace(metadata={"Name": 17}, version={}, _path="/synthetic/nonstring.dist-info"),
+]
+importlib.metadata.distributions = lambda: inventory
+`;
+    const execute = (extra = "") =>
+      spawnSync(python, ["-c", controlledDistributions + extra + pythonIdentityProgram], {
+        cwd: process.cwd(),
+        env: process.env,
+        encoding: "utf8",
+        timeout: 5000,
+        maxBuffer: 1024 * 1024,
+        shell: false,
+      });
+    const first = execute();
+    if (first.error && "code" in first.error && first.error.code === "ENOENT")
+      return skip("Python is unavailable for the actual probe regression");
+    expect(first.error).toBeUndefined();
+    expect(first.status, first.stderr).toBe(0);
+    const observed = JSON.parse(first.stdout);
+    expect(observed.distributions).toContainEqual(["healthy-package", "1.0"]);
+    const unidentified = observed.distributions.filter((entry: unknown) => !Array.isArray(entry)) as Array<{
+      identified: boolean;
+      name: string | null;
+      version: string | null;
+      path: string | null;
+      nameError: string | null;
+      versionError: string | null;
+      pathError: string | null;
+    }>;
+    expect(unidentified).toHaveLength(4);
+    expect(
+      unidentified.every((entry) => entry.identified === false && entry.name === null && entry.version === null),
+    ).toBe(true);
+    expect(new Set(unidentified.map((entry) => entry.path)).size).toBe(4);
+    expect(unidentified.find((entry) => entry.path?.endsWith("missing.dist-info"))).toMatchObject({
+      nameError: "KeyError",
+      versionError: "DistributionVersionUnavailable",
+    });
+    expect(unidentified.find((entry) => entry.path?.endsWith("raising.dist-info"))).toMatchObject({
+      nameError: "OSError",
+      versionError: "ValueError",
+    });
+    for (const suffix of ["blank.dist-info", "nonstring.dist-info"]) {
+      expect(unidentified.find((entry) => entry.path?.endsWith(suffix))).toMatchObject({
+        nameError: "DistributionNameUnavailable",
+        versionError: "DistributionVersionUnavailable",
+      });
+    }
+    const firstSignature = signature(observed);
+    expect(firstSignature).toBeTruthy();
+    const reverse = execute("\ninventory.reverse()\n");
+    expect(reverse.status, reverse.stderr).toBe(0);
+    expect(signature(JSON.parse(reverse.stdout))).toBe(firstSignature);
+    const repaired = execute('\ninventory[1].metadata = {"Name": "repaired-package"}\ninventory[1].version = "2.0"\n');
+    expect(repaired.status, repaired.stderr).toBe(0);
+    const repairedIdentity = JSON.parse(repaired.stdout);
+    expect(repairedIdentity.distributions).toContainEqual(["repaired-package", "2.0"]);
+    expect(signature(repairedIdentity)).not.toBe(firstSignature);
+    expect(signature({ ...observed, executableHash: "" })).toBeNull();
+    expect(signature({ ...observed, distributions: [{ identified: false }] })).toBeNull();
+    expect(
+      signature({ ...observed, distributions: [{ ...unidentified[0], path: null, pathError: "OSError" }] }),
+    ).toBeNull();
+    expect(signature({ ...observed, distributions: [{ ...unidentified[0], path: "relative.dist-info" }] })).toBeNull();
+  });
+
+  it("does not depend on Python availability for lint or typecheck receipts", () => {
+    const { root } = gitFixture({ "a.ts": "1\n" });
+    const env = { PYTHON_BIN: path.join(root, "missing-python") };
+    for (const gate of ["lint:internal", "typecheck:internal"]) {
+      const first = consultGateReceipt({ projectRoot: root, gate, env });
+      expect(recordGateReceipt({ projectRoot: root, decision: first, exitCode: 0, env }).recorded).toBe(true);
+      expect(consultGateReceipt({ projectRoot: root, gate, env }).reuse).toBe(true);
+    }
+    const vitest = consultGateReceipt({ projectRoot: root, gate: "vitest", args: ["run"], env });
+    expect(vitest.reuse).toBe(false);
+    expect(vitest.key).toBeNull();
+    expect(recordGateReceipt({ projectRoot: root, decision: vitest, exitCode: 0, env }).recorded).toBe(false);
+  });
+
+  it.skipIf(process.platform === "win32")(
+    "invalidates real receipts when an external prerequisite changes without a source edit",
+    () => {
+      const { root } = gitFixture({ "a.ts": "1\n" });
+      const external = path.join(root, "node_modules");
+      mkdirSync(external);
+      const python = path.join(external, "synthetic-python");
+      const payload = path.join(external, "identity.json");
+      writeFileSync(
+        python,
+        `#!${process.execPath}\nconst fs = require('node:fs'); process.stdout.write(fs.readFileSync(${JSON.stringify(payload)}));\n`,
+      );
+      chmodSync(python, 0o755);
+      const base = identity();
+      writeFileSync(payload, JSON.stringify(base));
+      const env = { PYTHON_BIN: python };
+      const first = consultGateReceipt({ projectRoot: root, gate: "vitest", args: ["run"], env });
+      expect(recordGateReceipt({ projectRoot: root, decision: first, exitCode: 0, env }).recorded).toBe(true);
+      expect(consultGateReceipt({ projectRoot: root, gate: "vitest", args: ["run"], env }).reuse).toBe(true);
+      for (const changed of [
+        { ...base, version: "3.13.0 synthetic" },
+        { ...base, prerequisites: { ...base.prerequisites, fitz: { ...base.prerequisites.fitz, version: "2.0" } } },
+        { ...base, prerequisites: { ...base.prerequisites, fitz: { available: false, error: "ImportError" } } },
+      ]) {
+        writeFileSync(payload, JSON.stringify(changed));
+        const after = consultGateReceipt({ projectRoot: root, gate: "vitest", args: ["run"], env });
+        expect(after.inputHash).toBe(first.inputHash);
+        expect(after.reuse).toBe(false);
+        expect(recordGateReceipt({ projectRoot: root, decision: first, exitCode: 0, env }).recorded).toBe(false);
+      }
+      const missingEnv = { PYTHON_BIN: path.join(external, "missing-python") };
+      expect(consultGateReceipt({ projectRoot: root, gate: "vitest", args: ["run"], env: missingEnv }).reuse).toBe(
+        false,
+      );
+    },
+  );
+});
+
 describe("gate receipts — coverage-enabling argument forms (Codex review, PR #2216)", () => {
-  const memoisable = (argumentList: string[]) => {
-    const source = readFileSync("scripts/run-vitest.mjs", "utf8");
-    const pattern = /const NON_MEMOISABLE_ARGUMENT = (\/.*\/);/.exec(source)?.[1];
-    expect(pattern).toBeTruthy();
-    const rx = new RegExp(pattern!.slice(1, pattern!.lastIndexOf("/")));
-    return !argumentList.some((argument) => argument === "-u" || rx.test(argument));
+  // Exercise the runner's real decision rather than scraping its source text, so a
+  // reformat of scripts/run-vitest.mjs cannot silently blind these assertions.
+  const memoisable = async (argumentList: string[]) => {
+    const { vitestRunIsMemoisable } = await import("../scripts/run-vitest.mjs");
+    return vitestRunIsMemoisable(argumentList) as boolean;
   };
 
-  it("refuses every accepted coverage form, not just the bare flag", () => {
+  it("refuses every accepted coverage form, not just the bare flag", async () => {
     // Vitest 4.1.10 documents `--coverage.enabled`; an exact-match list memoised it and
     // would then skip a later run, leaving `coverage/` stale for the gates that read it.
     for (const form of ["--coverage", "--coverage.enabled", "--coverage=true", "--coverage.provider=v8"]) {
-      expect(memoisable(["run", form]), form).toBe(false);
+      expect(await memoisable(["run", form]), form).toBe(false);
     }
   });
 
-  it("refuses watch, snapshot-update and UI runs in every form", () => {
+  it("refuses watch, snapshot-update and UI runs in every form", async () => {
     for (const form of ["--watch", "--watch=true", "--update", "-u", "--ui"]) {
-      expect(memoisable(["run", form]), form).toBe(false);
+      expect(await memoisable(["run", form]), form).toBe(false);
     }
   });
 
-  it("still memoises ordinary runs", () => {
-    expect(memoisable(["run"])).toBe(true);
-    expect(memoisable(["run", "tests/x.test.ts", "--reporter=dot"])).toBe(true);
-    expect(memoisable(["run", "--no-coverage"])).toBe(true);
+  it("still memoises ordinary runs", async () => {
+    expect(await memoisable(["run"])).toBe(true);
+    expect(await memoisable(["run", "tests/x.test.ts", "--reporter=dot"])).toBe(true);
+    expect(await memoisable(["run", "--no-coverage"])).toBe(true);
   });
 });
 
@@ -366,7 +699,7 @@ describe("gate receipts — wrapper contract", () => {
       runs += 1;
       return 0;
     };
-    const env = { GATE_RECEIPTS: "refresh" };
+    const env = { ...RECEIPTS_ENABLED, GATE_RECEIPTS: "refresh" };
     await withGateReceipt({ projectRoot: root, gate: "vitest", args: ["run"], run, env, log: () => {} });
     await withGateReceipt({ projectRoot: root, gate: "vitest", args: ["run"], run, env, log: () => {} });
     expect(runs).toBe(2);

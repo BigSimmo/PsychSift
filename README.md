@@ -135,13 +135,21 @@ heavy parsing, OCR, image captioning, chunking, embedding, and database inserts.
 It uses the worker defaults from `.env.example` when those vars are set in
 `.env.local`. These defaults do not prevent live database claims or provider calls.
 
-**Docker Compose also requires connected-workload approval.**
-`docker compose up --build` starts both the app and ingestion worker and loads
-`.env.local` into both. It does not create an isolated local Supabase database.
-Production credentials can therefore let the worker consume production jobs.
-Use only the explicitly approved target and workload. The Compose app mapping is
-`http://localhost:3000`; stop this stack with `docker compose down`. This mapping
-does not replace the project-identity checks for development servers above.
+**Docker Compose starts only the app; the worker is opt-in.**
+`docker compose --env-file .env.local up --build` builds and starts the app tier
+only. Compose has no default Supabase URL: it fails fast unless
+`NEXT_PUBLIC_SUPABASE_URL` is supplied (`--env-file`, the shell or `.env`; the
+optional `.env.local` `env_file` alone does not feed `${...}` interpolation).
+It does not create an isolated local Supabase database.
+
+The ingestion worker sits behind the `worker` profile because production
+credentials would let it consume production jobs. Start it only with explicit
+connected-workload approval for the target:
+`docker compose --env-file .env.local --profile worker up --build`.
+The worker container serves `/health` on internal port 3901 for its Compose
+healthcheck (nothing is published). The Compose app mapping is
+`http://localhost:3000`; stop the stack with `docker compose --env-file .env.local --profile worker down`.
+This mapping does not replace the project-identity checks for development servers above.
 
 ### Node.js runtime and lifecycle
 
@@ -218,9 +226,9 @@ requires Josh's explicit permission for that specific change under the
 Use reviewed committed migrations for durable schema changes; merging a migration
 to `main` applies it to production and requires the applicable approved window.
 
-Cloud agents do not inherit desktop OAuth automatically. After merging this
-config, authenticate MCP in the environment where the cloud agent runs and start
-a fresh agent session.
+Cursor cloud agents are prohibited for this repository (see `AGENTS.md`). Other
+hosted agents do not inherit desktop OAuth; authenticate MCP where that agent
+runs and start a fresh session.
 
 Never put `SUPABASE_SERVICE_ROLE_KEY` or other secrets into MCP config. The
 hosted Supabase MCP server uses OAuth, not repo secrets.
@@ -241,10 +249,9 @@ give design ↔ code access (capture live UI, read/write frames, Code Connect).
 Enable the plugin / MCP server, complete browser OAuth once, then verify with a
 prompt such as: _"Call Figma whoami and report only handle and plan tier."_
 
-**Cursor Cloud Agents:** official Figma remote MCP is **not supported** there today
-(Cloud/Automations return Forbidden; OAuth from desktop does not carry over). Use
+**Cursor Cloud Agents** are prohibited for this repository. Use
 **Cursor Desktop** (or Codex with its Figma plugin) for Figma MCP. Repo
-`.cursor/mcp.json` still helps the IDE; it does not unlock Cloud Agents. Details:
+`.cursor/mcp.json` helps the IDE only. Details:
 `docs/agents-guide.md`, `docs/codex-cloud.md`.
 
 ## Documentation
@@ -272,8 +279,9 @@ Verification gates (see `package.json` for the full chain):
 
 ```bash
 npm run verify:cheap    # ordinary offline gate: check:installed-lock-parity
-                        # + check:diff-integrity + lint + typecheck + test
-npm run verify:full     # 43 static/consistency gates (check:runtime through
+                        # + Codex hook tests + check:diff-integrity + lint
+                        # + typecheck + test
+npm run verify:full     # static/consistency gates (check:runtime through
                         # check:offline-pack; `npm run check:gate-manifest`
                         # lists them from verify:full:internal) then lint +
                         # typecheck + test — does not invoke the cheap script

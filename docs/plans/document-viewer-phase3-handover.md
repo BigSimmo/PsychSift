@@ -75,8 +75,8 @@ correct page count, page-flip changes the raster. Expect it to fail locally with
 skip-with-reason, never a silent green — `docs/testing.md` flake policy applies.
 
 `#279` lives in `docs/outstanding-issues.md`, so queue its closure with `npm run issues:done -- '#279'` (or
-`issues:update` if the gate is only partly built), then reconcile it from the dedicated ledger branch — **not** `ledger:append --supersede`, which records
-the separate branch-review ledger and would leave the durable row untouched. Its refuted remedy has
+`issues:update` if the gate is only partly built), then reconcile it from the dedicated ledger branch — **not** a `Review record` PR comment, which records
+the separate review history and would leave the durable row untouched. Its refuted remedy has
 already been struck from the row; record the gate you built as the resolution.
 
 Everything below is proven by that gate in CI plus focused unit tests locally.

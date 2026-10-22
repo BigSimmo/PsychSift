@@ -6,9 +6,11 @@ import { toDocumentMatch } from "@/lib/document-enrichment";
 import { isClinicalImageEvidence } from "@/lib/image-filtering";
 import type { RelatedDocument } from "@/lib/types";
 import { isMissingStorageObject, selectCommittedCovers } from "../scripts/archive/backfill-document-covers.mjs";
+import { readWorkerIngestionSource } from "./helpers/worker-ingestion-source";
 
 const extractorSource = readFileSync(new URL("../worker/python/extract_pdf_assets.py", import.meta.url), "utf8");
-const workerSource = readFileSync(new URL("../worker/main.ts", import.meta.url), "utf8");
+// worker/main.ts plus the ingestion stages extracted from it (image captioning holds the cover logic).
+const workerSource = readWorkerIngestionSource();
 const backfillSource = readFileSync(
   new URL("../scripts/archive/backfill-document-covers.mjs", import.meta.url),
   "utf8",

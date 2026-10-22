@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * ops-digest — render a one-screen operational summary from the live deep health
- * probe, for the daily ops-digest workflow.
+ * probe, for the six-hourly ops-digest workflow.
  *
  * The app already exposes rich signal at GET /api/health?deep=1 (SLO counters,
  * cache hit-rate, answer spend, degraded/truncation rates), but nothing surfaces
@@ -24,7 +24,12 @@
  */
 import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
-import { evaluateOperationalAlerts, summarizeOperationalAlerts } from "./lib/operational-alerts.mjs";
+import {
+  ANSWER_QUALITY_THRESHOLDS,
+  ANSWER_QUALITY_WINDOW_MINUTES,
+  evaluateOperationalAlerts,
+  summarizeOperationalAlerts,
+} from "./lib/operational-alerts.mjs";
 
 const allowedStatuses = new Set(["ok", "degraded", "unreachable", "unknown"]);
 const allowedSeverities = new Set(["none", "unknown", "warning", "page"]);
@@ -61,6 +66,12 @@ function argValue(name) {
 
 const hourlyWindowMs = 60 * 60 * 1000;
 const hourlyHistoryVersion = 1;
+// The paging rule counts consecutive digest samples, not consecutive UTC hours. Scheduled runs are
+// six hours apart, GitHub cron fires can arrive late or be dropped, and a manual run between them
+// shares the same history file. Any positive gap up to two schedule intervals therefore joins the
+// sequence; samples further apart than that are not treated as the same persistent failure.
+const scheduleIntervalMs = 6 * hourlyWindowMs;
+const maxConsecutiveSampleGapMs = 2 * scheduleIntervalMs;
 
 function hourStart(instant) {
   const epoch = instant instanceof Date ? instant.getTime() : Date.parse(String(instant));
@@ -108,9 +119,7 @@ export function updateHybridRpcHourlyEvidence(rawHistory, health, observedAt = n
     lastThree.every((entry, index) => {
       if (index === 0) return true;
       const gapMs = Date.parse(entry.hour) - Date.parse(lastThree[index - 1].hour);
-      // Scheduled runs are six hours apart, and a manual run between them shares the same history
-      // file, so any positive whole-hour gap up to six hours still counts as consecutive evidence.
-      return gapMs > 0 && gapMs <= 6 * hourlyWindowMs;
+      return gapMs > 0 && gapMs <= maxConsecutiveSampleGapMs;
     });
   const repeatedRpcNames = contiguous
     ? lastThree[0].rpcNames.filter((name) => lastThree.every((entry) => entry.rpcNames.includes(name)))
@@ -141,6 +150,116 @@ function usd(value) {
   return typeof value === "number" ? `$${value.toFixed(2)}` : "—";
 }
 
+const storageCleanupRunbook = "docs/observability-slos.md#storage-cleanup-backlog";
+
+function backlogCount(value) {
+  return Number.isInteger(value) && value >= 0 ? value : null;
+}
+
+/**
+ * One digest line for the deep probe's `storageCleanup` block, or null when the probe did not
+ * report it (older build, query error, or readiness-only response). Counts that are not
+ * non-negative integers are treated as absent rather than rendered as zero.
+ */
+export function renderStorageCleanupBacklog(block, now = Date.now()) {
+  if (!block || typeof block !== "object") return null;
+  const pending = backlogCount(block.pending);
+  const failed = backlogCount(block.failed);
+  if (pending === null || failed === null) return null;
+  // Older builds do not report expired claims; treat that as none.
+  const expiredClaims = backlogCount(block.expiredClaims) ?? 0;
+  const outstanding = pending + failed + expiredClaims;
+  const oldestEpoch = typeof block.oldestOutstandingAt === "string" ? Date.parse(block.oldestOutstandingAt) : NaN;
+  const oldest = Number.isFinite(oldestEpoch) ? new Date(oldestEpoch).toISOString() : null;
+  // A `pending` row exists for the few seconds a delete is running, so only a failed row, or an
+  // outstanding row older than an hour, means something is waiting for the manual drain.
+  const stale = Number.isFinite(oldestEpoch) && now - oldestEpoch > 60 * 60 * 1000;
+  const attention =
+    failed > 0 || (outstanding > 0 && stale)
+      ? `  ⚠ drain with \`npm run cleanup:storage\` ([runbook](${storageCleanupRunbook}))`
+      : "";
+  const expired = expiredClaims > 0 ? `, expired claims ${expiredClaims}` : "";
+  return `**Storage cleanup backlog:** ${outstanding} outstanding (pending ${pending}, failed ${failed}${expired})${
+    oldest ? ` · oldest ${oldest}` : ""
+  }${attention}`;
+}
+
+/**
+ * One digest line for the ingestion worker's intended state (audit EVAL-03). The worker has no
+ * public address and the deep probe does not reach it, so the operator records a deliberate pause
+ * in the repository variable INGESTION_WORKER_PAUSED. A pause is shown as paused — not healthy,
+ * not an outage — and never raises an alert here; the ingestion autopilot alerts when an upload
+ * waits more than 30 minutes without being claimed.
+ */
+export function renderIngestionWorkerState(value) {
+  const state = String(value ?? "")
+    .trim()
+    .toLowerCase();
+  if (state === "true") {
+    return "**Ingestion worker:** ⏸ paused on purpose (repository variable INGESTION_WORKER_PAUSED=true). Uploaded documents are not processed until it is resumed. Not an outage: the ingestion autopilot alerts only if an upload waits more than 30 minutes.";
+  }
+  if (state === "false") return "**Ingestion worker:** expected to be running.";
+  return "**Ingestion worker:** state not recorded (set repository variable INGESTION_WORKER_PAUSED to true or false).";
+}
+
+/**
+ * Digest lines for one answer-SLO snapshot. `alertWindow` marks the snapshot the alert rules
+ * judge: the trailing six-hour `sloTrailing` block, or the hourly `slo` from an older build.
+ */
+function renderAnswerWindow(s, { alertWindow }) {
+  // A current build marks a failed trailing query explicitly; it is unknown, not an empty window.
+  if (s.unavailable === true) {
+    return [
+      "",
+      `**Answer quality** (trailing ${s.windowMinutes ?? "?"}m, the window alerts judge)`,
+      "**Snapshot query failed—answer quality not assessed.**",
+    ];
+  }
+  const expectedWindowMinutes = alertWindow && s.windowMinutes !== 60 ? ANSWER_QUALITY_WINDOW_MINUTES : 60;
+  const noAnswerActivity = s.windowMinutes === expectedWindowMinutes && s.totalQueries === 0;
+  const sloPct = (value) => (noAnswerActivity ? "N/A" : pct(value));
+  const heading =
+    alertWindow && s.windowMinutes === ANSWER_QUALITY_WINDOW_MINUTES
+      ? `**Answer quality** (trailing ${s.windowMinutes}m, the window alerts judge)`
+      : `**Answer SLO** (trailing ${s.windowMinutes ?? "?"}m)`;
+  const emptyNote = !noAnswerActivity
+    ? ""
+    : alertWindow
+      ? "**No answered queries observed—answer quality not assessed.**"
+      : "No answered queries in the last 60 minutes.";
+  const lowVolumeNote =
+    alertWindow &&
+    Number.isInteger(s.totalQueries) &&
+    s.totalQueries > 0 &&
+    s.totalQueries < ANSWER_QUALITY_THRESHOLDS.minimumQueries
+      ? `Fewer than ${ANSWER_QUALITY_THRESHOLDS.minimumQueries} answers: source-gap, unsupported and latency-budget rates are not judged.`
+      : "";
+  const lines = [
+    "",
+    heading,
+    emptyNote,
+    lowVolumeNote,
+    `- queries: ${s.totalQueries ?? 0}`,
+    `- hybrid RPC errors: ${s.hybridRpcErrorQueries ?? 0} (${sloPct(s.hybridRpcErrorRate)})`,
+    `- degraded/source-only: ${s.degradedQueries ?? 0} (${sloPct(s.degradedRate)})`,
+    `- truncation fallbacks: ${s.truncationFallbackQueries ?? 0} (${sloPct(s.truncationFallbackRate)})`,
+    `- timeout fallbacks: ${s.timeoutFallbackQueries ?? 0} (${sloPct(s.timeoutFallbackRate)})`,
+    `- source gaps: ${s.sourceGapQueries ?? 0} (${sloPct(s.sourceGapRate)})`,
+    `- unsupported: ${s.unsupportedQueries ?? 0} (${sloPct(s.unsupportedRate)})`,
+  ];
+  if (s.latencyP95MsByRouteMode && typeof s.latencyP95MsByRouteMode === "object" && !noAnswerActivity) {
+    const routes = ["fast", "strong", "extractive"]
+      .map((mode) => {
+        const entry = s.latencyP95MsByRouteMode[mode];
+        const p95 = typeof entry?.p95Ms === "number" ? `${(entry.p95Ms / 1000).toFixed(1)}s` : "—";
+        return `${mode} ${p95} (n=${Number.isInteger(entry?.samples) ? entry.samples : 0})`;
+      })
+      .join(", ");
+    lines.push(`- p95 latency: ${routes}${s.latencySampleTruncated ? " ⚠ sample capped" : ""}`);
+  }
+  return lines;
+}
+
 export function renderDigest(health, meta = {}) {
   const lines = [];
   const stamp = new Date().toISOString();
@@ -155,6 +274,10 @@ export function renderDigest(health, meta = {}) {
           : "🔴 unreachable";
   lines.push(`### Ops digest — ${stamp}`, "", `**Service readiness:** ${badge}`);
   if (meta.error) lines.push("", `> Probe error: \`${meta.error}\``);
+  // Independent of the app probe, so it is shown even when the probe did not answer.
+  if (Object.hasOwn(meta, "ingestionWorkerPaused")) {
+    lines.push(renderIngestionWorkerState(meta.ingestionWorkerPaused));
+  }
 
   /**
    * WHICH BUILD THIS MEASURED, and when the container answered.
@@ -189,21 +312,12 @@ export function renderDigest(health, meta = {}) {
       lines.push(`**Checks:** ${checks}`);
     }
 
-    if (health.slo) {
-      const s = health.slo;
-      const noAnswerActivity = s.windowMinutes === 60 && s.totalQueries === 0;
-      const sloPct = (value) => (noAnswerActivity ? "N/A" : pct(value));
-      lines.push(
-        "",
-        "**Answer SLO** (trailing " + (s.windowMinutes ?? "?") + "m)",
-        noAnswerActivity ? "**No answered queries observed—answer quality not assessed.**" : "",
-        `- queries: ${s.totalQueries ?? 0}`,
-        `- hybrid RPC errors: ${s.hybridRpcErrorQueries ?? 0} (${sloPct(s.hybridRpcErrorRate)})`,
-        `- degraded/source-only: ${s.degradedQueries ?? 0} (${sloPct(s.degradedRate)})`,
-        `- truncation fallbacks: ${s.truncationFallbackQueries ?? 0} (${sloPct(s.truncationFallbackRate)})`,
-        `- timeout fallbacks: ${s.timeoutFallbackQueries ?? 0} (${sloPct(s.timeoutFallbackRate)})`,
-      );
-    }
+    // Audit EVAL-02: alerts judge the trailing six-hour `sloTrailing` window when the probe
+    // supplies it, so it is shown first and named as the alert window. The hourly block stays
+    // because it feeds the hybrid-RPC identity history.
+    const trailing = health.sloTrailing && typeof health.sloTrailing === "object" ? health.sloTrailing : null;
+    if (trailing) lines.push(...renderAnswerWindow(trailing, { alertWindow: true }));
+    if (health.slo) lines.push(...renderAnswerWindow(health.slo, { alertWindow: !trailing }));
 
     if (health.cache) {
       const c = health.cache;
@@ -225,6 +339,11 @@ export function renderDigest(health, meta = {}) {
         sp.sampleTruncated ? "- ⚠ sample truncated — figures are a lower bound" : "",
       );
     }
+
+    // Audit F-10: failed storage deletions queue in storage_cleanup_jobs and are drained only
+    // by the manual `npm run cleanup:storage`, so the backlog is shown here rather than nowhere.
+    const backlog = renderStorageCleanupBacklog(health.storageCleanup);
+    if (backlog) lines.push("", backlog);
   }
 
   const alerts = evaluateOperationalAlerts(health, meta);
@@ -279,6 +398,7 @@ async function main() {
     error,
     canaryStale: process.env.EVAL_CANARY_STALE === "true",
     canaryMessage: process.env.EVAL_CANARY_MESSAGE,
+    ingestionWorkerPaused: process.env.INGESTION_WORKER_PAUSED,
     repeatedHybridRpcNames: hourlyEvidence.repeatedRpcNames,
   };
   const digest = renderDigest(health, alertContext);

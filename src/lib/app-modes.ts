@@ -86,8 +86,19 @@ export type AppModeSearchConfig = {
   defaultQueryMode?: ClinicalQueryMode;
 };
 
+/**
+ * The two sides of the app (owner decision, 21 Oct 2026): Clinical is the
+ * reference half, Work is the working day. Every mode names its side here, and
+ * this is the one place that says which modes are Work. The menu groups, the
+ * Work area lists and the Work frame are checked against it
+ * (`tests/app-mode-sides.test.ts`).
+ */
+export type AppModeSide = "clinical" | "work";
+
 export type AppModeDefinition = {
   id: AppModeId;
+  /** Required, so a new mode cannot compile until its author says which side it is on. */
+  side: AppModeSide;
   label: string;
   description: string;
   devOnly?: boolean;
@@ -110,6 +121,7 @@ export const dsmSearchHref = "/dsm/search";
 export const appModeDefinitions = [
   {
     id: "answer",
+    side: "clinical",
     label: "Answer",
     description: "Source-backed clinical answer",
     search: {
@@ -132,6 +144,7 @@ export const appModeDefinitions = [
   },
   {
     id: "documents",
+    side: "clinical",
     label: "Documents",
     description: "Find source PDFs, notes, and evidence passages",
     // Documents owns a real home at /documents so it is reachable from nav like
@@ -158,6 +171,7 @@ export const appModeDefinitions = [
   },
   {
     id: "services",
+    side: "clinical",
     label: "Services",
     description: "Service records and referral pathways",
     href: "/services",
@@ -181,6 +195,7 @@ export const appModeDefinitions = [
   },
   {
     id: "forms",
+    side: "clinical",
     label: "Forms",
     description: "Clinical forms and pathways",
     href: "/forms",
@@ -206,6 +221,7 @@ export const appModeDefinitions = [
   },
   {
     id: "favourites",
+    side: "clinical",
     label: "Favourites",
     description: "Saved clinical items and sets",
     href: "/favourites",
@@ -229,6 +245,7 @@ export const appModeDefinitions = [
   },
   {
     id: "differentials",
+    side: "clinical",
     label: "Differentials",
     description: "Compare causes and clinical clues",
     href: "/differentials",
@@ -253,6 +270,7 @@ export const appModeDefinitions = [
   },
   {
     id: "dsm",
+    side: "clinical",
     label: "DSM-5 Diagnosis",
     description: "Diagnostic criteria, specifiers, and comparisons",
     href: "/dsm",
@@ -276,6 +294,7 @@ export const appModeDefinitions = [
   },
   {
     id: "specifiers",
+    side: "clinical",
     label: "Specifiers",
     description: "Refine diagnostic wording and episode patterns",
     href: "/specifiers",
@@ -299,6 +318,7 @@ export const appModeDefinitions = [
   },
   {
     id: "formulation",
+    side: "clinical",
     label: "Formulation",
     description: "Build and test clinical mechanism hypotheses",
     href: "/formulation",
@@ -322,6 +342,7 @@ export const appModeDefinitions = [
   },
   {
     id: "prescribing",
+    side: "clinical",
     label: "Medication",
     description: "Medication dosing, safety, and monitoring checks",
     // Like most other modes, /medications is a redirect: unsubmitted, it forwards
@@ -355,6 +376,7 @@ export const appModeDefinitions = [
   },
   {
     id: "tools",
+    side: "clinical",
     label: "Tools",
     description: "Clinical tools and applications",
     // PT-11: standalone /tools is the canonical entry; the older /?mode=tools
@@ -380,8 +402,9 @@ export const appModeDefinitions = [
   },
   {
     id: "calculators",
+    side: "clinical",
     label: "Calculators",
-    description: "Source-cited psychiatry scores and clinical decision calculators",
+    description: "Source-cited psychiatry rating scales",
     href: "/calculators",
     search: {
       kind: "calculators",
@@ -403,6 +426,7 @@ export const appModeDefinitions = [
   },
   {
     id: "therapy-compass",
+    side: "clinical",
     label: "Therapy",
     description: "Source-grounded therapy reference",
     href: "/therapy-compass",
@@ -436,6 +460,7 @@ export const appModeDefinitions = [
   },
   {
     id: "factsheets",
+    side: "clinical",
     label: "Factsheets",
     description: "Plain-language patient information to read, save, and print",
     href: "/factsheets",
@@ -462,6 +487,7 @@ export const appModeDefinitions = [
   },
   {
     id: "dictionary",
+    side: "clinical",
     label: "Dictionary",
     description: "Source-governed clinical terms, abbreviations, and related concepts",
     href: "/dictionary",
@@ -487,6 +513,7 @@ export const appModeDefinitions = [
   },
   {
     id: "sources",
+    side: "clinical",
     label: "Sources",
     description: "Ranked clinical source catalogue and traceability",
     href: "/sources",
@@ -510,6 +537,7 @@ export const appModeDefinitions = [
   },
   {
     id: "on-call",
+    side: "work",
     workSearch: true,
     label: "On Call",
     description: "Your service's contacts, escalation, orientation and teaching",
@@ -540,6 +568,7 @@ export const appModeDefinitions = [
   },
   {
     id: "cme",
+    side: "work",
     workSearch: true,
     label: "CPD",
     description: "Your continuing education: what you have done, and what is still short",
@@ -571,6 +600,7 @@ export const appModeDefinitions = [
   },
   {
     id: "teaching",
+    side: "work",
     workSearch: true,
     label: "Teaching",
     description: "Your hospital's teaching: this week's sessions, check-in and your attendance record",
@@ -601,6 +631,7 @@ export const appModeDefinitions = [
   },
   {
     id: "psychiatry",
+    side: "clinical",
     label: "Psychiatry",
     description: "Diagnosis, specifiers, formulation, therapy, forms, rating scales and the dictionary in one place",
     href: "/psychiatry",
@@ -630,6 +661,7 @@ export const appModeDefinitions = [
   },
   {
     id: "medicines",
+    side: "clinical",
     label: "Medicines",
     description: "Medication, factsheets, statewide charts and outside references in one place",
     href: "/medicines",
@@ -657,6 +689,7 @@ export const appModeDefinitions = [
   },
   {
     id: "my-work",
+    side: "work",
     workSearch: true,
     label: "Admin",
     description: "The paperwork around hospital work: renewals, starting and leaving a job, and where to get help",
@@ -685,6 +718,7 @@ export const appModeDefinitions = [
   },
   {
     id: "roster",
+    side: "work",
     workSearch: true,
     label: "Roster",
     description: "Your own shifts: imported, or added by hand, with Today, Shifts and Settings",
@@ -716,6 +750,7 @@ export const appModeDefinitions = [
   },
   {
     id: "open-shifts",
+    side: "work",
     // AI Search sits top right on every work page, Open shifts included
     // (work-mode redesign, owner request 7 Oct 2026).
     workSearch: true,
@@ -748,6 +783,7 @@ export const appModeDefinitions = [
   },
   {
     id: "first-nations",
+    side: "clinical",
     label: "First Nations",
     description: "Culturally safe care for Aboriginal and Torres Strait Islander patients",
     href: "/first-nations",
@@ -776,6 +812,7 @@ export const appModeDefinitions = [
   },
   {
     id: "my-day",
+    side: "work",
     workSearch: true,
     label: "My Day",
     description: "One list of what needs you today across On Call, Roster, CPD, Teaching and Admin",
@@ -822,6 +859,13 @@ export function isAppModeVisible(modeId: string, environment = process.env.NODE_
   const mode = appModeDefinitions.find((definition) => definition.id === modeId);
   if (!mode) return false;
   return !("devOnly" in mode) || !mode.devOnly || environment === "development";
+}
+
+/** The Work modes, read from each definition's `side`. */
+export type WorkModeId = Extract<(typeof appModeDefinitions)[number], { side: "work" }>["id"];
+
+export function appModeSide(modeId: AppModeId): AppModeSide {
+  return appModeDefinition(modeId).side;
 }
 
 export function visibleAppModeDefinitions(environment = process.env.NODE_ENV) {

@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "71486839-2388-4186-8e50-6504d91cf5d5",
+  "createdOn": "2026-10-20",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "issue",
+    "summary": "Privacy page: complaints, access, automated decision statement (APP 1.7-1.9 from 10 Dec 2026) and overseas disclosure",
+    "detail": "Wording waits for the privacy adviser's answers (question list 6c in the audit report). Findings R-08, R-20.",
+    "source": "Regulatory readiness audit 2026-10-20 (/mnt/project-files/reviews/2026-10-20-regulatory-launch-readiness.md)",
+    "issueUlid": "01M5D6CEB9XJ3N16G8K97GNX01"
+  }
+}

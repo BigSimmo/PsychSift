@@ -142,7 +142,7 @@ describe("requestAnswerStream", () => {
       expect(() =>
         buildAnswerFollowUpQuery("lithium " + "context ".repeat(260) + "TAIL_RESTRICTION", "what about this?"),
       ).toThrow("prior");
-      const caller = readFileSync("src/components/ClinicalDashboard.tsx", "utf8");
+      const caller = readFileSync("src/components/clinical-dashboard/use-dashboard-search-execution.ts", "utf8");
       expect(caller).toContain("resolvedQuery: payload.query");
       expect(caller).toContain("latestAnswerTurnRef.current?.resolvedQuery ?? latestAnswerTurnRef.current?.query");
       expect(requests.join(" ")).not.toContain("PRIOR_MODEL_PROSE_CANARY");

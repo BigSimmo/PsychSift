@@ -89,7 +89,7 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("Now: the safety order", () => {
-  it("leads with the hospital, then its emergency route, then your usual, Right now, your team and the shift tools", () => {
+  it("leads with the hospital, then its emergency route, then Right now, your usual, your team and the shift tools", () => {
     handbook.state = readyHandbook(
       handbookItems([
         { id: "em", title: "Emergency: Synthetic emergency code", phone: "55", kind: "clinical" },
@@ -102,9 +102,9 @@ describe("Now: the safety order", () => {
       "on-call-now-hero",
       "on-call-now-hospital",
       "on-call-now-emergency",
-      // Your own numbers first, straight under the header (usefulness audit, 11 Oct 2026).
-      "on-call-home-recent",
+      // Who covers this hour leads, then your own numbers (On Call overhaul, owner approval 20 Oct 2026).
       "on-call-now-right-now",
+      "on-call-home-recent",
       "on-call-now-team",
       "on-call-now-shift-tools",
     ]);
@@ -583,6 +583,15 @@ describe("Now: the footer group", () => {
     // and On site are in the Handbook, First night in Starting here, My shifts and Calendar in Roster.
     expect(screen.queryByTestId("on-call-now-footer")).toBeNull();
     expect(screen.queryByRole("heading", { name: "More for this shift" })).toBeNull();
+  });
+
+  it("links the shift tools to the MHA clock on the Clinical side", () => {
+    // Cross-links between Clinical and Work (owner decision, 21 Oct 2026).
+    render(<OnCallHome now={IN_HOURS} />);
+    const tools = screen.getByTestId("on-call-now-shift-tools");
+    const clock = within(tools).getByRole("link", { name: /MHA clock/i });
+    expect(clock).toHaveAttribute("href", "/forms/clock");
+    expect(clock).toHaveTextContent("MHA clock");
   });
 });
 

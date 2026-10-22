@@ -3,6 +3,7 @@
 import { primaryAnswerDisplayText as canonicalPrimaryAnswerDisplayText } from "@/lib/answer-display-text";
 
 import { Fragment, memo, type ReactNode } from "react";
+import Link from "next/link";
 import { Copy } from "lucide-react";
 
 import { SafeBoldText } from "@/components/SafeBoldText";
@@ -20,8 +21,14 @@ import { SignedImage } from "@/components/clinical-dashboard/signed-image";
 import { clinicalProseUsefulness } from "@/lib/source-text-sanitizer";
 import { type ClaimMarkCluster, type SupportedClaim, resolveClaimMarks } from "@/lib/answer-claim-marks";
 import { type SourceLink } from "@/lib/answer-render-policy";
+import { documentCitationHref } from "@/lib/citations";
+import { guidanceDifferenceLabel } from "@/lib/rag/guidance-difference-note";
 import type { AnswerSection, AnswerSectionKind, RagAnswer, VisualEvidenceCard } from "@/lib/types";
-import type { ClientBestSourceRecommendation, ClientSearchResult } from "@/lib/answer-client-payload";
+import type {
+  ClientBestSourceRecommendation,
+  ClientRagAnswerPayload,
+  ClientSearchResult,
+} from "@/lib/answer-client-payload";
 
 export const SourceImage = memo(function SourceImage({
   endpoint,
@@ -260,6 +267,7 @@ export function NaturalLanguageAnswer({
   showCopyAction = true,
   isRefusal = false,
   hideSourceRail = false,
+  guidanceDifference,
 }: {
   // Raw answer text (server bold intact); this component owns display
   // sanitization so <SafeBoldText> can render the high-yield emphasis.
@@ -315,6 +323,11 @@ export function NaturalLanguageAnswer({
    * so the list of them is left off rather than shown as if it backed something.
    */
   hideSourceRail?: boolean;
+  /**
+   * Owner-signed WA versus national difference (`answer.guidanceDifference`). The answer still
+   * follows WA; one quiet line under the prose names the national source. Approved 2026-10-21.
+   */
+  guidanceDifference?: ClientRagAnswerPayload["guidanceDifference"];
 }) {
   const { preferences } = useAppPreferences();
   const fragments = primaryAnswerDisplayFragments(text, { preformatted, preserveBold: true });
@@ -375,6 +388,7 @@ export function NaturalLanguageAnswer({
             ))}
           </span>
         </p>
+        {guidanceDifference && !isRefusal ? <GuidanceDifferenceLine difference={guidanceDifference} /> : null}
         {/* The Source-only pill is NOT here any more (owner decision,
             2026-09-03). It sat below the prose, apart from the three status
             chips above it and built from a third disclosure mechanism, so the
@@ -407,7 +421,7 @@ export function NaturalLanguageAnswer({
               type="button"
               onClick={onCopy}
               className={chatMicroAction}
-              aria-label="Copy answer with source status"
+              aria-label={`${copied ? "Copied" : "Copy"} with sources: answer and source status`}
             >
               <Copy aria-hidden="true" className="h-3.5 w-3.5" />
               {copied ? "Copied with sources" : "Copy with sources"}
@@ -416,6 +430,33 @@ export function NaturalLanguageAnswer({
         ) : null}
       </div>
     </section>
+  );
+}
+
+function GuidanceDifferenceLine({
+  difference,
+}: {
+  difference: NonNullable<ClientRagAnswerPayload["guidanceDifference"]>;
+}) {
+  const label = guidanceDifferenceLabel(difference);
+  return (
+    <p
+      data-testid="answer-guidance-difference"
+      className="mt-1.5 text-xs leading-5 text-[color:var(--text-muted)] sm:text-sm sm:leading-6"
+    >
+      National guidance differs on this point. See{" "}
+      <Link
+        href={documentCitationHref({
+          chunk_id: difference.chunkId,
+          document_id: difference.documentId,
+          page_number: difference.page,
+        })}
+        className="font-medium text-[color:var(--text-heading)] underline decoration-[color:var(--border-strong)] decoration-1 underline-offset-[3px] hover:decoration-current focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
+      >
+        {label}
+      </Link>
+      .
+    </p>
   );
 }
 

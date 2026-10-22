@@ -873,7 +873,10 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
 
     await gotoLauncher(page, "/services?q=13YARN&focus=1&run=1");
     await expect(page.getByRole("button", { name: "Mode Services" })).toBeVisible();
-    await expect(page.getByText("Services Navigator", { exact: true })).toBeVisible();
+    const servicesIdentity = page.getByRole("navigation", { name: "Referral progress" }).getByTestId("mode-nav-title");
+    await expect(servicesIdentity).toBeVisible();
+    await expect(servicesIdentity).toHaveText("Services");
+    await expect(page.locator(".universal-header").getByText("Services Navigator", { exact: true })).toHaveCount(0);
     await expect(page.getByTestId("shared-home-brand")).toHaveCount(0);
     await expect(page.getByTestId("service-search-results")).toBeVisible();
     await expect(page.getByTestId("service-search-result-13yarn")).toBeVisible();
@@ -1529,6 +1532,101 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
       await expect(composer, path).toBeVisible();
       await expect(composer, path).toBeFocused();
     }
+  });
+
+  for (const width of [390, 1280]) {
+    test(`Services keeps its shortlist when the shared composer submits another query at ${width}px`, async ({
+      page,
+    }) => {
+      await mockAnswerDashboardApi(page);
+      await page.setViewportSize({ width, height: 900 });
+      await gotoLauncher(page, "/services/search?q=13YARN&run=1");
+      const result = page.getByTestId("service-search-result-13yarn");
+      await expect(result).toBeVisible();
+      await result.getByRole("button", { name: "More actions for 13YARN" }).click();
+      await page.getByRole("button", { name: "Add 13YARN to shortlist", exact: true }).click();
+      await expect(
+        page
+          .getByRole("navigation", { name: "Referral progress" })
+          .getByRole("button", { name: "Shortlist (1)", exact: true }),
+      ).toBeVisible();
+      const input = visibleGlobalSearchInput(page).first();
+      await input.fill("crisis");
+      await input.press("Enter");
+      await expect.poll(() => new URL(page.url()).searchParams.get("q")).toBe("crisis");
+      expect(new URL(page.url()).searchParams.get("shortlist")).toBe("13yarn");
+      expect(new URL(page.url()).searchParams.has("workflow")).toBe(false);
+      await expect(
+        page.getByRole("navigation", { name: "Referral progress" }).locator('[aria-current="step"]'),
+      ).toHaveText("Search");
+
+      await page.goBack();
+      await expect.poll(() => new URL(page.url()).searchParams.get("q")).toBe("13YARN");
+      expect(new URL(page.url()).searchParams.get("shortlist")).toBe("13yarn");
+      await expect(result).toBeVisible();
+      await page.goForward();
+      await expect.poll(() => new URL(page.url()).searchParams.get("q")).toBe("crisis");
+      expect(new URL(page.url()).searchParams.get("shortlist")).toBe("13yarn");
+
+      await page
+        .getByRole("region", { name: "Service shortlist" })
+        .getByRole("button", { name: "Clear", exact: true })
+        .click();
+      await expect.poll(() => new URL(page.url()).searchParams.has("shortlist")).toBe(false);
+      // Clearing re-renders the page from the new URL, and the composer can re-sync
+      // its text from `q=crisis` as it does. Filling before that settles could let the
+      // sync overwrite "housing", so Enter resubmitted "crisis". Wait for the
+      // cleared state to paint, and for the typed text to hold, before submitting.
+      await expect(
+        page
+          .getByRole("navigation", { name: "Referral progress" })
+          .getByRole("button", { name: "Shortlist", exact: true }),
+      ).toHaveAttribute("aria-disabled", "true");
+      const nextInput = visibleGlobalSearchInput(page).first();
+      await nextInput.fill("housing");
+      await expect(nextInput).toHaveValue("housing");
+      await nextInput.press("Enter");
+      await expect.poll(() => new URL(page.url()).searchParams.get("q")).toBe("housing");
+      expect(new URL(page.url()).searchParams.has("shortlist")).toBe(false);
+      await expect(
+        page
+          .getByRole("navigation", { name: "Referral progress" })
+          .getByRole("button", { name: "Shortlist", exact: true }),
+      ).toHaveAttribute("aria-disabled", "true");
+      await expectNoPageHorizontalOverflow(page);
+    });
+
+    test(`Services can replace unavailable bookmarked shortlist records at ${width}px`, async ({ page }) => {
+      await mockAnswerDashboardApi(page);
+      await page.setViewportSize({ width, height: 900 });
+      await gotoLauncher(
+        page,
+        "/services/search?q=13YARN&run=1&shortlist=missing1,missing2,missing3,missing4,missing5&workflow=compare",
+      );
+      const result = page.getByTestId("service-search-result-13yarn");
+      await expect(result).toBeVisible();
+      await result.getByRole("button", { name: "More actions for 13YARN" }).click();
+      await page.getByRole("button", { name: "Add 13YARN to shortlist", exact: true }).click();
+      await expect(page.getByTestId("services-shortlist-bar")).toContainText("1 shortlisted");
+      expect(new URL(page.url()).searchParams.get("shortlist")).toBe("13yarn");
+      await expectNoPageHorizontalOverflow(page);
+    });
+  }
+
+  test("Therapy shared-home tabs retain compatible query and comparison state", async ({ page }) => {
+    await mockAnswerDashboardApi(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    const comparison = "cognitive-behavioural-therapy-cbt,acceptance-and-commitment-therapy-act";
+    await gotoLauncher(page, `/?mode=therapy-compass&q=insomnia&ids=${comparison}&topic=sleep`);
+    const nav = page.getByRole("navigation", { name: "Therapy pages" });
+    await expect(nav).toBeVisible();
+    await nav.getByRole("link", { name: "Compare", exact: true }).click();
+    await expect(page).toHaveURL(/\/therapy-compass\/compare/);
+    const params = new URL(page.url()).searchParams;
+    expect(params.get("q")).toBe("insomnia");
+    expect(params.get("ids")).toBe(comparison);
+    expect(params.get("topic")).toBe("sleep");
+    await expect(page.getByRole("button", { name: "Copy set", exact: true })).toBeEnabled();
   });
 
   test("services mode shows source-backed records in search results", async ({ page }) => {
@@ -2847,10 +2945,15 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     await expect(phoneDoNow).toBeVisible();
     await expect(phoneDoNow).toContainText("Do now");
     await expectNoPageHorizontalOverflow(page);
-    const forcedColorsMetricRows = await safetyMetricItems.evaluateAll((items) => {
-      return new Set(items.map((item) => Math.round(item.getBoundingClientRect().top))).size;
-    });
-    expect(forcedColorsMetricRows).toBeLessThanOrEqual(2);
+    // Poll for the same reason as the 320px check above: after the jump from
+    // 1280px WebKit can measure before the container query reflows the grid.
+    await expect
+      .poll(() =>
+        safetyMetricItems.evaluateAll((items) => {
+          return new Set(items.map((item) => Math.round(item.getBoundingClientRect().top))).size;
+        }),
+      )
+      .toBeLessThanOrEqual(2);
   });
 
   test("diagnosis map keeps labels contained and the selected inspector out of the canvas", async ({ page }) => {
@@ -3305,26 +3408,6 @@ test.describe("Responsive layout guards", () => {
     await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
   }
 
-  const mockupRoutes = [
-    { name: "tools command center", path: "/mockups/tools-command-center" },
-    { name: "tools split pane", path: "/mockups/tools-split-pane" },
-    { name: "tools workflow board", path: "/mockups/tools-workflow-board" },
-  ] as const;
-
-  for (const route of mockupRoutes) {
-    test(`${route.name} never overflows horizontally across sizes @mockup`, async ({ page }) => {
-      await page.setViewportSize({ width: 1280, height: 900 });
-      await gotoLauncher(page, route.path);
-      await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
-
-      for (const width of responsiveWidths) {
-        await page.setViewportSize({ width, height: 900 });
-        await settleLayout(page);
-        await expectNoPageHorizontalOverflow(page);
-      }
-    });
-  }
-
   const modeHomeRoutes = [
     { name: "prescribing", path: "/medications" },
     { name: "differentials", path: "/differentials" },
@@ -3514,4 +3597,36 @@ test.describe("Responsive layout guards", () => {
       .toBe(true);
     expect(appRequests).toEqual([]);
   });
+});
+
+test.describe("physiological calculator validation hold", () => {
+  for (const viewport of [
+    { name: "phone", width: 390, height: 844 },
+    { name: "desktop", width: 1440, height: 900 },
+  ]) {
+    test(`withholds unvalidated physiological outputs and preserves psychometric tools on ${viewport.name}`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(viewport);
+      await blockExternalRequests(page);
+      await gotoLauncher(page, "/calculators/search");
+
+      // The whole panel stays off the page until clinician verification, even
+      // though the retained component independently enforces its release hold.
+      await expect(page.getByTestId("clinical-math-panel")).toHaveCount(0);
+      await expect(page.getByTestId("clinical-math-panel-toggle")).toHaveCount(0);
+      await expect(page.getByTestId("clinical-math-release-hold")).toHaveCount(0);
+      await expect(page.getByTestId("clinical-math-renal-results")).toHaveCount(0);
+      await expect(page.getByTestId("clinical-math-qtc-results")).toHaveCount(0);
+      await expect(page.getByTestId("clinical-math-lithium-level")).toHaveCount(0);
+      await expect(page.getByTestId("clinical-math-lithium-results")).toHaveCount(0);
+      await expect(page.getByTestId("clinical-math-lithium-suggested-dose")).toHaveCount(0);
+
+      const psychometricList = page.getByTestId("calculator-result-list");
+      await psychometricList.scrollIntoViewIfNeeded();
+      await expect(psychometricList.getByRole("button", { name: /^Open PHQ-9/ })).toBeVisible();
+      await expect(psychometricList.getByRole("button")).toHaveCount(5);
+      await expectNoPageHorizontalOverflow(page);
+    });
+  }
 });

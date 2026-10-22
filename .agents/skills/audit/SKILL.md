@@ -5,7 +5,7 @@ description: Perform a deep evidence-backed PsychSift repository audit and produ
 
 # Audit
 
-1. Define scope, read `docs/codex-review-protocol.md`, and check prior reviews with `npm run ledger:lookup -- <ref> --scope "<scope>"` rather than reading the ledger table directly.
+1. Define scope, read `docs/codex-review-protocol.md`, and for a PR check its comments for a `Review record` at the current head and same scope (see [Records](../../../docs/agents/pull-request-workflow.md#records)).
 2. Inventory architecture, trust boundaries, changed areas, tests, and documented controls.
 3. Trace realistic correctness, security, privacy, clinical, data-loss, and reliability failures.
 4. Prove findings with exact files, lines, triggers, impact, and focused checks.

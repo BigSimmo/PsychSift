@@ -131,11 +131,9 @@ describe("header addon slot ownership", () => {
     expect(isHeaderAddonSlotOwnedRoute("/medications/sertraline")).toBe(true);
     expect(isHeaderAddonSlotOwnedRoute("/medications")).toBe(false);
 
-    // The developer hub index portals `DeveloperHubNavHeader`; its `/ledger`
-    // child route owns no header of its own, so it must stay outside the
-    // claimant set even though it shares the hub's path prefix.
-    expect(isHeaderAddonSlotOwnedRoute("/mockups/development")).toBe(true);
-    expect(isHeaderAddonSlotOwnedRoute("/mockups/development/ledger")).toBe(false);
+    // The Owner panel index portals `DeveloperHubNavHeader` and is claimed by
+    // the `/admin/` rule.
+    expect(isHeaderAddonSlotOwnedRoute("/admin/developer-hub")).toBe(true);
 
     // The presentations workflow owns the shared mode bar with its resolved
     // catalogue selection, while the shell index is not a document detail route.
@@ -163,16 +161,6 @@ describe("header addon slot ownership", () => {
     // A future claimant outside that cover reaches the mode branch and mounts a
     // second header into an occupied slot. This fails when that happens, and
     // the fix is an explicit guard at the mode branch.
-    //
-    // `/mockups/development` is deliberately not in this list. It is a claimant
-    // (see the test above and the "names every component" test below), but it
-    // never reaches `PageSecondaryNavigation` at all: `/mockups/**` has its own
-    // layout (`src/app/mockups/layout.tsx`), outside the `(search-app)` route
-    // group and its `AppModeId`-keyed shell, so there is no `modeId` for which
-    // `PageSecondaryNavigation` would ever be asked to render on this path. The
-    // coincidence this test guards — a mode-nav route also being locally-owned
-    // information navigation — has nothing to say about a route that isn't a
-    // mode-nav route in the first place.
     for (const pathname of [
       "/differentials/diagnoses/delirium",
       "/differentials/presentations/acute-confusion-encephalopathy",
@@ -324,7 +312,7 @@ describe("header addon slot ownership", () => {
     // There are three forms of that evidence, and all must be scanned. A page can
     // render `PhoneHeaderCollapsePortal` itself (DocumentViewer still does), use
     // `InPageNavHeader`, or render the shared `RegistryModeNav` directly.
-    const claimsSlot = /<(PhoneHeaderCollapsePortal|InPageNavHeader|RegistryModeNav)\b/;
+    const claimsSlot = /<(PhoneHeaderCollapsePortal|ModeNavHeaderPortal|InPageNavHeader|RegistryModeNav)\b/;
     // The shared header and shell adapter are mechanisms, not claimants: neither
     // represents a route that can own the slot on its own.
     const sharedHeader = "src/components/in-page-nav/in-page-nav-header.tsx";
@@ -344,7 +332,12 @@ describe("header addon slot ownership", () => {
         // `${cwd}/` matches nothing on Windows, so both the shared-header
         // exclusion below and the comparison at the end silently missed.
         const relative = relativePath(process.cwd(), path).split(sep).join("/");
-        if (relative === sharedHeader || relative === shellModeNav) continue;
+        if (
+          relative === sharedHeader ||
+          relative === shellModeNav ||
+          relative === "src/components/mode-nav/mode-nav.tsx"
+        )
+          continue;
         if (claimsSlot.test(readFileSync(path, "utf8"))) {
           claimants.push(relative);
         }
@@ -360,14 +353,16 @@ describe("header addon slot ownership", () => {
     // adopt the same shape from Client Component pages by convention. Either
     // way the route's claim is registered in the sibling, not the page.
     // `developer-hub-nav-header.tsx` is the fifth: `DeveloperHubPage` (the
-    // `/mockups/development` index) is a Server Component for the same reason
+    // `/admin/developer-hub` index) is a Server Component for the same reason
     // — its sections carry `LucideIcon` values and the header itself needs
     // hooks (`useInPageSectionNav`).
     expect(claimants.sort()).toEqual([
+      "src/components/ClinicalDashboard.tsx",
       "src/components/DocumentViewer.tsx",
       // Work-mode redesign, owner request 6 Oct 2026: Admin's section chips now sit
       // inside the page (the shared chip row), so `admin-nav-header.tsx` no longer
       // claims the header slot. The work frame's own tabs fill that place.
+      "src/components/calculators/search-page.tsx",
       "src/components/clinical-dashboard/medication-nav-header.tsx",
       // CME's Programme and Setup pages share one `*-nav-header.tsx` sibling
       // (`cmeSections` is a superset the header narrows per render), so the
@@ -408,6 +403,7 @@ describe("header addon slot ownership", () => {
       // Roster manage owns its own header for the manager surface.
       "src/components/roster/manage/roster-manage-nav-header.tsx",
       "src/components/services/service-detail-page.tsx",
+      "src/components/services/services-navigator-page.tsx",
       // The source record has no section index, so it renders the header's
       // breadcrumb shape (back, title) straight from the Server Component page
       // and needs no `*-nav-header.tsx` sibling to carry hooks or icons.

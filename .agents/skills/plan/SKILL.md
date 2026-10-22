@@ -6,7 +6,7 @@ description: Plan safe risk-scoped PsychSift work by inspecting the current chan
 # Plan
 
 1. Confirm the task objective, affected areas, and preserve unrelated work.
-2. Select the smallest sufficient local verification gate (`test:focused`, `verify:cheap`, or `verify:core`).
+2. Select the smallest sufficient local verification gate (`test:focused` or `verify:cheap`).
 3. Keep genuine safety gates intact: Supabase migrations, diff integrity, secrets, and auth/privacy rules.
 4. Keep live database, provider API calls, production readiness, and deployments approval-gated.
 5. Proceed autonomously with routine reversible local engineering; do not stall on procedural friction.

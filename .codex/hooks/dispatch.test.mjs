@@ -1,0 +1,385 @@
+import assert from "node:assert/strict";
+import test, { after } from "node:test";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import net from "node:net";
+import http from "node:http";
+import https from "node:https";
+import dns from "node:dns";
+import { syncBuiltinESMExports } from "node:module";
+import { findRoot, normalize, plan, run, registration } from "./dispatch.mjs";
+const root = fs.mkdtempSync(path.join(os.tmpdir(), "psychsift-hook-adapter-"));
+const directory = path.dirname(fileURLToPath(import.meta.url));
+const sourceRoot = process.env.PROJECT_HOOK_SOURCE_ROOT ?? path.resolve(directory, "../..");
+// Tests replay only synthetic fixtures. Trap network APIs and external provider CLIs;
+// never invoke native lifecycle events or the checkout's real push guard.
+const networkCalls = [];
+const originals = [];
+for (const [object, key] of [
+  [net, "connect"],
+  [net, "createConnection"],
+  [net.Socket.prototype, "connect"],
+  [http, "request"],
+  [http, "get"],
+  [https, "request"],
+  [https, "get"],
+  [dns, "lookup"],
+  [dns, "resolve"],
+  [globalThis, "fetch"],
+]) {
+  originals.push([object, key, object[key]]);
+  object[key] = () => {
+    networkCalls.push(key);
+    throw Error(`Network forbidden in hook fixture: ${key}`);
+  };
+}
+syncBuiltinESMExports();
+const originalPath = process.env.PATH;
+const trapDirectory = path.join(root, "offline-bin");
+fs.mkdirSync(trapDirectory);
+const providerMarker = path.join(root, "provider-attempt");
+for (const name of ["gh", "curl", "wget", "npm", "npx", "supabase", "railway"]) {
+  fs.writeFileSync(
+    path.join(trapDirectory, name),
+    `#!/bin/sh\necho attempted > '${providerMarker.replaceAll("\\", "/")}'\nexit 97\n`,
+    { mode: 0o755 },
+  );
+}
+process.env.PATH = trapDirectory + path.delimiter + originalPath;
+after(() => {
+  for (const [object, key, value] of originals) object[key] = value;
+  syncBuiltinESMExports();
+  process.env.PATH = originalPath;
+  assert.deepEqual(networkCalls, []);
+  assert.equal(fs.existsSync(providerMarker), false);
+  fs.rmSync(root, { recursive: true, force: true });
+});
+fs.mkdirSync(path.join(root, ".git"));
+fs.mkdirSync(path.join(root, "nested/deep"), { recursive: true });
+const payload = (tool_name, tool_input = {}) => ({
+  tool_name,
+  tool_input,
+  cwd: path.join(root, "nested/deep"),
+  session_id: "synthetic",
+});
+test("nested checkout and linked-worktree markers resolve without primary path", () => {
+  assert.equal(findRoot(path.join(root, "nested/deep")), root);
+  const wt = path.join(root, "linked");
+  fs.mkdirSync(wt);
+  fs.writeFileSync(path.join(wt, ".git"), "gitdir: ../dummy");
+  assert.equal(findRoot(wt), wt);
+});
+test("Git discovery controls are delegated to Git rather than walked past", () => {
+  assert.equal(
+    findRoot(path.join(root, "nested/deep"), { ...process.env, GIT_CEILING_DIRECTORIES: path.join(root, "nested") }),
+    null,
+  );
+});
+test("direct Codex shells normalize command and actual workdir", () => {
+  for (const tool of ["exec_command", "functions.exec_command"]) {
+    const p = normalize(payload(tool, { cmd: "git push", workdir: root, shell: "pwsh.exe" }));
+    assert.equal(p.tool_name, "PowerShell");
+    assert.equal(p.tool_input.command, "git push");
+    assert.equal(p.cwd, root);
+  }
+  assert.equal(normalize(payload("exec_command", { cmd: "git push", shell: "/bin/bash" })).tool_name, "Bash");
+});
+test("only relevant canonical actions are planned", () => {
+  assert.deepEqual(plan("PreToolUse", payload("Bash", { command: "git status" })), []);
+  assert.equal(
+    plan("PreToolUse", payload("functions.exec_command", { cmd: "git push" }))[0].file,
+    ".claude/hooks/push-format-guard.sh",
+  );
+  for (const cmd of [
+    "git -C /tmp/repo push origin HEAD",
+    'git -C "C:/My Repo" push',
+    "git -c core.hooksPath=x push",
+    "git --no-pager push",
+    "git -C '/tmp/My Repo' push",
+    "git -C/tmp/repo push",
+    'git -C"/tmp/My Repo" push',
+  ])
+    assert.equal(
+      plan("PreToolUse", payload("Bash", { command: cmd }))[0]?.file,
+      ".claude/hooks/push-format-guard.sh",
+      cmd,
+    );
+  for (const cmd of ["git pushd", "git log --grep push", "git -C /tmp/repo status"])
+    assert.deepEqual(plan("PreToolUse", payload("Bash", { command: cmd })), [], cmd);
+  assert.equal(plan("PreToolUse", payload("CronCreate"))[0].file, ".claude/hooks/pr-handoff-stop.sh");
+  assert.equal(plan("PostToolUse", payload("exec_command", { cmd: "gh pr create" }))[0].args[0], "post");
+  for (const cmd of [
+    "gh --repo github.com/BigSimmo/PsychSift pr create --fill",
+    "gh pr --repo github.com/BigSimmo/PsychSift create",
+    "gh pr create -R BigSimmo/PsychSift",
+    "gh pr create --repo=BigSimmo/PsychSift",
+    "url=$(gh pr create --fill)",
+    'bash -lc "gh pr create"',
+    "(gh pr create)",
+    "/usr/bin/gh pr create",
+  ])
+    assert.equal(plan("PostToolUse", payload("exec_command", { cmd }))[0].args[0], "post", cmd);
+  assert.deepEqual(plan("PostToolUse", payload("exec_command", { cmd: "gh pr list --repo BigSimmo/PsychSift" })), []);
+  assert.deepEqual(plan("PostToolUse", payload("exec_command", { cmd: "ghx pr create" })), []);
+  assert.deepEqual(plan("PostToolUse", payload("mcp__github__create_pull_request_review")), []);
+  assert.deepEqual(plan("PreCompact", {}), []);
+});
+test("malformed and unsupported wrappers make no advisory decision", async () => {
+  let called = 0;
+  const execute = () => {
+    called++;
+    throw Error("unexpected");
+  };
+  for (const p of [
+    null,
+    [],
+    { tool_name: "functions.exec", tool_input: { code: "git push" } },
+    payload("exec_command", { cmd: ["git", "push"] }),
+  ]) {
+    assert.deepEqual(await run("PreToolUse", p, root, { execute }), { stdout: "", stderr: "", code: 0 });
+  }
+  assert.equal(called, 0);
+});
+test("canonical deny is preserved and empty output is not a fabricated pass", async () => {
+  const deny =
+    JSON.stringify({
+      hookSpecificOutput: {
+        hookEventName: "PreToolUse",
+        permissionDecision: "deny",
+        permissionDecisionReason: "synthetic refusal",
+      },
+    }) + "\n";
+  const seen = [];
+  let result = await run("PreToolUse", payload("functions.exec_command", { cmd: "git push", workdir: root }), root, {
+    execute: async (a, p, r) => {
+      seen.push([a, p, r]);
+      return { stdout: deny, stderr: "", code: 0 };
+    },
+  });
+  assert.equal(result.stdout, deny);
+  assert.equal(seen[0][1].tool_input.command, "git push");
+  assert.equal(seen[0][2], root);
+  result = await run("PreToolUse", payload("Bash", { command: "git push" }), root, {
+    execute: async () => ({ stdout: "", stderr: "", code: 0 }),
+  });
+  assert.equal(result.stdout, "");
+});
+test("canonical exit 2 and wrong-event filtering preserve the transport contract", async () => {
+  const denial =
+    JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny" } }) + "\n";
+  const result = await run("PreToolUse", payload("Bash", { command: "git push" }), root, {
+    execute: async () => ({
+      stdout:
+        denial +
+        "not JSON\n" +
+        JSON.stringify({ hookSpecificOutput: { hookEventName: "PostToolUse", additionalContext: "wrong event" } }),
+      stderr: "synthetic reason",
+      code: 2,
+    }),
+  });
+  assert.equal(result.code, 2);
+  assert.equal(result.stdout, denial);
+  assert.equal(result.stderr, "synthetic reason");
+});
+test("unavailable canonical hooks report no advisory decision rather than a pass", async () => {
+  for (const result of [
+    { stdout: "", stderr: "", code: 1 },
+    { stdout: "", stderr: "", code: 1, error: Error("synthetic spawn failure") },
+  ]) {
+    const output = await run("PreToolUse", payload("Bash", { command: "git push" }), root, {
+      execute: async () => result,
+    });
+    assert.equal(output.code, 0);
+    assert.equal(output.stdout, "");
+    assert.match(output.stderr, /unavailable.*no advisory decision/s);
+  }
+});
+test("startup plans only issue context and cached freshness, without provisioning", async () => {
+  const actions = plan("SessionStart", {});
+  assert.deepEqual(
+    actions.map((a) => a.file),
+    [".claude/hooks/issues-surface.sh", "scripts/check-base-freshness.mjs"],
+  );
+  assert.equal(actions[1].env.BASE_FRESHNESS_NO_FETCH, "1");
+  const result = await run("SessionStart", {}, root, {
+    execute: async (a) => ({ stdout: a.kind === "context" ? "Synthetic issues" : "", stderr: "", code: 0 }),
+  });
+  assert.equal(JSON.parse(result.stdout).hookSpecificOutput.additionalContext, "Synthetic issues");
+});
+test("registration is portable, pins Windows Node, and resolves current payload root", () => {
+  const h = registration();
+  for (const groups of Object.values(h.hooks))
+    for (const g of groups)
+      for (const entry of g.hooks) {
+        assert.ok(entry.command.startsWith("node -e "));
+        assert.ok(entry.commandWindows.includes("C:/Program Files/nodejs/node.exe"));
+        assert.ok(entry.commandWindows.includes('else { "node" }'));
+        assert.ok(!/CLAUDE_PROJECT_DIR|D:[/\\]|setup-claude-cloud/.test(entry.command));
+      }
+  const matcher = new RegExp(h.hooks.PreToolUse[0].matcher);
+  assert.ok(matcher.test("functions.exec_command"));
+  assert.ok(!matcher.test("functions.exec"));
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(sourceRoot, ".codex/hooks.json"), "utf8")), h);
+});
+test("registration launch handles a real nested synthetic checkout and malformed input", () => {
+  fs.mkdirSync(path.join(root, ".codex/hooks"), { recursive: true });
+  fs.writeFileSync(
+    path.join(root, ".codex/hooks/dispatch.mjs"),
+    'export async function run(e,p,r){return {stdout:JSON.stringify({e,r,cwd:p.cwd}),stderr:"",code:0}}',
+  );
+  const entry = registration().hooks.PreToolUse[0].hooks[0];
+  const command = process.platform === "win32" ? entry.commandWindows : entry.command;
+  const shell = process.platform === "win32" ? "powershell.exe" : "/bin/bash";
+  const args = process.platform === "win32" ? ["-NoProfile", "-NonInteractive", "-Command", command] : ["-c", command];
+  const good = spawnSync(shell, args, {
+    input: JSON.stringify(payload("exec_command", { cmd: "git push" })),
+    encoding: "utf8",
+    cwd: root,
+    windowsHide: true,
+  });
+  assert.equal(good.status, 0, good.stderr);
+  assert.equal(JSON.parse(good.stdout).r, root);
+  const bad = spawnSync(shell, args, { input: "{broken", encoding: "utf8", cwd: root, windowsHide: true });
+  assert.equal(bad.status, 0);
+  assert.equal(bad.stdout, "");
+});
+test("registration accepts the same Windows checkout casing and refuses a foreign checkout", () => {
+  const entry = registration().hooks.PreToolUse[0].hooks[0];
+  const shell = process.platform === "win32" ? "powershell.exe" : "/bin/bash";
+  const args = process.platform === "win32" ? ["-NoProfile", "-Command", entry.commandWindows] : ["-c", entry.command];
+  const adapter = path.join(root, ".codex/hooks/dispatch.mjs");
+  fs.mkdirSync(path.dirname(adapter), { recursive: true });
+  fs.writeFileSync(adapter, 'export async function run(){return {stdout:"trusted-checkout",stderr:"",code:0}}');
+  const launch = (workdir) =>
+    spawnSync(shell, args, {
+      input: JSON.stringify(payload("exec_command", { cmd: "git push", workdir })),
+      encoding: "utf8",
+      cwd: root,
+      windowsHide: true,
+      timeout: 5000,
+    });
+  const equivalent = launch(process.platform === "win32" ? root.toLowerCase() : root);
+  assert.equal(equivalent.status, 0);
+  assert.equal(equivalent.stdout, "trusted-checkout");
+  const foreign = path.join(root, "untrusted-checkout");
+  const marker = path.join(foreign, "module-was-imported");
+  fs.mkdirSync(path.join(foreign, ".git"), { recursive: true });
+  fs.mkdirSync(path.join(foreign, ".codex/hooks"), { recursive: true });
+  fs.writeFileSync(
+    path.join(foreign, ".codex/hooks/dispatch.mjs"),
+    `import fs from "node:fs";fs.writeFileSync(${JSON.stringify(marker)},"unexpected import");export async function run(){return {stdout:"foreign",stderr:"",code:0}}`,
+  );
+  const rejected = launch(foreign);
+  assert.equal(rejected.status, 0);
+  assert.equal(rejected.stdout, "");
+  assert.equal(fs.existsSync(marker), false, "a foreign adapter must never be imported");
+});
+test("pre-push fails closed when Node cannot be found", () => {
+  const source = fs.existsSync(path.join(directory, "pre-push"))
+    ? path.join(directory, "pre-push")
+    : path.join(sourceRoot, ".githooks/pre-push");
+  const shell = process.platform === "win32" ? "C:/Program Files/Git/bin/bash.exe" : "/bin/bash";
+  const result = spawnSync(shell, [source], {
+    encoding: "utf8",
+    env: { ...process.env, PATH: root },
+    windowsHide: true,
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /node.*not found/i);
+});
+test("pre-push preserves guard arguments and nonzero refusal using only synthetic executables", () => {
+  const fixture = path.join(root, "push-fixture");
+  fs.mkdirSync(fixture);
+  fs.writeFileSync(path.join(fixture, "git"), `#!/bin/sh\nprintf '%s\\n' '${fixture.replaceAll("\\", "/")}'\n`, {
+    mode: 0o755,
+  });
+  fs.writeFileSync(path.join(fixture, "node"), '#!/bin/sh\nprintf "%s\\n" "$@"\nexit 7\n', { mode: 0o755 });
+  const shell = process.platform === "win32" ? "C:/Program Files/Git/bin/bash.exe" : "/bin/bash";
+  // Git Bash prepends its own runtime tools during Windows startup; set PATH after
+  // startup so these explicit fixture executables own both command resolutions.
+  const result = spawnSync(
+    shell,
+    [
+      "-c",
+      'export PATH="$1"; shift; exec /bin/sh "$@"',
+      "synthetic",
+      fixture,
+      path.join(sourceRoot, ".githooks/pre-push"),
+      "synthetic-remote",
+      "synthetic-url",
+    ],
+    { encoding: "utf8", cwd: fixture, windowsHide: true, timeout: 5000 },
+  );
+  assert.equal(result.status, 7, result.stderr);
+  assert.deepEqual(result.stdout.trim().split(/\r?\n/), [
+    `${fixture.replaceAll("\\", "/")}/scripts/guard-push.mjs`,
+    "synthetic-remote",
+    "synthetic-url",
+  ]);
+});
+test("canonical PR handoff runs only against synthetic marker state", async () => {
+  fs.mkdirSync(path.join(root, ".claude/hooks"), { recursive: true });
+  fs.copyFileSync(
+    path.join(sourceRoot, ".claude/hooks/pr-handoff-stop.sh"),
+    path.join(root, ".claude/hooks/pr-handoff-stop.sh"),
+  );
+  let p = {
+    ...payload("functions.exec_command", { cmd: "gh pr create", workdir: root }),
+    tool_response: { output: "https://github.com/synthetic/project/pull/123", exit_code: 0 },
+  };
+  const created = await run("PostToolUse", p, root);
+  assert.equal(created.code, 0);
+  assert.match(created.stdout, /PostToolUse/);
+  assert.ok(fs.existsSync(path.join(root, ".git/claude-pr-handoff-synthetic")));
+  const blocked = await run("PreToolUse", payload("CronCreate"), root);
+  assert.equal(JSON.parse(blocked.stdout).hookSpecificOutput.permissionDecision, "deny");
+  const unrelated = await run("PreToolUse", { ...payload("CronCreate"), session_id: "other" }, root);
+  assert.equal(unrelated.stdout, "");
+});
+
+test("Codex edit aliases and apply_patch reach the organisation warning in Edit/Write shape", async () => {
+  const action = (tool, input) => plan("PreToolUse", { tool_name: tool, tool_input: input, cwd: sourceRoot });
+  assert.equal(action("edit_file", { path: "a.ts" })[0].payload.tool_name, "Edit");
+  assert.equal(action("functions.write_file", { path: "a.ts" })[0].payload.tool_input.file_path, "a.ts");
+  const patch =
+    "*** Begin Patch\n*** Update File: lib/a.ts\n@@\n-x\n+y\n*** Add File: supabase/migrations/1_x.sql\n+select 1;\n*** End Patch\n";
+  assert.deepEqual(
+    action("apply_patch", { command: patch }).map((a) => [a.payload.tool_name, a.payload.tool_input.file_path]),
+    [
+      ["Edit", "lib/a.ts"],
+      ["Edit", "supabase/migrations/1_x.sql"],
+    ],
+  );
+  assert.deepEqual(action("apply_patch", {}), []);
+  assert.match(registration().hooks.PreToolUse[0].matcher, /\|apply_patch\|/);
+
+  // The translated payload produces a real warning from the maintained hook logic.
+  const { editHookOutput } = await import(
+    pathToFileURL(path.join(sourceRoot, "scripts/organisation/agent-hooks.mjs")).href
+  );
+  const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), "psychsift-edit-warning-"));
+  const migration = action("apply_patch", {
+    command: "*** Begin Patch\n*** Add File: supabase/migrations/20990101000000_x.sql\n+select 1;\n*** End Patch\n",
+  })[0];
+  assert.match(editHookOutput(JSON.stringify(migration.payload), { stateDir }) ?? "", /migration/i);
+  assert.equal(editHookOutput(JSON.stringify({ ...migration.payload, tool_name: "apply_patch" }), { stateDir }), null);
+
+  // Several patched files produce one combined advisory line.
+  const out = await run("PreToolUse", { tool_name: "apply_patch", tool_input: { command: patch } }, root, {
+    execute: async (a, p) => ({
+      stdout: JSON.stringify({
+        hookSpecificOutput: { hookEventName: "PreToolUse", additionalContext: `warn ${p.tool_input.file_path}` },
+      }),
+      stderr: "",
+      code: 0,
+    }),
+  });
+  assert.equal(out.stdout.trim().split("\n").length, 1);
+  assert.equal(
+    JSON.parse(out.stdout).hookSpecificOutput.additionalContext,
+    "warn lib/a.ts\nwarn supabase/migrations/1_x.sql",
+  );
+});

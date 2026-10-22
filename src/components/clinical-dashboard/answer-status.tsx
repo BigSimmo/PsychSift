@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { Check, ChevronRight, History, Square } from "lucide-react";
 
@@ -27,6 +28,11 @@ import type { AppModeId } from "@/lib/app-modes";
 import { consolidatedModeSearchPath } from "@/lib/consolidated-mode-home-redirect";
 import { motionIsSuppressed } from "@/lib/scroll-behavior";
 import { sharedHomeEmptyState, sharedHomePresentation, type SharedHomePresentation } from "@/lib/ui-copy";
+
+/** Getting started guide: Answer home only, loaded after the page so it adds nothing to first paint. */
+const FirstRunGuide = dynamic(() => import("@/components/front-door/first-run-guide").then((m) => m.FirstRunGuide), {
+  ssr: false,
+});
 
 export { CopyButton } from "@/components/ui/copy-button";
 // The skeleton lives apart so the lazy-load fallbacks can draw it without this module.
@@ -139,6 +145,8 @@ export function SharedHomeEmptyState({
               </ul>
             </section>
           )}
+          {/* Last in the footer, so nothing below it moves when it appears. */}
+          {modeId === "answer" ? <FirstRunGuide /> : null}
         </div>
       }
     />
@@ -400,8 +408,8 @@ export function SearchProgressBanner({ message, onStop }: { message: string; onS
  * stream boundary before the prose and is the most useful content this surface
  * has.
  *
- * What is here instead is the pending screen from
- * `/mockups/answer-chat-perfected-v2`, in the order that mockup draws it and for
+ * What is here instead is the pending screen from the answer-chat-perfected-v2
+ * design study (retired 2026-10-21), in the order that mockup drew it and for
  * the reason it draws it that way:
  *
  *     status line

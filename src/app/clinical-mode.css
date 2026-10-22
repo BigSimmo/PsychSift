@@ -181,8 +181,8 @@ html[data-glass="flat"] .universal-header:not([data-work-frame]) {
 .mode-nav__heading {
   margin: 0;
   padding: calc(var(--spacing) * 1) var(--mode-nav-ink-offset) 0;
-  font-size: 1.5625rem;
-  font-weight: 700;
+  font-size: var(--text-xl);
+  font-weight: var(--font-weight-heading);
   letter-spacing: -0.025em;
   line-height: var(--text-hero--line-height);
   text-wrap: balance;
@@ -213,7 +213,19 @@ html[data-glass="flat"] .universal-header:not([data-work-frame]) {
   }
 
   .mode-nav__heading {
-    padding-top: calc(var(--spacing) * 5);
+    padding-top: calc(var(--spacing) * 2);
+  }
+}
+
+/* Keep the desktop bar compact without changing phone safe-area ownership.
+   Measured collapse/reserve hooks observe the resulting height. */
+@media (min-width: 640px) {
+  .universal-header:not([data-work-frame]) {
+    padding-block: var(--spacing);
+  }
+
+  .universal-header:not([data-work-frame]) .universal-header-row {
+    min-height: var(--spacing-tap);
   }
 }
 
@@ -236,7 +248,12 @@ html[data-glass="flat"] .universal-header:not([data-work-frame]) {
    so from 1024px their band's title and tabs open out to it. Other bands keep
    their reading column. */
 @media (min-width: 1024px) {
-  .mode-band:is([data-mode="psychiatry"], [data-mode="medicines"]) :is(.mode-band__inner, .mode-band__tabs) {
+  .mode-band:is([data-mode="psychiatry"], [data-mode="medicines"], [data-mode="first-nations"])
+    :is(.mode-band__inner, .mode-band__tabs) {
     max-width: calc(var(--clinical-col) + var(--mode-band-gutter) * 2);
+  }
+
+  .mode-band[data-mode="first-nations"] .mode-band__tab-row {
+    gap: var(--spacing);
   }
 }

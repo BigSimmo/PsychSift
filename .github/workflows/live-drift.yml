@@ -15,6 +15,9 @@ on:
     paths:
       - "supabase/migrations/**"
       - "supabase/schema.sql"
+      # Edge functions and project config reach live on merge too (audit CC-10, 2026-10-20).
+      - "supabase/functions/**"
+      - "supabase/config.toml"
 
 concurrency:
   group: live-drift-check
@@ -25,6 +28,11 @@ permissions:
 
 jobs:
   live-drift:
+    # Holds SUPABASE_SERVICE_ROLE_KEY; restricted to main, no required reviewers, so the weekly
+    # schedule and the post-merge push run unattended. A manual dispatch from any other branch is
+    # refused by the environment's branch rule (the job fails, and drift-routing reports it).
+    # See docs/deployment-architecture.md, "The production-secrets environment" (audit F-21).
+    environment: production-secrets
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
@@ -57,7 +65,7 @@ jobs:
           missing=""
           [ -z "$SUPABASE_SERVICE_ROLE_KEY" ] && missing="$missing SUPABASE_SERVICE_ROLE_KEY"
           if [ -n "$missing" ]; then
-            echo "::error::Live drift check cannot run - missing repo secrets:$missing"
+            echo "::error::Live drift check cannot run - missing secrets (production-secrets environment):$missing"
             exit 1
           fi
 
@@ -153,7 +161,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: live-drift-diagnostics
+          name: live-drift-diagnostics-attempt${{ github.run_attempt }}
           path: |
             drift-output.txt
             migration-history-output.txt
@@ -168,7 +176,9 @@ jobs:
   # repository code — the drift job above keeps contents: read only.
   drift-routing:
     needs: live-drift
-    if: ${{ !cancelled() }}
+    # Only main can deploy to production-secrets, so a manual run from another branch is refused
+    # before the drift job checks anything. Routing it would open a false production alarm.
+    if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -261,22 +271,10 @@ jobs:
               return;
             }
 
-            // Route the alert to a person, not only a label (#TN512M): GitHub notifies an issue's
-            // assignee on their phone, for the opening and for every later comment. Best-effort, so
-            // a refused assignment can never cost the alert itself.
-            const alertAssignee = context.repo.owner;
-            async function assignAlert(issueNumber) {
-              try {
-                await github.rest.issues.addAssignees({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: issueNumber,
-                  assignees: [alertAssignee],
-                });
-              } catch (error) {
-                core.warning(`Could not assign @${alertAssignee} to #${issueNumber}: ${error.message}`);
-              }
-            }
+            // Owner decision 2026-10-21 (docs/decisions/2026-10-21-one-daily-health-summary.md): this
+            // workflow no longer @mentions or assigns the owner. Its result reaches the owner's phone once a
+            // day in the daily health summary (.github/workflows/daily-health-summary.yml), which reads this
+            // issue's label; the issue keeps the detail.
 
             const body = [
               "The live Supabase drift check is failing. This issue is updated in place by",
@@ -289,7 +287,7 @@ jobs:
               checkedSha ? `- Checked-out commit: \`${checkedSha.slice(0, 12)}\`` : "- Checked-out commit: unrecorded",
               `- Last updated: ${now}`,
               "",
-              "Full untruncated output is the `live-drift-diagnostics` artifact on the run above;",
+              `Full untruncated output is the \`live-drift-diagnostics-attempt${process.env.GITHUB_RUN_ATTEMPT}\` artifact on the run above;`,
               "the findings below are a bounded slice.",
               "",
               findings
@@ -307,9 +305,8 @@ jobs:
                 owner,
                 repo,
                 issue_number: existing.number,
-                body: `Still failing as of ${now} — ${runUrl}`,
+                body: `Still failing as of ${now}: ${runUrl}`,
               });
-              await assignAlert(existing.number);
               core.warning(`Live drift check failing; updated #${existing.number}.`);
             } else {
               const created = await github.rest.issues.create({
@@ -319,6 +316,5 @@ jobs:
                 labels: [label],
                 body,
               });
-              await assignAlert(created.data.number);
               core.warning(`Live drift check failing; opened #${created.data.number}.`);
             }

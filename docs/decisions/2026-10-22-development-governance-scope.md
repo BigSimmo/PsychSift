@@ -11,6 +11,6 @@ Unrelated expired reviews warn; changes to the expired entry or its covered path
 block. Default and release checks, evidence requirements and clinical sign-off remain
 unchanged. No exception is extended, backdated or resealed by this decision.
 
-The operating instructions live in [Clinical Governance](../clinical-governance.md#development-and-draft-review).
+The operating instructions live in [Development governance scope](../governance/development-governance-scope.md).
 
 If this summary and the source ever differ, the source wins.

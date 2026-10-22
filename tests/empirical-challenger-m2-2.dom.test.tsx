@@ -10,26 +10,31 @@ describe("Empirical Challenger M2-2: Baseline Ratchets, Test Guard Exemptions & 
     const baselineRaw = readFileSync("scripts/design-system-contract-baseline.json", "utf8");
     const baseline = JSON.parse(baselineRaw);
 
-    it("verifies exact metric counts: disabledOpacityUses (30), visibleLiveRegions (17), legacyShadowAliases (30)", () => {
-      expect(baseline.metrics.disabledOpacityUses).toBe(30);
-      expect(baseline.metrics.visibleLiveRegions).toBe(17);
-      expect(baseline.metrics.legacyShadowAliases).toBe(30);
+    it("pins lowered tap-floor (2), disabled-opacity (0), visible-live-region (13) and shadow-alias (12) debt", () => {
+      expect(baseline.metrics.interactiveTapFloorDeclarations).toBe(2);
+      expect(baseline.metrics.disabledOpacityUses).toBe(0);
+      expect(baseline.metrics.visibleLiveRegions).toBe(13);
+      expect(baseline.metrics.legacyShadowAliases).toBe(12);
     });
 
     it("verifies zero artificial inflation: sum of debtByPath matches top-level metrics exactly", () => {
       const sumValues = (obj: Record<string, number>) => Object.values(obj).reduce((a, b) => a + b, 0);
 
       const sumDisabledOpacity = sumValues(baseline.debtByPath.disabledOpacityUses);
+      const sumTapFloor = sumValues(baseline.debtByPath.interactiveTapFloorDeclarations);
       const sumVisibleLiveRegions = sumValues(baseline.debtByPath.visibleLiveRegions);
       const sumLegacyShadowAliases = sumValues(baseline.debtByPath.legacyShadowAliases);
 
-      expect(sumDisabledOpacity).toBe(30);
-      expect(sumVisibleLiveRegions).toBe(17);
-      expect(sumLegacyShadowAliases).toBe(30);
+      expect(sumTapFloor).toBe(2);
+      expect(sumDisabledOpacity).toBe(0);
+      expect(sumVisibleLiveRegions).toBe(13);
+      expect(sumLegacyShadowAliases).toBe(12);
 
+      expect(baseline.metrics.interactiveTapFloorDeclarations).toBe(sumTapFloor);
       expect(baseline.metrics.disabledOpacityUses).toBe(sumDisabledOpacity);
       expect(baseline.metrics.visibleLiveRegions).toBe(sumVisibleLiveRegions);
       expect(baseline.metrics.legacyShadowAliases).toBe(sumLegacyShadowAliases);
+      expect(baseline.debtByPath.disabledOpacityUses).toEqual({});
     });
 
     it("verifies debt reduction in specific audited files", () => {
@@ -41,10 +46,35 @@ describe("Empirical Challenger M2-2: Baseline Ratchets, Test Guard Exemptions & 
         baseline.debtByPath.disabledOpacityUses[
           "src/components/clinical-dashboard/favourites-command-library-page.tsx"
         ],
-      ).toBe(2);
+      ).toBeUndefined();
       expect(
         baseline.debtByPath.visibleLiveRegions["src/components/clinical-dashboard/favourites-command-library-page.tsx"],
       ).toBe(1);
+      expect(
+        baseline.debtByPath.interactiveTapFloorDeclarations["src/components/DocumentTagCloud.tsx"],
+      ).toBeUndefined();
+      for (const path of [
+        "src/components/calculators/calculator-ui.tsx",
+        "src/components/calculators/guided-flow.tsx",
+        "src/components/calculators/clinical-console.tsx",
+        "src/components/calculators/bedside-sheet.tsx",
+        "src/components/services/services-navigator-page.tsx",
+        "src/components/therapy-compass/controls.ts",
+      ])
+        expect(baseline.debtByPath.disabledOpacityUses[path], path).toBeUndefined();
+      for (const path of [
+        "src/components/therapy-compass/therapy-card.tsx",
+        "src/components/therapy-compass/screens/recommend-screen.tsx",
+        "src/components/therapy-compass/recommend-scenario-control.tsx",
+        "src/components/therapy-compass/workspace.tsx",
+      ])
+        expect(baseline.debtByPath.visibleLiveRegions[path], path).toBeUndefined();
+      for (const path of [
+        "src/components/calculators/search-detail.tsx",
+        "src/components/calculators/search-page.tsx",
+        "src/components/therapy-compass/screens/sheets-screen.tsx",
+      ])
+        expect(baseline.debtByPath.legacyShadowAliases[path], path).toBeUndefined();
     });
 
     it("adversarially stress-tests ratchet oracle: findDebtPathRegressions catches regressions", () => {

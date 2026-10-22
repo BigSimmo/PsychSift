@@ -9,6 +9,22 @@ import type { RosterAdminClient } from "@/lib/roster/team/api";
 import type { RosterAlertType } from "./messages";
 import { ownerSubscriptionFor, removeGoneSubscription, subscriptionsForOwners, type PushRow } from "./subscriptions";
 
+/**
+ * How many settings reads or pushes run at once for one alert. One at a time,
+ * a publication reaching 500 doctors took minutes after the receipt (#3165);
+ * a few in parallel keeps it to seconds without flooding the push provider.
+ */
+export const ROSTER_ALERT_PARALLEL = 8;
+
+/** Run `work` over `items`, at most `ROSTER_ALERT_PARALLEL` at a time. `work` must not throw. */
+async function eachInParallel<T>(items: readonly T[], work: (item: T) => Promise<void>): Promise<void> {
+  let next = 0;
+  const lane = async () => {
+    while (next < items.length) await work(items[next++]!);
+  };
+  await Promise.all(Array.from({ length: Math.min(ROSTER_ALERT_PARALLEL, items.length) }, lane));
+}
+
 export function webPushConfigured(): boolean {
   return !!(env.WEB_PUSH_PUBLIC_KEY && env.WEB_PUSH_PRIVATE_KEY && env.WEB_PUSH_SUBJECT);
 }
@@ -24,7 +40,7 @@ export async function sendRosterAlerts(
   if (!webPushConfigured() || !recipientIds.length) return totals;
   const unique = [...new Set(recipientIds)].slice(0, 500);
   const enabled = new Set<string>();
-  for (const ownerId of unique) {
+  await eachInParallel(unique, async (ownerId) => {
     try {
       const settings = await fetchRosterSettings(client, ownerId);
       if (
@@ -36,7 +52,7 @@ export async function sendRosterAlerts(
     } catch {
       totals.failed += 1;
     }
-  }
+  });
   if (!enabled.size) return totals;
   const pushed = await pushCodeToOwners(client, [...enabled], type, 6 * 60 * 60);
   return { sent: pushed.sent, skipped: totals.skipped, failed: totals.failed + pushed.failed };
@@ -56,10 +72,10 @@ export async function pushCodeToOwners(
   if (!webPushConfigured() || !ownerIds.length) return totals;
   webpush.setVapidDetails(env.WEB_PUSH_SUBJECT!, env.WEB_PUSH_PUBLIC_KEY!, env.WEB_PUSH_PRIVATE_KEY!);
   const rows = await subscriptionsForOwners(client, [...new Set(ownerIds)].slice(0, 500));
-  for (const row of rows) {
+  await eachInParallel(rows, async (row) => {
     if (await pushOne(client, row, code, ttlSeconds)) totals.sent += 1;
     else totals.failed += 1;
-  }
+  });
   return totals;
 }
 
@@ -78,12 +94,38 @@ export async function pushCodeToOwnerDevice(
   return pushOne(client, row, code, ttlSeconds);
 }
 
+/** A device receipt distinguishes permanent removal from a transient provider failure. */
+export async function pushRosterOfferDevice(
+  client: RosterAdminClient,
+  row: PushRow,
+  ttlSeconds: number,
+): Promise<"sent" | "skipped" | "retry"> {
+  if (!webPushConfigured()) return "retry";
+  webpush.setVapidDetails(env.WEB_PUSH_SUBJECT!, env.WEB_PUSH_PUBLIC_KEY!, env.WEB_PUSH_PRIVATE_KEY!);
+  try {
+    await webpush.sendNotification(
+      { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } },
+      JSON.stringify({ t: "offer" }),
+      { TTL: ttlSeconds, timeout: 10_000 },
+    );
+    return "sent";
+  } catch (error) {
+    const status = (error as { statusCode?: number })?.statusCode;
+    if (status === 404 || status === 410) {
+      await removeGoneSubscription(client, row);
+      return "skipped";
+    }
+    return "retry";
+  }
+}
+
 async function pushOne(client: RosterAdminClient, row: PushRow, code: string, ttlSeconds: number): Promise<boolean> {
   try {
     await webpush.sendNotification(
       { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } },
       JSON.stringify({ t: code }),
-      { TTL: ttlSeconds },
+      // A device that never answers must not hold up a lane for everyone after it.
+      { TTL: ttlSeconds, timeout: 10_000 },
     );
     return true;
   } catch (error) {

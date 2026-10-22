@@ -1,7 +1,44 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
+import { workerPythonLockTargets } from "../scripts/worker-python-lock-config.mjs";
+
 describe("worker Python lockfile", () => {
+  it("includes production setuptools in the lock while retaining the split Cloud input", () => {
+    expect(workerPythonLockTargets.production.includeUnsafe).toBe(true);
+    expect(workerPythonLockTargets.production.inputFile).toBe("worker/python/requirements.in");
+    expect(workerPythonLockTargets.cloud.inputFile).toBe("worker/python/requirements-cloud.in");
+    expect(readFileSync(workerPythonLockTargets.production.inputFile, "utf8")).toMatch(/^setuptools>=84\.0\.0$/m);
+    expect(readFileSync(workerPythonLockTargets.production.outputFile, "utf8")).toContain(
+      "--hash=sha256:51a52592b3b99e102b609654876bd65f19f999935166d1352678931132b0c670",
+    );
+    expect(readFileSync(workerPythonLockTargets.production.outputFile, "utf8")).toContain(
+      "--hash=sha256:f4695c21257f0d9b537ec2692c941d02ee143b7cc1276941349a546573b2ef73",
+    );
+  });
+
+  it("keeps the Cloud Cython pin compatible with quicksectx 0.4.1", () => {
+    const contents = readFileSync("worker/python/requirements-cloud.txt", "utf8");
+    expect(contents).toMatch(/^quicksectx==0\.4\.1\s/m);
+    const cython = contents.match(/^cython==(\d+)\.(\d+)\.(\d+)\s/m);
+    expect(cython, "Cloud lock must pin Cython").not.toBeNull();
+    // quicksectx 0.4.1 declares Cython>=0.25,<3.2.0 in its package metadata.
+    const [, major, minor] = cython!;
+    expect(Number(major) > 0 || Number(minor) >= 25).toBe(true);
+    expect(Number(major) < 3 || (Number(major) === 3 && Number(minor) < 2)).toBe(true);
+  });
+
+  it("keeps the Cloud Thinc pin compatible with spaCy 3.8.16", () => {
+    const contents = readFileSync("worker/python/requirements-cloud.txt", "utf8");
+    expect(contents).toMatch(/^spacy==3\.8\.16\s/m);
+    const thinc = contents.match(/^thinc==(\d+)\.(\d+)\.(\d+)\s/m);
+    expect(thinc, "Cloud lock must pin Thinc").not.toBeNull();
+    // spaCy 3.8.16 declares thinc>=8.3.12,<8.4.0 in its package metadata.
+    const [, major, minor, patch] = thinc!;
+    expect([Number(major), Number(minor)]).toEqual([8, 3]);
+    expect(Number(patch)).toBeGreaterThanOrEqual(12);
+  });
+
   it("has hashed, pinned locks for production Python 3.11 and Cloud Python 3.12", () => {
     expect(existsSync("worker/python/requirements.in"), "requirements.in missing").toBe(true);
     for (const [file, version] of [
@@ -21,7 +58,7 @@ describe("worker Python lockfile", () => {
         `${file} has no hashes`,
       ).toBe(true);
       expect(contents.includes("medspacy"), `medspacy not present in ${file}`).toBe(true);
-      if (version === "3.12") expect(contents).toMatch(/^setuptools==/m);
+      expect(contents).toMatch(/^setuptools==84\.0\.0/m);
     }
   });
 });

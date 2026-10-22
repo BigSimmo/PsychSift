@@ -27,16 +27,23 @@ vi.mock("@/components/roster/use-roster-shifts", () => ({
   }),
 }));
 
-const teaching = vi.hoisted(() => ({ current: { status: "ready", data: null as unknown }, retries: { calls: 0 } }));
+const teaching = vi.hoisted(() => ({
+  current: { status: "ready", data: null as unknown },
+  retries: { calls: 0 },
+  urls: [] as (string | null)[],
+}));
 vi.mock("@/components/teaching/use-teaching-resource", () => ({
-  useTeachingResource: () => ({
-    ...teaching.current,
-    code: null,
-    refreshing: false,
-    retry: () => {
-      teaching.retries.calls += 1;
-    },
-  }),
+  useTeachingResource: (url: string | null) => {
+    teaching.urls.push(url);
+    return {
+      ...teaching.current,
+      code: null,
+      refreshing: false,
+      retry: () => {
+        teaching.retries.calls += 1;
+      },
+    };
+  },
 }));
 
 // "Who's on now" reads the reader's team on its own; it has its own tests.
@@ -49,6 +56,8 @@ vi.mock("@/lib/supabase/client", () => ({
 }));
 
 import { useMyDayDashboardSources } from "@/components/my-day/use-my-day-dashboard-sources";
+import { myDayTeachingWeekUrl } from "@/components/my-day/use-my-day-items";
+import { teachingOverviewQuerySchema } from "@/lib/teaching/model";
 
 const TODAY = "2026-10-03";
 const NOW = new Date("2026-10-03T04:40:00Z");
@@ -120,6 +129,7 @@ beforeEach(() => {
   };
   roster.reload.calls = 0;
   teaching.retries.calls = 0;
+  teaching.urls = [];
   teaching.current = {
     status: "ready",
     data: {
@@ -135,6 +145,29 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("useMyDayDashboardSources", () => {
+  it("requests the shared 6-week Monday-anchored teaching URL accepted by teachingOverviewQuerySchema", () => {
+    stubCpd({ demoMode: false });
+    renderHook(() => useMyDayDashboardSources({ today: TODAY, now: NOW, allowSample: false }));
+    const expectedUrl = "/api/teaching?view=week&from=2026-09-28&to=2026-11-08";
+    expect(myDayTeachingWeekUrl(TODAY)).toBe(expectedUrl);
+    expect(teaching.urls).toContain(expectedUrl);
+
+    for (const day of [
+      "2026-09-28",
+      "2026-09-29",
+      "2026-09-30",
+      "2026-10-01",
+      "2026-10-02",
+      "2026-10-03",
+      "2026-10-04",
+    ]) {
+      const url = myDayTeachingWeekUrl(day);
+      expect(url).toBe(expectedUrl);
+      const params = Object.fromEntries(new URL(url, "https://psychsift.test").searchParams.entries());
+      expect(teachingOverviewQuerySchema.safeParse(params).success).toBe(true);
+    }
+  });
+
   it("reads the reader's own roster, today's real sessions and CPD hours", async () => {
     stubCpd({ demoMode: false });
     const { result } = renderHook(() => useMyDayDashboardSources({ today: TODAY, now: NOW, allowSample: false }));

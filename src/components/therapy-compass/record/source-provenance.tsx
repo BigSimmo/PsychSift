@@ -1,13 +1,18 @@
 "use client";
 
+import { ContentReviewNotice } from "@/components/content-review/content-review-notice";
 import { Disclosure } from "@/components/ui/disclosure";
+import { ExternalTextLink } from "@/components/ui/link";
 import { SourceDesignationBadge, SourceStatusBadge } from "@/components/ui-primitives";
 import {
-  isLaterAddedNiceReference,
+  isLaterAddedReference,
+  isNiceGuidelineCitation,
   splitSourceCitations,
   therapyNiceGuidelineMetadata,
   therapySourceMetadata,
 } from "@/lib/therapy-source-governance";
+import { therapyCitedSourceIds } from "@/lib/therapy-source-link-ids";
+import type { TherapySourceLink } from "@/lib/therapy-source-links";
 
 import type { Therapy } from "../data/types";
 
@@ -25,10 +30,29 @@ import type { Therapy } from "../data/types";
  *
  * What is emphatically not reduced is the disclosure: the review status is on
  * the collapsed row, so a record awaiting clinician sign-off says so without
- * anyone opening anything.
+ * anyone opening anything. The review date works the same way: a record past its
+ * 24-month date, or citing a guideline that has since changed, says so on the
+ * collapsed row too (owner decision 21 Oct 2026).
+ *
+ * `sourceLinks` are owner-confirmed links resolved on the server; until the owner
+ * signs a source off the list is empty and nothing extra renders.
  */
-export function TherapySourceProvenance({ therapy }: { therapy: Therapy }) {
+export function TherapySourceProvenance({
+  therapy,
+  sourceLinks = [],
+}: {
+  therapy: Therapy;
+  sourceLinks?: readonly TherapySourceLink[];
+}) {
   const reviewed = therapy.reviewStatus === "reviewed";
+  // Only a completed review has a date to count from. An unreviewed record is already
+  // labelled "Awaiting review", so it carries no due date of its own, but a confirmed
+  // change to a source it cites is still news.
+  const reviewInput = {
+    kind: "therapy",
+    lastReviewedAt: reviewed ? therapy.reviewedAt : null,
+    citedSourceIds: therapyCitedSourceIds(therapy.slug),
+  } as const;
   const source = therapy.sources[0] ?? null;
   const blob = source?.reference?.trim() || therapy.sourceNotes?.trim() || "";
   const { citations, notes } = splitSourceCitations(blob);
@@ -36,7 +60,7 @@ export function TherapySourceProvenance({ therapy }: { therapy: Therapy }) {
   const reviewStatusClass = reviewed
     ? "text-xs font-semibold text-[color:var(--success-text)]"
     : "text-xs font-semibold text-[color:var(--warning-text)]";
-  const hasLaterAddedNice = isLaterAddedNiceReference(blob);
+  const hasLaterAdded = isLaterAddedReference(blob);
 
   return (
     <>
@@ -45,92 +69,111 @@ export function TherapySourceProvenance({ therapy }: { therapy: Therapy }) {
           Source & review status <span className={reviewStatusClass}>{reviewStatus}</span>
         </h2>
       </div>
-      <Disclosure
-        className="text-sm"
-        headingLevel={2}
-        title="Source & review status"
-        meta={<span className={reviewStatusClass}>{reviewStatus}</span>}
-      >
-        <div className="space-y-3 pb-1">
-          {citations.length ? (
-            <ol className="m-0 list-none space-y-2 p-0">
-              {citations.map((citation, index) => {
-                const isNiceCitation =
-                  citation.authority.toUpperCase().includes("NICE") ||
-                  citation.text.toLowerCase().includes("nice.org.uk");
-                const niceMetadata =
-                  isNiceCitation && hasLaterAddedNice
-                    ? therapyNiceGuidelineMetadata(citation, therapy.reviewStatus)
-                    : null;
-
-                return (
-                  <li
-                    key={`${citation.authority}-${index}`}
-                    className="rounded-md border border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-3 py-2"
-                  >
-                    <p className="m-0 text-xs leading-5 text-[color:var(--text)]">{citation.text}</p>
-                    {niceMetadata ? (
-                      <div className="mt-2 flex flex-wrap items-center gap-2">
-                        {citation.authority ? (
-                          <span className="inline-flex rounded-full border border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] px-2 py-px text-3xs font-semibold text-[color:var(--clinical-accent)]">
-                            {citation.authority}
-                          </span>
-                        ) : null}
-                        <SourceDesignationBadge metadata={niceMetadata} />
-                        <SourceStatusBadge metadata={niceMetadata} />
-                      </div>
-                    ) : citation.authority ? (
-                      <span className="mt-1.5 inline-flex rounded-full border border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] px-2 py-px text-3xs font-semibold text-[color:var(--clinical-accent)]">
-                        {citation.authority}
-                      </span>
-                    ) : null}
-                  </li>
-                );
-              })}
-            </ol>
-          ) : (
-            <p className="m-0 text-xs leading-5 text-[color:var(--text-muted)]">
-              No reference list was recorded for this therapy.
-            </p>
-          )}
-
-          {notes.length ? (
-            <div>
-              <p className="m-0 text-3xs font-bold uppercase tracking-eyebrow text-[color:var(--text-muted)]">
-                Record note — not a clinical source
-              </p>
-              {notes.map((note) => (
-                <p key={note} className="m-0 mt-1 text-xs leading-5 text-[color:var(--text-muted)]">
-                  {note}
+      {/* One block, so the page's section gap falls around the card and its caption, not between them. */}
+      <div>
+        <Disclosure
+          className="text-sm"
+          headingLevel={2}
+          title="Source & review status"
+          meta={<span className={reviewStatusClass}>{reviewStatus}</span>}
+        >
+          <div className="space-y-3 pb-1">
+            {sourceLinks.length ? (
+              <div data-testid="therapy-source-links">
+                <p className="m-0 text-3xs font-bold uppercase tracking-eyebrow text-[color:var(--text-muted)]">
+                  Sources
                 </p>
-              ))}
-            </div>
-          ) : null}
+                <ul className="m-0 mt-1 list-none space-y-1.5 p-0">
+                  {sourceLinks.map((link) => (
+                    <li key={link.id} className="text-xs leading-5">
+                      <ExternalTextLink href={link.href}>{link.title}</ExternalTextLink>
+                      <span className="ml-1.5 text-[color:var(--text-muted)]">{link.publisher}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {citations.length ? (
+              <ol className="m-0 list-none space-y-2 p-0">
+                {citations.map((citation, index) => {
+                  const isNiceCitation = isNiceGuidelineCitation(citation);
+                  const niceMetadata =
+                    isNiceCitation && hasLaterAdded
+                      ? therapyNiceGuidelineMetadata(citation, therapy.reviewStatus)
+                      : null;
 
-          {source ? (
-            <div className="space-y-2 border-t border-[color:var(--border)] pt-2.5">
-              <p className="m-0 text-xs text-[color:var(--text-muted)]">
-                {hasLaterAddedNice ? (
-                  <>
-                    Record content imported from{" "}
-                    <span className="break-words font-medium">{source.title ?? "an uploaded source"}</span> (guideline
-                    citations added separately from source register)
-                  </>
-                ) : (
-                  <>
-                    Imported from{" "}
-                    <span className="break-words font-medium">{source.title ?? "an uploaded source"}</span>
-                  </>
-                )}
+                  return (
+                    <li
+                      key={`${citation.authority}-${index}`}
+                      className="rounded-md border border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-3 py-2"
+                    >
+                      <p className="m-0 text-xs leading-5 text-[color:var(--text)]">{citation.text}</p>
+                      {niceMetadata ? (
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          {citation.authority ? (
+                            <span className="inline-flex rounded-full border border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] px-2 py-px text-3xs font-semibold text-[color:var(--clinical-accent)]">
+                              {citation.authority}
+                            </span>
+                          ) : null}
+                          <SourceDesignationBadge metadata={niceMetadata} />
+                          <SourceStatusBadge metadata={niceMetadata} />
+                        </div>
+                      ) : citation.authority ? (
+                        <span className="mt-1.5 inline-flex rounded-full border border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] px-2 py-px text-3xs font-semibold text-[color:var(--clinical-accent)]">
+                          {citation.authority}
+                        </span>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ol>
+            ) : (
+              <p className="m-0 text-xs leading-5 text-[color:var(--text-muted)]">
+                No reference list was recorded for this therapy.
               </p>
-              <span className="flex flex-wrap gap-2">
-                <SourceDesignationBadge metadata={therapySourceMetadata(source, therapy.reviewStatus)} />
-                <SourceStatusBadge metadata={therapySourceMetadata(source, therapy.reviewStatus)} />
-              </span>
-            </div>
-          ) : null}
-        </div>
-      </Disclosure>
+            )}
+
+            {notes.length ? (
+              <div>
+                <p className="m-0 text-3xs font-bold uppercase tracking-eyebrow text-[color:var(--text-muted)]">
+                  Record note — not a clinical source
+                </p>
+                {notes.map((note) => (
+                  <p key={note} className="m-0 mt-1 text-xs leading-5 text-[color:var(--text-muted)]">
+                    {note}
+                  </p>
+                ))}
+              </div>
+            ) : null}
+
+            {source ? (
+              <div className="space-y-2 border-t border-[color:var(--border)] pt-2.5">
+                <p className="m-0 text-xs text-[color:var(--text-muted)]">
+                  {hasLaterAdded ? (
+                    <>
+                      Record content imported from{" "}
+                      <span className="break-words font-medium">{source.title ?? "an uploaded source"}</span> (guideline
+                      citations added separately from source register)
+                    </>
+                  ) : (
+                    <>
+                      Imported from{" "}
+                      <span className="break-words font-medium">{source.title ?? "an uploaded source"}</span>
+                    </>
+                  )}
+                </p>
+                <span className="flex flex-wrap gap-2">
+                  <SourceDesignationBadge metadata={therapySourceMetadata(source, therapy.reviewStatus)} />
+                  <SourceStatusBadge metadata={therapySourceMetadata(source, therapy.reviewStatus)} />
+                </span>
+              </div>
+            ) : null}
+          </div>
+        </Disclosure>
+        {/* Under the card it belongs to, inset to the card's padding, so it reads as this
+          record's caption and never as a word on the related-therapy list above. */}
+        <ContentReviewNotice review={reviewInput} hideStates={["unknown"]} className="mt-1.5 px-3 sm:px-4" />
+      </div>
     </>
   );
 }

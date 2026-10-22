@@ -20,6 +20,8 @@ export const pdfPageSourceProvenanceSchema = z
         scriptSha256: sha,
         pythonVersion: runtime,
         pymupdfVersion: runtime,
+        mupdfVersion: runtime.optional(),
+        tesseractVersion: runtime.optional(),
       })
       .strict(),
     pageGeometry: z
@@ -63,7 +65,10 @@ export const pdfPageSourceProvenanceSchema = z
         ? ["pdf_geometry_transform_unverified"]
         : []),
       ...(value.ocr.status === "unverified" ? ["pdf_ocr_unverified"] : []),
-      ...(value.producer.pythonVersion === null || value.producer.pymupdfVersion === null
+      ...(value.producer.pythonVersion === null ||
+      value.producer.pymupdfVersion === null ||
+      value.producer.mupdfVersion === null ||
+      value.producer.tesseractVersion === null
         ? ["pdf_runtime_identity_unknown"]
         : []),
     ];
@@ -72,6 +77,7 @@ export const pdfPageSourceProvenanceSchema = z
       value.reasonCodes.length !== expected.length ||
       expected.some((reason) => !value.reasonCodes.includes(reason as (typeof value.reasonCodes)[number])) ||
       value.structuralDisposition !== (expected.length ? "unverified" : "retained") ||
+      (value.producer.tesseractVersion !== undefined && value.ocr.status !== "unverified") ||
       value.ocr.comparison !== (value.ocr.status === "unverified" ? "not_compared" : "not_applicable")
     ) {
       context.addIssue({ code: "custom", message: "pdf_source_observations_inconsistent" });

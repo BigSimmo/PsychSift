@@ -391,7 +391,7 @@ export function WorkHelpPage() {
   useModeBandHeading(topic ? { eyebrow: "Help", title: topic.title } : { title: "Help" });
 
   return (
-    <div className="work-help" data-mode-identity="my-day" data-testid="work-help">
+    <main className="work-help" data-mode-identity="my-day" data-testid="work-help">
       {bandShown ? null : topic ? (
         <TopBarBack label="All help" href={WORK_HELP_HREF} testId="work-help-top-back" />
       ) : (
@@ -413,6 +413,6 @@ export function WorkHelpPage() {
       ) : (
         <HelpHome />
       )}
-    </div>
+    </main>
   );
 }

@@ -480,7 +480,16 @@ describe("tenancy table tiers", () => {
     // withOwnerReadScope cannot be used on it (it filters owner_id), so every call site
     // hand-rolls .eq("user_id", …).
     // `roster_unavailability` is read only by Delete-my-data cleanup, with `.eq("user_id", …)` on the chain.
-    expect(userKeyed).toEqual(["roster_unavailability", "user_favourite_sets", "user_favourites", "user_preferences"]);
+    // `on_call_service_members` and `roster_member_roles` are read team-wide by the site-administrator
+    // Roster view and the rotation team list, each a declared scope exemption (added 2026-10-21).
+    expect(userKeyed).toEqual([
+      "on_call_service_members",
+      "roster_member_roles",
+      "roster_unavailability",
+      "user_favourite_sets",
+      "user_favourites",
+      "user_preferences",
+    ]);
   });
 });
 

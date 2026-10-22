@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "883a3d51-8ceb-46ad-b3bf-daa9ca609720",
+  "createdOn": "2026-10-22",
+  "action": "update",
+  "payload": {
+    "id": "#MAAXAX",
+    "detail": "21 Oct 2026, Teaching and CME PR: durable store public.teaching_epa_magic_links (migration 20261021190000), server routes /api/teaching/assessments/magic-links and the respond route on the durable store, doctor and supervisor screens labelled as feedback to copy into CLA, not an official RANZCP sign-off. Merged 22 Oct 2026 as PR #3759 (d01496110). Next: confirm the post-merge live-drift run passed, and keep /teaching/assessments/respond/* and its API open to signed-out visitors when the 1 Nov sign-in gate lands. Follow-ups: retire the old PUT registration route and the process-memory store once nothing uses them; consider a retention purge for completed or expired links.",
+    "baseRowFingerprint": "1303ee492459d61e97cba536888c59a34322dea7e570649301e9eda33673736b",
+    "targetUlid": "01M484CAW5MAAXAX35108YZ443"
+  }
+}

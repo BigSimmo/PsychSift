@@ -8,15 +8,80 @@ import type { ChunkInput, DocumentChunk } from "@/lib/types";
 // re-index can tell which chunker produced a row, and so bumping the strategy deliberately
 // invalidates stale chunks. Bump this when chunk boundaries change (e.g. when cross-page
 // document-mode chunking is enabled by default).
-export const CHUNKER_VERSION = "1.2.0-page";
-export const DOCUMENT_CHUNKER_VERSION = "1.2.0-document";
+export const CHUNKER_VERSION = "1.3.1-page";
+export const DOCUMENT_CHUNKER_VERSION = "1.3.1-document";
 
 const sentenceBoundary = /(?<=[.!?])\s+/;
+const sentenceBoundaryGlobal = new RegExp(sentenceBoundary.source, "g");
 const paragraphBoundary = /\n{2,}/;
-const metadataNoisePatterns: RegExp[] = [
-  /\b(?:copyright|all rights reserved|document revision|do not distribute|downloaded from|www\.\S+)\b/i,
-  /\b(?:version|revision)\s+\d+\s*$/i,
-];
+const lineBreakPattern = /\r?\n/;
+const whitespaceRunPattern = /\s+/g;
+const whitespaceSplitPattern = /\s+/;
+const horizontalWhitespaceRunPattern = /[ \t]+/g;
+const trailingHorizontalWhitespaceBeforeNewlinePattern = /[ \t]+\n/g;
+const excessBlankLinesPattern = /\n{3,}/g;
+const nonAlphanumericRunPattern = /[^a-z0-9]+/g;
+const lookupArtifactWordPattern = /\b(?:table|figure|appendix)\b/g;
+const headingLinePattern = /^[A-Z0-9][A-Za-z0-9\s,;:()[\]/-]{3,}$/;
+const trailingHeadingPunctuationPattern = /[:.\s]+$/;
+const digitsOnlyLinePattern = /^\d+$/;
+// Audit 2026-10-20 ING-B-02: "Clinical ..." and "Mental health ..." also open
+// ordinary clinical headings ("Clinical monitoring"), so on their own they only
+// mark a running header when the line also names an organisation.
+const boilerplateOrgPrefixPattern = /^(?:corporate|government|department|hospital|health service)\b/i;
+const boilerplateAmbiguousOrgPrefixPattern = /^(?:clinical|mental health)\b/i;
+const boilerplateOrgNounPattern =
+  /\b(?:services?|directorate|division|network|department|hospital|government|authority|governance)\b/i;
+// A repeated line is a running header or footer only within this many content
+// lines of the top or bottom of the page.
+const runningHeaderFooterWindow = 3;
+const numberWithUnitPattern =
+  /\d\s*(?:mg|mcg|µg|μg|ug|g|kg|ng|ml|l|dl|iu|units?|mmol|mol|meq|mmhg|bpm|%|x\s*10)(?![a-z])/i;
+const boilerplateKeywordPattern =
+  /\b(?:confidential|printed|uncontrolled|guideline|procedure|policy|document|version|review date)\b/i;
+const trailingDigitPattern = /\d$/;
+const sectionHeadingTextPattern = /^[A-Z][A-Za-z0-9\s,;:()\/\-\[\]]+$/;
+const numberedSectionHeadingPattern = /^\d+\.?\s+[A-Z]/;
+const edgeHyphenPattern = /(^-|-$)/g;
+const headingNumberPrefixPattern = /^(\d+(?:\.\d+){0,5})\b/;
+const tableSeparatorRowPattern = /^\s*\|?[\s:|-]+\|?\s*$/;
+const nonWhitespaceCharPattern = /\S/;
+const whitespaceCharPattern = /\s/;
+const sentenceTerminalPunctuationPattern = /[.!?]/;
+const trailingClausePunctuationPattern = /[\s,;:([{\-–—]+$/;
+const imageDataStartEndBlockPattern = /\[\[IMAGE_DATA_START\]\][\s\S]*?\[\[IMAGE_DATA_END\]\]/g;
+const imageDataOmittedBlockPattern = /\[\[IMAGE_DATA_OMITTED\]\][\s\S]*?\[\[\/IMAGE_DATA_OMITTED\]\]/g;
+const sentenceOrLineSplitPattern = /(?<=[.!?])\s+|\n+/;
+const invalidTableCellCharPattern = /[\r\n|\\]/;
+const markdownTableAlignmentCellPattern = /^:?-{3,}:?$/;
+const imageDataMarkerGlobalPattern =
+  /\[\[(IMAGE_DATA_START|IMAGE_DATA_END|IMAGE_DATA_OMITTED|\/IMAGE_DATA_OMITTED)\]\]/g;
+const danglingImageDataMarkerPattern = /\[\[\/?IMAGE_DATA|\bIMAGE_DATA_/;
+const tableIdentifierUnitPattern =
+  /^(?:mg|mcg|µg|μg|ug|g|kg|ng|pg|ml|l|dl|h|hr|hrs|hour|hours|min|s|sec|second|seconds|day|days|wk|week|weeks|mmol|mol|meq|iu|u|unit|units|mmhg|cm|bpm|x)$/i;
+const explicitRowIdentifierShapePattern = /^[A-Z0-9]+(?:[-_][A-Z0-9]+)+$/;
+const uppercaseAsciiLetterPattern = /[A-Z]/;
+const numericLiteralGlobalPattern = /[+-]?(?:\d+(?:[.,]\d+)?|\.\d+)(?:e[+-]?\d+)?/gi;
+const nonUnicodeLetterSplitPattern = /[^\p{L}]+/u;
+// Audit 2026-10-20 ING-B-01: these markers used to delete any line containing
+// them, including "Max dose 400 mg daily, see www..." and a clozapine ANC
+// threshold sharing a line with a copyright note. A marked line is now dropped
+// only when it reads as a notice as a whole (see looksLikeBoilerplateNotice).
+const boilerplateNoticeMarkerPattern =
+  /\b(?:copyright|all rights reserved|document revision|do not distribute|downloaded from|www\.\S+)\b/i;
+const boilerplateNoticeLeadPattern =
+  /^\W*(?:©|\(c\)|copyright\b|all rights reserved\b|document revision\b|do not distribute\b|downloaded from\b)/i;
+const boilerplateNoticeStripPattern =
+  /https?:\/\/\S+|www\.\S+|©|\(c\)|\b(?:copyright|all rights reserved|document revision|do not distribute|downloaded from)\b/gi;
+const urlPattern = /https?:\/\/\S+|www\.\S+/i;
+const urlGlobalPattern = /https?:\/\/\S+|www\.\S+/gi;
+const residualWordGlobalPattern = /\p{L}{2,}/gu;
+const maxBoilerplateNoticeResidualWords = 6;
+const clinicalComparatorPattern = /[<>≤≥]/;
+const metadataNoisePatterns: RegExp[] = [/\b(?:version|revision)\s+\d+\s*$/i];
+// Lines of one or two characters are kept when they are a word or number
+// ("No", "Na", "0", "10"); punctuation and bullet debris is still dropped.
+const shortContentLinePattern = /^[\p{L}\p{N}]{1,2}$/u;
 const lineNoisePatterns: RegExp[] = [
   // Audit M14: anchored to the WHOLE line. The previous unanchored form
   // matched an inline page reference anywhere in a sentence ("refer to p 3
@@ -46,24 +111,20 @@ export function estimateTokens(text: string) {
 
 export function detectHeading(text: string) {
   const firstMeaningfulLine = text
-    .split(/\r?\n/)
+    .split(lineBreakPattern)
     .map((line) => line.trim())
     .find((line) => line.length > 0 && line.length < 120);
 
   if (!firstMeaningfulLine) return null;
-  if (/^[A-Z0-9][A-Za-z0-9\s,;:()[\]/-]{3,}$/.test(firstMeaningfulLine)) {
-    return firstMeaningfulLine.replace(/[:.\s]+$/, "");
+  if (headingLinePattern.test(firstMeaningfulLine)) {
+    return firstMeaningfulLine.replace(trailingHeadingPunctuationPattern, "");
   }
 
   return null;
 }
 
 function normalizeLookupText(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .replace(/\b(?:table|figure|appendix)\b/g, "")
-    .trim();
+  return value.toLowerCase().replace(nonAlphanumericRunPattern, " ").replace(lookupArtifactWordPattern, "").trim();
 }
 
 // A line that is nothing but a PSPF protective marking ("OFFICIAL",
@@ -72,31 +133,84 @@ function isClassificationBannerLine(line: string) {
   return Boolean(line.trim()) && !stripClassificationBanner(line).trim();
 }
 
+function hasClinicalSignal(line: string) {
+  return highYieldSectionPattern.test(line) || numberWithUnitPattern.test(line) || clinicalComparatorPattern.test(line);
+}
+
+// A line carrying a copyright, download-stamp or web-address marker is a notice
+// only when it has no clinical signal and either opens with the notice or has
+// little left once the notice words and addresses are removed.
+function looksLikeBoilerplateNotice(line: string) {
+  if (!boilerplateNoticeMarkerPattern.test(line)) return false;
+  if (hasClinicalSignal(line)) return false;
+  if (boilerplateNoticeLeadPattern.test(line)) return true;
+  // Chunker 1.3.1: a line whose only marker is a web address is a referral
+  // ("Crisis line: www.example.org"), not a notice. removePageNoise strips it
+  // only at the top or bottom edge of the page (see isUrlReferralLine).
+  if (isUrlReferralLine(line)) return false;
+  const residualWords = line.replace(boilerplateNoticeStripPattern, " ").match(residualWordGlobalPattern) ?? [];
+  return residualWords.length <= maxBoilerplateNoticeResidualWords;
+}
+
+// A short line whose only notice marker is a web address.
+function isUrlReferralLine(line: string) {
+  if (!urlPattern.test(line)) return false;
+  return !boilerplateNoticeMarkerPattern.test(line.replace(urlGlobalPattern, " "));
+}
+
+// An edge-of-page web address with little else on the line reads as a running
+// footer or header ("www.example.org", "Downloaded ... www..." is handled above).
+function looksLikeEdgeUrlNotice(line: string) {
+  if (!isUrlReferralLine(line) || hasClinicalSignal(line)) return false;
+  // Owner ruling 21 Oct 2026: only a bare web address is stripped at the page edge. Any
+  // words or numbers beside it ("Lifeline 13 11 14 www.lifeline.org.au") make it a
+  // referral that is kept.
+  return !/[\p{L}\p{N}]/u.test(line.replace(urlGlobalPattern, " "));
+}
+
 function looksLikeMetadataNoise(line: string) {
-  if (!line || line.length <= 2) return true;
-  if (/^\d+$/.test(line)) return true;
+  if (!line) return true;
+  if (line.length <= 2 && (!shortContentLinePattern.test(line) || clinicalUnitLinePattern.test(line))) return true;
   if (isClassificationBannerLine(line)) return true;
+  if (looksLikeBoilerplateNotice(line)) return true;
   if (metadataNoisePatterns.some((pattern) => pattern.test(line))) return true;
   if (lineNoisePatterns.some((pattern) => pattern.test(line))) return true;
   return false;
 }
 
 function normalizeRepeatedLine(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
+  return value.toLowerCase().replace(nonAlphanumericRunPattern, " ").trim();
 }
 
 function looksLikeRepeatingBoilerplate(line: string) {
   const normalized = normalizeRepeatedLine(line);
   if (!normalized || normalized.length < 5 || normalized.length > 90) return false;
   if (looksLikeMetadataNoise(line)) return true;
-  if (/^(?:clinical|corporate|mental health|government|department|hospital|health service)\b/i.test(line)) return true;
-  if (/\b(?:confidential|printed|uncontrolled|guideline|procedure|policy|document|version|review date)\b/i.test(line)) {
+  // Audit 2026-10-20 ING-B-02: never treat a repeated line that states a dose,
+  // measurement, threshold comparator or clinical action as a running header.
+  if (hasClinicalSignal(line)) return false;
+  if (boilerplateOrgPrefixPattern.test(line)) return true;
+  if (boilerplateAmbiguousOrgPrefixPattern.test(line) && boilerplateOrgNounPattern.test(line)) return true;
+  if (boilerplateKeywordPattern.test(line)) {
     return true;
   }
   return false;
+}
+
+// Indexes of the lines within `runningHeaderFooterWindow` content lines of the
+// top or bottom of a page. Lines that are noise on their own do not count
+// towards the window, so a protective-marking banner above a header does not
+// push the header out of it.
+function runningHeaderFooterIndexes(lines: string[]) {
+  const contentIndexes = lines.flatMap((line, index) => (line && !looksLikeMetadataNoise(line) ? [index] : []));
+  return new Set([
+    ...contentIndexes.slice(0, runningHeaderFooterWindow),
+    ...contentIndexes.slice(-runningHeaderFooterWindow),
+  ]);
+}
+
+function splitPageLines(text: string) {
+  return rejoinWrappedDoseUnits(text.split(lineBreakPattern).map((line) => line.trim()));
 }
 
 function buildRepeatedBoilerplateLines(inputs: ChunkInput[]) {
@@ -105,11 +219,11 @@ function buildRepeatedBoilerplateLines(inputs: ChunkInput[]) {
     // Keys must be built from the SAME normalized text that removePageNoise
     // later compares against, or a ligature/soft-hyphen in a repeated header
     // ("Conﬁdential") would produce a mismatched key and survive filtering.
+    const lines = splitPageLines(normalizeExtractedGlyphs(input.pageText));
+    const edgeIndexes = runningHeaderFooterIndexes(lines);
     const pageLines = new Set(
-      normalizeExtractedGlyphs(input.pageText)
-        .split(/\r?\n/)
-        .map((line) => line.trim())
-        .filter(looksLikeRepeatingBoilerplate)
+      lines
+        .filter((line, index) => edgeIndexes.has(index) && looksLikeRepeatingBoilerplate(line))
         .map(normalizeRepeatedLine)
         .filter(Boolean),
     );
@@ -132,7 +246,7 @@ function buildRepeatedBoilerplateLines(inputs: ChunkInput[]) {
 function isWrappedDoseUnitContinuation(previousLine: string | undefined, line: string) {
   return Boolean(
     previousLine &&
-    /\d$/.test(previousLine) &&
+    trailingDigitPattern.test(previousLine) &&
     clinicalUnitLinePattern.test(line) &&
     !lineNoisePatterns.some((pattern) => pattern.test(previousLine)),
   );
@@ -157,7 +271,7 @@ function rejoinWrappedDoseUnits(lines: string[]) {
 // removePageNoise sees), since the deleted unit is not recoverable from stored
 // chunks. Shares isWrappedDoseUnitContinuation with the fix so the two can't drift.
 export function countWrappedDoseUnitLines(text: string) {
-  const lines = text.split(/\r?\n/).map((line) => line.trim());
+  const lines = text.split(lineBreakPattern).map((line) => line.trim());
   let count = 0;
   for (let index = 1; index < lines.length; index += 1) {
     if (isWrappedDoseUnitContinuation(lines[index - 1], lines[index])) count += 1;
@@ -165,30 +279,56 @@ export function countWrappedDoseUnitLines(text: string) {
   return count;
 }
 
+// Audit 2026-10-20 ING-B-01: a bare number line is a page number only when it
+// is the first or last content line and not part of a run of numbers (a rating
+// scale column such as "0 / 1 / 2 / 3"). Other number lines are content.
+function isIsolatedEdgeNumberLine(lines: string[], index: number, keptIndexes: number[]) {
+  if (!digitsOnlyLinePattern.test(lines[index])) return false;
+  if (index !== keptIndexes[0] && index !== keptIndexes[keptIndexes.length - 1]) return false;
+  const position = keptIndexes.indexOf(index);
+  const neighbours = [keptIndexes[position - 1], keptIndexes[position + 1]];
+  return !neighbours.some((neighbour) => neighbour !== undefined && digitsOnlyLinePattern.test(lines[neighbour]));
+}
+
 function removePageNoise(text: string, repeatedBoilerplateLines = new Set<string>()) {
-  const lines = rejoinWrappedDoseUnits(text.split(/\r?\n/).map((line) => line.trim()));
+  const lines = splitPageLines(text);
+  const edgeIndexes = repeatedBoilerplateLines.size > 0 ? runningHeaderFooterIndexes(lines) : new Set<number>();
+  const keptIndexes = lines.flatMap((line, index) => {
+    if (line === "" || looksLikeMetadataNoise(line)) return [];
+    // Audit 2026-10-20 ING-B-02: a repeated line is only removed where it sits
+    // as a running header or footer, never from the body of the page.
+    if (edgeIndexes.has(index) && repeatedBoilerplateLines.has(normalizeRepeatedLine(line))) return [];
+    return [index];
+  });
+  const firstContent = keptIndexes[0];
+  const lastContent = keptIndexes[keptIndexes.length - 1];
+  const kept = new Set(
+    keptIndexes.filter(
+      (index) =>
+        !isIsolatedEdgeNumberLine(lines, index, keptIndexes) &&
+        !(
+          // A URL-only page (the address is both first and last line) is edge noise too.
+          (index === firstContent || index === lastContent) && looksLikeEdgeUrlNotice(lines[index])
+        ),
+    ),
+  );
   return lines
-    .filter((line) => {
-      if (line === "") return true;
-      if (looksLikeMetadataNoise(line)) return false;
-      if (repeatedBoilerplateLines.has(normalizeRepeatedLine(line))) return false;
-      return true;
-    })
+    .filter((line, index) => line === "" || kept.has(index))
     .join("\n")
-    .replace(/[ \t]+\n/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
+    .replace(trailingHorizontalWhitespaceBeforeNewlinePattern, "\n")
+    .replace(excessBlankLinesPattern, "\n\n")
     .trim();
 }
 
 function extractSectionHeadings(text: string) {
   return text
-    .split(/\r?\n/)
+    .split(lineBreakPattern)
     .map((line) => line.trim())
     .filter((line) => {
       if (!line || line.length < 4) return false;
       if (looksLikeMetadataNoise(line)) return false;
-      if (line.length < 90 && /^[A-Z][A-Za-z0-9\s,;:()\/\-\[\]]+$/.test(line)) return true;
-      if (/^\d+\.?\s+[A-Z]/.test(line) && line.length < 110) return true;
+      if (line.length < 90 && sectionHeadingTextPattern.test(line)) return true;
+      if (numberedSectionHeadingPattern.test(line) && line.length < 110) return true;
       return false;
     });
 }
@@ -196,17 +336,13 @@ function extractSectionHeadings(text: string) {
 function sectionAnchorId(heading: string | null) {
   if (!heading) return null;
   return (
-    heading
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "")
-      .slice(0, 40) || null
+    heading.toLowerCase().replace(nonAlphanumericRunPattern, "-").replace(edgeHyphenPattern, "").slice(0, 40) || null
   );
 }
 
 function headingLevel(heading: string | null, sectionPath: string[]) {
   if (!heading) return sectionPath.length > 0 ? Math.min(sectionPath.length, 6) : null;
-  const numbered = heading.match(/^(\d+(?:\.\d+){0,5})\b/);
+  const numbered = heading.match(headingNumberPrefixPattern);
   if (numbered) return Math.min(numbered[1].split(".").length, 6);
   return sectionPath.includes(heading)
     ? Math.max(1, sectionPath.indexOf(heading) + 1)
@@ -215,23 +351,23 @@ function headingLevel(heading: string | null, sectionPath: string[]) {
 
 function imageMatchScore(lookupText: string, sourceText: string) {
   if (!lookupText || !sourceText) return 0;
-  const source = new Set(sourceText.split(/\s+/).filter(Boolean));
+  const source = new Set(sourceText.split(whitespaceSplitPattern).filter(Boolean));
   const hits = lookupText
-    .split(/\s+/)
+    .split(whitespaceSplitPattern)
     .filter(Boolean)
     .filter((token) => source.has(token)).length;
   return hits;
 }
 
 function dedupeChunkFingerprint(text: string) {
-  return normalizeLookupText(text).replace(/\s+/g, " ").trim();
+  return normalizeLookupText(text).replace(whitespaceRunPattern, " ").trim();
 }
 
 const imageDataTagPattern =
   /\[\[IMAGE_DATA_START\]\][\s\S]*?\[\[IMAGE_DATA_END\]\]|\[\[IMAGE_DATA_OMITTED\]\][\s\S]*?\[\[\/IMAGE_DATA_OMITTED\]\]/g;
 
 function normalizeChunkKeyContent(content: string) {
-  return content.replace(imageDataTagPattern, " ").replace(/\s+/g, " ").trim().toLowerCase();
+  return content.replace(imageDataTagPattern, " ").replace(whitespaceRunPattern, " ").trim().toLowerCase();
 }
 
 // CI-4: a stable, position-independent identity for a chunk. Keyed on the document, the
@@ -283,8 +419,8 @@ function adaptiveChunkProfile(text: string, sectionPath: string[]) {
 
 export function chunkTextWithOverlap(text: string, chunkSize = env.CHUNK_SIZE, overlap = env.CHUNK_OVERLAP) {
   const clean = removePageNoise(normalizeExtractedGlyphs(text))
-    .replace(/[ \t]+\n/g, "\n")
-    .replace(/[ \t]+/g, " ")
+    .replace(trailingHorizontalWhitespaceBeforeNewlinePattern, "\n")
+    .replace(horizontalWhitespaceRunPattern, " ")
     .trim();
   if (!clean) return [];
   if (clean.length <= chunkSize) return [clean];
@@ -316,7 +452,7 @@ export function chunkTextWithOverlap(text: string, chunkSize = env.CHUNK_SIZE, o
           chunks.push(current.trim());
           current = "";
         }
-        chunks.push(...chunkTextBySentence(paragraph, chunkSize, overlap));
+        chunks.push(...chunkOversizedParagraph(paragraph, chunkSize, overlap));
         continue;
       }
 
@@ -337,7 +473,64 @@ export function chunkTextWithOverlap(text: string, chunkSize = env.CHUNK_SIZE, o
     return chunks.filter(Boolean);
   }
 
-  return chunkTextBySentence(clean, chunkSize, overlap);
+  return chunkOversizedParagraph(clean, chunkSize, overlap);
+}
+
+// Audit 2026-10-20 ING-B-03: the PDF extractor joins a table's title, its
+// markdown rows and any footnote with single newlines, so a table page is one
+// paragraph that isTableBlock rejects. Split such a paragraph into its prose
+// and table runs; each table run is chunked by rows with its header (and a
+// "Table ..." title line directly above it) repeated on every chunk.
+function chunkOversizedParagraph(paragraph: string, chunkSize: number, overlap: number) {
+  const lines = paragraph.split(lineBreakPattern);
+  const segments: Array<{ table: boolean; lines: string[] }> = [];
+  for (const line of lines) {
+    const table = tableRowPattern.test(line);
+    const last = segments[segments.length - 1];
+    if (last && last.table === table) last.lines.push(line);
+    else segments.push({ table, lines: [line] });
+  }
+  if (!segments.some((segment) => segment.table && segment.lines.length >= 2)) {
+    return chunkTextBySentence(paragraph, chunkSize, overlap);
+  }
+
+  const chunks: string[] = [];
+  const pushProse = (proseLines: string[]) => {
+    const prose = proseLines.join("\n").trim();
+    if (!prose) return;
+    chunks.push(...(prose.length > chunkSize ? chunkTextBySentence(prose, chunkSize, overlap) : [prose]));
+  };
+  const isTableSegment = (segment: (typeof segments)[number] | undefined) =>
+    Boolean(segment?.table && segment.lines.length >= 2);
+  // Footnote lines at the start of a prose run belong to the table before it.
+  const footnoteCounts = segments.map((segment, index) =>
+    !isTableSegment(segment) && isTableSegment(segments[index - 1]) ? tableFootnoteLineCount(segment.lines) : 0,
+  );
+  // A caption (or heading) at the end of a prose run belongs to the table after it.
+  const captions = segments.map((segment, index) =>
+    !isTableSegment(segment) && isTableSegment(segments[index + 1])
+      ? tableCaption(segment.lines.slice(footnoteCounts[index]))
+      : null,
+  );
+  segments.forEach((segment, index) => {
+    if (!isTableSegment(segment)) {
+      const body = segment.lines.slice(footnoteCounts[index]);
+      const caption = captions[index];
+      pushProse(caption ? body.slice(0, caption.start) : body);
+      return;
+    }
+    const caption = captions[index - 1]?.caption ?? "";
+    const next = segments[index + 1];
+    const footnote =
+      next && footnoteCounts[index + 1] > 0
+        ? next.lines
+            .slice(0, footnoteCounts[index + 1])
+            .map((line) => line.trim())
+            .join("\n")
+        : "";
+    chunks.push(...chunkTableBlock(segment.lines.join("\n"), chunkSize, caption, footnote));
+  });
+  return chunks;
 }
 
 function readableOverlapTail(text: string, overlap: number) {
@@ -348,25 +541,96 @@ function readableOverlapTail(text: string, overlap: number) {
 }
 
 const tableRowPattern = /^\s*\|.*\|\s*$/;
+const tableCaptionLinePattern = /^table\b/i;
+// Chunker 1.3.1: the caption search looks a little further back for a wrapped
+// "Table ..." title, and a long title is truncated at a word boundary rather
+// than dropped. When truncated, the full title also stays in the prose.
+const maxTableCaptionLines = 6;
+const maxTableCaptionLength = 300;
+// A non-"Table" caption is the nearest preceding short heading-like line.
+const maxHeadingCaptionLength = 160;
+// A heading caption does not end like a sentence or a wrapped lead-in, and does not
+// start lowercase (a wrapped sentence tail).
+const headingCaptionEndPattern = /[^.!?:,;]$/;
+const headingCaptionStartPattern = /^[\p{Lu}\p{N}]/u;
+const sentenceEndLinePattern = /[.!?]$/;
+// Owner ruling 21 Oct 2026: only symbol markers, "Note" and "Source" open a footnote, so a
+// numbered or lettered dosing list after a table stays prose.
+const tableFootnoteLinePattern = /^(?:[*†‡§]+|notes?\b|sources?\b)/i;
+const maxTableFootnoteLines = 4;
+const maxTableFootnoteLength = 400;
+
+// Returns the caption carried onto every chunk of the following table and the
+// index where it starts in `lines` (lines from `start` are moved out of prose).
+function tableCaption(lines: string[]): { start: number; caption: string } | null {
+  const trimmed = lines.map((line) => line.trim());
+  const earliest = Math.max(0, trimmed.length - maxTableCaptionLines);
+  for (let index = trimmed.length - 1; index >= earliest; index -= 1) {
+    if (!tableCaptionLinePattern.test(trimmed[index] ?? "")) continue;
+    const full = trimmed.slice(index).filter(Boolean).join("\n");
+    if (full.length <= maxTableCaptionLength) return { start: index, caption: full };
+    return {
+      start: trimmed.length,
+      caption: truncateAtWordBoundary(full.replace(whitespaceRunPattern, " "), maxTableCaptionLength),
+    };
+  }
+  let last = trimmed.length - 1;
+  while (last >= 0 && !trimmed[last]) last -= 1;
+  const candidate = last >= 0 ? trimmed[last] : "";
+  let before = last - 1;
+  while (before >= 0 && !trimmed[before]) before -= 1;
+  // The line above must end a sentence (or not exist, or be separated by a blank line),
+  // so the candidate is not the tail of a sentence the extractor wrapped.
+  const standsAlone = before < 0 || before < last - 1 || sentenceEndLinePattern.test(trimmed[before]);
+  if (
+    candidate &&
+    candidate.length <= maxHeadingCaptionLength &&
+    headingCaptionEndPattern.test(candidate) &&
+    headingCaptionStartPattern.test(candidate) &&
+    standsAlone
+  ) {
+    return { start: last, caption: candidate };
+  }
+  return null;
+}
+
+// How many lines at the start of a prose run read as the preceding table's
+// footnotes ("* ...", "a) ...", "Note: ...", "Source: ...").
+function tableFootnoteLineCount(lines: string[]) {
+  let count = 0;
+  let length = 0;
+  for (const line of lines.slice(0, maxTableFootnoteLines)) {
+    const text = line.trim();
+    if (!text || !tableFootnoteLinePattern.test(text)) break;
+    length += text.length + 1;
+    if (length > maxTableFootnoteLength) return 0;
+    count += 1;
+  }
+  return count;
+}
 
 function isTableBlock(block: string) {
-  const lines = block.split(/\r?\n/).filter((line) => line.trim().length > 0);
+  const lines = block.split(lineBreakPattern).filter((line) => line.trim().length > 0);
   if (lines.length < 2) return false;
   return lines.every((line) => tableRowPattern.test(line));
 }
 
-function chunkTableBlock(block: string, chunkSize: number) {
-  const lines = block.split(/\r?\n/).filter((line) => line.trim().length > 0);
-  if (block.length <= chunkSize) return [block.trim()];
+function chunkTableBlock(block: string, chunkSize: number, caption = "", footnote = "") {
+  const lines = block.split(lineBreakPattern).filter((line) => line.trim().length > 0);
+  const captioned = [caption, block.trim(), footnote].filter(Boolean).join("\n");
+  if (captioned.length <= chunkSize) return [captioned];
 
-  const separatorIndex = lines.findIndex((line) => /^\s*\|?[\s:|-]+\|?\s*$/.test(line) && line.includes("-"));
+  const separatorIndex = lines.findIndex((line) => tableSeparatorRowPattern.test(line) && line.includes("-"));
   const headerLines = separatorIndex > 0 ? lines.slice(0, separatorIndex + 1) : lines.slice(0, 1);
   const bodyLines = lines.slice(headerLines.length);
-  const header = headerLines.join("\n");
+  const header = [caption, ...headerLines].filter(Boolean).join("\n");
+  // Chunker 1.3.1: a single row longer than the room left under the header is
+  // split at word boundaries into pieces that each repeat the header.
+  const rowBudget = Math.max(40, chunkSize - header.length - 1);
 
   const chunks: string[] = [];
   let current = header;
-  for (const row of bodyLines) {
+  for (const row of bodyLines.flatMap((line) => splitOversizedRow(line, rowBudget))) {
     const candidate = `${current}\n${row}`;
     if (candidate.length > chunkSize && current !== header) {
       chunks.push(current.trim());
@@ -376,7 +640,50 @@ function chunkTableBlock(block: string, chunkSize: number) {
     }
   }
   if (current.trim()) chunks.push(current.trim());
-  return chunks.length > 0 ? chunks : [block.trim()];
+  if (chunks.length === 0) return [captioned];
+  if (footnote) {
+    // Keep the size cap: append to the last chunk only when it fits, otherwise emit the
+    // footnote with the repeated header as its own chunk.
+    const appended = `${chunks[chunks.length - 1]}\n${footnote}`;
+    if (appended.length <= chunkSize) chunks[chunks.length - 1] = appended;
+    else chunks.push(...footnoteChunks(header, footnote, chunkSize));
+  }
+  return chunks;
+}
+
+// The fallback footnote chunk must also respect the cap: repeat the header only when
+// header + footnote fits, otherwise split the footnote at word boundaries on its own.
+function footnoteChunks(header: string, footnote: string, chunkSize: number) {
+  const withHeader = `${header}\n${footnote}`;
+  if (withHeader.length <= chunkSize) return [withHeader];
+  const pieces: string[] = [];
+  let rest = footnote.trim();
+  while (rest.length > chunkSize) {
+    const cut = rest.slice(0, chunkSize).lastIndexOf(" ");
+    const at = cut > chunkSize * 0.5 ? cut : chunkSize;
+    pieces.push(rest.slice(0, at).trim());
+    rest = rest.slice(at).trim();
+  }
+  if (rest) pieces.push(rest);
+  return pieces;
+}
+
+const rowContinuationMarker = "(row continued) ";
+
+function splitOversizedRow(row: string, budget: number) {
+  if (row.length <= budget) return [row];
+  const pieces: string[] = [];
+  let rest = row.trim();
+  // Continuation pieces carry the marker, so they get that much less room.
+  while (rest.length > (pieces.length === 0 ? budget : budget - rowContinuationMarker.length)) {
+    const room = Math.max(1, pieces.length === 0 ? budget : budget - rowContinuationMarker.length);
+    const cut = rest.slice(0, room).lastIndexOf(" ");
+    const at = cut > room * 0.5 ? cut : room;
+    pieces.push(rest.slice(0, at).trim());
+    rest = rest.slice(at).trim();
+  }
+  if (rest) pieces.push(rest);
+  return pieces.map((piece, index) => (index === 0 ? piece : `${rowContinuationMarker}${piece}`));
 }
 
 const clinicalProhibitionPattern =
@@ -387,10 +694,15 @@ function readableOverlapStart(clean: string, end: number, overlap: number) {
   if (overlap <= 0) return end;
   let start = Math.max(0, end - overlap);
 
-  while (start > 0 && start < end && /\S/.test(clean[start - 1] ?? "") && /\S/.test(clean[start] ?? "")) {
+  while (
+    start > 0 &&
+    start < end &&
+    nonWhitespaceCharPattern.test(clean[start - 1] ?? "") &&
+    nonWhitespaceCharPattern.test(clean[start] ?? "")
+  ) {
     start -= 1;
   }
-  while (start < end && /\s/.test(clean[start] ?? "")) {
+  while (start < end && whitespaceCharPattern.test(clean[start] ?? "")) {
     start += 1;
   }
 
@@ -398,11 +710,14 @@ function readableOverlapStart(clean: string, end: number, overlap: number) {
   let sentenceStart = start;
   while (
     sentenceStart > 0 &&
-    !(/[.!?]/.test(clean[sentenceStart - 1] ?? "") && /\s/.test(clean[sentenceStart] ?? ""))
+    !(
+      sentenceTerminalPunctuationPattern.test(clean[sentenceStart - 1] ?? "") &&
+      whitespaceCharPattern.test(clean[sentenceStart] ?? "")
+    )
   ) {
     sentenceStart -= 1;
   }
-  while (sentenceStart < end && /\s/.test(clean[sentenceStart] ?? "")) sentenceStart += 1;
+  while (sentenceStart < end && whitespaceCharPattern.test(clean[sentenceStart] ?? "")) sentenceStart += 1;
   const sentenceWindow = clean.slice(sentenceStart, end);
   const boundary = sentenceEndPattern.exec(sentenceWindow);
   const governingSentence = sentenceWindow.slice(0, boundary?.index ?? sentenceWindow.length);
@@ -414,7 +729,7 @@ function readableOverlapStart(clean: string, end: number, overlap: number) {
 function chunkTextBySentence(clean: string, chunkSize: number, overlap: number) {
   const chunks: string[] = [];
   // Record actual offsets once; never scan the remaining document for every chunk.
-  const sentenceEnds = Array.from(clean.matchAll(new RegExp(sentenceBoundary.source, "g")), (match) => match.index);
+  const sentenceEnds = Array.from(clean.matchAll(sentenceBoundaryGlobal), (match) => match.index);
   if (sentenceEnds.at(-1) !== clean.length) sentenceEnds.push(clean.length);
   let boundaryIndex = 0;
   let start = 0;
@@ -457,16 +772,13 @@ function truncateAtWordBoundary(value: string, limit: number) {
   const clauseCut = Math.max(window.lastIndexOf(". "), window.lastIndexOf("; "), window.lastIndexOf(": "));
   const wordCut = window.lastIndexOf(" ");
   const cut = clauseCut >= limit * 0.6 ? clauseCut + 1 : wordCut > 0 ? wordCut : window.length;
-  const trimmed = window
-    .slice(0, cut)
-    .replace(/[\s,;:([{\-–—]+$/, "")
-    .trim();
+  const trimmed = window.slice(0, cut).replace(trailingClausePunctuationPattern, "").trim();
   return trimmed ? `${trimmed}...` : `${window.trim()}...`;
 }
 
 function compactImageText(value: string | null | undefined, limit = 420) {
   const text = String(value ?? "")
-    .replace(/\s+/g, " ")
+    .replace(whitespaceRunPattern, " ")
     .trim();
   if (!text) return "";
   return truncateAtWordBoundary(text, limit);
@@ -474,18 +786,18 @@ function compactImageText(value: string | null | undefined, limit = 420) {
 
 function compactSynopsisText(value: string | null | undefined, limit = 720) {
   const withoutImageTags = String(value ?? "")
-    .replace(/\[\[IMAGE_DATA_START\]\][\s\S]*?\[\[IMAGE_DATA_END\]\]/g, " ")
-    .replace(/\[\[IMAGE_DATA_OMITTED\]\][\s\S]*?\[\[\/IMAGE_DATA_OMITTED\]\]/g, " ");
+    .replace(imageDataStartEndBlockPattern, " ")
+    .replace(imageDataOmittedBlockPattern, " ");
   const sentences = withoutImageTags
-    .split(/(?<=[.!?])\s+|\n+/)
+    .split(sentenceOrLineSplitPattern)
     // Extraction glues the protective-marking header onto body sentences
     // ("OFFICIAL: OFFICIAL Lithium Therapy …"); shed the banner prefix so it
     // never enters the stored synopsis.
-    .map((sentence) => stripClassificationBanner(sentence.replace(/\s+/g, " ").trim()).trim())
+    .map((sentence) => stripClassificationBanner(sentence.replace(whitespaceRunPattern, " ").trim()).trim())
     .filter((sentence) => sentence.length >= 12 && !boilerplateSynopsisPattern.test(sentence));
   const highYieldSentences = sentences.filter((sentence) => highYieldSectionPattern.test(sentence));
   const selected = (highYieldSentences.length ? highYieldSentences : sentences).slice(0, 4).join(" ");
-  const compact = selected.replace(/\s+/g, " ").trim();
+  const compact = selected.replace(whitespaceRunPattern, " ").trim();
   if (!compact) return "";
   return truncateAtWordBoundary(compact, limit);
 }
@@ -558,7 +870,9 @@ function nativeTableBlock(image: ChunkImages[number]) {
   const rows = image.tableRows;
   if (!Array.isArray(columns) || columns.length < 2 || !Array.isArray(rows)) return null;
   const normalizeCell = (cell: unknown) =>
-    typeof cell === "string" && !/[\r\n|\\]/.test(cell) ? cell.replace(/\s+/g, " ").trim() : null;
+    typeof cell === "string" && !invalidTableCellCharPattern.test(cell)
+      ? cell.replace(whitespaceRunPattern, " ").trim()
+      : null;
   const normalizedColumns = columns.map(normalizeCell);
   if (normalizedColumns.some((cell) => !cell)) return null;
   const dataRows: string[][] = [];
@@ -570,7 +884,7 @@ function nativeTableBlock(image: ChunkImages[number]) {
     if (cells.some((cell) => !cell)) return null;
     const checked = cells as string[];
     if (checked.every((cell, index) => cell === normalizedColumns[index])) continue;
-    if (checked.every((cell) => /^:?-{3,}:?$/.test(cell))) continue;
+    if (checked.every((cell) => markdownTableAlignmentCellPattern.test(cell))) continue;
     dataRows.push(checked);
   }
   if (!dataRows.length) return null;
@@ -579,9 +893,7 @@ function nativeTableBlock(image: ChunkImages[number]) {
 
 function narrativeTableBlocks(text: string) {
   let openMarker: string | null = null;
-  for (const marker of text.matchAll(
-    /\[\[(IMAGE_DATA_START|IMAGE_DATA_END|IMAGE_DATA_OMITTED|\/IMAGE_DATA_OMITTED)\]\]/g,
-  )) {
+  for (const marker of text.matchAll(imageDataMarkerGlobalPattern)) {
     if (marker[1] === "IMAGE_DATA_START" || marker[1] === "IMAGE_DATA_OMITTED") {
       if (openMarker) return null;
       openMarker = marker[1];
@@ -593,8 +905,8 @@ function narrativeTableBlocks(text: string) {
   }
   if (openMarker) return null;
   const narrative = text.replace(imageDataTagPattern, " ");
-  if (/\[\[\/?IMAGE_DATA|\bIMAGE_DATA_/.test(narrative)) return null;
-  const lines = narrative.split(/\r?\n/).map((line) => line.trim());
+  if (danglingImageDataMarkerPattern.test(narrative)) return null;
+  const lines = narrative.split(lineBreakPattern).map((line) => line.trim());
   const blocks: Array<{ columns: string[]; rows: string[][] }> = [];
   for (let index = 0; index < lines.length; index += 1) {
     if (!lines[index].startsWith("|")) continue;
@@ -606,19 +918,19 @@ function narrativeTableBlocks(text: string) {
         line
           .slice(1, -1)
           .split("|")
-          .map((cell) => cell.replace(/\s+/g, " ").trim()),
+          .map((cell) => cell.replace(whitespaceRunPattern, " ").trim()),
       );
       index += 1;
     }
     index -= 1;
     const [columns, ...remaining] = rows;
     if (columns.some((cell) => !cell)) return null;
-    if (remaining[0]?.every((cell) => /^:?-{3,}:?$/.test(cell))) {
+    if (remaining[0]?.every((cell) => markdownTableAlignmentCellPattern.test(cell))) {
       if (remaining[0].length !== columns.length) return null;
       remaining.shift();
     }
     if (remaining.some((row) => row.length !== columns.length || row.some((cell) => !cell))) return null;
-    if (remaining.some((row) => row.every((cell) => /^:?-{3,}:?$/.test(cell)))) return null;
+    if (remaining.some((row) => row.every((cell) => markdownTableAlignmentCellPattern.test(cell)))) return null;
     if (remaining.length) blocks.push({ columns, rows: remaining });
   }
   return blocks;
@@ -652,13 +964,13 @@ function matchesNativeTableBlock(
     return false;
   const table = nativeTableBlock(image);
   if (!table) return false;
-  const units =
-    /^(?:mg|mcg|µg|μg|ug|g|kg|ng|pg|ml|l|dl|h|hr|hrs|hour|hours|min|s|sec|second|seconds|day|days|wk|week|weeks|mmol|mol|meq|iu|u|unit|units|mmhg|cm|bpm|x)$/i;
   const hasRowIdentifier = table.rows.some((row) => {
     // First slice supports explicit labels, not a semantic classifier for plain words/units.
-    if (!/^[A-Z0-9]+(?:[-_][A-Z0-9]+)+$/.test(row[0]) || !/[A-Z]/.test(row[0])) return false;
-    const withoutNumbers = row[0].replace(/[+-]?(?:\d+(?:[.,]\d+)?|\.\d+)(?:e[+-]?\d+)?/gi, " ");
-    return withoutNumbers.split(/[^\p{L}]+/u).some((word) => word && !units.test(word));
+    if (!explicitRowIdentifierShapePattern.test(row[0]) || !uppercaseAsciiLetterPattern.test(row[0])) return false;
+    const withoutNumbers = row[0].replace(numericLiteralGlobalPattern, " ");
+    return withoutNumbers
+      .split(nonUnicodeLetterSplitPattern)
+      .some((word) => word && !tableIdentifierUnitPattern.test(word));
   });
   if (!hasRowIdentifier) return false;
   const rowSignatures = new Set(table.rows.map((row) => JSON.stringify(row)));
@@ -700,22 +1012,22 @@ function matchesNativeTableBlock(
 }
 
 function pageLocalExcerptForChunk(chunkExcerpt: string, pageText: string) {
-  const compactPage = pageText.replace(/\s+/g, " ").trim();
+  const compactPage = pageText.replace(whitespaceRunPattern, " ").trim();
   if (!compactPage) return chunkExcerpt;
 
   const chunkWords = new Set(
     normalizeLookupText(chunkExcerpt)
-      .split(/\s+/)
+      .split(whitespaceSplitPattern)
       .filter((word) => word.length >= 3),
   );
   if (chunkWords.size === 0) return compactPage;
 
   const candidates = compactPage
-    .split(/(?<=[.!?])\s+|\n+/)
+    .split(sentenceOrLineSplitPattern)
     .map((part) => part.trim())
     .filter(Boolean)
     .map((part) => {
-      const words = normalizeLookupText(part).split(/\s+/).filter(Boolean);
+      const words = normalizeLookupText(part).split(whitespaceSplitPattern).filter(Boolean);
       const hits = words.filter((word) => chunkWords.has(word)).length;
       return { part, hits };
     })
@@ -768,21 +1080,23 @@ function emitChunk(args: {
       const label = normalizeLookupText(image.tableLabel ?? "");
       const title = normalizeLookupText(image.tableTitle ?? "");
       const caption = normalizeLookupText(image.caption);
-      const imageText = [label, title, caption].filter(Boolean).flatMap((value) => value.split(/\s+/).filter(Boolean));
+      const imageText = [label, title, caption]
+        .filter(Boolean)
+        .flatMap((value) => value.split(whitespaceSplitPattern).filter(Boolean));
       const imageLookup = imageText.join(" ");
       const headerBoost = heading && imageText.some((token) => normalizeLookupText(heading).includes(token)) ? 1 : 0;
       const direct = imageMatchScore(caption, contentLookup) >= 1 || imageMatchScore(imageLookup, contentLookup) >= 2;
       const pathHit =
         sectionContext.some((candidate) =>
           normalizeLookupText(candidate)
-            .split(/\s+/)
+            .split(whitespaceSplitPattern)
             .some((token) => imageLookup.includes(token)),
         ) && image.sourceKind !== "embedded";
       return direct || pathHit || (image.sourceKind === "table_crop" && headerBoost > 0) || headerBoost >= 1;
     })
     .map((image) => image.id);
 
-  const excerpt = content.replace(/\[\[IMAGE_DATA_START\]\][\s\S]*?\[\[IMAGE_DATA_END\]\]/g, "").trim();
+  const excerpt = content.replace(imageDataStartEndBlockPattern, "").trim();
   args.chunks.push({
     document_id: args.documentId,
     page_number: args.pageNumber,
@@ -941,7 +1255,7 @@ function buildDocumentModeChunks(inputs: ChunkInput[]) {
       images: input.images ?? [],
       metadata: input.metadata ?? {},
       sectionHeadings: extractSectionHeadings(cleanedText),
-      wordSet: new Set(normalizeLookupText(cleanedText).split(/\s+/).filter(Boolean)),
+      wordSet: new Set(normalizeLookupText(cleanedText).split(whitespaceSplitPattern).filter(Boolean)),
     };
   });
 
@@ -974,7 +1288,7 @@ function buildDocumentModeChunks(inputs: ChunkInput[]) {
 
     sectionChunks.forEach((content, pageChunkIndex) => {
       const contentWords = new Set(
-        normalizeLookupText(content.replace(imageDataTagPattern, " ")).split(/\s+/).filter(Boolean),
+        normalizeLookupText(content.replace(imageDataTagPattern, " ")).split(whitespaceSplitPattern).filter(Boolean),
       );
       const contributing = attributeChunkToPages(contentWords, section.pages);
       const pageNumbers = contributing

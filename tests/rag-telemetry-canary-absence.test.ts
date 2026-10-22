@@ -125,4 +125,82 @@ describe("B1 telemetry canary absence", () => {
     });
     expect(findCanaryLeaks(JSON.stringify(shape), canaryTokens)).toEqual([]);
   });
+
+  it("generation degradation telemetry projection (#231) drops contaminated canary payloads", async () => {
+    const { generationDegradationTelemetryFields } = await loadTelemetryModule("true");
+    const contaminated = {
+      generationDegradation: {
+        version: "generation-degradation-v1",
+        policy: "legacy-generation-policy-v1",
+        promptVersion: canaryTokens[0],
+        schemaVersion: "clinical-rag-answer-schema-v4",
+        cacheVersion: "rag-cache-v25",
+        routeBudgetMs: 35000,
+        observationComplete: true,
+        reason: canaryTokens[1] ?? canaryTokens[0],
+        attempts: [
+          {
+            ordinal: 1,
+            stage: "initial",
+            route: canaryTokens[0],
+            timeoutMs: 30000,
+            outputBudget: "standard",
+            retrievalHealthy: true,
+            coverage: "complete",
+            contextCount: 2,
+            outcome: canaryTokens[0],
+            responseReceived: false,
+            latencyMs: 12000,
+            outputChars: 0,
+            outputTokens: 0,
+            reasoningTokens: 0,
+            qualityReason: canaryTokens[0],
+            retryAdmission: "not_requested",
+            retryRemainingMs: null,
+            parseFailed: false,
+            verificationFailed: false,
+          },
+        ],
+        completedResponseCount: 0,
+        totalAttemptLatencyMs: 12000,
+        completedOutput: { useful: false, validCitationCount: 0, unverifiedNumericCount: 0 },
+      },
+    };
+    const emitted = generationDegradationTelemetryFields(contaminated as never);
+    expect(emitted).toEqual({});
+    expect(findCanaryLeaks(JSON.stringify(emitted), canaryTokens)).toEqual([]);
+  });
+});
+
+describe("scalar degradation metadata", () => {
+  it("generationDegradationLogMetadata (#231) drops contaminated reason/attempt fields and never leaks canaries", async () => {
+    const { generationDegradationLogMetadata } = await import("../src/lib/rag/rag-generation-degradation");
+    const contaminated = {
+      schemaVersion: "rag-generation-degradation-v1",
+      promptVersion: "clinical-rag-answer-v6",
+      answerSchemaVersion: "clinical-rag-answer-schema-v5",
+      routeBudgetMs: 35000,
+      totalAttemptLatencyMs: 30000,
+      completedResponseCount: 0,
+      degraded: true,
+      reason: canaryTokens[0],
+      attempts: [
+        {
+          attempt: 1,
+          route: "strong",
+          timeoutMs: 30000,
+          outputBudget: "standard",
+          retrievalHealthy: true,
+          coverage: "complete",
+          contextCount: 2,
+          latencyMs: 30000,
+          outcome: "timeout",
+          failureReason: canaryTokens[1] ?? canaryTokens[0],
+        },
+      ],
+    };
+    const emitted = generationDegradationLogMetadata(contaminated as never);
+    expect(emitted).toEqual({});
+    expect(findCanaryLeaks(JSON.stringify(emitted), canaryTokens)).toEqual([]);
+  });
 });

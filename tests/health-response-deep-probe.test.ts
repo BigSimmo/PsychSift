@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const DEEP_TOKEN = "deep-probe-secret";
 
@@ -79,10 +79,10 @@ function mockSupabase(healthy: boolean, options: { fails?: boolean; timesOut?: b
   return { readSiteContentHealthEvidence };
 }
 
-async function deepProbe() {
+async function deepProbe(query = "deep=1") {
   const { healthResponse } = await import("../src/lib/health-response");
   const response = await healthResponse(
-    new Request("http://localhost/api/health?deep=1", { headers: { "x-health-deep-token": DEEP_TOKEN } }),
+    new Request(`http://localhost/api/health?${query}`, { headers: { "x-health-deep-token": DEEP_TOKEN } }),
   );
   return { response, body: (await response.json()) as Record<string, unknown> };
 }
@@ -116,6 +116,65 @@ describe("authorized deep health probe diagnostics", () => {
       pricing: { inputPerMTok: 1.25, cachedInputPerMTok: 0.125, outputPerMTok: 10 },
       alertDailyUsd: 25,
     });
+  });
+
+  it("adds a trailing answer-quality snapshot as long as the digest interval (audit EVAL-02)", async () => {
+    mockEnv();
+    mockSupabase(true);
+    const answerSloSnapshot = vi.fn(async (_client: unknown, windowMinutes = 60) => ({
+      windowMinutes,
+      totalQueries: windowMinutes === 60 ? 0 : 12,
+    }));
+    vi.doMock("@/lib/observability/answer-slo", () => ({ answerSloSnapshot }));
+    vi.doMock("@/lib/observability/spend-metrics", () => ({ spendSnapshot: vi.fn(async () => ({})) }));
+    const { ANSWER_QUALITY_WINDOW_MINUTES } = await import("../scripts/lib/operational-alerts.mjs");
+
+    const { response, body } = await deepProbe();
+
+    expect(response.status).toBe(200);
+    // The hourly snapshot keeps feeding the hybrid-RPC identity history; the trailing one is
+    // the window every answer-rate alert reads, and it must match the alert policy exactly.
+    expect(answerSloSnapshot).toHaveBeenCalledTimes(2);
+    expect(answerSloSnapshot).toHaveBeenCalledWith({ id: "admin-client" });
+    expect(answerSloSnapshot).toHaveBeenCalledWith({ id: "admin-client" }, ANSWER_QUALITY_WINDOW_MINUTES);
+    expect(body.slo).toMatchObject({ windowMinutes: 60, totalQueries: 0 });
+    expect(body.sloTrailing).toMatchObject({ windowMinutes: ANSWER_QUALITY_WINDOW_MINUTES, totalQueries: 12 });
+  });
+
+  it("adds the 24-hour snapshot only when the daily health summary asks for it", async () => {
+    mockEnv();
+    mockSupabase(true);
+    const answerSloSnapshot = vi.fn(async (_client: unknown, windowMinutes = 60) => ({ windowMinutes }));
+    vi.doMock("@/lib/observability/answer-slo", () => ({ answerSloSnapshot }));
+    vi.doMock("@/lib/observability/spend-metrics", () => ({ spendSnapshot: vi.fn(async () => ({})) }));
+
+    const plain = await deepProbe();
+    expect(plain.body).not.toHaveProperty("sloDaily");
+    expect(answerSloSnapshot).toHaveBeenCalledTimes(2);
+
+    const daily = await deepProbe("deep=1&answer_window=daily");
+    expect(daily.body.sloDaily).toEqual({ windowMinutes: 1440 });
+    expect(answerSloSnapshot).toHaveBeenCalledWith({ id: "admin-client" }, 1440);
+  });
+
+  it("keeps the hourly snapshot when only the trailing snapshot query fails", async () => {
+    mockEnv();
+    mockSupabase(true);
+    const answerSloSnapshot = vi.fn(async (_client: unknown, windowMinutes = 60) => {
+      if (windowMinutes !== 60) throw new Error("trailing slo query failed");
+      return { windowMinutes, totalQueries: 3 };
+    });
+    vi.doMock("@/lib/observability/answer-slo", () => ({ answerSloSnapshot }));
+    vi.doMock("@/lib/observability/spend-metrics", () => ({ spendSnapshot: vi.fn(async () => ({})) }));
+
+    const { response, body } = await deepProbe();
+
+    expect(response.status).toBe(200);
+    expect(body.slo).toMatchObject({ windowMinutes: 60, totalQueries: 3 });
+    // A current build marks the failed trailing query explicitly, so the digest reports answer
+    // quality as unknown instead of falling back to the hourly-only rules of an older build.
+    expect(body.sloTrailing).toEqual({ windowMinutes: 360, unavailable: true });
+    expect(JSON.stringify(body)).not.toContain("query failed");
   });
 
   it("keeps the probe healthy when a diagnostic snapshot query fails", async () => {
@@ -229,6 +288,212 @@ describe("authorized deep health probe diagnostics", () => {
     expect(body.coalescing).toBeUndefined();
     expect(answerSloSnapshot).not.toHaveBeenCalled();
     expect(spendSnapshot).not.toHaveBeenCalled();
+  });
+});
+
+// Audit F-10: the storage cleanup backlog reaches the ops digest only through the deep probe.
+describe("the storage cleanup backlog snapshot", () => {
+  const backlog = { pending: 1, failed: 2, outstanding: 3, oldestOutstandingAt: "2026-10-18T00:00:00.000Z" };
+
+  function mockBacklog(impl: () => Promise<unknown>) {
+    const storageCleanupBacklogSnapshot = vi.fn(impl);
+    vi.doMock("@/lib/observability/answer-slo", () => ({ answerSloSnapshot: vi.fn(async () => null) }));
+    vi.doMock("@/lib/observability/spend-metrics", () => ({ spendSnapshot: vi.fn(async () => null) }));
+    vi.doMock("@/lib/observability/cleanup-backlog", () => ({ storageCleanupBacklogSnapshot }));
+    return storageCleanupBacklogSnapshot;
+  }
+
+  it("is reported to the token-gated deep probe with the admin client", async () => {
+    mockEnv();
+    mockSupabase(true);
+    const snapshot = mockBacklog(async () => backlog);
+
+    const { response, body } = await deepProbe();
+
+    expect(response.status).toBe(200);
+    expect(body.storageCleanup).toEqual(backlog);
+    expect(snapshot).toHaveBeenCalledWith({ id: "admin-client" });
+  });
+
+  it("is dropped, without flipping liveness or leaking the error, when its query fails", async () => {
+    mockEnv();
+    mockSupabase(true);
+    mockBacklog(async () => {
+      throw new Error("private cleanup query failure");
+    });
+
+    const { response, body } = await deepProbe();
+
+    expect(response.status).toBe(200);
+    expect(body.storageCleanup).toBeUndefined();
+    expect(JSON.stringify(body)).not.toContain("private cleanup query failure");
+  });
+
+  it("never runs for readiness or an unauthenticated deep probe", async () => {
+    mockEnv();
+    mockSupabase(true);
+    const snapshot = mockBacklog(async () => backlog);
+    const { healthResponse } = await import("../src/lib/health-response");
+
+    const readiness = await healthResponse(
+      new Request("http://localhost/api/health/ready", { headers: { "x-health-deep-token": DEEP_TOKEN } }),
+      { forceDeep: true, allowUnauthenticatedDeep: true, probes: "readiness" },
+    );
+    const anonymous = await healthResponse(new Request("http://localhost/api/health?deep=1"), {
+      allowUnauthenticatedDeep: true,
+    });
+
+    expect(((await readiness.json()) as Record<string, unknown>).storageCleanup).toBeUndefined();
+    expect(((await anonymous.json()) as Record<string, unknown>).storageCleanup).toBeUndefined();
+    expect(snapshot).not.toHaveBeenCalled();
+  });
+
+  it("is suppressed when an authorized caller opts out", async () => {
+    mockEnv();
+    mockSupabase(true);
+    const snapshot = mockBacklog(async () => backlog);
+    const { healthResponse } = await import("../src/lib/health-response");
+
+    const response = await healthResponse(
+      new Request("http://localhost/api/health?deep=1", { headers: { "x-health-deep-token": DEEP_TOKEN } }),
+      { includeStorageCleanup: false },
+    );
+
+    expect(((await response.json()) as Record<string, unknown>).storageCleanup).toBeUndefined();
+    expect(snapshot).not.toHaveBeenCalled();
+  });
+});
+
+describe("storageCleanupBacklogSnapshot", () => {
+  beforeEach(() => {
+    // The describe block above mocks this module for the probe; these tests need the real one.
+    vi.doUnmock("@/lib/observability/cleanup-backlog");
+  });
+
+  type Call = { table: string; columns: string; options?: unknown; filters: Array<[string, unknown]> };
+
+  function fakeClient(resolve: (call: Call) => unknown) {
+    const calls: Call[] = [];
+    const client = {
+      from(table: string) {
+        return {
+          select(columns: string, options?: unknown) {
+            const call: Call = { table, columns, options, filters: [] };
+            calls.push(call);
+            const builder = {
+              eq(column: string, value: unknown) {
+                call.filters.push([`eq:${column}`, value]);
+                return builder;
+              },
+              lte(column: string, value: unknown) {
+                call.filters.push([`lte:${column}`, value]);
+                return builder;
+              },
+              or(filters: string) {
+                call.filters.push(["or", filters]);
+                return builder;
+              },
+              order(column: string, value: unknown) {
+                call.filters.push([`order:${column}`, value]);
+                return builder;
+              },
+              limit(count: number) {
+                call.filters.push(["limit", count]);
+                return builder;
+              },
+              then(onFulfilled: (value: unknown) => unknown, onRejected?: (reason: unknown) => unknown) {
+                return Promise.resolve(resolve(call)).then(onFulfilled, onRejected);
+              },
+            };
+            return builder;
+          },
+        };
+      },
+    };
+    return { client, calls };
+  }
+
+  it("counts only actionable jobs and reads only the oldest actionable timestamp", async () => {
+    vi.resetModules();
+    const { storageCleanupBacklogSnapshot } = await import("../src/lib/observability/cleanup-backlog");
+    const now = new Date("2026-10-19T12:00:00.000Z");
+    const { client, calls } = fakeClient((call) => {
+      const status = call.filters.find(([key]) => key === "eq:status")?.[1];
+      if (status === "pending") return { count: 2, error: null };
+      if (status === "failed") return { count: 5, error: null };
+      if (status === "processing") return { count: 1, error: null };
+      return { data: [{ created_at: "2026-10-17T03:04:05.000Z" }], error: null };
+    });
+
+    await expect(storageCleanupBacklogSnapshot(client as never, now)).resolves.toEqual({
+      pending: 2,
+      failed: 5,
+      expiredClaims: 1,
+      outstanding: 8,
+      oldestOutstandingAt: "2026-10-17T03:04:05.000Z",
+    });
+    expect(calls.every((call) => call.table === "storage_cleanup_jobs")).toBe(true);
+    // Head-only counts, and the age lookup selects nothing but created_at.
+    expect(calls.filter((call) => call.columns === "id").map((call) => call.options)).toEqual([
+      { count: "exact", head: true },
+      { count: "exact", head: true },
+      { count: "exact", head: true },
+    ]);
+    // A governed public-source row is not counted before its cleanup deadline; an expired
+    // processing claim is, because the drain reclaims it.
+    const due =
+      'public_source_cleanup_not_before.is.null,public_source_cleanup_not_before.lte."2026-10-19T12:00:00.000Z"';
+    const countFilters = calls.filter((call) => call.columns === "id").map((call) => call.filters);
+    expect(countFilters).toEqual([
+      [
+        ["eq:status", "pending"],
+        ["or", due],
+      ],
+      [
+        ["eq:status", "failed"],
+        ["or", due],
+      ],
+      [
+        ["eq:status", "processing"],
+        ["lte:public_source_claim_expires_at", "2026-10-19T12:00:00.000Z"],
+      ],
+    ]);
+    expect(calls.find((call) => call.columns === "created_at")?.filters).toEqual([
+      [
+        "or",
+        `and(status.in.(pending,failed),or(${due})),and(status.eq.processing,public_source_claim_expires_at.lte."2026-10-19T12:00:00.000Z")`,
+      ],
+      ["order:created_at", { ascending: true }],
+      ["limit", 1],
+    ]);
+  });
+
+  it("reports an empty queue with no oldest timestamp", async () => {
+    vi.resetModules();
+    const { storageCleanupBacklogSnapshot } = await import("../src/lib/observability/cleanup-backlog");
+    const { client } = fakeClient((call) =>
+      call.columns === "id" ? { count: 0, error: null } : { data: [], error: null },
+    );
+
+    await expect(storageCleanupBacklogSnapshot(client as never)).resolves.toEqual({
+      pending: 0,
+      failed: 0,
+      expiredClaims: 0,
+      outstanding: 0,
+      oldestOutstandingAt: null,
+    });
+  });
+
+  it("throws rather than reporting a falsely empty queue when a count fails", async () => {
+    vi.resetModules();
+    const { storageCleanupBacklogSnapshot } = await import("../src/lib/observability/cleanup-backlog");
+    const { client } = fakeClient((call) =>
+      call.columns === "id" ? { count: null, error: { message: "permission denied" } } : { data: [], error: null },
+    );
+
+    await expect(storageCleanupBacklogSnapshot(client as never)).rejects.toThrow(
+      "Storage cleanup backlog count failed.",
+    );
   });
 });
 

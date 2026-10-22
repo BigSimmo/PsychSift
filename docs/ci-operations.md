@@ -1,6 +1,17 @@
 # CI Operations and Runner Usage Assessment
 
+_Updated 2026-10-17 — clarified undraft CI selection and cancellation; Documentation owns._
+
 See also [continuous-integration.md](continuous-integration.md) for pre-push safety controls and Guard 2 in-flight CI push guard details.
+
+## Workflow semantic validation
+
+Changes to workflows, the semantic validator or its release manifest run the pinned actionlint
+gate in `Static PR checks`. Use `npm run check:github-actions:semantics` locally on Linux x64.
+`scripts/actionlint-release.json` pins both the official archive and extracted executable;
+cache hits verify the executable hash rather than trusting `PATH`. A failed download,
+checksum mismatch, failed semantic self-test or invalid workflow blocks the gate. This checks
+workflow schema and expressions; action pins and composite-action policies have separate checks.
 
 ## Efficiency changes, October 2026
 
@@ -142,7 +153,7 @@ Automatic reviews require at least 10 repository stars on GitHub, not additional
 
 - **Eligibility Requirement:** As verified on PRs #2522 and #2542, CodeRabbit reports: _"This repository does not receive automatic reviews because it has fewer than 10 stars"_ (`Plan: Team`, repository star count: 0).
 - **Not a Spending Cap Issue:** This is a categorical repository eligibility requirement, not a credit exhaustion or spending cap issue.
-- **Operational Guidance:** Sessions should not treat a missing CodeRabbit review as a budget symptom. Do not undraft PRs solely in an attempt to trigger review, as draft status is skipped by CodeRabbit outright and undrafting mid-CI unnecessarily escalates workflows to the full heavy test set.
+- **Operational Guidance:** Sessions should not treat a missing CodeRabbit review as a budget symptom. Do not undraft PRs solely in an attempt to trigger review, as draft status is skipped by CodeRabbit outright and undrafting mid-CI can cancel or restart work and enable readiness jobs. Changed-file predicates still select which jobs run; undrafting does not force the full heavy test set. See the change-scoping and reuse rules above.
 
 ## Scheduled Workflows (#QSHHGK)
 
@@ -163,15 +174,20 @@ eight pushes from 2026-09-13 with no workflow reporting it, and across the four 
 
 - **Delivery, not detection.** `.github/workflows/ci.yml` now ends with a `main-failure-routing` job.
   On a push to `main` it opens or updates one pinned issue labelled `main-ci-failure`, names the
-  individual failing jobs (including each matrix leg), and **closes the issue on the next green
-  `main` run**. An open issue therefore means `main` is red right now, not that it once was. When
+  individual failing jobs (including each matrix leg), and keeps their unresolved identities in
+  the issue. It closes only after later applicable successful evidence covers every outstanding
+  failure on the same commit or a descendant. An unrelated scoped green run, skipped check or
+  partial recovery leaves the alert open. Unidentified failures or damaged history need explicit
+  operator review; a green aggregate cannot establish which missing checks recovered. When
   `main` goes red again it **reopens the most recent issue it closed** (matched by its own marker)
   rather than opening a new one, so the alert history stays in one place (owner decision, 2026-09-26).
 - **Report only.** It mutates no branch and re-runs nothing. `scripts/check-github-action-pins.mjs`
   forbids workflow-authored branch mutation, and a red `main` is a fact to deliver, not to repair
   automatically.
 - **Scoped privilege.** `issues: write` and `actions: read` live on that job alone, which checks out
-  no code and runs nothing from the repository. Every other job in `ci.yml` keeps `contents: read`.
+  no code and runs nothing from the repository. The change-scope proof job has `checks: read` to
+  read annotations using each job's validated same-repository `check_run_url`; other jobs retain
+  their individually declared permissions.
 - **Do not "fix" this by widening PR checks.** `release-browser-matrix` never runs on a
   `pull_request` event, so adding it to `pr-required`'s `needs` would aggregate a skipped job and
   change nothing, while making every branch wait on a ~45-minute matrix (#9Z197J).
@@ -219,3 +235,9 @@ All tooling and scripts for inspecting worktree fleets and checkout directories 
 - **Incident Precedent (#XCAX01):** On 2026-08-21, an aggressive automated cleanup sweep deleted an in-use worktree mid-session, destroying uncommitted developer work. Multi-agent workflows frequently hold open file handles across multiple roots (`.claude/worktrees`, `D:/Worktrees`, `.codex/worktrees`, `.gemini/antigravity/worktrees`).
 - **Zero Mutation Invariant:** No fleet auditing script is permitted to delete, deregister, prune, or mutate developer checkouts. Any removal or mutation flag is rejected before adapters execute. Git prune operations are permitted only as read-only dry runs (`git worktree prune --dry-run -v`).
 - **Deferred Cleanup:** Exact-path worktree removal remains deferred indefinitely. Any future cleanup must be executed via explicit human instruction targeting named, verified-dead directory paths with confirmed zero live process handles.
+
+## Container evidence artifacts
+
+The Docker image job preserves both available CycloneDX SBOMs and complete finalized Buildx history in the `sboms-<attempt>` artifact, where `<attempt>` is the GitHub run attempt. Download that attempt's raw file; for attempt 2, download `sboms-2` and run `tar -xf sboms-2` to read the original `sbom-app.cdx.json`, `sbom-worker.cdx.json`, and `container-builds.dockerbuild` files. Its `manifest.json` records original byte counts, SHA-256 hashes, and explicitly missing optional SBOMs. SBOM generation remains advisory; the build-history export is required after successful builder setup and runs before any builder pruning, including after a failed image build.
+
+Implicit build-record uploads are disabled while build summaries remain enabled. The complete raw tar archive has a hard 64 MiB ceiling and is uploaded as-is with seven days of retention. The [pinned upload action's `archive: false` contract](https://github.com/actions/upload-artifact/blob/cf430e030ddbb5b0abf93d22962f4752f3646cd9/action.yml) ignores the `name` input and uses the uploaded file's basename. Both the archive output and upload path therefore include the run attempt, preserving each rerun's evidence without a name collision or an enclosing ZIP. An oversized, unsafe, missing-required, or unverifiable bundle fails the job and produces no partial upload. Existing image builds, runtime verification, and Trivy vulnerability evaluation retain their existing behavior. Build records now need extraction from this artifact before opening in Docker Desktop; they are not separate automatically uploaded artifacts.

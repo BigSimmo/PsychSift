@@ -19,9 +19,8 @@
 import { spawn } from "node:child_process";
 import { loadEnvConfig } from "@next/env";
 import { confirm } from "./cli-utils";
-import { applyIngestionRecoveryPlan, supabaseStageError } from "./lib/ingestion-recovery-executor";
 
-import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
+loadEnvConfig(process.cwd());
 
 function parseArgs(argv: string[]) {
   const valueFor = (name: string) => {
@@ -71,11 +70,16 @@ async function safeCount(label: string, countPromise: PromiseLike<CountResult>) 
   }
 }
 
-export async function runReindex(argv = process.argv.slice(2)) {
-  loadEnvConfig(process.cwd());
+async function main() {
   const [
     { env, requireServerEnv },
-    { buildIngestionRecoveryPlan, INGESTION_RECOVERY_JOB_STATUSES, isFreshProcessingJob },
+    {
+      buildIngestionRecoveryPlan,
+      reconcileIngestionRecoveryPlan,
+      applyIngestionRecoveryActions,
+      INGESTION_RECOVERY_JOB_STATUSES,
+      isFreshProcessingJob,
+    },
     { hasIncompleteDocumentsWithoutOpenJobs, isReindexQueueClear },
     { createAdminClient },
     { assertSupabaseHealthy, probeSupabaseHealth },
@@ -88,7 +92,7 @@ export async function runReindex(argv = process.argv.slice(2)) {
   ]);
   requireServerEnv();
 
-  const args = parseArgs(argv);
+  const args = parseArgs(process.argv.slice(2));
   const staleAfterMinutes = env.WORKER_STALE_AFTER_MINUTES;
   const limit = args.limit;
 
@@ -149,7 +153,9 @@ export async function runReindex(argv = process.argv.slice(2)) {
           .from("ingestion_jobs")
           .select("id", { count: "exact", head: true })
           .eq("status", "processing")
-          .or(`locked_at.is.null,locked_at.lt.${staleCutoff}`),
+          .or(
+            `lease_expires_at.lte.${snapshotNow.toISOString()},and(lease_expires_at.is.null,or(locked_at.is.null,locked_at.lt.${staleCutoff}))`,
+          ),
       ),
       safeCount(
         "documents_queued",
@@ -228,14 +234,15 @@ export async function runReindex(argv = process.argv.slice(2)) {
     if (needsRecovery) {
       console.log(`\n[Step 3] Queue recovery (stale: ${staleJobs.count}, failed: ${failedJobs.count})...`);
 
-      const openJobsQuery = () =>
+      const recoveryJobsQuery = () =>
         supabase
           .from("ingestion_jobs")
-          .select("id,document_id,status,locked_at,documents!inner(status,page_count,chunk_count,owner_id)")
+          .select(
+            "id,document_id,status,locked_at,lease_token,lease_expires_at,documents(status,page_count,chunk_count,owner_id)",
+          )
           .in("status", [...INGESTION_RECOVERY_JOB_STATUSES])
           .order("created_at", { ascending: true });
-
-      const { data, error } = await openJobsQuery();
+      const { data, error } = await recoveryJobsQuery();
 
       if (error) {
         console.error(`  Failed to load jobs for recovery: ${error.message}`);
@@ -254,6 +261,8 @@ export async function runReindex(argv = process.argv.slice(2)) {
         document_id: string;
         status: string | null;
         locked_at: string | null;
+        lease_token: string | null;
+        lease_expires_at: string | null;
         documents: RecoveryDocument | RecoveryDocument[] | null;
       };
       // Pass every queried job (pending/processing/failed) to the planner and let its
@@ -261,24 +270,27 @@ export async function runReindex(argv = process.argv.slice(2)) {
       // hid legitimate in-flight owners from the planner: a document with a failed row plus a
       // fresh processing retry would then requeue the failed row and collide with the still-open
       // processing sibling on ingestion_jobs_one_open_per_document_uidx (Audit I2/E2 follow-up).
-      const normaliseJobRows = (rows: RawJobRow[] | null) =>
-        (rows ?? []).map((job: RawJobRow) => ({
+      const jobs = (data ?? []).map((job: RawJobRow) => ({
+        ...job,
+        documents: Array.isArray(job.documents)
+          ? (job.documents[0] as RecoveryDocument | undefined)
+          : (job.documents as RecoveryDocument | undefined),
+      }));
+      hasActiveProcessingJobs = (data ?? [])
+        .map((job: RawJobRow) => ({
           ...job,
           documents: Array.isArray(job.documents)
             ? (job.documents[0] as RecoveryDocument | undefined)
             : (job.documents as RecoveryDocument | undefined),
-        }));
-      const jobs = normaliseJobRows(data as RawJobRow[] | null);
-      hasActiveProcessingJobs = jobs.some((job) => isFreshProcessingJob(job, snapshotNow, staleAfterMinutes));
+        }))
+        .some((job) => isFreshProcessingJob(job, snapshotNow, staleAfterMinutes));
       const plan = buildIngestionRecoveryPlan({ jobs, staleAfterMinutes });
       const actions = plan.actions.slice(0, limit);
-      const resetDocumentIds = Array.from(
-        new Set(actions.filter((a) => a.action === "retry").map((a) => a.documentId)),
-      );
+      const resetDocumentIds = plan.resetDocumentIds;
       const supersedeCount = actions.filter((a) => a.action === "supersede").length;
       const retryCount = actions.filter((a) => a.action === "retry").length;
 
-      console.log(`  Documents to reset: ${resetDocumentIds.length}`);
+      console.log(`  Documents to reset: ${resetDocumentIds.length} (all artifacts preserved)`);
       console.log(`  Jobs to supersede : ${supersedeCount}`);
       console.log(`  Jobs to retry     : ${retryCount}`);
 
@@ -296,17 +308,23 @@ export async function runReindex(argv = process.argv.slice(2)) {
           console.log("  Recovery skipped. Re-checking queue before worker run.");
           skipWorkerRun = true;
         } else {
-          const { jobs: freshJobs } = await applyIngestionRecoveryPlan({
-            supabase,
-            actions,
+          const { data: freshData, error: freshError } = await recoveryJobsQuery();
+          if (freshError) throw new Error(freshError.message);
+          const freshJobs = (freshData ?? []).map((job: RawJobRow) => ({
+            ...job,
+            documents: Array.isArray(job.documents) ? job.documents[0] : job.documents,
+          }));
+          const { applicable, skipped } = reconcileIngestionRecoveryPlan({
+            planned: actions,
+            jobs: freshJobs,
             staleAfterMinutes,
-            readJobs: async () => {
-              const { data, error } = await openJobsQuery();
-              if (error) throw supabaseStageError("re-read open ingestion jobs", error);
-              return normaliseJobRows(data as RawJobRow[] | null);
-            },
           });
-          hasActiveProcessingJobs = freshJobs.some((job) => isFreshProcessingJob(job, new Date(), staleAfterMinutes));
+          const results = await applyIngestionRecoveryActions(supabase, applicable);
+          for (const { action, applied, reason } of results) {
+            if (!applied) console.log(`  Skipped ${action.action} job ${action.jobId}: ${reason}`);
+          }
+          // Re-snapshot before launching another worker when authority moved or a managed hold refused.
+          if (skipped.length > 0 || results.some((result) => !result.applied)) skipWorkerRun = true;
 
           console.log("  Recovery applied.");
         }
@@ -340,16 +358,14 @@ export async function runReindex(argv = process.argv.slice(2)) {
   process.exitCode = 1;
 }
 
-if (isDirectEntrypoint(import.meta.url)) {
-  runReindex().catch((error) => {
-    import("@/lib/privacy")
-      .then(({ safeErrorLogDetails }) => {
-        console.error("Reindex pipeline failed", safeErrorLogDetails(error));
-        process.exitCode = 1;
-      })
-      .catch(() => {
-        console.error(error instanceof Error ? error.message : error);
-        process.exitCode = 1;
-      });
-  });
-}
+main().catch((error) => {
+  import("@/lib/privacy")
+    .then(({ safeErrorLogDetails }) => {
+      console.error("Reindex pipeline failed", safeErrorLogDetails(error));
+      process.exitCode = 1;
+    })
+    .catch(() => {
+      console.error(error instanceof Error ? error.message : error);
+      process.exitCode = 1;
+    });
+});

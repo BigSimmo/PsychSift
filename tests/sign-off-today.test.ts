@@ -94,7 +94,7 @@ describe("signOffTodayItem", () => {
     expect(item).toMatchObject({ id: "my-work:sign-off:today", mode: "my-work", severity: "info", due: null });
     expect(item?.title).toBe("1 clinical record to sign off today");
     expect(item?.title).not.toContain("Title 3C");
-    expect(item?.href.startsWith("/mockups/development")).toBe(true);
+    expect(item?.href.startsWith("/admin/developer-hub")).toBe(true);
   });
 
   it("is absent when nothing can be signed", () => {
@@ -120,7 +120,106 @@ describe("the real queue", () => {
     // 16 Oct 2026: the 27 corrected Therapy records and the 3 adopted medicine sources
     // have been signed off by "Psych Sift", so no signable rows remain; everything still
     // waiting is an Indigenous governance hold or has no sign-off tool / references.
-    expect(signable.map((item) => item.family)).toEqual([]);
+    // 17 Oct 2026: clinical:review now offers sources reviewed only in prose (owner decision),
+    // so the two OCP WA standards are signable by the owner.
+    // 17 Oct 2026 22:12 AWST: the 26 Therapy records stamped without therapy:review went back to
+    // needs_review (owner ruling); they list references, so the owner can sign each one.
+    // 20 Oct 2026: the clinical content audit edited eight signed WA MHA forms (1A, 3D, 4B, 5A,
+    // 5B, 5C, 11D, 12C), which went back to drafted and are signable again with clinical:review.
+    // 21 Oct 2026: the 27 Therapy records signed in #3562 and the 18 signed records with a
+    // contradictory format label went back to needs_review (owner ruling), so 71 Therapy records
+    // are signable; the owner's lithium attestation was restored, so that source is signed.
+    // 21 Oct 2026: the owner chose the AADPA 2022 ADHD guideline for the shared library; it was
+    // added unsigned, so it joins the signable sources.
+    // 22 Oct 2026: the 71 TGA Product Information search records became signable candidates
+    // (owner decision: the live TGA search is the PI source), with WA policy MP 0131/20.
+    // 22 Oct 2026: the owner signed all 75 signable sources with clinical:review, so no source
+    // rows remain signable.
+    expect(signable.map((item) => item.family)).toEqual([
+      ...Array<string>(8).fill("wa-mha-forms"),
+      ...Array<string>(71).fill("therapy"),
+    ]);
+    expect(signable.map((item) => item.id)).toEqual([
+      "form-1a",
+      "form-3d",
+      "form-4b",
+      "form-5a",
+      "form-5b",
+      "form-5c",
+      "form-11d",
+      "form-12c",
+      "adolescent-focused-psychotherapy-for-anorexia-nervosa",
+      "advocacy-informed-therapeutic-work",
+      "applied-relaxation-relaxation-based-therapy",
+      "behaviour-therapy",
+      "behavioural-activation-ba",
+      "behavioural-couples-therapy-for-substance-use-disorders-bct-sud",
+      "carer-interventions",
+      "cognitive-behavioural-therapy-cbt",
+      "cognitive-behavioural-therapy-for-bipolar-depression-bipolar-relapse-prevention",
+      "cognitive-behavioural-therapy-for-insomnia",
+      "cognitive-behavioural-therapy-for-insomnia-cbt-i",
+      "cognitive-behavioural-therapy-for-psychosis-cbtp",
+      "cognitive-therapy",
+      "community-reinforcement-and-family-training-craft",
+      "constructivist-therapies",
+      "contingency-management-cm",
+      "cue-exposure-therapy-cet-for-substance-use-disorders",
+      "dialectical-behaviour-therapy-dbt",
+      "experiential-therapies",
+      "exposure-and-response-prevention-erp",
+      "exposure-and-response-prevention-for-tics-erp-for-tics",
+      "family-intervention-for-psychosis",
+      "family-psychoeducation-for-psychosis",
+      "family-focused-psychoeducation-for-bipolar-disorder",
+      "gestalt-therapy",
+      "group-psychoeducation-for-bipolar-disorder",
+      "habit-reversal-training-cbit",
+      "habit-reversal-training-for-trichotillomania-and-excoriation-disorder",
+      "health-anxiety-focused-cbt",
+      "humanistic-psychotherapy",
+      "imagery-rehearsal-therapy-irt-for-nightmare-disorder",
+      "inference-based-cbt-for-ocd",
+      "integrated-cbt-for-ptsd-and-substance-use-disorders",
+      "interpersonal-and-social-rhythm-therapy-ipsrt",
+      "matrix-model",
+      "meaning-centred-psychotherapy",
+      "mentalisation-based-therapy-mbt",
+      "mindfulness-based-relapse-prevention-mbrp",
+      "mindfulness-based-therapy-for-insomnia-mbti",
+      "mother-infant-therapy-mother-infant-psychotherapy",
+      "motivational-enhancement-therapy-met",
+      "motivational-interviewing-mi-for-substance-use-disorders",
+      "multi-family-interventions",
+      "narrative-therapy",
+      "parent-management-training-pmt",
+      "parent-training",
+      "parent-and-child-training",
+      "parent-child-relational-therapy",
+      "parent-child-interaction-therapy-pcit",
+      "peer-support",
+      "play-therapy-play-based-therapies",
+      "problem-solving-therapy-pst",
+      "psychodynamic-psychotherapy",
+      "psychoeducation-for-psychosis",
+      "recovery-planning-for-addiction",
+      "recovery-oriented-psychosocial-interventions",
+      "relapse-prevention-therapy-for-substance-use-disorders",
+      "relapse-prevention-psychotherapy",
+      "relational-cultural-therapy",
+      "seeking-safety",
+      "short-term-psychodynamic-psychotherapy-for-depression-stpp",
+      "social-anxiety-focused-cbt",
+      "social-communication-parent-mediated-autism-interventions",
+      "stair-skills-training-in-affective-and-interpersonal-regulation",
+      "structured-clinical-management",
+      "supportive-expressive-psychodynamic-counselling-approaches-for-depression",
+      "trauma-informed-skills-work",
+      "twelve-step-facilitation-tsf",
+      "values-based-therapies",
+      "wake-therapy-sleep-deprivation-chronotherapy",
+      "written-exposure-therapy",
+    ]);
     expect(today.signable).toBe(signable.length);
     expect(today.rows.length).toBe(Math.min(SIGN_OFF_TODAY_SIZE, signable.length));
     for (const item of today.rows) {
@@ -285,5 +384,27 @@ describe("tool-order and pin-awareness", () => {
         .filter((slug) => signedBySlug[slug] !== undefined)
         .sort(),
     );
+  });
+  it("the therapy sign-off transaction regenerates the signable projection, so a newly signed therapy leaves the to-do list", async () => {
+    const therapy = await import("../scripts/review-therapy.mjs");
+    const { therapyReviewedContentSha256 } = await import("../scripts/lib/therapy-review-contract.mjs");
+    const records = structuredClone(therapiesSource) as Record<string, unknown>[];
+    // The committed projection is exactly what the transaction writes.
+    expect(therapy.therapySignableProjection(records)).toEqual(signableTherapySlugList);
+    const slug = signableTherapySlugList.slugs[0];
+    const record = records.find((item) => item.slug === slug)!;
+    // Fixture only: simulate the tool recording an owner signature on a copy.
+    Object.assign(record, {
+      reviewStatus: "reviewed",
+      reviewedBy: "Fixture Reviewer",
+      reviewedAt: "2026-10-18T00:00:00.000Z",
+    });
+    record.reviewedContentSha256 = therapyReviewedContentSha256(record);
+    const projected = therapy.therapySignableProjection(records);
+    expect(projected.slugs).not.toContain(slug);
+    expect(projected.signedBySlug[slug]).toEqual({
+      reviewedBy: "Fixture Reviewer",
+      reviewedAt: "2026-10-18T00:00:00.000Z",
+    });
   });
 });

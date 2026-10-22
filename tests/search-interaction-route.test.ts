@@ -1,5 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+// These routes always apply the per-owner rate limiter; the route tests stub it
+// open so they exercise the route logic, not the limiter.
+vi.mock("@/lib/api-rate-limit", () => ({
+  consumeSubjectApiRateLimit: vi.fn(async () => ({ limited: false })),
+  rateLimitJsonResponse: () => Response.json({ error: "rate limited" }, { status: 429 }),
+  allowRateLimitInMemoryFallbackOnUnavailable: () => false,
+}));
+
 const userId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const documentId = "11111111-1111-4111-8111-111111111111";
 const chunkId = "22222222-2222-4222-8222-222222222222";

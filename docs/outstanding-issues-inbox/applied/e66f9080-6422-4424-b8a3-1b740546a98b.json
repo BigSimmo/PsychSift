@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "e66f9080-6422-4424-b8a3-1b740546a98b",
+  "createdOn": "2026-10-20",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "task",
+    "summary": "Move GH_TOKEN into the main-only production-secrets environment and stop putting it in a git push URL",
+    "detail": "Audit CC-12, 2026-10-20: pr-batch-runner.yml and ranking-snapshot-refresh.yml read the owner's personal GH_TOKEN as a repository secret, and ranking-snapshot-refresh.yml puts it in the git push URL. Add environment: production-secrets to both jobs and push through gh auth setup-git, then the owner moves the secret. Not done in the audit fix PR because this session's automated safety check refused the edit.",
+    "source": "docs/decisions/2026-10-20-database-prs-merge-by-hand.md",
+    "issueUlid": "01M5CVYDBJF8Q9KKNFAFRXXSSR"
+  }
+}

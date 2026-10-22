@@ -18,6 +18,11 @@ describe("ingestion autopilot workflow secret handling", () => {
     expect(workflow).toContain("repository_dispatch:");
     expect(workflow).toContain("types: [ingestion-autopilot]");
     expect(workflow).toContain("APPLY_REQUESTED: ${{ github.event.client_payload.apply || 'false' }}");
+    // Audit F-21: the key comes from the main-only production-secrets environment, which has no
+    // required reviewers so the schedule runs unattended; it is not an approval gate for --apply.
+    expect(workflow.match(/^\s+environment:.*$/gm)?.map((line) => line.trim())).toEqual([
+      "environment: production-secrets",
+    ]);
 
     const secretLines = workflow.split("\n").filter((line) => line.includes("SUPABASE_SERVICE_ROLE_KEY:"));
     expect(secretLines).toEqual([

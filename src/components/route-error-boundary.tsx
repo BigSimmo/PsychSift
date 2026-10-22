@@ -4,7 +4,7 @@ import { startTransition, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { TriangleAlert, RefreshCw, ClipboardCopy, Check } from "lucide-react";
 
-import { cn, primaryControl } from "@/components/ui-primitives";
+import { cn, commandControl } from "@/components/ui-primitives";
 import { useCopyDiagnostics } from "@/lib/use-copy-diagnostics";
 
 export type RouteErrorBoundaryProps = {
@@ -119,7 +119,7 @@ export function RouteErrorBoundary({
               type="button"
               onClick={() => window.location.reload()}
               className={cn(
-                primaryControl,
+                commandControl,
                 "flex min-h-12 items-center justify-center gap-2 px-4 py-2 text-sm font-medium",
               )}
             >
@@ -136,7 +136,7 @@ export function RouteErrorBoundary({
                 });
               }}
               className={cn(
-                primaryControl,
+                commandControl,
                 "flex min-h-12 items-center justify-center gap-2 px-4 py-2 text-sm font-medium",
               )}
             >

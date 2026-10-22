@@ -10,23 +10,20 @@ import {
   ClipboardCheck,
   Copy,
   ExternalLink,
-  FileText,
   GraduationCap,
   Loader2,
   Plus,
   Quote,
-  RefreshCw,
-  Search,
   ShieldAlert,
   ShieldCheck,
   Table2,
-  Target,
   ThumbsDown,
   ThumbsUp,
 } from "lucide-react";
 
 import { Sheet } from "@/components/ui/sheet";
-import { type AnswerFeedbackType } from "@/lib/answer-feedback";
+import { type AnswerFeedbackType, type SubmitAnswerFeedback } from "@/lib/answer-feedback";
+import { AnswerFeedbackPanel, answerFeedbackQuestion } from "@/components/clinical-dashboard/answer-feedback-panel";
 import { ClinicalOutputPanel } from "@/components/clinical-dashboard/output-panel";
 import { isPreformattedGroundedAnswer, plainAnswerText } from "@/components/clinical-dashboard/answer-content";
 import { CopyButton } from "@/components/clinical-dashboard/answer-status";
@@ -43,17 +40,15 @@ import {
   chatActionRow,
   chatMicroAction,
   cn,
+  controlDisabled,
   codeText,
   EmptyState,
   iconTilePremium,
   ignoreUnavailableActivation,
-  metadataPillDensity,
   proseMeasure,
   sourceCard,
   subtleStatusPill,
   textMuted,
-  toneDanger,
-  toneNeutral,
   toneSuccess,
   toneWarning,
 } from "@/components/ui-primitives";
@@ -114,7 +109,7 @@ export function AnswerUtilityActions({
   copied: boolean;
   onCopy: () => void;
   pendingFeedback?: AnswerFeedbackType | null;
-  onSubmitFeedback?: (feedbackType: AnswerFeedbackType) => void;
+  onSubmitFeedback?: SubmitAnswerFeedback;
   /** A new CME entry with the lead cited source filled in; absent when nothing was cited. */
   cpdHref?: string | null;
   /**
@@ -141,11 +136,19 @@ export function AnswerUtilityActions({
    *
    * This did not arise until the list became a modal (2026-09-02). As an in-flow
    * disclosure the notice was simply visible above it, so nothing had to close.
+   *
+   * Closing unmounts the panel, so the typed note lives here and is cleared only
+   * once the host reports the save succeeded: a refused or failed note reopens
+   * intact for the reader to edit and resend.
    */
+  const [draftNote, setDraftNote] = useState("");
   const submitFeedbackAndClose = useCallback(
-    (feedbackType: AnswerFeedbackType) => {
-      onSubmitFeedback?.(feedbackType);
+    (feedbackType: AnswerFeedbackType, note?: string) => {
+      const result = note ? onSubmitFeedback?.(feedbackType, note) : onSubmitFeedback?.(feedbackType);
       setFeedbackOpen(false);
+      void Promise.resolve(result).then((saved) => {
+        if (saved === true) setDraftNote("");
+      });
     },
     [onSubmitFeedback],
   );
@@ -167,7 +170,7 @@ export function AnswerUtilityActions({
             type="button"
             onClick={onCopy}
             className={cn(chatMicroAction, "min-w-0")}
-            aria-label="Copy answer with source status"
+            aria-label={`${copied ? "Copied" : "Copy"} with sources: answer and source status`}
           >
             <Copy aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
             {/* Below 360px (small phones) the full label truncated to "Copy …".
@@ -182,7 +185,7 @@ export function AnswerUtilityActions({
             href={cpdHref}
             data-testid="answer-log-cpd"
             className={cn(chatMicroAction, "shrink-0")}
-            aria-label="Log learning from this answer's source as CPD"
+            aria-label="Log as CPD: learning from this answer's source"
           >
             <GraduationCap aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
             Log as CPD
@@ -200,7 +203,7 @@ export function AnswerUtilityActions({
                 type="button"
                 disabled={Boolean(pendingFeedback)}
                 onClick={() => onSubmitFeedback("verified")}
-                className={cn(chatMicroAction, "min-w-12 justify-center px-2 disabled:opacity-60")}
+                className={cn(chatMicroAction, controlDisabled, "min-w-12 justify-center px-2")}
                 aria-label="This answer is supported by its sources"
               >
                 {pendingFeedback === "verified" ? (
@@ -273,6 +276,8 @@ export function AnswerUtilityActions({
             onSubmit={submitFeedbackAndClose}
             tone="problems"
             chrome="bare"
+            note={draftNote}
+            onNoteChange={setDraftNote}
           />
         </Sheet>
       ) : null}
@@ -724,7 +729,7 @@ export function ClinicalNotesChecklistPanel({
                   className={cn(
                     "inline-flex min-h-tap min-w-0 items-center justify-center gap-1.5 rounded-md px-2 text-xs font-semibold leading-none transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]",
                     selected
-                      ? "bg-[color:var(--clinical-accent)] text-[color:var(--clinical-accent-contrast)] shadow-[var(--e1)]"
+                      ? "bg-[color:var(--clinical-accent)] text-[color:var(--clinical-accent-contrast)] shadow-[var(--e0)]"
                       : "text-[color:var(--text-muted)] hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text)]",
                   )}
                 >
@@ -1123,122 +1128,9 @@ export function primaryVisualTable(answer: ClientRagAnswerPayload) {
   return answer.visualEvidence?.find((item) => item.accessibleTableMarkdown || item.tableRows?.length) ?? null;
 }
 
-const answerFeedbackOptions: Array<{
-  type: AnswerFeedbackType;
-  label: string;
-  icon: typeof CircleCheck;
-  tone: "success" | "warning" | "danger" | "neutral";
-}> = [
-  { type: "verified", label: "Verified", icon: CircleCheck, tone: "success" },
-  { type: "needs_correction", label: "Needs correction", icon: CircleAlert, tone: "warning" },
-  { type: "source_insufficient", label: "Source insufficient", icon: ShieldAlert, tone: "warning" },
-  { type: "wrong_source", label: "Wrong source", icon: FileText, tone: "danger" },
-  { type: "missing_source", label: "Missing source", icon: Search, tone: "warning" },
-  { type: "unsupported_answer", label: "Unsupported answer", icon: ShieldAlert, tone: "danger" },
-  { type: "numeric_error", label: "Numeric error", icon: Target, tone: "danger" },
-  { type: "outdated_guidance", label: "Outdated guidance", icon: RefreshCw, tone: "warning" },
-];
-
-function feedbackToneClass(tone: "success" | "warning" | "danger" | "neutral") {
-  if (tone === "success") return toneSuccess;
-  if (tone === "warning") return toneWarning;
-  if (tone === "danger") return toneDanger;
-  return toneNeutral;
-}
-
-/** The question the panel asks, so a Sheet header can ask it instead. */
-export const answerFeedbackQuestion = {
-  problems: {
-    title: "What is wrong with this answer?",
-    description:
-      "Name the fault so a reviewer can find it. This sends feedback for review; it does not change the answer.",
-  },
-  full: {
-    title: "Is the answer supported?",
-    description:
-      "Record whether the linked evidence supports the answer. This sends feedback for review; it does not change the answer.",
-  },
-} as const;
-
-export function AnswerFeedbackPanel({
-  pending,
-  onSubmit,
-  tone = "full",
-  chrome = "card",
-}: {
-  pending: AnswerFeedbackType | null;
-  onSubmit: (feedbackType: AnswerFeedbackType) => void;
-  /**
-   * `"problems"` drops the affirmative option and asks the narrower question.
-   * The thumb down is the only way into this panel on the answer surface, and
-   * offering "Verified" inside a list a reader opened to report a fault is a
-   * mis-click waiting to record the opposite of what they meant.
-   */
-  tone?: "full" | "problems";
-  /**
-   * `"bare"` drops the card's own border and its heading pair for a host that
-   * already carries them — the Sheet the answer surface opens, whose title and
-   * description ARE `answerFeedbackQuestion`. Asking the same question twice,
-   * once in the sheet header and again three lines below it, is the duplication
-   * this exists to avoid.
-   */
-  chrome?: "card" | "bare";
-}) {
-  const problemsOnly = tone === "problems";
-  const bare = chrome === "bare";
-  const options = problemsOnly
-    ? answerFeedbackOptions.filter((item) => item.tone !== "success")
-    : answerFeedbackOptions;
-  const question = answerFeedbackQuestion[problemsOnly ? "problems" : "full"];
-  return (
-    <section
-      data-testid="answer-review-panel"
-      data-tone={tone}
-      data-chrome={chrome}
-      className={cn(!bare && "rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-subtle)] p-3")}
-      aria-label={problemsOnly ? "Report a problem" : "Answer review"}
-    >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        {bare ? null : (
-          <div>
-            <p className="text-sm font-semibold text-[color:var(--text)]">{question.title}</p>
-            <p className={cn("mt-1 text-xs leading-5", textMuted)}>{question.description}</p>
-          </div>
-        )}
-        {pending ? (
-          <span className={metadataPillDensity.dense}>
-            <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
-            Saving
-          </span>
-        ) : null}
-      </div>
-      <div className={cn("grid grid-cols-2 gap-2 sm:flex sm:flex-wrap", bare ? "mt-0" : "mt-3")}>
-        {options.map((item) => {
-          const Icon = item.icon;
-          return (
-            <button
-              key={item.type}
-              type="button"
-              disabled={Boolean(pending)}
-              onClick={() => onSubmit(item.type)}
-              className={cn(
-                "inline-flex min-h-tap items-center justify-center gap-1.5 rounded-lg border px-2.5 text-center text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 lg:min-h-compact-meta",
-                feedbackToneClass(item.tone),
-              )}
-            >
-              {pending === item.type ? (
-                <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
-              ) : (
-                <Icon aria-hidden="true" className="h-4 w-4" />
-              )}
-              {item.label}
-            </button>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
+// Moved to a light module so the medication and therapy record pages can reuse the report panel
+// without pulling this heavy component tree; re-exported to keep evidence-panels' public API stable.
+export { AnswerFeedbackPanel, answerFeedbackQuestion } from "@/components/clinical-dashboard/answer-feedback-panel";
 
 // Moved to a light module so the dashboard can import it without pulling this heavy component
 // tree into the initial bundle; re-exported here to keep evidence-panels' public API stable.

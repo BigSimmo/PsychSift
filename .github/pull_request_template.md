@@ -16,7 +16,8 @@ or an applicable handoff requirement can require the complete browser gate; rout
 does not automatically require a full unit, browser or release suite.
 
 Nothing in this template blocks a merge. The gates that fail closed are migration history,
-required-check forgery, and CI itself.
+required-check forgery, a migration PR with auto-merge armed, a required-check file changed without
+a `Required check change approved:` line, bot commits on protected paths, and CI itself.
 
 ## Risk and rollout
 

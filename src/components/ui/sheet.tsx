@@ -4,6 +4,7 @@ import {
   useEffect,
   useCallback,
   useId,
+  useLayoutEffect,
   useRef,
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
@@ -23,6 +24,8 @@ import {
   updateSheetRoot,
   type SheetFocusController,
 } from "@/components/ui/sheet-focus";
+
+const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 export type SheetMobileSize = "content" | "viewport";
 export type SheetMobileHeaderSafeArea = "none" | "padding" | "offset";
@@ -197,7 +200,11 @@ export function Sheet({
     onClose();
   }, [dismissOnBack, onClose, sheetId]);
 
-  useEffect(() => {
+  // Layout effect, not a passive one: the Close button, swipe and back handlers
+  // read these refs, and a click that lands after a commit but before passive
+  // effects flush would otherwise call the previous render's onClose (a stale
+  // closure — e.g. a sheet that had just saved would skip its own reset).
+  useIsomorphicLayoutEffect(() => {
     onCloseRef.current = onClose;
     requestCloseRef.current = requestClose;
   }, [onClose, requestClose]);
@@ -483,7 +490,7 @@ export function Sheet({
         }}
         style={contentStyle}
         className={cn(
-          "flex min-w-0 w-full flex-col overflow-hidden border border-[color:var(--border-lux)] bg-[color:var(--surface-raised)] text-[color:var(--text)] shadow-[var(--shadow-elevated)] pb-safe",
+          "flex min-w-0 w-full flex-col overflow-hidden border border-[color:var(--border-lux)] bg-[color:var(--surface-raised)] text-[color:var(--text)] shadow-[var(--e4)] pb-safe",
           "transition duration-[var(--duration-moderate)] motion-reduce:transition-none sm:duration-[var(--duration-quick)]",
           placement === "left"
             ? "h-full max-h-full max-w-[min(20rem,calc(100vw-3rem))] rounded-r-2xl border-y-0 border-l-0 pt-safe pl-safe sm:max-h-dvh sm:max-w-[20rem] sm:rounded-l-none sm:rounded-r-2xl sm:pb-0 sm:pl-0"

@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "c105e0bc-9f8c-44ca-87a4-2487e91f9ff3",
+  "createdOn": "2026-10-17",
+  "action": "done",
+  "payload": {
+    "id": "#BDFFYF",
+    "outcome": "Closed as a duplicate of #Z12CBC (verified 18 Oct 2026): both track legal and clinical sign-off, or removal, of the unwired WA MHA Form 6A/6B print component (src/components/forms/wa-mha-form-print.tsx). #Z12CBC is the surviving row and carries the owner decision of 17 Oct 2026 21:37 AWST that #WFYDV6 stays open until sign-off. Provenance kept: #BDFFYF came from the PR #3573 follow-up (branding replaced, Form 6B wording corrected) and its post-13 Nov removal option.",
+    "baseRowFingerprint": "840dd59529b40fccd31777189478ca9fe605eb1cadd819583f293dd49cf83e5f",
+    "targetUlid": "01M54ZYAB6BDFFYFA3ZA5MNPVB"
+  }
+}

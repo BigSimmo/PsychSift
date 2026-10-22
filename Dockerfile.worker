@@ -26,7 +26,8 @@
 # `server-only` marker to the standalone stub at build time (the job
 # run-tsx.mjs previously did at runtime) and keeps npm packages external,
 # so the bundle resolves them from the runner's production node_modules.
-FROM node:24-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20 AS node-base
+FROM node:24-bookworm-slim@sha256:a5f4366e834695d5f363b920c104953a535d3a9864d1bdf74566a0ebe01daee5 AS node-base
+FROM python:3.11-slim-trixie@sha256:e88e9763f943ec1834f992a4b51e0f24500486803e8bc534e5767af9ea65f6ce AS python-runtime-base
 
 FROM node-base AS build
 WORKDIR /app
@@ -74,14 +75,120 @@ RUN for attempt in 1 2 3; do \
       sleep $((attempt * 10)); \
     done
 
-FROM node-base AS runner
-# libgl1 + libglib2.0-0 are OpenCV's runtime shared libraries: docling's rapidocr
+# Build security backports using the same signed Trixie sources and ordinary
+# Debian packaging. Compilers/source trees never enter the runtime image.
+# The immutable snapshot deb-src keeps the exact pinned source versions in
+# worker/native/components/*.json resolvable after Debian supersedes them on
+# the live mirrors; the .dsc hash check still pins the bytes. Its Release file
+# is archive-signed but expired, hence check-valid-until=no on that line only.
+FROM python-runtime-base AS native-security-build-base
+RUN printf '%s\n' \
+    'deb-src [signed-by=/usr/share/keyrings/debian-archive-keyring.pgp check-valid-until=no] https://snapshot.debian.org/archive/debian/20261021T000000Z trixie main' \
+    'deb-src [signed-by=/usr/share/keyrings/debian-archive-keyring.pgp] https://deb.debian.org/debian trixie main' \
+    'deb-src [signed-by=/usr/share/keyrings/debian-archive-keyring.pgp] https://deb.debian.org/debian-security trixie-security main' \
+    > /etc/apt/sources.list.d/worker-native-security-sources.list \
+  && apt-get update \
+  && apt-get install -y --no-install-recommends build-essential dpkg-dev quilt
+COPY worker/native/build_security_debs.py worker/native/test_build_security_debs.py /tmp/worker-native/
+RUN python3 /tmp/worker-native/test_build_security_debs.py
+
+FROM native-security-build-base AS native-util-linux
+COPY worker/native/components/util-linux.json /tmp/worker-native/components/util-linux.json
+COPY worker/native/patches/util-linux/ /tmp/worker-native/patches/util-linux/
+COPY worker/native/util-linux-regressions.sh /tmp/worker-native/util-linux-regressions.sh
+RUN python3 /tmp/worker-native/build_security_debs.py util-linux
+
+FROM native-security-build-base AS native-tesseract
+COPY worker/native/components/tesseract.json /tmp/worker-native/components/tesseract.json
+COPY worker/native/patches/tesseract/ /tmp/worker-native/patches/tesseract/
+COPY worker/native/tesseract-regressions.sh /tmp/worker-native/tesseract-regressions.sh
+COPY worker/native/tesseract-adapted-templates-test.cc /tmp/worker-native/tesseract-adapted-templates-test.cc
+RUN python3 /tmp/worker-native/build_security_debs.py tesseract
+
+FROM native-security-build-base AS native-ncurses
+COPY worker/native/components/ncurses.json /tmp/worker-native/components/ncurses.json
+COPY worker/native/patches/ncurses/ /tmp/worker-native/patches/ncurses/
+COPY worker/native/ncurses-regressions.sh /tmp/worker-native/ncurses-regressions.sh
+RUN python3 /tmp/worker-native/build_security_debs.py ncurses
+
+FROM native-security-build-base AS native-libxml2
+COPY worker/native/components/libxml2.json /tmp/worker-native/components/libxml2.json
+COPY worker/native/patches/libxml2/ /tmp/worker-native/patches/libxml2/
+COPY worker/native/libxml2-tests/ /tmp/worker-native/libxml2-tests/
+COPY worker/native/libxml2-regressions.sh /tmp/worker-native/libxml2-regressions.sh
+RUN python3 /tmp/worker-native/build_security_debs.py libxml2
+
+FROM python-runtime-base AS runner
+COPY --from=node-base /usr/local/bin/node /usr/local/bin/node
+COPY --from=native-util-linux /out/ /tmp/worker-native-debs/
+COPY --from=native-tesseract /out/ /tmp/worker-native-debs/
+COPY --from=native-ncurses /out/ /tmp/worker-native-debs/
+COPY --from=native-libxml2 /out/ /tmp/worker-native-debs/
+COPY worker/native/build_security_debs.py /tmp/worker-native-verify.py
+# libgl1 + libglib2.0-0t64 are OpenCV's runtime shared libraries: docling's rapidocr
 # stage imports cv2 during `docling-tools models download` and again at run time,
 # and the slim base ships neither (Gate B run 32165911181 failed the prefetch with
 # `ImportError: libGL.so.1`). ca-certificates covers the build-time model fetch.
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends python3 python3-venv tesseract-ocr ca-certificates libgl1 libglib2.0-0 \
-  && rm -rf /var/lib/apt/lists/*
+# Keep the production locks' Python 3.11 interpreter; Trixie's distro Python is
+# 3.13. Explicitly upgrade Perl and reject a stale security repository.
+# Backport only curl and its three HTTP/3 libraries; all other backports are
+# forbidden. ngtcp2 1.22.1 also avoids introducing CVE-2026-40170.
+RUN printf '%s\n' \
+    'deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] https://deb.debian.org/debian trixie-backports main' \
+    > /etc/apt/sources.list.d/worker-native-backports.list \
+  && printf '%s\n' \
+    'Package: libcurl4t64 libnghttp3-9 libngtcp2-16 libngtcp2-crypto-ossl0' \
+    'Pin: release n=trixie-backports' \
+    'Pin-Priority: 990' \
+    '' \
+    'Package: *' \
+    'Pin: release n=trixie-backports' \
+    'Pin-Priority: -1' \
+    > /etc/apt/preferences.d/worker-native-backports \
+  && apt-get update \
+  && apt-get install -y --no-install-recommends --no-remove perl-base tesseract-ocr ca-certificates libgl1 libglib2.0-0t64 \
+    libcurl4t64=8.21.0-2~bpo13+1 libnghttp3-9=1.15.0-1~bpo13+1 \
+    libngtcp2-16=1.22.1-1~bpo13+1 libngtcp2-crypto-ossl0=1.22.1-1~bpo13+1 \
+    /tmp/worker-native-debs/*.deb \
+  && mkdir -p /usr/share/psychsift/native-security \
+  && cp /tmp/worker-native-debs/*.json /usr/share/psychsift/native-security/ \
+  && dpkg --compare-versions "$(dpkg-query --show --showformat='${Version}' perl-base)" ge 5.40.1-6+deb13u1 \
+  && dpkg --compare-versions "$(dpkg-query --show --showformat='${Version}' libcurl4t64)" ge 8.21.0-2~bpo13+1 \
+  && dpkg --compare-versions "$(dpkg-query --show --showformat='${Version}' libngtcp2-16)" ge 1.22.1-1~bpo13+1 \
+  && groupadd --gid 1000 node \
+  && useradd --uid 1000 --gid node --shell /bin/sh --create-home node \
+  && python3 -c "import sys; assert sys.version_info[:2] == (3, 11)" \
+  && python3 -m pip uninstall -y setuptools \
+  && for helper in /usr/bin/mount /usr/bin/umount; do \
+       if [ -e "$helper" ]; then chmod u-s,g-s "$helper"; fi; \
+     done \
+  && rm -rf /var/lib/apt/lists/* /usr/local/lib/node_modules/npm /opt/yarn-* /tmp/worker-native-debs \
+  && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/yarn /usr/local/bin/yarnpkg
+RUN python3 /tmp/worker-native-verify.py --verify-installed /usr/share/psychsift/native-security \
+  && rm /tmp/worker-native-verify.py
+# Optional ruled-table OCR: bake the official, hash-pinned cell model at build time.
+# The extraction flag remains off; the runtime never downloads model data.
+RUN python3 - <<'PYMODEL'
+import hashlib
+from pathlib import Path
+import urllib.request
+model_dir = Path("/opt/psychsift-ocr-models")
+model_dir.mkdir(mode=0o755)
+model = model_dir / "Latin.traineddata"
+digest = hashlib.sha256()
+size = 0
+with urllib.request.urlopen("https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/87416418657359cb625c412a48b6e1d6d41c29bd/script/Latin.traineddata", timeout=60) as response, model.open("wb") as output:
+    while chunk := response.read(1024 * 1024):
+        size += len(chunk)
+        if size > 89_384_811:
+            raise RuntimeError("OCR cell model exceeds pinned size")
+        digest.update(chunk)
+        output.write(chunk)
+if size != 89_384_811 or digest.hexdigest() != "6dbdaf8ecc6c40f025c2648bf3b3f3fbffe073e1fd2df2047fde2e2b2f020d53":
+    raise RuntimeError("OCR cell model does not match pinned identity")
+model.chmod(0o644)
+PYMODEL
+COPY worker/python/ocr-model-LICENSE.txt /opt/psychsift-ocr-models/LICENSE
 WORKDIR /app
 COPY worker/python/requirements.txt worker/python/requirements.txt
 RUN python3 -m venv /opt/ocr-venv
@@ -149,15 +256,26 @@ RUN python -m compileall -q worker/python \
   && find worker/python -type d -name __pycache__ -prune -exec rm -rf '{}' + \
   && rm -f worker/python/test_*.py
 COPY package.json ./package.json
+COPY worker/native/check_docling_runtime.py /tmp/check-native-docling.py
 USER node
 # The runtime validator proves the bundle, Node, Python and module resolution
 # before the image is promoted. It never calls Supabase/OpenAI or claims jobs.
 RUN node dist/worker/validate-runtime.mjs
+RUN timeout 180 /opt/docling-venv/bin/python /tmp/check-native-docling.py
 LABEL org.opencontainers.image.source="https://github.com/BigSimmo/PsychSift"
 LABEL org.opencontainers.image.title="PsychSift ingestion worker"
 LABEL org.opencontainers.image.description="Node + Python OCR ingestion worker for the PsychSift medical guideline RAG knowledge base"
 LABEL org.opencontainers.image.licenses="UNLICENSED"
 STOPSIGNAL SIGTERM
+# Container-runtime health probe for Docker/Compose. worker/health.ts binds
+# /health on WORKER_HEALTH_PORT, falling back to Railway's PORT; with neither
+# set the health server is off and the probe reports unhealthy rather than
+# claiming a check it could not run. Railway ignores HEALTHCHECK and keeps
+# using railway.worker.json's healthcheckPath (/health on PORT), so this does
+# not change Railway deploy gating.
+# Kept on one line: tests/tsx-server-only-runner.test.ts treats the first line
+# starting with CMD as the worker entrypoint.
+HEALTHCHECK --interval=30s --timeout=20s --start-period=60s --retries=3 CMD node -e "const p=process.env.WORKER_HEALTH_PORT||process.env.PORT;if(!p){console.error('worker health server disabled: set WORKER_HEALTH_PORT or PORT');process.exit(1)}fetch('http://127.0.0.1:'+p+'/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 # Long-poll worker; WORKER_* env vars control claim batch size, concurrency,
 # and the stale-claim window (see src/lib/env.ts).
 #

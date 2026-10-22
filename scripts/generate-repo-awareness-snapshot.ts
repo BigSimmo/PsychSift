@@ -46,8 +46,7 @@ export type SiteMapInput = {
  * Sorted by path, two routes added on two branches land next to each other
  * whenever their paths sort next to each other, and adjacent insertions are a
  * hard conflict in the committed snapshot. That is not hypothetical and not
- * rare: `/mockups/source-rail-desktop-scroll` and
- * `/mockups/specifier-record-directions` both sort under `/mockups/s`, and PR
+ * rare: two mockup routes (since retired) both sorted under `/mockups/s`, and PR
  * #2674 conflicted on exactly that pair. A conflict here sets
  * `mergeable_state=dirty`, which suppresses `refs/pull/<n>/merge` and leaves
  * the check list empty rather than red.
@@ -126,7 +125,7 @@ export const README_PATH = "docs/README.md";
  * rows here, drowning the documents a reader is actually looking for. Inbox
  * requests are JSON transactions, not documents.
  */
-const EXCLUDED_DOC_PREFIXES = ["docs/branch-review-records/", "docs/outstanding-issues-inbox/"];
+const EXCLUDED_DOC_PREFIXES = ["docs/archive/branch-review-records/", "docs/outstanding-issues-inbox/"];
 
 function filterDocumentPaths(output: string): string[] {
   return output
@@ -362,8 +361,8 @@ export function readFlakeLedger(ledgerPath = FLAKE_LEDGER_PATH): FlakeLedgerFile
 
 export const REVIEW_LEDGER_PATH = "docs/branch-review-ledger.md";
 export const REVIEW_ARCHIVE_PATHSPEC = ":(glob)docs/archive/branch-review-ledger-*.md";
-export const REVIEW_RECORDS_DIR = "docs/branch-review-records";
-export const REVIEW_RECORDS_PATHSPEC = ":(glob)docs/branch-review-records/*.record.md";
+export const REVIEW_RECORDS_DIR = "docs/archive/branch-review-records";
+export const REVIEW_RECORDS_PATHSPEC = ":(glob)docs/archive/branch-review-records/*.record.md";
 
 const RECORD_ROW = /^\|\s*\d{4}-\d{2}-\d{2}\s*\|/;
 
@@ -586,7 +585,7 @@ export function buildReviewStateSection(rows: readonly { file: string; line: str
  * other non-emitted files under that tree must not advance the stamp.
  *
  * The review corpus is excluded from that glob, mirroring `EXCLUDED_DOC_PREFIXES`.
- * Appending a review record writes `docs/branch-review-records/<sha>.record.md`,
+ * Appending a review record writes `docs/archive/branch-review-records/<sha>.record.md`,
  * which the bare glob matched — so every handoff moved this stamp on both the
  * feature branch and `main`, and two lines that always differ are a conflict no
  * amount of dispersal in `review_state.records` can avoid (`#EFETZT`). Dropping
@@ -599,7 +598,7 @@ const REVISION_INPUTS = [
   "src/lib/app-modes.ts",
   "src/lib/consolidated-mode-home-redirect.ts",
   ":(glob)docs/**/*.md",
-  ":(exclude,glob)docs/branch-review-records/**",
+  ":(exclude,glob)docs/archive/branch-review-records/**",
   ":(exclude,glob)docs/archive/branch-review-ledger-*.md",
   "tests/flake-ledger.json",
   "scripts/generate-site-map.ts",

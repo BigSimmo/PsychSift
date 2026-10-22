@@ -10,7 +10,7 @@ type TherapySourceInput = {
  * A source marker the catalogue writes inline at the end of a sentence, e.g.
  * "… as unsupported self-help. (PubMed)".
  */
-export const AUTHORITY_PATTERN = /(?<=[.!?])\s*\(([A-Z0-9][^().!?]{0,58})\)/g;
+export const AUTHORITY_PATTERN = /(?<=[.!?])\s*\((?!(?:19|20)\d{2}\))([A-Z0-9][^().!?]{0,58})\)/g;
 
 export type SourceCitation = { text: string; authority: string };
 
@@ -72,6 +72,12 @@ export function isLaterAddedNiceReference(text: string | null | undefined): bool
   return text.includes("9 October 2026") && text.includes("NICE");
 }
 
+/** Check if a reference blob contains later-added guideline or literature citations (2026-10-09 or 2026-10-17 sweeps). */
+export function isLaterAddedReference(text: string | null | undefined): boolean {
+  if (!text) return false;
+  return isLaterAddedNiceReference(text) || text.includes("added on 17 October 2026");
+}
+
 export type NiceGuidelineDetails = {
   title: string;
   authorityCode: string | null;
@@ -81,7 +87,7 @@ export type NiceGuidelineDetails = {
 /** Extract structured guideline details from a NICE recommendation citation. */
 export function extractNiceGuidelineDetails(citationText: string, authority?: string | null): NiceGuidelineDetails {
   const urlMatch = citationText.match(/https?:\/\/[^\s)]+/)?.[0]?.replace(/[.,;:)]+$/, "") ?? null;
-  const authorityCode = authority?.replace(/^NICE\s*/i, "").trim() || null;
+  const authorityCode = authority?.replace(/^NICE(?:\s+guideline)?\s*/i, "").trim() || null;
   const titleMatch = citationText.match(/^([^,]+)/);
   const rawTitle = titleMatch ? titleMatch[1].trim() : "NICE guideline";
   const title = `NICE guideline: ${rawTitle}${authorityCode ? ` (${authorityCode})` : ""}`;
@@ -93,11 +99,24 @@ export function extractNiceGuidelineDetails(citationText: string, authority?: st
   };
 }
 
+/** Explicit citation authority wins over publisher names or links mentioned in its prose. */
+export function isNiceGuidelineCitation(citation: { authority?: string; text?: string }): boolean {
+  if (citation.authority?.trim())
+    return /^NICE(?:\s+guideline)?(?:\s+[A-Z]{1,5}\d+)?$/i.test(citation.authority.trim());
+  return /https:\/\/(?:www\.)?nice\.org\.uk\/guidance\//i.test(citation.text ?? "");
+}
+
 /** Explicit source metadata for later-added NICE guideline citations. */
 export function therapyNiceGuidelineMetadata(
   citation: { authority?: string; text?: string },
   recordReviewStatus: string,
 ): ClinicalSourceMetadata {
+  if (!isNiceGuidelineCitation(citation)) {
+    return therapySourceMetadata(
+      { title: citation.text ?? null, sourceType: null, reference: citation.text ?? null },
+      recordReviewStatus,
+    );
+  }
   const details = extractNiceGuidelineDetails(citation.text ?? "", citation.authority);
   return {
     source_kind: "guideline",

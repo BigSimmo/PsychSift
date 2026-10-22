@@ -79,8 +79,9 @@ ranking-protected file changed, a `RAG impact:` placeholder to replace; include 
   `Verification not run: <reason>`; an unchecked box is never the only evidence.
 
 **Arming auto-merge at open (owner ruling 2026-09-16).** An agent that opens an **ordinary** PR
-may arm ordinary merge auto-merge as part of opening it (`gh pr merge --merge --auto`), with no further
-confirmation. Once a PR exists, its auto-merge state is user-owned — see
+may arm auto-merge as part of opening it (`gh pr merge --merge --auto`), with no further
+confirmation. Merge commits are the only merge method enabled (squash and rebase merging are
+off since 2026-10-18), so `--squash` or `--rebase` will be rejected. Once a PR exists, its auto-merge state is user-owned — see
 [Merge authority](#merge-authority) for what that forbids. Merging a `supabase/` change is a live
 clinical-database deploy; treat that merge as production.
 
@@ -262,25 +263,21 @@ human review comments must follow the repository's strict resolution discipline:
 
 ## Records
 
-Owner ruling 2026-09-16: review and sweep records will move to PR comments in a separate, later
-change. Until that lands, the current `ledger:append` mechanics below stay in force.
+Review and sweep records live in pull request comments (owner decision 2026-09-16, implemented
+2026-10-20 in [the decision](../decisions/2026-10-20-review-records-now-pr-comments.md)).
 
-- **Before** reviewing a branch or PR, run `npm run ledger:lookup -- <branch-or-ref> --scope "<scope>"`. On `ALREADY REVIEWED`, summarise the prior outcome and skip unless the user asks for
-  a fresh pass. Never scan the table by eye.
-- **After** a completed review, sweep, or landed check — including pure and no-op reviews —
-  create one immutable record with `npm run ledger:append -- --ref <x> --head <full-40-char-sha> --scope <s> --outcome <o> --checks <c>`. The HEAD must be the full SHA; `see PR head`,
-  `pending pushed head`, and abbreviations make the record unmatchable and the review runs again.
-  Never hand-write a record.
-- The historical table in `docs/branch-review-ledger.md` is frozen during normal PR work. Never
-  edit, deduplicate, or rotate it (`ledger:dedupe`, `ledger:rotate`), and never resolve a review
-  conflict by editing it. Correct or replace with a superseding record (`--supersede`). The
-  repository deliberately leaves the ledger's merge attribute unspecified because GitHub cannot
-  run a local custom driver.
-- One `Run PR` record per PR per sweep, no sweep-total record; on a later sweep of the same PR,
-  pass `--supersede` rather than stacking another "main sync" record.
-- **Never push a tip whose sole delta is a babysit or review record** — it marks every other open
-  PR behind for no product change. Fold the record into the next product commit on that branch,
-  or into a bundled docs/ledger PR, and report the outcome in the chat meanwhile.
+- **Before** reviewing a PR, read its comments for a `Review record` comment at the PR's current
+  head SHA with the same scope. If there is one, summarise its outcome and skip unless the user
+  asks for a fresh pass.
+- **After** a completed review, sweep, or landed check on a PR, including pure and no-op reviews,
+  post one comment on that PR. Its first line is `Review record`, followed by the branch, the full
+  40-character head SHA, the scope, the outcome and the checks run, and it ends with the attribution
+  footer. Posting it falls under the same GitHub authority as the review itself. A later pass on the
+  same PR and scope edits that comment, or posts a new one when the head SHA has changed.
+- A branch with no PR gets no record. Report the review in the task's own reply.
+- The old repository records are archived, read-only, under `docs/archive/branch-review-records/`.
+  `npm run ledger:lookup -- <branch-or-ref> --scope "<scope>"` still searches them and the frozen
+  `docs/branch-review-ledger.md` table for history. Never add, edit or delete a file in either.
 
 ### Ledger PRs: keep them off the snapshot, and what the governance gate really catches
 
@@ -317,8 +314,17 @@ the GitHub ruleset no longer requires that context.
 migration dated at or before the newest one on `main` (out-of-order or future-dated). A migration
 already on `main` is never edited; ship a new migration with the newest timestamp
 (`AGENTS.md` `# Supabase project safety`). The only override is a body line
-`Migration history edit approved: <reason>` together with an accompanying fail-fast validation
-guard migration in the same change.
+`Migration history edit approved: <reason>`, where the reason cites the owner's words (a
+`docs/decisions/` entry or a link), together with an accompanying fail-fast validation guard
+migration in the same change.
+
+**Required-check files.** `ci.yml`, `secret-scan.yml`, `.github/actions/**` and
+`scripts/ci-change-scope.mjs` decide whether the required checks pass, and a PR runs its own copy
+of them. `PR policy` fails a PR that changes one unless its body has a line
+`Required check change approved: <reason>` citing the owner's yes (a `docs/decisions/` entry or a link); Dependabot pin bumps are exempt
+(audit CC-04, 2026-10-20). The gate checks the line's shape only. It is a declaration that makes the change
+visible, not proof of the owner's yes: the owner's review and Merge press remain the approval (owner decision,
+2026-10-20, recorded in `docs/decisions/2026-10-20-database-prs-merge-by-hand.md`).
 
 Clinical-content and RAG-ranking PRs keep every other control — the clinical governance
 preflight, the `RAG impact:` body line, the canary-pair requirement, the advisory
@@ -336,10 +342,16 @@ tripwire, not a boundary — an expression-built name or a later re-post gets pa
 boundary needs live settings: post required checks from a dedicated GitHub App whose key lives
 in an environment secret limited to `main`, and pin the ruleset to that app.
 
-**Ordinary PRs.** An agent may arm ordinary merge auto-merge when it opens the PR (see [Open](#open)).
+**Ordinary PRs.** An agent may arm merge-commit auto-merge (`--merge`) when it opens the PR (see [Open](#open)).
 Merging a PR directly into `main` or any protected branch still needs the user's explicit
 request; the only standing batch authority is [`Clear PRs`](#clear-prs). [`Run PR`](#run-pr)
 never merges and never arms.
+
+**Clinical-risk PRs.** `PR policy` fails a clinical-risk PR while auto-merge on it was armed by any
+account other than the repository owner, such as a review bot (#YF0XSQ: on 13 Oct 2026 gitar-bot
+armed PR 3507 and it merged on bot approvals alone). Turning auto-merge off re-runs the check and it
+passes. The owner may still arm it, so this is a tripwire against bots, not proof of the owner's own
+review.
 
 **Auto-merge state is user-owned once the PR exists.** Automation must not disable or re-enable
 it. Ordinary fast-forward commits and pushes to fix CI or review findings, bundled additions, and an `update-branch` /
@@ -366,7 +378,8 @@ authorization.
 
 ## Landed
 
-A merged PR here may land as a squash commit or an ordinary merge commit. **Decide which by
+Since 2026-10-18 PRs here land only as ordinary merge commits (squash and rebase merging are
+disabled), but older history also contains squash commits. **Decide which by
 parent count, never by assumption:** `git rev-list --parents -n 1 <merge-commit>` prints the
 commit followed by its parents — one parent is a squash (or fast-forward), two is a merge commit.
 Squash-merge history has twice orphaned a late follow-up commit and once needed a fix-forward.
@@ -480,6 +493,8 @@ actions, and only for the duration of that sweep:
 - GitHub reads: pull requests, checks, workflow runs and job logs, review threads.
 - Pushing ordinary commits to PR feature branches (never `main` or another protected branch).
 - Review-thread replies and review-thread resolution.
+- Posting or editing one `Review record` comment on each PR swept ([Records](#records)), which
+  replaces the review record the sweep used to commit.
 - Re-running failed hosted CI jobs and updating a PR branch from `main`.
 
 Nothing else inherits this authorization. Only the user's own task message can trigger the sweep
@@ -619,8 +634,8 @@ Bundle only when every item being combined is:
 - **Not already mid-edit** in another open PR or session (check local context / review records
   first).
 
-**Best candidates:** small same-scope documentation, immutable review records
-(`docs/branch-review-records/`), or queued issue requests (`docs/outstanding-issues-inbox/`).
+**Best candidates:** small same-scope documentation, or queued issue requests
+(`docs/outstanding-issues-inbox/`).
 Standalone PRs whose sole diff is a ledger update or documentation record should not be opened
 on their own.
 

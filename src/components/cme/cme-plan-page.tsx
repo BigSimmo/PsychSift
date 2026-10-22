@@ -14,6 +14,7 @@ import { useDirtyStateGuard } from "@/components/ui/use-dirty-state-guard";
 import { cn, controlDisabled, textMuted } from "@/components/ui-primitives";
 import { subscribeAccountTransition } from "@/lib/account-scoped-browser-state";
 import { CPD_CATEGORY_RULE_SET } from "@/lib/cme/category-rules-source";
+import { cmeCarryConfirmHref } from "@/lib/cme/carry-return";
 import { formatCalendarDateLong } from "@/lib/cme/cpd-year";
 import { cmeSaveErrorText } from "@/lib/cme/load-state";
 import { cpdTextPatientProblem } from "@/lib/cme/patient-detail-check";
@@ -154,6 +155,7 @@ export function CmePlanPage({
   nextYearConfirmed = null,
   nextYearGoals,
   ownerId,
+  resumeCarryGoalId = null,
 }: {
   set: CmeRequirementSet;
   goals: readonly CmePlanGoal[];
@@ -165,6 +167,8 @@ export function CmePlanPage({
   /** Required before enabling carry, so adding a goal cannot replace or duplicate a saved next-year goal. */
   nextYearGoals?: readonly CmePlanGoal[];
   ownerId?: string;
+  /** The goal a doctor chose to carry before confirming next year's targets, back from set-up. */
+  resumeCarryGoalId?: string | null;
 }) {
   const draftOwnerId = ownerId ?? "demo";
   const router = useRouter();
@@ -201,6 +205,17 @@ export function CmePlanPage({
   const availableToCarry = carryableCmeGoals(goals, targetGoals).filter((goal) => !carriedIds.has(goal.id));
   const targetReady = nextYearConfirmed === true && targetGoals !== undefined;
   const targetFull = (targetGoals?.length ?? 0) >= CME_PLAN_GOAL_MAX;
+  // Back from confirming next year's targets: the chosen goal is named and its Carry button
+  // focused, but nothing is carried until the doctor taps it.
+  const resumeGoal =
+    offerCarry && targetReady && !targetFull && resumeCarryGoalId
+      ? (availableToCarry.find((goal) => goal.id === resumeCarryGoalId) ?? null)
+      : null;
+  const resumeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const resumeGoalId = resumeGoal?.id ?? null;
+  useEffect(() => {
+    if (resumeGoalId) resumeButtonRef.current?.focus();
+  }, [resumeGoalId]);
 
   async function carryGoal(goal: CmePlanGoal) {
     if (!targetReady || carryingId || carriedIds.has(goal.id) || targetFull) return;
@@ -515,13 +530,17 @@ export function CmePlanPage({
                   Choose any goal you are still working on. Nothing carries forward automatically.
                 </p>
                 {nextYearConfirmed === false ? (
-                  <p>
-                    <CmeTextLink href={`/cme/setup?year=${set.year + 1}`}>
-                      Confirm {set.year + 1} targets first
-                    </CmeTextLink>
+                  // The link keeps its 48 px tap target; the negative margin keeps the card's text rhythm.
+                  <p className="-my-2">
+                    <CmeTextLink href={cmeCarryConfirmHref(set.year)}>Confirm {set.year + 1} targets first</CmeTextLink>
                   </p>
                 ) : nextYearConfirmed === null ? (
                   <p className={cn(textMuted, "text-sm-minus")}>Next year’s targets have not been checked here yet.</p>
+                ) : null}
+                {resumeGoal && !carriedIds.has(resumeGoal.id) ? (
+                  <p className="text-sm-minus" data-testid="cme-carry-resume">
+                    {set.year + 1} targets confirmed. Tap Carry to bring “{resumeGoal.goal}” forward.
+                  </p>
                 ) : null}
                 {availableToCarry.length === 0 ? (
                   <p className={cn(textMuted, "text-sm-minus")}>No goals left to carry.</p>
@@ -532,17 +551,31 @@ export function CmePlanPage({
                         key={goal.id}
                         title={goal.goal}
                         end={
-                          <button
-                            type="button"
-                            disabled={!targetReady || targetFull || carryingId !== null || demoMode}
-                            onClick={() => void carryGoal(goal)}
-                            className={cn(
-                              focusRing,
-                              "inline-flex min-h-12 items-center whitespace-nowrap text-sm-minus font-medium text-[color:var(--clinical-accent)] hover:underline disabled:cursor-not-allowed disabled:text-[color:var(--disabled)] disabled:no-underline",
-                            )}
-                          >
-                            {carryingId === goal.id ? "Carrying…" : `Carry into ${set.year + 1}`}
-                          </button>
+                          nextYearConfirmed === false ? (
+                            // Confirming comes first; set-up sends the doctor back here with this goal ready.
+                            <Link
+                              href={cmeCarryConfirmHref(set.year, goal.id)}
+                              className={cn(
+                                focusRing,
+                                "inline-flex min-h-12 items-center whitespace-nowrap text-sm-minus font-medium text-[color:var(--clinical-accent)] hover:underline",
+                              )}
+                            >
+                              Confirm, then carry
+                            </Link>
+                          ) : (
+                            <button
+                              ref={goal.id === resumeGoalId ? resumeButtonRef : undefined}
+                              type="button"
+                              disabled={!targetReady || targetFull || carryingId !== null || demoMode}
+                              onClick={() => void carryGoal(goal)}
+                              className={cn(
+                                focusRing,
+                                "inline-flex min-h-12 items-center whitespace-nowrap text-sm-minus font-medium text-[color:var(--clinical-accent)] hover:underline disabled:cursor-not-allowed disabled:text-[color:var(--disabled)] disabled:no-underline",
+                              )}
+                            >
+                              {carryingId === goal.id ? "Carrying…" : `Carry into ${set.year + 1}`}
+                            </button>
+                          )
                         }
                       />
                     ))}

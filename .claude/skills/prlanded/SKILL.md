@@ -1,6 +1,6 @@
 ---
 name: prlanded
-description: Verify a merged PR actually landed correctly in this repo and clean up after it. Use right after a PR merges (especially squash + auto-merge) to confirm the squashed commit matches your branch by content, catch late commits that were orphaned by the auto-merge race, and update the ledger and memory.
+description: Verify a merged PR actually landed correctly in this repo and clean up after it. Use right after a PR merges (especially with auto-merge) to confirm the merge commit, or for older PRs the squashed commit, matches your branch by content, catch late commits that were orphaned by the auto-merge race, and post its review record and update memory.
 ---
 
 # prlanded — confirm a merge landed and tidy up
@@ -35,12 +35,12 @@ Otherwise ask before GitHub access; never infer provider authority merely from l
    and validate the exact worktree path from a different worktree, then report the commands or run
    them only within that authorization. For squash-merged branches, explain why `-d` refuses and
    why `-D` would be needed; empty content proof is necessary but does not itself authorize deletion.
-5. **Record** per [Records](../../../docs/agents/pull-request-workflow.md#records): `npm run ledger:append` with `--ref <branch>`,
-   the merged commit's full 40-character `--head`, `--scope prlanded`, `--outcome`, and `--checks`,
-   plus any relevant memory note.
+5. **Record** per [Records](../../../docs/agents/pull-request-workflow.md#records): post one `Review record` comment on the merged PR
+   with the branch, the merged commit's full 40-character SHA, scope `prlanded`, the outcome and
+   the checks run, plus any relevant memory note.
 
 ## Notes
 
-- Do not re-review a branch/HEAD already recorded in the ledger for the same scope.
+- Do not re-review a PR whose comments already hold a `Review record` at that head for the same scope.
 - If the content diff is non-empty and you are unsure why, stop and report rather than
   deleting anything.

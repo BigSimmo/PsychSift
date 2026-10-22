@@ -3,7 +3,7 @@
 import { ArrowLeft, ArrowRight, Check, ChevronRight, Clock3, ListChecks, RotateCcw, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import { cn } from "@/components/ui-primitives";
+import { cn, controlDisabled } from "@/components/ui-primitives";
 import { MissingValue, missingValuePhrase } from "@/components/ui/missing-value";
 
 import { calculators, domainLabels, type CalculatorFixture, type CalculatorItem } from "./calculator-fixtures";
@@ -231,7 +231,8 @@ function QuestionScreen({
           onClick={onBack}
           disabled={stepIndex === 0}
           className={cn(
-            "inline-flex min-h-tap items-center gap-2 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-3 text-sm-minus font-bold text-[color:var(--text-muted)] hover:text-[color:var(--text)] disabled:pointer-events-none disabled:opacity-40",
+            "inline-flex min-h-tap items-center gap-2 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-3 text-sm-minus font-bold text-[color:var(--text-muted)] hover:text-[color:var(--text)] disabled:pointer-events-none",
+            controlDisabled,
             focusRing,
           )}
         >
@@ -395,8 +396,8 @@ export function CalculatorsGuidedFlowMockup() {
   };
 
   return (
-    <div className="min-h-screen bg-[color:var(--surface-wash)]">
-      <main className="mx-auto grid min-h-screen max-w-5xl content-start gap-6 px-4 py-6 pb-28 text-[color:var(--text)] sm:px-6 lg:px-8">
+    <div className="min-h-dvh bg-[color:var(--surface-wash)]">
+      <main className="mx-auto grid min-h-dvh max-w-5xl content-start gap-6 px-4 py-6 pb-28 text-[color:var(--text)] sm:px-6 lg:px-8">
         {!calc ? (
           <PickerScreen onPick={start} />
         ) : finished ? (

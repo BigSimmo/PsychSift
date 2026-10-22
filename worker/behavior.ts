@@ -22,7 +22,7 @@ import { IngestionProviderEgressRefusal } from "../src/lib/ingestion-provider-eg
 
 export const WORKER_CONTROL_PLANE_TIMEOUT_MS = 30_000;
 export const WORKER_DATA_PLANE_TIMEOUT_MS = 240_000;
-export const WORKER_SUPABASE_TIMEOUT_MS = 120_000;
+export const WORKER_SUPABASE_TIMEOUT_MS = 240_000;
 
 export const CONTROL_PLANE_RPCS: ReadonlySet<string> = new Set([
   "claim_ingestion_jobs",
@@ -47,7 +47,13 @@ export function resolveWorkerDataPlaneTimeoutMs(environment: Record<string, stri
 
 export function resolveWorkerSupabaseTimeoutMs(environment: Record<string, string | undefined> = process.env): number {
   const raw = Number(environment.WORKER_SUPABASE_TIMEOUT_MS);
-  return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : WORKER_SUPABASE_TIMEOUT_MS;
+  return Number.isFinite(raw) && raw > 0
+    ? Math.floor(raw)
+    : Math.max(
+        WORKER_SUPABASE_TIMEOUT_MS,
+        resolveWorkerDataPlaneTimeoutMs(environment),
+        resolveWorkerControlPlaneTimeoutMs(environment),
+      );
 }
 
 export function controlPlaneAbortSignal(
@@ -330,20 +336,26 @@ export async function runIngestionMutation(
   rpc: (name: string, args: Record<string, unknown>) => PromiseLike<IngestionRpcResult>,
   name: string,
   payload: Record<string, unknown> = {},
+  options: { revokeOnUncertainOutcome?: boolean } = {},
 ) {
+  // Only a call that writes nothing (the heartbeat) may opt out; its caller then owns revocation.
+  const revokeOnUncertainOutcome = options.revokeOnUncertainOutcome !== false;
   return attempt.serialize(async () => {
     attempt.check();
     let result: IngestionRpcResult;
     try {
       result = await rpc(name, { ...payload, p_fence: attempt.fence });
     } catch (error) {
-      attempt.cancel();
+      if (revokeOnUncertainOutcome) attempt.cancel();
       throw error;
     }
     const rejection = result.error ? confirmedRpcRejection(result.error) : null;
     if (rejection) throw rejection;
+    if (result.error) {
+      if (revokeOnUncertainOutcome) attempt.cancel();
+      throw new Error(result.error.message);
+    }
     try {
-      if (result.error) throw new Error(result.error.message);
       const accepted =
         name === "commit_document_index_generation"
           ? attempt.handoff(result.data, payload.p_generation)
@@ -355,6 +367,41 @@ export async function runIngestionMutation(
       throw error;
     }
   });
+}
+
+/**
+ * Audit 2026-10-20 ING-A-03: the heartbeat writes no data, so an uncertain or transiently
+ * rejected heartbeat need not throw away the attempt's paid work. It is tolerated until no
+ * heartbeat has been confirmed for `toleranceMs` (a third of the stale window by default, so
+ * the attempt stands down long before another worker can reclaim the lease). A reported lost
+ * lease, an invalid response or a confirmed non-transient rejection still revokes at once.
+ */
+export function startIngestionHeartbeat(
+  attempt: IngestionAttempt,
+  beat: () => Promise<unknown>,
+  options: { intervalMs: number; toleranceMs: number; leaseMs: number; now?: () => number },
+) {
+  // The tolerance must end strictly before the lease does, or an attempt could keep working after
+  // another worker has reclaimed its job. Refuse to start rather than run with a bad configuration.
+  if (!(options.toleranceMs > 0 && options.toleranceMs < options.leaseMs))
+    throw new RangeError(
+      `Heartbeat tolerance (${options.toleranceMs} ms) must be positive and shorter than the job lease (${options.leaseMs} ms).`,
+    );
+  const now = options.now ?? Date.now;
+  let lastConfirmedAt = now();
+  return setInterval(() => {
+    beat().then(
+      () => {
+        lastConfirmedAt = now();
+      },
+      (error: unknown) => {
+        const tolerable =
+          !(error instanceof IngestionAttemptError) &&
+          (!(error instanceof IngestionRpcRejectedError) || isTransientDatabaseRejection(error));
+        if (!tolerable || now() - lastConfirmedAt >= options.toleranceMs) attempt.cancel();
+      },
+    );
+  }, options.intervalMs);
 }
 
 export function claimedJobFence(
@@ -683,4 +730,104 @@ export function serializeDocumentPageRowsForCommit(
     boundedXlsxJson(rows, XLSX_SOURCE_LIMITS.resultBytes);
   }
   return rows;
+}
+
+export type WorkerClaimScopeFilter = {
+  allowedDocumentIds: ReadonlySet<string>;
+  allowedFileTypes: ReadonlySet<string>;
+  active: boolean;
+  /** A malformed allowlist (no valid entries, or a non-UUID document ID): claim nothing rather than everything. */
+  claimsNothing: boolean;
+  /** Why the configured scope was rejected, for one operator-facing warning. */
+  configurationError: string | null;
+};
+
+const claimDocumentIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+function normalizeClaimDocumentId(value?: string | null): string {
+  return (value ?? "").trim().toLowerCase();
+}
+
+function normalizeClaimMimeType(value?: string | null): string {
+  return (value ?? "").split(";")[0]!.trim().toLowerCase();
+}
+
+export function resolveWorkerClaimScopeFilter(
+  environment: Record<string, string | undefined> = process.env,
+): WorkerClaimScopeFilter {
+  const parseList = (raw: string | undefined, normalize: (item: string) => string) =>
+    new Set(
+      (raw ?? "")
+        .split(",")
+        .map((item) => normalize(item))
+        .filter(Boolean),
+    );
+  const allowedDocumentIds = parseList(environment.WORKER_ALLOWED_DOCUMENT_IDS, normalizeClaimDocumentId);
+  const allowedFileTypes = parseList(environment.WORKER_ALLOWED_FILE_TYPES, normalizeClaimMimeType);
+  // Blank means unset (the .env.example default). A configured list that parses to no
+  // entries is malformed; dropping it would silently widen the scope to every job.
+  const malformed = (raw: string | undefined, parsed: ReadonlySet<string>) =>
+    (raw ?? "").trim() !== "" && parsed.size === 0;
+  // claim_ingestion_jobs takes uuid[]; one bad ID would fail every claim request, so
+  // reject the whole document scope instead of sending it or silently dropping the entry.
+  const invalidDocumentIds = [...allowedDocumentIds].filter((id) => !claimDocumentIdPattern.test(id));
+  const configurationError =
+    invalidDocumentIds.length > 0
+      ? `WORKER_ALLOWED_DOCUMENT_IDS contains non-UUID value(s): ${invalidDocumentIds.slice(0, 3).join(", ")}`
+      : malformed(environment.WORKER_ALLOWED_DOCUMENT_IDS, allowedDocumentIds)
+        ? "WORKER_ALLOWED_DOCUMENT_IDS is set but lists no document IDs"
+        : malformed(environment.WORKER_ALLOWED_FILE_TYPES, allowedFileTypes)
+          ? "WORKER_ALLOWED_FILE_TYPES is set but lists no MIME types"
+          : null;
+  const claimsNothing = configurationError !== null;
+  return {
+    allowedDocumentIds,
+    allowedFileTypes,
+    active: claimsNothing || allowedDocumentIds.size > 0 || allowedFileTypes.size > 0,
+    claimsNothing,
+    configurationError,
+  };
+}
+
+export function isPreClaimCandidateAllowed(
+  candidate: { document_id?: string | null; file_type?: string | null },
+  filter: WorkerClaimScopeFilter,
+): boolean {
+  if (!filter.active) return true;
+  if (filter.claimsNothing) return false;
+  const docId = normalizeClaimDocumentId(candidate.document_id);
+  const fileType = normalizeClaimMimeType(candidate.file_type);
+  if (filter.allowedDocumentIds.size > 0 && (!docId || !filter.allowedDocumentIds.has(docId))) {
+    return false;
+  }
+  if (filter.allowedFileTypes.size > 0 && (!fileType || !filter.allowedFileTypes.has(fileType))) {
+    return false;
+  }
+  return true;
+}
+
+export function isClaimableIngestionJobCandidate(
+  candidate: {
+    status?: string | null;
+    attempt_count?: number | null;
+    max_attempts?: number | null;
+    next_run_at?: string | null;
+    lease_expires_at?: string | null;
+  },
+  nowMs: number = Date.now(),
+): boolean {
+  const attemptCount = candidate.attempt_count ?? 0;
+  const maxAttempts = candidate.max_attempts ?? 3;
+  if (attemptCount >= maxAttempts) return false;
+  if (candidate.status === "pending") {
+    if (!candidate.next_run_at) return true;
+    const nextRunMs = Date.parse(candidate.next_run_at);
+    return Number.isFinite(nextRunMs) && nextRunMs <= nowMs;
+  }
+  if (candidate.status === "processing") {
+    if (!candidate.lease_expires_at) return false;
+    const leaseExpiresMs = Date.parse(candidate.lease_expires_at);
+    return Number.isFinite(leaseExpiresMs) && leaseExpiresMs <= nowMs;
+  }
+  return false;
 }

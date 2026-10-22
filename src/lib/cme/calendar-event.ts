@@ -8,7 +8,7 @@ const PERTH_OFFSET_HOURS = 8;
 
 /** A confirmed dated course or event can be exported; guessed dates never can. */
 export function canAddLearningToCalendar(item: LearningDirectoryItem): boolean {
-  return item.datesConfirmed && item.startsOn !== null;
+  return item.datesConfirmed && item.startsOn !== null && !item.cancelled;
 }
 
 function perthWallTimeUtc(date: string, time: string): string {

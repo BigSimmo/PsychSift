@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
+import type { MouseEventHandler } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { cn } from "@/components/ui-primitives";
@@ -21,12 +22,14 @@ export function ShowAllChip({
   label = "Show all",
   ariaLabel,
   testId,
+  onClick,
 }: {
   href: string;
   icon: LucideIcon;
   label?: string;
   ariaLabel: string;
   testId: string;
+  onClick?: MouseEventHandler<HTMLAnchorElement>;
 }) {
   return (
     <div className="flex justify-center">
@@ -34,6 +37,7 @@ export function ShowAllChip({
         href={href}
         aria-label={ariaLabel}
         data-testid={testId}
+        onClick={onClick}
         className={cn(
           "group inline-flex min-h-tap items-center justify-center text-[color:var(--clinical-accent-strong)] lg:min-h-compact-meta",
           focusRing,

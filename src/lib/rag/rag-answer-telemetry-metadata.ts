@@ -3,7 +3,14 @@ import { rankAnswerEvidence } from "@/lib/answer-ranking";
 import { buildCrossDocumentFusionBrief, buildCrossDocumentSynthesisPlan } from "@/lib/cross-document-synthesis";
 import { buildAnswerScoreExplanations, buildIndexingQuality, collectMemoryCards } from "@/lib/rag/rag-answer-support";
 import { memoryCardChunkScore } from "@/lib/rag/rag-candidate-sources";
+import {
+  generationDegradationLogMetadata,
+  readObservedGenerationDegradation,
+  type RagGenerationDegradationReason,
+} from "@/lib/rag/rag-generation-degradation";
 import type { RagAnswer, RagQueryClass } from "@/lib/types";
+
+export { generationDegradationLogMetadata };
 
 type AnswerLatencyTimings = NonNullable<RagAnswer["latencyTimings"]>;
 
@@ -44,11 +51,54 @@ export function answerLatencyMetadata(
   timings: AnswerLatencyTimings | null | undefined,
   startedAt: number,
 ): Record<string, unknown> {
+  // Time to first visible content (master plan section 4). Present only when a preview was
+  // sent, so every other answer keeps the legacy shape. A rounded number, never text.
+  const firstVerifiedContentMs = timings?.first_verified_content_ms;
   return {
     search_latency_ms: searchLatencyMs,
     generation_latency_ms: generationLatencyMs,
     total_latency_ms: timings?.total_latency_ms ?? Date.now() - startedAt,
+    ...(typeof firstVerifiedContentMs === "number" && Number.isFinite(firstVerifiedContentMs)
+      ? { first_verified_content_ms: Math.round(firstVerifiedContentMs) }
+      : {}),
     ...extendedAnswerTelemetryFields(timings),
+  };
+}
+
+/**
+ * Flattened scalar telemetry projection of `RagGenerationDegradationRecord` (#231).
+ *
+ * Separates `provider_initial_attempt_timeout` (zero-response initial call timeout)
+ * from `provider_quality_retry_exhausted` (response-bearing quality-gate rejection
+ * followed by retry-ladder exhaustion) in `rag_queries.metadata` without changing
+ * the rollout-gated `RagAnswer.generationDegradation` response contract.
+ *
+ * Every emitted field comes from `projectGenerationDegradation`, which allowlists
+ * enum strings and bounds integers, so free text and adversarial canary tokens can
+ * never pass through this helper.
+ */
+export function generationDegradationTelemetryFields(
+  answer: Pick<RagAnswer, "generationDegradation"> | object | null | undefined,
+): {
+  generation_degradation_reason?: RagGenerationDegradationReason | null;
+  generation_degradation_attempt_count?: number;
+  generation_degradation_completed_response_count?: number;
+  generation_degradation_total_attempt_latency_ms?: number;
+  generation_degradation_initial_outcome?: string | null;
+  generation_degradation_initial_latency_ms?: number | null;
+  generation_degradation_initial_timeout_ms?: number | null;
+} {
+  const degradation = readObservedGenerationDegradation(answer);
+  if (!degradation) return {};
+  const initialAttempt = degradation.attempts[0];
+  return {
+    generation_degradation_reason: degradation.reason,
+    generation_degradation_attempt_count: degradation.attempts.length,
+    generation_degradation_completed_response_count: degradation.completedResponseCount,
+    generation_degradation_total_attempt_latency_ms: degradation.totalAttemptLatencyMs,
+    generation_degradation_initial_outcome: initialAttempt?.outcome ?? null,
+    generation_degradation_initial_latency_ms: initialAttempt?.latencyMs ?? null,
+    generation_degradation_initial_timeout_ms: initialAttempt?.timeoutMs ?? null,
   };
 }
 
@@ -56,7 +106,7 @@ export function answerLatencyMetadata(
 export function answerScopedEvidenceMetadata(
   query: string,
   queryClass: RagQueryClass,
-  answer: Pick<RagAnswer, "sources" | "indexingVersion">,
+  answer: Pick<RagAnswer, "sources" | "indexingVersion" | "generationDegradation">,
 ) {
   const sources = answer.sources;
   const ranking = rankAnswerEvidence(query, sources, queryClass);
@@ -91,6 +141,7 @@ export function answerScopedEvidenceMetadata(
     indexing_extraction_quality: indexingQuality.extractionQuality,
     indexing_stale: indexingQuality.stale,
     ...scoreExplanationLogMetadata(scoreExplanations),
+    ...generationDegradationTelemetryFields(answer),
   };
 }
 

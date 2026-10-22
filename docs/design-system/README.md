@@ -42,3 +42,5 @@ empty `files` so `check:design-system-adoption` / `check:design-system-contract`
 draft; human-approved Linux screenshots and exact hosted provenance remain the draft→ready gate,
 not a red CI check. Design project `08d6f126-3fd0-4764-aedf-0062a467280a` is not verified by this
 repository; local design-sync parity is not remote publication proof.
+
+Local implementation evidence: [17 October 2026 audit-resolution handoff](audit-resolution-2026-10-17.md) records all 32 original findings and eight assurance tasks, with unresolved acceptance and evidence limits. It is not the canonical task ledger.

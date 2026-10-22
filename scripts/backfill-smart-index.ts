@@ -509,6 +509,13 @@ async function upsertIndexQuality(args: {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
+  // This legacy path has no admitted source/scanner permit and mutates live
+  // generations before model calls. Metadata-only mode also creates embeddings.
+  if (args.write && args.confirm) {
+    throw new Error(
+      "Legacy smart-index writes require scanner-bound worker admission; use the governed ingestion worker. No repair writes were made.",
+    );
+  }
   const [
     { requireOpenAIEnv, requireServerEnv },
     { createAdminClient },

@@ -236,7 +236,8 @@ describe("Therapy Compass responsive contract", () => {
     expect(therapyCardSource).toContain("useTherapyFavourite(therapy.slug)");
     expect(therapyCardSource).toContain("onClick={() => void toggleFavourite()}");
     expect(therapyCardSource).toContain("aria-pressed={saved}");
-    expect(therapyCardSource).toContain('role="status"');
+    expect(therapyCardSource).toContain("if (notice) announce(notice)");
+    expect(therapyCardSource).not.toContain('aria-live="polite"');
     expect(therapyFavouriteSource).toContain('await accountData.setFavourite("therapy", slug, nowSaved)');
     expect(therapyFavouriteSource).toContain("Sign in or create an account to save therapies.");
     expect(therapyFavouriteSource).toContain("Save failed. Try again.");

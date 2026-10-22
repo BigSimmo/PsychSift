@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "playwright/test";
+import { expectAtLeastCssPx } from "./helpers/layout-tolerance";
 import { clickWhenSettled } from "./playwright-settlement";
 
 /**
@@ -28,6 +29,44 @@ async function mockSetupStatus(page: Page) {
   await page.route("**/api/setup-status**", async (route) => {
     await route.fulfill({ json: { demoMode: true, checks: readySetupChecks } });
   });
+}
+
+/** #3731: the Tab walk measures geometry, so it must not sample a layout that is still
+ * moving. Waits for fonts, chrome/reserve transitions and finished animations, then for
+ * the dock, the focused control and the scroll position to hold still across consecutive
+ * frames. It only waits; every assertion the walk makes is unchanged. */
+async function waitForPhoneTabWalkSettled(page: Page) {
+  await page.waitForFunction(
+    async () => {
+      if (document.fonts.status !== "loaded") return false;
+      await document.fonts.ready;
+      if (document.querySelector('[data-chrome-transitioning="true"], [data-reserve-transitioning="true"]'))
+        return false;
+      if (document.getAnimations().some((animation) => animation.playState === "running")) return false;
+      const frame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      const sample = () => {
+        const dock = document.querySelector('form[role="search"][data-footer-variant="compact"]');
+        const layer = (dock?.closest(".phone-footer-layer") ?? dock) as HTMLElement | null;
+        const active = document.activeElement as HTMLElement | null;
+        const rects = [layer, active].map((node) => {
+          const rect = node?.getBoundingClientRect();
+          return rect ? [rect.top, rect.bottom, rect.left, rect.width].join(",") : "";
+        });
+        return [window.scrollY, document.documentElement.scrollHeight, ...rects].join("|");
+      };
+      let previous = sample();
+      for (let stable = 0; stable < 3;) {
+        await frame();
+        const current = sample();
+        if (current !== previous) return false;
+        stable += 1;
+        previous = current;
+      }
+      return true;
+    },
+    undefined,
+    { polling: 50 },
+  );
 }
 
 async function mockDemoDashboard(page: Page) {
@@ -477,12 +516,15 @@ test.describe("Header element overlap coverage", () => {
       }
       window.scrollTo(0, 0);
     });
+    await waitForPhoneTabWalkSettled(page);
 
     const covered: string[] = [];
     let resultStops = 0;
     let scrolledStops = 0;
     for (let press = 0; press < 80; press++) {
       await page.keyboard.press("Tab");
+      // Focus-driven scrollIntoView can still be moving; measure the settled frame.
+      await waitForPhoneTabWalkSettled(page);
       const stop = await page.evaluate(() => {
         const active = document.activeElement as HTMLElement | null;
         if (!active || active === document.body) return { kind: "none" as const };
@@ -748,7 +790,9 @@ test.describe("Tablet usability regressions", () => {
       const name = await control.getAttribute("aria-label");
       const box = await control.boundingBox();
       expect(box, `${name}: control must render`).not.toBeNull();
-      expect(box!.height, `${name}: must meet the 48px tap floor at 820px`).toBeGreaterThanOrEqual(48);
+      // Firefox measured 47.999969482421875 for the favourites button (main run 39120425367):
+      // float error from the rect, not a control below the min-h-12 floor.
+      expectAtLeastCssPx(box!.height, 48, `${name}: must meet the 48px tap floor at 820px`);
     }
   });
 
@@ -779,15 +823,15 @@ test.describe("Tablet usability regressions", () => {
     });
     await page.goto("/forms/search?q=transport&run=1", { waitUntil: "domcontentloaded" });
 
-    // Two nodes carry this copy and both are meant to: the visible paragraph,
-    // and the sr-only live region the empty state populates after mount so the
-    // degraded state is announced rather than heard as a silent zero. Playwright
-    // matches text by substring, so the bare string resolved to both and failed
-    // strict mode. Name each one instead of loosening the assertion.
+    // The registry fault owns the announcement and retry. The body explains
+    // that an incomplete search is not a reliable absence without speaking twice.
+    const fault = page.getByTestId("search-query-ribbon-fault");
+    await expect(fault).toHaveAttribute("role", "alert");
+    await expect(fault).toContainText("Could not load forms");
+    await expect(fault.getByRole("button", { name: "Retry", exact: true })).toBeEnabled();
     await expect(page.getByText("Search could not complete", { exact: true })).toBeVisible();
-    await expect(page.getByText(/^Search could not complete\. Part of the search index did not respond/)).toHaveCount(
-      1,
-    );
+    await expect(page.getByText(/^The search did not complete, so this is not a reliable/)).toBeVisible();
+    await expect(page.locator('[aria-live="polite"]').filter({ hasText: "Search could not complete" })).toHaveCount(0);
     await expect(page.getByText(/^No matches for/)).toHaveCount(0);
   });
 

@@ -10,6 +10,7 @@ import {
   PublicApiError,
 } from "@/lib/http";
 import { logger } from "@/lib/logger";
+import { contentFreeErrorDetails } from "@/lib/privacy";
 import { writeAuditLog } from "@/lib/audit";
 import { consumeSubjectApiRateLimit, rateLimitJsonResponse } from "@/lib/api-rate-limit";
 import { planDocumentName, type DocumentNamePlan, type DocumentNameSupabase } from "@/lib/document-naming";
@@ -36,6 +37,9 @@ import { acquireUploadAdmission, parseUploadContentLength } from "@/lib/upload-a
 import { assertUploadStructure } from "@/lib/upload-structure";
 
 export const runtime = "nodejs";
+
+// Allow large document transfers while bounding every Storage call, including collision reads.
+const UPLOAD_STORAGE_TIMEOUT_MS = 120_000;
 
 const uploadMetadataSchema = z
   .object({
@@ -132,8 +136,8 @@ async function duplicateUploadResponse(args: {
       .remove([args.storagePath]);
     if (cleanupStorageError) {
       logger.warn("Duplicate upload storage cleanup failed", {
-        storagePath: args.storagePath,
-        message: cleanupStorageError.message,
+        storageObjectRef: createHash("sha256").update(args.storagePath).digest("hex"),
+        ...contentFreeErrorDetails(cleanupStorageError),
       });
       const { error: cleanupLedgerError } = await args.supabase.from("storage_cleanup_jobs").insert({
         document_bucket: env.SUPABASE_DOCUMENT_BUCKET,
@@ -146,7 +150,7 @@ async function duplicateUploadResponse(args: {
       if (cleanupLedgerError) {
         // Keep the duplicate response path fail-closed for orphaned objects: without a
         // ledger row there is no durable recovery record after storage.remove() failed.
-        throw new Error(`Duplicate upload cleanup ledger insert failed: ${cleanupLedgerError.message}`);
+        throw new Error("Duplicate upload cleanup ledger insert failed.");
       }
     }
   }
@@ -203,14 +207,13 @@ async function releaseSupersededUpload(args: {
     documentId: args.documentId,
     supersededPath,
     committedPath: args.committedPath,
-  }).catch((error: unknown) => ({
+  }).catch(() => ({
     outcome: "unrecorded" as const,
-    failures: [error instanceof Error ? error.message : "release failed"],
+    failures: [{ stage: "unknown" as const, code: "unknown" as const }],
   }));
   if (release.outcome === "unrecorded") {
     logger.error("Superseded upload object cleanup failed; object requires manual reconciliation", {
-      storagePath: supersededPath,
-      ownerId: args.ownerId,
+      storageObjectRef: createHash("sha256").update(supersededPath).digest("hex"),
       failures: release.failures,
     });
   }
@@ -433,6 +436,19 @@ export async function POST(request: Request) {
       userSupabase,
     );
     if (replay.outcome !== "not_found") {
+      // A previous attempt may have committed its recovery sibling and then
+      // stopped before cleanup. The replay is durable proof of the winning path.
+      durableAdmission = true;
+      const committedReplayPath = replay.document.storage_path;
+      if (typeof committedReplayPath !== "string") {
+        throw new PublicApiError("Stored admission storage path is invalid.", 409);
+      }
+      await releaseSupersededUpload({
+        ownerId: uploadOwnerId,
+        documentId,
+        supersededPath: storagePath,
+        committedPath: committedReplayPath,
+      });
       return NextResponse.json({ document: replay.document, job: replay.job });
     }
 
@@ -461,8 +477,10 @@ export async function POST(request: Request) {
     let storageUpload;
     try {
       storageUpload = await uploadTrustedDocumentBytes({
-        // Large document transfers may legitimately exceed the default deadline; keep database/auth/RPC calls bounded.
-        storage: createAdminClient({ timeoutMs: null }).storage.from(env.SUPABASE_DOCUMENT_BUCKET),
+        // This client is request-scoped: aborts must not leak into the shared admin client.
+        storage: createAdminClient({ timeoutMs: UPLOAD_STORAGE_TIMEOUT_MS, signal: request.signal }).storage.from(
+          env.SUPABASE_DOCUMENT_BUCKET,
+        ),
         ownerId: uploadOwnerId,
         documentId,
         intendedStoragePath: admissionStoragePath,
@@ -475,7 +493,14 @@ export async function POST(request: Request) {
       if (storageError instanceof TrustedDocumentStorageUploadError && storageError.kind === "outcome_unknown") {
         uploadedPath = storageError.storagePath;
         preserveUploadedArtifact = true;
+        // Preserve a content-free lookup before cancellation replaces this error with 499.
+        logger.error("Document Storage upload outcome unknown; manual reconciliation required", {
+          code: "upload_storage_outcome_unknown",
+          correlationId,
+          storageObjectRef: uploadedPath ? createHash("sha256").update(uploadedPath).digest("hex") : null,
+        });
       }
+      assertUploadNotAborted(request);
       throw storageError;
     }
     uploadedPath = storageUpload.storagePath;
@@ -610,7 +635,7 @@ export async function POST(request: Request) {
                 image_bucket: env.SUPABASE_IMAGE_BUCKET,
                 image_paths: [],
               });
-              if (ledgerError) throw new Error(`Upload cleanup ledger insert failed: ${ledgerError.message}`);
+              if (ledgerError) throw new Error("Upload cleanup ledger insert failed.");
             }
             uploadedPath = null;
             durableAdmission = true;
@@ -622,7 +647,12 @@ export async function POST(request: Request) {
         // The duplicate response helper exclusively owns exact-path compensation
         // and its durable cleanup-ledger fallback.
         preserveUploadedArtifact = true;
-        return duplicateUploadResponse({ supabase, ownerId: uploadOwnerId, contentHash, storagePath: uploadedPath });
+        return await duplicateUploadResponse({
+          supabase,
+          ownerId: uploadOwnerId,
+          contentHash,
+          storagePath: uploadedPath,
+        });
       }
       throw dispatchError;
     }
@@ -655,8 +685,8 @@ export async function POST(request: Request) {
           .remove([uploadedPath]);
         if (cleanupStorageError) {
           logger.error("Upload cleanup failed; storage object may be orphaned", {
-            storagePath: uploadedPath,
-            message: cleanupStorageError.message,
+            storageObjectRef: createHash("sha256").update(uploadedPath).digest("hex"),
+            ...contentFreeErrorDetails(cleanupStorageError),
           });
           const { error: cleanupLedgerError } = await supabase.from("storage_cleanup_jobs").insert({
             document_bucket: env.SUPABASE_DOCUMENT_BUCKET,
@@ -668,18 +698,18 @@ export async function POST(request: Request) {
           });
           if (cleanupLedgerError) {
             logger.error("Upload cleanup ledger insert failed; orphaned object requires manual reconciliation", {
-              storagePath: uploadedPath,
-              ownerId: cleanupOwnerId,
-              message: cleanupLedgerError.message,
+              storageObjectRef: createHash("sha256").update(uploadedPath).digest("hex"),
+              ...contentFreeErrorDetails(cleanupLedgerError),
             });
           }
         }
       } catch (cleanupError) {
         // Cleanup is best-effort, but a silent failure leaves an orphaned storage
-        // object. Record the path so it can be reconciled instead of dropping it.
+        // object. Keep its bytes on the scoped cleanup queue; logs contain only
+        // an opaque object digest and fixed error classifications.
         logger.error("Upload cleanup failed; storage object may be orphaned", {
-          storagePath: uploadedPath,
-          message: cleanupError instanceof Error ? cleanupError.message : String(cleanupError),
+          storageObjectRef: createHash("sha256").update(uploadedPath).digest("hex"),
+          ...contentFreeErrorDetails(cleanupError),
         });
         try {
           const { error: cleanupLedgerError } = await supabase.from("storage_cleanup_jobs").insert({
@@ -692,16 +722,14 @@ export async function POST(request: Request) {
           });
           if (cleanupLedgerError) {
             logger.error("Upload cleanup ledger insert failed; orphaned object requires manual reconciliation", {
-              storagePath: uploadedPath,
-              ownerId: cleanupOwnerId,
-              message: cleanupLedgerError.message,
+              storageObjectRef: createHash("sha256").update(uploadedPath).digest("hex"),
+              ...contentFreeErrorDetails(cleanupLedgerError),
             });
           }
         } catch (cleanupLedgerError) {
           logger.error("Upload cleanup ledger insert failed; orphaned object requires manual reconciliation", {
-            storagePath: uploadedPath,
-            ownerId: cleanupOwnerId,
-            message: cleanupLedgerError instanceof Error ? cleanupLedgerError.message : String(cleanupLedgerError),
+            storageObjectRef: createHash("sha256").update(uploadedPath).digest("hex"),
+            ...contentFreeErrorDetails(cleanupLedgerError),
           });
         }
       }
@@ -720,7 +748,8 @@ export async function POST(request: Request) {
       });
     }
 
-    return jsonError(error);
+    logger.error("Upload request failed", contentFreeErrorDetails(error));
+    return jsonError(error, 500, { log: false });
   } finally {
     releaseAdmission?.();
   }

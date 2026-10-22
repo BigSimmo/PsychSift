@@ -28,13 +28,14 @@ import { subscribeAccountTransition } from "@/lib/account-scoped-browser-state";
 import { toAwstParts } from "@/lib/caring-contacts/clock";
 import { mhaActMetadata, mhaActSection } from "@/lib/mha-act-sections";
 import { formatPerthDateTime, parsePerthDateTimeInput } from "@/lib/mha-timeline";
-import { mhaTimers, type MhaTimerItem } from "@/lib/on-call/mha-timers";
+import { formHasRecurringReview, mhaTimers, type MhaTimerItem } from "@/lib/on-call/mha-timers";
 import type { MhaClockForm } from "@/lib/psychiatry-hub/mha-clock-forms";
 import {
   addMhaClock,
   keepReadableMhaClocks,
   loadMhaClockState,
   MHA_CLOCK_LIMIT,
+  mhaClockMadeAtProblem,
   MHA_CLOCK_UNREADABLE,
   removeMhaClock,
   restoreMhaClock,
@@ -74,7 +75,7 @@ const WEEKDAY_WINDOW_MS = 3 * 24 * HOUR_MS;
 const UNDO_MS = 8_000;
 
 export const MHA_CLOCK_RETENTION_NOTE =
-  "Only on this phone, not on your other devices. Kept until you remove it or you are signed out. A clock holds the form and the time only.";
+  "Only on this phone, not on your other devices. Kept until you remove it, sign out or your sign-in ends. A clock holds the form and the time only.";
 export const MHA_CLOCK_HANDOVER_NOTE =
   "Copies each form, when it was made and its time limits as this page shows them. No names, and no running times, because those go out of date once pasted.";
 
@@ -263,8 +264,16 @@ function AddClock({ forms, now }: { readonly forms: readonly MhaClockForm[]; rea
       fail(ADD_MESSAGE.invalid, Boolean(code));
       return;
     }
-    if (now && start.getTime() > now.getTime()) {
+    // The allowed window is the owner's ruling of 2026-10-20 (see `mhaClockMadeAtProblem`).
+    const problem = mhaClockMadeAtProblem(start.getTime(), (now ?? new Date()).getTime(), {
+      recurring: formHasRecurringReview(code),
+    });
+    if (problem === "future") {
       fail("That time is later than now. Enter when the form was made.", true);
+      return;
+    }
+    if (problem === "too-old") {
+      fail("That time is more than 7 days ago. Check the date the form was made.", true);
       return;
     }
     const result = addMhaClock(code, start);
@@ -591,7 +600,7 @@ function UndoBar({
   return (
     <div
       role="status"
-      className="pointer-events-none fixed inset-x-0 bottom-[max(1rem,env(safe-area-inset-bottom))] z-[var(--z-toast)] flex justify-center px-4"
+      className="pointer-events-none fixed inset-x-0 bottom-[calc(max(1rem,env(safe-area-inset-bottom))+var(--keyboard-height,0px))] z-[var(--z-toast)] flex justify-center px-4"
     >
       {removed || message ? (
         <div

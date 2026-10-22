@@ -1,6 +1,11 @@
 import { z } from "zod";
 
-import { answerFeedbackTypes } from "@/lib/answer-feedback";
+import {
+  ANSWER_FEEDBACK_NOTE_MAX_LENGTH,
+  answerFeedbackTypes,
+  feedbackRecordIdPattern,
+  feedbackRecordTypes,
+} from "@/lib/answer-feedback";
 
 export const clinicalQualitySnapshotVersion = "1" as const;
 
@@ -105,6 +110,11 @@ export const ragAnswerFeedbackRowSchema = z
     source_ids: z.array(z.string().trim().min(1).max(160)).max(80),
     cited_source_ids: z.array(z.string().trim().min(1).max(160)).max(80),
     created_at: z.iso.datetime({ offset: true }),
+    // Which page the report came from, and the reader's optional note (administrators only;
+    // the note is cleared after 30 days and never enters the weekly summary).
+    record_type: z.enum(feedbackRecordTypes).default("answer"),
+    record_id: z.string().regex(feedbackRecordIdPattern).nullable().default(null),
+    note: z.string().max(ANSWER_FEEDBACK_NOTE_MAX_LENGTH).nullable().default(null),
   })
   .strict();
 
@@ -186,6 +196,9 @@ export const qualityQueueItemSchema = z
     feedbackId: z.string().uuid().nullable(),
     interactionId: z.string().uuid().nullable(),
     answerHash: z.string().nullable(),
+    recordType: z.enum(feedbackRecordTypes).nullable().default(null),
+    recordId: z.string().nullable().default(null),
+    note: z.string().max(ANSWER_FEEDBACK_NOTE_MAX_LENGTH).nullable().default(null),
     documentIds: z.array(z.string().uuid()),
     createdAt: z.iso.datetime({ offset: true }),
     priority: z.enum(["high", "medium", "routine"]),
@@ -399,6 +412,9 @@ export function projectQualityQueue(args: {
       feedbackId: row.id,
       interactionId: row.interaction_id,
       answerHash: row.answer_hash,
+      recordType: row.record_type,
+      recordId: row.record_id,
+      note: row.note,
       documentIds: resolveDocumentIds([...row.source_ids, ...row.cited_source_ids]),
       createdAt: row.created_at,
       priority: qualityPriority(row.feedback_category),

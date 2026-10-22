@@ -37,6 +37,7 @@ const CPD_FILES = [
 const MODE_NAME_FILES = [
   "src/components/calendar/calendar-subscribe.tsx",
   "src/components/clinical-dashboard/settings-reminders.tsx",
+  "src/app/manifest.ts",
   "scripts/generate-site-map.ts",
 ];
 

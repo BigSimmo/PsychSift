@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 import {
   BIMODAL_RUNNER_TOLERANCE_FLOORS,
   DEFAULT_TOLERANCE,
+  STREAMED_HOME_LCP_FLOOR_MS,
   baselineFromRows,
   compareToLighthouseBudget,
   expectedBudgetRuns,
@@ -321,6 +322,18 @@ describe("gradeRun", () => {
     // Unintended documents* name must still flag — closes false-green path
     expect(gradeRun(row("desktop-documents", { lcpMs: 961 }), baseline)).toHaveLength(1);
     expect(gradeRun(row("mobile-dsm", { lcpMs: 961 }), baseline)).toHaveLength(1);
+  });
+
+  it("gives only desktop-root the streamed-home LCP floor", () => {
+    const baseline = { lcpMs: 955, cls: 0, tbtMs: 64 };
+    expect(STREAMED_HOME_LCP_FLOOR_MS).toBe(700);
+    // The slow group of the skeleton race (refresh run 39625188079) passes on desktop-root only
+    expect(gradeRun(row("desktop-root", { lcpMs: 1584 }), baseline)).toEqual([]);
+    expect(gradeRun(row("mobile-root", { lcpMs: 1584 }), baseline)).toHaveLength(1);
+    expect(gradeRun(row("desktop-documents-search", { lcpMs: 1584 }), baseline)).toHaveLength(1);
+    // A regression past the floor still fails, and TBT keeps its own floor
+    expect(gradeRun(row("desktop-root", { lcpMs: 1700 }), baseline)).toHaveLength(1);
+    expect(gradeRun(row("desktop-root", { lcpMs: 955, tbtMs: 200 }), baseline)).toHaveLength(1);
   });
 
   it("ignores an improvement", () => {

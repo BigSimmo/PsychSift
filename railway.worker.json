@@ -19,6 +19,8 @@
       "/src/data/**",
       "/worker/**",
       "/eval/docling/requirements.txt",
+      "/eval/docling/model-artifacts.json",
+      "/eval/docling/verify-model-artifacts.mjs",
       "/scripts/build-worker.mjs",
       "/scripts/check-installed-lock-parity.mjs",
       "/scripts/check-node-engine.cjs",

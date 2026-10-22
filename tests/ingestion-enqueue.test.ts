@@ -22,7 +22,7 @@ type ClientConfig = {
 function makeClient(cfg: ClientConfig) {
   // eqCalls records the column names passed to .eq(), so tests can assert that
   // both document writes (queue update + rollback) are owner-scoped.
-  const calls = { documentUpdates: 0, competingSelects: 0, eqCalls: [] as string[] };
+  const calls = { documentUpdates: 0, competingSelects: 0, eqCalls: [] as string[], eqValues: [] as unknown[] };
   function builder(table: string) {
     const b: Record<string, unknown> = {};
     b.update = () => {
@@ -31,7 +31,8 @@ function makeClient(cfg: ClientConfig) {
     };
     b.insert = () => b;
     b.select = () => b;
-    b.eq = (col: string) => {
+    b.eq = (col: string, value: unknown) => {
+      calls.eqValues.push([col, value]);
       calls.eqCalls.push(col);
       return b;
     };
@@ -40,6 +41,8 @@ function makeClient(cfg: ClientConfig) {
       calls.competingSelects += 1;
       return Promise.resolve(cfg.competing ?? { data: [], error: null });
     };
+    b.maybeSingle = () =>
+      Promise.resolve({ data: { updated_at: "2026-10-18T05:00:00.123456+00:00" }, error: cfg.updateError ?? null });
     b.single = () => Promise.resolve(cfg.jobInsert ?? { data: { id: "job1" }, error: null });
     // Awaiting a documents.update chain resolves here.
     b.then = (resolve: (v: unknown) => void, reject?: (e: unknown) => void) =>
@@ -103,6 +106,7 @@ describe("enqueueDocumentReindexJob", () => {
     expect(result).toEqual({ outcome: "already_active" });
     // Initial queue update + the compensating rollback update, both owner-scoped.
     expect(calls.documentUpdates).toBe(2);
+    expect(calls.eqValues).toContainEqual(["updated_at", "2026-10-18T05:00:00.123456+00:00"]);
     expect(calls.eqCalls.filter((col) => col === "owner_id").length).toBeGreaterThanOrEqual(2);
   });
 
@@ -112,4 +116,70 @@ describe("enqueueDocumentReindexJob", () => {
     });
     await expect(enqueueDocumentReindexJob({ supabase: client as never, document: doc })).rejects.toThrow("boom");
   });
+});
+
+describe("database-trigger rollback fence", () => {
+  it.each(["none", "processing", "newer"])(
+    "restores only the queue write returned by the database: %s",
+    async (scenario) => {
+      vi.doMock("@/lib/env", () => ({ env: { WORKER_MAX_ATTEMPTS: 3 } }));
+      const { enqueueDocumentReindexJob } = await import("../src/lib/ingestion-enqueue");
+      const state = {
+        status: "failed",
+        chunk_count: 7,
+        page_count: 2,
+        image_count: 1,
+        error_message: "old",
+        updated_at: "before",
+      };
+      const from = (table: string) => {
+        const filters: [string, unknown][] = [];
+        let patch: Record<string, unknown> = {};
+        const apply = () => {
+          if (
+            filters.every(
+              ([key, value]) => key === "id" || key === "owner_id" || state[key as keyof typeof state] === value,
+            )
+          ) {
+            Object.assign(state, patch, { updated_at: "database-trigger-value" });
+          }
+          return { data: { updated_at: state.updated_at }, error: null };
+        };
+        const chain = {
+          update: (values: Record<string, unknown>) => {
+            patch = values;
+            return chain;
+          },
+          eq: (key: string, value: unknown) => {
+            filters.push([key, value]);
+            return chain;
+          },
+          select: () => chain,
+          in: () => chain,
+          insert: () => chain,
+          maybeSingle: async () => apply(),
+          single: async () => ({ data: null, error: { code: "23505", message: "collision" } }),
+          limit: async () => {
+            if (scenario === "newer")
+              Object.assign(state, { status: "indexed", chunk_count: 99, updated_at: "newer-trigger-value" });
+            return { data: scenario === "processing" ? [{ id: "competitor", status: "processing" }] : [], error: null };
+          },
+          then: (resolve: (value: unknown) => unknown) =>
+            Promise.resolve(table === "documents" ? apply() : {}).then(resolve),
+        };
+        return chain;
+      };
+      await enqueueDocumentReindexJob({ supabase: { from } as never, document: { ...doc, ...state } });
+      expect(state).toMatchObject(
+        scenario === "newer"
+          ? { status: "indexed", chunk_count: 99 }
+          : {
+              status: scenario === "processing" ? "processing" : "failed",
+              chunk_count: 7,
+              page_count: 2,
+              image_count: 1,
+            },
+      );
+    },
+  );
 });

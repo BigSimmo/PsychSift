@@ -4,6 +4,7 @@ import { ChevronRight, UserRound } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
 
+import { PatientDetailsGate } from "@/components/clinical-dashboard/patient-details-gate";
 import { PatientProfilePanel } from "@/components/clinical-dashboard/patient-profile-panel";
 import { usePatientProfile } from "@/components/clinical-dashboard/patient-profile-context";
 import { Sheet } from "@/components/ui/sheet";
@@ -124,7 +125,9 @@ export function PatientDetailsDockAction() {
       mobilePlacement="bottom"
       testId="patient-details-sheet"
     >
-      <PatientProfilePanel variant="compact" defaultOpen />
+      <PatientDetailsGate>
+        <PatientProfilePanel variant="compact" defaultOpen />
+      </PatientDetailsGate>
     </Sheet>
   );
 

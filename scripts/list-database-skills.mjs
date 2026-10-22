@@ -296,7 +296,7 @@ export function validateRepositorySkillPolicies(
   ];
   for (const name of cursorReviewSkills) {
     requireContract(`.cursor/skills/${name}/SKILL.md`, [
-      "use `npm run ledger:append` to create an immutable review record",
+      "post one `Review record` comment on the PR",
       "never edit the frozen `docs/branch-review-ledger.md` table",
     ]);
   }
@@ -340,7 +340,7 @@ export function validateRepositorySkillPolicies(
       `Cross-surface skill name collision for "${name}" on ${surfaces.join(", ")} ` +
         `(${occurrences.map((skill) => skill.relative).join(", ")}). ` +
         `Rename one surface, or add an intentional twin to CROSS_SURFACE_NAME_TWINS ` +
-        `in scripts/list-database-skills.mjs (ledger is the only reviewed twin today).`,
+        `in scripts/list-database-skills.mjs (reviewed twins: ${[...CROSS_SURFACE_NAME_TWINS].join(", ")}).`,
     );
   }
 
@@ -547,7 +547,6 @@ export const userFacingProductSurfaces = [
   "docs/agents/dead-code-deletion.md",
   "docs/agents/external-skill-precedence.md",
   "docs/agents/native-startup/commit-as-you-go.md",
-  "docs/agents/native-startup/contextual-working-defaults.md",
   "docs/agents/native-startup/external-skill-precedence.md",
   "docs/agents/native-startup/process-hardening.md",
   "docs/agents/native-startup/publication-workflows.md",

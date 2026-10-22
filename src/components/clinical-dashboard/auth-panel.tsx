@@ -17,6 +17,7 @@ import {
 import { ProviderBrandIcon, type SsoProvider } from "@/components/clinical-dashboard/provider-brand-icons";
 import { AUTH_EMAIL_STORAGE_KEY, type OAuthProvider, useAuthSession } from "@/lib/supabase/client";
 import {
+  controlDisabled,
   AsyncButton,
   cn,
   fieldControlWithIcon,
@@ -25,7 +26,7 @@ import {
   floatingControl,
   InlineNotice,
   panelSubtle,
-  primaryControl,
+  commandControl,
   textMuted,
 } from "@/components/ui-primitives";
 
@@ -131,12 +132,12 @@ export function AuthPanel() {
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]">
               <ShieldCheck aria-hidden="true" className="h-4 w-4" />
             </span>
-            <span className="min-w-0">
+            <div className="min-w-0">
               <p className="text-sm font-semibold text-[color:var(--text)]">Signed in for private documents</p>
               <p className={cn("mt-1 text-xs leading-5", textMuted)}>
                 {session?.user.email ?? "Authenticated session"}
               </p>
-            </span>
+            </div>
           </div>
           <button type="button" onClick={signOut} className={cn(floatingControl, "px-3 text-xs")}>
             <LogOut aria-hidden="true" className="h-4 w-4" />
@@ -221,7 +222,7 @@ export function AuthPanel() {
           busyLabel={isExpired ? "Sending fresh link…" : "Sending link…"}
           disabled={actionBusy || !email.trim()}
           idleIcon={<Mail aria-hidden="true" className="h-4 w-4" />}
-          className={cn(primaryControl, "w-full")}
+          className={cn(commandControl, "w-full")}
         >
           {isExpired ? "Send fresh link" : "Continue with email"}
         </AsyncButton>
@@ -279,7 +280,10 @@ function ProviderButton({
       onClick={onClick}
       disabled={busy}
       aria-label={`Continue with ${provider}`}
-      className="flex min-h-tap w-full items-center gap-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-lux)] px-3 text-left text-sm font-semibold text-[color:var(--text-heading)] shadow-[var(--shadow-inset)] transition hover:border-[color:var(--border-strong)] hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] disabled:cursor-wait disabled:opacity-65 disabled:hover:border-[color:var(--border)] disabled:hover:bg-[color:var(--surface-lux)]"
+      className={cn(
+        controlDisabled,
+        "flex min-h-tap w-full items-center gap-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-lux)] px-3 text-left text-sm font-semibold text-[color:var(--text-heading)] shadow-[var(--shadow-inset)] transition hover:border-[color:var(--border-strong)] hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] disabled:cursor-wait disabled:hover:border-[color:var(--border)] disabled:hover:bg-[color:var(--surface-lux)]",
+      )}
     >
       {pending ? (
         <span className="grid h-7 w-7 shrink-0 place-items-center">

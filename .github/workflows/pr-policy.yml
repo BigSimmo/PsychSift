@@ -3,7 +3,10 @@ name: PR Policy
 on:
   pull_request_target:
     branches: [main, "release/**"]
-    types: [opened, edited, synchronize, reopened, ready_for_review]
+    # auto_merge_* re-run the check when auto-merge is armed or disarmed: a migration PR fails
+    # while armed (audit CC-01, owner decision 2026-10-20), and a clinical-risk PR fails while
+    # armed by anyone but the owner (#YF0XSQ).
+    types: [opened, edited, synchronize, reopened, ready_for_review, auto_merge_enabled, auto_merge_disabled]
   merge_group:
 
 # Runs for one PR queue instead of cancelling each other, so a newer synchronize
@@ -258,7 +261,71 @@ jobs:
               }
             }
 
+            // Bot-authored commits: read each bot commit's own files so the policy can block a bot
+            // change to Supabase, backend infra SQL or clinical paths. Unreadable data fails closed.
+            // AI-agent commits (author, committer or Co-Authored-By) are read too, for a warning.
+            const { isBotAuthor, botCoAuthored, aiAgentIdentity, isAiAgentBranch } = await import(moduleUrl);
+            // On an agent-named branch every commit is fetched: the agent may commit as the owner.
+            const agentBranch = isAiAgentBranch(latestPr.head.ref);
+            let commits;
+            try {
+              const prCommits = await github.paginate(github.rest.pulls.listCommits, {
+                ...repo,
+                pull_number: pr.number,
+                per_page: 100,
+              });
+              // pulls.listCommits returns at most 250 commits; fail closed rather than skip any.
+              if (prCommits.length >= 250 || prCommits.length !== latestPr.commits) {
+                core.setFailed(
+                  `PR commit list is incomplete (${prCommits.length} of ${latestPr.commits}); bot-authored changes cannot be verified.`,
+                );
+                return;
+              }
+              commits = [];
+              for (const item of prCommits) {
+                const author = {
+                  login: item.author?.login ?? "",
+                  email: item.commit?.author?.email ?? "",
+                  name: item.commit?.author?.name ?? "",
+                };
+                const committer = { email: item.commit?.committer?.email ?? "", name: item.commit?.committer?.name ?? "" };
+                const message = item.commit?.message ?? "";
+                const parents = item.parents?.length ?? 1;
+                if (
+                  !agentBranch &&
+                  !isBotAuthor(author) &&
+                  !botCoAuthored(message) &&
+                  !aiAgentIdentity({ author, committer, message })
+                )
+                  continue;
+                let files;
+                try {
+                  // getCommit returns at most 300 files per page; paginate (GitHub caps at 3000)
+                  // and fail closed if the cap may have been reached.
+                  const pages = await github.paginate(
+                    github.rest.repos.getCommit,
+                    { ...repo, ref: item.sha, per_page: 100 },
+                    (response) => response.data.files ?? [],
+                  );
+                  const commitFiles = pages.flat();
+                  if (commitFiles.length >= 3000) throw new Error("file list may be truncated at 3000");
+                  files = commitFiles.flatMap((file) =>
+                    [file.filename, file.previous_filename].filter(Boolean),
+                  );
+                } catch (error) {
+                  core.warning(`Unable to read files of bot commit ${item.sha}: ${error instanceof Error ? error.message : String(error)}.`);
+                }
+                commits.push({ sha: item.sha, author, committer, message, parents, files });
+              }
+            } catch (error) {
+              core.setFailed(
+                `Unable to list PR commits: ${error instanceof Error ? error.message : String(error)}. Bot-authored changes cannot be verified.`,
+              );
+              return;
+            }
+
             const result = evaluatePullRequestPolicy({
+              commits,
               title: latestPr.title,
               body: latestPr.body || "",
               headRef: latestPr.head.ref,
@@ -272,6 +339,10 @@ jobs:
               addedMigrationContents,
               changedWorkflowContents,
               enforceMigrationHistory: true,
+              author: latestPr.user?.login ?? "",
+              autoMergeArmed: Boolean(latestPr.auto_merge),
+              autoMergeEnabledBy: latestPr.auto_merge?.enabled_by?.login ?? "",
+              ownerLogin: context.repo.owner,
             });
 
             const warnings = result.warnings || [];
@@ -286,11 +357,12 @@ jobs:
               .write();
 
             // Advisory metadata nudges (title/summary/verification/UI/risk) are
-            // surfaced but never fail the check. Blocking conditions: a clinical-risk PR
-            // with an incomplete Clinical Governance Preflight; a RAG-ranking-surface PR
-            // without an explicit `RAG impact:` declaration (docs/rag-behaviour/safeguards.md);
-            // a migration PR claiming a deferred deploy; an edit to applied migration history;
-            // and a changed branch workflow that names or posts a required check.
+            // surfaced but never fail the check, and so are the Clinical Governance Preflight and
+            // `RAG impact:` declarations (advisory since 2026-09-17). Blocking conditions: a
+            // migration PR claiming a deferred deploy or with auto-merge armed; an edit to applied
+            // migration history; a bot commit on a protected path; a required-check file changed
+            // without a declared reason; and a changed branch workflow that names or posts a
+            // required check.
             for (const warning of warnings) core.warning(warning);
 
             if (!result.ok) {

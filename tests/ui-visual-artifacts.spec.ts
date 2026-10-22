@@ -52,19 +52,6 @@ async function attachViewportScreenshot(
 }
 
 test.describe("PsychSift visual QA artifacts", () => {
-  test.beforeEach(async ({ page }) => {
-    // The first-visit "AI Search" note sits over the header on staff modes
-    // and has made Chromium refuse `Page.captureScreenshot` under CI load
-    // (Production UI shard 1 on PR #3332). Mark it seen before any navigation.
-    await page.addInitScript(() => {
-      try {
-        window.localStorage.setItem("psychsift:work-search-coach-seen", "1");
-      } catch {
-        // Storage blocked: the note may still appear.
-      }
-    });
-  });
-
   test("captures dashboard and document viewer screenshots", async ({ page }, testInfo) => {
     test.setTimeout(60_000);
     await attachViewportScreenshot(page, testInfo, "dashboard-mobile", { width: 390, height: 820 }, "/");

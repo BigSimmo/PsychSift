@@ -2,8 +2,8 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 /**
- * `DeveloperAreaGate` is the administrator gate every /mockups/development
- * and /mockups/care-plan layout wraps its children in. #L30 was a single public build-time flag
+ * `DeveloperAreaGate` is the administrator gate every developer-gated layout
+ * wraps its children in. #L30 was a single public build-time flag
  * (`NEXT_PUBLIC_MOCKUPS_ENABLED=true`), set alone, disabling the gate in
  * production. `tests/developer-area-access.test.ts` proves the pure
  * `developerGateBypassAllowed()` predicate directly; this file proves the
@@ -23,7 +23,7 @@ const mocks = vi.hoisted(() => ({
     email: null as string | null,
   },
   linkAccessGranted: false,
-  pathname: "/mockups/development",
+  pathname: "/admin/developer-hub",
   developerAreaPath: null as string | null,
   routerRefresh: vi.fn(),
 }));
@@ -72,7 +72,7 @@ afterEach(() => {
   mocks.bypassAllowed = false;
   mocks.linkAccessGranted = false;
   mocks.accessResult = { state: "authorized", email: null };
-  mocks.pathname = "/mockups/development";
+  mocks.pathname = "/admin/developer-hub";
   mocks.developerAreaPath = null;
   delete process.env.DEVELOPER_AREA_ACCESS_KEY;
   mocks.routerRefresh.mockClear();
@@ -109,7 +109,7 @@ describe("DeveloperAreaGate", () => {
     const { rerender } = render(await DeveloperAreaGate({ children: <p data-testid="protected">secret</p> }));
     expect(mocks.routerRefresh).not.toHaveBeenCalled();
 
-    mocks.pathname = "/mockups/development/ledger";
+    mocks.pathname = "/admin/developer-hub/ledger";
     rerender(await DeveloperAreaGate({ children: <p data-testid="protected">secret</p> }));
 
     expect(mocks.routerRefresh).toHaveBeenCalledTimes(1);
@@ -200,7 +200,7 @@ describe("DeveloperAreaGate developer-key field wiring", () => {
 
   it("passes the proxy's rejection through and hands back a target without the marker", async () => {
     mocks.accessResult = { state: "unauthenticated", email: null };
-    mocks.developerAreaPath = "/mockups/care-plan?tab=risk&devkeyerror=1";
+    mocks.developerAreaPath = "/admin/developer-hub?tab=risk&devkeyerror=1";
     const { DeveloperAreaGate } = await import("@/components/developer-area/developer-area-gate");
 
     render(await DeveloperAreaGate({ children: <p data-testid="protected">secret</p> }));
@@ -208,6 +208,6 @@ describe("DeveloperAreaGate developer-key field wiring", () => {
     const gateScreen = screen.getByTestId("gate-screen");
     expect(gateScreen).toHaveAttribute("data-key-rejected", "true");
     // The retry, and the eventual success, land on a clean URL.
-    expect(gateScreen).toHaveAttribute("data-next", "/mockups/care-plan?tab=risk");
+    expect(gateScreen).toHaveAttribute("data-next", "/admin/developer-hub?tab=risk");
   });
 });

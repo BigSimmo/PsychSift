@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 
 import { calculators } from "@/lib/calculators/calculator-fixtures";
-import { factsheets } from "@/lib/factsheets-data";
+import { FACTSHEET_DEMO_NOTICE, factsheets } from "@/lib/factsheets-data";
 import { THERAPY_CATALOGUE_ASSETS } from "@/data/therapy-catalogue-assets";
 import type { Therapy } from "@/lib/therapy-compass-types";
 import { dictionaryEntries, dictionarySource } from "@/lib/dictionary-data";
@@ -155,6 +155,7 @@ const fullTherapyRecords = loadPublicFullTherapyRecords();
 
 export function therapySiteContentRecord(therapy: Therapy) {
   const producer = staticProducer("therapy-compass");
+  const needsReview = therapyNeedsReview(therapy);
   return createSiteContentRecord({
     version: "site-content-record-v1",
     logicalId: `therapies:${therapy.slug}`,
@@ -162,29 +163,37 @@ export function therapySiteContentRecord(therapy: Therapy) {
     domain: "therapies",
     route: producer.routeBuilder(therapy.slug),
     title: therapy.name,
-    body: [
-      therapy.category && `Category: ${therapy.category}`,
-      therapy.clinicalSummary,
-      therapy.bestUsedFor && `Best used for: ${therapy.bestUsedFor}`,
-      therapy.targetSymptoms && `Targets: ${therapy.targetSymptoms}`,
-      therapy.indications && `Indications: ${therapy.indications}`,
-      therapy.contraindicationsOrCautions && `Contraindications and cautions: ${therapy.contraindicationsOrCautions}`,
-      therapy.patientPopulation && `Patient population: ${therapy.patientPopulation}`,
-      therapy.setting && `Setting: ${therapy.setting}`,
-      therapy.deliverySteps && `Delivery: ${therapy.deliverySteps}`,
-      therapy.patientExplanation && `Patient explanation: ${therapy.patientExplanation}`,
-      therapy.mechanism && `Mechanism: ${therapy.mechanism}`,
-      therapy.evidenceLevel && `Evidence level: ${therapy.evidenceLevel}`,
-      therapy.evidenceNotes && `Evidence notes: ${therapy.evidenceNotes}`,
-      therapy.limitations && `Limitations: ${therapy.limitations}`,
-      therapy.warnings.length > 0 && `Warnings: ${therapy.warnings.join("; ")}`,
-    ]
+    // Owner ruling 18 Oct 2026 00:10 AWST: unsigned therapy text is not used as
+    // answer evidence or site content. A record awaiting review is indexed by
+    // name and category only, matching the Clinical Ask catalogue evidence gate.
+    // See docs/decisions/2026-10-18-unsigned-clinical-text-withheld-from-site-content.md.
+    body: (needsReview
+      ? [therapy.category && `Category: ${therapy.category}`]
+      : [
+          therapy.category && `Category: ${therapy.category}`,
+          therapy.clinicalSummary,
+          therapy.bestUsedFor && `Best used for: ${therapy.bestUsedFor}`,
+          therapy.targetSymptoms && `Targets: ${therapy.targetSymptoms}`,
+          therapy.indications && `Indications: ${therapy.indications}`,
+          therapy.contraindicationsOrCautions &&
+            `Contraindications and cautions: ${therapy.contraindicationsOrCautions}`,
+          therapy.patientPopulation && `Patient population: ${therapy.patientPopulation}`,
+          therapy.setting && `Setting: ${therapy.setting}`,
+          therapy.deliverySteps && `Delivery: ${therapy.deliverySteps}`,
+          therapy.patientExplanation && `Patient explanation: ${therapy.patientExplanation}`,
+          therapy.mechanism && `Mechanism: ${therapy.mechanism}`,
+          therapy.evidenceLevel && `Evidence level: ${therapy.evidenceLevel}`,
+          therapy.evidenceNotes && `Evidence notes: ${therapy.evidenceNotes}`,
+          therapy.limitations && `Limitations: ${therapy.limitations}`,
+          therapy.warnings.length > 0 && `Warnings: ${therapy.warnings.join("; ")}`,
+        ]
+    )
       .filter(Boolean)
       .join("\n"),
     sourceRole: "clinical_reference",
     access: "public",
-    validationStatus: therapyNeedsReview(therapy) ? "unverified" : "locally_reviewed",
-    sourceStatus: therapyNeedsReview(therapy) ? "review_due" : "current",
+    validationStatus: needsReview ? "unverified" : "locally_reviewed",
+    sourceStatus: needsReview ? "review_due" : "current",
     sourceLineage: repositoryLineage(`public/therapy-compass-data/${THERAPY_CATALOGUE_ASSETS.full}`, therapy),
   });
 }
@@ -243,7 +252,13 @@ function buildFactsheetRecords() {
       domain: "factsheets",
       route: producer.routeBuilder(sheet.slug),
       title: sheet.title,
-      body: [sheet.brand, `Audience: ${sheet.audience}`, sheet.summary, `Review date: ${sheet.reviewedOn}`]
+      body: [
+        sheet.brand,
+        `Audience: ${sheet.audience}`,
+        sheet.summary,
+        FACTSHEET_DEMO_NOTICE,
+        `Content month: ${sheet.reviewedOn}`,
+      ]
         .filter(Boolean)
         .join("\n"),
       sourceRole: "clinical_reference",
@@ -252,6 +267,10 @@ function buildFactsheetRecords() {
       sourceStatus: "current",
       sourceLineage: [
         ...repositoryLineage("src/components/factsheets/factsheets-data.ts", sheet),
+        ...repositoryLineage("src/lib/factsheets-data.ts:summary-context", {
+          notice: FACTSHEET_DEMO_NOTICE,
+          dateMeaning: "content-month",
+        }),
         ...sheet.sources.map((source) => ({
           sourceId: `reference:${source.org}:${source.n}`,
           sourceHash: siteContentValueHash(source),

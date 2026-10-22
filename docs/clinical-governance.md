@@ -25,37 +25,9 @@ The status authority is [`governance/privacy-readiness.v1.json`](governance/priv
 with the current evidence summary in
 [`governance/privacy-closeout-2026-09-01.md`](governance/privacy-closeout-2026-09-01.md). As of
 2026-09-01, OpenAI API sharing and call logging are disabled and optional hosted tools are disabled;
-OpenAI has acknowledged the ZDR request. The register's current unresolved release requirements
-are ZDR, APP 8, APP 1/5 notice, and clinical PHI minimisation; DPA evidence is recorded there
-separately. Do not infer approval from request submission or
+OpenAI has acknowledged the ZDR request, but ZDR, DPA, APP 8, APP 1/5 notice, and clinical
+PHI-minimisation approvals remain release blockers. Do not infer approval from request submission or
 from the public `/privacy` transparency page.
-
-### Development and draft review
-
-Offline development and draft review may proceed with recorded privacy gaps. Use the explicit
-development profile with a full, locally available base commit SHA for the **whole proposed
-change**, rather than selecting a later checkpoint to hide earlier edits:
-
-```sh
-npm run check:privacy-readiness:development -- --base <full-base-commit-sha>
-npm run check:clinical-hazard-controls:development -- --base <full-base-commit-sha>
-npm run docs:maintain:development -- --base <full-base-commit-sha>
-```
-
-This local-only profile checks committed changes, the index, working files and untracked paths.
-An unrelated expired review becomes a visible warning; editing the expired entry or a covered
-path still blocks, including staged register edits whose working copy was restored. Invalid or
-unavailable scope falls back to strict checks. Pending/partial privacy requirements are printed
-as release blockers without being converted into approvals. No patient data or provider access
-is needed. `docs:maintain:development` is read-only; to refresh generated documentation first,
-use `npm run docs:maintain -- --development --base <full-base-commit-sha>`.
-
-Default checks remain strict. `--release`, `check:privacy-readiness:release`,
-`check:production-readiness` and `governance:release` retain their production requirements;
-`--release` wins even if `--development` is also supplied. A development pass is not release,
-clinical, legal or provider approval. The [privacy impact assessment](privacy-impact-assessment.md)
-retains the data-field, purpose, store, retention and deletion inventory; this profile changes
-none of those data-handling controls. See the [owner decision](decisions/2026-10-22-development-governance-scope.md).
 
 ## Clinical Use Rules
 
@@ -84,13 +56,13 @@ weaker than not publishing it, and these pages are world-readable with no login 
 Set `generatedBodyUnreliable` on the record's curated entry in `src/lib/differential-curated.ts`,
 alongside a `contentNote` saying what was wrong and what still stands. `withholdGeneratedBody`
 strips the affected fields at the page boundary and the page states the absence rather than
-rendering an empty panel. Withholding is a holding action, not a fix: the record still needs review,
-and the ten locally authored differential records still carry no clinician sign-off (`/issues`
-`#87GR24`).
+rendering an empty panel. Withholding is a holding action, not a fix: the record still needs review. (The locally authored
+differential overlays, once unsigned under `/issues` `#87GR24`, were signed off by the owner on
+2026-10-06.)
 
 ## Pull Request Preflight
 
-Use the [PR template's Clinical Governance Preflight](../.github/pull_request_template.md#clinical-governance-preflight) for any change that touches ingestion, answer generation, search/ranking, source rendering, document access, privacy, production environment behavior, or clinical output. Its metadata warnings are advisory in `pr-policy`; incomplete or missing checkboxes do not themselves block merge. Record evidence or an explicit unresolved/not-applicable explanation rather than checking an unverified item. Clinical-owner sign-off, live-canary approval and other applicable safety gates remain separate requirements.
+Use the `.github/pull_request_template.md` clinical governance section for any change that touches ingestion, answer generation, search/ranking, source rendering, document access, privacy, production environment behavior, or clinical output.
 
 - Confirm the Supabase target remains `PsychSift Production` (`sjrfecxgysukkwxsowpy`).
 - Confirm service-role credentials and private document access remain server-only.

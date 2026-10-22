@@ -12,6 +12,8 @@ import {
 import { documentsSearchHref, DOCUMENTS_MODE_HOME_ROUTE } from "@/lib/document-flow-routes";
 import { factsheetSlugs } from "@/components/factsheets/factsheets-data";
 import { dictionaryEntries, dictionaryTopics } from "@/lib/dictionary-data";
+import { curatedEntryFor } from "@/lib/differential-curated";
+import { generatedBodyWithheld } from "@/lib/differential-detail";
 import { differentialRecords } from "@/lib/differentials";
 import { dsmDiagnoses } from "@/lib/dsm";
 import { formulationMechanisms } from "@/lib/formulation";
@@ -95,8 +97,10 @@ const documentedRedirectTargets: Record<string, string> = {
 
 const routeDescriptions: Record<string, string> = {
   "/": "Main PsychSift shell.",
+  "/about":
+    "About and intended use: what PsychSift is, who it is for, and how to use it safely (draft wording, owner sign-off pending).",
   "/applications": "Legacy application launcher redirect to Tools.",
-  "/calculators": "Psychiatry rating scale scoring and clinical decision calculators.",
+  "/calculators": "Psychiatry rating scale scoring and clinical calculators.",
   "/calculators/search":
     "Browsable calculator catalogue and scored results. An empty query lists every calculator; a submitted query narrows the same list.",
   "/dictionary": "Clinical dictionary home with term search and category navigation.",
@@ -149,6 +153,8 @@ const routeDescriptions: Record<string, string> = {
   "/medications": "Compatibility redirect to the shared Medication (prescribing) home.",
   "/medications/[slug]": "Medication detail.",
   "/privacy": "Public privacy and data-processing transparency notice; governance approval pending.",
+  "/terms":
+    "Versioned Terms of Use; signed-in users accept each new version once (draft wording, owner sign-off pending).",
   "/reference/colour-coding": "Clinical domain and category colour-coding palette reference.",
   "/safety-plan":
     "Patient safety plan generator (Stanley-Brown six steps), inside the search shell under Psychiatry; opened from the Psychiatry page's For a shift row.",
@@ -542,6 +548,20 @@ export function collectSiteMapData(): SiteMapData {
     redirects: discoverRedirects([...pageRoutes, ...publicRouteHandlers]),
     nonRoutedMockupArtifacts: discoverNonRoutedMockupArtifacts(),
   };
+}
+
+// Derived from the curated-content registry rather than written by hand, so the
+// caveat names exactly the records whose generated body is withheld and
+// disappears once curated content replaces the last one.
+function withheldDifferentialCaveats() {
+  return differentialRecords
+    .filter((record) => generatedBodyWithheld(curatedEntryFor(record.slug)))
+    .map((record) => record.slug)
+    .sort()
+    .map(
+      (slug) =>
+        `- \`/differentials/diagnoses/${slug}\` withholds its generated clinical body because the export carried material from other conditions; the page replaces it with locally curated content and a note explaining why.`,
+    );
 }
 
 function bullet(route: string, description?: string) {
@@ -967,12 +987,12 @@ function renderSiteMapRaw(data = collectSiteMapData()) {
         : ["- No page-level redirects discovered."],
     ),
     ...section("Known caveats and stale-path flags", [
-      "- `/mockups/*` prototype routes are development-only: production returns 404 for every path except the developer-gated subtrees (`/mockups/development`, `/mockups/care-plan`), which carry their own signed-in administrator gate. `robots.txt` deliberately allows crawling; responses under `/mockups/:path*` carry `X-Robots-Tag: noindex, nofollow` instead, so per-response indexing policy can be observed.",
+      "- `/mockups/*` prototype routes are development-only: production returns 404 for every path. The addresses of the retired Owner panel copy redirect to `/admin/developer-hub` before the proxy runs. `robots.txt` deliberately allows crawling; responses under `/mockups/:path*` carry `X-Robots-Tag: noindex, nofollow` instead, so per-response indexing policy can be observed.",
       "- `/mockups/favourites-hub` (to `/favourites`) and `/mockups/medication-prescribing` (to `/medications/acamprosate`) are legacy compatibility routes whose page-level redirects work in development only; in production the proxy's mockup block returns 404 before either page renders. `/mockups/document-search-command` is the one mockup path that still redirects in production, via `staticRouteRedirects` in `src/proxy.ts`.",
       "- Registry-backed service and form pages may show sign-in, load-error, or in-app not-found states for missing per-user records.",
       "- Live user registries may contain additional service or form slugs beyond the seeded/demo slugs listed here.",
       "- `/documents/[id]` is intentionally summarized as a route family; individual document IDs are private runtime data.",
-      "- Several differential records are placeholder scaffolds pending source-backed local clinical content.",
+      ...withheldDifferentialCaveats(),
     ]),
     ...section("Route ownership/source map", [
       "| Area | Source |",

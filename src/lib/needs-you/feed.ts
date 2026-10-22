@@ -27,11 +27,19 @@ import {
 } from "@/lib/on-call/wa-public-holidays";
 import { currentWorkTimeZone } from "@/lib/work-time/current-zone";
 import { zoneOffsetMs } from "@/lib/work-time/format";
+import type { WorkModeId } from "@/lib/app-modes";
 
 /* ------------------------------------------------------------- the interface */
 
 /** The work areas an item can belong to, in the order the chips show them. */
-export const notificationAreas = ["on-call", "roster", "cme", "teaching", "my-work", "my-day"] as const;
+export const notificationAreas = [
+  "on-call",
+  "roster",
+  "cme",
+  "teaching",
+  "my-work",
+  "my-day",
+] as const satisfies readonly WorkModeId[];
 export type NotificationArea = (typeof notificationAreas)[number];
 
 export const notificationAreaLabels: Readonly<Record<NotificationArea, string>> = {

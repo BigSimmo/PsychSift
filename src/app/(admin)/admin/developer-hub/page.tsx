@@ -139,7 +139,7 @@ export default async function DeveloperHubPage() {
          */}
         {clinicalAnswerFailures.length > 0 ? (
           <Link
-            href="/mockups/development/clinical-answer-failures"
+            href="/admin/developer-hub/clinical-answer-failures"
             data-testid="developer-hub-clinical-answer-failures-band"
             className="rounded-xl border border-[color:var(--warning)]/40 bg-[color:var(--warning-soft)] px-4 py-3 text-sm text-[color:var(--text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
           >

@@ -79,6 +79,11 @@ describe("browser test plan", () => {
     "src/lib/theme.ts",
     "src/lib/client-store-factory.ts",
     "src/lib/supabase/client.tsx",
+    "src/lib/scroll-behavior.ts",
+    "src/lib/navigation-guards.ts",
+    "src/lib/keyboard-shortcuts.ts",
+    "src/lib/terms-acceptance.ts",
+    "src/lib/supabase/browser-client.ts",
   ])("requires full browser proof for shared runtime input %s", (file) => {
     const scope = JSON.parse(
       execFileSync(process.execPath, ["scripts/ci-change-scope.mjs", "--json", "--files", file], {
@@ -306,16 +311,18 @@ describe("browser test plan", () => {
     it("sends a mockup spec to chromium-mockups alone", () => {
       // Under `--project=chromium` this collects nothing, because that project
       // grep-inverts `@mockup`.
-      expect(projectsForSpecs(["tests/ui-care-plan-mockup.spec.ts"], patterns)).toEqual({
+      expect(projectsForSpecs(["tests/ui-accessible-table-mockup.spec.ts"], patterns)).toEqual({
         projects: ["chromium-mockups"],
         unroutable: [],
       });
     });
 
     it("sends a spec that holds both kinds to both projects", () => {
-      // ui-tools.spec.ts matches both testMatch patterns: production journeys
-      // plus `@mockup` ones. Either project alone runs half of it.
-      expect(projectsForSpecs(["tests/ui-tools.spec.ts"], patterns)).toEqual({
+      // No spec on disk holds both kinds since ui-tools.spec.ts lost its `@mockup`
+      // journeys on 2026-10-21, so the overlap is synthesised. Either project alone
+      // would run half of such a file.
+      const overlapping = { production: /.*ui-mixed\.spec\.ts/, mockup: /.*ui-mixed\.spec\.ts/ };
+      expect(projectsForSpecs(["tests/ui-mixed.spec.ts"], overlapping)).toEqual({
         projects: ["chromium", "chromium-mockups"],
         unroutable: [],
       });
@@ -342,7 +349,7 @@ describe("browser test plan", () => {
 
     it("puts the routed projects on the command it prints", () => {
       const result = browserTestPlan({
-        files: ["tests/ui-care-plan-mockup.spec.ts"],
+        files: ["tests/ui-accessible-table-mockup.spec.ts"],
         scope: { ui_changed: true },
         specSources: SPECS,
         sourceSources: new Map(),
@@ -435,6 +442,11 @@ describe("browser test plan", () => {
       "src/lib/app-modes.ts",
       "src/lib/on-call/demo-entries.ts",
       "src/lib/demo-data.ts",
+      "src/lib/scroll-behavior.ts",
+      "src/lib/navigation-guards.ts",
+      "src/lib/keyboard-shortcuts.ts",
+      "src/lib/terms-acceptance.ts",
+      "src/lib/supabase/browser-client.ts",
       "src/app/api/answer/route.ts",
       "src/lib/rag/rag.ts",
       "docs/testing.md",

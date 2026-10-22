@@ -20,11 +20,19 @@ the readiness guide corrects that earlier reference. The register remains the st
 **Provider-backed boundary:** commands such as `check:supabase-project`, `eval:quality`,
 `eval:retrieval:quality`, and `verify:release` touch live Supabase and/or OpenAI. Agents must not
 run them without explicit user approval (`AGENTS.md`). Offline substitutes:
-`verify:cheap` / `verify:pr-local` / `eval:quality:release:offline` where applicable.
+`verify:cheap` / `verify:pr-local` where applicable. `eval:quality:release:offline` is not one of
+them: it turns OpenAI off but still reads the live database, so it needs the same approval
+(see [`retrieval-quality-runbook.md`](retrieval-quality-runbook.md)).
 
 This is the runbook to make the app publishable in one focused pass.
 
 Last reviewed: 2026-07-10. Applies to any feature branch or release candidate.
+
+**Ledger status (refreshed 2026-10-18):** the six approvals are still open (`#BS3SN9`), and the owner's
+constraint stands: no identifiable patient information enters the app until they close. Also open:
+staging soak and rollback rehearsal (`#057`), data-layer restore rehearsal (`#QVVS6W`), and Railway
+deploying `main` before required checks finish (`#HYSWAF`). The first two are planned in
+[`operator-rehearsal-plan.md`](operator-rehearsal-plan.md).
 
 - Runtime target: the Next.js version pinned in `package.json`, Node >=24.15.0 <25, npm 11.x.
 - Supabase target: `sjrfecxgysukkwxsowpy` (`PsychSift Production`).
