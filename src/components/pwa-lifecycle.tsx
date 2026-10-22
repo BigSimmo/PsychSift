@@ -18,6 +18,7 @@ import { Suspense, useEffect, useRef, useState, useSyncExternalStore } from "rea
 import "@/components/pwa-offline-line.css";
 
 import { BrandMark } from "@/components/clinical-dashboard/brand";
+import { takeEarlyInstallPrompt } from "@/lib/pwa-early-install-prompt";
 import { BRAND_INSTALL_TAGLINE, BRAND_NAME } from "@/lib/brand";
 import { createBrowserStore } from "@/lib/client-store-factory";
 import type { savedLine as SavedLine } from "@/lib/offline-line";
@@ -450,6 +451,10 @@ export function PwaLifecycle() {
       }
     };
 
+    const earlyPrompt = takeEarlyInstallPrompt();
+    if (earlyPrompt && !isStandaloneDisplay() && !wasInstallRecentlyDismissed()) {
+      setInstallPrompt(earlyPrompt as BeforeInstallPromptEvent);
+    }
     window.addEventListener("beforeinstallprompt", handleInstallPrompt);
     window.addEventListener("appinstalled", handleInstalled);
     return () => {

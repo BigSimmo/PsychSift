@@ -41,7 +41,12 @@ export const IntentPrefetchLink = forwardRef<HTMLAnchorElement, IntentPrefetchLi
     if (prefetchedHref.current === href) return;
     if (!router) return;
     prefetchedHref.current = href;
-    router.prefetch(href);
+    router.prefetch(href, {
+      // Once the prefetched data goes stale, let the next intent warm it again.
+      onInvalidate: () => {
+        if (prefetchedHref.current === href) prefetchedHref.current = null;
+      },
+    });
   }, [router, href]);
   return (
     <Link
