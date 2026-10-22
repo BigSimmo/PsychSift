@@ -79,8 +79,16 @@ describe("staging tenancy workflow", () => {
   it("treats a superseded staging commit as harmless only when the resolve step passed", () => {
     expect(workflow).toContain('elif [ "$RESOLVE" = "success" ] && [ "$RELATION" = "superseded" ]; then');
     expect(workflow).toContain(
-      'if (process.env.RELATION === "superseded" && process.env.RESOLVE_RESULT === "success") {',
+      'const supersededHold = process.env.RESOLVE_RESULT === "success" || process.env.EVENT_NAME === "push";',
     );
+    expect(workflow).toContain('if (process.env.RELATION === "superseded" && supersededHold) {');
+  });
+
+  // Codex P1 on #3748: on the gate a superseded run fails (holding this commit's live deploy) but is
+  // reported as a hold, not as a separation failure, and does not open the alert issue.
+  it("holds the live deploy, without alerting, when the gate meets a newer staging commit", () => {
+    expect(workflow).toContain('elif [ "$EVENT_NAME" = "push" ] && [ "$RELATION" = "superseded" ]; then');
+    expect(workflow).toContain("## Held, not released: staging already runs a newer app commit");
   });
 
   it("resolves the staging deployment before the harness, strict only on dispatch", () => {
@@ -93,7 +101,7 @@ describe("staging tenancy workflow", () => {
       "push) node scripts/resolve-staging-deployment.mjs --allow-equivalent --wait-seconds 1800 ;;",
     );
     expect(workflow).toContain(
-      "schedule) node scripts/resolve-staging-deployment.mjs --allow-equivalent --wait-seconds 900 ;;",
+      "schedule) node scripts/resolve-staging-deployment.mjs --allow-equivalent --superseded-ok --wait-seconds 900 ;;",
     );
     expect(workflow).toContain("*) node scripts/resolve-staging-deployment.mjs ;;");
     expect(workflow).toContain("CROSS_TENANT_EXPECTED_DEPLOYED_SHA: ${{ steps.resolve.outputs.deployed_sha }}");

@@ -2,7 +2,11 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
-import { classifyStagingDeployment, parseStagingAppOrigin } from "../scripts/resolve-staging-deployment.mjs";
+import {
+  classifyStagingDeployment,
+  parseStagingAppOrigin,
+  supersededVerdict,
+} from "../scripts/resolve-staging-deployment.mjs";
 
 const watchPatterns = (
   JSON.parse(readFileSync(new URL("../railway.app.json", import.meta.url), "utf8")) as {
@@ -67,6 +71,14 @@ describe("staging deployment resolver (#3113)", () => {
     expect(classify({ ...newer, changedFiles: ["src/app/page.tsx"] }).relation).toBe("superseded");
     // A release proof still needs the exact commit.
     expect(classify({ ...newer, allowEquivalent: false, changedFiles: ["docs/a.md"] }).relation).toBe("superseded");
+  });
+
+  // Codex P1 on #3748: runs are serialised, so the newer commit's proof cannot have finished when
+  // this run meets it. Passing on the gate would let this commit go live with nothing proven.
+  it("passes a superseded commit only on the nightly, holds it on the gate and fails a strict proof", () => {
+    expect(supersededVerdict({ allowEquivalent: true, supersededOk: true })).toBe("pass");
+    expect(supersededVerdict({ allowEquivalent: true, supersededOk: false })).toBe("hold");
+    expect(supersededVerdict({ allowEquivalent: false, supersededOk: false })).toBe("fail");
   });
 
   it("only reads an https staging origin, never the production host", () => {

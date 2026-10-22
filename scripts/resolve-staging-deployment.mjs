@@ -20,8 +20,10 @@
  *   stale       — an app-affecting change is waiting and staging has not deployed it. Polled
  *                 until `--wait-seconds` runs out, then reported as its own clear failure.
  *   superseded  — staging already runs a NEWER commit whose app files differ from the checkout's.
- *                 Not a failure on the nightly or the gate: the run for that newer commit proves it.
- *                 (A newer commit with the same app files is `equivalent`.) A strict proof fails.
+ *                 The nightly (`--superseded-ok`) passes it: the newer commit's run proves that.
+ *                 The main-push gate fails it at once, so this commit's live deploy is held until
+ *                 the newer commit's own gate run passes; nothing is released unproven. (A newer
+ *                 commit with the same app files is `equivalent`.) A strict proof fails.
  *   unrelated   — staging reports a commit on neither side of the checkout's history.
  *
  * A dispatched release proof stays strict (exact only), as docs/staging-tenancy-release-evidence.md
@@ -29,7 +31,7 @@
  *
  * Env: CROSS_TENANT_STAGING_APP_URL (https origin, never psychiatry.tools),
  *      CROSS_TENANT_CHECKOUT_COMMIT_SHA (full SHA). Writes `deployed_sha` and `relation` to
- *      $GITHUB_OUTPUT when set. Exit 0 on exact/equivalent (and superseded with --allow-equivalent), 1 otherwise.
+ *      $GITHUB_OUTPUT when set. Exit 0 on exact/equivalent (and superseded with --superseded-ok), 1 otherwise.
  */
 import { execFileSync } from "node:child_process";
 import { appendFileSync, readFileSync } from "node:fs";
@@ -109,11 +111,23 @@ async function readDeployedSha(origin) {
   return sha;
 }
 
+/**
+ * What a `superseded` result means for this run: the nightly passes it, the main-push gate holds this
+ * commit's live deploy (the newer commit's run cannot have finished yet), a strict proof fails it.
+ * @param {{ allowEquivalent: boolean; supersededOk: boolean }} options
+ * @returns {"pass" | "hold" | "fail"}
+ */
+export function supersededVerdict(options) {
+  if (options.supersededOk) return "pass";
+  return options.allowEquivalent ? "hold" : "fail";
+}
+
 function parseArgs(argv) {
-  const options = { allowEquivalent: false, waitSeconds: 0, pollSeconds: 30 };
+  const options = { allowEquivalent: false, supersededOk: false, waitSeconds: 0, pollSeconds: 30 };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "--allow-equivalent") options.allowEquivalent = true;
+    else if (arg === "--superseded-ok") options.supersededOk = true;
     else if (arg === "--wait-seconds") options.waitSeconds = Math.max(0, Number(argv[++index]) || 0);
     else if (arg === "--poll-seconds") options.pollSeconds = Math.max(5, Number(argv[++index]) || 30);
     else throw new Error(`Unknown argument: ${arg}`);
@@ -168,7 +182,7 @@ async function main() {
       writeOutputs({ deployed_sha: deployedSha, relation: result.relation });
       return 0;
     }
-    if (result.relation === "superseded" && options.allowEquivalent) {
+    if (result.relation === "superseded" && supersededVerdict(options) === "pass") {
       // Waiting cannot help: staging only moves forward. The run for the newer commit proves it.
       console.log(
         `STAGING_SUPERSEDED: staging already runs ${deployedSha}, newer than ${checkoutSha} with different app files; ` +
@@ -182,6 +196,14 @@ async function main() {
       writeOutputs({ deployed_sha: deployedSha, relation: result.relation });
       if (result.relation === "unrelated") {
         console.error(`STAGING_UNRELATED: staging runs ${deployedSha}, which is not on the history of ${checkoutSha}.`);
+      } else if (result.relation === "superseded" && supersededVerdict(options) === "hold") {
+        // The gate: that newer commit's run cannot have finished yet (runs are serialised), so
+        // passing here would let this commit go live before anything was proven. Hold it instead.
+        console.error(
+          `STAGING_SUPERSEDED_HELD: staging already runs ${deployedSha}, newer than ${checkoutSha} with different ` +
+            "app files. Separation was not tested for this commit, so its live deploy is held; " +
+            "the newer commit's own run decides.",
+        );
       } else if (result.relation === "superseded") {
         console.error(
           `STAGING_NOT_EXACT: staging runs ${deployedSha}, newer than the commit this run proves (${checkoutSha}). ` +

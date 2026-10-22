@@ -102,7 +102,7 @@ jobs:
         run: |
           case "$EVENT_NAME" in
             push) node scripts/resolve-staging-deployment.mjs --allow-equivalent --wait-seconds 1800 ;;
-            schedule) node scripts/resolve-staging-deployment.mjs --allow-equivalent --wait-seconds 900 ;;
+            schedule) node scripts/resolve-staging-deployment.mjs --allow-equivalent --superseded-ok --wait-seconds 900 ;;
             *) node scripts/resolve-staging-deployment.mjs ;;
           esac
 
@@ -159,6 +159,7 @@ jobs:
       - name: Report whether separation was proven
         if: always()
         env:
+          EVENT_NAME: ${{ github.event_name }}
           RESOLVE: ${{ steps.resolve.outcome }}
           HARNESS: ${{ steps.harness.outcome }}
           RELATION: ${{ steps.resolve.outputs.relation }}
@@ -168,6 +169,9 @@ jobs:
             echo "## Two-user separation PROVEN on staging (${DEPLOYED:-unknown}, ${RELATION:-unknown})" >> "$GITHUB_STEP_SUMMARY"
           elif [ "$RESOLVE" = "success" ] && [ "$RELATION" = "superseded" ]; then
             echo "## Not tested here: staging already runs a newer app commit (${DEPLOYED:-unknown}); its own run proves it" >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$EVENT_NAME" = "push" ] && [ "$RELATION" = "superseded" ]; then
+            echo "## Held, not released: staging already runs a newer app commit (${DEPLOYED:-unknown}); its own run decides" >> "$GITHUB_STEP_SUMMARY"
+            echo "::notice title=Live deploy held::Staging runs a newer commit, so this one was not tested. The newer commit's run decides."
           else
             if [ "$RESOLVE" != "success" ]; then
               reason="staging was not running a provable version (${RELATION:-unreadable}); see the resolve step"
@@ -207,6 +211,7 @@ jobs:
           HARNESS_RESULT: ${{ needs.cross-tenant.result == 'success' && needs.cross-tenant.outputs.harness || needs.cross-tenant.result }}
           RESOLVE_RESULT: ${{ needs.cross-tenant.outputs.resolve }}
           RELATION: ${{ needs.cross-tenant.outputs.relation }}
+          EVENT_NAME: ${{ github.event_name }}
         with:
           script: |
             // Owner decision 2026-10-21 (docs/decisions/2026-10-21-one-daily-health-summary.md): this
@@ -220,8 +225,10 @@ jobs:
             const repo = context.repo.repo;
             const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
             // A newer staging commit's own run carries the verdict; this run neither opens nor closes the alert.
-            // Only a resolve step that passed: a strict release proof that met a newer commit is a failure.
-            if (process.env.RELATION === "superseded" && process.env.RESOLVE_RESULT === "success") {
+            // Only a passed resolve (the nightly) or the gate's deliberate hold: a strict release proof that
+            // met a newer commit is a failure and still alerts.
+            const supersededHold = process.env.RESOLVE_RESULT === "success" || process.env.EVENT_NAME === "push";
+            if (process.env.RELATION === "superseded" && supersededHold) {
               core.info("Staging already runs a newer app commit; its run reports the result.");
               return;
             }

@@ -24,7 +24,9 @@ The evidence file (schema version 3) records `deploymentRelation` as `exact` or 
 run reports `STAGING_STALE` and says plainly that separation was not tested. This only stays rare if the
 staging app service deploys each `main` push by itself; without that, every app change leaves staging stale.
 When staging has already moved on to a newer commit with different app files, the run reports `superseded`,
-skips the harness and leaves the alert issue alone, because the newer commit's own run proves it.
+skips the harness and leaves the alert issue alone, because the newer commit's own run proves it. The
+nightly passes such a run; the main-push gate fails it, which holds that commit's live deploy until the newer
+commit's own gate run passes, so nothing goes live untested.
 It signs both test accounts in before creating the service-role client and refuses to
 write fixtures if both credentials resolve to the same user.
 

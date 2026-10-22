@@ -11,7 +11,9 @@ runs the two-doctor check against it. The check stays off until the owner sets t
 is red. Two settings on the staging service must be in place before the switch goes on: staging must
 deploy each `main` push by itself (it did not on 21 Oct 2026, so the check could only report staging as
 stale), and Railway's Wait for CI must be off there, because staging would otherwise wait for this check
-while the check waits for staging. A dispatched release proof still needs
+while the check waits for staging. If staging has already moved on to a newer commit with different app
+files, the check holds this commit's live deploy rather than passing it untested; the newer commit's own run
+decides, and it carries this commit's changes. A dispatched release proof still needs
 staging on the exact candidate commit.
 
 If this summary and the source ever differ, the source wins.
