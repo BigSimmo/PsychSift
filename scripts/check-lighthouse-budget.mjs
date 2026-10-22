@@ -80,6 +80,19 @@ const BIMODAL_RUNNER_VARIANCE_RUNS = new Set([
   "desktop-documents-search",
 ]);
 
+/**
+ * Desktop `/` has a second, larger bimodality on top of runner jitter. The home streams
+ * behind the `(search-app)` loading skeleton, and whether the skeleton paints before the
+ * streamed heading is a race: the fast group measures about 930-1060 ms LCP and the slow
+ * group about 1190-1590 ms on identical code (PR #3749 run 39665367028: 1540, 1195, 1055;
+ * refresh run 39625188079: 1584). Removing the skeleton was measured and refuted in
+ * October 2026: the heading then painted first, but simulated LCP rose to 1092-1144 ms
+ * against 811-891 ms with it, on the same machine. This floor covers the slow group on
+ * this one run only, so the other runs keep the 200 ms runner floor.
+ */
+export const STREAMED_HOME_LCP_FLOOR_MS = 700;
+const STREAMED_HOME_RUN = "desktop-root";
+
 export function isBimodalRunnerVarianceRun(runName) {
   if (!runName || typeof runName !== "string") return false;
   return BIMODAL_RUNNER_VARIANCE_RUNS.has(runName);
@@ -254,7 +267,8 @@ export function gradeRun(row, baselineRow, tolerance = DEFAULT_TOLERANCE) {
     }
 
     const pct = before === 0 ? Number.POSITIVE_INFINITY : (delta / before) * 100;
-    const runnerFloor = isBimodalRun ? (BIMODAL_RUNNER_TOLERANCE_FLOORS[metric] ?? 0) : 0;
+    const streamedHomeFloor = runName === STREAMED_HOME_RUN && metric === "lcpMs" ? STREAMED_HOME_LCP_FLOOR_MS : 0;
+    const runnerFloor = Math.max(isBimodalRun ? (BIMODAL_RUNNER_TOLERANCE_FLOORS[metric] ?? 0) : 0, streamedHomeFloor);
     const minAbsolute = Math.max(rule.minAbsolute ?? 0, runnerFloor);
 
     if (delta >= minAbsolute && pct > rule.pct) {
@@ -562,8 +576,15 @@ export function selfTest() {
     throw new Error("selfTest failed: documents-search bimodal runner variance was not accommodated");
   }
 
-  const bimodalBreached = gradeRun({ run: "desktop-root", lcpMs: 1050 }, { lcpMs: 786, cls: 0, tbtMs: 100 });
+  const bimodalBreached = gradeRun({ run: "mobile-root", lcpMs: 1050 }, { lcpMs: 786, cls: 0, tbtMs: 100 });
   if (bimodalBreached.length === 0) throw new Error("selfTest failed: real regression on bimodal route not flagged");
+
+  // The streamed-home floor covers the desktop `/` skeleton race and nothing wider
+  const streamedHomeSlowGroup = gradeRun({ run: "desktop-root", lcpMs: 1584 }, { lcpMs: 955, cls: 0, tbtMs: 100 });
+  if (streamedHomeSlowGroup.length !== 0)
+    throw new Error("selfTest failed: desktop-root skeleton race was not accommodated");
+  const streamedHomeRegression = gradeRun({ run: "desktop-root", lcpMs: 1700 }, { lcpMs: 955, cls: 0, tbtMs: 100 });
+  if (streamedHomeRegression.length === 0) throw new Error("selfTest failed: real desktop-root regression not flagged");
 
   // Negative: bare "documents" substring must NOT raise the LCP floor (false-green risk)
   if (isBimodalRunnerVarianceRun("desktop-documents") || isBimodalRunnerVarianceRun("mobile-documents-upload")) {
