@@ -8,6 +8,7 @@ import { committedIndexGeneration, isCommittedGenerationMetadata } from "@/lib/r
 import { tableFactDetailProjection } from "@/lib/document-detail";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, requireAuthenticatedUser, unauthorizedResponse } from "@/lib/supabase/auth";
+import { requireSignedInClinicalAccess } from "@/lib/clinical-access";
 import { enforceDocumentReadRateLimit, withOwnerReadScope } from "@/lib/public-api-access";
 import { tableReviewMetadata, tableReviewSchema } from "@/lib/table-review";
 import { parseJsonBody } from "@/lib/validation/body";
@@ -55,6 +56,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
     const supabase = createAdminClient();
     const { access, rateLimit } = await enforceDocumentReadRateLimit(request, supabase);
+    requireSignedInClinicalAccess(access);
     if (rateLimit.limited) {
       return rateLimitJsonResponse("Document requests are rate limited. Try again shortly.", rateLimit);
     }

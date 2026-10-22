@@ -47,6 +47,7 @@ export function DocumentViewerRail({
   onUnauthorized,
   onSearchByTag,
   indexHealth,
+  textLocked = false,
 }: {
   className?: string;
   headerHidden: boolean;
@@ -66,6 +67,8 @@ export function DocumentViewerRail({
   onUnauthorized: () => void;
   onSearchByTag: (tag: { searchText: string; label: string }) => void;
   indexHealth: DocumentIndexHealth | null;
+  /** Signed out: the summary, tags and indexing details are document content, so only the index shows. */
+  textLocked?: boolean;
 }) {
   return (
     <aside
@@ -99,145 +102,151 @@ export function DocumentViewerRail({
         className="hidden min-w-0 md:col-span-2 lg:col-span-1 lg:block"
       />
 
-      {indexWarnings.length ? (
-        <InlineNotice tone="warning" className="min-w-0 text-xs md:col-span-2 lg:col-span-1">
-          <span className="font-bold">Extraction warnings</span>
-          {indexWarnings.slice(0, 4).map((warning) => (
-            <span key={warning} className="mt-1 block font-semibold">
-              {warning}
-            </span>
-          ))}
-        </InlineNotice>
-      ) : null}
+      {textLocked ? null : (
+        <>
+          {indexWarnings.length ? (
+            <InlineNotice tone="warning" className="min-w-0 text-xs md:col-span-2 lg:col-span-1">
+              <span className="font-bold">Extraction warnings</span>
+              {indexWarnings.slice(0, 4).map((warning) => (
+                <span key={warning} className="mt-1 block font-semibold">
+                  {warning}
+                </span>
+              ))}
+            </InlineNotice>
+          ) : null}
 
-      {document ? (
-        <details
-          id="source-summary"
-          name="document-viewer-section"
-          data-testid="high-yield-summary"
-          className={cn(
-            panel,
-            "group min-w-0 max-sm:hidden print:block scroll-mt-[var(--document-anchor-offset,6rem)] source-print md:col-span-2 lg:col-span-1",
-          )}
-        >
-          <DocumentSectionSummary
-            icon={Sparkles}
-            title={document.summary?.clinical_specifics?.profile ? "Clinical document profile" : "High-yield summary"}
-            description="What this document covers, from its indexed evidence."
-          />
-          <div className={cn(clinicalDivider, "p-4 pt-3")}>
-            <BadgeCluster items={summaryBadges} limit={8} showOverflowCount />
-            {document.summary?.clinical_specifics?.profile ? (
-              <ClinicalSummaryProfile profile={document.summary.clinical_specifics.profile} />
-            ) : (
-              <FormattedHighYieldSummary
-                formatted={formattedStoredSummary}
-                showLead={formattedStoredSummary.sections.length === 0}
+          {document ? (
+            <details
+              id="source-summary"
+              name="document-viewer-section"
+              data-testid="high-yield-summary"
+              className={cn(
+                panel,
+                "group min-w-0 max-sm:hidden print:block scroll-mt-[var(--document-anchor-offset,6rem)] source-print md:col-span-2 lg:col-span-1",
+              )}
+            >
+              <DocumentSectionSummary
+                icon={Sparkles}
+                title={
+                  document.summary?.clinical_specifics?.profile ? "Clinical document profile" : "High-yield summary"
+                }
+                description="What this document covers, from its indexed evidence."
               />
-            )}
-            {!document.summary?.clinical_specifics?.profile && document.summary?.clinical_specifics && (
-              <div className="mt-4 space-y-4">
-                {Object.entries(document.summary.clinical_specifics)
-                  .filter(([key, items]) => key !== "profile" && Array.isArray(items) && items.length > 0)
-                  .slice(0, 6)
-                  .map(([key, items]) => (
-                    <section key={key} className="border-t border-[color:var(--border)] pt-3">
-                      <h3 className="text-xs font-bold uppercase tracking-eyebrow text-[color:var(--text-muted)]">
-                        {key.replaceAll("_", " ")}
-                      </h3>
-                      <ul
-                        className={cn(
-                          proseMeasure,
-                          "mt-2 space-y-1.5 text-base-minus leading-6 text-[color:var(--text-muted)]",
-                        )}
-                      >
-                        {(items as string[]).slice(0, 5).map((item, index) => (
-                          <li key={`${key}:${index}:${item}`} className="flex gap-2">
-                            <span
-                              aria-hidden="true"
-                              className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--clinical-accent)]"
-                            />
-                            <span>
-                              <SafeBoldText text={item} />
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </section>
-                  ))}
+              <div className={cn(clinicalDivider, "p-4 pt-3")}>
+                <BadgeCluster items={summaryBadges} limit={8} showOverflowCount />
+                {document.summary?.clinical_specifics?.profile ? (
+                  <ClinicalSummaryProfile profile={document.summary.clinical_specifics.profile} />
+                ) : (
+                  <FormattedHighYieldSummary
+                    formatted={formattedStoredSummary}
+                    showLead={formattedStoredSummary.sections.length === 0}
+                  />
+                )}
+                {!document.summary?.clinical_specifics?.profile && document.summary?.clinical_specifics && (
+                  <div className="mt-4 space-y-4">
+                    {Object.entries(document.summary.clinical_specifics)
+                      .filter(([key, items]) => key !== "profile" && Array.isArray(items) && items.length > 0)
+                      .slice(0, 6)
+                      .map(([key, items]) => (
+                        <section key={key} className="border-t border-[color:var(--border)] pt-3">
+                          <h3 className="text-xs font-bold uppercase tracking-eyebrow text-[color:var(--text-muted)]">
+                            {key.replaceAll("_", " ")}
+                          </h3>
+                          <ul
+                            className={cn(
+                              proseMeasure,
+                              "mt-2 space-y-1.5 text-base-minus leading-6 text-[color:var(--text-muted)]",
+                            )}
+                          >
+                            {(items as string[]).slice(0, 5).map((item, index) => (
+                              <li key={`${key}:${index}:${item}`} className="flex gap-2">
+                                <span
+                                  aria-hidden="true"
+                                  className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--clinical-accent)]"
+                                />
+                                <span>
+                                  <SafeBoldText text={item} />
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        </section>
+                      ))}
+                  </div>
+                )}
+                {document.labels?.length ? (
+                  <div className="mt-4 border-t border-[color:var(--border)] pt-3">
+                    <p className={eyebrowText}>Browse by tag</p>
+                    <DocumentTagCloud
+                      labels={document.labels}
+                      limit={18}
+                      className="mt-2"
+                      onTagClick={onSearchByTag}
+                      grouped
+                    />
+                  </div>
+                ) : null}
+                {canUseAdministrativeApis ? (
+                  <details className={cn(sourceCard, "mt-4 p-3")}>
+                    <summary className="cursor-pointer text-sm font-semibold text-[color:var(--text)]">
+                      Document tools
+                    </summary>
+                    <DocumentManualTagEditor
+                      document={document}
+                      canManage={canUseAdministrativeApis}
+                      clientDemoMode={clientDemoMode}
+                      authorizationHeader={authorizationHeader}
+                      onLabelsUpdated={onLabelsUpdated}
+                      onUnauthorized={onUnauthorized}
+                    />
+                  </details>
+                ) : null}
               </div>
-            )}
-            {document.labels?.length ? (
-              <div className="mt-4 border-t border-[color:var(--border)] pt-3">
-                <p className={eyebrowText}>Browse by tag</p>
-                <DocumentTagCloud
-                  labels={document.labels}
-                  limit={18}
-                  className="mt-2"
-                  onTagClick={onSearchByTag}
-                  grouped
-                />
-              </div>
-            ) : null}
-            {canUseAdministrativeApis ? (
-              <details className={cn(sourceCard, "mt-4 p-3")}>
-                <summary className="cursor-pointer text-sm font-semibold text-[color:var(--text)]">
-                  Document tools
-                </summary>
-                <DocumentManualTagEditor
-                  document={document}
-                  canManage={canUseAdministrativeApis}
-                  clientDemoMode={clientDemoMode}
-                  authorizationHeader={authorizationHeader}
-                  onLabelsUpdated={onLabelsUpdated}
-                  onUnauthorized={onUnauthorized}
-                />
-              </details>
-            ) : null}
-          </div>
-        </details>
-      ) : null}
+            </details>
+          ) : null}
 
-      {indexHealth ? (
-        <details
-          id={documentIndexingSectionId}
-          name="document-viewer-section"
-          data-testid="indexing-details"
-          className={cn(
-            panel,
-            "group min-w-0 scroll-mt-[var(--document-anchor-offset,6rem)] md:col-span-2 lg:col-span-1",
-          )}
-        >
-          <summary className="flex min-h-[56px] cursor-pointer list-none items-center justify-between gap-3 px-4 py-3">
-            <span className={eyebrowText}>Indexing details</span>
-            <ChevronDown
-              aria-hidden="true"
-              className="h-4 w-4 shrink-0 text-[color:var(--text-muted)] transition group-open:rotate-180"
-            />
-          </summary>
-          <dl
-            className={cn(
-              clinicalDivider,
-              "grid gap-2 p-4 text-xs font-semibold text-[color:var(--text-muted)] sm:grid-cols-2",
-            )}
-          >
-            <div>
-              <dt>Extraction</dt>
-              <dd className="mt-0.5 text-[color:var(--text)]">{indexHealth.extractionQuality ?? "unknown"}</dd>
-            </div>
-            <div>
-              <dt>Index version</dt>
-              <dd className={cn("mt-0.5 truncate text-[color:var(--text)]", codeText)}>
-                {indexHealth.indexVersion ?? "unknown"}
-              </dd>
-            </div>
-            <div className="sm:col-span-2">
-              <dt>Indexed</dt>
-              <dd className="mt-0.5 text-[color:var(--text)]">{indexHealth.indexedAt ?? "not recorded"}</dd>
-            </div>
-          </dl>
-        </details>
-      ) : null}
+          {indexHealth ? (
+            <details
+              id={documentIndexingSectionId}
+              name="document-viewer-section"
+              data-testid="indexing-details"
+              className={cn(
+                panel,
+                "group min-w-0 scroll-mt-[var(--document-anchor-offset,6rem)] md:col-span-2 lg:col-span-1",
+              )}
+            >
+              <summary className="flex min-h-[56px] cursor-pointer list-none items-center justify-between gap-3 px-4 py-3">
+                <span className={eyebrowText}>Indexing details</span>
+                <ChevronDown
+                  aria-hidden="true"
+                  className="h-4 w-4 shrink-0 text-[color:var(--text-muted)] transition group-open:rotate-180"
+                />
+              </summary>
+              <dl
+                className={cn(
+                  clinicalDivider,
+                  "grid gap-2 p-4 text-xs font-semibold text-[color:var(--text-muted)] sm:grid-cols-2",
+                )}
+              >
+                <div>
+                  <dt>Extraction</dt>
+                  <dd className="mt-0.5 text-[color:var(--text)]">{indexHealth.extractionQuality ?? "unknown"}</dd>
+                </div>
+                <div>
+                  <dt>Index version</dt>
+                  <dd className={cn("mt-0.5 truncate text-[color:var(--text)]", codeText)}>
+                    {indexHealth.indexVersion ?? "unknown"}
+                  </dd>
+                </div>
+                <div className="sm:col-span-2">
+                  <dt>Indexed</dt>
+                  <dd className="mt-0.5 text-[color:var(--text)]">{indexHealth.indexedAt ?? "not recorded"}</dd>
+                </div>
+              </dl>
+            </details>
+          ) : null}
+        </>
+      )}
     </aside>
   );
 }
