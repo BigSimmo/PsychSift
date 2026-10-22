@@ -72,8 +72,10 @@ const EXPECTED: Record<SignOffFamilyId, number> = {
   // lithium attestation was restored, so 8 wait. Later on 21 Oct the owner chose the AADPA 2022
   // ADHD guideline for the shared library; it was added unsigned, so 9 wait. On 22 Oct 2026 the 71
   // TGA Product Information search records became candidates (owner decision: the live TGA search
-  // is the PI source), with WA policy MP 0131/20, so 81 wait.
-  sources: 81,
+  // is the PI source), with WA policy MP 0131/20, so 81 wait. Later on 22 Oct the owner signed
+  // 75 of them with clinical:review (the 72, the AADPA guideline and the two OCP standards), so
+  // only the six held Indigenous sources wait.
+  sources: 6,
 };
 
 describe("clinical sign-off queue", () => {
@@ -165,7 +167,7 @@ describe("clinical sign-off queue", () => {
     );
     expect(
       sources.rows.filter((row) => row.statusLabel === "Reviewed in prose only, not yet signed").map((row) => row.id),
-    ).toEqual(["ocp-wa-standard-authorisation-of-hospitals", "ocp-wa-standards-for-clinical-care"]);
+    ).toEqual([]);
   });
 
   it("carries the whole dictionary editorial layer, which nothing else in the app renders", () => {
@@ -344,7 +346,9 @@ const EXPECTED_SIGNED_BY_DOMAIN: Record<SignOffDomainId, { signed: number; waiti
   // attestation was reversed on 21 Oct 2026 (owner ruling). The AADPA 2022 ADHD guideline was
   // added unsigned on 21 Oct 2026 (owner's choice), so it waits for the owner too.
   // 72 more joined on 22 Oct 2026: the 71 TGA PI search records and WA policy MP 0131/20.
-  sources: { signed: 93, waiting: 81 },
+  // Later on 22 Oct the owner signed 75 with clinical:review (those 72, the AADPA guideline and
+  // the two OCP standards), so only the six held Indigenous sources wait.
+  sources: { signed: 168, waiting: 6 },
   services: { signed: 21, waiting: 4 },
 };
 
@@ -388,16 +392,16 @@ describe("clinical & rule sign-off ledger", () => {
   });
 
   it("derives the overall totals, signer breakdown, and categorized waiting counts from the domain rows", () => {
-    expect(ledger.totalSigned).toBe(531);
-    expect(ledger.totalWaiting).toBe(1419);
+    expect(ledger.totalSigned).toBe(606);
+    expect(ledger.totalWaiting).toBe(1344);
     expect(ledger.totalGoverned).toBe(1950);
     expect(ledger.signedByTotals).toEqual({
-      "Josh Simpson": 3,
+      "Josh Simpson": 78,
       "Psych Sift": 67,
       PsychSift: 461,
     });
     expect(ledger.waitingByCategory).toEqual({
-      signableNow: 246,
+      signableNow: 171,
       indigenousHold: 26,
       awaitingPrerequisites: 582,
       awaitingTool: 565,
