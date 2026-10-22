@@ -53,6 +53,7 @@ import {
   teamMemberships,
   type AreaRow,
 } from "@/lib/work-profile/model";
+import type { WorkModeId } from "@/lib/app-modes";
 
 const AREA_HREF: Record<AreaRow["id"], string> = {
   roster: "/roster/settings",
@@ -62,11 +63,11 @@ const AREA_HREF: Record<AreaRow["id"], string> = {
   "on-call": "/on-call/call",
 };
 
-const AREA_MODE: Record<AreaRow["id"], string> = {
+const AREA_MODE: Record<AreaRow["id"], WorkModeId> = {
   roster: "roster",
   teaching: "teaching",
   cpd: "cme",
-  admin: "admin",
+  admin: "my-work",
   "on-call": "on-call",
 };
 
