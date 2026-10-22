@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "3329cb5e-a548-4120-9cf2-dedf6b426b66",
+  "createdOn": "2026-10-22",
+  "action": "update",
+  "payload": {
+    "id": "#WWTRM5",
+    "detail": "Item 4 done on branch claude/project-thread-l6adgn (22 Oct 2026): docs/decisions/2026-09-26-remove-ward-flow-and-caring-contacts.md now carries a dated update explaining that src/lib/caring-contacts/clock.ts is the shared Perth time helper used by the MHA clock, First Nations and On Call pages, and holds no Caring Contacts features. Still open: item 1, the corrupted arrow at docs/outstanding-issues.md:15 (mojibake for a right arrow in 'How this is used'). It can only be fixed on a dedicated reconcile branch, because ordinary PRs may not edit the canonical ledger. NEXT ACTION: the next issues:reconcile run replaces that arrow, then close this row.",
+    "baseRowFingerprint": "ce0ea5f6905ac4c22b8582fbe69f947ef3ab261c54a907b68494a4eb8f081d51",
+    "targetUlid": "01M54YEVQ8WWTRM5RPCGA0FEVP"
+  }
+}
