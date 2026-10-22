@@ -672,6 +672,7 @@ function runTsxScriptIfPresent(root, relTsScript, args = []) {
  *   check?: boolean,
  *   classifyPaths?: string[],
  *   refreshPinPaths?: string[]
+ *   governanceArgs?: string[]
  * }} [options]
  */
 export function runDocsMaintain(options = {}) {
@@ -679,6 +680,7 @@ export function runDocsMaintain(options = {}) {
   const check = Boolean(options.check);
   const classifyPaths = Array.isArray(options.classifyPaths) ? options.classifyPaths : [];
   const refreshPinPaths = Array.isArray(options.refreshPinPaths) ? options.refreshPinPaths : [];
+  const governanceArgs = Array.isArray(options.governanceArgs) ? options.governanceArgs : [];
 
   if (classifyPaths.length > 0) {
     const results = classifyPaths.map((p) => classifyRepositoryPath(p, { root }));
@@ -731,7 +733,7 @@ export function runDocsMaintain(options = {}) {
     runTsxScriptIfPresent(root, "scripts/generate-repo-awareness-snapshot.ts", ["--check"]);
     runNodeScriptIfPresent(root, "scripts/check-outstanding-issues-snapshot.mjs");
     runNodeScriptIfPresent(root, "scripts/generate-hazard-register-snapshot.mjs", ["--check"]);
-    runNodeScriptIfPresent(root, "scripts/check-clinical-hazard-controls.mjs");
+    runNodeScriptIfPresent(root, "scripts/check-clinical-hazard-controls.mjs", governanceArgs);
     runNodeScriptIfPresent(root, "scripts/organisation/check-instructions.mjs");
     runNodeScriptIfPresent(root, "scripts/organisation/decisions.mjs", ["check"]);
     runNodeScriptIfPresent(root, "scripts/list-database-skills.mjs", ["--check"]);
@@ -758,7 +760,7 @@ export function runDocsMaintain(options = {}) {
   const pinResult = refreshPinPaths.length > 0 ? refreshDocPins(root, { paths: refreshPinPaths }) : { updated: false };
 
   // Step 4: Run full --check verification to confirm clean state
-  runDocsMaintain({ root, check: true });
+  runDocsMaintain({ root, check: true, governanceArgs });
 
   return {
     mode: "write",
@@ -768,17 +770,22 @@ export function runDocsMaintain(options = {}) {
   };
 }
 
-function parseCliArgs(argv) {
+export function parseCliArgs(argv) {
   const args = argv.slice(2);
   let check = false;
   let classifyMode = false;
   let refreshPinsMode = false;
   const classifyPaths = [];
   const refreshPinPaths = [];
+  const governanceArgs = [];
 
   for (let i = 0; i < args.length; i += 1) {
     const arg = args[i];
-    if (arg === "--check") {
+    if (arg === "--development" || arg === "--release") {
+      governanceArgs.push(arg);
+    } else if (arg === "--base") {
+      governanceArgs.push(arg, args[++i] ?? "");
+    } else if (arg === "--check") {
       check = true;
       classifyMode = false;
       refreshPinsMode = false;
@@ -795,7 +802,7 @@ function parseCliArgs(argv) {
     }
   }
 
-  return { check, classifyMode, classifyPaths, refreshPinPaths };
+  return { check, classifyMode, classifyPaths, refreshPinPaths, governanceArgs };
 }
 
 function isExecutedDirectly() {
@@ -811,12 +818,12 @@ function isExecutedDirectly() {
 
 if (isExecutedDirectly()) {
   try {
-    const { check, classifyMode, classifyPaths, refreshPinPaths } = parseCliArgs(process.argv);
+    const { check, classifyMode, classifyPaths, refreshPinPaths, governanceArgs } = parseCliArgs(process.argv);
     if (classifyMode && classifyPaths.length === 0) {
       console.error("Usage: node scripts/maintain-docs-system.mjs --classify <path...>");
       process.exit(1);
     }
-    runDocsMaintain({ check, classifyPaths, refreshPinPaths });
+    runDocsMaintain({ check, classifyPaths, refreshPinPaths, governanceArgs });
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
     process.exit(1);

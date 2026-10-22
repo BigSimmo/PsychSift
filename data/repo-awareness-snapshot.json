@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-17"
+    "committed_at": "2026-10-22"
   },
   "routes": {
     "modes": [
@@ -3267,6 +3267,11 @@
       {
         "path": "docs/evidence/mobile-root-timing-control-2026-08-26.md",
         "section": "evidence",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-22-development-governance-scope.md",
+        "section": "decisions",
         "catalogued": true
       },
       {

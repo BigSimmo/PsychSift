@@ -13,7 +13,7 @@ import {
   referencePath,
   registerTopLevel,
   reportExpiredReviewDate,
-  resolveReviewDateScope,
+  resolveGovernanceReviewDateScope,
 } from "./organisation/review-date-scope.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -640,12 +640,9 @@ function main() {
         "to prove them; every file, symbol, test-reference and date check below still ran.",
     );
   }
-  // Strict unless pull-request CI asks for pr mode explicitly (REVIEW_DATE_MODE=pr with BASE_SHA and
-  // HEAD_SHA); see scripts/organisation/review-date-scope.mjs. Local runs, other branches and release stay strict.
-  // --release pins strict whatever the environment says, as check-privacy-readiness does: a release
-  // must never ship on a lapsed hazard review.
-  const release = process.argv.includes("--release");
-  const reviewDateScope = resolveReviewDateScope({ env: release ? {} : process.env, root });
+  // Explicit development scope includes working inputs. Default local and release checks stay
+  // strict; --release wins over development flags and the existing CI environment scope.
+  const reviewDateScope = resolveGovernanceReviewDateScope({ argv: process.argv.slice(2), root });
   const { errors, warnings } = evaluateClinicalHazardControls(manifest, { checkGit: !shallow, reviewDateScope });
   printReviewDateWarnings("CLINICAL_HAZARD_CONTROLS", reviewDateScope, warnings);
   if (errors.length) {

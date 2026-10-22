@@ -25,9 +25,37 @@ The status authority is [`governance/privacy-readiness.v1.json`](governance/priv
 with the current evidence summary in
 [`governance/privacy-closeout-2026-09-01.md`](governance/privacy-closeout-2026-09-01.md). As of
 2026-09-01, OpenAI API sharing and call logging are disabled and optional hosted tools are disabled;
-OpenAI has acknowledged the ZDR request, but ZDR, DPA, APP 8, APP 1/5 notice, and clinical
-PHI-minimisation approvals remain release blockers. Do not infer approval from request submission or
+OpenAI has acknowledged the ZDR request. The register's current unresolved release requirements
+are ZDR, APP 8, APP 1/5 notice, and clinical PHI minimisation; DPA evidence is recorded there
+separately. Do not infer approval from request submission or
 from the public `/privacy` transparency page.
+
+### Development and draft review
+
+Offline development and draft review may proceed with recorded privacy gaps. Use the explicit
+development profile with a full, locally available base commit SHA for the **whole proposed
+change**, rather than selecting a later checkpoint to hide earlier edits:
+
+```sh
+npm run check:privacy-readiness:development -- --base <full-base-commit-sha>
+npm run check:clinical-hazard-controls:development -- --base <full-base-commit-sha>
+npm run docs:maintain:development -- --base <full-base-commit-sha>
+```
+
+This local-only profile checks committed changes, the index, working files and untracked paths.
+An unrelated expired review becomes a visible warning; editing the expired entry or a covered
+path still blocks, including staged register edits whose working copy was restored. Invalid or
+unavailable scope falls back to strict checks. Pending/partial privacy requirements are printed
+as release blockers without being converted into approvals. No patient data or provider access
+is needed. `docs:maintain:development` is read-only; to refresh generated documentation first,
+use `npm run docs:maintain -- --development --base <full-base-commit-sha>`.
+
+Default checks remain strict. `--release`, `check:privacy-readiness:release`,
+`check:production-readiness` and `governance:release` retain their production requirements;
+`--release` wins even if `--development` is also supplied. A development pass is not release,
+clinical, legal or provider approval. The [privacy impact assessment](privacy-impact-assessment.md)
+retains the data-field, purpose, store, retention and deletion inventory; this profile changes
+none of those data-handling controls. See the [owner decision](decisions/2026-10-22-development-governance-scope.md).
 
 ## Clinical Use Rules
 

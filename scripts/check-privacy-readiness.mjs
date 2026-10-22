@@ -13,7 +13,7 @@ import {
   referencePath,
   registerTopLevel,
   reportExpiredReviewDate,
-  resolveReviewDateScope,
+  resolveGovernanceReviewDateScope,
 } from "./organisation/review-date-scope.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -386,14 +386,20 @@ function main() {
         "ran. Release mode does not skip them.",
     );
   }
-  // Strict unless pull-request CI asks for pr mode explicitly (REVIEW_DATE_MODE=pr with BASE_SHA and
-  // HEAD_SHA); see scripts/organisation/review-date-scope.mjs. Release mode never reads it.
-  const reviewDateScope = release
-    ? resolveReviewDateScope({ env: {}, root })
-    : resolveReviewDateScope({ env: process.env, root });
+  // Explicit development scope includes working inputs. Otherwise retain the existing CI scope
+  // or strict local default; --release always ignores either non-release scope.
+  const reviewDateScope = resolveGovernanceReviewDateScope({ argv: process.argv.slice(2), root });
   const { errors, warnings } = evaluatePrivacyReadiness(manifest, { release, checkGit: !skip, reviewDateScope });
   printReviewDateWarnings("PRIVACY_READINESS", reviewDateScope, warnings);
   const scopeLabel = describeReviewDateScope(reviewDateScope);
+  if (!release) {
+    for (const item of manifest.requirements ?? []) {
+      if (["pending", "partial"].includes(item.status))
+        console.warn(
+          `PRIVACY_READINESS_RELEASE_BLOCKER: ${item.id} status=${item.status} owner=${item.accountableRole}`,
+        );
+    }
+  }
   if (errors.length) {
     console.error(`PRIVACY_READINESS_FAIL mode=${release ? "release" : "structural"} ${scopeLabel}`);
     for (const error of errors) console.error(`- ${error}`);
