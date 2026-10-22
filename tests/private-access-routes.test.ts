@@ -3827,6 +3827,21 @@ describe("private document API access", () => {
     expect(body.tableFacts.map((fact: { id: string }) => fact.id)).toEqual(["fact-old"]);
   });
 
+  it("refuses anonymous table facts before reading the document or its tables", async () => {
+    const client = createSupabaseMock(() => ok([]));
+    mockRuntime(client);
+    const { GET } = await import("../src/app/api/documents/[id]/table-facts/route");
+
+    const response = await GET(request(`/api/documents/${documentId}/table-facts`), {
+      params: Promise.resolve({ id: documentId }),
+    });
+
+    expect(response.status).toBe(401);
+    expect(await payload(response)).toMatchObject({ code: "authentication_required" });
+    expect(client.from).not.toHaveBeenCalledWith("documents");
+    expect(client.from).not.toHaveBeenCalledWith("document_table_facts");
+  });
+
   it("refuses anonymous in-document search before reading the document or its text", async () => {
     const client = createSupabaseMock((call) => {
       if (call.table === "documents" && matchesOwnerReadScope(call)) {
