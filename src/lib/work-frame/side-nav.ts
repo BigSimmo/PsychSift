@@ -1,24 +1,24 @@
-import type { AppModeId } from "@/lib/app-modes";
+import type { WorkModeId } from "@/lib/app-modes";
 import { WORK_AREAS, workAreaIdForPath, type WorkAreaId } from "@/lib/work-frame/areas";
 
 /**
  * The work side menu and tablet rail (owner pick "Burger and rail", 7 Oct
  * 2026). On a phone the header's menu button opens a work side menu; from
  * 768 px a narrow rail sits down the left edge instead. Both list the same
- * seven work areas, in the order the mockup draws them, each with the number
+ * six work areas, in the order the mockup draws them, each with the number
  * of things waiting there. Classic readers keep the clinical sidebar.
  *
- * Open shifts is an inner area of Roster inside a page, but it is its own mode
- * in the mode picker, so it keeps its own row here too. Manage team and
- * Assessments are not modes, so they light their parent's row and add to its
- * count.
+ * Open shifts is a tab inside Roster (owner decisions, 12 and 21 Oct 2026), so
+ * it has no row of its own here or in the mode menu. Manage team and
+ * Assessments are not modes either; all three light their parent's row and add
+ * to its count.
  */
 
 export type WorkSideArea = {
   /** The area the row opens and is tinted for. */
   readonly id: WorkAreaId;
   /** The mode the row switches to, for its icon and the mode switch. */
-  readonly modeId: AppModeId;
+  readonly modeId: WorkModeId;
   readonly label: string;
   /** The rail is 84 px wide, so long names get a shorter label there. */
   readonly short: string;
@@ -26,7 +26,7 @@ export type WorkSideArea = {
   readonly href: string;
 };
 
-function entry(id: WorkAreaId, modeId: AppModeId, label: string, short = label): WorkSideArea {
+function entry(id: WorkAreaId, modeId: WorkModeId, label: string, short = label): WorkSideArea {
   return { id, modeId, label, short, href: WORK_AREAS[id].tabs[0].href ?? "/my-day" };
 }
 

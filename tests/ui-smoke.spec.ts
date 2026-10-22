@@ -4875,14 +4875,15 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(appModeMenu.getByRole("menuitemradio")).toHaveCount(18);
     await expect(appModeMenu.getByRole("heading", { name: "Search" })).toBeAttached();
     await expect(appModeMenu.getByRole("heading", { name: "Psychiatry" })).toBeAttached();
+    await expect(appModeMenu.getByRole("heading", { name: "Mental Health Act" })).toBeAttached();
     await expect(appModeMenu.getByRole("heading", { name: "Medicines" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading")).toHaveCount(3);
+    await expect(appModeMenu.getByRole("heading")).toHaveCount(4);
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Dictionary\b/ })).toBeAttached();
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^CPD\b/ })).toHaveCount(0);
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Roster\b/ })).toHaveCount(0);
 
     await modeDialog.getByRole("radio", { name: "Work" }).click();
-    await expect(modeDialog.getByRole("status")).toHaveText("7 in Work");
+    await expect(modeDialog.getByRole("status")).toHaveText("6 in Work");
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^CPD\b/ })).toBeAttached();
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Admin\b/ })).toBeAttached();
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^My Day\b/ })).toBeAttached();
@@ -4895,7 +4896,7 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(answerMode).toBeFocused();
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Evidence\b/ })).toHaveCount(0);
     // Arrow Down follows the drawn order, group by group: the end of Search
-    // steps into Psychiatry, and the end of Psychiatry steps into Medicines.
+    // steps into Psychiatry, and the end of Psychiatry steps into the Mental Health Act, then Medicines.
     await page.keyboard.press("ArrowDown");
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Documents\b/ })).toBeFocused();
     await page.keyboard.press("ArrowDown");
@@ -4912,8 +4913,6 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Formulation\b/ })).toBeFocused();
     await page.keyboard.press("ArrowDown");
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Therapy\b/ })).toBeFocused();
-    await page.keyboard.press("ArrowDown");
-    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Forms\b/ })).toBeFocused();
     // Calculators and the Dictionary moved here from Medicines (audit item 8).
     await page.keyboard.press("ArrowDown");
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Calculators\b/ })).toBeFocused();
@@ -4921,6 +4920,9 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Dictionary\b/ })).toBeFocused();
     await page.keyboard.press("ArrowDown");
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^First Nations\b/ })).toBeFocused();
+    // The Mental Health Act is its own door, led by Forms (owner decision, 21 Oct 2026).
+    await page.keyboard.press("ArrowDown");
+    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Forms\b/ })).toBeFocused();
     // Medicines is led by its hub, as Psychiatry is.
     await page.keyboard.press("ArrowDown");
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Medicines\b/ })).toBeFocused();

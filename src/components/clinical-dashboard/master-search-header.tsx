@@ -131,6 +131,7 @@ import {
 } from "@/lib/teaching/page-visibility";
 import {
   clinicalBandAttribute,
+  modeMenuRowFor,
   modeMenuSideForMode,
   modeMenuSides,
   orderModesForSide,
@@ -824,7 +825,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
   function selectModeMenuSide(side: ModeMenuSideId) {
     setModeMenuSide(side);
     const options = orderModesForSide(visibleAppModeOptions, side);
-    const selected = options.findIndex((mode) => mode.id === selectedAppMode.id);
+    const selected = options.findIndex((mode) => mode.id === modeMenuRowFor(selectedAppMode.id));
     setModeMenuFocusIndex(selected >= 0 ? selected : 0);
   }
 
@@ -885,7 +886,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
     const openingOptions = orderModesForSide(visibleAppModeOptions, side);
     const openingIndex = Math.max(
       0,
-      openingOptions.findIndex((mode) => mode.id === selectedAppMode.id),
+      openingOptions.findIndex((mode) => mode.id === modeMenuRowFor(selectedAppMode.id)),
     );
     const highlighted = openingOptions[openingIndex];
     if (highlighted) prefetchModeSelection(highlighted.id);
@@ -924,7 +925,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
       const options = orderModesForSide(visibleAppModeOptions, side);
       const current = Math.max(
         0,
-        options.findIndex((mode) => mode.id === selectedAppMode.id),
+        options.findIndex((mode) => mode.id === modeMenuRowFor(selectedAppMode.id)),
       );
       openModeMenuWithFocus(event.key === "ArrowDown" ? current : current - 1, side);
     } else if (event.key === "Tab" && modeMenuOpen && !usesPhoneSearchLayout) {
@@ -1030,7 +1031,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
   }
 
   function renderModeMenuOption(mode: (typeof visibleAppModeOptions)[number], index: number) {
-    const active = mode.id === searchMode;
+    const active = mode.id === modeMenuRowFor(searchMode);
     return (
       <button
         key={mode.id}

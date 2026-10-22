@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-21"
+    "committed_at": "2026-10-22"
   },
   "routes": {
     "modes": [
@@ -3104,6 +3104,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-21-mental-health-act-door.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-10-18-bot-authored-sensitive-commits-blocked.md",
         "section": "decisions",
         "catalogued": true
@@ -3271,6 +3276,11 @@
       {
         "path": "docs/governance/privacy-closeout-2026-09-01.md",
         "section": "governance",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-21-mode-sides-and-one-work-list.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -3514,6 +3524,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-21-open-shifts-inside-roster.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/archive/source-governance-status-2026-07-08.md",
         "section": "archive",
         "catalogued": true
@@ -3646,6 +3661,11 @@
       {
         "path": "docs/superpowers/rag-upgrade/cloud/approval-matrix.md",
         "section": "superpowers",
+        "catalogued": true
+      },
+      {
+        "path": "docs/product/clinical-and-work-direction.md",
+        "section": "product",
         "catalogued": true
       },
       {
@@ -4209,6 +4229,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-21-worker-scan-advisory-until-4-nov.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/design-system/drift-measurement-2026-09-02.md",
         "section": "design-system",
         "catalogued": true
@@ -4396,6 +4421,11 @@
       {
         "path": "docs/archive/search-rag-phase-0-baseline.md",
         "section": "archive",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-21-answers-leave-diagnosis-to-clinician.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -4684,6 +4714,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-21-all-in-one-clinical-and-work.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/audit/primary-checkout-reconciliation-2026-07-24.md",
         "section": "audit",
         "catalogued": true
@@ -4946,6 +4981,11 @@
       {
         "path": "docs/audit/worktree-reconciliation-2026-08-23.md",
         "section": "audit",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-21-content-review-intervals.md",
+        "section": "decisions",
         "catalogued": true
       },
       {

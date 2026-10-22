@@ -82,10 +82,22 @@ describe("schema_drift_snapshot definition parity (migration vs schema.sql)", ()
     return text.slice(start, end);
   };
 
-  it(`migration ${HISTORY_PROBE_MIGRATION.slice(0, 14)} (latest definer) and schema.sql carry byte-identical definitions`, () => {
-    const fromMigration = extract(read(`supabase/migrations/${HISTORY_PROBE_MIGRATION}`));
+  // The newest migration that redefines schema_drift_snapshot(); schema.sql must mirror it.
+  const LATEST_DEFINER_MIGRATION = "20261021180000_schema_drift_snapshot_literal_safe_comments.sql";
+
+  it(`migration ${LATEST_DEFINER_MIGRATION.slice(0, 14)} (latest definer) and schema.sql carry byte-identical definitions`, () => {
+    const fromMigration = extract(read(`supabase/migrations/${LATEST_DEFINER_MIGRATION}`));
     const fromSchema = extract(read("supabase/schema.sql"));
     expect(fromSchema).toBe(fromMigration);
+  });
+
+  it("strips a line comment only where no quoted value is open on that line (#81A3YJ)", () => {
+    const sql = extract(read(`supabase/migrations/${LATEST_DEFINER_MIGRATION}`));
+    expect(sql).toContain(`'(^|\\n)((?:[^''"\\n-]|-(?!-)|''[^''\\n]*''|"[^"\\n]*")*)--[^\\n]*', '\\1\\2', 'g'`);
+    expect(sql).not.toContain(`'--[^\\n]*', '', 'g'`);
+    // The latest definer keeps everything the v2 probe added.
+    expect(sql).toContain("'snapshot_version', 2");
+    expect(sql).toContain("'migration_history_probe', history_probe");
   });
 
   it("v2 probe reads history via a guarded dynamic query and reports its own availability", () => {

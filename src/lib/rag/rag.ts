@@ -2617,8 +2617,7 @@ async function answerQuestionWithScopeUncoalesced(
     pre_retrieval_latency_ms: preRetrievalLatencyMs,
     retrieval_latency_ms: searchLatencyMs,
     routing_latency_ms: routingLatencyMs,
-    route_budget_ms: routeDeadline.budgetMs,
-    route_deadline_exceeded: routeDeadline.deadlineExceeded,
+    ...routeDeadline.timingFields(),
     route_budget_exhausted_by_retrieval: routeBudgetExhaustedByRetrieval,
   });
   const coverageFor = (selectedEvidence: SearchResult[], citedChunkIds?: string[]) =>
@@ -3472,6 +3471,7 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
         normalResults: modelContextResults,
         fallbackResults: generationFallbackResults,
         relevance,
+        onVerifiedUnit: routeDeadline.markFirstVerifiedContent,
       }),
     });
     await args.onProgress?.({

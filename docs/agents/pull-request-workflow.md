@@ -347,6 +347,12 @@ Merging a PR directly into `main` or any protected branch still needs the user's
 request; the only standing batch authority is [`Clear PRs`](#clear-prs). [`Run PR`](#run-pr)
 never merges and never arms.
 
+**Clinical-risk PRs.** `PR policy` fails a clinical-risk PR while auto-merge on it was armed by any
+account other than the repository owner, such as a review bot (#YF0XSQ: on 13 Oct 2026 gitar-bot
+armed PR 3507 and it merged on bot approvals alone). Turning auto-merge off re-runs the check and it
+passes. The owner may still arm it, so this is a tripwire against bots, not proof of the owner's own
+review.
+
 **Auto-merge state is user-owned once the PR exists.** Automation must not disable or re-enable
 it. Ordinary fast-forward commits and pushes to fix CI or review findings, bundled additions, and an `update-branch` /
 merge-main-in sync that [Branch sync](#branch-sync) allows (a real conflict, or the owner asks)
