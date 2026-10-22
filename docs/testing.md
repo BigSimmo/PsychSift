@@ -358,7 +358,12 @@ following the same shape as `check:bundle-budget`.
   measured a different page after a redirect — **always fails**, regardless of `enforce`. An ungraded
   route counted as a pass is the failure mode `summarise-web-vitals.mjs` documents at length.
 - CLS is graded on absolute movement; LCP and TBT need to clear both a percentage and an absolute
-  floor, so 12 ms → 16 ms is not reported as a 33% regression.
+  floor, so 12 ms → 16 ms is not reported as a 33% regression. The four calibrated runs get a
+  200 ms LCP floor for runner jitter, and desktop `/` alone gets 700 ms: the home streams behind
+  the `(search-app)` loading skeleton, and whether the skeleton paints first is a race that splits
+  identical code into a fast and a slow group (`STREAMED_HOME_LCP_FLOOR_MS` in
+  `scripts/check-lighthouse-budget.mjs` has the measurements, and the owner chose this over removing
+  the skeleton on 22 Oct 2026).
 - A cell that produced **no measurement at all** — a non-zero exit, no report file, or a report
   carrying only a `runtimeError` such as Lighthouse's own `NO_NAVSTART` (ledger #147 recorded
   `/forms` doing this) — is retried **once**, and the retry is always logged to the run summary and

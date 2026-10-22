@@ -551,6 +551,7 @@ export function AssessTextField({
   required,
   readOnly,
   single,
+  quietNote,
 }: {
   readonly id: string;
   readonly label: string;
@@ -560,16 +561,19 @@ export function AssessTextField({
   readonly required?: boolean;
   readonly readOnly?: boolean;
   readonly single?: boolean;
+  /** Leaves out the standing patient-details reminder when a field beside it already shows it. A warning still shows. */
+  readonly quietNote?: boolean;
 }) {
   const hit = looksLikePatientDetails(value);
   const noteId = `${id}-privacy`;
+  const showNote = hit || !quietNote;
   const missing = required && !value.trim();
   const shared = {
     id,
     value,
     readOnly,
     placeholder,
-    "aria-describedby": noteId,
+    "aria-describedby": showNote ? noteId : undefined,
     "aria-required": required || undefined,
     "data-err": missing ? "" : undefined,
     className: "assess-txt",
@@ -585,11 +589,13 @@ export function AssessTextField({
       ) : (
         <textarea rows={3} {...shared} onChange={(event) => onChange(event.target.value)} />
       )}
-      <AssessNote id={noteId} tone={hit ? "amber" : undefined}>
-        {hit
-          ? "This may be patient details (it looks like a URN, a date, a title and name, or a bed number). Please check and remove it."
-          : "Leave out anything that could identify a patient. This check only catches some."}
-      </AssessNote>
+      {showNote ? (
+        <AssessNote id={noteId} tone={hit ? "amber" : undefined}>
+          {hit
+            ? "This may be patient details (it looks like a URN, a date, a title and name, or a bed number). Please check and remove it."
+            : "Leave out anything that could identify a patient. This check only catches some."}
+        </AssessNote>
+      ) : null}
       <span className="sr-only" aria-live="polite">
         {hit ? "This may be patient details. Please check and remove it." : ""}
       </span>

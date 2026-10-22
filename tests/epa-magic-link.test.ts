@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError } from "@/lib/supabase/auth";
 
 const { mockRequireAuthenticatedUser } = vi.hoisted(() => ({
@@ -231,7 +232,7 @@ describe("External supervisor EPA magic-link (#MAAXAX)", () => {
     }
   });
 
-  it("requires authentication on PUT and refuses ephemeral store in production", async () => {
+  it("requires authentication on PUT and, in production, answers 503 while the durable table is unavailable", async () => {
     mockRequireAuthenticatedUser.mockRejectedValueOnce(new AuthenticationError());
     const unauthPut = await PUT(
       new Request("https://psychiatry.tools/api/teaching/assessments/respond/unauth_token_1234567890abcd", {
@@ -248,12 +249,65 @@ describe("External supervisor EPA magic-link (#MAAXAX)", () => {
     expect(unauthPut.status).toBe(401);
 
     vi.stubEnv("NODE_ENV", "production");
+    // Production reads public.teaching_epa_magic_links (#MAAXAX); before that migration is live the
+    // lookup fails, and the supervisor sees "unavailable" rather than a server fault.
+    const missingTable = { data: null, error: { code: "42P01" } };
+    const failing: Record<string, unknown> = {};
+    for (const step of ["select", "eq", "gt", "order", "limit"]) failing[step] = () => failing;
+    failing.maybeSingle = () => Promise.resolve(missingTable);
+    vi.mocked(createAdminClient).mockReturnValueOnce({ from: () => failing } as never);
     try {
       const prodGet = await GET(new Request("https://psychiatry.tools/api/teaching/assessments/respond/some_token"), {
         params: Promise.resolve({ token: "some_token_1234567890abcdef" }),
       });
       expect(prodGet.status).toBe(503);
       expect(await prodGet.json()).toMatchObject({ code: "assessment_store_unavailable" });
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+});
+
+describe("the demo-mode supervisor link", () => {
+  it("opens a made-up request and accepts an answer without storing it", async () => {
+    const { EPA_MAGIC_LINK_DEMO_TOKEN } = await import("@/lib/teaching/assessments/magic-link");
+    const url = `https://psychiatry.tools/api/teaching/assessments/respond/${EPA_MAGIC_LINK_DEMO_TOKEN}`;
+    const params = { params: Promise.resolve({ token: EPA_MAGIC_LINK_DEMO_TOKEN }) };
+    const opened = await GET(new Request(url), params);
+    expect(opened.status).toBe(200);
+    expect(await opened.json()).toMatchObject({ request: { traineeName: "Dr Trainee Example", status: "pending" } });
+    const sent = await POST(
+      new Request(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ level: "proximal", strengths: "Clear formulation." }),
+      }),
+      { params: Promise.resolve({ token: EPA_MAGIC_LINK_DEMO_TOKEN }) },
+    );
+    expect(sent.status).toBe(200);
+    expect(await sent.json()).toMatchObject({ ok: true, request: { status: "completed" } });
+    const again = await GET(new Request(url), { params: Promise.resolve({ token: EPA_MAGIC_LINK_DEMO_TOKEN }) });
+    expect(await again.json()).toMatchObject({ request: { status: "pending" } });
+  });
+
+  it("works in production too, without touching the stored links", async () => {
+    const { EPA_MAGIC_LINK_DEMO_TOKEN } = await import("@/lib/teaching/assessments/magic-link");
+    vi.stubEnv("NODE_ENV", "production");
+    vi.mocked(createAdminClient).mockClear();
+    try {
+      const url = `https://psychiatry.tools/api/teaching/assessments/respond/${EPA_MAGIC_LINK_DEMO_TOKEN}`;
+      const opened = await GET(new Request(url), { params: Promise.resolve({ token: EPA_MAGIC_LINK_DEMO_TOKEN }) });
+      expect(opened.status).toBe(200);
+      const sent = await POST(
+        new Request(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ level: "proximal" }),
+        }),
+        { params: Promise.resolve({ token: EPA_MAGIC_LINK_DEMO_TOKEN }) },
+      );
+      expect(sent.status).toBe(200);
+      expect(createAdminClient).not.toHaveBeenCalled();
     } finally {
       vi.unstubAllEnvs();
     }

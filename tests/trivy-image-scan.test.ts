@@ -12,6 +12,7 @@ import {
   cachedTrivyDbNeedsRefresh,
   trivyDbNeedsRefresh,
   trivyDockerMounts,
+  trivyFindingsBlock,
   validateTrivyReportJson,
   trivyFindingDetails,
   applyTrivySuppressions,
@@ -290,6 +291,10 @@ describe("Trivy image scan evidence validation (R13)", () => {
       ok: true,
       high: 0,
       critical: 0,
+      byImage: {
+        "clinical-kb-app:ci": { high: 0, critical: 0 },
+        "clinical-kb-worker:ci": { high: 0, critical: 0 },
+      },
       reason: null,
     });
   });
@@ -468,6 +473,51 @@ describe("Trivy cache directory freshness", () => {
     expect(cachedTrivyDbNeedsRefresh(cacheWith({ dbFile: true, metadata: current }), "db", "trivy.db", now)).toBe(
       false,
     );
+  });
+});
+
+describe("worker image scan advisory window (owner decision 2026-10-21)", () => {
+  const summary = (appHigh: number, workerHigh: number, workerCritical = 0) =>
+    [
+      `Trivy scan completed (clinical-kb-app:ci): STATUS=ok HIGH=${appHigh} CRITICAL=0 MEDIUM=0 LOW=0 UNKNOWN=0`,
+      `Trivy scan completed (clinical-kb-worker:ci): STATUS=ok HIGH=${workerHigh} CRITICAL=${workerCritical} MEDIUM=0 LOW=0 UNKNOWN=0`,
+    ].join("\n");
+  const before = new Date("2026-10-22T00:00:00Z");
+  const after = new Date("2026-11-04T00:00:00Z");
+  const main = "refs/heads/main";
+
+  it("keeps worker-only findings advisory on main until 4 Nov 2026", () => {
+    const result = evaluateTrivySummaryText(summary(0, 84, 3));
+    expect(result).toMatchObject({
+      byImage: {
+        "clinical-kb-app:ci": { high: 0, critical: 0 },
+        "clinical-kb-worker:ci": { high: 84, critical: 3 },
+      },
+    });
+    expect(trivyFindingsBlock(result, "push", before, main)).toBe(false);
+    expect(trivyFindingsBlock(result, "schedule", before, main)).toBe(false);
+  });
+
+  it("blocks worker findings on any ref other than main", () => {
+    const result = evaluateTrivySummaryText(summary(0, 84, 3));
+    expect(trivyFindingsBlock(result, "push", before, "refs/heads/release/2026-11")).toBe(true);
+    expect(trivyFindingsBlock(result, "workflow_dispatch", before, "refs/heads/some-branch")).toBe(true);
+    expect(trivyFindingsBlock(result, "push", before, "")).toBe(true);
+  });
+
+  it("blocks worker findings again from 4 Nov 2026", () => {
+    expect(trivyFindingsBlock(evaluateTrivySummaryText(summary(0, 84, 3)), "push", after, main)).toBe(true);
+  });
+
+  it("still blocks app image findings and unassessed scans inside the window", () => {
+    expect(trivyFindingsBlock(evaluateTrivySummaryText(summary(1, 0)), "push", before, main)).toBe(true);
+    expect(trivyFindingsBlock(evaluateTrivySummaryText(summary(1, 84)), "push", before, main)).toBe(true);
+    expect(trivyFindingsBlock(evaluateTrivySummaryText("STATUS=unassessed"), "push", before, main)).toBe(true);
+  });
+
+  it("passes clean scans and stays advisory on pull requests", () => {
+    expect(trivyFindingsBlock(evaluateTrivySummaryText(summary(0, 0)), "push", after)).toBe(false);
+    expect(trivyFindingsBlock(evaluateTrivySummaryText(summary(1, 84)), "pull_request", after)).toBe(false);
   });
 });
 

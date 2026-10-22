@@ -16,7 +16,7 @@ import {
 } from "./lib/cross-tenant-write-probe";
 import { probeCmeEvidenceAndExportIsolation } from "./lib/cross-tenant-cme-evidence-probe";
 import { probeOnCallContentIsolation } from "./lib/cross-tenant-oncall-content-probe";
-import { probeRosterIsolation } from "./lib/cross-tenant-roster-probe";
+import { probeRosterIsolation, seedRosterFixtures } from "./lib/cross-tenant-roster-probe";
 
 loadEnvConfig(process.cwd());
 
@@ -41,6 +41,12 @@ type HarnessConfig = {
   documentBucket: string;
   evidencePath: string;
   checkoutCommitSha: string;
+  /**
+   * The commit staging must report. Equal to the checkout unless scripts/resolve-staging-deployment.mjs
+   * proved an earlier commit builds the same app (`deploymentRelation: "equivalent"`).
+   */
+  expectedDeployedCommitSha: string;
+  deploymentRelation: "exact" | "equivalent";
   workflowRunUrl: string | null;
 };
 
@@ -148,6 +154,21 @@ export function readCrossTenantStagingConfig(): HarnessConfig {
   if (!/^[a-f0-9]{40}$/.test(checkoutCommitSha)) {
     throw new Error("CROSS_TENANT_CHECKOUT_COMMIT_SHA must be a full 40-character Git commit SHA.");
   }
+  // Only the resolver sets these, after proving no app-affecting file changed between the two
+  // commits; without them the comparison stays exact, as a release proof requires.
+  const relation = process.env.CROSS_TENANT_DEPLOYMENT_RELATION?.trim() || "exact";
+  if (relation !== "exact" && relation !== "equivalent") {
+    throw new Error('CROSS_TENANT_DEPLOYMENT_RELATION must be "exact" or "equivalent".');
+  }
+  const expectedDeployedCommitSha = (
+    process.env.CROSS_TENANT_EXPECTED_DEPLOYED_SHA?.trim() || checkoutCommitSha
+  ).toLowerCase();
+  if (!/^[a-f0-9]{40}$/.test(expectedDeployedCommitSha)) {
+    throw new Error("CROSS_TENANT_EXPECTED_DEPLOYED_SHA must be a full 40-character Git commit SHA.");
+  }
+  if (relation === "exact" && expectedDeployedCommitSha !== checkoutCommitSha) {
+    throw new Error("An exact deployment proof must expect the checkout commit itself.");
+  }
 
   return {
     appUrl,
@@ -162,6 +183,8 @@ export function readCrossTenantStagingConfig(): HarnessConfig {
     documentBucket,
     evidencePath: process.env.CROSS_TENANT_EVIDENCE_PATH?.trim() || DEFAULT_EVIDENCE_PATH,
     checkoutCommitSha,
+    expectedDeployedCommitSha,
+    deploymentRelation: relation,
     workflowRunUrl: process.env.CROSS_TENANT_WORKFLOW_RUN_URL?.trim() || null,
   };
 }
@@ -216,9 +239,12 @@ export async function verifyCrossTenantDeploymentIdentity(config: HarnessConfig)
   if (!/^[a-f0-9]{40}$/.test(deployedCommitSha)) {
     throw new Error("GET /api/health did not report a full deploymentCommitSha.");
   }
-  if (deployedCommitSha !== config.checkoutCommitSha) {
+  if (deployedCommitSha !== config.expectedDeployedCommitSha) {
     throw new Error(
-      `Staging deployment SHA ${deployedCommitSha} does not match checkout SHA ${config.checkoutCommitSha}.`,
+      config.deploymentRelation === "exact"
+        ? `Staging deployment SHA ${deployedCommitSha} does not match checkout SHA ${config.checkoutCommitSha}.`
+        : `Staging deployment SHA ${deployedCommitSha} does not match the app-equivalent SHA ` +
+            `${config.expectedDeployedCommitSha} resolved for checkout ${config.checkoutCommitSha}.`,
     );
   }
   // Prove the provider mode here, not from the answer's reason code. /api/health reports
@@ -658,7 +684,7 @@ function writeEvidence(args: {
   const completedAt = new Date().toISOString();
   const errorMessage = args.error instanceof Error ? args.error.message : args.error ? String(args.error) : null;
   const payload = {
-    schemaVersion: 2,
+    schemaVersion: 3,
     check: "cross-tenant-staging",
     status: errorMessage || args.cleanupErrors.length > 0 ? "failed" : "passed",
     runId: args.runId,
@@ -669,6 +695,9 @@ function writeEvidence(args: {
     appOrigin: args.config?.appUrl ?? null,
     checkoutCommitSha: args.config?.checkoutCommitSha ?? null,
     deployedCommitSha: args.deployedCommitSha,
+    // "equivalent": staging ran an earlier commit with identical app inputs (railway.app.json
+    // watchPatterns), proven before this run; the harness code itself is the checkout's.
+    deploymentRelation: args.config?.deploymentRelation ?? null,
     workflowRunUrl: args.config?.workflowRunUrl ?? null,
     checkpoints: args.checkpoints,
     // Surfaces the harness could not exercise for want of fixture data. Not a pass for them.
@@ -703,8 +732,8 @@ async function main() {
     checkpoints.push("configuration-safety");
 
     // The public health response is self-reported deployment metadata rather
-    // than cryptographic attestation, but exact equality prevents evidence from
-    // silently combining a checkout with a different deployed candidate.
+    // than cryptographic attestation, but equality with the resolved commit prevents evidence
+    // from silently combining a checkout with a different deployed candidate.
     deployedCommitSha = await verifyCrossTenantDeploymentIdentity(config);
     checkpoints.push("deployment-identity");
 
@@ -869,6 +898,12 @@ async function main() {
             ? new URL(invited.path, "https://example.invalid").hash.match(/^#code=([a-f\d]{64})$/i)?.[1]
             : null;
         if (!code) throw new Error("Roster probe invitation response had no one-use code in its fragment.");
+        // Written into the disposable service only; the service's registered cleanup cascades them away.
+        const fixtures = await seedRosterFixtures(admin, {
+          serviceId: serviceWrites.serviceId,
+          userIdA: sessionA.userId,
+          userIdB: sessionB.userId,
+        });
         const roster = await probeRosterIsolation({
           request: writeRequest,
           tokenA: sessionA.token,
@@ -876,6 +911,7 @@ async function main() {
           serviceIdA: serviceWrites.serviceId,
           userIdB: sessionB.userId,
           inviteCodeForB: code,
+          fixtures,
         });
         checkpoints.push(...roster.checkpoints);
         notExercised.push(...roster.skipped);

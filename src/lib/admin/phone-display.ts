@@ -1,4 +1,4 @@
-import { onCallDialableNumber } from "@/lib/on-call/home-modules";
+import { onCallDialableNumber } from "@/lib/on-call/number-resolver";
 
 /**
  * Where a number is shown (spec rule 11, standard §2). The hospital's own list

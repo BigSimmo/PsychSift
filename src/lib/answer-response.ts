@@ -6,6 +6,7 @@ import {
   sourceGovernanceWarnings,
 } from "@/lib/source-governance";
 import type { RagAnswer } from "@/lib/types";
+import { guidanceDifferenceNoteForAnswer } from "@/lib/rag/guidance-difference-note";
 import { carryRagProgrammeTelemetry } from "@/lib/rag/rag-programme-telemetry";
 import {
   classifyRagFallbackReason,
@@ -13,6 +14,12 @@ import {
   normalizeRagFallbackReasonCode,
   publicFallbackReason,
 } from "@/lib/rag/rag-fallback-reason";
+
+/** Owner-signed WA versus national note; absent unless a signed-off WA chunk directly supports the answer. */
+function withGuidanceDifference(answer: RagAnswer) {
+  const guidanceDifference = guidanceDifferenceNoteForAnswer(answer);
+  return guidanceDifference ? { guidanceDifference } : {};
+}
 
 function answerFallbackReasonCode(
   answer?: Pick<
@@ -113,6 +120,7 @@ export function buildGovernedAnswerClientResponse(answer: RagAnswer) {
     telemetryAnswer: answer,
     payload: {
       ...toClientAnswerPayload({ ...answer, fallbackReasonCode }),
+      ...withGuidanceDifference(answer),
       fallbackReasonCode,
       degradedMode: answerDegradedModeSignal({ ...answer, fallbackReasonCode }),
       sourceGovernanceWarnings: warnings,

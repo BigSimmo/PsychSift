@@ -55,12 +55,84 @@
   "nortriptyline": ["tga-product-information-nortriptyline", "ranzcp-mood-disorders-clinical-practice-guideline"],
   "phenelzine": ["tga-product-information-phenelzine", "ranzcp-mood-disorders-clinical-practice-guideline"],
   "tranylcypromine": ["tga-product-information-tranylcypromine", "ranzcp-mood-disorders-clinical-practice-guideline"],
-  "dexamfetamine": ["wa-monitored-medicines-prescribing-code", "wa-health-scriptcheckwa"],
-  "lisdexamfetamine": ["wa-monitored-medicines-prescribing-code", "wa-health-scriptcheckwa"],
-  "methylphenidate": ["wa-monitored-medicines-prescribing-code", "wa-health-scriptcheckwa"],
-  "alprazolam": ["wa-monitored-medicines-prescribing-code", "wa-health-scriptcheckwa"],
-  "buprenorphine-sl-depot": ["wa-monitored-medicines-prescribing-code", "wa-health-scriptcheckwa"],
-  "buprenorphine-naloxone": ["wa-monitored-medicines-prescribing-code", "wa-health-scriptcheckwa"],
-  "gabapentin": ["wa-monitored-medicines-prescribing-code", "wa-health-scriptcheckwa"],
-  "pregabalin": ["wa-monitored-medicines-prescribing-code", "wa-health-scriptcheckwa"]
+  "dexamfetamine": [
+    "wa-monitored-medicines-prescribing-code",
+    "wa-health-scriptcheckwa",
+    "tga-product-information-dexamfetamine"
+  ],
+  "lisdexamfetamine": [
+    "wa-monitored-medicines-prescribing-code",
+    "wa-health-scriptcheckwa",
+    "tga-product-information-lisdexamfetamine"
+  ],
+  "methylphenidate": [
+    "wa-monitored-medicines-prescribing-code",
+    "wa-health-scriptcheckwa",
+    "tga-product-information-methylphenidate"
+  ],
+  "alprazolam": [
+    "wa-monitored-medicines-prescribing-code",
+    "wa-health-scriptcheckwa",
+    "tga-product-information-alprazolam"
+  ],
+  "buprenorphine-sl-depot": [
+    "wa-monitored-medicines-prescribing-code",
+    "wa-health-scriptcheckwa",
+    "tga-product-information-buprenorphine"
+  ],
+  "buprenorphine-naloxone": [
+    "wa-monitored-medicines-prescribing-code",
+    "wa-health-scriptcheckwa",
+    "tga-product-information-buprenorphine"
+  ],
+  "gabapentin": [
+    "wa-monitored-medicines-prescribing-code",
+    "wa-health-scriptcheckwa",
+    "tga-product-information-gabapentin"
+  ],
+  "pregabalin": [
+    "wa-monitored-medicines-prescribing-code",
+    "wa-health-scriptcheckwa",
+    "tga-product-information-pregabalin"
+  ],
+  "oxcarbazepine": ["tga-product-information-oxcarbazepine"],
+  "topiramate": ["tga-product-information-topiramate"],
+  "phenytoin": ["tga-product-information-phenytoin"],
+  "levetiracetam": ["tga-product-information-levetiracetam"],
+  "quetiapine": ["tga-product-information-quetiapine"],
+  "risperidone": ["tga-product-information-risperidone"],
+  "aripiprazole": ["tga-product-information-aripiprazole"],
+  "olanzapine-wafer-odt": ["tga-product-information-olanzapine"],
+  "paliperidone-er": ["tga-product-information-paliperidone"],
+  "lurasidone": ["tga-product-information-lurasidone"],
+  "asenapine": ["tga-product-information-asenapine"],
+  "brexpiprazole": ["tga-product-information-brexpiprazole"],
+  "cariprazine": ["tga-product-information-cariprazine"],
+  "levomepromazine": ["tga-product-information-levomepromazine"],
+  "periciazine": ["tga-product-information-periciazine"],
+  "trifluoperazine": ["tga-product-information-trifluoperazine"],
+  "zuclopenthixol": ["tga-product-information-zuclopenthixol"],
+  "ondansetron": ["tga-product-information-ondansetron"],
+  "domperidone": ["tga-product-information-domperidone"],
+  "dosulepin": ["tga-product-information-dosulepin"],
+  "doxepin": ["tga-product-information-doxepin"],
+  "imipramine": ["tga-product-information-imipramine"],
+  "venlafaxine-xr": ["tga-product-information-venlafaxine"],
+  "desvenlafaxine": ["tga-product-information-desvenlafaxine"],
+  "moclobemide": ["tga-product-information-moclobemide"],
+  "mirtazapine": ["tga-product-information-mirtazapine"],
+  "bupropion-sr": ["tga-product-information-bupropion"],
+  "agomelatine": ["tga-product-information-agomelatine"],
+  "clonazepam": ["tga-product-information-clonazepam"],
+  "diazepam": ["tga-product-information-diazepam"],
+  "lorazepam": ["tga-product-information-lorazepam"],
+  "midazolam": ["tga-product-information-midazolam"],
+  "nitrazepam": ["tga-product-information-nitrazepam"],
+  "oxazepam": ["tga-product-information-oxazepam"],
+  "temazepam": ["tga-product-information-temazepam"],
+  "zolpidem": ["tga-product-information-zolpidem"],
+  "zopiclone": ["tga-product-information-zopiclone"],
+  "ketamine": ["wa-monitored-medicines-prescribing-code", "tga-product-information-ketamine"],
+  "propranolol": ["tga-product-information-propranolol"],
+  "clonidine": ["tga-product-information-clonidine"]
 }

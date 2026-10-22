@@ -50,6 +50,7 @@ import { perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 import type { SessionSummary } from "@/lib/teaching/model";
 import { zonedDateOf } from "@/lib/work-time/format";
 import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
+import { PatientDetailAlert } from "@/components/privacy-input-notice";
 import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 import { useWorkSyncStatus } from "@/lib/work-sync/work-sync-client";
 
@@ -929,15 +930,11 @@ export function QuickNoteCard() {
         placeholder="A reminder for yourself"
         className="min-h-14 w-full resize-y rounded-lg border border-[color:var(--work-line-strong)] bg-[color:var(--work-surface)] px-3 py-2.5 text-sm text-[color:var(--work-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus)] forced-colors:border"
       />
-      <div id={hintId}>
+      <div id={hintId} className="grid gap-1.5">
         {problem ? (
-          <p
-            role="alert"
-            data-testid="my-day-quick-note-problem"
-            className="m-0 text-xs font-semibold leading-snug text-[color:var(--warning)]"
-          >
+          <PatientDetailAlert testId="my-day-quick-note-problem" className="m-0 px-1 leading-snug">
             {`${problem.title}. Not saved: remove it to keep this note.`}
-          </p>
+          </PatientDetailAlert>
         ) : null}
         <QuietFoot icon={TriangleAlert}>Never write patient names or details here. {QUICK_NOTE_KEPT[kept]}</QuietFoot>
       </div>

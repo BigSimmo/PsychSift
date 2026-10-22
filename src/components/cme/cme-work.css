@@ -1047,3 +1047,9 @@ html[data-mode-identity="cme"] .work-chip__count {
     background: CanvasText;
   }
 }
+
+/* A cancelled course leads with its red tag, so the row takes a little more room
+   above it and the tag clears the card's top edge. The date tile moves with it. */
+.work-row[data-cancelled] {
+  padding-top: calc(var(--spacing) * 4);
+}

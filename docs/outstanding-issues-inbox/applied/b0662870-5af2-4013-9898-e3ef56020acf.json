@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "b0662870-5af2-4013-9898-e3ef56020acf",
+  "createdOn": "2026-10-21",
+  "action": "done",
+  "payload": {
+    "id": "#R2FNTJ",
+    "outcome": "Directory already live at /cme/learning (src/data/cme/wa-learning-directory.json). The Teaching and CME PR (21 Oct 2026) adds the cancelled flag and the 'Included in your workshop' or 'Available through your employer' note, and a weekly report-only check (.github/workflows/learning-directory-weekly.yml) per the owner's 21 Oct decision; a person still updates the file by PR.",
+    "baseRowFingerprint": "833c2d2e52b4215d3b23a66ecf5e8fadeb96087631528fce33aa6c29f95c919c",
+    "targetUlid": "01M3DZQ0BKR2FNTJKM4MV9WVCM"
+  }
+}

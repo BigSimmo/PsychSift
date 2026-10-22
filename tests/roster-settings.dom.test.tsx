@@ -133,8 +133,11 @@ describe("Roster Settings", () => {
     render(<RosterSettingsPage />);
     await screen.findByText("Example Hospital");
     const note = screen.getByTestId("roster-settings-delete-note");
-    expect(note).toHaveTextContent("You get 30 seconds to change your mind.");
-    expect(note).toHaveTextContent("Extra time you logged is not removed here, and phone alerts stop on every device.");
+    expect(note).toHaveTextContent("You get 30 seconds to change your mind, then it cannot be undone.");
+    // What the team keeps and for how long, matching roster_retention_purge (#3163).
+    expect(note).toHaveTextContent("12 months after each roster was published");
+    expect(note).toHaveTextContent("Past dates you couldn't work go after 30 days.");
+    expect(note).toHaveTextContent("Extra time you logged stays. Phone alerts stop on every device.");
     expect(screen.getByTestId("roster-settings-who-sees")).toHaveTextContent("Roster does not ask for patient details");
   });
 

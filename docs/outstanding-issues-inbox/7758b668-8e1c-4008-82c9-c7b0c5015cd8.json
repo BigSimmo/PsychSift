@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "7758b668-8e1c-4008-82c9-c7b0c5015cd8",
+  "createdOn": "2026-10-21",
+  "action": "done",
+  "payload": {
+    "id": "#25PJFR",
+    "outcome": "Closed 2026-10-21 as not reproducible: the guest activation step that produced it was removed by PR #3259 (signed-out visitors now see the sample directly), and six signed-out On Call pages loaded twice each with no error boundary or page errors on main 81ba5ae.",
+    "baseRowFingerprint": "0bbef85b4c801cc71e8dad0aad07e86ec76377dc16bd9df7bafd3a7b0781e098",
+    "targetUlid": "01M3DZQ0HC25PJFRR929C8FWF3"
+  }
+}

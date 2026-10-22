@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "f2e5b2bc-8d0d-4b8c-86a6-a93dfa6cdc7e",
+  "createdOn": "2026-10-21",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "issue",
+    "summary": "The WA valproate guideline (CG.MHSP.Valproate.pdf) is not in the live corpus, although an answer-quality eval case expects it",
+    "detail": "Read-only live query 2026-10-21 (owner-approved free read, answer safety hardening thread): no document in public.documents has a title or file name containing 'valpro' other than the registry JSON records. quality-valproate-pregnancy-contraindication in src/lib/rag/rag-eval-cases.ts lists CG.MHSP.Valproate.pdf as an expected file, and the high-risk case hepatic-valproate (#ZZ4RAP) cannot be sourced without it. The only hepatic valproate passage found was BMJ Best Practice 'Bipolar disorder in adults' p130, whose licence is unconfirmed. Next: owner supplies the WA guideline PDF for ingestion (same path as the CAMHS ADHD guideline, #018); no re-index of existing documents is needed.",
+    "source": "Answer safety hardening thread, 2026-10-21, read-only Supabase query",
+    "issueUlid": "01M5F5FS6D7B6MMMAM9NCTSB3M"
+  }
+}

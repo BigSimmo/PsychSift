@@ -1,5 +1,6 @@
-import Link from "next/link";
+import { IntentPrefetchLink } from "@/components/ui/intent-prefetch-link";
 import { ShieldAlert } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { cn, textMuted } from "@/components/ui-primitives";
 import type { AppModeId } from "@/lib/app-modes";
@@ -33,7 +34,7 @@ export function PrivacyInputNotice({
     >
       <ShieldAlert className="size-icon-xs shrink-0 text-[color:var(--warning)]" aria-hidden />
       <span>Do not enter patient-identifiable information.</span>
-      <Link
+      <IntentPrefetchLink
         href={returnMode ? `/privacy?from=${returnMode}` : "/privacy"}
         // min-h-tap stays: ui-accessibility.spec.ts measures this link's own
         // border box and requires >=44x44, so the 48px target is load-bearing
@@ -55,7 +56,35 @@ export function PrivacyInputNotice({
         className="-mb-4 inline-flex min-h-tap items-center rounded-sm font-medium underline decoration-[color:var(--border-strong)] underline-offset-2 transition-colors hover:text-[color:var(--clinical-accent)] hover:decoration-current focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] sm:mb-0 sm:min-h-0"
       >
         Privacy and data processing
-      </Link>
+      </IntentPrefetchLink>
+    </p>
+  );
+}
+
+/**
+ * The one look for "this reads as a patient detail", shared by the Ask composer and My Day's quick
+ * note so a doctor learns a single warning. Each caller keeps its own check and wording; this is only
+ * the alert itself.
+ */
+export function PatientDetailAlert({
+  className,
+  id,
+  testId,
+  children,
+}: {
+  className?: string;
+  id?: string;
+  testId?: string;
+  children: ReactNode;
+}) {
+  return (
+    <p
+      id={id}
+      role="alert"
+      data-testid={testId}
+      className={cn("text-2xs font-medium text-[color:var(--danger)]", className)}
+    >
+      {children}
     </p>
   );
 }

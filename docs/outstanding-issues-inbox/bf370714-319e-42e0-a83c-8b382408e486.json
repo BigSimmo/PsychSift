@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "bf370714-319e-42e0-a83c-8b382408e486",
+  "createdOn": "2026-10-22",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "issue",
+    "summary": "Roster swap accept: move the team rule checks (max hours, nights, days in a row) into the SQL accept so a rules change between the app's read and the accept cannot slip a swap through without the manager. Rare timing gap left by PR #3753 (Codex P1); Josh chose ship now, follow up later on 22 Oct 2026. Never worse than before #3753.",
+    "issueUlid": "01M5GK7J60DW0T5XW9TXGA6E25"
+  }
+}

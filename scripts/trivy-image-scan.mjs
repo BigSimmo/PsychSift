@@ -21,6 +21,13 @@ export const TRIVY_IMAGE =
   "aquasec/trivy:0.59.1@sha256:029e990b328d149bf0a9ffe355919041e1f86192db2df47e217f8a36dd42ceac";
 export const REQUIRED_TRIVY_SCAN_IMAGES = Object.freeze(["clinical-kb-app:ci", "clinical-kb-worker:ci"]);
 
+// Owner decision 2026-10-21 (docs/decisions/2026-10-21-worker-scan-advisory-until-4-nov.md): until
+// this date, HIGH/CRITICAL findings in the worker image are advisory everywhere, because a red
+// main-branch scan held up production deploys while the worker fixes (#3701) are finished. App
+// image findings and any unassessed scan still fail. The exemption ends by itself on this date.
+export const WORKER_SCAN_ADVISORY_UNTIL = "2026-11-04T00:00:00Z";
+export const WORKER_SCAN_IMAGE = "clinical-kb-worker:ci";
+
 function run(cmd, args, opts = {}) {
   // Full worker inventories exceed spawnSync's default 1MiB buffer.
   // Bound both local and Docker scanner evidence at 32MiB.
@@ -212,11 +219,13 @@ export function evaluateTrivySummaryText(summaryText, requiredImages = REQUIRED_
 
   let high = 0;
   let critical = 0;
+  const byImage = {};
   for (const imageRef of requiredImages) {
     const counts = evidence.get(imageRef);
     if (!counts) return unassessed(`missing_status_ok_for_${imageRef}`);
     high += counts[0];
     critical += counts[1];
+    byImage[imageRef] = { high: counts[0], critical: counts[1] };
     if (!Number.isSafeInteger(high) || !Number.isSafeInteger(critical)) return unassessed("count_overflow");
   }
   return {
@@ -224,8 +233,25 @@ export function evaluateTrivySummaryText(summaryText, requiredImages = REQUIRED_
     ok: high === 0 && critical === 0,
     high,
     critical,
+    byImage,
     reason: high === 0 && critical === 0 ? null : "high_or_critical_vulnerabilities_found",
   };
+}
+
+/**
+ * Whether assessed findings fail this event. Pull requests and merge groups stay advisory. Elsewhere
+ * any finding fails, except worker-image findings on main before WORKER_SCAN_ADVISORY_UNTIL. The
+ * exception covers main only, so a release branch or a dispatch from another ref still blocks.
+ */
+export function trivyFindingsBlock(result, eventName, now = new Date(), ref = process.env.GITHUB_REF ?? "") {
+  if (!result?.assessed) return true;
+  if (result.ok) return false;
+  if (["pull_request", "merge_group"].includes(eventName)) return false;
+  if (ref !== "refs/heads/main") return true;
+  if (now.getTime() >= Date.parse(WORKER_SCAN_ADVISORY_UNTIL)) return true;
+  return Object.entries(result.byImage ?? {}).some(
+    ([imageRef, counts]) => imageRef !== WORKER_SCAN_IMAGE && (counts.high > 0 || counts.critical > 0),
+  );
 }
 
 function evaluateSummaryFile(summaryPath, eventName) {
@@ -254,6 +280,12 @@ function evaluateSummaryFile(summaryPath, eventName) {
   if (["pull_request", "merge_group"].includes(eventName)) {
     console.log(
       `::warning::Trivy found ${counts} in the production images (advisory on pull requests and merge groups).`,
+    );
+    return 0;
+  }
+  if (!trivyFindingsBlock(result, eventName)) {
+    console.log(
+      `::warning::Trivy found ${counts}, all in the worker image, which is advisory until ${WORKER_SCAN_ADVISORY_UNTIL.slice(0, 10)} (owner decision 2026-10-21).`,
     );
     return 0;
   }

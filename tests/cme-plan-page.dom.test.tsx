@@ -180,6 +180,68 @@ describe("development plan page", () => {
     expect(screen.getByRole("button", { name: "Carry into 2027" })).toBeDisabled();
   });
 
+  it("shows the same confirm-first link in demo mode, which only opens read-only set-up", () => {
+    render(
+      <CmePlanPage
+        set={SET}
+        goals={[GOAL]}
+        entries={[]}
+        now={new Date("2026-12-20T10:00:00+08:00")}
+        nextYearConfirmed={false}
+        demoMode
+      />,
+    );
+    expect(screen.getByRole("link", { name: "Confirm, then carry" })).toHaveAttribute(
+      "href",
+      `/cme/setup?year=2027&edit=1&carryFrom=2026&carryGoal=${GOAL.id}`,
+    );
+  });
+
+  it("sends a goal through next year's set-up and back, ready to carry but not carried", () => {
+    const now = new Date("2026-12-18T12:00:00+08:00");
+    const { rerender } = render(
+      <CmePlanPage set={SET} goals={[GOAL]} entries={[]} now={now} nextYearConfirmed={false} nextYearGoals={[]} />,
+    );
+    expect(screen.getByRole("link", { name: "Confirm 2027 targets first" })).toHaveAttribute(
+      "href",
+      "/cme/setup?year=2027&edit=1&carryFrom=2026",
+    );
+    expect(screen.getByRole("link", { name: "Confirm, then carry" })).toHaveAttribute(
+      "href",
+      `/cme/setup?year=2027&edit=1&carryFrom=2026&carryGoal=${GOAL.id}`,
+    );
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+    rerender(
+      <CmePlanPage
+        set={SET}
+        goals={[GOAL]}
+        entries={[]}
+        now={now}
+        nextYearConfirmed
+        nextYearGoals={[]}
+        resumeCarryGoalId={GOAL.id}
+      />,
+    );
+    expect(screen.getByTestId("cme-carry-resume")).toHaveTextContent("Document capacity well");
+    expect(screen.getByRole("button", { name: "Carry into 2027" })).toHaveFocus();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("ignores a returned goal that is not this year's", () => {
+    render(
+      <CmePlanPage
+        set={SET}
+        goals={[GOAL]}
+        entries={[]}
+        now={new Date("2026-12-18T12:00:00+08:00")}
+        nextYearConfirmed
+        nextYearGoals={[]}
+        resumeCarryGoalId="44444444-4444-4444-8444-444444444444"
+      />,
+    );
+    expect(screen.queryByTestId("cme-carry-resume")).toBeNull();
+  });
+
   it("keeps a stale editor from overwriting a changed plan", async () => {
     const user = userEvent.setup();
     const fetchMock = vi
