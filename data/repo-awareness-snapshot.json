@@ -3302,6 +3302,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-22-wa-endorsed-review-gate.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/superpowers/rag-upgrade/cloud/specs/2026-08-20-rag-answer-and-australian-sources-design.md",
         "section": "superpowers",
         "catalogued": true
