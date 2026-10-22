@@ -22,6 +22,7 @@ import { clinicalProseUsefulness } from "@/lib/source-text-sanitizer";
 import { type ClaimMarkCluster, type SupportedClaim, resolveClaimMarks } from "@/lib/answer-claim-marks";
 import { type SourceLink } from "@/lib/answer-render-policy";
 import { documentCitationHref } from "@/lib/citations";
+import { guidanceDifferenceLabel } from "@/lib/rag/guidance-difference-note";
 import type { AnswerSection, AnswerSectionKind, RagAnswer, VisualEvidenceCard } from "@/lib/types";
 import type {
   ClientBestSourceRecommendation,
@@ -437,9 +438,7 @@ function GuidanceDifferenceLine({
 }: {
   difference: NonNullable<ClientRagAnswerPayload["guidanceDifference"]>;
 }) {
-  const label = [difference.title, String(difference.year), difference.page ? `p ${difference.page}` : null]
-    .filter(Boolean)
-    .join(", ");
+  const label = guidanceDifferenceLabel(difference);
   return (
     <p
       data-testid="answer-guidance-difference"

@@ -116,3 +116,13 @@ export function guidanceDifferenceNoteForAnswer(
   const match = differences.find((entry) => entry.waChunkIds.some((chunkId) => directChunkIds.has(chunkId)));
   return match ? noteFor(match) : undefined;
 }
+
+/** "Example National Guideline, 2023, p 11": the linked part of the line, shared by screen and clipboard. */
+export function guidanceDifferenceLabel(note: Pick<GuidanceDifferenceNote, "title" | "year" | "page">) {
+  return [note.title, String(note.year), note.page ? `p ${note.page}` : null].filter(Boolean).join(", ");
+}
+
+/** The whole line as plain text, for copied answers. */
+export function guidanceDifferenceSentence(note: Pick<GuidanceDifferenceNote, "title" | "year" | "page">) {
+  return `National guidance differs on this point. See ${guidanceDifferenceLabel(note)}.`;
+}

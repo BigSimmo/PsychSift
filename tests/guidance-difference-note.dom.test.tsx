@@ -6,6 +6,7 @@ vi.mock("@/components/clinical-dashboard/signed-image", () => ({
 }));
 
 import { NaturalLanguageAnswer } from "@/components/clinical-dashboard/answer-content";
+import { buildAnswerClipboardText } from "@/components/clinical-dashboard/answer-copy-payload";
 import { clientAnswerFieldsSchema } from "@/lib/answer-client-fields";
 import {
   activeReviewedGuidanceDifferences,
@@ -147,5 +148,24 @@ describe("guidance difference note", () => {
     unmount();
     renderAnswer({ isRefusal: true });
     expect(screen.queryByTestId("answer-guidance-difference")).toBeNull();
+  });
+
+  it("keeps the line in a copied answer, directly after the answer text", () => {
+    const note = guidanceDifferenceNoteForAnswer(answer(), [ENTRY]);
+    const copied = buildAnswerClipboardText({
+      answer: {
+        answer: "Check renal function at baseline and six weeks after starting.",
+        grounded: true,
+        confidence: "high",
+        citations: [],
+        sources: [],
+        guidanceDifference: note,
+      },
+      renderCopyText:
+        "Clinical answer draft\n\nAnswer\nCheck renal function at baseline and six weeks after starting.\n\nSources\n1. WA guideline",
+    });
+    expect(copied).toContain(
+      "Check renal function at baseline and six weeks after starting.\n\nNational guidance differs on this point. See Example National Guideline, 2023, p 11.\n\nSources",
+    );
   });
 });

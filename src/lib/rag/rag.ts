@@ -1547,13 +1547,17 @@ async function searchChunksWithTiming(
 
   if (textData.length) {
     const rerankElapsedMs = startRerankClock(searchTiming);
-    const textCandidates = await measureSearchPhase(searchTiming, "metadata_hydration", () =>
-      attachDocumentRankingMetadata(
-        supabase,
-        textData as SearchResult[],
-        args.ownerId,
-        documentRankingMetadataCache,
-        args.signal,
+    // Superseded rows leave before any fast-path decision, so an outdated lexical match cannot
+    // short-circuit the lanes that would find the current guidance (#BFCTST).
+    const textCandidates = excludeSupersededEvidence(
+      await measureSearchPhase(searchTiming, "metadata_hydration", () =>
+        attachDocumentRankingMetadata(
+          supabase,
+          textData as SearchResult[],
+          args.ownerId,
+          documentRankingMetadataCache,
+          args.signal,
+        ),
       ),
     );
     expandedQuery = expandClinicalQueryWithCandidateMetadata(args.query, expandedQuery, textCandidates);
@@ -1612,7 +1616,7 @@ async function searchChunksWithTiming(
     textFastResults = selectRankedRetrievalResults({
       query: retrievalQuery,
       queryClass: queryClassification.queryClass,
-      candidates: memoryBoost.results,
+      candidates: excludeSupersededEvidence(memoryBoost.results),
       topK: args.topK ?? 8,
       maxResultsPerDocument,
       telemetry,
@@ -1711,7 +1715,7 @@ async function searchChunksWithTiming(
           selectRankedRetrievalResults({
             query: retrievalQuery,
             queryClass: queryClassification.queryClass,
-            candidates: memoryBoost.results,
+            candidates: excludeSupersededEvidence(memoryBoost.results),
             topK: args.topK ?? 8,
             maxResultsPerDocument,
             telemetry,
@@ -1978,7 +1982,7 @@ async function searchChunksWithTiming(
         selectRankedRetrievalResults({
           query: retrievalQuery,
           queryClass: queryClassification.queryClass,
-          candidates: memoryBoost.results,
+          candidates: excludeSupersededEvidence(memoryBoost.results),
           topK: args.topK ?? 8,
           maxResultsPerDocument,
           telemetry,
@@ -2072,7 +2076,7 @@ async function searchChunksWithTiming(
       selectRankedRetrievalResults({
         query: retrievalQuery,
         queryClass: queryClassification.queryClass,
-        candidates: memoryBoost.results,
+        candidates: excludeSupersededEvidence(memoryBoost.results),
         topK: args.topK ?? 8,
         maxResultsPerDocument,
         telemetry,
@@ -4294,6 +4298,20 @@ export async function summarizeDocument(
   }
 
   const results = buildDocumentSummaryResults(chunks, document);
+  // A superseded document is never used as evidence, including when it is summarised directly (#BFCTST).
+  if (excludeSupersededEvidence(results).length === 0) {
+    return observeRagAnswer(
+      {
+        answer:
+          "This document is marked as superseded, so it is not summarised as clinical guidance. Use its current replacement instead.",
+        grounded: false,
+        confidence: "unsupported",
+        citations: [],
+        sources: [],
+      } satisfies RagAnswer,
+      options?.observationContext,
+    );
+  }
 
   const summaryInstructions = `Summarize a clinical document for practical psychiatric use in Perth, Australia.
 Use only the excerpts provided. Use a layered response: make the answer field a plain high-yield clinical paragraph,
