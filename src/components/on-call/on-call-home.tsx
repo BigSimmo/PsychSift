@@ -21,6 +21,7 @@ import { NowNeedsYou, onCallNeedsYouAnswered, useOnCallCallMarks } from "@/compo
 import { NowRightNow } from "@/components/on-call/now/right-now";
 import { NowShiftPulseCard } from "@/components/on-call/now/shift-pulse-card";
 import { NowShiftShortcuts } from "@/components/on-call/now/shift-shortcuts";
+import { NowMhaClockRow } from "@/components/on-call/now/mha-clock-row";
 import { NowShiftLists } from "@/components/on-call/now/shift-lists";
 import { NowWhoToCall, type OnCallSituation } from "@/components/on-call/now/systems-down";
 import { NowYourTeam } from "@/components/on-call/now/your-team";
@@ -445,6 +446,7 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
                   now={now}
                   handbookReady={ready || handbook.status === "no-service"}
                 />
+                <NowMhaClockRow />
               </NowShiftShortcuts>
               <NowShiftPulseCard now={now} />
               {/* A week before a new job starts until the end of its first week. */}

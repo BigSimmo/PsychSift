@@ -5,6 +5,7 @@ import {
   type ReminderSettings,
   type ReminderType,
 } from "@/lib/reminders/settings";
+import type { WorkModeId } from "@/lib/app-modes";
 
 /**
  * The areas the Alerts page lists under "By area", each over the reminder
@@ -19,7 +20,7 @@ export type AlertArea = {
   readonly id: AlertAreaId;
   readonly title: string;
   /** The mode whose colour the row's dot is painted in. */
-  readonly mode: string;
+  readonly mode: WorkModeId;
   readonly description: string;
   /** Reminder types whose calendar alerts this area's sheet sets. */
   readonly types: readonly ReminderType[];
