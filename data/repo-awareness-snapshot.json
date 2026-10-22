@@ -1641,6 +1641,10 @@
         "file": "src/app/api/search/universal/route.ts"
       },
       {
+        "path": "/api/teaching/assessments/magic-links",
+        "file": "src/app/api/teaching/assessments/magic-links/route.ts"
+      },
+      {
         "path": "/api/work/courses",
         "file": "src/app/api/work/courses/route.ts"
       },
@@ -1671,6 +1675,10 @@
       {
         "path": "/api/roster/workplaces",
         "file": "src/app/api/roster/workplaces/route.ts"
+      },
+      {
+        "path": "/api/teaching/assessments/magic-links/[id]",
+        "file": "src/app/api/teaching/assessments/magic-links/[id]/route.ts"
       },
       {
         "path": "/api/roster/read-file",

@@ -1,7 +1,7 @@
 "use client";
 
 import { Camera } from "lucide-react";
-import { useId, useRef, useState } from "react";
+import { useId, useRef, useState, useSyncExternalStore } from "react";
 
 import { QrCheckInHelper } from "./qr-check-in-helper";
 import { typedCodeDigits } from "@/components/teaching/session-view-model";
@@ -30,6 +30,15 @@ const STREAMS = [
  * when the session has a join link. Nothing says "checked in" until the server says so; the demo
  * saves nothing and says so.
  */
+/*
+ * The in-app scanner needs the browser's own QR reader (BarcodeDetector). iPhone Safari has none, so
+ * there the camera would open and never read a code (#ZTDZ4Z). Without it the sheet offers only the
+ * phone's camera app and the typed digits. Read after hydration, so the server and first render agree.
+ */
+const noSubscription = () => () => {};
+const browserCanReadQr = () => typeof window !== "undefined" && "BarcodeDetector" in window;
+const serverCannotReadQr = () => false;
+
 export function TeachingCodeSheet({
   open,
   onClose,
@@ -49,6 +58,7 @@ export function TeachingCodeSheet({
   const [stream, setStream] = useState<CheckinStream>("room");
   const [typed, setTyped] = useState("");
   const [showScanner, setShowScanner] = useState(false);
+  const canScanInApp = useSyncExternalStore(noSubscription, browserCanReadQr, serverCannotReadQr);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -113,14 +123,16 @@ export function TeachingCodeSheet({
                 Open your phone&apos;s camera and point it at the code on screen. The link it opens checks you in.
               </span>
             </span>
-            <button
-              type="button"
-              onClick={() => setShowScanner((prev) => !prev)}
-              className="shrink-0 font-semibold text-[color:var(--mode-identity)] underline"
-              data-testid="toggle-in-app-qr-scanner"
-            >
-              {showScanner ? "Hide scanner" : "Scan in app"}
-            </button>
+            {canScanInApp ? (
+              <button
+                type="button"
+                onClick={() => setShowScanner((prev) => !prev)}
+                className="shrink-0 font-semibold text-[color:var(--mode-identity)] underline"
+                data-testid="toggle-in-app-qr-scanner"
+              >
+                {showScanner ? "Hide scanner" : "Scan in app"}
+              </button>
+            ) : null}
           </div>
           {session.hasJoinLink ? (
             <div className="grid gap-1.75">
@@ -188,7 +200,7 @@ export function TeachingCodeSheet({
             {busy ? "Checking in" : "Check in"}
           </WorkButton>
         </form>
-        {showScanner ? (
+        {showScanner && canScanInApp ? (
           <QrCheckInHelper
             hideManualEntry
             onClose={() => setShowScanner(false)}
