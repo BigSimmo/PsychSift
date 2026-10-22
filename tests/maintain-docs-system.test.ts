@@ -65,6 +65,11 @@ describe("maintain-docs-system pipeline", () => {
     ]);
   });
 
+  it("keeps --check when --base has no value", () => {
+    const options = parseCliArgs(["node", "maintenance", "--development", "--base", "--check"]);
+    expect(options).toMatchObject({ check: true, governanceArgs: ["--development", "--base", ""] });
+  });
+
   describe("classifyRepositoryPath", () => {
     it("classifies paths deterministically across all 7 system areas", () => {
       const cases = [

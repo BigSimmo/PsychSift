@@ -819,7 +819,11 @@ export function parseCliArgs(argv) {
     if (arg === "--development" || arg === "--release") {
       governanceArgs.push(arg);
     } else if (arg === "--base") {
-      governanceArgs.push(arg, args[++i] ?? "");
+      // A missing value must not swallow the next option (for example --check).
+      const value = args[i + 1];
+      const hasValue = value !== undefined && !value.startsWith("--");
+      governanceArgs.push(arg, hasValue ? value : "");
+      if (hasValue) i += 1;
     } else if (arg === "--check") {
       check = true;
       classifyMode = false;

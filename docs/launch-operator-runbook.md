@@ -89,19 +89,23 @@ PIA-4 retention migrations. **Do not redeploy the worker until `20260708130000` 
 | h     | `20260713201542_consolidate_rag_response_cache_retention`                                                | **Applied and verified live 2026-07-14**            | Job 16 is active and bounded; obsolete duplicate job confirmed absent.                                     |
 | i     | Retrieval RPC forward-codification (`20260713062107`…`20260713062139`)                                   | **Applied and drift/readiness verified 2026-07-13** | Verify only; see [forward-codify-retrieval-rpcs-workorder.md](forward-codify-retrieval-rpcs-workorder.md). |
 
-**⏸ PAUSE:** if and only if linked history shows migration `20260708120000` or `20260713201542` absent after auto-deploy,
-apply the reviewed committed migration through the guarded recovery/reconciliation workflow. Do not use this status
-reconciliation as authority to replay the verified July-8 or forward-codification groups.
+**⏸ PAUSE:** if linked history shows migration `20260708120000` or `20260713201542` absent after auto-deploy, a missing
+history row alone does not prove the schema is unresolved. Before any apply, the guarded recovery/reconciliation workflow
+must establish `check:drift` and `check:migration-history` results (or equivalent server-side schema and history evidence)
+for the selected target. Apply the reviewed committed migration only after that evidence, and only with the owner's yes.
+Do not use this status reconciliation as authority to replay the verified July-8 or forward-codification groups.
 
 After applying, query `cron.job` and expect at least these active retention jobs: `purge-rag-query-misses`
 at `45 3 * * *` and `purge-rag-response-cache` at `15 * * * *`. The obsolete
 `purge-expired-rag-response-cache` name must be absent.
 
 **⏸ PAUSE / ✅ verify:** these commands read Supabase; retrieval quality also calls OpenAI.
-Approve the exact run and its bounded downstream spend before executing:
+Approve the exact run and its bounded downstream spend before executing. Load the approved production profile
+(`NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` and project metadata for `sjrfecxgysukkwxsowpy`) for the
+whole block. Each command selects its target from that profile, so a staging profile would silently check staging.
 
 ```bash
-SUPABASE_ENVIRONMENT=production npm run check:july8-live-batch
+npm run check:july8-live-batch
 npm run check:drift
 npm run check:indexing              # search_schema_health() ok
 npm run eval:retrieval:quality      # must stay 36/36 (retrieval-affecting: step d + drift-codify)

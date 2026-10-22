@@ -130,7 +130,8 @@ export function implementedApiRouteGaps(indexText, routeFiles) {
     routeFiles
       .map((file) => file.replaceAll("\\", "/").replace(/^\.\//, ""))
       .filter((file) => file.startsWith("src/app/api/") && file.endsWith("/route.ts"))
-      .map((file) => file.slice("src/app".length, -"/route.ts".length)),
+      // Route groups such as `(internal)` organise files but never appear in the URL.
+      .map((file) => file.slice("src/app".length, -"/route.ts".length).replace(/\/\([^/]+\)/g, "")),
   );
   const table = sectionText(indexText, "api")
     .split(/\r?\n/)

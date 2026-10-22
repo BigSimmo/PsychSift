@@ -131,6 +131,10 @@ describe("implementedApiRouteGaps", () => {
     ).toEqual([]);
   });
 
+  it("drops route-group segments when mapping handlers to endpoints", () => {
+    expect(implementedApiRouteGaps(apiTable(["/api/answer"]), ["src/app/api/(internal)/answer/route.ts"])).toEqual([]);
+  });
+
   it("rejects an invented endpoint even when its API family exists", () => {
     expect(
       implementedApiRouteGaps(

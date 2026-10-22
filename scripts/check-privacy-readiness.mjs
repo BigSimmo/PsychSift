@@ -405,7 +405,7 @@ function main() {
   printReviewDateWarnings("PRIVACY_READINESS", reviewDateScope, warnings);
   const scopeLabel = describeReviewDateScope(reviewDateScope);
   if (!release) {
-    for (const item of manifest.requirements ?? []) {
+    for (const item of Array.isArray(manifest.requirements) ? manifest.requirements : []) {
       if (["pending", "partial"].includes(item.status))
         console.warn(
           `PRIVACY_READINESS_RELEASE_BLOCKER: ${item.id} status=${item.status} owner=${item.accountableRole}`,
