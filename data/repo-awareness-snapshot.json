@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-21"
+    "committed_at": "2026-10-22"
   },
   "routes": {
     "modes": [
@@ -5065,6 +5065,11 @@
       },
       {
         "path": "docs/decisions/2026-08-18-gate-b-table-target-is-parity.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-22-desktop-home-lighthouse-floor.md",
         "section": "decisions",
         "catalogued": true
       },
