@@ -131,6 +131,44 @@ describe("cross-tenant staging configuration safety", () => {
     await expect(verifyCrossTenantDeploymentIdentity(config)).rejects.toThrow(/does not match checkout SHA/);
   });
 
+  it("accepts a resolver-proven app-equivalent commit and nothing else", async () => {
+    const equivalent = "fedcba9876543210fedcba9876543210fedcba98";
+    stubConfig();
+    vi.stubEnv("CROSS_TENANT_DEPLOYMENT_RELATION", "equivalent");
+    vi.stubEnv("CROSS_TENANT_EXPECTED_DEPLOYED_SHA", equivalent);
+    const config = readCrossTenantStagingConfig();
+    expect(config.checkoutCommitSha).toBe(validConfig.CROSS_TENANT_CHECKOUT_COMMIT_SHA);
+    expect(config.expectedDeployedCommitSha).toBe(equivalent);
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify({ deploymentCommitSha: equivalent, checks: { openaiConfig: "skipped" } }), {
+        status: 200,
+      }),
+    );
+    await expect(verifyCrossTenantDeploymentIdentity(config)).resolves.toBe(equivalent);
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          deploymentCommitSha: validConfig.CROSS_TENANT_CHECKOUT_COMMIT_SHA,
+          checks: { openaiConfig: "skipped" },
+        }),
+        { status: 200 },
+      ),
+    );
+    await expect(verifyCrossTenantDeploymentIdentity(config)).rejects.toThrow(/app-equivalent SHA/);
+  });
+
+  it("keeps an exact proof exact and rejects an unknown relation", () => {
+    stubConfig();
+    vi.stubEnv("CROSS_TENANT_EXPECTED_DEPLOYED_SHA", "fedcba9876543210fedcba9876543210fedcba98");
+    expect(() => readCrossTenantStagingConfig()).toThrow(/exact deployment proof must expect the checkout/);
+
+    vi.stubEnv("CROSS_TENANT_EXPECTED_DEPLOYED_SHA", "");
+    vi.stubEnv("CROSS_TENANT_DEPLOYMENT_RELATION", "close-enough");
+    expect(() => readCrossTenantStagingConfig()).toThrow(/must be "exact" or "equivalent"/);
+  });
+
   it("requires /api/health to report the offline, keyless provider profile", async () => {
     stubConfig();
     const config = readCrossTenantStagingConfig();

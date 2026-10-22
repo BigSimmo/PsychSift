@@ -2,6 +2,11 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
+import {
+  triggersDeploy as triggersDeployForPatterns,
+  watchPatternMatches,
+} from "../scripts/lib/railway-watch-patterns.mjs";
+
 type RailwayConfig = {
   build?: {
     dockerfilePath?: string;
@@ -20,25 +25,8 @@ function readConfig(fileName: string): RailwayConfig {
   return JSON.parse(readFileSync(new URL(`../${fileName}`, import.meta.url), "utf8")) as RailwayConfig;
 }
 
-function watchPatternMatches(pattern: string, filePath: string) {
-  const normalizedPattern = pattern.replace(/^\/+/, "");
-  const normalizedPath = filePath.replace(/^\/+/, "");
-  if (normalizedPattern.endsWith("/**")) {
-    const prefix = normalizedPattern.slice(0, -3);
-    return normalizedPath === prefix || normalizedPath.startsWith(`${prefix}/`);
-  }
-  return normalizedPath === normalizedPattern;
-}
-
-// Gitignore-style, as Railway documents: a "!" pattern excludes files a preceding rule
-// included, and the last matching pattern wins.
 function triggersDeploy(config: RailwayConfig, filePath: string) {
-  let included = false;
-  for (const pattern of config.build?.watchPatterns ?? []) {
-    const negated = pattern.startsWith("!");
-    if (watchPatternMatches(negated ? pattern.slice(1) : pattern, filePath)) included = !negated;
-  }
-  return included;
+  return triggersDeployForPatterns(config.build?.watchPatterns ?? [], filePath);
 }
 
 describe("Railway config as code", () => {
@@ -210,6 +198,15 @@ describe("Railway config as code", () => {
       expect(triggersDeploy(worker, filePath)).toBe(false);
     },
   );
+
+  it("uses only the exact-path and dir/** shapes the shared matcher understands", () => {
+    for (const config of [app, worker]) {
+      for (const pattern of config.build?.watchPatterns ?? []) {
+        const body = pattern.replace(/^!/, "").replace(/\/\*\*$/, "");
+        expect(body, pattern).not.toMatch(/[*?[\]{}]/);
+      }
+    }
+  });
 
   it("places each exclusion after the rule it narrows, which Railway requires", () => {
     for (const config of [app, worker]) {

@@ -3669,6 +3669,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-21-staging-gate-before-live.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/agents/codex-review-throttling.md",
         "section": "agents",
         "catalogued": true
