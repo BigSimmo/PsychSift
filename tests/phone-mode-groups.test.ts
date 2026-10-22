@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { appModeIds, type AppModeId } from "@/lib/app-modes";
 import {
   clinicalBandAttribute,
+  modeMenuRowFor,
   modeMenuSideForMode,
   modeMenuSides,
   orderByPhoneModeGroups,
@@ -40,13 +41,14 @@ describe("phone mode groups", () => {
     expect(new Set(groupIds).size).toBe(groupIds.length);
   });
 
-  it("draws Clinical as Search, Psychiatry, Medicines and the library, and Work as one list with On Call in it", () => {
+  it("draws Clinical as Search, Psychiatry, the Mental Health Act, Medicines and the library, and Work as one list with On Call in it", () => {
     const groupOf = (modeId: AppModeId) =>
       phoneModeGroups.find((group) => (group.modeIds as readonly AppModeId[]).includes(modeId));
     expect(modeMenuSides.map((side) => side.id)).toEqual(["clinical", "work"]);
     expect(phoneModeGroupsForSide("clinical").map((group) => group.id)).toEqual([
       "find",
       "psychiatry",
+      "mha",
       "care",
       "library",
     ]);
@@ -55,9 +57,11 @@ describe("phone mode groups", () => {
     expect(groupOf("my-day")).toMatchObject({
       id: "work",
       showHeading: false,
-      modeIds: ["my-day", "on-call", "open-shifts", "roster", "teaching", "cme", "my-work"],
+      modeIds: ["my-day", "on-call", "roster", "teaching", "cme", "my-work"],
     });
     expect(groupOf("first-nations")?.id).toBe("psychiatry");
+    // The Mental Health Act is its own door, led by Forms (owner decision, 21 Oct 2026).
+    expect(groupOf("forms")).toMatchObject({ id: "mha", label: "Mental Health Act", modeIds: ["forms"] });
     expect(groupOf("prescribing")).toMatchObject({ id: "care", label: "Medicines" });
     expect(groupOf("answer")?.modeIds).toEqual(["answer", "documents", "services"]);
     expect(groupOf("favourites")?.modeIds).toEqual(["favourites", "sources"]);
@@ -72,11 +76,16 @@ describe("phone mode groups", () => {
     expect(phoneModeGroups.map((group) => group.id)).toEqual([
       "find",
       "psychiatry",
+      "mha",
       "care",
       "library",
       "retired",
       "work",
+      "inside-roster",
     ]);
+    // Open shifts is a tab inside Roster (owner decision, 21 Oct 2026): still a Work mode, never drawn.
+    expect(groupOf("open-shifts")).toMatchObject({ id: "inside-roster", side: "work", drawn: false });
+    expect(phoneModeGroupsForSide("work").flatMap((group) => group.modeIds)).not.toContain("open-shifts");
     expect(modeMenuSideForMode("on-call")).toBe("work");
     expect(modeMenuSideForMode("answer")).toBe("clinical");
   });
@@ -87,7 +96,11 @@ describe("phone mode groups", () => {
       .filter((group) => group.drawn)
       .flatMap((group) => group.modeIds as readonly AppModeId[]);
     // Undrawn (retired) modes sort after everything drawn rather than vanishing.
-    expect(orderByPhoneModeGroups(registryOrder).map((mode) => mode.id)).toEqual([...drawnModeIds, "tools"]);
+    expect(orderByPhoneModeGroups(registryOrder).map((mode) => mode.id)).toEqual([
+      ...drawnModeIds,
+      "tools",
+      "open-shifts",
+    ]);
     // A session that hides some modes keeps the drawn order for the rest: Clinical, then Work.
     const someModes = (["cme", "psychiatry", "forms", "answer"] as const).map((id) => ({ id }));
     expect(orderByPhoneModeGroups(someModes).map((mode) => mode.id)).toEqual(["answer", "psychiatry", "forms", "cme"]);
@@ -106,5 +119,18 @@ describe("clinicalBandAttribute", () => {
     expect(clinicalBandAttribute("dictionary", null, false)).toBeUndefined();
     expect(clinicalBandAttribute("dictionary", "/admin", true)).toBeUndefined();
     expect(clinicalBandAttribute("roster", "/roster", false)).toBeUndefined();
+  });
+});
+
+describe("modeMenuRowFor", () => {
+  it("stands Open shifts for Roster, the drawn row it is a tab of, and leaves drawn modes alone", () => {
+    expect(modeMenuRowFor("open-shifts")).toBe("roster");
+    for (const group of phoneModeGroups.filter((entry) => entry.drawn)) {
+      for (const modeId of group.modeIds) expect(modeMenuRowFor(modeId)).toBe(modeId);
+    }
+    const drawn = new Set<string>(phoneModeGroups.filter((group) => group.drawn).flatMap((group) => group.modeIds));
+    for (const group of phoneModeGroups.filter((entry) => !entry.drawn && entry.id !== "retired")) {
+      for (const modeId of group.modeIds) expect(drawn.has(modeMenuRowFor(modeId))).toBe(true);
+    }
   });
 });

@@ -51,10 +51,16 @@ export function answerLatencyMetadata(
   timings: AnswerLatencyTimings | null | undefined,
   startedAt: number,
 ): Record<string, unknown> {
+  // Time to first visible content (master plan section 4). Present only when a preview was
+  // sent, so every other answer keeps the legacy shape. A rounded number, never text.
+  const firstVerifiedContentMs = timings?.first_verified_content_ms;
   return {
     search_latency_ms: searchLatencyMs,
     generation_latency_ms: generationLatencyMs,
     total_latency_ms: timings?.total_latency_ms ?? Date.now() - startedAt,
+    ...(typeof firstVerifiedContentMs === "number" && Number.isFinite(firstVerifiedContentMs)
+      ? { first_verified_content_ms: Math.round(firstVerifiedContentMs) }
+      : {}),
     ...extendedAnswerTelemetryFields(timings),
   };
 }

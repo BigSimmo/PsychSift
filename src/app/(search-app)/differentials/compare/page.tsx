@@ -11,6 +11,9 @@ import {
   resolveDifferentialCompareLaunchHref,
 } from "@/lib/differentials";
 import { diagnosisOwnSummary } from "@/lib/differential-snapshot";
+import { ClinicalPageSignInNotice } from "@/components/mode-kit/clinical-page-sign-in-notice";
+import { clinicalPageSignInRequired } from "@/lib/clinical-page-access";
+import { CLINICAL_SIGN_IN_COPY } from "@/lib/front-door-content";
 
 export const metadata: Metadata = {
   title: "Compare differentials | PsychSift",
@@ -36,6 +39,10 @@ function firstSearchParam(value?: string | string[]) {
  * selections span presentations.
  */
 export default async function DifferentialCompareRoute({ searchParams }: DifferentialCompareRouteProps) {
+  // #3738: no record content in a signed-out server response.
+  if (await clinicalPageSignInRequired()) {
+    return <ClinicalPageSignInNotice copy={CLINICAL_SIGN_IN_COPY.differentials} testId="differentials-sign-in" />;
+  }
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const query = firstSearchParam(resolvedSearchParams.query ?? resolvedSearchParams.q)?.trim() ?? "";
   const selectedIds = (firstSearchParam(resolvedSearchParams.ids) ?? "")

@@ -290,6 +290,19 @@ export function buildEvidencePreviewProgress(args: {
   normalResults: SearchResult[];
   fallbackResults: SearchResult[];
   relevance?: EvidenceRelevance | null;
+  /** Called once when a verified preview unit is built, so the caller can time first content
+   * (docs/verified-answer-incremental-delivery-design.md, "Telemetry and acceptance"). */
+  onVerifiedUnit?: () => void;
+}): EvidencePreviewProgressFields {
+  const fields = evidencePreviewProgressFields(args);
+  if (fields.verifiedUnit) args.onVerifiedUnit?.();
+  return fields;
+}
+
+function evidencePreviewProgressFields(args: {
+  normalResults: SearchResult[];
+  fallbackResults: SearchResult[];
+  relevance?: EvidenceRelevance | null;
 }): EvidencePreviewProgressFields {
   if (!env.RAG_INCREMENTAL_EVIDENCE_PREVIEW) return { previewReason: "disabled" };
   const fallbackIds = new Set(args.fallbackResults.map((result) => result.id));

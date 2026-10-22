@@ -362,7 +362,7 @@ describe("mode menu destination prefetch", () => {
     expect(within(dialog).queryByRole("menuitemradio", { name: /^Answer\b/i })).toBeNull();
     expect(within(dialog).getByText("Your working day")).toBeTruthy();
     expect(within(dialog).getByText(/One list of what needs you today/i)).toBeTruthy();
-    expect(within(dialog).getByRole("status")).toHaveTextContent("7 in Work");
+    expect(within(dialog).getByRole("status")).toHaveTextContent("6 in Work");
   });
 
   it("opens On Call's pill straight on the Work list", async () => {

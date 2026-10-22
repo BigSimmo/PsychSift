@@ -4,6 +4,9 @@ import { redirect } from "next/navigation";
 import { appModeSelectionHref } from "@/lib/app-modes";
 import { unsubmittedModeSearchTargetForSearchParams } from "@/lib/consolidated-mode-home-redirect";
 import { DifferentialsHomePage } from "@/components/differentials/differentials-home-page";
+import { ClinicalPageSignInNotice } from "@/components/mode-kit/clinical-page-sign-in-notice";
+import { clinicalPageSignInRequired } from "@/lib/clinical-page-access";
+import { CLINICAL_SIGN_IN_COPY } from "@/lib/front-door-content";
 
 export const metadata: Metadata = {
   title: "Search differential diagnoses | PsychSift",
@@ -31,6 +34,10 @@ function firstValue(value?: string | string[]) {
  * the same target builder so navigation context is not dropped.
  */
 export default async function DifferentialsSearchRoute(props: RouteProps) {
+  // #3738: no record content in a signed-out server response.
+  if (await clinicalPageSignInRequired()) {
+    return <ClinicalPageSignInNotice copy={CLINICAL_SIGN_IN_COPY.differentials} testId="differentials-sign-in" />;
+  }
   const params = props.searchParams ? await props.searchParams : {};
   const query = firstValue(params.q)?.trim() || firstValue(params.query)?.trim() || "";
   if (!query) {
