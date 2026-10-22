@@ -1136,7 +1136,7 @@ sequenceDiagram
 - Registry modes: services, forms, medications, differentials; Formulation is a local mechanism and structured-draft workspace
 - Demo mode: synthetic data when Supabase unavailable (`demo-data.ts`, `isDemoMode()` in `env.ts`)
 
-### Developer hub (`src/app/mockups/development/`, `src/lib/developer-area/`)
+### Developer hub (`src/app/(admin)/admin/developer-hub/`, `src/lib/developer-area/`)
 
 Login-gated internal hub (Owner panel) for repository, clinical-safety, and operational state, reachable only to a signed-in administrator
 account (`DeveloperAreaGate`, `src/components/developer-area/developer-area-gate.tsx`; gate helpers
