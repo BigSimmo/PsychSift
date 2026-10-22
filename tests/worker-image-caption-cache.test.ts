@@ -28,6 +28,7 @@ import {
   type ImageCaptionCacheKey,
 } from "../worker/image-caption-cache";
 import { resolveCaptionTasks, type CaptionTask } from "../worker/image-captioning";
+import { sweepOrphanedImageCaptionCache } from "../src/lib/image-caption-cache-cleanup";
 import { env } from "../src/lib/env";
 import type { ImageClassification } from "../worker/image-classification";
 import type { IngestionStageContext } from "../worker/ingestion-stage-context";
@@ -107,8 +108,41 @@ function fakeCacheTable() {
           return { data: rows.get(keyOf(filters)) ?? null, error: null };
         },
       };
+      // #3730: the clean-up deletes one owner's rows for one document, minus the kept identities.
+      let keep: string[] = [];
+      const remove = {
+        eq(column: string, value: unknown) {
+          filters[column] = value;
+          return remove;
+        },
+        not(column: string, operator: string, value: string) {
+          expect([column, operator]).toEqual(["cache_identity", "in"]);
+          keep = value
+            .slice(1, -1)
+            .split(",")
+            .map((identity) => identity.replace(/^"|"$/g, ""));
+          return remove;
+        },
+        abortSignal() {
+          return remove;
+        },
+        then(resolve: (value: { error: null }) => void) {
+          for (const [rowKey, row] of rows) {
+            const metadata = row.metadata as Record<string, unknown>;
+            if (
+              row.owner_id === filters.owner_id &&
+              metadata.document_id === filters["metadata->>document_id"] &&
+              !keep.includes(String(row.cache_identity))
+            ) {
+              rows.delete(rowKey);
+            }
+          }
+          resolve({ error: null });
+        },
+      };
       return {
         select: () => select,
+        delete: () => remove,
         upsert(row: Record<string, unknown>, options: { onConflict: string }) {
           expect(options.onConflict).toBe("owner_id,image_hash,model,cache_identity");
           rows.set(keyOf(row), structuredClone(row));
@@ -323,6 +357,8 @@ describe("image caption cache identity", () => {
     const stored = [...table.rows.values()][0];
     expect(String(stored.caption)).not.toContain("jane.citizen@example.org");
     expect(stored).toMatchObject({ owner_id: OWNER_ID, image_hash: "c".repeat(64), mime_type: "image/png" });
+    // #3730: the row records its document so it can be deleted with it.
+    expect(stored.metadata).toMatchObject({ document_id: DOCUMENT_ID });
 
     const failing = {
       from: () => {
@@ -434,5 +470,143 @@ describe("caption stage reuse across retries (ING-B-10)", () => {
       resolveCaptionTasks(context(table.client), job({ attempt: 2 }), [task()], new Map()),
     ).rejects.toBeInstanceOf(IngestionProviderEgressRefusal);
     expect(classify).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("caption cache clean-up on reprocess (#3730)", () => {
+  const OTHER_DOCUMENT_ID = "77777777-7777-4777-8777-777777777777";
+
+  function reprocessed(content: string) {
+    const next = job({ attempt: 2 });
+    next.documents = { ...next.documents, content_hash: content.repeat(64) };
+    return next;
+  }
+
+  it("drops the document's rows for identities the new content no longer produces", async () => {
+    classify.mockResolvedValue(modelClassification());
+    const table = fakeCacheTable();
+    await resolveCaptionTasks(context(table.client), job(), [task()], new Map());
+    await resolveCaptionTasks(context(table.client), job({ documentId: OTHER_DOCUMENT_ID }), [task()], new Map());
+    expect(table.rows.size).toBe(2);
+
+    await resolveCaptionTasks(context(table.client), reprocessed("e"), [task()], new Map());
+
+    const remaining = [...table.rows.values()].map((row) => row.metadata as Record<string, unknown>);
+    expect(remaining).toHaveLength(2);
+    // The other document's caption of the same bytes is untouched.
+    expect(remaining.filter((metadata) => metadata.document_id === OTHER_DOCUMENT_ID)).toHaveLength(1);
+    const current = imageCaptionCacheKey({
+      job: reprocessed("e"),
+      imageHash: task().imageHash,
+      contextHash: task().contextHash,
+      mimeType: "image/png",
+      classifierInputs: INPUTS,
+    })!;
+    expect(
+      remaining.filter((metadata) => metadata.document_id === DOCUMENT_ID).map((metadata) => metadata.cache_identity),
+    ).toEqual([current.identity]);
+  });
+
+  it("keeps the rows a retry of unchanged content can still reuse", async () => {
+    classify.mockResolvedValue(modelClassification());
+    const table = fakeCacheTable();
+    await resolveCaptionTasks(context(table.client), job(), [task()], new Map());
+    const retry = await resolveCaptionTasks(context(table.client), job({ attempt: 2 }), [task()], new Map());
+    expect(retry[0].classificationCacheHit).toBe(true);
+    expect(table.rows.size).toBe(1);
+  });
+
+  it("prunes nothing when the run bound no cache identity", async () => {
+    classify.mockResolvedValue(modelClassification());
+    const table = fakeCacheTable();
+    await resolveCaptionTasks(context(table.client), job(), [task()], new Map());
+    const unbound = job({ attempt: 2 });
+    unbound.documents = { ...unbound.documents, content_hash: null as unknown as string };
+    await resolveCaptionTasks(context(table.client), unbound, [task()], new Map());
+    expect(table.rows.size).toBe(1);
+  });
+});
+
+// A delete-route clean-up that fails leaves a deleted document's captions behind; the
+// operator storage clean-up sweeps them later (#3730 review).
+describe("orphaned caption cache sweep (#3730)", () => {
+  function sweepClient(cacheRows: { id: string; document_id: string }[], liveDocuments: string[]) {
+    const rows = [...cacheRows];
+    const deletes: string[][] = [];
+    const client = {
+      from(table: string) {
+        const filters: { gt?: string; in?: string[]; limit?: number; del?: boolean } = {};
+        const builder = {
+          select: () => builder,
+          not: () => builder,
+          order: () => builder,
+          limit: (count: number) => ((filters.limit = count), builder),
+          gt: (_column: string, value: string) => ((filters.gt = value), builder),
+          in: (_column: string, values: string[]) => ((filters.in = values), builder),
+          delete: () => ((filters.del = true), builder),
+          then(resolve: (value: { data: unknown; error: null }) => void) {
+            if (table === "documents") {
+              resolve({
+                data: liveDocuments.filter((id) => filters.in?.includes(id)).map((id) => ({ id })),
+                error: null,
+              });
+            } else if (filters.del) {
+              deletes.push(filters.in ?? []);
+              for (const id of filters.in ?? [])
+                rows.splice(
+                  rows.findIndex((row) => row.id === id),
+                  1,
+                );
+              resolve({ data: null, error: null });
+            } else {
+              const page = rows
+                .filter((row) => !filters.gt || row.id > filters.gt)
+                .sort((a, b) => a.id.localeCompare(b.id))
+                .slice(0, filters.limit);
+              resolve({ data: page, error: null });
+            }
+          },
+        };
+        return builder;
+      },
+    };
+    return { client: client as unknown as Parameters<typeof sweepOrphanedImageCaptionCache>[0], rows, deletes };
+  }
+
+  const cache = [
+    { id: "a1", document_id: "doc-live" },
+    { id: "a2", document_id: "doc-gone" },
+    { id: "a3", document_id: "doc-gone" },
+  ];
+
+  it("deletes only the rows whose document no longer exists", async () => {
+    const fake = sweepClient(cache, ["doc-live"]);
+    const result = await sweepOrphanedImageCaptionCache(fake.client, { dryRun: false });
+    expect(result).toEqual({ scanned: 3, orphaned: 2, deleted: 2 });
+    expect(fake.rows.map((row) => row.id)).toEqual(["a1"]);
+  });
+
+  it("counts orphans without deleting on a dry run", async () => {
+    const fake = sweepClient(cache, ["doc-live"]);
+    const result = await sweepOrphanedImageCaptionCache(fake.client, { dryRun: true });
+    expect(result).toEqual({ scanned: 3, orphaned: 2, deleted: 0 });
+    expect(fake.deletes).toEqual([]);
+  });
+
+  it("stops at the row cap", async () => {
+    const fake = sweepClient(cache, []);
+    const result = await sweepOrphanedImageCaptionCache(fake.client, { maxRows: 2, dryRun: false });
+    expect(result.scanned).toBe(2);
+    expect(fake.rows.map((row) => row.id)).toEqual(["a3"]);
+  });
+
+  it("pages through the whole cache when no cap is set", async () => {
+    const many = Array.from({ length: 2_500 }, (_, index) => ({
+      id: `r${String(index).padStart(5, "0")}`,
+      document_id: index === 2_400 ? "doc-gone" : "doc-live",
+    }));
+    const fake = sweepClient(many, ["doc-live"]);
+    const result = await sweepOrphanedImageCaptionCache(fake.client, { dryRun: false });
+    expect(result).toEqual({ scanned: 2_500, orphaned: 1, deleted: 1 });
   });
 });

@@ -233,11 +233,10 @@ jobs:
               "",
               ...detail,
             ].join("\n");
-            // GitHub mobile pushes a direct @mention to the owner's phone, the alert channel chosen on
-            // 2026-10-19 (docs/decisions/2026-10-19-production-alerts-by-phone.md), so every new alert
-            // and repeat comment names the owner (audit EVAL-04).
-            const alertAssignee = context.repo.owner;
-            const alertMention = `@${alertAssignee}`;
+            // Owner decision 2026-10-21 (docs/decisions/2026-10-21-one-daily-health-summary.md): this
+            // workflow no longer @mentions the owner. Its result reaches the owner's phone once a day in the
+            // daily health summary (.github/workflows/daily-health-summary.yml), which reads this issue's
+            // label; the issue keeps the detail.
             const { data: existing } = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -249,7 +248,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: existing[0].number,
-                body: `${alertMention}\n\n${body}`,
+                body,
               });
             } else {
               await github.rest.issues.create({
@@ -257,7 +256,7 @@ jobs:
                 repo: context.repo.repo,
                 title: "Reindex reaper alert",
                 labels: [label],
-                body: `${alertMention}\n\n${body}`,
+                body,
               });
             }
 

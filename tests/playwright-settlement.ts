@@ -75,10 +75,16 @@ export function visibleByText(page: Page, text: string | RegExp, options?: { exa
  *
  * Scroll first, wait until the target holds still across frames, then click. The target is
  * already in view, so `click()` scrolls nothing and triggers no second collapse.
+ *
+ * Unlike `click()`, `scrollIntoViewIfNeeded()` does not retry when a re-render swaps the
+ * element out mid-scroll; it throws "Element is not attached to the DOM". A release WebKit run
+ * hit that on the on-call resources panel, so the scroll retries and re-resolves the locator.
  */
 export async function clickWhenSettled(locator: Locator, { timeout = 10_000 }: { timeout?: number } = {}) {
   await expectHydrated(locator);
-  await locator.scrollIntoViewIfNeeded({ timeout });
+  await expect(async () => {
+    await locator.scrollIntoViewIfNeeded({ timeout: 2_000 });
+  }).toPass({ timeout });
   let previous = "";
   await expect
     .poll(
