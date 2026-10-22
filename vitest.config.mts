@@ -107,7 +107,9 @@ const config = {
           // Node environment, unchanged glob — existing tests behave exactly as before.
           name: "node",
           environment: "node",
-          include: liveProviderTests ? ["tests/**/*.live.test.ts"] : ["tests/**/*.test.ts"],
+          include: liveProviderTests
+            ? ["tests/**/*.live.test.ts"]
+            : ["tests/**/*.test.ts", "scripts/archive/check-july8-live-batch.test.ts"],
           exclude: liveProviderTests ? [] : ["tests/**/*.live.test.ts"],
           // Restores spies and unstubs globals after every test (TS-01).
           setupFiles: ["tests/setup/node.setup.ts"],

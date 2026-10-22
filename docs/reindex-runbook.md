@@ -20,7 +20,10 @@ The quickest way to run a full reindex cycle is the consolidated pipeline comman
 npm run reindex
 ```
 
-This single command encapsulates the full safe sequence below: it confirms the target project, checks Supabase health, snapshots reindex health, applies ingestion queue recovery (with an interactive confirmation prompt), runs the worker, and repeats until the queue is clear or the round limit is reached.
+This single command encapsulates the sequence below: it confirms the target project, checks Supabase health, snapshots reindex health, applies ingestion queue recovery (with an interactive confirmation prompt), runs the worker, and repeats until the queue is clear or the round limit is reached.
+
+Both `reindex` and `recover:ingestion` apply recovery through the shared atomic RPC described in
+[Recovery transaction](#recovery-transaction-merged-18-october-2026). The command remains a live operation requiring the applicable operator and spending approvals.
 
 Options:
 
@@ -45,7 +48,7 @@ npm run reindex -- --yes --max-rounds 5
 > must clear the passage-rank gate (`content_mrr_at_10` above baseline, per
 > `src/lib/reindex-eval-gate.ts`) through that harness before any promotion — never via this command.
 
-## Manual safe sequence
+## Manual sequence
 
 If you prefer to run each step by hand (or need to reconcile a migration in between):
 

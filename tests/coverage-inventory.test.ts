@@ -102,6 +102,30 @@ describe("coverage inventory", () => {
     }
   });
 
+  const budgetControls = [
+    "src/lib/answer-pilot-budget.js",
+    "src/lib/answer-pilot-diagnostic.js",
+    "src/lib/answer-pilot-ticket.js",
+    "src/lib/answer-wire-budget-guard.js",
+  ];
+
+  it.each(budgetControls)("includes the production budget-control module %s in measured coverage", (file) => {
+    expect(COVERAGE_INCLUDE_GLOBS.some((glob) => path.matchesGlob(file, glob))).toBe(true);
+    expect(coverageSourceFiles()).toContain(file);
+  });
+
+  it("rejects an LCOV report that has every root but omits production budget controls", () => {
+    const result = checkCoverageInventory(completeLcov, { expectedFiles: budgetControls });
+    expect(result.missingFiles).toContain("src/lib/answer-pilot-budget.js");
+  });
+
+  it("accepts an LCOV report containing every required production budget control", () => {
+    const controls = budgetControls.map((file) => `SF:${file}\nend_of_record`).join("\n");
+    expect(
+      checkCoverageInventory(`${completeLcov}\n${controls}`, { expectedFiles: budgetControls }).missingFiles,
+    ).toEqual([]);
+  });
+
   it("keeps conservative whole-repository floors alongside scoped ratchets", () => {
     const config = readFileSync(new URL("../vitest.config.mts", import.meta.url), "utf8");
     expect(config).toMatch(/thresholds:\s*\{\s*\/\/[\s\S]*?statements: 52,[\s\S]*?branches: 49,/);

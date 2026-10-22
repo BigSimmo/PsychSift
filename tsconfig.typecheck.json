@@ -34,13 +34,5 @@
   // `next-env.d.ts` is excluded explicitly because `**/*.ts` matches `.d.ts`
   // too, so dropping it from `include` alone would not keep it out.
   "include": ["next-env.typecheck.d.ts", "**/*.ts", "**/*.tsx", "**/*.mts"],
-  "exclude": [
-    "node_modules",
-    ".next/**",
-    "next-env.d.ts",
-    "scratch/**",
-    "supabase/functions/**",
-    "worktrees/**",
-    "scripts/archive/**"
-  ]
+  "exclude": ["node_modules", ".next/**", "next-env.d.ts", "scratch/**", "supabase/functions/**", "worktrees/**"]
 }

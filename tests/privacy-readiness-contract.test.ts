@@ -457,6 +457,14 @@ describe("privacy readiness review dates: expiry and pull-request scope", () => 
       expect(releaseRun.stderr).toContain("- manifest review has expired\n");
     });
 
+    it.skipIf(!checkGit)("ignores explicit development scope under --release at the CLI boundary", () => {
+      const result = runCli(["--development", "--base", manifest.reviewedCommit, "--release"], AFTER_EVERY_EXPIRY, {});
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain("PRIVACY_READINESS_FAIL mode=release review-dates=strict");
+      expect(result.stderr).toContain("- manifest review has expired\n");
+      expect(result.stderr).not.toContain("REVIEW_DATE_WARNING");
+    });
+
     it("refuses pull-request mode on a non-main push and stays strict", () => {
       const pushRun = runCli([], AFTER_EVERY_EXPIRY, {
         ...PR_ENV,

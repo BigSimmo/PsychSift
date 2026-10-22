@@ -10,6 +10,7 @@ import {
   NOT_BLOCKING_NOTE,
   reportExpiredReviewDate,
   resolveReviewDateScope,
+  resolveGovernanceReviewDateScope,
   STRICT_REVIEW_DATE_SCOPE,
   type ReviewDateScope,
 } from "../scripts/organisation/review-date-scope.mjs";
@@ -361,5 +362,93 @@ describe("listing the files a change touched", () => {
     });
     expect(refused.mode).toBe("strict");
     expect(refused.notes.join(" ")).toContain("could not be listed");
+  });
+
+  function developmentRepo() {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "development-review-scope-"));
+    roots.push(root);
+    git(root, "init", "-q", "-b", "main");
+    write(root, REGISTER, JSON.stringify({ items: [{ id: "expired", review: "old" }, { id: "other" }] }));
+    write(root, "src/covered.ts", "old\n");
+    write(root, "src/renamed.ts", "old\n");
+    git(root, "add", ".");
+    git(root, "commit", "-q", "-m", "base");
+    const base = git(root, "rev-parse", "HEAD");
+    git(root, "checkout", "-q", "-b", "development");
+    const scope = (extra: string[] = [], env = {}) =>
+      resolveGovernanceReviewDateScope({ root, argv: ["--development", "--base", base, ...extra], env });
+    const disposition = (value: ReviewDateScope, coveredPaths: string[] = []) =>
+      expiredReviewDateDisposition(value, {
+        registerPath: REGISTER,
+        coveredPaths,
+        select: (register: { items: { id: string; review?: string }[] }) =>
+          register.items.find((entry) => entry.id === "expired"),
+      });
+    return { root, base, scope, disposition };
+  }
+
+  it("permits unrelated expired reviews locally with an explicit base and no release claim", () => {
+    const { root, base, scope, disposition } = developmentRepo();
+    write(root, "docs/unrelated.md", "synthetic\n");
+    const value = scope();
+    expect(value).toMatchObject({ mode: "development", base, head: "WORKTREE", touched: ["docs/unrelated.md"] });
+    expect(disposition(value, ["src/covered.ts"]).blocking).toBe(false);
+    expect(describeReviewDateScope(value)).toContain("release-ready=false");
+  });
+
+  it("includes committed, staged, unstaged, untracked and both renamed paths", () => {
+    const { root, scope, disposition } = developmentRepo();
+    write(root, "committed.txt", "synthetic\n");
+    git(root, "add", ".");
+    git(root, "commit", "-q", "-m", "feature");
+    write(root, "src/covered.ts", "staged\n");
+    git(root, "add", "src/covered.ts");
+    write(root, "src/covered.ts", "old\n");
+    git(root, "mv", "src/renamed.ts", "src/new.ts");
+    write(root, "new.txt", "synthetic\n");
+    const value = scope();
+    expect(value.touched).toEqual(["committed.txt", "new.txt", "src/covered.ts", "src/new.ts", "src/renamed.ts"]);
+    for (const file of value.touched ?? []) expect(disposition(value, [file]).blocking).toBe(true);
+  });
+
+  it.each(["unstaged", "staged", "staged-restored", "malformed", "deleted"])(
+    "blocks an expired register entry changed in %s state",
+    (state) => {
+      const { root, scope, disposition } = developmentRepo();
+      const original = fs.readFileSync(path.join(root, REGISTER), "utf8");
+      write(root, REGISTER, state === "malformed" ? "{" : original.replace('"old"', '"edited"'));
+      if (state.startsWith("staged")) git(root, "add", REGISTER);
+      if (state === "staged-restored") write(root, REGISTER, original);
+      if (state === "deleted") fs.unlinkSync(path.join(root, REGISTER));
+      expect(disposition(scope()).blocking).toBe(true);
+    },
+  );
+
+  it("allows edits to another register entry without excusing edits to the expired one", () => {
+    const { root, scope, disposition } = developmentRepo();
+    const register = JSON.parse(fs.readFileSync(path.join(root, REGISTER), "utf8"));
+    register.items[1].review = "new";
+    write(root, REGISTER, JSON.stringify(register));
+    expect(disposition(scope()).blocking).toBe(false);
+  });
+
+  it("retains strict defaults and release precedence over development or CI settings", () => {
+    const { root, base, scope } = developmentRepo();
+    expect(resolveGovernanceReviewDateScope({ root, argv: [], env: {} }).mode).toBe("strict");
+    expect(
+      scope(["--release"], { REVIEW_DATE_MODE: "pr", GITHUB_EVENT_NAME: "pull_request", BASE_SHA: base }).mode,
+    ).toBe("strict");
+    for (const env of [{ CI: "true" }, { GITHUB_ACTIONS: "true" }, { GITHUB_EVENT_NAME: "pull_request" }])
+      expect(scope([], env).mode).toBe("strict");
+    for (const argv of [
+      ["--development"],
+      ["--development", "--base", "HEAD"],
+      ["--development", "--base", "1".repeat(40)],
+    ])
+      expect(resolveGovernanceReviewDateScope({ root, argv, env: {} }).mode).toBe("strict");
+    git(root, "checkout", "-q", "main");
+    expect(scope().mode).toBe("strict");
+    git(root, "checkout", "-q", "-b", "release/test");
+    expect(scope().mode).toBe("strict");
   });
 });

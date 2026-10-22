@@ -127,7 +127,15 @@ function normalizeType(typeText, declaration) {
 
 function createProgram(sourceMap, root) {
   const configPath = path.join(root, "tsconfig.json");
-  const parsed = ts.getParsedCommandLineOfConfigFile(configPath, {}, ts.sys);
+  const parsed = ts.getParsedCommandLineOfConfigFile(
+    configPath,
+    {},
+    {
+      ...ts.sys,
+      // Program roots are explicit below; only inherited compiler options are needed here.
+      readDirectory: () => [],
+    },
+  );
   if (!parsed) throw new Error(`Unable to parse ${configPath}`);
   const mapped = [...new Set(Object.values(sourceMap))].map((relativePath) => path.join(root, relativePath));
   const rootNames = [...new Set([...mapped, ...collectExportStarRoots(sourceMap, root)])];

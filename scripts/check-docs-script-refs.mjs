@@ -23,6 +23,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
+import { isMaintainedDatedDocument } from "./lib/document-lifecycle.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const scanAll = process.argv.includes("--all");
@@ -85,7 +86,12 @@ function collectDocs(dirRelative, targets) {
       continue;
     }
     if (!entry.isFile() || !entry.name.endsWith(".md")) continue;
-    if (!scanAll && DATED_DOC.test(entry.name)) continue;
+    if (
+      !scanAll &&
+      DATED_DOC.test(entry.name) &&
+      !isMaintainedDatedDocument(readFileSync(path.join(repoRoot, entryRelative), "utf8"))
+    )
+      continue;
     targets.push(entryRelative);
   }
 }
@@ -100,10 +106,15 @@ export const ROOT_SCRIPT_REF_DOCS = Object.freeze([
   "GEMINI.md",
 ]);
 
-function main() {
-  const validScripts = parsePackageScripts(readFileSync(path.join(repoRoot, "package.json"), "utf8"));
+export function defaultTargets() {
   const targets = [...ROOT_SCRIPT_REF_DOCS];
   collectDocs("docs", targets);
+  return targets;
+}
+
+function main() {
+  const validScripts = parsePackageScripts(readFileSync(path.join(repoRoot, "package.json"), "utf8"));
+  const targets = defaultTargets();
 
   let stale = 0;
   let checked = 0;

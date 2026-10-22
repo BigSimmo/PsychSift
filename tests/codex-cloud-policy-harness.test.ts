@@ -17,9 +17,11 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
+// Git's bin/bash.exe launcher prepends system tools ahead of fixture shims.
+// Invoke the shell itself so the isolated PATH retains its requested order.
 const bashCommand =
   process.platform === "win32"
-    ? path.join(process.env.ProgramFiles || "C:\\Program Files", "Git/bin/bash.exe")
+    ? path.join(process.env.ProgramFiles || "C:\\Program Files", "Git/usr/bin/bash.exe")
     : "/bin/bash";
 const shellToolsPath = process.platform === "win32" ? "/mingw64/bin:/usr/bin:/bin" : "/usr/bin:/bin";
 const temporaryDirectories: string[] = [];
@@ -33,6 +35,19 @@ afterEach(() => {
 function bashPath(value: string) {
   if (process.platform !== "win32") return value;
   return value.replace(/^([A-Za-z]):/, (_, drive: string) => `/${drive.toLowerCase()}`).replaceAll("\\", "/");
+}
+
+function currentDirectoryCacheKey(directory: string) {
+  // This fixture's git returns $PWD. Query that physical shell identity
+  // independently: Git Bash may mount the native temp directory at /tmp.
+  const physical = spawnSync(bashCommand, ["--noprofile", "--norc", "-c", "pwd -P"], {
+    cwd: directory,
+    encoding: "utf8",
+    env: { NODE_ENV: "test", SystemRoot: process.env.SystemRoot, WINDIR: process.env.WINDIR, PATH: shellToolsPath },
+  });
+  expect(physical.status, physical.stderr).toBe(0);
+  expect(physical.stdout.trim()).not.toBe("");
+  return createHash("sha256").update(physical.stdout.trim()).digest("hex");
 }
 
 function scopedProfile(contents: string) {
@@ -1087,7 +1102,7 @@ describe("Codex Cloud policy-only harness runtime isolation", () => {
         },
       });
       expect(result.status, result.stderr || result.stdout).toBe(0);
-      const key = createHash("sha256").update(bashPath(checkout)).digest("hex");
+      const key = currentDirectoryCacheKey(checkout);
       expect(readFileSync(path.join(cache, "checkouts", key, "cloud-expected-base-sha"), "utf8")).toBe(`${base}\n`);
     }
     expect(readdirSync(path.join(cache, "checkouts"))).toHaveLength(2);

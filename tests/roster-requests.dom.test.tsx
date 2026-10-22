@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 
@@ -147,6 +147,9 @@ it("opens the calendar swap flow from a handoff, using a valid team ID and never
   teamsState.data.teams.push({ ...teamsState.data.teams[0]!, serviceId: second, name: "Other team" });
   window.history.replaceState({}, "", `/roster/requests?start=swap&team=${second}&assignment=${TAKE}&actorId=${MEI}`);
   render(<RosterRequestsPage />);
+  await act(async () => {
+    await vi.dynamicImportSettled();
+  });
   expect(await screen.findByRole("dialog", { name: "Swap this shift" })).toBeTruthy();
   expect(mocks.fetchRead).toHaveBeenCalledWith(second, "overview");
   expect(mocks.post).not.toHaveBeenCalled();

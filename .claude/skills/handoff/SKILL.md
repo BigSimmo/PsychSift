@@ -86,7 +86,8 @@ force-push, or discard work.
    [Open](../../../docs/agents/pull-request-workflow.md#open) requires — full prose, verbatim Preflight lines checked only
    where true, a satisfying `RAG impact:` line. On an ordinary PR you may arm
    auto-merge at open (`gh pr merge --merge --auto`; merge commits are the only enabled method)
-   ([Merge authority](../../../docs/agents/pull-request-workflow.md#merge-authority)).
+   ([Merge authority](../../../docs/agents/pull-request-workflow.md#merge-authority)), subject to
+   existing auto-merge ownership and protected-merge requirements; never push to `main` or force-push.
 8. **Record** the review per [Records](../../../docs/agents/pull-request-workflow.md#records) as one `Review record` comment on the PR.
 9. **Follow CI while it is useful, then stop** per [Follow CI](../../../docs/agents/pull-request-workflow.md#follow-ci):
    fix only what this change broke, slow cadence, no cron, then report the PR URL and plainly
@@ -94,6 +95,9 @@ force-push, or discard work.
 
 ## Requires explicit confirmation (do not do automatically)
 
-Merging into a protected branch, arming auto-merge on anything other than an ordinary PR you
-are opening, force-push, rebasing a shared branch, deleting/renaming branches, `git reset --hard`,
+Use [Merge authority](../../../docs/agents/pull-request-workflow.md#merge-authority) for protected
+merges, the ordinary-PR auto-merge-at-open exception and existing auto-merge state.
+Rebasing a shared branch, deleting/renaming branches, `git reset --hard`,
 `git clean -fd`, or any provider-touching verification.
+
+Force-push and direct pushes to `main` remain prohibited by the owner's Git rules.

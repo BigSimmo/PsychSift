@@ -64,11 +64,12 @@ clinical use or any mass reindex; increasing image-size limits is not acceptance
 applied to the live project _before_ the worker is (re)deployed from current
 `main`.**
 
-`worker/main.ts` passes `p_worker_id` to the lease-fence RPCs
-(`complete_ingestion_job`, `fail_or_retry_ingestion_job`,
-`complete_strict_enrichment_job`). Deploying the new worker against a database
-that has not yet taken this migration means the R1/R2 lease fences the worker
-relies on are not present. See
+That July migration is a historical minimum, not the full current worker contract.
+Current completion/failure callers use the serialized attempt's `p_fence` through
+the worker mutation adapter; claim RPCs still include `p_worker_id`. Legacy
+completion overloads remain in the schema with service-role execution revoked.
+Require the selected worker release's full migration manifest and current RPC
+signatures/grants, rather than accepting the existence of an older overload. See
 [`operator-apply-july8-batch.md`](archive/operator-apply-july8-batch.md) (step 2:
 _"apply before worker redeploy"_) for the ordered apply plan.
 
@@ -78,10 +79,39 @@ Confirm the gate before continuing:
 node -v                  # must report >= 24.15.0 < 25 (Node 24 engine floor)
 npm -v                   # must report >= 11.0.0 < 12 (npm 11)
 npm run check:runtime    # validates Node 24 and npm 11 engines
-npm run reindex:health   # ok:true, and the RPC signatures accept p_worker_id
 ```
 
-If migrations are still outstanding, stop here and apply them first.
+**Provider reads — confirm the exact Supabase target and scope first:**
+
+```bash
+npm run reindex:health   # queue/table readability, counts and limited open-job diagnostics only
+```
+
+`ok:true` does not inspect or exercise lease-fence RPC signatures, grants, or
+worker/database compatibility. Obtain separate, approved read-only catalog
+evidence from the intended database (no completion RPC is called as a probe):
+
+```sql
+SELECT p.proname,
+       pg_catalog.pg_get_function_identity_arguments(p.oid) AS identity_arguments,
+       pg_catalog.pg_get_function_arguments(p.oid) AS arguments,
+       pg_catalog.has_function_privilege('service_role', p.oid, 'EXECUTE') AS service_role_execute
+FROM pg_catalog.pg_proc p
+JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public'
+  AND p.proname IN ('claim_ingestion_jobs', 'complete_ingestion_job',
+                    'fail_or_retry_ingestion_job', 'complete_strict_enrichment_job')
+ORDER BY p.proname, identity_arguments;
+```
+
+Compare argument names/types/defaults and execution grants to the exact selected
+worker caller/mutation-adapter source and committed schema/migrations. At this
+documentation revision the current completion/failure overloads take `p_fence jsonb`;
+the obsolete completion overloads must not regain execution merely to pass a check.
+Keep catalog compatibility, migration history, drift and actual worker acceptance
+as separate evidence. A catalog read cannot prove runtime lease-fence behavior.
+If required migrations or contracts are missing, stop and use the separately
+approved migration/reconciliation procedure; this runbook grants no apply authority.
 
 The image-security gate is separate from migration readiness. `Dockerfile.worker`
 explicitly upgrades `perl-base` and rejects versions older than Debian's
@@ -788,10 +818,23 @@ The second Gate B caveat is already load-bearing above: docling's eager-mode lat
 This section is the **image** rollback. To turn off docling shadow extraction without
 changing the image, use the two-step flag rollback in §3.7 instead.
 
-Redeploy the previous image tag. The worker holds no durable local state; all
-artifact writes are idempotent per generation/chunk-key, and completion is
-gated by the strict completion RPCs plus the edge agent, so a redeploy costs at
-most one stale window of latency on any in-flight job and zero data loss.
+Redeploy the previous compatible image tag under the approved rollback procedure,
+after checking its database contract. Worker queue/index state is durable in
+Supabase; a redeploy interrupts in-flight work. Automatic stale reclaim requires
+attempts remaining, so there is no universal one-stale-window recovery bound.
+An uncertain final-attempt outcome can remain `processing` until operator recovery;
+see the [owner's retained recovery decision](decisions/2026-10-16-stuck-final-attempt-uses-existing-recovery.md).
+
+Before declaring rollback complete, compare the pre/post deployment IDs and inspect
+the affected in-flight job IDs, attempt counts, locks and document/index state through
+approved bounded reads. `reindex:health` and the 6-hourly check examine only the 25
+oldest open jobs for stuck-processing diagnostics, so a healthy result does not exclude
+an exhausted-attempt job behind that window. Follow the existing approved
+`recover:ingestion` dry-run/review/apply procedure for confirmed stuck work; it applies
+at most 20 fixes per run by default. Do not substitute consolidated `reindex` recovery
+or add an automatic database fix. Recovery writes and any subsequent worker/provider
+work retain their specific approval and spending boundaries. Record unresolved jobs
+and verify their final state; image rollback alone is not data-loss or queue-recovery proof.
 
 ### Scoped Node worker claims
 

@@ -25,6 +25,9 @@ let versions: number;
 let scanStarted: (() => void) | undefined;
 
 beforeEach(async () => {
+  // Semantic refusals must not race a real deadline during filesystem pin checks.
+  // Only the deadline test advances these timers; filesystem I/O and Date.now stay real.
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
   boundary.platform = "linux";
   boundary.exec.mockReset();
   root = await mkdtemp(path.join(tmpdir(), "psychsift-clamav-test-"));
@@ -75,20 +78,18 @@ beforeEach(async () => {
       expect(options.env.LC_ALL).toBe("C");
       const finish = (error: { code: number | string } | null, stdout = "", stderr = "") => {
         callback(error, stdout, stderr);
-        // The deadline test freezes timers during real pin I/O. Its version child
-        // closes immediately; the scan child still has a separately delayed close.
-        if (mode === "timeout" && !scanFile) {
-          queueMicrotask(() => child.emit("close", error ? 1 : 0));
-          return;
-        }
-        setTimeout(async () => {
+        const close = async () => {
           if (scanFile)
             filePresentAtClose = await readFile(scanFile).then(
               () => true,
               () => false,
             );
           child.emit("close", error ? 1 : 0);
-        }, 1);
+        };
+        // Keep callback and close separate without advancing semantic-test deadlines.
+        // The timeout scan child closes only after the test advances its extra 1 ms.
+        if (mode === "timeout" && scanFile) setTimeout(close, 1);
+        else queueMicrotask(close);
       };
       queueMicrotask(async () => {
         if (argv.includes("--version")) {
@@ -189,7 +190,6 @@ describe("ClamAV exact-byte adapter with mocked CLI", () => {
     config = { ...config, timeoutMs: 100 };
     // Real filesystem pin work cannot consume the deadline before a child exists.
     // Advance the deadline only after the mocked scan child has its abort listener.
-    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     const started = new Promise<void>((resolve) => {
       scanStarted = resolve;
     });

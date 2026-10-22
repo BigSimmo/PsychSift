@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ServicePage } from "@/components/on-call/service-page";
@@ -122,7 +122,9 @@ function mockServiceApi(pendingOrientation = false) {
   return { fetcher, writes };
 }
 async function openService() {
-  render(<ServicePage initialServiceId={serviceId} initialSiteId={siteId} initialRotation="Term 1 2027" />);
+  await act(async () => {
+    render(<ServicePage initialServiceId={serviceId} initialSiteId={siteId} initialRotation="Term 1 2027" />);
+  });
   await screen.findByTestId(`service-entry-${contactId}`);
 }
 beforeEach(() => {

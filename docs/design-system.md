@@ -1,4 +1,4 @@
-# PsychSift Design System — the front door
+# PsychSift design system — v1 compatibility notes
 
 > **Superseded as spec (31 July 2026).** The system of record is now
 > [`docs/design-system/`](./design-system/README.md) — SPEC, TOKENS, COMPONENTS, DECISIONS,
@@ -6,17 +6,18 @@
 > This file remains useful only as a description of the live v1 layer during the transition
 > (SPEC §4.11); do not extend it.
 
-This is the single entry point for how UI is designed and built in this app. It states the
-contract; the deep documents hold the rationale. Precedence when documents disagree:
+_Updated 2026-10-21 — removed conflicting legacy authority and edit instructions; Documentation owns._
 
-1. **This file** — the working contract for day-to-day UI changes.
-2. [`docs/redesign/permanent-colour-direction.md`](./redesign/permanent-colour-direction.md) — the authoritative colour specification ("Clinical White / Sky Graphite"). Colour disputes end here.
-3. [`docs/redesign/02-design-direction.md`](./redesign/02-design-direction.md) — token rationale: type scale, spacing, radii, elevation, motion.
-4. [`docs/redesign/09-ui-primitives-recipes.md`](./redesign/09-ui-primitives-recipes.md) — the recipe catalogue for `src/components/ui-primitives.tsx`.
+Start UI work at the [current design-system front door](design-system/README.md). Its
+authority order is `AGENTS.md` → `src/app/ckb-v2-tokens.css` → committed tests →
+`.design-sync/conventions.md` → the v2 document set. `src/app/globals.css` supplies the
+compatibility layer; the notes below describe that layer and do not override the current
+hierarchy. Change the governing token, contract or specification through that hierarchy.
 
-Design direction is **settled**. Work on the UI is convergence — closing the gap between the
-contract and the code — not reinvention. If a change genuinely needs a new direction, update
-`permanent-colour-direction.md` first, then the code.
+The [colour-direction record](redesign/permanent-colour-direction.md),
+[original token rationale](redesign/02-design-direction.md) and
+[recipe catalogue](redesign/09-ui-primitives-recipes.md) retain transition context.
+Their historical palettes and mutation instructions do not establish current authority.
 
 Comparison surfaces also follow [`comparison-behaviour.md`](comparison-behaviour.md). That contract
 standardises selection and interaction states while leaving clinical fields and meaning with each

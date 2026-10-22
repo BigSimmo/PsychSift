@@ -109,6 +109,7 @@
     "src/lib/ooxml-workbook.ts",
     "src/lib/public-source-acquisition.ts",
     "src/lib/public-source-activation-manifest.ts",
+    "src/lib/publication/**",
     "src/lib/python-bin.ts",
     "src/lib/reindex-eval-gate.ts",
     "src/lib/reindex-pipeline.ts",

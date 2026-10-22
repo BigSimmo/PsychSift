@@ -15,6 +15,7 @@ describe("bundled Cloud skill link coverage", () => {
     expect(defaultTargets()).toContain(target);
     expect(defaultTargets()).toContain(".claude/cloud-profile/skills/sentry-nextjs-sdk/SKILL.md");
     expect(defaultTargets()).toContain("PROJECT-INSTRUCTIONS-CONTINUATION.md");
+    expect(defaultTargets()).toContain("docs/superpowers/plans/2026-09-20-cme-mode-phase-1.md");
   });
 
   it("catches the escaped sibling link and checks its corrected destination", () => {

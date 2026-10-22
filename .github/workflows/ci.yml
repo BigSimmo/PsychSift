@@ -889,6 +889,7 @@ jobs:
               --config p/nodejs \
               --config p/python \
               worker \
+              src/lib/publication \
               src/lib/ingestion*.ts \
               src/lib/extractors \
               src/app/api/ingestion \

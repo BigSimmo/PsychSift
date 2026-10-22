@@ -2,6 +2,14 @@
   "version": 1,
   "rules": [
     {
+      "id": "squash-auto-merge-default",
+      "retired": "2026-10-18",
+      "summary": "Current owner Git defaults select ordinary merges without a squash or rebase fallback. Clinical and database approvals remain binding.",
+      "pattern": "may arm squash auto-merge|squash when the repository allows it",
+      "allowedContext": "historical|retired|superseded|no longer",
+      "decision": "docs/decisions/2026-10-18-normal-merges-and-push-safety.md"
+    },
+    {
       "id": "cloud-imported-working-agreement",
       "retired": "2026-10-17",
       "summary": "The old imported full-stack review inputs and duplicate working agreement are removed. Use the maintained task prompt and canonical operating policy.",

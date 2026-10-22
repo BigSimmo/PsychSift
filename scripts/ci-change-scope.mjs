@@ -212,9 +212,13 @@ const siteContentPatterns = [
   /^src\/lib\/retrieval-.*\.ts$/,
 ];
 
-/** App Router API handlers are not browser journeys — keep them out of ui_changed. */
+/** Keep API handlers and the retained, non-runtime engineering snapshot out of browser journeys. */
 function isUiChangedPath(filePath) {
   if (filePath === "src/app/api" || filePath.startsWith("src/app/api/")) return false;
+  // The four engineering panels retired on 2026-09-26. Its retained reader has no
+  // src consumers; repo-awareness-snapshot.test.ts scans every source file on disk
+  // so restoring a runtime import requires revisiting this exact exclusion.
+  if (filePath === "data/repo-awareness-snapshot.json") return false;
   if (pathMatches(filePath, uiPatterns)) return true;
   browserInputs ??= browserInputClosure();
   return browserInputs.has(filePath);
@@ -454,6 +458,9 @@ const perfInitialLoadApiPatterns = ["src/app/api/setup-status", "src/app/api/loc
  * path. Each is a deliberate loss of coverage; a path NOT listed here stays in scope.
  */
 const perfExclusionPatterns = [
+  // Shared server-only publication readers/DTOs previously lived under worker/.
+  // Keep their existing non-render scope after the ownership-only extraction.
+  /^src\/lib\/publication\/(?:published-admin-layout(?:-contract)?|original-witness-readback)\.ts$/,
   // Most App Router API handlers are off the Lighthouse critical path. Initial-load
   // handlers in perfInitialLoadApiPatterns are carved out above and stay in scope.
   // assertBudgetRoutesAreQueryFree() still fails closed if a budget route gains a
@@ -481,14 +488,10 @@ const perfExclusionPatterns = [
   // perf_changed and the job failed mobile TBT +32.7% against a baseline
   // the same change cannot move.
   "data/outstanding-issues-snapshot.json",
-  // Same reasoning, same developer hub, sibling artefact:
-  // `src/lib/developer-area/repo-awareness-snapshot.ts` imports this JSON and
-  // the only route importers are under `src/app/mockups/development/`. It was
-  // missed when the sibling was carved out, and it is the more frequent one —
-  // every `ledger:append` regenerates it, so a routine handoff paid a
-  // ~7-minute Lighthouse run against a budget the change cannot move
-  // (`#EFETZT`, whose measured cost is "one full CI round trip" per
-  // occurrence).
+  // The four engineering panels retired on 2026-09-26. This retained snapshot's
+  // sole src importer is the retained reader, which itself has no src consumers.
+  // repo-awareness-snapshot.test.ts guards that non-runtime import boundary by
+  // scanning source files on disk, including files not yet tracked by Git.
   "data/repo-awareness-snapshot.json",
   // Developer hub panels: reachable only from `src/app/mockups/development/**`,
   // which is already excluded and 404s in production.
@@ -552,6 +555,7 @@ const ingestionSastPatterns = [
   ".github/workflows/ci.yml",
   "scripts/ci-change-scope.mjs",
   "worker",
+  "src/lib/publication",
   /^src\/lib\/ingestion[^/]*\.ts$/,
   "src/lib/extractors",
   "src/app/api/ingestion",
@@ -575,6 +579,7 @@ const containerPatterns = [
   "railway.worker.json",
   "tests/stubs/server-only.ts",
   /^worker\/.+/,
+  /^src\/lib\/publication\/.+/,
   "worker/python/requirements.in",
   "worker/python/requirements.txt",
   // These inputs are copied into the isolated Docling venv/model layer of
@@ -1150,6 +1155,26 @@ function assertCoreStaticAndUiScopes() {
     coverage_changed: true,
     build_changed: true,
   });
+  for (const [oldPath, sharedPath] of [
+    ["worker/published-admin-source-layout.ts", "src/lib/publication/published-admin-layout.ts"],
+    ["worker/published-admin-source-layout-contract.ts", "src/lib/publication/published-admin-layout-contract.ts"],
+    ["worker/original-witness-readback.ts", "src/lib/publication/original-witness-readback.ts"],
+  ]) {
+    const previous = classify([oldPath], { readLedger: emptyLedger });
+    // Browser lanes follow the actual browser import closure, which reaches the shared
+    // src/lib copy but not the worker path. Those lanes may only widen, never narrow.
+    const browserLanes = new Set(["ui_changed", "perf_changed", "advisory_ui_changed"]);
+    const expected = Object.fromEntries(
+      outputs.filter((output) => !browserLanes.has(output)).map((output) => [output, previous[output]]),
+    );
+    assertScope(`shared-publication-parity:${sharedPath}`, [sharedPath], expected);
+    const current = classify([sharedPath], { readLedger: emptyLedger });
+    for (const lane of browserLanes) {
+      if (previous[lane] && !current[lane]) {
+        throw new Error(`shared-publication-parity:${sharedPath}: ${lane} narrowed from ${oldPath}`);
+      }
+    }
+  }
   assertScope("worker-keeps-coverage", ["worker/index.ts"], {
     source_changed: true,
     coverage_changed: true,
@@ -1334,10 +1359,25 @@ function assertPerformanceScopeInclusions() {
   assertScope("perf-off-for-outstanding-issues-snapshot", ["data/outstanding-issues-snapshot.json"], {
     perf_changed: false,
   });
-  // The sibling developer-hub snapshot, carved out for the same reason. Pinned
-  // separately because it was the one the original carve-out missed.
+  // The retained engineering snapshot no longer feeds a browser journey. Keep
+  // source, build, coverage and safety work while excluding only UI/perf lanes.
   assertScope("perf-off-for-repo-awareness-snapshot", ["data/repo-awareness-snapshot.json"], {
+    docs_only: false,
+    docs_changed: false,
+    source_changed: true,
+    static_heavy_changed: true,
+    coverage_changed: true,
+    build_changed: true,
+    ui_changed: false,
     perf_changed: false,
+  });
+  assertScope("other-engineering-snapshots-keep-ui", ["data/outstanding-issues-snapshot.json"], {
+    ui_changed: true,
+    perf_changed: false,
+  });
+  assertScope("hazard-snapshot-keeps-browser-scopes", ["data/hazard-register-snapshot.json"], {
+    ui_changed: true,
+    perf_changed: true,
   });
   assertScope("perf-on-for-build-config", ["next.config.ts", "postcss.config.mjs", "tsconfig.json"], {
     perf_changed: true,

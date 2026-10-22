@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 const router = vi.hoisted(() => ({ refresh: vi.fn() }));
@@ -243,7 +243,9 @@ describe("Today", () => {
             })
           : null,
     );
-    render(<TeachingToday demoMode={false} />);
+    await act(async () => {
+      render(<TeachingToday demoMode={false} />);
+    });
     const hero = await screen.findByTestId("teaching-hero");
     // Work-mode redesign, owner request 6 Oct 2026: the hero's meta line is the time, place and
     // service, and when check-in opens is its own note under it.

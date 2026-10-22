@@ -66,6 +66,45 @@ since, so re-measure before relying on this figure). Note the chain has known fi
 vs schema.sql (buckets, two triggers, a handful of indexes — item 10 in
 [database-drift-detection.md](database-drift-detection.md#reconciliation-backlog)).
 
+## Application identity on a restored target
+
+Procedure clarification: 2026-10-21, checked against `src/lib/supabase/project.ts`;
+not a new restore rehearsal. CLI linkage, application environment selection and
+deployed browser configuration are independent. A successful schema restore does
+not make a replacement project an accepted application target.
+
+- **Same-project restore:** confirm the URL/ref/name still identify production
+  `PsychSift Production` (`sjrfecxgysukkwxsowpy`) and use only that project's valid
+  credentials. Revalidate configuration and runtime before admitting traffic.
+- **Isolated nonproduction rehearsal:** use the existing supported staging declaration
+  in a separate checkout/process with no inherited production keys or environment files.
+  Set `NEXT_PUBLIC_SUPABASE_URL=https://<rehearsal-ref>.supabase.co`,
+  `SUPABASE_PROJECT_REF=<rehearsal-ref>`, `SUPABASE_PROJECT_NAME=<rehearsal-name>`,
+  **both** `SUPABASE_STAGING_PROJECT_REF=<rehearsal-ref>` and
+  `SUPABASE_STAGING_PROJECT_NAME=<rehearsal-name>`, and matching target-only keys.
+  The ref must be a valid 20-character ref distinct from production and every stale
+  ref. Start with synthetic fixtures, no workers/OpenAI key and `RAG_PROVIDER_MODE=offline`;
+  use only explicitly approved data/destinations for any full-data restore.
+  Follow the [staging identity procedure](launch-operator-runbook.md)
+  before any application probe or seed. Under the project's confirmation boundary,
+  run `npm run check:supabase-project` and require the exact intended ref/name plus
+  `[staging]`. `[production]` is a stop condition even if the checker exits successfully.
+  Confirm key provenance separately; this local checker never contacts Supabase.
+- **Real production replacement with a different ref:** the current application guard
+  deliberately rejects an undeclared replacement. Stop production cutover until the
+  owner approves the exact production-identity transition and its separate reviewed
+  configuration/code, migration/deployment and data-access consequences. Staging
+  acceptance is rehearsal evidence, not permission to relabel a replacement as production.
+  Do not bypass the guard or casually edit the production constant to make acceptance pass.
+  Rebuild the app with the approved new public URL/key (they are inlined into the browser
+  bundle), update server/worker consumers through the approved secret route, then verify
+  both configured identity and actual deployed identity before traffic is admitted.
+
+All provider-backed restore checks and retrieval evaluation retain explicit target,
+provider and per-run spend approval. Local identity acceptance/rejection tests prove
+only configuration handling; they do not prove restored data, auth, storage, retrieval
+quality, queue recovery or a production cutover.
+
 ## Retrieval verification on the restored copy (rehearsed 2026-07-07)
 
 ### Site-content releases
@@ -86,9 +125,12 @@ Public registry site content is restored as immutable `site_content_releases` an
 4. **Golden retrieval eval (`npm run eval:retrieval:quality`) cannot run
    against a schema-only restore** — it needs the real ~2,065-document corpus
    plus `OPENAI_API_KEY` and service-role env. After a _data_ restore, point
-   `.env.local` at the restored project (update `NEXT_PUBLIC_SUPABASE_URL`,
-   `SUPABASE_PROJECT_REF`, keys), run `npm run check:supabase-project`, then
-   `npm run eval:retrieval:quality` and require the current golden set to pass
+   an isolated application process at the restored project using the complete
+   [identity procedure above](#application-identity-on-a-restored-target), including
+   explicit staging declarations for a different-ref rehearsal. Require the intended
+   checker environment/ref/name before any provider-backed acceptance. After separate
+   approval for the exact restored data target, OpenAI evaluation workload and hard
+   spend cap, run `npm run eval:retrieval:quality` and require the current golden set to pass
    (**36/36** as of 2026-07; see the PR template and
    `docs/rag-behaviour/safeguards.md`) before serving traffic. This is the
    acceptance test for a real recovery.
@@ -160,6 +202,9 @@ A schema restore is not operationally complete until all five environment-owned 
    - Re-enter auth provider configuration (magic link, Google/Apple/Microsoft SSO redirect URLs, rotating secrets), connection-pool settings (percentage-mode pool setting at `20–25%` of compute-managed `max_connections` rather than pinning at 10 connections; see `docs/auth-connection-cap-runbook.md`), per-project API keys (`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY` — note that `Dockerfile` bakes `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` into the client bundle at image build time, so rotating it requires a Railway image rebuild, not just a restart), and `E2E_USER_*` test credentials.
    - Sanity check: Run `npm run check:env-parity` and names-only checks to verify all consuming environments have valid references without logging secrets.
 6. **System health verification:**
+   - Establish and verify the intended [application target identity](#application-identity-on-a-restored-target)
+     before application checks. Each command below contacts the selected provider;
+     retrieval evaluation also invokes OpenAI and requires its specific bounded spend approval.
    - Run `SELECT (public.search_schema_health())->>'ok';` (must return `true` with `missing: []`).
    - Run `npm run check:indexing` to confirm required retrieval and operational indexes are valid.
    - Run `npm run check:drift` to confirm schema parity with the canonical drift manifest.

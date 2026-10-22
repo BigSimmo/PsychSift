@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -98,6 +98,9 @@ describe("Service handbook lifecycle isolation", () => {
     render(<ServicePage initialServiceId={serviceId} initialSiteId={siteId} />);
     const navigation = await screen.findByRole("navigation", { name: "Service handbook sections" });
     await user.click(within(navigation).getByRole("button", { name: "Members" }));
+    await act(async () => {
+      await vi.dynamicImportSettled();
+    });
     expect(await screen.findByRole("button", { name: "Create invitation" })).toBeDisabled();
     await user.type(screen.getByLabelText(/Invitee's email/), "dr.ivy@example.org");
     await user.click(screen.getByRole("button", { name: "Create invitation" }));

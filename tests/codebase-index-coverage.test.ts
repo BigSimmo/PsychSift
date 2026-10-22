@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { coverageGaps, schemaTableGaps, trackedRootDirectoryNames } from "../scripts/check-codebase-index-coverage.mjs";
+import {
+  coverageGaps,
+  implementedApiRouteGaps,
+  schemaTableGaps,
+  trackedRootDirectoryNames,
+} from "../scripts/check-codebase-index-coverage.mjs";
 
 const index = `
 ## Top-level layout
@@ -97,5 +102,75 @@ describe("coverageGaps", () => {
       missing: ["rag_queries"],
       stale: ["document_chunks"],
     });
+  });
+});
+
+function apiTable(endpoints: string[]) {
+  return `
+### API routes (\`src/app/api/\`)
+
+| Area | Implemented endpoints |
+| --- | --- |
+| Example | ${endpoints.map((endpoint) => `\`${endpoint}\``).join(", ")} |
+
+## \`src/lib/\` module map
+`;
+}
+
+describe("implementedApiRouteGaps", () => {
+  it("accepts nested and dynamic endpoints with exact local route handlers", () => {
+    expect(
+      implementedApiRouteGaps(
+        apiTable(["/api/answer", "/api/documents/bulk/reindex", "/api/cme/entries/[id]/evidence/[evidenceId]"]),
+        [
+          "src/app/api/answer/route.ts",
+          "src/app/api/documents/bulk/reindex/route.ts",
+          "src\\app\\api\\cme\\entries\\[id]\\evidence\\[evidenceId]\\route.ts",
+        ],
+      ),
+    ).toEqual([]);
+  });
+
+  it("drops route-group segments when mapping handlers to endpoints", () => {
+    expect(implementedApiRouteGaps(apiTable(["/api/answer"]), ["src/app/api/(internal)/answer/route.ts"])).toEqual([]);
+  });
+
+  it("rejects an invented endpoint even when its API family exists", () => {
+    expect(
+      implementedApiRouteGaps(
+        apiTable(["/api/documents", "/api/documents/[id]/summary", "/api/documents/[id]/summary"]),
+        ["src/app/api/documents/route.ts", "src/app/api/documents/[id]/summarize/route.ts"],
+      ),
+    ).toEqual(["/api/documents/[id]/summary"]);
+  });
+
+  it("preserves case when matching dynamic route segment names", () => {
+    expect(
+      implementedApiRouteGaps(apiTable(["/api/images/[imageid]"]), ["src/app/api/images/[imageId]/route.ts"]),
+    ).toEqual(["/api/images/[imageid]"]);
+  });
+
+  it("skips placeholders, wildcard and query/hash examples", () => {
+    expect(
+      implementedApiRouteGaps(
+        apiTable([
+          "/api/calendar/feed/<token>.ics",
+          "/api/documents/{id}",
+          "/api/documents/*",
+          "/api/search?q=example",
+          "/api/documents#example",
+        ]),
+        [],
+      ),
+    ).toEqual([]);
+  });
+
+  it("limits implementation claims to table rows inside the API section", () => {
+    const examples = `
+| Cookie example outside the API section | \`/api/cookie/path\` |
+${apiTable(["/api/answer"]).replace("| Area |", "Example: `/api/proposed/example`.\n\n| Area |")}
+| Source note in the module section | \`/api/not-an-endpoint\` |
+`;
+    expect(implementedApiRouteGaps(examples, ["src/app/api/answer/route.ts"])).toEqual([]);
   });
 });

@@ -1,5 +1,18 @@
 # CME Mode — Phase 1 Implementation Plan
 
+**Status:** maintained implementation reference; original task checkboxes are not a live queue.
+
+_Updated 2026-10-21 — added lifecycle routing and replaced retired clock example; Documentation owns._
+
+The core workflow exists in [the current CME source](../../../src/lib/cme/) and
+[phone journey](../../../tests/ui-cme-phone.spec.ts). Read the
+[current design decisions](../../cme/design/cme-design-decisions.md), including the
+23 September owner decisions, before using the original tasks below. Those decisions
+supersede earlier capture, peer-review and year-finalisation proposals. Use
+[task lifecycle and receipt handoff](../../task-receipts.md) for current ownership,
+residual scope and acceptance. Source existence does not establish that every planned
+capability is complete, migrations were applied, or the app was deployed.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add an eighteenth app mode, `cme`, giving one Australian-registered doctor a phone-first place to record continuing professional development, see whether they are on pace, and prove it — built to the Medical Board's national requirement with an optional college overlay.
@@ -1935,7 +1948,12 @@ git commit -m "test(cme): hold the design record's absolutes as a contract"
 
 - [ ] **Step 3: Write the phone journey with the clock frozen**
 
-The dashboard prints "103 days left" and projects to 31 December. Both move every night, so an unfrozen clock re-baselines this screen daily and makes the gate worthless. The repo already has the pattern at `tests/ui-ward-roles.spec.ts:78`.
+The original dashboard example prints "103 days left" and projects to 31 December. Keep
+time deterministic for those assertions. The living example is
+[tests/ui-cme-phone.spec.ts](../../../tests/ui-cme-phone.spec.ts): its `beforeEach` uses
+`page.clock.setFixedTime(FROZEN)` to pin `new Date()` while preserving animation frames.
+The current demo routes also pass `DEMO_CME_INSTANT`; the test freeze protects against
+future live-clock drift. Use that current example rather than copying the older sketch below.
 
 ```ts
 // tests/ui-cme-phone.spec.ts

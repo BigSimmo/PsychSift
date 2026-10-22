@@ -14,6 +14,7 @@ export const RULE_CONSISTENCY_FILES = Object.freeze([
   ".claude/agents/ingestion-worker-reviewer.md",
   ".claude/skills/gates/SKILL.md",
   ".cursor/skills/release-readiness-review/SKILL.md",
+  "plugins/clinical-kb/skills/clinical-kb-workflow/SKILL.md",
   ".claude/hooks/pr-handoff-stop.sh",
   ".claude/skills/prompt/SKILL.md",
   ".claude/cloud-profile/skills/prompt/SKILL.md",
@@ -96,6 +97,7 @@ export function findRuleConsistencyProblems(files) {
     "CLAUDE.md",
     ".claude/agents/verification-router.md",
     ".cursor/skills/release-readiness-review/SKILL.md",
+    "plugins/clinical-kb/skills/clinical-kb-workflow/SKILL.md",
   ]) {
     requireText(
       file,

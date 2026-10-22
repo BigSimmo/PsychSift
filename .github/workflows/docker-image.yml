@@ -46,6 +46,7 @@ on:
       - "tests/container-ci-contract.test.ts"
       - "tests/deploy-migration-gate.test.ts"
       - "worker/**"
+      - "src/lib/publication/**"
       - "eval/docling/requirements.txt"
       - "eval/docling/verify-model-artifacts.mjs"
       - "eval/docling/model-artifacts.json"

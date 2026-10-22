@@ -1,6 +1,18 @@
 # Design-system live convergence programme
 
-**Status:** execution-ready plan
+**Status:** historical programme plan, superseded as an execution queue.
+
+_Updated 2026-10-21 — separated original plan from current debt and acceptance; Documentation owns._
+
+> Use the [current design-system front door](../design-system/README.md) and
+> [task lifecycle](../task-receipts.md) to scope new work. The
+> [committed baseline](../../scripts/design-system-contract-baseline.json) records current
+> debt; it differs from the starting counts below and still contains nonzero metrics.
+> [GATES](../design-system/GATES.md) and [ADOPTION](../design-system/ADOPTION.md) govern
+> enforcement and visual-proof disposition. Human-approved visual baselines, hosted
+> provenance and local/device acceptance require their own evidence; this plan does not
+> establish those outcomes. Its original six-PR sequence and counts are retained as history,
+> not instructions to restart those tranches or a claim that every acceptance item is complete.
 
 **Prepared:** 22 August 2026
 

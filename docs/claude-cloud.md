@@ -17,6 +17,11 @@ It bootstraps Node/dependencies through `.claude/hooks/session-start.sh`, then r
 freshness, issues, testing-policy and organisation context in order and emits one SessionStart
 context envelope. Hook registration order is not used as a scheduling guarantee.
 
+The base-freshness child uses cached Git refs (`BASE_FRESHNESS_NO_FETCH=1`), even if
+the parent environment requests fetching. Startup does not authorise a GitHub fetch.
+Refresh remote refs separately only with applicable provider authority; cached freshness
+is not proof of the current remote tip.
+
 Provisioning runs only when `CLAUDE_CODE_REMOTE=true`; local sessions retain the context hooks.
 Bootstrap failure skips dependent provisioning and reports the failure without failing the
 session. Readiness must be checked before relying on any affected tool. The remote marker selects

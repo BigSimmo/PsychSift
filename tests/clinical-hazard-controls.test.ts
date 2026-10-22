@@ -513,6 +513,14 @@ describe("clinical hazard review dates: expiry and pull-request scope", () => {
       );
     });
 
+    it.skipIf(!checkGit)("ignores explicit development scope under --release at the CLI boundary", () => {
+      const result = run({}, AFTER_EVERY_EXPIRY, ["--development", "--base", manifest.reviewedCommit, "--release"]);
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain("CLINICAL_HAZARD_CONTROLS_FAIL review-dates=strict");
+      expect(result.stderr).toContain("- manifest: review has expired\n");
+      expect(result.stderr).not.toContain("REVIEW_DATE_WARNING");
+    });
+
     it.skipIf(!checkGit)("refuses pull-request mode on a non-main push, or without a base, and stays strict", () => {
       for (const env of [
         { ...PR_ENV, GITHUB_EVENT_NAME: "push", GITHUB_REF: "refs/heads/topic" },

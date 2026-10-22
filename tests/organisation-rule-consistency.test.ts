@@ -27,6 +27,14 @@ describe("active client rule consistency", () => {
     expect(findRuleConsistencyProblems(sources)).toEqual([]);
   });
 
+  it("includes the supported project plugin in routine-versus-release routing checks", () => {
+    const file = "plugins/clinical-kb/skills/clinical-kb-workflow/SKILL.md";
+    expect(sources[file]).toBeDefined();
+    expect(rulesFor({ ...sources, [file]: "Run npm run check:production-readiness for every local edit." })).toContain(
+      "routine-readiness",
+    );
+  });
+
   it.each(["CLAUDE.md", ".claude/agents/verification-router.md", ".cursor/skills/release-readiness-review/SKILL.md"])(
     "rejects regression from structural readiness to release-only routing in %s",
     (file) => {

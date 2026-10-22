@@ -12,7 +12,9 @@
 // the change touches the register file itself or a path the expired entry covers; then it still
 // blocks. Nothing else moves: a date in the future, the 45-day drift-exception cap and every
 // non-date check block exactly as before, and every other context (local runs, pushes to other
-// branches, manual runs, release gates) stays strict. Lapsed dates are raised instead by the weekly
+// branches, manual runs, release gates) stays strict by default. Explicit local --development
+// scope below extends the same change-aware rule to working files, never to a release.
+// Lapsed dates are raised instead by the weekly
 // review-date report (scripts/organisation/weekly/review-dates.mjs) and by release gates.
 //
 // FAIL CLOSED. Anything short of a clean, explicit request resolves to strict: the variable unset
@@ -20,6 +22,7 @@
 // malformed or unreachable base, or any git error. Strict is the behaviour before this change, so
 // a failure here can never make a check weaker than it was.
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 
 export const REVIEW_DATE_MODE_ENV = "REVIEW_DATE_MODE";
@@ -32,10 +35,11 @@ const OFFLINE_GIT_ENV = { GIT_NO_LAZY_FETCH: "1", GIT_TERMINAL_PROMPT: "0" };
 
 export const NOT_BLOCKING_NOTE =
   "Not blocking this change, which edits neither this entry in the register nor a path this entry covers. It still " +
-  "blocks in local runs, on other branches and in release checks, and the weekly review-date report lists it.";
+  "blocks in default local and release checks, and the weekly review-date report lists it. " +
+  "Development scope is not release approval.";
 
 /**
- * @typedef {{ mode: "strict" | "pr", touched: string[] | null, base: string | null, head: string | null,
+ * @typedef {{ mode: "strict" | "pr" | "development", touched: string[] | null, base: string | null, head: string | null,
  *   mergeBase?: string | null, read?: (revision: string, file: string) => string | null,
  *   notes: string[] }} ReviewDateScope
  */
@@ -139,6 +143,53 @@ export function resolveReviewDateScope({
 }
 
 /**
+ * Explicit local development scope. No GitHub-event impersonation and no network calls.
+ * Include committed, staged, unstaged and untracked inputs; compare register entries with
+ * their actual working copies. Any missing provenance falls back to the existing strict gate.
+ * Release always wins, including when both flags are supplied.
+ * @param {{ argv?: string[], env?: Record<string, string | undefined>, root: string }} options
+ * @returns {ReviewDateScope}
+ */
+export function resolveGovernanceReviewDateScope({ argv = [], env = process.env, root }) {
+  if (argv.includes("--release")) return resolveReviewDateScope({ env: {}, root });
+  if (!argv.includes("--development")) return resolveReviewDateScope({ env, root });
+  const refuse = (reason) => strict(`Development scope refused (${reason}); expired review dates block as usual.`);
+  if (env.CI || env.GITHUB_ACTIONS || env.GITHUB_EVENT_NAME) return refuse("development scope is local only");
+  const baseIndex = argv.indexOf("--base");
+  const requestedBase = baseIndex >= 0 ? argv[baseIndex + 1] : "";
+  if (!requestedBase || !/^[0-9a-f]{40}$/.test(requestedBase))
+    return refuse("--base must name an explicit full local commit SHA");
+  const branch = git(root, ["symbolic-ref", "--quiet", "--short", "HEAD"])?.trim();
+  if (!branch || branch === "main" || branch.startsWith("release/"))
+    return refuse("a checked-out development branch is required");
+  const head = git(root, ["rev-parse", "--verify", "HEAD^{commit}"])?.trim();
+  if (!head) return refuse("HEAD cannot be resolved");
+  const listed = gitTouchedFiles(root, requestedBase, head);
+  const staged = git(root, ["diff", "--cached", "--no-renames", "--name-only", "-z", "HEAD"]);
+  const unstaged = git(root, ["diff", "--no-renames", "--name-only", "-z"]);
+  const untracked = git(root, ["ls-files", "--others", "--exclude-standard", "-z"]);
+  if (!listed.ok || staged === null || unstaged === null || untracked === null)
+    return refuse("the complete committed and working change cannot be read");
+  return {
+    mode: "development",
+    touched: [...new Set([...listed.files, ...`${staged}${unstaged}${untracked}`.split("\0").filter(Boolean)])].sort(),
+    base: requestedBase,
+    head: "WORKTREE",
+    mergeBase: listed.mergeBase,
+    read: (revision, file) => {
+      if (revision === "INDEX") return git(root, ["show", `:${file}`]);
+      if (revision !== "WORKTREE") return git(root, ["show", `${revision}:${file}`]);
+      try {
+        return readFileSync(path.join(root, file), "utf8");
+      } catch {
+        return null;
+      }
+    },
+    notes: [`Local development only; base=${requestedBase} head=${head}. Release requirements remain outstanding.`],
+  };
+}
+
+/**
  * A register path reference in canonical form, without its `#anchor`: POSIX-normalised, with a
  * leading "./" and any trailing "/" removed, so "./src/a.ts", "src//a.ts" and "src/lib/" compare
  * with the paths git lists. Null when it is not a usable string or names the repository root.
@@ -174,7 +225,11 @@ function entryChange(scope, registerPath, select) {
       if (typeof text !== "string") throw new Error(`no ${registerPath} at ${revision}`);
       return JSON.stringify(select(JSON.parse(text.replace(/^\uFEFF/, ""))) ?? null);
     };
-    return at(scope.mergeBase) === at(scope.head ?? "HEAD") ? "unchanged" : "edited";
+    const baseline = at(scope.mergeBase);
+    if (baseline !== at(scope.head ?? "HEAD")) return "edited";
+    // A staged register edit can differ even after the working file is restored.
+    if (scope.mode === "development" && baseline !== at("INDEX")) return "edited";
+    return "unchanged";
   } catch {
     return "unknown";
   }
@@ -193,7 +248,8 @@ function entryChange(scope, registerPath, select) {
  */
 export function expiredReviewDateDisposition(scope, { registerPath, coveredPaths = [], select }) {
   // Anything that is not a well-formed pr scope is strict: never weaker than before.
-  if (!scope || scope.mode !== "pr" || !Array.isArray(scope.touched)) return { blocking: true, because: null };
+  if (!scope || !["pr", "development"].includes(scope.mode) || !Array.isArray(scope.touched))
+    return { blocking: true, because: null };
   const touched = new Set(scope.touched);
   if (touched.has(registerPath)) {
     const change = entryChange(scope, registerPath, select);
@@ -237,6 +293,8 @@ export function registerTopLevel(register) {
 /** One-line description of the scope for a check's PASS line and log. */
 export function describeReviewDateScope(scope) {
   if (scope?.mode === "pr" && Array.isArray(scope.touched)) return `review-dates=pr touched=${scope.touched.length}`;
+  if (scope?.mode === "development" && Array.isArray(scope.touched))
+    return `review-dates=development touched=${scope.touched.length} release-ready=false`;
   return "review-dates=strict";
 }
 

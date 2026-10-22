@@ -19,6 +19,8 @@
 /.playwright-cli/
 /playwright/.auth/
 /.local/
+# Host-local agent runtime history, sessions and locks; never project inputs.
+/.trigger-tree/
 # Track only the secret-free project MCP template. Host-local Codex files under
 # .codex/ stay ignored. Never put OAuth tokens, bearer headers, or env secrets in
 # config.toml — credentials belong in the host credential store. CI Gitleaks and

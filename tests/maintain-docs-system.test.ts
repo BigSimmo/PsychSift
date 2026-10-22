@@ -7,6 +7,8 @@ import {
   placeUnplacedFiles,
   readOrganisationReport,
   refreshDocPins,
+  parseCliArgs,
+  runDocsMaintain,
 } from "../scripts/maintain-docs-system.mjs";
 
 describe("maintain-docs-system pipeline", () => {
@@ -25,6 +27,47 @@ describe("maintain-docs-system pipeline", () => {
         fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
       }
     }
+  });
+
+  it("forwards the explicit development base through maintenance to the actual hazard child", () => {
+    const root = makeTempFixture();
+    const base = "a".repeat(40);
+    const scripts = [
+      "check-organisation.mjs",
+      "check-codebase-index-coverage.mjs",
+      "check-docs-script-refs.mjs",
+      "check-docs-links.mjs",
+      "check-outstanding-issues-snapshot.mjs",
+      "check-clinical-hazard-controls.mjs",
+      "organisation/check-instructions.mjs",
+      "organisation/decisions.mjs",
+      "list-database-skills.mjs",
+      "generate-branch-review-index.mjs",
+    ];
+    for (const script of scripts) {
+      const file = path.join(root, "scripts", script);
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(
+        file,
+        script === "check-organisation.mjs"
+          ? "console.log(JSON.stringify({totals:{unplaced:0}}));"
+          : script === "check-clinical-hazard-controls.mjs"
+            ? 'import fs from "node:fs"; fs.writeFileSync("hazard-args.json", JSON.stringify(process.argv.slice(2)));'
+            : "// synthetic offline fixture\n",
+      );
+    }
+    const options = parseCliArgs(["node", "maintenance", "--check", "--development", "--base", base]);
+    expect(runDocsMaintain({ ...options, root })).toMatchObject({ mode: "check" });
+    expect(JSON.parse(fs.readFileSync(path.join(root, "hazard-args.json"), "utf8"))).toEqual([
+      "--development",
+      "--base",
+      base,
+    ]);
+  });
+
+  it("keeps --check when --base has no value", () => {
+    const options = parseCliArgs(["node", "maintenance", "--development", "--base", "--check"]);
+    expect(options).toMatchObject({ check: true, governanceArgs: ["--development", "--base", ""] });
   });
 
   describe("classifyRepositoryPath", () => {

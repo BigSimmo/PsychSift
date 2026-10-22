@@ -1,4 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join, relative } from "node:path";
+import ts from "typescript";
 
 import {
   assertRepoAwarenessVersion,
@@ -12,6 +15,53 @@ import {
 import { REPO_AWARENESS_SNAPSHOT_VERSION } from "@/lib/developer-area/repo-awareness-types";
 
 const NOW = new Date("2026-08-22T12:00:00.000Z");
+
+function snapshotImports(source: string): string[] {
+  return ts
+    .preProcessFile(source, true, true)
+    .importedFiles.map((entry) => entry.fileName)
+    .filter((specifier) =>
+      /(?:^|\/)repo-awareness-snapshot(?:\.(?:json|[cm]?[jt]sx?))?$/.test(
+        specifier.replaceAll("\\", "/").replace(/[?#].*$/, ""),
+      ),
+    );
+}
+
+describe("retained engineering snapshot import boundary", () => {
+  it.each([
+    'import snapshot from "../../../data/repo-awareness-snapshot.json";',
+    'export * from "@/lib/developer-area/repo-awareness-snapshot";',
+    'const reader = import("@/lib/developer-area/repo-awareness-snapshot.ts");',
+    'const snapshot = require("../../../data/repo-awareness-snapshot.json");',
+  ])("detects a runtime importer: %s", (source) => {
+    expect(snapshotImports(source)).toHaveLength(1);
+  });
+
+  it("allows only the retained reader and no src consumer of that reader, including untracked source", () => {
+    const sourceRoot = join(process.cwd(), "src");
+    // Enumerate the actual tree, never git ls-files: a newly written route or
+    // component must invalidate the fast path before it has been staged.
+    const files = readdirSync(sourceRoot, { recursive: true })
+      .map(String)
+      .map((name) => join(sourceRoot, name))
+      .filter((path) => /\.[cm]?[jt]sx?$/.test(path) && statSync(path).isFile());
+    const importers = files.flatMap((path) =>
+      snapshotImports(readFileSync(path, "utf8")).map((specifier) => ({
+        path: relative(process.cwd(), path).replaceAll("\\", "/"),
+        specifier,
+      })),
+    );
+    expect(
+      importers,
+      "Restoring a runtime reader or direct JSON import requires restoring UI/perf classification for this snapshot.",
+    ).toEqual([
+      {
+        path: "src/lib/developer-area/repo-awareness-snapshot.ts",
+        specifier: "../../../data/repo-awareness-snapshot.json",
+      },
+    ]);
+  });
+});
 
 describe("assertRepoAwarenessVersion", () => {
   it("accepts the version the committed snapshot declares", () => {

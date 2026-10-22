@@ -1,8 +1,27 @@
 # Document viewer — Phase 3 handover
 
-Execution brief for Phase 3 of `docs/plans/document-viewer-redesign-plan.md`. Phases 0–2 merged as
-PR #1741 (squash `42f87ca`); Phase 3 was never started. The viewer still rasters exactly one page at a
-time, so every page flip on a long guideline is a cold render — that is the remaining felt slowness.
+**Status:** historical pre-implementation brief, superseded for execution by the
+[programme record](document-viewer-redesign-plan.md). It records Phase 3 landed in PR #1772:
+windowed rendering, keyboard reading, rail virtualization and decode priority. Current
+[canvas source](../../src/components/document-viewer/pdf-canvas-viewer.tsx) and the
+[canvas journey](../../tests/ui-document-canvas.spec.ts) are the implementation/check entry points.
+
+_Updated 2026-10-21 — corrected lifecycle and residual-scope routing; Documentation owns._
+
+> Historically recorded follow-on scope included crop → page overlay (requires `bbox` contract
+> plumbing), signed-URL batching (`#283`), and optional Phase 4 polish/hosted visual acceptance.
+> Current visible-source images use `useBatchSignedImageUrls` and `/api/images/signed-urls`;
+> batching is implemented in source, while its live acceptance remains separately unverified.
+> OffscreenCanvas was intentionally conditional, not an accepted outstanding implementation
+> requirement. Use [task lifecycle and receipt handoff](../task-receipts.md) to establish
+> current ownership and scope; the original tasks and verification claims below describe
+> their historical baseline, not fresh execution authority or runtime proof.
+
+## Original execution brief
+
+This brief was prepared after Phases 0–2 (PR #1741, squash `42f87ca`), before Phase 3.
+Its starting baseline rastered one page at a time; that baseline is superseded by the
+landed windowed viewer. Preserve the original task detail below for rationale.
 
 **Scope:** every Phase 3 capability **except crop → page overlay**. Crop overlay is deliberately out —
 `bbox` is SELECTed at `src/lib/document-detail.ts:441` but absent from `DocumentDetailImage` in

@@ -27,6 +27,26 @@ Worth a line for clinical, data, auth/privacy, migration, dependency, or deploym
 - Rollback:
 - Provider or production effects: None / describe the explicitly authorized effect
 
+## Clinical Governance Preflight
+
+For ingestion, answers, retrieval/ranking, sources, document access, privacy, production
+environment behavior or clinical output, record the applicable evidence here. This metadata
+is advisory in `pr-policy`; it does not replace clinical-owner sign-off, provider/spend
+approval, live canary requirements or other fail-closed gates. Leave unverified items
+unchecked and explain the gap. See [clinical governance](../docs/clinical-governance.md#pull-request-preflight).
+
+- [ ] Source-backed claims still require linked source verification before clinical use
+- [ ] No patient-identifiable document workflow was introduced or expanded without explicit governance approval
+- [ ] Supabase target remains `PsychSift Production` (`sjrfecxgysukkwxsowpy`)
+- [ ] Service-role keys and private document access remain server-only
+- [ ] Demo/synthetic content remains clearly separated from real clinical sources
+- [ ] Source metadata, review status, and outdated/unknown-source behavior remain conservative
+- [ ] Deployment classification/TGA SaMD impact was checked when clinical decision-support behavior changed
+
+Evidence / not applicable / unresolved:
+
+-
+
 <!--
 Provider-backed evals are owner-run and never automatic:
   `npm run eval:retrieval:quality` (must stay 36/36) — retrieval, ranking, selection, chunking

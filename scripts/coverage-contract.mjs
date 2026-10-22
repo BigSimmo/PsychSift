@@ -1,6 +1,6 @@
 /** Shared coverage inventory contract for Vitest and the post-run LCOV guard. */
 export const COVERAGE_INCLUDE_GLOBS = Object.freeze([
-  "src/**/*.{ts,tsx}",
+  "src/**/*.{ts,tsx,js}",
   "scripts/**/*.{ts,mjs,cjs}",
   "worker/**/*.ts",
   "supabase/functions/**/*.ts",

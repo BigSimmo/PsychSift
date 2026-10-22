@@ -1,6 +1,6 @@
 # PsychSift Documentation Index
 
-_Updated 2026-10-08 — catalogue Context7 and CME guides; clarify issue authority; Documentation owns._
+_Updated 2026-10-21 — task-first navigation, authority routing and plan lifecycle corrections; Documentation owns._
 
 Categorised map of every tracked Markdown document under `docs/`: the load-bearing docs lead
 each category, and an "Also catalogued" list completes it (the archived
@@ -21,21 +21,27 @@ npm run docs:check-links
 
 Choose the task and the kind of evidence before following an instruction:
 
-| Need                                 | Entry point                                                            | Read it as                                                                       |
-| ------------------------------------ | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| PsychSift development                | [Repository README](../README.md), [codebase index](codebase-index.md) | Setup and architecture, subject to the current manifests and provider boundaries |
-| Agent instructions or platform setup | [Task navigator](agents-guide.md), [AGENTS.md](../AGENTS.md)           | Find the applicable rule; do not run every referenced workflow                   |
-| Current work or acceptance           | The existing task checkpoint                                           | Check its identity, scope and evidence before relying on its status              |
-| A past decision or incident          | The historical records below                                           | Evidence of what happened then, not a current completion or deployment claim     |
+| Need                                   | Entry point                                                                                                        | Read it as                                                                                      |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| PsychSift development                  | [Repository README](../README.md), [codebase index](codebase-index.md)                                             | Setup and architecture, subject to the current manifests and provider boundaries                |
+| Agent instructions or platform setup   | [Task navigator](agents-guide.md), [AGENTS.md](../AGENTS.md)                                                       | Find the applicable rule; do not run every referenced workflow                                  |
+| Current work or acceptance             | [Task lifecycle and receipt handoff](task-receipts.md)                                                             | Canonical ownership and lifecycle; checkpoints/receipts supply evidence pending reconciliation  |
+| Change a screen or design primitive    | [Design-system front door](design-system/README.md), [wiring conventions](wiring-conventions.md)                   | Token/test authority, interaction contracts and the applicable verification route               |
+| Ingestion or retrieval work            | [Ingestion state machine](ingestion-state-machine.md), [RAG safeguards](rag-behaviour/README.md)                   | Worker/index lifecycle, protected surfaces and required evidence; provider runs need approval   |
+| Privacy, clinical safety or release    | [Clinical governance](clinical-governance.md), [production readiness](production-readiness.md)                     | Domain approvals and release limits; written guidance is not live acceptance                    |
+| Operate or investigate an incident     | [Deployment architecture](deployment-architecture.md), [incident runbooks](governance-incident-runbooks.md)        | Verify target identity and authority before provider actions                                    |
+| Find an issue or historical outcome    | [Issues inbox](outstanding-issues-inbox/README.md), [issue history](outstanding-issues.md)                         | Immutable requests and repository issue evidence; lifecycle authority stays in task-receipts.md |
+| Place a file or maintain documentation | [Organisation map](organisation/README.md), [documentation system](DOCS-SYSTEM.md), [script map](scripts-index.md) | Ownership, generators and focused maintenance checks                                            |
+| A past decision or incident            | The historical records below                                                                                       | Evidence of what happened then, not a current completion or deployment claim                    |
 
 ## Documentation ownership and maintenance
 
-| Document type                                  | How to maintain it                                                                                                                  | What its presence proves                                                              |
-| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| Maintained guide or runbook                    | Correct the relevant source and necessary references when behaviour changes. Check commands against the current script definitions. | Instructions exist; current execution and access still need evidence.                 |
-| Generated index or snapshot                    | Use its named generator and inspect the resulting diff. Do not hand-edit generated facts or run unrelated generators.               | The recorded inventory or snapshot, within its declared scope and capture conditions. |
-| Task checkpoint                                | Keep one current record per task with ownership, scope, decisions, evidence, blockers and next action. Preserve concurrent work.    | Reported task status, which must be reconciled with the actual working state.         |
-| Historical report, lesson or immutable receipt | Preserve the original record; add a dated correction or superseding reference through the appropriate workflow.                     | Historical evidence, including its original failures and limitations.                 |
+| Document type                                  | How to maintain it                                                                                                                  | What its presence proves                                                                   |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Maintained guide or runbook                    | Correct the relevant source and necessary references when behaviour changes. Check commands against the current script definitions. | Instructions exist; current execution and access still need evidence.                      |
+| Generated index or snapshot                    | Use its named generator and inspect the resulting diff. Do not hand-edit generated facts or run unrelated generators.               | The recorded inventory or snapshot, within its declared scope and capture conditions.      |
+| Task checkpoint / receipt                      | Follow [task-receipts.md](task-receipts.md); retain one task identity and hand evidence to its canonical owner.                     | Local evidence and reconciliation handoff; export does not prove canonical reconciliation. |
+| Historical report, lesson or immutable receipt | Preserve the original record; add a dated correction or superseding reference through the appropriate workflow.                     | Historical evidence, including its original failures and limitations.                      |
 
 Use `npm run docs:check-links` for maintained-document references and
 `npm run docs:check-scripts` for npm script references. These are static checks;
@@ -293,6 +299,7 @@ Every remaining tracked document in this category (process, plus the `agents/` r
 - [Local implementation results](audit/2026-10-17-full-deep-remediation-results.md) — issue disposition, verification limits and operator handoff.
 - [Clinical release handoff](governance/clinical-release-remediation-handoff-2026-10-17.md) — genuine outstanding privacy and clinical evidence.
 - [Physiological calculator hold](governance/physiological-calculator-hold-2026-10-17.md) — containment pending sourced clinical review.
+- [Development governance scope](governance/development-governance-scope.md) — local development and draft-review profile for the governance checks; release checks unchanged.
 - [Cache freshness](rag-behaviour/cache-freshness.md) — durable revision fences and mixed-deployment limits.
 
 ## Plans and workstreams (living)
@@ -332,7 +339,7 @@ Every remaining tracked document in this category, one line each; the descriptio
 - [prompts/sources-mode-extraction.md](prompts/sources-mode-extraction.md) — Sources mode extraction prompt
 - [superpowers/plans/2026-09-04-on-call-mode.md](superpowers/plans/2026-09-04-on-call-mode.md) — On Call mode implementation plan
 - [superpowers/plans/2026-09-27-on-call-completion.md](superpowers/plans/2026-09-27-on-call-completion.md) — On Call plan to complete the health-service rebuild (after #3110)
-- [superpowers/plans/2026-09-20-cme-mode-phase-1.md](superpowers/plans/2026-09-20-cme-mode-phase-1.md) — CPD mode (mode id `cme`) phase 1 implementation plan
+- [superpowers/plans/2026-09-20-cme-mode-phase-1.md](superpowers/plans/2026-09-20-cme-mode-phase-1.md) — maintained CPD Phase 1 implementation reference; current source/test links and lifecycle notice at destination
 - [superpowers/plans/2026-09-25-wa-psychiatry-build.md](superpowers/plans/2026-09-25-wa-psychiatry-build.md) — WA Psychiatry build: fast-lane implementation plan (v2)
 - [superpowers/plans/2026-09-27-roster-mode-overview.md](superpowers/plans/2026-09-27-roster-mode-overview.md) — Roster mode build overview: steps, default decisions, Josh-only actions
 - [superpowers/plans/2026-09-27-roster-mode-plan-a-database.md](superpowers/plans/2026-09-27-roster-mode-plan-a-database.md) — Roster mode plan A: the combined database change (PR #3117)
@@ -545,9 +552,9 @@ Every remaining tracked document in this category (dated records and the `eviden
 - [answer-page-redesign-handover.md](answer-page-redesign-handover.md) — Build-and-merge handover for the chosen answer-page design (completed)
 - [ledger-id-scheme-proposal.md](ledger-id-scheme-proposal.md) — Design for collision-free outstanding-issue ids (`#168`, implemented via ULIDs)
 - [framework-dependency-modernization-checklist.md](framework-dependency-modernization-checklist.md) — Ordered Next.js 16, runtime, dependency, Turbopack, and verification migration program (completed)
-- [plans/design-system-live-convergence-plan.md](plans/design-system-live-convergence-plan.md) — Design-system live convergence programme (completed plan)
-- [plans/document-viewer-phase2-unified-chrome.md](plans/document-viewer-phase2-unified-chrome.md) — Phase 2 — Unified viewing chrome (PDF + photo) plan (completed)
-- [plans/document-viewer-phase3-handover.md](plans/document-viewer-phase3-handover.md) — Document viewer — Phase 3 handover (completed)
+- [plans/design-system-live-convergence-plan.md](plans/design-system-live-convergence-plan.md) — historical convergence plan; current debt and visual-acceptance residuals route from its status notice
+- [plans/document-viewer-phase2-unified-chrome.md](plans/document-viewer-phase2-unified-chrome.md) — historical Phase 2 plan; programme records implementation landed, with follow-on scope at destination
+- [plans/document-viewer-phase3-handover.md](plans/document-viewer-phase3-handover.md) — historical Phase 3 brief; landed work and deferred crop/batch/polish scope at destination
 - [audit/codescene-non-rag-remediation-2026-10-09.md](audit/codescene-non-rag-remediation-2026-10-09.md) — CodeScene maintainability remediation: non-RAG phase (2026-10-09)
 - [audit/full-repository-adversarial-audit-2026-10-09.md](audit/full-repository-adversarial-audit-2026-10-09.md) — Comprehensive repository-wide adversarial audit & reconciliation report (2026-10-09)
 - [audit/psychsift-ux-behavioral-audit-report-2026-10.md](audit/psychsift-ux-behavioral-audit-report-2026-10.md) — PsychSift comprehensive app behavior, UX & clinical ergonomics audit report (2026-10)

@@ -19,7 +19,12 @@ host-agnostic. Railway has no Sydney region (closest Singapore); data at rest st
 so this creates both a latency/SLO tradeoff and overseas processing that must be covered by the approved
 privacy/processor record. Confirm answer-p95 in the staging soak (step 4).
 
-Legend: **⏸ PAUSE** = provider action, needs your approval · **✅ verify** = check to run after.
+Legend: **⏸ PAUSE** = provider action, needs your approval · **✅ verify** = acceptance evidence,
+not permission to execute. Read-only provider access still needs confirmation. Before each billable
+run, agree its exact target, workload/calls/runtime, total estimate, retries and enforceable hard cap
+under the applicable owner spending rule and [provider boundary](../AGENTS.md#api-and-provider-confirmation-boundary).
+The provider gate applies to every executable step below, including verification and diagnostics;
+this runbook grants no migration, configuration, deployment or spending authority.
 
 ---
 
@@ -40,16 +45,33 @@ Legend: **⏸ PAUSE** = provider action, needs your approval · **✅ verify** =
 
 ---
 
-## 0. Pre-flight (read-only)
+## 0. Pre-flight (local inspection, then approved provider reads)
 
 ```bash
 node -v                              # must report >= 24.15.0 < 25 (Node 24 engine floor)
 npm -v                               # must report >= 11.0.0 < 12 (npm 11)
 npm run check:runtime                # validates Node 24 and npm 11 engines
-npm run check:supabase-project       # must report PsychSift Production / sjrfecxgysukkwxsowpy
+```
+
+The three commands above inspect the local toolchain only; they do not contact a provider.
+The project-config checker below also reads local configuration only, but AGENTS.md explicitly
+requires confirmation for it. Its output proves configured identity, not the identity or health of
+a remote service. For a production release it must report `PsychSift Production` /
+`sjrfecxgysukkwxsowpy` / `[production]`; staging must use step 3's separate identity.
+
+**⏸ PAUSE — confirm target and selected reads before running:**
+
+```bash
+npm run check:supabase-project       # local config read; explicitly confirmation-required by project policy
 npx supabase migration list --linked
 npm run reindex:health               # note jobs_pending / jobs_processing (needed for step 1 R17)
 ```
+
+| Command                            | Target / effect                                                       | Provider and spending relevance                                                                                          |
+| ---------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `check:supabase-project`           | Local application URL/ref/name declaration; no remote request         | Explicit project confirmation boundary; no API charge established by this checker                                        |
+| `supabase migration list --linked` | Selected CLI-linked Supabase project; history read                    | Confirm linked ref first; provider read, not schema parity proof; assess service/downstream costs                        |
+| `reindex:health`                   | Application-configured Supabase admin client; probes/counts/open jobs | Confirm app ref separately from CLI link; provider read; service usage, not a provider-free check or RPC signature proof |
 
 ## 1. Confirm migration state; apply only unresolved controls 🧑 Supabase
 
@@ -67,18 +89,23 @@ PIA-4 retention migrations. **Do not redeploy the worker until `20260708130000` 
 | h     | `20260713201542_consolidate_rag_response_cache_retention`                                                | **Applied and verified live 2026-07-14**            | Job 16 is active and bounded; obsolete duplicate job confirmed absent.                                     |
 | i     | Retrieval RPC forward-codification (`20260713062107`…`20260713062139`)                                   | **Applied and drift/readiness verified 2026-07-13** | Verify only; see [forward-codify-retrieval-rpcs-workorder.md](forward-codify-retrieval-rpcs-workorder.md). |
 
-**⏸ PAUSE:** if and only if linked history shows migration `20260708120000` or `20260713201542` absent after auto-deploy,
-apply the reviewed committed migration through the guarded recovery/reconciliation workflow. Do not use this status
-reconciliation as authority to replay the verified July-8 or forward-codification groups.
+**⏸ PAUSE:** if linked history shows migration `20260708120000` or `20260713201542` absent after auto-deploy, a missing
+history row alone does not prove the schema is unresolved. Before any apply, the guarded recovery/reconciliation workflow
+must establish `check:drift` and `check:migration-history` results (or equivalent server-side schema and history evidence)
+for the selected target. Apply the reviewed committed migration only after that evidence, and only with the owner's yes.
+Do not use this status reconciliation as authority to replay the verified July-8 or forward-codification groups.
 
 After applying, query `cron.job` and expect at least these active retention jobs: `purge-rag-query-misses`
 at `45 3 * * *` and `purge-rag-response-cache` at `15 * * * *`. The obsolete
 `purge-expired-rag-response-cache` name must be absent.
 
-**✅ verify:**
+**⏸ PAUSE / ✅ verify:** these commands read Supabase; retrieval quality also calls OpenAI.
+Approve the exact run and its bounded downstream spend before executing. Load the approved production profile
+(`NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` and project metadata for `sjrfecxgysukkwxsowpy`) for the
+whole block. Each command selects its target from that profile, so a staging profile would silently check staging.
 
 ```bash
-SUPABASE_ENVIRONMENT=production npm run check:july8-live-batch
+npm run check:july8-live-batch
 npm run check:drift
 npm run check:indexing              # search_schema_health() ok
 npm run eval:retrieval:quality      # must stay 36/36 (retrieval-affecting: step d + drift-codify)
@@ -107,20 +134,54 @@ npm run eval:quality -- --rag-only  # grounded-supported must not drop; citation
 
 Record outcomes in release notes / [process-hardening.md](process-hardening.md).
 
-## 3. Provision staging + seed 🧑 Supabase + Railway (billable)
+## 3. Establish staging identity before application operations 🧑 Supabase + Railway
 
-Detailed: [staging-setup.md](staging-setup.md). No code change — the identity guard activates on env.
+Detailed: [staging-setup.md](staging-setup.md). Its recorded environment observations are dated;
+reuse an existing authorised staging target after revalidation rather than creating a replacement
+merely because the evidence needs renewal. CLI linkage and application configuration are independent.
 
-1. **⏸ PAUSE** create Supabase project `PsychSift Staging`, same org, **ap-southeast-2**, generate DB
-   password (Supabase MCP `create_project` after `confirm_cost`, or dashboard). Record `<staging-ref>`.
-2. `supabase link --project-ref <staging-ref>` → `supabase db push` → `npm run check:indexing`.
-3. Seed synthetic (~50 docs, **never** production clinical docs):
+1. **⏸ PAUSE** confirm the existing staging project's exact ref/name and the operator's authority.
+   Creating a project, applying schema or deploying compute is a separate billable mutation requiring
+   its specific approved scope/cap. Follow the detailed staging schema procedure; do not run a blind
+   `db push` from this checklist.
+2. Before any application check, seed or import, prepare an isolated staging checkout/process with
+   **no production environment files or inherited production credentials**. Obtain that project's
+   publishable and service-role keys through the approved secret-management route; never print them.
+   Set the application URL/ref/name and explicit staging declaration together. In a Bash operator
+   shell, after `STAGING_REF` is set to the verified 20-character ref:
    ```bash
-   npm run samples && npm run import:docs
-   npm run registry:seed -- --owner-id <owner> --write --confirm
-   npm run differentials:seed && npm run medications:seed
+   export NEXT_PUBLIC_SUPABASE_URL="https://${STAGING_REF}.supabase.co"
+   export SUPABASE_PROJECT_REF="$STAGING_REF"
+   export SUPABASE_PROJECT_NAME='PsychSift Staging'
+   export SUPABASE_STAGING_PROJECT_REF="$STAGING_REF"
+   export SUPABASE_STAGING_PROJECT_NAME='PsychSift Staging'
+   export RAG_PROVIDER_MODE=offline
    ```
-4. Capture staging keys (`sb_publishable_…`, `sb_secret_…`).
+   Configure only matching staging credentials, including a separate staging `RAG_QUERY_HASH_SECRET`;
+   omit `OPENAI_API_KEY` and keep workers stopped for the offline tenancy profile. A declared staging
+   ref must differ from production and stale refs. Production credentials are never a fallback.
+3. **⏸ PAUSE / ✅ verify** run `npm run check:supabase-project` in that same process. Require a
+   successful result with the **exact intended staging ref/name and `[staging]`**. A successful
+   `[production]` result is a stop condition. The local checker does not verify key ownership:
+   separately confirm key provenance in the approved provider session, then approve and run the
+   staged target's `npm run check:indexing`. `supabase link --project-ref "$STAGING_REF"` controls only
+   subsequent CLI operations, never these application clients.
+4. The offline tenancy profile needs no bulk import or worker; its harness creates/removes its own
+   minimal synthetic fixtures. Optional load/seed work is separately approved for the verified
+   staging target, with staging owner UUID, corpus size and provider/worker consequences bounded.
+   For that approved workload, these examples supply the actual CLI arguments (set
+   `STAGING_OWNER_ID` to the authorised staging test user's UUID first):
+   ```bash
+   npm run samples
+   npm run import:docs -- --path ./sample-documents --owner-id "$STAGING_OWNER_ID" --limit 50 --dry-run
+   npm run registry:seed -- --owner-id "$STAGING_OWNER_ID"
+   npm run differentials:seed -- --owner-id "$STAGING_OWNER_ID"
+   npm run medications:seed -- --owner-id "$STAGING_OWNER_ID"
+   ```
+   Review the generated corpus and dry-run plans. Import without `--dry-run` writes Storage/documents
+   and queues jobs; it has no separate `--write` flag. Each record seed needs both `--write --confirm`
+   appended to its own command to write. Do so only within that specific approved staging workload;
+   starting a worker can trigger embeddings/enrichment and needs its own bounded provider authority.
 
 ## 4. Staging soak + rollback rehearsal 🧑 Railway
 
@@ -169,9 +230,16 @@ runtime secrets (**incl. `RAG_QUERY_HASH_SECRET`** — PIA-2 fail-closed guard r
 `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, `SUPABASE_PROJECT_REF/NAME` for prod). One warm instance,
 no scale-to-zero, Railway health `/api/health/ready`. I'll prep the Railway service config via the `use-railway` skill.
 
-**✅ verify:** `GET /api/health/ready` (and manual `GET /api/health` → `{"status":"ok"}`); `npm run check:deployment-readiness`.
+**⏸ PAUSE / ✅ verify (provider reads and possibly downstream checks):** `GET /api/health/ready`
+(and manual `GET /api/health` → `{"status":"ok"}`); inspect `npm run check:deployment-readiness`
+and approve its exact provider scope before running it.
 
 ## 6. Post-deploy
+
+**⏸ PAUSE:** these are separate provider actions. Worker/seed commands write or consume queues;
+dashboard edits mutate settings; workflow dispatch invokes hosted CI and may call providers.
+Confirm each target/effect and any billable run's cap before execution. A previous deployment
+approval does not automatically approve this list.
 
 - **Worker** 🧑 — build `Dockerfile.worker`, run **one** always-on instance in the same region with prod
   secrets. **Only after migration `20260708130000` is live.** Confirms via `npm run reindex:health`.
@@ -187,6 +255,10 @@ no scale-to-zero, Railway health `/api/health/ready`. I'll prep the Railway serv
   canary is green from `main` (one `workflow_dispatch` run).
 
 ## 7. Environment post-restore recovery controls (#326)
+
+**⏸ PAUSE:** provider configuration reads and any repairs below retain their read/write approval
+boundaries. Use the [disaster recovery identity procedure](disaster-recovery-runbook.md#application-identity-on-a-restored-target)
+before application checks against a new project; do not change the production identity constant as a shortcut.
 
 Following a Supabase database restore or disaster recovery failover, verify all 5 environment-owned controls before admitting production traffic:
 
