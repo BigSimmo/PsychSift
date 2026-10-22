@@ -10,7 +10,7 @@
     "tolerancePct": 25
   },
   "serverPages": {
-    "/mockups/development/clinical-sign-off": {
+    "/admin/developer-hub/clinical-sign-off": {
       "rawBytesCeiling": 750000,
       "gzipBytesCeiling": 110000
     },

@@ -83,7 +83,7 @@ import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
  *
  * **There is deliberately no freshness warning on this page** (owner,
  * 2026-09-16): overdue entries are reported in the developer hub, at
- * `/mockups/development/on-call-freshness`. Do not restore one here.
+ * `/admin/developer-hub/on-call-freshness`. Do not restore one here.
  *
  * Nothing moves under the thumb: while the hospital loads, each hospital module
  * holds its space with static outlines, and nothing is ever inserted above the

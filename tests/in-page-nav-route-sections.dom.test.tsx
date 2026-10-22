@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import DeveloperHubPage from "@/app/mockups/development/page";
+import DeveloperHubPage from "@/app/(admin)/admin/developer-hub/page";
 import {
   MEDICATION_TAB_IDS,
   medicationNavSections,
@@ -41,7 +41,7 @@ import { specifierCatalogItems, curatedEnrichmentFor } from "@/lib/specifiers-co
 import { specifierRecords } from "@/lib/specifiers";
 
 /**
- * `/mockups/development` is the only async route in this table, and the only one
+ * `/admin/developer-hub` is the only async route in this table, and the only one
  * that would otherwise reach Supabase from a cross-route navigation contract.
  * Its facts are stubbed so this file keeps testing anchors, not data access;
  * `tests/developer-hub-environment-facts.test.ts` owns that half.
@@ -105,7 +105,7 @@ type RouteCase = {
   sections: readonly PageSection[];
   /**
    * Async because a route component may be an async Server Component —
-   * `/mockups/development` awaits its environment facts. Callers must `await`
+   * `/admin/developer-hub` awaits its environment facts. Callers must `await`
    * this before handing it to `render`.
    */
   render: () => ReactElement | Promise<ReactElement>;
@@ -226,7 +226,7 @@ const routes: RouteCase[] = [
     ),
   },
   {
-    name: "/mockups/development",
+    name: "/admin/developer-hub",
     sections: developerHubNavSections,
     render: () => DeveloperHubPage(),
   },

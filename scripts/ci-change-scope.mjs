@@ -473,8 +473,8 @@ const perfExclusionPatterns = [
   "src/sentry.server.config.ts",
   "src/sentry.edge.config.ts",
   // Developer-hub payload only. `src/lib/developer-area/ledger-snapshot.ts`
-  // imports this JSON, and the only route importers are under
-  // `src/app/mockups/development/` (already excluded; 404 in production). A
+  // imports this JSON, and the only route importers are the owner-gated Owner
+  // panel pages (`src/app/(admin)/admin/developer-hub/`), never a budgeted page. A
   // ledger reconcile that closes the last P1 must not pay a 7-minute
   // Lighthouse budget run, and must not fail merge on TBT noise from
   // `/documents/search`. Measured on PR #2302: this file alone flipped
@@ -483,15 +483,15 @@ const perfExclusionPatterns = [
   "data/outstanding-issues-snapshot.json",
   // Same reasoning, same developer hub, sibling artefact:
   // `src/lib/developer-area/repo-awareness-snapshot.ts` imports this JSON and
-  // the only route importers are under `src/app/mockups/development/`. It was
+  // the only route importers are the owner-gated Owner panel pages. It was
   // missed when the sibling was carved out, and it is the more frequent one —
   // every `ledger:append` regenerates it, so a routine handoff paid a
   // ~7-minute Lighthouse run against a budget the change cannot move
   // (`#EFETZT`, whose measured cost is "one full CI round trip" per
   // occurrence).
   "data/repo-awareness-snapshot.json",
-  // Developer hub panels: reachable only from `src/app/mockups/development/**`,
-  // which is already excluded and 404s in production.
+  // Developer hub panels: reachable only from the owner-gated Owner panel
+  // (`src/app/(admin)/admin/developer-hub/**`), never from a budgeted page.
   "src/components/developer-area/hub",
   // Same hub, its data layer — with ONE carve-out. `headers.ts` is imported by
   // `src/proxy.ts` and `src/lib/api-csrf.ts`, whose matcher runs before every

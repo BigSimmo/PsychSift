@@ -10,7 +10,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
  */
 
 const mocks = vi.hoisted(() => ({
-  pathname: "/mockups/development",
+  pathname: "/admin/developer-hub",
   refresh: vi.fn(),
 }));
 
@@ -21,7 +21,7 @@ vi.mock("next/navigation", () => ({
 
 afterEach(() => {
   cleanup();
-  mocks.pathname = "/mockups/development";
+  mocks.pathname = "/admin/developer-hub";
   mocks.refresh.mockClear();
 });
 
@@ -48,7 +48,7 @@ describe("DeveloperAreaRouteGuard", () => {
     );
     expect(mocks.refresh).not.toHaveBeenCalled();
 
-    mocks.pathname = "/mockups/development/ledger";
+    mocks.pathname = "/admin/developer-hub/ledger";
     rerender(
       <DeveloperAreaRouteGuard>
         <p>content</p>

@@ -186,25 +186,10 @@ describe("production mockup boundary", () => {
     }
   });
 
-  it("lets the developer-gated hub through the blanket block, without opting in the flag", () => {
-    // This subtree carries its own signed-in-administrator gate
-    // (DeveloperAreaGate) instead of the flat 404 — no NEXT_PUBLIC_MOCKUPS_ENABLED
-    // opt-in should be required, and no OTHER /mockups/** path should be affected.
-    for (const path of ["/mockups/development", "/mockups/development/ledger"]) {
-      expect(shouldBlockProductionMockups(path, { NODE_ENV: "production" })).toBe(false);
-    }
-    // A path that merely starts with the same characters is not a prefix match.
-    expect(shouldBlockProductionMockups("/mockups/development-notes", { NODE_ENV: "production" })).toBe(true);
-  });
 });
 
 describe("developer-area header (x-developer-area)", () => {
   it("sets the header only for the developer-gated paths, and strips a client-supplied copy elsewhere", async () => {
-    const developmentRequest = requestFor("/mockups/development");
-    const developmentResponse = await proxy(developmentRequest);
-    expect(developmentResponse.headers.get("x-middleware-request-x-developer-area")).toBe("1");
-    expect(developmentResponse.headers.get("x-middleware-request-x-developer-area-path")).toBe("/mockups/development");
-
     const adminDevRequest = requestFor("/admin/developer-hub");
     const adminDevResponse = await proxy(adminDevRequest);
     expect(adminDevResponse.headers.get("x-middleware-request-x-developer-area")).toBe("1");
@@ -215,7 +200,7 @@ describe("developer-area header (x-developer-area)", () => {
 
     const otherMockupRequest = requestFor("/mockups/work-roles");
     otherMockupRequest.headers.set("x-developer-area", "1");
-    otherMockupRequest.headers.set("x-developer-area-path", "/mockups/development");
+    otherMockupRequest.headers.set("x-developer-area-path", "/admin/developer-hub");
     const otherMockupResponse = await proxy(otherMockupRequest);
     // Spoofed header must not survive into the forwarded request.
     expect(otherMockupResponse.headers.get("x-middleware-request-x-developer-area")).toBeNull();
@@ -409,11 +394,11 @@ describe("passwordless developer-area access (?devkey)", () => {
   }
 
   it.each(["http:", "https:"])(
-    "exchanges a correct key for three scoped cookies over %s and strips the key",
+    "exchanges a correct key for a scoped cookie over %s and strips the key",
     async (protocol) => {
       await withKey(async () => {
         const response = await proxy(
-          new NextRequest(`${protocol}//localhost/mockups/development?${DEVELOPER_ACCESS_QUERY_PARAM}=${KEY}`),
+          new NextRequest(`${protocol}//localhost/admin/developer-hub?${DEVELOPER_ACCESS_QUERY_PARAM}=${KEY}`),
         );
 
         const location = response.headers.get("location");
@@ -429,11 +414,8 @@ describe("passwordless developer-area access (?devkey)", () => {
         const cookies = response.headers
           .getSetCookie()
           .filter((cookie) => cookie.startsWith(`${DEVELOPER_ACCESS_COOKIE}=`));
-        expect(cookies).toHaveLength(2);
-        expect(cookies.map((cookie) => cookie.match(/(?:^|;\s*)Path=([^;]+)/)?.[1])).toEqual([
-          "/admin/developer-hub",
-          "/mockups/development",
-        ]);
+        expect(cookies).toHaveLength(1);
+        expect(cookies.map((cookie) => cookie.match(/(?:^|;\s*)Path=([^;]+)/)?.[1])).toEqual(["/admin/developer-hub"]);
         for (const cookie of cookies) {
           expect(cookie).toContain("HttpOnly");
           expect(cookie).toContain("SameSite=lax");
@@ -448,25 +430,25 @@ describe("passwordless developer-area access (?devkey)", () => {
     },
   );
 
-  it("issues exactly two cookies when a key exchange also renews an existing valid cookie", async () => {
+  it("issues exactly one cookie when a key exchange also renews an existing valid cookie", async () => {
     await withKey(async () => {
       const token = issueDeveloperAccessToken({ DEVELOPER_AREA_ACCESS_KEY: KEY }) as string;
       const response = await proxy(
         requestWithCookie(
-          `/mockups/development?${DEVELOPER_ACCESS_QUERY_PARAM}=${KEY}`,
+          `/admin/developer-hub?${DEVELOPER_ACCESS_QUERY_PARAM}=${KEY}`,
           DEVELOPER_ACCESS_COOKIE,
           token,
         ),
       );
       expect(
         response.headers.getSetCookie().filter((cookie) => cookie.startsWith(`${DEVELOPER_ACCESS_COOKIE}=`)),
-      ).toHaveLength(2);
+      ).toHaveLength(1);
     });
   });
 
   it("issues no cookie for a wrong key, but still strips it from the URL", async () => {
     await withKey(async () => {
-      const response = await proxy(requestFor(`/mockups/development?${DEVELOPER_ACCESS_QUERY_PARAM}=wrong-guess`));
+      const response = await proxy(requestFor(`/admin/developer-hub?${DEVELOPER_ACCESS_QUERY_PARAM}=wrong-guess`));
 
       expect(accessCookie(response)).toBeUndefined();
       // Stripped anyway, so a failed guess cannot ride the DEVELOPER_AREA_PATH
@@ -483,7 +465,7 @@ describe("passwordless developer-area access (?devkey)", () => {
     const previous = process.env.DEVELOPER_AREA_ACCESS_KEY;
     delete process.env.DEVELOPER_AREA_ACCESS_KEY;
     try {
-      const response = await proxy(requestFor(`/mockups/development?${DEVELOPER_ACCESS_QUERY_PARAM}=${KEY}`));
+      const response = await proxy(requestFor(`/admin/developer-hub?${DEVELOPER_ACCESS_QUERY_PARAM}=${KEY}`));
       expect(accessCookie(response)).toBeUndefined();
       expect(response.headers.get("location")).toContain(`${DEVELOPER_ACCESS_ERROR_PARAM}=1`);
     } finally {
@@ -506,14 +488,14 @@ describe("passwordless developer-area access (?devkey)", () => {
     await withKey(async () => {
       const token = issueDeveloperAccessToken({ DEVELOPER_AREA_ACCESS_KEY: KEY }) as string;
 
-      const renewed = await proxy(requestWithCookie("/mockups/development", DEVELOPER_ACCESS_COOKIE, token));
+      const renewed = await proxy(requestWithCookie("/admin/developer-hub", DEVELOPER_ACCESS_COOKIE, token));
       expect(
         renewed.headers.getSetCookie().filter((cookie) => cookie.startsWith(`${DEVELOPER_ACCESS_COOKIE}=`)),
-      ).toHaveLength(2);
+      ).toHaveLength(1);
 
       // Rolling renewal must extend only what already verifies; a forged value
       // is left to be refused by DeveloperAreaGate, never re-stamped as valid.
-      const forged = await proxy(requestWithCookie("/mockups/development", DEVELOPER_ACCESS_COOKIE, "v1.1.forged"));
+      const forged = await proxy(requestWithCookie("/admin/developer-hub", DEVELOPER_ACCESS_COOKIE, "v1.1.forged"));
       expect(accessCookie(forged)).toBeUndefined();
     });
   });

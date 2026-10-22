@@ -987,7 +987,7 @@ function renderSiteMapRaw(data = collectSiteMapData()) {
         : ["- No page-level redirects discovered."],
     ),
     ...section("Known caveats and stale-path flags", [
-      "- `/mockups/*` prototype routes are development-only: production returns 404 for every path except the developer-gated subtree (`/mockups/development`, which now redirects to the Owner panel), which carries their own signed-in administrator gate. `robots.txt` deliberately allows crawling; responses under `/mockups/:path*` carry `X-Robots-Tag: noindex, nofollow` instead, so per-response indexing policy can be observed.",
+      "- `/mockups/*` prototype routes are development-only: production returns 404 for every path. The addresses of the retired Owner panel copy redirect to `/admin/developer-hub` before the proxy runs. `robots.txt` deliberately allows crawling; responses under `/mockups/:path*` carry `X-Robots-Tag: noindex, nofollow` instead, so per-response indexing policy can be observed.",
       "- `/mockups/favourites-hub` (to `/favourites`) and `/mockups/medication-prescribing` (to `/medications/acamprosate`) are legacy compatibility routes whose page-level redirects work in development only; in production the proxy's mockup block returns 404 before either page renders. `/mockups/document-search-command` is the one mockup path that still redirects in production, via `staticRouteRedirects` in `src/proxy.ts`.",
       "- Registry-backed service and form pages may show sign-in, load-error, or in-app not-found states for missing per-user records.",
       "- Live user registries may contain additional service or form slugs beyond the seeded/demo slugs listed here.",

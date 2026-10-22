@@ -10,7 +10,7 @@ import { formatRelativeAge, resolveFreshnessFrom, resolveLiveFreshness } from "@
 // app-router tree that throws "invariant expected app router to be mounted",
 // so every render here needs the router mocked, same as the hub page test.
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/mockups/development/corpus-health",
+  usePathname: () => "/admin/developer-hub/corpus-health",
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), prefetch: vi.fn() }),
 }));
 
@@ -91,7 +91,7 @@ describe("PanelPageShell", () => {
     expect(screen.getByTestId("developer-routes")).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1, name: "Routes and modes" })).toBeInTheDocument();
     const back = screen.getByTestId("developer-routes-back");
-    expect(back).toHaveAttribute("href", "/mockups/development");
+    expect(back).toHaveAttribute("href", "/admin/developer-hub");
     expect(screen.getByTestId("developer-hub-freshness")).toHaveTextContent(/Repository content as of/);
     expect(screen.getByText("body")).toBeInTheDocument();
   });

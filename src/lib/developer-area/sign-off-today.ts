@@ -115,7 +115,7 @@ export type SignOffTodayItem = {
   readonly href: string;
 };
 
-export const SIGN_OFF_TODAY_HREF = "/mockups/development#developer-hub-today";
+export const SIGN_OFF_TODAY_HREF = "/admin/developer-hub#developer-hub-today";
 
 export function signOffTodayItem(today: SignOffToday): SignOffTodayItem | null {
   if (today.rows.length === 0) return null;

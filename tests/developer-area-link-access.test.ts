@@ -130,8 +130,8 @@ describe("parseDeveloperGateTarget", () => {
   });
 
   it("reports the proxy's rejection and strips the marker from the retry target", () => {
-    expect(parseDeveloperGateTarget(`/mockups/development?${DEVELOPER_ACCESS_ERROR_PARAM}=1`)).toEqual({
-      target: "/mockups/development",
+    expect(parseDeveloperGateTarget(`/admin/developer-hub?${DEVELOPER_ACCESS_ERROR_PARAM}=1`)).toEqual({
+      target: "/admin/developer-hub",
       keyRejected: true,
     });
   });
@@ -149,7 +149,7 @@ describe("parseDeveloperGateTarget", () => {
     // another origin does not merely redirect — it posts the key to whoever owns
     // that origin.
     const hostile = [
-      "//evil.example/mockups/development",
+      "//evil.example/admin/developer-hub",
       "https://evil.example",
       "mockups/development",
       "",
@@ -162,32 +162,27 @@ describe("parseDeveloperGateTarget", () => {
       "/\nevil.example",
       "/\revil.example",
       // Look-alike prefixes are not members of the allowlist either.
-      "/mockups/development-archive",
+      "/admin/developer-hub-archive",
       "/documents",
       "/mockups",
     ];
     for (const value of hostile) {
-      expect(parseDeveloperGateTarget(value).target).toBe("/mockups/development");
+      expect(parseDeveloperGateTarget(value).target).toBe("/admin/developer-hub");
     }
-    expect(parseDeveloperGateTarget(null).target).toBe("/mockups/development");
+    expect(parseDeveloperGateTarget(null).target).toBe("/admin/developer-hub");
   });
 
   it("refuses to carry a rejected path's query string over to the fallback", () => {
     // Dropping the path but keeping its query would let a hostile `next` still
     // steer the page it lands on.
     expect(parseDeveloperGateTarget("https://evil.example/?tab=risk")).toEqual({
-      target: "/mockups/development",
+      target: "/admin/developer-hub",
       keyRejected: false,
     });
   });
 
   it("admits every gated subtree, and their descendants", () => {
-    for (const allowed of [
-      "/mockups/development",
-      "/mockups/development/ledger",
-      "/admin/developer-hub",
-      "/admin/developer-hub/ledger",
-    ]) {
+    for (const allowed of ["/admin/developer-hub", "/admin/developer-hub/ledger"]) {
       expect(parseDeveloperGateTarget(allowed).target).toBe(allowed);
     }
   });
@@ -207,14 +202,14 @@ describe("developerKeyUnlockUrl", () => {
   });
 
   it("does not carry a previous attempt's rejection marker into the retry", () => {
-    const url = developerKeyUnlockUrl(`/mockups/development?${DEVELOPER_ACCESS_ERROR_PARAM}=1`, KEY);
+    const url = developerKeyUnlockUrl(`/admin/developer-hub?${DEVELOPER_ACCESS_ERROR_PARAM}=1`, KEY);
     expect(url).not.toContain(DEVELOPER_ACCESS_ERROR_PARAM);
   });
 
   it("escapes the key rather than letting it alter the URL's shape", () => {
     // A mistyped key containing `&` or `#` must stay one parameter value, not
     // become a second parameter or a fragment that silently truncates it.
-    const url = new URL(developerKeyUnlockUrl("/mockups/development", "a&b=c#d"), "https://psychiatry.tools");
+    const url = new URL(developerKeyUnlockUrl("/admin/developer-hub", "a&b=c#d"), "https://psychiatry.tools");
     expect(url.searchParams.get("devkey")).toBe("a&b=c#d");
   });
 });

@@ -2,7 +2,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import DeveloperIngestionPage from "@/app/mockups/development/ingestion/page";
+import DeveloperIngestionPage from "@/app/(admin)/admin/developer-hub/ingestion/page";
 
 // PanelPageShell's back control is a ContextualBackLink, which calls
 // next/navigation's useRouter for its history-aware click handler. Outside an
@@ -10,7 +10,7 @@ import DeveloperIngestionPage from "@/app/mockups/development/ingestion/page";
 // so every render here needs the router mocked, same as every other panel
 // page test (for example `developer-panel-page-shell.dom.test.tsx`).
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/mockups/development/ingestion",
+  usePathname: () => "/admin/developer-hub/ingestion",
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), prefetch: vi.fn() }),
 }));
 
@@ -50,7 +50,7 @@ describe("developer ingestion page — shell and freshness (plan §8)", () => {
     render(<DeveloperIngestionPage />);
 
     expect(screen.getByTestId("developer-ingestion")).toBeInTheDocument();
-    expect(screen.getByTestId("developer-ingestion-back")).toHaveAttribute("href", "/mockups/development");
+    expect(screen.getByTestId("developer-ingestion-back")).toHaveAttribute("href", "/admin/developer-hub");
 
     // The shell's own stamp is rendered at server-render time, before the
     // client panel has fetched anything — so it says "read live on demand" (#XKS6FD),

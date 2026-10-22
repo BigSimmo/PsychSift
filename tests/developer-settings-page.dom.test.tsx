@@ -1,13 +1,13 @@
 import { render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import DeveloperSettingsCheckPage from "@/app/mockups/development/settings/page";
+import DeveloperSettingsCheckPage from "@/app/(admin)/admin/developer-hub/settings/page";
 import type { SettingsCheck } from "@/lib/developer-area/settings-check";
 
 // PanelPageShell's back control is a ContextualBackLink, which calls
 // next/navigation's useRouter. Outside an app-router tree that throws.
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/mockups/development/settings",
+  usePathname: () => "/admin/developer-hub/settings",
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), prefetch: vi.fn() }),
 }));
 

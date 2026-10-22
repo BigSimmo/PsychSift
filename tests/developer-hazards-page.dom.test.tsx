@@ -1,7 +1,7 @@
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import DeveloperHazardsPage from "@/app/mockups/development/hazards/page";
+import DeveloperHazardsPage from "@/app/(admin)/admin/developer-hub/hazards/page";
 import { loadHazardSnapshot, unmitigatedHazards } from "@/lib/developer-area/hazard-register";
 import { DOCUMENT_CAUTIONS } from "@/lib/document-cautions";
 
@@ -9,7 +9,7 @@ import { DOCUMENT_CAUTIONS } from "@/lib/document-cautions";
 // next/navigation's useRouter for its history-aware click handler. Outside an
 // app-router tree that throws, so every render here needs the router mocked.
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/mockups/development/hazards",
+  usePathname: () => "/admin/developer-hub/hazards",
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), prefetch: vi.fn() }),
 }));
 

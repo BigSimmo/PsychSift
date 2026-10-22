@@ -13,7 +13,7 @@ import { loadSignOffLedger, loadSignOffQueue } from "@/lib/developer-area/sign-o
 // app-router tree that throws "invariant expected app router to be mounted",
 // so every render here needs the router mocked, same as the sibling hub tests.
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/mockups/development/clinical-sign-off",
+  usePathname: () => "/admin/developer-hub/clinical-sign-off",
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), prefetch: vi.fn() }),
 }));
 

@@ -233,9 +233,9 @@ describe("tracked sitemap", () => {
     expect(routes).not.toEqual(alphabetical);
 
     // Alphabetically adjacent routes with shared prefix are dispersed across the list
-    // The `/mockups/tools-*` family this used was retired on 2026-10-21; the Owner panel
-    // subtree is now the largest shared-prefix family.
-    const toolsRoutes = routes.filter((r) => r.startsWith("/mockups/development/"));
+    // The `/mockups/tools-*` and `/mockups/development/*` families this used were retired
+    // on 2026-10-21 and 2026-10-22; the document-search family is now the largest.
+    const toolsRoutes = routes.filter((r) => r.startsWith("/mockups/document-search"));
     expect(toolsRoutes.length).toBeGreaterThan(3);
     const positions = toolsRoutes.map((r) => routes.indexOf(r));
     expect(Math.max(...positions) - Math.min(...positions)).toBeGreaterThan(toolsRoutes.length - 1);
