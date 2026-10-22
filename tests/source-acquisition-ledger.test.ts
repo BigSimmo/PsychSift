@@ -567,6 +567,20 @@ describe("source acquisition live_product_information date model", () => {
     );
   });
 
+  it("does not count the absent date as missing metadata in the catalogue, so a reviewed live PI is not forced to D", () => {
+    const reviewed = record({ ...live, validationStatus: "locally_reviewed" });
+    expect(acquisitionRecordWarnings(reviewed)).not.toContain("missing_dates");
+    const [entry] = canonicalizeSourceReferences([...acquisitionSourceReferences([reviewed])]);
+    expect(entry.rating.band).not.toBe("D");
+  });
+
+  it("still warns about missing dates when the live flag rides on any other URL", () => {
+    const [entry] = canonicalizeSourceReferences([
+      { ...acquisitionSourceReferences([record(live)])[0], canonicalUrl: "https://www.tga.gov.au/x" },
+    ]);
+    expect(entry.warnings).toContain("missing_dates");
+  });
+
   it("recognises only the PI search URL", () => {
     expect(isTgaProductInformationSearchUrl(PI_SEARCH)).toBe(true);
     expect(

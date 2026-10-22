@@ -21,7 +21,7 @@ import {
   type SourceUsage,
 } from "@/lib/sources/catalogue-types";
 import { qualityBandForScore } from "@/lib/sources/rating-method";
-import { safeCanonicalSourceUrl } from "@/lib/sources/source-url-policy";
+import { isTgaProductInformationSearchUrl, safeCanonicalSourceUrl } from "@/lib/sources/source-url-policy";
 
 const ACCURACY = { approved: 25, locally_reviewed: 20, unverified: 5, unknown: 0 } as const;
 const EVIDENCE = {
@@ -217,7 +217,8 @@ function sourceWarnings(input: ClinicalSourceReferenceInput): SourceCatalogueWar
   }
   if (!hasText(input.publisher)) warnings.push("missing_publisher");
   if (!hasText(input.version)) warnings.push("missing_version");
-  if (![input.publicationDate, input.reviewDate, lastUpdatedDate, input.expiryDate].some(hasText)) {
+  const undatedByDesign = input.liveProductInformation === true && isTgaProductInformationSearchUrl(input.canonicalUrl);
+  if (![input.publicationDate, input.reviewDate, lastUpdatedDate, input.expiryDate].some(hasText) && !undatedByDesign) {
     warnings.push("missing_dates");
   }
   if (!hasText(input.jurisdiction) || geographyFor(input).scope === "unknown") warnings.push("unknown_jurisdiction");
@@ -409,6 +410,9 @@ function mergedReference(inputs: readonly ClinicalSourceReferenceInput[]): Clini
     publicationDate: firstString(ordered.map((input) => strictSourceDate(input.publicationDate))),
     reviewDate: firstString(ordered.map((input) => strictSourceDate(input.reviewDate))),
     lastUpdatedDate: firstString(ordered.map((input) => strictSourceDate(input.lastUpdatedDate ?? null))),
+    // Kept when any merged reference is the ledger's live PI search; sourceWarnings
+    // still requires the merged URL to be that search before it waives the date.
+    ...(ordered.some((input) => input.liveProductInformation === true) ? { liveProductInformation: true } : {}),
     expiryDate: firstString(ordered.map((input) => strictSourceDate(input.expiryDate))),
     evidenceType: worstValue(
       ordered.map((input) => input.evidenceType),

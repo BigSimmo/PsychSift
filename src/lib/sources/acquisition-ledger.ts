@@ -10,6 +10,7 @@ import type {
   SourceUsage,
 } from "@/lib/sources/catalogue-types";
 import { strictSourceDate } from "@/lib/sources/source-date-policy";
+import { isTgaProductInformationSearchUrl } from "@/lib/sources/source-url-policy";
 import acquisitionLedger from "@/data/source-acquisitions.json";
 
 const TITLE_COLLATOR = new Intl.Collator("en-AU");
@@ -89,25 +90,9 @@ export type SourceDateModel = "published" | "continuously_updated" | "last_updat
  * It is narrow on purpose: only a TGA record whose URL is that search may use it,
  * and it must carry no date at all, so it never asserts an event nobody read.
  */
-export const LIVE_PRODUCT_INFORMATION_VERSION = "Current TGA-approved Product Information (live search)";
+export { isTgaProductInformationSearchUrl };
 
-/** True for the TGA eBS Product Information search for one non-empty term, and nothing else. */
-export function isTgaProductInformationSearchUrl(value: string | null): boolean {
-  if (!value) return false;
-  let url: URL;
-  try {
-    url = new URL(value);
-  } catch {
-    return false;
-  }
-  return (
-    url.protocol === "https:" &&
-    url.hostname === "www.ebs.tga.gov.au" &&
-    url.pathname === "/ebs/picmi/picmirepository.nsf/PICMI" &&
-    url.searchParams.get("t") === "pi" &&
-    Boolean(url.searchParams.get("q")?.trim())
-  );
-}
+export const LIVE_PRODUCT_INFORMATION_VERSION = "Current TGA-approved Product Information (live search)";
 
 export type SourceAcquisitionRecord = {
   id: string;
@@ -256,6 +241,7 @@ export function acquisitionReference(
     reviewDate: record.reviewDate,
     // Carried only when present, so every other record's reference is unchanged.
     ...(record.lastUpdatedDate ? { lastUpdatedDate: record.lastUpdatedDate } : {}),
+    ...(record.dateModel === "live_product_information" ? { liveProductInformation: true } : {}),
     expiryDate: record.expiryDate,
     jurisdiction: record.jurisdiction,
     evidenceType: record.evidenceType,
@@ -283,16 +269,9 @@ export function acquisitionRecordWarnings(record: SourceAcquisitionRecord): Sour
   return entry ? entry.warnings : [];
 }
 
-/**
- * The catalogue warnings that count as capture defects for this record. A live
- * Product Information search carries no date by design (`acquisitionLedgerIssues`
- * holds it to exactly that shape), so `missing_dates` is expected there.
- */
+/** The catalogue warnings that count as capture defects for this record. */
 export function acquisitionRecordMetadataDefects(record: SourceAcquisitionRecord): SourceCatalogueWarning[] {
-  const live = record.dateModel === "live_product_information";
-  return acquisitionRecordWarnings(record).filter(
-    (warning) => metadataDefects.has(warning) && !(live && warning === "missing_dates"),
-  );
+  return acquisitionRecordWarnings(record).filter((warning) => metadataDefects.has(warning));
 }
 
 export function acquisitionRecordGeography(record: SourceAcquisitionRecord): SourceGeographyScope {
