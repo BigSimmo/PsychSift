@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "id": "72a79068-1a37-416f-b4aa-3b43c54628f4",
+  "createdOn": "2026-10-23",
+  "action": "update",
+  "payload": {
+    "id": "#VX8BXD",
+    "detail": "UPDATE 2026-10-23: the Main CI and test reliability thread closed on 23 Oct with its staging deploy and rollback test parked here, because staging is half-built. The staging deploy and rollback test runs straight after this rebuild, following section 3 of the staging trial plan (project file ci-reliability/release-test-pass-and-staging-trial-plan.md; the in-repo version is docs/operator-rehearsal-plan.md steps 3 and 4, see #057): revalidate staging, deploy the candidate and record its commit, smoke plus npm run test:cross-tenant:staging, roll back by redeploying the previous staging deployment, then redeploy the candidate. Every Railway step needs the owner's OK at the time. PRIOR DETAIL: Owner deferred on 2026-10-22. Staging is half-built after a db reset stopped at migration 20260528009000, because the CLI temporary login role lacks the extensions schema on its search_path, so the hnsw vector_cosine_ops opclass is not found. Fix: from a clean checkout of current main, run npx supabase@latest db reset --db-url with the staging session-pooler string (project ikoiolksxqxfxgiyqpnu only, never the production ref), then migration list to confirm the latest version. migration list reads recorded history only, so the rebuild counts as done only when npm run check:migration-history and npm run check:drift also pass against staging, with credentials verified as staging (never the production ref). Until done, the nightly staging tenancy test is expected to fail, Main CI's staging deploy and rollback test and the two-doctor staging check wait, STAGING_GATE_ENFORCE stays off, and no colleague invites. After it: Main CI deploy and rollback test, the dispatched two-doctor run, then switch STAGING_GATE_ENFORCE on after a healthy run. Related: #057.",
+    "source": "Safety foundations thread, 2026-10-22; PR #3748; PR #3765; Main CI and test reliability thread 2026-10-23; docs/staging-tenancy-release-evidence.md",
+    "baseRowFingerprint": "f01cc370f4d61460fe652b5f01a3e4982f68f19e92a3181d6502bbb56023bd9e",
+    "targetUlid": "01M5HBG9G9VX8BXDTSPYV13MBE"
+  }
+}
