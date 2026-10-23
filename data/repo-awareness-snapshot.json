@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-22"
+    "committed_at": "2026-10-23"
   },
   "routes": {
     "modes": [
@@ -5089,6 +5089,11 @@
       {
         "path": "docs/worker-deploy-runbook.md",
         "section": "root",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-23-reindex-pilot-approved.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
