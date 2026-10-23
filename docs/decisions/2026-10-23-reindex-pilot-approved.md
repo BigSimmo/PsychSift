@@ -19,8 +19,11 @@ on the live database. So the pilot relies on that rollback and the daily backup.
   them through its clozapine, lithium and agitation cases.
 - **What runs:** one full re-index of each document on the current code (chunker 1.3.1 and the
   OCR fixes from PRs #3710, #3715 and #3716).
-- **Scope control:** the production worker is limited to those three documents with
-  `WORKER_ALLOWED_DOCUMENT_IDS`, and it is paused again once the pilot ends.
+- **Scope control:**
+  - The production worker is limited to those three documents with `WORKER_ALLOWED_DOCUMENT_IDS`.
+  - The app service's `WORKER_MAX_ATTEMPTS` is set to `1` before the jobs are queued. The re-index
+    route stamps that value on every job, so no job retries by itself.
+  - Both settings go back, and the worker is paused again, once the pilot ends.
 
 **How it is judged**
 
@@ -42,8 +45,8 @@ on the live database. So the pilot relies on that rollback and the daily backup.
   - Each document gets at most 15 image captions (`WORKER_MAX_CAPTIONED_IMAGES_PER_DOCUMENT`).
   - The ceiling is about US$1.00 per document, so US$3.00 for three documents.
   - Captions that are already cached are not paid for again.
-- **Retries:** one retry of one document is allowed, up to US$1.00. If a second job fails, the
-  worker is paused before it tries again.
+- **Retries:** none happen automatically (`WORKER_MAX_ATTEMPTS=1`). The owner may re-queue one failed
+  document once by hand, up to US$1.00. Any further failure ends the pilot.
 - **After canary:** the answer subset of run 39759615452 cost US$0.13. Allow up to US$0.50.
 - **Total ceiling:** US$4.50.
 
