@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "6654c7d0-cb7b-4584-8f57-f1a67f467c0b",
+  "createdOn": "2026-10-23",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "issue",
+    "summary": "Release eval case admission-discharge-coverage-paraphrase misses MHSP.AdmissionCommunityPts.pdf in its top 5",
+    "detail": "Owner: Answer quality. The capped release check on 92d37ba (owner ran it on his PC on 2026-10-22, under US$1) passed 79 of 80 answer cases with 0 retrieval failures. The single miss was admission-discharge-coverage-paraphrase: MHSP.AdmissionCommunityPts.pdf was not in the top 5, although the answer was still grounded and cited 2 sources, so it degraded conservatively. The same miss has been listed under #J8SJQ9 since the 2026-09-27 canary. No immediate fix. Treat it as a candidate case for the next approved canary pair: any fix touches a protected RAG ranking surface, needs the RAG impact line, and a live before/after canary (paid, owner approval).",
+    "source": "Release check 2026-10-22 on 92d37ba, project file retrieval-quality-2026-10-22T10-23-57-742Z.md; Live site visual checks thread",
+    "issueUlid": "01M5M50ZG4KWC9XPBFNKNF1XT7"
+  }
+}

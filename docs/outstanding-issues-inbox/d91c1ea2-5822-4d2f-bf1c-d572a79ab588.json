@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "d91c1ea2-5822-4d2f-bf1c-d572a79ab588",
+  "createdOn": "2026-10-23",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "issue",
+    "summary": "Metabolic monitoring answer opens with a PDF-glued, cut-off sentence",
+    "detail": "Owner: Answer quality. Logged by the owner on 2026-10-22 17:58Z (\"Log it\"). Eval case quality-antipsychotic-metabolic-monitoring (\"What metabolic monitoring is required for antipsychotics?\"), Eval Canary run 39759615452 on main 0a01d2567: the answer opens with a \"The guidance is that ...\" wrapper, then a sentence glued across a PDF line break and cut off: \"A baseline fasting glucose should be obtained for all patients Patients with significant risk factors should have fasting.\" Source: Schizoaffective disorder.pdf p21. The glossary line, the lithium sentence and the \"pdf)\" scrap were already fixed by #3762. NEXT ACTION: capture the p21 chunk text (needs an owner-approved read-only Supabase read, or the PDF), add a fixture test, then fix the sentence join and truncation in extractive fact extraction. RAG-protected surface: flag before editing, write a RAG impact line, and run the live canary pair (paid, needs owner approval). Not clinically signed off. Related: #J8SJQ9 (the same case's stub history).",
+    "source": "Answer quality plan thread 2026-10-22; Eval Canary 39759615452; project file answer-quality/follow-ups-2026-10-22.md",
+    "issueUlid": "01M5M50ZEDX203BM6PSD3RA30Y"
+  }
+}
