@@ -49,7 +49,8 @@ it is the July 2026 analysis, kept as history._
 
 **Production today.** The production worker is paused on purpose: it runs a placeholder that processes no jobs.
 The library re-index is stopped by owner decision
-([decision](decisions/2026-10-17-library-reindex-stopped.md)).
+([decision](decisions/2026-10-17-library-reindex-stopped.md)), apart from a three-document pilot
+([pilot decision](decisions/2026-10-23-reindex-pilot-approved.md)).
 
 ## History: the July 2026 analysis
 
