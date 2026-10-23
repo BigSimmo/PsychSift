@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "ed9d3fe2-9a5b-428c-834a-5919298cd7b5",
+  "createdOn": "2026-10-23",
+  "action": "done",
+  "payload": {
+    "id": "#V5C4QJ",
+    "outcome": "Resolved 2026-10-23 by a read-only Railway check (owner connected the Railway connector and said go ahead). Project PsychSift: production services PsychSift (formerly the Database service) and worker, staging services app and worker-5g6o, plus environment shared variables, carry no CARING_CONTACTS_* or SUPABASE_CARING_CONTACTS_* variables. Every service builds from BigSimmo/PsychSift branch main, none from deploy/australia. Nothing to delete, and no credential to rotate or revoke.",
+    "baseRowFingerprint": "083c94083a2e8a29706b2b27a31a881716ebdbe776e8eb2eee96e488c913bf4f",
+    "targetUlid": "01M3FFV30EV5C4QJ8KYCE28D2W"
+  }
+}
