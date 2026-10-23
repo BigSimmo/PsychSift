@@ -418,7 +418,9 @@ Before the worker is switched back on, with the owner's explicit yes:
    first permitted job is not stopped as `scanner_unavailable`.
 2. Restore the real start command, then clear any pause switch.
 3. Watch the first jobs; the library re-index stays stopped
-   ([decision](decisions/2026-10-17-library-reindex-stopped.md)).
+   ([decision](decisions/2026-10-17-library-reindex-stopped.md)), apart from the three-document pilot
+   ([pilot decision](decisions/2026-10-23-reindex-pilot-approved.md)), which also limits the worker with
+   `WORKER_ALLOWED_DOCUMENT_IDS` and pauses it again when the pilot ends.
 
 ### Shadow extraction mode (packet B4 — docling, default OFF)
 

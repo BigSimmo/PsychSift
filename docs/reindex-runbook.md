@@ -4,6 +4,8 @@ Use this sequence when applying RAG indexing changes to the live `PsychSift Prod
 
 > **Current status: the library re-index is stopped by owner decision** (see
 > [the decision](decisions/2026-10-17-library-reindex-stopped.md)). Do not start a re-index from this runbook.
+> The one exception is the three-document pilot in
+> [the pilot decision](decisions/2026-10-23-reindex-pilot-approved.md), which has its own scope and spend cap.
 >
 > **Every command below that touches the live database, the worker or OpenAI needs the owner's explicit yes first.**
 > `npm run reindex` (with or without `--yes`), `recover:ingestion -- --apply`, `worker:once`,

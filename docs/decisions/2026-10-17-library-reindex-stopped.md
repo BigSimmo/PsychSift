@@ -11,4 +11,7 @@ This is the owner's decision as relayed in the 17 October 2026 project handover,
 re-index (stopped)" among settled decisions. The owner's exact wording is to be confirmed in the pull
 request that records it.
 
+On 2026-10-23 the owner allowed one narrow exception, a three-document pilot with its own spend cap
+([pilot decision](2026-10-23-reindex-pilot-approved.md)). The stop still covers the rest of the library.
+
 If this summary and the source ever differ, the source wins.
