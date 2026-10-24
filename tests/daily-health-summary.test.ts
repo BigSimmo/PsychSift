@@ -82,7 +82,7 @@ describe("daily health summary: judging each check", () => {
       });
       expect(result).toMatchObject({
         status: "amber",
-        detail: "only the Safari or Firefox browser tests are failing; the required checks pass",
+        detail: "only the extra browser tests or the advisory screenshot checks are failing; the required checks pass",
       });
       expect(readMainCiOutstanding(ciIssue(pending(["release-browser-matrix (firefox, firefox, 1, 4)"])))).toEqual({
         advisoryOnly: true,
@@ -92,6 +92,11 @@ describe("daily health summary: judging each check", () => {
     it.each([
       ["a required job is outstanding", pending(["release-browser-matrix (webkit, tablet, 3, 4)", "PR required"])],
       ["an unidentified prior failure", pending(["Unidentified prior failure (manual review required)"])],
+      [
+        "the browser legs could not be listed",
+        pending(["release-browser-matrix (unidentified checks; manual review required)"]),
+      ],
+      ["only the matrix aggregate is named", pending(["release-browser-matrix"])],
       ["the list is empty", pending([])],
       ["the marker is missing", "CI has unresolved failures on `main`."],
       ["the marker is unreadable", "<!-- main-ci-pending:v1:%7Bnot-json -->"],

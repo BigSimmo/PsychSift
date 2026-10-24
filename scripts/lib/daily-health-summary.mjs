@@ -114,7 +114,7 @@ export const SUMMARY_SOURCES = [
     advisory: {
       when: (issue) => readMainCiOutstanding(issue).advisoryOnly,
       onTrouble: "amber",
-      trouble: "only the Safari or Firefox browser tests are failing; the required checks pass",
+      trouble: "only the extra browser tests or the advisory screenshot checks are failing; the required checks pass",
     },
     maxAgeHours: null,
   },
@@ -179,7 +179,9 @@ function age(ms) {
 }
 
 const MAIN_CI_PENDING_PATTERN = /<!-- main-ci-pending:v1:([^\s]*) -->/;
-const ADVISORY_MAIN_CI_JOB = /^(?:release-browser-matrix(?: \(.*\))?|Visual baselines \(advisory\))$/;
+// Named matrix legs only, such as "release-browser-matrix (webkit, tablet, 3, 4)". The bare aggregate and
+// "release-browser-matrix (unidentified checks; manual review required)" do not match, so they stay red.
+const ADVISORY_MAIN_CI_JOB = /^(?:release-browser-matrix \([\w-]+(?:, [\w-]+)*\)|Visual baselines \(advisory\))$/;
 
 /**
  * Reads the outstanding-check list that `ci.yml` writes into the main-failure issue as a
