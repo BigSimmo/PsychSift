@@ -806,7 +806,8 @@ describe("API validation contracts", () => {
     const activeCountCall = client.calls.find((call) => call.inFilters.some((filter) => filter.column === "status"));
     expect(activeCountCall).toMatchObject({
       table: "ingestion_jobs",
-      filters: [{ column: "documents.owner_id", value: userId }],
+      // The administrator's own documents and the owner-less public library (ING-S-N7).
+      orFilters: [`owner_id.eq.${userId},owner_id.is.null`],
       inFilters: [{ column: "status", values: ["pending", "processing"] }],
     });
     expect(activeCountCall?.range).toBeUndefined();

@@ -691,7 +691,7 @@ async function consumeSubjectApiRateLimitDurable(args: SubjectRateLimitArgs): Pr
       allowInMemoryFallbackOnUnavailable,
     });
     if (!isGenerationBucket(args.bucket)) return perMinute;
-    const [minuteResult, dailyResult] = await Promise.all([
+    const [minute, daily] = await Promise.allSettled([
       perMinute,
       consumeSignedInGenerationDailyCap({
         supabase: args.supabase,
@@ -699,8 +699,12 @@ async function consumeSubjectApiRateLimitDurable(args: SubjectRateLimitArgs): Pr
         allowInMemoryFallbackOnUnavailable: Boolean(allowInMemoryFallbackOnUnavailable),
       }),
     ]);
-    if (minuteResult.limited) return minuteResult;
-    return dailyResult.limited ? dailyResult : minuteResult;
+    // A per-minute refusal stands even if the daily row could not be read; otherwise either
+    // limiter being unreadable fails the request closed.
+    if (minute.status === "fulfilled" && minute.value.limited) return minute.value;
+    if (minute.status === "rejected") throw minute.reason;
+    if (daily.status === "rejected") throw daily.reason;
+    return daily.value.limited ? daily.value : minute.value;
   }
 
   const defaults = anonymousApiRateLimitDefaults[args.bucket] ?? apiRateLimitDefaults[args.bucket];

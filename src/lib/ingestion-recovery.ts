@@ -250,3 +250,12 @@ export async function applyIngestionRecoveryActions(
   }
   return results;
 }
+
+/**
+ * PostgREST filter, applied to the joined `documents` table, for the ingestion jobs an
+ * administrator may see and retry: their own documents and the shared public library (no owner).
+ * Public-library jobs used to be invisible in the admin panel (audit ING-S-N7, 24 Oct 2026).
+ */
+export function administeredJobDocumentsFilter(ownerId: string) {
+  return `owner_id.eq.${ownerId},owner_id.is.null`;
+}
