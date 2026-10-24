@@ -10,4 +10,4 @@ medspacy>=1.1.0
 # Complete upstream model-artifact security fixes; upstream still reports 3.10.3.
 nltk @ https://codeload.github.com/nltk/nltk/tar.gz/8658f3e7c172abf87f99db045b59a6b1a9e80c7a#sha256=80a0217a14b75e6bd63fe1c1f0190a1a7ceadbe7de3aa4d9b842df5d0a11f7d8
 # Do not inherit Debian venv's vulnerable setuptools bootstrap version.
-setuptools>=84.0.0
+setuptools>=84.1.0
