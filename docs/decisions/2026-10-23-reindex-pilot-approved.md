@@ -49,5 +49,7 @@ on the live database. So the pilot relies on that rollback and the daily backup.
   document once by hand, up to US$1.00. Any further failure ends the pilot.
 - **After canary:** the answer subset of run 39759615452 cost US$0.13. Allow up to US$0.50.
 - **Total ceiling:** US$4.50.
+- **Revised 24 Oct 2026:** the owner approved the pilot and its after canary again in chat, with a
+  hard cap of US$7 for the two together. The plan above is unchanged.
 
 If this summary and the source ever differ, the source wins.
