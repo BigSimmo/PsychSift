@@ -10,7 +10,6 @@ import {
 import { consumeApiRateLimit, rateLimitJsonResponse } from "@/lib/api-rate-limit";
 import { isDemoMode } from "@/lib/env";
 import { jsonError } from "@/lib/http";
-import { administeredJobDocumentsFilter } from "@/lib/ingestion-recovery";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, requireAuthenticatedUser, unauthorizedResponse } from "@/lib/supabase/auth";
 import { optionalUuidQuery, parseRequestQuery, queryInteger } from "@/lib/validation/query";
@@ -86,13 +85,13 @@ export async function GET(request: Request) {
     let query = supabase
       .from("ingestion_jobs")
       .select("*, documents!inner(title,file_name,status,owner_id)", { count: "exact" })
-      .or(administeredJobDocumentsFilter(user.id), { referencedTable: "documents" })
+      .eq("documents.owner_id", user.id)
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
     let activeCountQuery = supabase
       .from("ingestion_jobs")
       .select("id, documents!inner(owner_id)", { count: "exact", head: true })
-      .or(administeredJobDocumentsFilter(user.id), { referencedTable: "documents" })
+      .eq("documents.owner_id", user.id)
       .in("status", ACTIVE_JOB_STATUSES);
     // #L15: a pre-pagination full count, same shape as activeCountQuery, so
     // the failed-jobs tile stops under-reporting once a corpus has more jobs
@@ -100,7 +99,7 @@ export async function GET(request: Request) {
     let failedCountQuery = supabase
       .from("ingestion_jobs")
       .select("id, documents!inner(owner_id)", { count: "exact", head: true })
-      .or(administeredJobDocumentsFilter(user.id), { referencedTable: "documents" })
+      .eq("documents.owner_id", user.id)
       .eq("status", "failed");
 
     if (batchId) {

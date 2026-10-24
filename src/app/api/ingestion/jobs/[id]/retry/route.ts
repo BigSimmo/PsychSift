@@ -5,7 +5,6 @@ import { env, isDemoMode } from "@/lib/env";
 import { jsonError, publicErrorResponse } from "@/lib/http";
 import { ingestionJobRetryRejectionReason } from "@/lib/ingestion";
 import {
-  administeredJobDocumentsFilter,
   applyIngestionRecoveryActions,
   isFreshProcessingJob,
   type IngestionRecoveryJob,
@@ -71,11 +70,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         "id,document_id,status,locked_at,lease_token,lease_expires_at,documents!inner(status,owner_id,chunk_count)",
       )
       .eq("id", id)
-      .or(administeredJobDocumentsFilter(user.id), { referencedTable: "documents" })
+      .eq("documents.owner_id", user.id)
       .maybeSingle();
     if (readError) throw new Error(readError.message);
     const job = row as unknown as (IngestionRecoveryJob & { status: string | null }) | null;
-    if (!job || (job.documents?.owner_id != null && job.documents.owner_id !== user.id)) {
+    if (!job || job.documents?.owner_id !== user.id) {
       return publicErrorResponse("Ingestion job not found.", 404, { code: "ingestion_job_not_found" });
     }
     if (job.status === "completed") {
@@ -125,7 +124,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       .from("ingestion_jobs")
       .select("*, documents!inner(owner_id)")
       .eq("id", job.id)
-      .or(administeredJobDocumentsFilter(user.id), { referencedTable: "documents" })
+      .eq("documents.owner_id", user.id)
       .maybeSingle();
     if (queuedError) throw new Error(queuedError.message);
     // The owner join is only the tenancy filter; keep the response shape the panel already reads.

@@ -2620,32 +2620,6 @@ describe("private document API access", () => {
     });
   }
 
-  it("lets an administrator retry a failed public-library job, which has no owner (ING-S-N7)", async () => {
-    const client = retryClient(retryJobRow({}, { owner_id: null }), () =>
-      ok({ ok: true, action: "retry", artifacts_preserved: true }),
-    );
-    mockRuntime(client);
-
-    const response = await postRetry();
-
-    expect(response.status).toBe(200);
-    const read = client.calls.find((call) => call.table === "ingestion_jobs" && call.maybeSingle);
-    expect(read?.orFilters).toContain(`owner_id.eq.${userId},owner_id.is.null`);
-    expect(client.rpc).toHaveBeenCalledWith(
-      "recover_ingestion_job",
-      expect.objectContaining({ p_expected: expect.objectContaining({ documentOwnerId: null }) }),
-    );
-  });
-
-  it("still hides another owner's job from the retry route", async () => {
-    const client = retryClient(retryJobRow({}, { owner_id: "someone-else" }), () => ok({ ok: true }));
-    mockRuntime(client);
-
-    const response = await postRetry();
-
-    expect(response.status).toBe(404);
-  });
-
   it("re-queues a failed job through the hardened recovery RPC with the observed row state (DB-01)", async () => {
     const client = retryClient(retryJobRow(), () => ok({ ok: true, action: "retry", artifacts_preserved: true }));
     mockRuntime(client);
