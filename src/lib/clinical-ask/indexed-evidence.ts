@@ -1,6 +1,7 @@
 import type { ClinicalAskEvidence, ClinicalAskRequest, SourceReviewState } from "@/lib/clinical-ask/contracts";
 import type { RetrievalAccessScope } from "@/lib/owner-scope";
 import { searchChunksWithTelemetry } from "@/lib/rag/rag";
+import { excludeSupersededEvidence } from "@/lib/rag/superseded-evidence";
 import { registryCorpusDetailHref } from "@/lib/registry-corpus-links";
 import type { ClinicalSourceMetadata, SearchResult } from "@/lib/types";
 
@@ -73,7 +74,9 @@ export async function retrieveIndexedEvidence(
     allowGlobalSearch: !accessScope.ownerId,
     signal,
   });
-  return results
+  // Owner rule #BFCTST: a superseded source is never evidence. Answer applied it; Clinical Ask did
+  // not (audit E2E-06, 24 Oct 2026).
+  return excludeSupersededEvidence(results)
     .slice(0, RESULT_LIMIT)
     .map(toEvidence)
     .filter((item): item is ClinicalAskEvidence => item !== null);
