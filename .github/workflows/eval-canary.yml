@@ -10,6 +10,10 @@
 # branch. After merging, send an `eval-canary` repository dispatch and confirm
 # it is green before trusting the weekly cadence.
 name: Eval Canary
+# A dispatch that shortens the answer subset or stages ranking weights is a trial: it can pass
+# without testing what the weekly run tests, so its title says so and the daily summary never
+# lets it clear a failed canary (audit EM-N3). Default dispatches and the schedule keep the plain name.
+run-name: ${{ github.event_name == 'repository_dispatch' && (github.event.client_payload.rag_ranking_config || (github.event.client_payload.answer_case_limit && github.event.client_payload.answer_case_limit < 44)) && 'Eval Canary (trial run, does not clear alerts)' || 'Eval Canary' }}
 
 on:
   # repository_dispatch always loads this secret-bearing workflow and its code
