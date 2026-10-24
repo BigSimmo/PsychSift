@@ -7,6 +7,7 @@ import {
   consumeSubjectApiRateLimit,
   rateLimitJsonResponse,
 } from "@/lib/api-rate-limit";
+import { rejectPatientDetailQuestion } from "@/lib/clinical-question-patient-check-server";
 import { isDemoMode, isLocalNoAuthMode } from "@/lib/env";
 import { jsonError, PublicApiError } from "@/lib/http";
 import { publicCatalogueAccessContext } from "@/lib/public-api-access";
@@ -140,6 +141,9 @@ export async function GET(request: Request) {
       universalSearchQuerySchema,
       "Invalid universal query.",
     );
+    // The document lane can send this text to OpenAI's query classifier, so refuse one that looks
+    // like it holds a patient detail here too, not only in the browser (audit SEC-N1, 24 Oct 2026).
+    rejectPatientDetailQuestion({ query: q });
 
     if (isDemoMode() || isLocalNoAuthMode()) {
       const searchArgs: RunUniversalSearchArgs = {

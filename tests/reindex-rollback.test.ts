@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   applyRollbackPlans,
   collectCommittedGenerations,
+  formatRollbackOutcome,
   planReindexRollback,
   parseRollbackArgs,
   runReindexRollback,
@@ -116,6 +117,26 @@ describe("reindex rollback", () => {
     const [outcome] = await runReindexRollback(store, { kind: "documents", documentIds: [DOC_A] }, { apply: true });
     expect(outcome.refusal).toBe("target_snapshot_missing");
     expect(repoint).not.toHaveBeenCalled();
+  });
+
+  it("refuses a second run that would move a rolled-back document forward again (ING-S-N2)", async () => {
+    const { store, repoint, documents } = memoryStore({ [DOC_A]: { ...twoGenerations(), current: "gen-old" } });
+    const [outcome] = await runReindexRollback(store, { kind: "documents", documentIds: [DOC_A] }, { apply: true });
+    expect(outcome.refusal).toBe("previous_generation_is_newer");
+    expect(repoint).not.toHaveBeenCalled();
+    expect(documents[DOC_A].current).toBe("gen-old");
+  });
+
+  it("rolls forward only when asked to, and says so", async () => {
+    const { store, repoint } = memoryStore({ [DOC_A]: { ...twoGenerations(), current: "gen-old" } });
+    const [outcome] = await runReindexRollback(
+      store,
+      { kind: "documents", documentIds: [DOC_A] },
+      { apply: true, allowRollForward: true },
+    );
+    expect(repoint).toHaveBeenCalledWith(DOC_A, "gen-old", "gen-new");
+    expect(formatRollbackOutcome(outcome, true)).toContain("ROLLED FORWARD");
+    expect(parseRollbackArgs(["--document-id", DOC_A, "--roll-forward"]).allowRollForward).toBe(true);
   });
 
   it("reports an RPC refusal as a failed apply", async () => {
