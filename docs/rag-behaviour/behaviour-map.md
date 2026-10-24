@@ -20,6 +20,13 @@ and the SQL orders by it — so the RPCs discriminate candidates that the `min(t
 collapse to byte-identical app-side primaries. **This saturation is why unrelated documents
 matching the same terms tie exactly.**
 
+**Changes 20 to 22 Oct 2026 (recorded 24 Oct 2026).** Table-fact selection (S2, audit RAG-A-02,
+PR #3711, commits `b12d5c65f` and `5574366a1`): `groupTableFactMatches` in
+`rag-candidate-sources.ts` now keeps up to five table facts per chunk, the five with the highest
+`textRank` (duplicates by id keep the higher-ranked copy, ties keep arrival order). The chunk's own
+score still comes from its best fact, so the S2 formulas above are unchanged. Answer-side changes
+from the same days are listed at the end of section 7.
+
 ## 2. What resolves ties (the comparator chains)
 
 - **Selection** (`retrieval-selection.ts`): clamped score → lexicalScore → rerankScore →
@@ -113,6 +120,26 @@ answerShape}` where `answerShape` is provider-safe counts/lengths only — never
   `generation_fallback:generation_quality_failed` degraded token, cache exclusion, and the
   source-only fallback are byte-for-byte unchanged. Do not use these fields to relax a gate;
   they exist so a live degraded answer can name the gate that rejected it.
+
+**Changes 20 to 22 Oct 2026 (recorded 24 Oct 2026).** Each was checked against git history:
+
+- **Self-reported ungrounded answers are gated** (audit RAG-B-01, PR #3698, commit `52150f017`). When
+  the model returns `grounded: false` but still cites a passage, `parseAnswerJson` now treats the
+  answer as unsupported, so it takes the final gate's evidence-gap path instead of being delivered.
+  A cached answer with the old shape is treated as a miss or evicted.
+- **Superseded sources never become evidence** (owner rule #BFCTST, PR #3743, commit `09c81c94c`;
+  kept by the owner on 24 Oct 2026, see
+  [the decision](../decisions/2026-10-24-superseded-sources-stay-out-of-answers.md)).
+  `excludeSupersededEvidence` (`src/lib/rag/superseded-evidence.ts`) removes any source whose
+  `document_status` is `outdated` before every answer route sees the ranked results. `review_due`
+  and `unknown` sources stay, with their own warnings. When only outdated sources matched, the
+  answer falls back to its usual evidence-gap behaviour. The owner declined the wider version in
+  PR #3700, which would also have dropped withdrawn and past-expiry sources. On this branch (24 Oct 2026) Clinical Ask applies the same filter in `src/lib/clinical-ask/indexed-evidence.ts`.
+- **National guidance difference note** (commit `09b6af979`, owner decision 21 Oct 2026).
+  `src/lib/rag/guidance-difference-note.ts` adds one plain line under the answer naming a national
+  source that differs from the WA guidance the answer follows. It only comes from an owner-signed
+  entry in `src/data/reviewed-guidance-differences.json`, which was still empty on 24 Oct 2026, so
+  no live answer shows it yet.
 
 ## 8. Answer composition menu (packet S2, 2026-08-18)
 

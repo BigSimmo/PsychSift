@@ -146,8 +146,12 @@ Before implementing any changes to RAG ranking, retrieval, synthesis, or evaluat
   - `scripts/fixtures/rag-retrieval-golden.json`, `scripts/fixtures/rag-ranking-candidate-snapshot.v1.json`
   - Contract test pins: `tests/rag-fast-path-ordering.test.ts`, `tests/ranking-tuning.test.ts`, `tests/retrieval-selection.test.ts`, `tests/rag-second-stage-ranking.test.ts`, `tests/eval-retrieval.test.ts`, `tests/rag-imputation-contract.test.ts`
 
-- Manually review database schema and retrieval RPC changes in `supabase/schema.sql` and
-  `supabase/migrations/` for RAG impact; these paths are not matched by `ragRankingPatterns`.
+- Review database schema and retrieval RPC changes in `supabase/schema.sql` and
+  `supabase/migrations/` for RAG impact. No path in `ragRankingPatterns` matches them, but pr-policy
+  reads each added migration's SQL and classifies the PR as a ranking change when it creates, alters,
+  drops or patches a retrieval function (`retrievalFunctionMigrationPaths` in `scripts/pr-policy.mjs`;
+  see `docs/rag-behaviour/safeguards.md`). Corrected 24 Oct 2026. Edits to `supabase/schema.sql`
+  alone still need a manual check.
 
 - Separately check authored clinical datasets matched by `clinicalRiskPatterns` for clinical
   governance requirements: `src/lib/dictionary-data.ts`, `src/lib/factsheets-data.ts`,

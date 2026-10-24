@@ -118,15 +118,34 @@ commit of that document. The script needs the `rollback_document_index_generatio
   worker-owned `documents.metadata` keys (extraction quality, cover image, embedding model,
   enrichment state, extraction provenance and metrics) and the `document_index_quality` row,
   from snapshots taken as each generation is replaced. Owner-edited metadata such as the title
-  is left alone. A generation committed before those snapshots existed is refused with
-  `target_snapshot_missing` rather than rolled back with mismatched details. The dry run
-  reports that refusal too, so a document it lists as ready will not be refused for it at apply.
+  is left alone. A generation that was replaced before 21 Oct 2026 (before
+  `20261021170000_restore_generation_metadata_on_rollback.sql` started taking snapshots) has no
+  snapshot and is refused with `target_snapshot_missing` rather than rolled back with mismatched
+  details. The dry run reports that refusal too, so a document it lists as ready will not be
+  refused for it at apply.
 - `--apply` writes (it asks first unless `--yes` is given). It refuses a document with no
   previous committed generation, or whose previous generation has no chunks. The database
   function also refuses if the pointer moved since the dry run or an ingestion job for the
   document is pending or processing.
-- The generation you roll back from is kept, so a rollback can itself be rolled back. Check
-  the result with `npm run reindex:health` and run the retrieval eval before relying on it.
+- The generation you roll back from is kept, so a rollback can itself be undone. On branch
+  `claude/project-thread-d92wad` (24 Oct 2026), a second run that would move a document forward
+  to that newer generation is refused as `previous_generation_is_newer` unless you pass
+  `--roll-forward`, so running the same command twice no longer undoes the rollback by accident.
+  Check the result with `npm run reindex:health` and run the retrieval eval before relying on it.
+
+**Cautions (added 24 Oct 2026).**
+
+- **Older documents may have no quick undo.** Rollback only counts a generation that has page
+  rows stamped with its generation. Migration `20261013075944_administrator_txt_fenced_runtime_cutover.sql`
+  (13 Oct 2026) added `document_pages.index_generation_id` with no backfill, so pages saved before
+  it carry no stamp. For a document whose previous pages are that old, the planner reports
+  `no_previous_generation` and cannot restore it. Run the read-only dry run for the documents
+  before any re-index, including the pilot, and treat a refusal as "no quick undo for this
+  document". A database fix is drafted separately and needs the owner's yes before it can merge.
+- **Do not re-index a pilot document twice before the go/no-go check.** Each commit keeps only
+  the new generation and the one it replaced. If a document's current index is already a pilot
+  generation, queuing it again would replace its pre-pilot generation, and rollback could then
+  only return to the first pilot run.
 
 ```bash
 npm run reindex:rollback -- --chunker-version 1.3.1-page            # dry run

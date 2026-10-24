@@ -1,5 +1,7 @@
 # RAG upgrade execution order
 
+> **Status, 24 Oct 2026:** the full library re-index is stopped by owner decision (`docs/decisions/2026-10-17-library-reindex-stopped.md`). Only the approved three-document pilot (`docs/decisions/2026-10-23-reindex-pilot-approved.md`) may run.
+
 The manifest is the scheduling authority. Execute one phase per fresh session and never execute plans alphabetically. P00–P17 are Cloud/offline implementation. L00–L10 begin only in a new local session after the accepted offline programme is published.
 
 ## Cloud implementation sequence

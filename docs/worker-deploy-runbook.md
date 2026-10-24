@@ -13,6 +13,8 @@ This is the detailed expansion of the **Worker** bullet in
 that runbook is the launch sequence; this one is the worker recipe. The actual
 deploy is an operator action — see the gate in step 0.
 
+> **Every command below that touches the live database, the worker or OpenAI needs the owner's explicit yes first** (see "Spending approval for each billable run" in [`AGENTS.md`](../AGENTS.md)).
+
 Production host is **Railway** (`deployment-architecture.md` §2); the image is
 host-agnostic, so the `docker run` recipe below maps 1:1 onto Railway service
 env vars + a restart policy (or any OCI host).
@@ -282,8 +284,14 @@ docker build -f Dockerfile.worker -t clinical-kb-worker .
   before the image is promoted. The venv is first on `PATH`, so the default
   `PYTHON_BIN=python` resolves to it — no override needed in-container.
 - Runtime is the non-root `node` user. No secret is baked into any layer.
-- `STOPSIGNAL SIGTERM` is set; the worker drains the active batch and exits `0`
-  on `SIGTERM`/`SIGINT`. Fatal errors still exit `1` and fire the webhook.
+- `STOPSIGNAL SIGTERM` is set. On `SIGTERM`/`SIGINT` the worker stops claiming new jobs and exits
+  `0` once its loop ends. Fatal errors still exit `1` and fire the webhook.
+- **A restart can cut off a running job (corrected 24 Oct 2026).** The worker's database calls are
+  tied to the same stop signal (`controlPlaneAbortSignal` in `worker/behavior.ts`), so once the
+  signal arrives a running job's next database call is aborted rather than allowed to finish, and
+  `railway.worker.json` sets no draining time. The job is picked up again only after its lease goes
+  stale (`WORKER_STALE_AFTER_MINUTES`, default 45 minutes in `src/lib/env.ts`). So change worker
+  settings, or redeploy the worker, only when no job is running.
 - `dist/worker/validate-runtime.mjs` runs during the image build and again in
   CI with `--network=none` to prove Node, module resolution, Python, Tesseract,
   PyMuPDF, Pillow and pytesseract are present without calling Supabase/OpenAI.
@@ -384,15 +392,24 @@ These database deadlines are separate from the native extraction limits below.
 
 **Pause switches** (`isWorkerClaimLoopPaused` in `worker/health.ts`). Either one pauses the claim loop:
 
-| Variable                    | Pauses when    | Notes                                                          |
-| --------------------------- | -------------- | -------------------------------------------------------------- |
-| `WORKER_PAUSED`             | `true` or `1`  | Emergency stop; also named in the governance incident runbooks |
-| `WORKER_CLAIM_LOOP_ENABLED` | `false` or `0` | Same effect; unset or any other value leaves claiming on       |
+| Variable                    | Pauses when                                         | Notes                                                          |
+| --------------------------- | --------------------------------------------------- | -------------------------------------------------------------- |
+| `WORKER_PAUSED`             | Any value except blank, `false`, `0`, `no` or `off` | Emergency stop; also named in the governance incident runbooks |
+| `WORKER_CLAIM_LOOP_ENABLED` | Any value except blank, `true`, `1`, `yes` or `on`  | Same effect                                                    |
+
+Both switches fail closed on branch `claude/project-thread-d92wad` (24 Oct 2026, commit `ac5aae439`):
+a value the worker does not recognise, such as `WORKER_PAUSED=paused`, now pauses it instead of being
+read as "not paused". Values are trimmed and case is ignored.
 
 While paused the worker keeps its health endpoint up, logs "Worker claim loop is paused" once, and claims
 no new jobs (`worker/run-loop.ts`). A batch already claimed is not interrupted. To resume, both must allow
-claiming: `WORKER_PAUSED` unset or false, and `WORKER_CLAIM_LOOP_ENABLED` unset or true. Nothing alerts on a
-paused worker, so record any pause in the incident or task notes.
+claiming: `WORKER_PAUSED` blank, `false`, `0`, `no` or `off`, and `WORKER_CLAIM_LOOP_ENABLED` blank, `true`,
+`1`, `yes` or `on`. Nothing alerts on a paused worker, so record any pause in the incident or task notes.
+
+On the same branch, `/health` also reports `claimScope` (whether claiming is restricted, how many document
+IDs and which file types are allowed, and any allowlist error), and the startup log prints one
+"Worker claim scope:" line with the pause state and that scope. Check it after any change to
+`WORKER_ALLOWED_DOCUMENT_IDS`, such as the re-index pilot.
 
 **`WORKER_ADMIN_SOURCE_RUNTIME_MODULE`** (`loadAdminSourceRuntimeOptions` in `worker/admin-source-runtime.ts`).
 It names, by absolute local path, a server-mounted module that is deliberately kept outside this repository.
@@ -726,9 +743,10 @@ So a rollback is **two** steps, and stopping after the first leaves docling stil
 1. Set `WORKER_DOCUMENT_EXTRACTOR_MODE=legacy` on the `worker` service.
 2. **Deploy.** Use Railway's apply/redeploy action so a new deployment starts with the new value.
 
-Once the new deployment starts, the outgoing container gets `STOPSIGNAL SIGTERM` and drains its
-active batch before exiting 0 (§1), so the worst-case worker-side delay is the current batch plus
-at most one 120-second docling window. No migration, no reindex, and no code or image change is
+Once the new deployment starts, the outgoing container gets `STOPSIGNAL SIGTERM` (§1). It stops
+claiming new jobs, but a job that is still running can be cut off and is only picked up again
+after its lease goes stale (default 45 minutes), so deploy when no job is running (corrected
+24 Oct 2026). No migration, no reindex, and no code or image change is
 required.
 
 Existing `shadow_extraction` records stay on their document rows as inert history. Nothing
