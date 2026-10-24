@@ -3,6 +3,7 @@ import { z } from "zod";
 import { parseListRows } from "@/lib/api-list-response";
 import { consumeApiRateLimit, rateLimitJsonResponse } from "@/lib/api-rate-limit";
 import { isDemoMode } from "@/lib/env";
+import { currentDocumentPageRows } from "@/lib/reindex-pipeline";
 import { jsonError } from "@/lib/http";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, requireAuthenticatedUser, unauthorizedResponse } from "@/lib/supabase/auth";
@@ -77,8 +78,18 @@ const pageRowSchema = z
     text: nullableStringSchema,
     ocr_used: z.boolean().nullable(),
     metadata: nullableRecordSchema,
+    index_generation_id: z.string().nullable().optional(),
   })
   .passthrough();
+
+function currentPagesByDocument<T extends { document_id: string; index_generation_id?: string | null }>(
+  pages: T[],
+  documents: Array<{ id: string; metadata?: unknown }>,
+) {
+  const byDocument = new Map<string, T[]>();
+  for (const page of pages) byDocument.set(page.document_id, [...(byDocument.get(page.document_id) ?? []), page]);
+  return documents.flatMap((document) => currentDocumentPageRows(byDocument.get(document.id) ?? [], document.metadata));
+}
 
 const imageRowSchema = z
   .object({
@@ -420,7 +431,7 @@ export async function GET(request: Request) {
         .limit(CHILD_QUERY_ROW_CAP),
       supabase
         .from("document_pages")
-        .select("document_id,page_number,text,ocr_used,metadata")
+        .select("document_id,page_number,text,ocr_used,metadata,index_generation_id")
         .in("document_id", documentIds)
         .limit(CHILD_QUERY_ROW_CAP),
       supabase
@@ -455,7 +466,9 @@ export async function GET(request: Request) {
         qualityRows: parseListRows(qualityResult.data, qualityRowSchema),
         jobs: parseListRows(jobsResult.data, jobRowSchema),
         stages: parseListRows(stagesResult.data, stageRowSchema),
-        pages: parseListRows(pagesResult.data, pageRowSchema),
+        // Only each document's current page copies: after a re-index the older copies stay stored
+        // for rollback, and counting them inflated page and OCR totals (audit 2026-10-24, E2E-02).
+        pages: currentPagesByDocument(parseListRows(pagesResult.data, pageRowSchema), documents),
         images: parseListRows(imagesResult.data, imageRowSchema),
       }).slice(0, 80),
       ...(partialTables.length > 0 ? { partial: true, partialTables } : {}),

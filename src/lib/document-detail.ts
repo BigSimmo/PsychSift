@@ -11,7 +11,11 @@ import {
   withOwnerReadScope,
   redactNonOwnedDocumentFields,
 } from "@/lib/public-api-access";
-import { committedIndexGeneration, isCommittedGenerationMetadata } from "@/lib/reindex-pipeline";
+import {
+  committedIndexGeneration,
+  currentDocumentPageRows,
+  isCommittedGenerationMetadata,
+} from "@/lib/reindex-pipeline";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError } from "@/lib/supabase/auth";
 import { parseRouteParams } from "@/lib/validation/params";
@@ -172,6 +176,12 @@ function withImageTableMetadata<T extends object>(image: T) {
 function withoutMetadata<T extends { metadata?: unknown }>(row: T) {
   const projected = { ...row };
   delete projected.metadata;
+  return projected;
+}
+
+function withoutPageInternals<T extends { metadata?: unknown; index_generation_id?: string | null }>(row: T) {
+  const projected = withoutMetadata(row);
+  delete projected.index_generation_id;
   return projected;
 }
 
@@ -494,7 +504,7 @@ export async function loadAuthorizedDocumentDetail(args: {
 
   const pagesRequest = supabase
     .from("document_pages")
-    .select("id,page_number,text,ocr_used,metadata")
+    .select("id,page_number,text,ocr_used,metadata,index_generation_id")
     .eq("document_id", id)
     .gte("page_number", pageRange.from)
     .lte("page_number", pageRange.to)
@@ -593,7 +603,10 @@ export async function loadAuthorizedDocumentDetail(args: {
     } as unknown as ClinicalDocument,
     ...(!isOwner ? { publicReviewDate } : {}),
     pages: publicRows(
-      committedRows(document, pagesResult.data ?? []).map(withoutMetadata) as Record<string, unknown>[],
+      currentDocumentPageRows(pagesResult.data ?? [], document.metadata).map(withoutPageInternals) as Record<
+        string,
+        unknown
+      >[],
     ) as DocumentDetailPage[],
     images: publicRows(
       committedRows(document, imagesResult.data ?? []).map(withImageTableMetadata) as Record<string, unknown>[],
