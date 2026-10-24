@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "ec731f45-fffd-449d-a16f-4b15f2957862",
+  "createdOn": "2026-10-23",
+  "action": "update",
+  "payload": {
+    "id": "#FVF58M",
+    "summary": "Adversarial real-PDF and table-fact regressions are reviewed and tested; broader acceptance remains",
+    "detail": "CURRENT EXECUTION 24 October 2026: The new synthetic real-PDF four-column fixture covers wrapped actions, confirmed vertical group merge, group termination and distinct threshold/rate/action tuples. A separate producer regression preserves those relationships and source provenance. Both executed with PyMuPDF available; ingestion specialist review is clear. Keep the integration limit explicit: the extractor and producer use complementary fixtures; the complete imageTableMetadata handoff and broader benchmark acceptance are not demonstrated. Parser behavior was unchanged and no re-index was run.\n\nHISTORICAL DETAIL (superseded where corrected above): LOCAL PROOF 24 October 2026: a new synthetic real-PDF test exercises four columns, wrapped actions, a confirmed vertically merged group, different threshold/rate/action tuples and the next unmerged group. tests/relational-table-evidence.test.ts invokes that Python test when PyMuPDF exists and separately asserts table-fact tuples and provenance. Existing parser was unchanged. Focused table producer/grouping/ranking/PDF tests passed; new real-PDF regression passed. Remaining: independent review and deciding whether this plus the existing reading-order fixtures covers the intended broader adversarial table benchmark. No live corpus, re-index or extraction-behaviour change is claimed.",
+    "source": "Local execution and independent scoped review 24 October 2026 at df1e07db04.",
+    "baseRowFingerprint": "1fa18d0c3c0636cc1afc816fe2d64bce7990efb91cf3a93308224915d90bed26",
+    "targetUlid": "01M3CHC2MQFVF58MKZ723N3W8Q"
+  }
+}

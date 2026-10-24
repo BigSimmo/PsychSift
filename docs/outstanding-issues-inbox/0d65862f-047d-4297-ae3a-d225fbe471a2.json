@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "0d65862f-047d-4297-ae3a-d225fbe471a2",
+  "createdOn": "2026-10-23",
+  "action": "update",
+  "payload": {
+    "id": "#1RVGZF",
+    "summary": "Clinical sign-in guards are implemented; complete surface and live acceptance remain",
+    "detail": "REVALIDATED 2026-10-23 at df1e07db04. The shared signed-in clinical guard, Answer/Clinical Ask/document route wiring and server-rendered page gates already exist, with synthetic contract/DOM coverage. Remove the instruction to build them again. Retain verification of the complete owner-specified surface, production signed-out/signed-in behaviour and regulatory acceptance; no production journey or clinical/legal sign-off was performed. Source inspection only; no fresh application/provider execution or clinical sign-off. Evidence: src/lib/clinical-access.ts; src/lib/clinical-page-access.ts; src/app/api/answer/route.ts; tests/clinical-catalogue-api-gate.test.ts; tests/clinical-snapshot-pages-sign-in.dom.test.tsx. PRIOR DETAIL: Owner decision 2026-10-20 (docs/decisions/2026-10-20-clinical-decision-tools-need-sign-in.md). Mockup awaits owner 'build'. Server-side refusal on answer, clinical-ask and signed-url routes plus UI gates. Findings R-01, R-03, R-05, R-13, R-15. PR-4 stays unmet until built.",
+    "source": "Current-state issue revalidation 2026-10-23 at df1e07db04; Regulatory readiness audit 2026-10-20 (/mnt/project-files/reviews/2026-10-20-regulatory-launch-readiness.md)",
+    "baseRowFingerprint": "3ab1e8697442fee2fe7bfedce6d456ed5c2beb952471ff93e849c8f05e39a6b8",
+    "targetUlid": "01M5D6CDFH1RVGZF44DTFHP9F7"
+  }
+}

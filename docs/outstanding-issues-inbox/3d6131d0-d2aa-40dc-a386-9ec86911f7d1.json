@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "3d6131d0-d2aa-40dc-a386-9ec86911f7d1",
+  "createdOn": "2026-10-23",
+  "action": "update",
+  "payload": {
+    "id": "#9V1TJ5",
+    "summary": "Keep uploaded-local retrieval fail-closed; reconcile application and database scope declarations",
+    "detail": "REVALIDATED 2026-10-23 at df1e07db04. Preserve fail-closed uploaded-local retrieval. Remaining scope is application/database scope consistency, not enabling retrieval or blaming unrelated canary failures. Source inspection only; no fresh application/provider execution or clinical sign-off. Evidence: src/lib/rag/rag-candidate-sources.ts. PRIOR DETAIL: OWNER DECISION 2026-09-26 (Josh, 'all as recommended' in the project chat): keep uploaded-local retrieval fail-closed for now; turning it on is a separate, larger safety project (P16 generation-bound activation). Canary cases are NOT red because of this: #4WR2XZ's live search found the WA clozapine guidelines scoped public, so do not re-investigate that link. Remaining cleanup only: the app still treats uploaded_local (and international_supplementary, fail-closed by migration 20260901130000) as live scopes in src/lib/rag/rag-candidate-sources.ts, rag-governed-search.ts, source-conflict-section.ts and rag-reviewed-policy-input.ts while match_governed_candidate_chunks_v3 returns nothing for them; making app and database agree is a RAG-surface change needing the usual flag and canary. DO NOT route around the fail-closed migration.",
+    "source": "Current-state issue revalidation 2026-10-23 at df1e07db04; Claude Code session 2026-09-15 (session_01Fj3ue1Dv89wSgzZWVQ6v3L), offline read of supabase/schema.sql and supabase/migrations/20260901120100; PR #2803 review round",
+    "baseRowFingerprint": "a14f09cdfa2b4082593b282fe6764aa0ad9dc04e797f871adaa5c7ee9d49d11b",
+    "targetUlid": "01M2JW4Z4A9V1TJ54QF9GQCH08"
+  }
+}

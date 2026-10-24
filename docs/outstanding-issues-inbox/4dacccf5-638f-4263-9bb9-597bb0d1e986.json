@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "4dacccf5-638f-4263-9bb9-597bb0d1e986",
+  "createdOn": "2026-10-23",
+  "action": "update",
+  "payload": {
+    "id": "#6X06YS",
+    "summary": "MHAS legacy overlay and held Zonta proposal await admission; SARC counselling is already covered",
+    "detail": "CURRENT EXECUTION 24 October 2026: MHAS already exists as legacy S100; the remaining canonical overlay must match/enrich it, not append a duplicate. SARC counselling is already represented in canonical SVC-SV-001, so no separate SARC record is needed. Private held proposals for MHAS overlay SVC-LEG-004 and Zonta Supported Refuge Accommodation SVC-FDV-005 are prepared at D:/Temp/psychsift-wa-service-drafts-20261024.json with primary-source evidence in the adjacent .md. Both are unreviewed and outside runtime because the canonical schema has no safe draft publication state. The worker reports schema/type validation passed. Remaining: exact-content owner review, current MHAS scope and Zonta cohort/catchment/referral gaps, separately governed Zonta issuer admission, one-time MHAS identity merge proof and normal clinical/publication gates. No record, source authority or clinical signature was imported/changed.",
+    "source": "Primary official MHAS/Zonta pages and current local service data, researched 24 October 2026 at df1e07db04; private draft evidence note.",
+    "baseRowFingerprint": "3a59ebe3a5010054ffd25b1dbe729737d0677256ac727aadba806b2a2979876f",
+    "targetUlid": "01M2MSJY9Q6X06YSV30566X5Z7"
+  }
+}

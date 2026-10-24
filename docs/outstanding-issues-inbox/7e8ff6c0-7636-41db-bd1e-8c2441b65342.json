@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "7e8ff6c0-7636-41db-bd1e-8c2441b65342",
+  "createdOn": "2026-10-23",
+  "action": "update",
+  "payload": {
+    "id": "#SQ2FG9",
+    "summary": "Structured rights metadata is drafted; verify and populate source permissions before relevant use",
+    "detail": "LOCAL IMPLEMENTATION 24 October 2026: optional rights record in acquisition-ledger.ts supports unknown/restricted/documented, licence, HTTPS terms evidence, checked date and notes. Omission stays unknown; documented terms confer no access, ingestion, publication, ranking or clinical approval. Tests cover malformed inputs, evidence links/dates, unchanged classification and stale attestations after edits. Existing source data and signatures were not rewritten. Remaining: independent review, integration and actual evidence-backed per-source rights review/population; do not fill permissions from assumptions.",
+    "source": "Current local execution 24 October 2026 at df1e07db04; prior source retained in historical detail.",
+    "baseRowFingerprint": "32d380bb66d906e728f5c8c4049cfd1729559fb75039fbd33021bdd81b62e43b",
+    "targetUlid": "01M5D6CE3PSQ2FG93C7QY68NPF"
+  }
+}

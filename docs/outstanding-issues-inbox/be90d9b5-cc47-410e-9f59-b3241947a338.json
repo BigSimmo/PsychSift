@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "be90d9b5-cc47-410e-9f59-b3241947a338",
+  "createdOn": "2026-10-23",
+  "action": "update",
+  "payload": {
+    "id": "#WWTRM5",
+    "summary": "Correct the remaining canonical-ledger arrow through dedicated reconciliation",
+    "detail": "REVALIDATED 2026-10-23 at df1e07db04. The shared Perth time-helper clarification exists. Retain only the canonical-ledger arrow correction through dedicated reconciliation; do not delete the live helper. Source inspection only; no fresh application/provider execution or clinical sign-off. Evidence: docs/decisions/2026-09-26-remove-ward-flow-and-caring-contacts.md. PRIOR DETAIL: Item 4 done on branch claude/project-thread-l6adgn (22 Oct 2026): docs/decisions/2026-09-26-remove-ward-flow-and-caring-contacts.md now carries a dated update explaining that src/lib/caring-contacts/clock.ts is the shared Perth time helper used by the MHA clock, First Nations and On Call pages, and holds no Caring Contacts features. Still open: item 1, the corrupted arrow at docs/outstanding-issues.md:15 (mojibake for a right arrow in 'How this is used'). It can only be fixed on a dedicated reconcile branch, because ordinary PRs may not edit the canonical ledger. NEXT ACTION: the next issues:reconcile run replaces that arrow, then close this row.",
+    "source": "Current-state issue revalidation 2026-10-23 at df1e07db04; PR #3609 review (gitar-bot, chatgpt-codex-connector), 17 Oct 2026",
+    "baseRowFingerprint": "2e93d89df02787b61b346f03735a75a948da1ca64fde9f418267bb4685de9a61",
+    "targetUlid": "01M54YEVQ8WWTRM5RPCGA0FEVP"
+  }
+}

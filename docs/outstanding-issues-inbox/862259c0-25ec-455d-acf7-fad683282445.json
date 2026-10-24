@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "862259c0-25ec-455d-acf7-fad683282445",
+  "createdOn": "2026-10-23",
+  "action": "update",
+  "payload": {
+    "id": "#F8Q9KK",
+    "summary": "Token-free Git push is drafted; GH_TOKEN environment migration and workflow acceptance remain",
+    "detail": "LOCAL IMPLEMENTATION 24 October 2026: ranking-snapshot-refresh.yml now uses gh auth setup-git and an explicit https://github.com/${REPOSITORY}.git push URL without credentials. Workflow contract test passes. Remaining: specifically approve and execute moving GH_TOKEN from repository secrets to the main-only production-secrets environment, couple both consuming jobs to that environment, verify branch protections and a real authorized run. Environment references are not enabled ahead of secret availability because that would break the controller; no credential or GitHub setting was changed.",
+    "source": "Current local execution 24 October 2026 at df1e07db04; prior source retained in historical detail.",
+    "baseRowFingerprint": "e93910d9d9a7de985367430c01ec165f817d2241d0b65131378d9aebe72c3b87",
+    "targetUlid": "01M5CVYDBJF8Q9KKNFAFRXXSSR"
+  }
+}

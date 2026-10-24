@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "9130d07d-a02f-4166-9420-f12ff8f7e8f7",
+  "createdOn": "2026-10-23",
+  "action": "update",
+  "payload": {
+    "id": "#2X90V6",
+    "summary": "Historical PR3570 branch-name correction now targets the archived review record",
+    "detail": "REVALIDATED 2026-10-23 at df1e07db04. The review record is now archived. GitHub PR3570 read on 23 October confirms head claude/reconcile-ledger-20261016 while the archived row says claude/reconcile-inbox-20261016. Retain only sanctioned historical-record correction at its new path, not a live task-readiness blocker; never edit immutable/tool-managed records by hand. Source inspection only; no fresh application/provider execution or clinical sign-off. Evidence: docs/archive/branch-review-records/a7be2760026da4bc040fa90bf847382bdcded2a8a7510ceaf7be4ac49c042211.record.md. PRIOR DETAIL: docs/branch-review-records/a7be2760026da4bc040fa90bf847382bdcded2a8a7510ceaf7be4ac49c042211.record.md (added by PR #3609) records branch claude/reconcile-inbox-20261016 for PR #3570, but gh shows #3570's head branch was claude/reconcile-ledger-20261016 (merge fa526775c6, head d8eefbb91e). The SHAs and merge state are correct. Correct the branch name through the sanctioned branch-review-ledger tooling only; never hand-edit the record.",
+    "source": "Current-state issue revalidation 2026-10-23 at df1e07db04; PR #3609 sweep proof verification, 17 Oct 2026",
+    "baseRowFingerprint": "655d45524463c0126ceddee7aa69baa203c4cb2eb3c1c5dc333fdd62c64553e0",
+    "targetUlid": "01M551BST62X90V6VK3DEP4C7S"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "956c6266-696e-40b3-a560-249c46ad4ac8",
+  "createdOn": "2026-10-23",
+  "action": "update",
+  "payload": {
+    "id": "#SQ2FG9",
+    "summary": "Structured rights metadata is locally reviewed/tested; source permission evidence and integration remain",
+    "detail": "CURRENT EXECUTION 24 October 2026: Structured optional rights fields, evidence/date validation and attestation invalidation are locally implemented. Independent specialist review found a malformed-date coercion bug; the parent reproduced it, fixed it with a string/null guard, added the exact malformed object regression and obtained a clear correction review. Post-correction focused run passed 114 tests across six files. Existing 188 source records and 95 attestations remain unchanged. Remaining: integration and actual evidence-backed per-source rights review/population. No clinical/legal permission, rank change or publication is granted.\n\nHISTORICAL DETAIL (superseded where corrected above): LOCAL IMPLEMENTATION 24 October 2026: optional rights record in acquisition-ledger.ts supports unknown/restricted/documented, licence, HTTPS terms evidence, checked date and notes. Omission stays unknown; documented terms confer no access, ingestion, publication, ranking or clinical approval. Tests cover malformed inputs, evidence links/dates, unchanged classification and stale attestations after edits. Existing source data and signatures were not rewritten. Remaining: independent review, integration and actual evidence-backed per-source rights review/population; do not fill permissions from assumptions.",
+    "source": "Local execution and independent scoped review 24 October 2026 at df1e07db04.",
+    "baseRowFingerprint": "32d380bb66d906e728f5c8c4049cfd1729559fb75039fbd33021bdd81b62e43b",
+    "targetUlid": "01M5D6CE3PSQ2FG93C7QY68NPF"
+  }
+}
