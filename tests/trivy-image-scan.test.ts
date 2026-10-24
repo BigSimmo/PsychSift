@@ -476,17 +476,17 @@ describe("Trivy cache directory freshness", () => {
   });
 });
 
-describe("worker image scan advisory window (owner decision 2026-10-21)", () => {
+describe("worker image scan advisory window (owner decisions 2026-10-21 and 2026-10-24)", () => {
   const summary = (appHigh: number, workerHigh: number, workerCritical = 0) =>
     [
       `Trivy scan completed (clinical-kb-app:ci): STATUS=ok HIGH=${appHigh} CRITICAL=0 MEDIUM=0 LOW=0 UNKNOWN=0`,
       `Trivy scan completed (clinical-kb-worker:ci): STATUS=ok HIGH=${workerHigh} CRITICAL=${workerCritical} MEDIUM=0 LOW=0 UNKNOWN=0`,
     ].join("\n");
   const before = new Date("2026-10-22T00:00:00Z");
-  const after = new Date("2026-11-04T00:00:00Z");
+  const after = new Date("2026-12-02T00:00:00Z");
   const main = "refs/heads/main";
 
-  it("keeps worker-only findings advisory on main until 4 Nov 2026", () => {
+  it("keeps worker-only findings advisory on main until 2 Dec 2026", () => {
     const result = evaluateTrivySummaryText(summary(0, 84, 3));
     expect(result).toMatchObject({
       byImage: {
@@ -505,7 +505,7 @@ describe("worker image scan advisory window (owner decision 2026-10-21)", () => 
     expect(trivyFindingsBlock(result, "push", before, "")).toBe(true);
   });
 
-  it("blocks worker findings again from 4 Nov 2026", () => {
+  it("blocks worker findings again from 2 Dec 2026", () => {
     expect(trivyFindingsBlock(evaluateTrivySummaryText(summary(0, 84, 3)), "push", after, main)).toBe(true);
   });
 

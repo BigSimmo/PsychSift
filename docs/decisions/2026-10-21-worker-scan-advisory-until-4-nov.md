@@ -1,6 +1,6 @@
 # Decision: Worker image scan findings are advisory until 4 November 2026
 
-- **Status:** decided 2026-10-21
+- **Status:** decided 2026-10-21; superseded by 2026-10-24-worker-scan-advisory-until-2-dec.md
 - **Source:** `scripts/trivy-image-scan.mjs`, find "The exemption ends by itself on this date"
 
 On 21 Oct 2026 the owner approved, in the project chat ("Go ahead with all recommendations please",

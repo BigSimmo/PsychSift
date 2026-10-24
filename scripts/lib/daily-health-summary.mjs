@@ -107,6 +107,15 @@ export const SUMMARY_SOURCES = [
     issue: "open",
     onTrouble: "red",
     trouble: "checks on main are failing",
+    // Amber, not red, when the only outstanding checks are the cross-browser legs or the advisory
+    // visual baselines (readMainCiOutstanding). Those legs are continue-on-error on main and
+    // block nothing. Before this, one flaky Safari tablet leg kept the summary red for days
+    // (22-24 Oct 2026) while every required check passed, which teaches the reader to skip red.
+    advisory: {
+      when: (issue) => readMainCiOutstanding(issue).advisoryOnly,
+      onTrouble: "amber",
+      trouble: "only the Safari or Firefox browser tests are failing; the required checks pass",
+    },
     maxAgeHours: null,
   },
   {
@@ -169,6 +178,35 @@ function age(ms) {
   return `${Math.round(ms / DAY)} days`;
 }
 
+const MAIN_CI_PENDING_PATTERN = /<!-- main-ci-pending:v1:([^\s]*) -->/;
+const ADVISORY_MAIN_CI_JOB = /^(?:release-browser-matrix(?: \(.*\))?|Visual baselines \(advisory\))$/;
+
+/**
+ * Reads the outstanding-check list that `ci.yml` writes into the main-failure issue as a
+ * `main-ci-pending:v1` marker, and says whether every outstanding check is advisory: a
+ * cross-browser matrix leg or the advisory visual baselines. Fails closed: an issue the workflow
+ * bot did not write, a missing or unreadable marker, an empty list, or any other job name means
+ * not advisory, so the check stays red. Only job names are read; nothing is copied out.
+ *
+ * @param {LabelledIssue | null | undefined} issue
+ */
+export function readMainCiOutstanding(issue) {
+  if (issue?.user?.login !== WORKFLOW_BOT) return { advisoryOnly: false };
+  const match = MAIN_CI_PENDING_PATTERN.exec(String(issue.body ?? ""));
+  if (!match) return { advisoryOnly: false };
+  let entries;
+  try {
+    entries = JSON.parse(decodeURIComponent(match[1]));
+  } catch {
+    return { advisoryOnly: false };
+  }
+  if (!Array.isArray(entries) || entries.length === 0) return { advisoryOnly: false };
+  const advisoryOnly = entries.every(
+    (entry) => typeof entry?.name === "string" && ADVISORY_MAIN_CI_JOB.test(entry.name.trim()),
+  );
+  return { advisoryOnly };
+}
+
 /** Reads the two status words the ops digest writes into its rolling issue, through allow-lists. */
 export function readDigestState(body) {
   const text = String(body ?? "");
@@ -215,8 +253,9 @@ export function assessSource(
   let detail = "all clear";
 
   if (source.issue === "open" && issue?.state === "open") {
-    status = source.onTrouble;
-    detail = source.trouble;
+    const advisory = source.advisory?.when(issue) === true;
+    status = advisory ? source.advisory.onTrouble : source.onTrouble;
+    detail = advisory ? source.advisory.trouble : source.trouble;
   } else if (source.issue === "recent" && issue) {
     const active = time(botActivityAt);
     const clearedAt = time(clearingRun?.updated_at ?? clearingRun?.run_started_at ?? clearingRun?.created_at);
