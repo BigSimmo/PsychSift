@@ -8,12 +8,12 @@ describe("worker Python lockfile", () => {
     expect(workerPythonLockTargets.production.includeUnsafe).toBe(true);
     expect(workerPythonLockTargets.production.inputFile).toBe("worker/python/requirements.in");
     expect(workerPythonLockTargets.cloud.inputFile).toBe("worker/python/requirements-cloud.in");
-    expect(readFileSync(workerPythonLockTargets.production.inputFile, "utf8")).toMatch(/^setuptools>=84\.0\.0$/m);
+    expect(readFileSync(workerPythonLockTargets.production.inputFile, "utf8")).toMatch(/^setuptools>=84\.1\.0$/m);
     expect(readFileSync(workerPythonLockTargets.production.outputFile, "utf8")).toContain(
-      "--hash=sha256:51a52592b3b99e102b609654876bd65f19f999935166d1352678931132b0c670",
+      "--hash=sha256:23657205b63d4d31395ab917815247f694aafad28cd21316bf5fd45a51048ea0",
     );
     expect(readFileSync(workerPythonLockTargets.production.outputFile, "utf8")).toContain(
-      "--hash=sha256:f4695c21257f0d9b537ec2692c941d02ee143b7cc1276941349a546573b2ef73",
+      "--hash=sha256:5231689c6ac8156cd155cfb98c3fd6fb252c3e7e9bd3d78b64d3c55f132624c9",
     );
   });
 
@@ -58,7 +58,7 @@ describe("worker Python lockfile", () => {
         `${file} has no hashes`,
       ).toBe(true);
       expect(contents.includes("medspacy"), `medspacy not present in ${file}`).toBe(true);
-      expect(contents).toMatch(/^setuptools==84\.0\.0/m);
+      expect(contents).toMatch(/^setuptools==84\.1\.0/m);
     }
   });
 });
