@@ -595,7 +595,7 @@ const containerPatterns = [
   "scripts/check-worker-python-lock.mjs",
   "tests/container-ci-contract.test.ts",
   "tests/deploy-migration-gate.test.ts",
-  /^scripts\/(check-node-engine|check-upload-limit-parity|guard-next-build|build-worker|run-heavy|run-next-build|check-client-bundle-secrets|install-git-hooks|app-container-smoke|check-image-content-contract|trivy-image-scan|resolve-oci-image-digest|generate-worker-python-lock|check-worker-python-lock)\.(?:cjs|mjs)$/,
+  /^scripts\/(check-node-engine|check-upload-limit-parity|guard-next-build|build-worker|run-heavy|check-client-bundle-secrets|install-git-hooks|app-container-smoke|check-image-content-contract|trivy-image-scan|resolve-oci-image-digest|generate-worker-python-lock|check-worker-python-lock)\.(?:cjs|mjs)$/,
   // scripts/deploy/** is baked into both runner images at build time (the
   // pre-deploy migration gate: await-migrations.mjs, migration-versions.mjs,
   // write-migration-manifest.mjs) and CI proves it with a --self-test run
@@ -618,7 +618,7 @@ const buildPatterns = [
   "package.json",
   "package-lock.json",
   "scripts/check-bundle-budget.mjs",
-  /^scripts\/(check-node-engine|check-upload-limit-parity|guard-next-build|run-next-build|dev-free-port|ensure-local-server)\.(?:cjs|mjs)$/,
+  /^scripts\/(check-node-engine|check-upload-limit-parity|guard-next-build|dev-free-port|ensure-local-server)\.(?:cjs|mjs)$/,
 ];
 
 const staticConfigPatterns = [
@@ -1711,7 +1711,6 @@ function assertDependencyAndContainerScopes() {
       "worker/index.ts",
       "scripts/build-worker.mjs",
       "scripts/run-heavy.mjs",
-      "scripts/run-next-build.mjs",
       "scripts/check-client-bundle-secrets.mjs",
       "scripts/check-upload-limit-parity.mjs",
       "scripts/install-git-hooks.mjs",
