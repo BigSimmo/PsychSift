@@ -204,6 +204,13 @@
       "recordedBy": "Claude (RAG and ingestion audit thread)",
       "recordedOn": "2026-10-24",
       "expiresOn": "2026-12-07"
+    },
+    {
+      "path": "docs/clinical-hazard-analysis.md",
+      "reason": "RAG and ingestion re-audit 24 Oct 2026, NEW-G-02: line anchors into src/lib/answer-verification.ts moved by 98 lines because the figure-check widening added code above them. Anchor numbers only; no hazard text changed. Owner reseal due after review and before merge.",
+      "recordedBy": "Claude (RAG and ingestion audit thread)",
+      "recordedOn": "2026-10-24",
+      "expiresOn": "2026-12-07"
     }
   ]
 }
