@@ -38,7 +38,9 @@ describe("External supervisor EPA magic-link (#MAAXAX)", () => {
   });
 
   it("generates a high-entropy token, hashes it with SHA-256 at rest, and resolves valid lookups", async () => {
-    const now = new Date("2026-10-16T00:00:00.000Z");
+    // The GET route checks expiry against the real clock, so the link must be created on it too;
+    // a fixed date here expires the link 14 days later and turns this case red from then on.
+    const now = new Date();
     const created = createEpaMagicLinkRequest({
       epaCode: "EPA 1",
       traineeName: "Dr Alex Example",

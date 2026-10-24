@@ -30,11 +30,15 @@ describe("embedding request budgets", () => {
   it("refuses an indivisible input beyond the whole request budget without exposing text", () => {
     const input = "SYNTHETIC_PRIVATE_MARKER" + "a".repeat(EMBEDDING_MAX_BATCH_UTF8_BYTES);
     expect(() => batchEmbeddingInputs(["safe earlier input", input], 256, model)).toThrow(EmbeddingRequestBudgetError);
+    let refusal: unknown;
     try {
       batchEmbeddingInputs([input], 256, model);
     } catch (error) {
-      expect(String(error)).not.toContain("SYNTHETIC_PRIVATE_MARKER");
+      refusal = error;
     }
+    // Asserting outside the catch keeps the leak check from being skipped if this stops throwing.
+    expect(refusal).toBeInstanceOf(EmbeddingRequestBudgetError);
+    expect(String(refusal)).not.toContain("SYNTHETIC_PRIVATE_MARKER");
   });
 
   it("keeps count-only behavior for an unknown model without claiming a byte-BPE bound", () => {

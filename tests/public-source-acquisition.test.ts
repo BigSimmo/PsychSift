@@ -1348,21 +1348,24 @@ describe("public source acquisition", () => {
     expect(objects).toEqual(new Set([new URL(authorityB.signedUrl).pathname]));
 
     const rawToken = new URL(authorityA.signedUrl).searchParams.get("token")!;
-    try {
-      await uploadPublicSourceWithSignedAuthority(
-        authorityA,
-        Buffer.from("clinical text"),
-        "text/plain",
-        new AbortController().signal,
-        vi.fn(async () => {
-          throw new Error(`transport rejected ${authorityA.signedUrl}`);
-        }),
-      );
-    } catch (error) {
-      expect(String(error)).toMatch(/storage write failed/i);
-      expect(String(error)).not.toContain(rawToken);
-      expect(String(error)).not.toContain(authorityA.signedUrl);
-    }
+    // Capture the rejection rather than asserting inside a catch, so an upload that stops
+    // rejecting fails here instead of skipping every redaction check.
+    const transportError = await uploadPublicSourceWithSignedAuthority(
+      authorityA,
+      Buffer.from("clinical text"),
+      "text/plain",
+      new AbortController().signal,
+      vi.fn(async () => {
+        throw new Error(`transport rejected ${authorityA.signedUrl}`);
+      }),
+    ).then(
+      () => undefined,
+      (error: unknown) => error,
+    );
+    expect(transportError).toBeInstanceOf(Error);
+    expect(String(transportError)).toMatch(/storage write failed/i);
+    expect(String(transportError)).not.toContain(rawToken);
+    expect(String(transportError)).not.toContain(authorityA.signedUrl);
   });
 
   it("aborts and settles a held upload before abandonment when its total timeout expires", async () => {

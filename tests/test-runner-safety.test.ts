@@ -321,6 +321,9 @@ describe("repository-wide heavyweight lock", () => {
       // rejects this invocation first.
       PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH: process.execPath,
     };
+    // A container browser root makes the preflight check the host's browser revision before the
+    // override above, so a stale cache would fail the run before lease admission is reached.
+    delete childEnvironment.PLAYWRIGHT_BROWSERS_PATH;
     delete childEnvironment[testRunLockInternals.tokenEnvironmentKey];
     delete childEnvironment[testRunLockInternals.pathEnvironmentKey];
 
@@ -367,6 +370,8 @@ describe("repository-wide heavyweight lock", () => {
       [testRunLockInternals.tokenEnvironmentKey]: "mismatched-token",
       [testRunLockInternals.pathEnvironmentKey]: path.join(baseDirectory, "unrelated-lease-path"),
     };
+    // As above: keep the host's browser revision check from failing the run before the lease check.
+    delete childEnvironment.PLAYWRIGHT_BROWSERS_PATH;
 
     const result = spawnSync(
       process.execPath,
