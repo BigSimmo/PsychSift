@@ -201,7 +201,9 @@ jobs:
           git switch -c "$branch"
           git add scripts/fixtures/rag-ranking-candidate-snapshot.v1.json scripts/fixtures/rag-ranking-candidate-snapshot.v1.provenance.json
           git commit -m "Refresh the ranking snapshot from Eval Canary run $RUN_ID"
-          git push "https://x-access-token:${GH_TOKEN}@github.com/${REPOSITORY}.git" "HEAD:refs/heads/$branch"
+          # gh supplies credentials through Git's helper; the token never enters argv or the remote URL.
+          gh auth setup-git --hostname github.com
+          git push "https://github.com/${REPOSITORY}.git" "HEAD:refs/heads/$branch"
           gh pr create --repo "$REPOSITORY" --base main --head "$branch" \
             --title "Refresh the ranking snapshot from Eval Canary run $RUN_ID" \
             --body "$(printf '%s\n' \

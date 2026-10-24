@@ -55,4 +55,10 @@ describe("ranking snapshot refresh workflow", () => {
     expect(workflow).toContain("RAG impact: no retrieval behaviour change.");
     expect(workflow).not.toMatch(/gh pr merge|--auto|refs\/heads\/main|contents: write/);
   });
+
+  it("uses a credential helper instead of embedding the token in the push URL", () => {
+    expect(workflow).toContain("gh auth setup-git --hostname github.com");
+    expect(workflow).toContain('git push "https://github.com/${REPOSITORY}.git" "HEAD:refs/heads/$branch"');
+    expect(workflow).not.toMatch(/https:\/\/[^\s"]*(?:GH_TOKEN|x-access-token)/);
+  });
 });
