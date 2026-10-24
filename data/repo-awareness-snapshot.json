@@ -3177,6 +3177,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-24-superseded-sources-stay-out-of-answers.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/prompts/codex-architecture-maintainability-ultra-review.md",
         "section": "prompts",
         "catalogued": true
