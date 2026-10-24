@@ -189,5 +189,21 @@
     "tests/services-safety-routing.test.ts": "e54f0a0f0f11810848de0b178c5398e9ac158b90a814d2005986d9e0b3853f33",
     "tests/source-governance.test.ts": "17b26759d7954886f803a9e7f3c9ef857fc53edd35995f54c2b91b37131b13e0",
     "tests/ward-output.test.ts": "bb9f417d63c769b8e059f41fe2c9a5c52f772cedd13e6352408b4a7716e00222"
-  }
+  },
+  "driftExceptions": [
+    {
+      "path": "src/lib/answer-verification.ts",
+      "reason": "RAG and ingestion re-audit 24 Oct 2026, NEW-G-02: the answer figure check now reads thousands separators (1,500), dose number words (two milligrams) and symbolic comparators (<, >=) so a changed figure in these forms is caught. It only widens what the check compares; nothing it passed before now passes less strictly. Owner reseal due after review and before merge.",
+      "recordedBy": "Claude (RAG and ingestion audit thread)",
+      "recordedOn": "2026-10-24",
+      "expiresOn": "2026-12-07"
+    },
+    {
+      "path": "tests/answer-verification.test.ts",
+      "reason": "RAG and ingestion re-audit 24 Oct 2026, NEW-G-02: the answer figure check now reads thousands separators (1,500), dose number words (two milligrams) and symbolic comparators (<, >=) so a changed figure in these forms is caught. It only widens what the check compares; nothing it passed before now passes less strictly. Owner reseal due after review and before merge.",
+      "recordedBy": "Claude (RAG and ingestion audit thread)",
+      "recordedOn": "2026-10-24",
+      "expiresOn": "2026-12-07"
+    }
+  ]
 }
