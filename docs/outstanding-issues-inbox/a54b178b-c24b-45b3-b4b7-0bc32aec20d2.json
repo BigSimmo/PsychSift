@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "a54b178b-c24b-45b3-b4b7-0bc32aec20d2",
+  "createdOn": "2026-10-24",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "task",
+    "summary": "Worker image: recheck the 24 Trivy findings weekly and upgrade as fixed versions appear, before the advisory window ends on 2 Dec 2026",
+    "detail": "Owner decision 2026-10-24 (docs/decisions/2026-10-24-worker-scan-advisory-until-2-dec.md): the worker image scan stays advisory on main until 2026-12-02 instead of 2026-11-04, because Trivy listed no fixed version for any of the 24 findings in GitHub issue #3741 (libxml2 CVE-2026-6653 CRITICAL first). Each week, read the daily docker-image.yml scan summary for clinical-kb-worker:ci and bump any package that now has a fixed Debian or pip release. Before 2 Dec: either the findings are fixed or suppressed with a signed-off not-affected decision, or the owner decides again. Hand-patching (backports) waits until the three-document re-index pilot is finished.",
+    "source": "Catch-up review thread 2026-10-24, decision card; GitHub issue #3741",
+    "issueUlid": "01M5Q907D1CK9GBW2B79ZMYEXQ"
+  }
+}

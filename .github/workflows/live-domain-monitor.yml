@@ -148,6 +148,10 @@ jobs:
       # It probes only the catalogue domains, never `documents`, so the monitor triggers no
       # embedding call and stays inside this file's no-providers contract.
       #
+      # Since 21 Oct 2026 search needs sign-in, so the catalogue is read through the still-public
+      # registry route (same canonical read, same `degraded` flag), and the script also checks that
+      # universal search still refuses a signed-out visitor. Medications has no public route left.
+      #
       # A degraded domain is re-probed once, 12 s later. Since 2026-10-06 a cold read that misses
       # the search budget finishes in the background and heals itself, so one seed answer after
       # idle is by design; a catalogue that is really unreadable is still degraded on the re-probe
@@ -293,9 +297,10 @@ jobs:
                 ? `### Failing probes\n\n${findings}`
                 : "### Failing probes\n\nNone recorded — the job failed before the probes ran, so this is **not** evidence the site is healthy. Read the run log linked above.",
               "",
-              "A catalogue-search failure means readers are being served the in-bundle seed catalogue",
-              "instead of the published one, so Medications, Forms and Services can be missing anything",
-              "published since the last release. Start with the latency of the",
+              "A catalogue-search failure means either readers are being served the in-bundle seed",
+              "catalogue instead of the published one, so Forms and Services can be missing anything",
+              "published since the last release, or search answered a signed-out visitor, so the",
+              "sign-in gate is open. The run log says which. For the catalogue, start with the latency of the",
               "`read_site_content_public_records` RPC; context in `src/lib/site-content/catalogue-seed-fallback.ts`.",
             ].join("\n");
 

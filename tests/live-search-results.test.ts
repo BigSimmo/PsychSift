@@ -2,13 +2,16 @@ import { describe, expect, it } from "vitest";
 
 import {
   assessSearchProbe,
+  assessSignInGate,
   degradedReprobeDelayMs,
   liveSearchProbes,
   runSearchProbes,
+  signInGateProbe,
   summariseSearchProbes,
 } from "../scripts/check-live-search-results.mjs";
 import {
   catalogueBackgroundFillBudgetMs,
+  catalogueListFallbackBudgetMs,
   catalogueSeedFallbackCooldownMs,
 } from "../src/lib/site-content/catalogue-seed-fallback";
 
@@ -25,66 +28,38 @@ import {
  * repository has either already shipped or deliberately introduced as a survival mechanism.
  */
 
-function group(overrides: Record<string, unknown> = {}) {
-  return { kind: "forms", total: 5, items: [{ id: "a" }], latencyMs: 120, ...overrides };
-}
-
 function response(overrides: Record<string, unknown> = {}) {
-  return { status: 200, body: { groups: [group(overrides)] } };
+  return { status: 200, body: { matches: [{ record: { slug: "a" } }], total: 40, ...overrides } };
 }
 
 describe("assessSearchProbe", () => {
-  it("passes a domain that returns results canonically", () => {
-    const verdict = assessSearchProbe({ domain: "forms", ...response() });
+  it("passes a domain that returns matches canonically", () => {
+    const verdict = assessSearchProbe({ domain: "forms", ...response(), latencyMs: 120 });
     expect(verdict.ok).toBe(true);
-    expect(verdict.message).toContain("5 result(s)");
+    expect(verdict.message).toBe("forms: 1 match(es) in 120ms.");
   });
 
-  // THE OUTAGE. An errored empty group inside an HTTP 200 body.
-  it("fails a domain that returned zero results", () => {
-    const verdict = assessSearchProbe({ domain: "forms", ...response({ total: 0, items: [], latencyMs: 2503 }) });
+  // THE OUTAGE. A well-formed HTTP 200 with nothing in it.
+  it("fails a domain that returned zero matches", () => {
+    const verdict = assessSearchProbe({ domain: "forms", ...response({ matches: [] }) });
     expect(verdict.ok).toBe(false);
     expect(verdict.code).toBe("no_results");
-  });
-
-  it("fails a domain the search path marked errored", () => {
-    const verdict = assessSearchProbe({
-      domain: "forms",
-      ...response({ total: 0, items: [], error: true, latencyMs: 2503 }),
-    });
-    expect(verdict.ok).toBe(false);
-    expect(verdict.code).toBe("domain_errored");
   });
 
   // THE FALSE NEGATIVE THIS CHECK MUST NOT HAVE. With the seed fallback in place the same database
   // failure returns a full, plausible result set. A monitor that only counts items calls this
   // healthy and the next outage runs unseen again.
-  it("fails a domain serving seeds, even though it returned results", () => {
-    const verdict = assessSearchProbe({ domain: "forms", ...response({ degraded: true, total: 5 }) });
+  it("fails a domain serving seeds, even though it returned matches", () => {
+    const verdict = assessSearchProbe({ domain: "forms", ...response({ degraded: true }) });
     expect(verdict.ok).toBe(false);
     expect(verdict.code).toBe("degraded");
   });
 
-  it("fails when the domain is missing from the response", () => {
-    const verdict = assessSearchProbe({ domain: "services", ...response() });
-    expect(verdict.ok).toBe(false);
-    expect(verdict.code).toBe("missing_domain");
-  });
-
   it("fails on a non-200 status or an unreadable body", () => {
+    expect(assessSearchProbe({ domain: "forms", status: 401, body: null }).code).toBe("http_error");
     expect(assessSearchProbe({ domain: "forms", status: 503, body: null }).code).toBe("http_error");
     expect(assessSearchProbe({ domain: "forms", status: 200, body: null }).code).toBe("unreadable");
-    expect(assessSearchProbe({ domain: "forms", status: 200, body: {} }).code).toBe("unreadable");
-  });
-
-  // Counting items directly covers a response that omits `total` rather than reporting it as 0.
-  it("falls back to the item count when total is absent", () => {
-    const verdict = assessSearchProbe({
-      domain: "forms",
-      status: 200,
-      body: { groups: [{ kind: "forms", items: [{ id: "a" }], latencyMs: 90 }] },
-    });
-    expect(verdict.ok).toBe(true);
+    expect(assessSearchProbe({ domain: "forms", status: 200, body: [] }).code).toBe("unreadable");
   });
 
   // A string has a truthy `.length`, so counting it blind let a malformed body pass as healthy —
@@ -93,24 +68,38 @@ describe("assessSearchProbe", () => {
     ["a string", "ok"],
     ["an object", { length: 3 }],
     ["null", null],
-  ])("does not count %s as results when total is absent", (_label, items) => {
-    const verdict = assessSearchProbe({
-      domain: "forms",
-      status: 200,
-      body: { groups: [{ kind: "forms", items, latencyMs: 90 }] },
-    });
+    ["absent", undefined],
+  ])("does not count %s as matches", (_label, matches) => {
+    const verdict = assessSearchProbe({ domain: "forms", status: 200, body: { matches, total: 40 } });
     expect(verdict.ok).toBe(false);
     expect(verdict.code).toBe("no_results");
   });
 });
 
+// Since 21 Oct 2026 search needs sign-in (#3728, #3696). The monitor's anonymous probe getting 401
+// is the gate working; a 200 is the gate lost.
+describe("assessSignInGate", () => {
+  it.each([401, 403])("passes when search refuses a signed-out visitor with %i", (status) => {
+    expect(assessSignInGate({ status })).toMatchObject({ ok: true, code: "ok" });
+  });
+
+  it("fails when search answers a signed-out visitor", () => {
+    const verdict = assessSignInGate({ status: 200 });
+    expect(verdict).toMatchObject({ ok: false, code: "gate_open" });
+    expect(verdict.message).toContain("must need sign-in");
+  });
+
+  it("reports a server failure as a failure, not as the gate holding", () => {
+    expect(assessSignInGate({ status: 500 })).toMatchObject({ ok: false, code: "http_error" });
+    expect(assessSignInGate({ status: 429 })).toMatchObject({ ok: false, code: "http_error" });
+  });
+});
+
 describe("the probe set", () => {
-  it("covers every catalogue-backed domain", () => {
-    expect(liveSearchProbes.map((probe: { domain: string }) => probe.domain).sort()).toEqual([
-      "forms",
-      "medications",
-      "services",
-    ]);
+  it("covers every public catalogue domain, and checks the sign-in gate on search", () => {
+    expect(liveSearchProbes.map((probe: { domain: string }) => probe.domain).sort()).toEqual(["forms", "services"]);
+    expect(liveSearchProbes.map((probe: { kind: string }) => probe.kind).sort()).toEqual(["form", "service"]);
+    expect(signInGateProbe.domain).toBe("medications");
   });
 
   it("reports failure when any domain fails, not only when all of them do", () => {
@@ -165,18 +154,17 @@ describe("runSearchProbes", () => {
   // The outage, and the defect this re-probe was introduced alongside: still degraded when asked
   // again, because nothing lifted the cooldown. Must stay red.
   it("fails a domain that is still serving seeds on the re-probe", async () => {
-    const harness = scripted({ medications: [degraded, degraded] });
+    const harness = scripted({ forms: [degraded, degraded] });
     const results = await runSearchProbes(harness);
 
     expect(summariseSearchProbes(results).ok).toBe(false);
-    expect(results.find((result) => result.domain === "medications")).toMatchObject({ ok: false, code: "degraded" });
+    expect(results.find((result) => result.domain === "forms")).toMatchObject({ ok: false, code: "degraded" });
   });
 
-  it("never re-probes zero results, an errored group or an unreachable domain", async () => {
+  it("never re-probes zero results or an unreachable domain", async () => {
     const harness = scripted({
       forms: [() => ({ ok: false, domain: "forms", code: "no_results", message: "forms: zero" })],
-      services: [() => ({ ok: false, domain: "services", code: "domain_errored", message: "services: errored" })],
-      medications: [
+      services: [
         () => {
           throw new Error("fetch failed");
         },
@@ -184,15 +172,17 @@ describe("runSearchProbes", () => {
     });
     const results = await runSearchProbes(harness);
 
-    expect(harness.calls).toEqual(["forms", "services", "medications"]);
+    expect(harness.calls).toEqual(["forms", "services"]);
     expect(harness.slept).toEqual([]);
-    expect(results.map((result) => result.code)).toEqual(["no_results", "domain_errored", "unreachable"]);
+    expect(results.map((result) => result.code)).toEqual(["no_results", "unreachable"]);
   });
 
   // The two bounds that make the re-probe honest, pinned against the app's own constants so a
   // change on either side cannot silently turn the re-probe into a mask.
   it("waits past the app's background fill, and well inside the cooldown a real failure opens", () => {
     expect(degradedReprobeDelayMs).toBeGreaterThan(catalogueBackgroundFillBudgetMs);
+    // The registry route the probes read waits longer than search before it falls back.
+    expect(degradedReprobeDelayMs).toBeGreaterThan(catalogueListFallbackBudgetMs);
     expect(degradedReprobeDelayMs).toBeLessThan(catalogueSeedFallbackCooldownMs / 2);
   });
 });

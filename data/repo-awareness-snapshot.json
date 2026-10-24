@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-23"
+    "committed_at": "2026-10-24"
   },
   "routes": {
     "modes": [
@@ -1953,6 +1953,11 @@
       },
       {
         "path": "docs/decisions/2026-10-17-remaining-therapy-compass-sign-offs.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-24-honest-alerts-and-medication-import-guard.md",
         "section": "decisions",
         "catalogued": true
       },
@@ -4508,6 +4513,11 @@
       },
       {
         "path": "docs/decisions/2026-09-25-rkpg-clozapine-guideline-handling.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-24-worker-scan-advisory-until-2-dec.md",
         "section": "decisions",
         "catalogued": true
       },
