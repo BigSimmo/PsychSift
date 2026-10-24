@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "6c28344a-9baf-4977-bfe3-8729c8a9c77a",
+  "createdOn": "2026-10-24",
+  "action": "update",
+  "payload": {
+    "id": "#F8Q9KK",
+    "detail": "UPDATE 2026-10-24: workflow half done on branch claude/project-thread-q5puw2: pr-batch-runner.yml (reconcile) and ranking-snapshot-refresh.yml now run in the production-secrets environment, and the snapshot refresh pushes through gh auth setup-git after checking origin, with no token in any push URL (tests/ranking-snapshot-refresh-workflow.test.ts). Owner next: add GH_TOKEN to the production-secrets environment, then delete the repository copy after a scheduled PR batch runner run passes. Merge when no PR batch is mid-flight (control-file hash changes).",
+    "baseRowFingerprint": "e93910d9d9a7de985367430c01ec165f817d2241d0b65131378d9aebe72c3b87",
+    "targetUlid": "01M5CVYDBJF8Q9KKNFAFRXXSSR"
+  }
+}
