@@ -7,6 +7,7 @@ import {
 } from "../src/lib/sources/acquisition-ledger";
 import { canonicalizeSourceReferences } from "../src/lib/sources/catalogue-core";
 import { repositorySourceReferences } from "../src/lib/sources/repository-providers";
+import { SOURCE_RIGHTS_STATUSES, sourceRightsStatusCounts } from "../src/lib/sources/source-rights";
 
 const records = sourceAcquisitionRecords;
 const rungLabels = new Map(SOURCE_ACQUISITION_RUNGS.map((entry) => [entry.rung, entry.label]));
@@ -18,6 +19,14 @@ for (const { rung, label } of SOURCE_ACQUISITION_RUNGS) {
 }
 for (const disposition of ["adopted", "candidate", "rejected"] as const) {
   console.log(`${disposition}: ${records.filter((record) => record.disposition === disposition).length}`);
+}
+
+// Informational only (finding R-07): an unknown rights position is the expected
+// state until the owner records one, so it never fails this check.
+const rightsCounts = sourceRightsStatusCounts(records);
+console.log(`Rights and licence status unknown: ${rightsCounts.unknown} of ${records.length}`);
+for (const status of SOURCE_RIGHTS_STATUSES) {
+  if (status !== "unknown" && rightsCounts[status] > 0) console.log(`- rights ${status}: ${rightsCounts[status]}`);
 }
 
 const issues = acquisitionLedgerIssues(records);
