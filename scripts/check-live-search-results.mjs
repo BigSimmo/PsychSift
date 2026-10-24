@@ -22,6 +22,20 @@
  * unreachable, nobody told. So this asserts `degraded !== true` with exactly the same severity as
  * a zero count. A domain answering from seeds is a broken database that happens to be survivable.
  *
+ * SINCE 21 OCT 2026 SEARCH NEEDS SIGN-IN. `/api/search/universal` answers a signed-out visitor
+ * with 401 (#3728, the TGA rule in #3696), so this monitor, which makes the same anonymous GETs any
+ * visitor makes, got 401 on every probe from then on and kept the daily health summary red for a
+ * failure that was really the intended gate. It now does two things instead:
+ *
+ * 1. It reads Forms and Services through `/api/registry/records`, which is still public and runs
+ *    the same canonical catalogue read with the same seed fallback and `degraded` flag. So the
+ *    2026-09 outage, in either of its shapes, still fails here.
+ * 2. It asserts that universal search still REFUSES a signed-out visitor. A 200 there means the
+ *    sign-in gate has been lost, which matters as much as an empty catalogue.
+ *
+ * Medications has no public catalogue route any more, so it is not read here. It shares the
+ * canonical read path with Forms and Services; a fault specific to it is not covered.
+ *
  * Needs no secret: these are the same anonymous GETs any visitor makes, in keeping with the
  * calling workflow's no-secrets contract.
  *
@@ -34,48 +48,39 @@
 import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 /**
- * One probe per catalogue-backed domain. The terms are chosen to match many records in the
- * in-bundle catalogue, so a zero count can only mean the search path is broken — never that the
+ * One probe per public catalogue domain. The terms are chosen to match many records in the
+ * in-bundle catalogue, so a zero count can only mean the read path is broken — never that the
  * corpus happened to drift away from an over-specific term. Verified against the ranking
- * functions when written: referral 5+, counselling 5+, sertraline 5+.
+ * functions when written: referral 5+, counselling 5+.
  */
 export const liveSearchProbes = [
-  { domain: "forms", query: "referral" },
-  { domain: "services", query: "counselling" },
-  { domain: "medications", query: "sertraline" },
+  { domain: "forms", kind: "form", query: "referral" },
+  { domain: "services", kind: "service", query: "counselling" },
 ];
 
+/** The signed-out request universal search must refuse. */
+export const signInGateProbe = { domain: "medications", query: "sertraline" };
+
 /**
- * Turn one probe's response into a verdict.
+ * Turn one registry probe's response into a verdict.
  *
  * @param {object} input
  * @param {string} input.domain
  * @param {number} input.status                HTTP status
- * @param {object|null} input.body             parsed `/api/search/universal` response, or null
+ * @param {object|null} input.body             parsed `/api/registry/records` response, or null
+ * @param {number} [input.latencyMs]           measured by the caller
  */
-export function assessSearchProbe({ domain, status, body }) {
+export function assessSearchProbe({ domain, status, body, latencyMs }) {
+  const took = typeof latencyMs === "number" ? ` in ${latencyMs}ms` : "";
   if (status !== 200) {
-    return { ok: false, domain, code: "http_error", message: `${domain}: search returned HTTP ${status}.` };
+    return { ok: false, domain, code: "http_error", message: `${domain}: catalogue returned HTTP ${status}.` };
   }
-  const groups = Array.isArray(body?.groups) ? body.groups : null;
-  if (!groups) {
-    return { ok: false, domain, code: "unreadable", message: `${domain}: response carried no groups array.` };
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return { ok: false, domain, code: "unreadable", message: `${domain}: response was not a catalogue object.` };
   }
-  const group = groups.find((candidate) => candidate?.kind === domain);
-  if (!group) {
-    return { ok: false, domain, code: "missing_domain", message: `${domain}: no group for the requested domain.` };
-  }
-  if (group.error === true) {
-    return {
-      ok: false,
-      domain,
-      code: "domain_errored",
-      message: `${domain}: the domain failed or timed out after ${group.latencyMs}ms.`,
-    };
-  }
-  // Checked before the count, because a degraded domain still returns items and would otherwise
+  // Checked before the count, because a degraded read still returns records and would otherwise
   // pass. This is the exact shape the 2026-09-16 outage now takes with the seed fallback in place.
-  if (group.degraded === true) {
+  if (body.degraded === true) {
     return {
       ok: false,
       domain,
@@ -83,19 +88,50 @@ export function assessSearchProbe({ domain, status, body }) {
       message: `${domain}: answering from the in-bundle catalogue because the published one could not be read.`,
     };
   }
-  // `items` is only a count when it is actually an array. A malformed body carrying
-  // `items: "ok"` has a truthy `.length` of 2, which would let this monitor call an unreadable
-  // response healthy — the one failure mode it exists to catch.
-  const total = typeof group.total === "number" ? group.total : Array.isArray(group.items) ? group.items.length : 0;
-  if (total <= 0) {
+  // Only an array counts. A malformed body carrying `matches: "ok"` has a truthy `.length` of 2,
+  // which would let this monitor call an unreadable response healthy — the one failure mode it
+  // exists to catch.
+  const count = Array.isArray(body.matches) ? body.matches.length : 0;
+  if (count <= 0) {
     return {
       ok: false,
       domain,
       code: "no_results",
-      message: `${domain}: returned zero results after ${group.latencyMs}ms for a query with known matches.`,
+      message: `${domain}: returned zero matches${took} for a query with known matches.`,
     };
   }
-  return { ok: true, domain, code: "ok", message: `${domain}: ${total} result(s) in ${group.latencyMs}ms.` };
+  return { ok: true, domain, code: "ok", message: `${domain}: ${count} match(es)${took}.` };
+}
+
+/**
+ * Universal search must refuse a signed-out visitor. 401 and 403 are both a refusal. A 200 means
+ * clinical search is open to anyone again; anything else is reported as the server failing.
+ *
+ * @param {{ status: number }} input
+ */
+export function assessSignInGate({ status }) {
+  if (status === 401 || status === 403) {
+    return {
+      ok: true,
+      domain: "sign-in gate",
+      code: "ok",
+      message: `sign-in gate: search refused a signed-out visitor (HTTP ${status}).`,
+    };
+  }
+  if (status >= 200 && status < 300) {
+    return {
+      ok: false,
+      domain: "sign-in gate",
+      code: "gate_open",
+      message: `sign-in gate: search answered a signed-out visitor (HTTP ${status}). Search must need sign-in (docs/decisions/2026-10-20-clinical-decision-tools-need-sign-in.md).`,
+    };
+  }
+  return {
+    ok: false,
+    domain: "sign-in gate",
+    code: "http_error",
+    message: `sign-in gate: search returned HTTP ${status}.`,
+  };
 }
 
 /**
@@ -115,7 +151,7 @@ export function assessSearchProbe({ domain, status, body }) {
  * also still fails: nothing lifts its cooldown. `tests/live-search-results.test.ts` pins both
  * bounds against the app's own constants.
  *
- * Only `degraded` is re-probed. Zero results, an errored group, or an HTTP failure is never the
+ * Only `degraded` is re-probed. Zero results or an HTTP failure is never the
  * designed cold path, and is reported on the first sight as before.
  */
 export const degradedReprobeDelayMs = 12_000;
@@ -166,28 +202,47 @@ export function summariseSearchProbes(results) {
     ok: failed.length === 0,
     failed,
     message:
-      failed.length === 0 ? "Every catalogue domain returned live results." : `${failed.length} domain(s) failed.`,
+      failed.length === 0
+        ? "Every catalogue domain returned live results, and search still needs sign-in."
+        : `${failed.length} check(s) failed.`,
   };
 }
 
-async function probe(domain, query, domainUrl, timeoutMs) {
-  const url = new URL("/api/search/universal", domainUrl);
+async function probe(kind, domain, query, domainUrl, timeoutMs) {
+  const url = new URL("/api/registry/records", domainUrl);
+  url.searchParams.set("kind", kind);
   url.searchParams.set("q", query);
-  url.searchParams.set("domains", domain);
+  url.searchParams.set("view", "search");
+  url.searchParams.set("limit", "5");
+  const started = Date.now();
   const response = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(timeoutMs) });
   const body = await response.json().catch(() => null);
-  return assessSearchProbe({ domain, status: response.status, body });
+  return assessSearchProbe({ domain, status: response.status, body, latencyMs: Date.now() - started });
+}
+
+async function probeSignInGate(domainUrl, timeoutMs) {
+  const url = new URL("/api/search/universal", domainUrl);
+  url.searchParams.set("q", signInGateProbe.query);
+  url.searchParams.set("domains", signInGateProbe.domain);
+  try {
+    const response = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(timeoutMs) });
+    return assessSignInGate({ status: response.status });
+  } catch (error) {
+    return { ok: false, domain: "sign-in gate", code: "unreachable", message: `sign-in gate: ${error.message}` };
+  }
 }
 
 async function main() {
   const domainUrl = process.env.LIVE_DOMAIN_URL;
   if (!domainUrl) throw new Error("LIVE_DOMAIN_URL is required.");
   const timeoutMs = Number(process.env.SEARCH_PROBE_TIMEOUT_MS || 30_000);
+  const kinds = Object.fromEntries(liveSearchProbes.map((entry) => [entry.domain, entry.kind]));
 
   const results = await runSearchProbes({
-    probe: (domain, query) => probe(domain, query, domainUrl, timeoutMs),
+    probe: (domain, query) => probe(kinds[domain], domain, query, domainUrl, timeoutMs),
     sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   });
+  results.push(await probeSignInGate(domainUrl, timeoutMs));
 
   for (const result of results) {
     // A healed cold read passes, but stays visible: it is still a reader who was served seeds.
@@ -201,7 +256,7 @@ async function main() {
     return;
   }
   console.log(
-    "::error::Catalogue search is not answering on the live site. Registry search reads read_site_content_public_records; check that RPC's latency first.",
+    "::error::Catalogue or sign-in check failed on the live site. The catalogue reads read_site_content_public_records; check that RPC's latency first.",
   );
   process.exitCode = 1;
 }

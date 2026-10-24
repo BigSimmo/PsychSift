@@ -2,6 +2,12 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 
+import {
+  diffMedicationSnapshots,
+  judgeMedicationImport,
+  parseAcceptedChanges,
+} from "./lib/medication-import-guard.mjs";
+
 type MedicationExportRecord = {
   slug: string;
   name: string;
@@ -120,6 +126,22 @@ function main() {
     if (!record.slug) throw new Error(`Medication missing slug: ${record.name}`);
     if (slugs.has(record.slug)) throw new Error(`Duplicate slug: ${record.slug}`);
     slugs.add(record.slug);
+  }
+
+  // Refuse to overwrite medicines already here unless each change is accepted by name, so an
+  // import cannot silently undo corrections made in this repository (scripts/lib/medication-import-guard.mjs).
+  const current = existsSync(out) ? (JSON.parse(readFileSync(out, "utf8")) as MedicationExportRecord[]) : [];
+  const diff = diffMedicationSnapshots(current, records);
+  const verdict = judgeMedicationImport(diff, parseAcceptedChanges(process.argv));
+  if (!verdict.ok) {
+    console.error(`[medications:import] ${verdict.message}`);
+    process.exitCode = 1;
+    return;
+  }
+  console.log(`[medications:import] ${verdict.message}`);
+  if (process.argv.includes("--dry-run")) {
+    console.log("[medications:import] Dry run: nothing written.");
+    return;
   }
 
   writeFileSync(out, `${JSON.stringify(records, null, 2)}\n`, "utf8");

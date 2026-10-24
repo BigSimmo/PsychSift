@@ -25,7 +25,10 @@ export const REQUIRED_TRIVY_SCAN_IMAGES = Object.freeze(["clinical-kb-app:ci", "
 // this date, HIGH/CRITICAL findings in the worker image are advisory everywhere, because a red
 // main-branch scan held up production deploys while the worker fixes (#3701) are finished. App
 // image findings and any unassessed scan still fail. The exemption ends by itself on this date.
-export const WORKER_SCAN_ADVISORY_UNTIL = "2026-11-04T00:00:00Z";
+// Extended from 4 Nov to 2 Dec 2026 by owner decision 2026-10-24
+// (docs/decisions/2026-10-24-worker-scan-advisory-until-2-dec.md): no fixed version existed for any
+// of the 24 remaining findings (#3741), and the daily scan in docker-image.yml keeps reporting them.
+export const WORKER_SCAN_ADVISORY_UNTIL = "2026-12-02T00:00:00Z";
 export const WORKER_SCAN_IMAGE = "clinical-kb-worker:ci";
 
 function run(cmd, args, opts = {}) {
