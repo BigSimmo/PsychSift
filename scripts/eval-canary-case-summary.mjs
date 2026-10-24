@@ -29,7 +29,11 @@ export function latestQualityReport(dir) {
 function section(label, summary) {
   const failed = Array.isArray(summary?.failed_cases) ? summary.failed_cases : [];
   const total = summary?.case_count ?? "?";
-  if (!failed.length) return [`Every ${label} case passed individually.`];
+  if (!failed.length) {
+    // A --rag-only run leaves the retrieval summary empty, and an empty section is not a pass.
+    const ran = typeof summary?.case_count === "number" && summary.case_count > 0;
+    return [ran ? `Every ${label} case passed individually.` : `No ${label} cases were run in this report.`];
+  }
   return [
     `**${failed.length} of ${total} ${label} cases failed individually:**`,
     "",
