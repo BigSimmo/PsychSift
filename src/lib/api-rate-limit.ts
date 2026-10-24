@@ -78,12 +78,13 @@ export type ApiRateLimitResult = {
   /**
    * Which ceiling produced this decision. `anonymous_generation_ceiling` marks the
    * aggregate all-anonymous provider-spend ceiling so the 429 can carry its own code
-   * rather than being read as an ordinary per-caller limit.
+   * rather than being read as an ordinary per-caller limit. `signed_in_generation_daily` marks
+   * a signed-in account's daily generation cap.
    */
   scope?: ApiRateLimitScope;
 };
 
-export type ApiRateLimitScope = "subject" | "anonymous_generation_ceiling";
+export type ApiRateLimitScope = "subject" | "anonymous_generation_ceiling" | "signed_in_generation_daily";
 
 const apiRateLimitDefaults = {
   answer: { limit: 30, windowSeconds: 60 },
@@ -190,9 +191,44 @@ export const ANONYMOUS_GENERATION_CEILING_CODE = "anonymous_generation_ceiling";
 const ANONYMOUS_GENERATION_CEILING_MESSAGE =
   "The shared limit for anonymous generated answers has been reached. Sign in to continue, or retry later.";
 
-/** Provider-backed generation buckets that count against the aggregate anonymous ceiling. */
-function isAnonymousGenerationBucket(bucket: ApiRateLimitBucket) {
+/** Provider-backed generation buckets: they count against the aggregate anonymous ceiling and the signed-in daily cap. */
+function isGenerationBucket(bucket: ApiRateLimitBucket) {
   return bucket === "answer" || bucket === "clinical_ask" || bucket === "speech_transcription";
+}
+
+/**
+ * Daily cap on provider-backed generation for ONE signed-in account (audit SEC-N2, 24 Oct 2026).
+ *
+ * Sign-up is open, and the per-minute owner limits above (answer 30 + clinical_ask 20 +
+ * speech_transcription 12) bound bursts only: one account could otherwise make ~89,000 paid calls
+ * a day. This shared per-account row counts every generation request alongside the per-minute
+ * bucket.
+ *
+ * Numbers, and why:
+ * - **250 requests per 86400 s per account**, shared by `answer`, `clinical_ask` and
+ *   `speech_transcription`. A busy clinical day of looking things up is well under 100.
+ * - Fixed window from the account's first request, like every other durable bucket here.
+ * - Consumed in parallel with the per-minute bucket so it adds no round trip. Both rows belong to
+ *   the same account, so a request one of them refuses only spends that account's own allowance.
+ * - The evaluation canary calls the answer pipeline in-process, not through these routes, so it
+ *   does not count here.
+ *
+ * Raising this raises the most one account can spend in a day, so treat a change here as a spend
+ * decision, not a tuning knob.
+ */
+export const SIGNED_IN_GENERATION_DAILY_CAP = { limit: 250, windowSeconds: 86_400 } as const;
+
+/** Bucket column value for the per-account daily row; deliberately not an {@link ApiRateLimitBucket}. */
+export const SIGNED_IN_GENERATION_DAILY_BUCKET = "signed_in_generation_daily";
+
+/** Distinct 429 code for a signed-in account's daily generation cap. */
+export const SIGNED_IN_GENERATION_DAILY_CODE = "generation_daily_cap";
+
+const SIGNED_IN_GENERATION_DAILY_MESSAGE =
+  "This account has reached its daily limit for generated answers. Search and the library still work; try again later.";
+
+export function signedInGenerationDailySubjectKey(ownerId: string) {
+  return `owner:${ownerId}:generation`;
 }
 
 type SupabaseAdmin = ReturnType<typeof createAdminClient>;
@@ -449,6 +485,59 @@ async function consumeAnonymousGenerationCeiling(args: {
 }
 
 /**
+ * Consumes one unit of a signed-in account's daily generation cap (see
+ * {@link SIGNED_IN_GENERATION_DAILY_CAP}). Fails closed when the limiter is unreadable, unless
+ * the caller's per-instance fallback is permitted.
+ */
+async function consumeSignedInGenerationDailyCap(args: {
+  supabase: SupabaseAdmin;
+  ownerId: string;
+  allowInMemoryFallbackOnUnavailable: boolean;
+}): Promise<ApiRateLimitResult> {
+  const scope = "signed_in_generation_daily" as const;
+  const subjectKey = signedInGenerationDailySubjectKey(args.ownerId);
+  const { limit, windowSeconds } = SIGNED_IN_GENERATION_DAILY_CAP;
+  const cached = tryReadDurableRateLimitDenyCache(subjectKey, SIGNED_IN_GENERATION_DAILY_BUCKET);
+  if (cached) return { ...cached, scope };
+
+  const { data, error } = await args.supabase.rpc("consume_api_subject_rate_limit", {
+    p_subject_key: subjectKey,
+    p_bucket: SIGNED_IN_GENERATION_DAILY_BUCKET,
+    p_limit: limit,
+    p_window_seconds: windowSeconds,
+  });
+
+  const row = error ? null : parseRateLimitRow(data);
+  if (!row || typeof row.limited !== "boolean") {
+    if (!args.allowInMemoryFallbackOnUnavailable) throw new ApiRateLimitUnavailableError();
+    sentryLog.warn(SENTRY_LOG_MESSAGES.API_RATE_LIMIT_FALLBACK, {
+      bucket: SIGNED_IN_GENERATION_DAILY_BUCKET,
+      backend: "in_memory",
+      fallback: true,
+    });
+    return {
+      ...consumeInMemoryApiRateLimit({
+        ownerId: subjectKey,
+        bucket: SIGNED_IN_GENERATION_DAILY_BUCKET,
+        limit,
+        windowSeconds,
+      }),
+      scope,
+    };
+  }
+
+  const result = {
+    limited: row.limited,
+    limit: Number(row.limit_value ?? limit),
+    remaining: Number(row.remaining ?? 0),
+    retryAfterSeconds: Math.max(1, Number(row.retry_after_seconds ?? windowSeconds)),
+    resetAt: String(row.reset_at ?? new Date(Date.now() + windowSeconds * 1000).toISOString()),
+  } satisfies ApiRateLimitResult;
+  rememberDurableRateLimitDenyCache(subjectKey, SIGNED_IN_GENERATION_DAILY_BUCKET, result);
+  return { ...result, scope };
+}
+
+/**
  * The anonymous subject, global and (for generation buckets) aggregate-ceiling checks in ONE database
  * round trip, in the same order and with the same stop-at-first-denial accounting as the serial calls
  * below. Each serial call crossed from the app's region to the database's, so an anonymous answer
@@ -465,7 +554,7 @@ async function consumeAnonymousRateLimitsAtomic(args: {
   globalLimit: number;
   globalWindowSeconds: number;
 }): Promise<ApiRateLimitResult | null> {
-  const withCeiling = isAnonymousGenerationBucket(args.bucket);
+  const withCeiling = isGenerationBucket(args.bucket);
   const { data, error } = await args.supabase.rpc("consume_anonymous_rate_limits_atomic", {
     p_subject_key: args.subjectKey,
     p_bucket: args.bucket,
@@ -593,7 +682,7 @@ async function consumeSubjectApiRateLimitDurable(args: SubjectRateLimitArgs): Pr
     : args.allowInMemoryFallbackOnUnavailable;
 
   if (args.subject.kind === "owner") {
-    return consumeApiRateLimit({
+    const perMinute = consumeApiRateLimit({
       supabase: args.supabase,
       ownerId: args.subject.ownerId,
       bucket: args.bucket,
@@ -601,6 +690,17 @@ async function consumeSubjectApiRateLimitDurable(args: SubjectRateLimitArgs): Pr
       windowSeconds: args.windowSeconds,
       allowInMemoryFallbackOnUnavailable,
     });
+    if (!isGenerationBucket(args.bucket)) return perMinute;
+    const [minuteResult, dailyResult] = await Promise.all([
+      perMinute,
+      consumeSignedInGenerationDailyCap({
+        supabase: args.supabase,
+        ownerId: args.subject.ownerId,
+        allowInMemoryFallbackOnUnavailable: Boolean(allowInMemoryFallbackOnUnavailable),
+      }),
+    ]);
+    if (minuteResult.limited) return minuteResult;
+    return dailyResult.limited ? dailyResult : minuteResult;
   }
 
   const defaults = anonymousApiRateLimitDefaults[args.bucket] ?? apiRateLimitDefaults[args.bucket];
@@ -713,7 +813,7 @@ async function consumeSubjectApiRateLimitDurable(args: SubjectRateLimitArgs): Pr
 
   // Aggregate provider-spend ceiling across every anonymous generation route. Consumed last so
   // a caller already denied by a narrower limit does not also burn the shared allowance.
-  if (isAnonymousGenerationBucket(args.bucket)) {
+  if (isGenerationBucket(args.bucket)) {
     const ceilingResult = await consumeAnonymousGenerationCeiling({
       supabase: args.supabase,
       allowInMemoryFallbackOnUnavailable: allowAnonymousRateLimitFallback(
@@ -854,9 +954,19 @@ export function rateLimitJsonResponse(
   // An aggregate-ceiling denial is not the caller's own quota running out: it says the site as a
   // whole has spent its anonymous generation allowance, and signing in is the way past it. Give it
   // its own code and message so clients and logs can tell the two apart.
-  const hitAnonymousGenerationCeiling = rateLimit.scope === "anonymous_generation_ceiling";
-  const code = hitAnonymousGenerationCeiling ? ANONYMOUS_GENERATION_CEILING_CODE : "rate_limited";
-  const publicMessage = hitAnonymousGenerationCeiling ? ANONYMOUS_GENERATION_CEILING_MESSAGE : message;
+  // A signed-in account's daily cap likewise is not a "retry shortly" limit.
+  const code =
+    rateLimit.scope === "anonymous_generation_ceiling"
+      ? ANONYMOUS_GENERATION_CEILING_CODE
+      : rateLimit.scope === "signed_in_generation_daily"
+        ? SIGNED_IN_GENERATION_DAILY_CODE
+        : "rate_limited";
+  const publicMessage =
+    rateLimit.scope === "anonymous_generation_ceiling"
+      ? ANONYMOUS_GENERATION_CEILING_MESSAGE
+      : rateLimit.scope === "signed_in_generation_daily"
+        ? SIGNED_IN_GENERATION_DAILY_MESSAGE
+        : message;
   // Example wide event: denial counts by bucket without subject identifiers.
   sentryLog.warn(SENTRY_LOG_MESSAGES.API_RATE_LIMITED, {
     code,
