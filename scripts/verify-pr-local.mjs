@@ -63,6 +63,7 @@ const staticHeavyGuards = [
   "check:function-grants",
   "check:owner-scope",
   "check:calculator-content",
+  "test:codex-hooks",
 ];
 const staticHeavyScripts = ["lint", "typecheck", "test"];
 

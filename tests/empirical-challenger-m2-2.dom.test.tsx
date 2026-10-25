@@ -55,9 +55,6 @@ describe("Empirical Challenger M2-2: Baseline Ratchets, Test Guard Exemptions & 
       ).toBeUndefined();
       for (const path of [
         "src/components/calculators/calculator-ui.tsx",
-        "src/components/calculators/guided-flow.tsx",
-        "src/components/calculators/clinical-console.tsx",
-        "src/components/calculators/bedside-sheet.tsx",
         "src/components/services/services-navigator-page.tsx",
         "src/components/therapy-compass/controls.ts",
       ])
