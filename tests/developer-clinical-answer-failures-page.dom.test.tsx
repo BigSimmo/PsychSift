@@ -50,8 +50,8 @@ afterEach(() => {
 });
 
 describe("developer clinical answer failures page", () => {
-  it("renders inside the shared shell and stamps the ledger as its source", () => {
-    render(<DeveloperClinicalAnswerFailuresPage />);
+  it("renders inside the shared shell and stamps the ledger as its source", async () => {
+    render(await DeveloperClinicalAnswerFailuresPage());
     expect(screen.getByTestId("developer-clinical-answer-failures")).toBeInTheDocument();
     expect(screen.getByTestId("developer-clinical-answer-failures-back")).toHaveAttribute(
       "href",
@@ -60,7 +60,7 @@ describe("developer clinical answer failures page", () => {
     expect(screen.getByTestId("developer-hub-freshness")).toHaveTextContent(/Ledger/);
   });
 
-  it("shows the clinical question in words, not only its case id", () => {
+  it("shows the clinical question in words, not only its case id", async () => {
     // The id is what makes the match checkable; the question is the only part a
     // reader can act on. Losing the question would leave a page of slugs.
     failures.value = [
@@ -71,7 +71,7 @@ describe("developer clinical answer failures page", () => {
         },
       ]),
     ];
-    render(<DeveloperClinicalAnswerFailuresPage />);
+    render(await DeveloperClinicalAnswerFailuresPage());
 
     const entry = screen.getByTestId("developer-clinical-answer-failure-#J8SJQ9");
     expect(entry).toHaveTextContent("What metabolic monitoring is required for antipsychotics?");
@@ -79,14 +79,14 @@ describe("developer clinical answer failures page", () => {
     expect(entry).toHaveTextContent("Metabolic monitoring returns a stub");
   });
 
-  it("counts items and referenced questions separately, because one item can name several", () => {
+  it("counts items and referenced questions separately, because one item can name several", async () => {
     failures.value = [
       failure("#S4R2W3", "Two questions answer with a bare title list", [
         { id: "quality-agitation-im-route", question: "Q1" },
         { id: "quality-duress-pathway", question: "Q2" },
       ]),
     ];
-    render(<DeveloperClinicalAnswerFailuresPage />);
+    render(await DeveloperClinicalAnswerFailuresPage());
 
     expect(screen.getByTestId("developer-clinical-answer-failures-count-items")).toHaveTextContent("1");
     expect(screen.getByTestId("developer-clinical-answer-failures-count-questions")).toHaveTextContent("2");
@@ -106,7 +106,7 @@ describe("developer clinical answer failures page", () => {
         { id: "quality-discharge-documentation", question: "What discharge documentation is required?" },
       ]),
     ];
-    const { container } = render(<DeveloperClinicalAnswerFailuresPage />);
+    const { container } = render(await DeveloperClinicalAnswerFailuresPage());
     const text = container.textContent ?? "";
 
     expect(screen.getByTestId("developer-clinical-answer-failure-#J8SJQ9")).toHaveTextContent(
@@ -125,17 +125,17 @@ describe("developer clinical answer failures page", () => {
    * than render a blank container that an empty list and a failed load would
    * both produce.
    */
-  it("says what an empty list does not prove", () => {
-    render(<DeveloperClinicalAnswerFailuresPage />);
+  it("says what an empty list does not prove", async () => {
+    render(await DeveloperClinicalAnswerFailuresPage());
 
     const empty = screen.getByTestId("developer-clinical-answer-failures-empty");
     expect(empty).toHaveTextContent(/No open ledger item names a clinical eval question/);
     expect(empty).toHaveTextContent(/not the answer engine being proven well/);
   });
 
-  it("states the limits of its own coverage above the list, not as a footnote", () => {
+  it("states the limits of its own coverage above the list, not as a footnote", async () => {
     failures.value = [failure("#J8SJQ9", "A failure", [{ id: "quality-duress-pathway", question: "Q" }])];
-    const { container } = render(<DeveloperClinicalAnswerFailuresPage />);
+    const { container } = render(await DeveloperClinicalAnswerFailuresPage());
 
     const text = container.textContent ?? "";
     expect(text).toMatch(/narrower thing than a picture of answer quality/);

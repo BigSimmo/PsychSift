@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { SignOffQueuePageContent } from "@/components/developer-area/hub/sign-off-queue-page-content";
+import { developerAreaRequestAuthorized } from "@/lib/developer-area/access";
 
 export const metadata: Metadata = {
   title: "Clinical sign-off queue · Developer · PsychSift",
@@ -34,6 +35,8 @@ function parsePageParam(value: string | string[] | undefined): number {
  * `DeveloperReviewStatePage`, the sibling page this pagination is copied from.
  */
 export default async function DeveloperClinicalSignOffPage({ searchParams }: DeveloperClinicalSignOffPageProps) {
+  // The layout gate can be skipped on a client-side navigation; check again here (see `access.ts`).
+  if (!(await developerAreaRequestAuthorized())) return null;
   const params = searchParams ? await searchParams : {};
   const family = firstValue(params.family);
   const domain = firstValue(params.domain);

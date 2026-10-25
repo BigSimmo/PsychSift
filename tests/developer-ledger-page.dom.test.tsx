@@ -56,16 +56,32 @@ vi.mock("@/lib/developer-area/ledger-snapshot", async (importOriginal) => {
   };
 });
 
+/**
+ * The page's own access check, separate from the layout gate (which the App
+ * Router can skip on a client-side navigation). `true` admits the request.
+ */
+const accessGranted = vi.hoisted(() => ({ value: true }));
+
+vi.mock("@/lib/developer-area/access", () => ({
+  developerAreaRequestAuthorized: async () => accessGranted.value,
+}));
+
 afterEach(cleanup);
 
 afterEach(() => {
   acuityOverride.value = null;
   openDetailOverride.value = null;
+  accessGranted.value = true;
 });
 
 describe("developer ledger page", () => {
-  it("renders priority and acuity as visibly distinct labels", () => {
-    render(<DeveloperLedgerPage />);
+  it("renders nothing when the request is not authorized, even if the layout gate was skipped", async () => {
+    accessGranted.value = false;
+    expect(await DeveloperLedgerPage()).toBeNull();
+  });
+
+  it("renders priority and acuity as visibly distinct labels", async () => {
+    render(await DeveloperLedgerPage());
     const queue = screen.getByTestId("developer-ledger-queue");
     // Acuity lives only in the queue; priority only in the open list. A shared
     // badge would report the P1 rows and the A1 queue entry as one urgent set.
@@ -73,13 +89,13 @@ describe("developer ledger page", () => {
     expect(within(screen.getByTestId("developer-ledger-open")).queryByText(/^A1$/)).toBeNull();
   });
 
-  it("gives acuity and priority genuinely different badge treatments", () => {
+  it("gives acuity and priority genuinely different badge treatments", async () => {
     // The test above constrains only *which scale appears where*. It says
     // nothing about treatment, so a regression that handed the acuity chip the
     // priority badge's exact classes — the merged badge the spec forbids —
     // would pass it. This is the assertion that fails instead.
     const snapshot = loadLedgerSnapshot();
-    render(<DeveloperLedgerPage />);
+    render(await DeveloperLedgerPage());
 
     const entry = snapshot.queue[0];
     const chip = screen.getByTestId(`developer-ledger-acuity-${entry.order}`);
@@ -107,19 +123,19 @@ describe("developer ledger page", () => {
     expect(badge.textContent).toBe(snapshot.open[0].priority);
   });
 
-  it("shows counts that match the snapshot", () => {
+  it("shows counts that match the snapshot", async () => {
     const snapshot = loadLedgerSnapshot();
-    render(<DeveloperLedgerPage />);
+    render(await DeveloperLedgerPage());
     expect(screen.getByTestId("developer-ledger-count-open")).toHaveTextContent(String(snapshot.counts.open));
     expect(screen.getByTestId("developer-ledger-count-pending")).toHaveTextContent(String(snapshot.counts.pending));
   });
 
-  it("wires all four counts to the snapshot rather than hardcoding any of them", () => {
+  it("wires all four counts to the snapshot rather than hardcoding any of them", async () => {
     // The two the brief pins are not enough on their own: `-p1` and `-queued`
     // could each carry a literal and still pass above. Every tile must read
     // from the same snapshot the list below it renders.
     const { counts } = loadLedgerSnapshot();
-    render(<DeveloperLedgerPage />);
+    render(await DeveloperLedgerPage());
 
     // Read the number element itself, not the whole tile: the p1 tile's label
     // is "blocking, priority P1", so a `toContain` over the tile would match
@@ -133,48 +149,48 @@ describe("developer ledger page", () => {
     expect(within(screen.getByTestId("developer-ledger-queue")).getAllByRole("listitem")).toHaveLength(counts.queued);
   });
 
-  it("always shows the freshness stamp", () => {
-    render(<DeveloperLedgerPage />);
+  it("always shows the freshness stamp", async () => {
+    render(await DeveloperLedgerPage());
     expect(screen.getByTestId("developer-hub-freshness")).toBeInTheDocument();
   });
 
-  it("keeps full detail in the DOM behind a native disclosure, not a click handler", () => {
-    render(<DeveloperLedgerPage />);
+  it("keeps full detail in the DOM behind a native disclosure, not a click handler", async () => {
+    render(await DeveloperLedgerPage());
     const item = screen.getAllByTestId(/^developer-ledger-item-/)[0];
     expect(item.querySelector("details")).not.toBeNull();
     expect(item.querySelector("button")).toBeNull();
   });
 
-  it("carries no button anywhere on the page, so nothing needs a client handler", () => {
+  it("carries no button anywhere on the page, so nothing needs a client handler", async () => {
     // Task 7 shipped a `<button onClick>` inside a Server Component and the
     // route threw on every render; neither tsc nor jsdom can see that class of
     // bug, because jsdom renders this as an ordinary client tree. Asserting the
     // absence of buttons outright is what keeps the page free of handlers.
-    const { container } = render(<DeveloperLedgerPage />);
+    const { container } = render(await DeveloperLedgerPage());
     expect(container.querySelector("button")).toBeNull();
   });
 
-  it("keeps the collapsed detail text in the DOM rather than withholding it", () => {
+  it("keeps the collapsed detail text in the DOM rather than withholding it", async () => {
     // Progressive disclosure is a readability device, not a data-hiding one.
     // The longest detail cell is ~7,800 characters, which is why it is not
     // inline — but it must still be findable and screen-reader reachable.
     const snapshot = loadLedgerSnapshot();
     const first = snapshot.open[0];
-    render(<DeveloperLedgerPage />);
+    render(await DeveloperLedgerPage());
 
     const item = screen.getByTestId(`developer-ledger-item-${first.id.replace("#", "")}`);
     expect(item.querySelector("details")?.textContent).toContain(first.detail);
   });
 
-  it("labels the running order as urgency, not priority", () => {
-    render(<DeveloperLedgerPage />);
+  it("labels the running order as urgency, not priority", async () => {
+    render(await DeveloperLedgerPage());
     expect(screen.getByTestId("developer-ledger-queue-caption")).toHaveTextContent(/urgency, not priority/i);
   });
 
-  it("renders every open item, grouped P1 then P2 then P3", () => {
+  it("renders every open item, grouped P1 then P2 then P3", async () => {
     const snapshot = loadLedgerSnapshot();
     const grouped = openItemsByPriority(snapshot);
-    render(<DeveloperLedgerPage />);
+    render(await DeveloperLedgerPage());
 
     const open = screen.getByTestId("developer-ledger-open");
     const rendered = within(open)
@@ -194,21 +210,21 @@ describe("developer ledger page", () => {
     expect(rendered).toHaveLength(snapshot.counts.open);
   });
 
-  it("renders an acuity value it does not recognise instead of dropping the entry", () => {
+  it("renders an acuity value it does not recognise instead of dropping the entry", async () => {
     // The spec lists "Optional" as a possible acuity; the live ledger only ever
     // uses A1-A3, so without this override the unknown branch is never reached.
     acuityOverride.value = "Optional";
     const snapshot = loadLedgerSnapshot();
-    render(<DeveloperLedgerPage />);
+    render(await DeveloperLedgerPage());
 
     const queue = screen.getByTestId("developer-ledger-queue");
     expect(within(queue).getAllByRole("listitem")).toHaveLength(snapshot.counts.queued);
     expect(within(queue).getAllByText("Optional").length).toBe(snapshot.counts.queued);
   });
 
-  it("lists every pending inbox request", () => {
+  it("lists every pending inbox request", async () => {
     const snapshot = loadLedgerSnapshot();
-    render(<DeveloperLedgerPage />);
+    render(await DeveloperLedgerPage());
     const pending = screen.getByTestId("developer-ledger-pending");
     // A fully reconciled inbox is a normal resting state, not an anomaly: reconcile
     // applies every queued request and leaves zero pending until the next branch
@@ -224,12 +240,12 @@ describe("developer ledger page", () => {
     expect(pending).toHaveTextContent(snapshot.pending[0].summary);
   });
 
-  it("links back to the developer hub", () => {
-    render(<DeveloperLedgerPage />);
+  it("links back to the developer hub", async () => {
+    render(await DeveloperLedgerPage());
     expect(screen.getByTestId("developer-ledger-back")).toHaveAttribute("href", "/admin/developer-hub");
   });
 
-  it("shows no markdown pipe escape to the reader", () => {
+  it("shows no markdown pipe escape to the reader", async () => {
     // `open.#SZGPAH.detail` used to carry a literal `\|` — a markdown-table
     // artifact that has no business in a JSON data contract, and that the page
     // would otherwise render verbatim. Fixed in the generator; pinned here
@@ -252,7 +268,7 @@ describe("developer ledger page", () => {
     // is no "maybe zero rows" case, so the guard is gone too — not weakened,
     // removed, because the condition it protected against no longer exists for
     // this assertion.
-    const { container: liveContainer } = render(<DeveloperLedgerPage />);
+    const { container: liveContainer } = render(await DeveloperLedgerPage());
 
     // Durable negative, unaffected by the fixture below: it runs against the
     // real, unmocked snapshot and holds whatever the ledger happens to
@@ -266,7 +282,7 @@ describe("developer ledger page", () => {
     const first = snapshot.open[0];
     expect(first.detail).toContain("|");
 
-    const { container } = render(<DeveloperLedgerPage />);
+    const { container } = render(await DeveloperLedgerPage());
     expect(container.textContent).toContain(first.detail);
     expect(container.textContent).not.toContain(String.raw`\|`);
   });
