@@ -2872,6 +2872,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-25-audit-check-rules-and-clinical-sign-off.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/redesign/04-deferred.md",
         "section": "redesign",
         "catalogued": true
