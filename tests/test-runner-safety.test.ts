@@ -1027,6 +1027,28 @@ describe("sensitive diagnostic text", () => {
     expect(redacted).not.toContain(jwt);
     expect(redacted.match(/\[REDACTED\]/g)?.length).toBeGreaterThanOrEqual(6);
   });
+
+  it("redacts database URL passwords and bare secret assignments", () => {
+    const redacted = redactSensitiveText(
+      [
+        "postgresql://postgres:url-password-value@db.example.test:5432/postgres",
+        "PASSWORD=bare-password-value TOKEN=bare-token-value SECRET=bare-secret-value",
+        "supabase db push --db-url postgresql://postgres:flag-url-password@h/db",
+      ].join(" "),
+    );
+
+    for (const secret of [
+      "url-password-value",
+      "bare-password-value",
+      "bare-token-value",
+      "bare-secret-value",
+      "flag-url-password",
+    ]) {
+      expect(redacted).not.toContain(secret);
+    }
+    expect(redacted).toContain("postgresql://postgres:[REDACTED]@db.example.test:5432/postgres");
+    expect(redacted).toContain("PASSWORD=[REDACTED]");
+  });
 });
 
 describe("provider-safe test environment", () => {

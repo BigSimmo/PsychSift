@@ -90,6 +90,11 @@ describe("source watch: what counts as a change", () => {
     expect(normaliseHtml("<p>Reviewed 2026-03-03 at 10:15 am</p>")).toBe(
       normaliseHtml("<p>Reviewed 2026-10-21 at 9:00 pm</p>"),
     );
+    expect(normaliseHtml("<p>Page generated 14:32</p>")).toBe(normaliseHtml("<p>Page generated 09:05</p>"));
+    expect(normaliseHtml("<p>Reviewed 2026-03-03 10:15</p>")).toBe(normaliseHtml("<p>Reviewed 2026-10-21 9:00</p>"));
+    expect(normaliseHtml("<p>Clock 10:15:02</p>")).toBe(normaliseHtml("<p>Clock 9:00:59</p>"));
+    // A ratio or dilution is guidance, not a clock.
+    expect(normaliseHtml("<p>Dilute adrenaline 1:10</p>")).not.toBe(normaliseHtml("<p>Dilute adrenaline 1:20</p>"));
   });
 
   it("reports first sight, unchanged, changed, moved, gone and unreachable", () => {

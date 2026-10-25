@@ -57,4 +57,30 @@ describe("report-only sweeps stay offline unless asked", () => {
       rmSync(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     }
   });
+
+  it("sweep-merged-branches lists clean branch names and skips branches checked out in a worktree", () => {
+    const directory = mkdtempSync(path.join(tmpdir(), "sweep-merged-worktree-"));
+    const worktree = `${directory}-other`;
+    const git = (args: string[]) => execFileSync("git", args, { cwd: directory, encoding: "utf8" });
+    try {
+      git(["init", "--quiet", "-b", "main"]);
+      git(["config", "user.email", "test@example.com"]);
+      git(["config", "user.name", "Test"]);
+      writeFileSync(path.join(directory, "a.txt"), "a\n");
+      git(["add", "a.txt"]);
+      git(["commit", "--quiet", "-m", "fixture"]);
+      git(["branch", "done"]);
+      git(["branch", "busy"]);
+      git(["worktree", "add", "--quiet", worktree, "busy"]);
+
+      const dryRun = execFileSync(process.execPath, [sweepMergedBranches], { cwd: directory, encoding: "utf8" });
+      expect(dryRun).toContain("- done\n");
+      expect(dryRun).not.toContain("busy");
+      expect(dryRun).not.toMatch(/^- [*+] /m);
+      expect(dryRun).toContain("delete 1 local branch(es)");
+    } finally {
+      rmSync(worktree, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      rmSync(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    }
+  });
 });
