@@ -378,4 +378,27 @@ describe("Share and calendar", () => {
     render(<OpenShiftsAdvertActions listing={listing} booked sample />);
     expect(screen.queryByTestId("open-shifts-advert-actions")).toBeNull();
   });
+
+  it("names the share button once, and says so when a copy fails", async () => {
+    const listing = {
+      ...sampleListings(NOW)[0]!,
+      status: "open" as const,
+      claimedByMe: false,
+      startsAt: new Date(NOW.getTime() + 86_400_000).toISOString(),
+    };
+    const writeText = vi.fn().mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error("denied"));
+    vi.stubGlobal("navigator", { ...navigator, share: undefined, clipboard: { writeText } });
+    try {
+      render(<OpenShiftsAdvertActions listing={listing} booked={false} sample={false} />);
+      fireEvent.click(screen.getByRole("button", { name: "Share with a colleague" }));
+      // The live region sits outside the button, so the name is not doubled.
+      expect(await screen.findByRole("button", { name: "Copied to share" })).toBeInTheDocument();
+      expect(screen.getByTestId("open-shifts-share-status")).toHaveTextContent("Copied to share");
+      fireEvent.click(screen.getByRole("button", { name: "Copied to share" }));
+      expect(await screen.findByRole("button", { name: "Could not copy" })).toBeInTheDocument();
+      expect(screen.getByTestId("open-shifts-share-status")).toHaveTextContent("Could not copy the shift. Try again.");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });

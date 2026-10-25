@@ -1,11 +1,11 @@
 "use client";
 
-import { focusOnCallEntryFromHash } from "@/components/on-call/on-call-page-anchors";
+import { focusOnCallEntryHashTarget } from "@/components/on-call/on-call-page-anchors";
 
 import { Plus } from "lucide-react";
 import dynamic from "next/dynamic";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useAccountData } from "@/components/account-data-provider";
 import { inPageAnchor } from "@/components/in-page-nav/in-page-nav-classes";
@@ -36,7 +36,7 @@ import { onCallPageSections } from "@/components/on-call/on-call-page-sections";
 import { OnCallEmptyState } from "@/components/on-call/kit/empty-state";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui-primitives";
-import { cacheOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
+import { cacheOnCallEntries, updateCachedOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
 import { useOnCallLinkedDocumentsState } from "@/lib/on-call/linked-documents";
 import { onCallEntryFreshness, type OnCallEntry, onCallEntryIsEditable } from "@/lib/on-call/entry-model";
 import { recordOnCallRecent } from "@/lib/on-call/recent-storage";
@@ -207,10 +207,20 @@ export function OnCallSectionPage({ view }: { view: OnCallPageView }) {
     () => (view === "who-is-who" ? entries.filter((entry) => !isAdminWorkforceExplainer(entry)) : entries),
     [view, entries],
   );
+  // Focus the hashed entry once per hash value: as soon as it renders, and on
+  // each hashchange. A data refresh (a "Still correct" tap, an edit, a reload)
+  // must not pull the reader back to it, re-open it or move focus off the row
+  // they just used, so a hash already handled is not focused again.
+  const focusedHash = useRef<string | null>(null);
   useEffect(() => {
-    focusOnCallEntryFromHash();
-    window.addEventListener("hashchange", focusOnCallEntryFromHash);
-    return () => window.removeEventListener("hashchange", focusOnCallEntryFromHash);
+    if (focusedHash.current !== window.location.hash && focusOnCallEntryHashTarget()) {
+      focusedHash.current = window.location.hash;
+    }
+    function onHashChange() {
+      focusedHash.current = focusOnCallEntryHashTarget() ? window.location.hash : null;
+    }
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
   }, [view, entries]);
   const sourceIds =
     view === "playbook" || view === "orientation"
@@ -340,15 +350,18 @@ export function OnCallSectionPage({ view }: { view: OnCallPageView }) {
     setVerifyAllState({ running: false, error: null });
   }
 
+  // Both run after an await (a verify, an editor save), so they update the
+  // latest cached list rather than this render's `entries` snapshot.
   function upsertCachedEntry(entry: OnCallEntry) {
-    const next = entries.some((existing) => existing.id === entry.id)
-      ? entries.map((existing) => (existing.id === entry.id ? entry : existing))
-      : [...entries, entry];
-    cacheOnCallEntries(next);
+    updateCachedOnCallEntries(entries, (current) =>
+      current.some((existing) => existing.id === entry.id)
+        ? current.map((existing) => (existing.id === entry.id ? entry : existing))
+        : [...current, entry],
+    );
   }
 
   function removeCachedEntry(id: string) {
-    cacheOnCallEntries(entries.filter((existing) => existing.id !== id));
+    updateCachedOnCallEntries(entries, (current) => current.filter((existing) => existing.id !== id));
   }
 
   // Writing needs an account, and so does reading anything but the preview. Each list component drops

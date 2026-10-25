@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ServiceEntryEditor } from "@/components/on-call/service-entry-editor";
 import { ServiceAdminPanel } from "@/components/on-call/service-admin-panel";
 import { ServiceHandbook } from "@/components/on-call/service-handbook";
+import { resolveHandbookPhone } from "@/lib/on-call/number-resolver";
 import { demoServiceDetail, DEMO_SITE_ID } from "@/lib/on-call/service-demo";
 
 afterEach(cleanup);
@@ -91,6 +92,43 @@ describe("Stage C editor controls", () => {
     expect(screen.getByText(`Member ${second.id.slice(-8)}`)).toBeInTheDocument();
   });
 
+  it("asks before removing a member, and says so when the admin is removing themselves", async () => {
+    const action = vi.fn().mockResolvedValue({ ok: true });
+    const [admin, editor] = demoServiceDetail.members;
+    render(<ServiceAdminPanel detail={demoServiceDetail} actorId={admin.id} onAction={action} />);
+    const removeButtons = screen.getAllByRole("button", { name: "Remove member" });
+    await userEvent.click(removeButtons[1]!);
+    expect(action).not.toHaveBeenCalled();
+    let dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveTextContent(`Member ${editor.id.slice(-8)} will lose access`);
+    await userEvent.click(within(dialog).getAllByRole("button", { name: "Cancel" })[0]!);
+    expect(action).not.toHaveBeenCalled();
+
+    await userEvent.click(removeButtons[0]!);
+    dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByRole("heading", { name: "Remove yourself" })).toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Remove yourself" }));
+    expect(action).toHaveBeenCalledWith({ action: "member.revoke", memberId: admin.id });
+  });
+
+  it("resyncs a member's role when the saved role changes", () => {
+    const view = render(<ServiceAdminPanel detail={demoServiceDetail} onAction={vi.fn()} />);
+    const [, editor] = demoServiceDetail.members;
+    expect(screen.getByLabelText("Role", { selector: `#service-member-${editor.id}-role` })).toHaveValue("editor");
+    view.rerender(
+      <ServiceAdminPanel
+        detail={{
+          ...demoServiceDetail,
+          members: demoServiceDetail.members.map((member) =>
+            member.id === editor.id ? { ...member, role: "member" as const } : member,
+          ),
+        }}
+        onAction={vi.fn()}
+      />,
+    );
+    expect(screen.getByLabelText("Role", { selector: `#service-member-${editor.id}-role` })).toHaveValue("member");
+  });
+
   it("confirms the visible published revision, while a non-reviewer cannot confirm cover", async () => {
     const entry = demoServiceDetail.entries.find((entry) => entry.content.section === "cover")!;
     const action = vi.fn().mockResolvedValue({ ok: true });
@@ -116,6 +154,66 @@ describe("Stage C editor controls", () => {
     expect(screen.getByText(/Draft saved 25 Sept? 2026/)).toBeInTheDocument();
     expect(screen.queryByText(/^Updated 25/)).toBeNull();
     expect(screen.queryByRole("button", { name: "Still correct" })).toBeNull();
+  });
+  it("says the hospital hours were saved after the reload brings the new times back", async () => {
+    const site = demoServiceDetail.sites.find((item) => item.id === DEMO_SITE_ID)!;
+    let detail = { ...demoServiceDetail, entries: [] };
+    const props = { selectedSiteId: DEMO_SITE_ID, canEdit: true, onEdit: vi.fn(), onAdd: vi.fn() };
+    const action = vi.fn(async (sent: { afterHoursStart?: string | null; afterHoursEnd?: string | null }) => {
+      // The real page reloads detail before the action resolves.
+      detail = {
+        ...detail,
+        sites: detail.sites.map((item) =>
+          item.id === site.id
+            ? { ...item, afterHoursStart: sent.afterHoursStart, afterHoursEnd: sent.afterHoursEnd }
+            : item,
+        ),
+      };
+      view.rerender(<ServiceHandbook {...props} detail={detail} onAction={action as never} />);
+      return { ok: true };
+    });
+    const view = render(<ServiceHandbook {...props} detail={detail} onAction={action as never} />);
+    const hours = screen.getByTestId("service-site-hours");
+    await userEvent.clear(within(hours).getByLabelText("After hours starts"));
+    await userEvent.type(within(hours).getByLabelText("After hours starts"), "18:30");
+    await userEvent.clear(within(hours).getByLabelText("After hours ends"));
+    await userEvent.type(within(hours).getByLabelText("After hours ends"), "07:30");
+    await userEvent.click(within(hours).getByRole("button", { name: "Save hospital hours" }));
+    expect(action).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "site.update", afterHoursStart: "18:30", afterHoursEnd: "07:30" }),
+    );
+    expect(await screen.findByText("Hospital hours saved.")).toBeInTheDocument();
+    expect(within(screen.getByTestId("service-site-hours")).getByLabelText("After hours starts")).toHaveValue("18:30");
+  });
+
+  it("offers a Call button only for a published number, never a draft or withdrawn one", () => {
+    const entry = demoServiceDetail.entries.find(
+      (entry) =>
+        entry.content.kind === "operational" &&
+        resolveHandbookPhone(entry.content.phone).tel &&
+        !entry.content.steps &&
+        !entry.content.cover,
+    )!;
+    const props = { selectedSiteId: DEMO_SITE_ID, canEdit: true, onEdit: vi.fn(), onAdd: vi.fn(), onAction: vi.fn() };
+    const card = () => screen.getByTestId(`service-entry-${entry.id}`);
+    const view = render(<ServiceHandbook {...props} detail={{ ...demoServiceDetail, entries: [entry] }} />);
+    expect(within(card()).getByRole("link", { name: new RegExp(`^Call ${entry.content.title}`) })).toBeInTheDocument();
+    expect(within(card()).getByRole("button", { name: "Flag incorrect entry" })).toBeInTheDocument();
+
+    const draft = { ...entry, status: "draft" as const, publishedRevision: null, publishedContent: null };
+    view.rerender(<ServiceHandbook {...props} detail={{ ...demoServiceDetail, entries: [draft] }} />);
+    expect(within(card()).queryByRole("link", { name: /^Call / })).toBeNull();
+    expect(
+      within(card()).getByText(`Phone or extension: ${entry.content.phone}`, { exact: false }),
+    ).toBeInTheDocument();
+    expect(within(card()).getByText("Not published")).toBeInTheDocument();
+    expect(within(card()).queryByRole("button", { name: "Flag incorrect entry" })).toBeNull();
+
+    view.rerender(
+      <ServiceHandbook {...props} detail={{ ...demoServiceDetail, entries: [{ ...entry, status: "withdrawn" }] }} />,
+    );
+    expect(within(card()).queryByRole("link", { name: /^Call / })).toBeNull();
+    expect(within(card()).queryByRole("button", { name: "Flag incorrect entry" })).toBeNull();
   });
 });
 

@@ -24,6 +24,8 @@ const cacheOnCallEntries = vi.fn();
 vi.mock("@/lib/on-call/entry-store", () => ({
   useOnCallEntries: () => state,
   cacheOnCallEntries: (entries: OnCallEntry[]) => cacheOnCallEntries(entries),
+  updateCachedOnCallEntries: (fallback: OnCallEntry[], update: (current: OnCallEntry[]) => OnCallEntry[]) =>
+    cacheOnCallEntries(update([...fallback])),
 }));
 const hospital = vi.hoisted(() => ({ state: null as unknown as HospitalHandbookState }));
 vi.mock("@/components/on-call/use-hospital-handbook", async (importOriginal) => ({

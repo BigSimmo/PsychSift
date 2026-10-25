@@ -151,6 +151,43 @@ describe("useHospitalHandbook", () => {
     await waitFor(() => expect(result.current.status).toBe("ready"));
   });
 
+  it("gives up on a stalled read, so the numbers end as unavailable with a retry, and the retry reads afresh", async () => {
+    vi.useFakeTimers();
+    try {
+      const detailUrl = `/api/on-call/services/${SERVICE}?siteId=${SITE_A}`;
+      let stall = true;
+      vi.mocked(globalThis.fetch).mockImplementation(async (input, init) => {
+        const url = typeof input === "string" ? input : String(input);
+        if (url === detailUrl && stall) {
+          // Never answers; only the read's own deadline ends it.
+          return new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener("abort", () => reject(init.signal!.reason));
+          });
+        }
+        return routes[url]?.() ?? json({ error: "not found" }, 404);
+      });
+      const { result } = renderHook(() => useHospitalHandbook());
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(result.current.status).toBe("loading");
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(15_000);
+      });
+      expect(result.current.status).toBe("unavailable");
+
+      stall = false;
+      act(() => result.current.retry());
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(result.current.status).toBe("ready");
+      expect(getCalls(detailUrl)).toBe(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("keeps published staff names in memory without saving them in device storage", async () => {
     const named = content({
       section: "cover",

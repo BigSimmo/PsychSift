@@ -157,6 +157,26 @@ export function cacheOnCallEntries(entries: OnCallEntry[]): boolean {
   }
 }
 
+/**
+ * Rewrite the cache from the LATEST cached list, read at write time, rather
+ * than from the list a screen rendered before an await. `cacheOnCallEntries`
+ * replaces the whole list, so two quick "Still correct" taps on different
+ * rows, or a background refetch landing while a request is in flight, would
+ * otherwise have the later write restore the older snapshot and silently drop
+ * the earlier change. `fallback` is the screen's own list, used only when
+ * nothing is cached (a browser blocking site data). A screen showing example
+ * rows is refused outright, exactly as `cacheOnCallEntries` refuses them.
+ */
+export function updateCachedOnCallEntries(
+  fallback: readonly OnCallEntry[],
+  update: (current: OnCallEntry[]) => OnCallEntry[],
+): boolean {
+  if (typeof window === "undefined") return false;
+  if (fallback.some((entry) => shownExampleEntries.has(entry))) return false;
+  const current = readCachedOnCallEntries()?.entries ?? [...fallback];
+  return cacheOnCallEntries(update(current));
+}
+
 function scrubPersistedOnCallCache(): void {
   removeLegacyOnCallEntryCaches();
   try {
