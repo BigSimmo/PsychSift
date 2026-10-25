@@ -3579,8 +3579,8 @@ test.describe("Responsive layout guards", () => {
     appRequests.length = 0;
 
     await showPane("Build");
-    await page.getByLabel("e.g. Not sleeping for a couple of nights").fill("Not sleeping");
-    await page.getByRole("button", { name: "Add" }).first().click();
+    await page.getByRole("textbox", { name: "Warning signs: new entry" }).fill("Not sleeping");
+    await page.getByRole("button", { name: "Add to Warning signs" }).click();
     await showPane("Plan preview");
     await page.getByRole("button", { name: "Copy" }).click();
 

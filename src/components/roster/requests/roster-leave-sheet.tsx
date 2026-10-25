@@ -102,6 +102,9 @@ function LeaveSession({
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Per shift: an offer in flight, or one already made. A second tap would only
+  // be refused by the server and swap the receipt for an error.
+  const [offers, setOffers] = useState<Readonly<Record<string, "sending" | "sent">>>({});
 
   const span =
     startsOn && endsOn
@@ -228,13 +231,25 @@ function LeaveSession({
     }
   }
 
+  function setOffer(id: string, state: "sending" | "sent" | null) {
+    setOffers((current) => {
+      const next = { ...current };
+      if (state) next[id] = state;
+      else delete next[id];
+      return next;
+    });
+  }
+
   async function offer(shift: RosterAssignment) {
-    if (!serviceId) return;
+    if (!serviceId || offers[shift.id]) return;
+    setOffer(shift.id, "sending");
     const response = await postRosterAction(serviceId, { action: "open.post", assignmentId: shift.id });
     if (!response.ok) {
+      setOffer(shift.id, null);
       setError(response.message);
       return;
     }
+    setOffer(shift.id, "sent");
     onSent(
       "Shift offered to your team",
       response.result.openShiftId
@@ -244,6 +259,7 @@ function LeaveSession({
               openShiftId: response.result.openShiftId!,
             });
             if (!reverse.ok) throw new Error(reverse.message);
+            setOffer(shift.id, null);
           }
         : undefined,
     );
@@ -400,7 +416,14 @@ function LeaveSession({
             {covered.map((shift) => (
               <div key={shift.id} className="grid gap-2">
                 <RosterSwapTicket shift={shift} label="Team shift" />
-                <Button onClick={() => void offer(shift)}>Offer as open shift</Button>
+                <Button
+                  busy={offers[shift.id] === "sending"}
+                  busyLabel="Offering"
+                  disabled={!!offers[shift.id]}
+                  onClick={() => void offer(shift)}
+                >
+                  {offers[shift.id] === "sent" ? "Offered" : "Offer as open shift"}
+                </Button>
               </div>
             ))}
           </section>

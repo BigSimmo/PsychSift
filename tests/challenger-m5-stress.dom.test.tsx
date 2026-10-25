@@ -71,7 +71,7 @@ describe("Empirical Challenger M5 Stress Harness", () => {
 
       const reasonsSection = screen.getByRole("region", { name: /Reasons for living/i });
       const input = within(reasonsSection).getByPlaceholderText(/Finishing my apprenticeship/i);
-      const addBtn = within(reasonsSection).getByRole("button", { name: /^add$/i });
+      const addBtn = within(reasonsSection).getByRole("button", { name: /^add to /i });
 
       await user.type(input, "Finishing medical training");
       await user.click(addBtn);
@@ -102,7 +102,7 @@ describe("Empirical Challenger M5 Stress Harness", () => {
 
       const reasonsSection = screen.getByRole("region", { name: /Reasons for living/i });
       const input = within(reasonsSection).getByPlaceholderText(/Finishing my apprenticeship/i);
-      const addBtn = within(reasonsSection).getByRole("button", { name: /^add$/i });
+      const addBtn = within(reasonsSection).getByRole("button", { name: /^add to /i });
 
       await user.type(input, "My family");
       await user.click(addBtn);
@@ -128,7 +128,7 @@ describe("Empirical Challenger M5 Stress Harness", () => {
 
       const reasonsSection = screen.getByRole("region", { name: /Reasons for living/i });
       const input = within(reasonsSection).getByPlaceholderText(/Finishing my apprenticeship/i);
-      const addBtn = within(reasonsSection).getByRole("button", { name: /^add$/i });
+      const addBtn = within(reasonsSection).getByRole("button", { name: /^add to /i });
 
       const items = ["Item One", "Item Two", "Item Three"];
       for (const item of items) {

@@ -32,7 +32,7 @@ export function DayView({
   const nowMinute = Number(perthTimeOf(now).slice(0, 2)) * 60 + Number(perthTimeOf(now).slice(3, 5));
   return (
     <>
-      <div className="mx-px flex items-center justify-between gap-3 pl-3 pr-1 text-sm text-muted-foreground">
+      <div className="mx-px flex items-center justify-between gap-3 pl-3 pr-1 text-sm text-[color:var(--text-muted)]">
         <span>{day === today ? `Now ${perthTimeOf(now)}` : "Perth time"}</span>
         <span
           data-testid="roster-timeline-axis"

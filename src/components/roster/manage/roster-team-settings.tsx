@@ -12,7 +12,20 @@ const rules: readonly [keyof RosterRules, string][] = [
   ["maxHours7d", "Maximum hours in 7 days"],
   ["maxHours14d", "Maximum hours in 14 days"],
 ];
-export function RosterTeamSettings({ serviceId, overview }: { serviceId: string; overview: RosterOverview }) {
+export function RosterTeamSettings({
+  serviceId,
+  overview,
+  onSaved,
+}: {
+  serviceId: string;
+  overview: RosterOverview;
+  /**
+   * Called once the settings are saved, so the page rereads its overview. The
+   * form seeds from that overview when it next mounts; a stale one would show
+   * the old values, and saving them again would quietly undo this save.
+   */
+  onSaved?: () => void;
+}) {
   const [approval, setApproval] = useState(overview.settings.swapApproval);
   const [values, setValues] = useState<Record<string, string>>(
     Object.fromEntries(Object.entries(overview.settings.rules).map(([key, value]) => [key, String(value)])),
@@ -50,7 +63,9 @@ export function RosterTeamSettings({ serviceId, overview }: { serviceId: string;
       setBusy(false);
       return;
     }
-    if ("nextCutoffOn" in overview && cutoff !== (overview.nextCutoffOn ?? "")) {
+    onSaved?.();
+    const cutoffChanged = "nextCutoffOn" in overview && cutoff !== (overview.nextCutoffOn ?? "");
+    if (cutoffChanged) {
       try {
         const response = await fetch(`/api/roster/team/${encodeURIComponent(serviceId)}/cutoff`, {
           method: "POST",
@@ -69,6 +84,7 @@ export function RosterTeamSettings({ serviceId, overview }: { serviceId: string;
         return;
       }
     }
+    if (cutoffChanged) onSaved?.();
     setBusy(false);
     setMessage("Saved");
   }

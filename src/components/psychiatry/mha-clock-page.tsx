@@ -450,7 +450,7 @@ function ClockItem({
   readonly form: MhaClockForm | undefined;
   readonly items: readonly MhaTimerItem[];
   readonly nowMs: number;
-  readonly onRemove: (clock: MhaClock) => void;
+  readonly onRemove: (clock: MhaClock, fromKeyboard: boolean) => void;
 }) {
   const made = mhaClockWhen(clock.madeAt, nowMs);
   return (
@@ -475,7 +475,9 @@ function ClockItem({
           </span>
           <button
             type="button"
-            onClick={() => onRemove(clock)}
+            // Keyboard activation (focused, no pointer clicks) hands focus to Undo, since
+            // this button unmounts with the card and focus would otherwise fall to the page.
+            onClick={(event) => onRemove(clock, event.detail === 0 && document.activeElement === event.currentTarget)}
             aria-label={`Remove the Form ${clock.formCode} clock made ${made}`}
             data-testid="mha-clock-remove"
             className={cn(
@@ -590,13 +592,20 @@ function UndoBar({
   onHold,
   onRelease,
   message,
+  focusRequest,
 }: {
   readonly removed: MhaClock | null;
   readonly onUndo: () => void;
   readonly onHold: (reason: UndoHold) => void;
   readonly onRelease: (reason: UndoHold) => void;
   readonly message: string | null;
+  /** Bumped when a keyboard removal should land on Undo. */
+  readonly focusRequest: number;
 }) {
+  const undoButton = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (focusRequest > 0) undoButton.current?.focus();
+  }, [focusRequest]);
   return (
     <div
       role="status"
@@ -617,6 +626,7 @@ function UndoBar({
           <span className="nums min-w-0 py-2">{message ?? `Form ${removed?.formCode} clock removed`}</span>
           {removed ? (
             <button
+              ref={undoButton}
               type="button"
               onClick={onUndo}
               data-testid="mha-clock-undo-button"
@@ -648,6 +658,7 @@ function firstOfEach(items: readonly MhaTimerItem[]): MhaTimerItem[] {
 function useUndo() {
   const [removed, setRemoved] = useState<MhaClock | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [focusRequest, setFocusRequest] = useState(0);
   const timer = useRef<number | null>(null);
   const holds = useRef(new Set<UndoHold>());
   const clear = useCallback(() => {
@@ -680,9 +691,11 @@ function useUndo() {
       }),
     [clear],
   );
-  const remove = (clock: MhaClock) => {
-    if (removeMhaClock(clock.id)) show(clock, null);
-    else if (loadMhaClockState().unreadable) show(null, ADD_MESSAGE.unreadable);
+  const remove = (clock: MhaClock, fromKeyboard: boolean) => {
+    if (removeMhaClock(clock.id)) {
+      show(clock, null);
+      if (fromKeyboard) setFocusRequest((value) => value + 1);
+    } else if (loadMhaClockState().unreadable) show(null, ADD_MESSAGE.unreadable);
     else show(null, "This browser would not remove the clock. Check that site storage is allowed.");
   };
   const undo = () => {
@@ -701,7 +714,7 @@ function useUndo() {
     holds.current.delete(reason);
     if (holds.current.size === 0) startTimer();
   };
-  return { removed, message, remove, undo, say, hold, release };
+  return { removed, message, focusRequest, remove, undo, say, hold, release };
 }
 
 export function MhaClockPage({
@@ -875,6 +888,7 @@ export function MhaClockPage({
           onUndo={undo.undo}
           onHold={undo.hold}
           onRelease={undo.release}
+          focusRequest={undo.focusRequest}
         />
       </div>
     </InformationPageShell>

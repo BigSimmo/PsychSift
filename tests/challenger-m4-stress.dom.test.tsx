@@ -99,7 +99,7 @@ describe("Empirical Challenger M4 Stress Test Harness", () => {
       const reasonsSection = screen.getByRole("region", { name: /Reasons for living/i });
       const input = within(reasonsSection).getByPlaceholderText(/Finishing my apprenticeship/i);
       await user.type(input, "My family and garden");
-      const addBtn = within(reasonsSection).getByRole("button", { name: /^add$/i });
+      const addBtn = within(reasonsSection).getByRole("button", { name: /^add to /i });
       await user.click(addBtn);
 
       const removeBtn = within(reasonsSection).getByRole("button", {
@@ -132,7 +132,7 @@ describe("Empirical Challenger M4 Stress Test Harness", () => {
 
       const reasonsSection = screen.getByRole("region", { name: /Reasons for living/i });
       const input = within(reasonsSection).getByPlaceholderText(/Finishing my apprenticeship/i);
-      const addBtn = within(reasonsSection).getByRole("button", { name: /^add$/i });
+      const addBtn = within(reasonsSection).getByRole("button", { name: /^add to /i });
 
       await user.type(input, "Reason Alpha");
       await user.click(addBtn);
