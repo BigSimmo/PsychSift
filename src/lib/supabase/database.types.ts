@@ -2093,6 +2093,7 @@ export type Database = {
           metadata: Json;
           owner_id: string | null;
           page_count: number;
+          page_storage_mode: string;
           search_tsv: unknown;
           source_path: string | null;
           status: string;
@@ -2117,6 +2118,7 @@ export type Database = {
           metadata?: Json;
           owner_id?: string | null;
           page_count?: number;
+          page_storage_mode?: string;
           search_tsv?: unknown;
           source_path?: string | null;
           status?: string;
@@ -2141,6 +2143,7 @@ export type Database = {
           metadata?: Json;
           owner_id?: string | null;
           page_count?: number;
+          page_storage_mode?: string;
           search_tsv?: unknown;
           source_path?: string | null;
           status?: string;

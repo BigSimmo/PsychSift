@@ -84,11 +84,13 @@ const pageRowSchema = z
 
 function currentPagesByDocument<T extends { document_id: string; index_generation_id?: string | null }>(
   pages: T[],
-  documents: Array<{ id: string; metadata?: unknown }>,
+  documents: Array<{ id: string; metadata?: unknown; page_storage_mode?: string | null }>,
 ) {
   const byDocument = new Map<string, T[]>();
   for (const page of pages) byDocument.set(page.document_id, [...(byDocument.get(page.document_id) ?? []), page]);
-  return documents.flatMap((document) => currentDocumentPageRows(byDocument.get(document.id) ?? [], document.metadata));
+  return documents.flatMap((document) =>
+    currentDocumentPageRows(byDocument.get(document.id) ?? [], document.metadata, document.page_storage_mode),
+  );
 }
 
 const imageRowSchema = z
@@ -400,7 +402,9 @@ export async function GET(request: Request) {
 
     const { data: documentsData, error: documentsError } = await supabase
       .from("documents")
-      .select("id,title,file_name,status,page_count,chunk_count,image_count,error_message,metadata,updated_at")
+      .select(
+        "id,title,file_name,status,page_count,chunk_count,image_count,error_message,metadata,page_storage_mode,updated_at",
+      )
       .eq("owner_id", user.id)
       .order("updated_at", { ascending: false })
       .limit(limit);
