@@ -79,6 +79,29 @@ describe("buildDocumentClinicalSummaryModel", () => {
     expect(model.priorities[0]).toMatchObject({ title: "Timing and monitoring", page: 6 });
   });
 
+  it("never shows an applies-to scope statement as a key clinical action", () => {
+    const scope = "Adults prescribed lithium in the synthetic shared-care pathway.";
+    const model = buildDocumentClinicalSummaryModel(
+      documentWithProfile(profile({ key_clinical_actions: [], applies_to: [item(scope, [2])] })),
+    );
+
+    const scopePriority = model.priorities.find((priority) => priority.text === scope);
+    expect(scopePriority).toMatchObject({ id: "scope", title: "Applies to", label: "Scope", tone: "scope", page: 2 });
+    expect(model.priorities.some((priority) => priority.title === "Key clinical action")).toBe(false);
+  });
+
+  it("keeps the clinical action, not the scope, when the document has both", () => {
+    const model = buildDocumentClinicalSummaryModel(
+      documentWithProfile(profile({ applies_to: [item("Adults in the synthetic pathway.", [2])] })),
+    );
+
+    expect(model.priorities.map((priority) => priority.title)).toEqual([
+      "Escalation and safety",
+      "Timing and monitoring",
+      "Key clinical action",
+    ]);
+  });
+
   it("handles persisted profile items without a pages array", () => {
     const legacyItem = {
       ...item("Take a trough level after the last dose.", []),

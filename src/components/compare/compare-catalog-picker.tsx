@@ -54,6 +54,11 @@ export function CompareCatalogPicker({
   hideActions?: boolean;
 }) {
   const inputId = useId();
+  // Focus stays in the input while the arrow keys move the highlight, so the
+  // input names the highlighted option through aria-activedescendant; without
+  // it a screen reader heard nothing and Enter chose an unannounced item.
+  const listId = useId();
+  const optionId = (index: number) => `${listId}-option-${index}`;
   const inputRef = useRef<HTMLInputElement>(null);
   const highlightScope = `${query}::${activeSlot}`;
   const [highlightState, setHighlightState] = useState({ scope: highlightScope, index: 0 });
@@ -170,6 +175,11 @@ export function CompareCatalogPicker({
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
           onKeyDown={onKeyDown}
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded={hits.length > 0}
+          aria-controls={listId}
+          aria-activedescendant={highlight < hits.length ? optionId(highlight) : undefined}
           placeholder={searchPlaceholder}
           className={cn(searchShellInput, "text-base sm:text-sm")}
         />
@@ -188,6 +198,7 @@ export function CompareCatalogPicker({
         </div>
       ) : null}
       <div
+        id={listId}
         className="max-h-[24rem] overflow-y-auto rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)]"
         role="listbox"
         // The options are named; the list they belong to was not, so a screen
@@ -204,6 +215,7 @@ export function CompareCatalogPicker({
             return (
               <button
                 key={item.id}
+                id={optionId(index)}
                 type="button"
                 role="option"
                 aria-selected={highlight === index}

@@ -69,6 +69,31 @@ describe("contextual back navigation", () => {
     expect(router.replace).not.toHaveBeenCalled();
   });
 
+  it("does not step back off-site from a deep link when the Navigation API is unavailable", async () => {
+    setCanGoBack(undefined);
+    // Arrive as a deep link from another site: earlier entries exist, but none
+    // were added by this document and the referrer is not this origin.
+    window.history.pushState({}, "", "/before-this-document");
+    vi.resetModules();
+    const { canNavigateBack } = await import("@/components/contextual-back-link");
+    try {
+      Object.defineProperty(document, "referrer", { configurable: true, value: "https://mail.example.com/inbox" });
+      expect(window.history.length).toBeGreaterThan(1);
+      expect(canNavigateBack()).toBe(false);
+
+      Object.defineProperty(document, "referrer", { configurable: true, value: `${window.location.origin}/search` });
+      expect(canNavigateBack()).toBe(true);
+
+      // A client-side navigation inside this document also makes Back safe.
+      Object.defineProperty(document, "referrer", { configurable: true, value: "" });
+      window.history.pushState({}, "", "/documents/synthetic");
+      expect(canNavigateBack()).toBe(true);
+    } finally {
+      // Drop the own-property override so the prototype getter applies again.
+      delete (document as { referrer?: string }).referrer;
+    }
+  });
+
   it("cancels button navigation when onBeforeNavigate returns false", async () => {
     const user = userEvent.setup();
     const onBeforeNavigate = vi.fn(() => false);

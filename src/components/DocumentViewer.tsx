@@ -1477,6 +1477,8 @@ export function DocumentViewer({
               generatedSummaryRef={generatedSummaryRef}
               generatedAnswerIsSummary={generatedAnswerIsSummary}
               generatedSummaryText={generatedSummaryText}
+              documentId={documentId}
+              onOpenPage={navigateToPage}
             />
 
             {readyDocument ? (

@@ -85,6 +85,41 @@ describe("Roster owner panel", () => {
     await screen.findByText("sam@example.org");
   });
 
+  it("shows a failed confirmation inside the open sheet, not behind it", async () => {
+    fetchMock.mockImplementation(async (input: string, init?: RequestInit) => {
+      if (init?.method === "POST") return Response.json({ message: "Synthetic change refused." }, { status: 400 });
+      if (input.endsWith(SERVICE)) return Response.json(members);
+      return Response.json(teams);
+    });
+    render(<RosterTeamsPanel />);
+    fireEvent.click(await screen.findByRole("button", { name: "Confirm team" }));
+    fireEvent.click(screen.getByRole("dialog").querySelector("button")!);
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Synthetic change refused.");
+    expect(screen.getByRole("dialog")).toContainElement(alert);
+    expect(screen.getAllByText("Synthetic change refused.")).toHaveLength(1);
+  });
+
+  it("replaces the loading line with an error and a retry when people fail to load", async () => {
+    let memberCalls = 0;
+    fetchMock.mockImplementation(async (input: string) => {
+      if (input.endsWith(SERVICE)) {
+        memberCalls += 1;
+        return memberCalls === 1 ? Response.json({}, { status: 500 }) : Response.json(members);
+      }
+      return Response.json(teams);
+    });
+    render(<RosterTeamsPanel />);
+    fireEvent.click(await screen.findByRole("button", { name: "People" }));
+
+    await screen.findByText("People in this team could not be loaded. Try again shortly.");
+    expect(screen.queryByText("Loading people…")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await screen.findByText("Dr Sam Example");
+    expect(screen.queryByText("People in this team could not be loaded. Try again shortly.")).toBeNull();
+  });
+
   it("tells a signed-out visitor to sign in as an administrator", async () => {
     fetchMock.mockResolvedValue(Response.json({}, { status: 401 }));
     render(<RosterTeamsPanel />);
