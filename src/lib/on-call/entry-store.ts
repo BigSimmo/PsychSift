@@ -574,28 +574,45 @@ export function useOnCallEntries(): OnCallEntriesState {
     reportAreaData("admin", realState);
   }, [realState]);
 
+  // The sample is a local dynamic import, so it fails only when its file did not
+  // download (flaky signal, or a deploy replaced it). Show the load-failed state
+  // with a retry instead of loading forever.
+  const [sampleFailed, setSampleFailed] = useState(false);
+  const [sampleAttempt, setSampleAttempt] = useState(0);
+  const retrySample = useCallback(() => {
+    setSampleFailed(false);
+    setSampleAttempt((n) => n + 1);
+  }, []);
+
   useEffect(() => {
     if (!sampling) return;
     let cancelled = false;
-    void loadExampleDataset("onCall.entries").then((rows) => {
-      if (cancelled) return;
-      const copies = rows.map((row) => ({ ...row }));
-      for (const copy of copies) shownExampleEntries.add(copy);
-      setSampleEntries(copies);
-    });
+    void loadExampleDataset("onCall.entries").then(
+      (rows) => {
+        if (cancelled) return;
+        const copies = rows.map((row) => ({ ...row }));
+        for (const copy of copies) shownExampleEntries.add(copy);
+        setSampleEntries(copies);
+      },
+      () => {
+        if (!cancelled) setSampleFailed(true);
+      },
+    );
     return () => {
       cancelled = true;
     };
-  }, [sampling]);
+  }, [sampling, sampleAttempt]);
 
   if (!sampling) return stored;
+  const sampleLoadFailed = sampleEntries === null && sampleFailed;
   return {
     ...stored,
     entries: sampleEntries ?? [],
     cachedAt: null,
-    loading: sampleEntries === null,
-    isOffline: false,
-    loadError: null,
+    loading: sampleEntries === null && !sampleFailed,
+    isOffline: sampleLoadFailed,
+    loadError: sampleLoadFailed ? "failed" : null,
+    retry: sampleLoadFailed ? retrySample : stored.retry,
     signedOut: false,
     demoMode: true,
     sample: true,
