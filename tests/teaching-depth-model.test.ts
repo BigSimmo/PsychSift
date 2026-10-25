@@ -326,6 +326,19 @@ describe("the spreadsheet import", () => {
     expect(refused.rows[0].errors[0]).not.toMatch(/Alex Example|12345/);
   });
 
+  it("refuses suffixed, prefixed and hyphenated patient-identifier headers", () => {
+    const groups = [{ groupId: GROUP, name: "Registrars", userIds: [] }];
+    for (const extra of ["MRN_No", "Medicare-Number", "DOB_date", "URN", "pt_dob", "Surname-1", "first_name_2"]) {
+      const refused = previewRows(parseCsv(`${header},${extra}\n${clean},x`), groups);
+      expect(refused.ready, extra).toBeNull();
+      expect(refused.rows[0].errors[0], extra).toMatch(/patient details/i);
+    }
+    for (const extra of ["return_notes", "turnout", "adobe_link"]) {
+      const accepted = previewRows(parseCsv(`${header},${extra}\n${clean},x`), groups);
+      expect(accepted.rows[0].errors.join(" "), extra).not.toMatch(/patient details/i);
+    }
+  });
+
   it("reads dates and times from an .xlsx made from the template", async () => {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Term");

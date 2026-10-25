@@ -114,6 +114,42 @@ describe("auth-backed catalogue background refresh", () => {
     expect(result.current).toMatchObject({ status: "error", record: null, linkedDocuments: [] });
   });
 
+  it("aborts a registry detail request and never paints its late body after an identity change", async () => {
+    const record = { slug: "cmht", title: "Community Mental Health Team" };
+    let resolveBody!: (body: unknown) => void;
+    let firstSignal: AbortSignal | undefined;
+    fetchMock.mockImplementationOnce((_input, init) => {
+      firstSignal = init?.signal ?? undefined;
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => new Promise((resolve) => (resolveBody = resolve)),
+      } as unknown as Response);
+    });
+    fetchMock.mockResolvedValueOnce(jsonResponse({ error: "not_found" }, 404));
+
+    const { result, rerender } = renderHook(() => useRegistryRecord("service", "cmht"));
+    await flushMicrotasks();
+    expect(result.current).toMatchObject({ status: "loading", record: null });
+
+    authSession.authorizationHeader = { Authorization: "Bearer user-b-token" };
+    authSession.session = { user: { id: "user-b" } };
+    rerender();
+    await flushMicrotasks();
+    expect(firstSignal?.aborted).toBe(true);
+    expect(result.current).toMatchObject({ status: "not_found", record: null });
+
+    await act(async () =>
+      resolveBody({
+        record,
+        linkedDocuments: [],
+        governance: { sourceStatus: "current", validationStatus: "unverified" },
+      }),
+    );
+    await flushMicrotasks();
+    expect(result.current).toMatchObject({ status: "not_found", record: null });
+  });
+
   it("preserves medication data only while query and identity are unchanged", async () => {
     vi.useFakeTimers();
     const payload = { records: [{ slug: "clozapine", name: "Clozapine" }], total: 1 };

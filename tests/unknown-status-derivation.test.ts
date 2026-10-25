@@ -30,6 +30,15 @@ describe("deriveUnknownStatus", () => {
     expect(result).toEqual({ kind: "derived", reviewDate: "2025-01-01", status: "review_due" });
   });
 
+  it("lands a leap-day publication on 28 February in a non-leap review year", () => {
+    const shortened = deriveUnknownStatus("2024-02-29", { now: NOW });
+    expect(shortened).toEqual({ kind: "derived", reviewDate: "2027-02-28", status: "current" });
+    if (shortened.kind === "derived") expect(parseIsoDate(shortened.reviewDate)).not.toBeNull();
+
+    const leapToLeap = deriveUnknownStatus("2020-02-29", { reviewCycleYears: 4, now: NOW });
+    expect(leapToLeap).toEqual({ kind: "derived", reviewDate: "2024-02-29", status: "review_due" });
+  });
+
   it("skips documents with no publication date", () => {
     expect(deriveUnknownStatus(null, { now: NOW })).toEqual({ kind: "skip", reason: "no_publication_date" });
     expect(deriveUnknownStatus("", { now: NOW })).toEqual({ kind: "skip", reason: "no_publication_date" });

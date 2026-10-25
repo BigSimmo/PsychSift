@@ -31,9 +31,15 @@ import { announceWorkSyncChange } from "@/lib/work-sync/sections";
 
 const listeners = new Set<() => void>();
 const memory = new Map<string, string>();
-subscribeAccountTransition(() => memory.clear());
+/** Keys whose last save the browser refused: the page copy is newer than the device copy. */
+const unsaved = new Set<string>();
+function clearMemory(): void {
+  memory.clear();
+  unsaved.clear();
+}
+subscribeAccountTransition(clearMemory);
 if (typeof window !== "undefined") {
-  window.addEventListener(SHARED_DEVICE_CHANGE_EVENT, () => memory.clear());
+  window.addEventListener(SHARED_DEVICE_CHANGE_EVENT, clearMemory);
 }
 
 function notify(): void {
@@ -54,7 +60,7 @@ function subscribe(onChange: () => void): () => void {
 }
 
 function read(key: string): string | null {
-  if (isSharedDevice()) {
+  if (isSharedDevice() || unsaved.has(key)) {
     return memory.get(key) ?? null;
   }
   try {
@@ -76,9 +82,11 @@ function write(key: string, value: string): void {
     window.localStorage.setItem(key, value);
   } catch {
     // Storage refused: the change lasts for this page only.
+    unsaved.add(key);
     notify();
     return;
   }
+  unsaved.delete(key);
   notify();
   announceWorkSyncChange(key);
 }

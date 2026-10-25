@@ -68,7 +68,11 @@ export function deriveUnknownStatus(
   const pubDate = new Date(`${pub.year}-${pad(pub.month)}-${pad(pub.day)}T00:00:00+08:00`);
   if (pubDate > now) return { kind: "skip", reason: "future_publication_date" };
 
-  const reviewDate = `${pub.year + reviewCycleYears}-${pad(pub.month)}-${pad(pub.day)}`;
+  // A 29 February publication lands on 28 February in a non-leap review year, so the inferred
+  // date is always a real calendar date and never later than one full cycle.
+  const reviewYear = pub.year + reviewCycleYears;
+  const daysInReviewMonth = new Date(Date.UTC(reviewYear, pub.month, 0)).getUTCDate();
+  const reviewDate = `${reviewYear}-${pad(pub.month)}-${pad(Math.min(pub.day, daysInReviewMonth))}`;
   const status = new Date(`${reviewDate}T23:59:59+08:00`) >= now ? "current" : "review_due";
   return { kind: "derived", reviewDate, status };
 }
