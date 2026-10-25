@@ -2,11 +2,12 @@
 
 import { PencilLine, Trash2, TriangleAlert } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { CmeDateField } from "@/components/cme/cme-date-field";
 import { CmeNote } from "@/components/cme/cme-flat-list";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Select, type SelectOption } from "@/components/ui/select";
 import { TextField } from "@/components/ui/text-field";
 import { InlineNotice } from "@/components/ui-primitives";
@@ -141,7 +142,8 @@ function DraftRow({
 }: {
   draft: CmeDraft;
   demoMode: boolean;
-  onChanged: (draft: CmeDraft) => void;
+  /** `moved` is true when the change puts the draft in another "waiting on" group. */
+  onChanged: (draft: CmeDraft, moved: boolean) => void;
   onDeleted: (id: string) => void;
 }) {
   const [waitingOn, setWaitingOn] = useState<CmeDraftWaitingOn | null>(draft.waitingOn);
@@ -149,6 +151,7 @@ function DraftRow({
   const [followUpOn, setFollowUpOn] = useState(draft.followUpOn ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   async function save(next: WaitingOnValue) {
     if (waitingNoteProblem(next.waitingNote)) {
@@ -169,7 +172,7 @@ function DraftRow({
       });
       const body = (await response.json().catch(() => null)) as { draft?: CmeDraft; message?: string } | null;
       if (!response.ok) throw new Error(body?.message ?? `Could not update this draft (${response.status}).`);
-      if (body?.draft) onChanged(body.draft);
+      if (body?.draft) onChanged(body.draft, body.draft.waitingOn !== draft.waitingOn);
     } catch (cause) {
       setError(cmeSaveErrorText(cause, "Could not update this draft."));
     } finally {
@@ -248,11 +251,23 @@ function DraftRow({
               icon={Trash2}
               busy={busy}
               busyLabel="Deleting…"
-              onClick={() => void remove()}
+              onClick={() => setConfirmingDelete(true)}
               testId={`cme-draft-delete-${draft.id}`}
             >
               Delete
             </Button>
+            {/* A draft can hold a long reflection, so a stray tap never deletes it outright. */}
+            <ConfirmDialog
+              open={confirmingDelete}
+              onCancel={() => setConfirmingDelete(false)}
+              onConfirm={() => {
+                setConfirmingDelete(false);
+                void remove();
+              }}
+              title="Delete this draft?"
+              description={`"${draftTitle(draft)}" will be deleted. This cannot be undone.`}
+              confirmLabel="Delete draft"
+            />
           </div>
         ) : null}
       </div>
@@ -277,6 +292,14 @@ export function CmeDraftsSection({
   loadFailed = false,
 }: CmeDraftsSectionProps) {
   const [items, setItems] = useState<readonly CmeDraft[]>(drafts);
+  // A "waiting on" change moves the row under another group, which remounts it and
+  // drops keyboard focus to the page. Put focus back on the moved row's control.
+  const refocusDraftId = useRef<string | null>(null);
+  useEffect(() => {
+    if (!refocusDraftId.current) return;
+    document.getElementById(`cme-draft-${refocusDraftId.current}-waiting-on`)?.focus();
+    refocusDraftId.current = null;
+  });
 
   if (!signedIn) return null;
 
@@ -302,8 +325,9 @@ export function CmeDraftsSection({
     .map((key) => ({ key, drafts: groups[key] }))
     .filter((group) => group.drafts.length > 0);
 
-  function handleChanged(next: CmeDraft) {
+  function handleChanged(next: CmeDraft, moved: boolean) {
     setItems((current) => current.map((item) => (item.id === next.id ? next : item)));
+    if (moved) refocusDraftId.current = next.id;
   }
   function handleDeleted(id: string) {
     setItems((current) => current.filter((item) => item.id !== id));

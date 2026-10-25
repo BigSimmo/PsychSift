@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, buttonFaceClass } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/choice";
 import { FormField } from "@/components/ui/form-field";
+import { PatientDetailCatch } from "@/components/cme/cpd-feature-kit";
 import { InlineNotice, cn, fieldControlPlain, textMuted } from "@/components/ui-primitives";
 import {
   CME_EVIDENCE_MAX_BYTES,
@@ -15,6 +16,7 @@ import {
   type CmeEvidence,
   type CmeEvidenceKind,
 } from "@/lib/cme/evidence-model";
+import { cpdTextPatientProblem } from "@/lib/cme/patient-detail-check";
 import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 export function CmeEvidencePanel({
@@ -327,7 +329,9 @@ function EvidenceFileRow({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const reasonId = `cme-evidence-remove-reason-${item.id}`;
-  const reasonValid = reason.trim().length >= 3 && reason.trim().length <= 500;
+  // The reason is kept on the activity as the record, so the shared patient-detail check reads it.
+  const reasonProblem = reason.trim() ? cpdTextPatientProblem(reason) : null;
+  const reasonValid = reason.trim().length >= 3 && reason.trim().length <= 500 && !reasonProblem;
 
   if (item.removedAt) {
     return (
@@ -424,6 +428,7 @@ function EvidenceFileRow({
               />
             )}
           </FormField>
+          <PatientDetailCatch problem={reasonProblem} testId={`cme-evidence-remove-reason-catch-${item.id}`} />
           {error ? (
             <p role="alert" className="text-sm">
               {error}

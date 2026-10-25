@@ -94,6 +94,8 @@ describe("CmeDraftsSection", () => {
 
     await waitFor(() => expect(screen.getByTestId("cme-drafts-group-supervisor")).toBeInTheDocument());
     expect(screen.queryByTestId("cme-drafts-group-nextAction")).toBeNull();
+    // The row moved under another group; keyboard focus follows it rather than falling to the page.
+    await waitFor(() => expect(screen.getByLabelText("Waiting on")).toHaveFocus());
     expect(fetchMock).toHaveBeenCalledWith(`/api/cme/drafts/${item.id}`, expect.objectContaining({ method: "PATCH" }));
     const sentBody = JSON.parse(String(fetchMock.mock.calls[0][1]?.body)) as { waitingOn: string | null };
     expect(sentBody.waitingOn).toBe("supervisor");
@@ -127,6 +129,9 @@ describe("CmeDraftsSection", () => {
     render(<CmeDraftsSection drafts={[item]} />);
 
     await user.click(screen.getByTestId(`cme-draft-delete-${item.id}`));
+    // A stray tap only asks; nothing is deleted until the owner confirms.
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+    await user.click(await screen.findByRole("button", { name: "Delete draft" }));
 
     await waitFor(() => expect(screen.queryByTestId("cme-drafts-section")).toBeNull());
     expect(globalThis.fetch).toHaveBeenCalledWith(

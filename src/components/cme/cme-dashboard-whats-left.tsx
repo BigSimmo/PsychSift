@@ -129,7 +129,7 @@ function buildWhatsLeftRows({
         : {
             href:
               shape === "task"
-                ? `/cme/setup?year=${set.year}#cme-requirement-${encodeURIComponent(requirement.id)}`
+                ? `/cme/setup?year=${set.year}&edit=1#cme-requirement-${encodeURIComponent(requirement.id)}`
                 : `/cme/new?year=${set.year}`,
           }),
     });

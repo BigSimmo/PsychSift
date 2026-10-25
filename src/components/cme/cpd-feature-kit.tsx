@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Clock, Copy, TriangleAlert, type LucideIcon } from "lucide-react";
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { useModeBandHeading } from "@/components/mode-band/mode-band";
@@ -284,6 +284,14 @@ export function CopyIconButton({
   readonly testId?: string;
 }) {
   const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
+  // One reset timer at a time: a second press restarts the 2 s, and none fires after unmount.
+  const resetTimer = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (resetTimer.current !== null) window.clearTimeout(resetTimer.current);
+    },
+    [],
+  );
   return (
     <button
       type="button"
@@ -299,7 +307,11 @@ export function CopyIconButton({
           setState("failed");
           announce("Could not copy. Select the text and copy it yourself.");
         }
-        window.setTimeout(() => setState("idle"), 2_000);
+        if (resetTimer.current !== null) window.clearTimeout(resetTimer.current);
+        resetTimer.current = window.setTimeout(() => {
+          resetTimer.current = null;
+          setState("idle");
+        }, 2_000);
       }}
       className={cn(
         focusRing,

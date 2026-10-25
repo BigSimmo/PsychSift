@@ -74,6 +74,9 @@ describe("CmeDashboardRoute one-tap due log", () => {
       if (url === "/api/cme/entries/dash-entry" && init?.method === "DELETE") {
         return new Response(null, { status: 204 });
       }
+      if (url === "/api/cme/routines/routine-due" && init?.method === "PATCH") {
+        return new Response(JSON.stringify({ routine: dueRoutine }), { status: 200 });
+      }
       return new Response("unexpected", { status: 500 });
     });
     render(
@@ -94,6 +97,15 @@ describe("CmeDashboardRoute one-tap due log", () => {
     });
     await user.click(screen.getByRole("button", { name: "Undo" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/cme/entries/dash-entry", { method: "DELETE" }));
+    // Saving moved the routine's next due date on; Undo puts the old one back.
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/cme/routines/routine-due",
+        expect.objectContaining({ method: "PATCH" }),
+      ),
+    );
+    const patch = fetchMock.mock.calls.find(([url]) => String(url) === "/api/cme/routines/routine-due");
+    expect(JSON.parse(String(patch?.[1]?.body))).toMatchObject({ nextDue: "2026-09-01" });
   });
 
   it("shows a demo read-only notice instead of navigating", async () => {
@@ -112,5 +124,33 @@ describe("CmeDashboardRoute one-tap due log", () => {
     expect(await screen.findByTestId("cme-one-tap-log-error")).toHaveTextContent(/Demo mode is read-only/i);
     expect(fetchMock).not.toHaveBeenCalled();
     expect(navigation.push).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Dismiss notification" }));
+    expect(screen.queryByTestId("cme-one-tap-log-error")).toBeNull();
+  });
+
+  it("reuses a request id only to retry the same log, never for a different routine", async () => {
+    const user = userEvent.setup();
+    const otherDue: CmeRoutine = { ...dueRoutine, id: "routine-other", title: "Journal club" };
+    // The reply is lost every time, as on a phone that drops signal after the server saved.
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockRejectedValue(new TypeError("Failed to fetch"));
+    render(
+      <CmeDashboardRoute
+        set={DEMO_CME_YEAR}
+        entries={DEMO_CME_ENTRIES}
+        nowIso="2026-09-19T02:00:00Z"
+        routines={[dueRoutine, otherDue]}
+      />,
+    );
+    const requestIds = () =>
+      fetchMock.mock.calls.map(([, init]) => (JSON.parse(String(init?.body)) as { requestId: string }).requestId);
+    await user.click(screen.getAllByRole("button", { name: /log 1(\.0)? h/i })[0]!);
+    await screen.findByTestId("cme-one-tap-log-error");
+    await user.click(screen.getAllByRole("button", { name: /log 1(\.0)? h/i })[0]!);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await user.click(screen.getAllByRole("button", { name: /log 1(\.0)? h/i })[1]!);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+    const [first, retry, other] = requestIds();
+    expect(retry).toBe(first);
+    expect(other).not.toBe(first);
   });
 });

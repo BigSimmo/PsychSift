@@ -221,4 +221,17 @@ describe("amending an activity in a closed year", () => {
     expect(body).toMatchObject({ amendmentReason: "Certificate shows 4 hours", title: entry.title, date: entry.date });
     expect(fetcher.mock.calls[0]![1]).toMatchObject({ method: "PATCH" });
   });
+
+  it("does not record an amendment whose reason reads like patient details", async () => {
+    const user = userEvent.setup();
+    const fetcher = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ entry })));
+    render(<CmeEntryRouteClient entry={entry} set={closedSet} edit demoMode={false} />);
+    await user.type(screen.getByLabelText(/Reason for this amendment/), "Saw John Smith, 45 with low mood");
+    expect(screen.getByTestId("cme-entry-amendment-reason-catch")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Record amendment" }));
+    expect(
+      await screen.findByText("Take out the patient details from the reason to record this amendment."),
+    ).toBeInTheDocument();
+    expect(fetcher).not.toHaveBeenCalled();
+  });
 });

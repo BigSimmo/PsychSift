@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 
 import { CmeEntryForm, type CmeEntryDraft } from "@/components/cme/cme-entry-form";
 import { CmeEntryGoalPicker } from "@/components/cme/cme-entry-goal-picker";
+import { PatientDetailCatch } from "@/components/cme/cpd-feature-kit";
 import type { CmePlanGoal } from "@/lib/cme/plan-goals";
 import { cmeEntryActionRow, CmeEntryPage } from "@/components/cme/cme-entry-page";
 import { FormField } from "@/components/ui/form-field";
@@ -19,6 +20,7 @@ import {
   InlineNotice,
   textMuted,
 } from "@/components/ui-primitives";
+import { cpdTextPatientProblem } from "@/lib/cme/patient-detail-check";
 import { CME_AMENDMENT_REASON_MAX, CME_AMENDMENT_REASON_MIN } from "@/lib/cme/year-close";
 import type { CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
 
@@ -67,6 +69,7 @@ export function CmeEntryRouteClient({ entry, set, edit, demoMode, goals = [] }: 
   const [confirmArchiveOpen, setConfirmArchiveOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [amendmentReason, setAmendmentReason] = useState("");
+  const amendmentReasonProblem = amendmentReason.trim() ? cpdTextPatientProblem(amendmentReason) : null;
   useEffect(() => {
     if (!archiveUndoOpen) return;
     const timer = window.setTimeout(() => setArchiveUndoOpen(false), 6000);
@@ -134,6 +137,9 @@ export function CmeEntryRouteClient({ entry, set, edit, demoMode, goals = [] }: 
                 />
               )}
             </FormField>
+            <div className="mt-2">
+              <PatientDetailCatch problem={amendmentReasonProblem} testId="cme-entry-amendment-reason-catch" />
+            </div>
           </div>
         ) : null}
         {demoMode ? (
@@ -152,6 +158,10 @@ export function CmeEntryRouteClient({ entry, set, edit, demoMode, goals = [] }: 
                 const reason = amendmentReason.trim();
                 if (reason.length < CME_AMENDMENT_REASON_MIN) {
                   throw new Error("Give a reason for this amendment before recording it.");
+                }
+                // The reason is kept beside the original and shown in the closed year's record.
+                if (amendmentReasonProblem) {
+                  throw new Error("Take out the patient details from the reason to record this amendment.");
                 }
                 await patchEntry({ ...updatePayload(loadedEntry, draft), amendmentReason: reason });
               } else {

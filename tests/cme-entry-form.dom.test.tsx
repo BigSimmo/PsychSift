@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { CmeEntryForm } from "@/components/cme/cme-entry-form";
-import { perthCalendarDate } from "@/lib/cme/cpd-year";
+import { formatCalendarDateLong, perthCalendarDate } from "@/lib/cme/cpd-year";
 
 describe("New entry", () => {
   const knownEntry = {
@@ -81,6 +81,32 @@ describe("New entry", () => {
     await user.click(screen.getByRole("button", { name: "Save entry" }));
     await user.click(screen.getByRole("button", { name: "Log again" }));
     expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+  it("names the activity's own date when a back-dated repeat is caught", async () => {
+    const day = perthCalendarDate(new Date(Date.now() - 7 * 86_400_000));
+    const original = {
+      id: "demo-existing",
+      date: day,
+      title: "Demo journal club",
+      allocations: [{ category: "educational" as const, hours: 1 }],
+      reflection: "",
+      costCents: null,
+      transcribed: false,
+      routineId: null,
+      documentId: null,
+      buckets: [],
+    };
+    render(
+      <CmeEntryForm
+        onSubmit={vi.fn()}
+        existingEntries={[original]}
+        initialEntry={{ ...original, sourceUrl: null, formalPeerReviewHours: 0 }}
+      />,
+    );
+    await userEvent.setup().click(screen.getByRole("button", { name: "Save entry" }));
+    expect(
+      screen.getByText(`You already logged this on ${formatCalendarDateLong(day)}. Log it again?`),
+    ).toBeInTheDocument();
   });
   it("will not save until the allocations add up to the stated hours", async () => {
     const onSubmit = vi.fn();
@@ -177,6 +203,18 @@ describe("New entry", () => {
     await user.type(screen.getByLabelText(/formal peer-review credit/i), "-1");
     expect(screen.getByText(/positive plain number/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /save entry/i })).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("names the number format, not the reviewing-hours cap, when the peer-review credit is not a number", async () => {
+    const user = userEvent.setup();
+    render(<CmeEntryForm onSubmit={vi.fn()} />);
+    await user.type(screen.getByLabelText(/what was it/i), "Peer review group");
+    await user.click(screen.getByRole("button", { name: "2" }));
+    await user.click(screen.getByRole("button", { name: "Reviewing" }));
+    await user.type(screen.getByLabelText(/formal peer-review credit/i), "1.5h");
+    expect(screen.getByTestId("cme-entry-save-blocked")).toHaveTextContent(
+      "Enter peer-review credit as a plain number, such as 1 or 1.5, to save it.",
+    );
   });
 
   it("submits domain and peer-review credit inside the allocated reviewing hours", async () => {

@@ -91,6 +91,25 @@ describe("CmeMissedSessionsSection", () => {
     expect(JSON.parse(String(unlinkInit.body))).toEqual({ replacementEntryId: null });
   });
 
+  it("asks before deleting a missed session", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(JSON.stringify({ deleted: true }), { status: 200 }));
+    render(<CmeMissedSessionsSection sessions={[SESSION]} entries={[]} />);
+
+    await user.click(screen.getByRole("button", { name: `Delete missed session: ${SESSION.title}` }));
+    expect(fetchMock).not.toHaveBeenCalled();
+    await user.click((await screen.findAllByRole("button", { name: "Cancel" }))[0]!);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.getByTestId(`cme-missed-row-${SESSION.id}`)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: `Delete missed session: ${SESSION.title}` }));
+    await user.click(await screen.findByRole("button", { name: "Delete missed session" }));
+    await waitFor(() => expect(screen.queryByTestId(`cme-missed-row-${SESSION.id}`)).toBeNull());
+    expect(fetchMock).toHaveBeenCalledWith(`/api/cme/missed/${SESSION.id}`, { method: "DELETE" });
+  });
+
   it("shows a signed-out state with no add control", () => {
     render(<CmeMissedSessionsSection sessions={[]} entries={[]} state="signed-out" />);
     expect(screen.getByTestId("cme-missed-signed-out")).toBeInTheDocument();

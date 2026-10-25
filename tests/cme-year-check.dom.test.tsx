@@ -128,7 +128,7 @@ describe("year check page", () => {
       within(screen.getByTestId("cme-check-row-requirement-self-evaluation")).getByRole("link", {
         name: "Mark done: Annual self-evaluation",
       }),
-    ).toHaveAttribute("href", "/cme/setup");
+    ).toHaveAttribute("href", "/cme/setup?year=2026&edit=1#cme-requirement-self-evaluation");
     expect(
       within(screen.getByTestId("cme-check-row-total")).getByRole("link", { name: "Log: 50 hours in total" }),
     ).toHaveAttribute("href", "/cme/new?year=2026");
