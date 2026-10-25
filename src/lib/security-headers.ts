@@ -110,6 +110,22 @@ export function buildContentSecurityPolicy({
   );
 }
 
+// Fallback policy for the image-suffixed paths src/proxy.ts's matcher skips
+// (wired into next.config.ts `headers()`). Those paths are meant to be static
+// images, but a dynamic page route given such a segment (e.g. /documents/x.png)
+// still renders HTML; without this it would ship with no CSP at all. It has no
+// nonce, so no script runs there, while images (and inline-styled SVG) still load.
+export function buildStaticAssetContentSecurityPolicy(): string {
+  return (
+    "default-src 'none'; " +
+    "img-src 'self' data:; " +
+    "style-src 'unsafe-inline'; " +
+    "base-uri 'none'; " +
+    "form-action 'none'; " +
+    "frame-ancestors 'none'"
+  );
+}
+
 // Static security headers applied to every route via next.config.ts. NOTE:
 // Content-Security-Policy is intentionally NOT here — it carries a per-request
 // nonce and is emitted from src/proxy.ts (see buildContentSecurityPolicy).

@@ -426,7 +426,12 @@ export async function proxy(request: NextRequest) {
     for (const [k, v] of previousHeaders.entries()) {
       // `Headers.entries()` does not reliably preserve Set-Cookie attributes.
       // Re-apply cookies through the cookie store after this copy instead.
-      if (k.toLowerCase() === "set-cookie") continue;
+      // The earlier response was built before the user was known, so its
+      // x-middleware-* request-override headers omit x-proxy-auth-user. Copying
+      // them would drop the signed header before routes see it and echo it to
+      // the browser instead; the refreshed response already carries its own.
+      const lower = k.toLowerCase();
+      if (lower === "set-cookie" || lower.startsWith("x-middleware-")) continue;
       refreshedResponse.headers.set(k, v);
     }
     for (const cookie of previousCookies) {

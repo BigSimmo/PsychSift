@@ -274,6 +274,17 @@ describe("container delivery contract", () => {
     expect(read("scripts/build-multiplatform.sh")).toContain('--build-arg "NEXT_PUBLIC_SUPABASE_URL=');
   });
 
+  it("requires NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY as an explicit app build arg instead of a placeholder", () => {
+    // A placeholder key builds and passes the healthcheck, then every browser sign-in is rejected.
+    const dockerfile = read("Dockerfile");
+    expect(dockerfile).toMatch(/^ARG NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY\s*$/m);
+    expect(dockerfile).not.toMatch(/^ARG NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=/m);
+    expect(dockerfile).toMatch(/if \[ -z "\$\{NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY\}" \]; then[\s\S]*?exit 1/);
+    expect(read(".github/workflows/docker-image.yml")).toMatch(/^\s*NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=\S+\s*$/m);
+    expect(read("scripts/build-multiplatform.sh")).toContain('--build-arg "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=');
+    expect(read("docker-compose.yml")).not.toContain("placeholder-build-publishable-key");
+  });
+
   it("keeps sensitive and machine-local files out of Docker build contexts", () => {
     const dockerignore = read(".dockerignore").split(/\r?\n/);
 

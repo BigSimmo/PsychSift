@@ -2,7 +2,11 @@ import type { NextConfig } from "next";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { withSentryConfig } from "@sentry/nextjs/config";
-import { buildSecurityHeaders, resolveRuntimeFlags } from "./src/lib/security-headers";
+import {
+  buildSecurityHeaders,
+  buildStaticAssetContentSecurityPolicy,
+  resolveRuntimeFlags,
+} from "./src/lib/security-headers";
 import { resolveDeploymentCommitSha, resolveSentryRelease } from "./src/lib/observability/sentry-release";
 import { expectedSupabaseProject } from "./src/lib/supabase/project";
 import { THERAPY_CATALOGUE_ASSETS } from "./src/data/therapy-catalogue-assets";
@@ -123,6 +127,13 @@ const nextConfig: NextConfig = {
       {
         source: "/(.*)",
         headers: securityHeaders,
+      },
+      {
+        // src/proxy.ts skips non-API paths ending in an image extension, so the
+        // nonce'd CSP never reaches them. Keep this source in step with that
+        // matcher (tests/proxy.test.ts checks every skipped path is covered).
+        source: "/((?!api(?:/|$)).*\\.(?:svg|png|jpg|jpeg|gif|webp|ico))",
+        headers: [{ key: "Content-Security-Policy", value: buildStaticAssetContentSecurityPolicy() }],
       },
       {
         source: "/sw.js",

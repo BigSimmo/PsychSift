@@ -149,6 +149,11 @@ describe("Railway config as code", () => {
     "scripts/check-client-bundle-secrets.mjs",
     "scripts/check-upload-limit-parity.mjs",
     "scripts/stamp-service-worker.mjs",
+    // src/lib re-exports these shared safety and egress modules, and the
+    // developer area imports the privacy register, so both compile into the app.
+    "supabase/functions/_shared/document-ingress-safety.ts",
+    "supabase/functions/_shared/public-source-policy.ts",
+    "docs/governance/privacy-readiness.v1.json",
   ])("deploys the app for runtime input %s", (filePath) => {
     expect(triggersDeploy(app, filePath)).toBe(true);
   });
@@ -175,6 +180,9 @@ describe("Railway config as code", () => {
     "scripts/resolve-tsx-cli.mjs",
     "scripts/run-tsx.mjs",
     "tests/stubs/server-only.ts",
+    // The worker imports the shared safety and egress modules directly.
+    "supabase/functions/_shared/ingestion-provider-egress.ts",
+    "supabase/functions/_shared/public-source-policy.ts",
   ])("deploys the worker for runtime input %s", (filePath) => {
     expect(triggersDeploy(worker, filePath)).toBe(true);
   });

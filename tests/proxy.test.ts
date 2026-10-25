@@ -112,6 +112,38 @@ describe("proxy content-security-policy", () => {
   });
 });
 
+describe("CSP for paths the proxy matcher skips", () => {
+  it("gives every image-suffixed page path the proxy skips a static, script-free CSP", async () => {
+    const { tryToParsePath } = await import("next/dist/lib/try-to-parse-path");
+    const { config } = await import("../src/proxy");
+    const { default: loadNextConfig } = await import("../next.config");
+    const nextConfig = await loadNextConfig();
+    const rules = (await nextConfig.headers?.()) ?? [];
+    const cspRules = rules
+      .filter((rule) => rule.headers.some((header) => header.key.toLowerCase() === "content-security-policy"))
+      .map((rule) => ({ rule, regex: new RegExp(tryToParsePath(rule.source).regexStr!, "i") }));
+    const proxyMatchers = config.matcher.map((source) => new RegExp(tryToParsePath(source).regexStr!));
+    const proxyRuns = (path: string) => proxyMatchers.some((matcher) => matcher.test(path));
+    const fallbackCsp = (path: string) =>
+      cspRules
+        .find(({ regex }) => regex.test(path))
+        ?.rule.headers.find((header) => header.key.toLowerCase() === "content-security-policy")?.value;
+
+    for (const path of ["/documents/abc.png", "/dictionary/foo.svg", "/teaching/c/x.jpeg", "/icons/icon-192.png"]) {
+      expect(proxyRuns(path), path).toBe(false);
+      const policy = fallbackCsp(path);
+      expect(policy, path).toContain("default-src 'none'");
+      expect(policy, path).not.toContain("script-src");
+      expect(policy, path).toContain("frame-ancestors 'none'");
+    }
+    // Paths the proxy handles keep only its nonce'd CSP, never a second policy.
+    for (const path of ["/documents/abc", "/api/documents/abc.png", "/"]) {
+      expect(proxyRuns(path), path).toBe(true);
+      expect(fallbackCsp(path), path).toBeUndefined();
+    }
+  });
+});
+
 describe("proxy auth session refresh", () => {
   it("propagates custom response headers during cookie setAll", async () => {
     const originalUrl = env.NEXT_PUBLIC_SUPABASE_URL;

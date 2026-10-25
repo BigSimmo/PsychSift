@@ -1,7 +1,8 @@
 #!/bin/bash
 # Docker multi-platform build script
-# Usage: NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co ./scripts/build-multiplatform.sh [app|worker|all]
-#   (NEXT_PUBLIC_SUPABASE_URL is required for app/all builds; the Dockerfile has no default.)
+# Usage: NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_... \
+#          ./scripts/build-multiplatform.sh [app|worker|all]
+#   (Both are required for app/all builds; the Dockerfile has no default for either.)
 # Requires: docker buildx with multiplatform support enabled
 
 set -e
@@ -50,6 +51,7 @@ build_app() {
         --tag "$REGISTRY/$REPO_OWNER/psychsift-app:latest" \
         --build-arg "ALLOW_LOW_RAM_BUILD=1" \
         --build-arg "NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL:?NEXT_PUBLIC_SUPABASE_URL must be set for the app image build}" \
+        --build-arg "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:?NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY must be set for the app image build}" \
         $OUTPUT_FLAG \
         .
     echo "✅ App tier build complete"

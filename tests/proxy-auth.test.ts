@@ -102,6 +102,25 @@ describe("proxy auth claims forwarding & anti-spoofing", () => {
     expect(setCookie.some((header) => /HttpOnly/i.test(header) && /Path=\//i.test(header))).toBe(true);
   });
 
+  it("forwards the signed user header to routes and never echoes it to the browser", async () => {
+    const { proxy } = await import("../src/proxy");
+    const { verifyProxyAuthHeader } = await import("../src/lib/supabase/proxy-auth-crypto");
+    const request = new NextRequest(new URL("http://localhost/api/answer"));
+    request.cookies.set("sb-unit-test-auth-token", "base64-opaque-session");
+
+    const response = await proxy(request);
+    // Next deletes every request header missing from this list before the
+    // route runs, and sends any unlisted x-middleware-request-* to the browser.
+    const overridden = (response.headers.get("x-middleware-override-headers") ?? "").split(",");
+    expect(overridden).toContain(PROXY_AUTH_USER_HEADER);
+    expect(overridden).toContain("x-nonce");
+    const forwarded = response.headers.get(`x-middleware-request-${PROXY_AUTH_USER_HEADER}`);
+    expect(forwarded).toBeTruthy();
+    expect(verifyProxyAuthHeader(forwarded!)).toBeTruthy();
+    // The rotated session cookie still reaches the route's request headers.
+    expect(response.headers.get("x-middleware-request-cookie")).toContain("rotated-session");
+  });
+
   it("strips client-supplied x-proxy-auth-user header to prevent spoofing", async () => {
     const { proxy } = await import("../src/proxy");
     const maliciousRequest = new NextRequest(new URL("http://localhost/api/answer"), {

@@ -21,7 +21,7 @@ services:
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:?set NEXT_PUBLIC_SUPABASE_URL to the approved Supabase project URL}
-        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:-placeholder-build-publishable-key}
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:?set NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY to the approved Supabase publishable key}
         # Non-secret staging identity: without it the browser-side project
         # guard rejects a staging URL as a production mismatch.
         NEXT_PUBLIC_SUPABASE_STAGING_PROJECT_REF: ${NEXT_PUBLIC_SUPABASE_STAGING_PROJECT_REF:-}
