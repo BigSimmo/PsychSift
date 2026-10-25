@@ -59,7 +59,9 @@ on the live database. So the pilot relies on that rollback and the daily backup.
   no generation stamp (migration `20261013075944` added the column with no backfill), so for a
   document whose previous index is that old the planner reports `no_previous_generation`. Run the
   read-only rollback dry run for the three documents before the pilot and treat a refusal as "no
-  quick undo". A database fix is drafted separately and needs the owner's yes.
+  quick undo right now", then run it again after the pilot commits and before any no-go decision,
+  because the committed pilot makes the generation it replaced the rollback target. A database fix
+  is drafted separately and needs the owner's yes.
 - A generation replaced before 21 Oct 2026 has no snapshot and is refused with
   `target_snapshot_missing`.
 - Do not re-queue a pilot document whose current index is already a pilot generation before the

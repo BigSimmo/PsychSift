@@ -1,5 +1,7 @@
 import { loadAdminClient } from "./eval-utils";
 
+const OWNER_LOOKUP_BATCH_SIZE = 100;
+
 type MissRow = {
   id: string;
   query: string;
@@ -85,12 +87,14 @@ async function main() {
     promotable.flatMap((group) => promotableLabels(group).map((label) => label.document_id)),
     Number.MAX_SAFE_INTEGER,
   );
+  // In batches: the API caps a response without reporting the cut, and a document missing from a
+  // truncated lookup would have its labels skipped while its misses were still marked promoted.
   const ownerByDocument = new Map<string, string | null>();
-  if (documentIds.length > 0) {
+  for (let start = 0; start < documentIds.length; start += OWNER_LOOKUP_BATCH_SIZE) {
     const { data: documents, error: documentsError } = await supabase
       .from("documents")
       .select("id,owner_id")
-      .in("id", documentIds);
+      .in("id", documentIds.slice(start, start + OWNER_LOOKUP_BATCH_SIZE));
     if (documentsError) throw new Error(documentsError.message);
     for (const document of documents ?? []) ownerByDocument.set(document.id, document.owner_id);
   }

@@ -705,10 +705,22 @@ describe("short threshold cells and page-edge numbers (EXT-01)", () => {
     const offset = buildChunks([
       page(5, ["Check renal function.", "3"].join("\n")),
       page(6, ["Check thyroid function.", "4"].join("\n")),
+      page(7, ["Check liver function.", "5"].join("\n")),
     ])
       .map((chunk) => chunk.content)
       .join("\n");
-    expect(offset).not.toMatch(/\b[34]\b/);
+    expect(offset).not.toMatch(/\b[345]\b/);
+  });
+
+  it("keeps threshold cells that happen to run in sequence across only two pages", () => {
+    const content = buildChunks([
+      page(5, ["Missed doses before re-titration", "Clozapine", "1"].join("\n")),
+      page(6, ["Days off before restarting at a low dose", "Clozapine", "2"].join("\n")),
+    ])
+      .map((chunk) => chunk.content)
+      .join("\n");
+    expect(content).toMatch(/Clozapine\s+1/);
+    expect(content).toMatch(/Clozapine\s+2/);
   });
 });
 

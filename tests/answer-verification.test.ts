@@ -405,6 +405,8 @@ describe("answer-verification (GEN-C2 / GEN-H2)", () => {
     const verifies = (answer: string, evidence: string) =>
       verifyAnswerNumbers(answer, [{ chunk_id: "chunk-1" }], [source({ content: evidence })]);
     expect(verifies("Give 6 mg.", "Give between two and four milligrams.").hasUnverifiedNumbers).toBe(true);
+    expect(verifies("Give 3 mg.", "Give one-two milligrams.").hasUnverifiedNumbers).toBe(true);
+    expect(extractClinicalValueAtoms("twenty-five milligrams")[0]).toMatchObject({ canonicalValue: "25" });
     expect(verifies("Give 6 mg.", "Give two - four milligrams.").hasUnverifiedNumbers).toBe(true);
     expect(extractClinicalValueAtoms("two four milligrams")).toEqual([]);
     expect(extractClinicalValueAtoms("ten five milligrams")).toEqual([]);

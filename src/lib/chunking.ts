@@ -321,9 +321,13 @@ function isolatedEdgeNumbers(text: string, repeatedBoilerplateLines: Set<string>
     .map((index) => Number(lines[index]));
 }
 
+// A shifted printed numbering must show on at least this many pages. Two edge cells that happen to
+// run in sequence across one page break ("1" on page 5, "2" on page 6) are table values, not pages.
+const MIN_SHIFTED_PAGE_NUMBER_PAGES = 3;
+
 // The bare numbers each page may print as its page number: its own number, or an edge number
-// whose offset from the page number repeats on an adjacent page (front matter shifts printed
-// numbering). Any other edge number is content.
+// whose offset from the page number repeats on an adjacent page and across the document (front
+// matter shifts printed numbering). Any other edge number is content.
 function buildPageNumberLines(inputs: ChunkInput[], repeatedBoilerplateLines: Set<string>) {
   const edges = inputs.map((input) =>
     input.pageNumber == null
@@ -332,12 +336,18 @@ function buildPageNumberLines(inputs: ChunkInput[], repeatedBoilerplateLines: Se
           (value) => value - (input.pageNumber as number),
         ),
   );
+  const pagesWithOffset = new Map<number, number>();
+  for (const offsets of edges) {
+    for (const offset of new Set(offsets)) pagesWithOffset.set(offset, (pagesWithOffset.get(offset) ?? 0) + 1);
+  }
   return inputs.map((input, index): ReadonlySet<string> | undefined => {
     if (input.pageNumber == null) return undefined;
     const labels = new Set([String(input.pageNumber)]);
     const neighbourOffsets = new Set([...(edges[index - 1] ?? []), ...(edges[index + 1] ?? [])]);
     for (const offset of edges[index]) {
-      if (neighbourOffsets.has(offset)) labels.add(String(input.pageNumber + offset));
+      if (neighbourOffsets.has(offset) && (pagesWithOffset.get(offset) ?? 0) >= MIN_SHIFTED_PAGE_NUMBER_PAGES) {
+        labels.add(String(input.pageNumber + offset));
+      }
     }
     return labels;
   });

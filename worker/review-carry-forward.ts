@@ -19,7 +19,7 @@ const reviewFields = [
 ] as const;
 
 type ReviewFields = Partial<Record<(typeof reviewFields)[number], unknown>>;
-type CarriedReview = { review: ReviewFields; generation: string | null };
+export type CarriedReview = { review: ReviewFields; generation: string | null };
 
 type ReviewedRow = { metadata: unknown; index_generation_id: string | null };
 type ReviewedImageRow = ReviewedRow & { image_hash: string | null };
@@ -113,6 +113,10 @@ export function carryTableFactReview<T extends TableFactKeyFields & { metadata: 
   return carried ? { ...fact, metadata: withReview(fact.metadata, carried) } : fact;
 }
 
+// The API caps each response (1,000 rows by default) without reporting the cut, so reviews are read
+// a page at a time until a short page comes back.
+export const PRIOR_REVIEW_PAGE_SIZE = 1000;
+
 /** Reviewed rows of this document on any generation other than the one being written. */
 async function loadReviewedRows<T>(
   supabase: SupabaseClient,
@@ -121,18 +125,24 @@ async function loadReviewedRows<T>(
   documentId: string,
   writeGeneration: string,
 ) {
-  const { data, error } = await supabase
-    .from(table)
-    .select(columns)
-    .eq("document_id", documentId)
-    // Legacy rows carry no generation, and a bare neq would skip them (NULL never compares).
-    .or(`index_generation_id.is.null,index_generation_id.neq.${writeGeneration}`)
-    .not("metadata->>review_class", "is", null)
-    .limit(5000);
-  // Fail the job rather than silently dropping an owner's review: a retry is cheap, a lost
-  // "bad extraction" mark is not.
-  if (error) throw new Error(`Could not read prior ${table} reviews: ${error.message}`);
-  return (data ?? []) as T[];
+  const rows: T[] = [];
+  for (let from = 0; ; from += PRIOR_REVIEW_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from(table)
+      .select(columns)
+      .eq("document_id", documentId)
+      // Legacy rows carry no generation, and a bare neq would skip them (NULL never compares).
+      .or(`index_generation_id.is.null,index_generation_id.neq.${writeGeneration}`)
+      .not("metadata->>review_class", "is", null)
+      .order("id")
+      .range(from, from + PRIOR_REVIEW_PAGE_SIZE - 1);
+    // Fail the job rather than silently dropping an owner's review: a retry is cheap, a lost
+    // "bad extraction" mark is not.
+    if (error) throw new Error(`Could not read prior ${table} reviews: ${error.message}`);
+    const page = (data ?? []) as T[];
+    rows.push(...page);
+    if (page.length < PRIOR_REVIEW_PAGE_SIZE) return rows;
+  }
 }
 
 export async function loadPriorImageReviews(supabase: SupabaseClient, documentId: string, writeGeneration: string) {

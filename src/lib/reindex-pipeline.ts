@@ -136,9 +136,10 @@ export function isCommittedGenerationMetadata(args: { rowMetadata?: unknown; com
  *
  * Page metadata never carries `index_generation_id`, so `isCommittedGenerationMetadata` kept every
  * stored copy of a page after a re-index, and the viewer showed whichever copy came back last
- * (RAG and ingestion audit 2026-10-24, E2E-02). When a typed document's committed generation has
- * no rows in the set, the unstamped rows are returned rather than nothing, so a reader degrades
- * to the pre-typed text instead of a blank page.
+ * (RAG and ingestion audit 2026-10-24, E2E-02). When a document names a committed generation that
+ * has no rows in the set, nothing is returned: the unstamped rows are older text, and showing them
+ * as current is the hazard this guards against. Only a document naming no generation reads its
+ * unstamped rows.
  */
 export function currentDocumentPageRows<T extends { index_generation_id?: string | null }>(
   rows: T[],
@@ -146,8 +147,9 @@ export function currentDocumentPageRows<T extends { index_generation_id?: string
 ): T[] {
   if (!rows.some((row) => row.index_generation_id)) return rows;
   const committedGeneration = committedIndexGeneration(documentMetadata);
-  const committed = committedGeneration ? rows.filter((row) => row.index_generation_id === committedGeneration) : [];
-  return committed.length > 0 ? committed : rows.filter((row) => !row.index_generation_id);
+  return committedGeneration
+    ? rows.filter((row) => row.index_generation_id === committedGeneration)
+    : rows.filter((row) => !row.index_generation_id);
 }
 
 export function imageRowNeedsGenerationRestamp(args: {

@@ -125,8 +125,13 @@ describe("governed answer response", () => {
     expect(signal.reason).toBe(
       "Source evidence could not be confirmed, so no verified passages are shown. Please try again.",
     );
-    expect(buildGovernedAnswerClientResponse(timedOut).payload.degradedMode?.reason).not.toMatch(
-      /verified source-backed portion/,
+    const governed = buildGovernedAnswerClientResponse(timedOut).payload;
+    expect(governed.degradedMode?.reason).not.toMatch(/verified source-backed portion/);
+    // The browser-side projection reads the same source count, so the governed payload survives a
+    // strict round trip and a restored payload keeps the same wording.
+    expect(projectClientAnswerPayload(JSON.parse(JSON.stringify(governed)), true)).not.toBeNull();
+    expect(projectClientAnswerPayload(JSON.parse(JSON.stringify(governed)))?.degradedMode?.reason).toBe(
+      governed.degradedMode?.reason,
     );
     expect(answerDegradedModeSignal({ ...timedOut, sources: [source()] }).reason).toBe(
       "Answer generation timed out; the verified source-backed portion is shown.",

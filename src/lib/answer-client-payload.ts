@@ -10,7 +10,7 @@ import {
 export type { ClientRelatedDocument } from "@/lib/answer-client-fields";
 import { citationFromResult, documentCitationHref } from "@/lib/citations";
 import { hasWaDocumentControlEndorsement } from "@/lib/clinical-validation-basis";
-import { isRagFallbackReasonCode, publicFallbackReason } from "@/lib/rag/rag-fallback-reason";
+import { isRagFallbackReasonCode, publicDegradedReason } from "@/lib/rag/rag-fallback-reason";
 import type {
   BestSourceRecommendation,
   Citation,
@@ -683,7 +683,10 @@ export function projectClientDegradedMode(value: unknown): ClientDegradedMode | 
   const fallbackReasonCode = isRagFallbackReasonCode(value.fallbackReasonCode) ? value.fallbackReasonCode : null;
   if (!rawMode && value.answerQualityTier !== "source_only" && fallbackReasonCode === null) return undefined;
   const active = rawMode?.active === true || value.answerQualityTier === "source_only" || fallbackReasonCode !== null;
-  return { active, reason: active ? publicFallbackReason(fallbackReasonCode ?? "unknown") : null };
+  // Same source-count rule as the server (audit NEW-G-04): with no sources, never claim a
+  // verified source-backed portion is shown.
+  const sourceCount = Array.isArray(value.sources) ? value.sources.length : 0;
+  return { active, reason: active ? publicDegradedReason(fallbackReasonCode ?? "unknown", sourceCount) : null };
 }
 
 /**

@@ -176,7 +176,7 @@
     "src/lib/source-governance.ts": "edec0e4bc7dc115847e0fdd2802a88cc340a8676b2e8288ee427563ce1bc1c68",
     "src/lib/source-text-sanitizer.ts": "cb6c869b520a8be03d40bae1206a87b6d53318573baeaec664b35c353fa1bd80",
     "tests/answer-render-policy.test.ts": "026d9b8360b26d7d7cae9c0cca54458c94cac10496e50297d8ab205f012138e2",
-    "tests/answer-verification.test.ts": "c10553f885e53caa9ad58dbf82604aba9f0180dae8dfebd0fa9af7f47b5b566d",
+    "tests/answer-verification.test.ts": "368c8b0bc701c829e21c9bc88a7eec840aa7a2d0baa3351bdb1d5fe838629363",
     "tests/clinical-safety.test.ts": "96d950e946af0bcc2cb3f517fc372d28e67d93099e00b07b5d3c854fa1a020e8",
     "tests/rag-claim-support.test.ts": "79f19e142dff92ea92cb3635bd032f081885a1714d1ac745eb3d0f9151247586",
     "tests/rag-content-accuracy.test.ts": "6aaacb7fb9b43711696ba244a56cd31736fb3a884690774cde4f4db6ee206eb4",

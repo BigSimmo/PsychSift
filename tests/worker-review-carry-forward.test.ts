@@ -4,6 +4,7 @@ import {
   carryImageReview,
   carryTableFactReview,
   loadPriorImageReviews,
+  PRIOR_REVIEW_PAGE_SIZE,
   priorImageReviews,
   priorTableFactReviews,
 } from "../worker/review-carry-forward";
@@ -107,8 +108,9 @@ describe("review carry-forward across a re-index (E2E-04)", () => {
       eq: (...args: unknown[]) => (calls.push(["eq", ...args]), query),
       or: (...args: unknown[]) => (calls.push(["or", ...args]), query),
       not: (...args: unknown[]) => (calls.push(["not", ...args]), query),
-      limit: (...args: unknown[]) => (
-        calls.push(["limit", ...args]),
+      order: (...args: unknown[]) => (calls.push(["order", ...args]), query),
+      range: (...args: unknown[]) => (
+        calls.push(["range", ...args]),
         Promise.resolve({
           data: [{ image_hash: "hash-a", metadata: badExtraction, index_generation_id: null }],
           error: null,
@@ -124,13 +126,42 @@ describe("review carry-forward across a re-index (E2E-04)", () => {
     expect(reviews.get("hash-a")?.review.review_class).toBe("bad_extraction");
   });
 
+  it("reads every page of reviews, not just the first", async () => {
+    const ranges: Array<[number, number]> = [];
+    const fullPage = Array.from({ length: PRIOR_REVIEW_PAGE_SIZE }, (_, index) => ({
+      image_hash: `hash-${index}`,
+      metadata: badExtraction,
+      index_generation_id: "gen-old",
+    }));
+    const query = {
+      select: () => query,
+      eq: () => query,
+      or: () => query,
+      not: () => query,
+      order: () => query,
+      range: (from: number, to: number) => {
+        ranges.push([from, to]);
+        const data =
+          from === 0 ? fullPage : [{ image_hash: "hash-last", metadata: badExtraction, index_generation_id: null }];
+        return Promise.resolve({ data, error: null });
+      },
+    };
+    const reviews = await loadPriorImageReviews({ from: () => query } as never, "doc-1", "gen-new");
+    expect(ranges).toEqual([
+      [0, PRIOR_REVIEW_PAGE_SIZE - 1],
+      [PRIOR_REVIEW_PAGE_SIZE, 2 * PRIOR_REVIEW_PAGE_SIZE - 1],
+    ]);
+    expect(reviews.size).toBe(PRIOR_REVIEW_PAGE_SIZE + 1);
+  });
+
   it("fails the job rather than dropping reviews when they cannot be read", async () => {
     const query = {
       select: () => query,
       eq: () => query,
       or: () => query,
       not: () => query,
-      limit: () => Promise.resolve({ data: null, error: { message: "timeout" } }),
+      order: () => query,
+      range: () => Promise.resolve({ data: null, error: { message: "timeout" } }),
     };
     await expect(loadPriorImageReviews({ from: () => query } as never, "doc-1", "gen-new")).rejects.toThrow(
       "Could not read prior document_images reviews: timeout",

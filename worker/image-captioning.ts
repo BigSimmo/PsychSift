@@ -59,7 +59,7 @@ import {
   type ImageClassificationWithVisualProfile,
 } from "./image-classification";
 import type { IngestionStageContext } from "./ingestion-stage-context";
-import { carryImageReview, loadPriorImageReviews } from "./review-carry-forward";
+import { carryImageReview, loadPriorImageReviews, type CarriedReview } from "./review-carry-forward";
 import type { JobRow } from "./types";
 
 type InsertedImage = {
@@ -442,7 +442,11 @@ async function persistCaptionedImages(
 ) {
   const { attemptForJob, ingestionRpcClient, supabase } = ctx;
   // Audit E2E-04: the owner's earlier figure reviews survive a re-index.
-  const priorReviews = await loadPriorImageReviews(supabase, job.document_id, indexGenerationId);
+  // No retained images, nothing to carry: skip the read so a database blip cannot fail an image-free job.
+  const priorReviews =
+    resolvedTasks.length > 0
+      ? await loadPriorImageReviews(supabase, job.document_id, indexGenerationId)
+      : new Map<string, CarriedReview>();
   const insertedImages: InsertedImage[] = [];
   let coverImageId: string | null = null;
   const imageTypeCounts = new Map<string, number>();

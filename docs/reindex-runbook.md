@@ -140,8 +140,11 @@ commit of that document. The script needs the `rollback_document_index_generatio
   (13 Oct 2026) added `document_pages.index_generation_id` with no backfill, so pages saved before
   it carry no stamp. For a document whose previous pages are that old, the planner reports
   `no_previous_generation` and cannot restore it. Run the read-only dry run for the documents
-  before any re-index, including the pilot, and treat a refusal as "no quick undo for this
-  document". A database fix is drafted separately and needs the owner's yes before it can merge.
+  before any re-index, including the pilot: a refusal there means "no quick undo for this document
+  right now". It is not the final word, because once the re-index commits, the generation it
+  replaced becomes the one to roll back to. Run the dry run again after the commit and before
+  any no-go decision. A database fix is drafted separately and needs the owner's yes before it
+  can merge.
 - **Do not re-index a pilot document twice before the go/no-go check.** Each commit keeps only
   the new generation and the one it replaced. If a document's current index is already a pilot
   generation, queuing it again would replace its pre-pilot generation, and rollback could then

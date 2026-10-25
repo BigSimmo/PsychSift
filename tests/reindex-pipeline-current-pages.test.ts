@@ -27,14 +27,19 @@ describe("currentDocumentPageRows (audit 2026-10-24, E2E-02)", () => {
     ]);
   });
 
-  it("falls back to the unstamped copy instead of a blank page when the committed generation is missing", () => {
+  it("reads the unstamped copy only when the document names no generation", () => {
     const rows = [
       { page_number: 1, text: "pre-typed copy", index_generation_id: null },
       { page_number: 1, text: "orphan", index_generation_id: G1 },
     ];
     expect(currentDocumentPageRows(rows, {}).map((row) => row.text)).toEqual(["pre-typed copy"]);
-    expect(currentDocumentPageRows(rows, { index_generation_id: G2 }).map((row) => row.text)).toEqual([
-      "pre-typed copy",
-    ]);
+  });
+
+  it("never passes older text off as current when the committed generation's page is missing", () => {
+    const rows = [
+      { page_number: 1, text: "pre-typed copy", index_generation_id: null },
+      { page_number: 1, text: "orphan", index_generation_id: G1 },
+    ];
+    expect(currentDocumentPageRows(rows, { index_generation_id: G2 })).toEqual([]);
   });
 });

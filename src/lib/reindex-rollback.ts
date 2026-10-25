@@ -122,7 +122,12 @@ async function planDocument(
   plan.previousCommittedAt = previous.committedAt;
   plan.previousChunks = await store.chunkCount(documentId, previous.generationId);
   if (plan.previousChunks === 0) return { ...plan, refusal: "previous_generation_has_no_chunks" };
-  if (!options.allowRollForward && isNewerThan(previous.committedAt, plan.currentCommittedAt)) {
+  // With no commit time for the current generation the order cannot be known, so the target could
+  // be newer: refuse unless the operator means to roll forward.
+  if (
+    !options.allowRollForward &&
+    (plan.currentCommittedAt === null || isNewerThan(previous.committedAt, plan.currentCommittedAt))
+  ) {
     return { ...plan, refusal: "previous_generation_is_newer" };
   }
   if (!(await store.hasGenerationSnapshot(documentId, previous.generationId))) {

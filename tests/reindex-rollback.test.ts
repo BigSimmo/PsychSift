@@ -119,6 +119,15 @@ describe("reindex rollback", () => {
     expect(repoint).not.toHaveBeenCalled();
   });
 
+  it("refuses when the current generation's commit time is unknown, unless rolling forward", async () => {
+    const document = twoGenerations();
+    document.current = "gen-unstamped";
+    const { store, repoint } = memoryStore({ [DOC_A]: document });
+    const [outcome] = await runReindexRollback(store, { kind: "documents", documentIds: [DOC_A] }, { apply: true });
+    expect(outcome.refusal).toBe("previous_generation_is_newer");
+    expect(repoint).not.toHaveBeenCalled();
+  });
+
   it("refuses a second run that would move a rolled-back document forward again (ING-S-N2)", async () => {
     const { store, repoint, documents } = memoryStore({ [DOC_A]: { ...twoGenerations(), current: "gen-old" } });
     const [outcome] = await runReindexRollback(store, { kind: "documents", documentIds: [DOC_A] }, { apply: true });
