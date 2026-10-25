@@ -2684,6 +2684,30 @@ describe("private document API access", () => {
     expect(client.rpc).not.toHaveBeenCalledWith("recover_ingestion_job", expect.anything());
   });
 
+  // Audit ING-S-N7: a shared public-library document has no owner; its failed job is retryable here.
+  it("re-queues a failed job for a shared public-library document", async () => {
+    const client = retryClient(retryJobRow({}, { owner_id: null }), () => ok({ ok: true, action: "retry" }));
+    mockRuntime(client);
+
+    const response = await postRetry();
+
+    expect(response.status).toBe(200);
+    expect(client.rpc).toHaveBeenCalledWith(
+      "recover_ingestion_job",
+      expect.objectContaining({ p_expected: expect.objectContaining({ documentOwnerId: null }) }),
+    );
+  });
+
+  it("returns 404 when a returned job belongs to another user's private document", async () => {
+    const client = retryClient(retryJobRow({}, { owner_id: "someone-else" }), () => ok({ ok: true }));
+    mockRuntime(client);
+
+    const response = await postRetry();
+
+    expect(response.status).toBe(404);
+    expect(client.rpc).not.toHaveBeenCalledWith("recover_ingestion_job", expect.anything());
+  });
+
   it("returns 404 for a job outside the administrator's documents", async () => {
     const client = retryClient(null, () => ok({ ok: true }));
     mockRuntime(client);

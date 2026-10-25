@@ -70,11 +70,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         "id,document_id,status,locked_at,lease_token,lease_expires_at,documents!inner(status,owner_id,chunk_count)",
       )
       .eq("id", id)
-      .eq("documents.owner_id", user.id)
+      // Audit ING-S-N7: shared public-library documents (no owner) can be retried here too.
+      .or(`owner_id.eq.${user.id},owner_id.is.null`, { referencedTable: "documents" })
       .maybeSingle();
     if (readError) throw new Error(readError.message);
     const job = row as unknown as (IngestionRecoveryJob & { status: string | null }) | null;
-    if (!job || job.documents?.owner_id !== user.id) {
+    const jobOwner = job?.documents?.owner_id ?? null;
+    if (!job || (jobOwner !== null && jobOwner !== user.id)) {
       return publicErrorResponse("Ingestion job not found.", 404, { code: "ingestion_job_not_found" });
     }
     if (job.status === "completed") {
@@ -124,7 +126,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       .from("ingestion_jobs")
       .select("*, documents!inner(owner_id)")
       .eq("id", job.id)
-      .eq("documents.owner_id", user.id)
+      .or(`owner_id.eq.${user.id},owner_id.is.null`, { referencedTable: "documents" })
       .maybeSingle();
     if (queuedError) throw new Error(queuedError.message);
     // The owner join is only the tenancy filter; keep the response shape the panel already reads.

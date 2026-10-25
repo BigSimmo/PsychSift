@@ -804,9 +804,11 @@ describe("API validation contracts", () => {
     expect(response.headers.get("x-indexing-active")).toBe("true");
 
     const activeCountCall = client.calls.find((call) => call.inFilters.some((filter) => filter.column === "status"));
+    // Audit ING-S-N7: the administrator's own documents or shared public-library documents.
     expect(activeCountCall).toMatchObject({
       table: "ingestion_jobs",
-      filters: [{ column: "documents.owner_id", value: userId }],
+      filters: [],
+      orFilters: [`owner_id.eq.${userId},owner_id.is.null`],
       inFilters: [{ column: "status", values: ["pending", "processing"] }],
     });
     expect(activeCountCall?.range).toBeUndefined();
