@@ -59,8 +59,45 @@ function storageWarningsFrom(error: unknown, label: string) {
   return `${label}: ${message}`;
 }
 
+// Audit ING-A-08: ingestion uploads each image under `<document id>/<lease token>/<generation>/`
+// before it writes the image's row, so an attempt that crashed or was superseded between the two
+// leaves a file no row points to, and the row snapshot taken by delete_document_if_idle misses it.
+// Deleting the document therefore also sweeps its own prefix. Bounded so one delete stays quick.
+const LEFTOVER_IMAGE_SWEEP_DEPTH = 3;
+const LEFTOVER_IMAGE_SWEEP_LIMIT = 5000;
+
+async function listLeftoverImagePaths(
+  supabase: ReturnType<typeof createAdminClient>,
+  documentId: string,
+): Promise<{ paths: string[]; error: unknown }> {
+  const paths: string[] = [];
+  const folders: Array<{ prefix: string; depth: number }> = [{ prefix: documentId, depth: 1 }];
+  while (folders.length > 0 && paths.length < LEFTOVER_IMAGE_SWEEP_LIMIT) {
+    const folder = folders.shift()!;
+    for (let offset = 0; paths.length < LEFTOVER_IMAGE_SWEEP_LIMIT; offset += 1000) {
+      const { data, error } = await supabase.storage
+        .from(env.SUPABASE_IMAGE_BUCKET)
+        .list(folder.prefix, { limit: 1000, offset });
+      if (error) return { paths, error };
+      for (const entry of data ?? []) {
+        // Storage lists a sub-folder as an entry without an id.
+        if (entry.id === null) {
+          if (folder.depth < LEFTOVER_IMAGE_SWEEP_DEPTH) {
+            folders.push({ prefix: `${folder.prefix}/${entry.name}`, depth: folder.depth + 1 });
+          }
+        } else {
+          paths.push(`${folder.prefix}/${entry.name}`);
+        }
+      }
+      if ((data ?? []).length < 1000) break;
+    }
+  }
+  return { paths, error: null };
+}
+
 async function removeStorageObjects(args: {
   supabase: ReturnType<typeof createAdminClient>;
+  documentId: string;
   sourcePath: string | null;
   imagePaths: string[];
 }) {
@@ -76,7 +113,9 @@ async function removeStorageObjects(args: {
     }
   }
 
-  const uniqueImagePaths = Array.from(new Set(args.imagePaths.filter(Boolean)));
+  const leftover = await listLeftoverImagePaths(args.supabase, args.documentId);
+  if (leftover.error) warnings.push(storageWarningsFrom(leftover.error, "Leftover images"));
+  const uniqueImagePaths = Array.from(new Set([...args.imagePaths, ...leftover.paths].filter(Boolean)));
   for (let start = 0; start < uniqueImagePaths.length; start += 1000) {
     const paths = uniqueImagePaths.slice(start, start + 1000);
     const imageRemove = await args.supabase.storage.from(env.SUPABASE_IMAGE_BUCKET).remove(paths);
@@ -249,6 +288,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
 
     const cleanup = await removeStorageObjects({
       supabase,
+      documentId: id,
       sourcePath: result.source_path,
       imagePaths: result.image_paths,
     });

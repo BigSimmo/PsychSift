@@ -99,6 +99,22 @@ type SelectResult = Promise<{ data: ChunkRow[] | null; error: { message: string 
   range: (from: number, to: number) => SelectResult;
 };
 
+type QueryError = { message: string } | null;
+
+/** The three cache-invalidation reads and writes run after an applied backfill. */
+type CacheInvalidationClient = {
+  from: (table: string) => {
+    select: (columns: string) => {
+      in: (
+        column: string,
+        values: string[],
+      ) => Promise<{ data: Array<{ document_id: string; revision: number | string }> | null; error: QueryError }>;
+    };
+    upsert: (rows: Array<{ document_id: string; revision: number }>) => Promise<{ error: QueryError }>;
+    delete: () => { in: (column: string, values: string[]) => Promise<{ error: QueryError }> };
+  };
+};
+
 type AdminClient = {
   from: (table: string) => {
     select: (columns: string) => SelectResult;
@@ -277,6 +293,31 @@ async function main() {
   }
 
   console.log(`\nDone. Updated ${updated} chunks in place (no embeddings changed).`);
+
+  // Whole-codebase audit 2026-10-24: chunk edits do not touch the documents row, so cached
+  // answers quoting the old text stayed valid. Bump each edited document's evidence revision
+  // (part of every app copy's cache scope revision) and clear the shared answer and search cache.
+  const cacheClient = supabase as unknown as CacheInvalidationClient;
+  const documentIds = [...new Set(changed.map((row) => row.document_id))];
+  for (let index = 0; index < documentIds.length; index += 200) {
+    const batch = documentIds.slice(index, index + 200);
+    const { data: revisions, error: readError } = await cacheClient
+      .from("document_evidence_revisions")
+      .select("document_id,revision")
+      .in("document_id", batch);
+    if (readError) throw new Error(`Reading evidence revisions failed: ${readError.message}`);
+    const current = new Map((revisions ?? []).map((row) => [row.document_id, Number(row.revision) || 0]));
+    const { error: bumpError } = await cacheClient
+      .from("document_evidence_revisions")
+      .upsert(batch.map((documentId) => ({ document_id: documentId, revision: (current.get(documentId) ?? 0) + 1 })));
+    if (bumpError) throw new Error(`Bumping evidence revisions failed: ${bumpError.message}`);
+  }
+  const { error: cacheError } = await supabase
+    .from("rag_response_cache")
+    .delete()
+    .in("cache_kind", ["search", "answer"]);
+  if (cacheError) throw new Error(`Clearing the shared answer cache failed: ${cacheError.message}`);
+  console.log(`Answer caches invalidated for ${documentIds.length} documents.`);
 }
 
 main().catch((error) => {
