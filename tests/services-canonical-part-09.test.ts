@@ -26,6 +26,8 @@ const PART_09_IDS = [
   "SVC-YTH-023",
   "SVC-YTH-024",
   "SVC-YTH-025",
+  // Added 2026-10-24 (#6X06YS).
+  "SVC-LEG-004",
 ] as const;
 
 describe("part-09 WA service records written 2026-09-26", () => {
@@ -67,6 +69,12 @@ describe("part-09 WA service records written 2026-09-26", () => {
     expect(stableIdFor("S212")).toBe("SVC-YTH-021");
     expect(stableIdFor("S041")).toBe("SVC-YTH-024");
     expect(stableIdFor("S123")).toBe("SVC-YTH-025");
+  });
+
+  it("replaces the legacy Mental Health Advocacy Service entry rather than adding a second copy", () => {
+    const services = loadServicesSnapshot().services;
+    expect(services.find((service) => service.id === "S100")?.stable_id).toBe("SVC-LEG-004");
+    expect(services.filter((service) => service.stable_id === "SVC-LEG-004")).toHaveLength(1);
   });
 
   it("matches the two Youth Hospital in the Home entries the same way whatever the snapshot order", () => {

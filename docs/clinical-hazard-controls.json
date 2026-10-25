@@ -163,7 +163,7 @@
     "docs/clinical-governance.md": "4a21c4ee500e1e7953b4fc975206cb6c06dddcc4b436453c09d7ea60e42dc598",
     "docs/clinical-hazard-analysis.md": "d6738ce036b76445f624b80ff7252ab0af1bed85ec3de6fc5cffa653f8c81b0f",
     "src/components/clinical-dashboard/patient-profile-panel.tsx": "0eacd7447d883195e2ca9b512034018e445c45249d7394355730b8d11e3a1a43",
-    "src/data/dictionary-source-dispositions.json": "afc5760d7567803c512c7e0a2cf5826cdc27b3c152db9c0aadf7f66d3e1c6141",
+    "src/data/dictionary-source-dispositions.json": "c91faaa74dbca9c194fadd80166c6eb90198dd0ba010fb7da63001a035c54202",
     "src/lib/answer-render-policy.ts": "e9e529e59da9a53ebc8d427df6f2685f8facfeb71ede3c36aea410f95665ad06",
     "src/lib/answer-verification.ts": "fa2429b2ac14f51d00a8ab1b3754f05bedda3b6b30b56a585a16fbfe411c7eb4",
     "src/lib/clinical-safety.ts": "f779a97793e0015b558e9c7a738e606111c85f09b005661ca8c4bba0c9d88f73",
