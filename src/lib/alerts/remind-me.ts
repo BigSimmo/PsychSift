@@ -8,6 +8,9 @@
  * common slip, not a guarantee, which is why the sheet also says it in words.
  */
 
+import { currentWorkTimeZone } from "@/lib/work-time/current-zone";
+import { zoneOffsetMs } from "@/lib/work-time/format";
+
 export const REMIND_ME_TEXT_LIMIT = 120;
 export const REMIND_ME_MAX = 20;
 
@@ -239,41 +242,50 @@ export function checkReminderText(text: string): ReminderTextProblem | null {
 
 export type WhenOption = { readonly id: string; readonly label: string; readonly dueAt: string };
 
-const PERTH_OFFSET_MS = 8 * 60 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
 
-function perthClock(instant: number): string {
-  const date = new Date(instant + PERTH_OFFSET_MS);
+function workClock(instant: number, zone: string = currentWorkTimeZone()): string {
+  const date = new Date(instant + zoneOffsetMs(instant, zone));
   return `${String(date.getUTCHours()).padStart(2, "0")}:${String(date.getUTCMinutes()).padStart(2, "0")}`;
 }
 
-/** The UTC instant of a Perth wall-clock time on the Perth day `instant` falls in, plus `addDays`. */
-function perthAt(instant: number, hours: number, addDays = 0): number {
-  const perth = new Date(instant + PERTH_OFFSET_MS);
-  return (
-    Date.UTC(perth.getUTCFullYear(), perth.getUTCMonth(), perth.getUTCDate() + addDays, hours, 0) - PERTH_OFFSET_MS
-  );
+/** The UTC instant of a work-zone wall-clock time on the work-zone day `instant` falls in, plus `addDays`. */
+function workAt(instant: number, hours: number, addDays: number, zone: string): number {
+  const local = new Date(instant + zoneOffsetMs(instant, zone));
+  const wall = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate() + addDays, hours, 0);
+  // Two passes settle the offset when the target day is across a daylight-saving change.
+  const guess = wall - zoneOffsetMs(wall, zone);
+  return wall - zoneOffsetMs(guess, zone);
 }
 
 /**
  * The quick choices: in an hour; the next of 12:00 or 17:00 at least 90
  * minutes away; the end of today's rostered shift, when one is still to come;
- * and tomorrow at 08:00. Perth time throughout.
+ * and tomorrow at 08:00. Work time zone throughout (Perth unless another is
+ * chosen), the same clock the roster shows the shift end in.
  */
-export function remindMeWhenOptions(now: Date, shiftEndsAt: string | null): WhenOption[] {
+export function remindMeWhenOptions(
+  now: Date,
+  shiftEndsAt: string | null,
+  zone: string = currentWorkTimeZone(),
+): WhenOption[] {
   const at = now.getTime();
   const options: WhenOption[] = [{ id: "hour", label: "In 1 hour", dueAt: new Date(at + HOUR_MS).toISOString() }];
-  const later = [12, 17].map((hour) => perthAt(at, hour)).find((instant) => instant - at >= 1.5 * HOUR_MS);
+  const later = [12, 17].map((hour) => workAt(at, hour, 0, zone)).find((instant) => instant - at >= 1.5 * HOUR_MS);
   if (later !== undefined)
-    options.push({ id: "later", label: perthClock(later), dueAt: new Date(later).toISOString() });
+    options.push({ id: "later", label: workClock(later, zone), dueAt: new Date(later).toISOString() });
   const end = shiftEndsAt ? Date.parse(shiftEndsAt) : Number.NaN;
   if (Number.isFinite(end) && end - at > 15 * 60 * 1000 && end - at < 16 * HOUR_MS)
-    options.push({ id: "shift-end", label: `End of shift, ${perthClock(end)}`, dueAt: new Date(end).toISOString() });
+    options.push({
+      id: "shift-end",
+      label: `End of shift, ${workClock(end, zone)}`,
+      dueAt: new Date(end).toISOString(),
+    });
   // Before 08:00 (a night shift) "08:00" means this morning, not the day after.
-  const morning = perthAt(at, 8);
+  const morning = workAt(at, 8, 0, zone);
   if (morning - at >= 1.5 * HOUR_MS)
     options.push({ id: "morning", label: "08:00", dueAt: new Date(morning).toISOString() });
-  else options.push({ id: "tomorrow", label: "Tomorrow 08:00", dueAt: new Date(perthAt(at, 8, 1)).toISOString() });
+  else options.push({ id: "tomorrow", label: "Tomorrow 08:00", dueAt: new Date(workAt(at, 8, 1, zone)).toISOString() });
   return options;
 }
 
@@ -324,27 +336,28 @@ export function dueReminders(list: readonly Reminder[], now: Date): Reminder[] {
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
-function perthDayIndex(instant: number): number {
-  return Math.floor((instant + PERTH_OFFSET_MS) / (24 * HOUR_MS));
+function workDayIndex(instant: number, zone: string): number {
+  return Math.floor((instant + zoneOffsetMs(instant, zone)) / (24 * HOUR_MS));
 }
 
-/** "Due 12:00", "Today 12:00", "Tomorrow 08:00" or "Wed 08:00", Perth time. */
-export function reminderWhenLabel(reminder: Reminder, now: Date): string {
+/** "Due 12:00", "Today 12:00", "Tomorrow 08:00" or "Wed 08:00", work time zone. */
+export function reminderWhenLabel(reminder: Reminder, now: Date, zone: string = currentWorkTimeZone()): string {
   if (reminder.doneAt) return "Done";
   const due = Date.parse(reminder.dueAt);
-  const clock = perthClock(due);
-  const days = perthDayIndex(due) - perthDayIndex(now.getTime());
+  const clock = workClock(due, zone);
+  const days = workDayIndex(due, zone) - workDayIndex(now.getTime(), zone);
+  const weekday = DAYS[new Date(due + zoneOffsetMs(due, zone)).getUTCDay()];
   if (due <= now.getTime()) {
     if (days === 0) return `Due ${clock}`;
     if (days === -1) return `Due yesterday ${clock}`;
-    return `Due ${DAYS[new Date(due + PERTH_OFFSET_MS).getUTCDay()]} ${clock}`;
+    return `Due ${weekday} ${clock}`;
   }
   if (days === 0) return `Today ${clock}`;
   if (days === 1) return `Tomorrow ${clock}`;
-  return `${DAYS[new Date(due + PERTH_OFFSET_MS).getUTCDay()]} ${clock}`;
+  return `${weekday} ${clock}`;
 }
 
-export { perthClock as remindMeClock };
+export { workClock as remindMeClock };
 
 /** My Day reads `?sheet=reminders` on arrival and opens Your reminders, so a reminder tapped elsewhere lands on its list. */
 export const MY_DAY_REMINDERS_HREF = "/my-day?sheet=reminders";

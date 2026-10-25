@@ -24,8 +24,10 @@ const encoder = new TextEncoder();
 
 /** XML 1.0 forbids most control characters outright, so they are dropped rather than escaped. */
 function xmlText(value: string): string {
+  // XML 1.0 Char, astral plane included: without the u flag an emoji is two surrogate halves,
+  // neither in range, so every emoji or supplementary-plane character was silently deleted.
   return value
-    .replace(/[^\t\n\r -퟿-�]/g, "")
+    .replace(/[^\t\n\r\u0020-\uD7FF\uE000-\uFFFD\u{10000}-\u{10FFFF}]/gu, "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")

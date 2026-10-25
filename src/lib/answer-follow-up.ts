@@ -273,8 +273,8 @@ const menuFollowUpTemplates: Record<Exclude<RelatedInformationMenuKey, "none">, 
     {
       kind: "source_gap",
       question: reportedGapQuestion,
-      // Only offered when the answer itself reported a gap or conflict; the
-      // haystack check below is satisfied by that report, not by source prose.
+      // Only offered when the answer itself reported a coverage gap (a conflict is
+      // not one); the haystack check below is satisfied by that report, not by source prose.
       evidenceTerms: ["reported_gap"],
       answeredTerms: [],
     },
@@ -522,7 +522,6 @@ export function buildAnswerFollowUpSuggestions(
   // the authored `source_gap` item whenever any earlier menu template matched.
   const gapAskedItself = suggestions.length > 0;
   const reportedGapsOrConflicts = answer.conflictsOrGaps ?? [];
-  const hasReportedGap = reportedGapsOrConflicts.length > 0;
   /**
    * A conflict is not a gap, and the authored gap question says the wrong thing
    * about one. `detectConflictsOrGaps` writes `type: "conflict"` when sources
@@ -544,7 +543,7 @@ export function buildAnswerFollowUpSuggestions(
     if (suggestions.length >= maxFollowUpSuggestions) break;
     // (2) evidence gate.
     const supported = template.evidenceTerms.some((term) =>
-      term === "reported_gap" ? hasReportedGap : evidenceIncludesTerm(evidenceHaystack, term, true),
+      term === "reported_gap" ? hasMissingCoverage : evidenceIncludesTerm(evidenceHaystack, term, true),
     );
     if (!supported) continue;
     // (3) already-answered suppression: an emitted section of this kind, the
