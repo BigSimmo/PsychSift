@@ -467,7 +467,10 @@ function RouteAnnouncer(): JSX.Element; // subscribes to app-router navigation
 
 - **Route change:** if navigation happened inside an overlay or controlled workflow, focus
   is preserved deliberately; otherwise focus moves to the new `<h1>` (fallback: main
-  landmark) with `tabIndex={-1}`, and the page title is announced once.
+  landmark) with `tabIndex={-1}`, and the page title is announced once — by Next's own
+  App Router announcer (`next-route-announcer`), which reads a changed `document.title`.
+  `RouteAnnouncer` does not announce the title itself, because a second copy read every
+  page name twice.
 - **Streaming:** the streamed answer renders under `aria-live="off"`; on settle, one
   announcement — "Answer ready, 4 sources" (or the caveated form, §2).
 - **Result counts / stage transitions:** concise text through `announce()`; the visible
@@ -495,7 +498,8 @@ node anywhere in the product — that is the anti-pattern this component exists 
 identical message inside a one-second window and spaces queued messages so one cannot cut
 into the previous sentence; `RouteAnnouncer` skips the first render (arrival is not a
 navigation), moves focus to the new `<h1>` unless focus sits inside a dialog or a
-`data-preserve-focus` workflow, and announces the page title once. Retiring the visible
+`data-preserve-focus` workflow, and leaves the single title announcement to Next's built-in
+route announcer. Retiring the visible
 `aria-live` nodes that remain in production — `document-search-results.tsx`, `StageList`,
 `AnswerProgress`, `EmptyState`'s default — is adoption work in PR 13, because each
 one needs its own surface diff. Until then two announcement mechanisms coexist.

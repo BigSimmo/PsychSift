@@ -12,8 +12,9 @@ import { cn, searchShell, searchShellInput } from "@/components/ui-primitives";
  *
  * `/tools` deliberately renders no shared composer — it owns its own filtering — but
  * until the hub was consolidated away this was the only place a clinician could type
- * a tools search, and the directory had no input at all. So the box came here with the
- * shortcut row rather than being lost with the hub.
+ * a tools search, and the directory had no input at all. So the box came here rather
+ * than being lost with the hub. (The hub's shortcut row, `ToolQuickActions`, was kept
+ * as a component but is not rendered on `/tools`.)
  *
  * In-flow, never fixed: the search-chrome contract allows a page to own its filtering,
  * but not to stack a second dock-sized bar over the shared chrome.
