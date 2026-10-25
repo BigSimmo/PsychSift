@@ -28,6 +28,8 @@ import { safetyPathLists } from "../pr-policy.mjs";
 import { SAFETY_CLASSES, safetyClassesFor } from "./safety-lists.mjs";
 
 const POLICY_FILE = "scripts/pr-policy.mjs";
+// Where relative imports in a loaded copy of the policy resolve: this checkout's pr-policy.
+const POLICY_MODULE_URL = new URL("../pr-policy.mjs", import.meta.url).href;
 
 // What each list is called in pr-policy, what it does for a PR, and how to put a file back on it.
 const LIST_DESCRIPTIONS = Object.freeze({
@@ -124,17 +126,24 @@ export function parseNameStatus(output) {
 }
 
 // Runs in a child `node --input-type=module` process so `coverageLossFindings` stays synchronous.
-// It loads one revision's copy of pr-policy (which imports only node builtins) from a data: URL
-// per side and classifies that side's paths with it. A side that cannot load reports an error.
+// It loads one revision's copy of pr-policy from a data: URL per side and classifies that side's
+// paths with it. A data: URL module cannot resolve a relative import, and pr-policy has one
+// (`./lib/is-entrypoint.mjs`), so each relative specifier is first rewritten to an absolute
+// file: URL beside this checkout's pr-policy. A side that cannot load reports an error.
 const CLASSIFY_WITH_POLICY_COPIES = `
 let input = "";
 for await (const chunk of process.stdin) input += chunk;
-const { copies, classes } = JSON.parse(input);
+const { copies, classes, policyUrl } = JSON.parse(input);
+const RELATIVE_SPECIFIER = /(\\bfrom\\s*|\\bimport\\s*\\(?\\s*)(["'])(\\.\\.?\\/[^"'\\r\\n]*)\\2/g;
 const output = {};
 for (const [side, { source, files }] of Object.entries(copies)) {
   try {
     if (typeof source !== "string") throw new Error("no copy of the policy at this revision");
-    const policy = await import("data:text/javascript;base64," + Buffer.from(source).toString("base64"));
+    const resolved = source.replace(
+      RELATIVE_SPECIFIER,
+      (_, lead, quote, specifier) => lead + quote + new URL(specifier, policyUrl).href + quote,
+    );
+    const policy = await import("data:text/javascript;base64," + Buffer.from(resolved).toString("base64"));
     const result = {};
     for (const file of files) {
       const flags = policy.classifyPullRequestFiles([file]);
@@ -167,7 +176,7 @@ function classifyWithPolicyCopies(root, sides) {
     copies[side] = { source: policySourceAt(root, revision), files };
   }
   const child = spawnSync(process.execPath, ["--input-type=module", "-e", CLASSIFY_WITH_POLICY_COPIES], {
-    input: JSON.stringify({ copies, classes: SAFETY_CLASSES }),
+    input: JSON.stringify({ copies, classes: SAFETY_CLASSES, policyUrl: POLICY_MODULE_URL }),
     encoding: "utf8",
     maxBuffer: 64 * 1024 * 1024,
     timeout: 60_000,
@@ -300,9 +309,9 @@ function listEditFindings(root, base, head) {
  *
  * Old paths are judged against the BASE revision's lists and new paths against the HEAD
  * revision's, so a change that renames a file and also deletes its name from pr-policy is still
- * caught. Both copies are loaded from git in a child process (pr-policy imports only node
- * builtins); a copy that cannot be loaded falls back to the head copy, then to the copy this
- * module imported.
+ * caught. Both copies are loaded from git in a child process, with pr-policy's relative imports
+ * resolved beside this checkout's copy; a copy that cannot be loaded falls back to the head copy,
+ * then to the copy this module imported.
  *
  * - A rename, or a copy, whose new path is missing a list the old path was on gives one `loud`
  *   warning keyed `coverage-lost:<new>`, naming each lost list and how to restore it.

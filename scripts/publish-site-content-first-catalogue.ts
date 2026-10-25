@@ -23,7 +23,8 @@
  *    That keeps every existing sign-off valid. Metadata added only when the row is projected
  *    (for example aliases, search terms and risk level) is not covered by the pin.
  * 3. Offline by default: `--dry-run` and `--out <path>` never import or call a live Supabase
- *    client. Live execution requires BOTH `--execute` and `ALLOW_DESTRUCTIVE_SITE_CONTENT_INIT=true`.
+ *    client. Live execution is not implemented: `--execute` checks that BOTH it and
+ *    `ALLOW_DESTRUCTIVE_SITE_CONTENT_INIT=true` are set with live credentials, then refuses.
  *
  * USAGE
  *   node scripts/run-tsx.mjs scripts/publish-site-content-first-catalogue.ts --dry-run
@@ -153,7 +154,14 @@ export function createSignOffPinCheck(
       if (!options.serviceContext) return "unverifiable";
       return recordPinState(review, "service", options.serviceContext);
     }
-    formsCatalog ??= JSON.parse(readFileSync(resolve(options.formsCatalogPath ?? "data/forms-catalog.json"), "utf8"));
+    formsCatalog ??= JSON.parse(
+      readFileSync(
+        options.formsCatalogPath
+          ? resolve(options.formsCatalogPath)
+          : resolve(REPOSITORY_ROOT, "data", "forms-catalog.json"),
+        "utf8",
+      ),
+    );
     return recordPinState(review, "form", { catalog: formsCatalog });
   };
 }
@@ -511,6 +519,11 @@ export async function runFirstPublicationCli(
         "Refusing live first-publication execution: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required for --execute (use --dry-run for offline plan generation).",
       );
     }
+    // No live write path exists yet. Say so and fail, rather than print a plan an operator who
+    // set the destructive flag and live credentials could mistake for a publication.
+    throw new Error(
+      "Live first-publication execution is not implemented: --execute only checks its safeguards, and nothing was published or written. Use --dry-run or --out <path> to build the plan offline.",
+    );
   }
 
   const plan = buildFirstPublicationCataloguePlan({

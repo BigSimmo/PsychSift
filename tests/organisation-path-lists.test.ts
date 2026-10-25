@@ -272,6 +272,27 @@ describe("coverageLossFindings: judged against the base lists", () => {
   });
 });
 
+describe("coverageLossFindings: the real pr-policy", () => {
+  // The real policy has a relative import, which a data: URL module cannot resolve on its own.
+  // Before relative specifiers were rewritten, this copy never loaded and the per-file check
+  // was replaced by a generic "compare the lists by hand" warning on every pr-policy edit.
+  const REAL_POLICY = fs.readFileSync(path.join(__dirname, "..", "scripts", "pr-policy.mjs"), "utf8");
+  const CHUNKING_ENTRY = "  /^src\\/lib\\/chunking\\.ts$/,\n";
+
+  it("loads the real policy and flags a file taken off its ranking list", () => {
+    expect(REAL_POLICY).toContain(CHUNKING_ENTRY);
+    const root = repo({ "scripts/pr-policy.mjs": REAL_POLICY, "src/lib/chunking.ts": BODY });
+    write(root, { "scripts/pr-policy.mjs": REAL_POLICY.replace(CHUNKING_ENTRY, "") });
+    commit(root);
+
+    const findings = coverageLossFindings({ root, base: "HEAD~1", head: "HEAD" });
+    expect(findings.map((finding) => finding.key)).not.toContain("coverage-list-edit-unchecked");
+    expect(findings.map((finding) => [finding.key, finding.loud])).toEqual([
+      ["coverage-dropped:src/lib/chunking.ts", true],
+    ]);
+  });
+});
+
 describe("coverageLossFindings: deletions", () => {
   it("gives a plain warning for a deleted safety-listed file", () => {
     const root = repo({ "lib/scoring.ts": BODY, "lib/misc.ts": BODY.replace("line0", "misc0") });
