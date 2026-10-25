@@ -62,7 +62,14 @@ describe("container delivery contract", () => {
 
     expect(imageWorkflow).toMatch(/^\s*workflow_call:\s*$/m);
     expect(imageWorkflow).not.toMatch(/^\s*pull_request:\s*$/m);
-    expect(imageWorkflow).toContain("group: docker-image-${{ github.ref }}");
+    expect(imageWorkflow).toContain(
+      "group: docker-image-${{ (github.event_name == 'push' || github.event_name == 'schedule') && github.run_id || github.ref }}",
+    );
+    // A merged commit's image build and Trivy scan must not be cancelled by a later merge or the daily schedule.
+    expect(imageWorkflow).toContain(
+      "cancel-in-progress: ${{ github.event_name != 'push' && github.event_name != 'schedule' }}",
+    );
+    expect(imageWorkflow).not.toContain("cancel-in-progress: true");
     expect(imageWorkflow).not.toContain("group: ${{ github.workflow }}-${{ github.ref }}");
     expect(ci).toContain("container-images:");
     expect(ci).toContain("uses: ./.github/workflows/docker-image.yml");

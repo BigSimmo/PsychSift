@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -13,6 +14,60 @@ const workflow = readFileSync(path.join(repoRoot, ".github", "workflows", "depen
 );
 const job = sourceFrom(workflow, "  dependency-report:\n", { label: "dependency-report job" });
 
+type WorkflowJob = {
+  if?: string;
+  needs?: string;
+  permissions?: Record<string, string>;
+  outputs?: Record<string, string>;
+  steps: { name?: string; uses?: string; run?: string }[];
+};
+
+function parsedWorkflow() {
+  return createRequire(import.meta.url)("js-yaml").load(workflow) as {
+    permissions: Record<string, string>;
+    jobs: Record<string, WorkflowJob>;
+  };
+}
+
+/**
+ * `npm ci` runs every dependency's install scripts, so the job that runs it (and the repository's
+ * own report script) must never hold `issues: write`. The token sits on a publish job that checks
+ * out and runs nothing from the repository, as organisation-weekly.yml does.
+ */
+describe("dependency-report workflow privileges", () => {
+  it("keeps workflow-level permissions read-only", () => {
+    expect(parsedWorkflow().permissions).toEqual({ contents: "read" });
+  });
+
+  it("never gives issues: write to the job that installs dependencies or runs repository code", () => {
+    const { jobs } = parsedWorkflow();
+    for (const [name, candidate] of Object.entries(jobs)) {
+      // Without a checkout there is no repository code (or lockfile) on the runner to execute.
+      const checksOut = candidate.steps.some((step) => step.uses?.startsWith("actions/checkout@"));
+      if (checksOut) {
+        expect(candidate.permissions, `${name} permissions`).toEqual({ contents: "read" });
+      }
+    }
+    expect(jobs["dependency-report"].permissions).toEqual({ contents: "read" });
+  });
+
+  it("publishes from a separate job that checks out nothing", () => {
+    const { jobs } = parsedWorkflow();
+    const publish = jobs.publish;
+    expect(publish.needs).toBe("dependency-report");
+    expect(publish.permissions).toEqual({ contents: "read", issues: "write" });
+    expect(publish.steps.some((step) => step.uses?.startsWith("actions/checkout@"))).toBe(false);
+    expect(publish.steps.some((step) => step.uses?.startsWith("./"))).toBe(false);
+    expect(publish.steps.some((step) => step.uses?.startsWith("actions/download-artifact@"))).toBe(true);
+  });
+
+  it("runs only on main, so a branch dispatch cannot overwrite the shared issue", () => {
+    const { jobs } = parsedWorkflow();
+    expect(jobs["dependency-report"].if).toBe("${{ github.ref == 'refs/heads/main' }}");
+    expect(jobs.publish.if).toBe("${{ github.ref == 'refs/heads/main' }}");
+  });
+});
+
 /**
  * These pin the half of the fix that lives outside the script. The script can now
  * say "unavailable", but that only matters if the workflow acts on it — the
@@ -22,8 +77,16 @@ const job = sourceFrom(workflow, "  dependency-report:\n", { label: "dependency-
 describe("dependency-report workflow evidence gate", () => {
   it("fails the run when either measurement did not complete", () => {
     expect(job).toContain("- name: Require a complete measurement");
-    expect(job).toContain("if: ${{ steps.report.outputs.evidence_complete != 'true' }}");
+    expect(job).toContain("if: ${{ needs.dependency-report.outputs.evidence_complete != 'true' }}");
     expect(job).toMatch(/Require a complete measurement[\s\S]*exit 1/);
+  });
+
+  it("forwards every step output the publish job reads as a job output", () => {
+    const parsed = parsedWorkflow();
+    const outputs = parsed.jobs["dependency-report"].outputs ?? {};
+    for (const name of ["outdated", "severity", "evidence_complete", "outdated_state", "audit_state"]) {
+      expect(outputs[name], `job output ${name}`).toBe(`\${{ steps.report.outputs.${name} }}`);
+    }
   });
 
   it("publishes the incomplete report before failing, so the evidence still lands", () => {
