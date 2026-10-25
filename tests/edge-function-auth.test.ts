@@ -157,6 +157,20 @@ describe("indexing-v3-agent dual-gate authorization (Task #P6BSQ3)", () => {
     expect(res?.status).toBe(401);
   });
 
+  it("rejects request with valid secret header but an unexpired non-service-role JWT (401)", async () => {
+    const anonJwt = makeJwt({ role: "anon", exp: Math.floor(Date.now() / 1000) + 3600 });
+    const req = new Request("http://localhost/indexing-v3-agent", {
+      method: "POST",
+      headers: {
+        "x-indexing-agent-secret": mockAgentKey,
+        authorization: `Bearer ${anonJwt}`,
+      },
+    });
+    const res = await authorizeIndexingAgentRequest(req, mockAgentKey);
+    expect(res).not.toBeNull();
+    expect(res?.status).toBe(401);
+  });
+
   it("authorizes request with BOTH valid secret header and valid JWT", async () => {
     const req = new Request("http://localhost/indexing-v3-agent", {
       method: "POST",
