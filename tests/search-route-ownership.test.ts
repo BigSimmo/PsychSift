@@ -228,9 +228,10 @@ describe("shared-search route ownership", () => {
     // changeMode must not optimistic-set searchMode before navigation.
     // Dedicated modes return to their dedicated standalone home, while remaining modes
     // return to the shared home. A current query is carried only as a draft, never as
-    // `run=1`; pending state still guards the push.
+    // `run=1`; pending state still guards the push. A draft that looks like it holds a
+    // patient detail is not carried into the address at all (design audit D-03).
     expect(shellSource).toMatch(
-      /function changeMode\(mode: AppModeId\) \{[\s\S]*?const carriedQuery = query\.trim\(\) \|\| requestedQuery\.trim\(\);[\s\S]*?const standaloneHome = standaloneModeHomeHref\(mode\);[\s\S]*?const href =\s*standaloneHome \?\?\s*appModeSelectionHref\(mode, \{[\s\S]*?query: carriedQuery \|\| undefined,[\s\S]*?router\.push\(href\);\n  \}/,
+      /function changeMode\(mode: AppModeId\) \{[\s\S]*?const draftQuery = query\.trim\(\) \|\| requestedQuery\.trim\(\);[\s\S]*?const draftRefusal = searchTextPatientDetailRefusal\(draftQuery\);[\s\S]*?const carriedQuery = draftRefusal \? "" : draftQuery;[\s\S]*?const standaloneHome = standaloneModeHomeHref\(mode\);[\s\S]*?const href =\s*standaloneHome \?\?\s*appModeSelectionHref\(mode, \{[\s\S]*?query: carriedQuery \|\| undefined,[\s\S]*?router\.push\(href\);\n  \}/,
     );
     const changeMode = shellSource.slice(
       shellSource.indexOf("function changeMode("),

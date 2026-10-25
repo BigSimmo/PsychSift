@@ -95,6 +95,10 @@ import { PrivateScopeUnavailableAlert } from "@/components/clinical-dashboard/pr
 import { DashboardSearchErrorState } from "@/components/clinical-dashboard/dashboard-search-error-state";
 import { useDashboardShellActions } from "@/components/clinical-dashboard/use-dashboard-shell-actions";
 import { useDashboardSearchExecution } from "@/components/clinical-dashboard/use-dashboard-search-execution";
+import {
+  searchTextPatientDetailRefusal,
+  usePreloadSearchPatientCheck,
+} from "@/components/clinical-dashboard/search-patient-detail-guard";
 import { notNowDocumentsSearch } from "@/components/front-door/ask-terms-not-now";
 import { useAskTermsGate } from "@/components/front-door/use-ask-terms-gate";
 import { Button } from "@/components/ui/button";
@@ -263,6 +267,7 @@ function ClinicalDashboardContent({
   const activeAnswerThreadOwnerIdRef = useRef<string | null>(null);
   const [answerThreadBootstrapped, setAnswerThreadBootstrapped] = useState(false);
   const [query, setQuery] = useState(initialQuery);
+  usePreloadSearchPatientCheck(query);
   const deferredQuery = useDeferredValue(query);
   const [searchMode, setSearchMode] = useState<AppModeId>(initialSearchMode);
   const {
@@ -1423,7 +1428,10 @@ function ClinicalDashboardContent({
     // Outside the shared home, every mode pick returns to `/`. Preserve the
     // current question as an unsubmitted draft, but never carry `run=1` into the
     // newly selected mode — only an explicit submit may open its result route.
-    const carriedQuery = query.trim() || submittedUrlQuery.trim();
+    const draftQuery = query.trim() || submittedUrlQuery.trim();
+    // The draft stays in the box, but one that looks like it holds a patient detail stays
+    // out of the address; Ask checks it again on submit (D-03).
+    const carriedQuery = searchTextPatientDetailRefusal(draftQuery) ? "" : draftQuery;
     const href = appModeSelectionHref(mode, {
       query: carriedQuery || undefined,
       queryMode,
@@ -1436,7 +1444,7 @@ function ClinicalDashboardContent({
     // old answer and replaceState a run=1 URL over the shared-home draft.
     stopSearch();
     clearModeResultState();
-    setQuery(carriedQuery);
+    setQuery(draftQuery);
     setModeSearchSubmitted(false);
     setSearchMode(mode);
     router.push(href);

@@ -576,7 +576,9 @@ function MedicationInteractionBlock({ record }: { record: MedicationRecord }) {
           phrasing that as "1 of 0 rows" would be nonsense. The third names the
           entered drugs outside the resolved interaction graph, which is a statement about the
           patient's list rather than about this medication, so it renders
-          alongside the other two rather than instead of them. */}
+          alongside the other two rather than instead of them. With no list
+          entered, the dashed box above already says there is no interaction
+          data, so the first notice is not repeated. */}
       {result.unreachableCounterparties.length > 0 ? (
         <InlineNotice tone="neutral">
           This catalogue has no machine-resolved interaction involving{" "}
@@ -588,10 +590,12 @@ function MedicationInteractionBlock({ record }: { record: MedicationRecord }) {
       ) : null}
 
       {!result.dataAvailable ? (
-        <InlineNotice tone="neutral">
-          This catalogue carries no interaction data for this medication, so nothing could be cross-checked against the
-          entered list. Review manually. It is not shown as clear.
-        </InlineNotice>
+        hasList ? (
+          <InlineNotice tone="neutral">
+            This catalogue carries no interaction data for this medication, so nothing could be cross-checked against
+            the entered list. Review manually. It is not shown as clear.
+          </InlineNotice>
+        ) : null
       ) : result.unresolvedRowCount > 0 ? (
         <InlineNotice tone="neutral">
           {result.unresolvedRowCount} of this medication&rsquo;s {result.totalRowCount} interaction{" "}

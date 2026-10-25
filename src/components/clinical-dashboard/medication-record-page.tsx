@@ -297,14 +297,15 @@ function MedicationRecordDetail({
   const indication = useMemo(() => medicationIndication(record), [record]);
   const sectionsByTab = useMemo(() => {
     const raw = medicationSectionsByTab(record);
-    const hasMaxDoseElsewhere =
-      metrics.some((m) => isMaxDoseLabel(m.label)) ||
-      record.quick.some((q) => /max.*dose/i.test(q.label) || /max/i.test(q.label));
+    // Only a Key figures max-dose tile counts. Every record's quick reference has a
+    // "Usual Dose & Max" row, but its value is long and clamped inside a collapsed
+    // row, so it is not a visible copy of the ceiling.
+    const hasMaxDoseElsewhere = metrics.some((m) => isMaxDoseLabel(m.label));
 
     if (!hasMaxDoseElsewhere) return raw;
 
     // #J7RV8Q: Deduplicate maximum dose display on medication tabs.
-    // The maximum dose is already prominently featured in Key figures and Quick reference;
+    // The maximum dose is already prominently featured in Key figures;
     // omit the duplicate Maximum Dose row from the Rapid Summary section.
     return {
       ...raw,
@@ -312,7 +313,7 @@ function MedicationRecordDetail({
         if (section.type !== "summary") return section;
         return {
           ...section,
-          rows: section.rows.filter((row) => !/^(?:max(?:imum)?\s+(?:daily\s+)?dose|dose)$/i.test(row.key.trim())),
+          rows: section.rows.filter((row) => !/^max(?:imum)?\s+(?:daily\s+)?dose$/i.test(row.key.trim())),
         };
       }),
     };
@@ -672,7 +673,9 @@ export function MedicationRecordPage({
   // (owner-aware) record once the hook resolves. Only fall back to the skeleton
   // when there is no server record to show (owner-only slugs) and the fetch is
   // still in flight; the error state applies only when nothing renderable exists.
-  const record = data?.record ?? fallbackRecord ?? null;
+  // A named not-found means the published catalogue no longer holds this slug (for
+  // example a retired record), so the bundled snapshot must not keep rendering.
+  const record = data?.record ?? (notFound ? null : fallbackRecord) ?? null;
   // Only trust the SSR fallback governance while the live fetch is still in
   // flight. A failed request means the authoritative status is unknown, so
   // don't keep presenting the fixture-derived guess as if it were confirmed.
