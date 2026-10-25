@@ -5487,11 +5487,22 @@ security invoker
 set search_path = public
 as $$
 BEGIN
+  -- The one permitted change is the ON DELETE SET NULL action of audit_logs.owner_id: the owner
+  -- is cleared, every other column is unchanged, and the account no longer exists.
+  IF TG_OP = 'UPDATE'
+    AND OLD.owner_id IS NOT NULL
+    AND NEW.owner_id IS NULL
+    AND (to_jsonb(NEW) - 'owner_id') = (to_jsonb(OLD) - 'owner_id')
+    AND NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = OLD.owner_id)
+  THEN
+    RETURN NEW;
+  END IF;
   RAISE EXCEPTION 'audit_logs is append-only: % not allowed', TG_OP
     USING ERRCODE = '42501';
   RETURN NULL;
 END;
 $$;
+
 
 revoke all on function public.audit_logs_prevent_mutation() from public, anon, authenticated, service_role;
 grant execute on function public.audit_logs_prevent_mutation() to postgres;
@@ -27668,6 +27679,57 @@ create policy "teaching_epa_magic_links_service_role_all"
   using (true)
   with check (true);
 
+-- Expired or cancelled EPA links are deleted 30 days later; completed links are kept
+-- (20261025150000, #9).
+create function public.purge_stale_teaching_epa_magic_links(p_retention_days integer default 30)
+returns integer
+language plpgsql
+security definer
+set search_path = public, pg_catalog, pg_temp
+as $$
+declare
+  v_deleted integer;
+begin
+  if p_retention_days is null or p_retention_days < 1 then
+    raise exception 'retention days must be positive' using errcode = '22023';
+  end if;
+  -- Completed links hold the supervisor's feedback for the doctor and are never deleted here.
+  delete from public.teaching_epa_magic_links
+   where (status = 'pending' and expires_at < now() - make_interval(days => p_retention_days))
+      or (status = 'revoked' and revoked_at < now() - make_interval(days => p_retention_days));
+  get diagnostics v_deleted = row_count;
+  return v_deleted;
+end;
+$$;
+
+alter function public.purge_stale_teaching_epa_magic_links(integer) owner to postgres;
+revoke all on function public.purge_stale_teaching_epa_magic_links(integer) from public, anon, authenticated;
+grant execute on function public.purge_stale_teaching_epa_magic_links(integer) to service_role;
+
+comment on table public.teaching_epa_magic_links is
+  'Single-use EPA feedback links. A link that expired or was cancelled is deleted 30 days later by
+   the pg_cron job "purge-stale-teaching-epa-magic-links"; completed links are kept.';
+
+-- Register the nightly purge when pg_cron is available. Preview/branch databases may not ship
+-- pg_cron; install the function there but skip scheduling.
+do $cron$
+begin
+  if to_regnamespace('cron') is null then
+    return;
+  end if;
+
+  perform cron.unschedule(j.jobid)
+  from cron.job j
+  where j.jobname = 'purge-stale-teaching-epa-magic-links';
+
+  perform cron.schedule(
+    'purge-stale-teaching-epa-magic-links',
+    '55 3 * * *',
+    $job$select public.purge_stale_teaching_epa_magic_links(30);$job$
+  );
+end
+$cron$;
+
 -- Canonical managed schema supplement for the pinned pre-managed schema snapshot.
 -- REPRESENTATION ONLY: never apply this file to an existing database.
 -- Historical cutover preimage/idle guards omitted; accepted object definitions and protections retained.
@@ -27680,7 +27742,8 @@ create table if not exists public.document_admission_events (
   id uuid primary key default gen_random_uuid(),
   document_id uuid not null,
   ingestion_job_id uuid not null,
-  staging_owner_id uuid not null references auth.users(id) on delete restrict,
+  -- Cleared, with administrator_id, when the account is deleted (20261025150000, #2).
+  staging_owner_id uuid references auth.users(id) on delete set null,
   source_channel text not null,
   actor_kind text not null,
   administrator_id uuid,
@@ -27703,8 +27766,8 @@ create table if not exists public.document_admission_events (
     check (actor_kind in ('administrator', 'trusted_backend')),
   constraint document_admission_events_actor_identity_check
     check (
-      (actor_kind = 'administrator' and source_channel = 'admin_api'
-        and administrator_id is not null and backend_principal is null)
+      (actor_kind = 'administrator' and source_channel = 'admin_api' and backend_principal is null
+        and (administrator_id is not null or staging_owner_id is null))
       or
       (actor_kind = 'trusted_backend' and source_channel = 'backend_import'
         and administrator_id is null and backend_principal is not null)
@@ -33136,8 +33199,37 @@ revoke all on table public.document_admission_events from public,anon,authentica
 -- typed-page sole-writer guard
 create trigger documents_page_storage_mode_owner before insert or update on public.documents for each row execute function ingestion_generation_evidence.guard_page_mode();
 
--- immutable administrator admission
-create trigger reject_document_admission_event_update before update on public.document_admission_events for each row execute function public.reject_document_admission_event_mutation();
+-- immutable administrator admission; the only permitted update clears the deleted account's ids (20261025150000, #2)
+create function public.guard_document_admission_event_update()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  -- The one permitted change is the ON DELETE SET NULL action of staging_owner_id once the
+  -- account is gone. The administrator id (always the same account) is cleared with it, and
+  -- nothing else in the record may change.
+  if old.staging_owner_id is not null
+    and new.staging_owner_id is null
+    and not exists (select 1 from auth.users u where u.id = old.staging_owner_id)
+  then
+    -- An administrator row's administrator id is that same account; any other value stays.
+    new.administrator_id := case when old.administrator_id is not distinct from old.staging_owner_id
+                                 then null else old.administrator_id end;
+    if (pg_catalog.to_jsonb(new) - array['staging_owner_id', 'administrator_id'])
+         = (pg_catalog.to_jsonb(old) - array['staging_owner_id', 'administrator_id'])
+    then
+      return new;
+    end if;
+  end if;
+  raise exception 'document_admission_events_append_only' using errcode = '55000';
+end;
+$$;
+
+alter function public.guard_document_admission_event_update() owner to postgres;
+revoke all on function public.guard_document_admission_event_update() from public, anon, authenticated, service_role;
+
+create trigger reject_document_admission_event_update before update on public.document_admission_events for each row execute function public.guard_document_admission_event_update();
 create trigger reject_document_admission_event_delete before delete on public.document_admission_events for each row execute function public.reject_document_admission_event_mutation();
 
 -- old unfenced overload denied after caller cutover
@@ -34461,7 +34553,9 @@ begin
     -- A key is only ever replayed for the person who first sent it.
     if v_key.posted_by is distinct from p_actor_id then raise exception 'roster_conflict'; end if;
     select status into v_status from public.roster_open_shifts where id = v_key.open_shift_id;
-    if v_status is null or v_status not in ('reported', 'open', 'claimed') then
+    -- Only a shift that is gone, cancelled or expired frees the key. A claimed or approved shift
+    -- replays the first post, so a late retry never reposts a gap that was already filled.
+    if v_status is null or v_status in ('cancelled', 'expired') then
       delete from public.roster_open_post_keys where service_id = p_service_id and post_key = p_post_key;
     else
       return jsonb_build_object('openShiftId', v_key.open_shift_id, 'status', v_status, 'replayed', true);
@@ -34931,19 +35025,6 @@ alter function public.commit_document_deep_memory_generation(jsonb, uuid, text, 
 revoke all on function public.commit_document_deep_memory_generation(jsonb, uuid, text, text, integer, integer, jsonb, jsonb, jsonb) from public, anon, authenticated;
 grant execute on function public.commit_document_deep_memory_generation(jsonb, uuid, text, text, integer, integer, jsonb, jsonb, jsonb) to service_role;
 
--- 20261016210000_adversarial_review_rpc_and_credential_hardening: durable open-shift post alert deduplication table.
-create table if not exists public.roster_open_post_alerts (
-  service_id text not null,
-  open_shift_id text not null,
-  delivered_at timestamptz not null default now(),
-  primary key (service_id, open_shift_id)
-);
-
-alter table public.roster_open_post_alerts owner to postgres;
-alter table public.roster_open_post_alerts enable row level security;
-revoke all on table public.roster_open_post_alerts from public, anon, authenticated;
-grant all on table public.roster_open_post_alerts to service_role;
-
 -- Scope is enforced inside the fenced claim transaction. The three-argument
 -- function remains available for older, unscoped workers during rollout.
 set local lock_timeout = '5s';
@@ -35221,6 +35302,11 @@ create table public.roster_offer_alert_devices (
   available_at timestamptz not null default now(),
   primary key(open_shift_id,subscription_id)
 );
+-- Cascade foreign-key indexes (20261025150000, #7).
+create index roster_offer_alert_devices_subscription_idx on public.roster_offer_alert_devices (subscription_id);
+create index roster_offer_alert_devices_owner_idx on public.roster_offer_alert_devices (owner_id);
+create index roster_offer_alert_outbox_service_idx on public.roster_offer_alert_outbox (service_id);
+create index roster_offer_alert_outbox_actor_idx on public.roster_offer_alert_outbox (actor_id);
 alter table public.roster_offer_alert_outbox owner to postgres;
 alter table public.roster_offer_alert_devices owner to postgres;
 alter table public.roster_offer_alert_outbox enable row level security;
@@ -36388,6 +36474,19 @@ begin
       else false end
   ) then
     raise exception using errcode = '42501', message = 'administrator_recent_authentication_required';
+  end if;
+  -- A soft-deleted or banned account is refused too (20261025150000, #8).
+  if not exists (
+    select 1
+    from auth.users u
+    where u.id = auth.uid()
+      and (pg_catalog.to_jsonb(u)->>'deleted_at') is null
+      and (
+        (pg_catalog.to_jsonb(u)->>'banned_until') is null
+        or (pg_catalog.to_jsonb(u)->>'banned_until')::timestamptz <= v_now
+      )
+  ) then
+    raise exception using errcode = '42501', message = 'administrator_assurance_required';
   end if;
 end;
 $$;
@@ -37713,7 +37812,9 @@ as $$
     'embedding_model','page_count','ocr_page_count','needs_ocr_page_count','text_character_count',
     'extracted_image_count','searchable_image_count','skipped_image_count',
     'skipped_image_reasons','image_type_counts','extraction_warnings',
-    'document_embedding_field_types','shadow_extraction','extraction_provenance']::text[]
+    'document_embedding_field_types','shadow_extraction','extraction_provenance',
+    'document_intelligence_version','document_intelligence_updated_at','index_unit_count',
+    'index_unit_counts_by_type','repaired_anchor_count','deep_memory_generations']::text[]
 $$;
 
 alter function public.document_index_generation_metadata_keys() owner to postgres;
