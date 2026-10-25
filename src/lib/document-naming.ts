@@ -23,7 +23,12 @@ export type DocumentNameSupabase = {
         column: "owner_id",
         value: string,
       ) => {
-        limit: (count: number) => PromiseLike<{ data: unknown[] | null; error: { message: string } | null }>;
+        order: (column: "id") => {
+          range: (
+            from: number,
+            to: number,
+          ) => PromiseLike<{ data: unknown[] | null; error: { message: string } | null }>;
+        };
       };
     };
   };
@@ -162,6 +167,10 @@ function uniqueTitle(
   return `${baseTitle} (${Date.now()})`;
 }
 
+const DOCUMENT_NAME_PAGE_SIZE = 1000;
+// Bound on the read, far above the corpus (about 2,000 documents today).
+const DOCUMENT_NAME_MAX_PAGES = 50;
+
 export async function planDocumentName(args: {
   supabase?: DocumentNameSupabase;
   ownerId: string;
@@ -180,13 +189,22 @@ export async function planDocumentName(args: {
   } else {
     if (!args.supabase) throw new Error("supabase client or existingDocs is required");
     const supabase = args.supabase as DocumentNameSupabase;
-    const { data, error } = await supabase
-      .from("documents")
-      .select("id,title,file_name,content_hash,metadata")
-      .eq("owner_id", args.ownerId)
-      .limit(1000);
-    if (error) throw new Error(error.message);
-    documents = Array.isArray(data) ? (data as ExistingDocumentName[]) : [];
+    // Every owner document, page by page in a stable order: matching is done
+    // in memory on normalised title keys, so a single capped page missed a
+    // same-title document beyond it and gave the upload a duplicate title.
+    for (let page = 0; page < DOCUMENT_NAME_MAX_PAGES; page += 1) {
+      const from = page * DOCUMENT_NAME_PAGE_SIZE;
+      const { data, error } = await supabase
+        .from("documents")
+        .select("id,title,file_name,content_hash,metadata")
+        .eq("owner_id", args.ownerId)
+        .order("id")
+        .range(from, from + DOCUMENT_NAME_PAGE_SIZE - 1);
+      if (error) throw new Error(error.message);
+      const rows = Array.isArray(data) ? (data as ExistingDocumentName[]) : [];
+      documents.push(...rows);
+      if (rows.length < DOCUMENT_NAME_PAGE_SIZE) break;
+    }
   }
   const matching = documents.filter((document) => {
     if (args.contentHash && document.content_hash === args.contentHash) return false;

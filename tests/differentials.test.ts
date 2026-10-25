@@ -506,10 +506,21 @@ function makeRecord(slug: string, status: DifferentialRecord["status"] = "routin
     status,
     subtitle: `${slug} subtitle`,
     clinicalHinge: `${slug} hinge`,
+    clinicalHingeScope: "presentation",
     safetySnapshot: { summary: `${slug} safety`, tags: [] },
-    sections: [],
+    sections: [
+      {
+        id: "why-it-fits",
+        title: "Why it fits",
+        summary: `${slug} subtitle`,
+        items: [`${slug} subtitle`, `${slug} hinge`, `${slug} own feature`],
+        tone: "fit",
+        scope: "diagnosis",
+      },
+    ],
     related: [],
-    currentPresentation: [`${slug} presentation feature`],
+    // Group text, as the export parser writes it: title, candidate list, hinge.
+    currentPresentation: ["Group title", `${slug}, sibling`, `CLINICAL HINGE: ${slug} hinge`],
     investigations: [`${slug} test`],
     immediateActions: [],
   };
@@ -566,7 +577,7 @@ describe("composeDifferentialSearchResults", () => {
     expect(results[0]).toMatchObject({
       kind: "diagnosis",
       id: "alpha",
-      clinicalCues: ["alpha presentation feature"],
+      clinicalCues: ["alpha own feature"],
       nextSteps: ["alpha test"],
     });
     expect(results[1]).toMatchObject({ kind: "presentation", id: "workflow-one" });
@@ -581,6 +592,29 @@ describe("composeDifferentialSearchResults", () => {
     expect(results[1]?.matchLabel).toBe("High match");
     const lowest = composeDifferentialSearchResults([diagnosisMatch("a", 9), diagnosisMatch("b", 4)], []);
     expect(lowest[1]?.matchLabel).toBe("Lower match");
+  });
+
+  it("never shows presentation-group text as a diagnosis's own cues", () => {
+    const [result] = composeDifferentialSearchResults([diagnosisMatch("alpha", 10)], []);
+    expect(result?.clinicalCues).toEqual(["alpha own feature"]);
+    expect(result?.tags).toEqual(["alpha own feature", "alpha test"]);
+
+    // The catalogue case that shipped: Acute psychosis carried the akathisia
+    // hinge from its Psychomotor Agitation group as a "Look for" cue.
+    const catalogueResults = composeDifferentialSearchResults(
+      differentialRecords.map((record) => ({ record, score: 1, reasons: ["title"] })),
+      [],
+      differentialRecords.length,
+    );
+    const groupTitles = new Set(differentialPresentations().map((workflow) => workflow.title.trim()));
+    for (const item of catalogueResults) {
+      for (const cue of [...item.clinicalCues, ...item.tags]) {
+        expect(cue).not.toMatch(/^clinical hinge/i);
+        expect(groupTitles.has(cue.trim())).toBe(false);
+      }
+    }
+    const acutePsychosis = catalogueResults.find((item) => item.id === "acute-psychosis");
+    expect(acutePsychosis?.clinicalCues.join(" ")).not.toMatch(/urge to move|akathisia/i);
   });
 
   it("maps hrefs to the catalogue detail pages", () => {

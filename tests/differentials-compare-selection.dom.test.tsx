@@ -69,6 +69,14 @@ vi.mock("@/components/clinical-dashboard/universal-search-also-matches", () => (
 
 import { DifferentialsHome } from "@/components/clinical-dashboard/differentials-home";
 
+type CatalogueRecord = NonNullable<ReturnType<typeof getDifferentialRecord>>;
+
+/** The record's sections with its "Why it fits" items replaced — the source of
+ *  a diagnosis result's own clinical cues. */
+function withFitItems(record: CatalogueRecord, items: string[]): CatalogueRecord["sections"] {
+  return record.sections.map((section) => (section.id === "why-it-fits" ? { ...section, items } : section));
+}
+
 describe("DifferentialsHome compare selection URL handoff", () => {
   beforeEach(() => {
     catalogState.status = "loading";
@@ -267,7 +275,14 @@ describe("DifferentialsHome compare selection URL handoff", () => {
     expect(bestMatch).not.toHaveClass("border-[color:var(--success-border)]");
 
     const resultRow = screen.getByTestId("differential-compact-result");
-    const clinicalCues = alphabeticalFirst!.currentPresentation
+    // Cues are the diagnosis's own "Why it fits" items, never the presentation
+    // group's title, candidate list or hinge held in currentPresentation.
+    const clinicalCues = (alphabeticalFirst!.sections.find((section) => section.id === "why-it-fits")?.items ?? [])
+      .map((value) => value.trim())
+      .filter(
+        (value) =>
+          value && value !== alphabeticalFirst!.subtitle.trim() && value !== alphabeticalFirst!.clinicalHinge.trim(),
+      )
       .flatMap((value) => value.split(/\s*\/\s*/))
       .map((value) => value.trim())
       .filter(Boolean)
@@ -279,6 +294,7 @@ describe("DifferentialsHome compare selection URL handoff", () => {
       expect(within(resultRow).getByText(cue, { exact: false })).toBeInTheDocument();
     }
     expect(resultRow).not.toHaveTextContent(investigation!);
+    expect(resultRow).not.toHaveTextContent(/clinical hinge/i);
 
     await act(async () => {
       screen.getByRole("button", { name: "A–Z" }).click();
@@ -325,6 +341,7 @@ describe("DifferentialsHome compare selection URL handoff", () => {
             subtitle: "",
             clinicalHinge: "",
             currentPresentation: [" "],
+            sections: withFitItems(record!, [" "]),
             investigations: [" "],
           },
           score: 20,
@@ -361,13 +378,13 @@ describe("DifferentialsHome compare selection URL handoff", () => {
     const record = getDifferentialRecord("medical-gi-endocrine-painful-organic-cause");
     const lead = getDifferentialRecord("acute-dystonia");
     expect(record && lead).toBeTruthy();
-    const repeatedCue = record!.currentPresentation.find((cue) => cue.trim()) ?? "pain";
+    const repeatedCue = "severe abdominal pain";
     catalogState.status = "ready";
     catalogState.matches = {
       diagnoses: [
         { record: lead!, score: 20, reasons: ["title"] },
         {
-          record: { ...record!, currentPresentation: [repeatedCue, repeatedCue] },
+          record: { ...record!, sections: withFitItems(record!, [repeatedCue, repeatedCue]) },
           score: 12,
           reasons: ["title"],
         },
@@ -392,7 +409,7 @@ describe("DifferentialsHome compare selection URL handoff", () => {
     catalogState.matches = {
       diagnoses: [
         {
-          record: { ...record!, currentPresentation: ["pain", "severe pain", " "] },
+          record: { ...record!, sections: withFitItems(record!, ["pain", "severe pain", " "]) },
           score: 20,
           reasons: ["title"],
         },
