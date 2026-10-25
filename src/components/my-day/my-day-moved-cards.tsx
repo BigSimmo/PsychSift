@@ -35,8 +35,10 @@ import type { SessionSummary } from "@/lib/teaching/model";
  *   - Admin's "Renew next" (`TodayRenewNextCard`), on Me;
  *   - Admin's renewals timeline (`ChecklistSummary`), on Me.
  *
- * Kept out of the dashboard's first load (`my-day-dashboard.tsx` imports this
- * file lazily). Each card only links out; nothing here changes a record. The
+ * Nothing imports this file at present: `my-day-dashboard.tsx` no longer
+ * renders these cards, so editing them changes nothing on My Day. It is kept
+ * pending a dead-code check (docs/agents/dead-code-deletion.md) before any
+ * removal. Each card only links out; nothing here changes a record. The
  * Roster shift card made this move earlier: it is My Day's headline card.
  */
 

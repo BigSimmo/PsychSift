@@ -11,6 +11,7 @@ import { ModeNotice } from "@/components/mode-kit/notice";
 import { useMyDayNow } from "@/components/my-day/my-day-page-parts";
 import { WorkStateNotice } from "@/components/mode-kit/work-state";
 import { Button } from "@/components/ui/button";
+import { kindOf } from "@/components/roster/roster-format";
 import { useRosterShifts } from "@/components/roster/use-roster-shifts";
 import { endOfShiftCard, type ShiftWindow } from "@/lib/alerts/end-of-shift";
 import { useExampleData } from "@/lib/example-data/store";
@@ -160,11 +161,14 @@ function MyDayFrameBody({ now, children }: { readonly now: Date; readonly childr
 
   const shiftWindows: readonly ShiftWindow[] = useMemo(
     () =>
-      shiftsState.shifts.map((s) => ({
-        label: s.title || (s as { label?: string }).label || "Rostered shift",
-        startsAt: s.startsAt,
-        endsAt: s.endsAt,
-      })),
+      shiftsState.shifts
+        // Leave is stored as a shift but has no handover, so it never gets an end-of-shift card (as on Today).
+        .filter((s) => kindOf(s) !== "leave")
+        .map((s) => ({
+          label: s.title || (s as { label?: string }).label || "Rostered shift",
+          startsAt: s.startsAt,
+          endsAt: s.endsAt,
+        })),
     [shiftsState.shifts],
   );
 
