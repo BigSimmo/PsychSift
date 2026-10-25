@@ -44,7 +44,7 @@ Do **not** run ops/provider steps until the matching box is explicitly approved 
 ### Ops secrets / chat (#025)
 
 - [ ] Generate and set `RAILWAY_WEBHOOK_SECRET` (≥16 chars) on Railway **Database** app service
-- [ ] Add Railway project webhook URL: `https://psychiatry.tools/api/webhooks/railway?token=<secret>`
+- [ ] Add Railway project webhook URL: `https://psychiatry.tools/api/webhooks/railway` with the custom header `x-webhook-secret: <secret>` (see `docs/webhooks.md`)
 - [ ] Set `SLACK_WEBHOOK_URL` and/or `DISCORD_WEBHOOK_URL` on **Railway app server env** (deploy alerts)
 - [ ] Set the **same** chat webhook URL(s) as **GitHub repo secrets** (CI failure notifier)
 - [ ] Set `SUPABASE_INGESTION_WEBHOOK_SECRET` on Railway app env **and** matching Supabase Vault `ingestion_webhook_secret`

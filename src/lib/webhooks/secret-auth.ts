@@ -19,7 +19,8 @@ type PresentedSecretOptions = {
   // Extra header carrying the raw secret (checked before Authorization: Bearer).
   headerName?: string;
   // Allow the secret to travel as a `?token=` query parameter. Only enable for
-  // providers (e.g. Railway) that can configure a target URL but not headers.
+  // a provider that can configure a target URL but not headers (Railway can send
+  // custom headers, so its route keeps this off).
   allowQueryToken?: boolean;
 };
 

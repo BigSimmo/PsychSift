@@ -32,15 +32,21 @@ Store every secret below in Railway/GitHub secret stores — never in the repo.
 (`SUCCESS`, `FAILED`, `CRASHED`, `REMOVED`) for the app + worker services to chat.
 This reports the deploy outcome GitHub cannot see.
 
-**Auth.** Railway lets you configure only a target URL (no custom headers or
-signing), so the shared secret `RAILWAY_WEBHOOK_SECRET` (min 16 chars) travels as
-a `?token=` query parameter and is compared constant-time. The receiver fails
-closed (`503`) when the secret is unset and returns `401` on a bad token.
+**Auth.** Railway webhooks can send custom headers (up to 20 per webhook; Railway's
+[webhook docs](https://docs.railway.com/observability/webhooks) recommend one for a shared
+secret, because payloads are not signed). The receiver reads the shared secret
+`RAILWAY_WEBHOOK_SECRET` (min 16 chars) from an `x-webhook-secret` header, or from
+`Authorization: Bearer <secret>`, and compares it constant-time. A `?token=` query
+parameter is not accepted, so the secret never sits in a URL or a proxy log. The
+receiver fails closed (`503`) when the secret is unset and returns `401` on a bad or
+missing secret.
 
-**Setup.** Railway → Project → Settings → Webhooks → add:
+**Setup.** Railway → Project → Settings → Webhooks → add the URL
+`https://psychiatry.tools/api/webhooks/railway` (no query string), then under
+**Custom headers** add one row:
 
 ```
-https://psychiatry.tools/api/webhooks/railway?token=<RAILWAY_WEBHOOK_SECRET>
+x-webhook-secret: <RAILWAY_WEBHOOK_SECRET>
 ```
 
 Transient phases (`BUILDING`, `DEPLOYING`, `QUEUED`, …) are dropped to keep the
@@ -49,27 +55,28 @@ channel quiet; the receiver answers `200 { "skipped": true }` for them.
 **Reading a failure.** The two ways this integration dies look nothing alike, and
 telling them apart is the whole job:
 
-| Symptom                                | Cause                                                               | Fix                                               |
-| -------------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------- |
-| `401` on `POST /api/webhooks/railway`  | the `?token=` in the Railway webhook URL ≠ `RAILWAY_WEBHOOK_SECRET` | re-add the webhook URL with the current secret    |
-| `503 webhook_not_configured`           | `RAILWAY_WEBHOOK_SECRET` unset on the service                       | set it                                            |
-| `200 { "forwarded": false }`           | authenticated, but no chat destination in server env                | set `SLACK_WEBHOOK_URL` or `DISCORD_WEBHOOK_URL`  |
-| no request reaches the receiver at all | no outgoing webhook configured on the Railway project               | add it in Railway → Project → Settings → Webhooks |
+| Symptom                                | Cause                                                                            | Fix                                               |
+| -------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------- |
+| `401` on `POST /api/webhooks/railway`  | the webhook's `x-webhook-secret` header is missing or ≠ `RAILWAY_WEBHOOK_SECRET` | re-add the header with the current secret         |
+| `503 webhook_not_configured`           | `RAILWAY_WEBHOOK_SECRET` unset on the service                                    | set it                                            |
+| `200 { "forwarded": false }`           | authenticated, but no chat destination in server env                             | set `SLACK_WEBHOOK_URL` or `DISCORD_WEBHOOK_URL`  |
+| no request reaches the receiver at all | no outgoing webhook configured on the Railway project                            | add it in Railway → Project → Settings → Webhooks |
 
 **Owner action, open since 2026-09-16 (#B6JP6F).** The integration is in row 1 right now: the
 production `PsychSift` service logs `Railway webhook rejected: presented secret did not match
 RAILWAY_WEBHOOK_SECRET` with `tokenPresented=true` on every deploy (six rejections in the 40 s after
 the 2026-09-16 12:27 UTC container start). **There is nothing to fix in this repository.** The
 receiver in `src/app/api/webhooks/railway/route.ts` is correct and is behaving correctly by
-rejecting the request; the `?token=` on the configured Railway webhook URL has simply drifted out of
-step with the `RAILWAY_WEBHOOK_SECRET` service variable. No MCP tool covers Railway project
-webhooks, and the fix needs the secret value, so it cannot be done from a coding session at all —
-it is the owner, in the Railway dashboard:
+rejecting the request. The 24 Oct 2026 audit (#14) found the likely cause: this page and the route
+comment told the owner to put the secret in a `?token=` URL, but the receiver only accepts it in a
+header, so a webhook set up from these notes could never authenticate. Railway now supports custom
+webhook headers, so the fix is in the Railway dashboard, and it needs the secret value:
 
 1. Railway → project `PsychSift` → the `PsychSift` service → Variables: set `RAILWAY_WEBHOOK_SECRET`
    to a fresh value of at least 16 characters.
 2. Railway → project `PsychSift` → Settings → Webhooks: delete the existing webhook and re-add it as
-   `https://psychiatry.tools/api/webhooks/railway?token=<that same value>`.
+   `https://psychiatry.tools/api/webhooks/railway` with the custom header
+   `x-webhook-secret: <that same value>`.
 3. Confirm on the next deploy that the rejection warning stops. Until it does, **no deploy success
    or failure notification reaches chat at all** — the same silence that cost three days on
    2026-09-13.
