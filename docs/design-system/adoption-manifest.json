@@ -3161,10 +3161,12 @@
       "entryExported": true,
       "directImportFiles": [
         "src/components/clinical-dashboard/answer-result-surface.tsx",
+        "src/components/document-viewer/generated-summary-panel.tsx",
         "src/components/ui/answer-card.tsx"
       ],
       "productImportFiles": [
         "src/components/clinical-dashboard/answer-result-surface.tsx",
+        "src/components/document-viewer/generated-summary-panel.tsx",
         "src/components/ui/answer-card.tsx"
       ],
       "designSync": {
