@@ -141,6 +141,30 @@ answerShape}` where `answerShape` is provider-safe counts/lengths only — never
   entry in `src/data/reviewed-guidance-differences.json`, which was still empty on 24 Oct 2026, so
   no live answer shows it yet.
 
+**Protected changes on PR #3781 (24 Oct 2026, owner yes with a US$8 canary cap).** Not live until
+that PR merges; the canary pair is recorded in [canary-ledger.md](canary-ledger.md).
+
+- **Superseded table rows (RET-N1).** The table-row lane in `searchChunksWithTelemetry` and the
+  coverage gate's candidates in `prepareCoverageGateResults` now pass through
+  `excludeSupersededEvidence`, so an outdated threshold row can no longer reach Search or the
+  typeahead, or end the search early before current guidance is looked for.
+- **Model-written notes on refused answers (NEW-G-03).** `sanitizeConflictsOrGaps` tags notes the
+  model wrote with `origin: "model"`; `toClientAnswerPayload` drops them when the answer is
+  unsupported or an evidence gap. System-built notes stay. The tag never reaches the browser.
+- **Unsupported summaries (NEW-G-01).** `sanitizeUnsupportedSummaryAnswer` replaces an ungrounded
+  or unsupported summary's text with `UNSUPPORTED_SUMMARY_TEXT`, and the Summarise panel shows the
+  answer view's caution for unsupported text or unmatched figures.
+- **Search-timeout wording (NEW-G-04).** With no sources, every provider-failure code uses
+  `NO_CONFIRMED_SOURCES_REASON` (`publicDegradedReason` in `rag-fallback-reason.ts`) instead of
+  promising a verified source-backed portion.
+- **Short threshold cells (EXT-01, chunker 1.3.2).** `looksLikeMetadataNoise` keeps any line of
+  two characters or fewer that holds a digit, comparison sign or plus/minus sign; a page-edge
+  number is dropped only when it is that page's own number or runs in sequence with an adjacent
+  page's. Reaches only documents indexed after merge.
+- **Reviews across re-index (E2E-04).** `worker/review-carry-forward.ts` copies the latest table
+  and figure review from earlier generations onto matching new rows (image content hash; fact page,
+  title, row and cells). A carried review can switch a figure off but never on.
+
 ## 8. Answer composition menu (packet S2, 2026-08-18)
 
 - `src/lib/rag/answer-composition.ts` is a pure map from (`RagQueryClass`,
