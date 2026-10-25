@@ -50,6 +50,13 @@ describe("eval-answer-quality argument parsing", () => {
     expect(answerTargetingThresholdFailure({ failOnThreshold: true, targetingFloor: 0.9, targetingRate: 0.5 })).toBe(
       "targeting_rate 0.5 < floor 0.9",
     );
+    expect(answerTargetingThresholdFailure({ failOnThreshold: true, targetingFloor: 0.8, targetingRate: null })).toBe(
+      "targeting_rate unavailable (no case scored) < floor 0.8",
+    );
+    expect(answerTargetingThresholdFailure({ failOnThreshold: true, targetingRate: null })).toBeNull();
+    expect(
+      answerTargetingThresholdFailure({ failOnThreshold: true, targetingFloor: 0.8, targetingRate: 0.9 }),
+    ).toBeNull();
   });
 
   it("captures the --dump-answers path alongside other flags", () => {

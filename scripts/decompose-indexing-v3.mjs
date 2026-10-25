@@ -3,6 +3,15 @@ import fs from "fs";
 const indexFile = "supabase/functions/indexing-v3-agent/index.ts";
 const utilsFile = "supabase/functions/indexing-v3-agent/utils.ts";
 
+// One-shot and already applied: a second run would overwrite utils.ts with only a header and
+// add a duplicate import block to index.ts, breaking the edge function.
+if (fs.existsSync(utilsFile)) {
+  console.error(
+    `decompose-indexing-v3: ${utilsFile} already exists; the decomposition has been applied. Refusing to rewrite it.`,
+  );
+  process.exit(1);
+}
+
 let content = fs.readFileSync(indexFile, "utf-8");
 
 const utilsToExtract = [

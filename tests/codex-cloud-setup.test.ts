@@ -1238,6 +1238,8 @@ describe("Codex Cloud environment contract", () => {
     expect(patDelete).toContain("git remote get-url --push --all origin");
     expect(patDelete).toContain("GIT_ASKPASS");
     expect(patDelete).toContain("core.hooksPath=/dev/null");
+    expect(patDelete).toContain("|heads/*|tags/*|remotes/*|");
+    expect(patDelete).toContain('push origin --delete "refs/heads/$branch"');
   });
 
   it("removes every adjacent command-shim PATH entry, including bracketed home paths", () => {
