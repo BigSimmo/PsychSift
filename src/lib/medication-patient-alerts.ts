@@ -86,13 +86,13 @@ export type PatientAlertResult = {
   unassessed: string[];
   /**
    * The same thing one tier down: distinct inputs referenced by an advisory row
-   * (`dose-adjust`, `caution`, `monitor`, or any future action that is neither a
-   * contraindication nor `info`) that could not be evaluated. Kept separate from
+   * (`dose-adjust`, `caution`, `monitor`, `info`, or any future action that is
+   * not a contraindication) that could not be evaluated. Kept separate from
    * `unassessed` because the consequence differs — an unread contraindication
    * gate can hide a reason not to prescribe, while an unread dosing gate hides a
-   * dose or a monitoring step. `action: "info"` rows are excluded from both:
-   * they carry no action to miss. Rendered as its own hint, never merged into
-   * the contraindication sentence.
+   * dose or a monitoring step. `action: "info"` rows land here too, so an unread
+   * gate on one never hides under a green all-clear. Rendered as its own hint,
+   * never merged into the contraindication sentence.
    */
   unassessedAdvisory: string[];
   /**

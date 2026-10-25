@@ -522,7 +522,13 @@ function MedicationInteractionBlock({ record }: { record: MedicationRecord }) {
         </div>
       ) : result.interactions.length === 0 ? (
         <InlineNotice
-          tone={result.unresolvedRowCount > 0 || result.unreachableCounterparties.length > 0 ? "neutral" : "success"}
+          tone={
+            result.unresolvedRowCount > 0 ||
+            result.unreachableCounterparties.length > 0 ||
+            result.reverseUnresolvedCounterparties.length > 0
+              ? "neutral"
+              : "success"
+          }
         >
           No interaction found between this medication and the {medicationCount}{" "}
           {medicationCount === 1 ? "medication" : "medications"} entered. Always confirm against source.
@@ -591,6 +597,17 @@ function MedicationInteractionBlock({ record }: { record: MedicationRecord }) {
           {result.unresolvedRowCount} of this medication&rsquo;s {result.totalRowCount} interaction{" "}
           {result.totalRowCount === 1 ? "row" : "rows"} could not be matched automatically — review the Key Interactions
           section below manually. This medication is not shown as clear.
+        </InlineNotice>
+      ) : null}
+
+      {/* The patient-side twin of the unresolved-row notice above: the entered
+          drug's own rows could not all be matched, so one of them may reach this
+          medication without naming it. */}
+      {result.reverseUnresolvedCounterparties.length > 0 ? (
+        <InlineNotice tone="neutral">
+          Some interaction rows for{" "}
+          {formatMedicationList(result.reverseUnresolvedCounterparties.map(medicationDisplayName))} could not be matched
+          automatically, so they were not fully cross-checked against this medication. Review manually.
         </InlineNotice>
       ) : null}
     </section>
