@@ -803,6 +803,23 @@ def maybe_raster_table_ocr(page, image, render_scale, budget, pytesseract, deadl
                 if remaining <= 0:
                     raise TimeoutError("raster math fallback exhausted page OCR timeout")
                 text = pytesseract.image_to_string(bitmap, lang="Latin", config=config, timeout=remaining).strip()
+            if math_plan is not None and math_plan.kind == "comparison" and re.fullmatch(r"\S+ [0-9]{2,}", text):
+                # Audit EXT-03 (24 Oct 2026): in italic fonts a decimal point can share an
+                # x-interval with the digit before it, so a read of "15" aligns with the glyphs of
+                # "1.5". A decimal-free comparison of two or more digits is checked against an
+                # ordinary read of the unchanged cell; if that read has the same digits with a
+                # decimal point, the table candidate is discarded rather than kept tenfold wrong.
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise TimeoutError("raster math decimal check exhausted page OCR timeout")
+                ordinary = pytesseract.image_to_string(
+                    bitmap, lang="Latin",
+                    config=(f"--psm {base_mode} --tessdata-dir {shlex.quote(model_directory)} "
+                            f"--dpi {round(scale * 72)}"),
+                    timeout=remaining)
+                digits = text.split(" ", 1)[1]
+                if any(number.replace(".", "") == digits for number in re.findall(r"[0-9]+\.[0-9]+", ordinary)):
+                    raise ValueError("raster math comparison dropped a decimal point the source shows")
         if time.monotonic() >= deadline:
             raise TimeoutError("raster OCR completed after page deadline")
         if len(record["crops"]) >= 112:
