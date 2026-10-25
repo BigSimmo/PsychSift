@@ -11,7 +11,6 @@ export const callTopic: WorkHelpTopic = {
     { label: "Now", body: "Who covers this hour at your hospital, your shift, and the numbers you use most." },
     { label: "Call", body: "Every number you may need tonight and where to refer, in one searchable list." },
     { label: "Shift", body: "Your handover, call log and breaks, kept on this phone and cleared after the shift." },
-    { label: "Handbook", body: "How your hospital works: the playbook, starting here, who's who and the pocket card." },
   ],
   questions: [
     {

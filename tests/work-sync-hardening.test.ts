@@ -142,6 +142,36 @@ describe("R11: Admin paperwork server-side patient-detail validation", () => {
     expect(saved.value).toEqual(clean);
     expect(upsert).toHaveBeenCalledOnce();
   });
+
+  it("reads this year in the work time zone, so early on 1 January in Perth a two-digit new year is not a birth date", async () => {
+    vi.useFakeTimers();
+    try {
+      // 01:00 on 1 January 2027 in Perth, still 31 December 2026 in UTC.
+      vi.setSystemTime(new Date("2026-12-31T17:00:00.000Z"));
+      const { client, upsert } = createMockAdminClient();
+      const paperwork: AdminPaperwork = {
+        ...emptyPaperwork(),
+        requests: [
+          {
+            id: "req-1",
+            kind: "leave",
+            title: "Annual leave request",
+            to: "Medical Workforce",
+            message: "Requesting leave from 4 Jan 27 to 15 Jan 27.",
+            status: "draft",
+            createdOn: "2027-01-01",
+          },
+        ],
+      };
+      expect(firstPaperworkPatientProblem(paperwork, 2026)).toBeTruthy();
+      expect(firstPaperworkPatientProblem(paperwork, 2027)).toBeNull();
+      const saved = await writeWorkSyncSection(client, OWNER_ID, "adminPaperwork", paperwork);
+      expect(saved.value).toEqual(paperwork);
+      expect(upsert).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe("R12: Teaching and CPD backup schemas reject unknown nested properties", () => {

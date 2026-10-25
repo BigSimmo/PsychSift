@@ -13,6 +13,7 @@ import {
   cancelCourse,
   cancelMyBooking,
   courseAvailability,
+  courseBookingsCsv,
   courseById,
   courseDateTile,
   coursesForRenewals,
@@ -884,5 +885,28 @@ describe("organiserCourses", () => {
     const lists = organiserCourses(s, TODAY);
     expect(lists.drafts).toEqual([]);
     expect(lists.past.map((c) => c.id)).toEqual(["posted"]);
+  });
+});
+
+describe("courseBookingsCsv", () => {
+  it("dates Since by the day in the work time zone, not the UTC day", () => {
+    const c = course("c", { capacity: 1 });
+    const s = state(
+      [c],
+      [
+        // 07:30 on 12 November in Perth, still 11 November in UTC.
+        booking("b1", "c", "booked", "2026-11-11T23:30:00.000Z"),
+        booking("w1", "c", "waitlisted", "2026-11-12T03:00:00.000Z"),
+      ],
+    );
+    const rows = courseBookingsCsv(s, "c", ZONE)
+      .replace(/^\uFEFF/, "")
+      .trim()
+      .split("\r\n");
+    expect(rows).toEqual([
+      "Name,Status,Since",
+      "Person b1,Booked,2026-11-12",
+      'Person w1,"Waiting, 1 in line",2026-11-12',
+    ]);
   });
 });

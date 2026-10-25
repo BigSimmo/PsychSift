@@ -112,7 +112,11 @@ export function documentFolders(documents: readonly AdminDocument[], query = "")
   return DOCUMENT_FOLDERS.flatMap((folder) => {
     const inFolder = matching
       .filter((document) => document.folder === folder)
-      .sort((a, b) => ((a.expiresOn ?? "9999") < (b.expiresOn ?? "9999") ? -1 : a.title.localeCompare(b.title)));
+      .sort((a, b) => {
+        const endsA = a.expiresOn ?? "9999";
+        const endsB = b.expiresOn ?? "9999";
+        return endsA < endsB ? -1 : endsA > endsB ? 1 : a.title.localeCompare(b.title);
+      });
     return inFolder.length ? [{ folder, label: DOCUMENT_FOLDER_WORDS[folder], documents: inFolder }] : [];
   });
 }

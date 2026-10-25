@@ -492,6 +492,21 @@ describe("Adversarial review fixes", () => {
     expect(screen.getByTestId("admin-documents-storage").textContent).toContain("last only until you close this page");
   });
 
+  it("drops a saved record from the screen when it is removed from the device elsewhere", () => {
+    withToasts(<AdminDocumentsPage now={NOW} />);
+    fireEvent.click(screen.getByTestId("admin-documents-add"));
+    fireEvent.change(screen.getByTestId("admin-documents-title"), { target: { value: "Employment contract" } });
+    fireEvent.click(screen.getByTestId("admin-documents-save"));
+    expect(screen.getAllByTestId("admin-documents-row")).toHaveLength(1);
+    // Another tab's sign-out, or work sync emptying the key, removes it without this tab's store.
+    act(() => {
+      window.localStorage.removeItem(ADMIN_PAPERWORK_STORAGE_KEY);
+      window.dispatchEvent(new StorageEvent("storage", { key: ADMIN_PAPERWORK_STORAGE_KEY }));
+    });
+    expect(screen.queryAllByTestId("admin-documents-row")).toHaveLength(0);
+    expect(stored()).toBeNull();
+  });
+
   it("opens the doctor's own link for a document", () => {
     withToasts(<AdminDocumentsPage now={NOW} />);
     fireEvent.click(screen.getByTestId("admin-documents-add"));
