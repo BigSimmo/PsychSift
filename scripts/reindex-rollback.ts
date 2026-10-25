@@ -22,6 +22,7 @@ import {
   applyRollbackPlans,
   collectCommittedGenerations,
   formatRollbackOutcome,
+  mergeLegacyGenerations,
   parseRollbackArgs,
   runReindexRollback,
   type RollbackScope,
@@ -84,7 +85,7 @@ function supabaseRollbackStore(supabase: AdminClient): RollbackStore {
       return data?.index_generation_id ?? null;
     },
     async committedGenerations(documentId) {
-      return collectCommittedGenerations(async (from, to) => {
+      const stamped = await collectCommittedGenerations(async (from, to) => {
         const { data, error } = await supabase
           .from("document_pages")
           .select("index_generation_id,created_at")
@@ -98,6 +99,22 @@ function supabaseRollbackStore(supabase: AdminClient): RollbackStore {
         // generated database types, so the row shape is stated here.
         return (data ?? []) as unknown as Array<{ index_generation_id: string | null; created_at: string }>;
       }, PAGE);
+      // Audit E2E-01: a generation committed before the 13 Oct 2026 cutover has unstamped pages,
+      // so it appears only through its chunks. The database function decides whether it can be
+      // restored (unstamped pages present, snapshot kept); here it only needs to be visible.
+      const fromChunks = await collectCommittedGenerations(async (from, to) => {
+        const { data, error } = await supabase
+          .from("document_chunks")
+          .select("index_generation_id,created_at")
+          .eq("document_id", documentId)
+          .not("index_generation_id", "is", null)
+          .order("created_at", { ascending: true })
+          .order("id")
+          .range(from, to);
+        if (error) throw new Error(error.message);
+        return (data ?? []) as Array<{ index_generation_id: string | null; created_at: string }>;
+      }, PAGE);
+      return mergeLegacyGenerations(stamped, fromChunks);
     },
     async chunkCount(documentId, generationId) {
       const { count, error } = await supabase

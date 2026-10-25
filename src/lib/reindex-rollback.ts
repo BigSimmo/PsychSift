@@ -3,7 +3,8 @@
 // commit_document_index_generation moves documents.metadata.index_generation_id to a new
 // generation; the prune trigger keeps that generation and the one it replaced. This module
 // plans moving the pointer back to the previous committed generation (the most recent
-// retained generation, other than the current one, that has typed document_pages rows) and
+// retained generation, other than the current one, that has typed document_pages rows, or chunks
+// only when it predates the 13 Oct 2026 page stamps) and
 // applies it through the rollback_document_index_generation RPC. Dry-run is the default.
 
 export type RollbackScope =
@@ -83,6 +84,19 @@ export async function collectCommittedGenerations(
     if (rows.length < pageSize) break;
   }
   return [...earliest].map(([generationId, committedAt]) => ({ generationId, committedAt }));
+}
+
+/**
+ * Audit E2E-01: adds generations that have chunks but no stamped pages. Every typed commit since
+ * 13 Oct 2026 stamps its pages, so such a generation was committed before then and owns the
+ * document's unstamped pages. A generation with stamped pages keeps its page date.
+ */
+export function mergeLegacyGenerations(
+  stamped: CommittedGeneration[],
+  fromChunks: CommittedGeneration[],
+): CommittedGeneration[] {
+  const known = new Set(stamped.map((entry) => entry.generationId));
+  return [...stamped, ...fromChunks.filter((entry) => !known.has(entry.generationId))];
 }
 
 function byCommittedAtDesc(left: CommittedGeneration, right: CommittedGeneration) {

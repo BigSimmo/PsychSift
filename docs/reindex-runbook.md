@@ -89,7 +89,10 @@ warns when at least a fifth of five or more assessed documents read poorly. Befo
 note the `poorShare`; afterwards run `npm run reindex:health -- --baseline-poor-share <that value>`
 and it also warns on a rise of five points or more. The scheduled ingestion autopilot prints the
 same verdict in its run summary. The warning never triggers queue recovery and does not change the
-exit code, so check the summary line rather than waiting for an alert issue.
+exit code, so check the summary line rather than waiting for an alert issue. Treat the counts
+as meaningful only for documents indexed since the worker began writing its own verdict: a
+mid-October review found every older document reading `good` because the now-uncalled
+`repair_enrichment_quality_batch` function had stamped them by row presence.
 
 The configured character target controls table groups (chunker 1.3.1). Each group repeats
 the table caption and header. A single row longer than the room left under the header is
@@ -153,8 +156,10 @@ commit of that document. The script needs the `rollback_document_index_generatio
   before any re-index, including the pilot: a refusal there means "no quick undo for this document
   right now". It is not the final word, because once the re-index commits, the generation it
   replaced becomes the one to roll back to. Run the dry run again after the commit and before
-  any no-go decision. A database fix is drafted separately and needs the owner's yes before it
-  can merge.
+  any no-go decision. Migration `20261025150000_rollback_legacy_pages_summary_and_guards.sql`
+  (audit E2E-01) fixes the older case once it is live: the planner also lists generations that
+  have chunks but no stamped pages, and the database rollback then switches the document back to
+  its unstamped pages. It merges only after the owner's own yes. Until then the refusal stands.
 - **Do not re-index a pilot document twice before the go/no-go check.** Each commit keeps only
   the new generation and the one it replaced. If a document's current index is already a pilot
   generation, queuing it again would replace its pre-pilot generation, and rollback could then
@@ -170,7 +175,10 @@ commit of that document. The script needs the `rollback_document_index_generatio
   summary, clinical specifics and generated topic labels are not part of the generation
   snapshot, so after a rollback they still describe the newer version. The script prints a note
   for every document it rolled back. Rebuild that document's enrichment afterwards (a small paid
-  run that needs spending approval) before relying on its summary.
+  run that needs spending approval) before relying on its summary. Once migration
+  `20261025150000` is live, the snapshot keeps the outgoing summary and generated labels and the
+  rollback restores them (its result says `summary_restored` and `labels_restored`); the note
+  still applies to generations that left before it went live.
 - **`--committed-after` and `--chunker-version` start from the documents table (audit DB-N3).**
   They list every indexed document (updated after the cut-off, for `--committed-after`) and then
   check each one's own pages and chunks, so they no longer scan whole tables. On a large library

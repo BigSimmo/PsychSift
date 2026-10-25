@@ -64,3 +64,22 @@ describe("source provenance gaps (audit 2026-10-24 E2E-10)", () => {
     expect(buildSourceProvenanceGapReport([{ id: "x", title: null, metadata: {} }]).searchable).toBe(1);
   });
 });
+
+describe("database follow-ups (E2E-10, E2E-11, DB-N4)", () => {
+  // Exercised against a scratch replay of schema.sql: a licence change to index_forbidden marked
+  // the document outdated, a label edit changed rag_cache_scope_revision_v1, the index was gone.
+  it("marks a document outdated when its licence stops permitting indexing, and bumps the cache on label edits", async () => {
+    const { readFileSync } = await import("node:fs");
+    const sql = readFileSync("supabase/migrations/20261025151000_label_cache_revision_licence_withdrawal.sql", "utf8");
+    expect(sql).toMatch(/new\.metadata->>'licence_policy' in \('index_forbidden', 'metadata_link_only'\)/);
+    expect(sql).toMatch(/'document_status', 'outdated'/);
+    for (const operation of ["insert", "update", "delete"]) {
+      expect(sql).toMatch(
+        new RegExp(
+          `create trigger document_labels_evidence_${operation} after ${operation} on public\\.document_labels`,
+        ),
+      );
+    }
+    expect(sql).toMatch(/drop index if exists public\.image_caption_cache_owner_hash_idx;/);
+  });
+});
