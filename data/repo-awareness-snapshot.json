@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-24"
+    "committed_at": "2026-10-25"
   },
   "routes": {
     "modes": [
@@ -4672,6 +4672,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-25-signed-in-daily-answer-cap.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/archive/2026-10-agent-code-reviews/IMPLEMENTATION_COMPLETE.md",
         "section": "archive",
         "catalogued": true
@@ -4888,6 +4893,11 @@
       },
       {
         "path": "docs/decisions/2026-10-15-no-default-ai-coding-tool.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-25-unsupported-summary-wording.md",
         "section": "decisions",
         "catalogued": true
       },
