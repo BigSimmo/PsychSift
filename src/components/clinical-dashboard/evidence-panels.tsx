@@ -1226,6 +1226,11 @@ export function QuoteCards({
                 >
                   &ldquo;{quoteText}&rdquo;
                 </blockquote>
+                {quote.isTruncated ? (
+                  <p className={cn("mt-1.5 text-xs", textMuted)}>
+                    Quote shortened. Open the source for the full passage.
+                  </p>
+                ) : null}
                 <div
                   className={cn(
                     "mt-3 flex flex-wrap items-center justify-between gap-2 pt-3 sm:mt-4 sm:gap-3",

@@ -37,6 +37,30 @@ describe("answer wait steps", () => {
     expect(screen.getAllByRole("button", { name: "Stop generating answer" })).toHaveLength(1);
   });
 
+  it("announces the finished answer through a status node that was already mounted", () => {
+    const running: TimedAnswerProgressUpdate[] = [{ stage: "generating", message: "Working.", receivedAt: 0 }];
+    const { rerender } = render(
+      <AnswerProgress events={running} startedAt={0} active onStop={() => {}} question="lithium level timing" />,
+    );
+    const status = screen.getByTestId("answer-progress-ready");
+    expect(status).toHaveAttribute("role", "status");
+    expect(status.textContent).toBe("");
+
+    rerender(
+      <AnswerProgress
+        events={[...running, { stage: "complete", message: "Answer ready.", receivedAt: 1 }]}
+        startedAt={0}
+        active
+        onStop={() => {}}
+        question="lithium level timing"
+      />,
+    );
+    // Same element, new text: a live region inserted with its text already inside
+    // is often not read out.
+    expect(screen.getByTestId("answer-progress-ready")).toBe(status);
+    expect(status.textContent).toBe("Answer ready.");
+  });
+
   it("still offers Stop when no question is known", () => {
     renderAt("scoping", null);
     expect(screen.queryByTestId("answer-progress-question")).toBeNull();

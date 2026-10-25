@@ -222,9 +222,13 @@ export function CrossModeLinksSection({
     // full ~1.2 MB differentials snapshot); the catalog is loaded once per session.
     if (!enabled || differentials) return;
     let cancelled = false;
-    import("@/lib/cross-mode-differentials").then((module) => {
-      if (!cancelled) setDifferentials(module.crossModeDifferentialCatalog());
-    });
+    import("@/lib/cross-mode-differentials")
+      .then((module) => {
+        if (!cancelled) setDifferentials(module.crossModeDifferentialCatalog());
+      })
+      // A failed chunk load (offline, or a deploy replaced the chunk) only drops these
+      // optional links. differentials stays null, so the next enable retries the load.
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
