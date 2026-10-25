@@ -5,7 +5,9 @@
 
 On 25 Oct 2026 the owner replied "Go ahead with all recommendations" (14:04Z) to the whole-codebase
 audit's database recommendations, including a preview database capped at US$5 and closed within 14
-days. That approves the fixes in `supabase/migrations/20261025150000_audit_database_fixes.sql`:
+days. That approves the fixes in `supabase/migrations/20261025150000_audit_database_fixes.sql`, and
+the insert guard in `20261025160000_document_admission_insert_guard.sql` that keeps #2 from
+admitting a new record without its administrator:
 
 - deleting an account keeps its audit-log rows and clears only the owner (#0);
 - a late retry of an open-shift post never reposts a gap that was claimed or approved (#1);

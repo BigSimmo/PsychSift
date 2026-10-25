@@ -33232,6 +33232,29 @@ revoke all on function public.guard_document_admission_event_update() from publi
 create trigger reject_document_admission_event_update before update on public.document_admission_events for each row execute function public.guard_document_admission_event_update();
 create trigger reject_document_admission_event_delete before delete on public.document_admission_events for each row execute function public.reject_document_admission_event_mutation();
 
+-- new admission records must name their account and administrator (20261025160000)
+create function public.guard_document_admission_event_insert()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  -- staging_owner_id is nullable only so account deletion can clear it; a new record must still
+  -- name its account, and an administrator record its administrator.
+  if new.staging_owner_id is null
+    or (new.actor_kind = 'administrator' and new.administrator_id is null)
+  then
+    raise exception 'document_admission_event_identity_required' using errcode = '23514';
+  end if;
+  return new;
+end;
+$$;
+
+alter function public.guard_document_admission_event_insert() owner to postgres;
+revoke all on function public.guard_document_admission_event_insert() from public, anon, authenticated, service_role;
+
+create trigger require_document_admission_event_identity before insert on public.document_admission_events for each row execute function public.guard_document_admission_event_insert();
+
 -- old unfenced overload denied after caller cutover
 revoke all on function public.commit_document_index_generation(p_document_id uuid, p_index_generation_id uuid, p_status text, p_page_count integer, p_chunk_count integer, p_image_count integer, p_metadata jsonb, p_pages jsonb, p_quality jsonb) from public,anon,authenticated,service_role;
 

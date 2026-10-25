@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-25T15:38:14.857Z",
+  "generated_at": "2026-10-25T16:17:40.502Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "5d5583dc22695af2ac44fdbf73cae9ffb2cace9d50c020ab0695d982ef65a48a",
-  "replay_seconds": 23,
+  "schema_sha256": "d267e1d440ad9509b9cbfb33daa07c6f3224869f499937acbb6d2140a70036c7",
+  "replay_seconds": 18,
   "snapshot": {
     "views": [
       {
@@ -18622,6 +18622,11 @@
         "table": "document_admission_events"
       },
       {
+        "def": "CREATE TRIGGER require_document_admission_event_identity BEFORE INSERT ON public.document_admission_events FOR EACH ROW EXECUTE FUNCTION public.guard_document_admission_event_insert()",
+        "name": "require_document_admission_event_identity",
+        "table": "document_admission_events"
+      },
+      {
         "def": "CREATE TRIGGER set_document_embedding_field_content_hash BEFORE INSERT OR UPDATE ON public.document_embedding_fields FOR EACH ROW EXECUTE FUNCTION public.set_document_embedding_field_content_hash()",
         "name": "set_document_embedding_field_content_hash",
         "table": "document_embedding_fields"
@@ -19742,6 +19747,13 @@
         ],
         "def_hash": "baa4902eb42ad6438e48517450c6cc46",
         "signature": "public.guard_australian_source_activation()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "c2264c2ecac8e209de6a21f5213b43c7",
+        "signature": "public.guard_document_admission_event_insert()"
       },
       {
         "acl": [

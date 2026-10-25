@@ -91,6 +91,16 @@ select pg_temp.assert_true(
 select pg_temp.assert_true(pg_temp.refused(
   $q$update public.document_admission_events set mime_type = 'application/pdf' where id = 'c0000000-0000-4000-8000-000000000001'$q$,
   'document_admission_events_append_only'), 'the cleared record must stay append-only');
+select pg_temp.assert_true(pg_temp.refused(
+  $q$insert into public.document_admission_events(
+    document_id, ingestion_job_id, staging_owner_id, source_channel, actor_kind, administrator_id,
+    correlation_id, admission_policy_version, content_sha256, file_name_sha256, storage_path_sha256,
+    mime_type, byte_count, authority, admission_digest, document_input_digest, request_digest)
+  values (gen_random_uuid(), gen_random_uuid(), null, 'admin_api', 'administrator', null,
+    gen_random_uuid(), 'trusted-document-admission-v1', 'sha256:' || repeat('1', 64), 'sha256:' || repeat('2', 64),
+    'sha256:' || repeat('3', 64), 'text/plain', 10, '{"version":1}', 'sha256:' || repeat('4', 64),
+    'sha256:' || repeat('5', 64), 'sha256:' || repeat('6', 64))$q$,
+  'document_admission_event_identity_required'), 'a new administrator record without its account ids must be refused');
 
 -- #5 ------------------------------------------------------------------------------------------
 select pg_temp.assert_true(
