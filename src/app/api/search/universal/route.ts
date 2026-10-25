@@ -22,6 +22,7 @@ import {
 } from "@/lib/universal-search";
 import { parseRequestQuery, queryInteger } from "@/lib/validation/query";
 import { appModeIds } from "@/lib/app-modes";
+import { rejectPatientDetailQuestion } from "@/lib/clinical-question-patient-check-server";
 
 export const runtime = "nodejs";
 
@@ -140,6 +141,10 @@ export async function GET(request: Request) {
       universalSearchQuerySchema,
       "Invalid universal query.",
     );
+    // The browser hook withholds text that looks like it holds a patient detail, but this route
+    // carries the query in its GET URL and runs document search on it, so refuse it here too —
+    // the same server backstop /api/search applies (repository audit F-01).
+    rejectPatientDetailQuestion({ query: q });
 
     if (isDemoMode() || isLocalNoAuthMode()) {
       const searchArgs: RunUniversalSearchArgs = {
