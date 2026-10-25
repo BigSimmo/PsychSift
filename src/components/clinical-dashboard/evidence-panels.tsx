@@ -34,6 +34,7 @@ import {
   proseMeasure,
   sourceCard,
   subtleStatusPill,
+  textMuted,
   toneWarning,
 } from "@/components/ui-primitives";
 import { type AnswerRenderModel } from "@/lib/answer-render-policy";
