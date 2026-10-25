@@ -62,6 +62,7 @@ const cacheOnCallEntries = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/on-call/entry-store", () => ({
   useOnCallEntries: () => entryState,
   cacheOnCallEntries: (entries: OnCallEntry[]) => cacheOnCallEntries(entries),
+  readCachedOnCallEntries: () => null,
 }));
 
 const END = "2027-01-31";

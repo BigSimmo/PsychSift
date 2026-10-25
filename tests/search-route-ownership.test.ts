@@ -480,6 +480,26 @@ describe("shared-search route ownership", () => {
     );
   });
 
+  it("searches the picked recent text and checks cross-mode text before it reaches the address bar", () => {
+    const dashboardSource = readFileSync(resolve(process.cwd(), "src/components/ClinicalDashboard.tsx"), "utf8");
+    // setQuery has not landed when the composer's recent pick submits, so the picked text is passed on.
+    expect(dashboardSource).toMatch(
+      /onPickRecent=\{\(recent\) => \{\s*pickRecentQuery\(recent\);[\s\S]*?if \(searchMode !== "prescribing"\) void ask\(recent\);/,
+    );
+    // A cross-mode search into a mode that reaches the AI service is checked for patient details
+    // before router.push writes it into the address bar and history (audit S2/D-03).
+    const beforeNavigation = sourceSegment(
+      dashboardSource,
+      "function crossModeSearchAfterTerms(",
+      "function navigateCrossModeSearch(",
+      { label: "crossModeSearchAfterTerms" },
+    );
+    expect(beforeNavigation).toContain("notNowDocumentsSearch(crossQuery.trim())");
+    expect(beforeNavigation).not.toContain("router.push");
+    // Differentials results belong to the submitted search, not the unsent draft.
+    expect(dashboardSource).toMatch(/<DifferentialsHome[\s\S]*?query=\{submittedModeQuery \?\? deferredQuery\}/);
+  });
+
   it("keeps the mode pill from navigating while the shared home is showing", () => {
     const dashboardSource = readFileSync(resolve(process.cwd(), "src/components/ClinicalDashboard.tsx"), "utf8");
     const selectSearchMode = sourceFrom(dashboardSource, "function selectSearchMode(", {

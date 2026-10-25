@@ -271,6 +271,24 @@ describe("LeaveWalletPage", () => {
     expect(search.value).not.toContain("confidential");
   });
 
+  it("keeps the confidential card open once its name has left the address", () => {
+    search.value = "card=confidential";
+    const { rerender } = render(<LeaveWalletPage now={NOW} />);
+    expect(search.value).toBe("");
+    // The next render reads the cleaned address, as the real router's would.
+    rerender(<LeaveWalletPage now={NOW} />);
+    expect(screen.getByTestId("admin-leave-open-confidential")).toBeTruthy();
+  });
+
+  it("still closes a card when the address moves off it", () => {
+    search.value = "card=annual";
+    const { rerender } = render(<LeaveWalletPage now={NOW} />);
+    expect(screen.getByTestId("admin-leave-open-annual")).toBeTruthy();
+    search.value = "";
+    rerender(<LeaveWalletPage now={NOW} />);
+    expect(screen.queryByTestId("admin-leave-open-annual")).toBeNull();
+  });
+
   it("keeps the agreement link a plain working link offline, with the reason in the banner", () => {
     setOnline(false);
     render(<LeaveWalletPage now={NOW} />);

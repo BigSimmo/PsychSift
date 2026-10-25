@@ -481,6 +481,8 @@ export function useDashboardSearchExecution(deps: DashboardSearchExecutionDeps) 
       const patientDetail = patientCheck.clinicalQuestionPatientDetail(trimmedQuery);
       if (patientDetail) {
         setActionNotice({ tone: "warning", message: patientCheck.clinicalQuestionPatientDetailMessage(patientDetail) });
+        // A Documents ?run=1 link reaches here without ask(), so it cleans the address too.
+        clearRefusedQueryFromAddress(trimmedQuery);
         return;
       }
     }

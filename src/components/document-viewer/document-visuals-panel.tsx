@@ -8,6 +8,7 @@ import {
   TableReviewPanel,
 } from "@/components/document-viewer/source-panels";
 import type { ImageRow, TableFactRow } from "@/components/document-viewer/types";
+import { InlineNotice } from "@/components/primitive-recipes/feedback";
 import { clinicalDivider, cn, EmptyState, LoadingPanel, panel, sourceCard } from "@/components/ui-primitives";
 import type { ClinicalDocument } from "@/lib/types";
 
@@ -30,6 +31,7 @@ export function DocumentVisualsPanel({
   auditImages,
   tableFacts,
   reviewingTableFactId,
+  tableReviewError,
   onReviewTableFact,
   activePage,
   onSelectPage,
@@ -42,6 +44,8 @@ export function DocumentVisualsPanel({
   auditImages: ImageRow[];
   tableFacts: TableFactRow[];
   reviewingTableFactId: string | null;
+  /** A failed review, shown here so the page being read stays on screen. */
+  tableReviewError?: string | null;
   onReviewTableFact: (fact: TableFactRow, reviewClass: string) => void;
   activePage: number;
   onSelectPage: (page: number) => void;
@@ -74,6 +78,11 @@ export function DocumentVisualsPanel({
                 busyFactId={reviewingTableFactId}
                 onReview={onReviewTableFact}
               />
+              {tableReviewError ? (
+                <InlineNotice tone="warning" className="mt-2">
+                  {tableReviewError}
+                </InlineNotice>
+              ) : null}
             </div>
           </details>
         ) : null}

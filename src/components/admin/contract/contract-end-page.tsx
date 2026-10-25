@@ -69,7 +69,7 @@ import { buildRestoreEntryBody } from "@/lib/admin/renewals";
 import { formatDateEcho, formatRecordedDate } from "@/lib/admin/renewal-dates";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
 import { complianceExpiresOn } from "@/lib/on-call/compliance";
-import { cacheOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
+import { cacheOnCallEntries, readCachedOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
 import { guardExampleAction } from "@/lib/example-data/guards";
 
@@ -238,7 +238,8 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
   const leave = useJuniorRosterLeave(loadState === "ready" && Boolean(endsOn));
 
   function upsert(saved: OnCallEntry) {
-    const entries = state.entries;
+    // The latest cache, not this render's list: two saves in flight would otherwise undo each other.
+    const entries = readCachedOnCallEntries()?.entries ?? state.entries;
     cacheOnCallEntries(
       entries.some((existing) => existing.id === saved.id)
         ? entries.map((existing) => (existing.id === saved.id ? saved : existing))
@@ -246,7 +247,8 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
     );
   }
   function remove(id: string) {
-    cacheOnCallEntries(state.entries.filter((existing) => existing.id !== id));
+    const entries = readCachedOnCallEntries()?.entries ?? state.entries;
+    cacheOnCallEntries(entries.filter((existing) => existing.id !== id));
   }
   function offerUndo(label: string, run: () => Promise<void>) {
     undoId.current += 1;

@@ -48,6 +48,7 @@ vi.mock("@/lib/on-call/entry-store", () => ({
   cacheOnCallEntries: (entries: OnCallEntry[]) => {
     storeState.entries = entries;
   },
+  readCachedOnCallEntries: () => null,
   isOnCallExampleEntry: () => false,
 }));
 
@@ -312,6 +313,21 @@ describe("AdminRenewalsPage — the checklist", () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     const clearBody = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body));
     expect(clearBody.details).not.toHaveProperty("issuerCheckedOn");
+  });
+
+  it("does not carry one item's failed save onto the next item opened", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "Could not save that." }), { status: 500 }),
+    );
+    renderPage();
+    openRecordedGroups();
+    fireEvent.click(screen.getByTestId("admin-renewals-checklist-row-working-with-children-check"));
+    fireEvent.click(screen.getByTestId("admin-renewals-item-sheet-issuer-check-record"));
+    const sheet = screen.getByTestId("admin-renewals-item-sheet");
+    expect(await within(sheet).findByRole("alert")).toBeInTheDocument();
+    fireEvent.click(within(sheet).getByRole("button", { name: /close/i }));
+    fireEvent.click(screen.getByTestId("admin-renewals-checklist-row-medical-registration-renewal"));
+    expect(within(screen.getByTestId("admin-renewals-item-sheet")).queryByRole("alert")).toBeNull();
   });
 
   it("does not stamp issuerCheckedOn when Renewed saves alone", async () => {

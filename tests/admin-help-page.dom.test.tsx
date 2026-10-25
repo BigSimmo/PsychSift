@@ -65,6 +65,7 @@ const entryState = vi.hoisted(() => ({
 vi.mock("@/lib/on-call/entry-store", () => ({
   useOnCallEntries: () => entryState,
   cacheOnCallEntries: vi.fn(),
+  readCachedOnCallEntries: () => null,
 }));
 
 beforeEach(() => {

@@ -175,6 +175,8 @@ export function DocumentViewer({
     documentSearchState.query === normalizedSourceSearch ? documentSearchState.results : emptyDocumentSearchResults;
   const currentDocumentSearchError = documentSearchState.query === normalizedSourceSearch ? documentSearchError : null;
   const [reviewingTableFactId, setReviewingTableFactId] = useState<string | null>(null);
+  // A failed table review is shown beside the table tools; viewerError means the document could not load.
+  const [tableReviewError, setTableReviewError] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(true);
   const [localProjectReady, setLocalProjectReady] = useState(true);
   const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
@@ -703,6 +705,7 @@ export function DocumentViewer({
           setPages(rowsById(detail.pages));
           setImages(rowsById(detail.images));
           setTableFacts(rowsById(detail.tableFacts));
+          setTableReviewError(null);
           setChunks(rowsById(detail.chunks));
           setIndexHealth(detail.indexHealth ?? null);
           setServerDemoMode(detail.demoMode);
@@ -1151,6 +1154,7 @@ export function DocumentViewer({
   };
   async function reviewTableFact(fact: TableFactRow, reviewClass: string) {
     setReviewingTableFactId(fact.id);
+    setTableReviewError(null);
     try {
       const response = await fetch(`/api/documents/${documentId}/table-facts`, {
         method: "PATCH",
@@ -1163,9 +1167,9 @@ export function DocumentViewer({
       const payload = await response.json().catch(() => ({}));
       if (response.status === 401) markSessionExpired();
       if (!response.ok) throw new Error(payload.error || "Table review update failed.");
-      setTableFacts((current) =>
-        current.map((candidate) => (candidate.id === fact.id ? (payload.tableFact as TableFactRow) : candidate)),
-      );
+      const updatedFact = payload.tableFact as TableFactRow | undefined;
+      if (!updatedFact || updatedFact.id !== fact.id) throw new Error("Table review update failed.");
+      setTableFacts((current) => current.map((candidate) => (candidate.id === fact.id ? updatedFact : candidate)));
       setImages((current) =>
         current.map((image) =>
           image.id === fact.source_image_id
@@ -1179,7 +1183,7 @@ export function DocumentViewer({
         ),
       );
     } catch (error) {
-      setViewerError(error instanceof Error ? error.message : "Table review update failed.");
+      setTableReviewError(error instanceof Error ? error.message : "Table review update failed.");
     } finally {
       setReviewingTableFactId(null);
     }
@@ -1630,6 +1634,7 @@ export function DocumentViewer({
                   auditImages={auditImages}
                   tableFacts={tableFacts}
                   reviewingTableFactId={reviewingTableFactId}
+                  tableReviewError={tableReviewError}
                   reviewTableFact={reviewTableFact}
                   activePage={activePage}
                 />

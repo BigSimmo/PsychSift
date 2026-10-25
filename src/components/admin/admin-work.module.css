@@ -829,24 +829,7 @@ a.nextLine {
   color: var(--text-muted);
 }
 
-/* ---------------------------------------------------- paper and tables */
-
-.paper {
-  display: grid;
-  padding: calc(var(--spacing) * 3.5) calc(var(--spacing) * 3.5) calc(var(--spacing) * 3);
-  border: 1px solid var(--work-line-strong, var(--border));
-  border-radius: var(--radius-lg);
-  background: var(--surface-raised);
-}
-
-.paperLine {
-  display: flex;
-  justify-content: space-between;
-  gap: calc(var(--spacing) * 2.5);
-  padding: calc(var(--spacing) * 1.5) 0;
-  border-top: 1px solid var(--work-line, var(--border));
-  font-size: var(--text-xs);
-}
+/* ---------------------------------------------------- tables */
 
 .grid2 {
   display: grid;
