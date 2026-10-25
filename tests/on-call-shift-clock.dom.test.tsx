@@ -3,12 +3,16 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { NowShiftClock, onCallShiftClock } from "@/components/on-call/now/shift-clock";
+import { APP_PREFERENCES_STORAGE_KEY } from "@/lib/account-scoped-browser-state";
 import type { OnCallShiftContext } from "@/lib/on-call/shift-context";
 
 // The after-hours clock on On Call Now (work-mode redesign idea 10, owner
 // request 6 Oct 2026). It counts down the reader's own rostered shift only.
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  window.localStorage.removeItem(APP_PREFERENCES_STORAGE_KEY);
+});
 
 /** Tue 6 Oct 21:00 to Wed 7 Oct 08:00, Perth (UTC+8). */
 type RosterContext = Extract<OnCallShiftContext, { kind: "roster" }>;
@@ -58,6 +62,16 @@ describe("onCallShiftClock", () => {
     expect(onCallShiftClock(roster(), new Date("2026-10-06T12:00:00.000Z"))).toBe(null);
     expect(onCallShiftClock(roster(), new Date("2026-10-07T00:00:00.000Z"))).toBe(null);
     expect(onCallShiftClock({ ...roster(), endsAt: "not a date" }, AT_0350)).toBe(null);
+  });
+
+  it("takes the weekday from the chosen work zone, not Perth", () => {
+    window.localStorage.setItem(APP_PREFERENCES_STORAGE_KEY, JSON.stringify({ timeZone: "Australia/Sydney" }));
+    // Tue 18:00 to Wed 01:00 in Sydney (AEDT, UTC+11): still Tuesday in Perth at the end.
+    const clock = onCallShiftClock(
+      { ...roster(), startsAt: "2026-10-06T07:00:00.000Z", endsAt: "2026-10-06T14:00:00.000Z" },
+      new Date("2026-10-06T10:00:00.000Z"),
+    );
+    expect(clock).toMatchObject({ from: "Tue 18:00", until: "Wed 01:00", untilTime: "01:00" });
   });
 });
 

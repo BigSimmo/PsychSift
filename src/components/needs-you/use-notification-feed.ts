@@ -214,15 +214,18 @@ export function useNotificationFeed({
 }): NotificationFeed {
   const { status: authStatus } = useAuthSession();
   const enabled = myDayEnabledForAuth(authStatus);
-  // Reads start once, at mount; `clock` only re-sorts what loaded.
-  const [readAt] = useState(() => new Date());
+  const { zone } = useWorkTimeZone();
+  const today = workToday(clock, zone);
+  // Reads start at mount and again when `clock` reaches a new work-zone day, so a header left open
+  // overnight reads the new day; within one day `clock` only re-sorts what loaded.
+  const [readStart, setReadStart] = useState(() => ({ day: today, at: new Date() }));
+  if (readStart.day !== today) setReadStart({ day: today, at: new Date() });
+  const readAt = readStart.at;
   const ownRead = useMyDayItems({ enabled: enabled && !read, now: readAt });
   const myDay = read ?? ownRead;
   const { entries, sample: onCallSample } = useOnCallEntries();
   const { preferences, setPreference } = useAppPreferences();
   const { reminders, markDone } = useRemindMe();
-  const { zone } = useWorkTimeZone();
-  const today = workToday(clock, zone);
   const device = useMyDayDeviceState(today);
   const online = useOnline();
 
