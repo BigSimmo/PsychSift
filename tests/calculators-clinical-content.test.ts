@@ -26,6 +26,17 @@ describe("K10 is described as one accepted measure, not the standard", () => {
     expect(k10?.indication).toMatch(/not a diagnostic instrument/i);
   });
 
+  it("keeps the same wording out of the mockup fixture set", () => {
+    for (const path of [
+      "src/lib/calculators/calculator-fixtures.ts",
+      "src/components/calculator-mockups/calculator-fixtures.ts",
+    ]) {
+      expect(readFileSync(resolve(ROOT, path), "utf8"), path).not.toContain(
+        "standard for Australian mental-health care plans",
+      );
+    }
+  });
+
   it("keeps distress bands out of diagnostic language", () => {
     for (const band of fixture("k10")?.bands ?? []) {
       expect(band.interpretation).toMatch(/not a diagnostic category/i);

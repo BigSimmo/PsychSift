@@ -24,6 +24,7 @@
     "scripts/snapshot-repo-awareness.mjs",
     "src/app/api/clinical-quality/route.ts",
     "src/app/mockups/**",
+    "src/components/calculator-mockups/**",
     "src/components/clinical-dashboard/global-mockup-search-shell.tsx",
     "src/components/developer-area/**",
     "src/components/master-document-flow-mockups.tsx",

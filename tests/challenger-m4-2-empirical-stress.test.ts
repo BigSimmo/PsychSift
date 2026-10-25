@@ -222,20 +222,18 @@ describe("Challenger M4-2: Empirical Stress Test & Technical Verification", () =
       expect(selectCardEntries([staleEntry], now)).toHaveLength(0);
     });
 
-    it("verifies printed pocket card provenance statement and calculator session ephemeral state", () => {
+    it("verifies printed pocket card provenance statement and bedside sheet ephemeral state", () => {
       const cardPath = path.join(PROJECT_ROOT, "src", "components", "on-call", "on-call-card.tsx");
       const cardCode = fs.readFileSync(cardPath, "utf-8");
       expect(cardCode).toContain(
         "PsychSift On Call pocket card. Confirm against the live app before relying on a printed copy, because paper cannot show its own age.",
       );
 
-      // The unrouted bedside-sheet mockup this used to read was deleted unused on 25 Oct 2026; the
-      // routed calculator search page is where answers are held now, so it carries the same pin.
-      const calculatorPagePath = path.join(PROJECT_ROOT, "src", "components", "calculators", "search-page.tsx");
-      const calculatorCode = fs.readFileSync(calculatorPagePath, "utf-8");
-      expect(calculatorCode).toContain("useState<SessionAnswers>({})");
-      expect(calculatorCode).not.toContain("localStorage.setItem");
-      expect(calculatorCode).not.toContain("sessionStorage.setItem");
+      const bedsideSheetPath = path.join(PROJECT_ROOT, "src", "components", "calculators", "bedside-sheet.tsx");
+      const bedsideCode = fs.readFileSync(bedsideSheetPath, "utf-8");
+      expect(bedsideCode).toContain("useState<SessionAnswers>({})");
+      expect(bedsideCode).not.toContain("localStorage.setItem");
+      expect(bedsideCode).not.toContain("sessionStorage.setItem");
     });
   });
 
