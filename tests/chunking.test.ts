@@ -1098,3 +1098,22 @@ describe("repeated headings and unpunctuated text (EXT-02, EXT-05)", () => {
     expect(chunks.at(-1)).toContain("step 220 dose");
   });
 });
+
+describe("table notes on split tables (EXT-07, chunker 1.3.3)", () => {
+  const table = (rows: number) =>
+    [
+      "| Drug | Dose | Action |",
+      "| --- | --- | --- |",
+      ...Array.from({ length: rows }, (_, i) => `| Drug ${i} | ${i + 1} mg | Review at week ${i + 1} |`),
+    ].join("\n");
+
+  it("repeats a short note on every piece of a split table", () => {
+    const note = "Note: not recommended in severe renal impairment.";
+    const chunks = chunkTextWithOverlap(`${table(80)}\n${note}`, 600, 60);
+    const tableChunks = chunks.filter((chunk) => chunk.includes("| Drug |"));
+    expect(tableChunks.length).toBeGreaterThan(2);
+    expect(tableChunks.every((chunk) => chunk.includes(note))).toBe(true);
+    expect(chunks.every((chunk) => chunk.length <= 600)).toBe(true);
+    for (let i = 0; i < 80; i += 1) expect(chunks.some((chunk) => chunk.includes(`| Drug ${i} |`))).toBe(true);
+  });
+});

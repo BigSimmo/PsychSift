@@ -644,6 +644,7 @@ const sentenceEndLinePattern = /[.!?]$/;
 const tableFootnoteLinePattern = /^(?:[*†‡§]+|notes?\b|sources?\b)/i;
 const maxTableFootnoteLines = 4;
 const maxTableFootnoteLength = 400;
+const maxRepeatedTableNoteLength = 200;
 
 // Returns the caption carried onto every chunk of the following table and the
 // index where it starts in `lines` (lines from `start` are moved out of prose).
@@ -709,15 +710,20 @@ function chunkTableBlock(block: string, chunkSize: number, caption = "", footnot
   const headerLines = separatorIndex > 0 ? lines.slice(0, separatorIndex + 1) : lines.slice(0, 1);
   const bodyLines = lines.slice(headerLines.length);
   const header = [caption, ...headerLines].filter(Boolean).join("\n");
+  // Chunker 1.3.3 (audit EXT-07): a short note such as "Note: not recommended in severe renal
+  // impairment" is repeated on every piece of a split table, like the header, so the pieces that
+  // hold most of the dose rows carry the warning. A longer note keeps the old placement below.
+  const repeatedNote = footnote && footnote.length <= maxRepeatedTableNoteLength ? footnote : "";
+  const groupSize = repeatedNote ? chunkSize - repeatedNote.length - 1 : chunkSize;
   // Chunker 1.3.1: a single row longer than the room left under the header is
   // split at word boundaries into pieces that each repeat the header.
-  const rowBudget = Math.max(40, chunkSize - header.length - 1);
+  const rowBudget = Math.max(40, groupSize - header.length - 1);
 
   const chunks: string[] = [];
   let current = header;
   for (const row of bodyLines.flatMap((line) => splitOversizedRow(line, rowBudget))) {
     const candidate = `${current}\n${row}`;
-    if (candidate.length > chunkSize && current !== header) {
+    if (candidate.length > groupSize && current !== header) {
       chunks.push(current.trim());
       current = `${header}\n${row}`;
     } else {
@@ -726,6 +732,7 @@ function chunkTableBlock(block: string, chunkSize: number, caption = "", footnot
   }
   if (current.trim()) chunks.push(current.trim());
   if (chunks.length === 0) return [captioned];
+  if (repeatedNote) return chunks.map((chunk) => `${chunk}\n${repeatedNote}`);
   if (footnote) {
     // Keep the size cap: append to the last chunk only when it fits, otherwise emit the
     // footnote with the repeated header as its own chunk.

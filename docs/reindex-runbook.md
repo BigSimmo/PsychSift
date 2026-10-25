@@ -85,9 +85,11 @@ recovery may run, but the integrity alert remains until a subsequent probe confi
 
 The configured character target controls table groups (chunker 1.3.1). Each group repeats
 the table caption and header. A single row longer than the room left under the header is
-split at word boundaries into pieces that each repeat the header, and a table footnote
-(symbol markers, "Note" or "Source" lines only) is appended to the last group when it fits,
-otherwise emitted with the repeated header as its own chunk.
+split at word boundaries into pieces that each repeat the header. A table footnote (symbol
+markers, "Note" or "Source" lines only) of up to 200 characters is repeated on every group
+(chunker 1.3.3), so every group carries a short warning such as a renal caution. A longer
+footnote is appended to the last group when it fits, otherwise emitted with the repeated header
+as its own chunk.
 
 ## Do not do this
 
