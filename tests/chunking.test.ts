@@ -1056,3 +1056,45 @@ describe("table row groups under chunker 1.3.1 (PR #3716 review follow-ups)", ()
     expect(joined).toContain("| Agent B | Short |");
   });
 });
+
+// Audit 2026-10-24, chunker 1.3.3.
+describe("repeated headings and unpunctuated text (EXT-02, EXT-05)", () => {
+  const page = (pageNumber: number, pageText: string) => ({ documentId: "doc-1", pageNumber, pageText, metadata: {} });
+
+  it("keeps a policy heading repeated on two pages of a longer document (EXT-02)", () => {
+    const pages = [
+      page(1, "Mental Health Services escalation\nEscalate deterioration to the treating team."),
+      page(2, "Mental Health Services escalation\nRecord observations hourly."),
+      page(3, "Lithium policy\nTarget level 0.6 to 0.8 mmol/L."),
+      page(4, "Lithium policy\nWithhold if level above 1.5 mmol/L."),
+      page(5, "Discharge planning\nArrange follow-up within seven days."),
+      page(6, "Discharge planning\nSend the summary to the GP."),
+    ];
+    const chunks = buildChunks(pages);
+    const withhold = chunks.find((chunk) => chunk.content.includes("Withhold if level above 1.5"));
+    expect(withhold?.content).toContain("Lithium policy");
+    expect(withhold?.section_path).not.toContain("Mental Health Services escalation");
+  });
+
+  it("still removes a keyword running header that repeats on most pages (EXT-02)", () => {
+    const pages = [1, 2, 3, 4].map((number) =>
+      page(number, `Clozapine Prescribing Guideline\nReview step ${number} with the treating team.`),
+    );
+    const content = buildChunks(pages)
+      .map((chunk) => chunk.content)
+      .join("\n");
+    expect(content).not.toContain("Clozapine Prescribing Guideline");
+    expect(content).toContain("Review step 4");
+  });
+
+  it("splits a long list without full stops near the intended size (EXT-05)", () => {
+    const text = Array.from({ length: 220 }, (_, index) => `Olanzapine step ${index + 1} dose 5 mg to 10 mg`).join(
+      "\n",
+    );
+    const chunks = chunkTextWithOverlap(text, 2000, 200);
+    expect(text.length).toBeGreaterThan(6000);
+    expect(chunks.length).toBeGreaterThan(3);
+    expect(chunks.every((chunk) => chunk.length <= 2000 * 1.35)).toBe(true);
+    expect(chunks.at(-1)).toContain("step 220 dose");
+  });
+});

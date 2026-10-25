@@ -8,8 +8,8 @@ import type { ChunkInput, DocumentChunk } from "@/lib/types";
 // re-index can tell which chunker produced a row, and so bumping the strategy deliberately
 // invalidates stale chunks. Bump this when chunk boundaries change (e.g. when cross-page
 // document-mode chunking is enabled by default).
-export const CHUNKER_VERSION = "1.3.2-page";
-export const DOCUMENT_CHUNKER_VERSION = "1.3.2-document";
+export const CHUNKER_VERSION = "1.3.3-page";
+export const DOCUMENT_CHUNKER_VERSION = "1.3.3-document";
 
 const sentenceBoundary = /(?<=[.!?])\s+/;
 const sentenceBoundaryGlobal = new RegExp(sentenceBoundary.source, "g");
@@ -191,19 +191,19 @@ function normalizeRepeatedLine(value: string) {
   return value.toLowerCase().replace(nonAlphanumericRunPattern, " ").trim();
 }
 
-function looksLikeRepeatingBoilerplate(line: string) {
+// "strong" lines are boilerplate on their own evidence (metadata, organisation names). "keyword"
+// lines only contain a word such as policy, procedure or guideline, which real headings share.
+function repeatingBoilerplateKind(line: string): "strong" | "keyword" | null {
   const normalized = normalizeRepeatedLine(line);
-  if (!normalized || normalized.length < 5 || normalized.length > 90) return false;
-  if (looksLikeMetadataNoise(line)) return true;
+  if (!normalized || normalized.length < 5 || normalized.length > 90) return null;
+  if (looksLikeMetadataNoise(line)) return "strong";
   // Audit 2026-10-20 ING-B-02: never treat a repeated line that states a dose,
   // measurement, threshold comparator or clinical action as a running header.
-  if (hasClinicalSignal(line)) return false;
-  if (boilerplateOrgPrefixPattern.test(line)) return true;
-  if (boilerplateAmbiguousOrgPrefixPattern.test(line) && boilerplateOrgNounPattern.test(line)) return true;
-  if (boilerplateKeywordPattern.test(line)) {
-    return true;
-  }
-  return false;
+  if (hasClinicalSignal(line)) return null;
+  if (boilerplateOrgPrefixPattern.test(line)) return "strong";
+  if (boilerplateAmbiguousOrgPrefixPattern.test(line) && boilerplateOrgNounPattern.test(line)) return "strong";
+  if (boilerplateKeywordPattern.test(line)) return "keyword";
+  return null;
 }
 
 // Indexes of the lines within `runningHeaderFooterWindow` content lines of the
@@ -223,24 +223,39 @@ function splitPageLines(text: string) {
 }
 
 function buildRepeatedBoilerplateLines(inputs: ChunkInput[]) {
-  const counts = new Map<string, number>();
+  const counts = new Map<string, { count: number; kind: "strong" | "keyword" }>();
   for (const input of inputs) {
     // Keys must be built from the SAME normalized text that removePageNoise
     // later compares against, or a ligature/soft-hyphen in a repeated header
     // ("Conﬁdential") would produce a mismatched key and survive filtering.
     const lines = splitPageLines(normalizeExtractedGlyphs(input.pageText));
     const edgeIndexes = runningHeaderFooterIndexes(lines);
-    const pageLines = new Set(
-      lines
-        .filter((line, index) => edgeIndexes.has(index) && looksLikeRepeatingBoilerplate(line))
-        .map(normalizeRepeatedLine)
-        .filter(Boolean),
-    );
-    for (const line of pageLines) {
-      counts.set(line, (counts.get(line) ?? 0) + 1);
+    const pageLines = new Map<string, "strong" | "keyword">();
+    lines.forEach((line, index) => {
+      if (!edgeIndexes.has(index)) return;
+      const kind = repeatingBoilerplateKind(line);
+      const key = kind ? normalizeRepeatedLine(line) : "";
+      if (kind && key && pageLines.get(key) !== "strong") pageLines.set(key, kind);
+    });
+    for (const [line, kind] of pageLines) {
+      const current = counts.get(line);
+      counts.set(line, {
+        count: (current?.count ?? 0) + 1,
+        kind: current?.kind === "strong" || kind === "strong" ? "strong" : "keyword",
+      });
     }
   }
-  return new Set([...counts.entries()].filter(([, count]) => count >= 2).map(([line]) => line));
+  // Chunker 1.3.3 (audit EXT-02): a line that only contains a word such as policy or procedure
+  // ("Lithium policy") is often a real heading repeated on a couple of pages. Stripping it left
+  // those pages under the previous section's heading. Such a line is now a running header only
+  // when it repeats on at least three pages and at least half of the document's pages, or on
+  // every page of a shorter document.
+  const keywordMinimum = Math.min(inputs.length, Math.max(3, Math.ceil(inputs.length / 2)));
+  return new Set(
+    [...counts.entries()]
+      .filter(([, { count, kind }]) => count >= (kind === "strong" ? 2 : keywordMinimum))
+      .map(([line]) => line),
+  );
 }
 
 // Rejoin a wrapped dose unit ("12.5" / "mg" on consecutive lines) into a single
@@ -796,6 +811,18 @@ function readableOverlapStart(clean: string, end: number, overlap: number) {
   return start < end ? start : Math.max(0, end - overlap);
 }
 
+// No real clinical sentence runs to this many characters; a list without full stops does.
+const unpunctuatedSpanMinimum = 2500;
+
+function unpunctuatedBreak(clean: string, start: number, chunkSize: number, fallback: number) {
+  const window = clean.slice(start, start + Math.floor(chunkSize * 1.35));
+  const minimum = Math.floor(chunkSize * 0.5);
+  const lineBreak = window.lastIndexOf("\n");
+  if (lineBreak >= minimum) return start + lineBreak;
+  const space = window.lastIndexOf(" ");
+  return space >= minimum ? start + space : fallback;
+}
+
 function chunkTextBySentence(clean: string, chunkSize: number, overlap: number) {
   const chunks: string[] = [];
   // Record actual offsets once; never scan the remaining document for every chunk.
@@ -803,15 +830,26 @@ function chunkTextBySentence(clean: string, chunkSize: number, overlap: number) 
   if (sentenceEnds.at(-1) !== clean.length) sentenceEnds.push(clean.length);
   let boundaryIndex = 0;
   let start = 0;
+  let unpunctuatedUntil = -1;
 
   while (start < clean.length) {
     const nominalEnd = Math.min(start + chunkSize, clean.length);
     while (sentenceEnds[boundaryIndex] < nominalEnd) boundaryIndex += 1;
     const completingEnd = sentenceEnds[boundaryIndex];
     const precedingEnd = boundaryIndex > 0 ? sentenceEnds[boundaryIndex - 1] : 0;
-    // Ordinary chunks retain the 35% elongation budget. An indivisible longer sentence is
-    // one atomic chunk: splitting or dropping it could change a clinical assertion's scope.
-    const end = completingEnd <= start + chunkSize * 1.35 || precedingEnd <= start ? completingEnd : precedingEnd;
+    // Ordinary chunks retain the 35% elongation budget and end at a sentence boundary when one
+    // falls inside it, because splitting a sentence could change a clinical assertion's scope.
+    const sentenceEnd =
+      completingEnd <= start + chunkSize * 1.35 || precedingEnd <= start ? completingEnd : precedingEnd;
+    // Chunker 1.3.3 (audit EXT-05): text with no full stops, such as a borderless dosing list,
+    // used to become one passage several times the intended size. A span far longer than any
+    // plausible sentence now breaks at the last line break, or failing that the last space, inside
+    // the budget. Shorter overlong sentences stay whole as before (CHK-01).
+    if (sentenceEnd - start > Math.max(chunkSize * 2, unpunctuatedSpanMinimum)) unpunctuatedUntil = sentenceEnd;
+    const end =
+      sentenceEnd <= unpunctuatedUntil && sentenceEnd - start > chunkSize * 1.35
+        ? unpunctuatedBreak(clean, start, chunkSize, sentenceEnd)
+        : sentenceEnd;
 
     const chunk = clean.slice(start, end).trim();
     if (chunk) chunks.push(chunk);

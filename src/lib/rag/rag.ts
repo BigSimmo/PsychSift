@@ -4171,7 +4171,31 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
               },
             });
           })()
-        : (extractiveFallbackAnswer ?? baseFallbackAnswer);
+        : (extractiveFallbackAnswer ??
+          (baseFallbackAnswer.citations.length > 0
+            ? (() => {
+                // Audit NEW-G-05 (24 Oct 2026): the base "review the source snippets" message went
+                // through the prose quality gate, which could replace it with "No current source
+                // ... was found" above passages that were in fact found. It is now the review
+                // fallback, which that gate passes through unchanged.
+                const reviewRouteReason = [
+                  route.reason,
+                  `generation_fallback:${sanitizedReason}`,
+                  SOURCE_BACKED_REVIEW_FALLBACK_REASON,
+                  "no_safe_extractive_candidate",
+                ].join("; ");
+                return buildSourceBackedReviewFallbackAnswer(baseFallbackAnswer, {
+                  reviewCitations: baseFallbackAnswer.citations,
+                  routingReason: reviewRouteReason,
+                  plan: buildCurrentSmartApiPlan("unsupported", reviewRouteReason, generationFallbackResults),
+                  carried: {
+                    queryAnalysis,
+                    relevance: generationFallbackArtifacts.relevance,
+                    scoreExplanations: generationFallbackArtifacts.scoreExplanations,
+                  },
+                });
+              })()
+            : baseFallbackAnswer));
     let fallbackAnswer = finalizeAnswer(
       annotateAnswerWithDiagnostics(generationFallbackAnswer, retrievalDiagnostics, {
         fallbackReasonCode: baseFallbackAnswer.fallbackReasonCode,
