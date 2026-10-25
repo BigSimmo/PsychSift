@@ -260,3 +260,18 @@ describe("parseRollbackArgs", () => {
     expect(documents[DOC_A].current).toBe("gen-newer");
   });
 });
+
+// Audit DB-N3 (24 Oct 2026): the operator script's candidate selection must not scan whole page or
+// chunk tables by an unindexed column. Every pages or chunks read in the store is document-scoped.
+describe("reindex rollback script queries (DB-N3)", () => {
+  it("selects candidates from documents and scopes every page and chunk read to one document", async () => {
+    const { readFileSync } = await import("node:fs");
+    const source = readFileSync("scripts/reindex-rollback.ts", "utf8");
+    const chains = source.split(/(?=\.from\(")/).slice(1);
+    const pageOrChunk = chains.filter((chain) => /^\.from\("document_(?:pages|chunks)"\)/.test(chain));
+    expect(pageOrChunk.length).toBeGreaterThan(0);
+    for (const chain of pageOrChunk) expect(chain.split(";")[0]).toMatch(/\.eq\("document_id", documentId\)/);
+    expect(source).not.toMatch(/\.gt\("created_at"/);
+    expect(source).not.toMatch(/\.eq\("metadata->>chunker_version"/);
+  });
+});

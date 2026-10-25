@@ -63,28 +63,16 @@ function supabaseRollbackStore(supabase: AdminClient): RollbackStore {
         yield* scope.documentIds;
         return;
       }
-      if (scope.kind === "committed-after") {
-        yield* distinctDocumentIds((from, to) =>
-          supabase
-            .from("document_pages")
-            .select("document_id")
-            .not("index_generation_id", "is", null)
-            .gt("created_at", scope.after)
-            .order("created_at", { ascending: false })
-            .order("id")
-            .range(from, to),
-        );
-        return;
-      }
-      yield* distinctDocumentIds((from, to) =>
-        supabase
-          .from("document_chunks")
-          .select("document_id")
-          .eq("metadata->>chunker_version", scope.chunkerVersion)
-          .order("document_id")
-          .order("id")
-          .range(from, to),
-      );
+      // Audit DB-N3 (24 Oct 2026): candidates come from the small documents table, never from a
+      // whole-table scan of pages or chunks (neither created_at nor chunker_version is indexed
+      // there). Committing a generation updates its document row, so updated_at after the cut-off
+      // covers every document committed after it; the planner then checks each candidate's own
+      // pages and chunks, which are indexed by document id, before it counts as in scope.
+      yield* distinctDocumentIds((from, to) => {
+        let query = supabase.from("documents").select("document_id:id").not("index_generation_id", "is", null);
+        if (scope.kind === "committed-after") query = query.gt("updated_at", scope.after);
+        return query.order("id").range(from, to);
+      });
     },
     async currentGeneration(documentId) {
       const { data, error } = await supabase
@@ -199,6 +187,15 @@ async function main() {
   const applied = await applyRollbackPlans(store, preview);
   for (const outcome of applied) console.log(formatRollbackOutcome(outcome, true));
   const failed = applied.filter((outcome) => !outcome.refusal && !outcome.applied).length;
+  // Audit DB-N1 (24 Oct 2026): the rollback restores passages, pages and quality, but the
+  // document summary, clinical specifics and generated topic labels still come from the newer
+  // version until the document's enrichment is rebuilt.
+  const rolledBack = applied.filter((outcome) => outcome.applied);
+  if (rolledBack.length > 0) {
+    console.log(
+      `\nNote: ${rolledBack.length} rolled-back document(s) still show the newer version's summary, clinical specifics and topic labels. Rebuild their enrichment (see docs/reindex-runbook.md, "Rolling back a reindex").`,
+    );
+  }
   if (failed > 0) process.exitCode = 1;
 }
 

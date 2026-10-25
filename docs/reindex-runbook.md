@@ -151,6 +151,16 @@ commit of that document. The script needs the `rollback_document_index_generatio
   the new generation and the one it replaced. If a document's current index is already a pilot
   generation, queuing it again would replace its pre-pilot generation, and rollback could then
   only return to the first pilot run.
+- **A rollback does not roll back the summary or topic labels (audit DB-N1).** The document
+  summary, clinical specifics and generated topic labels are not part of the generation
+  snapshot, so after a rollback they still describe the newer version. The script prints a note
+  for every document it rolled back. Rebuild that document's enrichment afterwards (a small paid
+  run that needs spending approval) before relying on its summary.
+- **`--committed-after` and `--chunker-version` start from the documents table (audit DB-N3).**
+  They list every indexed document (updated after the cut-off, for `--committed-after`) and then
+  check each one's own pages and chunks, so they no longer scan whole tables. On a large library
+  the dry run makes a few small queries per document, so prefer `--document-id` when the list is
+  known.
 
 ```bash
 npm run reindex:rollback -- --chunker-version 1.3.1-page            # dry run
