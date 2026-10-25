@@ -1058,7 +1058,7 @@ This generated snapshot is a local source-derived inventory. It does not assert 
 
 | Component                | Family   | Built | Locally registered | Observed v2 mount     | Proof declared | Baseline committed | Product imports |
 | ------------------------ | -------- | ----- | ------------------ | --------------------- | -------------- | ------------------ | --------------: |
-| `AccessibleTable`        | source   | yes   | yes                | inherited-global-root | yes            | no                 |               4 |
+| `AccessibleTable`        | source   | yes   | yes                | inherited-global-root | yes            | no                 |               3 |
 | `AnswerCard`             | answer   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
 | `AnswerFooter`           | answer   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
 | `AsyncButton`            | controls | yes   | yes                | inherited-global-root | yes            | no                 |               5 |
@@ -1086,7 +1086,7 @@ This generated snapshot is a local source-derived inventory. It does not assert 
 | `InlineNotice`           | feedback | yes   | yes                | inherited-global-root | yes            | no                 |              32 |
 | `LinkAction`             | controls | yes   | yes                | no                    | yes            | no                 |               0 |
 | `LoadingPanel`           | feedback | yes   | yes                | inherited-global-root | yes            | no                 |              10 |
-| `MissingValue`           | feedback | yes   | yes                | inherited-global-root | yes            | no                 |              11 |
+| `MissingValue`           | feedback | yes   | yes                | inherited-global-root | yes            | no                 |               8 |
 | `OverlayRoot`            | layout   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
 | `PageHeader`             | layout   | yes   | yes                | inherited-global-root | yes            | no                 |              15 |
 | `Pagination`             | controls | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
@@ -1095,7 +1095,7 @@ This generated snapshot is a local source-derived inventory. It does not assert 
 | `Quantity`               | answer   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
 | `RadioGroup`             | controls | yes   | yes                | inherited-global-root | yes            | no                 |               2 |
 | `RetrievalStateBanner`   | answer   | yes   | yes                | inherited-global-root | yes            | no                 |               2 |
-| `SafeBoldText`           | layout   | yes   | yes                | inherited-global-root | yes            | no                 |               9 |
+| `SafeBoldText`           | layout   | yes   | yes                | inherited-global-root | yes            | no                 |               8 |
 | `SearchField`            | controls | yes   | yes                | inherited-global-root | yes            | no                 |               5 |
 | `SegmentedControl`       | controls | yes   | yes                | inherited-global-root | yes            | no                 |              33 |
 | `Select`                 | controls | yes   | yes                | inherited-global-root | yes            | no                 |              16 |

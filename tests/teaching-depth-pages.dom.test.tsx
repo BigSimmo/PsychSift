@@ -15,11 +15,10 @@ import { TeachingCpdReview } from "@/components/teaching/teaching-cpd-review";
 import { TeachingFeedback } from "@/components/teaching/teaching-feedback";
 import { TeachingImport } from "@/components/teaching/teaching-import";
 import { TeachingSupervision } from "@/components/teaching/teaching-supervision";
-import { TeachingTeach } from "@/components/teaching/teaching-teach";
 import { useDelayedPost } from "@/components/teaching/use-delayed-post";
 import { resetExampleDataForTests, setExampleDataOn, useExampleData } from "@/lib/example-data/store";
 import { demoFeedbackOpen, demoSupervision } from "@/lib/teaching/depth-demo";
-import { IMPORT_TEMPLATE_HEADERS, readinessLabels } from "@/lib/teaching/depth-model";
+import { IMPORT_TEMPLATE_HEADERS } from "@/lib/teaching/depth-model";
 import { ENTRY, entry, pairingView, NOTE } from "./helpers/teaching-depth-fixtures";
 
 const NB = "\u00a0";
@@ -33,23 +32,6 @@ const row = {
   endsAt: "2026-09-20T05:00:00Z",
   hours: 1,
 };
-/** One talk still to prepare: room and slides ticked, the patient-details check open. */
-const teachFixture = () => ({
-  upcoming: [
-    {
-      occurrenceId: "33333333-3333-4333-8333-333333333333",
-      serviceId,
-      title: "Demo case-based discussion",
-      startsAt: "2026-10-03T00:00:00.000Z",
-      endsAt: "2026-10-03T00:45:00.000Z",
-      venue: "Demo tutorial room",
-      status: "scheduled",
-      items: ["room", "slides_link"],
-      deidConfirmedAt: null,
-    },
-  ],
-  taught: [],
-});
 const reply = (value: unknown, status = 200) =>
   new Response(JSON.stringify(value), { status, headers: { "content-type": "application/json" } });
 const posts = () => vi.mocked(fetch).mock.calls.filter(([, options]) => options?.method === "POST");
@@ -209,17 +191,6 @@ describe("Teaching depth journeys", () => {
     expect(screen.getByText("Cancelled before sending.")).toBeInTheDocument();
   });
 
-  it("does not mark presenter readiness saved when the request fails", async () => {
-    vi.mocked(fetch).mockImplementation(async (_url, options) =>
-      options?.method === "POST" ? reply({}, 503) : reply(teachFixture()),
-    );
-    render(<TeachingTeach demoMode={false} />);
-    const aims = await screen.findByRole("checkbox", { name: "Aims written" });
-    fireEvent.click(aims);
-    await screen.findByRole("alert");
-    expect(aims).not.toBeChecked();
-  });
-
   it("previews rows before importing and prevents a blind repeat after an uncertain commit", async () => {
     const series = {
       title: "Demo session",
@@ -290,81 +261,6 @@ describe("Teaching depth journeys", () => {
     ]);
     expect(screen.getByRole("combobox", { name: "Service" })).toBeInTheDocument();
     expect(screen.getByLabelText(/Choose CSV/)).toHaveAttribute("type", "file");
-  });
-
-  it("ticks readiness at once and keeps the page on screen while it refetches after the save", async () => {
-    let reads = 0;
-    let finishPost: (response: Response) => void = () => {};
-    vi.mocked(fetch).mockImplementation(async (_url, options) => {
-      if (options?.method === "POST") return new Promise<Response>((resolve) => (finishPost = resolve));
-      // The refetch after the save never answers, so the page must keep its data on screen.
-      return ++reads === 1 ? reply(teachFixture()) : new Promise<Response>(() => {});
-    });
-    const view = render(<TeachingTeach demoMode={false} />);
-    const aims = await screen.findByRole("checkbox", { name: "Aims written" });
-    expect(aims).not.toBeChecked();
-    fireEvent.click(aims);
-    expect(aims).toBeChecked();
-    await act(async () => finishPost(reply({ items: ["aims"], deidConfirmedAt: null })));
-    await waitFor(() => expect(reads).toBe(2));
-    expect(screen.getByRole("checkbox", { name: "Aims written" })).toBeChecked();
-    expect(view.container.querySelector("[data-skeleton-row]")).toBeNull();
-    expect(screen.queryByRole("alert")).toBeNull();
-  });
-
-  it("keeps the readiness list usable while a tick saves, and sends the ticks one at a time", async () => {
-    const finishPosts: Array<(response: Response) => void> = [];
-    vi.mocked(fetch).mockImplementation(async (_url, options) => {
-      if (options?.method === "POST") return new Promise<Response>((resolve) => finishPosts.push(resolve));
-      return reply(teachFixture());
-    });
-    render(<TeachingTeach demoMode={false} />);
-    const aims = await screen.findByRole("checkbox", { name: "Aims written" });
-    const reading = screen.getByRole("checkbox", { name: readinessLabels.reading_list });
-    aims.focus();
-    fireEvent.click(aims);
-    expect(aims).toBeEnabled();
-    expect(aims).toHaveFocus();
-    fireEvent.click(reading);
-    expect(aims).toBeChecked();
-    expect(reading).toBeChecked();
-    // The second tick waits for the first to finish, so the server sees them in order.
-    expect(posts()).toHaveLength(1);
-    await act(async () => finishPosts[0](reply({ items: ["room", "slides_link", "aims"], deidConfirmedAt: null })));
-    await waitFor(() => expect(posts()).toHaveLength(2));
-    // A server answer that predates a queued tick does not untick it.
-    expect(reading).toBeChecked();
-    await act(async () =>
-      finishPosts[1](reply({ items: ["room", "slides_link", "aims", "reading_list"], deidConfirmedAt: null })),
-    );
-    expect(aims).toBeChecked();
-    expect(reading).toBeChecked();
-    expect(screen.queryByRole("alert")).toBeNull();
-  });
-
-  it("moves focus to the confirmation once de-identification is confirmed", async () => {
-    vi.mocked(fetch).mockImplementation(async (_url, options) =>
-      options?.method === "POST"
-        ? reply({ items: ["room", "slides_link"], deidConfirmedAt: "2026-09-27T01:00:00.000Z" })
-        : reply(teachFixture()),
-    );
-    render(<TeachingTeach demoMode={false} />);
-    const confirm = await screen.findByRole("button", { name: "I have checked that my material is de-identified" });
-    confirm.focus();
-    fireEvent.click(confirm);
-    expect(await screen.findByText("De-identification confirmed.")).toHaveFocus();
-  });
-
-  it("rolls a failed readiness tick back and says so", async () => {
-    vi.mocked(fetch).mockImplementation(async (_url, options) =>
-      options?.method === "POST" ? reply({}, 503) : reply(teachFixture()),
-    );
-    render(<TeachingTeach demoMode={false} />);
-    const aims = await screen.findByRole("checkbox", { name: "Aims written" });
-    fireEvent.click(aims);
-    expect(aims).toBeChecked();
-    expect(await screen.findByRole("alert")).toHaveTextContent(/^Not saved\./);
-    expect(aims).not.toBeChecked();
   });
 
   it("asks feedback with two tap rows of 48px radios, five for usefulness and three for pace", async () => {

@@ -95,7 +95,6 @@
       ],
       "productImportFiles": [
         "src/components/clinical-dashboard/clinical-output-helpers.tsx",
-        "src/components/clinical-dashboard/output-panel.tsx",
         "src/components/clinical-dashboard/visual-evidence.tsx",
         "src/components/document-viewer/source-panels.tsx"
       ],
@@ -406,7 +405,6 @@
         "src/components/teaching/teaching-actions.tsx",
         "src/components/teaching/teaching-display.tsx",
         "src/components/teaching/teaching-supervision-admin.tsx",
-        "src/components/teaching/teaching-teach.tsx",
         "src/components/teaching/teaching-week.tsx",
         "src/components/therapy-compass/pathway-picker-sheet.tsx",
         "src/components/therapy-compass/pathway-step-stack.tsx",
@@ -617,7 +615,6 @@
         "src/components/teaching/teaching-calendar-sheet.tsx",
         "src/components/teaching/teaching-cpd-review.tsx",
         "src/components/teaching/teaching-resource-list.tsx",
-        "src/components/teaching/teaching-teach.tsx",
         "src/components/work-setup/work-setup-steps.tsx"
       ],
       "productImportFiles": [
@@ -1631,9 +1628,6 @@
         "src/components/AccessibleTable.tsx",
         "src/components/answer/AnswerFooter.tsx",
         "src/components/calculators/calculator-sheet.tsx",
-        "src/components/calculators/clinical-console.tsx",
-        "src/components/calculators/directory-grid.tsx",
-        "src/components/calculators/guided-flow.tsx",
         "src/components/calculators/search-detail.tsx",
         "src/components/clinical-dashboard/favourites-hub.tsx",
         "src/components/cme/cme-entry-page.tsx",
@@ -1644,9 +1638,6 @@
         "src/components/AccessibleTable.tsx",
         "src/components/answer/AnswerFooter.tsx",
         "src/components/calculators/calculator-sheet.tsx",
-        "src/components/calculators/clinical-console.tsx",
-        "src/components/calculators/directory-grid.tsx",
-        "src/components/calculators/guided-flow.tsx",
         "src/components/calculators/search-detail.tsx",
         "src/components/clinical-dashboard/favourites-hub.tsx",
         "src/components/cme/cme-entry-page.tsx",
@@ -2008,7 +1999,6 @@
         "src/components/clinical-dashboard/answer-inline-sections.tsx",
         "src/components/clinical-dashboard/document-admin.tsx",
         "src/components/clinical-dashboard/document-results.tsx",
-        "src/components/clinical-dashboard/output-panel.tsx",
         "src/components/document-viewer/document-clinical-summary.tsx",
         "src/components/document-viewer/document-rail-panels.tsx",
         "src/components/document-viewer/generated-summary-panel.tsx",

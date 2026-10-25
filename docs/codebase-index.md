@@ -826,7 +826,7 @@ split across two client-safe modules so exceljs/jszip never reach the server bun
 `import-sheet-reader.ts` reads a term spreadsheet in the browser (CSV, or `.xlsx` after an archive
 budget, both lazy-loaded), and `import-sheet.ts` holds the row validation/preview logic the server
 runs against only rows, never a file, so a preview or commit never sends or stores the file itself.
-The first-build depth screens are `teaching-teach.tsx`, `teaching-supervision.tsx`,
+The first-build depth screens are `teaching-presenting.tsx`, `teaching-supervision.tsx`,
 `teaching-feedback.tsx`, `teaching-import.tsx` and `teaching-cpd-review.tsx`, with routes
 `/teaching/teach`, `/teaching/supervision`, `/teaching/feedback`, `/teaching/import` and
 `/teaching/review`. `teaching-supervision-admin.tsx` adds pairing and service-role controls
