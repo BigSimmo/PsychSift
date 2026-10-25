@@ -112,6 +112,12 @@ describe("repository source providers", () => {
     );
   });
 
+  it("does not file a dictionary source's project access date as a publisher review date", () => {
+    const dictionaryReferences = provider("dictionary").references();
+    expect(dictionaryReferences.length).toBeGreaterThan(0);
+    expect(dictionaryReferences.every((reference) => reference.reviewDate === null)).toBe(true);
+  });
+
   it("captures every current structured owner record automatically", () => {
     const dictionaryReferences = provider("dictionary").references();
     expect(new Set(dictionaryReferences.map((reference) => reference.sourceId))).toEqual(

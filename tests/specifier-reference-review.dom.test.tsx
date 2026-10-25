@@ -39,6 +39,8 @@ function signed(item: SpecifierCatalogItem, overrides: Partial<SpecifierCatalogI
       reviewedBy: "Dr Alex Example",
       reviewedAt: "2026-09-26T03:00:00.000Z",
       reviewedContentSha256: "a".repeat(64),
+      // A fresh sign-off covers the content as it now stands.
+      changedSinceReview: false,
       ...overrides,
     },
   };
@@ -68,6 +70,13 @@ describe("specifier reference page clinician review", () => {
   it("never shows a placeholder row's stand-in definition", () => {
     render(<SpecifierReferencePage item={signed(placeholder)} />);
     expect(screen.queryByText(placeholder.definition!.meaning)).toBeNull();
+  });
+
+  it("withholds a signed definition that changed after the sign-off", () => {
+    render(<SpecifierReferencePage item={signed(defined, { changedSinceReview: true })} />);
+    expect(screen.getByText("Definition pending verification")).toBeInTheDocument();
+    expect(screen.queryByText(defined.definition!.meaning)).toBeNull();
+    expect(screen.queryByText(/Definition reviewed by/)).toBeNull();
   });
 
   it("fails closed on a partial sign-off", () => {

@@ -68,18 +68,21 @@ function parsedReviewDate(value: string | null | undefined): Date | null {
   return Number.isFinite(date.getTime()) ? date : null;
 }
 
-type SpecifierReviewFields = Pick<SpecifierReview, "clinicianReviewStatus" | "reviewedBy" | "reviewedAt">;
+type SpecifierReviewFields = Pick<SpecifierReview, "clinicianReviewStatus" | "reviewedBy" | "reviewedAt"> &
+  Partial<Pick<SpecifierReview, "changedSinceReview">>;
 
 /**
  * True only for a complete clinician sign-off: the reviewed status, a named person as reviewer
  * (`isNamedPerson`, the same test the site-wide sign-off line uses) and a parseable ISO
- * timestamp. Anything less fails closed to pending, so a partial or hand-edited attestation can
- * never make an entry read as reviewed. A product attribution such as "PsychSift" is not a
+ * timestamp, with nothing changed since the sign-off. Anything less fails closed to pending, so a
+ * partial or hand-edited attestation, or a definition edited after it was signed, can never make
+ * an entry read as reviewed. A product attribution such as "PsychSift" is not a
  * clinician: the 71 entries the 2026-09-26 reconcile stamped that way read as pending until a
  * named clinician signs them.
  */
 export function isSpecifierClinicianReviewed(review: SpecifierReviewFields): boolean {
   return (
+    review.changedSinceReview !== true &&
     review.clinicianReviewStatus === SPECIFIER_CLINICIAN_REVIEWED_STATUS &&
     isNamedPerson(review.reviewedBy) &&
     parsedReviewDate(review.reviewedAt) !== null

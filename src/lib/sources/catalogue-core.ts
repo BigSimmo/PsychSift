@@ -7,6 +7,7 @@ import {
   sourceCatalogueGeographyScope,
 } from "@/lib/source-authority-registry";
 import { normalizeSourceMetadata } from "@/lib/source-metadata";
+import { perthToday } from "@/lib/sources/currency-check";
 import { hasInvalidStructuredSourceDate, strictSourceDate } from "@/lib/sources/source-date-policy";
 import {
   SOURCE_RATING_WEIGHTS,
@@ -175,9 +176,11 @@ function hasText(value: string | null) {
   return Boolean(value?.trim());
 }
 
+// Compared with the Perth calendar date, as the Currency check is, so a source expiring
+// yesterday in Perth is not still current for the first eight hours of the Perth day.
 function isPastExpiryDate(value: string | null) {
   const date = strictSourceDate(value);
-  return Boolean(date && date < new Date().toISOString().slice(0, 10));
+  return Boolean(date && date < perthToday());
 }
 
 function effectiveDocumentStatus(input: ClinicalSourceReferenceInput) {

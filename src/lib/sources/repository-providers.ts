@@ -102,7 +102,9 @@ function dictionaryReference(sourceRef: DictionarySourceRef, usage: SourceUsage,
     title: source.title,
     publisher: source.organisation,
     canonicalUrl: source.url,
-    reviewDate: source.accessedOn,
+    // `accessedOn` is when this project opened the page, not a publisher review, so it is not
+    // filed as a review date (which the browse headings would show as "reviewed <date>").
+    reviewDate: null,
     jurisdiction: source.region,
     validationStatus: "unverified",
     contentMode: "link_only",

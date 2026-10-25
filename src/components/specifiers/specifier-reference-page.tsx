@@ -133,7 +133,8 @@ export function SpecifierReferencePage({ item }: { item: SpecifierCatalogItem })
   //
   // The clinician sign-off (`npm run clinical:review -- --kind specifier`) exists to clear
   // exactly that: an entry that passes the fail-closed isSpecifierClinicianReviewed test
-  // (status "clinician-reviewed" + named reviewer + parseable timestamp) shows its
+  // (status "clinician-reviewed" + named reviewer + parseable timestamp + nothing changed
+  // since the sign-off) shows its
   // definition, attributed to the reviewer. The sign-off covers the definition and its
   // placement only, not the curated enrichment below, which keeps its own labelling. Every
   // "pending"/"reviewed" statement here reads the same helper, so a signed entry never
