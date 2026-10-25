@@ -93,6 +93,6 @@ describe("service worker release stamp", () => {
     // Stamping after `next build` would miss the standalone output entirely.
     const build = packageJson.scripts["build:internal"];
     expect(build).toContain("stamp-service-worker.mjs");
-    expect(build.indexOf("stamp-service-worker.mjs")).toBeLessThan(build.indexOf("next/dist/bin/next build"));
+    expect(build.indexOf("stamp-service-worker.mjs")).toBeLessThan(build.indexOf("run-next-build.mjs"));
   });
 });

@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "c5b40742-7b02-4230-9cf6-4d06dce7fd0d",
+  "createdOn": "2026-10-24",
+  "action": "update",
+  "payload": {
+    "id": "#6X06YS",
+    "detail": "UPDATE 2026-10-24: MHAS here means the Mental Health Advocacy Service; written as SVC-LEG-004 from its wa.gov.au pages (replaces legacy S100), unsigned, awaiting owner clinical:review. SARC needs no separate record (SVC-SV-001 already covers counselling and is signed). Only Zonta House remains, blocked: its operator (Zonta House Refuge Association) is not a registered publisher and zontahouse.org.au is not an approved source site, and registering it edits the protected source-authority registry, so it needs the owner decision (precedent docs/decisions/2026-09-26-register-wa-service-issuers.md).",
+    "baseRowFingerprint": "3a59ebe3a5010054ffd25b1dbe729737d0677256ac727aadba806b2a2979876f",
+    "targetUlid": "01M2MSJY9Q6X06YSV30566X5Z7"
+  }
+}

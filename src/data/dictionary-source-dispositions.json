@@ -26,11 +26,6 @@
           "code": "host_not_in_inspected_governed_url_policy",
           "blocker": "The canonical URL's host is not in GOVERNED_SOURCE_HOSTS. Widening that policy is out of scope here.",
           "nextAction": "Decide whether the host belongs in GOVERNED_SOURCE_HOSTS as a separate, reviewed change, or drop the URL."
-        },
-        {
-          "code": "publication_event_not_stated_by_the_publisher",
-          "blocker": "The 4AT home page shows no version of the test and no publication or review date. A site copyright year is not a publication date.",
-          "nextAction": "Cite a dated 4AT document, such as the published validation paper or a dated test form, rather than the home page."
         }
       ],
       "decisionOwner": "Source register owner",
@@ -49,8 +44,9 @@
       "jobId": null,
       "publisherCheck": {
         "checkedOn": "2026-09-26",
-        "finding": "Read 2026-09-26 (automated page read, owner-approved). The site's copyright line reads '© 2026 the4AT' and credits the test to Professor Alasdair MacLullich, University of Edinburgh. It names no publishing agency and shows no version of the test and no publication or review date, so the publisher field and the held outcome are unchanged."
-      }
+        "finding": "Read 2026-09-26 (automated page read, owner-approved). The site's copyright line reads '© 2026 the4AT' and credits the test to Professor Alasdair MacLullich, University of Edinburgh. It names no publishing agency and shows no version of the test, so the publisher field and the held outcome are unchanged. Re-read 2026-10-24 from the publisher's own home page: its footer states 'Last updated 25 September 2026.' That is an update stamp for the whole site, not a publication or review date, and is banked as the publisher's own words (owner decision 2026-09-26). It does not date a particular edition of the test."
+      },
+      "establishedUpdateStatement": "Last updated 25 September 2026."
     },
     {
       "handoverSourceId": "AADPA-ADHD",
@@ -425,16 +421,6 @@
       "catalogueIdentityReason": "not_observed_in_current_dictionary_source_array",
       "blockers": [
         {
-          "code": "publication_event_not_stated_by_the_publisher",
-          "blocker": "The ASSIST Plus contact page shows no publisher line and no date of any kind.",
-          "nextAction": "Cite a dated document from this publisher instead, or leave the record held."
-        },
-        {
-          "code": "publisher_now_registered_date_still_required",
-          "blocker": "The publisher 'Australian Government Department of Health, Disability and Ageing' is now in the source authority register, so jurisdiction resolves. What remains is that no publication or review date has been established for this source.",
-          "nextAction": "Read the publisher's own page and record whichever date it states, with its true precision and event type."
-        },
-        {
           "code": "version_unknown",
           "blocker": "The version field holds \"Not established\", a description rather than an identifier. acquisitionLedgerIssues only requires the field to be non-empty text, so it accepts this and the gate will not catch it. Admitting the source unchanged would publish that string as its version.",
           "nextAction": "Establish the edition, version or release identifier from the publisher and replace the placeholder before admitting."
@@ -456,8 +442,9 @@
       "jobId": null,
       "publisherCheck": {
         "checkedOn": "2026-09-26",
-        "finding": "Read 2026-09-26 (automated page read, owner-approved). The ASSIST Plus contact page shows no publisher line and no date of any kind."
-      }
+        "finding": "Read 2026-09-26 (automated page read, owner-approved) with no date and no publisher line found. Re-read 2026-10-24 from the publisher's own page (health.gov.au contacts directory): it states 'Date last updated: 3 June 2025' and 'Organisation: University of Adelaide', and gives no publication or review date. The update stamp is banked as the publisher's own words under the owner decision of 2026-09-26. The page's 'Organisation' line names the University of Adelaide as the tool's organisation while the recorded publisher is the Department of Health, Disability and Ageing, which hosts the contacts directory entry; the publisher field is unchanged pending the register owner's decision."
+      },
+      "establishedUpdateStatement": "Date last updated: 3 June 2025"
     },
     {
       "handoverSourceId": "COLUMBIA-CSSRS",

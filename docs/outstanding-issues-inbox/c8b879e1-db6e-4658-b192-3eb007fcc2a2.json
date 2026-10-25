@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "c8b879e1-db6e-4658-b192-3eb007fcc2a2",
+  "createdOn": "2026-10-24",
+  "action": "done",
+  "payload": {
+    "id": "#1RVGZF",
+    "outcome": "Built and merged: PR #3696 (21 Oct) added server-side sign-in refusal on the answer, clinical-ask, signed-url and transcription routes plus UI gates for Answer, medication patient details, therapy ranking, calculator and questionnaire scoring and originals; PR #3737 gated search, medications and differentials; PR #3768 (22 Oct) gated library document text and in-document search. Verified from merged diffs on main 2837cffb9, not observed on the live site.",
+    "baseRowFingerprint": "3ab1e8697442fee2fe7bfedce6d456ed5c2beb952471ff93e849c8f05e39a6b8",
+    "targetUlid": "01M5D6CDFH1RVGZF44DTFHP9F7"
+  }
+}

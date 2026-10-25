@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "af1f0cd7-2780-4c5f-b2c7-c7c3c6eca49b",
+  "createdOn": "2026-10-24",
+  "action": "update",
+  "payload": {
+    "id": "#WY625D",
+    "detail": "UPDATE 2026-10-24: re-read the nine undated sources from their publishers on 24 Oct. Two now state a visible last-updated date, banked verbatim as update statements under the 26 Sep rule (4AT-OFFICIAL 25 Sep 2026, AUS-HEALTH-ASSIST-2025 3 Jun 2025); both stay held. Seven still show no visible date: AMHOCN-NOCC, COLUMBIA-CSSRS, COPE-EPDS-2026, DIVA-FOUNDATION, NACCHO-ACCHO-2026, NACCHO-AHW-2026, NACCHO-SEWB-2026 (NACCHO, Columbia and AMHOCN carry dates only in page metadata, which the rule excludes). Open owner question: the ASSIST Plus page names the University of Adelaide as organisation while the register records the Department of Health. The owner approved the dispositions change on 2026-10-24 and the hazard controls were resealed on 2026-10-25 (PR #3780).",
+    "baseRowFingerprint": "99f0bf9e1a5fa999f3ffd99056ef84ede07be06655d3a18fdc7b14a0dacfc247",
+    "targetUlid": "01M2MTYZ0YWY625D8YN1AS21XM"
+  }
+}
