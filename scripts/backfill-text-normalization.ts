@@ -312,7 +312,7 @@ async function main() {
       .upsert(batch.map((documentId) => ({ document_id: documentId, revision: (current.get(documentId) ?? 0) + 1 })));
     if (bumpError) throw new Error(`Bumping evidence revisions failed: ${bumpError.message}`);
   }
-  const { error: cacheError } = await supabase
+  const { error: cacheError } = await cacheClient
     .from("rag_response_cache")
     .delete()
     .in("cache_kind", ["search", "answer"]);
