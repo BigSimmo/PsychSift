@@ -19,6 +19,7 @@ import {
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 
 import { AdminLoadFailed } from "@/components/admin/admin-load-failed";
+import { useJuniorNow } from "@/components/admin/junior/junior-shared";
 import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { WorkBody, WorkButton, WorkCard, WorkEmpty, WorkIconRow, WorkSectionLabel } from "@/components/mode-kit/work";
@@ -92,7 +93,7 @@ export function SharingBody({ now: pinned, embedded = false }: { now?: Date; emb
   const page = usePaperworkPage("admin.sharing");
   const { store, entriesState, own, online } = page;
   const say = usePaperworkSay();
-  const now = useMemo(() => pinned ?? new Date(), [pinned]);
+  const now = useJuniorNow(pinned);
   const [preview, setPreview] = useState<SharePack | null>(null);
   const [recipientOpen, setRecipientOpen] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -190,6 +191,9 @@ export function SharingBody({ now: pinned, embedded = false }: { now?: Date; emb
     );
   }
 
+  function packProblem(pack: SharePack) {
+    return firstAdminPatientProblem(sharePackOwnWords(views, pack.audience), { allowCapitals: true });
+  }
   /**
    * Nothing leaves the page from the signed-out or demo sample, and nothing
    * with a patient detail in the doctor's own words (an issuer's name).
@@ -200,7 +204,7 @@ export function SharingBody({ now: pinned, embedded = false }: { now?: Date; emb
       if (guardExampleAction(page.examplesShown, kind)) say(EXAMPLE_NOT_SENT, undefined, "warning");
       return false;
     }
-    const problem = firstAdminPatientProblem(sharePackOwnWords(views, pack.audience), { allowCapitals: true });
+    const problem = packProblem(pack);
     if (problem) {
       say(
         `${problem.title} in a renewal's issuer. Nothing was copied or sent. Fix it in Renewals first.`,
@@ -261,19 +265,31 @@ export function SharingBody({ now: pinned, embedded = false }: { now?: Date; emb
           >
             Copy the text
           </WorkButton>
-          <a
-            href={shareMailtoHref(pack, email)}
-            onClick={(event) => {
-              if (mayLeave(pack, "send")) logShare(pack, "email");
-              else event.preventDefault();
-            }}
-            className="work-button"
-            data-variant="secondary"
-            data-testid={`admin-sharing-${audience}-email`}
-          >
-            <Mail aria-hidden="true" strokeWidth={2} />
-            Email draft
-          </a>
+          {/* A pack that may not leave gets no link, so a middle-click or a copied link cannot skip the check. */}
+          {store.sample || packProblem(pack) ? (
+            <WorkButton
+              variant="secondary"
+              icon={Mail}
+              onClick={() => void mayLeave(pack, "send")}
+              testId={`admin-sharing-${audience}-email`}
+            >
+              Email draft
+            </WorkButton>
+          ) : (
+            <a
+              href={shareMailtoHref(pack, email)}
+              onClick={(event) => {
+                if (mayLeave(pack, "send")) logShare(pack, "email");
+                else event.preventDefault();
+              }}
+              className="work-button"
+              data-variant="secondary"
+              data-testid={`admin-sharing-${audience}-email`}
+            >
+              <Mail aria-hidden="true" strokeWidth={2} />
+              Email draft
+            </a>
+          )}
         </div>
         <p className="text-xs text-[color:var(--text-muted)]">
           {`${pack.itemCount} ${pack.itemCount === 1 ? "item" : "items"} for ${pack.to}. The email opens in your own mail app.`}

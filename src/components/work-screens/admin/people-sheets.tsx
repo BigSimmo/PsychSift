@@ -12,7 +12,7 @@ import {
   UserPlus,
   Users,
 } from "lucide-react";
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { WorkButton, WorkCard, WorkEmpty, WorkSectionLabel } from "@/components/mode-kit/work";
@@ -112,13 +112,50 @@ function ChoiceList({
   readonly children: ReactNode;
   readonly testId?: string;
 }) {
+  const groupRef = useRef<HTMLDivElement>(null);
+  // A radio group is one Tab stop: the picked row, else the first. The arrow keys move between rows.
+  useEffect(() => {
+    if (kind !== "radio") return;
+    const radios = radiosIn(groupRef.current);
+    const stop = radios.find((radio) => radio.getAttribute("aria-checked") === "true") ?? radios[0];
+    for (const radio of radios) radio.tabIndex = radio === stop ? 0 : -1;
+  });
+  /**
+   * The arrows move focus only, and Space or Enter picks. Picking a person closes the list, so a pick on
+   * every arrow press would close it under the reader.
+   */
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (kind !== "radio") return;
+    const radios = radiosIn(event.currentTarget);
+    const current = radios.findIndex((radio) => radio === document.activeElement);
+    if (current < 0) return;
+    let next: number | null = null;
+    if (event.key === "ArrowDown" || event.key === "ArrowRight") next = (current + 1) % radios.length;
+    else if (event.key === "ArrowUp" || event.key === "ArrowLeft") next = (current - 1 + radios.length) % radios.length;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = radios.length - 1;
+    if (next === null) return;
+    event.preventDefault();
+    for (const radio of radios) radio.tabIndex = radio === radios[next] ? 0 : -1;
+    radios[next]!.focus();
+  };
   return (
     <WorkCard>
-      <div role={kind === "radio" ? "radiogroup" : "group"} aria-label={label} data-testid={testId}>
+      <div
+        ref={groupRef}
+        role={kind === "radio" ? "radiogroup" : "group"}
+        aria-label={label}
+        onKeyDown={onKeyDown}
+        data-testid={testId}
+      >
         {children}
       </div>
     </WorkCard>
   );
+}
+
+function radiosIn(group: HTMLElement | null): HTMLElement[] {
+  return group ? Array.from(group.querySelectorAll<HTMLElement>('[role="radio"]')) : [];
 }
 
 function Problem({ children, testId }: { readonly children: ReactNode; readonly testId?: string }) {

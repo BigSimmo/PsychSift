@@ -227,18 +227,18 @@
   color: var(--mode-identity);
 }
 
-.two-pane-menu__row[aria-current="true"] {
+.two-pane-menu__row[aria-current="page"] {
   background: var(--mode-identity-soft);
 }
 
-.two-pane-menu__row[aria-current="true"] .two-pane-menu__name {
+.two-pane-menu__row[aria-current="page"] .two-pane-menu__name {
   font-weight: 700;
   color: var(--mode-identity-deep, var(--mode-identity));
 }
 
 /* The deep shade is a light-mode partner only. On dark grounds the lightened
    identity colour is the readable one. */
-.dark .two-pane-menu__row[aria-current="true"] .two-pane-menu__name {
+.dark .two-pane-menu__row[aria-current="page"] .two-pane-menu__name {
   color: var(--mode-identity);
 }
 
@@ -716,7 +716,7 @@ a.two-pane-menu__today:hover {
 }
 
 @media (forced-colors: active) {
-  .two-pane-menu__row[aria-current="true"],
+  .two-pane-menu__row[aria-current="page"],
   .two-pane-menu__tile[aria-current="true"] {
     border: 2px solid Highlight;
     outline: 2px solid Highlight;

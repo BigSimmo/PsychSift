@@ -6,6 +6,7 @@ import {
   BLANK_COURSE_DRAFT,
   bookedFor,
   bookingCalendarEvents,
+  bookingDay,
   bookingCalendarId,
   bookingWorkCalendarEntries,
   bookingWorkCalendarId,
@@ -908,5 +909,26 @@ describe("courseBookingsCsv", () => {
       "Person b1,Booked,2026-11-12",
       'Person w1,"Waiting, 1 in line",2026-11-12',
     ]);
+  });
+});
+
+describe("booking days", () => {
+  it("reads the day a booking was made in the work time zone, not UTC", () => {
+    // 06:30 Perth on Sat 24 Oct is still 23 Oct in UTC.
+    expect(bookingDay("2026-10-23T22:30:00.000Z", ZONE)).toBe("2026-10-24");
+    expect(bookingDay("2026-10-24T02:00:00.000Z", ZONE)).toBe("2026-10-24");
+  });
+
+  it("puts the work-zone day in the organiser's export", () => {
+    const s = state(
+      [course("c")],
+      [
+        booking("b1", "c", "booked", "2026-10-23T22:30:00.000Z", { person: "Dr A" }),
+        booking("w1", "c", "waitlisted", "2026-10-23T23:10:00.000Z", { person: "Dr B" }),
+      ],
+    );
+    const csv = courseBookingsCsv(s, "c", ZONE);
+    expect(csv).toContain("Dr A,Booked,2026-10-24");
+    expect(csv).toContain('Dr B,"Waiting, 1 in line",2026-10-24');
   });
 });
