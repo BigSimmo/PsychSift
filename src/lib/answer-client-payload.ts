@@ -987,7 +987,20 @@ export function sourceCurrencyWarningForAnswer(answer: RagAnswer): "supporting" 
       : undefined;
 }
 
+/**
+ * Audit NEW-G-03: no check reads the text of an AI-written gap or conflict note, so once an answer
+ * is refused its notes are dropped too. Notes the system built from sources or checks stay.
+ */
+export function withoutModelNotesOnRefusal<
+  T extends Pick<RagAnswer, "confidence" | "responseMode" | "conflictsOrGaps">,
+>(answer: T): T {
+  const refused = answer.confidence === "unsupported" || answer.responseMode === "evidence_gap";
+  if (!refused || !answer.conflictsOrGaps?.some((item) => item.origin === "model")) return answer;
+  return { ...answer, conflictsOrGaps: answer.conflictsOrGaps.filter((item) => item.origin !== "model") };
+}
+
 export function toClientAnswerPayload(answer: RagAnswer): ClientRagAnswerPayload {
+  answer = withoutModelNotesOnRefusal(answer);
   const sourceCurrencyWarning = sourceCurrencyWarningForAnswer(answer);
   const claimMarks = answer.supportedClaims
     ?.filter((claim) => claim.supportStatus === "direct" || claim.supportStatus === "partial")

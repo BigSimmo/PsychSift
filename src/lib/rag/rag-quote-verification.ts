@@ -95,6 +95,7 @@ export function sanitizeConflictsOrGaps(items: ConflictOrGap[] | undefined, resu
       type: item.type,
       message: sanitizeStructuredText(item.message, { minLength: 8, minTokens: 2 }) || item.message,
       source_chunk_ids: item.source_chunk_ids?.filter((id) => allowed.has(id)),
+      origin: "model" as const,
     }))
     .filter((item) => !item.source_chunk_ids || item.source_chunk_ids.length > 0);
 }
