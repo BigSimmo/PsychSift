@@ -54,6 +54,16 @@ export function TeachingQrCheckinSheet({
     };
   }, [stopCamera]);
 
+  // The sheet stays mounted while closed, so a camera left running when the parent
+  // closes it would keep the stream (and the browser's camera indicator) live. The
+  // cleanup runs when `open` turns false.
+  useEffect(() => {
+    if (!open) return undefined;
+    return () => {
+      stopCamera();
+    };
+  }, [open, stopCamera]);
+
   const submitCode = useCallback(
     async (code: string) => {
       const clean = code.replace(/\D/g, "").slice(0, 6);
@@ -75,6 +85,9 @@ export function TeachingQrCheckinSheet({
           code: clean,
         });
         onCheckInSuccess?.();
+        // A typed code can succeed while a scan is running; release the camera before
+        // closing, as the Sheet's own close handler does.
+        stopCamera();
         onClose();
       } catch (cause) {
         setError(teachingErrorMessage(cause));
@@ -82,7 +95,7 @@ export function TeachingQrCheckinSheet({
         setBusy(false);
       }
     },
-    [live, serviceId, occurrenceId, onCheckInSuccess, onClose],
+    [live, serviceId, occurrenceId, onCheckInSuccess, onClose, stopCamera],
   );
 
   const handleTypedSubmit = async (e?: FormEvent) => {

@@ -85,3 +85,18 @@ describe("specifier reference page clinician review", () => {
     expect(screen.queryByText(defined.definition!.meaning)).toBeNull();
   });
 });
+
+describe("specifier reference page source status", () => {
+  // A checked source is not a clinician sign-off (audit S6), so the at-a-glance tile must
+  // match the grey review badge instead of reading "Source verified" in the success tone.
+  it("never presents a checked source as verified or signed off", () => {
+    const sourceChecked = specifierCatalogItems().find(
+      (item) => item.review.sourceVerificationStatus === "source-verified",
+    )!;
+    render(<SpecifierReferencePage item={unsigned(sourceChecked)} />);
+    const tile = screen.getByText("Source status").closest("div")!.parentElement!;
+    expect(tile).toHaveTextContent("Source checked, not signed off");
+    expect(tile.className).not.toMatch(/success/);
+    expect(screen.queryByText("Source verified")).toBeNull();
+  });
+});

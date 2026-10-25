@@ -57,7 +57,10 @@ const diagnosisOptions = [
   { value: "mood", label: "Mood episodes" },
 ];
 
-function EmptySearchResults({ query }: { query: string }) {
+function EmptySearchResults({ query, onClearFilters }: { query: string; onClearFilters?: () => void }) {
+  // With nothing typed, only the filters can have emptied the list, so the empty
+  // state names them instead of reading 'No strong match for ""'.
+  const filtersOnly = !query && Boolean(onClearFilters);
   return (
     <div className={cn(specifierCard, "grid justify-items-center gap-3 px-5 py-12 text-center")}>
       <span className="grid h-12 w-12 place-items-center rounded-xl bg-[color:var(--surface-subtle)] text-[color:var(--decoration-soft)]">
@@ -65,16 +68,28 @@ function EmptySearchResults({ query }: { query: string }) {
       </span>
       <div className="grid gap-1">
         <h2 className="text-lg font-extrabold text-[color:var(--text-heading)]">
-          No strong match for &ldquo;{query}&rdquo;
+          {filtersOnly ? "No specifiers match these filters" : <>No strong match for &ldquo;{query}&rdquo;</>}
         </h2>
         <p className="max-w-xl text-sm font-medium leading-6 text-[color:var(--text-muted)]">
-          Try the episode pattern, timing, patient language, or the base diagnosis. For example: &ldquo;depressed but
-          racing thoughts&rdquo; or &ldquo;returns every winter&rdquo;.
+          {filtersOnly ? (
+            "Clear the filters to browse every specifier again."
+          ) : (
+            <>
+              Try the episode pattern, timing, patient language, or the base diagnosis. For example: &ldquo;depressed
+              but racing thoughts&rdquo; or &ldquo;returns every winter&rdquo;.
+            </>
+          )}
         </p>
       </div>
-      <Link href={consolidatedModeSearchPath("specifiers")} className={cn(primaryControl)}>
-        Clear search
-      </Link>
+      {filtersOnly ? (
+        <button type="button" onClick={onClearFilters} className={cn(primaryControl)}>
+          Clear filters
+        </button>
+      ) : (
+        <Link href={consolidatedModeSearchPath("specifiers")} className={cn(primaryControl)}>
+          Clear search
+        </Link>
+      )}
       <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 pt-1">
         <Link
           href={pairCompareHref("/specifiers/compare", "with-anxious-distress", "with-mixed-features")}
@@ -487,7 +502,7 @@ function SpecifierResults({ query }: { query: string }) {
       />
 
       {matchingTotal === 0 ? (
-        <EmptySearchResults query={query} />
+        <EmptySearchResults query={query} onClearFilters={activeFilterCount > 0 ? clearFilters : undefined} />
       ) : scope === "guides" ? (
         <section aria-label={browsing ? "Specifiers, A to Z" : "Specifier matches"} className="grid gap-3">
           {guideMatches.map(({ record }, index) => (

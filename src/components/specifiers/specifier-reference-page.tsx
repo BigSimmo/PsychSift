@@ -5,6 +5,7 @@ import {
   BookOpenCheck,
   Check,
   FileCheck2,
+  Info,
   Layers,
   ListChecks,
   ShieldAlert,
@@ -46,8 +47,10 @@ const definitionStatusLabel: Record<SpecifierDefinitionStatus, string> = {
   "needs-manual-or-clinician-verification": "Needs manual verification",
 };
 
+// Same wording as the ReviewStatusBadge: a checked source is not a clinician sign-off
+// (audit S6), so this page must not call it "verified" or show it in the success tone.
 const sourceStatusLabel: Record<SpecifierSourceStatus, string> = {
-  "source-verified": "Source verified",
+  "source-verified": "Source checked, not signed off",
   "source-needs-formal-review": "Needs formal source review",
   "source-not-applicable": "Source not applicable",
 };
@@ -212,10 +215,9 @@ export function SpecifierReferencePage({ item }: { item: SpecifierCatalogItem })
             tone="info"
           />
           <QuickTile
-            icon={item.review.sourceVerificationStatus === "source-verified" ? Check : ShieldAlert}
+            icon={item.review.sourceVerificationStatus === "source-verified" ? Info : ShieldAlert}
             label="Source status"
             body={sourceStatusLabel[item.review.sourceVerificationStatus]}
-            tone={item.review.sourceVerificationStatus === "source-verified" ? "success" : "default"}
           />
         </section>
 
