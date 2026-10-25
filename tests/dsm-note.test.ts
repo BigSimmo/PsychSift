@@ -180,6 +180,7 @@ describe("dsmNoteBuilderRecord", () => {
       "differentials",
       "icdCode",
       "isDsmCriteria",
+      "slug",
       "specifiers",
       "title",
     ]);

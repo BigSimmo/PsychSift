@@ -1,12 +1,18 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { act, cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it } from "vitest";
+import { hydrateRoot, type Root } from "react-dom/client";
+import { renderToString } from "react-dom/server";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { DsmDiagnosisNoteBuilder } from "@/components/dsm/dsm-diagnosis-note-builder";
 import { dsmDiagnoses } from "@/lib/dsm";
 import { dsmNoteBuilderRecord } from "@/lib/dsm-note";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  // The builder saves its draft to sessionStorage, so clear it between tests.
+  window.sessionStorage.clear();
+});
 
 const panic = dsmNoteBuilderRecord(dsmDiagnoses.find((diagnosis) => diagnosis.slug === "panic-disorder")!);
 // Panic disorder supplies no `criteria_display`, as 145 of the 146 records do
@@ -108,5 +114,97 @@ describe("DsmDiagnosisNoteBuilder", () => {
     await user.click(screen.getByRole("button", { name: "Start over" }));
     expect(screen.queryByTestId("dsm-note-output")).toBeNull();
     expect(markCriterion("A", "Met").getAttribute("aria-checked")).toBe("false");
+  });
+});
+
+describe("DsmDiagnosisNoteBuilder saved drafts", () => {
+  const record = (slug: string) => dsmNoteBuilderRecord(dsmDiagnoses.find((diagnosis) => diagnosis.slug === slug)!);
+
+  // The catalogue gives each of these pairs one ICD code. A draft keyed by that
+  // code restored one diagnosis's answers onto the other.
+  const sharedCodePairs = [
+    ["voyeuristic-disorder", "frotteuristic-disorder"],
+    ["tardive-dyskinesia", "tardive-dystonia-tardive-akathisia"],
+  ] as const;
+
+  it.each(sharedCodePairs)(
+    "keeps %s and %s drafts apart although they share an ICD code",
+    async (firstSlug, secondSlug) => {
+      const first = record(firstSlug);
+      const second = record(secondSlug);
+      expect(first.icdCode).toBe(second.icdCode);
+
+      const user = userEvent.setup();
+      render(<DsmDiagnosisNoteBuilder record={first} />);
+      await user.click(markCriterion("A", "Met"));
+      await user.click(screen.getByRole("checkbox", { name: first.differentials[0] }));
+      expect(screen.getByTestId("dsm-note-output")).toBeTruthy();
+      cleanup();
+
+      render(<DsmDiagnosisNoteBuilder record={second} />);
+      expect(screen.queryByTestId("dsm-note-output")).toBeNull();
+      expect(markCriterion("A", "Met").getAttribute("aria-checked")).toBe("false");
+    },
+  );
+
+  it("restores only the answers the current record offers", () => {
+    const frotteuristic = record("frotteuristic-disorder");
+    window.sessionStorage.setItem(
+      `psychsift_dsm_draft_${frotteuristic.slug}`,
+      JSON.stringify({
+        statuses: { A: "met", C: "met" },
+        specifiers: ["Not a specifier here"],
+        specifierText: "",
+        excluded: [
+          "Consensual voyeuristic behaviour (mutual agreement; not a disorder)",
+          frotteuristic.differentials[0],
+        ],
+        includeCriterionText: true,
+      }),
+    );
+
+    render(<DsmDiagnosisNoteBuilder record={frotteuristic} />);
+    const note = screen.getByTestId("dsm-note-output").textContent ?? "";
+    expect(note).toContain("Key features present (A):");
+    expect(note).toContain("Differentials considered and excluded: Normal physical contact in crowds");
+    expect(note).not.toContain("Consensual voyeuristic behaviour");
+    expect(note).not.toContain("Not a specifier here");
+  });
+
+  it("renders the empty builder on the server and restores the draft only after hydration", async () => {
+    window.sessionStorage.setItem(
+      `psychsift_dsm_draft_${panic.slug}`,
+      JSON.stringify({
+        statuses: { A: "met" },
+        specifiers: [],
+        specifierText: "",
+        excluded: [],
+        includeCriterionText: true,
+      }),
+    );
+
+    const markup = renderToString(<DsmDiagnosisNoteBuilder record={panic} />);
+    expect(markup).toContain("to build the note.");
+    expect(markup).not.toContain('data-testid="dsm-note-output"');
+
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const container = document.createElement("div");
+    container.innerHTML = markup;
+    document.body.appendChild(container);
+    let root: Root | undefined;
+    await act(async () => {
+      root = hydrateRoot(container, <DsmDiagnosisNoteBuilder record={panic} />, {
+        onRecoverableError: (error) => console.error(error),
+      });
+    });
+
+    expect(consoleError).not.toHaveBeenCalled();
+    expect(within(container).getByTestId("dsm-note-output").textContent).toContain("Key features present (A):");
+    // The pre-hydration render must not have wiped the draft it never read.
+    expect(window.sessionStorage.getItem(`psychsift_dsm_draft_${panic.slug}`)).toContain('"A":"met"');
+
+    act(() => root?.unmount());
+    container.remove();
+    consoleError.mockRestore();
   });
 });
