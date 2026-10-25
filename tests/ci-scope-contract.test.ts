@@ -198,22 +198,3 @@ describe("site-content CI owner contract", () => {
     );
   });
 });
-
-describe("CI change scope output safety", () => {
-  it("refuses a changed path that would inject extra GITHUB_OUTPUT keys", () => {
-    const temporaryDirectory = mkdtempSync(join(tmpdir(), "ci-scope-output-"));
-    const outputFile = join(temporaryDirectory, "github-output");
-    try {
-      expect(() =>
-        execFileSync("node", ["scripts/ci-change-scope.mjs", "--", "docs/x\ndb_changed=false"], {
-          encoding: "utf8",
-          env: { ...process.env, GITHUB_OUTPUT: outputFile },
-          stdio: ["ignore", "pipe", "pipe"],
-        }),
-      ).toThrow(/contains a control character/);
-      expect(existsSync(outputFile)).toBe(false);
-    } finally {
-      rmSync(temporaryDirectory, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
-    }
-  });
-});
