@@ -61,10 +61,11 @@ function TeamSummary({
     return overview.status === "error" ? <ModeNotice tone="warning">{overview.message}</ModeNotice> : null;
   const assignments = Array.isArray(shifts.data?.assignments) ? shifts.data.assignments : [];
   const own = assignments.filter((row) => row.userId === actorId && timelineSpan(row, today, zone));
-  // An open shift is not a colleague, so it is left out, as on the Team page.
+  // An open shift (no person and no name) is not a colleague, so it is left out. A named
+  // colleague without an account (user_id null, roster_name set) is still on with you.
   const colleagues = assignments.filter(
     (row) =>
-      row.userId !== null &&
+      (row.userId !== null || Boolean(row.name?.trim())) &&
       row.userId !== actorId &&
       own.some(
         (mine) =>

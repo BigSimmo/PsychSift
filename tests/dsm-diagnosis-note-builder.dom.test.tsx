@@ -4,7 +4,7 @@ import { hydrateRoot, type Root } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { DsmDiagnosisNoteBuilder } from "@/components/dsm/dsm-diagnosis-note-builder";
+import { DSM_SHARED_ICD_CODES, DsmDiagnosisNoteBuilder } from "@/components/dsm/dsm-diagnosis-note-builder";
 import { dsmDiagnoses } from "@/lib/dsm";
 import { dsmNoteBuilderRecord } from "@/lib/dsm-note";
 
@@ -146,6 +146,49 @@ describe("DsmDiagnosisNoteBuilder saved drafts", () => {
       expect(markCriterion("A", "Met").getAttribute("aria-checked")).toBe("false");
     },
   );
+
+  it("lists exactly the ICD codes more than one catalogue record shares", () => {
+    const counts = new Map<string, number>();
+    for (const diagnosis of dsmDiagnoses) counts.set(diagnosis.icd_code, (counts.get(diagnosis.icd_code) ?? 0) + 1);
+    const shared = [...counts].filter(([, count]) => count > 1).map(([code]) => code);
+    expect([...DSM_SHARED_ICD_CODES].sort()).toEqual(shared.sort());
+  });
+
+  it("moves a draft saved under the old ICD key to the slug key", () => {
+    const legacyKey = `psychsift_dsm_draft_${panic.icdCode}`;
+    window.sessionStorage.setItem(
+      legacyKey,
+      JSON.stringify({
+        statuses: { A: "met" },
+        specifiers: [],
+        specifierText: "",
+        excluded: [],
+        includeCriterionText: true,
+      }),
+    );
+
+    render(<DsmDiagnosisNoteBuilder record={panic} />);
+    expect(screen.getByTestId("dsm-note-output").textContent).toContain("Key features present (A):");
+    expect(window.sessionStorage.getItem(legacyKey)).toBeNull();
+    expect(window.sessionStorage.getItem(`psychsift_dsm_draft_${panic.slug}`)).toContain('"A":"met"');
+  });
+
+  it("never reads an old ICD-keyed draft for a code two records share", () => {
+    const frotteuristic = record("frotteuristic-disorder");
+    window.sessionStorage.setItem(
+      `psychsift_dsm_draft_${frotteuristic.icdCode}`,
+      JSON.stringify({
+        statuses: { A: "met" },
+        specifiers: [],
+        specifierText: "",
+        excluded: [],
+        includeCriterionText: true,
+      }),
+    );
+
+    render(<DsmDiagnosisNoteBuilder record={frotteuristic} />);
+    expect(screen.queryByTestId("dsm-note-output")).toBeNull();
+  });
 
   it("restores only the answers the current record offers", () => {
     const frotteuristic = record("frotteuristic-disorder");

@@ -209,6 +209,8 @@ describe("Roster Today", () => {
           assignment("33333333-3333-4333-8333-000000000002", colleagueId, "Dr Sam Example"),
           // An unfilled open shift at the same time: not a colleague.
           assignment("33333333-3333-4333-8333-000000000003", null, null),
+          // A named locum with no account is still a colleague.
+          assignment("33333333-3333-4333-8333-000000000004", null, "Dr Lee Locum"),
         ],
       }),
     );
@@ -252,6 +254,7 @@ describe("Roster Today", () => {
     expect(await screen.findByText("Dr Sam Example asks to swap")).toBeInTheDocument();
     expect(screen.queryByText("Dr Kim Example asks to swap")).toBeNull();
     expect(await screen.findByText("Dr Sam Example")).toBeInTheDocument();
+    expect(screen.getByText("Dr Lee Locum")).toBeInTheDocument();
     expect(screen.queryByText("Name not available")).toBeNull();
   });
 

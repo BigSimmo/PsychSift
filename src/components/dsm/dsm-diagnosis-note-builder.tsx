@@ -61,6 +61,34 @@ function dsmNoteDraftStorageKey(slug: string) {
   return `psychsift_dsm_draft_${slug}`;
 }
 
+/**
+ * Drafts saved before the slug key were keyed by ICD code. One with a code no other record
+ * shares is read once and moved to the slug key, so a draft open across a deploy is not
+ * lost. The shared codes are never read: their legacy draft cannot be told apart.
+ * tests/dsm-diagnosis-note-builder.dom.test.tsx checks this set against the catalogue.
+ */
+export const DSM_SHARED_ICD_CODES: ReadonlySet<string> = new Set(["F65.81", "G24.09"]);
+
+function legacyDsmNoteDraftStorageKey(record: DsmNoteBuilderRecord): string | null {
+  return DSM_SHARED_ICD_CODES.has(record.icdCode) ? null : `psychsift_dsm_draft_${record.icdCode}`;
+}
+
+function readDsmNoteDraftWithLegacy(storageKey: string, record: DsmNoteBuilderRecord): DsmNoteDraft | null {
+  const current = readDsmNoteDraft(storageKey, record);
+  if (current) return current;
+  const legacyKey = legacyDsmNoteDraftStorageKey(record);
+  if (!legacyKey) return null;
+  const legacy = readDsmNoteDraft(legacyKey, record);
+  if (!legacy) return null;
+  try {
+    sessionStorage.setItem(storageKey, JSON.stringify(legacy));
+    sessionStorage.removeItem(legacyKey);
+  } catch {
+    // Storage refused the move; the draft still restores for this visit.
+  }
+  return legacy;
+}
+
 const STATUS_VALUES = new Set<string>(STATUS_OPTIONS.map((option) => option.value));
 
 /**
@@ -126,7 +154,7 @@ function DsmDiagnosisNoteBuilderInner({
   const rowNoun = isDsmCriteria ? "criterion" : "key feature";
   const storageKey = dsmNoteDraftStorageKey(record.slug);
 
-  const [initialDraft] = useState(() => (restoreDraft ? readDsmNoteDraft(storageKey, record) : null));
+  const [initialDraft] = useState(() => (restoreDraft ? readDsmNoteDraftWithLegacy(storageKey, record) : null));
 
   const [statuses, setStatuses] = useState<Record<string, DsmCriterionStatus>>(() => initialDraft?.statuses ?? {});
   const [specifiers, setSpecifiers] = useState<string[]>(() => initialDraft?.specifiers ?? []);
