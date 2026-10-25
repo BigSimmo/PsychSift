@@ -650,3 +650,94 @@ describe("differentials survive an unusable catalogue", () => {
     },
   );
 });
+
+describe("presentation detail catalogue reads", () => {
+  afterEach(async () => {
+    const { clearSiteContentRecordCache } = await import("@/lib/site-content/site-content-record-cache");
+    clearSiteContentRecordCache();
+  });
+
+  function presentationDetailClient() {
+    const client = createSupabaseMock();
+    const slugs: unknown[] = [];
+    client.rpc.mockImplementation(async (name: string, args?: { p_slug?: string | null }) => {
+      if (name === "consume_api_rate_limit" || name === "consume_api_subject_rate_limit") {
+        return ok([
+          {
+            limited: false,
+            limit_value: 120,
+            remaining: 119,
+            retry_after_seconds: 60,
+            reset_at: new Date().toISOString(),
+          },
+        ]);
+      }
+      slugs.push(args?.p_slug);
+      return ok([
+        {
+          initialized: true,
+          record: { sourceStatus: "current", validationStatus: "approved" },
+          render_payload:
+            args?.p_slug === null
+              ? {
+                  slug: "released-diagnosis",
+                  title: "Released diagnosis",
+                  status: "must-not-miss",
+                  subtitle: "Canonical subtitle",
+                  clinicalHinge: "Exact hinge",
+                  safetySnapshot: { summary: "Exact safety", tags: ["urgent"] },
+                  sections: [],
+                  related: [],
+                }
+              : {
+                  id: "released-presentation",
+                  title: "Released presentation",
+                  subtitle: "Canonical subtitle",
+                  safetySnapshot: { summary: "Exact safety", tags: ["urgent"] },
+                  criteria: [],
+                  candidates: [],
+                  reviewChecklist: [],
+                },
+          snapshot: { state: "current", releaseId: "release-1" },
+        },
+      ]);
+    });
+    return { client, slugs };
+  }
+
+  it("shares one cached whole-catalogue read across presentation opens", async () => {
+    const { client, slugs } = presentationDetailClient();
+    mockRuntime(client);
+    const { GET } = await import("../src/app/api/differentials/presentations/[slug]/route");
+    const open = () =>
+      GET(authenticatedRequest("/api/differentials/presentations/acute-confusion-encephalopathy"), {
+        params: Promise.resolve({ slug: "acute-confusion-encephalopathy" }),
+      });
+
+    expect((await open()).status).toBe(200);
+    expect((await open()).status).toBe(200);
+
+    // The per-slug presentation read stays uncached (once per open); the population read is shared.
+    expect(slugs.filter((slug) => slug === null)).toHaveLength(1);
+    expect(slugs.filter((slug) => slug !== null)).toHaveLength(2);
+  });
+
+  it("stops reading the catalogue once the reader has gone, and answers 499 rather than 500", async () => {
+    const { client, slugs } = presentationDetailClient();
+    mockRuntime(client);
+    const { GET } = await import("../src/app/api/differentials/presentations/[slug]/route");
+    const controller = new AbortController();
+    controller.abort();
+
+    const response = await GET(
+      new Request("http://localhost/api/differentials/presentations/acute-confusion-encephalopathy", {
+        headers: { Authorization: `Bearer ${token}` },
+        signal: controller.signal,
+      }),
+      { params: Promise.resolve({ slug: "acute-confusion-encephalopathy" }) },
+    );
+
+    expect(response.status).toBe(499);
+    expect(slugs).toEqual([]);
+  });
+});

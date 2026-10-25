@@ -36,6 +36,14 @@ function createSelectMock<T>(
       filters[`in:${column}`] = values;
       return builder;
     }),
+    is: vi.fn((column: string, value: null) => {
+      filters[`is:${column}`] = value;
+      return builder;
+    }),
+    or: vi.fn((expression: string) => {
+      filters.or = expression;
+      return builder;
+    }),
     maybeSingle: vi.fn(async () => ({ data: resolver(filters), error: null })),
     then: (onFulfilled: (value: { data: unknown[]; error: null }) => unknown) =>
       Promise.resolve({ data: listResolver ? listResolver(filters) : [], error: null }).then(onFulfilled),
@@ -46,10 +54,16 @@ function createSelectMock<T>(
 function createInsertMock(
   options: {
     ownedDocumentIds?: string[];
+    publicDocumentIds?: string[];
     ownedChunks?: Record<string, string>;
     documentFileNames?: Record<string, string>;
   } = {},
 ) {
+  // Mirrors withOwnerReadScope: a row is readable when the filter admits the caller's owned rows
+  // or the published public corpus (owner_id null).
+  const ownerScopeAdmits = (filters: SelectFilters) =>
+    filters.owner_id === userId || String(filters.or ?? "").includes(`owner_id.eq.${userId}`);
+  const publicScopeAdmits = (filters: SelectFilters) => String(filters.or ?? "").includes("owner_id.is.null");
   const insert = vi.fn((payload: unknown) => ({
     select: vi.fn(() => ({
       single: vi.fn(async () => ({ data: { id: "capture-1" }, error: null })),
@@ -61,19 +75,23 @@ function createInsertMock(
     client: {
       from: vi.fn((table: string) => {
         const ownedDocumentIds = options.ownedDocumentIds ?? [documentId];
+        const publicDocumentIds = options.publicDocumentIds ?? [];
         const documentFileNames = options.documentFileNames ?? { [documentId]: ownedFileName };
         const chunkDocument = (id: string) => options.ownedChunks?.[id] ?? (id === validChunkId ? documentId : null);
+        const readableDocumentIds = (filters: SelectFilters) => [
+          ...(ownerScopeAdmits(filters) ? ownedDocumentIds : []),
+          ...(publicScopeAdmits(filters) ? publicDocumentIds : []),
+        ];
         if (table === "documents") {
           return createSelectMock(
             (filters) => {
               const id = String(filters.id ?? "");
-              return filters.owner_id === userId && ownedDocumentIds.includes(id) ? { id } : null;
+              return readableDocumentIds(filters).includes(id) ? { id } : null;
             },
             (filters) => {
-              if (filters.owner_id !== userId) return [];
               const requestedIds = (filters["in:id"] as string[] | undefined) ?? null;
               const requestedFileNames = (filters["in:file_name"] as string[] | undefined) ?? null;
-              return ownedDocumentIds
+              return readableDocumentIds(filters)
                 .filter((id) => (requestedIds ? requestedIds.includes(id) : true))
                 .map((id) => ({ id, file_name: documentFileNames[id] ?? null }))
                 .filter((row) =>
@@ -457,6 +475,52 @@ describe("/api/eval-cases", () => {
     expect(response.status).toBe(201);
     expect(payload.top_files).toEqual([ownedFileName]);
     expect(payload.metadata).toMatchObject({ top_files_rejected: 1 });
+  });
+
+  it("keeps chunk, file and expected references from the published public corpus", async () => {
+    const publicDocumentId = "55555555-5555-4555-8555-555555555555";
+    const publicChunkId = "66666666-6666-4666-8666-666666666666";
+    const publicFileName = "public-lithium-guideline.pdf";
+    const { client, insert } = createInsertMock({
+      ownedDocumentIds: [],
+      publicDocumentIds: [publicDocumentId],
+      ownedChunks: { [publicChunkId]: publicDocumentId, [unownedChunkId]: unownedDocumentId },
+      documentFileNames: { [publicDocumentId]: publicFileName },
+    });
+    vi.doMock("@/lib/env", () => mockEnv());
+    vi.doMock("@/lib/supabase/admin", () => ({ createAdminClient: () => client }));
+    vi.doMock("@/lib/supabase/auth", () => ({
+      AuthenticationError: class AuthenticationError extends Error {},
+      requireAuthenticatedUser: vi.fn(async () => ({ id: userId })),
+      unauthorizedResponse: () => Response.json({ error: "Authentication required." }, { status: 401 }),
+    }));
+    const { POST } = await import("../src/app/api/eval-cases/route");
+
+    const response = await POST(
+      request({
+        query: "Which public source was cited?",
+        rating: "needs_fixing",
+        sourceChunkIds: [publicChunkId, unownedChunkId],
+        citedChunkIds: [publicChunkId],
+        sourceFiles: [publicFileName, "someone-elses-private-guideline.pdf"],
+        expectedDocumentId: publicDocumentId,
+      }),
+    );
+    const payload = insert.mock.calls[0]?.[0] as Record<string, unknown>;
+
+    expect(response.status).toBe(201);
+    expect(payload).toMatchObject({
+      top_chunk_ids: [publicChunkId],
+      cited_chunk_ids: [publicChunkId],
+      top_files: [publicFileName],
+      expected_document_id: publicDocumentId,
+      expected_chunk_id: publicChunkId,
+    });
+    expect(payload.metadata).toMatchObject({
+      source_chunk_ids_rejected: 1,
+      cited_chunk_ids_rejected: 0,
+      top_files_rejected: 1,
+    });
   });
 
   it("nulls unowned expected document and chunk references", async () => {

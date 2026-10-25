@@ -1479,11 +1479,11 @@ export const DERIVED_QUERY_INVENTORY = [
   {
     file: "src/app/api/eval-cases/route.ts",
     table: "document_chunks",
-    fn: "ownedChunkIdSet",
+    fn: "readableChunkIdSet",
     queries: 1,
     proof: PROOF_KINDS.PARENT_DOCUMENT_VERIFIED,
     reason:
-      'Audit L23. The capture body supplies candidate chunk ids, so this read is deliberately unscoped: it looks up only `id,document_id` for the ids the caller named. Nothing is returned from it directly. The parent documents are then read in the same function with `.eq("owner_id", args.ownerId)`, and the returned Set keeps only chunk ids whose document appears in that owner-scoped result — so a chunk the caller does not own can never leave this helper. Rejected ids are counted and reported, matching the existing malformed-id tally.',
+      "Audit L23. The capture body supplies candidate chunk ids, so this read is deliberately unscoped: it looks up only `id,document_id` for the ids the caller named. Nothing is returned from it directly. The parent documents are then read in the same function through `withOwnerReadScope(..., args.ownerId)` (the caller's owned rows plus the published public corpus, which most answers cite), and the returned Set keeps only chunk ids whose document appears in that read-scoped result — so a chunk the caller cannot read can never leave this helper. Rejected ids are counted and reported, matching the existing malformed-id tally.",
   },
   {
     file: "src/app/api/clinical-quality/route.ts",
@@ -1561,11 +1561,11 @@ export const DERIVED_QUERY_INVENTORY = [
   {
     file: "src/app/api/eval-cases/route.ts",
     table: "document_chunks",
-    fn: "ownedChunkReference",
+    fn: "readableChunkReference",
     queries: 1,
     proof: PROOF_KINDS.REVIEWED_INDIRECT,
     reason:
-      "Read-then-verify: selects only `id,document_id` for a caller-supplied chunk id, then calls ownedDocumentId on the returned document_id and returns null unless it belongs to the requester. No chunk content is selected and nothing is returned for a chunk the caller does not own.",
+      "Read-then-verify: selects only `id,document_id` for a caller-supplied chunk id, then calls readableDocumentId on the returned document_id and returns null unless the requester can read it (owned, or published public corpus, via withOwnerReadScope). No chunk content is selected and nothing is returned for a chunk the caller cannot read.",
   },
   {
     file: "src/app/api/images/[id]/signed-url/route.ts",

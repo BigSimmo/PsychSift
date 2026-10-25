@@ -1,3 +1,4 @@
+import { cpdTextPatientProblem, cpdTitlePatientProblem } from "@/lib/cme/patient-detail-check";
 import { cmeEntryCreateSchema } from "@/lib/cme/schemas";
 import { cmeYearConfigurationState } from "@/lib/cme/year-configuration";
 import { rowsToCmeYearClose, type CmeCloseEvaluation } from "@/lib/cme/year-close";
@@ -378,6 +379,22 @@ export async function saveCmeRoutine(
   if (result.error) throw cmeRepositoryError(result.error);
   if (!result.data) throw new PublicApiError("CPD routine not found.", 404);
   return rowToRoutine(result.data);
+}
+
+/**
+ * The server's backstop for the entry form's patient-detail check: the same CPD readings of the
+ * title and reflection, so a caller that skips the form (a stale tab, a script) cannot store a
+ * patient detail the form would have refused. The account work-sync and answer-feedback writes
+ * re-check on the server the same way.
+ */
+export function assertNoCmeEntryPatientDetail(entry: { readonly title: string; readonly reflection: string }): void {
+  if (cpdTitlePatientProblem(entry.title) || cpdTextPatientProblem(entry.reflection)) {
+    throw new PublicApiError(
+      "The title or reflection looks like it holds a patient detail, so it was not saved. Take it out and save again.",
+      422,
+      { code: "patient_detail" },
+    );
+  }
 }
 
 /**

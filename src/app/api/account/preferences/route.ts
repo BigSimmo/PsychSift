@@ -14,7 +14,7 @@ import {
   consumeSubjectApiRateLimit,
   rateLimitJsonResponse,
 } from "@/lib/api-rate-limit";
-import { jsonError } from "@/lib/http";
+import { jsonError, PublicApiError } from "@/lib/http";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, requireAuthenticatedUser, unauthorizedResponse } from "@/lib/supabase/auth";
 import { parseJsonBody } from "@/lib/validation/body";
@@ -232,7 +232,10 @@ export async function PUT(request: Request) {
       if (updated) return Response.json({ preferences });
     }
 
-    throw new Error("Account preferences changed too frequently. Please retry.");
+    // A conflict the client can retry, not a server fault: keep the retry hint and a stable code.
+    throw new PublicApiError("Account preferences changed too frequently. Please retry.", 409, {
+      code: "preferences_conflict",
+    });
   } catch (error) {
     if (error instanceof AuthenticationError) return unauthorizedResponse();
     return jsonError(error);
