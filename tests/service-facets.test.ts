@@ -43,10 +43,11 @@ describe("service facets", () => {
     expect(general + aod).toBe(records.length);
   });
 
-  it("finds housing_flags a near-partition, not an exact one — 10 services carry two values", () => {
+  it("finds housing_flags a near-partition, not an exact one — 11 services carry two values", () => {
     const counts = records.map((record) => serviceCatalogTags(record).housing_flags.length);
     const multi = counts.filter((count) => count > 1).length;
-    expect(multi).toBe(10);
+    // 11 from 2026-10-24: SVC-LEG-004 merges into legacy S100, whose housing_support tag joins the curated general.
+    expect(multi).toBe(11);
     expect(counts.every((count) => count >= 1)).toBe(true);
   });
 

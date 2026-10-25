@@ -2,7 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page, type TestInfo } from "playwright/test";
 import { stubZeroTouchPoints } from "./helpers/zero-touch";
 import { readPrimaryScrollGeometry } from "./playwright-scroll";
-import { clickWhenHydrated, visibleByTestId, visibleByText } from "./playwright-settlement";
+import { clickWhenSettled, visibleByTestId, visibleByText } from "./playwright-settlement";
 
 const axeWcagTags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
 const axeBlockingImpacts = new Set(["critical", "serious"]);
@@ -237,21 +237,30 @@ test("moves a selected mechanism through framework, quality review, and an edita
   await expect(previousStep).toBeDisabled();
   await expect(previousStep).toHaveCSS("opacity", "1");
   await expect(continueStep).toBeEnabled();
-  // The initial checked mechanism and enabled pager are server-rendered too.
-  await clickWhenHydrated(continueStep);
+  // The initial checked mechanism and enabled pager are server-rendered too, and the pager sits
+  // below the long mechanism list: scrolling it into view hides the in-flow header, and the
+  // collapse moves the pager while the click is in flight (release WebKit tablet, main run
+  // 39776061823: four click points, two "intercepts pointer events" retries). `clickWhenSettled`
+  // waits for hydration and for that movement to stop.
+  await clickWhenSettled(continueStep);
   await expect(page.getByTestId("formulation-builder-structure")).toBeVisible();
   const frameworkGroup = page.getByRole("radiogroup", { name: "Formulation framework" });
   const cbtCycle = frameworkGroup.getByRole("radio", { name: /CBT cycle/ });
   // Controlled `sr-only` radios still flake under `locator.check({ force })` on
   // Production UI shard 1 (state does not flip). Drive selection through the
   // visible label click handler instead, then assert the radio role.
-  await frameworkGroup.getByText("CBT cycle", { exact: true }).click();
+  // The structure step is shorter than the select step, so the page clamps to its new
+  // bottom and the header moves with it; a plain click here hit-tested the label and then
+  // landed one header-height away, leaving 5Ps selected (same run). Wait for the chrome to settle.
+  await clickWhenSettled(frameworkGroup.getByText("CBT cycle", { exact: true }));
   await expect(cbtCycle).toBeChecked();
   await page
     .getByRole("textbox", { name: "Presenting problem" })
     .fill("De-identified recurring low mood and overthinking.");
 
-  await page.getByRole("button", { name: "Review quality", exact: true }).click();
+  // Same moving-chrome miss: on 18 and 20 Oct 2026 the review step never opened and the
+  // evidence fill below timed out.
+  await clickWhenSettled(page.getByRole("button", { name: "Review quality", exact: true }));
   await page
     .getByRole("textbox", { name: "Evidence supporting this mechanism" })
     .fill("Repetitive review follows perceived failures and delays sleep.");

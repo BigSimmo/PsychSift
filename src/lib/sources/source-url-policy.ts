@@ -40,7 +40,6 @@ export const GOVERNED_SOURCE_HOSTS = [
   "www.livingproud.org.au",
   "www.mayoclinic.org",
   "www.medicarementalhealth.gov.au",
-  "www.mhas.wa.gov.au",
   "www.mhc.wa.gov.au",
   "www.mht.wa.gov.au",
   "www.ncbi.nlm.nih.gov",

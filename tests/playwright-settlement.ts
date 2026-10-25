@@ -73,8 +73,12 @@ export function visibleByText(page: Page, text: string | RegExp, options?: { exa
  * tools details panel and the document source-text accordion: alternating click points one
  * header-height apart, "intercepts pointer events" retries, then a final click that missed.
  *
- * Scroll first, wait until the target holds still across frames, then click. The target is
- * already in view, so `click()` scrolls nothing and triggers no second collapse.
+ * Scroll first, wait until no chrome transition is marked and the target holds still across
+ * frames, then click. The target is already in view, so `click()` scrolls nothing and triggers
+ * no second collapse. The same miss follows a phone-width resize (the chrome hides or reveals
+ * as the page reflows) and a step change that shortens the page (the clamped scroll moves the
+ * header): release WebKit tablet traces of the specifier swap and the formulation framework
+ * radio show the press landing one header-height away from the control it hit-tested.
  *
  * Unlike `click()`, `scrollIntoViewIfNeeded()` does not retry when a re-render swaps the
  * element out mid-scroll; it throws "Element is not attached to the DOM". A release WebKit run
@@ -89,15 +93,30 @@ export async function clickWhenSettled(locator: Locator, { timeout = 10_000 }: {
   await expect
     .poll(
       async () => {
-        await locator
+        // The shell marks a header hide/reveal or composer-reserve change on `#main-content`
+        // for the length of its transition. Two equal samples taken just before a collapse
+        // starts are not settled, so a marked transition never counts as still.
+        const chromeTransitioning = await locator
           .page()
           .evaluate(
             () =>
-              new Promise<void>((resolve) =>
-                requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(resolve, 50))),
+              new Promise<boolean>((resolve) =>
+                requestAnimationFrame(() =>
+                  requestAnimationFrame(() =>
+                    setTimeout(
+                      () =>
+                        resolve(
+                          document.querySelector(
+                            '[data-chrome-transitioning="true"], [data-reserve-transitioning="true"]',
+                          ) !== null,
+                        ),
+                      50,
+                    ),
+                  ),
+                ),
               ),
           );
-        const box = await locator.boundingBox();
+        const box = chromeTransitioning ? null : await locator.boundingBox();
         const current = box ? `${Math.round(box.x)},${Math.round(box.y)}` : "";
         const settled = current !== "" && current === previous;
         previous = current;

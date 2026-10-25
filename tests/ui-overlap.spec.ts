@@ -801,10 +801,10 @@ test.describe("Tablet usability regressions", () => {
   test("the calculator sheet has exactly one named close, and the backdrop still closes it", async ({ page }) => {
     await mockDemoDashboard(page);
     await page.goto("/calculators/search?q=phq", { waitUntil: "domcontentloaded" });
-    await page
-      .getByRole("button", { name: /^Open PHQ-9/ })
-      .first()
-      .click();
+    // The first press follows domcontentloaded, so it waits for hydration (and for the
+    // result to stop moving): a pre-hydration press opened no sheet on release WebKit tablet
+    // (main run 39757882588).
+    await clickWhenSettled(page.getByRole("button", { name: /^Open PHQ-9/ }).first());
 
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();

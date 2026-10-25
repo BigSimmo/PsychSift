@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "7711567c-0708-4af5-96a9-2424a4beebd7",
+  "createdOn": "2026-10-24",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "task",
+    "summary": "Classify scripts/run-next-build.mjs in CI change scope (build and container)",
+    "detail": "PR #3780 moved the next build step of build:internal into scripts/run-next-build.mjs. A later change to that file alone classifies as build_changed=false and container_changed=false in scripts/ci-change-scope.mjs, so the build and Docker jobs would not run for it. Fix: add run-next-build to the buildPatterns and containerPatterns script regexes and the container self-test list (the patch was written and dropped from #3780). Editing ci-change-scope.mjs is a required-check change, so the PR needs a body line `Required check change approved: <reason>` citing the owner yes.",
+    "source": "PR #3780 PR policy, 2026-10-24",
+    "issueUlid": "01M5QMHSE60AFXSH9C4NA29YW9"
+  }
+}

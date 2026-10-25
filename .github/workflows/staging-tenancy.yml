@@ -40,6 +40,7 @@ on:
       - "scripts/guard-next-build.mjs"
       - "scripts/install-git-hooks.mjs"
       - "scripts/run-heavy.mjs"
+      - "scripts/run-next-build.mjs"
       - "scripts/stamp-service-worker.mjs"
       - "scripts/deploy/**"
 
