@@ -11,6 +11,7 @@ import { jsonError, publicErrorResponse } from "@/lib/http";
 import { adminFreeTextProblem } from "@/lib/on-call/free-text-guard";
 import { onCallDetailsSchemaFor, onCallEntrySchema } from "@/lib/on-call/entry-model";
 import { assertValidLinkedDocumentIds, onCallEntryToRow, rowToOnCallEntry } from "@/lib/on-call/repository";
+import { mayPublishSharedOnCallEntry, sharedOnCallEntryRefusedResponse } from "@/lib/on-call/shared-entry-publisher";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, requireAuthenticatedUser, unauthorizedResponse } from "@/lib/supabase/auth";
 import { parseJsonBody } from "@/lib/validation/body";
@@ -65,6 +66,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     const entry = onCallEntrySchema.parse({ ...parsedEntry.data, id, details: parsedDetails.data });
     const row = onCallEntryToRow(entry, user.id);
+
+    // Only an administrator may save an entry as shared (owner decision, 25 Oct 2026). Anyone may
+    // still make their own entry private, which takes it off every other user's pages.
+    if (!row.is_personal && !(await mayPublishSharedOnCallEntry(request, supabase, user))) {
+      return sharedOnCallEntryRefusedResponse();
+    }
 
     await assertValidLinkedDocumentIds(supabase, entry.linkedDocumentIds, user.id, row.is_personal);
 
