@@ -26,6 +26,7 @@ import {
   buildDifferentialSectionIndex,
   type DifferentialDetailSection,
 } from "@/components/differentials/detail-section-index";
+import { likelihoodChipTone } from "@/components/differentials/diagnosis-map-insights";
 import { DiagnosisMapPanel } from "@/components/differentials/diagnosis-map-panel";
 import type { DifferentialCuratedEntry } from "@/lib/differential-curated";
 import { DifferentialOverviewRail } from "@/components/differentials/differential-overview-rail";
@@ -55,6 +56,7 @@ import {
   detailTabCounts,
   differentialGroupLabel,
   differentialGroupScopeNote,
+  differentialLikelihoodLabel,
   differentialSourceStatusLabel,
   differentialStatusLabel,
   differentialValidationStatusLabel,
@@ -110,11 +112,10 @@ const rowMeta: Record<DifferentialSection["tone"], { label: string; badgeClassNa
   },
 };
 
-/** Maps a related node's likelihood to its own severity tag, mirroring the record-status tones. */
+/** Labels a related node by its likelihood, in the same words and tones as the diagnosis map.
+ *  Likelihood is not clinical state, so it never borrows the Emergent / Urgent / Routine labels. */
 function likelihoodTag(likelihood: DifferentialRecord["related"][number]["likelihood"]) {
-  if (likelihood === "must-not-miss") return { label: "Emergent", className: statusToneClass.emergent };
-  if (likelihood === "possible") return { label: "Urgent", className: statusToneClass.urgent };
-  return { label: "Review", className: statusToneClass.routine };
+  return { label: differentialLikelihoodLabel(likelihood), className: likelihoodChipTone[likelihood] };
 }
 
 const sectionItemIcons: Partial<Record<DifferentialSection["tone"], LucideIcon>> = {

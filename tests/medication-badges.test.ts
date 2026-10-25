@@ -120,6 +120,43 @@ describe("medication badge mappers", () => {
       }
     }
   });
+
+  it("says avoid on a patient badge only when the row is a contraindication", () => {
+    // Nystatin's paediatric row reads "SAFE" and Warfarin's paediatric rows give weight-based
+    // dosing, yet both once carried an "Avoid <18 years" badge built from the age rule alone.
+    const offenders: string[] = [];
+    let patientRows = 0;
+    for (const record of loadMedicationSnapshot()) {
+      for (const section of record.sections) {
+        for (const row of section.rows) {
+          if (!row.patient) continue;
+          patientRows += 1;
+          const contraindication = row.patient.action === "contraindication";
+          for (const { label } of medicationRowBadges(row, section.type)) {
+            if (/avoid/i.test(label) && !contraindication) offenders.push(`${record.slug} ${row.key}: ${label}`);
+          }
+        }
+      }
+    }
+    expect(patientRows).toBeGreaterThan(0);
+    expect(offenders).toEqual([]);
+  });
+
+  it("states the threshold without 'avoid' on a non-contraindication row, and handles >= rules", () => {
+    const row = {
+      key: "Paediatric",
+      val: "Use weight-based dosing.",
+      patient: { factors: [], action: "dose-adjust", match: { age: { lt: 18 } } },
+    } as unknown as Parameters<typeof medicationRowBadges>[0];
+    expect(medicationRowBadges(row, "dose").map((badge) => badge.label)).toContain("<18 years");
+
+    const elderly = {
+      key: "Elderly",
+      val: "Avoid.",
+      patient: { factors: [], action: "contraindication", match: { age: { gte: 65 } } },
+    } as unknown as Parameters<typeof medicationRowBadges>[0];
+    expect(medicationRowBadges(elderly, "contra").map((badge) => badge.label)).toContain("Avoid ≥65 years");
+  });
 });
 
 describe("medications catalogue regression", () => {

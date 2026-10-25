@@ -3,6 +3,7 @@ import {
   UNKNOWN_STATUS_DERIVATION_VERSION,
   deriveUnknownStatus,
   parseIsoDate,
+  reviewCycleAppliesTo,
   unknownStatusDerivationBasis,
 } from "../src/lib/unknown-status-derivation";
 
@@ -85,5 +86,26 @@ describe("parseIsoDate", () => {
     expect(parseIsoDate("2025-02-29")).toBeNull();
     expect(parseIsoDate(20250101)).toBeNull();
     expect(parseIsoDate(null)).toBeNull();
+  });
+});
+
+describe("reviewCycleAppliesTo", () => {
+  it("assumes the standard review cycle for WA Health documents only", () => {
+    expect(reviewCycleAppliesTo({ publisher_code: "WAHEALTH" })).toBe(true);
+    expect(reviewCycleAppliesTo({ publisher: "WA Department of Health" })).toBe(true);
+    expect(reviewCycleAppliesTo({ publisher_code: "WAHEALTH", publisher: "WA Health" })).toBe(true);
+  });
+
+  it("leaves any other publisher, an unrecognised one, or none at all unknown", () => {
+    expect(reviewCycleAppliesTo({ publisher_code: "RANZCP" })).toBe(false);
+    expect(reviewCycleAppliesTo({ publisher_code: "BMJ" })).toBe(false);
+    expect(reviewCycleAppliesTo({ publisher: "Some Other Publisher" })).toBe(false);
+    expect(reviewCycleAppliesTo({})).toBe(false);
+    expect(reviewCycleAppliesTo({ publisher_code: "  ", publisher: null })).toBe(false);
+  });
+
+  it("refuses a WA Health code that conflicts with a different named publisher", () => {
+    expect(reviewCycleAppliesTo({ publisher_code: "WAHEALTH", publisher: "RANZCP" })).toBe(false);
+    expect(reviewCycleAppliesTo({ publisher_code: "WAHEALTH", publisher: "Some Other Publisher" })).toBe(false);
   });
 });

@@ -11,7 +11,38 @@
  * derived. See `scripts/derive-unknown-status.ts` for the live backfill driver.
  */
 
+import {
+  sourceAuthorityIdentityForPublisher,
+  sourceAuthorityIdentityForPublisherCode,
+} from "@/lib/source-authority-registry";
+
 export const DEFAULT_REVIEW_CYCLE_YEARS = 3;
+
+/**
+ * Registry keys of the publishers whose documents carry the standard review cycle this
+ * derivation assumes. Only WA Health is documented as doing so; any other publisher, or a
+ * document with no recognised publisher, stays "unknown" rather than being read as current.
+ * Widening this list is a clinical policy decision for the owner.
+ */
+const REVIEW_CYCLE_AUTHORITY_KEYS: ReadonlySet<string> = new Set(["wa-health"]);
+
+/** Whether a document's recorded publisher is one whose standard review cycle may be assumed. */
+export function reviewCycleAppliesTo(metadata: { publisher_code?: unknown; publisher?: unknown }): boolean {
+  const identities = [
+    typeof metadata.publisher_code === "string" && metadata.publisher_code.trim()
+      ? sourceAuthorityIdentityForPublisherCode(metadata.publisher_code)
+      : undefined,
+    typeof metadata.publisher === "string" && metadata.publisher.trim()
+      ? sourceAuthorityIdentityForPublisher(metadata.publisher)
+      : undefined,
+  ].filter((identity) => identity !== undefined);
+  // Every recorded identity must resolve, and to a cycle publisher: a WA Health code beside
+  // a different named publisher is a conflict, not evidence.
+  return (
+    identities.length > 0 &&
+    identities.every((identity) => identity !== null && REVIEW_CYCLE_AUTHORITY_KEYS.has(identity.key))
+  );
+}
 
 /** Metadata version stamp written when a status is derived from the review cycle. */
 export const UNKNOWN_STATUS_DERIVATION_VERSION = "unknown_status_cycle_v1";

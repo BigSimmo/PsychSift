@@ -88,6 +88,10 @@ function StaleEvidenceBody({
         : superseded > 0
           ? `${scope} ${everySourceOverdue ? "is" : "are"} past ${everySourceOverdue ? "its" : "their"} review date, including ${superseded} that ${superseded === 1 ? "has" : "have"} been superseded.`
           : `${scope} ${everySourceOverdue ? "is" : "are"} past ${everySourceOverdue ? "its" : "their"} review date.`;
+  // The collapsed chip is often the only text a clinician reads, so it carries the
+  // same distinction: never "Review due" alone when a cited source was superseded.
+  const collapsedLabel =
+    superseded === 0 ? "Review due" : superseded === overdue.length ? "Superseded" : "Superseded / review due";
 
   return (
     <div
@@ -106,7 +110,7 @@ function StaleEvidenceBody({
         className="flex min-h-compact-meta max-w-full items-center gap-1 rounded-full px-2 py-0.5 text-left transition hover:bg-[color:var(--warning-soft)]/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[color:var(--focus)]"
       >
         <span data-testid="retrieval-state-headline" className="min-w-0 truncate font-semibold">
-          Review due
+          {collapsedLabel}
         </span>
         <span className="shrink-0 text-2xs text-[color:var(--text-muted)]">
           · {overdue.length} {overdue.length === 1 ? "source" : "sources"}

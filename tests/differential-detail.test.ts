@@ -8,6 +8,7 @@ import {
   generatedBodyWithheld,
   withholdGeneratedBody,
   detailTabCounts,
+  differentialLikelihoodLabel,
   doNowStepsAreCurated,
   formatDifferentialCopyText,
   groupCurrentPresentation,
@@ -448,6 +449,26 @@ describe("detailTabCounts", () => {
   it("suppresses the related count rather than showing a zero", () => {
     const record: DifferentialRecord = { ...getDifferentialRecord("delirium")!, related: [] };
     expect(detailTabCounts(record).related).toBeNull();
+  });
+});
+
+describe("differentialLikelihoodLabel", () => {
+  it("names likelihood in its own words, matching the diagnosis map", () => {
+    expect(differentialLikelihoodLabel("most-likely")).toBe("Most likely");
+    expect(differentialLikelihoodLabel("possible")).toBe("Possible");
+    expect(differentialLikelihoodLabel("less-likely")).toBe("Less likely");
+    expect(differentialLikelihoodLabel("must-not-miss")).toBe("Must-not-miss");
+  });
+
+  it("never labels a shipped related diagnosis with an urgency status", () => {
+    // Every related node in the export is "possible"; it once rendered as an
+    // amber URGENT badge on the Related and Compare tabs, whatever that
+    // diagnosis's own status was.
+    const likelihoods = new Set(rawSnapshot.diagnoses.flatMap((entry) => entry.related.map((node) => node.likelihood)));
+    expect(likelihoods.size).toBeGreaterThan(0);
+    for (const likelihood of likelihoods) {
+      expect(differentialLikelihoodLabel(likelihood)).not.toMatch(/emergent|urgent|routine|review/i);
+    }
   });
 });
 

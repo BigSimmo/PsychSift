@@ -570,9 +570,13 @@ export function findSpecifier(slug: string) {
 
 export function normalizeSpecifierSelection(slugs: string[]) {
   const selected: string[] = [];
+  // The builder words psychotic features as "severe with psychotic features", a current-severity
+  // descriptor, so it conflicts with every other severity or remission descriptor. The latest pick wins.
   const conflictsBySlug: Record<string, readonly string[]> = {
     "mild-severity": ["with-psychotic-features"],
-    "with-psychotic-features": ["mild-severity"],
+    "in-partial-remission": ["with-psychotic-features"],
+    "in-full-remission": ["with-psychotic-features"],
+    "with-psychotic-features": ["mild-severity", "in-partial-remission", "in-full-remission"],
   };
 
   for (const slug of slugs) {

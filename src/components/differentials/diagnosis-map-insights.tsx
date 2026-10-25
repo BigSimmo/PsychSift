@@ -6,6 +6,7 @@ import { ArrowRight, ShieldAlert, SquareStack, Stethoscope } from "lucide-react"
 import { cn } from "@/components/ui-primitives";
 import {
   curatedProvenanceLabel,
+  differentialLikelihoodLabel,
   differentialStatusLabel,
   type DifferentialDiscriminatorRow,
   type DifferentialRelatedMapDetail,
@@ -22,7 +23,7 @@ import type { DifferentialLikelihood, DifferentialMapNode, DifferentialRecord } 
  * pair — nothing is invented for a record that has no content.
  */
 
-const likelihoodChipTone: Record<DifferentialLikelihood, string> = {
+export const likelihoodChipTone: Record<DifferentialLikelihood, string> = {
   // Likelihood is not clinical state, so it takes the accent and neutral
   // ramps (TOKENS.md §7). `must-not-miss` is the one genuine safety state
   // here and is the only member allowed the danger ramp.
@@ -31,13 +32,6 @@ const likelihoodChipTone: Record<DifferentialLikelihood, string> = {
   possible: "border-[color:var(--border)] bg-[color:var(--surface-subtle)] text-[color:var(--text-heading)]",
   "less-likely": "border-[color:var(--border)] bg-[color:var(--surface-subtle)] text-[color:var(--text-muted)]",
   "must-not-miss": "border-[color:var(--danger-border)] bg-[color:var(--danger-soft)] text-[color:var(--danger)]",
-};
-
-const likelihoodChipLabel: Record<DifferentialLikelihood, string> = {
-  "most-likely": "Most likely",
-  possible: "Possible",
-  "less-likely": "Less likely",
-  "must-not-miss": "Must-not-miss",
 };
 
 const statusChipTone: Record<DifferentialRecord["status"], string> = {
@@ -58,7 +52,7 @@ function LikelihoodChip({ likelihood }: { likelihood: DifferentialLikelihood }) 
         likelihoodChipTone[likelihood],
       )}
     >
-      {likelihoodChipLabel[likelihood]}
+      {differentialLikelihoodLabel(likelihood)}
     </span>
   );
 }

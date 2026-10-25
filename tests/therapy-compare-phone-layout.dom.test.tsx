@@ -76,7 +76,7 @@ vi.mock("@/components/therapy-compass/data/use-therapy-data", () => ({
     data: {
       therapies: [
         therapy("alpha", "Alpha therapy", "Alpha caution."),
-        therapy("beta", "Beta therapy", "Beta caution."),
+        therapy("beta", "Beta therapy", "Clarify the aim first. Beta caution."),
       ],
       pathways: [],
       reference: { categories: [], tags: [], measures: [] },
@@ -127,7 +127,11 @@ describe("Therapy comparison on a phone", () => {
     expect(within(caution).getByText("Alpha therapy")).toBeInTheDocument();
     expect(within(caution).getByText("Beta therapy")).toBeInTheDocument();
     expect(within(caution).getByText("Alpha caution.")).toBeInTheDocument();
-    expect(within(caution).getByText("Beta caution.")).toBeInTheDocument();
+    // The whole caution, not its first sentence: the risk wording can come second.
+    expect(within(caution).getByText("Clarify the aim first. Beta caution.")).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("therapy-compare-table")).getByText("Clarify the aim first. Beta caution."),
+    ).toBeInTheDocument();
 
     const fit = stack.getByRole("region", { name: "Best fit" });
     expect(within(fit).getByText("Alpha therapy best fit")).toBeInTheDocument();
