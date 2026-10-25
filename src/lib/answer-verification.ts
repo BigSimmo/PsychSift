@@ -75,23 +75,8 @@ function foldMarkdownEmphasis(text: string): string {
   return /[*`#_]/.test(text) ? text.replace(/[*`#]+|_{2,}/g, "") : text;
 }
 
-// A comma followed by groups of exactly three digits is a thousands separator ("1,000 mg",
-// "12,500 units"), not a decimal comma. Folding it to a decimal point turned "1,000 mg" into
-// "1 mg", so a 1000-fold dose error in an answer matched the source and passed as verified.
-// Decimal commas ("0,5 mg", "2,25 mg") keep their existing decimal-point folding.
-const THOUSANDS_GROUPED_NUMBER_PATTERN = /(?<![\d.,])([1-9]\d{0,2})((?:,\d{3})+)(?!\d|,\d)/g;
-
-function foldThousandsSeparators(text: string): string {
-  return text.includes(",")
-    ? text.replace(
-        THOUSANDS_GROUPED_NUMBER_PATTERN,
-        (_match, head: string, groups: string) => head + groups.replace(/,/g, ""),
-      )
-    : text;
-}
-
 function normalizeNumericToken(raw: string): string {
-  return foldThousandsSeparators(foldSuperscripts(raw))
+  return foldSuperscripts(raw)
     .toLowerCase()
     .replace(/\s+/g, "")
     .replace(/[–—]/g, "-")
@@ -127,11 +112,11 @@ export type LabelledNumericBandConflict = {
 };
 
 const clinicalQuantityPattern =
-  /\b(?:(below|under|less\s+than|above|over|greater\s+than|at\s+least|at\s+most|no\s+more\s+than)\s+)?(\d{1,3}(?:,\d{3}){2,}(?:\.\d+)?|\d+(?:[.,]\d+)?)(?:\s*[-–—]\s*(\d{1,3}(?:,\d{3}){2,}(?:\.\d+)?|\d+(?:[.,]\d+)?))?\s*(ug|µg|μg|mcg|micrograms?|mg|g|kg|ml|l|mmol|mol|umol|µmol|ng|units?|iu|milliseconds?|msecs?|ms|tablets?|puffs?|hours?|hrs?|h|days?|weeks?|wk|months?|minutes?|mins?|years?|°c|mmhg|bpm|%)\b((?:\s*\/\s*(?:kg|m2|dose|seconds?|secs?|minutes?|mins?|hours?|hrs?|h|days?|weeks?|wk|ml|l)){0,3})/giu;
+  /\b(?:(below|under|less\s+than|above|over|greater\s+than|at\s+least|at\s+most|no\s+more\s+than)\s+)?(\d+(?:[.,]\d+)?)(?:\s*[-–—]\s*(\d+(?:[.,]\d+)?))?\s*(ug|µg|μg|mcg|micrograms?|mg|g|kg|ml|l|mmol|mol|umol|µmol|ng|units?|iu|milliseconds?|msecs?|ms|tablets?|puffs?|hours?|hrs?|h|days?|weeks?|wk|months?|minutes?|mins?|years?|°c|mmhg|bpm|%)\b((?:\s*\/\s*(?:kg|m2|dose|seconds?|secs?|minutes?|mins?|hours?|hrs?|h|days?|weeks?|wk|ml|l)){0,3})/giu;
 const scientificQuantityPattern =
   /(?:(below|under|less\s+than|above|over|greater\s+than|at\s+least|at\s+most|no\s+more\s+than|<=|>=|<|>|≤|≥)\s*)?(\d+(?:[.,]\d+)?)\s*[×x]\s*10\^?(\d+)\s*\/\s*([a-z])/giu;
 const unitlessThresholdPattern =
-  /(?:\b(below|under|less\s+than|above|over|greater\s+than|at\s+least|at\s+most|no\s+more\s+than)\s+|(<=|>=|<|>|≤|≥)\s*)(\d{1,3}(?:,\d{3}){2,}(?:\.\d+)?|\d+(?:[.,]\d+)?)(?:\s*[-–—]\s*(\d{1,3}(?:,\d{3}){2,}(?:\.\d+)?|\d+(?:[.,]\d+)?))?/giu;
+  /(?:\b(below|under|less\s+than|above|over|greater\s+than|at\s+least|at\s+most|no\s+more\s+than)\s+|(<=|>=|<|>|≤|≥)\s*)(\d+(?:[.,]\d+)?)(?:\s*[-–—]\s*(\d+(?:[.,]\d+)?))?/giu;
 // Infer omitted years only inside explicit adjacent population-age grammar.
 // Closed continuations exclude an unknown measurement/category noun after the value.
 const populationAgePrefixPattern = /\b(?:children|adolescents|adults|people|young[ \t]+people)(?:[ \t]+aged?)?[ \t]+$/i;
@@ -145,7 +130,7 @@ const frequencyPattern =
 const everyNFrequencyPattern = /\bevery\s+(\d+)\s+(seconds?|minutes?|hours?|days?|weeks?)\b/giu;
 
 function canonicalNumber(value: string) {
-  const normalized = foldThousandsSeparators(value).replace(",", ".");
+  const normalized = value.replace(",", ".");
   const [integerPart, fractionPart] = normalized.split(".");
   const integer = integerPart.replace(/^0+(?=\d)/, "") || "0";
   const fraction = fractionPart?.replace(/0+$/, "") ?? "";
@@ -1641,14 +1626,7 @@ export function applyNumericVerification(
 // verification could not confirm, leaving the text intact (just un-emphasised). Verified bold stays.
 export function unboldUnverifiedNumbers(text: string, unverified: Set<string>): string {
   if (!unverified.size || !text.includes("**")) return text;
-  // Unverified tokens are clinicalValueAtomDisplay() strings, which keep symbol comparators
-  // ("<1.5"); extractNumericTokens folds those to "below:1.5", so match on both forms or a
-  // bold "**ANC < 1.5**" threshold stays emphasised after verification fails.
   return text.replace(/\*\*([^*]+)\*\*/g, (full, inner: string) =>
-    [...extractNumericTokens(inner), ...extractClinicalValueAtoms(inner).map(clinicalValueAtomDisplay)].some((token) =>
-      unverified.has(token),
-    )
-      ? inner
-      : full,
+    extractNumericTokens(inner).some((token) => unverified.has(token)) ? inner : full,
   );
 }

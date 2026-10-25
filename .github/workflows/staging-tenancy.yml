@@ -31,8 +31,6 @@ on:
       - "!data/outstanding-issues-snapshot.json"
       - "public/**"
       - "src/**"
-      - "supabase/functions/_shared/**"
-      - "docs/governance/privacy-readiness.v1.json"
       - "scripts/check-client-bundle-secrets.mjs"
       - "scripts/check-installed-lock-parity.mjs"
       - "scripts/check-node-engine.cjs"

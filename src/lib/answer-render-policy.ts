@@ -480,11 +480,10 @@ function buildWarnings(answer: ClientRagAnswerPayload | RagAnswer, trust: Answer
   } else if (currencyWarning === "retrieved") {
     warnings.push(currencyReviewWarnings.retrieved);
   }
-  // Bound the conflict/gap entries on their own count. A cap on the running total let five
-  // earlier trust, governance or currency notes crowd out every conflict or gap after the
-  // first, and no other surface renders conflictsOrGaps.
-  const gapMessages = (answer.conflictsOrGaps ?? []).map((gap) => gap.message).filter(Boolean);
-  warnings.push(...gapMessages.slice(0, 5));
+  for (const gap of answer.conflictsOrGaps ?? []) {
+    if (gap.message) warnings.push(gap.message);
+    if (warnings.length >= 5) break;
+  }
   return [...new Set(warnings)];
 }
 

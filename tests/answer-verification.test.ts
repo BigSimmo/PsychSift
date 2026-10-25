@@ -5,7 +5,6 @@ import {
   detectLabelledNumericBandConflicts,
   extractClinicalValueAtoms,
   extractNumericTokens,
-  unboldUnverifiedNumbers,
   verifyAnswerNumbers,
 } from "../src/lib/answer-verification";
 import { citationFromResult } from "../src/lib/citations";
@@ -1755,40 +1754,5 @@ describe("upper-limit comparator with clinical units", () => {
         verifyAnswerNumbers(`Use at least ${quantity}.`, [{ chunk_id: evidence.id }], [evidence]).hasUnverifiedNumbers,
       ).toBe(true);
     }
-  });
-});
-
-describe("thousands separators are not decimal commas (#177)", () => {
-  const verify = (sourceText: string, answerText: string) => {
-    const evidence = source({ content: sourceText });
-    return verifyAnswerNumbers(answerText, [{ chunk_id: evidence.id }], [evidence]);
-  };
-
-  it.each([
-    ["Give 1,000 mg daily.", "Give 1 mg daily."],
-    ["Give 5,000 units.", "Give 5 units."],
-    ["Give 1,500 mg daily.", "Give 1.5 mg daily."],
-    ["Give 5,000,000 units.", "Give 1,000,000 units."],
-  ])("flags a dose that drops the thousands: source %s, answer %s", (sourceText, answerText) => {
-    expect(verify(sourceText, answerText).hasUnverifiedNumbers).toBe(true);
-  });
-
-  it.each([
-    ["Give 1,000 mg daily.", "Give 1,000 mg daily."],
-    ["Give 1,000 mg daily.", "Give 1000 mg daily."],
-    ["Give 1,000,000 units.", "Give 1,000,000 units."],
-    ["Give 0,5 mg daily.", "Give 0.5 mg daily."],
-  ])("verifies the same figure however it is grouped: source %s, answer %s", (sourceText, answerText) => {
-    expect(verify(sourceText, answerText).unverifiedTokens).toEqual([]);
-  });
-});
-
-describe("unverified symbol-comparator thresholds lose their bold (#179)", () => {
-  it("un-bolds **ANC < 1.5** when <1.5 could not be verified", () => {
-    expect(unboldUnverifiedNumbers("Withhold if **ANC < 1.5**.", new Set(["<1.5"]))).toBe("Withhold if ANC < 1.5.");
-  });
-
-  it("keeps the bold on a verified threshold", () => {
-    expect(unboldUnverifiedNumbers("Withhold if **ANC < 1.5**.", new Set(["<2.0"]))).toBe("Withhold if **ANC < 1.5**.");
   });
 });

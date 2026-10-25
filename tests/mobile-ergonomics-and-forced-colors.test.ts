@@ -65,7 +65,7 @@ describe("Mobile ergonomics, touch targets, forced-colors, and 12px floor (Task 
 
     const menuCss = readRepoFile("src/components/work-frame/two-pane-side-menu.css");
     expect(menuCss).toMatch(
-      /@media\s*\(forced-colors:\s*active\)\s*\{[\s\S]*?\.two-pane-menu__row\[aria-current="true"\],\s*\.two-pane-menu__tile\[aria-current="true"\]/,
+      /@media\s*\(forced-colors:\s*active\)\s*\{[\s\S]*?\.two-pane-menu__row\[aria-current="page"\],\s*\.two-pane-menu__tile\[aria-current="true"\]/,
     );
   });
 

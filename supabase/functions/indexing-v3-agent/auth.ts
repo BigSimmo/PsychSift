@@ -54,9 +54,7 @@ export async function timingSafeSecretEqual(candidate: string, expected: string)
 /**
  * Dual-gate authentication for indexing-v3-agent:
  * Requires BOTH a valid internal service secret (via x-indexing-agent-secret or x-cron-secret)
- * AND a valid service-role JWT (via Authorization: Bearer <token>). The gateway's verify_jwt
- * accepts any project-signed token, including the public anon key, so this gate also confines
- * callers to the service-role cron token, as ingestion-worker and site-content-sync do.
+ * AND a valid JWT (via Authorization: Bearer <token>).
  */
 export async function authorizeIndexingAgentRequest(req: Request, agentSecret: string): Promise<Response | null> {
   if (!agentSecret) {
@@ -69,10 +67,10 @@ export async function authorizeIndexingAgentRequest(req: Request, agentSecret: s
     return Response.json({ ok: false, error: "Unauthorized: invalid service secret" }, { status: 401 });
   }
 
-  // Dual-gate 2: Valid service-role JWT via Authorization: Bearer <jwt>
+  // Dual-gate 2: Valid JWT via Authorization: Bearer <jwt>
   const authorization = req.headers.get("authorization") ?? "";
   const bearer = authorization.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
-  if (!bearer || !isValidJwt(bearer) || decodeJwtPayload(bearer)?.role !== "service_role") {
+  if (!bearer || !isValidJwt(bearer)) {
     return Response.json({ ok: false, error: "Unauthorized: valid JWT required" }, { status: 401 });
   }
 

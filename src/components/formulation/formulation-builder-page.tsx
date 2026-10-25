@@ -16,6 +16,7 @@ import {
   Waypoints,
 } from "lucide-react";
 import { useMemo, useState, useDeferredValue, useEffect } from "react";
+import { announce } from "@/components/ui/live-announcer";
 import { useDirtyStateGuard } from "@/components/ui/use-dirty-state-guard";
 import { subscribeAccountTransition } from "@/lib/account-scoped-browser-state";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
@@ -388,6 +389,7 @@ export function FormulationBuilderPage({
       await copyTextToClipboard(draft);
     } catch {
       setCopyState("failed");
+      announce("Draft not copied. Select the draft text and copy it by hand.");
       return;
     }
     setCopyState("copied");
@@ -769,7 +771,7 @@ export function FormulationBuilderPage({
                       className={cn(primaryControl, "gap-1.5 rounded-md px-3 text-xs")}
                     >
                       <Clipboard className="h-3.5 w-3.5" aria-hidden />
-                      {copyState === "copied" ? "Copied" : "Copy draft"}
+                      {copyState === "copied" ? "Copied" : copyState === "failed" ? "Not copied" : "Copy draft"}
                     </button>
                   </div>
                 </div>

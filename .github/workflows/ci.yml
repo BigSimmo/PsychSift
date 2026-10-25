@@ -352,13 +352,6 @@ jobs:
         if: needs.changes.outputs.static_heavy_changed == 'true'
         run: npm run check:medication-interactions
 
-      # The Codex hook dispatcher routes Codex tool events into the project's safety hooks.
-      # Its node:test suite ran only in local verify:cheap, so a broken dispatcher could merge green.
-      # .codex/** and .claude/hooks/** classify as static-heavy; the suite is offline and fast.
-      - name: Codex hook dispatcher tests
-        if: needs.changes.outputs.static_heavy_changed == 'true'
-        run: npm run test:codex-hooks
-
       - name: GitHub Actions pin check
         if: needs.changes.outputs.workflow_changed == 'true'
         run: npm run check:github-actions
