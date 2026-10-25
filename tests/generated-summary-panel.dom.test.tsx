@@ -41,7 +41,7 @@ describe("Summarise panel safety signals (NEW-G-01)", () => {
         { type: "gap", message: "Model note about a range.", origin: "model" },
         { type: "gap", message: "Check the source for the current range." },
       ],
-    } as RagAnswer);
+    } as unknown as RagAnswer);
     expect(answer.answer).toBe(UNSUPPORTED_SUMMARY_TEXT);
     expect(answer.confidence).toBe("unsupported");
     expect(answer.answerSections).toEqual([]);
@@ -55,7 +55,7 @@ describe("Summarise panel safety signals (NEW-G-01)", () => {
       confidence: "high",
       citations: [],
       sources: [],
-    } as RagAnswer);
+    } as unknown as RagAnswer);
     expect(answer.answer).toBe("Check lithium levels 5 to 7 days after a dose change.");
   });
 
