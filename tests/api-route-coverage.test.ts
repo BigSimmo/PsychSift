@@ -25,6 +25,7 @@ function createQueryMock<T>(result: { data: T; error: { message: string } | null
   const chain = {
     select: null as unknown as ReturnType<typeof vi.fn>,
     eq: null as unknown as ReturnType<typeof vi.fn>,
+    or: null as unknown as ReturnType<typeof vi.fn>,
     in: null as unknown as ReturnType<typeof vi.fn>,
     order: null as unknown as ReturnType<typeof vi.fn>,
     limit: null as unknown as ReturnType<typeof vi.fn>,
@@ -36,6 +37,7 @@ function createQueryMock<T>(result: { data: T; error: { message: string } | null
   } as {
     select: ReturnType<typeof vi.fn>;
     eq: ReturnType<typeof vi.fn>;
+    or: ReturnType<typeof vi.fn>;
     in: ReturnType<typeof vi.fn>;
     order: ReturnType<typeof vi.fn>;
     limit: ReturnType<typeof vi.fn>;
@@ -48,6 +50,7 @@ function createQueryMock<T>(result: { data: T; error: { message: string } | null
 
   chain.select = vi.fn(() => chain);
   chain.eq = vi.fn(() => chain);
+  chain.or = vi.fn(() => chain);
   chain.in = vi.fn(() => chain);
   chain.order = vi.fn(() => chain);
   chain.limit = vi.fn(() => chain);
@@ -226,10 +229,13 @@ describe("/api/ingestion/jobs", () => {
     expect(payload.jobs).toHaveLength(1);
     expect(from).toHaveBeenCalledTimes(3);
     expect(activeCountChain.in).toHaveBeenCalledWith("status", ["pending", "processing"]);
-    expect(activeCountChain.eq).toHaveBeenCalledWith("documents.owner_id", ownerId);
+    // ING-S-N7: the administrator's own jobs and the shared library's owner-less jobs.
+    const ownerFilter = [`owner_id.eq.${ownerId},owner_id.is.null`, { referencedTable: "documents" }];
+    expect(jobsChain.or).toHaveBeenCalledWith(...ownerFilter);
+    expect(activeCountChain.or).toHaveBeenCalledWith(...ownerFilter);
     expect(activeCountChain.eq).toHaveBeenCalledWith("batch_id", "11111111-1111-4111-8111-111111111111");
     expect(failedCountChain.eq).toHaveBeenCalledWith("status", "failed");
-    expect(failedCountChain.eq).toHaveBeenCalledWith("documents.owner_id", ownerId);
+    expect(failedCountChain.or).toHaveBeenCalledWith(...ownerFilter);
     expect(failedCountChain.eq).toHaveBeenCalledWith("batch_id", "11111111-1111-4111-8111-111111111111");
   });
 });
