@@ -2233,6 +2233,7 @@
       "testFiles": [
         "tests/agreement-ask-page.dom.test.tsx",
         "tests/answer-progress-ui-smoke.spec.ts",
+        "tests/calculators-a11y-feedback.dom.test.tsx",
         "tests/challenger-m3-2-empirical.dom.test.tsx",
         "tests/challenger-m4-stress.dom.test.tsx",
         "tests/challenger-m5-it2-empirical.dom.test.tsx",

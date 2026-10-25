@@ -54,6 +54,34 @@ function publicKeyBytes(value: string): Uint8Array<ArrayBuffer> {
   return Uint8Array.from(bytes, (character) => character.charCodeAt(0));
 }
 
+/** How long a tap waits for a registered service worker to become active. */
+const SERVICE_WORKER_READY_TIMEOUT_MS = 10_000;
+
+const NO_SERVICE_WORKER_MESSAGE = "Phone alerts aren't ready on this browser yet. Reload the page and try again.";
+
+/**
+ * The active service worker registration, or null when there is none.
+ * `ready` never settles when no service worker is registered (registration
+ * failures are swallowed on purpose), so a tap that awaited it bare left the
+ * switch busy until a reload. Check for a registration first, and stop waiting
+ * after a short while even when one exists.
+ */
+async function activeServiceWorkerRegistration(): Promise<ServiceWorkerRegistration | null> {
+  const worker = navigator.serviceWorker;
+  if (typeof worker.getRegistration === "function" && !(await worker.getRegistration())) return null;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      worker.ready,
+      new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), SERVICE_WORKER_READY_TIMEOUT_MS);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 function readLastTest(): string | null {
   try {
     return window.localStorage.getItem(LAST_TEST_KEY);
@@ -242,7 +270,11 @@ export function usePhoneAlerts(): PhoneAlerts {
         await turnOff();
         return;
       }
-      const registration = await navigator.serviceWorker.ready;
+      const registration = await activeServiceWorkerRegistration();
+      if (!registration) {
+        setMessage(NO_SERVICE_WORKER_MESSAGE);
+        return;
+      }
       if (!registration.pushManager) throw new Error("Push unavailable");
       const result = await Notification.requestPermission();
       setPermission(result);
@@ -277,7 +309,11 @@ export function usePhoneAlerts(): PhoneAlerts {
     setBusy(true);
     setMessage(null);
     try {
-      const registration = await navigator.serviceWorker.ready;
+      const registration = await activeServiceWorkerRegistration();
+      if (!registration) {
+        setMessage(NO_SERVICE_WORKER_MESSAGE);
+        return;
+      }
       const subscription = await registration.pushManager?.getSubscription();
       if (!subscription) throw new Error("Not subscribed");
       const response = await fetch("/api/alerts/test", {

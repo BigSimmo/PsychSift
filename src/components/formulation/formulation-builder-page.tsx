@@ -16,7 +16,9 @@ import {
   Waypoints,
 } from "lucide-react";
 import { useMemo, useState, useDeferredValue, useEffect } from "react";
+import { announce } from "@/components/ui/live-announcer";
 import { useDirtyStateGuard } from "@/components/ui/use-dirty-state-guard";
+import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 import { subscribeAccountTransition } from "@/lib/account-scoped-browser-state";
 
 import {
@@ -237,7 +239,7 @@ export function FormulationBuilderPage({
   const [sectionNotes, setSectionNotes] = useState<Record<string, string>>(() => initialDraft?.sectionNotes ?? {});
   const [qualityNotes, setQualityNotes] = useState<Record<string, string>>(() => initialDraft?.qualityNotes ?? {});
   const [editedDraft, setEditedDraft] = useState<string | null>(() => initialDraft?.editedDraft ?? null);
-  const [copied, setCopied] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
 
   const selectedMechanisms = useMemo(
     () =>
@@ -343,9 +345,17 @@ export function FormulationBuilderPage({
   }
 
   async function copyDraft() {
-    await navigator.clipboard.writeText(draft);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1800);
+    try {
+      await copyTextToClipboard(draft);
+      setCopyStatus("copied");
+      window.setTimeout(() => setCopyStatus("idle"), 1800);
+    } catch {
+      // Unhandled, a refused clipboard showed nothing, and the previous clipboard
+      // contents were pasted as this draft.
+      setCopyStatus("failed");
+      announce("Draft not copied. Select the draft text and copy it by hand.");
+      window.setTimeout(() => setCopyStatus("idle"), 4000);
+    }
   }
 
   return (
@@ -723,7 +733,7 @@ export function FormulationBuilderPage({
                       className={cn(primaryControl, "gap-1.5 rounded-md px-3 text-xs")}
                     >
                       <Clipboard className="h-3.5 w-3.5" aria-hidden />
-                      {copied ? "Copied" : "Copy draft"}
+                      {copyStatus === "copied" ? "Copied" : copyStatus === "failed" ? "Not copied" : "Copy draft"}
                     </button>
                   </div>
                 </div>

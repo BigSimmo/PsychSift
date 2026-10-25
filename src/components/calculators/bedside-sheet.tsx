@@ -4,7 +4,9 @@ import { AlertTriangle, CheckCheck, ChevronDown, ClipboardCopy, ClipboardList, N
 import { useEffect, useRef, useState } from "react";
 
 import { cn, controlDisabled } from "@/components/ui-primitives";
+import { announce } from "@/components/ui/live-announcer";
 import { useCopyToast } from "@/components/ui/toast";
+import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 
 import { calculators, domainLabels, type CalculatorFixture } from "./calculator-fixtures";
 import {
@@ -138,7 +140,7 @@ function SheetSection({
 export function CalculatorsBedsideSheetMockup() {
   const [session, setSession] = useState<SessionAnswers>({});
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({ phq9: true });
-  const [copied, setCopied] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
   const copiedTimer = useRef<number | undefined>(undefined);
   const mounted = useRef(true);
   const showToast = useCopyToast();
@@ -165,15 +167,20 @@ export function CalculatorsBedsideSheetMockup() {
     if (!completedCalcs.length) return;
     const lines = completedCalcs.map(({ calc, derived }) => formatResultSummary(calc, derived));
     try {
-      await navigator.clipboard.writeText(lines.join("\n"));
+      await copyTextToClipboard(lines.join("\n"));
       // The sheet can unmount while the clipboard write is pending; schedule nothing then.
       if (!mounted.current) return;
-      setCopied(true);
+      setCopyStatus("copied");
       showToast("Copied bedside summary");
       window.clearTimeout(copiedTimer.current);
-      copiedTimer.current = window.setTimeout(() => setCopied(false), 1500);
+      copiedTimer.current = window.setTimeout(() => setCopyStatus("idle"), 1500);
     } catch {
-      /* clipboard unavailable in some embeds — mockup-safe no-op */
+      // A silent failure leaves the previous clipboard contents to be pasted as this summary.
+      if (!mounted.current) return;
+      setCopyStatus("failed");
+      announce("Summary not copied. Copy the scores into the note by hand.");
+      window.clearTimeout(copiedTimer.current);
+      copiedTimer.current = window.setTimeout(() => setCopyStatus("idle"), 4000);
     }
   };
 
@@ -256,12 +263,12 @@ export function CalculatorsBedsideSheetMockup() {
                 focusRing,
               )}
             >
-              {copied ? (
+              {copyStatus === "copied" ? (
                 <CheckCheck className="size-icon-sm text-[color:var(--success)]" aria-hidden="true" />
               ) : (
                 <ClipboardCopy className="size-icon-sm" aria-hidden="true" />
               )}
-              {copied ? "Copied" : "Copy summary"}
+              {copyStatus === "copied" ? "Copied" : copyStatus === "failed" ? "Not copied" : "Copy summary"}
             </button>
           </div>
           {startedCalcs.length ? (

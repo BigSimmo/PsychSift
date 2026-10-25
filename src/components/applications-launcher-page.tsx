@@ -677,16 +677,6 @@ function DetailDialog({ app, open, onClose }: { app: LauncherApp; open: boolean;
               <ChevronRight className="h-4 w-4" aria-hidden />
             )}
           </Link>
-          <Link
-            href={app.href}
-            className={cn(
-              "inline-flex min-h-tap items-center justify-center gap-2 rounded-lg text-sm font-bold text-[color:var(--clinical-accent)]",
-              focusRing,
-            )}
-          >
-            View example
-            <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-          </Link>
         </div>
       }
     >
@@ -770,7 +760,11 @@ export function ApplicationsLauncherWorkspace({
   const effectiveSelectedId = filteredApps.some((app) => app.id === selectedId)
     ? selectedId
     : (filteredApps[0]?.id ?? selectedId);
-  const selectedApp = appById(effectiveSelectedId, launcherApps);
+  // The sheet shows the tool that was tapped, even when the active filter or
+  // search hides it: a quick shortcut is drawn whatever the filter, so falling
+  // back to the first filtered card here would open a different tool. The
+  // filtered fallback above only decides which card in the list is highlighted.
+  const detailApp = appById(selectedId, launcherApps);
   // Label the results by the selected filter's visible label (mobile-only filters
   // like "More" included) so assistive tech hears which result set is active.
   const activeFilterLabel =
@@ -934,7 +928,7 @@ export function ApplicationsLauncherWorkspace({
         </p>
       </section>
 
-      <DetailDialog app={selectedApp} open={detailOpen} onClose={() => setDetailOpen(false)} />
+      <DetailDialog app={detailApp} open={detailOpen} onClose={() => setDetailOpen(false)} />
     </main>
   );
 }
