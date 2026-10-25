@@ -4,7 +4,7 @@ import { addDaysToDate, formatPerthDay } from "@/lib/roster/shifts/perth-time";
 import { cn } from "@/components/ui-primitives";
 
 import { kindOf } from "./roster-format";
-import { zonedDateOf } from "@/lib/work-time/format";
+import { zonedDateOf, zonedWallToIso } from "@/lib/work-time/format";
 import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 /**
@@ -137,8 +137,13 @@ const BAR_SHAPE: Record<ShiftKind, string> = {
 
 type Segment = { key: string; top: number; height: number; kind: ShiftKind };
 
-function segmentsFor(date: string, shifts: readonly OnCallShift[]): Segment[] {
-  const dayStart = Date.parse(`${date}T00:00:00+08:00`);
+/** Midnight starting `date` on the work zone's wall clock, in ms. */
+function zonedMidnight(date: string, zone: string): number {
+  return Date.parse(zonedWallToIso(date, "00:00", zone) ?? `${date}T00:00:00+08:00`);
+}
+
+function segmentsFor(date: string, shifts: readonly OnCallShift[], zone: string): Segment[] {
+  const dayStart = zonedMidnight(date, zone);
   const dayEnd = dayStart + DAY_MS;
   return shifts.flatMap((shift) => {
     const start = Math.max(Date.parse(shift.startsAt), dayStart);
@@ -174,7 +179,7 @@ export function RosterWeekChart({
   const { zone } = useWorkTimeZone();
   const days = Array.from({ length: 7 }, (_, index) => addDaysToDate(monday, index));
   const today = zonedDateOf(now, zone);
-  const nowTop = ((now.getTime() - Date.parse(`${today}T00:00:00+08:00`)) / DAY_MS) * 100;
+  const nowTop = ((now.getTime() - zonedMidnight(today, zone)) / DAY_MS) * 100;
   return (
     <div
       className="grid grid-cols-[1.75rem_repeat(7,minmax(0,1fr))] gap-1"
@@ -214,7 +219,7 @@ export function RosterWeekChart({
             date === today ? "border-[color:var(--mode-identity)]" : "border-[color:var(--border)]",
           )}
         >
-          {segmentsFor(date, shifts).map((segment) => (
+          {segmentsFor(date, shifts, zone).map((segment) => (
             <span
               key={segment.key}
               className={cn("absolute inset-x-1 rounded-sm border", BAR_SHAPE[segment.kind])}

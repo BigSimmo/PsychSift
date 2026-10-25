@@ -60,6 +60,19 @@ describe("team display uses actual overlap and Perth dates", () => {
     const allDay = { ...mine, startsAt: "2026-10-03T14:00:00.000Z", endsAt: "2026-10-04T13:00:00.000Z" };
     expect(timelineSpan(allDay, "2026-10-04", "Australia/Sydney")).toMatchObject({ startMinute: 0, endMinute: 1380 });
   });
+  it("measures the day from the work zone's own midnight, not Perth's", () => {
+    // Sydney is on daylight saving (UTC+11) in mid-October.
+    const sydney = { ...mine, startsAt: "2026-10-15T08:00:00+11:00", endsAt: "2026-10-15T18:00:00+11:00" };
+    expect(timelineSpan(sydney, "2026-10-15", "Australia/Sydney")).toMatchObject({
+      label: "08:00–18:00",
+      startMinute: 480,
+      endMinute: 1080,
+    });
+    // A shift from 01:00 Sydney belongs to its own day, not the day before.
+    const early = { ...mine, startsAt: "2026-10-15T01:00:00+11:00", endsAt: "2026-10-15T07:00:00+11:00" };
+    expect(timelineSpan(early, "2026-10-14", "Australia/Sydney")).toBeNull();
+    expect(timelineSpan(early, "2026-10-15", "Australia/Sydney")).toMatchObject({ startMinute: 60, endMinute: 420 });
+  });
   it("orders grades and preserves the ungraded group", () => {
     const rows = [mine, { ...mine, id: "u", grade: null }, { ...mine, id: "c", grade: "consultant" as const }];
     expect(groupByGrade(rows).map((group) => group.label)).toEqual(["Consultants", "Registrars", "Grade not set"]);

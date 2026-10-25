@@ -22,14 +22,17 @@ export function groupByGrade(assignments: readonly RosterAssignment[]) {
     .map(([grade, label]) => ({ grade, label, assignments: assignments.filter((row) => row.grade === grade) }))
     .filter((group) => group.assignments.length);
 }
+/** Midnight starting `day` on the work zone's wall clock, in ms; NaN for an impossible date. */
+export function zonedDayStartMs(day: string, zone?: string) {
+  return Date.parse(perthWallToIso(day, "00:00", zone) ?? "");
+}
 /**
- * Where a shift sits on `day`'s 24-hour rail. The day runs from midnight to midnight in the
- * work zone, the same zone the labels are read in, so a bar lines up with its times (and a
- * daylight-saving day is 23 or 25 hours, not a fixed 86,400,000 ms).
+ * The part of a shift on `day`, in minutes from that day's midnight in the work
+ * zone. The day ends at the next midnight, so a daylight-saving day is 23 or 25 hours.
  */
 export function timelineSpan(assignment: RosterAssignment, day: string, zone?: string) {
-  const start = Date.parse(perthWallToIso(day, "00:00", zone) ?? "");
-  const end = Date.parse(perthWallToIso(addDaysToDate(day, 1), "00:00", zone) ?? "");
+  const start = zonedDayStartMs(day, zone);
+  const end = zonedDayStartMs(addDaysToDate(day, 1), zone);
   const a = Date.parse(assignment.startsAt),
     b = Date.parse(assignment.endsAt);
   if (!Number.isFinite(start) || !Number.isFinite(end) || a >= end || b <= start) return null;

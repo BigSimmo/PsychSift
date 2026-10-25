@@ -4,9 +4,11 @@ import { ModeGroupedList } from "@/components/mode-kit/grouped-list";
 import { modeInsetHairline, modePressable } from "@/components/mode-kit/recipes";
 import { focusRing } from "@/components/card-recipes";
 import { cn } from "@/components/ui-primitives";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 import { perthTimeOf } from "@/lib/roster/shifts/perth-time";
 import type { RosterAssignment } from "@/lib/roster/team/model";
-import { groupByGrade, timelineSpan } from "@/lib/roster/team/team-view";
+import { groupByGrade, timelineSpan, zonedDayStartMs } from "@/lib/roster/team/team-view";
+import { workTimeZoneLabel } from "@/lib/work-time/zones";
 
 /**
  * One day as a timeline per person, grouped by grade. The rows are already
@@ -28,12 +30,14 @@ export function DayView({
   rows: readonly RosterAssignment[];
   onSelect: (shift: RosterAssignment) => void;
 }) {
-  const visible = rows.filter((row) => timelineSpan(row, day));
-  const nowMinute = Number(perthTimeOf(now).slice(0, 2)) * 60 + Number(perthTimeOf(now).slice(3, 5));
+  const { zone } = useWorkTimeZone();
+  const visible = rows.filter((row) => timelineSpan(row, day, zone));
+  // Measured from the same zoned midnight as the bars, so the line meets them on a daylight-saving day too.
+  const nowMinute = (now.getTime() - zonedDayStartMs(day, zone)) / 60000;
   return (
     <>
       <div className="mx-px flex items-center justify-between gap-3 pl-3 pr-1 text-sm text-[color:var(--text-muted)]">
-        <span>{day === today ? `Now ${perthTimeOf(now)}` : "Perth time"}</span>
+        <span>{day === today ? `Now ${perthTimeOf(now, zone)}` : `${workTimeZoneLabel(zone)} time`}</span>
         <span
           data-testid="roster-timeline-axis"
           className="flex w-36 shrink-0 justify-between nums text-xs"
@@ -47,7 +51,7 @@ export function DayView({
       {groupByGrade(visible).map((group) => (
         <ModeGroupedList key={group.label} eyebrow={group.label} mode="roster">
           {group.assignments.map((row) => {
-            const span = timelineSpan(row, day)!;
+            const span = timelineSpan(row, day, zone)!;
             const displayName = row.userId === actorId ? "You" : (row.name ?? "Name not available");
             const initial = row.name?.trim().charAt(0).toUpperCase() ?? "?";
             return (

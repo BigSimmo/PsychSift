@@ -209,10 +209,13 @@ export function RoundForm({
   onCancel,
 }: RoundFormProps) {
   const [draft, setDraft] = useState<RoundDraft>(initial);
+  // The draft the form started from. A new round's `initial` is rebuilt (with new ids) on
+  // every render, the minute tick too, so comparing with it would read as unsaved changes.
+  const [baseline] = useState<RoundDraft>(initial);
   const [step, setStep] = useState<FormStep>("terms");
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const isDirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(initial), [draft, initial]);
+  const isDirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(baseline), [draft, baseline]);
   useDirtyStateGuard(isDirty && !busy);
   const now = useRosterNow();
   const toast = useWorkUndoToast();

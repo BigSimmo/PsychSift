@@ -60,24 +60,28 @@ function TeamSummary({
   if (overview.status !== "ready" || !overview.data)
     return overview.status === "error" ? <ModeNotice tone="warning">{overview.message}</ModeNotice> : null;
   const assignments = Array.isArray(shifts.data?.assignments) ? shifts.data.assignments : [];
-  const own = assignments.filter((row) => row.userId === actorId && timelineSpan(row, today));
+  const own = assignments.filter((row) => row.userId === actorId && timelineSpan(row, today, zone));
+  // An open shift is not a colleague, so it is left out, as on the Team page.
   const colleagues = assignments.filter(
     (row) =>
+      row.userId !== null &&
       row.userId !== actorId &&
       own.some(
         (mine) =>
           Date.parse(row.startsAt) < Date.parse(mine.endsAt) && Date.parse(row.endsAt) > Date.parse(mine.startsAt),
       ),
   );
+  // A request nobody answered in time is expired, not waiting, as Swaps shows it.
   const needsYou = (requests.data?.swaps ?? []).filter(
-    (swap) => swap.counterpartyId === actorId && swap.status === "requested",
+    (swap) =>
+      swap.counterpartyId === actorId && swap.status === "requested" && Date.parse(swap.expiresAt) > now.getTime(),
   );
   // The same count the Manage Inbox and the Settings "Manage" row show.
   const waiting = manage.data ? managerWaiting(manage.data, { decisionsInStrip: true, actorId }).count : 0;
   const cutoff = overview.data.nextCutoffOn;
   const holiday = Array.from({ length: 8 }, (_, offset) => addDaysToDate(today, offset)).find(
     (date) =>
-      isWaPublicHolidayDate(date) && assignments.some((row) => row.userId === actorId && timelineSpan(row, date)),
+      isWaPublicHolidayDate(date) && assignments.some((row) => row.userId === actorId && timelineSpan(row, date, zone)),
   );
   const rotationEndsOn = overview.data.me.rotationEndsOn;
   const nextTeamShift = rotationEndsOn

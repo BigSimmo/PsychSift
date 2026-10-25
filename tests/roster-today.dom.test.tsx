@@ -179,6 +179,82 @@ describe("Roster Today", () => {
     expect(cover).toHaveTextContent("Who can cover?");
   });
 
+  it("leaves open shifts out of On with you and expired requests out of Needs you", async () => {
+    const teamId = "22222222-2222-4222-8222-222222222222";
+    const actorId = "11111111-1111-4111-8111-111111111111";
+    const colleagueId = "44444444-4444-4444-8444-444444444444";
+    mockShifts([]);
+    routes.set("GET /api/roster/team", () =>
+      Response.json({
+        actorId,
+        teams: [{ serviceId: teamId, name: "General Medicine", enabled: true, role: "member", grade: "registrar" }],
+      }),
+    );
+    const assignment = (id: string, userId: string | null, name: string | null) => ({
+      id,
+      userId,
+      name,
+      grade: "registrar",
+      siteId: null,
+      siteName: "Example Hospital",
+      startsAt: "2026-10-13T08:00:00+08:00",
+      endsAt: "2026-10-13T16:30:00+08:00",
+      shiftCode: "D",
+      kind: "day",
+    });
+    routes.set(`GET /api/roster/team/${teamId}?what=assignments`, () =>
+      Response.json({
+        assignments: [
+          assignment("33333333-3333-4333-8333-000000000001", actorId, "Dr Alex Example"),
+          assignment("33333333-3333-4333-8333-000000000002", colleagueId, "Dr Sam Example"),
+          // An unfilled open shift at the same time: not a colleague.
+          assignment("33333333-3333-4333-8333-000000000003", null, null),
+        ],
+      }),
+    );
+    routes.set(`GET /api/roster/team/${teamId}?what=overview`, () =>
+      Response.json({
+        service: { id: teamId, name: "General Medicine" },
+        me: { role: "member", grade: "registrar", rotationEndsOn: null },
+        latestPublication: null,
+        seenLatest: true,
+        settings: { swapApproval: "auto_same_grade", rules: {}, rulesSource: null, payFortnightAnchor: null },
+        sites: [],
+      }),
+    );
+    const request = (id: string, requesterName: string, expiresAt: string) => ({
+      id,
+      status: "requested",
+      autoApproved: false,
+      needsManagerBecause: null,
+      cancelReason: null,
+      requesterId: colleagueId,
+      counterpartyId: actorId,
+      give: null,
+      take: null,
+      expiresAt,
+      createdAt: "2026-10-10T00:00:00Z",
+      decidedAt: null,
+      requesterName,
+      counterpartyName: "Dr Alex Example",
+    });
+    routes.set(`GET /api/roster/team/${teamId}?what=requests`, () =>
+      Response.json({
+        swaps: [
+          request("55555555-5555-4555-8555-000000000001", "Dr Sam Example", "2026-10-14T00:00:00Z"),
+          // Never answered and past its expiry: the server still says "requested".
+          request("55555555-5555-4555-8555-000000000002", "Dr Kim Example", "2026-10-12T00:00:00Z"),
+        ],
+        openShifts: [],
+      }),
+    );
+    renderToday("2026-10-13T02:00:00Z");
+    expect(await screen.findByText("Dr Sam Example asks to swap")).toBeInTheDocument();
+    expect(screen.queryByText("Dr Kim Example asks to swap")).toBeNull();
+    expect(await screen.findByText("Dr Sam Example")).toBeInTheDocument();
+    expect(screen.queryByText("Name not available")).toBeNull();
+  });
+
   it("turns into the night dial between midnight and 06:00 on a night", async () => {
     mockShifts([night("2026-10-15")]);
     renderToday("2026-10-15T19:12:00Z"); // 03:12 Friday in Perth
