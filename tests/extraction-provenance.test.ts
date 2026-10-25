@@ -49,6 +49,8 @@ describe("buildExtractionProvenance (#2F8K1V)", () => {
       chunker_versions: ["1.3.1-document", "1.3.1-page"],
       ocr_page_count: 2,
       ocr_engine_versions: ["5.3.4"],
+      raster_table_ocr_page_count: 0,
+      raster_math_transform_count: 0,
       recorded_at: "2026-10-21T12:00:00.000Z",
     });
   });
@@ -63,6 +65,8 @@ describe("buildExtractionProvenance (#2F8K1V)", () => {
       chunker_versions: ["1.3.1-page"],
       ocr_page_count: 0,
       ocr_engine_versions: [],
+      raster_table_ocr_page_count: 0,
+      raster_math_transform_count: 0,
       recorded_at: "2026-10-21T12:00:00.000Z",
     });
   });
@@ -76,5 +80,32 @@ describe("buildExtractionProvenance (#2F8K1V)", () => {
     expect(result.chunker_versions).toEqual([]);
     expect(result.ocr_engine_versions).toEqual([]);
     expect(result.ocr_page_count).toBe(1);
+  });
+
+  // Audit EXT-08: the optional image-table reader and its maths helper leave a trace.
+  it("counts pages read by the image-table reader and cells changed by its maths helper", () => {
+    const rasterPage = (pageNumber: number, transforms: number) =>
+      ({
+        pageNumber,
+        text: "table page",
+        metadata: {
+          raster_table_ocr: {
+            crops: [
+              { kind: "cell" },
+              ...Array.from({ length: transforms }, () => ({
+                kind: "cell",
+                ocrInputTransform: { kind: "comparison" },
+              })),
+            ],
+          },
+        },
+      }) as never as ExtractedPage;
+    const result = buildExtractionProvenance({
+      extracted: { extractor, pages: [pdfPage(1), rasterPage(2, 2), rasterPage(3, 0)] },
+      chunks: [] as never,
+      recordedAt: "2026-10-25T12:00:00.000Z",
+    });
+    expect(result.raster_table_ocr_page_count).toBe(2);
+    expect(result.raster_math_transform_count).toBe(2);
   });
 });
