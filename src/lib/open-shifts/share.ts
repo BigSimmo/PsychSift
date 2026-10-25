@@ -1,4 +1,4 @@
-import type { CalendarEvent } from "@/lib/calendar/calendar-event";
+import { CALENDAR_TIME_ZONE, type CalendarEvent } from "@/lib/calendar/calendar-event";
 import { perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 
 import { endsNextDay, formatHours, gradeLabel, hoursBetween, kindLabel, type OpenShiftListing } from "./model";
@@ -39,14 +39,18 @@ export function openShiftShareText(listing: Shareable, link: string | null = nul
   return lines.join("\n");
 }
 
-/** One calendar event for a booked extra shift. The id is stable, so adding it again updates it. */
+/**
+ * One calendar event for a booked extra shift. The id is stable, so adding it
+ * again updates it. Calendar events are on Perth's clock, so the start is read
+ * on that clock, not the work zone's.
+ */
 export function openShiftCalendarEvent(listing: Shareable): CalendarEvent {
   const place = [listing.siteName, listing.teamName].filter(Boolean).join(" · ");
   return {
     id: `psychsift-open-shift-${listing.id}`,
     title: `${title(listing)} (extra shift)`,
-    date: perthDateOf(listing.startsAt),
-    startTime: perthTimeOf(listing.startsAt),
+    date: perthDateOf(listing.startsAt, CALENDAR_TIME_ZONE),
+    startTime: perthTimeOf(listing.startsAt, CALENDAR_TIME_ZONE),
     durationMinutes: Math.round((Date.parse(listing.endsAt) - Date.parse(listing.startsAt)) / 60_000),
     kind: "other",
     ...(place ? { location: place } : {}),

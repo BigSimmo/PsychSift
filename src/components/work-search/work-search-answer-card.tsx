@@ -23,8 +23,9 @@ import { WorkRing } from "@/components/mode-kit/work";
 import { cn } from "@/components/ui-primitives";
 import { AREA_ICONS, onPlainClick, ResultRow } from "@/components/work-search/work-search-parts";
 import { downloadTextFile } from "@/lib/admin/download-file";
+import { CALENDAR_TIME_ZONE } from "@/lib/calendar/calendar-event";
 import { icsFileName, toIcs } from "@/lib/calendar/ics";
-import { perthTimeOf } from "@/lib/perth-time";
+import { perthDateOf, perthTimeOf } from "@/lib/perth-time";
 import type { WorkAnswer, WorkAnswerDay, WorkAnswerIcon, WorkAnswerProgress } from "@/lib/work-search/answers";
 import type { WorkItem } from "@/lib/work-search/model";
 import { guardExampleAction, isExampleRecord } from "@/lib/example-data/guards";
@@ -89,12 +90,14 @@ function addToCalendar(item: WorkItem) {
   if (!item.startsAt || !item.endsAt || !item.date) return;
   const minutes = Math.round((Date.parse(item.endsAt) - Date.parse(item.startsAt)) / 60_000);
   const location = item.detail?.split(" · ").slice(2).join(" · ") || undefined;
+  // Calendar events are on Perth's clock, so the start is read on that clock
+  // from the exact instant, not from the work zone's date and time.
   const file = toIcs([
     {
       id: item.id,
       title: item.title,
-      date: item.date,
-      startTime: perthTimeOf(item.startsAt),
+      date: perthDateOf(item.startsAt, CALENDAR_TIME_ZONE),
+      startTime: perthTimeOf(item.startsAt, CALENDAR_TIME_ZONE),
       durationMinutes: minutes,
       kind: "other",
       ...(location ? { location } : {}),
