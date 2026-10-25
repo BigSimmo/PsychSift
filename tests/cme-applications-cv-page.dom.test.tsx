@@ -405,6 +405,15 @@ describe("CV that fills itself", () => {
     );
   });
 
+  it("never copies the example CV out of the app", async () => {
+    const copy = vi.spyOn(clipboard, "copyTextToClipboard").mockResolvedValue();
+    renderCv({ demoMode: true });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("applications-cv-copy"));
+    });
+    expect(copy).not.toHaveBeenCalled();
+  });
+
   it("prints only the CV through the device's print screen", () => {
     const print = vi.spyOn(window, "print").mockImplementation(() => undefined);
     renderCv();

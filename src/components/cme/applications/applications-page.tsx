@@ -388,6 +388,7 @@ export function ApplicationsPage({ demoMode, now }: { readonly demoMode: boolean
         onSave={(draft) => saveReferee(draft, refereeSheet.open ? refereeSheet.id : null)}
         onRemove={removeOne}
         onNudgeCopied={nudged}
+        exampleData={store.mode === "sample"}
       />
     </CpdFeaturePage>
   );

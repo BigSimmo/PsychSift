@@ -28,6 +28,20 @@ export const flatRow =
   "relative flex min-h-12 min-w-0 items-center gap-3 px-3 py-2 before:pointer-events-none before:absolute before:left-3 before:right-0 before:top-0 before:h-px before:bg-[color:var(--border)] before:content-[''] first:before:hidden";
 
 /**
+ * Where a key press moves the choice in a radio group of `count` options, from
+ * `position`: arrows step and wrap, Home and End jump to the ends. Null for any
+ * other key, which the group leaves alone.
+ */
+export function radioKeyTarget(key: string, position: number, count: number): number | null {
+  if (count <= 0) return null;
+  if (key === "ArrowRight" || key === "ArrowDown") return (position + 1) % count;
+  if (key === "ArrowLeft" || key === "ArrowUp") return (position - 1 + count) % count;
+  if (key === "Home") return 0;
+  if (key === "End") return count - 1;
+  return null;
+}
+
+/**
  * A CPD feature page inside the work frame: the band names the page (eyebrow
  * and title, as the mockup's header does), the page keeps an h1 for screen
  * readers only, and the content sits in the kit's page column.

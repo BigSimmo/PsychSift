@@ -39,6 +39,9 @@ function PreferencesProbe() {
       <button type="button" onClick={() => setPreference("motion", "reduced")}>
         Reduced motion
       </button>
+      <button type="button" onClick={() => setPreference("saveRecentSearches", false)}>
+        Stop saving searches
+      </button>
       <button type="button" onClick={retrySync}>
         Retry sync
       </button>
@@ -280,6 +283,83 @@ describe("account preference bootstrap and write serialisation", () => {
     expect(getByTestId("save-recent")).toHaveTextContent("off");
     expect(getByTestId("may-record")).toHaveTextContent("no");
     expect(mayRecordRecentSearches()).toBe(false);
+  });
+
+  it("keeps a change whose PUT failed and re-sends it on Retry instead of adopting the older account value", async () => {
+    let getCount = 0;
+    const putBodies: Array<Record<string, unknown>> = [];
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const method = (init?.method ?? "GET").toUpperCase();
+      if (method === "GET" && String(input).includes("/api/account/preferences")) {
+        getCount += 1;
+        // The account still holds the old opt-in on every read.
+        return Promise.resolve(Response.json({ preferences: { ...DEFAULT_PREFERENCES, saveRecentSearches: true } }));
+      }
+      if (method === "PUT" && String(input).includes("/api/account/preferences")) {
+        const patch = JSON.parse(String(init?.body)) as Record<string, unknown>;
+        putBodies.push(patch);
+        if (putBodies.length === 1) return Promise.resolve(new Response("upstream unavailable", { status: 503 }));
+        return Promise.resolve(Response.json({ preferences: { ...DEFAULT_PREFERENCES, ...patch } }));
+      }
+      throw new Error(`Unexpected fetch: ${method} ${String(input)}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { getByRole, getByTestId } = render(<PreferencesProbe />);
+    await waitFor(() => expect(getByTestId("sync")).toHaveTextContent("synced"));
+    expect(getCount).toBe(1);
+
+    await act(async () => {
+      getByRole("button", { name: "Stop saving searches" }).click();
+    });
+    await waitFor(() => expect(getByTestId("sync")).toHaveTextContent("error"));
+    expect(putBodies).toEqual([{ saveRecentSearches: false }]);
+    expect(getByTestId("save-recent")).toHaveTextContent("off");
+
+    await act(async () => {
+      getByRole("button", { name: "Retry sync" }).click();
+    });
+
+    await waitFor(() => expect(getByTestId("sync")).toHaveTextContent("synced"));
+    expect(putBodies).toEqual([{ saveRecentSearches: false }, { saveRecentSearches: false }]);
+    expect(getByTestId("save-recent")).toHaveTextContent("off");
+    expect(getByTestId("may-record")).toHaveTextContent("no");
+    expect(mayRecordRecentSearches()).toBe(false);
+  });
+
+  it("re-sends a failed change with the next unrelated write", async () => {
+    const putBodies: Array<Record<string, unknown>> = [];
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const method = (init?.method ?? "GET").toUpperCase();
+      if (method === "GET" && String(input).includes("/api/account/preferences")) {
+        return Promise.resolve(Response.json({ preferences: DEFAULT_PREFERENCES }));
+      }
+      if (method === "PUT" && String(input).includes("/api/account/preferences")) {
+        const patch = JSON.parse(String(init?.body)) as Record<string, unknown>;
+        putBodies.push(patch);
+        if (putBodies.length === 1) return Promise.reject(new TypeError("Failed to fetch"));
+        return Promise.resolve(Response.json({ preferences: { ...DEFAULT_PREFERENCES, ...patch } }));
+      }
+      throw new Error(`Unexpected fetch: ${method} ${String(input)}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { getByRole, getByTestId } = render(<PreferencesProbe />);
+    await waitFor(() => expect(getByTestId("sync")).toHaveTextContent("synced"));
+
+    await act(async () => {
+      getByRole("button", { name: "Stop saving searches" }).click();
+    });
+    await waitFor(() => expect(getByTestId("sync")).toHaveTextContent("error"));
+
+    await act(async () => {
+      getByRole("button", { name: "Compact" }).click();
+    });
+
+    await waitFor(() => expect(getByTestId("sync")).toHaveTextContent("synced"));
+    expect(putBodies[1]).toEqual({ saveRecentSearches: false, density: "compact" });
+    expect(getByTestId("save-recent")).toHaveTextContent("off");
+    expect(getByTestId("density")).toHaveTextContent("compact");
   });
 
   it("serializes preference PUTs so a delayed older patch cannot overwrite a newer one", async () => {

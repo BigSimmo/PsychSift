@@ -207,6 +207,8 @@ export function ApplicationsCvPage({
   }
 
   async function copyText() {
+    // Example records never leave the app, copied included.
+    if (!guardExampleAction(demoMode, "copy")) return;
     if (!plain.shownCount) {
       notify("Nothing to copy. Every line is hidden.");
       return;

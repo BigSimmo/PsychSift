@@ -5,7 +5,7 @@ import { useId, useState } from "react";
 
 import { CmeDateField } from "@/components/cme/cme-date-field";
 import { focusRing } from "@/components/card-recipes";
-import { DateTile, FlatSwitch, PatientDetailCatch, flatCard } from "@/components/cme/cpd-feature-kit";
+import { DateTile, FlatSwitch, PatientDetailCatch, flatCard, radioKeyTarget } from "@/components/cme/cpd-feature-kit";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
 import { TextField } from "@/components/ui/text-field";
@@ -255,7 +255,7 @@ function SeasonDateSheetBody({
             Stage
           </p>
           <div role="radiogroup" aria-labelledby={stageGroup} className="flex flex-wrap gap-2">
-            {APPLICATION_STAGES.map((item) => {
+            {APPLICATION_STAGES.map((item, position) => {
               const selected = item.id === stage;
               const has = Boolean(seasonDateFor(state, item.id));
               return (
@@ -264,7 +264,16 @@ function SeasonDateSheetBody({
                   type="button"
                   role="radio"
                   aria-checked={selected}
+                  tabIndex={selected ? 0 : -1}
                   onClick={() => pickStage(item.id)}
+                  onKeyDown={(event) => {
+                    // One tab stop for the group; arrows, Home and End move the choice.
+                    const next = radioKeyTarget(event.key, position, APPLICATION_STAGES.length);
+                    if (next === null) return;
+                    event.preventDefault();
+                    pickStage(APPLICATION_STAGES[next]!.id);
+                    (event.currentTarget.parentElement?.children[next] as HTMLElement | undefined)?.focus();
+                  }}
                   data-testid={`applications-date-stage-${item.id}`}
                   className={cn(
                     focusRing,
