@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { perthDateOf, perthWallToIso } from "@/lib/roster/shifts/perth-time";
+import { PERTH_TIME_ZONE, perthDateOf, perthWallToIso } from "@/lib/roster/shifts/perth-time";
 import {
   ROSTER_ASSIGNMENT_KINDS,
   ROSTER_GRADES,
@@ -12,6 +12,11 @@ import {
 const uuid = z.string().uuid();
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const instant = z.string().refine((value) => Number.isFinite(Date.parse(value)));
+
+// The database counts a publish period in Perth dates, and the server checks with Perth too, so the
+// browser checks in Perth whatever work zone the manager chose. Otherwise a shift the browser accepts
+// can be refused on the server.
+const periodDateOf = (instant: string) => perthDateOf(instant, PERTH_TIME_ZONE);
 
 export type RosterPublishRow = {
   rowName: string;
@@ -79,7 +84,7 @@ export function validateOpenShifts({
     if (Date.parse(open.startsAt) <= now.getTime()) throw new Error("Open shifts must start in the future.");
     if (Date.parse(open.endsAt) <= Date.parse(open.startsAt))
       throw new Error("An open shift must end after it starts.");
-    const startDate = perthDateOf(open.startsAt);
+    const startDate = periodDateOf(open.startsAt);
     if (startDate < period.start || startDate > period.end)
       throw new Error("An open shift starts outside the chosen period.");
     return open;
@@ -147,7 +152,7 @@ export function buildPublishPayload({
     const row = parsed.data;
     if (!row.userId && !row.rosterName) throw new Error("Sort every roster row before publishing.");
     if (Date.parse(row.endsAt) <= Date.parse(row.startsAt)) throw new Error("A shift must end after it starts.");
-    const startDate = perthDateOf(row.startsAt);
+    const startDate = periodDateOf(row.startsAt);
     if (startDate < period.start || startDate > period.end)
       throw new Error("A shift starts outside the chosen period.");
     const { rowName: _rowName, ...assignment } = row;

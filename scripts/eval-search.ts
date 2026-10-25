@@ -58,7 +58,9 @@ export type SearchEvalResult = {
   failures: string[];
 };
 
-function parseArgs(argv: string[]): EvalArgs {
+const VALUE_FLAGS = new Set(["--owner-email", "--owner-id", "--limit", "--question"]);
+
+export function parseArgs(argv: string[]): EvalArgs {
   const args: EvalArgs = {
     ownerEmail: process.env.RAG_EVAL_OWNER_EMAIL,
     ownerId: process.env.RAG_EVAL_OWNER_ID ?? process.env.LOCAL_NO_AUTH_OWNER_ID,
@@ -79,6 +81,10 @@ function parseArgs(argv: string[]): EvalArgs {
       continue;
     }
 
+    // A misspelled flag (`--limt 5`) must stop the run, not silently fall back to defaults.
+    if (!VALUE_FLAGS.has(token)) {
+      throw new Error(`Unknown option ${token}. Expected --json, --fail-on-threshold, ${[...VALUE_FLAGS].join(", ")}.`);
+    }
     const value = argv[index + 1];
     if (!value || value.startsWith("--")) throw new Error(`Missing value for ${token}`);
     index += 1;

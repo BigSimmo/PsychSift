@@ -28,6 +28,7 @@ import { inPageAnchor } from "@/components/in-page-nav/in-page-nav-classes";
 import { WorkCard, WorkIconCircle, WorkSectionLabel } from "@/components/mode-kit/work";
 import { WorkStateNotice } from "@/components/mode-kit/work-state";
 import { AdminLoadFailed } from "@/components/admin/admin-load-failed";
+import { useJuniorNow } from "@/components/admin/junior/junior-shared";
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { onCallEntryAnchorId } from "@/components/on-call/on-call-page-anchors";
 import { cn } from "@/components/ui-primitives";
@@ -44,7 +45,12 @@ import {
 import { ADMIN_PAGE_HREFS } from "@/lib/admin/page-hrefs";
 import { ADMIN_REQUIREMENTS_CATALOGUE } from "@/lib/admin/requirements";
 import { parseApiErrorResponse } from "@/lib/api-client-error";
-import { cacheOnCallEntries, isOnCallExampleEntry, useOnCallEntries } from "@/lib/on-call/entry-store";
+import {
+  cacheOnCallEntries,
+  isOnCallExampleEntry,
+  readCachedOnCallEntries,
+  useOnCallEntries,
+} from "@/lib/on-call/entry-store";
 import { onCallEntrySchema, type OnCallEntry, type OnCallSection } from "@/lib/on-call/entry-model";
 import { onCallTelHref } from "@/lib/on-call/home-modules";
 import { isOnCallPlaceholderNumber } from "@/lib/on-call/number-resolver";
@@ -207,8 +213,7 @@ export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
   const { isAuthenticated } = useAccountData();
   const state = useOnCallEntries();
   const { entries, retry } = state;
-  const mountedAt = useMemo(() => new Date(), []);
-  const now = nowProp ?? mountedAt;
+  const now = useJuniorNow(nowProp);
   const [editorState, setEditorState] = useState<{ open: boolean; entry: OnCallEntry | null; section: OnCallSection }>({
     open: false,
     entry: null,
@@ -262,15 +267,18 @@ export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
   function upsertCachedEntry(entry: OnCallEntry) {
     if (!isCurrent()) return;
     if (isOnCallExampleEntry(entry)) return;
-    const next = entries.some((existing) => existing.id === entry.id)
-      ? entries.map((existing) => (existing.id === entry.id ? entry : existing))
-      : [...entries, entry];
+    // The latest cache, not this render's list: two saves in flight would otherwise undo each other.
+    const latest = readCachedOnCallEntries()?.entries ?? entries;
+    const next = latest.some((existing) => existing.id === entry.id)
+      ? latest.map((existing) => (existing.id === entry.id ? entry : existing))
+      : [...latest, entry];
     cacheOnCallEntries(next);
   }
 
   function removeCachedEntry(id: string) {
     if (!isCurrent()) return;
-    cacheOnCallEntries(entries.filter((existing) => existing.id !== id));
+    const latest = readCachedOnCallEntries()?.entries ?? entries;
+    cacheOnCallEntries(latest.filter((existing) => existing.id !== id));
   }
 
   async function handleToggle(entry: OnCallEntry, done: boolean) {

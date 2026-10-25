@@ -16,8 +16,10 @@ import {
   Waypoints,
 } from "lucide-react";
 import { useMemo, useState, useDeferredValue, useEffect } from "react";
+import { announce } from "@/components/ui/live-announcer";
 import { useDirtyStateGuard } from "@/components/ui/use-dirty-state-guard";
 import { subscribeAccountTransition } from "@/lib/account-scoped-browser-state";
+import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 
 import {
   FormulationPageShell,
@@ -44,6 +46,23 @@ import {
 } from "@/lib/formulation-mechanism-index";
 
 const STORAGE_KEY = "psychsift_formulation_draft";
+
+type SavedBuilderDraft = {
+  selectedIds?: string[];
+  templateId?: string;
+  sectionNotes?: Record<string, string>;
+  qualityNotes?: Record<string, string>;
+  editedDraft?: string | null;
+};
+
+function readSavedBuilderDraft(): SavedBuilderDraft | null {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as SavedBuilderDraft) : null;
+  } catch {
+    return null;
+  }
+}
 
 const builderSteps = [
   { id: "select", label: "Select", description: "Mechanisms" },
@@ -208,36 +227,52 @@ export function FormulationBuilderPage({
   const validInitialTemplate = formulationTemplates.some((template) => template.id === initialTemplate)
     ? initialTemplate!
     : formulationTemplates[0].id;
-  const initialDraft = useMemo(() => {
-    if (typeof window === "undefined") return null;
-    try {
-      const raw = sessionStorage.getItem(STORAGE_KEY);
-      return raw
-        ? (JSON.parse(raw) as {
-            selectedIds?: string[];
-            templateId?: string;
-            sectionNotes?: Record<string, string>;
-            qualityNotes?: Record<string, string>;
-            editedDraft?: string | null;
-          })
-        : null;
-    } catch {
-      return null;
-    }
-  }, []);
-
   const [activeStep, setActiveStep] = useState<BuilderStepId>("select");
-  const [selectedIds, setSelectedIds] = useState<string[]>(
-    () => initialDraft?.selectedIds ?? normalizeMechanismSelection(initialMechanisms),
-  );
+  const [selectedIds, setSelectedIds] = useState<string[]>(() => normalizeMechanismSelection(initialMechanisms));
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
   const [domain, setDomain] = useState("all");
-  const [templateId, setTemplateId] = useState<string>(() => initialDraft?.templateId ?? validInitialTemplate);
-  const [sectionNotes, setSectionNotes] = useState<Record<string, string>>(() => initialDraft?.sectionNotes ?? {});
-  const [qualityNotes, setQualityNotes] = useState<Record<string, string>>(() => initialDraft?.qualityNotes ?? {});
-  const [editedDraft, setEditedDraft] = useState<string | null>(() => initialDraft?.editedDraft ?? null);
-  const [copied, setCopied] = useState(false);
+  const [templateId, setTemplateId] = useState<string>(validInitialTemplate);
+  const [sectionNotes, setSectionNotes] = useState<Record<string, string>>({});
+  const [qualityNotes, setQualityNotes] = useState<Record<string, string>>({});
+  const [editedDraft, setEditedDraft] = useState<string | null>(null);
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
+  // Saving waits until the saved draft has been read back, so the first save cannot overwrite it.
+  const [draftRestored, setDraftRestored] = useState(false);
+
+  // Read the saved draft only after mount, so the server render and the first client render match.
+  // Mechanisms named in the address ("Use in formulation") are added to the saved selection, not dropped.
+  useEffect(() => {
+    const saved = readSavedBuilderDraft();
+    if (saved) {
+      const savedIds = normalizeMechanismSelection(saved.selectedIds ?? []);
+      const mergedIds = normalizeMechanismSelection([...savedIds, ...initialMechanisms]);
+      const savedTemplateId = saved.templateId ?? validInitialTemplate;
+      const savedSectionNotes = saved.sectionNotes ?? {};
+      const savedQualityNotes = saved.qualityNotes ?? {};
+      const savedEditedDraft = saved.editedDraft ?? null;
+      // A saved draft that was never hand-edited is rebuilt so it includes the added mechanisms.
+      const savedDraftUnedited =
+        savedEditedDraft ===
+        formulationDraftFor({
+          mechanisms: savedIds
+            .map((id) => findFormulationMechanismSummary(id))
+            .filter((mechanism): mechanism is FormulationMechanismSummary => Boolean(mechanism)),
+          templateId: savedTemplateId,
+          notes: savedSectionNotes,
+          qualityNotes: savedQualityNotes,
+        });
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSelectedIds(mergedIds);
+      setTemplateId(savedTemplateId);
+      setSectionNotes(savedSectionNotes);
+      setQualityNotes(savedQualityNotes);
+      setEditedDraft(mergedIds.length !== savedIds.length && savedDraftUnedited ? null : savedEditedDraft);
+    }
+    setDraftRestored(true);
+    // Mount-only: the address and the saved draft are read once, when the builder opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const selectedMechanisms = useMemo(
     () =>
@@ -275,6 +310,7 @@ export function FormulationBuilderPage({
   useDirtyStateGuard(isDirty);
 
   useEffect(() => {
+    if (!draftRestored) return;
     try {
       if (isDirty || selectedIds.length > 0) {
         sessionStorage.setItem(
@@ -287,7 +323,7 @@ export function FormulationBuilderPage({
     } catch {
       // Ignore storage errors
     }
-  }, [isDirty, sectionNotes, qualityNotes, selectedIds, templateId, editedDraft]);
+  }, [draftRestored, isDirty, sectionNotes, qualityNotes, selectedIds, templateId, editedDraft]);
 
   useEffect(() => {
     return subscribeAccountTransition(() => {
@@ -305,11 +341,17 @@ export function FormulationBuilderPage({
     });
   }, [validInitialTemplate]);
 
+  // Earlier-step changes rebuild the draft only while it still matches the generated text;
+  // hand edits are kept until the clinician presses Regenerate.
+  function discardUneditedDraft() {
+    setEditedDraft((current) => (current === null || current === generatedDraft ? null : current));
+  }
+
   function toggleMechanism(id: string) {
     setSelectedIds((current) =>
       current.includes(id) ? current.filter((item) => item !== id) : normalizeMechanismSelection([...current, id]),
     );
-    setEditedDraft(null);
+    discardUneditedDraft();
   }
 
   function clearMechanisms() {
@@ -326,7 +368,7 @@ export function FormulationBuilderPage({
 
   function updateSection(id: string, value: string) {
     setSectionNotes((current) => ({ ...current, [id]: value }));
-    setEditedDraft(null);
+    discardUneditedDraft();
   }
 
   function applySuggestions(id: string) {
@@ -338,14 +380,20 @@ export function FormulationBuilderPage({
   function move(direction: -1 | 1) {
     const next = builderSteps[activeIndex + direction];
     if (!next) return;
-    if (next.id === "draft") setEditedDraft(generatedDraft);
+    if (next.id === "draft" && editedDraft === null) setEditedDraft(generatedDraft);
     setActiveStep(next.id);
   }
 
   async function copyDraft() {
-    await navigator.clipboard.writeText(draft);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1800);
+    try {
+      await copyTextToClipboard(draft);
+    } catch {
+      setCopyState("failed");
+      announce("Draft not copied. Select the draft text and copy it by hand.");
+      return;
+    }
+    setCopyState("copied");
+    window.setTimeout(() => setCopyState((current) => (current === "copied" ? "idle" : current)), 1800);
   }
 
   return (
@@ -660,7 +708,7 @@ export function FormulationBuilderPage({
                         value={qualityNotes[prompt.id] ?? ""}
                         onChange={(event) => {
                           setQualityNotes((current) => ({ ...current, [prompt.id]: event.target.value }));
-                          setEditedDraft(null);
+                          discardUneditedDraft();
                         }}
                         rows={4}
                         aria-label={prompt.label}
@@ -723,10 +771,20 @@ export function FormulationBuilderPage({
                       className={cn(primaryControl, "gap-1.5 rounded-md px-3 text-xs")}
                     >
                       <Clipboard className="h-3.5 w-3.5" aria-hidden />
-                      {copied ? "Copied" : "Copy draft"}
+                      {copyState === "copied" ? "Copied" : copyState === "failed" ? "Not copied" : "Copy draft"}
                     </button>
                   </div>
                 </div>
+                {copyState === "failed" ? (
+                  <p role="status" className="text-sm font-semibold text-[color:var(--text-heading)]">
+                    Couldn&apos;t copy. Select the draft text and copy it yourself.
+                  </p>
+                ) : null}
+                {editedDraft !== null && editedDraft !== generatedDraft ? (
+                  <p className="text-xs font-medium leading-5 text-[color:var(--text-muted)]">
+                    Your edits are kept. Regenerate rebuilds the draft from the earlier steps and replaces them.
+                  </p>
+                ) : null}
                 <textarea
                   value={draft}
                   onChange={(event) => setEditedDraft(event.target.value)}

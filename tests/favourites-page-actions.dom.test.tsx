@@ -194,6 +194,21 @@ describe("favourites page actions", () => {
     await waitFor(() => expect(account.moveFavourite).toHaveBeenCalledWith("service", "crisis-team", null));
   });
 
+  it("gives each browse-mode copy of a row's details its own id", () => {
+    renderPage();
+    const row = rowFor("perinatal");
+    const wide = within(row).getByRole("button", { name: "Select Service perinatal for workspace" });
+    const narrow = within(row).getByRole("link", { name: "Open Service perinatal" });
+    const wideId = wide.getAttribute("aria-describedby")!;
+    const narrowId = narrow.getAttribute("aria-describedby")!;
+
+    expect(wideId).not.toBe(narrowId);
+    expect(row.querySelectorAll(`[id="${wideId}"]`)).toHaveLength(1);
+    expect(row.querySelectorAll(`[id="${narrowId}"]`)).toHaveLength(1);
+    expect(wide.querySelector(`[id="${wideId}"]`)).not.toBeNull();
+    expect(narrow.querySelector(`[id="${narrowId}"]`)).not.toBeNull();
+  });
+
   it("shows Continue for the last favourite opened", () => {
     account.openedSlug = "older-adult";
     renderPage();

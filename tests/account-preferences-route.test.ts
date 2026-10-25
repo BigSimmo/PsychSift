@@ -211,6 +211,31 @@ describe("PUT /api/account/preferences", () => {
     expect(database.insert).toHaveBeenCalledTimes(2);
     expect(database.update).toHaveBeenCalledTimes(1);
   });
+
+  it("answers a retryable 409 when every compare-and-swap attempt loses the race", async () => {
+    const database = mockPreferencesRoute(DEFAULT_PREFERENCES);
+    // Another device writes between every read and update, so no attempt's expected timestamp matches.
+    database.maybeSingle.mockImplementation(async () => ({
+      data: { preferences: structuredClone(DEFAULT_PREFERENCES), updated_at: "2026-08-24T00:00:00.000Z" },
+      error: null,
+    }));
+
+    const { PUT } = await import("@/app/api/account/preferences/route");
+    const response = await PUT(
+      new Request("http://local.test/api/account/preferences", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ density: "compact" }),
+      }),
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "preferences_conflict",
+      message: "Account preferences changed too frequently. Please retry.",
+    });
+    expect(database.update).toHaveBeenCalledTimes(3);
+  });
 });
 
 describe("PUT /api/account/preferences reminders", () => {

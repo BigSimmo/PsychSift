@@ -10,7 +10,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 import { fetchRosterRead, postRosterAction } from "@/components/roster/use-roster-team";
 import { SHIFT_KIND_LABEL } from "@/lib/roster/shift-kind";
-import { formatPerthDay, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
+import { addDaysToDate, formatPerthDay, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 import { openShiftCandidates } from "@/lib/roster/team/eligibility";
 import type { RosterAction, RosterAssignment, RosterOverview } from "@/lib/roster/team/model";
 import { zonedTimeOf } from "@/lib/work-time/format";
@@ -57,9 +57,11 @@ function GiveAwaySession({
     if (!open) return;
     let current = true;
     void Promise.all([
+      // Both ends on the Perth date, the Requests page's own window: a UTC end
+      // date runs a day short between midnight and 08:00 in Perth.
       fetchRosterRead(serviceId, "assignments", {
         from: perthDateOf(new Date()),
-        to: new Date(Date.now() + 54 * 86_400_000).toISOString().slice(0, 10),
+        to: addDaysToDate(perthDateOf(new Date()), 54),
       }),
       fetchRosterRead(serviceId, "overview"),
     ]).then(([assignments, overview]) => {
@@ -75,7 +77,11 @@ function GiveAwaySession({
     };
   }, [open, serviceId, initialAssignmentId]);
 
-  const mine = fresh?.assignments.filter((shift) => shift.userId === actorId && shift.kind !== "leave") ?? [];
+  // The read starts at today's date, so it includes shifts that already ended earlier today.
+  const mine =
+    fresh?.assignments.filter(
+      (shift) => shift.userId === actorId && shift.kind !== "leave" && Date.parse(shift.endsAt) > now.getTime(),
+    ) ?? [];
   const shift = mine.find((item) => item.id === assignmentId);
   const candidates =
     fresh && shift

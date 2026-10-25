@@ -126,10 +126,15 @@ export function ShiftSheet({
               onDecide={(item, approve) => void decision.decide(item, approve)}
             />
           ))}
-          <DecisionAnswer message={decision.message} errors={decision.errors} />
-          {decision.reviewDialog}
         </div>
       ) : null}
+      {/* Outside the list: the reload after a decision drops the decided swap, not its answer. */}
+      {manage && (decision.message || decision.errors.length) ? (
+        <div className="mt-3 grid gap-1">
+          <DecisionAnswer message={decision.message} errors={decision.errors} />
+        </div>
+      ) : null}
+      {manage ? decision.reviewDialog : null}
       {offered ? (
         <p role="status" className="mt-4 text-sm">
           Posted as an open shift.

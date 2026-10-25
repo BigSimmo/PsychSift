@@ -150,7 +150,7 @@ function removePartialInstall(projectRoot) {
   rmSync(target, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 });
 }
 
-function copyDependencies(donor, projectRoot) {
+export function copyDependencies(donor, projectRoot) {
   const source = path.join(donor, "node_modules");
   const destination = path.join(projectRoot, "node_modules");
   removePartialInstall(projectRoot);
@@ -182,8 +182,11 @@ function copyDependencies(donor, projectRoot) {
     return;
   }
 
+  // verbatimSymlinks keeps relative links such as node_modules/.bin/* relative. Without it Node
+  // rewrites them to absolute paths into the donor, so this worktree would run the donor's tools.
   cpSync(source, destination, {
     recursive: true,
+    verbatimSymlinks: true,
     filter: (sourcePath) => ![".cache", ".vite", ".tmp"].includes(path.basename(sourcePath)),
   });
 }

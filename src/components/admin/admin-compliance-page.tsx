@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 
 import { AdminNote, AdminPage, AdminRow, AdminSection, AdminSkeleton, adminStyles } from "@/components/admin/admin-kit";
 import { AdminLoadFailed } from "@/components/admin/admin-load-failed";
+import { useJuniorNow } from "@/components/admin/junior/junior-shared";
 import {
   AdminRuleToConfirm,
   AdminStatusIcon,
@@ -372,8 +373,7 @@ export function ComplianceByGroup({
  */
 export function AdminCompliancePage({ now: nowProp }: { now?: Date } = {}) {
   const state = useOnCallEntries();
-  const mountedAt = useMemo(() => new Date(), []);
-  const now = nowProp ?? mountedAt;
+  const now = useJuniorNow(nowProp);
   const loadState = adminLoadState(state);
   const [signInOpen, setSignInOpen] = useState(false);
   const canEdit = loadState === "ready" && !state.demoMode;

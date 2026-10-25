@@ -61,7 +61,7 @@ export function buildCmeYearEndActions({
       id: "evaluation",
       label: "Self-evaluation",
       status: evaluation?.completedOn ? "Recorded" : "Not recorded",
-      href: `/cme/setup?year=${set.year}#cme-setup-steps`,
+      href: `/cme/setup?year=${set.year}&edit=1#cme-setup-steps`,
     },
     {
       id: "goals",

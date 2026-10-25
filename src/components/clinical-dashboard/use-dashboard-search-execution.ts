@@ -47,6 +47,7 @@ import type { VerifiedEvidencePreviewUnit } from "@/lib/answer-stream-contract";
 import { createAnswerThreadSnapshotMetadata, maxStoredAnswerTurns } from "@/lib/answer-thread-storage";
 import { appModeHomeHref, appModeQueryMode, appModeSearchConfig, type AppModeId } from "@/lib/app-modes";
 import { identifierShapeWarning } from "@/lib/clinical-ask/context";
+import { SEARCH_IDENTIFIER_HELD_BACK } from "@/components/clinical-dashboard/search-patient-detail-guard";
 import { incrementalEvidencePreviewRenderingEnabled } from "@/lib/client-env";
 import { isDeployedClinicalKb } from "@/lib/deployed-app";
 import { documentsSearchHref } from "@/lib/document-flow-routes";
@@ -77,9 +78,6 @@ const PATIENT_CHECK_UNAVAILABLE =
   "Could not check your question for patient details. Check your connection and try again.";
 /** Longest Retry-After the client waits out before reporting the service's busy message instead. */
 const maxClientRetryWaitMs = 10_000;
-
-const SEARCH_IDENTIFIER_HELD_BACK =
-  "This search looks like it holds a record number, date of birth, phone number or email. Remove it and search again.";
 
 /** A refused deep link (?q=…&run=1) must not leave the patient detail sitting in the address bar,
  *  so the refused question is dropped when the address is what holds it. An address holding a
@@ -481,6 +479,8 @@ export function useDashboardSearchExecution(deps: DashboardSearchExecutionDeps) 
       const patientDetail = patientCheck.clinicalQuestionPatientDetail(trimmedQuery);
       if (patientDetail) {
         setActionNotice({ tone: "warning", message: patientCheck.clinicalQuestionPatientDetailMessage(patientDetail) });
+        // A Documents ?run=1 link reaches here without ask(), so it cleans the address too.
+        clearRefusedQueryFromAddress(trimmedQuery);
         return;
       }
     }

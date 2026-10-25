@@ -13,7 +13,7 @@ import { ON_CALL_VIEW_TITLES } from "@/components/on-call/on-call-section-identi
 import { OnCallEmptyState } from "@/components/on-call/kit/empty-state";
 import { cn, eyebrowText, floatingControl, textMuted } from "@/components/ui-primitives";
 import { formatClinicalDate } from "@/lib/source-metadata";
-import { cacheOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
+import { updateCachedOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
 import { msUntilNextOnCallLocalDay } from "@/lib/on-call/local-date";
 import { buildOnCallReviewQueue, type OnCallReviewItem } from "@/lib/on-call/review-queue";
@@ -50,7 +50,12 @@ export function OnCallCheckPage({ now: nowProp }: { now?: Date } = {}) {
       if (!response.ok) throw new Error(`Could not confirm ${entry.title}. Try again.`);
       const payload: unknown = await response.json();
       const updated = (payload as { entry?: OnCallEntry } | null)?.entry;
-      if (updated) cacheOnCallEntries(entries.map((existing) => (existing.id === updated.id ? updated : existing)));
+      // After the await, so update the latest cached list, not this render's snapshot.
+      if (updated) {
+        updateCachedOnCallEntries(entries, (current) =>
+          current.map((existing) => (existing.id === updated.id ? updated : existing)),
+        );
+      }
     } catch (failure) {
       const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
       const isFetchError = failure instanceof TypeError && failure.message.toLowerCase().includes("fetch");

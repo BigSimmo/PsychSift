@@ -30,6 +30,12 @@
 //      for the same reason, and only one of them used to stop green: a patient
 //      on a drug the corpus never mentions produced no interactions, zero
 //      unresolved rows, and a confident green.
+//   5. An entered medication carrying its own unresolved rows →
+//      `reverseUnresolvedCounterparties`. Case 1 counts only the VIEWED drug's
+//      rows, but the reverse scan reads the PATIENT's rows too, and an
+//      unresolved one there (e.g. clarithromycin's CYP3A4/P-gp row) may reach
+//      the viewed drug without naming it. Viewing diltiazem for a patient on
+//      clarithromycin used to compose straight to green.
 //
 // Missing analysis is not the same as a negative finding. `composeMedicationVerdict`
 // is where that is finally enforced.
@@ -76,6 +82,13 @@ export type MedicationInteractionResult = {
    * `UNREACHABLE_SLUGS` — this is the fourth route to an incomplete analysis.
    */
   unreachableCounterparties: string[];
+  /**
+   * Entered medications whose own interaction rows include at least one that
+   * could not be resolved, so the reverse scan may have missed an edge to the
+   * viewed drug. Excludes `unreachableCounterparties`, which already says so.
+   * The fifth route to an incomplete analysis.
+   */
+  reverseUnresolvedCounterparties: string[];
 };
 
 type IndexRow = {
@@ -363,6 +376,14 @@ export function evaluateMedicationInteractions(
   const counts: Record<SemanticTone, number> = { ...EMPTY_COUNTS };
   for (const interaction of resultInteractions) counts[interaction.tone] += 1;
 
+  // The graph calculation already includes both endpoints of every resolved
+  // edge. Keep this result filter as a defensive invariant so the UI can never
+  // call a medication uncheckable directly above an alert about that drug.
+  const unreachableCounterparties = Array.from(patient)
+    .filter((value) => UNREACHABLE_SLUGS.has(value))
+    .filter((value) => !resultInteractions.some((item) => item.counterpartySlug === value))
+    .sort((a, b) => medicationDisplayName(a).localeCompare(medicationDisplayName(b)));
+
   return {
     interactions: resultInteractions,
     counts,
@@ -370,12 +391,10 @@ export function evaluateMedicationInteractions(
     unresolvedRowCount: dataAvailable ? (entry?.unresolvedRowCount ?? 0) : 1,
     totalRowCount: entry?.rows.length ?? 0,
     dataAvailable,
-    // The graph calculation already includes both endpoints of every resolved
-    // edge. Keep this result filter as a defensive invariant so the UI can never
-    // call a medication uncheckable directly above an alert about that drug.
-    unreachableCounterparties: Array.from(patient)
-      .filter((value) => UNREACHABLE_SLUGS.has(value))
-      .filter((value) => !resultInteractions.some((item) => item.counterpartySlug === value))
+    unreachableCounterparties,
+    reverseUnresolvedCounterparties: Array.from(patient)
+      .filter((value) => (INDEX.bySlug[value]?.unresolvedRowCount ?? 0) > 0)
+      .filter((value) => !unreachableCounterparties.includes(value))
       .sort((a, b) => medicationDisplayName(a).localeCompare(medicationDisplayName(b))),
   };
 }
@@ -401,9 +420,18 @@ export function composeMedicationVerdict(input: {
    * uncheckable drug sits in the patient's list.
    */
   unreachableCounterpartyCount?: number;
+  /**
+   * Entered medications carrying unresolved rows of their own. Optional for the
+   * same reason as `unreachableCounterpartyCount`, with the same consequence if
+   * a caller omits it.
+   */
+  reverseUnresolvedCounterpartyCount?: number;
 }): MedicationVerdict {
   const incomplete =
-    input.unassessedCount > 0 || input.unresolvedRowCount > 0 || (input.unreachableCounterpartyCount ?? 0) > 0;
+    input.unassessedCount > 0 ||
+    input.unresolvedRowCount > 0 ||
+    (input.unreachableCounterpartyCount ?? 0) > 0 ||
+    (input.reverseUnresolvedCounterpartyCount ?? 0) > 0;
   const candidates = [input.considerationTone, input.interactionTone].filter(
     (tone): tone is SemanticTone => tone !== null,
   );

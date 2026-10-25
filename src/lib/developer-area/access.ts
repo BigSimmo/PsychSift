@@ -1,6 +1,7 @@
 import "server-only";
 
 import { cookies } from "next/headers";
+import { cache } from "react";
 
 import { isAdministratorUser } from "@/lib/authorization";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -38,7 +39,7 @@ export function developerGateBypassAllowed(environment: Record<string, string | 
  * Reused deliberately rather than a new role — a second, parallel authorization
  * concept for a single-admin deployment would be pure duplication.
  */
-export async function resolveDeveloperAccessState(): Promise<DeveloperAccessResult> {
+export const resolveDeveloperAccessState = cache(async (): Promise<DeveloperAccessResult> => {
   const supabase = await createSupabaseServerClient();
   if (!supabase) return { state: "unauthenticated", email: null };
 
@@ -50,7 +51,7 @@ export async function resolveDeveloperAccessState(): Promise<DeveloperAccessResu
     state: isAdministratorUser(user) ? "authorized" : "unauthorized",
     email: user.email ?? null,
   };
-}
+});
 
 /**
  * Whether this request carries a valid passwordless access cookie — the secret
@@ -71,3 +72,20 @@ export async function developerLinkAccessGranted(): Promise<boolean> {
   const cookieStore = await cookies();
   return developerAccessTokenValid(cookieStore.get(DEVELOPER_ACCESS_COOKIE)?.value);
 }
+
+/**
+ * The same admission decision `DeveloperAreaGate` makes, as one yes or no, for
+ * the developer-hub pages to check for themselves. The layout gate alone is not
+ * enough: on a client-side navigation the App Router can skip re-rendering a
+ * shared layout, so a hand-made request that claims the layout is already
+ * mounted gets the page payload without the gate ever running. Each page that
+ * renders repository data on the server therefore checks again and renders
+ * nothing when this is false; the layout gate still shows the sign-in screen
+ * on an ordinary request. Wrapped in `cache` (as is
+ * `resolveDeveloperAccessState`) so the layout and page share one auth lookup.
+ */
+export const developerAreaRequestAuthorized = cache(async (): Promise<boolean> => {
+  if (developerGateBypassAllowed()) return true;
+  if (await developerLinkAccessGranted()) return true;
+  return (await resolveDeveloperAccessState()).state === "authorized";
+});

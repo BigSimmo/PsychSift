@@ -122,14 +122,10 @@ export function answerTargetingThresholdFailure(args: {
   targetingFloor?: number;
   targetingRate: number | null;
 }) {
-  if (
-    !args.failOnThreshold ||
-    args.targetingFloor === undefined ||
-    args.targetingRate === null ||
-    args.targetingRate >= args.targetingFloor
-  ) {
-    return null;
-  }
+  if (!args.failOnThreshold || args.targetingFloor === undefined) return null;
+  // No scored case (a mistyped --intent, or cases with no applicable targeting) cannot meet a floor.
+  if (args.targetingRate === null) return `targeting_rate unavailable (no case scored) < floor ${args.targetingFloor}`;
+  if (args.targetingRate >= args.targetingFloor) return null;
   return `targeting_rate ${args.targetingRate} < floor ${args.targetingFloor}`;
 }
 

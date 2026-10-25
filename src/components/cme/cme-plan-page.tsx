@@ -393,7 +393,7 @@ export function CmePlanPage({
               }
               end={
                 <Link
-                  href="/cme/setup#cme-setup-steps"
+                  href={`/cme/setup?year=${set.year}&edit=1#cme-setup-steps`}
                   data-testid="cme-plan-status-link"
                   className="work-button min-h-tap shrink-0"
                   data-variant="tinted"

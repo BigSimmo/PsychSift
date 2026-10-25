@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { CmeDashboardRoute } from "@/components/cme/cme-dashboard-route";
 import { CmeStateNotice } from "@/components/cme/cme-state-notice";
 import type { CmeReportingReminder } from "@/components/cme/cme-dashboard";
-import { cmeReportingCloseDate } from "@/lib/cme/calendar-events";
+import { cmeReportingCloseDate, cmeReportingWindowClose } from "@/lib/cme/calendar-events";
 import { cpdYearOf, perthCalendarDate } from "@/lib/cme/cpd-year";
 import { groupDrafts } from "@/lib/cme/drafts";
 import { loadCmePageData } from "@/lib/cme/load-cme-page-data";
@@ -37,6 +37,8 @@ function placeholderSet(year: number): CmeRequirementSet {
 async function loadReportingReminder(now: Date, shownYear: number): Promise<CmeReportingReminder | null> {
   const currentYear = cpdYearOf(now);
   if (shownYear !== currentYear) return null;
+  // Past 1 March no reminder can show, so skip loading last year at all.
+  if (perthCalendarDate(now) > cmeReportingWindowClose(currentYear - 1)) return null;
   const previous = await loadCmePageData(currentYear - 1);
   if (previous.state !== "ready" || !previous.set) return null;
   const closesOn = cmeReportingCloseDate(previous.set);

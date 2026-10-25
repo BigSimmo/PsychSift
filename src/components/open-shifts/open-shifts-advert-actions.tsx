@@ -1,7 +1,7 @@
 "use client";
 
 import { CalendarPlus, Check, Share2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useRosterNow } from "@/components/roster/roster-format";
 import { downloadTextFile } from "@/lib/admin/download-file";
@@ -10,6 +10,9 @@ import type { OpenShiftListing } from "@/lib/open-shifts/model";
 import { openShiftCalendarEvent, openShiftShareText } from "@/lib/open-shifts/share";
 
 import { advertHref } from "./open-shifts-ui";
+
+/** How long "Copied to share" (or a failed copy) shows before the button reads as itself again. */
+const COPY_STATUS_MS = 4000;
 
 const action =
   "inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-md border border-[color:var(--border-strong)] px-3 text-sm font-semibold text-[color:var(--text-heading)] focus-visible:outline-2 focus-visible:outline-[color:var(--mode-identity)]";
@@ -30,13 +33,20 @@ export function OpenShiftsAdvertActions({
   /** Approved for you: the calendar button shows. */
   readonly booked: boolean;
 }) {
-  const [copied, setCopied] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
   const now = useRosterNow();
+  // Reset, so a later tap is never shown as the earlier one's result.
+  useEffect(() => {
+    if (copyStatus === "idle") return;
+    const timer = window.setTimeout(() => setCopyStatus("idle"), COPY_STATUS_MS);
+    return () => window.clearTimeout(timer);
+  }, [copyStatus]);
   // A shift that has started can't be asked for, so it isn't passed on.
   const shareable = listing.status === "open" && !listing.claimedByMe && Date.parse(listing.startsAt) > now.getTime();
   if (sample || (!shareable && !booked)) return null;
 
   async function share() {
+    setCopyStatus("idle");
     const link = `${window.location.origin}${advertHref(listing)}`;
     const text = openShiftShareText(listing, link);
     if (typeof navigator.share === "function") {
@@ -50,9 +60,9 @@ export function OpenShiftsAdvertActions({
     }
     try {
       await navigator.clipboard.writeText(text);
-      setCopied(true);
+      setCopyStatus("copied");
     } catch {
-      setCopied(false);
+      setCopyStatus("failed");
     }
   }
 
@@ -71,16 +81,29 @@ export function OpenShiftsAdvertActions({
       ) : null}
       {shareable ? (
         <button type="button" className={action} onClick={() => void share()}>
-          {copied ? (
+          {copyStatus === "copied" ? (
             <Check aria-hidden="true" strokeWidth={1.6} className="size-icon-sm" />
           ) : (
             <Share2 aria-hidden="true" strokeWidth={1.6} className="size-icon-sm" />
           )}
-          <span>{copied ? "Copied to share" : "Share with a colleague"}</span>
-          <span aria-live="polite" className="sr-only">
-            {copied ? "Copied to share" : ""}
+          <span>
+            {copyStatus === "copied"
+              ? "Copied to share"
+              : copyStatus === "failed"
+                ? "Could not copy"
+                : "Share with a colleague"}
           </span>
         </button>
+      ) : null}
+      {/* Outside the button, so its text is never part of the button's name. */}
+      {shareable ? (
+        <span aria-live="polite" className="sr-only" data-testid="open-shifts-share-status">
+          {copyStatus === "copied"
+            ? "Copied to share"
+            : copyStatus === "failed"
+              ? "Could not copy the shift. Try again."
+              : ""}
+        </span>
       ) : null}
     </div>
   );

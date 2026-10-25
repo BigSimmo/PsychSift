@@ -33,7 +33,6 @@ export function EmergencyProtocolBanner({
 
   return (
     <aside
-      role="alert"
       aria-label={`Emergency clinical protocol: ${protocol.name}`}
       data-testid="emergency-protocol-banner"
       className={cn(
@@ -41,66 +40,71 @@ export function EmergencyProtocolBanner({
         className,
       )}
     >
-      {/* Top Bar: Icon, Eyebrow, Heading, Quick Poisons Call & Optional Dismiss */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex items-start gap-3 min-w-0">
-          <div
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-[color:var(--danger-border)] bg-[color:var(--danger-soft)] text-[color:var(--danger)]"
-            aria-hidden="true"
-          >
-            <ShieldAlert aria-hidden="true" className="h-5 w-5" />
-          </div>
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-2xs font-bold uppercase tracking-wider text-[color:var(--danger)]">
-                Acute Emergency Protocol
-              </span>
-              <span className="rounded border border-[color:var(--danger-border)] bg-[color:var(--danger-soft)] px-1.5 py-0.25 text-2xs font-semibold uppercase text-[color:var(--danger)]">
-                {protocol.category}
-              </span>
-              {protocol.acronym && (
-                <span className="rounded bg-[color:var(--surface-subtle)] px-1.5 py-0.25 text-2xs font-mono font-bold text-[color:var(--text-muted)]">
-                  {protocol.acronym}
-                </span>
-              )}
+      {/* The alert covers only the heading and first-line action. On the whole aside it
+          would replace the landmark, and expanding the protocol would insert the long
+          detail into an assertive, atomic live region that re-reads the entire card. */}
+      <div role="alert" data-testid="emergency-protocol-alert">
+        {/* Top Bar: Icon, Eyebrow, Heading, Quick Poisons Call & Optional Dismiss */}
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex items-start gap-3 min-w-0">
+            <div
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-[color:var(--danger-border)] bg-[color:var(--danger-soft)] text-[color:var(--danger)]"
+              aria-hidden="true"
+            >
+              <ShieldAlert aria-hidden="true" className="h-5 w-5" />
             </div>
-            <h3 className="mt-0.5 text-base sm:text-lg font-bold leading-snug text-[color:var(--text-heading)]">
-              {protocol.name}
-            </h3>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-2xs font-bold uppercase tracking-wider text-[color:var(--danger)]">
+                  Acute Emergency Protocol
+                </span>
+                <span className="rounded border border-[color:var(--danger-border)] bg-[color:var(--danger-soft)] px-1.5 py-0.25 text-2xs font-semibold uppercase text-[color:var(--danger)]">
+                  {protocol.category}
+                </span>
+                {protocol.acronym && (
+                  <span className="rounded bg-[color:var(--surface-subtle)] px-1.5 py-0.25 text-2xs font-mono font-bold text-[color:var(--text-muted)]">
+                    {protocol.acronym}
+                  </span>
+                )}
+              </div>
+              <h3 className="mt-0.5 text-base sm:text-lg font-bold leading-snug text-[color:var(--text-heading)]">
+                {protocol.name}
+              </h3>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {showPoisonsCall && (
+              <a
+                href="tel:131126"
+                className="inline-flex min-h-tap items-center gap-1.5 rounded-lg border border-[color:var(--danger-border)] bg-[color:var(--danger-soft)] px-2.5 py-1 text-xs font-bold text-[color:var(--danger)] hover:bg-[color:var(--surface-raised)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus)]"
+                title="Call Poisons Information Centre (Australia 24/7)"
+              >
+                <Phone aria-hidden="true" className="h-3.5 w-3.5" />
+                <span>Poisons: 13 11 26</span>
+              </a>
+            )}
+            {onDismiss && (
+              <button
+                type="button"
+                onClick={onDismiss}
+                aria-label="Dismiss emergency protocol banner"
+                className="grid h-tap w-tap place-items-center rounded-lg text-[color:var(--text-muted)] hover:text-[color:var(--text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus)]"
+              >
+                <X aria-hidden="true" className="h-4 w-4" />
+              </button>
+            )}
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          {showPoisonsCall && (
-            <a
-              href="tel:131126"
-              className="inline-flex min-h-tap items-center gap-1.5 rounded-lg border border-[color:var(--danger-border)] bg-[color:var(--danger-soft)] px-2.5 py-1 text-xs font-bold text-[color:var(--danger)] hover:bg-[color:var(--surface-raised)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus)]"
-              title="Call Poisons Information Centre (Australia 24/7)"
-            >
-              <Phone aria-hidden="true" className="h-3.5 w-3.5" />
-              <span>Poisons: 13 11 26</span>
-            </a>
-          )}
-          {onDismiss && (
-            <button
-              type="button"
-              onClick={onDismiss}
-              aria-label="Dismiss emergency protocol banner"
-              className="grid h-tap w-tap place-items-center rounded-lg text-[color:var(--text-muted)] hover:text-[color:var(--text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus)]"
-            >
-              <X aria-hidden="true" className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Immediate First-Line Action Callout */}
-      <div className="mt-3 rounded-lg border border-[color:var(--danger-border)] bg-[color:var(--danger-soft)] p-3">
-        <div className="flex items-start gap-2">
-          <AlertTriangle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--danger)]" />
-          <div className="min-w-0 text-sm">
-            <span className="font-bold uppercase tracking-wide text-[color:var(--danger)]">First-Line Action: </span>
-            <span className="font-semibold text-[color:var(--danger)]">{protocol.firstLineAction}</span>
+        {/* Immediate First-Line Action Callout */}
+        <div className="mt-3 rounded-lg border border-[color:var(--danger-border)] bg-[color:var(--danger-soft)] p-3">
+          <div className="flex items-start gap-2">
+            <AlertTriangle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--danger)]" />
+            <div className="min-w-0 text-sm">
+              <span className="font-bold uppercase tracking-wide text-[color:var(--danger)]">First-Line Action: </span>
+              <span className="font-semibold text-[color:var(--danger)]">{protocol.firstLineAction}</span>
+            </div>
           </div>
         </div>
       </div>

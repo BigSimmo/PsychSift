@@ -26,7 +26,10 @@ import { createHmac, timingSafeEqual } from "node:crypto";
  * own issue time, keyed by `DEVELOPER_AREA_ACCESS_KEY`, so a stolen cookie
  * cannot be turned back into the key, and rotating the key in Railway revokes
  * every device at once — the only revocation this design has, which is why it
- * is written down here rather than left to be rediscovered.
+ * is written down here rather than left to be rediscovered. That holds only
+ * when `DEVELOPER_AREA_ACCESS_KEY_PREVIOUS` is left unset: see
+ * {@link resolvePreviousDeveloperAccessKey} for why an emergency revocation
+ * must never set it.
  *
  * **It fails closed in every unset or under-strength case.** No key configured,
  * a key below `MIN_DEVELOPER_ACCESS_KEY_LENGTH`, a malformed token, a token
@@ -91,6 +94,17 @@ export function resolveDeveloperAccessKey(
   return trimmed;
 }
 
+/**
+ * The key being rotated out, accepted alongside the current one, or null.
+ *
+ * For a PLANNED rotation only. A cookie or URL key that verifies against this
+ * key is honoured, and `src/proxy.ts` renews every verified cookie under the
+ * CURRENT key — that renewal is how long-lived cookies move across a rotation.
+ * It also means any device used while this is set keeps access after it is
+ * removed. So for an emergency revocation (a leaked link or cookie) rotate
+ * `DEVELOPER_AREA_ACCESS_KEY` and leave this unset: only then is every device
+ * signed out at once.
+ */
 export function resolvePreviousDeveloperAccessKey(
   environment: Record<string, string | undefined> = process.env,
 ): string | null {

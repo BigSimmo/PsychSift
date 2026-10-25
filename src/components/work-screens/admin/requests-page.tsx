@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { AdminStatusWord } from "@/components/admin/admin-status-word";
+import { useJuniorNow } from "@/components/admin/junior/junior-shared";
 import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import {
@@ -128,7 +129,7 @@ export function AdminRequestsPage({ now: pinned }: { now?: Date } = {}) {
   const page = usePaperworkPage("admin.requests");
   const { store, online } = page;
   const say = usePaperworkSay();
-  const now = useMemo(() => pinned ?? new Date(), [pinned]);
+  const now = useJuniorNow(pinned);
   const today = perthDateOf(now);
   // "send" is Sharing, merged into Requests on 11 Oct 2026: its old address lands on `?view=send`.
   const router = useRouter();

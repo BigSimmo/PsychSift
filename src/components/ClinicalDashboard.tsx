@@ -95,6 +95,10 @@ import { PrivateScopeUnavailableAlert } from "@/components/clinical-dashboard/pr
 import { DashboardSearchErrorState } from "@/components/clinical-dashboard/dashboard-search-error-state";
 import { useDashboardShellActions } from "@/components/clinical-dashboard/use-dashboard-shell-actions";
 import { useDashboardSearchExecution } from "@/components/clinical-dashboard/use-dashboard-search-execution";
+import {
+  searchTextPatientDetailRefusal,
+  usePreloadSearchPatientCheck,
+} from "@/components/clinical-dashboard/search-patient-detail-guard";
 import { notNowDocumentsSearch } from "@/components/front-door/ask-terms-not-now";
 import { useAskTermsGate } from "@/components/front-door/use-ask-terms-gate";
 import { Button } from "@/components/ui/button";
@@ -263,6 +267,7 @@ function ClinicalDashboardContent({
   const activeAnswerThreadOwnerIdRef = useRef<string | null>(null);
   const [answerThreadBootstrapped, setAnswerThreadBootstrapped] = useState(false);
   const [query, setQuery] = useState(initialQuery);
+  usePreloadSearchPatientCheck(query);
   const deferredQuery = useDeferredValue(query);
   const [searchMode, setSearchMode] = useState<AppModeId>(initialSearchMode);
   const {
@@ -1181,6 +1186,32 @@ function ClinicalDashboardContent({
   }
 
   function crossModeSearchAfterTerms(mode: AppModeId, crossQuery: string) {
+    // The navigation below writes the text into the address bar, history and a request line
+    // before executeSearch could refuse it, so a mode whose search reaches the overseas AI
+    // service holds back a patient detail first (audit S2/D-03). The Not now fallback's check
+    // is the same one: a patient detail, or a check that cannot load, stops the search.
+    const targetModeSearch = appModeSearchConfig(mode);
+    const sendsQueryToProvider =
+      targetModeSearch.resultKind === "answer" ||
+      targetModeSearch.kind === "documents" ||
+      targetModeSearch.kind === "differentials";
+    if (sendsQueryToProvider && crossQuery.trim()) {
+      const submittedSeq = searchRequestSeqRef.current;
+      void notNowDocumentsSearch(crossQuery.trim()).then((checked) => {
+        // A mode switch, Stop or newer search while the check loads makes this one stale.
+        if (submittedSeq !== searchRequestSeqRef.current) return;
+        if ("notice" in checked) {
+          setActionNotice({ tone: "warning", message: checked.notice });
+          return;
+        }
+        latestNavigateCrossModeSearch(mode, crossQuery);
+      });
+      return;
+    }
+    navigateCrossModeSearch(mode, crossQuery);
+  }
+
+  function navigateCrossModeSearch(mode: AppModeId, crossQuery: string) {
     if (mode === "favourites" && !favouritesAccessible) {
       openAccountSetup("favourites");
       return;
@@ -1397,7 +1428,10 @@ function ClinicalDashboardContent({
     // Outside the shared home, every mode pick returns to `/`. Preserve the
     // current question as an unsubmitted draft, but never carry `run=1` into the
     // newly selected mode — only an explicit submit may open its result route.
-    const carriedQuery = query.trim() || submittedUrlQuery.trim();
+    const draftQuery = query.trim() || submittedUrlQuery.trim();
+    // The draft stays in the box, but one that looks like it holds a patient detail stays
+    // out of the address; Ask checks it again on submit (D-03).
+    const carriedQuery = searchTextPatientDetailRefusal(draftQuery) ? "" : draftQuery;
     const href = appModeSelectionHref(mode, {
       query: carriedQuery || undefined,
       queryMode,
@@ -1410,7 +1444,7 @@ function ClinicalDashboardContent({
     // old answer and replaceState a run=1 URL over the shared-home draft.
     stopSearch();
     clearModeResultState();
-    setQuery(carriedQuery);
+    setQuery(draftQuery);
     setModeSearchSubmitted(false);
     setSearchMode(mode);
     router.push(href);
@@ -1693,6 +1727,7 @@ function ClinicalDashboardContent({
   });
   const handleCrossModeSearch = useEventCallback(crossModeSearch);
   const latestCrossModeSearchAfterTerms = useEventCallback(crossModeSearchAfterTerms);
+  const latestNavigateCrossModeSearch = useEventCallback(navigateCrossModeSearch);
   const handleDocumentTagSearch = useEventCallback(handleTagSearch);
   const handleScopeFiltersChange = useScopeFilterRelax(query, queryMode, setScopeFilters, ask);
   const handleDocumentFiltersApply = useApplyFilters(query, queryMode, setScopeFilters, setSelectedDocumentIds, askRef);
@@ -1897,7 +1932,9 @@ function ClinicalDashboardContent({
           recentQueries={recentQueries}
           onPickRecent={(recent) => {
             pickRecentQuery(recent);
-            void ask();
+            // setQuery has not landed yet, so the picked text is passed on; prescribing
+            // already ran its medication search in pickRecentQuery.
+            if (searchMode !== "prescribing") void ask(recent);
           }}
           onCrossModeSearch={crossModeSearch}
           /* The answer thread owns the follow-up questions now, as full-width
@@ -2217,7 +2254,10 @@ function ClinicalDashboardContent({
                 ) : activeModeResultKind === "differentials" ? (
                   <ClinicalCatalogueGate copy={CLINICAL_SIGN_IN_COPY.differentials} testId="differentials-sign-in">
                     <DifferentialsHome
-                      query={deferredQuery}
+                      // The results belong to the submitted search, not the unsent draft: the
+                      // catalogue lookup would otherwise send every draft edit, unchecked for
+                      // patient details, to /api/differentials.
+                      query={submittedModeQuery ?? deferredQuery}
                       loading={loading}
                       searchSubmitted={modeSearchSubmitted}
                       evidenceQuery={differentialEvidenceQuery}

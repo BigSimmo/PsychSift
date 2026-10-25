@@ -836,10 +836,18 @@ export function ServicesNavigatorPage() {
 
   // Only ever called with an empty escape from the zero-results state below —
   // individual group values toggle through `toggleCoreGroupValue` instead.
-  function hrefWithGroupCleared() {
+  // "Show all services" must actually widen: clearing only `group` reloaded the
+  // same empty list when facets or the care lens caused the zero. Every filter
+  // is cleared and, with a search present, scope widens to the whole catalogue
+  // while the query itself is kept (docs/filter-contract.md section 6).
+  function hrefShowingAllServices() {
     const params = new URLSearchParams(searchParams.toString());
     params.set("run", "1");
+    for (const dimension of serviceFacetDimensions) params.delete(dimension);
+    params.delete("substance");
     params.delete("group");
+    if (urlQuery) params.set("scope", "all");
+    else params.delete("scope");
     return `/services?${params.toString()}`;
   }
 
@@ -1208,7 +1216,7 @@ export function ServicesNavigatorPage() {
           </p>
           <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
             <Link
-              href={hrefWithGroupCleared()}
+              href={hrefShowingAllServices()}
               className="inline-flex min-h-12 items-center justify-center rounded-lg border border-[color:var(--clinical-accent)] px-4 text-sm font-bold text-[color:var(--clinical-accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
             >
               Show all services

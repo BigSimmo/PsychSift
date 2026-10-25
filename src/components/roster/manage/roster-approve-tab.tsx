@@ -7,6 +7,7 @@ import { WorkStateLoading, WorkStateNotice } from "@/components/mode-kit/work-st
 import { RosterStat } from "@/components/roster/roster-ui";
 import { goToNeedsYou } from "@/components/roster/team/calendar/needs-you-strip";
 import { useRosterRead } from "@/components/roster/use-roster-team";
+import { SHIFT_KIND_LABEL } from "@/lib/roster/shift-kind";
 import { addDaysToDate, formatPerthDay, perthDateOf } from "@/lib/roster/shifts/perth-time";
 import type { RosterOverview } from "@/lib/roster/team/model";
 import { coverGaps, coverReadWindow, RosterCoverGap } from "./roster-cover-tab";
@@ -166,7 +167,9 @@ export function RosterApproveTab({
                   {names.get(swap.counterpartyId) ?? "Team member"}
                 </span>
                 {swap.needsManagerBecause ? (
-                  <span className="text-sm text-muted-foreground">{managerReason[swap.needsManagerBecause]}</span>
+                  <span className="text-sm text-[color:var(--text-muted)]">
+                    {managerReason[swap.needsManagerBecause]}
+                  </span>
                 ) : null}
               </button>
             </li>
@@ -180,7 +183,7 @@ export function RosterApproveTab({
               >
                 <span>
                   {shift.status === "reported"
-                    ? `${names.get(shift.postedBy ?? "") ?? "A team member"} can't make ${formatPerthDay(perthDateOf(shift.startsAt))} ${shift.kind}`
+                    ? `${names.get(shift.postedBy ?? "") ?? "A team member"} can't make ${formatPerthDay(perthDateOf(shift.startsAt))} ${SHIFT_KIND_LABEL[shift.kind].toLowerCase()}`
                     : `Taken by ${names.get(shift.claimedBy ?? "") ?? "a team member"} · needs your approval`}
                 </span>
               </button>
@@ -224,7 +227,7 @@ export function RosterApproveTab({
       {leave.data?.leave.length ? (
         <section className="grid gap-2">
           <h2>Planned leave</h2>
-          <p className="text-sm text-muted-foreground">Leave is approved in HR.</p>
+          <p className="text-sm text-[color:var(--text-muted)]">Leave is approved in HR.</p>
           {leave.data.leave.map((row, index) => (
             <p key={`${row.userId}-${row.startsOn}-${index}`}>
               Leave · {row.name ?? names.get(row.userId) ?? "Team member"} · {formatPerthDay(row.startsOn)}–

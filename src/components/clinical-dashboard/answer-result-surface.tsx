@@ -267,9 +267,7 @@ function StagedAnswerResultSurfaceImpl({
    * (`src/lib/answer-feedback.ts`), and reusing it means the report lands in the
    * same place a clinician's other answer feedback does.
    */
-  const reportSourceMismatch = useCallback(() => {
-    onSubmitFeedback("wrong_source");
-  }, [onSubmitFeedback]);
+  const reportSourceMismatch = useCallback(() => onSubmitFeedback("wrong_source"), [onSubmitFeedback]);
   const safetyTriggerRef = useRef<HTMLButtonElement>(null);
   /**
    * Which pill opened the sheet, so closing returns focus there rather than to

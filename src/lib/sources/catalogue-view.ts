@@ -166,13 +166,10 @@ function dateValue(value: string | null | undefined) {
   return Number.isNaN(timestamp) ? Number.NEGATIVE_INFINITY : timestamp;
 }
 
+// Expiry is not a candidate, matching latestKnownDate in browse-facets: a far-future expiry
+// does not make a source more recent than one reviewed last month.
 function mostRecentDate(entry: ClinicalSourceClientEntry) {
-  return Math.max(
-    dateValue(entry.publicationDate),
-    dateValue(entry.reviewDate),
-    dateValue(entry.lastUpdatedDate),
-    dateValue(entry.expiryDate),
-  );
+  return Math.max(dateValue(entry.publicationDate), dateValue(entry.reviewDate), dateValue(entry.lastUpdatedDate));
 }
 
 export function filterAndSortSourceCatalogue(

@@ -388,6 +388,26 @@ describe("Adversarial review fixes", () => {
     fireEvent.click(within(sheet).getByTestId("admin-requests-sheet-save"));
   }
 
+  it("stamps a request sent after midnight with the new day when the page was left open", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      // 23:00 Perth on Tue 6 Oct, then back to the page at 09:00 Perth on Wed 7 Oct.
+      vi.setSystemTime(new Date("2026-10-06T15:00:00Z"));
+      withToasts(<AdminRequestsPage />);
+      vi.setSystemTime(new Date("2026-10-07T01:00:00Z"));
+      act(() => {
+        document.dispatchEvent(new Event("visibilitychange"));
+      });
+      newRequest("Manual handling");
+      await act(async () => {
+        fireEvent.click(screen.getByTestId("admin-requests-copy"));
+      });
+      expect((stored()?.requests as { sentOn: string }[])[0]!.sentOn).toBe("2026-10-07");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("will not send a health reason to Medical Workforce, even when the To field is changed back", () => {
     withToasts(<AdminRequestsPage now={NOW} />);
     fireEvent.click(screen.getByTestId("admin-requests-new"));
@@ -480,6 +500,47 @@ describe("Adversarial review fixes", () => {
     expect(screen.getAllByText(/Nothing was copied or sent/).length).toBeGreaterThan(0);
   });
 
+  it("gives a pack with a patient detail in an issuer no email link to middle-click past the check", async () => {
+    storeState.entries = [
+      complianceFixture(
+        "Medical registration renewal",
+        {
+          category: "Registration",
+          expiresOn: "2027-09-30",
+          requirementId: "medical-registration-renewal",
+          issuingBody: "Pt John Smith",
+        },
+        { isOwn: true },
+      ),
+    ];
+    withToasts(<AdminSharingPage now={NOW} />);
+    fireEvent.click(screen.getByTestId("admin-sharing-switch-registration"));
+    const email = screen.getByTestId("admin-sharing-workforce-email");
+    expect(email.getAttribute("href")).toBeNull();
+    await act(async () => {
+      fireEvent.click(email);
+    });
+    expect(screen.getAllByText(/Nothing was copied or sent/).length).toBeGreaterThan(0);
+  });
+
+  it("keeps the email link for a pack that may leave", () => {
+    storeState.entries = [
+      complianceFixture(
+        "Medical registration renewal",
+        {
+          category: "Registration",
+          expiresOn: "2027-09-30",
+          requirementId: "medical-registration-renewal",
+          issuingBody: "Medical Board of Australia",
+        },
+        { isOwn: true },
+      ),
+    ];
+    withToasts(<AdminSharingPage now={NOW} />);
+    fireEvent.click(screen.getByTestId("admin-sharing-switch-registration"));
+    expect(screen.getByTestId("admin-sharing-workforce-email").getAttribute("href")).toMatch(/^mailto:/);
+  });
+
   it("keeps a change on screen and says so when the phone refuses to save", () => {
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
       throw new DOMException("full", "QuotaExceededError");
@@ -490,6 +551,21 @@ describe("Adversarial review fixes", () => {
     fireEvent.click(screen.getByTestId("admin-documents-save"));
     expect(screen.getAllByTestId("admin-documents-row")).toHaveLength(1);
     expect(screen.getByTestId("admin-documents-storage").textContent).toContain("last only until you close this page");
+  });
+
+  it("drops a saved record from the screen when it is removed from the device elsewhere", () => {
+    withToasts(<AdminDocumentsPage now={NOW} />);
+    fireEvent.click(screen.getByTestId("admin-documents-add"));
+    fireEvent.change(screen.getByTestId("admin-documents-title"), { target: { value: "Employment contract" } });
+    fireEvent.click(screen.getByTestId("admin-documents-save"));
+    expect(screen.getAllByTestId("admin-documents-row")).toHaveLength(1);
+    // Another tab's sign-out, or work sync emptying the key, removes it without this tab's store.
+    act(() => {
+      window.localStorage.removeItem(ADMIN_PAPERWORK_STORAGE_KEY);
+      window.dispatchEvent(new StorageEvent("storage", { key: ADMIN_PAPERWORK_STORAGE_KEY }));
+    });
+    expect(screen.queryAllByTestId("admin-documents-row")).toHaveLength(0);
+    expect(stored()).toBeNull();
   });
 
   it("opens the doctor's own link for a document", () => {
@@ -514,6 +590,33 @@ describe("Adversarial review fixes", () => {
     fireEvent.click(screen.getByTestId("admin-tax-save"));
     expect(screen.getByTestId("admin-tax-sheet").textContent).toContain("Type the amount");
     expect(stored()).toBeNull();
+  });
+
+  it("refuses a new expense once the year is full, and never drops a saved one", () => {
+    withToasts(<AdminTaxPage now={NOW} />);
+    fireEvent.click(screen.getByTestId("admin-tax-add"));
+    fireEvent.change(screen.getByTestId("admin-tax-title"), { target: { value: "Textbook" } });
+    fireEvent.change(screen.getByTestId("admin-tax-amount"), { target: { value: "25" } });
+    fireEvent.click(screen.getByTestId("admin-tax-save"));
+    cleanup();
+    const saved = stored() as { tax: Record<string, { expenses: { id: string }[] }> };
+    const [yearKey, taxYear] = Object.entries(saved.tax)[0]!;
+    const first = taxYear.expenses[0]!;
+    const full = Array.from({ length: 500 }, (_, index) => ({ ...first, id: `exp-full-${index}` }));
+    window.localStorage.setItem(
+      ADMIN_PAPERWORK_STORAGE_KEY,
+      JSON.stringify({ ...saved, tax: { ...saved.tax, [yearKey]: { ...taxYear, expenses: full } } }),
+    );
+
+    withToasts(<AdminTaxPage now={NOW} />);
+    fireEvent.click(screen.getByTestId("admin-tax-add"));
+    fireEvent.change(screen.getByTestId("admin-tax-title"), { target: { value: "Conference" } });
+    fireEvent.change(screen.getByTestId("admin-tax-amount"), { target: { value: "10" } });
+    fireEvent.click(screen.getByTestId("admin-tax-save"));
+    const after = (stored() as typeof saved).tax[yearKey]!.expenses;
+    expect(after).toHaveLength(500);
+    expect(after.at(-1)!.id).toBe("exp-full-499");
+    expect(screen.getAllByText(/already holds 500 expenses/).length).toBeGreaterThan(0);
   });
 
   it("uses flat row buttons, never glass, inside cards", () => {

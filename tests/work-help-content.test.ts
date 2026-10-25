@@ -23,6 +23,7 @@ import {
   type WorkHelpLink,
   type WorkHelpTopic,
 } from "@/lib/work-help";
+import { WORK_AREAS } from "@/lib/work-frame/areas";
 import { WORK_SETUP_STEPS } from "@/lib/work-setup/progress";
 
 /* ------------------------------------------------------------ route index */
@@ -159,6 +160,13 @@ describe("topic structure", () => {
     expect(workHelpTopicForArea("manage").id).toBe("rost");
     expect(workHelpTopicForArea("assess").id).toBe("assess");
     expect(workHelpTopicForArea("admin").id).toBe("admin");
+  });
+
+  it.each(
+    WORK_HELP_AREA_TOPICS.filter((topic) => topic.tabs && topic.areaId).map((topic) => [topic.id, topic] as const),
+  )("%s: the tabs it describes are the frame's three pinned tabs, in order", (_id, topic) => {
+    const frameTabs = WORK_AREAS[topic.areaId!].tabs.map((tab) => tab.label);
+    expect(topic.tabs!.map((tab) => tab.label)).toEqual(frameTabs);
   });
 });
 

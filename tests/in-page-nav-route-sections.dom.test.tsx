@@ -108,7 +108,7 @@ type RouteCase = {
    * `/admin/developer-hub` awaits its environment facts. Callers must `await`
    * this before handing it to `render`.
    */
-  render: () => ReactElement | Promise<ReactElement>;
+  render: () => ReactElement | Promise<ReactElement | null>;
   /**
    * Anchors that legitimately depend on the record. Each is asserted present on
    * a fixture that has the data and absent on one that does not, rather than

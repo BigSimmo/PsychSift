@@ -39,6 +39,7 @@ import {
   realpathSync,
   renameSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
@@ -457,9 +458,20 @@ function replaceFileAtomically(path, contents, { expectedRaw } = {}) {
   }
 }
 
-/** Compact, same-directory atomic replacement for the canonical one-line JSON. */
+/**
+ * Serialises the source in the layout it already has. `.prettierignore` declares it compact
+ * one-line JSON, but the committed file is pretty-printed; rewriting it compact on a single
+ * sign-off would turn a one-record change into a ~17,800-line reflow that hides the real edit
+ * and conflicts with any concurrent Therapy edit. Normalising the layout is its own change.
+ */
+function serializeTherapySource(records, existingRaw) {
+  if (typeof existingRaw !== "string" || !/^\[\r?\n/.test(existingRaw)) return JSON.stringify(records);
+  return `${JSON.stringify(records, null, 2)}${existingRaw.endsWith("\n") ? "\n" : ""}`;
+}
+
+/** Same-directory atomic replacement of the source, keeping the layout of `expectedRaw`. */
 export function writeTherapySourceAtomically(path, records, { expectedRaw } = {}) {
-  replaceFileAtomically(path, JSON.stringify(records), { expectedRaw });
+  replaceFileAtomically(path, serializeTherapySource(records, expectedRaw), { expectedRaw });
 }
 
 function listGeneratedCataloguePaths() {
@@ -496,25 +508,65 @@ function sourceMatchesIntendedBytes(sourcePath, intendedRaw) {
   }
 }
 
-function acquireReviewTransactionLock(sourcePath) {
+const STALE_REVIEW_LOCK_MS = 30 * 60 * 1000;
+
+// Same rule as review-clinical-record.mjs: a lock is left over when the PID written into it is no
+// longer running, or when it is older than any real sign-off transaction takes. A killed sign-off
+// (closed terminal, Ctrl+C) skips the finally that removes the lock, so without this every later
+// sign-off would be refused.
+function reviewLockIsStale(lockPath) {
+  try {
+    const pid = Number.parseInt(readFileSync(lockPath, "utf8"), 10);
+    const ageMs = Date.now() - statSync(lockPath).mtimeMs;
+    if (ageMs > STALE_REVIEW_LOCK_MS) return true;
+    // A lock with no PID yet may belong to a sign-off that has just created it and is about to
+    // write its PID, so only an old one counts as left over.
+    if (!Number.isInteger(pid) || pid <= 0) return ageMs > 10_000;
+    try {
+      process.kill(pid, 0);
+      return false;
+    } catch (error) {
+      return error?.code === "ESRCH";
+    }
+  } catch {
+    return false;
+  }
+}
+
+function acquireReviewTransactionLock(sourcePath, notice) {
   const lockPath = `${sourcePath}.review.lock`;
   let descriptor;
-  let created = false;
-  try {
-    descriptor = openSync(lockPath, "wx");
-    created = true;
-    writeFileSync(descriptor, `${process.pid}\n`, "utf8");
-    fsyncSync(descriptor);
-  } catch (error) {
+  for (let attempt = 0; ; attempt += 1) {
+    let created = false;
     try {
-      if (descriptor !== undefined) closeSync(descriptor);
-    } finally {
-      if (created && existsSync(lockPath)) rmSync(lockPath, { force: true });
+      descriptor = openSync(lockPath, "wx");
+      created = true;
+      writeFileSync(descriptor, `${process.pid}\n`, "utf8");
+      fsyncSync(descriptor);
+      break;
+    } catch (error) {
+      try {
+        if (descriptor !== undefined) closeSync(descriptor);
+      } finally {
+        descriptor = undefined;
+        if (created && existsSync(lockPath)) rmSync(lockPath, { force: true });
+      }
+      if (error?.code !== "EEXIST") throw error;
+      if (attempt === 0 && reviewLockIsStale(lockPath)) {
+        // The earlier sign-off may have stopped part-way through rebuilding the generated
+        // Therapy files. This transaction rebuilds and checks all of them before it succeeds.
+        notice(
+          `Removed a leftover lock from an earlier Therapy sign-off that did not finish (${basename(lockPath)}). ` +
+            "This sign-off rebuilds and checks the generated Therapy files.",
+        );
+        rmSync(lockPath, { force: true });
+        continue;
+      }
+      throw new Error(
+        `Another Therapy review transaction is active; refusing a concurrent write. Close any other sign-off window ` +
+          `and try again; if none is open, wait 30 minutes or delete the file ${lockPath}.`,
+      );
     }
-    if (error?.code === "EEXIST") {
-      throw new Error("Another Therapy review transaction is active; refusing a concurrent write.");
-    }
-    throw error;
   }
   return () => {
     try {
@@ -539,14 +591,15 @@ export function persistTherapyReviewTransaction({
   fixedGeneratedPaths = FIXED_GENERATED_PATHS,
   listGeneratedPaths = listGeneratedCataloguePaths,
   runGenerator = regenerateAndValidate,
+  notice = (message) => process.stderr.write(`${message}\n`),
 }) {
-  const releaseLock = acquireReviewTransactionLock(sourcePath);
+  const releaseLock = acquireReviewTransactionLock(sourcePath, notice);
   try {
     if (typeof expectedRaw !== "string" || readFileSync(sourcePath, "utf8") !== expectedRaw) {
       throw new Error("Therapy source changed after review began; refusing to overwrite concurrent work.");
     }
     const sourceBefore = Buffer.from(expectedRaw);
-    const intendedRaw = JSON.stringify(records);
+    const intendedRaw = serializeTherapySource(records, expectedRaw);
     const generatedBefore = captureGeneratedFiles(fixedGeneratedPaths, listGeneratedPaths);
     replaceFileAtomically(sourcePath, intendedRaw, { expectedRaw });
 

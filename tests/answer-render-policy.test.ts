@@ -1150,3 +1150,29 @@ describe("currency warnings are distinguishable from evidence gaps", () => {
     expect(currencyReviewWarnings.retrieved).toBe("A retrieved source is due for review.");
   });
 });
+
+describe("answer warnings keep every conflict and gap", () => {
+  it("does not let five earlier warnings crowd out a second conflict or gap (#182)", () => {
+    const model = buildAnswerRenderModel(
+      answer({
+        retrievalGateBlocked: true,
+        faithfulnessWarning: "Numeric claims require source verification.",
+        unverifiedNumericTokens: ["25 mg"],
+        sourceGovernanceWarnings: [
+          {
+            code: "unverified_source",
+            severity: "warning",
+            message: "One or more supporting sources are not locally validated.",
+          },
+        ],
+        conflictsOrGaps: [
+          { type: "gap", message: "Paediatric dosing is not covered." },
+          { type: "conflict", message: "Sources disagree on the withholding threshold." },
+        ],
+      }),
+    );
+
+    expect(model.warnings).toContain("Paediatric dosing is not covered.");
+    expect(model.warnings).toContain("Sources disagree on the withholding threshold.");
+  });
+});

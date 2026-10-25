@@ -243,7 +243,18 @@ export function acquirePrimaryCheckoutLease({
     primaryPath: inspection.primaryPath,
     startedAt: new Date().toISOString(),
   };
-  writeFileSync(inspection.leasePath, `${JSON.stringify(owner, null, 2)}\n`, "utf8");
+  // "wx" makes acquisition atomic: if another task wrote a lease since the inspection above,
+  // this write fails instead of silently replacing that task's lease.
+  try {
+    writeFileSync(inspection.leasePath, `${JSON.stringify(owner, null, 2)}\n`, { encoding: "utf8", flag: "wx" });
+  } catch (error) {
+    if (error?.code === "EEXIST") {
+      throw new Error(
+        `Primary checkout write refused: another task created the lease at ${inspection.leasePath} at the same moment. Run --check, then retry.`,
+      );
+    }
+    throw error;
+  }
 
   let released = false;
   return {
@@ -289,6 +300,7 @@ function parseArgs(argv) {
     release: false,
     json: false,
     ownerLabel: "task",
+    ownerPid: undefined,
     purpose: "primary-write",
     primaryPath: undefined,
     token: undefined,
@@ -307,6 +319,7 @@ function parseArgs(argv) {
     else if (token === "--release") options.release = true;
     else if (token === "--json") options.json = true;
     else if (token === "--owner") options.ownerLabel = next();
+    else if (token === "--owner-pid") options.ownerPid = Number(next());
     else if (token === "--purpose") options.purpose = next();
     else if (token === "--primary") options.primaryPath = next();
     else if (token === "--token") options.token = next();
@@ -323,7 +336,7 @@ function main() {
   const options = parseArgs(process.argv.slice(2));
   if (options.help) {
     console.log(
-      "Usage: node scripts/primary-checkout-lease.mjs [--check|--acquire|--release] [--json] [--primary <path>] [--owner <label>] [--purpose <text>] [--token <token>]",
+      "Usage: node scripts/primary-checkout-lease.mjs [--check|--acquire|--release] [--json] [--primary <path>] [--owner <label>] [--owner-pid <pid>] [--purpose <text>] [--token <token>]",
     );
     return;
   }
@@ -338,8 +351,22 @@ function main() {
     return;
   }
   if (options.acquire) {
+    // This command exits as soon as it prints, so a lease recorded against its own PID would be
+    // stale at once: the next acquirer would delete it and the exported token would never match.
+    // The lease must name the long-lived process that does the primary writes, such as the shell.
+    if (options.ownerPid === undefined) {
+      throw new Error(
+        "--acquire needs --owner-pid <pid> naming the long-lived process that holds the lease (for example the shell: --owner-pid $$).",
+      );
+    }
+    if (!Number.isInteger(options.ownerPid) || options.ownerPid === process.pid || !processIsAlive(options.ownerPid)) {
+      throw new Error(
+        `--owner-pid must be the PID of a running process other than this command; got ${options.ownerPid}.`,
+      );
+    }
     const lease = acquirePrimaryCheckoutLease({
       primaryPath: options.primaryPath,
+      processId: options.ownerPid,
       ownerLabel: options.ownerLabel,
       purpose: options.purpose,
     });

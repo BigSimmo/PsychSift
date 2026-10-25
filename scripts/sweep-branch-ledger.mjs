@@ -34,6 +34,29 @@ function tryGit(args) {
   }
 }
 
+/** Like tryGit, but null on failure so a failed command is not mistaken for empty output. */
+function gitOrNull(args) {
+  try {
+    return git(args);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Ahead/behind and unique-commit counts for one branch, from the raw `rev-list --count` and
+ * cherry-pick `log` output. A failed git command (null) makes the branch indeterminate rather than
+ * "0 unique commits", so a broken comparison never turns unmerged work into a deletion candidate.
+ */
+export function branchComparison(countsOutput, uniqueLogOutput) {
+  if (countsOutput === null || uniqueLogOutput === null) {
+    return { ahead: null, behind: null, uniqueCommits: null, deletionCandidate: false };
+  }
+  const [behind, ahead] = countsOutput ? countsOutput.split(/\s+/).map((n) => Number.parseInt(n, 10) || 0) : [0, 0];
+  const uniqueCommits = uniqueLogOutput ? uniqueLogOutput.split("\n").filter(Boolean).length : 0;
+  return { ahead, behind, uniqueCommits, deletionCandidate: uniqueCommits === 0 };
+}
+
 /**
  * Extract branch short-names from a ledger branch/ref cell. A ref token is
  * "<namespace>/<name>" with no surrounding whitespace, so the "PR #N / " prefix and
@@ -298,6 +321,16 @@ function main() {
     return;
   }
 
+  // Every comparison below is against origin/main; without it every branch would read as 0/0
+  // with no unique commits.
+  if (!tryGit(["rev-parse", "--verify", "--quiet", "origin/main^{commit}"])) {
+    refuse(
+      "refusing to report: origin/main does not resolve locally, so no branch can be compared " +
+        `with it. Refresh the remote-tracking refs (re-run with --fetch, which runs: ${SWEEP_FETCH_COMMAND}) and retry.`,
+    );
+    return;
+  }
+
   const ledgerText = (() => {
     try {
       return readLedgerCorpus();
@@ -315,11 +348,10 @@ function main() {
   const rows = [];
   for (const ref of remoteBranches) {
     const short = ref.replace(/^origin\//, "");
-    const counts = tryGit(["rev-list", "--left-right", "--count", `origin/main...${ref}`]);
-    const [behind, ahead] = counts ? counts.split(/\s+/).map((n) => Number.parseInt(n, 10) || 0) : [0, 0];
+    const counts = gitOrNull(["rev-list", "--left-right", "--count", `origin/main...${ref}`]);
     // Cherry-pick-aware: commits on the branch NOT already in main (by patch id).
-    const uniqueLog = tryGit(["log", "--oneline", "--right-only", "--cherry-pick", `origin/main...${ref}`]);
-    const uniqueCommits = uniqueLog ? uniqueLog.split("\n").filter(Boolean).length : 0;
+    const uniqueLog = gitOrNull(["log", "--oneline", "--right-only", "--cherry-pick", `origin/main...${ref}`]);
+    const { ahead, behind, uniqueCommits, deletionCandidate } = branchComparison(counts, uniqueLog);
     const headSha = tryGit(["rev-parse", ref]);
     rows.push({
       branch: short,
@@ -329,11 +361,15 @@ function main() {
       // Only a completed `branch-cleanup` review at the current HEAD counts as
       // reviewed/skippable; deletion-pending rows and stale HEADs report `no`.
       reviewed: hasCompletedCleanupReview(ledgerText, short, headSha),
-      deletionCandidate: uniqueCommits === 0,
+      deletionCandidate,
     });
   }
 
-  rows.sort((a, b) => a.uniqueCommits - b.uniqueCommits || a.branch.localeCompare(b.branch));
+  // Indeterminate rows (null counts) sort last.
+  const sortableCount = (value) => (value === null ? Number.MAX_SAFE_INTEGER : value);
+  rows.sort(
+    (a, b) => sortableCount(a.uniqueCommits) - sortableCount(b.uniqueCommits) || a.branch.localeCompare(b.branch),
+  );
 
   if (asJson) {
     console.log(JSON.stringify({ generatedAt: new Date().toISOString(), branches: rows }, null, 2));
@@ -345,7 +381,7 @@ function main() {
   console.log("unique  ahead  behind  review  branch");
   for (const r of rows) {
     console.log(
-      `${String(r.uniqueCommits).padStart(6)}  ${String(r.ahead).padStart(5)}  ${String(r.behind).padStart(6)}  ` +
+      `${String(r.uniqueCommits ?? "?").padStart(6)}  ${String(r.ahead ?? "?").padStart(5)}  ${String(r.behind ?? "?").padStart(6)}  ` +
         `${r.reviewed ? "  yes " : "  no  "}  ${r.branch}`,
     );
   }

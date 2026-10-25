@@ -252,8 +252,10 @@ export function RouteAnnouncer() {
       }
     }
 
-    const title = document.title.trim();
-    if (title) announce(title);
+    // The title itself is not announced here. Next's App Router mounts its own
+    // announcer (`next-route-announcer`, assertive) that reads the new
+    // document.title whenever it changes, so a second polite copy made every
+    // navigation read the page name twice, plus the heading this focus move reads.
   }, [pathname]);
 
   return null;

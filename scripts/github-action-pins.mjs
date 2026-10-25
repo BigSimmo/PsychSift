@@ -101,6 +101,13 @@ const reviewedActionPins = new Map([
       // 0.3.302 -> 0.3.303 (action.yml, run.ts, package.json, bun.lock) — no
       // change to permissions, tokens/secrets handling, or network endpoints.
       ["5eb090f3c3afd701a0672cd32981197ca27688f6", "v1.0.253"],
+      // Reviewed 2026-10-25 for PR #3787: tag v1.0.259 (annotated tag object
+      // 515fe2be) dereferences to commit ae68417a. The upstream diff
+      // v1.0.253...v1.0.259 touches only action.yml, run.ts, package.json and
+      // bun.lock to move Claude Code 2.1.303 -> 2.1.309 and Agent SDK
+      // 0.3.303 -> 0.3.309 — no change to permissions, tokens/secrets
+      // handling, or network endpoints.
+      ["ae68417a745a5df4b2124873632bd73a2255e6f6", "v1.0.259"],
     ]),
   ],
   ["actions/cache", new Map([["55cc8345863c7cc4c66a329aec7e433d2d1c52a9", "v6"]])],
@@ -190,11 +197,18 @@ const reviewedActionPins = new Map([
 ]);
 
 const usesPattern = /^\s*(?:-\s*)?uses:\s*([^@\s]+)@([^\s#]+)(?:\s+#\s*(\S.*?))?\s*$/;
+const anyUsesPattern = /^\s*(?:-\s*)?uses:\s*([^\s#]+)/;
 const immutableCommitSha = /^[0-9a-f]{40}$/;
 
 export function validateActionReference(line) {
   const match = line.match(usesPattern);
-  if (!match) return null;
+  if (!match) {
+    // A `uses:` with no `@ref` (e.g. `docker://alpine:3.20`) runs a mutable image or action;
+    // only repository-local `./` references may omit a ref.
+    const bare = line.match(anyUsesPattern);
+    if (!bare || bare[1].startsWith("./")) return null;
+    return `${bare[1]} has no pinned ref. Pin external actions to a reviewed 40-character commit SHA.`;
+  }
 
   const [, action, ref, versionComment] = match;
   if (action.startsWith("./")) return null;

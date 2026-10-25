@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { cn, textMuted } from "@/components/ui-primitives";
 import type { CmePlanGoal } from "@/lib/cme/plan-goals";
@@ -23,6 +23,10 @@ export function CmeEntryGoalPicker({
 }) {
   const [goalId, setGoalId] = useState<string | null>(initialGoalId);
   const [status, setStatus] = useState<string | null>(null);
+  // The choice the server last confirmed, what a failed save puts back.
+  const confirmed = useRef<string | null>(initialGoalId);
+  const saving = useRef(false);
+  const queued = useRef<{ readonly goalId: string | null } | null>(null);
 
   if (goals.length === 0) {
     return (
@@ -38,26 +42,53 @@ export function CmeEntryGoalPicker({
     );
   }
 
+  async function saveGoal(next: string | null) {
+    const response = await fetch(`/api/cme/entries/${entryId}/goal`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ goalId: next }),
+    });
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+      throw new Error(payload?.message ?? `Could not save the goal (${response.status}).`);
+    }
+  }
+
   async function choose(next: string | null) {
-    const previous = goalId;
     setGoalId(next);
     setStatus("Saving…");
-    try {
-      const response = await fetch(`/api/cme/entries/${entryId}/goal`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ goalId: next }),
-      });
-      if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as { message?: string } | null;
-        throw new Error(payload?.message ?? `Could not save the goal (${response.status}).`);
+    // One save at a time, in order. A choice made while a save is in flight goes
+    // next, so the server and the screen both end on the last choice, and an
+    // earlier failure never puts back a value over a later one.
+    if (saving.current) {
+      queued.current = { goalId: next };
+      return;
+    }
+    saving.current = true;
+    let value = next;
+    let failure: { readonly error: unknown } | null = null;
+    for (;;) {
+      try {
+        await saveGoal(value);
+        confirmed.current = value;
+        failure = null;
+      } catch (error) {
+        failure = { error };
       }
+      const pending = queued.current;
+      queued.current = null;
+      if (!pending) break;
+      value = pending.goalId;
+    }
+    saving.current = false;
+    if (!failure) {
       setStatus("Saved.");
-    } catch (error) {
+    } else {
+      const { error } = failure;
       const isOffline =
         (typeof navigator !== "undefined" && !navigator.onLine) ||
         (error instanceof TypeError && (error.message.includes("fetch") || error.message.includes("network")));
-      setGoalId(previous);
+      setGoalId(confirmed.current);
       setStatus(
         isOffline
           ? "You are offline. Connect to save this goal selection."

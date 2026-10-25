@@ -126,7 +126,9 @@ export function readDates(text: string, today: string): DateReading {
     }
   }
   if (from !== null) {
-    if (!to || to < from || from < today) return { blocked: "past" };
+    if (!to || from < today) return { blocked: "past" };
+    // "28-3 Nov" reads as 28 Nov to 3 Nov. Both may be ahead, so ask rather than say it has passed.
+    if (to < from) return { ask: "Which dates do you mean?", options: [] };
     const dayWord =
       /\b(sunday|sun|monday|mon|tuesday|tues|tue|wednesday|wed|thursday|thurs|thur|thu|friday|fri|saturday|sat)\b/i.exec(
         text,

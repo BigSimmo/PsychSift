@@ -105,7 +105,23 @@ function EmergencyRoute({
           </span>
         </a>
       ) : null}
-      {dial && (deskOnly || !primary?.tel) && !extension ? (
+      {/* A recorded instruction rather than a number ("Press the wall button") is shown as written,
+          never as "Dial <instruction> from a ward phone". */}
+      {dial?.kind === "text" ? (
+        <button
+          type="button"
+          aria-haspopup="dialog"
+          onClick={() => setSheetOpen(true)}
+          data-testid={`${testId}-dial-details`}
+          aria-label={`${dial.display}. Dialling details for ${title}`}
+          className={cn(onCallOutlineButton, focusRing, "justify-start py-1.5")}
+        >
+          <Phone aria-hidden="true" strokeWidth={1.5} className="size-icon-md shrink-0" />
+          <span className="min-w-0 break-words text-left font-semibold">{dial.display}</span>
+          <span className="text-sm font-normal text-[color:var(--text-muted)]">Dialling details</span>
+        </button>
+      ) : null}
+      {dial && dial.kind !== "text" && (deskOnly || !primary?.tel) && !extension ? (
         <button
           type="button"
           aria-haspopup="dialog"

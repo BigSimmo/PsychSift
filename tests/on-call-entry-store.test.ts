@@ -8,6 +8,7 @@ import {
   onCallEntryCacheStorageKey,
   peekOnCallEntrySessionEpoch,
   readCachedOnCallEntries,
+  updateCachedOnCallEntries,
 } from "@/lib/on-call/entry-store";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
 
@@ -202,6 +203,29 @@ describe("on-call entry cache", () => {
     expect(() => cacheOnCallEntries([contact])).not.toThrow();
     expect(cacheOnCallEntries([contact])).toBe(false);
     expect(() => clearOnCallEntryCache()).not.toThrow();
+  });
+
+  it("applies a late update to the latest cached list, not the snapshot the screen held", () => {
+    const other: OnCallEntry = { ...contact, id: "22222222-2222-4222-8222-222222222222", slug: "other" };
+    cacheOnCallEntries([contact, other]);
+    // Both taps start from the same render's list.
+    const snapshot = readCachedOnCallEntries()!.entries;
+    const first = { ...contact, lastVerifiedAt: "2026-09-04T12:00:00.000Z" };
+    const second = { ...other, lastVerifiedAt: "2026-09-04T12:00:00.000Z" };
+    const replace = (updated: OnCallEntry) => (current: OnCallEntry[]) =>
+      current.map((existing) => (existing.id === updated.id ? updated : existing));
+    expect(updateCachedOnCallEntries(snapshot, replace(first))).toBe(true);
+    expect(updateCachedOnCallEntries(snapshot, replace(second))).toBe(true);
+    expect(readCachedOnCallEntries()?.entries).toEqual([first, second]);
+  });
+
+  it("falls back to the screen's own list when nothing is cached", () => {
+    expect(updateCachedOnCallEntries([contact], (current) => current.filter(() => false))).toBe(true);
+    expect(readCachedOnCallEntries()?.entries).toEqual([]);
+    clearOnCallEntryCache();
+    const updated = { ...contact, title: "Renamed" };
+    updateCachedOnCallEntries([contact], (current) => current.map(() => updated));
+    expect(readCachedOnCallEntries()?.entries).toEqual([updated]);
   });
 
   it("advances the session epoch only when the cache is cleared", () => {

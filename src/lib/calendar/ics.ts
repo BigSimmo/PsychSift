@@ -1,5 +1,7 @@
 import {
   allDayEndExclusive,
+  CALENDAR_TIME_ZONE,
+  CALENDAR_UTC_OFFSET_MINUTES,
   eventUtcRange,
   type CalendarEvent,
   type CalendarRecurrence,
@@ -10,8 +12,12 @@ import {
  * calendar — Apple, Google, Outlook — imports. Built on the device and handed
  * to the owner as a download; nothing is sent anywhere.
  *
- * Timed events are written in UTC (`Z`) rather than with a `TZID`, which is
- * exact for Perth (no daylight saving) and avoids shipping a VTIMEZONE block.
+ * A one-off timed event is written in UTC (`Z`), which is exact for Perth (no
+ * daylight saving). A timed event that belongs to a repeating series is written
+ * in Perth wall-clock time with `TZID`, plus one fixed +08:00 VTIMEZONE block,
+ * because RFC 5545 expands a repeat rule in its DTSTART's zone: from a UTC start
+ * before 08:00 Perth, a monthly rule would follow the previous UTC day and land
+ * a day late or skip months.
  */
 
 const PRODUCT_ID = "-//PsychSift//Calendar//EN";
@@ -60,6 +66,29 @@ export function compactUtc(instant: Date): string {
     .toISOString()
     .replace(/[-:]/g, "")
     .replace(/\.\d{3}Z$/, "Z");
+}
+
+/** The same instant as Perth wall-clock time, `YYYYMMDDTHHMMSS` with no `Z`, for a `TZID` value. */
+function compactPerth(instant: Date): string {
+  return compactUtc(new Date(instant.getTime() + CALENDAR_UTC_OFFSET_MINUTES * 60_000)).replace(/Z$/, "");
+}
+
+/** Perth has kept UTC+8 with no daylight saving since 2009, so one fixed-offset rule describes it. */
+const PERTH_VTIMEZONE = [
+  "BEGIN:VTIMEZONE",
+  `TZID:${CALENDAR_TIME_ZONE}`,
+  "BEGIN:STANDARD",
+  "DTSTART:19700101T000000",
+  "TZOFFSETFROM:+0800",
+  "TZOFFSETTO:+0800",
+  "TZNAME:AWST",
+  "END:STANDARD",
+  "END:VTIMEZONE",
+];
+
+/** A timed series, or one occurrence of a series, is written in Perth time so its repeats expand in Perth. */
+function usesPerthTime(event: CalendarEvent): boolean {
+  return Boolean(event.recurrence || event.seriesOccurrence) && eventUtcRange(event) !== null;
 }
 
 /**
@@ -119,8 +148,11 @@ function alarmLines(event: CalendarEvent): string[] {
 function eventLines(event: CalendarEvent, stamp: Date): string[] {
   const lines = ["BEGIN:VEVENT", `UID:${event.id}@${UID_DOMAIN}`, `DTSTAMP:${compactUtc(stamp)}`];
   const range = eventUtcRange(event);
+  const perth = usesPerthTime(event);
+  const dateTime = (instant: Date) =>
+    perth ? `;TZID=${CALENDAR_TIME_ZONE}:${compactPerth(instant)}` : `:${compactUtc(instant)}`;
   if (range) {
-    lines.push(`DTSTART:${compactUtc(range.start)}`, `DTEND:${compactUtc(range.end)}`);
+    lines.push(`DTSTART${dateTime(range.start)}`, `DTEND${dateTime(range.end)}`);
   } else {
     // All-day: DTEND is the day after, exclusive.
     lines.push(
@@ -130,9 +162,7 @@ function eventLines(event: CalendarEvent, stamp: Date): string[] {
   }
   if (event.seriesOccurrence) {
     // Overrides the series occurrence that starts at this same moment (RFC 5545 §3.8.4.4).
-    lines.push(
-      range ? `RECURRENCE-ID:${compactUtc(range.start)}` : `RECURRENCE-ID;VALUE=DATE:${compactDate(event.date)}`,
-    );
+    lines.push(range ? `RECURRENCE-ID${dateTime(range.start)}` : `RECURRENCE-ID;VALUE=DATE:${compactDate(event.date)}`);
   } else if (event.recurrence) {
     lines.push(`RRULE:${recurrenceRule(event.recurrence, event.seriesStartDate ?? event.date)}`);
   }
@@ -162,6 +192,7 @@ export function toIcs(
       `X-PUBLISHED-TTL:PT${options.refreshHours}H`,
     );
   }
+  if (events.some(usesPerthTime)) lines.push(...PERTH_VTIMEZONE);
   for (const event of events) lines.push(...eventLines(event, stamp));
   lines.push("END:VCALENDAR");
   return `${lines.map(foldIcsLine).join("\r\n")}\r\n`;

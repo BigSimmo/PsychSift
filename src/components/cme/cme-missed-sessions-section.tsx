@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { CmeDateField } from "@/components/cme/cme-date-field";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Select } from "@/components/ui/select";
 import { TextField } from "@/components/ui/text-field";
 import { EmptyState, InlineNotice } from "@/components/ui-primitives";
@@ -189,6 +190,7 @@ export function CmeMissedSessionsSection({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<CmeMissedSession | null>(null);
 
   const readOnly = demoMode;
   const today = perthCalendarDate(new Date());
@@ -393,7 +395,7 @@ export function CmeMissedSessionsSection({
                         icon={Trash2}
                         disabled={busy}
                         aria-label={`Delete missed session: ${session.title}`}
-                        onClick={() => void remove(session.id)}
+                        onClick={() => setPendingDelete(session)}
                       >
                         Delete
                       </Button>
@@ -532,6 +534,18 @@ export function CmeMissedSessionsSection({
           )}
         </div>
       ) : null}
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => {
+          const session = pendingDelete;
+          setPendingDelete(null);
+          if (session) void remove(session.id);
+        }}
+        title="Delete this missed session?"
+        description={`"${pendingDelete?.title ?? ""}" will be removed from your missed sessions. This cannot be undone.`}
+        confirmLabel="Delete missed session"
+      />
     </section>
   );
 }

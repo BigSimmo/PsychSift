@@ -7,6 +7,7 @@ import { EnvironmentStrip } from "@/components/developer-area/hub/environment-st
 import { OwnerTodaySection } from "@/components/developer-area/hub/owner-today-section";
 import { PanelCard } from "@/components/developer-area/hub/panel-card";
 import { inPageAnchor } from "@/components/in-page-nav/in-page-nav-classes";
+import { developerAreaRequestAuthorized } from "@/lib/developer-area/access";
 import { resolveClinicalAnswerFailures } from "@/lib/developer-area/clinical-answer-failures";
 import { resolveHubEnvironmentFacts } from "@/lib/developer-area/environment-facts";
 import { panelsInGroup, type HubPanelGroup } from "@/lib/developer-area/hub-panels";
@@ -54,6 +55,8 @@ const GROUPS: { id: HubPanelGroup; anchor: string; label: string }[] = [
 ];
 
 export default async function DeveloperHubPage() {
+  // The layout gate can be skipped on a client-side navigation; check again here (see `access.ts`).
+  if (!(await developerAreaRequestAuthorized())) return null;
   const snapshot = loadLedgerSnapshot();
   const environment = await resolveHubEnvironmentFacts();
   const clinicalAnswerFailures = resolveClinicalAnswerFailures(snapshot);

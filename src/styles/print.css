@@ -1,15 +1,11 @@
-/* Print styles for WA MHA statutory forms and clinical documents (#C4CFFP) */
+/* Print styles for printable forms and clinical documents (#C4CFFP) */
 
 @media print {
   /* Prevent form headers, titles, and statutory metadata from rendering blank.
    * Specificity overrides global `header { display: none !important; }`.
    */
-  .wa-mha-form-print,
-  .wa-mha-print-header,
   .form-print-header,
   header.form-print-header,
-  header.wa-mha-print-header,
-  [data-wa-mha-form-print] header,
   [data-print-header],
   .form-print-title,
   [data-print-title],
@@ -24,8 +20,6 @@
     print-color-adjust: exact !important;
   }
 
-  .wa-mha-form-print header *,
-  .wa-mha-print-header *,
   .form-print-header *,
   [data-print-header] *,
   .statutory-metadata * {
@@ -33,16 +27,6 @@
   }
 
   /* Form page breaking & layout */
-  .wa-mha-form-print {
-    width: 100% !important;
-    max-width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    font-size: 11pt;
-    line-height: var(--leading-snug);
-    color: black;
-  }
-
   .form-print-section {
     page-break-inside: avoid;
     break-inside: avoid;

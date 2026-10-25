@@ -145,6 +145,19 @@ describe("specifierClinicianReviewLabel", () => {
     }
   });
 
+  it("fails closed when the definition changed after the sign-off", () => {
+    const review = {
+      clinicianReviewStatus: "clinician-reviewed",
+      reviewedBy: "Dr Alex Example",
+      reviewedAt: "2026-09-26T03:00:00Z",
+      reviewedContentSha256: PIN,
+      changedSinceReview: true,
+    };
+    expect(isSpecifierClinicianReviewed(review)).toBe(false);
+    expect(specifierClinicianReviewLabel(review)).toBe("Pending qualified review");
+    expect(isSpecifierClinicianReviewed({ ...review, changedSinceReview: false })).toBe(true);
+  });
+
   it("does not treat reviewer fields on a pending status as a sign-off", () => {
     const review = {
       clinicianReviewStatus: "clinician-review-pending",

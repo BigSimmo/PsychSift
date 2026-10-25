@@ -284,6 +284,13 @@ describe("log it again", () => {
     expect(screen.getByLabelText("Reflection")).toHaveValue("");
     expect(screen.getByLabelText(/what it cost/i)).toHaveValue("");
   });
+
+  it("says the copy is dated 1 January, not today, when logging into a past year", () => {
+    render(<CmeNewEntryRoute repeatOf={original} set={{ ...SET, year: 2020 }} />);
+    expect(screen.getByTestId("cme-entry-repeat-notice")).toHaveTextContent(
+      "Copied from an earlier entry and dated 1 January 2020.",
+    );
+  });
 });
 
 describe("annual summary PDF", () => {

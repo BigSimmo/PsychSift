@@ -26,6 +26,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 
 import { canNavigateBack } from "@/components/contextual-back-link";
 import { NavigationBackButton } from "@/components/navigation-back-button";
+import { announce } from "@/components/ui/live-announcer";
 import { appModeHomeHref } from "@/lib/app-modes";
 import { WA_CRISIS_CONTACTS } from "@/lib/crisis-contacts";
 import { registerNavigationGuard } from "@/lib/navigation-guards";
@@ -315,6 +316,7 @@ function planContainsSeedEntries(entries: Record<StepKey, Entry[]>, reasons: Ent
 
 function AddRow({
   kind,
+  label,
   namePrefix,
   primaryPlaceholder,
   secondaryPlaceholder,
@@ -322,6 +324,8 @@ function AddRow({
   onDraftDirtyChange,
 }: {
   kind: StepKind;
+  /** The step's own name. The example placeholders are hints, never the field's name. */
+  label: string;
   namePrefix?: string;
   primaryPlaceholder: string;
   secondaryPlaceholder?: string;
@@ -365,7 +369,7 @@ function AddRow({
           }
         }}
         placeholder={primaryPlaceholder}
-        aria-label={primaryPlaceholder}
+        aria-label={kind === "contact" ? `${label}: ${primaryPlaceholder}` : `${label}: new entry`}
         className={cn(fieldControlPlain, "min-h-tap")}
       />
       {kind === "contact" ? (
@@ -385,13 +389,14 @@ function AddRow({
             }
           }}
           placeholder={secondaryPlaceholder}
-          aria-label={secondaryPlaceholder}
+          aria-label={`${label}: ${secondaryPlaceholder}`}
           className={cn(fieldControlPlain, "min-h-tap")}
         />
       ) : null}
       <button
         type="button"
         onClick={submit}
+        aria-label={`Add to ${label}`}
         className={cn(
           "inline-flex min-h-tap items-center justify-center gap-1.5 rounded-lg border border-dashed border-[color:var(--border-strong)] bg-[color:var(--surface-subtle)] px-3 text-sm-minus font-bold text-[color:var(--text-muted)] transition hover:border-[color:var(--clinical-accent-border)] hover:text-[color:var(--clinical-accent)]",
           kind === "list" && "justify-self-start",
@@ -443,6 +448,7 @@ function EntryChip({ entry, kind, onRemove }: { entry: Entry; kind: StepKind; on
         type="button"
         onClick={onRemove}
         aria-label={`Remove “${entry.primary}”`}
+        data-safety-plan-remove
         className={cn(
           "relative grid size-7 place-items-center rounded-md text-[color:var(--decoration-soft)] transition hover:bg-[color:var(--danger-soft)] hover:text-[color:var(--danger)] before:absolute before:-inset-2.5 before:content-['']",
           focusRing,
@@ -452,6 +458,30 @@ function EntryChip({ entry, kind, onRemove }: { entry: Entry; kind: StepKind; on
       </button>
     </li>
   );
+}
+
+/**
+ * The remove button a reader pressed unmounts with its entry, so focus would
+ * fall to the top of the page. Land it on the entry that took its place, else
+ * the one before, else the step's add field, and say the entry went.
+ */
+function useRemovalFocus(count: number, fallbackId: string) {
+  const listRef = useRef<HTMLUListElement>(null);
+  const pendingIndex = useRef<number | null>(null);
+  useEffect(() => {
+    const index = pendingIndex.current;
+    if (index === null) return;
+    pendingIndex.current = null;
+    const buttons = listRef.current?.querySelectorAll<HTMLButtonElement>("[data-safety-plan-remove]");
+    const target = buttons?.[Math.min(index, buttons.length - 1)] ?? document.getElementById(fallbackId);
+    target?.focus();
+  }, [count, fallbackId]);
+  const removing = useCallback((index: number) => {
+    pendingIndex.current = index;
+    // The entry's own words are not read back: the shared live region outlives the plan.
+    announce("Entry removed.");
+  }, []);
+  return { listRef, removing };
 }
 
 function StepBuilderCard({
@@ -469,6 +499,7 @@ function StepBuilderCard({
 }) {
   const Icon = def.icon;
   const filled = isStepComplete(def, entries);
+  const { listRef, removing } = useRemovalFocus(entries.length, `spg-${def.key}-primary`);
 
   return (
     <section
@@ -502,9 +533,17 @@ function StepBuilderCard({
       </header>
 
       {entries.length ? (
-        <ul className="grid gap-1.5">
-          {entries.map((entry) => (
-            <EntryChip key={entry.id} entry={entry} kind={def.kind} onRemove={() => onRemove(entry.id)} />
+        <ul ref={listRef} className="grid gap-1.5">
+          {entries.map((entry, index) => (
+            <EntryChip
+              key={entry.id}
+              entry={entry}
+              kind={def.kind}
+              onRemove={() => {
+                removing(index);
+                onRemove(entry.id);
+              }}
+            />
           ))}
         </ul>
       ) : (
@@ -515,6 +554,7 @@ function StepBuilderCard({
 
       <AddRow
         kind={def.kind}
+        label={def.builderTitle}
         namePrefix={def.key}
         primaryPlaceholder={def.primaryPlaceholder}
         secondaryPlaceholder={def.secondaryPlaceholder}
@@ -579,6 +619,7 @@ export function PatientSafetyPlan() {
   const router = useRouter();
   const [entries, setEntries] = useState<Record<StepKey, Entry[]>>(EMPTY_ENTRIES);
   const [reasons, setReasons] = useState<Entry[]>([]);
+  const { listRef: reasonListRef, removing: removingReason } = useRemovalFocus(reasons.length, "spg-reasons-primary");
   const [planDate, setPlanDate] = useState("");
   const [mobileTab, setMobileTab] = useState<"build" | "preview">("build");
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
@@ -1127,8 +1168,8 @@ export function PatientSafetyPlan() {
               <StepCount count={reasons.length} noun={["reason", "reasons"]} />
             </header>
             {reasons.length ? (
-              <ul className="flex flex-wrap gap-x-2.5 gap-y-2">
-                {reasons.map((reason) => (
+              <ul ref={reasonListRef} className="flex flex-wrap gap-x-2.5 gap-y-2">
+                {reasons.map((reason, index) => (
                   <li
                     key={reason.id}
                     className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--clinical-chat-sand-border-strong)] bg-[color:var(--surface)] py-1 pl-3 pr-1.5 text-sm-minus font-semibold text-[color:var(--text-heading)]"
@@ -1137,10 +1178,12 @@ export function PatientSafetyPlan() {
                     <button
                       type="button"
                       onClick={() => {
+                        removingReason(index);
                         setReasons((prev) => prev.filter((item) => item.id !== reason.id));
                         setFinalised(false);
                       }}
                       aria-label={`Remove “${reason.primary}”`}
+                      data-safety-plan-remove
                       className={cn(
                         "relative grid size-5 place-items-center rounded-full text-[color:var(--decoration-soft)] transition hover:bg-[color:var(--danger-soft)] hover:text-[color:var(--danger)] before:absolute before:-inset-y-3.5 before:-inset-x-3 before:content-['']",
                         focusRing,
@@ -1154,6 +1197,7 @@ export function PatientSafetyPlan() {
             ) : null}
             <AddRow
               kind="list"
+              label="Reasons for living"
               namePrefix="reasons"
               primaryPlaceholder="e.g. Finishing my apprenticeship"
               onDraftDirtyChange={(dirty) => setDraftDirty("reason", dirty)}

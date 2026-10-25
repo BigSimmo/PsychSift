@@ -16,12 +16,13 @@ const secretFlagPattern = new RegExp(
   "gi",
 );
 const secretEnvironmentPattern =
-  /\b([A-Z][A-Z0-9_]*(?:API_KEY|AUTH_TOKEN|ACCESS_TOKEN|REFRESH_TOKEN|SERVICE_ROLE_KEY|SERVICE_KEY|CLIENT_SECRET|PRIVATE_KEY|PASSWORD|SECRET|TOKEN))\s*=\s*(?:(?:"[^"]*")|(?:'[^']*')|(?:[^\s]+))/g;
+  /\b([A-Z0-9_]*(?:API_KEY|AUTH_TOKEN|ACCESS_TOKEN|REFRESH_TOKEN|SERVICE_ROLE_KEY|SERVICE_KEY|CLIENT_SECRET|PRIVATE_KEY|PASSWORD|SECRET|TOKEN))\s*=\s*(?:(?:"[^"]*")|(?:'[^']*')|(?:[^\s]+))/g;
 const authorizationPattern = /\b(Bearer|Basic)\s+[A-Za-z0-9+/=._-]{8,}/gi;
 const jwtPattern = /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g;
 const knownTokenPattern =
   /\b(?:crsr_|sk-|sb_secret_|ghp_|gho_|ghu_|ghs_|github_pat_|xox[baprs]-|rk_live_|pk_live_)[A-Za-z0-9._-]{8,}\b/gi;
-const urlCredentialPattern = /(\bhttps?:\/\/[^/\s:@]+:)[^@\s/]+@/gi;
+// Any scheme, so postgresql://, redis:// and similar connection strings lose their password too.
+const urlCredentialPattern = /(\b[a-z][a-z0-9+.-]*:\/\/[^/\s:@]+:)[^@\s/]+@/gi;
 
 /**
  * Redact common credential forms before command, process, or failure text is

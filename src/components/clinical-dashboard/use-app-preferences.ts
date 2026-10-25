@@ -267,14 +267,29 @@ export function useAppPreferences() {
   // only the latest combined patch is sent when the chain drains.
   const writeChainRef = useRef(Promise.resolve());
   const pendingWriteRef = useRef<PreferencePatch | null>(null);
+  // The last patch a PUT failed to deliver, tagged with the auth epoch it was
+  // made in. It rides along with the next write (or Retry) and is overlaid on
+  // any account snapshot until then, so a failed sync never lets the server's
+  // older value overwrite the local choice — a "Save recent searches" opt-out
+  // in particular. Another account's epoch never sees it.
+  const failedWriteRef = useRef<{ authEpoch: number; patch: PreferencePatch } | null>(null);
 
-  const acceptAccountPreferences = useCallback((accountPreferences: AppPreferences) => {
-    // A later local change may already be queued behind the request whose
-    // response supplied this account snapshot. Keep that patch visible while
-    // adopting the authoritative privacy value returned by the server.
-    const pendingPatch = pendingWriteRef.current;
-    persist(normalizePreferences(pendingPatch ? { ...accountPreferences, ...pendingPatch } : accountPreferences));
+  const undeliveredPatch = useCallback((epoch: number): PreferencePatch | null => {
+    const failed = failedWriteRef.current;
+    return failed && failed.authEpoch === epoch ? failed.patch : null;
   }, []);
+
+  const acceptAccountPreferences = useCallback(
+    (accountPreferences: AppPreferences, epoch: number) => {
+      // A later local change may already be queued behind the request whose
+      // response supplied this account snapshot, or an earlier one may not have
+      // reached the server. Keep both visible while adopting the authoritative
+      // privacy value returned by the server.
+      const localPatch = { ...undeliveredPatch(epoch), ...pendingWriteRef.current };
+      persist(normalizePreferences({ ...accountPreferences, ...localPatch }));
+    },
+    [undeliveredPatch],
+  );
 
   // Adjust during render rather than in an effect: a new session must not spend
   // a frame reporting the previous session's sync outcome, and an effect always
@@ -324,8 +339,9 @@ export function useAppPreferences() {
         if (localPreferenceRevision !== revisionAtFetchStart) return;
         const accountPreferences = normalizeAuthoritativePreferences(payload?.preferences);
         if (accountPreferences) {
-          acceptAccountPreferences(accountPreferences);
-          setObservedSync("synced");
+          acceptAccountPreferences(accountPreferences, authEpoch);
+          // A change that failed to send is still not on the account.
+          setObservedSync(undeliveredPatch(authEpoch) ? "error" : "synced");
           return;
         }
         if (payload?.preferences !== null) {
@@ -352,7 +368,7 @@ export function useAppPreferences() {
           setObservedSync("error");
           return;
         }
-        acceptAccountPreferences(bootstrappedPreferences);
+        acceptAccountPreferences(bootstrappedPreferences, authEpoch);
         setObservedSync("synced");
       } catch (error) {
         // An abort is this effect being torn down, not a failure to report.
@@ -362,7 +378,15 @@ export function useAppPreferences() {
       }
     })();
     return () => controller.abort();
-  }, [acceptAccountPreferences, authEpoch, authStatus, authorizationHeader, bootstrapAttempt, markSessionExpired]);
+  }, [
+    acceptAccountPreferences,
+    authEpoch,
+    authStatus,
+    authorizationHeader,
+    bootstrapAttempt,
+    markSessionExpired,
+    undeliveredPatch,
+  ]);
 
   useEffect(() => {
     applyPreferenceSideEffects(preferences);
@@ -389,11 +413,17 @@ export function useAppPreferences() {
           if (pendingWriteRef.current !== queuedPatch) return;
           const pendingPatch = pendingWriteRef.current;
           pendingWriteRef.current = null;
+          // Resend whatever an earlier failed PUT could not deliver; the newer
+          // patch wins any key both carry.
+          const sentPatch = { ...undeliveredPatch(authEpoch), ...pendingPatch };
+          const keepUndelivered = () => {
+            failedWriteRef.current = { authEpoch, patch: sentPatch };
+          };
           try {
             const response = await fetch("/api/account/preferences", {
               method: "PUT",
               headers: { "Content-Type": "application/json", ...authorizationHeader },
-              body: JSON.stringify(pendingPatch),
+              body: JSON.stringify(sentPatch),
             });
             if (response.status === 401) {
               markSessionExpired();
@@ -401,22 +431,26 @@ export function useAppPreferences() {
               return;
             }
             if (!response.ok) {
+              keepUndelivered();
               settle("error");
               return;
             }
             const accountPreferences = await readAuthoritativePreferences(response);
             if (!accountPreferences) {
+              keepUndelivered();
               settle("error");
               return;
             }
-            acceptAccountPreferences(accountPreferences);
+            failedWriteRef.current = null;
+            acceptAccountPreferences(accountPreferences, authEpoch);
             settle("synced");
           } catch {
+            keepUndelivered();
             settle("error");
           }
         });
     },
-    [acceptAccountPreferences, authStatus, authorizationHeader, markSessionExpired],
+    [acceptAccountPreferences, authEpoch, authStatus, authorizationHeader, markSessionExpired, undeliveredPatch],
   );
 
   const setPreference = useCallback(
@@ -453,9 +487,16 @@ export function useAppPreferences() {
       setObservedSync("local-only");
       return;
     }
+    // A change that failed to send is retried by sending it again: re-reading
+    // the account alone would adopt the server's older value over it.
+    const failedPatch = undeliveredPatch(authEpoch);
+    if (failedPatch) {
+      persistAccountPreferences(failedPatch);
+      return;
+    }
     setObservedSync(null);
     setBootstrapAttempt((attempt) => attempt + 1);
-  }, [authStatus]);
+  }, [authEpoch, authStatus, persistAccountPreferences, undeliveredPatch]);
 
   return {
     preferences,

@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
+import { runSqlExpectation } from "../scripts/check-site-content-control-plane.mjs";
+
 const authorityMigration = "supabase/migrations/20260830120000_harden_site_content_initial_adoption.sql";
 const transitionMigration = "supabase/migrations/20260830121000_bind_site_content_release_transitions.sql";
 
@@ -120,5 +122,28 @@ describe("P06 site-content control-plane correction", () => {
     expect(validator).not.toMatch(/process\.env|supabase|next\/|node:fs|provider/i);
     expect(cli).toContain("assertSiteContentReconciliationInput");
     expect(cli).not.toMatch(/record_site_content_reconciliation_plan|administrator.?token|reviewedBy|actorId/i);
+  });
+
+  it("fails an expected refusal when the SQL succeeds", () => {
+    expect(() => runSqlExpectation(() => "ok", "site_content_transition_backfill_unprovable")).toThrow(
+      "Expected site_content_transition_backfill_unprovable, but SQL succeeded.",
+    );
+  });
+
+  it("accepts an expected refusal only when the failure carries the marker", () => {
+    const refusal = Object.assign(new Error("psql failed"), {
+      stderr: "ERROR:  site_content_transition_backfill_unprovable",
+    });
+    expect(
+      runSqlExpectation(() => {
+        throw refusal;
+      }, "site_content_transition_backfill_unprovable"),
+    ).toContain("site_content_transition_backfill_unprovable");
+    expect(() =>
+      runSqlExpectation(() => {
+        throw new Error("psql failed: unrelated");
+      }, "site_content_transition_backfill_unprovable"),
+    ).toThrow("SQL failed without expected marker");
+    expect(runSqlExpectation(() => "ok", undefined)).toBe("ok");
   });
 });

@@ -136,7 +136,7 @@ function ManagerTeam({
                 grade: overview.data.me.grade,
               }}
             />
-            <RosterTeamSettings serviceId={serviceId} overview={overview.data} />
+            <RosterTeamSettings serviceId={serviceId} overview={overview.data} onSaved={overview.reload} />
             <RosterSafeNumber
               serviceId={serviceId}
               overview={overview.data}

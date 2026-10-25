@@ -160,4 +160,26 @@ describe("Therapy Review Status Governance on SheetsScreen and BriefScreen (P2-1
       expect(screen.queryByText("Awaiting clinical review")).not.toBeInTheDocument();
     });
   });
+
+  describe("SheetsScreen coping section crisis wording", () => {
+    const coping = () => screen.getByRole("heading", { name: "If things get hard" }).parentElement!;
+
+    it("points at the contacts below only when the sheet includes them", () => {
+      navigation.pathname = "/therapy-compass/reviewed-act/sheet";
+      navigation.search = "section=coping&section=contacts";
+      render(h(TcProvider, null, h(SheetsScreen)));
+
+      expect(coping()).toHaveTextContent("use the contacts below straight away.");
+    });
+
+    it("carries the crisis instruction itself when the contacts section is off", () => {
+      navigation.pathname = "/therapy-compass/reviewed-act/sheet";
+      navigation.search = "section=coping";
+      render(h(TcProvider, null, h(SheetsScreen)));
+
+      expect(screen.queryByRole("heading", { name: "Support contacts" })).not.toBeInTheDocument();
+      expect(coping()).not.toHaveTextContent("contacts below");
+      expect(coping()).toHaveTextContent("call your local emergency number or a 24/7 crisis line straight away.");
+    });
+  });
 });

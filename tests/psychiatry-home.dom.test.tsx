@@ -42,12 +42,19 @@ const counts: PsychiatrySectionCounts = {
 const now = new Date("2026-10-03T04:00:00Z");
 
 beforeEach(() => {
+  // The visit store drops records older than 90 days against the real clock, so pin the clock to
+  // `now`; otherwise visits stamped from this fixed date vanish once the real date moves on.
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(now);
   window.localStorage.clear();
   clearPsychiatryVisits();
   push.mockReset();
   pageParam = "";
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 describe("PsychiatryHome", () => {
   it("links every section in the menu's Psychiatry group to its existing home, with its count", () => {

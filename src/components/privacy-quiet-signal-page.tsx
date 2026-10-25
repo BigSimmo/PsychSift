@@ -162,16 +162,19 @@ export function PrivacyQuietSignalPage() {
 
   const toggleSection = useCallback(
     (id: PrivacySectionId) => {
+      // Toggle what the reader sees, not the manual set: a section open only
+      // because the fragment points at it must close on the first press.
+      const closing = openIds.has(id);
       setManualOpenIds((current) => {
         const next = new Set(current);
-        if (next.has(id)) next.delete(id);
+        if (closing) next.delete(id);
         else next.add(id);
         return next;
       });
       setLastSelectedId(id);
       // Closing the section the fragment points at has to drop the fragment too,
       // or the derived open set would immediately reopen it.
-      if (openIds.has(id) && hashSectionId === id) writePrivacyHashSection(null);
+      if (closing && hashSectionId === id) writePrivacyHashSection(null);
     },
     [hashSectionId, openIds],
   );

@@ -79,6 +79,11 @@ describe("contentReviewSchedule", () => {
     expect(contentReviewSchedule({ ...base, referenceDate: at("2027-04-14") }).state).toBe("due_soon");
     expect(contentReviewSchedule({ ...base, referenceDate: at("2027-05-14") }).state).toBe("due");
     expect(contentReviewSchedule({ ...base, referenceDate: at("2028-01-01") }).state).toBe("due");
+    // 02:00 in Perth on the due date is still the previous day in UTC.
+    expect(contentReviewSchedule({ ...base, referenceDate: new Date("2027-05-13T18:00:00.000Z") }).state).toBe("due");
+    expect(contentReviewSchedule({ ...base, referenceDate: new Date("2027-04-13T18:00:00.000Z") }).state).toBe(
+      "due_soon",
+    );
     expect(contentReviewNoticeCopy(contentReviewSchedule({ ...base, referenceDate: at("2027-05-20") }))).toEqual({
       lead: "Next review overdue",
       detail: "It was due on",

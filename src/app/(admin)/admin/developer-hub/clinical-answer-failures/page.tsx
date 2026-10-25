@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { PanelPageShell } from "@/components/developer-area/hub/panel-page-shell";
 import { CountTile, META_CLASS, PanelSection } from "@/components/developer-area/hub/panel-primitives";
+import { developerAreaRequestAuthorized } from "@/lib/developer-area/access";
 import { referencedQuestionCount, resolveClinicalAnswerFailures } from "@/lib/developer-area/clinical-answer-failures";
 import { loadLedgerSnapshot, resolveFreshness } from "@/lib/developer-area/ledger-snapshot";
 
@@ -10,7 +11,9 @@ export const metadata: Metadata = {
   description: "Open ledger items that name one of the repository's clinical eval questions.",
 };
 
-export default function DeveloperClinicalAnswerFailuresPage() {
+export default async function DeveloperClinicalAnswerFailuresPage() {
+  // The layout gate can be skipped on a client-side navigation; check again here (see `access.ts`).
+  if (!(await developerAreaRequestAuthorized())) return null;
   const snapshot = loadLedgerSnapshot();
   const now = new Date();
   const freshness = resolveFreshness(snapshot, now);

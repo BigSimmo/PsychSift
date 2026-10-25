@@ -1,5 +1,5 @@
 import type { CatalogService } from "@/lib/service-catalog";
-import { catalogServiceSlug, extractEmails, extractPhones } from "@/lib/service-catalog";
+import { catalogServiceSlug, extractEmails, extractPhones, extractTextOnlyPhones } from "@/lib/service-catalog";
 import {
   compactBestUseTitle,
   compactCatalogField,
@@ -144,6 +144,20 @@ function contactKind(kind: string | undefined, value: string): ServiceContact["k
   return "unknown";
 }
 
+/**
+ * One contact per number. A text-message-only number ("text 0477 13 11 14") is labelled
+ * as one and kept out of the `phone` kind, so it is never offered as a `tel:` call link.
+ */
+function phoneContacts(phones: string[], textOnly: Set<string>, voiceLabel: string, detail?: string) {
+  const voiceCount = phones.filter((phone) => !textOnly.has(phone)).length;
+  let voiceIndex = 0;
+  return phones.map((phone): ServiceContact => {
+    if (textOnly.has(phone)) return { label: "Text message", value: phone, detail, kind: "text" };
+    voiceIndex += 1;
+    return { label: voiceCount > 1 ? `${voiceLabel} ${voiceIndex}` : voiceLabel, value: phone, detail, kind: "phone" };
+  });
+}
+
 function buildContacts(service: CatalogService): ServiceContact[] {
   const contacts: ServiceContact[] = [];
   const hours = displayField(service.hours, ROW_MAX);
@@ -158,15 +172,13 @@ function buildContacts(service: CatalogService): ServiceContact[] {
       // number, so a value with 0 or 1 extractable phones is left exactly as before.
       if (kind === "phone") {
         const phones = extractPhones(contact.value);
+        const textOnly = extractTextOnlyPhones(contact.value);
         if (phones.length > 1) {
-          phones.forEach((phone, index) => {
-            contacts.push({
-              label: contact.label ? `${contact.label} ${index + 1}` : `Phone ${index + 1}`,
-              value: phone,
-              detail: hours,
-              kind: "phone",
-            });
-          });
+          contacts.push(...phoneContacts(phones, textOnly, contact.label || "Phone", hours));
+          continue;
+        }
+        if (phones.length === 1 && textOnly.has(phones[0])) {
+          contacts.push({ label: contact.label || "Text message", value: contact.value, detail: hours, kind: "text" });
           continue;
         }
       }
@@ -182,14 +194,7 @@ function buildContacts(service: CatalogService): ServiceContact[] {
     const phones = extractPhones(contactBlob);
     const emails = extractEmails(contactBlob);
 
-    for (const phone of phones) {
-      contacts.push({
-        label: phones.length > 1 ? `Phone ${contacts.filter((entry) => entry.kind === "phone").length + 1}` : "Phone",
-        value: phone,
-        detail: hours,
-        kind: "phone",
-      });
-    }
+    contacts.push(...phoneContacts(phones, extractTextOnlyPhones(contactBlob), "Phone", hours));
 
     for (const email of emails) {
       contacts.push({
@@ -322,8 +327,10 @@ function buildReferralInfo(service: CatalogService): ServiceInfoRow[] {
   const pathway = displayField(service.referral_pathway, ROW_MAX) ?? displayField(labeled.pathway, ROW_MAX);
   if (pathway) rows.push({ label: "Primary route", value: pathway });
 
-  const phones = extractPhones([service.contact_details, service.referral_details].join(" "));
-  phones.forEach((phone, index) => add(phones.length > 1 ? `Phone ${index + 1}` : "Phone", phone));
+  const phoneText = [service.contact_details, service.referral_details].join(" ");
+  for (const contact of phoneContacts(extractPhones(phoneText), extractTextOnlyPhones(phoneText), "Phone")) {
+    add(contact.label, contact.value ?? undefined);
+  }
 
   const emails = extractEmails([service.contact_details, service.referral_details].join(" "));
   emails.forEach((email) => add("Email", email));

@@ -1,4 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+const work = vi.hoisted(() => ({ zone: "Australia/Perth" }));
+vi.mock("@/lib/work-time/current-zone", () => ({ currentWorkTimeZone: () => work.zone }));
 
 import { toIcs } from "@/lib/calendar/ics";
 import { openShiftCalendarEvent, openShiftShareText } from "@/lib/open-shifts/share";
@@ -44,5 +47,25 @@ describe("openShiftCalendarEvent", () => {
     const ics = toIcs([event], { now: new Date("2026-10-12T00:00:00Z") });
     expect(ics).toContain("UID:psychsift-open-shift-shift-1");
     expect(ics).not.toMatch(/VALARM/);
+  });
+
+  describe("in a work time zone other than Perth", () => {
+    afterEach(() => {
+      work.zone = "Australia/Perth";
+    });
+
+    it("keeps the file's start at the shift's real instant", () => {
+      work.zone = "Australia/Sydney";
+      // Tue 27 Oct 2026, 08:00 Sydney (AEDT, UTC+11) is 05:00 Perth.
+      const event = openShiftCalendarEvent({
+        ...night,
+        startsAt: "2026-10-26T21:00:00.000Z",
+        endsAt: "2026-10-27T05:00:00.000Z",
+      });
+      expect(event).toMatchObject({ date: "2026-10-27", startTime: "05:00", durationMinutes: 480 });
+      const ics = toIcs([event], { now: new Date("2026-10-12T00:00:00Z") });
+      expect(ics).toContain("DTSTART:20261026T210000Z");
+      expect(ics).toContain("DTEND:20261027T050000Z");
+    });
   });
 });

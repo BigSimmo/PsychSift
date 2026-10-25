@@ -10,7 +10,7 @@ export const dayTopic: WorkHelpTopic = {
   tabs: [
     { label: "Today", body: "Your next shift, what is up next and what needs you." },
     { label: "Week", body: "Today and the next six days of shifts, teaching and dated items." },
-    { label: "Hours", body: "Your rostered hours this week and this fortnight, not pay." },
+    { label: "Calendar", body: "Everything with a date, a month at a time: shifts, teaching and dated items." },
   ],
   questions: [
     {

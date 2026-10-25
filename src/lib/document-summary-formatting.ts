@@ -159,23 +159,40 @@ function normalizeSentenceKey(value: string) {
     .trim();
 }
 
+function isRepeatKey(existing: string, key: string) {
+  return (
+    existing === key ||
+    (key.length >= 40 && existing.includes(key)) ||
+    (existing.length >= 40 && key.includes(existing))
+  );
+}
+
+// A later, complete sentence that continues a kept one extends it — it adds the
+// threshold or action ("… and withhold if the level is above 1.5 mmol/L") — so
+// it replaces the shorter one rather than being dropped. Only a continuation
+// counts: a repeat with running-header text glued in front is not an extension,
+// and a sentence cut off mid-thought never replaces a complete one.
+function extendsKept(existing: string, key: string, sentence: string) {
+  return key.length > existing.length && key.startsWith(existing) && /[.!?:;)\]"']$/.test(sentence.trim());
+}
+
 // Drops exact repeats and long (>=40-char key) containment repeats, keeping the
-// first occurrence — stored summaries frequently repeat whole passages 2-3x.
+// first occurrence's position — stored summaries frequently repeat whole
+// passages 2-3x. Where the repeat extends the kept sentence, the longer wins.
 export function dedupeSummarySentences(sentences: string[]): string[] {
   const kept: string[] = [];
   const keys: string[] = [];
   for (const sentence of sentences) {
     const key = normalizeSentenceKey(sentence);
     if (!key) continue;
-    const isDuplicate = keys.some(
-      (existing) =>
-        existing === key ||
-        (key.length >= 40 && existing.includes(key)) ||
-        (existing.length >= 40 && key.includes(existing)),
-    );
-    if (isDuplicate) continue;
-    kept.push(sentence);
-    keys.push(key);
+    const index = keys.findIndex((existing) => isRepeatKey(existing, key));
+    if (index === -1) {
+      kept.push(sentence);
+      keys.push(key);
+    } else if (extendsKept(keys[index], key, sentence)) {
+      kept[index] = sentence;
+      keys[index] = key;
+    }
   }
   return kept;
 }
@@ -289,7 +306,7 @@ export function formatDocumentSummary(raw: string | null | undefined): Formatted
   // Assemble sections with global sentence dedupe (repeats cross section
   // boundaries in stored summaries) and per-section boilerplate stripping
   // (running headers re-glue after inline headings).
-  const seenKeys: string[] = [];
+  const seen: Array<{ key: string; sentence: string }> = [];
   const seenHeadings = new Map<string, DocumentSummarySection>();
   const orderedSections: DocumentSummarySection[] = [];
   let truncatedTail = false;
@@ -300,15 +317,23 @@ export function formatDocumentSummary(raw: string | null | undefined): Formatted
     for (const sentence of sentences) {
       const key = normalizeSentenceKey(sentence);
       if (!key) continue;
-      const isDuplicate = seenKeys.some(
-        (existing) =>
-          existing === key ||
-          (key.length >= 40 && existing.includes(key)) ||
-          (existing.length >= 40 && key.includes(existing)),
-      );
-      if (isDuplicate) continue;
-      fresh.push(sentence);
-      seenKeys.push(key);
+      const earlier = seen.find((entry) => isRepeatKey(entry.key, key));
+      if (!earlier) {
+        fresh.push(sentence);
+        seen.push({ key, sentence });
+        continue;
+      }
+      if (!extendsKept(earlier.key, key, sentence)) continue;
+      // Replace the shorter sentence where it was kept, in an earlier section
+      // or earlier in this one.
+      for (const items of [...orderedSections.map((section) => section.items), fresh]) {
+        const position = items.indexOf(earlier.sentence);
+        if (position === -1) continue;
+        items[position] = sentence;
+        break;
+      }
+      earlier.key = key;
+      earlier.sentence = sentence;
     }
     return fresh;
   };

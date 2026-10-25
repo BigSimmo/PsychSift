@@ -19,6 +19,8 @@ import { myDayCardIds } from "@/lib/my-day/dashboard";
 import { paperworkSchema, type AdminPaperwork } from "@/lib/work-screens/admin/paperwork-model";
 import { firstPaperworkPatientProblem } from "@/lib/work-screens/admin/patient-check";
 import { checkPatientDetail, type PatientDetailCheckOptions } from "@/lib/work-text/patient-detail-check";
+import { currentWorkYear } from "@/lib/work-time/current-zone";
+import { DEFAULT_WORK_TIME_ZONE } from "@/lib/work-time/zones";
 import {
   WORK_SYNC_ACCOUNT_STORES,
   WORK_SYNC_QUICK_NOTE_LIMIT,
@@ -139,6 +141,15 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+/**
+ * This year in the work time zone, for the patient-detail checks, so the server
+ * reads a year the way the device does. From midnight to 8 am on 1 January in
+ * Perth the UTC year is still last year.
+ */
+function workYear(): number {
+  return currentWorkYear(Date.now(), DEFAULT_WORK_TIME_ZONE);
+}
+
 /** Validates one section's value; null clears it. Throws a 400 the doctor can read. */
 function parseWorkSyncValue(section: WorkSyncSection, value: unknown): unknown {
   if (value === null) return null;
@@ -151,14 +162,14 @@ function parseWorkSyncValue(section: WorkSyncSection, value: unknown): unknown {
   if (section === "myDayQuickNote") {
     const note = parsed.data as string;
     if (!note.trim()) return null;
-    if (checkPatientDetail(note, { thisYear: new Date().getUTCFullYear() })) {
+    if (checkPatientDetail(note, { thisYear: workYear() })) {
       throw new PublicApiError("The note looks like it holds a patient detail, so it stays on this device.", 422, {
         code: "patient_detail",
       });
     }
   }
   if (section === "adminPaperwork") {
-    const thisYear = new Date().getUTCFullYear();
+    const thisYear = workYear();
     if (firstPaperworkPatientProblem(parsed.data as AdminPaperwork, thisYear)) {
       throw new PublicApiError("Something here looks like a patient detail, so it stays on this device.", 422, {
         code: "patient_detail",
@@ -166,7 +177,7 @@ function parseWorkSyncValue(section: WorkSyncSection, value: unknown): unknown {
     }
   }
   if (section === "teachingTermTracker" || section === "teachingExamPrep") {
-    const thisYear = new Date().getUTCFullYear();
+    const thisYear = workYear();
     const flagged = teachingTexts(section, parsed.data).some(
       ([text, options]) => text.trim() !== "" && checkPatientDetail(text, { ...options, thisYear }),
     );

@@ -148,4 +148,13 @@ describe("figures", () => {
     expect(formatPsychiatryVisitWhen(Date.parse("2026-10-02T01:30:00Z"), now)).toBe("Yesterday");
     expect(formatPsychiatryVisitWhen(Date.parse("2026-09-20T01:30:00Z"), now)).toBe("20 Sept");
   });
+
+  it("says the day and the time in the same work zone", () => {
+    const sydney = "Australia/Sydney"; // AEST, UTC+10, on 3 Oct 2026; `now` is 14:00 there
+    expect(formatPsychiatryVisitWhen(Date.parse("2026-10-03T01:30:00Z"), now, sydney)).toBe("Today 11:30");
+    // 00:30 in Sydney is still 22:30 the day before in Perth.
+    expect(formatPsychiatryVisitWhen(Date.parse("2026-10-02T14:30:00Z"), now, sydney)).toBe("Today 00:30");
+    expect(formatPsychiatryVisitWhen(Date.parse("2026-10-02T13:30:00Z"), now, sydney)).toBe("Yesterday");
+    expect(formatPsychiatryVisitWhen(Date.parse("2026-09-20T15:00:00Z"), now, sydney)).toBe("21 Sept");
+  });
 });

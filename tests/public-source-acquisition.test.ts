@@ -362,6 +362,31 @@ describe("public source acquisition", () => {
     expect(cancel).toHaveBeenCalledOnce();
   });
 
+  it("fails cleanly when a compressed body breaks partway through", async () => {
+    const plan = await activePlan();
+    const compressed = gzipSync(Buffer.from("x".repeat(2_048)));
+    const cancel = vi.fn();
+    const broken: AsyncIterable<Uint8Array> = {
+      async *[Symbol.asyncIterator]() {
+        yield compressed.subarray(0, 8);
+        throw new Error("connection reset");
+      },
+    };
+
+    await expect(
+      fetchApprovedPublicSource(plan, {
+        resolve: async () => [{ address: "1.1.1.1", family: 4 }],
+        request: async () => ({
+          status: 200,
+          headers: { "content-type": "text/plain", "content-encoding": "gzip" },
+          body: broken,
+          cancel,
+        }),
+      }),
+    ).rejects.toThrow(/stream cancelled, timed out, or failed/i);
+    expect(cancel).toHaveBeenCalledOnce();
+  });
+
   it("honours caller cancellation before network access", async () => {
     const controller = new AbortController();
     controller.abort();
@@ -1348,21 +1373,24 @@ describe("public source acquisition", () => {
     expect(objects).toEqual(new Set([new URL(authorityB.signedUrl).pathname]));
 
     const rawToken = new URL(authorityA.signedUrl).searchParams.get("token")!;
-    try {
-      await uploadPublicSourceWithSignedAuthority(
-        authorityA,
-        Buffer.from("clinical text"),
-        "text/plain",
-        new AbortController().signal,
-        vi.fn(async () => {
-          throw new Error(`transport rejected ${authorityA.signedUrl}`);
-        }),
-      );
-    } catch (error) {
-      expect(String(error)).toMatch(/storage write failed/i);
-      expect(String(error)).not.toContain(rawToken);
-      expect(String(error)).not.toContain(authorityA.signedUrl);
-    }
+    // Capture the rejection rather than asserting inside a catch, so an upload that stops
+    // rejecting fails here instead of skipping every redaction check.
+    const transportError = await uploadPublicSourceWithSignedAuthority(
+      authorityA,
+      Buffer.from("clinical text"),
+      "text/plain",
+      new AbortController().signal,
+      vi.fn(async () => {
+        throw new Error(`transport rejected ${authorityA.signedUrl}`);
+      }),
+    ).then(
+      () => undefined,
+      (error: unknown) => error,
+    );
+    expect(transportError).toBeInstanceOf(Error);
+    expect(String(transportError)).toMatch(/storage write failed/i);
+    expect(String(transportError)).not.toContain(rawToken);
+    expect(String(transportError)).not.toContain(authorityA.signedUrl);
   });
 
   it("aborts and settles a held upload before abandonment when its total timeout expires", async () => {

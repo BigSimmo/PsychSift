@@ -137,4 +137,21 @@ describe("answer display formatting", () => {
     expect(comparison.mode).toBe("comparison_matrix");
     expect(coerceAnswerDisplayMode("document_lookup")).toBe("document_lookup");
   });
+
+  it("keeps a spaced numeric range whole instead of splitting it into bullets (#178)", () => {
+    const parsed = parseAnswerDisplayContent("Target lithium level is 0.6 - 0.8 mmol/L for maintenance.");
+
+    expect(parsed.lines.map((line) => line.text)).toEqual([
+      "Target lithium level is 0.6 - 0.8 mmol/L for maintenance.",
+    ]);
+  });
+
+  it("still splits inline bullets that start with a number after a word", () => {
+    const parsed = parseAnswerDisplayContent("Check levels weekly. - 2 checks are needed before discharge.");
+
+    expect(parsed.lines.map((line) => line.text)).toEqual([
+      "Check levels weekly.",
+      "2 checks are needed before discharge.",
+    ]);
+  });
 });

@@ -6,7 +6,7 @@ import {
   shiftLengthIsValid,
   type OnCallShiftInput,
 } from "@/lib/roster/shifts/model";
-import { perthWallToIso } from "@/lib/roster/shifts/perth-time";
+import { PERTH_TIME_ZONE, perthWallToIso } from "@/lib/roster/shifts/perth-time";
 
 /**
  * Reads shifts out of a calendar (`.ics`) file, on the device.
@@ -87,13 +87,27 @@ function unescapeText(value: string): string {
     .trim();
 }
 
+// Outlook and Exchange feeds name zones the Windows way, which Intl does not know
+// (the CLDR mapping for the Australian zones).
+const WINDOWS_ZONES: Readonly<Record<string, string>> = {
+  "w. australia standard time": "Australia/Perth",
+  "aus central standard time": "Australia/Darwin",
+  "cen. australia standard time": "Australia/Adelaide",
+  "e. australia standard time": "Australia/Brisbane",
+  "aus eastern standard time": "Australia/Sydney",
+  "tasmania standard time": "Australia/Hobart",
+};
+
 /**
  * The instant a wall-clock time in `timeZone` names. Perth, a missing zone and
  * a zone this device does not know are all read as Perth, because every roster
- * this app serves is a Perth roster.
+ * this app serves is a Perth roster. Perth is named explicitly, never left to
+ * the doctor's chosen work zone, so a phone import and a server refresh of the
+ * same calendar always read the same times.
  */
-function zonedWallToIso(date: string, time: string, timeZone: string | undefined): string | null {
-  const perth = perthWallToIso(date, time);
+function zonedWallToIso(date: string, time: string, rawTimeZone: string | undefined): string | null {
+  const perth = perthWallToIso(date, time, PERTH_TIME_ZONE);
+  const timeZone = rawTimeZone ? (WINDOWS_ZONES[rawTimeZone.trim().toLowerCase()] ?? rawTimeZone) : undefined;
   if (!perth || !timeZone || /perth/i.test(timeZone)) return perth;
   let formatter: Intl.DateTimeFormat;
   try {

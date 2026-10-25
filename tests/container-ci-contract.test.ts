@@ -62,7 +62,14 @@ describe("container delivery contract", () => {
 
     expect(imageWorkflow).toMatch(/^\s*workflow_call:\s*$/m);
     expect(imageWorkflow).not.toMatch(/^\s*pull_request:\s*$/m);
-    expect(imageWorkflow).toContain("group: docker-image-${{ github.ref }}");
+    expect(imageWorkflow).toContain(
+      "group: docker-image-${{ (github.event_name == 'push' || github.event_name == 'schedule') && github.run_id || github.ref }}",
+    );
+    // A merged commit's image build and Trivy scan must not be cancelled by a later merge or the daily schedule.
+    expect(imageWorkflow).toContain(
+      "cancel-in-progress: ${{ github.event_name != 'push' && github.event_name != 'schedule' }}",
+    );
+    expect(imageWorkflow).not.toContain("cancel-in-progress: true");
     expect(imageWorkflow).not.toContain("group: ${{ github.workflow }}-${{ github.ref }}");
     expect(ci).toContain("container-images:");
     expect(ci).toContain("uses: ./.github/workflows/docker-image.yml");
@@ -176,10 +183,10 @@ describe("container delivery contract", () => {
   it("keeps the minimal app runtime and pre-deploy shell pinned and inventoried", () => {
     const dockerfile = read("Dockerfile");
     expect(dockerfile).toContain(
-      "gcr.io/distroless/cc-debian13:nonroot@sha256:b7e81cb1af38d9345680e68bcf564d388f96304e25222030fc8c051faf8565b3",
+      "gcr.io/distroless/cc-debian13:nonroot@sha256:3ee00291cf386ec52a552e6a858d555debd74776eb4bfa53fa3df2cd6677515e",
     );
     expect(dockerfile).toContain(
-      "node:24-trixie-slim@sha256:7f486cabe892bff8fef04c0f7da8dba84a560be3e4e2740b7a86afc57ebec315",
+      "node:24-trixie-slim@sha256:43b9ba1142b8dcf33fa8f922ca1be85714adc444e0586c7cf7726daaeabc1bea",
     );
     expect(dockerfile).toContain("COPY --from=app-node-runtime-base /usr/local/bin/node /usr/local/bin/node");
     expect(dockerfile).toContain("COPY --from=app-node-runtime-base /usr/bin/dash /bin/sh");
@@ -272,6 +279,17 @@ describe("container delivery contract", () => {
       /^\s*NEXT_PUBLIC_SUPABASE_URL=https:\/\/\S+\.supabase\.co\s*$/m,
     );
     expect(read("scripts/build-multiplatform.sh")).toContain('--build-arg "NEXT_PUBLIC_SUPABASE_URL=');
+  });
+
+  it("requires NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY as an explicit app build arg instead of a placeholder", () => {
+    // A placeholder key builds and passes the healthcheck, then every browser sign-in is rejected.
+    const dockerfile = read("Dockerfile");
+    expect(dockerfile).toMatch(/^ARG NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY\s*$/m);
+    expect(dockerfile).not.toMatch(/^ARG NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=/m);
+    expect(dockerfile).toMatch(/if \[ -z "\$\{NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY\}" \]; then[\s\S]*?exit 1/);
+    expect(read(".github/workflows/docker-image.yml")).toMatch(/^\s*NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=\S+\s*$/m);
+    expect(read("scripts/build-multiplatform.sh")).toContain('--build-arg "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=');
+    expect(read("docker-compose.yml")).not.toContain("placeholder-build-publishable-key");
   });
 
   it("keeps sensitive and machine-local files out of Docker build contexts", () => {

@@ -27,15 +27,27 @@ const renderCalls: number[] = [];
 const cleanupCalls: number[] = [];
 let getPageCalls: number[] = [];
 let getDocumentOptions: Record<string, unknown> | null = null;
+/** Each page's stored /Rotate, for pages that have one. */
+let storedPageRotation = new Map<number, number>();
+/** Pages whose raster rejects, as an unsupported font or image would. */
+let failingRenderPages = new Set<number>();
+let viewportRotations: { pageNumber: number; rotation: number | undefined }[] = [];
 
 vi.mock("pdfjs-dist/legacy/build/pdf.mjs", () => {
   const makePage = (pageNumber: number) => ({
-    getViewport: ({ scale = 1 }: { scale?: number; rotation?: number }) => ({
-      width: PAGE_WIDTH * scale,
-      height: PAGE_HEIGHT * scale,
-    }),
+    rotate: storedPageRotation.get(pageNumber) ?? 0,
+    getViewport: ({ scale = 1, rotation }: { scale?: number; rotation?: number }) => {
+      viewportRotations.push({ pageNumber, rotation });
+      return {
+        width: PAGE_WIDTH * scale,
+        height: PAGE_HEIGHT * scale,
+      };
+    },
     render: () => {
       renderCalls.push(pageNumber);
+      if (failingRenderPages.has(pageNumber)) {
+        return { promise: Promise.reject(new Error("synthetic raster failure")), cancel: () => {} };
+      }
       return { promise: Promise.resolve(), cancel: () => {} };
     },
     cleanup: () => {
@@ -136,6 +148,9 @@ beforeEach(() => {
   cleanupCalls.length = 0;
   getPageCalls = [];
   getDocumentOptions = null;
+  storedPageRotation = new Map();
+  failingRenderPages = new Set();
+  viewportRotations = [];
   observers = [];
   idleCallbacks = [];
   animationFrameCallbacks = new Map();
@@ -423,5 +438,53 @@ describe("PDF reader page virtualization", () => {
 
     await waitFor(() => expect(onPageChange).toHaveBeenCalledWith(PAGE_COUNT));
     expect(renderedPages()).toContain(PAGE_COUNT);
+  });
+
+  it("draws a page at its own stored rotation plus the reader's turn", async () => {
+    // pdf.js replaces, not adds to, the page's /Rotate when a rotation is passed,
+    // so a landscape table stored as /Rotate 90 drew sideways at the default 0°.
+    storedPageRotation.set(1, 90);
+    await renderViewer();
+    await waitFor(() => expect(renderCalls).toContain(1));
+    const pageOne = viewportRotations.filter((call) => call.pageNumber === 1).map((call) => call.rotation);
+    expect(pageOne.length).toBeGreaterThan(0);
+    expect(new Set(pageOne)).toEqual(new Set([90]));
+
+    cleanup();
+    viewportRotations = [];
+    await renderViewer({ rotation: 270 });
+    await waitFor(() => expect(viewportRotations.some((call) => call.pageNumber === 1)).toBe(true));
+    expect(new Set(viewportRotations.filter((call) => call.pageNumber === 1).map((call) => call.rotation))).toEqual(
+      new Set([0]),
+    );
+  });
+
+  it("keeps the column mounted when one page fails to render, with the error in that page's slot", async () => {
+    failingRenderPages.add(1);
+    await renderViewer();
+
+    const errorCard = await screen.findByTestId("pdf-page-render-error");
+    expect(errorCard.textContent).toContain("Could not display page 1 of the PDF.");
+    // The rest of the document is still there to scroll to.
+    expect(screen.getByTestId("pdf-page-column")).toBeTruthy();
+    expect(screen.getAllByTestId("pdf-page-slot")).toHaveLength(PAGE_COUNT);
+    expect(errorCard.closest('[data-page="1"]')).toBeTruthy();
+    expect(document.querySelector('[data-preview-error="true"]')).toBeNull();
+
+    // Let any layout-driven re-raster settle first, so the count below measures
+    // the retry alone. The page keeps failing meanwhile, so the error stays.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    });
+    expect(screen.getByTestId("pdf-page-render-error")).toBeTruthy();
+
+    // Retrying re-renders that page, and a success clears its error.
+    failingRenderPages.delete(1);
+    const callsBefore = renderCalls.filter((page) => page === 1).length;
+    await act(async () => {
+      screen.getByRole("button", { name: "Retry page" }).click();
+    });
+    await waitFor(() => expect(renderCalls.filter((page) => page === 1).length).toBeGreaterThan(callsBefore));
+    await waitFor(() => expect(screen.queryByTestId("pdf-page-render-error")).toBeNull());
   });
 });

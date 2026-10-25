@@ -13,11 +13,13 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/services/test-service",
 }));
 
+const accountState = vi.hoisted(() => ({ isAuthenticated: true, saveSucceeds: true }));
+
 vi.mock("@/components/account-data-provider", () => ({
   useAccountData: () => ({
     isSaved: () => false,
-    setFavourite: vi.fn(async () => true),
-    isAuthenticated: true,
+    setFavourite: vi.fn(async () => accountState.saveSucceeds),
+    isAuthenticated: accountState.isAuthenticated,
   }),
 }));
 
@@ -357,5 +359,45 @@ describe("ServiceDetailPage content cleanup", () => {
     expect(screen.getByRole("link", { name: "08 9224 8889" })).toHaveAttribute("href", "tel:0892248889");
 
     expectWellFormedDefinitionLists(container);
+  });
+
+  it("counts reject criteria apart from cautions", () => {
+    render(
+      <ServiceDetailPage
+        service={baseService({
+          criteria: [
+            { label: "Eligible callers", tone: "meet" },
+            { label: "Long wait list", tone: "caution" },
+            { label: "Not for under 18s", tone: "reject" },
+            { label: "Closed service — do not refer", tone: "reject" },
+          ],
+        })}
+      />,
+    );
+
+    expect(screen.getByText("1 meet")).toBeInTheDocument();
+    expect(screen.getByText("1 caution")).toBeInTheDocument();
+    expect(screen.getByText("2 reject")).toBeInTheDocument();
+  });
+
+  it("shows the signed-out save prompt as a warning, not a success", async () => {
+    accountState.isAuthenticated = false;
+    accountState.saveSucceeds = false;
+    try {
+      render(<ServiceDetailPage service={baseService()} />);
+      fireEvent.click(screen.getByTestId("service-actions-trigger"));
+      fireEvent.click(
+        within(screen.getByTestId("service-actions-sheet")).getByRole("button", { name: "Save service" }),
+      );
+
+      const notice = (await screen.findByText("Sign in or create an account to save services")).closest(
+        '[role="status"]',
+      )!;
+      expect(notice.className).toMatch(/warning/);
+      expect(notice.className).not.toMatch(/success/);
+    } finally {
+      accountState.isAuthenticated = true;
+      accountState.saveSucceeds = true;
+    }
   });
 });

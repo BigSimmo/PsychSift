@@ -3,6 +3,7 @@ import "server-only";
 import { withOwnerReadScope } from "@/lib/public-api-access";
 import { normalizeSourceMetadata } from "@/lib/source-metadata";
 import type { ClinicalSourceReferenceInput } from "@/lib/sources/catalogue-types";
+import { strictSourceDate } from "@/lib/sources/source-date-policy";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -60,7 +61,8 @@ export function documentRowsToSourceReferences(rows: readonly unknown[]): Clinic
       version: metadata.version,
       publicationDate: metadata.publication_date,
       reviewDate: metadata.review_date,
-      expiryDate: null,
+      // Date part only: the metadata allows a full ISO timestamp, the catalogue a calendar date.
+      expiryDate: strictSourceDate(metadata.expiry_date?.slice(0, 10) ?? null),
       jurisdiction: metadata.jurisdiction,
       evidenceType: "unknown",
       documentStatus: metadata.document_status,

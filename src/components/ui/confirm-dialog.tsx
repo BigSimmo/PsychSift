@@ -79,7 +79,7 @@ export function ConfirmDialog({
             disabled={!phraseSatisfied}
             busy={busy}
             busyLabel={busyLabel ?? `${confirmLabel}…`}
-            data-testid="confirm-dialog-confirm"
+            testId="confirm-dialog-confirm"
           >
             {confirmLabel}
           </Button>

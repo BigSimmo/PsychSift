@@ -8,6 +8,7 @@ import {
   PanelSection,
 } from "@/components/developer-area/hub/panel-primitives";
 import { PanelPageShell } from "@/components/developer-area/hub/panel-page-shell";
+import { developerAreaRequestAuthorized } from "@/lib/developer-area/access";
 import { resolveFreshnessFrom } from "@/lib/developer-area/freshness";
 import { DOCUMENT_CAUTIONS } from "@/lib/document-cautions";
 import {
@@ -105,7 +106,9 @@ function HazardCard({ hazard, now }: { hazard: HazardRow; now: Date }) {
   );
 }
 
-export default function DeveloperHazardsPage() {
+export default async function DeveloperHazardsPage() {
+  // The layout gate can be skipped on a client-side navigation; check again here (see `access.ts`).
+  if (!(await developerAreaRequestAuthorized())) return null;
   const snapshot = loadHazardSnapshot();
   const now = new Date();
   const freshness = resolveFreshnessFrom(snapshot.generatedAt, now);

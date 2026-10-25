@@ -65,7 +65,10 @@ describe("CmePlanPage draft persistence across navigation and failed saves (R09)
     });
 
     expect(window.sessionStorage.getItem(cmePlanDraftStorageKey(2026))).not.toBeNull();
-    expect(screen.getByTestId("cme-plan-status-link")).toHaveAttribute("href", "/cme/setup#cme-setup-steps");
+    expect(screen.getByTestId("cme-plan-status-link")).toHaveAttribute(
+      "href",
+      "/cme/setup?year=2026&edit=1#cme-setup-steps",
+    );
 
     // Simulate navigating away via "Record it" and returning after recording the plan-written date.
     unmount();

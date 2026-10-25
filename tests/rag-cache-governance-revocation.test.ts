@@ -311,6 +311,7 @@ describe("durable source-governance cache fence (F13)", () => {
       requireAuthenticatedUser: async () => ({ id: ownerId }),
       unauthorizedResponse: vi.fn(),
     }));
+    vi.doMock("@/lib/supabase/admin-assurance", () => ({ requireRecentAdministratorAssurance: async () => undefined }));
     vi.doMock("@/lib/api-rate-limit", () => ({
       consumeApiRateLimit: async () => ({ limited: false }),
       rateLimitJsonResponse: vi.fn(),

@@ -8,8 +8,10 @@ import { WorkButton, WorkCard, WorkChip, WorkChips, WorkSectionLabel, WorkTag } 
 import { AssessHeader, AssessNote, AssessTextField, OptionCard } from "@/components/teaching/assessments/assess-kit";
 import {
   CASE_COMPLEXITIES,
+  EPA_OBSERVED,
   SUPERVISION_LEVELS,
   type CaseComplexity,
+  type EpaObserved,
   type SupervisionLevel,
 } from "@/lib/teaching/assessments/content";
 import {
@@ -52,6 +54,7 @@ function EpaMagicLinkRespondBody({ token }: { readonly token: string }) {
 
   const [level, setLevel] = useState<SupervisionLevel | null>(null);
   const [complexity, setComplexity] = useState<CaseComplexity | null>(null);
+  const [observed, setObserved] = useState<EpaObserved | null>(null);
   const [assessorName, setAssessorName] = useState(() => record?.supervisorName ?? "");
   const [strengths, setStrengths] = useState("");
   const [improvements, setImprovements] = useState("");
@@ -111,6 +114,14 @@ function EpaMagicLinkRespondBody({ token }: { readonly token: string }) {
       setFormError("Choose a supervision level first.");
       return;
     }
+    if (!observed) {
+      setFormError("Say how you know: you saw some of it, or a team member who was there told you.");
+      return;
+    }
+    if (observed === "team" && !strengths.trim() && !improvements.trim()) {
+      setFormError("Name the team member's role in your feedback.");
+      return;
+    }
     if (patientProblem) {
       setFormError(patientProblem.body);
       return;
@@ -130,6 +141,7 @@ function EpaMagicLinkRespondBody({ token }: { readonly token: string }) {
         body: JSON.stringify({
           level,
           complexity,
+          observed,
           assessorName: resolvedAssessorName,
           strengths,
           improvements,
@@ -145,6 +157,7 @@ function EpaMagicLinkRespondBody({ token }: { readonly token: string }) {
           submitEpaMagicLinkResponse(token, {
             level,
             complexity,
+            observed,
             assessorName: resolvedAssessorName,
             strengths,
             improvements,
@@ -166,6 +179,7 @@ function EpaMagicLinkRespondBody({ token }: { readonly token: string }) {
       const localResult = submitEpaMagicLinkResponse(token, {
         level,
         complexity,
+        observed,
         assessorName: resolvedAssessorName,
         strengths,
         improvements,
@@ -238,6 +252,16 @@ function EpaMagicLinkRespondBody({ token }: { readonly token: string }) {
             quietNote
           />
 
+          {/* The AMC EPA form's declaration [EPA1p], asked here as in the in-app inbox: never assumed. */}
+          <WorkSectionLabel>How you know</WorkSectionLabel>
+          <OptionCard
+            legend="How you know"
+            name="epa-magic-link-observed"
+            value={observed}
+            onChange={setObserved}
+            options={EPA_OBSERVED}
+          />
+
           <OptionCard
             legend={`Level of supervision ${record.traineeName} needed`}
             name="epa-magic-link-level"
@@ -287,7 +311,7 @@ function EpaMagicLinkRespondBody({ token }: { readonly token: string }) {
             icon={Send}
             size="wide"
             testId="epa-magic-link-submit"
-            disabled={!level || Boolean(patientProblem) || submitting}
+            disabled={!level || !observed || Boolean(patientProblem) || submitting}
             onClick={() => void handleSubmit()}
           >
             {submitting ? "Sending…" : "Send feedback"}

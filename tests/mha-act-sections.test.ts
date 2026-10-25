@@ -85,6 +85,19 @@ describe("Act section coverage", () => {
     ).toEqual([]);
   });
 
+  it("fails a hand edit to the verbatim Act text that keeps its stored hash", () => {
+    const edited = structuredClone(sourceSections);
+    const [first] = edited.sections;
+    first.text = `${first.text} (edited)`;
+    const problems = checkProblems({
+      source: edited,
+      curated: curatedSections,
+      catalog: formsCatalog,
+      supplemental: formsActSectionCues,
+    });
+    expect(problems.join("\n")).toContain(`Act extraction for section ${first.section} does not match its textSha256`);
+  });
+
   it("does not call a catalogue row without its own cue a duplicate of the supplemental map", () => {
     // The seven forms the archive never indexed now have catalogue rows, for their
     // operational guidance. Their section mapping still comes from the supplemental map,

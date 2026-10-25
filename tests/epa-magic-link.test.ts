@@ -38,7 +38,9 @@ describe("External supervisor EPA magic-link (#MAAXAX)", () => {
   });
 
   it("generates a high-entropy token, hashes it with SHA-256 at rest, and resolves valid lookups", async () => {
-    const now = new Date("2026-10-16T00:00:00.000Z");
+    // The GET route checks expiry against the real clock, so the link must be created on it too;
+    // a fixed date here expires the link 14 days later and turns this case red from then on.
+    const now = new Date();
     const created = createEpaMagicLinkRequest({
       epaCode: "EPA 1",
       traineeName: "Dr Alex Example",
@@ -98,7 +100,7 @@ describe("External supervisor EPA magic-link (#MAAXAX)", () => {
 
     const postExpired = submitEpaMagicLinkResponse(
       created.token,
-      { level: "minimal", strengths: "Structured handover." },
+      { level: "minimal", observed: "direct", strengths: "Structured handover." },
       afterExpiry,
     );
     expect(postExpired).toMatchObject({
@@ -144,6 +146,7 @@ describe("External supervisor EPA magic-link (#MAAXAX)", () => {
         headers: { "Content-Type": "application/json", "x-forwarded-for": "198.51.100.11" },
         body: JSON.stringify({
           level: "proximal",
+          observed: "direct",
           strengths: "Reviewed patient DOB 12/04/1985 UMNs 12345678 on Ward 4.",
         }),
       }),
@@ -162,6 +165,7 @@ describe("External supervisor EPA magic-link (#MAAXAX)", () => {
         body: JSON.stringify({
           level: "minimal",
           complexity: "medium",
+          observed: "team",
           strengths: "Clear chart check and safe lithium monitoring plan.",
           improvements: "Document baseline renal function target timing.",
         }),
@@ -187,6 +191,7 @@ describe("External supervisor EPA magic-link (#MAAXAX)", () => {
         headers: { "Content-Type": "application/json", "x-forwarded-for": "198.51.100.11" },
         body: JSON.stringify({
           level: "direct",
+          observed: "direct",
           strengths: "Replay attempt.",
         }),
       }),
@@ -207,6 +212,7 @@ describe("External supervisor EPA magic-link (#MAAXAX)", () => {
     });
     const submitDr = submitEpaMagicLinkResponse(createdDr.token, {
       level: "minimal",
+      observed: "direct",
       assessorName: "Dr J. Smith",
       strengths: "Safe handover and clear plan.",
     });
@@ -223,6 +229,7 @@ describe("External supervisor EPA magic-link (#MAAXAX)", () => {
     });
     const submitMs = submitEpaMagicLinkResponse(createdMs.token, {
       level: "proximal",
+      observed: "direct",
       assessorName: "Ms Taylor",
       strengths: "Calm de-escalation.",
     });
@@ -280,7 +287,7 @@ describe("the demo-mode supervisor link", () => {
       new Request(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ level: "proximal", strengths: "Clear formulation." }),
+        body: JSON.stringify({ level: "proximal", observed: "direct", strengths: "Clear formulation." }),
       }),
       { params: Promise.resolve({ token: EPA_MAGIC_LINK_DEMO_TOKEN }) },
     );
@@ -288,6 +295,32 @@ describe("the demo-mode supervisor link", () => {
     expect(await sent.json()).toMatchObject({ ok: true, request: { status: "completed" } });
     const again = await GET(new Request(url), { params: Promise.resolve({ token: EPA_MAGIC_LINK_DEMO_TOKEN }) });
     expect(await again.json()).toMatchObject({ request: { status: "pending" } });
+  });
+
+  it("refuses an answer that does not say how the supervisor knows, instead of assuming they saw it", async () => {
+    const { EPA_MAGIC_LINK_DEMO_TOKEN } = await import("@/lib/teaching/assessments/magic-link");
+    const url = `https://psychiatry.tools/api/teaching/assessments/respond/${EPA_MAGIC_LINK_DEMO_TOKEN}`;
+    const post = (body: unknown) =>
+      POST(
+        new Request(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        }),
+        { params: Promise.resolve({ token: EPA_MAGIC_LINK_DEMO_TOKEN }) },
+      );
+
+    const undeclared = await post({ level: "proximal", strengths: "Clear formulation." });
+    expect(undeclared.status).toBe(400);
+    expect(await undeclared.json()).toMatchObject({ code: "invalid_submission" });
+
+    const teamWithoutRole = await post({ level: "proximal", observed: "team" });
+    expect(teamWithoutRole.status).toBe(400);
+    expect(await teamWithoutRole.json()).toMatchObject({ code: "invalid_submission" });
+
+    const team = await post({ level: "proximal", observed: "team", strengths: "Ward nurse reported calm handover." });
+    expect(team.status).toBe(200);
+    expect(await team.json()).toMatchObject({ request: { submission: { observed: "team" } } });
   });
 
   it("works in production too, without touching the stored links", async () => {
@@ -302,7 +335,7 @@ describe("the demo-mode supervisor link", () => {
         new Request(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ level: "proximal" }),
+          body: JSON.stringify({ level: "proximal", observed: "direct" }),
         }),
         { params: Promise.resolve({ token: EPA_MAGIC_LINK_DEMO_TOKEN }) },
       );

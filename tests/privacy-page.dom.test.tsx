@@ -73,6 +73,18 @@ describe("privacy page interaction", () => {
     expect(panelFor("Third parties involved").panel.dataset.open).toBe("true");
   });
 
+  it("closes a section opened only by the URL hash on the first press", () => {
+    window.location.hash = "#third-parties";
+    render(<PrivacyQuietSignalPage />);
+
+    const { trigger } = panelFor("Third parties involved");
+    fireEvent.click(trigger);
+
+    expect(panelFor("Third parties involved").panel.dataset.open).toBe("false");
+    expect(panelFor("Third parties involved").trigger).toHaveAttribute("aria-expanded", "false");
+    expect(window.location.hash).toBe("");
+  });
+
   it("opens the explaining section when an at-a-glance fact is selected", () => {
     render(<PrivacyQuietSignalPage />);
 

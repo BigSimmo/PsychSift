@@ -160,6 +160,15 @@ function statusClassName(status: DifferentialRecord["status"]) {
   return "border-[color:var(--border)] bg-[color:var(--surface-subtle)] text-[color:var(--text-muted)]";
 }
 
+const urgencyRank: Record<DifferentialRecord["status"], number> = { emergent: 2, urgent: 1, routine: 0 };
+
+/** The Highest urgency box's tone; neutral when nothing is selected. */
+function urgencyBoxClassName(status: DifferentialRecord["status"] | null) {
+  if (status === "emergent") return "border-[color:var(--danger-border)] bg-[color:var(--danger-soft)]/80";
+  if (status === "urgent") return "border-[color:var(--warning-border)] bg-[color:var(--warning-soft)]/80";
+  return "border-[color:var(--border)] bg-[color:var(--surface-subtle)]";
+}
+
 function CandidateGlyph({ record, className }: { record: DifferentialRecord; className?: string }) {
   if (record.slug.includes("substance")) return <FlaskConical className={className} aria-hidden />;
   if (record.slug.includes("post-ictal")) return <Activity className={className} aria-hidden />;
@@ -541,23 +550,44 @@ function HighestUrgencyPanel({
   workflow: DifferentialPresentationWorkflow;
   candidates: CandidateView[];
 }) {
-  // Every selected emergency is listed: an earlier `slice(0, 3)` silently
-  // dropped the fourth (post-ictal state on acute confusion) with no cue
-  // (#0FT00E follow-up).
-  const emergent = candidates.filter((candidate) => candidate.selected && candidate.record.status === "emergent");
+  // The badge and tone follow the most urgent SELECTED diagnosis. A fixed
+  // Emergency box over a selection with no emergency overstated it, and an
+  // alarm that is wrong some of the time teaches readers to skip it.
+  const selected = candidates.filter((candidate) => candidate.selected);
+  const highestStatus = selected.reduce<DifferentialRecord["status"] | null>(
+    (highest, candidate) =>
+      highest === null || urgencyRank[candidate.record.status] > urgencyRank[highest]
+        ? candidate.record.status
+        : highest,
+    null,
+  );
+  // Every selected diagnosis at that level is listed: an earlier `slice(0, 3)`
+  // silently dropped the fourth emergency (post-ictal state on acute confusion)
+  // with no cue (#0FT00E follow-up).
+  const highest = selected.filter((candidate) => candidate.record.status === highestStatus);
   return (
     <section className="rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] p-4 shadow-[var(--shadow-inset)]">
       <h2 className="text-sm font-extrabold uppercase text-[color:var(--text-muted)]">Highest urgency</h2>
       <p className="mt-1 text-xs font-medium text-[color:var(--text-muted)]">Based on current selection</p>
-      <div className="mt-3 rounded-lg border border-[color:var(--danger-border)] bg-[color:var(--danger-soft)]/80 p-3">
-        <EmergencyBadge status="emergent" />
-        <ul className="mt-3 grid gap-1.5 text-sm font-semibold text-[color:var(--text-heading)]">
-          {emergent.map((candidate) => (
-            <li key={candidate.record.slug}>
-              <UrgentDiagnosisLink candidate={candidate} />
-            </li>
-          ))}
-        </ul>
+      <div
+        data-testid="differential-highest-urgency"
+        data-status={highestStatus ?? "none"}
+        className={cn("mt-3 rounded-lg border p-3", urgencyBoxClassName(highestStatus))}
+      >
+        {highestStatus ? (
+          <>
+            <EmergencyBadge status={highestStatus} />
+            <ul className="mt-3 grid gap-1.5 text-sm font-semibold text-[color:var(--text-heading)]">
+              {highest.map((candidate) => (
+                <li key={candidate.record.slug}>
+                  <UrgentDiagnosisLink candidate={candidate} />
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : (
+          <p className="text-sm font-semibold text-[color:var(--text-muted)]">No diagnoses selected.</p>
+        )}
         <p className="mt-3 text-sm font-semibold text-[color:var(--text-muted)]">{workflow.highestUrgencyNote}</p>
       </div>
       <UnselectedEmergencies candidates={candidates} testId="differential-unselected-emergencies" className="mt-3" />

@@ -156,6 +156,11 @@ export function TwoPaneSideMenu({
   const cancelRef = useRef<HTMLButtonElement>(null);
   const signOutRef = useRef<HTMLButtonElement>(null);
   const clearCancelRef = useRef<HTMLButtonElement>(null);
+  const clearTriggerRef = useRef<HTMLButtonElement>(null);
+  const recentHeadingRef = useRef<HTMLHeadingElement>(null);
+  /** Where focus goes once the clear check closes from its own buttons, so it never falls to the page. */
+  const clearReturn = useRef<"trigger" | "heading" | null>(null);
+  const [clearedNote, setClearedNote] = useState("");
   const checkShown = useRef(false);
   const swipe = useRef<{ x: number; y: number } | null>(null);
 
@@ -166,8 +171,12 @@ export function TwoPaneSideMenu({
     checkShown.current = confirmSignOut;
   }, [confirmSignOut]);
 
+  // Cancel hands focus back to Clear; clearing empties the list, so focus moves to its heading.
   useEffect(() => {
     if (confirmClear) clearCancelRef.current?.focus();
+    else if (clearReturn.current === "trigger") clearTriggerRef.current?.focus();
+    else if (clearReturn.current === "heading") recentHeadingRef.current?.focus();
+    clearReturn.current = null;
   }, [confirmClear]);
 
   // The Sheet stays mounted so it can hand focus back to the menu button on
@@ -417,13 +426,19 @@ export function TwoPaneSideMenu({
 
           <section aria-labelledby={`${titleId}-recent`}>
             <div className="two-pane-menu__label">
-              <h3 id={`${titleId}-recent`}>Recent questions</h3>
+              <h3 id={`${titleId}-recent`} ref={recentHeadingRef} tabIndex={-1}>
+                Recent questions
+              </h3>
               {recentQueries.length && !confirmClear ? (
                 <button
+                  ref={clearTriggerRef}
                   type="button"
                   className="two-pane-menu__label-action"
                   aria-label="Clear recent questions"
-                  onClick={() => setConfirmClear(true)}
+                  onClick={() => {
+                    setClearedNote("");
+                    setConfirmClear(true);
+                  }}
                   data-testid="two-pane-menu-clear-recent"
                 >
                   Clear
@@ -434,7 +449,14 @@ export function TwoPaneSideMenu({
               <div className="two-pane-menu__confirm" role="group" aria-labelledby={`${titleId}-clear-question`}>
                 <p id={`${titleId}-clear-question`}>Clear your recent questions from this device?</p>
                 <div className="two-pane-menu__confirm-actions">
-                  <button ref={clearCancelRef} type="button" onClick={() => setConfirmClear(false)}>
+                  <button
+                    ref={clearCancelRef}
+                    type="button"
+                    onClick={() => {
+                      clearReturn.current = "trigger";
+                      setConfirmClear(false);
+                    }}
+                  >
                     Cancel
                   </button>
                   <button
@@ -443,6 +465,8 @@ export function TwoPaneSideMenu({
                     data-testid="two-pane-menu-clear-recent-confirm"
                     onClick={() => {
                       clearRecentQueries();
+                      clearReturn.current = "heading";
+                      setClearedNote("Recent questions cleared");
                       setConfirmClear(false);
                     }}
                   >
@@ -466,6 +490,9 @@ export function TwoPaneSideMenu({
             ) : (
               <p className="two-pane-menu__empty">Your questions will appear here.</p>
             )}
+            <p className="sr-only" role="status" data-testid="two-pane-menu-clear-recent-status">
+              {clearedNote}
+            </p>
           </section>
 
           <RecentPagesGroup headingId={`${titleId}-recent-pages`} pages={recentPages} onNavigate={close} />

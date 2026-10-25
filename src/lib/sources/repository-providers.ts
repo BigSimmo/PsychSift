@@ -102,7 +102,9 @@ function dictionaryReference(sourceRef: DictionarySourceRef, usage: SourceUsage,
     title: source.title,
     publisher: source.organisation,
     canonicalUrl: source.url,
-    reviewDate: source.accessedOn,
+    // `accessedOn` is when this project opened the page, not a publisher review, so it is not
+    // filed as a review date (which the browse headings would show as "reviewed <date>").
+    reviewDate: null,
     jurisdiction: source.region,
     validationStatus: "unverified",
     contentMode: "link_only",
@@ -395,6 +397,19 @@ function formUsage(code: string, title: string, field: string): SourceUsage {
   };
 }
 
+/**
+ * No owner review is recorded for the official MHA form links. The manifest's
+ * `generatedAt` is a build timestamp, not an attestation, so it stays the
+ * version only and never becomes a review date. Until a real review is
+ * recorded these read as unverified with unknown currency, the same fallback a
+ * calculator evidence source without a recorded review gets (owner decision,
+ * 25 Oct 2026).
+ */
+const OFFICIAL_FORM_REVIEW_STATUS = {
+  documentStatus: "unknown",
+  validationStatus: "unverified",
+} as const satisfies Partial<ClinicalSourceReferenceInput>;
+
 function officialFormReferences() {
   const references = formsPdfManifest.assets.flatMap((asset) => {
     if (!asset.officialPdfUrl) return [];
@@ -408,11 +423,9 @@ function officialFormReferences() {
         publisherCode: "OCP WA",
         canonicalUrl: asset.officialPdfUrl,
         version: formsPdfManifest.generatedAt,
-        reviewDate: formsPdfManifest.generatedAt,
         jurisdiction: "Australia/WA",
         evidenceType: "regulatory",
-        documentStatus: "current",
-        validationStatus: "locally_reviewed",
+        ...OFFICIAL_FORM_REVIEW_STATUS,
         contentMode: "link_only",
         topics: ["Mental Health Act", "official form"],
       }),
@@ -428,11 +441,9 @@ function officialFormReferences() {
         publisherCode: "OCP WA",
         canonicalUrl: officialFormsRegisterUrl,
         version: formsPdfManifest.generatedAt,
-        reviewDate: formsPdfManifest.generatedAt,
         jurisdiction: "Australia/WA",
         evidenceType: "regulatory",
-        documentStatus: "current",
-        validationStatus: "locally_reviewed",
+        ...OFFICIAL_FORM_REVIEW_STATUS,
         contentMode: "link_only",
         topics: ["Mental Health Act", "official form"],
       }),

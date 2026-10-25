@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { writeInstalledTreeStamp } from "../scripts/check-installed-lock-parity.mjs";
 
 import {
+  copyDependencies,
   findDependencyDonor,
   installationIsComplete,
   installedMetadataMatches,
@@ -92,6 +93,19 @@ describe("Codex Desktop worktree setup", () => {
     expect(lockDigest(wrongLock)).not.toBe(lockDigest(current));
     expect(lockDigest(exactLock)).toBe(lockDigest(current));
     expect(findDependencyDonor([wrongLock, exactLock], current, ["next"])).toBe(exactLock);
+  });
+
+  it.skipIf(process.platform === "win32")("keeps copied node_modules links relative to the new worktree", () => {
+    const donor = fixture("1.0.0", true);
+    const target = fixture();
+    mkdirSync(path.join(donor, "node_modules", "next", "dist", "bin"), { recursive: true });
+    writeFileSync(path.join(donor, "node_modules", "next", "dist", "bin", "next"), "#!/usr/bin/env node\n");
+    mkdirSync(path.join(donor, "node_modules", ".bin"), { recursive: true });
+    symlinkSync("../next/dist/bin/next", path.join(donor, "node_modules", ".bin", "next"));
+
+    copyDependencies(donor, target);
+
+    expect(readlinkSync(path.join(target, "node_modules", ".bin", "next"))).toBe("../next/dist/bin/next");
   });
 
   it("resolves npm's JavaScript entrypoint without executing a Windows command shim", () => {

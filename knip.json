@@ -17,15 +17,6 @@
     "docs/**",
     "src/components/work-setup/work-setup-row.tsx"
   ],
-  "ignoreDependencies": [
-    "mammoth",
-    "qrcode",
-    "server-only",
-    "tailwind-merge",
-    "web-push",
-    "@types/qrcode",
-    "@types/web-push"
-  ],
   "vitest": {
     "config": ["vitest.config.mts"]
   },

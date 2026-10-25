@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { canonicalizeSourceReferences, compareClinicalSources, rateClinicalSource } from "@/lib/sources/catalogue-core";
 import type {
@@ -209,6 +209,46 @@ describe("clinical source catalogue", () => {
     expect(future.sourceId).toBe("future");
     expect(future.documentStatus).toBe("current");
     expect(future.rating.dimensions.currency).toBe(15);
+  });
+
+  describe("expiry against the Perth calendar date", () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("treats a source as expired once its expiry date has passed in Perth, while UTC is still on that date", () => {
+      // 03:00 on 25 Oct 2026 in Perth is still 24 Oct in UTC.
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(new Date("2026-10-24T19:00:00.000Z"));
+      const [entry] = canonicalizeSourceReferences([reference({ sourceId: "lapsed", expiryDate: "2026-10-24" })]);
+
+      expect(entry.documentStatus).toBe("outdated");
+      expect(entry.rating.dimensions.currency).toBe(0);
+    });
+
+    it("keeps a source current on its own expiry day in Perth", () => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(new Date("2026-10-24T15:00:00.000Z"));
+      const [entry] = canonicalizeSourceReferences([reference({ sourceId: "today", expiryDate: "2026-10-24" })]);
+
+      expect(entry.documentStatus).toBe("current");
+    });
+  });
+
+  it("does not read a future expiry date as recency in the currency sort", () => {
+    const entries = canonicalizeSourceReferences([
+      reference({
+        sourceId: "old-long-expiry",
+        publicationDate: "2015-01-01",
+        reviewDate: null,
+        expiryDate: "2999-01-01",
+      }),
+      reference({ sourceId: "recently-reviewed", publicationDate: null, reviewDate: "2026-09-01", expiryDate: null }),
+    ]);
+
+    expect(
+      filterAndSortSourceCatalogue(entries, noFilters({ sort: "currency" })).map((entry) => entry.sourceId),
+    ).toEqual(["recently-reviewed", "old-long-expiry"]);
   });
 
   it("hard-excludes a source with an identified replacement even when marked active", () => {

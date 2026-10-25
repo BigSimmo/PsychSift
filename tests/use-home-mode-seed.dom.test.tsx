@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
 
 import { renderHook, waitFor } from "@testing-library/react";
+import { useSyncExternalStore } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { ReadonlyURLSearchParams } from "next/navigation";
 
@@ -109,5 +110,46 @@ describe("useHomeModeSeed ?mode= sync and the UI-change flag", () => {
     await nextFrame();
     expect(setSearchMode).not.toHaveBeenCalled();
     expect(modeChangeFromUiRef.current).toBe(false);
+  });
+});
+
+describe("useHomeModeSeed cold / seeding", () => {
+  it("restores the remembered mode on a hydrated cold load of /", async () => {
+    // The real store is useSyncExternalStore with a server snapshot of the
+    // default mode, so the hydration commit sees "answer" and only the next
+    // render carries the stored mode.
+    const replaceState = vi.spyOn(window.history, "replaceState");
+    const subscribeNothing = () => () => undefined;
+    renderHook(
+      () => {
+        const lastAppMode = useSyncExternalStore<AppModeId>(
+          subscribeNothing,
+          () => "prescribing",
+          () => "answer",
+        );
+        useHomeModeSeed({
+          pathname: "/",
+          searchParams: params(""),
+          lastAppMode,
+          setSearchMode: vi.fn(),
+          setQuery: vi.fn(),
+          setQueryMode: vi.fn(),
+          setScopeFilters: vi.fn(),
+          setModeSearchSubmitted: vi.fn(),
+          setLoading: vi.fn(),
+          setError: vi.fn(),
+          setAnswerProgress: vi.fn(),
+          clearModeResultState: vi.fn(),
+          focusComposerInput: vi.fn(),
+          stopSearch: vi.fn(),
+          modeChangeFromUiRef: { current: false },
+          searchModeRef: { current: "answer" },
+          lastSyncedSearchParamsRef: { current: "" },
+        });
+      },
+      { hydrate: true },
+    );
+    await waitFor(() => expect(replaceState).toHaveBeenCalledWith(null, "", "/?mode=prescribing"));
+    replaceState.mockRestore();
   });
 });

@@ -11,6 +11,8 @@ import type { RequestSent } from "./request-ui";
 
 type DayKind = "cant" | "prefer_off";
 const words: Record<DayKind, string> = { cant: "Can't work", prefer_off: "Prefer off" };
+/** "Sunday 25 October": the spoken name of a day button, never the raw ISO date. */
+const spokenDay = new Intl.DateTimeFormat("en-AU", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long" });
 
 export function RosterDatesSheet(props: ComponentProps<typeof DatesSession>) {
   return props.open ? (
@@ -146,7 +148,7 @@ function DatesSession({
                     <button
                       type="button"
                       key={date}
-                      aria-label={`${date}: ${selected[date] ? words[selected[date]] : "available"}`}
+                      aria-label={`${spokenDay.format(new Date(`${date}T00:00:00Z`))}: ${selected[date] ? words[selected[date]] : "available"}`}
                       aria-pressed={!!selected[date]}
                       onClick={() => cycle(date)}
                       className="min-h-12 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] text-xs hover:bg-[color:var(--surface-subtle)]"

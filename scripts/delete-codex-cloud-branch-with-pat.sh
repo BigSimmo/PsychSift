@@ -18,8 +18,9 @@ branch="$1"
 [[ "${CODEX_CLOUD:-0}" != "1" ]] || fail "Cloud secrets are unavailable during the agent phase; use native Push, the GitHub connector, or GitHub UI."
 [[ -n "${CODEX_CLOUD_GITHUB_PAT:-}" ]] || fail "CODEX_CLOUD_GITHUB_PAT is unavailable; this operator-only helper must run outside Codex Cloud."
 
+# heads/, tags/ and remotes/ prefixes resolve to another ref (heads/main -> refs/heads/main).
 case "$branch" in
-  main|master|develop|release|release/*|HEAD|HEAD/*|refs/*|*..*|*~*|*@\{*|*\\*|*\ *|"")
+  main|master|develop|release|release/*|HEAD|HEAD/*|refs/*|heads/*|tags/*|remotes/*|*..*|*~*|*@\{*|*\\*|*\ *|"")
     fail "Refusing to delete a protected or invalid branch name."
     ;;
 esac
@@ -46,5 +47,5 @@ EOF
 chmod 0700 "$askpass"
 
 GIT_ASKPASS="$askpass" GIT_TERMINAL_PROMPT=0 \
-  git -c credential.helper= -c core.hooksPath=/dev/null push origin --delete "$branch"
+  git -c credential.helper= -c core.hooksPath=/dev/null push origin --delete "refs/heads/$branch"
 printf '[operator:github-pat] PASS: deleted %s.\n' "$branch"

@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Plus } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { cn } from "@/components/ui-primitives";
@@ -18,6 +18,9 @@ import { teachingErrorMessage, teachingPost } from "@/lib/teaching/client";
 export function useWeekAdd(sample: boolean, onChanged?: () => void) {
   const [inWeek, setInWeek] = useState<Record<string, boolean>>({});
   const [notice, setNotice] = useState<string | null>(null);
+  // The latest request per occurrence. A double tap sends set then unset, and their answers can arrive
+  // in either order, so only the newest request's answer (or rollback) may change what is on screen.
+  const latestRequest = useRef<Record<string, number>>({});
 
   function added(row: { occurrenceId: string; inMyWeek: boolean }): boolean {
     return inWeek[row.occurrenceId] ?? row.inMyWeek;
@@ -30,6 +33,8 @@ export function useWeekAdd(sample: boolean, onChanged?: () => void) {
     }
     const id = row.occurrenceId;
     const next = !added(row);
+    const request = (latestRequest.current[id] ?? 0) + 1;
+    latestRequest.current[id] = request;
     setInWeek((current) => ({ ...current, [id]: next }));
     setNotice(null);
     try {
@@ -37,10 +42,12 @@ export function useWeekAdd(sample: boolean, onChanged?: () => void) {
         action: next ? "week_add.set" : "week_add.unset",
         occurrenceId: id,
       });
+      if (latestRequest.current[id] !== request) return;
       setInWeek((current) => ({ ...current, [id]: result.inMyWeek }));
       // Week's own read lists added sessions too, so it is read again (keeping what is on screen meanwhile).
       onChanged?.();
     } catch (cause) {
+      if (latestRequest.current[id] !== request) return;
       setInWeek((current) => ({ ...current, [id]: !next }));
       setNotice(teachingErrorMessage(cause));
     }

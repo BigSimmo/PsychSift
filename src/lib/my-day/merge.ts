@@ -16,13 +16,12 @@ import {
   type MyDayItem,
   type MyDaySeverity,
 } from "@/lib/my-day/model";
+import { perthTimeOf } from "@/lib/perth-time";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
 const PERTH_OFFSET_MS = 8 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
-
-const two = (value: number) => String(value).padStart(2, "0");
 
 /** Whole days from Perth calendar date `from` to `to`; both `YYYY-MM-DD`. */
 function dayDifference(from: string, to: string): number {
@@ -105,7 +104,8 @@ export function mergeMyDayItems(groups: readonly (readonly MyDayItem[])[]): MyDa
 
 /**
  * `Today`, `Tomorrow`, `Yesterday` or `9 Oct 2026`, with ` · 14:30` (24-hour,
- * Perth) when the due value carries a time. Empty for no date or an unreadable one.
+ * work zone, default Perth) when the due value carries a time. The day word and
+ * the time are read in the same zone. Empty for no date or an unreadable one.
  */
 export function formatMyDayDue(due: string | null, now: Date): string {
   const date = duePerthDate(due);
@@ -115,8 +115,7 @@ export function formatMyDayDue(due: string | null, now: Date): string {
   const label =
     days === 0 ? "Today" : days === 1 ? "Tomorrow" : days === -1 ? "Yesterday" : `${day} ${MONTHS[month - 1]} ${year}`;
   if (DATE_ONLY.test(due)) return label;
-  const perth = new Date(Date.parse(due) + PERTH_OFFSET_MS);
-  return `${label} · ${two(perth.getUTCHours())}:${two(perth.getUTCMinutes())}`;
+  return `${label} · ${perthTimeOf(due)}`;
 }
 
 /** Counts by severity, for the home card and the page header. */

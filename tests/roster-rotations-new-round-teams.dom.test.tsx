@@ -9,6 +9,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { RotationsRead } from "@/components/roster/rotations/use-rotations";
+import { confirmShellNavigation } from "@/lib/navigation-guards";
 import { EXAMPLE_ROTATION_SERVICE_ID, exampleRotationRounds } from "@/lib/example-data/datasets/roster-rotations";
 
 const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), prefetch: vi.fn() }));
@@ -61,6 +62,18 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("new round form for two teams", () => {
+  it("has no unsaved changes until something is edited, however often it re-renders", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const { rerender } = render(<NewRotationRoundPage />);
+    await screen.findByTestId("rotation-new-round-team");
+    // A re-render (the minute tick, say) rebuilds the starting draft with new ids.
+    rerender(<NewRotationRoundPage />);
+    rerender(<NewRotationRoundPage />);
+    expect(confirmShellNavigation()).toBe(true);
+    expect(confirm).not.toHaveBeenCalled();
+    confirm.mockRestore();
+  });
+
   it("starts the chosen team's form and names that team when saving", async () => {
     const user = userEvent.setup();
     render(<NewRotationRoundPage />);

@@ -12,10 +12,21 @@ export function ServiceSiteHours({
   site: ServiceSite;
   onAction: (action: ServiceAction) => Promise<unknown>;
 }) {
-  const [start, setStart] = useState(site.afterHoursStart ?? "");
-  const [end, setEnd] = useState(site.afterHoursEnd ?? "");
+  const savedStart = site.afterHoursStart ?? "";
+  const savedEnd = site.afterHoursEnd ?? "";
+  const [start, setStart] = useState(savedStart);
+  const [end, setEnd] = useState(savedEnd);
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<{ text: string; failed: boolean } | null>(null);
+  // The parent keys this form on the site only, so a save that reloads new
+  // hours keeps this instance (and its "saved" message) and resyncs the
+  // fields here, during render rather than in an effect.
+  const [synced, setSynced] = useState({ start: savedStart, end: savedEnd });
+  if (synced.start !== savedStart || synced.end !== savedEnd) {
+    setSynced({ start: savedStart, end: savedEnd });
+    setStart(savedStart);
+    setEnd(savedEnd);
+  }
   async function save() {
     const result = serviceActionSchema.safeParse({
       action: "site.update",
@@ -24,16 +35,16 @@ export function ServiceSiteHours({
       afterHoursEnd: end || null,
     });
     if (!result.success) {
-      setMessage("Set two different times, or clear both.");
+      setMessage({ text: "Set two different times, or clear both.", failed: true });
       return;
     }
     setBusy(true);
     setMessage(null);
     try {
       await onAction(result.data);
-      setMessage("Hospital hours saved.");
+      setMessage({ text: "Hospital hours saved.", failed: false });
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Hours could not be saved.");
+      setMessage({ text: error instanceof Error ? error.message : "Hours could not be saved.", failed: true });
     } finally {
       setBusy(false);
     }
@@ -66,7 +77,7 @@ export function ServiceSiteHours({
       <Button variant="secondary" busy={busy} onClick={() => void save()}>
         Save hospital hours
       </Button>
-      {message ? <InlineNotice tone="neutral">{message}</InlineNotice> : null}
+      {message ? <InlineNotice tone={message.failed ? "danger" : "neutral"}>{message.text}</InlineNotice> : null}
     </fieldset>
   );
 }

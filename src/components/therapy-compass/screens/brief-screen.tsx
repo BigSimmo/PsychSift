@@ -264,7 +264,7 @@ export function BriefScreen() {
                     <MetaCell
                       eyebrow="Cautions"
                       tone="warning"
-                      text={summarise(t.contraindicationsOrCautions, 1) || "Review cautions before use."}
+                      text={t.contraindicationsOrCautions?.trim() || "Review cautions before use."}
                     />
                     <MetaCell
                       eyebrow="Source"

@@ -28,4 +28,8 @@ describe("Ask Roster dates", () => {
   it("reads a same-month range without using the device timezone", () => {
     expect(readDates("12-16 Oct", "2026-10-01")).toEqual({ dates: [{ from: "2026-10-12", to: "2026-10-16" }] });
   });
+
+  it("asks about a reversed range instead of saying it has passed", () => {
+    expect(readDates("28-3 Nov", "2026-10-24")).toEqual({ ask: "Which dates do you mean?", options: [] });
+  });
 });

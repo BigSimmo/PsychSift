@@ -16,6 +16,8 @@ import { TextField } from "@/components/ui/text-field";
 import { useDirtyStateGuard } from "@/components/ui/use-dirty-state-guard";
 import { cn, fieldControlPlain, InlineNotice, textMuted } from "@/components/ui-primitives";
 import { parseApiErrorResponse } from "@/lib/api-client-error";
+import { isAdministratorUser } from "@/lib/authorization";
+import { useAuthIfAvailable } from "@/lib/example-data/store";
 import { isComplianceEntry, ON_CALL_ADMIN_CATEGORIES, ON_CALL_COMPLIANCE_CATEGORIES } from "@/lib/on-call/compliance";
 import { mergeOnCallEditorDetails } from "@/lib/on-call/editor-details";
 import { ON_CALL_HOME_TAGS } from "@/lib/on-call/home-modules";
@@ -801,6 +803,16 @@ export function OnCallEntryEditor({
   const complianceForcesPrivate = section === "logistics" && draft.isCompliance;
 
   /**
+   * Only a site administrator may share an entry with everyone signed in (owner
+   * decision, 25 Oct 2026); the API refuses a shared save from anyone else, so
+   * the form does not offer one. With no sign-in provider mounted (a screen
+   * rendered on its own) the choice stays on screen and the server decides.
+   */
+  const auth = useAuthIfAvailable();
+  const sharingNotAllowed = auth !== null && !isAdministratorUser(auth.session?.user);
+  const forcedPrivate = complianceForcesPrivate || sharingNotAllowed;
+
+  /**
    * Which taxonomy the STORED row is in — `null` while creating, where there is
    * nothing stored to lose. This, not the tick box, is what says whether a save
    * would move the row.
@@ -1080,12 +1092,14 @@ export function OnCallEntryEditor({
       // site can open. There is no version of a compliance requirement
       // that belongs to anybody but its owner, so the editor does not offer
       // the choice — see the statement that replaces the tick box below.
-      isPersonal: complianceForcesPrivate || draft.isPersonal,
+      // Forced on too for an account that is not an administrator, which may
+      // not share an entry (`sharingNotAllowed`).
+      isPersonal: forcedPrivate || draft.isPersonal,
       // Forced off for the same reason `isPersonal` is forced on, and with the
       // same asymmetry: a compliance row is never printed, so storing a true
       // flag it cannot act on would mean that unticking "Compliance
       // requirement" later put the row on the card without anyone choosing it.
-      includeOnCard: complianceForcesPrivate ? false : draft.includeOnCard,
+      includeOnCard: forcedPrivate ? false : draft.includeOnCard,
       sortOrder: entry?.sortOrder ?? 0,
       lastVerifiedAt: entry?.lastVerifiedAt ?? null,
     };
@@ -1325,6 +1339,14 @@ export function OnCallEntryEditor({
                 Private to you. A compliance requirement is your own record, so this entry is never shared: it stays off
                 the pages other signed-in users read, and off the printable card.
               </p>
+            ) : sharingNotAllowed ? (
+              <p
+                data-testid="on-call-entry-editor-administrator-privacy"
+                className={cn("px-1 py-1.5 text-xs leading-5", textMuted)}
+              >
+                Private to you. Only an administrator can share an entry with everyone signed in, so this entry stays
+                off the pages other signed-in users read, and off the printable card.
+              </p>
             ) : (
               <Checkbox
                 label="Private — only you"
@@ -1341,7 +1363,7 @@ export function OnCallEntryEditor({
                 them, nor for the note saying nothing here is checked with an
                 issuing body. Ticking a box that silently never prints is the
                 same defect as a privacy box that silently never protects. */}
-            {complianceForcesPrivate ? null : (
+            {forcedPrivate ? null : (
               <Checkbox
                 label="Include on printable card"
                 checked={draft.includeOnCard}

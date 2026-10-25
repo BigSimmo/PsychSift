@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   FACTSHEET_DEMO_NOTICE,
+  FACTSHEET_EMERGENCY_NUMBER,
   TOPIC_SECTION_PREVIEW_LIMIT,
   factsheetCategories,
   factsheetDetailHref,
@@ -188,6 +189,18 @@ describe("factsheet library", () => {
       // The sources block is always the final print block.
       expect(blocks.at(-1)?.kind).toBe("sources");
     }
+  });
+
+  it("gives every printed sheet, of every kind, the emergency number", () => {
+    // A printed therapy handout once dropped the crisis contacts that its screen
+    // version shows, so a CBT sheet left the reader with no number to call.
+    const kinds = new Set<string>();
+    for (const sheet of factsheets) {
+      kinds.add(sheet.kind);
+      const printed = JSON.stringify(printBlocks(sheet));
+      expect(printed, `${sheet.slug} (${sheet.kind})`).toContain(FACTSHEET_EMERGENCY_NUMBER);
+    }
+    expect(kinds).toContain("therapy");
   });
 
   it("prints the selected reading level for medicine-rich factsheets", () => {

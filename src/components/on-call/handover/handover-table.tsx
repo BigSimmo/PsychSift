@@ -179,6 +179,7 @@ function Table({
       data-no-tab-swipe
       className="max-w-full overflow-x-auto rounded-md print:overflow-visible"
       tabIndex={0}
+      role="region"
       aria-label="Handover table, scrolls sideways"
     >
       <table className="w-max min-w-full border-collapse text-left print:w-full print:text-xs">

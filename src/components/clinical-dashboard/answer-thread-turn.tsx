@@ -27,6 +27,7 @@ import {
 import { answerUsesDegradedMode, answerUsesSourceOnlyProvenance } from "@/components/ui/answer-state";
 import type { AnswerPayload } from "@/components/clinical-dashboard/search-utils";
 import { demoAnswerDisclosure } from "@/lib/answer-client-payload";
+import { parseSafeBoldText } from "@/lib/safe-bold";
 import type { ClientSearchResult } from "@/lib/answer-client-payload";
 
 /**
@@ -96,7 +97,11 @@ export const PriorAnswerTurnSurface = memo(function PriorAnswerTurnSurface({
   const leadSourceLinks = renderAdaptiveAnswer ? [] : renderModel.primarySources;
   const leadBestSource = renderAdaptiveAnswer ? null : renderModel.bestSource;
   const leadSourceCount = renderAdaptiveAnswer ? projectedAnswer.leadCitationSources.length : legacySourceCount;
-  const previewText = projectedAnswer.leadText || turn.answer.answer;
+  // leadText keeps **bold** markers for the rich renderer; the collapsed preview is
+  // plain text, so drop them rather than print literal asterisks.
+  const previewText = parseSafeBoldText(projectedAnswer.leadText || turn.answer.answer)
+    .map((segment) => segment.text)
+    .join("");
   const degradedAnswer = answerUsesDegradedMode({
     answerQualityTier: turn.answer.answerQualityTier,
     fallbackReasonCode: turn.answer.fallbackReasonCode,

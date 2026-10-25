@@ -13,8 +13,14 @@ import { localSmartExcludedToolIds, type ToolCatalogId, type ToolCatalogRecord }
  * canonical directory at `/tools` carrying the filter ribbon and the full list. Which
  * one a clinician saw depended on how they arrived — the mode pill gave them the hub,
  * every other link gave them the directory. `/?mode=tools` now redirects to `/tools`,
- * so this row moved here rather than being deleted with the hub: it is the one thing
- * the hub had that the directory did not.
+ * and this row was kept rather than deleted with the hub: it is the one thing the hub
+ * had that the directory did not.
+ *
+ * Not currently rendered. Nothing imports `ToolQuickActions`: the `/tools` directory
+ * (`tools-search-results-page.tsx`) shows `ToolLocalSearch` and its results but no
+ * shortcut row, and the launcher keeps its own copy of these actions. Whether the row
+ * returns to `/tools` is an owner call; until then, do not read this file as proof that
+ * the directory has shortcuts.
  *
  * Deliberately verbs, not mode names. The sidebar already lists every mode by name;
  * this row answers "what am I trying to do" (Ask, Compare, Prescribe, Safety), which
@@ -39,8 +45,10 @@ export function quickActionsForSession(canAccessFavourites: boolean, naturalSmar
   );
 }
 
+// No fallback tool: borrowing another tool's identity and description for a
+// missing id would pair one tool's label with a different tool's details.
 function toolById(id: ToolCatalogId, tools: readonly ToolCatalogRecord[]) {
-  return tools.find((tool) => tool.id === id) ?? tools[0];
+  return tools.find((tool) => tool.id === id);
 }
 
 export function ToolQuickActions({
@@ -56,18 +64,19 @@ export function ToolQuickActions({
   canAccessFavourites: boolean;
   naturalSmartSearch: boolean;
 }) {
-  const quickActions = quickActionsForSession(canAccessFavourites, naturalSmartSearch);
-  // An empty catalogue would make `toolById` return undefined and every tile
-  // dereference it. The directory renders this row above its own results, so a
-  // filtered-to-nothing list must not take the shortcuts down with it.
-  if (tools.length === 0) return null;
+  // A shortcut whose tool is not in this catalogue is skipped rather than drawn
+  // with another tool's details, so a filtered-to-nothing list renders no row.
+  const quickActions = quickActionsForSession(canAccessFavourites, naturalSmartSearch).flatMap((action) => {
+    const tool = toolById(action.id, tools);
+    return tool ? [{ action, tool }] : [];
+  });
+  if (quickActions.length === 0) return null;
   return (
     <section
       aria-label="Quick tool shortcuts"
       className={cn(mobile ? "grid grid-cols-4 gap-2" : "grid w-full grid-cols-2 gap-3 md:grid-cols-3")}
     >
-      {quickActions.slice(0, mobile ? 8 : 6).map((action) => {
-        const tool = toolById(action.id, tools);
+      {quickActions.slice(0, mobile ? 8 : 6).map(({ action, tool }) => {
         const identity = toolIdentity(tool.id, tool.area);
         return (
           <button

@@ -89,7 +89,7 @@ export function computeCmeNextStep(args: {
   if (inRequestedYear && daysElapsedInCpdYear(now, set.year) < CPD_PACE_MINIMUM_ELAPSED_DAYS && earlyTask) {
     return {
       label: `It's early in the year for a pace projection — a good place to start is ${earlyTask.label.toLowerCase()}.`,
-      href: `/cme/setup?year=${set.year}#cme-requirement-${encodeURIComponent(earlyTask.id)}`,
+      href: `/cme/setup?year=${set.year}&edit=1#cme-requirement-${encodeURIComponent(earlyTask.id)}`,
       rowId: null,
     };
   }
@@ -108,7 +108,7 @@ export function computeCmeNextStep(args: {
     label: `Next: ${requirement?.label ?? "Next requirement"} — ${next.summary}`,
     href:
       requirement?.spec.shape === "task"
-        ? `/cme/setup?year=${set.year}#cme-requirement-${encodeURIComponent(requirement.id)}`
+        ? `/cme/setup?year=${set.year}&edit=1#cme-requirement-${encodeURIComponent(requirement.id)}`
         : `/cme/new?year=${set.year}`,
     rowId: `requirement-${next.requirementId}`,
   };

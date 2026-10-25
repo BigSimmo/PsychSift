@@ -84,6 +84,15 @@ describe("MedicationRecordPage content-first states", () => {
     expect(screen.queryByText("Request failed (404)")).not.toBeInTheDocument();
   });
 
+  it("renders the not-found panel, not the bundled snapshot, when the published record is gone", () => {
+    // A retired slug: the server still hands over the snapshot as a fallback, but the
+    // live catalogue answered medication_not_found, so the snapshot must not render.
+    mockDetail({ data: null, loading: false, error: "Request failed (404)", notFound: true });
+    render(<MedicationRecordPage slug="test-med" fallbackRecord={fallbackDrug} />);
+    expect(screen.getByRole("heading", { level: 1, name: "Medication Not Found" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Fallback Drug" })).not.toBeInTheDocument();
+  });
+
   it("keeps a non-not-found failure as an error rather than a not-found (#W0T66R)", () => {
     mockDetail({ data: null, loading: false, error: "Request failed (503)", notFound: false });
     render(<MedicationRecordPage slug="zzz" />);

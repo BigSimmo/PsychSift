@@ -37,21 +37,44 @@ export type DifferentialSearchResultItem = {
   reasons: string[];
 };
 
+const clinicalHingePrefix = /^clinical hinge:/i;
+
+/**
+ * The "Look for" cues written about this diagnosis.
+ *
+ * Never `currentPresentation`: the export parser fills it with the presentation
+ * group's title, its candidate list and a "CLINICAL HINGE: …" line, so it is
+ * group text, and showing it as cues put the akathisia hinge under Acute
+ * psychosis. The diagnosis-scoped "Why it fits" items are the diagnosis's own,
+ * less any group hinge and the line already shown as the subtitle.
+ */
+function diagnosisOwnCues(record: DifferentialRecord, subtitle: string): string[] {
+  const groupHinge = record.clinicalHingeScope === "presentation" ? (record.clinicalHinge?.trim() ?? "") : "";
+  const fit = (record.sections ?? []).find((section) => section.id === "why-it-fits");
+  if (!fit || fit.scope === "presentation") return [];
+  return fit.items
+    .map((item) => item.trim())
+    .filter((item) => item && item !== groupHinge && item !== subtitle.trim() && !clinicalHingePrefix.test(item))
+    .slice(0, 3);
+}
+
 function diagnosisResultItem(match: DifferentialRecordMatch): Omit<DifferentialSearchResultItem, "matchLabel"> {
   const { record, score, reasons } = match;
+  const subtitle = diagnosisOwnSummary(record);
+  const clinicalCues = diagnosisOwnCues(record, subtitle);
   return {
     id: record.slug,
     kind: "diagnosis",
     slug: record.slug,
     title: record.title,
-    subtitle: diagnosisOwnSummary(record),
+    subtitle,
     href: `/differentials/diagnoses/${record.slug}`,
     status: record.status,
     score,
-    tags: [...record.currentPresentation.slice(0, 3), record.investigations[0]]
+    tags: [...clinicalCues, record.investigations[0]]
       .filter((value): value is string => Boolean(value?.trim()))
       .slice(0, 4),
-    clinicalCues: record.currentPresentation.filter((value) => value.trim()).slice(0, 3),
+    clinicalCues,
     nextSteps: record.investigations.filter((value) => value.trim()).slice(0, 2),
     safety: record.safetySnapshot.summary,
     reasons,

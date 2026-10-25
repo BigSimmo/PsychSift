@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -10,6 +10,7 @@ import {
   primaryCheckoutLeaseInternals,
 } from "../scripts/primary-checkout-lease.mjs";
 
+const cliPath = path.join(__dirname, "..", "scripts", "primary-checkout-lease.mjs");
 const temporaryDirectories: string[] = [];
 
 afterEach(() => {
@@ -178,6 +179,55 @@ describe("primary checkout write lease (#077)", () => {
     } finally {
       lease.release();
     }
+  });
+
+  it("never replaces a lease file another task created after the inspection", () => {
+    const primaryPath = createPrimaryFixture();
+    const baseDirectory = temporaryDirectory("primary-lease-race-");
+    // A concurrent acquirer has created its lease file but not yet written its owner record.
+    const leasePath = path.join(baseDirectory, "primary-checkout-lease.json");
+    writeFileSync(leasePath, "", "utf8");
+
+    expect(() =>
+      acquirePrimaryCheckoutLease({ primaryPath, baseDirectory, environment: {}, purpose: "racing writer" }),
+    ).toThrow(/created the lease .* at the same moment/);
+    expect(readFileSync(leasePath, "utf8")).toBe("");
+  });
+
+  it("refuses a CLI --acquire that would record its own short-lived PID", () => {
+    const primaryPath = createPrimaryFixture();
+    const result = spawnSync(process.execPath, [cliPath, "--acquire", "--primary", primaryPath], {
+      encoding: "utf8",
+      env: { ...process.env, CLINICAL_KB_PRIMARY_LEASE_TOKEN: "", CLINICAL_KB_PRIMARY_LEASE_PATH: "" },
+    });
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("--acquire needs --owner-pid");
+    expect(inspectPrimaryCheckoutLease({ primaryPath, environment: {} }).owner).toBeNull();
+  });
+
+  it("records the named long-lived owner on a CLI --acquire, so the lease stays live after the CLI exits", () => {
+    const primaryPath = createPrimaryFixture();
+    const result = spawnSync(
+      process.execPath,
+      [cliPath, "--acquire", "--json", "--primary", primaryPath, "--owner-pid", String(process.pid)],
+      {
+        encoding: "utf8",
+        env: { ...process.env, CLINICAL_KB_PRIMARY_LEASE_TOKEN: "", CLINICAL_KB_PRIMARY_LEASE_PATH: "" },
+      },
+    );
+    expect(result.status).toBe(0);
+    const payload = JSON.parse(result.stdout);
+    const inspection = inspectPrimaryCheckoutLease({
+      primaryPath,
+      environment: {
+        CLINICAL_KB_PRIMARY_LEASE_TOKEN: payload.environment.CLINICAL_KB_PRIMARY_LEASE_TOKEN,
+        CLINICAL_KB_PRIMARY_LEASE_PATH: payload.environment.CLINICAL_KB_PRIMARY_LEASE_PATH,
+      },
+    });
+    expect(inspection.owner?.pid).toBe(process.pid);
+    expect(inspection.owner?.alive).toBe(true);
+    expect(inspection.sameOwner).toBe(true);
+    rmSync(inspection.leasePath, { force: true });
   });
 
   it("exposes stable environment key names for nested ownership", () => {

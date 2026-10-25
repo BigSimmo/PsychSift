@@ -313,6 +313,8 @@ function PathwayContextCard({
   const tabSourceId = useId();
   const panelPathwayId = `${tabPathwayId}-panel`;
   const panelSourceId = `${tabSourceId}-panel`;
+  const sourceHref = form.source?.url ?? details?.officialRegisterUrl;
+  const sourceUnavailableId = useId();
   const pathwayItems = (items: string[] | undefined, emptyTitle: string, emptyMeta: string) =>
     items?.length
       ? items.map((item) => {
@@ -520,16 +522,35 @@ function PathwayContextCard({
           </dl>
         </div>
       )}
-      <a
-        href={form.source?.url ?? details?.officialRegisterUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={cn(floatingControl, "mt-3 w-full rounded-lg px-3 text-xs")}
-      >
-        <Navigation className="h-4 w-4" aria-hidden />
-        Open official source / pathway
-        <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-      </a>
+      {sourceHref ? (
+        <a
+          href={sourceHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(floatingControl, "mt-3 w-full rounded-lg px-3 text-xs")}
+        >
+          <Navigation className="h-4 w-4" aria-hidden />
+          Open official source / pathway
+          <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+        </a>
+      ) : (
+        // Matches the actions sheet: an <a> without href is neither focusable nor announced as a link.
+        <button
+          type="button"
+          aria-disabled="true"
+          onClick={ignoreUnavailableActivation}
+          title="Open official source — no official source URL is recorded for this form"
+          aria-describedby={sourceUnavailableId}
+          className={cn(floatingControl, "mt-3 w-full rounded-lg px-3 text-xs text-[color:var(--text-muted)]")}
+        >
+          <Navigation className="h-4 w-4" aria-hidden />
+          Open official source / pathway
+          <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+          <span id={sourceUnavailableId} className="sr-only">
+            No official source URL is recorded for this form.
+          </span>
+        </button>
+      )}
     </section>
   );
 }

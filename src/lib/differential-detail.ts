@@ -134,6 +134,19 @@ export function differentialStatusLabel(status: DifferentialRecord["status"]): "
   return "Routine";
 }
 
+const differentialLikelihoodLabels: Record<DifferentialLikelihood, string> = {
+  "most-likely": "Most likely",
+  possible: "Possible",
+  "less-likely": "Less likely",
+  "must-not-miss": "Must-not-miss",
+};
+
+/** A related diagnosis's likelihood, in words. Likelihood is not clinical state,
+ *  so it never borrows the Emergent / Urgent / Routine status labels above. */
+export function differentialLikelihoodLabel(likelihood: DifferentialLikelihood): string {
+  return differentialLikelihoodLabels[likelihood];
+}
+
 /** Shown wherever authored content renders. Curated text is local clinical
  *  reference, not an extract from an indexed source, and must read that way.
  *  Declared here rather than beside the corpus so a client component can label

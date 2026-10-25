@@ -124,7 +124,10 @@ export function parseHours(text: string): number | null {
   const value = text.trim();
   if (!value) return null;
   const clock = /^(\d{1,3}):([0-5]\d)$/.exec(value);
-  if (clock) return Number(clock[1]) + Number(clock[2]) / 60;
+  if (clock) {
+    const clockHours = Number(clock[1]) + Number(clock[2]) / 60;
+    return clockHours <= 400 ? clockHours : null;
+  }
   if (!/^\d{1,3}(?:[.,]\d{1,2})?$/.test(value)) return null;
   const hours = Number(value.replace(",", "."));
   return Number.isFinite(hours) && hours <= 400 ? hours : null;

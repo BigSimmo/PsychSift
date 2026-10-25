@@ -13,6 +13,7 @@ import {
   railwayVariableArgs,
 } from "../scripts/check-env-parity.mjs";
 import {
+  branchComparison,
   branchCoverageRefusal,
   fetchRefspecCoversAllBranches,
   hasCompletedCleanupReview,
@@ -141,6 +142,23 @@ describe("check-env-parity name parsing", () => {
 });
 
 describe("sweep-branch-ledger parsing", () => {
+  it("never makes a branch a deletion candidate when its comparison with origin/main failed", () => {
+    expect(branchComparison("3\t2", "abc123 unique work\ndef456 more")).toEqual({
+      ahead: 2,
+      behind: 3,
+      uniqueCommits: 2,
+      deletionCandidate: false,
+    });
+    expect(branchComparison("4\t1", "")).toMatchObject({ uniqueCommits: 0, deletionCandidate: true });
+    expect(branchComparison("4\t1", null)).toEqual({
+      ahead: null,
+      behind: null,
+      uniqueCommits: null,
+      deletionCandidate: false,
+    });
+    expect(branchComparison(null, "")).toMatchObject({ deletionCandidate: false });
+  });
+
   it("extracts claude/ and codex/ branch names from ledger markdown", () => {
     const md = [
       "| 2026-07-10 | codex/design-ux-review-fixes | abc | scope | out | checks |",

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { allocateRotations } from "@/lib/roster/rotations/allocate";
 import { roundSetupSchema, type ManagedRound, type RoundSetup } from "@/lib/roster/rotations/model";
 import {
+  closeRound,
   createManagedRound,
   editRoundSetup,
   movePlacement,
@@ -83,6 +84,13 @@ describe("round rules", () => {
   it("will not publish while the round is open again", () => {
     const reopened = openRound(allocated(), NOW);
     expect(() => publishRound(reopened, NOW)).toThrow(/Close the round/);
+  });
+
+  it("will not publish an allocation run before the round was opened again", () => {
+    const reopened = openRound(allocated(), NOW);
+    expect(reopened.allocation).toBeNull();
+    const changed = savePreference(reopened, "a", ["ed", "cl"], true, NOW);
+    expect(() => publishRound(closeRound(changed), LATER)).toThrow(/Run the allocation/);
   });
 
   it("refuses a hand move that repeats a rotation", () => {

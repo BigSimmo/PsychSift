@@ -892,27 +892,18 @@ if (!/^      image: semgrep\/semgrep@sha256:[0-9a-f]{64}\s*$/m.test(semgrepGateJ
 }
 
 // One SHA per action across every workflow AND composite action. Dependabot bumps
-// one file at a time, so a laggard can sit on an old major indefinitely; because
-// the per-line validation above only covers workflows, a composite skew (e.g.
-// setup-node v5 vs v7) was previously invisible. Assert each action name resolves
+// one file at a time, so a laggard can sit on an old major indefinitely, and a
+// composite skew (e.g. setup-node v5 vs v7) was previously invisible. Assert each action name resolves
 // to a single SHA everywhere it is used.
 const actionPinPattern = /uses:\s*([^@\s]+)@([0-9a-f]{40})(?:\s*#\s*(\S+))?/;
 const shasByAction = new Map();
 for (const filePath of discoverGitHubActionFiles(process.cwd())) {
   const fileName = path.relative(process.cwd(), filePath).replaceAll("\\", "/");
-  // Workflow lines are already run through validateActionReference in the first
-  // pass; composite files are not, so validate them here. Without this, a
-  // non-SHA composite reference (e.g. vendor/action@v1) matches neither the
-  // 40-hex actionPinPattern below nor the first pass, so it would slip through
-  // unpinned. Local `./` refs are correctly ignored by validateActionReference.
-  const isComposite = fileName.startsWith(".github/actions/");
+  // Every line, workflow and composite alike, was already run through
+  // validateActionReference by collectPinFailures, so this pass only groups SHAs.
   readFileSync(filePath, "utf8")
     .split(/\r?\n/)
     .forEach((line, index) => {
-      if (isComposite) {
-        const actionFailure = validateActionReference(line);
-        if (actionFailure) failures.push(`${fileName}:${index + 1}: ${actionFailure}`);
-      }
       const match = actionPinPattern.exec(line);
       if (!match) return;
       const [, name, sha, version] = match;

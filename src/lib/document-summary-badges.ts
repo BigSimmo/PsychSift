@@ -59,13 +59,17 @@ type SummaryPhraseRule = {
 // "not contraindicated in pregnancy") inverts its meaning — it must never emit a
 // red danger badge, which would read as a false clinical stop signal.
 const contraindicationNegationBefore = /\b(?:no|not|non|without|nil|free of|absence of|no known)\b[\s\w,'’-]{0,16}$/i;
+// The same negation written after the word, as a label: "Contraindications:
+// none listed", "Contraindications - nil", "Contraindications: N/A".
+const contraindicationNegationAfter = /^\w*\s*[:\-–—]?\s*(?:none|nil|n\/a|not applicable)\b/i;
 
 function hasPositiveContraindication(text: string): boolean {
   const pattern = /contraindicat/gi;
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(text)) !== null) {
     const before = text.slice(Math.max(0, match.index - 40), match.index);
-    if (!contraindicationNegationBefore.test(before)) return true;
+    const after = text.slice(pattern.lastIndex, pattern.lastIndex + 40);
+    if (!contraindicationNegationBefore.test(before) && !contraindicationNegationAfter.test(after)) return true;
   }
   return false;
 }

@@ -22,9 +22,11 @@ export async function requestSignedUrlPayload(
   },
 ): Promise<SignedUrlResponsePayload> {
   const response = await fetch(endpoint, { signal: options.signal, headers: options.headers });
-  const payload: SignedUrlResponsePayload = await response.json();
   if (response.status === 401) options.onUnauthorized();
-  if (!response.ok) throw new Error(payload?.error || options.errorMessage);
+  // A proxy or gateway can answer with an HTML or empty body. That must still reach
+  // the sign-in handling above and the friendly message, not surface a parser error.
+  const payload: SignedUrlResponsePayload | null = await response.json().catch(() => null);
+  if (!response.ok || !payload) throw new Error(payload?.error || options.errorMessage);
   return payload;
 }
 

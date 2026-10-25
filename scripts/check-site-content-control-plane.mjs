@@ -66,10 +66,13 @@ function removeOwnedContainer() {
 
 function psql(database, sql, { expectFailure, user = "postgres" } = {}) {
   const args = ["exec", "-i", CONTAINER, "psql", "-U", user, "-d", database, "-v", "ON_ERROR_STOP=1", "-q", "-f", "-"];
+  return runSqlExpectation(() => docker(args, sql), expectFailure);
+}
+
+export function runSqlExpectation(run, expectFailure) {
+  let output;
   try {
-    const output = docker(args, sql);
-    if (expectFailure) throw new Error(`Expected ${expectFailure}, but SQL succeeded.`);
-    return output;
+    output = run();
   } catch (error) {
     if (!expectFailure) throw error;
     const detail = `${error?.stdout ?? ""}\n${error?.stderr ?? ""}\n${error?.message ?? ""}`;
@@ -78,6 +81,10 @@ function psql(database, sql, { expectFailure, user = "postgres" } = {}) {
     }
     return detail;
   }
+  // Checked outside the try: thrown inside it, this error's own message carries the marker, so
+  // the catch would accept it and every expected refusal would pass when the SQL succeeded.
+  if (expectFailure) throw new Error(`Expected ${expectFailure}, but SQL succeeded.`);
+  return output;
 }
 
 function dockerAsync(args, input) {

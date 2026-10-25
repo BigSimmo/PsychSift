@@ -449,6 +449,10 @@ export function PrivacyPanel({
           testId="work-profile-clear-searches"
         />
       </WorkProfileSection>
+      {/* The row's subtitle changes silently, so the result is also said aloud. */}
+      <p className="sr-only" role="status" data-testid="work-profile-clear-searches-status">
+        {cleared ?? ""}
+      </p>
       {teams.length > 0 ? (
         <WorkProfileSection label="Your teams">
           {teams.map((team) => (

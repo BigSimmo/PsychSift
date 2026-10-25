@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { DifferentialPresentationWorkflowPage } from "@/components/differentials/differential-presentation-workflow-page";
-import { getDifferentialRecord, getPresentationWorkflow } from "@/lib/differentials";
+import { differentialPresentations, getDifferentialRecord, getPresentationWorkflow } from "@/lib/differentials";
 
 vi.mock("next/link", () => ({
   default: ({ children, href, ...rest }: { children: ReactNode; href: string }) => (
@@ -118,6 +118,29 @@ describe("Highest urgency callout (#0FT00E)", () => {
       for (const candidateSlug of nonEmergentUnselected) {
         expect(panel.queryByRole("link", { name: `Open diagnosis: ${titleOf(candidateSlug)}` })).toBeNull();
       }
+    }
+  });
+
+  it("reports the most urgent selected diagnosis, not a fixed Emergency, when no emergency is selected", () => {
+    // Every acute-confusion candidate is an emergency, so use a presentation
+    // that also carries non-emergent candidates.
+    const statusOf = (candidateSlug: string) => getDifferentialRecord(candidateSlug)?.status;
+    const mixed = differentialPresentations().find(
+      (presentation) =>
+        presentation.candidates.some((candidate) => statusOf(candidate.slug) === "emergent") &&
+        presentation.candidates.some((candidate) => statusOf(candidate.slug) === "urgent"),
+    );
+    expect(mixed).toBeDefined();
+    const nonEmergent = mixed!.candidates
+      .map((candidate) => candidate.slug)
+      .filter((candidateSlug) => statusOf(candidateSlug) !== undefined && statusOf(candidateSlug) !== "emergent");
+    const expectedStatus = "urgent";
+
+    render(<DifferentialPresentationWorkflowPage presentationSlug={mixed!.id} selectedIds={nonEmergent} />);
+    for (const box of screen.getAllByTestId("differential-highest-urgency")) {
+      expect(box.getAttribute("data-status")).toBe(expectedStatus);
+      expect(within(box).queryByText("Emergency")).toBeNull();
+      expect(within(box).getByText("Urgent")).toBeInTheDocument();
     }
   });
 });

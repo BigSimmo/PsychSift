@@ -1,7 +1,8 @@
 #!/bin/bash
 # Docker multi-platform build script
-# Usage: NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co ./scripts/build-multiplatform.sh [app|worker|all]
-#   (NEXT_PUBLIC_SUPABASE_URL is required for app/all builds; the Dockerfile has no default.)
+# Usage: NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_... \
+#          ./scripts/build-multiplatform.sh [app|worker|all]
+#   (Both are required for app/all builds; the Dockerfile has no default for either.)
 # Requires: docker buildx with multiplatform support enabled
 
 set -e
@@ -9,7 +10,9 @@ set -e
 PLATFORMS="${PLATFORMS:-linux/amd64,linux/arm64}"
 REGISTRY="${REGISTRY:-ghcr.io}"
 # Extract GitHub owner (e.g., "BigSimmo") from git remote URL, fallback to "BigSimmo"
-DETECTED_OWNER="$(git remote get-url origin 2>/dev/null | sed -E 's|.*[:/]([^/]+)/[^/]+(\.git)?$|\1|' || echo "BigSimmo")"
+# Default after capture: with no origin, sed still exits 0 on empty input, so `|| echo` never fires.
+DETECTED_OWNER="$(git remote get-url origin 2>/dev/null | sed -E 's|.*[:/]([^/]+)/[^/]+(\.git)?$|\1|')"
+DETECTED_OWNER="${DETECTED_OWNER:-BigSimmo}"
 REPO_OWNER="${REPO_OWNER:-$DETECTED_OWNER}"
 TARGET="${1:-all}"
 PUSH="${PUSH:-false}"  # Set PUSH=true to push to registry
@@ -50,6 +53,7 @@ build_app() {
         --tag "$REGISTRY/$REPO_OWNER/psychsift-app:latest" \
         --build-arg "ALLOW_LOW_RAM_BUILD=1" \
         --build-arg "NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL:?NEXT_PUBLIC_SUPABASE_URL must be set for the app image build}" \
+        --build-arg "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:?NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY must be set for the app image build}" \
         $OUTPUT_FLAG \
         .
     echo "✅ App tier build complete"

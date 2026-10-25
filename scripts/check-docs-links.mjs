@@ -168,6 +168,11 @@ const SCOPED_ALLOWLIST = mergeScopedAllowlist([
   ["docs/answer-page-redesign-handover.md", new Set(["src/components/answer-chat-perfected-mockups.tsx"])],
   ["docs/superpowers/specs/2026-08-20-care-plan-design.md", new Set(["docs/care-plan-context.md"])],
   ["docs/outstanding-issues.md", new Set(["src/components/document-search-mockups.tsx"])],
+  // ── The unrouted calculator mockup tree, deleted unused on 2026-10-25 (owner decision on the audit
+  // fix batch; its routes were already retired on 2026-10-21). A dated design sweep and the audit
+  // that proposed the retirement name it; their paths are historical.
+  ["docs/design-system/sweep-fix-missing-values-round-2.md", new Set(["src/components/calculator-mockups/"])],
+  ["docs/mockup-audit-and-issues-report.md", new Set(["src/components/calculator-mockups/calculator-pathways.ts"])],
 ]);
 
 /** Build the scoped allowlist, merging the sets of a document listed more than once. */

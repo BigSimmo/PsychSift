@@ -26,6 +26,7 @@ import { TextField } from "@/components/ui/text-field";
 import { cn, textMuted } from "@/components/ui-primitives";
 import { teachingPost } from "@/lib/teaching/client";
 import type { ResourceRow } from "@/lib/teaching/model";
+import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
 
 const KIND_ICONS: Record<ResourceRow["kind"], LucideIcon> = {
   slides: FileText,
@@ -263,8 +264,15 @@ export function AddResourceSheet({
   const linkError = url.trim() && !linkOk && !typingScheme(url) ? "Use a link that starts with https://" : undefined;
   const asksSession = kind === "slides" && !target.occurrenceId;
   const occurrenceId = target.occurrenceId ?? (asksSession && sessionId ? sessionId : undefined);
+  // Everyone in the service sees the title, so the shared patient-detail check reads it first.
+  const titleProblem = title.trim() ? checkPatientDetail(title, { allowCapitals: true }) : null;
   const ready =
-    title.trim().length > 0 && title.trim().length <= 160 && linkOk && ticked && (!asksSession || Boolean(sessionId));
+    title.trim().length > 0 &&
+    title.trim().length <= 160 &&
+    !titleProblem &&
+    linkOk &&
+    ticked &&
+    (!asksSession || Boolean(sessionId));
 
   async function add() {
     if (!ready || busy) return;
@@ -311,7 +319,13 @@ export function AddResourceSheet({
           error={linkError}
           onChange={(event) => setUrl(event.target.value)}
         />
-        <TextField label="Title" value={title} maxLength={160} onChange={(event) => setTitle(event.target.value)} />
+        <TextField
+          label="Title"
+          value={title}
+          maxLength={160}
+          error={titleProblem ? `${titleProblem.title} ${titleProblem.body}` : undefined}
+          onChange={(event) => setTitle(event.target.value)}
+        />
         <Select
           label="Type"
           value={kind}

@@ -5,10 +5,6 @@ import { describe, expect, it } from "vitest";
 
 const sourceRoot = resolve(process.cwd(), "src");
 const internalArrowControls = new Set([
-  // Multi-step calculator flow, not browser-route navigation.
-  "components/calculators/guided-flow.tsx",
-  // Returns from a calculator record to the calculator search panel in-place.
-  "components/calculators/search-detail.tsx",
   // Returns from a settings subpanel to the settings root in the same dialog.
   "components/clinical-dashboard/settings-dialog.tsx",
   // Previous step in the formulation builder workflow.

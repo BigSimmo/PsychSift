@@ -1,5 +1,8 @@
 /** @vitest-environment jsdom */
 
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -110,6 +113,33 @@ describe("two-pane side menu", () => {
     expect(screen.getByText("Clear your recent questions from this device?")).toBeTruthy();
     fireEvent.click(screen.getByTestId("two-pane-menu-clear-recent-confirm"));
     expect(window.sessionStorage.getItem(recentKey)).toBeNull();
+  });
+
+  it("keeps focus in the menu when the clear check closes, and says when the questions are cleared", () => {
+    window.sessionStorage.setItem(recentKey, JSON.stringify(recent));
+    renderMenu();
+
+    fireEvent.click(screen.getByTestId("two-pane-menu-clear-recent"));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(document.activeElement).toBe(screen.getByTestId("two-pane-menu-clear-recent"));
+
+    fireEvent.click(screen.getByTestId("two-pane-menu-clear-recent"));
+    fireEvent.click(screen.getByTestId("two-pane-menu-clear-recent-confirm"));
+    expect(document.activeElement).toBe(screen.getByRole("heading", { level: 3, name: "Recent questions" }));
+    expect(screen.getByTestId("two-pane-menu-clear-recent-status").textContent).toBe("Recent questions cleared");
+  });
+
+  it("marks the current mode's shortcut with the aria-current value its highlight styles", () => {
+    renderMenu({ activeMode: "documents" });
+    const current = screen
+      .getAllByRole("link")
+      .filter((link) => link.classList.contains("two-pane-menu__row--shortcut"))
+      .filter((link) => link.hasAttribute("aria-current"));
+    expect(current).toHaveLength(1);
+    const css = readFileSync(path.resolve(process.cwd(), "src/components/work-frame/two-pane-side-menu.css"), "utf8");
+    const rowSelectors = [...css.matchAll(/\.two-pane-menu__row\[aria-current="[^"]+"\]/g)].map((match) => match[0]);
+    expect(rowSelectors.length).toBeGreaterThan(0);
+    for (const selector of rowSelectors) expect(current[0]!.matches(selector), selector).toBe(true);
   });
 
   it("switches to Work, with the Today card and the areas as tiles, and back", () => {

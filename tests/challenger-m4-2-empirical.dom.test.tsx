@@ -325,7 +325,7 @@ describe("Empirical Challenger M4-2 Verification Suite", () => {
 
       const reasonsSection = screen.getByRole("region", { name: /Reasons for living/i });
       const input = within(reasonsSection).getByPlaceholderText(/Finishing my apprenticeship/i);
-      const addBtn = within(reasonsSection).getByRole("button", { name: /^add$/i });
+      const addBtn = within(reasonsSection).getByRole("button", { name: /^add to /i });
 
       await user.type(input, "First reason");
       await user.click(addBtn);

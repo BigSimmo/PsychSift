@@ -1,5 +1,7 @@
+import { perthCalendarDate } from "@/lib/perth-time";
 import { courseMinutes } from "@/lib/work-screens/admin/bookings-calendar";
 import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
+import { currentWorkTimeZone } from "@/lib/work-time/current-zone";
 
 /*
  * Admin · Bookings (`/admin/bookings`) and the organiser's Courses (`/admin/courses`).
@@ -653,16 +655,29 @@ function normaliseWords(text: string): string {
 /* ------------------------------------------------------------------ organiser export */
 
 /**
+ * The work-zone calendar day a booking was made, `YYYY-MM-DD`. `at` is a UTC instant, so its own first ten
+ * characters are the day before for a booking made in the Perth early morning.
+ */
+export function bookingDay(at: string, zone: string): string {
+  return Number.isNaN(Date.parse(at)) ? at.slice(0, 10) : perthCalendarDate(at, zone);
+}
+
+/**
  * Who is booked and waiting on one course, as a spreadsheet file. Excel reads it as
  * UTF-8 only with the byte order mark, and a cell that starts like a formula is
- * quoted so it never runs.
+ * quoted so it never runs. "Since" is the day in the work time zone, because
+ * `at` is a UTC instant and a Perth morning booking is still yesterday in UTC.
  */
-export function courseBookingsCsv(state: BookingsState, courseId: string): string {
+export function courseBookingsCsv(
+  state: BookingsState,
+  courseId: string,
+  zone: string = currentWorkTimeZone(),
+): string {
   const cell = (value: string) => {
     const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
     return /[",\r\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
   };
-  const day = (at: string) => at.slice(0, 10);
+  const day = (at: string) => bookingDay(at, zone);
   const rows = [
     ...bookedFor(state, courseId).map((booking) => [
       booking.person,

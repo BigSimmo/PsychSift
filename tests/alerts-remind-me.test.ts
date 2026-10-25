@@ -221,3 +221,31 @@ describe("Remind me edge cases", () => {
     }
   });
 });
+
+describe("when choices follow the chosen work zone (#333)", () => {
+  // Mon 26 Oct 07:00 in Sydney (AEDT, UTC+11); the roster shows the shift ending 17:00 Sydney.
+  const now = new Date("2026-10-25T20:00:00Z");
+
+  it("labels and schedules on the Sydney clock, not Perth's", () => {
+    const options = remindMeWhenOptions(now, "2026-10-26T06:00:00Z", "Australia/Sydney");
+    expect(options.map((option) => option.label)).toEqual([
+      "In 1 hour",
+      "12:00",
+      "End of shift, 17:00",
+      "Tomorrow 08:00",
+    ]);
+    expect(options[1]!.dueAt).toBe("2026-10-26T01:00:00.000Z");
+    expect(options[3]!.dueAt).toBe("2026-10-26T21:00:00.000Z");
+  });
+
+  it("shows a reminder's time on the Sydney clock", () => {
+    const reminder: Reminder = {
+      id: "r1",
+      text: "Call the pharmacy",
+      dueAt: "2026-10-26T01:00:00.000Z",
+      createdAt: "2026-10-25T20:00:00.000Z",
+      doneAt: null,
+    };
+    expect(reminderWhenLabel(reminder, now, "Australia/Sydney")).toBe("Today 12:00");
+  });
+});

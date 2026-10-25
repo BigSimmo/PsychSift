@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { BookOpenText, Check, ChevronRight, ExternalLink, ShieldCheck, Workflow } from "lucide-react";
+import { BookOpenText, Check, ChevronRight, ExternalLink } from "lucide-react";
 import { useCallback, useDeferredValue, useId, useMemo, useState } from "react";
 
 import { appModeHomeHref } from "@/lib/app-modes";
@@ -26,9 +26,7 @@ import {
 import { useRegistryRecords } from "@/lib/use-registry-records";
 import {
   cn,
-  codeText,
   eyebrowText,
-  ignoreUnavailableActivation,
   pageContainer,
   searchFocusRing,
   searchPageCanvas,
@@ -55,8 +53,6 @@ import { UniversalSearchAlsoMatches } from "@/components/clinical-dashboard/univ
 type FormsSearchResultsPageProps = {
   query: string;
 };
-
-const supportsPathwayClaims = false;
 
 function resultCode(match: FormSearchMatch, index: number) {
   return formCatalogDetails(match.service)?.form ?? String(index + 1);
@@ -329,111 +325,6 @@ function ResultsTable({
   );
 }
 
-function PathwayPanel() {
-  return (
-    <section className={cn(searchResultsSection, "p-5")}>
-      <h2 className="text-lg font-extrabold text-[color:var(--text-heading)]">
-        Related pathway{" "}
-        <span className="ml-2 text-sm font-medium text-[color:var(--text-muted)]">( PSOLIS Transport Pathway )</span>
-      </h2>
-      <div className="mt-5 grid grid-cols-[1fr_24px_1fr_24px_1.4fr_24px_1fr] items-center gap-3">
-        <PathwayNode label="Before" code="1A" title="Referral for examination" />
-        <ChevronRight aria-hidden="true" className="h-5 w-5 text-[color:var(--text-muted)]" />
-        <PathwayNode label="Current" code="4A" title="Transport order" active />
-        <ChevronRight aria-hidden="true" className="h-5 w-5 text-[color:var(--text-muted)]" />
-        <PathwayNode
-          label="Parallel"
-          code="3A"
-          title="Detention to enable examination"
-          secondaryCode="4B"
-          secondaryTitle="Extension of Transport Order"
-        />
-        <ChevronRight aria-hidden="true" className="h-5 w-5 text-[color:var(--text-muted)]" />
-        <PathwayNode label="After" code="" title="Examination at destination" />
-      </div>
-      <div className="mt-5 flex justify-center">
-        <button
-          type="button"
-          aria-disabled="true"
-          onClick={ignoreUnavailableActivation}
-          title="Coming soon"
-          className={cn(
-            "inline-flex min-h-tap cursor-not-allowed items-center gap-3 rounded-md px-2 text-sm font-extrabold text-[color:var(--clinical-accent)] opacity-70",
-            searchFocusRing,
-          )}
-        >
-          <Workflow aria-hidden="true" className="h-5 w-5" />
-          View full pathway
-          <ExternalLink aria-hidden="true" className="h-4 w-4" />
-        </button>
-      </div>
-    </section>
-  );
-}
-
-function PathwayNode({
-  label,
-  code,
-  title,
-  active,
-  secondaryCode,
-  secondaryTitle,
-}: {
-  label: string;
-  code: string;
-  title: string;
-  active?: boolean;
-  secondaryCode?: string;
-  secondaryTitle?: string;
-}) {
-  return (
-    <div>
-      <p className="mb-3 text-2xs font-bold uppercase text-[color:var(--text-muted)]">{label}</p>
-      <div
-        className={cn(
-          "min-h-[112px] rounded-lg border p-4",
-          active
-            ? "border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)]"
-            : "border-[color:var(--border)] bg-[color:var(--surface)]",
-        )}
-      >
-        {code ? (
-          <p className={cn("text-2xl font-extrabold text-[color:var(--clinical-accent)]", codeText)}>{code}</p>
-        ) : null}
-        <p className="mt-2 text-sm font-extrabold leading-snug text-[color:var(--text-heading)]">{title}</p>
-        {active ? (
-          <span className="mt-3 inline-flex rounded-full bg-[color:var(--clinical-accent-soft)] px-3 py-1 text-2xs font-extrabold text-[color:var(--clinical-accent)]">
-            You are here
-          </span>
-        ) : null}
-        {secondaryCode && secondaryTitle ? (
-          <div className="mt-3 grid gap-2 text-sm">
-            <p>
-              <span className="mr-2 text-xl font-extrabold text-[color:var(--clinical-accent)]">{secondaryCode}</span>
-              <span className="text-xs font-medium text-[color:var(--text-muted)]">{secondaryTitle}</span>
-            </p>
-          </div>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function VerifiedFooter() {
-  return (
-    <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 py-5 text-xs text-[color:var(--text-muted)] lg:py-6 lg:text-sm">
-      <span className="inline-flex items-center gap-2 font-extrabold text-[color:var(--clinical-accent)]">
-        <ShieldCheck aria-hidden="true" className="h-5 w-5" />
-        Source verified
-      </span>
-      <span>·</span>
-      <span>Official source</span>
-      <span>·</span>
-      <span>Aligned to MHA 2014</span>
-    </div>
-  );
-}
-
 const metaChipClass = "rounded-md px-2 py-1 text-2xs font-bold capitalize leading-none";
 
 /**
@@ -629,63 +520,6 @@ function MobileCards({
           <ChevronRight className="h-4 w-4" aria-hidden />
         </Link>
       )}
-    </section>
-  );
-}
-
-function MobilePathway() {
-  return (
-    <section className={cn(searchResultsSection, "p-3")}>
-      <h2 className="text-sm-minus font-extrabold text-[color:var(--text-heading)]">
-        Related pathway <span className="font-medium text-[color:var(--text-muted)]">( PSOLIS Transport )</span>
-      </h2>
-      <div className="mt-2 flex items-center gap-1 overflow-x-auto pb-0.5">
-        {[
-          ["1A", "Referral"],
-          ["4A", "Transport order"],
-          ["3A/4B", "Parallel"],
-          ["", "Destination Examination"],
-        ].map(([code, label], index) => (
-          <div key={`${code}-${label}`} className="flex items-center gap-1">
-            <div
-              className={cn(
-                "min-w-[64px] rounded-md border p-1.5 text-center",
-                index === 1
-                  ? "border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)]"
-                  : "border-[color:var(--border)] bg-[color:var(--surface)]",
-              )}
-            >
-              {code ? (
-                <p className={cn("text-sm font-extrabold leading-none text-[color:var(--clinical-accent)]", codeText)}>
-                  {code}
-                </p>
-              ) : null}
-              <p className="mt-0.5 text-2xs font-bold leading-4 text-[color:var(--text-muted)]">{label}</p>
-              {index === 1 ? (
-                <p className="mt-0.5 rounded-full bg-[color:var(--clinical-accent-soft)] px-1 py-0.5 text-2xs font-extrabold leading-4 text-[color:var(--clinical-accent)]">
-                  You are here
-                </p>
-              ) : null}
-            </div>
-            {index < 3 ? (
-              <ChevronRight aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-[color:var(--text-muted)]" />
-            ) : null}
-          </div>
-        ))}
-      </div>
-      <button
-        type="button"
-        aria-disabled="true"
-        onClick={ignoreUnavailableActivation}
-        title="Coming soon"
-        className={cn(
-          "mx-auto mt-1 flex min-h-tap cursor-not-allowed items-center gap-2 rounded-md px-2 text-sm-minus font-extrabold text-[color:var(--clinical-accent)] opacity-70",
-          searchFocusRing,
-        )}
-      >
-        <Workflow aria-hidden="true" className="h-4 w-4" />
-        View full pathway
-      </button>
     </section>
   );
 }
@@ -955,9 +789,6 @@ function FormsSearchResultsPageContent({ query }: FormsSearchResultsPageProps) {
           />
         )}
         <ActAndStandardsLink />
-        <div className="hidden lg:block">{supportsPathwayClaims ? <PathwayPanel /> : null}</div>
-        <div className="lg:hidden">{supportsPathwayClaims ? <MobilePathway /> : null}</div>
-        {registryReady && supportsPathwayClaims ? <VerifiedFooter /> : null}
       </main>
     </div>
   );

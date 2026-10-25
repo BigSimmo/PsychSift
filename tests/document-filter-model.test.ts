@@ -51,6 +51,19 @@ describe("document retrieval filter model", () => {
     expect(merged.labelTypesAny).toEqual(["service"]);
   });
 
+  it("counts only WA health services as local, not interstate ones", () => {
+    const withPublisher = (id: string, publisher: string) => ({
+      ...document(id, "FSH", "High"),
+      metadata: { document_status: "current", publisher },
+    });
+    const sources = [
+      withPublisher("wa", "South Metropolitan Health Service"),
+      withPublisher("qld", "Metro North Hospital and Health Service"),
+    ];
+    expect(filterDocumentsByRetrievalScope(sources, { locality: "local" }).map((item) => item.id)).toEqual(["wa"]);
+    expect(filterDocumentsByRetrievalScope(sources, { locality: "non_local" }).map((item) => item.id)).toEqual(["qld"]);
+  });
+
   it("compares order-independent scope state", () => {
     expect(sameDocumentScope({ risks: ["High", "Low"] }, { risks: ["Low", "High"] })).toBe(true);
   });

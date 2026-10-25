@@ -39,10 +39,12 @@ async function authorised(request: Request) {
 
 /**
  * Release held: the signed-in reader sees the sample team's example leave, and
- * a change is checked and answered as if it were saved. Nothing is stored.
+ * a change is checked and answered as if it were saved. Nothing is stored. The
+ * same `roster` rate limit applies, because each answer still parses the body.
  */
 async function sampleLeave(request: Request, operation: "GET" | "POST" | "PATCH" | "DELETE") {
-  await requireAuthenticatedUser(request, createAdminClient());
+  const { rate } = await authorised(request);
+  if (rate.limited) return rateLimitJsonResponse("Too many requests. Try again shortly.", rate);
   const [example] = demoRosterLeave();
   if (operation === "GET") return NextResponse.json({ leave: [example] }, { headers });
   if (operation === "POST") {

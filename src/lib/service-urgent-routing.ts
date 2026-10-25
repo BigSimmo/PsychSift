@@ -23,9 +23,11 @@ const IMMEDIATE_DANGER =
 // lines; an alcohol-withdrawal seizure keeps the Alcohol and Drug Support Line after 000.
 const MEDICAL_EMERGENCY =
   /\b(?:seizures?|seizing|convuls\w*|unconscious(?:ness)?|loss of consciousness|unresponsive|not breathing|stopped breathing|collaps(?:e|ed|ing)|anaphyla\w*)\b/i;
-// Wording that says the person is under 18: CAMHS Crisis Connect alone.
+// Wording that says the person is under 18: CAMHS Crisis Connect alone. Age shorthand such as
+// "16yo", "16 y/o" and "15 y.o." counts the same as "16 year old"; the lookahead stands in for
+// `\b` because "y.o." ends on a full stop.
 const CHILD =
-  /(?:\b(?:child(?:ren)?|kids?|teen(?:ager)?s?|adolescents?|minors?|under[- ]?18|(?:[0-9]|1[0-7])\s*[- ]?\s*(?:year|yr)s?[- ]?old)\b|<\s*18\b)/i;
+  /(?:\b(?:child(?:ren)?|kids?|teen(?:ager)?s?|adolescents?|minors?|under[- ]?18|(?:[0-9]|1[0-7])\s*[- ]?\s*(?:year|yr)s?[- ]?old)\b|\b(?:[0-9]|1[0-7])\s*[- ]?\s*(?:y\s*\/\s*o|y\.?\s*o\.?)(?![a-z0-9])|<\s*18\b)/i;
 // Owner decision 15 (Josh, 2026-09-25): plain youth wording does not say whether the person is
 // under or over 18, so a youth crisis pins both CAMHS Crisis Connect and the adult MHERL line,
 // CAMHS first. Explicit under-18 wording (CHILD) in the same query settles the age: CAMHS alone.

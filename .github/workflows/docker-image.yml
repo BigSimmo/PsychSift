@@ -78,8 +78,15 @@ on:
 concurrency:
   # Use a workflow-specific literal. In a reusable invocation `github.workflow`
   # is the caller's name, which would collide with and cancel the parent CI run.
-  group: docker-image-${{ github.ref }}
-  cancel-in-progress: true
+  #
+  # Main/release pushes and the daily schedule get one group per run, as in ci.yml
+  # and secret-scan.yml: a push run verifies a commit that is already merged, so a
+  # later merge (or the 18:00 scan starting at the same moment) must not cancel it.
+  # GitHub also keeps only one pending run per group, so a shared group would drop
+  # the middle run of three quick merges. PR and merge-queue calls keep the shared
+  # ref group so a newer head still supersedes an older one.
+  group: docker-image-${{ (github.event_name == 'push' || github.event_name == 'schedule') && github.run_id || github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'push' && github.event_name != 'schedule' }}
 
 permissions:
   contents: read

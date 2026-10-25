@@ -39,6 +39,8 @@ function signed(item: SpecifierCatalogItem, overrides: Partial<SpecifierCatalogI
       reviewedBy: "Dr Alex Example",
       reviewedAt: "2026-09-26T03:00:00.000Z",
       reviewedContentSha256: "a".repeat(64),
+      // A fresh sign-off covers the content as it now stands.
+      changedSinceReview: false,
       ...overrides,
     },
   };
@@ -70,9 +72,31 @@ describe("specifier reference page clinician review", () => {
     expect(screen.queryByText(placeholder.definition!.meaning)).toBeNull();
   });
 
+  it("withholds a signed definition that changed after the sign-off", () => {
+    render(<SpecifierReferencePage item={signed(defined, { changedSinceReview: true })} />);
+    expect(screen.getByText("Definition pending verification")).toBeInTheDocument();
+    expect(screen.queryByText(defined.definition!.meaning)).toBeNull();
+    expect(screen.queryByText(/Definition reviewed by/)).toBeNull();
+  });
+
   it("fails closed on a partial sign-off", () => {
     render(<SpecifierReferencePage item={signed(defined, { reviewedBy: null })} />);
     expect(screen.getByText("Definition pending verification")).toBeInTheDocument();
     expect(screen.queryByText(defined.definition!.meaning)).toBeNull();
+  });
+});
+
+describe("specifier reference page source status", () => {
+  // A checked source is not a clinician sign-off (audit S6), so the at-a-glance tile must
+  // match the grey review badge instead of reading "Source verified" in the success tone.
+  it("never presents a checked source as verified or signed off", () => {
+    const sourceChecked = specifierCatalogItems().find(
+      (item) => item.review.sourceVerificationStatus === "source-verified",
+    )!;
+    render(<SpecifierReferencePage item={unsigned(sourceChecked)} />);
+    const tile = screen.getByText("Source status").closest("div")!.parentElement!;
+    expect(tile).toHaveTextContent("Source checked, not signed off");
+    expect(tile.className).not.toMatch(/success/);
+    expect(screen.queryByText("Source verified")).toBeNull();
   });
 });

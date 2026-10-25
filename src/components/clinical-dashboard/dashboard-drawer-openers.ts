@@ -49,17 +49,8 @@ export function useDashboardDrawerOpeners({
 
   function openEvidenceDrawer() {
     closeDashboardTransientSurfaces();
-    const reviewTrigger =
-      (document.getElementById("answer-evidence-drawer-mobile-trigger") as HTMLButtonElement | null) ??
-      document.querySelector<HTMLButtonElement>(
-        '[data-testid="answer-source-drawer-trigger"], [data-testid="source-drawer-trigger"]',
-      );
-    if (reviewTrigger) {
-      reviewTrigger.scrollIntoView({ block: "center", behavior: resolveScrollBehavior() });
-      reviewTrigger.click();
-      return;
-    }
-
+    // There is no single evidence-drawer trigger to click any more (each source row
+    // opens its own drawer), so this goes to the answer's sources section.
     const sourcesSection = document.getElementById("sources");
     if (sourcesSection) {
       sourcesSection.scrollIntoView({ block: "start", behavior: resolveScrollBehavior() });

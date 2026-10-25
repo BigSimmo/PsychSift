@@ -618,6 +618,30 @@ describe("buildAnswerFollowUpSuggestions · thread and shape rules", () => {
     expect(suggestions).not.toContain("What does the indexed guidance not cover for lithium?");
   });
 
+  it("does not call a conflict a coverage gap on the management menu either (#181)", () => {
+    // The management menu carries its own `source_gap` template, gated on the
+    // `reported_gap` evidence term; a conflict alone must not satisfy it.
+    const conflictOnly = buildAnswerFollowUpSuggestions(
+      "lithium management",
+      {
+        ...answerFor({ query: "lithium management", queryClass: "broad_summary", intent: "general" }),
+        conflictsOrGaps: [{ type: "conflict", message: "Sources disagree on the ANC withholding threshold." }],
+      },
+      ["lithium management"],
+    );
+    const withGap = buildAnswerFollowUpSuggestions(
+      "lithium management",
+      {
+        ...answerFor({ query: "lithium management", queryClass: "broad_summary", intent: "general" }),
+        conflictsOrGaps: [{ type: "gap", message: "Paediatric dosing is not covered." }],
+      },
+      ["lithium management"],
+    );
+
+    expect(conflictOnly).not.toContain("What does the indexed guidance not cover for lithium?");
+    expect(withGap).toContain("What does the indexed guidance not cover for lithium?");
+  });
+
   it("offers no gap question when the topic is not supported by the evidence", () => {
     // `reportedGapQuestion` interpolates the topic, so offering it past this gate
     // would name a subject the corpus never mentioned.

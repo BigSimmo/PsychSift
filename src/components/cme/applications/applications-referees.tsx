@@ -4,7 +4,15 @@ import { Check, Copy, Users } from "lucide-react";
 import { useId, useState } from "react";
 
 import { focusRing } from "@/components/card-recipes";
-import { flatCard, flatRow, IconCircle, PatientDetailCatch, Tag, type TagTone } from "@/components/cme/cpd-feature-kit";
+import {
+  flatCard,
+  flatRow,
+  IconCircle,
+  PatientDetailCatch,
+  radioKeyTarget,
+  Tag,
+  type TagTone,
+} from "@/components/cme/cpd-feature-kit";
 import { Button } from "@/components/ui/button";
 import { announce } from "@/components/ui/live-announcer";
 import { Sheet } from "@/components/ui/sheet";
@@ -26,6 +34,7 @@ import {
   type RefereeStatus,
 } from "@/lib/cme/applications";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
+import { guardExampleAction } from "@/lib/example-data/guards";
 
 const statusTone: Record<RefereeStatus, TagTone> = {
   "not-asked": "neutral",
@@ -138,6 +147,7 @@ export function RefereeSheet({
   onSave,
   onRemove,
   onNudgeCopied,
+  exampleData,
 }: {
   readonly open: boolean;
   /** Null to add a new referee. */
@@ -147,6 +157,8 @@ export function RefereeSheet({
   readonly onSave: (draft: RefereeDraft) => void;
   readonly onRemove: (id: string) => void;
   readonly onNudgeCopied: (id: string) => void;
+  /** The referees are example records, which never leave the app, copied included. */
+  readonly exampleData: boolean;
 }) {
   return open ? (
     <RefereeSheetBody
@@ -157,6 +169,7 @@ export function RefereeSheet({
       onSave={onSave}
       onRemove={onRemove}
       onNudgeCopied={onNudgeCopied}
+      exampleData={exampleData}
     />
   ) : null;
 }
@@ -168,6 +181,7 @@ function RefereeSheetBody({
   onSave,
   onRemove,
   onNudgeCopied,
+  exampleData,
 }: {
   readonly referee: Referee | null;
   readonly today: string;
@@ -175,6 +189,7 @@ function RefereeSheetBody({
   readonly onSave: (draft: RefereeDraft) => void;
   readonly onRemove: (id: string) => void;
   readonly onNudgeCopied: (id: string) => void;
+  readonly exampleData: boolean;
 }) {
   const statusGroup = useId();
   const [name, setName] = useState(referee?.name ?? "");
@@ -205,6 +220,7 @@ function RefereeSheetBody({
 
   async function copyNudge() {
     if (!nudge || !referee) return;
+    if (!guardExampleAction(exampleData, "copy")) return;
     try {
       await copyTextToClipboard(nudge);
       setCopy("copied");
@@ -274,7 +290,7 @@ function RefereeSheetBody({
             aria-labelledby={statusGroup}
             className="grid grid-cols-2 gap-2 min-[380px]:grid-cols-3"
           >
-            {REFEREE_STATUSES.map((item) => {
+            {REFEREE_STATUSES.map((item, position) => {
               const selected = item.id === status;
               return (
                 <button
@@ -282,7 +298,16 @@ function RefereeSheetBody({
                   type="button"
                   role="radio"
                   aria-checked={selected}
+                  tabIndex={selected ? 0 : -1}
                   onClick={() => setStatus(item.id)}
+                  onKeyDown={(event) => {
+                    // One tab stop for the group; arrows, Home and End move the choice.
+                    const next = radioKeyTarget(event.key, position, REFEREE_STATUSES.length);
+                    if (next === null) return;
+                    event.preventDefault();
+                    setStatus(REFEREE_STATUSES[next]!.id);
+                    (event.currentTarget.parentElement?.children[next] as HTMLElement | undefined)?.focus();
+                  }}
                   data-testid={`applications-referee-status-${item.id}`}
                   className={cn(
                     focusRing,

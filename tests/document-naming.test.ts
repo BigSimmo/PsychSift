@@ -2,12 +2,14 @@ import { describe, expect, it } from "vitest";
 import { documentTitleKey, planDocumentName, smartDocumentTitle } from "../src/lib/document-naming";
 
 function supabaseWithDocuments(documents: unknown[]) {
-  // Minimal stub of the query chain planDocumentName uses.
+  // Minimal stub of the query chain planDocumentName uses, paged like PostgREST.
   return {
     from: () => ({
       select: () => ({
         eq: () => ({
-          limit: async () => ({ data: documents, error: null }),
+          order: () => ({
+            range: async (from: number, to: number) => ({ data: documents.slice(from, to + 1), error: null }),
+          }),
         }),
       }),
     }),
@@ -60,6 +62,24 @@ describe("document naming", () => {
       duplicateIndex: 2,
       duplicateReason: "same_title_or_filename",
     });
+  });
+
+  it("finds a same-title document beyond the first page of owner documents", async () => {
+    const others = Array.from({ length: 1500 }, (_, index) => ({
+      id: `doc-${String(index).padStart(4, "0")}`,
+      title: `Unrelated Policy ${index}`,
+      file_name: `unrelated-${index}.pdf`,
+      content_hash: `hash-other-${index}`,
+    }));
+    others[1200] = { id: "doc-1200", title: "Guideline", file_name: "guideline.pdf", content_hash: "hash-1" };
+    const plan = await planDocumentName({
+      supabase: supabaseWithDocuments(others),
+      ownerId: "owner",
+      fileName: "guideline.pdf",
+      contentHash: "hash-2",
+    });
+
+    expect(plan).toMatchObject({ title: "Guideline (Copy 2)", duplicateReason: "same_title_or_filename" });
   });
 
   it("matches a renamed document by its current title when the stored group key is stale", async () => {
