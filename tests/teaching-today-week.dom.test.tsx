@@ -22,7 +22,7 @@ vi.mock("@/components/on-call/on-call-entry-editor", () => ({
 }));
 
 import { TeachingToday } from "@/components/teaching/teaching-today";
-import { heroModel, restOfWeek, sessionRow } from "@/components/teaching/teaching-view-model";
+import { heroModel, joinLabel, restOfWeek, sessionRow } from "@/components/teaching/teaching-view-model";
 import { TeachingWeekScreen } from "@/components/teaching/teaching-week";
 import { readExampleData, resetExampleDataForTests } from "@/lib/example-data/store";
 import { useTeachingRoles } from "@/lib/teaching/page-visibility";
@@ -223,6 +223,15 @@ describe("the view model", () => {
     expect(restOfWeek([session(), journal, cancelled], OCC, NOW, TODAY)).toBe(
       `1${NB}more session · today's 16:00 is cancelled`,
     );
+  });
+
+  it("names the join platform only from its own domains, never from a look-alike host", () => {
+    expect(joinLabel("https://teams.microsoft.com/l/meetup-join/1")).toBe("Join on Teams");
+    expect(joinLabel("https://example.zoom.us/j/1")).toBe("Join on Zoom");
+    expect(joinLabel("https://example.webex.com/meet/room")).toBe("Join on Webex");
+    expect(joinLabel("https://teams.example-login.net/l/meetup-join/1")).toBe("Join online");
+    expect(joinLabel("https://zoom.example.test/j/1")).toBe("Join online");
+    expect(joinLabel("https://evilteams.microsoft.com.example.test/x")).toBe("Join online");
   });
 });
 

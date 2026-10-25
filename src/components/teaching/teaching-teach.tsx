@@ -283,6 +283,11 @@ function TeachPage({ demoMode }: { demoMode: boolean }) {
     </TeachingDepthPage>
   );
 }
+/**
+ * Superseded: no route mounts this page. `/teaching/teach` renders `TeachingPresenting`, whose four-check
+ * de-identification sheet replaced the single-tap confirm above. Do not mount or copy this page; it stays only
+ * while its tests are moved, under docs/agents/dead-code-deletion.md.
+ */
 export function TeachingTeach(props: { demoMode: boolean }) {
   return <TeachingAccountPage component={TeachPage} {...props} />;
 }

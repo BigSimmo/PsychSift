@@ -395,6 +395,22 @@ describe("AddResourceSheet", () => {
     expect(screen.getByText("Use a link that starts with https://")).toBeInTheDocument();
     expect(fetchCalls(fetchMock, "/api/teaching/resources")).toBe(0);
   });
+
+  it("keeps Add disabled while the title carries a patient detail, as everyone in the service sees it", () => {
+    const fetchMock = serveFetch(() => null);
+    render(<AddResourceSheet serviceId={TEAM_A} target={{ occurrenceId: OCC }} onClose={vi.fn()} onAdded={vi.fn()} />);
+    const title = screen.getByRole("textbox", { name: "Title" });
+    fireEvent.change(title, { target: { value: "Mrs Smith bed 12 case" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Link" }), { target: { value: "https://example.org/s" } });
+    fireEvent.click(screen.getByRole("checkbox", { name: "No patient details in this file" }));
+    const add = screen.getByRole("button", { name: "Add" });
+    expect(add).toBeDisabled();
+    expect(title).toHaveAttribute("aria-invalid", "true");
+    fireEvent.click(add);
+    expect(fetchCalls(fetchMock, "/api/teaching/resources")).toBe(0);
+    fireEvent.change(title, { target: { value: "Case presentation slides" } });
+    expect(add).toBeEnabled();
+  });
 });
 
 describe("SessionMaterials", () => {

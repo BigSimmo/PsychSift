@@ -238,6 +238,10 @@ describe("Teaching depth journeys", () => {
     });
     render(<TeachingImport demoMode={false} />);
     const input = await screen.findByLabelText(/Choose CSV/);
+    // Only a CSV is read on the phone; an XLSX goes to the server whole, and the page says so.
+    expect(
+      screen.getByText("A CSV is read on this device; an XLSX file is sent to PsychSift to be read. Up to 1 MB."),
+    ).toBeInTheDocument();
     const file = new File([], "timetable.csv", { type: "text/csv" });
     Object.defineProperty(file, "text", {
       value: async () =>
@@ -439,6 +443,39 @@ describe("Teaching depth journeys", () => {
     refuse = false;
     fireEvent.click(screen.getByRole("button", { name: /Save my target/ }));
     await waitFor(() => expect(screen.queryByLabelText("Your personal target (hours, optional)")).toBeNull());
+  });
+
+  it("keeps a held correction open with what was typed when the send fails, and closes it after a send", async () => {
+    let refuse = true;
+    vi.mocked(fetch).mockImplementation(async (_url, options) =>
+      options?.method === "POST"
+        ? refuse
+          ? reply({ error: "Not saved" }, 500)
+          : reply({ ok: true })
+        : reply({ pairings: [pairingView()] }),
+    );
+    render(<TeachingSupervision demoMode={false} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Correct Mon 28 Sep" }));
+    fireEvent.change(screen.getByLabelText("Correction reason"), { target: { value: "wrong_length" } });
+    const minutes = () => screen.getByLabelText("Corrected minutes");
+    fireEvent.change(minutes(), { target: { value: "75" } });
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    fireEvent.click(screen.getByRole("button", { name: "Send correction for confirmation" }));
+    // Held for Undo: the form stays, so a failed send still has the entries it promises.
+    expect(minutes()).toHaveValue(75);
+    await act(async () => vi.advanceTimersByTimeAsync(10000));
+    vi.useRealTimers();
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Your entries are still here/);
+    expect(posts()).toHaveLength(1);
+    await waitFor(() => expect(minutes()).toBeEnabled());
+    expect(minutes()).toHaveValue(75);
+    refuse = false;
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    fireEvent.click(screen.getByRole("button", { name: "Send correction for confirmation" }));
+    await act(async () => vi.advanceTimersByTimeAsync(10000));
+    vi.useRealTimers();
+    await waitFor(() => expect(screen.queryByLabelText("Corrected minutes")).toBeNull());
+    expect(posts()).toHaveLength(2);
   });
 });
 

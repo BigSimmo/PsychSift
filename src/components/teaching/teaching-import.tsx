@@ -119,7 +119,7 @@ function ImportPage({ demoMode }: { demoMode: boolean }) {
                     {fileName ?? "No file chosen"}
                   </p>
                   <p className="text-xs leading-snug text-[color:var(--text-muted)]">
-                    Read on this device. CSV or XLSX, up to 1 MB.
+                    A CSV is read on this device; an XLSX file is sent to PsychSift to be read. Up to 1 MB.
                   </p>
                 </div>
               </div>
@@ -281,8 +281,8 @@ function ImportPage({ demoMode }: { demoMode: boolean }) {
         </p>
       ) : null}
       <T5Note icon="shield">
-        A service timetable only. No patient details, attendance, passcodes or slides. Only timetable rows are sent for
-        preview.
+        A service timetable only. No patient details, attendance, passcodes or slides. An XLSX file is sent whole, with
+        every sheet, so remove any other sheets first. Only timetable rows are sent for preview.
       </T5Note>
     </TeachingDepthPage>
   );

@@ -133,6 +133,25 @@ describe("the presenter's phone kit", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't copy the link.");
   });
 
+  it("names the stream the shared screen shows, and keeps it when the phone's switch changes", async () => {
+    const created: Record<string, unknown>[] = [];
+    serveCheckin((url, body) => {
+      if (url === SESSION_URL) return json(200, detail({ canShowCode: true, hasJoinLink: true }));
+      if (url === TEAM_URL && body?.action === "display.create") {
+        created.push(body);
+        return json(200, { token: "t", path: `/teaching/display/${SECRET}`, expiresAt: "2026-09-30T06:00:00.000Z" });
+      }
+      return null;
+    });
+    render(<TeachingCheckinScreen occurrenceId={OCC} demoMode={false} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Show on a shared screen" }));
+    const panel = screen.getByTestId("teaching-checkin-shared");
+    await waitFor(() => expect(panel).toHaveTextContent("It shows the Room code. Link works until"));
+    expect(created[0]).toMatchObject({ stream: "room" });
+    fireEvent.click(screen.getByRole("radio", { name: "Teams" }));
+    expect(panel).toHaveTextContent("It shows the Room code.");
+  });
+
   it("shows the shared-screen control as busy while the link is made", async () => {
     let finish: (response: Response) => void = () => undefined;
     serveCheckin((url, body) =>
