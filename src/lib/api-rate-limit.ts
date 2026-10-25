@@ -214,7 +214,7 @@ function isGenerationBucket(bucket: ApiRateLimitBucket) {
  *   does not count here.
  *
  * Raising this raises the most one account can spend in a day, so treat a change here as a spend
- * decision, not a tuning knob.
+ * decision, not a tuning knob. The owner confirmed 250 a day on 25 Oct 2026.
  */
 export const SIGNED_IN_GENERATION_DAILY_CAP = { limit: 250, windowSeconds: 86_400 } as const;
 

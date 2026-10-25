@@ -85,6 +85,7 @@ export async function loadDocumentSummaryContext(documentId: string, ownerId?: s
   return { document, chunks: committedChunks };
 }
 
+// Wording approved by the owner on 25 Oct 2026; change it only with the owner's sign-off.
 export const UNSUPPORTED_SUMMARY_TEXT =
   "This summary could not be matched to the document's passages, so it is not shown. Read the document directly.";
 
