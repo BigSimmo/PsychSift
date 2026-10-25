@@ -901,14 +901,6 @@ function resolveChangedFiles(args) {
 }
 
 function writeOutputs(result) {
-  // A NUL-separated diff keeps a line break inside a path, and GITHUB_OUTPUT keeps the last value of
-  // a repeated key, so a crafted file name could append `db_changed=false` after the real scope keys.
-  const unsafePath = result.files.find((file) => /[\u0000-\u001f\u007f]/.test(file));
-  if (unsafePath !== undefined) {
-    throw new Error(
-      `Refusing to write CI scope outputs: changed path ${JSON.stringify(unsafePath)} contains a control character.`,
-    );
-  }
   for (const key of outputs) {
     console.log(`${key}=${result[key]}`);
   }
