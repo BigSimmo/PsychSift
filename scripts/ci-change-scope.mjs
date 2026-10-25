@@ -1068,9 +1068,13 @@ function assertBrowserAndAdvisoryScopes() {
       advisory_ui_changed: true,
     },
   );
-  assertScope("advisory-on-for-mockup-component-directory", ["src/components/example-mockups/example-flow.tsx"], {
-    advisory_ui_changed: true,
-  });
+  assertScope(
+    "advisory-on-for-mockup-component-directory",
+    ["src/components/calculator-mockups/guided-flow-mockup.tsx"],
+    {
+      advisory_ui_changed: true,
+    },
+  );
   // The directory rule must not swallow ordinary component paths.
   assertScope("advisory-off-for-non-mockup-component-directory", ["src/components/clinical-dashboard/mode-nav.tsx"], {
     ui_changed: true,
