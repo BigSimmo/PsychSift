@@ -96,7 +96,7 @@ describe("table fact generation", () => {
       ["", "", "Continuation note for the table"],
     ];
     for (const facts of [carryFacts(rows), carryFacts(rows, null), carryFacts(rows, [[1, 1]])]) {
-      expect(facts[1]?.clinical_parameter).toBe("Synthetic monitoring table");
+      expect(facts[1]?.clinical_parameter).toBeNull();
       expect(facts[1]?.metadata).not.toHaveProperty("row_label_inherited_from");
     }
   });
@@ -114,12 +114,7 @@ describe("table fact generation", () => {
         [2, 0],
       ],
     );
-    expect(facts.map((fact) => fact.clinical_parameter)).toEqual([
-      "Group A",
-      "Group A",
-      "Group A",
-      "Synthetic monitoring table",
-    ]);
+    expect(facts.map((fact) => fact.clinical_parameter)).toEqual(["Group A", "Group A", "Group A", null]);
   });
 
   it("resets inheritance across an empty separator row even when the next cell is marked merged", () => {
@@ -135,7 +130,7 @@ describe("table fact generation", () => {
       ],
     );
     expect(facts).toHaveLength(2);
-    expect(facts[1]?.clinical_parameter).toBe("Synthetic monitoring table");
+    expect(facts[1]?.clinical_parameter).toBeNull();
     expect(facts[1]?.metadata).not.toHaveProperty("row_label_inherited_from");
   });
 
@@ -159,7 +154,7 @@ describe("table fact generation", () => {
         },
       ],
     });
-    expect(facts[1]?.clinical_parameter).toBe("Synthetic monitoring table");
+    expect(facts[1]?.clinical_parameter).toBeNull();
     expect(facts[1]?.metadata).not.toHaveProperty("row_label_inherited_from");
   });
 
@@ -176,8 +171,33 @@ describe("table fact generation", () => {
         [2, 0],
       ],
     );
-    expect(facts[2]?.clinical_parameter).toBe("Synthetic monitoring table");
+    expect(facts[2]?.clinical_parameter).toBeNull();
     expect(facts[2]?.metadata).not.toHaveProperty("row_label_inherited_from");
+  });
+
+  // Audit EXT-06 (24 Oct 2026): a drug name spanning two columns covers the parameter cell from
+  // the left, so that row must not inherit the parameter of the row above.
+  it("does not carry a label down into a cell covered by a span from the left", () => {
+    const facts = buildTableFactRows({
+      job: { document_id: "doc-1", documents: { owner_id: "owner-1" } },
+      chunkRows: [],
+      insertedImages: [
+        {
+          id: "image-1",
+          pageNumber: 3,
+          tableTitle: "Table 3. Monitoring thresholds",
+          tableRows: [
+            ["Lithium", "Serum level", "> 1.5 mmol/L", "Withhold"],
+            ["Valproate (all formulations)", "", "< 50 mg/L", "Check adherence"],
+            ["", "Serum level", "> 1.2 mmol/L", "Repeat in 1 week"],
+          ],
+          tableColumns: ["Drug", "Parameter", "Threshold", "Action"],
+          tableMergedCells: [[1, 1]],
+        },
+      ],
+    });
+    expect(facts.map((fact) => fact.clinical_parameter)).toEqual(["Serum level", null, "Serum level"]);
+    expect(facts[1]?.metadata).not.toHaveProperty("row_label_inherited_from");
   });
 
   it("deduplicates repeated table rows from the same image", () => {
