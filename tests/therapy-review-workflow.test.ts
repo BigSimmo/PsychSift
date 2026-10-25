@@ -648,7 +648,10 @@ describe("Therapy clinician-input workflow", () => {
         fixedGeneratedPaths: fixture.fixedGeneratedPaths,
         listGeneratedPaths: fixture.listGeneratedPaths,
         runGenerator: () => undefined,
-        notice: (message: string) => notices.push(message),
+        notice: (message: string) => {
+          notices.push(message);
+          return true;
+        },
       }),
     ).not.toThrow();
 
@@ -670,7 +673,7 @@ describe("Therapy clinician-input workflow", () => {
         fixedGeneratedPaths: fixture.fixedGeneratedPaths,
         listGeneratedPaths: fixture.listGeneratedPaths,
         runGenerator: () => undefined,
-        notice: () => undefined,
+        notice: () => true,
       }),
     ).toThrow(lockPath);
 
