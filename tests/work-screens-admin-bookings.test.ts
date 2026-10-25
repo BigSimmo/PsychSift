@@ -6,6 +6,7 @@ import {
   BLANK_COURSE_DRAFT,
   bookedFor,
   bookingCalendarEvents,
+  bookingDay,
   bookingCalendarId,
   bookingWorkCalendarEntries,
   bookingWorkCalendarId,
@@ -13,6 +14,7 @@ import {
   cancelCourse,
   cancelMyBooking,
   courseAvailability,
+  courseBookingsCsv,
   courseById,
   courseDateTile,
   coursesForRenewals,
@@ -884,5 +886,49 @@ describe("organiserCourses", () => {
     const lists = organiserCourses(s, TODAY);
     expect(lists.drafts).toEqual([]);
     expect(lists.past.map((c) => c.id)).toEqual(["posted"]);
+  });
+});
+
+describe("courseBookingsCsv", () => {
+  it("dates Since by the day in the work time zone, not the UTC day", () => {
+    const c = course("c", { capacity: 1 });
+    const s = state(
+      [c],
+      [
+        // 07:30 on 12 November in Perth, still 11 November in UTC.
+        booking("b1", "c", "booked", "2026-11-11T23:30:00.000Z"),
+        booking("w1", "c", "waitlisted", "2026-11-12T03:00:00.000Z"),
+      ],
+    );
+    const rows = courseBookingsCsv(s, "c", ZONE)
+      .replace(/^\uFEFF/, "")
+      .trim()
+      .split("\r\n");
+    expect(rows).toEqual([
+      "Name,Status,Since",
+      "Person b1,Booked,2026-11-12",
+      'Person w1,"Waiting, 1 in line",2026-11-12',
+    ]);
+  });
+});
+
+describe("booking days", () => {
+  it("reads the day a booking was made in the work time zone, not UTC", () => {
+    // 06:30 Perth on Sat 24 Oct is still 23 Oct in UTC.
+    expect(bookingDay("2026-10-23T22:30:00.000Z", ZONE)).toBe("2026-10-24");
+    expect(bookingDay("2026-10-24T02:00:00.000Z", ZONE)).toBe("2026-10-24");
+  });
+
+  it("puts the work-zone day in the organiser's export", () => {
+    const s = state(
+      [course("c")],
+      [
+        booking("b1", "c", "booked", "2026-10-23T22:30:00.000Z", { person: "Dr A" }),
+        booking("w1", "c", "waitlisted", "2026-10-23T23:10:00.000Z", { person: "Dr B" }),
+      ],
+    );
+    const csv = courseBookingsCsv(s, "c", ZONE);
+    expect(csv).toContain("Dr A,Booked,2026-10-24");
+    expect(csv).toContain('Dr B,"Waiting, 1 in line",2026-10-24');
   });
 });

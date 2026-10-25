@@ -4,6 +4,7 @@ import {
   DEFAULT_REVIEW_CYCLE_YEARS,
   UNKNOWN_STATUS_DERIVATION_VERSION,
   deriveUnknownStatus,
+  reviewCycleAppliesTo,
   unknownStatusDerivationBasis,
 } from "@/lib/unknown-status-derivation";
 
@@ -25,7 +26,12 @@ loadEnvConfig(process.cwd());
  * review_due against that inferred date.
  *
  * Deliberately conservative:
+ *  - Only touches documents whose recorded publisher is WA Health
+ *    (`REVIEW_CYCLE_AUTHORITY_KEYS`); the cycle is not assumed for anyone else.
  *  - Only touches `document_status = "unknown"`; never overwrites a derived status.
+ *    Each row is re-read just before its write and skipped if its status or
+ *    publication date changed meanwhile; only the derived keys are merged onto
+ *    the fresh metadata, so a concurrent worker update is not overwritten.
  *  - Only touches docs WITH a `publication_date`; date-less unknowns stay unknown
  *    (there is nothing to infer from).
  *  - Skips future/implausible publication dates (likely mis-extractions) so a bad
@@ -93,7 +99,8 @@ async function main() {
 
   const derived: Array<{
     document: DocumentRow;
-    metadata: Record<string, unknown>;
+    publicationDate: unknown;
+    updates: Record<string, unknown>;
     reviewDate: string;
     status: string;
   }> = [];
@@ -101,18 +108,30 @@ async function main() {
 
   for (const document of documents) {
     const metadata = metadataRecord(document.metadata);
+    if (!reviewCycleAppliesTo(metadata)) {
+      skipCounts.publisher_without_review_cycle = (skipCounts.publisher_without_review_cycle ?? 0) + 1;
+      continue;
+    }
     const result = deriveUnknownStatus(metadata.publication_date, { reviewCycleYears: REVIEW_CYCLE_YEARS, now: NOW });
     if (result.kind === "skip") {
       skipCounts[result.reason] = (skipCounts[result.reason] ?? 0) + 1;
       continue;
     }
-    metadata.document_status = result.status;
-    metadata.review_date = result.reviewDate;
-    metadata.review_date_inferred = true;
-    metadata.unknown_status_derivation_version = UNKNOWN_STATUS_DERIVATION_VERSION;
-    metadata.unknown_status_derivation_basis = unknownStatusDerivationBasis(REVIEW_CYCLE_YEARS);
-    metadata.unknown_status_derived_at = new Date().toISOString();
-    derived.push({ document, metadata, reviewDate: result.reviewDate, status: result.status });
+    const updates: Record<string, unknown> = {
+      document_status: result.status,
+      review_date: result.reviewDate,
+      review_date_inferred: true,
+      unknown_status_derivation_version: UNKNOWN_STATUS_DERIVATION_VERSION,
+      unknown_status_derivation_basis: unknownStatusDerivationBasis(REVIEW_CYCLE_YEARS),
+      unknown_status_derived_at: new Date().toISOString(),
+    };
+    derived.push({
+      document,
+      publicationDate: metadata.publication_date,
+      updates,
+      reviewDate: result.reviewDate,
+      status: result.status,
+    });
   }
 
   const summary = {
@@ -136,14 +155,33 @@ async function main() {
 
   if (!APPLY) return;
 
+  let written = 0;
+  let changedSinceRead = 0;
   for (const item of derived) {
+    // Re-read so a worker or backfill that touched this row since the scan is not
+    // overwritten with the start-up copy, and only the derived keys are merged in.
+    const { data: fresh, error: readError } = await supabase
+      .from("documents")
+      .select("metadata")
+      .eq("id", item.document.id)
+      .single();
+    if (readError) throw new Error(`Failed to re-read ${item.document.file_name}: ${readError.message}`);
+    const current = metadataRecord(fresh?.metadata);
+    if ((current.document_status ?? "unknown") !== "unknown" || current.publication_date !== item.publicationDate) {
+      changedSinceRead += 1;
+      continue;
+    }
     const { error } = await supabase
       .from("documents")
-      .update({ metadata: item.metadata as Json })
+      .update({ metadata: { ...current, ...item.updates } as Json })
       .eq("id", item.document.id);
     if (error) throw new Error(`Failed to update ${item.document.file_name}: ${error.message}`);
+    written += 1;
   }
-  console.log(`Derived document_status for ${derived.length} previously-unknown documents.`);
+  console.log(
+    `Derived document_status for ${written} previously-unknown documents` +
+      (changedSinceRead ? `; skipped ${changedSinceRead} that changed since the scan.` : "."),
+  );
 }
 
 main().catch((error) => {

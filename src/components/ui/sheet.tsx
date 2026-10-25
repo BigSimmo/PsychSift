@@ -232,10 +232,19 @@ export function Sheet({
       return undefined;
     }
     const stateKey = `ps_sheet_${sheetId}`;
-    try {
-      window.history.pushState({ [stateKey]: true }, "");
-    } catch {
-      // Ignore storage/history exceptions in restricted embeds
+    // A parent that closes the sheet itself (a filter sheet's Done button)
+    // bypasses requestClose, so the entry pushed here stays behind as the
+    // current entry. Reopening on that untouched leftover reuses it instead of
+    // stacking another same-URL entry, so repeated open-then-Done cycles cannot
+    // make Back need one extra press per use. The stored href means an entry
+    // whose URL was rewritten since the push is never reused.
+    const href = window.location.href;
+    if (window.history.state?.[stateKey] !== href) {
+      try {
+        window.history.pushState({ [stateKey]: href }, "");
+      } catch {
+        // Ignore storage/history exceptions in restricted embeds
+      }
     }
 
     const handlePopState = () => {
@@ -249,7 +258,8 @@ export function Sheet({
       // that pops can land after a later replaceState and wipe that URL
       // (filter sheets were undoing the DSM search query). The pushed entry
       // is removed when the user dismisses the sheet, which calls history.back()
-      // while this listener is still attached.
+      // while this listener is still attached. A parent-driven close leaves
+      // one same-URL entry, which the next open of this sheet reuses above.
     };
   }, [open, dismissOnBack, sheetId]);
 

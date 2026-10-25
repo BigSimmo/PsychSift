@@ -623,6 +623,9 @@ function logRetrievalDiagnostics(args: {
   })();
 }
 
+// Upper bound on the redacted failure message kept in rag_queries metadata.
+const MAX_FAILURE_CAUSE_MESSAGE_CHARS = 300;
+
 function logSearchObservation(args: {
   supabase: ReturnType<typeof createAdminClient>;
   ownerId?: string | null;
@@ -999,6 +1002,9 @@ export async function POST(request: Request) {
         },
       };
       if (ownerId && supabase) {
+        // rag_queries is a durable sink, so the driver message goes through the same redactor as
+        // the logs (it can carry a URL, path, credential-like token or HTML body) and is capped.
+        const safeCause = safeErrorLogDetails(error);
         logSearchObservation({
           supabase,
           ownerId,
@@ -1008,7 +1014,10 @@ export async function POST(request: Request) {
           failure: {
             code,
             causeName: error.name,
-            causeMessage: error.message,
+            causeMessage:
+              typeof safeCause.message === "string"
+                ? safeCause.message.slice(0, MAX_FAILURE_CAUSE_MESSAGE_CHARS)
+                : null,
             sqlState: extractSqlState(error),
           },
         });

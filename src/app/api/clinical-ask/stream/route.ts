@@ -25,10 +25,12 @@ import { runClinicalAsk } from "@/lib/clinical-ask/orchestrator";
 import { suggestClinicalAskContext, synthesizeClinicalAskDraft } from "@/lib/clinical-ask/synthesis";
 import { clinicalAskRequestPatientDetail } from "@/lib/clinical-question-patient-check-server";
 import { PublicApiError, jsonError } from "@/lib/http";
+import { logger } from "@/lib/logger";
 import { setAgentConversationId } from "@/lib/observability/agent-monitoring";
 import { resolveRetrievalAccessScope } from "@/lib/owner-scope";
 import { requireSignedInClinicalAccess } from "@/lib/clinical-access";
 import { publicAccessContext } from "@/lib/public-api-access";
+import { safeErrorLogDetails } from "@/lib/privacy";
 import { buildServerTimingHeader, preambleServerTimingEntries } from "@/lib/server-timing";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, unauthorizedResponse } from "@/lib/supabase/auth";
@@ -145,6 +147,9 @@ function clinicalAskStream(
             // Client cleanly aborted or navigated away — do not emit internal_error frame.
             return;
           }
+          // A caught failure never reaches jsonError's logging, so record it here or operators have
+          // no trace of it. safeErrorLogDetails redacts the message and keeps one stack line.
+          logger.error("Clinical Ask stream failed", safeErrorLogDetails(error));
           send({ type: "error", code: "internal_error", retryable: true, message: "Clinical Ask failed safely." });
         } finally {
           clearInterval(heartbeat);

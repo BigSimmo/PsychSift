@@ -91,7 +91,7 @@ function Fairness({ serviceId, overview }: { serviceId: string; overview: Roster
           </tbody>
         </table>
       </div>
-      <p className="text-xs text-muted-foreground">
+      <p className="text-xs text-[color:var(--text-muted)]">
         Counts cover this team&apos;s roster only. Leave and on-call time are excluded from worked hours.
       </p>
     </section>
@@ -336,7 +336,7 @@ export function RosterCoverTab({ serviceId, overview }: { serviceId: string; ove
         </table>
       </div>
       {!maker.data.needs.length ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-[color:var(--text-muted)]">
           Showing rostered counts. Staffing requirements have not been set.
         </p>
       ) : null}

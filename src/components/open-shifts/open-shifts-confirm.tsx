@@ -33,6 +33,17 @@ export function ConfirmSheet({
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The sheet stays mounted on pages that do not move on after a success, so
+  // closing it clears the busy state: reopened, it must not show a stuck button
+  // that also blocks Escape and the backdrop.
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (!open) {
+      setBusy(false);
+      setError(null);
+    }
+  }
   async function confirm() {
     setBusy(true);
     setError(null);

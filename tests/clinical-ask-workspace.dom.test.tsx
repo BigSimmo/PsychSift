@@ -3,6 +3,9 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const navigation = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => navigation }));
+const announcer = vi.hoisted(() => ({ announce: vi.fn() }));
+vi.mock("@/components/ui/live-announcer", () => announcer);
+import { ClinicalAskAnswerSurface } from "@/components/clinical-dashboard/clinical-ask-answer-surface";
 import {
   ClinicalAskSessionProvider,
   useClinicalAskSession,
@@ -129,7 +132,59 @@ function Harness({
 describe("ClinicalAskWorkspace", () => {
   beforeEach(() => {
     navigation.push.mockReset();
+    announcer.announce.mockReset();
     HTMLElement.prototype.scrollIntoView = vi.fn();
+  });
+
+  it("announces each Clinical Ask result through the shared announcer", () => {
+    render(
+      <ClinicalAskSessionProvider>
+        <Harness />
+      </ClinicalAskSessionProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Seed" }));
+    fireEvent.click(screen.getByRole("button", { name: "Gap" }));
+    expect(announcer.announce).toHaveBeenLastCalledWith("Clinical Ask found an evidence gap.");
+    fireEvent.click(screen.getByRole("button", { name: "Clarify" }));
+    expect(announcer.announce).toHaveBeenLastCalledWith("Clinical Ask needs more Case Context.");
+    fireEvent.click(screen.getByRole("button", { name: "Fail" }));
+    expect(announcer.announce).toHaveBeenLastCalledWith("Clinical Ask could not complete.");
+    fireEvent.click(screen.getByRole("button", { name: "Answer" }));
+    expect(announcer.announce).toHaveBeenLastCalledWith("Clinical Ask answer ready.");
+  });
+
+  it("releases a feedback choice whose save failed and announces a successful copy", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 500 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    try {
+      render(
+        <ClinicalAskAnswerSurface
+          response={{
+            state: "answered",
+            mode: "services",
+            lead: { id: "lead", text: "Consider the local pathway.", evidenceIds: [] },
+            sections: [],
+            conflicts: [],
+            missingInformation: [],
+            followUps: [],
+            handoffs: [],
+            evidence: [],
+          }}
+          feedbackMetadata={{ interactionId: "i-1", answerHash: "h-1", feedbackToken: "t-1" }}
+        />,
+      );
+      const helpful = screen.getByRole("button", { name: "Helpful" });
+      fireEvent.click(helpful);
+      expect(await screen.findByText("Feedback could not be saved.")).toBeInTheDocument();
+      expect(helpful).toHaveAttribute("aria-pressed", "false");
+
+      fireEvent.click(screen.getByRole("button", { name: "Copy answer" }));
+      await waitFor(() => expect(announcer.announce).toHaveBeenCalledWith("Answer copied."));
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
   it("reviews suggestions, evidence gaps, and clears memory-only case state", () => {
     render(

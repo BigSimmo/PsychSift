@@ -22,6 +22,7 @@ import {
   onCallEntryFreshness,
   type OnCallEntry,
   type OnCallLinkedDocument,
+  type OnCallStepHours,
   onCallEntryIsEditable,
 } from "@/lib/on-call/entry-model";
 import { ON_CALL_DEMO_PLAYBOOK_TRIGGER } from "@/lib/on-call/demo-playbook";
@@ -62,7 +63,19 @@ export type { OnCallLinkedDocument };
 
 interface OnCallPlaybookDetails {
   trigger: string;
-  escalationSteps: readonly { order: number; whoToCall: string; when: string; phone?: string }[];
+  escalationSteps: readonly {
+    order: number;
+    whoToCall: string;
+    when: string;
+    phone?: string;
+    hours?: OnCallStepHours;
+  }[];
+}
+
+/** The same hours word the Escalate page shows; a step with no value applies at any time. */
+function stepHoursWord(hours: OnCallStepHours | undefined): string | null {
+  if (hours === undefined || hours === "any") return null;
+  return hours === "after-hours" ? "After hours" : "Working hours";
 }
 
 function parsePlaybookDetails(details: unknown): OnCallPlaybookDetails | null {
@@ -293,7 +306,7 @@ function PlaybookCard({
                   <OnCallEntryRow
                     icon={onCallTelHref(step.phone) ? Phone : undefined}
                     title={`${step.order}. ${step.whoToCall}`}
-                    subtitle={step.when}
+                    subtitle={[step.when, stepHoursWord(step.hours)].filter(Boolean).join(" · ")}
                     href={onCallTelHref(step.phone)}
                     onActivate={() => recordOnCallRecent({ id: entry.id, title: entry.title })}
                     testId={`on-call-playbook-step-${entry.slug}-${step.order}`}

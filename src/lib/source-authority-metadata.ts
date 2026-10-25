@@ -64,7 +64,9 @@ const registeredCodes = sourceAuthorityRegistry
   .flatMap((authority) => authority.codes.map((code) => ({ code: code.toUpperCase(), authority })))
   .sort((left, right) => right.code.length - left.code.length || left.code.localeCompare(right.code));
 
-const caseSensitiveIdentityCodes = new Set(["WHO"]);
+// Codes that are also ordinary English words match only in capitals, so "Nice and easy
+// guide" or "people who care" never names NICE or WHO as the publisher.
+const caseSensitiveIdentityCodes = new Set(["WHO", "NICE"]);
 
 const compiledRegisteredCodes = registeredCodes.map((candidate) => {
   const flags = caseSensitiveIdentityCodes.has(candidate.code) ? "" : "i";

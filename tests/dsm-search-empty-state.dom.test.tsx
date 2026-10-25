@@ -166,4 +166,31 @@ describe("DsmSearchPage compare tray names", () => {
     expect(tray).toHaveTextContent("Major depressive disorder · Panic disorder");
     expect(tray).not.toHaveTextContent("major-depressive-disorder");
   });
+
+  it("names a ticked diagnosis outside the results in the comparison aside as the tray does", () => {
+    render(
+      <DsmSearchPage
+        query="review"
+        categories={categories}
+        results={[
+          {
+            slug: "mood-1",
+            title: "Mood one",
+            icd_code: "F00",
+            category: { key: "mood", label: "Mood disorders" },
+            summary: "Mood one summary",
+            criteriaCount: 2,
+            criteriaProvenance: "dsm_criteria",
+            differentialCount: 1,
+            specifierCount: 1,
+          },
+        ]}
+        initialIds={["major-depressive-disorder"]}
+      />,
+    );
+
+    const aside = screen.getByRole("complementary", { name: "Comparison selection" });
+    expect(aside).toHaveTextContent("Major depressive disorder");
+    expect(aside).not.toHaveTextContent("major-depressive-disorder");
+  });
 });

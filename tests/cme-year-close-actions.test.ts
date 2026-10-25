@@ -34,6 +34,8 @@ describe("year-end actions", () => {
     expect(actions.find(({ id }) => id === "copy")?.status).toMatch(/\d+ to copy|All copied/);
     expect(actions.find(({ id }) => id === "targets")?.status).toBe("Not checked");
     expect(actions.find(({ id }) => id === "summary")?.href).toBe("/cme/summary?year=2026");
+    // The self-evaluation date is recorded in the Set up form, not the read-only targets page.
+    expect(actions.find(({ id }) => id === "evaluation")?.href).toBe("/cme/setup?year=2026&edit=1#cme-setup-steps");
     expect(
       buildCmeYearEndActions({
         set,

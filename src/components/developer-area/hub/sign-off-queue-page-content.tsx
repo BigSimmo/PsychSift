@@ -61,14 +61,32 @@ const FAMILY_LINK_CLASS =
 const FAMILY_LINK_ACTIVE_CLASS =
   "inline-flex min-h-12 w-full items-center gap-2 rounded-lg border border-[color:var(--border-strong)] bg-[color:var(--surface-subtle)] px-3 py-2 text-sm leading-6 text-[color:var(--text-heading)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]";
 
+/**
+ * The other section's selection, carried on every link so paging one section
+ * does not reset the other. Each id is set only when the reader chose it, so a
+ * page opened bare keeps its short links.
+ */
+type KeptDomain = { domain?: SignOffDomainId; signedPage: number };
+type KeptFamily = { family?: SignOffFamilyId; page: number };
+
+function familyParams({ family, page }: KeptFamily): string[] {
+  if (!family) return [];
+  return page <= 1 ? [`family=${family}`] : [`family=${family}`, `page=${page}`];
+}
+
+function domainParams({ domain, signedPage }: KeptDomain): string[] {
+  if (!domain) return [];
+  return signedPage <= 1 ? [`domain=${domain}`] : [`domain=${domain}`, `signedPage=${signedPage}`];
+}
+
 /** `?family=…&page=…`. Page 1 is left implicit so the shortest link is the common one. */
-function queueHref(family: SignOffFamilyId, page: number): string {
-  return page <= 1 ? `?family=${family}` : `?family=${family}&page=${page}`;
+function queueHref(family: SignOffFamilyId, page: number, kept: KeptDomain = { signedPage: 1 }): string {
+  return `?${[...familyParams({ family, page }), ...domainParams(kept)].join("&")}`;
 }
 
 /** `?domain=…&signedPage=…`. Page 1 is left implicit. */
-function domainSignedHref(domain: SignOffDomainId, signedPage: number): string {
-  return signedPage <= 1 ? `?domain=${domain}` : `?domain=${domain}&signedPage=${signedPage}`;
+function domainSignedHref(domain: SignOffDomainId, signedPage: number, kept: KeptFamily = { page: 1 }): string {
+  return `?${[...familyParams(kept), ...domainParams({ domain, signedPage })].join("&")}`;
 }
 
 function formatSignedBySummary(counts: Readonly<Record<string, number>>): string {
@@ -163,16 +181,18 @@ function Pager({
   page,
   totalPages,
   ariaLabel,
+  kept,
 }: {
   family: SignOffFamilyId;
   page: number;
   totalPages: number;
   ariaLabel: string;
+  kept: KeptDomain;
 }) {
   return (
     <div className="flex items-center gap-2" role="navigation" aria-label={ariaLabel}>
       {page > 1 ? (
-        <Link href={queueHref(family, page - 1)} aria-label="Previous page" className={PAGER_LINK_CLASS}>
+        <Link href={queueHref(family, page - 1, kept)} aria-label="Previous page" className={PAGER_LINK_CLASS}>
           <ChevronLeft aria-hidden="true" className="size-icon-sm" />
           Previous
         </Link>
@@ -186,7 +206,7 @@ function Pager({
         {page} / {totalPages}
       </span>
       {page < totalPages ? (
-        <Link href={queueHref(family, page + 1)} aria-label="Next page" className={PAGER_LINK_CLASS}>
+        <Link href={queueHref(family, page + 1, kept)} aria-label="Next page" className={PAGER_LINK_CLASS}>
           Next
           <ChevronRight aria-hidden="true" className="size-icon-sm" />
         </Link>
@@ -205,17 +225,19 @@ function SignedDomainPager({
   page,
   totalPages,
   ariaLabel,
+  kept,
 }: {
   domain: SignOffDomainId;
   page: number;
   totalPages: number;
   ariaLabel: string;
+  kept: KeptFamily;
 }) {
   return (
     <div className="flex items-center gap-2" role="navigation" aria-label={ariaLabel}>
       {page > 1 ? (
         <Link
-          href={domainSignedHref(domain, page - 1)}
+          href={domainSignedHref(domain, page - 1, kept)}
           aria-label="Previous signed records page"
           className={PAGER_LINK_CLASS}
         >
@@ -233,7 +255,7 @@ function SignedDomainPager({
       </span>
       {page < totalPages ? (
         <Link
-          href={domainSignedHref(domain, page + 1)}
+          href={domainSignedHref(domain, page + 1, kept)}
           aria-label="Next signed records page"
           className={PAGER_LINK_CLASS}
         >
@@ -253,9 +275,11 @@ function SignedDomainPager({
 function SignedRecordsInspector({
   domain,
   requestedSignedPage,
+  kept,
 }: {
   domain: SignOffDomainSummary;
   requestedSignedPage: number;
+  kept: KeptFamily;
 }) {
   const totalPages = Math.max(1, Math.ceil(domain.signedRows.length / SIGN_OFF_PAGE_SIZE));
   const page = Math.min(Math.max(1, requestedSignedPage), totalPages);
@@ -288,6 +312,7 @@ function SignedRecordsInspector({
             page={page}
             totalPages={totalPages}
             ariaLabel={`${domain.name} signed records pagination`}
+            kept={kept}
           />
         ) : null}
       </div>
@@ -305,6 +330,7 @@ function SignedRecordsInspector({
             page={page}
             totalPages={totalPages}
             ariaLabel={`${domain.name} signed records pagination bottom`}
+            kept={kept}
           />
         </div>
       ) : null}
@@ -312,7 +338,15 @@ function SignedRecordsInspector({
   );
 }
 
-function FamilySection({ family, requestedPage }: { family: SignOffFamily; requestedPage: number }) {
+function FamilySection({
+  family,
+  requestedPage,
+  kept,
+}: {
+  family: SignOffFamily;
+  requestedPage: number;
+  kept: KeptDomain;
+}) {
   const totalPages = Math.max(1, Math.ceil(family.rows.length / SIGN_OFF_PAGE_SIZE));
   const page = Math.min(Math.max(1, requestedPage), totalPages);
   const startIndex = (page - 1) * SIGN_OFF_PAGE_SIZE;
@@ -332,11 +366,17 @@ function FamilySection({ family, requestedPage }: { family: SignOffFamily; reque
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p data-testid="developer-sign-off-pagination-summary" className={META_CLASS}>
-          Showing {startIndex + 1}–{startIndex + pageRows.length} of {family.rows.length} records in this family (page{" "}
-          {page} of {totalPages}). The family totals above are unaffected by this slice.
+          Showing {family.rows.length === 0 ? 0 : startIndex + 1}–{startIndex + pageRows.length} of {family.rows.length}{" "}
+          records in this family (page {page} of {totalPages}). The family totals above are unaffected by this slice.
         </p>
         {totalPages > 1 ? (
-          <Pager family={family.id} page={page} totalPages={totalPages} ariaLabel={`${family.name} pagination`} />
+          <Pager
+            family={family.id}
+            page={page}
+            totalPages={totalPages}
+            ariaLabel={`${family.name} pagination`}
+            kept={kept}
+          />
         ) : null}
       </div>
 
@@ -353,6 +393,7 @@ function FamilySection({ family, requestedPage }: { family: SignOffFamily; reque
             page={page}
             totalPages={totalPages}
             ariaLabel={`${family.name} pagination bottom`}
+            kept={kept}
           />
         </div>
       ) : null}
@@ -385,6 +426,16 @@ export function SignOffQueuePageContent({
     ledger.domains.find((domain) => domain.id === requestedDomain) ??
     ledger.domains.find((domain) => domain.id === "wa-mha-forms") ??
     ledger.domains[0]!;
+  // Each section's links carry the other's explicit choice, so paging one does
+  // not send the other back to its default.
+  const keptFamily: KeptFamily = {
+    family: selected.id === requestedFamily ? selected.id : undefined,
+    page: requestedPage,
+  };
+  const keptDomain: KeptDomain = {
+    domain: selectedDomain.id === requestedDomain ? selectedDomain.id : undefined,
+    signedPage: requestedSignedPage,
+  };
   // Counted per row, not per family: the dictionary family is flagged unrouted
   // because its 333 sense drafts have nowhere to go, but its 96 definition
   // reviews do point at a live entry. Counting the family whole would report 429
@@ -477,7 +528,7 @@ export function SignOffQueuePageContent({
               <li key={domain.id} className={CARD_CLASS} data-testid={`developer-sign-off-ledger-domain-${domain.id}`}>
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <Link
-                    href={domainSignedHref(domain.id, 1)}
+                    href={domainSignedHref(domain.id, 1, keptFamily)}
                     aria-current={active ? "true" : undefined}
                     className="text-sm font-bold text-[color:var(--text-heading)] underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
                   >
@@ -507,7 +558,7 @@ export function SignOffQueuePageContent({
         </ul>
       </PanelSection>
 
-      <SignedRecordsInspector domain={selectedDomain} requestedSignedPage={requestedSignedPage} />
+      <SignedRecordsInspector domain={selectedDomain} requestedSignedPage={requestedSignedPage} kept={keptFamily} />
 
       <PanelSection
         testId="developer-sign-off-needs-signing-breakdown"
@@ -576,7 +627,7 @@ export function SignOffQueuePageContent({
               <li>
                 <span className="font-bold text-[color:var(--text)]">
                   {therapyPrerequisiteRows.length} Therapy Compass records (
-                  <Link href={queueHref("therapy", 1)} className="underline">
+                  <Link href={queueHref("therapy", 1, keptDomain)} className="underline">
                     open in queue
                   </Link>
                   ):
@@ -591,7 +642,7 @@ export function SignOffQueuePageContent({
               <li>
                 <span className="font-bold text-[color:var(--text)]">
                   {waitingIn("specifiers", "awaitingPrerequisites")} DSM-5-TR specifier catalog placeholders (
-                  <Link href={queueHref("specifiers", 1)} className="underline">
+                  <Link href={queueHref("specifiers", 1, keptDomain)} className="underline">
                     open in queue
                   </Link>
                   ):
@@ -603,7 +654,7 @@ export function SignOffQueuePageContent({
               <li>
                 <span className="font-bold text-[color:var(--text)]">
                   {waitingIn("dictionary", "awaitingPrerequisites")} Dictionary definition verdicts (
-                  <Link href={queueHref("dictionary", 1)} className="underline">
+                  <Link href={queueHref("dictionary", 1, keptDomain)} className="underline">
                     open in queue
                   </Link>
                   ):
@@ -640,7 +691,7 @@ export function SignOffQueuePageContent({
               <li>
                 <span className="font-bold text-[color:var(--text)]">
                   {waitingIn("differentials", "awaitingTool")} exported differential snapshot records (
-                  <Link href={queueHref("differentials", 1)} className="underline">
+                  <Link href={queueHref("differentials", 1, keptDomain)} className="underline">
                     open in queue
                   </Link>
                   ):
@@ -654,7 +705,7 @@ export function SignOffQueuePageContent({
               <li>
                 <span className="font-bold text-[color:var(--text)]">
                   {waitingIn("dictionary", "awaitingTool")} unpublished dictionary sense drafts (
-                  <Link href={queueHref("dictionary", 1)} className="underline">
+                  <Link href={queueHref("dictionary", 1, keptDomain)} className="underline">
                     open in queue
                   </Link>
                   ):
@@ -689,7 +740,7 @@ export function SignOffQueuePageContent({
             return (
               <li key={family.id}>
                 <Link
-                  href={queueHref(family.id, 1)}
+                  href={queueHref(family.id, 1, keptDomain)}
                   aria-current={active ? "page" : undefined}
                   className={active ? FAMILY_LINK_ACTIVE_CLASS : FAMILY_LINK_CLASS}
                 >
@@ -702,7 +753,7 @@ export function SignOffQueuePageContent({
         </ul>
       </PanelSection>
 
-      <FamilySection family={selected} requestedPage={requestedPage} />
+      <FamilySection family={selected} requestedPage={requestedPage} kept={keptDomain} />
     </PanelPageShell>
   );
 }

@@ -66,7 +66,10 @@ function requirementAction(requirement: CmeRequirement, year: number): CmeYearCh
     case "task":
       return requirement.id === "plan"
         ? { label: "Open your plan", href: "/cme/plan" }
-        : { label: "Mark it done in set up", href: "/cme/setup" };
+        : {
+            label: "Mark it done in set up",
+            href: `/cme/setup?year=${year}&edit=1#cme-requirement-${encodeURIComponent(requirement.id)}`,
+          };
     case "activity-count":
       return { label: "Tag an activity in your log", href: `/cme/log?year=${year}` };
     default:

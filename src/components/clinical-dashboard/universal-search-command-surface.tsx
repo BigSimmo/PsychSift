@@ -556,7 +556,11 @@ export function UniversalSearchCommandSurface({
   const suppressLocalOnlySmartActions = smartNaturalSearch && isSmartLocalOnlyMode(modeId);
   const listboxId = useId();
   const router = useRouter();
-  const [activeIndex, setActiveIndex] = useState(-1);
+  // The highlighted row, held by item id and the query it was picked under
+  // rather than by position: typing, or streamed groups inserting rows above
+  // it, otherwise moved the highlight onto a different record that Enter then
+  // opened. A new query clears it; a row that disappears clears it.
+  const [activeSelection, setActiveSelection] = useState<{ id: string; query: string } | null>(null);
   // The dropdown is a fine-pointer desktop enhancement. Width-only checks let
   // wide, zoomed, or desktop-mode phones open it over the page.
   const dropdownMinimumWidthQuery = commandDropdownMinimumWidthMediaQuery(placement);
@@ -564,7 +568,7 @@ export function UniversalSearchCommandSurface({
   const closeDropdownWhenUndisplayable = useEventCallback(() => {
     setEagerDropdownDisplayable(null);
     onDropdownOpenChange(false);
-    setActiveIndex(-1);
+    setActiveSelection(null);
   });
   const mediaDropdownDisplayable = useCommandDropdownDisplayable(placement, closeDropdownWhenUndisplayable);
   // Focus can arrive before the shared hook's post-hydration effect has
@@ -1090,13 +1094,21 @@ export function UniversalSearchCommandSurface({
   ]);
 
   const flatItems = useMemo(() => sections.flatMap((section) => section.items), [sections]);
-  const activeItemId = activeIndex >= 0 && activeIndex < flatItems.length ? flatItems[activeIndex].id : null;
+  const activeIndex =
+    activeSelection && activeSelection.query === trimmedQuery
+      ? flatItems.findIndex((item) => item.id === activeSelection.id)
+      : -1;
+  const activeItemId = activeIndex >= 0 ? flatItems[activeIndex].id : null;
+  const setActiveIndex = (index: number) => {
+    const item = flatItems[index];
+    setActiveSelection(item ? { id: item.id, query: trimmedQuery } : null);
+  };
 
   function handleComposerKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {
     if (!dropdownDisplayable) {
       if (event.key === "Escape") {
         onDropdownOpenChange(false);
-        setActiveIndex(-1);
+        setActiveSelection(null);
       }
       onInputKeyDown?.(event);
       return;
@@ -1104,13 +1116,13 @@ export function UniversalSearchCommandSurface({
     if (event.key === "ArrowDown") {
       event.preventDefault();
       onDropdownOpenChange(true);
-      setActiveIndex((current) => (current + 1) % Math.max(flatItems.length, 1));
+      setActiveIndex((activeIndex + 1) % Math.max(flatItems.length, 1));
       return;
     }
     if (event.key === "ArrowUp") {
       event.preventDefault();
       onDropdownOpenChange(true);
-      setActiveIndex((current) => (current <= 0 ? flatItems.length - 1 : current - 1));
+      setActiveIndex(activeIndex <= 0 ? flatItems.length - 1 : activeIndex - 1);
       return;
     }
     if (event.key === "Home" && dropdownOpen && flatItems.length) {
@@ -1130,7 +1142,7 @@ export function UniversalSearchCommandSurface({
       // and nothing else, so suppress the native behaviour and keep the query.
       event.preventDefault();
       onDropdownOpenChange(false);
-      setActiveIndex(-1);
+      setActiveSelection(null);
       return;
     }
     if (event.key === "Enter" && dropdownOpen && activeIndex >= 0 && flatItems[activeIndex]) {
@@ -1156,7 +1168,7 @@ export function UniversalSearchCommandSurface({
       const target = event.target;
       if (target instanceof Element && target.closest(".universal-command-dropdown")) return;
       onDropdownOpenChange(false);
-      setActiveIndex(-1);
+      setActiveSelection(null);
     }
 
     // Page movement means the user has left the composer context. Closing the
@@ -1233,7 +1245,7 @@ export function UniversalSearchCommandSurface({
           if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
             setEagerDropdownDisplayable(null);
             onDropdownOpenChange(false);
-            setActiveIndex(-1);
+            setActiveSelection(null);
           }
         }}
       >

@@ -511,7 +511,9 @@ export function ServiceDetailPage({ service }: { service: ServiceRecord }) {
   const router = useRouter();
   const accountData = useAccountData();
   const saved = accountData.isSaved("service", service.slug);
-  const [notice, setNotice] = useState<string | null>(null);
+  // The tone is set where the notice is raised: guessing it from the wording showed
+  // "Sign in or create an account to save services" in the green success tone.
+  const [notice, setNotice] = useState<{ text: string; tone: "success" | "warning" } | null>(null);
   const { sections, activeId, selectSection } = useInPageSectionNav(serviceNavSections);
   const primaryContact = hasText(service.primaryContact?.value)
     ? service.primaryContact
@@ -594,7 +596,9 @@ export function ServiceDetailPage({ service }: { service: ServiceRecord }) {
   const showTagsSection = tagItems.length > 0;
   const showPriorityFacts = visibleSummaryCards.length > 0;
   const meetCount = criteria.filter((item) => item.tone === "meet").length;
-  const cautionCount = criteria.filter((item) => item.tone !== "meet").length;
+  // Rejects are counted apart from cautions: a "do not refer" criterion read as "N caution".
+  const cautionCount = criteria.filter((item) => item.tone === "caution").length;
+  const rejectCount = criteria.filter((item) => item.tone === "reject").length;
   const recordGroups = serviceCoreGroupIds(service);
   const localConfirmationDetail =
     service.verification?.notes?.find((note) => /hour/i.test(note)) ??
@@ -605,14 +609,17 @@ export function ServiceDetailPage({ service }: { service: ServiceRecord }) {
     try {
       const nowSaved = !saved;
       if (!(await accountData.setFavourite("service", service.slug, nowSaved))) {
-        setNotice(
-          accountData.isAuthenticated ? "Save failed. Try again." : "Sign in or create an account to save services",
-        );
+        setNotice({
+          text: accountData.isAuthenticated
+            ? "Save failed. Try again."
+            : "Sign in or create an account to save services",
+          tone: "warning",
+        });
         return;
       }
-      setNotice(nowSaved ? "Service saved" : "Service removed from saved items");
+      setNotice({ text: nowSaved ? "Service saved" : "Service removed from saved items", tone: "success" });
     } catch {
-      setNotice("Save failed");
+      setNotice({ text: "Save failed", tone: "warning" });
     }
   }
 
@@ -699,10 +706,10 @@ export function ServiceDetailPage({ service }: { service: ServiceRecord }) {
             aria-live="polite"
             className={cn(
               "mb-3 flex min-h-tap items-center justify-between gap-3 rounded-lg border p-3 text-sm font-semibold shadow-[var(--shadow-inset)]",
-              notice.includes("failed") || notice.includes("Nothing") ? toneWarning : toneSuccess,
+              notice.tone === "warning" ? toneWarning : toneSuccess,
             )}
           >
-            <span>{notice}</span>
+            <span>{notice.text}</span>
             <button
               type="button"
               onClick={() => setNotice(null)}
@@ -865,6 +872,11 @@ export function ServiceDetailPage({ service }: { service: ServiceRecord }) {
                         <span className={cn(metadataPillDensity.roomy, "rounded-full", toneWarning)}>
                           {cautionCount} caution
                         </span>
+                        {rejectCount > 0 ? (
+                          <span className={cn(metadataPillDensity.roomy, "rounded-full", toneDanger)}>
+                            {rejectCount} reject
+                          </span>
+                        ) : null}
                       </div>
                     }
                   >

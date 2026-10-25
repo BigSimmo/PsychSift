@@ -43,6 +43,7 @@ import { useExampleData } from "@/lib/example-data/store";
 const MINUTE = 60_000;
 
 type SharedScreen = { token: string; path: string; expiresAt: string };
+const STREAM_WORDS: Record<CheckinStream, string> = { room: "Room", teams: "Teams" };
 
 export function TeachingCheckinScreen({
   occurrenceId,
@@ -98,7 +99,8 @@ export function TeachingCheckinScreen({
 
 function CodePanel({ detail, nowMs }: { detail: SessionDetailRead; nowMs: number }) {
   const [stream, setStream] = useState<CheckinStream>("room");
-  const [shared, setShared] = useState<SharedScreen | null>(null);
+  // The shared screen keeps the stream it was opened with, whatever the switch shows afterwards.
+  const [shared, setShared] = useState<(SharedScreen & { stream: CheckinStream }) | null>(null);
   const [sharing, setSharing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<"copied" | "failed" | null>(null);
@@ -151,13 +153,13 @@ function CodePanel({ detail, nowMs }: { detail: SessionDetailRead; nowMs: number
         setCopied(null);
       } else {
         // Master plan R2: `display.create` answers `{ token, path, expiresAt }`; the path shows codes only.
-        setShared(
-          await teachingPost<SharedScreen>(serviceUrl, {
-            action: "display.create",
-            occurrenceId: detail.occurrenceId,
-            stream,
-          }),
-        );
+        const sharedStream = stream;
+        const created = await teachingPost<SharedScreen>(serviceUrl, {
+          action: "display.create",
+          occurrenceId: detail.occurrenceId,
+          stream: sharedStream,
+        });
+        setShared({ ...created, stream: sharedStream });
       }
     } catch (cause) {
       setError(teachingErrorMessage(cause));
@@ -227,7 +229,7 @@ function CodePanel({ detail, nowMs }: { detail: SessionDetailRead; nowMs: number
         </T5Button>
         <p className={cn("text-sm", textMuted)}>
           {shared
-            ? `Link works until ${perthTime(shared.expiresAt)}. Stopping makes it stop working.`
+            ? `${detail.hasJoinLink ? `It shows the ${STREAM_WORDS[shared.stream]} code. ` : ""}Link works until ${perthTime(shared.expiresAt)}. Stopping makes it stop working.`
             : "No sign-in needed. It shows the code only."}
         </p>
         {shared ? (

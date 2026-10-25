@@ -3,7 +3,7 @@ import { createRequire } from "node:module";
 import { lookup as dnsLookup } from "node:dns/promises";
 import { BlockList, isIP } from "node:net";
 import { request as httpsRequest } from "node:https";
-import { Readable } from "node:stream";
+import { pipeline, Readable, type Transform } from "node:stream";
 import { createBrotliDecompress, createGunzip, createInflate } from "node:zlib";
 import { z } from "zod";
 
@@ -328,9 +328,12 @@ function decompressedBody(response: AcquisitionResponse): AsyncIterable<Uint8Arr
   const encoding = response.headers["content-encoding"]?.trim().toLowerCase();
   const source = Readable.from(response.body);
   if (!encoding || encoding === "identity") return source;
-  if (encoding === "gzip") return source.pipe(createGunzip());
-  if (encoding === "deflate") return source.pipe(createInflate());
-  if (encoding === "br") return source.pipe(createBrotliDecompress());
+  // pipeline, not pipe: a body that fails or is destroyed by a timeout must fail the decompressor
+  // too, or the read loop waits on it forever. The loop sees the error through the decompressor.
+  const decompress = (decompressor: Transform) => pipeline(source, decompressor, () => undefined);
+  if (encoding === "gzip") return decompress(createGunzip());
+  if (encoding === "deflate") return decompress(createInflate());
+  if (encoding === "br") return decompress(createBrotliDecompress());
   throw new Error("Unsupported response content encoding.");
 }
 

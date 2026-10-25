@@ -8,6 +8,7 @@ import {
 } from "@/lib/api-rate-limit";
 import {
   amendClosedCmeEntry,
+  assertNoCmeEntryPatientDetail,
   assertValidCmeLinkedIds,
   setCmeEntryArchived,
   saveCmeEntry,
@@ -94,6 +95,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         return publicErrorResponse("Invalid CPD amendment. A reason of 3 to 1000 characters is required.", 400);
       }
       const { amendmentReason, ...fields } = amendment.data;
+      assertNoCmeEntryPatientDetail(fields);
       await assertValidCmeLinkedIds(supabase, user.id, {
         routineId: fields.routineId,
         documentId: fields.documentId,
@@ -124,6 +126,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const parsed = cmeEntryUpdateSchema.safeParse(rawBody);
     if (!parsed.success) return publicErrorResponse("Invalid CPD entry.", 400);
     const body = parsed.data;
+    assertNoCmeEntryPatientDetail(body);
 
     // `transcribed` is not part of a full replace — read it off the existing row and carry
     // it forward so editing title/cost cannot silently un-transcribe the entry.

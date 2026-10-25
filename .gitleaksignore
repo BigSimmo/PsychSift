@@ -181,3 +181,7 @@ e270353c3f8a154971a11b9eabd2b0acef4476ec:supabase/applied-migration-hashes.json:
 # Migration seal entry from PR #3726 before its rename: the filename contained "key" and the
 # value is a sha256, which the generic-api-key rule reads as a key. Not a secret.
 d5257a8733b1e099e6208690786bb3b89b0b1139:supabase/applied-migration-hashes.json:generic-api-key:339
+
+# Fake Supabase-style key in a fixture that checks the search route redacts secrets from the
+# failure cause it stores (mock.supabase.co, not a real project). Not a secret. Owner approved this entry 25 Oct 2026.
+6a157785abe51781898332e1c3a3befe415d205e:tests/api-search.test.ts:generic-api-key:425

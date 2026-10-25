@@ -23,8 +23,9 @@ export type ManagerCalendar = {
   flags: Map<string, RuleFlag[]>;
   /**
    * For each waiting swap, the rule flags the roster would gain for its two
-   * people once the shifts changed hands. The server does not recheck team
-   * rules when a manager approves, so this is the only check on them.
+   * people once the shifts changed hands, shown before the manager decides.
+   * The server also rechecks team rules on approve, unless the manager has
+   * read the warnings and the approval sends `acknowledgeRuleWarnings`.
    */
   afterSwap: Map<string, SwapRuleFlag[]>;
   /** Swaps waiting on this manager; never one the manager is part of, which the server refuses. */

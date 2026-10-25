@@ -46,4 +46,36 @@ describe("CompareCatalogPicker", () => {
     ).toBeDisabled();
     expect(screen.getByRole("option", { name: /^MSE / })).toHaveClass("disabled:text-[color:var(--disabled)]!");
   });
+
+  it("names the arrow-key highlight to assistive technology through the combobox", async () => {
+    const user = userEvent.setup();
+    render(
+      <CompareCatalogPicker
+        items={[
+          { id: "mse", title: "MSE", snippet: "Mental state examination" },
+          { id: "mmse", title: "MMSE", snippet: "Mini-mental state examination" },
+        ]}
+        query=""
+        onQueryChange={() => {}}
+        selectedIds={[null, null]}
+        maxCount={2}
+        activeSlot={0}
+        onChoose={() => {}}
+        searchPlaceholder="Search term or abbreviation"
+      />,
+    );
+
+    const input = screen.getByRole("combobox", { name: "Search term or abbreviation" });
+    const listbox = screen.getByRole("listbox");
+    const options = screen.getAllByRole("option");
+    expect(input).toHaveAttribute("aria-controls", listbox.id);
+    expect(input).toHaveAttribute("aria-expanded", "true");
+    expect(input).toHaveAttribute("aria-activedescendant", options[0]!.id);
+
+    await user.click(input);
+    await user.keyboard("{ArrowDown}");
+    expect(input).toHaveFocus();
+    expect(input).toHaveAttribute("aria-activedescendant", options[1]!.id);
+    expect(options[1]).toHaveAttribute("aria-selected", "true");
+  });
 });

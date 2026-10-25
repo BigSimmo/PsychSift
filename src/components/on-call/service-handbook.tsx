@@ -79,7 +79,18 @@ function ServiceEntryCard({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const learning = learningHref(entry);
-  const dial = resolveHandbookPhone(entry.content.phone);
+  // For editors `content` is the DRAFT and withdrawn rows are included, so the
+  // Call button dials only the published number (as `publishedHandbookItems`
+  // does). An unpublished number is shown as plain text, never as a call link.
+  const published = entry.status === "withdrawn" ? null : entry.publishedContent;
+  const dial = resolveHandbookPhone(published?.phone ?? "");
+  const unpublishedPhone =
+    entry.content.phone.trim() &&
+    entry.content.phone !== published?.phone &&
+    !entry.content.steps &&
+    !entry.content.cover
+      ? entry.content.phone
+      : null;
 
   async function submitReport() {
     if (!reason.trim() || busy) return;
@@ -193,6 +204,13 @@ function ServiceEntryCard({
           </div>
         ) : null}
 
+        {unpublishedPhone ? (
+          <p className="nums break-all text-sm font-normal text-[color:var(--text)]">
+            Phone or extension: {unpublishedPhone}
+            <span className={cn(textMuted, "ml-2 text-xs")}>Not published</span>
+          </p>
+        ) : null}
+
         {entry.content.kind !== "operational" && entry.reviewedAt && entry.publishedRevision === entry.revision ? (
           <p className={cn(textMuted, "break-words text-xs")}>
             Reviewed {formatOnCallDate(entry.reviewedAt)}
@@ -224,9 +242,12 @@ function ServiceEntryCard({
         )}
 
         <div className="grid gap-2 sm:grid-cols-2">
-          <Button variant="secondary" size="sm" icon={Flag} onClick={() => setReportOpen((open) => !open)}>
-            Flag incorrect entry
-          </Button>
+          {/* The server refuses a report on an entry with no published revision. */}
+          {published ? (
+            <Button variant="secondary" size="sm" icon={Flag} onClick={() => setReportOpen((open) => !open)}>
+              Flag incorrect entry
+            </Button>
+          ) : null}
           {learning ? (
             <Link
               href={learning}
@@ -375,13 +396,7 @@ export function ServiceHandbook({
       {canEdit && selectedSiteId
         ? detail.sites
             .filter((site) => site.id === selectedSiteId)
-            .map((site) => (
-              <ServiceSiteHours
-                key={`${site.id}:${site.afterHoursStart}:${site.afterHoursEnd}`}
-                site={site}
-                onAction={onAction}
-              />
-            ))
+            .map((site) => <ServiceSiteHours key={site.id} site={site} onAction={onAction} />)
         : null}
       <form
         role="search"

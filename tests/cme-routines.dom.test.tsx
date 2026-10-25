@@ -116,6 +116,49 @@ describe("Routines", () => {
     expect(navigation.refresh).toHaveBeenCalled();
   });
 
+  it("takes refreshed routines after a one-tap log, so the logged routine leaves Due today", () => {
+    const { rerender } = render(
+      <CmeRoutinesRoute nowIso={NOW.toISOString()} initialRoutines={[dueRoutine]} demoMode={false} />,
+    );
+    expect(screen.getByRole("button", { name: /^log 1\.0 h for supervision$/i })).toBeInTheDocument();
+    // The save moved next due a month on; router.refresh() hands the route the new list.
+    rerender(
+      <CmeRoutinesRoute
+        nowIso={NOW.toISOString()}
+        initialRoutines={[{ ...dueRoutine, nextDue: "2026-10-28" }]}
+        demoMode={false}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: /^log 1\.0 h for supervision$/i })).toBeNull();
+    expect(screen.getByRole("button", { name: "Log now for Supervision" })).toBeInTheDocument();
+  });
+
+  it("puts the routine's next due date back when a one-tap log is undone", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url === "/api/cme/entries" && init?.method === "POST") {
+        return new Response(JSON.stringify({ entry: { id: "entry-undo" } }), { status: 201 });
+      }
+      if (url === "/api/cme/entries/entry-undo" && init?.method === "DELETE") {
+        return new Response(null, { status: 204 });
+      }
+      if (url === "/api/cme/routines/r1" && init?.method === "PATCH") {
+        return new Response(JSON.stringify({ routine: dueRoutine }), { status: 200 });
+      }
+      return new Response("unexpected", { status: 500 });
+    });
+    render(<CmeRoutinesRoute nowIso={NOW.toISOString()} initialRoutines={[dueRoutine]} demoMode={false} />);
+    await user.click(screen.getByRole("button", { name: /^log 1\.0 h for supervision$/i }));
+    await user.click(await screen.findByRole("button", { name: "Undo" }));
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith("/api/cme/routines/r1", expect.objectContaining({ method: "PATCH" })),
+    );
+    const patch = fetchMock.mock.calls.find(([url]) => String(url) === "/api/cme/routines/r1");
+    expect(JSON.parse(String(patch?.[1]?.body))).toMatchObject({ title: "Supervision", nextDue: "2026-09-28" });
+    expect(screen.queryByTestId("cme-one-tap-log-error")).toBeNull();
+  });
+
   it("opens the form when a due routine has no usual category split", async () => {
     const user = userEvent.setup();
     const fetchMock = vi.spyOn(globalThis, "fetch");

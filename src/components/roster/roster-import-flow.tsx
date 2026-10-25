@@ -472,7 +472,7 @@ export function RosterImportFlow({
           ) : null}
 
           {review.diff.conflicts.length ? (
-            <ModeNotice tone="warning" data-testid="roster-import-conflicts">
+            <ModeNotice tone="warning" testId="roster-import-conflicts">
               {plural(review.diff.conflicts.length, "overlapping shift")} found in this file.
             </ModeNotice>
           ) : null}

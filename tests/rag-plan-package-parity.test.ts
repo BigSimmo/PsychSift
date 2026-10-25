@@ -99,17 +99,6 @@ function isCommitAvailable(commit: string): boolean {
   }
 }
 
-function ensureHistoryDeepened(depth = 2000): void {
-  if (!isShallowClone()) return;
-  try {
-    execFileSync("git", ["fetch", `--deepen=${depth}`], {
-      stdio: ["ignore", "ignore", "ignore"],
-    });
-  } catch {
-    // Ignore network or fetch failures
-  }
-}
-
 describe("RAG plan execution packages", () => {
   it.each([0, 1, 2])("admits the documented legacy bootstrap only after raw status 0 (status %s)", (status) => {
     const guide = readFileSync("docs/superpowers/rag-upgrade/canonical/START-HERE.cloud.md", "utf8");
@@ -144,14 +133,12 @@ describe("RAG plan execution packages", () => {
   });
 
   it("keeps Local and Cloud task bodies identical and executable", () => {
-    if (!isCommitAvailable(manifest.reconciledBase)) {
-      ensureHistoryDeepened(2000);
-      if (!isCommitAvailable(manifest.reconciledBase) && isShallowClone()) {
-        console.warn(
-          `RAG_PLAN_PACKAGE_PARITY_SHALLOW_CLONE: reconciledBase ${manifest.reconciledBase} is unavailable in shallow clone and history could not be deepened; skipping package parity check.`,
-        );
-        return;
-      }
+    // The offline suite never fetches: deepening the clone is a GitHub call.
+    if (!isCommitAvailable(manifest.reconciledBase) && isShallowClone()) {
+      console.warn(
+        `RAG_PLAN_PACKAGE_PARITY_SHALLOW_CLONE: reconciledBase ${manifest.reconciledBase} is unavailable in shallow clone; skipping package parity check. Run git fetch --deepen=2000 to check it.`,
+      );
+      return;
     }
     expect(() =>
       execFileSync(process.execPath, ["scripts/build-rag-plan-packages.mjs", "--check", "--require-origin-main"], {

@@ -1,3 +1,4 @@
+import { PERTH_TIME_ZONE, perthCalendarDate } from "@/lib/perth-time";
 import { confirmedSourceChangesAfter, type SourceChangeEvent } from "@/lib/sources/source-change-events";
 
 /**
@@ -115,7 +116,11 @@ export function contentReviewSchedule(
   },
 ): ContentReviewSchedule {
   const referenceDate = input.referenceDate ?? new Date();
-  const today = referenceDate.toISOString().slice(0, 10);
+  // The Perth calendar day, not the UTC one: before 08:00 in Perth the UTC date
+  // is still yesterday, which held a review that fell due today back until 8 am.
+  // Perth named explicitly, not the viewer's work zone, so the server render and
+  // the client agree.
+  const today = perthCalendarDate(referenceDate, PERTH_TIME_ZONE);
   let lastReviewedOn = isoCalendarDate(input.lastReviewedAt);
   if (lastReviewedOn && utcDay(lastReviewedOn) - utcDay(today) > FUTURE_DATE_TOLERANCE_DAYS * DAY_MS) {
     lastReviewedOn = null;

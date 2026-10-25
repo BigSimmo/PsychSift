@@ -50,7 +50,7 @@ const SITES = {
   },
 } as const;
 
-// Per-day counts follow the approved mock-up's signed-out example (v10), within the 14-day window.
+// Per-day counts follow the approved mock-up's signed-out example (v10), within the browse window (`WINDOW_DAYS`).
 const ROWS: readonly SampleRow[] = [
   { day: 0, start: "17:00", end: "23:00", kind: "evening", code: "E", site: "northgate" },
   { day: 1, start: "08:00", end: "16:30", kind: "day", code: "D", site: "northgate", urgent: true },

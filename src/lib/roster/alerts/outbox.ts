@@ -46,6 +46,7 @@ export async function drainRosterOfferAlerts(
     if (result.error || result.data === null) throw new OfferLeaseError("Offer alert lease unavailable");
     return result.data;
   };
+  let unwinding = false;
   try {
     let eligible = await offerRecipients(client, event.actor_id, event.service_id, event.open_shift_id);
     if (!event.initialized) await work("prepare", { p_owner_ids: eligible });
@@ -85,8 +86,17 @@ export async function drainRosterOfferAlerts(
         await work("ack", { p_subscription_id: device.subscription_id, p_outcome: outcome });
       }
     }
+  } catch (error) {
+    unwinding = true;
+    throw error;
   } finally {
-    await work("release");
+    try {
+      await work("release");
+    } catch (releaseError) {
+      // A lost lease on release must not hide the failure that is already unwinding; lease expiry
+      // still frees the claim.
+      if (!unwinding) throw releaseError;
+    }
   }
   return true;
 }

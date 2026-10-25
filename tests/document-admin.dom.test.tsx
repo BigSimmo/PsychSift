@@ -171,6 +171,26 @@ describe("DocumentDrawer — browsing", () => {
     expect(props.onLoadMoreDocuments).toHaveBeenCalledTimes(1);
   });
 
+  it("reveals loaded documents past the first twelve rows instead of capping the list", () => {
+    const props = baseProps();
+    const documents = Array.from({ length: 15 }, (_, index) =>
+      makeDocument({ id: `doc-${index}`, title: `Guideline number ${index}`, file_name: `guideline-${index}.pdf` }),
+    );
+    render(<DocumentDrawer {...props} documents={documents} />);
+
+    expect(screen.getAllByRole("button", { name: "Add scope" })).toHaveLength(12);
+    fireEvent.click(screen.getByRole("button", { name: "Show more (12 of 15 shown)" }));
+    expect(screen.getAllByRole("button", { name: "Add scope" })).toHaveLength(15);
+    expect(screen.queryByRole("button", { name: /^Show more/ })).toBeNull();
+  });
+
+  it("names each filter select by its visible label", () => {
+    render(<DocumentDrawer {...baseProps()} />);
+    for (const label of ["Source type", "Site", "Topic", "Population", "Provenance"]) {
+      expect(screen.getByRole("combobox", { name: label })).toBeInTheDocument();
+    }
+  });
+
   it("toggles a document in and out of the answer scope", () => {
     const props = baseProps();
     const { rerender } = render(<DocumentDrawer {...props} selectedDocumentIds={[]} />);

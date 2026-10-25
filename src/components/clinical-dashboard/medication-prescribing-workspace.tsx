@@ -51,7 +51,7 @@ import {
   evaluateMedicationInteractions,
   type MedicationVerdict,
 } from "@/lib/medication-interactions";
-import { evaluatePatientAlerts } from "@/lib/medication-patient-alerts";
+import { evaluatePatientAlerts, unassessedGateCount } from "@/lib/medication-patient-alerts";
 import { BadgeCluster, type ClinicalBadgeItem } from "@/components/clinical-dashboard/clinical-badge";
 import { medicationIdentityBadges, type MedicationRecord } from "@/lib/medications";
 import {
@@ -595,18 +595,20 @@ function MedicationResults({
       // catalogue metadata. The verdict folds BOTH engines together — physiology
       // considerations and interactions against the entered medication list —
       // and degrades a would-be green to grey whenever either engine left
-      // something unassessed.
+      // something unassessed. Both consideration tiers count, exactly as on the
+      // detail page, so the list never reads clear where the record does not.
       if (medication && !profileEmpty) {
         const alerts = evaluatePatientAlerts(medication, profile);
         const interactions = evaluateMedicationInteractions(medication.slug, profile.medications ?? [], medication);
         const verdict = composeMedicationVerdict({
           considerationTone: alerts.highestTone,
           considerationCount: alerts.considerations.length,
-          unassessedCount: alerts.unassessed.length,
+          unassessedCount: unassessedGateCount(alerts),
           interactionTone: interactions.highestTone,
           interactionCount: interactions.interactions.length,
           unresolvedRowCount: interactions.unresolvedRowCount,
           unreachableCounterpartyCount: interactions.unreachableCounterparties.length,
+          reverseUnresolvedCounterpartyCount: interactions.reverseUnresolvedCounterparties.length,
         });
         return {
           result,

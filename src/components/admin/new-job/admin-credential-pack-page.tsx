@@ -8,6 +8,7 @@ import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setu
 import { useAccountData } from "@/components/account-data-provider";
 import { AdminNote, AdminPage, AdminSkeleton, adminStyles } from "@/components/admin/admin-kit";
 import { AdminLoadFailed } from "@/components/admin/admin-load-failed";
+import { useJuniorNow } from "@/components/admin/junior/junior-shared";
 import { focusRing } from "@/components/card-recipes";
 import { InformationPageBreadcrumbs } from "@/components/information-page-shell";
 import { PageTitleUnderBand, useModeBandHeading } from "@/components/mode-band/mode-band";
@@ -45,8 +46,7 @@ import { guardExampleAction } from "@/lib/example-data/guards";
 export function AdminCredentialPackPage({ now: nowProp }: { now?: Date } = {}) {
   const state = useOnCallEntries();
   const { isAuthenticated } = useAccountData();
-  const mountedAt = useMemo(() => new Date(), []);
-  const now = nowProp ?? mountedAt;
+  const now = useJuniorNow(nowProp);
   const loadState = adminLoadState(state);
   const own = useMemo(() => selectAdminOwnEntries(state), [state]);
 

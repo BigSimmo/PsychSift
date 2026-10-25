@@ -18,6 +18,7 @@
       "/src/lib/**",
       "/src/data/**",
       "/worker/**",
+      "/supabase/functions/_shared/**",
       "/eval/docling/requirements.txt",
       "/eval/docling/model-artifacts.json",
       "/eval/docling/verify-model-artifacts.mjs",

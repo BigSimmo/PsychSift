@@ -20,7 +20,7 @@ import {
   InlineNotice,
   textMuted,
 } from "@/components/ui-primitives";
-import { perthCalendarDate } from "@/lib/cme/cpd-year";
+import { formatCalendarDateLong, perthCalendarDate } from "@/lib/cme/cpd-year";
 import type { CmeDraftPayload } from "@/lib/cme/drafts";
 import { parseCmeHours } from "@/lib/cme/hours-input";
 import { cmeSaveErrorText } from "@/lib/cme/load-state";
@@ -374,7 +374,7 @@ export function CmeEntryForm({
               : allocations.length === 0 || !balanced
                 ? "Split every hour across the categories to save it."
                 : !formalPeerReviewValid
-                  ? "Peer-review credit cannot be more than the reviewing-performance hours."
+                  ? "Enter peer-review credit as a plain number, such as 1 or 1.5, to save it."
                   : firstDraftIssue === "reflection"
                     ? "Shorten the reflection to 2000 characters to save it."
                     : firstDraftIssue === "sourceUrl"
@@ -663,7 +663,11 @@ export function CmeEntryForm({
           if (pending) void performSave(pending);
         }}
         title="Log it again?"
-        description="You logged this today already. Log it again?"
+        description={
+          repeatPending && repeatPending.date !== today
+            ? `You already logged this on ${formatCalendarDateLong(repeatPending.date)}. Log it again?`
+            : "You logged this today already. Log it again?"
+        }
         confirmLabel="Log again"
         tone="primary"
       />

@@ -62,6 +62,15 @@ describe("staging soak safety", () => {
         forbidHosts: [],
       }),
     ).toThrow(/Refusing target/);
+    expect(() =>
+      assertTargetIsNotProduction({
+        target: "https://database-production-c1c0.up.railway.app",
+        forbidHosts: [],
+      }),
+    ).toThrow(/Refusing target/);
+    expect(() =>
+      assertTargetIsNotProduction({ target: "https://app-staging-6a78.up.railway.app", forbidHosts: [] }),
+    ).not.toThrow();
   });
 
   it("refuses bearer tokens in argv and reads them from the environment", () => {

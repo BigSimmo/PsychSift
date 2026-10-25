@@ -89,6 +89,18 @@ beforeEach(() => {
 });
 
 describe("POST /api/clinical-ask/stream", () => {
+  it("logs an unexpected failure without the question before sending the safe error frame", async () => {
+    mocks.run.mockRejectedValueOnce(new Error("synthetic orchestrator failure"));
+    const response = await POST(post());
+    const text = await response.text();
+    expect(text).toContain("internal_error");
+    expect(mocks.logError).toHaveBeenCalledWith(
+      "Clinical Ask stream failed",
+      expect.objectContaining({ name: "Error", message: "synthetic orchestrator failure" }),
+    );
+    expect(JSON.stringify(mocks.logError.mock.calls)).not.toContain(body.question);
+  });
+
   it("authenticates, rate limits, owner-scopes, and streams safe headers", async () => {
     const response = await POST(post());
     await response.text();
@@ -156,6 +168,29 @@ describe("POST /api/clinical-ask/stream", () => {
     });
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(mocks.run).toHaveBeenCalledOnce();
+  });
+
+  it("logs an internal failure before sending the safe error frame", async () => {
+    mocks.run.mockRejectedValueOnce(new Error("synthesis provider returned 503"));
+
+    const response = await POST(post());
+    const text = await response.text();
+
+    expect(text).toContain('"code":"internal_error"');
+    expect(mocks.logError).toHaveBeenCalledWith(
+      "Clinical Ask stream failed",
+      expect.objectContaining({ name: "Error", message: expect.any(String) }),
+    );
+  });
+
+  it("does not log a client abort as a failure", async () => {
+    mocks.run.mockRejectedValueOnce(new DOMException("Clinical Ask stream cancelled.", "AbortError"));
+
+    const response = await POST(post());
+    const text = await response.text();
+
+    expect(text).not.toContain('"code":"internal_error"');
+    expect(mocks.logError).not.toHaveBeenCalled();
   });
 
   it("refuses a signed-out request before rate limiting or orchestration", async () => {

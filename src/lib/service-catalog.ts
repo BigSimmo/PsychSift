@@ -229,6 +229,31 @@ export function extractPhones(text: string): string[] {
   );
 }
 
+// "text 0477 13 11 14" or "SMS 0458 737 732" is a number for text messages only, which a
+// call cannot reach. The words between the previous number (or the start) and this one
+// decide it, so "Call or text 0477 ..." stays a phone number, and "text relay" (the voice
+// relay service) is not a text-message line.
+const TEXT_ONLY_BEFORE = /\b(?:sms|text)\b(?!\s+relay)[^\d]*$/i;
+const CALL_WORD = /\b(?:call|phone|ring|voice)\b/i;
+
+/** The numbers `extractPhones` finds in `text` that the text offers for text messages only. */
+export function extractTextOnlyPhones(text: string): Set<string> {
+  const textOnly = new Set<string>();
+  const voice = new Set<string>();
+  let previousEnd = 0;
+  for (const match of text.matchAll(PHONE_PATTERN)) {
+    const index = match.index ?? 0;
+    const gap = text.slice(previousEnd, index);
+    previousEnd = index + match[0].length;
+    const phone = balancePhoneBrackets(match[0].replace(/\s+/g, " ").trim(), text, index);
+    if (TEXT_ONLY_BEFORE.test(gap) && !CALL_WORD.test(gap)) textOnly.add(phone);
+    else voice.add(phone);
+  }
+  // A number also offered for calls anywhere in the text stays a phone number.
+  for (const phone of voice) textOnly.delete(phone);
+  return textOnly;
+}
+
 export function normalizeCatalogService(raw: unknown, index: number): CatalogService {
   const source = typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>) : {};
   const fallbackId = `service-${index + 1}`;

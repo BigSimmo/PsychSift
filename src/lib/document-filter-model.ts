@@ -1,4 +1,4 @@
-import { normalizeSourceMetadata } from "@/lib/source-metadata";
+import { isLocalSource, normalizeSourceMetadata } from "@/lib/source-metadata";
 import type { SearchScopeFilters } from "@/lib/search-scope";
 import type { ClinicalDocument, DocumentLabelType } from "@/lib/types";
 
@@ -63,11 +63,7 @@ function normalize(value: string): string {
 }
 
 function isLocalDocument(document: ClinicalDocument): boolean {
-  const metadata = normalizeSourceMetadata(document.metadata);
-  const locality = `${metadata.jurisdiction ?? ""} ${metadata.publisher ?? ""}`.toLowerCase();
-  return /\b(?:wa|western australia|north metropolitan|east metropolitan|south metropolitan|perth|health service)\b/.test(
-    locality,
-  );
+  return isLocalSource(normalizeSourceMetadata(document.metadata));
 }
 
 function documentHasAnyLabel(document: ClinicalDocument, type: DocumentLabelType, values: readonly string[]): boolean {

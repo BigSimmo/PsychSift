@@ -243,5 +243,16 @@ describe("publish-site-content-first-catalogue CLI (#HTZPQ8 / #ZPHK2F)", () => {
         ALLOW_DESTRUCTIVE_SITE_CONTENT_INIT: "true",
       }),
     ).rejects.toThrow(/NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY/);
+
+    // With every safeguard satisfied, --execute still fails and says nothing was published,
+    // because no live write path exists; it never returns a plan that reads like a publication.
+    await expect(
+      runFirstPublicationCli(["--execute"], {
+        NODE_ENV: "test",
+        ALLOW_DESTRUCTIVE_SITE_CONTENT_INIT: "true",
+        NEXT_PUBLIC_SUPABASE_URL: "https://example.invalid",
+        SUPABASE_SERVICE_ROLE_KEY: "synthetic-test-key",
+      }),
+    ).rejects.toThrow(/not implemented.*nothing was published/);
   });
 });

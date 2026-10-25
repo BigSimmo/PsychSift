@@ -684,7 +684,7 @@ function CourseDetail({
             ]}
           />
           <SheetPoint icon={CalendarCheck}>It goes in your calendar straight away.</SheetPoint>
-          <SheetPoint icon={Clock}>You can cancel any time before it starts.</SheetPoint>
+          <SheetPoint icon={Clock}>You can cancel up to the end of the day before it starts.</SheetPoint>
         </Sheet>
       ) : null}
 

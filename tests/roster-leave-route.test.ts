@@ -58,6 +58,15 @@ it("serves example leave while the release is held, and never touches real leave
   expect((await GET(new Request("http://x/api/roster/leave"))).status).toBe(401);
 });
 
+it("rate-limits the held example leave like the real one", async () => {
+  vi.stubEnv("NODE_ENV", "production");
+  mocks.rate.mockResolvedValueOnce({ limited: true });
+  const response = await GET(new Request("http://x/api/roster/leave"));
+  expect(response.status).toBe(429);
+  expect(mocks.rate).toHaveBeenCalledWith(expect.objectContaining({ bucket: "roster" }));
+  expect(mocks.from).not.toHaveBeenCalled();
+});
+
 const ME = "5e000000-0000-4000-8000-000000000001";
 const OTHER = "5e000000-0000-4000-8000-000000000002";
 const SERVICE = "5e000000-0000-4000-8000-000000000003";
@@ -188,6 +197,15 @@ describe("my planned leave", () => {
     queries.length = 0;
     expect((await POST(request("POST", { ...body, endsOn: "2026-12-21" }))).status).toBe(400);
     expect(queries).toHaveLength(0);
+  });
+
+  it("counts toward the cap only the leave the list still shows", async () => {
+    await GET(request("GET"));
+    const shown = queries[0]?.filters.find(([key]) => key === "ends_on");
+    expect(shown).toBeDefined();
+    queries.length = 0;
+    expect((await POST(request("POST", body))).status).toBe(201);
+    expect(queries[0]?.filters).toContainEqual(shown);
   });
 
   it("writes only the session owner and filters updates and deletion by that owner", async () => {

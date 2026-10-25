@@ -26,7 +26,7 @@ import { smartSearchContentTerms } from "@/lib/smart-search-intent";
  * The Australian crisis routes, as one string so the sheet kinds cannot drift
  * apart over which numbers a reader is given.
  *
- * Every kind must be able to reach this. `condition` appends it to `support`,
+ * Every kind must be able to reach this. `condition` and `therapy` append it to `support`,
  * `medRich` carries its own `urgentHelp`, `procedure` carries it inside `safe`,
  * and `medLite` gets `FACTSHEET_MEDLITE_URGENT_HELP` below — because a sheet
  * that names self-harm, a seizure or serotonin toxicity and then offers no way
@@ -1219,6 +1219,13 @@ export function printBlocks(sheet: Factsheet, readingLevel: "easy" | "standard" 
         { kind: "prose", heading: "What it is", body: sheet.intro },
         { kind: "list", heading: "How it works", items: sheet.steps.map((step) => `${step.h} — ${step.t}`) },
         { kind: "facts", heading: "What to expect", items: sheet.expect },
+        // The screen shows the same support callout as a condition sheet, so the
+        // printed handout carries the same crisis line rather than dropping it.
+        {
+          kind: "prose",
+          heading: "Getting support",
+          body: `${sheet.support ?? ""} ${FACTSHEET_CRISIS_LINE}`.trim(),
+        },
         sourcesBlock,
       ];
     case "procedure":

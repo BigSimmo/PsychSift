@@ -170,9 +170,10 @@ export function checkRepoAwarenessSnapshot(options: CheckSnapshotOptions = {}): 
     regenerated = generateImpl();
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    // A bare "ENOENT" is not enough: a missing generator input (docs/README.md, the flake ledger)
+    // also says ENOENT, and must fail the gate rather than skip it as if git were absent.
     if (
       message.includes("spawnSync git") ||
-      message.includes("ENOENT") ||
       message.includes("not a git repository") ||
       message.includes("git: not found") ||
       message.includes("git is not available")

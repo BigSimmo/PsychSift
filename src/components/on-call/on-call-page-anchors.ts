@@ -51,13 +51,19 @@ export function onCallEntryAnchorId(id: string): string {
 }
 
 export function focusOnCallEntryFromHash(): void {
-  if (typeof window === "undefined") return;
+  focusOnCallEntryHashTarget();
+}
+
+/** `focusOnCallEntryFromHash`, returning whether the hashed entry was on the page. */
+export function focusOnCallEntryHashTarget(): boolean {
+  if (typeof window === "undefined") return false;
   const id = window.location.hash.slice(1);
-  if (!id.startsWith("on-call-entry-")) return;
+  if (!id.startsWith("on-call-entry-")) return false;
   const target = document.getElementById(id);
-  if (!target) return;
+  if (!target) return false;
   const disclosure = target.querySelector<HTMLButtonElement>('button[aria-expanded="false"]');
   disclosure?.click();
   target.focus({ preventScroll: true });
   target.scrollIntoView?.({ block: "center", behavior: "instant" });
+  return true;
 }

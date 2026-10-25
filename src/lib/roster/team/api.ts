@@ -28,7 +28,8 @@ export type RosterAdminClient = ReturnType<typeof createAdminClient>;
  * invented team from `sample` (falling back to `demo`) so the screens can be
  * used as an example. No real team row is read or written: a write with a
  * `sample` answer returns an example receipt and saves nothing, and a route
- * with neither is refused with 503.
+ * with neither is refused with 503. The sample answer takes the same `roster`
+ * rate-limit bucket as the live one: it still parses bodies and builds exports.
  */
 export async function withRosterApi(
   request: Request,
@@ -46,9 +47,14 @@ export async function withRosterApi(
           });
     } else if (!rosterTeamReleaseEnabled()) {
       if (sample) {
-        await requireAuthenticatedUser(request, createAdminClient());
-        const answer = await sample();
-        response = answer instanceof Response ? answer : NextResponse.json(answer);
+        const client = createAdminClient();
+        const user = await requireAuthenticatedUser(request, client);
+        const rate = await consumeRosterRateLimit(client, user.id);
+        if (rate.limited) response = rateLimitJsonResponse("Too many requests. Try again shortly.", rate);
+        else {
+          const answer = await sample();
+          response = answer instanceof Response ? answer : NextResponse.json(answer);
+        }
       } else {
         response = publicErrorResponse("Team roster is not available for real staff yet.", 503, {
           code: "roster_release_held",
@@ -57,12 +63,7 @@ export async function withRosterApi(
     } else {
       const client = createAdminClient();
       const user = await requireAuthenticatedUser(request, client);
-      const rate = await consumeSubjectApiRateLimit({
-        supabase: client,
-        subject: { kind: "owner", ownerId: user.id },
-        bucket: "roster",
-        allowInMemoryFallbackOnUnavailable: allowRateLimitInMemoryFallbackOnUnavailable(),
-      });
+      const rate = await consumeRosterRateLimit(client, user.id);
       if (rate.limited) response = rateLimitJsonResponse("Too many requests. Try again shortly.", rate);
       else {
         const result = await operation(client, user.id);
@@ -75,6 +76,15 @@ export async function withRosterApi(
   response.headers.set("Cache-Control", "private, no-store, max-age=0");
   response.headers.set("Vary", "Cookie, Authorization");
   return response;
+}
+
+function consumeRosterRateLimit(client: RosterAdminClient, ownerId: string) {
+  return consumeSubjectApiRateLimit({
+    supabase: client,
+    subject: { kind: "owner", ownerId },
+    bucket: "roster",
+    allowInMemoryFallbackOnUnavailable: allowRateLimitInMemoryFallbackOnUnavailable(),
+  });
 }
 
 /**

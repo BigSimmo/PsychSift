@@ -92,6 +92,21 @@ describe("RosterFatigueRestRing", () => {
     expect(result.isBreach).toBe(true);
   });
 
+  it("measures rest from the shift that ends last, not the one that starts last", () => {
+    // A day shift inside a 24-hour on call: the on call ends at 08:00, one hour before the next shift.
+    const now = new Date("2026-10-05T20:00:00+08:00");
+    const shifts = [
+      { id: "oncall", startsAt: "2026-10-05T08:00:00+08:00", endsAt: "2026-10-06T08:00:00+08:00" },
+      { id: "day", startsAt: "2026-10-05T09:00:00+08:00", endsAt: "2026-10-05T17:00:00+08:00" },
+      { id: "next", startsAt: "2026-10-06T09:00:00+08:00", endsAt: "2026-10-06T17:00:00+08:00" },
+    ];
+    const result = calculateRestTurnaround(shifts, now);
+    expect(result.nextShift?.id).toBe("next");
+    expect(result.previousShift?.id).toBe("oncall");
+    expect(result.totalTurnaroundMs).toBe(60 * 60 * 1000);
+    expect(result.isBreach).toBe(true);
+  });
+
   it("counts rest from the end of the shift still in progress", () => {
     const now = new Date("2026-10-04T12:00:00+08:00"); // four hours into a shift that ends 16:00
     const shifts = [

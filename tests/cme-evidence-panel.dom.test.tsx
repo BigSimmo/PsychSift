@@ -113,6 +113,17 @@ describe("Private evidence attachment journey", () => {
     expect(JSON.parse(String(init?.body))).toEqual({ reason: "Shows a patient name" });
   });
 
+  it("keeps Remove file off while the reason reads like patient details", async () => {
+    const user = userEvent.setup();
+    vi.mocked(fetch).mockResolvedValueOnce(json({ evidence: [evidence] }));
+    render(<CmeEvidencePanel entryId={entryId} readOnly />);
+    await user.click(await screen.findByRole("button", { name: `Remove ${evidence.fileName}` }));
+    await user.type(screen.getByLabelText(/why are you removing this file/i), "Saw John Smith, 45 with low mood");
+    expect(screen.getByTestId(`cme-evidence-remove-reason-catch-${evidence.id}`)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove file" })).toBeDisabled();
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
   it("does not request personal evidence in a demo", async () => {
     render(<CmeEvidencePanel entryId={entryId} demoMode />);
     await waitFor(() => expect(screen.getByText("Demo evidence is not stored.")).toBeInTheDocument());

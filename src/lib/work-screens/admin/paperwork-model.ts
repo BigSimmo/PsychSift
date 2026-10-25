@@ -173,10 +173,13 @@ export const expenseSchema = z
   .strict();
 export type AdminExpense = z.infer<typeof expenseSchema>;
 
+/** The most expenses one financial year keeps. */
+export const MAX_TAX_YEAR_EXPENSES = 500;
+
 export const taxYearSchema = z
   .object({
     ticks: z.record(z.string().regex(/^[a-z0-9-]{1,40}$/), z.boolean()).default({}),
-    expenses: z.array(expenseSchema).max(500).default([]),
+    expenses: z.array(expenseSchema).max(MAX_TAX_YEAR_EXPENSES).default([]),
   })
   .strict();
 export type AdminTaxYear = z.infer<typeof taxYearSchema>;

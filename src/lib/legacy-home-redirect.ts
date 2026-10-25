@@ -17,9 +17,9 @@ const legacyModePaths = {
  * `/?mode=tools` used to render a second, hub-shaped launcher instead. That gave Tools
  * two different surfaces depending on how a clinician arrived — the mode pill served
  * the hub, every other link served the canonical directory at `/tools`. The hub's one
- * unique feature, its verb shortcut row, moved to `/tools`
- * (`components/tools/tool-quick-actions.tsx`), so this alias now has nothing of its own
- * left to show and forwards.
+ * unique feature, its verb shortcut row, was kept as a component
+ * (`components/tools/tool-quick-actions.tsx`) but `/tools` does not currently render
+ * it. This alias still has nothing of its own left to show, so it forwards.
  *
  * Unconditional on purpose: unlike the submitted-only map above, there is no state in
  * which rendering `/` for `mode=tools` is correct.

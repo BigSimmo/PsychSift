@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 
 import { AdminNote, AdminPage, AdminSkeleton, adminStyles } from "@/components/admin/admin-kit";
 import { AdminLoadFailed } from "@/components/admin/admin-load-failed";
+import { useJuniorNow } from "@/components/admin/junior/junior-shared";
 import { focusRing } from "@/components/card-recipes";
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { InformationPageBreadcrumbs } from "@/components/information-page-shell";
@@ -66,8 +67,7 @@ const RANGE_OPTIONS = [
  */
 export function AdminComplianceExportPage({ now: nowProp }: { now?: Date } = {}) {
   const state = useOnCallEntries();
-  const mountedAt = useMemo(() => new Date(), []);
-  const now = nowProp ?? mountedAt;
+  const now = useJuniorNow(nowProp);
   const today = perthCalendarDate(now);
   const loadState = adminLoadState(state);
   const [signInOpen, setSignInOpen] = useState(false);

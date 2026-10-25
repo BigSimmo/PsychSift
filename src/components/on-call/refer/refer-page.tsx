@@ -262,7 +262,8 @@ export function OnCallReferSections({ query }: { readonly query: string }) {
           </li>
         ) : (
           <>
-            {/* Shared notes are readable by the service, so only the private ones are "only you". */}
+            {/* A shared note can be read by anyone signed in to this site (there is no
+                service tier), so only the private ones are "only you". */}
             {entries.demoMode ? null : (
               <li className="min-w-0 px-3 pb-2">
                 <p className={cn(modeSecondaryText, "break-words")}>
@@ -297,7 +298,7 @@ export function OnCallReferSections({ query }: { readonly query: string }) {
                 href={`/on-call/referrals#${onCallEntryAnchorId(entry.id)}`}
                 leading={<Feather aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />}
                 title={entry.title}
-                subtitle={[entry.subtitle, entry.isPersonal ? "Private" : "Shared with your service"]
+                subtitle={[entry.subtitle, entry.isPersonal ? "Private" : "Shared with everyone signed in"]
                   .filter(Boolean)
                   .join(" · ")}
               />

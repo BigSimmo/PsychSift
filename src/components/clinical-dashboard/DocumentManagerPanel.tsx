@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Activity, ExternalLink, Loader2, RefreshCw, ShieldCheck, Sparkles } from "lucide-react";
+import { useEffect, useRef } from "react";
 
 import { StatusBadge } from "@/components/clinical-dashboard/badges";
 import { cleanDisplayTitle } from "@/components/clinical-dashboard/display-text";
@@ -26,6 +27,7 @@ import {
   toneSuccess,
   toneWarning,
 } from "@/components/ui-primitives";
+import { announce } from "@/components/ui/live-announcer";
 import type { ImportBatch, IngestionJob } from "@/lib/types";
 import { emptyStates } from "@/lib/ui-copy";
 
@@ -87,6 +89,32 @@ export function SetupChecklist({ checks }: { checks: SetupCheck[] }) {
   );
 }
 
+function jobDocumentTitle(job: IngestionJob) {
+  return job.documents?.title ?? job.documents?.file_name ?? "Document";
+}
+
+/**
+ * Announces a job only when it finishes or fails. Each row used to carry its own
+ * polite live region with the percentage, so every poll during a batch queued an
+ * announcement per row for up to ten rows. The progress bar already exposes the
+ * value on demand; the transitions are what a screen-reader user needs to hear.
+ */
+function useJobOutcomeAnnouncements(jobs: IngestionJob[]) {
+  const previousStatus = useRef<Map<string, IngestionJob["status"]> | null>(null);
+  useEffect(() => {
+    const previous = previousStatus.current;
+    previousStatus.current = new Map(jobs.map((job) => [job.id, job.status]));
+    // The first list is what was already there, not a change.
+    if (!previous) return;
+    for (const job of jobs) {
+      const before = previous.get(job.id);
+      if (before === undefined || before === job.status) continue;
+      if (job.status === "completed") announce(`${jobDocumentTitle(job)}: indexing completed`);
+      else if (job.status === "failed") announce(`${jobDocumentTitle(job)}: indexing failed`);
+    }
+  }, [jobs]);
+}
+
 function formatBytes(bytes: number) {
   if (!Number.isFinite(bytes) || bytes <= 0) return "0 MB";
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
@@ -109,6 +137,7 @@ export function IndexingMonitor({
   onReindex: (documentId: string) => void;
   onEnrich: (documentId: string) => void;
 }) {
+  useJobOutcomeAnnouncements(jobs);
   const visibleJobs = jobs.filter((job) => indexingWorkMatchesFilter(job, filter));
   const visibleBatches = batches.filter((batch) => indexingWorkMatchesFilter(batch, filter));
   const filterTitle =
@@ -168,13 +197,10 @@ export function IndexingMonitor({
       </p>
 
       {visibleJobs.slice(0, 10).map((job) => {
-        const documentTitle = job.documents?.title ?? job.documents?.file_name ?? "Document";
+        const documentTitle = jobDocumentTitle(job);
         const busy = actionId === job.id || actionId === job.document_id;
         return (
           <div key={job.id} className={cn(panelSubtle, "p-3")}>
-            <span className="sr-only" aria-live="polite" aria-atomic="true">
-              {documentTitle}: {job.status}, {job.progress}%
-            </span>
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-[color:var(--text)]">{documentTitle}</p>

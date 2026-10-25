@@ -17,6 +17,7 @@ import {
   sourceReviewDecisionSchema,
 } from "@/lib/source-review";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requireRecentAdministratorAssurance } from "@/lib/supabase/admin-assurance";
 import { AuthenticationError, requireAuthenticatedUser, unauthorizedResponse } from "@/lib/supabase/auth";
 import { parseJsonBody } from "@/lib/validation/body";
 import { parseRouteParams } from "@/lib/validation/params";
@@ -100,6 +101,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     const supabase = createAdminClient();
     const user = await requireAuthenticatedUser(request, supabase, { administrator: true });
+    // A review can reject, decommission or supersede a public-corpus source in every owner's
+    // retrieval view, which reaches further than the delete and publish actions that already
+    // require recent MFA (audit F-12), so a session without it cannot record one either.
+    await requireRecentAdministratorAssurance(request, supabase, user.id);
     const body = await parseJsonBody(request, bodySchema, "Invalid source review.");
     const rateLimit = await consumeApiRateLimit({ supabase, ownerId: user.id, bucket: "source_review" });
     if (rateLimit.limited) return rateLimitJsonResponse("Too many source review requests. Retry shortly.", rateLimit);

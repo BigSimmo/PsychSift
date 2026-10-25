@@ -113,4 +113,21 @@ describe("DocumentManualTagEditor", () => {
     // The generic error banner must not also render the server message.
     expect(screen.queryByText("Unauthorized")).toBeNull();
   });
+
+  it("announces a failed tag change to screen readers as an alert", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: async () => ({ error: "That tag already exists." }),
+      }),
+    );
+
+    render(<DocumentManualTagEditor document={makeDocument()} {...baseProps} />);
+    fireEvent.change(screen.getByLabelText("Manual tag"), { target: { value: "new tag" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("That tag already exists.");
+  });
 });

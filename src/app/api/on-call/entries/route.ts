@@ -26,6 +26,7 @@ import {
   onCallEntryToRow,
   rowToOnCallEntry,
 } from "@/lib/on-call/repository";
+import { mayPublishSharedOnCallEntry, sharedOnCallEntryRefusedResponse } from "@/lib/on-call/shared-entry-publisher";
 import { publicAccessContext } from "@/lib/public-api-access";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, requireAuthenticatedUser, unauthorizedResponse } from "@/lib/supabase/auth";
@@ -135,6 +136,13 @@ export async function POST(request: Request) {
       details: parsedDetails.data,
     });
     const row = onCallEntryToRow(entry, user.id);
+
+    // A shared entry is read by every signed-in user, so only an administrator may create one
+    // (owner decision, 25 Oct 2026). Decided on the row as it will be stored, after
+    // onCallEntryToRow has forced compliance requirements private.
+    if (!row.is_personal && !(await mayPublishSharedOnCallEntry(request, supabase, user))) {
+      return sharedOnCallEntryRefusedResponse();
+    }
 
     await assertValidLinkedDocumentIds(supabase, entry.linkedDocumentIds, user.id, row.is_personal);
 

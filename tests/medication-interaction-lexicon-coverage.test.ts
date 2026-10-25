@@ -137,6 +137,20 @@ describe("lexicon deny-lists (the traps this module exists for)", () => {
     expect(arbs.every((slug) => records.find((item) => item.slug === slug)?.class !== "Antibiotic")).toBe(true);
   });
 
+  it("never resolves atomoxetine as an SNRI", () => {
+    // Atomoxetine is a selective noradrenaline reuptake inhibitor (NRI), not a
+    // serotonergic drug. Its catalogue subclass read "SNRI (Non-stimulant)", so
+    // `snris` put it in tramadol's CRITICAL serotonin-syndrome row. The label is
+    // corrected in the snapshot (owner decision, 25 Oct 2026); this pins the outcome.
+    expect(records.find((item) => item.slug === "atomoxetine")?.subclass).toBe("NRI (Non-stimulant)");
+    const snris = slugsFor("snris");
+    expect(snris).toContain("venlafaxine-xr");
+    expect(snris).not.toContain("atomoxetine");
+    const tramadolSerotonin = index.bySlug["tramadol-ir"]?.rows.find((row) => row.termIds.includes("snris"));
+    expect(tramadolSerotonin?.counterparties).toContain("duloxetine");
+    expect(tramadolSerotonin?.counterparties).not.toContain("atomoxetine");
+  });
+
   it("keeps every subclass substring token a whole-word match", () => {
     // The systemic form of the ARB trap: a `subclassIncludes` token that only
     // appears inside a longer word is matching by accident. Legitimate uses —

@@ -19,7 +19,7 @@ import {
   resolveLiveCanvasWindow,
   resolveRenderAheadPages,
 } from "@/components/document-viewer/canvas-raster-budget";
-import { resolveBboxOverlayStyle } from "@/components/document-viewer/bbox-overlay";
+import { resolveBboxFrameGeometry, resolveBboxOverlayStyle } from "@/components/document-viewer/bbox-overlay";
 import { announce } from "@/components/ui/live-announcer";
 import { useViewerGestures } from "@/components/document-viewer/use-viewer-gestures";
 import {
@@ -36,6 +36,18 @@ const MAX_FIT_SCALE = 2.8;
 
 /** Page geometry at pdf.js scale 1, after rotation. */
 type PageGeometry = { width: number; height: number };
+
+/**
+ * The angle to draw a page at: its own stored /Rotate plus the reader's turn.
+ *
+ * pdf.js only defaults `getViewport`'s rotation to the page's /Rotate; any value
+ * passed replaces it. Passing the reader's rotation alone drew every page stored
+ * as rotated landscape (dosing tables, scanned guidelines) sideways at 0°.
+ */
+function resolvePageRotation(pageRotate: number | undefined, readerRotation: number): number {
+  const total = (Number.isFinite(pageRotate) ? Number(pageRotate) : 0) + readerRotation;
+  return ((total % 360) + 360) % 360;
+}
 
 // A signed URL that has passed its (10-min) TTL fails pdf.js with an auth/HTTP
 // error rather than a parse error. Detect those so the parent can re-issue a
@@ -142,6 +154,11 @@ const PdfPageSlot = memo(function PdfPageSlot({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [geometry, setGeometry] = useState<PageGeometry | null>(null);
   const [painted, setPainted] = useState(false);
+  // A page that fails to render shows its error in its own slot, so the rest of
+  // the column stays mounted and readable. Bumping `renderAttempt` retries this
+  // page alone; leaving the render window clears the failure for a fresh try.
+  const [renderFailed, setRenderFailed] = useState(false);
+  const [renderAttempt, setRenderAttempt] = useState(0);
 
   useEffect(() => {
     registerSlot(pageNumber, slotRef.current);
@@ -172,7 +189,8 @@ const PdfPageSlot = memo(function PdfPageSlot({
         if (!canvas) return;
         // Rotation is applied in the viewport so width/height already reflect the
         // 90°/270° swap — the fit calculation and canvas sizing follow for free.
-        const baseViewport = pdfPage.getViewport({ scale: 1, rotation });
+        const pageRotation = resolvePageRotation(pdfPage.rotate, rotation);
+        const baseViewport = pdfPage.getViewport({ scale: 1, rotation: pageRotation });
         const measured = { width: baseViewport.width, height: baseViewport.height };
         setGeometry(measured);
         onGeometry(pageNumber, measured);
@@ -192,9 +210,10 @@ const PdfPageSlot = memo(function PdfPageSlot({
           viewportScale,
           devicePixelRatio: window.devicePixelRatio,
         });
-        const viewport = pdfPage.getViewport({ scale: viewportScale * outputScale, rotation });
+        const viewport = pdfPage.getViewport({ scale: viewportScale * outputScale, rotation: pageRotation });
         const context = canvas.getContext("2d");
         if (!context) {
+          setRenderFailed(true);
           onRenderError(pageNumber, new Error("Could not initialize the PDF canvas."));
           return;
         }
@@ -212,9 +231,13 @@ const PdfPageSlot = memo(function PdfPageSlot({
           viewport,
         });
         await renderTask.promise;
-        if (!cancelled) setPainted(true);
+        if (!cancelled) {
+          setPainted(true);
+          setRenderFailed(false);
+        }
       } catch (renderError) {
         if (!cancelled && renderError instanceof Error && renderError.name !== "RenderingCancelledException") {
+          setRenderFailed(true);
           onRenderError(pageNumber, renderError);
         }
       } finally {
@@ -240,6 +263,7 @@ const PdfPageSlot = memo(function PdfPageSlot({
     pageNumber,
     pdf,
     render,
+    renderAttempt,
     renderZoom,
     rotation,
   ]);
@@ -265,7 +289,10 @@ const PdfPageSlot = memo(function PdfPageSlot({
   }, [render]);
 
   useEffect(() => {
-    if (!render) setPainted(false);
+    if (!render) {
+      setPainted(false);
+      setRenderFailed(false);
+    }
   }, [render]);
 
   const reservedGeometry = geometry ?? fallbackGeometry;
@@ -273,9 +300,12 @@ const PdfPageSlot = memo(function PdfPageSlot({
     ? resolveViewportScale({ fitWidth, contentWidth, baseWidth: reservedGeometry.width, renderZoom })
     : 1;
 
+  // Stored point-space boxes are in the page's own frame (its /Rotate already
+  // applied by extraction), so only the reader's turn is applied on top, against
+  // the page's size before that turn.
   const overlayStyle = resolveBboxOverlayStyle({
     bbox: highlightedBbox,
-    pageGeometry: reservedGeometry,
+    pageGeometry: resolveBboxFrameGeometry(reservedGeometry, rotation),
     rotation,
   });
 
@@ -301,7 +331,12 @@ const PdfPageSlot = memo(function PdfPageSlot({
     >
       {render ? (
         <div
-          className="relative mx-auto max-w-full self-start"
+          className={cn(
+            "relative mx-auto max-w-full self-start",
+            // A page that failed before it was measured has no reserved box to
+            // hold its error card, so give the card room of its own.
+            renderFailed && !reservedGeometry && "min-h-72 w-full",
+          )}
           style={
             reservedGeometry
               ? {
@@ -332,6 +367,25 @@ const PdfPageSlot = memo(function PdfPageSlot({
                 height: overlayStyle.height,
               }}
             />
+          ) : null}
+          {renderFailed ? (
+            <div
+              data-testid="pdf-page-render-error"
+              className="absolute inset-0 z-10 grid place-items-center rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] p-4 text-center text-sm text-[color:var(--text-muted)]"
+            >
+              <div>
+                <FileText aria-hidden="true" className="mx-auto mb-2 h-8 w-8" />
+                <p>{`Could not display page ${pageNumber} of the PDF.`}</p>
+                <button
+                  type="button"
+                  onClick={() => setRenderAttempt((current) => current + 1)}
+                  className={cn(secondaryButton, "mt-3")}
+                >
+                  <RefreshCw aria-hidden="true" className="h-4 w-4" />
+                  Retry page
+                </button>
+              </div>
+            </div>
           ) : null}
         </div>
       ) : (
@@ -405,7 +459,8 @@ export const PdfCanvasViewer = memo(function PdfCanvasViewer({
    * Reports whether the document itself failed to open. DocumentFrame's
    * toolbar stays enabled otherwise, so zoom, page and rotate buttons sat live
    * over the "Could not load PDF preview" card and did nothing (audit VUX-07c).
-   * A single page failing to render is not reported: the rest still work.
+   * A single page failing to render is not reported: its error stays in its
+   * own slot and the rest of the column still works.
    */
   onLoadFailedChange?: (failed: boolean) => void;
 }) {
@@ -890,14 +945,17 @@ export const PdfCanvasViewer = memo(function PdfCanvasViewer({
       // page — report it either way, or a background prefetch failure would sit
       // there un-recovered until the reader flipped into it.
       if (isLikelyExpiredUrl(renderError)) reportUrlExpired();
-      // Only the page the reader is actually looking at may take over the frame.
-      // A neighbour rendered ahead is invisible; blanking a perfectly good page
-      // because a prefetch failed would be a worse outcome than the prefetch
-      // simply not arriving.
+      // The failed slot shows its own error card and the rest of the column
+      // stays readable, so a render failure never takes over the whole frame.
+      // Only the page the reader is actually looking at is announced: a
+      // neighbour rendered ahead is invisible until the reader reaches it.
       if (pageNumber === pageRef.current) {
         // Same reason as the load path above: never surface the library's own message.
         console.error("[pdf-canvas-viewer] PDF page render failed", renderError);
-        setError("Could not display this page of the PDF.");
+        announce(`Could not display page ${pageNumber} of the PDF.`, {
+          priority: "assertive",
+          eventId: `pdf-canvas-preview:${urlRef.current}:page-${pageNumber}`,
+        });
       }
     },
     [reportUrlExpired],

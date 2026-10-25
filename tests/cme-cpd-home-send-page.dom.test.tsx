@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CpdHomeEntryLink } from "@/components/cme/cpd-home/cpd-home-entry-link";
 import { CpdHomeSendPage } from "@/components/cme/cpd-home/cpd-home-send-page";
+import { CopyIconButton } from "@/components/cme/cpd-feature-kit";
 import { CPD_HOME_SEND_STORAGE_KEY, clearAccountScopedBrowserStorage } from "@/lib/account-scoped-browser-state";
 import type { CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
 import * as clipboard from "@/lib/copy-to-clipboard";
@@ -396,5 +397,42 @@ describe("Send to AMA CPD Home", () => {
   it("exports an entry link to the page", () => {
     render(<CpdHomeEntryLink year={2026} />);
     expect(screen.getByTestId("cpd-home-entry-link").getAttribute("href")).toBe("/cme/cpd-home?year=2026");
+  });
+});
+
+describe("CopyIconButton", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it("keeps Copied for the full 2 seconds after a second press, with no timer left after unmount", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(clipboard, "copyTextToClipboard").mockResolvedValue();
+    const { unmount } = render(<CopyIconButton text="Grand round" label="Copy Grand round" />);
+    const button = screen.getByRole("button", { name: "Copy Grand round" });
+    await act(async () => {
+      fireEvent.click(button);
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(1_500);
+    });
+    await act(async () => {
+      fireEvent.click(button);
+    });
+    // The first press's timer would have reset the label here.
+    await act(async () => {
+      vi.advanceTimersByTime(1_000);
+    });
+    expect(button).toHaveAttribute("aria-label", "Copy Grand round, copied");
+    await act(async () => {
+      vi.advanceTimersByTime(1_000);
+    });
+    expect(button).toHaveAttribute("aria-label", "Copy Grand round");
+    await act(async () => {
+      fireEvent.click(button);
+    });
+    unmount();
+    expect(vi.getTimerCount()).toBe(0);
   });
 });

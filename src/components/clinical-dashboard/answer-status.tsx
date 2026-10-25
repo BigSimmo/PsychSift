@@ -479,11 +479,13 @@ export function AnswerProgress({
       aria-busy={running}
       className="grid gap-2"
     >
-      {finished ? (
-        <span role="status" className="sr-only">
-          Answer ready.
-        </span>
-      ) : (
+      {/* Mounted in both states and only its text changes: a live region inserted with
+          its text already inside is often not announced, so "Answer ready." needs a node
+          that was already on the page, empty, while the answer was being written. */}
+      <span role="status" data-testid="answer-progress-ready" className="sr-only">
+        {finished ? "Answer ready." : ""}
+      </span>
+      {finished ? null : (
         <>
           <div
             data-slot="answer-progress-card"
@@ -566,7 +568,8 @@ export function AnswerProgress({
 
       {/* The build disclosure for a finished answer moved below the answer (owner decision,
           17 Oct 2026): see answer-build-details.tsx. This section stays where it is so the
-          "Answer ready." live region is the same node that announced the progress. */}
+          "Answer ready." status node above stays mounted from the first progress event to
+          the finished answer. */}
     </section>
   );
 }

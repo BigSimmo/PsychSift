@@ -1,3 +1,4 @@
+import { cpdTextPatientProblem, cpdTitlePatientProblem } from "@/lib/cme/patient-detail-check";
 import { cmeEntryCreateSchema } from "@/lib/cme/schemas";
 import { cmeYearConfigurationState } from "@/lib/cme/year-configuration";
 import { rowsToCmeYearClose, type CmeCloseEvaluation } from "@/lib/cme/year-close";
@@ -381,6 +382,22 @@ export async function saveCmeRoutine(
 }
 
 /**
+ * The server's backstop for the entry form's patient-detail check: the same CPD readings of the
+ * title and reflection, so a caller that skips the form (a stale tab, a script) cannot store a
+ * patient detail the form would have refused. The account work-sync and answer-feedback writes
+ * re-check on the server the same way.
+ */
+export function assertNoCmeEntryPatientDetail(entry: { readonly title: string; readonly reflection: string }): void {
+  if (cpdTitlePatientProblem(entry.title) || cpdTextPatientProblem(entry.reflection)) {
+    throw new PublicApiError(
+      "The title or reflection looks like it holds a patient detail, so it was not saved. Take it out and save again.",
+      422,
+      { code: "patient_detail" },
+    );
+  }
+}
+
+/**
  * Reject `routineId` / `documentId` that do not belong to this owner.
  *
  * Foreign keys only prove the target row exists somewhere. Without an owner
@@ -494,10 +511,13 @@ export async function clearCmeEntryTranscribed(
 }
 
 /**
- * Replace one entry's allocations. Reads prior rows first and restores them if
- * the insert fails, so a rejected edit cannot leave the entry with zero
- * categories. Callers that then fail updating `cme_entries` should call
- * `restoreCmeAllocations` with the returned `prior` snapshot.
+ * @deprecated Do not use. Write allocations only through `saveCmeEntry` (the
+ * `cme_save_entry` database function), which saves an entry and its allocations
+ * in one transaction and refuses a closed or archived year. This helper deletes
+ * then inserts in separate requests, skips those year checks, and its restore is
+ * best effort, so a double failure can leave an entry with no allocations.
+ * Nothing calls it; it is kept only until it can be removed under
+ * docs/agents/dead-code-deletion.md.
  */
 export async function replaceCmeAllocations(
   supabase: AdminClient,
@@ -568,7 +588,10 @@ export async function replaceCmeAllocations(
   return { written, prior };
 }
 
-/** Re-insert a prior allocation snapshot after a later step in the same PATCH failed. */
+/**
+ * @deprecated Do not use; see `replaceCmeAllocations`. Allocations are written only
+ * through `saveCmeEntry`, which is atomic and checks the year.
+ */
 export async function restoreCmeAllocations(
   supabase: AdminClient,
   ownerId: string,

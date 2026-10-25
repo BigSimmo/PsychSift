@@ -56,6 +56,12 @@ describe("service urgent routing — Requirement R2", () => {
         "child crisis",
         "teen suicidal",
         "16 year old self harm",
+        "16 yr old self harm",
+        "16yo self harm",
+        "16-yo self harm",
+        "16 yo suicidal",
+        "16 y/o suicidal",
+        "15 y.o. suicidal",
         "kids suicidal",
         "under 18 crisis",
         "<18 crisis",
@@ -63,6 +69,12 @@ describe("service urgent routing — Requirement R2", () => {
       ]) {
         expect(detectServiceUrgentIntents(query)).toEqual(["camhs_crisis"]);
         expect(titles(query, 8)[0]).toBe("CAMHS Crisis Connect");
+      }
+    });
+
+    it("does not read adult or non-age shorthand as under-18 wording", () => {
+      for (const query of ["18yo suicidal", "25 y/o suicidal", "16 you suicidal"]) {
+        expect(detectServiceUrgentIntents(query), query).toEqual(["emergency", "adult_metro_crisis"]);
       }
     });
 

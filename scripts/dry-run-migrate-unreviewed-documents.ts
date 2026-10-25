@@ -112,6 +112,11 @@ async function main() {
     console.error("DRY_RUN_MIGRATE_ERROR: --write requires explicit --confirm flag to mutate database records.");
     process.exit(1);
   }
+  // JSON mode only reports a plan; it never ran the write loop, so it must not claim "written".
+  if (isWrite && isJson) {
+    console.error("DRY_RUN_MIGRATE_ERROR: --json reports a dry-run plan only and cannot be combined with --write.");
+    process.exit(1);
+  }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -136,17 +141,29 @@ async function main() {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const { data, error } = await supabase.from("documents").select("id, title, file_name, metadata").limit(10000);
+  // Page through every row: the hosted API caps a single response (1000 rows by default), so one
+  // .limit() read would silently inspect only part of the corpus.
+  const pageSize = 1000;
+  const data: DocumentRow[] = [];
+  for (let from = 0; ; from += pageSize) {
+    const { data: page, error } = await supabase
+      .from("documents")
+      .select("id, title, file_name, metadata")
+      .order("id", { ascending: true })
+      .range(from, from + pageSize - 1);
 
-  if (error) {
-    console.error(`DRY_RUN_MIGRATE_FETCH_ERROR: ${error.message}`);
-    process.exit(1);
+    if (error) {
+      console.error(`DRY_RUN_MIGRATE_FETCH_ERROR: ${error.message}`);
+      process.exit(1);
+    }
+    data.push(...((page ?? []) as DocumentRow[]));
+    if (!page || page.length < pageSize) break;
   }
 
-  const plan = planUnreviewedDocumentsMigration((data ?? []) as DocumentRow[]);
+  const plan = planUnreviewedDocumentsMigration(data);
 
   if (isJson) {
-    console.log(JSON.stringify({ status: isWrite ? "written" : "dry-run", plan }, null, 2));
+    console.log(JSON.stringify({ status: "dry-run", plan }, null, 2));
     return;
   }
 
@@ -160,16 +177,32 @@ async function main() {
     console.log("\nExecuting migration writes...");
     const toUpdate = plan.candidates.filter((c) => c.action === "migrate").map((c) => c.id);
     console.log(`Migrating ${toUpdate.length} documents...`);
+    const failures: string[] = [];
     // Batch updates in chunks
     for (let i = 0; i < toUpdate.length; i += 100) {
       const chunk = toUpdate.slice(i, i + 100);
       for (const id of chunk) {
-        const doc = (data ?? []).find((d) => d.id === id);
-        if (!doc) continue;
+        const doc = data.find((d) => d.id === id);
+        if (!doc) {
+          failures.push(`${id}: row missing from the inspected set`);
+          continue;
+        }
         const meta = { ...((doc.metadata ?? {}) as Record<string, unknown>) };
         meta.clinical_validation_status = "imported_unreviewed";
-        await supabase.from("documents").update({ metadata: meta }).eq("id", id);
+        const { data: updated, error: updateError } = await supabase
+          .from("documents")
+          .update({ metadata: meta })
+          .eq("id", id)
+          .select("id");
+        if (updateError) failures.push(`${id}: ${updateError.message}`);
+        else if (!updated || updated.length !== 1) failures.push(`${id}: updated ${updated?.length ?? 0} rows`);
       }
+    }
+    if (failures.length > 0) {
+      console.error(`DRY_RUN_MIGRATE_WRITE_ERROR: ${failures.length} of ${toUpdate.length} updates failed.`);
+      for (const failure of failures) console.error(`  ${failure}`);
+      process.exitCode = 1;
+      return;
     }
     console.log("Migration complete.");
   } else {

@@ -83,6 +83,18 @@ describe("Refer page", () => {
     expect(screen.queryByText(/being built/i)).toBeNull();
   });
 
+  it("labels a shared note as readable by everyone signed in, not just the reader's service", () => {
+    entries.list = [
+      personalReferral("p1", "My private note"),
+      { ...personalReferral("p2", "My shared note"), isPersonal: false },
+    ];
+    render(<OnCallReferPage />);
+    const mine = screen.getByTestId("on-call-refer-mine");
+    expect(within(mine).getByText("Private")).toBeInTheDocument();
+    expect(within(mine).getByText("Shared with everyone signed in")).toBeInTheDocument();
+    expect(within(mine).queryByText(/your service/i)).toBeNull();
+  });
+
   it("never shows an empty notes list while the notes are still loading or failed to load", () => {
     entries.loading = true;
     render(<OnCallReferPage />);

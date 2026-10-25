@@ -72,6 +72,9 @@ describe("buildDocumentSummaryBadges", () => {
       "There are no contraindications to this therapy.",
       "Lithium is not contraindicated in mild renal impairment.",
       "No known contraindications have been reported.",
+      "Contraindications: none listed for this formulation.",
+      "Contraindications - nil known.",
+      "Contraindications: N/A.",
     ]) {
       const badges = buildDocumentSummaryBadges({ summaryText });
       expect(badges.find((badge) => badge.label === "Contraindications")).toBeUndefined();
@@ -81,6 +84,11 @@ describe("buildDocumentSummaryBadges", () => {
       summaryText: "No dose adjustment needed, but it is contraindicated in severe hepatic failure.",
     });
     expect(positive.find((badge) => badge.label === "Contraindications")?.tone).toBe("danger");
+    // A later "none" that is not the label's own value does not negate it.
+    const labelled = buildDocumentSummaryBadges({
+      summaryText: "Contraindications: severe renal impairment; none of the listed interactions apply.",
+    });
+    expect(labelled.find((badge) => badge.label === "Contraindications")?.tone).toBe("danger");
   });
 
   it("deduplicates equivalent label- and phrase-derived badges by display label", () => {

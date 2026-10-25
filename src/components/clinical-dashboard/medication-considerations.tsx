@@ -33,6 +33,7 @@ import {
 import {
   evaluatePatientAlerts,
   noticeToneForSemanticTone,
+  unassessedGateCount,
   type MedicationConsideration,
 } from "@/lib/medication-patient-alerts";
 import type { MedicationRecord } from "@/lib/medications";
@@ -394,8 +395,8 @@ export function MedicationConsiderations({ record, className }: { record: Medica
   const { profile, isEmpty } = usePatientProfile();
   const result = useMemo(() => evaluatePatientAlerts(record, profile), [record, profile]);
   // Either tier is enough to disqualify the all-clear: both mean a criterion on
-  // this medication was never evaluated.
-  const hasUnassessedGates = result.unassessed.length > 0 || result.unassessedAdvisory.length > 0;
+  // this medication was never evaluated. Shared with the result-row verdict.
+  const hasUnassessedGates = unassessedGateCount(result) > 0;
 
   return (
     <section aria-label="Patient considerations" className={cn("space-y-2", className)}>
@@ -522,7 +523,13 @@ function MedicationInteractionBlock({ record }: { record: MedicationRecord }) {
         </div>
       ) : result.interactions.length === 0 ? (
         <InlineNotice
-          tone={result.unresolvedRowCount > 0 || result.unreachableCounterparties.length > 0 ? "neutral" : "success"}
+          tone={
+            result.unresolvedRowCount > 0 ||
+            result.unreachableCounterparties.length > 0 ||
+            result.reverseUnresolvedCounterparties.length > 0
+              ? "neutral"
+              : "success"
+          }
         >
           No interaction found between this medication and the {medicationCount}{" "}
           {medicationCount === 1 ? "medication" : "medications"} entered. Always confirm against source.
@@ -570,7 +577,9 @@ function MedicationInteractionBlock({ record }: { record: MedicationRecord }) {
           phrasing that as "1 of 0 rows" would be nonsense. The third names the
           entered drugs outside the resolved interaction graph, which is a statement about the
           patient's list rather than about this medication, so it renders
-          alongside the other two rather than instead of them. */}
+          alongside the other two rather than instead of them. With no list
+          entered, the dashed box above already says there is no interaction
+          data, so the first notice is not repeated. */}
       {result.unreachableCounterparties.length > 0 ? (
         <InlineNotice tone="neutral">
           This catalogue has no machine-resolved interaction involving{" "}
@@ -582,15 +591,28 @@ function MedicationInteractionBlock({ record }: { record: MedicationRecord }) {
       ) : null}
 
       {!result.dataAvailable ? (
-        <InlineNotice tone="neutral">
-          This catalogue carries no interaction data for this medication, so nothing could be cross-checked against the
-          entered list. Review manually. It is not shown as clear.
-        </InlineNotice>
+        hasList ? (
+          <InlineNotice tone="neutral">
+            This catalogue carries no interaction data for this medication, so nothing could be cross-checked against
+            the entered list. Review manually. It is not shown as clear.
+          </InlineNotice>
+        ) : null
       ) : result.unresolvedRowCount > 0 ? (
         <InlineNotice tone="neutral">
           {result.unresolvedRowCount} of this medication&rsquo;s {result.totalRowCount} interaction{" "}
           {result.totalRowCount === 1 ? "row" : "rows"} could not be matched automatically — review the Key Interactions
           section below manually. This medication is not shown as clear.
+        </InlineNotice>
+      ) : null}
+
+      {/* The patient-side twin of the unresolved-row notice above: the entered
+          drug's own rows could not all be matched, so one of them may reach this
+          medication without naming it. */}
+      {result.reverseUnresolvedCounterparties.length > 0 ? (
+        <InlineNotice tone="neutral">
+          Some interaction rows for{" "}
+          {formatMedicationList(result.reverseUnresolvedCounterparties.map(medicationDisplayName))} could not be matched
+          automatically, so they were not fully cross-checked against this medication. Review manually.
         </InlineNotice>
       ) : null}
     </section>

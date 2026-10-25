@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { RotationsRead } from "@/components/roster/rotations/use-rotations";
+import { confirmShellNavigation } from "@/lib/navigation-guards";
 import { exampleRotationRounds } from "@/lib/example-data/datasets/roster-rotations";
 import { myRoundView } from "@/lib/roster/rotations/operations";
 
@@ -106,6 +107,40 @@ describe("RotationRankPage while the round is open", () => {
       fireEvent.click(screen.getByTestId("rotation-rank-save"));
     });
     expect(savePreference).toHaveBeenCalledWith(openRound.round.id, ["example:rot:community"], false);
+  });
+
+  it("keeps focus in the lists when a row goes away", () => {
+    render(<RotationRankPage roundId={openRound.round.id} now={NOW} />);
+    fireEvent.click(screen.getByRole("button", { name: "Rank Forensic" }));
+    fireEvent.click(screen.getByRole("button", { name: "Rank Community" }));
+    // Removing a row moves focus to the next one.
+    fireEvent.click(screen.getByRole("button", { name: /^1st:\s?Forensic/ }));
+    fireEvent.click(screen.getByTestId("rotation-rank-remove"));
+    expect(screen.getByRole("button", { name: /^1st:\s?Community/ })).toHaveFocus();
+    // Removing the last ranked row follows the rotation back into "Not ranked yet".
+    fireEvent.click(screen.getByRole("button", { name: /^1st:\s?Community/ }));
+    fireEvent.click(screen.getByTestId("rotation-rank-remove"));
+    expect(screen.getByRole("button", { name: "Rank Community" })).toHaveFocus();
+  });
+
+  it("follows the last unranked rotation into the ranking", () => {
+    render(<RotationRankPage roundId={openRound.round.id} now={NOW} />);
+    const names = screen
+      .getAllByTestId("rotation-unranked-row")
+      .map((row) => row.getAttribute("aria-label")!.replace(/^Rank /, ""));
+    for (const name of names) fireEvent.click(screen.getByRole("button", { name: `Rank ${name}` }));
+    const last = names[names.length - 1]!;
+    expect(screen.getByRole("button", { name: new RegExp(`^${names.length}th:\\s?${last}`) })).toHaveFocus();
+  });
+
+  it("asks before the shell navigates away from an unsaved order", () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    render(<RotationRankPage roundId={openRound.round.id} now={NOW} />);
+    expect(confirmShellNavigation()).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Rank Forensic" }));
+    expect(confirmShellNavigation()).toBe(false);
+    expect(confirm).toHaveBeenCalledTimes(1);
+    confirm.mockRestore();
   });
 
   it("shows a refused save in words and keeps the order", async () => {

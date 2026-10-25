@@ -64,6 +64,16 @@ describe("run-heavy lock holders stay async", () => {
     expect(source).not.toContain("spawnSync");
     expect(source).toContain("await runVitest()");
   });
+
+  it("keeps the Playwright build and test children async so lease heartbeats can fire", () => {
+    const source = readFileSync(path.join(repositoryRoot, "scripts/run-playwright.mjs"), "utf8");
+    // Only the short Windows taskkill in cleanup may stay synchronous.
+    expect(source).not.toContain("spawnSync(process.execPath");
+    expect(source.match(/spawnSync\(/g) ?? []).toHaveLength(1);
+    expect(source).toContain('spawnSync("taskkill"');
+    expect(source).toContain('await runChild(["--max-old-space-size=8192", nextBin, "build", "--webpack"]');
+    expect(source).toContain('await runChild([playwrightBin, "test", ...playwrightArgs]');
+  });
 });
 
 describe("eval-retrieval parallelization", () => {

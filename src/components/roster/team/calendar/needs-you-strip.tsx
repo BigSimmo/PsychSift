@@ -268,7 +268,7 @@ export function useRosterDecision(serviceId: string, onChanged: () => void) {
       busy={busy}
     />
   );
-  return { busy, message, errors, decide, approveAll, reviewDialog };
+  return { busy, message, errors, reviewing: review !== null, decide, approveAll, reviewDialog };
 }
 
 const who = (name: string | null | undefined, fallback: string | null | undefined) =>
@@ -402,8 +402,13 @@ export function NeedsYouStrip({
   onChanged: () => void;
   onPickDay: (date: string) => void;
 }) {
-  const { busy, message, errors, decide, approveAll, reviewDialog } = useRosterDecision(serviceId, onChanged);
-  if (!pending.length && !claimed.length && !shortDays.length) return null;
+  const { busy, message, errors, reviewing, decide, approveAll, reviewDialog } = useRosterDecision(
+    serviceId,
+    onChanged,
+  );
+  // The reload after a decision can empty the lists; the answer stays until there is nothing left to read.
+  const answering = message !== null || errors.length > 0 || reviewing;
+  if (!pending.length && !claimed.length && !shortDays.length && !answering) return null;
 
   const approvable = pending.filter((swap) => checks.checkable.has(swap.id) && !swapHasWarning(swap, checks)).length;
 

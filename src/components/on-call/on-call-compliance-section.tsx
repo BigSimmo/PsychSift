@@ -74,8 +74,6 @@ export interface OnCallComplianceSectionProps {
   onEditEntry?: (entry: OnCallEntry) => void;
   /** One-tap "still correct today"; shown only on a stale entry. */
   onVerified?: (entry: OnCallEntry) => void;
-  /** Whether to render a fallback badge for rows with missing or unreadable details. */
-  fallbackBadge?: boolean;
 }
 
 /**
@@ -299,7 +297,6 @@ function ComplianceRow({
   onEditEntry,
   onVerified,
   privacyStatedOnPage,
-  fallbackBadge,
 }: {
   entry: OnCallEntry;
   now: Date;
@@ -311,7 +308,6 @@ function ComplianceRow({
    * eight identical pills say it eight times.
    */
   privacyStatedOnPage: boolean;
-  fallbackBadge?: boolean;
 }) {
   const details = parseComplianceDetails(entry.details);
   const freshness = onCallEntryFreshness(entry, now);
@@ -460,8 +456,6 @@ function ComplianceRow({
             from one they did. */}
         {details?.category ? (
           <span className={cn(metadataPillDensity.standard, "rounded-full")}>{details.category}</span>
-        ) : fallbackBadge ? (
-          <span className={cn(metadataPillDensity.standard, "rounded-full")}>General Requirement</span>
         ) : null}
         {/* Lead time is per requirement because the real ones differ by
             months — a police check is not a form you submit the week it
@@ -517,7 +511,6 @@ export function OnCallComplianceSection({
   testId = "on-call-compliance-section",
   onEditEntry,
   onVerified,
-  fallbackBadge = false,
 }: OnCallComplianceSectionProps) {
   const { compliance } = partitionLogisticsEntries(entries);
 
@@ -624,7 +617,6 @@ export function OnCallComplianceSection({
                 onEditEntry={onCallEntryIsEditable(entry) ? onEditEntry : undefined}
                 onVerified={onCallEntryIsEditable(entry) ? onVerified : undefined}
                 privacyStatedOnPage={allPrivate}
-                fallbackBadge={fallbackBadge}
               />
             ))}
           </OnCallGroupSection>

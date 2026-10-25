@@ -130,7 +130,7 @@ describe("Clinical input privacy attributes & account transitions", () => {
     expectPrivacyAttributes(specifierInput);
 
     fireEvent.change(specifierInput!, { target: { value: "Synthetic specifier" } });
-    const storageKey = `psychsift_dsm_draft_${panic.icdCode}`;
+    const storageKey = `psychsift_dsm_draft_${panic.slug}`;
     expect(window.sessionStorage.getItem(storageKey)).toContain("Synthetic specifier");
 
     act(() => {

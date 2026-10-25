@@ -4,6 +4,7 @@ import { CARD_CLASS, CountTile, META_CLASS, PanelSection } from "@/components/de
 import { LedgerFilter, type LedgerFilterGroup } from "@/components/developer-area/hub/ledger-filter";
 import { LEDGER_DETAIL_CLASS, LEDGER_DISCLOSURE_CLASS } from "@/components/developer-area/hub/ledger-item";
 import { PanelPageShell } from "@/components/developer-area/hub/panel-page-shell";
+import { developerAreaRequestAuthorized } from "@/lib/developer-area/access";
 import {
   loadLedgerSnapshot,
   openItemsByPriority,
@@ -35,7 +36,9 @@ const ACUITY_NOTE: Record<string, string> = {
   A3: "start when there is room",
 };
 
-export default function DeveloperLedgerPage() {
+export default async function DeveloperLedgerPage() {
+  // The layout gate can be skipped on a client-side navigation; check again here (see `access.ts`).
+  if (!(await developerAreaRequestAuthorized())) return null;
   const snapshot = loadLedgerSnapshot();
   const freshness = resolveFreshness(snapshot, new Date());
   const grouped = openItemsByPriority(snapshot);

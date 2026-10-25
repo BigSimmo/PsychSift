@@ -982,6 +982,65 @@ describe("P1-1 — an update payload is a written VALUE, not a filter", () => {
     );
     expect(mixed[0].ownerScopedChain).toBe(false);
   });
+
+  it("does not count a stamp that a later spread can overwrite", () => {
+    const overridable = scanFixture(
+      FIXTURE_FILE,
+      `export async function POST() {
+        return supabase.from("documents").insert({ owner_id: user.id, ...body });
+      }`,
+    );
+    expect(overridable[0].ownerScopedChain, JSON.stringify(overridable[0].proofs)).toBe(false);
+
+    const stampedLast = scanFixture(
+      FIXTURE_FILE,
+      `export async function POST() {
+        return supabase.from("documents").insert({ ...body, owner_id: user.id });
+      }`,
+    );
+    expect(stampedLast[0].ownerScopedChain).toBe(true);
+  });
+});
+
+describe("`.is()` and embedded `documents.owner_id` filters", () => {
+  it("accepts `.is(owner_id, null)` only with a literal null", () => {
+    const shared = scanFixture(
+      FIXTURE_FILE,
+      `export async function GET() {
+        return supabase.from("documents").select("id").is("owner_id", null);
+      }`,
+    );
+    expect(shared[0].ownerScopedChain).toBe(true);
+
+    const nonNull = scanFixture(
+      FIXTURE_FILE,
+      `export async function GET() {
+        return supabase.from("documents").select("id").is("owner_id", value);
+      }`,
+    );
+    expect(nonNull[0].ownerScopedChain).toBe(false);
+  });
+
+  it("requires `documents!inner` for a direct-tier `documents.owner_id` filter", () => {
+    const tiers = { direct: new Set(["document_summaries"]) };
+    const outer = scanFixture(
+      FIXTURE_FILE,
+      `export async function GET() {
+        return supabase.from("document_summaries").select("*, documents(title)").eq("documents.owner_id", uid);
+      }`,
+      tiers,
+    );
+    expect(outer[0].ownerScopedChain).toBe(false);
+
+    const inner = scanFixture(
+      FIXTURE_FILE,
+      `export async function GET() {
+        return supabase.from("document_summaries").select("*, documents!inner(title)").eq("documents.owner_id", uid);
+      }`,
+      tiers,
+    );
+    expect(inner[0].ownerScopedChain).toBe(true);
+  });
 });
 
 describe("P1-2 — `.or()` is a disjunction and cannot be an owner proof on its own", () => {
@@ -999,6 +1058,12 @@ describe("P1-2 — `.or()` is a disjunction and cannot be an owner proof on its 
     expect(orFixture("owner_id.is.null,status.eq.indexed").ownerScopedChain).toBe(false);
     expect(orFixture("owner_id.eq.11111111-1111-4111-8111-111111111111,id.eq.abc").ownerScopedChain).toBe(false);
     expect(orFixture("status.eq.indexed,owner_id.eq.abc").ownerScopedChain).toBe(false);
+  });
+
+  it("rejects an `is.` term other than `is.null`", () => {
+    // `owner_id.is.not_null` matches every tenant's owned rows.
+    expect(orFixture("owner_id.is.not_null").ownerScopedChain).toBe(false);
+    expect(orFixture("owner_id.eq.abc,owner_id.is.not_null").ownerScopedChain).toBe(false);
   });
 
   it("accepts the nested shape withOwnerReadScope actually emits", () => {

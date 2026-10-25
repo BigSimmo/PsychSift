@@ -92,12 +92,23 @@ describe("calendar file", () => {
     expect(folded.replace(/\r\n /g, "")).toBe(`SUMMARY:${"é".repeat(60)}`);
   });
 
-  it("writes timed events in UTC and all-day events as dates, with a repeat rule", () => {
+  it("writes one-off timed events in UTC, with no time-zone block", () => {
+    const ics = toIcs([TIMED, ALL_DAY], { now: NOW });
+    expect(ics).toContain("DTSTART:20260930T043000Z");
+    expect(ics).toContain("DTEND:20260930T060000Z");
+    expect(ics).not.toContain("TZID");
+    expect(ics).not.toContain("VTIMEZONE");
+  });
+
+  it("writes timed series in Perth time and all-day events as dates, with a repeat rule", () => {
     const ics = toIcs([{ ...TIMED, recurrence: "fortnightly" }, ALL_DAY], { name: "CME", now: NOW });
     expect(ics.startsWith("BEGIN:VCALENDAR\r\nVERSION:2.0\r\n")).toBe(true);
     expect(ics.endsWith("END:VCALENDAR\r\n")).toBe(true);
-    expect(ics).toContain("DTSTART:20260930T043000Z");
-    expect(ics).toContain("DTEND:20260930T060000Z");
+    expect(ics).toContain(
+      "BEGIN:VTIMEZONE\r\nTZID:Australia/Perth\r\nBEGIN:STANDARD\r\nDTSTART:19700101T000000\r\nTZOFFSETFROM:+0800\r\nTZOFFSETTO:+0800\r\nTZNAME:AWST\r\nEND:STANDARD\r\nEND:VTIMEZONE\r\nBEGIN:VEVENT\r\n",
+    );
+    expect(ics).toContain("DTSTART;TZID=Australia/Perth:20260930T123000");
+    expect(ics).toContain("DTEND;TZID=Australia/Perth:20260930T140000");
     expect(ics).toContain("RRULE:FREQ=WEEKLY;INTERVAL=2");
     expect(ics).toContain("DTSTART;VALUE=DATE:20261231");
     expect(ics).toContain("DTEND;VALUE=DATE:20270101");
@@ -119,6 +130,22 @@ describe("calendar file", () => {
     expect(toIcs([{ ...TIMED, date: "2026-01-28", recurrence: "monthly" }], { now: NOW })).toContain(
       "RRULE:FREQ=MONTHLY\r\n",
     );
+  });
+
+  it("anchors an early-morning monthly series to its Perth day, not the UTC day before", () => {
+    // 07:30 Perth is 23:30 UTC the day before. A UTC DTSTART would make the rule repeat on
+    // that UTC day: the 30th would land on Perth's 31st or the 1st, the 1st would skip months.
+    const early = { ...TIMED, startTime: "07:30", recurrence: "monthly" } as const;
+    for (const [date, start, rule] of [
+      ["2026-10-30", "20261030T073000", "FREQ=MONTHLY;BYMONTHDAY=28,29,30;BYSETPOS=-1"],
+      ["2026-10-31", "20261031T073000", "FREQ=MONTHLY;BYMONTHDAY=28,29,30,31;BYSETPOS=-1"],
+      ["2026-02-01", "20260201T073000", "FREQ=MONTHLY"],
+    ] as const) {
+      const ics = toIcs([{ ...early, date }], { now: NOW });
+      expect(ics).toContain(`DTSTART;TZID=Australia/Perth:${start}\r\n`);
+      expect(ics).toContain(`RRULE:${rule}\r\n`);
+      expect(ics).not.toMatch(/DTSTART:\d{8}T\d{6}Z/);
+    }
   });
 
   it("exports a February occurrence using the original January 31 series rule", () => {

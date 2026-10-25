@@ -93,10 +93,12 @@ describe("Send test alert", () => {
     const response = await POST(req({ endpoint: ENDPOINT }));
     expect(await response.json()).toEqual({ sent: 1 });
     expect(mocks.send).toHaveBeenCalledTimes(1);
-    const [target, payload] = mocks.send.mock.calls[0]!;
+    const [target, payload, options] = mocks.send.mock.calls[0]!;
     expect(target).toMatchObject({ endpoint: ENDPOINT });
     // The lock-screen words live in the service worker; the payload is the code only.
     expect(JSON.parse(payload as string)).toEqual({ t: "test" });
+    // A push service that never answers must not leave the button spinning.
+    expect(options).toMatchObject({ timeout: 10_000 });
   });
 
   it("never sends to a device this account does not own", async () => {

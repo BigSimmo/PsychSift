@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-24"
+    "committed_at": "2026-10-25"
   },
   "routes": {
     "modes": [
@@ -2872,6 +2872,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-25-audit-check-rules-and-clinical-sign-off.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/redesign/04-deferred.md",
         "section": "redesign",
         "catalogued": true
@@ -3477,6 +3482,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-25-clinical-displays-show-gaps-honestly.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-08-21-care-plan-memory-only-with-storage-seam.md",
         "section": "decisions",
         "catalogued": true
@@ -4032,6 +4042,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-25-delete-unused-surfaces-from-audit.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/archive/2026-10-agent-code-reviews/VERIFICATION_REQUIRED.md",
         "section": "archive",
         "catalogued": true
@@ -4264,6 +4279,11 @@
       {
         "path": "docs/branch-cleanup-guide.md",
         "section": "root",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-25-clinical-question-holds-back-bare-names-and-addresses.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -4714,6 +4734,11 @@
       {
         "path": "docs/archive/search-rag-phase-4-canonical-render-policy.md",
         "section": "archive",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-25-only-administrators-share-on-call-entries.md",
+        "section": "decisions",
         "catalogued": true
       },
       {

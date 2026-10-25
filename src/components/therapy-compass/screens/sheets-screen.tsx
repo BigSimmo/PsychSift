@@ -241,8 +241,12 @@ export function SheetsScreen() {
                 {b.secCoping ? (
                   <PaperSection title="If things get hard">
                     Some days will feel harder than others — that&rsquo;s normal. Make the step smaller rather than
-                    skipping it. If your distress rises sharply or you have thoughts of harming yourself, use the
-                    contacts below straight away.
+                    skipping it. If your distress rises sharply or you have thoughts of harming yourself,{" "}
+                    {/* The two sections toggle separately, so this never points at contacts the sheet leaves
+                        out: without them it carries the contacts section's own crisis instruction. */}
+                    {b.secContacts
+                      ? "use the contacts below straight away."
+                      : "call your local emergency number or a 24/7 crisis line straight away."}
                   </PaperSection>
                 ) : null}
 

@@ -47,10 +47,10 @@ describe("PatientSafetyPlan privacy contract", () => {
     const localStorageSpy = vi.spyOn(Storage.prototype, "setItem");
 
     render(<PatientSafetyPlan />);
-    fireEvent.change(screen.getByLabelText("e.g. Not sleeping for a couple of nights"), {
+    fireEvent.change(screen.getByPlaceholderText("e.g. Not sleeping for a couple of nights"), {
       target: { value: "Not sleeping" },
     });
-    fireEvent.click(screen.getAllByRole("button", { name: "Add" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: /^Add to / })[0]);
     fireEvent.click(screen.getByRole("button", { name: "Copy" }));
 
     expect(writeText).toHaveBeenCalledTimes(1);
@@ -74,10 +74,10 @@ describe("PatientSafetyPlan privacy contract", () => {
     const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
 
     render(<PatientSafetyPlan />);
-    fireEvent.change(screen.getByLabelText("e.g. Not sleeping for a couple of nights"), {
+    fireEvent.change(screen.getByPlaceholderText("e.g. Not sleeping for a couple of nights"), {
       target: { value: "Not sleeping" },
     });
-    fireEvent.click(screen.getAllByRole("button", { name: "Add" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: /^Add to / })[0]);
     fireEvent.click(screen.getByRole("button", { name: "Go back" }));
 
     expect(confirmSpy).toHaveBeenCalledOnce();
@@ -95,7 +95,7 @@ describe("PatientSafetyPlan privacy contract", () => {
     const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
 
     render(<PatientSafetyPlan />);
-    fireEvent.change(screen.getByLabelText("e.g. Not sleeping for a couple of nights"), {
+    fireEvent.change(screen.getByPlaceholderText("e.g. Not sleeping for a couple of nights"), {
       target: { value: "Not sleeping" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Go back" }));
@@ -108,8 +108,8 @@ describe("PatientSafetyPlan privacy contract", () => {
     const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
 
     render(<PatientSafetyPlan />);
-    fireEvent.change(screen.getByLabelText("Name & relationship"), { target: { value: "Priya" } });
-    fireEvent.change(screen.getByLabelText("Phone or how to reach them"), { target: { value: "0400 000 000" } });
+    fireEvent.change(screen.getByPlaceholderText("Name & relationship"), { target: { value: "Priya" } });
+    fireEvent.change(screen.getByPlaceholderText("Phone or how to reach them"), { target: { value: "0400 000 000" } });
     fireEvent.click(screen.getByRole("button", { name: "Go back" }));
 
     expect(confirmSpy).toHaveBeenCalledOnce();
@@ -120,7 +120,7 @@ describe("PatientSafetyPlan privacy contract", () => {
     const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
 
     render(<PatientSafetyPlan />);
-    fireEvent.change(screen.getByLabelText("e.g. Not sleeping for a couple of nights"), {
+    fireEvent.change(screen.getByPlaceholderText("e.g. Not sleeping for a couple of nights"), {
       target: { value: "Not sleeping" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Load example" }));

@@ -2,6 +2,10 @@ import type { ServiceContact, ServiceRecord } from "@/lib/service-ranker";
 
 // "ext", "extn", "extension", "x" (not inside a word such as "fax") or "#", then digits.
 const EXTENSION_TAIL = /(?:(?<![a-z])(?:ext(?:ension|n)?|x)(?![a-z])\.?|#)\s*\d.*$/i;
+// A bracketed note with words in it ("(24 hours)", "(9am-5pm)") is not part of the number.
+const WORDED_BRACKET = /\([^()]*[a-z][^()]*\)/gi;
+// One number as written: digits with the spaces, brackets and dashes between them.
+const NUMBER_RUN = /\+?\(?\d(?:[\d\s()-]*\d)?/g;
 
 /**
  * The first dialable number in a contact string, as the digits a `tel:` link
@@ -12,10 +16,18 @@ export function extractFirstDialablePhone(value: string): string | undefined {
   const sanitized = value.replace(/\b24\/7\b/gi, "").replace(/\((?:option|ext|line|menu)\s*\d+\)/gi, "");
   // An unbracketed extension ("ext 1", "extn 12", "x1", "#2") is not part of the number
   // to dial, so each number is cut where one starts.
-  const parts = sanitized.split(/[;\n/]|\s+or\s+/i).map((p) => p.replace(EXTENSION_TAIL, "").trim());
+  const parts = sanitized
+    .split(/[;,\n/]|\s+or\s+/i)
+    .map((p) => p.replace(EXTENSION_TAIL, "").replace(WORDED_BRACKET, " ").trim());
   for (const part of parts) {
-    const compact = part.replace(/[^\d+]/g, "");
-    if (compact.length >= 3) return compact;
+    // Only the number itself is dialled: other digits in the segment ("24 hours",
+    // "9am-5pm", "press 1") must never be joined onto it. Two numbers in one segment
+    // cannot be told apart, so that segment dials nothing rather than a wrong number.
+    const runs = (part.match(NUMBER_RUN) ?? [])
+      .map((run) => run.replace(/[^\d+]/g, ""))
+      .filter((run) => run.replace(/\D/g, "").length >= 3);
+    if (runs.length === 1) return runs[0];
+    if (runs.length > 1) return undefined;
   }
   return undefined;
 }
@@ -55,8 +67,9 @@ export function serviceCallTarget(service: ServiceRecord): ServiceCallTarget | n
   // as the run of digits that dials to exactly `compact`.
   const digits = compact.replace(/\D/g, "");
   const run =
-    (value.match(PHONE_RUN) ?? []).map((match) => match.trim()).find((match) => match.replace(/\D/g, "") === digits) ??
-    compact;
+    (value.replace(WORDED_BRACKET, " ").match(PHONE_RUN) ?? [])
+      .map((match) => match.trim())
+      .find((match) => match.replace(/\D/g, "") === digits) ?? compact;
   return { href: `tel:${compact}`, display: balanceParens(run) };
 }
 

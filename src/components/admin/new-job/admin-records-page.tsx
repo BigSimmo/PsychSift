@@ -7,6 +7,7 @@ import { flushSync } from "react-dom";
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { AdminNote, AdminPage, AdminSkeleton, adminStyles } from "@/components/admin/admin-kit";
 import { AdminLoadFailed } from "@/components/admin/admin-load-failed";
+import { useJuniorNow } from "@/components/admin/junior/junior-shared";
 import { AdminNavHeader } from "@/components/admin/admin-nav-header";
 import { ADMIN_RECORDS_SECTIONS } from "@/components/admin/admin-page-sections";
 import { AdminShowAll } from "@/components/admin/admin-show-all";
@@ -93,8 +94,7 @@ function RecordGroup({ section, expandAll }: { section: AdminRecordsSection; exp
  */
 export function AdminRecordsPage({ now: nowProp }: { now?: Date } = {}) {
   const state = useOnCallEntries();
-  const mountedAt = useMemo(() => new Date(), []);
-  const now = nowProp ?? mountedAt;
+  const now = useJuniorNow(nowProp);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const [printAll, setPrintAll] = useState(false);
   const loadState = adminLoadState(state);

@@ -17,7 +17,7 @@ import { InformationPageShell } from "@/components/information-page-shell";
 import { OnCallCrisisLines } from "@/components/on-call/call/external-line-rows";
 import { preloadablePanel } from "@/components/on-call/preloadable-panel";
 import { ServiceHandbook } from "@/components/on-call/service-handbook";
-import { focusOnCallEntryFromHash } from "@/components/on-call/on-call-page-anchors";
+import { focusOnCallEntryHashTarget } from "@/components/on-call/on-call-page-anchors";
 import { cardSurface, focusRing } from "@/components/card-recipes";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
@@ -317,11 +317,21 @@ export function ServicePage({
     return () => controller.abort();
   }, [auth.authEpoch, demoMode, effectiveState, loadDetail, rotation, selectedServiceId, selectedSiteId, services]);
 
+  // Focus the hashed entry once per hash value: as soon as it renders, and on
+  // each hashchange. A data refresh (a "Still correct" tap, an edit, a reload)
+  // must not pull the reader back to it, re-open it or move focus off the row
+  // they just used, so a hash already handled is not focused again.
+  const focusedHash = useRef<string | null>(null);
   useEffect(() => {
     if (!detail || tab !== "handbook") return;
-    focusOnCallEntryFromHash();
-    window.addEventListener("hashchange", focusOnCallEntryFromHash);
-    return () => window.removeEventListener("hashchange", focusOnCallEntryFromHash);
+    if (focusedHash.current !== window.location.hash && focusOnCallEntryHashTarget()) {
+      focusedHash.current = window.location.hash;
+    }
+    function onHashChange() {
+      focusedHash.current = focusOnCallEntryHashTarget() ? window.location.hash : null;
+    }
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
   }, [detail, tab]);
 
   const selectedSummary = services.find((service) => service.id === selectedServiceId) ?? null;
@@ -769,7 +779,7 @@ export function ServicePage({
               onAction={action}
             />
           ) : tab === "admin" && canEdit ? (
-            <ServiceAdminPanel detail={detail} onAction={action} />
+            <ServiceAdminPanel detail={detail} actorId={auth.session?.user.id ?? null} onAction={action} />
           ) : (
             <section
               aria-labelledby="service-membership-actions-heading"

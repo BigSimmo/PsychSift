@@ -210,6 +210,43 @@ describe("TeachingQrCheckinSheet (#ZTDZ4Z)", () => {
     expect(onCheckInSuccess).toHaveBeenCalledTimes(1);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+  it("releases a running camera when a typed code succeeds or the parent closes the sheet", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(clientModule, "teachingPost").mockResolvedValue({
+      method: "code",
+      recordedAt: new Date().toISOString(),
+    });
+    class MockBarcodeDetector {
+      static getSupportedFormats = vi.fn().mockResolvedValue(["qr_code"]);
+      detect = vi.fn().mockResolvedValue([]);
+    }
+    // @ts-expect-error - assign mock
+    window.BarcodeDetector = MockBarcodeDetector;
+    const stopTrack = vi.fn();
+    Object.defineProperty(navigator, "mediaDevices", {
+      value: { getUserMedia: vi.fn().mockResolvedValue({ getTracks: () => [{ stop: stopTrack }] }) },
+      configurable: true,
+    });
+
+    const props = { onClose: vi.fn(), serviceId: "service-1", occurrenceId: "occurrence-1" };
+    const { rerender } = render(<TeachingQrCheckinSheet open {...props} />);
+
+    await user.click(screen.getByTestId("teaching-camera-scan-btn"));
+    await waitFor(() => expect(screen.getByTestId("teaching-camera-video")).toBeInTheDocument());
+    await user.type(screen.getByTestId("teaching-typed-code-input"), "654321");
+    await user.click(screen.getByTestId("teaching-typed-code-submit"));
+
+    await waitFor(() => expect(props.onClose).toHaveBeenCalledTimes(1));
+    expect(stopTrack).toHaveBeenCalledTimes(1);
+
+    // The parent closing the sheet (it stays mounted) must also release the camera.
+    stopTrack.mockClear();
+    await user.click(screen.getByTestId("teaching-camera-scan-btn"));
+    await waitFor(() => expect(screen.getByTestId("teaching-camera-video")).toBeInTheDocument());
+    rerender(<TeachingQrCheckinSheet open={false} {...props} />);
+    expect(stopTrack).toHaveBeenCalledTimes(1);
+  });
+
   it("ignores a QR detection that finishes after the camera is stopped", async () => {
     const user = userEvent.setup();
     const teachingPostSpy = vi.spyOn(clientModule, "teachingPost").mockResolvedValue({

@@ -35,11 +35,20 @@ export function calculateRestTurnaround(
     return { restRemainingMs: null, totalTurnaroundMs: null, isBreach: false, nextShift: null, previousShift: null };
   }
 
-  // The shift immediately before nextShift: the latest one to start before it, even if it overlaps
-  // (an overlap is a zero-rest breach, not a reason to fall back to an older, safe-looking gap).
+  // The shift immediately before nextShift: of those starting before it, the one that ends last,
+  // even if it overlaps (an overlap is a zero-rest breach, not a reason to fall back to an older,
+  // safe-looking gap). The latest to start is not enough: a day shift inside a 24-hour on call
+  // starts later but ends first, and would overstate the rest.
   const nextStart = Date.parse(nextShift.startsAt);
-  const previousShift =
-    [...sorted].reverse().find((s) => s.id !== nextShift.id && Date.parse(s.startsAt) < nextStart) ?? null;
+  const previousShift = sorted.reduce<Pick<OnCallShift, "id" | "startsAt" | "endsAt"> | null>(
+    (latest, s) =>
+      s.id !== nextShift.id &&
+      Date.parse(s.startsAt) < nextStart &&
+      (!latest || Date.parse(s.endsAt) >= Date.parse(latest.endsAt))
+        ? s
+        : latest,
+    null,
+  );
 
   if (!previousShift) {
     return { restRemainingMs: null, totalTurnaroundMs: null, isBreach: false, nextShift, previousShift: null };

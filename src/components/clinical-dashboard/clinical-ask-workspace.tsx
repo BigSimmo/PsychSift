@@ -1,12 +1,22 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { announce } from "@/components/ui/live-announcer";
 import { Sheet } from "@/components/ui/sheet";
 import { identifierShapeWarning } from "@/lib/clinical-ask/context";
+import type { ClinicalAskResponse } from "@/lib/clinical-ask/contracts";
 import { ClinicalAskAnswerSurface } from "./clinical-ask-answer-surface";
 import { useClinicalAskSession } from "./clinical-ask-session-context";
 import { clinicalAskWorkspaceVisible } from "./use-clinical-ask-shell-state";
+
+/** What a screen reader hears when each kind of Clinical Ask result lands. */
+const responseAnnouncements: Record<ClinicalAskResponse["state"], string> = {
+  answered: "Clinical Ask answer ready.",
+  evidence_gap: "Clinical Ask found an evidence gap.",
+  clarification_required: "Clinical Ask needs more Case Context.",
+  failed: "Clinical Ask could not complete.",
+};
 
 export function ClinicalAskWorkspace({
   onDraftChange,
@@ -21,7 +31,17 @@ export function ClinicalAskWorkspace({
   const session = useClinicalAskSession();
   const [contextOpen, setContextOpen] = useState(false);
   const contextTriggerRef = useRef<HTMLButtonElement>(null);
-  if (!clinicalAskWorkspaceVisible(session)) return null;
+  const visible = clinicalAskWorkspaceVisible(session);
+  // Stage changes go through the app's single announcer. A status node inserted
+  // with its text already inside is often not read, and the result replaced it
+  // with no live region at all, so a screen-reader user heard nothing either way.
+  useEffect(() => {
+    if (visible && session.submitted) announce("Clinical Ask is gathering governed evidence.");
+  }, [visible, session.submitted]);
+  useEffect(() => {
+    if (visible && session.response) announce(responseAnnouncements[session.response.state]);
+  }, [visible, session.response]);
+  if (!visible) return null;
   const suggested = session.suggestions.filter((item) => item.status === "suggested");
   const hasContext = Object.keys(session.confirmedContext).length > 0 || suggested.length > 0;
   return (
@@ -47,7 +67,7 @@ export function ClinicalAskWorkspace({
       {identifierShapeWarning(session.draft) ? (
         <p role="alert">Remove identifiable details before using Smart mode.</p>
       ) : null}
-      {session.submitted ? <p role="status">Clinical Ask is gathering governed evidence…</p> : null}
+      {session.submitted ? <p>Clinical Ask is gathering governed evidence…</p> : null}
       {session.response ? (
         <ClinicalAskAnswerSurface
           response={session.response}

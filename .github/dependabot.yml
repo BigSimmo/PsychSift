@@ -46,7 +46,11 @@ updates:
         update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "github-actions"
-    directory: "/"
+    # "/" covers .github/workflows only. The composites under .github/actions pin the
+    # same actions, so they are listed too and land in the same grouped PR; without
+    # them a grouped bump moved only the workflow pins and check:github-actions failed
+    # it for SHA skew (Dependabot #3472 needed a hand fix-up to setup-node-cached).
+    directories: ["/", "/.github/actions/*"]
     schedule:
       interval: "weekly"
       day: "monday"

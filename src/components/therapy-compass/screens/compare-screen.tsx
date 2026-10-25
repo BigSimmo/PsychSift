@@ -80,7 +80,9 @@ const ROWS: Row[] = [
     icon: TriangleAlert,
     tone: "warning",
     priority: true,
-    get: (t) => summarise(t.contraindicationsOrCautions, 1) || "Check source before use.",
+    // The whole caution, never its first sentence: in the shipped data the risk wording often
+    // follows an assessment step, and this row (and the Copy set export) is read as the caution.
+    get: (t) => t.contraindicationsOrCautions?.trim() || "Check source before use.",
   },
   {
     key: "fit",

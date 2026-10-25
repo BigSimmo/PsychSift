@@ -249,6 +249,46 @@ function startIsolatedServer(serverPort, env) {
   return child;
 }
 
+/**
+ * Runs a child to completion without blocking the event loop, so the heavy-run lease
+ * heartbeat (a setInterval in test-run-lock.mjs) keeps refreshing owner.json during
+ * long builds and test runs. Resolves with a spawnSync-shaped result.
+ */
+function runChild(args, { capture = false, ...options } = {}) {
+  return new Promise((resolve) => {
+    const result = { status: null, signal: null, error: undefined, stdout: "", stderr: "" };
+    let child;
+    try {
+      child = spawn(process.execPath, args, { ...options, stdio: capture ? "pipe" : "inherit" });
+      activeChild = child;
+    } catch (error) {
+      resolve({ ...result, error });
+      return;
+    }
+    if (capture) {
+      child.stdout.setEncoding("utf8");
+      child.stderr.setEncoding("utf8");
+      child.stdout.on("data", (chunk) => {
+        result.stdout += chunk;
+      });
+      child.stderr.on("data", (chunk) => {
+        result.stderr += chunk;
+      });
+    }
+    child.once("error", (error) => {
+      result.error = error;
+      // A child that never started may not emit "close"; resolving twice is harmless.
+      if (child.pid === undefined) resolve(result);
+    });
+    child.once("close", (status, signal) => {
+      // A launch failure reports a negative errno as the status; keep it a failure.
+      result.status = result.error ? null : status;
+      result.signal = signal;
+      resolve(result);
+    });
+  });
+}
+
 function stopOwnedProcessTree(child) {
   if (!child?.pid || child.exitCode !== null) return;
   if (process.platform === "win32") {
@@ -265,11 +305,15 @@ function stopOwnedProcessTree(child) {
 }
 
 let server;
+// The build or test child currently running, so a signal-driven cleanup does not release the
+// lease and leave it running unsupervised.
+let activeChild;
 let cleaned = false;
 function cleanup() {
   if (cleaned) return;
   cleaned = true;
   try {
+    if (activeChild && activeChild.exitCode === null && activeChild.signalCode === null) activeChild.kill("SIGTERM");
     stopOwnedProcessTree(server);
     if (!keepBuildRoot) {
       removePathSync(absoluteRunRoot, { recursive: true });
@@ -411,12 +455,10 @@ try {
   } else {
     console.log(`Building isolated production Playwright app (${relativeRunRoot})`);
 
-    const buildResult = spawnSync(process.execPath, ["--max-old-space-size=8192", nextBin, "build", "--webpack"], {
+    const buildResult = await runChild(["--max-old-space-size=8192", nextBin, "build", "--webpack"], {
       cwd: projectRoot,
       env: offlineEnv,
-      encoding: "utf8",
-      maxBuffer: 64 * 1024 * 1024,
-      stdio: "pipe",
+      capture: true,
     });
     const buildExitCode = childProcessExitCode(buildResult);
     if (buildExitCode !== 0) {
@@ -463,10 +505,9 @@ try {
   server = startIsolatedServer(port, offlineEnv);
   await waitForServer(baseUrl, server);
 
-  const result = spawnSync(process.execPath, [playwrightBin, "test", ...playwrightArgs], {
+  const result = await runChild([playwrightBin, "test", ...playwrightArgs], {
     cwd: projectRoot,
     env: offlineEnv,
-    stdio: "inherit",
   });
   const exitCode = childProcessExitCode(result);
   cleanup();

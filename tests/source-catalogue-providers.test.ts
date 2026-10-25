@@ -112,6 +112,12 @@ describe("repository source providers", () => {
     );
   });
 
+  it("does not file a dictionary source's project access date as a publisher review date", () => {
+    const dictionaryReferences = provider("dictionary").references();
+    expect(dictionaryReferences.length).toBeGreaterThan(0);
+    expect(dictionaryReferences.every((reference) => reference.reviewDate === null)).toBe(true);
+  });
+
   it("captures every current structured owner record automatically", () => {
     const dictionaryReferences = provider("dictionary").references();
     expect(new Set(dictionaryReferences.map((reference) => reference.sourceId))).toEqual(
@@ -206,6 +212,23 @@ describe("repository source providers", () => {
         .filter((reference) => reference.usage.field === "officialRegisterUrl")
         .every((reference) => reference.canonicalUrl === officialFormsRegisterUrl),
     ).toBe(true);
+    // No owner review is recorded for the official form links, so the manifest
+    // build date is never a review date and none of them claims to be reviewed
+    // or current.
+    const officialFormReferences = formsReferences.filter(
+      (reference) => reference.usage.field === "officialPdfUrl" || reference.usage.field === "officialRegisterUrl",
+    );
+    expect(officialFormReferences.length).toBeGreaterThan(0);
+    for (const reference of officialFormReferences) {
+      expect(reference).toEqual(
+        expect.objectContaining({
+          validationStatus: "unverified",
+          documentStatus: "unknown",
+          reviewDate: null,
+          version: formsPdfManifest.generatedAt,
+        }),
+      );
+    }
 
     const medicationReferences = provider("medications").references();
     const medicationSourceRows = loadMedicationSnapshot().flatMap((medication) =>

@@ -637,12 +637,15 @@ function CorrectionForm({
   entry,
   today,
   sender,
+  onSent,
   onClose,
 }: {
   pairing: SupervisionPairingView;
   entry: SupervisionEntry;
   today: string;
   sender: Sender;
+  /** The correction is held or sending; the page closes the form once it has gone, and keeps it if it fails. */
+  onSent: () => void;
   onClose: () => void;
 }) {
   const [reason, setReason] = useState<CorrectionReason>("entered_in_error");
@@ -675,7 +678,7 @@ function CorrectionForm({
             `note-${id}`,
           )
         )
-          onClose();
+          onSent();
       }}
     >
       <div className="work-label">
@@ -747,7 +750,16 @@ function SupervisionBody({
   today: string;
   sender: Sender;
 }) {
-  const [correcting, setCorrecting] = useState<{ pairingId: string; entry: SupervisionEntry } | null>(null);
+  const [correcting, setCorrecting] = useState<{
+    pairingId: string;
+    entry: SupervisionEntry;
+    sent?: boolean;
+  } | null>(null);
+  // A sent correction stays open through the Undo hold and the send, and closes only once it has not failed,
+  // so a refused send keeps what was typed ("Your entries are still here").
+  if (correcting?.sent && !sender.busy && sender.holding === null) {
+    setCorrecting(sender.message?.failed ? { ...correcting, sent: false } : null);
+  }
   const waiting = useMemo(() => pendingConfirmations(pairings), [pairings]);
   const waitingIds = useMemo(() => new Set(waiting.map((item) => item.id)), [waiting]);
   const supervising = pairings.some((p) => p.access === "supervisor" && !p.readOnlyUntil);
@@ -802,6 +814,7 @@ function SupervisionBody({
               entry={correcting.entry}
               today={today}
               sender={sender}
+              onSent={() => setCorrecting((current) => current && { ...current, sent: true })}
               onClose={() => setCorrecting(null)}
             />
           ) : null}

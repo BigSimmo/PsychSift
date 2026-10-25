@@ -146,4 +146,18 @@ describe("handover page (mock-up v10, screens 6 to 10)", () => {
     fireEvent.click(screen.getByTestId("on-call-handover-clear-confirm"));
     expect(window.localStorage.getItem(onCallHandoverStorageKey)).toBeNull();
   });
+
+  it("deletes one patient only after a confirmation, and Keep leaves it in place", () => {
+    render(<OnCallHandoverPage />);
+    addPatient("12", "Example Ward", "no");
+    fireEvent.click(screen.getByTestId("on-call-handover-delete"));
+    expect(window.localStorage.getItem(onCallHandoverStorageKey)).not.toBeNull();
+    fireEvent.click(screen.getByTestId("on-call-handover-delete-cancel"));
+    expect(window.localStorage.getItem(onCallHandoverStorageKey)).not.toBeNull();
+    expect(screen.getByTestId("on-call-handover-bed")).toHaveValue("12");
+    fireEvent.click(screen.getByTestId("on-call-handover-delete"));
+    fireEvent.click(screen.getByTestId("on-call-handover-delete-confirm"));
+    expect(window.localStorage.getItem(onCallHandoverStorageKey)).toBeNull();
+    expect(screen.getByTestId("on-call-handover-bed")).toHaveValue("");
+  });
 });

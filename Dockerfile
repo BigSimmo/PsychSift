@@ -66,7 +66,13 @@ RUN if [ -z "${NEXT_PUBLIC_SUPABASE_URL}" ]; then \
       echo "ERROR: build arg NEXT_PUBLIC_SUPABASE_URL is required (e.g. --build-arg NEXT_PUBLIC_SUPABASE_URL=https://<ref>.supabase.co)" >&2; \
       exit 1; \
     fi
-ARG NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=placeholder-build-publishable-key
+# No default either: a missing key would otherwise inline a placeholder that
+# every browser sign-in call is rejected with, while the build still passes.
+ARG NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+RUN if [ -z "${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}" ]; then \
+      echo "ERROR: build arg NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY is required (e.g. --build-arg NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...)" >&2; \
+      exit 1; \
+    fi
 # Non-secret identity metadata lets the browser-side project guard explicitly
 # accept staging instead of treating its URL as an accidental production mismatch.
 ARG NEXT_PUBLIC_SUPABASE_STAGING_PROJECT_REF=

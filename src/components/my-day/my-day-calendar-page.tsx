@@ -824,13 +824,13 @@ function DayCell({
   const isToday = date === today;
   const listed = items.slice(0, CELL_ITEMS);
   const more = items.length - listed.length;
-  const late = items.some(needsYou);
+  const late = items.filter(needsYou).length;
   return (
     <button
       type="button"
       aria-pressed={selected}
       aria-current={isToday ? "date" : undefined}
-      aria-label={`${formatZonedLongDay(date, today)}: ${items.length ? `${items.length} ${items.length === 1 ? "item" : "items"}${late ? ", one needs you" : ""}` : "nothing on"}`}
+      aria-label={`${formatZonedLongDay(date, today)}: ${items.length ? `${items.length} ${items.length === 1 ? "item" : "items"}${late ? `, ${late} need${late === 1 ? "s" : ""} you` : ""}` : "nothing on"}`}
       onClick={onSelect}
       data-testid={`my-day-calendar-day-${date}`}
       className={cn(

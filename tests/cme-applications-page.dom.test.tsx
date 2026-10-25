@@ -295,6 +295,52 @@ describe("Job applications season", () => {
     expect(short.map((node) => node.outerHTML.slice(0, 80))).toEqual([]);
   });
 
+  it("moves a referee's status with the arrow keys, Home and End, from one tab stop", () => {
+    renderPage();
+    fireEvent.click(screen.getByTestId("applications-add-referee"));
+    const notAsked = screen.getByTestId("applications-referee-status-not-asked");
+    const radios = within(screen.getByRole("radiogroup", { name: "Status" })).getAllByRole("radio");
+    expect(radios.map((radio) => radio.tabIndex)).toEqual([0, -1, -1, -1, -1]);
+    notAsked.focus();
+    fireEvent.keyDown(notAsked, { key: "ArrowRight" });
+    const asked = screen.getByTestId("applications-referee-status-asked");
+    expect(asked.getAttribute("aria-checked")).toBe("true");
+    expect(document.activeElement).toBe(asked);
+    expect(asked.tabIndex).toBe(0);
+    fireEvent.keyDown(asked, { key: "End" });
+    expect(screen.getByTestId("applications-referee-status-declined").getAttribute("aria-checked")).toBe("true");
+    fireEvent.keyDown(screen.getByTestId("applications-referee-status-declined"), { key: "ArrowDown" });
+    expect(notAsked.getAttribute("aria-checked")).toBe("true");
+    expect(document.activeElement).toBe(notAsked);
+  });
+
+  it("moves the date sheet's stage with the arrow keys, Home and End", () => {
+    renderPage();
+    fireEvent.click(screen.getByTestId("applications-first-date"));
+    const sheet = screen.getByTestId("applications-date-sheet");
+    const close = within(sheet).getByTestId("applications-date-stage-close");
+    expect(close.tabIndex).toBe(0);
+    expect(within(sheet).getByTestId("applications-date-stage-adverts").tabIndex).toBe(-1);
+    fireEvent.keyDown(close, { key: "ArrowLeft" });
+    const adverts = within(sheet).getByTestId("applications-date-stage-adverts");
+    expect(adverts.getAttribute("aria-checked")).toBe("true");
+    expect(document.activeElement).toBe(adverts);
+    fireEvent.keyDown(adverts, { key: "End" });
+    expect(within(sheet).getByTestId("applications-date-stage-start").getAttribute("aria-checked")).toBe("true");
+    fireEvent.keyDown(within(sheet).getByTestId("applications-date-stage-start"), { key: "Home" });
+    expect(adverts.getAttribute("aria-checked")).toBe("true");
+  });
+
+  it("never copies an example referee's nudge out of the app", async () => {
+    const copy = vi.spyOn(clipboard, "copyTextToClipboard").mockResolvedValue();
+    renderPage(true);
+    fireEvent.click(screen.getByTestId("applications-nudge-open"));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("applications-nudge-copy"));
+    });
+    expect(copy).not.toHaveBeenCalled();
+  });
+
   it("exports an entry link and a Today card that shows the next date", () => {
     localStorage.setItem(
       CPD_APPLICATIONS_STORAGE_KEY,

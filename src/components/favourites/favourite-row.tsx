@@ -290,13 +290,14 @@ export function FavouriteRow({
           <>
             {/* xl opens the item workspace beside the list; below xl the row is a
                 plain link, so a phone tap always opens the item and never only
-                selects it. */}
+                selects it. Both stay in the DOM, so each copy of the details
+                carries its own id. */}
             <button
               type="button"
               onClick={() => onSelectForWorkspace(item)}
               aria-label={`Select ${item.title} for workspace`}
               aria-pressed={workspaceSelected}
-              aria-describedby={metaId}
+              aria-describedby={`${metaId}-wide`}
               className={cn(
                 "hidden min-w-0 max-w-full items-center gap-2.5 rounded-md text-left xl:flex",
                 "flex-1 gap-3 py-2",
@@ -304,13 +305,13 @@ export function FavouriteRow({
                 insetFocus,
               )}
             >
-              <RowBody item={item} view={view} showSet={showSet} time={time} metaId={metaId} />
+              <RowBody item={item} view={view} showSet={showSet} time={time} metaId={`${metaId}-wide`} />
             </button>
             <Link
               href={item.href}
               onClick={() => onOpen(item)}
               aria-label={`Open ${item.title}`}
-              aria-describedby={metaId}
+              aria-describedby={`${metaId}-narrow`}
               draggable={false}
               className={cn(
                 "block min-w-0 max-w-full rounded-md text-left xl:hidden",
@@ -321,7 +322,7 @@ export function FavouriteRow({
               )}
             >
               <span className="flex min-w-0 items-center gap-3 [html[data-large-text]_&]:flex-wrap">
-                <RowBody item={item} view={view} showSet={showSet} time={time} metaId={metaId} />
+                <RowBody item={item} view={view} showSet={showSet} time={time} metaId={`${metaId}-narrow`} />
               </span>
             </Link>
           </>

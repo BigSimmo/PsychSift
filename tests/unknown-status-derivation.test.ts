@@ -3,6 +3,7 @@ import {
   UNKNOWN_STATUS_DERIVATION_VERSION,
   deriveUnknownStatus,
   parseIsoDate,
+  reviewCycleAppliesTo,
   unknownStatusDerivationBasis,
 } from "../src/lib/unknown-status-derivation";
 
@@ -28,6 +29,15 @@ describe("deriveUnknownStatus", () => {
   it("honours a custom review cycle length", () => {
     const result = deriveUnknownStatus("2024-01-01", { reviewCycleYears: 1, now: NOW });
     expect(result).toEqual({ kind: "derived", reviewDate: "2025-01-01", status: "review_due" });
+  });
+
+  it("lands a leap-day publication on 28 February in a non-leap review year", () => {
+    const shortened = deriveUnknownStatus("2024-02-29", { now: NOW });
+    expect(shortened).toEqual({ kind: "derived", reviewDate: "2027-02-28", status: "current" });
+    if (shortened.kind === "derived") expect(parseIsoDate(shortened.reviewDate)).not.toBeNull();
+
+    const leapToLeap = deriveUnknownStatus("2020-02-29", { reviewCycleYears: 4, now: NOW });
+    expect(leapToLeap).toEqual({ kind: "derived", reviewDate: "2024-02-29", status: "review_due" });
   });
 
   it("skips documents with no publication date", () => {
@@ -76,5 +86,26 @@ describe("parseIsoDate", () => {
     expect(parseIsoDate("2025-02-29")).toBeNull();
     expect(parseIsoDate(20250101)).toBeNull();
     expect(parseIsoDate(null)).toBeNull();
+  });
+});
+
+describe("reviewCycleAppliesTo", () => {
+  it("assumes the standard review cycle for WA Health documents only", () => {
+    expect(reviewCycleAppliesTo({ publisher_code: "WAHEALTH" })).toBe(true);
+    expect(reviewCycleAppliesTo({ publisher: "WA Department of Health" })).toBe(true);
+    expect(reviewCycleAppliesTo({ publisher_code: "WAHEALTH", publisher: "WA Health" })).toBe(true);
+  });
+
+  it("leaves any other publisher, an unrecognised one, or none at all unknown", () => {
+    expect(reviewCycleAppliesTo({ publisher_code: "RANZCP" })).toBe(false);
+    expect(reviewCycleAppliesTo({ publisher_code: "BMJ" })).toBe(false);
+    expect(reviewCycleAppliesTo({ publisher: "Some Other Publisher" })).toBe(false);
+    expect(reviewCycleAppliesTo({})).toBe(false);
+    expect(reviewCycleAppliesTo({ publisher_code: "  ", publisher: null })).toBe(false);
+  });
+
+  it("refuses a WA Health code that conflicts with a different named publisher", () => {
+    expect(reviewCycleAppliesTo({ publisher_code: "WAHEALTH", publisher: "RANZCP" })).toBe(false);
+    expect(reviewCycleAppliesTo({ publisher_code: "WAHEALTH", publisher: "Some Other Publisher" })).toBe(false);
   });
 });

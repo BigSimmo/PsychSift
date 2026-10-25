@@ -181,35 +181,40 @@ function isReviewed(_record: MedicationRecord, governance?: MedicationGovernance
 
 function patientBadges(patient: MedicationPatientMetadata, prefix: string, badges: MedicationBadge[]) {
   const match = patient.match ?? {};
-  const scr = match.scr as { gt?: number } | undefined;
-  if (typeof scr?.gt === "number") {
-    pushBadge(badges, {
-      id: `${prefix}-scr-gt-${scr.gt}`,
-      label: `Cr >${scr.gt} avoid`,
-      tone: "danger",
-    });
-  }
-
-  const age = match.age as { lt?: number; gt?: number } | undefined;
-  if (typeof age?.lt === "number") {
-    pushBadge(badges, {
-      id: `${prefix}-age-lt-${age.lt}`,
-      label: `Avoid <${age.lt} years`,
-      tone: "warning",
-    });
-  }
-  if (typeof age?.gt === "number") {
-    pushBadge(badges, {
-      id: `${prefix}-age-gt-${age.gt}`,
-      label: `Avoid >${age.gt} years`,
-      tone: "warning",
-    });
-  }
-
   const action = patient.action ?? "";
   const severity = patient.severity === "danger" ? "danger" : action === "contraindication" ? "danger" : "warning";
   const factorTone: SemanticTone =
     action === "monitor" || action === "dose-adjust" ? "clinical" : severity === "danger" ? "danger" : "warning";
+  // "Avoid" is a contraindication claim, so only a contraindication row says it. A caution,
+  // dose-adjust, monitor or info row (Nystatin's paediatric "SAFE" row, Warfarin's paediatric
+  // dosing rows) states just the threshold, in the tone its own action gives the factors.
+  const avoid = action === "contraindication";
+
+  const scr = match.scr as { gt?: number } | undefined;
+  if (typeof scr?.gt === "number") {
+    pushBadge(badges, {
+      id: `${prefix}-scr-gt-${scr.gt}`,
+      label: avoid ? `Cr >${scr.gt} avoid` : `Cr >${scr.gt}`,
+      tone: avoid ? "danger" : factorTone,
+    });
+  }
+
+  const age = match.age as { lt?: number; lte?: number; gt?: number; gte?: number } | undefined;
+  const ageBounds = [
+    ["lt", "<"],
+    ["lte", "≤"],
+    ["gt", ">"],
+    ["gte", "≥"],
+  ] as const;
+  for (const [operator, symbol] of ageBounds) {
+    const years = age?.[operator];
+    if (typeof years !== "number") continue;
+    pushBadge(badges, {
+      id: `${prefix}-age-${operator}-${years}`,
+      label: avoid ? `Avoid ${symbol}${years} years` : `${symbol}${years} years`,
+      tone: avoid ? "warning" : factorTone,
+    });
+  }
 
   for (const factor of patient.factors ?? []) {
     const label = FACTOR_LABELS[factor] ?? factor.charAt(0).toUpperCase() + factor.slice(1);

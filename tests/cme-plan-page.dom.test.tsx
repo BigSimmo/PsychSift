@@ -119,7 +119,10 @@ describe("development plan page", () => {
   it("says when the plan is not yet marked written", () => {
     render(<CmePlanPage set={SET} goals={[]} entries={[]} />);
     expect(screen.getByTestId("cme-plan-status")).toHaveTextContent("Plan not marked written yet");
-    expect(screen.getByTestId("cme-plan-status-link")).toHaveAttribute("href", "/cme/setup#cme-setup-steps");
+    expect(screen.getByTestId("cme-plan-status-link")).toHaveAttribute(
+      "href",
+      "/cme/setup?year=2026&edit=1#cme-setup-steps",
+    );
   });
 
   it("shows the date the plan was marked written, with a Change link", () => {
@@ -275,6 +278,27 @@ describe("goal picker on an activity", () => {
     await user.selectOptions(select, "");
     await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("This CPD year is closed."));
     expect(select).toHaveValue(GOAL.id);
+  });
+
+  it("saves quick successive goal choices in order, so an earlier failure never undoes a later choice", async () => {
+    const user = userEvent.setup();
+    const OTHER = { id: "44444444-4444-4444-8444-444444444444", goal: "Present at journal club", sortOrder: 1 };
+    let failFirst: (response: Response) => void = () => undefined;
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementationOnce(() => new Promise<Response>((resolve) => (failFirst = resolve)))
+      .mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 200 }));
+    render(<CmeEntryGoalPicker entryId="e1" goals={[GOAL, OTHER]} initialGoalId={null} readOnly={false} />);
+    const select = screen.getByLabelText(/Which goal/);
+    await user.selectOptions(select, GOAL.id);
+    await user.selectOptions(select, OTHER.id);
+    // The second choice waits for the first save rather than racing it.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    failFirst(new Response(JSON.stringify({ message: "Could not save." }), { status: 500 }));
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Saved."));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({ goalId: OTHER.id });
+    expect(select).toHaveValue(OTHER.id);
   });
 
   it("points to the plan when the year has no goals", () => {

@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import { cmeReportingCloseDate } from "@/lib/cme/calendar-events";
-import { confirmedSourceForHome, isRanzcpHome, readCpdHome, requirementsForCpdHome } from "@/lib/cme/home-choice";
+import {
+  confirmedSourceForHome,
+  isRanzcpHome,
+  readCpdHome,
+  requirementsAfterHomeChange,
+  requirementsForCpdHome,
+} from "@/lib/cme/home-choice";
 import { createAustralianRanzcpPreset } from "@/lib/cme/presets";
 
 describe("CPD home choice", () => {
@@ -20,6 +26,23 @@ describe("CPD home choice", () => {
     expect(national.requirements.every((requirement) => requirement.source === "national")).toBe(true);
     expect(other.requirements).toEqual(national.requirements);
     expect(ranzcp.requirements.some((requirement) => requirement.id === "peer-review")).toBe(true);
+  });
+
+  it("keeps recorded task dates and the confirmed targets when the home is switched away and back", () => {
+    const preset = createAustralianRanzcpPreset(2026, "2026-01-05");
+    const saved = {
+      ...preset,
+      totalHours: 60,
+      requirements: preset.requirements.map((requirement) =>
+        requirement.id === "plan" ? { ...requirement, completedOn: "2026-02-01" } : requirement,
+      ),
+    };
+    const national = requirementsAfterHomeChange(saved, "national", 2026, saved);
+    expect(national.requirements.every((requirement) => requirement.source === "national")).toBe(true);
+    expect(national.requirements.find((requirement) => requirement.id === "plan")?.completedOn).toBe("2026-02-01");
+    const back = requirementsAfterHomeChange({ ...saved, ...national }, "ranzcp", 2026, saved);
+    expect(back.totalHours).toBe(60);
+    expect(back.requirements).toEqual(saved.requirements);
   });
 
   it("shows the March reporting date only for an explicit RANZCP preset", () => {

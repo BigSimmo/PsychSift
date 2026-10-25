@@ -7,7 +7,7 @@ import { modeModuleSurface } from "@/components/mode-kit/recipes";
 import { cn } from "@/components/ui-primitives";
 import { SHIFT_KIND_LABEL } from "@/lib/roster/shift-kind";
 import { formatSpanUntil, relativeDay, shiftSpan } from "@/lib/roster/shifts-overview";
-import { WEEKDAYS, formatPerthDay, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
+import { WEEKDAYS, formatPerthDay, perthDateOf, perthTimeOf, perthWallToIso } from "@/lib/roster/shifts/perth-time";
 import type { RosterDisplayShift as OnCallShift } from "@/lib/roster/team/team-view";
 
 import { kindOf } from "./roster-format";
@@ -30,16 +30,18 @@ function weekdayName(instant: string): string {
   return WEEKDAYS[new Date(`${perthDateOf(instant)}T00:00:00Z`).getUTCDay()]!;
 }
 
-function hoursFromPerthMidnight(instant: string, date: string): number {
-  return (Date.parse(instant) - Date.parse(`${date}T00:00:00+08:00`)) / HOUR_MS;
+/** Hours from midnight starting `date` on the work zone's wall clock, the zone `perthDateOf` reads. */
+function hoursFromWorkMidnight(instant: string, date: string): number {
+  const midnight = perthWallToIso(date, "00:00") ?? `${date}T00:00:00+08:00`;
+  return (Date.parse(instant) - Date.parse(midnight)) / HOUR_MS;
 }
 
 function DayStrip({ shift }: { readonly shift: OnCallShift }) {
   const date = perthDateOf(shift.startsAt);
   const overnight = perthDateOf(shift.endsAt) !== date && perthTimeOf(shift.endsAt) !== "00:00";
   const origin = overnight ? 12 : 0;
-  const from = Math.max(0, hoursFromPerthMidnight(shift.startsAt, date) - origin);
-  const to = Math.min(24, hoursFromPerthMidnight(shift.endsAt, date) - origin);
+  const from = Math.max(0, hoursFromWorkMidnight(shift.startsAt, date) - origin);
+  const to = Math.min(24, hoursFromWorkMidnight(shift.endsAt, date) - origin);
   const ticks = overnight ? ["12", "18", "00", "06", "12"] : ["00", "06", "12", "18", "24"];
   return (
     <div aria-hidden="true" className="grid gap-1" data-testid="roster-next-shift-strip">

@@ -716,18 +716,14 @@ export async function embedTexts(texts: string[], options?: IngestionOpenAIOptio
   const batches = batchEmbeddingInputs(uniqueTexts, env.OPENAI_EMBEDDING_BATCH_SIZE, env.OPENAI_EMBEDDING_MODEL);
   try {
     const client = createOpenAIClient();
-    // IDX-C3: a single embeddings request is capped at 2048 inputs / ~300k tokens, so a
-    // full-corpus re-embed must be split. Batches run sequentially to stay polite to the
-    // rate limiter; the SDK still applies env.OPENAI_MAX_RETRIES per request. Reassembly
-    // uses the GLOBAL index (batchStart + item.index) so a chunk is never stored with the
-    // embedding of an unrelated text, even across batch boundaries (extends IDX-C1).
     const byIndex = new Array<number[]>(uniqueTexts.length);
 
     // IDX-C3: a single embeddings request is capped at 2048 inputs / ~300k tokens, so a
     // full-corpus re-embed must be split. To maximize throughput while respecting rate
-    // limits, batches run concurrently up to env.OPENAI_EMBEDDING_CONCURRENCY_LIMIT (default: 5).
-    // Reassembly uses the GLOBAL index (task.offset + item.index) so a chunk is never stored with the
-    // embedding of an unrelated text, even across batch/concurrency boundaries (extends IDX-C1).
+    // limits, batches run concurrently up to env.OPENAI_EMBEDDING_CONCURRENCY_LIMIT (default: 5),
+    // and the SDK still applies env.OPENAI_MAX_RETRIES per request. Reassembly uses the GLOBAL
+    // index (task.offset + item.index) so a chunk is never stored with the embedding of an
+    // unrelated text, even across batch/concurrency boundaries (extends IDX-C1).
     let currentOffset = 0;
     const tasks = batches.map((batch) => {
       const offset = currentOffset;

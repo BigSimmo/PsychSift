@@ -92,8 +92,16 @@ function parseCodexMcpTableHeader(line, state) {
     return true;
   }
   if (!line.startsWith("[")) return false;
+  // TOML allows whitespace and quoted keys inside a header, so `[ mcp_servers.x ]`
+  // and `[mcp_servers."x"]` are valid tables. Fail closed on any mcp_servers header
+  // the strict forms above did not accept, rather than silently dropping its keys.
+  if (mentionsMcpServers(line)) state.unrecognisedEntries.push(line.split("=")[0].trim());
   state.current = null;
   return true;
+}
+
+function mentionsMcpServers(line) {
+  return /^\[{0,2}mcp_servers(?![A-Za-z0-9_-])/.test(line.replace(/[\s"']/g, ""));
 }
 
 function parseCodexMcpSetting(line, state) {
@@ -102,6 +110,8 @@ function parseCodexMcpSetting(line, state) {
     if (dotted) {
       state.servers[dotted[1]] ??= {};
       state.servers[dotted[1]][dotted[2]] = parseTomlScalar(dotted[3]);
+    } else if (mentionsMcpServers(line)) {
+      state.unrecognisedEntries.push(line.split("=")[0].trim());
     }
     return;
   }
@@ -117,21 +127,23 @@ function parseCodexMcpSetting(line, state) {
  * Parse `[mcp_servers.name]` tables from a Codex project config.toml.
  * Supports only the scalar keys this gate governs.
  * @param {string} text
- * @returns {{ servers: Record<string, Record<string, unknown>>, nestedServers: Set<string>, unparsedServers: Set<string> }}
+ * @returns {{ servers: Record<string, Record<string, unknown>>, nestedServers: Set<string>, unparsedServers: Set<string>, unrecognisedEntries: string[] }}
  */
 export function parseCodexProjectMcpServers(text) {
   /** @type {Record<string, Record<string, unknown>>} */
   const servers = {};
   const nestedServers = new Set();
   const unparsedServers = new Set();
-  const state = { servers, nestedServers, unparsedServers, current: null };
+  /** @type {string[]} */
+  const unrecognisedEntries = [];
+  const state = { servers, nestedServers, unparsedServers, unrecognisedEntries, current: null };
   for (const rawLine of text.split(/\r?\n/)) {
     const line = rawLine.trim();
     if (!line || line.startsWith("#")) continue;
     if (parseCodexMcpTableHeader(line, state)) continue;
     parseCodexMcpSetting(line, state);
   }
-  return { servers, nestedServers, unparsedServers };
+  return { servers, nestedServers, unparsedServers, unrecognisedEntries };
 }
 
 function validateSupabaseMcpUrl(urlString, label, errors) {
@@ -231,7 +243,12 @@ function validateProjectMcpServer(name, server, nestedServers, unparsedServers, 
 export function validateCodexProjectMcpConfiguration(text) {
   const errors = [];
   validateProjectModelDefaults(text, errors);
-  const { servers, nestedServers, unparsedServers } = parseCodexProjectMcpServers(text);
+  const { servers, nestedServers, unparsedServers, unrecognisedEntries } = parseCodexProjectMcpServers(text);
+  for (const entry of unrecognisedEntries) {
+    errors.push(
+      `.codex/config.toml has an mcp_servers entry this gate cannot verify: ${entry}. Use a plain [mcp_servers.<name>] table header.`,
+    );
+  }
   const expectedNames = Object.keys(expectedCodexProjectMcpServers).sort();
   validateProjectMcpServerNames(servers, expectedNames, errors);
   for (const name of expectedNames) {

@@ -30,6 +30,12 @@ export async function fetchOwnerCmePlanGoals(
   return (data ?? []).map(rowToCmePlanGoal);
 }
 
+/**
+ * Entry ids per lookup. Each id goes into the request URL, and a year may hold up to
+ * `CME_MAX_ENTRIES` activities, so one filter for all of them could pass a gateway's URL limit.
+ */
+const ENTRY_GOAL_ID_BATCH_SIZE = 100;
+
 /** Entry id -> goal id, for the given entries. */
 export async function fetchOwnerCmeEntryGoals(
   supabase: AdminClient,
@@ -38,14 +44,26 @@ export async function fetchOwnerCmeEntryGoals(
 ): Promise<Record<string, string>> {
   if (!ownerId) throw new Error("Missing CME owner.");
   if (entryIds.length === 0) return {};
-  const { data, error } = await supabase
-    .from("cme_entry_goals")
-    .select("entry_id, goal_id")
-    .eq("owner_id", ownerId)
-    .in("entry_id", [...entryIds])
-    .limit(CME_MAX_ENTRIES);
-  if (error) throw cmeRepositoryError(error);
-  return Object.fromEntries((data ?? []).map((row) => [row.entry_id, row.goal_id]));
+  const batches: string[][] = [];
+  for (let index = 0; index < entryIds.length; index += ENTRY_GOAL_ID_BATCH_SIZE) {
+    batches.push(entryIds.slice(index, index + ENTRY_GOAL_ID_BATCH_SIZE));
+  }
+  const results = await Promise.all(
+    batches.map((batch) =>
+      supabase
+        .from("cme_entry_goals")
+        .select("entry_id, goal_id")
+        .eq("owner_id", ownerId)
+        .in("entry_id", batch)
+        .limit(CME_MAX_ENTRIES),
+    ),
+  );
+  const links: Record<string, string> = {};
+  for (const { data, error } of results) {
+    if (error) throw cmeRepositoryError(error);
+    for (const row of data ?? []) links[row.entry_id] = row.goal_id;
+  }
+  return links;
 }
 
 export async function saveOwnerCmePlanGoals(

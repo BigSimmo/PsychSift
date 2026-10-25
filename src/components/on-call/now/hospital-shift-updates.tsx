@@ -11,6 +11,60 @@ import { OnCallHospitalChooser } from "@/components/on-call/kit/handbook-state";
 import type { HospitalHandbookState } from "@/components/on-call/use-hospital-handbook";
 import type { OnCallShift } from "@/lib/roster/shifts/model";
 
+/** "Keep this hospital" for this shift and hospital, kept for the browser session so Now does not ask again. */
+const keptHospitalStorageKey = "clinical-kb-on-call-roster-site-kept";
+
+function readKeptHospital(): string | null {
+  try {
+    return typeof window === "undefined" ? null : window.sessionStorage.getItem(keptHospitalStorageKey);
+  } catch {
+    return null;
+  }
+}
+
+function rememberKeptHospital(key: string) {
+  try {
+    window.sessionStorage.setItem(keptHospitalStorageKey, key);
+  } catch {
+    // Storage blocked: the choice still holds until Now is next opened.
+  }
+}
+
+const NAME_FILLER = new Set(["the", "hospital"]);
+
+function nameWords(name: string): string[] {
+  return name
+    .toLocaleLowerCase()
+    .replace(/['\u2019]/g, "")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+    .split(" ")
+    .filter(Boolean);
+}
+
+/** `short` written as the initials of `long`: "SCGH" or "S.C.G.H." for Sir Charles Gairdner Hospital. */
+function isInitialsOf(short: readonly string[], long: readonly string[]): boolean {
+  const letters = short.length === 1 ? short[0]! : short.every((word) => word.length === 1) ? short.join("") : "";
+  if (letters.length < 2 || long.length < 2) return false;
+  const initials = (words: readonly string[]) => words.map((word) => word[0]).join("");
+  return letters === initials(long) || letters === initials(long.filter((word) => !NAME_FILLER.has(word)));
+}
+
+/**
+ * Whether a roster workplace and a handbook hospital name are the same place:
+ * case, punctuation and the words "the" and "hospital" aside, or one written
+ * as the other's initials. Anything looser stays a mismatch, so the prompt
+ * still shows when the names really differ.
+ */
+export function sameHospitalName(a: string, b: string): boolean {
+  const wordsA = nameWords(a);
+  const wordsB = nameWords(b);
+  const coreA = wordsA.filter((word) => !NAME_FILLER.has(word)).join(" ");
+  const coreB = wordsB.filter((word) => !NAME_FILLER.has(word)).join(" ");
+  if (coreA !== "" && coreA === coreB) return true;
+  return isInitialsOf(wordsA, wordsB) || isInitialsOf(wordsB, wordsA);
+}
+
 export function HospitalShiftUpdates({
   handbook,
   shifts,
@@ -29,8 +83,14 @@ export function HospitalShiftUpdates({
   const workplaces = [...new Set(active.flatMap((shift) => (shift.workplace ? [shift.workplace.trim()] : [])))];
   const workplace = workplaces.length === 1 ? workplaces[0] : null;
   const current = handbook.siteName ?? handbook.serviceName;
-  const mismatch = workplace && current && workplace.toLocaleLowerCase() !== current.toLocaleLowerCase();
-  const promptKey = `${handbook.hospitalKey}:${workplace}`;
+  const mismatch = workplace && current && !sameHospitalName(workplace, current);
+  // One shift and one hospital: a new shift, or another hospital, asks again.
+  const shiftSpan = active
+    .map((shift) => `${shift.startsAt}/${shift.endsAt}`)
+    .sort()
+    .join(",");
+  const promptKey = `${handbook.hospitalKey}|${shiftSpan}`;
+  const kept = dismissed === promptKey || readKeptHospital() === promptKey;
   const lastEnd = Math.max(...shifts.map((shift) => Date.parse(shift.endsAt)).filter((time) => time < now.getTime()));
   const changed = Number.isFinite(lastEnd)
     ? handbook.items.filter(
@@ -39,13 +99,19 @@ export function HospitalShiftUpdates({
     : [];
   return (
     <>
-      {mismatch && dismissed !== promptKey ? (
+      {mismatch && !kept ? (
         <section className="grid gap-2 px-1" data-testid="on-call-roster-site-prompt">
           <p className="text-sm text-[color:var(--text-heading)]">
             Your roster says {workplace}, but you are viewing {current}. Check the hospital before calling.
           </p>
           <OnCallHospitalChooser handbook={handbook} />
-          <Button variant="ghost" onClick={() => setDismissed(promptKey)}>
+          <Button
+            variant="ghost"
+            onClick={() => {
+              rememberKeptHospital(promptKey);
+              setDismissed(promptKey);
+            }}
+          >
             Keep this hospital
           </Button>
         </section>

@@ -170,6 +170,30 @@ it("saves all settings fields together when only one changes", async () => {
   );
 });
 
+it("asks the page to reread its overview once the settings are saved", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => Response.json({ result: { ok: true } })),
+  );
+  const onSaved = vi.fn();
+  render(<RosterTeamSettings serviceId="team" overview={overview} onSaved={onSaved} />);
+  fireEvent.click(screen.getByRole("button", { name: "Save team settings" }));
+  expect(await screen.findByText("Saved")).toBeTruthy();
+  expect(onSaved).toHaveBeenCalled();
+});
+
+it("does not reread the overview when the settings save is refused", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => Response.json({ error: { code: "roster_invalid_request", message: "No" } }, { status: 400 })),
+  );
+  const onSaved = vi.fn();
+  render(<RosterTeamSettings serviceId="team" overview={overview} onSaved={onSaved} />);
+  fireEvent.click(screen.getByRole("button", { name: "Save team settings" }));
+  await screen.findByRole("status");
+  expect(onSaved).not.toHaveBeenCalled();
+});
+
 function stubManagerTeam() {
   const fetcher = vi.fn(async (input: RequestInfo | URL) => {
     const what = new URL(String(input), "http://localhost").searchParams.get("what");
@@ -302,6 +326,42 @@ it("points to the Needs you strip instead of listing its decisions twice, and ke
   expect(screen.getByRole("button", { name: /Noor can't make/ })).toBeTruthy();
   const summary = screen.getByRole("list", { name: "Summary" });
   expect(within(summary).getByTestId("roster-stat-waiting").textContent).toContain("2");
+});
+
+it("names a reported shift by its kind's label, never the raw kind", async () => {
+  const reported = {
+    id: "open",
+    status: "reported",
+    postedBy: "noor",
+    claimedBy: null,
+    startsAt: "2026-10-06T00:00:00Z",
+    endsAt: "2026-10-07T00:00:00Z",
+    kind: "on_call",
+    shiftCode: "OC",
+  };
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) => {
+      const what = new URL(String(input), "http://localhost").searchParams.get("what");
+      return Response.json(
+        what === "manage"
+          ? { swaps: [], openShifts: [reported], seen: null }
+          : what === "people"
+            ? { people: [{ userId: "noor", displayName: "Noor" }] }
+            : what === "assignments"
+              ? { assignments: [] }
+              : { leave: [] },
+      );
+    }),
+  );
+  render(<RosterApproveTab serviceId="team" decisionsInStrip actorId="alex" />);
+  const item = await screen.findByRole("button", { name: /Noor can't make/ });
+  expect(item.textContent).toMatch(/on call$/);
+  expect(item.textContent).not.toContain("on_call");
+  fireEvent.click(item);
+  const sheet = await screen.findByRole("dialog");
+  expect(sheet.textContent).toContain("OC · On call ·");
+  expect(sheet.textContent).not.toContain("on_call");
 });
 
 it("lists everything waiting in one Inbox: swaps, taken shifts, shifts someone can't make, then short days", async () => {

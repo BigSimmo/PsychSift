@@ -50,7 +50,7 @@ import {
   sourceCapsuleDisplay,
   sourceSupportSentence,
 } from "@/components/clinical-dashboard/answer-source-rows";
-import type { ClientSearchResult } from "@/lib/answer-client-payload";
+import type { ClientQuoteCard, ClientSearchResult } from "@/lib/answer-client-payload";
 import type { SourceLink } from "@/lib/answer-render-policy";
 import { normalizeSourceMetadata } from "@/lib/source-metadata";
 import type { VisualEvidenceCard } from "@/lib/types";
@@ -115,11 +115,13 @@ function RailAndDrawer({
   visualEvidence = [],
   onScopeDocument,
   onReportSource,
+  quoteCards,
 }: {
   sources?: AnswerSourceRow[];
   visualEvidence?: VisualEvidenceCard[];
   onScopeDocument?: (documentId: string) => void;
-  onReportSource?: (source: AnswerSourceRow) => void;
+  onReportSource?: (source: AnswerSourceRow) => void | Promise<boolean | void>;
+  quoteCards?: ClientQuoteCard[];
 }) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   return (
@@ -133,6 +135,7 @@ function RailAndDrawer({
         visualEvidence={visualEvidence}
         onScopeDocument={onScopeDocument}
         onReportSource={onReportSource}
+        quoteCards={quoteCards}
       />
     </>
   );
@@ -498,6 +501,38 @@ describe("support sentence", () => {
   });
 });
 
+describe("source drawer passage truncation", () => {
+  function quoteCard(overrides: Partial<ClientQuoteCard>): ClientQuoteCard {
+    return {
+      chunk_id: "s1",
+      document_id: "doc-s1",
+      title: "Clozapine monitoring protocol",
+      file_name: "clozapine.pdf",
+      page_number: 3,
+      quote: "Check FBC weekly for the first eighteen weeks...",
+      section_heading: null,
+      ...overrides,
+    } as ClientQuoteCard;
+  }
+
+  it("says when the cited quote was shortened so a value past the cut is not missed", async () => {
+    const user = userEvent.setup();
+    render(<RailAndDrawer quoteCards={[quoteCard({ isTruncated: true })]} />);
+    await user.click(screen.getAllByTestId("answer-source-rail-row")[0]);
+    expect(screen.getByTestId("answer-source-drawer-passage-shortened")).toHaveTextContent(
+      "Quote shortened. Open the source for the full passage.",
+    );
+  });
+
+  it("adds no shortened note to a complete quote", async () => {
+    const user = userEvent.setup();
+    render(<RailAndDrawer quoteCards={[quoteCard({ isTruncated: false })]} />);
+    await user.click(screen.getAllByTestId("answer-source-rail-row")[0]);
+    expect(screen.getByTestId("answer-source-drawer-passage")).toBeInTheDocument();
+    expect(screen.queryByTestId("answer-source-drawer-passage-shortened")).toBeNull();
+  });
+});
+
 describe("source drawer overflow menu", () => {
   async function openMenu(user: ReturnType<typeof userEvent.setup>, props = {}) {
     render(<RailAndDrawer {...props} />);
@@ -531,6 +566,32 @@ describe("source drawer overflow menu", () => {
     await user.click(report);
     expect(onReportSource).toHaveBeenCalledTimes(1);
     expect(onReportSource.mock.calls[0][0].id).toBe("s1");
+  });
+
+  it("says the report was not sent when the feedback save is refused", async () => {
+    const user = userEvent.setup();
+    const onReportSource = vi.fn(async () => false);
+    const menu = await openMenu(user, { onReportSource });
+
+    const report = within(menu).getByTestId("answer-source-drawer-report");
+    await user.click(report);
+    await user.click(report);
+
+    expect(onReportSource).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText("Report not sent. Try again.")).toBeInTheDocument();
+    expect(screen.queryByText(/Reported\. Thank you/)).toBeNull();
+  });
+
+  it("confirms the report only once the feedback save succeeds", async () => {
+    const user = userEvent.setup();
+    const onReportSource = vi.fn(async () => true);
+    const menu = await openMenu(user, { onReportSource });
+
+    const report = within(menu).getByTestId("answer-source-drawer-report");
+    await user.click(report);
+    await user.click(report);
+
+    expect(await screen.findByText("Reported. Thank you — this answer is flagged for review.")).toBeInTheDocument();
   });
 
   it("does not offer the claim-mismatch report for an uncited source", async () => {

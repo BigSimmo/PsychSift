@@ -76,9 +76,10 @@ export type PatientAlertResult = {
    * the row fired on some other criterion: a row that fires on age while eGFR is
    * blank still has an unevaluated renal criterion.
    *
-   * This field is what the result-row verdict's green-to-grey degrade reads. Its
-   * MEANING is unchanged — contraindication rows only, never the advisory tier —
-   * but it is not untouched: collecting gates from fired rows too makes it a
+   * The result-row verdict's green-to-grey degrade reads this field together
+   * with `unassessedAdvisory`, through `unassessedGateCount`. Its MEANING is
+   * unchanged — contraindication rows only, never the advisory tier — but it is
+   * not untouched: collecting gates from fired rows too makes it a
    * strict superset of what it used to hold, so the degrade now fires on
    * medications where it previously stayed green. That direction is deliberate
    * and only ever more conservative; it never clears a degrade that used to fire.
@@ -86,13 +87,13 @@ export type PatientAlertResult = {
   unassessed: string[];
   /**
    * The same thing one tier down: distinct inputs referenced by an advisory row
-   * (`dose-adjust`, `caution`, `monitor`, or any future action that is neither a
-   * contraindication nor `info`) that could not be evaluated. Kept separate from
+   * (`dose-adjust`, `caution`, `monitor`, `info`, or any future action that is
+   * not a contraindication) that could not be evaluated. Kept separate from
    * `unassessed` because the consequence differs — an unread contraindication
    * gate can hide a reason not to prescribe, while an unread dosing gate hides a
-   * dose or a monitoring step. `action: "info"` rows are excluded from both:
-   * they carry no action to miss. Rendered as its own hint, never merged into
-   * the contraindication sentence.
+   * dose or a monitoring step. `action: "info"` rows land here too, so an unread
+   * gate on one never hides under a green all-clear. Rendered as its own hint,
+   * never merged into the contraindication sentence.
    */
   unassessedAdvisory: string[];
   /**
@@ -224,6 +225,17 @@ export function isProfileEmpty(profile: PatientProfile | null | undefined): bool
   if (profile.allergies && profile.allergies.length > 0) return false;
   if (profile.medications && profile.medications.length > 0) return false;
   return true;
+}
+
+/**
+ * Unread gates across both tiers. Either tier disqualifies an all-clear, because
+ * both mean a criterion on this medication was never evaluated. The detail-page
+ * considerations notice and the result-row verdict both read this, so the list
+ * can never show green for a medication whose detail page says it could not be
+ * fully checked (owner decision, 25 Oct 2026).
+ */
+export function unassessedGateCount(result: Pick<PatientAlertResult, "unassessed" | "unassessedAdvisory">): number {
+  return result.unassessed.length + result.unassessedAdvisory.length;
 }
 
 /**

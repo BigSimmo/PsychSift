@@ -376,3 +376,51 @@ describe("Sheet close handler freshness", () => {
     }
   });
 });
+
+describe("Sheet dismissOnBack history", () => {
+  function renderSheet(open: boolean, onClose: () => void) {
+    return (
+      <>
+        <OverlayRoot />
+        <Sheet open={open} onClose={onClose} dismissOnBack title="Filter sheet">
+          <p>Filter body</p>
+        </Sheet>
+      </>
+    );
+  }
+
+  it("does not stack a history entry per open when the parent closes the sheet itself", () => {
+    // A filter sheet's Done button closes through the parent, not requestClose,
+    // so the entry pushed on open is left behind. Before the fix every
+    // open-then-Done cycle pushed another same-URL entry, and Back needed one
+    // extra press per use to leave the page.
+    const onClose = vi.fn();
+    const startLength = window.history.length;
+    const { rerender, unmount } = render(renderSheet(false, onClose));
+
+    for (let cycle = 0; cycle < 3; cycle += 1) {
+      rerender(renderSheet(true, onClose));
+      rerender(renderSheet(false, onClose));
+    }
+
+    expect(window.history.length).toBe(startLength + 1);
+    expect(onClose).not.toHaveBeenCalled();
+    unmount();
+  });
+
+  it("pushes a fresh entry when the leftover entry's URL was rewritten after the push", () => {
+    const onClose = vi.fn();
+    const { rerender, unmount } = render(renderSheet(false, onClose));
+    rerender(renderSheet(true, onClose));
+    rerender(renderSheet(false, onClose));
+    const lengthAfterFirstCycle = window.history.length;
+
+    // A filter that rewrites the URL while keeping history.state must not have
+    // its new URL undone by a later Back that pops a reused entry.
+    window.history.replaceState(window.history.state, "", "/?filters=changed");
+    rerender(renderSheet(true, onClose));
+
+    expect(window.history.length).toBe(lengthAfterFirstCycle + 1);
+    unmount();
+  });
+});

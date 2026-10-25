@@ -115,19 +115,21 @@ function notify() {
   }
 }
 
-/** Returns false when the browser refused the write, so the caller can say it did not save. */
+/**
+ * Returns false when the browser refused the write, so the caller can say it did not save.
+ * Nothing changes then, so the page never shows an unsaved star as saved.
+ */
 function write(next: readonly WorkPageStar[]): boolean {
   const trimmed = next.slice(0, MAX_WORK_PAGE_STARS);
-  cache = trimmed;
-  let saved = true;
   try {
     window.localStorage.setItem(WORK_PAGE_FAVOURITES_STORAGE_KEY, JSON.stringify(trimmed));
   } catch {
-    saved = false;
+    return false;
   }
+  cache = trimmed;
   notify();
-  if (saved) announceWorkSyncChange(WORK_PAGE_FAVOURITES_STORAGE_KEY);
-  return saved;
+  announceWorkSyncChange(WORK_PAGE_FAVOURITES_STORAGE_KEY);
+  return true;
 }
 
 let storageListenerAttached = false;

@@ -36,6 +36,7 @@ export type DocumentViewerContentPanelsProps = {
   auditImages: ImageRow[];
   tableFacts: TableFactRow[];
   reviewingTableFactId: string | null;
+  tableReviewError?: string | null;
   reviewTableFact: (fact: TableFactRow, reviewClass: string) => Promise<void> | void;
   activePage: number;
 };
@@ -64,6 +65,7 @@ export function DocumentViewerContentPanels({
   auditImages,
   tableFacts,
   reviewingTableFactId,
+  tableReviewError,
   reviewTableFact,
   activePage,
 }: DocumentViewerContentPanelsProps) {
@@ -109,6 +111,7 @@ export function DocumentViewerContentPanels({
         auditImages={auditImages}
         tableFacts={tableFacts}
         reviewingTableFactId={reviewingTableFactId}
+        tableReviewError={tableReviewError}
         onReviewTableFact={reviewTableFact}
         activePage={activePage}
         onSelectPage={navigateToPage}

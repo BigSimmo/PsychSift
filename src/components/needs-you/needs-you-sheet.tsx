@@ -44,6 +44,7 @@ import {
   type NotificationSegment,
 } from "@/lib/needs-you/feed";
 import { needsYouWaitingCopy } from "@/lib/needs-you/groups";
+import { msUntilNextOnCallLocalDay } from "@/lib/on-call/local-date";
 
 /**
  * The Notification centre (work-mode redesign, owner request 6 Oct 2026): the
@@ -82,6 +83,8 @@ const AREA_ICONS: Readonly<Record<NotificationArea, LucideIcon>> = {
 /**
  * The clock the groups are sorted against: refreshed on open and every minute
  * while open. The Notifications page passes true for as long as it is shown.
+ * While closed it still moves once at the work-zone midnight, so the bell in
+ * the header reads the new day without a reload.
  */
 export function useNotificationClock(open: boolean): Date {
   const [clock, setClock] = useState(() => new Date());
@@ -95,6 +98,11 @@ export function useNotificationClock(open: boolean): Date {
     const timer = window.setInterval(() => setClock(new Date()), 60_000);
     return () => window.clearInterval(timer);
   }, [open]);
+  useEffect(() => {
+    if (open) return;
+    const timer = window.setTimeout(() => setClock(new Date()), msUntilNextOnCallLocalDay(clock));
+    return () => window.clearTimeout(timer);
+  }, [open, clock]);
   return clock;
 }
 

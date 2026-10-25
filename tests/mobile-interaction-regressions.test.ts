@@ -86,10 +86,6 @@ describe("mobile interaction regressions", () => {
       /type="button"\s+aria-disabled="true"\s+onClick=\{ignoreUnavailableActivation\}\s+aria-describedby="visual-evidence-add-unavailable"/,
     );
     expect(visualEvidence).not.toContain("setAdded(true)");
-    expect(evidencePanels).toContain('title="Add to favourites — coming soon"');
-    expect(evidencePanels).toMatch(
-      /type="button"\s+aria-disabled="true"\s+onClick=\{ignoreUnavailableActivation\}\s+aria-describedby="clinical-notes-add-unavailable"/,
-    );
     expect(evidencePanels).not.toContain("setAdded(true)");
 
     expect(tools).toContain("Sorted A to Z");

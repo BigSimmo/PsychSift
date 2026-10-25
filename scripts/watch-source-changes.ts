@@ -143,6 +143,8 @@ function decodeEntity(entity: string, body: string): string {
  * The readable text of an HTML page, so a rotated script bundle, a tracking token or
  * a re-indented template is not reported as a change. Dates and times are blanked
  * too: "Last updated", "Page generated" and clocks change without the guidance moving.
+ * A bare H:MM is blanked only when it reads as a clock (am/pm, seconds, or right after a
+ * date or an "updated"/"generated" label), so a ratio such as 1:10 to 1:20 still counts.
  */
 export function normaliseHtml(html: string): string {
   return html
@@ -157,7 +159,12 @@ export function normaliseHtml(html: string): string {
     )
     .replace(/\b\d{4}-\d{2}-\d{2}(?:T[\d:.]+Z?)?\b/g, "<date>")
     .replace(/\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/g, "<date>")
-    .replace(/\b\d{1,2}:\d{2}(?::\d{2})?\s*(?:am|pm)?\b/gi, "<time>")
+    .replace(/\b\d{1,2}:\d{2}(?::\d{2})?\s*(?:am|pm)\b/gi, "<time>")
+    .replace(/\b\d{1,2}:\d{2}:\d{2}\b/g, "<time>")
+    .replace(
+      /(<date>,?\s*(?:at\s+)?|\b(?:updated|generated|modified|published|accessed|retrieved|refreshed)(?:\s+at)?:?\s+)\d{1,2}:\d{2}\b/gi,
+      "$1<time>",
+    )
     .replace(/\s+/g, " ")
     .trim();
 }

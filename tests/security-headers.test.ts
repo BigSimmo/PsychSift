@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildContentSecurityPolicy, buildSecurityHeaders, resolveRuntimeFlags } from "../src/lib/security-headers";
+import {
+  buildContentSecurityPolicy,
+  buildSecurityHeaders,
+  resolveRuntimeFlags,
+  supabaseBrowserOrigins,
+} from "../src/lib/security-headers";
 
 // Regression guard for the "all images fail to render" incident. Document page
 // images and the PDF embed load cross-origin from Supabase Storage signed URLs
@@ -7,7 +12,7 @@ import { buildContentSecurityPolicy, buildSecurityHeaders, resolveRuntimeFlags }
 // while all server-side tests still pass:
 //   1. Cross-Origin-Embedder-Policy: require-corp — blocks cross-origin
 //      subresources that lack a CORP/CORS opt-in (Supabase does not send one).
-//   2. A CSP that stops allowing the *.supabase.co image origin.
+//   2. A CSP that stops allowing this app's <ref>.supabase.co image origin.
 // These assertions fail loudly if either is reintroduced.
 
 const flagVariants = [
@@ -17,6 +22,7 @@ const flagVariants = [
 ] as const;
 
 const NONCE = "dGVzdC1ub25jZQ==";
+const PRODUCTION_SUPABASE = "https://sjrfecxgysukkwxsowpy.supabase.co";
 
 describe("security headers", () => {
   it("disables Zod eval compilation before client validation", async () => {
@@ -52,14 +58,18 @@ describe("security headers", () => {
         expect(imgSrc).toBeDefined();
         const sources = imgSrc!.trim().split(/\s+/);
         // Supabase signed-URL images still load, but a broad `https:` wildcard is not allowed.
-        expect(sources).toContain("https://*.supabase.co");
+        expect(sources).toContain(PRODUCTION_SUPABASE);
         expect(sources).not.toContain("https:");
+        // Nor any other Supabase project: the wildcard would let an injected image
+        // send data to an attacker-owned *.supabase.co project.
+        expect(sources).not.toContain("https://*.supabase.co");
       });
 
       it("allows the Supabase origin in connect-src and no third-party telemetry origin", () => {
         const connectSrc = csp.split(";").find((directive) => directive.trim().startsWith("connect-src"));
         expect(connectSrc).toBeDefined();
-        expect(connectSrc).toContain("https://*.supabase.co");
+        expect(connectSrc).toContain(PRODUCTION_SUPABASE);
+        expect(connectSrc).not.toContain("*.supabase.co");
         // There is no browser Sentry SDK (docs/error-tracking.md: "no client Sentry
         // bundle path"; the only inits are src/sentry.{server,edge}.config.ts), so the
         // three wildcard `*.ingest*.sentry.io` origins were an egress channel from the
@@ -87,6 +97,15 @@ describe("security headers", () => {
         expect(csp).not.toContain("api.openai.com");
       });
 
+      it("lets only this origin use the camera, for the in-app QR check-in scanner", () => {
+        // camera=() blocked getUserMedia for the app itself, so "Scan in app" always
+        // failed with a "permission denied" message no browser setting could fix.
+        const policy = byKey.get("Permissions-Policy") ?? "";
+        expect(policy).toContain("camera=(self)");
+        expect(policy).not.toContain("camera=()");
+        expect(policy).not.toMatch(/camera=\([^)]*\*/);
+      });
+
       it("restricts PWA workers and manifests to this origin", () => {
         const workerSrc = csp.split(";").find((directive) => directive.trim().startsWith("worker-src"));
         const manifestSrc = csp.split(";").find((directive) => directive.trim().startsWith("manifest-src"));
@@ -95,6 +114,24 @@ describe("security headers", () => {
       });
     });
   }
+
+  it("allows only the production Supabase origin, plus a declared staging project", () => {
+    expect(supabaseBrowserOrigins(undefined)).toEqual([PRODUCTION_SUPABASE]);
+    expect(supabaseBrowserOrigins("  ")).toEqual([PRODUCTION_SUPABASE]);
+    // A malformed ref is ignored rather than widening the policy.
+    expect(supabaseBrowserOrigins("*")).toEqual([PRODUCTION_SUPABASE]);
+    expect(supabaseBrowserOrigins("abcdefghijklmnopqrst")).toEqual([
+      PRODUCTION_SUPABASE,
+      "https://abcdefghijklmnopqrst.supabase.co",
+    ]);
+    const csp = buildContentSecurityPolicy({
+      isDevelopment: false,
+      isLocalHttpRuntime: false,
+      nonce: NONCE,
+      supabaseOrigins: supabaseBrowserOrigins("abcdefghijklmnopqrst"),
+    });
+    expect(csp).toContain(`connect-src 'self' ${PRODUCTION_SUPABASE} https://abcdefghijklmnopqrst.supabase.co;`);
+  });
 
   it("only emits unsafe-eval in development and HSTS/upgrade-insecure-requests off local http", () => {
     const prod = buildContentSecurityPolicy({ isDevelopment: false, isLocalHttpRuntime: false, nonce: NONCE });

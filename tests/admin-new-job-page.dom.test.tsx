@@ -70,10 +70,17 @@ const identity = vi.hoisted(() => ({
 }));
 vi.mock("@/lib/supabase/client", () => ({ useAuthSession: () => identity.auth }));
 
+// The device cache the page writes to and reads back before each write.
+const deviceCache = vi.hoisted(() => ({ entries: null as OnCallEntry[] | null }));
 const cacheOnCallEntries = vi.fn();
 vi.mock("@/lib/on-call/entry-store", () => ({
   useOnCallEntries: () => entryState,
-  cacheOnCallEntries: (entries: OnCallEntry[]) => cacheOnCallEntries(entries),
+  cacheOnCallEntries: (entries: OnCallEntry[]) => {
+    deviceCache.entries = entries;
+    return cacheOnCallEntries(entries);
+  },
+  readCachedOnCallEntries: () =>
+    deviceCache.entries ? { entries: deviceCache.entries, savedAt: "2026-09-26T01:00:00.000Z" } : null,
   isOnCallExampleEntry: () => false,
 }));
 
@@ -88,6 +95,7 @@ beforeEach(() => {
     cachedAt: null,
   });
   cacheOnCallEntries.mockClear();
+  deviceCache.entries = null;
 });
 
 afterEach(() => {
@@ -170,6 +178,31 @@ describe("AdminNewJobPage", () => {
       `/api/on-call/entries/${loginOwn.id}`,
       expect.objectContaining({ method: "PATCH" }),
     );
+  });
+
+  it("keeps both of two quick ticks in the device cache, not only the last one saved", async () => {
+    const secondOwn = onCallEntryFixture({
+      section: "logistics",
+      title: "Demo pager setup",
+      details: { category: "Logins" },
+      isOwn: true,
+      isPersonal: false,
+    });
+    Object.assign(entryState, { entries: [loginOwn, secondOwn, loginShared, jobContact] });
+    deviceCache.entries = entryState.entries;
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const original = String(input).endsWith(secondOwn.id) ? secondOwn : loginOwn;
+      const saved = { ...original, details: { category: "Logins", done: true } };
+      return new Response(JSON.stringify({ entry: saved }), { status: 200 });
+    });
+    render(<AdminNewJobPage now={NOW} />);
+    // Both ticks start from the same render, before either save has come back.
+    fireEvent.click(screen.getByTestId(`admin-new-job-step-${loginOwn.slug}-checkbox`));
+    fireEvent.click(screen.getByTestId(`admin-new-job-step-${secondOwn.slug}-checkbox`));
+    await waitFor(() => expect(cacheOnCallEntries).toHaveBeenCalledTimes(2));
+    const cached = cacheOnCallEntries.mock.calls.at(-1)?.[0] as OnCallEntry[];
+    expect(cached.find((entry) => entry.id === loginOwn.id)?.details).toMatchObject({ done: true });
+    expect(cached.find((entry) => entry.id === secondOwn.id)?.details).toMatchObject({ done: true });
   });
 
   it("preserves a typed start date after a failed save so it can be retried", async () => {

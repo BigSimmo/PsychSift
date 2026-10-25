@@ -434,7 +434,10 @@ describe("RetrievalStateBanner", () => {
       />,
     );
 
-    await userEvent.click(screen.getByTestId("retrieval-state-stale-toggle"));
+    const toggle = screen.getByTestId("retrieval-state-stale-toggle");
+    // Collapsed, the chip is the only text on screen, so it must not soften the superseded one.
+    expect(toggle).toHaveTextContent(/Superseded \/ review due\s*· 2 sources/);
+    await userEvent.click(toggle);
     expect(screen.getByText(/including 1 that has been superseded/)).toBeVisible();
     const rows = screen.getAllByTestId("retrieval-state-overdue-row");
     expect(rows[0]).toHaveAttribute("data-status", "outdated");
@@ -442,6 +445,24 @@ describe("RetrievalStateBanner", () => {
     // Shape, not colour: the slashed ring differs from the half ring.
     expect(within(rows[0] as HTMLElement).getByTestId("status-mark")).toHaveAttribute("data-status", "outdated");
     expect(within(rows[1] as HTMLElement).getByTestId("status-mark")).toHaveAttribute("data-status", "review_due");
+  });
+
+  it("says Superseded, not Review due, on the collapsed chip when every overdue source was replaced", () => {
+    render(
+      <RetrievalStateBanner
+        state={{
+          kind: "stale_evidence",
+          sourceCount: 1,
+          overdue: [{ sourceId: "doc-1", title: "Withdrawn Protocol", reviewDueOn: "2024-01-01", status: "outdated" }],
+        }}
+        onOpenSource={vi.fn()}
+      />,
+    );
+
+    const toggle = screen.getByTestId("retrieval-state-stale-toggle");
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(toggle).toHaveTextContent(/Superseded\s*· 1 source/);
+    expect(toggle).not.toHaveTextContent(/review due/i);
   });
 
   it("refuses a stale state that names no overdue source", () => {

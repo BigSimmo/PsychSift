@@ -549,7 +549,9 @@ export function LeaveWalletPage({ now: nowProp }: { now?: Date } = {}) {
   const [seenUrlCard, setSeenUrlCard] = useState(urlCard);
   if (urlCard !== seenUrlCard) {
     setSeenUrlCard(urlCard);
-    setOpenId(urlCard);
+    // The discreet card's name leaving the address is the cleanup above, not a link elsewhere: it stays open.
+    const discreetCleanedUp = urlCard === null && Boolean(seenUrlCard && leaveTypeById(seenUrlCard)?.discreet);
+    if (!discreetCleanedUp) setOpenId(urlCard);
   }
 
   function open(id: LeaveTypeId | null) {

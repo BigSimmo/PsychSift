@@ -238,7 +238,11 @@ export function useRegistryRecord(kind: RegistryRecordKind, slug: string): Regis
 
   useEffect(() => {
     let active = true;
-    fetch(`/api/registry/records/${encodeURIComponent(slug)}?kind=${kind}`, { headers: authorizationHeader })
+    const controller = new AbortController();
+    fetch(`/api/registry/records/${encodeURIComponent(slug)}?kind=${kind}`, {
+      headers: authorizationHeader,
+      signal: controller.signal,
+    })
       .then(async (response) => {
         if (!active) return;
         if (response.status === 401) {
@@ -262,6 +266,8 @@ export function useRegistryRecord(kind: RegistryRecordKind, slug: string): Regis
         const responsePayload: unknown = await response.json().catch(() => null);
         const payload = parseRegistryRecordResponse(responsePayload);
         if (!payload) throw new Error("Registry record returned an invalid response.");
+        // A body that finishes after sign-out or an identity change must not paint the prior owner's record.
+        if (!active) return;
         setState({
           status: "ready",
           record: payload.record,
@@ -275,6 +281,7 @@ export function useRegistryRecord(kind: RegistryRecordKind, slug: string): Regis
       });
     return () => {
       active = false;
+      controller.abort();
     };
   }, [kind, slug, authStatus, authorizationHeader, markSessionExpired, attempt]);
 

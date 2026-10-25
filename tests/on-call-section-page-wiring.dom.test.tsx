@@ -1,8 +1,9 @@
 /** @vitest-environment jsdom */
 
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { onCallEntryAnchorId } from "@/components/on-call/on-call-page-anchors";
 import { OnCallSectionPage } from "@/components/on-call/on-call-section-page";
 import {
   ON_CALL_ORIENTATION_UNFILED_LABEL,
@@ -168,6 +169,34 @@ const ROUTED_CONTACTS = [
   contact("aaaa1111-1111-4111-8111-111111111111", "ward-a", "Ward A", ["Wards"]),
   contact("aaaa2222-2222-4222-8222-222222222222", "service-a", "Service A", ["Services"]),
 ];
+
+describe("arriving from a link to one entry", () => {
+  afterEach(() => history.replaceState(null, "", "/"));
+
+  it("focuses the hashed entry once, and a later data refresh does not pull the reader back", () => {
+    const [first, second] = ROUTED_CONTACTS;
+    history.replaceState(null, "", `/on-call/contacts#${onCallEntryAnchorId(first!.id)}`);
+    storeState.entries = ROUTED_CONTACTS;
+    const view = render(<OnCallSectionPage view="contacts" />);
+    const target = document.getElementById(onCallEntryAnchorId(first!.id))!;
+    expect(target).toHaveFocus();
+
+    // The reader moves on to another row, then a "Still correct" tap rewrites the list.
+    const other = document.getElementById(onCallEntryAnchorId(second!.id))!;
+    other.focus();
+    storeState.entries = ROUTED_CONTACTS.map((entry) => ({ ...entry }));
+    view.rerender(<OnCallSectionPage view="contacts" />);
+    expect(other).toHaveFocus();
+
+    // A new hash is still followed.
+    other.blur();
+    act(() => {
+      history.replaceState(null, "", `/on-call/contacts#${onCallEntryAnchorId(second!.id)}`);
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    });
+    expect(document.getElementById(onCallEntryAnchorId(second!.id))).toHaveFocus();
+  });
+});
 
 describe("the second header row is about THIS page", () => {
   // The mode pill opens On Call's nine pages. The section pages briefly carried

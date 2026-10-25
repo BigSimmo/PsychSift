@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import { buildComplianceOverview } from "@/lib/admin/compliance-overview";
 import { ADMIN_REQUIREMENTS_CATALOGUE } from "@/lib/admin/requirements";
-import { documentFromDraft, documentState, validateDocumentDraft } from "@/lib/work-screens/admin/documents";
+import {
+  documentFolders,
+  documentFromDraft,
+  documentState,
+  validateDocumentDraft,
+} from "@/lib/work-screens/admin/documents";
 import {
   emptyPaperwork,
   isValidPaperwork,
@@ -169,6 +174,13 @@ describe("Pay", () => {
     expect(parseHours("")).toBeNull();
   });
 
+  it("holds hours typed as hours and minutes to the same 400 hour limit as decimals", () => {
+    expect(parseHours("400:00")).toBe(400);
+    expect(parseHours("400:30")).toBeNull();
+    expect(parseHours("999:00")).toBeNull();
+    expect(parseHours("999")).toBeNull();
+  });
+
   it("says the hours match within rounding, and says by how much they differ", () => {
     expect(payslipResult({ payslipOrdinaryHours: 80, rosteredHours: 80.01, loggedExtraHours: 0 }).matches).toBe(true);
     const off = payslipResult({
@@ -237,6 +249,25 @@ describe("Documents", () => {
     expect(validateDocumentDraft({ ...base, url: "https://example.org/file" }).url).toBeUndefined();
     const saved = documentFromDraft({ ...base, url: "" }, "doc-1", "2026-10-07");
     expect("url" in saved).toBe(false);
+  });
+
+  it("lists each folder soonest end first, whichever title comes first", () => {
+    const doc = (id: string, title: string, expiresOn?: string) => ({
+      id,
+      title,
+      folder: "registration" as const,
+      addedOn: "2026-10-01",
+      ...(expiresOn ? { expiresOn } : {}),
+    });
+    const documents = [
+      doc("a", "AHPRA registration", "2027-06-01"),
+      doc("b", "Working with Children", "2026-11-01"),
+      doc("c", "Basic life support"),
+      doc("d", "Annual leave letter", "2026-11-01"),
+    ];
+    const order = (list: typeof documents) => documentFolders(list)[0].documents.map((document) => document.id);
+    expect(order(documents)).toEqual(["d", "b", "a", "c"]);
+    expect(order([...documents].reverse())).toEqual(["d", "b", "a", "c"]);
   });
 });
 

@@ -176,7 +176,15 @@ it("opens an Ask dates handoff with Prefer off already selected", async () => {
   window.history.replaceState({}, "", `/roster/requests?start=dates&team=${SERVICE}&date=${day}&kind=prefer_off`);
   render(<RosterRequestsPage />);
   expect(await screen.findByRole("dialog", { name: "Dates I can't work" })).toBeTruthy();
-  expect(await screen.findByRole("button", { name: `${day}: Prefer off` })).toBeTruthy();
+  // Named by its spoken weekday and date ("Sunday 25 October"), never the ISO date.
+  const spoken = new Intl.DateTimeFormat("en-AU", {
+    timeZone: "UTC",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(new Date(`${day}T00:00:00Z`));
+  expect(await screen.findByRole("button", { name: `${spoken}: Prefer off` })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: new RegExp(`^${day}:`) })).toBeNull();
 });
 
 it("no longer lists swaps or open shifts, and opens with Sick for tomorrow instead", () => {
@@ -278,6 +286,32 @@ it("checks planned leave against my team shifts: the clash, its day, and who els
   expect(await screen.findByText("2 of the team are already off these dates")).toBeTruthy();
 });
 
+it("offers a shift during leave once: busy while sending, then shown as offered", async () => {
+  const user = userEvent.setup();
+  reads.requests.swaps = [];
+  let answer: (value: unknown) => void = () => undefined;
+  mocks.post.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        answer = resolve;
+      }),
+  );
+  render(<RosterRequestsPage />);
+  await user.click(screen.getByRole("button", { name: "New" }));
+  await user.click(screen.getByTestId("roster-new-entry-leave"));
+  await user.type(screen.getByLabelText("From"), "2026-11-06");
+  await user.type(screen.getByLabelText("To"), "2026-11-08");
+  const offer = await screen.findByRole("button", { name: "Offer as open shift" });
+  await user.click(offer);
+  await user.click(offer);
+  expect(mocks.post.mock.calls.filter(([, action]) => action.action === "open.post")).toHaveLength(1);
+  await act(async () => {
+    answer({ ok: true, result: { openShiftId: OPEN } });
+  });
+  const offered = await screen.findByRole("button", { name: "Offered" });
+  expect(offered.hasAttribute("disabled")).toBe(true);
+});
+
 it("shows leave as loading, not as empty, until the leave read answers", async () => {
   let answer: (response: Response) => void = () => undefined;
   vi.stubGlobal(
@@ -344,4 +378,29 @@ it("opens the dates sheet from Add", async () => {
   render(<RosterRequestsPage />);
   await user.click(screen.getByRole("button", { name: "Add dates I can't work" }));
   expect(await screen.findByRole("dialog", { name: "Dates I can't work" })).toBeTruthy();
+});
+
+it("gives away only shifts still to finish, read up to the Perth date 54 days on", async () => {
+  // 03:00 on 21 Oct in Perth, while the UTC date is still 20 Oct.
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-10-20T19:00:00Z"));
+  try {
+    const ended = {
+      ...take,
+      id: "5e000000-0000-4000-8000-00000000000a",
+      startsAt: "2026-10-20T10:00:00Z",
+      endsAt: "2026-10-20T18:00:00Z",
+    };
+    reads.assignments.assignments = [ended, take];
+    const { RosterGiveAwaySheet } = await import("@/components/roster/requests/roster-give-away-sheet");
+    render(
+      <RosterGiveAwaySheet open onClose={() => undefined} serviceId={SERVICE} actorId={ME} onSent={() => undefined} />,
+    );
+    const choose = await screen.findByRole("combobox", { name: "My shift" });
+    const options = [...choose.querySelectorAll("option")].map((option) => option.getAttribute("value"));
+    expect(options).toEqual(["", TAKE]);
+    expect(mocks.fetchRead).toHaveBeenCalledWith(SERVICE, "assignments", { from: "2026-10-21", to: "2026-12-14" });
+  } finally {
+    vi.useRealTimers();
+  }
 });

@@ -1,5 +1,6 @@
 import { identifierShapeWarning } from "@/lib/clinical-ask/context";
-import { checkPatientDetail, type PatientDetailProblem } from "@/lib/work-text/patient-detail-check";
+import { bareNameOrAddressProblem } from "@/lib/clinical-question-bare-name";
+import { checkPatientDetail, normaliseWorkText, type PatientDetailProblem } from "@/lib/work-text/patient-detail-check";
 
 /**
  * The patient-detail check for a Clinical question, run before the question is sent to the
@@ -23,6 +24,11 @@ import { checkPatientDetail, type PatientDetailProblem } from "@/lib/work-text/p
  *
  * On top of that it keeps the narrower shapes the composer already warned about (email,
  * Medicare-shaped and labelled record numbers, a labelled date of birth, a phone number).
+ *
+ * It also holds back a bare first and last name ("Sarah Jones lithium level") and a street
+ * address ("8 Smith St"), which Work's check reads past (owner decision, 25 Oct 2026; see
+ * `bareNameOrAddressProblem` for how eponyms, medicines and capitalised clinical terms are kept
+ * out of it).
  *
  * Like Work's check it catches some details, not all, and the wording says so.
  */
@@ -74,6 +80,8 @@ export function clinicalQuestionPatientDetail(text: string): PatientDetailProble
       suggestion: null,
     };
   }
+  const bareNameOrAddress = bareNameOrAddressProblem(normaliseWorkText(text));
+  if (bareNameOrAddress) return bareNameOrAddress;
   if (!checkPatientDetail(text, OPTIONS)) return null;
   return checkPatientDetail(withoutClinicalShorthand(text), OPTIONS);
 }

@@ -192,6 +192,13 @@ describe("the Excel export", () => {
     expect(second?.getCell("B2").value).toBe('a < b & "c"');
   });
 
+  it("keeps emoji and supplementary-plane characters in exported text (#183)", async () => {
+    const bytes = buildXlsx([{ name: "Notes", rows: [["Note"], ["A\u{1F600}B\u{20000}C\u0007"]] }]);
+    const book = new ExcelJS.Workbook();
+    await book.xlsx.load(bytes.buffer as ArrayBuffer);
+    expect(book.getWorksheet("Notes")?.getCell("A2").value).toBe("A\u{1F600}B\u{20000}C");
+  });
+
   it("computes the standard CRC-32", () => {
     expect(crc32(new TextEncoder().encode("123456789")).toString(16)).toBe("cbf43926");
   });

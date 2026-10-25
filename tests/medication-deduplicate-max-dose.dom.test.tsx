@@ -107,4 +107,68 @@ describe("Medication detail max dose deduplication (#J7RV8Q)", () => {
       expect(within(summaryPanel).queryByText("Max Dose")).not.toBeInTheDocument();
     }
   });
+
+  it("keeps the Rapid Summary Maximum Dose row when no Key figure shows the max dose", () => {
+    // Carbamazepine-style record: no Max Dose stat, and the only other copy of the
+    // ceiling is inside the long "Usual Dose & Max" quick-reference value.
+    const medWithoutMaxDoseStat: MedicationRecord = {
+      ...sampleMed,
+      stats: [{ label: "Half-life", value: "12-17 h" }],
+      quick: [{ label: "Usual Dose & Max", value: "200 mg twice daily, titrated weekly. Max 2000 mg/day." }],
+      sections: [
+        {
+          title: "Rapid Summary",
+          type: "summary",
+          rows: [
+            { key: "Indication", val: "Bipolar disorder" },
+            { key: "Maximum Dose", val: "Max 2000 mg/day." },
+          ],
+        },
+      ],
+    };
+    useMedicationDetail.mockReturnValue({
+      data: { record: medWithoutMaxDoseStat, governance: null },
+      loading: false,
+      error: null,
+      notFound: false,
+    });
+    render(<MedicationDetail slug="test-med" fallbackRecord={medWithoutMaxDoseStat} />);
+
+    const figures = screen.getAllByTestId("medication-figure");
+    expect(figures.some((f) => f.textContent?.includes("Max Dose"))).toBe(false);
+    const summaryPanel = document.getElementById("medication-panel-summary");
+    expect(summaryPanel).toBeInTheDocument();
+    if (summaryPanel) {
+      expect(within(summaryPanel).getByText("Maximum Dose")).toBeInTheDocument();
+    }
+  });
+
+  it("does not strip a bare 'Dose' summary row even when a Max Dose figure exists", () => {
+    const medWithDoseRow: MedicationRecord = {
+      ...sampleMed,
+      sections: [
+        {
+          title: "Rapid Summary",
+          type: "summary",
+          rows: [
+            { key: "Indication", val: "Major depressive disorder" },
+            { key: "Dose", val: "50-100 mg daily." },
+          ],
+        },
+      ],
+    };
+    useMedicationDetail.mockReturnValue({
+      data: { record: medWithDoseRow, governance: null },
+      loading: false,
+      error: null,
+      notFound: false,
+    });
+    render(<MedicationDetail slug="test-med" fallbackRecord={medWithDoseRow} />);
+
+    const summaryPanel = document.getElementById("medication-panel-summary");
+    expect(summaryPanel).toBeInTheDocument();
+    if (summaryPanel) {
+      expect(within(summaryPanel).getByText("Dose")).toBeInTheDocument();
+    }
+  });
 });

@@ -92,10 +92,11 @@ describe("document-derived text must route through a formatter", () => {
     expect(dashboardSurfaces).not.toMatch(/caption=\{item\.caption\}/);
   });
 
-  it("cleans quotes for both display and clipboard through the verbatim cleaner", () => {
-    // One call for the rendered blockquote, one for the copy-to-clipboard text.
+  it("cleans displayed quotes through the verbatim cleaner", () => {
+    // One call for the rendered blockquote. The quote-card clipboard formatter that made the
+    // second call was deleted unused on 25 Oct 2026 (it had no caller outside tests).
     const cleanerCalls = dashboardSurfaces.match(/sourceTextForVerbatimQuote\(quote\.quote\)/g) ?? [];
-    expect(cleanerCalls.length).toBeGreaterThanOrEqual(2);
+    expect(cleanerCalls.length).toBeGreaterThanOrEqual(1);
   });
 });
 

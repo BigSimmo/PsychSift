@@ -161,7 +161,11 @@ function nextPerson(
         other.id !== row.id &&
         other.kind !== "leave" &&
         other.name !== null &&
-        other.userId !== row.userId &&
+        // Not the same person: by account when both rows have one, otherwise by roster name,
+        // so an unlinked locum's row can still hand over to another unlinked name.
+        (row.userId !== null && other.userId !== null
+          ? other.userId !== row.userId
+          : other.name.trim() !== (row.name ?? "").trim()) &&
         // Only someone of the same grade takes over: a registrar's row never says "then" an intern.
         other.grade === row.grade &&
         // A handover: starts no more than the overlap before this shift ends, and within 90 minutes after.

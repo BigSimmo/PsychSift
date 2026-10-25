@@ -12,10 +12,33 @@ type WindowWithNavigation = Window & {
   navigation?: NavigationCapability;
 };
 
+/**
+ * The history length when this document first ran this module. Entries past it
+ * were added by this document's own client-side navigations, so stepping back
+ * from one stays in the app.
+ */
+const historyLengthAtLoad = typeof window === "undefined" ? null : window.history.length;
+
+function hasSameOriginReferrer(): boolean {
+  if (!document.referrer) return false;
+  try {
+    return new URL(document.referrer).origin === window.location.origin;
+  } catch {
+    return false;
+  }
+}
+
 export function canNavigateBack(): boolean {
   if (typeof window === "undefined") return false;
   const canGoBack = (window as WindowWithNavigation).navigation?.canGoBack;
-  return typeof canGoBack === "boolean" ? canGoBack : window.history.length > 1;
+  if (typeof canGoBack === "boolean") return canGoBack;
+  // Without the Navigation API, history.length also counts entries from other
+  // sites: a deep link opened from an email has a length above 1, and
+  // router.back() would leave the app. Only trust it when the previous entry is
+  // known to be ours — this document was opened from this origin, or it has
+  // navigated client-side since it loaded.
+  if (window.history.length <= 1) return false;
+  return hasSameOriginReferrer() || (historyLengthAtLoad !== null && window.history.length > historyLengthAtLoad);
 }
 
 export function navigateContextuallyBack(

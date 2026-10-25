@@ -171,7 +171,11 @@ export function DocumentManualTagEditor({
       </form>
 
       {error ? (
-        <p className="mt-2 rounded-lg border border-[color:var(--warning)]/30 bg-[color:var(--warning-soft)] px-3 py-2 text-xs font-semibold text-[color:var(--warning)]">
+        // An alert, so a failed add, rename or remove is heard, not only seen.
+        <p
+          role="alert"
+          className="mt-2 rounded-lg border border-[color:var(--warning)]/30 bg-[color:var(--warning-soft)] px-3 py-2 text-xs font-semibold text-[color:var(--warning)]"
+        >
           {error}
         </p>
       ) : null}

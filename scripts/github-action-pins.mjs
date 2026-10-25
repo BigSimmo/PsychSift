@@ -190,11 +190,18 @@ const reviewedActionPins = new Map([
 ]);
 
 const usesPattern = /^\s*(?:-\s*)?uses:\s*([^@\s]+)@([^\s#]+)(?:\s+#\s*(\S.*?))?\s*$/;
+const anyUsesPattern = /^\s*(?:-\s*)?uses:\s*([^\s#]+)/;
 const immutableCommitSha = /^[0-9a-f]{40}$/;
 
 export function validateActionReference(line) {
   const match = line.match(usesPattern);
-  if (!match) return null;
+  if (!match) {
+    // A `uses:` with no `@ref` (e.g. `docker://alpine:3.20`) runs a mutable image or action;
+    // only repository-local `./` references may omit a ref.
+    const bare = line.match(anyUsesPattern);
+    if (!bare || bare[1].startsWith("./")) return null;
+    return `${bare[1]} has no pinned ref. Pin external actions to a reviewed 40-character commit SHA.`;
+  }
 
   const [, action, ref, versionComment] = match;
   if (action.startsWith("./")) return null;

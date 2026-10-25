@@ -62,6 +62,9 @@ export function RosterTeamsPanel() {
   const [teams, setTeams] = useState<OwnerTeam[] | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [members, setMembers] = useState<OwnerMember[] | null>(null);
+  // Separate from `members === null`, which means a load is still running: a
+  // failed load used to leave "Loading people…" up for good beside its error.
+  const [membersFailed, setMembersFailed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirmation, setConfirmation] = useState<OwnerTeam | null>(null);
@@ -90,6 +93,7 @@ export function RosterTeamsPanel() {
   async function loadMembers(serviceId: string) {
     const loadId = ++memberLoad.current;
     setMembers(null);
+    setMembersFailed(false);
     setEmail(null);
     try {
       const response = await fetch(`/api/roster/owner/teams/${encodeURIComponent(serviceId)}`, { cache: "no-store" });
@@ -98,7 +102,7 @@ export function RosterTeamsPanel() {
       if (!Array.isArray(answer.members) || !answer.members.every(isMember)) throw new Error();
       if (loadId === memberLoad.current) setMembers(answer.members);
     } catch {
-      if (loadId === memberLoad.current) setError("People in this team could not be loaded. Try again shortly.");
+      if (loadId === memberLoad.current) setMembersFailed(true);
     }
   }
 
@@ -174,7 +178,9 @@ export function RosterTeamsPanel() {
 
   return (
     <div className="grid gap-6" data-testid="roster-teams-panel">
-      {error ? <ModeNotice tone="warning">{error}</ModeNotice> : null}
+      {/* While the sheet is open its own body shows the error: the panel behind a
+          modal is not where anyone is looking. */}
+      {error && !confirmation ? <ModeNotice tone="warning">{error}</ModeNotice> : null}
       <section className="grid gap-3" aria-label="Health service teams">
         <h2 className={SECTION_HEADING_CLASS}>Teams</h2>
         {teams.length === 0 ? <p className={META_CLASS}>No teams yet.</p> : null}
@@ -197,7 +203,14 @@ export function RosterTeamsPanel() {
                 >
                   People
                 </Button>
-                <Button type="button" variant="secondary" onClick={() => setConfirmation(team)}>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    setError(null);
+                    setConfirmation(team);
+                  }}
+                >
                   {team.verifiedAt || team.isDemo ? "Change confirmation" : "Confirm team"}
                 </Button>
               </div>
@@ -208,7 +221,16 @@ export function RosterTeamsPanel() {
       {selected ? (
         <section className="grid gap-3" aria-label={`People in ${selected.name}`}>
           <h2 className={SECTION_HEADING_CLASS}>People · {selected.name}</h2>
-          {members === null ? <p className={META_CLASS}>Loading people…</p> : null}
+          {membersFailed ? (
+            <div className="grid justify-items-start gap-2">
+              <ModeNotice tone="warning">People in this team could not be loaded. Try again shortly.</ModeNotice>
+              <Button type="button" variant="secondary" onClick={() => void loadMembers(selected.serviceId)}>
+                Retry
+              </Button>
+            </div>
+          ) : members === null ? (
+            <p className={META_CLASS}>Loading people…</p>
+          ) : null}
           {members?.length === 0 ? <p className={META_CLASS}>No active members.</p> : null}
           <ul className="grid gap-2">
             {members?.map((member) => (
@@ -262,6 +284,11 @@ export function RosterTeamsPanel() {
                 ? `Remove confirmation for ${teamName(confirmation.name)}? Its members will lose access to the shared roster.`
                 : `Confirm ${teamName(confirmation.name)}? Its members can then share a roster.`}
             </p>
+            {error ? (
+              <p role="alert" className="text-sm text-[color:var(--warning)]">
+                {error}
+              </p>
+            ) : null}
             <Button
               type="button"
               variant="primary"

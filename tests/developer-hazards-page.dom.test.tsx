@@ -25,9 +25,9 @@ afterEach(() => {
  * the way that matters.
  */
 describe("developer hazard register page", () => {
-  it("leads with what is NOT controlled, not with a reassuring total", () => {
+  it("leads with what is NOT controlled, not with a reassuring total", async () => {
     const snapshot = loadHazardSnapshot();
-    render(<DeveloperHazardsPage />);
+    render(await DeveloperHazardsPage());
 
     const tile = screen.getByTestId("developer-hazards-count-unmitigated");
     expect(within(tile).getByTestId("developer-hazards-count-unmitigated-value")).toHaveTextContent(
@@ -54,25 +54,25 @@ describe("developer hazard register page", () => {
     }
   });
 
-  it("keeps each register's own authority sentence instead of one shared reassurance", () => {
-    render(<DeveloperHazardsPage />);
+  it("keeps each register's own authority sentence instead of one shared reassurance", async () => {
+    render(await DeveloperHazardsPage());
 
     const psychsift = screen.getByTestId("developer-hazards-register-psychsift-answer-pipeline");
     expect(psychsift).toHaveTextContent(/Static evidence register only/i);
     expect(psychsift).toHaveTextContent(/Not signed off by a clinician/i);
   });
 
-  it("marks expired reviews from the render-time Australia/Perth date", () => {
+  it("marks expired reviews from the render-time Australia/Perth date", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-11-23T16:00:00Z"));
-    render(<DeveloperHazardsPage />);
+    render(await DeveloperHazardsPage());
 
     const psychsift = screen.getByTestId("developer-hazards-register-psychsift-answer-pipeline");
     expect(psychsift).toHaveTextContent("Review EXPIRED 2026-11-23.");
   });
 
-  it("describes the live register and the retired ones without overstating coverage", () => {
-    render(<DeveloperHazardsPage />);
+  it("describes the live register and the retired ones without overstating coverage", async () => {
+    render(await DeveloperHazardsPage());
     const page = screen.getByTestId("developer-hazards");
 
     expect(page).toHaveTextContent(/One clinical area has a live register/i);
@@ -85,9 +85,9 @@ describe("developer hazard register page", () => {
     expect(screen.queryByTestId("developer-hazards-register-caring-contacts")).toBeNull();
   });
 
-  it("renders every recorded hazard, so no row can be silently dropped from a register", () => {
+  it("renders every recorded hazard, so no row can be silently dropped from a register", async () => {
     const snapshot = loadHazardSnapshot();
-    render(<DeveloperHazardsPage />);
+    render(await DeveloperHazardsPage());
 
     for (const register of snapshot.registers.filter((entry) => entry.exists)) {
       const section = screen.getByTestId(`developer-hazards-register-${register.id}`);
@@ -97,16 +97,16 @@ describe("developer hazard register page", () => {
     }
   });
 
-  it("does not claim the page covers every clinical risk", () => {
-    render(<DeveloperHazardsPage />);
+  it("does not claim the page covers every clinical risk", async () => {
+    render(await DeveloperHazardsPage());
     const page = screen.getByTestId("developer-hazards");
 
     expect(page).toHaveTextContent(/Nothing here is clinical assurance/i);
     expect(page).not.toHaveTextContent(/every clinical risk/i);
   });
 
-  it("lists every known source-document error with its governance decision and ledger id", () => {
-    render(<DeveloperHazardsPage />);
+  it("lists every known source-document error with its governance decision and ledger id", async () => {
+    render(await DeveloperHazardsPage());
     const section = screen.getByTestId("developer-hazards-document-cautions");
     for (const caution of DOCUMENT_CAUTIONS) {
       const item = within(section).getByTestId(`developer-hazards-document-caution-${caution.id}`);

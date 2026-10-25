@@ -1,14 +1,15 @@
 "use client";
 
 import { Info, X } from "lucide-react";
-import { useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useEffect, useId, useRef, type KeyboardEvent as ReactKeyboardEvent } from "react";
 
 import { cn } from "@/components/ui-primitives";
+import { announce } from "@/components/ui/live-announcer";
 import { canRestoreFocusTo, isTopmostSheet, popSheet, pushSheet, updateSheetRoot } from "@/components/ui/sheet-focus";
 import { MissingValue } from "@/components/ui/missing-value";
 import { useClinicalToolAccess } from "@/components/mode-kit/use-clinical-tool-access";
 
-import { calculators, domainLabels, type CalculatorFixture } from "./calculator-fixtures";
+import { domainLabels, type CalculatorFixture } from "./calculator-fixtures";
 import {
   CalculatorItems,
   ScoreBandBar,
@@ -18,7 +19,10 @@ import {
   progressLabel,
   type AnswerMap,
 } from "./calculator-ui";
-import { CalculatorSearchHome, NextActionsPanel, ScorePanel, type SessionAnswers } from "./search-detail";
+import { NextActionsPanel, ScorePanel } from "./search-detail";
+
+/** How long answers must settle before the running score is announced. */
+const SCORE_ANNOUNCEMENT_DELAY_MS = 700;
 
 /**
  * Popup variant of the search flow: the individual calculator opens as a
@@ -51,6 +55,31 @@ export function CalculatorSheet({
     if (scoringLocked && hasAnswers) onAnswersChange({});
   }, [scoringLocked, hasAnswers, onAnswersChange]);
   const derived = deriveCalculator(calc, scoringLocked ? {} : answers);
+  // The pinned strip below changes after every answer but is only visible. Say
+  // the same score, band and progress through the shared announcer instead, once
+  // a quick run of answers settles, so a screen-reader user need not leave the
+  // item they are on to learn where the instrument stands.
+  const scoreAnnouncement = derived.started
+    ? `${calc.abbrev} score ${derived.score} of ${calc.maxScore}, ${derived.result.label}. ${progressLabel(derived)}.`
+    : null;
+  const lastScoreAnnouncement = useRef<{ calcId: string; text: string | null }>({
+    calcId: calc.id,
+    text: scoreAnnouncement,
+  });
+  useEffect(() => {
+    const last = lastScoreAnnouncement.current;
+    // Opening a scale, or switching to another in place, is not a change to announce.
+    if (last.calcId !== calc.id || scoreAnnouncement === null) {
+      lastScoreAnnouncement.current = { calcId: calc.id, text: scoreAnnouncement };
+      return;
+    }
+    if (!isOpen || scoreAnnouncement === last.text) return;
+    const timer = window.setTimeout(() => {
+      lastScoreAnnouncement.current = { calcId: calc.id, text: scoreAnnouncement };
+      announce(scoreAnnouncement);
+    }, SCORE_ANNOUNCEMENT_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [calc.id, isOpen, scoreAnnouncement]);
   const internalSheetId = useId();
   const effectiveSheetId = sheetId ?? internalSheetId;
   const onCloseRef = useRef(onClose);
@@ -291,30 +320,6 @@ export function CalculatorSheet({
           <ScorePanel calc={calc} derived={derived} onReset={() => onAnswersChange({})} />
         </div>
       </div>
-    </div>
-  );
-}
-
-export function CalculatorsPopupSheetMockup() {
-  const [openId, setOpenId] = useState<string | null>(null);
-  const [session, setSession] = useState<SessionAnswers>({});
-
-  const activeCalc = openId ? calculators.find((calc) => calc.id === openId) : undefined;
-
-  const calculatorSheetId = useId();
-
-  return (
-    <div className="min-h-dvh bg-[color:var(--background)]">
-      <CalculatorSearchHome session={session} onOpen={setOpenId} />
-      {activeCalc ? (
-        <CalculatorSheet
-          calc={activeCalc}
-          sheetId={calculatorSheetId}
-          answers={session[activeCalc.id] ?? {}}
-          onAnswersChange={(next) => setSession((prev) => ({ ...prev, [activeCalc.id]: next }))}
-          onClose={() => setOpenId(null)}
-        />
-      ) : null}
     </div>
   );
 }

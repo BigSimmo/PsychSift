@@ -109,11 +109,14 @@ export function normalizeAccessibleTable(
   options?: NormalizeAccessibleTableOptions,
 ): NormalizedAccessibleTable | null {
   const conservativeClinical = options?.conservativeClinical ?? true;
-  const rawRows = rows.map((row) => row.map(compactCell)).filter((row) => row.some((cell) => !isEmptyCell(cell)));
+  const sourceRows = rows.filter((row) => row.some((cell) => !isEmptyCell(cell)));
+  const rawRows = sourceRows.map((row) => row.map(compactCell));
   if (!rawRows.length) return null;
 
   const rawHeader = (columns?.length ? columns : rawRows[0]).map(compactCell);
   const rawBody = columns?.length ? rawRows : rawRows.slice(1);
+  // compactCell folds newlines to spaces, so the multiline check must read the cells as extracted.
+  const sourceBody = columns?.length ? sourceRows : sourceRows.slice(1);
   const sourceColumnCount = Math.max(rawHeader.length, ...rawBody.map((row) => row.length), 1);
   const paddedHeader = [
     ...rawHeader,
@@ -132,7 +135,7 @@ export function normalizeAccessibleTable(
     const hasInterleavedGenericColumn = paddedHeader.some(
       (cell, index) => isGenericHeader(cell) && index < (namedIndexes.at(-1) ?? 0),
     );
-    const bodyHasMultilineCells = rawBody.some((row) => row.some((cell) => /\n/.test(cell)));
+    const bodyHasMultilineCells = sourceBody.some((row) => row.some((cell) => /\n/.test(String(cell ?? "").trim())));
     if (hasInterleavedGenericColumn || bodyHasMultilineCells) {
       return buildRawGridTable(
         paddedHeader,

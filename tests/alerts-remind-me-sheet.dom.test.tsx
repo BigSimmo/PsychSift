@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, renderHook, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { RemindMeSheet } from "@/components/alerts/remind-me-sheet";
+import { RemindMeSheet, YourRemindersSheet } from "@/components/alerts/remind-me-sheet";
 import { useRemindMe } from "@/components/alerts/use-remind-me";
 import { REMIND_ME_STORAGE_KEY } from "@/lib/account-scoped-browser-state";
 
@@ -39,6 +39,37 @@ describe("Remind me sheet", () => {
     await userEvent.clear(field);
     await userEvent.type(field, "Ask switchboard for the new pager list");
     expect(screen.queryByTestId("remind-me-problem")).toBeNull();
+  });
+
+  it("names each Done and Remove button after its reminder", () => {
+    const note = (id: string, text: string, doneAt: string | null) => ({
+      id,
+      text,
+      dueAt: "2099-10-05T09:00:00.000Z",
+      createdAt: "2026-10-05T01:00:00.000Z",
+      doneAt,
+    });
+    window.localStorage.setItem(
+      REMIND_ME_STORAGE_KEY,
+      JSON.stringify([
+        note("a", "Ask switchboard for the new pager list", null),
+        note("b", "Collect the ward keys", null),
+        // Ticked-off notes are kept for a day from the real clock, so this one is ticked off just now.
+        note("c", "Book the teaching room", new Date().toISOString()),
+      ]),
+    );
+    render(
+      <YourRemindersSheet
+        open
+        onClose={() => undefined}
+        onAdd={() => undefined}
+        now={new Date("2026-10-05T03:00:00Z")}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Done: Ask switchboard for the new pager list" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Done: Collect the ward keys" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Remove: Book the teaching room" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Done" })).toBeNull();
   });
 
   it("drops a stored note that only the shared patient-detail check catches", () => {
