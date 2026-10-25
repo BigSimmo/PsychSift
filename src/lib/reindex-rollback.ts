@@ -35,6 +35,10 @@ export type RollbackRefusal =
   | "document_not_found_or_no_current_generation"
   | "no_previous_generation"
   | "previous_generation_has_no_chunks"
+  // The only other retained generation was committed AFTER the current one, so "rolling back"
+  // would move the document forward again: a second run after a rollback does exactly this.
+  // Pass --roll-forward to mean it (audit ING-S-N2, 24 Oct 2026).
+  | "previous_generation_is_newer"
   // The database function refuses these too; the dry run reports it so apply holds no surprise.
   | "target_snapshot_missing";
 
@@ -85,7 +89,17 @@ function byCommittedAtDesc(left: CommittedGeneration, right: CommittedGeneration
   return right.committedAt.localeCompare(left.committedAt);
 }
 
-async function planDocument(store: RollbackStore, documentId: string): Promise<RollbackPlan> {
+export type RollbackPlanOptions = { allowRollForward?: boolean };
+
+function isNewerThan(candidate: string, reference: string | null) {
+  return reference !== null && candidate.localeCompare(reference) > 0;
+}
+
+async function planDocument(
+  store: RollbackStore,
+  documentId: string,
+  options: RollbackPlanOptions = {},
+): Promise<RollbackPlan> {
   const plan: RollbackPlan = {
     documentId,
     currentGeneration: null,
@@ -108,6 +122,14 @@ async function planDocument(store: RollbackStore, documentId: string): Promise<R
   plan.previousCommittedAt = previous.committedAt;
   plan.previousChunks = await store.chunkCount(documentId, previous.generationId);
   if (plan.previousChunks === 0) return { ...plan, refusal: "previous_generation_has_no_chunks" };
+  // With no commit time for the current generation the order cannot be known, so the target could
+  // be newer: refuse unless the operator means to roll forward.
+  if (
+    !options.allowRollForward &&
+    (plan.currentCommittedAt === null || isNewerThan(previous.committedAt, plan.currentCommittedAt))
+  ) {
+    return { ...plan, refusal: "previous_generation_is_newer" };
+  }
   if (!(await store.hasGenerationSnapshot(documentId, previous.generationId))) {
     return { ...plan, refusal: "target_snapshot_missing" };
   }
@@ -124,14 +146,19 @@ async function inScope(store: RollbackStore, scope: RollbackScope, plan: Rollbac
   return versions.includes(scope.chunkerVersion);
 }
 
-export async function planReindexRollback(store: RollbackStore, scope: RollbackScope, limit = DEFAULT_ROLLBACK_LIMIT) {
+export async function planReindexRollback(
+  store: RollbackStore,
+  scope: RollbackScope,
+  limit = DEFAULT_ROLLBACK_LIMIT,
+  options: RollbackPlanOptions = {},
+) {
   const max = clampRollbackLimit(limit);
   const seen = new Set<string>();
   const plans: RollbackPlan[] = [];
   for await (const documentId of store.candidateDocumentIds(scope)) {
     if (seen.has(documentId)) continue;
     seen.add(documentId);
-    const plan = await planDocument(store, documentId);
+    const plan = await planDocument(store, documentId, options);
     // The limit counts in-scope documents only, so out-of-scope candidates (for example a
     // retained non-current generation that matches) never consume it.
     if (await inScope(store, scope, plan)) plans.push(plan);
@@ -145,9 +172,9 @@ export async function planReindexRollback(store: RollbackStore, scope: RollbackS
 export async function runReindexRollback(
   store: RollbackStore,
   scope: RollbackScope,
-  options: { apply?: boolean; limit?: number } = {},
+  options: { apply?: boolean; limit?: number } & RollbackPlanOptions = {},
 ): Promise<RollbackOutcome[]> {
-  const plans = await planReindexRollback(store, scope, options.limit);
+  const plans = await planReindexRollback(store, scope, options.limit, options);
   return options.apply
     ? applyRollbackPlans(store, plans)
     : plans.map((plan) => ({ ...plan, applied: false, applyError: null }));
@@ -181,9 +208,13 @@ export function formatRollbackOutcome(outcome: RollbackOutcome, apply: boolean) 
     ? `REFUSED (${outcome.refusal})`
     : apply
       ? outcome.applied
-        ? "ROLLED BACK"
+        ? isNewerThan(outcome.previousCommittedAt ?? "", outcome.currentCommittedAt)
+          ? "ROLLED FORWARD"
+          : "ROLLED BACK"
         : `FAILED (${outcome.applyError ?? "unknown"})`
-      : "WOULD ROLL BACK";
+      : isNewerThan(outcome.previousCommittedAt ?? "", outcome.currentCommittedAt)
+        ? "WOULD ROLL FORWARD"
+        : "WOULD ROLL BACK";
   return [
     `${outcome.documentId}: ${status}`,
     `  current : ${outcome.currentGeneration ?? "none"} (${outcome.currentChunks ?? "?"} chunks, committed ${outcome.currentCommittedAt ?? "?"})`,
@@ -228,6 +259,7 @@ export function parseRollbackArgs(argv: string[]) {
     scope,
     apply,
     yes: argv.includes("--yes"),
+    allowRollForward: argv.includes("--roll-forward"),
     limit: clampRollbackLimit(Number.parseInt(limitValue ?? "", 10)),
   };
 }

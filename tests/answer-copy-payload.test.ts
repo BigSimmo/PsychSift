@@ -138,8 +138,9 @@ describe("answerStateForAnswer · empty sources fallback", () => {
 
   it.each([
     ["coverage_gap", /active sources support only part/i],
-    ["provider_offline", /Answer generation is temporarily unavailable; the verified source-backed portion is shown\./],
-    ["provider_missing_key", /Answer generation is not configured; the verified source-backed portion is shown\./],
+    // Audit NEW-G-04: with no sources there is no verified portion, so a provider code's caveat says so.
+    ["provider_offline", /Source evidence could not be confirmed, so no verified passages are shown\./],
+    ["provider_missing_key", /Source evidence could not be confirmed, so no verified passages are shown\./],
   ] as const)("copies tierless %s degradation with the governed caveat", (fallbackReasonCode, caveat) => {
     const degradedAnswer: RagAnswer = {
       ...answerWith([]),

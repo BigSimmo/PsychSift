@@ -1369,6 +1369,7 @@ export type Database = {
           created_at: string;
           document_id: string;
           id: string;
+          index_generation_id: string | null;
           metadata: Json;
           ocr_used: boolean;
           page_number: number;
@@ -1378,6 +1379,7 @@ export type Database = {
           created_at?: string;
           document_id: string;
           id?: string;
+          index_generation_id?: string | null;
           metadata?: Json;
           ocr_used?: boolean;
           page_number: number;
@@ -1387,6 +1389,7 @@ export type Database = {
           created_at?: string;
           document_id?: string;
           id?: string;
+          index_generation_id?: string | null;
           metadata?: Json;
           ocr_used?: boolean;
           page_number?: number;

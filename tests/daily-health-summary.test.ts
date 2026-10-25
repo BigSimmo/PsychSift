@@ -161,6 +161,17 @@ describe("daily health summary: judging each check", () => {
     expect(stillFailing).toMatchObject({ status: "red", detail: "the last weekly canary failed" });
   });
 
+  it("says too few answers were seen rather than 'within limits' on a quiet day (EM-N2)", () => {
+    const quiet = assessSource(source("answers"), {
+      latestRun: run(1),
+      issue: issue({
+        body: "**Service readiness:** 🟢 ok\n**Alert state:** none (0)\nFewer than 10 answers: source-gap, unsupported and latency-budget rates are not judged.",
+      }),
+      now: NOW,
+    });
+    expect(quiet).toMatchObject({ status: "green", detail: "service ok, too few answers to judge quality" });
+  });
+
   it("reports the switched-off reindex probe as green, and its alert as amber once armed", () => {
     expect(assessSource(source("reindex"), { latestRun: null, issue: null, now: NOW }).status).toBe("green");
     const alerted = assessSource(source("reindex"), {
@@ -208,6 +219,7 @@ describe("daily health summary: judging each check", () => {
       status: "ok",
       severity: "none",
       count: 0,
+      lowVolume: false,
     });
     expect(readDigestState("**Service readiness:** 🔴 pwned\n**Alert state:** evil (1)")).toMatchObject({
       status: "unknown",
@@ -354,6 +366,66 @@ describe("daily health summary: reading GitHub", () => {
     };
     const assessments = await collectAssessments({ github, owner: "BigSimmo", repo: "PsychSift", now: NOW });
     expect(assessments.every((item) => item.status === "red")).toBe(true);
+  });
+});
+
+describe("daily health summary: trial runs and second alert threads", () => {
+  const failedAt = "2026-10-24T18:30:00Z";
+  function canaryGithub({
+    runs,
+    issues,
+  }: {
+    runs: Array<Record<string, unknown>>;
+    issues: Array<Record<string, unknown>>;
+  }) {
+    return {
+      rest: {
+        actions: { listWorkflowRuns: async () => ({ data: { workflow_runs: runs } }) },
+        issues: {
+          listForRepo: async ({ labels, state }: { labels: string; state: string }) => ({
+            data: labels === "eval-canary" && state === "open" ? issues : [],
+          }),
+          listComments: async ({ issue_number }: { issue_number: number }) => ({
+            data:
+              issue_number === 52 ? [{ user: { login: "github-actions[bot]" }, created_at: failedAt, body: "" }] : [],
+          }),
+        },
+      },
+    };
+  }
+
+  it("does not let a shortened trial run clear a failed canary (EM-N3)", async () => {
+    const github = canaryGithub({
+      runs: [
+        {
+          ...run(2),
+          conclusion: "success",
+          event: "repository_dispatch",
+          display_title: "Eval Canary (trial run, does not clear alerts)",
+        },
+      ],
+      issues: [issue({ number: 52 })],
+    });
+    const assessments = await collectAssessments({ github, owner: "BigSimmo", repo: "PsychSift", now: NOW });
+    expect(assessments.find((item) => item.key === "canary")?.status).toBe("red");
+  });
+
+  it("finds the canary thread the bot posted on even when another thread was updated later (EM-N5)", async () => {
+    const github = canaryGithub({
+      runs: [{ ...run(30), conclusion: "failure", event: "schedule", display_title: "Eval Canary" }],
+      issues: [issue({ number: 51, updated_at: NOW }), issue({ number: 52, updated_at: failedAt })],
+    });
+    const assessments = await collectAssessments({ github, owner: "BigSimmo", repo: "PsychSift", now: NOW });
+    const canary = assessments.find((item) => item.key === "canary");
+    expect(canary?.status).toBe("red");
+    expect(canary?.link).toContain("#52");
+  });
+
+  it("marks only shortened or staged dispatches as trial runs", () => {
+    const workflow = readFileSync(".github/workflows/eval-canary.yml", "utf8");
+    expect(workflow).toContain("run-name: ${{ github.event_name == 'repository_dispatch' &&");
+    expect(workflow).toContain("answer_case_limit < 44");
+    expect(workflow).toContain("'Eval Canary (trial run, does not clear alerts)'");
   });
 });
 

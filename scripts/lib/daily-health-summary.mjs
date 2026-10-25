@@ -217,7 +217,10 @@ export function readDigestState(body) {
   const status = DIGEST_STATUS.has(statusMatch?.[1]) ? statusMatch[1] : "unknown";
   const severity = DIGEST_SEVERITY.has(severityMatch?.[1]) ? severityMatch[1] : "unknown";
   const count = severityMatch ? Number(severityMatch[2]) : null;
-  return { status, severity, count };
+  // The digest's low-volume note (scripts/ops-digest.mjs renderAnswerWindow): too few answers for
+  // the rate rules to run.
+  const lowVolume = /Fewer than \d+ answers: [^\n]*not judged/.test(text);
+  return { status, severity, count, lowVolume };
 }
 
 /**
@@ -287,6 +290,10 @@ export function assessSource(
       detail = `service ${digest.status}, alert state ${digest.severity}`;
     } else if (digest.severity === "unknown") {
       detail = "service ok, no answered queries to judge";
+    } else if (digest.lowVolume) {
+      // Under the minimum count the rate rules do not run, so "within limits" would overstate it
+      // (audit EM-N2, 24 Oct 2026).
+      detail = "service ok, too few answers to judge quality";
     } else {
       detail = "service ok, answers within limits";
     }
@@ -392,7 +399,13 @@ async function newestCompletedRun(github, owner, repo, workflow) {
   }
 }
 
-/** The newest completed run from one of `events`, looking back over the last 20 runs. */
+/**
+ * Run titles that mark a shortened or experimental run (eval-canary.yml's run-name). Such a run
+ * can pass without testing what the weekly run tests, so it never clears an alert (audit EM-N3).
+ */
+const TRIAL_RUN_TITLE = /\btrial run\b/i;
+
+/** The newest completed, non-trial run from one of `events`, looking back over the last 20 runs. */
 async function newestCompletedRunFrom(github, owner, repo, workflow, events) {
   try {
     const { data } = await github.rest.actions.listWorkflowRuns({
@@ -402,10 +415,47 @@ async function newestCompletedRunFrom(github, owner, repo, workflow, events) {
       status: "completed",
       per_page: 20,
     });
-    return data.workflow_runs?.find((run) => events.includes(run.event)) ?? null;
+    return (
+      data.workflow_runs?.find(
+        (run) => events.includes(run.event) && !TRIAL_RUN_TITLE.test(String(run.display_title ?? "")),
+      ) ?? null
+    );
   } catch {
     return null;
   }
+}
+
+/** Open issues carrying `label`, newest first (a workflow may keep more than one alert thread). */
+async function openIssues(github, owner, repo, label) {
+  const { data } = await github.rest.issues.listForRepo({
+    owner,
+    repo,
+    labels: label,
+    state: "open",
+    sort: "updated",
+    direction: "desc",
+    per_page: 10,
+  });
+  return data;
+}
+
+/**
+ * For a `recent` check, the open issue the workflow's bot posted on most recently. The canary
+ * keeps two alert threads (a missed threshold and a run that did not finish), so reading only the
+ * newest-updated one could hide the other (audit EM-N5, 24 Oct 2026). Falls back to the newest
+ * issue, open or closed, when no open one has bot activity in the window.
+ */
+async function mostRecentlyAlertedIssue(github, owner, repo, label, sinceMs) {
+  let best = { issue: null, activity: { botActivityAt: null, markers: null } };
+  for (const candidate of await openIssues(github, owner, repo, label)) {
+    const activity = await botActivitySince(github, owner, repo, candidate, sinceMs);
+    if (activity.botActivityAt !== null && (best.activity.botActivityAt ?? "") < activity.botActivityAt) {
+      best = { issue: candidate, activity };
+    }
+  }
+  if (best.issue) return best;
+  const issue = await newestIssue(github, owner, repo, label);
+  return { issue, activity: await botActivitySince(github, owner, repo, issue, sinceMs) };
 }
 
 async function newestIssue(github, owner, repo, label) {
@@ -465,14 +515,15 @@ export async function collectAssessments({ github, owner, repo, now }) {
   const assessments = [];
   for (const source of SUMMARY_SOURCES) {
     try {
-      const [latestRun, issue] = await Promise.all([
+      const [latestRun, { issue, activity }] = await Promise.all([
         newestCompletedRun(github, owner, repo, source.workflow),
-        newestIssue(github, owner, repo, source.label),
-      ]);
-      const activity =
         source.issue === "recent"
-          ? await botActivitySince(github, owner, repo, issue, nowMs - source.recentHours * HOUR)
-          : { botActivityAt: null, markers: null };
+          ? mostRecentlyAlertedIssue(github, owner, repo, source.label, nowMs - source.recentHours * HOUR)
+          : newestIssue(github, owner, repo, source.label).then((found) => ({
+              issue: found,
+              activity: { botActivityAt: null, markers: null },
+            })),
+      ]);
       const recentMarkers = source.key === "errors" ? activity.markers : null;
       const clearingRun = source.clearedBySuccess
         ? await newestCompletedRunFrom(github, owner, repo, source.workflow, source.clearedBy ?? [])

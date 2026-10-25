@@ -59,7 +59,12 @@ import {
 } from "./behavior";
 import { WorkerRuntimeControl, WorkerAbortError } from "./runtime-control";
 import { runWorkerLoop } from "./run-loop";
-import { isWorkerClaimLoopPaused, recordClaimProcessed, startWorkerHealthServerIfConfigured } from "./health";
+import {
+  isWorkerClaimLoopPaused,
+  recordClaimProcessed,
+  startWorkerHealthServerIfConfigured,
+  summarizeWorkerClaimScope,
+} from "./health";
 import type { JobRow } from "./types";
 
 export {
@@ -831,6 +836,17 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
         );
       }
     }
+
+    // State the claim scope once at startup, so the deploy log shows what this worker may pick up.
+    const claimScope = summarizeWorkerClaimScope(process.env);
+    console.log(
+      `Worker claim scope: paused=${isWorkerClaimLoopPaused(process.env)}, ` +
+        (claimScope.error
+          ? `allowlist rejected, claiming nothing (${claimScope.error})`
+          : claimScope.restricted
+            ? `restricted to ${claimScope.documentIds} document ID(s) and file types [${claimScope.fileTypes.join(", ")}]`
+            : "unrestricted"),
+    );
 
     const stopOfferAlerts = startRosterOfferAlertConsumer(supabase, controller.signal);
     try {

@@ -247,6 +247,8 @@ Complementary standing checks: `search_schema_health()` via
 `npm run check:indexing` (fails closed on RPC regression) and the weekly eval
 canary below (fails closed on quality regression).
 
+> `npm run check:indexing` reaches the live database, so it needs the owner's explicit yes first (added 24 Oct 2026).
+
 ### Reliability — degraded/source-only answer rate
 
 _Alerted: `OPS_DEGRADED_ANSWER_RATE_{UNKNOWN,WARNING,PAGE}` via `answerSloSnapshot`._

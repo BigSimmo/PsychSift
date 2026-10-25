@@ -223,6 +223,19 @@ export function publicFallbackReason(code: RagFallbackReasonCode): string {
   return publicReasons[code] ?? publicReasons.unknown;
 }
 
+export const NO_CONFIRMED_SOURCES_REASON =
+  "Source evidence could not be confirmed, so no verified passages are shown. Please try again.";
+
+/**
+ * The degraded-mode sentence for an answer. A provider code's own wording promises a verified
+ * source-backed portion, which is false when no source came back: a search that timed out also
+ * reports provider_timeout (audit NEW-G-04).
+ */
+export function publicDegradedReason(code: RagFallbackReasonCode, sourceCount: number): string {
+  if (isProviderGenerationFallbackCode(code) && sourceCount === 0) return NO_CONFIRMED_SOURCES_REASON;
+  return publicFallbackReason(code);
+}
+
 /** Annotate answer with diagnostics. */
 export function annotateAnswerWithDiagnostics<T extends RagAnswer>(
   answer: T,

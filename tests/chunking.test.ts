@@ -645,6 +645,85 @@ describe("line-noise filter keeps clinical content lines (ING-B-01)", () => {
   });
 });
 
+// Audit 2026-10-24 EXT-01 (chunker 1.3.2): borderless tables arrive one cell per line. Short
+// threshold cells and lone signs must survive, and a number at the page edge is a page number only
+// when it is that page's own label. Synthetic probe strings from the audit (short-probe, CASE3, CASE4).
+describe("short threshold cells and page-edge numbers (EXT-01)", () => {
+  const joinedChunks = (text: string) => chunkTextWithOverlap(text, 2000, 200).join("\n");
+  const page = (pageNumber: number, pageText: string) => ({ documentId: "doc-1", pageNumber, pageText, metadata: {} });
+
+  it("keeps short threshold cells and signs", () => {
+    const lines = joinedChunks(["Cut-offs", "<5", "≥8", ">2", "5%", "-1", "+", "1/", "Review daily."].join("\n")).split(
+      "\n",
+    );
+    expect(lines).toEqual(expect.arrayContaining(["<5", "≥8", ">2", "5%", "-1", "+", "1/"]));
+  });
+
+  it("keeps the direction and sign of a one-cell-per-line threshold table", () => {
+    const content = buildChunks([
+      page(
+        3,
+        [
+          "Clozapine blood monitoring",
+          "ANC",
+          "<",
+          "1.5",
+          "stop clozapine",
+          "ANC",
+          "≥",
+          "2.0",
+          "continue",
+          "Temperature",
+          "−",
+          "1",
+          "change",
+        ].join("\n"),
+      ),
+    ])
+      .map((chunk) => chunk.content)
+      .join("\n")
+      .replace(/\s+/g, " ");
+    expect(content).toContain("ANC < 1.5 stop clozapine ANC ≥ 2.0 continue Temperature − 1 change");
+  });
+
+  it("keeps a dose at the page edge that is not the page's number", () => {
+    const content = buildChunks([
+      page(1, ["Maximum daily dose", "Olanzapine", "20"].join("\n")),
+      page(2, ["30", "Quetiapine maximum daily dose in mg."].join("\n")),
+    ])
+      .map((chunk) => chunk.content)
+      .join("\n");
+    expect(content).toMatch(/Olanzapine\s+20/);
+    expect(content).toMatch(/30\s+Quetiapine/);
+  });
+
+  it("still drops the page's own number, and a printed number that runs in sequence across pages", () => {
+    const own = buildChunks([page(4, ["Monitor lithium levels.", "4"].join("\n"))])
+      .map((chunk) => chunk.content)
+      .join("\n");
+    expect(own).toBe("Monitor lithium levels.");
+    const offset = buildChunks([
+      page(5, ["Check renal function.", "3"].join("\n")),
+      page(6, ["Check thyroid function.", "4"].join("\n")),
+      page(7, ["Check liver function.", "5"].join("\n")),
+    ])
+      .map((chunk) => chunk.content)
+      .join("\n");
+    expect(offset).not.toMatch(/\b[345]\b/);
+  });
+
+  it("keeps threshold cells that happen to run in sequence across only two pages", () => {
+    const content = buildChunks([
+      page(5, ["Missed doses before re-titration", "Clozapine", "1"].join("\n")),
+      page(6, ["Days off before restarting at a low dose", "Clozapine", "2"].join("\n")),
+    ])
+      .map((chunk) => chunk.content)
+      .join("\n");
+    expect(content).toMatch(/Clozapine\s+1/);
+    expect(content).toMatch(/Clozapine\s+2/);
+  });
+});
+
 // Audit 2026-10-20 ING-B-02: the repeated-line filter must remove running
 // headers and footers, not repeated clinical headings or instructions.
 describe("repeated-line filter keeps clinical headings (ING-B-02)", () => {

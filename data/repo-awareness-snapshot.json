@@ -3932,6 +3932,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/rag-behaviour/canary-ledger.md",
+        "section": "rag-behaviour",
+        "catalogued": true
+      },
+      {
         "path": "docs/superpowers/specs/2026-09-01-sources-mode-design.md",
         "section": "superpowers",
         "catalogued": true
@@ -4687,6 +4692,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-25-signed-in-daily-answer-cap.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/archive/2026-10-agent-code-reviews/IMPLEMENTATION_COMPLETE.md",
         "section": "archive",
         "catalogued": true
@@ -4908,6 +4918,11 @@
       },
       {
         "path": "docs/decisions/2026-10-15-no-default-ai-coding-tool.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-25-unsupported-summary-wording.md",
         "section": "decisions",
         "catalogued": true
       },

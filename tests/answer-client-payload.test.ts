@@ -862,3 +862,39 @@ describe("P12A final adaptive discriminator and bounds", () => {
     ).toBeNull();
   });
 });
+
+// Audit NEW-G-03 (24 Oct 2026): no check reads the text of an AI-written gap note, so a refused
+// answer must not keep showing one ("avoid sertraline in the first trimester" survived a refusal).
+describe("AI-written gap notes on refused answers", () => {
+  const modelNote = {
+    type: "gap" as const,
+    message: "Sources do not cover use in pregnancy; avoid sertraline in the first trimester.",
+    origin: "model" as const,
+  };
+  const systemNote = { type: "gap" as const, message: "Check the source for the current dose range." };
+
+  it("tags notes parsed from the model as model-written", async () => {
+    const { sanitizeConflictsOrGaps } = await import("@/lib/rag/rag-quote-verification");
+    const [note] = sanitizeConflictsOrGaps([{ type: "gap", message: modelNote.message }], [fullSource()]);
+    expect(note.origin).toBe("model");
+  });
+
+  it("drops model notes and keeps system notes once the answer is refused", () => {
+    const refused: RagAnswer = {
+      ...answerWith([fullSource()]),
+      answer: "No current source with pregnancy guidance was found.",
+      grounded: false,
+      confidence: "unsupported",
+      responseMode: "evidence_gap",
+      conflictsOrGaps: [modelNote, systemNote],
+    };
+    const payload = toClientAnswerPayload(refused);
+    expect(payload.conflictsOrGaps).toEqual([systemNote]);
+    expect(buildAnswerRenderModel(payload).warnings.join(" ")).not.toContain("sertraline");
+  });
+
+  it("keeps model notes on an answer that was not refused, without sending the origin tag", () => {
+    const payload = toClientAnswerPayload({ ...answerWith([fullSource()]), conflictsOrGaps: [modelNote, systemNote] });
+    expect(payload.conflictsOrGaps).toEqual([{ type: "gap", message: modelNote.message }, systemNote]);
+  });
+});

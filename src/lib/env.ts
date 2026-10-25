@@ -6,6 +6,8 @@ import { resolvePythonBin } from "@/lib/python-bin";
 import { assertExpectedSupabaseProjectConfig, checkSupabaseProjectConfig } from "@/lib/supabase/project";
 import { MAX_UPLOAD_MB_CEILING } from "@/lib/upload-limits";
 
+const MAX_DOCUMENT_SIGNED_URL_TTL_SECONDS = 3600;
+
 /** Treat blank/whitespace as unset so optional placeholders can remain empty without failing validation. */
 function coerceBlankEnv(value: unknown): unknown {
   return typeof value === "string" && value.trim() === "" ? undefined : value;
@@ -398,7 +400,15 @@ const envSchema = z
       }),
     PYTHON_BIN: z.string().default(resolvePythonBin()),
     NEXT_PUBLIC_DEMO_MODE: z.enum(["true", "false"]).optional().default("false"),
-    DOCUMENT_SIGNED_URL_TTL_SECONDS: z.coerce.number().int().positive().default(600),
+    // Original-PDF and image links. Clamped, not rejected, at one hour: a link that lives longer is
+    // a copy of a clinical document anyone holding it can open, and a refusal here would stop the
+    // app starting over a typo (audit SEC-N7, 24 Oct 2026).
+    DOCUMENT_SIGNED_URL_TTL_SECONDS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(600)
+      .transform((seconds) => Math.min(seconds, MAX_DOCUMENT_SIGNED_URL_TTL_SECONDS)),
   })
   .refine(
     (value) => {

@@ -16,6 +16,7 @@ import {
   type MemoryCardCache,
 } from "@/lib/rag/rag-candidate-sources";
 import { applySecondStageRerankIfNeeded } from "@/lib/rag/rag-second-stage";
+import { excludeSupersededEvidence } from "@/lib/rag/superseded-evidence";
 import { measureSearchPhase, startRerankClock, type SearchTiming } from "@/lib/rag/rag-search-timing";
 import { selectRetrievalEvidence } from "@/lib/retrieval-selection";
 
@@ -140,7 +141,8 @@ export async function prepareCoverageGateResults(args: {
   const selected = selectRankedRetrievalResults({
     query: args.query,
     queryClass: args.queryClass,
-    candidates,
+    // The gate can end the search early, so it must only ever judge current (non-superseded) evidence.
+    candidates: excludeSupersededEvidence(candidates),
     topK: args.topK,
     maxResultsPerDocument: args.maxResultsPerDocument,
     telemetry: args.telemetry,

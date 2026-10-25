@@ -267,7 +267,7 @@ async function backfillDocument(documentId: string, images: BackfillImageRow[]) 
       visual_backfill_started_at: new Date().toISOString(),
     });
   }
-  await supabase
+  const { error: deleteError } = await supabase
     .from("document_index_units")
     .delete()
     .eq("document_id", documentId)
@@ -282,6 +282,8 @@ async function backfillDocument(documentId: string, images: BackfillImageRow[]) 
       "visual_askable_question",
       "table_threshold",
     ]);
+  // Inserting on top of rows that failed to delete would leave duplicate visual units.
+  if (deleteError) throw new Error(deleteError.message);
 
   if (units.length > 0) {
     const embeddings = await embedTexts(units.map(embeddingTextForDocumentIndexUnit));
@@ -329,11 +331,13 @@ async function main() {
     imagesByDocument.set(image.document_id, [...(imagesByDocument.get(image.document_id) ?? []), image]);
   }
 
+  let failedDocuments = 0;
   for (const [documentId, documentImages] of imagesByDocument) {
     try {
       await backfillDocument(documentId, documentImages);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      failedDocuments += 1;
       console.warn(`Visual backfill failed for document ${documentId}: ${message}`);
       if (!dryRun) {
         for (const image of documentImages) {
@@ -344,6 +348,10 @@ async function main() {
         }
       }
     }
+  }
+  if (failedDocuments > 0) {
+    console.error(`Visual backfill failed for ${failedDocuments} of ${imagesByDocument.size} document(s).`);
+    process.exitCode = 1;
   }
 }
 

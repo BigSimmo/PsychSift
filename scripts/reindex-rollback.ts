@@ -8,6 +8,8 @@
  *   npm run reindex:rollback -- --committed-after 2026-10-21T00:00:00Z
  *   npm run reindex:rollback -- --chunker-version 1.3.1-page
  *   npm run reindex:rollback -- --document-id <uuid> --apply [--yes] [--limit 50]
+ *   Add --roll-forward only to move a document to a NEWER retained generation (for example to
+ *   undo a rollback); without it such a document is refused as previous_generation_is_newer.
  *
  * The database function restores the target generation's worker-owned metadata and
  * document_index_quality row with the pointer (#3732), and refuses with target_snapshot_missing
@@ -175,7 +177,11 @@ async function main() {
   assertSupabaseHealthy(await probeSupabaseHealth(supabase), "Reindex generation rollback");
   const store = supabaseRollbackStore(supabase);
 
-  const preview = await runReindexRollback(store, args.scope, { apply: false, limit: args.limit });
+  const preview = await runReindexRollback(store, args.scope, {
+    apply: false,
+    limit: args.limit,
+    allowRollForward: args.allowRollForward,
+  });
   for (const outcome of preview) console.log(formatRollbackOutcome(outcome, false));
   const ready = preview.filter((outcome) => !outcome.refusal).length;
   console.log(`\nDocuments in scope: ${preview.length}; would roll back: ${ready}; refused: ${preview.length - ready}`);

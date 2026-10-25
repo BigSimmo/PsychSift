@@ -1652,7 +1652,9 @@ async function searchChunksWithTiming(
   const speculativeDocumentLookup = independentLanes.documentLookup;
   if (speculativeTableFacts) {
     const tableFactWaitStartedAt = Date.now();
-    const tableFactCandidates = await speculativeTableFacts.promise;
+    // Owner rule #BFCTST: superseded sources are never evidence, including rows from the table lane,
+    // which would otherwise let an outdated threshold satisfy the coverage gate and stop the search.
+    const tableFactCandidates = excludeSupersededEvidence(await speculativeTableFacts.promise);
     throwIfAborted(args.signal);
     mergeSpeculativeLaneTelemetry(telemetry, speculativeTableFacts.telemetry);
     // Only the time this request actually waited is on the critical path; the lane's own duration
