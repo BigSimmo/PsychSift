@@ -8,8 +8,8 @@ import type { ChunkInput, DocumentChunk } from "@/lib/types";
 // re-index can tell which chunker produced a row, and so bumping the strategy deliberately
 // invalidates stale chunks. Bump this when chunk boundaries change (e.g. when cross-page
 // document-mode chunking is enabled by default).
-export const CHUNKER_VERSION = "1.3.1-page";
-export const DOCUMENT_CHUNKER_VERSION = "1.3.1-document";
+export const CHUNKER_VERSION = "1.3.2-page";
+export const DOCUMENT_CHUNKER_VERSION = "1.3.2-document";
 
 const sentenceBoundary = /(?<=[.!?])\s+/;
 const sentenceBoundaryGlobal = new RegExp(sentenceBoundary.source, "g");
@@ -82,6 +82,10 @@ const metadataNoisePatterns: RegExp[] = [/\b(?:version|revision)\s+\d+\s*$/i];
 // Lines of one or two characters are kept when they are a word or number
 // ("No", "Na", "0", "10"); punctuation and bullet debris is still dropped.
 const shortContentLinePattern = /^[\p{L}\p{N}]{1,2}$/u;
+// Audit 2026-10-24 EXT-01 (chunker 1.3.2): borderless tables arrive one cell per line, so a short
+// line holding a digit, a comparison sign or a plus/minus sign is a threshold cell ("<5", "≥8",
+// "5%", "-1", a lone "<" or "−"), never debris. A lone ASCII hyphen is still treated as a bullet.
+const shortThresholdCellPattern = /[\p{N}<>≤≥=±+\u2212]/u;
 const lineNoisePatterns: RegExp[] = [
   // Audit M14: anchored to the WHOLE line. The previous unanchored form
   // matched an inline page reference anywhere in a sentence ("refer to p 3
@@ -170,7 +174,12 @@ function looksLikeEdgeUrlNotice(line: string) {
 
 function looksLikeMetadataNoise(line: string) {
   if (!line) return true;
-  if (line.length <= 2 && (!shortContentLinePattern.test(line) || clinicalUnitLinePattern.test(line))) return true;
+  if (
+    line.length <= 2 &&
+    !shortThresholdCellPattern.test(line) &&
+    (!shortContentLinePattern.test(line) || clinicalUnitLinePattern.test(line))
+  )
+    return true;
   if (isClassificationBannerLine(line)) return true;
   if (looksLikeBoilerplateNotice(line)) return true;
   if (metadataNoisePatterns.some((pattern) => pattern.test(line))) return true;
@@ -282,6 +291,9 @@ export function countWrappedDoseUnitLines(text: string) {
 // Audit 2026-10-20 ING-B-01: a bare number line is a page number only when it
 // is the first or last content line and not part of a run of numbers (a rating
 // scale column such as "0 / 1 / 2 / 3"). Other number lines are content.
+// Audit 2026-10-24 EXT-01 (chunker 1.3.2): when the page is known, the edge number must also be
+// one of that page's own page-number labels, so "Olanzapine / 20" at the foot of a page keeps its
+// dose. Without a page (standalone text), the position rule alone still applies.
 function isIsolatedEdgeNumberLine(lines: string[], index: number, keptIndexes: number[]) {
   if (!digitsOnlyLinePattern.test(lines[index])) return false;
   if (index !== keptIndexes[0] && index !== keptIndexes[keptIndexes.length - 1]) return false;
@@ -290,22 +302,65 @@ function isIsolatedEdgeNumberLine(lines: string[], index: number, keptIndexes: n
   return !neighbours.some((neighbour) => neighbour !== undefined && digitsOnlyLinePattern.test(lines[neighbour]));
 }
 
-function removePageNoise(text: string, repeatedBoilerplateLines = new Set<string>()) {
-  const lines = splitPageLines(text);
+function contentLineIndexes(lines: string[], repeatedBoilerplateLines: Set<string>) {
   const edgeIndexes = repeatedBoilerplateLines.size > 0 ? runningHeaderFooterIndexes(lines) : new Set<number>();
-  const keptIndexes = lines.flatMap((line, index) => {
+  return lines.flatMap((line, index) => {
     if (line === "" || looksLikeMetadataNoise(line)) return [];
     // Audit 2026-10-20 ING-B-02: a repeated line is only removed where it sits
     // as a running header or footer, never from the body of the page.
     if (edgeIndexes.has(index) && repeatedBoilerplateLines.has(normalizeRepeatedLine(line))) return [];
     return [index];
   });
+}
+
+function isolatedEdgeNumbers(text: string, repeatedBoilerplateLines: Set<string>) {
+  const lines = splitPageLines(text);
+  const keptIndexes = contentLineIndexes(lines, repeatedBoilerplateLines);
+  return keptIndexes
+    .filter((index) => isIsolatedEdgeNumberLine(lines, index, keptIndexes))
+    .map((index) => Number(lines[index]));
+}
+
+// The bare numbers each page may print as its page number: its own number, or an edge number
+// whose offset from the page number repeats on an adjacent page (front matter shifts printed
+// numbering). Any other edge number is content.
+function buildPageNumberLines(inputs: ChunkInput[], repeatedBoilerplateLines: Set<string>) {
+  const edges = inputs.map((input) =>
+    input.pageNumber == null
+      ? []
+      : isolatedEdgeNumbers(normalizeExtractedGlyphs(input.pageText), repeatedBoilerplateLines).map(
+          (value) => value - (input.pageNumber as number),
+        ),
+  );
+  return inputs.map((input, index): ReadonlySet<string> | undefined => {
+    if (input.pageNumber == null) return undefined;
+    const labels = new Set([String(input.pageNumber)]);
+    const neighbourOffsets = new Set([...(edges[index - 1] ?? []), ...(edges[index + 1] ?? [])]);
+    for (const offset of edges[index]) {
+      if (neighbourOffsets.has(offset)) labels.add(String(input.pageNumber + offset));
+    }
+    return labels;
+  });
+}
+
+// `pageNumberLines` set: an edge number is dropped only when it is one of those labels (an empty
+// set keeps every edge number, for text that was already cleaned). Unset: position rule only.
+function removePageNoise(
+  text: string,
+  repeatedBoilerplateLines = new Set<string>(),
+  pageNumberLines?: ReadonlySet<string>,
+) {
+  const lines = splitPageLines(text);
+  const keptIndexes = contentLineIndexes(lines, repeatedBoilerplateLines);
   const firstContent = keptIndexes[0];
   const lastContent = keptIndexes[keptIndexes.length - 1];
+  const isPageNumberLine = (index: number) =>
+    isIsolatedEdgeNumberLine(lines, index, keptIndexes) &&
+    (!pageNumberLines || pageNumberLines.has(String(Number(lines[index]))));
   const kept = new Set(
     keptIndexes.filter(
       (index) =>
-        !isIsolatedEdgeNumberLine(lines, index, keptIndexes) &&
+        !isPageNumberLine(index) &&
         !(
           // A URL-only page (the address is both first and last line) is edge noise too.
           (index === firstContent || index === lastContent) && looksLikeEdgeUrlNotice(lines[index])
@@ -417,8 +472,13 @@ function adaptiveChunkProfile(text: string, sectionPath: string[]) {
   };
 }
 
-export function chunkTextWithOverlap(text: string, chunkSize = env.CHUNK_SIZE, overlap = env.CHUNK_OVERLAP) {
-  const clean = removePageNoise(normalizeExtractedGlyphs(text))
+export function chunkTextWithOverlap(
+  text: string,
+  chunkSize = env.CHUNK_SIZE,
+  overlap = env.CHUNK_OVERLAP,
+  pageNumberLines?: ReadonlySet<string>,
+) {
+  const clean = removePageNoise(normalizeExtractedGlyphs(text), undefined, pageNumberLines)
     .replace(trailingHorizontalWhitespaceBeforeNewlinePattern, "\n")
     .replace(horizontalWhitespaceRunPattern, " ")
     .trim();
@@ -1153,23 +1213,25 @@ function buildPageModeChunks(inputs: ChunkInput[]) {
   const chunks: DocumentChunk[] = [];
   const chunkFingerprint = new Map<string, number>();
   const repeatedBoilerplateLines = buildRepeatedBoilerplateLines(inputs);
+  const pageNumberLines = buildPageNumberLines(inputs, repeatedBoilerplateLines);
   let activeSectionPath: string[] = [];
 
-  for (const input of inputs) {
+  for (const [inputIndex, input] of inputs.entries()) {
     const pageImages = input.images ?? [];
     const imageContext = buildPageImageContext(pageImages);
     // Normalize glyph artifacts once so chunk content, the heading lookup, and the
     // source-span excerpt all derive from the same text. Otherwise the normalized
     // excerpt cannot be located in the raw page and span offsets drop to null.
     const normalizedPageText = normalizeExtractedGlyphs(input.pageText);
-    const cleanedPageText = removePageNoise(normalizedPageText, repeatedBoilerplateLines);
+    const cleanedPageText = removePageNoise(normalizedPageText, repeatedBoilerplateLines, pageNumberLines[inputIndex]);
     const pageSectionPath = extractSectionHeadings(cleanedPageText);
     if (pageSectionPath.length > 0) activeSectionPath = pageSectionPath;
     const sectionPath = activeSectionPath;
     const pageText = [cleanedPageText, imageContext].filter(Boolean).join("\n\n");
     const pageLookupText = normalizeLookupText(normalizedPageText);
     const chunkProfile = adaptiveChunkProfile(cleanedPageText, sectionPath);
-    const pageChunks = chunkTextWithOverlap(pageText, chunkProfile.chunkSize, chunkProfile.overlap);
+    // Already cleaned above: an empty page-number set keeps the edge numbers that survived.
+    const pageChunks = chunkTextWithOverlap(pageText, chunkProfile.chunkSize, chunkProfile.overlap, new Set());
 
     pageChunks.forEach((content, pageChunkIndex) => {
       const fingerprint = dedupeChunkFingerprint(content);
@@ -1245,9 +1307,10 @@ function buildDocumentModeChunks(inputs: ChunkInput[]) {
   // pages), cross-page duplicates within a document are repeated boilerplate worth collapsing.
   const chunkFingerprint = new Map<string, number>();
 
-  const pages: DocumentPage[] = inputs.map((input) => {
+  const pageNumberLines = buildPageNumberLines(inputs, repeatedBoilerplateLines);
+  const pages: DocumentPage[] = inputs.map((input, inputIndex) => {
     const normalizedText = normalizeExtractedGlyphs(input.pageText);
-    const cleanedText = removePageNoise(normalizedText, repeatedBoilerplateLines);
+    const cleanedText = removePageNoise(normalizedText, repeatedBoilerplateLines, pageNumberLines[inputIndex]);
     return {
       pageNumber: input.pageNumber,
       normalizedText,
@@ -1284,7 +1347,7 @@ function buildDocumentModeChunks(inputs: ChunkInput[]) {
       .join("\n\n");
     const chunkProfile = adaptiveChunkProfile(combinedCleanText, section.sectionPath);
     const pageLookupText = normalizeLookupText(section.pages.map((page) => page.normalizedText).join(" "));
-    const sectionChunks = chunkTextWithOverlap(combinedText, chunkProfile.chunkSize, chunkProfile.overlap);
+    const sectionChunks = chunkTextWithOverlap(combinedText, chunkProfile.chunkSize, chunkProfile.overlap, new Set());
 
     sectionChunks.forEach((content, pageChunkIndex) => {
       const contentWords = new Set(
