@@ -918,9 +918,17 @@ function mergeSpeculativeLaneTelemetry(telemetry: SearchTelemetry, laneTelemetry
   if (laneTelemetry.text_variant_early_exit) telemetry.text_variant_early_exit = true;
 }
 
-/** Expand clinical query with candidate metadata. */
-function expandClinicalQueryWithCandidateMetadata(query: string, expandedQuery: string, candidates: SearchResult[]) {
-  const metadataTerms = candidateMetadataExpansionTerms(query, candidates);
+/**
+ * Expand clinical query with candidate metadata. Superseded candidates add nothing: an old
+ * version's title would steer the meaning-based search towards rows that are then thrown away
+ * (audit RET-N5, 24 Oct 2026; owner rule #BFCTST).
+ */
+export function expandClinicalQueryWithCandidateMetadata(
+  query: string,
+  expandedQuery: string,
+  candidates: SearchResult[],
+) {
+  const metadataTerms = candidateMetadataExpansionTerms(query, excludeSupersededEvidence(candidates));
   if (metadataTerms.length === 0) return expandedQuery;
   return uniqueTextValues([expandedQuery, ...metadataTerms], 24).join(" ");
 }
