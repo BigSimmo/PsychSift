@@ -1,4 +1,5 @@
 import { loadEnvConfig } from "@next/env";
+import { assessExtractionQuality, extractionQualityCountsFrom } from "@/lib/extraction-quality-watch";
 import { formatSupabaseUnavailableError, isSupabaseUnavailableError, probeSupabaseHealth } from "@/lib/supabase/health";
 
 loadEnvConfig(process.cwd());
@@ -168,6 +169,29 @@ async function main() {
     ),
     // document_chunks.embedding is NOT NULL, so a missing-embedding count would always be 0; not checked.
   ]);
+
+  // Audit 2026-10-24 EM-N6: how well documents were read, watched on a schedule. Reported beside the
+  // integrity counts but never as an integrity problem, so it cannot trigger queue recovery.
+  const qualityCounts = await Promise.all(
+    (["good", "partial", "poor", "unknown"] as const).map((quality) =>
+      safeCount(
+        `quality_extraction_${quality}`,
+        supabase
+          .from("document_index_quality")
+          .select("document_id", { count: "exact", head: true })
+          .eq("extraction_quality", quality),
+      ),
+    ),
+  );
+  const baselineIndex = process.argv.indexOf("--baseline-poor-share");
+  const baselineArg = baselineIndex >= 0 ? Number(process.argv[baselineIndex + 1] ?? "") : Number.NaN;
+  const qualityCountMap = Object.fromEntries(qualityCounts.map((item) => [item.label, item.count]));
+  const extractionQualityCounts = extractionQualityCountsFrom(qualityCountMap);
+  const extractionQuality = extractionQualityCounts
+    ? assessExtractionQuality(extractionQualityCounts, {
+        baselinePoorShare: Number.isFinite(baselineArg) ? baselineArg : null,
+      })
+    : null;
   const integrityProblems = integrityCounts
     .filter((item) => Number(item.count ?? 0) > 0)
     .map((item) => `${item.label}: ${item.count}`);
@@ -184,7 +208,7 @@ async function main() {
     strandedQueued,
     chunksWithSynopsis,
   ];
-  const countErrors = [...counts, ...integrityCounts].filter((item) => item.error);
+  const countErrors = [...counts, ...integrityCounts, ...qualityCounts].filter((item) => item.error);
   const errors = [
     ...countErrors.map((item) => ({ label: item.label, error: unavailableMessage(item.error) ?? item.error })),
     ...(jobsError ? [{ label: "open_jobs", error: unavailableMessage(jobsError.message) ?? jobsError.message }] : []),
@@ -195,8 +219,11 @@ async function main() {
       {
         ok: countErrors.length === 0 && !jobsError,
         generatedAt: new Date().toISOString(),
-        counts: Object.fromEntries([...counts, ...integrityCounts].map((item) => [item.label, item.count])),
+        counts: Object.fromEntries(
+          [...counts, ...integrityCounts, ...qualityCounts].map((item) => [item.label, item.count]),
+        ),
         integrityProblems,
+        extractionQuality,
         errors,
         openJobs: openJobs ?? [],
         recommendation:

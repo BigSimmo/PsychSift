@@ -83,6 +83,14 @@ older probes that omit these fields remain compatible. These signals alone never
 recovery, including with `--apply`. If separate recoverable queue work also exists, bounded
 recovery may run, but the integrity alert remains until a subsequent probe confirms resolution.
 
+`reindex:health` also reports how well documents were read: the `quality_extraction_good`,
+`_partial`, `_poor` and `_unknown` counts and an `extractionQuality` verdict (audit EM-N6). It
+warns when at least a fifth of five or more assessed documents read poorly. Before a re-index,
+note the `poorShare`; afterwards run `npm run reindex:health -- --baseline-poor-share <that value>`
+and it also warns on a rise of five points or more. The scheduled ingestion autopilot prints the
+same verdict in its run summary. The warning never triggers queue recovery and does not change the
+exit code, so check the summary line rather than waiting for an alert issue.
+
 The configured character target controls table groups (chunker 1.3.1). Each group repeats
 the table caption and header. A single row longer than the room left under the header is
 split at word boundaries into pieces that each repeat the header. A table footnote (symbol
@@ -151,6 +159,13 @@ commit of that document. The script needs the `rollback_document_index_generatio
   the new generation and the one it replaced. If a document's current index is already a pilot
   generation, queuing it again would replace its pre-pilot generation, and rollback could then
   only return to the first pilot run.
+- **Run the after-canary only once enrichment has finished (audit E2E-08).** The core index
+  switches over first, and the summary, sections and memory cards are rebuilt afterwards. A job
+  whose enrichment is turned off or fails is still marked completed ("enrichment deferred"), and in
+  between the old memory cards are hidden while the old summary is still used. Before dispatching
+  the after-canary, confirm for each re-indexed document that `metadata.enrichment_status` is
+  `completed` and that its memory card and section counts are close to the old generation's. That
+  check reads the live database, so it needs the owner's go-ahead like the pilot itself.
 - **A rollback does not roll back the summary or topic labels (audit DB-N1).** The document
   summary, clinical specifics and generated topic labels are not part of the generation
   snapshot, so after a rollback they still describe the newer version. The script prints a note

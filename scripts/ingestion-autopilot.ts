@@ -1,6 +1,8 @@
 import { spawnSync } from "node:child_process";
 import { appendFileSync } from "node:fs";
 
+import { assessExtractionQuality, extractionQualityCountsFrom } from "@/lib/extraction-quality-watch";
+
 // ingestion-autopilot — self-healing loop for a stuck ingestion queue.
 //
 // Silent ingestion stalls are invisible product damage: documents just quietly
@@ -200,6 +202,16 @@ export function assessIngestionHealth(
   };
 }
 
+/** One line on extraction quality for the run log, or null when the probe did not report it. */
+export function describeExtractionQuality(health: IngestionHealth): string | null {
+  const counts = extractionQualityCountsFrom(health.counts);
+  if (!counts) return null;
+  const verdict = assessExtractionQuality(counts);
+  if (verdict.warning) return `[autopilot] WARNING extraction quality: ${verdict.warning}`;
+  if (verdict.assessed === 0) return "[autopilot] extraction quality: no documents assessed yet";
+  return `[autopilot] extraction quality: ${counts.poor} poor of ${verdict.assessed} assessed`;
+}
+
 function parseIntFlag(name: string, fallback: number): number {
   const index = process.argv.indexOf(name);
   if (index < 0) return fallback;
@@ -249,6 +261,21 @@ function main() {
       appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${workerLine}\n`);
     } catch {
       // The summary is a convenience; the run log above carries the same line.
+    }
+  }
+
+  // Audit 2026-10-24 EM-N6: say how well documents are being read on every scheduled run. A
+  // warning goes to the run summary but does not change the exit code, so it never triggers
+  // queue recovery or a queue alert.
+  const qualityLine = describeExtractionQuality(health);
+  if (qualityLine) {
+    console.log(qualityLine);
+    if (process.env.GITHUB_STEP_SUMMARY) {
+      try {
+        appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${qualityLine}\n`);
+      } catch {
+        // The run log above carries the same line.
+      }
     }
   }
 
