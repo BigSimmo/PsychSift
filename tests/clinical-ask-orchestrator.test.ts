@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+const logs = vi.hoisted(() => ({ warn: vi.fn(), error: vi.fn() }));
+vi.mock("@/lib/logger", () => ({ logger: { debug: vi.fn(), info: vi.fn(), warn: logs.warn, error: logs.error } }));
+
 import type {
   ClinicalAskDependencies,
   ClinicalAskDraft,
@@ -159,6 +162,24 @@ describe("runClinicalAsk", () => {
     dependencies.retrieveExternal.mockRejectedValue(new Error("synthetic external failure"));
     const response = await runClinicalAsk(request(), scope, dependencies, new AbortController().signal, vi.fn());
     expect(["answered", "evidence_gap"]).toContain(response.state);
+    expect(logs.warn).toHaveBeenCalledWith(
+      "Clinical Ask external search failed",
+      expect.objectContaining({ mode: "services", name: "Error", message: "synthetic external failure" }),
+    );
+  });
+
+  it("logs a failed request without the question, and still answers safely", async () => {
+    logs.error.mockClear();
+    const dependencies = fakes();
+    dependencies.retrieveIndexed.mockRejectedValue(new Error("synthetic retrieval failure"));
+    const response = await runClinicalAsk(request(), scope, dependencies, new AbortController().signal, vi.fn());
+    expect(response).toMatchObject({ state: "failed", code: "provider_unavailable", retryable: true });
+    expect(logs.error).toHaveBeenCalledOnce();
+    expect(logs.error).toHaveBeenCalledWith(
+      "Clinical Ask failed",
+      expect.objectContaining({ mode: "services", name: "Error", message: "synthetic retrieval failure" }),
+    );
+    expect(JSON.stringify(logs.error.mock.calls)).not.toContain(question);
   });
 
   it("retries invalid synthesis at most once and reruns governance", async () => {

@@ -511,10 +511,13 @@ export async function clearCmeEntryTranscribed(
 }
 
 /**
- * Replace one entry's allocations. Reads prior rows first and restores them if
- * the insert fails, so a rejected edit cannot leave the entry with zero
- * categories. Callers that then fail updating `cme_entries` should call
- * `restoreCmeAllocations` with the returned `prior` snapshot.
+ * @deprecated Do not use. Write allocations only through `saveCmeEntry` (the
+ * `cme_save_entry` database function), which saves an entry and its allocations
+ * in one transaction and refuses a closed or archived year. This helper deletes
+ * then inserts in separate requests, skips those year checks, and its restore is
+ * best effort, so a double failure can leave an entry with no allocations.
+ * Nothing calls it; it is kept only until it can be removed under
+ * docs/agents/dead-code-deletion.md.
  */
 export async function replaceCmeAllocations(
   supabase: AdminClient,
@@ -585,7 +588,10 @@ export async function replaceCmeAllocations(
   return { written, prior };
 }
 
-/** Re-insert a prior allocation snapshot after a later step in the same PATCH failed. */
+/**
+ * @deprecated Do not use; see `replaceCmeAllocations`. Allocations are written only
+ * through `saveCmeEntry`, which is atomic and checks the year.
+ */
 export async function restoreCmeAllocations(
   supabase: AdminClient,
   ownerId: string,

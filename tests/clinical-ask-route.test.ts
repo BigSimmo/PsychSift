@@ -89,6 +89,18 @@ beforeEach(() => {
 });
 
 describe("POST /api/clinical-ask/stream", () => {
+  it("logs an unexpected failure without the question before sending the safe error frame", async () => {
+    mocks.run.mockRejectedValueOnce(new Error("synthetic orchestrator failure"));
+    const response = await POST(post());
+    const text = await response.text();
+    expect(text).toContain("internal_error");
+    expect(mocks.logError).toHaveBeenCalledWith(
+      "Clinical Ask stream failed",
+      expect.objectContaining({ name: "Error", message: "synthetic orchestrator failure" }),
+    );
+    expect(JSON.stringify(mocks.logError.mock.calls)).not.toContain(body.question);
+  });
+
   it("authenticates, rate limits, owner-scopes, and streams safe headers", async () => {
     const response = await POST(post());
     await response.text();

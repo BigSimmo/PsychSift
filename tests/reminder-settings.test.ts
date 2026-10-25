@@ -326,7 +326,8 @@ describe("toIcs alarms", () => {
     );
     expect(timed.match(/UID:teaching-1@/g)).toHaveLength(2);
     expect(timed.match(/RRULE:/g)).toHaveLength(1);
-    expect(timed).toContain("RECURRENCE-ID:20261010T043000Z\r\n");
+    expect(timed).toContain("RECURRENCE-ID;TZID=Australia/Perth:20261010T123000\r\n");
+    expect(timed.match(/BEGIN:VTIMEZONE/g)).toHaveLength(1);
     expect(timed).toContain("TRIGGER;VALUE=DATE-TIME:20261010T033000Z");
     expect(timed).not.toContain("RELATED=START");
     const allDay = toIcs([{ ...ALL_DAY, seriesOccurrence: true, alarmAt: "2026-10-10T01:00:00.000Z" }], { now });
