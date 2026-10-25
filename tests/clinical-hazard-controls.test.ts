@@ -177,6 +177,17 @@ describe("clinical hazard controls contract", () => {
     });
   });
 
+  // A reachable commit used to excuse a missing digest: the path was then never in `drifted`, so
+  // later edits to that safety control were never drift-checked.
+  it("fails when a cited path has no recorded digest even though the reviewed commit is reachable", () => {
+    const changed = structuredClone(manifest);
+    const [firstCitedPath] = citedRegisterPaths(changed);
+    delete changed.reviewedPathDigests[firstCitedPath];
+    const errors = validateClinicalHazardControls(changed, { checkGit: false, now: REGISTER_NOW }).join("\n");
+    expect(errors).toContain(`no recorded digest for ${firstCitedPath}`);
+    expect(errors).toContain("npm run governance:seal-hazard-controls");
+  });
+
   it("does not allow static evidence to close clinical truth or external risk acceptance", () => {
     const changed = structuredClone(manifest);
     changed.assuranceDecisions[0].state = "controlled";

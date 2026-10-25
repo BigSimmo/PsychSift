@@ -418,6 +418,16 @@ export function evaluateClinicalHazardControls(
         "reviewed content, run npm run governance:seal-hazard-controls; if it changed, it needs re-review.",
     );
   }
+  // A reachable commit proves the cited paths existed when reviewed, but not that they are
+  // drift-checked: a path cited without a digest is never compared, so a later edit to that
+  // control would pass silently. Every cited path needs a digest whatever the commit's state.
+  if (checkFiles && commitReachable && !contentProof.proven) {
+    errors.push(
+      `manifest: the recorded digests do not cover every cited path (${contentProof.reason}), so later ` +
+        "edits to it would never be drift-checked. Once the cited content is reviewed, run " +
+        "npm run governance:seal-hazard-controls.",
+    );
+  }
   // The reviewed snapshot cannot be read once its commit is gone, so the path-at-commit checks
   // stand down with it. The digests replace them, and prove more: those files are unchanged.
   const snapshotCheckGit = checkGit && commitReachable;

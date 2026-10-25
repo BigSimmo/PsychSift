@@ -10,7 +10,9 @@ set -e
 PLATFORMS="${PLATFORMS:-linux/amd64,linux/arm64}"
 REGISTRY="${REGISTRY:-ghcr.io}"
 # Extract GitHub owner (e.g., "BigSimmo") from git remote URL, fallback to "BigSimmo"
-DETECTED_OWNER="$(git remote get-url origin 2>/dev/null | sed -E 's|.*[:/]([^/]+)/[^/]+(\.git)?$|\1|' || echo "BigSimmo")"
+# Default after capture: with no origin, sed still exits 0 on empty input, so `|| echo` never fires.
+DETECTED_OWNER="$(git remote get-url origin 2>/dev/null | sed -E 's|.*[:/]([^/]+)/[^/]+(\.git)?$|\1|')"
+DETECTED_OWNER="${DETECTED_OWNER:-BigSimmo}"
 REPO_OWNER="${REPO_OWNER:-$DETECTED_OWNER}"
 TARGET="${1:-all}"
 PUSH="${PUSH:-false}"  # Set PUSH=true to push to registry

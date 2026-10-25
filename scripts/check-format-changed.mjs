@@ -37,14 +37,18 @@ const scopeResult = spawnSync(process.execPath, ["scripts/ci-change-scope.mjs", 
 });
 if (childProcessExitCode(scopeResult) !== 0) process.exit(childProcessExitCode(scopeResult));
 
-const changedFiles = JSON.parse(scopeResult.stdout).files.filter((file) => existsSync(path.join(projectRoot, file)));
-if (changedFiles.length === 0) {
+const scopeFiles = JSON.parse(scopeResult.stdout).files;
+// Escalate on the unfiltered list, as guard-push does: deleting .prettierignore or a
+// Prettier config changes the verdict for other files even though it no longer exists.
+const escalateToFullTree = scopeFiles.some((file) => isPrettierPolicyFile(file));
+// Deleted paths are gone from the checkout, and prettier errors on a missing argument.
+const changedFiles = scopeFiles.filter((file) => existsSync(path.join(projectRoot, file)));
+if (!escalateToFullTree && changedFiles.length === 0) {
   console.log("No changed files require a formatting check.");
   process.exit(0);
 }
 
 const prettierBin = path.join(projectRoot, "node_modules", "prettier", "bin", "prettier.cjs");
-const escalateToFullTree = changedFiles.some((file) => isPrettierPolicyFile(file));
 const prettierArgs = escalateToFullTree
   ? ["--check", "--ignore-unknown", "."]
   : ["--check", "--ignore-unknown", "--", ...changedFiles];

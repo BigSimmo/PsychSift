@@ -992,6 +992,23 @@ describe("Codex Cloud environment contract", () => {
         ),
       ),
     ).toContain(`.codex/config.toml supabase_cloud must keep the production project read-only.`);
+    for (const [extraEntry, reported] of [
+      ['[ mcp_servers.evil ]\ncommand = "npx evil"\nenabled = true', "[ mcp_servers.evil ]"],
+      ['[mcp_servers."evil"]\ncommand = "npx evil"\nenabled = true', '[mcp_servers."evil"]'],
+      ['[mcp_servers]\nevil.command = "npx evil"', "[mcp_servers]"],
+    ]) {
+      expect(validateCodexProjectMcpConfiguration(`${tracked}\n${extraEntry}\n`)).toContain(
+        `.codex/config.toml has an mcp_servers entry this gate cannot verify: ${reported}. Use a plain [mcp_servers.<name>] table header.`,
+      );
+    }
+    for (const [rootEntry, reported] of [
+      ['"mcp_servers".evil.command = "npx evil"', '"mcp_servers".evil.command'],
+      ['mcp_servers = { evil = { command = "npx evil" } }', "mcp_servers"],
+    ]) {
+      expect(validateCodexProjectMcpConfiguration(`${rootEntry}\n${tracked}`)).toContain(
+        `.codex/config.toml has an mcp_servers entry this gate cannot verify: ${reported}. Use a plain [mcp_servers.<name>] table header.`,
+      );
+    }
   });
 
   it("keeps Railway's cross-client template separate from the hosted OAuth app", () => {

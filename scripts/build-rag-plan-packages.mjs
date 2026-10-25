@@ -488,26 +488,14 @@ function validateCanonicalBodies() {
     } catch {
       shallow = false;
     }
+    // A check never fetches: deepening the clone is a GitHub call and a change to the
+    // checkout, so it stays an explicit step the operator runs from this remedy.
     if (shallow) {
-      try {
-        execFileSync("git", ["fetch", "--deepen=2000"], { cwd: repositoryRoot, stdio: "ignore" });
-        execFileSync("git", ["rev-parse", "--verify", `${manifest.reconciledBase}^{commit}`], {
-          cwd: repositoryRoot,
-          stdio: ["ignore", "ignore", "ignore"],
-        });
-        validationBaseAvailable = true;
-      } catch {
-        // Deepening failed or commit still unavailable
-      }
-    }
-    if (!validationBaseAvailable) {
-      if (shallow) {
-        errors.push(
-          `manifest reconciledBase is unavailable locally in shallow clone (${manifest.reconciledBase}); run git fetch --deepen=2000`,
-        );
-      } else {
-        errors.push(`manifest reconciledBase is unavailable locally: ${manifest.reconciledBase}`);
-      }
+      errors.push(
+        `manifest reconciledBase is unavailable locally in shallow clone (${manifest.reconciledBase}); run git fetch --deepen=2000`,
+      );
+    } else {
+      errors.push(`manifest reconciledBase is unavailable locally: ${manifest.reconciledBase}`);
     }
   }
   if (originMainAvailable && requireCurrentOriginMain) {
