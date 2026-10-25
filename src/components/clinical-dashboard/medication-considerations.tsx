@@ -33,6 +33,7 @@ import {
 import {
   evaluatePatientAlerts,
   noticeToneForSemanticTone,
+  unassessedGateCount,
   type MedicationConsideration,
 } from "@/lib/medication-patient-alerts";
 import type { MedicationRecord } from "@/lib/medications";
@@ -394,8 +395,8 @@ export function MedicationConsiderations({ record, className }: { record: Medica
   const { profile, isEmpty } = usePatientProfile();
   const result = useMemo(() => evaluatePatientAlerts(record, profile), [record, profile]);
   // Either tier is enough to disqualify the all-clear: both mean a criterion on
-  // this medication was never evaluated.
-  const hasUnassessedGates = result.unassessed.length > 0 || result.unassessedAdvisory.length > 0;
+  // this medication was never evaluated. Shared with the result-row verdict.
+  const hasUnassessedGates = unassessedGateCount(result) > 0;
 
   return (
     <section aria-label="Patient considerations" className={cn("space-y-2", className)}>

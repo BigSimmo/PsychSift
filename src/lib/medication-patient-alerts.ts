@@ -76,9 +76,10 @@ export type PatientAlertResult = {
    * the row fired on some other criterion: a row that fires on age while eGFR is
    * blank still has an unevaluated renal criterion.
    *
-   * This field is what the result-row verdict's green-to-grey degrade reads. Its
-   * MEANING is unchanged — contraindication rows only, never the advisory tier —
-   * but it is not untouched: collecting gates from fired rows too makes it a
+   * The result-row verdict's green-to-grey degrade reads this field together
+   * with `unassessedAdvisory`, through `unassessedGateCount`. Its MEANING is
+   * unchanged — contraindication rows only, never the advisory tier — but it is
+   * not untouched: collecting gates from fired rows too makes it a
    * strict superset of what it used to hold, so the degrade now fires on
    * medications where it previously stayed green. That direction is deliberate
    * and only ever more conservative; it never clears a degrade that used to fire.
@@ -224,6 +225,17 @@ export function isProfileEmpty(profile: PatientProfile | null | undefined): bool
   if (profile.allergies && profile.allergies.length > 0) return false;
   if (profile.medications && profile.medications.length > 0) return false;
   return true;
+}
+
+/**
+ * Unread gates across both tiers. Either tier disqualifies an all-clear, because
+ * both mean a criterion on this medication was never evaluated. The detail-page
+ * considerations notice and the result-row verdict both read this, so the list
+ * can never show green for a medication whose detail page says it could not be
+ * fully checked (owner decision, 25 Oct 2026).
+ */
+export function unassessedGateCount(result: Pick<PatientAlertResult, "unassessed" | "unassessedAdvisory">): number {
+  return result.unassessed.length + result.unassessedAdvisory.length;
 }
 
 /**

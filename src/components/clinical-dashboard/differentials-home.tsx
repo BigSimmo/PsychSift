@@ -633,6 +633,20 @@ function LikelyPresentationCard({ lead }: { lead: DifferentialResult }) {
   );
 }
 
+/** Emergent results the active lens hides from the visible (filtered) list. */
+function countHiddenEmergent(visible: DifferentialResult[], all: DifferentialResult[]): number {
+  const visibleEmergentIds = new Set(
+    visible.filter((result) => result.status === "emergent").map((result) => result.id),
+  );
+  return all.filter((result) => result.status === "emergent" && !visibleEmergentIds.has(result.id)).length;
+}
+
+function hiddenEmergentNotice(count: number): string {
+  return count === 1
+    ? "1 emergent differential is hidden by the active filters."
+    : `${count} emergent differentials are hidden by the active filters.`;
+}
+
 function UrgencyCard({
   results,
   hiddenEmergentCount = 0,
@@ -665,9 +679,7 @@ function UrgencyCard({
             role="status"
             className="text-sm font-semibold leading-5 text-[color:var(--text-heading)]"
           >
-            {hiddenEmergentCount === 1
-              ? "1 emergent differential is hidden by the active filters."
-              : `${hiddenEmergentCount} emergent differentials are hidden by the active filters.`}
+            {hiddenEmergentNotice(hiddenEmergentCount)}
           </p>
           {onClearFilters ? (
             <button
@@ -860,12 +872,7 @@ function InterpretationRail({
   allResults: DifferentialResult[];
   onClearFilters: () => void;
 }) {
-  const visibleEmergentIds = new Set(
-    results.filter((result) => result.status === "emergent").map((result) => result.id),
-  );
-  const hiddenEmergentCount = allResults.filter(
-    (result) => result.status === "emergent" && !visibleEmergentIds.has(result.id),
-  ).length;
+  const hiddenEmergentCount = countHiddenEmergent(results, allResults);
 
   return (
     <aside className="hidden min-w-0 gap-3 lg:grid" aria-label="Differential interpretation">
@@ -1026,6 +1033,10 @@ function SearchResultsView({
   const best = relevanceResults[0] ?? null;
   // Same lead the desktop interpretation rail uses for its safety card.
   const safetyLead = relevanceResults.find((result) => result.status === "emergent") ?? best;
+  // The desktop rail's urgency card carries the hidden-emergent notice, but the
+  // rail is lg-only. Phones and the filtered-empty state need the same notice in
+  // the main column, so a lens can never silently hide a must-not-miss result.
+  const hiddenEmergentCount = countHiddenEmergent(relevanceResults, results);
   const comparisonIds = useMemo(
     () =>
       new Set(
@@ -1304,6 +1315,15 @@ function SearchResultsView({
           <p className="text-sm font-medium leading-6 text-[color:var(--text-muted)]">
             Other results still match this search. Clear filters to show them.
           </p>
+          {hiddenEmergentCount > 0 ? (
+            <p
+              data-testid="differentials-filter-empty-hidden-emergent"
+              role="status"
+              className="text-sm font-semibold leading-5 text-[color:var(--text-heading)]"
+            >
+              {hiddenEmergentNotice(hiddenEmergentCount)}
+            </p>
+          ) : null}
           <button
             type="button"
             onClick={clearAllFilters}
@@ -1325,6 +1345,26 @@ function SearchResultsView({
                 {safetyLead.safety}
               </span>
             </p>
+          ) : null}
+          {hiddenEmergentCount > 0 ? (
+            <div
+              data-testid="differentials-hidden-emergent-phone-notice"
+              className="flex flex-wrap items-center gap-2 rounded-lg border border-[color:var(--danger-border)] bg-[color:var(--danger-soft)]/40 px-3 py-2 lg:hidden"
+            >
+              <p
+                role="status"
+                className="min-w-0 flex-1 text-xs font-semibold leading-5 text-[color:var(--text-heading)] sm:text-sm"
+              >
+                {hiddenEmergentNotice(hiddenEmergentCount)}
+              </p>
+              <button
+                type="button"
+                onClick={clearAllFilters}
+                className="inline-flex min-h-tap w-fit items-center gap-1.5 rounded-lg border border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] px-3 text-sm font-extrabold text-[color:var(--clinical-accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
+              >
+                Show all results
+              </button>
+            </div>
           ) : null}
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_23rem] lg:items-start">
             <section className="min-w-0 space-y-3" aria-label="Differential diagnosis results">

@@ -14,7 +14,8 @@ import { getDifferentialRecord, getPresentationWorkflow } from "@/lib/differenti
  *    most-shared first, and never invents one of its own.
  * 3. Both cards read the filtered result set, so the rail never describes a
  *    wider list than the one on screen. If a lens hides every emergent, the
- *    urgency card stays and says so instead of vanishing.
+ *    urgency card stays and says so instead of vanishing. The rail is lg-only,
+ *    so the same notice also renders in the main column below lg.
  */
 
 const catalogState = vi.hoisted(() => ({
@@ -184,6 +185,33 @@ describe("differentials interpretation rail", () => {
     expect(screen.queryByTestId("differentials-urgency-hidden-by-filters")).not.toBeInTheDocument();
     expect(within(restored).getByTestId("differential-status-badge")).toHaveTextContent("Emergent");
     expect(within(restored).getByRole("link")).toBeVisible();
+  });
+
+  it("says in the main column, not only the desktop rail, when the lens hides an emergent", async () => {
+    renderWith(["lithium-adverse-effects-toxicity", "acute-dystonia"]);
+
+    await screen.findByTestId("differentials-highest-urgency");
+    expect(screen.queryByTestId("differentials-hidden-emergent-phone-notice")).not.toBeInTheDocument();
+
+    await act(async () => {
+      screen.getByTestId("differential-filter-trigger-phone").click();
+    });
+    await act(async () => {
+      screen.getByRole("radio", { name: "High (1)" }).click();
+    });
+    await act(async () => {
+      screen.getByTestId("differential-filter-panel-done").click();
+    });
+
+    // The rail is lg-only, so phones depend on this main-column notice.
+    const notice = screen.getByTestId("differentials-hidden-emergent-phone-notice");
+    expect(notice).toHaveTextContent("1 emergent differential is hidden by the active filters.");
+    expect(notice.className).toContain("lg:hidden");
+
+    await act(async () => {
+      within(notice).getByRole("button", { name: "Show all results" }).click();
+    });
+    expect(screen.queryByTestId("differentials-hidden-emergent-phone-notice")).not.toBeInTheDocument();
   });
 
   it("hides the check-next card when no ranked differential names an investigation", async () => {
