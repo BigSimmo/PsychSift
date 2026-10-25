@@ -401,6 +401,18 @@ describe("answer-verification (GEN-C2 / GEN-H2)", () => {
     expect(verifies("Give ten milligrams at night.", "Give 10 mg at night.").hasUnverifiedNumbers).toBe(false);
   });
 
+  it("never adds the two ends of a worded range into one dose", () => {
+    const verifies = (answer: string, evidence: string) =>
+      verifyAnswerNumbers(answer, [{ chunk_id: "chunk-1" }], [source({ content: evidence })]);
+    expect(verifies("Give 6 mg.", "Give between two and four milligrams.").hasUnverifiedNumbers).toBe(true);
+    expect(verifies("Give 6 mg.", "Give two - four milligrams.").hasUnverifiedNumbers).toBe(true);
+    expect(extractClinicalValueAtoms("two four milligrams")).toEqual([]);
+    expect(extractClinicalValueAtoms("ten five milligrams")).toEqual([]);
+    expect(extractClinicalValueAtoms("two thousand five hundred milligrams")[0]).toMatchObject({
+      canonicalValue: "2500",
+    });
+  });
+
   it("keeps a symbolic comparator attached to a unit quantity (audit NEW-G-02)", () => {
     expect(extractClinicalValueAtoms("<5 mg")[0]).toMatchObject({
       comparator: "below",

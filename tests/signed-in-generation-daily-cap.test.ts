@@ -5,6 +5,7 @@ import {
   SIGNED_IN_GENERATION_DAILY_CAP,
   SIGNED_IN_GENERATION_DAILY_CODE,
   consumeSubjectApiRateLimit,
+  consumeSummaryRateLimits,
   rateLimitJsonResponse,
   signedInGenerationDailySubjectKey,
 } from "@/lib/api-rate-limit";
@@ -34,6 +35,7 @@ function limiterStub(limited: { perMinute?: boolean; daily?: boolean } = {}) {
         remaining: isLimited ? 0 : (args.p_limit ?? 0) - 1,
         retry_after_seconds: args.p_window_seconds ?? 60,
         reset_at: new Date(Date.now() + (args.p_window_seconds ?? 60) * 1000).toISOString(),
+        ...(name === "consume_summary_rate_limits_atomic" ? { bucket: "document_summarize" } : {}),
       },
       error: null,
     };
@@ -66,6 +68,27 @@ describe("signed-in daily generation cap (SEC-N2)", () => {
       });
     },
   );
+
+  it("counts streamed document summaries against the same daily row", async () => {
+    const { supabase, calls } = limiterStub({ daily: true });
+    const decision = await consumeSummaryRateLimits({ supabase, subject: owner });
+
+    expect(calls.map((call) => call.name)).toEqual([
+      "consume_summary_rate_limits_atomic",
+      "consume_api_subject_rate_limit",
+    ]);
+    expect(calls[1]?.args).toMatchObject({ p_subject_key: dailyKey, p_bucket: SIGNED_IN_GENERATION_DAILY_BUCKET });
+    expect(decision.rateLimit.limited).toBe(true);
+    expect(decision.rateLimit.scope).toBe("signed_in_generation_daily");
+  });
+
+  it("does not spend the daily allowance on a summary the per-minute buckets refuse", async () => {
+    const { supabase, calls } = limiterStub({ perMinute: true });
+    const decision = await consumeSummaryRateLimits({ supabase, subject: owner });
+
+    expect(decision.rateLimit.limited).toBe(true);
+    expect(calls.map((call) => call.name)).toEqual(["consume_summary_rate_limits_atomic"]);
+  });
 
   it("leaves non-generation buckets on the per-minute bucket alone", async () => {
     const { supabase, calls } = limiterStub();

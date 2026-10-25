@@ -889,6 +889,19 @@ export async function consumeSummaryRateLimits(args: {
     resetAt: String(row.reset_at ?? new Date(Date.now() + summaryDefaults.windowSeconds * 1000).toISOString()),
   };
 
+  // A signed-in account's streamed summaries are generation calls too, so they draw down its daily
+  // cap (SEC-N2) like answers do. Consumed after the atomic decision for the same reason as the
+  // anonymous ceiling below, and fails closed like the atomic call above.
+  if (!rateLimit.limited && args.subject.kind === "owner") {
+    const daily = await consumeSignedInGenerationDailyCap({
+      supabase: args.supabase,
+      ownerId: args.subject.ownerId,
+      allowInMemoryFallbackOnUnavailable: false,
+    });
+    if (daily.limited) return { bucket: "answer", rateLimit: daily };
+    rateLimit.remaining = Math.min(rateLimit.remaining, daily.remaining);
+  }
+
   // Streamed summaries are provider-backed generation too, so anonymous ones draw down the same
   // aggregate ceiling. Consumed after the atomic decision so a caller already denied by the answer
   // or summary bucket does not also burn the shared allowance.

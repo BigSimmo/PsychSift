@@ -133,19 +133,44 @@ const numberWordDosePattern = new RegExp(
 );
 const doseUnitWordPattern = /(\d)\s*(milligrammes?|milligrams?|grammes?|grams?|millilit(?:re|er)s?)\b/gi;
 
+type NumberWordKind = "start" | "unit" | "teen" | "tens" | "hundred" | "thousand" | "and";
+
+function numberWordKind(word: string): Exclude<NumberWordKind, "start"> | null {
+  if (word === "hundred" || word === "thousand" || word === "and") return word;
+  if (!(word in NUMBER_WORD_VALUES)) return null;
+  const value = NUMBER_WORD_VALUES[word];
+  return value < 10 ? "unit" : value < 20 ? "teen" : "tens";
+}
+
+// Which word may follow which in one written number. Anything else ("two four", "two and four",
+// "ten five") is a range or a list, not one number, so the phrase is left unconverted rather than
+// added up: "between two and four milligrams" must never become 6 mg (Codex review, 25 Oct 2026).
+const NUMBER_WORD_FOLLOWS: Record<Exclude<NumberWordKind, "start">, ReadonlySet<NumberWordKind>> = {
+  unit: new Set(["start", "tens", "hundred", "thousand", "and"]),
+  teen: new Set(["start", "hundred", "thousand", "and"]),
+  tens: new Set(["start", "hundred", "thousand", "and"]),
+  hundred: new Set(["start", "unit"]),
+  thousand: new Set(["start", "unit", "teen", "tens", "hundred"]),
+  and: new Set(["hundred", "thousand"]),
+};
+
 function numberPhraseValue(phrase: string): number | null {
   let total = 0;
   let current = 0;
+  let previous: NumberWordKind = "start";
   for (const word of phrase.toLowerCase().split(/[\s-]+/)) {
-    if (word === "and" || word === "") continue;
-    if (word === "hundred") current = (current || 1) * 100;
-    else if (word === "thousand") {
+    if (word === "") continue;
+    const kind = numberWordKind(word);
+    if (!kind || !NUMBER_WORD_FOLLOWS[kind].has(previous)) return null;
+    previous = kind;
+    if (kind === "and") continue;
+    if (kind === "hundred") current = (current || 1) * 100;
+    else if (kind === "thousand") {
       total += (current || 1) * 1000;
       current = 0;
-    } else if (word in NUMBER_WORD_VALUES) current += NUMBER_WORD_VALUES[word];
-    else return null;
+    } else current += NUMBER_WORD_VALUES[word];
   }
-  return total + current;
+  return previous === "and" ? null : total + current;
 }
 
 function canonicalDoseUnitWord(unit: string) {

@@ -5785,7 +5785,8 @@ describe("private document API access", () => {
       signal: expect.any(AbortSignal),
       observationContext: { interactionId: expect.any(String), rolloutMode: "legacy" },
     });
-    expect(client.rpc).toHaveBeenCalledTimes(1);
+    // The atomic answer and summary buckets, then the account's shared daily generation cap.
+    expect(client.rpc).toHaveBeenCalledTimes(2);
     expect(client.rpc).toHaveBeenCalledWith(
       "consume_summary_rate_limits_atomic",
       expect.objectContaining({
@@ -5794,6 +5795,10 @@ describe("private document API access", () => {
         p_answer_limit: 30,
         p_summary_limit: 12,
       }),
+    );
+    expect(client.rpc).toHaveBeenCalledWith(
+      "consume_api_subject_rate_limit",
+      expect.objectContaining({ p_bucket: "signed_in_generation_daily" }),
     );
     expect(answerQuestionWithScope).not.toHaveBeenCalled();
   });
