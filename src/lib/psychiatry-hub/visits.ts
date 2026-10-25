@@ -1,5 +1,6 @@
 import { PSYCHIATRY_VISITS_STORAGE_KEY, subscribeAccountTransition } from "@/lib/account-scoped-browser-state";
-import { perthCalendarDate } from "@/lib/perth-time";
+import { addDaysToDate, perthCalendarDate, perthTimeOf } from "@/lib/perth-time";
+import { currentWorkTimeZone } from "@/lib/work-time/current-zone";
 
 /**
  * The Psychiatry hub's on-device history: which reference records the reader
@@ -346,19 +347,14 @@ export function psychiatryWeekBySection(
 
 export const EMPTY_PSYCHIATRY_VISIT_STATE: PsychiatryVisitState = EMPTY;
 
-const PERTH_TIME = new Intl.DateTimeFormat("en-AU", {
-  hour: "2-digit",
-  minute: "2-digit",
-  hourCycle: "h23",
-  timeZone: "Australia/Perth",
-});
-const PERTH_DAY = new Intl.DateTimeFormat("en-AU", { day: "numeric", month: "short", timeZone: "Australia/Perth" });
+// Formats a `YYYY-MM-DD` already worked out in the work zone, so it reads it as UTC.
+const CALENDAR_DAY = new Intl.DateTimeFormat("en-AU", { day: "numeric", month: "short", timeZone: "UTC" });
 
-/** "Today 14:30", "Yesterday" or "3 Oct", in Perth time. Pure. */
-export function formatPsychiatryVisitWhen(at: number, now: number): string {
-  const day = perthCalendarDate(at);
-  const today = perthCalendarDate(now);
-  if (day === today) return `Today ${PERTH_TIME.format(at)}`;
-  if (day === perthCalendarDate(now - 24 * 60 * 60 * 1000)) return "Yesterday";
-  return PERTH_DAY.format(at);
+/** "Today 14:30", "Yesterday" or "3 Oct", in the work time zone (default Perth). Pure. */
+export function formatPsychiatryVisitWhen(at: number, now: number, zone: string = currentWorkTimeZone()): string {
+  const day = perthCalendarDate(at, zone);
+  const today = perthCalendarDate(now, zone);
+  if (day === today) return `Today ${perthTimeOf(at, zone)}`;
+  if (day === addDaysToDate(today, -1)) return "Yesterday";
+  return CALENDAR_DAY.format(Date.parse(`${day}T00:00:00Z`));
 }

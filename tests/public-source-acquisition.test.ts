@@ -362,6 +362,31 @@ describe("public source acquisition", () => {
     expect(cancel).toHaveBeenCalledOnce();
   });
 
+  it("fails cleanly when a compressed body breaks partway through", async () => {
+    const plan = await activePlan();
+    const compressed = gzipSync(Buffer.from("x".repeat(2_048)));
+    const cancel = vi.fn();
+    const broken: AsyncIterable<Uint8Array> = {
+      async *[Symbol.asyncIterator]() {
+        yield compressed.subarray(0, 8);
+        throw new Error("connection reset");
+      },
+    };
+
+    await expect(
+      fetchApprovedPublicSource(plan, {
+        resolve: async () => [{ address: "1.1.1.1", family: 4 }],
+        request: async () => ({
+          status: 200,
+          headers: { "content-type": "text/plain", "content-encoding": "gzip" },
+          body: broken,
+          cancel,
+        }),
+      }),
+    ).rejects.toThrow(/stream cancelled, timed out, or failed/i);
+    expect(cancel).toHaveBeenCalledOnce();
+  });
+
   it("honours caller cancellation before network access", async () => {
     const controller = new AbortController();
     controller.abort();

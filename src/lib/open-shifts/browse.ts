@@ -15,8 +15,8 @@ import { isClash, rosterCheckFor, type RosterCheck } from "./roster-check";
 /**
  * Browse: every count on the page comes from here, from the same rows, so the
  * quick bar, the "18 of 29" line, the calendar badges and the day list always
- * agree. Counts never include shifts outside the 14-day window, the reader's
- * own posts, or shifts they have already asked for.
+ * agree. Counts never include shifts outside the browse window (`WINDOW_DAYS`),
+ * the reader's own posts, or shifts they have already asked for.
  */
 
 export type BrowseFilters = {

@@ -157,7 +157,7 @@ export async function sendTestAlert(
     await webpush.sendNotification(
       { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } },
       JSON.stringify({ t: "test" }),
-      { TTL: 60 },
+      { TTL: 60, timeout: 10_000 },
     );
     return { sent: 1 };
   } catch (error) {

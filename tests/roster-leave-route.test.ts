@@ -199,6 +199,15 @@ describe("my planned leave", () => {
     expect(queries).toHaveLength(0);
   });
 
+  it("counts toward the cap only the leave the list still shows", async () => {
+    await GET(request("GET"));
+    const shown = queries[0]?.filters.find(([key]) => key === "ends_on");
+    expect(shown).toBeDefined();
+    queries.length = 0;
+    expect((await POST(request("POST", body))).status).toBe(201);
+    expect(queries[0]?.filters).toContainEqual(shown);
+  });
+
   it("writes only the session owner and filters updates and deletion by that owner", async () => {
     expect((await POST(request("POST", body))).status).toBe(201);
     expect(queries.find((q) => q.op === "insert")?.inserted).toMatchObject({ owner_id: ME, service_id: SERVICE });

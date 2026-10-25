@@ -96,13 +96,17 @@ export async function createOwnerLeave(
   client: RosterAdminClient,
   ownerId: string,
   input: z.infer<typeof createLeaveSchema>,
+  today = perthDateOf(new Date()),
 ): Promise<RosterLeave> {
   validSpan(input.startsOn, input.endsOn);
   if (input.serviceId) await rosterRead(client, ownerId, input.serviceId, "overview");
+  // Counts only what `listOwnerLeave` shows, so an entry the doctor can no longer see or delete
+  // never uses up the limit.
   const { data: current, error: countError } = await client
     .from("roster_leave")
     .select("id")
     .eq("owner_id", ownerId)
+    .gte("ends_on", addDaysToDate(today, -30))
     .limit(50);
   if (countError || !current) throw unavailable();
   if (current.length >= 50)

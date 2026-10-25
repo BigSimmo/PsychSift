@@ -168,6 +168,17 @@ describe("durable per-device offer consumer", () => {
     expect(f.rpc.mock.calls.some(([, a]) => a.p_operation === "ack")).toBe(false);
     expect(f.rpc.mock.calls.some(([, a]) => a.p_operation === "release")).toBe(true);
   });
+  it("reports the original failure when releasing the lease fails too", async () => {
+    const f = fixture();
+    const original = f.rpc.getMockImplementation()!;
+    f.rpc.mockImplementation(async (n, a) => {
+      if (a.p_operation === "release") return { data: null, error: { message: "lease gone" } } as never;
+      return original(n, a);
+    });
+    m.eligible.mockRejectedValueOnce(new Error("Opening check unavailable"));
+    await expect(drainRosterOfferAlerts(f.client)).rejects.toThrow("Opening check unavailable");
+    expect(f.rpc.mock.calls.some(([, a]) => a.p_operation === "release")).toBe(true);
+  });
   it("retries a transient per-device eligibility failure instead of terminally skipping", async () => {
     const f = fixture();
     m.eligible.mockResolvedValueOnce([owner, other]).mockRejectedValueOnce(new Error("Opening check unavailable"));
