@@ -1,5 +1,5 @@
 {
   "version": 1,
-  "note": "Owner-signed WA versus national guidance differences. An entry shows the 'National guidance differs on this point' line under any answer whose direct support cites one of its WA chunks. Only the owner adds or signs off an entry, in his own words. Expired entries are ignored.",
+  "note": "Owner-signed WA versus national guidance differences. An entry shows the 'National guidance differs on this point' line under any answer whose direct support cites one of its WA chunks. Only the owner adds or signs off an entry, in his own words. Expired entries are ignored. Give each entry waPassageFingerprints (guidancePassageFingerprint of each signed WA passage's text) so it still matches after a re-index gives the passages new ids.",
   "differences": []
 }
