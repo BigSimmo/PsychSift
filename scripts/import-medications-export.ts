@@ -1,8 +1,10 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 
 import {
+  buildMedicationSnapshotProvenance,
   diffMedicationSnapshots,
   judgeMedicationImport,
   parseAcceptedChanges,
@@ -32,6 +34,22 @@ function canonicalSnapshotPath() {
 
 function outputPath() {
   return path.resolve(process.cwd(), "data/medications-snapshot.json");
+}
+
+function provenancePath() {
+  return path.resolve(process.cwd(), "data/medications-snapshot.provenance.json");
+}
+
+/** The Medications checkout's HEAD commit, or null when it is not a git checkout or git is missing. */
+function upstreamCommitFor(source: string): string | null {
+  try {
+    return execFileSync("git", ["-C", path.dirname(source), "rev-parse", "HEAD"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return null;
+  }
 }
 
 const CLOZAPINE_OVERVIEW =
@@ -111,12 +129,15 @@ function main() {
 
   let records: MedicationExportRecord[];
   let source: string;
+  let sourceKind: "canonical-snapshot" | "export-zip";
   if (existsSync(canonicalSnapshotPath())) {
     records = loadFromCanonicalSnapshot();
     source = canonicalSnapshotPath();
+    sourceKind = "canonical-snapshot";
   } else if (existsSync(zipPath)) {
     records = loadFromZip(zipPath);
     source = zipPath;
+    sourceKind = "export-zip";
   } else {
     throw new Error(`No canonical snapshot and zip not found at ${zipPath}`);
   }
@@ -144,8 +165,23 @@ function main() {
     return;
   }
 
-  writeFileSync(out, `${JSON.stringify(records, null, 2)}\n`, "utf8");
+  const snapshotText = `${JSON.stringify(records, null, 2)}\n`;
+  writeFileSync(out, snapshotText, "utf8");
+  // Audit 2026-10-24 E2E-09: record which upstream version this snapshot is.
+  const provenance = buildMedicationSnapshotProvenance({
+    sourceKind,
+    sourceName: path.basename(source),
+    upstreamCommit: upstreamCommitFor(source),
+    sourceModifiedAt: statSync(source).mtime.toISOString(),
+    importedAt: new Date().toISOString(),
+    recordCount: records.length,
+    snapshotSha256: createHash("sha256").update(snapshotText, "utf8").digest("hex"),
+  });
+  writeFileSync(provenancePath(), `${JSON.stringify(provenance, null, 2)}\n`, "utf8");
   console.log(`[medications:import] Wrote ${records.length} medications from ${source}`);
+  console.log(
+    `[medications:import] Upstream commit: ${provenance.upstreamCommit ?? "not known (source is not a git checkout)"}`,
+  );
   console.log(`[medications:import] Output: ${out}`);
 }
 
