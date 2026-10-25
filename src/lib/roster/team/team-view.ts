@@ -1,4 +1,4 @@
-import { perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
+import { addDaysToDate, perthDateOf, perthTimeOf, perthWallToIso } from "@/lib/roster/shifts/perth-time";
 import type { OnCallShift } from "@/lib/roster/shifts/model";
 import type { RosterAssignment, RosterGrade, RosterTeam } from "./model";
 
@@ -22,21 +22,26 @@ export function groupByGrade(assignments: readonly RosterAssignment[]) {
     .map(([grade, label]) => ({ grade, label, assignments: assignments.filter((row) => row.grade === grade) }))
     .filter((group) => group.assignments.length);
 }
-export function timelineSpan(assignment: RosterAssignment, day: string) {
-  const start = Date.parse(`${day}T00:00:00+08:00`);
-  const end = start + 86_400_000;
+/**
+ * Where a shift sits on `day`'s 24-hour rail. The day runs from midnight to midnight in the
+ * work zone, the same zone the labels are read in, so a bar lines up with its times (and a
+ * daylight-saving day is 23 or 25 hours, not a fixed 86,400,000 ms).
+ */
+export function timelineSpan(assignment: RosterAssignment, day: string, zone?: string) {
+  const start = Date.parse(perthWallToIso(day, "00:00", zone) ?? "");
+  const end = Date.parse(perthWallToIso(addDaysToDate(day, 1), "00:00", zone) ?? "");
   const a = Date.parse(assignment.startsAt),
     b = Date.parse(assignment.endsAt);
-  if (!Number.isFinite(start) || a >= end || b <= start) return null;
+  if (!Number.isFinite(start) || !Number.isFinite(end) || a >= end || b <= start) return null;
   return {
     startMinute: (Math.max(start, a) - start) / 60000,
     endMinute: (Math.min(end, b) - start) / 60000,
     label:
       a < start
-        ? `to ${perthTimeOf(assignment.endsAt)}`
+        ? `to ${perthTimeOf(assignment.endsAt, zone)}`
         : b > end
-          ? `from ${perthTimeOf(assignment.startsAt)}`
-          : `${perthTimeOf(assignment.startsAt)}–${b === end ? "24:00" : perthTimeOf(assignment.endsAt)}`,
+          ? `from ${perthTimeOf(assignment.startsAt, zone)}`
+          : `${perthTimeOf(assignment.startsAt, zone)}–${b === end ? "24:00" : perthTimeOf(assignment.endsAt, zone)}`,
   };
 }
 export function withMe(assignments: readonly RosterAssignment[], me: string, now: Date) {

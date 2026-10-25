@@ -310,6 +310,18 @@ describe("writing to a team", () => {
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
 
+  it("rate-limits the held example team like the live one, before doing the sample work", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    mocks.consumeSubjectApiRateLimit.mockResolvedValue({ limited: true });
+    const response = await POST(jsonRequest({ action: "needs.set", expectedIds: [], needs: [] }), ctx());
+    expect(response.status).toBe(429);
+    expect(response.headers.get("Cache-Control")).toBe("private, no-store, max-age=0");
+    expect(mocks.consumeSubjectApiRateLimit).toHaveBeenCalledWith(
+      expect.objectContaining({ bucket: "roster", subject: { kind: "owner", ownerId: ALEX } }),
+    );
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
   it("takes a gap or a shift for open.post, never both, and never a leave gap", async () => {
     const gap = {
       action: "open.post",

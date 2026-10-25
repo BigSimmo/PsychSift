@@ -18,6 +18,7 @@ import {
   type OnCallShiftInput,
 } from "@/lib/roster/shifts/model";
 import { addDaysToDate, perthWallToIso } from "@/lib/roster/shifts/perth-time";
+import { currentWorkTimeZone } from "@/lib/work-time/current-zone";
 import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
 
 /**
@@ -141,7 +142,8 @@ function ShiftForm({
       return;
     }
     setSaving(true);
-    const failure = await onSubmit({ shift, repeatWeeks });
+    // The zone manualShiftFrom read the times in, so the server repeats on the same wall clock.
+    const failure = await onSubmit({ shift, repeatWeeks, timeZone: currentWorkTimeZone() });
     setSaving(false);
     setError(failure);
   }

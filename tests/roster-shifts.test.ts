@@ -677,6 +677,36 @@ describe("hand-added shifts", () => {
     expect(new Set(rows.map((row) => row.starts_at)).size).toBe(3);
   });
 
+  it("repeats on the work zone's wall clock across a daylight-saving change", async () => {
+    // Monday 28 Sep 2026, 08:00-17:00 Sydney (AEST, UTC+10). Daylight saving starts on
+    // 4 Oct, so the next Monday's 08:00 is 21:00Z the day before, not a fixed 168 h later.
+    const calls = fakeSupabase({ on_call_shifts: [] });
+    const sydney = {
+      startsAt: "2026-09-27T22:00:00.000Z",
+      endsAt: "2026-09-28T07:00:00.000Z",
+      title: "Clinic",
+      location: null,
+      sourceUid: null,
+    };
+    const response = await postManualShift(
+      manualRequest({ shift: sydney, repeatWeeks: 1, timeZone: "Australia/Sydney" }),
+    );
+    expect(response.status).toBe(200);
+    const rows = calls.find((call) => call.op === "insert")?.insertedRows as Array<{
+      starts_at: string;
+      ends_at: string;
+    }>;
+    expect(rows.map((row) => [row.starts_at, row.ends_at])).toEqual([
+      ["2026-09-27T22:00:00.000Z", "2026-09-28T07:00:00.000Z"],
+      ["2026-10-04T21:00:00.000Z", "2026-10-05T06:00:00.000Z"],
+    ]);
+
+    // An unsupported zone is refused rather than guessed.
+    expect(
+      (await postManualShift(manualRequest({ shift: sydney, repeatWeeks: 1, timeZone: "Mars/Olympus" }))).status,
+    ).toBe(400);
+  });
+
   it("gives a single, non-repeating shift its own series, so it can be removed", async () => {
     const calls = fakeSupabase({ on_call_shifts: [] });
     await postManualShift(manualRequest({ shift: shift("2026-10-05", "08:00", "17:00"), repeatWeeks: 0 }));

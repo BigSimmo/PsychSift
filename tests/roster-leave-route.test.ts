@@ -58,6 +58,15 @@ it("serves example leave while the release is held, and never touches real leave
   expect((await GET(new Request("http://x/api/roster/leave"))).status).toBe(401);
 });
 
+it("rate-limits the held example leave like the real one", async () => {
+  vi.stubEnv("NODE_ENV", "production");
+  mocks.rate.mockResolvedValueOnce({ limited: true });
+  const response = await GET(new Request("http://x/api/roster/leave"));
+  expect(response.status).toBe(429);
+  expect(mocks.rate).toHaveBeenCalledWith(expect.objectContaining({ bucket: "roster" }));
+  expect(mocks.from).not.toHaveBeenCalled();
+});
+
 const ME = "5e000000-0000-4000-8000-000000000001";
 const OTHER = "5e000000-0000-4000-8000-000000000002";
 const SERVICE = "5e000000-0000-4000-8000-000000000003";

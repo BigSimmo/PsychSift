@@ -612,6 +612,7 @@ describe("Roster Shifts", () => {
         kind: "evening",
       },
       repeatWeeks: 3,
+      timeZone: "Australia/Perth",
     });
   });
 

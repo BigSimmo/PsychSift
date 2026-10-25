@@ -293,6 +293,34 @@ describe("search scope filters", () => {
     });
   });
 
+  it("keeps interstate health services out of the Local filter", async () => {
+    const documents = [
+      { id: "wa-north", metadata: { publisher: "North Metropolitan Health Service" }, import_batch_id: null },
+      { id: "wa-cahs", metadata: { publisher: "Child and Adolescent Health Service" }, import_batch_id: null },
+      {
+        id: "qld-metro-north",
+        metadata: { publisher: "Metro North Hospital and Health Service" },
+        import_batch_id: null,
+      },
+      {
+        id: "nsw-hunter",
+        metadata: { publisher: "Hunter New England Local Health District Health Service", jurisdiction: "NSW" },
+        import_batch_id: null,
+      },
+    ];
+    const scopeFor = async (locality: "local" | "non_local") => {
+      const supabase = supabaseMock((call) => ({ data: call.table === "documents" ? documents : [], error: null }));
+      const scope = await resolveSearchScope({
+        supabase: supabase as never,
+        accessScope: { includePublic: true },
+        filters: { locality },
+      });
+      return [...(scope.documentIds ?? [])].sort();
+    };
+    expect(await scopeFor("local")).toEqual(["wa-cahs", "wa-north"]);
+    expect(await scopeFor("non_local")).toEqual(["nsw-hunter", "qld-metro-north"]);
+  });
+
   it("does not enumerate every public document when no filters are requested", async () => {
     const from = () => {
       throw new Error("public all-document scope should be enforced by the retrieval owner sentinel");

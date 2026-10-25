@@ -47,6 +47,19 @@ describe("team display uses actual overlap and Perth dates", () => {
     expect(timelineSpan(mine, "2026-10-16")).toMatchObject({ label: "to 08:00", startMinute: 0, endMinute: 480 });
     expect(timelineSpan(mine, "2026-10-17")).toBeNull();
   });
+  it("runs the day rail from midnight to midnight in the same zone as its labels", () => {
+    // 08:00-17:00 Sydney on Thu 15 Oct 2026 (AEDT, UTC+11) is 21:00Z-06:00Z.
+    const sydney = { ...mine, startsAt: "2026-10-14T21:00:00.000Z", endsAt: "2026-10-15T06:00:00.000Z" };
+    expect(timelineSpan(sydney, "2026-10-15", "Australia/Sydney")).toEqual({
+      label: "08:00–17:00",
+      startMinute: 480,
+      endMinute: 1020,
+    });
+    expect(timelineSpan(sydney, "2026-10-14", "Australia/Sydney")).toBeNull();
+    // Daylight saving starts on Sun 4 Oct 2026, so that Sydney day is 23 hours long.
+    const allDay = { ...mine, startsAt: "2026-10-03T14:00:00.000Z", endsAt: "2026-10-04T13:00:00.000Z" };
+    expect(timelineSpan(allDay, "2026-10-04", "Australia/Sydney")).toMatchObject({ startMinute: 0, endMinute: 1380 });
+  });
   it("orders grades and preserves the ungraded group", () => {
     const rows = [mine, { ...mine, id: "u", grade: null }, { ...mine, id: "c", grade: "consultant" as const }];
     expect(groupByGrade(rows).map((group) => group.label)).toEqual(["Consultants", "Registrars", "Grade not set"]);

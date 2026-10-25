@@ -233,6 +233,16 @@ export function normalizeSourceMetadata(input: unknown): ClinicalSourceMetadata 
   return normalizeClinicalSourceMetadata(safeInput as ClinicalSourceMetadataInput);
 }
 
+// Only WA's own health services count by name. A bare "health service" also matched
+// interstate publishers such as Queensland's "Metro North Hospital and Health Service".
+const LOCAL_SOURCE =
+  /\b(?:wa|western australia|north metropolitan|east metropolitan|south metropolitan|perth|child and adolescent health service|country health service)\b/;
+
+/** True when a source's jurisdiction or publisher names Western Australia: the "Local" filter. */
+export function isLocalSource(metadata: Pick<ClinicalSourceMetadata, "jurisdiction" | "publisher">): boolean {
+  return LOCAL_SOURCE.test(`${metadata.jurisdiction ?? ""} ${metadata.publisher ?? ""}`.toLowerCase());
+}
+
 const GOVERNANCE_FIELDS = ["document_status", "clinical_validation_status", "extraction_quality"] as const;
 
 /** True when the record carries at least one explicit governance field. */

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { ClinicalSourceMetadata, DocumentLabelType } from "@/lib/types";
-import { normalizeSourceMetadata } from "@/lib/source-metadata";
+import type { DocumentLabelType } from "@/lib/types";
+import { isLocalSource, normalizeSourceMetadata } from "@/lib/source-metadata";
 import type { RetrievalAccessScope } from "@/lib/owner-scope";
 
 const labelTypes = [
@@ -224,13 +224,6 @@ async function loadScopeLabels(args: {
   }
 
   return rows;
-}
-
-function isLocalSource(metadata: ClinicalSourceMetadata) {
-  const jurisdiction = `${metadata.jurisdiction ?? ""} ${metadata.publisher ?? ""}`.toLowerCase();
-  return /\b(?:wa|western australia|north metropolitan|east metropolitan|south metropolitan|perth|health service)\b/.test(
-    jurisdiction,
-  );
 }
 
 function metadataMatchesLocality(row: ScopeDocumentRow, filters: SearchScopeFilters) {
