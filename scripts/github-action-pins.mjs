@@ -101,6 +101,13 @@ const reviewedActionPins = new Map([
       // 0.3.302 -> 0.3.303 (action.yml, run.ts, package.json, bun.lock) — no
       // change to permissions, tokens/secrets handling, or network endpoints.
       ["5eb090f3c3afd701a0672cd32981197ca27688f6", "v1.0.253"],
+      // Reviewed 2026-10-25 for PR #3787: tag v1.0.259 (annotated tag object
+      // 515fe2be) dereferences to commit ae68417a. The upstream diff
+      // v1.0.253...v1.0.259 touches only action.yml, run.ts, package.json and
+      // bun.lock to move Claude Code 2.1.303 -> 2.1.309 and Agent SDK
+      // 0.3.303 -> 0.3.309 — no change to permissions, tokens/secrets
+      // handling, or network endpoints.
+      ["ae68417a745a5df4b2124873632bd73a2255e6f6", "v1.0.259"],
     ]),
   ],
   ["actions/cache", new Map([["55cc8345863c7cc4c66a329aec7e433d2d1c52a9", "v6"]])],
