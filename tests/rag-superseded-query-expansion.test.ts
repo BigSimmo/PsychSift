@@ -4,7 +4,7 @@
  * version's title could pull that search towards rows that are then thrown away (#BFCTST).
  */
 import { describe, expect, it } from "vitest";
-import { expandClinicalQueryWithCandidateMetadata } from "../src/lib/rag/rag";
+import { expandClinicalQueryWithCandidateMetadata } from "../src/lib/rag/rag-metadata-expansion";
 import type { SearchResult } from "../src/lib/types";
 
 function candidate(status: "current" | "outdated") {
