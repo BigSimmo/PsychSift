@@ -108,12 +108,21 @@ function optionSlug(name: string) {
   return OPTION_SLUG_OVERRIDES[fullKey] ?? OPTION_SLUG_OVERRIDES[key] ?? slugify(fullKey);
 }
 
-function mapUrgency(raw: string): DifferentialRecord["status"] {
-  const normalized = raw.trim().toLowerCase().split(/\r?\n/)[0].trim();
+/**
+ * Map the export's urgency label to a tier. An unrecognised or missing label stops the
+ * import rather than defaulting to "routine": silently filing a time-critical
+ * presentation in the lowest tier is the opposite of failing conservatively.
+ */
+function mapUrgency(raw: string, entryLabel: string): DifferentialRecord["status"] {
+  const label = raw.trim().split(/\r?\n/)[0].trim();
+  const normalized = label.toLowerCase();
   if (normalized.startsWith("emergent")) return "emergent";
   if (normalized.startsWith("urgent")) return "urgent";
   if (normalized.startsWith("standard") || normalized.startsWith("routine")) return "routine";
-  return "routine";
+  throw new Error(
+    `Unrecognised urgency ${JSON.stringify(label)} in differentials entry ${entryLabel}; ` +
+      "expected emergent, urgent, standard or routine.",
+  );
 }
 
 function splitSection(content: string, label: string) {
@@ -210,7 +219,7 @@ export function parseEntryFile(content: string, fileName?: string): ParsedPresen
   const title = parseEntryTitle(content);
   const defaultSlug = slugify(title);
   const slug = PRESENTATION_SLUG_OVERRIDES[entryId] ?? PRESENTATION_SLUG_OVERRIDES[defaultSlug] ?? defaultSlug;
-  const status = mapUrgency(splitSection(content, "Urgency") || "routine");
+  const status = mapUrgency(splitSection(content, "Urgency"), fileName ? `${entryId} (${fileName})` : entryId);
   const axisRaw = splitSection(content, "Axis").toLowerCase();
   const axis: ParsedPresentation["axis"] = axisRaw.includes("organic")
     ? "organic"

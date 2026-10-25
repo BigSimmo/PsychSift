@@ -160,6 +160,20 @@ OPTIONS:
     expect(parsed.status).toBe("routine");
   });
 
+  it("refuses an unrecognised or missing urgency instead of defaulting to routine", () => {
+    const entry = (urgencyLine: string) => `=== ENTRY 16 ===
+Agitation
+
+${urgencyLine}
+Axis: mixed
+Population: general
+
+OPTIONS:
+1. Delirium — Acute change`;
+    expect(() => parseEntryFile(entry("Urgency: Emergency"))).toThrow(/Unrecognised urgency "Emergency".*entry 16/);
+    expect(() => parseEntryFile(entry(""))).toThrow(/Unrecognised urgency "".*entry 16/);
+  });
+
   it("parses scenario presets and search aliases", () => {
     const presets = parseScenarioPresets(
       `## 1. Older adult acute confusion\n- **Query:** \`older adult acute confusion\`\n- **Signals:** Older adult onset\n- **Entries:**\n  - Entry 1 — Delirium`,

@@ -51,6 +51,12 @@ describe("GitHub Action pin validation", () => {
 
   it("allows repository-local actions", () => {
     expect(validateActionReference("        uses: ./.github/actions/example@v1")).toBeNull();
+    expect(validateActionReference("        uses: ./.github/actions/example")).toBeNull();
+  });
+
+  it("rejects a uses: reference with no pinned ref, such as a docker:// tag", () => {
+    expect(validateActionReference("      - uses: docker://alpine:3.20")).toContain("has no pinned ref");
+    expect(validateActionReference("        uses: some-org/some-action")).toContain("has no pinned ref");
   });
 
   it("accepts the reviewed autofix.ci action pin", () => {
