@@ -4877,6 +4877,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-26-crisis-routing-under-18-youth-and-000.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/development-speed-playbook.md",
         "section": "root",
         "catalogued": true
