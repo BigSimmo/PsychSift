@@ -17,8 +17,18 @@ export const dynamic = "force-dynamic";
 // route forwards notable deploy status changes for the app + worker services to
 // Slack/Discord — the piece GitHub cannot report, since it does not know Railway's
 // deploy outcome. See docs/webhooks.md for setup.
+//
+// Railway's current payload names the event in `type` ("Deployment.failed") and nests the
+// names under `resource` and the deploy status under `details`. The older flat shape (top-level
+// `status`, `project`, `service`) is still read. Reading only the flat shape answered every
+// current delivery with `status_not_notable`, so an authenticated failed deploy still reached
+// nobody (audit 26 Oct 2026, LS-02).
 
 const namedEntitySchema = z.object({ name: z.string().max(200).optional() });
+
+const deploymentSchema = z
+  .object({ id: z.string().max(200).optional(), meta: z.record(z.string().max(200), z.unknown()).optional() })
+  .optional();
 
 const railwayWebhookSchema = z.object({
   type: z.string().max(200).optional(),
@@ -27,10 +37,19 @@ const railwayWebhookSchema = z.object({
   project: namedEntitySchema.optional(),
   environment: namedEntitySchema.optional(),
   service: namedEntitySchema.optional(),
-  deployment: z
-    .object({ id: z.string().max(200).optional(), meta: z.record(z.string().max(200), z.unknown()).optional() })
+  deployment: deploymentSchema,
+  details: z.object({ status: z.string().max(200).optional() }).optional(),
+  resource: z
+    .object({
+      project: namedEntitySchema.optional(),
+      environment: namedEntitySchema.optional(),
+      service: namedEntitySchema.optional(),
+      deployment: deploymentSchema,
+    })
     .optional(),
 });
+
+type RailwayWebhookPayload = z.infer<typeof railwayWebhookSchema>;
 
 // Only forward status changes worth a ping; transient build/deploy phases are
 // dropped to keep the channel quiet.
@@ -43,10 +62,21 @@ function severityForStatus(status: string): ChatSeverity {
   return "info";
 }
 
-function serviceName(payload: z.infer<typeof railwayWebhookSchema>): string {
-  const fromService = payload.service?.name;
+// "Deployment.failed" -> "FAILED". Only deployment events carry a deploy status; volume and
+// monitor alerts have other prefixes and fall through to the payload's own status fields.
+function statusFromType(type: string | undefined): string {
+  const match = /^deployment\.([a-z_]+)$/i.exec(type ?? "");
+  return match?.[1]?.toUpperCase() ?? "";
+}
+
+function deployStatus(payload: RailwayWebhookPayload): string {
+  return (statusFromType(payload.type) || payload.details?.status || payload.status || "").toUpperCase();
+}
+
+function serviceName(payload: RailwayWebhookPayload): string {
+  const fromService = payload.resource?.service?.name ?? payload.service?.name;
   if (typeof fromService === "string" && fromService) return fromService;
-  const fromMeta = payload.deployment?.meta?.["serviceName"];
+  const fromMeta = (payload.resource?.deployment ?? payload.deployment)?.meta?.["serviceName"];
   if (typeof fromMeta === "string" && fromMeta) return fromMeta;
   return "unknown service";
 }
@@ -100,13 +130,13 @@ export async function POST(request: Request) {
     }
 
     const payload = parsed.data;
-    const status = (payload.status ?? "").toUpperCase();
+    const status = deployStatus(payload);
     if (!NOTABLE_STATUSES.has(status)) {
       return NextResponse.json({ skipped: true, reason: "status_not_notable", status });
     }
 
-    const project = payload.project?.name ?? "Railway project";
-    const environment = payload.environment?.name ?? "unknown environment";
+    const project = payload.resource?.project?.name ?? payload.project?.name ?? "Railway project";
+    const environment = payload.resource?.environment?.name ?? payload.environment?.name ?? "unknown environment";
     const service = serviceName(payload);
     const severity = severityForStatus(status);
 
