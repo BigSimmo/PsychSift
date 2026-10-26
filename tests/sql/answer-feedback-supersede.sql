@@ -147,7 +147,7 @@ select pg_temp.assert_true(
   'a superseding note gets its own 30-day clock, so the purge leaves it');
 delete from auth.users where id = '51111111-1111-4111-8111-111111111111';
 select pg_temp.assert_true(
-  (select owner_id is null and feedback_category = 'unsupported_answer' from public.rag_answer_feedback
+  (select owner_id is null and note is null and feedback_category = 'unsupported_answer' from public.rag_answer_feedback
    where interaction_id = '5b000000-0000-4000-8000-000000000001'),
-  'account deletion clears the owner and keeps the report');
+  'account deletion clears the owner and the note, and keeps the report');
 rollback;

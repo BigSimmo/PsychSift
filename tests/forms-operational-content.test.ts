@@ -88,7 +88,7 @@ describe("forms catalogue operational content", () => {
     // Josh confirmed the submitted sign-offs on 2026-10-02 and Form 2 was signed on
     // 2026-10-06. The 20 Oct 2026 clinical content audit edited eight signed forms, which
     // went back to drafted until the owner signs each one again with clinical:review.
-    expect([...drafted]).toEqual(["1a", "3d", "4b", "5a", "5b", "5c", "11d", "12c"]);
+    expect([...drafted]).toEqual(["1a", "3b", "3d", "4b", "5a", "5b", "5c", "11d", "12c"]);
 
     for (const record of formRecords) {
       const details = formCatalogDetails(record);
@@ -218,7 +218,7 @@ describe("forms catalogue operational content", () => {
     const sheet = buildSheet();
     expect(sheet.match(/\*\*Sign-off pin\*\*/g)?.length).toBe(formsContentReview.forms.length);
     expect(sheet).toContain("npm run clinical:review");
-    expect(sheet).toContain("**46 of 54 forms have clinician sign-off.**");
+    expect(sheet).toContain("**45 of 54 forms have clinician sign-off.**");
     expect(sheet).not.toContain("None of it carries");
   });
 });

@@ -150,16 +150,17 @@ material.
 | Admin extra time, leave balances and settings (`extra_time_records`, `admin_leave_balances`, `admin_settings`) and Teaching tables (`teaching_*`)                                                                                                                                                                                                                                                                                                                                      | Supabase (Sydney), service role only                                                                                                                                                                                                                                         | Medium (staff personal information)                                                                                                          | As the Admin and Teaching plans describe.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | Course bookings (`work_booking_courses`, `work_course_bookings`): courses and work requirements an organiser posts (title, about, place, time, organiser label, change notes) and each doctor's booking with their name, copied from their team member record, and its status                                                                                                                                                                                                          | Supabase (Sydney), RLS on with no policies, reached only through the bookings functions (service role); course text and the organiser label pass the shared patient-detail check                                                                                             | Medium (staff personal information)                                                                                                          | A doctor sees their own booking, and for everyone else's live places only the status, booking time and a hashed id, with no name. A site administrator, or anyone currently allowed to post courses for its team (a team manager, or the hospital's Medical Workforce or DCT), sees booked names. An organiser who loses that role stops seeing them. A booking is deleted with the doctor's account. A nightly job deletes each course, with every booking on it, once the course day is more than 12 months past (`work_bookings_retention_purge`, the same span as Roster). Added 2026-10-09. |
 
-**Planned Roster Release 2 leave access (approved by Josh 2026-09-27; not yet deployed):**
-the current table row above describes the count-only access in the merged SQL; live schema
-application is checked separately by the post-merge drift workflow. The follow-up migration's
-`roster_read('team_leave')` will let a roster manager of a confirmed team see an active team
-member's `userId`, name, leave kind (annual or professional development), start and end dates,
+**Roster Release 2 named leave access (approved by the owner 2026-09-27, shipped in
+`20260927220000_roster_release_two.sql`, reconfirmed by the owner on 2026-10-26, see
+[the decision](decisions/2026-10-26-roster-managers-see-named-leave.md)):**
+`roster_read('team_leave')` lets a roster manager of a confirmed team see an active team
+member's `userId`, name, leave kind (annual, PD, exam or personal, from
+`20261009002200_roster_leave_more_kinds.sql`), start and end dates,
 and status (planned, applied or approved), for a requested window of at most 62 days. The
 purpose is to plan cover; this view does not approve leave. Ordinary members continue to see
 only the anonymous overlap count. The dates, kind and status stay in the existing owner-scoped
 `roster_leave` table in Supabase (Sydney); names come from the team's member record. No leave
-reason or patient information is collected, and the plan adds no phone storage. The merged purge
+reason or patient information is collected, and it adds no phone storage. The merged purge
 is designed to delete leave 12 months after it ends; account deletion cascades to the leave row.
 Release 2's
 "Delete my data" flow will delete the doctor's own leave rows, and revoking team membership
