@@ -177,6 +177,9 @@ for (const colorScheme of ["light", "dark"] as const) {
       await page.keyboard.press("Tab");
       await expect(page.locator(":focus-visible")).toHaveCount(1);
       await expectNoHorizontalOverflow(page);
+      // The first Tab shows the skip link over the header for as long as it has focus.
+      // Scan the resting page, so Target Size (2.5.8) measures the controls themselves.
+      await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
       const axe = await new AxeBuilder({ page })
         .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
         .analyze();

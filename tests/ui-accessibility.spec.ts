@@ -150,9 +150,9 @@ async function openScopeControl(page: Page) {
 
 // wcag22aa adds Target Size (2.5.8), which the admin pages missed before (A11Y-18).
 const axeWcagTags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
-// Advisory gate: only fail on the impacts a clinician-facing release must not ship.
-// Lower-impact findings stay visible in the attached report without blocking the lane.
-const axeBlockingImpacts = new Set(["critical", "serious"]);
+// Every WCAG A/AA failure blocks, moderate ones included: a moderate WCAG failure is
+// still a failure (A11Y-18). Minor findings stay visible in the attached report.
+const axeBlockingImpacts = new Set(["critical", "serious", "moderate"]);
 
 async function expectNoBlockingAxeViolations(page: Page, testInfo: TestInfo, options?: { disableRules?: string[] }) {
   const builder = new AxeBuilder({ page }).withTags(axeWcagTags);
@@ -169,7 +169,7 @@ async function expectNoBlockingAxeViolations(page: Page, testInfo: TestInfo, opt
     (violation) =>
       `${violation.id} (${violation.impact}): ${violation.help} — ${violation.nodes.length} node(s), see ${violation.helpUrl}`,
   );
-  expect(summary, "axe found critical/serious WCAG A/AA violations").toEqual([]);
+  expect(summary, "axe found WCAG A/AA violations").toEqual([]);
 }
 
 const workAreaHomes = [
