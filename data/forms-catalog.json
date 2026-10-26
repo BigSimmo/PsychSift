@@ -396,7 +396,7 @@
       "maker": "Authorised practitioner specified by the applicable section.",
       "involved": "Confirm patient, maker, receiving service, support contacts and required notifications from the form.",
       "threshold": "Use only after identifying whether the continuation is under s28, s59 or s62.",
-      "clock": "S28 continuation: up to 24 hours, measured from end of the current s28 block. Immediate reassessment required; cumulative ceiling 72 hours metro/144 hours non-metro. S59 non-metropolitan examination: up to a further 48 hours, measured from end of the initial examination detention outside metro. S62 continuation: up to 24 hours, measured from end of current s62 block. Immediate reassessment required; cumulative ceiling 72 hours.",
+      "clock": "S28 continuation: up to 24 hours, measured from end of the current s28 block. Immediate reassessment required; continuous ceiling 72 hours metro/144 hours non-metro. S59 non-metropolitan examination: up to a further 48 hours, measured from end of the initial examination detention outside metro. S62 continuation: up to 24 hours, measured from end of current s62 block. Immediate reassessment required; continuous ceiling 72 hours.",
       "destination": "Confirm destination/place fields on the approved form.",
       "authorises": "Authority is limited to what the approved form and Act section state.",
       "doesNotAuthorise": "Does not replace linked forms, consent, notification or reporting duties unless the source says so.",
@@ -453,7 +453,7 @@
         "clock": {
           "title": "S28 continuation: up to 24 hours",
           "detail": "from end of the current s28 block · 2 further clocks",
-          "body": "S28 continuation: up to 24 hours, measured from end of the current s28 block. Immediate reassessment required; cumulative ceiling 72 hours metro/144 hours non-metro. S59 non-metropolitan examination: up to a further 48 hours, measured from end of the initial examination detention outside metro. S62 continuation: up to 24 hours, measured from end of current s62 block. Immediate reassessment required; cumulative ceiling 72 hours."
+          "body": "S28 continuation: up to 24 hours, measured from end of the current s28 block. Immediate reassessment required; continuous ceiling 72 hours metro/144 hours non-metro. S59 non-metropolitan examination: up to a further 48 hours, measured from end of the initial examination detention outside metro. S62 continuation: up to 24 hours, measured from end of current s62 block. Immediate reassessment required; continuous ceiling 72 hours."
         }
       }
     },
