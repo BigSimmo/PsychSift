@@ -1,8 +1,8 @@
 # Decision: Wrong quoted answers go to review, and the crisis banner catches two more phrasings
 
 - **Status:** decided 2026-10-26
-- **Source:** the owner, in chat ("yes to both" for the answer safety fixes, 26 Oct 2026). Findings
-  A2R-01 and A2R-02 in the project-files report `reviews/2026-10-26-clinical-answer-safety.md`.
+- **Source:** `src/lib/rag/rag-extractive-risk-gate.ts`, find "Answer safety re-audit A2R-01"
+- **Background:** the owner said "yes to both" in chat on 26 Oct 2026, for findings A2R-01 and A2R-02 in the project-files report `reviews/2026-10-26-clinical-answer-safety.md`.
 
 A2R-01. When the AI draft fails and the answer falls back to a quoted passage, that passage is now
 shown as "passages to review", not as a sourced answer, if a dose or threshold quote is about a
