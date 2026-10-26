@@ -2157,6 +2157,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-26-deploy-gating-and-staging-order.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/superpowers/plans/2026-09-26-cpd-elevation.md",
         "section": "superpowers",
         "catalogued": true
@@ -2374,6 +2379,11 @@
       {
         "path": "docs/superpowers/specs/2026-09-01-calculators-clinical-safety.md",
         "section": "superpowers",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-26-keep-unreviewed-interaction-warning-live.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -3232,6 +3242,16 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-26-openai-monthly-budget.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-26-remove-form-6a-6b-print-layout.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/superpowers/plans/2026-08-20-care-plan-implementation.md",
         "section": "superpowers",
         "catalogued": true
@@ -3524,6 +3544,11 @@
       {
         "path": "docs/codex/performance-reliability/README.md",
         "section": "codex",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-26-questions-stay-out-of-the-address-bar.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -3852,6 +3877,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-26-no-patient-data-rule-extended.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/db-maintenance.md",
         "section": "root",
         "catalogued": true
@@ -4133,6 +4163,11 @@
       },
       {
         "path": "docs/decisions/2026-10-16-cloud-policy-repair-boundary.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-26-third-party-pdfs-admin-only.md",
         "section": "decisions",
         "catalogued": true
       },
@@ -4912,6 +4947,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-26-relayed-approvals-unconfirmed.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/audit/gate-consolidation-audit-2026-09-02.md",
         "section": "audit",
         "catalogued": true
@@ -4949,6 +4989,11 @@
       {
         "path": "docs/governance/physiological-calculator-hold-2026-10-17.md",
         "section": "governance",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-26-shared-on-call-entries-admin-only.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -5097,6 +5142,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-26-adopt-frozen-24-aug-catalogue.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/audit/claude-code-cloud-connection-acceptance-2026-08-17.md",
         "section": "audit",
         "catalogued": true
@@ -5133,6 +5183,11 @@
       },
       {
         "path": "docs/decisions/2026-09-25-tablet-cross-mode-search-is-intended.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-26-clinical-sign-off-sheets.md",
         "section": "decisions",
         "catalogued": true
       },
