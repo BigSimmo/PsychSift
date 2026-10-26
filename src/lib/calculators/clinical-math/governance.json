@@ -87,7 +87,7 @@
   "implementationPins": {
     "src/lib/calculators/clinical-math/renal.ts": "51617e6db4aba04ce6ea89ad0830e21a5902d4a2be75b373821e05ae42cb42d7",
     "src/lib/calculators/clinical-math/qtc.ts": "f7d8e31a707c9f2203c96eda044295c574df545ef06d1d25f36c96fea1cb0afb",
-    "src/lib/calculators/clinical-math/lithium.ts": "5319dedd327f3312c1ad0ada409a8f737c67e68a82199a76e032cdbbf37806ab",
+    "src/lib/calculators/clinical-math/lithium.ts": "49c85b2acdeae02fa7dfb2c195dddb09dd52850cabc8e2e09925b148308a020f",
     "src/lib/calculators/clinical-math/types.ts": "2a3a846b4f5bb7a21ea915ebfa032c2eb95409d3c9ef34fa5fbc6a609c9004f3",
     "src/lib/calculators/clinical-math/index.ts": "93ec21888c7292f2b4667ba85ccb48f5f8027f1617c3110285aa3d895e050a0d",
     "src/components/calculators/clinical-math-panel.tsx": "62f5704c81b5d440ebf2662387f469c7dd92097277b668ee383a688718503efd"
