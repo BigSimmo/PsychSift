@@ -771,7 +771,7 @@ export function MasterDocumentSearch() {
           <section className="mt-4 hidden min-h-0 flex-1 overflow-hidden rounded-lg border border-[color:var(--border-lux)] bg-[color:var(--surface-lux)] shadow-[var(--e2)] md:block">
             <div className="overflow-x-auto">
               <div className="min-w-[56rem]">
-                <div className="grid grid-cols-[minmax(19rem,1.8fr)_minmax(16rem,1.3fr)_9.5rem_7.5rem_6.5rem] gap-3 border-b border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-4 py-3 text-xs font-extrabold uppercase tracking-[0.06em] text-[color:var(--text-soft)]">
+                <div className="grid grid-cols-[minmax(19rem,1.8fr)_minmax(16rem,1.3fr)_9.5rem_7.5rem_6.5rem] gap-3 border-b border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-4 py-3 text-xs font-extrabold uppercase tracking-[0.06em] text-[color:var(--text-muted)]">
                   <span>Document</span>
                   <span>Evidence</span>
                   <span>Status</span>
