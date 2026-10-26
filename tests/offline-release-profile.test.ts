@@ -111,7 +111,7 @@ describe("offline release profile wiring", () => {
         ...stagingValues,
       };
       const nextConfig = readFileSync(join(process.cwd(), "next.config.ts"), "utf8");
-      const uploadPredicate = nextConfig.match(/function shouldEnableSentrySourceMapUpload\(\) \{[\s\S]*?\n\}/)?.[0];
+      const uploadPredicate = nextConfig.match(/function shouldUploadSentrySourceMaps\(\) \{[\s\S]*?\n\}/)?.[0];
       expect(uploadPredicate).toBeTruthy();
       for (const { env } of children) {
         expect(env.OFFLINE_ENV_RELOAD_SENTINEL).toBe("synthetic-loaded");
@@ -123,12 +123,10 @@ describe("offline release profile wiring", () => {
           NEXT_PUBLIC_DEMO_MODE: "true",
           ...offlineSentryControlFlags,
         });
-        expect(runInNewContext(`${uploadPredicate}; shouldEnableSentrySourceMapUpload()`, { process: { env } })).toBe(
-          false,
-        );
+        expect(runInNewContext(`${uploadPredicate}; shouldUploadSentrySourceMaps()`, { process: { env } })).toBe(false);
       }
       expect(
-        runInNewContext(`${uploadPredicate}; shouldEnableSentrySourceMapUpload()`, { process: { env: synthetic } }),
+        runInNewContext(`${uploadPredicate}; shouldUploadSentrySourceMaps()`, { process: { env: synthetic } }),
       ).toBe(true);
     } finally {
       rmSync(root, { recursive: true, force: true, maxRetries: 3 });

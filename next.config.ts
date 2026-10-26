@@ -47,7 +47,7 @@ const nextConfig: NextConfig = {
   // Next detects a different server release and loads the requested URL afresh,
   // rather than applying its route tree to the old client and leaving loading.tsx on screen.
   ...(deploymentId ? { deploymentId } : {}),
-  productionBrowserSourceMaps: shouldEnableSentrySourceMapUpload(),
+  productionBrowserSourceMaps: shouldBuildSentrySourceMaps(),
   distDir: requestedDistDir || ".next",
   ...(requestedTsConfigPath
     ? {
@@ -246,21 +246,31 @@ const nextConfig: NextConfig = {
   },
 };
 
-function shouldEnableSentrySourceMapUpload() {
-  return Boolean(process.env.SENTRY_AUTH_TOKEN && process.env.SENTRY_ORG && process.env.SENTRY_PROJECT);
+// Source maps are BUILT whenever the Sentry org/project are known, but only UPLOADED when a token
+// is also present. The Railway Docker build never receives the token (see Dockerfile), so it builds
+// the same bundles (same Sentry debug-id injection) and then deletes the maps; the
+// sentry-sourcemaps.yml workflow rebuilds the same commit with the token from a GitHub secret and
+// uploads. Keeping the config independent of the token is what keeps the two builds identical.
+function shouldBuildSentrySourceMaps() {
+  return Boolean(process.env.SENTRY_ORG && process.env.SENTRY_PROJECT);
+}
+
+function shouldUploadSentrySourceMaps() {
+  return Boolean(process.env.SENTRY_AUTH_TOKEN?.trim() && process.env.SENTRY_ORG && process.env.SENTRY_PROJECT);
 }
 
 export default async function loadNextConfig() {
   const baseConfig = await withOptionalBundleAnalyzer(nextConfig);
 
-  if (!shouldEnableSentrySourceMapUpload()) {
+  if (!shouldBuildSentrySourceMaps()) {
     return baseConfig;
   }
 
   return withSentryConfig(baseConfig, {
     org: process.env.SENTRY_ORG,
     project: process.env.SENTRY_PROJECT,
-    authToken: process.env.SENTRY_AUTH_TOKEN,
+    // Undefined in the Railway build: the plugin injects debug ids but skips the upload.
+    authToken: shouldUploadSentrySourceMaps() ? process.env.SENTRY_AUTH_TOKEN?.trim() : undefined,
     release: { name: resolveSentryRelease() },
     silent: process.env.NODE_ENV === "production",
     // A diagnostic feature must never be able to block a clinical deploy. Without this, an expired
@@ -274,9 +284,11 @@ export default async function loadNextConfig() {
     suppressOnRouterTransitionStartWarning: true,
     sourcemaps: {
       disable: false,
-      // Successor to the removed `hideSourceMaps` option: upload maps to
-      // Sentry, never serve them publicly.
-      deleteSourcemapsAfterUpload: true,
+      // Must stay false. The plugin deletes the maps in its build-end hook even when it skipped the
+      // upload for lack of a token, which would remove them before the separate
+      // sentry-sourcemaps.yml upload step can read them. Maps are kept out of the public runtime
+      // image by the Dockerfile's explicit `find .next/static -name '*.map' -delete`.
+      deleteSourcemapsAfterUpload: false,
     },
     widenClientFileUpload: true,
   });

@@ -1,0 +1,102 @@
+name: Sentry source maps
+
+# Uploads browser source maps for each commit Railway deploys from main.
+#
+# Why here and not in the Railway build: the Railway Dockerfile builder only supports cache mounts,
+# not BuildKit secret mounts, so the only way to give the Docker build the upload token was a build
+# ARG, which every script `npm run build` runs can read. The Docker build now never sees the token
+# (see the Dockerfile Sentry comment); this job rebuilds the SAME commit with the SAME release
+# identity and build-time public values, then uploads with a pinned @sentry/cli. Only the upload step gets the
+# token.
+#
+# Matching: next.config.ts injects Sentry debug ids whenever SENTRY_ORG and SENTRY_PROJECT are set
+# and the token is not needed for that, so both builds run the identical config. Sentry resolves a
+# production frame by debug id (then release + URL). Byte-identical output is expected for an
+# identical commit, lockfile, Node version and NEXT_PUBLIC_* values, but it is not proven by this
+# job; docs/error-tracking.md ("Source-map upload") lists how to verify on a test release.
+#
+# Setup (owner): repository secret SENTRY_AUTH_TOKEN (release + source-map upload scope only), and
+# repository variables SENTRY_ORG, SENTRY_PROJECT plus every build-time value set on the Railway
+# app service (NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, NEXT_PUBLIC_SITE_URL,
+# RAILWAY_PUBLIC_DOMAIN, NEXT_PUBLIC_MAX_UPLOAD_MB, NEXT_PUBLIC_SUPABASE_STAGING_PROJECT_REF,
+# NEXT_PUBLIC_SUPABASE_STAGING_PROJECT_NAME, and SENTRY_RELEASE / NEXT_DEPLOYMENT_ID only if they
+# are set on Railway). Without the secret or org/project the job warns and exits successfully.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: sentry-sourcemaps-${{ github.sha }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  upload:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    env:
+      SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+      SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+    steps:
+      - name: Check upload configuration
+        id: config
+        env:
+          HAS_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN != '' }}
+        run: |
+          if [ "$HAS_TOKEN" != "true" ] || [ -z "$SENTRY_ORG" ] || [ -z "$SENTRY_PROJECT" ]; then
+            echo "::warning::SENTRY_AUTH_TOKEN secret or SENTRY_ORG/SENTRY_PROJECT variables are not set; skipping source-map upload."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        if: steps.config.outputs.enabled == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node and install
+        if: steps.config.outputs.enabled == 'true'
+        uses: ./.github/actions/setup-node-cached
+
+      # Mirrors the Dockerfile build stage. No SENTRY_AUTH_TOKEN here: the build must run exactly
+      # as it does on Railway (debug ids injected, nothing uploaded).
+      - name: Build with the Railway release identity
+        if: steps.config.outputs.enabled == 'true'
+        env:
+          NODE_ENV: production
+          NEXT_TELEMETRY_DISABLED: "1"
+          ALLOW_LOW_RAM_BUILD: "1"
+          RAILWAY_GIT_COMMIT_SHA: ${{ github.sha }}
+          SENTRY_RELEASE: ${{ vars.SENTRY_RELEASE }}
+          NEXT_DEPLOYMENT_ID: ${{ vars.NEXT_DEPLOYMENT_ID }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          NEXT_PUBLIC_SUPABASE_STAGING_PROJECT_REF: ${{ vars.NEXT_PUBLIC_SUPABASE_STAGING_PROJECT_REF }}
+          NEXT_PUBLIC_SUPABASE_STAGING_PROJECT_NAME: ${{ vars.NEXT_PUBLIC_SUPABASE_STAGING_PROJECT_NAME }}
+          NEXT_PUBLIC_MAX_UPLOAD_MB: ${{ vars.NEXT_PUBLIC_MAX_UPLOAD_MB }}
+          UPLOAD_LIMIT_PARITY_SERVER_MB: ${{ vars.NEXT_PUBLIC_MAX_UPLOAD_MB }}
+          NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}
+          RAILWAY_PUBLIC_DOMAIN: ${{ vars.RAILWAY_PUBLIC_DOMAIN }}
+        run: |
+          node scripts/deploy/write-release-manifest.mjs
+          npm run build
+
+      - name: Upload source maps to Sentry
+        if: steps.config.outputs.enabled == 'true'
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          RELEASE: ${{ vars.SENTRY_RELEASE || github.sha }}
+        run: |
+          set +x
+          npx --yes @sentry/cli@3.8.2 sourcemaps upload \
+            --org "$SENTRY_ORG" --project "$SENTRY_PROJECT" \
+            --release "$RELEASE" --url-prefix "~/_next/static" \
+            .next/static
