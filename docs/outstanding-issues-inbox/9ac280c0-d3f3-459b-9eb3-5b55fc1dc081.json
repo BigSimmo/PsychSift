@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "id": "9ac280c0-d3f3-459b-9eb3-5b55fc1dc081",
+  "createdOn": "2026-10-26",
+  "action": "update",
+  "payload": {
+    "id": "#WY625D",
+    "summary": "Dictionary sources: seven still show no visible publication date, and two hold update statements",
+    "source": "Revalidated against main 9ab09f7d0 on 2026-10-27 (issues report revalidation)",
+    "baseRowFingerprint": "1908df5c33d671caadf392b0c18404cd06410505e5b30c93652c902c189b21aa",
+    "targetUlid": "01M2MTYZ0YWY625D8YN1AS21XM"
+  }
+}
