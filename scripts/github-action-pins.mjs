@@ -108,6 +108,12 @@ const reviewedActionPins = new Map([
       // 0.3.303 -> 0.3.309 — no change to permissions, tokens/secrets
       // handling, or network endpoints.
       ["ae68417a745a5df4b2124873632bd73a2255e6f6", "v1.0.259"],
+      // Reviewed 2026-10-26 for PR #3795: tag v1.0.261 (annotated tag object
+      // af7730b4) dereferences to commit 16f9f71a. The upstream diff
+      // v1.0.259...v1.0.261 moves Claude Code 2.1.309 -> 2.1.310 and pins the
+      // PR checkout to the triggering head SHA (branch.ts, modes/tag) — no
+      // change to permissions, tokens/secrets handling, or network endpoints.
+      ["16f9f71ab9c490faf367f94dd294897edc25be33", "v1.0.261"],
     ]),
   ],
   ["actions/cache", new Map([["55cc8345863c7cc4c66a329aec7e433d2d1c52a9", "v6"]])],

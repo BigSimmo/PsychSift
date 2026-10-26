@@ -71,7 +71,7 @@ jobs:
           fetch-depth: 1
       - name: Run Claude Code
         if: ${{ env.CLAUDE_CODE_OAUTH_TOKEN != '' }}
-        uses: anthropics/claude-code-action@ae68417a745a5df4b2124873632bd73a2255e6f6 # v1.0.259
+        uses: anthropics/claude-code-action@16f9f71ab9c490faf367f94dd294897edc25be33 # v1.0.261
         with:
           # The action's default trigger phrase is "@claude"; it reads the
           # triggering comment/review and acts on the current PR head.
