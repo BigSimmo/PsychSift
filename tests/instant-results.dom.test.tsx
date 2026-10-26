@@ -1,8 +1,9 @@
 /** @vitest-environment jsdom */
 
 import { act, render, renderHook, screen } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { preloadSearchPatientCheck } from "@/components/clinical-dashboard/search-patient-detail-guard";
 import { ResultRowsPlaceholder } from "@/components/clinical-dashboard/result-rows-placeholder";
 import { useMedicationCatalog } from "@/components/clinical-dashboard/use-medication-catalog";
 import {
@@ -33,6 +34,12 @@ let fetchMock: ReturnType<typeof vi.fn<typeof fetch>>;
 function jsonResponse(body: unknown) {
   return new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } });
 }
+
+// Searches check typed text for patient details before they send or navigate; load the check
+// once up front so the steps below see the request go out (privacy audit S1, 2026-10-26).
+beforeAll(async () => {
+  await preloadSearchPatientCheck();
+});
 
 beforeEach(() => {
   fetchMock = vi.fn<typeof fetch>(() => Promise.resolve(jsonResponse({ records: [], total: 0 })));

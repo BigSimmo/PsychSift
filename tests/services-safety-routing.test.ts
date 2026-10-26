@@ -28,9 +28,9 @@ describe("services safety routing", () => {
     expect(detectServiceUrgentIntents("bereaved after my brother died by suicide")).not.toContain("suicide_aftercare");
   });
 
-  it("routes plain youth crisis wording to CAMHS Crisis Connect and MHERL (owner decision 15)", () => {
+  it("routes plain youth crisis wording to CAMHS Crisis Connect, 000 and MHERL (owner decision 15, 26 Oct D4)", () => {
     // "Youth", "young person" and "young people" do not say whether the person is under or over
-    // 18, so both the CAMHS and the adult crisis line are pinned, CAMHS first.
+    // 18, so both the CAMHS and the adult crisis line are pinned, CAMHS first and 000 straight after.
     for (const query of [
       "youth crisis",
       "youth self harm",
@@ -38,15 +38,22 @@ describe("services safety routing", () => {
       "young person suicidal",
       "suicidal young people",
     ]) {
-      expect(detectServiceUrgentIntents(query), query).toEqual(["camhs_crisis", "adult_metro_crisis"]);
-      expect(titles(query, 12).slice(0, 2), query).toEqual([
+      expect(detectServiceUrgentIntents(query), query).toEqual([
+        "camhs_crisis",
+        "emergency",
+        "adult_metro_crisis",
+        "youth_crisis_lines",
+      ]);
+      expect(titles(query, 12).slice(0, 3), query).toEqual([
         "CAMHS Crisis Connect",
+        "Emergency services",
         "Mental Health Emergency Response Line (MHERL)",
       ]);
     }
   });
 
-  it("routes explicit under-18 wording to CAMHS Crisis Connect alone, even when youth is also named", () => {
+  it("routes explicit under-18 wording to CAMHS Crisis Connect and 000 without the adult line, even when youth is also named", () => {
+    // Owner decisions 2026-10-26 (D4, D9): CAMHS Crisis Connect, then 000, then Kids Helpline and Lifeline WA.
     for (const query of [
       "kid self harm",
       "kids suicidal",
@@ -63,19 +70,28 @@ describe("services safety routing", () => {
       "suicidal teen youth",
       "young person aged 15-year-old suicidal",
     ]) {
-      expect(detectServiceUrgentIntents(query), query).toEqual(["camhs_crisis"]);
+      expect(detectServiceUrgentIntents(query), query).toEqual(["camhs_crisis", "emergency", "youth_crisis_lines"]);
       const pinned = rankServiceRecords(serviceRecords, query, 12, [], true)
         .filter(({ reasons }) => reasons.includes("urgent route"))
         .map(({ service }) => service.title);
-      expect(pinned, query).toEqual(["CAMHS Crisis Connect"]);
+      expect(pinned, query).toEqual(["CAMHS Crisis Connect", "Emergency services", "Kids Helpline", "Lifeline WA"]);
       expect(titles(query, 12)[0], query).toBe("CAMHS Crisis Connect");
     }
   });
 
   it("treats every self-harm word form as crisis wording", () => {
     for (const form of ["self harm", "self-harm", "selfharm", "self harming", "self-harmed", "selfharming"]) {
-      expect(detectServiceUrgentIntents(`young person ${form}`), form).toEqual(["camhs_crisis", "adult_metro_crisis"]);
-      expect(detectServiceUrgentIntents(`child ${form}`), form).toEqual(["camhs_crisis"]);
+      expect(detectServiceUrgentIntents(`young person ${form}`), form).toEqual([
+        "camhs_crisis",
+        "emergency",
+        "adult_metro_crisis",
+        "youth_crisis_lines",
+      ]);
+      expect(detectServiceUrgentIntents(`child ${form}`), form).toEqual([
+        "camhs_crisis",
+        "emergency",
+        "youth_crisis_lines",
+      ]);
       expect(detectServiceUrgentIntents(`aboriginal man ${form}`), form).toContain("aboriginal_crisis");
     }
     // Only the self-harm words themselves: "harm" alone, or harm to others, is not crisis wording.
@@ -85,8 +101,10 @@ describe("services safety routing", () => {
   it("keeps main's other urgent routes pinned alongside a youth crisis", () => {
     expect(detectServiceUrgentIntents("aboriginal youth suicide")).toEqual([
       "camhs_crisis",
+      "emergency",
       "aboriginal_crisis",
       "adult_metro_crisis",
+      "youth_crisis_lines",
     ]);
     expect(detectServiceUrgentIntents("youth overdose crisis")).toEqual(
       expect.arrayContaining(["emergency", "camhs_crisis", "adult_metro_crisis", "aod_urgent"]),

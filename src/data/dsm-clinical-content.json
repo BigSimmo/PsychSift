@@ -841,7 +841,7 @@
         "key": "mood",
         "label": "Mood Disorders"
       },
-      "icd_code": "F32.89/F32.9",
+      "icd_code": "F32.89/F32.A",
       "title": "Other specified / Unspecified depressive disorder",
       "key_features": [
         {
@@ -2052,7 +2052,7 @@
         "key": "sub",
         "label": "Substance-Related"
       },
-      "icd_code": "F12.129/F12.239",
+      "icd_code": "F12.129/F12.23",
       "title": "Cannabis intoxication / withdrawal",
       "key_features": [
         {
@@ -2099,7 +2099,7 @@
         "key": "sub",
         "label": "Substance-Related"
       },
-      "icd_code": "F11.129/F11.239",
+      "icd_code": "F11.129/F11.23",
       "title": "Opioid intoxication / withdrawal",
       "key_features": [
         {
@@ -2146,7 +2146,7 @@
         "key": "sub",
         "label": "Substance-Related"
       },
-      "icd_code": "F15.129/F15.239",
+      "icd_code": "F15.129/F15.23",
       "title": "Stimulant intoxication / withdrawal",
       "key_features": [
         {
@@ -2530,7 +2530,7 @@
         "key": "trm",
         "label": "Trauma & Stressor-Related"
       },
-      "icd_code": "F43.8",
+      "icd_code": "F43.81",
       "title": "Prolonged grief disorder",
       "key_features": [
         {
@@ -2597,7 +2597,7 @@
         "key": "trm",
         "label": "Trauma & Stressor-Related"
       },
-      "icd_code": "F94.2",
+      "icd_code": "F94.1",
       "title": "Reactive attachment disorder (RAD)",
       "key_features": [
         {
@@ -2655,7 +2655,7 @@
         "key": "trm",
         "label": "Trauma & Stressor-Related"
       },
-      "icd_code": "F94.1",
+      "icd_code": "F94.2",
       "title": "Disinhibited social engagement disorder (DSED)",
       "key_features": [
         {
@@ -2843,7 +2843,7 @@
         "key": "ncg",
         "label": "Neurocognitive & Delirium"
       },
-      "icd_code": "G31.9/F09",
+      "icd_code": "F06.1",
       "title": "Catatonia (associated, due to GMC, or unspecified)",
       "key_features": [
         {
@@ -3469,7 +3469,7 @@
         "key": "ncg",
         "label": "Neurocognitive & Delirium"
       },
-      "icd_code": "B22.0/F02.80",
+      "icd_code": "B20/F02.80",
       "title": "Neurocognitive disorder due to HIV infection",
       "key_features": [
         {
@@ -6144,7 +6144,7 @@
         "key": "slp",
         "label": "Sleep-Wake"
       },
-      "icd_code": "G47.00",
+      "icd_code": "F51.01",
       "title": "Insomnia disorder",
       "key_features": [
         {
@@ -6211,7 +6211,7 @@
         "key": "slp",
         "label": "Sleep-Wake"
       },
-      "icd_code": "G47.10",
+      "icd_code": "F51.11",
       "title": "Hypersomnolence disorder",
       "key_features": [
         {
@@ -6486,7 +6486,7 @@
         "key": "slp",
         "label": "Sleep-Wake"
       },
-      "icd_code": "G47.61",
+      "icd_code": "G25.81",
       "title": "Restless legs syndrome",
       "key_features": [
         {
@@ -7599,7 +7599,7 @@
         "key": "mim",
         "label": "Medication-Induced Movement"
       },
-      "icd_code": "G24.01",
+      "icd_code": "G24.02",
       "title": "Medication-induced acute dystonia",
       "key_features": [
         {
@@ -7657,7 +7657,7 @@
         "key": "mim",
         "label": "Medication-Induced Movement"
       },
-      "icd_code": "G21.1",
+      "icd_code": "G25.71",
       "title": "Medication-induced acute akathisia",
       "key_features": [
         {
@@ -7707,7 +7707,7 @@
         "key": "mim",
         "label": "Medication-Induced Movement"
       },
-      "icd_code": "G24.09",
+      "icd_code": "G24.01",
       "title": "Tardive dyskinesia",
       "key_features": [
         {
@@ -7766,7 +7766,7 @@
         "key": "mim",
         "label": "Medication-Induced Movement"
       },
-      "icd_code": "G24.09",
+      "icd_code": "G24.09/G25.71",
       "title": "Tardive dystonia & tardive akathisia",
       "key_features": [
         {
@@ -7928,7 +7928,7 @@
         "key": "mim",
         "label": "Medication-Induced Movement"
       },
-      "icd_code": "G25.71",
+      "icd_code": "G25.79",
       "title": "Other medication-induced movement disorder",
       "key_features": [
         {
@@ -7981,7 +7981,7 @@
         "key": "par",
         "label": "Paraphilic & Gender Dysphoria"
       },
-      "icd_code": "F65.81",
+      "icd_code": "F65.3",
       "title": "Voyeuristic disorder",
       "key_features": [
         {

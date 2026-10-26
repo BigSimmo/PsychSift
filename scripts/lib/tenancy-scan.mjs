@@ -118,6 +118,28 @@ export const SCANNED_LIB_MODULES = [
   "src/lib/roster/rotations/repository.ts",
   "src/lib/roster/alerts/outbox.ts",
   "src/lib/roster/alerts/recipients.ts",
+  // Added 2026-10-26 (privacy audit DB-01): personal-data modules that read or write tables directly
+  // outside src/app/api, so neither phase saw them. Each holds or reaches someone's own data (answer
+  // logs, audit rows, phone alerts, calendar feeds, CME drafts and goals, teaching opt-ins, hospital
+  // rosters and role grants, synced work data, favourites, search scope, reindex queueing). Listing
+  // them makes their scope a checked fact or a declared exemption with its proof.
+  "src/lib/answer-telemetry.ts",
+  "src/lib/audit.ts",
+  "src/lib/alerts/timed-sender.ts",
+  "src/lib/calendar/feed-repository.ts",
+  "src/lib/cme/drafts-repository.ts",
+  "src/lib/cme/missed-sessions-repository.ts",
+  "src/lib/cme/plan-goals-repository.ts",
+  "src/lib/teaching/repository.ts",
+  "src/lib/work-roles/hospital-short-staffed.ts",
+  "src/lib/work-roles/hospital-sick.ts",
+  "src/lib/work-roles/hospital-starters.ts",
+  "src/lib/work-roles/people.ts",
+  "src/lib/work-roles/server.ts",
+  "src/lib/work-sync/account-work-sync.ts",
+  "src/lib/favourites-reference.ts",
+  "src/lib/search-scope.ts",
+  "src/lib/ingestion-enqueue.ts",
 ];
 
 export const API_DIR_SEGMENTS = ["src", "app", "api"];
@@ -148,70 +170,49 @@ export function relativeToRepo(repoRoot, file) {
  * tenancy tiers. Generalises the older `ownerIdTablesFromDatabaseTypes()`; the parse is
  * bounded to the `public.Tables` block so RPC (`Functions`) entries cannot be mistaken
  * for tables.
+ *
+ * Reads the TypeScript syntax tree, not lines, so a table written as
+ * `GeneratedTable<{ ... }>` or with its whole `Row` on one line is tiered like any other
+ * (privacy audit DB-01: a line-based parse skipped 21 such tables and mis-tiered two).
  */
 export function tableTiersFromDatabaseTypes(text) {
-  const lines = text.split(/\r?\n/);
   const direct = new Set();
   const userKeyed = new Set();
   const derived = new Set();
   const all = new Set();
 
-  let inPublic = false;
-  let inTables = false;
-  let table = null;
-  let inRow = false;
-  let columns = null;
+  const sourceFile = ts.createSourceFile("database.types.ts", text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const memberNamed = (typeNode, name) =>
+    typeNode && ts.isTypeLiteralNode(typeNode)
+      ? typeNode.members.find(
+          (member) => ts.isPropertySignature(member) && member.name && propertyNameText(member.name) === name,
+        )?.type
+      : undefined;
 
-  const flush = () => {
-    if (!table || !columns) return;
+  let tables;
+  for (const statement of sourceFile.statements) {
+    if (ts.isTypeAliasDeclaration(statement) && statement.name.text === "Database") {
+      tables = memberNamed(memberNamed(statement.type, "public"), "Tables");
+    }
+  }
+  if (!tables || !ts.isTypeLiteralNode(tables)) return { direct, userKeyed, derived, all };
+
+  for (const member of tables.members) {
+    if (!ts.isPropertySignature(member) || !member.name || !member.type) continue;
+    const table = propertyNameText(member.name);
+    // `{ Row: {...}; Insert: ...}` or `GeneratedTable<{...row...}, ...>`.
+    const row = ts.isTypeReferenceNode(member.type) ? member.type.typeArguments?.[0] : memberNamed(member.type, "Row");
+    if (!table || !row || !ts.isTypeLiteralNode(row)) continue;
+    const columns = new Set(
+      row.members
+        .filter((column) => ts.isPropertySignature(column) && column.name)
+        .map((column) => propertyNameText(column.name)),
+    );
     all.add(table);
     if (columns.has("owner_id")) direct.add(table);
     else if (columns.has("user_id")) userKeyed.add(table);
     else if (columns.has("document_id")) derived.add(table);
-    table = null;
-    columns = null;
-  };
-
-  for (const line of lines) {
-    if (/^  public: \{$/.test(line)) {
-      inPublic = true;
-      continue;
-    }
-    if (!inPublic) continue;
-    if (/^    Tables: \{$/.test(line)) {
-      inTables = true;
-      continue;
-    }
-    if (/^    (Views|Functions|Enums|CompositeTypes): /.test(line)) {
-      flush();
-      inTables = false;
-      inPublic = false;
-      continue;
-    }
-    if (!inTables) continue;
-
-    const tableMatch = line.match(/^      ([a-z0-9_]+): \{$/);
-    if (tableMatch) {
-      flush();
-      table = tableMatch[1];
-      columns = new Set();
-      inRow = false;
-      continue;
-    }
-    if (!table) continue;
-    if (/^        Row: \{$/.test(line)) {
-      inRow = true;
-      continue;
-    }
-    if (/^        (Insert|Update|Relationships): /.test(line)) {
-      inRow = false;
-      continue;
-    }
-    if (!inRow) continue;
-    const column = line.match(/^          ([a-z0-9_]+)\??:/);
-    if (column) columns.add(column[1]);
   }
-  flush();
 
   // NOTE: a tenancy column under a FOURTH name (the way `clinical_quality_feedback_triage`
   // carries `owner_user_id`) puts its table in `all` and in no tier — which is exactly what
@@ -219,6 +220,10 @@ export function tableTiersFromDatabaseTypes(text) {
   // `document_id` on an existing table would likewise drop it out of its tier silently, and
   // the untiered list would then be the only thing that notices.
   return { direct, userKeyed, derived, all };
+}
+
+function propertyNameText(name) {
+  return ts.isIdentifier(name) || ts.isStringLiteral(name) ? name.text : undefined;
 }
 
 /* ------------------------------------------------------------- AST helpers */
@@ -1174,10 +1179,6 @@ export const PROOF_KINDS = {
 
 const CLINICAL_QUALITY_REASON =
   "Administrator-gated cross-tenant governance aggregate. GET and PATCH call authorizeAndLimit before these helpers run and the response carries governance metadata only — never raw question, answer, excerpt, or patient text. Per-owner filtering would defeat the oversight purpose (tenancy review §6).";
-const ON_CALL_SHARED_READ_REASON =
-  "Deliberately unscoped: On Call is a shared reference surface by owner decision (2026-09-04), so this read returns every account's shared rows with no owner to filter by. Since 2026-09-26 it answers signed-in callers only: its one caller, fetchVisibleOnCallEntries, returns nothing without a viewer owner id, and the route answers an anonymous caller with an empty list. Its tenancy control is not an owner predicate but two allow-lists that fail closed — PUBLIC_ON_CALL_SECTIONS (a seventh section is withheld until it is named on purpose, and `education` (Teaching) is left off it by owner decision 2026-09-26, so teaching rows reach only their owner) and rowMayBeComplianceRequirement (any `kind` on a `logistics` row, read from the raw row before parsing, so a malformed compliance requirement is withheld rather than published). A colleague's `details.contactName` is also dropped from every row it returns (OWNER_ONLY_DETAIL_KEYS, 2026-09-26). Added 2026-09-20 after a security review found this file sat outside the scanner: tests/on-call-api-contract.test.ts forbids the route from querying the table directly, which moved every On Call query out of src/app/api — the only directory phase 1 reads. Pinned by tests/on-call-repository.test.ts.";
-const ON_CALL_DEMO_CONTENT_COLLISION_REASON =
-  "Deliberately cross-owner existence probe, and it has to be: the example corpus it guards is published to every reader. `fetchSharedOnCallEntries` returns `is_personal = false` rows across ALL owners, and the loader's upsert key is (owner_id, section, slug), so a second account loading the corpus would not collide with the first — it would put a second, undeduplicated copy of the shared rows on the page of every signed-in reader, and repeated loads would walk toward ON_CALL_MAX_ENTRIES on the shared read where they would crowd out real entries. An owner-scoped query cannot detect that, because the thing being detected is by definition another owner's rows. Narrowness is the control: it selects `slug` only — never `owner_id`, never content — filters to `is_personal = false` and to the fixed demo slug list, takes `.limit(1)`, and the handler reads nothing but whether a row came back. So the only fact it can disclose, to an authenticated caller, is that example content exists somewhere on a site that already shows that content to every signed-in reader. It gates a write and never returns anyone's data. Added 2026-09-21 with the loader, after a Codex review found the duplicate-publication path.";
 const ROSTER_MANUAL_SHIFT_INSERT_REASON =
   "An insert, not a read: every row is built in the same function with `owner_id: ownerId`, and the payload is a flatMap over the doctor's own shifts and their weekly repeats, so the scanner cannot see the key at the payload's top level. requireOwner(ownerId) runs first, ownerId comes from the signed-in session in /api/roster/shifts/manual, and the table's own RLS keeps it service-role only. Added 2026-09-27 with Roster's hand-added shifts; pinned by tests/roster-shifts.test.ts.";
 const ROSTER_SITE_OWNER_REASON =
@@ -1188,6 +1189,24 @@ const ROSTER_ALERT_PARTY_REASON =
   "Notification routing, never a response: dispatchRosterAlerts runs after the route's own roster_read/roster_write RPC has checked the session actor's team access, and offerRecipients runs from the outbox for an event the RPC recorded. Each query filters both the team (service_id) and the row id, so it cannot name someone from another team, and its result only chooses which active members (activeRecipientIds) get a push; nothing it reads is returned to the caller. Declared 2026-10-21 (safety foundations, section 1).";
 const ON_CALL_SERVICE_NAME_REASON =
   "Team names only (id, name, verified_at, is_demo), looked up for ids the caller already holds: readMyTeams takes ids from the session user's own on_call_service_members rows; serviceNames is called with team ids from the caller's own memberships, their manager or workforce role grants (canManageRotations), or round rows already filtered to those teams. Declared 2026-10-21 (safety foundations, section 1).";
+const ANSWER_TELEMETRY_INSERT_REASON =
+  "An insert, not a read: the row is built by buildRagQueryLogRow / buildAnswerLogRow in the same module, both of which set `owner_id: args.ownerId ?? null`, so the scanner cannot see the key on the chain. Its only caller, persistAnswerDiagnostics, is reached from /api/answer and /api/answer/stream with `access.ownerId` from publicAccessContext and from /api/documents/[id]/summarize with the authenticated `user.id`, so each row records the asker's own question under the asker. Nothing is returned. Declared 2026-10-26 (privacy audit DB-01).";
+const INGESTION_ENQUEUE_REASON =
+  'Machine path, no user caller: the only caller is /api/webhooks/supabase/document-change, which first checks the webhook secret (verifyWebhookSecret), declines a record with no owner, and re-reads the document with `.eq("owner_id", ownerId)` before handing it here. The `documents` updates carry the owner predicate through the in-file applyOwnerFilter helper (`.eq("owner_id", document.owner_id)`, or `.is("owner_id", null)` for an ownerless row) rather than on the literal chain. The `ingestion_jobs` insert and competing-job read use the same `document.id`, after the owner-filtered update returned a row (a missing row returns document_deleted first); the read selects only `id,status`. Declared 2026-10-26 (privacy audit DB-01).';
+const SEARCH_SCOPE_REASON =
+  'Owner predicate applied by reassignment, not on the literal chain. resolveSearchScope returns an empty scope before any query when the access scope has neither an owner nor public access, then sets exactly one of `.or(owner_id.eq.<owner>,owner_id.is.null)`, `.eq("owner_id", owner)` or `.is("owner_id", null)` on documentQuery, together with `.eq("status", "indexed")` (the documents_ownerless_requires_publication_marker constraint makes an indexed ownerless row a published public-corpus row). loadScopeLabels is called only with ids from that read. Callers pass resolveRetrievalAccessScope(session owner) from /api/search, /api/answer and /api/answer/stream. Declared 2026-10-26 (privacy audit DB-01).';
+const WORK_HOSPITAL_VIEW_REASON =
+  'Hospital-wide Medical Workforce view. The function refuses first unless can(context, capability, { kind: "hospital", hospitalId }) passes, where context comes from loadWorkRoleContext for the authenticated user in its /api/work/hospital/* route; for starters.view, sick.inbox and staffing.overview at hospital scope only the site administrator (re-read from Auth) or a Medical Workforce grant for that same hospital passes. Every query is then limited by service_id to the teams work_hospital_teams links to that hospital. Short-staffed returns counts and team names only; starters returns names and New job progress only for members who chose to share it; sick calls return names, shift times and cover status, never a reason. Declared 2026-10-26 (privacy audit DB-01).';
+const WORK_PEOPLE_REASON =
+  "People and roles for one hospital. readPeople lists only hospitals that canManagePeople allows (roles.grant or assessments.administer at hospital scope: site administrator, or a Medical Workforce or DCT grant for that hospital), refuses a requested hospital outside that list, and filters every team query by service_id to the teams linked to the chosen hospital (or, for team names, to service ids on that hospital's own grants). readUnlinkedTeams runs only for the site administrator and returns team ids and names. The context comes from loadWorkRoleContext for the authenticated user in /api/work/people. Declared 2026-10-26 (privacy audit DB-01).";
+const WORK_HOSPITAL_STRUCTURE_REASON =
+  "Organisation structure, not personal data: work_hospitals holds a hospital's id, name and archive time, and work_hospital_teams links a team id to a hospital. Every write is administrator-only (isAdministrator(context), re-read from Auth in loadWorkRoleContext, before link-team, create-hospital, move-team, rename-hospital and archive-hospital; a hospital name that looks like a patient detail is refused). Reads list hospitals and team links so the caller's own role grants can be resolved (addGrantedRoles, for hospital ids on the session user's own `.eq(\"user_id\", userId)` grants) or so readPeople can filter to the hospitals canManagePeople allows. Nothing here names a person. Declared 2026-10-26 when the tier parser started reading GeneratedTable<...> tables (privacy audit DB-01).";
+const WORK_ROLE_GRANT_WRITE_REASON =
+  "Role management for another person, by design. grant inserts a row whose user_id is the person receiving the role, and only after decideGrantWorkRole(context.grants, context.userId, ...) allows the session user to give that role at that hospital (never to themselves), with every named trainee checked as an active member of a team linked to that hospital. revoke reads the grant by id, refuses unless the same rule would let the session user give it, and updates only that row while it is still active. The context comes from loadWorkRoleContext for the authenticated user in /api/work/people. Declared 2026-10-26 (privacy audit DB-01).";
+const ROSTER_ROTATION_ROUND_REASON =
+  "Team-scoped rotation rounds. readRotations filters by service_id to the session user's own teams (readMyTeams) and the teams canManageRotations allows, or reads all for the site administrator only. createRotationRound inserts for a team the caller was just checked to manage. loadRoundRow reads one round by id, and its only caller runRoundCommand then refuses with not-found unless the session user is an active member of that round's team, and refuses every manager action unless canManageRotations passes. fetchPublishedPlacementsFor filters to the feed owner's own active teams and published rounds. Declared 2026-10-26 when the tier parser started reading GeneratedTable<...> tables (privacy audit DB-01).";
+const ROSTER_ROTATION_PREFERENCES_REASON =
+  "Doctors' ranked rotation preferences, read by round. A round's administrator reads every preference in rounds readRotations put in managedIds (canManageRotations for that team, or the site administrator), which is how allocation works; everyone else, and every save or withdraw, passes onlyUserId so the chain gets `.eq(\"user_id\", onlyUserId)` for the session user. runRoundCommand reads all of a round's preferences only after canManageRotations on the round's own team. Declared 2026-10-26 (privacy audit DB-01).";
 const SETUP_STATUS_REASON =
   "Local-origin-gated setup/health existence probe. It returns status booleans and counts only, never owner rows, so a fresh deployment can diagnose missing setup before any corpus exists (tenancy review §3 / TEN-N1).";
 
@@ -1196,6 +1215,38 @@ const SETUP_STATUS_REASON =
  * query chain. Every entry names its proof; the mechanical kinds are re-checked in the AST.
  */
 export const SCOPE_EXEMPTIONS = [
+  {
+    file: "src/lib/roster/rotations/repository.ts",
+    table: "roster_rotation_preferences",
+    fn: "loadPreferences",
+    queries: 1,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason: ROSTER_ROTATION_PREFERENCES_REASON,
+  },
+  {
+    file: "src/lib/work-roles/people.ts",
+    table: "work_role_grants",
+    fn: "readPeople",
+    queries: 1,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason: WORK_PEOPLE_REASON,
+  },
+  {
+    file: "src/lib/work-roles/people.ts",
+    table: "work_role_grants",
+    fn: "grant",
+    queries: 1,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason: WORK_ROLE_GRANT_WRITE_REASON,
+  },
+  {
+    file: "src/lib/work-roles/people.ts",
+    table: "work_role_grants",
+    fn: "revoke",
+    queries: 2,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason: WORK_ROLE_GRANT_WRITE_REASON,
+  },
   {
     file: "src/lib/roster/owner/teams.ts",
     table: "on_call_service_members",
@@ -1252,22 +1303,6 @@ export const SCOPE_EXEMPTIONS = [
     queries: 1,
     proof: PROOF_KINDS.REVIEWED_INDIRECT,
     reason: ROSTER_MANUAL_SHIFT_INSERT_REASON,
-  },
-  {
-    file: "src/app/api/on-call/demo-content/route.ts",
-    table: "on_call_entries",
-    fn: "POST",
-    queries: 1,
-    proof: PROOF_KINDS.REVIEWED_INDIRECT,
-    reason: ON_CALL_DEMO_CONTENT_COLLISION_REASON,
-  },
-  {
-    file: "src/lib/on-call/repository.ts",
-    table: "on_call_entries",
-    fn: "fetchSharedOnCallEntries",
-    queries: 1,
-    proof: PROOF_KINDS.REVIEWED_INDIRECT,
-    reason: ON_CALL_SHARED_READ_REASON,
   },
   {
     file: "src/app/api/clinical-quality/route.ts",
@@ -1491,6 +1526,115 @@ export const SCOPE_EXEMPTIONS = [
     proof: PROOF_KINDS.REVIEWED_INDIRECT,
     reason:
       "Factory that returns an UNEXECUTED PostgREST builder. Its only consumer, loadVisibleDocumentSourceReferences, wraps it in withOwnerReadScope(query, viewerId) before awaiting it, so no caller can execute the unscoped builder. The indirection is a dependency-injection seam for tests; if a second consumer ever executes the builder directly this entry must be revisited.",
+  },
+  {
+    file: "src/lib/alerts/timed-sender.ts",
+    table: "web_push_subscriptions",
+    fn: "sendMorningBriefs",
+    queries: 1,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason:
+      'Deliberately cross-owner background sender with no request caller: startTimedAlertSender is started once from src/instrumentation.ts and runs this once a minute. It selects `owner_id` only, to find accounts with a linked phone; the follow-up preference and shift reads filter `.in("user_id" / "owner_id", ...)` on those ids, alert_claim_morning_brief claims each owner\'s brief once per day, and pushCodeToOwners sends the fixed code `brief` only to each owner\'s own subscriptions. Nothing read here is returned or logged. Declared 2026-10-26 (privacy audit DB-01).',
+  },
+  {
+    file: "src/lib/answer-telemetry.ts",
+    table: "rag_queries",
+    fn: "logAnswerDiagnostics",
+    queries: 1,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason: ANSWER_TELEMETRY_INSERT_REASON,
+  },
+  {
+    file: "src/lib/answer-telemetry.ts",
+    table: "rag_retrieval_logs",
+    fn: "logAnswerDiagnostics",
+    queries: 1,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason: ANSWER_TELEMETRY_INSERT_REASON,
+  },
+  {
+    file: "src/lib/answer-telemetry.ts",
+    table: "rag_retrieval_logs",
+    fn: "pruneExpiredRetrievalLogs",
+    queries: 1,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason:
+      "Deliberately cross-tenant retention purge: deletes rows older than the retention window by `created_at` alone, because retention applies to every owner equally. It returns only a deleted-row count, never rows. It has no caller in src/, worker/, scripts/ or supabase/ as of 2026-10-26; if one is added it must be operator- or schedule-only, never request-driven. Declared 2026-10-26 (privacy audit DB-01).",
+  },
+  {
+    file: "src/lib/ingestion-enqueue.ts",
+    table: "documents",
+    fn: "enqueueDocumentReindexJob",
+    queries: 2,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason: INGESTION_ENQUEUE_REASON,
+  },
+  {
+    file: "src/lib/search-scope.ts",
+    table: "documents",
+    fn: "resolveSearchScope",
+    queries: 1,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason: SEARCH_SCOPE_REASON,
+  },
+  {
+    file: "src/lib/search-scope.ts",
+    table: "document_labels",
+    fn: "loadScopeLabels",
+    queries: 1,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason: SEARCH_SCOPE_REASON,
+  },
+  {
+    file: "src/lib/teaching/repository.ts",
+    table: "on_call_service_members",
+    fn: "verifyActiveOrganiser",
+    queries: 1,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason:
+      'The actor\'s own membership row: the chain filters `.eq("service_id", serviceId).eq("user_id", actorId).is("revoked_at", null)`, but it starts from a `dynamicClient.from(...)` variable, so the scanner cannot tie the predicate to the table. actorId is the authenticated user id that withTeachingApi passes to teachingServiceMutation (its only caller, /api/teaching/services/[serviceId]). It selects `joined_at` only and serves as a permission check before display.revoke; nothing is returned. Declared 2026-10-26 (privacy audit DB-01).',
+  },
+  {
+    file: "src/lib/work-roles/hospital-short-staffed.ts",
+    table: "roster_assignments",
+    fn: "readHospitalShortStaffed",
+    queries: 1,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason: WORK_HOSPITAL_VIEW_REASON,
+  },
+  {
+    file: "src/lib/work-roles/hospital-starters.ts",
+    table: "on_call_service_members",
+    fn: "readHospitalStarters",
+    queries: 1,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason: WORK_HOSPITAL_VIEW_REASON,
+  },
+  {
+    file: "src/lib/work-roles/hospital-starters.ts",
+    table: "user_preferences",
+    fn: "readHospitalStarters",
+    queries: 1,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason:
+      "Filtered `.in(\"user_id\", batch)` to active members of the hospital's linked teams, but through an `as unknown as ChoiceQuery` cast the scanner cannot follow. It reads one JSON path only (`preferences->starterSharing->>workforce`), the member's own choice to share New job progress, never the rest of the row. Gated as the other hospital views: " +
+      WORK_HOSPITAL_VIEW_REASON,
+  },
+  {
+    file: "src/lib/work-roles/people.ts",
+    table: "on_call_service_members",
+    fn: "readPeople",
+    queries: 1,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason: WORK_PEOPLE_REASON,
+  },
+  {
+    file: "src/lib/work-roles/people.ts",
+    table: "roster_member_roles",
+    fn: "readPeople",
+    queries: 1,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason: WORK_PEOPLE_REASON,
   },
 ];
 
@@ -1727,6 +1871,14 @@ export const DERIVED_QUERY_INVENTORY = [
     identifier: "id",
     reason: "Image read for the same owner-resolved document id; 404 is thrown before any child query.",
   },
+  {
+    file: "src/lib/ingestion-enqueue.ts",
+    table: "ingestion_jobs",
+    fn: "enqueueDocumentReindexJob",
+    queries: 2,
+    proof: PROOF_KINDS.REVIEWED_INDIRECT,
+    reason: INGESTION_ENQUEUE_REASON,
+  },
 ];
 
 /**
@@ -1738,6 +1890,190 @@ export const DERIVED_QUERY_INVENTORY = [
  * until it is declared here with a reason.
  */
 export const UNTIERED_TABLE_DECLARATIONS = [
+  {
+    file: "src/lib/work-roles/hospital-short-staffed.ts",
+    table: "work_hospitals",
+    fn: "readHospitalShortStaffed",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_VIEW_REASON,
+  },
+  {
+    file: "src/lib/work-roles/hospital-short-staffed.ts",
+    table: "work_hospital_teams",
+    fn: "readHospitalShortStaffed",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_VIEW_REASON,
+  },
+  {
+    file: "src/lib/work-roles/hospital-sick.ts",
+    table: "work_hospitals",
+    fn: "readHospitalSickCalls",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_VIEW_REASON,
+  },
+  {
+    file: "src/lib/work-roles/hospital-sick.ts",
+    table: "work_hospital_teams",
+    fn: "readHospitalSickCalls",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_VIEW_REASON,
+  },
+  {
+    file: "src/lib/work-roles/hospital-starters.ts",
+    table: "work_hospitals",
+    fn: "readHospitalStarters",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_VIEW_REASON,
+  },
+  {
+    file: "src/lib/work-roles/hospital-starters.ts",
+    table: "work_hospital_teams",
+    fn: "readHospitalStarters",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_VIEW_REASON,
+  },
+  {
+    file: "src/lib/work-roles/people.ts",
+    table: "work_hospitals",
+    fn: "hospitalsFor",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_STRUCTURE_REASON,
+  },
+  {
+    file: "src/lib/work-roles/people.ts",
+    table: "work_hospital_teams",
+    fn: "readPeople",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_STRUCTURE_REASON,
+  },
+  {
+    file: "src/lib/work-roles/people.ts",
+    table: "work_hospital_teams",
+    fn: "readUnlinkedTeams",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_STRUCTURE_REASON,
+  },
+  {
+    file: "src/lib/work-roles/people.ts",
+    table: "work_hospital_teams",
+    fn: "hospitalTeamIds",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_STRUCTURE_REASON,
+  },
+  {
+    file: "src/lib/work-roles/people.ts",
+    table: "work_hospital_teams",
+    fn: "moveTeam",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_STRUCTURE_REASON,
+  },
+  {
+    file: "src/lib/work-roles/people.ts",
+    table: "work_hospitals",
+    fn: "moveTeam",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_STRUCTURE_REASON,
+  },
+  {
+    file: "src/lib/work-roles/people.ts",
+    table: "work_hospitals",
+    fn: "renameHospital",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_STRUCTURE_REASON,
+  },
+  {
+    file: "src/lib/work-roles/people.ts",
+    table: "work_hospitals",
+    fn: "archiveHospital",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_STRUCTURE_REASON,
+  },
+  {
+    file: "src/lib/work-roles/people.ts",
+    table: "work_hospital_teams",
+    fn: "applyPeopleChange",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_STRUCTURE_REASON,
+  },
+  {
+    file: "src/lib/work-roles/people.ts",
+    table: "work_hospitals",
+    fn: "applyPeopleChange",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_STRUCTURE_REASON,
+  },
+  {
+    file: "src/lib/work-roles/server.ts",
+    table: "work_hospital_teams",
+    fn: "addGrantedRoles",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_STRUCTURE_REASON,
+  },
+  {
+    file: "src/lib/work-roles/server.ts",
+    table: "work_hospitals",
+    fn: "addGrantedRoles",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_STRUCTURE_REASON,
+  },
+  {
+    file: "src/lib/roster/rotations/repository.ts",
+    table: "roster_rotation_rounds",
+    fn: "readRotations",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: ROSTER_ROTATION_ROUND_REASON,
+  },
+  {
+    file: "src/lib/roster/rotations/repository.ts",
+    table: "roster_rotation_rounds",
+    fn: "createRotationRound",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: ROSTER_ROTATION_ROUND_REASON,
+  },
+  {
+    file: "src/lib/roster/rotations/repository.ts",
+    table: "roster_rotation_rounds",
+    fn: "loadRoundRow",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: ROSTER_ROTATION_ROUND_REASON,
+  },
+  {
+    file: "src/lib/roster/rotations/repository.ts",
+    table: "roster_rotation_rounds",
+    fn: "runRoundCommand",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: ROSTER_ROTATION_ROUND_REASON,
+  },
+  {
+    file: "src/lib/roster/rotations/repository.ts",
+    table: "roster_rotation_rounds",
+    fn: "fetchPublishedPlacementsFor",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: ROSTER_ROTATION_ROUND_REASON,
+  },
   {
     file: "src/lib/roster/alerts/recipients.ts",
     table: "roster_swaps",
@@ -1811,6 +2147,70 @@ export const UNTIERED_TABLE_DECLARATIONS = [
     proof: PROOF_KINDS.UNTIERED_TABLE,
     reason:
       "Team-scoped by service_id, which the query filters on. requireActiveMember runs first and calls roster_read (overview) for the session actor, which raises unless the actor is an active, unrevoked member of a verified or demo team, exactly as for every other team read. The projection is weekday, date, kind, grade, site id and count only: no row id, user id or name (tenancy review §6).",
+  },
+  {
+    file: "src/lib/work-roles/hospital-short-staffed.ts",
+    table: "on_call_services",
+    fn: "readHospitalShortStaffed",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_VIEW_REASON,
+  },
+  {
+    file: "src/lib/work-roles/hospital-short-staffed.ts",
+    table: "roster_staffing_needs",
+    fn: "readHospitalShortStaffed",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_VIEW_REASON,
+  },
+  {
+    file: "src/lib/work-roles/hospital-short-staffed.ts",
+    table: "roster_publications",
+    fn: "readHospitalShortStaffed",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_VIEW_REASON,
+  },
+  {
+    file: "src/lib/work-roles/hospital-sick.ts",
+    table: "on_call_services",
+    fn: "readHospitalSickCalls",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_VIEW_REASON,
+  },
+  {
+    file: "src/lib/work-roles/hospital-sick.ts",
+    table: "roster_open_shifts",
+    fn: "readHospitalSickCalls",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_VIEW_REASON,
+  },
+  {
+    file: "src/lib/work-roles/hospital-starters.ts",
+    table: "on_call_services",
+    fn: "readHospitalStarters",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_HOSPITAL_VIEW_REASON,
+  },
+  {
+    file: "src/lib/work-roles/people.ts",
+    table: "on_call_services",
+    fn: "readPeople",
+    queries: 2,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_PEOPLE_REASON,
+  },
+  {
+    file: "src/lib/work-roles/people.ts",
+    table: "on_call_services",
+    fn: "readUnlinkedTeams",
+    queries: 1,
+    proof: PROOF_KINDS.UNTIERED_TABLE,
+    reason: WORK_PEOPLE_REASON,
   },
 ];
 

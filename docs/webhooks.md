@@ -52,6 +52,14 @@ x-webhook-secret: <RAILWAY_WEBHOOK_SECRET>
 Transient phases (`BUILDING`, `DEPLOYING`, `QUEUED`, …) are dropped to keep the
 channel quiet; the receiver answers `200 { "skipped": true }` for them.
 
+**Payload.** Railway's current payload names the event in `type` (`Deployment.failed`,
+`Deployment.crashed`, …) and nests the names under `resource` (`project`, `environment`,
+`service`) and the deploy status under `details.status`. The receiver reads the status from
+`type` first, then `details.status`, then the older flat top-level `status`, and the names from
+`resource` before the older top-level fields. Volume and CPU/RAM monitor alerts are not deploy
+events and are skipped. Until 26 Oct 2026 the receiver read only the flat shape, so every
+current delivery would have been skipped as `status_not_notable` even with the header fixed.
+
 **Reading a failure.** The two ways this integration dies look nothing alike, and
 telling them apart is the whole job:
 
@@ -65,9 +73,10 @@ telling them apart is the whole job:
 **Owner action, open since 2026-09-16 (#B6JP6F).** The integration is in row 1 right now: the
 production `PsychSift` service logs `Railway webhook rejected: presented secret did not match
 RAILWAY_WEBHOOK_SECRET` with `tokenPresented=true` on every deploy (six rejections in the 40 s after
-the 2026-09-16 12:27 UTC container start). **There is nothing to fix in this repository.** The
-receiver in `src/app/api/webhooks/railway/route.ts` is correct and is behaving correctly by
-rejecting the request. The 24 Oct 2026 audit (#14) found the likely cause: this page and the route
+the 2026-09-16 12:27 UTC container start). **The rejection is not a repository fault.** The
+receiver is behaving correctly by rejecting the request. (The receiver did have a second,
+separate gap, fixed on 26 Oct 2026: it did not read Railway's current payload shape, see
+**Payload** above.) The 24 Oct 2026 audit (#14) found the likely cause: this page and the route
 comment told the owner to put the secret in a `?token=` URL, but the receiver only accepts it in a
 header, so a webhook set up from these notes could never authenticate. Railway now supports custom
 webhook headers, so the fix is in the Railway dashboard, and it needs the secret value:
@@ -77,9 +86,12 @@ webhook headers, so the fix is in the Railway dashboard, and it needs the secret
 2. Railway → project `PsychSift` → Settings → Webhooks: delete the existing webhook and re-add it as
    `https://psychiatry.tools/api/webhooks/railway` with the custom header
    `x-webhook-secret: <that same value>`.
-3. Confirm on the next deploy that the rejection warning stops. Until it does, **no deploy success
-   or failure notification reaches chat at all** — the same silence that cost three days on
-   2026-09-13.
+3. Railway → project `PsychSift` → the `PsychSift` service → Variables: set `SLACK_WEBHOOK_URL`
+   or `DISCORD_WEBHOOK_URL`. Without one the receiver accepts the delivery and forwards it nowhere
+   (row 3 of the table above; the 26 Oct 2026 audit found neither set).
+4. Press **Test Webhook** in the Railway webhook form. It should answer `200`. Then confirm on the
+   next deploy that the rejection warning stops. Until it does, **no deploy success or failure
+   notification reaches chat at all** — the same silence that cost three days on 2026-09-13.
 
 All four are now reported by the app itself — the first two as `logger.warn`/`logger.error`
 from the route, the third from `postChatNotification` — and warn/error reach Sentry, which

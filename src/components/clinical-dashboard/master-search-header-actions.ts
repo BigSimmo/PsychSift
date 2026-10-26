@@ -1,6 +1,7 @@
 import type { AppModeId } from "@/lib/app-modes";
 import type { ClinicalQueryMode } from "@/lib/types";
 import type { ModeActionId } from "@/components/clinical-dashboard/mode-action-popup";
+import { searchTextPatientDetailRefusal } from "@/components/clinical-dashboard/search-patient-detail-guard";
 
 export interface MasterSearchHeaderModeActionContext {
   actionId: ModeActionId;
@@ -112,7 +113,9 @@ export function executeMasterSearchHeaderModeAction({
     return;
   }
   if (actionId === "dictionary-search") {
-    pushIfLeaveConfirmed(`/dictionary/search${trimmedQuery ? `?q=${encodeURIComponent(trimmedQuery)}` : ""}`);
+    // Text that looks like it holds a patient detail is left out of the address (privacy audit CA-03).
+    const carried = trimmedQuery && !searchTextPatientDetailRefusal(trimmedQuery) ? trimmedQuery : "";
+    pushIfLeaveConfirmed(`/dictionary/search${carried ? `?q=${encodeURIComponent(carried)}` : ""}`);
     return;
   }
   if (actionId === "dictionary-topics") {

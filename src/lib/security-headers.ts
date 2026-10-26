@@ -133,7 +133,9 @@ export function buildSecurityHeaders(flags: SecurityHeaderFlags): SecurityHeader
   return [
     { key: "X-Content-Type-Options", value: "nosniff" },
     { key: "X-Frame-Options", value: "DENY" },
-    { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+    // Origin only, even within the site: a full page address can carry search text in ?q=,
+    // which strict-origin-when-cross-origin would send on every same-site request (privacy audit CA-06).
+    { key: "Referrer-Policy", value: "strict-origin" },
     { key: "Cross-Origin-Resource-Policy", value: "same-site" },
     { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
     // No Cross-Origin-Embedder-Policy — see module header note.

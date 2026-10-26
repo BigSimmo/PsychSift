@@ -1,7 +1,7 @@
 "use client";
 
 import { TriangleAlert, Clock, CornerDownLeft, Heart, Loader2, Search, Sparkles } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { usePrivateAnswerRouter } from "@/components/clinical-dashboard/use-private-answer-url";
 import {
   useCallback,
   useDeferredValue,
@@ -555,7 +555,7 @@ export function UniversalSearchCommandSurface({
   const smartNaturalSearch = smartInterpretation.naturalLanguage;
   const suppressLocalOnlySmartActions = smartNaturalSearch && isSmartLocalOnlyMode(modeId);
   const listboxId = useId();
-  const router = useRouter();
+  const router = usePrivateAnswerRouter();
   // The highlighted row, held by item id and the query it was picked under
   // rather than by position: typing, or streamed groups inserting rows above
   // it, otherwise moved the highlight onto a different record that Enter then

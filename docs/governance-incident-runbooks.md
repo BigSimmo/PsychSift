@@ -1,13 +1,13 @@
 # Clinical governance incident runbooks
 
-Procedure checked against repository contracts: 2026-10-21. This is an operator reference, not a live containment rehearsal or clinical sign-off.
+Procedure checked against repository contracts: 2026-10-26. This is an operator reference, not a live containment rehearsal or clinical sign-off.
 
 Preserve interaction IDs, source IDs, timestamps, hashes and provider request IDs. Do not copy patient-identifying question or answer prose into tickets or chat.
 
 ## Escalation, authority and target identity
 
 - **Primary clinical governance owner:** Clinical Lead (`Josh` / designated clinical governance reviewer).
-- **Backup operator when the primary owner is unavailable (> 15 minutes for P0/P1 containment):** the on-call platform operator follows the existing incident authority for containment and rollback. Access alone does not authorise a new live database change; the [owner's specific-change permission rule](decisions/2026-10-15-database-changes-need-owner-permission.md) and the AGENTS.md provider/spending boundaries still apply. Escalate a blocked action and keep its containment status explicit.
+- **Backup operator:** none is appointed. The owner is the only operator (checked 26 Oct 2026, audit LS-11), so P0/P1 containment waits for the owner. The two fastest containment switches are Railway variables the owner can set from a phone: `RAG_PROVIDER_MODE=offline` on the app and `WORKER_PAUSED=true` on the worker (step 2 of the adverse-output runbook below). If a backup operator is later named, record the decision in `docs/decisions/` and name them here; they follow the existing incident authority for containment and rollback. Access alone does not authorise a new live database change; the [owner's specific-change permission rule](decisions/2026-10-15-database-changes-need-owner-permission.md) and the AGENTS.md provider/spending boundaries still apply. Escalate a blocked action and keep its containment status explicit.
 - **Restoration:** re-enabling generative modes or lifting a source's `decommissioned` / `superseded` disposition requires the primary clinical owner or designated clinical deputy's review. Clinical sign-off remains owner-only where required by project policy.
 - **Before any provider read or mutation:** confirm the exact target using [deployment architecture](deployment-architecture.md). Production is Railway project `PsychSift` (`5deaad0b-675a-4c13-978e-5ca2b5b877f9`), environment `production` (`6aa16f7b-d3e8-4aa2-9854-ee9ead9fcbd4`), app service `PsychSift` and worker service `worker`; Supabase is `PsychSift Production` (`sjrfecxgysukkwxsowpy`). Recheck these recorded identities in the authorised operator session and retain the selected service/deployment IDs. Stop on a mismatch. Use the explicitly selected service's supported variable editor; do not rely on a checkout's implicit CLI link or dump secret values into evidence.
 
@@ -67,5 +67,30 @@ Preserve interaction IDs, source IDs, timestamps, hashes and provider request ID
 ## Answer-pipeline rollback and restoration evidence
 
 1. Roll back or disable the smallest affected feature under the existing incident authority. Retain source browsing/source-only answers only if the incident permits them; source-only mode can still surface an implicated source.
-2. Verify the app's `/api/health` `deploymentCommitSha` and the worker's `/health` `deploymentCommitSha` / `claimLoopPaused: true` on the verified target. Health and configuration readback do not prove cessation of in-flight work, provider egress, source exclusion or cache deletion; record those separately.
+2. Verify the app's `/api/health` `deploymentCommitSha` on the verified target. The worker has no public address, so its `/health` cannot be read from outside Railway: confirm the worker instead from the Railway dashboard (worker service, Deployments: the active deployment's commit, and Variables: `WORKER_PAUSED=true` when it should be paused), and record the deployment ID. Health and configuration readback do not prove cessation of in-flight work, provider egress, source exclusion or cache deletion; record those separately.
 3. Do not weaken danger-source exclusion, query/answer minimisation or private-document access to restore availability. Hold forward promotion until focused regression and applicable release evidence pass. Local offline examples are `npm run eval:rag:offline`, `npm run check:clinical-hazard-controls` and `npm run check:production-readiness:ci`; select the required PR-local gate under the [verification policy](agents/verification-gates.md). Live acceptance and provider-backed release checks require their applicable approval and spend bound.
+
+## A Railway deploy failed
+
+Railway keeps the last good deployment running when a new one fails its healthcheck, so the site
+looks normal while new code is not live. This is how the worker went two days without a working
+deploy in October 2026 (audit LS-01) and nobody was told.
+
+1. **Find out.** A failed or crashed deploy reaches chat through `POST /api/webhooks/railway`
+   only when the Railway webhook carries the `x-webhook-secret` header and the app has
+   `SLACK_WEBHOOK_URL` or `DISCORD_WEBHOOK_URL` ([webhooks](webhooks.md) section 1). Without
+   those, check Railway, project `PsychSift`, each service's Deployments list.
+2. **Confirm what is live.** For the app, compare `deploymentCommitSha` from
+   `https://psychiatry.tools/api/health` with the commit you expected. For the worker, read the
+   active deployment's commit in Railway (no public address). Do not read a Railway "Success"
+   commit status as proof of a deploy ([deployment architecture](deployment-architecture.md)).
+3. **Read the failing deployment's logs** in Railway: build log first, then deploy log. A crash
+   seconds after start with only `PsychSift worker stopped unexpectedly` is usually a runtime
+   setting (a variable naming a missing file, a wrong start command), not the code. The worker's
+   error reporting needs `SENTRY_DSN` on the worker service.
+4. **Decide.** If the cause is a setting, the owner changes it in Railway. If it is code, fix it
+   in a PR. Do not redeploy an older image to "fix" it without checking the database contract
+   ([worker deploy runbook](worker-deploy-runbook.md), Rollback).
+5. **Verify.** The next deploy reaches SUCCESS and the live commit matches. For the worker, also
+   run `npm run reindex:health` (needs the owner's go-ahead, it reads the live database) before
+   resuming it.
