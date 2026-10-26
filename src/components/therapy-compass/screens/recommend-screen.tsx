@@ -124,9 +124,10 @@ export function RecommendScreen() {
         <>
           <div className="mb-3.5 flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0">
-              <div className="text-base-minus font-semibold text-[color:var(--text-heading)]">
+              {/* A real heading, so the ranked rows' h3 titles do not skip a level (a11y A11Y-12). */}
+              <h2 className="m-0 text-base-minus font-semibold text-[color:var(--text-heading)]">
                 Ranked clinical matches
-              </div>
+              </h2>
               <p className="mt-0.5 text-xs font-semibold text-[color:var(--text-muted)]">{matchLabel}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">

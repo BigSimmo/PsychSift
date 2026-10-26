@@ -98,7 +98,9 @@ function parseArgs(argv: string[]): EvalArgs {
 
   for (let index = 0; index < argv.length; index += 1) {
     const token = argv[index];
-    if (!token.startsWith("--")) continue;
+    // A mistyped flag used to be skipped, or to swallow the next token, so a run could
+    // quietly drop --fail-on-threshold and report green. Refuse anything not recognised.
+    if (!token.startsWith("--")) throw new Error(`Unexpected argument: ${token}`);
 
     if (token === "--json") {
       args.json = true;
@@ -113,6 +115,9 @@ function parseArgs(argv: string[]): EvalArgs {
       continue;
     }
 
+    if (!["--owner-email", "--owner-id", "--limit", "--question"].includes(token)) {
+      throw new Error(`Unknown flag: ${token}`);
+    }
     const value = argv[index + 1];
     if (!value || value.startsWith("--")) throw new Error(`Missing value for ${token}`);
     index += 1;
@@ -350,6 +355,10 @@ async function main() {
     }
   }
 
+  if (args.failOnThreshold && results.length === 0) {
+    console.error("--fail-on-threshold: no eval cases were selected, so nothing was checked.");
+    process.exit(1);
+  }
   if (args.failOnThreshold && thresholdFailures.length > 0) process.exit(1);
 }
 

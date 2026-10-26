@@ -53,3 +53,14 @@ describe("modes with nothing to search open their own page", () => {
     expect(legacyHomeRedirectUrl(new URL("https://clinical-kb.test/?mode=documents"), "GET")).toBeNull();
   });
 });
+
+describe("renamed mode links", () => {
+  it("sends /?mode=medications to the Medication mode instead of Answer, keeping the draft", () => {
+    expect(legacyHomeRedirectUrl(new URL("https://clinical-kb.test/?mode=medications"), "GET")?.toString()).toBe(
+      "https://clinical-kb.test/?mode=prescribing",
+    );
+    expect(
+      legacyHomeRedirectUrl(new URL("https://clinical-kb.test/?mode=medication&q=lithium"), "GET")?.toString(),
+    ).toBe("https://clinical-kb.test/?mode=prescribing&q=lithium");
+  });
+});

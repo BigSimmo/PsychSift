@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { comparePerCaseRanks, compareRetrievalEval } from "../scripts/compare-retrieval-eval";
+import { comparePerCaseRanks, compareRetrievalEval, recallFailures } from "../scripts/compare-retrieval-eval";
 
 // A complete retrieval eval summary as emitted by summarizeGoldenRetrievalResults, trimmed to the
 // fields the comparison reads.
@@ -197,5 +197,25 @@ describe("compare-retrieval-eval CLI --fail-on-regression", () => {
     const out = runCli(baseline, candidate);
     expect(out.stdout).toContain("NEW in candidate (no baseline): extra");
     expect(out.status).toBe(1);
+  });
+});
+
+describe("recallFailures", () => {
+  it("passes a pair that holds recall at 1.0", () => {
+    expect(recallFailures(compareRetrievalEval(summary(), summary()).rows)).toEqual([]);
+  });
+
+  it("fails a candidate below the pinned 1.0 even when the baseline was lower", () => {
+    const rows = compareRetrievalEval(
+      summary({ document_recall_at_5: 0.9 }),
+      summary({ document_recall_at_5: 0.95 }),
+    ).rows;
+    expect(recallFailures(rows)).toEqual(["document_recall_at_5 is 0.9500, below the pinned 1.0"]);
+  });
+
+  it("fails a content recall drop", () => {
+    const rows = compareRetrievalEval(summary(), summary({ content_recall_at_5: 0.9583 })).rows;
+    expect(recallFailures(rows)).toHaveLength(1);
+    expect(recallFailures(rows)[0]).toContain("content_recall_at_5");
   });
 });

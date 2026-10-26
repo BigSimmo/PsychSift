@@ -559,7 +559,8 @@ function RequestCard({
             <WorkButton variant="primary" icon={Copy} onClick={onCopy} testId="admin-requests-copy">
               Copy and mark sent
             </WorkButton>
-            {isExampleRecord(request) ? (
+            {/* A blocked message never goes into an href, where a middle click or copied link would skip onClick. */}
+            {isExampleRecord(request) || requestProblem(request) ? (
               <WorkButton variant="secondary" icon={Mail} onClick={() => void onEmail()} testId="admin-requests-email">
                 Email draft
               </WorkButton>
