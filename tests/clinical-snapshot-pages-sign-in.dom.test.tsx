@@ -98,7 +98,8 @@ describe("server-rendered clinical pages need sign-in (#3738)", () => {
     expect(await clinicalPageSignInRequired()).toBe(false);
     state.noAuth = false;
     state.configured = false;
-    expect(await clinicalPageSignInRequired()).toBe(false);
+    // N-06: no server client outside demo or no-auth mode means sign-in cannot be checked.
+    expect(await clinicalPageSignInRequired()).toBe(true);
   });
 
   it("sends a signed-out medicine page the sign-in card and no record", async () => {

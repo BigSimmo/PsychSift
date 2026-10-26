@@ -253,6 +253,8 @@ export const CLINICAL_SIGN_IN_INVITE_NOTE =
 
 /** Shown under the sign-in and create-account forms. */
 export const TERMS_SIGN_IN_NOTE = "By signing in or creating an account, you agree to the";
+/** PD-03 (26 Oct 2026): the sign-up form links the privacy notice beside the Terms. */
+export const PRIVACY_SIGN_IN_NOTE = "How we handle your data is in the";
 
 /* ------------------------------------------------------- First-run guide */
 
