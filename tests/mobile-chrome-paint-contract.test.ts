@@ -25,7 +25,7 @@ describe("mobile chrome paint baseline", () => {
     );
 
     expect(phoneStyles).toMatch(
-      /\.edge-glass-header,\s*\n\s*\.universal-header\s*\{[\s\S]*?background: var\(--surface\);[\s\S]*?backdrop-filter: none/,
+      /\.edge-glass-header,\s*\n\s*\.universal-header\s*\{[\s\S]*?background: var\(--background\);[\s\S]*?backdrop-filter: none/,
     );
     expect(phoneStyles).toMatch(/\.edge-glass-header-backdrop[\s\S]*?display: none/);
     expect(phoneStyles).toMatch(/\.answer-footer-search-dock\.answer-footer-search-edge[\s\S]*?bottom: 0;/);
