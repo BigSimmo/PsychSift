@@ -60,6 +60,18 @@ export function sharedGet(url: string, init?: { signal?: AbortSignal; cache?: Re
 }
 
 /**
+ * Forget the in-flight reads of `base` and of any address under it (`base?…`, `base/…`), so a
+ * read after a write never joins a request that started before it. Callers already waiting keep
+ * their own answer.
+ */
+export function forgetSharedGets(base: string): void {
+  for (const key of [...inFlight.keys()]) {
+    const url = key.slice(key.indexOf("|", key.indexOf("|") + 1) + 1);
+    if (url === base || url.startsWith(`${base}?`) || url.startsWith(`${base}/`)) inFlight.delete(key);
+  }
+}
+
+/**
  * Forget every in-flight read, so a caller after sign-in, sign-out or an
  * account switch can never be handed the previous person's response. Call it
  * wherever cached work data is cleared.
