@@ -6,7 +6,7 @@ import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { preloadSearchPatientCheck } from "@/components/clinical-dashboard/search-patient-detail-guard";
-import { useMedicationCatalog } from "@/components/clinical-dashboard/use-medication-catalog";
+import { useMedicationCatalog, useMedicationDetail } from "@/components/clinical-dashboard/use-medication-catalog";
 
 vi.mock("@/lib/supabase/client", () => ({
   useAuthSession: () => ({ authorizationHeader: undefined, session: null, status: "authenticated" }),
@@ -67,5 +67,23 @@ describe("useMedicationCatalog failure wording", () => {
 
     expect(result.current.loading).toBe(false);
     expect(result.current.error).toMatch(/taking too long/);
+  });
+});
+
+// D26-12: the record page's Details line read a bare "Request failed (503)".
+describe("useMedicationDetail failure wording", () => {
+  it.each([
+    [503, /medicines service is busy or unavailable/],
+    [429, /Too many requests/],
+    [401, /Sign in again/],
+  ])("turns a %i into plain words and keeps the code", async (status, expected) => {
+    fetchMock.mockResolvedValue(new Response("{}", { status }));
+    const { result } = renderHook(() => useMedicationDetail("clozapine"));
+    await settle();
+
+    expect(result.current.loading).toBe(false);
+    expect(result.current.error).toMatch(expected);
+    expect(result.current.error).toContain(`Code ${status}.`);
+    expect(result.current.error).not.toMatch(/Request failed/);
   });
 });

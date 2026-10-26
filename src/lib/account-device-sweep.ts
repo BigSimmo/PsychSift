@@ -45,11 +45,15 @@ const CLINICAL_DRAFT_PREFIXES: readonly string[] = [
 
 const SERVICE_WORKER_CACHE_PREFIX = "clinical-kb-pwa-";
 
-function sweepStorage(storage: Storage): void {
+/** Options for one sweep. `keepPrefix` spares one key family, used only while a sign-in asks first (D26-02). */
+export type AccountDeviceSweepOptions = { readonly keepPrefix?: string };
+
+function sweepStorage(storage: Storage, { keepPrefix }: AccountDeviceSweepOptions): void {
   const doomed: string[] = [];
   for (let index = 0; index < storage.length; index += 1) {
     const key = storage.key(index);
     if (!key) continue;
+    if (keepPrefix && key.startsWith(keepPrefix)) continue;
     const workKey = key.startsWith(PSYCHSIFT_PREFIX) && !DEVICE_PREFERENCE_KEYS.has(key);
     const draftKey = CLINICAL_DRAFT_KEYS.includes(key) || CLINICAL_DRAFT_PREFIXES.some((p) => key.startsWith(p));
     if (workKey || draftKey) doomed.push(key);
@@ -57,10 +61,10 @@ function sweepStorage(storage: Storage): void {
   for (const key of doomed) storage.removeItem(key);
 }
 
-function sweepWebStorage(): void {
+function sweepWebStorage(options: AccountDeviceSweepOptions): void {
   for (const getStorage of [() => window.localStorage, () => window.sessionStorage]) {
     try {
-      sweepStorage(getStorage());
+      sweepStorage(getStorage(), options);
     } catch {
       // Storage blocked: nothing was stored to clear.
     }
@@ -99,9 +103,9 @@ async function closePsychSiftNotifications(): Promise<void> {
  * sees honest absence), then the asynchronous parts in the background. Safe on
  * the server (no-op) and never throws.
  */
-export function sweepAccountDeviceData(): void {
+export function sweepAccountDeviceData(options: AccountDeviceSweepOptions = {}): void {
   if (typeof window === "undefined") return;
-  sweepWebStorage();
+  sweepWebStorage(options);
   for (const task of [deleteIndexedDbDatabases, deletePageCaches, closePsychSiftNotifications]) {
     void task().catch(() => undefined);
   }

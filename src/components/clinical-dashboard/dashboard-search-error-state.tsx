@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleAlert, FileText, RefreshCw, Search } from "lucide-react";
+import { CircleAlert, FileText, LogIn, RefreshCw, Search } from "lucide-react";
 
 import { generateQuerySuggestions, type AnswerErrorKind } from "@/components/clinical-dashboard/search-utils";
 import { cn, EmptyState, floatingControl, primaryControl } from "@/components/ui-primitives";
@@ -17,22 +17,80 @@ export function DashboardSearchErrorState({
   errorKind,
   activeModeResultKind,
   documentsResultsOwnError,
+  errorDetail,
   lastFailedQuery,
   query,
   onRephrase,
   onRetry,
   onSearchDocuments,
+  onSignInAndSend,
 }: {
   error: string | null;
   errorKind: AnswerErrorKind | null;
   activeModeResultKind: AppModeResultKind;
   documentsResultsOwnError: boolean;
+  /** The server's own words for this failure, shown only behind a tap (D26-08). */
+  errorDetail?: string | null;
   lastFailedQuery: string | null;
   query: string;
   onRephrase: () => void;
   onRetry: () => void;
   onSearchDocuments: () => void;
+  /** Opens sign-in and sends the held question once signed in (D26-05). */
+  onSignInAndSend?: () => void;
 }) {
+  const answerMode = activeModeResultKind === "answer";
+  if (error && answerMode && errorKind === "session-expired") {
+    // The question was never sent, so say so and keep it: one button signs in and sends it,
+    // instead of a dead end that left the reader to find Sign in and retype (D26-05).
+    return (
+      <EmptyState
+        icon={LogIn}
+        title="You were signed out, so this wasn’t sent"
+        body="Your question is kept. Sign in and it will send straight away."
+        live="assertive"
+        tone="info"
+        testId="answer-error"
+        actions={
+          onSignInAndSend && lastFailedQuery ? (
+            <button
+              type="button"
+              data-testid="answer-error-sign-in-and-send"
+              onClick={() => onSignInAndSend()}
+              className={cn(primaryControl, "text-xs")}
+            >
+              <LogIn aria-hidden="true" className="h-4 w-4" />
+              Sign in and send
+            </button>
+          ) : undefined
+        }
+      />
+    );
+  }
+  if (error && answerMode && errorKind === "daily-limit") {
+    // Retry cannot clear the daily cap, so it is not offered (D26-09).
+    return (
+      <EmptyState
+        icon={CircleAlert}
+        title="Today’s answers are used up"
+        body={error}
+        live="polite"
+        tone="info"
+        testId="answer-error"
+        actions={
+          <button
+            type="button"
+            data-testid="answer-error-search-documents"
+            onClick={() => onSearchDocuments()}
+            className={cn(floatingControl, "text-xs")}
+          >
+            <FileText aria-hidden="true" className="h-4 w-4" />
+            {answerRecovery.searchDocuments}
+          </button>
+        }
+      />
+    );
+  }
   return error && errorKind === "no-results" && activeModeResultKind === "answer" ? (
     <EmptyState
       icon={Search}
@@ -99,6 +157,12 @@ export function DashboardSearchErrorState({
               <FileText aria-hidden="true" className="h-4 w-4" />
               {answerRecovery.searchDocuments}
             </button>
+            {errorDetail ? (
+              <details className="w-full text-xs text-[color:var(--text-muted)]" data-testid="answer-error-detail">
+                <summary className="inline-flex min-h-tap cursor-pointer items-center">Show technical detail</summary>
+                <span className="break-words">{errorDetail}</span>
+              </details>
+            ) : null}
           </>
         ) : undefined
       }

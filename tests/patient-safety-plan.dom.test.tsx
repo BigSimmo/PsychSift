@@ -4,7 +4,7 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { PatientSafetyPlan } from "@/components/patient-safety-plan";
+import { PatientSafetyPlan, SAFETY_PLAN_UNDO_MS } from "@/components/patient-safety-plan";
 import { WA_CRISIS_CONTACTS } from "@/lib/crisis-contacts";
 import { confirmShellNavigation } from "@/lib/navigation-guards";
 
@@ -128,7 +128,7 @@ describe("PatientSafetyPlan — incomplete-plan draft guard", () => {
     render(<PatientSafetyPlan />);
 
     await user.click(screen.getByRole("button", { name: /Load example/ }));
-    await user.click(screen.getByRole("button", { name: /Clear all/ }));
+    await user.click(screen.getByRole("button", { name: /Clear the plan/ }));
 
     const supportStep = screen.getByRole("region", { name: "Step 4: People I can ask for help" });
     await user.type(within(supportStep).getByPlaceholderText("Name & relationship"), "Sam — a friend");
@@ -333,8 +333,9 @@ describe("PatientSafetyPlan — incomplete-plan draft guard", () => {
 
 describe("PatientSafetyPlan — Clear all and Copy feedback", () => {
   // fireEvent rather than userEvent: an earlier case in this file uses fake timers.
-  it("asks before Clear all wipes a plan with real entries, and keeps it when the doctor says no", () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+  // D26-24: no browser "are you sure" box; the plan clears at once and Undo brings it back.
+  it("clears a plan with real entries at once and offers Undo for ten seconds", () => {
+    const confirm = vi.spyOn(window, "confirm");
     render(<PatientSafetyPlan />);
 
     const supportStep = screen.getByRole("region", { name: "Step 4: People I can ask for help" });
@@ -342,29 +343,61 @@ describe("PatientSafetyPlan — Clear all and Copy feedback", () => {
       target: { value: "Sam — a friend" },
     });
     fireEvent.click(within(supportStep).getByRole("button", { name: /^Add to / }));
-    fireEvent.click(screen.getByRole("button", { name: /Clear all/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Clear the plan/ }));
 
-    expect(confirm).toHaveBeenCalledOnce();
-    expect(confirm).toHaveBeenCalledWith(expect.stringMatching(/Clear the whole plan\?.*can’t be undone/));
-    expect(within(supportStep).getAllByText("Sam — a friend").length).toBeGreaterThan(0);
-
-    confirm.mockReturnValue(true);
-    fireEvent.click(screen.getByRole("button", { name: /Clear all/ }));
+    expect(confirm).not.toHaveBeenCalled();
     expect(within(supportStep).queryByText("Sam — a friend")).toBeNull();
+    expect(screen.getByTestId("safety-plan-undo")).toHaveTextContent("Plan cleared");
+
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(within(supportStep).getAllByText("Sam — a friend").length).toBeGreaterThan(0);
+    expect(screen.queryByTestId("safety-plan-undo")).toBeNull();
     confirm.mockRestore();
   });
 
-  it("clears an untouched example or an empty plan without asking", () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+  it("drops Undo once new work starts on the cleared plan", () => {
+    render(<PatientSafetyPlan />);
+    const supportStep = screen.getByRole("region", { name: "Step 4: People I can ask for help" });
+    const field = () => within(supportStep).getByPlaceholderText("Name & relationship") as HTMLInputElement;
+    fireEvent.change(field(), { target: { value: "Sam — a friend" } });
+    fireEvent.click(within(supportStep).getByRole("button", { name: /^Add to / }));
+    fireEvent.click(screen.getByRole("button", { name: /Clear the plan/ }));
+    expect(screen.getByTestId("safety-plan-undo")).toBeTruthy();
+
+    fireEvent.change(field(), { target: { value: "Alex — a brother" } });
+    fireEvent.click(within(supportStep).getByRole("button", { name: /^Add to / }));
+    expect(screen.queryByTestId("safety-plan-undo")).toBeNull();
+    expect(within(supportStep).getAllByText("Alex — a brother").length).toBeGreaterThan(0);
+  });
+
+  it("lets the Undo offer lapse after ten seconds", () => {
+    vi.useFakeTimers();
+    try {
+      render(<PatientSafetyPlan />);
+      const supportStep = screen.getByRole("region", { name: "Step 4: People I can ask for help" });
+      fireEvent.change(within(supportStep).getByPlaceholderText("Name & relationship"), {
+        target: { value: "Sam — a friend" },
+      });
+      fireEvent.click(within(supportStep).getByRole("button", { name: /^Add to / }));
+      fireEvent.click(screen.getByRole("button", { name: /Clear the plan/ }));
+      expect(screen.getByTestId("safety-plan-undo")).toBeTruthy();
+
+      act(() => vi.advanceTimersByTime(SAFETY_PLAN_UNDO_MS));
+      expect(screen.queryByTestId("safety-plan-undo")).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("clears an untouched example or an empty plan without an Undo offer", () => {
     render(<PatientSafetyPlan />);
 
-    fireEvent.click(screen.getByRole("button", { name: /Clear all/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Clear the plan/ }));
     fireEvent.click(screen.getByRole("button", { name: /Load example/ }));
-    fireEvent.click(screen.getByRole("button", { name: /Clear all/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Clear the plan/ }));
 
-    expect(confirm).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("safety-plan-undo")).toBeNull();
     expect(screen.queryByText(examplePattern)).toBeNull();
-    confirm.mockRestore();
   });
 
   it("moves between Build and Plan preview with the arrow keys", () => {

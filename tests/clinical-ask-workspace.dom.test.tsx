@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const navigation = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => navigation }));
@@ -10,7 +10,10 @@ import {
   ClinicalAskSessionProvider,
   useClinicalAskSession,
 } from "@/components/clinical-dashboard/clinical-ask-session-context";
-import { ClinicalAskWorkspace } from "@/components/clinical-dashboard/clinical-ask-workspace";
+import {
+  CLINICAL_ASK_STALL_PROMPT_MS,
+  ClinicalAskWorkspace,
+} from "@/components/clinical-dashboard/clinical-ask-workspace";
 
 function Harness({
   onDraftChange,
@@ -69,6 +72,7 @@ function Harness({
       >
         Clarify
       </button>
+      <button onClick={() => session.submit("services", {})}>Submit</button>
       <button
         onClick={() =>
           session.receiveEvent({
@@ -134,6 +138,35 @@ describe("ClinicalAskWorkspace", () => {
     navigation.push.mockReset();
     announcer.announce.mockReset();
     HTMLElement.prototype.scrollIntoView = vi.fn();
+  });
+
+  // D26-10: a stalled Clinical Ask spun with no end.
+  it("offers Keep waiting or Stop once an answer has stalled", () => {
+    vi.useFakeTimers();
+    try {
+      render(
+        <ClinicalAskSessionProvider>
+          <Harness />
+        </ClinicalAskSessionProvider>,
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Seed" }));
+      fireEvent.click(screen.getByRole("button", { name: "Submit" }));
+      expect(screen.queryByTestId("clinical-ask-stall")).toBeNull();
+
+      act(() => vi.advanceTimersByTime(CLINICAL_ASK_STALL_PROMPT_MS));
+      expect(screen.getByTestId("clinical-ask-stall")).toHaveTextContent("This is taking longer than usual.");
+
+      fireEvent.click(screen.getByRole("button", { name: "Keep waiting" }));
+      expect(screen.queryByTestId("clinical-ask-stall")).toBeNull();
+      act(() => vi.advanceTimersByTime(CLINICAL_ASK_STALL_PROMPT_MS));
+      expect(screen.getByTestId("clinical-ask-stall")).toBeTruthy();
+
+      fireEvent.click(screen.getByRole("button", { name: "Stop" }));
+      expect(screen.queryByTestId("clinical-ask-stall")).toBeNull();
+      expect(screen.queryByText("Clinical Ask is gathering governed evidence…")).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("announces each Clinical Ask result through the shared announcer", () => {

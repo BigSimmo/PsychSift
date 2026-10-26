@@ -37,6 +37,16 @@ describe("account device sweep", () => {
     expect(window.localStorage.getItem("clinical-kb-theme")).toBe("dark");
   });
 
+  it("spares only the named key family while a sign-in asks first (D26-02)", () => {
+    window.localStorage.setItem("psychsift:patient-labels:fixture", "SYNTHETIC");
+    window.localStorage.setItem("psychsift:other:fixture", "SYNTHETIC");
+    sweepAccountDeviceData({ keepPrefix: "psychsift:patient-labels:" });
+    expect(window.localStorage.getItem("psychsift:patient-labels:fixture")).toBe("SYNTHETIC");
+    expect(window.localStorage.getItem("psychsift:other:fixture")).toBeNull();
+    sweepAccountDeviceData();
+    expect(window.localStorage.getItem("psychsift:patient-labels:fixture")).toBeNull();
+  });
+
   it("deletes IndexedDB databases and page caches, keeps the service worker's caches, and closes PsychSift notifications", async () => {
     const deleteDatabase = vi.fn();
     vi.stubGlobal("indexedDB", {

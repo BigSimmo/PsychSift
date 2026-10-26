@@ -4952,6 +4952,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-26-sign-in-keeps-signed-out-shift-work.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/development-speed-playbook.md",
         "section": "root",
         "catalogued": true

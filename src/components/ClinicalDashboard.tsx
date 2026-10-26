@@ -449,6 +449,7 @@ function ClinicalDashboardContent({
   // while `error` is truthy, and set alongside every `setError(<message>)` so a
   // stale value can never leak into a later, unrelated error.
   const [errorKind, setErrorKind] = useState<AnswerErrorKind | null>(null);
+  const [errorDetail, setErrorDetail] = useState<{ message: string; detail: string } | null>(null);
   const [lastFailedQuery, setLastFailedQuery] = useState<string | null>(null);
   const [setupWarning, setSetupWarning] = useState<string | null>(null);
   const [setupChecks, setSetupChecks] = useState<SetupCheck[]>(fallbackSetupChecks);
@@ -954,6 +955,7 @@ function ClinicalDashboardContent({
     setRestoredAnswerSavedAt,
     setError,
     setErrorKind,
+    setErrorDetail,
     setLastFailedQuery,
     setDemoMode,
     setActionNotice,
@@ -1102,6 +1104,21 @@ function ClinicalDashboardContent({
   useLayoutEffect(() => {
     askRef.current = ask;
   });
+
+  // Sign in and send (D26-05): a question an expired sign-in held back goes once the person is
+  // signed in again. Any newer search or cleared error drops the pending send.
+  const pendingSignInResendRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!error) pendingSignInResendRef.current = null;
+  }, [error]);
+  useEffect(() => {
+    if (authStatus !== "authenticated") return;
+    const held = pendingSignInResendRef.current;
+    if (!held) return;
+    pendingSignInResendRef.current = null;
+    setError(null);
+    void askRef.current(held);
+  }, [authStatus]);
 
   useEffect(() => {
     const trimmedQuery = query.trim();
@@ -2173,6 +2190,7 @@ function ClinicalDashboardContent({
                     errorKind={errorKind}
                     activeModeResultKind={activeModeResultKind}
                     documentsResultsOwnError={documentsResultsOwnError}
+                    errorDetail={errorDetail?.message === error ? errorDetail.detail : null}
                     lastFailedQuery={lastFailedQuery}
                     query={query}
                     onRephrase={() => focusComposerInput()}
@@ -2182,6 +2200,12 @@ function ClinicalDashboardContent({
                       void ask(retryQuery);
                     }}
                     onSearchDocuments={() => crossModeSearch("documents", (lastFailedQuery ?? query).trim())}
+                    onSignInAndSend={() => {
+                      const held = lastFailedQuery ?? query;
+                      pendingSignInResendRef.current = held;
+                      setQuery(held);
+                      openSettings();
+                    }}
                   />
                 )}
 
