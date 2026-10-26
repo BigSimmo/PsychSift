@@ -38,6 +38,9 @@ import { useAuthSession } from "@/lib/supabase/client";
  * things this corpus is loaded to show, and would put a "Private" pill on
  * every row of every page. So the consequence is stated at the control that
  * causes it, in the words a reader would use, rather than designed away.
+ *
+ * Because loading publishes, only a site administrator is offered Load (owner
+ * decision, 26 Oct 2026). Anyone holding a copy is still offered Remove.
  */
 /**
  * What this reader can do with the example corpus.
@@ -115,8 +118,12 @@ export function useOnCallDemoContentState(signedOut: boolean, demoMode: boolean)
         if (!response.ok) return;
         const body: unknown = await response.json();
         if (cancelled || typeof body !== "object" || body === null) return;
-        const { loaded, total } = body as { loaded?: unknown; total?: unknown };
-        if (typeof loaded === "number" && typeof total === "number") setState({ mode: "account", loaded, total });
+        const { loaded, total, mayLoad } = body as { loaded?: unknown; total?: unknown; mayLoad?: unknown };
+        if (typeof loaded !== "number" || typeof total !== "number") return;
+        // Loading publishes shared rows, which only an administrator may do. Anyone holding a copy
+        // can still remove it, so the control stays for them.
+        if (loaded === 0 && mayLoad !== true) return;
+        setState({ mode: "account", loaded, total });
       } catch {
         // Offline or a server error: stay silent and render nothing. This is a
         // convenience control, and a failed count is not worth an error banner
