@@ -5115,6 +5115,10 @@ export type Database = {
         Args: { p_actor_id: string; p_service_id: string; p_swap_id: string };
         Returns: Json;
       };
+      roster_swap_breaks_team_rules: {
+        Args: { p_service_id: string; p_swap_id: string; p_rules: Json };
+        Returns: boolean;
+      };
       roster_open_post_once: {
         Args: { p_actor_id: string; p_service_id: string; p_post_key: string; p_payload: Json };
         Returns: Json;

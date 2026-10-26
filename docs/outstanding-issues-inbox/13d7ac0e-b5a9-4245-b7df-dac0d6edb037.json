@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "13d7ac0e-b5a9-4245-b7df-dac0d6edb037",
+  "createdOn": "2026-10-23",
+  "action": "update",
+  "payload": {
+    "id": "#3E42FH",
+    "summary": "Complete remaining WA service review worklist (four at last recorded reconciliation)",
+    "detail": "REVALIDATED 2026-10-23 at df1e07db04. Replace the stale twelve-record title with the remaining service review worklist (four at the last recorded reconciliation). Current owner acceptance is not established by this audit. Source inspection only; no fresh application/provider execution or clinical sign-off. Evidence: docs/outstanding-issues.md. PRIOR DETAIL: 21 of 25 services signed off in PR #3143; only 4 services remain pending.",
+    "source": "Current-state issue revalidation 2026-10-23 at df1e07db04; PR #3143 review",
+    "baseRowFingerprint": "b6c77bf18081cdb17a85e99e37bc4651861d802fdccddb317e65f75803db3b32",
+    "targetUlid": "01M2MSJA293E42FH6W3NV64JPX"
+  }
+}

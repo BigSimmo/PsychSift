@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
@@ -21,9 +21,9 @@ import {
 import { useAuthSession } from "@/lib/supabase/client";
 import {
   TERMS_METADATA_KEY,
+  TERMS_PROMPT_REQUEST_EVENT,
   buildTermsAcceptance,
-  hasAcceptedTerms,
-  readLocalTermsVersion,
+  readTermsAcceptance,
   writeLocalTermsVersion,
 } from "@/lib/terms-acceptance";
 
@@ -34,6 +34,15 @@ const PROMPT_EXEMPT_PATHS = ["/terms", "/about", "/privacy", "/auth"];
  * Asks a signed-in user to accept the current Terms of Use, once per terms
  * version. Signed-out and demo sessions see nothing. See
  * `src/lib/terms-acceptance.ts` for where the record is kept and why.
+ *
+ * Only the account record counts, not this device's copy: Answer and the original
+ * documents check the account on the server (`requireHealthProfessionalDeclaration`),
+ * so a save that failed must keep asking rather than leave the user refused there
+ * with no prompt (D26-40, 26 Oct 2026).
+ *
+ * This is where the declaration is made, on first open (D26-07, 26 Oct 2026). Every
+ * clinical tool stays behind it (`useClinicalToolAccess`), and the card a tool shows
+ * after Not now opens this prompt again (`requestTermsPrompt`).
  */
 export function TermsAcceptancePrompt() {
   const { client, session, status } = useAuthSession();
@@ -45,16 +54,22 @@ export function TermsAcceptancePrompt() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
 
+  useEffect(() => {
+    const reopen = () => {
+      setLaterFor(null);
+      setSaveError(false);
+    };
+    window.addEventListener(TERMS_PROMPT_REQUEST_EVENT, reopen);
+    return () => window.removeEventListener(TERMS_PROMPT_REQUEST_EVENT, reopen);
+  }, []);
+
   if (status !== "authenticated" || !userId) return null;
   if (PROMPT_EXEMPT_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))) return null;
   if (acceptedFor === userId || laterFor === userId) return null;
   // Stay mounted while the save is in flight or its error is showing: the local
   // copy written after a failed save would otherwise hide the warning at once.
   const settling = saving || saveError;
-  if (
-    !settling &&
-    hasAcceptedTerms({ metadata: session?.user.user_metadata, localVersion: readLocalTermsVersion(userId) })
-  ) {
+  if (!settling && readTermsAcceptance(session?.user.user_metadata)?.version === TERMS_VERSION) {
     return null;
   }
 

@@ -6,7 +6,7 @@ import { LockKeyhole, Mail } from "lucide-react";
 
 import { TextField } from "@/components/ui/text-field";
 import { AsyncButton, cn, floatingControl, InlineNotice, commandControl } from "@/components/ui-primitives";
-import { TERMS_SIGN_IN_NOTE } from "@/lib/front-door-content";
+import { PRIVACY_SIGN_IN_NOTE, TERMS_SIGN_IN_NOTE } from "@/lib/front-door-content";
 import { useAuthSession } from "@/lib/supabase/client";
 
 type EmailMode = "signin" | "signup" | "link";
@@ -154,6 +154,14 @@ export function EmailAuthForm({
           className="font-semibold text-[color:var(--clinical-accent)] underline underline-offset-4"
         >
           Terms of Use
+        </Link>
+        . {PRIVACY_SIGN_IN_NOTE}{" "}
+        <Link
+          href="/privacy"
+          prefetch={false}
+          className="font-semibold text-[color:var(--clinical-accent)] underline underline-offset-4"
+        >
+          privacy notice
         </Link>
         .
       </p>

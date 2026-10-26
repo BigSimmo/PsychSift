@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "5b47ac45-0c8c-4753-b01e-dc69d4995da1",
+  "createdOn": "2026-10-23",
+  "action": "update",
+  "payload": {
+    "id": "#3AVEFG",
+    "summary": "Audit residuals: settings, targeted browser coverage, legacy names and install-prompt route proof",
+    "detail": "CURRENT CORRECTION 24 October 2026: The duplicate admin home is gone: be1315b8b3 removed src/app/mockups/development/** and repointed links to /admin/developer-hub under the recorded owner decision. The early PWA prompt hydration fix is also implemented (90b9f697e9), so do not rebuild that fix. It does not prove password-reset/privacy-route acceptance: retain targeted browser verification, settings/approval-gate concerns, thin browser journeys and remaining legacy naming. The local organisation map now covers the 44 previously unplaced tracked files and the docs pipeline passes; this does not close all residuals.\n\nHISTORICAL DETAIL (superseded where corrected above): Settings changes in GitHub are the owner's. Browser-check L4A-F2 before changing anything. HYSWAF already tracks Railway deploying before checks finish (L6-F1).",
+    "source": "Independent current-source cross-check 24 October 2026 at df1e07db04; exact source paths retained in detail.",
+    "baseRowFingerprint": "ad55be6be99f2161948992d248142119435fa92692a8b09c1621e257d39607ff",
+    "targetUlid": "01M4T65ZGQ3AVEFG1X67PCV32E"
+  }
+}

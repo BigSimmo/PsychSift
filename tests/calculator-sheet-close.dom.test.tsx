@@ -10,9 +10,9 @@
  *
  * No test exercised the close path at all before this file.
  *
- * Out of scope and deliberately not done here: migrating the sheet to
- * `OverlayPortal`. It is not portalled, so it still inherits any transformed or
- * clipping ancestor the search page grows. That is the larger correct fix.
+ * The sheet now portals into the `OverlayPortal` modal layer (26 Oct 2026, D26-07):
+ * in the page it painted over the overlay root, so the Terms prompt opened from
+ * its "Review the Terms" card was hidden behind it. The last test pins that.
  */
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -206,5 +206,11 @@ describe("CalculatorSheet sheet-focus and scroll-lock lifecycle", () => {
 
     expect(hasOpenSheet()).toBe(false);
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("renders in the modal overlay layer, so a sheet opened from inside it paints above it", () => {
+    renderSheet();
+    const dialog = screen.getByRole("dialog");
+    expect(dialog.closest('[data-overlay-layer="modal"]')).not.toBeNull();
   });
 });

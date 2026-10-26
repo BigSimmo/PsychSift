@@ -37,6 +37,8 @@
     "scripts/eval-trend.mjs",
     "scripts/eval-utils.ts",
     "scripts/fixtures/**",
+    "scripts/lib/answer-quality-line.mjs",
+    "scripts/lib/answer-speed-line.mjs",
     "scripts/lib/clinical-aliases.ts",
     "scripts/lib/deployment-rag-activation.mjs",
     "scripts/lib/eval-canary-disposition.mjs",
@@ -175,6 +177,7 @@
     "tests/fixtures/clinical-ask-cases.ts",
     "tests/fixtures/clozapine-threshold-source-chunks.json",
     "tests/fixtures/high-risk-eval-cases.draft.json",
+    "tests/fixtures/kemh-lithium-breastfeeding-live-excerpt.json",
     "tests/fixtures/lithium-monitoring-live-excerpts.json",
     "tests/helpers/rag-adversarial-assertions.ts",
     "tests/helpers/supabase-round-trip-counter.ts",
@@ -191,6 +194,7 @@
     "tests/query-classification.test.ts",
     "tests/rag-*",
     "tests/ranking-*",
+    "tests/registered-public-answer-options.test.ts",
     "tests/result-sort.test.ts",
     "tests/retrieval-*",
     "tests/safety-findings.test.ts",
@@ -209,6 +213,7 @@
     "tests/sse-heartbeat.test.ts",
     "tests/summarize-agent-conversation.test.ts",
     "tests/table-fact-ranking.test.ts",
+    "tests/text-rpc-variant-timings.test.ts",
     "tests/therapy-services-source-registration.test.ts",
     "tests/wa-service-issuer-registration.test.ts"
   ]
