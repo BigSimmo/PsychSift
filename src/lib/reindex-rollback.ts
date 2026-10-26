@@ -3,7 +3,8 @@
 // commit_document_index_generation moves documents.metadata.index_generation_id to a new
 // generation; the prune trigger keeps that generation and the one it replaced. This module
 // plans moving the pointer back to the previous committed generation (the most recent
-// retained generation, other than the current one, that has typed document_pages rows) and
+// retained generation, other than the current one, that has typed document_pages rows, or chunks
+// only when it predates the 13 Oct 2026 page stamps) and
 // applies it through the rollback_document_index_generation RPC. Dry-run is the default.
 
 export type RollbackScope =
@@ -13,7 +14,8 @@ export type RollbackScope =
 
 export type CommittedGeneration = { generationId: string; committedAt: string };
 
-export type RepointResult = { ok: boolean; reason?: string };
+/** summaryRestored/labelsRestored come from the RPC; absent means it did not say (an older RPC). */
+export type RepointResult = { ok: boolean; reason?: string; summaryRestored?: boolean; labelsRestored?: boolean };
 
 // Narrow data-access surface so the planner is testable with an in-memory store.
 export interface RollbackStore {
@@ -56,6 +58,8 @@ export type RollbackPlan = {
 export type RollbackOutcome = RollbackPlan & {
   applied: boolean;
   applyError: string | null;
+  summaryRestored?: boolean;
+  labelsRestored?: boolean;
 };
 
 export const DEFAULT_ROLLBACK_LIMIT = 50;
@@ -83,6 +87,19 @@ export async function collectCommittedGenerations(
     if (rows.length < pageSize) break;
   }
   return [...earliest].map(([generationId, committedAt]) => ({ generationId, committedAt }));
+}
+
+/**
+ * Audit E2E-01: adds generations that have chunks but no stamped pages. Every typed commit since
+ * 13 Oct 2026 stamps its pages, so such a generation was committed before then and owns the
+ * document's unstamped pages. A generation with stamped pages keeps its page date.
+ */
+export function mergeLegacyGenerations(
+  stamped: CommittedGeneration[],
+  fromChunks: CommittedGeneration[],
+): CommittedGeneration[] {
+  const known = new Set(stamped.map((entry) => entry.generationId));
+  return [...stamped, ...fromChunks.filter((entry) => !known.has(entry.generationId))];
 }
 
 function byCommittedAtDesc(left: CommittedGeneration, right: CommittedGeneration) {
@@ -195,7 +212,13 @@ export async function applyRollbackPlans(
     }
     try {
       const result = await store.repoint(plan.documentId, plan.currentGeneration, plan.previousGeneration);
-      outcomes.push({ ...plan, applied: result.ok, applyError: result.ok ? null : (result.reason ?? "rpc_refused") });
+      outcomes.push({
+        ...plan,
+        applied: result.ok,
+        applyError: result.ok ? null : (result.reason ?? "rpc_refused"),
+        summaryRestored: result.summaryRestored,
+        labelsRestored: result.labelsRestored,
+      });
     } catch (error) {
       outcomes.push({ ...plan, applied: false, applyError: error instanceof Error ? error.message : String(error) });
     }
@@ -262,4 +285,17 @@ export function parseRollbackArgs(argv: string[]) {
     allowRollForward: argv.includes("--roll-forward"),
     limit: clampRollbackLimit(Number.parseInt(limitValue ?? "", 10)),
   };
+}
+
+/**
+ * Which enrichment fields a rolled-back document still shows from the newer version. The rollback
+ * RPC restores the summary, clinical specifics and labels when the target generation's snapshot
+ * holds them; a flag that is false or missing (an older RPC) leaves that field stale.
+ */
+export function staleEnrichmentAfterRollback(outcome: RollbackOutcome): string[] {
+  if (!outcome.applied) return [];
+  return [
+    ...(outcome.summaryRestored === true ? [] : ["summary and clinical specifics"]),
+    ...(outcome.labelsRestored === true ? [] : ["topic labels"]),
+  ];
 }

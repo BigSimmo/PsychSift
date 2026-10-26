@@ -209,6 +209,7 @@ import {
 import { buildRagQueryPlan } from "@/lib/rag/rag-query-plan";
 import { withOriginalSectionEligibility } from "@/lib/rag/rag-original-section-eligibility";
 import { createCheckedPublishedOriginalLoader } from "@/lib/rag/rag-published-original-loader";
+import { expandClinicalQueryWithCandidateMetadata } from "@/lib/rag/rag-metadata-expansion";
 export { buildRagSourceBlock, truncateForModel } from "@/lib/rag/rag-source-block";
 import {
   buildClinicalTextSearchQuery,
@@ -218,7 +219,6 @@ import {
   hasDoseEvidenceSupport,
   hasStructuredThresholdEvidence,
   isMedicationDoseEvidenceQuery,
-  normalizedClinicalSearchTokens,
 } from "@/lib/clinical-search";
 import { env, requestedOpenAIAnswerModels } from "@/lib/env";
 import { ragSummaryPromptVersion } from "@/lib/rag/rag-versioning";
@@ -275,7 +275,7 @@ import {
   shouldSkipUnsupportedSoftTailCacheWrite,
 } from "@/lib/rag/rag-query-guard";
 export { shouldShortCircuitUnsupportedSearch } from "@/lib/rag/rag-query-guard";
-import { analyzeQueryWithClassifierFallback, uniqueTextValues } from "@/lib/rag/rag-classifier-fallback";
+import { analyzeQueryWithClassifierFallback } from "@/lib/rag/rag-classifier-fallback";
 export {
   analyzeQueryWithClassifierFallback,
   resetClassifierVerdictMemoForTests,
@@ -832,58 +832,6 @@ function hasOpenAIUsage(usage: OpenAITokenUsage) {
   return Object.values(usage).some((value) => typeof value === "number" && value > 0);
 }
 
-/** Metadata expansion term score. */
-function metadataExpansionTermScore(queryTokens: Set<string>, value: string, sourceWeight: number) {
-  const tokens = normalizedClinicalSearchTokens(value);
-  if (tokens.length === 0) return 0;
-  const overlap = tokens.filter((token) => queryTokens.has(token)).length;
-  const compactness = value.length <= 80 ? 0.25 : 0;
-  return sourceWeight + overlap * 0.6 + compactness;
-}
-
-/** Candidate metadata expansion terms. */
-function candidateMetadataExpansionTerms(query: string, candidates: SearchResult[], limit = 12) {
-  const queryTokens = new Set(normalizedClinicalSearchTokens(query));
-  const scoredTerms: Array<{ value: string; score: number }> = [];
-
-  for (const candidate of candidates.slice(0, 24)) {
-    scoredTerms.push(
-      {
-        value: candidate.section_heading ?? "",
-        score: metadataExpansionTermScore(queryTokens, candidate.section_heading ?? "", 1.4),
-      },
-      { value: candidate.title, score: metadataExpansionTermScore(queryTokens, candidate.title, 1.2) },
-      {
-        value: candidate.file_name.replace(/\.[^.]+$/, "").replace(/[._-]+/g, " "),
-        score: metadataExpansionTermScore(queryTokens, candidate.file_name, 0.8),
-      },
-    );
-
-    for (const label of candidate.document_labels ?? []) {
-      if (label.confidence !== undefined && label.confidence < 0.55) continue;
-      scoredTerms.push({
-        value: label.label,
-        score: metadataExpansionTermScore(queryTokens, label.label, 1.8),
-      });
-    }
-
-    if (candidate.document_summary && candidate.document_summary.length <= 140) {
-      scoredTerms.push({
-        value: candidate.document_summary,
-        score: metadataExpansionTermScore(queryTokens, candidate.document_summary, 0.9),
-      });
-    }
-  }
-
-  return uniqueTextValues(
-    scoredTerms
-      .filter((term) => term.value.trim() && term.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .map((term) => term.value),
-    limit,
-  );
-}
-
 /**
  * Starts a retrieval lane early with its own scratch telemetry, so a lane whose result is later
  * discarded (an earlier fast path returned) cannot mark the search degraded or change its telemetry.
@@ -916,13 +864,6 @@ function mergeSpeculativeLaneTelemetry(telemetry: SearchTelemetry, laneTelemetry
     };
   }
   if (laneTelemetry.text_variant_early_exit) telemetry.text_variant_early_exit = true;
-}
-
-/** Expand clinical query with candidate metadata. */
-function expandClinicalQueryWithCandidateMetadata(query: string, expandedQuery: string, candidates: SearchResult[]) {
-  const metadataTerms = candidateMetadataExpansionTerms(query, candidates);
-  if (metadataTerms.length === 0) return expandedQuery;
-  return uniqueTextValues([expandedQuery, ...metadataTerms], 24).join(" ");
 }
 
 type RagQueryInsert = Omit<Database["public"]["Tables"]["rag_queries"]["Insert"], "metadata"> & {
@@ -4163,7 +4104,31 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
               },
             });
           })()
-        : (extractiveFallbackAnswer ?? baseFallbackAnswer);
+        : (extractiveFallbackAnswer ??
+          (baseFallbackAnswer.citations.length > 0
+            ? (() => {
+                // Audit NEW-G-05 (24 Oct 2026): the base "review the source snippets" message went
+                // through the prose quality gate, which could replace it with "No current source
+                // ... was found" above passages that were in fact found. It is now the review
+                // fallback, which that gate passes through unchanged.
+                const reviewRouteReason = [
+                  route.reason,
+                  `generation_fallback:${sanitizedReason}`,
+                  SOURCE_BACKED_REVIEW_FALLBACK_REASON,
+                  "no_safe_extractive_candidate",
+                ].join("; ");
+                return buildSourceBackedReviewFallbackAnswer(baseFallbackAnswer, {
+                  reviewCitations: baseFallbackAnswer.citations,
+                  routingReason: reviewRouteReason,
+                  plan: buildCurrentSmartApiPlan("unsupported", reviewRouteReason, generationFallbackResults),
+                  carried: {
+                    queryAnalysis,
+                    relevance: generationFallbackArtifacts.relevance,
+                    scoreExplanations: generationFallbackArtifacts.scoreExplanations,
+                  },
+                });
+              })()
+            : baseFallbackAnswer));
     let fallbackAnswer = finalizeAnswer(
       annotateAnswerWithDiagnostics(generationFallbackAnswer, retrievalDiagnostics, {
         fallbackReasonCode: baseFallbackAnswer.fallbackReasonCode,

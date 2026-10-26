@@ -343,6 +343,8 @@
     "20261021190000_teaching_epa_magic_links.sql": "e211838e949ffbe8283ee82f6c79e96777e2254006c192df1688796712c6e139",
     "20261022010000_roster_swap_accept_for_manager.sql": "1c71fd4e14310af53df4748123384149058d8553bf82829c5d7948fa29370a88",
     "20261025150000_audit_database_fixes.sql": "76130c9d044b23c24eb65d5d37810b40381c1d9a5d48514397361a42ca73e7bb",
-    "20261025160000_document_admission_insert_guard.sql": "88fdc39ae9af72b6bd6a48de4f44f3e1c07d3c5fe6b7f0704e2cd6fd34effce8"
+    "20261025160000_document_admission_insert_guard.sql": "88fdc39ae9af72b6bd6a48de4f44f3e1c07d3c5fe6b7f0704e2cd6fd34effce8",
+    "20261025170000_rollback_legacy_pages_summary_and_guards.sql": "8d6c5f6b638a2b651dbc631cf5d66a5692e9a1da0113fac21e313a7a3d7fcdb6",
+    "20261025171000_label_cache_revision_licence_withdrawal.sql": "52add1c789cb67fb2c00d2be9a55ddc821dddf77e3a7b38fc7d0f7544ecb4f85"
   }
 }

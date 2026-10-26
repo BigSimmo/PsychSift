@@ -296,7 +296,15 @@ function createSupabaseMock(resolve: QueryResolver = defaultQueryResolver) {
       return { data: [], error: null };
     },
   );
-  const storageFrom = vi.fn(() => ({ upload, createSignedUrl, createSignedUrls, remove }));
+  const list = vi.fn(
+    async (
+      ...args: [string, { limit: number; offset: number }]
+    ): Promise<{ data: Array<{ id: string | null; name: string }> | null; error: QueryError | null }> => {
+      void args;
+      return { data: [], error: null };
+    },
+  );
+  const storageFrom = vi.fn(() => ({ upload, createSignedUrl, createSignedUrls, remove, list }));
   const getUser = vi.fn(async (receivedToken?: string) =>
     receivedToken === token
       ? { data: { user: { id: userId, app_metadata: { site_role: "administrator" } } }, error: null }
@@ -436,7 +444,7 @@ function createSupabaseMock(resolve: QueryResolver = defaultQueryResolver) {
     }),
     rpc,
     storage: { from: storageFrom },
-    storageMocks: { upload, createSignedUrl, createSignedUrls, remove, storageFrom },
+    storageMocks: { upload, createSignedUrl, createSignedUrls, remove, list, storageFrom },
   };
 
   return client;
@@ -2684,6 +2692,30 @@ describe("private document API access", () => {
     expect(client.rpc).not.toHaveBeenCalledWith("recover_ingestion_job", expect.anything());
   });
 
+  // Audit ING-S-N7: a shared public-library document has no owner; its failed job is retryable here.
+  it("re-queues a failed job for a shared public-library document", async () => {
+    const client = retryClient(retryJobRow({}, { owner_id: null }), () => ok({ ok: true, action: "retry" }));
+    mockRuntime(client);
+
+    const response = await postRetry();
+
+    expect(response.status).toBe(200);
+    expect(client.rpc).toHaveBeenCalledWith(
+      "recover_ingestion_job",
+      expect.objectContaining({ p_expected: expect.objectContaining({ documentOwnerId: null }) }),
+    );
+  });
+
+  it("returns 404 when a returned job belongs to another user's private document", async () => {
+    const client = retryClient(retryJobRow({}, { owner_id: "someone-else" }), () => ok({ ok: true }));
+    mockRuntime(client);
+
+    const response = await postRetry();
+
+    expect(response.status).toBe(404);
+    expect(client.rpc).not.toHaveBeenCalledWith("recover_ingestion_job", expect.anything());
+  });
+
   it("returns 404 for a job outside the administrator's documents", async () => {
     const client = retryClient(null, () => ok({ ok: true }));
     mockRuntime(client);
@@ -4740,6 +4772,77 @@ describe("private document API access", () => {
     expect(client.storageMocks.remove).toHaveBeenCalledWith([finalImage.storage_path]);
     expect(client.calls.some((call) => call.table === "document_images")).toBe(false);
     expect(client.calls.some((call) => call.table === "document_chunks")).toBe(false);
+  });
+
+  it("also removes images a crashed attempt left under the document's own prefix (audit ING-A-08)", async () => {
+    const recorded = `${documentId}/lease-a/generation-a/11111111-1111-4111-8111-111111111111.png`;
+    const orphan = `${documentId}/lease-b/generation-b/22222222-2222-4222-8222-222222222222.png`;
+    const client = createSupabaseMock(() => ok([]));
+    client.rpc.mockImplementation(async (name: string) =>
+      name === "delete_document_if_idle"
+        ? ok({
+            outcome: "deleted",
+            cleanup_job_id: "55555555-5555-4555-8555-555555555555",
+            document_title: "Owned",
+            source_path: null,
+            image_paths: [recorded],
+          })
+        : ok([]),
+    );
+    const tree: Record<string, Array<{ id: string | null; name: string }>> = {
+      [documentId]: [
+        { id: null, name: "lease-a" },
+        { id: null, name: "lease-b" },
+      ],
+      [`${documentId}/lease-a`]: [{ id: null, name: "generation-a" }],
+      [`${documentId}/lease-b`]: [{ id: null, name: "generation-b" }],
+      [`${documentId}/lease-a/generation-a`]: [{ id: "file-a", name: recorded.split("/").pop()! }],
+      [`${documentId}/lease-b/generation-b`]: [{ id: "file-b", name: orphan.split("/").pop()! }],
+    };
+    client.storageMocks.list.mockImplementation(async (prefix: string) => ({ data: tree[prefix] ?? [], error: null }));
+    mockRuntime(client);
+    const { DELETE } = await import("../src/app/api/documents/[id]/route");
+
+    const response = await DELETE(authenticatedRequest(`/api/documents/${documentId}`, { method: "DELETE" }), {
+      params: Promise.resolve({ id: documentId }),
+    });
+    expect(response.status).toBe(200);
+    expect(client.storageMocks.list).toHaveBeenCalledWith(documentId, { limit: 1000, offset: 0 });
+    expect(client.storageMocks.remove).toHaveBeenCalledWith([recorded, orphan]);
+  });
+
+  it("does not report a leftover-image sweep that hit its limit as complete (audit ING-A-08)", async () => {
+    const client = createSupabaseMock(() => ok([]));
+    client.rpc.mockImplementation(async (name: string) =>
+      name === "delete_document_if_idle"
+        ? ok({
+            outcome: "deleted",
+            cleanup_job_id: "55555555-5555-4555-8555-555555555555",
+            document_title: "Owned",
+            source_path: null,
+            image_paths: [],
+          })
+        : ok([]),
+    );
+    // Every page of the document's prefix is full, so the bounded sweep stops with files left.
+    client.storageMocks.list.mockImplementation(async (_prefix: string, options: { offset: number }) => ({
+      data: Array.from({ length: 1000 }, (_, index) => ({
+        id: `file-${options.offset + index}`,
+        name: `${options.offset + index}.png`,
+      })),
+      error: null,
+    }));
+    mockRuntime(client);
+    const { DELETE } = await import("../src/app/api/documents/[id]/route");
+
+    const response = await DELETE(authenticatedRequest(`/api/documents/${documentId}`, { method: "DELETE" }), {
+      params: Promise.resolve({ id: documentId }),
+    });
+    expect(response.status).toBe(200);
+    const body = (await payload(response)) as { storageWarnings: string[] };
+    expect(body.storageWarnings.some((warning) => warning.startsWith("Leftover images: stopped after 5000"))).toBe(
+      true,
+    );
   });
 
   it("does not touch storage when transactional deletion fails", async () => {

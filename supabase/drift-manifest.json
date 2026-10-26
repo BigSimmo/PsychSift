@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-25T16:17:40.502Z",
+  "generated_at": "2026-10-26T04:46:49.542Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "d267e1d440ad9509b9cbfb33daa07c6f3224869f499937acbb6d2140a70036c7",
-  "replay_seconds": 18,
+  "schema_sha256": "b9364f9857dac5198f7a7254fb5a7792250a781e68f7af1b77e603c8c9914f76",
+  "replay_seconds": 20,
   "snapshot": {
     "views": [
       {
@@ -3272,6 +3272,14 @@
             "generated": ""
           },
           {
+            "name": "labels",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
             "name": "metadata",
             "type": "jsonb",
             "default": null,
@@ -3281,6 +3289,14 @@
           },
           {
             "name": "quality",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "summary",
             "type": "jsonb",
             "default": null,
             "identity": "",
@@ -15676,12 +15692,6 @@
         "def_hash": "3f624f013d0133b0a2ee1793db7d0972"
       },
       {
-        "def": "CREATE INDEX image_caption_cache_owner_hash_idx ON public.image_caption_cache USING btree (owner_id, image_hash, model)",
-        "name": "image_caption_cache_owner_hash_idx",
-        "table": "image_caption_cache",
-        "def_hash": "2f2c90dfac660eb2a30bd869f686e665"
-      },
-      {
         "def": "CREATE UNIQUE INDEX image_caption_cache_owner_hash_model_identity_key ON public.image_caption_cache USING btree (owner_id, image_hash, model, cache_identity) NULLS NOT DISTINCT",
         "name": "image_caption_cache_owner_hash_model_identity_key",
         "table": "image_caption_cache",
@@ -18657,6 +18667,21 @@
         "table": "document_index_units"
       },
       {
+        "def": "CREATE TRIGGER document_labels_evidence_delete AFTER DELETE ON public.document_labels REFERENCING OLD TABLE AS old_rows FOR EACH STATEMENT EXECUTE FUNCTION public.document_evidence_rows_changed()",
+        "name": "document_labels_evidence_delete",
+        "table": "document_labels"
+      },
+      {
+        "def": "CREATE TRIGGER document_labels_evidence_insert AFTER INSERT ON public.document_labels REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION public.document_evidence_rows_changed()",
+        "name": "document_labels_evidence_insert",
+        "table": "document_labels"
+      },
+      {
+        "def": "CREATE TRIGGER document_labels_evidence_update AFTER UPDATE ON public.document_labels REFERENCING OLD TABLE AS old_rows NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION public.document_evidence_rows_changed()",
+        "name": "document_labels_evidence_update",
+        "table": "document_labels"
+      },
+      {
         "def": "CREATE TRIGGER document_memory_cards_updated_at BEFORE UPDATE ON public.document_memory_cards FOR EACH ROW EXECUTE FUNCTION public.set_updated_at()",
         "name": "document_memory_cards_updated_at",
         "table": "document_memory_cards"
@@ -18709,6 +18734,11 @@
       {
         "def": "CREATE TRIGGER documents_ingestion_webhook AFTER UPDATE OF metadata ON public.documents FOR EACH ROW EXECUTE FUNCTION public.notify_document_change_ingestion_webhook()",
         "name": "documents_ingestion_webhook",
+        "table": "documents"
+      },
+      {
+        "def": "CREATE TRIGGER documents_licence_withdrawn_outdated BEFORE UPDATE OF metadata ON public.documents FOR EACH ROW EXECUTE FUNCTION public.mark_licence_withdrawn_document_outdated()",
+        "name": "documents_licence_withdrawn_outdated",
         "table": "documents"
       },
       {
@@ -19163,7 +19193,7 @@
         "acl": [
           "postgres=X/postgres"
         ],
-        "def_hash": "40e293903d367e120421780f7cf4baaf",
+        "def_hash": "f855c295c5c6511082816882d0d3841a",
         "signature": "public.capture_document_index_metadata_snapshot()"
       },
       {
@@ -19916,6 +19946,13 @@
         ],
         "def_hash": "84d86f83a1a54d8d16bf12e98892aae1",
         "signature": "public.lock_ingestion_document_authority(uuid,boolean)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "6e8b9129e24763b8e95a53274ba57bf6",
+        "signature": "public.mark_licence_withdrawn_document_outdated()"
       },
       {
         "acl": [
@@ -20695,7 +20732,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "456e0660d53a26e0d3420ab261e2f89b",
+        "def_hash": "0e45d922deb2d81f57948eb6e50f9084",
         "signature": "public.rollback_document_index_generation(uuid,uuid,uuid)"
       },
       {
@@ -22836,6 +22873,11 @@
         "table": "document_index_generation_snapshots"
       },
       {
+        "def": "CHECK (((labels IS NULL) OR (jsonb_typeof(labels) = 'array'::text)))",
+        "name": "document_index_generation_snapshots_labels_array",
+        "table": "document_index_generation_snapshots"
+      },
+      {
         "def": "CHECK (((metadata IS NULL) OR (jsonb_typeof(metadata) = 'object'::text)))",
         "name": "document_index_generation_snapshots_metadata_object",
         "table": "document_index_generation_snapshots"
@@ -22848,6 +22890,11 @@
       {
         "def": "CHECK (((quality IS NULL) OR (jsonb_typeof(quality) = 'object'::text)))",
         "name": "document_index_generation_snapshots_quality_object",
+        "table": "document_index_generation_snapshots"
+      },
+      {
+        "def": "CHECK (((summary IS NULL) OR (jsonb_typeof(summary) = 'object'::text)))",
+        "name": "document_index_generation_snapshots_summary_object",
         "table": "document_index_generation_snapshots"
       },
       {

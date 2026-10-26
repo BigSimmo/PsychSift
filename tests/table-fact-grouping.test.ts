@@ -84,4 +84,13 @@ describe("table-fact grouping keeps every matched row per chunk", () => {
     expect(tie?.reason).toBe("first");
     expect(tie?.tableFacts?.map((row) => row.id)).toEqual(["a", "b"]);
   });
+
+  // Audit RET-N8: a reviewed-out row used to take one of the five slots and was removed only later.
+  it("drops a reviewed-out row before the five-row cut but keeps the chunk's score", () => {
+    const rows: Row[] = [{ ...fact("x", "chunk-1", 0.95), metadata: { review_class: "bad_extraction" } }];
+    for (const id of ["a", "b", "c", "d", "e"]) rows.push(fact(id, "chunk-1", 0.4));
+    const [match] = groupTableFactMatches(rows);
+    expect(match?.tableFacts?.map((row) => row.id)).toEqual(["a", "b", "c", "d", "e"]);
+    expect(match?.textRank).toBe(0.95);
+  });
 });

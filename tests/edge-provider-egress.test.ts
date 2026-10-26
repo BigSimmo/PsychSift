@@ -237,6 +237,14 @@ describe("Edge provider egress boundary", () => {
     expect(transport).toContain("if (e instanceof ProviderEgressDeniedError) throw e;");
     expect(index).toContain("createUnavailableIngestionProviderEgressContext({");
     expect(index).toContain("markJobFailure: (job, message, error) => markJobFailure(job, message, error)");
-    expect(index).toContain('document_ingress_safety: { verdict: "quarantine", ...refusal }');
+    // CR-02: the status RPC rejects any metadata key outside its allow-list, so the refusal goes
+    // in the error text and the metadata argument stays empty.
+    expect(index).not.toContain("document_ingress_safety");
+    const failure = index.slice(
+      index.indexOf("async function markJobFailure("),
+      index.indexOf("async function processJob("),
+    );
+    expect(failure).toContain("refusal.codes.join");
+    expect(failure).toMatch(/decision\.nextRunAt,\s*\{\},/);
   });
 });

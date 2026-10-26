@@ -39,6 +39,13 @@ statuses, so decommissioning, loss of access and membership changes cannot disap
 behind an unrelated latest indexed document. Full metadata inclusion conservatively
 invalidates caches after unrelated document updates.
 
+Each document's hash also carries its evidence counter (`document_evidence_revisions`), which
+table-fact and image edits bump. Migration `20261025171000_label_cache_revision_licence_withdrawal.sql`
+(drafted 25 Oct 2026, merges only after the owner's own yes) adds label inserts, real updates
+and deletes to that counter (audit E2E-11), so a label edit reaches every app copy, not only the
+one that handled it. The `backfill:text-normalization` script bumps the counter for every document
+whose chunk text it rewrites and clears the shared answer and search cache.
+
 The candidate snapshot namespaces and public-write proofs remain required. Anonymous
 answer caching, `skipCache`, original-section loaders, active pilot budgets, trusted
 reviewed-policy loaders/states and conflicts retain their existing exclusions. The

@@ -27,6 +27,13 @@ export function buildExtractionProvenance(args: {
   recordedAt: string;
 }) {
   const ocrPages = args.extracted.pages.filter((page) => page.ocrUsed === true);
+  // Audit EXT-08 (24 Oct 2026): whether the optional image-table reader, or its maths helper,
+  // produced any cell text, so a fault found later in either can be traced to its documents.
+  const rasterPages = args.extracted.pages.flatMap((page) => {
+    const record = page.metadata?.raster_table_ocr;
+    return record && typeof record === "object" ? [record as { crops?: unknown }] : [];
+  });
+  const rasterCrops = rasterPages.flatMap((record) => (Array.isArray(record.crops) ? record.crops : []));
   return {
     ...(args.extracted.extractor ?? {}),
     chunker_versions: distinctVersions(args.chunks.map((chunk) => chunk.metadata?.chunker_version)),
@@ -37,6 +44,10 @@ export function buildExtractionProvenance(args: {
         return provenance && provenance.format === "pdf" ? provenance.producer.tesseractVersion : undefined;
       }),
     ),
+    raster_table_ocr_page_count: rasterPages.length,
+    raster_math_transform_count: rasterCrops.filter(
+      (crop) => crop && typeof crop === "object" && "ocrInputTransform" in crop && crop.ocrInputTransform,
+    ).length,
     recorded_at: args.recordedAt,
   };
 }
