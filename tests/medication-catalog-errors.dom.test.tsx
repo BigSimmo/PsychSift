@@ -3,8 +3,9 @@
 // Design audit D-14: a failed or stalled Medication search said "Request failed (503)" or
 // stayed loading for ever. It now says what happened in plain words and gives up after a deadline.
 import { act, renderHook } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { preloadSearchPatientCheck } from "@/components/clinical-dashboard/search-patient-detail-guard";
 import { useMedicationCatalog } from "@/components/clinical-dashboard/use-medication-catalog";
 
 vi.mock("@/lib/supabase/client", () => ({
@@ -12,6 +13,12 @@ vi.mock("@/lib/supabase/client", () => ({
 }));
 
 let fetchMock: ReturnType<typeof vi.fn<typeof fetch>>;
+
+// Searches check typed text for patient details before they send or navigate; load the check
+// once up front so the steps below see the request go out (privacy audit S1, 2026-10-26).
+beforeAll(async () => {
+  await preloadSearchPatientCheck();
+});
 
 beforeEach(() => {
   vi.useFakeTimers();

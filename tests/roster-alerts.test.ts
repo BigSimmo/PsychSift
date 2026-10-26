@@ -116,6 +116,24 @@ describe("generic phone alerts", () => {
     expect(mocks.subscriptions).toHaveBeenCalledWith(client, [SAM]);
   });
 
+  it("alerts the claimer the decline itself cleared", async () => {
+    const OPEN = "5e000000-0000-4000-8000-000000000007";
+    mocks.open.mockResolvedValue({
+      id: OPEN,
+      posted_by: ALEX,
+      claimed_by: null,
+      starts_at: "2026-11-20T00:00:00.000Z",
+    });
+    await dispatchRosterAlerts(client, {
+      serviceId: SERVICE,
+      actorId: ALEX,
+      action: { action: "open.decline", openShiftId: OPEN },
+      result: { openShiftId: OPEN, status: "open", declinedClaimedBy: MEI },
+    });
+    expect(mocks.subscriptions).toHaveBeenCalledWith(client, [MEI]);
+    expect(mocks.send.mock.calls[0]?.[1]).toBe(JSON.stringify({ t: "request" }));
+  });
+
   it("routes both new and replayed offers through the durable device outbox", async () => {
     const OPEN = "5e000000-0000-4000-8000-000000000007";
     const gap = {

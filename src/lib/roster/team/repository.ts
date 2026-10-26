@@ -428,28 +428,35 @@ export async function rosterCommand(
           p_service_id: serviceId,
           p_open_shift_id: action.openShiftId,
         })
-      : action.action === "needs.set"
-        ? await client.rpc("roster_needs_replace", {
+      : action.action === "open.decline"
+        ? // Declining answers with the claimer it cleared (declinedClaimedBy), read under the decline's own lock.
+          await client.rpc("roster_open_decline", {
             p_actor_id: actorId,
             p_service_id: serviceId,
-            p_expected_ids: action.expectedIds as never,
-            p_needs: action.needs as never,
+            p_open_shift_id: action.openShiftId,
           })
-        : action.action === "open.post"
-          ? await client.rpc("roster_open_post_once", {
+        : action.action === "needs.set"
+          ? await client.rpc("roster_needs_replace", {
               p_actor_id: actorId,
               p_service_id: serviceId,
-              // A keyless post gets a one-use server key so it still records a post key, which is what
-              // enqueues its durable offer alert; without one the post saved but no one was alerted.
-              p_post_key: action.postKey ?? randomUUID(),
-              p_payload: withoutPostKey(payload) as never,
+              p_expected_ids: action.expectedIds as never,
+              p_needs: action.needs as never,
             })
-          : await client.rpc("roster_command", {
-              p_actor_id: actorId,
-              p_service_id: serviceId,
-              p_action: name,
-              p_payload: payload as never,
-            });
+          : action.action === "open.post"
+            ? await client.rpc("roster_open_post_once", {
+                p_actor_id: actorId,
+                p_service_id: serviceId,
+                // A keyless post gets a one-use server key so it still records a post key, which is what
+                // enqueues its durable offer alert; without one the post saved but no one was alerted.
+                p_post_key: action.postKey ?? randomUUID(),
+                p_payload: withoutPostKey(payload) as never,
+              })
+            : await client.rpc("roster_command", {
+                p_actor_id: actorId,
+                p_service_id: serviceId,
+                p_action: name,
+                p_payload: payload as never,
+              });
   if (error) throw rosterApiError(error);
   const parsed = rosterCommandResultSchema.safeParse(data);
   if (!parsed.success) throw rosterUnavailable();

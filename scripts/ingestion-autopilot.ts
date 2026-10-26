@@ -64,6 +64,12 @@ export type IngestionAssessment = {
   strandedQueuedDocuments: number;
   strandedFinalAttemptJobs: number;
   indexedDocumentsWithoutChunks: number;
+  /**
+   * Pending jobs on already-searchable documents that used every attempt. The claim RPC never
+   * picks them up again, so resuming the worker does not clear them, but no upload waits on them.
+   * Reported, never alerted on (audit 26 Oct 2026 LS-07).
+   */
+  abandonedSearchableJobs: number;
   workerState: WorkerState;
 };
 
@@ -127,6 +133,7 @@ export function assessIngestionHealth(
       strandedQueuedDocuments: 0,
       strandedFinalAttemptJobs: 0,
       indexedDocumentsWithoutChunks: 0,
+      abandonedSearchableJobs: 0,
       workerState,
     };
   }
@@ -145,13 +152,18 @@ export function assessIngestionHealth(
       const lockedAt = Date.parse(job.locked_at);
       if (Number.isFinite(lockedAt) && now - lockedAt > staleThresholdMs) staleProcessingJobs += 1;
     }
+    // A pending job that has used every attempt is never claimed again, so it is not waiting for
+    // the worker. It is counted below from reindex-health's exact counts instead.
+    if (job.status === "pending" && isExhausted(job)) continue;
     if (job.status === "pending") {
       const dueAt = Date.parse(job.next_run_at ?? job.created_at ?? "");
       if (Number.isFinite(dueAt) && now - dueAt > staleThresholdMs) agedPendingJobs += 1;
     }
   }
   // The preview holds only the 25 oldest open jobs; reindex-health's exact count covers the rest.
-  const overdueCount = Number(health.counts?.jobs_pending_overdue);
+  const exhaustedOverdue = Number(health.counts?.jobs_pending_exhausted_overdue);
+  const overdueCount =
+    Number(health.counts?.jobs_pending_overdue) - (Number.isSafeInteger(exhaustedOverdue) ? exhaustedOverdue : 0);
   if (Number.isFinite(overdueCount) && overdueCount > agedPendingJobs) agedPendingJobs = overdueCount;
   if (staleProcessingJobs > 0) {
     reasons.push(`${staleProcessingJobs} processing job(s) locked > ${staleAfterMinutes}m (stale worker)`);
@@ -188,6 +200,18 @@ export function assessIngestionHealth(
     "documents_indexed_without_chunks",
     "indexed document(s) without chunks",
   );
+  // An exhausted pending job on a document that is not searchable is an upload that will never
+  // finish by itself: it needs review, and queue recovery does not touch pending jobs.
+  integrityCount(
+    "jobs_pending_exhausted_unindexed",
+    "pending job(s) on unsearchable document(s) used every attempt and will never run",
+  );
+  const exhaustedTotal = Number(health.counts?.jobs_pending_exhausted);
+  const exhaustedUnindexed = Number(health.counts?.jobs_pending_exhausted_unindexed);
+  const abandonedSearchableJobs =
+    Number.isSafeInteger(exhaustedTotal) && Number.isSafeInteger(exhaustedUnindexed)
+      ? Math.max(0, exhaustedTotal - exhaustedUnindexed)
+      : 0;
   reasons.push(...integrityProblems);
 
   return {
@@ -202,8 +226,25 @@ export function assessIngestionHealth(
     strandedQueuedDocuments,
     strandedFinalAttemptJobs,
     indexedDocumentsWithoutChunks,
+    abandonedSearchableJobs,
     workerState,
   };
+}
+
+function isExhausted(job: { attempt_count?: number | null; max_attempts?: number | null }): boolean {
+  const attempts = Number(job.attempt_count);
+  const max = Number(job.max_attempts);
+  return Number.isFinite(attempts) && Number.isFinite(max) && max > 0 && attempts >= max;
+}
+
+/** One plain line about abandoned jobs on searchable documents, or null when there are none. */
+export function describeAbandonedJobs(assessment: IngestionAssessment): string | null {
+  if (assessment.abandonedSearchableJobs <= 0) return null;
+  return (
+    `[autopilot] note: ${assessment.abandonedSearchableJobs} pending job(s) on documents that are already searchable ` +
+    "used every attempt and will never run. They hold up no upload, so this does not alert. Resuming the worker " +
+    "does not clear them; closing them is a one-off database step (docs/reindex-runbook.md, Abandoned jobs)."
+  );
 }
 
 /** One line on extraction quality for the run log, or null when the probe did not report it. */
@@ -281,6 +322,18 @@ function main() {
     if (process.env.GITHUB_STEP_SUMMARY) {
       try {
         appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${qualityLine}\n`);
+      } catch {
+        // The run log above carries the same line.
+      }
+    }
+  }
+
+  const abandonedLine = describeAbandonedJobs(assessment);
+  if (abandonedLine) {
+    console.log(abandonedLine);
+    if (process.env.GITHUB_STEP_SUMMARY) {
+      try {
+        appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${abandonedLine}\n`);
       } catch {
         // The run log above carries the same line.
       }

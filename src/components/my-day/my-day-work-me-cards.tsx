@@ -928,6 +928,11 @@ export function QuickNoteCard() {
         aria-invalid={problem ? true : undefined}
         data-testid="my-day-quick-note"
         placeholder="A reminder for yourself"
+        // Kept from autofill, spelling and grammar extensions, like the other note fields (privacy audit CA-08).
+        autoComplete="off"
+        spellCheck={false}
+        data-gramm="false"
+        data-enable-grammarly="false"
         className="min-h-14 w-full resize-y rounded-lg border border-[color:var(--work-line-strong)] bg-[color:var(--work-surface)] px-3 py-2.5 text-sm text-[color:var(--work-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus)] forced-colors:border"
       />
       <div id={hintId} className="grid gap-1.5">

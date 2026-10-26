@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  searchTextPatientDetailRefusal,
+  usePreloadSearchPatientCheck,
+} from "@/components/clinical-dashboard/search-patient-detail-guard";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Clock3, History, Info, LayoutGrid, ListChecks, Rows3, Search, Sigma } from "lucide-react";
 import { useCallback, useEffect, useId, useMemo, useState, useSyncExternalStore } from "react";
@@ -329,6 +333,7 @@ export function CalculatorsSearchPage({
     () => false,
   );
   const query = hydrated ? (searchCommand?.query ?? initialQuery) : initialQuery;
+  usePreloadSearchPatientCheck(query);
   const normalizedQuery = normalizeCalculatorQuery(query);
   const smartExpansions = useMemo(() => smartSearchExpansions("calculators", query), [query]);
   const filterPanelId = useId();
@@ -381,7 +386,7 @@ export function CalculatorsSearchPage({
     const nextParams = new URLSearchParams(
       searchParams ? searchParams.toString() : typeof window !== "undefined" ? window.location.search : "",
     );
-    if (!nextParams.has("q") && query.trim()) {
+    if (!nextParams.has("q") && query.trim() && !searchTextPatientDetailRefusal(query)) {
       nextParams.set("q", query.trim());
     }
     nextParams.set("calculator", calculator.id);
@@ -393,7 +398,7 @@ export function CalculatorsSearchPage({
       searchParams ? searchParams.toString() : typeof window !== "undefined" ? window.location.search : "",
     );
     nextParams.delete("calculator");
-    if (!nextParams.has("q") && query.trim()) {
+    if (!nextParams.has("q") && query.trim() && !searchTextPatientDetailRefusal(query)) {
       nextParams.set("q", query.trim());
     }
     const searchString = nextParams.toString();

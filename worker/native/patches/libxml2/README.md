@@ -30,11 +30,24 @@ repair from commit `046931e64e9e081e82c341f6455d070716fb8cf2`, rebased to the
 2.9.14 function context. The built Python extension must pass the separate
 enumeration ownership controls.
 
-CVE-2026-6653 remains unresolved. Its larger vendor backport changes public
-entity/input structures; it is excluded pending compatibility evidence.
+CVE-2026-6653 uses Ubuntu's `debian/patches/CVE-2026-6653.patch` from
+`libxml2 2.9.14+dfsg-1.3ubuntu3.8` (noble-security, still carried in ubuntu3.10)
+byte for byte; it is the 2.9.14 backport of upstream commit
+`463bbeeca1805b5c4828f50d0fefc4eebaf620df`. It applies after the six patches
+above with `--fuzz=0` (line offsets only). Compatibility: the patch appends
+`flags`/`expandedSize` to the end of `struct _xmlEntity` and
+`parentConsumed`/`entity` to the end of `struct _xmlParserInput`, both
+allocated only inside libxml2 (`xmlCreateEntity`, `xmlNewInputStream`), and
+adds `XML_ENT_*` macros. No exported function, signature, symbol-file entry or
+SONAME changes. A consumer that allocated either struct itself or relied on its
+size would be affected; the worker image's consumer (libarchive, pulled in
+by Tesseract; the Python binding is not installed) does not. Behaviour change: entity
+expansion is capped at 10x the input (with a fixed 10 MB allowance) even with
+`XML_PARSE_HUGE`. The upstream checks in the Debian test run, including the
+patch's `testrecurse` updates, cover this; no dedicated UAF reproducer is added.
 
-Normal Debian features, build flags and tests remain in place. No public header,
-exported signature, symbol list or SONAME is changed by these patches.
+Normal Debian features, build flags and tests remain in place. Apart from the CVE-2026-6653 struct tail fields described above, no public
+header, exported signature, symbol list or SONAME is changed by these patches.
 The additional regression script must compile and run against the newly built
 `builddir/main/.libs/libxml2.so.2`; its C harness checks the resolved loaded
 library path, ordinary valid XML, and twelve XInclude option/loader cases using
