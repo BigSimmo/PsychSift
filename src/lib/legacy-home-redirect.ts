@@ -29,6 +29,16 @@ const aliasOnlyModePaths = {
 } as const;
 
 /**
+ * Mode names people type or bookmark that are not the mode's id. `/?mode=medications`
+ * used to fail the mode check and land on Answer with no sign anything was wrong
+ * (design audit D26-52), so these keep the visitor on `/` under the mode they meant.
+ */
+const renamedModeIds = {
+  medication: "prescribing",
+  medications: "prescribing",
+} as const;
+
+/**
  * Dropped when a mode forwards to its own page: `mode` is consumed by the
  * pathname, and `run=1` would submit the draft on a page with nothing to
  * search. A draft `q` and `focus` stay, so the page's composer can pick them up.
@@ -48,6 +58,14 @@ export function legacyHomeRedirectUrl(requestUrl: LegacyHomeRequestUrl, method: 
   if ((method !== "GET" && method !== "HEAD") || requestUrl.pathname !== "/") return null;
 
   const mode = requestUrl.searchParams.get("mode");
+
+  const renamedMode = mode ? renamedModeIds[mode as keyof typeof renamedModeIds] : undefined;
+  if (renamedMode) {
+    const renamedDestination = new URL(requestUrl.toString());
+    renamedDestination.searchParams.set("mode", renamedMode);
+    renamedDestination.hash = "";
+    return renamedDestination;
+  }
 
   const aliasOnlyPath = mode ? aliasOnlyModePaths[mode as keyof typeof aliasOnlyModePaths] : undefined;
   if (aliasOnlyPath) {
